@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import { init as authInit } from '@/store/auth.js'
 import './styles/main.css'
 
 // 滚动出现指令：进入视口时加上 .in（复刻原站 IntersectionObserver 动效）
@@ -25,6 +26,9 @@ const reveal = {
   }
 }
 
+// 挂载前先恢复登录态（store/auth.js 在模块加载时已同步从 localStorage 恢复，
+// init() 仅作幂等收口，保证刷新页面后导航守卫/侧边栏拿到的状态正确）
+authInit()
 const app = createApp(App)
 app.directive('reveal', reveal)
 app.use(router)

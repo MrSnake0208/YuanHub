@@ -16,9 +16,52 @@
       <a href="#"><span class="no">03</span>关于</a>
     </nav>
     <div class="island-foot">
-      <a href="#">登录 / 注册</a> · 简体中文<br>
+      <template v-if="isLoggedIn">
+        <span class="foot-user">{{ userName }}</span>
+        <button class="foot-logout" type="button" @click="onLogout">退出</button>
+      </template>
+      <router-link v-else to="/login" class="foot-link">登录 / 注册</router-link> · 简体中文<br>
       <a href="#">创建新作业</a><br>
       <div class="grp">作业制作者交流群<br>1055262891</div>
     </div>
   </aside>
 </template>
+
+<script setup>
+import { computed } from 'vue'
+import { auth, logout as doLogout } from '@/store/auth.js'
+
+// 已登录状态（reactive，随 auth 变化）
+const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false)
+const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
+
+function onLogout() {
+  // store/auth.js 的 logout() 会清空登录态并跳转 /login
+  doLogout()
+}
+</script>
+
+<style scoped>
+.foot-user {
+  color: var(--ink);
+  font-weight: 800;
+  margin-right: 6px;
+}
+.foot-logout {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 2px;
+  font-family: var(--font-b, inherit);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-60);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .25s;
+}
+.foot-logout:hover {
+  color: var(--rouge);
+}
+</style>

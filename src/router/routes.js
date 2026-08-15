@@ -50,5 +50,41 @@ export const routes = [
         meta: {
             title: '广陵账房 · 礼包计算器 — MaaYuan Share'
         }
+    },
+    {
+        path: '/login',
+        text: '登录',
+        name: 'login',
+        display: false,
+        module: 'user',
+        icon: 'log-in',
+        component: () => import('/src/pages/user/login.vue'),
+        meta: {
+            title: '登录 — MaaYuan Share'
+        }
+    },
+    {
+        path: '/register',
+        text: '注册',
+        name: 'register',
+        display: false,
+        module: 'user',
+        icon: 'user-plus',
+        component: () => import('/src/pages/user/register.vue'),
+        meta: {
+            title: '注册 — MaaYuan Share'
+        }
+    },
+    {
+        path: '/forgot',
+        text: '找回密码',
+        name: 'forgot',
+        display: false,
+        module: 'user',
+        icon: 'key-round',
+        component: () => import('/src/pages/user/forgot.vue'),
+        meta: {
+            title: '找回密码 — MaaYuan Share'
+        }
     }
 ]
