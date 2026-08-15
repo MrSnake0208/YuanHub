@@ -80,12 +80,13 @@
   <div class="cart-actions">
     <button class="btn ghost" :disabled="cartItems.length === 0" @click="$emit('clear')"><Trash2 :size="16" />清空</button>
     <button class="btn primary" :disabled="cartItems.length === 0" @click="exportImage"><Download :size="16" />导出图片</button>
+    <button class="btn primary" @click="$emit('save-plan')"><Save :size="16" />保存</button>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { ShoppingCart, Receipt, Gift, Trash2, Download } from '@lucide/vue'
+import { ShoppingCart, Receipt, Gift, Trash2, Download, Save } from '@lucide/vue'
 import html2canvas from 'html2canvas'
 
 const props = defineProps({
@@ -107,7 +108,7 @@ const props = defineProps({
   version: { type: String, default: 'daihao' }
 })
 
-const emit = defineEmits(['clear', 'update-initial'])
+const emit = defineEmits(['clear', 'update-initial', 'save-plan'])
 
 const el = ref(null)
 
