@@ -1,15 +1,6 @@
 <template>
-  <div class="auth-page">
-    <main class="auth-main">
-      <div class="auth-card" v-reveal>
-        <div class="auth-brand">
-          <div class="brand-mark">M</div>
-          <p class="en">MaaYuan Share</p>
-        </div>
-        <h1 class="auth-title">欢迎回来</h1>
-        <p class="auth-sub">登录后即可保存作业 · 同步进度</p>
-
-        <form class="auth-form" @submit.prevent="onSubmit" novalidate>
+  <AuthLayout title="欢迎回来" sub="登录后即可保存作业 · 同步进度">
+    <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
             <label>邮箱 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'email' }">
@@ -47,18 +38,17 @@
           </button>
         </form>
 
-        <div class="auth-switch">
-          <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
-          <router-link to="/forgot">忘记密码？</router-link>
-        </div>
-      </div>
-    </main>
-  </div>
+    <div class="auth-switch">
+      <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
+      <router-link to="/forgot">忘记密码？</router-link>
+    </div>
+  </AuthLayout>
 </template>
 
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import AuthLayout from '../../components/AuthLayout.vue'
 // store/auth.js 由 eng-api 按契约提供：{ login(email, password) } 返回 Promise
 import { auth } from '@/store/auth.js'
 
@@ -101,50 +91,6 @@ async function onSubmit() {
 </script>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 20px;
-}
-.auth-main {
-  width: 100%;
-  max-width: 420px;
-}
-.auth-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  box-shadow: 0 30px 60px -28px rgba(73,59,44,.3);
-  padding: 44px 40px 36px;
-}
-.auth-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-.auth-brand .brand-mark {
-  width: 38px; height: 38px;
-  border-radius: 12px;
-  background: var(--tea); color: var(--cream);
-  display: grid; place-items: center;
-  font-family: var(--font-d); font-weight: 900; font-size: 16px;
-}
-.auth-brand .en {
-  font-family: var(--font-d); font-weight: 700; font-size: 12px;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--ink-35);
-}
-.auth-title {
-  margin-top: 22px;
-  font-family: var(--font-s); font-weight: 900;
-  font-size: 30px; letter-spacing: .12em; text-align: center; color: var(--ink);
-}
-.auth-sub {
-  margin-top: 8px; text-align: center;
-  font-size: 13px; color: var(--ink-60);
-}
 .auth-form { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
 .field label {
   display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-60); margin-bottom: 6px;

@@ -1,16 +1,11 @@
 <template>
-  <div class="auth-page">
-    <main class="auth-main">
-      <div class="auth-card" v-reveal>
-        <p class="back"><router-link to="/login">← 返回登录</router-link></p>
-        <div class="auth-brand">
-          <div class="brand-mark">M</div>
-          <p class="en">Reset Password</p>
-        </div>
-        <h1 class="auth-title">{{ step === 1 ? '找回密码' : '设置新密码' }}</h1>
-        <p class="auth-sub">{{ step === 1 ? '通过邮箱验证码重置密码' : '验证成功 · 请设置新密码' }}</p>
+  <AuthLayout
+    :title="step === 1 ? '找回密码' : '设置新密码'"
+    :sub="step === 1 ? '通过邮箱验证码重置密码' : '验证成功 · 请设置新密码'"
+  >
+    <p class="back"><router-link to="/login">← 返回登录</router-link></p>
 
-        <!-- 步骤一：发送验证码 -->
+    <!-- 步骤一：发送验证码 -->
         <form v-if="step === 1" class="auth-form" @submit.prevent="onSend" novalidate>
           <div class="field">
             <label>邮箱 <em>*</em></label>
@@ -60,21 +55,20 @@
           </button>
         </form>
 
-        <div class="auth-switch" v-if="step === 2">
-          <router-link to="/login">返回登录</router-link>
-          <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
-        </div>
-        <div class="auth-switch" v-else>
-          <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
-        </div>
-      </div>
-    </main>
-  </div>
+    <div class="auth-switch" v-if="step === 2">
+      <router-link to="/login">返回登录</router-link>
+      <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
+    </div>
+    <div class="auth-switch" v-else>
+      <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
+    </div>
+  </AuthLayout>
 </template>
 
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AuthLayout from '../../components/AuthLayout.vue'
 // api/user.js 由 eng-api 按契约提供：sendResetVCode({email}) { resetPassword({email,activeCode,password}) }
 import { sendResetVCode, resetPassword } from '@/api/user.js'
 
@@ -154,33 +148,9 @@ async function onSubmit() {
 </script>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  padding: 32px 20px;
-}
-.auth-main { width: 100%; max-width: 420px; }
-.auth-card {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 24px;
-  box-shadow: 0 30px 60px -28px rgba(73,59,44,.3);
-  padding: 40px 40px 32px; position: relative;
-}
 .back { position: absolute; top: 18px; left: 22px; font-size: 12.5px; }
 .back a { color: var(--ink-60); text-decoration: none; font-weight: 600; }
 .back a:hover { color: var(--accent); }
-.auth-brand { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.auth-brand .brand-mark {
-  width: 38px; height: 38px; border-radius: 12px; background: var(--tea); color: var(--cream);
-  display: grid; place-items: center; font-family: var(--font-d); font-weight: 900; font-size: 16px;
-}
-.auth-brand .en {
-  font-family: var(--font-d); font-weight: 700; font-size: 12px;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--ink-35);
-}
-.auth-title {
-  margin-top: 20px; font-family: var(--font-s); font-weight: 900;
-  font-size: 30px; letter-spacing: .12em; text-align: center; color: var(--ink);
-}
-.auth-sub { margin-top: 8px; text-align: center; font-size: 13px; color: var(--ink-60); }
 .auth-form { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
 .field label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-60); margin-bottom: 6px; letter-spacing: .04em; }
 .field label em { color: var(--rouge); font-style: normal; }
