@@ -127,14 +127,14 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Plus, Trash2, Receipt, Filter, Calculator, Download } from '@lucide/vue'
-import IslandSidebar from '../components/IslandSidebar.vue'
-import SiteFooter from '../components/SiteFooter.vue'
-import PackageCard from '../components/cart/PackageCard.vue'
-import ReceiptPanel from '../components/cart/ReceiptPanel.vue'
-import CustomPackageModal from '../components/cart/CustomPackageModal.vue'
+import IslandSidebar from '../../components/IslandSidebar.vue'
+import SiteFooter from '../../components/SiteFooter.vue'
+import PackageCard from '../../components/cart/PackageCard.vue'
+import ReceiptPanel from '../../components/cart/ReceiptPanel.vue'
+import CustomPackageModal from '../../components/cart/CustomPackageModal.vue'
 import html2canvas from 'html2canvas'
-import { packagesDaihao, packagesRu } from '../data/packages.js'
-import { track1, track2 } from '../data/rewards.js'
+import { packagesDaihao, packagesRu } from '../../data/packages.js'
+import { track1, track2 } from '../../data/rewards.js'
 
 const version = ref('daihao')
 const exchangeRate = ref(7.2)

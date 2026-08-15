@@ -127,9 +127,9 @@
 
 <script setup>
 import { computed } from 'vue'
-import DetailSidebar from '../components/DetailSidebar.vue'
-import SiteFooter from '../components/SiteFooter.vue'
-import { DETAILS } from '../data/detail.js'
+import DetailSidebar from '../../components/DetailSidebar.vue'
+import SiteFooter from '../../components/SiteFooter.vue'
+import { DETAILS } from '../../data/detail.js'
 
 const props = defineProps({ id: { type: String, default: '' } })
 

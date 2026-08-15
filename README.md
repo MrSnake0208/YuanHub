@@ -28,13 +28,18 @@ npm run build # 产物输出到 dist/
 │   └── icons/                          # 四方共建图标
 └── src/
     ├── main.js                 # 入口 + v-reveal 滚动出现指令
-    ├── router.js               # createWebHistory 路由 + scrollBehavior
+    ├── router/                 # 路由（对齐 frontend-v2-plus 结构）
+    │   ├── index.js            # createWebHistory 路由实例 + scrollBehavior
+    │   └── routes.js           # 路由表 + 新页面注册注释模板
     ├── App.vue                 # RouterView + 路由过渡
     ├── styles/main.css         # 设计规范 v1.0 全部令牌与样式
     ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js
     ├── components/             # IslandSidebar / DetailSidebar / WorkCard / SiteFooter
     │   └── cart/               # PackageCard / ReceiptPanel / CustomPackageModal
-    └── views/                  # PlazaView / DetailView / CartView
+    └── pages/                  # 页面（按模块分子目录）
+        ├── index.vue           # 作业广场（/）
+        ├── work/detail.vue     # 通关作业详情（/work/:id）
+        └── tools/cart.vue      # 广陵账房·礼包计算器（/cart）
 ```
 
 ## 复刻要点
