@@ -271,3 +271,153 @@ section{padding:88px 0 8px}
   .stone-row{grid-template-columns:1fr;gap:8px}
 }
 @media (max-width:640px){.credit-grid{grid-template-columns:1fr}}
+/* ============================================================
+   广陵账房（礼包购物车）· 设计规范 v1.0 上色
+   ============================================================ */
+.font-d{font-family:var(--font-d)}
+.font-s{font-family:var(--font-s)}
+.sticky{position:sticky}
+
+/* ---- 版本切换（蜜黄选中态） ---- */
+.cart-switch{display:inline-flex;background:rgba(73,59,44,.06);border-radius:12px;padding:4px;gap:4px}
+.cart-switch button{border:none;background:transparent;font-family:var(--font-b);font-weight:700;font-size:13.5px;padding:8px 20px;border-radius:9px;cursor:pointer;color:var(--ink-60);transition:all .3s var(--ease)}
+.cart-switch button.on{background:var(--yellow);color:var(--ink)}
+.cart-switch button:hover:not(.on){color:var(--ink)}
+
+/* ---- 汇率条 ---- */
+.rate-bar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 18px;flex-wrap:wrap}
+.rate-bar .lb{font-size:13px;font-weight:700;color:var(--ink)}
+.rate-bar input{width:84px;border:1.5px solid var(--line);background:var(--paper);border-radius:10px;padding:6px 10px;font-size:13px;font-family:var(--font-d);font-weight:700;color:var(--ink);outline:none;transition:border-color .3s}
+.rate-bar input:focus{border-color:var(--accent)}
+.rate-bar .hint{font-size:12px;color:var(--ink-60)}
+.rate-bar .ic{color:var(--accent)}
+
+/* ---- 筛选 ---- */
+.cart-filters{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.cart-filters .row{display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cart-filters .row::-webkit-scrollbar{display:none}
+.cart-filters .f-ic{flex:none;color:var(--accent);display:flex}
+.cart-filters .f-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:0 6px}
+.chip.on.gold{background:var(--yellow);border-color:var(--yellow-deep);color:var(--ink)}
+
+/* ---- 礼包卡 ---- */
+.pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pkg-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:all .4s var(--ease);min-height:120px}
+.pkg-card:hover{box-shadow:0 18px 36px -20px rgba(73,59,44,.3)}
+.pkg-card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pkg-del{position:absolute;top:-9px;right:-9px;background:rgba(166,81,74,.12);color:var(--rouge);border:none;border-radius:50%;width:26px;height:26px;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .3s;z-index:5}
+.pkg-card:hover .pkg-del{opacity:1}
+.pkg-del:hover{background:rgba(166,81,74,.22)}
+.pkg-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pkg-name{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.45}
+.pkg-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.pkg-tag{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 8px;letter-spacing:.03em;white-space:nowrap}
+.pkg-tag.pts{background:var(--yellow);color:var(--ink)}
+.pkg-tag.line{border:1.5px solid var(--line);color:var(--ink-60);background:transparent}
+.pkg-tag.gold{border:1.5px solid rgba(215,137,53,.5);color:var(--accent-strong);background:rgba(215,137,53,.07)}
+.pkg-price{text-align:right;flex-shrink:0}
+.pkg-price .main{font-family:var(--font-d);font-weight:900;font-size:17px;color:var(--accent);line-height:1}
+.pkg-price .usd{font-size:10px;color:var(--ink-35);margin-top:4px;font-family:var(--font-d)}
+.pkg-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:10px;margin-top:auto}
+.pkg-limit{font-size:11px;color:var(--ink-60)}
+.pkg-limit b{font-family:var(--font-d);color:var(--ink)}
+.pkg-limit b.max{color:var(--accent)}
+.stepper{display:flex;align-items:center;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:2px}
+.stepper button{width:24px;height:24px;border:none;border-radius:50%;background:var(--surface);color:var(--ink-60);display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 3px rgba(73,59,44,.12);transition:all .25s;font-family:var(--font-d)}
+.stepper button:hover:not(:disabled){color:var(--ink);border-color:var(--ink)}
+.stepper button:disabled{opacity:.4;cursor:default;box-shadow:none}
+.stepper .qty{width:26px;text-align:center;font-size:13px;font-weight:700;font-family:var(--font-d);color:var(--ink)}
+.pkg-add-card{background:var(--surface);border:2px dashed var(--line);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink-60);cursor:pointer;transition:all .4s var(--ease);min-height:120px;font-size:13px;font-weight:700}
+.pkg-add-card:hover{color:var(--accent);border-color:var(--accent);background:var(--cream)}
+.pkg-add-card .ic{background:var(--paper);border-radius:50%;width:38px;height:38px;display:grid;place-items:center;transition:background .3s}
+.pkg-add-card:hover .ic{background:var(--surface)}
+
+/* ---- 清单（收据） ---- */
+.cart-layout{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start}
+.receipt{background:var(--surface);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 20px 44px -24px rgba(73,59,44,.22)}
+.receipt-head{background:var(--tea);color:var(--cream);padding:20px;text-align:center}
+.receipt-head h2{font-family:var(--font-s);font-weight:900;font-size:19px;letter-spacing:.12em;display:flex;align-items:center;justify-content:center;gap:8px}
+.receipt-head .en{color:var(--yellow);font-size:10px;margin-top:4px;letter-spacing:.22em;text-transform:uppercase;font-family:var(--font-d);font-weight:700}
+.receipt-body{padding:20px}
+.initial-row{display:flex;justify-content:space-between;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:18px}
+.initial-row .lb{font-size:12px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px}
+.initial-row .lb .ic{color:var(--accent)}
+.initial-row input{width:96px;text-align:right;border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;font-family:var(--font-d);font-weight:700;color:var(--ink);background:var(--surface);outline:none;transition:border-color .3s}
+.initial-row input:focus{border-color:var(--accent)}
+.receipt-empty{text-align:center;padding:34px 0;color:var(--ink-60);border-bottom:1px solid var(--line);margin-bottom:18px}
+.receipt-empty .ic{color:var(--ink-35);margin:0 auto 10px;opacity:.5}
+.receipt-empty p{font-size:13px;font-weight:700}
+.receipt-empty .sub{font-size:11.5px;margin-top:4px;color:var(--ink-35)}
+.cart-line{display:flex;justify-content:space-between;align-items:flex-start;font-size:13px;margin-bottom:12px}
+.cart-line .nm{font-weight:700;color:var(--ink);font-size:12px;line-height:1.5}
+.cart-line .nm .sub{display:block;color:var(--ink-60);font-weight:600;font-size:11px;margin-top:2px}
+.cart-line .amt{font-weight:800;color:var(--ink);font-family:var(--font-d);flex-shrink:0}
+.divider-dashed{border-top:2px dashed var(--line);margin:18px 0}
+.tot-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:10px}
+.tot-row .lb{color:var(--ink-60)}
+.tot-row .v{font-weight:700;color:var(--ink);font-family:var(--font-d)}
+.tot-row .v.gold{color:var(--accent-strong);background:rgba(215,137,53,.08);border:1px solid rgba(215,137,53,.3);padding:2px 10px;border-radius:8px}
+.tot-row .v.badge{background:var(--paper);border:1px solid var(--line);padding:2px 10px;border-radius:8px}
+.tot-row .lb.strong{color:var(--ink);font-weight:800;font-size:13px}
+.grand-total{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--line);margin-top:18px;padding-top:18px}
+.grand-total .lb{font-weight:800;color:var(--ink);font-size:14px}
+.grand-total .v{font-family:var(--font-d);font-weight:900;font-size:26px;color:var(--rouge);line-height:1}
+
+/* ---- 积分奖励进度 ---- */
+.milestone{margin-top:8px}
+.milestone .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap}
+.milestone .tt{display:flex;align-items:center;gap:8px}
+.milestone .tt .nm{font-size:11.5px;font-weight:800;color:var(--ink)}
+.milestone .cd{font-size:10px;background:var(--yellow);color:var(--ink);padding:2px 8px;border-radius:999px;font-weight:700}
+.milestone .next{font-size:10px;color:var(--ink-60)}
+.milestone .next b{color:var(--accent);font-family:var(--font-d)}
+.milestone .done{font-size:10px;color:var(--accent-strong);font-weight:700}
+.milestone .box{font-size:10px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px 10px;line-height:1.8;margin-bottom:6px}
+.milestone .box b{color:var(--accent-strong);font-family:var(--font-d);margin-right:6px}
+.milestone .none{font-size:10px;color:var(--ink-35);font-style:italic;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+
+/* ---- 操作按钮 ---- */
+.cart-actions{display:flex;gap:12px;margin-top:16px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;padding:13px 20px;font-size:13.5px;font-weight:800;font-family:var(--font-b);cursor:pointer;transition:all .35s var(--ease);border:none}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{flex:1;background:var(--paper);border:1.5px solid var(--line);color:var(--ink)}
+.btn.ghost:hover:not(:disabled){background:var(--cream);color:var(--ink)}
+.btn.primary{flex:2;background:var(--tea);color:var(--cream)}
+.btn.primary:hover:not(:disabled){background:var(--accent);color:#fff;transform:translateY(-2px)}
+
+/* ---- 移动端底栏 ---- */
+.cart-mbar{position:fixed;bottom:0;left:0;right:0;background:var(--cream);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;z-index:40;box-shadow:0 -12px 24px -14px rgba(73,59,44,.18)}
+.cart-mbar .sum .k{font-size:10px;color:var(--ink-60);font-weight:800;letter-spacing:.08em}
+.cart-mbar .sum .v{font-family:var(--font-d);font-weight:900;font-size:19px;color:var(--rouge);margin-top:2px}
+.cart-mbar .btns{display:flex;align-items:center;gap:8px}
+.mbtn{display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:800;font-family:var(--font-b);cursor:pointer;transition:all .25s}
+.mbtn:disabled{opacity:.45;cursor:not-allowed}
+.mbtn.ghost{background:var(--paper);border:1.5px solid var(--line);color:var(--ink)}
+.mbtn.accent{background:var(--accent);color:var(--cream)}
+.mbtn.primary{background:var(--tea);color:var(--cream)}
+.mbtn.icon{padding:10px}
+
+/* ---- 自定义礼包弹窗 ---- */
+.modal-mask{position:fixed;inset:0;background:rgba(73,59,44,.5);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:20px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px -30px rgba(73,59,44,.45)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:16px 20px}
+.modal-head h3{font-family:var(--font-s);font-weight:900;font-size:17px;color:var(--ink);letter-spacing:.04em}
+.modal-head button{border:none;background:none;color:var(--ink-60);cursor:pointer;padding:4px;display:grid;place-items:center;border-radius:8px;transition:all .3s}
+.modal-head button:hover{color:var(--ink);background:var(--paper)}
+.modal form{padding:20px;display:flex;flex-direction:column;gap:14px}
+.modal .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal .fgrid .full{grid-column:1/-1}
+.modal label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-60);margin-bottom:6px}
+.modal label em{color:var(--rouge);font-style:normal}
+.modal input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;font-family:var(--font-b);color:var(--ink);background:var(--paper);outline:none;transition:all .3s}
+.modal input:focus{border-color:var(--accent);background:var(--surface)}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line);padding:14px 20px}
+.modal-foot .btn{padding:10px 22px;font-size:13px;border-radius:12px}
+
+/* ---- 账房页布局 ---- */
+.cart-main{padding-bottom:40px}
+@media (min-width:1081px){.cart-mbar{display:none}}
+@media (max-width:1180px){.cart-layout{grid-template-columns:1fr}.pkg-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.pkg-grid{grid-template-columns:1fr 1fr}.pkg-grid .pkg-card{min-height:0}}
+@media (max-width:420px){.pkg-grid{grid-template-columns:1fr}}
+

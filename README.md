@@ -16,6 +16,7 @@ npm run build # 产物输出到 dist/
 |---|---|---|
 | `/` | 作业广场：Hero + 工具栏（Tab / 站点筛选 / 搜索 / 排序）+ 作业卡列表（分页加载）+ 三方共建 + 页脚 | `index.html` |
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
+| `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
 
 ## 目录结构
 
@@ -30,9 +31,10 @@ npm run build # 产物输出到 dist/
     ├── router.js               # createWebHistory 路由 + scrollBehavior
     ├── App.vue                 # RouterView + 路由过渡
     ├── styles/main.css         # 设计规范 v1.0 全部令牌与样式
-    ├── data/                   # avatars.js / works.js / detail.js
+    ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js
     ├── components/             # IslandSidebar / DetailSidebar / WorkCard / SiteFooter
-    └── views/                  # PlazaView / DetailView
+    │   └── cart/               # PackageCard / ReceiptPanel / CustomPackageModal
+    └── views/                  # PlazaView / DetailView / CartView
 ```
 
 ## 复刻要点
@@ -43,3 +45,5 @@ npm run build # 产物输出到 dist/
 - **详情页**：scrollspy 高亮 + 平滑锚点滚动 + 密探星级/星石/要点全数据化。
 - **动效**：IntersectionObserver 滚动出现（v-reveal 指令，支持错峰 delay）、路由淡入淡出。
 - 原站 10 条作业数据中，仅「阳泰山府10 无庞统」有详情链接，其余卡片不可点击（与原站一致）。
+- **广陵账房页**（`/cart`）：由 `yuanpaid`（React 版游戏礼包购物车）迁移，数据（101+41 个礼包、28 档累充奖励）逐字保留，交互逻辑（限购、汇率、筛选、自定义、导出图片）忠实移植，并按设计规范 v1.0 整体重新上色。
+- 依赖：`@lucide/vue`（图标）、`html2canvas`（导出图片）。
