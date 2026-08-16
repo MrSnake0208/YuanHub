@@ -89,6 +89,7 @@ import {
   generateOpenApiToken,
   deleteOpenApiToken
 } from '../../api/openApi.js'
+import { scopeDesc as _scopeDesc, isReadonly as _isReadonly, formatCreateTime as _formatCreateTime } from '../../utils/openApiToken.js'
 
 // scope 权限兜底描述（读不到权限列表时使用）
 const FALLBACK_SCOPES = {
@@ -107,41 +108,16 @@ let noticeTimer = null
 
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
 
-// 后端 listUserTokens 返回的 scope 是权限 code 数组（如 [10001] / [10001,10002]）
-function scopeCodes(scope) {
-  if (Array.isArray(scope)) return scope
-  if (scope == null) return []
-  return [scope]
-}
-
-// 按 code 查描述：优先后端权限列表（{ key, code, desc }），其次兜底映射，最后显示原始值
-function descByCode(code) {
-  const hit = permissions.value.find(function (p) { return Number(p.code) === Number(code) })
-  if (hit && hit.desc) return hit.desc
-  if (FALLBACK_SCOPES[code]) return FALLBACK_SCOPES[code]
-  return '权限 ' + code
-}
-
-// 多个权限拼接描述（如「库存数据读取、库存数据写入」）
+// scope 解析/描述/时间格式化逻辑已抽离到 src/utils/openApiToken.js（可单测）。
+// 这里用薄封装绑定当前页面的 permissions / 兜底映射，供模板直接调用。
 function scopeDesc(scope) {
-  const codes = scopeCodes(scope)
-  if (codes.length === 0) return '未知权限'
-  return codes.map(descByCode).join('、')
+  return _scopeDesc(scope, permissions.value, FALLBACK_SCOPES)
 }
-
 function isReadonly(scope) {
-  const codes = scopeCodes(scope)
-  return codes.length === 1 && Number(codes[0]) === 10001
+  return _isReadonly(scope)
 }
-
-// 后端 create_time 为 epoch 毫秒，格式化为本地时间
 function formatCreateTime(ms) {
-  const n = Number(ms)
-  if (!n) return ''
-  const d = new Date(n)
-  if (isNaN(d.getTime())) return ''
-  const pad = function (x) { return String(x).padStart(2, '0') }
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+  return _formatCreateTime(ms)
 }
 
 const permissionCount = computed(function () {
@@ -186,7 +162,8 @@ async function loadTokens() {
 
 async function generate(kind) {
   if (busy.value) return
-  const scope = kind === 'read' ? 10001 : 10002
+  // 后端 scope 字段为权限 code 数组（如 [10001]），须传数组
+  const scope = kind === 'read' ? [10001] : [10002]
   generating.value = kind
   try {
     await generateOpenApiToken({ scope: scope, remark: kind === 'read' ? '只读' : '只写' })
