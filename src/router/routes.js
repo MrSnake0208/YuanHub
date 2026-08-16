@@ -1,6 +1,7 @@
 import INDEX from '/src/pages/index.vue'
 import WORK_DETAIL from '/src/pages/work/detail.vue'
 import CART from '/src/pages/tools/cart.vue'
+import INVENTORY from '/src/pages/inventory/index.vue'
 
 // {
 //     path: '/',  访问路径
@@ -49,6 +50,18 @@ export const routes = [
         component: CART,
         meta: {
             title: '广陵账房 · 礼包计算器 — MaaYuan Share'
+        }
+    },
+    {
+        path: '/inventory',
+        text: '库存',
+        name: 'inventory',
+        display: true,
+        module: 'tools',
+        icon: 'package-open',
+        component: INVENTORY,
+        meta: {
+            title: '库存 — MaaYuan Share'
         }
     },
     {

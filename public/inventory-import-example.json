@@ -1,0 +1,180 @@
+{
+  "format": "myshare-inventory-exchange",
+  "version": 1,
+  "exported_at": "2026-08-16T08:15:00+08:00",
+  "catalog_version": "2026-08-16",
+  "producer": {
+    "platform": "myshare",
+    "version": "5"
+  },
+  "records": [
+    {
+      "record_id": "myshare:00cbab990ea14275bc815caabac5ed9e",
+      "record_type": "reward_delta",
+      "entity_type": "agent",
+      "effective_at": "2026-08-16T07:19:46.833+08:00",
+      "entries": [
+        {
+          "id": "char_029_xiuqiu",
+          "name": "绣球",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "record_id": "myshare:748d48af2e6c4dce86d07f4a53d01427",
+      "record_type": "reward_delta",
+      "entity_type": "agent",
+      "effective_at": "2026-08-16T07:20:57.048+08:00",
+      "entries": [
+        {
+          "id": "char_029_xiuqiu",
+          "name": "绣球",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "record_id": "myshare:bc6c8a83def64c27b69b10d9949b20a7",
+      "record_type": "reward_delta",
+      "entity_type": "agent",
+      "effective_at": "2026-08-16T07:30:14.974+08:00",
+      "entries": [
+        {
+          "id": "char_029_xiuqiu",
+          "name": "绣球",
+          "count": 1
+        },
+        {
+          "id": "char_088_liubao",
+          "name": "刘豹",
+          "count": 1
+        },
+        {
+          "id": "char_121_menghuo",
+          "name": "孟获",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "record_id": "myshare:0e7da16586c34317a071b89f53e94dee",
+      "record_type": "reward_delta",
+      "entity_type": "agent",
+      "effective_at": "2026-08-16T07:58:29.567+08:00",
+      "entries": [
+        {
+          "id": "char_081_linghumao",
+          "name": "令狐茂",
+          "count": 1
+        },
+        {
+          "id": "char_002_jiaxu",
+          "name": "贾诩",
+          "count": 1
+        },
+        {
+          "id": "char_010_xuyou",
+          "name": "许攸",
+          "count": 1
+        },
+        {
+          "id": "char_061_gongsunshan",
+          "name": "公孙珊",
+          "count": 1
+        },
+        {
+          "id": "char_017_ganti",
+          "name": "甘缇",
+          "count": 1
+        },
+        {
+          "id": "char_004_guojia",
+          "name": "郭嘉",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "record_id": "myshare:2af6a103e8fb499d8bd1118e6b7313fa",
+      "record_type": "reward_delta",
+      "entity_type": "agent",
+      "effective_at": "2026-08-16T07:59:17.800+08:00",
+      "entries": [
+        {
+          "id": "char_081_linghumao",
+          "name": "令狐茂",
+          "count": 1
+        },
+        {
+          "id": "char_002_jiaxu",
+          "name": "贾诩",
+          "count": 1
+        },
+        {
+          "id": "char_010_xuyou",
+          "name": "许攸",
+          "count": 1
+        },
+        {
+          "id": "char_061_gongsunshan",
+          "name": "公孙珊",
+          "count": 1
+        },
+        {
+          "id": "char_017_ganti",
+          "name": "甘缇",
+          "count": 1
+        },
+        {
+          "id": "char_004_guojia",
+          "name": "郭嘉",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "record_id": "myshare:af6374b2869c4460b529c09f21e4672a",
+      "record_type": "reward_delta",
+      "entity_type": "agent",
+      "effective_at": "2026-08-16T08:09:19.353+08:00",
+      "entries": [
+        {
+          "id": "char_081_linghumao",
+          "name": "令狐茂",
+          "count": 1
+        },
+        {
+          "id": "char_002_jiaxu",
+          "name": "贾诩",
+          "count": 1
+        },
+        {
+          "id": "char_105_simahui",
+          "name": "司马徽",
+          "count": 1
+        },
+        {
+          "id": "char_010_xuyou",
+          "name": "许攸",
+          "count": 1
+        },
+        {
+          "id": "char_061_gongsunshan",
+          "name": "公孙珊",
+          "count": 1
+        },
+        {
+          "id": "char_017_ganti",
+          "name": "甘缇",
+          "count": 1
+        },
+        {
+          "id": "char_004_guojia",
+          "name": "郭嘉",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

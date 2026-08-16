@@ -1,0 +1,389 @@
+<template>
+  <div class="page-inventory">
+    <IslandSidebar />
+
+    <main class="inventory-main">
+      <!-- HERO -->
+      <header class="hero">
+        <div class="wrap">
+          <div class="crumb">
+            <span class="pill fill">库存</span>
+            <span class="pill">背包</span>
+            <span class="pill">统计</span>
+          </div>
+          <h1>广陵库房<span class="small">清点 · 归档 · 溯源</span></h1>
+          <p class="hero-sub">代号鸢 / 如鸢 库存与奖励台账：同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案。</p>
+          <div class="hero-stats">
+            <div><div class="k">对象目录</div><div class="v">{{ catalogCount }}<small>项</small></div></div>
+            <div><div class="k">当前物品</div><div class="v">{{ itemCount }}<small>种</small></div></div>
+            <div><div class="k">当前角色</div><div class="v">{{ agentCount }}<small>种</small></div></div>
+            <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
+            <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="wrap">
+          <!-- TABS：当前库存 / 时段获得量 -->
+          <div class="inventory-tabs" v-reveal>
+            <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前库存</button>
+            <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">时段获得量</button>
+            <span class="sp"></span>
+            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
+            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
+          </div>
+
+          <!-- 导入档案 -->
+          <div v-if="showImport" class="import-box" v-reveal>
+            <p class="tip">粘贴符合《库存数据交换协议 v1》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
+            <textarea v-model="importText" placeholder='{\n  "format": "myshare-inventory-exchange",\n  "version": 1,\n  ...\n}'></textarea>
+            <div class="import-actions">
+              <label class="btn ghost file-label">
+                选择 JSON 文件
+                <input type="file" accept=".json,application/json" @change="onFilePick" />
+              </label>
+              <button class="btn ghost" :disabled="loadingExample" @click="fillExample">{{ loadingExample ? '加载中…' : '示例导入' }}</button>
+              <button class="btn primary" :disabled="importing || !importText.trim()" @click="doImport">导入</button>
+            </div>
+            <div v-if="importResult" class="import-result">
+              导入完成：接受 {{ importResult.accepted }} 条 · 重复 {{ importResult.duplicates }} 条
+              <span v-if="importResult.history_only"> · 仅历史 {{ importResult.history_only }} 条</span>
+              <span v-if="importResult.superseded"> · 已归档 {{ importResult.superseded }} 条</span>
+              <button class="ok" @click="afterImport">刷新库存</button>
+            </div>
+          </div>
+
+          <!-- 当前库存 -->
+          <div v-show="activeTab === 'current'" class="panel">
+            <div class="type-switch" v-reveal>
+              <button :class="{ on: entityType === 'item' }" @click="setEntityType('item')">物品 item</button>
+              <button :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">角色 agent</button>
+              <span class="sp"></span>
+              <span class="hint">对象名称来自统一目录，数量以最近快照为准</span>
+            </div>
+
+            <div v-if="loading" class="state">正在加载库存…</div>
+            <div v-else-if="error" class="state err">
+              {{ error }}
+              <button v-if="!auth.isLoggedIn" class="link" @click="goLogin">请先登录后重试</button>
+            </div>
+            <div v-else-if="currentEntries.length === 0" class="state">暂无 {{ entityType === 'item' ? '物品' : '角色' }} 库存记录</div>
+            <ul v-else class="entry-list" v-reveal>
+              <li v-for="e in currentEntries" :key="e.id" class="entry">
+                <span class="dot" :class="entityType === 'agent' ? 'dot-agent' : 'dot-item'"></span>
+                <span class="name" :title="e.id">{{ e.name || e.id }}</span>
+                <span class="id">{{ e.id }}</span>
+                <span class="count">{{ fmtCount(e.count) }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- 时段获得量 -->
+          <div v-show="activeTab === 'acquired'" class="panel">
+            <div class="acquired-bar" v-reveal>
+              <div class="type-switch">
+                <button :class="{ on: entityType === 'item' }" @click="setEntityType('item')">物品 item</button>
+                <button :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">角色 agent</button>
+              </div>
+              <div class="range">
+                <label>
+                  <span class="lb">起</span>
+                  <input type="date" v-model="rangeFrom" />
+                </label>
+                <label>
+                  <span class="lb">止</span>
+                  <input type="date" v-model="rangeTo" />
+                </label>
+                <button class="btn ghost" :disabled="loading" @click="loadAcquired">统计</button>
+              </div>
+            </div>
+
+            <div v-if="loading" class="state">正在统计获得量…</div>
+            <div v-else-if="error" class="state err">{{ error }}</div>
+            <div v-else-if="acquiredEntries.length === 0" class="state">该时段暂无获得记录</div>
+            <ul v-else class="entry-list" v-reveal>
+              <li v-for="e in acquiredEntries" :key="e.id" class="entry">
+                <span class="dot" :class="entityType === 'agent' ? 'dot-agent' : 'dot-item'"></span>
+                <span class="name" :title="e.id">{{ e.name || e.id }}</span>
+                <span class="id">{{ e.id }}</span>
+                <span class="count gained">+{{ fmtCount(e.count) }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <SiteFooter>
+        <template #big>广陵库房<br><span>清点 · 归档 · 溯源</span></template>
+        <template #fine>
+          <b>MaaYuan Share</b> · 库存与奖励台账<br>
+          MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
+          数据仅供参考，请以游戏内实际库存为准
+        </template>
+      </SiteFooter>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import IslandSidebar from '../../components/IslandSidebar.vue'
+import SiteFooter from '../../components/SiteFooter.vue'
+import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory } from '../../api/inventory.js'
+import { auth } from '../../store/auth.js'
+
+const activeTab = ref('current')
+const entityType = ref('item')
+const loading = ref(false)
+const error = ref('')
+const catalog = ref({ entities: [] })
+const currentEntries = ref([])
+const acquiredEntries = ref([])
+const rangeFrom = ref(localDate(new Date(Date.now() - 30 * 86400000)))
+const rangeTo = ref(localDate(new Date()))
+const showImport = ref(false)
+const importText = ref('')
+const importing = ref(false)
+const importResult = ref(null)
+const loadingExample = ref(false)
+
+function setTab(t) { activeTab.value = t; if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired() }
+function setEntityType(t) { entityType.value = t; reloadCurrent() }
+
+// ISO 日期（本地时区 YYYY-MM-DD），供 <input type=date> 与后端 [from,to) 区间
+function localDate(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return y + '-' + m + '-' + day
+}
+
+function fmtCount(n) {
+  const v = Number(n) || 0
+  return v.toLocaleString('zh-CN')
+}
+
+// 名称查找：优先目录，其次后端返回的 name，最后回退 id
+function nameOf(id, name) {
+  if (name) return name
+  if (!catalog.value.entities.length) return id
+  const hit = catalog.value.entities.find(function (e) { return e.id === id && e.entity_type === entityType.value })
+  return (hit && hit.name) ? hit.name : id
+}
+
+// 统计卡片数据
+const catalogCount = computed(function () {
+  const list = catalog.value.entities || []
+  return list.length || '…'
+})
+const itemCount = computed(function () { return entityType.value === 'item' ? currentEntries.value.length : '—' })
+const agentCount = computed(function () { return entityType.value === 'agent' ? currentEntries.value.length : '—' })
+
+async function safeLoad(fn) {
+  loading.value = true
+  error.value = ''
+  try { await fn() } catch (err) {
+    error.value = humanErr(err, '加载失败，请稍后重试')
+  } finally { loading.value = false }
+}
+
+// 后端 /current 返回 List<{ entity_type, entries: { "<id>": {count, listed_baseline_at} } }>。
+// 传入 entity_type 时取首个元素，把 entries 对象转成 [{id, name, count}]。
+async function reloadCurrent() {
+  await safeLoad(async function () {
+    const data = await getCurrent({ entityType: entityType.value })
+    const list = Array.isArray(data) ? data : (data ? [data] : [])
+    const doc = list[0]
+    const entriesObj = (doc && doc.entries) ? doc.entries : {}
+    currentEntries.value = Object.keys(entriesObj).map(function (id) {
+      const se = entriesObj[id] || {}
+      return { id: id, name: nameOf(id, se.name), count: Number(se.count) || 0 }
+    }).sort(function (a, b) { return b.count - a.count })
+  })
+}
+
+// 后端 /acquired 返回 { entity_type, from, to, acquired: { "<id>": count } }。
+async function loadAcquired() {
+  await safeLoad(async function () {
+    const data = await getAcquired({ entityType: entityType.value, from: rangeFrom.value, to: rangeTo.value })
+    const acquiredObj = (data && data.acquired) ? data.acquired : {}
+    acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
+      return { id: id, name: nameOf(id, null), count: Number(acquiredObj[id]) || 0 }
+    }).sort(function (a, b) { return b.count - a.count })
+  })
+}
+
+function humanErr(err, fallback) {
+  if (!err) return fallback
+  const msg = err.message
+  if (!msg) return fallback
+  if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return '网络异常，请检查后端服务是否已启动'
+  return msg
+}
+
+function goLogin() { location.href = '/login' }
+
+// ---- 导入档案 ----
+async function doImport() {
+  if (!auth.isLoggedIn) { goLogin(); return }
+  if (!importText.value.trim()) { alert('请粘贴交换协议 JSON 或选择文件'); return }
+  let doc = null
+  try {
+    doc = JSON.parse(importText.value)
+  } catch (_e) {
+    alert('JSON 解析失败，请检查格式')
+    return
+  }
+  importing.value = true
+  importResult.value = null
+  try {
+    const res = await importInventory(doc)
+    importResult.value = res || {}
+  } catch (err) {
+    alert(humanErr(err, '导入失败'))
+  } finally {
+    importing.value = false
+  }
+}
+
+function onFilePick(ev) {
+  const file = ev && ev.target && ev.target.files && ev.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = function () {
+    importText.value = String(reader.result || '')
+  }
+  reader.readAsText(file, 'utf-8')
+}
+
+// 一键填充 public/ 下的示例交换文档（供真机导入测试）。
+async function fillExample() {
+  if (loadingExample.value) return
+  loadingExample.value = true
+  try {
+    const res = await fetch(import.meta.env.BASE_URL + 'inventory-import-example.json')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    importText.value = await res.text()
+  } catch (err) {
+    alert(humanErr(err, '加载示例失败'))
+  } finally {
+    loadingExample.value = false
+  }
+}
+
+function afterImport() {
+  importResult.value = null
+  importText.value = ''
+  showImport.value = false
+  reloadCurrent()
+}
+
+// ---- 导出档案 ----
+async function doExport() {
+  if (!auth.isLoggedIn) { goLogin(); return }
+  try {
+    const data = await exportInventory({ include: 'current,rewards', from: rangeFrom.value, to: rangeTo.value })
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'inventory-export.json'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (err) {
+    alert(humanErr(err, '导出失败'))
+  }
+}
+
+onMounted(async function () {
+  try {
+    const data = await getCatalog()
+    if (data && data.entities) catalog.value = { entities: data.entities }
+  } catch (_e) {
+    catalog.value = { entities: [] }
+  }
+  reloadCurrent()
+})
+</script>
+
+<style scoped>
+/* —— 复用全局 CSS 变量（不新增色值），对齐广陵账房（cart.vue）版式 —— */
+.inventory-main { padding-bottom: 40px }
+.page-inventory .hero::after { content: '库存' }
+
+.inventory-tabs { display: flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 14px; padding: 4px; margin-top: 40px }
+.inventory-tabs button {
+  border: none; background: transparent; font-family: var(--font-b); font-weight: 700;
+  font-size: 14px; padding: 10px 26px; border-radius: 10px; cursor: pointer; color: var(--ink-60);
+  transition: all .3s var(--ease);
+}
+.inventory-tabs button.on { background: var(--tea); color: var(--cream) }
+.inventory-tabs button:hover:not(.on) { color: var(--ink) }
+.inventory-tabs .sp { flex: 1 }
+.act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap }
+.act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
+.act-btn:disabled { opacity: .45; cursor: not-allowed }
+
+.import-box { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px }
+.import-box .tip { font-size: 12.5px; color: var(--ink-60); line-height: 1.8; margin-bottom: 12px }
+.import-box textarea { width: 100%; min-height: 140px; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; font-family: var(--font-b); font-size: 12.5px; color: var(--ink); background: var(--paper); outline: none; resize: vertical; transition: border-color .3s }
+.import-box textarea:focus { border-color: var(--accent) }
+.import-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px }
+.file-label { cursor: pointer }
+.file-label input { display: none }
+.import-result { margin-top: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.import-result .ok { margin-left: auto; border: none; background: var(--tea); color: var(--cream); border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b) }
+
+.panel { margin-top: 20px }
+
+.type-switch { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 12px; padding: 4px; align-items: center }
+.type-switch button {
+  border: none; background: transparent; font-family: var(--font-b); font-weight: 700;
+  font-size: 13px; padding: 8px 18px; border-radius: 9px; cursor: pointer; color: var(--ink-60);
+  transition: all .3s var(--ease);
+}
+.type-switch button.on { background: var(--yellow); color: var(--ink) }
+.type-switch button:hover:not(.on) { color: var(--ink) }
+.type-switch .sp { flex: 1 }
+.type-switch .hint { font-size: 12px; color: var(--ink-35); font-weight: 600; margin-right: 6px }
+
+.acquired-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap }
+.range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.range label { display: flex; align-items: center; gap: 6px }
+.range .lb { font-size: 12px; font-weight: 700; color: var(--ink-60) }
+.range input {
+  border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 13px;
+  font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none; transition: border-color .3s;
+}
+.range input:focus { border-color: var(--accent) }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .35s var(--ease); border: none }
+.btn:disabled { opacity: .45; cursor: not-allowed }
+.btn.ghost { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink) }
+.btn.ghost:hover:not(:disabled) { background: var(--cream); color: var(--ink) }
+
+.state { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 20px; padding: 56px 40px; text-align: center; color: var(--ink-35); font-weight: 700; margin-top: 16px }
+.state.err { color: var(--ink-60) }
+.state .link { margin-left: 12px; background: none; border: none; color: var(--accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+
+.entry-list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 10px }
+.entry {
+  display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; padding: 14px 20px; transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .3s;
+}
+.entry:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -20px rgba(73, 59, 44, .26); border-color: rgba(73, 59, 44, .22) }
+.entry .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--yellow-deep); flex: none }
+.entry .dot.dot-agent { background: var(--accent) }
+.entry .name { font-family: var(--font-s); font-weight: 800; font-size: 16px; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.entry .id { font-family: var(--font-d); font-size: 11.5px; color: var(--ink-35); }
+.entry .count { font-family: var(--font-d); font-weight: 900; font-size: 22px; color: var(--ink); min-width: 72px; text-align: right }
+.entry .count.gained { color: var(--accent-strong) }
+
+/* 深色块上的文字（未登录提示） */
+.hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
+
+@media (max-width: 640px) {
+  .entry .id { display: none }
+  .acquired-bar { flex-direction: column; align-items: stretch }
+  .range { justify-content: space-between }
+}
+</style>

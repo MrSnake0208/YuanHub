@@ -7,13 +7,14 @@
     <nav class="nav">
       <router-link to="/" :class="{ active: $route.path === '/' }"><span class="no">01</span>作业广场</router-link>
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"><span class="no">02</span>广陵账房</router-link>
+      <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }"><span class="no">03</span>库存</router-link>
       <div class="nav-lb">协作看板 · 快捷跳转</div>
       <a class="ext" href="#" style="--cc:var(--tea)"><span class="dot"></span>出战阵容编辑器<span class="who">BWiki</span></a>
       <a class="ext" href="#" style="--cc:var(--accent)"><span class="dot"></span>操作记录仪<span class="who">辟雍学宫</span></a>
       <a class="ext" href="#" style="--cc:var(--rouge)"><span class="dot"></span>打关跟打<span class="who">YuanAssist</span></a>
       <a class="ext" href="#" style="--cc:var(--yellow-deep)"><span class="dot"></span>Box · 羁绊<span class="who">MAA</span></a>
       <div class="nav-lb">站点</div>
-      <a href="#"><span class="no">03</span>关于</a>
+      <a href="#"><span class="no">04</span>关于</a>
     </nav>
     <div class="island-foot">
       <template v-if="isLoggedIn">
