@@ -240,10 +240,27 @@ async function reloadCurrent() {
   })
 }
 
+// 本地日期 YYYY-MM-DD → 本地时区当日 00:00 的 ISO 时刻（后端按 [from,to) 半开区间）。
+function dayStartIso(dStr) {
+  const p = String(dStr || '').split('-').map(Number)
+  if (p.length !== 3 || p.some(isNaN)) return null
+  return new Date(p[0], p[1] - 1, p[2]).toISOString()
+}
+
+// 本地日期 YYYY-MM-DD → 本地时区次日 00:00 的 ISO 时刻（「止」包含当天整天）。
+function nextDayStartIso(dStr) {
+  const p = String(dStr || '').split('-').map(Number)
+  if (p.length !== 3 || p.some(isNaN)) return null
+  return new Date(p[0], p[1] - 1, p[2] + 1).toISOString()
+}
+
 // 后端 /acquired 返回 { entity_type, from, to, acquired: { "<id>": count } }。
 async function loadAcquired() {
   await safeLoad(async function () {
-    const data = await getAcquired({ entityType: entityType.value, from: rangeFrom.value, to: rangeTo.value })
+    const from = dayStartIso(rangeFrom.value)
+    const to = nextDayStartIso(rangeTo.value)
+    if (!from || !to) { error.value = '请选择有效的起止日期'; return }
+    const data = await getAcquired({ entityType: entityType.value, from: from, to: to })
     const acquiredObj = (data && data.acquired) ? data.acquired : {}
     acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
       return { id: id, name: nameOf(id, null), count: Number(acquiredObj[id]) || 0 }
@@ -370,7 +387,11 @@ function afterImport() {
 async function doExport() {
   if (!auth.isLoggedIn) { goLogin(); return }
   try {
-    const data = await exportInventory({ include: 'current,rewards', from: rangeFrom.value, to: rangeTo.value })
+    const data = await exportInventory({
+      include: 'current,rewards',
+      from: dayStartIso(rangeFrom.value),
+      to: nextDayStartIso(rangeTo.value)
+    })
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
