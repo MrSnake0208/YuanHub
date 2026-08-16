@@ -102,7 +102,10 @@
 
             <div v-if="loading" class="state">正在统计获得量…</div>
             <div v-else-if="error" class="state err">{{ error }}</div>
-            <div v-else-if="acquiredEntries.length === 0" class="state">该时段暂无获得记录</div>
+            <div v-else-if="acquiredEntries.length === 0" class="state">
+              <template v-if="entityType === 'item'">该时段暂无物品获得记录 · 物品获得量仅来自奖励流水（派遣/寿春等），背包快照不计入</template>
+              <template v-else>该时段暂无获得记录</template>
+            </div>
             <ul v-else class="entry-list" v-reveal>
               <li v-for="e in acquiredEntries" :key="e.id" class="entry">
                 <span class="dot" :class="entityType === 'agent' ? 'dot-agent' : 'dot-item'"></span>
@@ -186,7 +189,17 @@ function setTab(t) {
   if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired()
   if (t === 'records') loadRecords()
 }
-function setEntityType(t) { entityType.value = t; reloadCurrent() }
+function setEntityType(t) {
+  if (t === entityType.value) return
+  entityType.value = t
+  // 切换对象类型后,旧的时段获得量结果属于另一类型:清空避免张冠李戴;
+  // 当前库存立即刷新;若正处于"时段获得量"页签则按新类型自动重新统计
+  // (离开页签时 setTab 的空列表条件也会触发重新加载)。
+  acquiredEntries.value = []
+  error.value = ''
+  reloadCurrent()
+  if (activeTab.value === 'acquired') loadAcquired()
+}
 
 // ISO 日期（本地时区 YYYY-MM-DD），供 <input type=date> 与后端 [from,to) 区间
 function localDate(d) {
@@ -254,13 +267,18 @@ function nextDayStartIso(dStr) {
   return new Date(p[0], p[1] - 1, p[2] + 1).toISOString()
 }
 
+// 请求序号:快速切换 entity_type 时丢弃过期响应,避免旧类型结果覆盖新类型。
+let acquiredSeq = 0
+
 // 后端 /acquired 返回 { entity_type, from, to, acquired: { "<id>": count } }。
 async function loadAcquired() {
+  const seq = ++acquiredSeq
   await safeLoad(async function () {
     const from = dayStartIso(rangeFrom.value)
     const to = nextDayStartIso(rangeTo.value)
     if (!from || !to) { error.value = '请选择有效的起止日期'; return }
     const data = await getAcquired({ entityType: entityType.value, from: from, to: to })
+    if (seq !== acquiredSeq) return
     const acquiredObj = (data && data.acquired) ? data.acquired : {}
     acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
       return { id: id, name: nameOf(id, null), count: Number(acquiredObj[id]) || 0 }
