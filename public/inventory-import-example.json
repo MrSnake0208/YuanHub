@@ -12,6 +12,7 @@
       "record_id": "myshare:00cbab990ea14275bc815caabac5ed9e",
       "record_type": "reward_delta",
       "entity_type": "agent",
+      "acquisition_channel": "派遣",
       "effective_at": "2026-08-16T07:19:46.833+08:00",
       "entries": [
         {
@@ -25,6 +26,7 @@
       "record_id": "myshare:748d48af2e6c4dce86d07f4a53d01427",
       "record_type": "reward_delta",
       "entity_type": "agent",
+      "acquisition_channel": "派遣",
       "effective_at": "2026-08-16T07:20:57.048+08:00",
       "entries": [
         {
@@ -38,6 +40,7 @@
       "record_id": "myshare:bc6c8a83def64c27b69b10d9949b20a7",
       "record_type": "reward_delta",
       "entity_type": "agent",
+      "acquisition_channel": "派遣",
       "effective_at": "2026-08-16T07:30:14.974+08:00",
       "entries": [
         {
@@ -61,6 +64,7 @@
       "record_id": "myshare:0e7da16586c34317a071b89f53e94dee",
       "record_type": "reward_delta",
       "entity_type": "agent",
+      "acquisition_channel": "据点情报",
       "effective_at": "2026-08-16T07:58:29.567+08:00",
       "entries": [
         {
@@ -99,6 +103,7 @@
       "record_id": "myshare:2af6a103e8fb499d8bd1118e6b7313fa",
       "record_type": "reward_delta",
       "entity_type": "agent",
+      "acquisition_channel": "据点情报",
       "effective_at": "2026-08-16T07:59:17.800+08:00",
       "entries": [
         {
@@ -137,6 +142,7 @@
       "record_id": "myshare:af6374b2869c4460b529c09f21e4672a",
       "record_type": "reward_delta",
       "entity_type": "agent",
+      "acquisition_channel": "据点情报",
       "effective_at": "2026-08-16T08:09:19.353+08:00",
       "entries": [
         {
