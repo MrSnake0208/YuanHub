@@ -70,14 +70,24 @@
               <button v-if="!auth.isLoggedIn" class="link" @click="goLogin">请先登录后重试</button>
             </div>
             <div v-else-if="currentEntries.length === 0" class="state">暂无 {{ entityType === 'item' ? '物品' : '角色' }} 库存记录</div>
-            <ul v-else class="entry-list" v-reveal>
-              <li v-for="e in currentEntries" :key="e.id" class="entry">
-                <span class="dot" :class="entityType === 'agent' ? 'dot-agent' : 'dot-item'"></span>
-                <span class="name" :title="e.id">{{ e.name || e.id }}</span>
-                <span class="id">{{ e.id }}</span>
-                <span class="count">{{ fmtCount(e.count) }}</span>
-              </li>
-            </ul>
+            <div v-else class="backpack" v-reveal>
+              <div class="bp-head">
+                <span class="bp-tip">共 <b class="bp-num">{{ currentEntries.length }}</b> 种 · 图标请放至 <code>public/inventory-icons/{{ entityType === 'agent' ? 'agents' : 'items' }}/对象id.{{ ICON_EXT }}</code>，未上传前显示占位印</span>
+              </div>
+              <ul class="slot-grid">
+                <li v-for="e in currentEntries" :key="e.id" class="slot" :title="e.name || e.id">
+                  <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
+                    <div class="slot-ph">
+                      <span class="ph-seal">图</span>
+                      <span class="ph-mono">{{ monogram(e) }}</span>
+                    </div>
+                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" loading="lazy" @error="onImgError" />
+                    <span class="slot-count">{{ fmtCount(e.count) }}</span>
+                  </div>
+                  <span class="slot-name">{{ e.name || e.id }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <!-- 时段获得量 -->
@@ -106,14 +116,24 @@
               <template v-if="entityType === 'item'">该时段暂无物品获得记录 · 物品获得量仅来自奖励流水（派遣/寿春等），背包快照不计入</template>
               <template v-else>该时段暂无获得记录</template>
             </div>
-            <ul v-else class="entry-list" v-reveal>
-              <li v-for="e in acquiredEntries" :key="e.id" class="entry">
-                <span class="dot" :class="entityType === 'agent' ? 'dot-agent' : 'dot-item'"></span>
-                <span class="name" :title="e.id">{{ e.name || e.id }}</span>
-                <span class="id">{{ e.id }}</span>
-                <span class="count gained">+{{ fmtCount(e.count) }}</span>
-              </li>
-            </ul>
+            <div v-else class="backpack" v-reveal>
+              <div class="bp-head">
+                <span class="bp-tip">本时段获得 <b class="bp-num">{{ acquiredEntries.length }}</b> 种 · 图标同「当前库存」目录，金橙角标为获得量</span>
+              </div>
+              <ul class="slot-grid">
+                <li v-for="e in acquiredEntries" :key="e.id" class="slot" :title="e.name || e.id">
+                  <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
+                    <div class="slot-ph">
+                      <span class="ph-seal">图</span>
+                      <span class="ph-mono">{{ monogram(e) }}</span>
+                    </div>
+                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" loading="lazy" @error="onImgError" />
+                    <span class="slot-count gained">+{{ fmtCount(e.count) }}</span>
+                  </div>
+                  <span class="slot-name">{{ e.name || e.id }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <!-- 导入记录 -->
@@ -212,6 +232,28 @@ function localDate(d) {
 function fmtCount(n) {
   const v = Number(n) || 0
   return v.toLocaleString('zh-CN')
+}
+
+// —— 背包格图标约定 ——
+// 图片目录：public/inventory-icons/items/（物品）、public/inventory-icons/agents/（角色）
+// 文件名 = 对象 id（与目录/导出档案中的 id 一致），扩展名见 ICON_EXT。
+// 图片未上传时格子显示「青花图印 + 名称首字」占位；上传同名图片后刷新即自动显示。
+const ICON_EXT = 'png'
+
+function iconSrc(e) {
+  const kind = entityType.value === 'agent' ? 'agents' : 'items'
+  return import.meta.env.BASE_URL + 'inventory-icons/' + kind + '/' + encodeURIComponent(e.id) + '.' + ICON_EXT
+}
+
+// 图片加载失败 → 隐藏 img，露出底层占位（占位不删：后续补图刷新页面即可显示）
+function onImgError(ev) {
+  if (ev && ev.target) ev.target.style.display = 'none'
+}
+
+// 占位首字：取名称第一个字符（中文 / emoji 安全）
+function monogram(e) {
+  const s = String(e.name || e.id || '?')
+  return Array.from(s)[0] || '?'
 }
 
 // 名称查找：优先目录，其次后端返回的 name，最后回退 id
@@ -491,18 +533,44 @@ onMounted(async function () {
 .state.err { color: var(--ink-60) }
 .state .link { margin-left: 12px; background: none; border: none; color: var(--accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
 
-.entry-list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 10px }
-.entry {
-  display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 14px 20px; transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .3s;
+/* ---- 背包格（游戏背包样式）---- */
+.backpack { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 18px 18px 20px }
+.bp-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1.5px dashed var(--line); flex-wrap: wrap }
+.bp-tip { font-size: 12px; color: var(--ink-60); font-weight: 600; line-height: 1.8 }
+.bp-tip code { font-family: var(--font-d); font-size: 11px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; color: var(--ink-60); margin: 0 2px; word-break: break-all }
+.bp-num { font-family: var(--font-d); font-weight: 900; color: var(--accent-strong); font-size: 13px }
+
+.slot-grid { list-style: none; margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 14px 12px }
+.slot { display: flex; flex-direction: column; transition: transform .45s var(--ease) }
+.slot:hover { transform: translateY(-4px) }
+.slot-ic {
+  position: relative; aspect-ratio: 1 / 1; border-radius: 18px; border: 1.5px solid var(--line);
+  background: var(--cream); overflow: hidden;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -10px 18px -10px rgba(73, 59, 44, .16);
+  transition: border-color .3s, box-shadow .45s var(--ease);
 }
-.entry:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -20px rgba(73, 59, 44, .26); border-color: rgba(73, 59, 44, .22) }
-.entry .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--yellow-deep); flex: none }
-.entry .dot.dot-agent { background: var(--accent) }
-.entry .name { font-family: var(--font-s); font-weight: 800; font-size: 16px; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.entry .id { font-family: var(--font-d); font-size: 11.5px; color: var(--ink-35); }
-.entry .count { font-family: var(--font-d); font-weight: 900; font-size: 22px; color: var(--ink); min-width: 72px; text-align: right }
-.entry .count.gained { color: var(--accent-strong) }
+.slot-ic.is-agent { border-color: rgba(215, 137, 53, .38); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -10px 18px -10px rgba(215, 137, 53, .22) }
+.slot:hover .slot-ic { border-color: var(--accent); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), 0 14px 26px -14px rgba(73, 59, 44, .4) }
+.slot-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(168deg, var(--surface) 0%, var(--cream) 62%, var(--paper) 100%) }
+.slot-ph .ph-seal {
+  position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; border: 1.5px solid var(--brand-blue);
+  border-radius: 6px; color: var(--brand-blue); font-size: 11px; font-weight: 800; display: grid; place-items: center;
+  opacity: .8; font-family: var(--font-b); line-height: 1;
+}
+.slot-ph .ph-mono { font-family: var(--font-s); font-weight: 900; font-size: clamp(26px, 4vw, 34px); color: var(--ink-35); user-select: none }
+.slot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover }
+.slot-count {
+  position: absolute; right: 7px; bottom: 7px; min-width: 24px; padding: 3px 8px; border-radius: 999px;
+  background: var(--tea); color: var(--cream); font-family: var(--font-d); font-weight: 900; font-size: 12.5px;
+  line-height: 1.25; text-align: center; box-shadow: 0 2px 6px rgba(73, 59, 44, .28);
+}
+.slot-count.gained { background: var(--accent); color: var(--cream) }
+.slot-name {
+  margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.45;
+  min-height: calc(2 * 1.45em); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-all; transition: color .3s;
+}
+.slot:hover .slot-name { color: var(--accent-strong) }
 
 /* ---- 导入记录 ---- */
 .records-head { display: flex; align-items: center; gap: 12px }
@@ -535,7 +603,9 @@ onMounted(async function () {
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
 
 @media (max-width: 640px) {
-  .entry .id { display: none }
+  .backpack { padding: 14px 12px 16px; border-radius: 20px }
+  .slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 12px 10px }
+  .slot-count { font-size: 11.5px; padding: 2px 7px; right: 5px; bottom: 5px }
   .acquired-bar { flex-direction: column; align-items: stretch }
   .range { justify-content: space-between }
 }

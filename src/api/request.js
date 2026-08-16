@@ -11,7 +11,9 @@
 // 为避免与 store/auth.js 产生模块循环依赖，这里通过「动态 import」在真正
 // 需要时才加载 store（仅读取 token / 调用 refresh() / logout()）。
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://192.168.31.55:8080";
+// const API_BASE = import.meta.env.VITE_API_BASE || "http://192.168.31.55:8080";
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "https://hub.maayuan.fun:16666";
 
 export async function request(
   path,
