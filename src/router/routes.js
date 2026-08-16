@@ -99,5 +99,18 @@ export const routes = [
         meta: {
             title: '找回密码 — MaaYuan Share'
         }
+    },
+    {
+        path: '/user/profile',
+        text: '个人中心',
+        name: 'profile',
+        display: false,
+        module: 'user',
+        icon: 'user',
+        component: () => import('/src/pages/user/profile.vue'),
+        meta: {
+            title: '个人中心 — MaaYuan Share',
+            requiresAuth: true
+        }
     }
 ]

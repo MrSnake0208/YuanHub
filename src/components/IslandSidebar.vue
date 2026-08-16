@@ -18,7 +18,8 @@
     </nav>
     <div class="island-foot">
       <template v-if="isLoggedIn">
-        <span class="foot-user">{{ userName }}</span>
+        <router-link to="/user/profile" class="foot-user">{{ userName }}</router-link>
+        <router-link to="/user/profile" class="foot-profile">个人中心</router-link>
         <button class="foot-logout" type="button" @click="onLogout">退出</button>
       </template>
       <router-link v-else to="/login" class="foot-link">登录 / 注册</router-link> · 简体中文<br>
@@ -47,6 +48,25 @@ function onLogout() {
   color: var(--ink);
   font-weight: 800;
   margin-right: 6px;
+  text-decoration: none;
+  border-bottom: 0;
+  cursor: pointer;
+  transition: color .25s;
+}
+.foot-user:hover {
+  color: var(--accent);
+}
+.foot-profile {
+  color: var(--brand-blue);
+  font-weight: 700;
+  margin-right: 6px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--yellow);
+  cursor: pointer;
+  transition: color .25s;
+}
+.foot-profile:hover {
+  color: var(--accent);
 }
 .foot-logout {
   background: none;

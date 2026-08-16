@@ -1,0 +1,337 @@
+<template>
+  <div class="page-profile">
+    <IslandSidebar />
+
+    <main class="profile-main">
+      <!-- HERO -->
+      <header class="hero">
+        <div class="wrap">
+          <div class="crumb">
+            <span class="pill fill">个人中心</span>
+            <span class="pill">账户</span>
+            <span class="pill">开放接口</span>
+          </div>
+          <h1>我的账户<span class="small">凭据 · 权限 · 开放接口</span></h1>
+          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：按权限（只读 / 只写）签发访问库存数据的凭据，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
+          <div class="hero-stats">
+            <div><div class="k">当前身份</div><div class="v"><span class="uname">{{ userName }}</span></div></div>
+            <div><div class="k">权限范围</div><div class="v">{{ permissionCount }}<small>项</small></div></div>
+            <div><div class="k">有效 Token</div><div class="v">{{ tokenCount }}<small>个</small></div></div>
+            <div class="is-authed"><div class="k">登录状态</div><div class="v">已登录<small>凭据已就绪</small></div></div>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="wrap">
+          <!-- Token 管理卡片 -->
+          <div class="token-card" v-reveal>
+            <div class="card-head">
+              <div>
+                <h2>第三方 API Token</h2>
+                <p class="card-sub">生成带权限范围的访问凭证，用于在站外读取或写入库存数据；请妥善保管，Token 泄露后请立即删除。</p>
+              </div>
+              <div class="gen-actions">
+                <button class="act-btn ghost" :disabled="busy || generating === 'read'" @click="generate('read')">
+                  {{ generating === 'read' ? '生成中…' : '生成只读 Token' }}
+                </button>
+                <button class="act-btn ghost" :disabled="busy || generating === 'write'" @click="generate('write')">
+                  {{ generating === 'write' ? '生成中…' : '生成只写 Token' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 提示状态 -->
+            <div v-if="notice" class="notice-line" :class="{ err: noticeError }">{{ notice }}</div>
+
+            <!-- 列表 -->
+            <div v-if="loading" class="state">正在加载 Token…</div>
+            <div v-else-if="error" class="state err">{{ error }}<button class="link" @click="loadTokens">重试</button></div>
+            <div v-else-if="tokens.length === 0" class="state">暂无 Token，点击上方按钮生成一个</div>
+            <ul v-else class="token-list">
+              <li v-for="t in tokens" :key="t.token" class="token-item">
+                <span class="t-dot" :class="isReadonly(t.scope) ? 'ro' : 'rw'"></span>
+                <div class="t-meta">
+                  <span class="tag" :class="isReadonly(t.scope) ? 'ro' : 'rw'">{{ scopeDesc(t.scope) }}</span>
+                  <span class="t-scope">scope: {{ t.scope }}</span>
+                  <span v-if="t.remark" class="t-remark">{{ t.remark }}</span>
+                  <span v-if="t.create_time" class="t-created">签发于 {{ formatCreateTime(t.create_time) }}</span>
+                </div>
+                <code class="t-token">{{ t.token }}</code>
+                <button class="t-btn copy" type="button" :disabled="busy" @click="copyToken(t.token)">复制</button>
+                <button class="t-btn del" type="button" :disabled="busy" @click="removeToken(t.token)">删除</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <SiteFooter>
+        <template #big>个人中心<br><span>凭据 · 权限 · 开放接口</span></template>
+        <template #fine>
+          <b>MaaYuan Share</b> · 第三方 API Token 管理<br>
+          MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
+          Token 仅用途：库存数据只读 / 写入，请勿泄露给他人
+        </template>
+      </SiteFooter>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import IslandSidebar from '../../components/IslandSidebar.vue'
+import SiteFooter from '../../components/SiteFooter.vue'
+import { auth } from '../../store/auth.js'
+import {
+  getOpenApiPermissions,
+  getOpenApiTokens,
+  generateOpenApiToken,
+  deleteOpenApiToken
+} from '../../api/openApi.js'
+
+// scope 权限兜底描述（读不到权限列表时使用）
+const FALLBACK_SCOPES = {
+  10001: '库存数据读取（只读）',
+  10002: '库存数据写入（只写）'
+}
+
+const tokens = ref([])
+const permissions = ref([])
+const loading = ref(false)
+const error = ref('')
+const generating = ref('') // 'read' | 'write' | ''
+const notice = ref('')
+const noticeError = ref(false)
+let noticeTimer = null
+
+const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
+
+// 后端 listUserTokens 返回的 scope 是权限 code 数组（如 [10001] / [10001,10002]）
+function scopeCodes(scope) {
+  if (Array.isArray(scope)) return scope
+  if (scope == null) return []
+  return [scope]
+}
+
+// 按 code 查描述：优先后端权限列表（{ key, code, desc }），其次兜底映射，最后显示原始值
+function descByCode(code) {
+  const hit = permissions.value.find(function (p) { return Number(p.code) === Number(code) })
+  if (hit && hit.desc) return hit.desc
+  if (FALLBACK_SCOPES[code]) return FALLBACK_SCOPES[code]
+  return '权限 ' + code
+}
+
+// 多个权限拼接描述（如「库存数据读取、库存数据写入」）
+function scopeDesc(scope) {
+  const codes = scopeCodes(scope)
+  if (codes.length === 0) return '未知权限'
+  return codes.map(descByCode).join('、')
+}
+
+function isReadonly(scope) {
+  const codes = scopeCodes(scope)
+  return codes.length === 1 && Number(codes[0]) === 10001
+}
+
+// 后端 create_time 为 epoch 毫秒，格式化为本地时间
+function formatCreateTime(ms) {
+  const n = Number(ms)
+  if (!n) return ''
+  const d = new Date(n)
+  if (isNaN(d.getTime())) return ''
+  const pad = function (x) { return String(x).padStart(2, '0') }
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+}
+
+const permissionCount = computed(function () {
+  return permissions.value.length || 2
+})
+const tokenCount = computed(function () { return tokens.value.length })
+
+// 轻量提示（内联状态文本，数秒后自动消失）
+function toast(text, isError) {
+  notice.value = text
+  noticeError.value = !!isError
+  if (noticeTimer) clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(function () {
+    notice.value = ''
+    noticeError.value = false
+  }, 3200)
+}
+
+function humanErr(err, fallback) {
+  if (!err) return fallback
+  const msg = err.message
+  if (!msg) return fallback
+  if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return '网络异常，请检查后端服务是否已启动'
+  return msg
+}
+
+// busy：生成/删除/复制任一进行中时锁定相关按钮
+const busy = computed(function () { return loading.value || !!generating.value })
+
+async function loadTokens() {
+  loading.value = true
+  error.value = ''
+  try {
+    const data = await getOpenApiTokens()
+    tokens.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    error.value = humanErr(err, 'Token 列表加载失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function generate(kind) {
+  if (busy.value) return
+  const scope = kind === 'read' ? 10001 : 10002
+  generating.value = kind
+  try {
+    await generateOpenApiToken({ scope: scope, remark: kind === 'read' ? '只读' : '只写' })
+    toast('Token 已生成')
+    await loadTokens()
+  } catch (err) {
+    toast(humanErr(err, '生成 Token 失败'), true)
+  } finally {
+    generating.value = ''
+  }
+}
+
+async function removeToken(token) {
+  if (!confirm('确定删除这个 Token 吗？删除后使用它的服务将立即失效。')) return
+  try {
+    await deleteOpenApiToken(token)
+    toast('Token 已删除')
+    await loadTokens()
+  } catch (err) {
+    toast(humanErr(err, '删除 Token 失败'), true)
+  }
+}
+
+async function copyToken(token) {
+  try {
+    await navigator.clipboard.writeText(token)
+    toast('已复制到剪贴板')
+  } catch (_e) {
+    // 降级：老式 execCommand 方式
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = token
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      toast('已复制到剪贴板')
+    } catch (_e2) {
+      toast('复制失败，请手动选择复制', true)
+    }
+  }
+}
+
+onMounted(async function () {
+  // 权限列表用于描述映射，读不到也不影响使用（有兜底）
+  try {
+    const data = await getOpenApiPermissions()
+    permissions.value = Array.isArray(data) ? data : []
+  } catch (_e) {
+    permissions.value = []
+  }
+  loadTokens()
+})
+</script>
+
+<style scoped>
+/* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
+.profile-main { padding-bottom: 40px }
+.page-profile .hero::after { content: '档案' }
+
+.hero-stats .uname {
+  font-family: var(--font-s);
+  font-weight: 900;
+  font-size: 26px;
+  letter-spacing: .02em;
+}
+.hero-stats .v small { vertical-align: baseline }
+.hero-stats div.is-authed .v { font-size: 26px }
+
+.token-card {
+  margin-top: 40px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 28px 30px;
+}
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap }
+.card-head h2 { font-family: var(--font-s); font-weight: 900; font-size: 24px; letter-spacing: .04em; color: var(--ink) }
+.card-sub { margin-top: 8px; font-size: 13px; line-height: 1.8; color: var(--ink-60); max-width: 560px }
+.gen-actions { display: flex; gap: 10px; flex-wrap: wrap }
+
+.act-btn {
+  border: 1.5px solid var(--line); background: var(--paper); border-radius: 999px;
+  padding: 10px 20px; font-size: 13px; font-weight: 800; color: var(--ink);
+  cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap;
+}
+.act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); background: var(--cream); color: var(--ink) }
+.act-btn:disabled { opacity: .45; cursor: not-allowed }
+
+.notice-line {
+  margin-top: 18px;
+  background: var(--yellow);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.notice-line.err { background: rgba(166, 81, 74, .14); color: var(--rouge) }
+
+.state { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 20px; padding: 56px 40px; text-align: center; color: var(--ink-35); font-weight: 700; margin-top: 20px }
+.state.err { color: var(--ink-60) }
+.state .link { margin-left: 12px; background: none; border: none; color: var(--accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+
+.token-list { list-style: none; margin-top: 20px; display: flex; flex-direction: column; gap: 12px }
+.token-item {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px;
+  transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .3s;
+}
+.token-item:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -20px rgba(73, 59, 44, .26); border-color: rgba(73, 59, 44, .22) }
+.t-dot { width: 10px; height: 10px; border-radius: 50%; flex: none }
+.t-dot.ro { background: var(--yellow-deep) }
+.t-dot.rw { background: var(--accent) }
+
+.t-meta { display: flex; flex-direction: column; gap: 3px; min-width: 180px; flex: none }
+.tag { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 7px; padding: 2px 10px; letter-spacing: .05em }
+.tag.ro { background: var(--yellow); color: var(--ink) }
+.tag.rw { background: rgba(215, 137, 53, .14); color: var(--accent-strong) }
+.t-scope { font-family: var(--font-d); font-size: 11px; color: var(--ink-35) }
+.t-remark { font-size: 11.5px; color: var(--ink-60) }
+.t-created { font-size: 11px; color: var(--ink-35) }
+
+.t-token {
+  flex: 1; min-width: 0;
+  font-family: var(--font-d); font-size: 12.5px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.t-btn {
+  flex: none; border: none; border-radius: 10px; padding: 8px 16px;
+  font-size: 12.5px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .3s var(--ease);
+}
+.t-btn.copy { background: var(--tea); color: var(--cream) }
+.t-btn.copy:hover:not(:disabled) { background: var(--accent); color: #fff }
+.t-btn.del { background: transparent; border: 1.5px solid var(--line); color: var(--ink-60) }
+.t-btn.del:hover:not(:disabled) { border-color: var(--rouge); color: var(--rouge) }
+.t-btn:disabled { opacity: .45; cursor: not-allowed }
+
+@media (max-width: 640px) {
+  .token-item { flex-wrap: wrap }
+  .t-meta { min-width: 0; flex: 1 }
+  .t-token { flex-basis: 100%; order: 3 }
+}
+</style>
