@@ -1,7 +1,7 @@
 {
   "format": "myshare-inventory-exchange",
   "version": 1,
-  "exported_at": "2026-08-16T08:15:00+08:00",
+  "exported_at": "2026-08-16T08:25:00+08:00",
   "catalog_version": "2026-08-16",
   "producer": {
     "platform": "myshare",
@@ -179,6 +179,26 @@
           "id": "char_004_guojia",
           "name": "郭嘉",
           "count": 1
+        }
+      ]
+    },
+    {
+      "record_id": "myshare:stock:item:example",
+      "record_type": "stock_snapshot",
+      "entity_type": "item",
+      "acquisition_channel": "背包",
+      "effective_at": "2026-08-16T08:20:00+08:00",
+      "snapshot_scope": "full",
+      "entries": [
+        {
+          "id": "baijinbi",
+          "name": "白金币",
+          "count": 103
+        },
+        {
+          "id": "baimozhijiu",
+          "name": "百末旨酒",
+          "count": 25
         }
       ]
     }

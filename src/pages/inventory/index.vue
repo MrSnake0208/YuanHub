@@ -25,10 +25,11 @@
 
       <section>
         <div class="wrap">
-          <!-- TABS：当前库存 / 时段获得量 -->
+          <!-- TABS：当前库存 / 时段获得量 / 导入记录 -->
           <div class="inventory-tabs" v-reveal>
             <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前库存</button>
             <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">时段获得量</button>
+            <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">导入记录</button>
             <span class="sp"></span>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
@@ -111,6 +112,35 @@
               </li>
             </ul>
           </div>
+
+          <!-- 导入记录 -->
+          <div v-show="activeTab === 'records'" class="panel">
+            <div class="records-head" v-reveal>
+              <span class="hint">共 {{ recordsList.length }} 条导入记录 · 删除单条后自动重放剩余记录重建库存</span>
+              <span class="sp"></span>
+              <button class="act-btn ghost" :disabled="recordsLoading" @click="loadRecords">刷新</button>
+            </div>
+
+            <div v-if="recordsLoading" class="state">正在加载记录…</div>
+            <div v-else-if="recordsError" class="state err">{{ recordsError }}</div>
+            <div v-else-if="recordsList.length === 0" class="state">暂无导入记录</div>
+            <ul v-else class="record-list" v-reveal>
+              <li v-for="r in recordsList" :key="r.record_id" class="record">
+                <div class="record-main">
+                  <div class="record-top">
+                    <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ r.record_type === 'reward_delta' ? '奖励' : '快照' }}</span>
+                    <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ r.entity_type === 'agent' ? '角色' : '物品' }}</span>
+                    <span v-if="r.acquisition_channel" class="rtag rtag-type">{{ r.acquisition_channel }}</span>
+                    <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
+                    <span class="record-time">{{ fmtTime(r.effective_at) }}</span>
+                  </div>
+                  <div class="record-entries">{{ entrySummary(r.entries, r.record_type) }}</div>
+                  <div class="record-id" :title="r.record_id">{{ r.record_id }}</div>
+                </div>
+                <button class="record-del" @click="onDeleteRecord(r)">删除</button>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -130,7 +160,7 @@
 import { ref, computed, onMounted } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory } from '../../api/inventory.js'
+import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord } from '../../api/inventory.js'
 import { auth } from '../../store/auth.js'
 
 const activeTab = ref('current')
@@ -147,8 +177,15 @@ const importText = ref('')
 const importing = ref(false)
 const importResult = ref(null)
 const loadingExample = ref(false)
+const recordsList = ref([])
+const recordsLoading = ref(false)
+const recordsError = ref('')
 
-function setTab(t) { activeTab.value = t; if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired() }
+function setTab(t) {
+  activeTab.value = t
+  if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired()
+  if (t === 'records') loadRecords()
+}
 function setEntityType(t) { entityType.value = t; reloadCurrent() }
 
 // ISO 日期（本地时区 YYYY-MM-DD），供 <input type=date> 与后端 [from,to) 区间
@@ -223,6 +260,56 @@ function humanErr(err, fallback) {
 }
 
 function goLogin() { location.href = '/login' }
+
+// ---- 导入记录（列表 / 删除） ----
+async function loadRecords() {
+  recordsLoading.value = true
+  recordsError.value = ''
+  try {
+    const list = await listRecords({})
+    recordsList.value = Array.isArray(list) ? list : []
+  } catch (err) {
+    recordsError.value = humanErr(err, '加载记录失败')
+  } finally {
+    recordsLoading.value = false
+  }
+}
+
+async function onDeleteRecord(rec) {
+  const rid = rec && rec.record_id
+  if (!rid) return
+  if (!confirm('删除记录「' + rid + '」？\n删除后将重放剩余记录重建库存，此操作不可恢复。')) return
+  try {
+    await deleteRecord(rid)
+    await loadRecords()
+    await reloadCurrent()
+  } catch (err) {
+    alert(humanErr(err, '删除失败'))
+  }
+}
+
+// stock_effect 标记的中文名
+function stockEffectLabel(eff) {
+  if (eff === 'applied') return '已生效'
+  if (eff === 'history_only') return '仅历史'
+  if (eff === 'superseded') return '已归档'
+  return eff || '未知'
+}
+
+// ISO 时间 → 本地可读字符串
+function fmtTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+// entries 摘要：奖励用 +N，快照用 =N
+function entrySummary(entries, recordType) {
+  const list = entries || []
+  const sign = recordType === 'reward_delta' ? '+' : '='
+  return list.map(function (e) { return (e.name || e.id) + sign + e.count }).join('、')
+}
 
 // ---- 导入档案 ----
 async function doImport() {
@@ -377,6 +464,33 @@ onMounted(async function () {
 .entry .id { font-family: var(--font-d); font-size: 11.5px; color: var(--ink-35); }
 .entry .count { font-family: var(--font-d); font-weight: 900; font-size: 22px; color: var(--ink); min-width: 72px; text-align: right }
 .entry .count.gained { color: var(--accent-strong) }
+
+/* ---- 导入记录 ---- */
+.records-head { display: flex; align-items: center; gap: 12px }
+.records-head .hint { font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
+.records-head .sp { flex: 1 }
+.record-list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 10px }
+.record {
+  display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; padding: 14px 18px; transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .3s;
+}
+.record:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -20px rgba(73, 59, 44, .26); border-color: rgba(73, 59, 44, .22) }
+.record-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px }
+.record-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.rtag { font-size: 11px; font-weight: 700; border-radius: 7px; padding: 2px 10px; letter-spacing: .03em; white-space: nowrap }
+.rtag.rtag-reward { background: var(--yellow); color: var(--ink) }
+.rtag.rtag-snapshot { border: 1.5px solid var(--brand-blue); color: var(--brand-blue); background: transparent }
+.rtag.rtag-type { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
+.rtag.rtag-agent { background: rgba(215, 137, 53, .08); border: 1.5px solid rgba(215, 137, 53, .4); color: var(--accent-strong) }
+.rtag.rtag-item { background: rgba(91, 106, 140, .07); border: 1.5px solid rgba(91, 106, 140, .35); color: var(--slate-deep) }
+.rtag.effect { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
+.rtag.effect.eff-history_only { color: var(--slate-deep); border-color: rgba(91, 106, 140, .35) }
+.rtag.effect.eff-superseded { color: var(--rouge); border-color: rgba(166, 81, 74, .4) }
+.record-time { font-family: var(--font-d); font-size: 11.5px; color: var(--ink-35); margin-left: auto }
+.record-entries { font-size: 13px; color: var(--ink); line-height: 1.7 }
+.record-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.record-del { flex: none; border: 1.5px solid rgba(166, 81, 74, .35); background: rgba(166, 81, 74, .06); color: var(--rouge); border-radius: 10px; padding: 7px 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
+.record-del:hover { background: rgba(166, 81, 74, .16) }
 
 /* 深色块上的文字（未登录提示） */
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }

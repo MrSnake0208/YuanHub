@@ -55,3 +55,24 @@ export function exportInventory({ include, from, to }) {
   const qs = params.toString()
   return request(PATH + '/export' + (qs ? '?' + qs : ''), { auth: true })
 }
+
+// 导入记录列表（GET，需登录）——{ entityType?, from?, to? }，按 effective_at 倒序
+// 返回 [{ record_id, record_type, entity_type, acquisition_channel, effective_at, received_at, stock_effect, entries: [{ id, name, count }] }]
+export function listRecords({ entityType, from, to } = {}) {
+  const params = new URLSearchParams()
+  if (entityType != null && entityType !== '') params.set('entity_type', entityType)
+  if (from != null) params.set('from', from)
+  if (to != null) params.set('to', to)
+  const qs = params.toString()
+  return request(PATH + '/records' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+// 删除单条记录（DELETE，需登录）——删除后后端全量重放剩余记录重建库存
+// 返回 true；不存在/越权抛 404
+// 注意：request() 在 data 为 true（布尔值）时正常返回
+export function deleteRecord(recordId) {
+  return request(PATH + '/records/' + encodeURIComponent(recordId), {
+    method: 'DELETE',
+    auth: true
+  })
+}
