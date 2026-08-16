@@ -7,4 +7,4 @@
 - 建议尺寸：正方形（如 128×128 / 256×256），格子内会裁剪为方形显示
 - 图片上传后刷新页面即自动显示；未上传的对象显示「图」印占位
 
-参考：id 列表见后端 `GET /v1/inventory/catalog`（公开接口）。
+参考：完整 id 列表见前端本地目录 `src/data/inventory/catalog.js` 的 `ITEM_CATALOG`（由 `scripts/build-inventory-catalog.mjs` 从上游 items.json 生成），后端 `GET /v1/inventory/catalog` 亦可供核对。

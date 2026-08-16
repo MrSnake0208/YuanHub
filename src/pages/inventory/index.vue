@@ -8,6 +8,7 @@
         <div class="wrap">
           <div class="crumb">
             <span class="pill fill">库存</span>
+            <span class="pill">清单</span>
             <span class="pill">背包</span>
             <span class="pill">统计</span>
           </div>
@@ -15,8 +16,8 @@
           <p class="hero-sub">代号鸢 / 如鸢 库存与奖励台账：同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案。</p>
           <div class="hero-stats">
             <div><div class="k">对象目录</div><div class="v">{{ catalogCount }}<small>项</small></div></div>
-            <div><div class="k">当前物品</div><div class="v">{{ itemCount }}<small>种</small></div></div>
-            <div><div class="k">当前角色</div><div class="v">{{ agentCount }}<small>种</small></div></div>
+            <div><div class="k">物品清单</div><div class="v">{{ itemCatalogCount }}<small>种</small></div></div>
+            <div><div class="k">角色清单</div><div class="v">{{ agentCatalogCount }}<small>种</small></div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
             <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
           </div>
@@ -25,8 +26,9 @@
 
       <section>
         <div class="wrap">
-          <!-- TABS：当前库存 / 时段获得量 / 导入记录 -->
+          <!-- TABS：清单 / 当前库存 / 时段获得量 / 导入记录 -->
           <div class="inventory-tabs" v-reveal>
+            <button :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">清单</button>
             <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前库存</button>
             <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">时段获得量</button>
             <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">导入记录</button>
@@ -55,6 +57,61 @@
             </div>
           </div>
 
+          <!-- 清单（全量目录：默认全部显示，数量初始 0，登录后叠加云端快照） -->
+          <div v-show="activeTab === 'manifest'" class="panel">
+            <div class="type-switch" v-reveal>
+              <button :class="{ on: entityType === 'item' }" @click="setEntityType('item')">物品 item</button>
+              <button :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">角色 agent</button>
+              <span class="sp"></span>
+              <span class="hint">清单来自统一目录：每个对象都显示，数量初始为 0，已登录时叠加云端库存</span>
+            </div>
+
+            <div class="manifest-bar" v-reveal>
+              <div class="mf-stats">
+                <div class="mf-stat"><b class="mf-num">{{ manifestTotal }}</b><span class="mf-k">目录</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已持有</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">收集度</span></div>
+              </div>
+              <div class="mf-progress" title="收集进度"><i :style="{ width: manifestPercent }"></i></div>
+              <span class="sp"></span>
+              <input v-model.trim="manifestSearch" class="mf-search" type="search" placeholder="搜索名称 / id" />
+              <div class="mf-filter">
+                <button :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
+                <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已持有</button>
+                <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未持有</button>
+              </div>
+            </div>
+
+            <div v-if="loading" class="state">正在加载清单…</div>
+            <div v-else class="backpack" v-reveal>
+              <div class="bp-head">
+                <span class="bp-tip">
+                  共 <b class="bp-num">{{ manifestTotal }}</b> 种 · 已持有 <b class="bp-num">{{ manifestOwned }}</b> 种 ·
+                  未持有 <b class="bp-num">{{ manifestMissing }}</b> 种 · 目录 v{{ CATALOG_VERSION }}
+                  <template v-if="!auth.isLoggedIn"> · 未登录：数量为初始值 0，登录后同步实际库存</template>
+                </span>
+                <span class="sp"></span>
+                <span v-if="error" class="bp-tip mf-warn">云端库存同步失败：{{ error }}（数量按 0 显示）</span>
+              </div>
+              <div v-if="manifestEntries.length === 0" class="state slim">没有匹配「{{ manifestSearch }}」的对象</div>
+              <ul v-else class="slot-grid">
+                <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
+                  <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
+                    <div class="slot-ph">
+                      <span class="ph-seal">图</span>
+                      <span class="ph-mono">{{ monogram(e) }}</span>
+                    </div>
+                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" loading="lazy" @error="onImgError" />
+                    <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
+                  </div>
+                  <span class="slot-name">{{ e.name || e.id }}</span>
+                  <span v-if="entityType === 'item'" class="slot-tag">{{ e.category }}</span>
+                  <span v-else class="slot-tag star" :class="'s' + e.rarity">{{ e.rarity }}★ · {{ e.prof }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
           <!-- 当前库存 -->
           <div v-show="activeTab === 'current'" class="panel">
             <div class="type-switch" v-reveal>
@@ -69,7 +126,10 @@
               {{ error }}
               <button v-if="!auth.isLoggedIn" class="link" @click="goLogin">请先登录后重试</button>
             </div>
-            <div v-else-if="currentEntries.length === 0" class="state">暂无 {{ entityType === 'item' ? '物品' : '角色' }} 库存记录</div>
+            <div v-else-if="currentEntries.length === 0" class="state">
+              <template v-if="!auth.isLoggedIn">尚未登录：数量均为 0 · <router-link class="link" to="/login">登录后同步实际库存</router-link></template>
+              <template v-else>暂无 {{ entityType === 'item' ? '物品' : '角色' }} 库存记录</template>
+            </div>
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
                 <span class="bp-tip">共 <b class="bp-num">{{ currentEntries.length }}</b> 种 · 图标请放至 <code>public/inventory-icons/{{ entityType === 'agent' ? 'agents' : 'items' }}/对象id.{{ ICON_EXT }}</code>，未上传前显示占位印</span>
@@ -185,9 +245,12 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord } from '../../api/inventory.js'
 import { auth } from '../../store/auth.js'
+import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG } from '../../data/inventory/catalog.js'
 
-const activeTab = ref('current')
+const activeTab = ref('manifest')
 const entityType = ref('item')
+const manifestSearch = ref('')
+const manifestFilter = ref('all')
 const loading = ref(false)
 const error = ref('')
 const catalog = ref({ entities: [] })
@@ -206,6 +269,8 @@ const recordsError = ref('')
 
 function setTab(t) {
   activeTab.value = t
+  // 清单与当前库存共用同一份云端当前库存数据
+  if ((t === 'manifest' || t === 'current') && currentEntries.value.length === 0) reloadCurrent()
   if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired()
   if (t === 'records') loadRecords()
 }
@@ -215,6 +280,7 @@ function setEntityType(t) {
   // 切换对象类型后,旧的时段获得量结果属于另一类型:清空避免张冠李戴;
   // 当前库存立即刷新;若正处于"时段获得量"页签则按新类型自动重新统计
   // (离开页签时 setTab 的空列表条件也会触发重新加载)。
+  currentEntries.value = []
   acquiredEntries.value = []
   error.value = ''
   reloadCurrent()
@@ -256,33 +322,94 @@ function monogram(e) {
   return Array.from(s)[0] || '?'
 }
 
-// 名称查找：优先目录，其次后端返回的 name，最后回退 id
+// 名称查找：优先本地全量目录，其次后端返回的 name，最后回退 id
 function nameOf(id, name) {
+  const local = LOCAL_NAME[entityType.value] ? LOCAL_NAME[entityType.value].get(id) : null
+  if (local) return local
   if (name) return name
   if (!catalog.value.entities.length) return id
   const hit = catalog.value.entities.find(function (e) { return e.id === id && e.entity_type === entityType.value })
   return (hit && hit.name) ? hit.name : id
 }
 
-// 统计卡片数据
-const catalogCount = computed(function () {
-  const list = catalog.value.entities || []
-  return list.length || '…'
-})
-const itemCount = computed(function () { return entityType.value === 'item' ? currentEntries.value.length : '—' })
-const agentCount = computed(function () { return entityType.value === 'agent' ? currentEntries.value.length : '—' })
+// 统计卡片数据（本地全量目录：物品 + 角色）
+const catalogCount = ITEM_CATALOG.length + AGENT_CATALOG.length
+const itemCatalogCount = ITEM_CATALOG.length
+const agentCatalogCount = AGENT_CATALOG.length
 
-async function safeLoad(fn) {
+// —— 清单（全量目录）：每个对象都显示，数量初始为 0，登录后叠加云端当前库存 ——
+const LOCAL_NAME = {
+  item: new Map(ITEM_CATALOG.map(function (e) { return [e.id, e.name] })),
+  agent: new Map(AGENT_CATALOG.map(function (e) { return [e.id, e.name] }))
+}
+const localCatalog = computed(function () { return entityType.value === 'agent' ? AGENT_CATALOG : ITEM_CATALOG })
+const currentMap = computed(function () {
+  const m = {}
+  currentEntries.value.forEach(function (e) { m[e.id] = Number(e.count) || 0 })
+  return m
+})
+const manifestEntries = computed(function () {
+  const stock = currentMap.value
+  const q = manifestSearch.value.toLowerCase()
+  const f = manifestFilter.value
+  return localCatalog.value
+    .map(function (e) {
+      const count = stock[e.id] != null ? stock[e.id] : 0
+      return Object.assign({}, e, { count: count, owned: count > 0 })
+    })
+    .filter(function (e) {
+      if (f === 'owned' && !e.owned) return false
+      if (f === 'missing' && e.owned) return false
+      if (q) {
+        const hay = [e.name, e.id, e.category, e.prof, e.subProf].filter(Boolean).join(' ').toLowerCase()
+        if (hay.indexOf(q) === -1) return false
+      }
+      return true
+    })
+})
+const manifestTotal = computed(function () { return localCatalog.value.length })
+const manifestOwned = computed(function () {
+  const stock = currentMap.value
+  return localCatalog.value.filter(function (e) { return (stock[e.id] || 0) > 0 }).length
+})
+const manifestMissing = computed(function () { return manifestTotal.value - manifestOwned.value })
+const manifestPercent = computed(function () {
+  if (!manifestTotal.value) return '0%'
+  return Math.round(manifestOwned.value * 100 / manifestTotal.value) + '%'
+})
+
+// 清单格 title：名称 · 分类 / 星级属性 · 数量
+function slotTitle(e) {
+  const parts = [e.name || e.id]
+  if (entityType.value === 'item' && e.category) parts.push(e.category)
+  if (entityType.value === 'agent') {
+    let line = (e.rarity != null ? e.rarity + '★' : '')
+    if (e.prof) line = line ? line + ' · ' + e.prof : e.prof
+    if (e.subProf) line = line ? line + ' · ' + e.subProf : e.subProf
+    parts.push(line)
+  }
+  parts.push('× ' + fmtCount(e.count))
+  return parts.join(' ｜ ')
+}
+
+async function safeLoad(fn, quiet) {
   loading.value = true
-  error.value = ''
+  if (!quiet) error.value = ''
   try { await fn() } catch (err) {
-    error.value = humanErr(err, '加载失败，请稍后重试')
+    if (!quiet) error.value = humanErr(err, '加载失败，请稍后重试')
   } finally { loading.value = false }
 }
 
 // 后端 /current 返回 List<{ entity_type, entries: { "<id>": {count, listed_baseline_at} } }>。
 // 传入 entity_type 时取首个元素，把 entries 对象转成 [{id, name, count}]。
-async function reloadCurrent() {
+async function reloadCurrent(quiet) {
+  // 未登录时不请求云端库存（避免 401 触发自动跳转登录页），数量保持初始 0
+  if (!auth.isLoggedIn) {
+    currentEntries.value = []
+    error.value = ''
+    loading.value = false
+    return
+  }
   await safeLoad(async function () {
     const data = await getCurrent({ entityType: entityType.value })
     const list = Array.isArray(data) ? data : (data ? [data] : [])
@@ -292,7 +419,7 @@ async function reloadCurrent() {
       const se = entriesObj[id] || {}
       return { id: id, name: nameOf(id, se.name), count: Number(se.count) || 0 }
     }).sort(function (a, b) { return b.count - a.count })
-  })
+  }, quiet)
 }
 
 // 本地日期 YYYY-MM-DD → 本地时区当日 00:00 的 ISO 时刻（后端按 [from,to) 半开区间）。
@@ -515,6 +642,24 @@ onMounted(async function () {
 .type-switch .sp { flex: 1 }
 .type-switch .hint { font-size: 12px; color: var(--ink-35); font-weight: 600; margin-right: 6px }
 
+/* ---- 清单（全量目录）工具条 ---- */
+.manifest-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px }
+.mf-stats { display: flex; gap: 24px; align-items: baseline }
+.mf-stat { display: flex; align-items: baseline; gap: 6px }
+.mf-num { font-family: var(--font-d); font-weight: 900; font-size: 20px; color: var(--accent-strong); letter-spacing: -.01em }
+.mf-k { font-size: 12px; color: var(--ink-60); font-weight: 700 }
+.mf-progress { flex: none; width: 120px; height: 8px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); overflow: hidden }
+.mf-progress i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .8s var(--ease) }
+.manifest-bar .sp { flex: 1 }
+.mf-search { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; width: 180px; transition: border-color .3s }
+.mf-search:focus { border-color: var(--accent) }
+.mf-filter { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 10px; padding: 4px }
+.mf-filter button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
+.mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
+.mf-filter button:hover:not(.on) { color: var(--ink) }
+.mf-warn { color: var(--rouge) }
+.state.slim { padding: 26px 20px; margin-top: 14px; border-radius: 14px }
+
 .acquired-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap }
 .range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .range label { display: flex; align-items: center; gap: 6px }
@@ -536,6 +681,7 @@ onMounted(async function () {
 /* ---- 背包格（游戏背包样式）---- */
 .backpack { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 18px 18px 20px }
 .bp-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1.5px dashed var(--line); flex-wrap: wrap }
+.bp-head .sp { flex: 1 }
 .bp-tip { font-size: 12px; color: var(--ink-60); font-weight: 600; line-height: 1.8 }
 .bp-tip code { font-family: var(--font-d); font-size: 11px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; color: var(--ink-60); margin: 0 2px; word-break: break-all }
 .bp-num { font-family: var(--font-d); font-weight: 900; color: var(--accent-strong); font-size: 13px }
@@ -571,6 +717,21 @@ onMounted(async function () {
   overflow: hidden; word-break: break-all; transition: color .3s;
 }
 .slot:hover .slot-name { color: var(--accent-strong) }
+
+/* ---- 清单格状态：未持有（数量 0）淡化，数量角标空心 ---- */
+.slot.is-missing .slot-ic { opacity: .55; border-style: dashed }
+.slot.is-missing:hover .slot-ic { opacity: .8 }
+.slot.is-missing .slot-name { color: var(--ink-35) }
+.slot.is-missing:hover .slot-name { color: var(--ink-60) }
+.slot-count.zero { background: transparent; border: 1.5px dashed var(--line); color: var(--ink-35); box-shadow: none }
+.slot-tag {
+  margin-top: 5px; align-self: center; font-size: 10.5px; font-weight: 700; color: var(--ink-60);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; line-height: 1.5;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.slot-tag.star.s5 { background: var(--yellow); border-color: transparent; color: var(--ink) }
+.slot-tag.star.s4 { background: transparent; border: 1.5px solid rgba(91, 106, 140, .45); color: var(--slate-deep) }
+.slot-tag.star.s3 { background: transparent; border: 1.5px solid var(--line); color: var(--ink-60) }
 
 /* ---- 导入记录 ---- */
 .records-head { display: flex; align-items: center; gap: 12px }
@@ -608,5 +769,10 @@ onMounted(async function () {
   .slot-count { font-size: 11.5px; padding: 2px 7px; right: 5px; bottom: 5px }
   .acquired-bar { flex-direction: column; align-items: stretch }
   .range { justify-content: space-between }
+  .manifest-bar { flex-direction: column; align-items: stretch; gap: 10px }
+  .manifest-bar .sp { display: none }
+  .mf-search { width: auto }
+  .mf-stats { justify-content: space-between }
+  .mf-progress { width: 100% }
 }
 </style>
