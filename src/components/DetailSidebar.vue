@@ -1,11 +1,11 @@
 <template>
   <aside class="island">
     <div class="brand">
-      <div class="brand-mark">M</div>
-      <div class="brand-txt">MaaYuan Share<b>通关作业</b></div>
+      <div class="brand-mark">Y</div>
+      <div class="brand-txt">YuanHub<b>通关作业</b></div>
     </div>
     <nav class="nav">
-      <router-link to="/"><span class="no">←</span>返回作业广场</router-link>
+      <router-link to="/"><span class="no">←</span>返回首页</router-link>
       <a
         v-for="item in items"
         :key="item.id"

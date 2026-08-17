@@ -7,8 +7,8 @@
         <!-- 极简页头：小品牌标 + 标题 + 一句副题（去掉 hero 渐变/胶囊/水印） -->
         <header class="auth-head">
           <div class="auth-brand">
-            <span class="brand-mark">M</span>
-            <span class="brand-name">MaaYuan Share</span>
+            <span class="brand-mark">Y</span>
+            <span class="brand-name">YuanHub</span>
           </div>
           <h1 class="auth-title">{{ title }}</h1>
           <p class="auth-sub">{{ sub }}</p>
@@ -22,7 +22,7 @@
         </section>
 
         <!-- 一行式页脚 -->
-        <footer class="auth-foot">MaaYuan Share · 作业分享站 — MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建 · 祝各位凹关顺利</footer>
+        <footer class="auth-foot">YuanHub · 栖鸢阁 — MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建 · 祝各位凹关顺利</footer>
       </div>
     </main>
   </div>

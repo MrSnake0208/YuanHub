@@ -13,6 +13,10 @@
           </div>
           <h1>广陵账房<span class="small">精打细算 · 运筹帷幄</span></h1>
           <p class="hero-sub">代号鸢 / 如鸢 礼包比价与购物清单：自动换算汇率、累计积分抽数、解锁累充奖励档位，一键导出账单图片。</p>
+          <div class="author-badge" v-reveal>
+            <span class="ab-mark">©</span>
+            <span class="ab-txt">独立创作 · 著作权归作者 <b>swerainy</b> 所有</span>
+          </div>
           <div class="hero-stats">
             <div><div class="k">收录礼包</div><div class="v">142<small>份</small></div></div>
             <div><div class="k">覆盖版本</div><div class="v">2<small>代号鸢 / 如鸢</small></div></div>
@@ -106,7 +110,8 @@
       <SiteFooter>
         <template #big>广陵账房<br><span>精打细算 · 运筹帷幄</span></template>
         <template #fine>
-          <b>MaaYuan Share</b> · 礼包计算器<br>
+          <b>YuanHub</b> · 礼包计算器<br>
+          作者：<b>swerainy</b> · 著作权归作者所有<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
           数据仅供参考，请以游戏内商店为准
         </template>
@@ -713,3 +718,37 @@ function exportReceipt() {
   }, 500)
 }
 </script>
+
+<style scoped>
+/* ---- 作者版权醒目标识（广陵账房 · swerainy） ---- */
+.author-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  background: var(--tea);
+  color: var(--cream);
+  border-radius: 999px;
+  padding: 9px 18px 9px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  box-shadow: 0 12px 26px -14px rgba(73,59,44,.5);
+}
+.ab-mark {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--yellow);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-d);
+  font-weight: 900;
+  font-size: 15px;
+}
+.author-badge b {
+  color: var(--yellow);
+  font-weight: 900;
+}
+</style>

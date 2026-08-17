@@ -268,7 +268,7 @@
       <SiteFooter>
         <template #big>广陵库房<br><span>清点 · 归档 · 溯源</span></template>
         <template #fine>
-          <b>MaaYuan Share</b> · 库存与奖励台账<br>
+          <b>YuanHub</b> · 库存与奖励台账<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
           数据仅供参考，请以游戏内实际库存为准
         </template>

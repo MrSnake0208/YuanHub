@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "MaaYuan Share 作业分享站 · 由 Vite + Vue 3 复刻",
+  "description": "YuanHub 栖鸢阁 · 由 Vite + Vue 3 复刻",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

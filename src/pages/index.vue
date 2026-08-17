@@ -90,7 +90,7 @@
       </section>
 
       <SiteFooter>
-        <template #big>MaaYuan Share<br><span>祝各位凹关顺利</span></template>
+        <template #big>YuanHub<br><span>祝各位凹关顺利</span></template>
         <template #fine>
           <a href="#">MaaYuan 导航站</a> · <a href="#">意见与反馈</a><br>
           <a href="#">MaaYuan GitHub Repo</a> · <a href="#">前端 Repo</a> · <a href="#">后端 Repo</a><br>

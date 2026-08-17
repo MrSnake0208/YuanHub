@@ -100,7 +100,7 @@
       <SiteFooter>
         <template #big>个人中心<br><span>凭据 · 权限 · 开放接口</span></template>
         <template #fine>
-          <b>MaaYuan Share</b> · 第三方 API Token 管理<br>
+          <b>YuanHub</b> · 第三方 API Token 管理<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
           Token 仅用途：库存数据只读 / 写入 / 导出，请勿泄露给他人
         </template>

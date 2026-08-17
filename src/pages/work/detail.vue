@@ -2,7 +2,7 @@
   <div v-if="!d" class="page-detail">
     <main style="margin-left:0">
       <div class="wrap" style="padding-top:120px">
-        <div class="empty show">没有找到这份作业<br><span style="font-size:12px;font-weight:600"><router-link to="/" style="color:var(--ink)">← 返回作业广场</router-link></span></div>
+        <div class="empty show">没有找到这份作业<br><span style="font-size:12px;font-weight:600"><router-link to="/" style="color:var(--ink)">← 返回首页</router-link></span></div>
       </div>
     </main>
   </div>
@@ -116,7 +116,7 @@
       <SiteFooter tone="slate">
         <template #big>祝各位凹关顺利<br><span>也祝草划早日 **</span></template>
         <template #fine>
-          <b>MaaYuan Share</b> · 作业分享<br>
+          <b>YuanHub</b> · 作业分享<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
           关键词：{{ d.keywords.join(' / ') }}
         </template>

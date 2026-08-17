@@ -16,15 +16,17 @@ import INVENTORY from '/src/pages/inventory/index.vue'
 
 export const routes = [
     {
+        // 作业广场暂时隐藏：/ 重定向到广陵账房；恢复时删除 redirect 并把 display 改回 true
         path: '/',
+        redirect: '/cart',
         text: '作业广场',
         name: 'plaza',
-        display: true,
+        display: false,
         module: 'plaza',
         icon: 'grid',
         component: INDEX,
         meta: {
-            title: '作业广场 — MaaYuan Share'
+            title: '作业广场 — YuanHub'
         }
     },
     {
@@ -37,7 +39,7 @@ export const routes = [
         component: () => import('/src/pages/work/detail.vue'),
         props: true,
         meta: {
-            title: '通关作业 — MaaYuan Share'
+            title: '通关作业 — YuanHub'
         }
     },
     {
@@ -49,7 +51,7 @@ export const routes = [
         icon: 'shopping-cart',
         component: CART,
         meta: {
-            title: '广陵账房 · 礼包计算器 — MaaYuan Share'
+            title: '广陵账房 · 礼包计算器 — YuanHub'
         }
     },
     {
@@ -61,7 +63,7 @@ export const routes = [
         icon: 'package-open',
         component: INVENTORY,
         meta: {
-            title: '库存 — MaaYuan Share'
+            title: '库存 — YuanHub'
         }
     },
     {
@@ -73,7 +75,7 @@ export const routes = [
         icon: 'log-in',
         component: () => import('/src/pages/user/login.vue'),
         meta: {
-            title: '登录 — MaaYuan Share'
+            title: '登录 — YuanHub'
         }
     },
     {
@@ -85,7 +87,7 @@ export const routes = [
         icon: 'user-plus',
         component: () => import('/src/pages/user/register.vue'),
         meta: {
-            title: '注册 — MaaYuan Share'
+            title: '注册 — YuanHub'
         }
     },
     {
@@ -97,7 +99,7 @@ export const routes = [
         icon: 'key-round',
         component: () => import('/src/pages/user/forgot.vue'),
         meta: {
-            title: '找回密码 — MaaYuan Share'
+            title: '找回密码 — YuanHub'
         }
     },
     {
@@ -109,7 +111,7 @@ export const routes = [
         icon: 'user',
         component: () => import('/src/pages/user/profile.vue'),
         meta: {
-            title: '个人中心 — MaaYuan Share',
+            title: '个人中心 — YuanHub',
             requiresAuth: true
         }
     }
