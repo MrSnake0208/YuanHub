@@ -2,22 +2,24 @@
 // - 统一 baseURL（VITE_API_BASE，默认为本地后端）
 // - 自动 JSON 序列化 / 反序列化
 // - auth=true 时自动附带 'Authorization: Bearer <accessToken>' 头
-// - 解析后端统一响应 { statusCode, message, data }
+// - 解析后端统一响应 { status_code, message, data }
 //   - statusCode===200 → 返回 data
 //   - 否则 throw new Error(message || '请求失败')
+// - 兼容库存接口的两种差异：
+//   - raw=true：成功时返回「完整 JSON」（如 /v1/inventory/export 直接返回交换文档，无 ApiResult 包装）
+//   - 库存错误结构 { error: { code, message, record_id?, entry_id? } }（非 ApiResult），自动提取 error.message
 // - 401 且 auth=true：用 refreshToken 静默刷新一次并重放原请求（仅一次）；
 //   刷新失败（或无 refreshToken）则清登录态并跳转 /login
 //
 // 为避免与 store/auth.js 产生模块循环依赖，这里通过「动态 import」在真正
 // 需要时才加载 store（仅读取 token / 调用 refresh() / logout()）。
 
-// const API_BASE = import.meta.env.VITE_API_BASE || "http://192.168.31.55:8080";
 const API_BASE =
   import.meta.env.VITE_API_BASE || "https://hub.maayuan.fun:16666";
 
 export async function request(
   path,
-  { method = "GET", body, auth = false } = {},
+  { method = "GET", body, auth = false, raw = false } = {},
 ) {
   let refreshed = false;
 
@@ -29,7 +31,7 @@ export async function request(
       const mod = await import("../store/auth.js");
       store = mod.auth;
       if (store && store.accessToken) {
-        headers["Authorization"] = `Bearer ${store.accessToken}`;
+        headers["Authorization"] = "Bearer " + store.accessToken;
       }
     }
 
@@ -38,9 +40,9 @@ export async function request(
       opts.body = JSON.stringify(body);
     }
 
-    const res = await fetch(`${API_BASE}${path}`, opts);
+    const res = await fetch(API_BASE + path, opts);
 
-    // 反序列化统一响应包装
+    // 反序列化响应体
     let payload = null;
     try {
       payload = await res.json();
@@ -48,7 +50,8 @@ export async function request(
       payload = null;
     }
 
-    // 后端 Jackson SNAKE_CASE：业务状态码字段为 status_code（兼容 statusCode 写法）
+    // 统一提取业务状态码与错误信息：
+    // 兼容 ApiResult{ status_code, message, data } 与 库存 { error: { code, message } }。
     const statusCode =
       payload && payload.status_code != null
         ? payload.status_code
@@ -56,9 +59,31 @@ export async function request(
           ? payload.statusCode
           : res.status;
     const message =
-      payload && payload.message != null
-        ? payload.message
-        : res.statusText || "请求失败";
+      payload && payload.error != null
+        ? payload.error.message || payload.error.code
+        : payload && payload.message != null
+          ? payload.message
+          : res.statusText || "请求失败";
+
+    // raw：返回完整 JSON（库存导出等无包装端点）
+    if (raw) {
+      if (res.ok) return payload;
+      // 401 且需认证：静默刷新并重放一次
+      if (res.status === 401 && auth && !refreshed) {
+        refreshed = true;
+        const mod = await import("../store/auth.js");
+        store = mod.auth;
+        if (store && store.refreshToken) {
+          const ok = await store.refresh();
+          if (ok) return doRequest();
+        }
+        await store.logout();
+        if (typeof location !== "undefined") {
+          location.href = "/login";
+        }
+      }
+      throw new Error(message || "请求失败");
+    }
 
     // 成功
     if (statusCode === 200) {

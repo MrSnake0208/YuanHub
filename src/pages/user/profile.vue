@@ -12,7 +12,7 @@
             <span class="pill">开放接口</span>
           </div>
           <h1>我的账户<span class="small">凭据 · 权限 · 开放接口</span></h1>
-          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：按权限（只读 / 只写）签发访问库存数据的凭据，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
+          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：按权限（只读 / 只写 / 导出）签发绑定到某个库存子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
           <div class="hero-stats">
             <div><div class="k">当前身份</div><div class="v"><span class="uname">{{ userName }}</span></div></div>
             <div><div class="k">权限范围</div><div class="v">{{ permissionCount }}<small>项</small></div></div>
@@ -29,16 +29,48 @@
             <div class="card-head">
               <div>
                 <h2>第三方 API Token</h2>
-                <p class="card-sub">生成带权限范围的访问凭证，用于在站外读取或写入库存数据；请妥善保管，Token 泄露后请立即删除。</p>
+                <p class="card-sub">每个 Token 绑定一个库存子账号，可授予只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表仅显示 token_id。</p>
               </div>
               <div class="gen-actions">
-                <button class="act-btn ghost" :disabled="busy || generating === 'read'" @click="generate('read')">
-                  {{ generating === 'read' ? '生成中…' : '生成只读 Token' }}
-                </button>
-                <button class="act-btn ghost" :disabled="busy || generating === 'write'" @click="generate('write')">
-                  {{ generating === 'write' ? '生成中…' : '生成只写 Token' }}
-                </button>
+                <button class="act-btn ghost" :disabled="busy" @click="openGen">生成 Token</button>
               </div>
+            </div>
+
+            <!-- 生成面板 -->
+            <div v-if="showGen" class="gen-panel">
+              <div class="gen-row">
+                <span class="gen-label">绑定子账号</span>
+                <select v-model="genAccountId" class="gen-select">
+                  <option v-if="!accounts.length" value="">（请先在库存页创建子账号）</option>
+                  <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </select>
+              </div>
+              <div class="gen-row">
+                <span class="gen-label">权限范围</span>
+                <label v-for="p in scopeOptions" :key="p.scope" class="gen-check">
+                  <input type="checkbox" :value="p.scope" v-model="genScopes" />
+                  <span>{{ p.scope }}<small> · {{ p.description }}</small></span>
+                </label>
+              </div>
+              <div class="gen-row">
+                <span class="gen-label">备注</span>
+                <input v-model.trim="genRemark" class="gen-input" placeholder="可选，如「派遣脚本」" />
+              </div>
+              <div class="gen-actions">
+                <button class="act-btn ghost" :disabled="generating" @click="showGen = false">取消</button>
+                <button class="act-btn primary" :disabled="generating || !genAccountId || !genScopes.length" @click="doGenerate">生成 Token</button>
+              </div>
+            </div>
+
+            <!-- 一次性展示刚生成的 Token -->
+            <div v-if="newToken" class="new-token">
+              <p class="nt-tip">Token 已生成，请立即复制保存 —— 列表仅显示 token_id，此明文只展示这一次：</p>
+              <div class="nt-row">
+                <code class="nt-code">{{ newToken.token }}</code>
+                <button class="t-btn copy" type="button" @click="copyToken(newToken.token)">复制</button>
+                <button class="t-btn del" type="button" @click="newToken = null">我已保存</button>
+              </div>
+              <p class="nt-meta">绑定子账号：{{ newToken.account_name || newToken.account_id }}</p>
             </div>
 
             <!-- 提示状态 -->
@@ -49,17 +81,16 @@
             <div v-else-if="error" class="state err">{{ error }}<button class="link" @click="loadTokens">重试</button></div>
             <div v-else-if="tokens.length === 0" class="state">暂无 Token，点击上方按钮生成一个</div>
             <ul v-else class="token-list">
-              <li v-for="t in tokens" :key="t.token" class="token-item">
-                <span class="t-dot" :class="isReadonly(t.scope) ? 'ro' : 'rw'"></span>
+              <li v-for="t in tokens" :key="t.token_id" class="token-item">
+                <span class="t-dot" :class="dotClass(t.scopes)"></span>
                 <div class="t-meta">
-                  <span class="tag" :class="isReadonly(t.scope) ? 'ro' : 'rw'">{{ scopeDesc(t.scope) }}</span>
-                  <span class="t-scope">scope: {{ t.scope }}</span>
+                  <span class="tag" :class="dotClass(t.scopes)">{{ scopeDesc(t.scopes) }}</span>
+                  <span class="t-account">子账号：{{ t.account_name || t.account_id }}</span>
                   <span v-if="t.remark" class="t-remark">{{ t.remark }}</span>
-                  <span v-if="t.create_time" class="t-created">签发于 {{ formatCreateTime(t.create_time) }}</span>
+                  <span v-if="t.created_at" class="t-created">签发于 {{ formatCreateTime(t.created_at) }}</span>
                 </div>
-                <code class="t-token">{{ t.token }}</code>
-                <button class="t-btn copy" type="button" :disabled="busy" @click="copyToken(t.token)">复制</button>
-                <button class="t-btn del" type="button" :disabled="busy" @click="removeToken(t.token)">删除</button>
+                <code class="t-token" :title="t.token_id">{{ t.token_id }}</code>
+                <button class="t-btn del" type="button" :disabled="busy" @click="removeToken(t)">删除</button>
               </li>
             </ul>
           </div>
@@ -71,7 +102,7 @@
         <template #fine>
           <b>MaaYuan Share</b> · 第三方 API Token 管理<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
-          Token 仅用途：库存数据只读 / 写入，请勿泄露给他人
+          Token 仅用途：库存数据只读 / 写入 / 导出，请勿泄露给他人
         </template>
       </SiteFooter>
     </main>
@@ -83,28 +114,37 @@ import { ref, computed, onMounted } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
+import { listAccounts } from '../../api/inventory.js'
 import {
   getOpenApiPermissions,
   getOpenApiTokens,
   generateOpenApiToken,
   deleteOpenApiToken
 } from '../../api/openApi.js'
-import { scopeDesc as _scopeDesc, isReadonly as _isReadonly, formatCreateTime as _formatCreateTime } from '../../utils/openApiToken.js'
+import { scopeDesc as _scopeDesc, isReadonly as _isReadonly, isWriteonly as _isWriteonly, formatCreateTime as _formatCreateTime } from '../../utils/openApiToken.js'
 
 // scope 权限兜底描述（读不到权限列表时使用）
 const FALLBACK_SCOPES = {
-  10001: '库存数据读取（只读）',
-  10002: '库存数据写入（只写）'
+  'inventory:read': '库存数据读取（只读）',
+  'inventory:write': '库存数据写入（只写）',
+  'inventory:export': '库存数据导出'
 }
 
 const tokens = ref([])
 const permissions = ref([])
+const accounts = ref([])
 const loading = ref(false)
 const error = ref('')
-const generating = ref('') // 'read' | 'write' | ''
+const generating = ref(false)
 const notice = ref('')
 const noticeError = ref(false)
 let noticeTimer = null
+
+const showGen = ref(false)
+const genAccountId = ref('')
+const genScopes = ref(['inventory:read'])
+const genRemark = ref('')
+const newToken = ref(null)
 
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
 
@@ -113,19 +153,30 @@ const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? aut
 function scopeDesc(scope) {
   return _scopeDesc(scope, permissions.value, FALLBACK_SCOPES)
 }
-function isReadonly(scope) {
-  return _isReadonly(scope)
+function dotClass(scope) {
+  if (_isReadonly(scope)) return 'ro'
+  if (_isWriteonly(scope)) return 'rw'
+  return 'mix'
 }
-function formatCreateTime(ms) {
-  return _formatCreateTime(ms)
+function formatCreateTime(value) {
+  return _formatCreateTime(value)
 }
 
 const permissionCount = computed(function () {
-  return permissions.value.length || 2
+  return permissions.value.length || 3
 })
 const tokenCount = computed(function () { return tokens.value.length })
 
-// 轻量提示（内联状态文本，数秒后自动消失）
+// 权限候选：优先后端权限列表，读不到时用内置三项兜底
+const scopeOptions = computed(function () {
+  if (permissions.value.length) return permissions.value
+  return [
+    { scope: 'inventory:read', description: '库存数据读取' },
+    { scope: 'inventory:write', description: '库存数据写入' },
+    { scope: 'inventory:export', description: '库存数据导出' }
+  ]
+})
+
 function toast(text, isError) {
   notice.value = text
   noticeError.value = !!isError
@@ -144,8 +195,7 @@ function humanErr(err, fallback) {
   return msg
 }
 
-// busy：生成/删除/复制任一进行中时锁定相关按钮
-const busy = computed(function () { return loading.value || !!generating.value })
+const busy = computed(function () { return loading.value || generating.value })
 
 async function loadTokens() {
   loading.value = true
@@ -160,26 +210,51 @@ async function loadTokens() {
   }
 }
 
-async function generate(kind) {
-  if (busy.value) return
-  // 后端 scope 字段为权限 code 数组（如 [10001]），须传数组
-  const scope = kind === 'read' ? [10001] : [10002]
-  generating.value = kind
+async function loadAccounts() {
   try {
-    await generateOpenApiToken({ scope: scope, remark: kind === 'read' ? '只读' : '只写' })
+    const data = await listAccounts()
+    accounts.value = Array.isArray(data) ? data : []
+    if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
+  } catch (_e) {
+    accounts.value = []
+  }
+}
+
+function openGen() {
+  showGen.value = true
+  if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
+  if (!genScopes.value.length) genScopes.value = ['inventory:read']
+}
+
+async function doGenerate() {
+  if (busy.value) return
+  if (!genAccountId.value) { toast('请先选择要绑定的库存子账号', true); return }
+  if (!genScopes.value.length) { toast('请至少选择一个权限', true); return }
+  generating.value = true
+  try {
+    const created = await generateOpenApiToken({
+      accountId: genAccountId.value,
+      scopes: genScopes.value.slice(),
+      remark: genRemark.value || null
+    })
+    newToken.value = created || null
+    showGen.value = false
+    genRemark.value = ''
     toast('Token 已生成')
     await loadTokens()
   } catch (err) {
     toast(humanErr(err, '生成 Token 失败'), true)
   } finally {
-    generating.value = ''
+    generating.value = false
   }
 }
 
-async function removeToken(token) {
+async function removeToken(t) {
+  const id = t && t.token_id
+  if (!id) return
   if (!confirm('确定删除这个 Token 吗？删除后使用它的服务将立即失效。')) return
   try {
-    await deleteOpenApiToken(token)
+    await deleteOpenApiToken(id)
     toast('Token 已删除')
     await loadTokens()
   } catch (err) {
@@ -192,7 +267,6 @@ async function copyToken(token) {
     await navigator.clipboard.writeText(token)
     toast('已复制到剪贴板')
   } catch (_e) {
-    // 降级：老式 execCommand 方式
     try {
       const ta = document.createElement('textarea')
       ta.value = token
@@ -210,18 +284,38 @@ async function copyToken(token) {
 }
 
 onMounted(async function () {
-  // 权限列表用于描述映射，读不到也不影响使用（有兜底）
   try {
     const data = await getOpenApiPermissions()
     permissions.value = Array.isArray(data) ? data : []
   } catch (_e) {
     permissions.value = []
   }
+  await loadAccounts()
   loadTokens()
 })
 </script>
 
 <style scoped>
+.act-btn.primary { border-color: transparent; background: var(--tea); color: var(--cream) }
+.act-btn.primary:hover:not(:disabled) { background: var(--accent); color: #fff }
+.gen-panel { margin-top: 18px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px }
+.gen-row { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap }
+.gen-label { flex: none; width: 84px; font-size: 13px; font-weight: 800; color: var(--ink); padding-top: 8px }
+.gen-select { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
+.gen-input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none }
+.gen-check { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-60); font-weight: 600; cursor: pointer; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 14px }
+.gen-check input { accent-color: var(--accent); cursor: pointer }
+.gen-check small { color: var(--ink-35); font-size: 11px }
+.gen-actions { display: flex; justify-content: flex-end; gap: 10px }
+.new-token { margin-top: 18px; background: var(--yellow); border: 1px solid transparent; border-radius: 16px; padding: 16px 18px }
+.nt-tip { font-size: 12.5px; color: var(--ink); font-weight: 700; line-height: 1.7 }
+.nt-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap }
+.nt-code { flex: 1; min-width: 200px; font-family: var(--font-d); font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; word-break: break-all }
+.nt-meta { margin-top: 8px; font-size: 12px; color: var(--ink-60); font-weight: 600 }
+.t-dot.mix { background: var(--brand-blue) }
+.tag.mix { background: rgba(91, 106, 140, .12); color: var(--slate-deep) }
+.t-account { font-size: 12px; color: var(--ink); font-weight: 700 }
+
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
 .profile-main { padding-bottom: 40px }
 .page-profile .hero::after { content: '档案' }

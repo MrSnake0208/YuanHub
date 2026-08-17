@@ -13,7 +13,7 @@
             <span class="pill">统计</span>
           </div>
           <h1>广陵库房<span class="small">清点 · 归档 · 溯源</span></h1>
-          <p class="hero-sub">代号鸢 / 如鸢 库存与奖励台账：同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案。</p>
+          <p class="hero-sub">代号鸢 / 如鸢 库存与奖励台账：支持多子账号分别清点，同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">对象目录</div><div class="v">{{ catalogCount }}<small>项</small></div></div>
             <div><div class="k">物品清单</div><div class="v">{{ itemCatalogCount }}<small>种</small></div></div>
@@ -26,6 +26,40 @@
 
       <section>
         <div class="wrap">
+          <!-- 库存子账号 -->
+          <div class="account-bar" v-reveal>
+            <div class="ac-sel">
+              <span class="ac-label">库存子账号</span>
+              <select v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading" @change="onAccountChange">
+                <option v-if="!accounts.length" value="">（未创建）</option>
+                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+              </select>
+              <span v-if="accountError" class="ac-warn">{{ accountError }}</span>
+            </div>
+            <span class="sp"></span>
+            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showAccounts = !showAccounts">{{ showAccounts ? '收起管理' : '管理账号' }}</button>
+          </div>
+
+          <!-- 账号管理 -->
+          <div v-if="showAccounts" class="account-mgr" v-reveal>
+            <div class="ac-new">
+              <input v-model.trim="newAccountName" placeholder="新子账号名称（1~64 字）" @keyup.enter="onCreateAccount" />
+              <button class="btn ghost" :disabled="accountBusy || !newAccountName" @click="onCreateAccount">新建账号</button>
+            </div>
+            <ul v-if="accounts.length" class="ac-list">
+              <li v-for="a in accounts" :key="a.id" class="ac-item">
+                <span class="ac-dot"></span>
+                <div class="ac-meta">
+                  <span class="ac-name">{{ a.name }}</span>
+                  <code class="ac-id">{{ a.id }}</code>
+                </div>
+                <button class="ac-btn" :disabled="accountBusy" @click="onRenameAccount(a)">改名</button>
+                <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
+              </li>
+            </ul>
+            <p v-else class="ac-empty">暂无子账号，请在上方输入名称创建第一个子账号</p>
+          </div>
+
           <!-- TABS：清单 / 当前库存 / 时段获得量 / 导入记录 -->
           <div class="inventory-tabs" v-reveal>
             <button :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">清单</button>
@@ -34,13 +68,14 @@
             <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">导入记录</button>
             <span class="sp"></span>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
+            <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
           </div>
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
-            <p class="tip">粘贴符合《库存数据交换协议 v1》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
-            <textarea v-model="importText" placeholder='{\n  "format": "myshare-inventory-exchange",\n  "version": 1,\n  ...\n}'></textarea>
+            <p class="tip">粘贴符合《库存数据交换协议 v2》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
+            <textarea v-model="importText" placeholder='{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}'></textarea>
             <div class="import-actions">
               <label class="btn ghost file-label">
                 选择 JSON 文件
@@ -199,30 +234,33 @@
           <!-- 导入记录 -->
           <div v-show="activeTab === 'records'" class="panel">
             <div class="records-head" v-reveal>
-              <span class="hint">共 {{ recordsList.length }} 条导入记录 · 删除单条后自动重放剩余记录重建库存</span>
+              <span class="hint">已加载 {{ recordsList.length }} 条导入记录 · 删除单条后自动重放剩余记录重建库存</span>
               <span class="sp"></span>
-              <button class="act-btn ghost" :disabled="recordsLoading" @click="loadRecords">刷新</button>
+              <button class="act-btn ghost" :disabled="recordsLoading" @click="loadRecords(true)">刷新</button>
             </div>
 
-            <div v-if="recordsLoading" class="state">正在加载记录…</div>
+            <div v-if="recordsLoading && recordsList.length === 0" class="state">正在加载记录…</div>
             <div v-else-if="recordsError" class="state err">{{ recordsError }}</div>
             <div v-else-if="recordsList.length === 0" class="state">暂无导入记录</div>
-            <ul v-else class="record-list" v-reveal>
-              <li v-for="r in recordsList" :key="r.record_id" class="record">
-                <div class="record-main">
-                  <div class="record-top">
-                    <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ r.record_type === 'reward_delta' ? '奖励' : '快照' }}</span>
-                    <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ r.entity_type === 'agent' ? '角色' : '物品' }}</span>
-                    <span v-if="r.acquisition_channel" class="rtag rtag-type">{{ r.acquisition_channel }}</span>
-                    <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
-                    <span class="record-time">{{ fmtTime(r.effective_at) }}</span>
+            <template v-else>
+              <ul class="record-list" v-reveal>
+                <li v-for="r in recordsList" :key="r.record_id" class="record">
+                  <div class="record-main">
+                    <div class="record-top">
+                      <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ r.record_type === 'reward_delta' ? '奖励' : '快照' }}</span>
+                      <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ r.entity_type === 'agent' ? '角色' : '物品' }}</span>
+                      <span v-if="r.acquisition_channel" class="rtag rtag-type">{{ r.acquisition_channel }}</span>
+                      <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
+                      <span class="record-time">{{ fmtTime(r.effective_at) }}</span>
+                    </div>
+                    <div class="record-entries">{{ entrySummary(r.entries, r.record_type) }}</div>
+                    <div class="record-id" :title="r.record_id">{{ r.record_id }}</div>
                   </div>
-                  <div class="record-entries">{{ entrySummary(r.entries, r.record_type) }}</div>
-                  <div class="record-id" :title="r.record_id">{{ r.record_id }}</div>
-                </div>
-                <button class="record-del" @click="onDeleteRecord(r)">删除</button>
-              </li>
-            </ul>
+                  <button class="record-del" @click="onDeleteRecord(r)">删除</button>
+                </li>
+              </ul>
+              <button v-if="recordsNextCursor" class="load-more" :disabled="recordsLoading" @click="loadRecords(false)">加载更多</button>
+            </template>
           </div>
         </div>
       </section>
@@ -243,7 +281,7 @@
 import { ref, computed, onMounted } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord } from '../../api/inventory.js'
+import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, renameAccount, deleteAccount } from '../../api/inventory.js'
 import { auth } from '../../store/auth.js'
 import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG } from '../../data/inventory/catalog.js'
 
@@ -263,7 +301,20 @@ const importText = ref('')
 const importing = ref(false)
 const importResult = ref(null)
 const loadingExample = ref(false)
+
+// —— 库存子账号 ——
+const accounts = ref([])
+const accountId = ref('')
+const accountsLoading = ref(false)
+const accountBusy = ref(false)
+const accountError = ref('')
+const showAccounts = ref(false)
+const newAccountName = ref('')
+const exportAll = ref(false)
+
+// —— 导入记录（游标分页） ——
 const recordsList = ref([])
+const recordsNextCursor = ref(null)
 const recordsLoading = ref(false)
 const recordsError = ref('')
 
@@ -272,19 +323,100 @@ function setTab(t) {
   // 清单与当前库存共用同一份云端当前库存数据
   if ((t === 'manifest' || t === 'current') && currentEntries.value.length === 0) reloadCurrent()
   if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired()
-  if (t === 'records') loadRecords()
+  if (t === 'records') loadRecords(true)
 }
 function setEntityType(t) {
   if (t === entityType.value) return
   entityType.value = t
   // 切换对象类型后,旧的时段获得量结果属于另一类型:清空避免张冠李戴;
-  // 当前库存立即刷新;若正处于"时段获得量"页签则按新类型自动重新统计
-  // (离开页签时 setTab 的空列表条件也会触发重新加载)。
+  // 当前库存立即刷新;若正处于"时段获得量"页签则按新类型自动重新统计。
   currentEntries.value = []
   acquiredEntries.value = []
   error.value = ''
   reloadCurrent()
   if (activeTab.value === 'acquired') loadAcquired()
+}
+
+// —— 库存子账号 ——
+async function loadAccounts() {
+  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
+  accountsLoading.value = true
+  accountError.value = ''
+  try {
+    const list = await listAccounts()
+    accounts.value = Array.isArray(list) ? list : []
+    const still = accounts.value.some(function (a) { return a.id === accountId.value })
+    if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
+  } catch (err) {
+    accountError.value = humanErr(err, '子账号加载失败')
+  } finally {
+    accountsLoading.value = false
+  }
+}
+
+function onAccountChange() {
+  // 切换账号：清空旧账号数据并按需重载
+  currentEntries.value = []
+  acquiredEntries.value = []
+  recordsList.value = []
+  recordsNextCursor.value = null
+  recordsError.value = ''
+  error.value = ''
+  reloadCurrent()
+  if (activeTab.value === 'acquired') loadAcquired()
+  if (activeTab.value === 'records') loadRecords(true)
+}
+
+async function onCreateAccount() {
+  const name = newAccountName.value.trim()
+  if (!name) return
+  accountBusy.value = true
+  accountError.value = ''
+  try {
+    const created = await createAccount(name)
+    newAccountName.value = ''
+    await loadAccounts()
+    if (created && created.id) accountId.value = created.id
+    onAccountChange()
+  } catch (err) {
+    accountError.value = humanErr(err, '创建账号失败')
+  } finally {
+    accountBusy.value = false
+  }
+}
+
+async function onRenameAccount(acc) {
+  const name = prompt('修改子账号名称（1~64 字）：', acc.name || '')
+  if (name == null) return
+  const trimmed = name.trim()
+  if (!trimmed) { accountError.value = '名称不能为空'; return }
+  accountBusy.value = true
+  accountError.value = ''
+  try {
+    await renameAccount(acc.id, trimmed)
+    await loadAccounts()
+  } catch (err) {
+    accountError.value = humanErr(err, '改名失败')
+  } finally {
+    accountBusy.value = false
+  }
+}
+
+async function onDeleteAccount(acc) {
+  if (!confirm('删除子账号「' + acc.name + '」？将级联清除该账号的库存、流水与相关 Token，且不可恢复。')) return
+  accountBusy.value = true
+  accountError.value = ''
+  try {
+    await deleteAccount(acc.id)
+    await loadAccounts()
+    const still = accounts.value.some(function (a) { return a.id === accountId.value })
+    if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
+    onAccountChange()
+  } catch (err) {
+    accountError.value = humanErr(err, '删除账号失败')
+  } finally {
+    accountBusy.value = false
+  }
 }
 
 // ISO 日期（本地时区 YYYY-MM-DD），供 <input type=date> 与后端 [from,to) 区间
@@ -301,9 +433,6 @@ function fmtCount(n) {
 }
 
 // —— 背包格图标约定 ——
-// 图片目录：public/inventory-icons/items/（物品）、public/inventory-icons/agents/（角色）
-// 文件名 = 对象 id（与目录/导出档案中的 id 一致），扩展名见 ICON_EXT。
-// 图片未上传时格子显示「青花图印 + 名称首字」占位；上传同名图片后刷新即自动显示。
 const ICON_EXT = 'png'
 
 function iconSrc(e) {
@@ -311,18 +440,15 @@ function iconSrc(e) {
   return import.meta.env.BASE_URL + 'inventory-icons/' + kind + '/' + encodeURIComponent(e.id) + '.' + ICON_EXT
 }
 
-// 图片加载失败 → 隐藏 img，露出底层占位（占位不删：后续补图刷新页面即可显示）
 function onImgError(ev) {
   if (ev && ev.target) ev.target.style.display = 'none'
 }
 
-// 占位首字：取名称第一个字符（中文 / emoji 安全）
 function monogram(e) {
   const s = String(e.name || e.id || '?')
   return Array.from(s)[0] || '?'
 }
 
-// 名称查找：优先本地全量目录，其次后端返回的 name，最后回退 id
 function nameOf(id, name) {
   const local = LOCAL_NAME[entityType.value] ? LOCAL_NAME[entityType.value].get(id) : null
   if (local) return local
@@ -332,12 +458,10 @@ function nameOf(id, name) {
   return (hit && hit.name) ? hit.name : id
 }
 
-// 统计卡片数据（本地全量目录：物品 + 角色）
 const catalogCount = ITEM_CATALOG.length + AGENT_CATALOG.length
 const itemCatalogCount = ITEM_CATALOG.length
 const agentCatalogCount = AGENT_CATALOG.length
 
-// —— 清单（全量目录）：每个对象都显示，数量初始为 0，登录后叠加云端当前库存 ——
 const LOCAL_NAME = {
   item: new Map(ITEM_CATALOG.map(function (e) { return [e.id, e.name] })),
   agent: new Map(AGENT_CATALOG.map(function (e) { return [e.id, e.name] }))
@@ -378,7 +502,6 @@ const manifestPercent = computed(function () {
   return Math.round(manifestOwned.value * 100 / manifestTotal.value) + '%'
 })
 
-// 清单格 title：名称 · 分类 / 星级属性 · 数量
 function slotTitle(e) {
   const parts = [e.name || e.id]
   if (entityType.value === 'item' && e.category) parts.push(e.category)
@@ -400,8 +523,6 @@ async function safeLoad(fn, quiet) {
   } finally { loading.value = false }
 }
 
-// 后端 /current 返回 List<{ entity_type, entries: { "<id>": {count, listed_baseline_at} } }>。
-// 传入 entity_type 时取首个元素，把 entries 对象转成 [{id, name, count}]。
 async function reloadCurrent(quiet) {
   // 未登录时不请求云端库存（避免 401 触发自动跳转登录页），数量保持初始 0
   if (!auth.isLoggedIn) {
@@ -410,8 +531,15 @@ async function reloadCurrent(quiet) {
     loading.value = false
     return
   }
+  // 未选择账号时不请求（后端 /current 需要 account_id）
+  if (!accountId.value) {
+    currentEntries.value = []
+    error.value = ''
+    loading.value = false
+    return
+  }
   await safeLoad(async function () {
-    const data = await getCurrent({ entityType: entityType.value })
+    const data = await getCurrent({ accountId: accountId.value, entityType: entityType.value })
     const list = Array.isArray(data) ? data : (data ? [data] : [])
     const doc = list[0]
     const entriesObj = (doc && doc.entries) ? doc.entries : {}
@@ -422,31 +550,28 @@ async function reloadCurrent(quiet) {
   }, quiet)
 }
 
-// 本地日期 YYYY-MM-DD → 本地时区当日 00:00 的 ISO 时刻（后端按 [from,to) 半开区间）。
 function dayStartIso(dStr) {
   const p = String(dStr || '').split('-').map(Number)
   if (p.length !== 3 || p.some(isNaN)) return null
   return new Date(p[0], p[1] - 1, p[2]).toISOString()
 }
 
-// 本地日期 YYYY-MM-DD → 本地时区次日 00:00 的 ISO 时刻（「止」包含当天整天）。
 function nextDayStartIso(dStr) {
   const p = String(dStr || '').split('-').map(Number)
   if (p.length !== 3 || p.some(isNaN)) return null
   return new Date(p[0], p[1] - 1, p[2] + 1).toISOString()
 }
 
-// 请求序号:快速切换 entity_type 时丢弃过期响应,避免旧类型结果覆盖新类型。
 let acquiredSeq = 0
 
-// 后端 /acquired 返回 { entity_type, from, to, acquired: { "<id>": count } }。
 async function loadAcquired() {
   const seq = ++acquiredSeq
   await safeLoad(async function () {
+    if (!accountId.value) { error.value = '请先创建并选择一个子账号'; return }
     const from = dayStartIso(rangeFrom.value)
     const to = nextDayStartIso(rangeTo.value)
     if (!from || !to) { error.value = '请选择有效的起止日期'; return }
-    const data = await getAcquired({ entityType: entityType.value, from: from, to: to })
+    const data = await getAcquired({ accountId: accountId.value, entityType: entityType.value, from: from, to: to })
     if (seq !== acquiredSeq) return
     const acquiredObj = (data && data.acquired) ? data.acquired : {}
     acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
@@ -465,13 +590,27 @@ function humanErr(err, fallback) {
 
 function goLogin() { location.href = '/login' }
 
-// ---- 导入记录（列表 / 删除） ----
-async function loadRecords() {
+// ---- 导入记录（游标分页） ----
+async function loadRecords(reset) {
+  if (!accountId.value) {
+    recordsList.value = []
+    recordsError.value = '请先创建并选择一个子账号'
+    recordsLoading.value = false
+    return
+  }
   recordsLoading.value = true
-  recordsError.value = ''
+  if (reset) recordsError.value = ''
   try {
-    const list = await listRecords({})
-    recordsList.value = Array.isArray(list) ? list : []
+    const cursor = reset ? null : recordsNextCursor.value
+    const page = await listRecords({
+      accountId: accountId.value,
+      entityType: entityType.value,
+      cursor: cursor,
+      limit: 50
+    })
+    const items = (page && Array.isArray(page.items)) ? page.items : []
+    recordsList.value = reset ? items : recordsList.value.concat(items)
+    recordsNextCursor.value = (page && page.next_cursor) ? page.next_cursor : null
   } catch (err) {
     recordsError.value = humanErr(err, '加载记录失败')
   } finally {
@@ -482,17 +621,16 @@ async function loadRecords() {
 async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id
   if (!rid) return
-  if (!confirm('删除记录「' + rid + '」？\n删除后将重放剩余记录重建库存，此操作不可恢复。')) return
+  if (!confirm('删除记录「' + rid + '」？删除后将重放剩余记录重建库存，此操作不可恢复。')) return
   try {
-    await deleteRecord(rid)
-    await loadRecords()
+    await deleteRecord(rid, accountId.value)
+    await loadRecords(true)
     await reloadCurrent()
   } catch (err) {
     alert(humanErr(err, '删除失败'))
   }
 }
 
-// stock_effect 标记的中文名
 function stockEffectLabel(eff) {
   if (eff === 'applied') return '已生效'
   if (eff === 'history_only') return '仅历史'
@@ -500,7 +638,6 @@ function stockEffectLabel(eff) {
   return eff || '未知'
 }
 
-// ISO 时间 → 本地可读字符串
 function fmtTime(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -508,7 +645,6 @@ function fmtTime(iso) {
   return d.toLocaleString('zh-CN', { hour12: false })
 }
 
-// entries 摘要：奖励用 +N，快照用 =N
 function entrySummary(entries, recordType) {
   const list = entries || []
   const sign = recordType === 'reward_delta' ? '+' : '='
@@ -548,14 +684,31 @@ function onFilePick(ev) {
   reader.readAsText(file, 'utf-8')
 }
 
-// 一键填充 public/ 下的示例交换文档（供真机导入测试）。
 async function fillExample() {
   if (loadingExample.value) return
   loadingExample.value = true
   try {
     const res = await fetch(import.meta.env.BASE_URL + 'inventory-import-example.json')
     if (!res.ok) throw new Error('HTTP ' + res.status)
-    importText.value = await res.text()
+    const text = await res.text()
+    // 示例文档里的 account_id 为占位符 acc_demo_main：若已选择子账号，则替换为当前账号，
+    // 使示例可以直接导入（后端要求 records 引用的 account_id 必须归属当前用户）。
+    if (accountId.value) {
+      try {
+        const doc = JSON.parse(text)
+        if (doc && doc.accounts && Array.isArray(doc.accounts)) {
+          doc.accounts = doc.accounts.map(function (a) { return Object.assign({}, a, { id: accountId.value }) })
+        }
+        if (doc && Array.isArray(doc.records)) {
+          doc.records = doc.records.map(function (r) { return Object.assign({}, r, { account_id: accountId.value }) })
+        }
+        importText.value = JSON.stringify(doc, null, 2)
+      } catch (_e) {
+        importText.value = text
+      }
+    } else {
+      importText.value = text
+    }
   } catch (err) {
     alert(humanErr(err, '加载示例失败'))
   } finally {
@@ -573,12 +726,19 @@ function afterImport() {
 // ---- 导出档案 ----
 async function doExport() {
   if (!auth.isLoggedIn) { goLogin(); return }
+  if (!accountId.value) { alert('请先创建并选择一个子账号'); return }
   try {
-    const data = await exportInventory({
+    const opts = {
       include: 'current,rewards',
       from: dayStartIso(rangeFrom.value),
       to: nextDayStartIso(rangeTo.value)
-    })
+    }
+    if (exportAll.value && accounts.value.length > 1) {
+      opts.scope = 'all'
+    } else {
+      opts.accountId = accountId.value
+    }
+    const data = await exportInventory(opts)
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -597,11 +757,42 @@ onMounted(async function () {
   } catch (_e) {
     catalog.value = { entities: [] }
   }
+  await loadAccounts()
   reloadCurrent()
 })
 </script>
 
 <style scoped>
+/* ---- 库存子账号 ---- */
+.account-bar { display: flex; align-items: center; gap: 16px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
+.account-bar .sp { flex: 1 }
+.ac-sel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.ac-label { font-size: 13px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
+.ac-sel select { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s }
+.ac-sel select:focus { border-color: var(--accent) }
+.ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
+.account-mgr { margin-top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px }
+.ac-new { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
+.ac-new input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
+.ac-new input:focus { border-color: var(--accent) }
+.ac-list { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px }
+.ac-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper) }
+.ac-item .ac-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--yellow-deep); flex: none }
+.ac-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.ac-name { font-size: 13.5px; font-weight: 800; color: var(--ink) }
+.ac-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ac-btn { flex: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
+.ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
+.ac-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
+.ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
+.ac-btn:disabled { opacity: .45; cursor: not-allowed }
+.ac-empty { margin-top: 12px; font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
+.export-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); cursor: pointer; white-space: nowrap }
+.export-all input { accent-color: var(--accent); cursor: pointer }
+.load-more { display: block; margin: 16px auto 0; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 26px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease) }
+.load-more:hover:not(:disabled) { border-color: var(--ink); background: var(--cream) }
+.load-more:disabled { opacity: .45; cursor: not-allowed }
+
 /* —— 复用全局 CSS 变量（不新增色值），对齐广陵账房（cart.vue）版式 —— */
 .inventory-main { padding-bottom: 40px }
 .page-inventory .hero::after { content: '库存' }

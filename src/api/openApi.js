@@ -1,34 +1,37 @@
 // 第三方开放接口（Open API）封装 —— 对照 BackEndV3-Share 契约
-// 用于管理「第三方 API Token」：生成 / 列举 / 删除，scope 权限区分只读与只写。
+// 用于管理「第三方 API Token」：生成 / 列举 / 删除，scope 为稳定字符串 key 数组。
+// 每个 token 绑定一个库存子账号（account_id），用于限定第三方访问范围。
 // 约定同 src/api/user.js：函数入参一律 camelCase，内部转 snake_case。
 import { request } from './request.js'
 
 // 权限列表（公开，无需登录）——返回可用 scope 及其描述
-// 返回 [{ scope, description }]（后端字段为 snake_case）
+// 返回 [{ scope, description }]（如 inventory:read / inventory:write / inventory:export）
 export function getOpenApiPermissions() {
   return request('/user/open-api/permissions', { auth: false })
 }
 
 // 已生成的 Token 列表（需登录）
-// 返回 [{ token, scope, remark, created_at }]（后端字段为 snake_case）
+// 返回 [{ token_id, account_id, account_name, remark, scopes, created_at }]
+// 注意：出于安全，列表不返回 token 明文（仅生成时一次性返回）。
 export function getOpenApiTokens() {
   return request('/user/open-api/tokens', { auth: true })
 }
 
-// 生成 Token（POST，需登录）——{ scope, remark }
-export function generateOpenApiToken({ scope, remark }) {
+// 生成 Token（POST，需登录）——{ accountId, scopes, remark }
+// scopes 为字符串 key 数组（如 ['inventory:read']）；
+// 返回 { token_id, token, account_id, account_name, remark, scopes, created_at }（token 仅此一次返回）。
+export function generateOpenApiToken({ accountId, scopes, remark }) {
   return request('/user/open-api/token', {
     method: 'POST',
     auth: true,
-    body: { scope, remark }
+    body: { account_id: accountId, scopes, remark }
   })
 }
 
-// 删除 Token（POST，需登录）——body 传 token 字符串
-export function deleteOpenApiToken(token) {
-  return request('/user/open-api/token/delete', {
-    method: 'POST',
-    auth: true,
-    body: { token }
+// 删除 Token（DELETE，需登录）——按 token_id 删除
+export function deleteOpenApiToken(tokenId) {
+  return request('/user/open-api/tokens/' + encodeURIComponent(tokenId), {
+    method: 'DELETE',
+    auth: true
   })
 }

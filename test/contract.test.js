@@ -1,6 +1,8 @@
 // 前后端契约一致性测试（node:test，零依赖）
-// 校验后端 OpenApiTokenService/OpenApiPermission 与前端 openApi.js/profile.vue 的字段名、路径、权限码一致，
-// 防止再次出现 create_time vs created_at、{key,code,desc} vs {scope,description} 这类字段漂移。
+// 校验后端 OpenApiTokenService/OpenApiPermission/InventoryController 与前端
+// openApi.js/inventory.js/profile.vue/utils 的字段名、路径、scope key 一致，
+// 防止再次出现 create_time vs created_at、{key,code,desc} vs {scope,description}、
+// token 明文回传、缺少 account_id 等字段漂移。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -15,61 +17,82 @@ function readRel(rel) {
 
 const backendService = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenService.kt')
 const backendPermission = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiPermission.kt')
-const backendInventoryCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiInventoryController.kt')
+const backendTokenCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenController.kt')
+const backendGenerateRequest = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenGenerateRequest.kt')
+const backendInventoryCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/InventoryController.kt')
+const backendRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/response/InventoryRecordPageResponse.kt')
+
 const frontendApi = readRel('YuanHub/src/api/openApi.js')
+const frontendInventory = readRel('YuanHub/src/api/inventory.js')
 const frontendProfile = readRel('YuanHub/src/pages/user/profile.vue')
 const frontendUtil = readRel('YuanHub/src/utils/openApiToken.js')
+const frontendInventoryPage = readRel('YuanHub/src/pages/inventory/index.vue')
 
-test('前后端 token 列表字段契约一致：create_time', () => {
-  // 后端 list() 输出的 key
-  assert.match(backendService, /"create_time" to it.createTime.toEpochMilli()/)
-  // 前端 profile.vue 消费的字段
-  assert.match(frontendProfile, /t\.create_time/)
-  // 确保前端不再残留错误的 created_at
-  assert.doesNotMatch(frontendProfile, /t\.created_at/)
+test('token 列表字段契约：token_id/account_id/account_name/scopes/created_at，且不再返回 token 明文', () => {
+  assert.match(backendService, /data class OpenApiTokenListItemDto\(/)
+  assert.match(backendService, /val accountName/)
+  assert.match(backendService, /val scopes: List<String>/)
+  assert.match(backendService, /val createdAt: Instant/)
+  // 前端列表项消费 token_id / account_name / scopes / created_at
+  assert.match(frontendProfile, /t\.token_id/)
+  assert.match(frontendProfile, /t\.account_name/)
+  assert.match(frontendProfile, /t\.scopes/)
+  assert.match(frontendProfile, /t\.created_at/)
+  // 前端列表不再消费 t.token 明文或旧的 create_time
+  assert.doesNotMatch(frontendProfile, /t\.token\b/)
+  assert.doesNotMatch(frontendProfile, /t\.create_time/)
 })
 
-test('前后端权限列表字段契约一致：key/code/desc', () => {
-  assert.match(backendPermission, /mapOf\("key" to it\.key, "code" to it\.code, "desc" to it\.desc\)/)
-  // 前端 descByCode 在 utils/openApiToken.js 中按 p.code 匹配、读 hit.desc
-  assert.match(frontendUtil, /p\.code/)
-  assert.match(frontendUtil, /hit\.desc/)
-  // 确保前端不再依赖错误的 scope/description 字段
-  assert.doesNotMatch(frontendUtil, /\.description/)
+test('权限列表字段契约：scope/description（字符串 key，非数字 code）', () => {
+  assert.match(backendPermission, /OpenApiPermissionDto\(scope = it\.key, description = it\.desc\)/)
+  // 前端 descByKey 在 utils/openApiToken.js 中按 p.scope 匹配、读 hit.description
+  assert.match(frontendUtil, /p\.scope/)
+  assert.match(frontendUtil, /hit\.description/)
+  // 确保前端不再依赖数字 code / desc 字段
+  assert.doesNotMatch(frontendUtil, /p\.code/)
+  assert.doesNotMatch(frontendUtil, /hit\.desc\b/)
 })
 
-test('权限 code 前后端一致：10001/10002', () => {
-  assert.match(backendPermission, /10001/)
-  assert.match(backendPermission, /10002/)
-  assert.match(frontendProfile, /10001/)
-  assert.match(frontendProfile, /10002/)
-})
-
-test('前端接口路径与后端控制器一致', () => {
-  // 后端路由
-  assert.match(backendService, /open-api-token:/) // Redis key 前缀，非路由，仅作存在性哨兵
-  // 用控制器文件缺失时报警
-  assert.ok(backendInventoryCtrl.length > 0)
-  // 前端 openApi.js 的四个路径
-  for (const p of ['/user/open-api/permissions', '/user/open-api/tokens', '/user/open-api/token', '/user/open-api/token/delete']) {
-    assert.match(frontendApi, new RegExp(p.replace(/\//g, '\\/')))
+test('scope key 前后端一致：inventory:read/write/export', () => {
+  for (const k of ['inventory:read', 'inventory:write', 'inventory:export']) {
+    assert.ok(backendPermission.includes(k), '后端缺 ' + k)
+    assert.ok(frontendApi.includes(k), '前端缺 ' + k)
   }
 })
 
-test('第三方示例接口校验 inventory:read(10001)', () => {
-  assert.match(backendInventoryCtrl, /INVENTORY_READ\.code/)
+test('生成接口 body 字段 account_id/scopes/remark 前后端一致', () => {
+  assert.match(backendGenerateRequest, /val accountId: String/)
+  assert.match(backendGenerateRequest, /val scopes: List<String>/)
+  assert.match(backendGenerateRequest, /val remark: String\?/)
+  assert.match(frontendApi, /account_id: accountId/)
+  assert.match(frontendApi, /scopes, remark/)
 })
 
-test('生成接口 body 字段 scope/remark 前后端一致', () => {
-  assert.match(frontendApi, /body: { scope, remark }/)
+test('删除接口按 token_id：DELETE /user/open-api/tokens/{tokenId}', () => {
+  assert.match(backendTokenCtrl, /"\/tokens\/\{tokenId\}"/)
+  assert.match(frontendApi, /\/user\/open-api\/tokens\/' \+ encodeURIComponent\(tokenId\)/)
 })
 
-test('生成时 scope 必须传数组（后端 DTO 为 List<Int>），而非单值', () => {
-  // 后端 DTO 声明 scope 为列表
-  assert.match(backendService, /scopeCodes: List<Int>/) // 服务层形参（唯一可靠锚点）
-  // 前端 profile.vue 生成时传 [10001] / [10002] 数组，而非裸 10001
-  assert.match(frontendProfile, /\[10001\]/)
-  assert.match(frontendProfile, /\[10002\]/)
-  // 确保没有残留裸单值赋值（const scope = kind ... ? 10001 : 10002）
-  assert.doesNotMatch(frontendProfile, /const scope = kind === 'read' \? 10001 : 10002/)
+test('库存账号 CRUD 路径前后端一致', () => {
+  assert.match(backendInventoryCtrl, /PostMapping\("\/accounts"/)
+  assert.match(backendInventoryCtrl, /GetMapping\("\/accounts"/)
+  assert.match(backendInventoryCtrl, /PatchMapping\("\/accounts\/\{accountId\}"/)
+  assert.match(backendInventoryCtrl, /DeleteMapping\("\/accounts\/\{accountId\}"/)
+  assert.match(frontendInventory, /PATH \+ '\/accounts'/)
+  assert.match(frontendInventory, /PATH \+ '\/accounts\/' \+ encodeURIComponent\(accountId\)/)
+})
+
+test('库存查询携带 account_id（后端必填 + 前端透传）', () => {
+  assert.match(backendInventoryCtrl, /account_id/)
+  assert.match(frontendInventory, /account_id/)
+})
+
+test('导出接口 raw 返回（无 ApiResult 包装）', () => {
+  assert.match(frontendInventory, /raw: true/)
+})
+
+test('记录列表游标分页：items/next_cursor', () => {
+  assert.match(backendRecordPage, /val items: List<InventoryRecordListItemDto>/)
+  assert.match(backendRecordPage, /val nextCursor: String\?/)
+  assert.match(frontendInventoryPage, /next_cursor/)
 })
