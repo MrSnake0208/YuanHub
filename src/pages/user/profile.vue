@@ -12,10 +12,10 @@
             <span class="pill">开放接口</span>
           </div>
           <h1>我的账户<span class="small">凭据 · 权限 · 开放接口</span></h1>
-          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：按权限（只读 / 只写 / 导出）签发绑定到某个库存子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
+          <p class="hero-sub">管理你的登录身份与「专属认证 Token」：按权限预设签发绑定到某个库存子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
           <div class="hero-stats">
             <div><div class="k">当前身份</div><div class="v"><span class="uname">{{ userName }}</span></div></div>
-            <div><div class="k">权限范围</div><div class="v">{{ permissionCount }}<small>项</small></div></div>
+            <div><div class="k">权限预设</div><div class="v">{{ tokenPresets.length }}<small>个</small></div></div>
             <div><div class="k">有效 Token</div><div class="v">{{ tokenCount }}<small>个</small></div></div>
             <div class="is-authed"><div class="k">登录状态</div><div class="v">已登录<small>凭据已就绪</small></div></div>
           </div>
@@ -28,8 +28,8 @@
           <div class="token-card" v-reveal>
             <div class="card-head">
               <div>
-                <h2>第三方 API Token</h2>
-                <p class="card-sub">每个 Token 绑定一个库存子账号，可授予只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表仅显示 token_id。</p>
+                <h2>专属认证 Token</h2>
+                <p class="card-sub">每个 Token 绑定一个库存子账号，并按预设授予所需权限。出于安全，Token 明文仅在生成时展示一次；如未保存，请删除旧 Token 后重新生成。</p>
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="busy" @click="openGen">生成 Token</button>
@@ -46,10 +46,10 @@
                 </select>
               </div>
               <div class="gen-row">
-                <span class="gen-label">权限范围</span>
-                <label v-for="p in scopeOptions" :key="p.scope" class="gen-check">
-                  <input type="checkbox" :value="p.scope" v-model="genScopes" />
-                  <span>{{ p.scope }}<small> · {{ p.description }}</small></span>
+                <span class="gen-label">权限预设</span>
+                <label v-for="preset in tokenPresets" :key="preset.id" class="preset-option" :class="{ active: genPresetId === preset.id }">
+                  <input v-model="genPresetId" type="radio" name="token-preset" :value="preset.id" />
+                  <span><b>{{ preset.name }}</b><small>{{ preset.description }}</small></span>
                 </label>
               </div>
               <div class="gen-row">
@@ -58,19 +58,19 @@
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="generating" @click="showGen = false">取消</button>
-                <button class="act-btn primary" :disabled="generating || !genAccountId || !genScopes.length" @click="doGenerate">生成 Token</button>
+                <button class="act-btn primary" :disabled="generating || !genAccountId || !selectedPreset" @click="doGenerate">生成 Token</button>
               </div>
             </div>
 
             <!-- 一次性展示刚生成的 Token -->
             <div v-if="newToken" class="new-token">
-              <p class="nt-tip">Token 已生成，请立即复制保存 —— 列表仅显示 token_id，此明文只展示这一次：</p>
+              <p class="nt-tip">Token 已生成，请立即复制保存 —— 下方列表不会再次展示此明文：</p>
               <div class="nt-row">
                 <code class="nt-code">{{ newToken.token }}</code>
                 <button class="t-btn copy" type="button" @click="copyToken(newToken.token)">复制</button>
                 <button class="t-btn del" type="button" @click="newToken = null">我已保存</button>
               </div>
-              <p class="nt-meta">绑定子账号：{{ newToken.account_name || newToken.account_id }}</p>
+              <p class="nt-meta">绑定子账号：{{ newToken.account_name || newToken.account_id }} · 权限预设：{{ tokenPresetName(newToken.scopes) }}</p>
             </div>
 
             <!-- 提示状态 -->
@@ -84,12 +84,13 @@
               <li v-for="t in tokens" :key="t.token_id" class="token-item">
                 <span class="t-dot" :class="dotClass(t.scopes)"></span>
                 <div class="t-meta">
-                  <span class="tag" :class="dotClass(t.scopes)">{{ scopeDesc(t.scopes) }}</span>
-                  <span class="t-account">子账号：{{ t.account_name || t.account_id }}</span>
+                  <div class="t-heading">
+                    <span class="t-account">子账号：{{ t.account_name || t.account_id }}</span>
+                    <span class="tag" :class="dotClass(t.scopes)">{{ tokenPresetName(t.scopes) }}</span>
+                  </div>
                   <span v-if="t.remark" class="t-remark">{{ t.remark }}</span>
                   <span v-if="t.created_at" class="t-created">签发于 {{ formatCreateTime(t.created_at) }}</span>
                 </div>
-                <code class="t-token" :title="t.token_id">{{ t.token_id }}</code>
                 <button class="t-btn del" type="button" :disabled="busy" @click="removeToken(t)">删除</button>
               </li>
             </ul>
@@ -100,7 +101,7 @@
       <SiteFooter>
         <template #big>个人中心<br><span>凭据 · 权限 · 开放接口</span></template>
         <template #fine>
-          <b>YuanHub</b> · 第三方 API Token 管理<br>
+          <b>YuanHub</b> · 专属认证 Token 管理<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
           Token 仅用途：库存数据只读 / 写入 / 导出，请勿泄露给他人
         </template>
@@ -116,22 +117,19 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
 import { listAccounts } from '../../api/inventory.js'
 import {
-  getOpenApiPermissions,
   getOpenApiTokens,
   generateOpenApiToken,
   deleteOpenApiToken
 } from '../../api/openApi.js'
-import { scopeDesc as _scopeDesc, isReadonly as _isReadonly, isWriteonly as _isWriteonly, formatCreateTime as _formatCreateTime } from '../../utils/openApiToken.js'
-
-// scope 权限兜底描述（读不到权限列表时使用）
-const FALLBACK_SCOPES = {
-  'inventory:read': '库存数据读取（只读）',
-  'inventory:write': '库存数据写入（只写）',
-  'inventory:export': '库存数据导出'
-}
+import {
+  OPEN_API_TOKEN_PRESETS,
+  tokenPresetName,
+  isReadonly as _isReadonly,
+  isWriteonly as _isWriteonly,
+  formatCreateTime as _formatCreateTime
+} from '../../utils/openApiToken.js'
 
 const tokens = ref([])
-const permissions = ref([])
 const accounts = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -142,17 +140,13 @@ let noticeTimer = null
 
 const showGen = ref(false)
 const genAccountId = ref('')
-const genScopes = ref(['inventory:read'])
+const tokenPresets = OPEN_API_TOKEN_PRESETS
+const genPresetId = ref(tokenPresets[0].id)
 const genRemark = ref('')
 const newToken = ref(null)
 
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
 
-// scope 解析/描述/时间格式化逻辑已抽离到 src/utils/openApiToken.js（可单测）。
-// 这里用薄封装绑定当前页面的 permissions / 兜底映射，供模板直接调用。
-function scopeDesc(scope) {
-  return _scopeDesc(scope, permissions.value, FALLBACK_SCOPES)
-}
 function dotClass(scope) {
   if (_isReadonly(scope)) return 'ro'
   if (_isWriteonly(scope)) return 'rw'
@@ -162,19 +156,9 @@ function formatCreateTime(value) {
   return _formatCreateTime(value)
 }
 
-const permissionCount = computed(function () {
-  return permissions.value.length || 3
-})
 const tokenCount = computed(function () { return tokens.value.length })
-
-// 权限候选：优先后端权限列表，读不到时用内置三项兜底
-const scopeOptions = computed(function () {
-  if (permissions.value.length) return permissions.value
-  return [
-    { scope: 'inventory:read', description: '库存数据读取' },
-    { scope: 'inventory:write', description: '库存数据写入' },
-    { scope: 'inventory:export', description: '库存数据导出' }
-  ]
+const selectedPreset = computed(function () {
+  return tokenPresets.find(function (preset) { return preset.id === genPresetId.value }) || null
 })
 
 function toast(text, isError) {
@@ -223,18 +207,18 @@ async function loadAccounts() {
 function openGen() {
   showGen.value = true
   if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
-  if (!genScopes.value.length) genScopes.value = ['inventory:read']
 }
 
 async function doGenerate() {
   if (busy.value) return
   if (!genAccountId.value) { toast('请先选择要绑定的库存子账号', true); return }
-  if (!genScopes.value.length) { toast('请至少选择一个权限', true); return }
+  if (!selectedPreset.value) { toast('请选择权限预设', true); return }
+  const scopes = selectedPreset.value.scopes.slice()
   generating.value = true
   try {
     const created = await generateOpenApiToken({
       accountId: genAccountId.value,
-      scopes: genScopes.value.slice(),
+      scopes,
       remark: genRemark.value || null
     })
     newToken.value = created || null
@@ -284,12 +268,6 @@ async function copyToken(token) {
 }
 
 onMounted(async function () {
-  try {
-    const data = await getOpenApiPermissions()
-    permissions.value = Array.isArray(data) ? data : []
-  } catch (_e) {
-    permissions.value = []
-  }
   await loadAccounts()
   loadTokens()
 })
@@ -303,9 +281,11 @@ onMounted(async function () {
 .gen-label { flex: none; width: 84px; font-size: 13px; font-weight: 800; color: var(--ink); padding-top: 8px }
 .gen-select { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .gen-input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none }
-.gen-check { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-60); font-weight: 600; cursor: pointer; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 14px }
-.gen-check input { accent-color: var(--accent); cursor: pointer }
-.gen-check small { color: var(--ink-35); font-size: 11px }
+.preset-option { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-60); cursor: pointer; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; transition: border-color .25s var(--ease), background .25s var(--ease) }
+.preset-option.active { border-color: var(--accent); background: var(--yellow) }
+.preset-option input { accent-color: var(--accent); cursor: pointer }
+.preset-option b { color: var(--ink); font-weight: 800 }
+.preset-option small { margin-left: 7px; color: var(--ink-60); font-size: 11px }
 .gen-actions { display: flex; justify-content: flex-end; gap: 10px }
 .new-token { margin-top: 18px; background: var(--yellow); border: 1px solid transparent; border-radius: 16px; padding: 16px 18px }
 .nt-tip { font-size: 12.5px; color: var(--ink); font-weight: 700; line-height: 1.7 }
@@ -314,10 +294,9 @@ onMounted(async function () {
 .nt-meta { margin-top: 8px; font-size: 12px; color: var(--ink-60); font-weight: 600 }
 .t-dot.mix { background: var(--brand-blue) }
 .tag.mix { background: rgba(91, 106, 140, .12); color: var(--slate-deep) }
-.t-account { font-size: 12px; color: var(--ink); font-weight: 700 }
+.t-account { display: inline-flex; align-items: center; min-height: 22px; font-size: 12px; line-height: 1.5; color: var(--ink); font-weight: 700 }
 
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
-.profile-main { padding-bottom: 40px }
 .page-profile .hero::after { content: '档案' }
 
 .hero-stats .uname {
@@ -330,6 +309,7 @@ onMounted(async function () {
 .hero-stats div.is-authed .v { font-size: 26px }
 
 .token-card {
+  container-type: inline-size;
   margin-top: 40px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -365,31 +345,29 @@ onMounted(async function () {
 .state.err { color: var(--ink-60) }
 .state .link { margin-left: 12px; background: none; border: none; color: var(--accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
 
-.token-list { list-style: none; margin-top: 20px; display: flex; flex-direction: column; gap: 12px }
+.token-list {
+  list-style: none; margin-top: 20px; display: grid;
+  grid-template-columns: minmax(0, 1fr); gap: 12px;
+}
 .token-item {
-  display: flex; align-items: center; gap: 16px;
+  display: flex; align-items: flex-start; gap: 16px; min-width: 0;
   background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px;
   transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .3s;
 }
 .token-item:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -20px rgba(73, 59, 44, .26); border-color: rgba(73, 59, 44, .22) }
-.t-dot { width: 10px; height: 10px; border-radius: 50%; flex: none }
+.t-dot { width: 10px; height: 10px; margin-top: 8px; border-radius: 50%; flex: none }
 .t-dot.ro { background: var(--yellow-deep) }
 .t-dot.rw { background: var(--accent) }
 
-.t-meta { display: flex; flex-direction: column; gap: 3px; min-width: 180px; flex: none }
-.tag { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 7px; padding: 2px 10px; letter-spacing: .05em }
+.t-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 }
+.t-heading { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap }
+.tag { display: inline-flex; align-items: center; flex: none; min-height: 22px; max-width: 100%; font-size: 11px; font-weight: 700; line-height: 1.5; border-radius: 7px; padding: 2px 10px; letter-spacing: .05em }
 .tag.ro { background: var(--yellow); color: var(--ink) }
 .tag.rw { background: rgba(215, 137, 53, .14); color: var(--accent-strong) }
 .t-scope { font-family: var(--font-d); font-size: 11px; color: var(--ink-35) }
 .t-remark { font-size: 11.5px; color: var(--ink-60) }
 .t-created { font-size: 11px; color: var(--ink-35) }
 
-.t-token {
-  flex: 1; min-width: 0;
-  font-family: var(--font-d); font-size: 12.5px; color: var(--ink);
-  background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
 .t-btn {
   flex: none; border: none; border-radius: 10px; padding: 8px 16px;
   font-size: 12.5px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .3s var(--ease);
@@ -400,9 +378,16 @@ onMounted(async function () {
 .t-btn.del:hover:not(:disabled) { border-color: var(--rouge); color: var(--rouge) }
 .t-btn:disabled { opacity: .45; cursor: not-allowed }
 
+@container (min-width: 660px) {
+  .token-list { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+}
+
+@container (min-width: 1000px) {
+  .token-list { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+}
+
 @media (max-width: 640px) {
   .token-item { flex-wrap: wrap }
   .t-meta { min-width: 0; flex: 1 }
-  .t-token { flex-basis: 100%; order: 3 }
 }
 </style>

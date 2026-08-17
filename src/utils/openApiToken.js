@@ -1,6 +1,16 @@
 // 第三方 API Token 纯函数（scope 解析 + 描述映射 + 时间格式化）
 // 从 profile.vue 抽离，便于单测与复用；无副作用、无依赖。
 
+// 前端只向用户暴露权限预设，底层 scope 由预设统一维护。
+export const OPEN_API_TOKEN_PRESETS = Object.freeze([
+  Object.freeze({
+    id: 'guangling-storehouse',
+    name: '广陵库房',
+    description: '库存读取、写入与导出',
+    scopes: Object.freeze(['inventory:read', 'inventory:write', 'inventory:export'])
+  })
+])
+
 // 后端 scopes 字段为稳定字符串 key 数组（如 ['inventory:read'] 或
 // ['inventory:read','inventory:export']），此处统一归一为数组。
 export function scopeKeys(scope) {
@@ -23,6 +33,22 @@ export function scopeDesc(scope, permissions, fallback = {}) {
   const keys = scopeKeys(scope)
   if (keys.length === 0) return '未知权限'
   return keys.map(function (k) { return descByKey(k, permissions, fallback) }).join('、')
+}
+
+// scope 顺序不影响预设匹配；只有集合完全一致时才视为该预设。
+export function tokenPresetForScopes(scope, presets = OPEN_API_TOKEN_PRESETS) {
+  const keys = Array.from(new Set(scopeKeys(scope))).sort()
+  return presets.find(function (preset) {
+    const presetKeys = Array.from(new Set(preset.scopes)).sort()
+    return keys.length === presetKeys.length && keys.every(function (key, index) {
+      return key === presetKeys[index]
+    })
+  }) || null
+}
+
+export function tokenPresetName(scope) {
+  const preset = tokenPresetForScopes(scope)
+  return preset ? preset.name : '其他权限'
 }
 
 // 是否「只读」token：scope 恰为单个 inventory:read

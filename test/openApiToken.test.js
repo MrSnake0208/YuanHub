@@ -3,9 +3,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  OPEN_API_TOKEN_PRESETS,
   scopeKeys,
   descByKey,
   scopeDesc,
+  tokenPresetForScopes,
+  tokenPresetName,
   isReadonly,
   isWriteonly,
   formatCreateTime
@@ -58,6 +61,24 @@ test('scopeDesc 多权限用顿号拼接', () => {
 
 test('scopeDesc 空数组返回未知权限', () => {
   assert.equal(scopeDesc([], PERMISSIONS, FALLBACK), '未知权限')
+})
+
+test('广陵库房预设包含库存读、写、导出权限', () => {
+  assert.deepEqual(
+    Array.from(OPEN_API_TOKEN_PRESETS[0].scopes),
+    ['inventory:read', 'inventory:write', 'inventory:export']
+  )
+})
+
+test('完整 scope 组合按集合匹配广陵库房预设', () => {
+  const preset = tokenPresetForScopes(['inventory:export', 'inventory:read', 'inventory:write'])
+  assert.equal(preset && preset.name, '广陵库房')
+  assert.equal(tokenPresetName(['inventory:read', 'inventory:write', 'inventory:export']), '广陵库房')
+})
+
+test('非预设 scope 组合不误标为广陵库房', () => {
+  assert.equal(tokenPresetForScopes(['inventory:read']), null)
+  assert.equal(tokenPresetName(['inventory:read']), '其他权限')
 })
 
 test('isReadonly 仅单个 inventory:read 为真', () => {

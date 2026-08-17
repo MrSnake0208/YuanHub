@@ -794,7 +794,6 @@ onMounted(async function () {
 .load-more:disabled { opacity: .45; cursor: not-allowed }
 
 /* —— 复用全局 CSS 变量（不新增色值），对齐广陵账房（cart.vue）版式 —— */
-.inventory-main { padding-bottom: 40px }
 .page-inventory .hero::after { content: '库存' }
 
 .inventory-tabs { display: flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 14px; padding: 4px; margin-top: 40px }

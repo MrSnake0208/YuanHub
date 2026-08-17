@@ -33,8 +33,9 @@ test('token 列表字段契约：token_id/account_id/account_name/scopes/created
   assert.match(backendService, /val accountName/)
   assert.match(backendService, /val scopes: List<String>/)
   assert.match(backendService, /val createdAt: Instant/)
-  // 前端列表项消费 token_id / account_name / scopes / created_at
+  // 前端内部消费 token_id（列表 key / 删除），但不把它渲染给用户
   assert.match(frontendProfile, /t\.token_id/)
+  assert.doesNotMatch(frontendProfile, /\{\{\s*t\.token_id\s*\}\}/)
   assert.match(frontendProfile, /t\.account_name/)
   assert.match(frontendProfile, /t\.scopes/)
   assert.match(frontendProfile, /t\.created_at/)
@@ -66,6 +67,14 @@ test('生成接口 body 字段 account_id/scopes/remark 前后端一致', () => 
   assert.match(backendGenerateRequest, /val remark: String\?/)
   assert.match(frontendApi, /account_id: accountId/)
   assert.match(frontendApi, /scopes, remark/)
+})
+
+test('Token 生成按权限预设选择并提交预设 scopes', () => {
+  assert.match(frontendProfile, /v-model="genPresetId"/)
+  assert.match(frontendProfile, /type="radio"/)
+  assert.match(frontendProfile, /selectedPreset\.value\.scopes\.slice/)
+  assert.match(frontendProfile, /tokenPresetName\(t\.scopes\)/)
+  assert.doesNotMatch(frontendProfile, /type="checkbox"/)
 })
 
 test('删除接口按 token_id：DELETE /user/open-api/tokens/{tokenId}', () => {

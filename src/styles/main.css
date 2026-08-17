@@ -415,9 +415,7 @@ section{padding:88px 0 8px}
 .modal-foot .btn{padding:10px 22px;font-size:13px;border-radius:12px}
 
 /* ---- 账房页布局 ---- */
-.cart-main{padding-bottom:40px}
 @media (min-width:1081px){.cart-mbar{display:none}}
 @media (max-width:1180px){.cart-layout{grid-template-columns:1fr}.pkg-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.pkg-grid{grid-template-columns:1fr 1fr}.pkg-grid .pkg-card{min-height:0}}
 @media (max-width:420px){.pkg-grid{grid-template-columns:1fr}}
-
