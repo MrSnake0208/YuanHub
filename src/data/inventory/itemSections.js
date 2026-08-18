@@ -63,11 +63,17 @@ export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze(['zhuangjinboli'])
 
 const GAME_BAG_POSITION = new Map(GAME_BAG_ITEM_IDS.map(function (id, index) { return [id, index] }))
 const STOCK_EDIT_LEADING_IDS = ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi']
-const CULTIVATION_SUBCATEGORIES = Object.freeze([
-  { id: 'mirror', name: '镜', itemIds: ['xinghanjing', 'shuijing', 'baoshijing', 'liujinjing', 'liubojing', 'tongjing'] },
-  { id: 'fan', name: '扇', itemIds: ['beihuifengshan', 'xianmenshan', 'yushan', 'jinsishan', 'cuishan', 'juanshan'] },
-  { id: 'wine', name: '酒', itemIds: ['mulanzhuilu', 'bawanglei', 'lingshanquan', 'baimozhijiu', 'qingjiu', 'zhuojiu'] }
+const RESOURCE_SUBCATEGORIES = Object.freeze([
+  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi'] },
+  { id: 'divination-stone', name: '命盘&星石', itemIds: ['gongguoge', 'shanebu', 'gusuanchou', 'jinsuanchou', 'jieyangping', 'jiezheping', 'jiezhuping'] },
+  { id: 'agent-experience', name: '密探经验', itemIds: ['liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan'] }
 ])
+const CULTIVATION_SUBGROUPS = Object.freeze([
+  { id: 'fire-wind', name: '火&风', itemIds: ['beihuifengshan', 'xianmenshan', 'yushan', 'jinsishan', 'cuishan', 'juanshan'] },
+  { id: 'earth-water', name: '地&水', itemIds: ['mulanzhuilu', 'bawanglei', 'lingshanquan', 'baimozhijiu', 'qingjiu', 'zhuojiu'] },
+  { id: 'yin-yang', name: '阴&阳', itemIds: ['xinghanjing', 'shuijing', 'baoshijing', 'liujinjing', 'liubojing', 'tongjing'] }
+])
+const AGENT_EXPERIENCE_IDS = new Set(RESOURCE_SUBCATEGORIES[2].itemIds)
 
 export function sortItemsByGameOrder(entries) {
   return entries
@@ -115,18 +121,60 @@ export function groupItemsByCategory(entries, categoryOrder, categoryAliases) {
   })
 }
 
-export function withCultivationSubcategories(sections) {
-  return sections.map(function (section) {
-    if (section.name !== '修为进阶材料') return section
-    const entryById = new Map(section.entries.map(function (entry) { return [entry.id, entry] }))
-    const placedIds = new Set()
-    const subsections = CULTIVATION_SUBCATEGORIES.map(function (subcategory) {
-      const entries = subcategory.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
-      entries.forEach(function (entry) { placedIds.add(entry.id) })
-      return { id: subcategory.id, name: subcategory.name, entries: entries }
-    }).filter(function (subcategory) { return subcategory.entries.length > 0 })
-    const otherEntries = section.entries.filter(function (entry) { return !placedIds.has(entry.id) })
-    if (otherEntries.length) subsections.push({ id: 'other', name: '其他', entries: otherEntries })
-    return Object.assign({}, section, { subsections: subsections })
+export function buildItemCategorySections(entries) {
+  const entryById = new Map(entries.map(function (entry) { return [entry.id, entry] }))
+  const resourceSubsections = RESOURCE_SUBCATEGORIES.map(function (subcategory) {
+    return {
+      id: subcategory.id,
+      name: subcategory.name,
+      entries: subcategory.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
+    }
   })
+  const cultivationEntries = entries.filter(function (entry) { return entry.category === '修为进阶材料' })
+  const cultivationSubgroups = CULTIVATION_SUBGROUPS.map(function (subgroup) {
+    return {
+      id: subgroup.id,
+      name: subgroup.name,
+      entries: subgroup.itemIds.map(function (id) { return entryById.get(id) }).filter(Boolean)
+    }
+  })
+  const developmentSubsections = [
+    {
+      id: 'cultivation',
+      name: '修为进阶材料',
+      entries: cultivationEntries,
+      subgroups: cultivationSubgroups
+    },
+    {
+      id: 'level-breakthrough',
+      name: '等级突破材料',
+      entries: entries.filter(function (entry) {
+        return entry.category === '密探突破材料' && !AGENT_EXPERIENCE_IDS.has(entry.id)
+      })
+    },
+    {
+      id: 'bond-breakthrough',
+      name: '羁绊突破材料',
+      entries: entries.filter(function (entry) { return entry.category === '养成材料' })
+    }
+  ]
+
+  return [
+    {
+      id: 'resources',
+      name: '资源道具',
+      entries: resourceSubsections.flatMap(function (section) { return section.entries }),
+      primaryEntries: [],
+      subsectionLayout: 'shelves',
+      subsections: resourceSubsections
+    },
+    {
+      id: 'agent-development',
+      name: '密探养成资源',
+      entries: developmentSubsections.flatMap(function (section) { return section.entries }),
+      primaryEntries: [],
+      subsectionLayout: 'rows',
+      subsections: developmentSubsections
+    }
+  ]
 }

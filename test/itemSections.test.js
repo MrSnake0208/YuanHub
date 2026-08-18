@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { ITEM_CATEGORIES, ITEM_CATALOG } from '../src/data/inventory/catalog.js'
-import { GAME_BAG_ITEM_IDS, groupItemsByCategory, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems, withCultivationSubcategories } from '../src/data/inventory/itemSections.js'
+import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
+import { GAME_BAG_ITEM_IDS, buildItemCategorySections, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../src/data/inventory/itemSections.js'
 
 const GAME_BAG_ORDER = [
   '装金玻璃', '六韬兵书', '兵书全卷', '兵书残卷', '府君海棠', '蟠龙鼓', '银纹刀', '玉龟盾', '犀角弓',
@@ -48,35 +48,52 @@ test('前端暂不展示装金玻璃', function () {
   assert.equal(visible.length, ITEM_CATALOG.length - 1)
 })
 
-test('类别模式使用目录 category 分组且不遗漏道具', function () {
-  const resourceCategories = ['未分类', '鸟食', '货币']
-  const aliases = { '未分类': '资源道具', '鸟食': '资源道具', '货币': '资源道具' }
-  const displayCategories = ['资源道具'].concat(ITEM_CATEGORIES.filter(function (category) { return !resourceCategories.includes(category) }))
-  const sections = groupItemsByCategory(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)), displayCategories, aliases)
+test('类别模式只展示资源道具和密探养成资源且不遗漏道具', function () {
+  const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
   const flattened = sections.flatMap(function (section) { return section.entries })
 
-  assert.deepEqual(sections.map(function (section) { return section.name }), displayCategories)
+  assert.deepEqual(sections.map(function (section) { return section.name }), ['资源道具', '密探养成资源'])
   assert.equal(flattened.length, ITEM_CATALOG.length - 1)
   assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length - 1)
-  sections.filter(function (section) { return section.name !== '资源道具' }).forEach(function (section) {
-    assert.equal(section.entries.every(function (item) { return item.category === section.name }), true)
-  })
-  const resourceSection = sections[0]
-  assert.equal(resourceSection.name, '资源道具')
-  assert.deepEqual(resourceSection.entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币'])
-  assert.equal(resourceSection.entries.every(function (item) { return resourceCategories.includes(item.category) }), true)
 })
 
-test('修为进阶材料分为镜、扇、酒三个子类别', function () {
-  const categories = groupItemsByCategory(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)), ITEM_CATEGORIES)
-  const sections = withCultivationSubcategories(categories)
-  const cultivation = sections.find(function (section) { return section.name === '修为进阶材料' })
+test('资源道具分为鸟食礼包、命盘&星石、密探经验三行资源架', function () {
+  const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
+  const resourceSection = sections[0]
 
-  assert.deepEqual(cultivation.subsections.map(function (section) { return section.name }), ['镜', '扇', '酒'])
-  assert.deepEqual(cultivation.subsections.map(function (section) { return section.entries.map(function (item) { return item.name }) }), [
-    ['星汉镜', '水镜', '宝石镜', '鎏金镜', '六博镜', '铜镜'],
-    ['悲回风扇', '仙门扇', '羽扇', '金丝扇', '翠扇', '绢扇'],
-    ['木兰坠露', '霸王泪', '灵山泉', '百末旨酒', '清酒', '浊酒']
+  assert.equal(resourceSection.subsectionLayout, 'shelves')
+  assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['鸟食礼包', '命盘&星石', '密探经验'])
+  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币'])
+  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), [
+    '功过格', '善恶簿', '骨算筹', '金算筹', '解殃瓶', '解谪瓶', '解注瓶'
   ])
-  assert.equal(cultivation.subsections.flatMap(function (section) { return section.entries }).length, cultivation.entries.length)
+  assert.deepEqual(resourceSection.subsections[2].entries.map(function (item) { return item.name }), ['六韬兵书', '兵书全卷', '兵书残卷'])
+})
+
+test('密探养成资源三个子类别使用全宽行布局并保持游戏顺序', function () {
+  const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
+  const development = sections[1]
+
+  assert.equal(development.subsectionLayout, 'rows')
+  assert.deepEqual(development.subsections.map(function (section) { return section.name }), ['修为进阶材料', '等级突破材料', '羁绊突破材料'])
+  assert.deepEqual(development.subsections[0].entries.map(function (item) { return item.name }), [
+    '星汉镜', '水镜', '悲回风扇', '仙门扇', '木兰坠露', '霸王泪', '宝石镜', '鎏金镜',
+    '羽扇', '金丝扇', '灵山泉', '百末旨酒', '六博镜', '铜镜', '翠扇', '绢扇', '清酒', '浊酒'
+  ])
+  assert.deepEqual(development.subsections[0].subgroups.map(function (group) { return group.name }), [
+    '火&风（扇）', '地&水（露、泪、酒、泉）', '阴&阳（镜）'
+  ])
+  assert.deepEqual(development.subsections[0].subgroups[0].entries.map(function (item) { return item.name }), [
+    '悲回风扇', '仙门扇', '羽扇', '金丝扇', '翠扇', '绢扇'
+  ])
+  assert.deepEqual(development.subsections[0].subgroups[1].entries.map(function (item) { return item.name }), [
+    '木兰坠露', '霸王泪', '灵山泉', '百末旨酒', '清酒', '浊酒'
+  ])
+  assert.deepEqual(development.subsections[0].subgroups[2].entries.map(function (item) { return item.name }), [
+    '星汉镜', '水镜', '宝石镜', '鎏金镜', '六博镜', '铜镜'
+  ])
+  assert.equal(development.subsections[0].subgroups.flatMap(function (group) { return group.entries }).length, 18)
+  assert.deepEqual(development.subsections[2].entries.map(function (item) { return item.name }), [
+    '怀阴金锁', '阳明金锁', '天风金锁', '火源金锁', '水心金锁', '载地金锁'
+  ])
 })

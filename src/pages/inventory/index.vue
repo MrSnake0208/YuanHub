@@ -8,15 +8,14 @@
         <div class="wrap">
           <div class="crumb">
             <span class="pill fill">库存</span>
-            <span class="pill">清单</span>
-            <span class="pill">背包</span>
+            <span class="pill">追踪</span>
             <span class="pill">统计</span>
           </div>
           <h1>广陵库房<span class="small">清点 · 归档 · 溯源</span></h1>
           <p class="hero-sub">代号鸢 / 如鸢 库存与奖励台账：支持多子账号分别清点，同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div>
-              <div class="k">道具目录更新日期</div>
+              <div class="k">追踪目录更新日期</div>
               <div class="v catalog-date"><time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></div>
             </div>
             <div><div class="k">背包道具</div><div class="v">{{ itemCatalogCount }}<small>种</small></div></div>
@@ -32,7 +31,7 @@
           <!-- 库存子账号 -->
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
-              <label class="ac-label" for="inventory-account">库存子账号</label>
+              <label class="ac-label" for="inventory-account">当前库存子账号</label>
               <select id="inventory-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || editingStock" @change="onAccountChange">
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -63,10 +62,9 @@
             <p v-else class="ac-empty">暂无子账号，请在上方输入名称创建第一个子账号</p>
           </div>
 
-          <!-- TABS：清单 / 当前库存 / 时段获得量 / 导入记录 -->
+          <!-- TABS：追踪目录 / 时段获得量 / 导入记录 -->
           <div class="inventory-tabs" v-reveal>
-            <button :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">清单</button>
-            <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前库存</button>
+            <button :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">追踪清单</button>
             <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">时段获得量</button>
             <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">导入记录</button>
             <span class="sp"></span>
@@ -95,21 +93,38 @@
             </div>
           </div>
 
-          <!-- 清单（全量目录：默认全部显示，数量初始 0，登录后叠加云端快照） -->
-          <div v-show="activeTab === 'manifest'" class="panel">
-            <div class="type-switch" v-reveal>
-              <button :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
-              <button :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
-              <span class="sp"></span>
+          <!-- 追踪目录（YuanHub 当前支持的追踪范围，登录后叠加云端库存） -->
+          <div v-show="activeTab === 'manifest'" ref="manifestPanel" class="panel">
+            <div class="manifest-intro" :class="{ 'is-editing': editingStock }" v-reveal>
+              <div class="type-switch">
+                <button :disabled="editingStock" :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
+                <button :disabled="editingStock" :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
+                <span class="sp"></span>
+              </div>
+
+              <aside class="manifest-scope" :class="{ 'is-editing': editingStock }">
+                <Pencil v-if="editingStock" :size="16" aria-hidden="true" />
+                <Info v-else :size="16" aria-hidden="true" />
+                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : '背包库存' }} · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
+                <p v-else-if="entityType === 'item'" class="scope-guidance">库存数量有误？点击标题旁的 <Pencil :size="13" aria-hidden="true" /> 进入编辑模式</p>
+                <p v-else>密探心纸目前仅供查看，编辑方式后续补充。</p>
+                <div v-if="editingStock" class="manifest-edit-actions">
+                  <button type="button" :disabled="savingStock" @click="cancelStockEdit"><X :size="14" />取消</button>
+                  <button type="button" class="primary" :disabled="savingStock || !!stockDraftError || !stockChangedCount" @click="saveStockEdit">
+                    <Save :size="14" />{{ savingStock ? '保存中…' : '保存库存' }}
+                  </button>
+                </div>
+                <span v-if="stockSaveNotice && !editingStock" class="stock-save-notice" role="status" aria-live="polite">{{ stockSaveNotice }}</span>
+              </aside>
             </div>
 
-            <div class="manifest-bar" v-reveal>
+            <div v-if="!editingStock" class="manifest-bar" v-reveal>
               <div class="mf-stats">
-                <div class="mf-stat"><b class="mf-num">{{ manifestTotal }}</b><span class="mf-k">目录</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestTotal }}</b><span class="mf-k">可追踪</span></div>
                 <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已持有</span></div>
-                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">收集度</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">持有率</span></div>
               </div>
-              <div class="mf-progress" title="收集进度"><i :style="{ '--progress': manifestProgressScale }"></i></div>
+              <div class="mf-progress" title="当前追踪目录持有率"><i :style="{ '--progress': manifestProgressScale }"></i></div>
               <span class="sp"></span>
               <input v-model.trim="manifestSearch" class="mf-search" type="search" aria-label="搜索库存名称或 ID" placeholder="搜索名称 / id" />
               <div class="mf-filter">
@@ -117,19 +132,51 @@
                 <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已持有</button>
                 <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未持有</button>
               </div>
+              <span v-if="error" class="mf-sync-error" role="status">云端库存同步失败：{{ error }}（数量按 0 显示）</span>
             </div>
 
-            <div v-if="loading" class="state">正在加载清单…</div>
-            <div v-else class="backpack" v-reveal>
-              <div class="bp-head">
-                <span class="bp-tip">
-                  共 <b class="bp-num">{{ manifestTotal }}</b> 种 · 已持有 <b class="bp-num">{{ manifestOwned }}</b> 种 ·
-                  未持有 <b class="bp-num">{{ manifestMissing }}</b> 种
-                  <template v-if="!auth.isLoggedIn"> · 未登录：数量为初始值 0，请登录后同步实际库存</template>
-                </span>
-                <span class="sp"></span>
-                <span v-if="error" class="bp-tip mf-warn">云端库存同步失败：{{ error }}（数量按 0 显示）</span>
-              </div>
+            <div v-if="loading" class="state">正在加载追踪目录…</div>
+            <div v-else-if="editingStock" class="backpack stock-editor">
+              <p v-if="stockDraftError || stockEditError" class="stock-edit-error">{{ stockDraftError || stockEditError }}</p>
+              <ul class="slot-grid stock-edit-grid">
+                <li v-for="e in stockEditorEntries" :key="e.id" class="slot stock-edit-slot" :title="e.name || e.id">
+                  <div class="slot-ic">
+                    <div class="slot-ph">
+                      <span class="ph-seal">图</span>
+                      <span class="ph-mono">{{ monogram(e) }}</span>
+                    </div>
+                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                  </div>
+                  <InventoryItemName :entry="e" />
+                  <div class="stock-stepper" :class="{ invalid: !isValidStockCount(stockDraft[e.id]) }">
+                    <button
+                      type="button"
+                      :disabled="!isValidStockCount(stockDraft[e.id]) || Number(stockDraft[e.id]) <= 0"
+                      :aria-label="'减少' + (e.name || e.id) + '库存'"
+                      @click="adjustStockCount(e.id, -1)"
+                    ><Minus :size="16" /></button>
+                    <input
+                      v-model="stockDraft[e.id]"
+                      class="stock-count-input"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      max="2147483647"
+                      step="1"
+                      :aria-label="(e.name || e.id) + '当前库存'"
+                      @focus="$event.target.select()"
+                    />
+                    <button
+                      type="button"
+                      :disabled="!isValidStockCount(stockDraft[e.id]) || Number(stockDraft[e.id]) >= 2147483647"
+                      :aria-label="'增加' + (e.name || e.id) + '库存'"
+                      @click="adjustStockCount(e.id, 1)"
+                    ><Plus :size="16" /></button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div v-else class="backpack" :class="{ 'manifest-items': entityType === 'item' }" v-reveal>
               <div v-if="manifestEntries.length === 0" class="state slim">没有匹配「{{ manifestSearch }}」的对象</div>
               <div v-else-if="entityType === 'item'" class="item-sections">
                 <section v-for="section in manifestCategorySections" :key="section.id" class="item-section">
@@ -137,33 +184,67 @@
                     <h2>{{ section.name }}</h2>
                     <span>{{ section.entries.length }} 种</span>
                   </div>
-                  <template v-if="section.subsections">
-                    <div class="subsection-columns">
-                      <div v-for="subcategory in section.subsections" :key="subcategory.id" class="item-subsection">
-                        <div class="subsection-head"><h3>{{ subcategory.name }}</h3><span>{{ subcategory.entries.length }} 种</span></div>
-                        <ul class="slot-grid">
+                  <ul v-if="!section.subsections || section.primaryEntries.length" class="slot-grid">
+                    <li v-for="e in section.subsections ? section.primaryEntries : section.entries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
+                      <div class="slot-ic">
+                        <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
+                        <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                        <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
+                      </div>
+                      <InventoryItemName :entry="e" />
+                    </li>
+                  </ul>
+                  <template v-if="section.subsections && section.subsections.length">
+                    <div class="subsection-columns" :class="{ 'subsection-rows': section.subsectionLayout === 'rows', 'subsection-shelves': section.subsectionLayout === 'shelves' }">
+                      <div
+                        v-for="subcategory in section.subsections"
+                        :key="subcategory.id"
+                        class="item-subsection"
+                        :class="{
+                          'is-divination-stone': subcategory.id === 'divination-stone',
+                          'is-level-breakthrough': subcategory.id === 'level-breakthrough'
+                        }"
+                      >
+                        <div class="subsection-head">
+                          <h3>{{ subcategory.name }}</h3>
+                          <span>{{ subcategory.entries.length }} 种</span>
+                          <button
+                            type="button"
+                            class="subsection-edit"
+                            :disabled="loading || !!error"
+                            :aria-label="'编辑' + subcategory.name + '的库存'"
+                            :data-tooltip="'编辑「' + subcategory.name + '」的库存'"
+                            @click="startSubsectionStockEdit(subcategory)"
+                          ><Pencil :size="14" aria-hidden="true" /></button>
+                        </div>
+                        <div v-if="subcategory.subgroups" class="cultivation-groups">
+                          <div v-for="group in subcategory.subgroups" :key="group.id" class="cultivation-group">
+                            <div class="cultivation-group-head"><h4>{{ group.name }}</h4><span>{{ group.entries.length }} 种</span></div>
+                            <ul class="slot-grid">
+                              <li v-for="e in group.entries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
+                                <div class="slot-ic">
+                                  <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
+                                  <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                                  <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
+                                </div>
+                                <InventoryItemName :entry="e" />
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                        <ul v-else class="slot-grid">
                           <li v-for="e in subcategory.entries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
                             <div class="slot-ic">
                               <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
-                              <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
+                              <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
                               <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
                             </div>
-                            <span class="slot-name">{{ e.name || e.id }}</span>
+                            <InventoryItemName :entry="e" />
                           </li>
                         </ul>
                       </div>
                     </div>
                   </template>
-                  <ul v-else class="slot-grid">
-                    <li v-for="e in section.entries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
-                      <div class="slot-ic">
-                        <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
-                        <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
-                        <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
-                      </div>
-                      <span class="slot-name">{{ e.name || e.id }}</span>
-                    </li>
-                  </ul>
                 </section>
               </div>
               <ul v-else class="slot-grid">
@@ -173,136 +254,11 @@
                       <span class="ph-seal">图</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
-                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
+                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
                     <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
                   </div>
-                  <span class="slot-name">{{ e.name || e.id }}</span>
+                  <InventoryItemName :entry="e" />
                   <span class="slot-tag star" :class="'s' + e.rarity">{{ e.rarity }}★ · {{ e.prof }}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 当前库存 -->
-          <div v-show="activeTab === 'current'" class="panel">
-            <div class="type-switch" v-reveal>
-              <button :disabled="editingStock" :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
-              <button :disabled="editingStock" :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
-              <span class="sp"></span>
-              <span v-if="stockSaveNotice && !editingStock" class="stock-save-notice" role="status" aria-live="polite">{{ stockSaveNotice }}</span>
-              <button v-if="entityType === 'item' && !editingStock" class="stock-action" :disabled="loading || !!error" @click="startStockEdit">
-                <Pencil :size="14" />编辑库存
-              </button>
-              <template v-if="entityType === 'item' && editingStock">
-                <button class="stock-action" :disabled="savingStock" @click="cancelStockEdit"><X :size="14" />取消</button>
-                <button class="stock-action primary" :disabled="savingStock || !!stockDraftError || !stockChangedCount" @click="saveStockEdit">
-                  <Save :size="14" />{{ savingStock ? '保存中…' : '保存库存' }}
-                </button>
-              </template>
-            </div>
-
-            <div v-if="loading" class="state">正在加载库存…</div>
-            <div v-else-if="error" class="state err">
-              {{ error }}
-              <button v-if="!auth.isLoggedIn" class="link" @click="goLogin">请先登录后重试</button>
-            </div>
-            <div v-else-if="editingStock" class="backpack stock-editor" v-reveal>
-              <div class="bp-head">
-                <span class="bp-tip">按游戏内背包顺序核对并调整数量 · 已修改 <b class="bp-num">{{ stockChangedCount }}</b> 项</span>
-              </div>
-              <p v-if="stockDraftError || stockEditError" class="stock-edit-error">{{ stockDraftError || stockEditError }}</p>
-              <ul class="slot-grid stock-edit-grid">
-                <li v-for="e in stockEditEntries" :key="e.id" class="slot stock-edit-slot" :title="e.name || e.id">
-                  <div class="slot-ic">
-                    <div class="slot-ph">
-                      <span class="ph-seal">图</span>
-                      <span class="ph-mono">{{ monogram(e) }}</span>
-                    </div>
-                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
-                    <div class="stock-stepper" :class="{ invalid: !isValidStockCount(stockDraft[e.id]) }">
-                      <button
-                        type="button"
-                        :disabled="!isValidStockCount(stockDraft[e.id]) || Number(stockDraft[e.id]) <= 0"
-                        :aria-label="'减少' + (e.name || e.id) + '库存'"
-                        @click="adjustStockCount(e.id, -1)"
-                      ><Minus :size="14" /></button>
-                      <input
-                        v-model="stockDraft[e.id]"
-                        class="stock-count-input"
-                        type="number"
-                        inputmode="numeric"
-                        min="0"
-                        max="2147483647"
-                        step="1"
-                        :aria-label="(e.name || e.id) + '当前库存'"
-                        @focus="$event.target.select()"
-                      />
-                      <button
-                        type="button"
-                        :disabled="!isValidStockCount(stockDraft[e.id]) || Number(stockDraft[e.id]) >= 2147483647"
-                        :aria-label="'增加' + (e.name || e.id) + '库存'"
-                        @click="adjustStockCount(e.id, 1)"
-                      ><Plus :size="14" /></button>
-                    </div>
-                  </div>
-                  <span class="slot-name">{{ e.name || e.id }}</span>
-                </li>
-              </ul>
-            </div>
-            <div v-else-if="visibleCurrentEntries.length === 0" class="state">
-              <template v-if="!auth.isLoggedIn">尚未登录：数量均为 0 · <router-link class="link" to="/login">登录后同步实际库存</router-link></template>
-              <template v-else>暂无 {{ entityType === 'item' ? '物品' : '角色' }} 库存记录</template>
-            </div>
-            <div v-else class="backpack" v-reveal>
-              <div class="bp-head">
-                <span class="bp-tip">共 <b class="bp-num">{{ visibleCurrentEntries.length }}</b> 种 · 图标请放至 <code>public/inventory-icons/{{ entityType === 'agent' ? 'agents' : 'items' }}/对象id.{{ ICON_EXT }}</code>，未上传前显示占位印</span>
-              </div>
-              <div v-if="entityType === 'item'" class="item-sections">
-                <section v-for="section in currentCategorySections" :key="section.id" class="item-section">
-                  <div class="section-head">
-                    <h2>{{ section.name }}</h2>
-                    <span>{{ section.entries.length }} 种</span>
-                  </div>
-                  <template v-if="section.subsections">
-                    <div class="subsection-columns">
-                      <div v-for="subcategory in section.subsections" :key="subcategory.id" class="item-subsection">
-                        <div class="subsection-head"><h3>{{ subcategory.name }}</h3><span>{{ subcategory.entries.length }} 种</span></div>
-                        <ul class="slot-grid">
-                          <li v-for="e in subcategory.entries" :key="e.id" class="slot" :title="e.name || e.id">
-                            <div class="slot-ic">
-                              <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
-                              <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
-                              <span class="slot-count">{{ fmtCount(e.count) }}</span>
-                            </div>
-                            <span class="slot-name">{{ e.name || e.id }}</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </template>
-                  <ul v-else class="slot-grid">
-                    <li v-for="e in section.entries" :key="e.id" class="slot" :title="e.name || e.id">
-                      <div class="slot-ic">
-                        <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
-                        <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
-                        <span class="slot-count">{{ fmtCount(e.count) }}</span>
-                      </div>
-                      <span class="slot-name">{{ e.name || e.id }}</span>
-                    </li>
-                  </ul>
-                </section>
-              </div>
-              <ul v-else class="slot-grid">
-                <li v-for="e in visibleCurrentEntries" :key="e.id" class="slot" :title="e.name || e.id">
-                  <div class="slot-ic is-agent">
-                    <div class="slot-ph">
-                      <span class="ph-seal">图</span>
-                      <span class="ph-mono">{{ monogram(e) }}</span>
-                    </div>
-                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
-                    <span class="slot-count">{{ fmtCount(e.count) }}</span>
-                  </div>
-                  <span class="slot-name">{{ e.name || e.id }}</span>
                 </li>
               </ul>
             </div>
@@ -336,7 +292,7 @@
             </div>
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
-                <span class="bp-tip">本时段获得 <b class="bp-num">{{ acquiredEntries.length }}</b> 种 · 图标同「当前库存」目录，金橙角标为获得量</span>
+                <span class="bp-tip">本时段获得 <b class="bp-num">{{ acquiredEntries.length }}</b> 种 · 图标与「追踪目录」一致，金橙角标为获得量</span>
               </div>
               <ul class="slot-grid">
                 <li v-for="e in acquiredEntries" :key="e.id" class="slot" :title="e.name || e.id">
@@ -345,10 +301,10 @@
                       <span class="ph-seal">图</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
-                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @error="onImgError" />
+                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
                     <span class="slot-count gained">+{{ fmtCount(e.count) }}</span>
                   </div>
-                  <span class="slot-name">{{ e.name || e.id }}</span>
+                  <InventoryItemName :entry="e" />
                 </li>
               </ul>
             </div>
@@ -401,17 +357,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { Minus, Pencil, Plus, Save, X } from '@lucide/vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
+import { Info, Minus, Pencil, Plus, Save, X } from '@lucide/vue'
+import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, renameAccount, deleteAccount } from '../../api/inventory.js'
 import { auth } from '../../store/auth.js'
-import { CATALOG_VERSION, ITEM_CATEGORIES, ITEM_CATALOG, AGENT_CATALOG } from '../../data/inventory/catalog.js'
-import { FRONTEND_HIDDEN_ITEM_IDS, groupItemsByCategory, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems, withCultivationSubcategories } from '../../data/inventory/itemSections.js'
+import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG } from '../../data/inventory/catalog.js'
+import { FRONTEND_HIDDEN_ITEM_IDS, buildItemCategorySections, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../../data/inventory/itemSections.js'
 import { buildManualStockSnapshot, nextManualSnapshotTime, preserveHiddenStockEntries } from '../../data/inventory/manualStock.js'
 
 const activeTab = ref('manifest')
+const manifestPanel = ref(null)
 const entityType = ref('item')
 const manifestSearch = ref('')
 const manifestFilter = ref('all')
@@ -433,6 +391,8 @@ const stockDraft = ref({})
 const stockOriginal = ref({})
 const stockEditError = ref('')
 const stockSaveNotice = ref('')
+const stockEditScopeIds = ref(null)
+const stockEditScopeName = ref('')
 const currentFullBaselineAt = ref(null)
 
 // —— 库存子账号 ——
@@ -444,6 +404,10 @@ const accountError = ref('')
 const showAccounts = ref(false)
 const newAccountName = ref('')
 const exportAll = ref(false)
+const currentAccountName = computed(function () {
+  const account = accounts.value.find(function (item) { return item.id === accountId.value })
+  return account ? account.name : '当前账号'
+})
 
 // —— 导入记录（游标分页） ——
 const recordsList = ref([])
@@ -452,13 +416,12 @@ const recordsLoading = ref(false)
 const recordsError = ref('')
 
 function setTab(t) {
-  if (editingStock.value && t !== 'current') {
+  if (editingStock.value && t !== 'manifest') {
     if (stockChangedCount.value && !confirm('当前库存修改尚未保存，放弃修改并离开？')) return
     cancelStockEdit()
   }
   activeTab.value = t
-  // 清单与当前库存共用同一份云端当前库存数据
-  if ((t === 'manifest' || t === 'current') && currentEntries.value.length === 0) reloadCurrent()
+  if (t === 'manifest' && currentEntries.value.length === 0) reloadCurrent()
   if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired()
   if (t === 'records') loadRecords(true)
 }
@@ -582,8 +545,18 @@ function iconSrc(e) {
   return import.meta.env.BASE_URL + 'inventory-icons/' + kind + '/' + encodeURIComponent(e.id) + '.' + ICON_EXT
 }
 
+function onImgLoad(ev) {
+  const img = ev && ev.currentTarget
+  if (!img) return
+  img.hidden = false
+  if (img.parentElement) img.parentElement.classList.remove('has-icon-error')
+}
+
 function onImgError(ev) {
-  if (ev && ev.target) ev.target.style.display = 'none'
+  const img = ev && ev.currentTarget
+  if (!img) return
+  img.hidden = true
+  if (img.parentElement) img.parentElement.classList.add('has-icon-error')
 }
 
 function monogram(e) {
@@ -601,6 +574,11 @@ function nameOf(id, name) {
 }
 
 const visibleItemCatalog = visibleInventoryItems(ITEM_CATALOG)
+const stockCatalogSections = buildItemCategorySections(sortItemsByGameOrder(visibleItemCatalog))
+const stockCatalogSubsections = new Map(
+  stockCatalogSections.flatMap(function (section) { return section.subsections || [] })
+    .map(function (subsection) { return [subsection.id, subsection] })
+)
 const itemCatalogCount = visibleItemCatalog.length
 const agentCatalogCount = AGENT_CATALOG.length
 
@@ -609,9 +587,6 @@ const LOCAL_NAME = {
   agent: new Map(AGENT_CATALOG.map(function (e) { return [e.id, e.name] }))
 }
 const LOCAL_ITEM = new Map(ITEM_CATALOG.map(function (e) { return [e.id, e] }))
-const RESOURCE_CATEGORIES = ['未分类', '鸟食', '货币']
-const ITEM_CATEGORY_ALIASES = Object.freeze({ '未分类': '资源道具', '鸟食': '资源道具', '货币': '资源道具' })
-const DISPLAY_ITEM_CATEGORIES = ['资源道具'].concat(ITEM_CATEGORIES.filter(function (category) { return !RESOURCE_CATEGORIES.includes(category) }))
 const localCatalog = computed(function () { return entityType.value === 'agent' ? AGENT_CATALOG : visibleItemCatalog })
 const visibleCurrentEntries = computed(function () {
   return entityType.value === 'item' ? visibleInventoryItems(currentEntries.value) : currentEntries.value
@@ -641,9 +616,7 @@ const manifestEntries = computed(function () {
     })
 })
 const manifestGameEntries = computed(function () { return sortItemsByGameOrder(manifestEntries.value) })
-const currentGameEntries = computed(function () { return sortItemsByGameOrder(visibleCurrentEntries.value) })
-const manifestCategorySections = computed(function () { return withCultivationSubcategories(groupItemsByCategory(manifestGameEntries.value, DISPLAY_ITEM_CATEGORIES, ITEM_CATEGORY_ALIASES)) })
-const currentCategorySections = computed(function () { return withCultivationSubcategories(groupItemsByCategory(currentGameEntries.value, DISPLAY_ITEM_CATEGORIES, ITEM_CATEGORY_ALIASES)) })
+const manifestCategorySections = computed(function () { return buildItemCategorySections(manifestGameEntries.value) })
 const stockEditEntries = computed(function () {
   const ids = new Set(visibleItemCatalog.map(function (item) { return item.id }))
   const entries = visibleItemCatalog.slice()
@@ -652,12 +625,17 @@ const stockEditEntries = computed(function () {
   })
   return sortStockEditItems(entries)
 })
+const stockEditorEntries = computed(function () {
+  if (!stockEditScopeIds.value) return stockEditEntries.value
+  const scopeIds = new Set(stockEditScopeIds.value)
+  return stockEditEntries.value.filter(function (item) { return scopeIds.has(item.id) })
+})
 const stockDraftError = computed(function () {
-  const invalid = stockEditEntries.value.find(function (item) { return !isValidStockCount(stockDraft.value[item.id]) })
+  const invalid = stockEditorEntries.value.find(function (item) { return !isValidStockCount(stockDraft.value[item.id]) })
   return invalid ? (invalid.name || invalid.id) + '的库存必须是 0 至 2,147,483,647 之间的整数' : ''
 })
 const stockChangedCount = computed(function () {
-  return stockEditEntries.value.filter(function (item) {
+  return stockEditorEntries.value.filter(function (item) {
     const value = stockDraft.value[item.id]
     return isValidStockCount(value) && Number(value) !== Number(stockOriginal.value[item.id] || 0)
   }).length
@@ -667,7 +645,6 @@ const manifestOwned = computed(function () {
   const stock = currentMap.value
   return localCatalog.value.filter(function (e) { return (stock[e.id] || 0) > 0 }).length
 })
-const manifestMissing = computed(function () { return manifestTotal.value - manifestOwned.value })
 const manifestPercent = computed(function () {
   if (!manifestTotal.value) return '0%'
   return Math.round(manifestOwned.value * 100 / manifestTotal.value) + '%'
@@ -702,17 +679,35 @@ function adjustStockCount(id, delta) {
   stockDraft.value[id] = Math.min(2147483647, Math.max(0, current + delta))
 }
 
-function startStockEdit() {
+function startSubsectionStockEdit(subcategory) {
+  const subsection = stockCatalogSubsections.get(subcategory.id)
+  startStockEdit(subsection ? subsection.entries : subcategory.entries, subcategory.name)
+}
+
+function scrollToStockEditor() {
+  nextTick(function () {
+    if (!manifestPanel.value) return
+    const offset = window.matchMedia('(max-width: 640px)').matches ? 64 : 16
+    const top = window.scrollY + manifestPanel.value.getBoundingClientRect().top - offset
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    window.scrollTo({ top: Math.max(0, top), behavior: behavior })
+  })
+}
+
+function startStockEdit(scopeEntries, scopeName) {
   if (!auth.isLoggedIn) { goLogin(); return }
   if (!accountId.value) { alert('请先创建并选择一个子账号'); return }
   const draft = {}
   stockEditEntries.value.forEach(function (item) { draft[item.id] = Number(currentMap.value[item.id]) || 0 })
   stockDraft.value = Object.assign({}, draft)
   stockOriginal.value = Object.assign({}, draft)
+  stockEditScopeIds.value = Array.isArray(scopeEntries) ? scopeEntries.map(function (item) { return item.id }) : null
+  stockEditScopeName.value = stockEditScopeIds.value ? String(scopeName || '') : ''
   stockEditError.value = ''
   stockSaveNotice.value = ''
   showImport.value = false
   editingStock.value = true
+  scrollToStockEditor()
 }
 
 function cancelStockEdit() {
@@ -720,6 +715,8 @@ function cancelStockEdit() {
   savingStock.value = false
   stockDraft.value = {}
   stockOriginal.value = {}
+  stockEditScopeIds.value = null
+  stockEditScopeName.value = ''
   stockEditError.value = ''
 }
 
@@ -760,6 +757,8 @@ async function saveStockEdit() {
     stockSaveNotice.value = '库存已更新'
     stockDraft.value = {}
     stockOriginal.value = {}
+    stockEditScopeIds.value = null
+    stockEditScopeName.value = ''
     await reloadCurrent()
   } catch (err) {
     stockEditError.value = humanErr(err, '库存保存失败')
@@ -1089,11 +1088,23 @@ onMounted(async function () {
 .type-switch button:disabled { opacity: .45; cursor: not-allowed }
 .type-switch .sp { flex: 1 }
 .type-switch .hint { font-size: 12px; color: var(--ink-35); font-weight: 600; margin-right: 6px }
-.type-switch button.stock-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 13px }
-.type-switch button.stock-action.primary { border-color: var(--tea); background: var(--tea); color: var(--cream) }
 .stock-save-notice { color: var(--accent-strong); font-size: 12px; font-weight: 800 }
 
-/* ---- 清单（全量目录）工具条 ---- */
+/* ---- 追踪目录工具条 ---- */
+.manifest-intro { display: flex; align-items: center; gap: 14px }
+.manifest-intro .type-switch { flex: none }
+.manifest-scope { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 4px 0 4px 14px; border-left: 1px dashed var(--line); color: var(--ink-60) }
+.manifest-scope > svg { flex: none; color: var(--accent-strong) }
+.manifest-scope p { flex: 0 1 auto; margin: 0; font-size: 12px; font-weight: 600; line-height: 1.65 }
+.manifest-scope p b { color: var(--accent-strong); font-family: var(--font-d); font-weight: 900 }
+.scope-guidance svg { display: inline; margin-inline: 2px; color: var(--accent-strong); vertical-align: -2px }
+.manifest-scope button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; min-height: 36px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--accent-strong); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer }
+.manifest-scope button:hover:not(:disabled) { background: var(--yellow); color: var(--ink) }
+.manifest-scope button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.manifest-scope button:disabled { opacity: .45; cursor: not-allowed }
+.manifest-scope .manifest-edit-actions { display: flex; align-items: center; gap: 6px; flex: none }
+.manifest-scope .manifest-edit-actions .primary { background: var(--tea); color: var(--cream); padding-inline: 12px }
+.manifest-scope .manifest-edit-actions .primary:hover:not(:disabled) { background: var(--ink); color: var(--cream) }
 .manifest-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px }
 .mf-stats { display: flex; gap: 24px; align-items: baseline }
 .mf-stat { display: flex; align-items: baseline; gap: 6px }
@@ -1108,7 +1119,7 @@ onMounted(async function () {
 .mf-filter button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--ink-60); transition: color .3s var(--ease), background-color .3s var(--ease), box-shadow .3s var(--ease) }
 .mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
 .mf-filter button:hover:not(.on) { color: var(--ink) }
-.mf-warn { color: var(--rouge) }
+.mf-sync-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; font-weight: 700; line-height: 1.6 }
 .state.slim { padding: 26px 20px; margin-top: 14px; border-radius: 14px }
 
 .acquired-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap }
@@ -1137,24 +1148,49 @@ onMounted(async function () {
 .bp-tip code { font-family: var(--font-d); font-size: 11px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; color: var(--ink-60); margin: 0 2px; word-break: break-all }
 .bp-num { font-family: var(--font-d); font-weight: 900; color: var(--accent-strong); font-size: 13px }
 
-.slot-grid { list-style: none; margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 14px 12px }
+.slot-grid { list-style: none; margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, 104px); justify-content: start; gap: 18px 16px }
 .item-sections { display: flex; flex-direction: column }
-.item-section { padding: 22px 0 8px }
+.item-section { padding: 22px 0 0px }
 .item-section + .item-section { border-top: 1.5px dashed var(--line) }
 .section-head { display: flex; align-items: baseline; gap: 10px }
 .section-head h2 { margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 18px; font-weight: 900; letter-spacing: 0 }
 .section-head span { color: var(--ink-35); font-family: var(--font-d); font-size: 11px; font-weight: 800 }
-.item-section .slot-grid { margin-top: 14px }
-.subsection-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px }
-.item-subsection { min-width: 0; padding: 12px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
-.subsection-head { display: flex; align-items: center; gap: 8px; padding-left: 9px; border-left: 3px solid var(--accent) }
+.item-section .slot-grid { margin-top: 20px }
+.subsection-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 16px }
+.subsection-columns.subsection-rows { grid-template-columns: minmax(0, 1fr) }
+.subsection-columns.subsection-shelves { grid-template-columns: minmax(0, 1fr) }
+.item-subsection { min-width: 0; padding: 18px 0; display: flex; flex-direction: column }
+.item-subsection + .item-subsection { border-top: 1.5px dashed var(--line) }
+.subsection-head { position: relative; display: flex; align-items: center; gap: 8px; min-height: 30px; padding-left: 10px }
+.subsection-head::before { content: ''; position: absolute; left: 0; top: 50%; width: 3px; height: 20px; border-radius: 2px; background: var(--accent); transform: translateY(-50%) }
 .subsection-head h3 { margin: 0; color: var(--ink); font-family: var(--font-b); font-size: 13px; font-weight: 900; letter-spacing: 0 }
 .subsection-head span { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
-.item-subsection .slot-grid { flex: 1; grid-template-columns: repeat(3, minmax(0, 92px)); align-content: center; justify-content: center; gap: 12px 9px; margin-top: 12px }
+.subsection-edit { position: relative; flex: none; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--accent-strong); cursor: pointer; transition: color .18s var(--ease) }
+.subsection-edit svg { transition: transform .18s var(--ease) }
+.subsection-edit:hover:not(:disabled) { color: var(--tea) }
+.subsection-edit:hover:not(:disabled) svg { transform: translateY(-1px) rotate(-10deg) }
+.subsection-edit:disabled { opacity: .4; cursor: not-allowed }
+.subsection-edit::after { content: attr(data-tooltip); position: absolute; left: calc(100% + 8px); top: 50%; z-index: 20; width: max-content; max-width: 220px; padding: 6px 9px; border-radius: 6px; background: var(--tea); color: var(--cream); font-family: var(--font-b); font-size: 11px; font-weight: 700; line-height: 1.4; white-space: nowrap; opacity: 0; pointer-events: none; transform: translate(-3px, -50%); transition: opacity .16s var(--ease), transform .16s var(--ease) }
+.subsection-edit:hover::after, .subsection-edit:focus-visible::after { opacity: 1; transform: translate(0, -50%) }
+.item-subsection > .slot-grid { flex: 1; grid-template-columns: repeat(3, minmax(0, 104px)); align-content: center; justify-content: center; gap: 18px 16px; margin-top: 20px }
+.subsection-rows .item-subsection > .slot-grid { grid-template-columns: repeat(auto-fill, 104px); align-content: start; justify-content: start }
+.subsection-shelves .item-subsection { display: grid; grid-template-columns: 112px minmax(0, 1fr); column-gap: 20px }
+.subsection-shelves .subsection-head { align-self: start }
+.subsection-shelves .item-subsection > .slot-grid { grid-template-columns: repeat(auto-fill, 104px); align-content: start; justify-content: start; margin-top: 8px }
+.item-subsection > .slot-grid .slot-name { height: auto; min-height: 1.45em }
+.cultivation-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 20px }
+.cultivation-group { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
+.cultivation-group-head { display: flex; align-items: baseline; gap: 8px }
+.cultivation-group-head h4 { margin: 0; color: var(--ink); font-family: var(--font-b); font-size: 12.5px; font-weight: 900; letter-spacing: 0 }
+.cultivation-group-head span { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
+.cultivation-group > .slot-grid { grid-template-columns: repeat(3, minmax(0, 92px)); align-content: start; justify-content: center; gap: 12px 9px; margin-top: 16px }
+.cultivation-group .slot-name { height: auto; min-height: 1.45em }
 .stock-edit-error { margin-top: 14px; border: 1px solid rgba(166, 81, 74, .35); border-radius: 8px; background: rgba(166, 81, 74, .06); color: var(--rouge); padding: 9px 12px; font-size: 12px; font-weight: 700 }
-.stock-edit-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)) }
+.stock-edit-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 22px 16px }
+.stock-edit-slot { align-items: center }
 .stock-edit-slot:hover { transform: none }
-.stock-stepper { position: absolute; z-index: 2; left: 5px; right: 5px; bottom: 5px; height: 31px; display: grid; grid-template-columns: 25px minmax(0, 1fr) 25px; align-items: stretch; border: 1.5px solid var(--accent); border-radius: 7px; overflow: hidden; background: var(--surface); box-shadow: 0 3px 8px rgba(73, 59, 44, .18) }
+.stock-edit-slot .slot-name { height: auto; min-height: calc(2 * 1.45em) }
+.stock-stepper { width: min(100%, 132px); height: 40px; margin-top: 6px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: stretch; border: 1.5px solid var(--accent); border-radius: 8px; overflow: hidden; background: var(--surface); box-shadow: 0 3px 8px rgba(73, 59, 44, .14) }
 .stock-stepper:focus-within { border-color: var(--tea); box-shadow: 0 0 0 2px var(--yellow) }
 .stock-stepper.invalid { border-color: var(--rouge) }
 .stock-stepper button { display: grid; place-items: center; min-width: 0; padding: 0; border: 0; border-radius: 0; background: var(--paper); color: var(--ink); cursor: pointer }
@@ -1162,46 +1198,48 @@ onMounted(async function () {
 .stock-stepper button:last-child { border-left: 1px solid var(--line) }
 .stock-stepper button:hover:not(:disabled) { background: var(--yellow) }
 .stock-stepper button:disabled { color: var(--ink-35); cursor: not-allowed; opacity: .55 }
-.stock-count-input { min-width: 0; width: 100%; height: 100%; padding: 0 2px; border: 0; border-radius: 0; background: var(--surface); color: var(--ink); font-family: var(--font-d); font-size: 12px; font-weight: 900; line-height: 1; text-align: center; outline: none; appearance: textfield; -moz-appearance: textfield }
+.stock-count-input { min-width: 0; width: 100%; height: 100%; padding: 0 2px; border: 0; border-radius: 0; background: var(--surface); color: var(--ink); font-family: var(--font-d); font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; text-align: center; outline: none; appearance: textfield; -moz-appearance: textfield }
 .stock-count-input::-webkit-inner-spin-button, .stock-count-input::-webkit-outer-spin-button { margin: 0; appearance: none; -webkit-appearance: none }
 .stock-stepper.invalid .stock-count-input { color: var(--rouge) }
-.slot { display: flex; flex-direction: column; transition: transform .45s var(--ease) }
-.slot:hover { transform: translateY(-4px) }
+.slot { display: flex; flex-direction: column; min-width: 0; transition: transform .22s var(--ease) }
+.slot:hover { transform: translateY(-2px) }
 .slot-ic {
-  position: relative; aspect-ratio: 1 / 1; border-radius: 18px; border: 1.5px solid var(--line);
-  background: var(--cream); overflow: hidden;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -10px 18px -10px rgba(73, 59, 44, .16);
-  transition: border-color .3s, box-shadow .45s var(--ease);
+  position: relative; width: min(100%, 100px); aspect-ratio: 1 / 1; margin: 0 auto; border-radius: 17px;
+  transition: border-color .22s, box-shadow .22s var(--ease), filter .22s;
 }
-.slot-ic.is-agent { border-color: rgba(215, 137, 53, .38); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -10px 18px -10px rgba(215, 137, 53, .22) }
-.slot:hover .slot-ic { border-color: var(--accent); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), 0 14px 26px -14px rgba(73, 59, 44, .4) }
-.slot-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(168deg, var(--surface) 0%, var(--cream) 62%, var(--paper) 100%) }
+.slot-ic.is-agent { overflow: hidden; border: 1.5px solid rgba(215, 137, 53, .38); background: var(--cream); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -10px 18px -10px rgba(215, 137, 53, .22) }
+.slot:hover .slot-ic:not(.is-agent) { filter: brightness(1.035) }
+.slot:hover .slot-ic.is-agent { border-color: var(--accent); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), 0 14px 26px -14px rgba(73, 59, 44, .4) }
+.slot-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; visibility: hidden; opacity: 0; border-radius: inherit; background: linear-gradient(168deg, var(--surface) 0%, var(--cream) 62%, var(--paper) 100%); pointer-events: none }
+.slot-ic.has-icon-error .slot-ph { visibility: visible; opacity: 1 }
 .slot-ph .ph-seal {
   position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; border: 1.5px solid var(--brand-blue);
   border-radius: 6px; color: var(--brand-blue); font-size: 11px; font-weight: 800; display: grid; place-items: center;
   opacity: .8; font-family: var(--font-b); line-height: 1;
 }
 .slot-ph .ph-mono { font-family: var(--font-s); font-weight: 900; font-size: clamp(26px, 4vw, 34px); color: var(--ink-35); user-select: none }
-.slot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover }
+.slot-img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; transition: filter .22s, opacity .22s }
 .slot-count {
-  position: absolute; right: 7px; bottom: 7px; min-width: 24px; padding: 3px 8px; border-radius: 999px;
-  background: var(--tea); color: var(--cream); font-family: var(--font-d); font-weight: 900; font-size: 12.5px;
-  line-height: 1.25; text-align: center; box-shadow: 0 2px 6px rgba(73, 59, 44, .28);
+  position: absolute; right: 3px; bottom: 6px; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 26px; padding: 2px 9px 0; border: 1px solid rgba(255, 248, 236, .82); border-radius: 999px;
+  background: rgba(90, 70, 51, .94); color: var(--cream); font-family: var(--font-d); font-weight: 900; font-size: 14px;
+  line-height: 1; text-align: center; white-space: nowrap; box-shadow: 0 3px 8px rgba(73, 59, 44, .24);
 }
 .slot-count.gained { background: var(--accent); color: var(--cream) }
 .slot-name {
-  margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.45;
-  min-height: calc(2 * 1.45em); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  margin-top: 5px; font-size: 12px; font-weight: 800; color: var(--ink); text-align: center; line-height: 1.45;
+  height: calc(2 * 1.45em); display: flex; align-items: center; justify-content: center;
   overflow: hidden; word-break: break-all; transition: color .3s;
 }
 .slot:hover .slot-name { color: var(--accent-strong) }
 
-/* ---- 清单格状态：未持有（数量 0）淡化，数量角标空心 ---- */
-.slot.is-missing .slot-ic { opacity: .55; border-style: dashed }
-.slot.is-missing:hover .slot-ic { opacity: .8 }
+/* ---- 清单格状态：未持有（数量 0）仅淡化图片，数量角标保持可读 ---- */
+.slot.is-missing .slot-img { filter: grayscale(.28) saturate(.5); opacity: .68 }
+.slot.is-missing:hover .slot-ic:not(.is-agent) .slot-img { filter: grayscale(.16) saturate(.68); opacity: .8 }
+.slot.is-missing .slot-ic.is-agent { opacity: .55; border-style: dashed }
+.slot.is-missing:hover .slot-ic.is-agent { opacity: .8 }
 .slot.is-missing .slot-name { color: var(--ink-35) }
 .slot.is-missing:hover .slot-name { color: var(--ink-60) }
-.slot-count.zero { background: transparent; border: 1.5px dashed var(--line); color: var(--ink-35); box-shadow: none }
+.slot-count.zero { background: rgba(255, 253, 246, .86); border: 1.5px dashed var(--line); color: var(--ink-60); box-shadow: none }
 .slot-tag {
   margin-top: 5px; align-self: center; font-size: 10.5px; font-weight: 700; color: var(--ink-60);
   background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; line-height: 1.5;
@@ -1210,6 +1248,42 @@ onMounted(async function () {
 .slot-tag.star.s5 { background: var(--yellow); border-color: transparent; color: var(--ink) }
 .slot-tag.star.s4 { background: transparent; border: 1.5px solid rgba(91, 106, 140, .45); color: var(--slate-deep) }
 .slot-tag.star.s3 { background: transparent; border: 1.5px solid var(--line); color: var(--ink-60) }
+
+/* ---- 背包道具追踪目录：盘点簿式紧凑清单 ---- */
+.backpack.manifest-items { padding: 14px 16px 18px; border-radius: 16px }
+.manifest-items .item-section { padding-top: 15px }
+.manifest-items .item-section + .item-section { margin-top: 4px }
+.manifest-items .section-head { gap: 8px }
+.manifest-items .section-head h2 { font-size: 16px }
+.manifest-items .section-head span { font-size: 10.5px }
+.manifest-items .slot-grid,
+.manifest-items .item-subsection > .slot-grid,
+.manifest-items .subsection-rows .item-subsection > .slot-grid,
+.manifest-items .subsection-shelves .item-subsection > .slot-grid,
+.manifest-items .cultivation-group > .slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); justify-content: stretch; gap: 12px 8px; margin-top: 12px }
+.manifest-items .slot:hover { transform: none }
+.manifest-items .slot-ic:not(.is-agent) { width: 68px; border-radius: 11px }
+.manifest-items .slot-name { height: 2.6em; min-height: 0; margin-top: 3px; font-size: 11.5px; line-height: 1.3 }
+.manifest-items .slot-count { right: 0; bottom: 2px; min-width: 27px; height: 20px; padding: 1px 6px 0; border-width: 1px; font-size: 11.5px; box-shadow: 0 2px 5px rgba(73, 59, 44, .2) }
+.manifest-items .slot-count.zero { border-width: 1px }
+.manifest-items .slot-ph .ph-seal { top: 5px; right: 5px; width: 18px; height: 18px; border-radius: 4px; font-size: 9px }
+.manifest-items .slot-ph .ph-mono { font-size: 24px }
+.manifest-items .subsection-columns { margin-top: 9px }
+.manifest-items .item-subsection { padding: 11px 0 }
+.manifest-items .subsection-head { gap: 6px; padding-left: 8px }
+.manifest-items .subsection-head::before { width: 2px; height: 18px }
+.manifest-items .subsection-head h3 { font-size: 12.5px }
+.manifest-items .subsection-head span { font-size: 10px }
+.manifest-items .subsection-shelves .item-subsection { grid-template-columns: 132px minmax(0, 1fr); column-gap: 12px }
+.manifest-items .subsection-shelves .item-subsection > .slot-grid { margin-top: 0 }
+.manifest-items .cultivation-groups { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin-top: 11px }
+.manifest-items .cultivation-group { padding: 10px; border-radius: 7px }
+.manifest-items .cultivation-group-head h4 { font-size: 12px }
+.manifest-items .cultivation-group-head span { font-size: 10px }
+
+@media (min-width: 641px) {
+  .manifest-items .item-subsection.is-level-breakthrough > .slot-grid > .slot:nth-child(12) { grid-column: 1 }
+}
 
 /* ---- 导入记录 ---- */
 .records-head { display: flex; align-items: center; gap: 12px }
@@ -1268,6 +1342,24 @@ onMounted(async function () {
   .import-box textarea { font-size: 16px }
   .import-actions { align-items: stretch; flex-direction: column }
   .import-actions .btn { width: 100% }
+  .manifest-intro { display: block }
+  .manifest-intro.is-editing { display: contents }
+  .manifest-scope { align-items: flex-start; flex-wrap: wrap; margin-top: 12px; padding: 10px 2px; border-left: 0; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line) }
+  .manifest-scope.is-editing {
+    position: sticky;
+    top: 64px;
+    z-index: 45;
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 10px 24px -18px rgba(73, 59, 44, .45);
+  }
+  .manifest-scope p { flex-basis: calc(100% - 25px) }
+  .manifest-scope > button { width: 100%; min-height: 44px; background: var(--surface); border: 1px solid var(--line) }
+  .manifest-scope .manifest-edit-actions { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+  .manifest-scope .manifest-edit-actions button { width: 100%; min-height: 44px; background: var(--surface); border: 1px solid var(--line) }
   .type-switch { width: 100%; display: flex; flex-wrap: wrap }
   .type-switch > button { flex: 1 1 calc(50% - 4px); min-height: 44px }
   .type-switch .hint { flex: 1 1 100%; margin: 4px 2px }
@@ -1275,21 +1367,49 @@ onMounted(async function () {
   .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 9px }
   .item-section { padding-top: 18px }
   .section-head h2 { font-size: 16px }
-  .subsection-columns { grid-template-columns: 1fr; gap: 10px; margin-top: 14px }
-  .item-subsection { padding: 11px }
-  .item-subsection .slot-grid { grid-template-columns: repeat(3, minmax(0, 92px)); gap: 10px 8px }
-  .slot-count { font-size: 11.5px; padding: 2px 7px; right: 5px; bottom: 5px }
+  .subsection-columns { grid-template-columns: 1fr; gap: 0; margin-top: 14px }
+  .item-subsection { padding: 16px 0 }
+  .item-subsection > .slot-grid { grid-template-columns: repeat(3, minmax(0, 92px)); gap: 10px 8px }
+  .subsection-shelves .item-subsection { grid-template-columns: minmax(0, 1fr); row-gap: 20px }
+  .subsection-shelves .subsection-head { align-self: auto }
+  .subsection-edit { width: 44px; height: 44px }
+  .subsection-shelves .item-subsection > .slot-grid { grid-template-columns: repeat(3, minmax(0, 92px)); justify-content: center; margin-top: 0 }
+  .cultivation-groups { grid-template-columns: minmax(0, 1fr); gap: 10px }
+  .cultivation-group { padding: 11px }
+  .cultivation-group > .slot-grid { grid-template-columns: repeat(3, minmax(0, 92px)); gap: 10px 8px }
+  .slot-ic:not(.is-agent) { width: min(100%, 88px) }
+  .slot-count { min-width: 30px; height: 24px; font-size: 13px; padding: 2px 8px 0; right: 2px; bottom: 5px }
+  .backpack.manifest-items { padding: 10px 8px 12px; border-radius: 14px }
+  .manifest-items .item-section { padding-top: 11px }
+  .manifest-items .section-head h2 { font-size: 13px }
+  .manifest-items .slot-grid,
+  .manifest-items .item-subsection > .slot-grid,
+  .manifest-items .subsection-rows .item-subsection > .slot-grid,
+  .manifest-items .subsection-shelves .item-subsection > .slot-grid,
+  .manifest-items .cultivation-group > .slot-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px 3px; margin-top: 8px }
+  .manifest-items .slot-ic:not(.is-agent) { width: min(100%, 42px) }
+  .manifest-items .slot-name { height: 2.5em; margin-top: 2px; font-size: 9.5px; line-height: 1.25 }
+  .manifest-items .slot-count { right: -1px; bottom: 1px; min-width: 20px; height: 16px; padding: 1px 4px 0; font-size: 9.5px }
+  .manifest-items .slot-ph .ph-seal { display: none }
+  .manifest-items .slot-ph .ph-mono { font-size: 18px }
+  .manifest-items .subsection-columns { margin-top: 5px }
+  .manifest-items .item-subsection { padding: 8px 0 }
+  .manifest-items .subsection-shelves .item-subsection { grid-template-columns: minmax(0, 1fr); row-gap: 7px }
+  .manifest-items .item-subsection.is-divination-stone > .slot-grid > .slot:nth-child(5) { grid-column: 1 }
+  .manifest-items .cultivation-groups { grid-template-columns: minmax(0, 1fr); gap: 7px; margin-top: 7px }
+  .manifest-items .cultivation-group { padding: 6px }
   .acquired-bar { flex-direction: column; align-items: stretch }
   .range { justify-content: space-between }
   .manifest-bar { flex-direction: column; align-items: stretch; gap: 10px }
   .manifest-bar .sp { display: none }
   .type-switch { flex-wrap: wrap }
   .type-switch > .sp { display: none }
-  .type-switch button.stock-action { flex: 1 }
   .stock-save-notice { width: 100%; text-align: center }
   .stock-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .stock-stepper { left: 4px; right: 4px; bottom: 4px; height: 44px; grid-template-columns: 44px minmax(0, 1fr) 44px }
-  .stock-count-input { font-size: 14px }
+  .stock-stepper { width: min(100%, 132px); height: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, 44px) }
+  .stock-stepper button:first-child { grid-column: 1; grid-row: 2; border-right: 1px solid var(--line) }
+  .stock-stepper button:last-child { grid-column: 2; grid-row: 2; border-left: 0 }
+  .stock-stepper .stock-count-input { grid-column: 1 / -1; grid-row: 1; border-bottom: 1px solid var(--line); font-size: 15px }
   .mf-search { width: auto }
   .mf-stats { width: 100%; justify-content: space-between; gap: 8px }
   .mf-stat { flex-direction: column; gap: 1px }
@@ -1305,5 +1425,12 @@ onMounted(async function () {
   .record-time { margin-left: 0 }
   .record-del { min-height: 44px; width: 100% }
   .state { padding: 36px 18px }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subsection-edit,
+  .subsection-edit svg,
+  .subsection-edit::after { transition: none }
+  .subsection-edit:hover:not(:disabled) svg { transform: none }
 }
 </style>
