@@ -4,7 +4,7 @@
       <div class="modal plan-modal">
         <div class="modal-head">
           <h3>我的方案</h3>
-          <button type="button" @click="$emit('close')"><X :size="20" /></button>
+          <button type="button" aria-label="关闭方案列表弹窗" @click="$emit('close')"><X :size="20" /></button>
         </div>
 
         <div class="plan-body">
@@ -71,7 +71,7 @@
         </div>
 
         <div class="modal-foot">
-          <button type="button" class="btn ghost" style="flex:none" @click="$emit('close')">关闭</button>
+          <button type="button" class="btn ghost" @click="$emit('close')">关闭</button>
         </div>
       </div>
     </div>
@@ -169,7 +169,7 @@ function commitRename(p) {
 .pbtn{
   flex-shrink:0;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;
   background:var(--paper);border:1px solid var(--line);color:var(--ink-60);
-  cursor:pointer;transition:all .25s var(--ease);
+  cursor:pointer;transition:color .25s var(--ease),background-color .25s var(--ease),border-color .25s var(--ease);
 }
 .pbtn:hover{color:var(--ink);border-color:var(--ink)}
 .pbtn.ok{background:var(--yellow);border-color:var(--yellow-deep);color:var(--ink)}
@@ -184,5 +184,14 @@ function commitRename(p) {
 .upload-hint{
   background:var(--cream);border:1px dashed var(--line);border-radius:12px;
   padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--ink-60);
+}
+@media (max-width:640px){
+  .plan-body{padding:14px 16px}
+  .guest-banner{align-items:flex-start;flex-wrap:wrap}
+  .guest-banner .banner-login{min-height:40px}
+  .plan-item{align-items:flex-start;flex-wrap:wrap;padding:10px}
+  .plan-main{min-height:44px;justify-content:center}
+  .pbtn{width:44px;height:44px}
+  .rename-input{min-height:44px;font-size:16px}
 }
 </style>

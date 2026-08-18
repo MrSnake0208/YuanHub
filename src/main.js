@@ -7,6 +7,10 @@ import './styles/main.css'
 // 滚动出现指令：进入视口时加上 .in（复刻原站 IntersectionObserver 动效）
 const reveal = {
   mounted(el, binding) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.classList.add('rv', 'in')
+      return
+    }
     const delay = binding.value && binding.value.delay ? binding.value.delay : 0
     if (delay) el.style.transitionDelay = delay + 'ms'
     el.classList.add('rv')

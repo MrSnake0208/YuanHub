@@ -2,7 +2,7 @@
   <div class="page-profile">
     <IslandSidebar />
 
-    <main class="profile-main">
+    <main id="main-content" class="profile-main">
       <!-- HERO -->
       <header class="hero">
         <div class="wrap">
@@ -39,8 +39,8 @@
             <!-- 生成面板 -->
             <div v-if="showGen" class="gen-panel">
               <div class="gen-row">
-                <span class="gen-label">绑定子账号</span>
-                <select v-model="genAccountId" class="gen-select">
+                <label class="gen-label" for="token-account">绑定子账号</label>
+                <select id="token-account" v-model="genAccountId" class="gen-select">
                   <option v-if="!accounts.length" value="">（请先在库存页创建子账号）</option>
                   <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
@@ -53,8 +53,8 @@
                 </label>
               </div>
               <div class="gen-row">
-                <span class="gen-label">备注</span>
-                <input v-model.trim="genRemark" class="gen-input" placeholder="可选，如「派遣脚本」" />
+                <label class="gen-label" for="token-remark">备注</label>
+                <input id="token-remark" v-model.trim="genRemark" class="gen-input" autocomplete="off" placeholder="可选，如「派遣脚本」" />
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="generating" @click="showGen = false">取消</button>
@@ -74,7 +74,7 @@
             </div>
 
             <!-- 提示状态 -->
-            <div v-if="notice" class="notice-line" :class="{ err: noticeError }">{{ notice }}</div>
+            <div v-if="notice" class="notice-line" :class="{ err: noticeError }" role="status" aria-live="polite">{{ notice }}</div>
 
             <!-- 列表 -->
             <div v-if="loading" class="state">正在加载 Token…</div>
@@ -324,7 +324,7 @@ onMounted(async function () {
 .act-btn {
   border: 1.5px solid var(--line); background: var(--paper); border-radius: 999px;
   padding: 10px 20px; font-size: 13px; font-weight: 800; color: var(--ink);
-  cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap;
+  cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap;
 }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); background: var(--cream); color: var(--ink) }
 .act-btn:disabled { opacity: .45; cursor: not-allowed }
@@ -370,7 +370,7 @@ onMounted(async function () {
 
 .t-btn {
   flex: none; border: none; border-radius: 10px; padding: 8px 16px;
-  font-size: 12.5px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .3s var(--ease);
+  font-size: 12.5px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease);
 }
 .t-btn.copy { background: var(--tea); color: var(--cream) }
 .t-btn.copy:hover:not(:disabled) { background: var(--accent); color: #fff }
@@ -387,7 +387,27 @@ onMounted(async function () {
 }
 
 @media (max-width: 640px) {
+  .hero-stats .uname { font-size: 18px; overflow-wrap: anywhere }
+  .hero-stats div.is-authed .v { font-size: 20px }
+  .token-card { margin-top: 24px; padding: 20px 16px; border-radius: 18px }
+  .card-head { gap: 16px }
+  .card-head h2 { font-size: 22px }
+  .card-head .gen-actions { width: 100% }
+  .card-head .act-btn { width: 100%; min-height: 44px }
+  .gen-panel { padding: 14px; border-radius: 14px }
+  .gen-row { align-items: stretch; flex-direction: column; gap: 7px }
+  .gen-label { width: auto; padding-top: 0 }
+  .gen-select,.gen-input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
+  .preset-option { width: 100%; min-height: 44px; border-radius: 12px }
+  .preset-option span { min-width: 0 }
+  .preset-option small { display: block; margin: 2px 0 0 }
+  .gen-actions { width: 100% }
+  .gen-actions .act-btn { flex: 1; min-height: 44px }
+  .new-token { padding: 14px }
+  .nt-code { width: 100%; min-width: 0 }
+  .nt-row .t-btn { flex: 1 }
   .token-item { flex-wrap: wrap }
   .t-meta { min-width: 0; flex: 1 }
+  .t-btn { min-height: 44px }
 }
 </style>

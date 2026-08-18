@@ -1,5 +1,20 @@
 <template>
-  <aside class="island">
+  <header class="mobile-shell detail-mobile-shell">
+    <router-link class="mobile-brand" to="/cart" aria-label="返回广陵账房">
+      <ArrowLeft :size="19" aria-hidden="true" />
+      <span>返回</span>
+    </router-link>
+    <nav class="mobile-nav detail-mobile-nav" aria-label="作业章节">
+      <a
+        v-for="item in items"
+        :key="item.id"
+        :href="'#' + item.id"
+        :class="{ active: activeId === item.id }"
+      >{{ item.label }}</a>
+    </nav>
+  </header>
+
+  <aside class="island" aria-label="作业章节">
     <div class="brand">
       <div class="brand-mark">Y</div>
       <div class="brand-txt">YuanHub<b>通关作业</b></div>
@@ -22,6 +37,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ArrowLeft } from '@lucide/vue'
 
 defineProps({
   author: { type: String, default: '' },
