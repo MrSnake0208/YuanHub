@@ -124,6 +124,7 @@
                 <span class="bp-tip">
                   共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已养成 <b class="bp-num">{{ manifestOwned }}</b> 位 ·
                   未养成 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
+                  <template v-if="gameFilter !== 'all'"> · 已按「{{ gameFilter }}」过滤</template>
                   <template v-if="!auth.isLoggedIn"> · 未登录：仅展示图鉴，不显示云端养成</template>
                 </span>
                 <span class="sp"></span>
@@ -345,6 +346,14 @@ function normalizeEntry(e) {
   }
 }
 
+// 版本匹配：item 可以是目录项或当前养成项；未声明 games 视为通用/通配。
+function matchesGame(item, game) {
+  if (game === 'all') return true
+  const games = item && (item.games || [])
+  if (!games || games.length === 0) return true
+  return games.indexOf(game) !== -1
+}
+
 const currentMap = computed(function () {
   const m = {}
   currentEntries.value.forEach(function (e) { m[e.id] = e })
@@ -367,6 +376,7 @@ const manifestEntries = computed(function () {
       })
     })
     .filter(function (e) {
+      if (!matchesGame(e, gameFilter.value)) return false
       if (f === 'owned' && !e.owned) return false
       if (f === 'missing' && e.owned) return false
       if (q) {
@@ -548,7 +558,9 @@ async function reloadCurrent(quiet) {
     })
     currentEntries.value = Object.keys(combined).map(function (id) {
       const op = catalogMap.value[id] || {}
-      return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '' }, combined[id])
+      return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '', games: op.games || [] }, combined[id])
+    }).filter(function (e) {
+      return matchesGame(e, gameFilter.value)
     }).sort(function (a, b) {
       return (b.level - a.level) || (b.starLevel - a.starLevel) || (b.elite - a.elite)
     })
