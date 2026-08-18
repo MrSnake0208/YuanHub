@@ -5,7 +5,8 @@ import {
   agentReleaseOrder,
   buildAgentGroups,
   filterAgentEntries,
-  sortAgentEntries
+  sortAgentEntries,
+  visibleAgentEntries
 } from '../src/data/inventory/agentManifest.js'
 
 const agents = [
@@ -18,6 +19,14 @@ const agents = [
 test('密探发布序号从 id 数字段解析', function () {
   assert.equal(agentReleaseOrder('char_102_jianyong'), 102)
   assert.equal(agentReleaseOrder('custom_agent'), -1)
+})
+
+test('暂不展示指定的限定变体', function () {
+  assert.deepEqual(visibleAgentEntries([
+    { id: 'char_084_chendengsp', name: '陈登·黍王' },
+    { id: 'char_085_shizimiaosp', name: '史子眇·赴烛' },
+    { id: 'char_013_chendeng', name: '陈登' }
+  ]).map(function (entry) { return entry.name }), ['陈登'])
 })
 
 test('最新排序按编号降序且非法 id 排末尾', function () {

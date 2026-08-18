@@ -106,11 +106,11 @@
               <aside class="manifest-scope" :class="{ 'is-editing': editingStock }">
                 <Pencil v-if="editingStock" :size="16" aria-hidden="true" />
                 <Info v-else :size="16" aria-hidden="true" />
-                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : (entityType === 'agent' ? '密探心纸库存' : '背包库存') }} · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
+                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : (entityType === 'agent' ? '心纸库存' : '道具库存') }} （背包排序） · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
                 <p v-else-if="entityType === 'item'" class="scope-guidance">库存数量有误？点击标题旁的 <Pencil :size="13" aria-hidden="true" /> 进入编辑模式</p>
-                <p v-else>特别关注自动同步到当前子账号；编辑只会更新心纸数量。</p>
+                <p v-else>心纸数量不对？立即手动修改</p>
                 <button v-if="!editingStock && entityType === 'agent'" type="button" class="scope-edit-agent" :disabled="loading || !!error" @click="startStockEdit()">
-                  <Pencil :size="14" aria-hidden="true" />编辑心纸
+                  <Pencil :size="14" aria-hidden="true" />编辑心纸库存
                 </button>
                 <div v-if="editingStock" class="manifest-edit-actions">
                   <button type="button" :disabled="savingStock" @click="cancelStockEdit"><X :size="14" />取消</button>
@@ -149,9 +149,11 @@
                 :data-tooltip="agentControlsToggleLabel"
                 @click="agentControlsCollapsed = !agentControlsCollapsed"
               >
-                <ChevronsDown v-if="agentControlsCollapsed" :size="16" aria-hidden="true" />
-                <ChevronsUp v-else :size="16" aria-hidden="true" />
-                <span>{{ agentControlsCollapsed ? '展开' : '收起' }}</span>
+                <ChevronLeft v-if="editingStock && agentControlsCollapsed" :size="17" aria-hidden="true" />
+                <ChevronRight v-else-if="editingStock" :size="17" aria-hidden="true" />
+                <ChevronDown v-else-if="agentControlsCollapsed" :size="17" aria-hidden="true" />
+                <ChevronUp v-else :size="17" aria-hidden="true" />
+    <span>{{ agentControlsToggleLabel }}</span>
               </button>
               <label class="agent-control-search">
                 <Search :size="15" aria-hidden="true" />
@@ -350,28 +352,31 @@
                 <section v-for="group in agentGroups" :key="group.id" class="agent-group">
                   <div v-if="group.label" class="agent-group-head"><h2>{{ group.label }}</h2><span>{{ group.entries.length }} 位</span></div>
                   <ul class="slot-grid agent-slot-grid">
-                    <li v-for="e in group.entries" :key="e.id" class="slot agent-card" :class="{ 'is-missing': !e.owned, 'is-favorite': favoriteAgentIds.has(e.id) }" :title="slotTitle(e)">
-                      <div class="slot-ic is-agent">
-                        <div class="slot-ph">
-                          <span class="ph-seal">图</span>
-                          <span class="ph-mono">{{ monogram(e) }}</span>
+                    <template v-for="(e, index) in group.entries" :key="e.id">
+                      <li v-if="isAgentFavoriteBoundary(group.entries, index)" class="agent-favorite-divider" role="separator" aria-label="其他密探"></li>
+                      <li class="slot agent-card" :class="{ 'is-missing': !e.owned, 'is-favorite': favoriteAgentIds.has(e.id) }" :title="slotTitle(e)">
+                        <div class="slot-ic is-agent">
+                          <div class="slot-ph">
+                            <span class="ph-seal">图</span>
+                            <span class="ph-mono">{{ monogram(e) }}</span>
+                          </div>
+                          <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                          <button
+                            type="button"
+                            class="agent-favorite-btn"
+                            :class="{ on: favoriteAgentIds.has(e.id), busy: favoriteBusyIds.has(e.id) }"
+                            :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + (e.name || e.id) : '特别关注' + (e.name || e.id)"
+                            :aria-pressed="favoriteAgentIds.has(e.id)"
+                            :aria-busy="favoriteBusyIds.has(e.id)"
+                            :disabled="favoriteBusyIds.has(e.id) || favoriteLoading || !auth.isLoggedIn || !accountId"
+                            :data-tooltip="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
+                            @click="toggleAgentFavorite(e)"
+                          ><Star :size="15" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+                          <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
                         </div>
-                        <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
-                        <button
-                          type="button"
-                          class="agent-favorite-btn"
-                          :class="{ on: favoriteAgentIds.has(e.id), busy: favoriteBusyIds.has(e.id) }"
-                          :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + (e.name || e.id) : '特别关注' + (e.name || e.id)"
-                          :aria-pressed="favoriteAgentIds.has(e.id)"
-                          :aria-busy="favoriteBusyIds.has(e.id)"
-                          :disabled="favoriteBusyIds.has(e.id) || favoriteLoading || !auth.isLoggedIn || !accountId"
-                          :data-tooltip="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
-                          @click="toggleAgentFavorite(e)"
-                        ><Star :size="15" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
-                        <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
-                      </div>
-                      <InventoryItemName :entry="e" />
-                    </li>
+                        <InventoryItemName :entry="e" />
+                      </li>
+                    </template>
                   </ul>
                 </section>
               </div>
@@ -620,7 +625,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronRight, ChevronsDown, ChevronsUp, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, X } from '@lucide/vue'
+import { ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, X } from '@lucide/vue'
 import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
 import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -629,7 +634,7 @@ import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, 
 import { auth } from '../../store/auth.js'
 import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { acquisitionChannel, buildAcquiredStats, buildRewardInsights, localDayKey, mapsHaveSameCounts, summarizeDispatchDuration } from '../../data/inventory/acquiredStats.js'
-import { buildAgentGroups, filterAgentEntries, sortAgentEntries } from '../../data/inventory/agentManifest.js'
+import { buildAgentGroups, filterAgentEntries, HIDDEN_AGENT_IDS, sortAgentEntries, visibleAgentEntries } from '../../data/inventory/agentManifest.js'
 import { FRONTEND_HIDDEN_ITEM_IDS, buildItemCategorySections, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../../data/inventory/itemSections.js'
 import { buildManualStockSnapshot, nextManualSnapshotTime, preserveHiddenStockEntries } from '../../data/inventory/manualStock.js'
 import { staminaCostOf, validateInventoryExchangeDocument } from '../../data/inventory/exchange.js'
@@ -650,6 +655,8 @@ const agentSort = ref('latest')
 const agentSortDirection = ref('desc')
 const agentSortBeforeEdit = ref(null)
 const agentSortDirectionBeforeEdit = ref(null)
+const agentFavoriteModeBeforeEdit = ref(null)
+const agentControlsCollapsedBeforeEdit = ref(null)
 const AGENT_SORT_OPTIONS = [
   { id: 'latest', label: '实装顺序' },
   { id: 'backpack', label: '背包顺序' },
@@ -673,7 +680,8 @@ const AGENT_FAVORITE_MODES = [
   { id: 'only', label: '只看关注' }
 ]
 const agentControlsToggleLabel = computed(function () {
-  return agentControlsCollapsed.value ? '展开密探工具' : '收起密探工具'
+  if (editingStock.value && agentControlsCollapsed.value) return '筛选'
+  return agentControlsCollapsed.value ? '展开' : '收起'
 })
 const AGENT_STATUS_OPTIONS = [
   { id: 'owned', label: '有库存' },
@@ -1098,14 +1106,15 @@ function applyAcquiredEntityType() {
 }
 
 const visibleItemCatalog = visibleInventoryItems(ITEM_CATALOG)
+const visibleAgentCatalog = visibleAgentEntries(AGENT_CATALOG)
 const stockCatalogSections = buildItemCategorySections(sortItemsByGameOrder(visibleItemCatalog))
 const stockCatalogSubsections = new Map(
   stockCatalogSections.flatMap(function (section) { return section.subsections || [] })
     .map(function (subsection) { return [subsection.id, subsection] })
 )
 const itemCatalogCount = visibleItemCatalog.length
-const agentCatalogCount = AGENT_CATALOG.length
-const agentSubProfs = Array.from(new Set(AGENT_CATALOG.map(function (entry) { return entry.subProf }).filter(Boolean)))
+const agentCatalogCount = visibleAgentCatalog.length
+const agentSubProfs = Array.from(new Set(visibleAgentCatalog.map(function (entry) { return entry.subProf }).filter(Boolean)))
 const agentFacetCount = computed(function () {
   return agentStatusFilters.value.length + agentRarityFilters.value.length + agentProfFilters.value.length + agentSubProfFilters.value.length
 })
@@ -1115,10 +1124,10 @@ const agentSortDirectionButtonLabel = computed(function () {
 
 const LOCAL_NAME = {
   item: new Map(ITEM_CATALOG.map(function (e) { return [e.id, e.name] })),
-  agent: new Map(AGENT_CATALOG.map(function (e) { return [e.id, e.name] }))
+  agent: new Map(visibleAgentCatalog.map(function (e) { return [e.id, e.name] }))
 }
 const LOCAL_ITEM = new Map(ITEM_CATALOG.map(function (e) { return [e.id, e] }))
-const localCatalog = computed(function () { return entityType.value === 'agent' ? AGENT_CATALOG : visibleItemCatalog })
+const localCatalog = computed(function () { return entityType.value === 'agent' ? visibleAgentCatalog : visibleItemCatalog })
 const visibleCurrentEntries = computed(function () {
   return entityType.value === 'item' ? visibleInventoryItems(currentEntries.value) : currentEntries.value
 })
@@ -1173,6 +1182,13 @@ const agentEmptyMessage = computed(function () {
   return '当前筛选下没有密探'
 })
 
+function isAgentFavoriteBoundary(entries, index) {
+  if (agentFavoriteMode.value !== 'priority' || index <= 0) return false
+  const previous = entries[index - 1]
+  const current = entries[index]
+  return !favoriteAgentIds.value.has(current.id) && favoriteAgentIds.value.has(previous.id)
+}
+
 function clearAgentFacetFilters() {
   agentStatusFilters.value = []
   agentRarityFilters.value = []
@@ -1223,11 +1239,11 @@ function resetAgentFilters() {
 }
 
 const stockEditEntries = computed(function () {
-  const baseCatalog = entityType.value === 'agent' ? AGENT_CATALOG : visibleItemCatalog
+  const baseCatalog = entityType.value === 'agent' ? visibleAgentCatalog : visibleItemCatalog
   const ids = new Set(baseCatalog.map(function (item) { return item.id }))
   const entries = baseCatalog.slice()
   visibleCurrentEntries.value.forEach(function (item) {
-    if (!ids.has(item.id)) entries.push(item)
+    if (!ids.has(item.id) && !(entityType.value === 'agent' && HIDDEN_AGENT_IDS.has(item.id))) entries.push(item)
   })
   return entityType.value === 'agent' ? sortAgentEntries(entries, 'backpack', null, { direction: 'asc' }) : sortStockEditItems(entries)
 })
@@ -1524,8 +1540,12 @@ function startStockEdit(scopeEntries, scopeName) {
   if (entityType.value === 'agent') {
     agentSortBeforeEdit.value = agentSort.value
     agentSortDirectionBeforeEdit.value = agentSortDirection.value
+    agentFavoriteModeBeforeEdit.value = agentFavoriteMode.value
+    agentControlsCollapsedBeforeEdit.value = agentControlsCollapsed.value
     agentSort.value = 'backpack'
     agentSortDirection.value = 'asc'
+    agentFavoriteMode.value = 'all'
+    agentControlsCollapsed.value = true
   }
   editingStock.value = true
   scrollToStockEditor()
@@ -1539,6 +1559,18 @@ function restoreAgentSortAfterEdit() {
   agentSortDirectionBeforeEdit.value = null
 }
 
+function restoreAgentFavoriteModeAfterEdit() {
+  if (agentFavoriteModeBeforeEdit.value == null) return
+  agentFavoriteMode.value = agentFavoriteModeBeforeEdit.value
+  agentFavoriteModeBeforeEdit.value = null
+}
+
+function restoreAgentControlsAfterEdit() {
+  if (agentControlsCollapsedBeforeEdit.value == null) return
+  agentControlsCollapsed.value = agentControlsCollapsedBeforeEdit.value
+  agentControlsCollapsedBeforeEdit.value = null
+}
+
 function cancelStockEdit() {
   editingStock.value = false
   savingStock.value = false
@@ -1548,6 +1580,8 @@ function cancelStockEdit() {
   stockEditScopeName.value = ''
   stockEditError.value = ''
   restoreAgentSortAfterEdit()
+  restoreAgentFavoriteModeAfterEdit()
+  restoreAgentControlsAfterEdit()
 }
 
 function manualSnapshotTime() {
@@ -1588,6 +1622,8 @@ async function saveStockEdit() {
     if (result && result.superseded) throw new Error('快照时间早于现有库存，未能生效')
     editingStock.value = false
     restoreAgentSortAfterEdit()
+    restoreAgentFavoriteModeAfterEdit()
+    restoreAgentControlsAfterEdit()
     stockSaveNotice.value = entityType.value === 'agent' ? '密探心纸库存已更新' : '库存已更新'
     stockDraft.value = {}
     stockOriginal.value = {}
@@ -2140,6 +2176,15 @@ onMounted(async function () {
 .mf-sync-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; font-weight: 700; line-height: 1.6 }
 .agent-controls { position: sticky; top: 16px; z-index: 24; display: flex; align-items: flex-end; gap: 8px; margin-top: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 12px 28px -22px rgba(73, 59, 44, .4); flex-wrap: wrap }
 .agent-controls-toggle { display: none; position: relative; width: 58px; min-height: 44px; align-items: center; justify-content: center; gap: 3px; flex: none; padding: 0 6px; border: 1px solid var(--tea); border-radius: 6px; background: var(--tea); color: var(--cream); font-family: var(--font-b); font-size: 10.5px; font-weight: 900; cursor: pointer; box-shadow: 0 3px 8px -6px var(--tea) }
+.agent-controls-toggle svg { transition: transform .2s var(--ease) }
+.agent-controls.is-editing.is-collapsed .agent-controls-toggle:hover svg,
+.agent-controls.is-editing.is-collapsed .agent-controls-toggle:focus-visible svg { transform: translateX(-2px) }
+.agent-controls.is-editing:not(.is-collapsed) .agent-controls-toggle:hover svg,
+.agent-controls.is-editing:not(.is-collapsed) .agent-controls-toggle:focus-visible svg { transform: translateX(2px) }
+.agent-controls:not(.is-editing).is-collapsed .agent-controls-toggle:hover svg,
+.agent-controls:not(.is-editing).is-collapsed .agent-controls-toggle:focus-visible svg { transform: translateY(2px) }
+.agent-controls:not(.is-editing):not(.is-collapsed) .agent-controls-toggle:hover svg,
+.agent-controls:not(.is-editing):not(.is-collapsed) .agent-controls-toggle:focus-visible svg { transform: translateY(-2px) }
 .agent-controls-toggle:hover { border-color: var(--ink); background: var(--ink); color: var(--cream) }
 .agent-controls-toggle:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .agent-sort-row { display: contents }
@@ -2391,11 +2436,13 @@ onMounted(async function () {
 .stock-edit-slot .slot-name { height: auto; min-height: calc(2 * 1.45em) }
 .stock-editor.is-agent-editor { padding: 14px }
 .is-agent-editor .stock-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-top: 12px }
-.is-agent-editor .stock-edit-slot { display: grid; min-height: 82px; grid-template-columns: 64px minmax(80px, 1fr) 132px; grid-template-rows: repeat(2, minmax(0, auto)); align-items: center; gap: 2px 10px; padding: 8px 10px; border-bottom: 1px solid var(--line) }
-.is-agent-editor .stock-edit-slot .slot-ic { width: 58px; grid-row: 1 / -1; margin: 0; border-radius: 10px }
-.is-agent-editor .stock-edit-slot .slot-name { height: auto; min-height: 0; justify-content: flex-start; margin: 0; text-align: left }
-.is-agent-editor .stock-edit-slot .slot-tag { align-self: start; justify-self: start; margin: 0; padding-inline: 6px }
-.is-agent-editor .stock-edit-slot .stock-stepper { width: 132px; grid-column: 3; grid-row: 1 / -1; margin: 0 }
+.is-agent-editor .stock-edit-slot { display: grid; min-height: 82px; grid-template-columns: 64px minmax(80px, 1fr) 132px; grid-template-rows: repeat(2, minmax(0, auto)); grid-template-areas: 'media name stepper' 'media meta stepper'; align-items: center; gap: 2px 10px; padding: 8px 10px; border-bottom: 1px solid var(--line) }
+.is-agent-editor .stock-edit-slot .slot-ic { width: 58px; grid-area: media; margin: 0; border-radius: 10px }
+.is-agent-editor .stock-edit-slot .slot-ic.is-agent { overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none }
+.is-agent-editor .stock-edit-slot:hover .slot-ic.is-agent { border-color: transparent; background: transparent; box-shadow: none }
+.is-agent-editor .stock-edit-slot .slot-name { grid-area: name; height: auto; min-height: 0; justify-content: flex-start; margin: 0; text-align: left }
+.is-agent-editor .stock-edit-slot .slot-tag { grid-area: meta; align-self: start; justify-self: start; margin: 0; padding-inline: 6px }
+.is-agent-editor .stock-edit-slot .stock-stepper { width: 132px; grid-area: stepper; margin: 0 }
 .stock-stepper { width: min(100%, 132px); height: 40px; margin-top: 6px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: stretch; border: 1.5px solid var(--accent); border-radius: 8px; overflow: hidden; background: var(--surface); box-shadow: 0 3px 8px rgba(73, 59, 44, .14) }
 .stock-stepper:focus-within { border-color: var(--tea); box-shadow: 0 0 0 2px var(--yellow) }
 .stock-stepper.invalid { border-color: var(--rouge) }
@@ -2455,6 +2502,12 @@ onMounted(async function () {
 .slot-tag.star.s5 { background: var(--yellow); border-color: transparent; color: var(--ink) }
 .slot-tag.star.s4 { background: transparent; border: 1.5px solid rgba(91, 106, 140, .45); color: var(--slate-deep) }
 .slot-tag.star.s3 { background: transparent; border: 1.5px solid var(--line); color: var(--ink-60) }
+.is-agent-editor .stock-edit-slot .slot-tag { margin-top: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-60); font-size: 10px; font-weight: 700; line-height: 1.35 }
+.is-agent-editor .stock-edit-slot .slot-tag.star.s5 { background: transparent; color: var(--accent-strong) }
+.is-agent-editor .stock-edit-slot .slot-tag.star.s4,
+.is-agent-editor .stock-edit-slot .slot-tag.star.s3 { border: 0; color: var(--ink-60) }
+.is-agent-editor .stock-edit-slot .stock-stepper { border: 1px solid var(--line); box-shadow: 0 2px 6px rgba(73, 59, 44, .08) }
+.is-agent-editor .stock-edit-slot .stock-stepper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(239, 210, 142, .7) }
 
 /* ---- 密探目录：与背包道具同构的心纸盘点格 ---- */
 .backpack.manifest-agents { padding: 14px 16px 18px; border-radius: 16px }
@@ -2466,6 +2519,7 @@ onMounted(async function () {
 .manifest-agents .agent-group-head h2 { margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 15px; font-weight: 900; letter-spacing: 0 }
 .manifest-agents .agent-group-head span { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
 .manifest-agents .agent-slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); justify-content: stretch; gap: 12px 8px; margin-top: 12px }
+.manifest-agents .agent-favorite-divider { grid-column: 1 / -1; height: 0; margin: 4px 0 2px; border-top: 1px dashed var(--line); list-style: none }
 .manifest-agents .agent-group-head + .agent-slot-grid { margin-top: 12px }
 .manifest-agents .agent-card { position: relative; align-items: center }
 .manifest-agents .agent-card:hover { transform: none }
@@ -2474,13 +2528,14 @@ onMounted(async function () {
 .manifest-agents .agent-card:hover .slot-ic.is-agent { border-color: transparent; box-shadow: none }
 .manifest-agents .agent-card .slot-name { height: 2.7em; margin-top: 4px; color: var(--ink); font-size: 10.5px; line-height: 1.35 }
 .manifest-agents .agent-card.is-favorite .slot-name { color: var(--tea) }
-.manifest-agents .agent-card .slot-count { right: 2px; bottom: 3px; min-width: 25px; height: 20px; padding: 2px 6px 0; border-radius: 5px; font-size: 10.5px; box-shadow: none }
+.manifest-agents .agent-card .slot-count { right: 0; bottom: 2px; min-width: 27px; height: 20px; padding: 1px 6px 0; border-radius: 999px; border-width: 1px; font-size: 11.5px; box-shadow: 0 2px 5px rgba(73, 59, 44, .2) }
 .manifest-agents .agent-favorite-btn { position: absolute; top: -6px; right: -12px; z-index: 4; display: grid; width: 44px; height: 44px; place-items: center; border: 0; background: transparent; color: var(--ink-35); cursor: pointer }
 .manifest-agents .agent-favorite-btn::before { position: absolute; inset: 8px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: 0 2px 6px rgba(73, 59, 44, .16); content: ''; opacity: .94; transition: background-color .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease) }
 .manifest-agents .agent-favorite-btn svg { position: relative; z-index: 1 }
-.manifest-agents .agent-favorite-btn.on { color: var(--cream) }
-.manifest-agents .agent-favorite-btn.on::before { border-color: var(--tea); background: var(--tea); box-shadow: 0 2px 7px rgba(73, 59, 44, .28) }
+.manifest-agents .agent-favorite-btn.on { color: #ff9320 }
+.manifest-agents .agent-favorite-btn.on::before { border-color: var(--line); background: var(--surface); box-shadow: 0 2px 6px rgba(73, 59, 44, .16) }
 .manifest-agents .agent-favorite-btn:hover:not(:disabled)::before { border-color: var(--accent); transform: scale(1.06) }
+.manifest-agents .agent-favorite-btn.on:hover:not(:disabled)::before { border-color: var(--line); background: var(--surface); box-shadow: 0 2px 6px rgba(73, 59, 44, .16); transform: none }
 .manifest-agents .agent-favorite-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .manifest-agents .agent-favorite-btn:disabled { cursor: not-allowed; opacity: .5 }
 .manifest-agents .agent-favorite-btn.busy svg { opacity: .42 }
@@ -2519,12 +2574,20 @@ onMounted(async function () {
 
 @media (min-width: 641px) {
   .manifest-items .item-subsection.is-level-breakthrough > .slot-grid > .slot:nth-child(12) { grid-column: 1 }
+  .is-agent-editor .stock-edit-slot { grid-template-areas: 'media name stepper' 'media meta stepper' }
 }
 
 @media (min-width: 641px) and (max-width: 1080px) {
   .manifest-items .item-subsection.is-divination-stone > .slot-grid > .slot:nth-child(5) { grid-column: 1 }
   .manifest-items .cultivation-groups { grid-template-columns: minmax(0, 1fr) }
   .manifest-items .cultivation-group > .slot-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) }
+}
+
+@media (min-width: 1200px) {
+  .is-agent-editor .stock-edit-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px }
+  .is-agent-editor .stock-edit-slot { min-height: 76px; grid-template-columns: 52px minmax(0, 1fr) 104px; gap: 2px 7px; padding: 7px 8px }
+  .is-agent-editor .stock-edit-slot .slot-ic { width: 50px }
+  .is-agent-editor .stock-edit-slot .stock-stepper { width: 104px; grid-template-columns: 32px minmax(0, 1fr) 32px }
 }
 
 /* ---- 导入记录 ---- */
@@ -2668,6 +2731,9 @@ onMounted(async function () {
   .mf-filter { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr) }
   .mf-filter button { min-height: 40px }
   .agent-controls { top: 72px; display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) minmax(82px, auto) 58px; align-items: end; gap: 7px; padding: 8px }
+  .agent-controls.is-editing { position: fixed; right: 16px; bottom: 16px; top: auto; z-index: 60; width: min(343px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; margin: 0 }
+  .agent-controls.is-editing:not(.is-collapsed) { overflow: visible }
+  .agent-controls.is-editing:not(.is-collapsed) .agent-menu-options { top: auto; bottom: calc(100% + 7px) }
   .agent-controls-toggle { display: inline-flex; grid-column: 5; grid-row: 1; width: 58px }
   .agent-controls > label { min-width: 0 }
   .agent-controls select, .agent-control-search input { width: 100%; min-width: 0; min-height: 44px; font-size: 12px }
@@ -2696,6 +2762,10 @@ onMounted(async function () {
   .agent-controls.is-collapsed .agent-control-search { grid-column: 1 / 4; grid-row: 1 }
   .agent-controls.is-collapsed .agent-filter-panel { grid-column: 4; grid-row: 1 }
   .agent-controls.is-collapsed .agent-controls-toggle { grid-column: 5; grid-row: 1 }
+  .agent-controls.is-editing.is-collapsed { display: block; width: auto; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible }
+  .agent-controls.is-editing.is-collapsed .agent-control-search,
+  .agent-controls.is-editing.is-collapsed .agent-filter-panel { display: none }
+  .agent-controls.is-editing.is-collapsed .agent-controls-toggle { display: inline-flex; width: 58px; grid-column: auto; grid-row: auto }
   .backpack.manifest-agents { padding: 8px 7px 10px; border-radius: 14px }
   .manifest-agents .agent-group { padding-top: 11px }
   .manifest-agents .agent-group + .agent-group { margin-top: 4px }

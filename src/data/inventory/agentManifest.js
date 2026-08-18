@@ -1,6 +1,18 @@
 const PROF_ORDER = ['阳', '阴', '火', '风', '水', '地', '混沌']
 const SUB_PROF_ORDER = ['神纪', '诡道', '破军', '岐黄', '龙盾']
 
+// 暂不在心纸清单和库存编辑中展示的限定变体。
+export const HIDDEN_AGENT_IDS = new Set([
+  'char_084_chendengsp',
+  'char_085_shizimiaosp'
+])
+
+export function visibleAgentEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).filter(function (entry) {
+    return !HIDDEN_AGENT_IDS.has(entry && entry.id)
+  })
+}
+
 // The order shown by the in-game agent inventory. Names missing from this list
 // have not been verified yet and are kept together at the end of the sort.
 export const AGENT_BACKPACK_ORDER = [
