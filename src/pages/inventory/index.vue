@@ -65,8 +65,8 @@
           <!-- TABS：追踪目录 / 时段获得量 / 导入记录 -->
           <div class="inventory-tabs" v-reveal>
             <button :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">追踪清单</button>
-            <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">时段获得量</button>
-            <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">导入记录</button>
+            <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">统计报告</button>
+            <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">操作历史</button>
             <span class="sp"></span>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn || editingStock" @click="showImport = !showImport">导入档案</button>
             <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
@@ -505,7 +505,7 @@
                 </div>
                 <div v-if="displayedAcquiredEntries.length === 0" class="state slim">没有匹配当前筛选的获得记录</div>
                 <ul v-else class="slot-grid acquired-slot-grid">
-                  <li v-for="e in displayedAcquiredEntries" :key="e.entity_type + ':' + e.id" class="slot" :title="e.name || e.id">
+                  <li v-for="e in displayedAcquiredEntries" :key="e.entity_type + ':' + e.id" class="slot" :class="{ 'is-priority': isPriorityReward(e) }" :title="e.name || e.id">
                     <button type="button" class="slot-action" :aria-label="'查看' + (e.name || e.id) + '的获得明细'" @click="openEntityDetails(e.id)">
                       <div class="slot-ic" :class="{ 'is-agent': e.entity_type === 'agent' }">
                         <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
@@ -544,7 +544,7 @@
                     <button type="button" :aria-label="'查看' + day.dayLabel + '的奖励流水明细'" @click="openDayDetails(day.date)">
                       <time :datetime="day.date"><b>{{ day.dayLabel }}</b><span>{{ day.weekday }} · {{ day.recordCount }} 条流水合并</span></time>
                       <span class="daily-rewards">
-                        <span v-for="reward in day.rewards" :key="reward.id"><b>{{ reward.name }}</b><em>+{{ fmtCount(reward.count) }}</em></span>
+                        <span v-for="reward in day.rewards" :key="reward.id" :class="{ 'is-priority': isPriorityReward(reward) }"><b>{{ reward.name }}</b><em>+{{ fmtCount(reward.count) }}</em></span>
                       </span>
                       <ChevronRight :size="18" aria-hidden="true" />
                     </button>
@@ -567,7 +567,7 @@
                       <span v-if="staminaCostOf(record) !== undefined" class="detail-stamina">消耗体力 <b>{{ staminaCostOf(record) }}</b></span>
                     </div>
                     <div class="detail-entries">
-                      <span v-for="entry in visibleRecordEntries(record)" :key="entry.id"><b>{{ entry.name || nameOf(entry.id, null, record.entity_type) }}</b><em>+{{ fmtCount(entry.count) }}</em></span>
+                      <span v-for="entry in visibleRecordEntries(record)" :key="entry.id" :class="{ 'is-priority': isPriorityReward(entry) }"><b>{{ entry.name || nameOf(entry.id, null, record.entity_type) }}</b><em>+{{ fmtCount(entry.count) }}</em></span>
                     </div>
                   </li>
                 </ol>
@@ -592,8 +592,8 @@
                 <li v-for="r in recordsList" :key="r.record_id" class="record">
                   <div class="record-main">
                     <div class="record-top">
-                      <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ r.record_type === 'reward_delta' ? '奖励' : '快照' }}</span>
-                      <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ r.entity_type === 'agent' ? '角色' : '物品' }}</span>
+                      <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ r.record_type === 'reward_delta' ? '实时奖励' : '库存更新' }}</span>
+                      <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ r.entity_type === 'agent' ? '心纸' : '道具' }}</span>
                       <span v-if="r.acquisition_channel" class="rtag rtag-type">{{ r.acquisition_channel }}</span>
                       <span v-if="staminaCostOf(r) !== undefined" class="rtag rtag-stamina">消耗体力 {{ staminaCostOf(r) }}</span>
                       <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
@@ -1189,6 +1189,10 @@ function isAgentFavoriteBoundary(entries, index) {
   return !favoriteAgentIds.value.has(current.id) && favoriteAgentIds.value.has(previous.id)
 }
 
+function isPriorityReward(reward) {
+  return reward && (reward.id === 'baijinbi' || reward.id === 'zhuyu' || favoriteAgentIds.value.has(reward.id))
+}
+
 function clearAgentFacetFilters() {
   agentStatusFilters.value = []
   agentRarityFilters.value = []
@@ -1449,12 +1453,27 @@ const sourceRows = computed(function () {
   const max = rows.length ? rows[0].recordCount : 1
   return rows.map(function (row) {
     const top = Array.from(row.counts.entries()).sort(function (a, b) { return b[1] - a[1] }).slice(0, 3)
+    const favoriteTop = Array.from(row.counts.entries())
+      .filter(function (pair) { return favoriteAgentIds.value.has(pair[0]) })
+      .sort(function (a, b) { return b[1] - a[1] })
+    const priorityEntries = Array.from(row.counts.entries())
+      .filter(function (pair) { return pair[0] === 'baijinbi' || pair[0] === 'zhuyu' })
+      .sort(function (a, b) { return b[1] - a[1] })
+    const favoritePreview = favoriteTop.slice(0, 4)
+    const priorityPreview = priorityEntries.concat(favoritePreview)
+    const totalCount = Array.from(row.counts.values()).reduce(function (sum, count) { return sum + count }, 0)
+    const topEntry = top[0]
+    const priorityText = priorityPreview.length
+      ? '重点 · ' + priorityPreview.map(function (pair) { return acquiredNameOf(pair[0], null) + ' +' + fmtCount(pair[1]) }).join(' · ') + (favoriteTop.length > favoritePreview.length ? ' · 另 ' + (favoriteTop.length - favoritePreview.length) + ' 位关注' : '')
+      : ''
     return {
       name: row.name,
       recordCount: row.recordCount,
       entityCount: row.ids.size,
       scale: row.recordCount / max,
-      topText: top.map(function (pair) { return acquiredNameOf(pair[0], null) + ' +' + fmtCount(pair[1]) }).join(' · ')
+      topText: priorityText || (topEntry
+        ? '累计 +' + fmtCount(totalCount) + ' · 主要为 ' + acquiredNameOf(topEntry[0], null) + ' +' + fmtCount(topEntry[1])
+        : '累计 +0')
     }
   })
 })
@@ -2334,6 +2353,16 @@ onMounted(async function () {
 .acquired-search > svg { position: absolute; left: 10px; bottom: 12px; z-index: 1; color: var(--ink-35); pointer-events: none }
 
 .acquired-overview { margin-top: 12px }
+.acquired-overview .acquired-slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); justify-content: stretch; gap: 12px 8px; margin-top: 12px }
+.acquired-overview .slot-ic:not(.is-agent) { width: 68px; border-radius: 11px }
+.acquired-overview .slot-ic.is-agent { width: 68px; overflow: visible; border: 0; background: transparent; box-shadow: none }
+.acquired-overview .slot:hover .slot-ic.is-agent { border-color: transparent; background: transparent; box-shadow: none }
+.acquired-overview .slot.is-priority .slot-ic,
+.acquired-overview .slot.is-priority:hover .slot-ic { box-shadow: none }
+.acquired-overview .slot.is-priority .slot-name { color: var(--ink); font-weight: 900; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; background: none }
+.acquired-overview .slot.is-priority .slot-meta { color: var(--ink-60) }
+.acquired-overview .slot-name { height: 2.6em; min-height: 0; margin-top: 3px; font-size: 11.5px; line-height: 1.3 }
+.acquired-overview .slot-count { right: 0; bottom: 2px; min-width: 27px; height: 20px; padding: 1px 6px 0; border-width: 1px; font-size: 11.5px; box-shadow: 0 2px 5px rgba(73, 59, 44, .2) }
 .acquired-slot-grid .slot-action { width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font-family: inherit; text-align: inherit; cursor: pointer }
 .acquired-slot-grid .slot-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 8px }
 .slot-meta { display: block; margin-top: 2px; color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 700; text-align: center }
@@ -2353,7 +2382,7 @@ onMounted(async function () {
 .source-main i::after { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--accent); content: ''; transform: scaleX(var(--source-scale, 0)); transform-origin: left }
 .source-stat { color: var(--ink-60); font-size: 11px; font-weight: 700; white-space: nowrap }
 .source-stat b { color: var(--ink); font-family: var(--font-d); font-size: 15px; font-weight: 900 }
-.source-top { overflow: hidden; color: var(--ink-60); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap }
+.source-top { min-width: 0; overflow-wrap: anywhere; color: var(--ink-60); font-size: 11px; font-weight: 600; line-height: 1.5 }
 .source-list svg { color: var(--accent-strong) }
 
 .timeline-list { padding: 4px 0 }
@@ -2365,6 +2394,7 @@ onMounted(async function () {
 .timeline-list time span { color: var(--ink-35); font-size: 10px; font-weight: 700 }
 .daily-rewards { display: flex; min-width: 0; gap: 6px; flex-wrap: wrap }
 .daily-rewards > span { display: inline-flex; min-height: 30px; max-width: 100%; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 11px }
+.daily-rewards > span.is-priority { border-color: rgba(215, 137, 53, .55); background: var(--yellow); color: var(--ink) }
 .daily-rewards b { overflow-wrap: anywhere; font-weight: 800 }
 .daily-rewards em { color: var(--accent-strong); font-family: var(--font-d); font-style: normal; font-weight: 900; white-space: nowrap }
 .timeline-list svg { color: var(--accent-strong) }
@@ -2381,6 +2411,7 @@ onMounted(async function () {
 .detail-stamina b { color: var(--accent-strong); font-family: var(--font-d); font-size: 12px; font-weight: 900 }
 .detail-entries { display: flex; gap: 6px; flex-wrap: wrap }
 .detail-entries span { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 11px }
+.detail-entries span.is-priority { border: 1px solid rgba(215, 137, 53, .55); background: var(--yellow) }
 .detail-entries b { font-weight: 800 }
 .detail-entries em { color: var(--accent-strong); font-family: var(--font-d); font-style: normal; font-weight: 900 }
 
@@ -2590,6 +2621,16 @@ onMounted(async function () {
   .is-agent-editor .stock-edit-slot .stock-stepper { width: 104px; grid-template-columns: 32px minmax(0, 1fr) 32px }
 }
 
+@media (max-width: 900px) {
+  .acquired-overview { padding: 10px 8px 12px; border-radius: 14px }
+  .acquired-overview .acquired-slot-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px 2px; margin-top: 8px }
+  .acquired-overview .slot-ic:not(.is-agent),
+  .acquired-overview .slot-ic.is-agent { width: min(100%, 42px) }
+  .acquired-overview .slot-name { height: 2.5em; margin-top: 2px; font-size: 10px; line-height: 1.25 }
+  .acquired-overview .slot-count { right: -1px; bottom: 1px; min-width: 18px; height: 15px; padding: 1px 3px 0; font-size: 9px }
+  .acquired-overview .slot-meta { margin-top: 1px; font-size: 10px }
+}
+
 /* ---- 导入记录 ---- */
 .records-head { display: flex; align-items: center; gap: 12px }
 .records-head .hint { font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
@@ -2700,6 +2741,7 @@ onMounted(async function () {
   .manifest-items .slot-count { right: -1px; bottom: 1px; min-width: 20px; height: 16px; padding: 1px 4px 0; font-size: 9.5px }
   .manifest-items .slot-ph .ph-seal { display: none }
   .manifest-items .slot-ph .ph-mono { font-size: 18px }
+  .acquired-overview { padding: 10px 8px 12px; border-radius: 14px }
   .manifest-items .subsection-columns { margin-top: 5px }
   .manifest-items .item-subsection { padding: 8px 0 }
   .manifest-items .subsection-shelves .item-subsection { grid-template-columns: minmax(0, 1fr); row-gap: 7px }
@@ -2804,13 +2846,13 @@ onMounted(async function () {
   .acquired-ledger { padding: 14px 12px; border-radius: 12px }
   .ledger-head { align-items: flex-start; flex-direction: column; gap: 6px }
   .ledger-head > small { text-align: left }
-  .source-list button { min-height: 88px; grid-template-columns: 28px minmax(0, 1fr) 22px; grid-template-areas: 'rank main icon' '. records icon' '. kinds icon'; gap: 4px 8px; padding: 10px 2px }
+  .source-list button { min-height: 108px; grid-template-columns: 28px minmax(0, 1fr) 22px; grid-template-areas: 'rank main icon' '. records icon' '. kinds icon' '. top top'; gap: 4px 8px; padding: 10px 2px }
   .source-rank { grid-area: rank }
   .source-main { grid-area: main }
   .source-list svg { grid-area: icon }
   .source-stat:nth-child(3) { grid-area: records }
   .source-stat:nth-child(4) { grid-area: kinds }
-  .source-top { display: none }
+  .source-top { display: block; grid-area: top; font-size: 10px; line-height: 1.4; white-space: normal }
   .timeline-list button { min-height: 0; grid-template-columns: minmax(0, 1fr) 22px; grid-template-areas: 'date icon' 'rewards rewards'; gap: 8px; padding: 12px 2px }
   .timeline-list time { grid-area: date }
   .timeline-list svg { grid-area: icon }
