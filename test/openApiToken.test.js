@@ -8,19 +8,22 @@ import {
   scopeDesc,
   isReadonly,
   isWriteonly,
+  isInventoryScope,
+  isOperatorScope,
+  scopeDomain,
+  FALLBACK_DESCRIPTIONS,
   formatCreateTime
 } from '../src/utils/openApiToken.js'
 
 const PERMISSIONS = [
   { scope: 'inventory:read', description: '库存数据读取' },
   { scope: 'inventory:write', description: '库存数据写入' },
-  { scope: 'inventory:export', description: '库存数据导出' }
+  { scope: 'inventory:export', description: '库存数据导出' },
+  { scope: 'operator:read', description: '密探数据读取' },
+  { scope: 'operator:write', description: '密探数据写入' },
+  { scope: 'operator:export', description: '密探数据导出' }
 ]
-const FALLBACK = {
-  'inventory:read': '库存数据读取（只读）',
-  'inventory:write': '库存数据写入（只写）',
-  'inventory:export': '库存数据导出'
-}
+const FALLBACK = FALLBACK_DESCRIPTIONS
 
 test('scopeKeys 数组原样返回', () => {
   assert.deepEqual(scopeKeys(['inventory:read', 'inventory:write']), ['inventory:read', 'inventory:write'])
@@ -73,6 +76,37 @@ test('isReadonly 只写或双权限为假', () => {
 test('isWriteonly 仅单个 inventory:write 为真', () => {
   assert.equal(isWriteonly(['inventory:write']), true)
   assert.equal(isWriteonly(['inventory:read']), false)
+})
+
+test('isReadonly/isWriteonly 支持 operator 单权限', () => {
+  assert.equal(isReadonly(['operator:read']), true)
+  assert.equal(isReadonly('operator:read'), true)
+  assert.equal(isReadonly(['operator:write']), false)
+  assert.equal(isWriteonly(['operator:write']), true)
+  assert.equal(isWriteonly(['operator:read']), false)
+})
+
+test('isInventoryScope/isOperatorScope 前缀判断', () => {
+  assert.equal(isInventoryScope('inventory:read'), true)
+  assert.equal(isInventoryScope('operator:read'), false)
+  assert.equal(isOperatorScope('operator:export'), true)
+  assert.equal(isOperatorScope('inventory:export'), false)
+})
+
+test('scopeDomain 识别库存/密探/空/混合', () => {
+  assert.equal(scopeDomain(['inventory:read', 'inventory:write']), 'inventory')
+  assert.equal(scopeDomain(['operator:read']), 'operator')
+  assert.equal(scopeDomain('operator:export'), 'operator')
+  assert.equal(scopeDomain([]), '')
+  assert.equal(scopeDomain(['inventory:read', 'operator:read']), 'mixed')
+  assert.equal(scopeDomain(null), '')
+})
+
+test('FALLBACK_DESCRIPTIONS 覆盖六个 scope', () => {
+  assert.equal(FALLBACK_DESCRIPTIONS['inventory:read'], '库存数据读取（只读）')
+  assert.equal(FALLBACK_DESCRIPTIONS['operator:read'], '密探数据读取（只读）')
+  assert.equal(FALLBACK_DESCRIPTIONS['operator:write'], '密探数据写入（只写）')
+  assert.equal(FALLBACK_DESCRIPTIONS['operator:export'], '密探数据导出')
 })
 
 test('formatCreateTime 格式化 ISO 字符串为本地时间', () => {

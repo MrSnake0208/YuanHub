@@ -1,0 +1,113 @@
+// 密探（operator）接口封装 —— 对照 BackEndV3-Share 最新 commit ed5347a
+// 后端为 Spring Boot，全局 Jackson SNAKE_CASE：
+// - 请求/响应 JSON 字段均为 snake_case（account_id、full_baseline_at、
+//   snapshot_scope、effective_at、snapshot_effect 等）；
+// - 交换协议 v2 为 myshare-operator-exchange，record 自带 account_id。
+//
+// 约定同 src/api/inventory.js：函数入参一律 camelCase，内部转 snake_case；
+// 导出接口与库存一致直接返回完整交换文档（无 ApiResult 包装），故用 raw。
+import { request } from './request.js'
+
+const PATH = '/v1/operator'
+
+// —— 密探子账号（独立于库存子账号） ——
+
+// 列表（需登录）
+// 返回 [{ id, name, created_at, updated_at }]
+export function listOperatorAccounts() {
+  return request(PATH + '/accounts', { auth: true })
+}
+
+// 创建（POST，需登录）——body { name }
+export function createOperatorAccount(name) {
+  return request(PATH + '/accounts', {
+    method: 'POST',
+    auth: true,
+    body: { name }
+  })
+}
+
+// 改名（PATCH，需登录）——body { name }
+export function renameOperatorAccount(accountId, name) {
+  return request(PATH + '/accounts/' + encodeURIComponent(accountId), {
+    method: 'PATCH',
+    auth: true,
+    body: { name }
+  })
+}
+
+// 删除（DELETE，需登录）——级联删除该账号的密探养成、导入记录与 OPERATOR token
+export function deleteOperatorAccount(accountId) {
+  return request(PATH + '/accounts/' + encodeURIComponent(accountId), {
+    method: 'DELETE',
+    auth: true
+  })
+}
+
+// —— 密探公开目录 ——
+
+// 密探图鉴（公开，无需登录）
+// 返回 { format, version, catalog_version, operators: [{ id, name, alias,
+//   rarity, prof, sub_prof?, games, discs, star_stones? }] }
+export function getOperatorCatalog() {
+  return request(PATH + '/catalog', { auth: false })
+}
+
+// —— 个人密探数据 ——
+
+// 导入（POST，需登录）——body 为完整交换文档 v2（snake_case 原样透传）
+// 响应 { accepted, duplicates, superseded, warnings: [] }
+export function importOperator(doc) {
+  return request(PATH + '/import', {
+    method: 'POST',
+    auth: true,
+    body: doc
+  })
+}
+
+// 当前养成（GET，需登录）——accountId 必填；game?：如鸢/代号鸢/不传=全部
+// 返回 [{ user_id, account_id, game, full_baseline_at,
+//   entries: { "<char_id>": { elite, star_level, level, discs, star_stones,
+//     listed_baseline_at } }, updated_at }]
+export function getOperatorCurrent({ accountId, game } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  if (game != null && game !== '') params.set('game', game)
+  const qs = params.toString()
+  return request(PATH + '/current' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+// 导入记录列表（GET，需登录）——{ accountId, game?, cursor?, limit? }
+// 返回 { items: [{ account_id, record_id, record_type, game, snapshot_scope,
+//   effective_at, received_at, snapshot_effect, entries }], next_cursor }
+export function listOperatorRecords({ accountId, game, cursor, limit } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  if (game != null && game !== '') params.set('game', game)
+  if (cursor != null && cursor !== '') params.set('cursor', cursor)
+  if (limit != null) params.set('limit', String(limit))
+  const qs = params.toString()
+  return request(PATH + '/records' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+// 删除单条记录（DELETE，需登录）——删除后后端重放剩余记录重建养成状态
+export function deleteOperatorRecord(recordId, accountId) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/records/' + encodeURIComponent(recordId) + (qs ? '?' + qs : ''), {
+    method: 'DELETE',
+    auth: true
+  })
+}
+
+// 导出（GET，需登录）——{ accountId?, scope? }
+// 二选一：account_id（单账号）或 scope=all（全部账号）。
+// 直接返回 v2 交换文档（无 ApiResult 包装），故用 raw。
+export function exportOperator({ accountId, scope } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  if (scope != null && scope !== '') params.set('scope', scope)
+  const qs = params.toString()
+  return request(PATH + '/export' + (qs ? '?' + qs : ''), { auth: true, raw: true })
+}

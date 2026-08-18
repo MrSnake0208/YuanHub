@@ -67,6 +67,18 @@ export const routes = [
         }
     },
     {
+        path: '/operator',
+        text: '密探',
+        name: 'operator',
+        display: true,
+        module: 'tools',
+        icon: 'users',
+        component: () => import('/src/pages/operator/index.vue'),
+        meta: {
+            title: '密探 — YuanHub'
+        }
+    },
+    {
         path: '/login',
         text: '登录',
         name: 'login',

@@ -12,7 +12,7 @@
             <span class="pill">开放接口</span>
           </div>
           <h1>我的账户<span class="small">凭据 · 权限 · 开放接口</span></h1>
-          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：按权限（只读 / 只写 / 导出）签发绑定到某个库存子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
+          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：支持库存与密探两个数据域，按权限（只读 / 只写 / 导出）签发绑定到对应子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
           <div class="hero-stats">
             <div><div class="k">当前身份</div><div class="v"><span class="uname">{{ userName }}</span></div></div>
             <div><div class="k">权限范围</div><div class="v">{{ permissionCount }}<small>项</small></div></div>
@@ -29,7 +29,7 @@
             <div class="card-head">
               <div>
                 <h2>第三方 API Token</h2>
-                <p class="card-sub">每个 Token 绑定一个库存子账号，可授予只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表仅显示 token_id。</p>
+                <p class="card-sub">每个 Token 绑定一个库存或密探子账号，可授予对应数据域的只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表仅显示 token_id。</p>
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="busy" @click="openGen">生成 Token</button>
@@ -39,9 +39,16 @@
             <!-- 生成面板 -->
             <div v-if="showGen" class="gen-panel">
               <div class="gen-row">
+                <span class="gen-label">数据域</span>
+                <div class="domain-switch">
+                  <button :class="{ on: genDomain === 'inventory' }" type="button" @click="setGenDomain('inventory')">库存</button>
+                  <button :class="{ on: genDomain === 'operator' }" type="button" @click="setGenDomain('operator')">密探</button>
+                </div>
+              </div>
+              <div class="gen-row">
                 <span class="gen-label">绑定子账号</span>
                 <select v-model="genAccountId" class="gen-select">
-                  <option v-if="!accounts.length" value="">（请先在库存页创建子账号）</option>
+                  <option v-if="!accounts.length" value="">（请先在库存/密探页创建{{ genDomain === 'operator' ? '密探' : '库存' }}子账号）</option>
                   <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </div>
@@ -84,6 +91,7 @@
               <li v-for="t in tokens" :key="t.token_id" class="token-item">
                 <span class="t-dot" :class="dotClass(t.scopes)"></span>
                 <div class="t-meta">
+                  <span class="tag domain" :class="'dom-' + domainOf(t.scopes)">{{ domainLabel(t.scopes) }}</span>
                   <span class="tag" :class="dotClass(t.scopes)">{{ scopeDesc(t.scopes) }}</span>
                   <span class="t-account">子账号：{{ t.account_name || t.account_id }}</span>
                   <span v-if="t.remark" class="t-remark">{{ t.remark }}</span>
@@ -102,7 +110,7 @@
         <template #fine>
           <b>YuanHub</b> · 第三方 API Token 管理<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
-          Token 仅用途：库存数据只读 / 写入 / 导出，请勿泄露给他人
+          Token 仅用途：库存 / 密探数据只读、写入、导出，请勿泄露给他人
         </template>
       </SiteFooter>
     </main>
@@ -115,24 +123,26 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
 import { listAccounts } from '../../api/inventory.js'
+import { listOperatorAccounts } from '../../api/operator.js'
 import {
   getOpenApiPermissions,
   getOpenApiTokens,
   generateOpenApiToken,
   deleteOpenApiToken
 } from '../../api/openApi.js'
-import { scopeDesc as _scopeDesc, isReadonly as _isReadonly, isWriteonly as _isWriteonly, formatCreateTime as _formatCreateTime } from '../../utils/openApiToken.js'
-
-// scope 权限兜底描述（读不到权限列表时使用）
-const FALLBACK_SCOPES = {
-  'inventory:read': '库存数据读取（只读）',
-  'inventory:write': '库存数据写入（只写）',
-  'inventory:export': '库存数据导出'
-}
+import {
+  scopeDesc as _scopeDesc,
+  isReadonly as _isReadonly,
+  isWriteonly as _isWriteonly,
+  scopeDomain as _scopeDomain,
+  FALLBACK_DESCRIPTIONS as FALLBACK_SCOPES,
+  formatCreateTime as _formatCreateTime
+} from '../../utils/openApiToken.js'
 
 const tokens = ref([])
 const permissions = ref([])
-const accounts = ref([])
+const inventoryAccounts = ref([])
+const operatorAccounts = ref([])
 const loading = ref(false)
 const error = ref('')
 const generating = ref(false)
@@ -141,12 +151,18 @@ const noticeError = ref(false)
 let noticeTimer = null
 
 const showGen = ref(false)
+const genDomain = ref('inventory')
 const genAccountId = ref('')
 const genScopes = ref(['inventory:read'])
 const genRemark = ref('')
 const newToken = ref(null)
 
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
+
+// 当前数据域下可选子账号（库存与密探相互独立）
+const accounts = computed(function () {
+  return genDomain.value === 'operator' ? operatorAccounts.value : inventoryAccounts.value
+})
 
 // scope 解析/描述/时间格式化逻辑已抽离到 src/utils/openApiToken.js（可单测）。
 // 这里用薄封装绑定当前页面的 permissions / 兜底映射，供模板直接调用。
@@ -158,23 +174,37 @@ function dotClass(scope) {
   if (_isWriteonly(scope)) return 'rw'
   return 'mix'
 }
+function domainOf(scope) {
+  return _scopeDomain(scope)
+}
+function domainLabel(scope) {
+  const d = domainOf(scope)
+  if (d === 'operator') return '密探'
+  if (d === 'inventory') return '库存'
+  if (d === 'mixed') return '混合'
+  return '未知'
+}
 function formatCreateTime(value) {
   return _formatCreateTime(value)
 }
 
 const permissionCount = computed(function () {
-  return permissions.value.length || 3
+  return permissions.value.length || 6
 })
 const tokenCount = computed(function () { return tokens.value.length })
 
-// 权限候选：优先后端权限列表，读不到时用内置三项兜底
+// 权限候选：按当前数据域过滤，读不到后端权限列表时用内置六项兜底
+const FALLBACK_PERMISSIONS = [
+  { scope: 'inventory:read', description: '库存数据读取' },
+  { scope: 'inventory:write', description: '库存数据写入' },
+  { scope: 'inventory:export', description: '库存数据导出' },
+  { scope: 'operator:read', description: '密探数据读取' },
+  { scope: 'operator:write', description: '密探数据写入' },
+  { scope: 'operator:export', description: '密探数据导出' }
+]
 const scopeOptions = computed(function () {
-  if (permissions.value.length) return permissions.value
-  return [
-    { scope: 'inventory:read', description: '库存数据读取' },
-    { scope: 'inventory:write', description: '库存数据写入' },
-    { scope: 'inventory:export', description: '库存数据导出' }
-  ]
+  const source = permissions.value.length ? permissions.value : FALLBACK_PERMISSIONS
+  return source.filter(function (p) { return p.scope.indexOf(genDomain.value + ':') === 0 })
 })
 
 function toast(text, isError) {
@@ -212,23 +242,41 @@ async function loadTokens() {
 
 async function loadAccounts() {
   try {
-    const data = await listAccounts()
-    accounts.value = Array.isArray(data) ? data : []
+    const [invData, opData] = await Promise.all([
+      listAccounts(),
+      listOperatorAccounts()
+    ])
+    inventoryAccounts.value = Array.isArray(invData) ? invData : []
+    operatorAccounts.value = Array.isArray(opData) ? opData : []
     if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
+    // 若当前选中的账号已不属于当前域，切到该域第一个账号
+    if (genAccountId.value && !accounts.value.some(function (a) { return a.id === genAccountId.value })) {
+      genAccountId.value = accounts.value.length ? accounts.value[0].id : ''
+    }
   } catch (_e) {
-    accounts.value = []
+    // 任一账号列表加载失败不阻断 Token 列表；保留已有数据
   }
+}
+
+function setGenDomain(domain) {
+  if (domain === genDomain.value) return
+  genDomain.value = domain
+  genScopes.value = [domain === 'operator' ? 'operator:read' : 'inventory:read']
+  genAccountId.value = accounts.value.length ? accounts.value[0].id : ''
 }
 
 function openGen() {
   showGen.value = true
+  if (!genScopes.value.length || genScopes.value[0].indexOf(genDomain.value + ':') !== 0) {
+    genScopes.value = [genDomain.value === 'operator' ? 'operator:read' : 'inventory:read']
+  }
   if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
-  if (!genScopes.value.length) genScopes.value = ['inventory:read']
 }
 
 async function doGenerate() {
   if (busy.value) return
-  if (!genAccountId.value) { toast('请先选择要绑定的库存子账号', true); return }
+  const domainName = genDomain.value === 'operator' ? '密探' : '库存'
+  if (!genAccountId.value) { toast('请先选择要绑定的' + domainName + '子账号', true); return }
   if (!genScopes.value.length) { toast('请至少选择一个权限', true); return }
   generating.value = true
   try {
@@ -303,6 +351,10 @@ onMounted(async function () {
 .gen-label { flex: none; width: 84px; font-size: 13px; font-weight: 800; color: var(--ink); padding-top: 8px }
 .gen-select { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .gen-input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none }
+.domain-switch { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 12px; padding: 4px }
+.domain-switch button { border: none; background: transparent; font-family: var(--font-b); font-weight: 800; font-size: 13px; padding: 8px 20px; border-radius: 9px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
+.domain-switch button.on { background: var(--tea); color: var(--cream) }
+.domain-switch button:hover:not(.on) { color: var(--ink) }
 .gen-check { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-60); font-weight: 600; cursor: pointer; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 14px }
 .gen-check input { accent-color: var(--accent); cursor: pointer }
 .gen-check small { color: var(--ink-35); font-size: 11px }
@@ -380,6 +432,10 @@ onMounted(async function () {
 .tag { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 7px; padding: 2px 10px; letter-spacing: .05em }
 .tag.ro { background: var(--yellow); color: var(--ink) }
 .tag.rw { background: rgba(215, 137, 53, .14); color: var(--accent-strong) }
+.tag.domain { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); margin-right: -4px }
+.tag.domain.dom-inventory { border-color: rgba(91, 106, 140, .45); color: var(--slate-deep) }
+.tag.domain.dom-operator { border-color: rgba(215, 137, 53, .55); color: var(--accent-strong) }
+.tag.domain.dom-mixed { border-color: rgba(166, 81, 74, .4); color: var(--rouge) }
 .t-scope { font-family: var(--font-d); font-size: 11px; color: var(--ink-35) }
 .t-remark { font-size: 11.5px; color: var(--ink-60) }
 .t-created { font-size: 11px; color: var(--ink-35) }
