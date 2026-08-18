@@ -131,8 +131,8 @@
               </div>
               <div class="mf-progress" title="当前追踪目录持有率"><i :style="{ '--progress': manifestProgressScale }"></i></div>
               <span class="sp"></span>
-              <input id="manifest-search" v-model.trim="manifestSearch" name="manifest-search" class="mf-search" type="search" aria-label="搜索库存名称或 ID" placeholder="搜索名称 / id" />
-              <div class="mf-filter">
+              <input v-if="entityType === 'item'" id="manifest-search" v-model.trim="manifestSearch" name="manifest-search" class="mf-search" type="search" aria-label="搜索库存名称或 ID" placeholder="搜索名称 / id" />
+              <div v-if="entityType === 'item'" class="mf-filter">
                 <button :aria-pressed="manifestFilter === 'all'" :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
                 <button :aria-pressed="manifestFilter === 'owned'" :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已持有</button>
                 <button :aria-pressed="manifestFilter === 'missing'" :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未持有</button>
@@ -140,28 +140,88 @@
               <span v-if="error" class="mf-sync-error" role="status">云端库存同步失败：{{ error }}（数量按 0 显示）</span>
             </div>
 
-            <div v-if="entityType === 'agent'" class="agent-controls" :class="{ 'is-editing': editingStock }" aria-label="密探清单工具">
-              <label v-if="editingStock" class="agent-control-search">
-                <Search :size="15" aria-hidden="true" />
-                <span class="sr-only">搜索密探</span>
-                <input id="agent-editor-search" v-model.trim="manifestSearch" name="agent-editor-search" type="search" placeholder="搜索名称 / 属性 / 职业" />
-              </label>
+            <div v-if="entityType === 'agent'" class="agent-controls" :class="{ 'is-editing': editingStock, 'is-collapsed': agentControlsCollapsed }" aria-label="密探清单工具">
               <button
                 type="button"
-                class="agent-favorite-filter"
-                :class="{ on: manifestFavoriteOnly }"
-                :aria-pressed="manifestFavoriteOnly"
-                :disabled="!auth.isLoggedIn || !accountId || favoriteLoading"
-                @click="manifestFavoriteOnly = !manifestFavoriteOnly"
-              ><Star :size="15" :fill="manifestFavoriteOnly ? 'currentColor' : 'none'" aria-hidden="true" />只看关注</button>
-              <label><span>星级</span><select id="agent-rarity-filter" v-model="agentRarityFilter" name="agent-rarity-filter"><option value="">全部</option><option value="5">5 星</option><option value="4">4 星</option><option value="3">3 星</option></select></label>
-              <label><span>属性</span><select id="agent-prof-filter" v-model="agentProfFilter" name="agent-prof-filter"><option value="">全部</option><option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option></select></label>
-              <label><span>职业</span><select id="agent-sub-prof-filter" v-model="agentSubProfFilter" name="agent-sub-prof-filter"><option value="">全部</option><option v-for="prof in agentSubProfs" :key="prof" :value="prof">{{ prof }}</option></select></label>
-              <label v-if="!editingStock"><span>分组</span><select id="agent-group-by" v-model="agentGroupBy" name="agent-group-by"><option value="none">不分组</option><option value="rarity">按星级</option><option value="prof">按属性</option><option value="subProf">按职业</option></select></label>
-              <label><span>顺序</span><select id="agent-sort" v-model="agentSort" name="agent-sort"><option value="favorite">关注优先</option><option value="latest">新密探优先</option><option value="count">数量从高到低</option><option value="rarity">星级从高到低</option><option value="name">名称</option></select></label>
-              <div v-if="!editingStock" class="agent-view-switch" aria-label="密探展示方式">
-                <button type="button" :class="{ on: agentView === 'grid' }" :aria-pressed="agentView === 'grid'" title="网格视图" aria-label="网格视图" @click="agentView = 'grid'"><Grid2X2 :size="16" /></button>
-                <button type="button" :class="{ on: agentView === 'list' }" :aria-pressed="agentView === 'list'" title="紧凑列表" aria-label="紧凑列表" @click="agentView = 'list'"><List :size="17" /></button>
+                class="agent-controls-toggle"
+                :aria-expanded="!agentControlsCollapsed"
+                :aria-label="agentControlsToggleLabel"
+                :data-tooltip="agentControlsToggleLabel"
+                @click="agentControlsCollapsed = !agentControlsCollapsed"
+              >
+                <ChevronsDown v-if="agentControlsCollapsed" :size="16" aria-hidden="true" />
+                <ChevronsUp v-else :size="16" aria-hidden="true" />
+                <span>{{ agentControlsCollapsed ? '展开' : '收起' }}</span>
+              </button>
+              <label class="agent-control-search">
+                <Search :size="15" aria-hidden="true" />
+                <span class="sr-only">搜索密探</span>
+                <input :id="editingStock ? 'agent-editor-search' : 'agent-search'" v-model.trim="manifestSearch" :name="editingStock ? 'agent-editor-search' : 'agent-search'" type="search" placeholder="搜索名称 / 属性 / 职业" />
+              </label>
+              <details class="agent-filter-panel" @toggle="positionAgentFilterMenu">
+                <summary><ListFilter :size="15" aria-hidden="true" />筛选<span v-if="agentFacetCount">{{ agentFacetCount }}</span></summary>
+                <div class="agent-filter-menu">
+                  <div class="agent-filter-menu-head">
+                    <strong>筛选条件</strong>
+                    <button v-if="agentFacetCount" type="button" @click="clearAgentFacetFilters">清空</button>
+                  </div>
+                  <fieldset>
+                    <legend>库存</legend>
+                    <label v-for="option in AGENT_STATUS_OPTIONS" :key="option.id" :class="{ selected: agentStatusFilters.includes(option.id) }"><input v-model="agentStatusFilters" type="checkbox" :value="option.id" />{{ option.label }}</label>
+                  </fieldset>
+                  <fieldset>
+                    <legend>星级</legend>
+                    <label v-for="rarity in AGENT_RARITIES" :key="rarity" :class="{ selected: agentRarityFilters.includes(String(rarity)) }"><input v-model="agentRarityFilters" type="checkbox" :value="String(rarity)" />{{ rarity }} 星</label>
+                  </fieldset>
+                  <fieldset>
+                    <legend>属性</legend>
+                    <label v-for="prof in AGENT_PROFS" :key="prof" :class="{ selected: agentProfFilters.includes(prof) }"><input v-model="agentProfFilters" type="checkbox" :value="prof" />{{ prof }}</label>
+                  </fieldset>
+                  <fieldset>
+                    <legend>职业</legend>
+                    <label v-for="prof in agentSubProfs" :key="prof" :class="{ selected: agentSubProfFilters.includes(prof) }"><input v-model="agentSubProfFilters" type="checkbox" :value="prof" />{{ prof }}</label>
+                  </fieldset>
+                </div>
+              </details>
+              <div class="agent-favorite-mode" role="group" aria-label="关注显示方式">
+                <button
+                  v-for="mode in AGENT_FAVORITE_MODES"
+                  :key="mode.id"
+                  type="button"
+                  :class="{ on: agentFavoriteMode === mode.id }"
+                  :aria-pressed="agentFavoriteMode === mode.id"
+                  :disabled="mode.id === 'only' && (!auth.isLoggedIn || !accountId || favoriteLoading)"
+                  @click="agentFavoriteMode = mode.id"
+                >{{ mode.label }}</button>
+              </div>
+              <div class="agent-sort-row">
+                <details class="agent-menu-control agent-sort-control">
+                  <summary :aria-label="'排序方式：' + agentSortLabel">
+                    <ArrowDownUp :size="15" aria-hidden="true" />
+                    <span>{{ agentSortLabel }}</span>
+                    <ChevronDown :size="15" aria-hidden="true" />
+                  </summary>
+                  <div class="agent-menu-options" role="listbox" aria-label="排序方式">
+                    <button v-for="option in AGENT_SORT_OPTIONS" :key="option.id" type="button" role="option" :aria-selected="agentSort === option.id" :class="{ selected: agentSort === option.id }" @click="chooseAgentMenuValue($event, 'sort', option.id)">
+                      <span>{{ option.label }}</span>
+                      <Check v-if="agentSort === option.id" :size="14" aria-hidden="true" />
+                    </button>
+                  </div>
+                </details>
+                <button type="button" class="agent-sort-direction" :class="{ asc: agentSortDirection === 'asc' }" :aria-label="agentSortDirectionButtonLabel" :data-tooltip="agentSortDirectionButtonLabel" @click="toggleAgentSortDirection"><ArrowDown :size="16" aria-hidden="true" /></button>
+                <details v-if="!editingStock" class="agent-menu-control agent-group-control">
+                  <summary :aria-label="'分组方式：' + agentGroupLabel">
+                    <Layers3 :size="15" aria-hidden="true" />
+                    <span>{{ agentGroupLabel }}</span>
+                    <ChevronDown :size="15" aria-hidden="true" />
+                  </summary>
+                  <div class="agent-menu-options" role="listbox" aria-label="分组方式">
+                    <button v-for="option in AGENT_GROUP_OPTIONS" :key="option.id" type="button" role="option" :aria-selected="agentGroupBy === option.id" :class="{ selected: agentGroupBy === option.id }" @click="chooseAgentMenuValue($event, 'group', option.id)">
+                      <span>{{ option.label }}</span>
+                      <Check v-if="agentGroupBy === option.id" :size="14" aria-hidden="true" />
+                    </button>
+                  </div>
+                </details>
               </div>
               <button v-if="agentFiltersActive" type="button" class="agent-reset" @click="resetAgentFilters"><X :size="14" aria-hidden="true" />清除</button>
               <span class="agent-result" role="status">显示 {{ editingStock ? visibleStockEditorEntries.length : manifestEntries.length }} / {{ agentCatalogCount }}</span>
@@ -212,8 +272,11 @@
                 </li>
               </ul>
             </div>
-            <div v-else class="backpack" :class="{ 'manifest-items': entityType === 'item', 'manifest-agents': entityType === 'agent', 'agent-list-view': entityType === 'agent' && agentView === 'list' }" v-reveal>
-              <div v-if="manifestEntries.length === 0" class="state slim">没有匹配「{{ manifestSearch }}」的对象</div>
+            <div v-else class="backpack" :class="{ 'manifest-items': entityType === 'item', 'manifest-agents': entityType === 'agent' }" v-reveal>
+              <div v-if="manifestEntries.length === 0" class="state slim">
+                {{ entityType === 'agent' ? agentEmptyMessage : '没有匹配「' + manifestSearch + '」的对象' }}
+                <button v-if="entityType === 'agent' && agentFavoriteMode === 'only'" type="button" class="link" @click="agentFavoriteMode = 'all'">查看全部</button>
+              </div>
               <div v-else-if="entityType === 'item'" class="item-sections">
                 <section v-for="section in manifestCategorySections" :key="section.id" class="item-section">
                   <div class="section-head">
@@ -294,23 +357,20 @@
                           <span class="ph-mono">{{ monogram(e) }}</span>
                         </div>
                         <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                        <button
+                          type="button"
+                          class="agent-favorite-btn"
+                          :class="{ on: favoriteAgentIds.has(e.id), busy: favoriteBusyIds.has(e.id) }"
+                          :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + (e.name || e.id) : '特别关注' + (e.name || e.id)"
+                          :aria-pressed="favoriteAgentIds.has(e.id)"
+                          :aria-busy="favoriteBusyIds.has(e.id)"
+                          :disabled="favoriteBusyIds.has(e.id) || favoriteLoading || !auth.isLoggedIn || !accountId"
+                          :data-tooltip="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
+                          @click="toggleAgentFavorite(e)"
+                        ><Star :size="15" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
                         <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
                       </div>
-                      <div class="agent-card-body">
-                        <InventoryItemName :entry="e" />
-                        <span class="slot-tag star" :class="'s' + e.rarity">{{ e.rarity }}★ · {{ e.prof }} · {{ e.subProf }}</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="agent-favorite-btn"
-                        :class="{ on: favoriteAgentIds.has(e.id), busy: favoriteBusyIds.has(e.id) }"
-                        :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + (e.name || e.id) : '特别关注' + (e.name || e.id)"
-                        :aria-pressed="favoriteAgentIds.has(e.id)"
-                        :aria-busy="favoriteBusyIds.has(e.id)"
-                        :disabled="favoriteBusyIds.has(e.id) || favoriteLoading || !auth.isLoggedIn || !accountId"
-                        :title="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
-                        @click="toggleAgentFavorite(e)"
-                      ><Star :size="16" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+                      <InventoryItemName :entry="e" />
                     </li>
                   </ul>
                 </section>
@@ -560,7 +620,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { CalendarDays, ChevronRight, Grid2X2, Info, List, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, X } from '@lucide/vue'
+import { ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronRight, ChevronsDown, ChevronsUp, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, X } from '@lucide/vue'
 import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
 import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -579,13 +639,47 @@ const manifestPanel = ref(null)
 const entityType = ref('item')
 const manifestSearch = ref('')
 const manifestFilter = ref('all')
-const manifestFavoriteOnly = ref(false)
-const agentRarityFilter = ref('')
-const agentProfFilter = ref('')
-const agentSubProfFilter = ref('')
+const agentFavoriteMode = ref('priority')
+const agentControlsCollapsed = ref(false)
+const agentStatusFilters = ref([])
+const agentRarityFilters = ref([])
+const agentProfFilters = ref([])
+const agentSubProfFilters = ref([])
 const agentGroupBy = ref('none')
-const agentSort = ref('favorite')
-const agentView = ref('grid')
+const agentSort = ref('latest')
+const agentSortDirection = ref('desc')
+const agentSortBeforeEdit = ref(null)
+const agentSortDirectionBeforeEdit = ref(null)
+const AGENT_SORT_OPTIONS = [
+  { id: 'latest', label: '实装顺序' },
+  { id: 'backpack', label: '背包顺序' },
+  { id: 'count', label: '心纸数量' },
+  { id: 'name', label: '名称' }
+]
+const AGENT_GROUP_OPTIONS = [
+  { id: 'none', label: '不分组' },
+  { id: 'prof', label: '按属性' },
+  { id: 'subProf', label: '按职业' }
+]
+const agentSortLabel = computed(function () {
+  return AGENT_SORT_OPTIONS.find(function (option) { return option.id === agentSort.value })?.label || '实装顺序'
+})
+const agentGroupLabel = computed(function () {
+  return AGENT_GROUP_OPTIONS.find(function (option) { return option.id === agentGroupBy.value })?.label || '不分组'
+})
+const AGENT_FAVORITE_MODES = [
+  { id: 'all', label: '默认' },
+  { id: 'priority', label: '关注优先' },
+  { id: 'only', label: '只看关注' }
+]
+const agentControlsToggleLabel = computed(function () {
+  return agentControlsCollapsed.value ? '展开密探工具' : '收起密探工具'
+})
+const AGENT_STATUS_OPTIONS = [
+  { id: 'owned', label: '有库存' },
+  { id: 'missing', label: '无库存' }
+]
+const AGENT_RARITIES = [5, 4, 3]
 const favoriteAgentIds = ref(new Set())
 const favoriteBusyIds = ref(new Set())
 const favoriteLoading = ref(false)
@@ -1012,6 +1106,12 @@ const stockCatalogSubsections = new Map(
 const itemCatalogCount = visibleItemCatalog.length
 const agentCatalogCount = AGENT_CATALOG.length
 const agentSubProfs = Array.from(new Set(AGENT_CATALOG.map(function (entry) { return entry.subProf }).filter(Boolean)))
+const agentFacetCount = computed(function () {
+  return agentStatusFilters.value.length + agentRarityFilters.value.length + agentProfFilters.value.length + agentSubProfFilters.value.length
+})
+const agentSortDirectionButtonLabel = computed(function () {
+  return agentSortDirection.value === 'desc' ? '切换为升序' : '切换为降序'
+})
 
 const LOCAL_NAME = {
   item: new Map(ITEM_CATALOG.map(function (e) { return [e.id, e.name] })),
@@ -1040,13 +1140,16 @@ const manifestEntries = computed(function () {
   if (entityType.value === 'agent') {
     const filtered = filterAgentEntries(manifestBaseEntries.value, {
       query: q,
-      status: f,
-      favoriteOnly: manifestFavoriteOnly.value,
-      rarity: agentRarityFilter.value,
-      prof: agentProfFilter.value,
-      subProf: agentSubProfFilter.value
+      statuses: agentStatusFilters.value,
+      favoriteMode: agentFavoriteMode.value,
+      rarities: agentRarityFilters.value,
+      profs: agentProfFilters.value,
+      subProfs: agentSubProfFilters.value
     }, favoriteAgentIds.value)
-    return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value)
+    return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value, {
+      favoriteFirst: agentFavoriteMode.value === 'priority',
+      direction: agentSortDirection.value
+    })
   }
   return manifestBaseEntries.value.filter(function (e) {
       if (f === 'owned' && !e.owned) return false
@@ -1062,17 +1165,61 @@ const manifestGameEntries = computed(function () { return sortItemsByGameOrder(m
 const manifestCategorySections = computed(function () { return buildItemCategorySections(manifestGameEntries.value) })
 const agentGroups = computed(function () { return buildAgentGroups(manifestEntries.value, agentGroupBy.value) })
 const agentFiltersActive = computed(function () {
-  return !!manifestSearch.value || manifestFilter.value !== 'all' || manifestFavoriteOnly.value ||
-    !!agentRarityFilter.value || !!agentProfFilter.value || !!agentSubProfFilter.value
+  return !!manifestSearch.value || agentFavoriteMode.value === 'only' || agentFacetCount.value > 0
 })
+const agentEmptyMessage = computed(function () {
+  if (agentFavoriteMode.value === 'only' && favoriteAgentIds.value.size === 0) return '还没有特别关注的密探'
+  if (manifestSearch.value) return '没有找到“' + manifestSearch.value + '”'
+  return '当前筛选下没有密探'
+})
+
+function clearAgentFacetFilters() {
+  agentStatusFilters.value = []
+  agentRarityFilters.value = []
+  agentProfFilters.value = []
+  agentSubProfFilters.value = []
+}
+
+function toggleAgentSortDirection() {
+  agentSortDirection.value = agentSortDirection.value === 'desc' ? 'asc' : 'desc'
+}
+
+function chooseAgentMenuValue(event, type, value) {
+  if (type === 'sort') {
+    agentSort.value = value
+    if (value === 'backpack') agentSortDirection.value = 'asc'
+  }
+  if (type === 'group') agentGroupBy.value = value
+  const menu = event.currentTarget.closest('details')
+  if (menu) menu.open = false
+}
+
+function positionAgentFilterMenu(event) {
+  const panel = event.currentTarget
+  if (!panel.open) return
+  nextTick(function () {
+    const menu = panel.querySelector('.agent-filter-menu')
+    if (!menu) return
+    if (window.innerWidth > 640) {
+      menu.style.left = ''
+      menu.style.right = ''
+      menu.style.transform = ''
+      return
+    }
+    const panelRect = panel.getBoundingClientRect()
+    const menuWidth = Math.min(320, window.innerWidth - 32)
+    const left = Math.max(16, Math.min(window.innerWidth - menuWidth - 16, panelRect.right - menuWidth))
+    menu.style.left = (left - panelRect.left) + 'px'
+    menu.style.right = 'auto'
+    menu.style.transform = 'none'
+  })
+}
 
 function resetAgentFilters() {
   manifestSearch.value = ''
   manifestFilter.value = 'all'
-  manifestFavoriteOnly.value = false
-  agentRarityFilter.value = ''
-  agentProfFilter.value = ''
-  agentSubProfFilter.value = ''
+  agentFavoriteMode.value = 'priority'
+  clearAgentFacetFilters()
 }
 
 const stockEditEntries = computed(function () {
@@ -1082,7 +1229,7 @@ const stockEditEntries = computed(function () {
   visibleCurrentEntries.value.forEach(function (item) {
     if (!ids.has(item.id)) entries.push(item)
   })
-  return entityType.value === 'agent' ? sortAgentEntries(entries, 'latest') : sortStockEditItems(entries)
+  return entityType.value === 'agent' ? sortAgentEntries(entries, 'backpack', null, { direction: 'asc' }) : sortStockEditItems(entries)
 })
 const stockEditorEntries = computed(function () {
   if (!stockEditScopeIds.value) return stockEditEntries.value
@@ -1097,13 +1244,16 @@ const visibleStockEditorEntries = computed(function () {
   })
   const filtered = filterAgentEntries(rows, {
     query: manifestSearch.value,
-    status: manifestFilter.value,
-    favoriteOnly: manifestFavoriteOnly.value,
-    rarity: agentRarityFilter.value,
-    prof: agentProfFilter.value,
-    subProf: agentSubProfFilter.value
+    statuses: agentStatusFilters.value,
+    favoriteMode: agentFavoriteMode.value,
+    rarities: agentRarityFilters.value,
+    profs: agentProfFilters.value,
+    subProfs: agentSubProfFilters.value
   }, favoriteAgentIds.value)
-  return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value)
+  return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value, {
+    favoriteFirst: agentFavoriteMode.value === 'priority',
+    direction: agentSortDirection.value
+  })
 })
 const stockDraftError = computed(function () {
   const invalid = stockEditorEntries.value.find(function (item) { return !isValidStockCount(stockDraft.value[item.id]) })
@@ -1371,8 +1521,22 @@ function startStockEdit(scopeEntries, scopeName) {
   stockEditError.value = ''
   stockSaveNotice.value = ''
   showImport.value = false
+  if (entityType.value === 'agent') {
+    agentSortBeforeEdit.value = agentSort.value
+    agentSortDirectionBeforeEdit.value = agentSortDirection.value
+    agentSort.value = 'backpack'
+    agentSortDirection.value = 'asc'
+  }
   editingStock.value = true
   scrollToStockEditor()
+}
+
+function restoreAgentSortAfterEdit() {
+  if (agentSortBeforeEdit.value == null) return
+  agentSort.value = agentSortBeforeEdit.value
+  agentSortDirection.value = agentSortDirectionBeforeEdit.value || 'desc'
+  agentSortBeforeEdit.value = null
+  agentSortDirectionBeforeEdit.value = null
 }
 
 function cancelStockEdit() {
@@ -1383,6 +1547,7 @@ function cancelStockEdit() {
   stockEditScopeIds.value = null
   stockEditScopeName.value = ''
   stockEditError.value = ''
+  restoreAgentSortAfterEdit()
 }
 
 function manualSnapshotTime() {
@@ -1422,6 +1587,7 @@ async function saveStockEdit() {
     const result = await importInventory(doc)
     if (result && result.superseded) throw new Error('快照时间早于现有库存，未能生效')
     editingStock.value = false
+    restoreAgentSortAfterEdit()
     stockSaveNotice.value = entityType.value === 'agent' ? '密探心纸库存已更新' : '库存已更新'
     stockDraft.value = {}
     stockOriginal.value = {}
@@ -1972,23 +2138,89 @@ onMounted(async function () {
 .mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
 .mf-filter button:hover:not(.on) { color: var(--ink) }
 .mf-sync-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; font-weight: 700; line-height: 1.6 }
-.agent-controls { display: flex; align-items: flex-end; gap: 10px; margin-top: 10px; padding: 10px 2px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); flex-wrap: wrap }
-.agent-controls > label { display: flex; min-width: 88px; flex-direction: column; gap: 4px }
-.agent-controls > label > span:not(.sr-only) { color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
-.agent-controls select, .agent-controls input { min-height: 40px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-family: var(--font-b); font-size: 12px; outline: none }
-.agent-controls select { min-width: 88px; padding: 7px 28px 7px 9px; cursor: pointer }
-.agent-controls input { width: 210px; padding: 7px 10px 7px 33px }
-.agent-controls select:focus, .agent-controls input:focus { border-color: var(--accent) }
+.agent-controls { position: sticky; top: 16px; z-index: 24; display: flex; align-items: flex-end; gap: 8px; margin-top: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 12px 28px -22px rgba(73, 59, 44, .4); flex-wrap: wrap }
+.agent-controls-toggle { display: none; position: relative; width: 58px; min-height: 44px; align-items: center; justify-content: center; gap: 3px; flex: none; padding: 0 6px; border: 1px solid var(--tea); border-radius: 6px; background: var(--tea); color: var(--cream); font-family: var(--font-b); font-size: 10.5px; font-weight: 900; cursor: pointer; box-shadow: 0 3px 8px -6px var(--tea) }
+.agent-controls-toggle:hover { border-color: var(--ink); background: var(--ink); color: var(--cream) }
+.agent-controls-toggle:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.agent-sort-row { display: contents }
+.agent-menu-control { position: relative; min-width: 112px; align-self: flex-end }
+.agent-menu-control summary { display: flex; min-height: 44px; align-items: center; gap: 8px; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer; list-style: none; transition: border-color .18s var(--ease), background-color .18s var(--ease), box-shadow .18s var(--ease) }
+.agent-menu-control summary::-webkit-details-marker { display: none }
+.agent-menu-control summary > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.agent-menu-control summary > svg:last-child { margin-left: auto; flex: none; color: var(--ink-60); transition: transform .18s var(--ease) }
+.agent-menu-control summary:hover { border-color: var(--accent); background: var(--paper) }
+.agent-menu-control[open] { z-index: 40 }
+.agent-menu-control[open] summary { border-color: var(--accent); background: var(--paper); box-shadow: 0 4px 12px -10px var(--tea) }
+.agent-menu-control[open] summary > svg:last-child { transform: rotate(180deg) }
+.agent-menu-control summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.agent-menu-options { position: absolute; top: calc(100% + 7px); left: 0; z-index: 50; width: max-content; min-width: 100%; max-width: min(220px, calc(100vw - 32px)); padding: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 18px 34px -20px var(--tea) }
+.agent-group-control .agent-menu-options { right: 0; left: auto }
+.agent-menu-options button { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: space-between; gap: 18px; padding: 7px 9px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 12px; font-weight: 700; text-align: left; cursor: pointer; transition: background-color .16s var(--ease), color .16s var(--ease) }
+.agent-menu-options button:hover { background: var(--paper); color: var(--ink) }
+.agent-menu-options button.selected { background: var(--yellow); color: var(--ink); font-weight: 900 }
+.agent-menu-options button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: -2px }
+.agent-menu-options button svg { flex: none; color: var(--accent-strong) }
+.agent-controls > label { display: flex; min-width: 112px; flex-direction: column; gap: 4px }
+.agent-controls > label > span:not(.sr-only) { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
+.agent-controls select, .agent-control-search input { min-height: 44px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-family: var(--font-b); font-size: 12px; outline: none }
+.agent-select-control { position: relative }
+.agent-select-control > svg { position: absolute; bottom: 15px; left: 10px; z-index: 1; color: var(--ink-60); pointer-events: none }
+.agent-select-control select { width: 100%; min-width: 112px; padding: 8px 28px 8px 32px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer }
+.agent-select-control:hover select { border-color: var(--accent); background: var(--paper) }
+.agent-control-search input { width: 210px; padding: 8px 10px 8px 33px }
+.agent-controls select:focus, .agent-control-search input:focus { border-color: var(--accent) }
+.agent-select-control select:focus { border-color: var(--accent); background: var(--paper) }
 .agent-control-search { position: relative; min-width: 210px }
-.agent-control-search > svg { position: absolute; bottom: 12px; left: 10px; z-index: 1; color: var(--ink-35); pointer-events: none }
-.agent-favorite-filter, .agent-reset { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 5px; padding: 7px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer }
-.agent-favorite-filter.on { border-color: var(--accent); background: var(--yellow); color: var(--ink) }
-.agent-favorite-filter:hover:not(:disabled):not(.on), .agent-reset:hover { border-color: var(--ink); color: var(--ink) }
-.agent-favorite-filter:disabled { cursor: not-allowed; opacity: .45 }
+.agent-control-search > svg { position: absolute; bottom: 14px; left: 10px; z-index: 1; color: var(--ink-35); pointer-events: none }
+.agent-favorite-mode { display: inline-grid; grid-template-columns: repeat(3, auto); align-self: flex-end; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper) }
+.agent-favorite-mode button { min-height: 36px; padding: 6px 11px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 11.5px; font-weight: 800; cursor: pointer }
+.agent-favorite-mode button.on { background: var(--yellow); color: var(--ink); box-shadow: 0 1px 3px rgba(73, 59, 44, .14) }
+.agent-favorite-mode button:hover:not(:disabled):not(.on) { color: var(--ink) }
+.agent-favorite-mode button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.agent-favorite-mode button:disabled { cursor: not-allowed; opacity: .42 }
+.agent-filter-panel { position: relative; align-self: flex-end }
+.agent-filter-panel summary { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-60); font-size: 12px; font-weight: 800; cursor: pointer; list-style: none }
+.agent-filter-panel summary::-webkit-details-marker { display: none }
+.agent-filter-panel summary span { display: inline-grid; min-width: 20px; height: 20px; place-items: center; padding-inline: 5px; border-radius: 4px; background: var(--paper); color: var(--tea); font-family: var(--font-d); font-size: 10px }
+.agent-filter-panel[open] { z-index: 30 }
+.agent-filter-panel[open] summary { border-color: var(--accent); background: var(--paper); color: var(--ink) }
+.agent-filter-panel summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.agent-filter-menu { position: absolute; top: calc(100% + 7px); left: 0; z-index: 30; width: min(380px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 140px)); overflow-y: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 18px 38px -22px var(--tea) }
+.agent-filter-menu-head { display: flex; min-height: 28px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 2px 9px; border-bottom: 1px solid var(--line) }
+.agent-filter-menu-head strong { color: var(--ink); font-size: 12px; font-weight: 900 }
+.agent-filter-menu-head button { min-height: 28px; padding: 3px 6px; border: 0; border-radius: 4px; background: transparent; color: var(--accent-strong); font-size: 11px; font-weight: 800; cursor: pointer }
+.agent-filter-menu-head button:hover { background: var(--paper); color: var(--ink) }
+.agent-filter-menu fieldset { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 2px 6px; min-width: 0; margin: 0; padding: 10px 0; border: 0; border-bottom: 1px dashed var(--line) }
+.agent-filter-menu fieldset:first-of-type { padding-top: 9px }
+.agent-filter-menu legend { grid-column: 1 / -1; width: 100%; margin-bottom: 3px; color: var(--ink-60); font-family: var(--font-s); font-size: 11.5px; font-weight: 900; letter-spacing: 0 }
+.agent-filter-menu label { display: inline-flex; min-height: 36px; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-60); font-size: 11.5px; font-weight: 700; cursor: pointer; transition: color .18s var(--ease), background-color .18s var(--ease), border-color .18s var(--ease) }
+.agent-filter-menu label:hover { background: var(--paper); color: var(--ink) }
+.agent-filter-menu label.selected { border-color: var(--accent); background: var(--yellow); color: var(--ink) }
+.agent-filter-menu label:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.agent-filter-menu input { width: 15px; height: 15px; margin: 0; accent-color: var(--tea) }
+.agent-sort-direction, .agent-reset { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 5px; padding: 7px 12px; border: 1.5px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-60); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer }
+.agent-sort-direction { position: relative; width: 44px; padding: 0; background: var(--paper) }
+.agent-sort-direction svg { transition: transform .18s var(--ease) }
+.agent-sort-direction.asc svg { transform: rotate(180deg) }
+.agent-sort-direction:hover, .agent-reset:hover { border-color: var(--ink); color: var(--ink) }
+.agent-sort-direction:focus-visible, .agent-reset:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .agent-reset { background: transparent }
-.agent-view-switch { display: inline-grid; grid-template-columns: repeat(2, 40px); padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
-.agent-view-switch button { display: grid; width: 40px; height: 34px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); cursor: pointer }
-.agent-view-switch button.on { background: var(--tea); color: var(--cream) }
+.agent-sort-direction::after,
+.manifest-agents .agent-favorite-btn::after,
+.agent-controls-toggle::after,
+.agent-select-control::after {
+  position: absolute; z-index: 80; width: max-content; max-width: 180px; padding: 5px 8px; border-radius: 5px;
+  background: var(--tea); color: var(--cream); content: attr(data-tooltip); font-family: var(--font-b); font-size: 10.5px; font-weight: 700;
+  line-height: 1.35; opacity: 0; pointer-events: none; white-space: nowrap; transition: opacity .16s var(--ease), transform .16s var(--ease)
+}
+.agent-sort-direction::after { top: calc(100% + 7px); left: 50%; transform: translate(-50%, -3px) }
+.manifest-agents .agent-favorite-btn::after { top: calc(100% + 3px); right: 0; transform: translateY(-3px) }
+.agent-controls-toggle::after, .agent-select-control::after { top: calc(100% + 7px); left: 0; transform: translateY(-3px) }
+.agent-sort-direction:hover::after, .agent-sort-direction:focus-visible::after,
+.manifest-agents .agent-favorite-btn:hover::after, .manifest-agents .agent-favorite-btn:focus-visible::after,
+.agent-controls-toggle:hover::after, .agent-controls-toggle:focus-visible::after,
+.agent-select-control:hover::after, .agent-select-control:focus-within::after { opacity: 1; transform: translate(0, 0) }
+.agent-sort-direction:hover::after, .agent-sort-direction:focus-visible::after { transform: translate(-50%, 0) }
 .agent-result, .agent-sync-state { align-self: center; color: var(--ink-60); font-family: var(--font-d); font-size: 11px; font-weight: 800 }
 .agent-result { margin-left: auto }
 .agent-sync-state.is-error { flex-basis: 100%; color: var(--rouge); font-family: var(--font-b) }
@@ -2224,40 +2456,34 @@ onMounted(async function () {
 .slot-tag.star.s4 { background: transparent; border: 1.5px solid rgba(91, 106, 140, .45); color: var(--slate-deep) }
 .slot-tag.star.s3 { background: transparent; border: 1.5px solid var(--line); color: var(--ink-60) }
 
-/* ---- 密探目录：名册式清单 ---- */
+/* ---- 密探目录：与背包道具同构的心纸盘点格 ---- */
 .backpack.manifest-agents { padding: 14px 16px 18px; border-radius: 16px }
 .manifest-agents .agent-directory { min-width: 0 }
-.manifest-agents .agent-group { position: relative; padding-top: 12px }
-.manifest-agents .agent-group + .agent-group { margin-top: 12px; padding-top: 16px; border-top: 1px dashed var(--line) }
+.manifest-agents .agent-group { position: relative; padding-top: 15px }
+.manifest-agents .agent-group + .agent-group { margin-top: 4px; border-top: 1px dashed var(--line) }
 .manifest-agents .agent-group-head { position: relative; display: flex; min-height: 28px; align-items: center; gap: 8px; padding-left: 11px }
 .manifest-agents .agent-group-head::before { position: absolute; top: 50%; left: 0; width: 3px; height: 18px; border-radius: 2px; background: var(--accent); content: ''; transform: translateY(-50%) }
 .manifest-agents .agent-group-head h2 { margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 15px; font-weight: 900; letter-spacing: 0 }
 .manifest-agents .agent-group-head span { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
-.manifest-agents .agent-slot-grid { grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); gap: 8px; margin-top: 4px }
-.manifest-agents .agent-group-head + .agent-slot-grid { margin-top: 10px }
-.manifest-agents .agent-card { position: relative; display: grid; min-height: 80px; grid-template-columns: 64px minmax(0, 1fr) 44px; align-items: center; gap: 10px; padding: 8px 6px 8px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); transition: border-color .18s var(--ease), background-color .18s var(--ease), box-shadow .18s var(--ease) }
-.manifest-agents .agent-card:hover { border-color: var(--accent); background: var(--surface); box-shadow: 0 7px 18px -15px var(--tea); transform: none }
-.manifest-agents .agent-card.is-favorite { border-color: var(--accent); background: var(--surface) }
-.manifest-agents .agent-card .slot-ic { width: 64px; margin: 0; border-radius: 7px }
-.manifest-agents .agent-card .slot-ic.is-agent { border-width: 1px; box-shadow: none }
-.manifest-agents .agent-card:hover .slot-ic.is-agent { box-shadow: none }
-.manifest-agents .agent-card-body { display: flex; min-width: 0; align-self: stretch; flex-direction: column; justify-content: center; gap: 4px }
-.manifest-agents .agent-card .slot-name { height: auto; min-height: 0; justify-content: flex-start; margin: 0; color: var(--ink); font-size: 12.5px; line-height: 1.35; text-align: left; word-break: break-word }
+.manifest-agents .agent-slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); justify-content: stretch; gap: 12px 8px; margin-top: 12px }
+.manifest-agents .agent-group-head + .agent-slot-grid { margin-top: 12px }
+.manifest-agents .agent-card { position: relative; align-items: center }
+.manifest-agents .agent-card:hover { transform: none }
+.manifest-agents .agent-card .slot-ic { width: 72px; border-radius: 0 }
+.manifest-agents .agent-card .slot-ic.is-agent { overflow: visible; border: 0; background: transparent; box-shadow: none }
+.manifest-agents .agent-card:hover .slot-ic.is-agent { border-color: transparent; box-shadow: none }
+.manifest-agents .agent-card .slot-name { height: 2.7em; margin-top: 4px; color: var(--ink); font-size: 10.5px; line-height: 1.35 }
 .manifest-agents .agent-card.is-favorite .slot-name { color: var(--tea) }
-.manifest-agents .agent-card .slot-tag { max-width: 100%; align-self: flex-start; margin: 0; padding: 1px 7px; border-radius: 5px; font-size: 10px }
-.manifest-agents .agent-card .slot-count { right: 3px; bottom: 3px; min-width: 27px; height: 22px; padding: 2px 6px 0; border-radius: 5px; font-size: 11px; box-shadow: none }
-.manifest-agents .agent-favorite-btn { display: grid; width: 44px; height: 44px; place-items: center; align-self: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink-60); cursor: pointer; transition: background-color .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease) }
-.manifest-agents .agent-favorite-btn.on { border-color: var(--accent); background: var(--yellow); color: var(--tea) }
-.manifest-agents .agent-favorite-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--paper); color: var(--tea); transform: translateY(-1px) }
+.manifest-agents .agent-card .slot-count { right: 2px; bottom: 3px; min-width: 25px; height: 20px; padding: 2px 6px 0; border-radius: 5px; font-size: 10.5px; box-shadow: none }
+.manifest-agents .agent-favorite-btn { position: absolute; top: -6px; right: -12px; z-index: 4; display: grid; width: 44px; height: 44px; place-items: center; border: 0; background: transparent; color: var(--ink-35); cursor: pointer }
+.manifest-agents .agent-favorite-btn::before { position: absolute; inset: 8px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: 0 2px 6px rgba(73, 59, 44, .16); content: ''; opacity: .94; transition: background-color .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease) }
+.manifest-agents .agent-favorite-btn svg { position: relative; z-index: 1 }
+.manifest-agents .agent-favorite-btn.on { color: var(--cream) }
+.manifest-agents .agent-favorite-btn.on::before { border-color: var(--tea); background: var(--tea); box-shadow: 0 2px 7px rgba(73, 59, 44, .28) }
+.manifest-agents .agent-favorite-btn:hover:not(:disabled)::before { border-color: var(--accent); transform: scale(1.06) }
 .manifest-agents .agent-favorite-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .manifest-agents .agent-favorite-btn:disabled { cursor: not-allowed; opacity: .5 }
 .manifest-agents .agent-favorite-btn.busy svg { opacity: .42 }
-.backpack.agent-list-view { padding: 10px 16px 14px }
-.agent-list-view .agent-slot-grid { grid-template-columns: repeat(2, minmax(280px, 1fr)); gap: 0 18px; margin-top: 4px }
-.agent-list-view .agent-card { min-height: 72px; padding-block: 6px; border-width: 0 0 1px; border-radius: 0; background: transparent }
-.agent-list-view .agent-card:hover { border-color: var(--line); background: var(--cream); box-shadow: none }
-.agent-list-view .agent-card.is-favorite { border-color: var(--accent); background: transparent }
-.agent-list-view .agent-card .slot-ic { width: 58px }
 
 /* ---- 背包道具追踪目录：盘点簿式紧凑清单 ---- */
 .backpack.manifest-items { padding: 14px 16px 18px; border-radius: 16px }
@@ -2441,29 +2667,45 @@ onMounted(async function () {
   .mf-search { width: 100%; min-height: 44px; font-size: 16px }
   .mf-filter { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr) }
   .mf-filter button { min-height: 40px }
-  .agent-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 9px; padding: 12px 0 }
+  .agent-controls { top: 72px; display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) minmax(82px, auto) 58px; align-items: end; gap: 7px; padding: 8px }
+  .agent-controls-toggle { display: inline-flex; grid-column: 5; grid-row: 1; width: 58px }
   .agent-controls > label { min-width: 0 }
-  .agent-controls select, .agent-controls input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
-  .agent-control-search { grid-column: 1 / -1 }
+  .agent-controls select, .agent-control-search input { width: 100%; min-width: 0; min-height: 44px; font-size: 12px }
+  .agent-control-search { grid-column: 1 / 4; grid-row: 1 }
   .agent-control-search > svg { bottom: 14px }
-  .agent-favorite-filter { grid-column: 1 / -1; min-height: 44px }
-  .agent-view-switch { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .agent-view-switch button { width: 100%; height: 40px }
+  .agent-favorite-mode { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .agent-favorite-mode button { min-height: 40px; padding-inline: 5px }
+  .agent-filter-panel { grid-column: 4; grid-row: 1 }
+  .agent-filter-panel summary { width: 100% }
+  .agent-filter-menu { left: 0; right: auto; width: min(320px, calc(100vw - 32px)) }
+  .agent-sort-row { display: grid; grid-column: 1 / -1; grid-row: 3; grid-template-columns: minmax(0, 1.05fr) 44px minmax(132px, 1fr); gap: 7px; min-width: 0 }
+  .agent-sort-row .agent-menu-control { min-width: 0; width: 100% }
+  .agent-sort-row .agent-sort-direction { width: 100% }
+  .agent-controls.is-editing .agent-sort-row { grid-template-columns: minmax(0, 1fr) 44px }
   .agent-reset { min-height: 44px }
-  .agent-result { margin-left: 0; text-align: right }
+  .agent-result { grid-column: 1 / -1; grid-row: 4; margin: 0; justify-self: center; text-align: center }
   .agent-sync-state { grid-column: 1 / -1 }
+  .agent-controls.is-collapsed { row-gap: 0 }
+  .agent-controls.is-collapsed .agent-favorite-mode,
+  .agent-controls.is-collapsed .agent-sort-control,
+  .agent-controls.is-collapsed .agent-sort-direction,
+  .agent-controls.is-collapsed .agent-group-control,
+  .agent-controls.is-collapsed .agent-reset,
+  .agent-controls.is-collapsed .agent-result,
+  .agent-controls.is-collapsed .agent-sync-state { display: none }
+  .agent-controls.is-collapsed .agent-control-search { grid-column: 1 / 4; grid-row: 1 }
+  .agent-controls.is-collapsed .agent-filter-panel { grid-column: 4; grid-row: 1 }
+  .agent-controls.is-collapsed .agent-controls-toggle { grid-column: 5; grid-row: 1 }
   .backpack.manifest-agents { padding: 8px 7px 10px; border-radius: 14px }
-  .manifest-agents .agent-group { padding-top: 8px }
-  .manifest-agents .agent-group + .agent-group { margin-top: 10px; padding-top: 12px }
+  .manifest-agents .agent-group { padding-top: 11px }
+  .manifest-agents .agent-group + .agent-group { margin-top: 4px }
   .manifest-agents .agent-group-head { min-height: 26px }
   .manifest-agents .agent-group-head + .agent-slot-grid { margin-top: 7px }
-  .manifest-agents .agent-slot-grid { grid-template-columns: minmax(0, 1fr); gap: 6px }
-  .manifest-agents .agent-card { min-height: 76px; grid-template-columns: 58px minmax(0, 1fr) 44px; gap: 8px; padding: 7px 5px 7px 7px }
-  .manifest-agents .agent-card .slot-ic { width: 58px }
-  .backpack.agent-list-view { padding: 7px 8px 10px }
-  .agent-list-view .agent-slot-grid { grid-template-columns: minmax(0, 1fr); gap: 0 }
-  .agent-list-view .agent-card { min-height: 68px; padding-block: 5px }
-  .agent-list-view .agent-card .slot-ic { width: 54px }
+  .manifest-agents .agent-slot-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px 4px; margin-top: 8px }
+  .manifest-agents .agent-card .slot-ic { width: min(100%, 64px) }
+  .manifest-agents .agent-card .slot-name { height: 2.6em; margin-top: 2px; font-size: 9.5px; line-height: 1.3 }
+  .manifest-agents .agent-card .slot-count { right: 1px; bottom: 2px; min-width: 22px; height: 18px; padding-inline: 4px; font-size: 9.5px }
+  .manifest-agents .agent-favorite-btn { top: -7px; right: -12px }
   .is-agent-editor .stock-edit-grid { grid-template-columns: minmax(0, 1fr); gap: 5px }
   .is-agent-editor .stock-edit-slot { min-height: 82px; grid-template-columns: 58px minmax(70px, 1fr) 132px; gap: 2px 7px; padding-inline: 4px }
   .is-agent-editor .stock-edit-slot .slot-ic { width: 54px }

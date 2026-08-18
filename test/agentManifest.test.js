@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  agentBackpackOrder,
   agentReleaseOrder,
   buildAgentGroups,
   filterAgentEntries,
@@ -25,20 +26,54 @@ test('最新排序按编号降序且非法 id 排末尾', function () {
   ])
 })
 
+test('背包顺序按已知名单排列，未录入者统一置后', function () {
+  const entries = [
+    { id: 'char_001_unknown', name: '未收录', rarity: 5 },
+    { id: 'char_099_ganti', name: '甘缇', rarity: 3 },
+    { id: 'char_125_zhaoyun', name: '赵云', rarity: 5 },
+    { id: 'char_105_simahui', name: '司马徽', rarity: 5 }
+  ]
+  assert.equal(agentBackpackOrder('司马徽'), 0)
+  assert.deepEqual(sortAgentEntries(entries, 'backpack').map(function (entry) { return entry.name }), [
+    '司马徽', '赵云', '甘缇', '未收录'
+  ])
+})
+
 test('关注、状态与目录属性筛选可以组合', function () {
   const filtered = filterAgentEntries(agents, {
-    status: 'owned',
-    favoriteOnly: true,
-    rarity: '5',
-    prof: '火',
+    statuses: ['owned'],
+    favoriteMode: 'only',
+    rarities: ['5'],
+    profs: ['火'],
     query: '中'
   }, new Set(['char_038_mid', 'char_009_old']))
   assert.deepEqual(filtered.map(function (entry) { return entry.id }), ['char_038_mid'])
 })
 
-test('关注优先后仍按发布时间稳定排序', function () {
-  assert.deepEqual(sortAgentEntries(agents, 'favorite', new Set(['char_009_old', 'char_038_mid'])).map(function (entry) { return entry.id }), [
+test('同一筛选维度取并集且不同维度取交集', function () {
+  const filtered = filterAgentEntries(agents, {
+    rarities: ['4', '5'],
+    profs: ['阴', '火'],
+    subProfs: ['破军', '龙盾']
+  })
+  assert.deepEqual(filtered.map(function (entry) { return entry.id }), ['char_009_old', 'char_038_mid'])
+})
+
+test('关注优先作为独立优先级并保留主排序', function () {
+  assert.deepEqual(sortAgentEntries(agents, 'latest', new Set(['char_009_old', 'char_038_mid']), {
+    favoriteFirst: true,
+    direction: 'desc'
+  }).map(function (entry) { return entry.id }), [
     'char_038_mid', 'char_009_old', 'char_102_new', 'custom_agent'
+  ])
+})
+
+test('主排序可以独立反序', function () {
+  assert.deepEqual(sortAgentEntries(agents, 'latest', null, { direction: 'asc' }).map(function (entry) { return entry.id }), [
+    'custom_agent', 'char_009_old', 'char_038_mid', 'char_102_new'
+  ])
+  assert.deepEqual(sortAgentEntries(agents, 'count', null, { direction: 'asc' }).map(function (entry) { return entry.id }), [
+    'char_009_old', 'custom_agent', 'char_102_new', 'char_038_mid'
   ])
 })
 
