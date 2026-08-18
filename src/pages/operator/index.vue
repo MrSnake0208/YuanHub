@@ -245,19 +245,20 @@
                   <span class="elite-hint">当前等级最高修为 {{ maxEliteForLevel }}</span>
                 </div>
                 <div class="star-card" title="0=未拥有 · 1~30=星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
-                  <span class="star-card-title">星级</span>
-                  <span class="star-card-body">
+                  <div class="star-row">
+                    <span class="star-caption">星级</span>
                     <span class="star-groups">
                       <button type="button" class="star-pill" :class="{ on: starGroupName === 'none' }" @click="pickStarGroup('none')">未拥有</button>
                       <button v-for="s in STAR_RANGE" :key="s" type="button" class="star-pill" :class="{ on: starGroupName === s }" @click="pickStarGroup(s)">{{ s }}星</button>
                       <button type="button" class="star-pill awaken" :class="{ on: starGroupName === 'awaken' }" @click="pickStarGroup('awaken')">觉醒</button>
                     </span>
-                    <span v-if="starGroupName !== 'none' && starGroupName !== 'awaken'" class="star-nodes">
-                      <span class="node-caption">节点</span>
-                      <button v-for="n in NODE_RANGE" :key="n" type="button" class="node-chip" :class="{ on: starNode === n }" @click="pickStarNode(n)">{{ n }}</button>
+                  </div>
+                  <div v-if="starGroupName !== 'none' && starGroupName !== 'awaken'" class="star-row">
+                    <span class="star-caption">节点</span>
+                    <span class="star-nodes">
+                      <button v-for="n in NODE_RANGE" :key="n" type="button" class="node-chip" :class="{ on: starNode === n }" @click="pickStarNode(n)">{{ starGroupName }}-{{ n }}</button>
                     </span>
-                    <span class="star-feedback">当前：<b>{{ starLabel(editForm.starLevel) }}</b></span>
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -267,7 +268,7 @@
               <div class="disc-editor">
                 <p class="hint">最多同时选择 3 个命盘。</p>
                 <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
-                <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="{ on: isDiscSelected(d) }">
+                <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]">
                   <input type="checkbox" :value="discKey(d)" v-model="editForm.discNames" />
                   <span class="disc-name">{{ discKey(d) }}</span>
                   <small v-if="d.abbreviation">{{ d.abbreviation }}</small>
@@ -420,6 +421,12 @@ function discObject(key) {
   }
 }
 
+// 命盘品级色 → 按钮配色类（与后端目录 color 字段：无色 / 金 / 紫 / 蓝 对齐）
+const DISC_COLOR_CLASS = { '金': 'c-gold', '紫': 'c-purple', '蓝': 'c-blue' }
+function discColorClass(d) {
+  return (d && DISC_COLOR_CLASS[d.color]) || ''
+}
+
 const editingDiscs = computed(function () {
   return (editingOp.value && editingOp.value.discs) || []
 })
@@ -559,7 +566,7 @@ function starLabel(v) {
   return n
 }
 
-// 分段胶囊交互：把一维 starLevel 拆成「星级分组 + 节点」二维状态
+// 星级分段胶囊 + 节点胶囊：把一维 starLevel 拆成「星级分组 + 节点」二维状态
 const starGroupName = computed(function () {
   const v = Number(editForm.value.starLevel) || 0
   if (v === 0) return 'none'
@@ -1302,15 +1309,16 @@ onMounted(async function () {
 .num-fields .star-card {
   flex-basis: 100%;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   background: var(--paper);
   border: 1.5px solid var(--line);
   border-radius: 12px;
   padding: 10px 12px;
 }
-.num-fields .star-card-title { flex: none; width: 34px; padding-top: 5px; font-size: 13px; font-weight: 800; color: var(--ink) }
-.num-fields .star-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.star-row { display: flex; align-items: center; gap: 12px; min-width: 0 }
+.star-caption { flex: none; width: 34px; font-size: 13px; font-weight: 800; color: var(--ink) }
 .star-groups { display: flex; flex-wrap: wrap; gap: 6px }
 .star-pill {
   border: 1.5px solid var(--line);
@@ -1330,7 +1338,6 @@ onMounted(async function () {
 .star-pill.awaken { letter-spacing: .04em }
 .star-pill.awaken.on { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .star-nodes { display: flex; align-items: center; flex-wrap: wrap; gap: 6px }
-.node-caption { font-size: 11.5px; color: var(--ink-35); font-weight: 700; margin-right: 2px }
 .node-chip {
   min-width: 30px;
   height: 26px;
@@ -1348,8 +1355,6 @@ onMounted(async function () {
 }
 .node-chip:hover { border-color: var(--accent); color: var(--accent-strong) }
 .node-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
-.star-feedback { font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
-.star-feedback b { font-family: var(--font-d); font-weight: 900; color: var(--accent-strong) }
 .num-fields .level-row { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 12px }
 .num-fields .elite-hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
 .disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
@@ -1359,6 +1364,18 @@ onMounted(async function () {
 .disc-option.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 .disc-option small { font-size: 10.5px; color: var(--ink-35); font-weight: 600 }
 .disc-option .disc-color { color: var(--accent-strong); font-weight: 800 }
+/* 命盘品级色：金 / 紫 / 蓝（未选中=淡色底，选中=实色） */
+.disc-option.c-gold { background: rgba(215, 137, 53, .14); border-color: rgba(215, 137, 53, .55); color: #8a5a1f }
+.disc-option.c-gold.on { background: var(--accent); border-color: #b06f24; color: var(--cream) }
+.disc-option.c-purple { background: rgba(151, 130, 199, .16); border-color: rgba(151, 130, 199, .62); color: #6d56a0 }
+.disc-option.c-purple.on { background: #8a72bd; border-color: #7a62ab; color: var(--cream) }
+.disc-option.c-blue { background: rgba(110, 135, 184, .16); border-color: rgba(110, 135, 184, .6); color: #4f6387 }
+.disc-option.c-blue.on { background: #6E87B8; border-color: #5f76a4; color: var(--cream) }
+.disc-option.c-gold .disc-color { color: var(--accent-strong) }
+.disc-option.c-purple .disc-color { color: #7a62ab }
+.disc-option.c-blue .disc-color { color: #5f76a4 }
+.disc-option.c-gold.on .disc-color, .disc-option.c-purple.on .disc-color, .disc-option.c-blue.on .disc-color { color: var(--cream) }
+.disc-option.c-gold.on small, .disc-option.c-purple.on small, .disc-option.c-blue.on small { color: inherit }
 .stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
 .stone-item { display: flex; align-items: center; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
 .stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
