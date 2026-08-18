@@ -142,6 +142,7 @@
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
                   <span class="slot-tag star" :class="'s' + (e.rarity || 3)">{{ e.rarity || 3 }}★ · {{ e.prof || '未知' }}</span>
+                  <button v-if="auth.isLoggedIn && accountId" class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
                 </li>
               </ul>
             </div>
@@ -180,6 +181,7 @@
                   <span class="build-line">化极 {{ e.elite }} · 星 {{ e.starLevel }}</span>
                   <span v-if="e.discs && e.discs.length" class="build-line small">命盘 {{ e.discs.length }} 格</span>
                   <span v-if="e.starStones && e.starStones.length" class="build-line small">星石 {{ e.starStones.length }} 槽</span>
+                  <button class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
                 </li>
               </ul>
             </div>
@@ -218,6 +220,74 @@
           </div>
         </div>
       </section>
+
+      <!-- 单个密探编辑弹窗 -->
+      <div v-if="editing" class="editor-mask" @click.self="closeEditor">
+        <div class="editor-panel" v-reveal>
+          <div class="editor-head">
+            <div>
+              <h3>{{ editingOp.name || editingOp.id }}</h3>
+              <p class="editor-sub">{{ editingOp.id }} · {{ editingOp.rarity }}★ · {{ editingOp.prof }}</p>
+            </div>
+            <button class="editor-close" type="button" @click="closeEditor">×</button>
+          </div>
+
+          <div class="editor-body">
+            <div class="editor-row">
+              <span class="editor-label">版本</span>
+              <div class="editor-game">
+                <label v-for="g in editingGames" :key="g" class="game-pill">
+                  <input type="radio" :value="g" v-model="editGame" />
+                  <span>{{ g }}</span>
+                </label>
+                <p class="hint">保存后只写入所选版本的养成数据；每个密探可分别维护如鸢 / 代号鸢状态。</p>
+              </div>
+            </div>
+
+            <div class="editor-row">
+              <span class="editor-label">基础养成</span>
+              <div class="num-fields">
+                <label>化极 <input type="number" v-model.number="editForm.elite" min="0" /></label>
+                <label>星级 <input type="number" v-model.number="editForm.starLevel" min="0" /></label>
+                <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="120" /></label>
+              </div>
+            </div>
+
+            <div class="editor-row">
+              <span class="editor-label">命盘</span>
+              <div class="disc-editor">
+                <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
+                <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="{ on: isDiscSelected(d) }">
+                  <input type="checkbox" :value="discKey(d)" v-model="editForm.discNames" />
+                  <span class="disc-name">{{ discKey(d) }}</span>
+                  <small v-if="d.abbreviation">{{ d.abbreviation }}</small>
+                  <small v-if="d.color" class="disc-color">{{ d.color }}</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="editor-row">
+              <span class="editor-label">星石</span>
+              <div class="stone-editor">
+                <div v-for="slot in stoneSlots" :key="slot.type" class="stone-item">
+                  <span class="stone-name">{{ slot.label }}</span>
+                  <input type="number" v-model.number="editForm.stones[slot.type].level" min="0" max="60" placeholder="0=未装备" />
+                </div>
+                <p class="hint">星石等级填 0 表示未装备；保存后仅装备等级大于 0 的星石槽位。</p>
+              </div>
+            </div>
+
+            <div v-if="editNotice" class="editor-notice" :class="{ err: editNoticeError }">{{ editNotice }}</div>
+          </div>
+
+          <div class="editor-actions">
+            <button class="btn ghost" type="button" :disabled="savingEdit" @click="closeEditor">取消</button>
+            <button class="btn primary" type="button" :disabled="savingEdit || !editGame" @click="saveEdit">
+              {{ savingEdit ? '保存中…' : '保存到云端' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <SiteFooter>
         <template #big>密探养成<br><span>图鉴 · 快照 · 归档</span></template>
@@ -266,6 +336,16 @@ const importText = ref('')
 const importing = ref(false)
 const importResult = ref(null)
 
+// —— 单个密探编辑弹窗 ——
+const editing = ref(false)
+const editingId = ref('')
+const editingOp = ref(null)
+const editGame = ref('')
+const editForm = ref({ elite: 0, starLevel: 0, level: 0, discNames: [], stones: {} })
+const editNotice = ref('')
+const editNoticeError = ref(false)
+const savingEdit = ref(false)
+
 // —— 密探子账号 ——
 const accounts = ref([])
 const accountId = ref('')
@@ -284,18 +364,56 @@ const recordsError = ref('')
 
 // —— 目录归一化 ——
 function normalizeOperator(op) {
+  const rawSub = op.subProf || op.sub_prof || ''
   return {
     id: op.id || op.operator_id || op.operatorId || '',
     name: op.name || '',
     alias: op.alias || '',
     rarity: op.rarity != null ? op.rarity : 3,
     prof: Array.isArray(op.prof) ? op.prof.join('、') : (op.prof || '未知'),
-    subProf: op.subProf || op.sub_prof || '',
+    subProf: Array.isArray(rawSub) ? rawSub : (rawSub ? [rawSub] : []),
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
     starStones: op.starStones || op.star_stones || []
   }
 }
+
+// 编辑弹窗辅助
+function discKey(d) {
+  if (!d) return ''
+  return d.ot_name || d.otName || ''
+}
+
+function discObject(key) {
+  const d = (editingOp.value && editingOp.value.discs || []).find(function (x) { return discKey(x) === key })
+  if (!d) return { ot_name: key }
+  return {
+    ot_name: key,
+    abbreviation: d.abbreviation || null,
+    color: d.color || null,
+    desp: d.desp || null
+  }
+}
+
+const editingGames = computed(function () {
+  const games = (editingOp.value && editingOp.value.games || [])
+  return games.length ? games : ['如鸢', '代号鸢']
+})
+
+const editingDiscs = computed(function () {
+  return (editingOp.value && editingOp.value.discs) || []
+})
+
+const stoneSlots = computed(function () {
+  const configured = (editingOp.value && editingOp.value.starStones || [])
+  if (configured.length) {
+    return configured.map(function (s) { return { type: s.type || 'main', label: s.name || (s.type === 'assist' ? '辅星石' : '主星石') } })
+  }
+  return [
+    { type: 'main', label: '主星石' },
+    { type: 'assist', label: '辅星石' }
+  ]
+})
 
 const catalogOperators = computed(function () {
   if (backendCatalog.value.length) return backendCatalog.value.map(normalizeOperator)
@@ -413,6 +531,112 @@ function buildTitle(e) {
   if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
   if (e.starStones && e.starStones.length) parts.push('星石：' + e.starStones.map(function (s) { return (s.name || s.type) + ' Lv' + s.level }).join('、'))
   return parts.join(' ｜ ')
+}
+
+function isDiscSelected(d) {
+  return editForm.value.discNames.indexOf(discKey(d)) !== -1
+}
+
+function openEdit(id) {
+  if (!auth.isLoggedIn || !accountId.value) { alert('请先登录并选择密探子账号'); return }
+  const op = catalogMap.value[id]
+  if (!op) return
+  const existing = currentMap.value[id] || {}
+  editingId.value = id
+  editingOp.value = op
+  const games = op.games && op.games.length ? op.games : ['如鸢', '代号鸢']
+  editGame.value = gameFilter.value !== 'all' && games.indexOf(gameFilter.value) !== -1 ? gameFilter.value : games[0]
+  const stones = {}
+  stoneSlots.value.forEach(function (slot) {
+    const hit = (existing.starStones || []).find(function (s) { return s.type === slot.type })
+    stones[slot.type] = {
+      name: (hit && hit.name) || slot.label,
+      type: slot.type,
+      level: (hit && hit.level != null) ? hit.level : 0
+    }
+  })
+  editForm.value = {
+    elite: existing.elite != null ? existing.elite : 0,
+    starLevel: existing.starLevel != null ? existing.starLevel : 0,
+    level: existing.level != null ? existing.level : 0,
+    discNames: (existing.discs || []).map(discKey).filter(Boolean),
+    stones: stones
+  }
+  editNotice.value = ''
+  editNoticeError.value = false
+  editing.value = true
+}
+
+function closeEditor() {
+  if (savingEdit.value) return
+  editing.value = false
+  editingId.value = ''
+  editingOp.value = null
+  editGame.value = ''
+  editNotice.value = ''
+  editNoticeError.value = false
+}
+
+async function saveEdit() {
+  if (!editingOp.value || !accountId.value) return
+  if (editForm.value.level < 0 || editForm.value.elite < 0 || editForm.value.starLevel < 0) {
+    editNotice.value = '养成数值不能为负数'
+    editNoticeError.value = true
+    return
+  }
+  const op = editingOp.value
+  const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
+  const entry = {
+    id: op.id,
+    name: op.name || undefined,
+    alias: op.alias || undefined,
+    rarity: op.rarity,
+    prof: op.prof ? op.prof.split('、') : [],
+    subProf: Array.isArray(op.subProf) ? op.subProf : (op.subProf ? op.subProf.split('、') : []),
+    games: op.games || [],
+    elite: editForm.value.elite,
+    starLevel: editForm.value.starLevel,
+    level: editForm.value.level,
+    discs: editForm.value.discNames.map(discObject),
+    starStones: Object.keys(editForm.value.stones || {})
+      .map(function (type) { return editForm.value.stones[type] })
+      .filter(function (s) { return s && s.level > 0 })
+      .map(function (s) { return { name: s.name || null, type: s.type, level: s.level } })
+  }
+  const doc = {
+    format: 'myshare-operator-exchange',
+    version: 2,
+    exported_at: new Date().toISOString(),
+    catalog_version: catalogVersion.value || '',
+    producer: { platform: 'yuanhub', version: '1' },
+    accounts: [{ id: account.id, name: account.name }],
+    records: [{
+      account_id: account.id,
+      record_id: 'yuanhub:edit:' + Date.now() + ':' + Math.random().toString(16).slice(2, 8),
+      record_type: 'operator_snapshot',
+      game: editGame.value,
+      effective_at: new Date().toISOString(),
+      snapshot_scope: 'listed',
+      entries: [entry]
+    }]
+  }
+  savingEdit.value = true
+  editNotice.value = ''
+  editNoticeError.value = false
+  try {
+    await importOperator(doc)
+    editNotice.value = '已保存到云端'
+    setTimeout(function () {
+      closeEditor()
+      reloadCurrent()
+      if (activeTab.value === 'records') loadRecords(true)
+    }, 800)
+  } catch (err) {
+    editNotice.value = humanErr(err, '保存失败')
+    editNoticeError.value = true
+  } finally {
+    savingEdit.value = false
+  }
 }
 
 function setTab(t) {
@@ -913,6 +1137,46 @@ onMounted(async function () {
 .record-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .record-del { flex: none; border: 1.5px solid rgba(166, 81, 74, .35); background: rgba(166, 81, 74, .06); color: var(--rouge); border-radius: 10px; padding: 7px 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
 .record-del:hover { background: rgba(166, 81, 74, .16) }
+
+/* ---- 单个密探编辑弹窗 ---- */
+.editor-mask { position: fixed; inset: 0; z-index: 100; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 24px }
+.editor-panel { width: min(680px, 100%); max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5) }
+.editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 28px 16px; border-bottom: 1.5px dashed var(--line) }
+.editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 26px; letter-spacing: .04em; color: var(--ink) }
+.editor-sub { margin-top: 4px; font-size: 12px; color: var(--ink-35); font-weight: 600 }
+.editor-close { border: none; background: transparent; color: var(--ink-60); font-size: 26px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 10px; transition: all .25s }
+.editor-close:hover { color: var(--rouge); background: rgba(166, 81, 74, .08) }
+.editor-body { display: flex; flex-direction: column; gap: 18px; padding: 20px 28px 24px }
+.editor-row { display: flex; gap: 16px; align-items: flex-start }
+.editor-label { flex: none; width: 76px; padding-top: 9px; font-size: 13px; font-weight: 800; color: var(--ink) }
+.editor-game { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.game-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 16px; transition: all .25s }
+.game-pill input { display: none }
+.game-pill:has(input:checked) { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.editor-game .hint { flex-basis: 100%; margin-top: 2px; font-size: 11.5px; color: var(--ink-35); line-height: 1.7 }
+.num-fields { display: flex; gap: 12px; flex-wrap: wrap }
+.num-fields label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px }
+.num-fields input { width: 76px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--ink); outline: none; -moz-appearance: textfield }
+.num-fields input::-webkit-outer-spin-button, .num-fields input::-webkit-inner-spin-button { -webkit-appearance: none }
+.disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
+.disc-editor .hint { flex-basis: 100%; font-size: 12px; color: var(--ink-35) }
+.disc-option { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; transition: all .25s; user-select: none }
+.disc-option input { display: none }
+.disc-option.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.disc-option small { font-size: 10.5px; color: var(--ink-35); font-weight: 600 }
+.disc-option .disc-color { color: var(--accent-strong); font-weight: 800 }
+.stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
+.stone-item { display: flex; align-items: center; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
+.stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
+.stone-item input { width: 90px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-d); font-weight: 800; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; -moz-appearance: textfield }
+.stone-item input:focus { border-color: var(--accent) }
+.stone-editor .hint { font-size: 11.5px; color: var(--ink-35); line-height: 1.6 }
+.editor-notice { margin-top: 4px; background: var(--yellow); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; line-height: 1.6 }
+.editor-notice.err { background: rgba(166, 81, 74, .14); color: var(--rouge) }
+.editor-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 0 28px 24px }
+
+.edit-btn { margin-top: 6px; align-self: center; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink-60); border-radius: 999px; padding: 3px 12px; font-size: 11px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s; line-height: 1.5 }
+.edit-btn:hover { border-color: var(--accent); color: var(--accent-strong); background: var(--cream) }
 
 /* 深色块上的文字（未登录提示） */
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
