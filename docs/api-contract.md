@@ -1,19 +1,19 @@
 # BackEndV3-Share 用户接口契约（前端接入参考）
 
-> 依据 `/Users/mrsnake/Desktop/yituliu/BackEndV3-Share` 源码整理，前端实现必须与之一一对应。
+> 依据 `~/BackEndV3-Share` 源码整理，前端实现必须与之一一对应。
 
 ## 基础信息
 
 - 后端地址（本地开发）：`http://localhost:8080`，无 context-path
 - CORS：已全开（allowedOriginPatterns=*，allowCredentials=true），前端 Vite dev 5173 端口可直接调用
-- 统一响应包装：`{ "statusCode": number, "message": string|null, "data": T|null }`
-  - 成功：statusCode=200，data 为业务数据
-  - 失败：statusCode 对齐 HTTP 状态码，message 为中文提示（前端应直接展示 message）
+- 统一响应包装：`{ "status_code": number, "message": string|null, "data": T|null }`
+  - 成功：status_code=200，data 为业务数据
+  - 失败：status_code 对齐 HTTP 状态码，message 为中文提示（前端应直接展示 message）
   - 注意 Jackson 配置 `property-naming-strategy: SNAKE_CASE`：**请求/响应 JSON 字段均为 snake_case**
 - 认证方式：请求头 `Authorization: Bearer <accessToken>`（后端 header 配置名即 Authorization）
 - 时间字段：`Instant` 序列化为 ISO-8601 字符串（如 `2025-01-01T00:00:00Z`）
 - 邮件验证码：600 秒（10 分钟）有效；发送间隔限制 = expire/10 = 60 秒（重复发送返回 403 "发送验证码的请求至少需要间隔 60 秒"）；本地调试 `debug.email.no-send: true` 时验证码打印在后端日志
-- Swagger UI：`http://localhost:8080/swagger-ui.html`（可在线对照）
+- Swagger UI：`http://localhost:8080/swagger-ui/index.html`（可在线对照）
 
 ## 接口清单
 
@@ -79,7 +79,8 @@
 
 - accessToken 有效期：21600 秒（6 小时）
 - refreshToken 有效期：604800 秒（7 天）
-- 认证失败（未带/无效 token / 过期）：401 JSON `{"statusCode":401,"message":"未登录或登录已过期",...}`（AuthenticationEntryPointImpl；已核对源码 AuthenticationEntryPointImpl.commence 返回 fail(401, "未登录或登录已过期")）
+- 普通用户接口认证失败（未带/无效 token / 过期）：401 JSON `{"status_code":401,"message":"未登录或登录已过期",...}`
+- 库存接口认证失败：401 JSON `{"error":{"code":"unauthorized","message":"Authentication is required"}}`
 
 ## 前端建议架构（贴合现有 Vue3+Vite 项目，无 axios/pinia）
 
@@ -99,7 +100,7 @@
 - POST /v1/inventory/accounts  body {name} → {id,name,created_at,updated_at}（id 形如 acc_<32hex>，每用户 ≤10 个，重名 409）
 - GET /v1/inventory/accounts → [{id,name,created_at,updated_at}]
 - PATCH /v1/inventory/accounts/{accountId}  body {name} → 账号对象
-- DELETE /v1/inventory/accounts/{accountId} → 级联删除该账号库存/流水/token，返回 true
+- DELETE /v1/inventory/accounts/{accountId} → 级联删除该账号库存/流水/密探关注/token，返回 true
 
 ### 查询与导入导出
 - GET /v1/inventory/current?account_id=&entity_type=item|agent → [{entity_type, entries:{"<id>":{count,listed_baseline_at}}}]
@@ -110,7 +111,23 @@
 - GET /v1/inventory/export?account_id= 或 scope=all&include=current|current,rewards&from=&to= → 直接返回交换文档（无 ApiResult 包装）
 - GET /v1/inventory/catalog（公开）→ {catalog_version, entities:[{entity_type,id,name}]}
 
+### 密探特别关注（已实现，可联调）
+
+> 完整前端接入要求见 [`frontend-handoff-agent-favorites.md`](./frontend-handoff-agent-favorites.md)，可复制的实施任务见 [`frontend-implementation-prompt-agent-favorites.md`](./frontend-implementation-prompt-agent-favorites.md)。
+
+- GET /v1/inventory/agent-favorites?account_id= → `{account_id,agent_ids:[...]}`
+- PUT /v1/inventory/agent-favorites/{agentId}?account_id= → `{account_id,agent_id,favorite:true}`
+- DELETE /v1/inventory/agent-favorites/{agentId}?account_id= → `{account_id,agent_id,favorite:false}`
+- 三个接口只接受普通登录 JWT，不接受 OpenAPI Token；PUT/DELETE 无请求体且均幂等。
+- GET 的 `agent_ids` 去重并按完整 ID 字符串升序返回；这不是发布顺序。
+- 所有读写按 JWT 当前用户与 `account_id` 校验，切换子账号必须清空旧列表并重新查询。
+- 错误：未登录 `401 unauthorized`；账号不存在或不属于当前用户 `404 account_not_found`；缺少 `account_id` 为 `422 schema_validation_failed`；非法或未知密探分别为 `422 invalid_agent_id`、`422 unknown_agent`。
+- 关注状态不进入 current/acquired/records/export，不生成库存流水，也不进入交换档案 v2。
+- 本地真实 Mongo 已完成 64 次 PUT、并发度 16 的烟测：64 个 HTTP 200，数据库目标记录 1 行。
+
 ### 交换文档 v2（导入/导出一致）
+
+```json
 {
   "format": "myshare-inventory-exchange",
   "version": 2,
@@ -129,6 +146,11 @@
     "entries": [ { "id": "char_029_xiuqiu", "name": "绣球", "count": 1 } ]
   } ]
 }
+```
+
+密探心纸手动库存沿用上述 v2 文档：使用 `record_type=stock_snapshot`、`entity_type=agent`。
+`full` 替换该子账号完整密探库存，`listed` 只覆盖列出的密探。库存业务只使用
+`id` 和 `count`；`name` 是展示冗余，`rarity`、`prof`、`sub_prof` 等字段不能修改公共目录。
 
 ## OpenAPI Token 接口契约（/user/open-api）
 
@@ -145,6 +167,7 @@
 - src/api/inventory.js：账号 CRUD + 全部查询带 account_id + 游标分页 + 导出 raw。
 - src/api/openApi.js：生成传 account_id/scopes/remark，删除走 DELETE /tokens/{tokenId}。
 - src/utils/openApiToken.js：scope 改为字符串 key 数组，时间字段为 ISO created_at。
+- 密探特别关注和密探心纸手动编辑尚待前端接入；实现范围、竞态处理、视觉约束和验收用例见 `docs/frontend-handoff-agent-favorites.md`。
 
 ## 设计规范约束（MaaYuan Share v1.0）
 

@@ -75,8 +75,9 @@
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
-            <p class="tip">粘贴符合《库存数据交换协议 v2》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
-            <textarea v-model="importText" aria-label="库存交换档案 JSON" autocomplete="off" placeholder='{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}'></textarea>
+            <p id="inventory-import-tip" class="tip">粘贴符合《库存数据交换协议 v2》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
+            <textarea id="inventory-import-json" v-model="importText" aria-label="库存交换档案 JSON" :aria-invalid="!!importError" :aria-describedby="importError ? 'inventory-import-tip inventory-import-error' : 'inventory-import-tip'" autocomplete="off" placeholder='{"format":"myshare-inventory-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[]}' @input="importError = ''"></textarea>
+            <p v-if="importError" id="inventory-import-error" class="import-error" role="alert">{{ importError }}</p>
             <div class="import-actions">
               <label class="btn ghost file-label">
                 选择 JSON 文件
@@ -97,17 +98,20 @@
           <div v-show="activeTab === 'manifest'" ref="manifestPanel" class="panel">
             <div class="manifest-intro" :class="{ 'is-editing': editingStock }" v-reveal>
               <div class="type-switch">
-                <button :disabled="editingStock" :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
-                <button :disabled="editingStock" :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
+                <button :disabled="editingStock" :aria-pressed="entityType === 'item'" :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
+                <button :disabled="editingStock" :aria-pressed="entityType === 'agent'" :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
                 <span class="sp"></span>
               </div>
 
               <aside class="manifest-scope" :class="{ 'is-editing': editingStock }">
                 <Pencil v-if="editingStock" :size="16" aria-hidden="true" />
                 <Info v-else :size="16" aria-hidden="true" />
-                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : '背包库存' }} · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
+                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : (entityType === 'agent' ? '密探心纸库存' : '背包库存') }} · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
                 <p v-else-if="entityType === 'item'" class="scope-guidance">库存数量有误？点击标题旁的 <Pencil :size="13" aria-hidden="true" /> 进入编辑模式</p>
-                <p v-else>密探心纸目前仅供查看，编辑方式后续补充。</p>
+                <p v-else>特别关注自动同步到当前子账号；编辑只会更新心纸数量。</p>
+                <button v-if="!editingStock && entityType === 'agent'" type="button" class="scope-edit-agent" :disabled="loading || !!error" @click="startStockEdit()">
+                  <Pencil :size="14" aria-hidden="true" />编辑心纸
+                </button>
                 <div v-if="editingStock" class="manifest-edit-actions">
                   <button type="button" :disabled="savingStock" @click="cancelStockEdit"><X :size="14" />取消</button>
                   <button type="button" class="primary" :disabled="savingStock || !!stockDraftError || !stockChangedCount" @click="saveStockEdit">
@@ -122,25 +126,56 @@
               <div class="mf-stats">
                 <div class="mf-stat"><b class="mf-num">{{ manifestTotal }}</b><span class="mf-k">可追踪</span></div>
                 <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已持有</span></div>
+                <div v-if="entityType === 'agent'" class="mf-stat"><b class="mf-num">{{ favoriteAgentIds.size }}</b><span class="mf-k">特别关注</span></div>
                 <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">持有率</span></div>
               </div>
               <div class="mf-progress" title="当前追踪目录持有率"><i :style="{ '--progress': manifestProgressScale }"></i></div>
               <span class="sp"></span>
-              <input v-model.trim="manifestSearch" class="mf-search" type="search" aria-label="搜索库存名称或 ID" placeholder="搜索名称 / id" />
+              <input id="manifest-search" v-model.trim="manifestSearch" name="manifest-search" class="mf-search" type="search" aria-label="搜索库存名称或 ID" placeholder="搜索名称 / id" />
               <div class="mf-filter">
-                <button :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
-                <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已持有</button>
-                <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未持有</button>
+                <button :aria-pressed="manifestFilter === 'all'" :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
+                <button :aria-pressed="manifestFilter === 'owned'" :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已持有</button>
+                <button :aria-pressed="manifestFilter === 'missing'" :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未持有</button>
               </div>
               <span v-if="error" class="mf-sync-error" role="status">云端库存同步失败：{{ error }}（数量按 0 显示）</span>
             </div>
 
+            <div v-if="entityType === 'agent'" class="agent-controls" :class="{ 'is-editing': editingStock }" aria-label="密探清单工具">
+              <label v-if="editingStock" class="agent-control-search">
+                <Search :size="15" aria-hidden="true" />
+                <span class="sr-only">搜索密探</span>
+                <input id="agent-editor-search" v-model.trim="manifestSearch" name="agent-editor-search" type="search" placeholder="搜索名称 / 属性 / 职业" />
+              </label>
+              <button
+                type="button"
+                class="agent-favorite-filter"
+                :class="{ on: manifestFavoriteOnly }"
+                :aria-pressed="manifestFavoriteOnly"
+                :disabled="!auth.isLoggedIn || !accountId || favoriteLoading"
+                @click="manifestFavoriteOnly = !manifestFavoriteOnly"
+              ><Star :size="15" :fill="manifestFavoriteOnly ? 'currentColor' : 'none'" aria-hidden="true" />只看关注</button>
+              <label><span>星级</span><select id="agent-rarity-filter" v-model="agentRarityFilter" name="agent-rarity-filter"><option value="">全部</option><option value="5">5 星</option><option value="4">4 星</option><option value="3">3 星</option></select></label>
+              <label><span>属性</span><select id="agent-prof-filter" v-model="agentProfFilter" name="agent-prof-filter"><option value="">全部</option><option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option></select></label>
+              <label><span>职业</span><select id="agent-sub-prof-filter" v-model="agentSubProfFilter" name="agent-sub-prof-filter"><option value="">全部</option><option v-for="prof in agentSubProfs" :key="prof" :value="prof">{{ prof }}</option></select></label>
+              <label v-if="!editingStock"><span>分组</span><select id="agent-group-by" v-model="agentGroupBy" name="agent-group-by"><option value="none">不分组</option><option value="rarity">按星级</option><option value="prof">按属性</option><option value="subProf">按职业</option></select></label>
+              <label><span>顺序</span><select id="agent-sort" v-model="agentSort" name="agent-sort"><option value="favorite">关注优先</option><option value="latest">新密探优先</option><option value="count">数量从高到低</option><option value="rarity">星级从高到低</option><option value="name">名称</option></select></label>
+              <div v-if="!editingStock" class="agent-view-switch" aria-label="密探展示方式">
+                <button type="button" :class="{ on: agentView === 'grid' }" :aria-pressed="agentView === 'grid'" title="网格视图" aria-label="网格视图" @click="agentView = 'grid'"><Grid2X2 :size="16" /></button>
+                <button type="button" :class="{ on: agentView === 'list' }" :aria-pressed="agentView === 'list'" title="紧凑列表" aria-label="紧凑列表" @click="agentView = 'list'"><List :size="17" /></button>
+              </div>
+              <button v-if="agentFiltersActive" type="button" class="agent-reset" @click="resetAgentFilters"><X :size="14" aria-hidden="true" />清除</button>
+              <span class="agent-result" role="status">显示 {{ editingStock ? visibleStockEditorEntries.length : manifestEntries.length }} / {{ agentCatalogCount }}</span>
+              <span v-if="favoriteLoading" class="agent-sync-state" role="status">正在同步关注…</span>
+              <span v-else-if="favoriteError" class="agent-sync-state is-error" role="status">{{ favoriteError }}</span>
+            </div>
+
             <div v-if="loading" class="state">正在加载追踪目录…</div>
-            <div v-else-if="editingStock" class="backpack stock-editor">
+            <div v-else-if="editingStock" class="backpack stock-editor" :class="{ 'is-agent-editor': entityType === 'agent' }">
               <p v-if="stockDraftError || stockEditError" class="stock-edit-error">{{ stockDraftError || stockEditError }}</p>
+              <div v-if="visibleStockEditorEntries.length === 0" class="state slim">当前筛选下没有密探</div>
               <ul class="slot-grid stock-edit-grid">
-                <li v-for="e in stockEditorEntries" :key="e.id" class="slot stock-edit-slot" :title="e.name || e.id">
-                  <div class="slot-ic">
+                <li v-for="e in visibleStockEditorEntries" :key="e.id" class="slot stock-edit-slot" :title="e.name || e.id">
+                  <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
                     <div class="slot-ph">
                       <span class="ph-seal">图</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
@@ -148,6 +183,7 @@
                     <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
                   </div>
                   <InventoryItemName :entry="e" />
+                  <span v-if="entityType === 'agent'" class="slot-tag star" :class="'s' + e.rarity">{{ e.rarity }}★ · {{ e.prof }} · {{ e.subProf }}</span>
                   <div class="stock-stepper" :class="{ invalid: !isValidStockCount(stockDraft[e.id]) }">
                     <button
                       type="button"
@@ -176,7 +212,7 @@
                 </li>
               </ul>
             </div>
-            <div v-else class="backpack" :class="{ 'manifest-items': entityType === 'item' }" v-reveal>
+            <div v-else class="backpack" :class="{ 'manifest-items': entityType === 'item', 'manifest-agents': entityType === 'agent', 'agent-list-view': entityType === 'agent' && agentView === 'list' }" v-reveal>
               <div v-if="manifestEntries.length === 0" class="state slim">没有匹配「{{ manifestSearch }}」的对象</div>
               <div v-else-if="entityType === 'item'" class="item-sections">
                 <section v-for="section in manifestCategorySections" :key="section.id" class="item-section">
@@ -247,67 +283,228 @@
                   </template>
                 </section>
               </div>
-              <ul v-else class="slot-grid">
-                <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
-                  <div class="slot-ic is-agent">
-                    <div class="slot-ph">
-                      <span class="ph-seal">图</span>
-                      <span class="ph-mono">{{ monogram(e) }}</span>
-                    </div>
-                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
-                    <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
-                  </div>
-                  <InventoryItemName :entry="e" />
-                  <span class="slot-tag star" :class="'s' + e.rarity">{{ e.rarity }}★ · {{ e.prof }}</span>
-                </li>
-              </ul>
+              <div v-else class="agent-directory">
+                <section v-for="group in agentGroups" :key="group.id" class="agent-group">
+                  <div v-if="group.label" class="agent-group-head"><h2>{{ group.label }}</h2><span>{{ group.entries.length }} 位</span></div>
+                  <ul class="slot-grid agent-slot-grid">
+                    <li v-for="e in group.entries" :key="e.id" class="slot agent-card" :class="{ 'is-missing': !e.owned, 'is-favorite': favoriteAgentIds.has(e.id) }" :title="slotTitle(e)">
+                      <div class="slot-ic is-agent">
+                        <div class="slot-ph">
+                          <span class="ph-seal">图</span>
+                          <span class="ph-mono">{{ monogram(e) }}</span>
+                        </div>
+                        <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                        <span class="slot-count" :class="{ zero: !e.owned }">{{ fmtCount(e.count) }}</span>
+                      </div>
+                      <div class="agent-card-body">
+                        <InventoryItemName :entry="e" />
+                        <span class="slot-tag star" :class="'s' + e.rarity">{{ e.rarity }}★ · {{ e.prof }} · {{ e.subProf }}</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="agent-favorite-btn"
+                        :class="{ on: favoriteAgentIds.has(e.id), busy: favoriteBusyIds.has(e.id) }"
+                        :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + (e.name || e.id) : '特别关注' + (e.name || e.id)"
+                        :aria-pressed="favoriteAgentIds.has(e.id)"
+                        :aria-busy="favoriteBusyIds.has(e.id)"
+                        :disabled="favoriteBusyIds.has(e.id) || favoriteLoading || !auth.isLoggedIn || !accountId"
+                        :title="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
+                        @click="toggleAgentFavorite(e)"
+                      ><Star :size="16" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+                    </li>
+                  </ul>
+                </section>
+              </div>
             </div>
           </div>
 
           <!-- 时段获得量 -->
-          <div v-show="activeTab === 'acquired'" class="panel">
-            <div class="acquired-bar" v-reveal>
-              <div class="type-switch">
-                <button :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
-                <button :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
+          <div v-show="activeTab === 'acquired'" class="panel acquired-panel" :aria-busy="acquiredLoading">
+            <section class="acquired-query" aria-labelledby="acquired-query-title" v-reveal>
+              <div class="acquired-query-head">
+                <div>
+                  <span class="query-eyebrow">奖励流水统计</span>
+                  <h2 id="acquired-query-title">选一段时间，翻看获得簿</h2>
+                </div>
+                <div class="type-switch" aria-label="统计对象">
+                  <button :aria-pressed="entityType === 'item'" :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
+                  <button :aria-pressed="entityType === 'agent'" :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
+                </div>
               </div>
-              <div class="range">
-                <label>
-                  <span class="lb">起</span>
-                  <input type="date" v-model="rangeFrom" />
-                </label>
-                <label>
-                  <span class="lb">止</span>
-                  <input type="date" v-model="rangeTo" />
-                </label>
-                <button class="btn ghost" :disabled="loading" @click="loadAcquired">统计</button>
-              </div>
-            </div>
 
-            <div v-if="loading" class="state">正在统计获得量…</div>
-            <div v-else-if="error" class="state err">{{ error }}</div>
-            <div v-else-if="acquiredEntries.length === 0" class="state">
-              <template v-if="entityType === 'item'">该时段暂无物品获得记录 · 物品获得量仅来自奖励流水（派遣/寿春等），背包快照不计入</template>
-              <template v-else>该时段暂无获得记录</template>
-            </div>
-            <div v-else class="backpack" v-reveal>
-              <div class="bp-head">
-                <span class="bp-tip">本时段获得 <b class="bp-num">{{ acquiredEntries.length }}</b> 种 · 图标与「追踪目录」一致，金橙角标为获得量</span>
+              <div class="quick-range" aria-label="快捷时段">
+                <button v-for="preset in rangePresets" :key="preset.id" :aria-pressed="rangePreset === preset.id" :class="{ on: rangePreset === preset.id }" :disabled="acquiredLoading" @click="applyRangePreset(preset.id)">{{ preset.label }}</button>
               </div>
-              <ul class="slot-grid">
-                <li v-for="e in acquiredEntries" :key="e.id" class="slot" :title="e.name || e.id">
-                  <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
-                    <div class="slot-ph">
-                      <span class="ph-seal">图</span>
-                      <span class="ph-mono">{{ monogram(e) }}</span>
-                    </div>
-                    <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
-                    <span class="slot-count gained">+{{ fmtCount(e.count) }}</span>
-                  </div>
-                  <InventoryItemName :entry="e" />
-                </li>
-              </ul>
+
+              <div class="acquired-bar">
+                <div class="range">
+                  <label>
+                    <span class="lb">开始日期</span>
+                    <input id="acquired-range-from" v-model="rangeFrom" name="acquired-range-from" type="date" :max="rangeTo || undefined" :disabled="acquiredLoading" @change="markCustomRange" />
+                  </label>
+                  <span class="range-dash" aria-hidden="true">至</span>
+                  <label>
+                    <span class="lb">结束日期</span>
+                    <input id="acquired-range-to" v-model="rangeTo" name="acquired-range-to" type="date" :min="rangeFrom || undefined" :disabled="acquiredLoading" @change="markCustomRange" />
+                  </label>
+                  <button class="btn primary acquired-submit" :disabled="acquiredLoading || !accountId" @click="loadAcquired">
+                    <RefreshCw :size="15" aria-hidden="true" :class="{ spin: acquiredLoading }" />
+                    {{ acquiredLoading ? '正在统计' : '更新统计' }}
+                  </button>
+                </div>
+                <p class="range-caption">
+                  <CalendarDays :size="15" aria-hidden="true" />
+                  <span class="range-caption-lines">
+                    <span>{{ acquiredRangeLabel }}</span>
+                    <span>{{ acquiredRangeMetaLabel }}</span>
+                  </span>
+                  <span v-if="acquiredQueryDirty" class="query-dirty">待更新</span>
+                </p>
+              </div>
+            </section>
+
+            <div v-if="acquiredLoading" class="state acquired-loading" role="status" aria-live="polite">
+              <span class="loading-seal" aria-hidden="true">簿</span>
+              <span>正在统计获得量…</span>
+              <small v-if="acquiredRecordProgress.pages">已整理 {{ acquiredRecordProgress.records }} 条流水</small>
             </div>
+            <div v-else-if="acquiredError && !periodHasData" class="state err" role="alert">{{ acquiredError }}</div>
+            <div v-else-if="!periodHasData" class="state acquired-empty">
+              <strong>这段时间没有奖励获得记录</strong>
+              <span>仅统计派遣、寿春等奖励流水，库存快照不计入。可以换一个时段，或先导入对应账号的奖励流水。</span>
+            </div>
+            <template v-else>
+              <AcquiredPeriodReport
+                :insights="periodInsights"
+                :dispatch-duration="periodDispatchDuration"
+                :item-totals-available="!acquiredTotalsErrors.item"
+                :agent-totals-available="!acquiredTotalsErrors.agent"
+                :records-available="!acquiredRecordsError"
+                :favorite-loading="favoriteLoading"
+                :favorite-error="favoriteError"
+                v-reveal
+              />
+
+              <div v-if="acquiredRecordsError || acquiredRecordsTruncated || acquiredTotalsErrors.item || acquiredTotalsErrors.agent || !acquiredTotalsMatch || periodDispatchDuration.unconvertedRecordCount" class="acquired-notices" role="status">
+                <p v-if="acquiredTotalsErrors.item">白金币等价值暂不可用：{{ acquiredTotalsErrors.item }}</p>
+                <p v-if="acquiredTotalsErrors.agent">心纸排行与关注统计暂不可用：{{ acquiredTotalsErrors.agent }}</p>
+                <p v-if="acquiredRecordsError">汇总已加载，但流水明细加载失败：{{ acquiredRecordsError }}</p>
+                <p v-if="acquiredRecordsTruncated">本次明细最多整理 5,000 条；总量仍以后端汇总为准，幸运日、连续收获和同框结论可能不完整。</p>
+                <p v-if="!acquiredTotalsMatch">流水明细与汇总口径存在差异；总览排行以后端汇总为准。</p>
+                <p v-if="periodDispatchDuration.unconvertedRecordCount">有 {{ periodDispatchDuration.unconvertedRecordCount }} 条派遣流水缺少可换算的消耗体力，未计入派遣总时长。</p>
+              </div>
+
+              <div v-if="acquiredEntries.length === 0" class="state acquired-empty acquired-type-empty">
+                <strong>{{ entityType === 'item' ? '本期没有背包道具奖励' : '本期没有密探心纸奖励' }}</strong>
+                <span>上方总账仍展示本周期的跨类型统计；可切换统计对象查看另一类流水。</span>
+              </div>
+              <template v-else>
+              <div class="acquired-tools" v-reveal>
+                <div class="acquired-views" role="tablist" aria-label="获得统计视图">
+                  <button role="tab" :aria-selected="acquiredView === 'overview'" :class="{ on: acquiredView === 'overview' }" @click="setAcquiredView('overview')">获得总览</button>
+                  <button role="tab" :aria-selected="acquiredView === 'source'" :class="{ on: acquiredView === 'source' }" @click="setAcquiredView('source')">来源分析</button>
+                  <button role="tab" :aria-selected="acquiredView === 'timeline'" :class="{ on: acquiredView === 'timeline' }" @click="setAcquiredView('timeline')">按日汇总</button>
+                  <button role="tab" :aria-selected="acquiredView === 'details'" :class="{ on: acquiredView === 'details' }" @click="setAcquiredView('details')">流水明细</button>
+                </div>
+                <div class="acquired-filters" :class="{ 'has-sort': acquiredView === 'overview' }">
+                  <label class="acquired-source-filter">
+                    <span>来源</span>
+                    <select id="acquired-source" v-model="acquiredSource" name="acquired-source" @change="clearSelectedEntity">
+                      <option value="all">全部来源</option>
+                      <option v-for="source in acquiredStats.channels" :key="source.name" :value="source.name">{{ source.name }}（{{ source.recordCount }}）</option>
+                    </select>
+                  </label>
+                  <label class="acquired-search">
+                    <span class="sr-only">搜索名称或 ID</span>
+                    <Search :size="16" aria-hidden="true" />
+                    <input id="acquired-search" v-model.trim="acquiredSearch" name="acquired-search" type="search" placeholder="搜索名称 / ID" @input="clearSelectedEntity" />
+                  </label>
+                  <label v-if="acquiredView === 'overview'" class="acquired-sort-filter">
+                    <span>排序</span>
+                    <select id="acquired-sort" v-model="acquiredSort" name="acquired-sort">
+                      <option value="count">获得量 ↓</option>
+                      <option value="name">名称顺序</option>
+                      <option value="records">获得次数 ↓</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <section v-if="acquiredView === 'overview'" class="backpack acquired-overview" aria-label="获得总览" v-reveal>
+                <div class="bp-head">
+                  <span class="bp-tip">{{ acquiredResultCaption }}</span>
+                </div>
+                <div v-if="displayedAcquiredEntries.length === 0" class="state slim">没有匹配当前筛选的获得记录</div>
+                <ul v-else class="slot-grid acquired-slot-grid">
+                  <li v-for="e in displayedAcquiredEntries" :key="e.id" class="slot" :title="e.name || e.id">
+                    <button type="button" class="slot-action" :aria-label="'查看' + (e.name || e.id) + '的获得明细'" @click="openEntityDetails(e.id)">
+                      <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
+                        <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
+                        <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
+                        <span class="slot-count gained">+{{ fmtCount(e.count) }}</span>
+                      </div>
+                      <InventoryItemName :entry="e" />
+                      <span class="slot-meta">{{ e.recordCount || 0 }} 次记录</span>
+                    </button>
+                  </li>
+                </ul>
+              </section>
+
+              <section v-else-if="acquiredView === 'source'" class="acquired-ledger" aria-labelledby="source-title" v-reveal>
+                <div class="ledger-head"><div><span>渠道账目</span><h3 id="source-title">奖励从哪里来</h3></div><small>按奖励流水数排序，不直接相加不同物品的数量</small></div>
+                <div v-if="sourceRows.length === 0" class="state slim">当前筛选下没有来源数据</div>
+                <ol v-else class="source-list">
+                  <li v-for="(source, index) in sourceRows" :key="source.name">
+                    <button type="button" @click="focusSource(source.name)">
+                      <span class="source-rank">{{ String(index + 1).padStart(2, '0') }}</span>
+                      <span class="source-main"><strong>{{ source.name }}</strong><i :style="{ '--source-scale': source.scale }"></i></span>
+                      <span class="source-stat"><b>{{ source.recordCount }}</b> 条流水</span>
+                      <span class="source-stat"><b>{{ source.entityCount }}</b> 种获得</span>
+                      <span class="source-top">{{ source.topText }}</span>
+                      <ChevronRight :size="18" aria-hidden="true" />
+                    </button>
+                  </li>
+                </ol>
+              </section>
+
+              <section v-else-if="acquiredView === 'timeline'" class="acquired-ledger" aria-labelledby="timeline-title" v-reveal>
+                <div class="ledger-head"><div><span>每日归账</span><h3 id="timeline-title">按日汇总获得量</h3></div><small>同一天、同一道具自动合并；点击日期核对原始流水</small></div>
+                <div v-if="timelineRows.length === 0" class="state slim">当前筛选下没有每日获得数据</div>
+                <ol v-else class="timeline-list">
+                  <li v-for="day in timelineRows" :key="day.date">
+                    <button type="button" :aria-label="'查看' + day.dayLabel + '的奖励流水明细'" @click="openDayDetails(day.date)">
+                      <time :datetime="day.date"><b>{{ day.dayLabel }}</b><span>{{ day.weekday }} · {{ day.recordCount }} 条流水合并</span></time>
+                      <span class="daily-rewards">
+                        <span v-for="reward in day.rewards" :key="reward.id"><b>{{ reward.name }}</b><em>+{{ fmtCount(reward.count) }}</em></span>
+                      </span>
+                      <ChevronRight :size="18" aria-hidden="true" />
+                    </button>
+                  </li>
+                </ol>
+              </section>
+
+              <section v-else class="acquired-ledger acquired-details" aria-labelledby="details-title" v-reveal>
+                <div class="ledger-head details-head">
+                  <div><span>原始账目</span><h3 id="details-title">{{ detailsTitle }}</h3></div>
+                  <button v-if="selectedEntity || selectedDay" type="button" class="act-btn ghost" @click="clearSelectedEntity"><X :size="14" aria-hidden="true" />查看全部</button>
+                </div>
+                <p class="details-caption">{{ detailResultCaption }}</p>
+                <div v-if="filteredRewardRecords.length === 0" class="state slim">没有匹配当前筛选的流水</div>
+                <ol v-else class="detail-list">
+                  <li v-for="record in filteredRewardRecords" :key="record.record_id">
+                    <time :datetime="record.effective_at"><b>{{ fmtRecordDay(record.effective_at) }}</b><span>{{ fmtRecordClock(record.effective_at) }}</span></time>
+                    <div class="detail-meta">
+                      <span class="detail-source">{{ recordChannel(record) }}</span>
+                      <span v-if="staminaCostOf(record) !== undefined" class="detail-stamina">消耗体力 <b>{{ staminaCostOf(record) }}</b></span>
+                    </div>
+                    <div class="detail-entries">
+                      <span v-for="entry in visibleRecordEntries(record)" :key="entry.id"><b>{{ entry.name || nameOf(entry.id, null) }}</b><em>+{{ fmtCount(entry.count) }}</em></span>
+                    </div>
+                  </li>
+                </ol>
+              </section>
+              </template>
+            </template>
           </div>
 
           <!-- 导入记录 -->
@@ -329,6 +526,7 @@
                       <span class="rtag" :class="r.record_type === 'reward_delta' ? 'rtag-reward' : 'rtag-snapshot'">{{ r.record_type === 'reward_delta' ? '奖励' : '快照' }}</span>
                       <span class="rtag rtag-type" :class="r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'">{{ r.entity_type === 'agent' ? '角色' : '物品' }}</span>
                       <span v-if="r.acquisition_channel" class="rtag rtag-type">{{ r.acquisition_channel }}</span>
+                      <span v-if="staminaCostOf(r) !== undefined" class="rtag rtag-stamina">消耗体力 {{ staminaCostOf(r) }}</span>
                       <span class="rtag effect" :class="'eff-' + r.stock_effect">{{ stockEffectLabel(r.stock_effect) }}</span>
                       <span class="record-time">{{ fmtTime(r.effective_at) }}</span>
                     </div>
@@ -358,30 +556,74 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { Info, Minus, Pencil, Plus, Save, X } from '@lucide/vue'
+import { CalendarDays, ChevronRight, Grid2X2, Info, List, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, X } from '@lucide/vue'
+import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
 import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, renameAccount, deleteAccount } from '../../api/inventory.js'
+import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, renameAccount, deleteAccount, listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
 import { auth } from '../../store/auth.js'
-import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG } from '../../data/inventory/catalog.js'
+import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
+import { acquisitionChannel, buildAcquiredStats, buildRewardInsights, localDayKey, mapsHaveSameCounts, summarizeDispatchDuration } from '../../data/inventory/acquiredStats.js'
+import { buildAgentGroups, filterAgentEntries, sortAgentEntries } from '../../data/inventory/agentManifest.js'
 import { FRONTEND_HIDDEN_ITEM_IDS, buildItemCategorySections, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../../data/inventory/itemSections.js'
 import { buildManualStockSnapshot, nextManualSnapshotTime, preserveHiddenStockEntries } from '../../data/inventory/manualStock.js'
+import { staminaCostOf, validateInventoryExchangeDocument } from '../../data/inventory/exchange.js'
 
 const activeTab = ref('manifest')
 const manifestPanel = ref(null)
 const entityType = ref('item')
 const manifestSearch = ref('')
 const manifestFilter = ref('all')
+const manifestFavoriteOnly = ref(false)
+const agentRarityFilter = ref('')
+const agentProfFilter = ref('')
+const agentSubProfFilter = ref('')
+const agentGroupBy = ref('none')
+const agentSort = ref('favorite')
+const agentView = ref('grid')
+const favoriteAgentIds = ref(new Set())
+const favoriteBusyIds = ref(new Set())
+const favoriteLoading = ref(false)
+const favoriteError = ref('')
+const favoriteLoadedAccount = ref('')
+let favoriteLoadSeq = 0
 const loading = ref(false)
 const error = ref('')
 const catalog = ref({ entities: [] })
 const currentEntries = ref([])
 const acquiredEntries = ref([])
-const rangeFrom = ref(localDate(new Date(Date.now() - 30 * 86400000)))
+const rangeFrom = ref(localDate(new Date(Date.now() - 29 * 86400000)))
 const rangeTo = ref(localDate(new Date()))
+const rangePreset = ref('30d')
+const acquiredView = ref('overview')
+const acquiredSearch = ref('')
+const acquiredSource = ref('all')
+const acquiredSort = ref('count')
+const acquiredLoading = ref(false)
+const acquiredError = ref('')
+const acquiredRecords = ref([])
+const acquiredAllRecords = ref([])
+const acquiredRecordsError = ref('')
+const acquiredRecordsTruncated = ref(false)
+const acquiredRecordProgress = ref({ pages: 0, records: 0 })
+const acquiredTotalsObject = ref({})
+const acquiredTotalsByType = ref({ item: {}, agent: {} })
+const acquiredTotalsErrors = ref({ item: '', agent: '' })
+const appliedAcquiredKey = ref('')
+const selectedEntityId = ref('')
+const selectedDay = ref('')
+const rangePresets = [
+  { id: '7d', label: '近 7 日' },
+  { id: '30d', label: '近 30 日' },
+  { id: 'this-week', label: '本周' },
+  { id: 'last-week', label: '上周' },
+  { id: 'this-month', label: '本月' },
+  { id: 'last-month', label: '上月' }
+]
 const showImport = ref(false)
 const importText = ref('')
+const importError = ref('')
 const importing = ref(false)
 const importResult = ref(null)
 const loadingExample = ref(false)
@@ -422,7 +664,8 @@ function setTab(t) {
   }
   activeTab.value = t
   if (t === 'manifest' && currentEntries.value.length === 0) reloadCurrent()
-  if (t === 'acquired' && acquiredEntries.value.length === 0) loadAcquired()
+  if (t === 'manifest' && entityType.value === 'agent') loadAgentFavorites()
+  if (t === 'acquired' && appliedAcquiredKey.value !== currentAcquiredKey.value) loadAcquired()
   if (t === 'records') loadRecords(true)
 }
 function setEntityType(t) {
@@ -433,15 +676,106 @@ function setEntityType(t) {
   // 当前库存立即刷新;若正处于"时段获得量"页签则按新类型自动重新统计。
   currentEntries.value = []
   currentFullBaselineAt.value = null
-  acquiredEntries.value = []
+  resetAcquiredData()
   error.value = ''
   reloadCurrent()
+  if (t === 'agent') loadAgentFavorites()
   if (activeTab.value === 'acquired') loadAcquired()
+}
+
+function clearAgentFavorites() {
+  favoriteLoadSeq += 1
+  favoriteAgentIds.value = new Set()
+  favoriteBusyIds.value = new Set()
+  favoriteLoading.value = false
+  favoriteError.value = ''
+  favoriteLoadedAccount.value = ''
+}
+
+async function loadAgentFavorites(force) {
+  if (!auth.isLoggedIn || !accountId.value) {
+    clearAgentFavorites()
+    return
+  }
+  const targetAccount = accountId.value
+  if (!force && favoriteLoadedAccount.value === targetAccount) return
+  const seq = ++favoriteLoadSeq
+  favoriteLoading.value = true
+  favoriteError.value = ''
+  try {
+    const data = await listAgentFavorites(targetAccount)
+    if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
+    favoriteAgentIds.value = new Set(Array.isArray(data && data.agent_ids) ? data.agent_ids : [])
+    favoriteLoadedAccount.value = targetAccount
+  } catch (err) {
+    if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
+    favoriteAgentIds.value = new Set()
+    favoriteLoadedAccount.value = ''
+    favoriteError.value = humanErr(err, '特别关注同步失败')
+  } finally {
+    if (seq === favoriteLoadSeq && accountId.value === targetAccount) favoriteLoading.value = false
+  }
+}
+
+async function toggleAgentFavorite(entry) {
+  const id = entry && entry.id
+  const targetAccount = accountId.value
+  if (!id || !auth.isLoggedIn || !targetAccount || favoriteBusyIds.value.has(id)) return
+  const wasFavorite = favoriteAgentIds.value.has(id)
+  const nextFavorites = new Set(favoriteAgentIds.value)
+  if (wasFavorite) nextFavorites.delete(id)
+  else nextFavorites.add(id)
+  favoriteAgentIds.value = nextFavorites
+  favoriteBusyIds.value = new Set(favoriteBusyIds.value).add(id)
+  favoriteError.value = ''
+  try {
+    const data = wasFavorite
+      ? await removeAgentFavorite(targetAccount, id)
+      : await addAgentFavorite(targetAccount, id)
+    if (accountId.value !== targetAccount) return
+    const confirmed = new Set(favoriteAgentIds.value)
+    if (data && data.favorite === false) confirmed.delete(id)
+    else confirmed.add(id)
+    favoriteAgentIds.value = confirmed
+    favoriteLoadedAccount.value = targetAccount
+  } catch (err) {
+    if (accountId.value !== targetAccount) return
+    const rollback = new Set(favoriteAgentIds.value)
+    if (wasFavorite) rollback.add(id)
+    else rollback.delete(id)
+    favoriteAgentIds.value = rollback
+    favoriteError.value = humanErr(err, '关注状态保存失败，请重试')
+  } finally {
+    if (accountId.value === targetAccount) {
+      const busy = new Set(favoriteBusyIds.value)
+      busy.delete(id)
+      favoriteBusyIds.value = busy
+    }
+  }
+}
+
+function resetAcquiredData() {
+  acquiredSeq += 1
+  acquiredEntries.value = []
+  acquiredRecords.value = []
+  acquiredAllRecords.value = []
+  acquiredTotalsObject.value = {}
+  acquiredTotalsByType.value = { item: {}, agent: {} }
+  acquiredTotalsErrors.value = { item: '', agent: '' }
+  acquiredError.value = ''
+  acquiredRecordsError.value = ''
+  acquiredRecordsTruncated.value = false
+  acquiredRecordProgress.value = { pages: 0, records: 0 }
+  appliedAcquiredKey.value = ''
+  acquiredSource.value = 'all'
+  acquiredSearch.value = ''
+  selectedEntityId.value = ''
+  selectedDay.value = ''
 }
 
 // —— 库存子账号 ——
 async function loadAccounts() {
-  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
+  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; clearAgentFavorites(); return }
   accountsLoading.value = true
   accountError.value = ''
   try {
@@ -459,15 +793,17 @@ async function loadAccounts() {
 function onAccountChange() {
   // 切换账号：清空旧账号数据并按需重载
   cancelStockEdit()
+  clearAgentFavorites()
   stockSaveNotice.value = ''
   currentEntries.value = []
   currentFullBaselineAt.value = null
-  acquiredEntries.value = []
+  resetAcquiredData()
   recordsList.value = []
   recordsNextCursor.value = null
   recordsError.value = ''
   error.value = ''
   reloadCurrent()
+  if (entityType.value === 'agent') loadAgentFavorites()
   if (activeTab.value === 'acquired') loadAcquired()
   if (activeTab.value === 'records') loadRecords(true)
 }
@@ -532,6 +868,53 @@ function localDate(d) {
   return y + '-' + m + '-' + day
 }
 
+function inputDate(value) {
+  const parts = String(value || '').split('-').map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return null
+  const date = new Date(parts[0], parts[1] - 1, parts[2], 12)
+  if (date.getFullYear() !== parts[0] || date.getMonth() !== parts[1] - 1 || date.getDate() !== parts[2]) return null
+  return date
+}
+
+function addLocalDays(date, count) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + count)
+  return next
+}
+
+function weekStart(date) {
+  const start = new Date(date)
+  const offset = (start.getDay() + 6) % 7
+  start.setDate(start.getDate() - offset)
+  return start
+}
+
+function markCustomRange() {
+  rangePreset.value = 'custom'
+}
+
+function applyRangePreset(id) {
+  const today = inputDate(localDate(new Date()))
+  let from = today
+  let to = today
+  if (id === '7d') from = addLocalDays(today, -6)
+  if (id === '30d') from = addLocalDays(today, -29)
+  if (id === 'this-week') from = weekStart(today)
+  if (id === 'last-week') {
+    to = addLocalDays(weekStart(today), -1)
+    from = addLocalDays(to, -6)
+  }
+  if (id === 'this-month') from = new Date(today.getFullYear(), today.getMonth(), 1, 12)
+  if (id === 'last-month') {
+    from = new Date(today.getFullYear(), today.getMonth() - 1, 1, 12)
+    to = new Date(today.getFullYear(), today.getMonth(), 0, 12)
+  }
+  rangePreset.value = id
+  rangeFrom.value = localDate(from)
+  rangeTo.value = localDate(to)
+  loadAcquired()
+}
+
 function fmtCount(n) {
   const v = Number(n) || 0
   return v.toLocaleString('zh-CN')
@@ -581,6 +964,7 @@ const stockCatalogSubsections = new Map(
 )
 const itemCatalogCount = visibleItemCatalog.length
 const agentCatalogCount = AGENT_CATALOG.length
+const agentSubProfs = Array.from(new Set(AGENT_CATALOG.map(function (entry) { return entry.subProf }).filter(Boolean)))
 
 const LOCAL_NAME = {
   item: new Map(ITEM_CATALOG.map(function (e) { return [e.id, e.name] })),
@@ -596,16 +980,28 @@ const currentMap = computed(function () {
   currentEntries.value.forEach(function (e) { m[e.id] = Number(e.count) || 0 })
   return m
 })
-const manifestEntries = computed(function () {
+const manifestBaseEntries = computed(function () {
   const stock = currentMap.value
+  return localCatalog.value.map(function (entry) {
+    const count = stock[entry.id] != null ? stock[entry.id] : 0
+    return Object.assign({}, entry, { count: count, owned: count > 0 })
+  })
+})
+const manifestEntries = computed(function () {
   const q = manifestSearch.value.toLowerCase()
   const f = manifestFilter.value
-  return localCatalog.value
-    .map(function (e) {
-      const count = stock[e.id] != null ? stock[e.id] : 0
-      return Object.assign({}, e, { count: count, owned: count > 0 })
-    })
-    .filter(function (e) {
+  if (entityType.value === 'agent') {
+    const filtered = filterAgentEntries(manifestBaseEntries.value, {
+      query: q,
+      status: f,
+      favoriteOnly: manifestFavoriteOnly.value,
+      rarity: agentRarityFilter.value,
+      prof: agentProfFilter.value,
+      subProf: agentSubProfFilter.value
+    }, favoriteAgentIds.value)
+    return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value)
+  }
+  return manifestBaseEntries.value.filter(function (e) {
       if (f === 'owned' && !e.owned) return false
       if (f === 'missing' && e.owned) return false
       if (q) {
@@ -617,18 +1013,50 @@ const manifestEntries = computed(function () {
 })
 const manifestGameEntries = computed(function () { return sortItemsByGameOrder(manifestEntries.value) })
 const manifestCategorySections = computed(function () { return buildItemCategorySections(manifestGameEntries.value) })
+const agentGroups = computed(function () { return buildAgentGroups(manifestEntries.value, agentGroupBy.value) })
+const agentFiltersActive = computed(function () {
+  return !!manifestSearch.value || manifestFilter.value !== 'all' || manifestFavoriteOnly.value ||
+    !!agentRarityFilter.value || !!agentProfFilter.value || !!agentSubProfFilter.value
+})
+
+function resetAgentFilters() {
+  manifestSearch.value = ''
+  manifestFilter.value = 'all'
+  manifestFavoriteOnly.value = false
+  agentRarityFilter.value = ''
+  agentProfFilter.value = ''
+  agentSubProfFilter.value = ''
+}
+
 const stockEditEntries = computed(function () {
-  const ids = new Set(visibleItemCatalog.map(function (item) { return item.id }))
-  const entries = visibleItemCatalog.slice()
+  const baseCatalog = entityType.value === 'agent' ? AGENT_CATALOG : visibleItemCatalog
+  const ids = new Set(baseCatalog.map(function (item) { return item.id }))
+  const entries = baseCatalog.slice()
   visibleCurrentEntries.value.forEach(function (item) {
     if (!ids.has(item.id)) entries.push(item)
   })
-  return sortStockEditItems(entries)
+  return entityType.value === 'agent' ? sortAgentEntries(entries, 'latest') : sortStockEditItems(entries)
 })
 const stockEditorEntries = computed(function () {
   if (!stockEditScopeIds.value) return stockEditEntries.value
   const scopeIds = new Set(stockEditScopeIds.value)
   return stockEditEntries.value.filter(function (item) { return scopeIds.has(item.id) })
+})
+const visibleStockEditorEntries = computed(function () {
+  if (entityType.value !== 'agent') return stockEditorEntries.value
+  const rows = stockEditorEntries.value.map(function (entry) {
+    const count = Number(currentMap.value[entry.id]) || 0
+    return Object.assign({}, entry, { count: count, owned: count > 0 })
+  })
+  const filtered = filterAgentEntries(rows, {
+    query: manifestSearch.value,
+    status: manifestFilter.value,
+    favoriteOnly: manifestFavoriteOnly.value,
+    rarity: agentRarityFilter.value,
+    prof: agentProfFilter.value,
+    subProf: agentSubProfFilter.value
+  }, favoriteAgentIds.value)
+  return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value)
 })
 const stockDraftError = computed(function () {
   const invalid = stockEditorEntries.value.find(function (item) { return !isValidStockCount(stockDraft.value[item.id]) })
@@ -652,6 +1080,196 @@ const manifestPercent = computed(function () {
 const manifestProgressScale = computed(function () {
   if (!manifestTotal.value) return 0
   return manifestOwned.value / manifestTotal.value
+})
+
+const currentAcquiredKey = computed(function () {
+  return [accountId.value, entityType.value, rangeFrom.value, rangeTo.value].join('|')
+})
+const acquiredQueryDirty = computed(function () {
+  return !!appliedAcquiredKey.value && appliedAcquiredKey.value !== currentAcquiredKey.value
+})
+const acquiredRangeDays = computed(function () {
+  const from = inputDate(rangeFrom.value)
+  const to = inputDate(rangeTo.value)
+  if (!from || !to || from > to) return 0
+  return Math.round((to.getTime() - from.getTime()) / 86400000) + 1
+})
+const acquiredRangeLabel = computed(function () {
+  const from = inputDate(rangeFrom.value)
+  const to = inputDate(rangeTo.value)
+  if (!from || !to || from > to) return '请选择有效的起止日期'
+  const format = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' })
+  return format.format(from) + ' 至 ' + format.format(to) + ' · 包含起止当天'
+})
+const acquiredStats = computed(function () { return buildAcquiredStats(acquiredRecords.value) })
+const acquiredItemRecords = computed(function () {
+  return acquiredAllRecords.value.filter(function (record) { return record && record.entity_type === 'item' })
+})
+const acquiredAgentRecords = computed(function () {
+  return acquiredAllRecords.value.filter(function (record) { return record && record.entity_type === 'agent' })
+})
+const favoriteAgentsForStats = computed(function () {
+  return AGENT_CATALOG.filter(function (agent) { return favoriteAgentIds.value.has(agent.id) })
+})
+const periodInsights = computed(function () {
+  return buildRewardInsights({
+    itemTotals: acquiredTotalsByType.value.item,
+    agentTotals: acquiredTotalsByType.value.agent,
+    itemRecords: acquiredItemRecords.value,
+    agentRecords: acquiredAgentRecords.value,
+    favoriteAgents: favoriteAgentsForStats.value,
+    rangeEnd: rangeTo.value
+  })
+})
+const periodHasData = computed(function () {
+  const totals = Object.values(acquiredTotalsByType.value.item || {}).concat(Object.values(acquiredTotalsByType.value.agent || {}))
+  return totals.some(function (count) { return (Number(count) || 0) > 0 }) || periodInsights.value.rewardRecordCount > 0
+})
+const acquiredActivityLabel = computed(function () {
+  if (acquiredLoading.value || acquiredQueryDirty.value || acquiredRecordsError.value || !periodHasData.value) return ''
+  return periodInsights.value.activeDayCount + '天 · ' + periodInsights.value.rewardRecordCount + '条'
+})
+const acquiredRangeMetaLabel = computed(function () {
+  const period = '共 ' + acquiredRangeDays.value + ' 天'
+  return acquiredActivityLabel.value ? period + ' · 有收获 ' + acquiredActivityLabel.value : period
+})
+const periodDispatchDuration = computed(function () {
+  const item = summarizeDispatchDuration(acquiredItemRecords.value)
+  const agent = summarizeDispatchDuration(acquiredAgentRecords.value)
+  const source = item.dispatchRecordCount ? 'item' : (agent.dispatchRecordCount ? 'agent' : '')
+  return Object.assign({}, source === 'agent' ? agent : item, { source: source })
+})
+const acquiredEntityMap = computed(function () {
+  return new Map(acquiredStats.value.entities.map(function (entry) { return [entry.id, entry] }))
+})
+const acquiredTotalsMatch = computed(function () {
+  if (acquiredRecordsError.value || acquiredRecordsTruncated.value) return true
+  const recordTotals = {}
+  acquiredStats.value.entities.forEach(function (entry) { recordTotals[entry.id] = entry.count })
+  return mapsHaveSameCounts(acquiredTotalsObject.value, recordTotals)
+})
+const selectedEntity = computed(function () {
+  if (!selectedEntityId.value) return null
+  const statsEntry = acquiredEntityMap.value.get(selectedEntityId.value)
+  const totalEntry = acquiredEntries.value.find(function (entry) { return entry.id === selectedEntityId.value })
+  return statsEntry || totalEntry || null
+})
+const selectedDayLabel = computed(function () {
+  const date = inputDate(selectedDay.value)
+  return date ? (date.getMonth() + 1) + '月' + date.getDate() + '日' : selectedDay.value
+})
+const detailsTitle = computed(function () {
+  if (selectedEntity.value) return selectedEntity.value.name + '的获得明细'
+  if (selectedDay.value) return selectedDayLabel.value + '的奖励流水'
+  return '奖励流水明细'
+})
+
+function entryMatchesQuery(entry, query) {
+  if (!query) return true
+  const name = entry.name || nameOf(entry.id, null)
+  return [entry.id, name].filter(Boolean).join(' ').toLowerCase().includes(query)
+}
+
+const displayedAcquiredEntries = computed(function () {
+  const query = acquiredSearch.value.toLowerCase()
+  const source = acquiredSource.value
+  const recordCounts = new Map()
+  acquiredStats.value.rewardRecords.forEach(function (record) {
+    if (source !== 'all' && acquisitionChannel(record.acquisition_channel) !== source) return
+    const ids = new Set((Array.isArray(record.entries) ? record.entries : []).map(function (entry) { return entry.id }))
+    ids.forEach(function (id) { recordCounts.set(id, (recordCounts.get(id) || 0) + 1) })
+  })
+  const rows = acquiredEntries.value.map(function (entry) {
+    const detail = acquiredEntityMap.value.get(entry.id)
+    const count = source === 'all' ? entry.count : Number(detail && detail.channels[source]) || 0
+    return Object.assign({}, entry, { count: count, recordCount: recordCounts.get(entry.id) || 0 })
+  }).filter(function (entry) {
+    return entry.count > 0 && entryMatchesQuery(entry, query)
+  })
+  return rows.sort(function (left, right) {
+    if (acquiredSort.value === 'name') return left.name.localeCompare(right.name, 'zh-CN')
+    if (acquiredSort.value === 'records') return right.recordCount - left.recordCount || right.count - left.count
+    return right.count - left.count || left.name.localeCompare(right.name, 'zh-CN')
+  })
+})
+const acquiredResultCaption = computed(function () {
+  const source = acquiredSource.value === 'all' ? '全部来源' : acquiredSource.value
+  const search = acquiredSearch.value ? '· 匹配「' + acquiredSearch.value + '」' : ''
+  return source + ' ' + search + ' · 显示 ' + displayedAcquiredEntries.value.length + ' 种 · 点击图标查看原始流水'
+})
+
+const filteredRewardRecords = computed(function () {
+  const query = acquiredSearch.value.toLowerCase()
+  const source = acquiredSource.value
+  return acquiredStats.value.rewardRecords.filter(function (record) {
+    if (source !== 'all' && acquisitionChannel(record.acquisition_channel) !== source) return false
+    const entries = Array.isArray(record.entries) ? record.entries : []
+    if (selectedDay.value && localDayKey(record.effective_at) !== selectedDay.value) return false
+    if (selectedEntityId.value && !entries.some(function (entry) { return entry.id === selectedEntityId.value })) return false
+    if (query && !entries.some(function (entry) { return entryMatchesQuery(entry, query) })) return false
+    return true
+  }).slice().sort(function (left, right) {
+    return new Date(right.effective_at).getTime() - new Date(left.effective_at).getTime()
+  })
+})
+
+const sourceRows = computed(function () {
+  const query = acquiredSearch.value.toLowerCase()
+  const selectedSource = acquiredSource.value
+  const sourceMap = new Map()
+  acquiredStats.value.rewardRecords.forEach(function (record) {
+    const source = acquisitionChannel(record.acquisition_channel)
+    if (selectedSource !== 'all' && source !== selectedSource) return
+    const entries = (Array.isArray(record.entries) ? record.entries : []).filter(function (entry) {
+      return entryMatchesQuery(entry, query)
+    })
+    if (query && entries.length === 0) return
+    if (!sourceMap.has(source)) sourceMap.set(source, { name: source, recordCount: 0, ids: new Set(), counts: new Map() })
+    const row = sourceMap.get(source)
+    row.recordCount += 1
+    entries.forEach(function (entry) {
+      row.ids.add(entry.id)
+      row.counts.set(entry.id, (row.counts.get(entry.id) || 0) + (Number(entry.count) || 0))
+    })
+  })
+  const rows = Array.from(sourceMap.values()).sort(function (a, b) { return b.recordCount - a.recordCount })
+  const max = rows.length ? rows[0].recordCount : 1
+  return rows.map(function (row) {
+    const top = Array.from(row.counts.entries()).sort(function (a, b) { return b[1] - a[1] }).slice(0, 3)
+    return {
+      name: row.name,
+      recordCount: row.recordCount,
+      entityCount: row.ids.size,
+      scale: row.recordCount / max,
+      topText: top.map(function (pair) { return nameOf(pair[0], null) + ' +' + fmtCount(pair[1]) }).join(' · ')
+    }
+  })
+})
+
+const timelineRows = computed(function () {
+  const stats = buildAcquiredStats(filteredRewardRecords.value)
+  return stats.days.slice().reverse().map(function (day) {
+    const date = inputDate(day.date)
+    return Object.assign({}, day, {
+      dayLabel: date ? (date.getMonth() + 1) + '月' + date.getDate() + '日' : day.date,
+      weekday: date ? new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date) : '',
+      rewards: Object.entries(day.counts || {}).map(function (pair) {
+        return { id: pair[0], name: nameOf(pair[0], null), count: Number(pair[1]) || 0 }
+      }).filter(function (entry) {
+        return entry.count > 0
+      }).sort(function (left, right) {
+        return right.count - left.count || left.name.localeCompare(right.name, 'zh-CN')
+      })
+    })
+  })
+})
+const detailResultCaption = computed(function () {
+  const parts = []
+  if (acquiredSource.value !== 'all') parts.push(acquiredSource.value)
+  if (selectedDay.value) parts.push(selectedDayLabel.value)
+  if (acquiredSearch.value) parts.push('匹配「' + acquiredSearch.value + '」')
+  parts.push(filteredRewardRecords.value.length + ' 条奖励流水')
+  return parts.join(' · ')
 })
 
 function slotTitle(e) {
@@ -742,9 +1360,12 @@ async function saveStockEdit() {
   const visibleDraftEntries = stockEditEntries.value.map(function (item) {
     return { id: item.id, name: item.name || item.id, count: Number(stockDraft.value[item.id]) }
   })
-  const draftEntries = preserveHiddenStockEntries(visibleDraftEntries, currentEntries.value, FRONTEND_HIDDEN_ITEM_IDS)
+  const draftEntries = entityType.value === 'item'
+    ? preserveHiddenStockEntries(visibleDraftEntries, currentEntries.value, FRONTEND_HIDDEN_ITEM_IDS)
+    : visibleDraftEntries
   const doc = buildManualStockSnapshot({
     accountId: accountId.value,
+    entityType: entityType.value,
     catalogVersion: CATALOG_VERSION,
     effectiveAt: effectiveAt,
     recordId: manualRecordId(),
@@ -754,7 +1375,7 @@ async function saveStockEdit() {
     const result = await importInventory(doc)
     if (result && result.superseded) throw new Error('快照时间早于现有库存，未能生效')
     editingStock.value = false
-    stockSaveNotice.value = '库存已更新'
+    stockSaveNotice.value = entityType.value === 'agent' ? '密探心纸库存已更新' : '库存已更新'
     stockDraft.value = {}
     stockOriginal.value = {}
     stockEditScopeIds.value = null
@@ -819,21 +1440,186 @@ function nextDayStartIso(dStr) {
 }
 
 let acquiredSeq = 0
+const MAX_ACQUIRED_RECORD_PAGES = 50
+
+function setAcquiredView(view) {
+  acquiredView.value = view
+  if (view !== 'details') {
+    selectedEntityId.value = ''
+    selectedDay.value = ''
+  }
+}
+
+function openEntityDetails(id) {
+  selectedEntityId.value = id
+  selectedDay.value = ''
+  acquiredView.value = 'details'
+}
+
+function openDayDetails(day) {
+  selectedDay.value = day
+  selectedEntityId.value = ''
+  acquiredView.value = 'details'
+}
+
+function clearSelectedEntity() {
+  selectedEntityId.value = ''
+  selectedDay.value = ''
+}
+
+function focusSource(source) {
+  acquiredSource.value = source
+  acquiredView.value = 'overview'
+  selectedEntityId.value = ''
+  selectedDay.value = ''
+}
+
+function recordChannel(record) {
+  return acquisitionChannel(record && record.acquisition_channel)
+}
+
+function visibleRecordEntries(record) {
+  const query = acquiredSearch.value.toLowerCase()
+  const entries = Array.isArray(record && record.entries) ? record.entries : []
+  return entries.filter(function (entry) {
+    if (selectedEntityId.value) return entry.id === selectedEntityId.value
+    return entryMatchesQuery(entry, query)
+  })
+}
+
+function fmtRecordDay(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value || ''
+  return new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }).format(date)
+}
+
+function fmtRecordClock(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
+}
+
+async function fetchAcquiredRecords(params, seq) {
+  const records = []
+  const seenCursors = new Set()
+  let cursor = null
+  let pages = 0
+  let truncated = false
+  do {
+    const page = await listRecords({
+      accountId: params.accountId,
+      entityType: params.entityType,
+      from: params.from,
+      to: params.to,
+      cursor: cursor,
+      limit: 100
+    })
+    if (seq !== acquiredSeq) return { records: [], truncated: false, cancelled: true }
+    const items = page && Array.isArray(page.items) ? page.items : []
+    records.push(...items)
+    pages += 1
+    acquiredRecordProgress.value = { pages: pages, records: records.length }
+    const nextCursor = page && page.next_cursor ? page.next_cursor : null
+    if (!nextCursor) break
+    if (seenCursors.has(nextCursor)) throw new Error('流水分页游标重复，已停止加载')
+    seenCursors.add(nextCursor)
+    cursor = nextCursor
+    if (pages >= MAX_ACQUIRED_RECORD_PAGES) {
+      truncated = true
+      break
+    }
+  } while (cursor)
+  return { records: records, truncated: truncated, cancelled: false }
+}
 
 async function loadAcquired() {
   const seq = ++acquiredSeq
-  await safeLoad(async function () {
-    if (!accountId.value) { error.value = '请先创建并选择一个子账号'; return }
-    const from = dayStartIso(rangeFrom.value)
-    const to = nextDayStartIso(rangeTo.value)
-    if (!from || !to) { error.value = '请选择有效的起止日期'; return }
-    const data = await getAcquired({ accountId: accountId.value, entityType: entityType.value, from: from, to: to })
+  acquiredError.value = ''
+  acquiredRecordsError.value = ''
+  acquiredRecordsTruncated.value = false
+  acquiredTotalsErrors.value = { item: '', agent: '' }
+  acquiredRecordProgress.value = { pages: 0, records: 0 }
+  selectedEntityId.value = ''
+  selectedDay.value = ''
+  acquiredSource.value = 'all'
+  if (!auth.isLoggedIn) {
+    acquiredEntries.value = []
+    acquiredRecords.value = []
+    acquiredAllRecords.value = []
+    acquiredTotalsByType.value = { item: {}, agent: {} }
+    acquiredError.value = '登录后才能统计子账号的获得量'
+    return
+  }
+  if (!accountId.value) {
+    acquiredEntries.value = []
+    acquiredRecords.value = []
+    acquiredAllRecords.value = []
+    acquiredTotalsByType.value = { item: {}, agent: {} }
+    acquiredError.value = '请先创建并选择一个子账号'
+    return
+  }
+  const fromDate = inputDate(rangeFrom.value)
+  const toDate = inputDate(rangeTo.value)
+  const from = dayStartIso(rangeFrom.value)
+  const to = nextDayStartIso(rangeTo.value)
+  if (!fromDate || !toDate || fromDate > toDate || !from || !to) {
+    acquiredError.value = '请选择有效的起止日期'
+    return
+  }
+
+  acquiredLoading.value = true
+  acquiredEntries.value = []
+  acquiredRecords.value = []
+  acquiredAllRecords.value = []
+  acquiredTotalsObject.value = {}
+  acquiredTotalsByType.value = { item: {}, agent: {} }
+  const queryKey = currentAcquiredKey.value
+  const baseParams = { accountId: accountId.value, from: from, to: to }
+  const itemParams = Object.assign({}, baseParams, { entityType: 'item' })
+  const agentParams = Object.assign({}, baseParams, { entityType: 'agent' })
+  loadAgentFavorites()
+  try {
+    const results = await Promise.allSettled([
+      getAcquired(itemParams),
+      getAcquired(agentParams),
+      fetchAcquiredRecords(baseParams, seq)
+    ])
     if (seq !== acquiredSeq) return
-    const acquiredObj = (data && data.acquired) ? data.acquired : {}
-    acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
-      return { id: id, name: nameOf(id, null), count: Number(acquiredObj[id]) || 0 }
-    }).sort(function (a, b) { return b.count - a.count })
-  })
+    const itemTotalsResult = results[0]
+    const agentTotalsResult = results[1]
+    const recordsResult = results[2]
+    const nextTotals = { item: {}, agent: {} }
+    const nextErrors = { item: '', agent: '' }
+    if (itemTotalsResult.status === 'fulfilled') nextTotals.item = itemTotalsResult.value && itemTotalsResult.value.acquired ? itemTotalsResult.value.acquired : {}
+    else nextErrors.item = humanErr(itemTotalsResult.reason, '背包奖励汇总加载失败')
+    if (agentTotalsResult.status === 'fulfilled') nextTotals.agent = agentTotalsResult.value && agentTotalsResult.value.acquired ? agentTotalsResult.value.acquired : {}
+    else nextErrors.agent = humanErr(agentTotalsResult.reason, '密探心纸汇总加载失败')
+    acquiredTotalsByType.value = nextTotals
+    acquiredTotalsErrors.value = nextErrors
+
+    const activeTotalsResult = entityType.value === 'item' ? itemTotalsResult : agentTotalsResult
+    if (activeTotalsResult.status === 'fulfilled') {
+      const acquiredObj = nextTotals[entityType.value]
+      acquiredTotalsObject.value = acquiredObj
+      acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
+        return { id: id, name: nameOf(id, null), count: Number(acquiredObj[id]) || 0 }
+      }).filter(function (entry) { return entry.count > 0 }).sort(function (a, b) { return b.count - a.count })
+      appliedAcquiredKey.value = queryKey
+    } else {
+      acquiredError.value = humanErr(activeTotalsResult.reason, '获得量汇总加载失败')
+    }
+    if (recordsResult.status === 'fulfilled' && !recordsResult.value.cancelled) {
+      acquiredAllRecords.value = recordsResult.value.records
+      acquiredRecords.value = recordsResult.value.records.filter(function (record) {
+        return record && record.entity_type === entityType.value
+      })
+      acquiredRecordsTruncated.value = recordsResult.value.truncated
+    } else if (recordsResult.status === 'rejected') {
+      acquiredRecordsError.value = humanErr(recordsResult.reason, '流水明细加载失败')
+    }
+  } finally {
+    if (seq === acquiredSeq) acquiredLoading.value = false
+  }
 }
 
 function humanErr(err, fallback) {
@@ -882,6 +1668,7 @@ async function onDeleteRecord(rec) {
     await deleteRecord(rid, accountId.value)
     await loadRecords(true)
     await reloadCurrent()
+    resetAcquiredData()
   } catch (err) {
     alert(humanErr(err, '删除失败'))
   }
@@ -910,12 +1697,14 @@ function entrySummary(entries, recordType) {
 // ---- 导入档案 ----
 async function doImport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!importText.value.trim()) { alert('请粘贴交换协议 JSON 或选择文件'); return }
+  importError.value = ''
+  if (!importText.value.trim()) { importError.value = '请粘贴交换协议 JSON 或选择文件'; return }
   let doc = null
   try {
     doc = JSON.parse(importText.value)
-  } catch (_e) {
-    alert('JSON 解析失败，请检查格式')
+    validateInventoryExchangeDocument(doc)
+  } catch (err) {
+    importError.value = err instanceof SyntaxError ? 'JSON 解析失败，请检查格式' : humanErr(err, '导入档案校验失败')
     return
   }
   importing.value = true
@@ -924,7 +1713,7 @@ async function doImport() {
     const res = await importInventory(doc)
     importResult.value = res || {}
   } catch (err) {
-    alert(humanErr(err, '导入失败'))
+    importError.value = humanErr(err, '导入失败')
   } finally {
     importing.value = false
   }
@@ -936,6 +1725,7 @@ function onFilePick(ev) {
   const reader = new FileReader()
   reader.onload = function () {
     importText.value = String(reader.result || '')
+    importError.value = ''
   }
   reader.readAsText(file, 'utf-8')
 }
@@ -959,11 +1749,14 @@ async function fillExample() {
           doc.records = doc.records.map(function (r) { return Object.assign({}, r, { account_id: accountId.value }) })
         }
         importText.value = JSON.stringify(doc, null, 2)
+        importError.value = ''
       } catch (_e) {
         importText.value = text
+        importError.value = ''
       }
     } else {
       importText.value = text
+      importError.value = ''
     }
   } catch (err) {
     alert(humanErr(err, '加载示例失败'))
@@ -975,8 +1768,11 @@ async function fillExample() {
 function afterImport() {
   importResult.value = null
   importText.value = ''
+  importError.value = ''
   showImport.value = false
   reloadCurrent()
+  resetAcquiredData()
+  if (activeTab.value === 'acquired') loadAcquired()
 }
 
 // ---- 导出档案 ----
@@ -1069,6 +1865,8 @@ onMounted(async function () {
 .import-box .tip { font-size: 12.5px; color: var(--ink-60); line-height: 1.8; margin-bottom: 12px }
 .import-box textarea { width: 100%; min-height: 140px; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; font-family: var(--font-b); font-size: 12.5px; color: var(--ink); background: var(--paper); outline: none; resize: vertical; transition: border-color .3s }
 .import-box textarea:focus { border-color: var(--accent) }
+.import-box textarea[aria-invalid="true"] { border-color: var(--rouge) }
+.import-error { min-height: 20px; margin-top: 7px; color: var(--rouge); font-size: 12.5px; font-weight: 700; line-height: 1.6 }
 .import-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px }
 .file-label { cursor: pointer }
 .file-label input { display: none }
@@ -1120,17 +1918,56 @@ onMounted(async function () {
 .mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
 .mf-filter button:hover:not(.on) { color: var(--ink) }
 .mf-sync-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; font-weight: 700; line-height: 1.6 }
+.agent-controls { display: flex; align-items: flex-end; gap: 10px; margin-top: 10px; padding: 10px 2px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); flex-wrap: wrap }
+.agent-controls > label { display: flex; min-width: 88px; flex-direction: column; gap: 4px }
+.agent-controls > label > span:not(.sr-only) { color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
+.agent-controls select, .agent-controls input { min-height: 40px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-family: var(--font-b); font-size: 12px; outline: none }
+.agent-controls select { min-width: 88px; padding: 7px 28px 7px 9px; cursor: pointer }
+.agent-controls input { width: 210px; padding: 7px 10px 7px 33px }
+.agent-controls select:focus, .agent-controls input:focus { border-color: var(--accent) }
+.agent-control-search { position: relative; min-width: 210px }
+.agent-control-search > svg { position: absolute; bottom: 12px; left: 10px; z-index: 1; color: var(--ink-35); pointer-events: none }
+.agent-favorite-filter, .agent-reset { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 5px; padding: 7px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer }
+.agent-favorite-filter.on { border-color: var(--accent); background: var(--yellow); color: var(--ink) }
+.agent-favorite-filter:hover:not(:disabled):not(.on), .agent-reset:hover { border-color: var(--ink); color: var(--ink) }
+.agent-favorite-filter:disabled { cursor: not-allowed; opacity: .45 }
+.agent-reset { background: transparent }
+.agent-view-switch { display: inline-grid; grid-template-columns: repeat(2, 40px); padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+.agent-view-switch button { display: grid; width: 40px; height: 34px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); cursor: pointer }
+.agent-view-switch button.on { background: var(--tea); color: var(--cream) }
+.agent-result, .agent-sync-state { align-self: center; color: var(--ink-60); font-family: var(--font-d); font-size: 11px; font-weight: 800 }
+.agent-result { margin-left: auto }
+.agent-sync-state.is-error { flex-basis: 100%; color: var(--rouge); font-family: var(--font-b) }
 .state.slim { padding: 26px 20px; margin-top: 14px; border-radius: 14px }
 
-.acquired-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap }
-.range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
-.range label { display: flex; align-items: center; gap: 6px }
-.range .lb { font-size: 12px; font-weight: 700; color: var(--ink-60) }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0 }
+.acquired-query { padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface) }
+.acquired-query-head { display: flex; align-items: center; justify-content: space-between; gap: 20px }
+.query-eyebrow, .ledger-head > div > span { display: block; color: var(--accent-strong); font-family: var(--font-d); font-size: 11px; font-weight: 900; letter-spacing: 0 }
+.acquired-query h2 { margin-top: 3px; color: var(--ink); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0 }
+.quick-range { display: flex; gap: 8px; margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); flex-wrap: wrap }
+.quick-range button { min-height: 38px; padding: 6px 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-60); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer; transition: background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease) }
+.quick-range button.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
+.quick-range button:hover:not(:disabled):not(.on) { border-color: var(--ink); color: var(--ink) }
+.quick-range button:disabled { opacity: .45; cursor: not-allowed }
+.acquired-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; margin-top: 14px; flex-wrap: wrap }
+.range { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap }
+.range label { display: flex; flex-direction: column; align-items: flex-start; gap: 5px }
+.range .lb { font-size: 11px; font-weight: 800; color: var(--ink-60) }
+.range-dash { align-self: center; margin-top: 17px; color: var(--ink-35); font-size: 12px; font-weight: 700 }
 .range input {
-  border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 13px;
-  font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none; transition: border-color .3s;
+  min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px;
+  font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s;
 }
 .range input:focus { border-color: var(--accent) }
+.acquired-submit { min-height: 44px; flex: none }
+.range-caption { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--ink-60); font-size: 11.5px; font-weight: 700; line-height: 1.6 }
+.range-caption svg { flex: none; color: var(--accent-strong) }
+.range-caption-lines { display: grid; gap: 1px }
+.range-caption-lines > span:last-child { color: var(--accent-strong); font-family: var(--font-d); font-weight: 900 }
+.query-dirty { padding: 2px 7px; border: 1px solid var(--accent); border-radius: 999px; color: var(--accent-strong); white-space: nowrap }
+.spin { animation: acquired-spin .8s linear infinite }
+@keyframes acquired-spin { to { transform: rotate(360deg) } }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: color .35s var(--ease), background-color .35s var(--ease), border-color .35s var(--ease), transform .35s var(--ease); border: none }
 .btn:disabled { opacity: .45; cursor: not-allowed }
 .btn.ghost { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink) }
@@ -1139,6 +1976,81 @@ onMounted(async function () {
 .state { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 20px; padding: 56px 40px; text-align: center; color: var(--ink-35); font-weight: 700; margin-top: 16px }
 .state.err { color: var(--ink-60) }
 .state .link { margin-left: 12px; background: none; border: none; color: var(--accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.acquired-loading { display: flex; min-height: 190px; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--ink-60) }
+.acquired-loading small { color: var(--ink-35); font-family: var(--font-d); font-size: 11px }
+.loading-seal { display: grid; width: 42px; height: 42px; place-items: center; border: 1.5px solid var(--brand-blue); border-radius: 8px; color: var(--brand-blue); font-family: var(--font-s); font-size: 18px; font-weight: 900 }
+.acquired-empty { display: flex; min-height: 190px; flex-direction: column; align-items: center; justify-content: center; gap: 8px }
+.acquired-empty strong { color: var(--ink); font-family: var(--font-s); font-size: 17px }
+.acquired-empty span { max-width: 560px; color: var(--ink-60); font-size: 12px; font-weight: 600; line-height: 1.8 }
+
+.acquired-notices { margin-top: 10px; padding: 10px 14px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--cream); color: var(--ink-60); font-size: 11.5px; font-weight: 700; line-height: 1.7 }
+.acquired-notices p + p { margin-top: 3px }
+
+.acquired-tools { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap }
+.acquired-views { display: inline-flex; gap: 3px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
+.acquired-views button { min-height: 40px; padding: 7px 15px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 12px; font-weight: 800; cursor: pointer; transition: background-color .2s var(--ease), color .2s var(--ease) }
+.acquired-views button.on { background: var(--tea); color: var(--cream) }
+.acquired-views button:hover:not(.on) { background: var(--paper); color: var(--ink) }
+.acquired-filters { display: flex; min-width: 0; align-items: flex-end; gap: 8px; margin-left: auto; flex-wrap: wrap }
+.acquired-filters > label { display: flex; flex-direction: column; gap: 4px }
+.acquired-filters > label > span:not(.sr-only) { color: var(--ink-60); font-size: 10px; font-weight: 800 }
+.acquired-filters select, .acquired-filters input { min-height: 40px; border: 1.5px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-family: var(--font-b); font-size: 12px; outline: none }
+.acquired-filters select { padding: 7px 30px 7px 10px; cursor: pointer }
+.acquired-filters input { width: 172px; padding: 7px 10px 7px 34px }
+.acquired-filters select:focus, .acquired-filters input:focus { border-color: var(--accent) }
+.acquired-search { position: relative; align-self: flex-end }
+.acquired-search > svg { position: absolute; left: 10px; bottom: 12px; z-index: 1; color: var(--ink-35); pointer-events: none }
+
+.acquired-overview { margin-top: 12px }
+.acquired-slot-grid .slot-action { width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font-family: inherit; text-align: inherit; cursor: pointer }
+.acquired-slot-grid .slot-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 8px }
+.slot-meta { display: block; margin-top: 2px; color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 700; text-align: center }
+
+.acquired-ledger { margin-top: 12px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface) }
+.ledger-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 1px dashed var(--line) }
+.ledger-head h3 { margin-top: 2px; color: var(--ink); font-family: var(--font-s); font-size: 19px; font-weight: 900; letter-spacing: 0 }
+.ledger-head > small { max-width: 440px; color: var(--ink-60); font-size: 11px; font-weight: 600; line-height: 1.7; text-align: right }
+.source-list, .timeline-list, .detail-list { list-style: none }
+.source-list li + li, .timeline-list li + li, .detail-list li + li { border-top: 1px solid var(--line) }
+.source-list button { display: grid; width: 100%; min-height: 72px; grid-template-columns: 34px minmax(150px, 1fr) 90px 90px minmax(170px, 1.2fr) 24px; align-items: center; gap: 12px; padding: 10px 4px; border: 0; background: transparent; color: var(--ink); font-family: var(--font-b); text-align: left; cursor: pointer }
+.source-list button:hover { background: var(--cream) }
+.source-rank { color: var(--ink-35); font-family: var(--font-d); font-size: 12px; font-weight: 900 }
+.source-main { min-width: 0 }
+.source-main strong { display: block; overflow: hidden; font-size: 14px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap }
+.source-main i { display: block; width: 100%; height: 5px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: var(--paper) }
+.source-main i::after { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--accent); content: ''; transform: scaleX(var(--source-scale, 0)); transform-origin: left }
+.source-stat { color: var(--ink-60); font-size: 11px; font-weight: 700; white-space: nowrap }
+.source-stat b { color: var(--ink); font-family: var(--font-d); font-size: 15px; font-weight: 900 }
+.source-top { overflow: hidden; color: var(--ink-60); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap }
+.source-list svg { color: var(--accent-strong) }
+
+.timeline-list { padding: 4px 0 }
+.timeline-list button { display: grid; width: 100%; min-height: 72px; grid-template-columns: 120px minmax(0, 1fr) 22px; align-items: center; gap: 14px; padding: 12px 4px; border: 0; background: transparent; color: var(--ink); font-family: var(--font-b); text-align: left; cursor: pointer }
+.timeline-list button:hover { background: var(--cream) }
+.timeline-list button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px }
+.timeline-list time { display: flex; min-width: 0; flex-direction: column; gap: 3px }
+.timeline-list time b { color: var(--ink); font-family: var(--font-d); font-size: 13px; font-weight: 900 }
+.timeline-list time span { color: var(--ink-35); font-size: 10px; font-weight: 700 }
+.daily-rewards { display: flex; min-width: 0; gap: 6px; flex-wrap: wrap }
+.daily-rewards > span { display: inline-flex; min-height: 30px; max-width: 100%; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 11px }
+.daily-rewards b { overflow-wrap: anywhere; font-weight: 800 }
+.daily-rewards em { color: var(--accent-strong); font-family: var(--font-d); font-style: normal; font-weight: 900; white-space: nowrap }
+.timeline-list svg { color: var(--accent-strong) }
+
+.details-head .act-btn { display: inline-flex; min-height: 40px; align-items: center; gap: 5px }
+.details-caption { margin: 12px 0 2px; color: var(--ink-60); font-size: 11.5px; font-weight: 700 }
+.detail-list li { display: grid; grid-template-columns: 116px 110px minmax(0, 1fr); align-items: start; gap: 12px; padding: 13px 4px }
+.detail-list time { display: flex; flex-direction: column; gap: 2px }
+.detail-list time b { color: var(--ink); font-size: 11.5px; font-weight: 800 }
+.detail-list time span { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 700 }
+.detail-meta { display: flex; min-width: 0; align-items: flex-start; gap: 6px; flex-direction: column }
+.detail-source { width: fit-content; max-width: 100%; overflow: hidden; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); font-size: 10.5px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap }
+.detail-stamina { color: var(--ink-60); font-size: 10.5px; font-weight: 700 }
+.detail-stamina b { color: var(--accent-strong); font-family: var(--font-d); font-size: 12px; font-weight: 900 }
+.detail-entries { display: flex; gap: 6px; flex-wrap: wrap }
+.detail-entries span { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 11px }
+.detail-entries b { font-weight: 800 }
+.detail-entries em { color: var(--accent-strong); font-family: var(--font-d); font-style: normal; font-weight: 900 }
 
 /* ---- 背包格（游戏背包样式）---- */
 .backpack { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 18px 18px 20px }
@@ -1190,6 +2102,13 @@ onMounted(async function () {
 .stock-edit-slot { align-items: center }
 .stock-edit-slot:hover { transform: none }
 .stock-edit-slot .slot-name { height: auto; min-height: calc(2 * 1.45em) }
+.stock-editor.is-agent-editor { padding: 14px }
+.is-agent-editor .stock-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-top: 12px }
+.is-agent-editor .stock-edit-slot { display: grid; min-height: 82px; grid-template-columns: 64px minmax(80px, 1fr) 132px; grid-template-rows: repeat(2, minmax(0, auto)); align-items: center; gap: 2px 10px; padding: 8px 10px; border-bottom: 1px solid var(--line) }
+.is-agent-editor .stock-edit-slot .slot-ic { width: 58px; grid-row: 1 / -1; margin: 0; border-radius: 10px }
+.is-agent-editor .stock-edit-slot .slot-name { height: auto; min-height: 0; justify-content: flex-start; margin: 0; text-align: left }
+.is-agent-editor .stock-edit-slot .slot-tag { align-self: start; justify-self: start; margin: 0; padding-inline: 6px }
+.is-agent-editor .stock-edit-slot .stock-stepper { width: 132px; grid-column: 3; grid-row: 1 / -1; margin: 0 }
 .stock-stepper { width: min(100%, 132px); height: 40px; margin-top: 6px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: stretch; border: 1.5px solid var(--accent); border-radius: 8px; overflow: hidden; background: var(--surface); box-shadow: 0 3px 8px rgba(73, 59, 44, .14) }
 .stock-stepper:focus-within { border-color: var(--tea); box-shadow: 0 0 0 2px var(--yellow) }
 .stock-stepper.invalid { border-color: var(--rouge) }
@@ -1235,10 +2154,11 @@ onMounted(async function () {
 /* ---- 清单格状态：未持有（数量 0）仅淡化图片，数量角标保持可读 ---- */
 .slot.is-missing .slot-img { filter: grayscale(.28) saturate(.5); opacity: .68 }
 .slot.is-missing:hover .slot-ic:not(.is-agent) .slot-img { filter: grayscale(.16) saturate(.68); opacity: .8 }
-.slot.is-missing .slot-ic.is-agent { opacity: .55; border-style: dashed }
-.slot.is-missing:hover .slot-ic.is-agent { opacity: .8 }
-.slot.is-missing .slot-name { color: var(--ink-35) }
-.slot.is-missing:hover .slot-name { color: var(--ink-60) }
+.slot.is-missing .slot-ic.is-agent { border-style: dashed }
+.slot.is-missing .slot-ic.is-agent .slot-img { filter: grayscale(.28) saturate(.5); opacity: .55 }
+.slot.is-missing:hover .slot-ic.is-agent .slot-img { filter: grayscale(.16) saturate(.68); opacity: .8 }
+.slot.is-missing .slot-name { color: var(--ink-60) }
+.slot.is-missing:hover .slot-name { color: var(--accent-strong) }
 .slot-count.zero { background: rgba(255, 253, 246, .86); border: 1.5px dashed var(--line); color: var(--ink-60); box-shadow: none }
 .slot-tag {
   margin-top: 5px; align-self: center; font-size: 10.5px; font-weight: 700; color: var(--ink-60);
@@ -1248,6 +2168,41 @@ onMounted(async function () {
 .slot-tag.star.s5 { background: var(--yellow); border-color: transparent; color: var(--ink) }
 .slot-tag.star.s4 { background: transparent; border: 1.5px solid rgba(91, 106, 140, .45); color: var(--slate-deep) }
 .slot-tag.star.s3 { background: transparent; border: 1.5px solid var(--line); color: var(--ink-60) }
+
+/* ---- 密探目录：名册式清单 ---- */
+.backpack.manifest-agents { padding: 14px 16px 18px; border-radius: 16px }
+.manifest-agents .agent-directory { min-width: 0 }
+.manifest-agents .agent-group { position: relative; padding-top: 12px }
+.manifest-agents .agent-group + .agent-group { margin-top: 12px; padding-top: 16px; border-top: 1px dashed var(--line) }
+.manifest-agents .agent-group-head { position: relative; display: flex; min-height: 28px; align-items: center; gap: 8px; padding-left: 11px }
+.manifest-agents .agent-group-head::before { position: absolute; top: 50%; left: 0; width: 3px; height: 18px; border-radius: 2px; background: var(--accent); content: ''; transform: translateY(-50%) }
+.manifest-agents .agent-group-head h2 { margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 15px; font-weight: 900; letter-spacing: 0 }
+.manifest-agents .agent-group-head span { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
+.manifest-agents .agent-slot-grid { grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); gap: 8px; margin-top: 4px }
+.manifest-agents .agent-group-head + .agent-slot-grid { margin-top: 10px }
+.manifest-agents .agent-card { position: relative; display: grid; min-height: 80px; grid-template-columns: 64px minmax(0, 1fr) 44px; align-items: center; gap: 10px; padding: 8px 6px 8px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); transition: border-color .18s var(--ease), background-color .18s var(--ease), box-shadow .18s var(--ease) }
+.manifest-agents .agent-card:hover { border-color: var(--accent); background: var(--surface); box-shadow: 0 7px 18px -15px var(--tea); transform: none }
+.manifest-agents .agent-card.is-favorite { border-color: var(--accent); background: var(--surface) }
+.manifest-agents .agent-card .slot-ic { width: 64px; margin: 0; border-radius: 7px }
+.manifest-agents .agent-card .slot-ic.is-agent { border-width: 1px; box-shadow: none }
+.manifest-agents .agent-card:hover .slot-ic.is-agent { box-shadow: none }
+.manifest-agents .agent-card-body { display: flex; min-width: 0; align-self: stretch; flex-direction: column; justify-content: center; gap: 4px }
+.manifest-agents .agent-card .slot-name { height: auto; min-height: 0; justify-content: flex-start; margin: 0; color: var(--ink); font-size: 12.5px; line-height: 1.35; text-align: left; word-break: break-word }
+.manifest-agents .agent-card.is-favorite .slot-name { color: var(--tea) }
+.manifest-agents .agent-card .slot-tag { max-width: 100%; align-self: flex-start; margin: 0; padding: 1px 7px; border-radius: 5px; font-size: 10px }
+.manifest-agents .agent-card .slot-count { right: 3px; bottom: 3px; min-width: 27px; height: 22px; padding: 2px 6px 0; border-radius: 5px; font-size: 11px; box-shadow: none }
+.manifest-agents .agent-favorite-btn { display: grid; width: 44px; height: 44px; place-items: center; align-self: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink-60); cursor: pointer; transition: background-color .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease) }
+.manifest-agents .agent-favorite-btn.on { border-color: var(--accent); background: var(--yellow); color: var(--tea) }
+.manifest-agents .agent-favorite-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--paper); color: var(--tea); transform: translateY(-1px) }
+.manifest-agents .agent-favorite-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.manifest-agents .agent-favorite-btn:disabled { cursor: not-allowed; opacity: .5 }
+.manifest-agents .agent-favorite-btn.busy svg { opacity: .42 }
+.backpack.agent-list-view { padding: 10px 16px 14px }
+.agent-list-view .agent-slot-grid { grid-template-columns: repeat(2, minmax(280px, 1fr)); gap: 0 18px; margin-top: 4px }
+.agent-list-view .agent-card { min-height: 72px; padding-block: 6px; border-width: 0 0 1px; border-radius: 0; background: transparent }
+.agent-list-view .agent-card:hover { border-color: var(--line); background: var(--cream); box-shadow: none }
+.agent-list-view .agent-card.is-favorite { border-color: var(--accent); background: transparent }
+.agent-list-view .agent-card .slot-ic { width: 58px }
 
 /* ---- 背包道具追踪目录：盘点簿式紧凑清单 ---- */
 .backpack.manifest-items { padding: 14px 16px 18px; border-radius: 16px }
@@ -1285,6 +2240,12 @@ onMounted(async function () {
   .manifest-items .item-subsection.is-level-breakthrough > .slot-grid > .slot:nth-child(12) { grid-column: 1 }
 }
 
+@media (min-width: 641px) and (max-width: 1080px) {
+  .manifest-items .item-subsection.is-divination-stone > .slot-grid > .slot:nth-child(5) { grid-column: 1 }
+  .manifest-items .cultivation-groups { grid-template-columns: minmax(0, 1fr) }
+  .manifest-items .cultivation-group > .slot-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) }
+}
+
 /* ---- 导入记录 ---- */
 .records-head { display: flex; align-items: center; gap: 12px }
 .records-head .hint { font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
@@ -1301,6 +2262,7 @@ onMounted(async function () {
 .rtag.rtag-reward { background: var(--yellow); color: var(--ink) }
 .rtag.rtag-snapshot { border: 1.5px solid var(--brand-blue); color: var(--brand-blue); background: transparent }
 .rtag.rtag-type { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
+.rtag.rtag-stamina { background: var(--cream); border: 1.5px solid var(--accent); color: var(--accent-strong) }
 .rtag.rtag-agent { background: rgba(215, 137, 53, .08); border: 1.5px solid rgba(215, 137, 53, .4); color: var(--accent-strong) }
 .rtag.rtag-item { background: rgba(91, 106, 140, .07); border: 1.5px solid rgba(91, 106, 140, .35); color: var(--slate-deep) }
 .rtag.effect { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
@@ -1398,8 +2360,12 @@ onMounted(async function () {
   .manifest-items .item-subsection.is-divination-stone > .slot-grid > .slot:nth-child(5) { grid-column: 1 }
   .manifest-items .cultivation-groups { grid-template-columns: minmax(0, 1fr); gap: 7px; margin-top: 7px }
   .manifest-items .cultivation-group { padding: 6px }
+  .acquired-query { padding: 14px; border-radius: 12px }
+  .acquired-query-head { align-items: stretch; flex-direction: column; gap: 12px }
+  .acquired-query h2 { font-size: 18px; line-height: 1.45 }
+  .quick-range { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px }
+  .quick-range button { min-height: 44px; padding-inline: 6px }
   .acquired-bar { flex-direction: column; align-items: stretch }
-  .range { justify-content: space-between }
   .manifest-bar { flex-direction: column; align-items: stretch; gap: 10px }
   .manifest-bar .sp { display: none }
   .type-switch { flex-wrap: wrap }
@@ -1418,9 +2384,71 @@ onMounted(async function () {
   .mf-search { width: 100%; min-height: 44px; font-size: 16px }
   .mf-filter { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr) }
   .mf-filter button { min-height: 40px }
+  .agent-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 9px; padding: 12px 0 }
+  .agent-controls > label { min-width: 0 }
+  .agent-controls select, .agent-controls input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
+  .agent-control-search { grid-column: 1 / -1 }
+  .agent-control-search > svg { bottom: 14px }
+  .agent-favorite-filter { grid-column: 1 / -1; min-height: 44px }
+  .agent-view-switch { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .agent-view-switch button { width: 100%; height: 40px }
+  .agent-reset { min-height: 44px }
+  .agent-result { margin-left: 0; text-align: right }
+  .agent-sync-state { grid-column: 1 / -1 }
+  .backpack.manifest-agents { padding: 8px 7px 10px; border-radius: 14px }
+  .manifest-agents .agent-group { padding-top: 8px }
+  .manifest-agents .agent-group + .agent-group { margin-top: 10px; padding-top: 12px }
+  .manifest-agents .agent-group-head { min-height: 26px }
+  .manifest-agents .agent-group-head + .agent-slot-grid { margin-top: 7px }
+  .manifest-agents .agent-slot-grid { grid-template-columns: minmax(0, 1fr); gap: 6px }
+  .manifest-agents .agent-card { min-height: 76px; grid-template-columns: 58px minmax(0, 1fr) 44px; gap: 8px; padding: 7px 5px 7px 7px }
+  .manifest-agents .agent-card .slot-ic { width: 58px }
+  .backpack.agent-list-view { padding: 7px 8px 10px }
+  .agent-list-view .agent-slot-grid { grid-template-columns: minmax(0, 1fr); gap: 0 }
+  .agent-list-view .agent-card { min-height: 68px; padding-block: 5px }
+  .agent-list-view .agent-card .slot-ic { width: 54px }
+  .is-agent-editor .stock-edit-grid { grid-template-columns: minmax(0, 1fr); gap: 5px }
+  .is-agent-editor .stock-edit-slot { min-height: 82px; grid-template-columns: 58px minmax(70px, 1fr) 132px; gap: 2px 7px; padding-inline: 4px }
+  .is-agent-editor .stock-edit-slot .slot-ic { width: 54px }
+  .is-agent-editor .stock-edit-slot .stock-stepper { width: 132px; height: 44px; grid-template-columns: 40px minmax(0, 1fr) 40px; grid-template-rows: 44px }
+  .is-agent-editor .stock-stepper button:first-child { grid-column: 1; grid-row: 1; border-right: 1px solid var(--line) }
+  .is-agent-editor .stock-stepper button:last-child { grid-column: 3; grid-row: 1; border-left: 1px solid var(--line) }
+  .is-agent-editor .stock-stepper .stock-count-input { grid-column: 2; grid-row: 1; border-bottom: 0 }
   .range { align-items: stretch; flex-direction: column }
-  .range label { justify-content: space-between }
-  .range input { min-height: 44px; min-width: 0; font-size: 16px }
+  .range label { width: 100% }
+  .range-dash { display: none }
+  .range input { width: 100%; min-height: 44px; min-width: 0; font-size: 16px }
+  .acquired-submit { width: 100% }
+  .range-caption { width: 100%; align-items: flex-start; margin-left: 0 }
+  .acquired-tools { align-items: stretch; flex-direction: column }
+  .acquired-views { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .acquired-views button { min-height: 44px; padding-inline: 7px }
+  .acquired-filters { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'search' 'source'; gap: 10px; margin-left: 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
+  .acquired-filters.has-sort { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: 'search search' 'source sort' }
+  .acquired-filters > label { min-width: 0; gap: 5px }
+  .acquired-filters > label > span:not(.sr-only) { font-size: 11px }
+  .acquired-filters select, .acquired-filters input { width: 100%; min-height: 44px; border-radius: 8px; background: var(--paper); font-size: 16px }
+  .acquired-search { grid-area: search }
+  .acquired-source-filter { grid-area: source }
+  .acquired-sort-filter { grid-area: sort }
+  .acquired-search > svg { bottom: 14px }
+  .acquired-ledger { padding: 14px 12px; border-radius: 12px }
+  .ledger-head { align-items: flex-start; flex-direction: column; gap: 6px }
+  .ledger-head > small { text-align: left }
+  .source-list button { min-height: 88px; grid-template-columns: 28px minmax(0, 1fr) 22px; grid-template-areas: 'rank main icon' '. records icon' '. kinds icon'; gap: 4px 8px; padding: 10px 2px }
+  .source-rank { grid-area: rank }
+  .source-main { grid-area: main }
+  .source-list svg { grid-area: icon }
+  .source-stat:nth-child(3) { grid-area: records }
+  .source-stat:nth-child(4) { grid-area: kinds }
+  .source-top { display: none }
+  .timeline-list button { min-height: 0; grid-template-columns: minmax(0, 1fr) 22px; grid-template-areas: 'date icon' 'rewards rewards'; gap: 8px; padding: 12px 2px }
+  .timeline-list time { grid-area: date }
+  .timeline-list svg { grid-area: icon }
+  .daily-rewards { grid-area: rewards }
+  .detail-list li { grid-template-columns: 90px minmax(0, 1fr); gap: 8px; padding: 12px 2px }
+  .detail-entries { grid-column: 1 / -1 }
+  .details-head .act-btn { width: 100%; justify-content: center; min-height: 44px }
   .record { align-items: flex-start; padding: 12px; flex-wrap: wrap }
   .record-time { margin-left: 0 }
   .record-del { min-height: 44px; width: 100% }
@@ -1432,5 +2460,6 @@ onMounted(async function () {
   .subsection-edit svg,
   .subsection-edit::after { transition: none }
   .subsection-edit:hover:not(:disabled) svg { transform: none }
+  .spin { animation: none }
 }
 </style>

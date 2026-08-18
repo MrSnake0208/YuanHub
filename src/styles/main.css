@@ -179,7 +179,7 @@ main{margin-left:292px;min-height:100vh}
 .pg button:disabled{opacity:.4;cursor:default}
 
 /* ---------------- 详情页：章节 ---------------- */
-section{padding:88px 0 8px}
+section{padding:0px 0 8px}
 .sec-head{display:flex;align-items:baseline;gap:18px;border-bottom:2px solid var(--ink);padding-bottom:16px}
 .sec-head .idx{font-family:var(--font-d);font-weight:900;font-size:15px;background:var(--slate);color:var(--cream);border-radius:8px;padding:5px 10px}
 .sec-head h2{font-family:var(--font-s);font-weight:900;font-size:clamp(28px,3vw,40px);letter-spacing:.06em}
@@ -498,7 +498,7 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .hero-stats .k{font-size:10.5px;line-height:1.45}
   .hero-stats .v{font-size:24px;line-height:1.2}
   .hero-stats .v small{display:block;margin:3px 0 0;font-size:11px;line-height:1.35}
-  section{padding:48px 0 4px}
+  section{padding:0px 0 4px}
 
   .toolbar{position:relative;top:auto;margin-top:0;padding:10px;border-radius:14px;gap:8px;box-shadow:none}
   .tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}

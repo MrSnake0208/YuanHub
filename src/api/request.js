@@ -19,12 +19,12 @@ const API_BASE =
 
 export async function request(
   path,
-  { method = "GET", body, auth = false, raw = false } = {},
+  { method = "GET", body, auth = false, raw = false, headers: extraHeaders } = {},
 ) {
   let refreshed = false;
 
   async function doRequest() {
-    const headers = { "Content-Type": "application/json" };
+    const headers = Object.assign({ "Content-Type": "application/json" }, extraHeaders);
 
     let store = null;
     if (auth) {

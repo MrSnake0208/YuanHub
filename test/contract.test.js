@@ -15,6 +15,14 @@ function readRel(rel) {
   return readFileSync(ROOT + rel, 'utf8')
 }
 
+function exportedFunctionSource(source, name) {
+  const start = source.indexOf('export function ' + name + '(')
+  assert.notEqual(start, -1, '缺少前端函数 ' + name)
+  const end = source.indexOf('\n}\n', start)
+  assert.notEqual(end, -1, '无法提取前端函数 ' + name)
+  return source.slice(start, end + 2)
+}
+
 const backendService = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenService.kt')
 const backendPermission = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiPermission.kt')
 const backendTokenCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenController.kt')
@@ -89,6 +97,27 @@ test('库存账号 CRUD 路径前后端一致', () => {
   assert.match(backendInventoryCtrl, /DeleteMapping\("\/accounts\/\{accountId\}"/)
   assert.match(frontendInventory, /PATH \+ '\/accounts'/)
   assert.match(frontendInventory, /PATH \+ '\/accounts\/' \+ encodeURIComponent\(accountId\)/)
+})
+
+test('密探特别关注 GET/PUT/DELETE 契约一致', () => {
+  assert.match(backendInventoryCtrl, /GetMapping\("\/agent-favorites"/)
+  assert.match(backendInventoryCtrl, /PutMapping\("\/agent-favorites\/\{agentId\}"/)
+  assert.match(backendInventoryCtrl, /DeleteMapping\("\/agent-favorites\/\{agentId\}"/)
+  const list = exportedFunctionSource(frontendInventory, 'listAgentFavorites')
+  const add = exportedFunctionSource(frontendInventory, 'addAgentFavorite')
+  const remove = exportedFunctionSource(frontendInventory, 'removeAgentFavorite')
+  assert.match(list, /account_id/)
+  assert.match(list, /auth: true/)
+  assert.match(add, /encodeURIComponent\(agentId\)/)
+  assert.match(add, /account_id/)
+  assert.match(add, /method: 'PUT'/)
+  assert.match(add, /auth: true/)
+  assert.doesNotMatch(add, /body:/)
+  assert.match(remove, /encodeURIComponent\(agentId\)/)
+  assert.match(remove, /account_id/)
+  assert.match(remove, /method: 'DELETE'/)
+  assert.match(remove, /auth: true/)
+  assert.doesNotMatch(remove, /body:/)
 })
 
 test('库存查询携带 account_id（后端必填 + 前端透传）', () => {
