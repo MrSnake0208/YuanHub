@@ -46,6 +46,8 @@ export function dispatchHoursForStaminaCost(staminaCost) {
 export function summarizeDispatchDuration(records) {
   const summary = {
     totalHours: 0,
+    luoyangHours: 0,
+    shouchunHours: 0,
     dispatchRecordCount: 0,
     convertedRecordCount: 0,
     unconvertedRecordCount: 0
@@ -60,6 +62,9 @@ export function summarizeDispatchDuration(records) {
       return
     }
     summary.totalHours += hours
+    const channel = acquisitionChannel(record.acquisition_channel || record.acquisitionChannel)
+    if (channel.includes('洛阳')) summary.luoyangHours += hours
+    if (channel.includes('寿春')) summary.shouchunHours += hours
     summary.convertedRecordCount += 1
   })
   return summary
@@ -231,12 +236,17 @@ export function buildRewardInsights({
   agentTotals,
   itemRecords,
   agentRecords,
+  agentHistoryRecords,
+  agentHistoryComplete,
   favoriteAgents,
   rangeEnd,
   minimumBiasSample = 10
 } = {}) {
   const items = rewardRecords(itemRecords)
   const agents = rewardRecords(agentRecords)
+  const hasExplicitAgentHistory = Array.isArray(agentHistoryRecords)
+  const agentHistory = hasExplicitAgentHistory ? rewardRecords(agentHistoryRecords) : agents
+  const historyComplete = agentHistoryComplete === undefined ? hasExplicitAgentHistory : Boolean(agentHistoryComplete)
   const resolvedItemTotals = normalizedTotals(itemTotals, items)
   const resolvedAgentTotals = normalizedTotals(agentTotals, agents)
   const favorites = namedFavoriteAgents(favoriteAgents)
@@ -244,8 +254,10 @@ export function buildRewardInsights({
   const favoriteNames = new Map(favorites.map(function (agent) { return [agent.id, agent.name] }))
   const agentNames = new Map(favorites.map(function (agent) { return [agent.id, agent.name] }))
   const agentRecordMeta = new Map()
+  const agentHistoryMeta = new Map()
   const activeDays = new Set()
   const coinDays = new Map()
+  const coinStreakDays = new Set()
   const favoriteDays = new Map()
   const favoriteDayAgents = new Map()
   const luckyCoframes = []
@@ -258,7 +270,9 @@ export function buildRewardInsights({
 
   items.forEach(function (record) {
     const day = localDayKey(record.effective_at)
-    const isYuanbao = acquisitionChannel(record.acquisition_channel) === '鸢报'
+    const channel = acquisitionChannel(record.acquisition_channel)
+    const isYuanbao = channel === '鸢报'
+    const isLuoyang = channel === '派遣-洛阳'
     if (day && !coinDays.has(day)) coinDays.set(day, { date: day, direct: 0, zhuyu: 0, count: 0 })
     const row = day ? coinDays.get(day) : null
     const entries = Array.isArray(record.entries) ? record.entries : []
@@ -268,8 +282,13 @@ export function buildRewardInsights({
         const count = positiveCount(entry.count)
         if (row) row.direct += count
         if (isYuanbao) yuanbaoWhiteCoin += count
+        if (day && isLuoyang && count) coinStreakDays.add(day)
       }
-      if (entry.id === 'zhuyu' && row) row.zhuyu += positiveCount(entry.count)
+      if (entry.id === 'zhuyu') {
+        const count = positiveCount(entry.count)
+        if (row) row.zhuyu += count
+        if (day && count) coinStreakDays.add(day)
+      }
     })
     if (row) row.count = row.direct + row.zhuyu * 50
   })
@@ -311,6 +330,18 @@ export function buildRewardInsights({
     }
   })
 
+  agentHistory.forEach(function (record) {
+    const day = localDayKey(record.effective_at)
+    const entries = Array.isArray(record.entries) ? record.entries : []
+    entries.forEach(function (entry) {
+      if (!entry || !entry.id || !positiveCount(entry.count)) return
+      if (entry.name) agentNames.set(entry.id, entry.name)
+      if (!agentHistoryMeta.has(entry.id)) agentHistoryMeta.set(entry.id, { lastDay: '' })
+      const meta = agentHistoryMeta.get(entry.id)
+      if (day && (!meta.lastDay || day > meta.lastDay)) meta.lastDay = day
+    })
+  })
+
   const ranking = Object.keys(resolvedAgentTotals).map(function (id) {
     const meta = agentRecordMeta.get(id)
     return {
@@ -336,6 +367,26 @@ export function buildRewardInsights({
     return agent.daysSinceLast !== undefined
   }).sort(function (left, right) {
     return right.daysSinceLast - left.daysSinceLast || left.name.localeCompare(right.name, 'zh-CN')
+  })
+  const favoriteTopThreeIds = new Set(favoriteRanking.slice(0, 3).map(function (agent) { return agent.id }))
+  const periodFavoriteIds = new Set(favoriteRanking.map(function (agent) { return agent.id }))
+  const absenceCandidates = favorites.filter(function (agent) {
+    return !favoriteTopThreeIds.has(agent.id)
+  }).map(function (agent) {
+    const historyMeta = agentHistoryMeta.get(agent.id)
+    const hasHistory = Boolean(historyMeta && historyMeta.lastDay)
+    if (!hasHistory && !historyComplete) return null
+    const acquiredInPeriod = periodFavoriteIds.has(agent.id)
+    return {
+      id: agent.id,
+      name: agent.name,
+      kind: hasHistory ? (acquiredInPeriod ? 'stale' : 'period-missing') : 'never',
+      priority: hasHistory ? (acquiredInPeriod ? 2 : 1) : 0,
+      lastDay: hasHistory ? historyMeta.lastDay : '',
+      daysSinceLast: hasHistory ? dayDistance(historyMeta.lastDay, rangeEnd) : undefined
+    }
+  }).filter(Boolean).sort(function (left, right) {
+    return left.priority - right.priority || (right.daysSinceLast || 0) - (left.daysSinceLast || 0) || left.name.localeCompare(right.name, 'zh-CN')
   })
 
   const coinDayRows = Array.from(coinDays.values())
@@ -366,9 +417,10 @@ export function buildRewardInsights({
       zhuyu: zhuyu,
       equivalent: direct + zhuyu * 50,
       bestDay: bestDay(coinDayRows),
-      longestStreak: longestDayStreak(coinDayRows.filter(function (row) { return row.count > 0 }).map(function (row) { return row.date }))
+      longestStreak: longestDayStreak(Array.from(coinStreakDays))
     },
     agents: {
+      favorites: favorites,
       ranking: ranking,
       favoriteRanking: favoriteRanking,
       favoriteTotal: favoriteTotal,
@@ -377,6 +429,7 @@ export function buildRewardInsights({
       coverageRatio: favorites.length ? favoriteRanking.length / favorites.length : null,
       missingFavorites: missingFavorites,
       stalestFavorite: staleFavorites[0] || null,
+      absenceTarget: absenceCandidates[0] || null,
       luckyDay: bestDay(favoriteDayRows),
       luckyCoframes: luckyCoframes,
       bias: {

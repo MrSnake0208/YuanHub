@@ -326,10 +326,6 @@
                   <span class="query-eyebrow">奖励流水统计</span>
                   <h2 id="acquired-query-title">选一段时间，翻看获得簿</h2>
                 </div>
-                <div class="type-switch" aria-label="统计对象">
-                  <button :aria-pressed="entityType === 'item'" :class="{ on: entityType === 'item' }" @click="setEntityType('item')">背包道具</button>
-                  <button :aria-pressed="entityType === 'agent'" :class="{ on: entityType === 'agent' }" @click="setEntityType('agent')">密探心纸</button>
-                </div>
               </div>
 
               <div class="quick-range" aria-label="快捷时段">
@@ -385,18 +381,26 @@
                 v-reveal
               />
 
-              <div v-if="acquiredRecordsError || acquiredRecordsTruncated || acquiredTotalsErrors.item || acquiredTotalsErrors.agent || !acquiredTotalsMatch || periodDispatchDuration.unconvertedRecordCount" class="acquired-notices" role="status">
+              <div class="type-switch acquired-type-switch" aria-label="统计对象" v-reveal>
+                <button type="button" aria-label="全部（道具和心纸）" :aria-pressed="acquiredEntityType === 'all'" :class="{ on: acquiredEntityType === 'all' }" @click="setAcquiredEntityType('all')">ALL</button>
+                <button type="button" :aria-pressed="acquiredEntityType === 'item'" :class="{ on: acquiredEntityType === 'item' }" @click="setAcquiredEntityType('item')">背包道具</button>
+                <button type="button" :aria-pressed="acquiredEntityType === 'agent'" :class="{ on: acquiredEntityType === 'agent' }" @click="setAcquiredEntityType('agent')">密探心纸</button>
+              </div>
+
+              <div v-if="acquiredRecordsError || acquiredRecordsTruncated || acquiredAgentHistoryError || acquiredAgentHistoryTruncated || acquiredTotalsErrors.item || acquiredTotalsErrors.agent || !acquiredTotalsMatch || periodDispatchDuration.unconvertedRecordCount" class="acquired-notices" role="status">
                 <p v-if="acquiredTotalsErrors.item">白金币等价值暂不可用：{{ acquiredTotalsErrors.item }}</p>
                 <p v-if="acquiredTotalsErrors.agent">心纸排行与关注统计暂不可用：{{ acquiredTotalsErrors.agent }}</p>
                 <p v-if="acquiredRecordsError">汇总已加载，但流水明细加载失败：{{ acquiredRecordsError }}</p>
                 <p v-if="acquiredRecordsTruncated">本次明细最多整理 5,000 条；总量仍以后端汇总为准，幸运日、连续收获和同框结论可能不完整。</p>
+                <p v-if="acquiredAgentHistoryError">长期失联统计暂不可用：{{ acquiredAgentHistoryError }}</p>
+                <p v-else-if="acquiredAgentHistoryTruncated">密探历史流水超过 5,000 条，未查到的密探不会被判定为从未获得。</p>
                 <p v-if="!acquiredTotalsMatch">流水明细与汇总口径存在差异；总览排行以后端汇总为准。</p>
                 <p v-if="periodDispatchDuration.unconvertedRecordCount">有 {{ periodDispatchDuration.unconvertedRecordCount }} 条派遣流水缺少可换算的消耗体力，未计入派遣总时长。</p>
               </div>
 
               <div v-if="acquiredEntries.length === 0" class="state acquired-empty acquired-type-empty">
-                <strong>{{ entityType === 'item' ? '本期没有背包道具奖励' : '本期没有密探心纸奖励' }}</strong>
-                <span>上方总账仍展示本周期的跨类型统计；可切换统计对象查看另一类流水。</span>
+                <strong>{{ acquiredEntityType === 'all' ? '本期没有道具或心纸奖励' : (acquiredEntityType === 'item' ? '本期没有背包道具奖励' : '本期没有密探心纸奖励') }}</strong>
+                <span>上方总账始终展示本周期的完整统计；可切换统计对象查看对应流水。</span>
               </div>
               <template v-else>
               <div class="acquired-tools" v-reveal>
@@ -436,9 +440,9 @@
                 </div>
                 <div v-if="displayedAcquiredEntries.length === 0" class="state slim">没有匹配当前筛选的获得记录</div>
                 <ul v-else class="slot-grid acquired-slot-grid">
-                  <li v-for="e in displayedAcquiredEntries" :key="e.id" class="slot" :title="e.name || e.id">
+                  <li v-for="e in displayedAcquiredEntries" :key="e.entity_type + ':' + e.id" class="slot" :title="e.name || e.id">
                     <button type="button" class="slot-action" :aria-label="'查看' + (e.name || e.id) + '的获得明细'" @click="openEntityDetails(e.id)">
-                      <div class="slot-ic" :class="{ 'is-agent': entityType === 'agent' }">
+                      <div class="slot-ic" :class="{ 'is-agent': e.entity_type === 'agent' }">
                         <div class="slot-ph"><span class="ph-seal">图</span><span class="ph-mono">{{ monogram(e) }}</span></div>
                         <img class="slot-img" :src="iconSrc(e)" :alt="e.name || e.id" width="96" height="96" loading="lazy" @load="onImgLoad" @error="onImgError" />
                         <span class="slot-count gained">+{{ fmtCount(e.count) }}</span>
@@ -498,7 +502,7 @@
                       <span v-if="staminaCostOf(record) !== undefined" class="detail-stamina">消耗体力 <b>{{ staminaCostOf(record) }}</b></span>
                     </div>
                     <div class="detail-entries">
-                      <span v-for="entry in visibleRecordEntries(record)" :key="entry.id"><b>{{ entry.name || nameOf(entry.id, null) }}</b><em>+{{ fmtCount(entry.count) }}</em></span>
+                      <span v-for="entry in visibleRecordEntries(record)" :key="entry.id"><b>{{ entry.name || nameOf(entry.id, null, record.entity_type) }}</b><em>+{{ fmtCount(entry.count) }}</em></span>
                     </div>
                   </li>
                 </ol>
@@ -593,6 +597,7 @@ const error = ref('')
 const catalog = ref({ entities: [] })
 const currentEntries = ref([])
 const acquiredEntries = ref([])
+const acquiredEntityType = ref('all')
 const rangeFrom = ref(localDate(new Date(Date.now() - 29 * 86400000)))
 const rangeTo = ref(localDate(new Date()))
 const rangePreset = ref('30d')
@@ -604,8 +609,11 @@ const acquiredLoading = ref(false)
 const acquiredError = ref('')
 const acquiredRecords = ref([])
 const acquiredAllRecords = ref([])
+const acquiredAgentHistoryRecords = ref([])
 const acquiredRecordsError = ref('')
 const acquiredRecordsTruncated = ref(false)
+const acquiredAgentHistoryError = ref('')
+const acquiredAgentHistoryTruncated = ref(false)
 const acquiredRecordProgress = ref({ pages: 0, records: 0 })
 const acquiredTotalsObject = ref({})
 const acquiredTotalsByType = ref({ item: {}, agent: {} })
@@ -672,15 +680,20 @@ function setEntityType(t) {
   if (editingStock.value) return
   if (t === entityType.value) return
   entityType.value = t
-  // 切换对象类型后,旧的时段获得量结果属于另一类型:清空避免张冠李戴;
-  // 当前库存立即刷新;若正处于"时段获得量"页签则按新类型自动重新统计。
   currentEntries.value = []
   currentFullBaselineAt.value = null
-  resetAcquiredData()
   error.value = ''
   reloadCurrent()
   if (t === 'agent') loadAgentFavorites()
-  if (activeTab.value === 'acquired') loadAcquired()
+}
+
+function setAcquiredEntityType(t) {
+  if (!['all', 'item', 'agent'].includes(t) || t === acquiredEntityType.value) return
+  acquiredEntityType.value = t
+  acquiredSource.value = 'all'
+  acquiredSearch.value = ''
+  clearSelectedEntity()
+  applyAcquiredEntityType()
 }
 
 function clearAgentFavorites() {
@@ -759,12 +772,15 @@ function resetAcquiredData() {
   acquiredEntries.value = []
   acquiredRecords.value = []
   acquiredAllRecords.value = []
+  acquiredAgentHistoryRecords.value = []
   acquiredTotalsObject.value = {}
   acquiredTotalsByType.value = { item: {}, agent: {} }
   acquiredTotalsErrors.value = { item: '', agent: '' }
   acquiredError.value = ''
   acquiredRecordsError.value = ''
   acquiredRecordsTruncated.value = false
+  acquiredAgentHistoryError.value = ''
+  acquiredAgentHistoryTruncated.value = false
   acquiredRecordProgress.value = { pages: 0, records: 0 }
   appliedAcquiredKey.value = ''
   acquiredSource.value = 'all'
@@ -924,7 +940,8 @@ function fmtCount(n) {
 const ICON_EXT = 'png'
 
 function iconSrc(e) {
-  const kind = entityType.value === 'agent' ? 'agents' : 'items'
+  const type = e && e.entity_type ? e.entity_type : entityType.value
+  const kind = type === 'agent' ? 'agents' : 'items'
   return import.meta.env.BASE_URL + 'inventory-icons/' + kind + '/' + encodeURIComponent(e.id) + '.' + ICON_EXT
 }
 
@@ -947,13 +964,43 @@ function monogram(e) {
   return Array.from(s)[0] || '?'
 }
 
-function nameOf(id, name) {
-  const local = LOCAL_NAME[entityType.value] ? LOCAL_NAME[entityType.value].get(id) : null
+function nameOf(id, name, requestedType) {
+  const type = requestedType || entityType.value
+  const local = LOCAL_NAME[type] ? LOCAL_NAME[type].get(id) : null
   if (local) return local
   if (name) return name
   if (!catalog.value.entities.length) return id
-  const hit = catalog.value.entities.find(function (e) { return e.id === id && e.entity_type === entityType.value })
+  const hit = catalog.value.entities.find(function (e) { return e.id === id && e.entity_type === type })
   return (hit && hit.name) ? hit.name : id
+}
+
+function acquiredNameOf(id, name) {
+  if (name) return name
+  const active = acquiredEntries.value.find(function (entry) { return entry.id === id })
+  if (active && active.name) return active.name
+  const itemName = nameOf(id, null, 'item')
+  return itemName !== id ? itemName : nameOf(id, null, 'agent')
+}
+
+function applyAcquiredEntityType() {
+  const types = acquiredEntityType.value === 'all' ? ['item', 'agent'] : [acquiredEntityType.value]
+  const totals = {}
+  acquiredEntries.value = types.flatMap(function (type) {
+    const acquired = acquiredTotalsByType.value[type] || {}
+    return Object.keys(acquired).map(function (id) {
+      const count = Number(acquired[id]) || 0
+      totals[id] = (totals[id] || 0) + count
+      return { id: id, name: nameOf(id, null, type), count: count, entity_type: type }
+    })
+  }).filter(function (entry) {
+    return entry.count > 0
+  }).sort(function (left, right) {
+    return right.count - left.count || left.name.localeCompare(right.name, 'zh-CN')
+  })
+  acquiredTotalsObject.value = totals
+  acquiredRecords.value = acquiredEntityType.value === 'all'
+    ? acquiredAllRecords.value.slice()
+    : acquiredAllRecords.value.filter(function (record) { return record && record.entity_type === acquiredEntityType.value })
 }
 
 const visibleItemCatalog = visibleInventoryItems(ITEM_CATALOG)
@@ -1083,7 +1130,7 @@ const manifestProgressScale = computed(function () {
 })
 
 const currentAcquiredKey = computed(function () {
-  return [accountId.value, entityType.value, rangeFrom.value, rangeTo.value].join('|')
+  return [accountId.value, rangeFrom.value, rangeTo.value].join('|')
 })
 const acquiredQueryDirty = computed(function () {
   return !!appliedAcquiredKey.value && appliedAcquiredKey.value !== currentAcquiredKey.value
@@ -1117,6 +1164,8 @@ const periodInsights = computed(function () {
     agentTotals: acquiredTotalsByType.value.agent,
     itemRecords: acquiredItemRecords.value,
     agentRecords: acquiredAgentRecords.value,
+    agentHistoryRecords: acquiredAgentHistoryRecords.value,
+    agentHistoryComplete: !acquiredAgentHistoryError.value && !acquiredAgentHistoryTruncated.value,
     favoriteAgents: favoriteAgentsForStats.value,
     rangeEnd: rangeTo.value
   })
@@ -1134,10 +1183,8 @@ const acquiredRangeMetaLabel = computed(function () {
   return acquiredActivityLabel.value ? period + ' · 有收获 ' + acquiredActivityLabel.value : period
 })
 const periodDispatchDuration = computed(function () {
-  const item = summarizeDispatchDuration(acquiredItemRecords.value)
-  const agent = summarizeDispatchDuration(acquiredAgentRecords.value)
-  const source = item.dispatchRecordCount ? 'item' : (agent.dispatchRecordCount ? 'agent' : '')
-  return Object.assign({}, source === 'agent' ? agent : item, { source: source })
+  const summary = summarizeDispatchDuration(acquiredAllRecords.value)
+  return Object.assign({}, summary, { source: summary.dispatchRecordCount ? 'all' : '' })
 })
 const acquiredEntityMap = computed(function () {
   return new Map(acquiredStats.value.entities.map(function (entry) { return [entry.id, entry] }))
@@ -1166,7 +1213,7 @@ const detailsTitle = computed(function () {
 
 function entryMatchesQuery(entry, query) {
   if (!query) return true
-  const name = entry.name || nameOf(entry.id, null)
+  const name = entry.name || acquiredNameOf(entry.id, null)
   return [entry.id, name].filter(Boolean).join(' ').toLowerCase().includes(query)
 }
 
@@ -1241,7 +1288,7 @@ const sourceRows = computed(function () {
       recordCount: row.recordCount,
       entityCount: row.ids.size,
       scale: row.recordCount / max,
-      topText: top.map(function (pair) { return nameOf(pair[0], null) + ' +' + fmtCount(pair[1]) }).join(' · ')
+      topText: top.map(function (pair) { return acquiredNameOf(pair[0], null) + ' +' + fmtCount(pair[1]) }).join(' · ')
     }
   })
 })
@@ -1254,7 +1301,7 @@ const timelineRows = computed(function () {
       dayLabel: date ? (date.getMonth() + 1) + '月' + date.getDate() + '日' : day.date,
       weekday: date ? new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date) : '',
       rewards: Object.entries(day.counts || {}).map(function (pair) {
-        return { id: pair[0], name: nameOf(pair[0], null), count: Number(pair[1]) || 0 }
+        return { id: pair[0], name: acquiredNameOf(pair[0], null), count: Number(pair[1]) || 0 }
       }).filter(function (entry) {
         return entry.count > 0
       }).sort(function (left, right) {
@@ -1499,7 +1546,7 @@ function fmtRecordClock(value) {
   return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
 }
 
-async function fetchAcquiredRecords(params, seq) {
+async function fetchAcquiredRecords(params, seq, trackProgress = true) {
   const records = []
   const seenCursors = new Set()
   let cursor = null
@@ -1518,7 +1565,7 @@ async function fetchAcquiredRecords(params, seq) {
     const items = page && Array.isArray(page.items) ? page.items : []
     records.push(...items)
     pages += 1
-    acquiredRecordProgress.value = { pages: pages, records: records.length }
+    if (trackProgress) acquiredRecordProgress.value = { pages: pages, records: records.length }
     const nextCursor = page && page.next_cursor ? page.next_cursor : null
     if (!nextCursor) break
     if (seenCursors.has(nextCursor)) throw new Error('流水分页游标重复，已停止加载')
@@ -1537,6 +1584,8 @@ async function loadAcquired() {
   acquiredError.value = ''
   acquiredRecordsError.value = ''
   acquiredRecordsTruncated.value = false
+  acquiredAgentHistoryError.value = ''
+  acquiredAgentHistoryTruncated.value = false
   acquiredTotalsErrors.value = { item: '', agent: '' }
   acquiredRecordProgress.value = { pages: 0, records: 0 }
   selectedEntityId.value = ''
@@ -1546,6 +1595,8 @@ async function loadAcquired() {
     acquiredEntries.value = []
     acquiredRecords.value = []
     acquiredAllRecords.value = []
+    acquiredAgentHistoryRecords.value = []
+    acquiredTotalsObject.value = {}
     acquiredTotalsByType.value = { item: {}, agent: {} }
     acquiredError.value = '登录后才能统计子账号的获得量'
     return
@@ -1554,6 +1605,8 @@ async function loadAcquired() {
     acquiredEntries.value = []
     acquiredRecords.value = []
     acquiredAllRecords.value = []
+    acquiredAgentHistoryRecords.value = []
+    acquiredTotalsObject.value = {}
     acquiredTotalsByType.value = { item: {}, agent: {} }
     acquiredError.value = '请先创建并选择一个子账号'
     return
@@ -1571,6 +1624,7 @@ async function loadAcquired() {
   acquiredEntries.value = []
   acquiredRecords.value = []
   acquiredAllRecords.value = []
+  acquiredAgentHistoryRecords.value = []
   acquiredTotalsObject.value = {}
   acquiredTotalsByType.value = { item: {}, agent: {} }
   const queryKey = currentAcquiredKey.value
@@ -1582,12 +1636,14 @@ async function loadAcquired() {
     const results = await Promise.allSettled([
       getAcquired(itemParams),
       getAcquired(agentParams),
-      fetchAcquiredRecords(baseParams, seq)
+      fetchAcquiredRecords(baseParams, seq),
+      fetchAcquiredRecords({ accountId: accountId.value, entityType: 'agent', to: to }, seq, false)
     ])
     if (seq !== acquiredSeq) return
     const itemTotalsResult = results[0]
     const agentTotalsResult = results[1]
     const recordsResult = results[2]
+    const agentHistoryResult = results[3]
     const nextTotals = { item: {}, agent: {} }
     const nextErrors = { item: '', agent: '' }
     if (itemTotalsResult.status === 'fulfilled') nextTotals.item = itemTotalsResult.value && itemTotalsResult.value.acquired ? itemTotalsResult.value.acquired : {}
@@ -1597,25 +1653,22 @@ async function loadAcquired() {
     acquiredTotalsByType.value = nextTotals
     acquiredTotalsErrors.value = nextErrors
 
-    const activeTotalsResult = entityType.value === 'item' ? itemTotalsResult : agentTotalsResult
-    if (activeTotalsResult.status === 'fulfilled') {
-      const acquiredObj = nextTotals[entityType.value]
-      acquiredTotalsObject.value = acquiredObj
-      acquiredEntries.value = Object.keys(acquiredObj).map(function (id) {
-        return { id: id, name: nameOf(id, null), count: Number(acquiredObj[id]) || 0 }
-      }).filter(function (entry) { return entry.count > 0 }).sort(function (a, b) { return b.count - a.count })
-      appliedAcquiredKey.value = queryKey
-    } else {
-      acquiredError.value = humanErr(activeTotalsResult.reason, '获得量汇总加载失败')
-    }
     if (recordsResult.status === 'fulfilled' && !recordsResult.value.cancelled) {
       acquiredAllRecords.value = recordsResult.value.records
-      acquiredRecords.value = recordsResult.value.records.filter(function (record) {
-        return record && record.entity_type === entityType.value
-      })
       acquiredRecordsTruncated.value = recordsResult.value.truncated
     } else if (recordsResult.status === 'rejected') {
       acquiredRecordsError.value = humanErr(recordsResult.reason, '流水明细加载失败')
+    }
+    if (agentHistoryResult.status === 'fulfilled' && !agentHistoryResult.value.cancelled) {
+      acquiredAgentHistoryRecords.value = agentHistoryResult.value.records
+      acquiredAgentHistoryTruncated.value = agentHistoryResult.value.truncated
+    } else if (agentHistoryResult.status === 'rejected') {
+      acquiredAgentHistoryError.value = humanErr(agentHistoryResult.reason, '密探历史流水加载失败')
+    }
+    applyAcquiredEntityType()
+    appliedAcquiredKey.value = queryKey
+    if (itemTotalsResult.status === 'rejected' && agentTotalsResult.status === 'rejected' && recordsResult.status === 'rejected') {
+      acquiredError.value = '本期总账和奖励流水均加载失败，请稍后重试'
     }
   } finally {
     if (seq === acquiredSeq) acquiredLoading.value = false
@@ -1883,6 +1936,7 @@ onMounted(async function () {
 }
 .type-switch button.on { background: var(--yellow); color: var(--ink) }
 .type-switch button:hover:not(.on) { color: var(--ink) }
+.type-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
 .type-switch button:disabled { opacity: .45; cursor: not-allowed }
 .type-switch .sp { flex: 1 }
 .type-switch .hint { font-size: 12px; color: var(--ink-35); font-weight: 600; margin-right: 6px }
@@ -1985,6 +2039,7 @@ onMounted(async function () {
 
 .acquired-notices { margin-top: 10px; padding: 10px 14px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--cream); color: var(--ink-60); font-size: 11.5px; font-weight: 700; line-height: 1.7 }
 .acquired-notices p + p { margin-top: 3px }
+.acquired-type-switch { margin-top: 16px }
 
 .acquired-tools { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap }
 .acquired-views { display: inline-flex; gap: 3px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface) }
@@ -2324,6 +2379,8 @@ onMounted(async function () {
   .manifest-scope .manifest-edit-actions button { width: 100%; min-height: 44px; background: var(--surface); border: 1px solid var(--line) }
   .type-switch { width: 100%; display: flex; flex-wrap: wrap }
   .type-switch > button { flex: 1 1 calc(50% - 4px); min-height: 44px }
+  .acquired-type-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .acquired-type-switch > button { min-width: 0; height: 50px; padding-inline: 6px; font-size: 12px; line-height: 1.35; white-space: normal }
   .type-switch .hint { flex: 1 1 100%; margin: 4px 2px }
   .backpack { padding: 14px 12px 16px; border-radius: 20px }
   .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 9px }
