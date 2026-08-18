@@ -29,48 +29,101 @@
       <section>
         <div class="wrap">
           <!-- 库存子账号 -->
-          <div class="account-bar" v-reveal>
-            <div class="ac-sel">
-              <label class="ac-label" for="inventory-account">当前库存子账号</label>
-              <select id="inventory-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || editingStock" @change="onAccountChange">
-                <option v-if="!accounts.length" value="">（未创建）</option>
-                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-              </select>
-              <span v-if="accountError" class="ac-warn">{{ accountError }}</span>
+          <div class="account-workspace" v-reveal>
+            <div class="account-bar">
+              <div class="account-heading">
+                <span class="section-kicker">数据归属</span>
+                <h2>选择要查看的账号</h2>
+                <p>库存、统计和操作历史都会切换到这个子账号。</p>
+              </div>
+              <div class="account-selector">
+                <label class="ac-label" for="inventory-account">当前账号</label>
+                <select id="inventory-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || editingStock" @change="onAccountChange">
+                  <option v-if="!accounts.length" value="">（未创建）</option>
+                  <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+                </select>
+                <span v-if="accountError" class="ac-warn">{{ accountError }}</span>
+              </div>
+              <button class="act-btn account-manage" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showAccounts" @click="showAccounts = !showAccounts">
+                <Users :size="15" aria-hidden="true" />{{ showAccounts ? '收起账号管理' : '管理账号' }}
+              </button>
+              <button class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" @click="showArchive = !showArchive">
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
+              </button>
             </div>
-            <span class="sp"></span>
-            <button class="act-btn ghost" :disabled="!auth.isLoggedIn || editingStock" @click="showAccounts = !showAccounts">{{ showAccounts ? '收起管理' : '管理账号' }}</button>
-          </div>
 
-          <!-- 账号管理 -->
-          <div v-if="showAccounts && !editingStock" class="account-mgr" v-reveal>
-            <div class="ac-new">
-              <input v-model.trim="newAccountName" aria-label="新子账号名称" autocomplete="off" placeholder="新子账号名称（1~64 字）" @keyup.enter="onCreateAccount" />
-              <button class="btn ghost" :disabled="accountBusy || !newAccountName" @click="onCreateAccount">新建账号</button>
-            </div>
-            <ul v-if="accounts.length" class="ac-list">
-              <li v-for="a in accounts" :key="a.id" class="ac-item">
-                <span class="ac-dot"></span>
-                <div class="ac-meta">
-                  <span class="ac-name">{{ a.name }}</span>
-                  <code class="ac-id">{{ a.id }}</code>
+            <!-- 账号管理 -->
+            <div v-if="showAccounts && !editingStock" class="account-mgr">
+              <div class="account-mgr-head">
+                <div>
+                  <h3>账号列表</h3>
+                  <p>给不同存档分别记账，删除账号会同时删除其库存和流水。</p>
                 </div>
-                <button class="ac-btn" :disabled="accountBusy" @click="onRenameAccount(a)">改名</button>
-                <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
-              </li>
-            </ul>
-            <p v-else class="ac-empty">暂无子账号，请在上方输入名称创建第一个子账号</p>
+                <span class="account-count">{{ accounts.length }} 个账号</span>
+              </div>
+              <div class="ac-new">
+                <input v-model.trim="newAccountName" aria-label="新子账号名称" autocomplete="off" placeholder="输入新账号名称" @keyup.enter="onCreateAccount" />
+                <button class="btn ghost" :disabled="accountBusy || !newAccountName" @click="onCreateAccount">新建账号</button>
+              </div>
+              <ul v-if="accounts.length" class="ac-list">
+                <li v-for="a in accounts" :key="a.id" class="ac-item" :class="{ selected: a.id === accountId }">
+                  <span class="ac-dot"></span>
+                  <div class="ac-meta">
+                    <span class="ac-name">{{ a.name }}<em v-if="a.id === accountId">当前</em></span>
+                    <code class="ac-id">{{ a.id }}</code>
+                  </div>
+                  <button class="ac-btn" :disabled="accountBusy" @click="onRenameAccount(a)">改名</button>
+                  <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
+                </li>
+              </ul>
+              <p v-else class="ac-empty">还没有库存子账号，先创建一个再开始记录。</p>
+            </div>
+
+            <!-- 档案操作：默认收起，避免抢占库存主流程的注意力 -->
+            <div v-if="showArchive && !editingStock" class="archive-workspace">
+              <div class="archive-heading">
+                <div>
+                  <span class="section-kicker">数据交换</span>
+                  <h2>导入或导出档案</h2>
+                  <p>用于在不同平台之间迁移库存；导出前请确认账号范围。</p>
+                </div>
+                <span class="archive-format">JSON · v2</span>
+              </div>
+              <div class="archive-actions">
+                <button class="act-btn archive-import" :disabled="!auth.isLoggedIn || editingStock" @click="showImport = !showImport">
+                  <Upload :size="16" aria-hidden="true" />{{ showImport ? '收起导入' : '导入档案' }}
+                </button>
+                <div class="export-group">
+                  <div class="export-label">导出范围</div>
+                  <div class="export-options" role="radiogroup" aria-label="导出范围">
+                    <label class="export-option" :class="{ active: !exportAll }">
+                      <input v-model="exportAll" type="radio" :value="false" name="inventory-export-scope" />
+                      <span><b>当前账号</b><small>{{ currentAccountName }}</small></span>
+                    </label>
+                    <label class="export-option" :class="{ active: exportAll, disabled: accounts.length < 2 }">
+                      <input v-model="exportAll" type="radio" :value="true" name="inventory-export-scope" :disabled="accounts.length < 2" />
+                      <span><b>全部账号</b><small>{{ accounts.length > 1 ? accounts.length + ' 个账号' : '至少需要 2 个账号' }}</small></span>
+                    </label>
+                  </div>
+                  <button class="act-btn export-submit" :disabled="!auth.isLoggedIn || !accountId" @click="doExport">
+                    <Download :size="16" aria-hidden="true" />导出档案
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- TABS：追踪目录 / 时段获得量 / 导入记录 -->
-          <div class="inventory-tabs" v-reveal>
-            <button :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">追踪清单</button>
-            <button :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">统计报告</button>
-            <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">操作历史</button>
-            <span class="sp"></span>
-            <button class="act-btn ghost" :disabled="!auth.isLoggedIn || editingStock" @click="showImport = !showImport">导入档案</button>
-            <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
-            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
+          <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
+          <div class="inventory-tabs" role="tablist" aria-label="库存工作区" v-reveal>
+            <button role="tab" :aria-selected="activeTab === 'manifest'" :class="{ on: activeTab === 'manifest' }" @click="setTab('manifest')">
+              <Layers3 :size="17" aria-hidden="true" /><span>追踪清单</span>
+            </button>
+            <button role="tab" :aria-selected="activeTab === 'acquired'" :class="{ on: activeTab === 'acquired' }" @click="setTab('acquired')">
+              <CalendarDays :size="17" aria-hidden="true" /><span>统计报告</span>
+            </button>
+            <button role="tab" :aria-selected="activeTab === 'records'" :class="{ on: activeTab === 'records' }" @click="setTab('records')">
+              <ListFilter :size="17" aria-hidden="true" /><span>操作历史</span>
+            </button>
           </div>
 
           <!-- 导入档案 -->
@@ -106,7 +159,7 @@
               <aside class="manifest-scope" :class="{ 'is-editing': editingStock }">
                 <Pencil v-if="editingStock" :size="16" aria-hidden="true" />
                 <Info v-else :size="16" aria-hidden="true" />
-                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : (entityType === 'agent' ? '心纸库存' : '道具库存') }} （背包排序） · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
+                <p v-if="editingStock">正在编辑「{{ currentAccountName }}」的{{ stockEditScopeName ? '「' + stockEditScopeName + '」库存' : (entityType === 'agent' ? '心纸库存' : '道具库存') }} （默认按游戏背包内顺序，可通过筛选按钮自行更改） · 已修改 <b>{{ stockChangedCount }}</b> 项</p>
                 <p v-else-if="entityType === 'item'" class="scope-guidance">库存数量有误？点击标题旁的 <Pencil :size="13" aria-hidden="true" /> 进入编辑模式</p>
                 <p v-else>心纸数量不对？立即手动修改</p>
                 <button v-if="!editingStock && entityType === 'agent'" type="button" class="scope-edit-agent" :disabled="loading || !!error" @click="startStockEdit()">
@@ -388,8 +441,8 @@
             <section class="acquired-query" aria-labelledby="acquired-query-title" v-reveal>
               <div class="acquired-query-head">
                 <div>
-                  <span class="query-eyebrow">奖励流水统计</span>
-                  <h2 id="acquired-query-title">选一段时间，翻看获得簿</h2>
+                  <span class="query-eyebrow">奖励智能统计</span>
+                  <h2 id="acquired-query-title">立即解锁分析报告与趣味数据</h2>
                 </div>
               </div>
 
@@ -625,7 +678,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, X } from '@lucide/vue'
+import { Archive, ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, Upload, Users, X } from '@lucide/vue'
 import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
 import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -732,6 +785,7 @@ const rangePresets = [
   { id: 'last-month', label: '上月' }
 ]
 const showImport = ref(false)
+const showArchive = ref(false)
 const importText = ref('')
 const importError = ref('')
 const importing = ref(false)
@@ -899,6 +953,7 @@ async function loadAccounts() {
   try {
     const list = await listAccounts()
     accounts.value = Array.isArray(list) ? list : []
+    if (accounts.value.length < 2) exportAll.value = false
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
   } catch (err) {
@@ -2089,23 +2144,35 @@ onMounted(async function () {
 </script>
 
 <style scoped>
-/* ---- 库存子账号 ---- */
-.account-bar { display: flex; align-items: center; gap: 16px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
-.account-bar .sp { flex: 1 }
-.ac-sel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
-.ac-label { font-size: 13px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
-.ac-sel select { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s }
-.ac-sel select:focus { border-color: var(--accent) }
+/* ---- 库存子账号：先明确数据上下文，再展开管理 ---- */
+.account-workspace { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden }
+.account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 290px) auto auto; align-items: center; gap: 12px; padding: 22px 24px }
+.account-heading h2, .archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
+.account-heading p, .archive-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
+.section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
+.account-selector { display: flex; flex-direction: column; gap: 6px }
+.ac-label { font-size: 11.5px; font-weight: 800; color: var(--ink-60); letter-spacing: .08em }
+.account-selector select { width: 100%; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s, box-shadow .3s }
+.account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
 .ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
-.account-mgr { margin-top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px }
+.account-manage, .archive-toggle { min-height: 44px; align-self: center; transform: translateY(9px) }
+.archive-toggle { background: transparent; }
+.account-manage svg, .archive-actions svg { flex: none }
+.account-mgr { border-top: 1px dashed var(--line); background: var(--cream); padding: 20px 24px 22px }
+.account-mgr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px }
+.account-mgr-head h3 { font-size: 14px; font-weight: 900; font-family: var(--font-s) }
+.account-mgr-head p { margin-top: 4px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
+.account-count, .archive-format { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap }
 .ac-new { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
 .ac-new input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
 .ac-new input:focus { border-color: var(--accent) }
 .ac-list { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px }
 .ac-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper) }
+.ac-item.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent) }
 .ac-item .ac-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--yellow-deep); flex: none }
 .ac-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
-.ac-name { font-size: 13.5px; font-weight: 800; color: var(--ink) }
+.ac-name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--ink) }
+.ac-name em { font-style: normal; background: var(--yellow); border-radius: 999px; padding: 2px 7px; font-size: 10px; letter-spacing: .03em }
 .ac-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ac-btn { flex: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .25s, background-color .25s, border-color .25s }
 .ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
@@ -2113,8 +2180,6 @@ onMounted(async function () {
 .ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
 .ac-btn:disabled { opacity: .45; cursor: not-allowed }
 .ac-empty { margin-top: 12px; font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
-.export-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); cursor: pointer; white-space: nowrap }
-.export-all input { accent-color: var(--accent); cursor: pointer }
 .load-more { display: block; margin: 16px auto 0; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 26px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease) }
 .load-more:hover:not(:disabled) { border-color: var(--ink); background: var(--cream) }
 .load-more:disabled { opacity: .45; cursor: not-allowed }
@@ -2122,18 +2187,38 @@ onMounted(async function () {
 /* —— 复用全局 CSS 变量（不新增色值），对齐广陵账房（cart.vue）版式 —— */
 .page-inventory .hero::after { content: '库存' }
 
-.inventory-tabs { display: flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 14px; padding: 4px; margin-top: 40px }
+.inventory-tabs { position: sticky; top: 24px; z-index: 45; display: flex; gap: 4px; background: rgba(255, 248, 236, .94); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 14px; padding: 5px; margin-top: 32px; box-shadow: 0 12px 28px -22px rgba(73, 59, 44, .5) }
 .inventory-tabs button {
-  border: none; background: transparent; font-family: var(--font-b); font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: none; background: transparent; font-family: var(--font-b); font-weight: 700;
   font-size: 14px; padding: 10px 26px; border-radius: 10px; cursor: pointer; color: var(--ink-60);
   transition: color .3s var(--ease), background-color .3s var(--ease);
 }
+.inventory-tabs button svg { display: none }
 .inventory-tabs button.on { background: var(--tea); color: var(--cream) }
 .inventory-tabs button:hover:not(.on) { color: var(--ink) }
 .inventory-tabs .sp { flex: 1 }
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap }
+.act-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
 .act-btn:disabled { opacity: .45; cursor: not-allowed }
+
+/* ---- 档案操作：导入与导出同区，导出范围用明确的单选项表达 ---- */
+.archive-workspace { border-top: 1px dashed var(--line); background: var(--cream); padding: 16px 24px 18px }
+.archive-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px }
+.archive-actions { display: grid; grid-template-columns: minmax(150px, .36fr) minmax(0, 1fr); gap: 18px; align-items: stretch; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line) }
+.archive-import { min-height: 52px; border-radius: 12px; background: var(--surface) }
+.export-group { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center }
+.export-label { color: var(--ink-60); font-size: 12px; font-weight: 800; white-space: nowrap }
+.export-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+.export-option { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); cursor: pointer; transition: border-color .25s, background-color .25s, box-shadow .25s }
+.export-option.active { border-color: var(--accent); background: var(--cream); box-shadow: inset 3px 0 0 var(--accent) }
+.export-option.disabled { opacity: .55; cursor: not-allowed }
+.export-option input { width: 15px; height: 15px; accent-color: var(--accent); flex: none }
+.export-option span { min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.export-option b { color: var(--ink); font-size: 12.5px; white-space: nowrap }
+.export-option small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-60); font-size: 11px }
+.export-submit { min-height: 52px; padding-inline: 18px; border-color: var(--tea); background: var(--tea); color: var(--cream) }
+.export-submit:hover:not(:disabled) { border-color: var(--tea-deep); background: var(--tea-deep); color: var(--cream) }
 
 .import-box { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px }
 .import-box .tip { font-size: 12.5px; color: var(--ink-60); line-height: 1.8; margin-bottom: 12px }
@@ -2664,27 +2749,72 @@ onMounted(async function () {
 .hero-stats .catalog-date time { font-family: var(--font-d); font-weight: 900; white-space: nowrap }
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
 
+/* 移动端二级导航：对齐顶部主导航的图标 + 文字 + 选中块 */
+@media (max-width: 1080px) {
+  .inventory-main { padding-bottom: 0 }
+  .inventory-main > section { padding-bottom: 40px }
+  .page-inventory :deep(.footer) { padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom)) }
+  .inventory-tabs {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 55;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin: 0;
+    padding: 7px max(12px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    border-radius: 0;
+    background: rgba(255, 248, 236, .96);
+    border-top: 1px solid var(--line);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, .48);
+  }
+  .inventory-tabs button {
+    min-height: 48px;
+    padding: 6px 8px;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 11px;
+    font-size: 11.5px;
+    line-height: 1.1;
+  }
+  .inventory-tabs button svg { display: block }
+  .inventory-tabs button.on { background: var(--yellow); color: var(--ink) }
+}
+
 @media (max-width: 640px) {
   .hero-stats .catalog-date { font-size: 19px; line-height: 1.3 }
   .hero-stats .catalog-date time { white-space: nowrap }
-  .account-bar { align-items: stretch; flex-direction: column; gap: 10px }
-  .account-bar .sp { display: none }
-  .ac-sel { display: grid; grid-template-columns: 1fr; gap: 6px }
-  .ac-sel select { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
-  .account-bar > .act-btn { width: 100%; min-height: 44px }
-  .account-mgr { padding: 14px; border-radius: 14px }
+  .account-workspace { border-radius: 16px }
+  .account-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px 10px; padding: 18px 16px }
+  .account-heading, .account-selector { grid-column: 1 / -1 }
+  .account-selector { gap: 6px }
+  .account-selector select { width: 100%; min-width: 0; min-height: 46px; font-size: 16px }
+  .account-manage, .archive-toggle { width: 100%; min-height: 44px; transform: none }
+  .account-mgr { padding: 16px; }
+  .account-mgr-head { flex-direction: column; gap: 8px }
   .ac-new { align-items: stretch; flex-direction: column }
   .ac-new input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
   .ac-new .btn { width: 100% }
   .ac-item { align-items: flex-start; gap: 8px; padding: 12px; flex-wrap: wrap }
   .ac-meta { flex-basis: calc(100% - 24px) }
   .ac-btn { min-height: 40px; flex: 1 }
-  .inventory-tabs { margin-top: 24px; flex-wrap: wrap; background: transparent; padding: 0; gap: 8px }
-  .inventory-tabs > button:not(.act-btn) { flex: 1 1 calc(50% - 4px); min-height: 44px; background: rgba(73, 59, 44, .06) }
-  .inventory-tabs > button:not(.act-btn).on { background: var(--tea) }
-  .inventory-tabs .sp { display: none }
-  .inventory-tabs .act-btn { flex: 1 1 calc(50% - 4px); min-height: 44px; background: var(--surface) }
-  .inventory-tabs .export-all { flex: 1 1 100%; min-height: 44px; justify-content:center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px }
+  .inventory-tabs { margin: 0 }
+  .archive-workspace { margin-top: 0; padding: 14px 16px 16px }
+  .archive-heading { flex-direction: column; gap: 8px }
+  .archive-actions { grid-template-columns: 1fr; gap: 12px; margin-top: 14px; padding-top: 14px }
+  .archive-import { width: 100%; min-height: 46px }
+  .export-group { grid-template-columns: 1fr; gap: 8px }
+  .export-label { font-size: 11.5px }
+  .export-options { grid-template-columns: 1fr 1fr; gap: 8px }
+  .export-option { min-height: 58px; padding: 8px 9px }
+  .export-option b { font-size: 12px }
+  .export-submit { width: 100%; min-height: 46px }
   .import-box { padding: 14px; border-radius: 14px }
   .import-box textarea { font-size: 16px }
   .import-actions { align-items: stretch; flex-direction: column }
@@ -2773,7 +2903,7 @@ onMounted(async function () {
   .mf-filter { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr) }
   .mf-filter button { min-height: 40px }
   .agent-controls { top: 72px; display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) minmax(82px, auto) 58px; align-items: end; gap: 7px; padding: 8px }
-  .agent-controls.is-editing { position: fixed; right: 16px; bottom: 16px; top: auto; z-index: 60; width: min(343px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; margin: 0 }
+  .agent-controls.is-editing { position: fixed; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); top: auto; z-index: 60; width: min(343px, calc(100vw - 32px)); max-height: calc(100vh - 100px); overflow-y: auto; margin: 0 }
   .agent-controls.is-editing:not(.is-collapsed) { overflow: visible }
   .agent-controls.is-editing:not(.is-collapsed) .agent-menu-options { top: auto; bottom: calc(100% + 7px) }
   .agent-controls-toggle { display: inline-flex; grid-column: 5; grid-row: 1; width: 58px }
@@ -2872,5 +3002,11 @@ onMounted(async function () {
   .subsection-edit::after { transition: none }
   .subsection-edit:hover:not(:disabled) svg { transform: none }
   .spin { animation: none }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .account-bar { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); }
+  .account-heading { grid-column: 1 / -1; }
+  .account-manage, .archive-toggle { width: 100%; transform: none; }
 }
 </style>
