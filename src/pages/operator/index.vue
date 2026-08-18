@@ -178,7 +178,7 @@
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
                   <span class="slot-tag star" :class="'s' + (e.rarity || 3)">{{ e.rarity || 3 }}★ · {{ e.prof || '未知' }}</span>
-                  <span class="build-line">化极 {{ e.elite }} · 星 {{ e.starLevel }}</span>
+                  <span class="build-line">化极 {{ e.elite }} · {{ starLabel(e.starLevel) }}</span>
                   <span v-if="e.discs && e.discs.length" class="build-line small">命盘 {{ e.discs.length }} 格</span>
                   <span v-if="e.starStones && e.starStones.length" class="build-line small">星石 {{ e.starStones.length }} 槽</span>
                   <button class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
@@ -233,29 +233,32 @@
           </div>
 
           <div class="editor-body">
-            <div class="editor-row">
-              <span class="editor-label">版本</span>
-              <div class="editor-game">
-                <label v-for="g in editingGames" :key="g" class="game-pill">
-                  <input type="radio" :value="g" v-model="editGame" />
-                  <span>{{ g }}</span>
-                </label>
-                <p class="hint">保存后只写入所选版本的养成数据；每个密探可分别维护如鸢 / 代号鸢状态。</p>
-              </div>
-            </div>
+            <div class="editor-save-hint">将保存到：{{ saveGameLabel }}</div>
 
             <div class="editor-row">
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
-                <label>化极 <input type="number" v-model.number="editForm.elite" min="0" /></label>
-                <label>星级 <input type="number" v-model.number="editForm.starLevel" min="0" /></label>
-                <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="120" /></label>
+                <label>化极 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
+                <label>星级
+                  <select v-model.number="editForm.starLevel" class="star-select">
+                    <option value="0">未设置</option>
+                    <option value="1">1 星</option>
+                    <option value="2">2 星</option>
+                    <option value="3">3 星</option>
+                    <option value="4">4 星</option>
+                    <option value="5">5 星</option>
+                    <option value="6">觉醒</option>
+                  </select>
+                </label>
+                <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
+                <span class="elite-hint">当前等级最高化极 {{ maxEliteForLevel }}</span>
               </div>
             </div>
 
             <div class="editor-row">
               <span class="editor-label">命盘</span>
               <div class="disc-editor">
+                <p class="hint">最多同时选择 3 个命盘。</p>
                 <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
                 <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="{ on: isDiscSelected(d) }">
                   <input type="checkbox" :value="discKey(d)" v-model="editForm.discNames" />
@@ -271,9 +274,14 @@
               <div class="stone-editor">
                 <div v-for="slot in stoneSlots" :key="slot.type" class="stone-item">
                   <span class="stone-name">{{ slot.label }}</span>
-                  <input type="number" v-model.number="editForm.stones[slot.type].level" min="0" max="60" placeholder="0=未装备" />
+                  <select v-model="editForm.stones[slot.type].name" class="stone-select">
+                    <option value="">未装备</option>
+                    <option v-for="opt in starOptionsFor(slot.type)" :key="opt" :value="opt">{{ opt }}<template v-if="slot.type === 'assist' && starDesc(slot.type, opt)"> · {{ starDesc(slot.type, opt) }}</template></option>
+                  </select>
+                  <input v-if="editForm.stones[slot.type].name" type="number" v-model.number="editForm.stones[slot.type].level" min="0" max="60" placeholder="等级" />
+                  <span v-else class="stone-empty">未装备</span>
                 </div>
-                <p class="hint">星石等级填 0 表示未装备；保存后仅装备等级大于 0 的星石槽位。</p>
+                <p class="hint">主星石与辅星石各可装备 3 个（对应 3 个命盘位）；名称为空表示未装备。保存后仅保留已填写名称且等级大于 0 的星石。</p>
               </div>
             </div>
 
@@ -282,7 +290,7 @@
 
           <div class="editor-actions">
             <button class="btn ghost" type="button" :disabled="savingEdit" @click="closeEditor">取消</button>
-            <button class="btn primary" type="button" :disabled="savingEdit || !editGame" @click="saveEdit">
+            <button class="btn primary" type="button" :disabled="savingEdit" @click="saveEdit">
               {{ savingEdit ? '保存中…' : '保存到云端' }}
             </button>
           </div>
@@ -302,7 +310,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import {
@@ -319,6 +327,7 @@ import {
 } from '../../api/operator.js'
 import { auth } from '../../store/auth.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
+import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
 
 const activeTab = ref('catalog')
 const gameFilter = ref('all')
@@ -346,6 +355,14 @@ const editNotice = ref('')
 const editNoticeError = ref(false)
 const savingEdit = ref(false)
 
+// 编辑保存目标版本：跟随页面顶部筛选；选“全部”时保存为通用状态（不区分版本）
+const saveGame = computed(function () {
+  return gameFilter.value === 'all' ? null : gameFilter.value
+})
+const saveGameLabel = computed(function () {
+  return saveGame.value || '通用（全部）'
+})
+
 // —— 密探子账号 ——
 const accounts = ref([])
 const accountId = ref('')
@@ -366,7 +383,8 @@ const recordsError = ref('')
 function normalizeOperator(op) {
   const rawSub = op.subProf || op.sub_prof || ''
   return {
-    id: op.id || op.operator_id || op.operatorId || '',
+    // 优先取业务 id（operatorId），避免后端把 Mongo 内部 _id 作为 id 返回时串台
+    id: op.operatorId || op.operator_id || op.id || '',
     name: op.name || '',
     alias: op.alias || '',
     rarity: op.rarity != null ? op.rarity : 3,
@@ -395,25 +413,54 @@ function discObject(key) {
   }
 }
 
-const editingGames = computed(function () {
-  const games = (editingOp.value && editingOp.value.games || [])
-  return games.length ? games : ['如鸢', '代号鸢']
-})
-
 const editingDiscs = computed(function () {
   return (editingOp.value && editingOp.value.discs) || []
 })
 
 const stoneSlots = computed(function () {
-  const configured = (editingOp.value && editingOp.value.starStones || [])
-  if (configured.length) {
-    return configured.map(function (s) { return { type: s.type || 'main', label: s.name || (s.type === 'assist' ? '辅星石' : '主星石') } })
-  }
   return [
-    { type: 'main', label: '主星石' },
-    { type: 'assist', label: '辅星石' }
+    { type: 'main1', label: '主星石 1' },
+    { type: 'main2', label: '主星石 2' },
+    { type: 'main3', label: '主星石 3' },
+    { type: 'assist1', label: '辅星石 1' },
+    { type: 'assist2', label: '辅星石 2' },
+    { type: 'assist3', label: '辅星石 3' }
   ]
 })
+
+function starOptionsFor(type) {
+  return type.indexOf('assist') === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS
+}
+
+function starDesc(type, name) {
+  if (type.indexOf('assist') !== 0) return ''
+  return ASSIST_STAR_DESCRIPTIONS[name] || ''
+}
+
+// 命盘最多同时选择 3 个
+watch(
+  function () { return editForm.value.discNames },
+  function (val) {
+    if (val.length > 3) {
+      editForm.value.discNames = val.slice(0, 3)
+      editNotice.value = '命盘最多同时选择 3 个'
+      editNoticeError.value = true
+    }
+  }
+)
+
+// 化极不能超过当前等级上限，等级变化时自动修正
+watch(
+  function () { return editForm.value.level },
+  function (level) {
+    const max = getMaxEliteForLevel(level)
+    if (editForm.value.elite > max) {
+      editForm.value.elite = max
+      editNotice.value = '化极已随等级自动调整为 ' + max + '（当前等级上限）'
+      editNoticeError.value = false
+    }
+  }
+)
 
 const catalogOperators = computed(function () {
   if (backendCatalog.value.length) return backendCatalog.value.map(normalizeOperator)
@@ -459,9 +506,44 @@ function normalizeEntry(e) {
     starLevel: e.starLevel != null ? e.starLevel : (e.star_level != null ? e.star_level : 0),
     level: e.level != null ? e.level : 0,
     discs: e.discs || [],
-    starStones: e.starStones || e.star_stones || [],
+    starStones: (e.starStones || e.star_stones || []).map(function (s) {
+      return Object.assign({}, s, { type: normalizeStoneType(s.type) })
+    }),
     listedBaselineAt: e.listedBaselineAt || e.listed_baseline_at || null
   }
+}
+
+// 化极与等级关系（参考 MaaYuan-Share-frontend operatorRequirementModel）：
+// 每 5 级增加 1 点化极上限，100 级时上限为 17。
+const OPERATOR_LEVEL_MAX = 100
+const OPERATOR_ELITE_MAX = 17
+
+function getMaxEliteForLevel(level) {
+  const normalizedLevel = Math.min(
+    OPERATOR_LEVEL_MAX,
+    Math.max(0, Math.trunc(Number(level) || 0))
+  )
+  return Math.min(
+    OPERATOR_ELITE_MAX,
+    Math.max(0, Math.floor(normalizedLevel / 5) - 3)
+  )
+}
+
+const maxEliteForLevel = computed(function () {
+  return getMaxEliteForLevel(editForm.value.level)
+})
+
+function starLabel(v) {
+  const n = Number(v) || 0
+  if (n === 6) return '觉醒'
+  return n || 0
+}
+
+// 旧协议仅用 main/assist；新前端按 3 主星 + 3 辅星槽位保存为 main1..3 / assist1..3
+function normalizeStoneType(type) {
+  if (type === 'main') return 'main1'
+  if (type === 'assist') return 'assist1'
+  return type || ''
 }
 
 // 版本匹配：item 可以是目录项或当前养成项；未声明 games 视为通用/通配。
@@ -520,14 +602,14 @@ function monogram(e) {
 
 function slotTitle(e) {
   const parts = [e.name || e.id]
-  if (e.owned) parts.push('化极 ' + e.elite + ' · 星 ' + e.starLevel + ' · Lv' + e.level)
+  if (e.owned) parts.push('化极 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
   else parts.push('未养成')
   if (e.prof) parts.push(e.prof)
   return parts.join(' ｜ ')
 }
 
 function buildTitle(e) {
-  const parts = [e.name || e.id, '化极 ' + e.elite, '星 ' + e.starLevel, 'Lv' + e.level]
+  const parts = [e.name || e.id, '化极 ' + e.elite, starLabel(e.starLevel), 'Lv' + e.level]
   if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
   if (e.starStones && e.starStones.length) parts.push('星石：' + e.starStones.map(function (s) { return (s.name || s.type) + ' Lv' + s.level }).join('、'))
   return parts.join(' ｜ ')
@@ -544,13 +626,11 @@ function openEdit(id) {
   const existing = currentMap.value[id] || {}
   editingId.value = id
   editingOp.value = op
-  const games = op.games && op.games.length ? op.games : ['如鸢', '代号鸢']
-  editGame.value = gameFilter.value !== 'all' && games.indexOf(gameFilter.value) !== -1 ? gameFilter.value : games[0]
   const stones = {}
   stoneSlots.value.forEach(function (slot) {
     const hit = (existing.starStones || []).find(function (s) { return s.type === slot.type })
     stones[slot.type] = {
-      name: (hit && hit.name) || slot.label,
+      name: (hit && hit.name) || '',
       type: slot.type,
       level: (hit && hit.level != null) ? hit.level : 0
     }
@@ -584,6 +664,12 @@ async function saveEdit() {
     editNoticeError.value = true
     return
   }
+  const maxElite = getMaxEliteForLevel(editForm.value.level)
+  if (editForm.value.elite > maxElite) {
+    editNotice.value = '化极不能超过当前等级上限 ' + maxElite
+    editNoticeError.value = true
+    return
+  }
   const op = editingOp.value
   const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
   const entry = {
@@ -600,8 +686,8 @@ async function saveEdit() {
     discs: editForm.value.discNames.map(discObject),
     starStones: Object.keys(editForm.value.stones || {})
       .map(function (type) { return editForm.value.stones[type] })
-      .filter(function (s) { return s && s.level > 0 })
-      .map(function (s) { return { name: s.name || null, type: s.type, level: s.level } })
+      .filter(function (s) { return s && s.name && s.level > 0 })
+      .map(function (s) { return { name: s.name, type: s.type, level: s.level } })
   }
   const doc = {
     format: 'myshare-operator-exchange',
@@ -614,7 +700,7 @@ async function saveEdit() {
       account_id: account.id,
       record_id: 'yuanhub:edit:' + Date.now() + ':' + Math.random().toString(16).slice(2, 8),
       record_type: 'operator_snapshot',
-      game: editGame.value,
+      game: saveGame.value,
       effective_at: new Date().toISOString(),
       snapshot_scope: 'listed',
       entries: [entry]
@@ -951,7 +1037,7 @@ function entrySummary(entries) {
   const list = entries || []
   return list.map(function (e) {
     const star = e.starLevel != null ? e.starLevel : (e.star_level != null ? e.star_level : 0)
-    return (e.name || e.id) + ' Lv' + e.level + ' 星' + star
+    return (e.name || e.id) + ' Lv' + e.level + ' ' + starLabel(star)
   }).join('、')
 }
 
@@ -1147,6 +1233,7 @@ onMounted(async function () {
 .editor-close { border: none; background: transparent; color: var(--ink-60); font-size: 26px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 10px; transition: all .25s }
 .editor-close:hover { color: var(--rouge); background: rgba(166, 81, 74, .08) }
 .editor-body { display: flex; flex-direction: column; gap: 18px; padding: 20px 28px 24px }
+.editor-save-hint { background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: 12.5px; color: var(--ink-60); font-weight: 700 }
 .editor-row { display: flex; gap: 16px; align-items: flex-start }
 .editor-label { flex: none; width: 76px; padding-top: 9px; font-size: 13px; font-weight: 800; color: var(--ink) }
 .editor-game { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
@@ -1158,6 +1245,8 @@ onMounted(async function () {
 .num-fields label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px }
 .num-fields input { width: 76px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--ink); outline: none; -moz-appearance: textfield }
 .num-fields input::-webkit-outer-spin-button, .num-fields input::-webkit-inner-spin-button { -webkit-appearance: none }
+.num-fields .star-select { border: 1.5px solid var(--line); border-radius: 8px; padding: 4px 6px; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
+.num-fields .elite-hint { flex-basis: 100%; margin-left: 84px; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
 .disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
 .disc-editor .hint { flex-basis: 100%; font-size: 12px; color: var(--ink-35) }
 .disc-option { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; transition: all .25s; user-select: none }
@@ -1168,8 +1257,11 @@ onMounted(async function () {
 .stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
 .stone-item { display: flex; align-items: center; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
 .stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
+.stone-select { flex: 1; min-width: 120px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
+.stone-select:focus { border-color: var(--accent) }
 .stone-item input { width: 90px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-d); font-weight: 800; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; -moz-appearance: textfield }
 .stone-item input:focus { border-color: var(--accent) }
+.stone-empty { font-size: 12px; color: var(--ink-35); font-weight: 600; flex: 1 }
 .stone-editor .hint { font-size: 11.5px; color: var(--ink-35); line-height: 1.6 }
 .editor-notice { margin-top: 4px; background: var(--yellow); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; line-height: 1.6 }
 .editor-notice.err { background: rgba(166, 81, 74, .14); color: var(--rouge) }
