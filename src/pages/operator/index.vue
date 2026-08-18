@@ -13,7 +13,7 @@
             <span class="pill">归档</span>
           </div>
           <h1>密探养成<span class="small">图鉴 · 快照 · 归档</span></h1>
-          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：独立密探子账号分别维护，记录化极、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
+          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：独立密探子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
             <div><div class="k">已养成</div><div class="v">{{ currentEntries.length }}<small>位</small></div></div>
@@ -179,7 +179,7 @@
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
                   <span class="slot-tag star" :class="'s' + (e.rarity || 3)">{{ e.rarity || 3 }}★ · {{ e.prof || '未知' }}</span>
-                  <span class="build-line">化极 {{ e.elite }} · {{ starLabel(e.starLevel) }}</span>
+                  <span class="build-line">修为 {{ e.elite }} · {{ starLabel(e.starLevel) }}</span>
                   <span v-if="e.discs && e.discs.length" class="build-line small">命盘 {{ e.discs.length }} 格</span>
                   <span v-if="e.starStones && e.starStones.length" class="build-line small">星石 {{ e.starStones.length }} 槽</span>
                   <button class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
@@ -239,20 +239,26 @@
             <div class="editor-row">
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
-                <label>化极 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
-                <label>星级
-                  <select v-model.number="editForm.starLevel" class="star-select">
-                    <option value="0">未设置</option>
-                    <option value="1">1 星</option>
-                    <option value="2">2 星</option>
-                    <option value="3">3 星</option>
-                    <option value="4">4 星</option>
-                    <option value="5">5 星</option>
-                    <option value="6">觉醒</option>
-                  </select>
-                </label>
-                <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
-                <span class="elite-hint">当前等级最高化极 {{ maxEliteForLevel }}</span>
+                <div class="level-row">
+                  <label>修为 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
+                  <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
+                  <span class="elite-hint">当前等级最高修为 {{ maxEliteForLevel }}</span>
+                </div>
+                <div class="star-card" title="0=未拥有 · 1~30=星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
+                  <span class="star-card-title">星级</span>
+                  <span class="star-card-body">
+                    <span class="star-groups">
+                      <button type="button" class="star-pill" :class="{ on: starGroupName === 'none' }" @click="pickStarGroup('none')">未拥有</button>
+                      <button v-for="s in STAR_RANGE" :key="s" type="button" class="star-pill" :class="{ on: starGroupName === s }" @click="pickStarGroup(s)">{{ s }}星</button>
+                      <button type="button" class="star-pill awaken" :class="{ on: starGroupName === 'awaken' }" @click="pickStarGroup('awaken')">觉醒</button>
+                    </span>
+                    <span v-if="starGroupName !== 'none' && starGroupName !== 'awaken'" class="star-nodes">
+                      <span class="node-caption">节点</span>
+                      <button v-for="n in NODE_RANGE" :key="n" type="button" class="node-chip" :class="{ on: starNode === n }" @click="pickStarNode(n)">{{ n }}</button>
+                    </span>
+                    <span class="star-feedback">当前：<b>{{ starLabel(editForm.starLevel) }}</b></span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -450,14 +456,14 @@ watch(
   }
 )
 
-// 化极不能超过当前等级上限，等级变化时自动修正
+// 修为不能超过当前等级上限，等级变化时自动修正
 watch(
   function () { return editForm.value.level },
   function (level) {
     const max = getMaxEliteForLevel(level)
     if (editForm.value.elite > max) {
       editForm.value.elite = max
-      editNotice.value = '化极已随等级自动调整为 ' + max + '（当前等级上限）'
+      editNotice.value = '修为已随等级自动调整为 ' + max + '（当前等级上限）'
       editNoticeError.value = false
     }
   }
@@ -514,8 +520,8 @@ function normalizeEntry(e) {
   }
 }
 
-// 化极与等级关系（参考 MaaYuan-Share-frontend operatorRequirementModel）：
-// 每 5 级增加 1 点化极上限，100 级时上限为 17。
+// 修为与等级关系（参考 MaaYuan-Share-frontend operatorRequirementModel）：
+// 每 5 级增加 1 点修为上限，100 级时上限为 17。
 const OPERATOR_LEVEL_MAX = 100
 const OPERATOR_ELITE_MAX = 17
 
@@ -534,10 +540,51 @@ const maxEliteForLevel = computed(function () {
   return getMaxEliteForLevel(editForm.value.level)
 })
 
+// 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
+// 0 = 未拥有；1..30 = 6×(星−1)+节点+1（1星·0 .. 5星·5，5星·5 = 30）；31 = 觉醒（仅一档）。
+const MAX_STAR_LEVEL = 31
+const STAR_LEVEL_AWAKEN = 31
+const STAR_RANGE = [1, 2, 3, 4, 5]
+const NODE_RANGE = [0, 1, 2, 3, 4, 5]
+
 function starLabel(v) {
   const n = Number(v) || 0
-  if (n === 6) return '觉醒'
-  return n || 0
+  if (n === 0) return '未拥有'
+  if (n === STAR_LEVEL_AWAKEN) return '觉醒'
+  if (n >= 1 && n <= 30) {
+    const star = Math.floor((n - 1) / 6) + 1
+    const node = (n - 1) % 6
+    return star + ' 星 · ' + node
+  }
+  return n
+}
+
+// 分段胶囊交互：把一维 starLevel 拆成「星级分组 + 节点」二维状态
+const starGroupName = computed(function () {
+  const v = Number(editForm.value.starLevel) || 0
+  if (v === 0) return 'none'
+  if (v === STAR_LEVEL_AWAKEN) return 'awaken'
+  if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1
+  return 'none'
+})
+const starNode = computed(function () {
+  const v = Number(editForm.value.starLevel) || 0
+  if (v >= 1 && v <= 30) return (v - 1) % 6
+  return 0
+})
+
+function pickStarGroup(g) {
+  if (g === 'none') { editForm.value.starLevel = 0; return }
+  if (g === 'awaken') { editForm.value.starLevel = STAR_LEVEL_AWAKEN; return }
+  const s = Number(g)
+  if (!(s >= 1 && s <= 5)) return
+  editForm.value.starLevel = 6 * (s - 1) + starNode.value + 1
+}
+
+function pickStarNode(n) {
+  const s = starGroupName.value
+  if (typeof s !== 'number') return
+  editForm.value.starLevel = 6 * (s - 1) + Number(n) + 1
 }
 
 // 旧协议仅用 main/assist；新前端按 3 主星 + 3 辅星槽位保存为 main1..3 / assist1..3
@@ -603,14 +650,14 @@ function monogram(e) {
 
 function slotTitle(e) {
   const parts = [e.name || e.id]
-  if (e.owned) parts.push('化极 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
+  if (e.owned) parts.push('修为 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
   else parts.push('未养成')
   if (e.prof) parts.push(e.prof)
   return parts.join(' ｜ ')
 }
 
 function buildTitle(e) {
-  const parts = [e.name || e.id, '化极 ' + e.elite, starLabel(e.starLevel), 'Lv' + e.level]
+  const parts = [e.name || e.id, '修为 ' + e.elite, starLabel(e.starLevel), 'Lv' + e.level]
   if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
   if (e.starStones && e.starStones.length) parts.push('星石：' + e.starStones.map(function (s) { return (s.name || s.type) + ' Lv' + s.level }).join('、'))
   return parts.join(' ｜ ')
@@ -665,9 +712,14 @@ async function saveEdit() {
     editNoticeError.value = true
     return
   }
+  if (editForm.value.starLevel > MAX_STAR_LEVEL) {
+    editNotice.value = '星级需在 0..' + MAX_STAR_LEVEL + ' 之间（0=未拥有，31=觉醒）'
+    editNoticeError.value = true
+    return
+  }
   const maxElite = getMaxEliteForLevel(editForm.value.level)
   if (editForm.value.elite > maxElite) {
-    editNotice.value = '化极不能超过当前等级上限 ' + maxElite
+    editNotice.value = '修为不能超过当前等级上限 ' + maxElite
     editNoticeError.value = true
     return
   }
@@ -940,7 +992,7 @@ function fillExample() {
         id: op.id || 'char_001_yangxiu',
         name: op.name || '杨修',
         elite: 0,
-        starLevel: 1,
+        starLevel: 30, // 5星·5（新映射：0=未拥有 · 1..30=星级·节点 · 31=觉醒）
         level: 40,
         discs: [],
         starStones: []
@@ -1247,8 +1299,59 @@ onMounted(async function () {
 .num-fields label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px }
 .num-fields input { width: 76px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--ink); outline: none; -moz-appearance: textfield }
 .num-fields input::-webkit-outer-spin-button, .num-fields input::-webkit-inner-spin-button { -webkit-appearance: none }
-.num-fields .star-select { border: 1.5px solid var(--line); border-radius: 8px; padding: 4px 6px; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
-.num-fields .elite-hint { flex-basis: 100%; margin-left: 84px; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
+.num-fields .star-card {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.num-fields .star-card-title { flex: none; width: 34px; padding-top: 5px; font-size: 13px; font-weight: 800; color: var(--ink) }
+.num-fields .star-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px }
+.star-groups { display: flex; flex-wrap: wrap; gap: 6px }
+.star-pill {
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-60);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-family: var(--font-b);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all .25s;
+}
+.star-pill:hover { border-color: var(--accent); color: var(--accent-strong) }
+.star-pill.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.star-pill.awaken { letter-spacing: .04em }
+.star-pill.awaken.on { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.star-nodes { display: flex; align-items: center; flex-wrap: wrap; gap: 6px }
+.node-caption { font-size: 11.5px; color: var(--ink-35); font-weight: 700; margin-right: 2px }
+.node-chip {
+  min-width: 30px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-60);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-d);
+  line-height: 1;
+  cursor: pointer;
+  transition: all .25s;
+}
+.node-chip:hover { border-color: var(--accent); color: var(--accent-strong) }
+.node-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.star-feedback { font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
+.star-feedback b { font-family: var(--font-d); font-weight: 900; color: var(--accent-strong) }
+.num-fields .level-row { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 12px }
+.num-fields .elite-hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
 .disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
 .disc-editor .hint { flex-basis: 100%; font-size: 12px; color: var(--ink-35) }
 .disc-option { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; transition: all .25s; user-select: none }
@@ -1259,7 +1362,7 @@ onMounted(async function () {
 .stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
 .stone-item { display: flex; align-items: center; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
 .stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
-.stone-select { flex: 1; min-width: 120px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
+.stone-select { flex: none; width: 104px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .stone-select:focus { border-color: var(--accent) }
 .stone-item input { width: 90px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-d); font-weight: 800; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; -moz-appearance: textfield }
 .stone-item input:focus { border-color: var(--accent) }
