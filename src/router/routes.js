@@ -79,6 +79,19 @@ export const routes = [
         }
     },
     {
+        path: '/operator/admin',
+        text: '密探图鉴管理',
+        name: 'operator-admin',
+        display: false,
+        module: 'tools',
+        icon: 'shield',
+        component: () => import('/src/pages/operator/admin.vue'),
+        meta: {
+            title: '密探图鉴管理 — YuanHub',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/login',
         text: '登录',
         name: 'login',

@@ -111,3 +111,38 @@ export function exportOperator({ accountId, scope } = {}) {
   const qs = params.toString()
   return request(PATH + '/export' + (qs ? '?' + qs : ''), { auth: true, raw: true })
 }
+
+// —— 密探公共图鉴管理（仅管理员，/v1/admin/operator-catalog） ——
+// 管理的是「公共图鉴背后的全局字典」（有哪些密探、长什么样），
+// 与个人子账号的养成档案严格分离。
+const ADMIN_PATH = '/v1/admin/operator-catalog'
+
+// 管理员全量列表（含内部字段 star_stones / catalog_version / created_at）
+// 返回 [{ id, name, alias, rarity, prof, sub_prof, games, discs, star_stones,
+//   sp_of, catalog_version, created_at }]
+export function listAdminOperatorCatalog() {
+  return request(ADMIN_PATH, { auth: true })
+}
+
+// 新增密探目录（body 字段：subProf / starStones / spOf 用 camelCase；
+// discs 条目用 ot_name，与后端 OperatorCatalogWriteRequest 契约一致）
+export function createAdminOperatorCatalog(entry) {
+  return request(ADMIN_PATH, { method: 'POST', auth: true, body: entry })
+}
+
+// 更新密探目录（path id 与 body id 必须一致）
+export function updateAdminOperatorCatalog(operatorId, entry) {
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId), {
+    method: 'PUT',
+    auth: true,
+    body: entry
+  })
+}
+
+// 删除密探目录
+export function deleteAdminOperatorCatalog(operatorId) {
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId), {
+    method: 'DELETE',
+    auth: true
+  })
+}

@@ -77,6 +77,7 @@
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
             <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
+            <router-link v-if="auth.isLoggedIn" class="act-btn ghost admin-link" to="/operator/admin">管理图鉴</router-link>
           </div>
 
           <!-- 导入档案 -->
@@ -1102,6 +1103,7 @@ onMounted(async function () {
 .game-filter select { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; cursor: pointer }
 
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap }
+.admin-link { text-decoration: none; display: inline-flex; align-items: center }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
 .act-btn:disabled { opacity: .45; cursor: not-allowed }
 
