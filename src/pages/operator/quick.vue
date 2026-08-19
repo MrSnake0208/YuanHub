@@ -12,11 +12,11 @@
             <span class="pill">首次 / 快捷导入</span>
           </div>
           <h1>快捷导入<span class="small">首次建档 · 星阶批量</span></h1>
-          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页都能批量设置「修为 / 等级」，最后一次性保存到该子账号，适合账号首次建档或快速补录。</p>
+          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页批量设置「修为 / 等级」，点「保存本页并下一步」即把本页立即写入该子账号，逐页即存，适合账号首次建档或快速补录。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
-            <div><div class="k">已勾选</div><div class="v">{{ overallChecked }}<small>位</small></div></div>
-            <div><div class="k">待导入</div><div class="v">{{ allEntries.length }}<small>条</small></div></div>
+            <div><div class="k">本页已勾选</div><div class="v">{{ checkedOfCurrent.length }}<small>位</small></div></div>
+            <div><div class="k">本次已保存</div><div class="v">{{ sessionSavedCount }}<small>位</small></div></div>
             <div class="is-authed"><div class="k">{{ auth.isLoggedIn ? '保存到' : '登录状态' }}</div><div class="v">{{ auth.isLoggedIn ? (accountName || '—') : '未登录' }}<small>{{ auth.isLoggedIn ? '子账号' : '需登录后使用' }}</small></div></div>
           </div>
         </div>
@@ -74,16 +74,23 @@
                 @click="goStep(s.key)"
               >
                 <span class="step-no">{{ steps.indexOf(s) + 1 }}</span>
-                <span class="step-txt">{{ s.nav }}<small v-if="isStepDone(s.key)">{{ countOf(s.key) }} 位</small></span>
+                <span class="step-txt">{{ s.nav }}<small v-if="isStepDone(s.key)">{{ countOf(s.key) }} 位</small><small v-if="savedByKey[s.key]" class="saved">已存</small></span>
               </button>
             </div>
 
-            <!-- 单页：勾选某星阶密探 + 批量修为/等级 -->
-            <div v-if="!isConfirm" class="wiz-card" v-reveal>
+            <!-- 单页：勾选某星阶密探 + 批量修为/等级，逐页即存 -->
+            <div class="wiz-card" v-reveal>
               <div class="wiz-head">
                 <h2>{{ currentStep.title }}</h2>
-                <p class="wiz-sub">{{ currentStep.sub }}；本页的「修为 / 等级」会批量应用到已勾选的密探上。</p>
+                <p class="wiz-sub">{{ currentStep.sub }}；本页的「修为 / 等级」会批量应用到已勾选的密探上，点「保存本页并下一步」即写入该子账号。</p>
               </div>
+
+              <!-- 本页保存状态 -->
+              <div v-if="pageSave.show" class="page-save" :class="{ err: !pageSave.ok }">
+                <template v-if="pageSave.ok">✓ {{ pageSave.message }}</template>
+                <template v-else>{{ pageSave.message }}<button class="link" type="button" :disabled="importing" @click="saveCurrentPage">重试</button></template>
+              </div>
+              <div v-else-if="savedByKey[currentKey]" class="page-save ok-static">✓ 本页已保存 · 修改后可重新点「保存本页并下一步」覆盖保存</div>
 
               <!-- 批量设置条 -->
               <div class="batch-bar">
@@ -122,76 +129,35 @@
               <!-- 搜索 -->
               <div class="op-search">
                 <input v-model.trim="search" class="op-search-input" type="search" placeholder="搜索名称 / 别名 / id" />
-                <span class="op-search-count">本页 {{ pageOperators.length }} 位 · {{ catalogCount }} 位目录内</span>
+                <span class="op-search-count">本页 {{ pageOperators.length }} 位 · 已有数据 {{ hasDataOperators.length }} 位 · 目录 {{ catalogCount }} 位</span>
               </div>
 
-              <div v-if="pageOperators.length === 0" class="state slim">没有匹配「{{ search }}」的密探</div>
-              <ul v-else class="op-list">
-                <li v-for="op in pageOperators" :key="op.id" class="op-col">
-                  <label class="op-card" :class="{ on: isChecked(op.id) }">
-                    <input type="checkbox" class="op-check" :checked="isChecked(op.id)" :disabled="importing" @change="toggleOperator(op.id, $event)" />
-                    <img v-if="op.avatar" class="op-avatar" :src="avatarUrl(op.avatar)" :alt="op.name" loading="lazy" />
-                    <span v-else class="op-ph">{{ monogram(op) }}</span>
-                    <span class="op-meta">
-                      <span class="op-name">{{ op.name }}</span>
-                      <span class="op-sub">{{ op.prof }} · {{ op.rarity }}★</span>
-                    </span>
-                    <span v-if="existingTag(op)" class="op-has">{{ existingTag(op) }}</span>
-                  </label>
-                </li>
-              </ul>
-
-              <div class="wiz-actions">
-                <button class="btn ghost" type="button" :disabled="importing || stepIndex === 0" @click="goStep(steps[stepIndex - 1].key)">上一步</button>
-                <button class="btn primary" type="button" :disabled="importing" @click="nextStep">
-                  {{ isAwaken ? '下一步：确认导入' : '下一步' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- 确认页 -->
-            <div v-else class="wiz-card confirm" v-reveal>
-              <div class="wiz-head">
-                <h2>确认导入</h2>
-                <p class="wiz-sub">将下方 {{ allEntries.length }} 位密探保存到子账号「{{ accountName }}」{{ saveGameLabel }}。若该密探已有命盘 / 星石，会自动保留。</p>
-              </div>
-
-              <div v-if="importResult" class="import-result">
-                <b>导入完成</b>：接受 {{ importResult.accepted }} 条 · 重复 {{ importResult.duplicates }} 条
-                <template v-if="importResult.superseded"> · 已归档 {{ importResult.superseded }} 条</template>
-                <template v-if="importResult.warnings && importResult.warnings.length"> · 警告 {{ importResult.warnings.length }} 条</template>
-                <div class="import-result-actions">
-                  <button class="mini" type="button" @click="goBack">返回密探页</button>
-                  <button class="mini" type="button" @click="resetAll">再导一次</button>
-                </div>
-              </div>
-              <div v-else-if="importError" class="import-error">{{ importError }}</div>
-
-              <template v-if="!importResult">
-                <div v-if="allEntries.length === 0" class="state slim">尚未勾选任何密探，请返回前面的星阶页勾选。</div>
-                <template v-else>
-                  <div class="confirm-summary">
-                    <div v-for="g in summaryGroups" :key="g.label" class="cg">
-                      <div class="cg-k">{{ g.label }}</div>
-                      <div class="cg-v">{{ g.count }}<small>位</small></div>
-                    </div>
-                  </div>
-                  <ul class="confirm-list">
-                    <li v-for="e in allEntries" :key="e.key + ':' + e.id" class="confirm-item">
-                      <span class="ci-star" :class="'star-' + e.starKey">{{ e.starLabel }}</span>
-                      <img v-if="avOf(e.id)" class="ci-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
-                      <span v-else class="ci-ph">{{ monogramName(e.name) }}</span>
-                      <span class="ci-name">{{ e.name }}</span>
-                      <span class="ci-detail">修为 {{ e.elite }} · Lv{{ e.level }}</span>
+              <!-- 分组：无数据密探在前，已有数据的沉底并用分割线隔开 -->
+              <template v-if="operatorGroups.length">
+                <template v-for="(g, gi) in operatorGroups" :key="gi">
+                  <div v-if="g.divider" class="op-divider"><span>{{ g.label }}</span></div>
+                  <ul class="op-list" :class="{ 'op-list-group': g.divider }">
+                    <li v-for="op in g.items" :key="op.id" class="op-col">
+                      <label class="op-card" :class="{ on: isChecked(op.id) }">
+                        <input type="checkbox" class="op-check" :checked="isChecked(op.id)" :disabled="importing" @change="toggleOperator(op.id, $event)" />
+                        <img v-if="op.avatar" class="op-avatar" :src="avatarUrl(op.avatar)" :alt="op.name" loading="lazy" />
+                        <span v-else class="op-ph">{{ monogram(op) }}</span>
+                        <span class="op-meta">
+                          <span class="op-name">{{ op.name }}</span>
+                          <span class="op-sub">{{ op.prof }} · {{ op.rarity }}★</span>
+                        </span>
+                        <span v-if="existingTag(op)" class="op-has">{{ existingTag(op) }}</span>
+                      </label>
                     </li>
                   </ul>
                 </template>
               </template>
+              <div v-else class="state slim">没有匹配「{{ search }}」的密探</div>
 
-              <div v-if="!importResult" class="wiz-actions">
-                <button class="btn ghost" type="button" :disabled="importing" @click="goStep(steps[stepIndex - 1].key)">上一步</button>
-                <button class="btn primary" type="button" :disabled="importing || allEntries.length === 0 || !auth.isLoggedIn || !accountId" @click="doImport">
-                  {{ importing ? '导入中…' : '提交导入' }}
+              <div class="wiz-actions">
+                <button class="btn ghost" type="button" :disabled="importing || stepIndex === 0" @click="goStep(steps[stepIndex - 1].key)">上一步</button>
+                <button class="btn primary" type="button" :disabled="importing" @click="nextStep">
+                  {{ importing ? '保存中…' : (isAwaken ? '保存并完成' : '保存本页并下一步') }}
                 </button>
               </div>
             </div>
@@ -257,7 +223,7 @@ const starSteps = [
   { key: '5', nav: '5星', title: '勾选 5 星密探', sub: '勾选当前为「5 星」的密探（节点 0~5）。' },
   { key: 'awaken', nav: '觉醒', title: '勾选 觉醒 密探', sub: '勾选当前已「觉醒」的密探（仅一档）。' }
 ]
-const steps = starSteps.concat([{ key: 'confirm', nav: '确认', title: '确认导入', sub: '核对后一次性保存到该子账号。' }])
+const steps = starSteps
 
 // —— 页面状态 ——
 const stepIndex = ref(0)
@@ -274,8 +240,11 @@ const catalogVersion = ref('')
 const backendCatalog = ref([])
 const currentEntries = ref([])
 const importing = ref(false)
-const importResult = ref(null)
-const importError = ref('')
+const sessionSavedCount = ref(0)
+// 每页是否已保存过（用于步骤条“已存”标记 + 返回已保存页时的提示）
+const savedByKey = reactive({})
+// 本页最近一次保存结果（成功 / 失败提示）
+const pageSave = reactive({ show: false, ok: false, message: '' })
 let currentLoadToken = 0
 
 // 每页：勾选集合 + 批量表单（修为 / 等级 / 节点）
@@ -289,7 +258,6 @@ starSteps.forEach(function (s) {
 // —— 派生状态 ——
 const currentStep = computed(function () { return steps[stepIndex.value] })
 const currentKey = computed(function () { return currentStep.value.key })
-const isConfirm = computed(function () { return currentKey.value === 'confirm' })
 const isAwaken = computed(function () { return currentKey.value === 'awaken' })
 const checkedOfCurrent = computed(function () { return checkedByKey[currentKey.value] || [] })
 const pageForm = computed(function () { return formByKey[currentKey.value] || { elite: 0, level: 0, node: 0 } })
@@ -356,6 +324,24 @@ const pageOperators = computed(function () {
     .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'zh') })
 })
 
+// 分组：无数据密探放前面；已有数据的沉底，用分割线隔开（仍跟随搜索 / 版本筛选）
+const noDataOperators = computed(function () {
+  return pageOperators.value.filter(function (op) { return !hasExistingData(op.id) })
+})
+const hasDataOperators = computed(function () {
+  return pageOperators.value.filter(function (op) { return hasExistingData(op.id) })
+})
+const operatorGroups = computed(function () {
+  const groups = []
+  if (noDataOperators.value.length) groups.push({ divider: false, items: noDataOperators.value })
+  if (hasDataOperators.value.length) groups.push({
+    divider: true,
+    label: '已有养成数据 · ' + hasDataOperators.value.length + ' 位',
+    items: hasDataOperators.value
+  })
+  return groups
+})
+
 // —— 当前养成（用于“已有”标记 + 保留命盘/星石） ——
 function normalizeEntry(e) {
   e = e || {}
@@ -395,7 +381,6 @@ function isChecked(id) {
 }
 
 function isStepDone(key) {
-  if (key === 'confirm') return false
   return (checkedByKey[key] || []).length > 0
 }
 
@@ -490,35 +475,35 @@ async function selectAllPage() {
   const key = currentKey.value
   const cur = checkedByKey[key] || []
   const ids = pageOperators.value.map(function (op) { return op.id })
-  const conflicts = ids.filter(function (id) { return !!previousStepFor(id, key) })
-  if (conflicts.length) {
-    const preview = conflicts.slice(0, 5).map(function (id) {
-      const op = catalogMap.value[id]
-      return (op ? op.name || id : id) + '（' + stepLabel(previousStepFor(id, key)) + '）'
-    }).join('、')
-    const suffix = conflicts.length > 5 ? '等 ' + conflicts.length + ' 位密探' : ''
-    const ok = await dialog.confirm({
-      title: '调整勾选',
-      message: preview + suffix + '已在其他星级选择，是否覆盖到' + stepLabel(key) + '？'
-    })
-    if (!ok) return
+  const toAdd = []
+  // 对「跨页冲突 / 已有数据」的密探逐个确认：点“否/跳过”只跳过那一个，其余照常勾选。
+  for (const id of ids) {
+    const name = catalogMap.value[id] ? (catalogMap.value[id].name || id) : id
+    const fromKey = previousStepFor(id, key)
+    if (fromKey) {
+      const ok = await dialog.confirm({
+        title: '调整勾选',
+        message: '「' + name + '」已在' + stepLabel(fromKey) + '选择，全选时是否覆盖到' + stepLabel(key) + '？',
+        confirmText: '覆盖并勾选',
+        cancelText: '跳过'
+      })
+      if (!ok) continue
+    } else if (hasExistingData(id)) {
+      const entry = currentMap.value[id]
+      const detail = entry ? '（已有 Lv' + (entry.level || 0) + ' · 修为 ' + (entry.elite || 0) + ' · ' + (starLabelOf(entry.starLevel) || '已有养成数据') + '）' : ''
+      const ok = await dialog.confirm({
+        title: '覆盖养成数据',
+        message: '「' + name + '」' + detail + '，全选时是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。',
+        confirmText: '覆盖并勾选',
+        cancelText: '跳过'
+      })
+      if (!ok) continue
+    }
+    toAdd.push(id)
   }
-  const existing = ids.filter(function (id) { return !conflicts.includes(id) && hasExistingData(id) })
-  if (existing.length) {
-    const names = existing.slice(0, 5).map(function (id) {
-      const op = catalogMap.value[id]
-      return op ? op.name || id : id
-    }).join('、')
-    const suffix = existing.length > 5 ? '等 ' + existing.length + ' 位密探' : ''
-    const ok = await dialog.confirm({
-      title: '覆盖养成数据',
-      message: names + suffix + '已有养成数据，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。',
-      confirmText: '覆盖'
-    })
-    if (!ok) return
-  }
-  removeFromOtherSteps(ids, key)
-  checkedByKey[key] = Array.from(new Set(cur.concat(ids)))
+  if (!toAdd.length) return
+  removeFromOtherSteps(toAdd, key)
+  checkedByKey[key] = Array.from(new Set(cur.concat(toAdd)))
 }
 
 function clearPage() {
@@ -527,10 +512,6 @@ function clearPage() {
     return ids.indexOf(id) === -1
   })
 }
-
-const overallChecked = computed(function () {
-  return starSteps.reduce(function (sum, s) { return sum + (checkedByKey[s.key] || []).length }, 0)
-})
 
 // 修为不能超过当前等级上限（每页各自跟随：等级变更下修、修为手工上调时封顶）
 watch(
@@ -554,7 +535,7 @@ watch(
 
 const maxEliteHint = computed(function () {
   const f = pageForm.value
-  if (isConfirm.value || !f) return ''
+  if (!f) return ''
   return getMaxEliteForLevel(f.level)
 })
 
@@ -575,46 +556,36 @@ function starLabelForStep(s, node) {
   return Number(s.key) + ' 星 · ' + (node == null ? 0 : node)
 }
 
-// —— 汇总待导入条目（保留已有命盘 / 星石） ——
-const allEntries = computed(function () {
-  const out = []
-  starSteps.forEach(function (s) {
-    const ids = checkedByKey[s.key] || []
-    const f = formByKey[s.key] || { elite: 0, level: 0, node: 0 }
-    ids.forEach(function (id) {
-      const op = catalogMap.value[id]
-      if (!op) return
-      const existing = currentMap.value[id] || {}
-      const level = clampInt(f.level, OPERATOR_LEVEL_MAX)
-      const elite = Math.min(clampInt(f.elite, OPERATOR_ELITE_MAX), getMaxEliteForLevel(level))
-      const starLevel = s.key === 'awaken'
-        ? STAR_LEVEL_AWAKEN
-        : 6 * (Number(s.key) - 1) + ((f.node == null ? 0 : f.node)) + 1
-      out.push({
-        starKey: s.key,
-        starLabel: starLabelForStep(s, f.node),
-        id: id,
-        name: op.name || id,
-        elite: elite,
-        starLevel: starLevel,
-        level: level,
-        discs: existing.discs || [],
-        starStones: existing.starStones || [],
-        rarity: op.rarity,
-        prof: op.prof ? op.prof.split('、') : [],
-        subProf: Array.isArray(op.subProf) ? op.subProf : (op.subProf ? op.subProf.split('、') : []),
-        games: op.games || []
-      })
-    })
-  })
-  return out
-})
-
-const summaryGroups = computed(function () {
-  return starSteps.map(function (s) {
-    return { label: s.nav, count: (checkedByKey[s.key] || []).length }
-  })
-})
+// —— 组装某页待导入条目（保留已有命盘 / 星石） ——
+function buildPageEntries(key) {
+  const ids = checkedByKey[key] || []
+  const f = formByKey[key] || { elite: 0, level: 0, node: 0 }
+  return ids.map(function (id) {
+    const op = catalogMap.value[id]
+    if (!op) return null
+    const existing = currentMap.value[id] || {}
+    const level = clampInt(f.level, OPERATOR_LEVEL_MAX)
+    const elite = Math.min(clampInt(f.elite, OPERATOR_ELITE_MAX), getMaxEliteForLevel(level))
+    const starLevel = key === 'awaken'
+      ? STAR_LEVEL_AWAKEN
+      : 6 * (Number(key) - 1) + ((f.node == null ? 0 : f.node)) + 1
+    return {
+      starKey: key,
+      starLabel: starLabelForStep({ key: key }, f.node),
+      id: id,
+      name: op.name || id,
+      elite: elite,
+      starLevel: starLevel,
+      level: level,
+      discs: existing.discs || [],
+      starStones: existing.starStones || [],
+      rarity: op.rarity,
+      prof: op.prof ? op.prof.split('、') : [],
+      subProf: Array.isArray(op.subProf) ? op.subProf : (op.subProf ? op.subProf.split('、') : []),
+      games: op.games || []
+    }
+  }).filter(Boolean)
+}
 
 const saveGame = computed(function () {
   return gameFilter.value === 'all' ? null : gameFilter.value
@@ -635,10 +606,25 @@ function goStep(key) {
   if (idx === -1 || idx > maxUnlockedStep.value) return
   stepIndex.value = idx
   search.value = ''
+  pageSave.show = false
 }
 
-function nextStep() {
-  if (stepIndex.value >= steps.length - 1) return
+// 「保存本页并下一步」：先保存当前页，成功后再翻页；觉醒页保存后完成返回密探页。
+async function nextStep() {
+  if (importing.value) return
+  const hasEntries = buildPageEntries(currentKey.value).length > 0
+  const ok = await saveCurrentPage()
+  if (!ok) return
+  if (stepIndex.value >= steps.length - 1) {
+    // 觉醒页：保存后返回密探页（留一点时间展示「已保存」）
+    setTimeout(goBack, 600)
+    return
+  }
+  if (hasEntries) {
+    // 稍作停留展示「已保存」结果，再翻页
+    await new Promise(function (r) { setTimeout(r, 600) })
+  }
+  pageSave.show = false
   const nextIndex = stepIndex.value + 1
   maxUnlockedStep.value = Math.max(maxUnlockedStep.value, nextIndex)
   stepIndex.value = nextIndex
@@ -721,12 +707,21 @@ async function reloadCurrent() {
   }
 }
 
-// —— 提交 ——
-async function doImport() {
-  if (!auth.isLoggedIn) { router.push('/login'); return }
-  if (!accountId.value) { importError.value = '请先创建并选择一个子账号（可在密探或库存页新建）'; return }
-  const entries = allEntries.value
-  if (!entries.length) { importError.value = '尚未勾选任何密探，无法提交'; return }
+// —— 逐页保存：一页一导入（一页即存，不再攒到最后一次导入） ——
+async function saveCurrentPage() {
+  if (!auth.isLoggedIn) { router.push('/login'); return false }
+  if (!accountId.value) {
+    pageSave.show = true
+    pageSave.ok = false
+    pageSave.message = '请先创建并选择一个子账号（可在密探或库存页新建）'
+    return false
+  }
+  const key = currentKey.value
+  const entries = buildPageEntries(key)
+  if (!entries.length) {
+    // 本页未勾选：不导入，直接放行（不计入已保存）
+    return true
+  }
   const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
   const now = new Date().toISOString()
   const doc = {
@@ -762,28 +757,24 @@ async function doImport() {
     }]
   }
   importing.value = true
-  importError.value = ''
-  importResult.value = null
   try {
-    const res = await importOperator(doc)
-    importResult.value = res || {}
+    await importOperator(doc)
+    sessionSavedCount.value += entries.length
+    savedByKey[key] = true
+    pageSave.show = true
+    pageSave.ok = true
+    pageSave.message = '本页已保存 ' + entries.length + ' 位到「' + account.name + '」' + saveGameLabel.value
+    // 重新拉取当前养成数据，让「已有数据」分组与“已有”标记即时更新
+    await reloadCurrent()
+    return true
   } catch (err) {
-    importError.value = humanErr(err, '导入失败')
+    pageSave.show = true
+    pageSave.ok = false
+    pageSave.message = '「' + stepLabel(key) + '」保存失败：' + humanErr(err, '导入失败')
+    return false
   } finally {
     importing.value = false
   }
-}
-
-function resetAll() {
-  importResult.value = null
-  importError.value = ''
-  stepIndex.value = 0
-  maxUnlockedStep.value = 0
-  search.value = ''
-  starSteps.forEach(function (s) {
-    checkedByKey[s.key] = []
-    Object.assign(formByKey[s.key], { elite: 0, level: 0, node: 0 })
-  })
 }
 
 function goBack() { router.push('/operator') }
@@ -791,16 +782,6 @@ function goBack() { router.push('/operator') }
 function monogram(e) {
   const s = String(e.name || e.id || '?')
   return Array.from(s)[0] || '?'
-}
-
-function monogramName(name) {
-  return Array.from(String(name || '?'))[0] || '?'
-}
-
-// 头像：目录项已带 avatar 字段；确认页条目只按 id 回查目录拿头像（与密探页 avOf 一致）
-function avOf(id) {
-  const op = catalogMap.value[id]
-  return (op && op.avatar) || ''
 }
 
 function humanErr(err, fallback) {
@@ -838,7 +819,7 @@ onMounted(async function () {
 
 /* ---- 步骤条 ---- */
 .stepper {
-  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 40px;
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 40px;
   overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
 .step {
@@ -855,6 +836,7 @@ onMounted(async function () {
 }
 .step .step-txt { min-width: 0; display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.25; white-space: nowrap }
 .step .step-txt small { font-size: 10px; font-family: var(--font-d); font-weight: 700; color: var(--ink-35) }
+.step .step-txt small.saved { color: var(--accent-strong) }
 .step.done { border-color: var(--yellow-deep); background: var(--yellow) }
 .step.done .step-no { border-color: var(--yellow-deep); background: var(--surface) }
 .step.on { background: var(--tea); border-color: var(--tea); color: var(--cream) }
@@ -867,6 +849,13 @@ onMounted(async function () {
 .wiz-head { padding-bottom: 14px; border-bottom: 1.5px dashed var(--line) }
 .wiz-head h2 { font-family: var(--font-s); font-weight: 900; font-size: 26px; letter-spacing: .04em; color: var(--ink) }
 .wiz-sub { margin-top: 6px; font-size: 12.5px; color: var(--ink-60); line-height: 1.8; font-weight: 600 }
+
+/* ---- 本页保存状态 ---- */
+.page-save { margin-top: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; background: rgba(215, 137, 53, .14); border: 1.5px solid rgba(215, 137, 53, .45); color: var(--ink) }
+.page-save.ok-static { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
+.page-save.err { background: rgba(166, 81, 74, .14); border: 1.5px solid rgba(166, 81, 74, .4); color: var(--rouge) }
+.page-save .link { margin-left: 6px; background: none; border: none; color: var(--accent-strong); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.page-save .link:disabled { opacity: .5; cursor: not-allowed }
 
 /* ---- 批量设置条 ---- */
 .batch-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px }
@@ -923,6 +912,12 @@ onMounted(async function () {
 .op-sub { font-size: 11px; color: var(--ink-60); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .op-has { flex: none; font-size: 10.5px; color: var(--accent-strong); background: rgba(215, 137, 53, .14); border: 1px solid rgba(215, 137, 53, .45); border-radius: 999px; padding: 2px 8px; white-space: nowrap }
 
+/* ---- 分割线：已有数据的密探与无数据区隔开 ---- */
+.op-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 4px }
+.op-divider::before, .op-divider::after { content: ''; flex: 1; height: 1.5px; background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 12px) }
+.op-divider span { flex: none; font-size: 11.5px; font-weight: 800; font-family: var(--font-b); color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 12px; white-space: nowrap }
+.op-list-group { margin-top: 8px }
+
 /* ---- 底部操作 ---- */
 .wiz-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; flex-wrap: wrap }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .35s var(--ease); border: none }
@@ -931,27 +926,6 @@ onMounted(async function () {
 .btn.ghost:hover:not(:disabled) { background: var(--cream); color: var(--ink) }
 .btn.primary { background: var(--tea); color: var(--cream) }
 .btn.primary:hover:not(:disabled) { background: var(--accent); color: #fff }
-
-/* ---- 确认页 ---- */
-.confirm-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px }
-.cg { flex: 1; min-width: 92px; text-align: center; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 8px }
-.cg-k { font-size: 12px; font-weight: 700; color: var(--ink-60) }
-.cg-v { font-family: var(--font-d); font-weight: 900; font-size: 22px; color: var(--accent-strong); margin-top: 4px }
-.cg-v small { font-family: var(--font-b); font-size: 12px; color: var(--ink-35); margin-left: 2px }
-.confirm-list { list-style: none; margin-top: 16px; max-height: 40vh; overflow-y: auto; border: 1.5px solid var(--line); border-radius: 14px; padding: 6px }
-.confirm-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; transition: background .2s }
-.confirm-item:hover { background: var(--paper) }
-.ci-star { flex: none; font-size: 10.5px; font-weight: 800; color: var(--ink); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 2px 9px; white-space: nowrap }
-.ci-star.star-awaken { background: var(--tea); border-color: var(--tea); color: var(--cream) }
-.ci-ph { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--yellow); color: var(--ink); font-family: var(--font-s); font-weight: 900; font-size: 14px }
-.ci-avatar { flex: none; width: 28px; height: 28px; border-radius: 8px; object-fit: cover; background: var(--paper); border: 1.5px solid var(--line) }
-.ci-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.ci-detail { flex: none; font-family: var(--font-d); font-size: 12px; color: var(--ink-60); font-weight: 700; white-space: nowrap }
-
-.import-result { margin-top: 16px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 16px; font-size: 13px; color: var(--ink); font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
-.import-result b { color: var(--accent-strong) }
-.import-result-actions { margin-left: auto; display: flex; gap: 8px }
-.import-error { margin-top: 16px; background: rgba(166, 81, 74, .14); color: var(--rouge); border: 1.5px solid rgba(166, 81, 74, .4); border-radius: 14px; padding: 12px 16px; font-size: 12.5px; font-weight: 700 }
 
 .state { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 20px; padding: 56px 40px; text-align: center; color: var(--ink-35); font-weight: 700; margin-top: 16px }
 .state.err { color: var(--ink-60) }
@@ -963,7 +937,7 @@ onMounted(async function () {
 .hero-stats div.is-authed .v small { font-family: var(--font-b); font-size: 14px; font-weight: 700 }
 
 @media (max-width: 900px) {
-  .stepper { grid-template-columns: repeat(7, minmax(104px, 1fr)); scroll-snap-type: x proximity }
+  .stepper { grid-template-columns: repeat(6, minmax(104px, 1fr)); scroll-snap-type: x proximity }
   .step { scroll-snap-align: start }
 }
 
