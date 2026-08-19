@@ -59,7 +59,6 @@
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
             <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
-            <router-link v-if="auth.isLoggedIn" class="act-btn ghost admin-link" to="/operator/admin">管理图鉴</router-link>
           </div>
 
           <!-- 导入档案 -->

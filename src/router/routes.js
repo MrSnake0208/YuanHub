@@ -100,7 +100,8 @@ export const routes = [
         component: () => import('/src/pages/operator/admin.vue'),
         meta: {
             title: '密探图鉴管理 — YuanHub',
-            requiresAuth: true
+            requiresAuth: true,
+            requiresAdmin: true
         }
     },
     {
