@@ -130,7 +130,8 @@
                 <li v-for="op in pageOperators" :key="op.id" class="op-col">
                   <label class="op-card" :class="{ on: isChecked(op.id) }">
                     <input type="checkbox" class="op-check" :checked="isChecked(op.id)" :disabled="importing" @change="toggleOperator(op.id, $event)" />
-                    <span class="op-ph">{{ monogram(op) }}</span>
+                    <img v-if="op.avatar" class="op-avatar" :src="avatarUrl(op.avatar)" :alt="op.name" loading="lazy" />
+                    <span v-else class="op-ph">{{ monogram(op) }}</span>
                     <span class="op-meta">
                       <span class="op-name">{{ op.name }}</span>
                       <span class="op-sub">{{ op.prof }} · {{ op.rarity }}★</span>
@@ -178,7 +179,8 @@
                   <ul class="confirm-list">
                     <li v-for="e in allEntries" :key="e.key + ':' + e.id" class="confirm-item">
                       <span class="ci-star" :class="'star-' + e.starKey">{{ e.starLabel }}</span>
-                      <span class="ci-ph">{{ monogramName(e.name) }}</span>
+                      <img v-if="avOf(e.id)" class="ci-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
+                      <span v-else class="ci-ph">{{ monogramName(e.name) }}</span>
                       <span class="ci-name">{{ e.name }}</span>
                       <span class="ci-detail">修为 {{ e.elite }} · Lv{{ e.level }}</span>
                     </li>
@@ -220,6 +222,7 @@ import {
   getOperatorCurrent,
   importOperator
 } from '../../api/operator.js'
+import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
@@ -303,7 +306,8 @@ function normalizeOperator(op) {
     subProf: Array.isArray(rawSub) ? rawSub : (rawSub ? [rawSub] : []),
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
-    starStones: op.starStones || op.star_stones || []
+    starStones: op.starStones || op.star_stones || [],
+    avatar: op.avatar || ''
   }
 }
 
@@ -319,7 +323,8 @@ const catalogOperators = computed(function () {
       subProf: e.subProf || '',
       games: ['如鸢', '代号鸢'],
       discs: [],
-      starStones: []
+      starStones: [],
+      avatar: ''
     }
   })
 })
@@ -792,6 +797,12 @@ function monogramName(name) {
   return Array.from(String(name || '?'))[0] || '?'
 }
 
+// 头像：目录项已带 avatar 字段；确认页条目只按 id 回查目录拿头像（与密探页 avOf 一致）
+function avOf(id) {
+  const op = catalogMap.value[id]
+  return (op && op.avatar) || ''
+}
+
 function humanErr(err, fallback) {
   if (!err) return fallback
   const msg = err.message
@@ -901,7 +912,12 @@ onMounted(async function () {
   background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-35);
   font-family: var(--font-s); font-weight: 900; font-size: 17px;
 }
+.op-avatar {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; object-fit: cover;
+  background: var(--surface); border: 1.5px solid var(--line);
+}
 .op-card.on .op-ph { border-color: var(--yellow-deep); color: var(--ink) }
+.op-card.on .op-avatar { border-color: var(--yellow-deep) }
 .op-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
 .op-name { font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .op-sub { font-size: 11px; color: var(--ink-60); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
@@ -928,6 +944,7 @@ onMounted(async function () {
 .ci-star { flex: none; font-size: 10.5px; font-weight: 800; color: var(--ink); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 2px 9px; white-space: nowrap }
 .ci-star.star-awaken { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .ci-ph { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--yellow); color: var(--ink); font-family: var(--font-s); font-weight: 900; font-size: 14px }
+.ci-avatar { flex: none; width: 28px; height: 28px; border-radius: 8px; object-fit: cover; background: var(--paper); border: 1.5px solid var(--line) }
 .ci-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .ci-detail { flex: none; font-family: var(--font-d); font-size: 12px; color: var(--ink-60); font-weight: 700; white-space: nowrap }
 
