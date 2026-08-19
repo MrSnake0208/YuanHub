@@ -655,6 +655,7 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, renameAccount, deleteAccount, listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
 import { auth } from '../../store/auth.js'
+import { activeAccount } from '../../store/activeAccount.js'
 import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { acquisitionChannel, buildAcquiredStats, buildRewardInsights, localDayKey, mapsHaveSameCounts, summarizeDispatchDuration } from '../../data/inventory/acquiredStats.js'
 import { buildAgentGroups, filterAgentEntries, HIDDEN_AGENT_IDS, sortAgentEntries, visibleAgentEntries } from '../../data/inventory/agentManifest.js'
@@ -773,7 +774,11 @@ const currentFullBaselineAt = ref(null)
 
 // —— 统一子账号（库存 × 密探共用） ——
 const accounts = ref([])
-const accountId = ref('')
+// 当前选中账号由 activeAccount store 记忆并持久化（跨页面导航 / 刷新不丢）
+const accountId = computed({
+  get: function () { return activeAccount.id },
+  set: function (v) { activeAccount.set(v) }
+})
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
@@ -915,13 +920,14 @@ function resetAcquiredData() {
 
 // —— 统一子账号（库存 × 密探共用） ——
 async function loadAccounts() {
-  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; clearAgentFavorites(); return }
+  if (!auth.isLoggedIn) { accounts.value = []; clearAgentFavorites(); return }
   accountsLoading.value = true
   accountError.value = ''
   try {
     const list = await listAccounts()
     accounts.value = Array.isArray(list) ? list : []
     if (accounts.value.length < 2) exportAll.value = false
+    // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
   } catch (err) {

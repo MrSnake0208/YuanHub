@@ -331,6 +331,7 @@ import {
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
+import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
@@ -381,7 +382,11 @@ const quickHref = computed(function () {
 
 // —— 统一子账号（库存 × 密探共用） ——
 const accounts = ref([])
-const accountId = ref('')
+// 当前选中账号由 activeAccount store 记忆并持久化（跨页面导航 / 刷新不丢）
+const accountId = computed({
+  get: function () { return activeAccount.id },
+  set: function (v) { activeAccount.set(v) }
+})
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
@@ -855,12 +860,13 @@ async function loadCatalog() {
 
 // —— 统一子账号（库存 × 密探共用） ——
 async function loadAccounts() {
-  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
+  if (!auth.isLoggedIn) { accounts.value = []; return }
   accountsLoading.value = true
   accountError.value = ''
   try {
     const list = await listOperatorAccounts()
     accounts.value = Array.isArray(list) ? list : []
+    // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
   } catch (err) {
