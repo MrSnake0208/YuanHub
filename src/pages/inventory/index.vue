@@ -29,55 +29,24 @@
       <section>
         <div class="wrap">
           <!-- 统一子账号（库存 × 密探共用） -->
-          <div class="account-workspace" v-reveal>
-            <div class="account-bar">
-              <div class="account-heading">
-                <span class="section-kicker">数据归属</span>
-                <h2>选择要查看的账号</h2>
-                <p>库存、统计和操作历史都会切换到这个子账号；这里创建的账号在密探页同样可见。</p>
-              </div>
-              <div class="account-selector">
-                <label class="ac-label" for="inventory-account">当前账号</label>
-                <select id="inventory-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || editingStock" @change="onAccountChange">
-                  <option v-if="!accounts.length" value="">（未创建）</option>
-                  <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-                </select>
-                <span v-if="accountError" class="ac-warn">{{ accountError }}</span>
-              </div>
-              <button class="act-btn account-manage" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showAccounts" @click="showAccounts = !showAccounts">
-                <Users :size="15" aria-hidden="true" />{{ showAccounts ? '收起账号管理' : '管理账号' }}
-              </button>
+          <AccountWorkspace
+            v-model:accountId="accountId"
+            :accounts="accounts"
+            :error="accountError"
+            :disabled="!auth.isLoggedIn || accountsLoading || editingStock"
+            :busy="accountBusy"
+            heading-title="选择要查看的账号"
+            heading-sub="库存、统计和操作历史都会切换到这个子账号；这里创建的账号在密探页同样可见。"
+            @change="onAccountChange"
+            @create="onCreateAccount"
+            @rename="onRenameAccount"
+            @delete="onDeleteAccount"
+          >
+            <template #actions>
               <button class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" @click="showArchive = !showArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
               </button>
-            </div>
-
-            <!-- 账号管理 -->
-            <div v-if="showAccounts && !editingStock" class="account-mgr">
-              <div class="account-mgr-head">
-                <div>
-                  <h3>账号列表</h3>
-                  <p>给不同存档分别记账（库存 / 密探共用同一批账号）；删除账号会连同库存、密探、特别关注和所有 Token 一并清除。</p>
-                </div>
-                <span class="account-count">{{ accounts.length }} 个账号</span>
-              </div>
-              <div class="ac-new">
-                <input v-model.trim="newAccountName" aria-label="新子账号名称" autocomplete="off" placeholder="输入新账号名称" @keyup.enter="onCreateAccount" />
-                <button class="btn ghost" :disabled="accountBusy || !newAccountName" @click="onCreateAccount">新建账号</button>
-              </div>
-              <ul v-if="accounts.length" class="ac-list">
-                <li v-for="a in accounts" :key="a.id" class="ac-item" :class="{ selected: a.id === accountId }">
-                  <span class="ac-dot"></span>
-                  <div class="ac-meta">
-                    <span class="ac-name">{{ a.name }}<em v-if="a.id === accountId">当前</em></span>
-                    <code class="ac-id">{{ a.id }}</code>
-                  </div>
-                  <button class="ac-btn" :disabled="accountBusy" @click="onRenameAccount(a)">改名</button>
-                  <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
-                </li>
-              </ul>
-              <p v-else class="ac-empty">还没有子账号，先创建一个再开始记录。</p>
-            </div>
+            </template>
 
             <!-- 档案操作：默认收起，避免抢占库存主流程的注意力 -->
             <div v-if="showArchive && !editingStock" class="archive-workspace">
@@ -111,7 +80,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </AccountWorkspace>
 
           <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
           <div class="inventory-tabs" role="tablist" aria-label="库存工作区" v-reveal>
@@ -678,7 +647,8 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { Archive, ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, Upload, Users, X } from '@lucide/vue'
+import { Archive, ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, Upload, X } from '@lucide/vue'
+import AccountWorkspace from '../../components/AccountWorkspace.vue'
 import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
 import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -807,8 +777,6 @@ const accountId = ref('')
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
-const showAccounts = ref(false)
-const newAccountName = ref('')
 const exportAll = ref(false)
 const currentAccountName = computed(function () {
   const account = accounts.value.find(function (item) { return item.id === accountId.value })
@@ -981,14 +949,13 @@ function onAccountChange() {
   if (activeTab.value === 'records') loadRecords(true)
 }
 
-async function onCreateAccount() {
-  const name = newAccountName.value.trim()
+async function onCreateAccount(rawName) {
+  const name = (rawName || '').trim()
   if (!name) return
   accountBusy.value = true
   accountError.value = ''
   try {
     const created = await createAccount(name)
-    newAccountName.value = ''
     await loadAccounts()
     if (created && created.id) accountId.value = created.id
     onAccountChange()
@@ -2144,42 +2111,13 @@ onMounted(async function () {
 </script>
 
 <style scoped>
-/* ---- 统一子账号：先明确数据上下文，再展开管理 ---- */
-.account-workspace { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden }
-.account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 290px) auto auto; align-items: center; gap: 12px; padding: 22px 24px }
-.account-heading h2, .archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
-.account-heading p, .archive-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
+/* ---- 数据交换（账号选择器/管理已抽到共用组件 AccountWorkspace.vue） ---- */
+.archive-toggle { min-height: 44px; align-self: center; transform: translateY(9px); background: transparent }
+.archive-actions svg { flex: none }
+.archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
+.archive-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
 .section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
-.account-selector { display: flex; flex-direction: column; gap: 6px }
-.ac-label { font-size: 11.5px; font-weight: 800; color: var(--ink-60); letter-spacing: .08em }
-.account-selector select { width: 100%; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s, box-shadow .3s }
-.account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
-.ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
-.account-manage, .archive-toggle { min-height: 44px; align-self: center; transform: translateY(9px) }
-.archive-toggle { background: transparent; }
-.account-manage svg, .archive-actions svg { flex: none }
-.account-mgr { border-top: 1px dashed var(--line); background: var(--cream); padding: 20px 24px 22px }
-.account-mgr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px }
-.account-mgr-head h3 { font-size: 14px; font-weight: 900; font-family: var(--font-s) }
-.account-mgr-head p { margin-top: 4px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
-.account-count, .archive-format { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap }
-.ac-new { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
-.ac-new input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
-.ac-new input:focus { border-color: var(--accent) }
-.ac-list { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px }
-.ac-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper) }
-.ac-item.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent) }
-.ac-item .ac-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--yellow-deep); flex: none }
-.ac-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
-.ac-name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--ink) }
-.ac-name em { font-style: normal; background: var(--yellow); border-radius: 999px; padding: 2px 7px; font-size: 10px; letter-spacing: .03em }
-.ac-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.ac-btn { flex: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .25s, background-color .25s, border-color .25s }
-.ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
-.ac-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
-.ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
-.ac-btn:disabled { opacity: .45; cursor: not-allowed }
-.ac-empty { margin-top: 12px; font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
+.archive-format { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap }
 .load-more { display: block; margin: 16px auto 0; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 26px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease) }
 .load-more:hover:not(:disabled) { border-color: var(--ink); background: var(--cream) }
 .load-more:disabled { opacity: .45; cursor: not-allowed }
@@ -2790,20 +2728,7 @@ onMounted(async function () {
 @media (max-width: 640px) {
   .hero-stats .catalog-date { font-size: 19px; line-height: 1.3 }
   .hero-stats .catalog-date time { white-space: nowrap }
-  .account-workspace { border-radius: 16px }
-  .account-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px 10px; padding: 18px 16px }
-  .account-heading, .account-selector { grid-column: 1 / -1 }
-  .account-selector { gap: 6px }
-  .account-selector select { width: 100%; min-width: 0; min-height: 46px; font-size: 16px }
-  .account-manage, .archive-toggle { width: 100%; min-height: 44px; transform: none }
-  .account-mgr { padding: 16px; }
-  .account-mgr-head { flex-direction: column; gap: 8px }
-  .ac-new { align-items: stretch; flex-direction: column }
-  .ac-new input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
-  .ac-new .btn { width: 100% }
-  .ac-item { align-items: flex-start; gap: 8px; padding: 12px; flex-wrap: wrap }
-  .ac-meta { flex-basis: calc(100% - 24px) }
-  .ac-btn { min-height: 40px; flex: 1 }
+  .archive-toggle { width: 100%; min-height: 44px; transform: none }
   .inventory-tabs { margin: 0 }
   .archive-workspace { margin-top: 0; padding: 14px 16px 16px }
   .archive-heading { flex-direction: column; gap: 8px }
@@ -3005,8 +2930,6 @@ onMounted(async function () {
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
-  .account-bar { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); }
-  .account-heading { grid-column: 1 / -1; }
-  .account-manage, .archive-toggle { width: 100%; transform: none; }
+  .archive-toggle { width: 100%; transform: none; }
 }
 </style>
