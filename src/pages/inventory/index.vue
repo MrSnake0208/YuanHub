@@ -28,13 +28,13 @@
 
       <section>
         <div class="wrap">
-          <!-- 库存子账号 -->
+          <!-- 统一子账号（库存 × 密探共用） -->
           <div class="account-workspace" v-reveal>
             <div class="account-bar">
               <div class="account-heading">
                 <span class="section-kicker">数据归属</span>
                 <h2>选择要查看的账号</h2>
-                <p>库存、统计和操作历史都会切换到这个子账号。</p>
+                <p>库存、统计和操作历史都会切换到这个子账号；这里创建的账号在密探页同样可见。</p>
               </div>
               <div class="account-selector">
                 <label class="ac-label" for="inventory-account">当前账号</label>
@@ -57,7 +57,7 @@
               <div class="account-mgr-head">
                 <div>
                   <h3>账号列表</h3>
-                  <p>给不同存档分别记账，删除账号会同时删除其库存和流水。</p>
+                  <p>给不同存档分别记账（库存 / 密探共用同一批账号）；删除账号会连同库存、密探、特别关注和所有 Token 一并清除。</p>
                 </div>
                 <span class="account-count">{{ accounts.length }} 个账号</span>
               </div>
@@ -76,7 +76,7 @@
                   <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
                 </li>
               </ul>
-              <p v-else class="ac-empty">还没有库存子账号，先创建一个再开始记录。</p>
+              <p v-else class="ac-empty">还没有子账号，先创建一个再开始记录。</p>
             </div>
 
             <!-- 档案操作：默认收起，避免抢占库存主流程的注意力 -->
@@ -801,7 +801,7 @@ const stockEditScopeIds = ref(null)
 const stockEditScopeName = ref('')
 const currentFullBaselineAt = ref(null)
 
-// —— 库存子账号 ——
+// —— 统一子账号（库存 × 密探共用） ——
 const accounts = ref([])
 const accountId = ref('')
 const accountsLoading = ref(false)
@@ -945,7 +945,7 @@ function resetAcquiredData() {
   selectedDay.value = ''
 }
 
-// —— 库存子账号 ——
+// —— 统一子账号（库存 × 密探共用） ——
 async function loadAccounts() {
   if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; clearAgentFavorites(); return }
   accountsLoading.value = true
@@ -1017,7 +1017,7 @@ async function onRenameAccount(acc) {
 }
 
 async function onDeleteAccount(acc) {
-  if (!confirm('删除子账号「' + acc.name + '」？将级联清除该账号的库存、流水与相关 Token，且不可恢复。')) return
+  if (!confirm('删除子账号「' + acc.name + '」？该账号的库存数据、密探数据、特别关注和所有 API Token 都会被一并清除，且不可恢复。')) return
   accountBusy.value = true
   accountError.value = ''
   try {
@@ -2144,7 +2144,7 @@ onMounted(async function () {
 </script>
 
 <style scoped>
-/* ---- 库存子账号：先明确数据上下文，再展开管理 ---- */
+/* ---- 统一子账号：先明确数据上下文，再展开管理 ---- */
 .account-workspace { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden }
 .account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 290px) auto auto; align-items: center; gap: 12px; padding: 22px 24px }
 .account-heading h2, .archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }

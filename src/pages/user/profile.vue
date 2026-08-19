@@ -29,7 +29,7 @@
             <div class="card-head">
               <div>
                 <h2>专属认证 Token</h2>
-                <p class="card-sub">每个 Token 绑定一个子账号，并按数据域授予只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表不会再次展示此明文。</p>
+                <p class="card-sub">每个 Token 绑定一个子账号（库存、密探、特别关注共用同一批账号），并按其 scopes 授予库存 / 密探的只读、只写、导出权限。库存与密探的 scope 可同时勾选，生成一个「双域 Token」。出于安全，Token 明文仅在生成时展示一次，列表不会再次展示此明文。</p>
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="busy" @click="openGen">生成 Token</button>
@@ -39,19 +39,13 @@
             <!-- 生成面板 -->
             <div v-if="showGen" class="gen-panel">
               <div class="gen-row">
-                <span class="gen-label">数据域</span>
-                <div class="domain-switch">
-                  <button :class="{ on: genDomain === 'inventory' }" type="button" @click="setGenDomain('inventory')">库存</button>
-                  <button :class="{ on: genDomain === 'operator' }" type="button" @click="setGenDomain('operator')">密探</button>
-                </div>
-              </div>
-              <div class="gen-row">
                 <span class="gen-label">绑定子账号</span>
                 <select v-model="genAccountId" class="gen-select">
-                  <option v-if="!accounts.length" value="">（请先在库存/密探页创建{{ genDomain === 'operator' ? '密探' : '库存' }}子账号）</option>
+                  <option v-if="!accounts.length" value="">（暂无子账号，请先在库存或密探页创建）</option>
                   <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                 </select>
               </div>
+              <p class="gen-tip">Token 权限由 scopes 决定，不区分账号域：库存与密探可同时勾选，生成一个 token 通吃两域。</p>
               <div class="gen-row">
                 <span class="gen-label">权限范围</span>
                 <label v-for="p in scopeOptions" :key="p.scope" class="gen-check">
@@ -122,8 +116,7 @@ import { ref, computed, onMounted } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
-import { listAccounts } from '../../api/inventory.js'
-import { listOperatorAccounts } from '../../api/operator.js'
+import { listAccounts } from '../../api/accounts.js'
 import {
   getOpenApiPermissions,
   getOpenApiTokens,
@@ -141,8 +134,7 @@ import {
 
 const tokens = ref([])
 const permissions = ref([])
-const inventoryAccounts = ref([])
-const operatorAccounts = ref([])
+const accounts = ref([])
 const loading = ref(false)
 const error = ref('')
 const generating = ref(false)
@@ -151,18 +143,13 @@ const noticeError = ref(false)
 let noticeTimer = null
 
 const showGen = ref(false)
-const genDomain = ref('inventory')
+// 统一子账号（库存 × 密探共用一套账号，直接来自 GET /v1/accounts）
 const genAccountId = ref('')
 const genScopes = ref(['inventory:read'])
 const genRemark = ref('')
 const newToken = ref(null)
 
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
-
-// 当前数据域下可选子账号（库存与密探相互独立）
-const accounts = computed(function () {
-  return genDomain.value === 'operator' ? operatorAccounts.value : inventoryAccounts.value
-})
 
 // scope 解析/描述/时间格式化逻辑已抽离到 src/utils/openApiToken.js（可单测）。
 // 这里用薄封装绑定当前页面的 permissions / 兜底映射，供模板直接调用。
@@ -193,7 +180,8 @@ const permissionCount = computed(function () {
 })
 const tokenCount = computed(function () { return tokens.value.length })
 
-// 权限候选：按当前数据域过滤，读不到后端权限列表时用内置六项兜底
+// 权限候选：库存与密探全部平铺展示，可跨域同时勾选（生成双域 Token）；
+// 读不到后端权限列表时用内置六项兜底。
 const FALLBACK_PERMISSIONS = [
   { scope: 'inventory:read', description: '库存数据读取' },
   { scope: 'inventory:write', description: '库存数据写入' },
@@ -203,8 +191,7 @@ const FALLBACK_PERMISSIONS = [
   { scope: 'operator:export', description: '密探数据导出' }
 ]
 const scopeOptions = computed(function () {
-  const source = permissions.value.length ? permissions.value : FALLBACK_PERMISSIONS
-  return source.filter(function (p) { return p.scope.indexOf(genDomain.value + ':') === 0 })
+  return permissions.value.length ? permissions.value : FALLBACK_PERMISSIONS
 })
 
 function toast(text, isError) {
@@ -242,41 +229,29 @@ async function loadTokens() {
 
 async function loadAccounts() {
   try {
-    const [invData, opData] = await Promise.all([
-      listAccounts(),
-      listOperatorAccounts()
-    ])
-    inventoryAccounts.value = Array.isArray(invData) ? invData : []
-    operatorAccounts.value = Array.isArray(opData) ? opData : []
+    const data = await listAccounts()
+    accounts.value = Array.isArray(data) ? data : []
     if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
-    // 若当前选中的账号已不属于当前域，切到该域第一个账号
+    // 若当前选中的账号已被删除，切到第一个账号
     if (genAccountId.value && !accounts.value.some(function (a) { return a.id === genAccountId.value })) {
       genAccountId.value = accounts.value.length ? accounts.value[0].id : ''
     }
   } catch (_e) {
-    // 任一账号列表加载失败不阻断 Token 列表；保留已有数据
+    // 账号列表加载失败不阻断 Token 列表；保留已有数据
   }
-}
-
-function setGenDomain(domain) {
-  if (domain === genDomain.value) return
-  genDomain.value = domain
-  genScopes.value = [domain === 'operator' ? 'operator:read' : 'inventory:read']
-  genAccountId.value = accounts.value.length ? accounts.value[0].id : ''
 }
 
 function openGen() {
   showGen.value = true
-  if (!genScopes.value.length || genScopes.value[0].indexOf(genDomain.value + ':') !== 0) {
-    genScopes.value = [genDomain.value === 'operator' ? 'operator:read' : 'inventory:read']
+  if (!genScopes.value.length) {
+    genScopes.value = ['inventory:read']
   }
   if (!genAccountId.value && accounts.value.length) genAccountId.value = accounts.value[0].id
 }
 
 async function doGenerate() {
   if (busy.value) return
-  const domainName = genDomain.value === 'operator' ? '密探' : '库存'
-  if (!genAccountId.value) { toast('请先选择要绑定的' + domainName + '子账号', true); return }
+  if (!genAccountId.value) { toast('请先选择要绑定的子账号', true); return }
   if (!genScopes.value.length) { toast('请至少选择一个权限', true); return }
   generating.value = true
   try {
@@ -351,10 +326,7 @@ onMounted(async function () {
 .gen-label { flex: none; width: 84px; font-size: 13px; font-weight: 800; color: var(--ink); padding-top: 8px }
 .gen-select { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .gen-input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--surface); outline: none }
-.domain-switch { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 12px; padding: 4px }
-.domain-switch button { border: none; background: transparent; font-family: var(--font-b); font-weight: 800; font-size: 13px; padding: 8px 20px; border-radius: 9px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
-.domain-switch button.on { background: var(--tea); color: var(--cream) }
-.domain-switch button:hover:not(.on) { color: var(--ink) }
+.gen-tip { width: 100%; font-size: 12px; color: var(--ink-60); line-height: 1.7; padding-top: 2px }
 .gen-check { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-60); font-weight: 600; cursor: pointer; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 14px }
 .gen-check input { accent-color: var(--accent); cursor: pointer }
 .gen-check small { color: var(--ink-35); font-size: 11px }

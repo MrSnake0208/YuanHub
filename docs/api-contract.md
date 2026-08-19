@@ -96,11 +96,15 @@
 > 需登录（JWT），/v1/inventory/catalog 公开。库存为私有数据，userId 取自 JWT，查询均需携带 account_id（多子账号）。
 > 统一响应：成功 {status_code:200, message, data}；库存端点出错返回 {error:{code,message,record_id?,entry_id?}}（非 ApiResult），HTTP 状态码对齐错误类型（401/403/404/409/422/500）。
 
-### 库存子账号
-- POST /v1/inventory/accounts  body {name} → {id,name,created_at,updated_at}（id 形如 acc_<32hex>，每用户 ≤10 个，重名 409）
-- GET /v1/inventory/accounts → [{id,name,created_at,updated_at}]
-- PATCH /v1/inventory/accounts/{accountId}  body {name} → 账号对象
-- DELETE /v1/inventory/accounts/{accountId} → 级联删除该账号库存/流水/密探关注/token，返回 true
+### 统一子账号（库存 × 密探共用，迁移后仅此一套）
+
+> 子账号统一后，库存与密探共用同一批账号：一个子账号 = 一个游戏账号，库存、密探、特别关注全共用。
+> 账号 CRUD 只保留 `/v1/accounts`；旧地址 `/v1/inventory/accounts`、`/v1/operator/accounts` 已删除（返回 404）。
+
+- POST /v1/accounts  body {name} → {id,name,created_at,updated_at}（id 形如 acc_<32hex>，重名 409）
+- GET /v1/accounts → [{id,name,created_at,updated_at}]（按创建时间升序）
+- PATCH /v1/accounts/{accountId}  body {name} → 账号对象
+- DELETE /v1/accounts/{accountId} → **整账号级联删除**：库存、密探、特别关注与全部 token 一并清除，不可恢复；返回 true
 
 ### 查询与导入导出
 - GET /v1/inventory/current?account_id=&entity_type=item|agent → [{entity_type, entries:{"<id>":{count,listed_baseline_at}}}]
@@ -154,9 +158,11 @@
 
 ## OpenAPI Token 接口契约（/user/open-api）
 
-> 生成/列举/删除需登录（JWT）；权限列表公开。Token 绑定库存子账号，每账号 ≤5 个。
+> 生成/列举/删除需登录（JWT）；权限列表公开。Token 绑定统一子账号（`account_id` 来自 `GET /v1/accounts`），
+> token 权限完全由 scopes 决定，可只含库存、只含密探，也可两者混用（双域 Token）。每账号 ≤5 个。
 
-- GET /user/open-api/permissions（公开）→ [{scope,description}]，scope 为字符串 key：inventory:read / inventory:write / inventory:export
+- GET /user/open-api/permissions（公开）→ [{scope,description}]，scope 为字符串 key：
+  inventory:read / inventory:write / inventory:export / operator:read / operator:write / operator:export
 - POST /user/open-api/token  body {account_id, scopes:[key...], remark} → {token_id, token, account_id, account_name, remark, scopes, created_at}（token 仅此一次返回）
 - GET /user/open-api/tokens → [{token_id, account_id, account_name, remark, scopes, created_at}]（不含 token 明文）
 - DELETE /user/open-api/tokens/{tokenId} → 删除（越权 403 / 不存在 404）
@@ -164,8 +170,8 @@
 ## 前端接入要点（本次适配）
 
 - src/api/request.js 新增 raw=true（导出接口返回完整文档）；自动兼容库存 {error:{code,message}} 错误结构并提取 message。
-- src/api/inventory.js：账号 CRUD + 全部查询带 account_id + 游标分页 + 导出 raw。
-- src/api/openApi.js：生成传 account_id/scopes/remark，删除走 DELETE /tokens/{tokenId}。
+- src/api/accounts.js：统一子账号 CRUD（`/v1/accounts`）；src/api/inventory.js、src/api/operator.js 均从这里复用同一套账号。
+- src/api/openApi.js：生成传 account_id/scopes/remark（scopes 可跨库存/密探混用），删除走 DELETE /tokens/{tokenId}。
 - src/utils/openApiToken.js：scope 改为字符串 key 数组，时间字段为 ISO created_at。
 - 密探特别关注和密探心纸手动编辑尚待前端接入；实现范围、竞态处理、视觉约束和验收用例见 `docs/frontend-handoff-agent-favorites.md`。
 
