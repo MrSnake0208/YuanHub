@@ -1,0 +1,959 @@
+<template>
+  <div class="page-quick">
+    <IslandSidebar />
+
+    <main class="quick-main">
+      <!-- HERO -->
+      <header class="hero">
+        <div class="wrap">
+          <div class="crumb">
+            <span class="pill fill">密探</span>
+            <span class="pill">养成</span>
+            <span class="pill">首次 / 快捷导入</span>
+          </div>
+          <h1>快捷导入<span class="small">首次建档 · 星阶批量</span></h1>
+          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页都能批量设置「修为 / 等级」，最后一次性保存到密探子账号，适合账号首次建档或快速补录。</p>
+          <div class="hero-stats">
+            <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
+            <div><div class="k">已勾选</div><div class="v">{{ overallChecked }}<small>位</small></div></div>
+            <div><div class="k">待导入</div><div class="v">{{ allEntries.length }}<small>条</small></div></div>
+            <div class="is-authed"><div class="k">{{ auth.isLoggedIn ? '保存到' : '登录状态' }}</div><div class="v">{{ auth.isLoggedIn ? (accountName || '—') : '未登录' }}<small>{{ auth.isLoggedIn ? '密探子账号' : '需登录后使用' }}</small></div></div>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="wrap">
+          <!-- 密探子账号 + 版本 -->
+          <div class="account-bar" v-reveal>
+            <div class="ac-sel">
+              <span class="ac-label">密探子账号</span>
+              <select id="quick-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || importing" @change="onAccountChange">
+                <option v-if="!accounts.length" value="">（未创建）</option>
+                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+              </select>
+              <span v-if="accountError" class="ac-warn">{{ accountError }}</span>
+            </div>
+            <span class="ac-sel">
+              <span class="ac-label">版本</span>
+              <select id="quick-game" v-model="gameFilter" :disabled="importing" @change="onGameChange">
+                <option value="all">全部（通用）</option>
+                <option value="如鸢">如鸢</option>
+                <option value="代号鸢">代号鸢</option>
+              </select>
+            </span>
+            <span class="sp"></span>
+            <router-link class="act-btn ghost" to="/operator">返回密探页</router-link>
+          </div>
+
+          <!-- 未登录 / 未建账号 -->
+          <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
+            请先登录后再使用快捷导入
+            <router-link class="link" to="/login">去登录</router-link>
+          </div>
+          <div v-else-if="accountsLoading || catalogLoading" class="state" v-reveal>正在加载快捷导入数据…</div>
+          <div v-else-if="!accounts.length" class="state err" v-reveal>
+            尚未创建密探子账号，请先返回密探页创建
+            <router-link class="link" to="/operator">去创建</router-link>
+          </div>
+          <div v-else-if="catalogError && !catalogOperators.length" class="state err" v-reveal>
+            {{ catalogError }}<button class="link" @click="loadCatalog">重试</button>
+          </div>
+
+          <template v-else>
+            <!-- 步骤条 -->
+            <div class="stepper" v-reveal>
+              <button
+                v-for="s in steps"
+                :key="s.key"
+                type="button"
+                class="step"
+                :class="{ on: s.key === currentKey, done: isStepDone(s.key), locked: !isStepUnlocked(s.key) }"
+                :disabled="importing || !isStepUnlocked(s.key)"
+                :title="isStepUnlocked(s.key) ? s.title : '请先在上一步点击“下一步”解锁'"
+                @click="goStep(s.key)"
+              >
+                <span class="step-no">{{ steps.indexOf(s) + 1 }}</span>
+                <span class="step-txt">{{ s.nav }}<small v-if="isStepDone(s.key)">{{ countOf(s.key) }} 位</small></span>
+              </button>
+            </div>
+
+            <!-- 单页：勾选某星阶密探 + 批量修为/等级 -->
+            <div v-if="!isConfirm" class="wiz-card" v-reveal>
+              <div class="wiz-head">
+                <h2>{{ currentStep.title }}</h2>
+                <p class="wiz-sub">{{ currentStep.sub }}；本页的「修为 / 等级」会批量应用到已勾选的密探上。</p>
+              </div>
+
+              <!-- 批量设置条 -->
+              <div class="batch-bar">
+                <span class="batch-count">已勾选 <b>{{ checkedOfCurrent.length }}</b> 位</span>
+                <div class="batch-fields">
+                  <label class="bf">
+                    <span>修为</span>
+                    <input name="elite" type="number" v-model.number="pageForm.elite" min="0" :max="maxEliteHint" :disabled="importing" @change="normalizePageForm" />
+                    <i>/{{ OPERATOR_ELITE_MAX }}</i>
+                  </label>
+                  <label class="bf">
+                    <span>等级</span>
+                    <input name="level" type="number" v-model.number="pageForm.level" min="0" max="100" :disabled="importing" @change="normalizePageForm" />
+                    <i>/100</i>
+                  </label>
+                  <span v-if="!isAwaken" class="bf node">
+                    <span>节点</span>
+                    <span class="node-pills">
+                      <button
+                        v-for="n in NODE_RANGE"
+                        :key="n"
+                        type="button"
+                        :class="{ on: pageForm.node === n }"
+                        :disabled="importing"
+                        @click="pageForm.node = n"
+                      >{{ n }}</button>
+                    </span>
+                  </span>
+                </div>
+                <span v-if="maxEliteHint" class="elite-hint">当前等级最高修为 {{ maxEliteHint }}</span>
+                <span class="sp"></span>
+                <button class="mini" type="button" :disabled="importing" @click="selectAllPage">全选本页</button>
+                <button class="mini" type="button" :disabled="importing" @click="clearPage">清空本页</button>
+              </div>
+
+              <!-- 搜索 -->
+              <div class="op-search">
+                <input v-model.trim="search" class="op-search-input" type="search" placeholder="搜索名称 / 别名 / id" />
+                <span class="op-search-count">本页 {{ pageOperators.length }} 位 · {{ catalogCount }} 位目录内</span>
+              </div>
+
+              <div v-if="pageOperators.length === 0" class="state slim">没有匹配「{{ search }}」的密探</div>
+              <ul v-else class="op-list">
+                <li v-for="op in pageOperators" :key="op.id" class="op-col">
+                  <label class="op-card" :class="{ on: isChecked(op.id) }">
+                    <input type="checkbox" class="op-check" :checked="isChecked(op.id)" :disabled="importing" @change="toggleOperator(op.id, $event)" />
+                    <span class="op-ph">{{ monogram(op) }}</span>
+                    <span class="op-meta">
+                      <span class="op-name">{{ op.name }}</span>
+                      <span class="op-sub">{{ op.prof }} · {{ op.rarity }}★</span>
+                    </span>
+                    <span v-if="existingTag(op)" class="op-has">{{ existingTag(op) }}</span>
+                  </label>
+                </li>
+              </ul>
+
+              <div class="wiz-actions">
+                <button class="btn ghost" type="button" :disabled="importing || stepIndex === 0" @click="goStep(steps[stepIndex - 1].key)">上一步</button>
+                <button class="btn primary" type="button" :disabled="importing" @click="nextStep">
+                  {{ isAwaken ? '下一步：确认导入' : '下一步' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 确认页 -->
+            <div v-else class="wiz-card confirm" v-reveal>
+              <div class="wiz-head">
+                <h2>确认导入</h2>
+                <p class="wiz-sub">将下方 {{ allEntries.length }} 位密探保存到子账号「{{ accountName }}」{{ saveGameLabel }}。若该密探已有命盘 / 星石，会自动保留。</p>
+              </div>
+
+              <div v-if="importResult" class="import-result">
+                <b>导入完成</b>：接受 {{ importResult.accepted }} 条 · 重复 {{ importResult.duplicates }} 条
+                <template v-if="importResult.superseded"> · 已归档 {{ importResult.superseded }} 条</template>
+                <template v-if="importResult.warnings && importResult.warnings.length"> · 警告 {{ importResult.warnings.length }} 条</template>
+                <div class="import-result-actions">
+                  <button class="mini" type="button" @click="goBack">返回密探页</button>
+                  <button class="mini" type="button" @click="resetAll">再导一次</button>
+                </div>
+              </div>
+              <div v-else-if="importError" class="import-error">{{ importError }}</div>
+
+              <template v-if="!importResult">
+                <div v-if="allEntries.length === 0" class="state slim">尚未勾选任何密探，请返回前面的星阶页勾选。</div>
+                <template v-else>
+                  <div class="confirm-summary">
+                    <div v-for="g in summaryGroups" :key="g.label" class="cg">
+                      <div class="cg-k">{{ g.label }}</div>
+                      <div class="cg-v">{{ g.count }}<small>位</small></div>
+                    </div>
+                  </div>
+                  <ul class="confirm-list">
+                    <li v-for="e in allEntries" :key="e.key + ':' + e.id" class="confirm-item">
+                      <span class="ci-star" :class="'star-' + e.starKey">{{ e.starLabel }}</span>
+                      <span class="ci-ph">{{ monogramName(e.name) }}</span>
+                      <span class="ci-name">{{ e.name }}</span>
+                      <span class="ci-detail">修为 {{ e.elite }} · Lv{{ e.level }}</span>
+                    </li>
+                  </ul>
+                </template>
+              </template>
+
+              <div v-if="!importResult" class="wiz-actions">
+                <button class="btn ghost" type="button" :disabled="importing" @click="goStep(steps[stepIndex - 1].key)">上一步</button>
+                <button class="btn primary" type="button" :disabled="importing || allEntries.length === 0 || !auth.isLoggedIn || !accountId" @click="doImport">
+                  {{ importing ? '导入中…' : '提交导入' }}
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <SiteFooter>
+        <template #big>快捷导入<br><span>首次建档 · 星阶批量</span></template>
+        <template #fine>
+          <b>YuanHub</b> · 密探养成档案· 快捷导入<br>
+          MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
+          数据仅供参考，请以游戏内实际养成为准
+        </template>
+      </SiteFooter>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import IslandSidebar from '../../components/IslandSidebar.vue'
+import SiteFooter from '../../components/SiteFooter.vue'
+import {
+  getOperatorCatalog,
+  listOperatorAccounts,
+  getOperatorCurrent,
+  importOperator
+} from '../../api/operator.js'
+import { auth } from '../../store/auth.js'
+import { dialog } from '../../utils/dialog.js'
+import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
+
+const router = useRouter()
+const route = useRoute()
+
+// —— 星阶常量（与后端 OperatorService.MAX_STAR_LEVEL 对齐） ——
+const OPERATOR_LEVEL_MAX = 100
+const OPERATOR_ELITE_MAX = 17
+const MAX_STAR_LEVEL = 31
+const STAR_LEVEL_AWAKEN = 31
+const NODE_RANGE = [0, 1, 2, 3, 4, 5]
+
+function getMaxEliteForLevel(level) {
+  const normalizedLevel = Math.min(
+    OPERATOR_LEVEL_MAX,
+    Math.max(0, Math.trunc(Number(level) || 0))
+  )
+  return Math.min(
+    OPERATOR_ELITE_MAX,
+    Math.max(0, Math.floor(normalizedLevel / 5) - 3)
+  )
+}
+
+// —— 步骤定义 ——
+const starSteps = [
+  { key: '1', nav: '1星', title: '选择 1 星密探', sub: '勾选当前为「1 星」的密探（节点 0~5）。' },
+  { key: '2', nav: '2星', title: '勾选 2 星密探', sub: '勾选当前为「2 星」的密探（节点 0~5）。' },
+  { key: '3', nav: '3星', title: '勾选 3 星密探', sub: '勾选当前为「3 星」的密探（节点 0~5）。' },
+  { key: '4', nav: '4星', title: '勾选 4 星密探', sub: '勾选当前为「4 星」的密探（节点 0~5）。' },
+  { key: '5', nav: '5星', title: '勾选 5 星密探', sub: '勾选当前为「5 星」的密探（节点 0~5）。' },
+  { key: 'awaken', nav: '觉醒', title: '勾选 觉醒 密探', sub: '勾选当前已「觉醒」的密探（仅一档）。' }
+]
+const steps = starSteps.concat([{ key: 'confirm', nav: '确认', title: '确认导入', sub: '核对后一次性保存到密探子账号。' }])
+
+// —— 页面状态 ——
+const stepIndex = ref(0)
+const maxUnlockedStep = ref(0)
+const search = ref('')
+const gameFilter = ref('all')
+const accounts = ref([])
+const accountId = ref('')
+const accountsLoading = ref(false)
+const accountError = ref('')
+const catalogLoading = ref(false)
+const catalogError = ref('')
+const catalogVersion = ref('')
+const backendCatalog = ref([])
+const currentEntries = ref([])
+const importing = ref(false)
+const importResult = ref(null)
+const importError = ref('')
+let currentLoadToken = 0
+
+// 每页：勾选集合 + 批量表单（修为 / 等级 / 节点）
+const checkedByKey = reactive({ '1': [], '2': [], '3': [], '4': [], '5': [], awaken: [] })
+const formByKey = reactive({})
+starSteps.forEach(function (s) {
+  formByKey[s.key] = { elite: 0, level: 0, node: 0 }
+  if (!checkedByKey[s.key]) checkedByKey[s.key] = []
+})
+
+// —— 派生状态 ——
+const currentStep = computed(function () { return steps[stepIndex.value] })
+const currentKey = computed(function () { return currentStep.value.key })
+const isConfirm = computed(function () { return currentKey.value === 'confirm' })
+const isAwaken = computed(function () { return currentKey.value === 'awaken' })
+const checkedOfCurrent = computed(function () { return checkedByKey[currentKey.value] || [] })
+const pageForm = computed(function () { return formByKey[currentKey.value] || { elite: 0, level: 0, node: 0 } })
+
+// —— 目录归一化（与密探页一致） ——
+function normalizeOperator(op) {
+  const rawSub = op.subProf || op.sub_prof || ''
+  return {
+    id: op.operatorId || op.operator_id || op.id || '',
+    name: op.name || '',
+    alias: op.alias || '',
+    rarity: op.rarity != null ? op.rarity : 3,
+    prof: Array.isArray(op.prof) ? op.prof.join('、') : (op.prof || '未知'),
+    subProf: Array.isArray(rawSub) ? rawSub : (rawSub ? [rawSub] : []),
+    games: op.games || op.games_list || [],
+    discs: op.discs || op.discs_list || [],
+    starStones: op.starStones || op.star_stones || []
+  }
+}
+
+const catalogOperators = computed(function () {
+  if (backendCatalog.value.length) return backendCatalog.value.map(normalizeOperator)
+  return AGENT_CATALOG.map(function (e) {
+    return {
+      id: e.id,
+      name: e.name,
+      alias: '',
+      rarity: e.rarity || 3,
+      prof: e.prof || '未知',
+      subProf: e.subProf || '',
+      games: ['如鸢', '代号鸢'],
+      discs: [],
+      starStones: []
+    }
+  })
+})
+
+const catalogMap = computed(function () {
+  const m = {}
+  catalogOperators.value.forEach(function (op) { m[op.id] = op })
+  return m
+})
+
+const catalogCount = computed(function () { return catalogOperators.value.length })
+
+function matchesGame(item, game) {
+  if (game === 'all') return true
+  const games = item && (item.games || [])
+  if (!games || games.length === 0) return true
+  return games.indexOf(game) !== -1
+}
+
+const pageOperators = computed(function () {
+  const q = search.value.toLowerCase()
+  return catalogOperators.value
+    .filter(function (op) { return matchesGame(op, gameFilter.value) })
+    .filter(function (op) {
+      if (!q) return true
+      const hay = [op.name, op.alias, op.id, op.prof, op.subProf].filter(Boolean).join(' ').toLowerCase()
+      return hay.indexOf(q) !== -1
+    })
+    .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'zh') })
+})
+
+// —— 当前养成（用于“已有”标记 + 保留命盘/星石） ——
+function normalizeEntry(e) {
+  e = e || {}
+  return {
+    elite: e.elite != null ? e.elite : 0,
+    starLevel: e.starLevel != null ? e.starLevel : (e.star_level != null ? e.star_level : 0),
+    level: e.level != null ? e.level : 0,
+    discs: e.discs || [],
+    starStones: e.starStones || e.star_stones || []
+  }
+}
+
+const currentMap = computed(function () {
+  const m = {}
+  currentEntries.value.forEach(function (e) { m[e.id] = e })
+  return m
+})
+
+function starLabelOf(v) {
+  const n = Number(v) || 0
+  if (n <= 0) return ''
+  if (n === STAR_LEVEL_AWAKEN) return '觉醒'
+  if (n >= 1 && n <= 30) return Math.floor((n - 1) / 6) + 1 + '星'
+  return ''
+}
+
+function existingTag(op) {
+  const b = currentMap.value[op.id]
+  if (!b) return ''
+  if (!(b.level > 0 || b.elite > 0 || b.starLevel > 0)) return '未养成'
+  return '已有 Lv' + b.level + ' · 修为 ' + b.elite + ' · ' + (starLabelOf(b.starLevel) || '—星')
+}
+
+// —— 勾选辅助 ——
+function isChecked(id) {
+  return (checkedByKey[currentKey.value] || []).indexOf(id) !== -1
+}
+
+function isStepDone(key) {
+  if (key === 'confirm') return false
+  return (checkedByKey[key] || []).length > 0
+}
+
+function isStepUnlocked(key) {
+  const idx = steps.findIndex(function (s) { return s.key === key })
+  return idx !== -1 && idx <= maxUnlockedStep.value
+}
+
+function countOf(key) {
+  return (checkedByKey[key] || []).length
+}
+
+function stepLabel(key) {
+  const step = starSteps.find(function (s) { return s.key === key })
+  return step ? step.nav : key
+}
+
+function previousStepFor(id, keepKey) {
+  for (const s of starSteps) {
+    if (s.key === keepKey) continue
+    if ((checkedByKey[s.key] || []).indexOf(id) !== -1) return s.key
+  }
+  return ''
+}
+
+async function confirmOverwrite(names, fromKey, toKey) {
+  if (!names.length) return true
+  const shown = names.slice(0, 5).join('、')
+  const suffix = names.length > 5 ? '等 ' + names.length + ' 位密探' : ''
+  return await dialog.confirm({
+    title: '调整勾选',
+    message:
+      (names.length === 1 ? names[0] : shown + suffix) +
+      '已在' + stepLabel(fromKey) + '选择，是否覆盖到' + stepLabel(toKey) + '？'
+  })
+}
+
+function hasExistingData(id) {
+  const entry = currentMap.value[id]
+  return !!entry && (Number(entry.level) > 0 || Number(entry.elite) > 0 || Number(entry.starLevel) > 0 ||
+    (Array.isArray(entry.discs) && entry.discs.length > 0) ||
+    (Array.isArray(entry.starStones) && entry.starStones.length > 0))
+}
+
+async function confirmExistingData(id, key) {
+  if (!hasExistingData(id)) return true
+  const op = catalogMap.value[id]
+  const entry = currentMap.value[id]
+  const name = op ? op.name || id : id
+  const detail = entry ? '（已有 Lv' + (entry.level || 0) + ' · 修为 ' + (entry.elite || 0) + ' · ' + (starLabelOf(entry.starLevel) || '已有养成数据') + '）' : ''
+  return await dialog.confirm({
+    title: '覆盖养成数据',
+    message: name + detail + '，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。',
+    confirmText: '覆盖'
+  })
+}
+
+function removeFromOtherSteps(ids, keepKey) {
+  const idSet = new Set(ids)
+  starSteps.forEach(function (s) {
+    if (s.key === keepKey) return
+    checkedByKey[s.key] = (checkedByKey[s.key] || []).filter(function (id) { return !idSet.has(id) })
+  })
+}
+
+async function toggleOperator(id, event) {
+  const checkbox = event && event.target
+  const checked = !!(checkbox && checkbox.checked)
+  const key = currentKey.value
+  const cur = checkedByKey[key] || []
+  if (checked) {
+    if (cur.indexOf(id) !== -1) return
+    const fromKey = previousStepFor(id, key)
+    const name = catalogMap.value[id] ? catalogMap.value[id].name || id : id
+    if (fromKey && !(await confirmOverwrite([name], fromKey, key))) {
+      // 原生 checkbox 会先切换状态再触发 change；取消覆盖时需立即恢复视觉状态。
+      checkbox.checked = false
+      return
+    }
+    if (!(await confirmExistingData(id, key))) {
+      checkbox.checked = false
+      return
+    }
+    removeFromOtherSteps([id], key)
+    checkedByKey[key] = cur.concat(id)
+  } else {
+    checkedByKey[key] = cur.filter(function (item) { return item !== id })
+  }
+}
+
+async function selectAllPage() {
+  const key = currentKey.value
+  const cur = checkedByKey[key] || []
+  const ids = pageOperators.value.map(function (op) { return op.id })
+  const conflicts = ids.filter(function (id) { return !!previousStepFor(id, key) })
+  if (conflicts.length) {
+    const preview = conflicts.slice(0, 5).map(function (id) {
+      const op = catalogMap.value[id]
+      return (op ? op.name || id : id) + '（' + stepLabel(previousStepFor(id, key)) + '）'
+    }).join('、')
+    const suffix = conflicts.length > 5 ? '等 ' + conflicts.length + ' 位密探' : ''
+    const ok = await dialog.confirm({
+      title: '调整勾选',
+      message: preview + suffix + '已在其他星级选择，是否覆盖到' + stepLabel(key) + '？'
+    })
+    if (!ok) return
+  }
+  const existing = ids.filter(function (id) { return !conflicts.includes(id) && hasExistingData(id) })
+  if (existing.length) {
+    const names = existing.slice(0, 5).map(function (id) {
+      const op = catalogMap.value[id]
+      return op ? op.name || id : id
+    }).join('、')
+    const suffix = existing.length > 5 ? '等 ' + existing.length + ' 位密探' : ''
+    const ok = await dialog.confirm({
+      title: '覆盖养成数据',
+      message: names + suffix + '已有养成数据，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。',
+      confirmText: '覆盖'
+    })
+    if (!ok) return
+  }
+  removeFromOtherSteps(ids, key)
+  checkedByKey[key] = Array.from(new Set(cur.concat(ids)))
+}
+
+function clearPage() {
+  const ids = pageOperators.value.map(function (op) { return op.id })
+  checkedByKey[currentKey.value] = (checkedByKey[currentKey.value] || []).filter(function (id) {
+    return ids.indexOf(id) === -1
+  })
+}
+
+const overallChecked = computed(function () {
+  return starSteps.reduce(function (sum, s) { return sum + (checkedByKey[s.key] || []).length }, 0)
+})
+
+// 修为不能超过当前等级上限（每页各自跟随：等级变更下修、修为手工上调时封顶）
+watch(
+  function () { return currentKey.value && (formByKey[currentKey.value] || {}).level },
+  function (level) {
+    const f = formByKey[currentKey.value]
+    if (!f) return
+    const max = getMaxEliteForLevel(level)
+    if (f.elite > max) f.elite = max
+  }
+)
+watch(
+  function () { return currentKey.value && (formByKey[currentKey.value] || {}).elite },
+  function (elite) {
+    const f = formByKey[currentKey.value]
+    if (!f) return
+    const max = getMaxEliteForLevel(f.level)
+    if (elite > max) f.elite = max
+  }
+)
+
+const maxEliteHint = computed(function () {
+  const f = pageForm.value
+  if (isConfirm.value || !f) return ''
+  return getMaxEliteForLevel(f.level)
+})
+
+function clampInt(v, max) {
+  return Math.max(0, Math.min(max, Math.trunc(Number(v) || 0)))
+}
+
+function normalizePageForm() {
+  const f = formByKey[currentKey.value]
+  if (!f) return
+  f.level = clampInt(f.level, OPERATOR_LEVEL_MAX)
+  f.elite = clampInt(f.elite, getMaxEliteForLevel(f.level))
+  f.node = clampInt(f.node, NODE_RANGE[NODE_RANGE.length - 1])
+}
+
+function starLabelForStep(s, node) {
+  if (s.key === 'awaken') return '觉醒'
+  return Number(s.key) + ' 星 · ' + (node == null ? 0 : node)
+}
+
+// —— 汇总待导入条目（保留已有命盘 / 星石） ——
+const allEntries = computed(function () {
+  const out = []
+  starSteps.forEach(function (s) {
+    const ids = checkedByKey[s.key] || []
+    const f = formByKey[s.key] || { elite: 0, level: 0, node: 0 }
+    ids.forEach(function (id) {
+      const op = catalogMap.value[id]
+      if (!op) return
+      const existing = currentMap.value[id] || {}
+      const level = clampInt(f.level, OPERATOR_LEVEL_MAX)
+      const elite = Math.min(clampInt(f.elite, OPERATOR_ELITE_MAX), getMaxEliteForLevel(level))
+      const starLevel = s.key === 'awaken'
+        ? STAR_LEVEL_AWAKEN
+        : 6 * (Number(s.key) - 1) + ((f.node == null ? 0 : f.node)) + 1
+      out.push({
+        starKey: s.key,
+        starLabel: starLabelForStep(s, f.node),
+        id: id,
+        name: op.name || id,
+        elite: elite,
+        starLevel: starLevel,
+        level: level,
+        discs: existing.discs || [],
+        starStones: existing.starStones || [],
+        rarity: op.rarity,
+        prof: op.prof ? op.prof.split('、') : [],
+        subProf: Array.isArray(op.subProf) ? op.subProf : (op.subProf ? op.subProf.split('、') : []),
+        games: op.games || []
+      })
+    })
+  })
+  return out
+})
+
+const summaryGroups = computed(function () {
+  return starSteps.map(function (s) {
+    return { label: s.nav, count: (checkedByKey[s.key] || []).length }
+  })
+})
+
+const saveGame = computed(function () {
+  return gameFilter.value === 'all' ? null : gameFilter.value
+})
+const saveGameLabel = computed(function () {
+  const g = saveGame.value
+  return g ? '· 版本「' + g + '」' : '· 版本「通用」'
+})
+
+const accountName = computed(function () {
+  const hit = accounts.value.find(function (a) { return a.id === accountId.value })
+  return (hit && hit.name) || ''
+})
+
+// —— 导航 ——
+function goStep(key) {
+  const idx = steps.findIndex(function (s) { return s.key === key })
+  if (idx === -1 || idx > maxUnlockedStep.value) return
+  stepIndex.value = idx
+  search.value = ''
+}
+
+function nextStep() {
+  if (stepIndex.value >= steps.length - 1) return
+  const nextIndex = stepIndex.value + 1
+  maxUnlockedStep.value = Math.max(maxUnlockedStep.value, nextIndex)
+  stepIndex.value = nextIndex
+  search.value = ''
+}
+
+// —— 数据加载 ——
+async function loadCatalog() {
+  catalogLoading.value = true
+  catalogError.value = ''
+  try {
+    const data = await getOperatorCatalog()
+    backendCatalog.value = (data && Array.isArray(data.operators)) ? data.operators : []
+    catalogVersion.value = (data && data.catalog_version) || ''
+  } catch (err) {
+    backendCatalog.value = []
+    catalogError.value = humanErr(err, '图鉴加载失败，当前显示本地兜底目录')
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+async function loadAccounts() {
+  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
+  accountsLoading.value = true
+  accountError.value = ''
+  try {
+    const list = await listOperatorAccounts()
+    accounts.value = Array.isArray(list) ? list : []
+    // 优先采纳从密探页带过来的账号（?account=）
+    const queryId = route.query.account
+    const still = accounts.value.some(function (a) { return a.id === accountId.value })
+    if (!still) {
+      if (queryId && accounts.value.some(function (a) { return a.id === queryId })) accountId.value = queryId
+      else accountId.value = accounts.value.length ? accounts.value[0].id : ''
+    }
+  } catch (err) {
+    accountError.value = humanErr(err, '密探子账号加载失败')
+  } finally {
+    accountsLoading.value = false
+  }
+}
+
+function onAccountChange() {
+  currentEntries.value = []
+  reloadCurrent()
+}
+
+function onGameChange() {
+  currentEntries.value = []
+  reloadCurrent()
+}
+
+async function reloadCurrent() {
+  const loadToken = ++currentLoadToken
+  if (!auth.isLoggedIn || !accountId.value) {
+    currentEntries.value = []
+    return
+  }
+  const requestedAccountId = accountId.value
+  const requestedGame = gameFilter.value
+  try {
+    const game = requestedGame === 'all' ? undefined : requestedGame
+    const data = await getOperatorCurrent({ accountId: requestedAccountId, game: game })
+    if (loadToken !== currentLoadToken) return
+    const list = Array.isArray(data) ? data : (data ? [data] : [])
+    const combined = {}
+    list.forEach(function (doc) {
+      const entriesObj = (doc && doc.entries) ? doc.entries : {}
+      Object.keys(entriesObj).forEach(function (id) {
+        combined[id] = normalizeEntry(entriesObj[id])
+      })
+    })
+    currentEntries.value = Object.keys(combined).map(function (id) {
+      return Object.assign({ id: id }, combined[id])
+    })
+  } catch (_err) {
+    // 养成加载失败不阻塞快捷导入，仅“已有”标记缺失；过期请求不得覆盖新选择。
+    if (loadToken === currentLoadToken) currentEntries.value = []
+  }
+}
+
+// —— 提交 ——
+async function doImport() {
+  if (!auth.isLoggedIn) { router.push('/login'); return }
+  if (!accountId.value) { importError.value = '请先创建并选择一个密探子账号（可在密探页新建）'; return }
+  const entries = allEntries.value
+  if (!entries.length) { importError.value = '尚未勾选任何密探，无法提交'; return }
+  const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
+  const now = new Date().toISOString()
+  const doc = {
+    format: 'myshare-operator-exchange',
+    version: 2,
+    exported_at: now,
+    catalog_version: catalogVersion.value || '',
+    producer: { platform: 'yuanhub', version: '1' },
+    accounts: [{ id: account.id, name: account.name }],
+    records: [{
+      account_id: account.id,
+      record_id: 'yuanhub:quick:' + Date.now() + ':' + Math.random().toString(16).slice(2, 8),
+      record_type: 'operator_snapshot',
+      game: saveGame.value,
+      effective_at: now,
+      snapshot_scope: 'listed',
+      entries: entries.map(function (e) {
+        return {
+          id: e.id,
+          name: e.name || undefined,
+          alias: undefined,
+          rarity: e.rarity,
+          prof: e.prof,
+          subProf: e.subProf,
+          games: e.games,
+          elite: e.elite,
+          starLevel: e.starLevel,
+          level: e.level,
+          discs: e.discs,
+          starStones: e.starStones
+        }
+      })
+    }]
+  }
+  importing.value = true
+  importError.value = ''
+  importResult.value = null
+  try {
+    const res = await importOperator(doc)
+    importResult.value = res || {}
+  } catch (err) {
+    importError.value = humanErr(err, '导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+function resetAll() {
+  importResult.value = null
+  importError.value = ''
+  stepIndex.value = 0
+  maxUnlockedStep.value = 0
+  search.value = ''
+  starSteps.forEach(function (s) {
+    checkedByKey[s.key] = []
+    Object.assign(formByKey[s.key], { elite: 0, level: 0, node: 0 })
+  })
+}
+
+function goBack() { router.push('/operator') }
+
+function monogram(e) {
+  const s = String(e.name || e.id || '?')
+  return Array.from(s)[0] || '?'
+}
+
+function monogramName(name) {
+  return Array.from(String(name || '?'))[0] || '?'
+}
+
+function humanErr(err, fallback) {
+  if (!err) return fallback
+  const msg = err.message
+  if (!msg) return fallback
+  if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return '网络异常，请检查后端服务是否已启动'
+  return msg
+}
+
+onMounted(async function () {
+  await loadCatalog()
+  await loadAccounts()
+  reloadCurrent()
+})
+</script>
+
+<style scoped>
+/* —— 复用全局 CSS 变量（不新增色值），对齐密探页版式 —— */
+.quick-main { padding-bottom: 40px }
+.page-quick .hero::after { content: '速录' }
+
+/* ---- 子账号 / 版本栏 ---- */
+.account-bar { display: flex; align-items: center; gap: 16px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
+.account-bar .sp { flex: 1 }
+.ac-sel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.ac-label { font-size: 13px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
+.ac-sel select { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s }
+.ac-sel select:focus { border-color: var(--accent) }
+.ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
+
+.act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center }
+.act-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
+.act-btn:disabled { opacity: .45; cursor: not-allowed }
+
+/* ---- 步骤条 ---- */
+.stepper {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 40px;
+  overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.step {
+  min-width: 0; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-60); border-radius: 14px;
+  padding: 7px 10px 7px 7px; font-family: var(--font-b); font-weight: 800; font-size: 13.5px;
+  cursor: pointer; transition: all .3s var(--ease);
+}
+.step:disabled { opacity: .45; cursor: not-allowed }
+.step.locked { background: var(--paper); border-style: dashed }
+.step .step-no {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-d);
+  font-size: 12px; font-weight: 900; background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60);
+}
+.step .step-txt { min-width: 0; display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.25; white-space: nowrap }
+.step .step-txt small { font-size: 10px; font-family: var(--font-d); font-weight: 700; color: var(--ink-35) }
+.step.done { border-color: var(--yellow-deep); background: var(--yellow) }
+.step.done .step-no { border-color: var(--yellow-deep); background: var(--surface) }
+.step.on { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.step.on .step-no { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .35); color: var(--cream) }
+.step.on .step-txt small { color: rgba(255, 248, 236, .8) }
+.step:not(.on):hover { border-color: var(--accent); color: var(--ink) }
+
+/* ---- 向导卡片 ---- */
+.wiz-card { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 22px 24px 24px }
+.wiz-head { padding-bottom: 14px; border-bottom: 1.5px dashed var(--line) }
+.wiz-head h2 { font-family: var(--font-s); font-weight: 900; font-size: 26px; letter-spacing: .04em; color: var(--ink) }
+.wiz-sub { margin-top: 6px; font-size: 12.5px; color: var(--ink-60); line-height: 1.8; font-weight: 600 }
+
+/* ---- 批量设置条 ---- */
+.batch-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px }
+.batch-bar .sp { flex: 1 }
+.batch-count { font-size: 13px; font-weight: 800; color: var(--ink) }
+.batch-count b { font-family: var(--font-d); color: var(--accent-strong); font-size: 16px }
+.batch-fields { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.bf { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px }
+.bf input { width: 58px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 14px; color: var(--ink); outline: none; -moz-appearance: textfield }
+.bf input::-webkit-outer-spin-button, .bf input::-webkit-inner-spin-button { -webkit-appearance: none }
+.bf i { font-style: normal; font-family: var(--font-d); font-size: 11px; color: var(--ink-35) }
+.bf.node { border: none; background: transparent; padding: 0 }
+.node-pills { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap }
+.node-pills button {
+  min-width: 26px; height: 24px; padding: 0 6px; border: 1.5px solid var(--line); background: var(--surface);
+  color: var(--ink-60); border-radius: 7px; font-family: var(--font-d); font-size: 12px; font-weight: 800; cursor: pointer; transition: all .25s;
+}
+.node-pills button:hover { border-color: var(--accent); color: var(--accent-strong) }
+.node-pills button.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.elite-hint { font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
+.mini { border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-60); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
+.mini:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
+.mini:disabled { opacity: .45; cursor: not-allowed }
+
+/* ---- 搜索 ---- */
+.op-search { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap }
+.op-search-input { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; width: 220px; transition: border-color .3s }
+.op-search-input:focus { border-color: var(--accent) }
+.op-search-count { font-size: 12px; color: var(--ink-35); font-weight: 600 }
+
+/* ---- 密探勾选卡片 ---- */
+.op-list { list-style: none; margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px }
+.op-col { min-width: 0 }
+.op-card {
+  display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--line); background: var(--paper);
+  border-radius: 12px; padding: 9px 11px; cursor: pointer; transition: all .25s; min-width: 0; height: 100%;
+}
+.op-card:hover { border-color: var(--accent); box-shadow: 0 10px 22px -14px rgba(73, 59, 44, .3) }
+.op-card.on { background: var(--yellow); border-color: var(--yellow-deep) }
+.op-check { accent-color: var(--accent-strong); flex: none; width: 16px; height: 16px; cursor: pointer }
+.op-ph {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-35);
+  font-family: var(--font-s); font-weight: 900; font-size: 17px;
+}
+.op-card.on .op-ph { border-color: var(--yellow-deep); color: var(--ink) }
+.op-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.op-name { font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.op-sub { font-size: 11px; color: var(--ink-60); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.op-has { flex: none; font-size: 10.5px; color: var(--accent-strong); background: rgba(215, 137, 53, .14); border: 1px solid rgba(215, 137, 53, .45); border-radius: 999px; padding: 2px 8px; white-space: nowrap }
+
+/* ---- 底部操作 ---- */
+.wiz-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; flex-wrap: wrap }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .35s var(--ease); border: none }
+.btn:disabled { opacity: .45; cursor: not-allowed }
+.btn.ghost { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink) }
+.btn.ghost:hover:not(:disabled) { background: var(--cream); color: var(--ink) }
+.btn.primary { background: var(--tea); color: var(--cream) }
+.btn.primary:hover:not(:disabled) { background: var(--accent); color: #fff }
+
+/* ---- 确认页 ---- */
+.confirm-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px }
+.cg { flex: 1; min-width: 92px; text-align: center; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 8px }
+.cg-k { font-size: 12px; font-weight: 700; color: var(--ink-60) }
+.cg-v { font-family: var(--font-d); font-weight: 900; font-size: 22px; color: var(--accent-strong); margin-top: 4px }
+.cg-v small { font-family: var(--font-b); font-size: 12px; color: var(--ink-35); margin-left: 2px }
+.confirm-list { list-style: none; margin-top: 16px; max-height: 40vh; overflow-y: auto; border: 1.5px solid var(--line); border-radius: 14px; padding: 6px }
+.confirm-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; transition: background .2s }
+.confirm-item:hover { background: var(--paper) }
+.ci-star { flex: none; font-size: 10.5px; font-weight: 800; color: var(--ink); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 2px 9px; white-space: nowrap }
+.ci-star.star-awaken { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.ci-ph { flex: none; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--yellow); color: var(--ink); font-family: var(--font-s); font-weight: 900; font-size: 14px }
+.ci-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.ci-detail { flex: none; font-family: var(--font-d); font-size: 12px; color: var(--ink-60); font-weight: 700; white-space: nowrap }
+
+.import-result { margin-top: 16px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 16px; font-size: 13px; color: var(--ink); font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.import-result b { color: var(--accent-strong) }
+.import-result-actions { margin-left: auto; display: flex; gap: 8px }
+.import-error { margin-top: 16px; background: rgba(166, 81, 74, .14); color: var(--rouge); border: 1.5px solid rgba(166, 81, 74, .4); border-radius: 14px; padding: 12px 16px; font-size: 12.5px; font-weight: 700 }
+
+.state { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 20px; padding: 56px 40px; text-align: center; color: var(--ink-35); font-weight: 700; margin-top: 16px }
+.state.err { color: var(--ink-60) }
+.state .link { margin-left: 12px; background: none; border: none; color: var(--accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px }
+.state.slim { padding: 26px 20px; margin-top: 14px; border-radius: 14px }
+
+/* 深色块上的文字 */
+.hero-stats div.is-authed .k { font-size: 12px; letter-spacing: .12em; font-weight: 700; color: rgba(73, 59, 44, .65) }
+.hero-stats div.is-authed .v small { font-family: var(--font-b); font-size: 14px; font-weight: 700 }
+
+@media (max-width: 900px) {
+  .stepper { grid-template-columns: repeat(7, minmax(104px, 1fr)); scroll-snap-type: x proximity }
+  .step { scroll-snap-align: start }
+}
+
+@media (max-width: 640px) {
+  .wiz-card { padding: 16px 14px 18px }
+  .op-list { grid-template-columns: repeat(auto-fill, minmax(142px, 1fr)) }
+  .op-search-input { width: 100% }
+  .step { font-size: 12.5px; padding: 6px 10px 6px 6px }
+}
+</style>

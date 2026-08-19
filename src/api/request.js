@@ -14,17 +14,31 @@
 // 为避免与 store/auth.js 产生模块循环依赖，这里通过「动态 import」在真正
 // 需要时才加载 store（仅读取 token / 调用 refresh() / logout()）。
 
-const API_BASE =
+export const API_BASE =
   import.meta.env.VITE_API_BASE || "https://hub.maayuan.fun:16666";
+
+/**
+ * 把后端返回的相对资源路径拼成完整 URL。
+ * 密探头像的 avatar 字段是相对路径（如 "/avatar/char_xxx.webp"），
+ * 这里统一加 API_BASE；已是绝对 URL（如未来 CDN 地址）则原样返回。
+ */
+export function avatarUrl(path) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return API_BASE + path;
+}
 
 export async function request(
   path,
-  { method = "GET", body, auth = false, raw = false, headers: extraHeaders } = {},
+  { method = "GET", body, auth = false, raw = false, multipart = false, headers: extraHeaders } = {},
 ) {
   let refreshed = false;
 
   async function doRequest() {
-    const headers = Object.assign({ "Content-Type": "application/json" }, extraHeaders);
+    // multipart 上传时不能手动设 Content-Type（浏览器会带 boundary），仅保留认证头。
+    const headers = multipart
+      ? Object.assign({}, extraHeaders)
+      : Object.assign({ "Content-Type": "application/json" }, extraHeaders);
 
     let store = null;
     if (auth) {
@@ -36,7 +50,10 @@ export async function request(
     }
 
     const opts = { method, headers };
-    if (body !== undefined) {
+    if (multipart) {
+      // body 是调用方构造的 FormData，原样透传
+      opts.body = body;
+    } else if (body !== undefined) {
       opts.body = JSON.stringify(body);
     }
 

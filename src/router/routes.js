@@ -79,6 +79,31 @@ export const routes = [
         }
     },
     {
+        path: '/operator/quick',
+        text: '快捷导入',
+        name: 'operator-quick',
+        display: false,
+        module: 'tools',
+        icon: 'zap',
+        component: () => import('/src/pages/operator/quick.vue'),
+        meta: {
+            title: '快捷导入 — YuanHub'
+        }
+    },
+    {
+        path: '/operator/admin',
+        text: '密探图鉴管理',
+        name: 'operator-admin',
+        display: false,
+        module: 'tools',
+        icon: 'shield',
+        component: () => import('/src/pages/operator/admin.vue'),
+        meta: {
+            title: '密探图鉴管理 — YuanHub',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/login',
         text: '登录',
         name: 'login',

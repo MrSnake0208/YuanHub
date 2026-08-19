@@ -5,4 +5,10 @@
       <component :is="Component" />
     </Transition>
   </RouterView>
+  <!-- 全站自定义弹窗（alert / confirm / prompt），Teleport 到 body -->
+  <AppDialog />
 </template>
+
+<script setup>
+import AppDialog from '@/components/AppDialog.vue'
+</script>

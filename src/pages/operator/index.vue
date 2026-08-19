@@ -13,7 +13,7 @@
             <span class="pill">归档</span>
           </div>
           <h1>密探养成<span class="small">图鉴 · 快照 · 归档</span></h1>
-          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：独立密探子账号分别维护，记录化极、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
+          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：独立密探子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
             <div><div class="k">已养成</div><div class="v">{{ currentEntries.length }}<small>位</small></div></div>
@@ -74,9 +74,11 @@
                 <option value="代号鸢">代号鸢</option>
               </select>
             </span>
+            <router-link class="act-btn ghost admin-link" :to="quickHref" @click="showImport = false">首次 / 快捷导入</router-link>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
             <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
+            <router-link v-if="auth.isLoggedIn" class="act-btn ghost admin-link" to="/operator/admin">管理图鉴</router-link>
           </div>
 
           <!-- 导入档案 -->
@@ -134,7 +136,8 @@
               <ul v-else class="slot-grid">
                 <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
                   <div class="slot-ic is-agent">
-                    <div class="slot-ph">
+                    <img v-if="e.avatar" class="slot-avatar" :src="avatarUrl(e.avatar)" :alt="e.name" loading="lazy" />
+                    <div v-else class="slot-ph">
                       <span class="ph-seal">密</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
@@ -170,7 +173,8 @@
               <ul class="slot-grid">
                 <li v-for="e in currentEntries" :key="e.id" class="slot build-slot" :title="buildTitle(e)">
                   <div class="slot-ic is-agent">
-                    <div class="slot-ph">
+                    <img v-if="avOf(e.id)" class="slot-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
+                    <div v-else class="slot-ph">
                       <span class="ph-seal">密</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
@@ -178,7 +182,7 @@
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
                   <span class="slot-tag star" :class="'s' + (e.rarity || 3)">{{ e.rarity || 3 }}★ · {{ e.prof || '未知' }}</span>
-                  <span class="build-line">化极 {{ e.elite }} · {{ starLabel(e.starLevel) }}</span>
+                  <span class="build-line">修为 {{ e.elite }} · {{ starLabel(e.starLevel) }}</span>
                   <span v-if="e.discs && e.discs.length" class="build-line small">命盘 {{ e.discs.length }} 格</span>
                   <span v-if="e.starStones && e.starStones.length" class="build-line small">星石 {{ e.starStones.length }} 槽</span>
                   <button class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
@@ -238,20 +242,27 @@
             <div class="editor-row">
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
-                <label>化极 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
-                <label>星级
-                  <select v-model.number="editForm.starLevel" class="star-select">
-                    <option value="0">未设置</option>
-                    <option value="1">1 星</option>
-                    <option value="2">2 星</option>
-                    <option value="3">3 星</option>
-                    <option value="4">4 星</option>
-                    <option value="5">5 星</option>
-                    <option value="6">觉醒</option>
-                  </select>
-                </label>
-                <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
-                <span class="elite-hint">当前等级最高化极 {{ maxEliteForLevel }}</span>
+                <div class="level-row">
+                  <label>修为 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
+                  <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
+                  <span class="elite-hint">当前等级最高修为 {{ maxEliteForLevel }}</span>
+                </div>
+                <div class="star-card" title="0=未拥有 · 1~30=星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
+                  <div class="star-row">
+                    <span class="star-caption">星级</span>
+                    <span class="star-groups">
+                      <button type="button" class="star-pill" :class="{ on: starGroupName === 'none' }" @click="pickStarGroup('none')">未拥有</button>
+                      <button v-for="s in STAR_RANGE" :key="s" type="button" class="star-pill" :class="{ on: starGroupName === s }" @click="pickStarGroup(s)">{{ s }}星</button>
+                      <button type="button" class="star-pill awaken" :class="{ on: starGroupName === 'awaken' }" @click="pickStarGroup('awaken')">觉醒</button>
+                    </span>
+                  </div>
+                  <div v-if="starGroupName !== 'none' && starGroupName !== 'awaken'" class="star-row">
+                    <span class="star-caption">节点</span>
+                    <span class="star-nodes">
+                      <button v-for="n in NODE_RANGE" :key="n" type="button" class="node-chip" :class="{ on: starNode === n }" @click="pickStarNode(n)">{{ starGroupName }}-{{ n }}</button>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -260,7 +271,7 @@
               <div class="disc-editor">
                 <p class="hint">最多同时选择 3 个命盘。</p>
                 <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
-                <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="{ on: isDiscSelected(d) }">
+                <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]">
                   <input type="checkbox" :value="discKey(d)" v-model="editForm.discNames" />
                   <span class="disc-name">{{ discKey(d) }}</span>
                   <small v-if="d.abbreviation">{{ d.abbreviation }}</small>
@@ -325,7 +336,9 @@ import {
   importOperator,
   exportOperator
 } from '../../api/operator.js'
+import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
+import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
 
@@ -363,6 +376,11 @@ const saveGameLabel = computed(function () {
   return saveGame.value || '通用（全部）'
 })
 
+// 首次 / 快捷导入：把当前子账号带到向导页默认选中
+const quickHref = computed(function () {
+  return accountId.value ? '/operator/quick?account=' + encodeURIComponent(accountId.value) : '/operator/quick'
+})
+
 // —— 密探子账号 ——
 const accounts = ref([])
 const accountId = ref('')
@@ -392,7 +410,8 @@ function normalizeOperator(op) {
     subProf: Array.isArray(rawSub) ? rawSub : (rawSub ? [rawSub] : []),
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
-    starStones: op.starStones || op.star_stones || []
+    starStones: op.starStones || op.star_stones || [],
+    avatar: op.avatar || ''
   }
 }
 
@@ -411,6 +430,12 @@ function discObject(key) {
     color: d.color || null,
     desp: d.desp || null
   }
+}
+
+// 命盘品级色 → 按钮配色类（与后端目录 color 字段：无色 / 金 / 紫 / 蓝 对齐）
+const DISC_COLOR_CLASS = { '金': 'c-gold', '紫': 'c-purple', '蓝': 'c-blue' }
+function discColorClass(d) {
+  return (d && DISC_COLOR_CLASS[d.color]) || ''
 }
 
 const editingDiscs = computed(function () {
@@ -449,14 +474,14 @@ watch(
   }
 )
 
-// 化极不能超过当前等级上限，等级变化时自动修正
+// 修为不能超过当前等级上限，等级变化时自动修正
 watch(
   function () { return editForm.value.level },
   function (level) {
     const max = getMaxEliteForLevel(level)
     if (editForm.value.elite > max) {
       editForm.value.elite = max
-      editNotice.value = '化极已随等级自动调整为 ' + max + '（当前等级上限）'
+      editNotice.value = '修为已随等级自动调整为 ' + max + '（当前等级上限）'
       editNoticeError.value = false
     }
   }
@@ -475,7 +500,8 @@ const catalogOperators = computed(function () {
       subProf: e.subProf || '',
       games: ['如鸢', '代号鸢'],
       discs: [],
-      starStones: []
+      starStones: [],
+      avatar: ''
     }
   })
 })
@@ -513,8 +539,8 @@ function normalizeEntry(e) {
   }
 }
 
-// 化极与等级关系（参考 MaaYuan-Share-frontend operatorRequirementModel）：
-// 每 5 级增加 1 点化极上限，100 级时上限为 17。
+// 修为与等级关系（参考 MaaYuan-Share-frontend operatorRequirementModel）：
+// 每 5 级增加 1 点修为上限，100 级时上限为 17。
 const OPERATOR_LEVEL_MAX = 100
 const OPERATOR_ELITE_MAX = 17
 
@@ -533,10 +559,51 @@ const maxEliteForLevel = computed(function () {
   return getMaxEliteForLevel(editForm.value.level)
 })
 
+// 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
+// 0 = 未拥有；1..30 = 6×(星−1)+节点+1（1星·0 .. 5星·5，5星·5 = 30）；31 = 觉醒（仅一档）。
+const MAX_STAR_LEVEL = 31
+const STAR_LEVEL_AWAKEN = 31
+const STAR_RANGE = [1, 2, 3, 4, 5]
+const NODE_RANGE = [0, 1, 2, 3, 4, 5]
+
 function starLabel(v) {
   const n = Number(v) || 0
-  if (n === 6) return '觉醒'
-  return n || 0
+  if (n === 0) return '未拥有'
+  if (n === STAR_LEVEL_AWAKEN) return '觉醒'
+  if (n >= 1 && n <= 30) {
+    const star = Math.floor((n - 1) / 6) + 1
+    const node = (n - 1) % 6
+    return star + ' 星 · ' + node
+  }
+  return n
+}
+
+// 星级分段胶囊 + 节点胶囊：把一维 starLevel 拆成「星级分组 + 节点」二维状态
+const starGroupName = computed(function () {
+  const v = Number(editForm.value.starLevel) || 0
+  if (v === 0) return 'none'
+  if (v === STAR_LEVEL_AWAKEN) return 'awaken'
+  if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1
+  return 'none'
+})
+const starNode = computed(function () {
+  const v = Number(editForm.value.starLevel) || 0
+  if (v >= 1 && v <= 30) return (v - 1) % 6
+  return 0
+})
+
+function pickStarGroup(g) {
+  if (g === 'none') { editForm.value.starLevel = 0; return }
+  if (g === 'awaken') { editForm.value.starLevel = STAR_LEVEL_AWAKEN; return }
+  const s = Number(g)
+  if (!(s >= 1 && s <= 5)) return
+  editForm.value.starLevel = 6 * (s - 1) + starNode.value + 1
+}
+
+function pickStarNode(n) {
+  const s = starGroupName.value
+  if (typeof s !== 'number') return
+  editForm.value.starLevel = 6 * (s - 1) + Number(n) + 1
 }
 
 // 旧协议仅用 main/assist；新前端按 3 主星 + 3 辅星槽位保存为 main1..3 / assist1..3
@@ -600,16 +667,22 @@ function monogram(e) {
   return Array.from(s)[0] || '?'
 }
 
+// 养成卡（currentEntries 系列快照）没有目录字段，按 id 回查目录拿到头像
+function avOf(id) {
+  const op = catalogMap.value[id]
+  return (op && op.avatar) || ''
+}
+
 function slotTitle(e) {
   const parts = [e.name || e.id]
-  if (e.owned) parts.push('化极 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
+  if (e.owned) parts.push('修为 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
   else parts.push('未养成')
   if (e.prof) parts.push(e.prof)
   return parts.join(' ｜ ')
 }
 
 function buildTitle(e) {
-  const parts = [e.name || e.id, '化极 ' + e.elite, starLabel(e.starLevel), 'Lv' + e.level]
+  const parts = [e.name || e.id, '修为 ' + e.elite, starLabel(e.starLevel), 'Lv' + e.level]
   if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
   if (e.starStones && e.starStones.length) parts.push('星石：' + e.starStones.map(function (s) { return (s.name || s.type) + ' Lv' + s.level }).join('、'))
   return parts.join(' ｜ ')
@@ -619,8 +692,8 @@ function isDiscSelected(d) {
   return editForm.value.discNames.indexOf(discKey(d)) !== -1
 }
 
-function openEdit(id) {
-  if (!auth.isLoggedIn || !accountId.value) { alert('请先登录并选择密探子账号'); return }
+async function openEdit(id) {
+  if (!auth.isLoggedIn || !accountId.value) { await dialog.alert({ message: '请先登录并选择密探子账号' }); return }
   const op = catalogMap.value[id]
   if (!op) return
   const existing = currentMap.value[id] || {}
@@ -664,9 +737,14 @@ async function saveEdit() {
     editNoticeError.value = true
     return
   }
+  if (editForm.value.starLevel > MAX_STAR_LEVEL) {
+    editNotice.value = '星级需在 0..' + MAX_STAR_LEVEL + ' 之间（0=未拥有，31=觉醒）'
+    editNoticeError.value = true
+    return
+  }
   const maxElite = getMaxEliteForLevel(editForm.value.level)
   if (editForm.value.elite > maxElite) {
-    editNotice.value = '化极不能超过当前等级上限 ' + maxElite
+    editNotice.value = '修为不能超过当前等级上限 ' + maxElite
     editNoticeError.value = true
     return
   }
@@ -800,7 +878,11 @@ async function onCreateAccount() {
 }
 
 async function onRenameAccount(acc) {
-  const name = prompt('修改密探子账号名称（1~64 字）：', acc.name || '')
+  const name = await dialog.prompt({
+    title: '修改子账号名称',
+    message: '修改密探子账号名称（1~64 字）：',
+    value: acc.name || ''
+  })
   if (name == null) return
   const trimmed = name.trim()
   if (!trimmed) { accountError.value = '名称不能为空'; return }
@@ -817,7 +899,13 @@ async function onRenameAccount(acc) {
 }
 
 async function onDeleteAccount(acc) {
-  if (!confirm('删除密探子账号「' + acc.name + '」？将级联清除该账号的养成、导入记录与相关 OPERATOR Token，且不可恢复。')) return
+  const ok = await dialog.confirm({
+    title: '删除密探子账号',
+    message: '删除密探子账号「' + acc.name + '」？将级联清除该账号的养成、导入记录与相关 OPERATOR Token，且不可恢复。',
+    type: 'danger',
+    confirmText: '删除'
+  })
+  if (!ok) return
   accountBusy.value = true
   accountError.value = ''
   try {
@@ -880,12 +968,12 @@ async function reloadCurrent(quiet) {
 // —— 导入 / 导出 ——
 async function doImport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!importText.value.trim()) { alert('请粘贴交换协议 JSON 或选择文件'); return }
+  if (!importText.value.trim()) { await dialog.alert({ message: '请粘贴交换协议 JSON 或选择文件' }); return }
   let doc = null
   try {
     doc = JSON.parse(importText.value)
   } catch (_e) {
-    alert('JSON 解析失败，请检查格式')
+    await dialog.alert({ title: '格式错误', message: 'JSON 解析失败，请检查格式' })
     return
   }
   // 若用户粘贴的文档使用占位 account_id，替换为当前账号，便于直接导入
@@ -901,7 +989,7 @@ async function doImport() {
     const res = await importOperator(doc)
     importResult.value = res || {}
   } catch (err) {
-    alert(humanErr(err, '导入失败'))
+    await dialog.alert({ title: '导入失败', message: humanErr(err, '导入失败') })
   } finally {
     importing.value = false
   }
@@ -939,7 +1027,7 @@ function fillExample() {
         id: op.id || 'char_001_yangxiu',
         name: op.name || '杨修',
         elite: 0,
-        starLevel: 1,
+        starLevel: 30, // 5星·5（新映射：0=未拥有 · 1..30=星级·节点 · 31=觉醒）
         level: 40,
         discs: [],
         starStones: []
@@ -958,7 +1046,7 @@ function afterImport() {
 
 async function doExport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!accountId.value) { alert('请先创建并选择一个密探子账号'); return }
+  if (!accountId.value) { await dialog.alert({ message: '请先创建并选择一个密探子账号' }); return }
   try {
     const opts = {}
     if (exportAll.value && accounts.value.length > 1) {
@@ -974,7 +1062,7 @@ async function doExport() {
     link.click()
     URL.revokeObjectURL(link.href)
   } catch (err) {
-    alert(humanErr(err, '导出失败'))
+    await dialog.alert({ title: '导出失败', message: humanErr(err, '导出失败') })
   }
 }
 
@@ -1010,13 +1098,19 @@ async function loadRecords(reset) {
 async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id
   if (!rid) return
-  if (!confirm('删除记录「' + rid + '」？删除后将重放剩余记录重建养成，此操作不可恢复。')) return
+  const ok = await dialog.confirm({
+    title: '删除导入记录',
+    message: '删除记录「' + rid + '」？删除后将重放剩余记录重建养成，此操作不可恢复。',
+    type: 'danger',
+    confirmText: '删除'
+  })
+  if (!ok) return
   try {
     await deleteOperatorRecord(rid, accountId.value)
     await loadRecords(true)
     await reloadCurrent()
   } catch (err) {
-    alert(humanErr(err, '删除失败'))
+    await dialog.alert({ title: '删除失败', message: humanErr(err, '删除失败') })
   }
 }
 
@@ -1102,6 +1196,7 @@ onMounted(async function () {
 .game-filter select { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; cursor: pointer }
 
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap }
+.admin-link { text-decoration: none; display: inline-flex; align-items: center }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
 .act-btn:disabled { opacity: .45; cursor: not-allowed }
 
@@ -1166,6 +1261,7 @@ onMounted(async function () {
   transition: border-color .3s, box-shadow .45s var(--ease);
 }
 .slot:hover .slot-ic { border-color: var(--accent); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), 0 14px 26px -14px rgba(73, 59, 44, .4) }
+.slot-avatar { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block }
 .slot-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(168deg, var(--surface) 0%, var(--cream) 62%, var(--paper) 100%) }
 .slot-ph .ph-seal {
   position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; border: 1.5px solid var(--brand-blue);
@@ -1245,8 +1341,57 @@ onMounted(async function () {
 .num-fields label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px }
 .num-fields input { width: 76px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--ink); outline: none; -moz-appearance: textfield }
 .num-fields input::-webkit-outer-spin-button, .num-fields input::-webkit-inner-spin-button { -webkit-appearance: none }
-.num-fields .star-select { border: 1.5px solid var(--line); border-radius: 8px; padding: 4px 6px; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
-.num-fields .elite-hint { flex-basis: 100%; margin-left: 84px; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
+.num-fields .star-card {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.star-row { display: flex; align-items: center; gap: 12px; min-width: 0 }
+.star-caption { flex: none; width: 34px; font-size: 13px; font-weight: 800; color: var(--ink) }
+.star-groups { display: flex; flex-wrap: wrap; gap: 6px }
+.star-pill {
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-60);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-family: var(--font-b);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all .25s;
+}
+.star-pill:hover { border-color: var(--accent); color: var(--accent-strong) }
+.star-pill.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.star-pill.awaken { letter-spacing: .04em }
+.star-pill.awaken.on { background: var(--tea); border-color: var(--tea); color: var(--cream) }
+.star-nodes { display: flex; align-items: center; flex-wrap: wrap; gap: 6px }
+.node-chip {
+  min-width: 30px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-60);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-d);
+  line-height: 1;
+  cursor: pointer;
+  transition: all .25s;
+}
+.node-chip:hover { border-color: var(--accent); color: var(--accent-strong) }
+.node-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
+.num-fields .level-row { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 12px }
+.num-fields .elite-hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
 .disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
 .disc-editor .hint { flex-basis: 100%; font-size: 12px; color: var(--ink-35) }
 .disc-option { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; transition: all .25s; user-select: none }
@@ -1254,10 +1399,22 @@ onMounted(async function () {
 .disc-option.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 .disc-option small { font-size: 10.5px; color: var(--ink-35); font-weight: 600 }
 .disc-option .disc-color { color: var(--accent-strong); font-weight: 800 }
+/* 命盘品级色：金 / 紫 / 蓝（未选中=淡色底，选中=实色） */
+.disc-option.c-gold { background: rgba(215, 137, 53, .14); border-color: rgba(215, 137, 53, .55); color: #8a5a1f }
+.disc-option.c-gold.on { background: var(--accent); border-color: #b06f24; color: var(--cream) }
+.disc-option.c-purple { background: rgba(151, 130, 199, .16); border-color: rgba(151, 130, 199, .62); color: #6d56a0 }
+.disc-option.c-purple.on { background: #8a72bd; border-color: #7a62ab; color: var(--cream) }
+.disc-option.c-blue { background: rgba(110, 135, 184, .16); border-color: rgba(110, 135, 184, .6); color: #4f6387 }
+.disc-option.c-blue.on { background: #6E87B8; border-color: #5f76a4; color: var(--cream) }
+.disc-option.c-gold .disc-color { color: var(--accent-strong) }
+.disc-option.c-purple .disc-color { color: #7a62ab }
+.disc-option.c-blue .disc-color { color: #5f76a4 }
+.disc-option.c-gold.on .disc-color, .disc-option.c-purple.on .disc-color, .disc-option.c-blue.on .disc-color { color: var(--cream) }
+.disc-option.c-gold.on small, .disc-option.c-purple.on small, .disc-option.c-blue.on small { color: inherit }
 .stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
 .stone-item { display: flex; align-items: center; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
 .stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
-.stone-select { flex: 1; min-width: 120px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
+.stone-select { flex: none; width: 104px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .stone-select:focus { border-color: var(--accent) }
 .stone-item input { width: 90px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-d); font-weight: 800; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; -moz-appearance: textfield }
 .stone-item input:focus { border-color: var(--accent) }
