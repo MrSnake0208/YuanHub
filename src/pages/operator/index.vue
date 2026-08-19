@@ -27,38 +27,20 @@
       <section>
         <div class="wrap">
           <!-- 统一子账号（库存 × 密探共用） -->
-          <div class="account-bar" v-reveal>
-            <div class="ac-sel">
-              <span class="ac-label">子账号</span>
-              <select v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading" @change="onAccountChange">
-                <option v-if="!accounts.length" value="">（未创建）</option>
-                <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-              </select>
-              <span v-if="accountError" class="ac-warn">{{ accountError }}</span>
-            </div>
-            <span class="sp"></span>
-            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showAccounts = !showAccounts">{{ showAccounts ? '收起管理' : '管理账号' }}</button>
-          </div>
-
-          <!-- 账号管理 -->
-          <div v-if="showAccounts" class="account-mgr" v-reveal>
-            <div class="ac-new">
-              <input v-model.trim="newAccountName" placeholder="新子账号名称（1~64 字）" @keyup.enter="onCreateAccount" />
-              <button class="btn ghost" :disabled="accountBusy || !newAccountName" @click="onCreateAccount">新建账号</button>
-            </div>
-            <ul v-if="accounts.length" class="ac-list">
-              <li v-for="a in accounts" :key="a.id" class="ac-item">
-                <span class="ac-dot"></span>
-                <div class="ac-meta">
-                  <span class="ac-name">{{ a.name }}</span>
-                  <code class="ac-id">{{ a.id }}</code>
-                </div>
-                <button class="ac-btn" :disabled="accountBusy" @click="onRenameAccount(a)">改名</button>
-                <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
-              </li>
-            </ul>
-            <p v-else class="ac-empty">暂无子账号，请在上方输入名称创建第一个子账号</p>
-          </div>
+          <AccountWorkspace
+            v-model:accountId="accountId"
+            :accounts="accounts"
+            :error="accountError"
+            :disabled="!auth.isLoggedIn || accountsLoading"
+            :busy="accountBusy"
+            heading-title="选择要查看的账号"
+            heading-sub="密探养成、导入记录都会切换到这个子账号；这里创建的账号在库存页同样可见。"
+            new-placeholder="新子账号名称（1~64 字）"
+            @change="onAccountChange"
+            @create="onCreateAccount"
+            @rename="onRenameAccount"
+            @delete="onDeleteAccount"
+          />
 
           <!-- TABS：图鉴 / 当前养成 / 导入记录 -->
           <div class="operator-tabs" v-reveal>
@@ -324,6 +306,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
+import AccountWorkspace from '../../components/AccountWorkspace.vue'
 import {
   getOperatorCatalog,
   listOperatorAccounts,
@@ -387,8 +370,6 @@ const accountId = ref('')
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
-const showAccounts = ref(false)
-const newAccountName = ref('')
 const exportAll = ref(false)
 
 // —— 导入记录（游标分页） ——
@@ -859,14 +840,13 @@ function onAccountChange() {
   if (activeTab.value === 'records') loadRecords(true)
 }
 
-async function onCreateAccount() {
-  const name = newAccountName.value.trim()
+async function onCreateAccount(rawName) {
+  const name = (rawName || '').trim()
   if (!name) return
   accountBusy.value = true
   accountError.value = ''
   try {
     const created = await createOperatorAccount(name)
-    newAccountName.value = ''
     await loadAccounts()
     if (created && created.id) accountId.value = created.id
     onAccountChange()
@@ -1157,30 +1137,7 @@ onMounted(async function () {
 .operator-main { padding-bottom: 40px }
 .page-operator .hero::after { content: '密探' }
 
-/* ---- 统一子账号 ---- */
-.account-bar { display: flex; align-items: center; gap: 16px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
-.account-bar .sp { flex: 1 }
-.ac-sel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
-.ac-label { font-size: 13px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
-.ac-sel select { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s }
-.ac-sel select:focus { border-color: var(--accent) }
-.ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
-.account-mgr { margin-top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px }
-.ac-new { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
-.ac-new input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
-.ac-new input:focus { border-color: var(--accent) }
-.ac-list { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px }
-.ac-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper) }
-.ac-item .ac-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--yellow-deep); flex: none }
-.ac-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
-.ac-name { font-size: 13.5px; font-weight: 800; color: var(--ink) }
-.ac-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.ac-btn { flex: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
-.ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
-.ac-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
-.ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
-.ac-btn:disabled { opacity: .45; cursor: not-allowed }
-.ac-empty { margin-top: 12px; font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
+/* ---- 统一子账号：选择/管理已抽到共用组件 AccountWorkspace.vue ---- */
 .export-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); cursor: pointer; white-space: nowrap }
 .export-all input { accent-color: var(--accent); cursor: pointer }
 .load-more { display: block; margin: 16px auto 0; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 26px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease) }
