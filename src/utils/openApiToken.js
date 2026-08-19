@@ -47,7 +47,8 @@ export function isOperatorScope(key) {
 
 // 根据 scope（数组或单字符串）判断 token 所属域：
 // 全部为库存权限 → 'inventory'；全部为密探权限 → 'operator'；
-// 空 → ''；混用 → 'mixed'（后端生成接口会拒绝混用，这里仅防御）。
+// 空 → ''；混用 → 'mixed'（子账号统一后后端允许混用，生成「双域 Token」，
+// 前端据此推导「库存 Token / 密探 Token / 双域 Token」标签，不再按账号域猜测）。
 export function scopeDomain(scope) {
   const keys = scopeKeys(scope)
   if (keys.length === 0) return ''

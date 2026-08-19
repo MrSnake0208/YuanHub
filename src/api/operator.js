@@ -10,39 +10,15 @@ import { request } from './request.js'
 
 const PATH = '/v1/operator'
 
-// —— 密探子账号（独立于库存子账号） ——
-
-// 列表（需登录）
-// 返回 [{ id, name, created_at, updated_at }]
-export function listOperatorAccounts() {
-  return request(PATH + '/accounts', { auth: true })
-}
-
-// 创建（POST，需登录）——body { name }
-export function createOperatorAccount(name) {
-  return request(PATH + '/accounts', {
-    method: 'POST',
-    auth: true,
-    body: { name }
-  })
-}
-
-// 改名（PATCH，需登录）——body { name }
-export function renameOperatorAccount(accountId, name) {
-  return request(PATH + '/accounts/' + encodeURIComponent(accountId), {
-    method: 'PATCH',
-    auth: true,
-    body: { name }
-  })
-}
-
-// 删除（DELETE，需登录）——级联删除该账号的密探养成、导入记录与 OPERATOR token
-export function deleteOperatorAccount(accountId) {
-  return request(PATH + '/accounts/' + encodeURIComponent(accountId), {
-    method: 'DELETE',
-    auth: true
-  })
-}
+// —— 统一子账号（库存 × 密探共用） ——
+// 账号 CRUD 已统一到 /v1/accounts（见 src/api/accounts.js）。
+// 这里以 Operator* 别名导出（兼容既有调用方），实现上与库存页共用同一批子账号。
+export {
+  listAccounts as listOperatorAccounts,
+  createAccount as createOperatorAccount,
+  renameAccount as renameOperatorAccount,
+  deleteAccount as deleteOperatorAccount
+} from './accounts.js'
 
 // —— 密探公开目录 ——
 

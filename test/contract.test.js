@@ -24,8 +24,10 @@ const backendInventoryRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/
 const backendOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/OperatorController.kt')
 const backendOperatorRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/response/OperatorResponses.kt')
 const backendOpenApiOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiOperatorController.kt')
+const backendAccountCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/account/AccountController.kt')
 
 const frontendApi = readRel('YuanHub/src/api/openApi.js')
+const frontendAccounts = readRel('YuanHub/src/api/accounts.js')
 const frontendInventory = readRel('YuanHub/src/api/inventory.js')
 const frontendOperator = readRel('YuanHub/src/api/operator.js')
 const frontendProfile = readRel('YuanHub/src/pages/user/profile.vue')
@@ -82,13 +84,24 @@ test('删除接口按 token_id：DELETE /user/open-api/tokens/{tokenId}', () => 
   assert.match(frontendApi, /\/user\/open-api\/tokens\/' \+ encodeURIComponent\(tokenId\)/)
 })
 
-test('库存账号 CRUD 路径前后端一致', () => {
-  assert.match(backendInventoryCtrl, /PostMapping\("\/accounts"/)
-  assert.match(backendInventoryCtrl, /GetMapping\("\/accounts"/)
-  assert.match(backendInventoryCtrl, /PatchMapping\("\/accounts\/\{accountId\}"/)
-  assert.match(backendInventoryCtrl, /DeleteMapping\("\/accounts\/\{accountId\}"/)
-  assert.match(frontendInventory, /PATH \+ '\/accounts'/)
-  assert.match(frontendInventory, /PATH \+ '\/accounts\/' \+ encodeURIComponent\(accountId\)/)
+test('统一子账号 CRUD 路径前后端一致（/v1/accounts，库存 × 密探共用）', () => {
+  // 后端：AccountController @RequestMapping("/v1/accounts")
+  assert.match(backendAccountCtrl, /RequestMapping\("\/v1\/accounts"/)
+  assert.match(backendAccountCtrl, /@PostMapping/)
+  assert.match(backendAccountCtrl, /@GetMapping/)
+  assert.match(backendAccountCtrl, /@PatchMapping\("\/\{accountId\}"/)
+  assert.match(backendAccountCtrl, /@DeleteMapping\("\/\{accountId\}"/)
+  // 前端：src/api/accounts.js 统一账号模块
+  assert.match(frontendAccounts, /const PATH = '\/v1\/accounts'/)
+  assert.match(frontendAccounts, /request\(PATH, \{ auth: true \}\)/)
+  assert.match(frontendAccounts, /PATH \+ '\/' \+ encodeURIComponent\(accountId\)/)
+  // 库存 / 密探 / Token 页均复用这一套账号函数，不再各自调用被删的旧地址
+  assert.match(frontendInventory, /from '\.\/accounts\.js'/)
+  assert.match(frontendOperator, /from '\.\/accounts\.js'/)
+  assert.match(frontendProfile, /from '\.\.\/\.\.\/api\/accounts\.js'/)
+  // 旧地址的调用方式（PATH + '/accounts'）不得再出现于库存/密探 API 模块
+  assert.doesNotMatch(frontendInventory, /PATH \+ '\/accounts'/)
+  assert.doesNotMatch(frontendOperator, /PATH \+ '\/accounts'/)
 })
 
 test('库存查询携带 account_id（后端必填 + 前端透传）', () => {
@@ -107,15 +120,6 @@ test('记录列表游标分页：items/next_cursor', () => {
   assert.match(backendOperatorRecordPage, /OperatorRecordPageResponse\(val items/)
   assert.match(backendOperatorRecordPage, /nextCursor: String\?/)
   assert.match(frontendOperatorPage, /next_cursor/)
-})
-
-test('密探账号 CRUD 路径前后端一致', () => {
-  assert.match(backendOperatorCtrl, /PostMapping\("\/accounts"/)
-  assert.match(backendOperatorCtrl, /GetMapping\("\/accounts"/)
-  assert.match(backendOperatorCtrl, /PatchMapping\("\/accounts\/\{accountId\}"/)
-  assert.match(backendOperatorCtrl, /DeleteMapping\("\/accounts\/\{accountId\}"/)
-  assert.match(frontendOperator, /PATH \+ '\/accounts'/)
-  assert.match(frontendOperator, /PATH \+ '\/accounts\/' \+ encodeURIComponent\(accountId\)/)
 })
 
 test('密探个人数据路径前后端一致', () => {

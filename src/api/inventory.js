@@ -11,41 +11,17 @@ import { deserializeInventoryRecordPage, serializeInventoryExchangeDocument } fr
 
 const PATH = '/v1/inventory'
 
-// —— 库存子账号 ——
+// —— 统一子账号（库存 × 密探共用） ——
+// 账号 CRUD 已统一到 /v1/accounts（见 src/api/accounts.js）；
+// 这里保留导出，兼容既有调用方，库存/密探两页共用同一批子账号。
+export {
+  listAccounts,
+  createAccount,
+  renameAccount,
+  deleteAccount
+} from './accounts.js'
 
-// 账号列表（需登录）
-// 返回 [{ id, name, created_at, updated_at }]
-export function listAccounts() {
-  return request(PATH + '/accounts', { auth: true })
-}
-
-// 创建账号（POST，需登录）——body { name }
-export function createAccount(name) {
-  return request(PATH + '/accounts', {
-    method: 'POST',
-    auth: true,
-    body: { name }
-  })
-}
-
-// 改名（PATCH，需登录）——body { name }
-export function renameAccount(accountId, name) {
-  return request(PATH + '/accounts/' + encodeURIComponent(accountId), {
-    method: 'PATCH',
-    auth: true,
-    body: { name }
-  })
-}
-
-// 删除账号（DELETE，需登录）——级联删除该账号的库存、流水与 token
-export function deleteAccount(accountId) {
-  return request(PATH + '/accounts/' + encodeURIComponent(accountId), {
-    method: 'DELETE',
-    auth: true
-  })
-}
-
-// —— 密探特别关注（按库存子账号隔离，仅普通登录 JWT）——
+// —— 密探特别关注（按子账号隔离，仅普通登录 JWT）——
 
 export function listAgentFavorites(accountId) {
   const params = new URLSearchParams()

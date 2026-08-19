@@ -13,7 +13,7 @@
             <span class="pill">归档</span>
           </div>
           <h1>密探养成<span class="small">图鉴 · 快照 · 归档</span></h1>
-          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：独立密探子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
+          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
             <div><div class="k">已养成</div><div class="v">{{ currentEntries.length }}<small>位</small></div></div>
@@ -26,10 +26,10 @@
 
       <section>
         <div class="wrap">
-          <!-- 密探子账号 -->
+          <!-- 统一子账号（库存 × 密探共用） -->
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
-              <span class="ac-label">密探子账号</span>
+              <span class="ac-label">子账号</span>
               <select v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading" @change="onAccountChange">
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -43,7 +43,7 @@
           <!-- 账号管理 -->
           <div v-if="showAccounts" class="account-mgr" v-reveal>
             <div class="ac-new">
-              <input v-model.trim="newAccountName" placeholder="新密探子账号名称（1~64 字）" @keyup.enter="onCreateAccount" />
+              <input v-model.trim="newAccountName" placeholder="新子账号名称（1~64 字）" @keyup.enter="onCreateAccount" />
               <button class="btn ghost" :disabled="accountBusy || !newAccountName" @click="onCreateAccount">新建账号</button>
             </div>
             <ul v-if="accounts.length" class="ac-list">
@@ -57,7 +57,7 @@
                 <button class="ac-btn danger" :disabled="accountBusy" @click="onDeleteAccount(a)">删除</button>
               </li>
             </ul>
-            <p v-else class="ac-empty">暂无密探子账号，请在上方输入名称创建第一个子账号</p>
+            <p v-else class="ac-empty">暂无子账号，请在上方输入名称创建第一个子账号</p>
           </div>
 
           <!-- TABS：图鉴 / 当前养成 / 导入记录 -->
@@ -381,7 +381,7 @@ const quickHref = computed(function () {
   return accountId.value ? '/operator/quick?account=' + encodeURIComponent(accountId.value) : '/operator/quick'
 })
 
-// —— 密探子账号 ——
+// —— 统一子账号（库存 × 密探共用） ——
 const accounts = ref([])
 const accountId = ref('')
 const accountsLoading = ref(false)
@@ -693,7 +693,7 @@ function isDiscSelected(d) {
 }
 
 async function openEdit(id) {
-  if (!auth.isLoggedIn || !accountId.value) { await dialog.alert({ message: '请先登录并选择密探子账号' }); return }
+  if (!auth.isLoggedIn || !accountId.value) { await dialog.alert({ message: '请先登录并选择子账号' }); return }
   const op = catalogMap.value[id]
   if (!op) return
   const existing = currentMap.value[id] || {}
@@ -833,7 +833,7 @@ async function loadCatalog() {
   }
 }
 
-// —— 密探子账号 ——
+// —— 统一子账号（库存 × 密探共用） ——
 async function loadAccounts() {
   if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
   accountsLoading.value = true
@@ -844,7 +844,7 @@ async function loadAccounts() {
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
   } catch (err) {
-    accountError.value = humanErr(err, '密探子账号加载失败')
+    accountError.value = humanErr(err, '子账号加载失败')
   } finally {
     accountsLoading.value = false
   }
@@ -871,7 +871,7 @@ async function onCreateAccount() {
     if (created && created.id) accountId.value = created.id
     onAccountChange()
   } catch (err) {
-    accountError.value = humanErr(err, '创建密探子账号失败')
+    accountError.value = humanErr(err, '创建子账号失败')
   } finally {
     accountBusy.value = false
   }
@@ -880,7 +880,7 @@ async function onCreateAccount() {
 async function onRenameAccount(acc) {
   const name = await dialog.prompt({
     title: '修改子账号名称',
-    message: '修改密探子账号名称（1~64 字）：',
+    message: '修改子账号名称（1~64 字）：',
     value: acc.name || ''
   })
   if (name == null) return
@@ -900,8 +900,8 @@ async function onRenameAccount(acc) {
 
 async function onDeleteAccount(acc) {
   const ok = await dialog.confirm({
-    title: '删除密探子账号',
-    message: '删除密探子账号「' + acc.name + '」？将级联清除该账号的养成、导入记录与相关 OPERATOR Token，且不可恢复。',
+    title: '删除子账号',
+    message: '删除子账号「' + acc.name + '」？该账号的密探数据、库存数据、特别关注和所有 API Token 都会被一并清除，且不可恢复。',
     type: 'danger',
     confirmText: '删除'
   })
@@ -1046,7 +1046,7 @@ function afterImport() {
 
 async function doExport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!accountId.value) { await dialog.alert({ message: '请先创建并选择一个密探子账号' }); return }
+  if (!accountId.value) { await dialog.alert({ message: '请先创建并选择一个子账号' }); return }
   try {
     const opts = {}
     if (exportAll.value && accounts.value.length > 1) {
@@ -1070,7 +1070,7 @@ async function doExport() {
 async function loadRecords(reset) {
   if (!accountId.value) {
     recordsList.value = []
-    recordsError.value = '请先创建并选择一个密探子账号'
+    recordsError.value = '请先创建并选择一个子账号'
     recordsLoading.value = false
     return
   }
@@ -1157,7 +1157,7 @@ onMounted(async function () {
 .operator-main { padding-bottom: 40px }
 .page-operator .hero::after { content: '密探' }
 
-/* ---- 密探子账号 ---- */
+/* ---- 统一子账号 ---- */
 .account-bar { display: flex; align-items: center; gap: 16px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
 .account-bar .sp { flex: 1 }
 .ac-sel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }

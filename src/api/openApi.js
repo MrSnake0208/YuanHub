@@ -1,6 +1,7 @@
 // 第三方开放接口（Open API）封装 —— 对照 BackEndV3-Share 契约
 // 用于管理「第三方 API Token」：生成 / 列举 / 删除，scope 为稳定字符串 key 数组。
-// 每个 token 绑定一个库存子账号（account_id），用于限定第三方访问范围。
+// 每个 token 绑定一个统一子账号（account_id，库存 × 密探共用），
+// token 能访问哪些数据完全由 scopes 决定，可同时包含 inventory:* 与 operator:*。
 // 约定同 src/api/user.js：函数入参一律 camelCase，内部转 snake_case。
 import { request } from './request.js'
 

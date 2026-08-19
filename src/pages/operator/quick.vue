@@ -12,22 +12,22 @@
             <span class="pill">首次 / 快捷导入</span>
           </div>
           <h1>快捷导入<span class="small">首次建档 · 星阶批量</span></h1>
-          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页都能批量设置「修为 / 等级」，最后一次性保存到密探子账号，适合账号首次建档或快速补录。</p>
+          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页都能批量设置「修为 / 等级」，最后一次性保存到该子账号，适合账号首次建档或快速补录。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
             <div><div class="k">已勾选</div><div class="v">{{ overallChecked }}<small>位</small></div></div>
             <div><div class="k">待导入</div><div class="v">{{ allEntries.length }}<small>条</small></div></div>
-            <div class="is-authed"><div class="k">{{ auth.isLoggedIn ? '保存到' : '登录状态' }}</div><div class="v">{{ auth.isLoggedIn ? (accountName || '—') : '未登录' }}<small>{{ auth.isLoggedIn ? '密探子账号' : '需登录后使用' }}</small></div></div>
+            <div class="is-authed"><div class="k">{{ auth.isLoggedIn ? '保存到' : '登录状态' }}</div><div class="v">{{ auth.isLoggedIn ? (accountName || '—') : '未登录' }}<small>{{ auth.isLoggedIn ? '子账号' : '需登录后使用' }}</small></div></div>
           </div>
         </div>
       </header>
 
       <section>
         <div class="wrap">
-          <!-- 密探子账号 + 版本 -->
+          <!-- 统一子账号 + 版本 -->
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
-              <span class="ac-label">密探子账号</span>
+              <span class="ac-label">子账号</span>
               <select id="quick-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || importing" @change="onAccountChange">
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -53,7 +53,7 @@
           </div>
           <div v-else-if="accountsLoading || catalogLoading" class="state" v-reveal>正在加载快捷导入数据…</div>
           <div v-else-if="!accounts.length" class="state err" v-reveal>
-            尚未创建密探子账号，请先返回密探页创建
+            尚未创建子账号，请先返回密探页创建
             <router-link class="link" to="/operator">去创建</router-link>
           </div>
           <div v-else-if="catalogError && !catalogOperators.length" class="state err" v-reveal>
@@ -254,7 +254,7 @@ const starSteps = [
   { key: '5', nav: '5星', title: '勾选 5 星密探', sub: '勾选当前为「5 星」的密探（节点 0~5）。' },
   { key: 'awaken', nav: '觉醒', title: '勾选 觉醒 密探', sub: '勾选当前已「觉醒」的密探（仅一档）。' }
 ]
-const steps = starSteps.concat([{ key: 'confirm', nav: '确认', title: '确认导入', sub: '核对后一次性保存到密探子账号。' }])
+const steps = starSteps.concat([{ key: 'confirm', nav: '确认', title: '确认导入', sub: '核对后一次性保存到该子账号。' }])
 
 // —— 页面状态 ——
 const stepIndex = ref(0)
@@ -671,7 +671,7 @@ async function loadAccounts() {
       else accountId.value = accounts.value.length ? accounts.value[0].id : ''
     }
   } catch (err) {
-    accountError.value = humanErr(err, '密探子账号加载失败')
+    accountError.value = humanErr(err, '子账号加载失败')
   } finally {
     accountsLoading.value = false
   }
@@ -719,7 +719,7 @@ async function reloadCurrent() {
 // —— 提交 ——
 async function doImport() {
   if (!auth.isLoggedIn) { router.push('/login'); return }
-  if (!accountId.value) { importError.value = '请先创建并选择一个密探子账号（可在密探页新建）'; return }
+  if (!accountId.value) { importError.value = '请先创建并选择一个子账号（可在密探或库存页新建）'; return }
   const entries = allEntries.value
   if (!entries.length) { importError.value = '尚未勾选任何密探，无法提交'; return }
   const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
