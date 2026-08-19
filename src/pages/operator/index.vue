@@ -136,7 +136,8 @@
               <ul v-else class="slot-grid">
                 <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
                   <div class="slot-ic is-agent">
-                    <div class="slot-ph">
+                    <img v-if="e.avatar" class="slot-avatar" :src="avatarUrl(e.avatar)" :alt="e.name" loading="lazy" />
+                    <div v-else class="slot-ph">
                       <span class="ph-seal">密</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
@@ -172,7 +173,8 @@
               <ul class="slot-grid">
                 <li v-for="e in currentEntries" :key="e.id" class="slot build-slot" :title="buildTitle(e)">
                   <div class="slot-ic is-agent">
-                    <div class="slot-ph">
+                    <img v-if="avOf(e.id)" class="slot-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
+                    <div v-else class="slot-ph">
                       <span class="ph-seal">密</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
@@ -334,6 +336,7 @@ import {
   importOperator,
   exportOperator
 } from '../../api/operator.js'
+import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
@@ -407,7 +410,8 @@ function normalizeOperator(op) {
     subProf: Array.isArray(rawSub) ? rawSub : (rawSub ? [rawSub] : []),
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
-    starStones: op.starStones || op.star_stones || []
+    starStones: op.starStones || op.star_stones || [],
+    avatar: op.avatar || ''
   }
 }
 
@@ -496,7 +500,8 @@ const catalogOperators = computed(function () {
       subProf: e.subProf || '',
       games: ['如鸢', '代号鸢'],
       discs: [],
-      starStones: []
+      starStones: [],
+      avatar: ''
     }
   })
 })
@@ -660,6 +665,12 @@ const manifestPercent = computed(function () {
 function monogram(e) {
   const s = String(e.name || e.id || '?')
   return Array.from(s)[0] || '?'
+}
+
+// 养成卡（currentEntries 系列快照）没有目录字段，按 id 回查目录拿到头像
+function avOf(id) {
+  const op = catalogMap.value[id]
+  return (op && op.avatar) || ''
 }
 
 function slotTitle(e) {
@@ -1250,6 +1261,7 @@ onMounted(async function () {
   transition: border-color .3s, box-shadow .45s var(--ease);
 }
 .slot:hover .slot-ic { border-color: var(--accent); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), 0 14px 26px -14px rgba(73, 59, 44, .4) }
+.slot-avatar { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block }
 .slot-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(168deg, var(--surface) 0%, var(--cream) 62%, var(--paper) 100%) }
 .slot-ph .ph-seal {
   position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; border: 1.5px solid var(--brand-blue);

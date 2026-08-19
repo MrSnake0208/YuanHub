@@ -146,3 +146,24 @@ export function deleteAdminOperatorCatalog(operatorId) {
     auth: true
   })
 }
+
+// 上传/替换密探头像（multipart，仅管理员）——上传即存、即时生效。
+// file 为 File/Blob；成功后返回更新后的目录条目（含 avatar 相对路径）。
+export function uploadAdminOperatorAvatar(operatorId, file) {
+  const form = new FormData()
+  form.append('file', file)
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/avatar', {
+    method: 'PUT',
+    auth: true,
+    multipart: true,
+    body: form
+  })
+}
+
+// 删除密探头像（仅管理员）——移除磁盘文件并置空字典字段
+export function deleteAdminOperatorAvatar(operatorId) {
+  return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/avatar', {
+    method: 'DELETE',
+    auth: true
+  })
+}

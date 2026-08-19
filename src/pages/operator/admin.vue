@@ -59,7 +59,8 @@
                 <tbody>
                   <tr v-for="r in filteredRows" :key="r.id">
                     <td class="cell-op">
-                      <span class="op-ph" :class="'s' + Math.min(5, r.rarity || 5)">{{ monogram(r) }}</span>
+                      <img v-if="r.avatar" class="op-avatar" :src="avatarUrl(r.avatar)" :alt="r.name" loading="lazy" />
+                      <span v-else class="op-ph" :class="'s' + Math.min(5, r.rarity || 5)">{{ monogram(r) }}</span>
                       <span class="op-name">
                         {{ r.name || r.id }}
                         <small>{{ r.id }}</small>
@@ -101,6 +102,24 @@
           </div>
 
           <div class="editor-body">
+            <div class="editor-row">
+              <span class="editor-label">头像</span>
+              <div class="avatar-editor">
+                <div class="avatar-editor-main">
+                  <img v-if="form.avatarPreview" :src="form.avatarPreview" class="avatar-preview" alt="新头像预览" />
+                  <img v-else-if="form.avatar" :src="avatarUrl(form.avatar)" class="avatar-preview" alt="当前头像" />
+                  <span v-else class="avatar-placeholder">无头像</span>
+                  <div class="avatar-actions">
+                    <input ref="avatarInput" type="file" accept="image/webp" class="avatar-file" @change="onAvatarPick" />
+                    <button class="btn ghost mini" type="button" @click="pickAvatar">选择图片</button>
+                    <button class="btn primary mini" type="button" :disabled="!form.avatarPick || avatarUploading" @click="uploadAvatar">{{ avatarUploading ? '上传中…' : '上传' }}</button>
+                    <button class="btn ghost mini" type="button" :disabled="avatarUploading || !form.avatar" @click="removeAvatar">删除头像</button>
+                  </div>
+                </div>
+                <p class="hint">仅支持 webp，≤500KB；上传即保存并即时对公共图鉴生效，不依赖下方「保存」按钮</p>
+              </div>
+            </div>
+
             <div class="editor-row">
               <span class="editor-label">基础</span>
               <div class="fields-2col">
@@ -196,8 +215,11 @@ import {
   listAdminOperatorCatalog,
   createAdminOperatorCatalog,
   updateAdminOperatorCatalog,
-  deleteAdminOperatorCatalog
+  deleteAdminOperatorCatalog,
+  uploadAdminOperatorAvatar,
+  deleteAdminOperatorAvatar
 } from '../../api/operator.js'
+import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
 
@@ -222,6 +244,7 @@ function normalizeRow(r) {
     discs: Array.isArray(r.discs) ? r.discs : [],
     starStones: Array.isArray(r.star_stones) ? r.star_stones : [],
     spOf: r.sp_of || r.spOf || null,
+    avatar: r.avatar || '',
     catalogVersion: r.catalog_version || r.catalogVersion || '',
     createdAt: r.created_at || r.createdAt || null
   }
@@ -258,6 +281,10 @@ const notice = ref('')
 const noticeError = ref(false)
 const saving = ref(false)
 
+// —— 头像上传 / 删除 ——
+const avatarUploading = ref(false)
+const avatarInput = ref(null)
+
 function blankForm() {
   return {
     id: '',
@@ -268,6 +295,9 @@ function blankForm() {
     subProfText: '',
     games: ['如鸢'],
     spOf: '',
+    avatar: '',
+    avatarPick: null,
+    avatarPreview: '',
     discs: [],
     starStones: [{ name: '主星石', type: 'main' }, { name: '辅星石', type: 'assist' }]
   }
@@ -283,6 +313,9 @@ function fillForm(r) {
     subProfText: r.subProf.join('、'),
     games: (r.games && r.games.length) ? r.games.slice() : ['如鸢'],
     spOf: r.spOf || '',
+    avatar: r.avatar || '',
+    avatarPick: null,
+    avatarPreview: '',
     discs: r.discs.map(function (d) {
       return {
         ot_name: d.ot_name || d.otName || '',
@@ -315,7 +348,72 @@ function openEdit(r) {
 
 function closeEditor() {
   if (saving.value) return
+  if (avatarUploading.value) return
   editing.value = false
+}
+
+function pickAvatar() {
+  const el = avatarInput.value
+  if (el) { el.value = ''; el.click() }
+}
+
+function onAvatarPick(e) {
+  const file = e.target.files && e.target.files[0]
+  form.value.avatarPick = file || null
+  form.value.avatarPreview = file ? URL.createObjectURL(file) : ''
+}
+
+// 上传头像：独立动作，上传即存、即时对公共图鉴生效（不依赖表单「保存」）
+async function uploadAvatar() {
+  if (!form.value.id || !/^char_[A-Za-z0-9_]+$/.test(form.value.id)) {
+    notice.value = '请先填写合法的 ID（char_xxx）再上传头像'
+    noticeError.value = true
+    return
+  }
+  const file = form.value.avatarPick
+  if (!file) { notice.value = '请先选择图片'; noticeError.value = true; return }
+  if (!/^image\/webp$/i.test(file.type)) { notice.value = '仅支持 webp 图片'; noticeError.value = true; return }
+  if (file.size > 500 * 1024) { notice.value = '图片不能超过 500KB'; noticeError.value = true; return }
+  avatarUploading.value = true
+  notice.value = ''
+  noticeError.value = false
+  try {
+    const saved = await uploadAdminOperatorAvatar(form.value.id, file)
+    const path = (saved && saved.avatar) || '/avatar/' + form.value.id + '.webp'
+    const row = rows.value.find(function (r) { return r.id === form.value.id })
+    if (row) row.avatar = path
+    form.value.avatar = path
+    form.value.avatarPreview = ''
+    form.value.avatarPick = null
+    notice.value = '头像已上传，即时对公共图鉴生效'
+  } catch (err) {
+    notice.value = humanErr(err, '头像上传失败')
+    noticeError.value = true
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
+// 删除头像：独立动作，即时生效
+async function removeAvatar() {
+  if (!confirm('删除「' + (form.value.name || form.value.id) + '」的头像？')) return
+  avatarUploading.value = true
+  notice.value = ''
+  noticeError.value = false
+  try {
+    await deleteAdminOperatorAvatar(form.value.id)
+    const row = rows.value.find(function (r) { return r.id === form.value.id })
+    if (row) row.avatar = ''
+    form.value.avatar = ''
+    form.value.avatarPreview = ''
+    form.value.avatarPick = null
+    notice.value = '头像已删除'
+  } catch (err) {
+    notice.value = humanErr(err, '头像删除失败')
+    noticeError.value = true
+  } finally {
+    avatarUploading.value = false
+  }
 }
 
 function splitList(text) {
@@ -475,9 +573,18 @@ onMounted(load)
 .cell-op { min-width: 220px }
 .cell-op { display: flex; align-items: center; gap: 12px }
 .op-ph { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-family: var(--font-d); font-weight: 900; font-size: 14px; color: var(--cream) }
+.op-avatar { flex: none; width: 34px; height: 34px; border-radius: 10px; object-fit: cover; background: var(--paper); border: 1.5px solid var(--line) }
 .op-ph.s3 { background: var(--yellow-deep); color: var(--ink) }
 .op-ph.s4 { background: var(--accent) }
 .op-ph.s5 { background: var(--tea) }
+
+/* —— 编辑弹窗头像区 —— */
+.avatar-editor { display: flex; flex-direction: column; gap: 8px }
+.avatar-editor-main { display: flex; align-items: center; gap: 16px }
+.avatar-preview { width: 72px; height: 72px; border-radius: 14px; object-fit: cover; background: var(--paper); border: 1.5px solid var(--line) }
+.avatar-placeholder { width: 72px; height: 72px; border-radius: 14px; display: grid; place-items: center; background: var(--paper); border: 1.5px dashed var(--line); color: var(--ink-35); font-size: 12px; text-align: center }
+.avatar-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
+.avatar-file { display: none }
 .op-name { display: flex; flex-direction: column; gap: 1px; line-height: 1.3 }
 .op-name small { font-family: var(--font-d); font-size: 10.5px; color: var(--ink-35) }
 .op-name em { font-style: normal; font-size: 11px; color: var(--ink-60) }
