@@ -20,10 +20,14 @@ router.beforeEach(async (to, from, next) => {
   }
   const authed = !!(auth.accessToken && auth.userInfo)
   const requiresAuth = to.meta && to.meta.requiresAuth
+  const requiresAdmin = to.meta && to.meta.requiresAdmin
 
   if (requiresAuth && !authed) {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳
     return next({ path: '/login', query: { redirect: to.fullPath } })
+  }
+  if (requiresAdmin && !auth.isAdmin) {
+    return next('/user/profile')
   }
   const authPages = ['/login', '/register', '/forgot']
   if (authed && authPages.includes(to.path)) {

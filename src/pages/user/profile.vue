@@ -24,6 +24,15 @@
 
       <section>
         <div class="wrap">
+          <div v-if="auth.isAdmin" class="admin-tools" v-reveal>
+            <div>
+              <span class="admin-kicker">管理员工具</span>
+              <h2>密探公共图鉴</h2>
+              <p>维护公共密探目录、头像与导入校验数据。</p>
+            </div>
+            <router-link class="act-btn primary admin-entry" to="/operator/admin">管理图鉴</router-link>
+          </div>
+
           <!-- Token 管理卡片 -->
           <div class="token-card" v-reveal>
             <div class="card-head">
@@ -344,6 +353,23 @@ onMounted(async function () {
 .profile-main { padding-bottom: 40px }
 .page-profile .hero::after { content: '档案' }
 
+.admin-tools {
+  margin-top: 40px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.admin-kicker { color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .08em }
+.admin-tools h2 { margin-top: 4px; color: var(--ink); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: .04em }
+.admin-tools p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
+.admin-entry { flex: none; text-decoration: none }
+
 .hero-stats .uname {
   font-family: var(--font-s);
   font-weight: 900;
@@ -429,6 +455,8 @@ onMounted(async function () {
 .t-btn:disabled { opacity: .45; cursor: not-allowed }
 
 @media (max-width: 640px) {
+  .admin-tools { align-items: stretch; flex-direction: column }
+  .admin-entry { justify-content: center; min-height: 44px }
   .token-item { flex-wrap: wrap }
   .t-meta { min-width: 0; flex: 1 }
   .t-token { flex-basis: 100%; order: 3 }
