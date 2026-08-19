@@ -199,6 +199,7 @@ import {
   deleteAdminOperatorCatalog
 } from '../../api/operator.js'
 import { auth } from '../../store/auth.js'
+import { dialog } from '../../utils/dialog.js'
 
 const rows = ref([])
 const loading = ref(false)
@@ -397,12 +398,18 @@ async function onDelete(r) {
   const warn = dependants.length
     ? '；注意：「' + dependants.join('、') + '」以该密探为 SP 本体，删除后它们的 spOf 校验将失效'
     : ''
-  if (!confirm('删除密探「' + (r.name || r.id) + '」？删除后公共图鉴与导入校验立即生效' + warn + '，此操作不可恢复。')) return
+  const ok = await dialog.confirm({
+    title: '删除密探',
+    message: '删除密探「' + (r.name || r.id) + '」？删除后公共图鉴与导入校验立即生效' + warn + '，此操作不可恢复。',
+    type: 'danger',
+    confirmText: '删除'
+  })
+  if (!ok) return
   try {
     await deleteAdminOperatorCatalog(r.id)
     await load()
   } catch (err) {
-    alert(humanErr(err, '删除失败'))
+    await dialog.alert({ title: '删除失败', message: humanErr(err, '删除失败') })
   }
 }
 

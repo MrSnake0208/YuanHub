@@ -221,6 +221,7 @@ import {
   importOperator
 } from '../../api/operator.js'
 import { auth } from '../../store/auth.js'
+import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 
 const router = useRouter()
@@ -415,14 +416,16 @@ function previousStepFor(id, keepKey) {
   return ''
 }
 
-function confirmOverwrite(names, fromKey, toKey) {
+async function confirmOverwrite(names, fromKey, toKey) {
   if (!names.length) return true
   const shown = names.slice(0, 5).join('、')
   const suffix = names.length > 5 ? '等 ' + names.length + ' 位密探' : ''
-  return window.confirm(
-    (names.length === 1 ? names[0] : shown + suffix) +
-    '已在' + stepLabel(fromKey) + '选择，是否覆盖到' + stepLabel(toKey) + '？'
-  )
+  return await dialog.confirm({
+    title: '调整勾选',
+    message:
+      (names.length === 1 ? names[0] : shown + suffix) +
+      '已在' + stepLabel(fromKey) + '选择，是否覆盖到' + stepLabel(toKey) + '？'
+  })
 }
 
 function hasExistingData(id) {
@@ -432,13 +435,17 @@ function hasExistingData(id) {
     (Array.isArray(entry.starStones) && entry.starStones.length > 0))
 }
 
-function confirmExistingData(id, key) {
+async function confirmExistingData(id, key) {
   if (!hasExistingData(id)) return true
   const op = catalogMap.value[id]
   const entry = currentMap.value[id]
   const name = op ? op.name || id : id
   const detail = entry ? '（已有 Lv' + (entry.level || 0) + ' · 修为 ' + (entry.elite || 0) + ' · ' + (starLabelOf(entry.starLevel) || '已有养成数据') + '）' : ''
-  return window.confirm(name + detail + '，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。')
+  return await dialog.confirm({
+    title: '覆盖养成数据',
+    message: name + detail + '，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。',
+    confirmText: '覆盖'
+  })
 }
 
 function removeFromOtherSteps(ids, keepKey) {
@@ -449,7 +456,7 @@ function removeFromOtherSteps(ids, keepKey) {
   })
 }
 
-function toggleOperator(id, event) {
+async function toggleOperator(id, event) {
   const checkbox = event && event.target
   const checked = !!(checkbox && checkbox.checked)
   const key = currentKey.value
@@ -458,12 +465,12 @@ function toggleOperator(id, event) {
     if (cur.indexOf(id) !== -1) return
     const fromKey = previousStepFor(id, key)
     const name = catalogMap.value[id] ? catalogMap.value[id].name || id : id
-    if (fromKey && !confirmOverwrite([name], fromKey, key)) {
+    if (fromKey && !(await confirmOverwrite([name], fromKey, key))) {
       // 原生 checkbox 会先切换状态再触发 change；取消覆盖时需立即恢复视觉状态。
       checkbox.checked = false
       return
     }
-    if (!confirmExistingData(id, key)) {
+    if (!(await confirmExistingData(id, key))) {
       checkbox.checked = false
       return
     }
@@ -474,7 +481,7 @@ function toggleOperator(id, event) {
   }
 }
 
-function selectAllPage() {
+async function selectAllPage() {
   const key = currentKey.value
   const cur = checkedByKey[key] || []
   const ids = pageOperators.value.map(function (op) { return op.id })
@@ -485,7 +492,11 @@ function selectAllPage() {
       return (op ? op.name || id : id) + '（' + stepLabel(previousStepFor(id, key)) + '）'
     }).join('、')
     const suffix = conflicts.length > 5 ? '等 ' + conflicts.length + ' 位密探' : ''
-    if (!window.confirm(preview + suffix + '已在其他星级选择，是否覆盖到' + stepLabel(key) + '？')) return
+    const ok = await dialog.confirm({
+      title: '调整勾选',
+      message: preview + suffix + '已在其他星级选择，是否覆盖到' + stepLabel(key) + '？'
+    })
+    if (!ok) return
   }
   const existing = ids.filter(function (id) { return !conflicts.includes(id) && hasExistingData(id) })
   if (existing.length) {
@@ -494,7 +505,12 @@ function selectAllPage() {
       return op ? op.name || id : id
     }).join('、')
     const suffix = existing.length > 5 ? '等 ' + existing.length + ' 位密探' : ''
-    if (!window.confirm(names + suffix + '已有养成数据，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。')) return
+    const ok = await dialog.confirm({
+      title: '覆盖养成数据',
+      message: names + suffix + '已有养成数据，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。',
+      confirmText: '覆盖'
+    })
+    if (!ok) return
   }
   removeFromOtherSteps(ids, key)
   checkedByKey[key] = Array.from(new Set(cur.concat(ids)))

@@ -335,6 +335,7 @@ import {
   exportOperator
 } from '../../api/operator.js'
 import { auth } from '../../store/auth.js'
+import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
 
@@ -680,8 +681,8 @@ function isDiscSelected(d) {
   return editForm.value.discNames.indexOf(discKey(d)) !== -1
 }
 
-function openEdit(id) {
-  if (!auth.isLoggedIn || !accountId.value) { alert('请先登录并选择密探子账号'); return }
+async function openEdit(id) {
+  if (!auth.isLoggedIn || !accountId.value) { await dialog.alert({ message: '请先登录并选择密探子账号' }); return }
   const op = catalogMap.value[id]
   if (!op) return
   const existing = currentMap.value[id] || {}
@@ -866,7 +867,11 @@ async function onCreateAccount() {
 }
 
 async function onRenameAccount(acc) {
-  const name = prompt('修改密探子账号名称（1~64 字）：', acc.name || '')
+  const name = await dialog.prompt({
+    title: '修改子账号名称',
+    message: '修改密探子账号名称（1~64 字）：',
+    value: acc.name || ''
+  })
   if (name == null) return
   const trimmed = name.trim()
   if (!trimmed) { accountError.value = '名称不能为空'; return }
@@ -883,7 +888,13 @@ async function onRenameAccount(acc) {
 }
 
 async function onDeleteAccount(acc) {
-  if (!confirm('删除密探子账号「' + acc.name + '」？将级联清除该账号的养成、导入记录与相关 OPERATOR Token，且不可恢复。')) return
+  const ok = await dialog.confirm({
+    title: '删除密探子账号',
+    message: '删除密探子账号「' + acc.name + '」？将级联清除该账号的养成、导入记录与相关 OPERATOR Token，且不可恢复。',
+    type: 'danger',
+    confirmText: '删除'
+  })
+  if (!ok) return
   accountBusy.value = true
   accountError.value = ''
   try {
@@ -946,12 +957,12 @@ async function reloadCurrent(quiet) {
 // —— 导入 / 导出 ——
 async function doImport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!importText.value.trim()) { alert('请粘贴交换协议 JSON 或选择文件'); return }
+  if (!importText.value.trim()) { await dialog.alert({ message: '请粘贴交换协议 JSON 或选择文件' }); return }
   let doc = null
   try {
     doc = JSON.parse(importText.value)
   } catch (_e) {
-    alert('JSON 解析失败，请检查格式')
+    await dialog.alert({ title: '格式错误', message: 'JSON 解析失败，请检查格式' })
     return
   }
   // 若用户粘贴的文档使用占位 account_id，替换为当前账号，便于直接导入
@@ -967,7 +978,7 @@ async function doImport() {
     const res = await importOperator(doc)
     importResult.value = res || {}
   } catch (err) {
-    alert(humanErr(err, '导入失败'))
+    await dialog.alert({ title: '导入失败', message: humanErr(err, '导入失败') })
   } finally {
     importing.value = false
   }
@@ -1024,7 +1035,7 @@ function afterImport() {
 
 async function doExport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!accountId.value) { alert('请先创建并选择一个密探子账号'); return }
+  if (!accountId.value) { await dialog.alert({ message: '请先创建并选择一个密探子账号' }); return }
   try {
     const opts = {}
     if (exportAll.value && accounts.value.length > 1) {
@@ -1040,7 +1051,7 @@ async function doExport() {
     link.click()
     URL.revokeObjectURL(link.href)
   } catch (err) {
-    alert(humanErr(err, '导出失败'))
+    await dialog.alert({ title: '导出失败', message: humanErr(err, '导出失败') })
   }
 }
 
@@ -1076,13 +1087,19 @@ async function loadRecords(reset) {
 async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id
   if (!rid) return
-  if (!confirm('删除记录「' + rid + '」？删除后将重放剩余记录重建养成，此操作不可恢复。')) return
+  const ok = await dialog.confirm({
+    title: '删除导入记录',
+    message: '删除记录「' + rid + '」？删除后将重放剩余记录重建养成，此操作不可恢复。',
+    type: 'danger',
+    confirmText: '删除'
+  })
+  if (!ok) return
   try {
     await deleteOperatorRecord(rid, accountId.value)
     await loadRecords(true)
     await reloadCurrent()
   } catch (err) {
-    alert(humanErr(err, '删除失败'))
+    await dialog.alert({ title: '删除失败', message: humanErr(err, '删除失败') })
   }
 }
 
