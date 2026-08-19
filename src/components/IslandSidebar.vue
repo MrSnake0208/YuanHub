@@ -1,5 +1,26 @@
 <template>
-  <aside class="island">
+  <header class="mobile-shell">
+    <router-link class="mobile-brand" to="/cart">
+      <span class="brand-mark">Y</span>
+      <span>栖鸢阁</span>
+    </router-link>
+    <nav class="mobile-nav" aria-label="主要导航">
+      <router-link to="/cart" :class="{ active: $route.path === '/cart' }">
+        <ShoppingCart :size="19" aria-hidden="true" />
+        <span>账房</span>
+      </router-link>
+      <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
+        <PackageOpen :size="19" aria-hidden="true" />
+        <span>库存</span>
+      </router-link>
+      <router-link :to="isLoggedIn ? '/user/profile' : '/login'" :class="{ active: $route.path === '/user/profile' || $route.path === '/login' }">
+        <component :is="isLoggedIn ? UserRound : LogIn" :size="19" aria-hidden="true" />
+        <span>{{ isLoggedIn ? '我的' : '登录' }}</span>
+      </router-link>
+    </nav>
+  </header>
+
+  <aside class="island" aria-label="主要导航">
     <div class="brand">
       <div class="brand-mark">Y</div>
       <div class="brand-txt">YuanHub<span class="beta">Beta</span><b>栖鸢阁</b></div>
@@ -36,6 +57,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
 import { auth, logout as doLogout } from '@/store/auth.js'
 
 // 已登录状态（reactive，随 auth 变化）

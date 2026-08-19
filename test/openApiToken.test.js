@@ -28,7 +28,6 @@ const FALLBACK = FALLBACK_DESCRIPTIONS
 test('scopeKeys 数组原样返回', () => {
   assert.deepEqual(scopeKeys(['inventory:read', 'inventory:write']), ['inventory:read', 'inventory:write'])
 })
-
 test('scopeKeys 单个字符串包装为数组', () => {
   assert.deepEqual(scopeKeys('inventory:read'), ['inventory:read'])
 })

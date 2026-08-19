@@ -7,6 +7,10 @@ import './styles/main.css'
 // 滚动出现指令：进入视口时加上 .in（复刻原站 IntersectionObserver 动效）
 const reveal = {
   mounted(el, binding) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.classList.add('rv', 'in')
+      return
+    }
     const delay = binding.value && binding.value.delay ? binding.value.delay : 0
     if (delay) el.style.transitionDelay = delay + 'ms'
     el.classList.add('rv')
@@ -17,7 +21,8 @@ const reveal = {
           io.unobserve(el)
         }
       })
-    }, { threshold: 0.12 })
+    // 提前触发，避免移动端固定工具栏把主内容推到视口下方后长时间保持透明。
+    }, { threshold: 0.12, rootMargin: '0px 0px 360px 0px' })
     io.observe(el)
     el.__revealIO = io
   },

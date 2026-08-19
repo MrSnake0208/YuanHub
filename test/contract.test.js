@@ -48,7 +48,6 @@ test('token 列表字段契约：token_id/account_id/account_name/scopes/created
   assert.doesNotMatch(frontendProfile, /t\.token\b/)
   assert.doesNotMatch(frontendProfile, /t\.create_time/)
 })
-
 test('权限列表字段契约：scope/description（字符串 key，非数字 code）', () => {
   assert.match(backendPermission, /OpenApiPermissionDto\(scope = it\.key, description = it\.desc\)/)
   // 前端 descByKey 在 utils/openApiToken.js 中按 p.scope 匹配、读 hit.description

@@ -2,13 +2,16 @@
   <AuthLayout title="欢迎回来" sub="登录后即可保存作业 · 同步进度">
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
-            <label>邮箱 <em>*</em></label>
+            <label for="login-email">邮箱 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'email' }">
               <input
+                id="login-email"
                 v-model.trim="form.email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
                 autocomplete="email"
+                spellcheck="false"
                 @focus="focusField = 'email'"
                 @blur="focusField = ''"
               />
@@ -17,10 +20,12 @@
           </div>
 
           <div class="field">
-            <label>密码 <em>*</em></label>
+            <label for="login-password">密码 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'password' }">
               <input
+                id="login-password"
                 v-model="form.password"
+                name="password"
                 type="password"
                 placeholder="请输入密码"
                 autocomplete="current-password"
@@ -31,7 +36,7 @@
             <p class="field-err" v-if="errors.password">{{ errors.password }}</p>
           </div>
 
-          <p class="form-err" v-if="serverMsg"><span class="dot"></span>{{ serverMsg }}</p>
+          <p class="form-err" v-if="serverMsg" role="alert"><span class="dot"></span>{{ serverMsg }}</p>
 
           <button class="btn-submit" type="submit" :disabled="loading">
             {{ loading ? '登录中…' : '登 录' }}
@@ -122,7 +127,7 @@ async function onSubmit() {
   background: var(--tea); color: var(--cream);
   border: none; border-radius: 999px; padding: 14px 0;
   font-size: 15px; font-weight: 800; font-family: var(--font-b);
-  letter-spacing: .14em; cursor: pointer; transition: all .35s var(--ease);
+  letter-spacing: .14em; cursor: pointer; transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
 }
 .btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px); }
 .btn-submit:disabled { opacity: .55; cursor: default; }

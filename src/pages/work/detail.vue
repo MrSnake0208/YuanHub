@@ -1,6 +1,6 @@
 <template>
   <div v-if="!d" class="page-detail">
-    <main style="margin-left:0">
+    <main id="main-content" style="margin-left:0">
       <div class="wrap" style="padding-top:120px">
         <div class="empty show">没有找到这份作业<br><span style="font-size:12px;font-weight:600"><router-link to="/" style="color:var(--ink)">← 返回首页</router-link></span></div>
       </div>
@@ -9,7 +9,7 @@
   <div v-else class="page-detail">
     <DetailSidebar :author="d.author" :source="d.source" />
 
-    <main>
+    <main id="main-content">
       <!-- HERO -->
       <header class="hero" :style="{ '--wm': JSON.stringify(d.watermark) }">
         <div class="wrap">
@@ -41,7 +41,7 @@
           <div class="team">
             <div v-for="(m, i) in d.team" :key="m.name" class="card" v-reveal="{ delay: (i % 5) * 70 }">
               <span class="pos">{{ m.pos }}</span>
-              <img :src="m.img" :alt="m.name">
+              <img :src="m.img" :alt="m.name" width="240" height="256">
               <h3>{{ m.name }}<span class="stars">{{ '★'.repeat(m.stars.on) }}<span class="off">{{ '★'.repeat(m.stars.off) }}</span></span></h3>
               <div class="attrs">
                 <div class="attr"><div class="k">攻击</div><div class="v">{{ m.atk }}</div></div>
@@ -89,7 +89,7 @@
           </div>
           <div class="stones" v-reveal>
             <div v-for="s in d.stones" :key="s.name" class="stone-row">
-              <div class="who"><img :src="s.img" :alt="s.name">{{ s.name }}</div>
+              <div class="who"><img :src="s.img" :alt="s.name" width="42" height="42">{{ s.name }}</div>
               <div class="conf" v-html="s.conf"></div>
             </div>
           </div>

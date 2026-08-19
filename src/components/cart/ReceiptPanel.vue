@@ -7,7 +7,7 @@
     <div class="receipt-body">
       <div class="initial-row">
         <span class="lb"><Gift :size="14" class="ic" />已有初始积分</span>
-        <input type="number" min="0" :value="initialPoints || ''" @input="onInitialInput" placeholder="0" />
+        <input type="number" min="0" aria-label="已有初始积分" :value="initialPoints || ''" @input="onInitialInput" placeholder="0" />
       </div>
 
       <div v-if="cartItems.length === 0" class="receipt-empty">

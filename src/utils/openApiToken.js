@@ -8,7 +8,6 @@ export function scopeKeys(scope) {
   if (scope == null || scope === '') return []
   return [scope]
 }
-
 // 按 key 查描述：优先后端权限列表（{ scope, description }），
 // 其次兜底映射，最后返回 key 本身。
 export function descByKey(key, permissions, fallback = {}) {
