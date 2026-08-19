@@ -18,12 +18,17 @@
           <div class="dialog-body">
             <p class="dialog-msg">{{ state.message }}</p>
             <label v-if="state.mode === 'prompt'" class="dialog-field">
+              <span v-if="state.inputLabel" class="dialog-field-label">{{ state.inputLabel }}</span>
               <input
                 ref="inputEl"
                 v-model="state.input"
                 type="text"
                 :placeholder="state.placeholder"
+                :aria-label="state.inputLabel || state.placeholder || '请输入内容'"
                 maxlength="64"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
                 @keydown.enter.prevent="onConfirm"
               />
             </label>
@@ -38,6 +43,7 @@
               type="button"
               class="dlg-btn primary"
               :class="{ danger: state.type === 'danger' }"
+              :disabled="confirmDisabled"
               @click="onConfirm"
             >
               {{ state.confirmText }}
@@ -68,8 +74,13 @@ const defaultTitle = computed(function () {
   if (state.mode === 'confirm') return '请确认'
   return '请输入'
 })
+const confirmDisabled = computed(function () {
+  if (state.mode !== 'prompt' || !state.requiredValue) return false
+  return state.input.trim() !== state.requiredValue
+})
 
 function onConfirm() {
+  if (confirmDisabled.value) return
   dialog._confirm()
 }
 function onCancel() {
@@ -193,6 +204,13 @@ watch(
 .dialog-field {
   display: block;
   margin-top: 14px;
+}
+.dialog-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
 }
 .dialog-field input {
   width: 100%;
