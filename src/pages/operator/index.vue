@@ -40,7 +40,45 @@
             @create="onCreateAccount"
             @rename="onRenameAccount"
             @delete="onDeleteAccount"
-          />
+          >
+            <template #actions>
+              <button class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
+              </button>
+            </template>
+
+            <div v-if="showArchive" class="archive-workspace">
+              <div class="archive-heading">
+                <div>
+                  <span class="section-kicker">数据交换</span>
+                  <h2>导入或导出档案</h2>
+                  <p>用于在不同平台之间迁移密探养成数据；导出前请确认账号范围。</p>
+                </div>
+                <span class="archive-format">JSON · v2</span>
+              </div>
+              <div class="archive-actions">
+                <button class="act-btn archive-import" :disabled="!auth.isLoggedIn" :aria-expanded="showImport" @click="showImport = !showImport">
+                  <Upload :size="16" aria-hidden="true" />{{ showImport ? '收起导入' : '导入档案' }}
+                </button>
+                <div class="export-group">
+                  <div class="export-label">导出范围</div>
+                  <div class="export-options" role="radiogroup" aria-label="导出范围">
+                    <label class="export-option" :class="{ active: !exportAll }">
+                      <input v-model="exportAll" type="radio" :value="false" name="operator-export-scope" />
+                      <span><b>当前账号</b><small>{{ currentAccountName }}</small></span>
+                    </label>
+                    <label class="export-option" :class="{ active: exportAll, disabled: accounts.length < 2 }">
+                      <input v-model="exportAll" type="radio" :value="true" name="operator-export-scope" :disabled="accounts.length < 2" />
+                      <span><b>全部账号</b><small>{{ accounts.length > 1 ? accounts.length + ' 个账号' : '至少需要 2 个账号' }}</small></span>
+                    </label>
+                  </div>
+                  <button class="act-btn export-submit" :disabled="!auth.isLoggedIn || !accountId" @click="doExport">
+                    <Download :size="16" aria-hidden="true" />导出档案
+                  </button>
+                </div>
+              </div>
+            </div>
+          </AccountWorkspace>
 
           <!-- TABS：图鉴 / 当前养成 / 导入记录 -->
           <div class="operator-tabs" v-reveal>
@@ -56,15 +94,13 @@
               </select>
             </span>
             <router-link class="act-btn ghost admin-link" :to="quickHref" @click="showImport = false">首次 / 快捷导入</router-link>
-            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
-            <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
-            <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
           </div>
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
-            <p class="tip">粘贴符合《密探数据交换协议 v2》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
-            <textarea v-model="importText" placeholder='{"format":"myshare-operator-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[{"account_id":"acc_xxx","record_id":"...","record_type":"operator_snapshot","snapshot_scope":"full","entries":[]}]}'></textarea>
+            <p id="operator-import-tip" class="tip">粘贴符合《密探数据交换协议 v2》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
+            <textarea id="operator-import-json" v-model="importText" aria-label="密探交换档案 JSON" :aria-invalid="!!importError" :aria-describedby="importError ? 'operator-import-tip operator-import-error' : 'operator-import-tip'" autocomplete="off" placeholder='{"format":"myshare-operator-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[{"account_id":"acc_xxx","record_id":"...","record_type":"operator_snapshot","snapshot_scope":"full","entries":[]}]}' @input="importError = ''"></textarea>
+            <p v-if="importError" id="operator-import-error" class="import-error" role="alert">{{ importError }}</p>
             <div class="import-actions">
               <label class="btn ghost file-label">
                 选择 JSON 文件
@@ -315,6 +351,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { Archive, Download, Upload } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
@@ -351,8 +388,10 @@ const catalogError = ref('')
 const catalogVersion = ref('')
 const backendCatalog = ref([])
 const currentEntries = ref([])
+const showArchive = ref(false)
 const showImport = ref(false)
 const importText = ref('')
+const importError = ref('')
 const importing = ref(false)
 const importResult = ref(null)
 
@@ -390,6 +429,15 @@ const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
 const exportAll = ref(false)
+const currentAccountName = computed(function () {
+  const account = accounts.value.find(function (item) { return item.id === accountId.value })
+  return account ? account.name : '当前账号'
+})
+
+function toggleArchive() {
+  showArchive.value = !showArchive.value
+  if (!showArchive.value) showImport.value = false
+}
 
 // —— 目录归一化 ——
 function normalizeOperator(op) {
@@ -865,6 +913,7 @@ async function loadAccounts() {
   try {
     const list = await listOperatorAccounts()
     accounts.value = Array.isArray(list) ? list : []
+    if (accounts.value.length < 2) exportAll.value = false
     // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
@@ -989,12 +1038,13 @@ async function reloadCurrent(quiet) {
 // —— 导入 / 导出 ——
 async function doImport() {
   if (!auth.isLoggedIn) { goLogin(); return }
-  if (!importText.value.trim()) { await dialog.alert({ message: '请粘贴交换协议 JSON 或选择文件' }); return }
+  importError.value = ''
+  if (!importText.value.trim()) { importError.value = '请粘贴交换协议 JSON 或选择文件'; return }
   let doc = null
   try {
     doc = JSON.parse(importText.value)
-  } catch (_e) {
-    await dialog.alert({ title: '格式错误', message: 'JSON 解析失败，请检查格式' })
+  } catch (err) {
+    importError.value = err instanceof SyntaxError ? 'JSON 解析失败，请检查格式' : humanErr(err, '导入档案校验失败')
     return
   }
   // 若用户粘贴的文档使用占位 account_id，替换为当前账号，便于直接导入
@@ -1010,7 +1060,7 @@ async function doImport() {
     const res = await importOperator(doc)
     importResult.value = res || {}
   } catch (err) {
-    await dialog.alert({ title: '导入失败', message: humanErr(err, '导入失败') })
+    importError.value = humanErr(err, '导入失败')
   } finally {
     importing.value = false
   }
@@ -1022,6 +1072,7 @@ function onFilePick(ev) {
   const reader = new FileReader()
   reader.onload = function () {
     importText.value = String(reader.result || '')
+    importError.value = ''
   }
   reader.readAsText(file, 'utf-8')
 }
@@ -1056,11 +1107,13 @@ function fillExample() {
     }]
   }
   importText.value = JSON.stringify(doc, null, 2)
+  importError.value = ''
 }
 
 function afterImport() {
   importResult.value = null
   importText.value = ''
+  importError.value = ''
   showImport.value = false
   reloadCurrent()
 }
@@ -1110,8 +1163,6 @@ onMounted(async function () {
 .page-operator .hero::after { content: '密探' }
 
 /* ---- 统一子账号：选择/管理已抽到共用组件 AccountWorkspace.vue ---- */
-.export-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); cursor: pointer; white-space: nowrap }
-.export-all input { accent-color: var(--accent); cursor: pointer }
 
 .operator-tabs { display: flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 14px; padding: 4px; margin-top: 40px; flex-wrap: wrap; align-items: center }
 .operator-tabs button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 14px; padding: 10px 26px; border-radius: 10px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
@@ -1121,15 +1172,41 @@ onMounted(async function () {
 .game-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-60) }
 .game-filter select { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; cursor: pointer }
 
-.act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap }
+.act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px }
 .admin-link { text-decoration: none; display: inline-flex; align-items: center }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
 .act-btn:disabled { opacity: .45; cursor: not-allowed }
+
+/* ---- 档案操作：与库存页保持同一结构和交互 ---- */
+.archive-toggle { min-height: 44px; align-self: center; transform: translateY(9px); background: transparent }
+.archive-actions svg { flex: none }
+.archive-workspace { border-top: 1px dashed var(--line); background: var(--cream); padding: 16px 24px 18px }
+.archive-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px }
+.archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
+.archive-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
+.section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
+.archive-format { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap }
+.archive-actions { display: grid; grid-template-columns: minmax(150px, .36fr) minmax(0, 1fr); gap: 18px; align-items: stretch; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line) }
+.archive-import { min-height: 52px; border-radius: 12px; background: var(--surface) }
+.export-group { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center }
+.export-label { color: var(--ink-60); font-size: 12px; font-weight: 800; white-space: nowrap }
+.export-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+.export-option { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); cursor: pointer; transition: border-color .25s, background-color .25s, box-shadow .25s }
+.export-option.active { border-color: var(--accent); background: var(--cream); box-shadow: inset 3px 0 0 var(--accent) }
+.export-option.disabled { opacity: .55; cursor: not-allowed }
+.export-option input { width: 15px; height: 15px; accent-color: var(--accent); flex: none }
+.export-option span { min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.export-option b { color: var(--ink); font-size: 12.5px; white-space: nowrap }
+.export-option small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-60); font-size: 11px }
+.export-submit { min-height: 52px; padding-inline: 18px; border-color: var(--tea); background: var(--tea); color: var(--cream) }
+.export-submit:hover:not(:disabled) { border-color: var(--tea-deep); background: var(--tea-deep); color: var(--cream) }
 
 .import-box { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px }
 .import-box .tip { font-size: 12.5px; color: var(--ink-60); line-height: 1.8; margin-bottom: 12px }
 .import-box textarea { width: 100%; min-height: 140px; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; font-family: var(--font-b); font-size: 12.5px; color: var(--ink); background: var(--paper); outline: none; resize: vertical; transition: border-color .3s }
 .import-box textarea:focus { border-color: var(--accent) }
+.import-box textarea[aria-invalid="true"] { border-color: var(--rouge) }
+.import-error { min-height: 20px; margin-top: 7px; color: var(--rouge); font-size: 12.5px; font-weight: 700; line-height: 1.6 }
 .import-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px }
 .file-label { cursor: pointer }
 .file-label input { display: none }
@@ -1358,6 +1435,21 @@ onMounted(async function () {
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
 
 @media (max-width: 640px) {
+  .archive-toggle { width: 100%; min-height: 44px; transform: none }
+  .archive-workspace { margin-top: 0; padding: 14px 16px 16px }
+  .archive-heading { flex-direction: column; gap: 8px }
+  .archive-actions { grid-template-columns: 1fr; gap: 12px; margin-top: 14px; padding-top: 14px }
+  .archive-import { width: 100%; min-height: 46px }
+  .export-group { grid-template-columns: 1fr; gap: 8px }
+  .export-label { font-size: 11.5px }
+  .export-options { grid-template-columns: 1fr 1fr; gap: 8px }
+  .export-option { min-height: 58px; padding: 8px 9px }
+  .export-option b { font-size: 12px }
+  .export-submit { width: 100%; min-height: 46px }
+  .import-box { padding: 14px; border-radius: 14px }
+  .import-box textarea { font-size: 16px }
+  .import-actions { align-items: stretch; flex-direction: column }
+  .import-actions .btn { width: 100% }
   .backpack { padding: 14px 12px 16px; border-radius: 20px }
   .slot-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px 10px }
   .slot-count { font-size: 11.5px; padding: 2px 7px; right: 5px; bottom: 5px }
@@ -1366,5 +1458,9 @@ onMounted(async function () {
   .mf-search { width: auto }
   .mf-stats { justify-content: space-between }
   .mf-progress { width: 100% }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .archive-toggle { width: 100%; transform: none }
 }
 </style>
