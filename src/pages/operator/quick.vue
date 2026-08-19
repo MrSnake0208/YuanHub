@@ -12,7 +12,7 @@
             <span class="pill">首次 / 快捷导入</span>
           </div>
           <h1>快捷导入<span class="small">首次建档 · 星阶批量</span></h1>
-          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页批量设置「修为 / 等级」，点「保存本页并下一步」即把本页立即写入该子账号，逐页即存，适合账号首次建档或快速补录。</p>
+          <p class="hero-sub">按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页批量设置「等级 / 修为」，点「保存本页并下一步」即把本页立即写入该子账号，逐页即存，适合账号首次建档或快速补录。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
             <div><div class="k">本页已勾选</div><div class="v">{{ checkedOfCurrent.length }}<small>位</small></div></div>
@@ -82,7 +82,7 @@
             <div class="wiz-card" v-reveal>
               <div class="wiz-head">
                 <h2>{{ currentStep.title }}</h2>
-                <p class="wiz-sub">{{ currentStep.sub }}；本页的「修为 / 等级」会批量应用到已勾选的密探上，点「保存本页并下一步」即写入该子账号。</p>
+                <p class="wiz-sub">{{ currentStep.sub }}；本页的「等级 / 修为」会批量应用到已勾选的密探上，点「保存本页并下一步」即写入该子账号。</p>
               </div>
 
               <!-- 本页保存状态 -->
@@ -97,28 +97,15 @@
                 <span class="batch-count">已勾选 <b>{{ checkedOfCurrent.length }}</b> 位</span>
                 <div class="batch-fields">
                   <label class="bf">
-                    <span>修为</span>
-                    <input name="elite" type="number" v-model.number="pageForm.elite" min="0" :max="maxEliteHint" :disabled="importing" @change="normalizePageForm" />
-                    <i>/{{ OPERATOR_ELITE_MAX }}</i>
-                  </label>
-                  <label class="bf">
                     <span>等级</span>
                     <input name="level" type="number" v-model.number="pageForm.level" min="0" max="100" :disabled="importing" @change="normalizePageForm" />
                     <i>/100</i>
                   </label>
-                  <span v-if="!isAwaken" class="bf node">
-                    <span>节点</span>
-                    <span class="node-pills">
-                      <button
-                        v-for="n in NODE_RANGE"
-                        :key="n"
-                        type="button"
-                        :class="{ on: pageForm.node === n }"
-                        :disabled="importing"
-                        @click="pageForm.node = n"
-                      >{{ n }}</button>
-                    </span>
-                  </span>
+                  <label class="bf">
+                    <span>修为</span>
+                    <input name="elite" type="number" v-model.number="pageForm.elite" min="0" :max="maxEliteHint" :disabled="importing" @change="normalizePageForm" />
+                    <i>/{{ OPERATOR_ELITE_MAX }}</i>
+                  </label>
                 </div>
                 <span v-if="maxEliteHint" class="elite-hint">当前等级最高修为 {{ maxEliteHint }}</span>
                 <span class="sp"></span>
@@ -164,7 +151,6 @@
                           <span class="op-name">{{ op.name }}</span>
                           <span class="op-sub">{{ op.prof }} · {{ op.rarity }}★</span>
                         </span>
-                        <span v-if="existingTag(op)" class="op-has">{{ existingTag(op) }}</span>
                       </label>
                     </li>
                   </ul>
@@ -270,7 +256,7 @@ const savedByKey = reactive({})
 const pageSave = reactive({ show: false, ok: false, message: '' })
 let currentLoadToken = 0
 
-// 每页：勾选集合 + 批量表单（修为 / 等级 / 节点）
+// 每页：勾选集合 + 批量表单（等级 / 修为；节点不显示，默认 0）
 const checkedByKey = reactive({ '1': [], '2': [], '3': [], '4': [], '5': [], awaken: [] })
 const formByKey = reactive({})
 starSteps.forEach(function (s) {
@@ -400,13 +386,6 @@ function starLabelOf(v) {
   if (n === STAR_LEVEL_AWAKEN) return '觉醒'
   if (n >= 1 && n <= 30) return Math.floor((n - 1) / 6) + 1 + '星'
   return ''
-}
-
-function existingTag(op) {
-  const b = currentMap.value[op.id]
-  if (!b) return ''
-  if (!(b.level > 0 || b.elite > 0 || b.starLevel > 0)) return '未养成'
-  return '已有 Lv' + b.level + ' · 修为 ' + b.elite + ' · ' + (starLabelOf(b.starLevel) || '—星')
 }
 
 // —— 勾选辅助 ——
@@ -905,14 +884,6 @@ onMounted(async function () {
 .bf input { width: 58px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 14px; color: var(--ink); outline: none; -moz-appearance: textfield }
 .bf input::-webkit-outer-spin-button, .bf input::-webkit-inner-spin-button { -webkit-appearance: none }
 .bf i { font-style: normal; font-family: var(--font-d); font-size: 11px; color: var(--ink-35) }
-.bf.node { border: none; background: transparent; padding: 0 }
-.node-pills { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap }
-.node-pills button {
-  min-width: 26px; height: 24px; padding: 0 6px; border: 1.5px solid var(--line); background: var(--surface);
-  color: var(--ink-60); border-radius: 7px; font-family: var(--font-d); font-size: 12px; font-weight: 800; cursor: pointer; transition: all .25s;
-}
-.node-pills button:hover { border-color: var(--accent); color: var(--accent-strong) }
-.node-pills button.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 .elite-hint { font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
 .mini { border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-60); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
 .mini:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
@@ -957,7 +928,6 @@ onMounted(async function () {
 .op-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
 .op-name { font-size: 13px; font-weight: 800; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .op-sub { font-size: 11px; color: var(--ink-60); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.op-has { flex: none; font-size: 10.5px; color: var(--accent-strong); background: rgba(215, 137, 53, .14); border: 1px solid rgba(215, 137, 53, .45); border-radius: 999px; padding: 2px 8px; white-space: nowrap }
 
 /* ---- 分割线：已有数据的密探与无数据区隔开 ---- */
 .op-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 4px }
