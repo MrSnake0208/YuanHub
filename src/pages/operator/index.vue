@@ -74,6 +74,7 @@
                 <option value="代号鸢">代号鸢</option>
               </select>
             </span>
+            <router-link class="act-btn ghost admin-link" :to="quickHref" @click="showImport = false">首次 / 快捷导入</router-link>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="showImport = !showImport">导入档案</button>
             <label v-if="accounts.length > 1" class="export-all"><input type="checkbox" v-model="exportAll" /> 全部账号</label>
             <button class="act-btn ghost" :disabled="!auth.isLoggedIn" @click="doExport">导出档案</button>
@@ -369,6 +370,11 @@ const saveGame = computed(function () {
 })
 const saveGameLabel = computed(function () {
   return saveGame.value || '通用（全部）'
+})
+
+// 首次 / 快捷导入：把当前子账号带到向导页默认选中
+const quickHref = computed(function () {
+  return accountId.value ? '/operator/quick?account=' + encodeURIComponent(accountId.value) : '/operator/quick'
 })
 
 // —— 密探子账号 ——
