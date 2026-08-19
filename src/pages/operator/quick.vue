@@ -194,6 +194,7 @@ import {
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
+import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
@@ -240,7 +241,11 @@ const subProfFilter = ref('all')
 const profOptions = AGENT_PROFS
 const subProfOptions = computed(function () { return deriveSubProfOptions(catalogOperators.value) })
 const accounts = ref([])
-const accountId = ref('')
+// 当前选中账号由 activeAccount store 记忆并持久化（跨页面导航 / 刷新不丢）
+const accountId = computed({
+  get: function () { return activeAccount.id },
+  set: function (v) { activeAccount.set(v) }
+})
 const accountsLoading = ref(false)
 const accountError = ref('')
 const catalogLoading = ref(false)
@@ -665,19 +670,19 @@ async function loadCatalog() {
 }
 
 async function loadAccounts() {
-  if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
+  if (!auth.isLoggedIn) { accounts.value = []; return }
   accountsLoading.value = true
   accountError.value = ''
   try {
     const list = await listOperatorAccounts()
     accounts.value = Array.isArray(list) ? list : []
-    // 优先采纳从密探页带过来的账号（?account=）
+    // 优先级：入口携带的 ?account= > activeAccount 记住的账号 > 第一个
     const queryId = route.query.account
-    const still = accounts.value.some(function (a) { return a.id === accountId.value })
-    if (!still) {
-      if (queryId && accounts.value.some(function (a) { return a.id === queryId })) accountId.value = queryId
-      else accountId.value = accounts.value.length ? accounts.value[0].id : ''
-    }
+    const rememberedId = accounts.value.some(function (a) { return a.id === activeAccount.id }) ? activeAccount.id : ''
+    const candidate = (queryId && accounts.value.some(function (a) { return a.id === queryId }))
+      ? queryId
+      : (rememberedId || (accounts.value.length ? accounts.value[0].id : ''))
+    if (accountId.value !== candidate) accountId.value = candidate
   } catch (err) {
     accountError.value = humanErr(err, '子账号加载失败')
   } finally {
