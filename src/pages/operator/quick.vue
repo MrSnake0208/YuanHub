@@ -823,7 +823,7 @@ onMounted(async function () {
 
 <style scoped>
 /* —— 复用全局 CSS 变量（不新增色值），对齐密探页版式 —— */
-.quick-main { padding-bottom: 40px }
+.quick-main { padding-bottom: 0 }
 .page-quick .hero::after { content: '速录' }
 
 /* ---- 子账号 / 版本栏 ---- */

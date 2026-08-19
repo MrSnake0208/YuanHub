@@ -1159,7 +1159,7 @@ onMounted(async function () {
 
 <style scoped>
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
-.operator-main { padding-bottom: 40px }
+.operator-main { padding-bottom: 0 }
 .page-operator .hero::after { content: '密探' }
 
 /* ---- 统一子账号：选择/管理已抽到共用组件 AccountWorkspace.vue ---- */

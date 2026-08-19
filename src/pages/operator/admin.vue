@@ -31,74 +31,136 @@
 
           <!-- 目录管理工具条 -->
           <div v-else class="admin-bar" v-reveal>
-            <input v-model.trim="search" class="adm-search" type="search" placeholder="搜索名称 / 别名 / id / 属性" />
+            <label class="adm-search-wrap">
+              <Search :size="18" aria-hidden="true" />
+              <input v-model.trim="search" class="adm-search" type="search" aria-label="搜索密探图鉴" placeholder="搜索名称、别名、ID 或属性" />
+            </label>
+            <span class="result-count" aria-live="polite">{{ filteredRows.length }} 位密探</span>
             <span class="sp"></span>
-            <button class="btn primary" @click="openNew">新增密探</button>
+            <button class="btn primary" type="button" @click="openNew">
+              <Plus :size="17" aria-hidden="true" />
+              新增密探
+            </button>
           </div>
 
           <!-- 列表 -->
-          <div v-if="loading" class="state">正在加载密探公共图鉴…</div>
-          <div v-else-if="error" class="state err">{{ error }}</div>
+          <div v-if="loading" class="state" role="status" aria-live="polite">正在加载密探公共图鉴…</div>
+          <div v-else-if="error" class="state err" role="alert">
+            {{ error }}<button class="state-retry" type="button" @click="load">重试</button>
+          </div>
           <template v-else>
             <div v-if="filteredRows.length === 0" class="state">没有匹配「{{ search }}」的密探</div>
-            <div v-else class="catalog-table-wrap" v-reveal>
-              <table class="catalog-table">
-                <thead>
-                  <tr>
-                    <th>密探</th>
-                    <th>稀有度</th>
-                    <th>属性 / 职业</th>
-                    <th>版本</th>
-                    <th>命盘</th>
-                    <th>星石</th>
-                    <th>SP</th>
-                    <th>目录版本</th>
-                    <th class="ops-col">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="r in filteredRows" :key="r.id">
-                    <td class="cell-op">
-                      <img v-if="r.avatar" class="op-avatar" :src="avatarUrl(r.avatar)" :alt="r.name" loading="lazy" />
-                      <span v-else class="op-ph" :class="'s' + Math.min(5, r.rarity || 5)">{{ monogram(r) }}</span>
-                      <span class="op-name">
-                        {{ r.name || r.id }}
-                        <small>{{ r.id }}</small>
-                        <em v-if="r.alias" class="op-alias">{{ r.alias }}</em>
-                      </span>
-                    </td>
-                    <td><span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}★</span></td>
-                    <td class="cell-prof">
-                      <span v-for="p in r.prof" :key="p" class="tag-prof">{{ p }}</span>
-                      <span v-if="!r.prof.length" class="muted">—</span>
-                      <small v-if="r.subProf.length" class="sub-prof">{{ r.subProf.join('、') }}</small>
-                    </td>
-                    <td><span v-for="g in r.games" :key="g" class="tag-station">{{ g }}</span></td>
-                    <td>{{ r.discs.length }}</td>
-                    <td>{{ r.starStones.length }}</td>
-                    <td><span v-if="r.spOf" class="tag-sp" :title="'本体：' + r.spOf">SP</span><span v-else class="muted">—</span></td>
-                    <td class="cell-ver"><code>{{ r.catalogVersion }}</code><small>{{ fmtTime(r.createdAt) }}</small></td>
-                    <td class="ops-col">
-                      <button class="ops-btn" @click="openEdit(r)">编辑</button>
-                      <button class="ops-btn danger" @click="onDelete(r)">删除</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div v-else class="catalog-views">
+              <div class="catalog-table-wrap">
+                <table class="catalog-table">
+                  <thead>
+                    <tr>
+                      <th>密探</th>
+                      <th>稀有度</th>
+                      <th>属性 / 职业</th>
+                      <th>版本</th>
+                      <th>命盘</th>
+                      <th>星石</th>
+                      <th>SP</th>
+                      <th>目录版本</th>
+                      <th class="ops-col">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="r in filteredRows" :key="r.id">
+                      <td class="cell-op">
+                        <img v-if="r.avatar" class="op-avatar" :src="avatarUrl(r.avatar)" :alt="r.name" loading="lazy" width="34" height="34" />
+                        <span v-else class="op-ph" :class="'s' + Math.min(5, r.rarity || 5)">{{ monogram(r) }}</span>
+                        <span class="op-name">
+                          {{ r.name || r.id }}
+                          <small>{{ r.id }}</small>
+                          <em v-if="r.alias" class="op-alias">{{ r.alias }}</em>
+                        </span>
+                      </td>
+                      <td><span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}★</span></td>
+                      <td class="cell-prof">
+                        <div class="cell-tag-flow">
+                          <span v-for="p in r.prof" :key="'prof-' + p" class="tag-prof" :style="profStyle(p)">{{ p }}</span>
+                          <span v-for="career in r.subProf" :key="'career-' + career" class="tag-subprof">{{ subProfLabel(career) }}</span>
+                          <span v-if="!r.prof.length && !r.subProf.length" class="muted">—</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-tag-flow">
+                          <span v-for="g in r.games" :key="g" class="tag-station">{{ g }}</span>
+                          <span v-if="!r.games.length" class="muted">—</span>
+                        </div>
+                      </td>
+                      <td>{{ r.discs.length }}</td>
+                      <td>{{ r.starStones.length }}</td>
+                      <td><span v-if="r.spOf" class="tag-sp" :title="'本体：' + r.spOf">SP</span><span v-else class="muted">—</span></td>
+                      <td class="cell-ver"><code>{{ r.catalogVersion }}</code><small>{{ fmtTime(r.createdAt) }}</small></td>
+                      <td class="ops-col">
+                        <button class="ops-btn" type="button" @click="openEdit(r)">编辑</button>
+                        <button class="ops-btn danger" type="button" @click="onDelete(r)">删除</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="catalog-mobile" aria-label="密探目录">
+                <article v-for="r in filteredRows" :key="'mobile-' + r.id" class="mobile-entry" :aria-labelledby="'mobile-name-' + r.id">
+                  <div class="mobile-entry-head">
+                    <img v-if="r.avatar" class="mobile-avatar" :src="avatarUrl(r.avatar)" alt="" loading="lazy" width="46" height="46" />
+                    <span v-else class="mobile-avatar op-ph" :class="'s' + Math.min(5, r.rarity || 5)" aria-hidden="true">{{ monogram(r) }}</span>
+                    <div class="mobile-identity">
+                      <h2 :id="'mobile-name-' + r.id">{{ r.name || r.id }}</h2>
+                      <div class="mobile-meta">
+                        <code>{{ r.id }}</code>
+                        <span v-if="r.alias">· {{ r.alias }}</span>
+                      </div>
+                    </div>
+                    <div class="mobile-badges">
+                      <span class="rarity" :class="'s' + Math.min(5, r.rarity || 5)">{{ r.rarity || 5 }}★</span>
+                      <span v-if="r.spOf" class="tag-sp" :title="'本体：' + r.spOf">SP</span>
+                    </div>
+                  </div>
+
+                  <div class="mobile-tags">
+                    <span v-for="p in r.prof" :key="'prof-' + p" class="tag-prof" :style="profStyle(p)">{{ p }}</span>
+                    <span v-for="career in r.subProf" :key="'career-' + career" class="tag-subprof">{{ subProfLabel(career) }}</span>
+                    <span v-for="g in r.games" :key="'game-' + g" class="tag-station">{{ g }}</span>
+                    <span v-if="!r.prof.length && !r.subProf.length && !r.games.length" class="muted">尚未填写属性、职业与版本</span>
+                  </div>
+
+                  <div class="mobile-foot">
+                    <dl class="mobile-data">
+                      <div><dt>命盘</dt><dd>{{ r.discs.length }}</dd></div>
+                      <div><dt>星石</dt><dd>{{ r.starStones.length }}</dd></div>
+                      <div class="mobile-version"><dt>目录</dt><dd :title="r.catalogVersion">{{ r.catalogVersion || '—' }}</dd></div>
+                    </dl>
+
+                    <div class="mobile-actions">
+                      <button class="mobile-edit" type="button" :aria-label="'编辑密探' + (r.name || r.id)" title="编辑" @click="openEdit(r)">
+                        <Pencil :size="17" aria-hidden="true" />
+                      </button>
+                      <button class="mobile-delete" type="button" :aria-label="'删除密探' + (r.name || r.id)" title="删除" @click="onDelete(r)">
+                        <Trash2 :size="18" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </div>
             </div>
           </template>
         </div>
       </section>
 
       <!-- 新增 / 编辑弹窗 -->
-      <div v-if="editing" class="editor-mask" @click.self="closeEditor">
-        <div class="editor-panel" v-reveal>
+      <div v-if="editing" class="editor-mask" @click.self="closeEditor" @keyup.esc="closeEditor">
+        <div class="editor-panel" role="dialog" aria-modal="true" aria-labelledby="catalog-editor-title">
           <div class="editor-head">
             <div>
-              <h3>{{ isNew ? '新增密探' : (form.name || form.id) }}</h3>
+              <h3 id="catalog-editor-title">{{ isNew ? '新增密探' : (form.name || form.id) }}</h3>
               <p class="editor-sub">{{ isNew ? '写入公共图鉴字典，即时对公共图鉴与导入校验生效' : (form.id + ' · 修改会整条覆盖保存' ) }}</p>
             </div>
-            <button class="editor-close" type="button" @click="closeEditor">×</button>
+            <button class="editor-close" type="button" aria-label="关闭编辑器" @click="closeEditor"><X :size="22" aria-hidden="true" /></button>
           </div>
 
           <div class="editor-body">
@@ -133,8 +195,24 @@
                     <option :value="3">3 ★</option>
                   </select>
                 </label>
-                <label>属性（逗号分隔）<input v-model.trim="form.profText" placeholder="阳、阴、混沌…" /></label>
-                <label>下属职业（逗号分隔）<input v-model.trim="form.subProfText" placeholder="shenji，可空" /></label>
+                <fieldset class="multi-field">
+                  <legend>属性 <small>{{ form.profs.length ? '已选 ' + form.profs.length + ' 项' : '可多选' }}</small></legend>
+                  <div class="multi-pick prof-pick">
+                    <label v-for="prof in PROF_OPTIONS" :key="prof" class="prof-option" :class="{ on: form.profs.includes(prof) }" :style="profStyle(prof)">
+                      <input v-model="form.profs" type="checkbox" :value="prof" :aria-label="prof" />
+                      <span>{{ prof }}</span>
+                    </label>
+                  </div>
+                </fieldset>
+                <fieldset class="multi-field">
+                  <legend>职业 <small>{{ form.subProfs.length ? '已选 ' + form.subProfs.length + ' 项' : '可多选' }}</small></legend>
+                  <div class="multi-pick sub-prof-pick">
+                    <label v-for="option in subProfOptions" :key="option.value" :class="{ on: form.subProfs.includes(option.value) }">
+                      <input v-model="form.subProfs" type="checkbox" :value="option.value" />
+                      {{ option.label }}
+                    </label>
+                  </div>
+                </fieldset>
               </div>
             </div>
 
@@ -161,9 +239,9 @@
                     <option value="蓝">蓝</option>
                   </select>
                   <input v-model.trim="d.desp" placeholder="描述" class="sub-desp" />
-                  <button class="sub-del" type="button" @click="form.discs.splice(i, 1)">×</button>
+                  <button class="sub-del" type="button" :aria-label="'删除第 ' + (i + 1) + ' 条命盘'" @click="form.discs.splice(i, 1)"><X :size="18" aria-hidden="true" /></button>
                 </div>
-                <button class="btn ghost mini" type="button" @click="form.discs.push({ ot_name: '', abbreviation: '', color: '金', desp: '' })">＋ 添加命盘</button>
+                <button class="btn ghost mini" type="button" @click="form.discs.push({ ot_name: '', abbreviation: '', color: '金', desp: '' })"><Plus :size="16" aria-hidden="true" />添加命盘</button>
               </div>
             </div>
 
@@ -176,9 +254,9 @@
                     <option value="main">主星石 main</option>
                     <option value="assist">辅星石 assist</option>
                   </select>
-                  <button class="sub-del" type="button" @click="form.starStones.splice(i, 1)">×</button>
+                  <button class="sub-del" type="button" :aria-label="'删除第 ' + (i + 1) + ' 个星石槽'" @click="form.starStones.splice(i, 1)"><X :size="18" aria-hidden="true" /></button>
                 </div>
-                <button class="btn ghost mini" type="button" @click="form.starStones.push({ name: '', type: 'main' })">＋ 添加星石槽</button>
+                <button class="btn ghost mini" type="button" @click="form.starStones.push({ name: '', type: 'main' })"><Plus :size="16" aria-hidden="true" />添加星石槽</button>
                 <p class="hint">目录星石只是「槽位模板」；不展示给公共图鉴，只用于校验用户导入。</p>
               </div>
             </div>
@@ -208,7 +286,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import {
@@ -222,9 +301,11 @@ import {
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
+import { adminCatalogEntries, compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
+import { elementAppearance } from '../../data/inventory/elementColors.js'
 
 const rows = ref([])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 const forbidden = ref('')
 const search = ref('')
@@ -234,7 +315,7 @@ function normalizeRow(r) {
   r = r || {}
   const rawSub = r.sub_prof || r.subProf || []
   return {
-    id: r.id || '',
+    id: r.id || r.operator_id || r.operatorId || '',
     name: r.name || '',
     alias: r.alias || '',
     rarity: r.rarity != null ? r.rarity : 5,
@@ -242,7 +323,7 @@ function normalizeRow(r) {
     subProf: Array.isArray(rawSub) ? rawSub : [],
     games: Array.isArray(r.games) ? r.games : [],
     discs: Array.isArray(r.discs) ? r.discs : [],
-    starStones: Array.isArray(r.star_stones) ? r.star_stones : [],
+    starStones: Array.isArray(r.star_stones) ? r.star_stones : (Array.isArray(r.starStones) ? r.starStones : []),
     spOf: r.sp_of || r.spOf || null,
     avatar: r.avatar || '',
     catalogVersion: r.catalog_version || r.catalogVersion || '',
@@ -285,14 +366,59 @@ const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarInput = ref(null)
 
+const PROF_OPTIONS = ['阳', '阴', '火', '风', '水', '地', '混沌']
+const BASE_SUB_PROF_OPTIONS = [
+  { value: 'shenji', label: '神纪' },
+  { value: 'guidao', label: '诡道' },
+  { value: 'pojun', label: '破军' },
+  { value: 'qihuang', label: '岐黄' },
+  { value: 'longdun', label: '龙盾' }
+]
+const SUB_PROF_CODE_BY_LABEL = Object.fromEntries(BASE_SUB_PROF_OPTIONS.map(function (option) {
+  return [option.label, option.value]
+}))
+const SUB_PROF_LABEL_BY_CODE = Object.fromEntries(BASE_SUB_PROF_OPTIONS.map(function (option) {
+  return [option.value, option.label]
+}))
+
+const subProfOptions = computed(function () {
+  const options = BASE_SUB_PROF_OPTIONS.slice()
+  const known = new Set(options.map(function (option) { return option.value }))
+  form.value.subProfs.forEach(function (value) {
+    if (!known.has(value)) options.push({ value, label: value })
+  })
+  return options
+})
+
+function normalizeSubProfValue(value) {
+  const text = String(value || '').trim()
+  return SUB_PROF_CODE_BY_LABEL[text] || text
+}
+
+function subProfLabel(value) {
+  const text = String(value || '').trim()
+  return SUB_PROF_LABEL_BY_CODE[text] || text
+}
+
+function profStyle(prof) {
+  const appearance = elementAppearance(prof)
+  if (!appearance) return null
+  return {
+    '--element-color': appearance.color,
+    '--element-text-color': appearance.darkInk
+      ? 'color-mix(in srgb, var(--element-color) 40%, var(--ink))'
+      : 'color-mix(in srgb, var(--element-color) 60%, var(--ink))'
+  }
+}
+
 function blankForm() {
   return {
     id: '',
     name: '',
     alias: '',
     rarity: 5,
-    profText: '',
-    subProfText: '',
+    profs: [],
+    subProfs: [],
     games: ['如鸢'],
     spOf: '',
     avatar: '',
@@ -309,8 +435,8 @@ function fillForm(r) {
     name: r.name,
     alias: r.alias || '',
     rarity: r.rarity || 5,
-    profText: r.prof.join('、'),
-    subProfText: r.subProf.join('、'),
+    profs: r.prof.slice(),
+    subProfs: r.subProf.map(normalizeSubProfValue),
     games: (r.games && r.games.length) ? r.games.slice() : ['如鸢'],
     spOf: r.spOf || '',
     avatar: r.avatar || '',
@@ -416,21 +542,14 @@ async function removeAvatar() {
   }
 }
 
-function splitList(text) {
-  return String(text || '')
-    .split(/[,，、]/)
-    .map(function (s) { return s.trim() })
-    .filter(Boolean)
-}
-
 function buildBody() {
   const body = {
     id: form.value.id.trim(),
     name: form.value.name.trim(),
     alias: form.value.alias.trim() || null,
     rarity: Number(form.value.rarity) || 5,
-    prof: splitList(form.value.profText),
-    subProf: splitList(form.value.subProfText),
+    prof: form.value.profs.slice(),
+    subProf: form.value.subProfs.slice(),
     games: form.value.games,
     discs: form.value.discs
       .filter(function (d) { return d.ot_name && d.ot_name.trim() })
@@ -518,7 +637,9 @@ async function load() {
   forbidden.value = ''
   try {
     const data = await listAdminOperatorCatalog()
-    rows.value = Array.isArray(data) ? data.map(normalizeRow) : []
+    const entries = adminCatalogEntries(data)
+    if (entries === null) throw new Error('管理接口响应格式异常，请刷新后重试')
+    rows.value = entries.map(normalizeRow).sort(compareOperatorIdDesc)
   } catch (err) {
     const msg = err && err.message ? err.message : ''
     if (/forbidden|管理|administrator/i.test(msg)) {
@@ -548,27 +669,32 @@ function humanErr(err, fallback) {
   return msg
 }
 
-onMounted(load)
+// 在 setup 阶段立即请求，确保首次渲染直接进入加载态并自动填充列表。
+load()
 </script>
 
 <style scoped>
 /* —— 复用全局 CSS 变量，对齐密探页（operator/index.vue）版式与配色规范 —— */
-.operator-main { padding-bottom: 40px }
+.operator-main { padding-bottom: 0 }
 .page-admin-op .hero::after { content: '管' }
 
 .banner { margin-top: 24px; background: rgba(166, 81, 74, .08) }
 
 .admin-bar { display: flex; align-items: center; gap: 14px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
 .admin-bar .sp { flex: 1 }
-.adm-search { border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; width: 240px; transition: border-color .3s }
-.adm-search:focus { border-color: var(--accent) }
+.adm-search-wrap { width: 280px; min-height: 40px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; color: var(--ink-35); background: var(--paper); transition: border-color .25s, box-shadow .25s }
+.adm-search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
+.adm-search { min-width: 0; flex: 1; border: 0; padding: 9px 0; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: transparent; outline: none }
+.adm-search::placeholder { color: var(--ink-35) }
+.result-count { font-family: var(--font-d); font-size: 12px; font-weight: 700; color: var(--ink-60); white-space: nowrap }
 
 .catalog-table-wrap { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; overflow-x: auto }
-.catalog-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 920px }
+.catalog-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px }
 .catalog-table th { text-align: left; font-family: var(--font-b); font-weight: 800; font-size: 12px; color: var(--ink-60); padding: 10px 12px; border-bottom: 1px dashed var(--line); white-space: nowrap }
 .catalog-table td { padding: 10px 12px; border-bottom: 1px solid rgba(156, 122, 77, .12); vertical-align: middle }
 .catalog-table tbody tr:last-child td { border-bottom: none }
 .catalog-table tbody tr:hover { background: rgba(156, 122, 77, .05) }
+.catalog-mobile { display: none }
 
 .cell-op { min-width: 220px }
 .cell-op { display: flex; align-items: center; gap: 12px }
@@ -593,10 +719,11 @@ onMounted(load)
 .rarity.s3 { color: var(--yellow-deep) }
 .rarity.s4 { color: var(--accent) }
 .rarity.s5 { color: var(--tea) }
-.cell-prof { display: flex; flex-direction: column; gap: 3px; align-items: flex-start }
-.tag-prof { display: inline-block; background: var(--yellow); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 800 }
-.sub-prof { color: var(--ink-35); font-size: 11px }
-.tag-station { display: inline-block; border: 1.5px solid var(--line); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-size: 11px; margin-right: 4px }
+.cell-prof { min-width: 190px }
+.cell-tag-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px }
+.tag-prof { display: inline-block; border: 1px solid var(--element-color, var(--yellow-deep)); border-radius: 6px; padding: 1px 7px 1px 10px; background: var(--surface); color: var(--ink); box-shadow: inset 3px 0 var(--element-color, var(--yellow-deep)); font-size: 11px; font-weight: 800 }
+.tag-subprof { display: inline-block; border: 1px solid var(--yellow-deep); border-radius: 6px; padding: 1px 7px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800 }
+.tag-station { display: inline-block; border: 1.5px solid var(--line); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-size: 11px }
 .tag-sp { display: inline-block; background: var(--tea); color: var(--cream); border-radius: 6px; padding: 1px 8px; font-size: 11px; font-weight: 800 }
 .muted { color: var(--ink-35); font-size: 12px }
 .cell-ver { max-width: 150px }
@@ -614,7 +741,7 @@ onMounted(load)
 .editor-head { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px dashed var(--line); padding-bottom: 14px }
 .editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 22px; letter-spacing: .02em; color: var(--ink) }
 .editor-sub { font-size: 12px; color: var(--ink-60); margin-top: 4px }
-.editor-close { margin-left: auto; background: transparent; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: var(--ink-35); padding: 0 4px }
+.editor-close { flex: none; width: 44px; height: 44px; margin: -8px -8px 0 auto; display: grid; place-items: center; background: transparent; border: none; border-radius: 10px; cursor: pointer; color: var(--ink-35) }
 .editor-close:hover { color: var(--ink) }
 .editor-body { padding: 16px 0 4px; display: flex; flex-direction: column; gap: 16px }
 .editor-row { display: flex; flex-direction: column; gap: 10px }
@@ -624,6 +751,17 @@ onMounted(load)
 .fields-2col input, .fields-2col select, .spof-input { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
 .fields-2col input:focus, .fields-2col select:focus, .spof-input:focus { border-color: var(--accent) }
 .fields-2col input[readonly] { opacity: .55 }
+.multi-field { min-width: 0; grid-column: 1 / -1; border: 0 }
+.multi-field legend { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
+.multi-field legend small { flex: none; color: var(--ink-35); font-size: 11px; font-weight: 600 }
+.multi-pick { display: flex; flex-wrap: wrap; gap: 8px }
+.multi-pick label { min-width: 58px; min-height: 38px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 11px; background: var(--paper); color: var(--ink-60); font-size: 13px; font-weight: 800; cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
+.multi-pick label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
+.multi-pick label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.fields-2col .multi-pick input { flex: none; width: 16px; height: 16px; min-height: 16px; padding: 0; border: 0; background: transparent; accent-color: var(--accent) }
+.multi-pick .prof-option { min-width: 68px; justify-content: flex-start; padding-left: 13px; border-color: var(--line); border-left: 3px solid var(--element-color, var(--yellow-deep)); background: var(--paper); color: var(--element-text-color, var(--ink)) }
+.multi-pick .prof-option.on { border-color: var(--line); border-left-color: var(--element-color, var(--yellow-deep)); background: var(--paper); color: var(--element-text-color, var(--ink)) }
+.multi-pick .prof-option input { accent-color: var(--element-color, var(--accent)) }
 .games-pick { display: flex; gap: 10px }
 .games-pick label { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 12px; font-size: 13px; font-weight: 800; color: var(--ink-60); cursor: pointer; transition: all .25s; background: var(--paper) }
 .games-pick label.on { background: var(--yellow); color: var(--ink); border-color: var(--yellow-deep) }
@@ -638,7 +776,7 @@ onMounted(load)
 .sub-sm { flex: 1; min-width: 80px }
 .sub-desp { flex: 3; min-width: 120px }
 .sub-color { flex: .8; min-width: 76px }
-.sub-del { border: none; background: transparent; color: var(--ink-35); font-size: 18px; cursor: pointer; padding: 0 4px }
+.sub-del { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: none; border-radius: 8px; background: transparent; color: var(--ink-35); cursor: pointer }
 .sub-del:hover { color: var(--rouge) }
 .btn.mini { padding: 6px 12px; font-size: 12px; align-self: flex-start }
 .hint { font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
@@ -656,4 +794,119 @@ onMounted(load)
 
 .state { text-align: center; padding: 40px 20px; color: var(--ink-60); font-size: 13.5px; margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
 .state.err { color: var(--rouge) }
+.state-retry { min-width: 44px; min-height: 28px; margin-left: 6px; padding: 2px 6px; border: 0; background: transparent; color: var(--accent-strong); font: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; cursor: pointer }
+.state-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+
+.admin-bar button:focus-visible,
+.ops-btn:focus-visible,
+.mobile-actions button:focus-visible,
+.editor-panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+
+@media (max-width: 767px) {
+  .page-admin-op .hero-sub { display: none }
+  .page-admin-op .hero h1 { font-size: 34px }
+  .page-admin-op .hero-stats { margin-top: 18px }
+
+  .admin-bar {
+    position: sticky;
+    top: 64px;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    margin: 16px 0 0;
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58);
+  }
+  .admin-bar .sp { display: none }
+  .adm-search-wrap { grid-column: 1 / -1; width: 100%; min-height: 46px; border-radius: 11px }
+  .adm-search { min-height: 44px; padding: 0; font-size: 16px }
+  .result-count { padding-left: 4px; font-size: 12px }
+  .admin-bar .btn { min-height: 44px; padding: 9px 14px }
+
+  .catalog-table-wrap { display: none }
+  .catalog-mobile { display: flex; flex-direction: column; gap: 10px; margin-top: 14px }
+  .mobile-entry {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .mobile-entry-head { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 12px 12px 8px }
+  .mobile-avatar { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; background: var(--paper); border: 1.5px solid var(--line) }
+  .mobile-avatar.op-ph { display: grid; place-items: center; border: 0; font-size: 16px }
+  .mobile-identity { min-width: 0 }
+  .mobile-identity h2 { overflow-wrap: anywhere; font-family: var(--font-s); font-size: 17px; line-height: 1.3; font-weight: 900; letter-spacing: .04em; color: var(--ink) }
+  .mobile-meta { display: flex; min-width: 0; align-items: center; gap: 4px; margin-top: 2px; color: var(--ink-60); font-size: 11px; line-height: 1.4 }
+  .mobile-meta code { min-width: 0; overflow: hidden; color: inherit; font-family: var(--font-d); font-size: inherit; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-meta span { flex: none; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 1px }
+  .mobile-badges .rarity { font-size: 12px }
+
+  .mobile-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px }
+  .mobile-tags .tag-station { background: transparent }
+  .mobile-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 9px; padding: 8px 12px; border-top: 1px dashed var(--line) }
+  .mobile-data { display: grid; grid-template-columns: 44px 44px minmax(0, 1fr); min-width: 0 }
+  .mobile-data > div { min-width: 0; padding: 0 7px; border-right: 1px solid var(--line) }
+  .mobile-data > div:first-child { padding-left: 0 }
+  .mobile-data > div:last-child { border-right: 0 }
+  .mobile-data dt { color: var(--ink-35); font-size: 9.5px; font-weight: 700; line-height: 1.35 }
+  .mobile-data dd { margin-top: 1px; color: var(--ink); font-family: var(--font-d); font-size: 13px; font-weight: 800; line-height: 1.35 }
+  .mobile-version dd { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap }
+
+  .mobile-actions { display: flex; gap: 6px }
+  .mobile-actions button { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; cursor: pointer; touch-action: manipulation }
+  .mobile-edit { border: 0; background: var(--tea); color: var(--cream) }
+  .mobile-delete { border: 1.5px solid rgba(166, 81, 74, .35); background: transparent; color: var(--rouge) }
+  .mobile-actions button:active { opacity: .72 }
+
+  .state { margin-top: 14px; padding: 32px 16px; border-radius: 14px }
+  .state-retry { min-height: 44px }
+
+  .editor-mask { align-items: end; padding: 0 }
+  .editor-panel { width: 100%; max-height: calc(100dvh - env(safe-area-inset-top)); padding: 0; border-width: 1px 0 0; border-radius: 20px 20px 0 0; overscroll-behavior: contain }
+  .editor-head { position: sticky; top: 0; z-index: 3; padding: 16px 16px 12px; background: var(--surface) }
+  .editor-head h3 { font-size: 20px }
+  .editor-sub { padding-right: 4px; font-size: 11.5px; line-height: 1.5 }
+  .editor-body { padding: 16px; gap: 20px }
+  .editor-row { gap: 9px }
+  .editor-label { font-size: 13px }
+  .fields-2col { grid-template-columns: 1fr; gap: 12px }
+  .fields-2col label { font-size: 13px }
+  .fields-2col input,
+  .fields-2col select,
+  .spof-input { width: 100%; min-height: 44px; padding: 9px 11px; font-size: 16px }
+  .multi-field legend { margin-bottom: 8px; font-size: 13px }
+  .multi-field legend small { font-size: 12px }
+  .multi-pick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+  .multi-pick label { min-width: 0; min-height: 44px; padding: 8px 5px; font-size: 13px }
+  .sub-prof-pick { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .games-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+  .games-pick label { min-height: 44px; justify-content: center; padding: 8px }
+  .games-pick + .editor-label { margin-left: 0 !important }
+  .avatar-editor-main { align-items: flex-start; gap: 12px }
+  .avatar-preview,
+  .avatar-placeholder { width: 72px; height: 72px; flex: none }
+  .avatar-actions { min-width: 0; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+  .avatar-actions .btn { width: 100%; min-height: 44px; padding: 8px }
+  .avatar-actions .btn:last-child { grid-column: 1 / -1 }
+  .hint { font-size: 12px; line-height: 1.65 }
+
+  .sub-editor { gap: 10px }
+  .sub-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 8px; padding: 12px 56px 12px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream) }
+  .sub-row input,
+  .sub-row select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 16px }
+  .sub-row .sub-ot,
+  .sub-row .sub-desp { grid-column: 1 / -1; min-width: 0 }
+  .sub-row .sub-sm,
+  .sub-row .sub-color { min-width: 0 }
+  .sub-del { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; color: var(--rouge) }
+  .btn.mini { min-height: 44px; padding: 8px 12px }
+
+  .editor-notice { font-size: 13px; line-height: 1.55 }
+  .editor-actions { position: sticky; bottom: 0; z-index: 3; display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 8px; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); box-shadow: 0 -12px 28px -24px rgba(73, 59, 44, .58) }
+  .editor-actions .btn { min-height: 46px; padding-inline: 10px }
+}
 </style>
