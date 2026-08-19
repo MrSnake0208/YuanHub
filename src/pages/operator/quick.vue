@@ -132,6 +132,24 @@
                 <span class="op-search-count">本页 {{ pageOperators.length }} 位 · 已有数据 {{ hasDataOperators.length }} 位 · 目录 {{ catalogCount }} 位</span>
               </div>
 
+              <!-- 属性 / 从属 筛选（随翻页重置） -->
+              <div class="prof-filter" v-reveal>
+                <div class="pf-row">
+                  <span class="pf-label">属性</span>
+                  <div class="mf-filter">
+                    <button :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
+                    <button v-for="p in profOptions" :key="p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
+                  </div>
+                </div>
+                <div class="pf-row">
+                  <span class="pf-label">从属</span>
+                  <div class="mf-filter">
+                    <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
+                    <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                  </div>
+                </div>
+              </div>
+
               <!-- 分组：无数据密探在前，已有数据的沉底并用分割线隔开 -->
               <template v-if="operatorGroups.length">
                 <template v-for="(g, gi) in operatorGroups" :key="gi">
@@ -152,7 +170,7 @@
                   </ul>
                 </template>
               </template>
-              <div v-else class="state slim">没有匹配「{{ search }}」的密探</div>
+              <div v-else class="state slim">没有匹配{{ filterSuffix }}的密探</div>
 
               <div class="wiz-actions">
                 <button class="btn ghost" type="button" :disabled="importing || stepIndex === 0" @click="goStep(steps[stepIndex - 1].key)">上一步</button>
@@ -191,7 +209,8 @@ import {
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
-import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
+import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
+import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -230,6 +249,10 @@ const stepIndex = ref(0)
 const maxUnlockedStep = ref(0)
 const search = ref('')
 const gameFilter = ref('all')
+const profFilter = ref('all')
+const subProfFilter = ref('all')
+const profOptions = AGENT_PROFS
+const subProfOptions = computed(function () { return deriveSubProfOptions(catalogOperators.value) })
 const accounts = ref([])
 const accountId = ref('')
 const accountsLoading = ref(false)
@@ -316,12 +339,23 @@ const pageOperators = computed(function () {
   const q = search.value.toLowerCase()
   return catalogOperators.value
     .filter(function (op) { return matchesGame(op, gameFilter.value) })
+    .filter(function (op) { return matchesProfSubFilter(op, profFilter.value, subProfFilter.value) })
     .filter(function (op) {
       if (!q) return true
       const hay = [op.name, op.alias, op.id, op.prof, op.subProf].filter(Boolean).join(' ').toLowerCase()
       return hay.indexOf(q) !== -1
     })
     .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'zh') })
+})
+
+// 筛选条件摘要（用于空态提示）
+const filterSuffix = computed(function () {
+  const parts = []
+  if (search.value) parts.push('「' + search.value + '」')
+  if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
+  if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
+  if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  return parts.length ? parts.join(' · ') : ''
 })
 
 // 分组：无数据密探放前面；已有数据的沉底，用分割线隔开（仍跟随搜索 / 版本筛选）
@@ -606,6 +640,8 @@ function goStep(key) {
   if (idx === -1 || idx > maxUnlockedStep.value) return
   stepIndex.value = idx
   search.value = ''
+  profFilter.value = 'all'
+  subProfFilter.value = 'all'
   pageSave.show = false
 }
 
@@ -629,6 +665,8 @@ async function nextStep() {
   maxUnlockedStep.value = Math.max(maxUnlockedStep.value, nextIndex)
   stepIndex.value = nextIndex
   search.value = ''
+  profFilter.value = 'all'
+  subProfFilter.value = 'all'
 }
 
 // —— 数据加载 ——
@@ -885,6 +923,15 @@ onMounted(async function () {
 .op-search-input { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; width: 220px; transition: border-color .3s }
 .op-search-input:focus { border-color: var(--accent) }
 .op-search-count { font-size: 12px; color: var(--ink-35); font-weight: 600 }
+
+/* ---- 属性 / 从属 筛选行 ---- */
+.prof-filter { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px }
+.pf-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.pf-label { flex: none; min-width: 34px; font-size: 12.5px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
+.mf-filter { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 10px; padding: 4px; flex-wrap: wrap }
+.mf-filter button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
+.mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
+.mf-filter button:hover:not(.on) { color: var(--ink) }
 
 /* ---- 密探勾选卡片 ---- */
 .op-list { list-style: none; margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px }

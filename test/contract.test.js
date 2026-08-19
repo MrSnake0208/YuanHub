@@ -119,7 +119,10 @@ test('记录列表游标分页：items/next_cursor', () => {
   assert.match(frontendInventoryPage, /next_cursor/)
   assert.match(backendOperatorRecordPage, /OperatorRecordPageResponse\(val items/)
   assert.match(backendOperatorRecordPage, /nextCursor: String\?/)
-  assert.match(frontendOperatorPage, /next_cursor/)
+  // 密探记录分页在 API 层（operator.js）仍透传 next_cursor；
+  // 运营页已移除「导入记录」tab（见规划决策），页面不再消费该字段。
+  assert.match(frontendOperator, /next_cursor/)
+  assert.doesNotMatch(frontendOperatorPage, /next_cursor/)
 })
 
 test('密探个人数据路径前后端一致', () => {

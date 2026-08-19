@@ -46,7 +46,6 @@
           <div class="operator-tabs" v-reveal>
             <button :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">图鉴</button>
             <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前养成</button>
-            <button :class="{ on: activeTab === 'records' }" @click="setTab('records')">导入记录</button>
             <span class="sp"></span>
             <span class="game-filter">
               版本
@@ -101,6 +100,24 @@
               </div>
             </div>
 
+            <!-- 属性 / 从属 筛选 -->
+            <div class="prof-filter" v-reveal>
+              <div class="pf-row">
+                <span class="pf-label">属性</span>
+                <div class="mf-filter">
+                  <button :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
+                  <button v-for="p in profOptions" :key="p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
+                </div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label">从属</span>
+                <div class="mf-filter">
+                  <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
+                  <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                </div>
+              </div>
+            </div>
+
             <div v-if="catalogLoading" class="state">正在加载密探图鉴…</div>
             <div v-else-if="catalogError && !catalogOperators.length" class="state err">{{ catalogError }}<button class="link" @click="loadCatalog">重试</button></div>
             <div v-else class="backpack" v-reveal>
@@ -109,12 +126,14 @@
                   共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已养成 <b class="bp-num">{{ manifestOwned }}</b> 位 ·
                   未养成 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
                   <template v-if="gameFilter !== 'all'"> · 已按「{{ gameFilter }}」过滤</template>
+                  <template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template>
+                  <template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template>
                   <template v-if="!auth.isLoggedIn"> · 未登录：仅展示图鉴，不显示云端养成</template>
                 </span>
                 <span class="sp"></span>
                 <span v-if="error" class="bp-tip mf-warn">云端养成同步失败：{{ error }}</span>
               </div>
-              <div v-if="manifestEntries.length === 0" class="state slim">没有匹配「{{ manifestSearch }}」的密探</div>
+              <div v-if="manifestEntries.length === 0" class="state slim">没有匹配{{ filterSuffix }}的密探</div>
               <ul v-else class="slot-grid">
                 <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
                   <div class="slot-ic is-agent">
@@ -139,6 +158,24 @@
               <span class="hint">密探名称与目录信息来自统一图鉴，养成数值以最近快照为准</span>
             </div>
 
+            <!-- 属性 / 从属 筛选 -->
+            <div class="prof-filter" v-reveal>
+              <div class="pf-row">
+                <span class="pf-label">属性</span>
+                <div class="mf-filter">
+                  <button :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
+                  <button v-for="p in profOptions" :key="p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
+                </div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-label">从属</span>
+                <div class="mf-filter">
+                  <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
+                  <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                </div>
+              </div>
+            </div>
+
             <div v-if="loading" class="state">正在加载养成状态…</div>
             <div v-else-if="error" class="state err">
               {{ error }}
@@ -150,10 +187,11 @@
             </div>
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
-                <span class="bp-tip">已加载 <b class="bp-num">{{ currentEntries.length }}</b> 位密探 · 版本「{{ gameFilter === 'all' ? '全部' : gameFilter }}」 · 点击密探卡查看命盘与星石</span>
+                <span class="bp-tip">已加载 <b class="bp-num">{{ filteredCurrent.length }}</b> 位密探 · 版本「{{ gameFilter === 'all' ? '全部' : gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template> · 点击密探卡查看命盘与星石</span>
               </div>
-              <ul class="slot-grid">
-                <li v-for="e in currentEntries" :key="e.id" class="slot build-slot" :title="buildTitle(e)">
+              <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ filterSuffix }}的密探</div>
+              <ul v-else class="slot-grid">
+                <li v-for="e in filteredCurrent" :key="e.id" class="slot build-slot" :title="buildTitle(e)">
                   <div class="slot-ic is-agent">
                     <img v-if="avOf(e.id)" class="slot-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
                     <div v-else class="slot-ph">
@@ -173,37 +211,6 @@
             </div>
           </div>
 
-          <!-- 导入记录 -->
-          <div v-show="activeTab === 'records'" class="panel">
-            <div class="records-head" v-reveal>
-              <span class="hint">已加载 {{ recordsList.length }} 条导入记录 · 删除单条后自动重放剩余记录重建养成</span>
-              <span class="sp"></span>
-              <button class="act-btn ghost" :disabled="recordsLoading" @click="loadRecords(true)">刷新</button>
-            </div>
-
-            <div v-if="recordsLoading && recordsList.length === 0" class="state">正在加载记录…</div>
-            <div v-else-if="recordsError" class="state err">{{ recordsError }}</div>
-            <div v-else-if="recordsList.length === 0" class="state">暂无导入记录</div>
-            <template v-else>
-              <ul class="record-list" v-reveal>
-                <li v-for="r in recordsList" :key="r.record_id" class="record">
-                  <div class="record-main">
-                    <div class="record-top">
-                      <span class="rtag rtag-snapshot">快照</span>
-                      <span v-if="r.game" class="rtag rtag-type">{{ r.game }}</span>
-                      <span class="rtag rtag-type">{{ r.snapshot_scope === 'full' ? '全量' : '局部' }}</span>
-                      <span class="rtag effect" :class="'eff-' + r.snapshot_effect">{{ snapshotEffectLabel(r.snapshot_effect) }}</span>
-                      <span class="record-time">{{ fmtTime(r.effective_at) }}</span>
-                    </div>
-                    <div class="record-entries">{{ entrySummary(r.entries) }}</div>
-                    <div class="record-id" :title="r.record_id">{{ r.record_id }}</div>
-                  </div>
-                  <button class="record-del" @click="onDeleteRecord(r)">删除</button>
-                </li>
-              </ul>
-              <button v-if="recordsNextCursor" class="load-more" :disabled="recordsLoading" @click="loadRecords(false)">加载更多</button>
-            </template>
-          </div>
         </div>
       </section>
 
@@ -314,21 +321,24 @@ import {
   renameOperatorAccount,
   deleteOperatorAccount,
   getOperatorCurrent,
-  listOperatorRecords,
-  deleteOperatorRecord,
   importOperator,
   exportOperator
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
-import { AGENT_CATALOG } from '../../data/inventory/catalog.js'
+import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
+import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
 
 const activeTab = ref('catalog')
 const gameFilter = ref('all')
 const manifestSearch = ref('')
 const manifestFilter = ref('all')
+const profFilter = ref('all')
+const subProfFilter = ref('all')
+const profOptions = AGENT_PROFS
+const subProfOptions = computed(function () { return deriveSubProfOptions(catalogOperators.value) })
 const loading = ref(false)
 const catalogLoading = ref(false)
 const error = ref('')
@@ -371,12 +381,6 @@ const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
 const exportAll = ref(false)
-
-// —— 导入记录（游标分页） ——
-const recordsList = ref([])
-const recordsNextCursor = ref(null)
-const recordsLoading = ref(false)
-const recordsError = ref('')
 
 // —— 目录归一化 ——
 function normalizeOperator(op) {
@@ -608,6 +612,27 @@ const currentMap = computed(function () {
   return m
 })
 
+// 图鉴顶部统计口径（不跟随属性/从属/搜索/已养成筛选）：仅按游戏过滤的全量
+const statsEntries = computed(function () {
+  const state = currentMap.value
+  return catalogOperators.value
+    .map(function (op) {
+      const build = state[op.id]
+      const owned = !!(build && (build.level > 0 || build.elite > 0 || build.starLevel > 0))
+      return Object.assign({}, op, { owned: owned })
+    })
+    .filter(function (e) { return matchesGame(e, gameFilter.value) })
+})
+const manifestOwned = computed(function () {
+  return statsEntries.value.filter(function (e) { return e.owned }).length
+})
+const manifestMissing = computed(function () { return statsEntries.value.length - manifestOwned.value })
+const manifestPercent = computed(function () {
+  if (!statsEntries.value.length) return '0%'
+  return Math.round(manifestOwned.value * 100 / statsEntries.value.length) + '%'
+})
+
+// 图鉴展示列表：在全量基础上叠加 属性/从属/搜索/已养成 筛选
 const manifestEntries = computed(function () {
   const state = currentMap.value
   const q = manifestSearch.value.toLowerCase()
@@ -625,6 +650,7 @@ const manifestEntries = computed(function () {
     })
     .filter(function (e) {
       if (!matchesGame(e, gameFilter.value)) return false
+      if (!matchesProfSubFilter(e, profFilter.value, subProfFilter.value)) return false
       if (f === 'owned' && !e.owned) return false
       if (f === 'missing' && e.owned) return false
       if (q) {
@@ -634,13 +660,24 @@ const manifestEntries = computed(function () {
       return true
     })
 })
-const manifestOwned = computed(function () {
-  return manifestEntries.value.filter(function (e) { return e.owned }).length
+
+// 筛选条件摘要（用于空态提示）
+const filterSuffix = computed(function () {
+  const parts = []
+  if (manifestSearch.value) parts.push('「' + manifestSearch.value + '」')
+  if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
+  if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
+  if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  if (manifestFilter.value === 'owned') parts.push('「已养成」')
+  if (manifestFilter.value === 'missing') parts.push('「未养成」')
+  return parts.length ? parts.join(' · ') : ''
 })
-const manifestMissing = computed(function () { return catalogCount.value - manifestOwned.value })
-const manifestPercent = computed(function () {
-  if (!catalogCount.value) return '0%'
-  return Math.round(manifestOwned.value * 100 / catalogCount.value) + '%'
+
+// 当前养成展示列表：叠加 属性/从属 筛选
+const filteredCurrent = computed(function () {
+  return currentEntries.value.filter(function (e) {
+    return matchesProfSubFilter(e, profFilter.value, subProfFilter.value)
+  })
 })
 
 function monogram(e) {
@@ -774,7 +811,6 @@ async function saveEdit() {
     setTimeout(function () {
       closeEditor()
       reloadCurrent()
-      if (activeTab.value === 'records') loadRecords(true)
     }, 800)
   } catch (err) {
     editNotice.value = humanErr(err, '保存失败')
@@ -787,14 +823,10 @@ async function saveEdit() {
 function setTab(t) {
   activeTab.value = t
   if (t === 'current' && currentEntries.value.length === 0) reloadCurrent()
-  if (t === 'records') loadRecords(true)
 }
 
 function onGameChange() {
   currentEntries.value = []
-  recordsList.value = []
-  recordsNextCursor.value = null
-  if (activeTab.value === 'records') loadRecords(true)
   reloadCurrent()
 }
 
@@ -833,11 +865,8 @@ async function loadAccounts() {
 
 function onAccountChange() {
   currentEntries.value = []
-  recordsList.value = []
-  recordsNextCursor.value = null
   error.value = ''
   reloadCurrent()
-  if (activeTab.value === 'records') loadRecords(true)
 }
 
 async function onCreateAccount(rawName) {
@@ -936,7 +965,7 @@ async function reloadCurrent(quiet) {
     })
     currentEntries.value = Object.keys(combined).map(function (id) {
       const op = catalogMap.value[id] || {}
-      return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '', games: op.games || [] }, combined[id])
+      return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '', subProf: op.subProf || '', games: op.games || [] }, combined[id])
     }).filter(function (e) {
       return matchesGame(e, gameFilter.value)
     }).sort(function (a, b) {
@@ -1046,75 +1075,6 @@ async function doExport() {
   }
 }
 
-// —— 导入记录 ——
-async function loadRecords(reset) {
-  if (!accountId.value) {
-    recordsList.value = []
-    recordsError.value = '请先创建并选择一个子账号'
-    recordsLoading.value = false
-    return
-  }
-  recordsLoading.value = true
-  if (reset) recordsError.value = ''
-  try {
-    const cursor = reset ? null : recordsNextCursor.value
-    const game = gameFilter.value === 'all' ? undefined : gameFilter.value
-    const page = await listOperatorRecords({
-      accountId: accountId.value,
-      game: game,
-      cursor: cursor,
-      limit: 50
-    })
-    const items = (page && Array.isArray(page.items)) ? page.items : []
-    recordsList.value = reset ? items : recordsList.value.concat(items)
-    recordsNextCursor.value = (page && page.next_cursor) ? page.next_cursor : null
-  } catch (err) {
-    recordsError.value = humanErr(err, '加载记录失败')
-  } finally {
-    recordsLoading.value = false
-  }
-}
-
-async function onDeleteRecord(rec) {
-  const rid = rec && rec.record_id
-  if (!rid) return
-  const ok = await dialog.confirm({
-    title: '删除导入记录',
-    message: '删除记录「' + rid + '」？删除后将重放剩余记录重建养成，此操作不可恢复。',
-    type: 'danger',
-    confirmText: '删除'
-  })
-  if (!ok) return
-  try {
-    await deleteOperatorRecord(rid, accountId.value)
-    await loadRecords(true)
-    await reloadCurrent()
-  } catch (err) {
-    await dialog.alert({ title: '删除失败', message: humanErr(err, '删除失败') })
-  }
-}
-
-function snapshotEffectLabel(eff) {
-  if (eff === 'applied') return '已生效'
-  if (eff === 'superseded') return '已归档'
-  return eff || '未知'
-}
-
-function fmtTime(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
-
-function entrySummary(entries) {
-  const list = entries || []
-  return list.map(function (e) {
-    const star = e.starLevel != null ? e.starLevel : (e.star_level != null ? e.star_level : 0)
-    return (e.name || e.id) + ' Lv' + e.level + ' ' + starLabel(star)
-  }).join('、')
-}
-
 function humanErr(err, fallback) {
   if (!err) return fallback
   const msg = err.message
@@ -1140,9 +1100,6 @@ onMounted(async function () {
 /* ---- 统一子账号：选择/管理已抽到共用组件 AccountWorkspace.vue ---- */
 .export-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-60); cursor: pointer; white-space: nowrap }
 .export-all input { accent-color: var(--accent); cursor: pointer }
-.load-more { display: block; margin: 16px auto 0; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 26px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease) }
-.load-more:hover:not(:disabled) { border-color: var(--ink); background: var(--cream) }
-.load-more:disabled { opacity: .45; cursor: not-allowed }
 
 .operator-tabs { display: flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 14px; padding: 4px; margin-top: 40px; flex-wrap: wrap; align-items: center }
 .operator-tabs button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 14px; padding: 10px 26px; border-radius: 10px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
@@ -1182,10 +1139,16 @@ onMounted(async function () {
 .manifest-bar .sp { flex: 1 }
 .mf-search { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; width: 180px; transition: border-color .3s }
 .mf-search:focus { border-color: var(--accent) }
-.mf-filter { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 10px; padding: 4px }
+.mf-filter { display: inline-flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 10px; padding: 4px; flex-wrap: wrap }
 .mf-filter button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
 .mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
 .mf-filter button:hover:not(.on) { color: var(--ink) }
+
+/* ---- 属性 / 从属 筛选行 ---- */
+.prof-filter { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px }
+.pf-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.pf-label { flex: none; min-width: 34px; font-size: 12.5px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
+
 .mf-warn { color: var(--rouge) }
 .state.slim { padding: 26px 20px; margin-top: 14px; border-radius: 14px }
 
@@ -1253,29 +1216,6 @@ onMounted(async function () {
 
 .build-slot .build-line { margin-top: 4px; align-self: center; font-size: 11px; color: var(--ink-60); font-weight: 700; line-height: 1.4 }
 .build-slot .build-line.small { font-size: 10.5px; color: var(--ink-35) }
-
-/* ---- 导入记录 ---- */
-.records-head { display: flex; align-items: center; gap: 12px }
-.records-head .hint { font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
-.records-head .sp { flex: 1 }
-.record-list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 10px }
-.record {
-  display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 14px 18px; transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .3s;
-}
-.record:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -20px rgba(73, 59, 44, .26); border-color: rgba(73, 59, 44, .22) }
-.record-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px }
-.record-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
-.rtag { font-size: 11px; font-weight: 700; border-radius: 7px; padding: 2px 10px; letter-spacing: .03em; white-space: nowrap }
-.rtag.rtag-snapshot { border: 1.5px solid var(--brand-blue); color: var(--brand-blue); background: transparent }
-.rtag.rtag-type { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
-.rtag.effect { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60) }
-.rtag.effect.eff-superseded { color: var(--rouge); border-color: rgba(166, 81, 74, .4) }
-.record-time { font-family: var(--font-d); font-size: 11.5px; color: var(--ink-35); margin-left: auto }
-.record-entries { font-size: 13px; color: var(--ink); line-height: 1.7 }
-.record-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.record-del { flex: none; border: 1.5px solid rgba(166, 81, 74, .35); background: rgba(166, 81, 74, .06); color: var(--rouge); border-radius: 10px; padding: 7px 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s }
-.record-del:hover { background: rgba(166, 81, 74, .16) }
 
 /* ---- 单个密探编辑弹窗 ---- */
 .editor-mask { position: fixed; inset: 0; z-index: 100; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 24px }
