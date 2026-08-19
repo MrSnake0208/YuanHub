@@ -28,7 +28,7 @@
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
               <span class="ac-label">密探子账号</span>
-              <select v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || importing" @change="onAccountChange">
+              <select id="quick-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || importing" @change="onAccountChange">
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
               </select>
@@ -36,7 +36,7 @@
             </div>
             <span class="ac-sel">
               <span class="ac-label">版本</span>
-              <select v-model="gameFilter" :disabled="importing">
+              <select id="quick-game" v-model="gameFilter" :disabled="importing" @change="onGameChange">
                 <option value="all">全部（通用）</option>
                 <option value="如鸢">如鸢</option>
                 <option value="代号鸢">代号鸢</option>
@@ -51,7 +51,11 @@
             请先登录后再使用快捷导入
             <router-link class="link" to="/login">去登录</router-link>
           </div>
-          <div v-else-if="catalogLoading" class="state" v-reveal>正在加载密探图鉴…</div>
+          <div v-else-if="accountsLoading || catalogLoading" class="state" v-reveal>正在加载快捷导入数据…</div>
+          <div v-else-if="!accounts.length" class="state err" v-reveal>
+            尚未创建密探子账号，请先返回密探页创建
+            <router-link class="link" to="/operator">去创建</router-link>
+          </div>
           <div v-else-if="catalogError && !catalogOperators.length" class="state err" v-reveal>
             {{ catalogError }}<button class="link" @click="loadCatalog">重试</button>
           </div>
@@ -64,8 +68,9 @@
                 :key="s.key"
                 type="button"
                 class="step"
-                :class="{ on: s.key === currentKey, done: isStepDone(s.key) }"
-                :disabled="importing"
+                :class="{ on: s.key === currentKey, done: isStepDone(s.key), locked: !isStepUnlocked(s.key) }"
+                :disabled="importing || !isStepUnlocked(s.key)"
+                :title="isStepUnlocked(s.key) ? s.title : '请先在上一步点击“下一步”解锁'"
                 @click="goStep(s.key)"
               >
                 <span class="step-no">{{ steps.indexOf(s) + 1 }}</span>
@@ -86,12 +91,12 @@
                 <div class="batch-fields">
                   <label class="bf">
                     <span>修为</span>
-                    <input type="number" v-model.number="pageForm.elite" min="0" :max="OPERATOR_ELITE_MAX" :disabled="importing" />
+                    <input name="elite" type="number" v-model.number="pageForm.elite" min="0" :max="maxEliteHint" :disabled="importing" @change="normalizePageForm" />
                     <i>/{{ OPERATOR_ELITE_MAX }}</i>
                   </label>
                   <label class="bf">
                     <span>等级</span>
-                    <input type="number" v-model.number="pageForm.level" min="0" max="100" :disabled="importing" />
+                    <input name="level" type="number" v-model.number="pageForm.level" min="0" max="100" :disabled="importing" @change="normalizePageForm" />
                     <i>/100</i>
                   </label>
                   <span v-if="!isAwaken" class="bf node">
@@ -124,7 +129,7 @@
               <ul v-else class="op-list">
                 <li v-for="op in pageOperators" :key="op.id" class="op-col">
                   <label class="op-card" :class="{ on: isChecked(op.id) }">
-                    <input type="checkbox" class="op-check" :value="op.id" v-model="checkedByKey[currentKey]" :disabled="importing" />
+                    <input type="checkbox" class="op-check" :checked="isChecked(op.id)" :disabled="importing" @change="toggleOperator(op.id, $event)" />
                     <span class="op-ph">{{ monogram(op) }}</span>
                     <span class="op-meta">
                       <span class="op-name">{{ op.name }}</span>
@@ -252,6 +257,7 @@ const steps = starSteps.concat([{ key: 'confirm', nav: '确认', title: '确认�
 
 // —— 页面状态 ——
 const stepIndex = ref(0)
+const maxUnlockedStep = ref(0)
 const search = ref('')
 const gameFilter = ref('all')
 const accounts = ref([])
@@ -266,6 +272,7 @@ const currentEntries = ref([])
 const importing = ref(false)
 const importResult = ref(null)
 const importError = ref('')
+let currentLoadToken = 0
 
 // 每页：勾选集合 + 批量表单（修为 / 等级 / 节点）
 const checkedByKey = reactive({ '1': [], '2': [], '3': [], '4': [], '5': [], awaken: [] })
@@ -386,15 +393,111 @@ function isStepDone(key) {
   return (checkedByKey[key] || []).length > 0
 }
 
+function isStepUnlocked(key) {
+  const idx = steps.findIndex(function (s) { return s.key === key })
+  return idx !== -1 && idx <= maxUnlockedStep.value
+}
+
 function countOf(key) {
   return (checkedByKey[key] || []).length
 }
 
+function stepLabel(key) {
+  const step = starSteps.find(function (s) { return s.key === key })
+  return step ? step.nav : key
+}
+
+function previousStepFor(id, keepKey) {
+  for (const s of starSteps) {
+    if (s.key === keepKey) continue
+    if ((checkedByKey[s.key] || []).indexOf(id) !== -1) return s.key
+  }
+  return ''
+}
+
+function confirmOverwrite(names, fromKey, toKey) {
+  if (!names.length) return true
+  const shown = names.slice(0, 5).join('、')
+  const suffix = names.length > 5 ? '等 ' + names.length + ' 位密探' : ''
+  return window.confirm(
+    (names.length === 1 ? names[0] : shown + suffix) +
+    '已在' + stepLabel(fromKey) + '选择，是否覆盖到' + stepLabel(toKey) + '？'
+  )
+}
+
+function hasExistingData(id) {
+  const entry = currentMap.value[id]
+  return !!entry && (Number(entry.level) > 0 || Number(entry.elite) > 0 || Number(entry.starLevel) > 0 ||
+    (Array.isArray(entry.discs) && entry.discs.length > 0) ||
+    (Array.isArray(entry.starStones) && entry.starStones.length > 0))
+}
+
+function confirmExistingData(id, key) {
+  if (!hasExistingData(id)) return true
+  const op = catalogMap.value[id]
+  const entry = currentMap.value[id]
+  const name = op ? op.name || id : id
+  const detail = entry ? '（已有 Lv' + (entry.level || 0) + ' · 修为 ' + (entry.elite || 0) + ' · ' + (starLabelOf(entry.starLevel) || '已有养成数据') + '）' : ''
+  return window.confirm(name + detail + '，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。')
+}
+
+function removeFromOtherSteps(ids, keepKey) {
+  const idSet = new Set(ids)
+  starSteps.forEach(function (s) {
+    if (s.key === keepKey) return
+    checkedByKey[s.key] = (checkedByKey[s.key] || []).filter(function (id) { return !idSet.has(id) })
+  })
+}
+
+function toggleOperator(id, event) {
+  const checkbox = event && event.target
+  const checked = !!(checkbox && checkbox.checked)
+  const key = currentKey.value
+  const cur = checkedByKey[key] || []
+  if (checked) {
+    if (cur.indexOf(id) !== -1) return
+    const fromKey = previousStepFor(id, key)
+    const name = catalogMap.value[id] ? catalogMap.value[id].name || id : id
+    if (fromKey && !confirmOverwrite([name], fromKey, key)) {
+      // 原生 checkbox 会先切换状态再触发 change；取消覆盖时需立即恢复视觉状态。
+      checkbox.checked = false
+      return
+    }
+    if (!confirmExistingData(id, key)) {
+      checkbox.checked = false
+      return
+    }
+    removeFromOtherSteps([id], key)
+    checkedByKey[key] = cur.concat(id)
+  } else {
+    checkedByKey[key] = cur.filter(function (item) { return item !== id })
+  }
+}
+
 function selectAllPage() {
+  const key = currentKey.value
+  const cur = checkedByKey[key] || []
   const ids = pageOperators.value.map(function (op) { return op.id })
-  const cur = checkedByKey[currentKey.value] || []
-  const merged = ids.concat(cur)
-  checkedByKey[currentKey.value] = Array.from(new Set(merged))
+  const conflicts = ids.filter(function (id) { return !!previousStepFor(id, key) })
+  if (conflicts.length) {
+    const preview = conflicts.slice(0, 5).map(function (id) {
+      const op = catalogMap.value[id]
+      return (op ? op.name || id : id) + '（' + stepLabel(previousStepFor(id, key)) + '）'
+    }).join('、')
+    const suffix = conflicts.length > 5 ? '等 ' + conflicts.length + ' 位密探' : ''
+    if (!window.confirm(preview + suffix + '已在其他星级选择，是否覆盖到' + stepLabel(key) + '？')) return
+  }
+  const existing = ids.filter(function (id) { return !conflicts.includes(id) && hasExistingData(id) })
+  if (existing.length) {
+    const names = existing.slice(0, 5).map(function (id) {
+      const op = catalogMap.value[id]
+      return op ? op.name || id : id
+    }).join('、')
+    const suffix = existing.length > 5 ? '等 ' + existing.length + ' 位密探' : ''
+    if (!window.confirm(names + suffix + '已有养成数据，是否覆盖为' + stepLabel(key) + '的设置？\n已有的命盘和星石会继续保留。')) return
+  }
+  removeFromOtherSteps(ids, key)
+  checkedByKey[key] = Array.from(new Set(cur.concat(ids)))
 }
 
 function clearPage() {
@@ -436,6 +539,14 @@ const maxEliteHint = computed(function () {
 
 function clampInt(v, max) {
   return Math.max(0, Math.min(max, Math.trunc(Number(v) || 0)))
+}
+
+function normalizePageForm() {
+  const f = formByKey[currentKey.value]
+  if (!f) return
+  f.level = clampInt(f.level, OPERATOR_LEVEL_MAX)
+  f.elite = clampInt(f.elite, getMaxEliteForLevel(f.level))
+  f.node = clampInt(f.node, NODE_RANGE[NODE_RANGE.length - 1])
 }
 
 function starLabelForStep(s, node) {
@@ -500,13 +611,16 @@ const accountName = computed(function () {
 // —— 导航 ——
 function goStep(key) {
   const idx = steps.findIndex(function (s) { return s.key === key })
-  if (idx === -1) return
+  if (idx === -1 || idx > maxUnlockedStep.value) return
   stepIndex.value = idx
   search.value = ''
 }
 
 function nextStep() {
-  if (stepIndex.value < steps.length - 1) stepIndex.value += 1
+  if (stepIndex.value >= steps.length - 1) return
+  const nextIndex = stepIndex.value + 1
+  maxUnlockedStep.value = Math.max(maxUnlockedStep.value, nextIndex)
+  stepIndex.value = nextIndex
   search.value = ''
 }
 
@@ -552,14 +666,23 @@ function onAccountChange() {
   reloadCurrent()
 }
 
+function onGameChange() {
+  currentEntries.value = []
+  reloadCurrent()
+}
+
 async function reloadCurrent() {
+  const loadToken = ++currentLoadToken
   if (!auth.isLoggedIn || !accountId.value) {
     currentEntries.value = []
     return
   }
+  const requestedAccountId = accountId.value
+  const requestedGame = gameFilter.value
   try {
-    const game = gameFilter.value === 'all' ? undefined : gameFilter.value
-    const data = await getOperatorCurrent({ accountId: accountId.value, game: game })
+    const game = requestedGame === 'all' ? undefined : requestedGame
+    const data = await getOperatorCurrent({ accountId: requestedAccountId, game: game })
+    if (loadToken !== currentLoadToken) return
     const list = Array.isArray(data) ? data : (data ? [data] : [])
     const combined = {}
     list.forEach(function (doc) {
@@ -572,8 +695,8 @@ async function reloadCurrent() {
       return Object.assign({ id: id }, combined[id])
     })
   } catch (_err) {
-    // 养成加载失败不阻塞快捷导入，仅“已有”标记缺失
-    currentEntries.value = []
+    // 养成加载失败不阻塞快捷导入，仅“已有”标记缺失；过期请求不得覆盖新选择。
+    if (loadToken === currentLoadToken) currentEntries.value = []
   }
 }
 
@@ -634,7 +757,12 @@ function resetAll() {
   importResult.value = null
   importError.value = ''
   stepIndex.value = 0
-  starSteps.forEach(function (s) { checkedByKey[s.key] = [] })
+  maxUnlockedStep.value = 0
+  search.value = ''
+  starSteps.forEach(function (s) {
+    checkedByKey[s.key] = []
+    Object.assign(formByKey[s.key], { elite: 0, level: 0, node: 0 })
+  })
 }
 
 function goBack() { router.push('/operator') }
@@ -682,18 +810,23 @@ onMounted(async function () {
 .act-btn:disabled { opacity: .45; cursor: not-allowed }
 
 /* ---- 步骤条 ---- */
-.stepper { display: flex; gap: 8px; margin-top: 40px; flex-wrap: wrap }
+.stepper {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 40px;
+  overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
 .step {
-  display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface);
-  color: var(--ink-60); border-radius: 999px; padding: 7px 16px 7px 8px; font-family: var(--font-b);
-  font-weight: 800; font-size: 13.5px; cursor: pointer; transition: all .3s var(--ease);
+  min-width: 0; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-60); border-radius: 14px;
+  padding: 7px 10px 7px 7px; font-family: var(--font-b); font-weight: 800; font-size: 13.5px;
+  cursor: pointer; transition: all .3s var(--ease);
 }
 .step:disabled { opacity: .45; cursor: not-allowed }
+.step.locked { background: var(--paper); border-style: dashed }
 .step .step-no {
   width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-d);
   font-size: 12px; font-weight: 900; background: var(--paper); border: 1.5px solid var(--line); color: var(--ink-60);
 }
-.step .step-txt { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.25 }
+.step .step-txt { min-width: 0; display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.25; white-space: nowrap }
 .step .step-txt small { font-size: 10px; font-family: var(--font-d); font-weight: 700; color: var(--ink-35) }
 .step.done { border-color: var(--yellow-deep); background: var(--yellow) }
 .step.done .step-no { border-color: var(--yellow-deep); background: var(--surface) }
@@ -796,10 +929,15 @@ onMounted(async function () {
 .hero-stats div.is-authed .k { font-size: 12px; letter-spacing: .12em; font-weight: 700; color: rgba(73, 59, 44, .65) }
 .hero-stats div.is-authed .v small { font-family: var(--font-b); font-size: 14px; font-weight: 700 }
 
+@media (max-width: 900px) {
+  .stepper { grid-template-columns: repeat(7, minmax(104px, 1fr)); scroll-snap-type: x proximity }
+  .step { scroll-snap-align: start }
+}
+
 @media (max-width: 640px) {
   .wiz-card { padding: 16px 14px 18px }
   .op-list { grid-template-columns: repeat(auto-fill, minmax(142px, 1fr)) }
   .op-search-input { width: 100% }
-  .step { font-size: 12.5px; padding: 6px 12px 6px 6px }
+  .step { font-size: 12.5px; padding: 6px 10px 6px 6px }
 }
 </style>
