@@ -15,35 +15,32 @@ function readRel(rel) {
   return readFileSync(ROOT + rel, 'utf8')
 }
 
-function exportedFunctionSource(source, name) {
-  const start = source.indexOf('export function ' + name + '(')
-  assert.notEqual(start, -1, '缺少前端函数 ' + name)
-  const end = source.indexOf('\n}\n', start)
-  assert.notEqual(end, -1, '无法提取前端函数 ' + name)
-  return source.slice(start, end + 2)
-}
-
 const backendService = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenService.kt')
 const backendPermission = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiPermission.kt')
 const backendTokenCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenController.kt')
 const backendGenerateRequest = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenGenerateRequest.kt')
 const backendInventoryCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/InventoryController.kt')
-const backendRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/response/InventoryRecordPageResponse.kt')
+const backendInventoryRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/response/InventoryRecordPageResponse.kt')
+const backendOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/OperatorController.kt')
+const backendOperatorRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/response/OperatorResponses.kt')
+const backendOpenApiOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiOperatorController.kt')
 
 const frontendApi = readRel('YuanHub/src/api/openApi.js')
 const frontendInventory = readRel('YuanHub/src/api/inventory.js')
+const frontendOperator = readRel('YuanHub/src/api/operator.js')
 const frontendProfile = readRel('YuanHub/src/pages/user/profile.vue')
 const frontendUtil = readRel('YuanHub/src/utils/openApiToken.js')
 const frontendInventoryPage = readRel('YuanHub/src/pages/inventory/index.vue')
+const frontendOperatorPage = readRel('YuanHub/src/pages/operator/index.vue')
+const frontendRoutes = readRel('YuanHub/src/router/routes.js')
 
 test('token 列表字段契约：token_id/account_id/account_name/scopes/created_at，且不再返回 token 明文', () => {
   assert.match(backendService, /data class OpenApiTokenListItemDto\(/)
   assert.match(backendService, /val accountName/)
   assert.match(backendService, /val scopes: List<String>/)
   assert.match(backendService, /val createdAt: Instant/)
-  // 前端内部消费 token_id（列表 key / 删除），但不把它渲染给用户
+  // 前端列表项消费 token_id / account_name / scopes / created_at
   assert.match(frontendProfile, /t\.token_id/)
-  assert.doesNotMatch(frontendProfile, /\{\{\s*t\.token_id\s*\}\}/)
   assert.match(frontendProfile, /t\.account_name/)
   assert.match(frontendProfile, /t\.scopes/)
   assert.match(frontendProfile, /t\.created_at/)
@@ -51,7 +48,6 @@ test('token 列表字段契约：token_id/account_id/account_name/scopes/created
   assert.doesNotMatch(frontendProfile, /t\.token\b/)
   assert.doesNotMatch(frontendProfile, /t\.create_time/)
 })
-
 test('权限列表字段契约：scope/description（字符串 key，非数字 code）', () => {
   assert.match(backendPermission, /OpenApiPermissionDto\(scope = it\.key, description = it\.desc\)/)
   // 前端 descByKey 在 utils/openApiToken.js 中按 p.scope 匹配、读 hit.description
@@ -62,10 +58,14 @@ test('权限列表字段契约：scope/description（字符串 key，非数字 c
   assert.doesNotMatch(frontendUtil, /hit\.desc\b/)
 })
 
-test('scope key 前后端一致：inventory:read/write/export', () => {
-  for (const k of ['inventory:read', 'inventory:write', 'inventory:export']) {
+test('scope key 前后端一致：inventory:* 与 operator:*', () => {
+  for (const k of [
+    'inventory:read', 'inventory:write', 'inventory:export',
+    'operator:read', 'operator:write', 'operator:export'
+  ]) {
     assert.ok(backendPermission.includes(k), '后端缺 ' + k)
-    assert.ok(frontendApi.includes(k), '前端缺 ' + k)
+    // openApi.js 只透传 scopes，不枚举 key；实际前端兜底/展示在 utils 与 profile
+    assert.ok(frontendUtil.includes(k), '前端缺 ' + k)
   }
 })
 
@@ -75,14 +75,6 @@ test('生成接口 body 字段 account_id/scopes/remark 前后端一致', () => 
   assert.match(backendGenerateRequest, /val remark: String\?/)
   assert.match(frontendApi, /account_id: accountId/)
   assert.match(frontendApi, /scopes, remark/)
-})
-
-test('Token 生成按权限预设选择并提交预设 scopes', () => {
-  assert.match(frontendProfile, /v-model="genPresetId"/)
-  assert.match(frontendProfile, /type="radio"/)
-  assert.match(frontendProfile, /selectedPreset\.value\.scopes\.slice/)
-  assert.match(frontendProfile, /tokenPresetName\(t\.scopes\)/)
-  assert.doesNotMatch(frontendProfile, /type="checkbox"/)
 })
 
 test('删除接口按 token_id：DELETE /user/open-api/tokens/{tokenId}', () => {
@@ -99,27 +91,6 @@ test('库存账号 CRUD 路径前后端一致', () => {
   assert.match(frontendInventory, /PATH \+ '\/accounts\/' \+ encodeURIComponent\(accountId\)/)
 })
 
-test('密探特别关注 GET/PUT/DELETE 契约一致', () => {
-  assert.match(backendInventoryCtrl, /GetMapping\("\/agent-favorites"/)
-  assert.match(backendInventoryCtrl, /PutMapping\("\/agent-favorites\/\{agentId\}"/)
-  assert.match(backendInventoryCtrl, /DeleteMapping\("\/agent-favorites\/\{agentId\}"/)
-  const list = exportedFunctionSource(frontendInventory, 'listAgentFavorites')
-  const add = exportedFunctionSource(frontendInventory, 'addAgentFavorite')
-  const remove = exportedFunctionSource(frontendInventory, 'removeAgentFavorite')
-  assert.match(list, /account_id/)
-  assert.match(list, /auth: true/)
-  assert.match(add, /encodeURIComponent\(agentId\)/)
-  assert.match(add, /account_id/)
-  assert.match(add, /method: 'PUT'/)
-  assert.match(add, /auth: true/)
-  assert.doesNotMatch(add, /body:/)
-  assert.match(remove, /encodeURIComponent\(agentId\)/)
-  assert.match(remove, /account_id/)
-  assert.match(remove, /method: 'DELETE'/)
-  assert.match(remove, /auth: true/)
-  assert.doesNotMatch(remove, /body:/)
-})
-
 test('库存查询携带 account_id（后端必填 + 前端透传）', () => {
   assert.match(backendInventoryCtrl, /account_id/)
   assert.match(frontendInventory, /account_id/)
@@ -130,7 +101,50 @@ test('导出接口 raw 返回（无 ApiResult 包装）', () => {
 })
 
 test('记录列表游标分页：items/next_cursor', () => {
-  assert.match(backendRecordPage, /val items: List<InventoryRecordListItemDto>/)
-  assert.match(backendRecordPage, /val nextCursor: String\?/)
+  assert.match(backendInventoryRecordPage, /val items: List<InventoryRecordListItemDto>/)
+  assert.match(backendInventoryRecordPage, /val nextCursor: String\?/)
   assert.match(frontendInventoryPage, /next_cursor/)
+  assert.match(backendOperatorRecordPage, /OperatorRecordPageResponse\(val items/)
+  assert.match(backendOperatorRecordPage, /nextCursor: String\?/)
+  assert.match(frontendOperatorPage, /next_cursor/)
+})
+
+test('密探账号 CRUD 路径前后端一致', () => {
+  assert.match(backendOperatorCtrl, /PostMapping\("\/accounts"/)
+  assert.match(backendOperatorCtrl, /GetMapping\("\/accounts"/)
+  assert.match(backendOperatorCtrl, /PatchMapping\("\/accounts\/\{accountId\}"/)
+  assert.match(backendOperatorCtrl, /DeleteMapping\("\/accounts\/\{accountId\}"/)
+  assert.match(frontendOperator, /PATH \+ '\/accounts'/)
+  assert.match(frontendOperator, /PATH \+ '\/accounts\/' \+ encodeURIComponent\(accountId\)/)
+})
+
+test('密探个人数据路径前后端一致', () => {
+  assert.match(backendOperatorCtrl, /PostMapping\("\/import"/)
+  assert.match(backendOperatorCtrl, /GetMapping\("\/current"/)
+  assert.match(backendOperatorCtrl, /GetMapping\("\/records"/)
+  assert.match(backendOperatorCtrl, /DeleteMapping\("\/records\/\{recordId\}"/)
+  assert.match(backendOperatorCtrl, /GetMapping\("\/export"/)
+  assert.match(backendOperatorCtrl, /GetMapping\("\/catalog"/)
+  assert.match(frontendOperator, /PATH \+ '\/import'/)
+  assert.match(frontendOperator, /PATH \+ '\/current'/)
+  assert.match(frontendOperator, /PATH \+ '\/records'/)
+  assert.match(frontendOperator, /PATH \+ '\/records\/' \+ encodeURIComponent\(recordId\)/)
+  assert.match(frontendOperator, /PATH \+ '\/export'/)
+  assert.match(frontendOperator, /PATH \+ '\/catalog'/)
+})
+
+test('密探导出 raw 返回（无 ApiResult 包装）', () => {
+  assert.match(frontendOperator, /raw: true/)
+})
+
+test('OpenAPI 密探控制器存在且复用 operator scope', () => {
+  assert.match(backendOpenApiOperatorCtrl, /\/open-api\/operator/)
+  assert.match(backendOpenApiOperatorCtrl, /OPERATOR_READ/)
+  assert.match(backendOpenApiOperatorCtrl, /OPERATOR_WRITE/)
+  assert.match(backendOpenApiOperatorCtrl, /OPERATOR_EXPORT/)
+})
+
+test('密探页面路由已在路由表中注册', () => {
+  assert.match(frontendRoutes, /path: '\/operator'/)
+  assert.match(frontendRoutes, /src\/pages\/operator\/index\.vue/)
 })

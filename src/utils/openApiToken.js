@@ -1,16 +1,6 @@
 // 第三方 API Token 纯函数（scope 解析 + 描述映射 + 时间格式化）
 // 从 profile.vue 抽离，便于单测与复用；无副作用、无依赖。
 
-// 前端只向用户暴露权限预设，底层 scope 由预设统一维护。
-export const OPEN_API_TOKEN_PRESETS = Object.freeze([
-  Object.freeze({
-    id: 'guangling-storehouse',
-    name: '广陵库房',
-    description: '库存读取、写入与导出',
-    scopes: Object.freeze(['inventory:read', 'inventory:write', 'inventory:export'])
-  })
-])
-
 // 后端 scopes 字段为稳定字符串 key 数组（如 ['inventory:read'] 或
 // ['inventory:read','inventory:export']），此处统一归一为数组。
 export function scopeKeys(scope) {
@@ -18,7 +8,6 @@ export function scopeKeys(scope) {
   if (scope == null || scope === '') return []
   return [scope]
 }
-
 // 按 key 查描述：优先后端权限列表（{ scope, description }），
 // 其次兜底映射，最后返回 key 本身。
 export function descByKey(key, permissions, fallback = {}) {
@@ -35,32 +24,48 @@ export function scopeDesc(scope, permissions, fallback = {}) {
   return keys.map(function (k) { return descByKey(k, permissions, fallback) }).join('、')
 }
 
-// scope 顺序不影响预设匹配；只有集合完全一致时才视为该预设。
-export function tokenPresetForScopes(scope, presets = OPEN_API_TOKEN_PRESETS) {
-  const keys = Array.from(new Set(scopeKeys(scope))).sort()
-  return presets.find(function (preset) {
-    const presetKeys = Array.from(new Set(preset.scopes)).sort()
-    return keys.length === presetKeys.length && keys.every(function (key, index) {
-      return key === presetKeys[index]
-    })
-  }) || null
-}
-
-export function tokenPresetName(scope) {
-  const preset = tokenPresetForScopes(scope)
-  return preset ? preset.name : '其他权限'
-}
-
-// 是否「只读」token：scope 恰为单个 inventory:read
+// 是否「只读」token：scope 恰为单个 read（库存或密探）
 export function isReadonly(scope) {
   const keys = scopeKeys(scope)
-  return keys.length === 1 && keys[0] === 'inventory:read'
+  return keys.length === 1 && (keys[0] === 'inventory:read' || keys[0] === 'operator:read')
 }
 
-// 是否「只写」token：scope 恰为单个 inventory:write
+// 是否「只写」token：scope 恰为单个 write（库存或密探）
 export function isWriteonly(scope) {
   const keys = scopeKeys(scope)
-  return keys.length === 1 && keys[0] === 'inventory:write'
+  return keys.length === 1 && (keys[0] === 'inventory:write' || keys[0] === 'operator:write')
+}
+
+// 判断单个 scope key 属于哪个业务域
+export function isInventoryScope(key) {
+  return String(key || '').startsWith('inventory:')
+}
+
+export function isOperatorScope(key) {
+  return String(key || '').startsWith('operator:')
+}
+
+// 根据 scope（数组或单字符串）判断 token 所属域：
+// 全部为库存权限 → 'inventory'；全部为密探权限 → 'operator'；
+// 空 → ''；混用 → 'mixed'（后端生成接口会拒绝混用，这里仅防御）。
+export function scopeDomain(scope) {
+  const keys = scopeKeys(scope)
+  if (keys.length === 0) return ''
+  const inventoryCount = keys.filter(isInventoryScope).length
+  const operatorCount = keys.filter(isOperatorScope).length
+  if (inventoryCount === keys.length) return 'inventory'
+  if (operatorCount === keys.length) return 'operator'
+  return 'mixed'
+}
+
+// 内置权限兜底描述（后端权限列表不可用或离线时使用）
+export const FALLBACK_DESCRIPTIONS = {
+  'inventory:read': '库存数据读取（只读）',
+  'inventory:write': '库存数据写入（只写）',
+  'inventory:export': '库存数据导出',
+  'operator:read': '密探数据读取（只读）',
+  'operator:write': '密探数据写入（只写）',
+  'operator:export': '密探数据导出'
 }
 
 // 后端 created_at 为 ISO-8601 字符串（Instant），格式化为本地时间（无秒）。

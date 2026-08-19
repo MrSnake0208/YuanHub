@@ -3,32 +3,31 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  OPEN_API_TOKEN_PRESETS,
   scopeKeys,
   descByKey,
   scopeDesc,
-  tokenPresetForScopes,
-  tokenPresetName,
   isReadonly,
   isWriteonly,
+  isInventoryScope,
+  isOperatorScope,
+  scopeDomain,
+  FALLBACK_DESCRIPTIONS,
   formatCreateTime
 } from '../src/utils/openApiToken.js'
 
 const PERMISSIONS = [
   { scope: 'inventory:read', description: '库存数据读取' },
   { scope: 'inventory:write', description: '库存数据写入' },
-  { scope: 'inventory:export', description: '库存数据导出' }
+  { scope: 'inventory:export', description: '库存数据导出' },
+  { scope: 'operator:read', description: '密探数据读取' },
+  { scope: 'operator:write', description: '密探数据写入' },
+  { scope: 'operator:export', description: '密探数据导出' }
 ]
-const FALLBACK = {
-  'inventory:read': '库存数据读取（只读）',
-  'inventory:write': '库存数据写入（只写）',
-  'inventory:export': '库存数据导出'
-}
+const FALLBACK = FALLBACK_DESCRIPTIONS
 
 test('scopeKeys 数组原样返回', () => {
   assert.deepEqual(scopeKeys(['inventory:read', 'inventory:write']), ['inventory:read', 'inventory:write'])
 })
-
 test('scopeKeys 单个字符串包装为数组', () => {
   assert.deepEqual(scopeKeys('inventory:read'), ['inventory:read'])
 })
@@ -63,24 +62,6 @@ test('scopeDesc 空数组返回未知权限', () => {
   assert.equal(scopeDesc([], PERMISSIONS, FALLBACK), '未知权限')
 })
 
-test('广陵库房预设包含库存读、写、导出权限', () => {
-  assert.deepEqual(
-    Array.from(OPEN_API_TOKEN_PRESETS[0].scopes),
-    ['inventory:read', 'inventory:write', 'inventory:export']
-  )
-})
-
-test('完整 scope 组合按集合匹配广陵库房预设', () => {
-  const preset = tokenPresetForScopes(['inventory:export', 'inventory:read', 'inventory:write'])
-  assert.equal(preset && preset.name, '广陵库房')
-  assert.equal(tokenPresetName(['inventory:read', 'inventory:write', 'inventory:export']), '广陵库房')
-})
-
-test('非预设 scope 组合不误标为广陵库房', () => {
-  assert.equal(tokenPresetForScopes(['inventory:read']), null)
-  assert.equal(tokenPresetName(['inventory:read']), '其他权限')
-})
-
 test('isReadonly 仅单个 inventory:read 为真', () => {
   assert.equal(isReadonly(['inventory:read']), true)
   assert.equal(isReadonly('inventory:read'), true)
@@ -94,6 +75,37 @@ test('isReadonly 只写或双权限为假', () => {
 test('isWriteonly 仅单个 inventory:write 为真', () => {
   assert.equal(isWriteonly(['inventory:write']), true)
   assert.equal(isWriteonly(['inventory:read']), false)
+})
+
+test('isReadonly/isWriteonly 支持 operator 单权限', () => {
+  assert.equal(isReadonly(['operator:read']), true)
+  assert.equal(isReadonly('operator:read'), true)
+  assert.equal(isReadonly(['operator:write']), false)
+  assert.equal(isWriteonly(['operator:write']), true)
+  assert.equal(isWriteonly(['operator:read']), false)
+})
+
+test('isInventoryScope/isOperatorScope 前缀判断', () => {
+  assert.equal(isInventoryScope('inventory:read'), true)
+  assert.equal(isInventoryScope('operator:read'), false)
+  assert.equal(isOperatorScope('operator:export'), true)
+  assert.equal(isOperatorScope('inventory:export'), false)
+})
+
+test('scopeDomain 识别库存/密探/空/混合', () => {
+  assert.equal(scopeDomain(['inventory:read', 'inventory:write']), 'inventory')
+  assert.equal(scopeDomain(['operator:read']), 'operator')
+  assert.equal(scopeDomain('operator:export'), 'operator')
+  assert.equal(scopeDomain([]), '')
+  assert.equal(scopeDomain(['inventory:read', 'operator:read']), 'mixed')
+  assert.equal(scopeDomain(null), '')
+})
+
+test('FALLBACK_DESCRIPTIONS 覆盖六个 scope', () => {
+  assert.equal(FALLBACK_DESCRIPTIONS['inventory:read'], '库存数据读取（只读）')
+  assert.equal(FALLBACK_DESCRIPTIONS['operator:read'], '密探数据读取（只读）')
+  assert.equal(FALLBACK_DESCRIPTIONS['operator:write'], '密探数据写入（只写）')
+  assert.equal(FALLBACK_DESCRIPTIONS['operator:export'], '密探数据导出')
 })
 
 test('formatCreateTime 格式化 ISO 字符串为本地时间', () => {
