@@ -16,7 +16,7 @@
 //
 // 可选参数：
 //   title / message / type('info'|'danger'|'success') /
-//   confirmText / cancelText / placeholder / value(仅 prompt)
+//   confirmText / cancelText / placeholder / value / inputLabel / requiredValue（后四项仅 prompt）
 import { reactive } from 'vue'
 
 const state = reactive({
@@ -28,6 +28,8 @@ const state = reactive({
   confirmText: '',
   cancelText: '',
   placeholder: '',
+  inputLabel: '',
+  requiredValue: '',
   value: '', // 输入框初始值
   input: '' // 输入框实时值
 })
@@ -48,6 +50,8 @@ function open(opts) {
     confirmText: opts.confirmText || (opts.mode === 'alert' ? '知道了' : '确定'),
     cancelText: opts.cancelText || '取消',
     placeholder: opts.placeholder || '',
+    inputLabel: opts.inputLabel || '',
+    requiredValue: opts.requiredValue != null ? String(opts.requiredValue) : '',
     value: opts.value != null ? String(opts.value) : '',
     input: opts.value != null ? String(opts.value) : ''
   })

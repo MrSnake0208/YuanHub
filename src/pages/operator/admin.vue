@@ -613,15 +613,18 @@ async function save() {
 async function onDelete(r) {
   const dependants = rows.value.filter(function (x) { return x.spOf === r.id }).map(function (x) { return x.name || x.id })
   const warn = dependants.length
-    ? '；注意：「' + dependants.join('、') + '」以该密探为 SP 本体，删除后它们的 spOf 校验将失效'
+    ? '\n注意：「' + dependants.join('、') + '」以该密探为 SP 本体，删除后它们的 spOf 校验将失效。'
     : ''
-  const ok = await dialog.confirm({
-    title: '删除密探',
-    message: '删除密探「' + (r.name || r.id) + '」？删除后公共图鉴与导入校验立即生效' + warn + '，此操作不可恢复。',
+  const confirmation = await dialog.prompt({
+    title: '确认删除密探',
+    message: '将永久删除「' + (r.name || r.id) + '」，并立即影响公共图鉴与导入校验。此操作不可恢复。' + warn,
     type: 'danger',
-    confirmText: '删除'
+    inputLabel: '输入 ' + r.id + ' 以确认',
+    placeholder: r.id,
+    requiredValue: r.id,
+    confirmText: '永久删除'
   })
-  if (!ok) return
+  if (confirmation !== r.id) return
   try {
     await deleteAdminOperatorCatalog(r.id)
     await load()
@@ -858,7 +861,7 @@ load()
 
   .mobile-actions { display: flex; gap: 6px }
   .mobile-actions button { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; cursor: pointer; touch-action: manipulation }
-  .mobile-edit { border: 0; background: var(--tea); color: var(--cream) }
+  .mobile-actions .mobile-edit { width: 68px; border: 0; background: var(--tea); color: var(--cream) }
   .mobile-delete { border: 1.5px solid rgba(166, 81, 74, .35); background: transparent; color: var(--rouge) }
   .mobile-actions button:active { opacity: .72 }
 
