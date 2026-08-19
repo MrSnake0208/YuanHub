@@ -18,8 +18,8 @@
               <div class="k">追踪目录更新日期</div>
               <div class="v catalog-date"><time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></div>
             </div>
-            <div><div class="k">背包道具</div><div class="v">{{ itemCatalogCount }}<small>种</small></div></div>
-            <div><div class="k">密探心纸</div><div class="v">{{ agentCatalogCount }}<small>种</small></div></div>
+            <div><div class="k">背包道具</div><div class="v">{{ itemCatalogCount }}<small class="stat-unit">种</small></div></div>
+            <div><div class="k">密探心纸</div><div class="v">{{ agentCatalogCount }}<small class="stat-unit">种</small></div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
             <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
           </div>
@@ -2734,6 +2734,7 @@ onMounted(async function () {
 @media (max-width: 640px) {
   .hero-stats .catalog-date { font-size: 19px; line-height: 1.3 }
   .hero-stats .catalog-date time { white-space: nowrap }
+  .hero-stats .v .stat-unit { display: inline; margin: 0 0 0 4px; vertical-align: baseline }
   .archive-toggle { width: 100%; min-height: 44px; transform: none }
   .inventory-tabs { margin: 0 }
   .archive-workspace { margin-top: 0; padding: 14px 16px 16px }

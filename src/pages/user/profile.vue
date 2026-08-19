@@ -350,7 +350,7 @@ onMounted(async function () {
 .t-account { font-size: 12px; color: var(--ink); font-weight: 700 }
 
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
-.profile-main { padding-bottom: 40px }
+.profile-main { padding-bottom: 0 }
 .page-profile .hero::after { content: '档案' }
 
 .admin-tools {
@@ -368,7 +368,15 @@ onMounted(async function () {
 .admin-kicker { color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .08em }
 .admin-tools h2 { margin-top: 4px; color: var(--ink); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: .04em }
 .admin-tools p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
-.admin-entry { flex: none; text-decoration: none }
+.admin-entry {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+  text-decoration: none;
+}
 
 .hero-stats .uname {
   font-family: var(--font-s);

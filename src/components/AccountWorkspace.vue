@@ -172,7 +172,10 @@ function submitCreate() {
 @media (max-width: 640px) {
   .account-workspace { border-radius: 16px }
   .account-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px 10px; padding: 18px 16px }
+  .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .account-heading, .account-selector { grid-column: 1 / -1 }
+  .account-bar.with-actions > .account-manage,
+  .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0 }
   .account-selector { gap: 6px }
   .account-selector select { width: 100%; min-width: 0; min-height: 46px; font-size: 16px }
   .account-manage { width: 100%; min-height: 44px; transform: none }
@@ -190,5 +193,9 @@ function submitCreate() {
   .account-bar { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); }
   .account-heading { grid-column: 1 / -1; }
   .account-manage { width: 100%; transform: none; }
+  .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .account-bar.with-actions .account-selector { grid-column: 1 / -1; }
+  .account-bar.with-actions > .account-manage,
+  .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0; }
 }
 </style>

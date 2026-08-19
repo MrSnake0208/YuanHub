@@ -493,11 +493,11 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .notice{margin-top:20px;padding:16px;gap:10px;flex-direction:column;border-radius:12px}
   .notice p{font-size:13px;line-height:1.75}
   .hero-stats{width:100%;margin-top:24px;grid-template-columns:repeat(2,minmax(0,1fr))!important}
-  .hero-stats>div{padding:15px 12px 18px;border-right:1px solid rgba(73,59,44,.28);overflow-wrap:anywhere}
+  .hero-stats>div{padding:15px 12px 18px;border-right:1px solid rgba(73,59,44,.28)}
   .hero-stats>div:nth-child(2n){border-right:none}
   .hero-stats .k{font-size:10.5px;line-height:1.45}
-  .hero-stats .v{font-size:24px;line-height:1.2}
-  .hero-stats .v small{display:block;margin:3px 0 0;font-size:11px;line-height:1.35}
+  .hero-stats .v{font-size:24px;line-height:1.2;white-space:nowrap}
+  .hero-stats .v small{display:inline;margin:0 0 0 4px;font-size:11px;line-height:inherit;vertical-align:baseline}
   section{padding:0px 0 4px}
 
   .toolbar{position:relative;top:auto;margin-top:0;padding:10px;border-radius:14px;gap:8px;box-shadow:none}
