@@ -16,7 +16,7 @@
           <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
-            <div><div class="k">已养成</div><div class="v">{{ currentEntries.length }}<small>位</small></div></div>
+            <div><div class="k">已拥有</div><div class="v">{{ currentEntries.length }}<small>位</small></div></div>
             <div><div class="k">游戏版本</div><div class="v">{{ gameCount }}<small>版</small></div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
             <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
@@ -87,16 +87,16 @@
             <div class="manifest-bar" v-reveal>
               <div class="mf-stats">
                 <div class="mf-stat"><b class="mf-num">{{ catalogCount }}</b><span class="mf-k">目录</span></div>
-                <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已养成</span></div>
-                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">养成率</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已拥有</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">拥有率</span></div>
               </div>
-              <div class="mf-progress" title="养成进度"><i :style="{ width: manifestPercent }"></i></div>
+              <div class="mf-progress" title="拥有进度"><i :style="{ width: manifestPercent }"></i></div>
               <span class="sp"></span>
               <input v-model.trim="manifestSearch" class="mf-search" type="search" placeholder="搜索名称 / 别名 / id" />
               <div class="mf-filter">
                 <button :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
-                <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已养成</button>
-                <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未养成</button>
+                <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已拥有</button>
+                <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未拥有</button>
               </div>
             </div>
 
@@ -123,8 +123,8 @@
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
                 <span class="bp-tip">
-                  共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已养成 <b class="bp-num">{{ manifestOwned }}</b> 位 ·
-                  未养成 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
+                  共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已拥有 <b class="bp-num">{{ manifestOwned }}</b> 位 ·
+                  未拥有 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
                   <template v-if="gameFilter !== 'all'"> · 已按「{{ gameFilter }}」过滤</template>
                   <template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template>
                   <template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template>
@@ -232,8 +232,8 @@
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
                 <div class="level-row">
-                  <label>修为 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
                   <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
+                  <label>修为 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
                   <span class="elite-hint">当前等级最高修为 {{ maxEliteForLevel }}</span>
                 </div>
                 <div class="star-card" title="0=未拥有 · 1~30=星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
@@ -278,7 +278,12 @@
                     <option value="">未装备</option>
                     <option v-for="opt in starOptionsFor(slot.type)" :key="opt" :value="opt">{{ opt }}<template v-if="slot.type === 'assist' && starDesc(slot.type, opt)"> · {{ starDesc(slot.type, opt) }}</template></option>
                   </select>
-                  <input v-if="editForm.stones[slot.type].name" type="number" v-model.number="editForm.stones[slot.type].level" min="0" max="60" placeholder="等级" />
+                  <template v-if="editForm.stones[slot.type].name">
+                    <span class="stone-quick" title="快捷等级（星石最高 60 级）">
+                      <button v-for="lv in STONE_QUICK_LEVELS" :key="lv" type="button" class="stone-lv-chip" :class="{ on: editForm.stones[slot.type].level === lv }" @click="editForm.stones[slot.type].level = lv">{{ lv }}</button>
+                    </span>
+                    <input type="number" v-model.number="editForm.stones[slot.type].level" min="0" max="60" placeholder="等级" />
+                  </template>
                   <span v-else class="stone-empty">未装备</span>
                 </div>
                 <p class="hint">主星石与辅星石各可装备 3 个（对应 3 个命盘位）；名称为空表示未装备。保存后仅保留已填写名称且等级大于 0 的星石。</p>
@@ -550,6 +555,8 @@ const MAX_STAR_LEVEL = 31
 const STAR_LEVEL_AWAKEN = 31
 const STAR_RANGE = [1, 2, 3, 4, 5]
 const NODE_RANGE = [0, 1, 2, 3, 4, 5]
+// 星石快捷等级（星石最高 60 级）
+const STONE_QUICK_LEVELS = [40, 50, 60]
 
 function starLabel(v) {
   const n = Number(v) || 0
@@ -612,7 +619,7 @@ const currentMap = computed(function () {
   return m
 })
 
-// 图鉴顶部统计口径（不跟随属性/从属/搜索/已养成筛选）：仅按游戏过滤的全量
+// 图鉴顶部统计口径（不跟随属性/从属/搜索/已拥有筛选）：仅按游戏过滤的全量
 const statsEntries = computed(function () {
   const state = currentMap.value
   return catalogOperators.value
@@ -632,7 +639,7 @@ const manifestPercent = computed(function () {
   return Math.round(manifestOwned.value * 100 / statsEntries.value.length) + '%'
 })
 
-// 图鉴展示列表：在全量基础上叠加 属性/从属/搜索/已养成 筛选
+// 图鉴展示列表：在全量基础上叠加 属性/从属/搜索/已拥有 筛选
 const manifestEntries = computed(function () {
   const state = currentMap.value
   const q = manifestSearch.value.toLowerCase()
@@ -668,8 +675,8 @@ const filterSuffix = computed(function () {
   if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
   if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
-  if (manifestFilter.value === 'owned') parts.push('「已养成」')
-  if (manifestFilter.value === 'missing') parts.push('「未养成」')
+  if (manifestFilter.value === 'owned') parts.push('「已拥有」')
+  if (manifestFilter.value === 'missing') parts.push('「未拥有」')
   return parts.length ? parts.join(' · ') : ''
 })
 
@@ -694,7 +701,7 @@ function avOf(id) {
 function slotTitle(e) {
   const parts = [e.name || e.id]
   if (e.owned) parts.push('修为 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
-  else parts.push('未养成')
+  else parts.push('未拥有')
   if (e.prof) parts.push(e.prof)
   return parts.join(' ｜ ')
 }
@@ -1309,12 +1316,30 @@ onMounted(async function () {
 .disc-option.c-gold.on .disc-color, .disc-option.c-purple.on .disc-color, .disc-option.c-blue.on .disc-color { color: var(--cream) }
 .disc-option.c-gold.on small, .disc-option.c-purple.on small, .disc-option.c-blue.on small { color: inherit }
 .stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
-.stone-item { display: flex; align-items: center; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
+.stone-item { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
 .stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
 .stone-select { flex: none; width: 104px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .stone-select:focus { border-color: var(--accent) }
 .stone-item input { width: 90px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-d); font-weight: 800; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; -moz-appearance: textfield }
 .stone-item input:focus { border-color: var(--accent) }
+.stone-quick { display: flex; align-items: center; gap: 5px }
+.stone-lv-chip {
+  min-width: 34px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-60);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-d);
+  line-height: 1;
+  cursor: pointer;
+  transition: all .25s;
+}
+.stone-lv-chip:hover { border-color: var(--accent); color: var(--accent-strong) }
+.stone-lv-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 .stone-empty { font-size: 12px; color: var(--ink-35); font-weight: 600; flex: 1 }
 .stone-editor .hint { font-size: 11.5px; color: var(--ink-35); line-height: 1.6 }
 .editor-notice { margin-top: 4px; background: var(--yellow); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; line-height: 1.6 }
