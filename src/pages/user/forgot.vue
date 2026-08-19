@@ -8,10 +8,10 @@
     <!-- 步骤一：发送验证码 -->
         <form v-if="step === 1" class="auth-form" @submit.prevent="onSend" novalidate>
           <div class="field">
-            <label>邮箱 <em>*</em></label>
+            <label for="forgot-email">邮箱 <em>*</em></label>
             <div class="split-row">
               <div class="input-wrap" :class="{ focus: focusField === 'email' }">
-                <input v-model.trim="form.email" type="email" placeholder="you@example.com" @focus="focusField='email'" @blur="focusField=''" />
+                <input id="forgot-email" v-model.trim="form.email" name="email" type="email" autocomplete="email" spellcheck="false" placeholder="you@example.com" @focus="focusField='email'" @blur="focusField=''" />
               </div>
               <button
                 class="code-btn" type="button" :disabled="sending || countdown > 0 || !emailOk" @click="onSend"
@@ -29,23 +29,23 @@
         <!-- 步骤二：验证码 + 新密码 -->
         <form v-else class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
-            <label>邮箱验证码 <em>*</em></label>
+            <label for="forgot-code">邮箱验证码 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'code' }">
-              <input v-model.trim="form.activeCode" type="text" placeholder="请输入验证码" inputmode="numeric" @focus="focusField='code'" @blur="focusField=''" />
+              <input id="forgot-code" v-model.trim="form.activeCode" name="code" type="text" autocomplete="one-time-code" spellcheck="false" placeholder="请输入验证码" inputmode="numeric" @focus="focusField='code'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.activeCode">{{ errors.activeCode }}</p>
           </div>
           <div class="field">
-            <label>新密码 <em>*</em></label>
+            <label for="forgot-password">新密码 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'password' }">
-              <input v-model="form.password" type="password" placeholder="8~32 位" autocomplete="new-password" @focus="focusField='password'" @blur="focusField=''" />
+              <input id="forgot-password" v-model="form.password" name="password" type="password" placeholder="8~32 位" autocomplete="new-password" @focus="focusField='password'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.password">{{ errors.password }}</p>
           </div>
           <div class="field">
-            <label>确认新密码 <em>*</em></label>
+            <label for="forgot-confirm">确认新密码 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'confirm' }">
-              <input v-model="form.confirm" type="password" placeholder="再次输入密码" autocomplete="new-password" @focus="focusField='confirm'" @blur="focusField=''" />
+              <input id="forgot-confirm" v-model="form.confirm" name="confirm-password" type="password" placeholder="再次输入密码" autocomplete="new-password" @focus="focusField='confirm'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.confirm">{{ errors.confirm }}</p>
           </div>
@@ -170,7 +170,7 @@ async function onSubmit() {
   flex: none; border: 1.5px solid var(--line); background: var(--surface);
   border-radius: 999px; padding: 0 16px; height: 44px;
   font-size: 12.5px; font-weight: 800; font-family: var(--font-b); color: var(--ink);
-  cursor: pointer; transition: all .3s var(--ease); white-space: nowrap;
+  cursor: pointer; transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap;
 }
 .code-btn:hover:not(:disabled) { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
 .code-btn:disabled { opacity: .5; cursor: default; }
@@ -186,7 +186,7 @@ async function onSubmit() {
   margin-top: 4px; background: var(--tea); color: var(--cream);
   border: none; border-radius: 999px; padding: 14px 0; font-size: 15px;
   font-weight: 800; font-family: var(--font-b); letter-spacing: .14em; cursor: pointer;
-  transition: all .35s var(--ease);
+  transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
 }
 .btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px); }
 .btn-submit:disabled { opacity: .55; cursor: default; }

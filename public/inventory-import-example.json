@@ -13,10 +13,11 @@
   "records": [
     {
       "account_id": "acc_demo_main",
-      "record_id": "myshare:00cbab990ea14275bc815caabac5ed9e",
+      "record_id": "myshare:example-v2:dispatch-01",
       "record_type": "reward_delta",
       "entity_type": "agent",
       "acquisition_channel": "派遣",
+      "stamina_cost": 10,
       "effective_at": "2026-08-16T07:19:46.833+08:00",
       "entries": [
         { "id": "char_029_xiuqiu", "name": "绣球", "count": 1 }
@@ -24,10 +25,11 @@
     },
     {
       "account_id": "acc_demo_main",
-      "record_id": "myshare:748d48af2e6c4dce86d07f4a53d01427",
+      "record_id": "myshare:example-v2:dispatch-02",
       "record_type": "reward_delta",
       "entity_type": "agent",
       "acquisition_channel": "派遣",
+      "stamina_cost": 20,
       "effective_at": "2026-08-16T07:20:57.048+08:00",
       "entries": [
         { "id": "char_029_xiuqiu", "name": "绣球", "count": 1 }
@@ -35,10 +37,11 @@
     },
     {
       "account_id": "acc_demo_main",
-      "record_id": "myshare:bc6c8a83def64c27b69b10d9949b20a7",
+      "record_id": "myshare:example-v2:dispatch-03",
       "record_type": "reward_delta",
       "entity_type": "agent",
       "acquisition_channel": "派遣",
+      "stamina_cost": 30,
       "effective_at": "2026-08-16T07:30:14.974+08:00",
       "entries": [
         { "id": "char_029_xiuqiu", "name": "绣球", "count": 1 },

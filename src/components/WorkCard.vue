@@ -13,7 +13,7 @@
     <div class="w-side">
       <div class="team-row">
         <div v-for="n in work.team" :key="n" class="member">
-          <span class="av"><img loading="lazy" :src="AV[n]" :alt="n"></span>
+          <span class="av"><img loading="lazy" width="46" height="46" :src="AV[n]" :alt="n"></span>
           <span class="nm">{{ n }}</span>
         </div>
       </div>
@@ -39,7 +39,7 @@
     <div class="w-side">
       <div class="team-row">
         <div v-for="n in work.team" :key="n" class="member">
-          <span class="av"><img loading="lazy" :src="AV[n]" :alt="n"></span>
+          <span class="av"><img loading="lazy" width="46" height="46" :src="AV[n]" :alt="n"></span>
           <span class="nm">{{ n }}</span>
         </div>
       </div>

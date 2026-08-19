@@ -2,7 +2,7 @@
   <div class="page-profile">
     <IslandSidebar />
 
-    <main class="profile-main">
+    <main id="main-content" class="profile-main">
       <!-- HERO -->
       <header class="hero">
         <div class="wrap">
@@ -12,7 +12,7 @@
             <span class="pill">开放接口</span>
           </div>
           <h1>我的账户<span class="small">凭据 · 权限 · 开放接口</span></h1>
-          <p class="hero-sub">管理你的登录身份与「第三方 API Token」：支持库存与密探两个数据域，按权限（只读 / 只写 / 导出）签发绑定到对应子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
+          <p class="hero-sub">管理你的登录身份与「专属认证 Token」：按权限签发绑定到某个子账号的访问凭证，随时复制与吊销，安全连接你的自动化脚本与工具。</p>
           <div class="hero-stats">
             <div><div class="k">当前身份</div><div class="v"><span class="uname">{{ userName }}</span></div></div>
             <div><div class="k">权限范围</div><div class="v">{{ permissionCount }}<small>项</small></div></div>
@@ -28,8 +28,8 @@
           <div class="token-card" v-reveal>
             <div class="card-head">
               <div>
-                <h2>第三方 API Token</h2>
-                <p class="card-sub">每个 Token 绑定一个库存或密探子账号，可授予对应数据域的只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表仅显示 token_id。</p>
+                <h2>专属认证 Token</h2>
+                <p class="card-sub">每个 Token 绑定一个子账号，并按数据域授予只读 / 只写 / 导出等权限。出于安全，Token 明文仅在生成时展示一次，列表不会再次展示此明文。</p>
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="busy" @click="openGen">生成 Token</button>
@@ -61,7 +61,7 @@
               </div>
               <div class="gen-row">
                 <span class="gen-label">备注</span>
-                <input v-model.trim="genRemark" class="gen-input" placeholder="可选，如「派遣脚本」" />
+                <input v-model.trim="genRemark" class="gen-input" autocomplete="off" placeholder="可选，如「派遣脚本」" />
               </div>
               <div class="gen-actions">
                 <button class="act-btn ghost" :disabled="generating" @click="showGen = false">取消</button>
@@ -71,7 +71,7 @@
 
             <!-- 一次性展示刚生成的 Token -->
             <div v-if="newToken" class="new-token">
-              <p class="nt-tip">Token 已生成，请立即复制保存 —— 列表仅显示 token_id，此明文只展示这一次：</p>
+              <p class="nt-tip">Token 已生成，请立即复制保存 —— 下方列表不会再次展示此明文：</p>
               <div class="nt-row">
                 <code class="nt-code">{{ newToken.token }}</code>
                 <button class="t-btn copy" type="button" @click="copyToken(newToken.token)">复制</button>
@@ -81,7 +81,7 @@
             </div>
 
             <!-- 提示状态 -->
-            <div v-if="notice" class="notice-line" :class="{ err: noticeError }">{{ notice }}</div>
+            <div v-if="notice" class="notice-line" :class="{ err: noticeError }" role="status" aria-live="polite">{{ notice }}</div>
 
             <!-- 列表 -->
             <div v-if="loading" class="state">正在加载 Token…</div>
@@ -108,7 +108,7 @@
       <SiteFooter>
         <template #big>个人中心<br><span>凭据 · 权限 · 开放接口</span></template>
         <template #fine>
-          <b>YuanHub</b> · 第三方 API Token 管理<br>
+          <b>YuanHub</b> · 专属认证 Token 管理<br>
           MAA × 代号鸢BWiki × 辟雍学宫 × YuanAssist 共同搭建<br>
           Token 仅用途：库存 / 密探数据只读、写入、导出，请勿泄露给他人
         </template>

@@ -2,7 +2,7 @@
   <div class="page-plaza">
     <IslandSidebar />
 
-    <main>
+    <main id="main-content">
       <!-- HERO -->
       <header class="hero">
         <div class="wrap">
@@ -40,7 +40,7 @@
             </div>
             <button v-for="s in ['全部', '如鸢', '代号鸢']" :key="s" class="chip" :class="{ on: site === s }" @click="setSite(s)">{{ s === '全部' ? s : '只看' + s }}</button>
             <div class="sp"></div>
-            <div class="search"><span class="ic">⌕</span><input v-model="q" placeholder="搜标题 / 作者 / 密探…"></div>
+            <div class="search"><span class="ic" aria-hidden="true">⌕</span><input v-model="q" type="search" aria-label="搜索作业" placeholder="搜标题 / 作者 / 密探…"></div>
             <span class="sort-lb">排序</span>
             <button class="chip" :class="{ on: sort === 'views' }" @click="setSort('views')">访问量</button>
             <button class="chip" :class="{ on: sort === 'likes' }" @click="setSort('likes')">热度</button>
@@ -69,19 +69,19 @@
             <div class="credits-head"><h2>共同搭建</h2><span class="sub">Built Together</span></div>
             <div class="credit-grid">
               <div class="credit" style="--cc:var(--yellow-deep)">
-                <img src="/icons/maa.png" alt="MAA">
+                <img src="/icons/maa.png" width="60" height="60" alt="MAA">
                 <div><div class="nm">MAA · MaaYuan</div><div class="rl">项目主导 · 自动化框架，大肥鸟为本站吉祥物</div></div>
               </div>
               <div class="credit" style="--cc:var(--brand-blue)">
-                <img src="/icons/bwiki.png" alt="BWiki">
+                <img src="/icons/bwiki.png" width="60" height="60" alt="BWiki">
                 <div><div class="nm">代号鸢 BWiki</div><div class="rl">资料与密探数据支持 · 编辑部</div></div>
               </div>
               <div class="credit" style="--cc:var(--accent)">
-                <img src="/icons/piyong.png" alt="辟雍学宫">
+                <img src="/icons/piyong.png" width="60" height="60" alt="辟雍学宫">
                 <div><div class="nm">辟雍学宫</div><div class="rl">小程序端 · 攻略社区共建</div></div>
               </div>
               <div class="credit" style="--cc:var(--mist)">
-                <img src="/icons/yuanassist.png" alt="YuanAssist">
+                <img src="/icons/yuanassist.png" width="60" height="60" alt="YuanAssist">
                 <div><div class="nm">YuanAssist</div><div class="rl">App 端 · 作业同步与工具支持</div></div>
               </div>
             </div>

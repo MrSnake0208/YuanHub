@@ -4,7 +4,7 @@
       <div class="modal">
         <div class="modal-head">
           <h3>保存方案</h3>
-          <button type="button" @click="$emit('close')"><X :size="20" /></button>
+          <button type="button" aria-label="关闭保存方案弹窗" @click="$emit('close')"><X :size="20" /></button>
         </div>
         <form @submit.prevent="submitSave(existing)">
           <div class="fgrid">
@@ -24,16 +24,15 @@
           </p>
 
           <div class="modal-foot">
-            <button type="button" class="btn ghost" style="flex:none" @click="$emit('close')">取消</button>
+            <button type="button" class="btn ghost" @click="$emit('close')">取消</button>
             <button
               v-if="existing"
               type="button"
               class="btn ghost"
-              style="flex:none"
               :disabled="saving"
               @click="submitSave(false)"
             >另存为新方案</button>
-            <button type="submit" class="btn primary" style="flex:none" :disabled="saving">
+            <button type="submit" class="btn primary" :disabled="saving">
               {{ saving ? '保存中…' : (existing ? '覆盖当前方案' : '保存') }}
             </button>
           </div>

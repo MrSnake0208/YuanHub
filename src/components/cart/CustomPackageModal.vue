@@ -4,7 +4,7 @@
       <div class="modal">
         <div class="modal-head">
           <h3>录入自定义礼包</h3>
-          <button type="button" @click="$emit('close')"><X :size="20" /></button>
+          <button type="button" aria-label="关闭自定义礼包弹窗" @click="$emit('close')"><X :size="20" /></button>
         </div>
         <form @submit.prevent="submit">
           <div class="fgrid">
@@ -42,8 +42,8 @@
             </div>
           </div>
           <div class="modal-foot">
-            <button type="button" class="btn ghost" style="flex:none" @click="$emit('close')">取消</button>
-            <button type="submit" class="btn primary" style="flex:none">确认录入</button>
+            <button type="button" class="btn ghost" @click="$emit('close')">取消</button>
+            <button type="submit" class="btn primary">确认录入</button>
           </div>
         </form>
       </div>

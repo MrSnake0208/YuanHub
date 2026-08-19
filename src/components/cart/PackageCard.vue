@@ -1,11 +1,11 @@
 <template>
   <div class="pkg-card" :class="{ sel: qty > 0 }">
-    <button v-if="isCustom" class="pkg-del" title="删除自定义礼包" @click="$emit('remove-custom', pkg.id)">
+    <button v-if="isCustom" class="pkg-del" title="删除自定义礼包" aria-label="删除自定义礼包" @click="$emit('remove-custom', pkg.id)">
       <Trash2 :size="12" />
     </button>
     <div class="pkg-top">
       <div class="flex-1 min-w-0 pr-2">
-        <h3 class="pkg-name" :title="pkg.name">{{ pkg.name }}</h3>
+        <h2 class="pkg-name" :title="pkg.name">{{ pkg.name }}</h2>
         <div class="pkg-tags">
           <span class="pkg-tag pts">{{ pkg.points }} 积分</span>
           <span v-if="pkg.draws > 0" class="pkg-tag line">{{ pkg.draws }} 抽</span>
@@ -24,9 +24,9 @@
         <template v-else>限购 <b :class="{ max: qty >= pkg.limit }">{{ qty }}</b>/{{ pkg.limit }}</template>
       </div>
       <div class="stepper">
-        <button :disabled="qty === 0" @click="$emit('remove')"><Minus :size="13" :stroke-width="2.5" /></button>
+        <button :disabled="qty === 0" :aria-label="`减少 ${pkg.name} 数量`" @click="$emit('remove')"><Minus :size="13" :stroke-width="2.5" /></button>
         <span class="qty">{{ qty }}</span>
-        <button :disabled="qty >= pkg.limit" @click="$emit('add')"><Plus :size="13" :stroke-width="2.5" /></button>
+        <button :disabled="qty >= pkg.limit" :aria-label="`增加 ${pkg.name} 数量`" @click="$emit('add')"><Plus :size="13" :stroke-width="2.5" /></button>
       </div>
     </div>
   </div>

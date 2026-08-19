@@ -30,13 +30,15 @@ export function avatarUrl(path) {
 
 export async function request(
   path,
-  { method = "GET", body, auth = false, raw = false, multipart = false } = {},
+  { method = "GET", body, auth = false, raw = false, multipart = false, headers: extraHeaders } = {},
 ) {
   let refreshed = false;
 
   async function doRequest() {
     // multipart 上传时不能手动设 Content-Type（浏览器会带 boundary），仅保留认证头。
-    const headers = multipart ? {} : { "Content-Type": "application/json" };
+    const headers = multipart
+      ? Object.assign({}, extraHeaders)
+      : Object.assign({ "Content-Type": "application/json" }, extraHeaders);
 
     let store = null;
     if (auth) {

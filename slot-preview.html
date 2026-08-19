@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>资源道具 Slot 预览</title>
+  <style>
+    :root {
+      --paper: #F6EDD0;
+      --surface: #FFFDF6;
+      --cream: #FFF8EC;
+      --ink: #493B2C;
+      --tea: #5A4633;
+      --yellow: #EFD28E;
+      --accent: #D78935;
+      --line: rgba(90, 70, 51, .24);
+      --muted: rgba(73, 59, 44, .58);
+      --font-title: "Noto Serif SC", "Songti SC", SimSun, serif;
+      --font-body: "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-number: Archivo, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--font-body);
+      background:
+        radial-gradient(circle at 16% 3%, rgba(255, 255, 255, .9), transparent 34%),
+        radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .72), transparent 30%),
+        linear-gradient(rgba(246, 237, 208, .73), rgba(246, 237, 208, .73)),
+        url("/maayuan/maayuan-pattern.webp") center top / 2400px auto fixed;
+    }
+
+    .preview {
+      width: min(1180px, calc(100% - 48px));
+      margin: 48px auto;
+      padding: 34px 36px 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 246, .94);
+      box-shadow: 0 18px 42px -34px rgba(73, 59, 44, .55);
+    }
+
+    .page-heading,
+    .shelf-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--font-title);
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .total,
+    .shelf-total {
+      color: var(--muted);
+      font-family: var(--font-number);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .shelf {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 24px;
+      padding: 28px 0;
+    }
+
+    .shelf + .shelf { border-top: 1px dashed var(--line); }
+
+    .shelf-heading {
+      align-self: start;
+      gap: 9px;
+      padding-left: 10px;
+      border-left: 3px solid var(--accent);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 104px);
+      justify-content: start;
+      gap: 18px 16px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .slot {
+      width: 104px;
+      color: inherit;
+      text-align: center;
+      outline: none;
+    }
+
+    .slot-art {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 0 auto;
+      border-radius: 17px;
+      transition: transform .22s ease, filter .22s ease;
+    }
+
+    .slot img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      object-fit: cover;
+    }
+
+    .slot-count {
+      position: absolute;
+      right: -2px;
+      bottom: 6px;
+      min-width: 31px;
+      height: 24px;
+      padding: 0 8px;
+      border: 1px solid rgba(255, 248, 236, .82);
+      border-radius: 999px;
+      background: rgba(90, 70, 51, .94);
+      box-shadow: 0 3px 8px rgba(73, 59, 44, .24);
+      color: var(--cream);
+      font-family: var(--font-number);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 22px;
+      white-space: nowrap;
+    }
+
+    .slot-name {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      margin-top: 5px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.45;
+      transition: color .22s ease;
+    }
+
+    .slot:hover .slot-art,
+    .slot:focus-visible .slot-art {
+      z-index: 1;
+      transform: translateY(-2px);
+      filter: brightness(1.035);
+    }
+
+    .slot:hover .slot-name,
+    .slot:focus-visible .slot-name { color: var(--accent); }
+
+    .slot:focus-visible .slot-art {
+      box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent);
+    }
+
+    .slot.is-missing img {
+      filter: grayscale(.28) saturate(.5);
+      opacity: .68;
+    }
+
+    .slot.is-missing .slot-count {
+      border: 1px dashed rgba(90, 70, 51, .5);
+      background: rgba(255, 253, 246, .85);
+      box-shadow: none;
+      color: var(--muted);
+    }
+
+    .slot.is-missing .slot-name { color: var(--muted); }
+
+    @media (max-width: 680px) {
+      .preview {
+        width: min(100% - 24px, 480px);
+        margin: 20px auto;
+        padding: 24px 14px 16px;
+      }
+
+      h1 { font-size: 22px; }
+
+      .shelf {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+        padding: 24px 0;
+      }
+
+      .slots {
+        grid-template-columns: repeat(3, minmax(0, 96px));
+        justify-content: space-around;
+        gap: 16px 8px;
+      }
+
+      .slot { width: min(100%, 96px); }
+      .slot-art { width: min(100%, 88px); height: auto; aspect-ratio: 1; }
+      .slot-count { right: -1px; bottom: 5px; height: 22px; padding: 0 7px; font-size: 11px; line-height: 20px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .slot-art,
+      .slot-name { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <header class="page-heading">
+      <h1>资源道具</h1>
+      <span class="total">15 种</span>
+    </header>
+
+    <section class="shelf" aria-labelledby="bird-food-heading">
+      <header class="shelf-heading">
+        <h2 id="bird-food-heading">鸟食礼包</h2>
+        <span class="shelf-total">5 种</span>
+      </header>
+      <ul class="slots">
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/jizhi.png" alt="鸡炙" /><span class="slot-count">580</span></div><span class="slot-name">鸡炙</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/mazi.png" alt="麻籽" /><span class="slot-count">36</span></div><span class="slot-name">麻籽</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/sherou.png" alt="蛇肉" /><span class="slot-count">20</span></div><span class="slot-name">蛇肉</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/zhuyu.png" alt="茱萸" /><span class="slot-count">20</span></div><span class="slot-name">茱萸</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/baijinbi.png" alt="白金币" /><span class="slot-count">21</span></div><span class="slot-name">白金币</span></li>
+      </ul>
+    </section>
+
+    <section class="shelf" aria-labelledby="divination-heading">
+      <header class="shelf-heading">
+        <h2 id="divination-heading">命盘&amp;星石</h2>
+        <span class="shelf-total">7 种</span>
+      </header>
+      <ul class="slots">
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/gongguoge.png" alt="功过格" /><span class="slot-count">10</span></div><span class="slot-name">功过格</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/shanebu.png" alt="善恶簿" /><span class="slot-count">19</span></div><span class="slot-name">善恶簿</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/gusuanchou.png" alt="骨算筹" /><span class="slot-count">1</span></div><span class="slot-name">骨算筹</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/jinsuanchou.png" alt="金算筹" /><span class="slot-count">1</span></div><span class="slot-name">金算筹</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/jieyangping.png" alt="解殃瓶" /><span class="slot-count">833</span></div><span class="slot-name">解殃瓶</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/jiezheping.png" alt="解谪瓶" /><span class="slot-count">239</span></div><span class="slot-name">解谪瓶</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/jiezhuping.png" alt="解注瓶" /><span class="slot-count">786</span></div><span class="slot-name">解注瓶</span></li>
+      </ul>
+    </section>
+
+    <section class="shelf" aria-labelledby="experience-heading">
+      <header class="shelf-heading">
+        <h2 id="experience-heading">密探经验</h2>
+        <span class="shelf-total">3 种</span>
+      </header>
+      <ul class="slots">
+        <li class="slot is-missing" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/liutaobingshu.png" alt="六韬兵书" /><span class="slot-count">0</span></div><span class="slot-name">六韬兵书</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/bingshuquanjuan.png" alt="兵书全卷" /><span class="slot-count">54</span></div><span class="slot-name">兵书全卷</span></li>
+        <li class="slot" tabindex="0"><div class="slot-art"><img src="/inventory-icons/items/bingshucanjuan.png" alt="兵书残卷" /><span class="slot-count">782</span></div><span class="slot-name">兵书残卷</span></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

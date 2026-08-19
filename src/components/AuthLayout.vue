@@ -2,7 +2,7 @@
   <div class="page-auth">
     <IslandSidebar />
 
-    <main>
+    <main id="main-content">
       <div class="auth-wrap">
         <!-- 极简页头：小品牌标 + 标题 + 一句副题（去掉 hero 渐变/胶囊/水印） -->
         <header class="auth-head">
@@ -81,8 +81,9 @@ defineProps({
 }
 
 @media (max-width: 640px) {
-  .auth-wrap { padding: 48px 16px 0; }
+  .auth-wrap { padding: 32px 16px 0; }
   .auth-title { font-size: 28px; }
-  .auth-card { padding: 32px 24px 28px; }
+  .auth-card { padding: 30px 24px 28px; border-radius: 18px; }
+  .auth-foot { margin-top: 48px; padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 }
 </style>

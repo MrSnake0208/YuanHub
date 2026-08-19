@@ -4,28 +4,28 @@
 
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
-            <label>邮箱 <em>*</em></label>
+            <label for="register-email">邮箱 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'email' }">
-              <input v-model.trim="form.email" type="email" placeholder="you@example.com" @focus="focusField='email'" @blur="focusField=''" />
+              <input id="register-email" v-model.trim="form.email" name="email" type="email" autocomplete="email" spellcheck="false" placeholder="you@example.com" @focus="focusField='email'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.email">{{ errors.email }}</p>
           </div>
 
           <div class="field">
-            <label>用户名 <em>*</em></label>
+            <label for="register-username">用户名 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'userName' }">
-              <input v-model.trim="form.userName" type="text" placeholder="4~24 位" @focus="focusField='userName'" @blur="focusField=''" />
+              <input id="register-username" v-model.trim="form.userName" name="username" type="text" autocomplete="username" spellcheck="false" placeholder="4~24 位" @focus="focusField='userName'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.userName">{{ errors.userName }}</p>
           </div>
 
           <div class="field split">
             <div class="split-head">
-              <label>验证码 <em>*</em></label>
+              <label for="register-code">验证码 <em>*</em></label>
             </div>
             <div class="split-row">
               <div class="input-wrap" :class="{ focus: focusField === 'code' }">
-                <input v-model.trim="form.registrationToken" type="text" placeholder="邮箱验证码" inputmode="numeric" @focus="focusField='code'" @blur="focusField=''" />
+                <input id="register-code" v-model.trim="form.registrationToken" name="code" type="text" autocomplete="one-time-code" spellcheck="false" placeholder="邮箱验证码" inputmode="numeric" @focus="focusField='code'" @blur="focusField=''" />
               </div>
               <button
                 class="code-btn"
@@ -39,22 +39,22 @@
           </div>
 
           <div class="field">
-            <label>密码 <em>*</em></label>
+            <label for="register-password">密码 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'password' }">
-              <input v-model="form.password" type="password" placeholder="8~32 位" autocomplete="new-password" @focus="focusField='password'" @blur="focusField=''" />
+              <input id="register-password" v-model="form.password" name="password" type="password" placeholder="8~32 位" autocomplete="new-password" @focus="focusField='password'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.password">{{ errors.password }}</p>
           </div>
 
           <div class="field">
-            <label>确认密码 <em>*</em></label>
+            <label for="register-confirm">确认密码 <em>*</em></label>
             <div class="input-wrap" :class="{ focus: focusField === 'confirm' }">
-              <input v-model="form.confirm" type="password" placeholder="再次输入密码" autocomplete="new-password" @focus="focusField='confirm'" @blur="focusField=''" />
+              <input id="register-confirm" v-model="form.confirm" name="confirm-password" type="password" placeholder="再次输入密码" autocomplete="new-password" @focus="focusField='confirm'" @blur="focusField=''" />
             </div>
             <p class="field-err" v-if="errors.confirm">{{ errors.confirm }}</p>
           </div>
 
-          <p class="form-err" v-if="serverMsg"><span class="dot"></span>{{ serverMsg }}</p>
+          <p class="form-err" v-if="serverMsg" role="alert"><span class="dot"></span>{{ serverMsg }}</p>
           <button class="btn-submit" type="submit" :disabled="loading">
             {{ loading ? '注册中…' : '注 册' }}
           </button>
@@ -172,7 +172,7 @@ async function onSubmit() {
   flex: none; border: 1.5px solid var(--line); background: var(--surface);
   border-radius: 999px; padding: 0 16px; height: 44px;
   font-size: 12.5px; font-weight: 800; font-family: var(--font-b); color: var(--ink);
-  cursor: pointer; transition: all .3s var(--ease); white-space: nowrap;
+  cursor: pointer; transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap;
 }
 .code-btn:hover:not(:disabled) { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
 .code-btn:disabled { opacity: .5; cursor: default; }
@@ -187,7 +187,7 @@ async function onSubmit() {
   margin-top: 4px; background: var(--tea); color: var(--cream);
   border: none; border-radius: 999px; padding: 14px 0; font-size: 15px;
   font-weight: 800; font-family: var(--font-b); letter-spacing: .14em; cursor: pointer;
-  transition: all .35s var(--ease);
+  transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
 }
 .btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px); }
 .btn-submit:disabled { opacity: .55; cursor: default; }

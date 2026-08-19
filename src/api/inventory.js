@@ -7,6 +7,7 @@
 // record_id、record_type、effective_at、snapshot_scope、account_id 等）。
 // 约定同 src/api/ledger.js：函数入参一律 camelCase，内部转 snake_case。
 import { request } from './request.js'
+import { deserializeInventoryRecordPage, serializeInventoryExchangeDocument } from '../data/inventory/exchange.js'
 
 const PATH = '/v1/inventory'
 
@@ -44,19 +45,57 @@ export function deleteAccount(accountId) {
   })
 }
 
+// —— 密探特别关注（按库存子账号隔离，仅普通登录 JWT）——
+
+export function listAgentFavorites(accountId) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/agent-favorites' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+export function addAgentFavorite(accountId, agentId) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/agent-favorites/' + encodeURIComponent(agentId) + (qs ? '?' + qs : ''), {
+    method: 'PUT',
+    auth: true
+  })
+}
+
+export function removeAgentFavorite(accountId, agentId) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/agent-favorites/' + encodeURIComponent(agentId) + (qs ? '?' + qs : ''), {
+    method: 'DELETE',
+    auth: true
+  })
+}
+
 // 对象目录（公开，无需登录）
 // 返回 { format, version, catalog_version, entities: [{ entity_type, id, name }] }
 export function getCatalog() {
   return request(PATH + '/catalog', { auth: false })
 }
 
-// 导入（POST，需登录）——body 为完整交换文档 v2（snake_case 原样透传）
+// 导入（POST，需登录）——body 为完整交换文档 v2；staminaCost 会映射为 stamina_cost。
 // 响应 { accepted, duplicates, history_only, superseded, warnings: [] }
 export function importInventory(doc) {
   return request(PATH + '/import', {
     method: 'POST',
     auth: true,
-    body: doc
+    body: serializeInventoryExchangeDocument(doc)
+  })
+}
+
+// 第三方导入（Open API Token）——与登录导入共用同一份协议序列化和校验。
+export function importInventoryOpenApi(doc, token) {
+  return request('/open-api/inventory/import', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token },
+    body: serializeInventoryExchangeDocument(doc)
   })
 }
 
@@ -97,8 +136,8 @@ export function exportInventory({ accountId, scope, include, from, to }) {
 }
 
 // 导入记录列表（GET，需登录）——{ accountId, entityType?, from?, to?, cursor?, limit? }，按 effective_at 倒序（游标分页）
-// 返回 { items: [{ account_id, record_id, record_type, entity_type, acquisition_channel, effective_at, received_at, stock_effect, entries: [{ id, name, count }] }], next_cursor }
-export function listRecords({ accountId, entityType, from, to, cursor, limit } = {}) {
+// 返回 { items: [{ account_id, record_id, record_type, entity_type, acquisition_channel, staminaCost?, effective_at, received_at, stock_effect, entries }], next_cursor }
+export async function listRecords({ accountId, entityType, from, to, cursor, limit } = {}) {
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   if (entityType != null && entityType !== '') params.set('entity_type', entityType)
@@ -107,7 +146,8 @@ export function listRecords({ accountId, entityType, from, to, cursor, limit } =
   if (cursor != null && cursor !== '') params.set('cursor', cursor)
   if (limit != null) params.set('limit', String(limit))
   const qs = params.toString()
-  return request(PATH + '/records' + (qs ? '?' + qs : ''), { auth: true })
+  const page = await request(PATH + '/records' + (qs ? '?' + qs : ''), { auth: true })
+  return deserializeInventoryRecordPage(page)
 }
 
 // 删除单条记录（DELETE，需登录）——删除后后端全量重放剩余记录重建库存

@@ -2,7 +2,7 @@
   <div class="page-cart">
     <IslandSidebar />
 
-    <main class="cart-main">
+    <main id="main-content" class="cart-main">
       <!-- HERO -->
       <header class="hero">
         <div class="wrap">
@@ -39,7 +39,7 @@
             <div v-if="version === 'daihao'" class="rate-bar" style="border:none;background:transparent;padding:0">
               <Calculator :size="16" class="ic" />
               <span class="lb" style="font-size:12.5px">汇率 USD→CNY</span>
-              <input type="number" step="0.01" v-model.number="exchangeRate" />
+              <input type="number" step="0.01" v-model.number="exchangeRate" aria-label="美元兑人民币汇率" />
               <span class="hint">自动换算人民币</span>
             </div>
           </div>
@@ -122,7 +122,7 @@
     <div class="cart-mbar">
       <div class="sum"><div class="k">合计金额</div><div class="v">¥{{ totalCny.toFixed(2) }}</div></div>
       <div class="btns">
-        <button class="mbtn ghost icon" :disabled="cartItems.length === 0" @click="clearCart"><Trash2 :size="17" /></button>
+        <button class="mbtn ghost icon" aria-label="清空购物车" :disabled="cartItems.length === 0" @click="clearCart"><Trash2 :size="17" /></button>
         <button class="mbtn accent" :disabled="cartItems.length === 0" @click="exportReceipt"><Download :size="15" /><span class="only-sm">导出</span></button>
         <button class="mbtn primary" @click="scrollToCart"><Receipt :size="15" />清单</button>
       </div>
