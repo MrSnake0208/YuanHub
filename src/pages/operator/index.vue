@@ -16,7 +16,7 @@
           <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
-            <div><div class="k">已拥有</div><div class="v">{{ currentEntries.length }}<small>位</small></div></div>
+            <div><div class="k">已拥有</div><div class="v">{{ manifestOwned }}<small>位</small></div></div>
             <div><div class="k">游戏版本</div><div class="v">{{ gameCount }}<small>版</small></div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
             <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
@@ -81,10 +81,10 @@
           </AccountWorkspace>
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
-          <div class="operator-tabs" v-reveal>
-            <button :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">图鉴</button>
-            <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前养成</button>
-            <button :class="{ on: activeTab === 'tracking' }" @click="setTab('tracking')">养成追踪</button>
+          <div class="operator-tabs" role="tablist" aria-label="密探工作区" v-reveal>
+            <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'catalog'" :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">图鉴</button>
+            <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'current'" :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前养成</button>
+            <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'tracking'" :class="{ on: activeTab === 'tracking' }" @click="setTab('tracking')">养成追踪</button>
             <span class="sp"></span>
             <span class="game-filter">
               版本
@@ -232,15 +232,16 @@
               {{ error }}
               <button v-if="!auth.isLoggedIn" class="link" @click="goLogin">请先登录后重试</button>
             </div>
-            <div v-else-if="currentEntries.length === 0" class="state">
+            <div v-else-if="ownedCurrentEntries.length === 0" class="state">
               <template v-if="!auth.isLoggedIn">尚未登录：仅可浏览图鉴 · <router-link class="link" to="/login">登录后同步实际养成</router-link></template>
-              <template v-else>暂无密探养成记录 · <router-link class="link" :to="quickHref">前往首次 / 快捷导入</router-link></template>
+              <template v-else-if="currentEntries.length === 0">暂无已拥有的密探养成记录 · <router-link class="link" :to="quickHref">前往首次 / 快捷导入</router-link></template>
+              <template v-else>当前记录中的密探均为未拥有 · <button class="link" type="button" @click="setTab('catalog')">前往图鉴设置</button></template>
             </div>
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
                 <span class="bp-tip">已加载 <b class="bp-num">{{ filteredCurrent.length }}</b> 位密探 · 版本「{{ gameFilter === 'all' ? '全部' : gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template> · 点击密探卡查看命盘与星石</span>
               </div>
-              <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ filterSuffix }}的密探</div>
+              <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已拥有密探</div>
               <div v-else class="build-list" role="list">
                 <article v-for="e in filteredCurrent" :key="e.id" class="build-row" :title="buildTitle(e)" role="listitem">
                   <div class="build-avatar" :class="'rarity-r' + (e.rarity || 3)">
@@ -277,6 +278,21 @@
         </div>
       </section>
 
+      <nav class="operator-mobile-tabs" role="tablist" aria-label="密探工作区">
+        <button type="button" role="tab" :aria-selected="activeTab === 'catalog'" :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">
+          <BookOpen :size="19" aria-hidden="true" />
+          <span>图鉴</span>
+        </button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'current'" :class="{ on: activeTab === 'current' }" @click="setTab('current')">
+          <ListChecks :size="19" aria-hidden="true" />
+          <span>当前养成</span>
+        </button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'tracking'" :class="{ on: activeTab === 'tracking' }" @click="setTab('tracking')">
+          <Target :size="19" aria-hidden="true" />
+          <span>养成追踪</span>
+        </button>
+      </nav>
+
       <!-- 单个密探编辑弹窗 -->
       <div v-if="editing" class="editor-mask" @click.self="closeEditor" @keydown.esc="closeEditor">
         <div
@@ -291,7 +307,9 @@
         >
           <div class="editor-head">
             <div class="editor-identity">
-              <span class="editor-kicker">密探档案 · 编辑</span>
+              <span class="editor-kicker">
+                <span>正在编辑 {{ currentAccountName }} 的密探</span>
+              </span>
               <div class="editor-title-line">
                 <h3 :id="'operator-editor-title-' + editingId">{{ editingOp.name || editingOp.id }}</h3>
                 <div :id="'operator-editor-context-' + editingId" class="editor-identity-tags">
@@ -304,9 +322,39 @@
                 </div>
               </div>
             </div>
-            <div class="editor-head-meta">
-              <span><small>保存账号</small><strong>{{ currentAccountName }}</strong></span>
-              <span><small>版本</small><strong>{{ saveGameLabel }}</strong></span>
+            <div class="editor-head-stats">
+              <div v-if="calculatedCombatStats.reason" class="editor-head-stats-toolbar">
+                <span class="editor-head-stats-note">{{ calculatedCombatStats.reason }}</span>
+              </div>
+              <div class="editor-head-values">
+                <span class="editor-head-live" role="status" aria-live="polite" aria-atomic="true">当前面板：攻击力 {{ calculatedCombatStats.attackLabel }}，生命力 {{ calculatedCombatStats.hpLabel }}</span>
+                <label class="editor-head-stat" :class="{ 'is-manual': editForm.combatStats.manualAttack != null, 'is-empty': calculatedCombatStats.attack == null }">
+                  <span class="editor-head-stat-meta"><strong>攻击力</strong><small>{{ combatAttackSource }}</small></span>
+                  <input
+                    :value="editForm.combatStats.manualAttack ?? ''"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    :placeholder="calculatedCombatStats.attackLabel"
+                    aria-label="校正攻击力，清空后恢复自动计算"
+                    title="直接输入校正值；清空恢复自动计算"
+                    @input="setManualCombatStat('manualAttack', $event)"
+                  />
+                </label>
+                <label class="editor-head-stat" :class="{ 'is-manual': editForm.combatStats.manualHp != null, 'is-empty': calculatedCombatStats.hp == null }">
+                  <span class="editor-head-stat-meta"><strong>生命力</strong><small>{{ combatHpSource }}</small></span>
+                  <input
+                    :value="editForm.combatStats.manualHp ?? ''"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    :placeholder="calculatedCombatStats.hpLabel"
+                    aria-label="校正生命力，清空后恢复自动计算"
+                    title="直接输入校正值；清空恢复自动计算"
+                    @input="setManualCombatStat('manualHp', $event)"
+                  />
+                </label>
+              </div>
             </div>
             <button class="editor-close" type="button" aria-label="关闭编辑" title="关闭编辑" @click="closeEditor"><X :size="19" aria-hidden="true" /></button>
           </div>
@@ -320,9 +368,9 @@
                   <label>修为 <input type="number" v-model.number="editForm.elite" inputmode="numeric" min="0" :max="maxEliteForLevel" /></label>
                   <span class="elite-hint">最高修为：{{ maxEliteForLevel }}</span>
                 </div>
-                <div class="star-card" title="0=未拥有 · 1~30=星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
+                <div class="star-card" title="0=未拥有 · 1~30=化极星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
                   <div class="star-row">
-                    <span class="star-caption">星级</span>
+                    <span class="star-caption">化极</span>
                     <span class="star-groups">
                       <button type="button" class="star-pill" :class="{ on: starGroupName === 'none' }" @click="pickStarGroup('none')">未拥有</button>
                       <button v-for="s in STAR_RANGE" :key="s" type="button" class="star-pill" :class="{ on: starGroupName === s }" @click="pickStarGroup(s)">{{ s }}星</button>
@@ -336,18 +384,98 @@
                     </span>
                   </div>
                 </div>
+                <div class="oddity-editor">
+                  <strong class="oddity-caption">奇闻属性</strong>
+                  <label v-for="(oddity, name) in editForm.combatStats.oddities" :key="name" class="oddity-field">
+                    <span class="oddity-name">{{ name }}</span>
+                    <span class="oddity-control">
+                      <input v-model.number="oddity.current" type="number" inputmode="decimal" min="0" :max="oddity.max" :aria-label="name + '当前值，上限' + oddity.max" />
+                      <span class="oddity-limit" :title="'固定上限 ' + oddity.max" aria-hidden="true">/ {{ oddity.max }}</span>
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
 
-            <div class="editor-row">
+            <div class="editor-row disc-editor-row">
               <span class="editor-label">命盘</span>
-              <div class="disc-editor">
-                <p class="hint">最多选择 3 个。</p>
-                <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
-                <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]">
-                  <input type="checkbox" :value="discKey(d)" v-model="editForm.discNames" />
-                  <span class="disc-name">{{ discKey(d) }}</span>
-                </label>
+              <div class="disc-loadout-editor">
+                <div class="disc-loadout-tabs" role="tablist" aria-label="命盘组合">
+                  <button
+                    v-for="(loadout, index) in editForm.discLoadouts"
+                    :id="'disc-loadout-tab-' + index"
+                    :key="loadout.id"
+                    type="button"
+                    role="tab"
+                    :aria-selected="selectedDiscLoadoutIndex === index"
+                    :aria-controls="'disc-loadout-panel-' + index"
+                    :tabindex="selectedDiscLoadoutIndex === index ? 0 : -1"
+                    :class="{ on: selectedDiscLoadoutIndex === index }"
+                    @click="selectedDiscLoadoutIndex = index"
+                    @keydown.left.prevent="selectDiscLoadoutTab(index - 1, true)"
+                    @keydown.right.prevent="selectDiscLoadoutTab(index + 1, true)"
+                  >
+                    <span>组合 {{ index + 1 }}</span>
+                    <strong>{{ loadout.name || '未命名组合' }}</strong>
+                    <small v-if="editForm.activeDiscLoadoutIndex === index"><Check :size="12" aria-hidden="true" />当前装备</small>
+                  </button>
+                </div>
+
+                <div
+                  v-if="selectedDiscLoadout"
+                  :id="'disc-loadout-panel-' + selectedDiscLoadoutIndex"
+                  class="disc-loadout-panel"
+                  role="tabpanel"
+                  :aria-labelledby="'disc-loadout-tab-' + selectedDiscLoadoutIndex"
+                >
+                  <div class="disc-loadout-toolbar">
+                    <label class="disc-loadout-name" :for="'disc-loadout-name-' + selectedDiscLoadoutIndex">
+                      <span class="disc-loadout-name-head">
+                        <span>组合名称</span>
+                        <span v-if="selectedDiscLoadout.nameMode !== 'manual'" class="disc-auto-status" title="随命盘选择自动生成名称">自动命名 ON</span>
+                      </span>
+                      <input
+                        :id="'disc-loadout-name-' + selectedDiscLoadoutIndex"
+                        :value="selectedDiscLoadout.name"
+                        type="text"
+                        maxlength="64"
+                        autocomplete="off"
+                        @input="setDiscLoadoutName(selectedDiscLoadoutIndex, $event)"
+                        @blur="ensureDiscLoadoutName(selectedDiscLoadoutIndex)"
+                      />
+                    </label>
+                    <button
+                      v-if="selectedDiscLoadout.nameMode === 'manual'"
+                      class="disc-auto-name"
+                      type="button"
+                      title="根据已选命盘恢复自动命名"
+                      @click="resetDiscLoadoutName(selectedDiscLoadoutIndex)"
+                    ><RotateCcw :size="14" aria-hidden="true" />恢复自动命名</button>
+                    <label class="disc-current-choice">
+                      <input
+                        v-model.number="editForm.activeDiscLoadoutIndex"
+                        type="radio"
+                        name="active-disc-loadout"
+                        :value="selectedDiscLoadoutIndex"
+                      />
+                      <span>设为当前装备</span>
+                    </label>
+                  </div>
+
+                  <div class="disc-options">
+                    <div class="disc-options-head">
+                      <span>选择命盘</span>
+                      <strong>{{ selectedDiscLoadout.discNames.length }} / 3</strong>
+                    </div>
+                    <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
+                    <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]">
+                      <input type="checkbox" :checked="isDiscSelected(d)" @change="toggleDiscSelection(d, $event)" />
+                      <span class="disc-name">{{ discKey(d) }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <p class="disc-storage-note">当前装备组合随档案同步云端；另一套组合与两套名称会保存在此浏览器。</p>
               </div>
             </div>
 
@@ -446,7 +574,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
-import { Archive, Download, Pencil, Save, Star, Upload, X } from '@lucide/vue'
+import { Archive, BookOpen, Check, Download, ListChecks, Pencil, RotateCcw, Save, Star, Target, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
@@ -466,9 +594,20 @@ import { auth } from '../../store/auth.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { matchesProfSubFilter, subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
+import { isOperatorOwned, matchesProfSubFilter, subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
+import {
+  automaticDiscLoadoutName,
+  createDiscLoadoutState,
+  discSelectionSignature
+} from '../../utils/operatorDiscLoadouts.js'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
 import { listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
+import {
+  calculateOperatorCombatStats,
+  combatStatsSourceLabel,
+  normalizeOperatorCombatStats,
+  normalizeOperatorOddities
+} from '../../utils/operatorCombatStats.js'
 
 const activeTab = ref('catalog')
 const gameFilter = ref('all')
@@ -503,7 +642,8 @@ const editing = ref(false)
 const editingId = ref('')
 const editingOp = ref(null)
 const editGame = ref('')
-const editForm = ref({ elite: 0, starLevel: 0, level: 0, discNames: [], stones: {} })
+const editForm = ref({ elite: 0, starLevel: 0, level: 0, discLoadouts: [], activeDiscLoadoutIndex: 0, stones: {}, combatStats: normalizeOperatorCombatStats({}) })
+const selectedDiscLoadoutIndex = ref(0)
 const editNotice = ref('')
 const editNoticeError = ref(false)
 const savingEdit = ref(false)
@@ -517,9 +657,6 @@ let editorTriggerEl = null
 // 编辑保存目标版本：跟随页面顶部筛选；选“全部”时保存为通用状态（不区分版本）
 const saveGame = computed(function () {
   return gameFilter.value === 'all' ? null : gameFilter.value
-})
-const saveGameLabel = computed(function () {
-  return saveGame.value || '不区分版本'
 })
 
 // 首次 / 快捷导入：把当前子账号带到向导页默认选中
@@ -562,6 +699,7 @@ function normalizeOperator(op) {
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
     starStones: op.starStones || op.star_stones || [],
+    oddities: op.oddities || op.oddity || null,
     avatar: op.avatar || ''
   }
 }
@@ -660,6 +798,7 @@ function discObject(key) {
 // 命盘品级色 → 按钮配色类（与后端目录 color 字段：无色 / 金 / 紫 / 蓝 对齐）
 const DISC_COLOR_CLASS = { '金': 'c-gold', '紫': 'c-purple', '蓝': 'c-blue' }
 const DISC_COLOR_ORDER = { '金': 0, '紫': 1, '蓝': 2 }
+const DISC_LOADOUT_STORAGE_PREFIX = 'yuanhub:operator-disc-loadouts:v1'
 function discColorClass(d) {
   return (d && DISC_COLOR_CLASS[d.color]) || ''
 }
@@ -680,6 +819,166 @@ const editingDiscs = computed(function () {
 function isMajorGoldDisc(disc) {
   if (!disc || disc.color !== '金') return false
   return /(攻击力|生命).*大幅提升/.test(discKey(disc))
+}
+
+const selectedDiscLoadout = computed(function () {
+  return editForm.value.discLoadouts[selectedDiscLoadoutIndex.value] || null
+})
+
+const activeDiscLoadout = computed(function () {
+  return editForm.value.discLoadouts[editForm.value.activeDiscLoadoutIndex] || null
+})
+
+function syncDiscLoadoutAutoName(loadout) {
+  if (!loadout || loadout.nameMode === 'manual') return
+  loadout.name = automaticDiscLoadoutName(loadout.discNames)
+}
+
+function selectDiscLoadoutTab(index, focusTab) {
+  const count = editForm.value.discLoadouts.length
+  if (!count) return
+  selectedDiscLoadoutIndex.value = ((Number(index) % count) + count) % count
+  if (focusTab) {
+    nextTick(function () {
+      const tab = document.getElementById('disc-loadout-tab-' + selectedDiscLoadoutIndex.value)
+      if (tab) tab.focus()
+    })
+  }
+}
+
+function setDiscLoadoutName(index, event) {
+  const loadout = editForm.value.discLoadouts[index]
+  if (!loadout) return
+  loadout.name = String(event && event.target ? event.target.value : '')
+  loadout.nameMode = 'manual'
+}
+
+function ensureDiscLoadoutName(index) {
+  const loadout = editForm.value.discLoadouts[index]
+  if (!loadout || String(loadout.name || '').trim()) return
+  loadout.nameMode = 'auto'
+  syncDiscLoadoutAutoName(loadout)
+}
+
+function resetDiscLoadoutName(index) {
+  const loadout = editForm.value.discLoadouts[index]
+  if (!loadout) return
+  loadout.nameMode = 'auto'
+  syncDiscLoadoutAutoName(loadout)
+}
+
+function isDiscSelected(disc) {
+  const loadout = selectedDiscLoadout.value
+  return !!loadout && loadout.discNames.indexOf(discKey(disc)) !== -1
+}
+
+function toggleDiscSelection(disc, event) {
+  const loadout = selectedDiscLoadout.value
+  const key = discKey(disc)
+  if (!loadout || !key) return
+  const index = loadout.discNames.indexOf(key)
+  if (index !== -1) {
+    loadout.discNames.splice(index, 1)
+  } else if (loadout.discNames.length >= 3) {
+    if (event && event.target) event.target.checked = false
+    editNotice.value = '每套命盘组合最多选择 3 个'
+    editNoticeError.value = true
+    return
+  } else {
+    loadout.discNames.push(key)
+  }
+  syncDiscLoadoutAutoName(loadout)
+  if (editNotice.value === '每套命盘组合最多选择 3 个') {
+    editNotice.value = ''
+    editNoticeError.value = false
+  }
+}
+
+function discLoadoutStorageKey() {
+  return [DISC_LOADOUT_STORAGE_PREFIX, accountId.value, saveGame.value || 'universal', editingId.value].join(':')
+}
+
+function loadCachedDiscLoadoutState(existingDiscs) {
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(discLoadoutStorageKey())
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || parsed.syncedDiscSignature !== discSelectionSignature(existingDiscs)) return null
+    return createDiscLoadoutState(parsed.loadouts, existingDiscs, parsed.activeIndex)
+  } catch (_) {
+    return null
+  }
+}
+
+function initialDiscLoadoutState(existing) {
+  const serverLoadouts = Array.isArray(existing.discLoadouts) ? existing.discLoadouts : []
+  if (serverLoadouts.length) {
+    const markedIndex = serverLoadouts.findIndex(function (loadout) { return loadout && (loadout.isActive || loadout.is_active) })
+    const idIndex = existing.activeDiscLoadoutId
+      ? serverLoadouts.findIndex(function (loadout) { return loadout && String(loadout.id) === String(existing.activeDiscLoadoutId) })
+      : -1
+    const index = markedIndex >= 0 ? markedIndex : (idIndex >= 0 ? idIndex : existing.activeDiscLoadoutIndex)
+    return createDiscLoadoutState(serverLoadouts, existing.discs, index)
+  }
+  return loadCachedDiscLoadoutState(existing.discs) || createDiscLoadoutState([], existing.discs, 0)
+}
+
+function persistDiscLoadoutState() {
+  if (typeof localStorage === 'undefined' || !activeDiscLoadout.value) return false
+  try {
+    localStorage.setItem(discLoadoutStorageKey(), JSON.stringify({
+      loadouts: editForm.value.discLoadouts.map(function (loadout) {
+        return {
+          id: loadout.id,
+          name: String(loadout.name || '').trim(),
+          nameMode: loadout.nameMode,
+          discNames: loadout.discNames.slice()
+        }
+      }),
+      activeIndex: editForm.value.activeDiscLoadoutIndex,
+      syncedDiscSignature: discSelectionSignature(activeDiscLoadout.value.discNames)
+    }))
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
+const COMBAT_STATS_STORAGE_PREFIX = 'yuanhub:operator-combat-stats:v1'
+function combatStatsStorageKey(id) {
+  return [COMBAT_STATS_STORAGE_PREFIX, accountId.value, saveGame.value || 'universal', id || editingId.value].join(':')
+}
+
+function loadCachedCombatStats(id) {
+  if (typeof localStorage === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(combatStatsStorageKey(id))
+    return raw ? normalizeOperatorCombatStats(JSON.parse(raw)) : null
+  } catch (_) {
+    return null
+  }
+}
+
+function persistCombatStats(id) {
+  if (typeof localStorage === 'undefined' || !editForm.value.combatStats) return false
+  try {
+    localStorage.setItem(combatStatsStorageKey(id), JSON.stringify({
+      attack: editForm.value.combatStats.attack,
+      hp: editForm.value.combatStats.hp,
+      manualAttack: editForm.value.combatStats.manualAttack,
+      manualHp: editForm.value.combatStats.manualHp,
+      curios: editForm.value.combatStats.curios,
+      oddities: editForm.value.combatStats.oddities,
+      source: editForm.value.combatStats.source,
+      observedInputs: { signature: calculatedCombatStats.value.inputSignature },
+      observedAt: editForm.value.combatStats.observedAt,
+      rulesVersion: 'wiki-panel-2026-03'
+    }))
+    return true
+  } catch (_) {
+    return false
+  }
 }
 
 const stoneSlots = computed(function () {
@@ -726,18 +1025,6 @@ function loadStonePreset(kind) {
   editNoticeError.value = false
 }
 
-// 命盘最多同时选择 3 个
-watch(
-  function () { return editForm.value.discNames },
-  function (val) {
-    if (val.length > 3) {
-      editForm.value.discNames = val.slice(0, 3)
-      editNotice.value = '命盘最多同时选择 3 个'
-      editNoticeError.value = true
-    }
-  }
-)
-
 // 修为不能超过当前等级上限，等级变化时自动修正
 watch(
   function () { return editForm.value.level },
@@ -780,6 +1067,7 @@ const catalogOperators = computed(function () {
       games: ['如鸢', '代号鸢'],
       discs: [],
       starStones: [],
+      oddities: e.oddities || null,
       avatar: ''
     }
   })
@@ -811,9 +1099,13 @@ function normalizeEntry(e) {
     starLevel: e.starLevel != null ? e.starLevel : (e.star_level != null ? e.star_level : 0),
     level: e.level != null ? e.level : 0,
     discs: e.discs || [],
+    discLoadouts: e.discLoadouts || e.disc_loadouts || [],
+    activeDiscLoadoutId: e.activeDiscLoadoutId || e.active_disc_loadout_id || '',
+    activeDiscLoadoutIndex: e.activeDiscLoadoutIndex != null ? e.activeDiscLoadoutIndex : e.active_disc_loadout_index,
     starStones: (e.starStones || e.star_stones || []).map(function (s) {
       return Object.assign({}, s, { type: normalizeStoneType(s.type) })
     }),
+    combatStats: normalizeOperatorCombatStats(e.combatStats || e.combat_stats || e.stats || e),
     listedBaselineAt: e.listedBaselineAt || e.listed_baseline_at || null
   }
 }
@@ -837,6 +1129,75 @@ function getMaxEliteForLevel(level) {
 const maxEliteForLevel = computed(function () {
   return getMaxEliteForLevel(editForm.value.level)
 })
+
+const combatStatsInput = computed(function () {
+  return {
+    operatorName: editingOp.value && editingOp.value.name,
+    level: editForm.value.level,
+    elite: editForm.value.elite,
+    starLevel: editForm.value.starLevel,
+    stones: editForm.value.stones,
+    oddities: editForm.value.combatStats && editForm.value.combatStats.oddities
+  }
+})
+
+const calculatedCombatStats = computed(function () {
+  return calculateOperatorCombatStats({
+    stored: editForm.value.combatStats,
+    input: combatStatsInput.value
+  })
+})
+
+const combatStatsSource = computed(function () {
+  return combatStatsSourceLabel(calculatedCombatStats.value.source, calculatedCombatStats.value.status)
+})
+
+const combatAttackSource = computed(function () {
+  if (editForm.value.combatStats && editForm.value.combatStats.manualAttack != null) return '手动校正'
+  if (calculatedCombatStats.value.breakdown) return '自动计算'
+  return calculatedCombatStats.value.attack == null ? '可手动校正' : combatStatsSource.value
+})
+
+const combatHpSource = computed(function () {
+  if (editForm.value.combatStats && editForm.value.combatStats.manualHp != null) return '手动校正'
+  if (calculatedCombatStats.value.breakdown) return '自动计算'
+  return calculatedCombatStats.value.hp == null ? '可手动校正' : combatStatsSource.value
+})
+
+function setManualCombatStat(key, event) {
+  if (!editForm.value.combatStats) editForm.value.combatStats = normalizeOperatorCombatStats({})
+  const raw = event && event.target ? event.target.value : ''
+  editForm.value.combatStats[key] = raw === '' ? null : Number(raw)
+  editForm.value.combatStats.source = 'manual'
+}
+
+const ODDITY_JOB_SUGGESTIONS = {
+  '龙盾': '免伤值',
+  '破军': '增伤值',
+  '破甲': '增伤值',
+  '岐黄': '治疗加成'
+}
+
+function ensureOperatorOddities(stats, op) {
+  if (!stats || !stats.oddities || typeof stats.oddities !== 'object') return
+  const maintained = op && op.oddities && typeof op.oddities === 'object'
+    ? normalizeOperatorOddities(op.oddities)
+    : null
+  const current = normalizeOperatorOddities(stats.oddities, stats.curios)
+  const maintainedSpecial = maintained && Object.keys(maintained).find(function (name) {
+    return name !== '攻击力' && name !== '生命值'
+  })
+  const currentSpecial = Object.keys(current).find(function (name) {
+    return name !== '攻击力' && name !== '生命值'
+  })
+  const specialName = maintainedSpecial || currentSpecial || ODDITY_JOB_SUGGESTIONS[firstSubProf(op)] || '职业属性'
+  const specialSource = current[specialName] || (currentSpecial && current[currentSpecial]) || (maintainedSpecial && maintained[maintainedSpecial])
+  stats.oddities = {
+    '攻击力': { current: current['攻击力'].current, max: 500 },
+    '生命值': { current: current['生命值'].current, max: 2600 },
+    [specialName]: { current: specialSource ? specialSource.current : 0, max: 15 }
+  }
+}
 
 // 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
 // 0 = 未拥有；1..30 = 6×(星−1)+节点+1（1星·0 .. 5星·5，5星·5 = 30）；31 = 觉醒（仅一档）。
@@ -914,7 +1275,7 @@ const statsEntries = computed(function () {
   return catalogOperators.value
     .map(function (op) {
       const build = state[op.id]
-      const owned = !!(build && (build.level > 0 || build.elite > 0 || build.starLevel > 0))
+      const owned = isOperatorOwned(build)
       return Object.assign({}, op, { owned: owned })
     })
     .filter(function (e) { return matchesGame(e, gameFilter.value) })
@@ -936,7 +1297,7 @@ const manifestEntries = computed(function () {
   return catalogOperators.value
     .map(function (op) {
       const build = state[op.id]
-      const owned = !!(build && (build.level > 0 || build.elite > 0 || build.starLevel > 0))
+      const owned = isOperatorOwned(build)
       return Object.assign({}, op, {
         owned: owned,
         elite: build ? build.elite : 0,
@@ -977,11 +1338,23 @@ const filterSuffix = computed(function () {
   return parts.length ? parts.join(' · ') : ''
 })
 
-// 当前养成展示列表：叠加 属性/从属 筛选
+// 当前养成首要口径：只展示已拥有，再叠加属性 / 从属筛选。
+const ownedCurrentEntries = computed(function () {
+  return currentEntries.value.filter(isOperatorOwned)
+})
+
 const filteredCurrent = computed(function () {
-  return currentEntries.value.filter(function (e) {
+  return ownedCurrentEntries.value.filter(function (e) {
     return matchesProfSubFilter(e, profFilter.value, subProfFilter.value)
   })
+})
+
+const currentFilterSuffix = computed(function () {
+  const parts = []
+  if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
+  if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
+  if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  return parts.length ? parts.join(' · ') : '当前条件'
 })
 
 function monogram(e) {
@@ -1010,10 +1383,6 @@ function buildTitle(e) {
   return parts.join(' ｜ ')
 }
 
-function isDiscSelected(d) {
-  return editForm.value.discNames.indexOf(discKey(d)) !== -1
-}
-
 async function openEdit(id) {
   if (!auth.isLoggedIn || !accountId.value) { await dialog.alert({ message: '请先登录并选择子账号' }); return }
   const op = catalogMap.value[id]
@@ -1022,22 +1391,29 @@ async function openEdit(id) {
   const existing = currentMap.value[id] || {}
   editingId.value = id
   editingOp.value = op
+  const discState = initialDiscLoadoutState(existing)
   const stones = {}
   stoneSlots.value.forEach(function (slot) {
     const hit = (existing.starStones || []).find(function (s) { return s.type === slot.type })
     stones[slot.type] = {
       name: (hit && hit.name) || '',
       type: slot.type,
-      level: (hit && hit.level != null) ? hit.level : 0
+      level: (hit && hit.level != null) ? hit.level : 0,
+      rarity: hit && (hit.rarity != null ? hit.rarity : hit.levelType)
     }
   })
+  const combatStats = loadCachedCombatStats(id) || normalizeOperatorCombatStats(existing.combatStats || {})
+  ensureOperatorOddities(combatStats, op)
   editForm.value = {
     elite: existing.elite != null ? existing.elite : 0,
     starLevel: existing.starLevel != null ? existing.starLevel : 0,
     level: existing.level != null ? existing.level : 0,
-    discNames: (existing.discs || []).map(discKey).filter(Boolean),
-    stones: stones
+    discLoadouts: discState.loadouts,
+    activeDiscLoadoutIndex: discState.activeIndex,
+    stones: stones,
+    combatStats: combatStats
   }
+  selectedDiscLoadoutIndex.value = discState.activeIndex
   selectedStonePresetIds.value = { main: '', assist: '' }
   editNotice.value = ''
   editNoticeError.value = false
@@ -1061,6 +1437,12 @@ function closeEditor() {
 
 async function saveEdit() {
   if (!editingOp.value || !accountId.value) return
+  editForm.value.discLoadouts.forEach(function (_, index) { ensureDiscLoadoutName(index) })
+  if (!activeDiscLoadout.value) {
+    editNotice.value = '请选择当前装备的命盘组合'
+    editNoticeError.value = true
+    return
+  }
   const rawLevel = editForm.value.level
   const rawElite = editForm.value.elite
   const rawStarLevel = editForm.value.starLevel
@@ -1110,6 +1492,20 @@ async function saveEdit() {
     editNoticeError.value = true
     return
   }
+  const combatStats = editForm.value.combatStats || {}
+  const optionalNonNegativeNumber = function (value) {
+    return value === '' || value == null || (Number.isFinite(Number(value)) && Number(value) >= 0)
+  }
+  const invalidOddity = Object.keys(combatStats.oddities || {}).find(function (name) {
+    const oddity = combatStats.oddities[name] || {}
+    if (!optionalNonNegativeNumber(oddity.current) || !optionalNonNegativeNumber(oddity.max)) return true
+    return oddity.max !== '' && oddity.max != null && Number(oddity.current || 0) > Number(oddity.max)
+  })
+  if (!optionalNonNegativeNumber(combatStats.manualAttack) || !optionalNonNegativeNumber(combatStats.manualHp) || invalidOddity) {
+    editNotice.value = '攻击力、生命力和奇闻属性需为非负数，且当前值不能超过上限'
+    editNoticeError.value = true
+    return
+  }
   const op = editingOp.value
   const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
   const entry = {
@@ -1123,7 +1519,8 @@ async function saveEdit() {
     elite: elite,
     starLevel: starLevel,
     level: level,
-    discs: editForm.value.discNames.map(discObject),
+    // 交换协议 v2 暂时只有单一 discs 字段；当前装备组合继续走旧字段保证后端兼容。
+    discs: activeDiscLoadout.value.discNames.map(discObject),
     starStones: stoneValues
       .filter(function (s) { return s && s.name })
       .map(function (s) { return { name: s.name, type: s.type, level: Number(s.level) } })
@@ -1150,7 +1547,12 @@ async function saveEdit() {
   editNoticeError.value = false
   try {
     await importOperator(doc)
-    editNotice.value = '已保存到云端'
+    const cached = persistDiscLoadoutState()
+    const combatCached = persistCombatStats(op.id)
+    editNotice.value = cached && combatCached
+      ? '已保存到云端；战斗属性记录已保存在此浏览器'
+      : '当前装备已保存；部分浏览器备用数据未能保留'
+    editNoticeError.value = !(cached && combatCached)
     setTimeout(function () {
       closeEditor()
       reloadCurrent()
@@ -1465,6 +1867,7 @@ onBeforeUnmount(function () {
 .operator-tabs button.on { background: var(--tea); color: var(--cream) }
 .operator-tabs button:hover:not(.on) { color: var(--ink) }
 .operator-tabs .sp { flex: 1 }
+.operator-mobile-tabs { display: none }
 .game-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-60) }
 .game-filter select { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; cursor: pointer }
 
@@ -1577,7 +1980,7 @@ onBeforeUnmount(function () {
 }
 .slot-ph .ph-mono { font-family: var(--font-s); font-weight: 900; font-size: clamp(26px, 4vw, 34px); color: var(--ink-35); user-select: none }
 .slot-count {
-  position: absolute; left: 7px; bottom: 7px; min-width: 24px; padding: 3px 8px; border-radius: 999px;
+  position: absolute; left: 1px; bottom: 1px; min-width: 24px; padding: 3px 8px; border-radius: 999px;
   background: var(--tea); color: var(--cream); font-family: var(--font-d); font-weight: 900; font-size: 12.5px;
   line-height: 1.25; text-align: center; box-shadow: 0 2px 6px rgba(73, 59, 44, .28);
 }
@@ -1641,9 +2044,10 @@ onBeforeUnmount(function () {
 /* ---- 单个密探编辑弹窗 ---- */
 .editor-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 24px; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px) }
 .editor-panel { display: flex; width: min(760px, 100%); height: min(92vh, 900px); height: min(92dvh, 900px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5) }
-.editor-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 18px; flex: 0 0 auto; padding: 20px 28px 17px; border-bottom: 1.5px dashed var(--line); background: var(--surface) }
-.editor-identity { min-width: 0 }
-.editor-kicker { display: block; margin-bottom: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 900; letter-spacing: 0; text-transform: uppercase }
+.editor-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .9fr) auto; align-items: center; gap: 16px; flex: 0 0 auto; padding: 18px 28px 15px; border-bottom: 1.5px dashed var(--line); background: var(--surface) }
+.editor-identity { min-width: 0; grid-column: 1; grid-row: 1 }
+.editor-kicker { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 900; letter-spacing: 0; text-transform: uppercase }
+.editor-kicker-account { max-width: 190px; overflow: hidden; padding-left: 8px; border-left: 1px solid var(--line); color: var(--ink-60); text-overflow: ellipsis; text-transform: none; white-space: nowrap }
 .editor-title-line { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 8px 12px }
 .editor-head h3 { color: var(--ink); font-family: var(--font-s); font-size: 26px; font-weight: 900; letter-spacing: 0; line-height: 1.2 }
 .editor-identity-tags { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 6px }
@@ -1651,11 +2055,28 @@ onBeforeUnmount(function () {
 .editor-identity-tag.rarity { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .editor-identity-tag.profession { background: transparent; color: var(--tea) }
 .editor-identity-tag img { width: 16px; height: 16px; object-fit: contain }
-.editor-head-meta { display: flex; min-width: 0; align-items: center; gap: 16px; color: var(--ink-35); text-align: right }
-.editor-head-meta span { display: flex; min-width: 72px; flex-direction: column; gap: 2px }
-.editor-head-meta small { font-size: 9.5px; font-weight: 700; line-height: 1.25 }
-.editor-head-meta strong { color: var(--ink); font: 800 11.5px var(--font-b); line-height: 1.3; white-space: nowrap }
-.editor-close { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--ink-60); cursor: pointer; transition: color .25s, background-color .25s }
+.editor-head-stats { display: flex; min-width: 0; grid-column: 2; grid-row: 1; flex-direction: column; gap: 7px }
+.editor-head-stats-toolbar { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 7px }
+.editor-head-stats-note { display: inline-flex; min-width: 0; align-items: center; gap: 5px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--cream); color: var(--ink-35); font-size: 9px; font-weight: 700; line-height: 1.35; text-align: right }
+.editor-head-stats-note::before { width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: var(--accent); content: '' }
+.editor-head-values { position: relative; display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px }
+.editor-head-live { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap }
+.editor-head-stat { position: relative; display: grid; min-width: 0; min-height: 66px; grid-template-rows: auto minmax(30px, auto); gap: 3px; padding: 8px 10px 7px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(145deg, var(--cream), var(--paper)); cursor: text; transition: border-color .2s, background-color .2s, box-shadow .2s }
+.editor-head-stat::after { position: absolute; right: 10px; bottom: 6px; left: 10px; height: 1px; background: rgba(215, 137, 53, .3); content: ''; transform: scaleX(0); transform-origin: right; transition: transform .2s }
+.editor-head-stat:hover { border-color: rgba(215, 137, 53, .58) }
+.editor-head-stat:focus-within { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 2px rgba(215, 137, 53, .12) }
+.editor-head-stat:focus-within::after { transform: scaleX(1); transform-origin: left }
+.editor-head-stat-meta { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 6px; line-height: 1.2; white-space: nowrap }
+.editor-head-stat-meta strong { color: var(--ink-60); font-size: 10.5px; font-weight: 900 }
+.editor-head-stat small { max-width: 72px; overflow: hidden; padding: 2px 5px; border-radius: 999px; background: rgba(73, 59, 44, .07); color: var(--ink-35); font-size: 8px; font-weight: 800; text-overflow: ellipsis }
+.editor-head-stat.is-manual small { background: rgba(215, 137, 53, .13); color: var(--accent-strong) }
+.editor-head-stat input { width: 100%; min-width: 0; min-height: 32px; padding: 1px 0 2px; border: 0; outline: none; background: transparent; color: var(--accent-strong); font: 900 23px/1 var(--font-d); letter-spacing: -.02em; text-align: right; -moz-appearance: textfield }
+.editor-head-stat input::placeholder { color: var(--accent-strong); opacity: 1 }
+.editor-head-stat.is-empty input::placeholder { color: var(--ink-35) }
+.editor-head-stat input:focus::placeholder { color: transparent; opacity: 0 }
+.editor-head-stat input:focus-visible { outline: none }
+.editor-head-stat input::-webkit-outer-spin-button, .editor-head-stat input::-webkit-inner-spin-button { -webkit-appearance: none }
+.editor-close { display: grid; width: 44px; height: 44px; grid-column: 3; grid-row: 1; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--ink-60); cursor: pointer; transition: color .25s, background-color .25s }
 .editor-close:hover { color: var(--rouge); background: rgba(166, 81, 74, .08) }
 .editor-close:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .editor-body { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 18px; overflow-y: auto; overscroll-behavior: contain; padding: 22px 28px 28px; scrollbar-gutter: stable }
@@ -1668,9 +2089,9 @@ onBeforeUnmount(function () {
 .game-pill:has(input:checked) { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 .editor-game .hint { flex-basis: 100%; margin-top: 2px; font-size: 11.5px; color: var(--ink-35); line-height: 1.7 }
 .num-fields { display: flex; gap: 12px; flex-wrap: wrap }
-.num-fields label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px }
-.num-fields input { width: 76px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--ink); outline: none; -moz-appearance: textfield }
-.num-fields input::-webkit-outer-spin-button, .num-fields input::-webkit-inner-spin-button { -webkit-appearance: none }
+.num-fields .level-row > label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px }
+.num-fields .level-row > label input { width: 76px; border: none; background: transparent; font-family: var(--font-d); font-weight: 900; font-size: 16px; color: var(--ink); outline: none; -moz-appearance: textfield }
+.num-fields .level-row > label input::-webkit-outer-spin-button, .num-fields .level-row > label input::-webkit-inner-spin-button { -webkit-appearance: none }
 .num-fields .star-card {
   flex-basis: 100%;
   display: flex;
@@ -1722,10 +2143,47 @@ onBeforeUnmount(function () {
 .node-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 .num-fields .level-row { flex-basis: 100%; display: grid; grid-template-columns: minmax(130px, 156px) minmax(130px, 156px) auto; align-items: center; gap: 10px }
 .num-fields .elite-hint { font-size: 11.5px; color: var(--ink-35); font-weight: 700; white-space: nowrap }
-.disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
-.disc-editor .hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35) }
-.disc-option { display: inline-flex; align-items: center; font-size: 12px; font-weight: 800; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: all .25s; user-select: none }
-.disc-option input { display: none }
+.oddity-editor { display: grid; grid-template-columns: 72px repeat(3, minmax(0, 1fr)); gap: 7px; align-items: center; padding-top: 10px; border-top: 1px dashed var(--line) }
+.num-fields .oddity-editor { width: 100%; min-width: 0; flex: 1 0 100% }
+.oddity-caption { color: var(--ink-60); font-size: 11px; font-weight: 900; white-space: nowrap }
+.oddity-field { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream) }
+.oddity-name { min-width: 0; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap }
+.oddity-control { display: inline-flex; min-width: 0; align-items: center; gap: 4px }
+.oddity-control input { width: 52px; min-width: 0; min-height: 36px; border: 1px solid var(--line); border-radius: 7px; padding: 6px; outline: none; background: var(--surface); color: var(--ink); font: 800 12px var(--font-d); text-align: right; -moz-appearance: textfield }
+.oddity-control input::-webkit-outer-spin-button, .oddity-control input::-webkit-inner-spin-button { -webkit-appearance: none }
+.oddity-control input:focus { border-color: var(--accent) }
+.oddity-control input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.oddity-limit { color: var(--ink-35); font: 800 10.5px var(--font-d); white-space: nowrap }
+.disc-loadout-editor { min-width: 0 }
+.disc-loadout-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 5px; border-radius: 8px; background: rgba(73, 59, 44, .07) }
+.disc-loadout-tabs button { display: grid; min-width: 0; min-height: 60px; grid-template-columns: minmax(0, 1fr) auto; align-content: center; gap: 3px 8px; padding: 8px 11px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink-60); text-align: left; cursor: pointer; font-family: var(--font-b) }
+.disc-loadout-tabs button > span { grid-column: 1; color: var(--ink-35); font-size: 9.5px; font-weight: 800 }
+.disc-loadout-tabs button > strong { grid-column: 1 / -1; overflow: hidden; color: inherit; font-size: 12px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap }
+.disc-loadout-tabs button > small { display: inline-flex; grid-column: 2; grid-row: 1; align-items: center; gap: 2px; color: var(--accent-strong); font-size: 9px; font-weight: 900; white-space: nowrap }
+.disc-loadout-tabs button:hover { color: var(--ink) }
+.disc-loadout-tabs button.on { border-color: var(--line); background: var(--surface); color: var(--ink); box-shadow: 0 2px 8px rgba(73, 59, 44, .08) }
+.disc-loadout-tabs button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.disc-loadout-panel { margin-top: 8px; padding: 11px 12px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
+.disc-loadout-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px; padding-bottom: 10px; border-bottom: 1px dashed var(--line) }
+.disc-loadout-name { display: flex; min-width: 0; flex-direction: column; gap: 4px; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
+.disc-loadout-name-head { display: flex; min-width: 0; min-height: 20px; align-items: center; justify-content: space-between; gap: 8px }
+.disc-loadout-name input { width: 100%; min-width: 0; min-height: 38px; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 7px; outline: none; background: var(--surface); color: var(--ink); font: 800 12.5px var(--font-b) }
+.disc-loadout-name input:focus { border-color: var(--accent) }
+.disc-auto-name, .disc-current-choice { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); font: 800 10.5px var(--font-b); white-space: nowrap }
+.disc-auto-name { cursor: pointer }
+.disc-auto-name:hover { border-color: var(--accent); color: var(--accent-strong) }
+.disc-auto-status { display: inline-flex; min-width: 0; min-height: 20px; align-items: center; overflow: hidden; padding: 2px 7px; border-radius: 999px; background: rgba(215, 137, 53, .12); color: var(--accent-strong); font-size: 9px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap }
+.disc-current-choice { grid-column: 3; cursor: pointer }
+.disc-current-choice:has(input:checked) { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
+.disc-current-choice input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent) }
+.disc-options { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 10px }
+.disc-options-head { display: flex; flex-basis: 100%; align-items: center; justify-content: space-between; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
+.disc-options-head strong { color: var(--accent-strong); font-family: var(--font-d); font-size: 11px }
+.disc-options .hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35) }
+.disc-storage-note { margin-top: 7px; color: var(--ink-35); font-size: 10.5px; font-weight: 700; line-height: 1.5 }
+.disc-option { position: relative; display: inline-flex; min-height: 34px; align-items: center; font-size: 12px; font-weight: 800; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: all .25s; user-select: none }
+.disc-option input { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap }
+.disc-option:has(input:focus-visible) { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .disc-option.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
 /* 命盘品级色：金 / 紫 / 蓝（未选中=淡色底，选中=实色） */
 .disc-option.c-gold { background: rgba(215, 137, 53, .14); border-color: rgba(215, 137, 53, .55); color: #8a5a1f }
@@ -1796,17 +2254,79 @@ onBeforeUnmount(function () {
 /* 深色块上的文字（未登录提示） */
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
 
+@media (max-width: 1080px) {
+  .operator-main > section { padding-bottom: 40px }
+  .page-operator :deep(.footer) { padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom)) }
+  .operator-tabs { gap: 8px; padding: 8px; }
+  .operator-tabs .operator-tab-button, .operator-tabs .sp { display: none }
+  .operator-tabs .game-filter { flex: 1; min-height: 44px; padding-inline: 8px }
+  .operator-tabs .admin-link { min-height: 44px }
+  .operator-mobile-tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 55;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 7px max(12px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    border-top: 1px solid var(--line);
+    background: rgba(255, 248, 236, .96);
+    box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, .48);
+    backdrop-filter: blur(12px);
+  }
+  .operator-mobile-tabs button {
+    display: flex;
+    min-width: 0;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--ink-60);
+    font: 800 11.5px/1.1 var(--font-b);
+    cursor: pointer;
+  }
+  .operator-mobile-tabs button.on { background: var(--yellow); color: var(--ink) }
+  .operator-mobile-tabs button:focus-visible { outline: 3px solid rgba(215, 137, 53, .55); outline-offset: 1px }
+}
+
 @media (max-width: 640px) {
+  .operator-tabs { margin-top: 24px }
+  .operator-tabs .game-filter { min-width: 0 }
+  .operator-tabs .game-filter select { min-width: 0; flex: 1 }
+  .operator-tabs .admin-link { padding-inline: 12px }
   .editor-mask { align-items: stretch; padding: 0 }
   .editor-panel { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0 }
-  .editor-head { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: calc(18px + env(safe-area-inset-top)) 16px 14px }
-  .editor-head-meta { grid-column: 1 / -1; min-width: 0; flex-direction: row; align-items: baseline; flex-wrap: wrap; justify-content: flex-start; gap: 4px 8px; padding-top: 0; text-align: left }
-  .editor-head-meta span:last-child { margin-left: auto }
+  .editor-head { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 16px 12px }
+  .editor-head-stats { grid-column: 1 / -1; grid-row: 2; gap: 6px }
+  .editor-head-stats-note { max-width: 100%; white-space: normal }
+  .editor-head-stat { min-height: 72px; padding: 8px 10px }
+  .editor-head-stat input { min-height: 44px; font-size: 22px }
+  .editor-close { grid-column: 2; grid-row: 1 }
   .editor-body { gap: 16px; padding: 18px 16px 24px }
   .editor-row { grid-template-columns: 1fr; gap: 8px; padding-bottom: 18px }
   .editor-label { padding-top: 0 }
   .num-fields .level-row { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .num-fields .elite-hint { grid-column: 1 / -1 }
+  .oddity-editor { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px }
+  .oddity-caption { grid-column: 1 / -1 }
+  .oddity-field { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 7px 6px }
+  .oddity-name { text-align: center }
+  .oddity-control { justify-content: center }
+  .oddity-control input { width: 44px; min-height: 44px; padding-inline: 4px; font-size: 16px }
+  .oddity-limit { font-size: 10px }
+  .disc-loadout-tabs button { min-height: 64px; padding-inline: 9px }
+  .disc-loadout-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch }
+  .disc-loadout-name { grid-column: 1 / -1 }
+  .disc-auto-name, .disc-current-choice { min-height: 44px; padding-inline: 8px }
+  .disc-current-choice { grid-column: auto }
+  .disc-auto-status { padding-inline: 7px }
   .stone-editor { grid-template-columns: minmax(0, 1fr) }
   .stone-preset-grid { grid-template-columns: minmax(0, 1fr) }
   .stone-preset-heading, .stone-current-heading { align-items: flex-start; flex-direction: column; gap: 3px }
@@ -1831,7 +2351,7 @@ onBeforeUnmount(function () {
   .import-actions .btn { width: 100% }
   .backpack { padding: 14px 12px 16px; border-radius: 20px }
   .slot-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px 10px }
-  .slot-count { font-size: 11.5px; padding: 2px 7px; left: 5px; bottom: 5px }
+  .slot-count { font-size: 11.5px; padding: 2px 7px; left: 1px; bottom: 1px }
   .manifest-bar { flex-direction: column; align-items: stretch; gap: 10px }
   .manifest-bar .sp { display: none }
   .mf-search { width: auto }

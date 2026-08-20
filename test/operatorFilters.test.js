@@ -3,10 +3,19 @@ import assert from 'node:assert/strict'
 import {
   subProfList,
   canonicalSubProf,
+  isOperatorOwned,
   tokens,
   matchesProfSubFilter,
   subProfOptions
 } from '../src/utils/operatorFilters.js'
+
+test('图鉴拥有状态只由 starLevel 决定', function () {
+  assert.equal(isOperatorOwned({ level: 100, elite: 17, starLevel: 0 }), false)
+  assert.equal(isOperatorOwned({ level: 100, elite: 17, star_level: 0 }), false)
+  assert.equal(isOperatorOwned({ level: 0, elite: 0, starLevel: 1 }), true)
+  assert.equal(isOperatorOwned({ level: 100 }), false)
+  assert.equal(isOperatorOwned(null), false)
+})
 
 test('subProfList 兼容字符串 / 数组 / snake_case', function () {
   assert.deepEqual(subProfList({ subProf: '神纪' }), ['神纪'])
