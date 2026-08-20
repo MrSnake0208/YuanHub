@@ -80,10 +80,11 @@
             </div>
           </AccountWorkspace>
 
-          <!-- TABS：图鉴 / 当前养成 / 导入记录 -->
+          <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
           <div class="operator-tabs" v-reveal>
             <button :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">图鉴</button>
             <button :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前养成</button>
+            <button :class="{ on: activeTab === 'tracking' }" @click="setTab('tracking')">养成追踪</button>
             <span class="sp"></span>
             <span class="game-filter">
               版本
@@ -167,10 +168,11 @@
                 </span>
                 <span class="sp"></span>
                 <span v-if="error" class="bp-tip mf-warn">云端养成同步失败：{{ error }}</span>
+                <span v-else-if="favoriteError" class="bp-tip mf-warn">{{ favoriteError }}</span>
               </div>
               <div v-if="manifestEntries.length === 0" class="state slim">没有匹配{{ filterSuffix }}的密探</div>
               <ul v-else class="slot-grid">
-                <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="{ 'is-missing': !e.owned }" :title="slotTitle(e)">
+                <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="[{ 'is-missing': !e.owned, 'is-favorite': favoriteAgentIds.has(e.id) }, 'rarity-r' + (e.rarity || 3)]" :title="slotTitle(e)">
                   <div class="slot-ic is-agent">
                     <img v-if="e.avatar" class="slot-avatar" :src="avatarUrl(e.avatar)" :alt="e.name" loading="lazy" />
                     <div v-else class="slot-ph">
@@ -178,10 +180,24 @@
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
                     <span class="slot-count" :class="{ zero: !e.owned }">{{ e.owned ? 'Lv' + e.level : '未养' }}</span>
+                    <span v-if="profIcon(e.prof)" class="prof-badge" :title="'属性：' + (e.prof || '未知')" role="img" :aria-label="'属性：' + (e.prof || '未知')">
+                      <img :src="profIcon(e.prof)" alt="" aria-hidden="true" />
+                    </span>
+                    <button
+                      v-if="auth.isLoggedIn && accountId"
+                      class="favorite-btn"
+                      :class="{ on: favoriteAgentIds.has(e.id), busy: favoriteBusyIds.has(e.id) }"
+                      type="button"
+                      :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + (e.name || e.id) : '特别关注' + (e.name || e.id)"
+                      :aria-pressed="favoriteAgentIds.has(e.id)"
+                      :aria-busy="favoriteBusyIds.has(e.id)"
+                      :disabled="favoriteBusyIds.has(e.id) || favoriteLoading"
+                      :title="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
+                      @click.stop="toggleAgentFavorite(e)"
+                    ><Star :size="16" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+                    <button v-if="auth.isLoggedIn && accountId" class="edit-icon-btn" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="15" aria-hidden="true" /></button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
-                  <span class="slot-tag star" :class="'s' + (e.rarity || 3)">{{ e.rarity || 3 }}★ · {{ e.prof || '未知' }}</span>
-                  <button v-if="auth.isLoggedIn && accountId" class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
                 </li>
               </ul>
             </div>
@@ -218,58 +234,91 @@
             </div>
             <div v-else-if="currentEntries.length === 0" class="state">
               <template v-if="!auth.isLoggedIn">尚未登录：仅可浏览图鉴 · <router-link class="link" to="/login">登录后同步实际养成</router-link></template>
-              <template v-else>暂无密探养成记录，请先导入档案</template>
+              <template v-else>暂无密探养成记录 · <router-link class="link" :to="quickHref">前往首次 / 快捷导入</router-link></template>
             </div>
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
                 <span class="bp-tip">已加载 <b class="bp-num">{{ filteredCurrent.length }}</b> 位密探 · 版本「{{ gameFilter === 'all' ? '全部' : gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template> · 点击密探卡查看命盘与星石</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ filterSuffix }}的密探</div>
-              <ul v-else class="slot-grid">
-                <li v-for="e in filteredCurrent" :key="e.id" class="slot build-slot" :title="buildTitle(e)">
-                  <div class="slot-ic is-agent">
+              <div v-else class="build-list" role="list">
+                <article v-for="e in filteredCurrent" :key="e.id" class="build-row" :title="buildTitle(e)" role="listitem">
+                  <div class="build-avatar" :class="'rarity-r' + (e.rarity || 3)">
                     <img v-if="avOf(e.id)" class="slot-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
-                    <div v-else class="slot-ph">
-                      <span class="ph-seal">密</span>
-                      <span class="ph-mono">{{ monogram(e) }}</span>
-                    </div>
-                    <span class="slot-count">{{ 'Lv' + e.level }}</span>
+                    <span v-else>{{ monogram(e) }}</span>
                   </div>
-                  <span class="slot-name">{{ e.name || e.id }}</span>
-                  <span class="slot-tag star" :class="'s' + (e.rarity || 3)">{{ e.rarity || 3 }}★ · {{ e.prof || '未知' }}</span>
-                  <span class="build-line">修为 {{ e.elite }} · {{ starLabel(e.starLevel) }}</span>
-                  <span v-if="e.discs && e.discs.length" class="build-line small">命盘 {{ e.discs.length }} 格</span>
-                  <span v-if="e.starStones && e.starStones.length" class="build-line small">星石 {{ e.starStones.length }} 槽</span>
-                  <button class="edit-btn" type="button" @click.stop="openEdit(e.id)">编辑</button>
-                </li>
-              </ul>
+                  <div class="build-identity">
+                    <strong>{{ e.name || e.id }}</strong>
+                    <span><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
+                  </div>
+                  <dl class="build-stat"><dt>等级</dt><dd>Lv {{ e.level }}</dd></dl>
+                  <dl class="build-stat"><dt>化极</dt><dd>{{ starLabel(e.starLevel) }}</dd></dl>
+                  <dl class="build-stat"><dt>修为</dt><dd>{{ e.elite }}</dd></dl>
+                  <div class="build-loadouts">
+                    <span>命盘 {{ e.discs && e.discs.length ? e.discs.length + ' 格' : '未配置' }}</span>
+                    <span>星石 {{ e.starStones && e.starStones.length ? e.starStones.length + ' 槽' : '未配置' }}</span>
+                  </div>
+                  <button class="build-edit" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="17" aria-hidden="true" /></button>
+                </article>
+              </div>
             </div>
+          </div>
+
+          <div v-show="activeTab === 'tracking'" class="panel">
+            <OperatorGrowthTracker
+              :account-id="accountId"
+              :current-entries="currentEntries"
+              :catalog-entries="catalogOperators"
+              :favorite-ids="favoriteAgentIds"
+              :is-logged-in="auth.isLoggedIn"
+            />
           </div>
 
         </div>
       </section>
 
       <!-- 单个密探编辑弹窗 -->
-      <div v-if="editing" class="editor-mask" @click.self="closeEditor">
-        <div class="editor-panel" v-reveal>
+      <div v-if="editing" class="editor-mask" @click.self="closeEditor" @keydown.esc="closeEditor">
+        <div
+          ref="editorPanelEl"
+          class="editor-panel"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="'operator-editor-title-' + editingId"
+          :aria-describedby="'operator-editor-context-' + editingId"
+          tabindex="-1"
+          v-reveal
+        >
           <div class="editor-head">
-            <div>
-              <h3>{{ editingOp.name || editingOp.id }}</h3>
-              <p class="editor-sub">{{ editingOp.id }} · {{ editingOp.rarity }}★ · {{ editingOp.prof }}</p>
+            <div class="editor-identity">
+              <span class="editor-kicker">密探档案 · 编辑</span>
+              <div class="editor-title-line">
+                <h3 :id="'operator-editor-title-' + editingId">{{ editingOp.name || editingOp.id }}</h3>
+                <div :id="'operator-editor-context-' + editingId" class="editor-identity-tags">
+                  <span class="editor-identity-tag rarity">{{ editingOp.rarity }} 星</span>
+                  <span v-if="editingOp.prof" class="editor-identity-tag">
+                    <img v-if="profIcon(editingOp.prof)" :src="profIcon(editingOp.prof)" alt="" aria-hidden="true" />
+                    {{ editingOp.prof }}
+                  </span>
+                  <span v-if="firstSubProf(editingOp)" class="editor-identity-tag profession">{{ firstSubProf(editingOp) }}</span>
+                </div>
+              </div>
             </div>
-            <button class="editor-close" type="button" @click="closeEditor">×</button>
+            <div class="editor-head-meta">
+              <span><small>保存账号</small><strong>{{ currentAccountName }}</strong></span>
+              <span><small>版本</small><strong>{{ saveGameLabel }}</strong></span>
+            </div>
+            <button class="editor-close" type="button" aria-label="关闭编辑" title="关闭编辑" @click="closeEditor"><X :size="19" aria-hidden="true" /></button>
           </div>
 
           <div class="editor-body">
-            <div class="editor-save-hint">将保存到：{{ saveGameLabel }}</div>
-
             <div class="editor-row">
               <span class="editor-label">基础养成</span>
               <div class="num-fields">
                 <div class="level-row">
-                  <label>等级 <input type="number" v-model.number="editForm.level" min="0" max="100" /></label>
-                  <label>修为 <input type="number" v-model.number="editForm.elite" min="0" :max="maxEliteForLevel" /></label>
-                  <span class="elite-hint">当前等级最高修为 {{ maxEliteForLevel }}</span>
+                  <label>等级 <input type="number" v-model.number="editForm.level" inputmode="numeric" min="0" max="100" /></label>
+                  <label>修为 <input type="number" v-model.number="editForm.elite" inputmode="numeric" min="0" :max="maxEliteForLevel" /></label>
+                  <span class="elite-hint">最高修为：{{ maxEliteForLevel }}</span>
                 </div>
                 <div class="star-card" title="0=未拥有 · 1~30=星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
                   <div class="star-row">
@@ -293,13 +342,11 @@
             <div class="editor-row">
               <span class="editor-label">命盘</span>
               <div class="disc-editor">
-                <p class="hint">最多同时选择 3 个命盘。</p>
+                <p class="hint">最多选择 3 个。</p>
                 <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
                 <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]">
                   <input type="checkbox" :value="discKey(d)" v-model="editForm.discNames" />
                   <span class="disc-name">{{ discKey(d) }}</span>
-                  <small v-if="d.abbreviation">{{ d.abbreviation }}</small>
-                  <small v-if="d.color" class="disc-color">{{ d.color }}</small>
                 </label>
               </div>
             </div>
@@ -307,32 +354,80 @@
             <div class="editor-row">
               <span class="editor-label">星石</span>
               <div class="stone-editor">
+                <div class="stone-presets">
+                  <div class="stone-preset-heading">
+                    <strong>载入已有预设</strong>
+                    <span>主星与辅星预设分别载入</span>
+                  </div>
+                  <div class="stone-preset-grid">
+                    <div v-for="kind in stonePresetKinds" :key="kind.id" class="stone-preset-item">
+                      <label :for="'stone-preset-' + kind.id">{{ kind.label }}</label>
+                      <select
+                        :id="'stone-preset-' + kind.id"
+                        v-model="selectedStonePresetIds[kind.id]"
+                        :disabled="!stonePresetOptions[kind.id].length"
+                      >
+                        <option value="">{{ stonePresetOptions[kind.id].length ? '请选择预设' : '暂无可用预设' }}</option>
+                        <option v-for="preset in stonePresetOptions[kind.id]" :key="preset.id" :value="String(preset.id)">{{ preset.name }}</option>
+                      </select>
+                      <button
+                        type="button"
+                        class="stone-preset-load"
+                        :disabled="!selectedStonePresetIds[kind.id]"
+                        @click="loadStonePreset(kind.id)"
+                      >载入</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="stone-current-heading">
+                  <strong>当前装备中的星石</strong>
+                  <span>以下内容将随密探档案保存</span>
+                </div>
                 <div v-for="slot in stoneSlots" :key="slot.type" class="stone-item">
-                  <span class="stone-name">{{ slot.label }}</span>
-                  <select v-model="editForm.stones[slot.type].name" class="stone-select">
+                  <div class="stone-item-head">
+                    <span class="stone-name">{{ slot.label }}</span>
+                    <span v-if="editForm.stones[slot.type].name" class="stone-current">Lv {{ editForm.stones[slot.type].level || 0 }}</span>
+                  </div>
+                  <select v-model="editForm.stones[slot.type].name" class="stone-select" :aria-label="slot.label + '名称'">
                     <option value="">未装备</option>
-                    <option v-for="opt in starOptionsFor(slot.type)" :key="opt" :value="opt">{{ opt }}<template v-if="slot.type === 'assist' && starDesc(slot.type, opt)"> · {{ starDesc(slot.type, opt) }}</template></option>
+                    <option v-for="opt in starOptionsFor(slot.type)" :key="opt" :value="opt">{{ opt }}<template v-if="slot.type.indexOf('assist') === 0 && starDesc(slot.type, opt)"> · {{ starDesc(slot.type, opt) }}</template></option>
                   </select>
                   <template v-if="editForm.stones[slot.type].name">
-                    <span class="stone-quick" title="快捷等级（星石最高 60 级）">
-                      <button v-for="lv in STONE_QUICK_LEVELS" :key="lv" type="button" class="stone-lv-chip" :class="{ on: editForm.stones[slot.type].level === lv }" @click="editForm.stones[slot.type].level = lv">{{ lv }}</button>
-                    </span>
-                    <input type="number" v-model.number="editForm.stones[slot.type].level" min="0" max="60" placeholder="等级" />
+                    <div class="stone-level-row">
+                      <label class="stone-level-field">
+                        <span>等级</span>
+                        <input type="number" v-model.number="editForm.stones[slot.type].level" inputmode="numeric" min="1" max="60" />
+                      </label>
+                      <div class="stone-quick" aria-label="快捷设置等级">
+                        <span>快捷设为</span>
+                        <button
+                          v-for="lv in STONE_QUICK_LEVELS"
+                          :key="lv"
+                          type="button"
+                          class="stone-lv-chip"
+                          :class="{ on: editForm.stones[slot.type].level === lv }"
+                          :aria-label="'将' + slot.label + '设为' + lv + '级'"
+                          @click="editForm.stones[slot.type].level = lv"
+                        >{{ lv === 60 ? '满级' : lv + '级' }}</button>
+                      </div>
+                    </div>
                   </template>
-                  <span v-else class="stone-empty">未装备</span>
                 </div>
-                <p class="hint">主星石与辅星石各可装备 3 个（对应 3 个命盘位）；名称为空表示未装备。保存后仅保留已填写名称且等级大于 0 的星石。</p>
+                <p class="hint">主星与辅星各 3 个；选择星石后再设置等级。</p>
               </div>
             </div>
 
-            <div v-if="editNotice" class="editor-notice" :class="{ err: editNoticeError }">{{ editNotice }}</div>
           </div>
 
           <div class="editor-actions">
-            <button class="btn ghost" type="button" :disabled="savingEdit" @click="closeEditor">取消</button>
-            <button class="btn primary" type="button" :disabled="savingEdit" @click="saveEdit">
-              {{ savingEdit ? '保存中…' : '保存到云端' }}
-            </button>
+            <div v-if="editNotice" class="editor-action-status" :class="{ err: editNoticeError }" role="status">{{ editNotice }}</div>
+            <div class="editor-action-buttons">
+              <button class="btn editor-cancel" type="button" :disabled="savingEdit" @click="closeEditor">取消</button>
+              <button class="btn primary editor-save" type="button" :disabled="savingEdit" @click="saveEdit">
+                <Save :size="16" aria-hidden="true" />
+                {{ savingEdit ? '保存中…' : '保存到云端' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -350,11 +445,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { Archive, Download, Upload } from '@lucide/vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import { Archive, Download, Pencil, Save, Star, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
+import OperatorGrowthTracker from '../../components/operator/OperatorGrowthTracker.vue'
 import {
   getOperatorCatalog,
   listOperatorAccounts,
@@ -370,8 +466,9 @@ import { auth } from '../../store/auth.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
+import { matchesProfSubFilter, subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
+import { listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
 
 const activeTab = ref('catalog')
 const gameFilter = ref('all')
@@ -394,6 +491,12 @@ const importText = ref('')
 const importError = ref('')
 const importing = ref(false)
 const importResult = ref(null)
+const favoriteAgentIds = ref(new Set())
+const favoriteBusyIds = ref(new Set())
+const favoriteLoading = ref(false)
+const favoriteError = ref('')
+let favoriteLoadSeq = 0
+let currentLoadSeq = 0
 
 // —— 单个密探编辑弹窗 ——
 const editing = ref(false)
@@ -404,13 +507,19 @@ const editForm = ref({ elite: 0, starLevel: 0, level: 0, discNames: [], stones: 
 const editNotice = ref('')
 const editNoticeError = ref(false)
 const savingEdit = ref(false)
+const stonePresetOptions = ref({ main: [], assist: [] })
+const selectedStonePresetIds = ref({ main: '', assist: '' })
+const editorPanelEl = ref(null)
+let bodyOverflowBeforeEditor = ''
+let bodyLockedByEditor = false
+let editorTriggerEl = null
 
 // 编辑保存目标版本：跟随页面顶部筛选；选“全部”时保存为通用状态（不区分版本）
 const saveGame = computed(function () {
   return gameFilter.value === 'all' ? null : gameFilter.value
 })
 const saveGameLabel = computed(function () {
-  return saveGame.value || '通用（全部）'
+  return saveGame.value || '不区分版本'
 })
 
 // 首次 / 快捷导入：把当前子账号带到向导页默认选中
@@ -449,11 +558,85 @@ function normalizeOperator(op) {
     alias: op.alias || '',
     rarity: op.rarity != null ? op.rarity : 3,
     prof: Array.isArray(op.prof) ? op.prof.join('、') : (op.prof || '未知'),
-    subProf: Array.isArray(rawSub) ? rawSub : (rawSub ? [rawSub] : []),
+    subProf: subProfList({ subProf: rawSub }),
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
     starStones: op.starStones || op.star_stones || [],
     avatar: op.avatar || ''
+  }
+}
+
+const PROF_ICON_FILES = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }
+function profIcon(prof) {
+  const file = PROF_ICON_FILES[String(prof || '').split('、')[0]]
+  return file ? import.meta.env.BASE_URL + 'assets/prof-icons/' + file : ''
+}
+
+function firstSubProf(entry) {
+  return subProfList(entry)[0] || ''
+}
+
+function clearAgentFavorites() {
+  favoriteLoadSeq += 1
+  favoriteAgentIds.value = new Set()
+  favoriteBusyIds.value = new Set()
+  favoriteLoading.value = false
+  favoriteError.value = ''
+}
+
+async function loadAgentFavorites() {
+  if (!auth.isLoggedIn || !accountId.value) { clearAgentFavorites(); return }
+  const targetAccount = accountId.value
+  const seq = ++favoriteLoadSeq
+  favoriteLoading.value = true
+  favoriteError.value = ''
+  try {
+    const data = await listAgentFavorites(targetAccount)
+    if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
+    favoriteAgentIds.value = new Set(Array.isArray(data && data.agent_ids) ? data.agent_ids : [])
+  } catch (err) {
+    if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
+    favoriteAgentIds.value = new Set()
+    favoriteError.value = humanErr(err, '特别关注同步失败')
+  } finally {
+    if (seq === favoriteLoadSeq && accountId.value === targetAccount) favoriteLoading.value = false
+  }
+}
+
+async function toggleAgentFavorite(entry) {
+  const id = entry && entry.id
+  const targetAccount = accountId.value
+  if (!id || !auth.isLoggedIn || !targetAccount || favoriteBusyIds.value.has(id)) return
+  const wasFavorite = favoriteAgentIds.value.has(id)
+  const next = new Set(favoriteAgentIds.value)
+  if (wasFavorite) next.delete(id)
+  else next.add(id)
+  favoriteAgentIds.value = next
+  favoriteBusyIds.value = new Set(favoriteBusyIds.value).add(id)
+  favoriteError.value = ''
+  try {
+    const data = wasFavorite
+      ? await removeAgentFavorite(targetAccount, id)
+      : await addAgentFavorite(targetAccount, id)
+    if (accountId.value !== targetAccount) return
+    const confirmed = new Set(favoriteAgentIds.value)
+    const confirmedFavorite = data && typeof data.favorite === 'boolean' ? data.favorite : !wasFavorite
+    if (confirmedFavorite) confirmed.add(id)
+    else confirmed.delete(id)
+    favoriteAgentIds.value = confirmed
+  } catch (err) {
+    if (accountId.value !== targetAccount) return
+    const rollback = new Set(favoriteAgentIds.value)
+    if (wasFavorite) rollback.add(id)
+    else rollback.delete(id)
+    favoriteAgentIds.value = rollback
+    favoriteError.value = humanErr(err, '关注状态保存失败，请重试')
+  } finally {
+    if (accountId.value === targetAccount) {
+      const busy = new Set(favoriteBusyIds.value)
+      busy.delete(id)
+      favoriteBusyIds.value = busy
+    }
   }
 }
 
@@ -476,24 +659,44 @@ function discObject(key) {
 
 // 命盘品级色 → 按钮配色类（与后端目录 color 字段：无色 / 金 / 紫 / 蓝 对齐）
 const DISC_COLOR_CLASS = { '金': 'c-gold', '紫': 'c-purple', '蓝': 'c-blue' }
+const DISC_COLOR_ORDER = { '金': 0, '紫': 1, '蓝': 2 }
 function discColorClass(d) {
   return (d && DISC_COLOR_CLASS[d.color]) || ''
 }
 
 const editingDiscs = computed(function () {
-  return (editingOp.value && editingOp.value.discs) || []
+  return ((editingOp.value && editingOp.value.discs) || [])
+    .map(function (disc, index) { return { disc: disc, index: index } })
+    .sort(function (a, b) {
+      const aOrder = DISC_COLOR_ORDER[a.disc && a.disc.color] ?? 3
+      const bOrder = DISC_COLOR_ORDER[b.disc && b.disc.color] ?? 3
+      const aMajorGold = isMajorGoldDisc(a.disc) ? 1 : 0
+      const bMajorGold = isMajorGoldDisc(b.disc) ? 1 : 0
+      return (aOrder - bOrder) || (aMajorGold - bMajorGold) || (a.index - b.index)
+    })
+    .map(function (entry) { return entry.disc })
 })
+
+function isMajorGoldDisc(disc) {
+  if (!disc || disc.color !== '金') return false
+  return /(攻击力|生命).*大幅提升/.test(discKey(disc))
+}
 
 const stoneSlots = computed(function () {
   return [
-    { type: 'main1', label: '主星石 1' },
-    { type: 'main2', label: '主星石 2' },
-    { type: 'main3', label: '主星石 3' },
-    { type: 'assist1', label: '辅星石 1' },
-    { type: 'assist2', label: '辅星石 2' },
-    { type: 'assist3', label: '辅星石 3' }
+    { type: 'main1', label: '主星 1' },
+    { type: 'assist1', label: '辅星 1' },
+    { type: 'main2', label: '主星 2' },
+    { type: 'assist2', label: '辅星 2' },
+    { type: 'main3', label: '主星 3' },
+    { type: 'assist3', label: '辅星 3' }
   ]
 })
+
+const stonePresetKinds = [
+  { id: 'main', label: '主星预设' },
+  { id: 'assist', label: '辅星预设' }
+]
 
 function starOptionsFor(type) {
   return type.indexOf('assist') === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS
@@ -502,6 +705,25 @@ function starOptionsFor(type) {
 function starDesc(type, name) {
   if (type.indexOf('assist') !== 0) return ''
   return ASSIST_STAR_DESCRIPTIONS[name] || ''
+}
+
+function loadStonePreset(kind) {
+  const presetId = selectedStonePresetIds.value[kind]
+  const preset = (stonePresetOptions.value[kind] || []).find(function (item) {
+    return String(item.id) === String(presetId)
+  })
+  if (!preset || !Array.isArray(preset.stones)) return
+  for (let index = 0; index < 3; index += 1) {
+    const type = kind + (index + 1)
+    const stone = preset.stones[index] || {}
+    editForm.value.stones[type] = {
+      name: stone.name || '',
+      type: type,
+      level: Number(stone.level) || 0
+    }
+  }
+  editNotice.value = '已载入「' + preset.name + '」' + (kind === 'main' ? '主星' : '辅星') + '预设'
+  editNoticeError.value = false
 }
 
 // 命盘最多同时选择 3 个
@@ -528,6 +750,21 @@ watch(
     }
   }
 )
+
+watch(editing, async function (isOpen) {
+  if (isOpen) {
+    bodyOverflowBeforeEditor = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    bodyLockedByEditor = true
+    await nextTick()
+    if (editorPanelEl.value) editorPanelEl.value.focus()
+    return
+  }
+  if (bodyLockedByEditor) {
+    document.body.style.overflow = bodyOverflowBeforeEditor
+    bodyLockedByEditor = false
+  }
+})
 
 const catalogOperators = computed(function () {
   if (backendCatalog.value.length) return backendCatalog.value.map(normalizeOperator)
@@ -718,7 +955,15 @@ const manifestEntries = computed(function () {
       }
       return true
     })
+    .sort(function (a, b) {
+      return operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id) || String(a.name).localeCompare(String(b.name), 'zh-CN')
+    })
 })
+
+function operatorReleaseOrder(id) {
+  const match = String(id || '').match(/char_(\d+)/)
+  return match ? Number(match[1]) : -1
+}
 
 // 筛选条件摘要（用于空态提示）
 const filterSuffix = computed(function () {
@@ -773,6 +1018,7 @@ async function openEdit(id) {
   if (!auth.isLoggedIn || !accountId.value) { await dialog.alert({ message: '请先登录并选择子账号' }); return }
   const op = catalogMap.value[id]
   if (!op) return
+  editorTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null
   const existing = currentMap.value[id] || {}
   editingId.value = id
   editingOp.value = op
@@ -792,6 +1038,7 @@ async function openEdit(id) {
     discNames: (existing.discs || []).map(discKey).filter(Boolean),
     stones: stones
   }
+  selectedStonePresetIds.value = { main: '', assist: '' }
   editNotice.value = ''
   editNoticeError.value = false
   editing.value = true
@@ -799,29 +1046,67 @@ async function openEdit(id) {
 
 function closeEditor() {
   if (savingEdit.value) return
+  const trigger = editorTriggerEl
+  editorTriggerEl = null
   editing.value = false
   editingId.value = ''
   editingOp.value = null
   editGame.value = ''
   editNotice.value = ''
   editNoticeError.value = false
+  nextTick(function () {
+    if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true })
+  })
 }
 
 async function saveEdit() {
   if (!editingOp.value || !accountId.value) return
-  if (editForm.value.level < 0 || editForm.value.elite < 0 || editForm.value.starLevel < 0) {
-    editNotice.value = '养成数值不能为负数'
+  const rawLevel = editForm.value.level
+  const rawElite = editForm.value.elite
+  const rawStarLevel = editForm.value.starLevel
+  const level = Number(rawLevel)
+  const elite = Number(rawElite)
+  const starLevel = Number(rawStarLevel)
+  const validInteger = function (raw, value) {
+    return raw !== '' && raw != null && Number.isFinite(value) && Number.isInteger(value)
+  }
+  if (!validInteger(rawLevel, level) || !validInteger(rawElite, elite) || !validInteger(rawStarLevel, starLevel)) {
+    editNotice.value = '等级、修为和星级必须填写整数'
     editNoticeError.value = true
     return
   }
-  if (editForm.value.starLevel > MAX_STAR_LEVEL) {
+  if (level < 0 || level > OPERATOR_LEVEL_MAX) {
+    editNotice.value = '等级需在 0..' + OPERATOR_LEVEL_MAX + ' 之间'
+    editNoticeError.value = true
+    return
+  }
+  if (elite < 0 || elite > OPERATOR_ELITE_MAX) {
+    editNotice.value = '修为需在 0..' + OPERATOR_ELITE_MAX + ' 之间'
+    editNoticeError.value = true
+    return
+  }
+  if (starLevel < 0 || starLevel > MAX_STAR_LEVEL) {
     editNotice.value = '星级需在 0..' + MAX_STAR_LEVEL + ' 之间（0=未拥有，31=觉醒）'
     editNoticeError.value = true
     return
   }
-  const maxElite = getMaxEliteForLevel(editForm.value.level)
-  if (editForm.value.elite > maxElite) {
+  const maxElite = getMaxEliteForLevel(level)
+  if (elite > maxElite) {
     editNotice.value = '修为不能超过当前等级上限 ' + maxElite
+    editNoticeError.value = true
+    return
+  }
+  const stoneValues = Object.keys(editForm.value.stones || {}).map(function (type) {
+    const stone = editForm.value.stones[type]
+    return Object.assign({ type: type }, stone || {})
+  })
+  const invalidStone = stoneValues.find(function (stone) {
+    if (!stone.name) return false
+    const stoneLevel = Number(stone.level)
+    return !validInteger(stone.level, stoneLevel) || stoneLevel < 1 || stoneLevel > 60
+  })
+  if (invalidStone) {
+    editNotice.value = '已装备星石的等级需为 1..60 的整数'
     editNoticeError.value = true
     return
   }
@@ -835,14 +1120,13 @@ async function saveEdit() {
     prof: op.prof ? op.prof.split('、') : [],
     subProf: Array.isArray(op.subProf) ? op.subProf : (op.subProf ? op.subProf.split('、') : []),
     games: op.games || [],
-    elite: editForm.value.elite,
-    starLevel: editForm.value.starLevel,
-    level: editForm.value.level,
+    elite: elite,
+    starLevel: starLevel,
+    level: level,
     discs: editForm.value.discNames.map(discObject),
-    starStones: Object.keys(editForm.value.stones || {})
-      .map(function (type) { return editForm.value.stones[type] })
-      .filter(function (s) { return s && s.name && s.level > 0 })
-      .map(function (s) { return { name: s.name, type: s.type, level: s.level } })
+    starStones: stoneValues
+      .filter(function (s) { return s && s.name })
+      .map(function (s) { return { name: s.name, type: s.type, level: Number(s.level) } })
   }
   const doc = {
     format: 'myshare-operator-exchange',
@@ -881,7 +1165,8 @@ async function saveEdit() {
 
 function setTab(t) {
   activeTab.value = t
-  if (t === 'current' && currentEntries.value.length === 0) reloadCurrent()
+  if ((t === 'current' || t === 'tracking') && currentEntries.value.length === 0) reloadCurrent()
+  if (t === 'tracking') loadAgentFavorites()
 }
 
 function onGameChange() {
@@ -927,6 +1212,8 @@ async function loadAccounts() {
 function onAccountChange() {
   currentEntries.value = []
   error.value = ''
+  clearAgentFavorites()
+  loadAgentFavorites()
   reloadCurrent()
 }
 
@@ -992,30 +1279,30 @@ async function onDeleteAccount(acc) {
 }
 
 // —— 当前养成 ——
-async function safeLoad(fn, quiet) {
-  loading.value = true
-  if (!quiet) error.value = ''
-  try { await fn() } catch (err) {
-    if (!quiet) error.value = humanErr(err, '加载失败，请稍后重试')
-  } finally { loading.value = false }
-}
-
 async function reloadCurrent(quiet) {
   if (!auth.isLoggedIn) {
+    currentLoadSeq += 1
     currentEntries.value = []
     error.value = ''
     loading.value = false
     return
   }
   if (!accountId.value) {
+    currentLoadSeq += 1
     currentEntries.value = []
     error.value = ''
     loading.value = false
     return
   }
-  await safeLoad(async function () {
-    const game = gameFilter.value === 'all' ? undefined : gameFilter.value
-    const data = await getOperatorCurrent({ accountId: accountId.value, game: game })
+  const targetAccount = accountId.value
+  const targetGame = gameFilter.value
+  const seq = ++currentLoadSeq
+  loading.value = true
+  if (!quiet) error.value = ''
+  try {
+    const game = targetGame === 'all' ? undefined : targetGame
+    const data = await getOperatorCurrent({ accountId: targetAccount, game: game })
+    if (seq !== currentLoadSeq || accountId.value !== targetAccount || gameFilter.value !== targetGame) return
     const list = Array.isArray(data) ? data : (data ? [data] : [])
     const combined = {}
     list.forEach(function (doc) {
@@ -1028,11 +1315,16 @@ async function reloadCurrent(quiet) {
       const op = catalogMap.value[id] || {}
       return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '', subProf: op.subProf || '', games: op.games || [] }, combined[id])
     }).filter(function (e) {
-      return matchesGame(e, gameFilter.value)
+      return matchesGame(e, targetGame)
     }).sort(function (a, b) {
-      return (b.level - a.level) || (b.starLevel - a.starLevel) || (b.elite - a.elite)
+      return (b.level - a.level) || (b.starLevel - a.starLevel) || (b.elite - a.elite) || (operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id))
     })
-  }, quiet)
+  } catch (err) {
+    if (seq !== currentLoadSeq || accountId.value !== targetAccount || gameFilter.value !== targetGame) return
+    if (!quiet) error.value = humanErr(err, '加载失败，请稍后重试')
+  } finally {
+    if (seq === currentLoadSeq && accountId.value === targetAccount && gameFilter.value === targetGame) loading.value = false
+  }
 }
 
 // —— 导入 / 导出 ——
@@ -1153,7 +1445,11 @@ function goLogin() { location.href = '/login' }
 onMounted(async function () {
   await loadCatalog()
   await loadAccounts()
-  reloadCurrent()
+  await Promise.all([reloadCurrent(), loadAgentFavorites()])
+})
+
+onBeforeUnmount(function () {
+  if (bodyLockedByEditor) document.body.style.overflow = bodyOverflowBeforeEditor
 })
 </script>
 
@@ -1261,14 +1557,16 @@ onMounted(async function () {
 .bp-num { font-family: var(--font-d); font-weight: 900; color: var(--accent-strong); font-size: 13px }
 
 .slot-grid { list-style: none; margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 14px 12px }
-.slot { display: flex; flex-direction: column; transition: transform .45s var(--ease) }
-.slot:hover { transform: translateY(-4px) }
+.slot { display: flex; flex-direction: column }
 .slot-ic {
-  position: relative; aspect-ratio: 1 / 1; border-radius: 18px; border: 1.5px solid rgba(215, 137, 53, .38);
+  position: relative; aspect-ratio: 1 / 1; border-radius: 8px; border: 2px solid rgba(73, 59, 44, .22);
   background: var(--cream); overflow: hidden;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), inset 0 -10px 18px -10px rgba(215, 137, 53, .22);
   transition: border-color .3s, box-shadow .45s var(--ease);
 }
+.slot.rarity-r5 .slot-ic { border-color: var(--accent); box-shadow: inset 0 0 0 2px rgba(239, 210, 142, .5) }
+.slot.rarity-r4 .slot-ic { border-color: #8672b2 }
+.slot.rarity-r3 .slot-ic { border-color: #99b5cf }
 .slot:hover .slot-ic { border-color: var(--accent); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .7), 0 14px 26px -14px rgba(73, 59, 44, .4) }
 .slot-avatar { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block }
 .slot-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(168deg, var(--surface) 0%, var(--cream) 62%, var(--paper) 100%) }
@@ -1279,7 +1577,7 @@ onMounted(async function () {
 }
 .slot-ph .ph-mono { font-family: var(--font-s); font-weight: 900; font-size: clamp(26px, 4vw, 34px); color: var(--ink-35); user-select: none }
 .slot-count {
-  position: absolute; right: 7px; bottom: 7px; min-width: 24px; padding: 3px 8px; border-radius: 999px;
+  position: absolute; left: 7px; bottom: 7px; min-width: 24px; padding: 3px 8px; border-radius: 999px;
   background: var(--tea); color: var(--cream); font-family: var(--font-d); font-weight: 900; font-size: 12.5px;
   line-height: 1.25; text-align: center; box-shadow: 0 2px 6px rgba(73, 59, 44, .28);
 }
@@ -1290,6 +1588,21 @@ onMounted(async function () {
   overflow: hidden; word-break: break-all; transition: color .3s;
 }
 .slot:hover .slot-name { color: var(--accent-strong) }
+.prof-badge { position: absolute; top: -7px; left: -7px; z-index: 3; display: grid; width: 44px; height: 44px; place-items: center }
+.prof-badge::before { position: absolute; inset: 8px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: 0 2px 7px rgba(73, 59, 44, .18); content: '' }
+.prof-badge img { position: relative; z-index: 1; width: 21px; height: 21px; object-fit: contain }
+.slot.is-favorite .slot-name { color: var(--tea) }
+.favorite-btn, .edit-icon-btn { position: absolute; z-index: 4; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; cursor: pointer; color: var(--ink-35) }
+.favorite-btn { top: -7px; right: -7px }
+.edit-icon-btn { right: -7px; bottom: -7px }
+.favorite-btn::before, .edit-icon-btn::before { position: absolute; inset: 8px; content: ''; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: 0 2px 7px rgba(73, 59, 44, .18); transition: transform .2s var(--ease), border-color .2s var(--ease) }
+.favorite-btn svg, .edit-icon-btn svg { position: relative; z-index: 1 }
+.favorite-btn.on { color: var(--accent) }
+.edit-icon-btn { color: var(--tea) }
+.favorite-btn:hover:not(:disabled)::before, .edit-icon-btn:hover::before { border-color: var(--accent); transform: scale(1.06) }
+.favorite-btn:focus-visible, .edit-icon-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px; border-radius: 50% }
+.favorite-btn:disabled { opacity: .5; cursor: wait }
+.favorite-btn.busy svg { opacity: .4 }
 .slot-tag {
   margin-top: 5px; align-self: center; font-size: 10.5px; font-weight: 700; color: var(--ink-60);
   background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; line-height: 1.5;
@@ -1305,19 +1618,50 @@ onMounted(async function () {
 
 .build-slot .build-line { margin-top: 4px; align-self: center; font-size: 11px; color: var(--ink-60); font-weight: 700; line-height: 1.4 }
 .build-slot .build-line.small { font-size: 10.5px; color: var(--ink-35) }
+.build-list { display: flex; flex-direction: column; margin-top: 12px }
+.build-row { min-width: 0; display: grid; grid-template-columns: 52px minmax(150px, 1.2fr) repeat(3, minmax(74px, .55fr)) minmax(150px, 1fr) 44px; align-items: center; gap: 12px; min-height: 72px; padding: 10px 8px; border-bottom: 1px solid var(--line); transition: background-color .2s var(--ease) }
+.build-row:last-child { border-bottom: 0 }
+.build-row:hover { background: var(--cream) }
+.build-avatar { position: relative; width: 48px; height: 48px; overflow: hidden; display: grid; place-items: center; border: 2px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink-35); font: 900 21px var(--font-s) }
+.build-avatar.rarity-r5 { border-color: var(--accent) }
+.build-avatar.rarity-r4 { border-color: var(--brand-blue) }
+.build-identity { min-width: 0; display: flex; flex-direction: column; gap: 4px }
+.build-identity strong { overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap }
+.build-identity span { display: flex; align-items: center; gap: 4px; color: var(--ink-60); font-size: 10.5px; font-weight: 700 }
+.build-identity img { width: 17px; height: 17px; object-fit: contain }
+.build-stat { min-width: 0 }
+.build-stat dt { color: var(--ink-35); font-size: 10px; font-weight: 700 }
+.build-stat dd { margin-top: 3px; overflow: hidden; color: var(--ink); font: 900 13px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
+.build-loadouts { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--ink-60); font-size: 10.5px; font-weight: 700 }
+.build-loadouts span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.build-edit { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--tea); cursor: pointer }
+.build-edit:hover { background: var(--yellow); color: var(--ink) }
+.build-edit:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 
 /* ---- 单个密探编辑弹窗 ---- */
-.editor-mask { position: fixed; inset: 0; z-index: 100; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 24px }
-.editor-panel { width: min(680px, 100%); max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5) }
-.editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 28px 16px; border-bottom: 1.5px dashed var(--line) }
-.editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 26px; letter-spacing: .04em; color: var(--ink) }
-.editor-sub { margin-top: 4px; font-size: 12px; color: var(--ink-35); font-weight: 600 }
-.editor-close { border: none; background: transparent; color: var(--ink-60); font-size: 26px; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 10px; transition: all .25s }
+.editor-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 24px; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px) }
+.editor-panel { display: flex; width: min(760px, 100%); height: min(92vh, 900px); height: min(92dvh, 900px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5) }
+.editor-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 18px; flex: 0 0 auto; padding: 20px 28px 17px; border-bottom: 1.5px dashed var(--line); background: var(--surface) }
+.editor-identity { min-width: 0 }
+.editor-kicker { display: block; margin-bottom: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 900; letter-spacing: 0; text-transform: uppercase }
+.editor-title-line { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 8px 12px }
+.editor-head h3 { color: var(--ink); font-family: var(--font-s); font-size: 26px; font-weight: 900; letter-spacing: 0; line-height: 1.2 }
+.editor-identity-tags { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 6px }
+.editor-identity-tag { display: inline-flex; min-height: 24px; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-60); font-size: 10.5px; font-weight: 800; line-height: 1.3; white-space: nowrap }
+.editor-identity-tag.rarity { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
+.editor-identity-tag.profession { background: transparent; color: var(--tea) }
+.editor-identity-tag img { width: 16px; height: 16px; object-fit: contain }
+.editor-head-meta { display: flex; min-width: 0; align-items: center; gap: 16px; color: var(--ink-35); text-align: right }
+.editor-head-meta span { display: flex; min-width: 72px; flex-direction: column; gap: 2px }
+.editor-head-meta small { font-size: 9.5px; font-weight: 700; line-height: 1.25 }
+.editor-head-meta strong { color: var(--ink); font: 800 11.5px var(--font-b); line-height: 1.3; white-space: nowrap }
+.editor-close { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--ink-60); cursor: pointer; transition: color .25s, background-color .25s }
 .editor-close:hover { color: var(--rouge); background: rgba(166, 81, 74, .08) }
-.editor-body { display: flex; flex-direction: column; gap: 18px; padding: 20px 28px 24px }
-.editor-save-hint { background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: 12.5px; color: var(--ink-60); font-weight: 700 }
-.editor-row { display: flex; gap: 16px; align-items: flex-start }
-.editor-label { flex: none; width: 76px; padding-top: 9px; font-size: 13px; font-weight: 800; color: var(--ink) }
+.editor-close:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.editor-body { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 18px; overflow-y: auto; overscroll-behavior: contain; padding: 22px 28px 28px; scrollbar-gutter: stable }
+.editor-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 16px; align-items: start; padding: 4px 0 20px; border-bottom: 1px solid var(--line) }
+.editor-row:last-child { padding-bottom: 4px; border-bottom: 0 }
+.editor-label { padding-top: 8px; color: var(--tea); font-family: var(--font-s); font-size: 14px; font-weight: 900; line-height: 1.35 }
 .editor-game { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
 .game-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 16px; transition: all .25s }
 .game-pill input { display: none }
@@ -1376,15 +1720,13 @@ onMounted(async function () {
 }
 .node-chip:hover { border-color: var(--accent); color: var(--accent-strong) }
 .node-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
-.num-fields .level-row { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 12px }
-.num-fields .elite-hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
+.num-fields .level-row { flex-basis: 100%; display: grid; grid-template-columns: minmax(130px, 156px) minmax(130px, 156px) auto; align-items: center; gap: 10px }
+.num-fields .elite-hint { font-size: 11.5px; color: var(--ink-35); font-weight: 700; white-space: nowrap }
 .disc-editor { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px }
-.disc-editor .hint { flex-basis: 100%; font-size: 12px; color: var(--ink-35) }
-.disc-option { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; transition: all .25s; user-select: none }
+.disc-editor .hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35) }
+.disc-option { display: inline-flex; align-items: center; font-size: 12px; font-weight: 800; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: all .25s; user-select: none }
 .disc-option input { display: none }
 .disc-option.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
-.disc-option small { font-size: 10.5px; color: var(--ink-35); font-weight: 600 }
-.disc-option .disc-color { color: var(--accent-strong); font-weight: 800 }
 /* 命盘品级色：金 / 紫 / 蓝（未选中=淡色底，选中=实色） */
 .disc-option.c-gold { background: rgba(215, 137, 53, .14); border-color: rgba(215, 137, 53, .55); color: #8a5a1f }
 .disc-option.c-gold.on { background: var(--accent); border-color: #b06f24; color: var(--cream) }
@@ -1392,41 +1734,61 @@ onMounted(async function () {
 .disc-option.c-purple.on { background: #8a72bd; border-color: #7a62ab; color: var(--cream) }
 .disc-option.c-blue { background: rgba(110, 135, 184, .16); border-color: rgba(110, 135, 184, .6); color: #4f6387 }
 .disc-option.c-blue.on { background: #6E87B8; border-color: #5f76a4; color: var(--cream) }
-.disc-option.c-gold .disc-color { color: var(--accent-strong) }
-.disc-option.c-purple .disc-color { color: #7a62ab }
-.disc-option.c-blue .disc-color { color: #5f76a4 }
-.disc-option.c-gold.on .disc-color, .disc-option.c-purple.on .disc-color, .disc-option.c-blue.on .disc-color { color: var(--cream) }
-.disc-option.c-gold.on small, .disc-option.c-purple.on small, .disc-option.c-blue.on small { color: inherit }
-.stone-editor { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px }
-.stone-item { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 14px }
-.stone-name { flex: none; min-width: 64px; font-size: 13px; font-weight: 800; color: var(--ink) }
-.stone-select { flex: none; width: 104px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-b); font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
+.stone-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex: 1; min-width: 200px }
+.stone-presets { grid-column: 1 / -1; padding: 11px 12px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream) }
+.stone-preset-heading { display: flex; align-items: baseline; gap: 9px; margin-bottom: 9px }
+.stone-preset-heading strong { color: var(--ink); font-size: 12px; font-weight: 900 }
+.stone-preset-heading span { color: var(--ink-35); font-size: 10.5px; font-weight: 700 }
+.stone-preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+.stone-preset-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px; min-width: 0 }
+.stone-preset-item label { color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap }
+.stone-preset-item select { width: 100%; min-width: 0; border: 1.5px solid var(--line); border-radius: 7px; padding: 6px 8px; background: var(--surface); color: var(--ink); font: 700 11.5px var(--font-b); outline: none }
+.stone-preset-item select:focus { border-color: var(--accent) }
+.stone-preset-item select:disabled { color: var(--ink-35); cursor: not-allowed; opacity: .8 }
+.stone-preset-load { min-width: 48px; min-height: 32px; padding: 0 8px; border: 1px solid var(--tea); border-radius: 7px; background: var(--tea); color: var(--cream); font: 800 11px var(--font-b); cursor: pointer }
+.stone-preset-load:hover:not(:disabled) { background: var(--accent); border-color: var(--accent) }
+.stone-preset-load:disabled { opacity: .4; cursor: not-allowed }
+.stone-current-heading { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; padding: 3px 2px 0; border-top: 1px dashed var(--line); }
+.stone-current-heading strong { color: var(--tea); font-family: var(--font-s); font-size: 13px; font-weight: 900 }
+.stone-current-heading span { color: var(--ink-35); font-size: 10.5px; font-weight: 700 }
+.stone-item { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 8px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px }
+.stone-item-head { display: flex; min-height: 20px; align-items: center; justify-content: space-between; gap: 8px }
+.stone-name { min-width: 0; color: var(--ink); font-size: 12.5px; font-weight: 900 }
+.stone-current { flex: none; color: var(--accent-strong); font: 900 10.5px var(--font-d) }
+.stone-select { width: 100%; min-width: 0; border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 9px; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .stone-select:focus { border-color: var(--accent) }
-.stone-item input { width: 90px; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-d); font-weight: 800; font-size: 14px; color: var(--ink); background: var(--surface); outline: none; -moz-appearance: textfield }
+.stone-level-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px }
+.stone-level-field { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
+.stone-item input { width: 46px; border: 1.5px solid var(--line); border-radius: 7px; padding: 5px 6px; font-family: var(--font-d); font-weight: 900; font-size: 12.5px; color: var(--ink); text-align: center; background: var(--surface); outline: none; -moz-appearance: textfield }
 .stone-item input:focus { border-color: var(--accent) }
-.stone-quick { display: flex; align-items: center; gap: 5px }
+.stone-quick { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(73, 59, 44, .06) }
+.stone-quick > span { margin: 0 3px; color: var(--ink-35); font-size: 9.5px; font-weight: 800; white-space: nowrap }
 .stone-lv-chip {
-  min-width: 34px;
-  height: 26px;
-  padding: 0 8px;
-  border: 1.5px solid var(--line);
-  background: var(--surface);
+  min-width: 36px;
+  height: 27px;
+  padding: 0 5px;
+  border: 0;
+  background: transparent;
   color: var(--ink-60);
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 800;
   font-family: var(--font-d);
   line-height: 1;
   cursor: pointer;
   transition: all .25s;
 }
-.stone-lv-chip:hover { border-color: var(--accent); color: var(--accent-strong) }
-.stone-lv-chip.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
-.stone-empty { font-size: 12px; color: var(--ink-35); font-weight: 600; flex: 1 }
-.stone-editor .hint { font-size: 11.5px; color: var(--ink-35); line-height: 1.6 }
-.editor-notice { margin-top: 4px; background: var(--yellow); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; line-height: 1.6 }
-.editor-notice.err { background: rgba(166, 81, 74, .14); color: var(--rouge) }
-.editor-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 0 28px 24px }
+.stone-lv-chip:hover { background: var(--surface); color: var(--accent-strong) }
+.stone-lv-chip.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
+.stone-editor .hint { grid-column: 1 / -1; font-size: 11px; color: var(--ink-35); line-height: 1.5 }
+.editor-actions { position: relative; z-index: 1; display: flex; min-height: 64px; align-items: center; gap: 16px; flex: 0 0 auto; padding: 10px 28px; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 18px rgba(73, 59, 44, .06) }
+.editor-action-status { min-width: 0; flex: 1; padding: 8px 12px; border-radius: 9px; background: var(--yellow); color: var(--ink); font-size: 12px; font-weight: 800; line-height: 1.45 }
+.editor-action-status.err { background: rgba(166, 81, 74, .14); color: var(--rouge) }
+.editor-action-buttons { display: flex; flex: none; gap: 8px; margin-left: auto }
+.editor-action-buttons .btn { min-height: 44px; }
+.editor-cancel { min-width: 72px; border: 0; background: transparent; color: var(--ink-60) }
+.editor-cancel:hover:not(:disabled) { background: var(--paper); color: var(--ink) }
+.editor-save { min-width: 132px; border-radius: 10px }
 
 .edit-btn { margin-top: 6px; align-self: center; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink-60); border-radius: 999px; padding: 3px 12px; font-size: 11px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s; line-height: 1.5 }
 .edit-btn:hover { border-color: var(--accent); color: var(--accent-strong); background: var(--cream) }
@@ -1435,6 +1797,23 @@ onMounted(async function () {
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
 
 @media (max-width: 640px) {
+  .editor-mask { align-items: stretch; padding: 0 }
+  .editor-panel { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0 }
+  .editor-head { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: calc(18px + env(safe-area-inset-top)) 16px 14px }
+  .editor-head-meta { grid-column: 1 / -1; min-width: 0; flex-direction: row; align-items: baseline; flex-wrap: wrap; justify-content: flex-start; gap: 4px 8px; padding-top: 0; text-align: left }
+  .editor-head-meta span:last-child { margin-left: auto }
+  .editor-body { gap: 16px; padding: 18px 16px 24px }
+  .editor-row { grid-template-columns: 1fr; gap: 8px; padding-bottom: 18px }
+  .editor-label { padding-top: 0 }
+  .num-fields .level-row { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .num-fields .elite-hint { grid-column: 1 / -1 }
+  .stone-editor { grid-template-columns: minmax(0, 1fr) }
+  .stone-preset-grid { grid-template-columns: minmax(0, 1fr) }
+  .stone-preset-heading, .stone-current-heading { align-items: flex-start; flex-direction: column; gap: 3px }
+  .editor-actions { min-height: 78px; align-items: stretch; flex-direction: column; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) }
+  .editor-action-status { flex: none }
+  .editor-action-buttons { width: 100%; }
+  .editor-action-buttons .btn { flex: 1; }
   .archive-toggle { width: 100%; min-height: 44px; transform: none }
   .archive-workspace { margin-top: 0; padding: 14px 16px 16px }
   .archive-heading { flex-direction: column; gap: 8px }
@@ -1452,12 +1831,22 @@ onMounted(async function () {
   .import-actions .btn { width: 100% }
   .backpack { padding: 14px 12px 16px; border-radius: 20px }
   .slot-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px 10px }
-  .slot-count { font-size: 11.5px; padding: 2px 7px; right: 5px; bottom: 5px }
+  .slot-count { font-size: 11.5px; padding: 2px 7px; left: 5px; bottom: 5px }
   .manifest-bar { flex-direction: column; align-items: stretch; gap: 10px }
   .manifest-bar .sp { display: none }
   .mf-search { width: auto }
   .mf-stats { justify-content: space-between }
   .mf-progress { width: 100% }
+  .build-row { grid-template-columns: 48px repeat(3, minmax(48px, auto)) minmax(0, 1fr) 44px; gap: 7px 9px; padding-block: 12px }
+  .build-avatar { width: 44px; height: 44px; grid-column: 1; grid-row: 1 / span 3 }
+  .build-identity { grid-column: 2 / 6; grid-row: 1 }
+  .build-stat { display: inline-flex; gap: 4px; grid-row: 2 }
+  .build-stat:nth-of-type(1) { grid-column: 2 }
+  .build-stat:nth-of-type(2) { grid-column: 3 }
+  .build-stat:nth-of-type(3) { grid-column: 4 }
+  .build-stat dt, .build-stat dd { display: inline; margin: 0; font-size: 10.5px }
+  .build-loadouts { grid-column: 2 / 6; grid-row: 3; flex-direction: row; flex-wrap: wrap }
+  .build-edit { grid-column: 6; grid-row: 1 / span 3 }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
