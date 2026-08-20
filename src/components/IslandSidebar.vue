@@ -2,7 +2,7 @@
   <header class="mobile-shell">
     <router-link class="mobile-brand" to="/cart">
       <span class="brand-mark">Y</span>
-      <span>栖鸢阁</span>
+      <span>YuanHub</span>
     </router-link>
     <nav class="mobile-nav" aria-label="主要导航">
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }">
@@ -12,6 +12,10 @@
       <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
         <PackageOpen :size="19" aria-hidden="true" />
         <span>库存</span>
+      </router-link>
+      <router-link to="/operator" :class="{ active: $route.path.startsWith('/operator') }">
+        <BookUser :size="19" aria-hidden="true" />
+        <span>密探</span>
       </router-link>
       <router-link :to="isLoggedIn ? '/user/profile' : '/login'" :class="{ active: $route.path === '/user/profile' || $route.path === '/login' }">
         <component :is="isLoggedIn ? UserRound : LogIn" :size="19" aria-hidden="true" />
@@ -23,13 +27,16 @@
   <aside class="island" aria-label="主要导航">
     <div class="brand">
       <div class="brand-mark">Y</div>
-      <div class="brand-txt">YuanHub<span class="beta">Beta</span><b>栖鸢阁</b></div>
+      <div class="brand-txt">
+        <div class="brand-line"><span>YuanHub</span><span class="beta">Beta</span></div>
+        <b>栖鸢阁</b>
+      </div>
     </div>
     <nav class="nav">
       <!-- 作业广场（暂时隐藏）：<router-link to="/" :class="{ active: $route.path === '/' }"><span class="no">01</span>作业广场</router-link> -->
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"><span class="no">01</span>广陵账房</router-link>
       <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }"><span class="no">02</span>库存</router-link>
-      <router-link to="/operator" :class="{ active: $route.path === '/operator' }"><span class="no">03</span>密探</router-link>
+      <router-link to="/operator" :class="{ active: $route.path.startsWith('/operator') }"><span class="no">03</span>密探</router-link>
       <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }"><span class="no">04</span>个人中心</router-link>
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
@@ -57,7 +64,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
+import { BookUser, LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
 import { auth, logout as doLogout } from '@/store/auth.js'
 
 // 已登录状态（reactive，随 auth 变化）
