@@ -26,7 +26,7 @@ export const routes = [
         icon: 'grid',
         component: INDEX,
         meta: {
-            title: '作业广场 — YuanHub'
+            title: '作业广场 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -39,7 +39,7 @@ export const routes = [
         component: () => import('/src/pages/work/detail.vue'),
         props: true,
         meta: {
-            title: '通关作业 — YuanHub'
+            title: '通关作业 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -51,7 +51,7 @@ export const routes = [
         icon: 'shopping-cart',
         component: CART,
         meta: {
-            title: '广陵账房 · 礼包计算器 — YuanHub'
+            title: '广陵账房 · 礼包计算器 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -63,7 +63,7 @@ export const routes = [
         icon: 'package-open',
         component: INVENTORY,
         meta: {
-            title: '库存 — YuanHub'
+            title: '库存 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -75,7 +75,7 @@ export const routes = [
         icon: 'users',
         component: () => import('/src/pages/operator/index.vue'),
         meta: {
-            title: '密探 — YuanHub'
+            title: '密探 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -87,7 +87,7 @@ export const routes = [
         icon: 'zap',
         component: () => import('/src/pages/operator/quick.vue'),
         meta: {
-            title: '快捷导入 — YuanHub'
+            title: '快捷导入 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -99,7 +99,7 @@ export const routes = [
         icon: 'shield',
         component: () => import('/src/pages/operator/admin.vue'),
         meta: {
-            title: '密探图鉴管理 — YuanHub',
+            title: '密探图鉴管理 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true,
             requiresAdmin: true
         }
@@ -113,7 +113,7 @@ export const routes = [
         icon: 'log-in',
         component: () => import('/src/pages/user/login.vue'),
         meta: {
-            title: '登录 — YuanHub'
+            title: '登录 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -125,7 +125,7 @@ export const routes = [
         icon: 'user-plus',
         component: () => import('/src/pages/user/register.vue'),
         meta: {
-            title: '注册 — YuanHub'
+            title: '注册 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -137,7 +137,7 @@ export const routes = [
         icon: 'key-round',
         component: () => import('/src/pages/user/forgot.vue'),
         meta: {
-            title: '找回密码 — YuanHub'
+            title: '找回密码 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -149,7 +149,7 @@ export const routes = [
         icon: 'user',
         component: () => import('/src/pages/user/profile.vue'),
         meta: {
-            title: '个人中心 — YuanHub',
+            title: '个人中心 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true
         }
     }

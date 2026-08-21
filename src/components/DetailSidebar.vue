@@ -16,7 +16,7 @@
 
   <aside class="island" aria-label="作业章节">
     <div class="brand">
-      <div class="brand-mark">Y</div>
+      <div class="brand-mark" aria-hidden="true">♥</div>
       <div class="brand-txt">YuanHub<b>通关作业</b></div>
     </div>
     <nav class="nav">
