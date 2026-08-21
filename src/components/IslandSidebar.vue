@@ -26,10 +26,10 @@
 
   <aside class="island" aria-label="主要导航">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true">♥</div>
+      <div class="brand-mark" aria-hidden="true">H</div>
       <div class="brand-txt">
         <div class="brand-line"><span>YuanHub</span><span class="beta">Beta</span></div>
-        <b>鸢鸢相抱</b>
+        <b>鸢鸢相抱♥️</b>
       </div>
     </div>
     <nav class="nav">

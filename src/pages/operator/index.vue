@@ -254,8 +254,13 @@
 
           <!-- 当前养成 -->
           <div v-show="activeTab === 'current'" class="panel">
-            <div class="type-switch" v-reveal>
-              <span class="hint">密探名称与目录信息来自统一图鉴，养成数值以最近快照为准</span>
+            <div class="current-workbench-head" v-reveal>
+              <div>
+                <span class="section-kicker">当前账号 · 养成台账</span>
+                <h2>{{ currentAccountName }}</h2>
+                <p>点按虚线数值可直接校正；完整命盘、星石与面板数据仍可进入完整编辑。</p>
+              </div>
+              <span class="current-count"><b>{{ filteredCurrent.length }}</b> / {{ ownedCurrentEntries.length }} 位</span>
             </div>
 
             <!-- 属性 / 从属 筛选 -->
@@ -286,32 +291,95 @@
               <template v-else-if="currentEntries.length === 0">暂无已招募的密探养成记录 · <router-link class="link" :to="quickHref">前往首次 / 快捷导入</router-link></template>
               <template v-else>当前记录中的密探均为未拥有 · <button class="link" type="button" @click="setTab('catalog')">前往图鉴设置</button></template>
             </div>
-            <div v-else class="backpack" v-reveal>
-              <div class="bp-head">
-                <span class="bp-tip">已加载 <b class="bp-num">{{ filteredCurrent.length }}</b> 位密探 · 版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template> · 点击密探卡查看命盘与星石</span>
+            <div v-else class="current-ledger" v-reveal>
+              <div class="current-ledger-meta">
+                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template></span>
+                <span>校正操作仅更新养成记录，不扣减库存</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
-              <div v-else class="build-list" role="list">
-                <article v-for="e in filteredCurrent" :key="e.id" class="build-row" :class="{ 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated' }" :title="buildTitle(e)" role="listitem">
-                  <div class="build-avatar" :class="'rarity-r' + (e.rarity || 3)">
-                    <img v-if="avOf(e.id)" class="slot-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
-                    <span v-else>{{ monogram(e) }}</span>
+              <div v-else class="agent-ledger-grid" role="list">
+                <article v-for="e in filteredCurrent" :key="e.id" class="agent-ledger-card" :class="[{ 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated' }, 'rarity-r' + (e.rarity || 3), 'status-' + operatorStatus(e)]" :title="buildTitle(e)" role="listitem">
+                  <header class="ledger-card-head">
+                    <div class="ledger-avatar">
+                      <img v-if="avOf(e.id)" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
+                      <span v-else>{{ monogram(e) }}</span>
+                      <button class="ledger-favorite" :class="{ on: favoriteAgentIds.has(e.id) }" type="button" :aria-label="favoriteAgentIds.has(e.id) ? '取消特别关注' + e.name : '特别关注' + e.name" :aria-pressed="favoriteAgentIds.has(e.id)" :disabled="favoriteBusyIds.has(e.id)" @click="toggleAgentFavorite(e)"><Star :size="14" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
+                    </div>
+                    <div class="ledger-identity">
+                      <div class="ledger-name-row">
+                        <h3>{{ e.name || e.id }}</h3>
+                        <select :value="operatorStatus(e)" :class="'status-' + operatorStatus(e)" :aria-label="e.name + '养成状态'" @change="setOperatorStatus(e, $event.target.value)">
+                          <option value="growing">养成中</option>
+                          <option value="graduated">已毕业</option>
+                          <option value="inactive">不养成</option>
+                        </select>
+                      </div>
+                      <span class="ledger-prof"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
+                    </div>
+                  </header>
+
+                  <section class="ledger-combat" aria-label="战斗面板与奇闻属性">
+                    <div v-for="kind in ['attack', 'hp']" :key="kind" class="ledger-combat-stat" :class="{ 'is-manual': cardCombatMode(e, kind) === 'manual', 'is-stale': combatObservedStatus(e) === 'stale' }">
+                      <div class="ledger-combat-head">
+                        <span>{{ kind === 'attack' ? '⚔ 攻击' : '♡ 生命' }}</span>
+                        <select class="ledger-combat-mode" :value="cardCombatMode(e, kind)" :aria-label="e.name + (kind === 'attack' ? '攻击来源' : '生命来源')" @change="setCardCombatMode(e, kind, $event.target.value)">
+                          <option value="auto" :disabled="!cardCombatAutoAvailable(e, kind)">自动计算</option>
+                          <option value="manual">手动校正</option>
+                        </select>
+                      </div>
+                      <input class="ledger-combat-value" type="number" min="0" :value="cardCombatInputValue(e, kind)" :placeholder="cardCombatDisplay(e, kind)" :aria-label="e.name + (kind === 'attack' ? '攻击力' : '生命力')" @input="setCardCombatValue(e, kind, $event)" @blur="saveCardCombat(e)" />
+                      <small class="ledger-combat-source">{{ cardCombatSource(e, kind) }}</small>
+                      <label class="ledger-oddity">🦋 <input type="number" min="0" :value="cardOddityValue(e, kind)" :placeholder="cardOddityMax(e, kind)" :aria-label="e.name + (kind === 'attack' ? '奇闻属性攻击力' : '奇闻属性生命值')" @input="setCardOddityValue(e, kind, $event)" @blur="saveCardCombat(e)" /><span>/ {{ cardOddityMax(e, kind) || '—' }}</span></label>
+                    </div>
+                  </section>
+
+                  <section class="ledger-growth" aria-label="核心养成">
+                    <div class="ledger-growth-row">
+                      <span class="ledger-grow-label">等级</span>
+                      <button class="ledger-editable" type="button" :aria-expanded="quickEditorKey === e.id + ':level'" @click="openQuickEditor(e, 'level')">Lv {{ e.level }}</button>
+                      <div class="ledger-step-actions"><button type="button" :disabled="quickSavingIds.has(e.id) || e.level >= 100" @click="quickCorrect(e, 'level', Math.min(100, e.level + 5))">+5</button><button type="button" :disabled="quickSavingIds.has(e.id) || e.level >= 100" @click="quickCorrect(e, 'level', Math.min(100, e.level + 10))">+10</button></div>
+                      <div v-if="quickEditorKey === e.id + ':level'" class="ledger-popover">
+                        <p><CircleAlert :size="13" aria-hidden="true" />仅校正记录，不扣减库存</p>
+                        <div><input v-model.number="quickDrafts[e.id].level" type="number" min="0" max="100" aria-label="校正等级" /><button type="button" @click="quickCorrect(e, 'level', quickDrafts[e.id].level)">保存</button></div>
+                      </div>
+                    </div>
+                    <div class="ledger-growth-row">
+                      <span class="ledger-grow-label">修为</span>
+                      <button class="ledger-editable" type="button" :aria-expanded="quickEditorKey === e.id + ':elite'" @click="openQuickEditor(e, 'elite')">{{ e.elite }}</button>
+                      <button class="ledger-smart-action" type="button" :disabled="quickSavingIds.has(e.id) || e.elite >= getMaxEliteForLevel(e.level)" @click="openQuickConfirm(e, 'elite')"><ChevronUp :size="13" aria-hidden="true" />升至 {{ Math.min(getMaxEliteForLevel(e.level), e.elite + 3) }}</button>
+                      <div v-if="quickEditorKey === e.id + ':elite'" class="ledger-popover">
+                        <p><CircleAlert :size="13" aria-hidden="true" />仅校正记录，不扣减库存</p>
+                        <div><input v-model.number="quickDrafts[e.id].elite" type="number" min="0" :max="getMaxEliteForLevel(e.level)" aria-label="校正修为" /><button type="button" @click="quickCorrect(e, 'elite', quickDrafts[e.id].elite)">保存</button></div>
+                      </div>
+                      <div v-if="quickConfirmKey === e.id + ':elite'" class="ledger-popover is-confirm">
+                        <strong>确认提升修为</strong><p>修为 {{ e.elite }} → {{ Math.min(getMaxEliteForLevel(e.level), e.elite + 3) }}，库存不会自动扣减。</p>
+                        <div><button class="cancel" type="button" @click="quickConfirmKey = ''">取消</button><button type="button" @click="quickCorrect(e, 'elite', Math.min(getMaxEliteForLevel(e.level), e.elite + 3))">确认</button></div>
+                      </div>
+                    </div>
+                    <div class="ledger-growth-row">
+                      <span class="ledger-grow-label">化极</span>
+                      <button class="ledger-editable" type="button" :aria-expanded="quickEditorKey === e.id + ':star'" @click="openQuickEditor(e, 'star')">{{ starLabel(e.starLevel, e.spOf) }}</button>
+                      <button class="ledger-next-action" type="button" :disabled="quickSavingIds.has(e.id) || e.starLevel >= (e.spOf ? 5 : 31)" @click="quickCorrect(e, 'star', e.starLevel + 1)">下一节点</button>
+                      <div v-if="quickEditorKey === e.id + ':star'" class="ledger-popover">
+                        <p><CircleAlert :size="13" aria-hidden="true" />仅校正记录，不扣减库存</p>
+                        <div><input v-model.number="quickDrafts[e.id].star" type="number" min="0" :max="e.spOf ? 5 : 31" aria-label="校正化极节点" /><button type="button" @click="quickCorrect(e, 'star', quickDrafts[e.id].star)">保存</button></div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div class="ledger-destiny">
+                    <div v-for="index in 2" :key="index" class="ledger-destiny-row"><span>命盘{{ index === 1 ? '一' : '二' }}</span><div><template v-if="cardLoadoutDiscs(e, index - 1).length"><em v-for="disc in cardLoadoutDiscs(e, index - 1)" :key="disc">{{ disc }}</em></template><em v-else class="empty">+ 词条</em></div></div>
                   </div>
-                  <div class="build-identity">
-                    <strong>{{ e.name || e.id }}</strong>
-                    <span><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
+
+                  <div class="ledger-stones" aria-label="已装备星石">
+                    <div v-for="(stone, index) in cardStoneSlots(e)" :key="index" class="stone-slot" :class="{ 'is-empty': !stone }"><template v-if="stone"><strong>{{ stone.name || '星石' }}</strong><small>{{ stone.level || 0 }}</small></template><span v-else>+</span></div>
                   </div>
-                  <dl class="build-stat"><dt>等级</dt><dd>Lv {{ e.level }}</dd></dl>
-                  <dl class="build-stat"><dt>化极</dt><dd>{{ starLabel(e.starLevel, e.spOf) }}</dd></dl>
-                  <dl class="build-stat"><dt>修为</dt><dd>{{ e.elite }}</dd></dl>
-                  <div class="build-loadouts">
-                    <span>命盘一：{{ loadoutSummary(e.discLoadouts && e.discLoadouts[0], e.discs) }}</span>
-                    <span>命盘二：{{ loadoutSummary(e.discLoadouts && e.discLoadouts[1]) }}</span>
-                    <span v-if="hasCombatValue(e)">攻击 {{ e.combatStats.attack ?? '—' }} · 生命 {{ e.combatStats.hp ?? '—' }}</span>
-                    <span v-if="combatObservedStatus(e) === 'stale'" class="combat-stale">观测已过期</span>
-                    <span>星石：{{ stoneSummary(e.starStones) }}</span>
+
+                  <div class="ledger-card-footer">
+                    <textarea :value="operatorRemark(e)" rows="2" :aria-label="e.name + '备忘'" placeholder="添加备忘…" @input="setOperatorRemarkDraft(e, $event.target.value)" @blur="saveOperatorRemark(e)"></textarea>
+                    <p v-if="quickNotices[e.id]" class="ledger-notice" role="status">{{ quickNotices[e.id] }}</p>
+                    <button class="ledger-full-edit" type="button" @click.stop="openEdit(e.id)"><Pencil :size="14" aria-hidden="true" />完整编辑</button>
                   </div>
-                  <button class="build-edit" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="17" aria-hidden="true" /></button>
                 </article>
               </div>
             </div>
@@ -630,7 +698,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
-import { Archive, BookOpen, Calculator, Download, ListChecks, Pencil, RotateCcw, Save, Star, Target, Upload, X } from '@lucide/vue'
+import { Archive, BookOpen, Calculator, ChevronUp, CircleAlert, Download, ListChecks, Pencil, RotateCcw, Save, Star, Target, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
@@ -716,6 +784,19 @@ let finishPendingScanScroll = null
 const scanEffectTimers = new Map()
 const operatorSlotElements = new Map()
 
+// 当前养成台账卡的轻量交互状态（状态与备忘是浏览器侧偏好，不改变后端协议）
+const quickEditorKey = ref('')
+const quickConfirmKey = ref('')
+const quickDrafts = ref({})
+const quickSavingIds = ref(new Set())
+const quickNotices = ref({})
+const workbenchStatuses = ref({})
+const workbenchRemarks = ref({})
+const workbenchRemarkSaving = ref(new Set())
+const cardCombatDrafts = ref({})
+const cardCombatModes = ref({})
+const cardCombatSavingIds = ref(new Set())
+
 // —— 单个密探编辑弹窗 ——
 const editing = ref(false)
 const editingId = ref('')
@@ -758,6 +839,12 @@ const gameFilter = computed({
   get: function () { return activeAccount.gameFor(accountId.value) },
   set: function (v) { activeAccount.setGame(v, accountId.value) }
 })
+
+watch(function () { return [accountId.value, saveGame.value] }, function () {
+  workbenchStatuses.value = readWorkbenchMap('statuses')
+  workbenchRemarks.value = readWorkbenchMap('remarks')
+  cardCombatModes.value = readWorkbenchMap('combat-modes')
+}, { immediate: true })
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
@@ -1536,6 +1623,9 @@ const ownedCurrentEntries = computed(function () {
 const filteredCurrent = computed(function () {
   return ownedCurrentEntries.value.filter(function (e) {
     return matchesProfSubFilter(e, profFilter.value, subProfFilter.value)
+  }).sort(function (a, b) {
+    const order = { growing: 0, graduated: 1, inactive: 2 }
+    return (order[operatorStatus(a)] ?? 0) - (order[operatorStatus(b)] ?? 0)
   })
 })
 
@@ -1607,6 +1697,281 @@ function stoneSummary(stones) {
   return stones.map(function (stone) {
     return (stone.name || stone.type || '未命名') + (stone.level != null ? ' Lv' + stone.level : '')
   }).join('、')
+}
+
+function workbenchStorageKey(kind) {
+  return 'yuanhub:operator-workbench:' + kind + ':' + (accountId.value || 'guest') + ':' + saveGame.value
+}
+
+function readWorkbenchMap(kind) {
+  if (typeof localStorage === 'undefined') return {}
+  try { return JSON.parse(localStorage.getItem(workbenchStorageKey(kind)) || '{}') || {} } catch (_) { return {} }
+}
+
+function persistWorkbenchMap(kind, value) {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(workbenchStorageKey(kind), JSON.stringify(value))
+}
+
+function operatorStatus(entry) {
+  if (workbenchStatuses.value[entry.id]) return workbenchStatuses.value[entry.id]
+  return 'growing'
+}
+
+function setOperatorStatus(entry, value) {
+  workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [entry.id]: value })
+  persistWorkbenchMap('statuses', workbenchStatuses.value)
+}
+
+function ensureQuickDraft(entry) {
+  if (!quickDrafts.value[entry.id]) {
+    quickDrafts.value[entry.id] = { level: entry.level, elite: entry.elite, star: entry.starLevel }
+  }
+  return quickDrafts.value[entry.id]
+}
+
+function openQuickEditor(entry, field) {
+  quickConfirmKey.value = ''
+  const key = entry.id + ':' + field
+  ensureQuickDraft(entry)
+  quickEditorKey.value = quickEditorKey.value === key ? '' : key
+}
+
+function openQuickConfirm(entry, field) {
+  quickEditorKey.value = ''
+  quickConfirmKey.value = entry.id + ':' + field
+}
+
+async function quickCorrect(entry, field, rawValue) {
+  const max = field === 'level' ? OPERATOR_LEVEL_MAX : field === 'elite' ? getMaxEliteForLevel(entry.level) : (entry.spOf ? 5 : MAX_STAR_LEVEL)
+  const value = Math.max(0, Math.min(max, Math.trunc(Number(rawValue))))
+  if (!Number.isFinite(value)) return
+  const patch = { expected_revision: Number(entry.revision) || 0, reason: 'manual_correction' }
+  patch[field === 'star' ? 'star_level' : field] = value
+  quickSavingIds.value = new Set([...quickSavingIds.value, entry.id])
+  try {
+    await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch })
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: '已保存' })
+    quickEditorKey.value = ''
+    quickConfirmKey.value = ''
+    await reloadCurrent(true)
+    window.setTimeout(function () {
+      const next = Object.assign({}, quickNotices.value)
+      delete next[entry.id]
+      quickNotices.value = next
+    }, 1800)
+  } catch (err) {
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: humanErr(err, '保存失败') })
+  } finally {
+    const next = new Set(quickSavingIds.value)
+    next.delete(entry.id)
+    quickSavingIds.value = next
+  }
+}
+
+function cardLoadoutDiscs(entry, index) {
+  const loadout = entry.discLoadouts && entry.discLoadouts[index]
+  if (loadout) {
+    const names = Array.isArray(loadout.discNames) ? loadout.discNames : (Array.isArray(loadout.discs) ? loadout.discs.map(discKey).filter(Boolean) : [])
+    return names.slice(0, 3)
+  }
+  return index === 0 && Array.isArray(entry.discs) ? entry.discs.map(discKey).filter(Boolean).slice(0, 3) : []
+}
+
+function cardStoneSlots(entry) {
+  const stones = Array.isArray(entry.starStones) ? entry.starStones : []
+  return Array.from({ length: 6 }, function (_, index) {
+    const stone = stones[index]
+    return stone && (stone.name || stone.type) ? stone : null
+  })
+}
+
+function operatorRemark(entry) {
+  if (Object.prototype.hasOwnProperty.call(workbenchRemarks.value, entry.id)) return workbenchRemarks.value[entry.id]
+  return entry.remark || entry.note || ''
+}
+
+function setOperatorRemarkDraft(entry, value) {
+  workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, { [entry.id]: value })
+}
+
+function saveOperatorRemark(entry) {
+  persistWorkbenchMap('remarks', workbenchRemarks.value)
+}
+
+function cardCombatStones(entry) {
+  return (Array.isArray(entry.starStones) ? entry.starStones : []).reduce(function (result, stone, index) {
+    const type = stone && stone.type ? stone.type : 'stone' + (index + 1)
+    result[type] = { name: stone.name || '', level: Number(stone.level) || 0, rarity: stone.rarity }
+    return result
+  }, {})
+}
+
+function cardCombatDraft(entry) {
+  if (!cardCombatDrafts.value[entry.id]) {
+    const stats = entry.combatStats || normalizeOperatorCombatStats({})
+    cardCombatDrafts.value = Object.assign({}, cardCombatDrafts.value, {
+      [entry.id]: {
+        attack: stats.manualAttack,
+        hp: stats.manualHp,
+        oddityAttack: stats.oddities && stats.oddities.attack ? stats.oddities.attack.current : 0,
+        oddityHp: stats.oddities && stats.oddities.hp ? stats.oddities.hp.current : 0
+      }
+    })
+  }
+  return cardCombatDrafts.value[entry.id]
+}
+
+function cardCombatInput(entry) {
+  const draft = cardCombatDraft(entry)
+  return {
+    operatorName: entry.name,
+    level: entry.level,
+    elite: entry.elite,
+    starLevel: entry.starLevel,
+    stones: cardCombatStones(entry),
+    oddities: {
+      attack: { current: draft.oddityAttack },
+      hp: { current: draft.oddityHp },
+      special: { current: entry.combatStats && entry.combatStats.oddities && entry.combatStats.oddities.special ? entry.combatStats.oddities.special.current : 0 }
+    }
+  }
+}
+
+function cardCombatResult(entry) {
+  const stats = entry.combatStats || normalizeOperatorCombatStats({})
+  const draft = cardCombatDraft(entry)
+  return calculateOperatorCombatStats({
+    stored: Object.assign({}, stats, {
+      manualAttack: draft.attack,
+      manualHp: draft.hp,
+      oddities: Object.assign({}, stats.oddities, {
+        attack: { current: draft.oddityAttack },
+        hp: { current: draft.oddityHp }
+      })
+    }),
+    input: cardCombatInput(entry)
+  })
+}
+
+function cardCombatAutoAvailable(entry, kind) {
+  const result = cardCombatResult(entry)
+  return kind === 'attack' ? result.automaticAttackAvailable : result.automaticHpAvailable
+}
+
+function cardCombatMode(entry, kind) {
+  const local = cardCombatModes.value[entry.id] || {}
+  if (local[kind] === 'auto' || local[kind] === 'manual') return local[kind]
+  const persisted = entry.combatStats && entry.combatStats.displayMode && entry.combatStats.displayMode[kind]
+  if (persisted === 'auto' || persisted === 'manual') return persisted
+  const stats = entry.combatStats || {}
+  const hasEffectiveValue = cardCombatDraft(entry)[kind] != null || stats[kind] != null
+  if (hasEffectiveValue) return 'manual'
+  if (cardCombatAutoAvailable(entry, kind)) return 'auto'
+  return 'manual'
+}
+
+function cardCombatAutoVisible(entry, kind) {
+  return cardCombatMode(entry, kind) === 'auto' && cardCombatAutoAvailable(entry, kind)
+}
+
+function cardCombatDisplay(entry, kind) {
+  const result = cardCombatResult(entry)
+  const mode = cardCombatMode(entry, kind)
+  if (mode === 'auto' && cardCombatAutoAvailable(entry, kind)) return kind === 'attack' ? result.automaticAttackLabel : result.automaticHpLabel
+  const effective = cardCombatDraft(entry)[kind] != null
+    ? cardCombatDraft(entry)[kind]
+    : (entry.combatStats && entry.combatStats[kind])
+  if (effective != null) return Number(effective).toLocaleString('zh-CN')
+  return kind === 'attack' ? result.attackLabel : result.hpLabel
+}
+
+function cardCombatInputValue(entry, kind) {
+  if (cardCombatMode(entry, kind) !== 'manual') return ''
+  const value = cardCombatDraft(entry)[kind]
+  return value == null ? '' : value
+}
+
+function cardCombatSource(entry, kind) {
+  const mode = cardCombatMode(entry, kind)
+  const result = cardCombatResult(entry)
+  if (mode === 'auto') return '自动计算' + (combatObservedStatus(entry) === 'stale' ? ' · 观测已过期' : '')
+  if (mode === 'manual') return '手动 / 观测值' + (combatObservedStatus(entry) === 'stale' ? ' · 观测已过期' : '')
+  return combatStatsSourceLabel(result.source, result.status)
+}
+
+function setCardCombatMode(entry, kind, mode) {
+  mode = mode === 'auto' ? 'auto' : 'manual'
+  const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, { [kind]: mode })
+  cardCombatModes.value = Object.assign({}, cardCombatModes.value, { [entry.id]: next })
+  persistWorkbenchMap('combat-modes', cardCombatModes.value)
+  saveCardCombat(entry)
+}
+
+function setCardCombatValue(entry, kind, event) {
+  const draft = cardCombatDraft(entry)
+  const raw = event && event.target ? event.target.value : ''
+  draft[kind] = raw === '' ? null : Number(raw)
+  const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, { [kind]: 'manual' })
+  cardCombatModes.value = Object.assign({}, cardCombatModes.value, { [entry.id]: next })
+  persistWorkbenchMap('combat-modes', cardCombatModes.value)
+}
+
+function cardOddityValue(entry, kind) {
+  const draft = cardCombatDraft(entry)
+  return kind === 'attack' ? draft.oddityAttack : draft.oddityHp
+}
+
+function cardOddityMax(entry, kind) {
+  const oddity = entry.combatStats && entry.combatStats.oddities && entry.combatStats.oddities[kind]
+  return oddity && oddity.max != null ? oddity.max : ''
+}
+
+function setCardOddityValue(entry, kind, event) {
+  const draft = cardCombatDraft(entry)
+  const raw = event && event.target ? event.target.value : ''
+  draft[kind === 'attack' ? 'oddityAttack' : 'oddityHp'] = raw === '' ? 0 : Number(raw)
+}
+
+async function saveCardCombat(entry) {
+  if (!accountId.value || cardCombatSavingIds.value.has(entry.id)) return
+  const draft = cardCombatDraft(entry)
+  const input = cardCombatInput(entry)
+  const signature = combatInputSignature(input)
+  const modes = cardCombatModes.value[entry.id] || (entry.combatStats && entry.combatStats.displayMode) || {}
+  const patch = {
+    expected_revision: Number(entry.revision) || 0,
+    reason: 'manual_correction',
+    combat_stats: {
+      manual_attack: draft.attack == null || draft.attack === '' ? null : Number(draft.attack),
+      manual_hp: draft.hp == null || draft.hp === '' ? null : Number(draft.hp),
+      display_mode: {
+        attack: modes.attack || null,
+        hp: modes.hp || null
+      },
+      oddities: {
+        attack: { current: Number(draft.oddityAttack) || 0 },
+        hp: { current: Number(draft.oddityHp) || 0 },
+        special: { current: Number(entry.combatStats && entry.combatStats.oddities && entry.combatStats.oddities.special ? entry.combatStats.oddities.special.current : 0) }
+      }
+    }
+  }
+  if (draft.attack != null || draft.hp != null) {
+    patch.combat_stats.source = 'manual'
+    patch.combat_stats.combat_input_signature = signature
+    patch.combat_stats.observed_inputs = { signature: signature, level: entry.level, elite: entry.elite, star_level: entry.starLevel }
+  }
+  cardCombatSavingIds.value = new Set([...cardCombatSavingIds.value, entry.id])
+  try {
+    await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch: patch })
+    await reloadCurrent(true)
+  } catch (err) {
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: humanErr(err, '战斗属性保存失败') })
+  } finally {
+    const next = new Set(cardCombatSavingIds.value)
+    next.delete(entry.id)
+    cardCombatSavingIds.value = next
+  }
 }
 
 async function openEdit(id) {
@@ -2722,6 +3087,102 @@ onBeforeUnmount(function () {
 
 /* ---- 密探卡片 ---- */
 .backpack { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 18px 18px 20px }
+.current-workbench-head { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-top:18px; padding:18px 2px 6px }
+.current-workbench-head h2 { margin-top:4px; font-family:var(--font-s); font-size:24px; font-weight:900; letter-spacing:.04em }
+.current-workbench-head p { margin-top:6px; color:var(--ink-60); font-size:12px; line-height:1.7 }
+.current-count { flex:none; color:var(--ink-60); font-size:12px; font-weight:800 }
+.current-count b { color:var(--accent-strong); font:900 28px var(--font-d) }
+.current-ledger { margin-top:16px; padding:16px; border:1px solid rgba(255,248,236,.22); border-radius:20px; background:linear-gradient(145deg,var(--tea),var(--tea-deep)); box-shadow:0 20px 40px -24px rgba(73,59,44,.55) }
+.current-ledger-meta { display:flex; justify-content:space-between; gap:12px; padding:0 2px 14px; color:rgba(255,248,236,.76); font-size:11px; font-weight:700; line-height:1.6 }
+.current-ledger-meta span:last-child { color:var(--yellow) }
+.agent-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px }
+.agent-ledger-card { position:relative; min-width:0; display:flex; flex-direction:column; gap:11px; padding:14px 12px 12px; color:var(--ink); border:1px solid var(--line); border-radius:12px; background:linear-gradient(180deg,var(--surface),var(--cream)); box-shadow:0 8px 24px rgba(73,59,44,.18), inset 0 1px 0 rgba(255,255,255,.8); transition:transform .35s var(--ease),box-shadow .35s var(--ease) }
+.agent-ledger-card:hover { transform:translateY(-5px); box-shadow:0 18px 30px rgba(73,59,44,.25), inset 0 1px 0 rgba(255,255,255,.8) }
+.agent-ledger-card.rarity-r5 { border-top:2px solid var(--accent) }
+.agent-ledger-card.rarity-r4 { border-top:2px solid var(--brand-blue) }
+.agent-ledger-card.status-growing { border-left:3px solid #6f9f76 }
+.agent-ledger-card.status-graduated { border-left:3px solid var(--yellow-deep) }
+.agent-ledger-card.status-inactive { border-left:3px solid rgba(73,59,44,.35) }
+.ledger-card-head { display:flex; gap:10px; align-items:center; min-width:0 }
+.ledger-avatar { position:relative; flex:none; width:46px; height:46px; overflow:visible; border:2px solid var(--yellow-deep); border-radius:10px; background:var(--paper) }
+.ledger-avatar img { width:100%; height:100%; display:block; object-fit:cover; border-radius:8px }
+.ledger-avatar > span { display:grid; width:100%; height:100%; place-items:center; font:900 21px var(--font-s); color:var(--ink-35) }
+.ledger-favorite { position:absolute; right:-9px; top:-9px; z-index:2; width:22px; height:22px; display:grid; place-items:center; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--surface); color:var(--ink-35); cursor:pointer; box-shadow:0 2px 5px rgba(73,59,44,.18) }
+.ledger-favorite.on { color:var(--accent); border-color:var(--accent) }
+.ledger-favorite:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.ledger-identity { min-width:0; flex:1 }
+.ledger-name-row { display:flex; align-items:center; justify-content:space-between; gap:5px }
+.ledger-name-row h3 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px; font-weight:900; font-family:var(--font-s) }
+.ledger-name-row select { max-width:64px; padding:3px 4px; border:0; border-radius:4px; background:var(--yellow); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer; outline:none }
+.ledger-name-row select.status-growing { background:#BFDCC0; color:#315f38 }
+.ledger-name-row select.status-graduated { background:var(--yellow); color:var(--ink) }
+.ledger-name-row select.status-inactive { background:rgba(73,59,44,.16); color:var(--ink-60) }
+.ledger-prof { display:flex; align-items:center; gap:4px; margin-top:4px; color:var(--ink-60); font-size:10.5px; font-weight:700 }
+.ledger-prof img { width:15px; height:15px; object-fit:contain }
+.ledger-combat { display:grid; grid-template-columns:1fr 1fr; gap:7px }
+.ledger-combat-stat { min-width:0; padding:7px 8px 6px; border:1px solid var(--line); border-radius:6px; background:var(--surface); transition:border-color .2s, box-shadow .2s }
+.ledger-combat-stat:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px rgba(215,137,53,.1) }
+.ledger-combat-stat.is-manual { border-color:rgba(215,137,53,.58); background:var(--cream) }
+.ledger-combat-stat.is-stale { border-color:rgba(166,81,74,.42) }
+.ledger-combat-head { display:flex; align-items:center; justify-content:space-between; gap:4px; color:var(--ink-60); font-size:10px; font-weight:800 }
+.ledger-combat-mode { max-width:74px; padding:2px 3px; border:1px solid var(--line); border-radius:999px; background:var(--paper); color:var(--ink-60); font-size:9px; font-weight:800; cursor:pointer; outline:none }
+.ledger-combat-mode:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(215,137,53,.12) }
+.ledger-combat-mode option { color:var(--ink); background:var(--surface) }
+.ledger-combat-value { display:block; width:100%; min-width:0; margin-top:3px; padding:1px 0 3px; border:0; border-bottom:1px dashed var(--accent); outline:none; background:transparent; color:var(--ink); font:900 21px/1 var(--font-d); -moz-appearance:textfield }
+.ledger-combat-value::-webkit-outer-spin-button,.ledger-combat-value::-webkit-inner-spin-button { -webkit-appearance:none }
+.ledger-combat-value::placeholder { color:var(--ink); opacity:1 }
+.ledger-combat-value:focus::placeholder { color:transparent }
+.ledger-combat-source { display:block; margin-top:4px; min-height:12px; color:var(--ink-35); font-size:8px; font-weight:800 }
+.ledger-oddity { display:flex; align-items:center; gap:2px; margin-top:4px; color:var(--accent-strong); font:800 10px var(--font-d) }
+.ledger-oddity input { width:35px; min-width:0; padding:0 1px; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink-60); font:800 10px var(--font-d); text-align:right; -moz-appearance:textfield }
+.ledger-oddity input::-webkit-outer-spin-button,.ledger-oddity input::-webkit-inner-spin-button { -webkit-appearance:none }
+.ledger-oddity span { color:var(--ink-35); font-size:9px }
+.ledger-growth { display:flex; flex-direction:column; gap:7px; padding:9px 9px 8px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.62) }
+.ledger-growth-row { position:relative; display:flex; align-items:center; min-height:24px; gap:5px; font-size:11px }
+.ledger-grow-label { width:32px; flex:none; color:var(--ink-60); font-weight:700 }
+.ledger-editable { padding:0 2px; border:0; border-bottom:1px dashed var(--accent); background:transparent; color:var(--ink); font:700 13px var(--font-d); cursor:pointer }
+.ledger-editable:hover { color:var(--accent-strong) }
+.ledger-step-actions { display:flex; gap:3px; margin-left:auto }
+.ledger-step-actions button,.ledger-next-action { border:1px solid var(--line); border-radius:4px; padding:3px 5px; background:var(--surface); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer }
+.ledger-step-actions button:hover,.ledger-next-action:hover:not(:disabled) { border-color:var(--accent); background:var(--yellow) }
+.ledger-smart-action { display:inline-flex; align-items:center; gap:2px; margin-left:auto; border:1px solid rgba(74,138,65,.35); border-radius:4px; padding:3px 5px; background:#E8F4E9; color:#378B3A; font-size:10px; font-weight:800; cursor:pointer }
+.ledger-next-action { margin-left:auto }
+.ledger-step-actions button:disabled,.ledger-smart-action:disabled,.ledger-next-action:disabled { opacity:.4; cursor:not-allowed }
+.ledger-popover { position:absolute; z-index:20; left:24px; right:0; top:calc(100% + 7px); display:flex; flex-direction:column; gap:7px; padding:9px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); box-shadow:0 10px 25px rgba(73,59,44,.22) }
+.ledger-popover::before { position:absolute; top:-6px; left:20px; width:10px; height:10px; border-left:1px solid var(--accent); border-top:1px solid var(--accent); background:var(--surface); content:''; transform:rotate(45deg) }
+.ledger-popover p { display:flex; align-items:flex-start; gap:4px; color:var(--brand-blue); font-size:9.5px; line-height:1.35; font-weight:700 }
+.ledger-popover > div { display:flex; gap:5px }
+.ledger-popover input { min-width:0; width:100%; padding:4px 5px; border:1px solid var(--line); border-radius:4px; background:var(--cream); color:var(--ink); font:700 12px var(--font-d); outline:none }
+.ledger-popover input:focus { border-color:var(--accent) }
+.ledger-popover button { flex:none; border:0; border-radius:4px; padding:0 8px; background:var(--accent); color:#fff; font-size:10px; font-weight:800; cursor:pointer }
+.ledger-popover.is-confirm { top:auto; bottom:calc(100% + 7px); left:auto; right:0 }
+.ledger-popover.is-confirm::before { top:auto; bottom:-6px; left:auto; right:20px; border-top:0; border-left:0; border-right:1px solid var(--accent); border-bottom:1px solid var(--accent) }
+.ledger-popover.is-confirm strong { font-size:11px }
+.ledger-popover.is-confirm p { color:var(--ink-60) }
+.ledger-popover.is-confirm .cancel { background:var(--paper); color:var(--ink-60) }
+.ledger-stats { display:grid; grid-template-columns:1fr 1fr; gap:7px }
+.ledger-stats > div { display:flex; flex-direction:column; gap:2px; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface) }
+.ledger-stats span { display:flex; align-items:center; gap:4px; color:var(--ink-60); font-size:10px; font-weight:800 }
+.ledger-stats strong { font:900 17px var(--font-d); color:var(--ink) }
+.ledger-stats small { color:var(--ink-35); font-size:9px; font-weight:700 }
+.ledger-destiny { display:flex; flex-direction:column; gap:5px; padding-top:2px }
+.ledger-destiny-row { display:flex; align-items:flex-start; gap:5px; min-width:0 }
+.ledger-destiny-row > span { flex:none; padding-top:3px; color:var(--accent-strong); font-size:10px; font-weight:800 }
+.ledger-destiny-row > div { display:flex; flex-wrap:wrap; gap:3px; min-width:0 }
+.ledger-destiny-row em { padding:2px 5px; border:1px solid rgba(215,137,53,.28); border-radius:4px; background:rgba(215,137,53,.12); color:var(--ink); font-size:9px; font-style:normal; font-weight:500 }
+.ledger-destiny-row em.empty { border-style:dashed; background:transparent; color:var(--ink-35) }
+.ledger-stones { display:grid; flex:0 0 42px; align-content:start; grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-rows:42px; height:42px; min-height:42px; max-height:42px; gap:3px; padding-top:2px; overflow:visible }
+.ledger-stones > .stone-slot { width:100%; height:42px; min-height:42px; max-height:42px; overflow:hidden; display:flex; flex:none; flex-direction:column; align-items:center; justify-content:center; min-width:0; border:1px solid var(--line); border-radius:4px; background:var(--surface); text-align:center; box-sizing:border-box }
+.ledger-stones > .stone-slot.is-empty { height:42px; min-height:42px; max-height:42px; flex:0 0 42px; background:transparent; color:var(--line); font-size:15px }
+.ledger-stones strong { max-width:100%; overflow:hidden; color:var(--ink); font-size:8px; text-overflow:ellipsis; white-space:nowrap }
+.ledger-stones small { color:var(--ink-60); font:8px var(--font-d) }
+.ledger-card-footer { display:flex; flex-direction:column; gap:7px; margin-top:auto; padding-top:4px }
+.ledger-card-footer textarea { width:100%; resize:vertical; min-height:36px; padding:4px 0; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink); font:10.5px/1.45 var(--font-b) }
+.ledger-card-footer textarea:focus { border-bottom-color:var(--accent) }
+.ledger-card-footer textarea::placeholder { color:var(--ink-35) }
+.ledger-full-edit { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; padding:7px; border:0; border-radius:6px; background:var(--ink); color:var(--cream); font-size:11px; font-weight:800; cursor:pointer }
+.ledger-full-edit:hover { background:var(--accent) }
+.ledger-notice { color:var(--accent-strong); font-size:10px; font-weight:800 }
 .bp-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1.5px dashed var(--line); flex-wrap: wrap }
 .bp-head .sp { flex: 1 }
 .bp-tip { font-size: 12px; color: var(--ink-60); font-weight: 600; line-height: 1.8 }
@@ -3037,6 +3498,8 @@ onBeforeUnmount(function () {
 .hero-stats div.is-authed .v small a { color: var(--cream); text-decoration: underline; text-underline-offset: 3px }
 
 @media (max-width: 1080px) {
+  .agent-ledger-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .current-ledger-meta { flex-direction: column; gap: 4px; }
   .operator-main > section { padding-bottom: 40px }
   .page-operator :deep(.footer) { padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom)) }
   .operator-tabs { gap: 8px; padding: 8px; }
@@ -3078,6 +3541,31 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
+  .current-workbench-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .current-workbench-head h2 { font-size: 21px; }
+  .current-ledger { margin-inline: -4px; padding: 10px; border-radius: 16px; }
+  .agent-ledger-grid { grid-template-columns: 1fr; gap: 10px; }
+  .agent-ledger-card { padding: 11px 9px 10px; gap: 9px; }
+  .ledger-card-head { gap: 7px; align-items: flex-start; }
+  .ledger-avatar { width: 40px; height: 40px; }
+  .ledger-name-row { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .ledger-name-row h3 { font-size: 14px; }
+  .ledger-name-row select { max-width: none; font-size: 9px; }
+  .ledger-prof { font-size: 9px; }
+  .ledger-combat-value { font-size: 19px; }
+  .ledger-growth { padding: 7px 6px; }
+  .ledger-growth-row { flex-wrap: wrap; gap: 4px; }
+  .ledger-grow-label { width: 28px; font-size: 10px; }
+  .ledger-smart-action, .ledger-next-action { margin-left: 32px; }
+  .ledger-step-actions { margin-left: auto; }
+  .ledger-popover { left: 0; right: -2px; }
+  .ledger-stats strong { font-size: 15px; }
+  .ledger-destiny-row > span { font-size: 9px; }
+  .ledger-destiny-row em { font-size: 8px; }
+  .ledger-stones { grid-auto-rows: 42px; }
+  .ledger-stones > .stone-slot { height: 42px; min-height: 42px; max-height: 42px; }
+  .ledger-stones strong { font-size: 7px; }
+  .ledger-full-edit { font-size: 10px; padding: 6px 3px; }
   .operator-tabs { margin-top: 24px }
   .operator-tabs .admin-link { padding-inline: 12px }
   .editor-mask { align-items: stretch; padding: 0 }
@@ -3153,6 +3641,13 @@ onBeforeUnmount(function () {
   .build-stat dt, .build-stat dd { display: inline; margin: 0; font-size: 10.5px }
   .build-loadouts { grid-column: 2 / 6; grid-row: 3; flex-direction: row; flex-wrap: wrap }
   .build-edit { grid-column: 6; grid-row: 1 / span 3 }
+}
+
+@media (max-width: 420px) {
+  .agent-ledger-grid { grid-template-columns: 1fr; }
+  .ledger-name-row { flex-direction: row; align-items: center; }
+  .ledger-name-row select { max-width: 64px; }
+  .ledger-smart-action, .ledger-next-action { margin-left: auto; }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
