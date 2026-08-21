@@ -238,7 +238,9 @@
 - 复用现有六槽 `starStones`，明确其当前装备语义，并允许 current PATCH 直接完整替换六槽；
 - 增加最多两套且没有 active 状态的 `disc_loadouts`；
 - 增加 `combat_stats.oddities`、扫描攻生、手动校正与输入有效状态；
+- 增加 `combat_stats.display_mode`（攻/生分别 `auto | manual | null`）作为跨设备显示偏好；前端仅在旧后端缺字段时使用浏览器备用值；
 - 增加 entry revision 和安全局部 PATCH；
+- PATCH 对缺失 entry 使用 `expected_revision=0` 创建默认养成记录，支持从图鉴未拥有状态直接进入编辑并保存；
 - 保证 v2 `discs` 只更新第一套，不覆盖第二套或战斗属性；
 - 保证 v2 import/export/delete replay 兼容。
 

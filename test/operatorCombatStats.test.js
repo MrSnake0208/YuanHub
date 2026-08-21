@@ -38,6 +38,18 @@ test('兼容根级、stats 和 snake_case 扫描属性', function () {
   })
 })
 
+test('服务器显示偏好使用稳定枚举，并区分字段缺失', function () {
+  const stats = normalizeOperatorCombatStats({
+    combat_stats: {
+      display_mode: { attack: 'auto', hp: 'manual', ignored: 'bad' }
+    }
+  })
+  assert.equal(stats.displayModePresent, true)
+  assert.deepEqual(stats.displayMode, { attack: 'auto', hp: 'manual' })
+  const legacy = normalizeOperatorCombatStats({ combat_stats: {} })
+  assert.equal(legacy.displayModePresent, undefined)
+})
+
 test('旧奇闻名称会迁移到稳定键，上限只信任公共图鉴 schema', function () {
   const schema = {
     attack: { name: '攻击力', max: 305 },

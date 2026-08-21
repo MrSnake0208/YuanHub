@@ -81,10 +81,14 @@ C. entry revision 与局部 PATCH
 PATCH /v1/operator/current/{operatorId}?account_id={accountId}&game={game}
 
 - expected_revision 必填；冲突返回 HTTP 409 operator_revision_conflict；
-- current source document 的选择必须与 GET 合并语义一致：指定游戏 entry 存在时写指定游戏记录；指定游戏记录存在但 entry 缺失时回退写通用记录；两者都没有该 entry 才返回 operator_not_found；
+- current source document 的选择必须与 GET 合并语义一致：指定游戏 entry 存在时写指定游戏记录；指定游戏记录存在但 entry 缺失时回退写通用记录；两边都没有该 entry 时，只有 `expected_revision != 0` 才返回并发错误，`expected_revision=0` 必须创建默认 entry；
 - 针对历史 `game=universal` 数据，增加一次性回填或首次 PATCH 惰性提升：按账号权威 `game` 复制缺失 entry 到具体游戏记录，具体游戏已有 entry 时不得覆盖；必须保留 revision、disc_loadouts、star_stones、combat_stats；回填完成前不能移除通用记录回退；
 - 只合并请求中出现的字段，未出现字段保持不变；
 - 支持 level、elite、star_level、disc_loadouts、star_stones、combat_stats 的局部校正；
+- `combat_stats.display_mode` 作为用户显示偏好持久化：`attack` / `hp` 仅允许 `auto | manual | null`，缺失保留，null 清除；GET current 返回它，PATCH 按出现字段合并；不改变 manual/observed 值及 stale 规则；
+- PATCH 目标 entry 缺失且 `expected_revision=0` 时创建默认 entry（level/elite/star_level=0、空命盘、空星石、combat_stats 按请求或 null），再应用请求字段；非零 revision 不得创建；
+- 实现要点：目标 entry 缺失时不能直接抛 `operator_not_found`。应选择/创建目标游戏的 `OperatorCurrent` 文档，先以默认 `OperatorEntry(level=0, elite=0, starLevel=0, revision=0)` 作为 CAS 基线，再合并本次 PATCH。若目标文档不存在，必须在同一事务中先 materialize 该文档，否则现有 `compareAndSetEntries` 只更新已存在的 Mongo 文档，首次保存仍会失败。
+- 创建分支必须与通用记录回退分支区分：有通用 entry 时复制通用 entry 到具体游戏后再应用 PATCH；两边都没有时使用全新默认 entry；两种情况都只允许 `expected_revision=0`，并继续走同一 revision 递增和 correction audit 流程。
 - `star_stones` 表示六槽当前装备的完整替换：字段缺失保留，空数组清空；槽位只允许 `main1..main3`、`assist1..assist3`，不扣库存、不写库存流水；
 - 星石变化必须触发已有 combat observation 的 stale 标记；
 - 空数组、null 和字段缺失必须按权威规格区分；
@@ -144,6 +148,11 @@ D. current 与 v2 兼容
 七、测试与验证
 
 请完整实现 /home/syoius/YuanHub/docs/backend-operator-current-foundation-spec.md 第 8 节的测试要求。
+
+必须补充两个回归测试：
+
+1. 新账号首次 PATCH 缺失 entry，`expected_revision=0` 成功创建并返回 `revision=1`，等级、修为、化极、命盘、六槽星石和 combat_stats 正确写入；
+2. 新账号首次 PATCH 使用非零 `expected_revision` 返回 `operator_revision_conflict`，且不创建空 entry。
 
 至少先运行：
 

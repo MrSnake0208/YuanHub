@@ -32,6 +32,14 @@ function firstObject(...values) {
   }) || {}
 }
 
+function normalizeDisplayMode(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  return {
+    attack: source.attack === 'auto' || source.attack === 'manual' ? source.attack : null,
+    hp: source.hp === 'auto' || source.hp === 'manual' ? source.hp : null
+  }
+}
+
 function normalizeCurio(value, index) {
   const source = typeof value === 'object' && value ? value : {}
   return {
@@ -145,6 +153,10 @@ export function normalizeOperatorCombatStats(raw, odditySchema) {
     observedAt: textOrEmpty(source.observedAt || source.observed_at),
     rulesVersion: textOrEmpty(source.rulesVersion || source.rules_version),
     version: Number(source.version) || 2
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'displayMode') || Object.prototype.hasOwnProperty.call(source, 'display_mode')) {
+    result.displayModePresent = true
+    result.displayMode = normalizeDisplayMode(source.displayMode != null ? source.displayMode : source.display_mode)
   }
   // 只有后端/采集端明确提供时才暴露观测元数据，保持旧本地快照对象的结构兼容。
   if (source.observedStatus != null || source.observed_status != null) {

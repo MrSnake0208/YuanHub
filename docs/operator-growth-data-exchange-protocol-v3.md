@@ -229,6 +229,10 @@ JSON Schema 只校验通用范围 `0..31`。生产者必须先根据 `operator_i
     "observed_hp": 20245,
     "manual_attack": null,
     "manual_hp": null,
+    "display_mode": {
+      "attack": "auto",
+      "hp": "manual"
+    },
     "source": "scan",
     "observed_at": "2026-08-21T10:21:32+08:00",
     "observed_status": "valid",
@@ -241,6 +245,8 @@ JSON Schema 只校验通用范围 `0..31`。生产者必须先根据 `operator_i
   }
 }
 ```
+
+`display_mode.attack` / `display_mode.hp` 为可选用户偏好，值为 `auto | manual | null`；它只记忆攻生展示选择，不改变观测值、手动校正值或 stale 语义。字段缺失表示未保存偏好。
 
 奇闻值只使用三个稳定语义键：
 

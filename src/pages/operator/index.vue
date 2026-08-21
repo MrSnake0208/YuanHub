@@ -190,7 +190,7 @@
                       :title="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
                       @click.stop="toggleAgentFavorite(e)"
                     ><Star :size="16" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
-                    <button v-if="auth.isLoggedIn && accountId && currentMap[e.id]" class="edit-icon-btn" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="15" aria-hidden="true" /></button>
+                    <button v-if="auth.isLoggedIn && accountId" class="edit-icon-btn" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="15" aria-hidden="true" /></button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
                 </li>
@@ -916,8 +916,44 @@ function initialDiscLoadoutState(existing) {
 }
 
 const COMBAT_STATS_STORAGE_PREFIX = 'yuanhub:operator-combat-stats:v1'
+const COMBAT_DISPLAY_MODE_STORAGE_PREFIX = 'yuanhub:operator-combat-display-mode:v1'
 function combatStatsStorageKey(id) {
   return [COMBAT_STATS_STORAGE_PREFIX, accountId.value, saveGame.value, id || editingId.value].join(':')
+}
+
+function combatDisplayModeStorageKey(id) {
+  return [COMBAT_DISPLAY_MODE_STORAGE_PREFIX, accountId.value, saveGame.value, id || editingId.value].join(':')
+}
+
+function loadCombatDisplayMode(id) {
+  if (typeof localStorage === 'undefined') return { attack: null, hp: null }
+  try {
+    const raw = localStorage.getItem(combatDisplayModeStorageKey(id))
+    const parsed = raw ? JSON.parse(raw) : {}
+    return {
+      attack: parsed.attack === 'auto' || parsed.attack === 'manual' ? parsed.attack : null,
+      hp: parsed.hp === 'auto' || parsed.hp === 'manual' ? parsed.hp : null
+    }
+  } catch (_) {
+    return { attack: null, hp: null }
+  }
+}
+
+function persistCombatDisplayMode(id) {
+  if (typeof localStorage === 'undefined') return false
+  try {
+    localStorage.setItem(combatDisplayModeStorageKey(id), JSON.stringify({
+      attack: editForm.value.combatStats && editForm.value.combatStats.manualAttack != null && calculatedCombatStats.value.automaticAttackAvailable
+        ? (combatAttackAutoVisible.value ? 'auto' : 'manual')
+        : null,
+      hp: editForm.value.combatStats && editForm.value.combatStats.manualHp != null && calculatedCombatStats.value.automaticHpAvailable
+        ? (combatHpAutoVisible.value ? 'auto' : 'manual')
+        : null
+    }))
+    return true
+  } catch (_) {
+    return false
+  }
 }
 
 function loadCachedCombatStats(id) {
@@ -1148,12 +1184,14 @@ const calculatedCombatStats = computed(function () {
 })
 
 const combatAttackAutoVisible = computed(function () {
+  if (!calculatedCombatStats.value.automaticAttackAvailable) return false
   return combatDisplayMode.value.attack === 'auto' || (
     combatDisplayMode.value.attack !== 'manual' && calculatedCombatStats.value.manualFallbackAvailable
   )
 })
 
 const combatHpAutoVisible = computed(function () {
+  if (!calculatedCombatStats.value.automaticHpAvailable) return false
   return combatDisplayMode.value.hp === 'auto' || (
     combatDisplayMode.value.hp !== 'manual' && calculatedCombatStats.value.manualFallbackAvailable
   )
@@ -1483,14 +1521,10 @@ async function openEdit(id) {
   const op = catalogMap.value[id]
   if (!op) return
   editorTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  const existing = currentMap.value[id]
-  if (!existing) {
-    await dialog.alert({ message: '该密探尚无云端养成记录，请先通过导入或快捷导入建立当前状态。' })
-    return
-  }
+  const existing = currentMap.value[id] || {}
   editingId.value = id
   editingOp.value = op
-  applyEditorEntry(existing, op, id, true)
+  applyEditorEntry(existing, op, id, Object.keys(existing).length > 0)
   editConflictDraft.value = null
   editNotice.value = ''
   editNoticeError.value = false
@@ -1534,7 +1568,10 @@ function applyEditorEntry(existing, op, id, allowCache) {
     combatStats.frontendObservedSignature = currentSignature
   }
   selectedDiscLoadoutIndex.value = discState.activeIndex
-  combatDisplayMode.value = { attack: null, hp: null }
+  // 新后端返回的服务器偏好是跨设备权威值；旧后端没有该字段时才读取浏览器备用值。
+  combatDisplayMode.value = combatStats.displayModePresent
+    ? (combatStats.displayMode || { attack: null, hp: null })
+    : loadCombatDisplayMode(id)
   combatDisplaySignature = currentSignature
   editOriginalStoneSignature.value = stoneSignature(stones)
   selectedStonePresetIds.value = { main: '', assist: '' }
@@ -1543,7 +1580,7 @@ function applyEditorEntry(existing, op, id, allowCache) {
 function restoreConflictDraft() {
   if (!editConflictDraft.value) return
   editForm.value = JSON.parse(JSON.stringify(editConflictDraft.value.form))
-  combatDisplayMode.value = { attack: null, hp: null }
+  combatDisplayMode.value = editConflictDraft.value.displayMode || { attack: null, hp: null }
   combatDisplaySignature = combatInputSignature(combatStatsInput.value)
   selectedDiscLoadoutIndex.value = editConflictDraft.value.selectedDiscLoadoutIndex
   editOriginalStoneSignature.value = editConflictDraft.value.originalStoneSignature
@@ -1644,12 +1681,7 @@ async function saveEdit() {
     editNoticeError.value = true
     return
   }
-  const existing = currentMap.value[op.id]
-  if (!existing) {
-    editNotice.value = '该密探尚无云端养成记录，请先通过导入或快捷导入建立当前状态'
-    editNoticeError.value = true
-    return
-  }
+  const existing = currentMap.value[op.id] || {}
   const discLoadouts = editForm.value.discLoadouts.map(function (loadout, index) {
     return {
       id: String(loadout.id || 'disc_' + (index + 1)),
@@ -1683,6 +1715,14 @@ async function saveEdit() {
     combat_stats: {
       manual_attack: normalizedManual(combatStats.manualAttack),
       manual_hp: normalizedManual(combatStats.manualHp),
+      display_mode: {
+        attack: combatStats.manualAttack != null && calculatedCombatStats.value.automaticAttackAvailable
+          ? (combatAttackAutoVisible.value ? 'auto' : 'manual')
+          : null,
+        hp: combatStats.manualHp != null && calculatedCombatStats.value.automaticHpAvailable
+          ? (combatHpAutoVisible.value ? 'auto' : 'manual')
+          : null
+      },
       oddities: ODDITY_KEYS.reduce(function (result, key) {
         const value = oddities[key] || {}
         result[key] = { current: Number(value.current) || 0 }
@@ -1707,7 +1747,21 @@ async function saveEdit() {
   editNotice.value = ''
   editNoticeError.value = false
   try {
-    await patchOperatorCurrent({ accountId: accountId.value, operatorId: op.id, game: saveGame.value, patch: patch })
+    try {
+      await patchOperatorCurrent({ accountId: accountId.value, operatorId: op.id, game: saveGame.value, patch: patch })
+    } catch (firstErr) {
+      // 旧后端不认识 display_mode 时，重试不带该可选字段；其余错误（尤其 409）继续原样处理。
+      const unsupportedDisplayMode = firstErr && (
+        firstErr.code === 'unsupported_field' ||
+        /unsupported field.*display[_ ]?mode/i.test(firstErr.message || '')
+      )
+      if (!unsupportedDisplayMode) throw firstErr
+      const legacyPatch = JSON.parse(JSON.stringify(patch))
+      if (legacyPatch.combat_stats) delete legacyPatch.combat_stats.display_mode
+      await patchOperatorCurrent({ accountId: accountId.value, operatorId: op.id, game: saveGame.value, patch: legacyPatch })
+      editNotice.value = '已保存；当前后端暂不支持跨设备记忆显示偏好'
+    }
+    persistCombatDisplayMode(op.id)
     await reloadCurrent(true)
     editNotice.value = '养成资料与已装备星石均已保存'
     setTimeout(function () {
@@ -1718,7 +1772,8 @@ async function saveEdit() {
       const localDraft = {
         form: JSON.parse(JSON.stringify(editForm.value)),
         selectedDiscLoadoutIndex: selectedDiscLoadoutIndex.value,
-        originalStoneSignature: editOriginalStoneSignature.value
+        originalStoneSignature: editOriginalStoneSignature.value,
+        displayMode: JSON.parse(JSON.stringify(combatDisplayMode.value))
       }
       await reloadCurrent(true)
       applyEditorEntry(currentMap.value[op.id] || {}, op, op.id, false)

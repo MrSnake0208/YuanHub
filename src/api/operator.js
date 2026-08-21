@@ -57,6 +57,8 @@ export function getOperatorCurrent({ accountId, game } = {}) {
 
 // 当前养成局部校正（PATCH，需登录）——只提交请求中出现的字段；
 // 支持 level、elite、star_level、disc_loadouts、star_stones、combat_stats；
+// combat_stats.display_mode 记忆攻/生上次保存时的 auto/manual 选择；
+// 目标 entry 不存在时由后端以 expected_revision=0 创建；
 // expected_revision 必填，冲突时 request() 会保留 409/code 供调用方处理。
 export function patchOperatorCurrent({ accountId, operatorId, game, patch } = {}) {
   const params = new URLSearchParams()
