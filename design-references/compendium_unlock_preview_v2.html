@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>图鉴解锁动画方向 v2</title>
+<style>
+:root{
+  --bg:#0a0d12;
+  --panel:#151a22;
+  --text:#ebf0f7;
+  --muted:#8d98aa;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--text);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(58,73,100,.28), transparent 40%),
+    linear-gradient(#0a0d12, #090b10);
+}
+.wrap{max-width:1240px; margin:0 auto; padding:40px 22px 70px}
+h1{font-size:30px; margin:0 0 10px}
+.lead{margin:0 0 28px; color:var(--muted); line-height:1.75}
+h2.section-title{
+  margin:34px 0 14px;
+  font-size:20px;
+}
+.section-desc{
+  color:var(--muted);
+  line-height:1.7;
+  margin:0 0 18px;
+  font-size:14px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:18px;
+}
+.grid.two{
+  grid-template-columns:repeat(2, 1fr);
+}
+.card-panel{
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(19,24,33,.92);
+  box-shadow:0 18px 50px rgba(0,0,0,.28);
+}
+.stage{
+  position:relative;
+  min-height:295px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+}
+.meta{
+  padding:18px 18px 20px;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.meta h3{
+  margin:0 0 8px;
+  font-size:17px;
+}
+.meta p{
+  margin:0 0 14px;
+  font-size:13px;
+  line-height:1.68;
+  color:var(--muted);
+  min-height:64px;
+}
+button{
+  border:0;
+  border-radius:10px;
+  padding:9px 14px;
+  cursor:pointer;
+  font-weight:700;
+  background:#eef3fa;
+  color:#111722;
+}
+button:active{transform:translateY(1px)}
+
+.unlock-card{
+  position:relative;
+  width:150px;
+  height:176px;
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  isolation:isolate;
+}
+.subject{
+  position:relative;
+  z-index:6;
+  width:76px; height:76px;
+  display:grid; place-items:center;
+  font-size:38px;
+  opacity:.16;
+  filter:grayscale(1) brightness(.5);
+  transform:scale(.9);
+}
+.label{
+  position:absolute;
+  left:0; right:0; bottom:13px;
+  z-index:7;
+  text-align:center;
+  font-size:10px;
+  letter-spacing:.16em;
+  opacity:1;
+}
+
+/* ========= Minimal scanner family ========= */
+.scanner-stage{
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,255,255,.03), transparent 34%),
+    #0d1015;
+}
+.scanner-card{
+  background:linear-gradient(145deg, rgba(42,47,57,.75), rgba(16,19,26,.98));
+  border:1px solid var(--accent-soft);
+  box-shadow: inset 0 1px rgba(255,255,255,.04), 0 20px 40px rgba(0,0,0,.42);
+}
+.scanner-card .label{color:var(--accent-deep)}
+.scanner-card .scanline{
+  position:absolute;
+  z-index:8;
+  left:10px; right:10px;
+  top:-10px;
+  height:3px;
+  border-radius:999px;
+  background:linear-gradient(90deg, transparent, var(--accent), white, var(--accent), transparent);
+  box-shadow:0 0 10px var(--accent), 0 0 22px color-mix(in srgb, var(--accent) 65%, transparent);
+  opacity:0;
+}
+.scanner-card .scan-glow{
+  position:absolute;
+  left:12px; right:12px;
+  height:26px;
+  top:-22px;
+  z-index:4;
+  background:linear-gradient(to bottom, color-mix(in srgb, var(--accent) 24%, transparent), transparent);
+  filter:blur(8px);
+  opacity:0;
+}
+.scanner-card.play{
+  animation:min-shell .88s ease-out both;
+}
+.scanner-card.play .scanline{
+  animation:min-scan .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.scanner-card.play .scan-glow{
+  animation:min-scan-glow .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.scanner-card.play .subject{
+  animation:min-reveal .72s cubic-bezier(.18,.82,.22,1) .12s both;
+}
+.scanner-card.play .label{
+  animation:fadeLabel .18s ease-out .18s both;
+}
+@keyframes min-scan{
+  0%{top:-10px; opacity:0}
+  8%{opacity:1}
+  92%{opacity:1}
+  100%{top:182px; opacity:0}
+}
+@keyframes min-scan-glow{
+  0%{top:-22px; opacity:0}
+  8%{opacity:.65}
+  92%{opacity:.7}
+  100%{top:170px; opacity:0}
+}
+@keyframes min-reveal{
+  0%{opacity:.16; filter:grayscale(1) brightness(.45); transform:scale(.9)}
+  42%{opacity:.78; filter:grayscale(.55) brightness(1.55); transform:scale(1)}
+  72%{opacity:1; filter:grayscale(0) brightness(1.9); transform:scale(1.08)}
+  100%{opacity:1; filter:none; transform:scale(1)}
+}
+@keyframes min-shell{
+  0%{transform:scale(1); border-color:var(--accent-soft)}
+  58%{transform:scale(1.018); border-color:var(--accent)}
+  100%{transform:scale(1); border-color:var(--accent-mid); box-shadow:0 16px 36px rgba(0,0,0,.42), 0 0 14px color-mix(in srgb, var(--accent) 12%, transparent)}
+}
+.gold{
+  --accent:#ddb252;
+  --accent-mid:rgba(221,178,82,.48);
+  --accent-soft:rgba(221,178,82,.18);
+  --accent-deep:#715c2b;
+}
+.purple{
+  --accent:#9483bf;
+  --accent-mid:rgba(148,131,191,.48);
+  --accent-soft:rgba(148,131,191,.18);
+  --accent-deep:#584a79;
+}
+.blue{
+  --accent:#9bb5cf;
+  --accent-mid:rgba(155,181,207,.52);
+  --accent-soft:rgba(155,181,207,.18);
+  --accent-deep:#56677a;
+}
+
+/* ========= Dark pixel ========= */
+.pixel-stage{
+  background:
+    radial-gradient(circle at 50% 40%, rgba(76,119,130,.08), transparent 30%),
+    linear-gradient(rgba(110,150,162,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110,150,162,.025) 1px, transparent 1px),
+    #06090d;
+  background-size:auto, 14px 14px, 14px 14px;
+}
+.pixel-card{
+  border-radius:0;
+  width:156px; height:182px;
+  background:#090d11;
+  border:3px solid #1f2a33;
+  box-shadow:8px 8px 0 #030507, 0 0 0 1px rgba(137,181,199,.05) inset;
+  image-rendering:pixelated;
+}
+.pixel-card::before{
+  content:"";
+  position:absolute;
+  inset:7px;
+  border:2px solid #0f171d;
+  z-index:1;
+}
+.pixel-card .label{
+  color:#415260;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.08em;
+}
+.pixel-card .subject{
+  font-size:40px;
+  filter:grayscale(1) brightness(.35) contrast(1.25);
+}
+.pixel-card .scanline{
+  position:absolute;
+  left:8px; right:8px; top:-14px;
+  height:9px;
+  z-index:8;
+  background:#7e95a4;
+  box-shadow:
+    0 0 0 2px #33414d inset,
+    0 0 10px rgba(155,181,207,.22),
+    0 8px 0 rgba(155,181,207,.08);
+  opacity:0;
+}
+.pixel-card .noise{
+  position:absolute;
+  inset:8px;
+  z-index:4;
+  opacity:0;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(135,174,194,.08) 0 2px, transparent 2px 9px);
+  mix-blend-mode:screen;
+}
+.pixel-card .vignette{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  background:radial-gradient(circle at 50% 45%, transparent 25%, rgba(0,0,0,.32) 80%);
+}
+.pixel-card.play{
+  animation:px-shell 0.78s steps(6,end) both;
+}
+.pixel-card.play .scanline{
+  animation:px-scan 0.56s steps(8,end) both;
+}
+.pixel-card.play .noise{
+  animation:px-noise 0.58s steps(5,end) .06s both;
+}
+.pixel-card.play .subject{
+  animation:px-reveal .62s steps(6,end) .11s both;
+}
+.pixel-card.play .label{
+  animation:fadeLabel .01s steps(1,end) .17s both;
+}
+@keyframes px-scan{
+  0%{top:-14px; opacity:0}
+  7%{opacity:1}
+  90%{opacity:1}
+  100%{top:184px; opacity:0}
+}
+@keyframes px-noise{
+  0%,100%{opacity:0}
+  20%,60%{opacity:.9}
+  40%,80%{opacity:.28}
+}
+@keyframes px-reveal{
+  0%{opacity:.14; filter:grayscale(1) brightness(.3) contrast(1.35); transform:scale(.82)}
+  34%{opacity:.42; filter:grayscale(.95) brightness(.65) contrast(1.7); transform:scale(.9)}
+  67%{opacity:1; filter:grayscale(.25) brightness(1.25) contrast(1.5); transform:scale(1.07)}
+  100%{opacity:1; filter:none; transform:scale(1)}
+}
+@keyframes px-shell{
+  0%{transform:translate(0,0); border-color:#1f2a33}
+  20%{transform:translate(-2px,0)}
+  40%{transform:translate(2px,-1px); border-color:#496172}
+  60%{transform:translate(-1px,1px); border-color:#8aa4b7}
+  80%{transform:translate(1px,0)}
+  100%{transform:translate(0,0); border-color:#384754}
+}
+
+/* ========= Rune no scan ========= */
+.rune-stage{
+  background:
+    radial-gradient(circle at 50% 50%, rgba(140,101,211,.10), transparent 34%),
+    #0e0a15;
+}
+.rune-card{
+  background:
+    radial-gradient(circle at 50% 44%, rgba(116,69,187,.12), transparent 42%),
+    linear-gradient(145deg, #181223, #0f0b14);
+  border:1px solid rgba(164,124,223,.2);
+  box-shadow:inset 0 0 24px rgba(101,61,169,.08), 0 22px 42px rgba(0,0,0,.5);
+}
+.rune-card .label{color:#59467a}
+.rune-card .ring,
+.rune-card .ring2,
+.rune-card .ripple1,
+.rune-card .ripple2,
+.rune-card .glyphs{
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate(-50%,-54%);
+  border-radius:50%;
+  z-index:4;
+  opacity:0;
+}
+.rune-card .ring{
+  width:114px; height:114px;
+  border:1px solid rgba(214,188,255,.85);
+  box-shadow:0 0 14px rgba(168,113,255,.24), inset 0 0 10px rgba(182,142,255,.14);
+}
+.rune-card .ring::before{
+  content:"";
+  position:absolute; inset:11px; border-radius:50%;
+  border:1px dashed rgba(218,198,255,.5);
+}
+.rune-card .ring2{
+  width:88px; height:88px;
+  border:1px solid rgba(215,188,255,.25);
+}
+.rune-card .glyphs{
+  width:126px; height:126px;
+  border:1px dotted rgba(232,214,255,.38);
+}
+.rune-card .glyphs::before{
+  content:"✦ ᚱ ✧ ᛟ ✦ ᚨ ✧ ᚾ";
+  position:absolute; inset:-6px;
+  display:flex; justify-content:center; align-items:flex-start;
+  font-size:10px; letter-spacing:3px;
+  color:#e1c8ff;
+  text-shadow:0 0 8px rgba(179,114,255,.85);
+}
+.rune-card .ripple1,
+.rune-card .ripple2{
+  border:1px solid rgba(203,168,255,.35);
+  box-shadow:0 0 10px rgba(163,99,255,.12);
+}
+.rune-card .ripple1{width:60px; height:60px}
+.rune-card .ripple2{width:60px; height:60px}
+.rune-card.play{
+  animation:r-shell 1.15s ease-out both;
+}
+.rune-card.play .ring{
+  animation:r-ring .95s cubic-bezier(.18,.82,.2,1) .02s both;
+}
+.rune-card.play .ring2{
+  animation:r-ring2 .88s cubic-bezier(.18,.82,.2,1) .08s both;
+}
+.rune-card.play .glyphs{
+  animation:r-glyph .98s ease-out .05s both;
+}
+.rune-card.play .ripple1{
+  animation:rippleA .92s ease-out .10s both;
+}
+.rune-card.play .ripple2{
+  animation:rippleB 1.0s ease-out .26s both;
+}
+.rune-card.play .subject{
+  animation:r-reveal .76s ease-out .28s both;
+}
+.rune-card.play .label{
+  animation:fadeLabel .18s ease-out .26s both;
+}
+@keyframes r-shell{
+  0%{border-color:rgba(164,124,223,.2)}
+  54%{border-color:rgba(214,188,255,.78); box-shadow:inset 0 0 28px rgba(146,85,235,.20), 0 0 34px rgba(140,85,230,.18)}
+  100%{border-color:rgba(164,124,223,.42); box-shadow:0 16px 36px rgba(0,0,0,.44), 0 0 14px rgba(140,85,230,.09)}
+}
+@keyframes r-ring{
+  0%{opacity:0; transform:translate(-50%,-54%) scale(.55) rotate(-25deg)}
+  30%{opacity:1}
+  80%{opacity:.75}
+  100%{opacity:0; transform:translate(-50%,-54%) scale(1.12) rotate(65deg)}
+}
+@keyframes r-ring2{
+  0%{opacity:0; transform:translate(-50%,-54%) scale(.72) rotate(18deg)}
+  28%{opacity:.8}
+  100%{opacity:0; transform:translate(-50%,-54%) scale(1.18) rotate(-54deg)}
+}
+@keyframes r-glyph{
+  0%{opacity:0; transform:translate(-50%,-54%) scale(.78) rotate(24deg)}
+  34%{opacity:.92}
+  100%{opacity:0; transform:translate(-50%,-54%) scale(1.15) rotate(-86deg)}
+}
+@keyframes rippleA{
+  0%{opacity:0; transform:translate(-50%,-54%) scale(.2)}
+  18%{opacity:.8}
+  100%{opacity:0; transform:translate(-50%,-54%) scale(2.1)}
+}
+@keyframes rippleB{
+  0%{opacity:0; transform:translate(-50%,-54%) scale(.25)}
+  24%{opacity:.6}
+  100%{opacity:0; transform:translate(-50%,-54%) scale(2.55)}
+}
+@keyframes r-reveal{
+  0%{opacity:.15; filter:grayscale(1) brightness(.45); transform:scale(.86)}
+  52%{opacity:1; filter:grayscale(.12) brightness(1.75) saturate(1.2); transform:scale(1.08)}
+  100%{opacity:1; filter:none; transform:scale(1)}
+}
+@keyframes fadeLabel{
+  to{opacity:0; transform:translateY(4px)}
+}
+
+.note{
+  margin-top:24px;
+  padding:18px 20px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;
+  background:#11161e;
+  color:#a6b1c1;
+  line-height:1.8;
+  font-size:14px;
+}
+.note strong{color:#eef2f7}
+@media(max-width:980px){
+  .grid, .grid.two{grid-template-columns:1fr}
+  .meta p{min-height:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>图鉴解锁动画方向 · v2</h1>
+  <p class="lead">
+    这版按你的要求做了三类调整：<strong>Scanner 只保留纵向扫描</strong>、<strong>Pixel 改成黑暗风</strong>、
+    <strong>Rune 去掉扫描线，仅保留符文 / 法阵 / 涟漪</strong>。
+  </p>
+
+  <h2 class="section-title">1) 稀有度 Scanner（最小化扫描版）</h2>
+  <p class="section-desc">
+    这一组都共用同一套动画逻辑：扫描线从上到下确认条目 → 图像显现 → 卡片稳定落到已解锁态。
+    适合做统一的“稀有度通用特效”。
+  </p>
+  <div class="grid">
+    <section class="card-panel">
+      <div class="stage scanner-stage">
+        <div class="unlock-card scanner-card gold" id="gold5">
+          <span class="scan-glow"></span>
+          <span class="scanline"></span>
+          <div class="subject">🦁</div>
+          <div class="label">RARITY V</div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Gold · 5 星通用特效</h3>
+        <p>去掉了原先后续那段转了小半圈的高光，只保留干净的纵向扫描。现在更像“高稀有度条目被正式记录”。</p>
+        <button onclick="replay('gold5')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="card-panel">
+      <div class="stage scanner-stage">
+        <div class="unlock-card scanner-card purple" id="purple">
+          <span class="scan-glow"></span>
+          <span class="scanline"></span>
+          <div class="subject">🦋</div>
+          <div class="label">RARITY IV</div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Purple · 稀有度 #9483bf</h3>
+        <p>同样是最小化扫描，只把完成态与扫描高光切到紫色稀有度。适合“稀有、秘术、梦境、异界”之类的分类。</p>
+        <button onclick="replay('purple')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="card-panel">
+      <div class="stage scanner-stage">
+        <div class="unlock-card scanner-card blue" id="blue">
+          <span class="scan-glow"></span>
+          <span class="scanline"></span>
+          <div class="subject">🐬</div>
+          <div class="label">RARITY III</div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Blue · 稀有度 #9bb5cf</h3>
+        <p>蓝色版本显得更冷静、系统化，适合较高级但不神秘的条目，或者偏科技 / 编录 / 观测的图鉴体系。</p>
+        <button onclick="replay('blue')">重新播放</button>
+      </div>
+    </section>
+  </div>
+
+  <h2 class="section-title">2) 黑暗风 Pixel Scanner</h2>
+  <p class="section-desc">
+    这一版整体压暗了，像是废弃终端 / 阴冷数据库 / 夜间扫描屏。动画不是“可爱像素”，而是更偏故障、压抑、暗色 CRT 的方向。
+    你说“有一个很适合的人选”，如果你把那个参考发我，我可以继续把这版往那个具体对象 / 风格靠。
+  </p>
+  <div class="grid two">
+    <section class="card-panel">
+      <div class="stage pixel-stage">
+        <div class="unlock-card pixel-card" id="pixel-dark">
+          <span class="vignette"></span>
+          <span class="noise"></span>
+          <span class="scanline"></span>
+          <div class="subject">☠️</div>
+          <div class="label">NO SIGNAL</div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Dark Pixel · 黑暗扫描</h3>
+        <p>扫描线更粗、更冷，配合轻微 steps 抖动和噪点显现。适合危险条目、被污染条目、夜间终端或敌对阵营图鉴。</p>
+        <button onclick="replay('pixel-dark')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="card-panel">
+      <div class="stage pixel-stage">
+        <div style="padding:28px 26px; color:#8f9bab; line-height:1.8; font-size:14px; max-width:360px;">
+          <strong style="color:#eef2f7;">这一块建议下一步：</strong><br>
+          你把“很适合的人选”发来后，我可以继续基于这个黑暗像素骨架做定制版，比如：
+          <ul style="margin:10px 0 0 18px; padding:0;">
+            <li>更偏恶魔图鉴 / 禁忌档案</li>
+            <li>更偏地牢 / 旧掌机 / Rogue-like</li>
+            <li>更偏黑客终端 / 生体识别</li>
+            <li>直接做成角色专属识别特效</li>
+          </ul>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Reserved Slot · 预留位</h3>
+        <p>先留出一个槽位，后面可以按你的人选继续做变体，不必推翻现有结构。</p>
+        <button onclick="replay('pixel-dark')">播放左侧</button>
+      </div>
+    </section>
+  </div>
+
+  <h2 class="section-title">3) Rune（无扫描线）</h2>
+  <p class="section-desc">
+    这一版不再有“系统扫描”的意味，而是纯粹的“法阵激活 → 符文旋转 → 涟漪扩散 → 条目显形”。
+    如果你也有人选参考，后面可以继续把符文密度、线条复杂度、神圣感 / 邪异感继续细化。
+  </p>
+  <div class="grid two">
+    <section class="card-panel">
+      <div class="stage rune-stage">
+        <div class="unlock-card rune-card" id="rune-only">
+          <span class="ring"></span>
+          <span class="ring2"></span>
+          <span class="glyphs"></span>
+          <span class="ripple1"></span>
+          <span class="ripple2"></span>
+          <div class="subject">🦉</div>
+          <div class="label">SEALED</div>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Rune Only · 符文 / 法阵 / 涟漪</h3>
+        <p>没有扫描线，重点完全放在法阵与符文显现。比 Scanner 更有仪式感，也更适合剧情型、神秘型或召唤型条目。</p>
+        <button onclick="replay('rune-only')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="card-panel">
+      <div class="stage rune-stage">
+        <div style="padding:28px 26px; color:#9ba5b7; line-height:1.8; font-size:14px; max-width:360px;">
+          <strong style="color:#eef2f7;">后续可继续分叉的方向：</strong><br>
+          <ul style="margin:10px 0 0 18px; padding:0;">
+            <li>圣洁 / 银白 / 月相系法阵</li>
+            <li>邪术 / 黑紫 / 封印裂开系法阵</li>
+            <li>炼金 / 几何阵 / 文献感更强</li>
+            <li>角色专属的徽记 / 宗派纹样</li>
+          </ul>
+        </div>
+      </div>
+      <div class="meta">
+        <h3>Reserved Slot · 预留位</h3>
+        <p>如果你把“可用的人选”发来，我下一轮可以直接往具体视觉母题上走，而不只是在抽象符文层面试探。</p>
+        <button onclick="replay('rune-only')">播放左侧</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="note">
+    <strong>我对这版的建议是：</strong><br>
+    1. <strong>5 星通用特效</strong> 就用这版 Gold Scanner，已经足够干净；<br>
+    2. <strong>紫 / 蓝</strong> 可以直接共用同套组件，只换 CSS 变量；<br>
+    3. <strong>Pixel 与 Rune</strong> 现在更像“方向样机”，等你把参考人选给我后，最值得继续往下打磨。
+  </div>
+</div>
+
+<script>
+function replay(id){
+  const el = document.getElementById(id);
+  el.classList.remove('play');
+  void el.offsetWidth;
+  el.classList.add('play');
+}
+window.addEventListener('load', () => {
+  const ids = ['gold5', 'purple', 'blue', 'pixel-dark', 'rune-only'];
+  ids.forEach((id, i) => {
+    setTimeout(() => {
+      document.getElementById(id).classList.add('play');
+    }, 320 + i * 140);
+  });
+});
+</script>
+</body>
+</html>
