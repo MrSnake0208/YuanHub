@@ -127,12 +127,14 @@ test('记录列表游标分页：items/next_cursor', () => {
 
 test('密探个人数据路径前后端一致', () => {
   assert.match(backendOperatorCtrl, /PostMapping\("\/import"/)
+  assert.match(backendOperatorCtrl, /PostMapping\("\/import\/preview"/)
   assert.match(backendOperatorCtrl, /GetMapping\("\/current"/)
   assert.match(backendOperatorCtrl, /GetMapping\("\/records"/)
   assert.match(backendOperatorCtrl, /DeleteMapping\("\/records\/\{recordId\}"/)
   assert.match(backendOperatorCtrl, /GetMapping\("\/export"/)
   assert.match(backendOperatorCtrl, /GetMapping\("\/catalog"/)
   assert.match(frontendOperator, /PATH \+ '\/import'/)
+  assert.match(frontendOperator, /PATH \+ '\/import\/preview'/)
   assert.match(frontendOperator, /PATH \+ '\/current'/)
   assert.match(frontendOperator, /PATH \+ '\/records'/)
   assert.match(frontendOperator, /PATH \+ '\/records\/' \+ encodeURIComponent\(recordId\)/)
@@ -149,6 +151,8 @@ test('OpenAPI 密探控制器存在且复用 operator scope', () => {
   assert.match(backendOpenApiOperatorCtrl, /OPERATOR_READ/)
   assert.match(backendOpenApiOperatorCtrl, /OPERATOR_WRITE/)
   assert.match(backendOpenApiOperatorCtrl, /OPERATOR_EXPORT/)
+  assert.match(backendOpenApiOperatorCtrl, /scan-import\/preview/)
+  assert.match(backendOpenApiOperatorCtrl, /scan-import\/commit/)
 })
 
 test('密探页面路由已在路由表中注册', () => {
