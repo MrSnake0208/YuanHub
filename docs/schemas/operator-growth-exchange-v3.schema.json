@@ -215,6 +215,7 @@
         "observed_hp": { "type": ["number", "null"], "minimum": 0 },
         "manual_attack": { "type": ["number", "null"], "minimum": 0 },
         "manual_hp": { "type": ["number", "null"], "minimum": 0 },
+        "display_mode": { "$ref": "#/$defs/combatDisplayMode" },
         "source": { "enum": ["scan", "manual", "imported"] },
         "observed_at": { "$ref": "#/$defs/timestamp" },
         "observed_status": { "enum": ["valid", "stale", "unverified", "unavailable"] },
@@ -232,6 +233,15 @@
         "star_level": { "type": "integer", "minimum": 0, "maximum": 31 },
         "oddities_signature": { "type": "string", "minLength": 1, "maxLength": 256 },
         "equipped_star_stones_signature": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "combatDisplayMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "attack": { "enum": ["auto", "manual", null] },
+        "hp": { "enum": ["auto", "manual", null] }
       }
     },
     "oddityValues": {

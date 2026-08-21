@@ -173,6 +173,10 @@ v3 JSON 直接使用 snake_case `star_level`，数值与站内 `starLevel` 完�
     "observed_hp": 28704,
     "manual_attack": null,
     "manual_hp": null,
+    "display_mode": {
+      "attack": "auto",
+      "hp": "manual"
+    },
     "source": "scan",
     "observed_at": "2026-08-20T12:00:00+08:00",
     "observed_status": "valid",
@@ -199,9 +203,10 @@ v3 JSON 直接使用 snake_case `star_level`，数值与站内 `starLevel` 完�
 - `section_status.oddities=ready` 时三个键必须齐全；`partial` 只合并出现的稳定键；`unavailable` 保留旧值；空对象不具有清空语义；
 - 奇闻上限由公共目录稀有度决定：3 星 `300/1560/9`、4 星 `305/1820/11`、5 星暂沿用 `500/2600/15`；请求中的 `max` 只作诊断，不能覆盖目录规则；
 - `manual_attack` / `manual_hp` 允许 `null`，表示恢复自动计算；
+- `display_mode.attack` / `display_mode.hp` 允许 `auto | manual | null`，只记忆用户上次保存时采用的显示结果；缺失保留，`null` 清除偏好，不改变任何攻生值或观测状态；
 - `source` 使用稳定枚举，如 `scan | manual | imported`；
 - `observed_status` 使用 `valid | stale | unverified | unavailable`；等级、修为、化极、奇闻或已装备星石变化后，旧扫描观测必须改为 `stale`；缺少旧输入签名但仍需保留的历史值使用 `unverified`；
-- 观测值和手动校正值均不得因输入变化被静默删除；响应需要明确当前展示采用公式、扫描还是手动值；
+- 观测值和手动校正值均不得因输入变化被静默删除；响应需要明确当前展示采用公式、扫描还是手动值；显示偏好通过 `combat_stats.display_mode` 跨设备保存，未提供该字段的旧数据由前端兼容回退；
 - 自动计算结果不作为持久化真相源，避免规则更新后保存值与输入不一致。
 
 #### 当前已装备星石
@@ -463,6 +468,7 @@ PATCH /v1/operator/current/{operatorId}?account_id=acc_xxx
 - 只更新请求中出现的字段，不能把未出现字段归零；
 - 指定游戏 current 与通用 current 合并读取时，PATCH 必须按 entry 选择实际来源：指定游戏 entry 优先，缺失时回退通用 entry；不能因指定游戏文档已存在而误报 `operator_not_found`；
 - `star_stones` 出现时完整替换六槽当前装备，空数组表示清空，字段缺失表示保留；合法槽位为 `main1..main3`、`assist1..assist3`；
+- `combat_stats.display_mode` 按出现字段局部合并；目标 entry 缺失时，`expected_revision=0` 表示创建默认 current entry 后应用 PATCH，非零 revision 不得创建；
 - 校正不产生库存消耗；
 - 星石更新必须直接走该 PATCH，不得通过旧 v2 import 构造补发记录；
 - 服务端继续校验等级 `0..100`、修为 `0..17`、现有 `starLevel` 语义及修为等级上限；低等级修为关系必须使用已确认的版本化规则，不能用旧前端偏移公式拒绝采集到的合法 `Lv1/修为1`、`Lv10/修为2` 等状态；

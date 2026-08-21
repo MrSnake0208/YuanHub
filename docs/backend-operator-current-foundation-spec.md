@@ -89,6 +89,8 @@ data class OperatorEntry(
 )
 ```
 
+`OperatorCombatStats` 内含可选 `displayMode`（JSON `display_mode`）；该对象只保存攻/生显示偏好，不是攻生计算结果。
+
 实际 Kotlin 类型和空值策略应遵守后端仓库现有惯例，但需要保持以下 JSON 语义。
 
 ### 3.1 双命盘
@@ -141,6 +143,10 @@ data class OperatorEntry(
     "observed_hp": 28704,
     "manual_attack": null,
     "manual_hp": null,
+    "display_mode": {
+      "attack": "auto",
+      "hp": "manual"
+    },
     "source": "scan",
     "observed_at": "2026-08-21T10:21:32+08:00",
     "observed_status": "valid",
@@ -161,6 +167,7 @@ data class OperatorEntry(
 - 请求即使携带 `max` 也只能用于诊断，不能覆盖服务端目录定义；
 - 当前值必须为非负数且不超过目录上限；
 - `manual_attack / manual_hp=null` 表示清除手动校正；
+- `display_mode.attack / display_mode.hp` 仅允许 `auto | manual | null`，记录用户上次保存时的显示选择，不改变手动校正值、扫描值或 stale 语义；字段缺失保留原值，`null` 清除对应偏好；
 - `source` 至少接受 `scan | manual | imported`；
 - `observed_status` 至少接受 `valid | stale | unverified | unavailable`；
 - 攻生观测与等级、修为、`starLevel`、三项奇闻当前值、六槽 `starStones` 绑定；这些输入改变时，旧观测保留但必须转为 `stale`；
@@ -229,14 +236,16 @@ PATCH /v1/operator/current/{operatorId}?account_id={accountId}&game={game}
 契约：
 
 - `account_id` 必须属于当前用户；`game` 必须与账号权威值一致；
-- 当指定游戏记录存在但目标密探只存在于通用记录时，PATCH 必须像 GET current 的合并读取一样回退到通用记录；若两者都有该密探，优先写入指定游戏记录；不能因为指定游戏文档存在就直接返回 `operator_not_found`；
+- 当指定游戏记录存在但目标密探只存在于通用记录时，PATCH 必须像 GET current 的合并读取一样回退到通用记录；若两者都有该密探，优先写入指定游戏记录；两边都没有该密探时，`expected_revision=0` 必须创建默认 entry，不能直接返回 `operator_not_found`；
 - 对历史 `game=universal` 数据，部署前可将其按账号当前权威 `game` 惰性/批量归属到具体游戏；具体游戏已有同一密探时以具体游戏记录为准，迁移必须保留 revision、双命盘、星石和 combat_stats；迁移完成前仍必须保留上述 PATCH 回退逻辑；
 - 只修改请求中实际出现的顶层字段；未出现字段保持不变；
 - `disc_loadouts=[]` 明确清空两套；`combat_stats` 内部字段同样按出现性合并；
+- `combat_stats.display_mode` 内部字段同样按出现性合并；current GET 返回已保存偏好，旧数据缺失时可省略；
 - `star_stones` 出现时按六槽当前装备完整替换；传空数组明确卸除全部已装备星石，字段缺失则保留现值；
 - `star_stones` 只保存装备关系与槽位，不扣库存、不写库存流水；合法槽位为 `main1..main3`、`assist1..assist3`，同一槽位最多一项；
 - `manual_attack=null / manual_hp=null` 是明确清除；
 - `expected_revision` 必填，冲突返回 HTTP 409 `operator_revision_conflict`；
+- 当目标 entry 不存在且 `expected_revision=0` 时，按请求创建默认 entry，再应用本次局部字段；非零 revision 创建请求返回 `operator_revision_conflict` 或明确的并发错误；
 - 校正不扣库存，不写库存流水；
 - 成功返回合并后的完整 entry 和新 revision；
 - `reason` 第一版只接受 `manual_correction | local_migration`；
