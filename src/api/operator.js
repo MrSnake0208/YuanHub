@@ -43,6 +43,16 @@ export function importOperator(doc) {
   })
 }
 
+// v3 导入预览（只校验和计算差异，不写 current / 库存）。
+// body 为 { document, account_mapping, confirm_review }。
+export function previewOperatorImport(body) {
+  return request(PATH + '/import/preview', {
+    method: 'POST',
+    auth: true,
+    body: body
+  })
+}
+
 // 当前养成（GET，需登录）——accountId 必填；game?：如鸢/代号鸢/不传=全部
 // 返回 [{ user_id, account_id, game, full_baseline_at,
 //   entries: { "<char_id>": { elite, star_level, level, disc_loadouts, discs,

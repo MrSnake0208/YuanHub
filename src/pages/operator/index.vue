@@ -13,7 +13,7 @@
             <span class="pill">归档</span>
           </div>
           <h1>密探养成<span class="small">图鉴 · 快照 · 归档</span></h1>
-          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
+          <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持 v2 / v3 交换档案。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
             <div><div class="k">已招募</div><div class="v">{{ manifestOwned }}<small>位</small></div></div>
@@ -57,7 +57,7 @@
                   <h2>导入或导出档案</h2>
                   <p>用于在不同平台之间迁移密探养成数据；导出前请确认账号范围。</p>
                 </div>
-                <span class="archive-format">JSON · v2</span>
+                <span class="archive-format">JSON · v2 / v3</span>
               </div>
               <div class="archive-actions">
                 <button class="act-btn archive-import" :disabled="!auth.isLoggedIn" :aria-expanded="showImport" @click="showImport = !showImport">
@@ -94,22 +94,58 @@
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
-            <p id="operator-import-tip" class="tip">粘贴符合《密探数据交换协议 v2》的 JSON 文档，或选择文件上传；导入结果会在下方展示。</p>
-            <textarea id="operator-import-json" v-model="importText" aria-label="密探交换档案 JSON" :aria-invalid="!!importError" :aria-describedby="importError ? 'operator-import-tip operator-import-error' : 'operator-import-tip'" autocomplete="off" placeholder='{"format":"myshare-operator-exchange","version":2,"accounts":[{"id":"acc_xxx","name":"大号"}],"records":[{"account_id":"acc_xxx","record_id":"...","record_type":"operator_snapshot","snapshot_scope":"full","entries":[]}]}' @input="importError = ''"></textarea>
+            <p id="operator-import-tip" class="tip">v3 档案会先校验并展示逐项差异，确认后才写入当前账号；v2 档案继续按原流程导入。</p>
+            <div class="import-target"><span>导入目标</span><strong>{{ currentAccountName }}</strong><small v-if="importDocumentVersion">已识别 v{{ importDocumentVersion }}</small></div>
+            <textarea id="operator-import-json" v-model="importText" aria-label="密探交换档案 JSON" :aria-invalid="!!importError" :aria-describedby="importError ? 'operator-import-tip operator-import-error' : 'operator-import-tip'" autocomplete="off" placeholder='{"format":"myshare-operator-exchange","version":3,"accounts":[{"id":"scan_local","name":"采集账号"}],"records":[]}' @input="onImportTextInput"></textarea>
             <p v-if="importError" id="operator-import-error" class="import-error" role="alert">{{ importError }}</p>
             <div class="import-actions">
               <label class="btn ghost file-label">
                 选择 JSON 文件
                 <input type="file" accept=".json,application/json" @change="onFilePick" />
               </label>
-              <button class="btn ghost" @click="fillExample">示例导入</button>
-              <button class="btn primary" :disabled="importing || !importText.trim()" @click="doImport">导入</button>
+              <button class="btn ghost" type="button" @click="fillExample">填入 v3 示例</button>
+              <button v-if="importDocumentVersion === 3" class="btn primary" type="button" :disabled="importing || !importText.trim() || !accountId" @click="previewV3Import">{{ importing ? '校验中…' : (importPreview ? '重新预览' : '校验并预览') }}</button>
+              <button v-else class="btn primary" type="button" :disabled="importing || !importText.trim()" @click="doImport">{{ importing ? '导入中…' : '导入 v2 档案' }}</button>
             </div>
-            <div v-if="importResult" class="import-result">
+            <section v-if="importPreview" class="import-preview" aria-live="polite" aria-label="v3 导入预览">
+              <div class="import-preview-head">
+                <div>
+                  <strong>导入预览</strong>
+                  <span>可写入 {{ importPreview.accepted + importPreview.partial }} · 待复核 {{ importPreview.review }} · 拒绝 {{ importPreview.rejected }} · 无变化 {{ importPreview.unchanged }}</span>
+                </div>
+                <button class="btn primary" type="button" :disabled="importing || !canCommitV3Import" @click="commitV3Import">{{ importing ? '导入中…' : '确认导入' }}</button>
+              </div>
+              <label v-if="importPreview.review" class="import-review-confirm">
+                <input v-model="importConfirmReview" type="checkbox" @change="onImportReviewChange" />
+                <span>确认写入需要人工复核的分区；勾选后请重新预览</span>
+              </label>
+              <p v-if="importPreview.rejected" class="import-preview-warning">被拒绝的密探不会写入，其余可接受条目仍可继续导入。</p>
+              <div class="import-preview-list">
+                <details v-for="(item, index) in importPreview.items" :key="item.recordId + ':' + item.operatorId + ':' + index" class="import-preview-item" :open="item.status === 'rejected' || item.status === 'review'">
+                  <summary>
+                    <span class="import-status" :class="'is-' + item.status">{{ importStatusLabel(item.status) }}</span>
+                    <strong>{{ importOperatorName(item.operatorId) }}</strong>
+                    <small>{{ Object.keys(item.changes).length }} 项变化<template v-if="item.stale"> · 观测将过期</template></small>
+                  </summary>
+                  <dl v-if="Object.keys(item.changes).length" class="import-change-list">
+                    <div v-for="(change, field) in item.changes" :key="field"><dt>{{ importFieldLabel(field) }}</dt><dd>{{ importValueLabel(change.before) }} → {{ importValueLabel(change.after) }}</dd></div>
+                  </dl>
+                  <ul v-if="item.blockingErrors.length || item.warnings.length" class="import-issue-list">
+                    <li v-for="(issue, issueIndex) in item.blockingErrors" :key="'error:' + issueIndex" class="error">{{ issue.message || issue.code }}<small v-if="issue.field">{{ issue.field }}</small></li>
+                    <li v-for="(issue, issueIndex) in item.warnings" :key="'warning:' + issueIndex">{{ issue.message || issue.code }}<small v-if="issue.field">{{ issue.field }}</small></li>
+                  </ul>
+                </details>
+              </div>
+            </section>
+            <div v-if="importResult && importResult.kind === 'v2'" class="import-result">
               导入完成：接受 {{ importResult.accepted }} 条 · 重复 {{ importResult.duplicates }} 条
               <span v-if="importResult.superseded"> · 已归档 {{ importResult.superseded }} 条</span>
               <span v-if="importResult.warnings && importResult.warnings.length"> · 警告 {{ importResult.warnings.length }} 条</span>
               <button class="ok" @click="afterImport">刷新养成</button>
+            </div>
+            <div v-else-if="importResult && importResult.kind === 'v3'" class="import-result" role="status">
+              导入完成：写入 {{ importResult.accepted + importResult.partial }} 条 · 拒绝 {{ importResult.rejected }} 条 · 无变化 {{ importResult.unchanged }} 条
+              <button class="ok" @click="afterImport">查看当前养成</button>
             </div>
           </div>
 
@@ -123,7 +159,7 @@
               </div>
               <div class="mf-progress" title="拥有进度"><i :style="{ width: manifestPercent }"></i></div>
               <span class="sp"></span>
-              <input v-model.trim="manifestSearch" class="mf-search" type="search" placeholder="搜索名称 / 别名 / id" />
+              <input v-model.trim="manifestSearch" class="mf-search" type="search" name="operator-search" aria-label="搜索密探名称、别名或 ID" placeholder="搜索名称 / 别名 / id" />
               <div class="mf-filter">
                 <button :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
                 <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已招募</button>
@@ -591,6 +627,7 @@ import {
   getOperatorCurrent,
   patchOperatorCurrent,
   importOperator,
+  previewOperatorImport,
   exportOperator
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
@@ -614,6 +651,12 @@ import {
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema
 } from '../../utils/operatorCombatStats.js'
+import {
+  buildOperatorV3BrowserRequest,
+  isOperatorV3Document,
+  normalizeOperatorV3ImportResponse,
+  operatorV3CommittableCount
+} from '../../utils/operatorV3Import.js'
 
 const ODDITY_KEYS = OPERATOR_ODDITY_KEYS
 
@@ -637,6 +680,9 @@ const importText = ref('')
 const importError = ref('')
 const importing = ref(false)
 const importResult = ref(null)
+const importPreview = ref(null)
+const importPreviewKey = ref('')
+const importConfirmReview = ref(false)
 const favoriteAgentIds = ref(new Set())
 const favoriteBusyIds = ref(new Set())
 const favoriteLoading = ref(false)
@@ -693,6 +739,27 @@ const exportAll = ref(false)
 const currentAccountName = computed(function () {
   const account = accounts.value.find(function (item) { return item.id === accountId.value })
   return account ? account.name : '当前账号'
+})
+
+const importDocumentVersion = computed(function () {
+  if (!importText.value.trim()) return null
+  try {
+    const parsed = JSON.parse(importText.value)
+    const document = parsed && parsed.document ? parsed.document : parsed
+    const version = Number(document && document.version)
+    return Number.isInteger(version) ? version : null
+  } catch (_) {
+    return null
+  }
+})
+
+const canCommitV3Import = computed(function () {
+  if (!importPreview.value || operatorV3CommittableCount(importPreview.value) === 0) return false
+  try {
+    return importPreviewKey.value === JSON.stringify(v3ImportRequest(parseImportDocument(), importConfirmReview.value))
+  } catch (_) {
+    return false
+  }
 })
 
 function toggleArchive() {
@@ -1795,6 +1862,9 @@ function setTab(t) {
 }
 
 async function onGameChange(game) {
+  importConfirmReview.value = false
+  importResult.value = null
+  resetImportPreview()
   const targetAccountId = accountId.value
   const account = accounts.value.find(function (item) { return item.id === targetAccountId })
   // 未升级的账号响应没有 game，继续使用本地映射；新版后端则写回账号权威值。
@@ -1857,6 +1927,9 @@ async function loadAccounts() {
 }
 
 function onAccountChange() {
+  importConfirmReview.value = false
+  importResult.value = null
+  resetImportPreview()
   currentEntries.value = []
   error.value = ''
   clearAgentFavorites()
@@ -1980,17 +2053,130 @@ async function reloadCurrent(quiet) {
 }
 
 // —— 导入 / 导出 ——
+function parseImportDocument() {
+  if (!importText.value.trim()) throw new Error('请粘贴交换协议 JSON 或选择文件')
+  const parsed = JSON.parse(importText.value)
+  return parsed && parsed.document ? parsed.document : parsed
+}
+
+function v3ImportRequest(document, confirmReview) {
+  return buildOperatorV3BrowserRequest(document, accountId.value, confirmReview)
+}
+
+function resetImportPreview() {
+  importPreview.value = null
+  importPreviewKey.value = ''
+}
+
+function onImportTextInput() {
+  importError.value = ''
+  importResult.value = null
+  importConfirmReview.value = false
+  resetImportPreview()
+}
+
+async function previewV3Import() {
+  if (!auth.isLoggedIn) { goLogin(); return }
+  importError.value = ''
+  importResult.value = null
+  let requestBody
+  try {
+    const document = parseImportDocument()
+    if (!isOperatorV3Document(document)) throw new Error('请选择密探养成数据交换协议 v3 文档')
+    requestBody = v3ImportRequest(document, importConfirmReview.value)
+  } catch (err) {
+    importError.value = err instanceof SyntaxError ? 'JSON 解析失败，请检查格式' : humanErr(err, 'v3 档案校验失败')
+    resetImportPreview()
+    return
+  }
+  importing.value = true
+  resetImportPreview()
+  try {
+    const response = await previewOperatorImport(requestBody)
+    importPreview.value = normalizeOperatorV3ImportResponse(response)
+    importPreviewKey.value = JSON.stringify(requestBody)
+  } catch (err) {
+    importError.value = humanErr(err, 'v3 档案预览失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function commitV3Import() {
+  if (!canCommitV3Import.value || importing.value) return
+  importError.value = ''
+  let requestBody
+  try {
+    requestBody = v3ImportRequest(parseImportDocument(), importConfirmReview.value)
+    if (JSON.stringify(requestBody) !== importPreviewKey.value) throw new Error('档案或目标账号已经变化，请重新预览')
+  } catch (err) {
+    importError.value = err instanceof SyntaxError ? 'JSON 解析失败，请检查格式' : humanErr(err, '无法提交导入')
+    resetImportPreview()
+    return
+  }
+  importing.value = true
+  try {
+    const response = normalizeOperatorV3ImportResponse(await importOperator(requestBody))
+    importResult.value = Object.assign({ kind: 'v3' }, response)
+    resetImportPreview()
+    await reloadCurrent(true)
+  } catch (err) {
+    importError.value = humanErr(err, 'v3 档案导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+function onImportReviewChange() {
+  importPreviewKey.value = ''
+  importResult.value = null
+}
+
+function importStatusLabel(status) {
+  return {
+    accepted: '可导入',
+    partial: '部分导入',
+    review: '待复核',
+    rejected: '已拒绝',
+    unchanged: '无变化'
+  }[status] || status
+}
+
+function importOperatorName(id) {
+  const op = catalogMap.value[id]
+  return op && op.name ? op.name + ' · ' + id : id
+}
+
+function importFieldLabel(field) {
+  return {
+    level: '等级',
+    elite: '修为',
+    star_level: '化极',
+    disc_loadouts: '命盘',
+    star_stones: '已装备星石',
+    equipped_star_stones: '已装备星石',
+    combat_stats: '奇闻与攻生'
+  }[field] || field
+}
+
+function importValueLabel(value) {
+  if (value == null) return '无'
+  if (Array.isArray(value)) return value.length ? JSON.stringify(value) : '空'
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
 async function doImport() {
   if (!auth.isLoggedIn) { goLogin(); return }
   importError.value = ''
-  if (!importText.value.trim()) { importError.value = '请粘贴交换协议 JSON 或选择文件'; return }
   let doc = null
   try {
-    doc = JSON.parse(importText.value)
+    doc = parseImportDocument()
   } catch (err) {
     importError.value = err instanceof SyntaxError ? 'JSON 解析失败，请检查格式' : humanErr(err, '导入档案校验失败')
     return
   }
+  if (isOperatorV3Document(doc)) { await previewV3Import(); return }
   // 若用户粘贴的文档使用占位 account_id，替换为当前账号，便于直接导入
   if (accountId.value && doc && Array.isArray(doc.accounts)) {
     doc.accounts = doc.accounts.map(function (a) { return Object.assign({}, a, { id: accountId.value }) })
@@ -2002,7 +2188,7 @@ async function doImport() {
   importResult.value = null
   try {
     const res = await importOperator(doc)
-    importResult.value = res || {}
+    importResult.value = Object.assign({ kind: 'v2' }, res || {})
   } catch (err) {
     importError.value = humanErr(err, '导入失败')
   } finally {
@@ -2016,46 +2202,58 @@ function onFilePick(ev) {
   const reader = new FileReader()
   reader.onload = function () {
     importText.value = String(reader.result || '')
-    importError.value = ''
+    onImportTextInput()
   }
   reader.readAsText(file, 'utf-8')
 }
 
 function fillExample() {
-  const op = catalogOperators.value[0] || {}
+  const op = catalogOperators.value.find(function (entry) {
+    return matchesGame(entry, saveGame.value) && !entry.spOf
+  }) || catalogOperators.value[0] || {}
   const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value || 'acc_demo', name: '示例账号' }
   const now = new Date().toISOString()
   const doc = {
     format: 'myshare-operator-exchange',
-    version: 2,
+    version: 3,
     exported_at: now,
     catalog_version: catalogVersion.value || 'local',
     producer: { platform: 'yuanhub', version: '1' },
-    accounts: [{ id: account.id, name: account.name }],
+    accounts: [{ id: 'local_example', name: account.name }],
     records: [{
-      account_id: account.id,
+      account_id: 'local_example',
       record_id: 'yuanhub:example:' + Date.now(),
       record_type: 'operator_snapshot',
-      game: '如鸢',
+      game: saveGame.value,
       effective_at: now,
       snapshot_scope: 'listed',
+      source_kind: 'manual',
+      coverage: { complete: false, record_count: 1, unmatched_count: 0, interrupted: false },
       entries: [{
-        id: op.id || 'char_001_yangxiu',
+        operator_id: op.id || 'char_001_yangxiu',
         name: op.name || '杨修',
         elite: 0,
-        starLevel: 30, // 5星·5（新映射：0=未拥有 · 1..30=星级·节点 · 31=觉醒）
+        star_level: 30,
         level: 40,
-        discs: [],
-        starStones: []
+        disc_loadouts: [],
+        equipped_star_stones: [],
+        section_status: {
+          basic: 'ready',
+          huaji: 'ready',
+          disc_loadouts: 'ready',
+          equipment: 'ready'
+        }
       }]
     }]
   }
   importText.value = JSON.stringify(doc, null, 2)
-  importError.value = ''
+  onImportTextInput()
 }
 
 function afterImport() {
   importResult.value = null
+  importConfirmReview.value = false
+  resetImportPreview()
   importText.value = ''
   importError.value = ''
   showImport.value = false
@@ -2149,6 +2347,9 @@ onBeforeUnmount(function () {
 
 .import-box { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px }
 .import-box .tip { font-size: 12.5px; color: var(--ink-60); line-height: 1.8; margin-bottom: 12px }
+.import-target { display: flex; min-height: 38px; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--ink-60); font-size: 12px }
+.import-target strong { color: var(--ink); font-size: 13px }
+.import-target small { margin-left: auto; border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; color: var(--accent-strong); font-weight: 800 }
 .import-box textarea { width: 100%; min-height: 140px; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; font-family: var(--font-b); font-size: 12.5px; color: var(--ink); background: var(--paper); outline: none; resize: vertical; transition: border-color .3s }
 .import-box textarea:focus { border-color: var(--accent) }
 .import-box textarea[aria-invalid="true"] { border-color: var(--rouge) }
@@ -2156,6 +2357,32 @@ onBeforeUnmount(function () {
 .import-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px }
 .file-label { cursor: pointer }
 .file-label input { display: none }
+.import-preview { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line) }
+.import-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 16px }
+.import-preview-head > div { display: flex; min-width: 0; flex-direction: column; gap: 4px }
+.import-preview-head strong { color: var(--ink); font-family: var(--font-s); font-size: 16px; font-weight: 900; letter-spacing: .04em }
+.import-preview-head span { color: var(--ink-60); font-size: 12px; line-height: 1.5 }
+.import-preview-head .btn { flex: none; min-height: 44px }
+.import-review-confirm { display: flex; align-items: center; gap: 9px; min-height: 44px; margin-top: 10px; padding: 7px 10px; border-left: 3px solid var(--accent); background: var(--cream); color: var(--ink); font-size: 12px; font-weight: 700; cursor: pointer }
+.import-review-confirm input { width: 17px; height: 17px; accent-color: var(--accent); flex: none }
+.import-preview-warning { margin-top: 10px; color: var(--rouge); font-size: 12px; font-weight: 700; line-height: 1.6 }
+.import-preview-list { margin-top: 12px; border-top: 1px solid var(--line) }
+.import-preview-item { border-bottom: 1px solid var(--line) }
+.import-preview-item summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; min-height: 46px; align-items: center; gap: 9px; padding: 7px 3px; color: var(--ink); cursor: pointer }
+.import-preview-item summary::marker { color: var(--ink-35) }
+.import-preview-item summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px }
+.import-preview-item summary small { color: var(--ink-60); font-size: 11px; white-space: nowrap }
+.import-status { border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; color: var(--ink-60); font-size: 10.5px; font-weight: 900; white-space: nowrap }
+.import-status.is-accepted { border-color: var(--accent); color: var(--accent-strong) }
+.import-status.is-partial, .import-status.is-review { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
+.import-status.is-rejected { border-color: var(--rouge); color: var(--rouge) }
+.import-change-list { margin: 0 3px 9px; padding: 7px 10px; background: var(--paper) }
+.import-change-list > div { display: grid; grid-template-columns: minmax(90px, .28fr) minmax(0, 1fr); gap: 10px; padding: 4px 0; font-size: 11.5px; line-height: 1.5 }
+.import-change-list dt { color: var(--ink-60); font-weight: 800 }
+.import-change-list dd { min-width: 0; overflow-wrap: anywhere; color: var(--ink); font-family: var(--font-d) }
+.import-issue-list { margin: 0 3px 10px; padding-left: 18px; color: var(--accent-strong); font-size: 11.5px; line-height: 1.6 }
+.import-issue-list li.error { color: var(--rouge) }
+.import-issue-list small { margin-left: 6px; color: var(--ink-60); font-family: var(--font-d) }
 .import-result { margin-top: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .import-result .ok { margin-left: auto; border: none; background: var(--tea); color: var(--cream); border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b) }
 
@@ -2608,6 +2835,11 @@ onBeforeUnmount(function () {
   .import-box textarea { font-size: 16px }
   .import-actions { align-items: stretch; flex-direction: column }
   .import-actions .btn { width: 100% }
+  .import-preview-head { align-items: stretch; flex-direction: column }
+  .import-preview-head .btn { width: 100% }
+  .import-preview-item summary { grid-template-columns: auto minmax(0, 1fr) }
+  .import-preview-item summary small { grid-column: 2; white-space: normal }
+  .import-change-list > div { grid-template-columns: 1fr; gap: 2px }
   .backpack { padding: 14px 12px 16px; border-radius: 20px }
   .slot-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px 10px }
   .slot-count { font-size: 11.5px; padding: 2px 7px; left: 1px; bottom: 1px }
