@@ -649,7 +649,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Archive, ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, Upload, X } from '@lucide/vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
 import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
@@ -659,6 +659,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, updateAccountGame, renameAccount, deleteAccount, listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
 import { getOperatorCatalog } from '../../api/operator.js'
 import { auth } from '../../store/auth.js'
+import { setInventoryToastFavoriteAgentIds, subscribeAccountEvents } from '../../store/accountEvents.js'
 import { activeAccount, isAccountGame } from '../../store/activeAccount.js'
 import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { acquisitionChannel, buildAcquiredStats, buildRewardInsights, localDayKey, mapsHaveSameCounts, summarizeDispatchDuration } from '../../data/inventory/acquiredStats.js'
@@ -725,6 +726,9 @@ const favoriteLoadedAccount = ref('')
 let favoriteLoadSeq = 0
 const loading = ref(false)
 const error = ref('')
+let accountEventRefreshTimer = null
+let inventoryEventRefreshPending = false
+let unsubscribeAccountEvents = null
 const catalog = ref({ entities: [] })
 const currentEntries = ref([])
 const acquiredEntries = ref([])
@@ -841,6 +845,7 @@ function clearAgentFavorites() {
   favoriteLoading.value = false
   favoriteError.value = ''
   favoriteLoadedAccount.value = ''
+  setInventoryToastFavoriteAgentIds([])
 }
 
 async function loadAgentFavorites(force) {
@@ -857,10 +862,12 @@ async function loadAgentFavorites(force) {
     const data = await listAgentFavorites(targetAccount)
     if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
     favoriteAgentIds.value = new Set(Array.isArray(data && data.agent_ids) ? data.agent_ids : [])
+    setInventoryToastFavoriteAgentIds(Array.from(favoriteAgentIds.value))
     favoriteLoadedAccount.value = targetAccount
   } catch (err) {
     if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
     favoriteAgentIds.value = new Set()
+    setInventoryToastFavoriteAgentIds([])
     favoriteLoadedAccount.value = ''
     favoriteError.value = humanErr(err, '特别关注同步失败')
   } finally {
@@ -888,6 +895,7 @@ async function toggleAgentFavorite(entry) {
     if (data && data.favorite === false) confirmed.delete(id)
     else confirmed.add(id)
     favoriteAgentIds.value = confirmed
+    setInventoryToastFavoriteAgentIds(Array.from(confirmed))
     favoriteLoadedAccount.value = targetAccount
   } catch (err) {
     if (accountId.value !== targetAccount) return
@@ -895,6 +903,7 @@ async function toggleAgentFavorite(entry) {
     if (wasFavorite) rollback.add(id)
     else rollback.delete(id)
     favoriteAgentIds.value = rollback
+    setInventoryToastFavoriteAgentIds(Array.from(rollback))
     favoriteError.value = humanErr(err, '关注状态保存失败，请重试')
   } finally {
     if (accountId.value === targetAccount) {
@@ -1689,6 +1698,7 @@ function cancelStockEdit() {
   restoreAgentSortAfterEdit()
   restoreAgentFavoriteModeAfterEdit()
   restoreAgentControlsAfterEdit()
+  if (inventoryEventRefreshPending) scheduleInventoryEventRefresh()
 }
 
 function manualSnapshotTime() {
@@ -1736,6 +1746,7 @@ async function saveStockEdit() {
     stockOriginal.value = {}
     stockEditScopeIds.value = null
     stockEditScopeName.value = ''
+    inventoryEventRefreshPending = false
     await reloadCurrent()
   } catch (err) {
     stockEditError.value = humanErr(err, '库存保存失败')
@@ -1781,6 +1792,32 @@ async function reloadCurrent(quiet) {
       return { id: id, name: nameOf(id, se.name), count: Number(se.count) || 0, category: item ? item.category : '', listedBaselineAt: se.listed_baseline_at || null }
     }).sort(function (a, b) { return b.count - a.count })
   }, quiet)
+}
+
+function scheduleInventoryEventRefresh() {
+  if (editingStock.value) {
+    inventoryEventRefreshPending = true
+    return
+  }
+  if (accountEventRefreshTimer != null) return
+  inventoryEventRefreshPending = false
+  accountEventRefreshTimer = setTimeout(function () {
+    accountEventRefreshTimer = null
+    reloadCurrent(true)
+    if (activeTab.value === 'acquired') loadAcquired()
+  }, 180)
+}
+
+function handleInventoryAccountEvent(message) {
+  if (!message) return
+  if (message.event === 'account_stream_open') {
+    scheduleInventoryEventRefresh()
+    return
+  }
+  if (message.event !== 'inventory_import') return
+  const data = message.data || {}
+  if (data.account_id && data.account_id !== accountId.value) return
+  scheduleInventoryEventRefresh()
 }
 
 function dayStartIso(dStr) {
@@ -2195,6 +2232,12 @@ onMounted(async function () {
   ])
   await loadAccounts()
   reloadCurrent()
+  unsubscribeAccountEvents = subscribeAccountEvents(handleInventoryAccountEvent)
+})
+
+onBeforeUnmount(function () {
+  if (unsubscribeAccountEvents) unsubscribeAccountEvents()
+  if (accountEventRefreshTimer != null) clearTimeout(accountEventRefreshTimer)
 })
 </script>
 
