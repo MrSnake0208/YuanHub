@@ -40,9 +40,9 @@
 }
 ```
 
-其中 `id` 用于定位目录对象，`count` 是唯一可变的业务值。请求中的 `name` 仅为交换档案的可读冗余字段；后端不得用它覆盖目录名称。即使客户端额外提交 `rarity`、`prof`、`sub_prof` 等字段，也不得写入或更新公共目录。
+其中 `id` 用于定位目录对象，`count` 是唯一可变的业务值。请求中的 `name` 仅为交换档案的可读冗余字段；后端不得用它覆盖目录名称。即使客户端额外提交 `rarity`、`prof`、`sub_prof`、`special_oddity_name`、`oddity_schema` 等字段，也不得写入或更新公共目录。
 
-密探的名称、星级、属性和职业只能通过受控的目录更新流程变更，不能通过用户库存接口变更。
+密探的名称、星级、属性、职业和第三奇闻名称只能通过受控的公共图鉴管理员流程变更，不能通过用户库存接口变更。奇闻稳定键和值的交换规则见 [`operator-growth-data-exchange-protocol-v3.md`](./operator-growth-data-exchange-protocol-v3.md)。
 
 ## 3. 数据模型
 

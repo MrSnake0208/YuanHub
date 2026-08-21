@@ -23,7 +23,7 @@
     </div>
     <template v-else>
       <div class="tracker-overview" aria-label="养成追踪概览">
-        <div class="overview-cell"><span>特别关注</span><strong>{{ favoriteRows.length }}<small>位</small></strong><em>{{ ownedFavoriteCount }} 位已拥有</em></div>
+        <div class="overview-cell"><span>特别关注</span><strong>{{ favoriteRows.length }}<small>位</small></strong><em>{{ ownedFavoriteCount }} 位已招募</em></div>
         <div class="overview-cell"><span>心纸库存</span><strong>{{ formatNumber(totalHeartStock) }}<small>张</small></strong><em>关注密探合计</em></div>
         <div class="overview-cell"><span>本期获得</span><strong>{{ formatNumber(totalHeartAcquired) }}<small>张</small></strong><em>近 {{ rangeDays }} 日</em></div>
         <div class="overview-cell"><span>待补项</span><strong>{{ totalGapCount }}<small>项</small></strong><em>按密探目标合计</em></div>

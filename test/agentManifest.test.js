@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   agentBackpackOrder,
+  agentMatchesGame,
   agentReleaseOrder,
   buildAgentGroups,
   filterAgentEntries,
@@ -66,6 +67,18 @@ test('同一筛选维度取并集且不同维度取交集', function () {
     subProfs: ['破军', '龙盾']
   })
   assert.deepEqual(filtered.map(function (entry) { return entry.id }), ['char_009_old', 'char_038_mid'])
+})
+
+test('游戏版本筛选支持双版本、单版本与旧目录通用项', function () {
+  const versioned = [
+    { id: 'both', games: ['如鸢', '代号鸢'] },
+    { id: 'daihao', games: ['代号鸢'] },
+    { id: 'legacy' }
+  ]
+  assert.equal(agentMatchesGame(versioned[0], '如鸢'), true)
+  assert.equal(agentMatchesGame(versioned[1], '如鸢'), false)
+  assert.deepEqual(filterAgentEntries(versioned, { game: '如鸢' }).map(function (entry) { return entry.id }), ['both', 'legacy'])
+  assert.deepEqual(filterAgentEntries(versioned, { game: '代号鸢' }).map(function (entry) { return entry.id }), ['both', 'daihao', 'legacy'])
 })
 
 test('关注优先作为独立优先级并保留主排序', function () {

@@ -1,0 +1,136 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 3,
+  "exported_at": "2026-08-21T10:30:00+08:00",
+  "catalog_version": "operators-2026-08-21",
+  "producer": {
+    "platform": "yuanhub",
+    "version": "3"
+  },
+  "accounts": [
+    {
+      "id": "acc_demo",
+      "name": "大号",
+      "game_scope": "如鸢"
+    }
+  ],
+  "records": [
+    {
+      "account_id": "acc_demo",
+      "record_id": "backup:operators:20260821T103000",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-08-21T10:30:00+08:00",
+      "snapshot_scope": "full",
+      "source_kind": "backup",
+      "entries": [
+        {
+          "operator_id": "char_012_yanliang",
+          "name": "颜良",
+          "observed_at": "2026-08-21T10:28:00+08:00",
+          "level": 100,
+          "elite": 17,
+          "star_level": 31,
+          "disc_loadouts": [
+            {
+              "id": "disc_1",
+              "name": "命盘一",
+              "discs": [
+                { "ot_name": "普攻强化" },
+                { "ot_name": "最大生命提升" }
+              ]
+            },
+            {
+              "id": "disc_2",
+              "name": "命盘二",
+              "discs": []
+            }
+          ],
+          "equipped_star_stones": [
+            {
+              "type": "main1",
+              "instance_id": "ssinst_demo_001",
+              "stone_id": "stone_tianfu",
+              "name": "天府",
+              "level": 60
+            },
+            {
+              "type": "assist1",
+              "instance_id": "ssinst_demo_002",
+              "stone_id": "stone_hongluan",
+              "name": "红鸾",
+              "level": 50
+            }
+          ],
+          "combat_stats": {
+            "observed_attack": 5200,
+            "observed_hp": 38000,
+            "manual_attack": null,
+            "manual_hp": null,
+            "source": "imported",
+            "observed_at": "2026-08-21T10:28:00+08:00",
+            "observed_status": "valid",
+            "combat_input_signature": "sha256:yanliang-demo",
+            "oddities": {
+              "attack": { "current": 305, "max": 305 },
+              "hp": { "current": 1820, "max": 1820 },
+              "special": { "current": 11, "max": 11 }
+            }
+          }
+        },
+        {
+          "operator_id": "char_085_shizimiaosp",
+          "name": "史子眇·赴烛",
+          "level": 100,
+          "elite": 17,
+          "star_level": 2,
+          "disc_loadouts": [],
+          "equipped_star_stones": [],
+          "combat_stats": {
+            "observed_attack": 4757,
+            "observed_hp": 30548,
+            "source": "imported",
+            "observed_status": "unverified",
+            "oddities": {
+              "attack": { "current": 0, "max": 500 },
+              "hp": { "current": 2400, "max": 2600 },
+              "special": { "current": 15, "max": 15 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "account_id": "acc_demo",
+      "record_id": "backup:annotations:20260821T103000",
+      "record_type": "operator_annotation_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-08-21T10:30:00+08:00",
+      "snapshot_scope": "full",
+      "source_kind": "backup",
+      "entries": [
+        {
+          "operator_id": "char_012_yanliang",
+          "growth_state": "graduated",
+          "favorite": true,
+          "note": "练度已毕业，继续关注心纸收集",
+          "targets": {
+            "level": 100,
+            "elite": 17,
+            "star_level": 31,
+            "heart_paper": 180
+          },
+          "updated_at": "2026-08-21T10:29:00+08:00"
+        },
+        {
+          "operator_id": "char_085_shizimiaosp",
+          "growth_state": "active",
+          "favorite": false,
+          "note": null,
+          "targets": null,
+          "updated_at": "2026-08-21T10:29:00+08:00"
+        }
+      ]
+    }
+  ]
+}

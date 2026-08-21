@@ -16,8 +16,8 @@
           <p class="hero-sub">如鸢 / 代号鸢 密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持导入导出完整交换档案（v2）。</p>
           <div class="hero-stats">
             <div><div class="k">密探目录</div><div class="v">{{ catalogCount }}<small>位</small></div></div>
-            <div><div class="k">已拥有</div><div class="v">{{ manifestOwned }}<small>位</small></div></div>
-            <div><div class="k">游戏版本</div><div class="v">{{ gameCount }}<small>版</small></div></div>
+            <div><div class="k">已招募</div><div class="v">{{ manifestOwned }}<small>位</small></div></div>
+            <div><div class="k">当前版本</div><div class="v">{{ gameFilter }}</div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
             <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
           </div>
@@ -29,14 +29,17 @@
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             v-model:accountId="accountId"
+            v-model:game="gameFilter"
             :accounts="accounts"
             :error="accountError"
-            :disabled="!auth.isLoggedIn || accountsLoading"
+            :disabled="!auth.isLoggedIn || accountsLoading || accountBusy"
+            :game-disabled="accountsLoading || accountBusy || editing"
             :busy="accountBusy"
             heading-title="选择要查看的账号"
-            heading-sub="密探养成、导入记录都会切换到这个子账号；这里创建的账号在库存页同样可见。"
+            heading-sub="密探、库存和游戏版本都会跟随这个子账号，在两边自动保持一致。"
             new-placeholder="新子账号名称（1~64 字）"
             @change="onAccountChange"
+            @game-change="onGameChange"
             @create="onCreateAccount"
             @rename="onRenameAccount"
             @delete="onDeleteAccount"
@@ -86,14 +89,6 @@
             <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'current'" :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前养成</button>
             <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'tracking'" :class="{ on: activeTab === 'tracking' }" @click="setTab('tracking')">养成追踪</button>
             <span class="sp"></span>
-            <span class="game-filter">
-              版本
-              <select v-model="gameFilter" @change="onGameChange">
-                <option value="all">全部</option>
-                <option value="如鸢">如鸢</option>
-                <option value="代号鸢">代号鸢</option>
-              </select>
-            </span>
             <router-link class="act-btn ghost admin-link" :to="quickHref" @click="showImport = false">首次 / 快捷导入</router-link>
           </div>
 
@@ -123,16 +118,16 @@
             <div class="manifest-bar" v-reveal>
               <div class="mf-stats">
                 <div class="mf-stat"><b class="mf-num">{{ catalogCount }}</b><span class="mf-k">目录</span></div>
-                <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已拥有</span></div>
-                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">拥有率</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已招募</span></div>
+                <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">招募率</span></div>
               </div>
               <div class="mf-progress" title="拥有进度"><i :style="{ width: manifestPercent }"></i></div>
               <span class="sp"></span>
               <input v-model.trim="manifestSearch" class="mf-search" type="search" placeholder="搜索名称 / 别名 / id" />
               <div class="mf-filter">
                 <button :class="{ on: manifestFilter === 'all' }" @click="manifestFilter = 'all'">全部</button>
-                <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已拥有</button>
-                <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未拥有</button>
+                <button :class="{ on: manifestFilter === 'owned' }" @click="manifestFilter = 'owned'">已招募</button>
+                <button :class="{ on: manifestFilter === 'missing' }" @click="manifestFilter = 'missing'">未招募</button>
               </div>
             </div>
 
@@ -159,9 +154,9 @@
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
                 <span class="bp-tip">
-                  共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已拥有 <b class="bp-num">{{ manifestOwned }}</b> 位 ·
-                  未拥有 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
-                  <template v-if="gameFilter !== 'all'"> · 已按「{{ gameFilter }}」过滤</template>
+                  共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已招募 <b class="bp-num">{{ manifestOwned }}</b> 位 ·
+                  未招募 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
+                  · 当前版本「{{ gameFilter }}」
                   <template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template>
                   <template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template>
                   <template v-if="!auth.isLoggedIn"> · 未登录：仅展示图鉴，不显示云端养成</template>
@@ -195,7 +190,7 @@
                       :title="favoriteAgentIds.has(e.id) ? '取消特别关注' : '特别关注'"
                       @click.stop="toggleAgentFavorite(e)"
                     ><Star :size="16" :fill="favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'" aria-hidden="true" /></button>
-                    <button v-if="auth.isLoggedIn && accountId" class="edit-icon-btn" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="15" aria-hidden="true" /></button>
+                    <button v-if="auth.isLoggedIn && accountId && currentMap[e.id]" class="edit-icon-btn" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="15" aria-hidden="true" /></button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
                 </li>
@@ -234,14 +229,14 @@
             </div>
             <div v-else-if="ownedCurrentEntries.length === 0" class="state">
               <template v-if="!auth.isLoggedIn">尚未登录：仅可浏览图鉴 · <router-link class="link" to="/login">登录后同步实际养成</router-link></template>
-              <template v-else-if="currentEntries.length === 0">暂无已拥有的密探养成记录 · <router-link class="link" :to="quickHref">前往首次 / 快捷导入</router-link></template>
+              <template v-else-if="currentEntries.length === 0">暂无已招募的密探养成记录 · <router-link class="link" :to="quickHref">前往首次 / 快捷导入</router-link></template>
               <template v-else>当前记录中的密探均为未拥有 · <button class="link" type="button" @click="setTab('catalog')">前往图鉴设置</button></template>
             </div>
             <div v-else class="backpack" v-reveal>
               <div class="bp-head">
-                <span class="bp-tip">已加载 <b class="bp-num">{{ filteredCurrent.length }}</b> 位密探 · 版本「{{ gameFilter === 'all' ? '全部' : gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template> · 点击密探卡查看命盘与星石</span>
+                <span class="bp-tip">已加载 <b class="bp-num">{{ filteredCurrent.length }}</b> 位密探 · 版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template> · 点击密探卡查看命盘与星石</span>
               </div>
-              <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已拥有密探</div>
+              <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
               <div v-else class="build-list" role="list">
                 <article v-for="e in filteredCurrent" :key="e.id" class="build-row" :title="buildTitle(e)" role="listitem">
                   <div class="build-avatar" :class="'rarity-r' + (e.rarity || 3)">
@@ -253,11 +248,14 @@
                     <span><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
                   </div>
                   <dl class="build-stat"><dt>等级</dt><dd>Lv {{ e.level }}</dd></dl>
-                  <dl class="build-stat"><dt>化极</dt><dd>{{ starLabel(e.starLevel) }}</dd></dl>
+                  <dl class="build-stat"><dt>化极</dt><dd>{{ starLabel(e.starLevel, e.spOf) }}</dd></dl>
                   <dl class="build-stat"><dt>修为</dt><dd>{{ e.elite }}</dd></dl>
                   <div class="build-loadouts">
-                    <span>命盘 {{ e.discs && e.discs.length ? e.discs.length + ' 格' : '未配置' }}</span>
-                    <span>星石 {{ e.starStones && e.starStones.length ? e.starStones.length + ' 槽' : '未配置' }}</span>
+                    <span>命盘一：{{ loadoutSummary(e.discLoadouts && e.discLoadouts[0], e.discs) }}</span>
+                    <span>命盘二：{{ loadoutSummary(e.discLoadouts && e.discLoadouts[1]) }}</span>
+                    <span v-if="hasCombatValue(e)">攻击 {{ e.combatStats.attack ?? '—' }} · 生命 {{ e.combatStats.hp ?? '—' }}</span>
+                    <span v-if="combatObservedStatus(e) === 'stale'" class="combat-stale">观测已过期</span>
+                    <span>星石：{{ stoneSummary(e.starStones) }}</span>
                   </div>
                   <button class="build-edit" type="button" :aria-label="'编辑' + (e.name || e.id)" title="编辑养成" @click.stop="openEdit(e.id)"><Pencil :size="17" aria-hidden="true" /></button>
                 </article>
@@ -319,6 +317,7 @@
                     {{ editingOp.prof }}
                   </span>
                   <span v-if="firstSubProf(editingOp)" class="editor-identity-tag profession">{{ firstSubProf(editingOp) }}</span>
+                  <span v-if="editingObservedStatus === 'stale'" class="editor-identity-tag stale">观测已过期</span>
                 </div>
               </div>
             </div>
@@ -327,28 +326,28 @@
                 <span class="editor-head-stats-note">{{ calculatedCombatStats.reason }}</span>
               </div>
               <div class="editor-head-values">
-                <span class="editor-head-live" role="status" aria-live="polite" aria-atomic="true">当前面板：攻击力 {{ calculatedCombatStats.attackLabel }}，生命力 {{ calculatedCombatStats.hpLabel }}</span>
-                <label class="editor-head-stat" :class="{ 'is-manual': editForm.combatStats.manualAttack != null, 'is-empty': calculatedCombatStats.attack == null }">
-                  <span class="editor-head-stat-meta"><strong>攻击力</strong><small>{{ combatAttackSource }}</small></span>
+                <span class="editor-head-live" role="status" aria-live="polite" aria-atomic="true">当前面板：攻击力 {{ combatAttackDisplayLabel }}，生命力 {{ combatHpDisplayLabel }}</span>
+                <label class="editor-head-stat" :class="{ 'is-manual': editForm.combatStats.manualAttack != null && !combatAttackAutoVisible, 'is-empty': calculatedCombatStats.attack == null }">
+                  <span class="editor-head-stat-meta"><strong>攻击</strong><small>{{ combatAttackSource }}</small><button v-if="calculatedCombatStats.automaticAttackAvailable && editForm.combatStats.manualAttack != null" type="button" class="manual-restore" :aria-label="combatAttackAutoVisible ? '恢复原手动攻击力校正' : '切换到自动计算攻击力'" :title="combatAttackAutoVisible ? '恢复原手动攻击力校正值' : '切换到自动计算攻击力'" @click.prevent.stop="toggleAutomaticCombatStat('attack')"><RotateCcw v-if="combatAttackAutoVisible" :size="11" aria-hidden="true" /><Calculator v-else :size="11" aria-hidden="true" /></button></span>
                   <input
-                    :value="editForm.combatStats.manualAttack ?? ''"
+                    :value="combatAttackInputValue"
                     type="number"
                     inputmode="numeric"
                     min="0"
-                    :placeholder="calculatedCombatStats.attackLabel"
+                    :placeholder="combatAttackDisplayLabel"
                     aria-label="校正攻击力，清空后恢复自动计算"
                     title="直接输入校正值；清空恢复自动计算"
                     @input="setManualCombatStat('manualAttack', $event)"
                   />
                 </label>
-                <label class="editor-head-stat" :class="{ 'is-manual': editForm.combatStats.manualHp != null, 'is-empty': calculatedCombatStats.hp == null }">
-                  <span class="editor-head-stat-meta"><strong>生命力</strong><small>{{ combatHpSource }}</small></span>
+                <label class="editor-head-stat" :class="{ 'is-manual': editForm.combatStats.manualHp != null && !combatHpAutoVisible, 'is-empty': calculatedCombatStats.hp == null }">
+                  <span class="editor-head-stat-meta"><strong>生命</strong><small>{{ combatHpSource }}</small><button v-if="calculatedCombatStats.automaticHpAvailable && editForm.combatStats.manualHp != null" type="button" class="manual-restore" :aria-label="combatHpAutoVisible ? '恢复原手动生命力校正' : '切换到自动计算生命力'" :title="combatHpAutoVisible ? '恢复原手动生命力校正值' : '切换到自动计算生命力'" @click.prevent.stop="toggleAutomaticCombatStat('hp')"><RotateCcw v-if="combatHpAutoVisible" :size="11" aria-hidden="true" /><Calculator v-else :size="11" aria-hidden="true" /></button></span>
                   <input
-                    :value="editForm.combatStats.manualHp ?? ''"
+                    :value="combatHpInputValue"
                     type="number"
                     inputmode="numeric"
                     min="0"
-                    :placeholder="calculatedCombatStats.hpLabel"
+                    :placeholder="combatHpDisplayLabel"
                     aria-label="校正生命力，清空后恢复自动计算"
                     title="直接输入校正值；清空恢复自动计算"
                     @input="setManualCombatStat('manualHp', $event)"
@@ -368,16 +367,16 @@
                   <label>修为 <input type="number" v-model.number="editForm.elite" inputmode="numeric" min="0" :max="maxEliteForLevel" /></label>
                   <span class="elite-hint">最高修为：{{ maxEliteForLevel }}</span>
                 </div>
-                <div class="star-card" title="0=未拥有 · 1~30=化极星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒">
+                <div class="star-card" :title="editingOp.spOf ? '0=未拥有 · 1~5=SP星级' : '0=未拥有 · 1~30=化极星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒'">
                   <div class="star-row">
                     <span class="star-caption">化极</span>
                     <span class="star-groups">
                       <button type="button" class="star-pill" :class="{ on: starGroupName === 'none' }" @click="pickStarGroup('none')">未拥有</button>
                       <button v-for="s in STAR_RANGE" :key="s" type="button" class="star-pill" :class="{ on: starGroupName === s }" @click="pickStarGroup(s)">{{ s }}星</button>
-                      <button type="button" class="star-pill awaken" :class="{ on: starGroupName === 'awaken' }" @click="pickStarGroup('awaken')">觉醒</button>
-                    </span>
-                  </div>
-                  <div v-if="starGroupName !== 'none' && starGroupName !== 'awaken'" class="star-row">
+                      <button v-if="!editingOp.spOf" type="button" class="star-pill awaken" :class="{ on: starGroupName === 'awaken' }" @click="pickStarGroup('awaken')">觉醒</button>
+                  </span>
+                </div>
+                  <div v-if="!editingOp.spOf && starGroupName !== 'none' && starGroupName !== 'awaken'" class="star-row">
                     <span class="star-caption">节点</span>
                     <span class="star-nodes">
                       <button v-for="n in NODE_RANGE" :key="n" type="button" class="node-chip" :class="{ on: starNode === n }" @click="pickStarNode(n)">{{ starGroupName }}-{{ n }}</button>
@@ -385,12 +384,15 @@
                   </div>
                 </div>
                 <div class="oddity-editor">
-                  <strong class="oddity-caption">奇闻属性</strong>
-                  <label v-for="(oddity, name) in editForm.combatStats.oddities" :key="name" class="oddity-field">
-                    <span class="oddity-name">{{ name }}</span>
+                  <strong class="oddity-caption">
+                    奇闻属性
+                    <small v-if="oddityCatalogIncomplete">图鉴待维护</small>
+                  </strong>
+                  <label v-for="key in ODDITY_KEYS" :key="key" class="oddity-field">
+                    <span class="oddity-name" :title="oddityFieldName(key)">{{ oddityFieldName(key) }}</span>
                     <span class="oddity-control">
-                      <input v-model.number="oddity.current" type="number" inputmode="decimal" min="0" :max="oddity.max" :aria-label="name + '当前值，上限' + oddity.max" />
-                      <span class="oddity-limit" :title="'固定上限 ' + oddity.max" aria-hidden="true">/ {{ oddity.max }}</span>
+                      <input v-model.number="editForm.combatStats.oddities[key].current" type="number" inputmode="decimal" min="0" :max="editForm.combatStats.oddities[key].max" :aria-label="oddityInputLabel(key)" />
+                      <span class="oddity-limit" :title="oddityLimitTitle(key)" aria-hidden="true">/ {{ oddityLimitLabel(key) }}</span>
                     </span>
                   </label>
                 </div>
@@ -417,7 +419,6 @@
                   >
                     <span>组合 {{ index + 1 }}</span>
                     <strong>{{ loadout.name || '未命名组合' }}</strong>
-                    <small v-if="editForm.activeDiscLoadoutIndex === index"><Check :size="12" aria-hidden="true" />当前装备</small>
                   </button>
                 </div>
 
@@ -451,15 +452,6 @@
                       title="根据已选命盘恢复自动命名"
                       @click="resetDiscLoadoutName(selectedDiscLoadoutIndex)"
                     ><RotateCcw :size="14" aria-hidden="true" />恢复自动命名</button>
-                    <label class="disc-current-choice">
-                      <input
-                        v-model.number="editForm.activeDiscLoadoutIndex"
-                        type="radio"
-                        name="active-disc-loadout"
-                        :value="selectedDiscLoadoutIndex"
-                      />
-                      <span>设为当前装备</span>
-                    </label>
                   </div>
 
                   <div class="disc-options">
@@ -475,7 +467,7 @@
                   </div>
                 </div>
 
-                <p class="disc-storage-note">当前装备组合随档案同步云端；另一套组合与两套名称会保存在此浏览器。</p>
+                <p class="disc-storage-note">两套命盘组合和名称都会同步到云端；这里不区分当前装备。</p>
               </div>
             </div>
 
@@ -514,11 +506,14 @@
                 <div v-for="slot in stoneSlots" :key="slot.type" class="stone-item">
                   <div class="stone-item-head">
                     <span class="stone-name">{{ slot.label }}</span>
-                    <span v-if="editForm.stones[slot.type].name" class="stone-current">Lv {{ editForm.stones[slot.type].level || 0 }}</span>
+                    <span v-if="editForm.stones[slot.type].name" class="stone-item-actions">
+                      <span class="stone-current">Lv {{ editForm.stones[slot.type].level || 0 }}</span>
+                      <button type="button" class="stone-remove" :aria-label="'卸除' + slot.label + '星石'" title="快捷卸除" @click="removeStone(slot.type)"><X :size="14" aria-hidden="true" /></button>
+                    </span>
                   </div>
                   <select v-model="editForm.stones[slot.type].name" class="stone-select" :aria-label="slot.label + '名称'">
                     <option value="">未装备</option>
-                    <option v-for="opt in starOptionsFor(slot.type)" :key="opt" :value="opt">{{ opt }}<template v-if="slot.type.indexOf('assist') === 0 && starDesc(slot.type, opt)"> · {{ starDesc(slot.type, opt) }}</template></option>
+                    <option v-for="opt in starOptionsFor(slot.type)" :key="opt" :value="opt" :disabled="!isStarStoneAllowed(opt, editingOp)">{{ opt }}<template v-if="slot.type.indexOf('assist') === 0 && starDesc(slot.type, opt)"> · {{ starDesc(slot.type, opt) }}</template><template v-if="!isStarStoneAllowed(opt, editingOp)"> · {{ starStoneRestrictionLabel(opt) }}</template></option>
                   </select>
                   <template v-if="editForm.stones[slot.type].name">
                     <div class="stone-level-row">
@@ -548,6 +543,13 @@
           </div>
 
           <div class="editor-actions">
+            <div v-if="editConflictDraft" class="editor-conflict" role="alert">
+              <strong>服务器数据已更新</strong>
+              <div class="editor-conflict-actions">
+                <button type="button" class="editor-conflict-btn" @click="discardConflictDraft">保留服务器数据</button>
+                <button type="button" class="editor-conflict-btn primary" @click="restoreConflictDraft">恢复我的修改</button>
+              </div>
+            </div>
             <div v-if="editNotice" class="editor-action-status" :class="{ err: editNoticeError }" role="status">{{ editNotice }}</div>
             <div class="editor-action-buttons">
               <button class="btn editor-cancel" type="button" :disabled="savingEdit" @click="closeEditor">取消</button>
@@ -574,7 +576,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
-import { Archive, BookOpen, Check, Download, ListChecks, Pencil, RotateCcw, Save, Star, Target, Upload, X } from '@lucide/vue'
+import { Archive, BookOpen, Calculator, Download, ListChecks, Pencil, RotateCcw, Save, Star, Target, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
@@ -583,34 +585,39 @@ import {
   getOperatorCatalog,
   listOperatorAccounts,
   createOperatorAccount,
+  updateOperatorAccountGame,
   renameOperatorAccount,
   deleteOperatorAccount,
   getOperatorCurrent,
+  patchOperatorCurrent,
   importOperator,
   exportOperator
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
-import { activeAccount } from '../../store/activeAccount.js'
+import { activeAccount, isAccountGame } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { isOperatorOwned, matchesProfSubFilter, subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
+import { isOperatorOwned, matchesProfSubFilter, subProfList, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import {
   automaticDiscLoadoutName,
-  createDiscLoadoutState,
-  discSelectionSignature
+  createDiscLoadoutState
 } from '../../utils/operatorDiscLoadouts.js'
-import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS } from '../../data/starStones.js'
+import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS, STAR_STONE_RESTRICTIONS } from '../../data/starStones.js'
 import { listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
 import {
+  OPERATOR_ODDITY_KEYS,
   calculateOperatorCombatStats,
+  combatInputSignature,
   combatStatsSourceLabel,
   normalizeOperatorCombatStats,
-  normalizeOperatorOddities
+  normalizeOperatorOddities,
+  normalizeOperatorOdditySchema
 } from '../../utils/operatorCombatStats.js'
 
+const ODDITY_KEYS = OPERATOR_ODDITY_KEYS
+
 const activeTab = ref('catalog')
-const gameFilter = ref('all')
 const manifestSearch = ref('')
 const manifestFilter = ref('all')
 const profFilter = ref('all')
@@ -642,11 +649,15 @@ const editing = ref(false)
 const editingId = ref('')
 const editingOp = ref(null)
 const editGame = ref('')
-const editForm = ref({ elite: 0, starLevel: 0, level: 0, discLoadouts: [], activeDiscLoadoutIndex: 0, stones: {}, combatStats: normalizeOperatorCombatStats({}) })
+const editForm = ref({ elite: 0, starLevel: 0, level: 0, discLoadouts: [], stones: {}, combatStats: normalizeOperatorCombatStats({}) })
+const combatDisplayMode = ref({ attack: null, hp: null })
+let combatDisplaySignature = ''
 const selectedDiscLoadoutIndex = ref(0)
 const editNotice = ref('')
 const editNoticeError = ref(false)
 const savingEdit = ref(false)
+const editOriginalStoneSignature = ref('')
+const editConflictDraft = ref(null)
 const stonePresetOptions = ref({ main: [], assist: [] })
 const selectedStonePresetIds = ref({ main: '', assist: '' })
 const editorPanelEl = ref(null)
@@ -654,9 +665,9 @@ let bodyOverflowBeforeEditor = ''
 let bodyLockedByEditor = false
 let editorTriggerEl = null
 
-// 编辑保存目标版本：跟随页面顶部筛选；选“全部”时保存为通用状态（不区分版本）
+// 编辑保存目标版本跟随当前子账号。
 const saveGame = computed(function () {
-  return gameFilter.value === 'all' ? null : gameFilter.value
+  return gameFilter.value
 })
 
 // 首次 / 快捷导入：把当前子账号带到向导页默认选中
@@ -670,6 +681,10 @@ const accounts = ref([])
 const accountId = computed({
   get: function () { return activeAccount.id },
   set: function (v) { activeAccount.set(v) }
+})
+const gameFilter = computed({
+  get: function () { return activeAccount.gameFor(accountId.value) },
+  set: function (v) { activeAccount.setGame(v, accountId.value) }
 })
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
@@ -688,6 +703,7 @@ function toggleArchive() {
 // —— 目录归一化 ——
 function normalizeOperator(op) {
   const rawSub = op.subProf || op.sub_prof || ''
+  const odditySchema = normalizeOperatorOdditySchema(op.odditySchema || op.oddity_schema)
   return {
     // 优先取业务 id（operatorId），避免后端把 Mongo 内部 _id 作为 id 返回时串台
     id: op.operatorId || op.operator_id || op.id || '',
@@ -697,9 +713,12 @@ function normalizeOperator(op) {
     prof: Array.isArray(op.prof) ? op.prof.join('、') : (op.prof || '未知'),
     subProf: subProfList({ subProf: rawSub }),
     games: op.games || op.games_list || [],
+    spOf: op.spOf || op.sp_of || '',
     discs: op.discs || op.discs_list || [],
     starStones: op.starStones || op.star_stones || [],
-    oddities: op.oddities || op.oddity || null,
+    specialOddityName: op.specialOddityName != null ? op.specialOddityName : op.special_oddity_name,
+    odditySchema: odditySchema,
+    incompleteFields: op.incompleteFields || op.incomplete_fields || [],
     avatar: op.avatar || ''
   }
 }
@@ -798,7 +817,6 @@ function discObject(key) {
 // 命盘品级色 → 按钮配色类（与后端目录 color 字段：无色 / 金 / 紫 / 蓝 对齐）
 const DISC_COLOR_CLASS = { '金': 'c-gold', '紫': 'c-purple', '蓝': 'c-blue' }
 const DISC_COLOR_ORDER = { '金': 0, '紫': 1, '蓝': 2 }
-const DISC_LOADOUT_STORAGE_PREFIX = 'yuanhub:operator-disc-loadouts:v1'
 function discColorClass(d) {
   return (d && DISC_COLOR_CLASS[d.color]) || ''
 }
@@ -823,10 +841,6 @@ function isMajorGoldDisc(disc) {
 
 const selectedDiscLoadout = computed(function () {
   return editForm.value.discLoadouts[selectedDiscLoadoutIndex.value] || null
-})
-
-const activeDiscLoadout = computed(function () {
-  return editForm.value.discLoadouts[editForm.value.activeDiscLoadoutIndex] || null
 })
 
 function syncDiscLoadoutAutoName(loadout) {
@@ -894,60 +908,16 @@ function toggleDiscSelection(disc, event) {
   }
 }
 
-function discLoadoutStorageKey() {
-  return [DISC_LOADOUT_STORAGE_PREFIX, accountId.value, saveGame.value || 'universal', editingId.value].join(':')
-}
-
-function loadCachedDiscLoadoutState(existingDiscs) {
-  if (typeof localStorage === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(discLoadoutStorageKey())
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!parsed || parsed.syncedDiscSignature !== discSelectionSignature(existingDiscs)) return null
-    return createDiscLoadoutState(parsed.loadouts, existingDiscs, parsed.activeIndex)
-  } catch (_) {
-    return null
-  }
-}
-
 function initialDiscLoadoutState(existing) {
   const serverLoadouts = Array.isArray(existing.discLoadouts) ? existing.discLoadouts : []
-  if (serverLoadouts.length) {
-    const markedIndex = serverLoadouts.findIndex(function (loadout) { return loadout && (loadout.isActive || loadout.is_active) })
-    const idIndex = existing.activeDiscLoadoutId
-      ? serverLoadouts.findIndex(function (loadout) { return loadout && String(loadout.id) === String(existing.activeDiscLoadoutId) })
-      : -1
-    const index = markedIndex >= 0 ? markedIndex : (idIndex >= 0 ? idIndex : existing.activeDiscLoadoutIndex)
-    return createDiscLoadoutState(serverLoadouts, existing.discs, index)
-  }
-  return loadCachedDiscLoadoutState(existing.discs) || createDiscLoadoutState([], existing.discs, 0)
-}
-
-function persistDiscLoadoutState() {
-  if (typeof localStorage === 'undefined' || !activeDiscLoadout.value) return false
-  try {
-    localStorage.setItem(discLoadoutStorageKey(), JSON.stringify({
-      loadouts: editForm.value.discLoadouts.map(function (loadout) {
-        return {
-          id: loadout.id,
-          name: String(loadout.name || '').trim(),
-          nameMode: loadout.nameMode,
-          discNames: loadout.discNames.slice()
-        }
-      }),
-      activeIndex: editForm.value.activeDiscLoadoutIndex,
-      syncedDiscSignature: discSelectionSignature(activeDiscLoadout.value.discNames)
-    }))
-    return true
-  } catch (_) {
-    return false
-  }
+  // 新接口没有 active/current 语义；数组顺序就是命盘一、命盘二。
+  // 旧数据只提供 discs 时，统一把它映射为第一套命盘。
+  return createDiscLoadoutState(serverLoadouts, existing.discs, 0)
 }
 
 const COMBAT_STATS_STORAGE_PREFIX = 'yuanhub:operator-combat-stats:v1'
 function combatStatsStorageKey(id) {
-  return [COMBAT_STATS_STORAGE_PREFIX, accountId.value, saveGame.value || 'universal', id || editingId.value].join(':')
+  return [COMBAT_STATS_STORAGE_PREFIX, accountId.value, saveGame.value, id || editingId.value].join(':')
 }
 
 function loadCachedCombatStats(id) {
@@ -998,12 +968,46 @@ const stonePresetKinds = [
 ]
 
 function starOptionsFor(type) {
-  return type.indexOf('assist') === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS
+  const options = type.indexOf('assist') === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS
+  const available = options.filter(function (name) { return isStarStoneAllowed(name, editingOp.value) })
+  const current = editForm.value.stones[type] && editForm.value.stones[type].name
+  // 历史数据即使不符合新限制也要保留在选择框中，避免打开编辑器时静默清空。
+  if (current && options.indexOf(current) !== -1 && available.indexOf(current) === -1) return [current].concat(available)
+  return available
+}
+
+function isStarStoneAllowed(name, operator) {
+  const restriction = STAR_STONE_RESTRICTIONS[name]
+  if (!restriction || !operator) return true
+  if (restriction.subProf) {
+    const subProfs = subProfList(operator)
+    if (subProfs.length && !restriction.subProf.some(function (value) { return subProfs.indexOf(value) !== -1 })) return false
+  }
+  if (restriction.prof) {
+    const profs = tokens(operator.prof)
+    if (profs.length && !restriction.prof.some(function (value) { return profs.indexOf(value) !== -1 })) return false
+  }
+  return true
+}
+
+function starStoneRestrictionLabel(name) {
+  const restriction = STAR_STONE_RESTRICTIONS[name]
+  if (!restriction) return ''
+  if (restriction.subProf) return '仅' + restriction.subProf.join(' / ')
+  if (restriction.prof) return '仅' + restriction.prof.join(' / ') + '属性'
+  return ''
 }
 
 function starDesc(type, name) {
   if (type.indexOf('assist') !== 0) return ''
   return ASSIST_STAR_DESCRIPTIONS[name] || ''
+}
+
+function removeStone(type) {
+  if (!editForm.value.stones[type]) return
+  editForm.value.stones[type].name = ''
+  editForm.value.stones[type].level = 0
+  editForm.value.stones[type].rarity = null
 }
 
 function loadStonePreset(kind) {
@@ -1067,7 +1071,9 @@ const catalogOperators = computed(function () {
       games: ['如鸢', '代号鸢'],
       discs: [],
       starStones: [],
-      oddities: e.oddities || null,
+      specialOddityName: null,
+      odditySchema: normalizeOperatorOdditySchema(),
+      incompleteFields: ['special_oddity_name'],
       avatar: ''
     }
   })
@@ -1079,33 +1085,26 @@ const catalogMap = computed(function () {
   return m
 })
 
-const catalogCount = computed(function () { return catalogOperators.value.length })
-const gameCount = computed(function () {
-  const set = new Set()
-  catalogOperators.value.forEach(function (op) {
-    ;(op.games || []).forEach(function (g) { set.add(g) })
-  })
-  if (set.size === 0) {
-    set.add('如鸢')
-    set.add('代号鸢')
-  }
-  return set.size || 2
+const catalogCount = computed(function () {
+  return catalogOperators.value.filter(function (op) { return matchesGame(op, gameFilter.value) }).length
 })
 
-function normalizeEntry(e) {
+function normalizeEntry(e, odditySchema) {
   e = e || {}
+  const hasCombatStats = Object.prototype.hasOwnProperty.call(e, 'combat_stats') || Object.prototype.hasOwnProperty.call(e, 'combatStats') || Object.prototype.hasOwnProperty.call(e, 'stats')
   return {
     elite: e.elite != null ? e.elite : 0,
     starLevel: e.starLevel != null ? e.starLevel : (e.star_level != null ? e.star_level : 0),
     level: e.level != null ? e.level : 0,
     discs: e.discs || [],
     discLoadouts: e.discLoadouts || e.disc_loadouts || [],
-    activeDiscLoadoutId: e.activeDiscLoadoutId || e.active_disc_loadout_id || '',
-    activeDiscLoadoutIndex: e.activeDiscLoadoutIndex != null ? e.activeDiscLoadoutIndex : e.active_disc_loadout_index,
     starStones: (e.starStones || e.star_stones || []).map(function (s) {
       return Object.assign({}, s, { type: normalizeStoneType(s.type) })
     }),
-    combatStats: normalizeOperatorCombatStats(e.combatStats || e.combat_stats || e.stats || e),
+    revision: e.revision != null ? Number(e.revision) || 0 : 0,
+    updatedAt: e.updatedAt || e.updated_at || null,
+    combatStatsPresent: hasCombatStats,
+    combatStats: normalizeOperatorCombatStats(e.combatStats || e.combat_stats || e.stats || e, odditySchema),
     listedBaselineAt: e.listedBaselineAt || e.listed_baseline_at || null
   }
 }
@@ -1148,55 +1147,112 @@ const calculatedCombatStats = computed(function () {
   })
 })
 
+const combatAttackAutoVisible = computed(function () {
+  return combatDisplayMode.value.attack === 'auto' || (
+    combatDisplayMode.value.attack !== 'manual' && calculatedCombatStats.value.manualFallbackAvailable
+  )
+})
+
+const combatHpAutoVisible = computed(function () {
+  return combatDisplayMode.value.hp === 'auto' || (
+    combatDisplayMode.value.hp !== 'manual' && calculatedCombatStats.value.manualFallbackAvailable
+  )
+})
+
+const combatAttackDisplayLabel = computed(function () {
+  return combatAttackAutoVisible.value ? calculatedCombatStats.value.automaticAttackLabel : calculatedCombatStats.value.attackLabel
+})
+
+const combatHpDisplayLabel = computed(function () {
+  return combatHpAutoVisible.value ? calculatedCombatStats.value.automaticHpLabel : calculatedCombatStats.value.hpLabel
+})
+
 const combatStatsSource = computed(function () {
   return combatStatsSourceLabel(calculatedCombatStats.value.source, calculatedCombatStats.value.status)
 })
 
 const combatAttackSource = computed(function () {
+  if (combatAttackAutoVisible.value) return '自动计算'
   if (editForm.value.combatStats && editForm.value.combatStats.manualAttack != null) return '手动校正'
   if (calculatedCombatStats.value.breakdown) return '自动计算'
   return calculatedCombatStats.value.attack == null ? '可手动校正' : combatStatsSource.value
 })
 
 const combatHpSource = computed(function () {
+  if (combatHpAutoVisible.value) return '自动计算'
   if (editForm.value.combatStats && editForm.value.combatStats.manualHp != null) return '手动校正'
   if (calculatedCombatStats.value.breakdown) return '自动计算'
   return calculatedCombatStats.value.hp == null ? '可手动校正' : combatStatsSource.value
 })
 
+const oddityCatalogIncomplete = computed(function () {
+  const op = editingOp.value
+  if (!op) return false
+  return !op.specialOddityName || (Array.isArray(op.incompleteFields) && op.incompleteFields.indexOf('special_oddity_name') !== -1)
+})
+
 function setManualCombatStat(key, event) {
   if (!editForm.value.combatStats) editForm.value.combatStats = normalizeOperatorCombatStats({})
   const raw = event && event.target ? event.target.value : ''
+  combatDisplayMode.value[key === 'manualAttack' ? 'attack' : 'hp'] = 'manual'
   editForm.value.combatStats[key] = raw === '' ? null : Number(raw)
   editForm.value.combatStats.source = 'manual'
+  if (raw !== '') markCombatCorrectionCurrent()
 }
 
-const ODDITY_JOB_SUGGESTIONS = {
-  '龙盾': '免伤值',
-  '破军': '增伤值',
-  '破甲': '增伤值',
-  '岐黄': '治疗加成'
+const combatAttackInputValue = computed(function () {
+  if (combatAttackAutoVisible.value) return ''
+  return editForm.value.combatStats && editForm.value.combatStats.manualAttack != null ? editForm.value.combatStats.manualAttack : ''
+})
+
+const combatHpInputValue = computed(function () {
+  if (combatHpAutoVisible.value) return ''
+  return editForm.value.combatStats && editForm.value.combatStats.manualHp != null ? editForm.value.combatStats.manualHp : ''
+})
+
+function markCombatCorrectionCurrent() {
+  const signature = combatInputSignature(combatStatsInput.value)
+  editForm.value.combatStats.observedInputs = { signature: signature }
+  editForm.value.combatStats.combatInputSignature = signature
+  editForm.value.combatStats.frontendObservedSignature = signature
+  editForm.value.combatStats.observedStatus = 'valid'
 }
+
+function toggleAutomaticCombatStat(key) {
+  const currentlyAutomatic = key === 'attack' ? combatAttackAutoVisible.value : combatHpAutoVisible.value
+  combatDisplayMode.value[key] = currentlyAutomatic ? 'manual' : 'auto'
+}
+
+watch(function () { return combatInputSignature(combatStatsInput.value) }, function (signature) {
+  if (combatDisplaySignature && combatDisplaySignature !== signature) {
+    combatDisplayMode.value = { attack: null, hp: null }
+  }
+  combatDisplaySignature = signature
+})
 
 function ensureOperatorOddities(stats, op) {
   if (!stats || !stats.oddities || typeof stats.oddities !== 'object') return
-  const maintained = op && op.oddities && typeof op.oddities === 'object'
-    ? normalizeOperatorOddities(op.oddities)
-    : null
-  const current = normalizeOperatorOddities(stats.oddities, stats.curios)
-  const maintainedSpecial = maintained && Object.keys(maintained).find(function (name) {
-    return name !== '攻击力' && name !== '生命值'
-  })
-  const currentSpecial = Object.keys(current).find(function (name) {
-    return name !== '攻击力' && name !== '生命值'
-  })
-  const specialName = maintainedSpecial || currentSpecial || ODDITY_JOB_SUGGESTIONS[firstSubProf(op)] || '职业属性'
-  const specialSource = current[specialName] || (currentSpecial && current[currentSpecial]) || (maintainedSpecial && maintained[maintainedSpecial])
-  stats.oddities = {
-    '攻击力': { current: current['攻击力'].current, max: 500 },
-    '生命值': { current: current['生命值'].current, max: 2600 },
-    [specialName]: { current: specialSource ? specialSource.current : 0, max: 15 }
-  }
+  stats.oddities = normalizeOperatorOddities(stats.oddities, stats.curios, op && op.odditySchema)
+}
+
+function oddityFieldName(key) {
+  const schema = editingOp.value && editingOp.value.odditySchema
+  return (schema && schema[key] && schema[key].name) || key
+}
+
+function oddityLimitLabel(key) {
+  const oddity = editForm.value.combatStats && editForm.value.combatStats.oddities[key]
+  return oddity && oddity.max != null ? oddity.max : '—'
+}
+
+function oddityInputLabel(key) {
+  const max = oddityLimitLabel(key)
+  return oddityFieldName(key) + '当前值' + (max === '—' ? '，公共图鉴暂无上限' : '，上限' + max)
+}
+
+function oddityLimitTitle(key) {
+  const max = oddityLimitLabel(key)
+  return max === '—' ? '等待公共图鉴返回上限' : '公共图鉴上限 ' + max
 }
 
 // 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
@@ -1208,9 +1264,10 @@ const NODE_RANGE = [0, 1, 2, 3, 4, 5]
 // 星石快捷等级（星石最高 60 级）
 const STONE_QUICK_LEVELS = [40, 50, 60]
 
-function starLabel(v) {
+function starLabel(v, spOf) {
   const n = Number(v) || 0
   if (n === 0) return '未拥有'
+  if (spOf) return n + ' 星'
   if (n === STAR_LEVEL_AWAKEN) return '觉醒'
   if (n >= 1 && n <= 30) {
     const star = Math.floor((n - 1) / 6) + 1
@@ -1224,6 +1281,7 @@ function starLabel(v) {
 const starGroupName = computed(function () {
   const v = Number(editForm.value.starLevel) || 0
   if (v === 0) return 'none'
+  if (editingOp.value && editingOp.value.spOf) return v
   if (v === STAR_LEVEL_AWAKEN) return 'awaken'
   if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1
   return 'none'
@@ -1239,6 +1297,7 @@ function pickStarGroup(g) {
   if (g === 'awaken') { editForm.value.starLevel = STAR_LEVEL_AWAKEN; return }
   const s = Number(g)
   if (!(s >= 1 && s <= 5)) return
+  if (editingOp.value && editingOp.value.spOf) { editForm.value.starLevel = s; return }
   editForm.value.starLevel = 6 * (s - 1) + starNode.value + 1
 }
 
@@ -1330,7 +1389,7 @@ function operatorReleaseOrder(id) {
 const filterSuffix = computed(function () {
   const parts = []
   if (manifestSearch.value) parts.push('「' + manifestSearch.value + '」')
-  if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
+  parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
   if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
   if (manifestFilter.value === 'owned') parts.push('「已拥有」')
@@ -1351,7 +1410,7 @@ const filteredCurrent = computed(function () {
 
 const currentFilterSuffix = computed(function () {
   const parts = []
-  if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
+  parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
   if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
   return parts.length ? parts.join(' · ') : '当前条件'
@@ -1370,17 +1429,53 @@ function avOf(id) {
 
 function slotTitle(e) {
   const parts = [e.name || e.id]
-  if (e.owned) parts.push('修为 ' + e.elite + ' · ' + starLabel(e.starLevel) + ' · Lv' + e.level)
+  if (e.owned) parts.push('修为 ' + e.elite + ' · ' + starLabel(e.starLevel, e.spOf) + ' · Lv' + e.level)
   else parts.push('未拥有')
   if (e.prof) parts.push(e.prof)
   return parts.join(' ｜ ')
 }
 
 function buildTitle(e) {
-  const parts = [e.name || e.id, '修为 ' + e.elite, starLabel(e.starLevel), 'Lv' + e.level]
-  if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
+  const parts = [e.name || e.id, '修为 ' + e.elite, starLabel(e.starLevel, e.spOf), 'Lv' + e.level]
+  if (e.discLoadouts && e.discLoadouts.length) parts.push('命盘：' + e.discLoadouts.map(function (loadout) { return loadoutSummary(loadout) }).join(' / '))
+  else if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
   if (e.starStones && e.starStones.length) parts.push('星石：' + e.starStones.map(function (s) { return (s.name || s.type) + ' Lv' + s.level }).join('、'))
   return parts.join(' ｜ ')
+}
+
+function loadoutSummary(loadout, legacyDiscs) {
+  const source = loadout || (legacyDiscs && legacyDiscs.length ? { discs: legacyDiscs } : null)
+  if (!source) return '未配置'
+  const discs = Array.isArray(source.discNames) ? source.discNames : (Array.isArray(source.discs) ? source.discs.map(discKey).filter(Boolean) : [])
+  return (source.name || (discs.length ? discs.join('、') : '未配置')) + (discs.length && source.name ? ' · ' + discs.join('、') : '')
+}
+
+function hasCombatValue(entry) {
+  const stats = entry && entry.combatStats
+  return !!stats && (stats.attack != null || stats.hp != null)
+}
+
+function combatObservedStatus(entry) {
+  const stats = entry && entry.combatStats
+  return stats && (stats.observedStatus || stats.observed_status)
+}
+
+const editingObservedStatus = computed(function () {
+  return combatObservedStatus(currentMap.value[editingId.value])
+})
+
+function stoneSignature(stones) {
+  return Object.keys(stones || {}).sort().map(function (type) {
+    const stone = stones[type] || {}
+    return [type, String(stone.name || ''), Number(stone.level) || 0, Number(stone.rarity) || 0].join(':')
+  }).join('|')
+}
+
+function stoneSummary(stones) {
+  if (!Array.isArray(stones) || !stones.length) return '未配置'
+  return stones.map(function (stone) {
+    return (stone.name || stone.type || '未命名') + (stone.level != null ? ' Lv' + stone.level : '')
+  }).join('、')
 }
 
 async function openEdit(id) {
@@ -1388,9 +1483,22 @@ async function openEdit(id) {
   const op = catalogMap.value[id]
   if (!op) return
   editorTriggerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  const existing = currentMap.value[id] || {}
+  const existing = currentMap.value[id]
+  if (!existing) {
+    await dialog.alert({ message: '该密探尚无云端养成记录，请先通过导入或快捷导入建立当前状态。' })
+    return
+  }
   editingId.value = id
   editingOp.value = op
+  applyEditorEntry(existing, op, id, true)
+  editConflictDraft.value = null
+  editNotice.value = ''
+  editNoticeError.value = false
+  editing.value = true
+}
+
+function applyEditorEntry(existing, op, id, allowCache) {
+  existing = existing || {}
   const discState = initialDiscLoadoutState(existing)
   const stones = {}
   stoneSlots.value.forEach(function (slot) {
@@ -1402,22 +1510,52 @@ async function openEdit(id) {
       rarity: hit && (hit.rarity != null ? hit.rarity : hit.levelType)
     }
   })
-  const combatStats = loadCachedCombatStats(id) || normalizeOperatorCombatStats(existing.combatStats || {})
+  // 服务端 current 是权威来源；仅在旧后端完全没有 combat_stats 时读取旧缓存。
+  const combatStats = existing.combatStatsPresent
+    ? normalizeOperatorCombatStats(existing.combatStats, op.odditySchema)
+    : (allowCache ? (loadCachedCombatStats(id) || normalizeOperatorCombatStats({}, op.odditySchema)) : normalizeOperatorCombatStats({}, op.odditySchema))
   ensureOperatorOddities(combatStats, op)
   editForm.value = {
     elite: existing.elite != null ? existing.elite : 0,
     starLevel: existing.starLevel != null ? existing.starLevel : 0,
     level: existing.level != null ? existing.level : 0,
     discLoadouts: discState.loadouts,
-    activeDiscLoadoutIndex: discState.activeIndex,
     stones: stones,
     combatStats: combatStats
   }
+  const currentSignature = combatInputSignature(combatStatsInput.value)
+  const observedInputs = combatStats.observedInputs || {}
+  if (combatStats.observedStatus !== 'stale' || (
+    combatStats.source === 'manual' &&
+    observedInputs.level != null && Number(observedInputs.level) === Number(editForm.value.level) &&
+    observedInputs.elite != null && Number(observedInputs.elite) === Number(editForm.value.elite) &&
+    observedInputs.starLevel != null && Number(observedInputs.starLevel) === Number(editForm.value.starLevel)
+  )) {
+    combatStats.frontendObservedSignature = currentSignature
+  }
   selectedDiscLoadoutIndex.value = discState.activeIndex
+  combatDisplayMode.value = { attack: null, hp: null }
+  combatDisplaySignature = currentSignature
+  editOriginalStoneSignature.value = stoneSignature(stones)
   selectedStonePresetIds.value = { main: '', assist: '' }
-  editNotice.value = ''
+}
+
+function restoreConflictDraft() {
+  if (!editConflictDraft.value) return
+  editForm.value = JSON.parse(JSON.stringify(editConflictDraft.value.form))
+  combatDisplayMode.value = { attack: null, hp: null }
+  combatDisplaySignature = combatInputSignature(combatStatsInput.value)
+  selectedDiscLoadoutIndex.value = editConflictDraft.value.selectedDiscLoadoutIndex
+  editOriginalStoneSignature.value = editConflictDraft.value.originalStoneSignature
+  editConflictDraft.value = null
+  editNotice.value = '已恢复本次修改，请确认服务器版本后再次保存'
   editNoticeError.value = false
-  editing.value = true
+}
+
+function discardConflictDraft() {
+  editConflictDraft.value = null
+  editNotice.value = '已采用服务器最新数据'
+  editNoticeError.value = false
 }
 
 function closeEditor() {
@@ -1430,6 +1568,7 @@ function closeEditor() {
   editGame.value = ''
   editNotice.value = ''
   editNoticeError.value = false
+  editConflictDraft.value = null
   nextTick(function () {
     if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true })
   })
@@ -1438,11 +1577,6 @@ function closeEditor() {
 async function saveEdit() {
   if (!editingOp.value || !accountId.value) return
   editForm.value.discLoadouts.forEach(function (_, index) { ensureDiscLoadoutName(index) })
-  if (!activeDiscLoadout.value) {
-    editNotice.value = '请选择当前装备的命盘组合'
-    editNoticeError.value = true
-    return
-  }
   const rawLevel = editForm.value.level
   const rawElite = editForm.value.elite
   const rawStarLevel = editForm.value.starLevel
@@ -1467,8 +1601,11 @@ async function saveEdit() {
     editNoticeError.value = true
     return
   }
-  if (starLevel < 0 || starLevel > MAX_STAR_LEVEL) {
-    editNotice.value = '星级需在 0..' + MAX_STAR_LEVEL + ' 之间（0=未拥有，31=觉醒）'
+  const starMax = editingOp.value.spOf ? 5 : MAX_STAR_LEVEL
+  if (starLevel < 0 || starLevel > starMax) {
+    editNotice.value = editingOp.value.spOf
+      ? 'SP 密探星级需在 0..5 之间'
+      : '星级需在 0..' + MAX_STAR_LEVEL + ' 之间（0=未拥有，31=觉醒）'
     editNoticeError.value = true
     return
   }
@@ -1487,6 +1624,7 @@ async function saveEdit() {
     const stoneLevel = Number(stone.level)
     return !validInteger(stone.level, stoneLevel) || stoneLevel < 1 || stoneLevel > 60
   })
+  const op = editingOp.value
   if (invalidStone) {
     editNotice.value = '已装备星石的等级需为 1..60 的整数'
     editNoticeError.value = true
@@ -1496,69 +1634,99 @@ async function saveEdit() {
   const optionalNonNegativeNumber = function (value) {
     return value === '' || value == null || (Number.isFinite(Number(value)) && Number(value) >= 0)
   }
-  const invalidOddity = Object.keys(combatStats.oddities || {}).find(function (name) {
-    const oddity = combatStats.oddities[name] || {}
+  const invalidOddity = ODDITY_KEYS.find(function (key) {
+    const oddity = (combatStats.oddities && combatStats.oddities[key]) || {}
     if (!optionalNonNegativeNumber(oddity.current) || !optionalNonNegativeNumber(oddity.max)) return true
     return oddity.max !== '' && oddity.max != null && Number(oddity.current || 0) > Number(oddity.max)
   })
   if (!optionalNonNegativeNumber(combatStats.manualAttack) || !optionalNonNegativeNumber(combatStats.manualHp) || invalidOddity) {
-    editNotice.value = '攻击力、生命力和奇闻属性需为非负数，且当前值不能超过上限'
+    editNotice.value = '攻击力、生命力和奇闻属性需为非负数，且不能超过公共图鉴给出的上限'
     editNoticeError.value = true
     return
   }
-  const op = editingOp.value
-  const account = accounts.value.find(function (a) { return a.id === accountId.value }) || { id: accountId.value, name: accountId.value }
-  const entry = {
-    id: op.id,
-    name: op.name || undefined,
-    alias: op.alias || undefined,
-    rarity: op.rarity,
-    prof: op.prof ? op.prof.split('、') : [],
-    subProf: Array.isArray(op.subProf) ? op.subProf : (op.subProf ? op.subProf.split('、') : []),
-    games: op.games || [],
-    elite: elite,
-    starLevel: starLevel,
-    level: level,
-    // 交换协议 v2 暂时只有单一 discs 字段；当前装备组合继续走旧字段保证后端兼容。
-    discs: activeDiscLoadout.value.discNames.map(discObject),
-    starStones: stoneValues
-      .filter(function (s) { return s && s.name })
-      .map(function (s) { return { name: s.name, type: s.type, level: Number(s.level) } })
+  const existing = currentMap.value[op.id]
+  if (!existing) {
+    editNotice.value = '该密探尚无云端养成记录，请先通过导入或快捷导入建立当前状态'
+    editNoticeError.value = true
+    return
   }
-  const doc = {
-    format: 'myshare-operator-exchange',
-    version: 2,
-    exported_at: new Date().toISOString(),
-    catalog_version: catalogVersion.value || '',
-    producer: { platform: 'yuanhub', version: '1' },
-    accounts: [{ id: account.id, name: account.name }],
-    records: [{
-      account_id: account.id,
-      record_id: 'yuanhub:edit:' + Date.now() + ':' + Math.random().toString(16).slice(2, 8),
-      record_type: 'operator_snapshot',
-      game: saveGame.value,
-      effective_at: new Date().toISOString(),
-      snapshot_scope: 'listed',
-      entries: [entry]
-    }]
+  const discLoadouts = editForm.value.discLoadouts.map(function (loadout, index) {
+    return {
+      id: String(loadout.id || 'disc_' + (index + 1)),
+      name: String(loadout.name || '').trim() || automaticDiscLoadoutName(loadout.discNames),
+      discs: loadout.discNames.map(function (name) { return { ot_name: name } })
+    }
+  })
+  const normalizedManual = function (value) {
+    return value === '' || value == null ? null : Number(value)
+  }
+  const oddities = combatStats.oddities || {}
+  const currentCombatSignature = combatInputSignature(combatStatsInput.value)
+  const manualCorrectionAtCurrentInput = (combatStats.manualAttack != null || combatStats.manualHp != null) && (
+    combatStats.combatInputSignature === currentCombatSignature ||
+    (combatStats.observedInputs && combatStats.observedInputs.signature === currentCombatSignature)
+  )
+  const patch = {
+    level: level,
+    elite: elite,
+    star_level: starLevel,
+    disc_loadouts: discLoadouts,
+    star_stones: stoneValues
+      .filter(function (s) { return s && s.name })
+      .map(function (s) {
+        return {
+          name: s.name,
+          type: s.type,
+          level: Number(s.level) || 0
+        }
+      }),
+    combat_stats: {
+      manual_attack: normalizedManual(combatStats.manualAttack),
+      manual_hp: normalizedManual(combatStats.manualHp),
+      oddities: ODDITY_KEYS.reduce(function (result, key) {
+        const value = oddities[key] || {}
+        result[key] = { current: Number(value.current) || 0 }
+        return result
+      }, {})
+    },
+    expected_revision: Number(existing.revision) || 0,
+    reason: 'manual_correction'
+  }
+  if (manualCorrectionAtCurrentInput) {
+    patch.combat_stats.source = 'manual'
+    patch.combat_stats.combat_input_signature = currentCombatSignature
+    patch.combat_stats.observed_inputs = {
+      level: level,
+      elite: elite,
+      star_level: starLevel,
+      oddities_signature: currentCombatSignature,
+      equipped_star_stones_signature: currentCombatSignature
+    }
   }
   savingEdit.value = true
   editNotice.value = ''
   editNoticeError.value = false
   try {
-    await importOperator(doc)
-    const cached = persistDiscLoadoutState()
-    const combatCached = persistCombatStats(op.id)
-    editNotice.value = cached && combatCached
-      ? '已保存到云端；战斗属性记录已保存在此浏览器'
-      : '当前装备已保存；部分浏览器备用数据未能保留'
-    editNoticeError.value = !(cached && combatCached)
+    await patchOperatorCurrent({ accountId: accountId.value, operatorId: op.id, game: saveGame.value, patch: patch })
+    await reloadCurrent(true)
+    editNotice.value = '养成资料与已装备星石均已保存'
     setTimeout(function () {
       closeEditor()
-      reloadCurrent()
     }, 800)
   } catch (err) {
-    editNotice.value = humanErr(err, '保存失败')
+    if (err && (err.status === 409 || err.code === 'operator_revision_conflict')) {
+      const localDraft = {
+        form: JSON.parse(JSON.stringify(editForm.value)),
+        selectedDiscLoadoutIndex: selectedDiscLoadoutIndex.value,
+        originalStoneSignature: editOriginalStoneSignature.value
+      }
+      await reloadCurrent(true)
+      applyEditorEntry(currentMap.value[op.id] || {}, op, op.id, false)
+      editConflictDraft.value = localDraft
+      editNotice.value = ''
+    } else {
+      editNotice.value = humanErr(err, '保存失败')
+    }
     editNoticeError.value = true
   } finally {
     savingEdit.value = false
@@ -1571,7 +1739,28 @@ function setTab(t) {
   if (t === 'tracking') loadAgentFavorites()
 }
 
-function onGameChange() {
+async function onGameChange(game) {
+  const targetAccountId = accountId.value
+  const account = accounts.value.find(function (item) { return item.id === targetAccountId })
+  // 未升级的账号响应没有 game，继续使用本地映射；新版后端则写回账号权威值。
+  if (targetAccountId && account && isAccountGame(account.game)) {
+    const previousGame = account.game
+    accountBusy.value = true
+    accountError.value = ''
+    try {
+      const updated = await updateOperatorAccountGame(targetAccountId, game)
+      if (accountId.value !== targetAccountId) return
+      Object.assign(account, updated || {}, { game: isAccountGame(updated && updated.game) ? updated.game : game })
+      activeAccount.setGame(account.game, targetAccountId)
+    } catch (err) {
+      if (accountId.value === targetAccountId) {
+        activeAccount.setGame(previousGame, targetAccountId)
+        accountError.value = humanErr(err, '游戏版本保存失败')
+      }
+    } finally {
+      if (accountId.value === targetAccountId) accountBusy.value = false
+    }
+  }
   currentEntries.value = []
   reloadCurrent()
 }
@@ -1600,6 +1789,7 @@ async function loadAccounts() {
   try {
     const list = await listOperatorAccounts()
     accounts.value = Array.isArray(list) ? list : []
+    activeAccount.syncAccounts(accounts.value)
     if (accounts.value.length < 2) exportAll.value = false
     // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
@@ -1622,12 +1812,16 @@ function onAccountChange() {
 async function onCreateAccount(rawName) {
   const name = (rawName || '').trim()
   if (!name) return
+  const selectedGame = gameFilter.value
   accountBusy.value = true
   accountError.value = ''
   try {
-    const created = await createOperatorAccount(name)
+    const created = await createOperatorAccount(name, selectedGame)
     await loadAccounts()
-    if (created && created.id) accountId.value = created.id
+    if (created && created.id) {
+      activeAccount.setGame(isAccountGame(created.game) ? created.game : selectedGame, created.id)
+      accountId.value = created.id
+    }
     onAccountChange()
   } catch (err) {
     accountError.value = humanErr(err, '创建子账号失败')
@@ -1669,6 +1863,7 @@ async function onDeleteAccount(acc) {
   accountError.value = ''
   try {
     await deleteOperatorAccount(acc.id)
+    activeAccount.forgetGame(acc.id)
     await loadAccounts()
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
@@ -1702,20 +1897,20 @@ async function reloadCurrent(quiet) {
   loading.value = true
   if (!quiet) error.value = ''
   try {
-    const game = targetGame === 'all' ? undefined : targetGame
-    const data = await getOperatorCurrent({ accountId: targetAccount, game: game })
+    const data = await getOperatorCurrent({ accountId: targetAccount, game: targetGame })
     if (seq !== currentLoadSeq || accountId.value !== targetAccount || gameFilter.value !== targetGame) return
     const list = Array.isArray(data) ? data : (data ? [data] : [])
     const combined = {}
     list.forEach(function (doc) {
       const entriesObj = (doc && doc.entries) ? doc.entries : {}
       Object.keys(entriesObj).forEach(function (id) {
-        combined[id] = normalizeEntry(entriesObj[id])
+        const op = catalogMap.value[id] || {}
+        combined[id] = normalizeEntry(entriesObj[id], op.odditySchema)
       })
     })
     currentEntries.value = Object.keys(combined).map(function (id) {
       const op = catalogMap.value[id] || {}
-      return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '', subProf: op.subProf || '', games: op.games || [] }, combined[id])
+      return Object.assign({ id: id, name: op.name || '', rarity: op.rarity, prof: op.prof || '', subProf: op.subProf || '', games: op.games || [], spOf: op.spOf || '' }, combined[id])
     }).filter(function (e) {
       return matchesGame(e, targetGame)
     }).sort(function (a, b) {
@@ -1868,9 +2063,6 @@ onBeforeUnmount(function () {
 .operator-tabs button:hover:not(.on) { color: var(--ink) }
 .operator-tabs .sp { flex: 1 }
 .operator-mobile-tabs { display: none }
-.game-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-60) }
-.game-filter select { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12.5px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; cursor: pointer }
-
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px }
 .admin-link { text-decoration: none; display: inline-flex; align-items: center }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
@@ -2037,13 +2229,14 @@ onBeforeUnmount(function () {
 .build-stat dd { margin-top: 3px; overflow: hidden; color: var(--ink); font: 900 13px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
 .build-loadouts { min-width: 0; display: flex; flex-direction: column; gap: 5px; color: var(--ink-60); font-size: 10.5px; font-weight: 700 }
 .build-loadouts span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.build-loadouts .combat-stale { color: var(--rouge); font-weight: 900 }
 .build-edit { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--tea); cursor: pointer }
 .build-edit:hover { background: var(--yellow); color: var(--ink) }
 .build-edit:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 
 /* ---- 单个密探编辑弹窗 ---- */
-.editor-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 24px; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px) }
-.editor-panel { display: flex; width: min(760px, 100%); height: min(92vh, 900px); height: min(92dvh, 900px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5) }
+.editor-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 24px; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px); isolation: isolate; pointer-events: auto }
+.editor-panel { position: relative; z-index: 1; display: flex; width: min(760px, 100%); height: min(92vh, 900px); height: min(92dvh, 900px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5); pointer-events: auto }
 .editor-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .9fr) auto; align-items: center; gap: 16px; flex: 0 0 auto; padding: 18px 28px 15px; border-bottom: 1.5px dashed var(--line); background: var(--surface) }
 .editor-identity { min-width: 0; grid-column: 1; grid-row: 1 }
 .editor-kicker { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 900; letter-spacing: 0; text-transform: uppercase }
@@ -2054,6 +2247,7 @@ onBeforeUnmount(function () {
 .editor-identity-tag { display: inline-flex; min-height: 24px; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-60); font-size: 10.5px; font-weight: 800; line-height: 1.3; white-space: nowrap }
 .editor-identity-tag.rarity { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .editor-identity-tag.profession { background: transparent; color: var(--tea) }
+.editor-identity-tag.stale { border-color: rgba(166, 81, 74, .45); background: rgba(166, 81, 74, .12); color: var(--rouge) }
 .editor-identity-tag img { width: 16px; height: 16px; object-fit: contain }
 .editor-head-stats { display: flex; min-width: 0; grid-column: 2; grid-row: 1; flex-direction: column; gap: 7px }
 .editor-head-stats-toolbar { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 7px }
@@ -2070,6 +2264,9 @@ onBeforeUnmount(function () {
 .editor-head-stat-meta strong { color: var(--ink-60); font-size: 10.5px; font-weight: 900 }
 .editor-head-stat small { max-width: 72px; overflow: hidden; padding: 2px 5px; border-radius: 999px; background: rgba(73, 59, 44, .07); color: var(--ink-35); font-size: 8px; font-weight: 800; text-overflow: ellipsis }
 .editor-head-stat.is-manual small { background: rgba(215, 137, 53, .13); color: var(--accent-strong) }
+.manual-restore { display: inline-grid; width: 19px; height: 19px; flex: 0 0 auto; place-items: center; padding: 0; border: 1px solid rgba(215, 137, 53, .38); border-radius: 50%; background: transparent; color: var(--accent-strong); cursor: pointer }
+.manual-restore:hover { border-color: var(--accent); background: var(--yellow) }
+.manual-restore:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .editor-head-stat input { width: 100%; min-width: 0; min-height: 32px; padding: 1px 0 2px; border: 0; outline: none; background: transparent; color: var(--accent-strong); font: 900 23px/1 var(--font-d); letter-spacing: -.02em; text-align: right; -moz-appearance: textfield }
 .editor-head-stat input::placeholder { color: var(--accent-strong); opacity: 1 }
 .editor-head-stat.is-empty input::placeholder { color: var(--ink-35) }
@@ -2145,7 +2342,8 @@ onBeforeUnmount(function () {
 .num-fields .elite-hint { font-size: 11.5px; color: var(--ink-35); font-weight: 700; white-space: nowrap }
 .oddity-editor { display: grid; grid-template-columns: 72px repeat(3, minmax(0, 1fr)); gap: 7px; align-items: center; padding-top: 10px; border-top: 1px dashed var(--line) }
 .num-fields .oddity-editor { width: 100%; min-width: 0; flex: 1 0 100% }
-.oddity-caption { color: var(--ink-60); font-size: 11px; font-weight: 900; white-space: nowrap }
+.oddity-caption { display: flex; flex-direction: column; gap: 2px; color: var(--ink-60); font-size: 11px; font-weight: 900; white-space: nowrap }
+.oddity-caption small { color: var(--rouge); font-size: 9px; font-weight: 800 }
 .oddity-field { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream) }
 .oddity-name { min-width: 0; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap }
 .oddity-control { display: inline-flex; min-width: 0; align-items: center; gap: 4px }
@@ -2169,13 +2367,10 @@ onBeforeUnmount(function () {
 .disc-loadout-name-head { display: flex; min-width: 0; min-height: 20px; align-items: center; justify-content: space-between; gap: 8px }
 .disc-loadout-name input { width: 100%; min-width: 0; min-height: 38px; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 7px; outline: none; background: var(--surface); color: var(--ink); font: 800 12.5px var(--font-b) }
 .disc-loadout-name input:focus { border-color: var(--accent) }
-.disc-auto-name, .disc-current-choice { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); font: 800 10.5px var(--font-b); white-space: nowrap }
+.disc-auto-name { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); font: 800 10.5px var(--font-b); white-space: nowrap }
 .disc-auto-name { cursor: pointer }
 .disc-auto-name:hover { border-color: var(--accent); color: var(--accent-strong) }
 .disc-auto-status { display: inline-flex; min-width: 0; min-height: 20px; align-items: center; overflow: hidden; padding: 2px 7px; border-radius: 999px; background: rgba(215, 137, 53, .12); color: var(--accent-strong); font-size: 9px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap }
-.disc-current-choice { grid-column: 3; cursor: pointer }
-.disc-current-choice:has(input:checked) { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
-.disc-current-choice input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent) }
 .disc-options { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 10px }
 .disc-options-head { display: flex; flex-basis: 100%; align-items: center; justify-content: space-between; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
 .disc-options-head strong { color: var(--accent-strong); font-family: var(--font-d); font-size: 11px }
@@ -2212,7 +2407,11 @@ onBeforeUnmount(function () {
 .stone-item { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 8px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px }
 .stone-item-head { display: flex; min-height: 20px; align-items: center; justify-content: space-between; gap: 8px }
 .stone-name { min-width: 0; color: var(--ink); font-size: 12.5px; font-weight: 900 }
+.stone-item-actions { display: inline-flex; align-items: center; gap: 5px }
 .stone-current { flex: none; color: var(--accent-strong); font: 900 10.5px var(--font-d) }
+.stone-remove { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(166, 81, 74, .35); border-radius: 7px; background: transparent; color: var(--rouge); cursor: pointer }
+.stone-remove:hover { background: rgba(166, 81, 74, .12) }
+.stone-remove:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .stone-select { width: 100%; min-width: 0; border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 9px; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; color: var(--ink); background: var(--surface); outline: none; cursor: pointer }
 .stone-select:focus { border-color: var(--accent) }
 .stone-level-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px }
@@ -2240,6 +2439,12 @@ onBeforeUnmount(function () {
 .stone-lv-chip.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
 .stone-editor .hint { grid-column: 1 / -1; font-size: 11px; color: var(--ink-35); line-height: 1.5 }
 .editor-actions { position: relative; z-index: 1; display: flex; min-height: 64px; align-items: center; gap: 16px; flex: 0 0 auto; padding: 10px 28px; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 18px rgba(73, 59, 44, .06) }
+.editor-conflict { display: flex; min-width: 0; flex: 1; flex-wrap: wrap; align-items: center; gap: 3px 8px; padding: 7px 10px; border: 1px solid rgba(166, 81, 74, .36); border-radius: 9px; background: rgba(166, 81, 74, .09); color: var(--rouge); font-size: 10.5px; line-height: 1.4 }
+.editor-conflict strong { flex: none; font-weight: 900 }
+.editor-conflict-actions { display: inline-flex; gap: 5px; margin-left: auto }
+.editor-conflict-btn { min-height: 30px; padding: 3px 8px; border: 1px solid rgba(166, 81, 74, .35); border-radius: 6px; background: var(--surface); color: var(--rouge); font: 800 10px var(--font-b); cursor: pointer }
+.editor-conflict-btn.primary { background: var(--rouge); color: var(--cream) }
+.editor-conflict-btn:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .editor-action-status { min-width: 0; flex: 1; padding: 8px 12px; border-radius: 9px; background: var(--yellow); color: var(--ink); font-size: 12px; font-weight: 800; line-height: 1.45 }
 .editor-action-status.err { background: rgba(166, 81, 74, .14); color: var(--rouge) }
 .editor-action-buttons { display: flex; flex: none; gap: 8px; margin-left: auto }
@@ -2259,7 +2464,6 @@ onBeforeUnmount(function () {
   .page-operator :deep(.footer) { padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom)) }
   .operator-tabs { gap: 8px; padding: 8px; }
   .operator-tabs .operator-tab-button, .operator-tabs .sp { display: none }
-  .operator-tabs .game-filter { flex: 1; min-height: 44px; padding-inline: 8px }
   .operator-tabs .admin-link { min-height: 44px }
   .operator-mobile-tabs {
     position: fixed;
@@ -2298,8 +2502,6 @@ onBeforeUnmount(function () {
 
 @media (max-width: 640px) {
   .operator-tabs { margin-top: 24px }
-  .operator-tabs .game-filter { min-width: 0 }
-  .operator-tabs .game-filter select { min-width: 0; flex: 1 }
   .operator-tabs .admin-link { padding-inline: 12px }
   .editor-mask { align-items: stretch; padding: 0 }
   .editor-panel { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0 }
@@ -2324,13 +2526,15 @@ onBeforeUnmount(function () {
   .disc-loadout-tabs button { min-height: 64px; padding-inline: 9px }
   .disc-loadout-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch }
   .disc-loadout-name { grid-column: 1 / -1 }
-  .disc-auto-name, .disc-current-choice { min-height: 44px; padding-inline: 8px }
-  .disc-current-choice { grid-column: auto }
+  .disc-auto-name { min-height: 44px; padding-inline: 8px }
   .disc-auto-status { padding-inline: 7px }
   .stone-editor { grid-template-columns: minmax(0, 1fr) }
   .stone-preset-grid { grid-template-columns: minmax(0, 1fr) }
   .stone-preset-heading, .stone-current-heading { align-items: flex-start; flex-direction: column; gap: 3px }
   .editor-actions { min-height: 78px; align-items: stretch; flex-direction: column; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) }
+  .editor-conflict { flex: none; align-items: flex-start; flex-direction: column }
+  .editor-conflict-actions { width: 100%; margin-left: 0 }
+  .editor-conflict-btn { flex: 1; min-height: 38px }
   .editor-action-status { flex: none }
   .editor-action-buttons { width: 100%; }
   .editor-action-buttons .btn { flex: 1; }

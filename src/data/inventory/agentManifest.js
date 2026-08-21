@@ -56,6 +56,14 @@ export function compareAgentRelease(left, right) {
   return String(left && left.id || '').localeCompare(String(right && right.id || ''))
 }
 
+// 未声明 games 的旧目录项视为双版本通用，兼容库存本地兜底目录。
+export function agentMatchesGame(entry, game) {
+  if (!game || game === 'all') return true
+  const games = entry && Array.isArray(entry.games) ? entry.games : []
+  if (!games.length) return true
+  return games.includes(game)
+}
+
 export function sortAgentEntries(entries, mode, favoriteIds, options) {
   const favorites = favoriteSet(favoriteIds)
   const settings = options || {}
@@ -95,6 +103,7 @@ export function filterAgentEntries(entries, filters, favoriteIds) {
   const subProfs = selectedSet(options.subProfs || options.subProf)
   return (Array.isArray(entries) ? entries : []).filter(function (entry) {
     const owned = (Number(entry.count) || 0) > 0
+    if (!agentMatchesGame(entry, options.game)) return false
     if (statuses.size === 1 && statuses.has('owned') && !owned) return false
     if (statuses.size === 1 && statuses.has('missing') && owned) return false
     if ((options.favoriteOnly || options.favoriteMode === 'only') && !favorites.has(entry.id)) return false

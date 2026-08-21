@@ -16,7 +16,7 @@
           <div class="hero-stats">
             <div><div class="k">目录条目</div><div class="v">{{ rows.length }}<small>位</small></div></div>
             <div><div class="k">SP 形态</div><div class="v">{{ spCount }}<small>位</small></div></div>
-            <div><div class="k">游戏版本</div><div class="v">{{ gameCount }}<small>版</small></div></div>
+            <div><div class="k">奇闻待维护</div><div class="v" :class="{ warn: missingOddityCount }">{{ missingOddityCount }}<small>位</small></div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">身份</div><div class="v">管理员<small>status ≥ 2</small></div></div>
           </div>
         </div>
@@ -61,6 +61,7 @@
                       <th>版本</th>
                       <th>命盘</th>
                       <th>星石</th>
+                      <th>第三奇闻</th>
                       <th>SP</th>
                       <th>目录版本</th>
                       <th class="ops-col">操作</th>
@@ -93,6 +94,10 @@
                       </td>
                       <td>{{ r.discs.length }}</td>
                       <td>{{ r.starStones.length }}</td>
+                      <td class="cell-oddity">
+                        <span :class="r.specialOddityName ? 'oddity-ready' : 'oddity-missing'">{{ r.odditySchema.special.name }}</span>
+                        <small>/ {{ r.odditySchema.special.max == null ? '—' : r.odditySchema.special.max }}</small>
+                      </td>
                       <td><span v-if="r.spOf" class="tag-sp" :title="'本体：' + r.spOf">SP</span><span v-else class="muted">—</span></td>
                       <td class="cell-ver"><code>{{ r.catalogVersion }}</code><small>{{ fmtTime(r.createdAt) }}</small></td>
                       <td class="ops-col">
@@ -133,6 +138,7 @@
                     <dl class="mobile-data">
                       <div><dt>命盘</dt><dd>{{ r.discs.length }}</dd></div>
                       <div><dt>星石</dt><dd>{{ r.starStones.length }}</dd></div>
+                      <div class="mobile-oddity"><dt>第三奇闻</dt><dd :class="{ missing: !r.specialOddityName }">{{ r.odditySchema.special.name }} / {{ r.odditySchema.special.max == null ? '—' : r.odditySchema.special.max }}</dd></div>
                       <div class="mobile-version"><dt>目录</dt><dd :title="r.catalogVersion">{{ r.catalogVersion || '—' }}</dd></div>
                     </dl>
 
@@ -213,6 +219,40 @@
                     </label>
                   </div>
                 </fieldset>
+              </div>
+            </div>
+
+            <div class="editor-row oddity-editor-row">
+              <span class="editor-label">奇闻定义</span>
+              <fieldset class="oddity-choice-field" :aria-invalid="specialOddityError ? 'true' : 'false'" aria-describedby="special-oddity-hint special-oddity-error">
+                <legend>第三奇闻名称 <b aria-hidden="true">*</b></legend>
+                <div class="oddity-choice-grid">
+                  <label v-for="name in SPECIAL_ODDITY_PRESETS" :key="name" :class="{ on: form.specialOddityChoice === name }">
+                    <input v-model="form.specialOddityChoice" type="radio" name="special-oddity-name" :value="name" @change="specialOddityError = ''" />
+                    <span>{{ name }}</span>
+                  </label>
+                  <label :class="{ on: form.specialOddityChoice === CUSTOM_ODDITY_OPTION }">
+                    <input v-model="form.specialOddityChoice" type="radio" name="special-oddity-name" :value="CUSTOM_ODDITY_OPTION" @change="specialOddityError = ''" />
+                    <span>自定义</span>
+                  </label>
+                </div>
+                <label v-if="form.specialOddityChoice === CUSTOM_ODDITY_OPTION" class="oddity-custom-field">
+                  <span>自定义名称</span>
+                  <input
+                    v-model.trim="form.specialOddityCustomName"
+                    placeholder="输入正式属性名称"
+                    autocomplete="off"
+                    :aria-invalid="specialOddityError ? 'true' : 'false'"
+                    aria-describedby="special-oddity-hint special-oddity-error"
+                    @blur="validateSpecialOddityName"
+                    @input="specialOddityError = ''"
+                  />
+                </label>
+                <small id="special-oddity-hint" class="hint">只维护展示名称；稳定键固定为 special，上限由服务端按稀有度生成。</small>
+                <small v-show="specialOddityError" id="special-oddity-error" class="field-error" role="alert">{{ specialOddityError }}</small>
+              </fieldset>
+              <div class="oddity-schema-preview" aria-label="奇闻稳定键与当前服务端上限">
+                <span v-for="key in ODDITY_KEYS" :key="key"><code>{{ key }}</code><b>{{ oddityPreviewName(key) }}</b><em>上限 {{ oddityPreviewMax(key) }}</em></span>
               </div>
             </div>
 
@@ -303,17 +343,23 @@ import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
 import { adminCatalogEntries, compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
+import { OPERATOR_ODDITY_KEYS, normalizeOperatorOdditySchema } from '../../utils/operatorCombatStats.js'
 
 const rows = ref([])
 const loading = ref(true)
 const error = ref('')
 const forbidden = ref('')
 const search = ref('')
+const ODDITY_KEYS = OPERATOR_ODDITY_KEYS
+const SPECIAL_ODDITY_PRESETS = ['增伤值', '免伤值', '治疗加成']
+const CUSTOM_ODDITY_OPTION = '__custom__'
 
 // —— 列表面板 ——
 function normalizeRow(r) {
   r = r || {}
   const rawSub = r.sub_prof || r.subProf || []
+  const specialOddityName = r.special_oddity_name != null ? r.special_oddity_name : r.specialOddityName
+  const odditySchema = normalizeOperatorOdditySchema(r.oddity_schema || r.odditySchema)
   return {
     id: r.id || r.operator_id || r.operatorId || '',
     name: r.name || '',
@@ -325,6 +371,9 @@ function normalizeRow(r) {
     discs: Array.isArray(r.discs) ? r.discs : [],
     starStones: Array.isArray(r.star_stones) ? r.star_stones : (Array.isArray(r.starStones) ? r.starStones : []),
     spOf: r.sp_of || r.spOf || null,
+    specialOddityName: String(specialOddityName || '').trim(),
+    odditySchema: odditySchema,
+    incompleteFields: Array.isArray(r.incomplete_fields) ? r.incomplete_fields : (Array.isArray(r.incompleteFields) ? r.incompleteFields : []),
     avatar: r.avatar || '',
     catalogVersion: r.catalog_version || r.catalogVersion || '',
     createdAt: r.created_at || r.createdAt || null
@@ -334,17 +383,17 @@ function normalizeRow(r) {
 const spCount = computed(function () {
   return rows.value.filter(function (r) { return r.spOf }).length
 })
-const gameCount = computed(function () {
-  const set = new Set()
-  rows.value.forEach(function (r) { (r.games || []).forEach(function (g) { set.add(g) }) })
-  return set.size || 2
+const missingOddityCount = computed(function () {
+  return rows.value.filter(function (r) {
+    return !r.specialOddityName || r.incompleteFields.indexOf('special_oddity_name') !== -1
+  }).length
 })
 
 const filteredRows = computed(function () {
   const q = search.value.toLowerCase()
   if (!q) return rows.value
   return rows.value.filter(function (r) {
-    const hay = [r.name, r.alias, r.id, r.prof.join(''), r.subProf.join('')].filter(Boolean).join(' ').toLowerCase()
+    const hay = [r.name, r.alias, r.id, r.prof.join(''), r.subProf.join(''), r.specialOddityName, r.specialOddityName ? '' : '待维护'].filter(Boolean).join(' ').toLowerCase()
     return hay.indexOf(q) !== -1
   })
 })
@@ -361,6 +410,7 @@ const form = ref(blankForm())
 const notice = ref('')
 const noticeError = ref(false)
 const saving = ref(false)
+const specialOddityError = ref('')
 
 // —— 头像上传 / 删除 ——
 const avatarUploading = ref(false)
@@ -421,6 +471,9 @@ function blankForm() {
     subProfs: [],
     games: ['如鸢'],
     spOf: '',
+    specialOddityChoice: '',
+    specialOddityCustomName: '',
+    odditySchema: normalizeOperatorOdditySchema(),
     avatar: '',
     avatarPick: null,
     avatarPreview: '',
@@ -430,6 +483,8 @@ function blankForm() {
 }
 
 function fillForm(r) {
+  const specialOddityName = String(r.specialOddityName || '').trim()
+  const usesPreset = SPECIAL_ODDITY_PRESETS.indexOf(specialOddityName) !== -1
   return {
     id: r.id,
     name: r.name,
@@ -439,6 +494,9 @@ function fillForm(r) {
     subProfs: r.subProf.map(normalizeSubProfValue),
     games: (r.games && r.games.length) ? r.games.slice() : ['如鸢'],
     spOf: r.spOf || '',
+    specialOddityChoice: usesPreset ? specialOddityName : (specialOddityName ? CUSTOM_ODDITY_OPTION : ''),
+    specialOddityCustomName: usesPreset ? '' : specialOddityName,
+    odditySchema: normalizeOperatorOdditySchema(r.odditySchema),
     avatar: r.avatar || '',
     avatarPick: null,
     avatarPreview: '',
@@ -461,6 +519,7 @@ function openNew() {
   form.value = blankForm()
   notice.value = ''
   noticeError.value = false
+  specialOddityError.value = ''
   editing.value = true
 }
 
@@ -469,6 +528,7 @@ function openEdit(r) {
   form.value = fillForm(r)
   notice.value = ''
   noticeError.value = false
+  specialOddityError.value = ''
   editing.value = true
 }
 
@@ -551,6 +611,7 @@ function buildBody() {
     prof: form.value.profs.slice(),
     subProf: form.value.subProfs.slice(),
     games: form.value.games,
+    specialOddityName: resolvedSpecialOddityName(),
     discs: form.value.discs
       .filter(function (d) { return d.ot_name && d.ot_name.trim() })
       .map(function (d) {
@@ -576,6 +637,11 @@ function validateBody(body) {
     return false
   }
   if (!body.name) { notice.value = '名称不能为空'; noticeError.value = true; return false }
+  if (!validateSpecialOddityName()) {
+    notice.value = specialOddityError.value
+    noticeError.value = true
+    return false
+  }
   if (!body.games.length) { notice.value = '至少选择一个游戏版本'; noticeError.value = true; return false }
   const discNames = body.discs.map(function (d) { return d.ot_name })
   if (new Set(discNames).size !== discNames.length) { notice.value = '命盘 ot_name 不能重复'; noticeError.value = true; return false }
@@ -583,6 +649,33 @@ function validateBody(body) {
   if (new Set(stoneTypes).size !== stoneTypes.length) { notice.value = '星石 type 不能重复（main / assist 各一）'; noticeError.value = true; return false }
   if (body.spOf === body.id) { notice.value = 'spOf 不能引用自身'; noticeError.value = true; return false }
   return true
+}
+
+function validateSpecialOddityName() {
+  const name = resolvedSpecialOddityName()
+  specialOddityError.value = name ? '' : (form.value.specialOddityChoice === CUSTOM_ODDITY_OPTION
+    ? '请输入自定义的正式属性名称'
+    : '请选择或自定义第三奇闻名称')
+  return !specialOddityError.value
+}
+
+function resolvedSpecialOddityName() {
+  if (form.value.specialOddityChoice === CUSTOM_ODDITY_OPTION) {
+    return String(form.value.specialOddityCustomName || '').trim()
+  }
+  return SPECIAL_ODDITY_PRESETS.indexOf(form.value.specialOddityChoice) !== -1
+    ? form.value.specialOddityChoice
+    : ''
+}
+
+function oddityPreviewName(key) {
+  if (key === 'special' && resolvedSpecialOddityName()) return resolvedSpecialOddityName()
+  return form.value.odditySchema[key].name
+}
+
+function oddityPreviewMax(key) {
+  const max = form.value.odditySchema[key].max
+  return max == null ? '保存后生成' : max
 }
 
 async function save() {
@@ -691,16 +784,16 @@ load()
 .adm-search::placeholder { color: var(--ink-35) }
 .result-count { font-family: var(--font-d); font-size: 12px; font-weight: 700; color: var(--ink-60); white-space: nowrap }
 
-.catalog-table-wrap { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; overflow-x: auto }
-.catalog-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px }
-.catalog-table th { text-align: left; font-family: var(--font-b); font-weight: 800; font-size: 12px; color: var(--ink-60); padding: 10px 12px; border-bottom: 1px dashed var(--line); white-space: nowrap }
-.catalog-table td { padding: 10px 12px; border-bottom: 1px solid rgba(156, 122, 77, .12); vertical-align: middle }
+.catalog-table-wrap { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; overflow-x: auto; scrollbar-gutter: stable }
+.catalog-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 980px }
+.catalog-table th { text-align: left; font-family: var(--font-b); font-weight: 800; font-size: 12px; color: var(--ink-60); padding: 10px 8px; border-bottom: 1px dashed var(--line); white-space: nowrap }
+.catalog-table td { padding: 10px 8px; border-bottom: 1px solid rgba(156, 122, 77, .12); vertical-align: middle }
 .catalog-table tbody tr:last-child td { border-bottom: none }
 .catalog-table tbody tr:hover { background: rgba(156, 122, 77, .05) }
 .catalog-mobile { display: none }
 
-.cell-op { min-width: 220px }
-.cell-op { display: flex; align-items: center; gap: 12px }
+.cell-op { min-width: 178px }
+.cell-op { display: flex; align-items: center; gap: 8px }
 .op-ph { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-family: var(--font-d); font-weight: 900; font-size: 14px; color: var(--cream) }
 .op-avatar { flex: none; width: 34px; height: 34px; border-radius: 10px; object-fit: cover; background: var(--paper); border: 1.5px solid var(--line) }
 .op-ph.s3 { background: var(--yellow-deep); color: var(--ink) }
@@ -722,18 +815,26 @@ load()
 .rarity.s3 { color: var(--yellow-deep) }
 .rarity.s4 { color: var(--accent) }
 .rarity.s5 { color: var(--tea) }
-.cell-prof { min-width: 190px }
+.hero-stats .v.warn { color: var(--rouge) }
+.cell-prof { min-width: 132px }
 .cell-tag-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px }
 .tag-prof { display: inline-block; border: 1px solid var(--element-color, var(--yellow-deep)); border-radius: 6px; padding: 1px 7px 1px 10px; background: var(--surface); color: var(--ink); box-shadow: inset 3px 0 var(--element-color, var(--yellow-deep)); font-size: 11px; font-weight: 800 }
 .tag-subprof { display: inline-block; border: 1px solid var(--yellow-deep); border-radius: 6px; padding: 1px 7px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800 }
 .tag-station { display: inline-block; border: 1.5px solid var(--line); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-size: 11px }
 .tag-sp { display: inline-block; background: var(--tea); color: var(--cream); border-radius: 6px; padding: 1px 8px; font-size: 11px; font-weight: 800 }
+.cell-oddity { min-width: 124px }
+.cell-oddity span { display: block; font-weight: 800 }
+.cell-oddity small { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px }
+.oddity-missing { color: var(--rouge) }
+.oddity-ready { color: var(--ink) }
 .muted { color: var(--ink-35); font-size: 12px }
-.cell-ver { max-width: 150px }
+.cell-ver { width: 96px; max-width: 96px }
 .cell-ver code { display: block; font-family: var(--font-d); font-size: 10.5px; color: var(--ink-60); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .cell-ver small { color: var(--ink-35); font-size: 10.5px }
-.ops-col { text-align: right; white-space: nowrap }
-.ops-btn { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 5px 12px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s; margin-left: 6px }
+.ops-col { position: sticky; right: 0; z-index: 2; min-width: 116px; text-align: right !important; white-space: nowrap; background: var(--surface); box-shadow: -10px 0 16px -16px rgba(73, 59, 44, .72) }
+.catalog-table thead .ops-col { z-index: 3 }
+.catalog-table tbody tr:hover .ops-col { background: color-mix(in srgb, var(--surface) 95%, var(--tea)) }
+.ops-btn { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 5px 8px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s; margin-left: 4px }
 .ops-btn:hover { border-color: var(--ink); color: var(--ink) }
 .ops-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
 .ops-btn.danger:hover { background: rgba(166, 81, 74, .1) }
@@ -754,6 +855,25 @@ load()
 .fields-2col input, .fields-2col select, .spof-input { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
 .fields-2col input:focus, .fields-2col select:focus, .spof-input:focus { border-color: var(--accent) }
 .fields-2col input[readonly] { opacity: .55 }
+.oddity-editor-row { align-items: start }
+.oddity-choice-field { display: flex; width: 100%; min-width: 0; flex-direction: column; gap: 8px; border: 0; color: var(--ink-60); font-size: 12px; font-weight: 800 }
+.oddity-choice-field legend { margin-bottom: 8px }
+.oddity-choice-field legend b { color: var(--rouge) }
+.oddity-choice-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+.oddity-choice-grid label { display: inline-flex; min-width: 0; min-height: 40px; align-items: center; justify-content: center; gap: 7px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 9px; background: var(--paper); color: var(--ink-60); cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
+.oddity-choice-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
+.oddity-choice-grid label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.oddity-choice-grid input { flex: none; width: 16px; height: 16px; accent-color: var(--accent) }
+.oddity-custom-field { display: flex; flex-direction: column; gap: 5px }
+.oddity-custom-field input { min-height: 40px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; outline: none; background: var(--paper); color: var(--ink); font: 13px var(--font-b); transition: border-color .25s, box-shadow .25s }
+.oddity-custom-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
+.oddity-custom-field input[aria-invalid="true"] { border-color: var(--rouge) }
+.field-error { color: var(--rouge); font-size: 11.5px; font-weight: 700 }
+.oddity-schema-preview { display: grid; min-width: min(300px, 100%); flex: 1; gap: 6px }
+.oddity-schema-preview > span { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; background: var(--cream) }
+.oddity-schema-preview code { color: var(--accent); font-family: var(--font-d); font-size: 10.5px; font-weight: 800 }
+.oddity-schema-preview b { overflow: hidden; color: var(--ink); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap }
+.oddity-schema-preview em { color: var(--ink-35); font-size: 10.5px; font-style: normal; white-space: nowrap }
 .multi-field { min-width: 0; grid-column: 1 / -1; border: 0 }
 .multi-field legend { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .multi-field legend small { flex: none; color: var(--ink-35); font-size: 11px; font-weight: 600 }
@@ -850,16 +970,19 @@ load()
 
   .mobile-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px }
   .mobile-tags .tag-station { background: transparent }
-  .mobile-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 9px; padding: 8px 12px; border-top: 1px dashed var(--line) }
-  .mobile-data { display: grid; grid-template-columns: 44px 44px minmax(0, 1fr); min-width: 0 }
+  .mobile-foot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 9px; padding: 8px 12px; border-top: 1px dashed var(--line) }
+  .mobile-data { display: grid; grid-template-columns: 42px 42px minmax(104px, 1.45fr) minmax(58px, .8fr); width: 100%; min-width: 0 }
   .mobile-data > div { min-width: 0; padding: 0 7px; border-right: 1px solid var(--line) }
   .mobile-data > div:first-child { padding-left: 0 }
   .mobile-data > div:last-child { border-right: 0 }
   .mobile-data dt { color: var(--ink-35); font-size: 9.5px; font-weight: 700; line-height: 1.35 }
   .mobile-data dd { margin-top: 1px; color: var(--ink); font-family: var(--font-d); font-size: 13px; font-weight: 800; line-height: 1.35 }
   .mobile-version dd { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-oddity { padding-block: 0 !important }
+  .mobile-oddity dd { overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap }
+  .mobile-oddity dd.missing { color: var(--rouge) }
 
-  .mobile-actions { display: flex; gap: 6px }
+  .mobile-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px }
   .mobile-actions button { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; cursor: pointer; touch-action: manipulation }
   .mobile-actions .mobile-edit { width: 68px; border: 0; background: var(--tea); color: var(--cream) }
   .mobile-delete { border: 1.5px solid rgba(166, 81, 74, .35); background: transparent; color: var(--rouge) }
@@ -882,6 +1005,11 @@ load()
   .fields-2col select,
   .spof-input { width: 100%; min-height: 44px; padding: 9px 11px; font-size: 16px }
   .multi-field legend { margin-bottom: 8px; font-size: 13px }
+  .oddity-editor-row { flex-direction: column }
+  .oddity-choice-field, .oddity-schema-preview { width: 100%; min-width: 0 }
+  .oddity-choice-grid { grid-template-columns: 1fr 1fr }
+  .oddity-choice-grid label { min-height: 44px }
+  .oddity-custom-field input { min-height: 44px; font-size: 16px }
   .multi-field legend small { font-size: 12px }
   .multi-pick { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
   .multi-pick label { min-width: 0; min-height: 44px; padding: 8px 5px; font-size: 13px }

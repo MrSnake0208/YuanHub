@@ -72,3 +72,17 @@ export const ASSIST_STAR_DESCRIPTIONS = {
   右弼: '风属性增伤+',
   地空: '风属性抗性+'
 }
+
+// 部分星石只允许装备到指定从属或属性的密探。
+export const STAR_STONE_RESTRICTIONS = {
+  紫微: { subProf: ['龙盾'] },
+  破军: { subProf: ['破军'] },
+  天机: { subProf: ['神纪', '诡道'] },
+  文昌: { subProf: ['岐黄'] },
+  天魁: { prof: ['地'] },
+  天钺: { prof: ['水'] },
+  左辅: { prof: ['火'] },
+  右弼: { prof: ['风'] },
+  天马: { prof: ['阴'] },
+  擎羊: { prof: ['阳'] }
+}

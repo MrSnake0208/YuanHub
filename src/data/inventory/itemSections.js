@@ -59,7 +59,7 @@ export const GAME_BAG_ITEM_IDS = Object.freeze([
   'baijinbi'
 ])
 
-export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze(['zhuangjinboli'])
+export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze(['zhuangjinboli', 'baijinbi'])
 
 const GAME_BAG_POSITION = new Map(GAME_BAG_ITEM_IDS.map(function (id, index) { return [id, index] }))
 const STOCK_EDIT_LEADING_IDS = ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi']
