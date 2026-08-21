@@ -1,0 +1,45 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 3,
+  "exported_at": "2026-08-21T10:30:00+08:00",
+  "producer": {
+    "platform": "invalid-fixture",
+    "version": "1"
+  },
+  "accounts": [
+    {
+      "id": "local_default",
+      "name": "非法样例"
+    }
+  ],
+  "records": [
+    {
+      "account_id": "local_default",
+      "record_id": "invalid:schema:001",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-08-21T10:30:00+08:00",
+      "snapshot_scope": "listed",
+      "source_kind": "scan",
+      "entries": [
+        {
+          "operator_id": "char_085_shizimiaosp",
+          "level": 101,
+          "star_level": 32,
+          "combat_stats": {
+            "oddities": {
+              "免伤值": { "current": 15 }
+            }
+          },
+          "equipped_star_stones": [
+            {
+              "type": "support1",
+              "name": "红鸾",
+              "level": 61
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

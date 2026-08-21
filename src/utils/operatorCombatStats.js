@@ -9,8 +9,12 @@ import {
 } from '../data/operatorPanelCalculator.js'
 
 const MAX_CURIOS = 24
-const BASE_ODDITY_LIMITS = { '攻击力': 500, '生命值': 2600 }
-const SPECIAL_ODDITY_LIMIT = 15
+export const OPERATOR_ODDITY_KEYS = ['attack', 'hp', 'special']
+const ODDITY_FALLBACK_NAMES = {
+  attack: '攻击力',
+  hp: '生命值',
+  special: '第三属性（图鉴待维护）'
+}
 
 function finiteOrNull(value) {
   if (value === '' || value == null) return null
@@ -50,62 +54,70 @@ function normalizeCurios(value) {
   return []
 }
 
-function canonicalOddityName(value) {
-  const name = textOrEmpty(value)
-  if (name === '攻击' || name === '攻击值') return '攻击力'
-  if (name === '生命' || name === '生命力' || name === 'HP') return '生命值'
-  return name
+function canonicalOddityKey(value) {
+  const key = textOrEmpty(value)
+  if (OPERATOR_ODDITY_KEYS.indexOf(key) !== -1) return key
+  if (['攻击', '攻击值', '攻击力', 'ATK', 'atk'].indexOf(key) !== -1) return 'attack'
+  if (['生命', '生命值', '生命力', 'HP', 'hp'].indexOf(key) !== -1) return 'hp'
+  return ''
 }
 
-function normalizeOddityEntry(value, defaultMax) {
+function normalizeOddityEntry(value) {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : { current: value }
   const current = finiteOrNull(source.current != null ? source.current : (source.value != null ? source.value : source.now))
   const max = finiteOrNull(source.max != null ? source.max : (source.limit != null ? source.limit : source.cap))
   return {
     current: current == null ? 0 : current,
-    max: max == null ? (defaultMax == null ? null : defaultMax) : max
+    max: max
   }
 }
 
-export function normalizeOperatorOddities(value, legacyCurios) {
+export function normalizeOperatorOdditySchema(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const result = {}
+  OPERATOR_ODDITY_KEYS.forEach(function (key) {
+    const entry = source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) ? source[key] : {}
+    result[key] = {
+      name: textOrEmpty(entry.name || entry.label) || ODDITY_FALLBACK_NAMES[key],
+      max: finiteOrNull(entry.max != null ? entry.max : (entry.limit != null ? entry.limit : entry.cap))
+    }
+  })
+  return result
+}
+
+export function normalizeOperatorOddities(value, legacyCurios, odditySchema) {
   const parsed = {}
   const assign = function (rawName, rawValue) {
-    const name = canonicalOddityName(rawName)
-    if (!name || Object.keys(parsed).length >= MAX_CURIOS) return
-    parsed[name] = normalizeOddityEntry(rawValue, BASE_ODDITY_LIMITS[name])
+    const key = canonicalOddityKey(rawName) || (parsed.special ? '' : 'special')
+    if (!key) return
+    parsed[key] = normalizeOddityEntry(rawValue)
   }
   if (Array.isArray(value)) {
-    value.slice(0, MAX_CURIOS).forEach(function (entry, index) {
+    value.slice(0, OPERATOR_ODDITY_KEYS.length).forEach(function (entry) {
       const source = entry && typeof entry === 'object' ? entry : {}
-      assign(source.name || source.label || ('特殊属性 ' + (index + 1)), source)
+      assign(source.key || source.id || source.name || source.label, source)
     })
   } else if (value && typeof value === 'object') {
-    Object.keys(value).slice(0, MAX_CURIOS).forEach(function (name) { assign(name, value[name]) })
+    Object.keys(value).forEach(function (name) { assign(name, value[name]) })
   }
 
   const legacy = Array.isArray(legacyCurios) ? legacyCurios : []
   const legacyAttack = legacy.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.attack) || 0) }, 0)
   const legacyHp = legacy.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.hp) || 0) }, 0)
-  const result = {
-    '攻击力': {
-      current: parsed['攻击力'] ? parsed['攻击力'].current : legacyAttack,
-      max: BASE_ODDITY_LIMITS['攻击力']
-    },
-    '生命值': {
-      current: parsed['生命值'] ? parsed['生命值'].current : legacyHp,
-      max: BASE_ODDITY_LIMITS['生命值']
+  const schema = normalizeOperatorOdditySchema(odditySchema)
+  const result = {}
+  OPERATOR_ODDITY_KEYS.forEach(function (key) {
+    const fallbackCurrent = key === 'attack' ? legacyAttack : (key === 'hp' ? legacyHp : 0)
+    result[key] = {
+      current: parsed[key] ? parsed[key].current : fallbackCurrent,
+      // 有公共图鉴 schema 时，上限必须以服务端为准；无 schema 的旧数据只保留原值。
+      max: schema[key].max == null ? (parsed[key] ? parsed[key].max : null) : schema[key].max
     }
-  }
-  const specialName = Object.keys(parsed).find(function (name) {
-    return name !== '攻击力' && name !== '生命值'
   })
-  if (specialName) {
-    result[specialName] = { current: parsed[specialName].current, max: SPECIAL_ODDITY_LIMIT }
-  }
   return result
 }
 
-export function normalizeOperatorCombatStats(raw) {
+export function normalizeOperatorCombatStats(raw, odditySchema) {
   raw = raw || {}
   const source = firstObject(
     raw.combatStats,
@@ -116,10 +128,14 @@ export function normalizeOperatorCombatStats(raw) {
   )
   const observedInputs = firstObject(source.observedInputs, source.observed_inputs, source.reference)
   const curios = normalizeCurios(source.curios || source.qiwen || source.anecdotes || source.anecdote)
-  const oddities = normalizeOperatorOddities(source.oddities || source.oddity || raw.oddities, curios)
-  return {
-    attack: finiteOrNull(source.attack),
-    hp: finiteOrNull(source.hp != null ? source.hp : (source.health != null ? source.health : source.life)),
+  const oddities = normalizeOperatorOddities(source.oddities || source.oddity || raw.oddities, curios, odditySchema)
+  const observedAttack = finiteOrNull(source.observedAttack != null ? source.observedAttack : source.observed_attack)
+  const observedHp = finiteOrNull(source.observedHp != null ? source.observedHp : source.observed_hp)
+  const result = {
+    attack: finiteOrNull(source.attack) != null ? finiteOrNull(source.attack) : observedAttack,
+    hp: finiteOrNull(source.hp != null ? source.hp : (source.health != null ? source.health : source.life)) != null
+      ? finiteOrNull(source.hp != null ? source.hp : (source.health != null ? source.health : source.life))
+      : observedHp,
     manualAttack: finiteOrNull(source.manualAttack != null ? source.manualAttack : (source.manual_attack != null ? source.manual_attack : source.overrideAttack)),
     manualHp: finiteOrNull(source.manualHp != null ? source.manualHp : (source.manual_hp != null ? source.manual_hp : source.overrideHp)),
     curios: curios,
@@ -130,6 +146,17 @@ export function normalizeOperatorCombatStats(raw) {
     rulesVersion: textOrEmpty(source.rulesVersion || source.rules_version),
     version: Number(source.version) || 2
   }
+  // 只有后端/采集端明确提供时才暴露观测元数据，保持旧本地快照对象的结构兼容。
+  if (source.observedStatus != null || source.observed_status != null) {
+    result.observedStatus = textOrEmpty(source.observedStatus || source.observed_status) || (observedAttack != null || observedHp != null ? 'valid' : 'unavailable')
+  }
+  if (source.combatInputSignature != null || source.combat_input_signature != null) {
+    result.combatInputSignature = textOrEmpty(source.combatInputSignature || source.combat_input_signature)
+  }
+  if (source.frontendObservedSignature != null || source.frontend_observed_signature != null) {
+    result.frontendObservedSignature = textOrEmpty(source.frontendObservedSignature || source.frontend_observed_signature)
+  }
+  return result
 }
 
 export function createOperatorCombatStats(raw) {
@@ -154,8 +181,8 @@ export function combatInputSignature(input) {
     elite: Math.max(0, Math.trunc(Number(input.elite) || 0)),
     starLevel: Math.max(0, Math.trunc(Number(input.starLevel) || 0)),
     stones: normalizeStoneInputs(input.stones),
-    oddities: oddities ? Object.keys(oddities).map(function (name) {
-      return [name, finiteOrNull(oddities[name].current), finiteOrNull(oddities[name].max)]
+    oddities: oddities ? OPERATOR_ODDITY_KEYS.map(function (key) {
+      return [key, finiteOrNull(oddities[key].current)]
     }) : [],
     curios: curios.map(function (curio, index) {
       return [
@@ -274,17 +301,17 @@ function panelRoleForInput(input) {
 export function calculateWikiOperatorCombatStats(input) {
   input = input || {}
   const role = panelRoleForInput(input)
-  if (!role) return { status: 'unsupported', source: 'rules', reason: '暂无该密探的面板规则数据' }
+  if (!role) return { status: 'unsupported', source: 'rules', reason: '暂时无法计算该密探的面板数据' }
   const levelTier = panelTierForLevel(input.level)
   if (!levelTier || Math.trunc(Number(input.elite) || 0) !== PANEL_ELITE_CAPS[levelTier - 1]) {
-    return { status: 'unsupported', source: 'rules', reason: '暂无当前等级·修为下的面板数据' }
+    return { status: 'unsupported', source: 'rules', reason: '仅提供完整等级·修为节点，暂时无法计算当前组合' }
   }
   const tier = levelTier
   const baseIndex = tier - 1
   const baseHp = finiteArrayValue(role.Level_HP, baseIndex)
   const baseAttack = finiteArrayValue(role.Level_ATK, baseIndex)
   if (baseHp === 0 && baseAttack === 0) {
-    return { status: 'unsupported', source: 'rules', reason: '该密探在当前养成节点尚无 Wiki 基础面板数据' }
+    return { status: 'unsupported', source: 'rules', reason: '该密探在当前养成节点尚无基础面板数据' }
   }
   const star = panelStarValues(input.starLevel)
   const promotionsHp = sumPromotion(role.Pay_HP, star.pay, 1)
@@ -294,10 +321,10 @@ export function calculateWikiOperatorCombatStats(input) {
   const hasOddities = input.oddities && typeof input.oddities === 'object' && !Array.isArray(input.oddities)
   const oddities = hasOddities ? normalizeOperatorOddities(input.oddities, []) : null
   const curioHp = oddities
-    ? (finiteOrNull(oddities['生命值'] && oddities['生命值'].current) || 0)
+    ? (finiteOrNull(oddities.hp && oddities.hp.current) || 0)
     : curios.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.hp) || 0) }, 0)
   const curioAttack = oddities
-    ? (finiteOrNull(oddities['攻击力'] && oddities['攻击力'].current) || 0)
+    ? (finiteOrNull(oddities.attack && oddities.attack.current) || 0)
     : curios.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.attack) || 0) }, 0)
   const hpPercent = star.multiplier + stone.hpPercent + (tier >= 2 ? 0.05 : 0)
   const attackPercent = star.multiplier + stone.attackPercent + (tier >= 4 ? 0.05 : 0)
@@ -328,8 +355,26 @@ export function calculateWikiOperatorCombatStats(input) {
 export function calculateOperatorCombatStats({ stored, input, calculator } = {}) {
   const normalized = normalizeOperatorCombatStats(stored)
   const signature = combatInputSignature(input)
-  const referenceSignature = normalized.observedInputs && (normalized.observedInputs.signature || normalized.observedInputs.inputSignature)
-  const changedSinceObservation = !!referenceSignature && referenceSignature !== signature
+  const localReferenceSignature = normalized.frontendObservedSignature || (normalized.observedInputs && (normalized.observedInputs.signature || normalized.observedInputs.inputSignature))
+  const backendReferenceSignature = normalized.combatInputSignature && !/^sha256:/i.test(normalized.combatInputSignature)
+    ? normalized.combatInputSignature
+    : ''
+  const observedInputs = normalized.observedInputs || {}
+  const primitiveInputChanged = [
+    ['level', input && input.level],
+    ['elite', input && input.elite],
+    ['starLevel', input && input.starLevel]
+  ].some(function ([key, value]) {
+    return observedInputs[key] != null && Number(observedInputs[key]) !== Number(value)
+  })
+  const manualPersistedAtCurrentInput = normalized.source === 'manual' &&
+    observedInputs.level != null && Number(observedInputs.level) === Number(input && input.level) &&
+    observedInputs.elite != null && Number(observedInputs.elite) === Number(input && input.elite) &&
+    observedInputs.starLevel != null && Number(observedInputs.starLevel) === Number(input && input.starLevel)
+  const changedSinceObservation = localReferenceSignature
+    ? localReferenceSignature !== signature
+    : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature))
+  const hasManualCorrection = normalized.manualAttack != null || normalized.manualHp != null
 
   const compute = calculator || calculateWikiOperatorCombatStats
   if (compute && typeof compute === 'function') {
@@ -337,42 +382,68 @@ export function calculateOperatorCombatStats({ stored, input, calculator } = {})
       ? (compute({ stored: normalized, input: input || {}, signature: signature }) || {})
       : (compute(input || {}) || {})
     if (result.status === 'unsupported') {
+      const useManual = hasManualCorrection
       return {
-        attack: normalized.manualAttack != null ? normalized.manualAttack : normalized.attack,
-        hp: normalized.manualHp != null ? normalized.manualHp : normalized.hp,
-        attackLabel: valueLabel(normalized.manualAttack != null ? normalized.manualAttack : normalized.attack),
-        hpLabel: valueLabel(normalized.manualHp != null ? normalized.manualHp : normalized.hp),
-        status: normalized.manualAttack != null || normalized.manualHp != null ? 'manual' : (normalized.attack != null || normalized.hp != null ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
-        source: normalized.manualAttack != null || normalized.manualHp != null ? 'manual' : normalized.source,
+        attack: useManual && normalized.manualAttack != null ? normalized.manualAttack : normalized.attack,
+        hp: useManual && normalized.manualHp != null ? normalized.manualHp : normalized.hp,
+        attackLabel: valueLabel(useManual && normalized.manualAttack != null ? normalized.manualAttack : normalized.attack),
+        hpLabel: valueLabel(useManual && normalized.manualHp != null ? normalized.manualHp : normalized.hp),
+        automaticAttack: null,
+        automaticHp: null,
+        automaticAttackLabel: '—',
+        automaticHpLabel: '—',
+        status: useManual ? 'manual' : (normalized.attack != null || normalized.hp != null ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
+        source: useManual ? 'manual' : normalized.source,
         reason: result.reason,
         changedSinceObservation: changedSinceObservation,
-        inputSignature: signature
+        inputSignature: signature,
+        manualFallbackAvailable: false,
+        automaticResultAvailable: false,
+        automaticAttackAvailable: false,
+        automaticHpAvailable: false
       }
     }
+    const useManual = hasManualCorrection && !changedSinceObservation
     return {
-      attack: normalized.manualAttack != null ? normalized.manualAttack : finiteOrNull(result.attack),
-      hp: normalized.manualHp != null ? normalized.manualHp : finiteOrNull(result.hp),
-      attackLabel: valueLabel(normalized.manualAttack != null ? normalized.manualAttack : result.attack),
-      hpLabel: valueLabel(normalized.manualHp != null ? normalized.manualHp : result.hp),
-      status: normalized.manualAttack != null || normalized.manualHp != null ? 'manual' : (result.status || 'calculated'),
-      source: normalized.manualAttack != null || normalized.manualHp != null ? 'manual' : (result.source || 'calculated'),
+      attack: useManual && normalized.manualAttack != null ? normalized.manualAttack : finiteOrNull(result.attack),
+      hp: useManual && normalized.manualHp != null ? normalized.manualHp : finiteOrNull(result.hp),
+      attackLabel: valueLabel(useManual && normalized.manualAttack != null ? normalized.manualAttack : result.attack),
+      hpLabel: valueLabel(useManual && normalized.manualHp != null ? normalized.manualHp : result.hp),
+      automaticAttack: finiteOrNull(result.attack),
+      automaticHp: finiteOrNull(result.hp),
+      automaticAttackLabel: valueLabel(result.attack),
+      automaticHpLabel: valueLabel(result.hp),
+      status: useManual ? 'manual' : (result.status || 'calculated'),
+      source: useManual ? 'manual' : (result.source || 'calculated'),
       breakdown: result.breakdown,
       reason: result.reason,
       changedSinceObservation: changedSinceObservation,
-      inputSignature: signature
+      inputSignature: signature,
+      manualFallbackAvailable: hasManualCorrection && changedSinceObservation,
+      automaticResultAvailable: finiteOrNull(result.attack) != null || finiteOrNull(result.hp) != null,
+      automaticAttackAvailable: finiteOrNull(result.attack) != null,
+      automaticHpAvailable: finiteOrNull(result.hp) != null
     }
   }
 
   const hasObservedValue = normalized.manualAttack != null || normalized.manualHp != null || normalized.attack != null || normalized.hp != null
   return {
-    attack: normalized.manualAttack != null ? normalized.manualAttack : normalized.attack,
-    hp: normalized.manualHp != null ? normalized.manualHp : normalized.hp,
-    attackLabel: valueLabel(normalized.manualAttack != null ? normalized.manualAttack : normalized.attack),
-    hpLabel: valueLabel(normalized.manualHp != null ? normalized.manualHp : normalized.hp),
-    status: normalized.manualAttack != null || normalized.manualHp != null ? 'manual' : (hasObservedValue ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
-    source: normalized.manualAttack != null || normalized.manualHp != null ? 'manual' : normalized.source,
+    attack: normalized.manualAttack != null && !changedSinceObservation ? normalized.manualAttack : normalized.attack,
+    hp: normalized.manualHp != null && !changedSinceObservation ? normalized.manualHp : normalized.hp,
+    attackLabel: valueLabel(normalized.manualAttack != null && !changedSinceObservation ? normalized.manualAttack : normalized.attack),
+    hpLabel: valueLabel(normalized.manualHp != null && !changedSinceObservation ? normalized.manualHp : normalized.hp),
+    automaticAttack: null,
+    automaticHp: null,
+    automaticAttackLabel: '—',
+    automaticHpLabel: '—',
+    status: hasManualCorrection && !changedSinceObservation ? 'manual' : (hasObservedValue ? (changedSinceObservation ? 'stale' : 'observed') : 'missing'),
+    source: hasManualCorrection && !changedSinceObservation ? 'manual' : normalized.source,
     changedSinceObservation: changedSinceObservation,
-    inputSignature: signature
+    inputSignature: signature,
+    manualFallbackAvailable: hasManualCorrection && changedSinceObservation,
+    automaticResultAvailable: false,
+    automaticAttackAvailable: false,
+    automaticHpAvailable: false
   }
 }
 

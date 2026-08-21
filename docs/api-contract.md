@@ -98,13 +98,14 @@
 
 ### 统一子账号（库存 × 密探共用，迁移后仅此一套）
 
-> 子账号统一后，库存与密探共用同一批账号：一个子账号 = 一个游戏账号，库存、密探、特别关注全共用。
+> 子账号统一后，库存与密探共用同一批账号：一个子账号 = 一个游戏账号，库存、密探、特别关注全共用。游戏版本也是账号级字段，只允许 `代号鸢` / `如鸢`；缺省和存量账号统一按 `代号鸢` 处理，不提供 `all` / `universal`。
 > 账号 CRUD 只保留 `/v1/accounts`；旧地址 `/v1/inventory/accounts`、`/v1/operator/accounts` 已删除（返回 404）。
 
-- POST /v1/accounts  body {name} → {id,name,created_at,updated_at}（id 形如 acc_<32hex>，重名 409）
-- GET /v1/accounts → [{id,name,created_at,updated_at}]（按创建时间升序）
-- PATCH /v1/accounts/{accountId}  body {name} → 账号对象
+- POST /v1/accounts  body `{name,game}` → `{id,name,game,created_at,updated_at}`（id 形如 acc_<32hex>，重名 409；兼容旧客户端，缺失 game 时默认 `代号鸢`）
+- GET /v1/accounts → `[{id,name,game,created_at,updated_at}]`（按创建时间升序）
+- PATCH /v1/accounts/{accountId}  body `{name?,game?}` → 账号对象；至少提供一个字段，允许只改名或只改版本
 - DELETE /v1/accounts/{accountId} → **整账号级联删除**：库存、密探、特别关注与全部 token 一并清除，不可恢复；返回 true
+- 非法版本返回 422：`{"error":{"code":"invalid_game","message":"game 只允许 代号鸢 或 如鸢"}}`
 
 ### 查询与导入导出
 - GET /v1/inventory/current?account_id=&entity_type=item|agent → [{entity_type, entries:{"<id>":{count,listed_baseline_at}}}]
@@ -155,6 +156,29 @@
 密探心纸手动库存沿用上述 v2 文档：使用 `record_type=stock_snapshot`、`entity_type=agent`。
 `full` 替换该子账号完整密探库存，`listed` 只覆盖列出的密探。库存业务只使用
 `id` 和 `count`；`name` 是展示冗余，`rarity`、`prof`、`sub_prof` 等字段不能修改公共目录。
+
+## 密探公共图鉴奇闻扩展（v3 前置，计划契约）
+
+> 本节是《密探养成数据交换协议 v3》的前置改造，尚不能视为现网已实现接口。正式字段以 [`operator-growth-data-exchange-protocol-v3.md`](./operator-growth-data-exchange-protocol-v3.md) 为准。
+
+- `GET /v1/operator/catalog`：公开目录每位密探增加 `special_oddity_name` 和只读 `oddity_schema`；
+- `GET /v1/admin/operator-catalog`：管理员目录同样返回上述字段；
+- `POST /v1/admin/operator-catalog`、`PUT /v1/admin/operator-catalog/{operator_id}`：管理写入 DTO 增加 `special_oddity_name`；
+- `special_oddity_name` 由管理员维护，去除首尾空格后长度 `1..32`；新建密探要求填写，存量数据迁移期可为空；
+- `oddity_schema` 由服务端根据名称和 `rarity` 派生，客户端只读：
+
+```json
+{
+  "special_oddity_name": "免伤值",
+  "oddity_schema": {
+    "attack": { "name": "攻击力", "max": 305 },
+    "hp": { "name": "生命值", "max": 1820 },
+    "special": { "name": "免伤值", "max": 11 }
+  }
+}
+```
+
+管理员只能改变第三项展示名称，不能改变 `attack / hp / special` 稳定键。上限按稀有度统一生成：3 星 `300/1560/9`、4 星 `305/1820/11`、5 星 `500/2600/15`。名称或稀有度修改必须更新 `catalog_version` 并刷新目录缓存；纯名称修改不迁移用户养成值。
 
 ## OpenAPI Token 接口契约（/user/open-api）
 

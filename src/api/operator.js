@@ -16,6 +16,7 @@ const PATH = '/v1/operator'
 export {
   listAccounts as listOperatorAccounts,
   createAccount as createOperatorAccount,
+  updateAccountGame as updateOperatorAccountGame,
   renameAccount as renameOperatorAccount,
   deleteAccount as deleteOperatorAccount
 } from './accounts.js'
@@ -24,7 +25,8 @@ export {
 
 // 密探图鉴（公开，无需登录）
 // 返回 { format, version, catalog_version, operators: [{ id, name, alias,
-//   rarity, prof, sub_prof?, games, discs, star_stones? }] }
+//   rarity, prof, sub_prof?, games, discs, star_stones?, special_oddity_name,
+//   oddity_schema: { attack, hp, special }, incomplete_fields }] }
 export function getOperatorCatalog() {
   return request(PATH + '/catalog', { auth: false })
 }
@@ -43,14 +45,29 @@ export function importOperator(doc) {
 
 // 当前养成（GET，需登录）——accountId 必填；game?：如鸢/代号鸢/不传=全部
 // 返回 [{ user_id, account_id, game, full_baseline_at,
-//   entries: { "<char_id>": { elite, star_level, level, discs, star_stones,
-//     listed_baseline_at } }, updated_at }]
+//   entries: { "<char_id>": { elite, star_level, level, disc_loadouts, discs,
+//     star_stones, combat_stats, revision, updated_at, listed_baseline_at } }, updated_at }]
 export function getOperatorCurrent({ accountId, game } = {}) {
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   if (game != null && game !== '') params.set('game', game)
   const qs = params.toString()
   return request(PATH + '/current' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+// 当前养成局部校正（PATCH，需登录）——只提交请求中出现的字段；
+// 支持 level、elite、star_level、disc_loadouts、star_stones、combat_stats；
+// expected_revision 必填，冲突时 request() 会保留 409/code 供调用方处理。
+export function patchOperatorCurrent({ accountId, operatorId, game, patch } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  if (game != null && game !== '') params.set('game', game)
+  const qs = params.toString()
+  return request(PATH + '/current/' + encodeURIComponent(operatorId) + (qs ? '?' + qs : ''), {
+    method: 'PATCH',
+    auth: true,
+    body: patch
+  })
 }
 
 // 导入记录列表（GET，需登录）——{ accountId, game?, cursor?, limit? }
@@ -95,12 +112,14 @@ const ADMIN_PATH = '/v1/admin/operator-catalog'
 
 // 管理员全量列表（含内部字段 star_stones / catalog_version / created_at）
 // 返回 [{ id, name, alias, rarity, prof, sub_prof, games, discs, star_stones,
-//   sp_of, catalog_version, created_at }]
+//   sp_of, special_oddity_name, oddity_schema, incomplete_fields,
+//   catalog_version, created_at }]
 export function listAdminOperatorCatalog() {
   return request(ADMIN_PATH, { auth: true })
 }
 
-// 新增密探目录（body 字段：subProf / starStones / spOf 用 camelCase；
+// 新增密探目录（body 字段：subProf / starStones / spOf /
+// specialOddityName 用 camelCase；
 // discs 条目用 ot_name，与后端 OperatorCatalogWriteRequest 契约一致）
 export function createAdminOperatorCatalog(entry) {
   return request(ADMIN_PATH, { method: 'POST', auth: true, body: entry })

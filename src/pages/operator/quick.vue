@@ -28,7 +28,7 @@
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
               <span class="ac-label">子账号</span>
-              <select id="quick-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || importing" @change="onAccountChange">
+              <select id="quick-account" v-model="accountId" :disabled="!auth.isLoggedIn || accountsLoading || importing || gameSaving" @change="onAccountChange">
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
               </select>
@@ -36,10 +36,9 @@
             </div>
             <span class="ac-sel">
               <span class="ac-label">版本</span>
-              <select id="quick-game" v-model="gameFilter" :disabled="importing" @change="onGameChange">
-                <option value="all">全部（通用）</option>
-                <option value="如鸢">如鸢</option>
+              <select id="quick-game" v-model="gameFilter" :disabled="importing || gameSaving" @change="onGameChange">
                 <option value="代号鸢">代号鸢</option>
+                <option value="如鸢">如鸢</option>
               </select>
             </span>
             <span class="sp"></span>
@@ -189,12 +188,13 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import {
   getOperatorCatalog,
   listOperatorAccounts,
+  updateOperatorAccountGame,
   getOperatorCurrent,
   importOperator
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
-import { activeAccount } from '../../store/activeAccount.js'
+import { activeAccount, isAccountGame } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
 import { AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
@@ -235,7 +235,6 @@ const steps = starSteps
 const stepIndex = ref(0)
 const maxUnlockedStep = ref(0)
 const search = ref('')
-const gameFilter = ref('all')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
 const profOptions = AGENT_PROFS
@@ -246,6 +245,10 @@ const accountId = computed({
   get: function () { return activeAccount.id },
   set: function (v) { activeAccount.set(v) }
 })
+const gameFilter = computed({
+  get: function () { return activeAccount.gameFor(accountId.value) },
+  set: function (v) { activeAccount.setGame(v, accountId.value) }
+})
 const accountsLoading = ref(false)
 const accountError = ref('')
 const catalogLoading = ref(false)
@@ -254,6 +257,7 @@ const catalogVersion = ref('')
 const backendCatalog = ref([])
 const currentEntries = ref([])
 const importing = ref(false)
+const gameSaving = ref(false)
 const sessionSavedCount = ref(0)
 // 每页是否已保存过（用于步骤条“已存”标记 + 返回已保存页时的提示）
 const savedByKey = reactive({})
@@ -317,7 +321,9 @@ const catalogMap = computed(function () {
   return m
 })
 
-const catalogCount = computed(function () { return catalogOperators.value.length })
+const catalogCount = computed(function () {
+  return catalogOperators.value.filter(function (op) { return matchesGame(op, gameFilter.value) }).length
+})
 
 function matchesGame(item, game) {
   if (game === 'all') return true
@@ -343,7 +349,7 @@ const pageOperators = computed(function () {
 const filterSuffix = computed(function () {
   const parts = []
   if (search.value) parts.push('「' + search.value + '」')
-  if (gameFilter.value !== 'all') parts.push('版本「' + gameFilter.value + '」')
+  parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
   if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
   return parts.length ? parts.join(' · ') : ''
@@ -606,11 +612,10 @@ function buildPageEntries(key) {
 }
 
 const saveGame = computed(function () {
-  return gameFilter.value === 'all' ? null : gameFilter.value
+  return gameFilter.value
 })
 const saveGameLabel = computed(function () {
-  const g = saveGame.value
-  return g ? '· 版本「' + g + '」' : '· 版本「通用」'
+  return '· 版本「' + saveGame.value + '」'
 })
 
 const accountName = computed(function () {
@@ -676,6 +681,7 @@ async function loadAccounts() {
   try {
     const list = await listOperatorAccounts()
     accounts.value = Array.isArray(list) ? list : []
+    activeAccount.syncAccounts(accounts.value)
     // 优先级：入口携带的 ?account= > activeAccount 记住的账号 > 第一个
     const queryId = route.query.account
     const rememberedId = accounts.value.some(function (a) { return a.id === activeAccount.id }) ? activeAccount.id : ''
@@ -695,7 +701,28 @@ function onAccountChange() {
   reloadCurrent()
 }
 
-function onGameChange() {
+async function onGameChange() {
+  const targetAccountId = accountId.value
+  const account = accounts.value.find(function (item) { return item.id === targetAccountId })
+  const requestedGame = gameFilter.value
+  if (targetAccountId && account && isAccountGame(account.game)) {
+    const previousGame = account.game
+    gameSaving.value = true
+    accountError.value = ''
+    try {
+      const updated = await updateOperatorAccountGame(targetAccountId, requestedGame)
+      if (accountId.value !== targetAccountId) return
+      Object.assign(account, updated || {}, { game: isAccountGame(updated && updated.game) ? updated.game : requestedGame })
+      activeAccount.setGame(account.game, targetAccountId)
+    } catch (err) {
+      if (accountId.value === targetAccountId) {
+        activeAccount.setGame(previousGame, targetAccountId)
+        accountError.value = humanErr(err, '游戏版本保存失败')
+      }
+    } finally {
+      if (accountId.value === targetAccountId) gameSaving.value = false
+    }
+  }
   currentEntries.value = []
   reloadCurrent()
 }
@@ -709,8 +736,7 @@ async function reloadCurrent() {
   const requestedAccountId = accountId.value
   const requestedGame = gameFilter.value
   try {
-    const game = requestedGame === 'all' ? undefined : requestedGame
-    const data = await getOperatorCurrent({ accountId: requestedAccountId, game: game })
+    const data = await getOperatorCurrent({ accountId: requestedAccountId, game: requestedGame })
     if (loadToken !== currentLoadToken) return
     const list = Array.isArray(data) ? data : (data ? [data] : [])
     const combined = {}
