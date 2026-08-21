@@ -203,13 +203,31 @@
               </div>
               <div v-if="manifestEntries.length === 0" class="state slim">没有匹配{{ filterSuffix }}的密探</div>
               <ul v-else class="slot-grid">
-                <li v-for="e in manifestEntries" :key="e.id" class="slot" :class="[{ 'is-missing': !e.owned, 'is-favorite': favoriteAgentIds.has(e.id) }, 'rarity-r' + (e.rarity || 3)]" :title="slotTitle(e)">
+                <li v-for="e in manifestEntries" :key="e.id" :ref="el => setOperatorSlotElement(e.id, el)" class="slot" :class="[{ 'is-missing': !e.owned, 'is-favorite': favoriteAgentIds.has(e.id), 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated', 'is-fazheng': e.id === 'char_108_fazheng', 'is-chendeng-sp': e.id === 'char_084_chendengsp', 'is-shizimiao-sp': e.id === 'char_085_shizimiaosp' }, 'rarity-r' + (e.rarity || 3)]" :title="slotTitle(e)">
                   <div class="slot-ic is-agent">
                     <img v-if="e.avatar" class="slot-avatar" :src="avatarUrl(e.avatar)" :alt="e.name" loading="lazy" />
                     <div v-else class="slot-ph">
                       <span class="ph-seal">密</span>
                       <span class="ph-mono">{{ monogram(e) }}</span>
                     </div>
+                    <template v-if="e.id === 'char_085_shizimiaosp'">
+                      <span class="operator-rune-layer rune-ring-outer" aria-hidden="true"></span>
+                      <span class="operator-rune-layer rune-ring-inner" aria-hidden="true"></span>
+                      <span class="operator-rune-layer rune-glyphs" aria-hidden="true"></span>
+                      <span class="operator-rune-layer rune-ripple-one" aria-hidden="true"></span>
+                      <span class="operator-rune-layer rune-ripple-two" aria-hidden="true"></span>
+                    </template>
+                    <template v-if="e.id === 'char_084_chendengsp'">
+                      <span class="operator-seed-layer seed-ring seed-ring-one" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-ring seed-ring-two" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-ring seed-ring-three" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-grain seed-grain-one" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-grain seed-grain-two" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-grain seed-grain-three" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-grain seed-grain-four" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-grain seed-grain-five" aria-hidden="true"></span>
+                      <span class="operator-seed-layer seed-grain seed-grain-six" aria-hidden="true"></span>
+                    </template>
                     <span class="slot-count" :class="{ zero: !e.owned }">{{ e.owned ? 'Lv' + e.level : '未养' }}</span>
                     <span v-if="profIcon(e.prof)" class="prof-badge" :title="'属性：' + (e.prof || '未知')" role="img" :aria-label="'属性：' + (e.prof || '未知')">
                       <img :src="profIcon(e.prof)" alt="" aria-hidden="true" />
@@ -274,7 +292,7 @@
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
               <div v-else class="build-list" role="list">
-                <article v-for="e in filteredCurrent" :key="e.id" class="build-row" :title="buildTitle(e)" role="listitem">
+                <article v-for="e in filteredCurrent" :key="e.id" class="build-row" :class="{ 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated' }" :title="buildTitle(e)" role="listitem">
                   <div class="build-avatar" :class="'rarity-r' + (e.rarity || 3)">
                     <img v-if="avOf(e.id)" class="slot-avatar" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
                     <span v-else>{{ monogram(e) }}</span>
@@ -631,6 +649,7 @@ import {
   exportOperator
 } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
+import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { auth } from '../../store/auth.js'
 import { activeAccount, isAccountGame } from '../../store/activeAccount.js'
 import { dialog } from '../../utils/dialog.js'
@@ -687,8 +706,15 @@ const favoriteAgentIds = ref(new Set())
 const favoriteBusyIds = ref(new Set())
 const favoriteLoading = ref(false)
 const favoriteError = ref('')
+const scanEffectById = ref({})
 let favoriteLoadSeq = 0
 let currentLoadSeq = 0
+let accountEventRefreshTimer = null
+let unsubscribeAccountEvents = null
+let scanFocusSeq = 0
+let finishPendingScanScroll = null
+const scanEffectTimers = new Map()
+const operatorSlotElements = new Map()
 
 // —— 单个密探编辑弹窗 ——
 const editing = ref(false)
@@ -2052,6 +2078,121 @@ async function reloadCurrent(quiet) {
   }
 }
 
+function scheduleEventRefresh() {
+  if (accountEventRefreshTimer != null) return
+  accountEventRefreshTimer = setTimeout(function () {
+    accountEventRefreshTimer = null
+    reloadCurrent(true)
+  }, 180)
+}
+
+function setOperatorSlotElement(operatorId, element) {
+  if (element) operatorSlotElements.set(operatorId, element)
+  else operatorSlotElements.delete(operatorId)
+}
+
+function scanTargetIsVisible(element) {
+  const rect = element.getBoundingClientRect()
+  return rect.top >= 96 && rect.bottom <= window.innerHeight - 96
+}
+
+function waitForScanScroll(reducedMotion) {
+  return new Promise(function (resolve) {
+    let timer = null
+    let finished = false
+    function finish() {
+      if (finished) return
+      finished = true
+      if (timer != null) clearTimeout(timer)
+      window.removeEventListener('scrollend', finish)
+      document.removeEventListener('scrollend', finish)
+      if (finishPendingScanScroll === finish) finishPendingScanScroll = null
+      resolve()
+    }
+    finishPendingScanScroll = finish
+    if (reducedMotion) {
+      requestAnimationFrame(finish)
+      return
+    }
+    window.addEventListener('scrollend', finish, { once: true })
+    document.addEventListener('scrollend', finish, { once: true })
+    timer = setTimeout(finish, 720)
+  })
+}
+
+async function focusAndFlashScanOperator(operatorId, effect) {
+  if (!operatorId) return
+  const focusSeq = ++scanFocusSeq
+  if (finishPendingScanScroll) finishPendingScanScroll()
+  activeTab.value = 'catalog'
+  if (!manifestEntries.value.some(function (entry) { return entry.id === operatorId })) {
+    manifestSearch.value = ''
+    manifestFilter.value = 'all'
+    profFilter.value = 'all'
+    subProfFilter.value = 'all'
+  }
+  await nextTick()
+  if (focusSeq !== scanFocusSeq) return
+  const target = operatorSlotElements.get(operatorId)
+  if (!target) {
+    flashScanOperator(operatorId, effect)
+    return
+  }
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!scanTargetIsVisible(target)) {
+    target.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center', inline: 'nearest' })
+    await waitForScanScroll(reducedMotion)
+    if (focusSeq !== scanFocusSeq) return
+  }
+  flashScanOperator(operatorId, effect)
+}
+
+function flashScanOperator(operatorId, effect) {
+  if (!operatorId) return
+  const existingTimer = scanEffectTimers.get(operatorId)
+  if (existingTimer != null) clearTimeout(existingTimer)
+  scanEffectById.value = Object.assign({}, scanEffectById.value, { [operatorId]: '' })
+  nextTick(function () {
+    scanEffectById.value = Object.assign({}, scanEffectById.value, { [operatorId]: effect })
+    const hasExtendedEffect = operatorId === 'char_084_chendengsp' || operatorId === 'char_085_shizimiaosp'
+    const effectDuration = hasExtendedEffect ? 1350 : (effect === 'new' ? 1200 : 700)
+    scanEffectTimers.set(operatorId, setTimeout(function () {
+      const next = Object.assign({}, scanEffectById.value)
+      delete next[operatorId]
+      scanEffectById.value = next
+      scanEffectTimers.delete(operatorId)
+    }, effectDuration))
+  })
+}
+
+function handleAccountEvent(message) {
+  if (!message) return
+  if (message.event === 'account_stream_open') {
+    scheduleEventRefresh()
+    return
+  }
+  if (message.event !== 'operator_scan_import') return
+  const data = message.data || {}
+  if (data.account_id && data.account_id !== accountId.value) return
+  if (data.status === 'accepted' || data.status === 'partial') {
+    if (!data.preview) scheduleEventRefresh()
+    focusAndFlashScanOperator(data.operator_id, Number(data.revision) === 1 ? 'new' : 'updated')
+  }
+}
+
+function stopAccountEventSubscription() {
+  if (accountEventRefreshTimer != null) clearTimeout(accountEventRefreshTimer)
+  accountEventRefreshTimer = null
+  if (unsubscribeAccountEvents) unsubscribeAccountEvents()
+  unsubscribeAccountEvents = null
+  scanFocusSeq += 1
+  if (finishPendingScanScroll) finishPendingScanScroll()
+  finishPendingScanScroll = null
+  operatorSlotElements.clear()
+  scanEffectTimers.forEach(clearTimeout)
+  scanEffectTimers.clear()
+}
+
 // —— 导入 / 导出 ——
 function parseImportDocument() {
   if (!importText.value.trim()) throw new Error('请粘贴交换协议 JSON 或选择文件')
@@ -2296,9 +2437,11 @@ onMounted(async function () {
   await loadCatalog()
   await loadAccounts()
   await Promise.all([reloadCurrent(), loadAgentFavorites()])
+  unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent)
 })
 
 onBeforeUnmount(function () {
+  stopAccountEventSubscription()
   if (bodyLockedByEditor) document.body.style.overflow = bodyOverflowBeforeEditor
 })
 </script>
@@ -2316,6 +2459,158 @@ onBeforeUnmount(function () {
 .operator-tabs button:hover:not(.on) { color: var(--ink) }
 .operator-tabs .sp { flex: 1 }
 .operator-mobile-tabs { display: none }
+.build-row.is-scan-updated { animation: operator-scan-update .7s ease-out }
+.build-row.is-scan-new { animation: operator-scan-new 1.2s var(--ease) }
+.slot.is-scan-new .slot-ic, .slot.is-scan-updated .slot-ic { transform-origin: center; animation: operator-scanner-shell .88s ease-out both }
+.slot.is-scan-updated .slot-ic { animation-duration: .68s }
+.slot.is-scan-new .slot-ic::before, .slot.is-scan-updated .slot-ic::before {
+  position: absolute; z-index: 8; top: -10px; right: 8px; left: 8px; height: 3px; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--operator-scanner-accent), #fff, var(--operator-scanner-accent), transparent);
+  box-shadow: 0 0 10px var(--operator-scanner-accent), 0 0 22px color-mix(in srgb, var(--operator-scanner-accent) 65%, transparent);
+  content: ''; opacity: 0; pointer-events: none; animation: operator-scanner-line .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.slot.is-scan-new .slot-ic::after, .slot.is-scan-updated .slot-ic::after {
+  position: absolute; z-index: 2; top: -22px; right: 10px; left: 10px; height: 26px;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--operator-scanner-accent) 24%, transparent), transparent);
+  content: ''; opacity: 0; filter: blur(8px); pointer-events: none; animation: operator-scanner-glow .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.slot.is-scan-new .slot-avatar, .slot.is-scan-new .slot-ph,
+.slot.is-scan-updated .slot-avatar, .slot.is-scan-updated .slot-ph {
+  animation: operator-scanner-reveal .72s cubic-bezier(.18,.82,.22,1) .12s both;
+}
+.slot.rarity-r5 .slot-ic { --operator-scanner-accent: var(--accent) }
+.slot.rarity-r4 .slot-ic { --operator-scanner-accent: #9483bf }
+.slot.rarity-r3 .slot-ic { --operator-scanner-accent: #9bb5cf }
+.operator-seed-layer { position: absolute; z-index: 2; pointer-events: none; opacity: 0 }
+.seed-ring {
+  top: 52%; left: 50%; width: 34%; aspect-ratio: 1; border: 1px solid color-mix(in srgb, var(--yellow-deep) 58%, transparent); border-radius: 50%;
+  box-shadow: 0 0 9px color-mix(in srgb, var(--yellow-deep) 20%, transparent); transform: translate(-50%, -50%) scale(.3);
+}
+.seed-grain {
+  top: calc(52% - 5px); left: calc(50% - 3px); width: 7px; height: 11px; border-radius: 70% 30% 70% 30%;
+  background: var(--yellow-deep); box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+.seed-grain-one { --seed-x: -36px; --seed-y: -22px; --seed-rotate: -25deg }
+.seed-grain-two { --seed-x: 34px; --seed-y: -26px; --seed-rotate: 31deg }
+.seed-grain-three { --seed-x: -40px; --seed-y: 11px; --seed-rotate: -55deg }
+.seed-grain-four { --seed-x: 39px; --seed-y: 14px; --seed-rotate: 58deg }
+.seed-grain-five { --seed-x: -20px; --seed-y: 34px; --seed-rotate: -10deg }
+.seed-grain-six { --seed-x: 23px; --seed-y: 33px; --seed-rotate: 16deg }
+.slot.is-chendeng-sp.is-scan-new .slot-ic, .slot.is-chendeng-sp.is-scan-updated .slot-ic {
+  border-style: solid;
+  animation: operator-seed-shell 1.15s cubic-bezier(.22, 1, .36, 1) both;
+}
+.slot.is-chendeng-sp.is-scan-new .slot-ic::before, .slot.is-chendeng-sp.is-scan-new .slot-ic::after,
+.slot.is-chendeng-sp.is-scan-updated .slot-ic::before, .slot.is-chendeng-sp.is-scan-updated .slot-ic::after {
+  content: none; animation: none;
+}
+.slot.is-chendeng-sp.is-scan-new .seed-ring, .slot.is-chendeng-sp.is-scan-updated .seed-ring { animation: operator-seed-ripple .95s cubic-bezier(.22, 1, .36, 1) both }
+.slot.is-chendeng-sp.is-scan-new .seed-ring-two, .slot.is-chendeng-sp.is-scan-updated .seed-ring-two { animation-delay: .16s }
+.slot.is-chendeng-sp.is-scan-new .seed-ring-three, .slot.is-chendeng-sp.is-scan-updated .seed-ring-three { animation-delay: .3s }
+.slot.is-chendeng-sp.is-scan-new .seed-grain, .slot.is-chendeng-sp.is-scan-updated .seed-grain { animation: operator-seed-burst .72s cubic-bezier(.22, 1, .36, 1) both }
+.slot.is-chendeng-sp.is-scan-new .seed-grain-two, .slot.is-chendeng-sp.is-scan-updated .seed-grain-two { animation-delay: .05s }
+.slot.is-chendeng-sp.is-scan-new .seed-grain-three, .slot.is-chendeng-sp.is-scan-updated .seed-grain-three { animation-delay: .1s }
+.slot.is-chendeng-sp.is-scan-new .seed-grain-four, .slot.is-chendeng-sp.is-scan-updated .seed-grain-four { animation-delay: .15s }
+.slot.is-chendeng-sp.is-scan-new .seed-grain-five, .slot.is-chendeng-sp.is-scan-updated .seed-grain-five { animation-delay: .2s }
+.slot.is-chendeng-sp.is-scan-new .seed-grain-six, .slot.is-chendeng-sp.is-scan-updated .seed-grain-six { animation-delay: .25s }
+.slot.is-chendeng-sp.is-scan-new .slot-avatar, .slot.is-chendeng-sp.is-scan-new .slot-ph,
+.slot.is-chendeng-sp.is-scan-updated .slot-avatar, .slot.is-chendeng-sp.is-scan-updated .slot-ph {
+  animation: operator-seed-reveal .72s cubic-bezier(.22, 1, .36, 1) .25s both;
+}
+.operator-rune-layer {
+  position: absolute; z-index: 2; top: 50%; left: 50%; aspect-ratio: 1; border-radius: 50%; opacity: 0;
+  pointer-events: none; transform: translate(-50%, -54%);
+}
+.rune-ring-outer { width: 78%; border: 1px solid color-mix(in srgb, #9483bf 74%, var(--surface)); box-shadow: 0 0 14px rgba(111, 86, 136, .28), inset 0 0 10px rgba(148, 131, 191, .2) }
+.rune-ring-inner { width: 61%; border: 1px dashed color-mix(in srgb, #9483bf 52%, var(--surface)); box-shadow: inset 0 0 12px rgba(111, 86, 136, .14) }
+.rune-glyphs { display: flex; width: 88%; align-items: flex-start; justify-content: center; border: 1px dotted color-mix(in srgb, #9483bf 58%, transparent) }
+.rune-glyphs::before { padding-top: 3px; color: color-mix(in srgb, #9483bf 72%, var(--surface)); content: '✦ 玄 ✧ 烛 ✦'; font: 800 9px var(--font-s); text-shadow: 0 0 7px rgba(111, 86, 136, .7); word-spacing: 4px }
+.rune-ripple-one, .rune-ripple-two { width: 42%; border: 1px solid color-mix(in srgb, #9483bf 48%, transparent); box-shadow: 0 0 10px rgba(111, 86, 136, .16) }
+.slot.is-shizimiao-sp.is-scan-new .slot-ic, .slot.is-shizimiao-sp.is-scan-updated .slot-ic {
+  --operator-rune-accent: #9483bf;
+  --operator-rune-deep: #6f5688;
+  border-style: solid;
+  animation: operator-rune-shell 1.15s cubic-bezier(.22, 1, .36, 1) both;
+}
+.slot.is-shizimiao-sp.is-scan-new .slot-ic::before, .slot.is-shizimiao-sp.is-scan-new .slot-ic::after,
+.slot.is-shizimiao-sp.is-scan-updated .slot-ic::before, .slot.is-shizimiao-sp.is-scan-updated .slot-ic::after {
+  content: none; animation: none;
+}
+.slot.is-shizimiao-sp.is-scan-new .rune-ring-outer, .slot.is-shizimiao-sp.is-scan-updated .rune-ring-outer { animation: operator-rune-ring-outer .95s cubic-bezier(.18, .82, .2, 1) .02s both }
+.slot.is-shizimiao-sp.is-scan-new .rune-ring-inner, .slot.is-shizimiao-sp.is-scan-updated .rune-ring-inner { animation: operator-rune-ring-inner .88s cubic-bezier(.18, .82, .2, 1) .08s both }
+.slot.is-shizimiao-sp.is-scan-new .rune-glyphs, .slot.is-shizimiao-sp.is-scan-updated .rune-glyphs { animation: operator-rune-glyphs .98s cubic-bezier(.22, 1, .36, 1) .05s both }
+.slot.is-shizimiao-sp.is-scan-new .rune-ripple-one, .slot.is-shizimiao-sp.is-scan-updated .rune-ripple-one { animation: operator-rune-ripple-one .92s cubic-bezier(.22, 1, .36, 1) .1s both }
+.slot.is-shizimiao-sp.is-scan-new .rune-ripple-two, .slot.is-shizimiao-sp.is-scan-updated .rune-ripple-two { animation: operator-rune-ripple-two 1s cubic-bezier(.22, 1, .36, 1) .26s both }
+.slot.is-shizimiao-sp.is-scan-new .slot-avatar, .slot.is-shizimiao-sp.is-scan-new .slot-ph,
+.slot.is-shizimiao-sp.is-scan-updated .slot-avatar, .slot.is-shizimiao-sp.is-scan-updated .slot-ph {
+  animation: operator-rune-reveal .76s cubic-bezier(.22, 1, .36, 1) .28s both;
+}
+.slot.is-fazheng .slot-ic {
+  transition: border-color 1.2s cubic-bezier(.22, 1, .36, 1), box-shadow 1.2s cubic-bezier(.22, 1, .36, 1), border-radius 1.05s steps(6, end);
+}
+.slot.is-fazheng.is-scan-new .slot-ic, .slot.is-fazheng.is-scan-updated .slot-ic {
+  --operator-pixel-purple: #6f5688;
+  border-style: solid;
+  border-radius: 2px;
+  animation: operator-pixel-shell .68s steps(6, end) both;
+}
+.slot.is-fazheng.is-scan-new .slot-ic::before, .slot.is-fazheng.is-scan-updated .slot-ic::before {
+  top: -8px; right: 5px; left: 5px; height: 4px; border-radius: 0;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--operator-pixel-purple) 38%, var(--tea)) 0 5px, var(--operator-pixel-purple) 5px 9px, color-mix(in srgb, var(--operator-pixel-purple) 72%, var(--cream)) 9px 11px, color-mix(in srgb, var(--operator-pixel-purple) 52%, var(--tea)) 11px 15px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--operator-pixel-purple) 48%, var(--tea)), 0 3px 0 rgba(111, 86, 136, .14);
+  animation: operator-pixel-scan .56s steps(8, end) both;
+}
+.slot.is-fazheng.is-scan-new .slot-ic::after, .slot.is-fazheng.is-scan-updated .slot-ic::after {
+  inset: 3px; height: auto;
+  background: linear-gradient(var(--operator-pixel-purple), var(--operator-pixel-purple)) left top / 22px 2px no-repeat, linear-gradient(var(--operator-pixel-purple), var(--operator-pixel-purple)) right top / 9px 2px no-repeat, linear-gradient(var(--operator-pixel-purple), var(--operator-pixel-purple)) left bottom / 10px 2px no-repeat, linear-gradient(var(--operator-pixel-purple), var(--operator-pixel-purple)) right bottom / 20px 2px no-repeat, linear-gradient(var(--operator-pixel-purple), var(--operator-pixel-purple)) left top / 2px 16px no-repeat, linear-gradient(var(--operator-pixel-purple), var(--operator-pixel-purple)) right bottom / 2px 18px no-repeat, repeating-linear-gradient(0deg, rgba(255, 253, 246, .04) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(111, 86, 136, .16) 0 2px, transparent 2px 9px);
+  filter: none; mix-blend-mode: multiply; animation: operator-pixel-noise .58s steps(5, end) .06s both;
+}
+.slot.is-fazheng.is-scan-new .slot-avatar, .slot.is-fazheng.is-scan-new .slot-ph,
+.slot.is-fazheng.is-scan-updated .slot-avatar, .slot.is-fazheng.is-scan-updated .slot-ph {
+  animation: operator-pixel-reveal .58s steps(6, end) .08s both;
+}
+@keyframes operator-scan-update { 0% { background-color: transparent; box-shadow: inset 0 0 0 0 rgba(215, 137, 53, 0) } 40% { background-color: rgba(239, 210, 142, .3); box-shadow: inset 4px 0 0 var(--accent) } 100% { background-color: transparent; box-shadow: inset 0 0 0 0 rgba(215, 137, 53, 0) } }
+@keyframes operator-scan-new { 0% { opacity: .55; transform: translateY(6px) scale(.985); box-shadow: 0 0 0 0 rgba(215, 137, 53, 0) } 45% { opacity: 1; transform: translateY(-2px) scale(1.01); box-shadow: 0 0 0 6px rgba(215, 137, 53, .18) } 100% { opacity: 1; transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(215, 137, 53, 0) } }
+@keyframes operator-scanner-line { 0% { transform: translateY(0); opacity: 0 } 8% { opacity: 1 } 92% { opacity: 1 } 100% { transform: translateY(130px); opacity: 0 } }
+@keyframes operator-scanner-glow { 0% { transform: translateY(0); opacity: 0 } 8% { opacity: .65 } 92% { opacity: .7 } 100% { transform: translateY(130px); opacity: 0 } }
+@keyframes operator-scanner-reveal { 0% { opacity: .16; filter: grayscale(1) brightness(.45) } 42% { opacity: .78; filter: grayscale(.55) brightness(1.55) } 72% { opacity: 1; filter: grayscale(0) brightness(1.9) } 100% { opacity: 1; filter: none } }
+@keyframes operator-scanner-shell { 0% { transform: scale(1) } 58% { transform: scale(1.018) } 100% { transform: scale(1) } }
+@keyframes operator-seed-shell {
+  0% { border-color: color-mix(in srgb, var(--tea) 72%, var(--yellow-deep)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--yellow-deep) 12%, transparent) }
+  52% { border-color: var(--yellow-deep); box-shadow: inset 0 0 24px color-mix(in srgb, var(--yellow) 30%, transparent), 0 0 28px color-mix(in srgb, var(--accent) 24%, transparent) }
+  100% { border-color: var(--accent); box-shadow: inset 0 0 0 2px rgba(239, 210, 142, .5) }
+}
+@keyframes operator-seed-ripple { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) } 22% { opacity: .72 } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.7) } }
+@keyframes operator-seed-burst { 0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(.5) } 28% { opacity: 1 } 100% { opacity: 0; transform: translate(var(--seed-x), var(--seed-y)) rotate(var(--seed-rotate)) scale(1) } }
+@keyframes operator-seed-reveal { 0% { opacity: .15; filter: grayscale(1) brightness(.45) } 54% { opacity: 1; filter: grayscale(.15) brightness(1.65) } 100% { opacity: 1; filter: none } }
+@keyframes operator-rune-shell {
+  0% { border-color: color-mix(in srgb, var(--operator-rune-deep) 42%, var(--tea)); box-shadow: inset 0 0 0 2px rgba(111, 86, 136, .08) }
+  54% { border-color: color-mix(in srgb, var(--operator-rune-accent) 72%, var(--surface)); box-shadow: inset 0 0 28px rgba(111, 86, 136, .22), 0 0 30px rgba(148, 131, 191, .24) }
+  100% { border-color: var(--accent); box-shadow: inset 0 0 0 2px rgba(239, 210, 142, .5) }
+}
+@keyframes operator-rune-ring-outer { 0% { opacity: 0; transform: translate(-50%, -54%) scale(.55) rotate(-25deg) } 30% { opacity: 1 } 80% { opacity: .75 } 100% { opacity: 0; transform: translate(-50%, -54%) scale(1.12) rotate(65deg) } }
+@keyframes operator-rune-ring-inner { 0% { opacity: 0; transform: translate(-50%, -54%) scale(.72) rotate(18deg) } 28% { opacity: .8 } 100% { opacity: 0; transform: translate(-50%, -54%) scale(1.18) rotate(-54deg) } }
+@keyframes operator-rune-glyphs { 0% { opacity: 0; transform: translate(-50%, -54%) scale(.78) rotate(24deg) } 34% { opacity: .92 } 100% { opacity: 0; transform: translate(-50%, -54%) scale(1.15) rotate(-86deg) } }
+@keyframes operator-rune-ripple-one { 0% { opacity: 0; transform: translate(-50%, -54%) scale(.2) } 18% { opacity: .8 } 100% { opacity: 0; transform: translate(-50%, -54%) scale(2.1) } }
+@keyframes operator-rune-ripple-two { 0% { opacity: 0; transform: translate(-50%, -54%) scale(.25) } 24% { opacity: .6 } 100% { opacity: 0; transform: translate(-50%, -54%) scale(2.55) } }
+@keyframes operator-rune-reveal { 0% { opacity: .15; filter: grayscale(1) brightness(.45) } 52% { opacity: 1; filter: grayscale(.12) brightness(1.7) saturate(1.2) } 100% { opacity: 1; filter: none } }
+@keyframes operator-pixel-scan { 0% { transform: translateY(0); opacity: 0 } 7% { opacity: 1 } 90% { opacity: 1 } 100% { transform: translateY(136px); opacity: 0 } }
+@keyframes operator-pixel-noise { 0%, 100% { opacity: 0 } 20%, 60% { opacity: .9 } 40%, 80% { opacity: .28 } }
+@keyframes operator-pixel-reveal { 0% { opacity: .14; filter: grayscale(1) brightness(.3) contrast(1.35) } 34% { opacity: .42; filter: grayscale(.95) brightness(.65) contrast(1.7) } 67% { opacity: 1; filter: grayscale(.25) brightness(1.25) contrast(1.5) } 100% { opacity: 1; filter: none } }
+@keyframes operator-pixel-shell {
+  0% { transform: translate(0, 0); border-color: color-mix(in srgb, var(--operator-pixel-purple) 34%, var(--tea)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--operator-pixel-purple) 24%, var(--tea)), 3px 3px 0 color-mix(in srgb, var(--operator-pixel-purple) 16%, var(--tea)) }
+  20% { transform: translate(-2px, 0); border-color: color-mix(in srgb, var(--operator-pixel-purple) 52%, var(--tea)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--operator-pixel-purple) 38%, var(--tea)), -3px 2px 0 color-mix(in srgb, var(--operator-pixel-purple) 22%, var(--tea)) }
+  40% { transform: translate(2px, -1px); border-color: var(--operator-pixel-purple); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--operator-pixel-purple) 52%, var(--tea)), 4px 0 0 color-mix(in srgb, var(--operator-pixel-purple) 34%, var(--tea)) }
+  60% { transform: translate(-1px, 1px); border-color: color-mix(in srgb, var(--operator-pixel-purple) 76%, var(--cream)); box-shadow: inset 0 0 0 2px var(--operator-pixel-purple), -2px 3px 0 color-mix(in srgb, var(--operator-pixel-purple) 42%, var(--tea)) }
+  80% { transform: translate(1px, 0); border-color: var(--operator-pixel-purple); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--operator-pixel-purple) 58%, var(--tea)), 2px 2px 0 color-mix(in srgb, var(--operator-pixel-purple) 28%, var(--tea)) }
+  100% { transform: translate(0, 0); border-color: color-mix(in srgb, var(--operator-pixel-purple) 48%, var(--tea)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--operator-pixel-purple) 36%, var(--tea)), 3px 3px 0 color-mix(in srgb, var(--operator-pixel-purple) 18%, var(--tea)) }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slot.is-fazheng .slot-ic { transition: none }
+  .operator-seed-layer { animation: none !important; opacity: 0 }
+  .operator-rune-layer { animation: none !important; opacity: 0 }
+  .build-row.is-scan-updated, .build-row.is-scan-new, .slot.is-scan-new .slot-ic, .slot.is-scan-updated .slot-ic, .slot.is-scan-new .slot-ic::before, .slot.is-scan-new .slot-ic::after, .slot.is-scan-updated .slot-ic::before, .slot.is-scan-updated .slot-ic::after, .slot.is-scan-new .slot-avatar, .slot.is-scan-new .slot-ph, .slot.is-scan-updated .slot-avatar, .slot.is-scan-updated .slot-ph { animation: none }
+}
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: all .3s var(--ease); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px }
 .admin-link { text-decoration: none; display: inline-flex; align-items: center }
 .act-btn.ghost:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
