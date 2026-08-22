@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>整卡提交反馈流程预览</title>
+<style>
+:root{
+  --bg:#f3efe7;
+  --card:#fffdf9;
+  --line:#e7dbcc;
+  --text:#4b3f31;
+  --muted:#857766;
+  --green:#5d8a61;
+  --green-soft:#edf5ed;
+  --blue:#6c8cac;
+  --blue-soft:#eef4fa;
+  --danger:#b56459;
+  --danger-soft:#f9ece9;
+  --gold:#c99842;
+  --gold-soft:#fbf2df;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  background:linear-gradient(#f7f3ed,#eee8df);
+  color:var(--text);
+}
+.wrap{max-width:1080px;margin:0 auto;padding:38px 22px 60px}
+h1{margin:0 0 8px;font-size:28px}
+.lead{margin:0 0 26px;color:var(--muted);line-height:1.7}
+.demo{
+  display:grid;
+  grid-template-columns:minmax(0,430px) 1fr;
+  gap:22px;
+  align-items:start;
+}
+.stage{
+  border:1px solid #ddd2c3;
+  border-radius:20px;
+  background:#f8f4ed;
+  padding:20px;
+}
+.controls{
+  border:1px solid #ddd2c3;
+  border-radius:18px;
+  background:#fffdf9;
+  padding:18px;
+}
+.controls h2{font-size:16px;margin:0 0 12px}
+.controls p{font-size:13px;line-height:1.65;color:#7d7266;margin:0 0 14px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+button{
+  border:1px solid #dfd0bc;
+  border-radius:9px;
+  padding:8px 12px;
+  background:#fffaf2;
+  color:#665747;
+  font-weight:800;
+  cursor:pointer;
+}
+button.primary{background:#4e4338;color:#fff;border-color:#4e4338}
+button.danger{background:#fff4f1;color:#a5554b;border-color:#e5c2bc}
+
+.card{
+  position:relative;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:var(--card);
+  box-shadow:0 10px 24px rgba(83,68,49,.08);
+}
+.card-inner{padding:14px}
+.head{display:flex;justify-content:space-between;align-items:center}
+.name{font-size:20px;font-weight:900}
+.state{
+  font-size:11px;
+  font-weight:900;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#f7ead7;
+  color:#9d6524;
+}
+.row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #efe5d9;
+}
+.row:last-of-type{border-bottom:0}
+.k{font-size:12px;color:#897b6a}
+.v{font-size:16px;font-weight:900}
+.note{margin-top:10px;font-size:11px;color:#8b7d6e}
+.save{
+  margin-top:12px;
+  width:100%;
+  height:38px;
+  border-radius:10px;
+  border:0;
+  background:#4c4035;
+  color:#fff;
+  font-weight:900;
+}
+
+.overlay{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  background:rgba(252,249,243,.72);
+  backdrop-filter:blur(3px);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.message{
+  width:min(220px,80%);
+  padding:16px 16px 14px;
+  border-radius:16px;
+  background:rgba(255,255,255,.88);
+  border:1px solid #e4d7c8;
+  box-shadow:0 12px 30px rgba(72,58,41,.12);
+  text-align:center;
+  transform:translateY(6px) scale(.97);
+  opacity:0;
+  transition:transform .2s ease,opacity .2s ease;
+}
+.overlay.show .message{transform:none;opacity:1}
+.icon{
+  width:40px;height:40px;border-radius:999px;
+  display:grid;place-items:center;
+  margin:0 auto 10px;
+  font-size:20px;font-weight:900;
+}
+.msg-title{font-size:15px;font-weight:900}
+.msg-desc{margin-top:4px;font-size:12px;line-height:1.45;color:#74695d}
+.msg-actions{display:flex;justify-content:center;gap:8px;margin-top:12px}
+
+.spinner{
+  width:18px;height:18px;border-radius:50%;
+  border:2px solid rgba(108,140,172,.22);
+  border-top-color:var(--blue);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.overlay.submitting .icon{
+  background:var(--blue-soft);
+  border:1px solid #cfe0ef;
+}
+.overlay.success .icon{
+  background:var(--green);
+  color:#fff;
+}
+.overlay.success .message{border-color:#d6e5d7}
+.overlay.error .icon{
+  background:var(--danger-soft);
+  border:1px solid #e8c8c3;
+  color:var(--danger);
+}
+.overlay.error .message{border-color:#e7c9c4}
+
+.flash{
+  position:absolute;
+  inset:-1px;
+  border-radius:20px;
+  pointer-events:none;
+  opacity:0;
+}
+.card.success-flash .flash{
+  animation:successFlash .7s ease-out both;
+}
+@keyframes successFlash{
+  0%{opacity:0;box-shadow:inset 0 0 0 1px rgba(93,138,97,0)}
+  30%{opacity:1;box-shadow:inset 0 0 0 2px rgba(93,138,97,.45),0 0 18px rgba(93,138,97,.11)}
+  100%{opacity:0;box-shadow:inset 0 0 0 1px rgba(93,138,97,0)}
+}
+
+.timeline{
+  margin-top:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.step{
+  display:grid;
+  grid-template-columns:28px 1fr;
+  gap:10px;
+  align-items:start;
+}
+.num{
+  width:28px;height:28px;border-radius:50%;
+  background:#f4eee5;
+  border:1px solid #e3d5c3;
+  display:grid;place-items:center;
+  font-size:12px;font-weight:900;color:#776a5b;
+}
+.step strong{font-size:13px}
+.step span{display:block;margin-top:2px;font-size:12px;color:#85786a;line-height:1.5}
+
+@media(max-width:820px){
+  .demo{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>整卡提交 · 三状态反馈</h1>
+  <p class="lead">适用于“用户一次修改多项 → 最后整卡提交”的流程。遮罩本身就是这张卡的提交状态，不需要额外 Toast。</p>
+
+  <div class="demo">
+    <div class="stage">
+      <div class="card" id="card">
+        <div class="flash"></div>
+        <div class="card-inner">
+          <div class="head">
+            <div class="name">庞德</div>
+            <div class="state">养成中</div>
+          </div>
+          <div class="row"><div class="k">等级</div><div class="v">Lv100</div></div>
+          <div class="row"><div class="k">修为</div><div class="v">14</div></div>
+          <div class="row"><div class="k">攻击 / 生命</div><div class="v">5284 / 1875</div></div>
+          <div class="row"><div class="k">命盘</div><div class="v">苦击 / 未配置</div></div>
+          <div class="note">周四打素材本，目前还差一点材料才能突破。</div>
+          <button class="save" id="submitBtn">提交本次修改</button>
+        </div>
+
+        <div class="overlay" id="overlay">
+          <div class="message">
+            <div class="icon" id="icon"></div>
+            <div class="msg-title" id="msgTitle"></div>
+            <div class="msg-desc" id="msgDesc"></div>
+            <div class="msg-actions" id="msgActions"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="controls">
+      <h2>预览控制</h2>
+      <p>可以直接播放完整成功流程，也可以单独查看失败态。</p>
+      <div class="btnrow">
+        <button class="primary" id="playSuccess">播放：提交中 → 已保存</button>
+        <button class="danger" id="showError">查看失败态</button>
+        <button id="reset">重置</button>
+      </div>
+
+      <div class="timeline">
+        <div class="step">
+          <div class="num">1</div>
+          <div><strong>正在提交</strong><span>遮罩阻止继续操作，中央 spinner 提示正在保存本次整卡修改。</span></div>
+        </div>
+        <div class="step">
+          <div class="num">2</div>
+          <div><strong>已保存</strong><span>spinner 原位切换成 ✓，成功态短暂停留，再淡出。</span></div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div><strong>失败</strong><span>保留遮罩，让用户选择“重试”或“继续编辑”，不丢失本地修改。</span></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const overlay = document.getElementById('overlay');
+const icon = document.getElementById('icon');
+const title = document.getElementById('msgTitle');
+const desc = document.getElementById('msgDesc');
+const actions = document.getElementById('msgActions');
+const card = document.getElementById('card');
+
+let timers = [];
+
+function clearTimers(){
+  timers.forEach(clearTimeout);
+  timers = [];
+}
+function resetOverlay(){
+  clearTimers();
+  overlay.className = 'overlay';
+  icon.innerHTML = '';
+  title.textContent = '';
+  desc.textContent = '';
+  actions.innerHTML = '';
+  card.classList.remove('success-flash');
+}
+function showSubmitting(){
+  resetOverlay();
+  overlay.className = 'overlay submitting show';
+  icon.innerHTML = '<span class="spinner"></span>';
+  title.textContent = '正在提交';
+  desc.textContent = '正在保存本次修改…';
+}
+function showSuccess(){
+  overlay.className = 'overlay success show';
+  icon.textContent = '✓';
+  title.textContent = '已保存';
+  desc.textContent = '本次修改已更新';
+  actions.innerHTML = '';
+  card.classList.remove('success-flash');
+  void card.offsetWidth;
+  card.classList.add('success-flash');
+}
+function showError(){
+  resetOverlay();
+  overlay.className = 'overlay error show';
+  icon.textContent = '!';
+  title.textContent = '保存失败';
+  desc.textContent = '本次修改尚未更新，请重试或继续编辑。';
+  actions.innerHTML = `
+    <button id="editAgain">继续编辑</button>
+    <button class="danger" id="retry">重试</button>
+  `;
+  document.getElementById('editAgain').onclick = resetOverlay;
+  document.getElementById('retry').onclick = playSuccess;
+}
+function playSuccess(){
+  showSubmitting();
+  timers.push(setTimeout(showSuccess, 1100));
+  timers.push(setTimeout(resetOverlay, 2100));
+}
+
+document.getElementById('playSuccess').onclick = playSuccess;
+document.getElementById('showError').onclick = showError;
+document.getElementById('reset').onclick = resetOverlay;
+document.getElementById('submitBtn').onclick = playSuccess;
+</script>
+</body>
+</html>

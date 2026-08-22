@@ -818,10 +818,10 @@ load()
 .hero-stats .v.warn { color: var(--rouge) }
 .cell-prof { min-width: 132px }
 .cell-tag-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px }
-.tag-prof { display: inline-block; border: 1px solid var(--element-color, var(--yellow-deep)); border-radius: 6px; padding: 1px 7px 1px 10px; background: var(--surface); color: var(--ink); box-shadow: inset 3px 0 var(--element-color, var(--yellow-deep)); font-size: 11px; font-weight: 800 }
-.tag-subprof { display: inline-block; border: 1px solid var(--yellow-deep); border-radius: 6px; padding: 1px 7px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800 }
-.tag-station { display: inline-block; border: 1.5px solid var(--line); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-size: 11px }
-.tag-sp { display: inline-block; background: var(--tea); color: var(--cream); border-radius: 6px; padding: 1px 8px; font-size: 11px; font-weight: 800 }
+.tag-prof { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--element-color, var(--yellow-deep)); border-radius: 6px; padding: 1px 7px 1px 10px; background: var(--surface); color: var(--ink); box-shadow: inset 3px 0 var(--element-color, var(--yellow-deep)); font-size: 11px; line-height: 1.2; font-weight: 800 }
+.tag-subprof { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--yellow-deep); border-radius: 6px; padding: 1px 7px; background: var(--yellow); color: var(--ink); font-size: 11px; line-height: 1.2; font-weight: 800 }
+.tag-station { display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line); color: var(--ink); border-radius: 6px; padding: 1px 7px; font-size: 11px; line-height: 1.2 }
+.tag-sp { display: inline-flex; align-items: center; justify-content: center; background: var(--tea); color: var(--cream); border-radius: 6px; padding: 1px 8px; font-size: 11px; line-height: 1.2; font-weight: 800 }
 .cell-oddity { min-width: 124px }
 .cell-oddity span { display: block; font-weight: 800 }
 .cell-oddity small { color: var(--ink-35); font-family: var(--font-d); font-size: 10.5px }
