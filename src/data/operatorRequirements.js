@@ -109,7 +109,7 @@ export function starLabelForStage(stage) {
   return STAR_LABELS[numberBetween(stage, 0, 25)] || '1-0'
 }
 
-export function calculateLevelRequirements(currentLevel, targetLevel, subProf) {
+export function calculateLevelRequirements(currentLevel, targetLevel, subProf, skipBreakthroughMaterials) {
   const from = numberBetween(currentLevel, 0, 100)
   const to = numberBetween(targetLevel, 0, 100)
   const result = { experience: 0, money: 0, items: {}, books: { fragment: 0, complete: 0, sixTao: 0 } }
@@ -120,11 +120,13 @@ export function calculateLevelRequirements(currentLevel, targetLevel, subProf) {
       Object.keys(entry).forEach(function (key) {
         if (key === 'level' || key === 'zhuanShu70' || key === 'zhuanShu80') return
         if (key === 'money') result.money += entry[key]
-        else add(result.items, key, entry[key])
+        else if (!skipBreakthroughMaterials) add(result.items, key, entry[key])
       })
       const prof = String(subProf || '')
-      if (entry.zhuanShu70) add(result.items, PROFESSION_MATERIALS[70][prof], entry.zhuanShu70)
-      if (entry.zhuanShu80) add(result.items, PROFESSION_MATERIALS[80][prof], entry.zhuanShu80)
+      if (!skipBreakthroughMaterials) {
+        if (entry.zhuanShu70) add(result.items, PROFESSION_MATERIALS[70][prof], entry.zhuanShu70)
+        if (entry.zhuanShu80) add(result.items, PROFESSION_MATERIALS[80][prof], entry.zhuanShu80)
+      }
     }
   })
   result.books.fragment = Math.ceil(result.experience / 100)

@@ -577,7 +577,7 @@ function normalizePageForm() {
 
 function starLabelForStep(s, node) {
   if (s.key === 'awaken') return '觉醒'
-  return Number(s.key) + ' 星 · ' + (node == null ? 0 : node)
+  return Number(s.key) + ' 星 · ' + (node == null ? 0 : node) + '节点'
 }
 
 // —— 组装某页待导入条目（保留已有命盘 / 星石） ——

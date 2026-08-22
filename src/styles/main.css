@@ -35,6 +35,15 @@ body{
   background-size:2400px 2400px,auto,auto,auto;
 }
 ::selection{background:var(--yellow);color:var(--ink)}
+
+/* 紧凑文字标签统一使用同一行盒，避免字体基线造成视觉错位。 */
+:where(.pill,.tag,.tg,.chip,.pkg-tag,.rtag,.src-tag,.tag-prof,.tag-subprof,.tag-station,.tag-sp,.star-pill,.node-chip,.stone-lv-chip){
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  vertical-align:middle;
+  line-height:1.2;
+}
 .skip-link{
   position:fixed;top:8px;left:12px;z-index:1000;transform:translateY(-160%);
   background:var(--tea);color:var(--cream);border-radius:8px;padding:10px 14px;
@@ -80,7 +89,7 @@ body{
 .island-foot a{color:var(--ink);font-weight:700;text-decoration:none;border-bottom:1.5px solid var(--yellow)}
 .island-foot b{color:var(--ink)}
 .island-foot .grp{margin-top:6px;font-size:11px}
-.src-tag{display:inline-block;background:var(--slate);color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;margin-right:6px;vertical-align:1px}
+.src-tag{display:inline-flex;align-items:center;justify-content:center;background:var(--slate);color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;line-height:1.2;margin-right:6px;vertical-align:middle}
 
 /* ---------------- 主区 ---------------- */
 main{margin-left:292px;min-height:100vh}
@@ -105,7 +114,7 @@ main{margin-left:292px;min-height:100vh}
   margin-top:30px;background:var(--tea);color:var(--cream);border-radius:16px;
   padding:18px 24px;display:flex;gap:18px;align-items:flex-start;max-width:860px;
 }
-.notice .tag{flex:none;background:var(--yellow);color:var(--ink);font-weight:800;font-size:12px;border-radius:999px;padding:4px 14px;letter-spacing:.08em;margin-top:2px}
+.notice .tag{flex:none;background:var(--yellow);color:var(--ink);font-weight:800;font-size:12px;border-radius:999px;padding:4px 14px;letter-spacing:.08em}
 .notice p{font-size:13.5px;line-height:1.9;color:rgba(255,248,236,.9)}
 .notice p b{color:var(--yellow)}
 .hero-stats{margin-top:40px;display:grid;grid-template-columns:repeat(4,1fr);border-top:1.5px solid rgba(73,59,44,.35)}
@@ -207,7 +216,7 @@ section{padding:0px 0 8px}
 .tips{margin-top:40px;display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:stretch}
 .tip-main{background:var(--slate);color:var(--cream);border-radius:22px;padding:34px 36px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .tip-main::after{content:'RETRY';position:absolute;right:22px;top:18px;font-family:var(--font-d);font-weight:900;font-size:44px;color:rgba(232,193,91,.16);letter-spacing:.12em}
-.tip-main .tag{display:inline-block;background:var(--yellow);color:var(--ink);font-weight:800;font-size:12px;border-radius:999px;padding:4px 14px;letter-spacing:.1em;width:max-content}
+.tip-main .tag{display:inline-flex;align-items:center;justify-content:center;background:var(--yellow);color:var(--ink);font-weight:800;font-size:12px;line-height:1.2;border-radius:999px;padding:4px 14px;letter-spacing:.1em;width:max-content}
 .tip-main p{margin-top:18px;font-size:16px;line-height:2;color:rgba(255,248,236,.93);position:relative;z-index:2}
 .tip-main p b{color:var(--yellow)}
 .tip-col{display:flex;flex-direction:column;gap:20px}

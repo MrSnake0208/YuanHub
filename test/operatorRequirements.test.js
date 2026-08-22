@@ -18,6 +18,13 @@ test('等级计算跨越突破门槛并按从属给出专属材料', function ()
   assert.equal(result.money, 300000)
 })
 
+test('等级计算可跳过已完成的突破材料', function () {
+  const result = calculateLevelRequirements(69, 71, '破军', true)
+  assert.equal(result.experience, 29500 + 30700)
+  assert.deepEqual(result.items, {})
+  assert.equal(result.money, 300000)
+})
+
 test('化极计算保留觉醒装金玻璃', function () {
   const result = calculateStarRequirements(30, 31)
   assert.equal(result.heart, 100)

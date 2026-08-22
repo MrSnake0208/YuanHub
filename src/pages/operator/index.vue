@@ -85,7 +85,7 @@
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
           <div class="operator-tabs" role="tablist" aria-label="密探工作区" v-reveal>
-            <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'catalog'" :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">图鉴</button>
+            <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'catalog'" :class="{ on: activeTab === 'catalog' }" @click="setTab('catalog')">密探图鉴</button>
             <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'current'" :class="{ on: activeTab === 'current' }" @click="setTab('current')">当前养成</button>
             <button type="button" class="operator-tab-button" role="tab" :aria-selected="activeTab === 'tracking'" :class="{ on: activeTab === 'tracking' }" @click="setTab('tracking')">养成追踪</button>
             <span class="sp"></span>
@@ -150,7 +150,7 @@
           </div>
 
           <!-- 图鉴（全量目录：默认全部显示，登录后叠加云端养成） -->
-          <div v-show="activeTab === 'catalog'" class="panel">
+          <div v-show="activeTab === 'catalog'" class="panel" :class="{ 'is-active': activeTab === 'catalog' }">
             <div class="manifest-bar" v-reveal>
               <div class="mf-stats">
                 <div class="mf-stat"><b class="mf-num">{{ catalogCount }}</b><span class="mf-k">目录</span></div>
@@ -253,7 +253,7 @@
           </div>
 
           <!-- 当前养成 -->
-          <div v-show="activeTab === 'current'" class="panel">
+          <div v-show="activeTab === 'current'" class="panel" :class="{ 'is-active': activeTab === 'current' }">
             <div class="current-workbench-head" v-reveal>
               <div>
                 <span class="section-kicker">当前账号 · 养成台账</span>
@@ -298,7 +298,7 @@
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
               <div v-else class="agent-ledger-grid" role="list">
-                <article v-for="e in filteredCurrent" :key="e.id" class="agent-ledger-card" :class="[{ 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated' }, 'rarity-r' + (e.rarity || 3), 'status-' + operatorStatus(e)]" :title="buildTitle(e)" role="listitem">
+                <article v-for="e in filteredCurrent" :key="e.id" class="agent-ledger-card" :class="[{ 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated', 'is-draft': cardHasDraft(e), 'is-submit-success': cardSubmitStates[e.id] === 'success', 'is-popover-open': cardPopoverKey.indexOf(e.id + ':') === 0 }, 'rarity-r' + (e.rarity || 3), 'status-' + operatorStatus(e)]" :aria-busy="cardSubmitStates[e.id] === 'submitting'" role="listitem">
                   <header class="ledger-card-head">
                     <div class="ledger-avatar">
                       <img v-if="avOf(e.id)" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
@@ -308,84 +308,118 @@
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
                         <h3>{{ e.name || e.id }}</h3>
-                        <select :value="operatorStatus(e)" :class="'status-' + operatorStatus(e)" :aria-label="e.name + '养成状态'" @change="setOperatorStatus(e, $event.target.value)">
-                          <option value="growing">养成中</option>
-                          <option value="graduated">已毕业</option>
-                          <option value="inactive">不养成</option>
-                        </select>
+                        <span class="ledger-mobile-prof"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
+                        <details class="ledger-status-menu" :class="'status-' + operatorStatus(e)">
+                          <summary class="ledger-status-button" :aria-label="e.name + '养成状态：' + statusLabel(operatorStatus(e))">
+                            <span>{{ statusLabel(operatorStatus(e)) }}</span>
+                          </summary>
+                          <div class="ledger-status-options" role="listbox" :aria-label="e.name + '养成状态选项'">
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'growing'" @click="setOperatorStatusAndClose(e, 'growing', $event)">养成中</button>
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'graduated'" @click="setOperatorStatusAndClose(e, 'graduated', $event)">已毕业</button>
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'inactive'" @click="setOperatorStatusAndClose(e, 'inactive', $event)">不养成</button>
+                          </div>
+                        </details>
                       </div>
-                      <span class="ledger-prof"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
+                      <span class="ledger-prof"><span class="ledger-prof-copy"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span><small v-if="quickNotices[e.id]" class="ledger-notice" role="status">{{ quickNotices[e.id] }}</small></span>
                     </div>
                   </header>
 
                   <section class="ledger-combat" aria-label="战斗面板与奇闻属性">
-                    <div v-for="kind in ['attack', 'hp']" :key="kind" class="ledger-combat-stat" :class="{ 'is-manual': cardCombatMode(e, kind) === 'manual', 'is-stale': combatObservedStatus(e) === 'stale' }">
+                    <div v-for="kind in ['attack', 'hp']" :key="kind" class="ledger-combat-stat" :class="{ 'is-manual': cardCombatMode(e, kind) === 'manual', 'is-stale': combatObservedStatus(e) === 'stale', 'is-saving': cardCombatSavingIds.has(e.id) }">
                       <div class="ledger-combat-head">
                         <span>{{ kind === 'attack' ? '⚔ 攻击' : '♡ 生命' }}</span>
-                        <select class="ledger-combat-mode" :value="cardCombatMode(e, kind)" :aria-label="e.name + (kind === 'attack' ? '攻击来源' : '生命来源')" @change="setCardCombatMode(e, kind, $event.target.value)">
-                          <option value="auto" :disabled="!cardCombatAutoAvailable(e, kind)">自动计算</option>
-                          <option value="manual">手动校正</option>
-                        </select>
+                        <button
+                          class="ledger-combat-mode"
+                          type="button"
+                          :class="{ 'is-auto': cardCombatMode(e, kind) === 'auto', 'is-manual': cardCombatMode(e, kind) === 'manual', 'is-disabled': !cardCombatModeSwitchAllowed(e, kind) }"
+                          :aria-label="combatModeLabel(e, kind)"
+                          :title="combatModeLabel(e, kind)"
+                          :disabled="!cardCombatModeSwitchAllowed(e, kind) || cardSubmitStates[e.id] === 'submitting'"
+                          @click="toggleCardCombatMode(e, kind)"
+                        >
+                          <Calculator v-if="cardCombatMode(e, kind) === 'auto' && cardCombatAutoAvailable(e, kind)" :size="12" stroke-width="2.2" aria-hidden="true" />
+                          <ScanLine v-else :size="12" stroke-width="2.2" aria-hidden="true" />
+                        </button>
                       </div>
-                      <input class="ledger-combat-value" type="number" min="0" :value="cardCombatInputValue(e, kind)" :placeholder="cardCombatDisplay(e, kind)" :aria-label="e.name + (kind === 'attack' ? '攻击力' : '生命力')" @input="setCardCombatValue(e, kind, $event)" @blur="saveCardCombat(e)" />
-                      <small class="ledger-combat-source">{{ cardCombatSource(e, kind) }}</small>
-                      <label class="ledger-oddity">🦋 <input type="number" min="0" :value="cardOddityValue(e, kind)" :placeholder="cardOddityMax(e, kind)" :aria-label="e.name + (kind === 'attack' ? '奇闻属性攻击力' : '奇闻属性生命值')" @input="setCardOddityValue(e, kind, $event)" @blur="saveCardCombat(e)" /><span>/ {{ cardOddityMax(e, kind) || '—' }}</span></label>
+                      <input class="ledger-combat-value" type="number" min="0" :value="cardCombatInputValue(e, kind)" :placeholder="cardCombatDisplay(e, kind)" :aria-label="e.name + (kind === 'attack' ? '攻击力' : '生命力')" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setCardCombatValue(e, kind, $event)" />
+                      <small class="ledger-combat-source">{{ cardSubmitStates[e.id] === 'submitting' ? '保存中…' : cardCombatSource(e, kind) }}</small>
+                      <label class="ledger-oddity"><span class="ledger-oddity-icon" aria-hidden="true">🦋</span><input type="number" min="0" :value="cardOddityValue(e, kind)" :placeholder="cardOddityMax(e, kind)" :aria-label="e.name + (kind === 'attack' ? '奇闻属性攻击力' : '奇闻属性生命值')" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setCardOddityValue(e, kind, $event)" /><span>/ {{ cardOddityMax(e, kind) || '—' }}</span></label>
                     </div>
                   </section>
 
                   <section class="ledger-growth" aria-label="核心养成">
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">等级</span>
-                      <button class="ledger-editable" type="button" :aria-expanded="quickEditorKey === e.id + ':level'" @click="openQuickEditor(e, 'level')">Lv {{ e.level }}</button>
-                      <div class="ledger-step-actions"><button type="button" :disabled="quickSavingIds.has(e.id) || e.level >= 100" @click="quickCorrect(e, 'level', Math.min(100, e.level + 5))">+5</button><button type="button" :disabled="quickSavingIds.has(e.id) || e.level >= 100" @click="quickCorrect(e, 'level', Math.min(100, e.level + 10))">+10</button></div>
-                      <div v-if="quickEditorKey === e.id + ':level'" class="ledger-popover">
-                        <p><CircleAlert :size="13" aria-hidden="true" />仅校正记录，不扣减库存</p>
-                        <div><input v-model.number="quickDrafts[e.id].level" type="number" min="0" max="100" aria-label="校正等级" /><button type="button" @click="quickCorrect(e, 'level', quickDrafts[e.id].level)">保存</button></div>
+                      <label class="ledger-inline-field"><span class="sr-only">等级</span><input class="ledger-editable ledger-inline-input" type="number" min="0" max="100" :value="cardGrowthValue(e, 'level')" :disabled="cardSubmitStates[e.id] === 'submitting'" aria-label="等级" @input="setGrowthInput(e, 'level', $event)" /></label>
+                      <div class="ledger-step-actions"><button v-if="cardGrowthValue(e, 'level') < 100" type="button" class="ledger-popover-trigger" :class="growthActionClass(e, 'level', 5)" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="openGrowthAction(e, 'level', 5)">{{ growthActionLabel(e, 'level', 5, '可 +5') }}</button><button v-else type="button" class="is-complete" disabled>已满级</button></div>
+                      <div v-if="cardPopoverKey === e.id + ':level'" class="ledger-popover"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthPopoverTitle(e, 'level') }}</p><label class="ledger-breakthrough-toggle"><input type="checkbox" :checked="cardLevelBreakthrough(e)" @change="setCardLevelBreakthrough(e, $event)" /><span>已突破</span></label><div class="ledger-material-list"><span v-for="item in growthMaterials(e, 'level')" :key="item.id" :class="{ 'is-lack': item.lack > 0 }">{{ item.name }} ×{{ item.required }}<small v-if="item.lack > 0">缺 {{ item.lack }}</small></span><em v-if="!growthMaterials(e, 'level').length">无需补充材料</em></div><div v-if="growthMaterialsReady(e, 'level')" class="ledger-popover-actions"><button type="button" @click="setGrowthDraft(e, 'level', growthTarget(e, 'level'))">应用到卡片</button></div><em v-else class="ledger-popover-blocked">材料不足，无法应用</em>
                       </div>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">修为</span>
-                      <button class="ledger-editable" type="button" :aria-expanded="quickEditorKey === e.id + ':elite'" @click="openQuickEditor(e, 'elite')">{{ e.elite }}</button>
-                      <button class="ledger-smart-action" type="button" :disabled="quickSavingIds.has(e.id) || e.elite >= getMaxEliteForLevel(e.level)" @click="openQuickConfirm(e, 'elite')"><ChevronUp :size="13" aria-hidden="true" />升至 {{ Math.min(getMaxEliteForLevel(e.level), e.elite + 3) }}</button>
-                      <div v-if="quickEditorKey === e.id + ':elite'" class="ledger-popover">
-                        <p><CircleAlert :size="13" aria-hidden="true" />仅校正记录，不扣减库存</p>
-                        <div><input v-model.number="quickDrafts[e.id].elite" type="number" min="0" :max="getMaxEliteForLevel(e.level)" aria-label="校正修为" /><button type="button" @click="quickCorrect(e, 'elite', quickDrafts[e.id].elite)">保存</button></div>
-                      </div>
-                      <div v-if="quickConfirmKey === e.id + ':elite'" class="ledger-popover is-confirm">
-                        <strong>确认提升修为</strong><p>修为 {{ e.elite }} → {{ Math.min(getMaxEliteForLevel(e.level), e.elite + 3) }}，库存不会自动扣减。</p>
-                        <div><button class="cancel" type="button" @click="quickConfirmKey = ''">取消</button><button type="button" @click="quickCorrect(e, 'elite', Math.min(getMaxEliteForLevel(e.level), e.elite + 3))">确认</button></div>
-                      </div>
+                      <label class="ledger-inline-field"><span class="sr-only">修为</span><input class="ledger-editable ledger-inline-input" type="number" min="0" :max="getMaxEliteForLevel(cardGrowthValue(e, 'level'))" :value="cardGrowthValue(e, 'elite')" :disabled="cardSubmitStates[e.id] === 'submitting'" aria-label="修为" @input="setGrowthInput(e, 'elite', $event)" /></label>
+                      <button class="ledger-smart-action ledger-popover-trigger" :class="growthActionClass(e, 'elite', 3)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level'))" @click="openGrowthAction(e, 'elite', 3)"><ChevronUp v-if="cardGrowthValue(e, 'elite') < getMaxEliteForLevel(cardGrowthValue(e, 'level')) && growthMaterialsReady(e, 'elite', 3)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level')) ? '已满级' : growthActionLabel(e, 'elite', 3, '升至 ' + growthTarget(e, 'elite')) }}</button>
+                      <div v-if="cardPopoverKey === e.id + ':elite'" class="ledger-popover"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthPopoverTitle(e, 'elite') }}</p><div class="ledger-material-list"><span v-for="item in growthMaterials(e, 'elite')" :key="item.id" :class="{ 'is-lack': item.lack > 0 }">{{ item.name }} ×{{ item.required }}<small v-if="item.lack > 0">缺 {{ item.lack }}</small></span><em v-if="!growthMaterials(e, 'elite').length">无需补充材料</em></div><div v-if="growthMaterialsReady(e, 'elite')" class="ledger-popover-actions"><button type="button" @click="setGrowthDraft(e, 'elite', growthTarget(e, 'elite'))">应用到卡片</button></div><em v-else class="ledger-popover-blocked">材料不足，无法应用</em></div>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">化极</span>
-                      <button class="ledger-editable" type="button" :aria-expanded="quickEditorKey === e.id + ':star'" @click="openQuickEditor(e, 'star')">{{ starLabel(e.starLevel, e.spOf) }}</button>
-                      <button class="ledger-next-action" type="button" :disabled="quickSavingIds.has(e.id) || e.starLevel >= (e.spOf ? 5 : 31)" @click="quickCorrect(e, 'star', e.starLevel + 1)">下一节点</button>
-                      <div v-if="quickEditorKey === e.id + ':star'" class="ledger-popover">
-                        <p><CircleAlert :size="13" aria-hidden="true" />仅校正记录，不扣减库存</p>
-                        <div><input v-model.number="quickDrafts[e.id].star" type="number" min="0" :max="e.spOf ? 5 : 31" aria-label="校正化极节点" /><button type="button" @click="quickCorrect(e, 'star', quickDrafts[e.id].star)">保存</button></div>
-                      </div>
+                      <button class="ledger-editable ledger-popover-trigger" type="button" :aria-expanded="cardPopoverKey === e.id + ':star-edit'" @click="openCardPopover(e, 'star-edit')">{{ starLabel(cardGrowthValue(e, 'star'), e.spOf) }}</button>
+                      <button v-if="!e.spOf" class="ledger-next-action ledger-popover-trigger" :class="growthActionClass(e, 'star', 1)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'star') >= 31" @click="openGrowthAction(e, 'star', 1)"><ChevronUp v-if="cardGrowthValue(e, 'star') < 31 && growthMaterialsReady(e, 'star', 1)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'star') >= 31 ? (cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN ? '已觉醒' : '已满级') : growthActionLabel(e, 'star', 1, '下一节点') }}</button>
+                      <div v-if="cardPopoverKey === e.id + ':star-edit'" class="ledger-popover ledger-star-popover"><p><CircleAlert :size="13" aria-hidden="true" />校正化极等级与节点</p><div class="ledger-star-controls"><select :value="starDraftGroup(e)" @change="setStarDraftGroup(e, $event)"><option value="0">未拥有</option><option v-for="group in 5" :key="group" :value="group">{{ group }} 星</option><option value="31">觉醒</option></select><select v-if="!e.spOf && starDraftGroup(e) > 0 && starDraftGroup(e) < 31" :value="starDraftNode(e)" @change="setStarDraftNode(e, $event)"><option v-for="node in 6" :key="node - 1" :value="node - 1">节点 {{ node - 1 }}</option></select></div><div class="ledger-popover-actions"><button type="button" @click="cardPopoverKey = ''">完成校正</button></div></div>
+                      <div v-if="cardPopoverKey === e.id + ':star'" class="ledger-popover"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthPopoverTitle(e, 'star') }}</p><div class="ledger-material-list"><span v-for="item in growthMaterials(e, 'star')" :key="item.id" :class="{ 'is-lack': item.lack > 0 }">{{ item.name }} ×{{ item.required }}<small v-if="item.lack > 0">缺 {{ item.lack }}</small></span><em v-if="!growthMaterials(e, 'star').length">无需补充材料</em></div><div v-if="growthMaterialsReady(e, 'star')" class="ledger-popover-actions"><button type="button" @click="setGrowthDraft(e, 'star', growthTarget(e, 'star'))">应用到卡片</button></div><em v-else class="ledger-popover-blocked">材料不足，无法应用</em></div>
                     </div>
                   </section>
 
                   <div class="ledger-destiny">
-                    <div v-for="index in 2" :key="index" class="ledger-destiny-row"><span>命盘{{ index === 1 ? '一' : '二' }}</span><div><template v-if="cardLoadoutDiscs(e, index - 1).length"><em v-for="disc in cardLoadoutDiscs(e, index - 1)" :key="disc">{{ disc }}</em></template><em v-else class="empty">+ 词条</em></div></div>
+                    <div v-for="index in 2" :key="index" class="ledger-destiny-row ledger-popover-trigger" role="button" tabindex="0" :aria-expanded="cardPopoverKey === e.id + ':disc-' + (index - 1)" @click="openCardPopover(e, 'disc-' + (index - 1))" @keydown.enter.prevent="openCardPopover(e, 'disc-' + (index - 1))" @keydown.space.prevent="openCardPopover(e, 'disc-' + (index - 1))">
+                      <span>命盘{{ index === 1 ? '一' : '二' }}</span>
+                      <div class="ledger-destiny-values"><template v-if="cardLoadoutDiscs(e, index - 1).length"><em v-for="disc in cardLoadoutDiscs(e, index - 1)" :key="disc" class="disc-term" :class="{ 'has-description': cardDiscDescription(e, disc) }" tabindex="0" @mouseenter.stop="showDiscTooltip($event, cardDiscDescription(e, disc))" @mouseleave="hideDiscTooltip" @focus="showDiscTooltip($event, cardDiscDescription(e, disc))" @blur="hideDiscTooltip">{{ disc }}</em></template><em v-else class="empty">+ 命盘</em></div>
+                      <div v-if="cardPopoverKey === e.id + ':disc-' + (index - 1)" class="ledger-popover ledger-disc-popover" @click.stop>
+                        <p><CircleAlert :size="13" aria-hidden="true" />编辑命盘{{ index === 1 ? '一' : '二' }}（最多 3 个）</p>
+                        <div class="ledger-disc-options">
+                          <label v-for="disc in cardDiscOptions(e)" :key="discKey(disc)" class="ledger-disc-option" :class="discColorClass(disc)" @click.stop>
+                            <input type="checkbox" :checked="cardDiscSelected(e, index - 1, disc)" @change.stop="toggleCardDisc(e, index - 1, disc, $event)" />
+                            <span class="disc-term-label" tabindex="0" @mouseenter.stop="showDiscTooltip($event, discDescription(disc))" @mouseleave="hideDiscTooltip" @focus="showDiscTooltip($event, discDescription(disc))" @blur="hideDiscTooltip">{{ discKey(disc) }}</span>
+                          </label>
+                        </div>
+                        <button type="button" @click.stop="cardPopoverKey = ''">完成</button>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="ledger-stones" aria-label="已装备星石">
-                    <div v-for="(stone, index) in cardStoneSlots(e)" :key="index" class="stone-slot" :class="{ 'is-empty': !stone }"><template v-if="stone"><strong>{{ stone.name || '星石' }}</strong><small>{{ stone.level || 0 }}</small></template><span v-else>+</span></div>
+                    <button v-for="(stone, index) in cardStoneSlots(e)" :key="index" type="button" class="stone-slot ledger-popover-trigger" :class="{ 'is-empty': !stone }" :aria-label="stone ? stone.name + '，等级 ' + (stone.level || 0) : '空星石槽位'" :aria-expanded="cardPopoverKey === e.id + ':stone-' + index" @click="openCardPopover(e, 'stone-' + index)">
+                      <template v-if="stone"><strong>{{ stone.name || '星石' }}</strong><small>{{ stone.level || 0 }}</small></template><span v-else>+</span>
+                    </button>
+                    <div v-if="cardPopoverKey.indexOf(e.id + ':stone-') === 0" class="ledger-popover ledger-stone-popover" @click.stop>
+                      <template v-for="(stone, index) in cardStoneSlots(e)" :key="index">
+                        <template v-if="cardPopoverKey === e.id + ':stone-' + index">
+                          <p><CircleAlert :size="13" aria-hidden="true" />编辑{{ stoneSlots[index].label }}</p>
+                          <select :value="cardStoneValue(e, index).name" :aria-label="stoneSlots[index].label + '名称'" @change="setCardStoneName(e, index, $event)">
+                            <option value="">未装备</option>
+                            <option v-for="name in cardStoneOptions(e, index)" :key="name" :value="name">{{ name }}</option>
+                          </select>
+                          <div class="ledger-stone-level-row">
+                            <label>等级 <input type="number" min="1" max="60" :value="cardStoneValue(e, index).level || ''" :disabled="!cardStoneValue(e, index).name" @input="setCardStoneLevel(e, index, $event)" /></label>
+                            <div class="ledger-stone-levels" aria-label="快捷设置星石等级"><button v-for="level in STONE_QUICK_LEVELS" :key="level" type="button" :class="{ on: cardStoneValue(e, index).level === level }" :disabled="!cardStoneValue(e, index).name" @click="setCardStoneLevel(e, index, level)">{{ level }}</button></div>
+                          </div>
+                          <div class="ledger-popover-actions"><button type="button" class="cancel" @click.stop="removeCardStone(e, index)">卸下</button><button type="button" @click.stop="cardPopoverKey = ''">完成</button></div>
+                        </template>
+                      </template>
+                    </div>
                   </div>
 
                   <div class="ledger-card-footer">
-                    <textarea :value="operatorRemark(e)" rows="2" :aria-label="e.name + '备忘'" placeholder="添加备忘…" @input="setOperatorRemarkDraft(e, $event.target.value)" @blur="saveOperatorRemark(e)"></textarea>
-                    <p v-if="quickNotices[e.id]" class="ledger-notice" role="status">{{ quickNotices[e.id] }}</p>
-                    <button class="ledger-full-edit" type="button" @click.stop="openEdit(e.id)"><Pencil :size="14" aria-hidden="true" />完整编辑</button>
+                    <textarea :value="operatorRemark(e)" rows="2" :aria-label="e.name + '备忘'" placeholder="添加备忘…" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setOperatorRemarkDraft(e, $event.target.value)"></textarea>
+                    <div class="ledger-card-actions"><template v-if="cardHasDraft(e)"><button class="ledger-card-cancel" type="button" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="cancelCardDraft(e)">取消</button><button class="ledger-card-save" type="button" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="saveCardDraft(e)"><Save :size="13" aria-hidden="true" />保存</button></template><button v-else class="ledger-full-edit" type="button" @click.stop="openEdit(e.id)"><Pencil :size="14" aria-hidden="true" />完整编辑</button></div>
                   </div>
+                  <div v-if="cardSubmitStates[e.id]" class="ledger-submit-overlay" :class="cardSubmitStates[e.id]"><div class="ledger-submit-message"><div class="ledger-submit-icon"><span v-if="cardSubmitStates[e.id] === 'submitting'" class="ledger-submit-spinner"></span><span v-else-if="cardSubmitStates[e.id] === 'success'">✓</span><span v-else>!</span></div><strong>{{ cardSubmitStates[e.id] === 'submitting' ? '正在提交' : cardSubmitStates[e.id] === 'success' ? '已保存' : '保存失败' }}</strong><p>{{ cardSubmitStates[e.id] === 'submitting' ? '正在保存本次修改…' : cardSubmitStates[e.id] === 'success' ? '本次修改已更新' : quickNotices[e.id] || '本次修改尚未更新' }}</p><div v-if="cardSubmitStates[e.id] === 'error'" class="ledger-submit-actions"><button type="button" @click="clearCardSubmitState(e)">继续编辑</button><button type="button" class="ledger-card-save" @click="saveCardDraft(e)">重试</button></div></div></div>
                 </article>
               </div>
             </div>
           </div>
 
-          <div v-show="activeTab === 'tracking'" class="panel">
+          <div v-show="activeTab === 'tracking'" class="panel" :class="{ 'is-active': activeTab === 'tracking' }">
             <OperatorGrowthTracker
               :account-id="accountId"
               :current-entries="currentEntries"
@@ -571,9 +605,9 @@
                       v-if="selectedDiscLoadout.nameMode === 'manual'"
                       class="disc-auto-name"
                       type="button"
-                      title="根据已选命盘恢复自动命名"
+                      aria-label="根据已选命盘恢复自动命名"
                       @click="resetDiscLoadoutName(selectedDiscLoadoutIndex)"
-                    ><RotateCcw :size="14" aria-hidden="true" />恢复自动命名</button>
+                    ><RotateCcw :size="14" aria-hidden="true" /><span>恢复自动命名</span></button>
                   </div>
 
                   <div class="disc-options">
@@ -584,7 +618,7 @@
                     <p v-if="!editingDiscs.length" class="hint">该密探暂无命盘目录数据，可直接留空保存。</p>
                     <label v-for="d in editingDiscs" :key="discKey(d)" class="disc-option" :class="[discColorClass(d), { on: isDiscSelected(d) }]">
                       <input type="checkbox" :checked="isDiscSelected(d)" @change="toggleDiscSelection(d, $event)" />
-                      <span class="disc-name">{{ discKey(d) }}</span>
+                      <span class="disc-name disc-term-label" tabindex="0" @mouseenter="showDiscTooltip($event, discDescription(d))" @mouseleave="hideDiscTooltip" @focus="showDiscTooltip($event, discDescription(d))" @blur="hideDiscTooltip">{{ discKey(d) }}</span>
                     </label>
                   </div>
                 </div>
@@ -625,7 +659,13 @@
                   <strong>当前装备中的星石</strong>
                   <span>以下内容将随密探档案保存</span>
                 </div>
-                <div v-for="slot in stoneSlots" :key="slot.type" class="stone-item">
+                <div
+                  v-for="(slot, slotIndex) in stoneSlots"
+                  :key="slot.type"
+                  class="stone-item"
+                  :class="slot.type.indexOf('main') === 0 ? 'is-main' : 'is-assist'"
+                  :style="{ '--stone-grid-row': String((slotIndex % 3) + 3) }"
+                >
                   <div class="stone-item-head">
                     <span class="stone-name">{{ slot.label }}</span>
                     <span v-if="editForm.stones[slot.type].name" class="stone-item-actions">
@@ -684,6 +724,17 @@
         </div>
       </div>
 
+      <Teleport to="body">
+        <div
+          v-if="discTooltip.visible"
+          id="disc-floating-tooltip"
+          class="disc-floating-tooltip"
+          :class="'is-' + discTooltip.placement"
+          :style="{ left: discTooltip.x + 'px', top: discTooltip.y + 'px' }"
+          role="tooltip"
+        >{{ discTooltip.text }}</div>
+      </Teleport>
+
       <SiteFooter>
         <template #big>密探养成<br><span>图鉴 · 快照 · 归档</span></template>
         <template #fine>
@@ -698,7 +749,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
-import { Archive, BookOpen, Calculator, ChevronUp, CircleAlert, Download, ListChecks, Pencil, RotateCcw, Save, Star, Target, Upload, X } from '@lucide/vue'
+import { Archive, BookOpen, Calculator, ChevronUp, CircleAlert, Download, ListChecks, Pencil, RotateCcw, Save, ScanLine, Star, Target, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
@@ -728,7 +779,16 @@ import {
   createDiscLoadoutState
 } from '../../utils/operatorDiscLoadouts.js'
 import { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS, ASSIST_STAR_DESCRIPTIONS, STAR_STONE_RESTRICTIONS } from '../../data/starStones.js'
-import { listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
+import { getCurrent as getInventoryCurrent, listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
+import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
+import {
+  calculateLevelRequirements,
+  calculateStarRequirements,
+  calculateXiuweiRequirements,
+  netRequirement,
+  starStageFromLevel,
+  starLabelForStage
+} from '../../data/operatorRequirements.js'
 import {
   OPERATOR_ODDITY_KEYS,
   calculateOperatorCombatStats,
@@ -796,6 +856,18 @@ const workbenchRemarkSaving = ref(new Set())
 const cardCombatDrafts = ref({})
 const cardCombatModes = ref({})
 const cardCombatSavingIds = ref(new Set())
+const cardGrowthDrafts = ref({})
+const cardPopoverKey = ref('')
+const cardMaterialStock = ref({})
+const cardMaterialLoading = ref(false)
+let cardMaterialLoadSeq = 0
+const cardSubmitStates = ref({})
+const cardSubmitTimers = new Map()
+const cardDraftBaselines = ref({})
+const cardPopoverStep = ref(0)
+const cardHeartStock = ref({})
+const cardLevelBreakthroughs = ref({})
+const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 
 // —— 单个密探编辑弹窗 ——
 const editing = ref(false)
@@ -844,6 +916,8 @@ watch(function () { return [accountId.value, saveGame.value] }, function () {
   workbenchStatuses.value = readWorkbenchMap('statuses')
   workbenchRemarks.value = readWorkbenchMap('remarks')
   cardCombatModes.value = readWorkbenchMap('combat-modes')
+  cardLevelBreakthroughs.value = {}
+  loadCardMaterialStock()
 }, { immediate: true })
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
@@ -983,6 +1057,38 @@ function discKey(d) {
   return d.ot_name || d.otName || ''
 }
 
+function discDescription(disc) {
+  if (!disc) return ''
+  return String(disc.desp || disc.description || disc.desc || '').trim()
+}
+
+function showDiscTooltip(event, description) {
+  const text = String(description || '').trim()
+  const target = event && event.currentTarget
+  if (!text || !(target && target.getBoundingClientRect)) {
+    hideDiscTooltip()
+    return
+  }
+  const rect = target.getBoundingClientRect()
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth
+  const tooltipHalfWidth = Math.min(140, Math.max(0, (viewportWidth - 24) / 2))
+  const center = rect.left + rect.width / 2
+  const x = Math.max(12 + tooltipHalfWidth, Math.min(viewportWidth - 12 - tooltipHalfWidth, center))
+  const placement = rect.top >= 96 ? 'top' : 'bottom'
+  discTooltip.value = {
+    visible: true,
+    text,
+    x,
+    y: placement === 'top' ? rect.top - 8 : rect.bottom + 8,
+    placement
+  }
+}
+
+function hideDiscTooltip() {
+  if (!discTooltip.value.visible) return
+  discTooltip.value = Object.assign({}, discTooltip.value, { visible: false })
+}
+
 function discObject(key) {
   const d = (editingOp.value && editingOp.value.discs || []).find(function (x) { return discKey(x) === key })
   if (!d) return { ot_name: key }
@@ -1001,8 +1107,8 @@ function discColorClass(d) {
   return (d && DISC_COLOR_CLASS[d.color]) || ''
 }
 
-const editingDiscs = computed(function () {
-  return ((editingOp.value && editingOp.value.discs) || [])
+function sortDiscsForPicker(discs) {
+  return (Array.isArray(discs) ? discs : [])
     .map(function (disc, index) { return { disc: disc, index: index } })
     .sort(function (a, b) {
       const aOrder = DISC_COLOR_ORDER[a.disc && a.disc.color] ?? 3
@@ -1012,6 +1118,10 @@ const editingDiscs = computed(function () {
       return (aOrder - bOrder) || (aMajorGold - bMajorGold) || (a.index - b.index)
     })
     .map(function (entry) { return entry.disc })
+}
+
+const editingDiscs = computed(function () {
+  return sortDiscsForPicker((editingOp.value && editingOp.value.discs) || [])
 })
 
 function isMajorGoldDisc(disc) {
@@ -1170,10 +1280,10 @@ function persistCombatStats(id) {
 const stoneSlots = computed(function () {
   return [
     { type: 'main1', label: '主星 1' },
-    { type: 'assist1', label: '辅星 1' },
     { type: 'main2', label: '主星 2' },
-    { type: 'assist2', label: '辅星 2' },
     { type: 'main3', label: '主星 3' },
+    { type: 'assist1', label: '辅星 1' },
+    { type: 'assist2', label: '辅星 2' },
     { type: 'assist3', label: '辅星 3' }
   ]
 })
@@ -1341,6 +1451,12 @@ function getMaxEliteForLevel(level) {
   )
 }
 
+// 修为材料按密探属性归入三类职业；与养成追踪组件保持同一映射。
+function xiuweiJob(prof) {
+  const first = String(prof || '').split('、')[0]
+  return ['风', '火'].includes(first) ? 'fh' : ['水', '地'].includes(first) ? 'ds' : 'yy'
+}
+
 const maxEliteForLevel = computed(function () {
   return getMaxEliteForLevel(editForm.value.level)
 })
@@ -1490,7 +1606,7 @@ function starLabel(v, spOf) {
   if (n >= 1 && n <= 30) {
     const star = Math.floor((n - 1) / 6) + 1
     const node = (n - 1) % 6
-    return star + ' 星 · ' + node
+    return star + ' 星 · ' + node + ' 节点'
   }
   return n
 }
@@ -1656,14 +1772,6 @@ function slotTitle(e) {
   return parts.join(' ｜ ')
 }
 
-function buildTitle(e) {
-  const parts = [e.name || e.id, '修为 ' + e.elite, starLabel(e.starLevel, e.spOf), 'Lv' + e.level]
-  if (e.discLoadouts && e.discLoadouts.length) parts.push('命盘：' + e.discLoadouts.map(function (loadout) { return loadoutSummary(loadout) }).join(' / '))
-  else if (e.discs && e.discs.length) parts.push('命盘：' + e.discs.map(function (d) { return d.ot_name || d.abbreviation || d.otName }).join('、'))
-  if (e.starStones && e.starStones.length) parts.push('星石：' + e.starStones.map(function (s) { return (s.name || s.type) + ' Lv' + s.level }).join('、'))
-  return parts.join(' ｜ ')
-}
-
 function loadoutSummary(loadout, legacyDiscs) {
   const source = loadout || (legacyDiscs && legacyDiscs.length ? { discs: legacyDiscs } : null)
   if (!source) return '未配置'
@@ -1718,9 +1826,359 @@ function operatorStatus(entry) {
   return 'growing'
 }
 
+function statusLabel(status) {
+  return status === 'graduated' ? '已毕业' : status === 'inactive' ? '不养成' : '养成中'
+}
+
+function flattenInventoryCurrent(data) {
+  const rows = Array.isArray(data) ? data : (data ? [data] : [])
+  const result = {}
+  rows.forEach(function (row) {
+    const entries = row && row.entries && typeof row.entries === 'object' ? row.entries : {}
+    Object.keys(entries).forEach(function (id) {
+      const value = entries[id]
+      result[id] = Number(value && value.count != null ? value.count : value) || 0
+    })
+  })
+  return result
+}
+
+async function loadCardMaterialStock() {
+  if (!auth.isLoggedIn || !accountId.value) {
+    cardMaterialLoadSeq += 1
+    cardMaterialStock.value = {}
+    cardHeartStock.value = {}
+    cardMaterialLoading.value = false
+    return
+  }
+  const targetAccount = accountId.value
+  const seq = ++cardMaterialLoadSeq
+  cardMaterialLoading.value = true
+  try {
+    const results = await Promise.all([
+      getInventoryCurrent({ accountId: targetAccount, entityType: 'item' }),
+      getInventoryCurrent({ accountId: targetAccount, entityType: 'agent' })
+    ])
+    if (seq !== cardMaterialLoadSeq || accountId.value !== targetAccount) return
+    const items = flattenInventoryCurrent(results[0])
+    cardMaterialStock.value = Object.assign({}, items, {
+      __experience__: (Number(items.bingshucanjuan) || 0) * 100 + (Number(items.bingshuquanjuan) || 0) * 1000 + (Number(items.liutaobingshu) || 0) * 10000
+    })
+    cardHeartStock.value = flattenInventoryCurrent(results[1])
+  } catch (_) {
+    if (seq === cardMaterialLoadSeq) {
+      cardMaterialStock.value = {}
+      cardHeartStock.value = {}
+    }
+  } finally {
+    if (seq === cardMaterialLoadSeq) cardMaterialLoading.value = false
+  }
+}
+
+function normalizeCardDiscLoadouts(entry) {
+  const source = Array.isArray(entry && entry.discLoadouts) && entry.discLoadouts.length
+    ? entry.discLoadouts
+    : (Array.isArray(entry && entry.discs) && entry.discs.length ? [{ discs: entry.discs }] : [])
+  return Array.from({ length: 2 }, function (_, index) {
+    const loadout = source[index] || {}
+    const names = Array.isArray(loadout.discNames)
+      ? loadout.discNames
+      : (Array.isArray(loadout.discs) ? loadout.discs.map(discKey).filter(Boolean) : [])
+    return {
+      id: String(loadout.id || 'disc_' + (index + 1)),
+      name: String(loadout.name || ''),
+      discNames: names.filter(Boolean).slice(0, 3)
+    }
+  })
+}
+
+function normalizeCardStarStones(entry) {
+  const source = Array.isArray(entry && entry.starStones) ? entry.starStones : []
+  const hasTypedSlots = source.some(function (stone) { return !!(stone && stone.type) })
+  return Array.from({ length: 6 }, function (_, index) {
+    const slot = stoneSlots.value[index]
+    const type = slot ? slot.type : 'stone' + (index + 1)
+    // Typed payloads are sparse by design: a missing slot must remain empty,
+    // rather than falling back to the item at the same array index.
+    const hit = source.find(function (stone) { return normalizeStoneType(stone && stone.type) === type }) || (!hasTypedSlots ? source[index] : null)
+    const rarity = hit && hit.rarity != null ? hit.rarity : (hit && hit.levelType != null ? hit.levelType : null)
+    return {
+      type: type,
+      name: hit && hit.name ? hit.name : '',
+      level: hit && hit.level != null ? Math.max(0, Math.min(60, Number(hit.level) || 0)) : 0,
+      rarity: rarity
+    }
+  })
+}
+
+function ensureCardDraft(entry) {
+  if (!entry || !entry.id) return null
+  if (!cardGrowthDrafts.value[entry.id]) {
+    const stats = entry.combatStats || normalizeOperatorCombatStats({})
+    const modes = Object.assign({}, cardCombatModes.value[entry.id] || (stats.displayMode || {}))
+    cardGrowthDrafts.value = Object.assign({}, cardGrowthDrafts.value, {
+      [entry.id]: {
+        level: Number(entry.level) || 0,
+        elite: Number(entry.elite) || 0,
+        star: Number(entry.starLevel) || 0,
+        discLoadouts: normalizeCardDiscLoadouts(entry),
+        starStones: normalizeCardStarStones(entry),
+        remark: operatorRemark(entry),
+        modes: modes
+      }
+    })
+  }
+  cardCombatDraft(entry)
+  if (!cardDraftBaselines.value[entry.id]) cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, { [entry.id]: cardDraftSnapshot(entry) })
+  return cardGrowthDrafts.value[entry.id]
+}
+
+function cardDraftSnapshot(entry) {
+  const growth = cardGrowthDrafts.value[entry.id] || {}
+  const combat = cardCombatDrafts.value[entry.id] || {}
+  return JSON.stringify({ level: Number(growth.level) || 0, elite: Number(growth.elite) || 0, star: Number(growth.star) || 0, discLoadouts: growth.discLoadouts || [], starStones: growth.starStones || [], remark: growth.remark == null ? operatorRemark(entry) : growth.remark, modes: cardCombatModes.value[entry.id] || growth.modes || {}, attack: combat.attack == null ? null : Number(combat.attack), hp: combat.hp == null ? null : Number(combat.hp), oddityAttack: Number(combat.oddityAttack) || 0, oddityHp: Number(combat.oddityHp) || 0 })
+}
+
+function cardGrowthValue(entry, field) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return field === 'star' ? entry.starLevel : entry[field]
+  return draft[field]
+}
+
+function cardHasDraft(entry) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return false
+  const baseline = cardDraftBaselines.value[entry.id]
+  return baseline !== cardDraftSnapshot(entry)
+}
+
+function setGrowthInput(entry, field, event) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return
+  const max = field === 'level' ? 100 : getMaxEliteForLevel(draft.level)
+  let value = Math.trunc(Number(event && event.target ? event.target.value : 0))
+  if (!Number.isFinite(value)) value = 0
+  draft[field] = Math.max(0, Math.min(max, value))
+  if (field === 'level' && draft.elite > getMaxEliteForLevel(draft.level)) draft.elite = getMaxEliteForLevel(draft.level)
+}
+
+function openCardPopover(entry, field) {
+  ensureCardDraft(entry)
+  cardPopoverKey.value = cardPopoverKey.value === entry.id + ':' + field ? '' : entry.id + ':' + field
+}
+
+function cardLevelBreakthrough(entry) {
+  return Boolean(entry && cardLevelBreakthroughs.value[entry.id])
+}
+
+function setCardLevelBreakthrough(entry, event) {
+  if (!entry || !entry.id) return
+  cardLevelBreakthroughs.value = Object.assign({}, cardLevelBreakthroughs.value, {
+    [entry.id]: Boolean(event && event.target && event.target.checked)
+  })
+}
+
+function growthTarget(entry, field, step) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return 0
+  const amount = Number(step == null ? cardPopoverStep.value : step) || (field === 'level' ? 5 : field === 'elite' ? 3 : 1)
+  if (field === 'level') return Math.min(100, draft.level + amount)
+  if (field === 'elite') return Math.min(getMaxEliteForLevel(draft.level), draft.elite + amount)
+  return Math.min(entry.spOf ? 5 : 31, draft.star + 1)
+}
+
+function openGrowthAction(entry, field, step) {
+  ensureCardDraft(entry)
+  cardPopoverStep.value = step || 1
+  cardPopoverKey.value = entry.id + ':' + field
+}
+
+function setGrowthDraft(entry, field, value, closePopover) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return
+  if (field === 'star') value = Math.max(0, Math.min(entry.spOf ? 5 : 31, Number(value) || 0))
+  draft[field] = Math.trunc(Number(value) || 0)
+  if (field === 'level' && draft.elite > getMaxEliteForLevel(draft.level)) draft.elite = getMaxEliteForLevel(draft.level)
+  if (closePopover !== false) cardPopoverKey.value = ''
+}
+
+function starDraftGroup(entry) {
+  const value = cardGrowthValue(entry, 'star')
+  if (entry.spOf) return value
+  if (value === 31) return 31
+  return value > 0 ? Math.floor((value - 1) / 6) + 1 : 0
+}
+
+function starDraftNode(entry) {
+  const value = cardGrowthValue(entry, 'star')
+  return value > 0 && value < 31 ? (value - 1) % 6 : 0
+}
+
+function setStarDraftGroup(entry, event) {
+  const group = Number(event && event.target ? event.target.value : 0)
+  if (entry.spOf) return setGrowthDraft(entry, 'star', group, false)
+  if (group === 0 || group === 31) return setGrowthDraft(entry, 'star', group, false)
+  setGrowthDraft(entry, 'star', 6 * (group - 1) + starDraftNode(entry) + 1, false)
+}
+
+function setStarDraftNode(entry, event) {
+  const node = Number(event && event.target ? event.target.value : 0)
+  const group = starDraftGroup(entry)
+  if (group > 0 && group < 31) setGrowthDraft(entry, 'star', 6 * (group - 1) + node + 1, false)
+}
+
+function growthActionClass(entry, field, step) {
+  const materials = growthMaterials(entry, field, step)
+  return materials.some(function (item) { return item.lack > 0 }) ? 'is-lack' : 'is-ready'
+}
+
+function growthMaterialsReady(entry, field, step) {
+  return !growthMaterials(entry, field, step).some(function (item) { return item.lack > 0 })
+}
+
+function growthActionLabel(entry, field, step, readyLabel) {
+  const materials = growthMaterials(entry, field, step)
+  if (!materials.some(function (item) { return item.lack > 0 })) return readyLabel
+  if (field === 'level') return '查看经验缺口'
+  if (field === 'star') {
+    const heart = materials.find(function (item) { return item.id === '__heart__' })
+    if (heart && heart.lack > 0) return heart.owned + '/' + heart.required
+  }
+  return '查看材料缺口'
+}
+
+function growthTargetLabel(entry, field) {
+  const target = growthTarget(entry, field)
+  if (field === 'level') return '等级 ' + target
+  if (field === 'elite') return '修为 ' + target
+  return '化极 ' + starLabel(target, entry.spOf)
+}
+
+function growthPopoverTitle(entry, field) {
+  const target = growthTargetLabel(entry, field)
+  return growthMaterialsReady(entry, field)
+    ? target + ' 将扣除以下道具'
+    : target + ' 还缺以下道具'
+}
+
+function levelBookDeductions(required, stock) {
+  let remaining = Math.max(0, Number(required) || 0)
+  const books = [
+    { id: 'liutaobingshu', value: 10000 },
+    { id: 'bingshuquanjuan', value: 1000 },
+    { id: 'bingshucanjuan', value: 100 }
+  ].map(function (book) {
+    return Object.assign({}, book, { available: Number(stock[book.id]) || 0, count: 0 })
+  })
+  books.forEach(function (book) {
+    const count = Math.min(book.available, Math.floor(remaining / book.value))
+    book.count += count
+    remaining -= count * book.value
+  })
+  if (remaining > 0) {
+    books.slice().reverse().forEach(function (book) {
+      if (remaining <= 0) return
+      const available = book.available - book.count
+      const count = Math.min(available, Math.ceil(remaining / book.value))
+      book.count += count
+      remaining -= count * book.value
+    })
+  }
+  return books.filter(function (book) { return book.count > 0 }).map(function (book) {
+    return { id: book.id, name: itemNameById(book.id), required: book.count, owned: book.available, lack: 0 }
+  })
+}
+
+function levelBookGapBundle(experienceGap) {
+  const gap = Math.max(0, Number(experienceGap) || 0)
+  if (!gap) return []
+  // 绝境历练每轮固定掉落：兵书全卷 9 + 兵书残卷 100，
+  // 对应 19,000 点兵书经验；按整轮向上取整，避免推荐经验不足。
+  const runs = Math.ceil(gap / 19000)
+  return [
+    { id: 'bingshuquanjuan', name: itemNameById('bingshuquanjuan'), required: runs * 9, owned: 0, lack: runs * 9 },
+    { id: 'bingshucanjuan', name: itemNameById('bingshucanjuan'), required: runs * 100, owned: 0, lack: runs * 100 }
+  ]
+}
+
+function growthMaterials(entry, field, step) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return []
+  const stock = cardMaterialStock.value || {}
+  let requirement
+  if (field === 'level') requirement = calculateLevelRequirements(draft.level, growthTarget(entry, 'level', step), firstSubProf(entry), cardLevelBreakthrough(entry))
+  else if (field === 'elite') requirement = calculateXiuweiRequirements(draft.elite, growthTarget(entry, 'elite', step), xiuweiJob(entry.prof))
+  else requirement = calculateStarRequirements(draft.star, growthTarget(entry, 'star', step))
+  const items = Object.keys(requirement.items || {}).map(function (id) {
+    const required = Number(requirement.items[id]) || 0
+    const owned = Number(stock[id]) || 0
+    return { id: id, name: itemNameById(id), required: required, owned: owned, lack: Math.max(required - owned, 0) }
+  }).filter(function (item) { return item.required > 0 })
+  if (requirement.experience) {
+    const experienceOwned = Number(stock.__experience__) || 0
+    if (experienceOwned >= requirement.experience) items.push.apply(items, levelBookDeductions(requirement.experience, stock))
+    else items.push.apply(items, levelBookGapBundle(requirement.experience - experienceOwned))
+  }
+  if (requirement.heart) {
+    const owned = Number(cardHeartStock.value[entry.id]) || 0
+    items.push({ id: '__heart__', name: '心纸', required: requirement.heart, owned: owned, lack: Math.max(requirement.heart - owned, 0) })
+  }
+  return items
+}
+
+function itemNameById(id) {
+  const item = ITEM_CATALOG.find(function (entry) { return entry.id === id })
+  return item ? item.name : id
+}
+
+function cancelCardDraft(entry) {
+  const draft = ensureCardDraft(entry)
+  let baseline = null
+  try { baseline = JSON.parse(cardDraftBaselines.value[entry.id] || 'null') } catch (_) { baseline = null }
+  baseline = baseline || {}
+  draft.level = baseline.level == null ? Number(entry.level) || 0 : Number(baseline.level) || 0
+  draft.elite = baseline.elite == null ? Number(entry.elite) || 0 : Number(baseline.elite) || 0
+  draft.star = baseline.star == null ? Number(entry.starLevel) || 0 : Number(baseline.star) || 0
+  draft.discLoadouts = Array.isArray(baseline.discLoadouts) ? JSON.parse(JSON.stringify(baseline.discLoadouts)) : normalizeCardDiscLoadouts(entry)
+  draft.starStones = Array.isArray(baseline.starStones) ? JSON.parse(JSON.stringify(baseline.starStones)) : normalizeCardStarStones(entry)
+  draft.remark = baseline.remark == null ? (entry.remark || entry.note || '') : baseline.remark
+  draft.modes = Object.assign({}, baseline.modes || (entry.combatStats && entry.combatStats.displayMode) || {})
+  workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, { [entry.id]: draft.remark })
+  cardCombatModes.value = Object.assign({}, cardCombatModes.value, { [entry.id]: Object.assign({}, draft.modes) })
+  const stats = entry.combatStats || normalizeOperatorCombatStats({})
+  cardCombatDrafts.value = Object.assign({}, cardCombatDrafts.value, { [entry.id]: {
+    attack: Object.prototype.hasOwnProperty.call(baseline, 'attack') ? baseline.attack : stats.manualAttack,
+    hp: Object.prototype.hasOwnProperty.call(baseline, 'hp') ? baseline.hp : stats.manualHp,
+    oddityAttack: baseline.oddityAttack == null ? stats.oddities.attack.current : baseline.oddityAttack,
+    oddityHp: baseline.oddityHp == null ? stats.oddities.hp.current : baseline.oddityHp
+  } })
+  cardPopoverKey.value = ''
+}
+
+function clearCardSubmitState(entry) {
+  delete cardSubmitStates.value[entry.id]
+  cardSubmitStates.value = Object.assign({}, cardSubmitStates.value)
+}
+
+function handleCardPopoverOutside(event) {
+  const target = event && event.target
+  if (!(target && target.closest && target.closest('.ledger-status-menu'))) {
+    document.querySelectorAll('.ledger-status-menu[open]').forEach(function (menu) { menu.open = false })
+  }
+  if (!cardPopoverKey.value) return
+  if (target && target.closest && (target.closest('.ledger-popover') || target.closest('.ledger-popover-trigger') || target.closest('.ledger-status-menu'))) return
+  cardPopoverKey.value = ''
+}
+
 function setOperatorStatus(entry, value) {
   workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [entry.id]: value })
   persistWorkbenchMap('statuses', workbenchStatuses.value)
+}
+
+function setOperatorStatusAndClose(entry, value, event) {
+  setOperatorStatus(entry, value)
+  const details = event && event.currentTarget && event.currentTarget.closest ? event.currentTarget.closest('details') : null
+  if (details) details.open = false
 }
 
 function ensureQuickDraft(entry) {
@@ -1770,20 +2228,89 @@ async function quickCorrect(entry, field, rawValue) {
 }
 
 function cardLoadoutDiscs(entry, index) {
-  const loadout = entry.discLoadouts && entry.discLoadouts[index]
-  if (loadout) {
-    const names = Array.isArray(loadout.discNames) ? loadout.discNames : (Array.isArray(loadout.discs) ? loadout.discs.map(discKey).filter(Boolean) : [])
-    return names.slice(0, 3)
-  }
-  return index === 0 && Array.isArray(entry.discs) ? entry.discs.map(discKey).filter(Boolean).slice(0, 3) : []
+  const draft = ensureCardDraft(entry)
+  const loadout = draft && draft.discLoadouts && draft.discLoadouts[index]
+  return loadout && Array.isArray(loadout.discNames) ? loadout.discNames.slice(0, 3) : []
 }
 
 function cardStoneSlots(entry) {
-  const stones = Array.isArray(entry.starStones) ? entry.starStones : []
-  return Array.from({ length: 6 }, function (_, index) {
-    const stone = stones[index]
-    return stone && (stone.name || stone.type) ? stone : null
-  })
+  const draft = ensureCardDraft(entry)
+  const stones = draft && Array.isArray(draft.starStones) ? draft.starStones : []
+  return stones.map(function (stone) { return stone && stone.name ? stone : null })
+}
+
+function cardDiscOptions(entry) {
+  const catalog = catalogMap.value[entry && entry.id]
+  return sortDiscsForPicker(catalog && catalog.discs)
+}
+
+function cardDiscDescription(entry, name) {
+  const disc = cardDiscOptions(entry).find(function (item) { return discKey(item) === name })
+  return discDescription(disc)
+}
+
+function cardDiscSelected(entry, loadoutIndex, disc) {
+  const draft = ensureCardDraft(entry)
+  const loadout = draft && draft.discLoadouts && draft.discLoadouts[loadoutIndex]
+  return !!loadout && loadout.discNames.indexOf(discKey(disc)) !== -1
+}
+
+function toggleCardDisc(entry, loadoutIndex, disc, event) {
+  const draft = ensureCardDraft(entry)
+  const loadout = draft && draft.discLoadouts && draft.discLoadouts[loadoutIndex]
+  const key = discKey(disc)
+  if (!loadout || !key) return
+  const selectedIndex = loadout.discNames.indexOf(key)
+  if (selectedIndex !== -1) {
+    loadout.discNames.splice(selectedIndex, 1)
+  } else if (loadout.discNames.length < 3) {
+    loadout.discNames.push(key)
+  } else {
+    if (event && event.target) event.target.checked = false
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: '每套命盘最多选择 3 个' })
+  }
+}
+
+function cardStoneValue(entry, index) {
+  const draft = ensureCardDraft(entry)
+  return draft && draft.starStones && draft.starStones[index]
+    ? draft.starStones[index]
+    : { type: stoneSlots.value[index] ? stoneSlots.value[index].type : 'stone' + (index + 1), name: '', level: 0 }
+}
+
+function cardStoneOptions(entry, index) {
+  const slot = stoneSlots.value[index]
+  const type = slot ? slot.type : 'main1'
+  const catalog = catalogMap.value[entry && entry.id]
+  const options = type.indexOf('assist') === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS
+  const available = options.filter(function (name) { return isStarStoneAllowed(name, catalog) })
+  const current = cardStoneValue(entry, index).name
+  if (current && options.indexOf(current) !== -1 && available.indexOf(current) === -1) return [current].concat(available)
+  return available
+}
+
+function setCardStoneName(entry, index, event) {
+  const stone = cardStoneValue(entry, index)
+  const name = String(event && event.target ? event.target.value : '')
+  stone.name = name
+  if (!name) stone.level = 0
+  else if (Number(stone.level) < 1) stone.level = 1
+}
+
+function setCardStoneLevel(entry, index, eventOrValue) {
+  const stone = cardStoneValue(entry, index)
+  if (!stone.name) return
+  const raw = eventOrValue && eventOrValue.target ? eventOrValue.target.value : eventOrValue
+  const value = Math.trunc(Number(raw) || 0)
+  stone.level = Math.max(1, Math.min(60, value))
+}
+
+function removeCardStone(entry, index) {
+  const stone = cardStoneValue(entry, index)
+  stone.name = ''
+  stone.level = 0
+  stone.rarity = null
+  cardPopoverKey.value = ''
 }
 
 function operatorRemark(entry) {
@@ -1792,15 +2319,20 @@ function operatorRemark(entry) {
 }
 
 function setOperatorRemarkDraft(entry, value) {
+  const draft = ensureCardDraft(entry)
   workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, { [entry.id]: value })
+  if (draft) draft.remark = value
 }
 
 function saveOperatorRemark(entry) {
-  persistWorkbenchMap('remarks', workbenchRemarks.value)
+  const draft = ensureCardDraft(entry)
+  if (draft) draft.remark = operatorRemark(entry)
 }
 
 function cardCombatStones(entry) {
-  return (Array.isArray(entry.starStones) ? entry.starStones : []).reduce(function (result, stone, index) {
+  const draft = ensureCardDraft(entry)
+  const stones = draft && Array.isArray(draft.starStones) ? draft.starStones : (Array.isArray(entry.starStones) ? entry.starStones : [])
+  return stones.reduce(function (result, stone, index) {
     const type = stone && stone.type ? stone.type : 'stone' + (index + 1)
     result[type] = { name: stone.name || '', level: Number(stone.level) || 0, rarity: stone.rarity }
     return result
@@ -1824,11 +2356,16 @@ function cardCombatDraft(entry) {
 
 function cardCombatInput(entry) {
   const draft = cardCombatDraft(entry)
+  const growth = cardGrowthDrafts.value[entry.id] || {
+    level: Number(entry.level) || 0,
+    elite: Number(entry.elite) || 0,
+    star: Number(entry.starLevel) || 0
+  }
   return {
     operatorName: entry.name,
-    level: entry.level,
-    elite: entry.elite,
-    starLevel: entry.starLevel,
+    level: Number(growth.level) || 0,
+    elite: Number(growth.elite) || 0,
+    starLevel: Number(growth.star) || 0,
     stones: cardCombatStones(entry),
     oddities: {
       attack: { current: draft.oddityAttack },
@@ -1857,6 +2394,13 @@ function cardCombatResult(entry) {
 function cardCombatAutoAvailable(entry, kind) {
   const result = cardCombatResult(entry)
   return kind === 'attack' ? result.automaticAttackAvailable : result.automaticHpAvailable
+}
+
+function cardCombatModeSwitchAllowed(entry, kind) {
+  if (!cardCombatAutoAvailable(entry, kind)) return false
+  const mode = cardCombatMode(entry, kind)
+  // 观测过期时，自动计算仍可用，但不能直接切换到过期观测值。
+  return !(mode === 'auto' && combatObservedStatus(entry) === 'stale')
 }
 
 function cardCombatMode(entry, kind) {
@@ -1895,26 +2439,50 @@ function cardCombatInputValue(entry, kind) {
 function cardCombatSource(entry, kind) {
   const mode = cardCombatMode(entry, kind)
   const result = cardCombatResult(entry)
-  if (mode === 'auto') return '自动计算' + (combatObservedStatus(entry) === 'stale' ? ' · 观测已过期' : '')
-  if (mode === 'manual') return '手动 / 观测值' + (combatObservedStatus(entry) === 'stale' ? ' · 观测已过期' : '')
+  const stale = combatObservedStatus(entry) === 'stale' ? ' · 数据已过期，请重新填写' : ''
+  if (mode === 'auto') return combatObservedStatus(entry) === 'stale'
+    ? '数值已过期，请重新填写'
+    : '可切换为观测值'
+  if (mode === 'manual') {
+    return cardCombatAutoAvailable(entry, kind)
+      ? '可切换为自动计算值' + stale
+      : '暂不支持自动计算' + stale
+  }
   return combatStatsSourceLabel(result.source, result.status)
 }
 
+function combatModeLabel(entry, kind) {
+  const name = kind === 'attack' ? '攻击力' : '生命力'
+  const mode = cardCombatMode(entry, kind)
+  if (!cardCombatAutoAvailable(entry, kind)) return name + '使用手动校正（暂无自动计算）'
+  if (mode === 'auto' && combatObservedStatus(entry) === 'stale') return name + '观测值已过期，请重新填写手动校正'
+  return mode === 'auto' ? '切换为手动校正' + name : '切换为自动计算' + name
+}
+
+function toggleCardCombatMode(entry, kind) {
+  const current = cardCombatMode(entry, kind)
+  const next = current === 'auto' ? 'manual' : 'auto'
+  if (next === 'auto' && !cardCombatAutoAvailable(entry, kind)) return
+  if (next === 'manual' && combatObservedStatus(entry) === 'stale') return
+  setCardCombatMode(entry, kind, next)
+}
+
 function setCardCombatMode(entry, kind, mode) {
+  const draft = ensureCardDraft(entry)
   mode = mode === 'auto' ? 'auto' : 'manual'
   const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, { [kind]: mode })
   cardCombatModes.value = Object.assign({}, cardCombatModes.value, { [entry.id]: next })
-  persistWorkbenchMap('combat-modes', cardCombatModes.value)
-  saveCardCombat(entry)
+  if (draft) draft.modes = Object.assign({}, next)
 }
 
 function setCardCombatValue(entry, kind, event) {
+  const card = ensureCardDraft(entry)
   const draft = cardCombatDraft(entry)
   const raw = event && event.target ? event.target.value : ''
   draft[kind] = raw === '' ? null : Number(raw)
   const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, { [kind]: 'manual' })
   cardCombatModes.value = Object.assign({}, cardCombatModes.value, { [entry.id]: next })
-  persistWorkbenchMap('combat-modes', cardCombatModes.value)
+  if (card) card.modes = Object.assign({}, next)
 }
 
 function cardOddityValue(entry, kind) {
@@ -1928,9 +2496,122 @@ function cardOddityMax(entry, kind) {
 }
 
 function setCardOddityValue(entry, kind, event) {
+  ensureCardDraft(entry)
   const draft = cardCombatDraft(entry)
   const raw = event && event.target ? event.target.value : ''
   draft[kind === 'attack' ? 'oddityAttack' : 'oddityHp'] = raw === '' ? 0 : Number(raw)
+}
+
+function cardPatch(entry) {
+  const growth = ensureCardDraft(entry)
+  const combat = cardCombatDraft(entry)
+  const input = Object.assign({}, cardCombatInput(entry), {
+    level: growth.level,
+    elite: growth.elite,
+    starLevel: growth.star
+  })
+  const result = cardCombatResult(Object.assign({}, entry, { level: growth.level, elite: growth.elite, starLevel: growth.star }))
+  const modes = growth.modes || cardCombatModes.value[entry.id] || {}
+  const patch = {
+    expected_revision: Number(entry.revision) || 0,
+    reason: 'manual_correction',
+    level: Number(growth.level) || 0,
+    elite: Number(growth.elite) || 0,
+    star_level: Number(growth.star) || 0,
+    disc_loadouts: (growth.discLoadouts || []).map(function (loadout, index) {
+      const names = Array.isArray(loadout.discNames) ? loadout.discNames.slice(0, 3) : []
+      return {
+        id: String(loadout.id || 'disc_' + (index + 1)),
+        name: String(loadout.name || '').trim() || automaticDiscLoadoutName(names),
+        discs: names.map(function (name) { return { ot_name: name } })
+      }
+    }),
+    star_stones: (growth.starStones || []).filter(function (stone) { return stone && stone.name }).map(function (stone) {
+      return { name: stone.name, type: stone.type, level: Number(stone.level) || 0 }
+    }),
+    combat_stats: {
+      manual_attack: combat.attack == null || combat.attack === '' ? null : Number(combat.attack),
+      manual_hp: combat.hp == null || combat.hp === '' ? null : Number(combat.hp),
+      display_mode: { attack: modes.attack || null, hp: modes.hp || null },
+      oddities: {
+        attack: { current: Number(combat.oddityAttack) || 0 },
+        hp: { current: Number(combat.oddityHp) || 0 },
+        special: { current: Number(entry.combatStats && entry.combatStats.oddities && entry.combatStats.oddities.special ? entry.combatStats.oddities.special.current : 0) }
+      }
+    }
+  }
+  if (combat.attack != null || combat.hp != null) {
+    patch.combat_stats.source = 'manual'
+    patch.combat_stats.combat_input_signature = combatInputSignature(input)
+    patch.combat_stats.observed_inputs = {
+      level: growth.level,
+      elite: growth.elite,
+      star_level: growth.star,
+      oddities_signature: patch.combat_stats.combat_input_signature,
+      equipped_star_stones_signature: patch.combat_stats.combat_input_signature
+    }
+  }
+  return patch
+}
+
+async function saveCardDraft(entry) {
+  if (!accountId.value || cardSubmitStates.value[entry.id] === 'submitting') return
+  cardPopoverKey.value = ''
+  cardSubmitStates.value = Object.assign({}, cardSubmitStates.value, { [entry.id]: 'submitting' })
+  try {
+    const response = await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch: cardPatch(entry) })
+    mergePatchedCurrentEntry(entry, response)
+    const draft = ensureCardDraft(entry)
+    if (draft && draft.remark != null) workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, { [entry.id]: draft.remark })
+    persistWorkbenchMap('remarks', workbenchRemarks.value)
+    persistWorkbenchMap('combat-modes', cardCombatModes.value)
+    cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, { [entry.id]: cardDraftSnapshot(entry) })
+    cardSubmitStates.value = Object.assign({}, cardSubmitStates.value, { [entry.id]: 'success' })
+    const timer = cardSubmitTimers.get(entry.id)
+    if (timer) clearTimeout(timer)
+    cardSubmitTimers.set(entry.id, setTimeout(function () { clearCardSubmitState(entry) }, 1100))
+  } catch (err) {
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: humanErr(err, '保存失败') })
+    cardSubmitStates.value = Object.assign({}, cardSubmitStates.value, { [entry.id]: 'error' })
+  }
+}
+
+function mergePatchedCurrentEntry(entry, payload) {
+  const raw = payload && payload.entry && typeof payload.entry === 'object'
+    ? payload.entry
+    : (payload && payload.operator && typeof payload.operator === 'object' ? payload.operator : payload)
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return
+  const catalog = catalogMap.value[entry.id] || {}
+  const normalized = Object.assign({
+    id: entry.id,
+    name: catalog.name || entry.name || '',
+    rarity: catalog.rarity || entry.rarity,
+    prof: catalog.prof || entry.prof || '',
+    subProf: catalog.subProf || entry.subProf || '',
+    games: catalog.games || entry.games || [],
+    spOf: catalog.spOf || entry.spOf || ''
+  }, normalizeEntry(raw, catalog.odditySchema))
+  Object.assign(entry, normalized)
+  const stats = normalized.combatStats || normalizeOperatorCombatStats({})
+  const growth = ensureCardDraft(entry)
+  if (growth) {
+    growth.level = Number(normalized.level) || 0
+    growth.elite = Number(normalized.elite) || 0
+    growth.star = Number(normalized.starLevel) || 0
+    growth.discLoadouts = normalizeCardDiscLoadouts(normalized)
+    growth.starStones = normalizeCardStarStones(normalized)
+    growth.modes = Object.assign({}, stats.displayMode || {})
+  }
+  cardCombatModes.value = Object.assign({}, cardCombatModes.value, { [entry.id]: Object.assign({}, stats.displayMode || {}) })
+  cardCombatDrafts.value = Object.assign({}, cardCombatDrafts.value, {
+    [entry.id]: {
+      attack: stats.manualAttack,
+      hp: stats.manualHp,
+      oddityAttack: stats.oddities && stats.oddities.attack ? stats.oddities.attack.current : 0,
+      oddityHp: stats.oddities && stats.oddities.hp ? stats.oddities.hp.current : 0
+    }
+  })
+  if (growth) cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, { [entry.id]: cardDraftSnapshot(entry) })
 }
 
 async function saveCardCombat(entry) {
@@ -1959,12 +2640,24 @@ async function saveCardCombat(entry) {
   if (draft.attack != null || draft.hp != null) {
     patch.combat_stats.source = 'manual'
     patch.combat_stats.combat_input_signature = signature
-    patch.combat_stats.observed_inputs = { signature: signature, level: entry.level, elite: entry.elite, star_level: entry.starLevel }
+    patch.combat_stats.observed_inputs = {
+      level: entry.level,
+      elite: entry.elite,
+      star_level: entry.starLevel,
+      oddities_signature: signature,
+      equipped_star_stones_signature: signature
+    }
   }
   cardCombatSavingIds.value = new Set([...cardCombatSavingIds.value, entry.id])
   try {
-    await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch: patch })
-    await reloadCurrent(true)
+    const response = await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch: patch })
+    mergePatchedCurrentEntry(entry, response)
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: '已保存' })
+    window.setTimeout(function () {
+      const next = Object.assign({}, quickNotices.value)
+      if (next[entry.id] === '已保存') delete next[entry.id]
+      quickNotices.value = next
+    }, 1400)
   } catch (err) {
     quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: humanErr(err, '战斗属性保存失败') })
   } finally {
@@ -2799,6 +3492,9 @@ function humanErr(err, fallback) {
 function goLogin() { location.href = '/login' }
 
 onMounted(async function () {
+  document.addEventListener('pointerdown', handleCardPopoverOutside)
+  window.addEventListener('scroll', hideDiscTooltip, true)
+  window.addEventListener('resize', hideDiscTooltip)
   await loadCatalog()
   await loadAccounts()
   await Promise.all([reloadCurrent(), loadAgentFavorites()])
@@ -2806,6 +3502,9 @@ onMounted(async function () {
 })
 
 onBeforeUnmount(function () {
+  document.removeEventListener('pointerdown', handleCardPopoverOutside)
+  window.removeEventListener('scroll', hideDiscTooltip, true)
+  window.removeEventListener('resize', hideDiscTooltip)
   stopAccountEventSubscription()
   if (bodyLockedByEditor) document.body.style.overflow = bodyOverflowBeforeEditor
 })
@@ -3047,6 +3746,7 @@ onBeforeUnmount(function () {
 .import-result .ok { margin-left: auto; border: none; background: var(--tea); color: var(--cream); border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b) }
 
 .panel { margin-top: 20px }
+.panel.is-active .rv { opacity: 1; transform: none }
 .type-switch { display: flex; gap: 4px; background: transparent; padding: 4px 0; align-items: center }
 .type-switch .hint { font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
 
@@ -3096,15 +3796,18 @@ onBeforeUnmount(function () {
 .current-ledger-meta { display:flex; justify-content:space-between; gap:12px; padding:0 2px 14px; color:rgba(255,248,236,.76); font-size:11px; font-weight:700; line-height:1.6 }
 .current-ledger-meta span:last-child { color:var(--yellow) }
 .agent-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px }
-.agent-ledger-card { position:relative; min-width:0; display:flex; flex-direction:column; gap:11px; padding:14px 12px 12px; color:var(--ink); border:1px solid var(--line); border-radius:12px; background:linear-gradient(180deg,var(--surface),var(--cream)); box-shadow:0 8px 24px rgba(73,59,44,.18), inset 0 1px 0 rgba(255,255,255,.8); transition:transform .35s var(--ease),box-shadow .35s var(--ease) }
+.agent-ledger-card { --ledger-rarity-accent:#99b5cf; position:relative; min-width:0; display:flex; flex-direction:column; gap:11px; padding:14px 12px 12px; color:var(--ink); border:1px solid var(--line); border-top:2px solid var(--ledger-rarity-accent); border-radius:12px; background:linear-gradient(180deg,var(--surface),var(--cream)); box-shadow:0 8px 24px rgba(73,59,44,.18), inset 0 1px 0 rgba(255,255,255,.8); transition:transform .35s var(--ease),box-shadow .35s var(--ease) }
+.agent-ledger-card:hover, .agent-ledger-card.is-popover-open { z-index:20 }
 .agent-ledger-card:hover { transform:translateY(-5px); box-shadow:0 18px 30px rgba(73,59,44,.25), inset 0 1px 0 rgba(255,255,255,.8) }
-.agent-ledger-card.rarity-r5 { border-top:2px solid var(--accent) }
-.agent-ledger-card.rarity-r4 { border-top:2px solid var(--brand-blue) }
+.agent-ledger-card.rarity-r5 { --ledger-rarity-accent:var(--accent) }
+.agent-ledger-card.rarity-r4 { --ledger-rarity-accent:#8672b2 }
+.agent-ledger-card.rarity-r3 { --ledger-rarity-accent:#99b5cf }
 .agent-ledger-card.status-growing { border-left:3px solid #6f9f76 }
 .agent-ledger-card.status-graduated { border-left:3px solid var(--yellow-deep) }
 .agent-ledger-card.status-inactive { border-left:3px solid rgba(73,59,44,.35) }
-.ledger-card-head { display:flex; gap:10px; align-items:center; min-width:0 }
-.ledger-avatar { position:relative; flex:none; width:46px; height:46px; overflow:visible; border:2px solid var(--yellow-deep); border-radius:10px; background:var(--paper) }
+.ledger-card-head { position:relative; display:flex; gap:10px; align-items:center; min-width:0 }
+.ledger-card-head:has(.ledger-status-menu[open]) { z-index:50 }
+.ledger-avatar { position:relative; flex:none; width:46px; height:46px; overflow:visible; border:2px solid var(--ledger-rarity-accent); border-radius:10px; background:color-mix(in srgb, var(--ledger-rarity-accent) 16%, var(--paper)) }
 .ledger-avatar img { width:100%; height:100%; display:block; object-fit:cover; border-radius:8px }
 .ledger-avatar > span { display:grid; width:100%; height:100%; place-items:center; font:900 21px var(--font-s); color:var(--ink-35) }
 .ledger-favorite { position:absolute; right:-9px; top:-9px; z-index:2; width:22px; height:22px; display:grid; place-items:center; padding:0; border:1px solid var(--line); border-radius:50%; background:var(--surface); color:var(--ink-35); cursor:pointer; box-shadow:0 2px 5px rgba(73,59,44,.18) }
@@ -3113,45 +3816,69 @@ onBeforeUnmount(function () {
 .ledger-identity { min-width:0; flex:1 }
 .ledger-name-row { display:flex; align-items:center; justify-content:space-between; gap:5px }
 .ledger-name-row h3 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px; font-weight:900; font-family:var(--font-s) }
-.ledger-name-row select { max-width:64px; padding:3px 4px; border:0; border-radius:4px; background:var(--yellow); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer; outline:none }
-.ledger-name-row select.status-growing { background:#BFDCC0; color:#315f38 }
-.ledger-name-row select.status-graduated { background:var(--yellow); color:var(--ink) }
-.ledger-name-row select.status-inactive { background:rgba(73,59,44,.16); color:var(--ink-60) }
-.ledger-prof { display:flex; align-items:center; gap:4px; margin-top:4px; color:var(--ink-60); font-size:10.5px; font-weight:700 }
-.ledger-prof img { width:15px; height:15px; object-fit:contain }
+.ledger-mobile-prof { display:none }
+.ledger-status-menu { position:relative; display:inline-flex; flex:none; max-width:86px; color:var(--ink) }
+.ledger-status-menu summary { list-style:none }
+.ledger-status-menu summary::-webkit-details-marker { display:none }
+.ledger-status-button { display:inline-flex; min-width:72px; min-height:30px; align-items:center; justify-content:space-between; gap:8px; padding:3px 8px; border:1px solid var(--line); border-radius:7px; background:var(--yellow); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer; user-select:none }
+.ledger-status-button::after { width:6px; height:6px; flex:none; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; content:''; transform:translateY(-2px) rotate(45deg) }
+.ledger-status-menu.status-growing .ledger-status-button { border-color:rgba(111,159,118,.45); background:#BFDCC0; color:#315f38 }
+.ledger-status-menu.status-graduated .ledger-status-button { border-color:rgba(239,210,142,.85); background:var(--yellow); color:var(--ink) }
+.ledger-status-menu.status-inactive .ledger-status-button { border-color:rgba(73,59,44,.22); background:rgba(73,59,44,.12); color:var(--ink-60) }
+.ledger-status-button:focus-visible { outline:2px solid var(--brand-blue); outline-offset:1px }
+.ledger-status-options { position:absolute; z-index:40; top:calc(100% + 5px); right:0; display:flex; min-width:116px; flex-direction:column; gap:3px; padding:5px; border:1px solid var(--line); border-radius:8px; background:var(--surface); box-shadow:0 10px 24px rgba(73,59,44,.22) }
+.ledger-status-options button { display:flex; min-height:40px; align-items:center; justify-content:center; padding:7px 9px; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--ink-60); font:800 11px var(--font-b); text-align:center; cursor:pointer; white-space:nowrap }
+.ledger-status-options button:hover, .ledger-status-options button[aria-selected="true"] { border-color:var(--line); background:var(--cream); color:var(--ink) }
+.ledger-status-options button:first-child[aria-selected="true"] { border-color:rgba(111,159,118,.45); background:#BFDCC0; color:#315f38 }
+.ledger-status-options button:nth-child(2)[aria-selected="true"] { border-color:rgba(239,210,142,.85); background:var(--yellow); color:var(--ink) }
+.ledger-status-options button:nth-child(3)[aria-selected="true"] { border-color:rgba(73,59,44,.22); background:rgba(73,59,44,.12); color:var(--ink-60) }
+.ledger-prof { display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0; margin-top:1px; color:var(--ink-60); font-size:10.5px; font-weight:700 }
+.ledger-prof-copy { display:flex; align-items:center; gap:4px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.ledger-prof img { width:15px; height:15px; flex:none; object-fit:contain }
 .ledger-combat { display:grid; grid-template-columns:1fr 1fr; gap:7px }
-.ledger-combat-stat { min-width:0; padding:7px 8px 6px; border:1px solid var(--line); border-radius:6px; background:var(--surface); transition:border-color .2s, box-shadow .2s }
+.ledger-combat-stat { position:relative; min-width:0; padding:7px 8px 6px; border:1px solid var(--line); border-radius:6px; background:var(--surface); transition:border-color .2s, box-shadow .2s }
+.ledger-combat-stat.is-saving { opacity:.72 }
+.ledger-combat-stat.is-saving::after { position:absolute; right:7px; bottom:7px; width:8px; height:8px; border:1px solid var(--line); border-top-color:var(--accent); border-radius:50%; content:''; animation:ledger-combat-spin .7s linear infinite }
+@keyframes ledger-combat-spin { to { transform:rotate(360deg) } }
 .ledger-combat-stat:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px rgba(215,137,53,.1) }
 .ledger-combat-stat.is-manual { border-color:rgba(215,137,53,.58); background:var(--cream) }
 .ledger-combat-stat.is-stale { border-color:rgba(166,81,74,.42) }
 .ledger-combat-head { display:flex; align-items:center; justify-content:space-between; gap:4px; color:var(--ink-60); font-size:10px; font-weight:800 }
-.ledger-combat-mode { max-width:74px; padding:2px 3px; border:1px solid var(--line); border-radius:999px; background:var(--paper); color:var(--ink-60); font-size:9px; font-weight:800; cursor:pointer; outline:none }
-.ledger-combat-mode:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(215,137,53,.12) }
-.ledger-combat-mode option { color:var(--ink); background:var(--surface) }
-.ledger-combat-value { display:block; width:100%; min-width:0; margin-top:3px; padding:1px 0 3px; border:0; border-bottom:1px dashed var(--accent); outline:none; background:transparent; color:var(--ink); font:900 21px/1 var(--font-d); -moz-appearance:textfield }
+.ledger-combat-mode { width:20px; height:20px; display:grid; place-items:center; flex:none; padding:0; border:0; border-radius:4px; background:transparent; color:var(--ink-35); cursor:pointer; outline:none; transition:color .18s ease, background .18s ease }
+.ledger-combat-mode:hover:not(:disabled) { background:rgba(215,137,53,.12); color:var(--accent-strong) }
+.ledger-combat-mode.is-auto { color:var(--brand-blue) }
+.ledger-combat-mode.is-manual { color:var(--accent-strong) }
+.ledger-combat-mode.is-disabled { color:var(--ink-35); cursor:not-allowed; opacity:.68 }
+.ledger-combat-mode:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.ledger-combat-value { display:block; width:100%; min-width:0; margin-top:3px; padding:1px 0 3px; border:0; border-bottom:1px dashed var(--accent); outline:none; background:transparent; color:var(--ink); font:900 21px/1 var(--font-d); text-align:center; -moz-appearance:textfield }
 .ledger-combat-value::-webkit-outer-spin-button,.ledger-combat-value::-webkit-inner-spin-button { -webkit-appearance:none }
 .ledger-combat-value::placeholder { color:var(--ink); opacity:1 }
 .ledger-combat-value:focus::placeholder { color:transparent }
-.ledger-combat-source { display:block; margin-top:4px; min-height:12px; color:var(--ink-35); font-size:8px; font-weight:800 }
-.ledger-oddity { display:flex; align-items:center; gap:2px; margin-top:4px; color:var(--accent-strong); font:800 10px var(--font-d) }
-.ledger-oddity input { width:35px; min-width:0; padding:0 1px; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink-60); font:800 10px var(--font-d); text-align:right; -moz-appearance:textfield }
+.ledger-combat-source { display:block; margin-top:4px; min-height:12px; color:var(--ink-35); font-size:8px; font-weight:800; text-align:center }
+.ledger-oddity { display:flex; align-items:center; justify-content:center; gap:3px; margin-top:4px; color:var(--accent-strong); font:800 10px var(--font-d) }
+.ledger-oddity-icon { display:inline-flex; width:14px; justify-content:center; color:var(--accent-strong); font:900 10px var(--font-s) }
+.ledger-oddity input { width:42px; min-width:0; padding:0 1px; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink-60); font:800 10px var(--font-d); text-align:center; -moz-appearance:textfield }
 .ledger-oddity input::-webkit-outer-spin-button,.ledger-oddity input::-webkit-inner-spin-button { -webkit-appearance:none }
 .ledger-oddity span { color:var(--ink-35); font-size:9px }
+.ledger-combat + .ledger-growth { margin-top:-10px }
 .ledger-growth { display:flex; flex-direction:column; gap:7px; padding:9px 9px 8px; border:1px solid var(--line); border-radius:8px; background:rgba(255,255,255,.62) }
 .ledger-growth-row { position:relative; display:flex; align-items:center; min-height:24px; gap:5px; font-size:11px }
 .ledger-grow-label { width:32px; flex:none; color:var(--ink-60); font-weight:700 }
 .ledger-editable { padding:0 2px; border:0; border-bottom:1px dashed var(--accent); background:transparent; color:var(--ink); font:700 13px var(--font-d); cursor:pointer }
 .ledger-editable:hover { color:var(--accent-strong) }
 .ledger-step-actions { display:flex; gap:3px; margin-left:auto }
-.ledger-step-actions button,.ledger-next-action { border:1px solid var(--line); border-radius:4px; padding:3px 5px; background:var(--surface); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer }
+.ledger-step-actions button,.ledger-next-action { border:1px solid var(--line); border-radius:4px; padding:3px 5px; background:var(--surface); color:var(--ink); font-size:10px; font-weight:800; text-align:center; cursor:pointer }
 .ledger-step-actions button:hover,.ledger-next-action:hover:not(:disabled) { border-color:var(--accent); background:var(--yellow) }
-.ledger-smart-action { display:inline-flex; align-items:center; gap:2px; margin-left:auto; border:1px solid rgba(74,138,65,.35); border-radius:4px; padding:3px 5px; background:#E8F4E9; color:#378B3A; font-size:10px; font-weight:800; cursor:pointer }
-.ledger-next-action { margin-left:auto }
+.ledger-smart-action { display:inline-flex; align-items:center; justify-content:center; gap:2px; margin-left:auto; border:1px solid rgba(74,138,65,.35); border-radius:4px; padding:3px 5px; background:#E8F4E9; color:#378B3A; font-size:10px; font-weight:800; text-align:center; cursor:pointer }
+.ledger-next-action { display:inline-flex; align-items:center; justify-content:center; gap:2px; margin-left:auto; line-height:1.2 }
+.ledger-next-action svg { flex:none; display:block }
 .ledger-step-actions button:disabled,.ledger-smart-action:disabled,.ledger-next-action:disabled { opacity:.4; cursor:not-allowed }
 .ledger-popover { position:absolute; z-index:20; left:24px; right:0; top:calc(100% + 7px); display:flex; flex-direction:column; gap:7px; padding:9px; border:1px solid var(--accent); border-radius:8px; background:var(--surface); box-shadow:0 10px 25px rgba(73,59,44,.22) }
 .ledger-popover::before { position:absolute; top:-6px; left:20px; width:10px; height:10px; border-left:1px solid var(--accent); border-top:1px solid var(--accent); background:var(--surface); content:''; transform:rotate(45deg) }
 .ledger-popover p { display:flex; align-items:flex-start; gap:4px; color:var(--brand-blue); font-size:9.5px; line-height:1.35; font-weight:700 }
 .ledger-popover > div { display:flex; gap:5px }
+.ledger-breakthrough-toggle { display:inline-flex; align-items:center; align-self:flex-start; gap:5px; color:var(--ink-60); font-size:9px; font-weight:700; cursor:pointer }
+.ledger-breakthrough-toggle input { width:13px; height:13px; margin:0; accent-color:var(--accent) }
 .ledger-popover input { min-width:0; width:100%; padding:4px 5px; border:1px solid var(--line); border-radius:4px; background:var(--cream); color:var(--ink); font:700 12px var(--font-d); outline:none }
 .ledger-popover input:focus { border-color:var(--accent) }
 .ledger-popover button { flex:none; border:0; border-radius:4px; padding:0 8px; background:var(--accent); color:#fff; font-size:10px; font-weight:800; cursor:pointer }
@@ -3166,23 +3893,107 @@ onBeforeUnmount(function () {
 .ledger-stats strong { font:900 17px var(--font-d); color:var(--ink) }
 .ledger-stats small { color:var(--ink-35); font-size:9px; font-weight:700 }
 .ledger-destiny { display:flex; flex-direction:column; gap:5px; padding-top:2px }
-.ledger-destiny-row { display:flex; align-items:flex-start; gap:5px; min-width:0 }
-.ledger-destiny-row > span { flex:none; padding-top:3px; color:var(--accent-strong); font-size:10px; font-weight:800 }
-.ledger-destiny-row > div { display:flex; flex-wrap:wrap; gap:3px; min-width:0 }
-.ledger-destiny-row em { padding:2px 5px; border:1px solid rgba(215,137,53,.28); border-radius:4px; background:rgba(215,137,53,.12); color:var(--ink); font-size:9px; font-style:normal; font-weight:500 }
+.ledger-destiny-row { position:relative; display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer }
+.ledger-destiny-row:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px; border-radius:4px }
+.ledger-destiny-row > span { display:inline-flex; flex:none; align-items:center; color:var(--accent-strong); font-size:10px; font-weight:800; line-height:1.2 }
+.ledger-destiny-row > .ledger-destiny-values { display:flex; flex-wrap:wrap; align-items:center; gap:3px; min-width:0 }
+.ledger-destiny-row em { display:inline-flex; align-items:center; justify-content:center; padding:2px 5px; border:1px solid rgba(215,137,53,.28); border-radius:4px; background:rgba(215,137,53,.12); color:var(--ink); font-size:9px; font-style:normal; font-weight:500; line-height:1.2 }
+.ledger-disc-popover { left:0; right:0; width:auto; min-width:0; max-width:100%; box-sizing:border-box }
+.ledger-disc-options { display:grid !important; width:100%; min-width:0; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px !important; max-height:150px; overflow-x:hidden; overflow-y:auto; scrollbar-gutter:stable }
+.ledger-disc-option { display:flex; width:100%; min-width:0; max-width:100%; align-items:center; gap:5px; padding:4px 5px; overflow:hidden; border:1px solid var(--line); border-radius:4px; background:var(--cream); color:var(--ink-60); font-size:9px; font-weight:700; cursor:pointer; box-sizing:border-box }
+.ledger-disc-option:has(input:checked) { border-color:var(--accent); background:rgba(215,137,53,.12); color:var(--ink) }
+.ledger-disc-option.c-gold { border-color:rgba(215,137,53,.55); background:rgba(215,137,53,.1); color:#8A5A1F }
+.ledger-disc-option.c-gold:has(input:checked) { border-color:#B06F24; background:var(--accent); color:var(--cream) }
+.ledger-disc-option.c-gold input { accent-color:#B06F24 }
+.ledger-disc-option.c-purple { border-color:rgba(151,130,199,.62); background:rgba(151,130,199,.16); color:#6D56A0 }
+.ledger-disc-option.c-purple:has(input:checked) { border-color:#7A62AB; background:#8A72BD; color:var(--cream) }
+.ledger-disc-option.c-purple input { accent-color:#8A72BD }
+.ledger-disc-option.c-blue { border-color:rgba(110,135,184,.6); background:rgba(110,135,184,.16); color:#4F6387 }
+.ledger-disc-option.c-blue:has(input:checked) { border-color:#5F76A4; background:#6E87B8; color:var(--cream) }
+.ledger-disc-option.c-blue input { accent-color:#6E87B8 }
+.ledger-disc-option input { width:13px; height:13px; flex:none; margin:0; accent-color:var(--accent) }
+.ledger-disc-option > span { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.disc-term, .disc-term-label { position:relative; cursor:help }
+.disc-term:focus-visible, .disc-term-label:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.disc-floating-tooltip { position:fixed; z-index:240; width:max-content; max-width:min(280px, calc(100vw - 24px)); padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:var(--tea); color:var(--cream); box-shadow:0 10px 24px rgba(73,59,44,.28); font:700 11px/1.5 var(--font-b); text-align:left; white-space:normal; overflow-wrap:anywhere; pointer-events:none; animation:disc-tooltip-in .14s ease both }
+.disc-floating-tooltip.is-top { transform:translate(-50%, -100%) }
+.disc-floating-tooltip.is-bottom { transform:translate(-50%, 0) }
+.disc-floating-tooltip::after { position:absolute; left:50%; width:8px; height:8px; background:var(--tea); content:''; transform:translateX(-50%) rotate(45deg) }
+.disc-floating-tooltip.is-top::after { bottom:-5px; border-right:1px solid var(--line); border-bottom:1px solid var(--line) }
+.disc-floating-tooltip.is-bottom::after { top:-5px; border-left:1px solid var(--line); border-top:1px solid var(--line) }
+@keyframes disc-tooltip-in { from { opacity:0 } to { opacity:1 } }
 .ledger-destiny-row em.empty { border-style:dashed; background:transparent; color:var(--ink-35) }
-.ledger-stones { display:grid; flex:0 0 42px; align-content:start; grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-rows:42px; height:42px; min-height:42px; max-height:42px; gap:3px; padding-top:2px; overflow:visible }
-.ledger-stones > .stone-slot { width:100%; height:42px; min-height:42px; max-height:42px; overflow:hidden; display:flex; flex:none; flex-direction:column; align-items:center; justify-content:center; min-width:0; border:1px solid var(--line); border-radius:4px; background:var(--surface); text-align:center; box-sizing:border-box }
-.ledger-stones > .stone-slot.is-empty { height:42px; min-height:42px; max-height:42px; flex:0 0 42px; background:transparent; color:var(--line); font-size:15px }
+.ledger-destiny-row:nth-child(1) > span { color:#A66C2B }
+.ledger-destiny-row:nth-child(1) em { border-color:#E7C89C; background:#FAF1E4 }
+.ledger-destiny-row:nth-child(1) em.empty { border-color:#E7C89C; background:transparent; color:#A66C2B }
+.ledger-destiny-row:nth-child(2) > span { color:#7E7A72 }
+.ledger-destiny-row:nth-child(2) em { border-color:#D8D3CB; background:#F5F2ED; color:#7E7A72 }
+.ledger-destiny-row:nth-child(2) em.empty { border-color:#D8D3CB; background:transparent; color:#7E7A72 }
+.ledger-stones { position:relative; display:grid; align-content:start; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; margin-top:auto; padding-top:2px; overflow:visible }
+.ledger-stones > .stone-slot { width:100%; aspect-ratio:1; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:0; min-height:0; padding:0; border:1px solid var(--line); border-radius:4px; background:var(--surface); color:var(--ink); font:inherit; text-align:center; box-sizing:border-box; cursor:pointer }
+.ledger-stones > .stone-slot:hover:not(:disabled) { border-color:var(--accent); background:var(--cream) }
+.ledger-stones > .stone-slot.is-empty { min-height:0; background:transparent; color:var(--line); font-size:15px }
+.ledger-stone-popover { left:0; right:0; top:calc(100% + 7px) }
+.ledger-stone-popover select { width:100%; min-width:0; padding:5px 6px; border:1px solid var(--line); border-radius:4px; background:var(--cream); color:var(--ink); font:700 10px var(--font-b); outline:none }
+.ledger-stone-level-row { display:flex !important; align-items:center; gap:6px !important }
+.ledger-stone-level-row > label { display:inline-flex; align-items:center; gap:4px; flex:none; color:var(--ink-60); font-size:9px; font-weight:800 }
+.ledger-stone-level-row input { width:42px; min-width:0; padding:4px; border:1px solid var(--line); border-radius:4px; background:var(--cream); color:var(--ink); font:800 11px var(--font-d); text-align:center; outline:none }
+.ledger-stone-levels { display:flex !important; flex:1; gap:3px !important; justify-content:flex-end }
+.ledger-stone-levels button { min-width:28px; padding:4px 5px; border:1px solid var(--line); border-radius:4px; background:var(--surface); color:var(--ink-60); font:800 9px var(--font-d); cursor:pointer }
+.ledger-stone-levels button.on { border-color:var(--yellow-deep); background:var(--yellow); color:var(--ink) }
+.ledger-stone-levels button:disabled { opacity:.45; cursor:not-allowed }
 .ledger-stones strong { max-width:100%; overflow:hidden; color:var(--ink); font-size:8px; text-overflow:ellipsis; white-space:nowrap }
 .ledger-stones small { color:var(--ink-60); font:8px var(--font-d) }
-.ledger-card-footer { display:flex; flex-direction:column; gap:7px; margin-top:auto; padding-top:4px }
+.ledger-card-footer { display:flex; flex-direction:column; gap:7px; margin-top:0; padding-top:4px }
 .ledger-card-footer textarea { width:100%; resize:vertical; min-height:36px; padding:4px 0; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink); font:10.5px/1.45 var(--font-b) }
 .ledger-card-footer textarea:focus { border-bottom-color:var(--accent) }
 .ledger-card-footer textarea::placeholder { color:var(--ink-35) }
+.ledger-inline-field { display:inline-flex; min-width:34px; align-items:center }
+.ledger-inline-input { width:42px; cursor:text; text-align:center; -moz-appearance:textfield }
+.ledger-inline-input::-webkit-outer-spin-button,.ledger-inline-input::-webkit-inner-spin-button { -webkit-appearance:none }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+.ledger-card-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; min-height:30px }
+.ledger-card-actions button { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:30px; padding:5px 10px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer; transition:transform .16s cubic-bezier(.22,1,.36,1),background-color .18s ease,border-color .18s ease,opacity .18s ease }
+.ledger-card-actions button:active { transform:scale(.97) }
+.ledger-card-actions button:disabled { opacity:.5; cursor:not-allowed }
+.ledger-card-cancel { border:1px solid var(--line); background:var(--paper); color:var(--ink-60) }
+.ledger-card-cancel:hover:not(:disabled) { border-color:var(--accent); color:var(--ink) }
+.ledger-card-save { border:1px solid var(--tea); background:var(--tea); color:var(--cream) }
+.ledger-card-save:hover:not(:disabled) { border-color:var(--accent); background:var(--accent) }
+.ledger-material-list { display:flex !important; flex-direction:column; gap:4px !important; max-height:150px; overflow:auto; padding:1px 0 }
+.ledger-material-list span { display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:4px 5px; border:1px solid rgba(73,59,44,.12); border-radius:4px; background:var(--cream); color:var(--ink); font:700 9px/1.3 var(--font-b) }
+.ledger-material-list span.is-lack { border-color:rgba(166,81,74,.35); background:rgba(240,207,200,.35); color:var(--rouge) }
+.ledger-material-list small { flex:none; color:var(--ink-60); font:700 8px var(--font-b) }
+.ledger-material-list .is-lack small { color:var(--rouge) }
+.ledger-material-list em { color:var(--ink-35); font-size:9px; font-style:normal }
+.ledger-popover-blocked { align-self:flex-end; color:var(--rouge); font-size:9px; font-style:normal; font-weight:800 }
+.ledger-popover-actions { justify-content:flex-end }
+.ledger-popover-actions .cancel { margin-right:auto; background:var(--paper); color:var(--ink-60) }
+.ledger-step-actions button.is-ready,.ledger-smart-action.is-ready,.ledger-next-action.is-ready { border-color:#C9D8C5; background:#EEF5EC; color:#6F846B }
+.ledger-step-actions button.is-lack,.ledger-smart-action.is-lack,.ledger-next-action.is-lack { border-color:#E4C49C; background:#FBF1E3; color:#A66F2E }
+.ledger-step-actions button.is-complete,.ledger-smart-action:disabled { border-color:var(--line); background:rgba(73,59,44,.08); color:var(--ink-60); opacity:.72; cursor:default }
+.ledger-star-controls { display:grid !important; grid-template-columns:1fr 1fr; gap:7px !important }
+.ledger-star-controls select { width:100%; min-width:0; min-height:44px; appearance:none; padding:8px 26px 8px 9px; border:1px solid var(--line); border-radius:7px; background:var(--cream); color:var(--ink); font:800 12px var(--font-b); outline:none; text-align:center; text-align-last:center; background-image:linear-gradient(45deg, transparent 50%, var(--ink-60) 50%),linear-gradient(135deg, var(--ink-60) 50%, transparent 50%); background-position:calc(100% - 13px) 18px,calc(100% - 8px) 18px; background-size:5px 5px,5px 5px; background-repeat:no-repeat }
+.ledger-star-controls select:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(215,137,53,.12) }
+.ledger-submit-overlay { position:absolute; inset:0; z-index:30; display:grid; place-items:center; padding:12px; border-radius:inherit; background:rgba(255,253,246,.74); backdrop-filter:blur(3px); opacity:1; pointer-events:auto; transition:opacity .18s ease }
+.ledger-submit-message { width:min(220px,88%); padding:16px 14px 13px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.9); box-shadow:0 12px 30px rgba(73,59,44,.16); text-align:center; transform:translateY(6px) scale(.97); animation:ledger-submit-enter .2s cubic-bezier(.22,1,.36,1) both }
+@keyframes ledger-submit-enter { to { transform:none } }
+.ledger-submit-icon { width:38px; height:38px; display:grid; place-items:center; margin:0 auto 9px; border-radius:50%; background:var(--blue-soft); color:var(--brand-blue); font-size:20px; font-weight:900 }
+.ledger-submit-overlay.success .ledger-submit-icon { background:#E8F4E9; color:#4f8758; border:1px solid rgba(111,159,118,.35) }
+.ledger-submit-overlay.error .ledger-submit-icon { background:rgba(240,207,200,.42); color:var(--rouge); border:1px solid rgba(166,81,74,.35) }
+.ledger-submit-message strong { display:block; color:var(--ink); font-size:14px; font-weight:900 }
+.ledger-submit-message p { margin:4px 0 0; color:var(--ink-60); font-size:10px; line-height:1.45 }
+.ledger-submit-spinner { width:18px; height:18px; border:2px solid rgba(91,106,140,.22); border-top-color:var(--brand-blue); border-radius:50%; animation:ledger-submit-spin .8s linear infinite }
+@keyframes ledger-submit-spin { to { transform:rotate(360deg) } }
+.ledger-submit-actions { display:flex !important; justify-content:center; gap:6px !important; margin-top:12px }
+.ledger-submit-actions button { min-height:28px; padding:5px 9px; border:1px solid var(--line); border-radius:5px; background:var(--paper); color:var(--ink-60); font-size:9px; font-weight:800; cursor:pointer }
+.ledger-submit-actions .ledger-card-save { border-color:var(--tea); background:var(--tea); color:var(--cream) }
+.agent-ledger-card.is-draft { box-shadow:0 10px 28px rgba(215,137,53,.2), inset 0 0 0 1px rgba(215,137,53,.18) }
+.agent-ledger-card.is-submit-success { box-shadow:0 12px 30px rgba(111,159,118,.2), inset 0 0 0 1px rgba(111,159,118,.2) }
+.ledger-notice { margin-left:auto }
 .ledger-full-edit { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; padding:7px; border:0; border-radius:6px; background:var(--ink); color:var(--cream); font-size:11px; font-weight:800; cursor:pointer }
 .ledger-full-edit:hover { background:var(--accent) }
-.ledger-notice { color:var(--accent-strong); font-size:10px; font-weight:800 }
+.ledger-notice { flex:none; max-width:45%; overflow:hidden; color:var(--accent-strong); font-size:9px; font-weight:800; text-overflow:ellipsis; white-space:nowrap }
 .bp-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1.5px dashed var(--line); flex-wrap: wrap }
 .bp-head .sp { flex: 1 }
 .bp-tip { font-size: 12px; color: var(--ink-60); font-weight: 600; line-height: 1.8 }
@@ -3274,7 +4085,7 @@ onBeforeUnmount(function () {
 
 /* ---- 单个密探编辑弹窗 ---- */
 .editor-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 24px; background: rgba(73, 59, 44, .42); backdrop-filter: blur(4px); isolation: isolate; pointer-events: auto }
-.editor-panel { position: relative; z-index: 1; display: flex; width: min(760px, 100%); height: min(92vh, 900px); height: min(92dvh, 900px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5); pointer-events: auto }
+.editor-panel { position: relative; z-index: 1; display: flex; width: min(760px, 100%); max-width: 100%; height: min(92vh, 900px); height: min(92dvh, 900px); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 40px 100px -30px rgba(73, 59, 44, .5); pointer-events: auto; box-sizing:border-box }
 .editor-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, .9fr) auto; align-items: center; gap: 16px; flex: 0 0 auto; padding: 18px 28px 15px; border-bottom: 1.5px dashed var(--line); background: var(--surface) }
 .editor-identity { min-width: 0; grid-column: 1; grid-row: 1 }
 .editor-kicker { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 900; letter-spacing: 0; text-transform: uppercase }
@@ -3305,7 +4116,7 @@ onBeforeUnmount(function () {
 .manual-restore { display: inline-grid; width: 19px; height: 19px; flex: 0 0 auto; place-items: center; padding: 0; border: 1px solid rgba(215, 137, 53, .38); border-radius: 50%; background: transparent; color: var(--accent-strong); cursor: pointer }
 .manual-restore:hover { border-color: var(--accent); background: var(--yellow) }
 .manual-restore:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
-.editor-head-stat input { width: 100%; min-width: 0; min-height: 32px; padding: 1px 0 2px; border: 0; outline: none; background: transparent; color: var(--accent-strong); font: 900 23px/1 var(--font-d); letter-spacing: -.02em; text-align: right; -moz-appearance: textfield }
+.editor-head-stat input { width: 100%; min-width: 0; min-height: 32px; padding: 1px 0 2px; border: 0; outline: none; background: transparent; color: var(--accent-strong); font: 900 23px/1 var(--font-d); letter-spacing: 0; text-align: center; -moz-appearance: textfield }
 .editor-head-stat input::placeholder { color: var(--accent-strong); opacity: 1 }
 .editor-head-stat.is-empty input::placeholder { color: var(--ink-35) }
 .editor-head-stat input:focus::placeholder { color: transparent; opacity: 0 }
@@ -3314,8 +4125,8 @@ onBeforeUnmount(function () {
 .editor-close { display: grid; width: 44px; height: 44px; grid-column: 3; grid-row: 1; place-items: center; border: 0; border-radius: 9px; background: transparent; color: var(--ink-60); cursor: pointer; transition: color .25s, background-color .25s }
 .editor-close:hover { color: var(--rouge); background: rgba(166, 81, 74, .08) }
 .editor-close:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
-.editor-body { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 18px; overflow-y: auto; overscroll-behavior: contain; padding: 22px 28px 28px; scrollbar-gutter: stable }
-.editor-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 16px; align-items: start; padding: 4px 0 20px; border-bottom: 1px solid var(--line) }
+.editor-body { display: flex; width:100%; min-width:0; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 18px; overflow-x:hidden; overflow-y: auto; overscroll-behavior: contain; padding: 22px 28px 28px; scrollbar-gutter: stable; box-sizing:border-box }
+.editor-row { display: grid; width:100%; min-width:0; max-width:100%; grid-template-columns: 86px minmax(0, 1fr); gap: 16px; align-items: start; padding: 4px 0 20px; border-bottom: 1px solid var(--line); box-sizing:border-box }
 .editor-row:last-child { padding-bottom: 4px; border-bottom: 0 }
 .editor-label { padding-top: 8px; color: var(--tea); font-family: var(--font-s); font-size: 14px; font-weight: 900; line-height: 1.35 }
 .editor-game { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
@@ -3340,14 +4151,15 @@ onBeforeUnmount(function () {
 }
 .star-row { display: flex; align-items: center; gap: 12px; min-width: 0 }
 .star-caption { flex: none; width: 34px; font-size: 13px; font-weight: 800; color: var(--ink) }
-.star-groups { display: flex; flex-wrap: wrap; gap: 6px }
+.star-groups { display: grid; min-width: 0; flex: 1; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px }
 .star-pill {
   border: 1.5px solid var(--line);
   background: var(--surface);
   color: var(--ink-60);
   border-radius: 999px;
-  padding: 5px 14px;
-  font-size: 12.5px;
+  min-width: 0;
+  padding: 5px 5px;
+  font-size: 11.5px;
   font-weight: 800;
   font-family: var(--font-b);
   line-height: 1.4;
@@ -3382,10 +4194,10 @@ onBeforeUnmount(function () {
 .num-fields .oddity-editor { width: 100%; min-width: 0; flex: 1 0 100% }
 .oddity-caption { display: flex; flex-direction: column; gap: 2px; color: var(--ink-60); font-size: 11px; font-weight: 900; white-space: nowrap }
 .oddity-caption small { color: var(--rouge); font-size: 9px; font-weight: 800 }
-.oddity-field { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream) }
+.oddity-field { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) minmax(92px, auto); align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream) }
 .oddity-name { min-width: 0; overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap }
 .oddity-control { display: inline-flex; min-width: 0; align-items: center; gap: 4px }
-.oddity-control input { width: 52px; min-width: 0; min-height: 36px; border: 1px solid var(--line); border-radius: 7px; padding: 6px; outline: none; background: var(--surface); color: var(--ink); font: 800 12px var(--font-d); text-align: right; -moz-appearance: textfield }
+.oddity-control input { width: 62px; min-width: 62px; min-height: 36px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 5px; outline: none; background: var(--surface); color: var(--ink); font: 800 12px var(--font-d); text-align: center; -moz-appearance: textfield }
 .oddity-control input::-webkit-outer-spin-button, .oddity-control input::-webkit-inner-spin-button { -webkit-appearance: none }
 .oddity-control input:focus { border-color: var(--accent) }
 .oddity-control input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
@@ -3399,22 +4211,24 @@ onBeforeUnmount(function () {
 .disc-loadout-tabs button:hover { color: var(--ink) }
 .disc-loadout-tabs button.on { border-color: var(--line); background: var(--surface); color: var(--ink); box-shadow: 0 2px 8px rgba(73, 59, 44, .08) }
 .disc-loadout-tabs button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
-.disc-loadout-panel { margin-top: 8px; padding: 11px 12px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
+.disc-loadout-panel { width:100%; min-width:0; max-width:100%; margin-top: 8px; padding: 11px 12px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); box-sizing:border-box }
 .disc-loadout-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px; padding-bottom: 10px; border-bottom: 1px dashed var(--line) }
 .disc-loadout-name { display: flex; min-width: 0; flex-direction: column; gap: 4px; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
 .disc-loadout-name-head { display: flex; min-width: 0; min-height: 20px; align-items: center; justify-content: space-between; gap: 8px }
 .disc-loadout-name input { width: 100%; min-width: 0; min-height: 38px; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 7px; outline: none; background: var(--surface); color: var(--ink); font: 800 12.5px var(--font-b) }
 .disc-loadout-name input:focus { border-color: var(--accent) }
-.disc-auto-name { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); font: 800 10.5px var(--font-b); white-space: nowrap }
+.disc-auto-name { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 5px; margin-left: auto; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); font: 800 10.5px var(--font-b); white-space: nowrap }
 .disc-auto-name { cursor: pointer }
 .disc-auto-name:hover { border-color: var(--accent); color: var(--accent-strong) }
+.disc-auto-name:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
 .disc-auto-status { display: inline-flex; min-width: 0; min-height: 20px; align-items: center; overflow: hidden; padding: 2px 7px; border-radius: 999px; background: rgba(215, 137, 53, .12); color: var(--accent-strong); font-size: 9px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap }
-.disc-options { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 10px }
+.disc-options { display: flex; width:100%; min-width:0; max-width:100%; flex-wrap: wrap; gap: 7px; padding-top: 10px }
 .disc-options-head { display: flex; flex-basis: 100%; align-items: center; justify-content: space-between; color: var(--ink-60); font-size: 10.5px; font-weight: 800 }
 .disc-options-head strong { color: var(--accent-strong); font-family: var(--font-d); font-size: 11px }
 .disc-options .hint { flex-basis: 100%; font-size: 11.5px; color: var(--ink-35) }
 .disc-storage-note { margin-top: 7px; color: var(--ink-35); font-size: 10.5px; font-weight: 700; line-height: 1.5 }
-.disc-option { position: relative; display: inline-flex; min-height: 34px; align-items: center; font-size: 12px; font-weight: 800; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: all .25s; user-select: none }
+.disc-option { position: relative; display: inline-flex; min-width:0; max-width:100%; min-height: 34px; align-items: center; overflow:hidden; font-size: 12px; font-weight: 800; color: var(--ink-60); background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: all .25s; user-select: none; box-sizing:border-box }
+.disc-option .disc-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .disc-option input { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap }
 .disc-option:has(input:focus-visible) { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .disc-option.on { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) }
@@ -3425,8 +4239,8 @@ onBeforeUnmount(function () {
 .disc-option.c-purple.on { background: #8a72bd; border-color: #7a62ab; color: var(--cream) }
 .disc-option.c-blue { background: rgba(110, 135, 184, .16); border-color: rgba(110, 135, 184, .6); color: #4f6387 }
 .disc-option.c-blue.on { background: #6E87B8; border-color: #5f76a4; color: var(--cream) }
-.stone-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex: 1; min-width: 200px }
-.stone-presets { grid-column: 1 / -1; padding: 11px 12px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream) }
+.stone-editor { display: grid; width:100%; max-width:100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex: 1; min-width:0; box-sizing:border-box }
+.stone-presets { grid-column: 1 / -1; grid-row:1; padding: 11px 12px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream) }
 .stone-preset-heading { display: flex; align-items: baseline; gap: 9px; margin-bottom: 9px }
 .stone-preset-heading strong { color: var(--ink); font-size: 12px; font-weight: 900 }
 .stone-preset-heading span { color: var(--ink-35); font-size: 10.5px; font-weight: 700 }
@@ -3439,10 +4253,12 @@ onBeforeUnmount(function () {
 .stone-preset-load { min-width: 48px; min-height: 32px; padding: 0 8px; border: 1px solid var(--tea); border-radius: 7px; background: var(--tea); color: var(--cream); font: 800 11px var(--font-b); cursor: pointer }
 .stone-preset-load:hover:not(:disabled) { background: var(--accent); border-color: var(--accent) }
 .stone-preset-load:disabled { opacity: .4; cursor: not-allowed }
-.stone-current-heading { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 8px; padding: 3px 2px 0; border-top: 1px dashed var(--line); }
+.stone-current-heading { grid-column: 1 / -1; grid-row:2; display: flex; align-items: baseline; gap: 8px; padding: 3px 2px 0; border-top: 1px dashed var(--line); }
 .stone-current-heading strong { color: var(--tea); font-family: var(--font-s); font-size: 13px; font-weight: 900 }
 .stone-current-heading span { color: var(--ink-35); font-size: 10.5px; font-weight: 700 }
-.stone-item { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 8px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px }
+.stone-item { display: flex; min-width: 0; grid-row:var(--stone-grid-row); flex-direction: column; align-items: stretch; gap: 8px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px }
+.stone-item.is-main { grid-column: 1 }
+.stone-item.is-assist { grid-column: 2 }
 .stone-item-head { display: flex; min-height: 20px; align-items: center; justify-content: space-between; gap: 8px }
 .stone-name { min-width: 0; color: var(--ink); font-size: 12.5px; font-weight: 900 }
 .stone-item-actions { display: inline-flex; align-items: center; gap: 5px }
@@ -3475,7 +4291,7 @@ onBeforeUnmount(function () {
 }
 .stone-lv-chip:hover { background: var(--surface); color: var(--accent-strong) }
 .stone-lv-chip.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
-.stone-editor .hint { grid-column: 1 / -1; font-size: 11px; color: var(--ink-35); line-height: 1.5 }
+.stone-editor .hint { grid-column: 1 / -1; grid-row:6; font-size: 11px; color: var(--ink-35); line-height: 1.5 }
 .editor-actions { position: relative; z-index: 1; display: flex; min-height: 64px; align-items: center; gap: 16px; flex: 0 0 auto; padding: 10px 28px; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 18px rgba(73, 59, 44, .06) }
 .editor-conflict { display: flex; min-width: 0; flex: 1; flex-wrap: wrap; align-items: center; gap: 3px 8px; padding: 7px 10px; border: 1px solid rgba(166, 81, 74, .36); border-radius: 9px; background: rgba(166, 81, 74, .09); color: var(--rouge); font-size: 10.5px; line-height: 1.4 }
 .editor-conflict strong { flex: none; font-weight: 900 }
@@ -3541,42 +4357,72 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
-  .current-workbench-head { align-items: flex-start; flex-direction: column; gap: 8px; }
-  .current-workbench-head h2 { font-size: 21px; }
-  .current-ledger { margin-inline: -4px; padding: 10px; border-radius: 16px; }
-  .agent-ledger-grid { grid-template-columns: 1fr; gap: 10px; }
-  .agent-ledger-card { padding: 11px 9px 10px; gap: 9px; }
-  .ledger-card-head { gap: 7px; align-items: flex-start; }
-  .ledger-avatar { width: 40px; height: 40px; }
-  .ledger-name-row { align-items: flex-start; flex-direction: column; gap: 3px; }
-  .ledger-name-row h3 { font-size: 14px; }
-  .ledger-name-row select { max-width: none; font-size: 9px; }
-  .ledger-prof { font-size: 9px; }
-  .ledger-combat-value { font-size: 19px; }
-  .ledger-growth { padding: 7px 6px; }
-  .ledger-growth-row { flex-wrap: wrap; gap: 4px; }
-  .ledger-grow-label { width: 28px; font-size: 10px; }
-  .ledger-smart-action, .ledger-next-action { margin-left: 32px; }
-  .ledger-step-actions { margin-left: auto; }
+  .current-workbench-head { align-items: flex-start; flex-direction: column; gap: 8px; margin-top: 12px; padding: 14px 0 4px; }
+  .current-workbench-head h2 { font-size: 23px; line-height: 1.25; }
+  .current-workbench-head p { font-size: 13px; line-height: 1.6; }
+  .current-count { align-self: flex-end; font-size: 13px; }
+  .current-count b { font-size: 26px; }
+  .prof-filter { margin-top: 10px; padding: 11px 12px; gap: 9px; }
+  .pf-row { align-items: flex-start; gap: 8px; }
+  .pf-label { padding-top: 7px; font-size: 12.5px; }
+  .pf-row .mf-filter { flex: 1; min-width: 0; }
+  .mf-filter { gap: 4px; }
+  .mf-filter button { min-height: 38px; padding: 7px 10px; font-size: 12px; }
+  .current-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px; }
+  .current-ledger-meta { padding-bottom: 12px; font-size: 12px; line-height: 1.5; }
+  .agent-ledger-grid { grid-template-columns: 1fr; gap: 12px; }
+  .agent-ledger-card { padding: 14px 12px 12px; gap: 12px; }
+  .ledger-card-head { gap: 9px; align-items: center; }
+  .ledger-avatar { width: 44px; height: 44px; }
+  .ledger-name-row { display: flex; min-width: 0; align-items: center; justify-content: flex-start; gap: 5px; }
+  .ledger-name-row h3 { flex: 0 1 auto; max-width: 42%; font-size: 16px; }
+  .ledger-mobile-prof { display: inline-flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 3px; overflow: hidden; color: var(--ink-60); font-size: 10.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .ledger-mobile-prof img { width: 14px; height: 14px; flex: none; object-fit: contain; }
+  .ledger-prof { display: none; }
+  .ledger-status-menu { max-width: 82px; }
+  .ledger-status-button { min-width: 76px; min-height: 36px; padding-inline: 7px; font-size: 10.5px; }
+  .ledger-combat { gap: 8px; }
+  .ledger-combat-stat { padding: 9px 10px 8px; }
+  .ledger-combat-head { font-size: 11.5px; }
+  .ledger-combat-value { min-height: 30px; font-size: 24px; }
+  .ledger-combat-source { min-height: 14px; font-size: 10px; }
+  .ledger-oddity { font-size: 11.5px; }
+  .ledger-oddity input { width: 48px; font-size: 11.5px; }
+  .ledger-growth { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 7px 8px; }
+  .ledger-growth-row { display: flex; min-width: 0; min-height: 104px; align-items: stretch; flex-direction: column; gap: 5px; }
+  .ledger-grow-label { width: auto; min-height: 18px; font-size: 11px; text-align: center; }
+  .ledger-inline-field { width: 100%; min-height: 34px; justify-content: center; }
+  .ledger-inline-input { width: 100%; min-height: 34px; font-size: 15px; text-align: center; }
+  .ledger-growth-row > .ledger-editable { width: 100%; min-height: 34px; padding-inline: 2px; text-align: center; }
+  .ledger-step-actions { width: 100%; min-width: 0; margin-left: 0; }
+  .ledger-step-actions button, .ledger-smart-action, .ledger-next-action { width: 100%; min-width: 0; min-height: 32px; margin-left: 0; padding: 4px 3px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .ledger-growth-row > .ledger-next-action { margin-top: 0; }
+  .ledger-growth-row > .ledger-popover { width: min(280px, calc(100vw - 24px)); max-width: calc(100vw - 24px); left: 0; right: auto; }
+  .ledger-growth-row:nth-child(2) > .ledger-popover { left: 50%; transform: translateX(-50%); }
+  .ledger-growth-row:nth-child(3) > .ledger-popover { left: auto; right: 0; }
   .ledger-popover { left: 0; right: -2px; }
-  .ledger-stats strong { font-size: 15px; }
-  .ledger-destiny-row > span { font-size: 9px; }
-  .ledger-destiny-row em { font-size: 8px; }
-  .ledger-stones { grid-auto-rows: 42px; }
-  .ledger-stones > .stone-slot { height: 42px; min-height: 42px; max-height: 42px; }
-  .ledger-stones strong { font-size: 7px; }
-  .ledger-full-edit { font-size: 10px; padding: 6px 3px; }
+  .ledger-stats strong { font-size: 18px; }
+  .ledger-destiny-row > span { font-size: 11px; }
+  .ledger-destiny-row em { padding: 4px 7px; font-size: 10.5px; }
+  .ledger-stones { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .ledger-stones > .stone-slot { aspect-ratio: 1; }
+  .ledger-stones strong { font-size: 9.5px; }
+  .ledger-stones small { font-size: 9.5px; }
+  .ledger-card-footer textarea { font-size: 12px; }
+  .ledger-full-edit { min-height: 44px; font-size: 12px; padding: 8px 6px; }
+  .ledger-submit-message { width:min(230px,92%); }
+  .ledger-material-list { max-height:130px; }
   .operator-tabs { margin-top: 24px }
   .operator-tabs .admin-link { padding-inline: 12px }
   .editor-mask { align-items: stretch; padding: 0 }
-  .editor-panel { width: 100%; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0 }
+  .editor-panel { width: 100%; max-width:100vw; height: 100vh; height: 100dvh; max-height: none; border: 0; border-radius: 0 }
   .editor-head { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 16px 12px }
   .editor-head-stats { grid-column: 1 / -1; grid-row: 2; gap: 6px }
   .editor-head-stats-note { max-width: 100%; white-space: normal }
   .editor-head-stat { min-height: 72px; padding: 8px 10px }
   .editor-head-stat input { min-height: 44px; font-size: 22px }
   .editor-close { grid-column: 2; grid-row: 1 }
-  .editor-body { gap: 16px; padding: 18px 16px 24px }
+  .editor-body { gap: 16px; overflow-x:hidden; padding: 18px 16px 24px }
   .editor-row { grid-template-columns: 1fr; gap: 8px; padding-bottom: 18px }
   .editor-label { padding-top: 0 }
   .num-fields .level-row { grid-template-columns: repeat(2, minmax(0, 1fr)) }
@@ -3586,15 +4432,29 @@ onBeforeUnmount(function () {
   .oddity-field { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 7px 6px }
   .oddity-name { text-align: center }
   .oddity-control { justify-content: center }
-  .oddity-control input { width: 44px; min-height: 44px; padding-inline: 4px; font-size: 16px }
+  .oddity-control input { width: 62px; min-width: 62px; min-height: 44px; padding-inline: 4px; font-size: 16px }
   .oddity-limit { font-size: 10px }
   .disc-loadout-tabs button { min-height: 64px; padding-inline: 9px }
-  .disc-loadout-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch }
-  .disc-loadout-name { grid-column: 1 / -1 }
-  .disc-auto-name { min-height: 44px; padding-inline: 8px }
+  .disc-loadout-toolbar { position:relative; grid-template-columns: minmax(0, 1fr); align-items: stretch }
+  .disc-loadout-name { grid-column:1; grid-row:1 }
+  .disc-loadout-name input { min-height:44px }
+  .disc-loadout-toolbar:has(.disc-auto-name) .disc-loadout-name input { padding-right:48px }
+  .disc-auto-name { z-index:1; width:44px; min-height:44px; grid-column:1; grid-row:1; align-self:end; justify-self:end; gap:0; margin:0; padding:0; border-width:0 0 0 1px; border-radius:0 7px 7px 0; background:transparent }
+  .disc-auto-name span { display:none }
   .disc-auto-status { padding-inline: 7px }
-  .stone-editor { grid-template-columns: minmax(0, 1fr) }
-  .stone-preset-grid { grid-template-columns: minmax(0, 1fr) }
+  .stone-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px }
+  .stone-item { gap: 6px; padding: 8px }
+  .stone-select { min-height: 42px; padding-inline: 7px; font-size: 11px }
+  .stone-level-row { grid-template-columns: minmax(54px, auto) minmax(0, 1fr); gap: 6px }
+  .stone-level-field { min-width: 54px; gap: 3px }
+  .stone-level-field input { width: 46px; min-width: 46px; }
+  .stone-quick { display: flex; width: 100%; align-items: center; justify-content: stretch; gap: 3px; padding: 0; background: transparent }
+  .stone-quick > span { display: none }
+  .stone-lv-chip { flex: 1; width: auto; min-width: 0; height: 36px; padding-inline: 1px; border: 1px solid var(--line); background: var(--cream); font-size: 10px }
+  .stone-presets { grid-column: 1 / -1 }
+  .stone-preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px }
+  .stone-preset-item { grid-template-columns: minmax(0, 1fr); gap: 4px }
+  .stone-preset-item select, .stone-preset-load { min-height: 38px }
   .stone-preset-heading, .stone-current-heading { align-items: flex-start; flex-direction: column; gap: 3px }
   .editor-actions { min-height: 78px; align-items: stretch; flex-direction: column; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) }
   .editor-conflict { flex: none; align-items: flex-start; flex-direction: column }
@@ -3646,8 +4506,84 @@ onBeforeUnmount(function () {
 @media (max-width: 420px) {
   .agent-ledger-grid { grid-template-columns: 1fr; }
   .ledger-name-row { flex-direction: row; align-items: center; }
-  .ledger-name-row select { max-width: 64px; }
-  .ledger-smart-action, .ledger-next-action { margin-left: auto; }
+  .ledger-smart-action, .ledger-next-action { margin-left: 0; }
+}
+
+/* 手机端养成卡片与编辑器的最后一层收口：窄屏不挤压文字，也不让弹层溢出视口。 */
+@media (max-width: 640px) {
+  .current-ledger-meta { min-width: 0; }
+  .current-ledger-meta span { min-width: 0; overflow-wrap: anywhere; }
+  .ledger-card-head, .ledger-identity, .ledger-name-row, .ledger-prof { min-width: 0; }
+  .ledger-prof { align-items: flex-start; flex-wrap: wrap; }
+  .ledger-prof-copy { flex: 1 1 100%; }
+  .ledger-notice { max-width: 100%; margin-left: 0; }
+  .ledger-growth-row { min-height: 104px; align-items: stretch; }
+  .ledger-inline-field, .ledger-inline-input { min-height: 34px; }
+  .ledger-inline-input { width: 100%; }
+  .ledger-step-actions button,
+  .ledger-smart-action,
+  .ledger-next-action { min-height: 32px; }
+  .ledger-smart-action, .ledger-next-action { max-width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; line-height: 1.25; }
+  .ledger-popover { left: 0; right: 0; max-width: 100%; max-height: min(52vh, 320px); overflow: auto; overscroll-behavior: contain; }
+  .ledger-popover p { overflow-wrap: anywhere; }
+  .ledger-popover button { min-height: 36px; }
+  .ledger-disc-option { min-height: 36px; }
+  .ledger-disc-options { max-height: 180px; }
+  .ledger-destiny-row { align-items: flex-start; gap: 8px; }
+  .ledger-destiny-row > span { padding-top: 4px; }
+  .ledger-destiny-row > .ledger-destiny-values { flex: 1; }
+  .ledger-stone-level-row { flex-wrap: wrap; }
+  .ledger-stone-levels { flex-basis: 100%; justify-content: space-between; }
+  .ledger-stone-levels button { flex: 1; min-height: 36px; }
+  .ledger-stone-popover select { min-height: 40px; }
+  .ledger-card-footer textarea { min-height: 44px; }
+  .ledger-card-actions { justify-content: stretch; }
+  .ledger-card-actions button { flex: 1; min-height: 40px; }
+  .ledger-full-edit { width: 100%; }
+}
+
+@media (max-width: 420px) {
+  .current-ledger { padding: 8px; }
+  .ledger-growth-row { display: flex; grid-template-columns: none; min-height: 104px; gap: 5px; }
+  .ledger-step-actions { min-width: 0; }
+  .ledger-step-actions button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ledger-status-menu { max-width: 76px; }
+  .ledger-status-button { min-width: 70px; padding-inline: 6px; }
+  .ledger-inline-input { width: 100%; }
+  .ledger-smart-action, .ledger-next-action { margin-left: 0; }
+  .ledger-destiny-row { flex-wrap: wrap; gap: 4px; }
+  .ledger-destiny-row > span { width: 100%; padding-top: 0; }
+  .ledger-destiny-row > .ledger-destiny-values { width: 100%; }
+  .ledger-disc-popover { min-width: 0; }
+  .ledger-disc-options { grid-template-columns: 1fr; }
+  .editor-head { grid-template-columns: minmax(0, 1fr) 44px; padding-inline: 12px; }
+  .editor-head h3 { font-size: 22px; }
+  .editor-body { padding-inline: 12px; }
+  .editor-row { gap: 6px; }
+  .num-fields .level-row { grid-template-columns: 1fr; }
+  .num-fields .elite-hint { grid-column: auto; white-space: normal; }
+  .oddity-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .disc-loadout-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .disc-loadout-name { grid-column:1; }
+  .disc-auto-name { width:44px; justify-self:end; }
+  .star-groups { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .star-pill { padding-inline: 2px; font-size: 10px; }
+  .stone-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .stone-item.is-main, .stone-item.is-assist { padding-inline: 6px; }
+  .stone-preset-item { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .stone-preset-item select, .stone-preset-load { min-height: 40px; }
+  .stone-preset-load { width: 100%; }
+  .stone-level-row { grid-template-columns: minmax(54px, auto) minmax(0, 1fr); gap: 5px; }
+  .stone-quick { flex-wrap: nowrap; justify-content: stretch; padding: 0; background: transparent; }
+  .stone-quick > span { display: none; }
+  .stone-lv-chip { flex: 1; min-height: 36px; }
+  .editor-actions { padding-inline: 12px; }
+  .editor-action-buttons { gap: 6px; }
+  .editor-save { min-width: 0; }
+}
+
+@media (min-width: 641px) {
+  .ledger-identity { position:relative; top:-2px; }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {

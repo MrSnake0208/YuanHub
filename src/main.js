@@ -14,20 +14,46 @@ const reveal = {
     const delay = binding.value && binding.value.delay ? binding.value.delay : 0
     if (delay) el.style.transitionDelay = delay + 'ms'
     el.classList.add('rv')
-    const io = new IntersectionObserver(es => {
-      es.forEach(e => {
-        if (e.isIntersecting) {
-          el.classList.add('in')
-          io.unobserve(el)
+    const isEffectivelyHidden = () => {
+      let node = el
+      while (node && node !== document.documentElement) {
+        const style = getComputedStyle(node)
+        if (style.display === 'none' || style.visibility === 'hidden') return true
+        node = node.parentElement
+      }
+      return false
+    }
+    const startIntersectionObserver = () => {
+      if (el.__revealIO || isEffectivelyHidden()) return false
+      const io = new IntersectionObserver(es => {
+        es.forEach(e => {
+          if (e.isIntersecting) {
+            el.classList.add('in')
+            io.unobserve(el)
+          }
+        })
+      // 提前触发，避免移动端固定工具栏把主内容推到视口下方后长时间保持透明。
+      }, { threshold: 0.12, rootMargin: '0px 0px 360px 0px' })
+      io.observe(el)
+      el.__revealIO = io
+      return true
+    }
+
+    // v-show 的面板在挂载时可能仍是 display:none，等待面板切换为可见后再建立观察器。
+    if (!startIntersectionObserver()) {
+      const visibilityObserver = new MutationObserver(() => {
+        if (startIntersectionObserver()) {
+          visibilityObserver.disconnect()
+          el.__revealVisibilityObserver = null
         }
       })
-    // 提前触发，避免移动端固定工具栏把主内容推到视口下方后长时间保持透明。
-    }, { threshold: 0.12, rootMargin: '0px 0px 360px 0px' })
-    io.observe(el)
-    el.__revealIO = io
+      visibilityObserver.observe(el.parentElement || document.body, { attributes: true, attributeFilter: ['class', 'style'], subtree: true })
+      el.__revealVisibilityObserver = visibilityObserver
+    }
   },
   unmounted(el) {
     if (el.__revealIO) el.__revealIO.disconnect()
+    if (el.__revealVisibilityObserver) el.__revealVisibilityObserver.disconnect()
   }
 }
 
