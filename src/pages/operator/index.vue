@@ -255,29 +255,55 @@
           <!-- 当前养成 -->
           <div v-show="activeTab === 'current'" class="panel" :class="{ 'is-active': activeTab === 'current' }">
             <div class="current-workbench-head" v-reveal>
-              <div>
+              <div class="current-workbench-copy">
                 <span class="section-kicker">当前账号 · 养成台账</span>
-                <h2>{{ currentAccountName }}</h2>
+                <div class="current-workbench-title">
+                  <h2>{{ currentAccountName }}</h2>
+                  <span class="current-game-tag">{{ gameFilter }}</span>
+                </div>
                 <p>点按虚线数值可直接校正；完整命盘、星石与面板数据仍可进入完整编辑。</p>
               </div>
-              <span class="current-count"><b>{{ filteredCurrent.length }}</b> / {{ ownedCurrentEntries.length }} 位</span>
+              <div class="current-workbench-index" aria-label="当前养成状态概览">
+                <div class="current-index-total"><b>{{ ownedCurrentEntries.length }}</b><span>已招募</span></div>
+                <dl class="current-status-index">
+                  <div class="status-growing"><dt>养成中</dt><dd>{{ currentStatusCounts.growing }}</dd></div>
+                  <div class="status-graduated"><dt>已毕业</dt><dd>{{ currentStatusCounts.graduated }}</dd></div>
+                  <div class="status-inactive"><dt>养老中</dt><dd>{{ currentStatusCounts.inactive }}</dd></div>
+                </dl>
+              </div>
             </div>
 
-            <!-- 属性 / 从属 筛选 -->
-            <div class="prof-filter" v-reveal>
+            <!-- 当前养成案卷筛选 -->
+            <div class="prof-filter current-prof-filter" v-reveal>
+              <div class="current-filter-head">
+                <div class="current-filter-title"><strong>筛选案卷</strong><span>筛选后按状态、稀有度、等级、化极、属性与实装顺序排列</span></div>
+                <div class="current-filter-tools">
+                  <span class="current-filter-result" aria-live="polite"><b>{{ filteredCurrent.length }}</b> / {{ ownedCurrentEntries.length }} 位</span>
+                  <button class="current-favorite-sort" :class="{ on: favoriteFirst }" type="button" :aria-pressed="favoriteFirst" @click="setFavoriteFirst(!favoriteFirst)"><Star :size="13" :fill="favoriteFirst ? 'currentColor' : 'none'" aria-hidden="true" />特别关注优先</button>
+                  <button v-if="hasCurrentFilters" class="current-filter-reset" type="button" @click="resetCurrentFilters"><RotateCcw :size="13" aria-hidden="true" />重置</button>
+                </div>
+              </div>
+              <div class="current-filter-rows">
               <div class="pf-row">
                 <span class="pf-label">属性</span>
-                <div class="mf-filter">
-                  <button :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
-                  <button v-for="p in profOptions" :key="p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
+                <div class="mf-filter" role="group" aria-label="按属性筛选当前养成">
+                  <button type="button" :aria-pressed="profFilter === 'all'" :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
+                  <button v-for="p in profOptions" :key="p" type="button" :aria-pressed="profFilter === p" :class="{ on: profFilter === p }" @click="profFilter = p"><img v-if="profIcon(p)" :src="profIcon(p)" alt="" aria-hidden="true" />{{ p }}</button>
                 </div>
               </div>
               <div class="pf-row">
                 <span class="pf-label">从属</span>
-                <div class="mf-filter">
-                  <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
-                  <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                <div class="mf-filter" role="group" aria-label="按从属筛选当前养成">
+                  <button type="button" :aria-pressed="subProfFilter === 'all'" :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
+                  <button v-for="s in subProfOptions" :key="s" type="button" :aria-pressed="subProfFilter === s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
                 </div>
+              </div>
+              <div class="pf-row pf-status-row">
+                <span class="pf-label">状态</span>
+                <div class="mf-filter current-status-filter" role="group" aria-label="按养成状态筛选当前养成">
+                  <button v-for="option in workbenchStatusOptions" :key="option.value" type="button" :aria-pressed="workbenchStatusFilter === option.value" :class="['status-' + option.value, { on: workbenchStatusFilter === option.value }]" @click="workbenchStatusFilter = option.value">{{ option.label }}<small>{{ option.value === 'all' ? ownedCurrentEntries.length : currentStatusCounts[option.value] }}</small></button>
+                </div>
+              </div>
               </div>
             </div>
 
@@ -293,7 +319,7 @@
             </div>
             <div v-else class="current-ledger" v-reveal>
               <div class="current-ledger-meta">
-                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template></span>
+                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template><template v-if="workbenchStatusFilter !== 'all'"> · 状态「{{ statusLabel(workbenchStatusFilter) }}」</template></span>
                 <span>校正操作仅更新养成记录，不扣减库存</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
@@ -316,7 +342,7 @@
                           <div class="ledger-status-options" role="listbox" :aria-label="e.name + '养成状态选项'">
                             <button type="button" role="option" :aria-selected="operatorStatus(e) === 'growing'" @click="setOperatorStatusAndClose(e, 'growing', $event)">养成中</button>
                             <button type="button" role="option" :aria-selected="operatorStatus(e) === 'graduated'" @click="setOperatorStatusAndClose(e, 'graduated', $event)">已毕业</button>
-                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'inactive'" @click="setOperatorStatusAndClose(e, 'inactive', $event)">不养成</button>
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'inactive'" @click="setOperatorStatusAndClose(e, 'inactive', $event)">养老中</button>
                           </div>
                         </details>
                       </div>
@@ -812,8 +838,16 @@ const manifestSearch = ref('')
 const manifestFilter = ref('all')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
+const workbenchStatusFilter = ref('all')
+const favoriteFirst = ref(false)
 const profOptions = AGENT_PROFS
 const subProfOptions = computed(function () { return deriveSubProfOptions(catalogOperators.value) })
+const workbenchStatusOptions = [
+  { value: 'all', label: '全部' },
+  { value: 'growing', label: '养成中' },
+  { value: 'graduated', label: '已毕业' },
+  { value: 'inactive', label: '养老中' }
+]
 const loading = ref(false)
 const catalogLoading = ref(false)
 const error = ref('')
@@ -916,6 +950,7 @@ watch(function () { return [accountId.value, saveGame.value] }, function () {
   workbenchStatuses.value = readWorkbenchMap('statuses')
   workbenchRemarks.value = readWorkbenchMap('remarks')
   cardCombatModes.value = readWorkbenchMap('combat-modes')
+  favoriteFirst.value = readFavoriteFirstPreference()
   cardLevelBreakthroughs.value = {}
   loadCardMaterialStock()
 }, { immediate: true })
@@ -1606,7 +1641,7 @@ function starLabel(v, spOf) {
   if (n >= 1 && n <= 30) {
     const star = Math.floor((n - 1) / 6) + 1
     const node = (n - 1) % 6
-    return star + ' 星 · ' + node + ' 节点'
+    return star + ' ⭐ · ' + node + ' 节点'
   }
   return n
 }
@@ -1736,13 +1771,46 @@ const ownedCurrentEntries = computed(function () {
   return currentEntries.value.filter(isOperatorOwned)
 })
 
+const currentStatusCounts = computed(function () {
+  return ownedCurrentEntries.value.reduce(function (counts, entry) {
+    const status = operatorStatus(entry)
+    if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1
+    return counts
+  }, { growing: 0, graduated: 0, inactive: 0 })
+})
+
+const CURRENT_STATUS_ORDER = { growing: 0, graduated: 1, inactive: 2 }
+const CURRENT_PROF_ORDER = { '地': 0, '水': 1, '火': 2, '风': 3, '阳': 4, '阴': 5, '混沌': 6 }
+
+function compareCurrentEntries(a, b) {
+  let difference = (CURRENT_STATUS_ORDER[operatorStatus(a)] ?? 99) - (CURRENT_STATUS_ORDER[operatorStatus(b)] ?? 99)
+  if (difference) return difference
+
+  // 特别关注只在同一养成状态内提前，不打破“养成中 → 已毕业 → 不养成”的主分组。
+  if (favoriteFirst.value) {
+    difference = Number(favoriteAgentIds.value.has(b.id)) - Number(favoriteAgentIds.value.has(a.id))
+    if (difference) return difference
+  }
+
+  difference = (Number(b.rarity) || 0) - (Number(a.rarity) || 0)
+  if (difference) return difference
+  difference = (Number(b.level) || 0) - (Number(a.level) || 0)
+  if (difference) return difference
+  // starLevel 本身包含大星与小节点进度，可直接作为完整化极标量比较。
+  difference = (Number(b.starLevel) || 0) - (Number(a.starLevel) || 0)
+  if (difference) return difference
+  difference = (CURRENT_PROF_ORDER[a.prof] ?? 99) - (CURRENT_PROF_ORDER[b.prof] ?? 99)
+  if (difference) return difference
+  difference = operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id)
+  if (difference) return difference
+  return String(a.name || a.id).localeCompare(String(b.name || b.id), 'zh-CN')
+}
+
 const filteredCurrent = computed(function () {
   return ownedCurrentEntries.value.filter(function (e) {
-    return matchesProfSubFilter(e, profFilter.value, subProfFilter.value)
-  }).sort(function (a, b) {
-    const order = { growing: 0, graduated: 1, inactive: 2 }
-    return (order[operatorStatus(a)] ?? 0) - (order[operatorStatus(b)] ?? 0)
-  })
+    return matchesProfSubFilter(e, profFilter.value, subProfFilter.value) &&
+      (workbenchStatusFilter.value === 'all' || operatorStatus(e) === workbenchStatusFilter.value)
+  }).sort(compareCurrentEntries)
 })
 
 const currentFilterSuffix = computed(function () {
@@ -1750,8 +1818,19 @@ const currentFilterSuffix = computed(function () {
   parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
   if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  if (workbenchStatusFilter.value !== 'all') parts.push('状态「' + statusLabel(workbenchStatusFilter.value) + '」')
   return parts.length ? parts.join(' · ') : '当前条件'
 })
+
+const hasCurrentFilters = computed(function () {
+  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all'
+})
+
+function resetCurrentFilters() {
+  profFilter.value = 'all'
+  subProfFilter.value = 'all'
+  workbenchStatusFilter.value = 'all'
+}
 
 function monogram(e) {
   const s = String(e.name || e.id || '?')
@@ -1821,13 +1900,24 @@ function persistWorkbenchMap(kind, value) {
   localStorage.setItem(workbenchStorageKey(kind), JSON.stringify(value))
 }
 
+function readFavoriteFirstPreference() {
+  if (typeof localStorage === 'undefined') return false
+  try { return localStorage.getItem(workbenchStorageKey('favorite-first')) === 'true' } catch (_) { return false }
+}
+
+function setFavoriteFirst(value) {
+  favoriteFirst.value = Boolean(value)
+  if (typeof localStorage === 'undefined') return
+  try { localStorage.setItem(workbenchStorageKey('favorite-first'), String(favoriteFirst.value)) } catch (_) {}
+}
+
 function operatorStatus(entry) {
   if (workbenchStatuses.value[entry.id]) return workbenchStatuses.value[entry.id]
   return 'growing'
 }
 
 function statusLabel(status) {
-  return status === 'graduated' ? '已毕业' : status === 'inactive' ? '不养成' : '养成中'
+  return status === 'graduated' ? '已毕业' : status === 'inactive' ? '养老中' : '养成中'
 }
 
 function flattenInventoryCurrent(data) {
@@ -3787,11 +3877,50 @@ onBeforeUnmount(function () {
 
 /* ---- 密探卡片 ---- */
 .backpack { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 18px 18px 20px }
-.current-workbench-head { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-top:18px; padding:18px 2px 6px }
-.current-workbench-head h2 { margin-top:4px; font-family:var(--font-s); font-size:24px; font-weight:900; letter-spacing:.04em }
-.current-workbench-head p { margin-top:6px; color:var(--ink-60); font-size:12px; line-height:1.7 }
-.current-count { flex:none; color:var(--ink-60); font-size:12px; font-weight:800 }
-.current-count b { color:var(--accent-strong); font:900 28px var(--font-d) }
+.current-workbench-head { position:relative; display:grid; min-width:0; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:24px; margin-top:18px; padding:19px 22px 18px; overflow:hidden; border:1px solid var(--line); border-radius:18px 18px 10px 10px; background:linear-gradient(105deg,color-mix(in srgb,var(--yellow) 24%,transparent),transparent 46%),var(--surface); box-shadow:0 12px 30px -24px rgba(73,59,44,.45) }
+.current-workbench-head::before { position:absolute; top:15px; bottom:15px; left:0; width:4px; border-radius:0 4px 4px 0; background:var(--accent); content:'' }
+.current-workbench-copy { min-width:0 }
+.current-workbench-title { display:flex; min-width:0; align-items:center; flex-wrap:wrap; gap:7px 10px; margin-top:4px }
+.current-workbench-head h2 { min-width:0; overflow:hidden; font-family:var(--font-s); font-size:25px; font-weight:900; letter-spacing:.04em; text-overflow:ellipsis; white-space:nowrap }
+.current-game-tag { display:inline-flex; min-height:24px; align-items:center; padding:2px 8px; border:1px solid var(--line); border-radius:999px; background:var(--cream); color:var(--ink-60); font-size:10px; font-weight:800; white-space:nowrap }
+.current-workbench-head p { max-width:650px; margin-top:6px; color:var(--ink-60); font-size:12px; line-height:1.65 }
+.current-workbench-index { display:flex; min-width:0; align-items:stretch; gap:14px; padding:8px 10px; border:1px solid rgba(73,59,44,.1); border-radius:12px; background:rgba(255,253,246,.72) }
+.current-index-total { display:flex; min-width:60px; align-items:center; justify-content:center; flex-direction:column; padding-right:13px; border-right:1px dashed var(--line) }
+.current-index-total b { color:var(--accent-strong); font:900 24px/1 var(--font-d) }
+.current-index-total span { margin-top:4px; color:var(--ink-60); font-size:9px; font-weight:800; white-space:nowrap }
+.current-status-index { display:grid; grid-template-columns:repeat(3,minmax(52px,1fr)); gap:9px; margin:0 }
+.current-status-index > div { position:relative; display:flex; min-width:0; justify-content:center; flex-direction:column; padding-left:9px }
+.current-status-index > div::before { position:absolute; top:5px; bottom:5px; left:0; width:3px; border-radius:999px; background:var(--line); content:'' }
+.current-status-index > .status-growing::before { background:#6f9f76 }
+.current-status-index > .status-graduated::before { background:var(--yellow-deep) }
+.current-status-index > .status-inactive::before { background:rgba(73,59,44,.35) }
+.current-status-index dt { overflow:hidden; color:var(--ink-60); font-size:9px; font-weight:800; text-overflow:ellipsis; white-space:nowrap }
+.current-status-index dd { margin:3px 0 0; color:var(--ink); font:900 14px/1 var(--font-d) }
+.current-prof-filter { margin-top:10px; gap:0; overflow:hidden; padding:0; border-radius:16px }
+.current-filter-head { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px dashed var(--line); background:var(--cream) }
+.current-filter-title { display:flex; min-width:0; align-items:baseline; gap:8px }
+.current-filter-title strong { flex:none; color:var(--tea); font-family:var(--font-s); font-size:13px; font-weight:900 }
+.current-filter-title span { min-width:0; overflow:hidden; color:var(--ink-35); font-size:10.5px; font-weight:700; text-overflow:ellipsis; white-space:nowrap }
+.current-filter-tools { display:flex; flex:none; align-items:center; gap:8px }
+.current-filter-result { color:var(--ink-60); font-size:10.5px; font-weight:800; white-space:nowrap }
+.current-filter-result b { color:var(--accent-strong); font:900 13px var(--font-d) }
+.current-favorite-sort { display:inline-flex; min-height:30px; align-items:center; justify-content:center; gap:4px; padding:4px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink-60); font:800 10px var(--font-b); cursor:pointer; transition:border-color .2s var(--ease),background .2s var(--ease),color .2s var(--ease) }
+.current-favorite-sort:hover { border-color:var(--accent); color:var(--accent-strong) }
+.current-favorite-sort.on { border-color:rgba(215,137,53,.55); background:var(--yellow); color:var(--tea) }
+.current-favorite-sort:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.current-filter-reset { display:inline-flex; min-height:30px; align-items:center; justify-content:center; gap:4px; padding:4px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink-60); font:800 10px var(--font-b); cursor:pointer }
+.current-filter-reset:hover { border-color:var(--accent); color:var(--accent-strong) }
+.current-filter-reset:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.current-filter-rows { display:flex; flex-direction:column; gap:8px; padding:11px 14px 12px }
+.current-prof-filter .pf-label { display:inline-flex; min-height:28px; align-items:center; justify-content:center; padding:2px 7px; border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--tea); font-size:11px }
+.current-prof-filter .pf-row .mf-filter { min-width:0; flex:1 }
+.current-prof-filter .mf-filter button { display:inline-flex; align-items:center; justify-content:center; gap:4px }
+.current-prof-filter .mf-filter button img { width:14px; height:14px; flex:none; object-fit:contain }
+.current-status-filter button small { margin-left:2px; color:var(--ink-35); font:800 9px var(--font-d) }
+.current-status-filter button.on small { color:currentColor; opacity:.72 }
+.current-status-filter button.status-growing.on { background:#BFDCC0; color:#315f38 }
+.current-status-filter button.status-graduated.on { background:var(--yellow); color:var(--ink) }
+.current-status-filter button.status-inactive.on { background:rgba(73,59,44,.13); color:var(--ink-60) }
 .current-ledger { margin-top:16px; padding:16px; border:1px solid rgba(255,248,236,.22); border-radius:20px; background:linear-gradient(145deg,var(--tea),var(--tea-deep)); box-shadow:0 20px 40px -24px rgba(73,59,44,.55) }
 .current-ledger-meta { display:flex; justify-content:space-between; gap:12px; padding:0 2px 14px; color:rgba(255,248,236,.76); font-size:11px; font-weight:700; line-height:1.6 }
 .current-ledger-meta span:last-child { color:var(--yellow) }
@@ -4357,17 +4486,37 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
-  .current-workbench-head { align-items: flex-start; flex-direction: column; gap: 8px; margin-top: 12px; padding: 14px 0 4px; }
-  .current-workbench-head h2 { font-size: 23px; line-height: 1.25; }
+  .current-workbench-head { grid-template-columns:1fr; align-items:stretch; gap:14px; margin-top:12px; padding:16px 14px 14px; border-radius:16px 16px 9px 9px; }
+  .current-workbench-head::before { top:12px; bottom:12px; width:3px; }
+  .current-workbench-head h2 { font-size:23px; line-height:1.25; }
   .current-workbench-head p { font-size: 13px; line-height: 1.6; }
-  .current-count { align-self: flex-end; font-size: 13px; }
-  .current-count b { font-size: 26px; }
+  .current-game-tag { min-height:26px; font-size:10.5px; }
+  .current-workbench-index { width:100%; justify-content:stretch; gap:10px; padding:8px; box-sizing:border-box; }
+  .current-index-total { min-width:58px; padding-right:10px; }
+  .current-index-total b { font-size:23px; }
+  .current-status-index { flex:1; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .current-status-index > div { padding-left:8px; }
+  .current-status-index dt { font-size:9.5px; }
+  .current-status-index dd { font-size:15px; }
   .prof-filter { margin-top: 10px; padding: 11px 12px; gap: 9px; }
   .pf-row { align-items: flex-start; gap: 8px; }
   .pf-label { padding-top: 7px; font-size: 12.5px; }
   .pf-row .mf-filter { flex: 1; min-width: 0; }
   .mf-filter { gap: 4px; }
   .mf-filter button { min-height: 38px; padding: 7px 10px; font-size: 12px; }
+  .current-prof-filter { padding:0; gap:0; }
+  .current-filter-head { align-items:flex-start; flex-direction:column; gap:8px; padding:11px 12px; }
+  .current-filter-title { align-items:flex-start; flex-direction:column; gap:2px; }
+  .current-filter-title span { overflow:visible; white-space:normal; }
+  .current-filter-tools { width:100%; flex-wrap:wrap; justify-content:flex-end; }
+  .current-filter-result { margin-right:auto; font-size:11px; }
+  .current-favorite-sort { min-height:36px; padding-inline:10px; }
+  .current-filter-reset { min-height:36px; padding-inline:10px; }
+  .current-filter-rows { gap:10px; padding:11px 12px 12px; }
+  .current-prof-filter .pf-row { display:grid; grid-template-columns:1fr; gap:6px; }
+  .current-prof-filter .pf-label { width:max-content; min-height:24px; padding:2px 7px; font-size:11px; }
+  .current-prof-filter .pf-row .mf-filter { width:100%; }
+  .current-prof-filter .mf-filter button { min-height:38px; }
   .current-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px; }
   .current-ledger-meta { padding-bottom: 12px; font-size: 12px; line-height: 1.5; }
   .agent-ledger-grid { grid-template-columns: 1fr; gap: 12px; }
