@@ -168,19 +168,19 @@
             </div>
 
             <!-- 属性 / 职业 筛选 -->
-            <div class="prof-filter" v-reveal>
-              <div class="pf-row">
+            <div class="prof-filter catalog-prof-filter" v-reveal>
+              <div class="pf-row pf-prof-row">
                 <span class="pf-label">属性</span>
-                <div class="mf-filter">
-                  <button :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
-                  <button v-for="p in profOptions" :key="p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
+                <div class="mf-filter" role="group" aria-label="按属性筛选密探图鉴">
+                  <button type="button" :aria-pressed="profFilter === 'all'" :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
+                  <button v-for="p in profOptions" :key="p" type="button" :aria-pressed="profFilter === p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
                 </div>
               </div>
-              <div class="pf-row">
+              <div class="pf-row pf-subprof-row">
                 <span class="pf-label">职业</span>
-                <div class="mf-filter">
-                  <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
-                  <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                <div class="mf-filter" role="group" aria-label="按职业筛选密探图鉴">
+                  <button type="button" :aria-pressed="subProfFilter === 'all'" :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
+                  <button v-for="s in subProfOptions" :key="s" type="button" :aria-pressed="subProfFilter === s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
                 </div>
               </div>
             </div>
@@ -274,14 +274,26 @@
               </div>
             </div>
 
-            <div v-if="upgradeReadyCount > 0 || upgradeReadyOnly" class="current-upgrade-reminder" :class="{ 'is-filtering': upgradeReadyOnly }">
-              <span class="current-upgrade-reminder-icon" aria-hidden="true"><ChevronUp :size="18" stroke-width="2.4" /></span>
-              <span class="current-upgrade-reminder-copy" role="status" aria-live="polite" aria-atomic="true">
-                <strong v-if="upgradeReadyCount > 0">有 {{ upgradeReadyCount }} 位密探存在可用提升</strong>
-                <strong v-else>当前没有可快捷提升的密探</strong>
-                <small>{{ upgradeReadyCount > 0 ? upgradeReadySummary : '库存、关注或养成状态已经变化，可以返回查看全部卡片。' }}</small>
-              </span>
-              <button type="button" :class="{ on: upgradeReadyOnly }" :aria-pressed="upgradeReadyOnly" @click="toggleUpgradeReadyOnly">{{ upgradeReadyOnly ? '显示全部' : '只看可提升' }}</button>
+            <div v-if="growthReadyCount > 0 || huajiReadyCount > 0 || upgradeReadyFilter" class="current-upgrade-reminders" role="status" aria-live="polite" aria-atomic="true">
+              <div v-if="growthReadyCount > 0 || upgradeReadyFilter === 'growth'" class="current-upgrade-reminder" :class="{ 'is-filtering': upgradeReadyFilter === 'growth' }">
+                <span class="current-upgrade-reminder-icon" aria-hidden="true"><ChevronUp :size="18" stroke-width="2.4" /></span>
+                <span class="current-upgrade-reminder-copy">
+                  <strong v-if="growthReadyCount > 0">有 {{ growthReadyCount }} 位养成中密探可提升等级或修为</strong>
+                  <strong v-else>当前没有养成中密探可提升等级或修为</strong>
+                  <small>{{ growthReadyCount > 0 ? growthReadySummary : '库存或养成状态已经变化，可以返回查看全部卡片。' }}</small>
+                </span>
+                <button type="button" :class="{ on: upgradeReadyFilter === 'growth' }" :aria-pressed="upgradeReadyFilter === 'growth'" @click="toggleUpgradeReadyFilter('growth')">{{ upgradeReadyFilter === 'growth' ? '显示全部' : '只看可提升等级/修为' }}</button>
+              </div>
+              <div v-if="huajiReadyCount > 0 || upgradeReadyFilter === 'huaji'" class="current-upgrade-reminder is-huaji" :class="{ 'is-filtering': upgradeReadyFilter === 'huaji' }">
+                <span class="current-upgrade-reminder-icon" aria-hidden="true"><Target :size="18" stroke-width="2.2" /></span>
+                <span class="current-upgrade-reminder-copy">
+                  <strong v-if="huajiReadyCount > 0">有 {{ huajiReadyCount }} 位密探可提升化极</strong>
+                  <strong v-else>当前没有密探可提升化极</strong>
+                  <small v-if="huajiReadyCount > 0"><template v-if="favoriteHuajiNames.length"><b>包括特别关注对象：{{ favoriteHuajiNames.join('、') }}</b></template>。</small>
+                  <small v-else>库存或密探状态已经变化，可以返回查看全部卡片。</small>
+                </span>
+                <button type="button" :class="{ on: upgradeReadyFilter === 'huaji' }" :aria-pressed="upgradeReadyFilter === 'huaji'" @click="toggleUpgradeReadyFilter('huaji')">{{ upgradeReadyFilter === 'huaji' ? '显示全部' : '只看可化极' }}</button>
+              </div>
             </div>
 
             <!-- 当前养成案卷筛选 -->
@@ -295,26 +307,26 @@
                 </div>
               </div>
               <div class="current-filter-rows">
-              <div class="pf-row">
-                <span class="pf-label">属性</span>
-                <div class="mf-filter" role="group" aria-label="按属性筛选当前养成">
-                  <button type="button" :aria-pressed="profFilter === 'all'" :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
-                  <button v-for="p in profOptions" :key="p" type="button" :aria-pressed="profFilter === p" :class="{ on: profFilter === p }" @click="profFilter = p"><img v-if="profIcon(p)" :src="profIcon(p)" alt="" aria-hidden="true" />{{ p }}</button>
+                <div class="pf-row pf-prof-row">
+                  <span class="pf-label">属性</span>
+                  <div class="mf-filter" role="group" aria-label="按属性筛选当前养成">
+                    <button type="button" :aria-pressed="profFilter === 'all'" :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
+                    <button v-for="p in profOptions" :key="p" type="button" :aria-pressed="profFilter === p" :class="{ on: profFilter === p }" @click="profFilter = p"><img v-if="profIcon(p)" :src="profIcon(p)" alt="" aria-hidden="true" />{{ p }}</button>
+                  </div>
                 </div>
-              </div>
-              <div class="pf-row">
-                <span class="pf-label">职业</span>
-                <div class="mf-filter" role="group" aria-label="按职业筛选当前养成">
-                  <button type="button" :aria-pressed="subProfFilter === 'all'" :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
-                  <button v-for="s in subProfOptions" :key="s" type="button" :aria-pressed="subProfFilter === s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                <div class="pf-row pf-subprof-row">
+                  <span class="pf-label">职业</span>
+                  <div class="mf-filter" role="group" aria-label="按职业筛选当前养成">
+                    <button type="button" :aria-pressed="subProfFilter === 'all'" :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
+                    <button v-for="s in subProfOptions" :key="s" type="button" :aria-pressed="subProfFilter === s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
+                  </div>
                 </div>
-              </div>
-              <div class="pf-row pf-status-row">
-                <span class="pf-label">状态</span>
-                <div class="mf-filter current-status-filter" role="group" aria-label="按养成状态筛选当前养成">
-                  <button v-for="option in workbenchStatusOptions" :key="option.value" type="button" :aria-pressed="workbenchStatusFilter === option.value" :class="['status-' + option.value, { on: workbenchStatusFilter === option.value }]" @click="setWorkbenchStatusFilter(option.value)">{{ option.label }}<small>{{ option.value === 'all' ? ownedCurrentEntries.length : currentStatusCounts[option.value] }}</small></button>
+                <div class="pf-row pf-status-row">
+                  <span class="pf-label">状态</span>
+                  <div class="mf-filter current-status-filter" role="group" aria-label="按养成状态筛选当前养成">
+                    <button v-for="option in workbenchStatusOptions" :key="option.value" type="button" :aria-pressed="workbenchStatusFilter === option.value" :class="['status-' + option.value, { on: workbenchStatusFilter === option.value }]" @click="setWorkbenchStatusFilter(option.value)">{{ option.label }}<small>{{ option.value === 'all' ? ownedCurrentEntries.length : currentStatusCounts[option.value] }}</small></button>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
 
@@ -331,7 +343,7 @@
             </div>
             <div v-else class="current-ledger" v-reveal>
               <div class="current-ledger-meta">
-                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 职业「{{ subProfFilter }}」</template><template v-if="workbenchStatusFilter !== 'all'"> · 状态「{{ statusLabel(workbenchStatusFilter) }}」</template><template v-if="upgradeReadyOnly"> · 仅看「可快捷提升」</template></span>
+                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 职业「{{ subProfFilter }}」</template><template v-if="workbenchStatusFilter !== 'all'"> · 状态「{{ statusLabel(workbenchStatusFilter) }}」</template><template v-if="upgradeReadyFilter === 'growth'"> · 仅看「等级/修为可提升」</template><template v-else-if="upgradeReadyFilter === 'huaji'"> · 仅看「可提升化极」</template></span>
                 <span>快捷提升会真实扣除库存；手动校正与完整编辑不扣库存</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
@@ -860,7 +872,7 @@ const manifestFilter = ref('all')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
 const workbenchStatusFilter = ref('all')
-const upgradeReadyOnly = ref(false)
+const upgradeReadyFilter = ref('')
 const favoriteFirst = ref(false)
 const profOptions = AGENT_PROFS
 const subProfOptions = computed(function () { return deriveSubProfOptions(catalogOperators.value) })
@@ -990,7 +1002,7 @@ watch(function () { return [accountId.value, saveGame.value] }, function () {
   cardCombatModes.value = readWorkbenchMap('combat-modes')
   favoriteFirst.value = readFavoriteFirstPreference()
   cardLevelBreakthroughs.value = {}
-  upgradeReadyOnly.value = false
+  upgradeReadyFilter.value = ''
   loadOperatorAnnotations()
   if (visitedTabs.value.has('current') && cardMaterialLoadedAccount.value !== accountId.value) loadCardMaterialStock()
 }, { immediate: true })
@@ -1849,42 +1861,47 @@ function compareCurrentEntries(a, b) {
 }
 
 const upgradeReadyGroups = computed(function () {
-  const groups = { growing: [], favoriteGraduatedHuaji: [] }
+  const groups = { growth: [], level: [], elite: [], huaji: [], favoriteHuaji: [] }
   if (cardMaterialLoadedAccount.value !== accountId.value) return groups
   ownedCurrentEntries.value.forEach(function (entry) {
     const status = operatorStatus(entry)
-    if (status === 'growing' && hasQuickGrowthActionAvailable(entry)) {
-      groups.growing.push(entry)
-      return
+    if (status === 'growing') {
+      const levelReady = quickGrowthActionAvailable(entry, 'level', 5)
+      const eliteReady = quickGrowthActionAvailable(entry, 'elite', 3)
+      if (levelReady) groups.level.push(entry)
+      if (eliteReady) groups.elite.push(entry)
+      if (levelReady || eliteReady) groups.growth.push(entry)
     }
-    if (status === 'graduated' && favoriteAgentIds.value.has(entry.id) && quickGrowthActionAvailable(entry, 'star', 1)) {
-      groups.favoriteGraduatedHuaji.push(entry)
+    if (quickGrowthActionAvailable(entry, 'star', 1)) {
+      groups.huaji.push(entry)
+      if (favoriteAgentIds.value.has(entry.id)) groups.favoriteHuaji.push(entry)
     }
   })
   return groups
 })
 
-const upgradeReadyEntries = computed(function () {
-  return upgradeReadyGroups.value.growing.concat(upgradeReadyGroups.value.favoriteGraduatedHuaji)
+const growthReadyCount = computed(function () { return upgradeReadyGroups.value.growth.length })
+const huajiReadyCount = computed(function () { return upgradeReadyGroups.value.huaji.length })
+const growthReadySummary = computed(function () {
+  return '等级可提升 ' + upgradeReadyGroups.value.level.length + ' 位 · 修为可提升 ' + upgradeReadyGroups.value.elite.length + ' 位。'
 })
-const upgradeReadyCount = computed(function () { return upgradeReadyEntries.value.length })
-const upgradeReadySummary = computed(function () {
-  const parts = []
-  const growing = upgradeReadyGroups.value.growing.length
-  const favoriteGraduatedHuaji = upgradeReadyGroups.value.favoriteGraduatedHuaji.length
-  if (growing) parts.push(growing + ' 位养成中密探可快捷提升')
-  if (favoriteGraduatedHuaji) parts.push(favoriteGraduatedHuaji + ' 位特别关注的已毕业密探可继续化极')
-  return parts.join('；') + '。'
+const favoriteHuajiNames = computed(function () {
+  return upgradeReadyGroups.value.favoriteHuaji.map(function (entry) { return entry.name || entry.id })
 })
-const upgradeReadyIds = computed(function () {
-  return new Set(upgradeReadyEntries.value.map(function (entry) { return entry.id }))
+const activeUpgradeReadyIds = computed(function () {
+  const entries = upgradeReadyFilter.value === 'growth'
+    ? upgradeReadyGroups.value.growth
+    : upgradeReadyFilter.value === 'huaji'
+      ? upgradeReadyGroups.value.huaji
+      : []
+  return new Set(entries.map(function (entry) { return entry.id }))
 })
 
 const filteredCurrent = computed(function () {
   return ownedCurrentEntries.value.filter(function (e) {
     return matchesProfSubFilter(e, profFilter.value, subProfFilter.value) &&
       (workbenchStatusFilter.value === 'all' || operatorStatus(e) === workbenchStatusFilter.value) &&
-      (!upgradeReadyOnly.value || upgradeReadyIds.value.has(e.id))
+      (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(e.id))
   }).sort(compareCurrentEntries)
 })
 
@@ -1894,33 +1911,34 @@ const currentFilterSuffix = computed(function () {
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
   if (subProfFilter.value !== 'all') parts.push('职业「' + subProfFilter.value + '」')
   if (workbenchStatusFilter.value !== 'all') parts.push('状态「' + statusLabel(workbenchStatusFilter.value) + '」')
-  if (upgradeReadyOnly.value) parts.push('「可快捷提升」')
+  if (upgradeReadyFilter.value === 'growth') parts.push('「等级/修为可提升」')
+  if (upgradeReadyFilter.value === 'huaji') parts.push('「可提升化极」')
   return parts.length ? parts.join(' · ') : '当前条件'
 })
 
 const hasCurrentFilters = computed(function () {
-  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all' || upgradeReadyOnly.value
+  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all' || Boolean(upgradeReadyFilter.value)
 })
 
 function resetCurrentFilters() {
   profFilter.value = 'all'
   subProfFilter.value = 'all'
   workbenchStatusFilter.value = 'all'
-  upgradeReadyOnly.value = false
+  upgradeReadyFilter.value = ''
 }
 
-function toggleUpgradeReadyOnly() {
-  if (upgradeReadyOnly.value) {
-    upgradeReadyOnly.value = false
+function toggleUpgradeReadyFilter(filter) {
+  if (upgradeReadyFilter.value === filter) {
+    upgradeReadyFilter.value = ''
     return
   }
   resetCurrentFilters()
-  upgradeReadyOnly.value = true
+  upgradeReadyFilter.value = filter
 }
 
 function setWorkbenchStatusFilter(value) {
   workbenchStatusFilter.value = value
-  upgradeReadyOnly.value = false
+  upgradeReadyFilter.value = ''
 }
 
 function monogram(e) {
@@ -2621,12 +2639,6 @@ function quickGrowthActionAvailable(entry, field, step) {
   const baseline = cardDraftBaselines.value[entry.id]
   if (draft && baseline && baseline !== cardDraftSnapshot(entry)) return false
   return quickGrowthRequirementReady(entry, field, step)
-}
-
-function hasQuickGrowthActionAvailable(entry) {
-  return quickGrowthActionAvailable(entry, 'level', 5) ||
-    quickGrowthActionAvailable(entry, 'elite', 3) ||
-    quickGrowthActionAvailable(entry, 'star', 1)
 }
 
 function growthActionClass(entry, field, step) {
@@ -4489,13 +4501,18 @@ onBeforeUnmount(function () {
 .current-status-index > .status-inactive::before { background:rgba(73,59,44,.35) }
 .current-status-index dt { overflow:hidden; color:var(--ink-60); font-size:9px; font-weight:800; text-overflow:ellipsis; white-space:nowrap }
 .current-status-index dd { margin:3px 0 0; color:var(--ink); font:900 14px/1 var(--font-d) }
-.current-upgrade-reminder { display:grid; min-width:0; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; margin-top:10px; padding:9px 11px; border:1px solid rgba(111,159,118,.38); border-radius:12px; background:linear-gradient(100deg,rgba(191,220,192,.5),rgba(255,253,246,.94) 58%); box-shadow:0 9px 22px -20px rgba(73,59,44,.5) }
+.current-upgrade-reminders { display:flex; min-width:0; flex-direction:column; gap:8px; margin-top:10px }
+.current-upgrade-reminder { display:grid; min-width:0; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; padding:9px 11px; border:1px solid rgba(111,159,118,.38); border-radius:12px; background:linear-gradient(100deg,rgba(191,220,192,.5),rgba(255,253,246,.94) 58%); box-shadow:0 9px 22px -20px rgba(73,59,44,.5) }
+.current-upgrade-reminder.is-huaji { border-color:rgba(215,137,53,.38); background:linear-gradient(100deg,rgba(239,210,142,.48),rgba(255,253,246,.94) 58%) }
 .current-upgrade-reminder.is-filtering { border-color:rgba(215,137,53,.5); background:linear-gradient(100deg,rgba(239,210,142,.46),rgba(255,253,246,.94) 58%) }
 .current-upgrade-reminder-icon { display:inline-flex; width:34px; height:34px; align-items:center; justify-content:center; border:1px solid rgba(111,159,118,.34); border-radius:10px; background:#BFDCC0; color:#315f38 }
+.current-upgrade-reminder.is-huaji .current-upgrade-reminder-icon { border-color:rgba(215,137,53,.38); background:var(--yellow); color:var(--accent-strong) }
 .current-upgrade-reminder-copy { display:flex; min-width:0; flex-direction:column; gap:2px }
 .current-upgrade-reminder-copy strong { color:var(--tea); font-family:var(--font-s); font-size:12.5px; font-weight:900; letter-spacing:.02em }
 .current-upgrade-reminder-copy small { color:var(--ink-60); font-size:10.5px; font-weight:700; line-height:1.45 }
+.current-upgrade-reminder-copy small b { color:var(--accent-strong); font-weight:900 }
 .current-upgrade-reminder button { display:inline-flex; min-height:36px; align-items:center; justify-content:center; padding:6px 12px; border:1px solid rgba(111,159,118,.55); border-radius:8px; background:var(--surface); color:#315f38; font:800 10.5px var(--font-b); white-space:nowrap; cursor:pointer; transition:border-color .2s var(--ease),background-color .2s var(--ease),color .2s var(--ease),transform .16s var(--ease) }
+.current-upgrade-reminder.is-huaji button { border-color:rgba(215,137,53,.5); color:var(--accent-strong) }
 .current-upgrade-reminder button:hover { border-color:var(--accent); color:var(--accent-strong) }
 .current-upgrade-reminder button.on { border-color:var(--tea); background:var(--tea); color:var(--cream) }
 .current-upgrade-reminder button:active { transform:scale(.97) }
@@ -5118,19 +5135,32 @@ onBeforeUnmount(function () {
   .pf-row .mf-filter { flex: 1; min-width: 0; }
   .mf-filter { gap: 4px; }
   .mf-filter button { min-height: 38px; padding: 7px 10px; font-size: 12px; }
+  .catalog-prof-filter { gap:5px; padding:7px 8px 8px; }
+  .catalog-prof-filter .pf-row { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:5px; }
+  .catalog-prof-filter .pf-label { width:32px; min-height:34px; box-sizing:border-box; padding:2px; font-size:10.5px; }
+  .catalog-prof-filter .pf-row .mf-filter { display:grid; width:100%; box-sizing:border-box; gap:3px; padding:3px; }
+  .catalog-prof-filter .pf-prof-row .mf-filter { grid-template-columns:repeat(8,minmax(0,1fr)); }
+  .catalog-prof-filter .pf-subprof-row .mf-filter { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .catalog-prof-filter .mf-filter button { width:100%; min-width:0; min-height:34px; padding:4px 2px; border-radius:6px; font-size:10.5px; line-height:1; white-space:nowrap; touch-action:manipulation; }
   .current-prof-filter { padding:0; gap:0; }
-  .current-filter-head { align-items:flex-start; flex-direction:column; gap:8px; padding:11px 12px; }
-  .current-filter-title { align-items:flex-start; flex-direction:column; gap:2px; }
-  .current-filter-title span { overflow:visible; white-space:normal; }
-  .current-filter-tools { width:100%; flex-wrap:wrap; justify-content:flex-end; }
-  .current-filter-result { margin-right:auto; font-size:11px; }
-  .current-favorite-sort { min-height:36px; padding-inline:10px; }
-  .current-filter-reset { min-height:36px; padding-inline:10px; }
-  .current-filter-rows { gap:10px; padding:11px 12px 12px; }
-  .current-prof-filter .pf-row { display:grid; grid-template-columns:1fr; gap:6px; }
-  .current-prof-filter .pf-label { width:max-content; min-height:24px; padding:2px 7px; font-size:11px; }
-  .current-prof-filter .pf-row .mf-filter { width:100%; }
-  .current-prof-filter .mf-filter button { min-height:38px; }
+  .current-filter-head { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:6px; padding:8px 9px; }
+  .current-filter-title { display:block; }
+  .current-filter-title span { display:none; }
+  .current-filter-tools { width:auto; min-width:0; flex-wrap:nowrap; justify-content:flex-end; gap:4px; }
+  .current-filter-result { margin:0; font-size:9.5px; }
+  .current-filter-result b { font-size:12px; }
+  .current-favorite-sort,
+  .current-filter-reset { min-height:32px; gap:3px; padding:3px 6px; font-size:9.5px; touch-action:manipulation; }
+  .current-filter-rows { gap:5px; padding:7px 8px 8px; }
+  .current-prof-filter .pf-row { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:5px; }
+  .current-prof-filter .pf-label { width:32px; min-height:34px; box-sizing:border-box; padding:2px; font-size:10.5px; }
+  .current-prof-filter .pf-row .mf-filter { display:grid; width:100%; box-sizing:border-box; gap:3px; padding:3px; }
+  .current-prof-filter .pf-prof-row .mf-filter { grid-template-columns:repeat(8,minmax(0,1fr)); }
+  .current-prof-filter .pf-subprof-row .mf-filter { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .current-prof-filter .pf-status-row .mf-filter { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .current-prof-filter .mf-filter button { width:100%; min-width:0; min-height:34px; gap:2px; padding:4px 2px; border-radius:6px; font-size:10.5px; line-height:1; white-space:nowrap; touch-action:manipulation; }
+  .current-prof-filter .pf-prof-row .mf-filter button img { display:none; }
+  .current-prof-filter .current-status-filter button small { margin-left:1px; font-size:8px; }
   .current-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px; }
   .current-ledger-meta { padding-bottom: 12px; font-size: 12px; line-height: 1.5; }
   .agent-ledger-grid { grid-template-columns: 1fr; gap: 12px; }
