@@ -82,6 +82,92 @@ export function patchOperatorCurrent({ accountId, operatorId, game, patch } = {}
   })
 }
 
+// —— 主观养成标注（状态 / 备注） ——
+
+export function getOperatorAnnotations(accountId) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/annotations' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+export function putOperatorAnnotation({ accountId, operatorId, annotation } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/annotations/' + encodeURIComponent(operatorId) + (qs ? '?' + qs : ''), {
+    method: 'PUT',
+    auth: true,
+    body: annotation
+  })
+}
+
+// —— 云端养成目标 ——
+
+export function getOperatorGrowthTargets(accountId) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/growth-targets' + (qs ? '?' + qs : ''), { auth: true })
+}
+
+export function putOperatorGrowthTarget({ accountId, operatorId, target } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const qs = params.toString()
+  return request(PATH + '/growth-targets/' + encodeURIComponent(operatorId) + (qs ? '?' + qs : ''), {
+    method: 'PUT',
+    auth: true,
+    body: target
+  })
+}
+
+export function deleteOperatorGrowthTarget({ accountId, operatorId, expectedRevision } = {}) {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  params.set('expected_revision', String(Number(expectedRevision) || 0))
+  const qs = params.toString()
+  return request(PATH + '/growth-targets/' + encodeURIComponent(operatorId) + (qs ? '?' + qs : ''), {
+    method: 'DELETE',
+    auth: true
+  })
+}
+
+// —— 服务端权威快捷提升 ——
+
+export function previewOperatorUpgrade({ accountId, game, operatorId, dimension, target, expectedOperatorRevision } = {}) {
+  return request(PATH + '/upgrades/preview', {
+    method: 'POST',
+    auth: true,
+    body: {
+      account_id: accountId,
+      game: game,
+      operator_id: operatorId,
+      dimension: dimension,
+      target: target,
+      expected_operator_revision: Number(expectedOperatorRevision) || 0
+    }
+  })
+}
+
+export function executeOperatorUpgrade({ accountId, game, operatorId, dimension, target, expectedOperatorRevision, expectedInventoryRevision, previewToken, idempotencyKey } = {}) {
+  return request(PATH + '/upgrades/execute', {
+    method: 'POST',
+    auth: true,
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: {
+      account_id: accountId,
+      game: game,
+      operator_id: operatorId,
+      dimension: dimension,
+      target: target,
+      expected_operator_revision: Number(expectedOperatorRevision) || 0,
+      expected_inventory_revision: Number(expectedInventoryRevision) || 0,
+      preview_token: previewToken
+    }
+  })
+}
+
 // 导入记录列表（GET，需登录）——{ accountId, game?, cursor?, limit? }
 // 返回 { items: [{ account_id, record_id, record_type, game, snapshot_scope,
 //   effective_at, received_at, snapshot_effect, entries }], next_cursor }
@@ -106,13 +192,15 @@ export function deleteOperatorRecord(recordId, accountId) {
   })
 }
 
-// 导出（GET，需登录）——{ accountId?, scope? }
+// 导出（GET，需登录）——{ accountId?, scope?, version? }
 // 二选一：account_id（单账号）或 scope=all（全部账号）。
-// 直接返回 v2 交换文档（无 ApiResult 包装），故用 raw。
-export function exportOperator({ accountId, scope } = {}) {
+// version 默认 2；version=3 包含客观档案、annotation、favorite 与 targets。
+// 直接返回交换文档（无 ApiResult 包装），故用 raw。
+export function exportOperator({ accountId, scope, version } = {}) {
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   if (scope != null && scope !== '') params.set('scope', scope)
+  if (version != null) params.set('version', String(version))
   const qs = params.toString()
   return request(PATH + '/export' + (qs ? '?' + qs : ''), { auth: true, raw: true })
 }

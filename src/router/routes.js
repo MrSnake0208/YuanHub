@@ -1,8 +1,3 @@
-import INDEX from '/src/pages/index.vue'
-import WORK_DETAIL from '/src/pages/work/detail.vue'
-import CART from '/src/pages/tools/cart.vue'
-import INVENTORY from '/src/pages/inventory/index.vue'
-
 // {
 //     path: '/',  访问路径
 //     text: '作业广场',  导航展示的文本
@@ -24,7 +19,7 @@ export const routes = [
         display: false,
         module: 'plaza',
         icon: 'grid',
-        component: INDEX,
+        component: () => import('/src/pages/index.vue'),
         meta: {
             title: '作业广场 — 鸢鸢相抱 · YuanHub'
         }
@@ -49,7 +44,7 @@ export const routes = [
         display: true,
         module: 'tools',
         icon: 'shopping-cart',
-        component: CART,
+        component: () => import('/src/pages/tools/cart.vue'),
         meta: {
             title: '广陵账房 · 礼包计算器 — 鸢鸢相抱 · YuanHub'
         }
@@ -61,7 +56,7 @@ export const routes = [
         display: true,
         module: 'tools',
         icon: 'package-open',
-        component: INVENTORY,
+        component: () => import('/src/pages/inventory/index.vue'),
         meta: {
             title: '库存 — 鸢鸢相抱 · YuanHub'
         }

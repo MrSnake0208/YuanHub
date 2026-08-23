@@ -86,7 +86,7 @@ test('subProfOptions 从目录去重推导并保持出现顺序', function () {
     { subProf: '神纪' },
     { sub_prof: '岐黄' },
     { subProf: '' },
-    { name: '无从属' }
+    { name: '无职业' }
   ]
   assert.deepEqual(subProfOptions(ops), ['神纪', '破军', '龙盾', '岐黄'])
   assert.deepEqual(subProfOptions([]), [])
