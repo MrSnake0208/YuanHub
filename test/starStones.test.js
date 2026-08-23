@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { STAR_STONE_RESTRICTIONS } from '../src/data/starStones.js'
 
-test('星石装备限制使用密探属性或从属定义', function () {
+test('星石装备限制使用密探属性或职业定义', function () {
   assert.deepEqual(STAR_STONE_RESTRICTIONS.紫微, { subProf: ['龙盾'] })
   assert.deepEqual(STAR_STONE_RESTRICTIONS.破军, { subProf: ['破军'] })
   assert.deepEqual(STAR_STONE_RESTRICTIONS.天机, { subProf: ['神纪', '诡道'] })

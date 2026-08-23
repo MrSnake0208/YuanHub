@@ -55,7 +55,7 @@
                 <div>
                   <span class="section-kicker">数据交换</span>
                   <h2>导入或导出档案</h2>
-                  <p>用于在不同平台之间迁移密探养成数据；导出前请确认账号范围。</p>
+                  <p>用于迁移或备份密探养成数据；导出包含客观档案、状态、备注、关注和养成目标。</p>
                 </div>
                 <span class="archive-format">JSON · v2 / v3</span>
               </div>
@@ -76,7 +76,7 @@
                     </label>
                   </div>
                   <button class="act-btn export-submit" :disabled="!auth.isLoggedIn || !accountId" @click="doExport">
-                    <Download :size="16" aria-hidden="true" />导出档案
+                    <Download :size="16" aria-hidden="true" />导出完整备份
                   </button>
                 </div>
               </div>
@@ -167,7 +167,7 @@
               </div>
             </div>
 
-            <!-- 属性 / 从属 筛选 -->
+            <!-- 属性 / 职业 筛选 -->
             <div class="prof-filter" v-reveal>
               <div class="pf-row">
                 <span class="pf-label">属性</span>
@@ -177,7 +177,7 @@
                 </div>
               </div>
               <div class="pf-row">
-                <span class="pf-label">从属</span>
+                <span class="pf-label">职业</span>
                 <div class="mf-filter">
                   <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
                   <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
@@ -194,7 +194,7 @@
                   未招募 <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录 <b class="bp-num">{{ catalogVersion || '本地兜底' }}</b>
                   · 当前版本「{{ gameFilter }}」
                   <template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template>
-                  <template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template>
+                  <template v-if="subProfFilter !== 'all'"> · 职业「{{ subProfFilter }}」</template>
                   <template v-if="!auth.isLoggedIn"> · 未登录：仅展示图鉴，不显示云端养成</template>
                 </span>
                 <span class="sp"></span>
@@ -253,7 +253,7 @@
           </div>
 
           <!-- 当前养成 -->
-          <div v-show="activeTab === 'current'" class="panel" :class="{ 'is-active': activeTab === 'current' }">
+          <div v-if="visitedTabs.has('current')" v-show="activeTab === 'current'" class="panel" :class="{ 'is-active': activeTab === 'current' }">
             <div class="current-workbench-head" v-reveal>
               <div class="current-workbench-copy">
                 <span class="section-kicker">当前账号 · 养成台账</span>
@@ -261,7 +261,8 @@
                   <h2>{{ currentAccountName }}</h2>
                   <span class="current-game-tag">{{ gameFilter }}</span>
                 </div>
-                <p>点按虚线数值可直接校正；完整命盘、星石与面板数据仍可进入完整编辑。</p>
+                <p>点按虚线数值可直接修改数据。快捷提升按钮会真实扣除库存；手动校正与完整编辑不扣库存</p>
+                <p>密探面板自动计算机制源自 <a class="current-credit-link" href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki编辑部<span aria-hidden="true">↗</span></a> 及技术外援，因为计算精度问题，数据会存在个位数误差，仅供殿下们参考</p>
               </div>
               <div class="current-workbench-index" aria-label="当前养成状态概览">
                 <div class="current-index-total"><b>{{ ownedCurrentEntries.length }}</b><span>已招募</span></div>
@@ -271,6 +272,16 @@
                   <div class="status-inactive"><dt>养老中</dt><dd>{{ currentStatusCounts.inactive }}</dd></div>
                 </dl>
               </div>
+            </div>
+
+            <div v-if="upgradeReadyCount > 0 || upgradeReadyOnly" class="current-upgrade-reminder" :class="{ 'is-filtering': upgradeReadyOnly }">
+              <span class="current-upgrade-reminder-icon" aria-hidden="true"><ChevronUp :size="18" stroke-width="2.4" /></span>
+              <span class="current-upgrade-reminder-copy" role="status" aria-live="polite" aria-atomic="true">
+                <strong v-if="upgradeReadyCount > 0">有 {{ upgradeReadyCount }} 位密探存在可用提升</strong>
+                <strong v-else>当前没有可快捷提升的密探</strong>
+                <small>{{ upgradeReadyCount > 0 ? upgradeReadySummary : '库存、关注或养成状态已经变化，可以返回查看全部卡片。' }}</small>
+              </span>
+              <button type="button" :class="{ on: upgradeReadyOnly }" :aria-pressed="upgradeReadyOnly" @click="toggleUpgradeReadyOnly">{{ upgradeReadyOnly ? '显示全部' : '只看可提升' }}</button>
             </div>
 
             <!-- 当前养成案卷筛选 -->
@@ -292,8 +303,8 @@
                 </div>
               </div>
               <div class="pf-row">
-                <span class="pf-label">从属</span>
-                <div class="mf-filter" role="group" aria-label="按从属筛选当前养成">
+                <span class="pf-label">职业</span>
+                <div class="mf-filter" role="group" aria-label="按职业筛选当前养成">
                   <button type="button" :aria-pressed="subProfFilter === 'all'" :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
                   <button v-for="s in subProfOptions" :key="s" type="button" :aria-pressed="subProfFilter === s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
                 </div>
@@ -301,12 +312,13 @@
               <div class="pf-row pf-status-row">
                 <span class="pf-label">状态</span>
                 <div class="mf-filter current-status-filter" role="group" aria-label="按养成状态筛选当前养成">
-                  <button v-for="option in workbenchStatusOptions" :key="option.value" type="button" :aria-pressed="workbenchStatusFilter === option.value" :class="['status-' + option.value, { on: workbenchStatusFilter === option.value }]" @click="workbenchStatusFilter = option.value">{{ option.label }}<small>{{ option.value === 'all' ? ownedCurrentEntries.length : currentStatusCounts[option.value] }}</small></button>
+                  <button v-for="option in workbenchStatusOptions" :key="option.value" type="button" :aria-pressed="workbenchStatusFilter === option.value" :class="['status-' + option.value, { on: workbenchStatusFilter === option.value }]" @click="setWorkbenchStatusFilter(option.value)">{{ option.label }}<small>{{ option.value === 'all' ? ownedCurrentEntries.length : currentStatusCounts[option.value] }}</small></button>
                 </div>
               </div>
               </div>
             </div>
 
+            <div v-if="annotationError" class="state err slim" role="alert">{{ annotationError }}</div>
             <div v-if="loading" class="state">正在加载养成状态…</div>
             <div v-else-if="error" class="state err">
               {{ error }}
@@ -319,8 +331,8 @@
             </div>
             <div v-else class="current-ledger" v-reveal>
               <div class="current-ledger-meta">
-                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 从属「{{ subProfFilter }}」</template><template v-if="workbenchStatusFilter !== 'all'"> · 状态「{{ statusLabel(workbenchStatusFilter) }}」</template></span>
-                <span>校正操作仅更新养成记录，不扣减库存</span>
+                <span>版本「{{ gameFilter }}」<template v-if="profFilter !== 'all'"> · 属性「{{ profFilter }}」</template><template v-if="subProfFilter !== 'all'"> · 职业「{{ subProfFilter }}」</template><template v-if="workbenchStatusFilter !== 'all'"> · 状态「{{ statusLabel(workbenchStatusFilter) }}」</template><template v-if="upgradeReadyOnly"> · 仅看「可快捷提升」</template></span>
+                <span>快捷提升会真实扣除库存；手动校正与完整编辑不扣库存</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
               <div v-else class="agent-ledger-grid" role="list">
@@ -334,19 +346,19 @@
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
                         <h3>{{ e.name || e.id }}</h3>
-                        <span class="ledger-mobile-prof"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span>
+                        <span class="ledger-mobile-prof"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注职业' }}</span>
                         <details class="ledger-status-menu" :class="'status-' + operatorStatus(e)">
                           <summary class="ledger-status-button" :aria-label="e.name + '养成状态：' + statusLabel(operatorStatus(e))">
                             <span>{{ statusLabel(operatorStatus(e)) }}</span>
                           </summary>
                           <div class="ledger-status-options" role="listbox" :aria-label="e.name + '养成状态选项'">
-                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'growing'" @click="setOperatorStatusAndClose(e, 'growing', $event)">养成中</button>
-                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'graduated'" @click="setOperatorStatusAndClose(e, 'graduated', $event)">已毕业</button>
-                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'inactive'" @click="setOperatorStatusAndClose(e, 'inactive', $event)">养老中</button>
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'growing'" :disabled="annotationBusyIds.has(e.id)" @click="setOperatorStatusAndClose(e, 'growing', $event)">养成中</button>
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'graduated'" :disabled="annotationBusyIds.has(e.id)" @click="setOperatorStatusAndClose(e, 'graduated', $event)">已毕业</button>
+                            <button type="button" role="option" :aria-selected="operatorStatus(e) === 'inactive'" :disabled="annotationBusyIds.has(e.id)" @click="setOperatorStatusAndClose(e, 'inactive', $event)">养老中</button>
                           </div>
                         </details>
                       </div>
-                      <span class="ledger-prof"><span class="ledger-prof-copy"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注从属' }}</span><small v-if="quickNotices[e.id]" class="ledger-notice" role="status">{{ quickNotices[e.id] }}</small></span>
+                      <span class="ledger-prof"><span class="ledger-prof-copy"><img v-if="profIcon(e.prof)" :src="profIcon(e.prof)" alt="" aria-hidden="true" />{{ e.prof || '未知' }} · {{ firstSubProf(e) || '未标注职业' }}</span><small v-if="quickNotices[e.id]" class="ledger-notice" role="status">{{ quickNotices[e.id] }}</small></span>
                     </div>
                   </header>
 
@@ -378,21 +390,21 @@
                       <span class="ledger-grow-label">等级</span>
                       <label class="ledger-inline-field"><span class="sr-only">等级</span><input class="ledger-editable ledger-inline-input" type="number" min="0" max="100" :value="cardGrowthValue(e, 'level')" :disabled="cardSubmitStates[e.id] === 'submitting'" aria-label="等级" @input="setGrowthInput(e, 'level', $event)" /></label>
                       <div class="ledger-step-actions"><button v-if="cardGrowthValue(e, 'level') < 100" type="button" class="ledger-popover-trigger" :class="growthActionClass(e, 'level', 5)" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="openGrowthAction(e, 'level', 5)">{{ growthActionLabel(e, 'level', 5, '可 +5') }}</button><button v-else type="button" class="is-complete" disabled>已满级</button></div>
-                      <div v-if="cardPopoverKey === e.id + ':level'" class="ledger-popover"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthPopoverTitle(e, 'level') }}</p><label class="ledger-breakthrough-toggle"><input type="checkbox" :checked="cardLevelBreakthrough(e)" @change="setCardLevelBreakthrough(e, $event)" /><span>已突破</span></label><div class="ledger-material-list"><span v-for="item in growthMaterials(e, 'level')" :key="item.id" :class="{ 'is-lack': item.lack > 0 }">{{ item.name }} ×{{ item.required }}<small v-if="item.lack > 0">缺 {{ item.lack }}</small></span><em v-if="!growthMaterials(e, 'level').length">无需补充材料</em></div><div v-if="growthMaterialsReady(e, 'level')" class="ledger-popover-actions"><button type="button" @click="setGrowthDraft(e, 'level', growthTarget(e, 'level'))">应用到卡片</button></div><em v-else class="ledger-popover-blocked">材料不足，无法应用</em>
+                      <div v-if="cardPopoverKey === e.id + ':level'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'level') }}</p><div v-if="isGrowthPreviewBusy(e, 'level')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'level')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'level') }}<button type="button" @click="openGrowthAction(e, 'level', 5)">重试</button></div><template v-else-if="growthPreviewData(e, 'level')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'level')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'level').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'level')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'level')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'level')" @click="executeGrowthAction(e, 'level')">{{ isGrowthExecuteBusy(e, 'level') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'level').length && !growthPreviewHasMaterialGap(e, 'level')" class="ledger-popover-blocked">当前状态无法提升</em></template>
                       </div>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">修为</span>
                       <label class="ledger-inline-field"><span class="sr-only">修为</span><input class="ledger-editable ledger-inline-input" type="number" min="0" :max="getMaxEliteForLevel(cardGrowthValue(e, 'level'))" :value="cardGrowthValue(e, 'elite')" :disabled="cardSubmitStates[e.id] === 'submitting'" aria-label="修为" @input="setGrowthInput(e, 'elite', $event)" /></label>
                       <button class="ledger-smart-action ledger-popover-trigger" :class="growthActionClass(e, 'elite', 3)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level'))" @click="openGrowthAction(e, 'elite', 3)"><ChevronUp v-if="cardGrowthValue(e, 'elite') < getMaxEliteForLevel(cardGrowthValue(e, 'level')) && growthMaterialsReady(e, 'elite', 3)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level')) ? '已满级' : growthActionLabel(e, 'elite', 3, '升至 ' + growthTarget(e, 'elite')) }}</button>
-                      <div v-if="cardPopoverKey === e.id + ':elite'" class="ledger-popover"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthPopoverTitle(e, 'elite') }}</p><div class="ledger-material-list"><span v-for="item in growthMaterials(e, 'elite')" :key="item.id" :class="{ 'is-lack': item.lack > 0 }">{{ item.name }} ×{{ item.required }}<small v-if="item.lack > 0">缺 {{ item.lack }}</small></span><em v-if="!growthMaterials(e, 'elite').length">无需补充材料</em></div><div v-if="growthMaterialsReady(e, 'elite')" class="ledger-popover-actions"><button type="button" @click="setGrowthDraft(e, 'elite', growthTarget(e, 'elite'))">应用到卡片</button></div><em v-else class="ledger-popover-blocked">材料不足，无法应用</em></div>
+                      <div v-if="cardPopoverKey === e.id + ':elite'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'elite') }}</p><div v-if="isGrowthPreviewBusy(e, 'elite')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'elite')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'elite') }}<button type="button" @click="openGrowthAction(e, 'elite', 3)">重试</button></div><template v-else-if="growthPreviewData(e, 'elite')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'elite')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'elite').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'elite')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'elite')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'elite')" @click="executeGrowthAction(e, 'elite')">{{ isGrowthExecuteBusy(e, 'elite') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'elite').length && !growthPreviewHasMaterialGap(e, 'elite')" class="ledger-popover-blocked">当前状态无法提升</em></template></div>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">化极</span>
                       <button class="ledger-editable ledger-popover-trigger" type="button" :aria-expanded="cardPopoverKey === e.id + ':star-edit'" @click="openCardPopover(e, 'star-edit')">{{ starLabel(cardGrowthValue(e, 'star'), e.spOf) }}</button>
                       <button v-if="!e.spOf" class="ledger-next-action ledger-popover-trigger" :class="growthActionClass(e, 'star', 1)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'star') >= 31" @click="openGrowthAction(e, 'star', 1)"><ChevronUp v-if="cardGrowthValue(e, 'star') < 31 && growthMaterialsReady(e, 'star', 1)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'star') >= 31 ? (cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN ? '已觉醒' : '已满级') : growthActionLabel(e, 'star', 1, '下一节点') }}</button>
                       <div v-if="cardPopoverKey === e.id + ':star-edit'" class="ledger-popover ledger-star-popover"><p><CircleAlert :size="13" aria-hidden="true" />校正化极等级与节点</p><div class="ledger-star-controls"><select :value="starDraftGroup(e)" @change="setStarDraftGroup(e, $event)"><option value="0">未拥有</option><option v-for="group in 5" :key="group" :value="group">{{ group }} 星</option><option value="31">觉醒</option></select><select v-if="!e.spOf && starDraftGroup(e) > 0 && starDraftGroup(e) < 31" :value="starDraftNode(e)" @change="setStarDraftNode(e, $event)"><option v-for="node in 6" :key="node - 1" :value="node - 1">节点 {{ node - 1 }}</option></select></div><div class="ledger-popover-actions"><button type="button" @click="cardPopoverKey = ''">完成校正</button></div></div>
-                      <div v-if="cardPopoverKey === e.id + ':star'" class="ledger-popover"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthPopoverTitle(e, 'star') }}</p><div class="ledger-material-list"><span v-for="item in growthMaterials(e, 'star')" :key="item.id" :class="{ 'is-lack': item.lack > 0 }">{{ item.name }} ×{{ item.required }}<small v-if="item.lack > 0">缺 {{ item.lack }}</small></span><em v-if="!growthMaterials(e, 'star').length">无需补充材料</em></div><div v-if="growthMaterialsReady(e, 'star')" class="ledger-popover-actions"><button type="button" @click="setGrowthDraft(e, 'star', growthTarget(e, 'star'))">应用到卡片</button></div><em v-else class="ledger-popover-blocked">材料不足，无法应用</em></div>
+                      <div v-if="!e.spOf && cardPopoverKey === e.id + ':star'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'star') }} </p><div v-if="isGrowthPreviewBusy(e, 'star')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'star')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'star') }}<button type="button" @click="openGrowthAction(e, 'star', 1)">重试</button></div><template v-else-if="growthPreviewData(e, 'star')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'star')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'star').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'star')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'star')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'star')" @click="executeGrowthAction(e, 'star')">{{ isGrowthExecuteBusy(e, 'star') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'star').length && !growthPreviewHasMaterialGap(e, 'star')" class="ledger-popover-blocked">当前状态无法提升</em></template></div>
                     </div>
                   </section>
 
@@ -436,8 +448,8 @@
                   </div>
 
                   <div class="ledger-card-footer">
-                    <textarea :value="operatorRemark(e)" rows="2" :aria-label="e.name + '备忘'" placeholder="添加备忘…" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setOperatorRemarkDraft(e, $event.target.value)"></textarea>
-                    <div class="ledger-card-actions"><template v-if="cardHasDraft(e)"><button class="ledger-card-cancel" type="button" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="cancelCardDraft(e)">取消</button><button class="ledger-card-save" type="button" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="saveCardDraft(e)"><Save :size="13" aria-hidden="true" />保存</button></template><button v-else class="ledger-full-edit" type="button" @click.stop="openEdit(e.id)"><Pencil :size="14" aria-hidden="true" />完整编辑</button></div>
+                    <textarea :value="operatorRemark(e)" rows="2" maxlength="1000" :aria-label="e.name + '备忘'" placeholder="添加备忘…" :disabled="cardSubmitStates[e.id] === 'submitting' || annotationBusyIds.has(e.id)" @input="setOperatorRemarkDraft(e, $event.target.value)"></textarea>
+                    <div class="ledger-card-actions"><template v-if="cardHasDraft(e)"><button class="ledger-card-cancel" type="button" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="cancelCardDraft(e)">取消</button><button class="ledger-card-save" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || annotationBusyIds.has(e.id)" @click="saveCardDraft(e)"><Save :size="13" aria-hidden="true" />保存</button></template><button v-else class="ledger-full-edit" type="button" @click.stop="openEdit(e.id)"><Pencil :size="14" aria-hidden="true" />完整编辑</button></div>
                   </div>
                   <div v-if="cardSubmitStates[e.id]" class="ledger-submit-overlay" :class="cardSubmitStates[e.id]"><div class="ledger-submit-message"><div class="ledger-submit-icon"><span v-if="cardSubmitStates[e.id] === 'submitting'" class="ledger-submit-spinner"></span><span v-else-if="cardSubmitStates[e.id] === 'success'">✓</span><span v-else>!</span></div><strong>{{ cardSubmitStates[e.id] === 'submitting' ? '正在提交' : cardSubmitStates[e.id] === 'success' ? '已保存' : '保存失败' }}</strong><p>{{ cardSubmitStates[e.id] === 'submitting' ? '正在保存本次修改…' : cardSubmitStates[e.id] === 'success' ? '本次修改已更新' : quickNotices[e.id] || '本次修改尚未更新' }}</p><div v-if="cardSubmitStates[e.id] === 'error'" class="ledger-submit-actions"><button type="button" @click="clearCardSubmitState(e)">继续编辑</button><button type="button" class="ledger-card-save" @click="saveCardDraft(e)">重试</button></div></div></div>
                 </article>
@@ -445,13 +457,17 @@
             </div>
           </div>
 
-          <div v-show="activeTab === 'tracking'" class="panel" :class="{ 'is-active': activeTab === 'tracking' }">
+          <div v-if="visitedTabs.has('tracking')" v-show="activeTab === 'tracking'" class="panel" :class="{ 'is-active': activeTab === 'tracking' }">
             <OperatorGrowthTracker
               :account-id="accountId"
               :current-entries="currentEntries"
               :catalog-entries="catalogOperators"
               :favorite-ids="favoriteAgentIds"
               :is-logged-in="auth.isLoggedIn"
+              :refresh-key="subjectiveRefreshKey"
+              :initial-current-items="cardMaterialStock"
+              :initial-current-agents="cardHeartStock"
+              :current-inventory-ready="cardMaterialLoadedAccount === accountId"
             />
           </div>
 
@@ -774,12 +790,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, defineAsyncComponent } from 'vue'
 import { Archive, BookOpen, Calculator, ChevronUp, CircleAlert, Download, ListChecks, Pencil, RotateCcw, Save, ScanLine, Star, Target, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
-import OperatorGrowthTracker from '../../components/operator/OperatorGrowthTracker.vue'
+const OperatorGrowthTracker = defineAsyncComponent(function () { return import('../../components/operator/OperatorGrowthTracker.vue') })
 import {
   getOperatorCatalog,
   listOperatorAccounts,
@@ -789,6 +805,10 @@ import {
   deleteOperatorAccount,
   getOperatorCurrent,
   patchOperatorCurrent,
+  getOperatorAnnotations,
+  putOperatorAnnotation,
+  previewOperatorUpgrade,
+  executeOperatorUpgrade,
   importOperator,
   previewOperatorImport,
   exportOperator
@@ -834,11 +854,13 @@ import {
 const ODDITY_KEYS = OPERATOR_ODDITY_KEYS
 
 const activeTab = ref('catalog')
+const visitedTabs = ref(new Set(['catalog']))
 const manifestSearch = ref('')
 const manifestFilter = ref('all')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
 const workbenchStatusFilter = ref('all')
+const upgradeReadyOnly = ref(false)
 const favoriteFirst = ref(false)
 const profOptions = AGENT_PROFS
 const subProfOptions = computed(function () { return deriveSubProfOptions(catalogOperators.value) })
@@ -871,6 +893,8 @@ const favoriteError = ref('')
 const scanEffectById = ref({})
 let favoriteLoadSeq = 0
 let currentLoadSeq = 0
+let currentLoadedKey = ''
+let favoriteLoadedAccount = ''
 let accountEventRefreshTimer = null
 let unsubscribeAccountEvents = null
 let scanFocusSeq = 0
@@ -878,7 +902,8 @@ let finishPendingScanScroll = null
 const scanEffectTimers = new Map()
 const operatorSlotElements = new Map()
 
-// 当前养成台账卡的轻量交互状态（状态与备忘是浏览器侧偏好，不改变后端协议）
+// 当前养成台账卡的交互状态。状态与备忘以云端 annotation 为真相源；
+// localStorage 只保留迁移与断网回退用途。
 const quickEditorKey = ref('')
 const quickConfirmKey = ref('')
 const quickDrafts = ref({})
@@ -887,6 +912,11 @@ const quickNotices = ref({})
 const workbenchStatuses = ref({})
 const workbenchRemarks = ref({})
 const workbenchRemarkSaving = ref(new Set())
+const annotationRevisions = ref({})
+const annotationBusyIds = ref(new Set())
+const annotationError = ref('')
+const subjectiveRefreshKey = ref(0)
+let annotationLoadSeq = 0
 const cardCombatDrafts = ref({})
 const cardCombatModes = ref({})
 const cardCombatSavingIds = ref(new Set())
@@ -895,12 +925,18 @@ const cardPopoverKey = ref('')
 const cardMaterialStock = ref({})
 const cardMaterialLoading = ref(false)
 let cardMaterialLoadSeq = 0
+const cardMaterialLoadedAccount = ref('')
 const cardSubmitStates = ref({})
 const cardSubmitTimers = new Map()
 const cardDraftBaselines = ref({})
 const cardPopoverStep = ref(0)
 const cardHeartStock = ref({})
 const cardLevelBreakthroughs = ref({})
+const growthPreviews = ref({})
+const growthPreviewBusyKeys = ref(new Set())
+const growthExecuteBusyKeys = ref(new Set())
+const growthExecutionKeys = new Map()
+const handledUpgradeTransactionIds = new Set()
 const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 
 // —— 单个密探编辑弹窗 ——
@@ -949,10 +985,14 @@ const gameFilter = computed({
 watch(function () { return [accountId.value, saveGame.value] }, function () {
   workbenchStatuses.value = readWorkbenchMap('statuses')
   workbenchRemarks.value = readWorkbenchMap('remarks')
+  annotationRevisions.value = {}
+  annotationError.value = ''
   cardCombatModes.value = readWorkbenchMap('combat-modes')
   favoriteFirst.value = readFavoriteFirstPreference()
   cardLevelBreakthroughs.value = {}
-  loadCardMaterialStock()
+  upgradeReadyOnly.value = false
+  loadOperatorAnnotations()
+  if (visitedTabs.value.has('current') && cardMaterialLoadedAccount.value !== accountId.value) loadCardMaterialStock()
 }, { immediate: true })
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
@@ -1024,6 +1064,7 @@ function firstSubProf(entry) {
 
 function clearAgentFavorites() {
   favoriteLoadSeq += 1
+  favoriteLoadedAccount = ''
   favoriteAgentIds.value = new Set()
   favoriteBusyIds.value = new Set()
   favoriteLoading.value = false
@@ -1040,6 +1081,7 @@ async function loadAgentFavorites() {
     const data = await listAgentFavorites(targetAccount)
     if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
     favoriteAgentIds.value = new Set(Array.isArray(data && data.agent_ids) ? data.agent_ids : [])
+    favoriteLoadedAccount = targetAccount
   } catch (err) {
     if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
     favoriteAgentIds.value = new Set()
@@ -1697,7 +1739,7 @@ const currentMap = computed(function () {
   return m
 })
 
-// 图鉴顶部统计口径（不跟随属性/从属/搜索/已拥有筛选）：仅按游戏过滤的全量
+// 图鉴顶部统计口径（不跟随属性/职业/搜索/已拥有筛选）：仅按游戏过滤的全量
 const statsEntries = computed(function () {
   const state = currentMap.value
   return catalogOperators.value
@@ -1717,7 +1759,7 @@ const manifestPercent = computed(function () {
   return Math.round(manifestOwned.value * 100 / statsEntries.value.length) + '%'
 })
 
-// 图鉴展示列表：在全量基础上叠加 属性/从属/搜索/已拥有 筛选
+// 图鉴展示列表：在全量基础上叠加 属性/职业/搜索/已拥有 筛选
 const manifestEntries = computed(function () {
   const state = currentMap.value
   const q = manifestSearch.value.toLowerCase()
@@ -1760,13 +1802,13 @@ const filterSuffix = computed(function () {
   if (manifestSearch.value) parts.push('「' + manifestSearch.value + '」')
   parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
-  if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  if (subProfFilter.value !== 'all') parts.push('职业「' + subProfFilter.value + '」')
   if (manifestFilter.value === 'owned') parts.push('「已拥有」')
   if (manifestFilter.value === 'missing') parts.push('「未拥有」')
   return parts.length ? parts.join(' · ') : ''
 })
 
-// 当前养成首要口径：只展示已拥有，再叠加属性 / 从属筛选。
+// 当前养成首要口径：只展示已拥有，再叠加属性 / 职业筛选。
 const ownedCurrentEntries = computed(function () {
   return currentEntries.value.filter(isOperatorOwned)
 })
@@ -1806,10 +1848,43 @@ function compareCurrentEntries(a, b) {
   return String(a.name || a.id).localeCompare(String(b.name || b.id), 'zh-CN')
 }
 
+const upgradeReadyGroups = computed(function () {
+  const groups = { growing: [], favoriteGraduatedHuaji: [] }
+  if (cardMaterialLoadedAccount.value !== accountId.value) return groups
+  ownedCurrentEntries.value.forEach(function (entry) {
+    const status = operatorStatus(entry)
+    if (status === 'growing' && hasQuickGrowthActionAvailable(entry)) {
+      groups.growing.push(entry)
+      return
+    }
+    if (status === 'graduated' && favoriteAgentIds.value.has(entry.id) && quickGrowthActionAvailable(entry, 'star', 1)) {
+      groups.favoriteGraduatedHuaji.push(entry)
+    }
+  })
+  return groups
+})
+
+const upgradeReadyEntries = computed(function () {
+  return upgradeReadyGroups.value.growing.concat(upgradeReadyGroups.value.favoriteGraduatedHuaji)
+})
+const upgradeReadyCount = computed(function () { return upgradeReadyEntries.value.length })
+const upgradeReadySummary = computed(function () {
+  const parts = []
+  const growing = upgradeReadyGroups.value.growing.length
+  const favoriteGraduatedHuaji = upgradeReadyGroups.value.favoriteGraduatedHuaji.length
+  if (growing) parts.push(growing + ' 位养成中密探可快捷提升')
+  if (favoriteGraduatedHuaji) parts.push(favoriteGraduatedHuaji + ' 位特别关注的已毕业密探可继续化极')
+  return parts.join('；') + '。'
+})
+const upgradeReadyIds = computed(function () {
+  return new Set(upgradeReadyEntries.value.map(function (entry) { return entry.id }))
+})
+
 const filteredCurrent = computed(function () {
   return ownedCurrentEntries.value.filter(function (e) {
     return matchesProfSubFilter(e, profFilter.value, subProfFilter.value) &&
-      (workbenchStatusFilter.value === 'all' || operatorStatus(e) === workbenchStatusFilter.value)
+      (workbenchStatusFilter.value === 'all' || operatorStatus(e) === workbenchStatusFilter.value) &&
+      (!upgradeReadyOnly.value || upgradeReadyIds.value.has(e.id))
   }).sort(compareCurrentEntries)
 })
 
@@ -1817,19 +1892,35 @@ const currentFilterSuffix = computed(function () {
   const parts = []
   parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
-  if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  if (subProfFilter.value !== 'all') parts.push('职业「' + subProfFilter.value + '」')
   if (workbenchStatusFilter.value !== 'all') parts.push('状态「' + statusLabel(workbenchStatusFilter.value) + '」')
+  if (upgradeReadyOnly.value) parts.push('「可快捷提升」')
   return parts.length ? parts.join(' · ') : '当前条件'
 })
 
 const hasCurrentFilters = computed(function () {
-  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all'
+  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all' || upgradeReadyOnly.value
 })
 
 function resetCurrentFilters() {
   profFilter.value = 'all'
   subProfFilter.value = 'all'
   workbenchStatusFilter.value = 'all'
+  upgradeReadyOnly.value = false
+}
+
+function toggleUpgradeReadyOnly() {
+  if (upgradeReadyOnly.value) {
+    upgradeReadyOnly.value = false
+    return
+  }
+  resetCurrentFilters()
+  upgradeReadyOnly.value = true
+}
+
+function setWorkbenchStatusFilter(value) {
+  workbenchStatusFilter.value = value
+  upgradeReadyOnly.value = false
 }
 
 function monogram(e) {
@@ -1900,6 +1991,123 @@ function persistWorkbenchMap(kind, value) {
   localStorage.setItem(workbenchStorageKey(kind), JSON.stringify(value))
 }
 
+const ANNOTATION_STATE_TO_API = { growing: 'active', graduated: 'graduated', inactive: 'skip' }
+const ANNOTATION_STATE_FROM_API = { active: 'growing', graduated: 'graduated', skip: 'inactive' }
+
+function annotationMigrationKey(account) {
+  return 'yuanhub:operator-annotations-migrated:v1:' + account
+}
+
+function annotationRevision(item) {
+  return Number(item && item.revision) || 0
+}
+
+function applyAnnotationItem(item) {
+  const id = item && (item.operator_id || item.operatorId)
+  if (!id) return
+  const apiState = item.growth_state || item.growthState || 'active'
+  const note = item.note == null ? '' : String(item.note)
+  workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [id]: ANNOTATION_STATE_FROM_API[apiState] || 'growing' })
+  workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, { [id]: note })
+  annotationRevisions.value = Object.assign({}, annotationRevisions.value, { [id]: annotationRevision(item) })
+}
+
+async function migrateLocalAnnotations(targetAccount, remoteIds) {
+  if (typeof localStorage === 'undefined' || localStorage.getItem(annotationMigrationKey(targetAccount)) === 'done') return
+  const localStatuses = readWorkbenchMap('statuses')
+  const localRemarks = readWorkbenchMap('remarks')
+  const ids = new Set(Object.keys(localStatuses).concat(Object.keys(localRemarks)))
+  const candidates = Array.from(ids).filter(function (id) {
+    if (remoteIds.has(id)) return false
+    const state = localStatuses[id] || 'growing'
+    const note = localRemarks[id] == null ? '' : String(localRemarks[id]).trim()
+    return state !== 'growing' || !!note
+  })
+  for (const id of candidates) {
+    const state = localStatuses[id] || 'growing'
+    const note = localRemarks[id] == null || String(localRemarks[id]).trim() === '' ? null : String(localRemarks[id])
+    const item = await putOperatorAnnotation({
+      accountId: targetAccount,
+      operatorId: id,
+      annotation: {
+        growth_state: ANNOTATION_STATE_TO_API[state] || 'active',
+        note: note,
+        expected_revision: 0
+      }
+    })
+    if (accountId.value !== targetAccount) return
+    applyAnnotationItem(item)
+  }
+  localStorage.setItem(annotationMigrationKey(targetAccount), 'done')
+}
+
+async function loadOperatorAnnotations() {
+  if (!auth.isLoggedIn || !accountId.value) {
+    annotationLoadSeq += 1
+    annotationRevisions.value = {}
+    return
+  }
+  const targetAccount = accountId.value
+  const seq = ++annotationLoadSeq
+  annotationError.value = ''
+  try {
+    const data = await getOperatorAnnotations(targetAccount)
+    if (seq !== annotationLoadSeq || accountId.value !== targetAccount) return
+    const items = Array.isArray(data && data.items) ? data.items : []
+    const statuses = {}
+    const remarks = {}
+    const revisions = {}
+    const remoteIds = new Set()
+    items.forEach(function (item) {
+      const id = item && (item.operator_id || item.operatorId)
+      if (!id) return
+      remoteIds.add(id)
+      statuses[id] = ANNOTATION_STATE_FROM_API[item.growth_state || item.growthState] || 'growing'
+      remarks[id] = item.note == null ? '' : String(item.note)
+      revisions[id] = annotationRevision(item)
+    })
+    workbenchStatuses.value = statuses
+    workbenchRemarks.value = remarks
+    annotationRevisions.value = revisions
+    await migrateLocalAnnotations(targetAccount, remoteIds)
+    if (seq !== annotationLoadSeq || accountId.value !== targetAccount) return
+    persistWorkbenchMap('statuses', workbenchStatuses.value)
+    persistWorkbenchMap('remarks', workbenchRemarks.value)
+  } catch (err) {
+    if (seq !== annotationLoadSeq || accountId.value !== targetAccount) return
+    annotationError.value = humanErr(err, '养成状态与备注同步失败')
+  }
+}
+
+async function saveOperatorAnnotation(entry, fields) {
+  if (!entry || !entry.id || !auth.isLoggedIn || !accountId.value) return null
+  const targetAccount = accountId.value
+  const id = entry.id
+  annotationBusyIds.value = new Set(annotationBusyIds.value).add(id)
+  annotationError.value = ''
+  try {
+    const body = Object.assign({}, fields, { expected_revision: Number(annotationRevisions.value[id]) || 0 })
+    const item = await putOperatorAnnotation({ accountId: targetAccount, operatorId: id, annotation: body })
+    if (accountId.value !== targetAccount) return null
+    applyAnnotationItem(item)
+    persistWorkbenchMap('statuses', workbenchStatuses.value)
+    persistWorkbenchMap('remarks', workbenchRemarks.value)
+    return item
+  } catch (err) {
+    if (accountId.value === targetAccount) {
+      annotationError.value = humanErr(err, '养成标注保存失败')
+      if (err && err.code === 'annotation_revision_conflict') await loadOperatorAnnotations()
+    }
+    throw err
+  } finally {
+    if (accountId.value === targetAccount) {
+      const next = new Set(annotationBusyIds.value)
+      next.delete(id)
+      annotationBusyIds.value = next
+    }
+  }
+}
+
 function readFavoriteFirstPreference() {
   if (typeof localStorage === 'undefined') return false
   try { return localStorage.getItem(workbenchStorageKey('favorite-first')) === 'true' } catch (_) { return false }
@@ -1936,6 +2144,7 @@ function flattenInventoryCurrent(data) {
 async function loadCardMaterialStock() {
   if (!auth.isLoggedIn || !accountId.value) {
     cardMaterialLoadSeq += 1
+    cardMaterialLoadedAccount.value = ''
     cardMaterialStock.value = {}
     cardHeartStock.value = {}
     cardMaterialLoading.value = false
@@ -1955,6 +2164,7 @@ async function loadCardMaterialStock() {
       __experience__: (Number(items.bingshucanjuan) || 0) * 100 + (Number(items.bingshuquanjuan) || 0) * 1000 + (Number(items.liutaobingshu) || 0) * 10000
     })
     cardHeartStock.value = flattenInventoryCurrent(results[1])
+    cardMaterialLoadedAccount.value = targetAccount
   } catch (_) {
     if (seq === cardMaterialLoadSeq) {
       cardMaterialStock.value = {}
@@ -2029,6 +2239,29 @@ function cardDraftSnapshot(entry) {
   return JSON.stringify({ level: Number(growth.level) || 0, elite: Number(growth.elite) || 0, star: Number(growth.star) || 0, discLoadouts: growth.discLoadouts || [], starStones: growth.starStones || [], remark: growth.remark == null ? operatorRemark(entry) : growth.remark, modes: cardCombatModes.value[entry.id] || growth.modes || {}, attack: combat.attack == null ? null : Number(combat.attack), hp: combat.hp == null ? null : Number(combat.hp), oddityAttack: Number(combat.oddityAttack) || 0, oddityHp: Number(combat.oddityHp) || 0 })
 }
 
+function parsedCardDraftSnapshot(entry) {
+  try { return JSON.parse(cardDraftSnapshot(entry)) } catch (_) { return {} }
+}
+
+function parsedCardDraftBaseline(entry) {
+  try { return JSON.parse(cardDraftBaselines.value[entry.id] || '{}') } catch (_) { return {} }
+}
+
+function cardDraftChanges(entry) {
+  const baseline = parsedCardDraftBaseline(entry)
+  const current = parsedCardDraftSnapshot(entry)
+  const baselineObjective = Object.assign({}, baseline)
+  const currentObjective = Object.assign({}, current)
+  delete baselineObjective.remark
+  delete currentObjective.remark
+  return {
+    objective: JSON.stringify(baselineObjective) !== JSON.stringify(currentObjective),
+    note: String(baseline.remark || '') !== String(current.remark || ''),
+    baseline: baseline,
+    current: current
+  }
+}
+
 function cardGrowthValue(entry, field) {
   const draft = ensureCardDraft(entry)
   if (!draft) return field === 'star' ? entry.starLevel : entry[field]
@@ -2077,10 +2310,248 @@ function growthTarget(entry, field, step) {
   return Math.min(entry.spOf ? 5 : 31, draft.star + 1)
 }
 
-function openGrowthAction(entry, field, step) {
+function growthActionKey(entry, field) {
+  return entry.id + ':' + field
+}
+
+function growthPreviewFor(entry, field) {
+  return growthPreviews.value[growthActionKey(entry, field)] || null
+}
+
+function growthPreviewData(entry, field) {
+  const state = growthPreviewFor(entry, field)
+  return state && state.data ? state.data : null
+}
+
+function growthPreviewError(entry, field) {
+  const state = growthPreviewFor(entry, field)
+  return state && state.error ? state.error : ''
+}
+
+function growthPreviewAvailable(entry, field) {
+  const preview = growthPreviewData(entry, field)
+  return !!(preview && preview.available)
+}
+
+function growthPreviewRequirements(entry, field) {
+  const preview = growthPreviewData(entry, field)
+  return preview && Array.isArray(preview.requirements) ? preview.requirements : []
+}
+
+function growthPreviewDisplayRequirements(entry, field) {
+  const requirements = growthPreviewRequirements(entry, field).slice()
+  if (field !== 'level' || cardMaterialLoadedAccount.value !== accountId.value) return requirements
+  const bookIds = new Set(['liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan'])
+  if (requirements.some(function (item) { return bookIds.has(item && item.id) })) return requirements
+  const requiredExperience = growthPreviewExperience(entry, field)
+  const stock = cardMaterialStock.value || {}
+  const experienceGap = Math.max(requiredExperience - (Number(stock.__experience__) || 0), 0)
+  if (!experienceGap) return requirements
+  const projectedStock = Object.assign({}, stock)
+  levelBookGapBundle(experienceGap).forEach(function (book) {
+    projectedStock[book.id] = (Number(projectedStock[book.id]) || 0) + book.required
+  })
+  levelBookDeductions(requiredExperience, projectedStock).forEach(function (book) {
+    const owned = Number(stock[book.id]) || 0
+    requirements.push({
+      entity_type: 'item',
+      id: book.id,
+      required: book.required,
+      owned: owned,
+      balance_after: owned - book.required
+    })
+  })
+  return requirements
+}
+
+function growthRequirementName(requirement, entry) {
+  const type = requirement && (requirement.entity_type || requirement.entityType)
+  const id = requirement && requirement.id
+  if (type === 'agent') {
+    const operator = catalogMap.value[id]
+    return ((operator && operator.name) || (entry && entry.id === id && entry.name) || id) + '心纸'
+  }
+  return itemNameById(id)
+}
+
+function growthRequirementValue(requirement, key) {
+  if (!requirement) return 0
+  const camel = key.replace(/_([a-z])/g, function (_, letter) { return letter.toUpperCase() })
+  return Number(requirement[key] != null ? requirement[key] : requirement[camel]) || 0
+}
+
+function growthRequirementBalanceLabel(requirement) {
+  const balance = growthRequirementValue(requirement, 'balance_after')
+  if (balance < 0) return '缺 ' + Math.abs(balance).toLocaleString('zh-CN')
+  return growthRequirementValue(requirement, 'owned').toLocaleString('zh-CN') + ' → ' + balance.toLocaleString('zh-CN')
+}
+
+function growthPreviewExperience(entry, field) {
+  const preview = growthPreviewData(entry, field)
+  return Number(preview && (preview.experience_required != null ? preview.experience_required : preview.experienceRequired)) || 0
+}
+
+function growthPreviewBlockingReasons(entry, field) {
+  const preview = growthPreviewData(entry, field)
+  const reasons = preview && Array.isArray(preview.blocking_reasons || preview.blockingReasons)
+    ? (preview.blocking_reasons || preview.blockingReasons)
+    : []
+  return reasons.filter(function (reason) {
+    return String(reason && reason.code || '') !== 'insufficient_inventory'
+  })
+}
+
+function growthPreviewHasMaterialGap(entry, field) {
+  return growthPreviewDisplayRequirements(entry, field).some(function (item) {
+    return growthRequirementValue(item, 'balance_after') < 0
+  })
+}
+
+function growthReasonMessage(reason) {
+  return String(reason && (reason.message || reason.code) || '当前状态无法提升')
+}
+
+function isGrowthPreviewBusy(entry, field) {
+  return growthPreviewBusyKeys.value.has(growthActionKey(entry, field))
+}
+
+function isGrowthExecuteBusy(entry, field) {
+  return growthExecuteBusyKeys.value.has(growthActionKey(entry, field))
+}
+
+function upgradeDimension(field) {
+  return field === 'star' ? 'huaji' : field
+}
+
+function uuid() {
+  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') return globalThis.crypto.randomUUID()
+  return 'upgrade-' + Date.now() + '-' + Math.random().toString(36).slice(2)
+}
+
+function resetCardDraftState(id) {
+  ;[cardGrowthDrafts, cardDraftBaselines, cardCombatDrafts].forEach(function (state) {
+    const next = Object.assign({}, state.value)
+    delete next[id]
+    state.value = next
+  })
+}
+
+async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
   ensureCardDraft(entry)
+  if (cardHasDraft(entry)) {
+    quickNotices.value = Object.assign({}, quickNotices.value, { [entry.id]: '请先保存或取消卡片中的手动修改' })
+    return
+  }
   cardPopoverStep.value = step || 1
-  cardPopoverKey.value = entry.id + ':' + field
+  const key = growthActionKey(entry, field)
+  cardPopoverKey.value = key
+  growthPreviewBusyKeys.value = new Set(growthPreviewBusyKeys.value).add(key)
+  growthExecutionKeys.delete(key)
+  growthPreviews.value = Object.assign({}, growthPreviews.value, { [key]: { data: null, error: '' } })
+  try {
+    const data = await previewOperatorUpgrade({
+      accountId: accountId.value,
+      game: saveGame.value,
+      operatorId: entry.id,
+      dimension: upgradeDimension(field),
+      target: growthTarget(entry, field, step),
+      expectedOperatorRevision: Number(entry.revision) || 0
+    })
+    if (cardPopoverKey.value !== key) return
+    growthPreviews.value = Object.assign({}, growthPreviews.value, { [key]: { data: data, error: '' } })
+  } catch (err) {
+    if (cardPopoverKey.value !== key) return
+    if (err && err.code === 'operator_state_stale' && !retriedAfterRefresh) {
+      await reloadCurrent(true)
+      resetCardDraftState(entry.id)
+      await openGrowthAction(currentMap.value[entry.id] || entry, field, step, true)
+      return
+    }
+    growthPreviews.value = Object.assign({}, growthPreviews.value, { [key]: { data: null, error: humanErr(err, '提升预览失败') } })
+  } finally {
+    const next = new Set(growthPreviewBusyKeys.value)
+    next.delete(key)
+    growthPreviewBusyKeys.value = next
+  }
+}
+
+function applyUpgradeConsumption(consumed) {
+  ;(Array.isArray(consumed) ? consumed : []).forEach(function (item) {
+    const type = item.entity_type || item.entityType
+    const id = item.id
+    const balance = Number(item.balance_after != null ? item.balance_after : item.balanceAfter) || 0
+    if (type === 'agent') cardHeartStock.value = Object.assign({}, cardHeartStock.value, { [id]: balance })
+    else cardMaterialStock.value = Object.assign({}, cardMaterialStock.value, { [id]: balance })
+  })
+  const stock = cardMaterialStock.value
+  cardMaterialStock.value = Object.assign({}, stock, {
+    __experience__: (Number(stock.bingshucanjuan) || 0) * 100 + (Number(stock.bingshuquanjuan) || 0) * 1000 + (Number(stock.liutaobingshu) || 0) * 10000
+  })
+}
+
+function applyUpgradeOperator(entry, raw) {
+  if (!entry || !raw) return
+  const preserveDraft = !!cardGrowthDrafts.value[entry.id] && cardHasDraft(entry)
+  entry.level = Number(raw.level) || 0
+  entry.elite = Number(raw.elite) || 0
+  entry.starLevel = Number(raw.star_level != null ? raw.star_level : raw.starLevel) || 0
+  entry.revision = Number(raw.revision) || entry.revision || 0
+  if (preserveDraft) {
+    showQuickNotice(entry.id, '服务器养成已更新；当前未保存修改仍保留，请确认后再提交')
+    return
+  }
+  const draft = ensureCardDraft(entry)
+  if (draft) {
+    draft.level = entry.level
+    draft.elite = entry.elite
+    draft.star = entry.starLevel
+    cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, { [entry.id]: cardDraftSnapshot(entry) })
+  }
+}
+
+async function executeGrowthAction(entry, field) {
+  const key = growthActionKey(entry, field)
+  const preview = growthPreviewData(entry, field)
+  if (!preview || !preview.available || growthExecuteBusyKeys.value.has(key)) return
+  const target = Number(preview.to)
+  const operatorRevision = Number(preview.operator_revision != null ? preview.operator_revision : preview.operatorRevision) || 0
+  const inventoryRevision = Number(preview.inventory_revision != null ? preview.inventory_revision : preview.inventoryRevision) || 0
+  const previewToken = preview.preview_token || preview.previewToken
+  const idempotencyKey = growthExecutionKeys.get(key) || uuid()
+  growthExecutionKeys.set(key, idempotencyKey)
+  growthExecuteBusyKeys.value = new Set(growthExecuteBusyKeys.value).add(key)
+  try {
+    const result = await executeOperatorUpgrade({
+      accountId: accountId.value,
+      game: saveGame.value,
+      operatorId: entry.id,
+      dimension: upgradeDimension(field),
+      target: target,
+      expectedOperatorRevision: operatorRevision,
+      expectedInventoryRevision: inventoryRevision,
+      previewToken: previewToken,
+      idempotencyKey: idempotencyKey
+    })
+    const transactionId = result && (result.transaction_id || result.transactionId)
+    if (transactionId) handledUpgradeTransactionIds.add(transactionId)
+    applyUpgradeOperator(entry, result && result.operator)
+    applyUpgradeConsumption(result && result.consumed)
+    cardPopoverKey.value = ''
+    growthExecutionKeys.delete(key)
+    showQuickNotice(entry.id, '已提升并扣除库存', 2200)
+  } catch (err) {
+    const refreshable = err && ['operator_state_stale', 'inventory_state_stale', 'insufficient_inventory', 'preview_expired'].includes(err.code)
+    showQuickNotice(entry.id, refreshable ? '状态已变化，已刷新提升预览' : humanErr(err, '提升失败'))
+    if (refreshable) {
+      await Promise.all([reloadCurrent(true), loadCardMaterialStock()])
+      resetCardDraftState(entry.id)
+      await openGrowthAction(currentMap.value[entry.id] || entry, field, cardPopoverStep.value)
+    }
+  } finally {
+    const next = new Set(growthExecuteBusyKeys.value)
+    next.delete(key)
+    growthExecuteBusyKeys.value = next
+  }
 }
 
 function setGrowthDraft(entry, field, value, closePopover) {
@@ -2117,7 +2588,49 @@ function setStarDraftNode(entry, event) {
   if (group > 0 && group < 31) setGrowthDraft(entry, 'star', 6 * (group - 1) + node + 1, false)
 }
 
+function quickGrowthRequirementReady(entry, field, step) {
+  const draft = cardGrowthDrafts.value[entry.id]
+  const level = Number(draft ? draft.level : entry.level) || 0
+  const elite = Number(draft ? draft.elite : entry.elite) || 0
+  const star = Number(draft ? draft.star : entry.starLevel) || 0
+  const stock = cardMaterialStock.value || {}
+  let requirement
+  if (field === 'level') {
+    if (level >= 100) return false
+    requirement = calculateLevelRequirements(level, Math.min(100, level + step), firstSubProf(entry), cardLevelBreakthrough(entry))
+  } else if (field === 'elite') {
+    const maxElite = getMaxEliteForLevel(level)
+    if (elite >= maxElite) return false
+    requirement = calculateXiuweiRequirements(elite, Math.min(maxElite, elite + step), xiuweiJob(entry.prof))
+  } else {
+    if (entry.spOf || star >= 31) return false
+    requirement = calculateStarRequirements(star, Math.min(31, star + step))
+  }
+  const itemsReady = Object.keys(requirement.items || {}).every(function (id) {
+    return (Number(stock[id]) || 0) >= (Number(requirement.items[id]) || 0)
+  })
+  if (!itemsReady) return false
+  if ((Number(requirement.experience) || 0) > (Number(stock.__experience__) || 0)) return false
+  if ((Number(requirement.heart) || 0) > (Number(cardHeartStock.value[entry.id]) || 0)) return false
+  return true
+}
+
+function quickGrowthActionAvailable(entry, field, step) {
+  if (!entry || !entry.id || cardSubmitStates.value[entry.id] === 'submitting') return false
+  const draft = cardGrowthDrafts.value[entry.id]
+  const baseline = cardDraftBaselines.value[entry.id]
+  if (draft && baseline && baseline !== cardDraftSnapshot(entry)) return false
+  return quickGrowthRequirementReady(entry, field, step)
+}
+
+function hasQuickGrowthActionAvailable(entry) {
+  return quickGrowthActionAvailable(entry, 'level', 5) ||
+    quickGrowthActionAvailable(entry, 'elite', 3) ||
+    quickGrowthActionAvailable(entry, 'star', 1)
+}
+
 function growthActionClass(entry, field, step) {
+  if (field === 'star' && entry.spOf) return 'is-ready'
   const materials = growthMaterials(entry, field, step)
   return materials.some(function (item) { return item.lack > 0 }) ? 'is-lack' : 'is-ready'
 }
@@ -2127,6 +2640,7 @@ function growthMaterialsReady(entry, field, step) {
 }
 
 function growthActionLabel(entry, field, step, readyLabel) {
+  if (field === 'star' && entry.spOf) return readyLabel
   const materials = growthMaterials(entry, field, step)
   if (!materials.some(function (item) { return item.lack > 0 })) return readyLabel
   if (field === 'level') return '查看经验缺口'
@@ -2260,9 +2774,31 @@ function handleCardPopoverOutside(event) {
   cardPopoverKey.value = ''
 }
 
-function setOperatorStatus(entry, value) {
+function showQuickNotice(id, message, duration) {
+  quickNotices.value = Object.assign({}, quickNotices.value, { [id]: message })
+  if (!duration) return
+  window.setTimeout(function () {
+    if (quickNotices.value[id] !== message) return
+    const next = Object.assign({}, quickNotices.value)
+    delete next[id]
+    quickNotices.value = next
+  }, duration)
+}
+
+async function setOperatorStatus(entry, value) {
+  if (!entry || !entry.id || annotationBusyIds.value.has(entry.id)) return
+  const previous = operatorStatus(entry)
   workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [entry.id]: value })
   persistWorkbenchMap('statuses', workbenchStatuses.value)
+  try {
+    await saveOperatorAnnotation(entry, { growth_state: ANNOTATION_STATE_TO_API[value] || 'active' })
+    showQuickNotice(entry.id, '养成状态已同步', 1800)
+  } catch (err) {
+    if (!(err && err.code === 'annotation_revision_conflict')) {
+      workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [entry.id]: previous })
+    }
+    showQuickNotice(entry.id, humanErr(err, '养成状态保存失败'))
+  }
 }
 
 function setOperatorStatusAndClose(entry, value, event) {
@@ -2645,15 +3181,24 @@ function cardPatch(entry) {
 }
 
 async function saveCardDraft(entry) {
-  if (!accountId.value || cardSubmitStates.value[entry.id] === 'submitting') return
+  if (!accountId.value || cardSubmitStates.value[entry.id] === 'submitting' || annotationBusyIds.value.has(entry.id)) return
   cardPopoverKey.value = ''
   cardSubmitStates.value = Object.assign({}, cardSubmitStates.value, { [entry.id]: 'submitting' })
   try {
-    const response = await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch: cardPatch(entry) })
-    mergePatchedCurrentEntry(entry, response)
+    const changes = cardDraftChanges(entry)
+    if (changes.objective) {
+      const response = await patchOperatorCurrent({ accountId: accountId.value, operatorId: entry.id, game: saveGame.value, patch: cardPatch(entry) })
+      mergePatchedCurrentEntry(entry, response)
+      // 客观字段已经成功时先推进其 baseline；若随后备注保存失败，重试只提交备注。
+      const objectiveBaseline = parsedCardDraftSnapshot(entry)
+      objectiveBaseline.remark = changes.baseline.remark == null ? '' : changes.baseline.remark
+      cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, { [entry.id]: JSON.stringify(objectiveBaseline) })
+    }
     const draft = ensureCardDraft(entry)
-    if (draft && draft.remark != null) workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, { [entry.id]: draft.remark })
-    persistWorkbenchMap('remarks', workbenchRemarks.value)
+    if (changes.note && draft) {
+      const note = String(draft.remark || '').trim() === '' ? null : String(draft.remark)
+      await saveOperatorAnnotation(entry, { note: note })
+    }
     persistWorkbenchMap('combat-modes', cardCombatModes.value)
     cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, { [entry.id]: cardDraftSnapshot(entry) })
     cardSubmitStates.value = Object.assign({}, cardSubmitStates.value, { [entry.id]: 'success' })
@@ -3030,9 +3575,12 @@ async function saveEdit() {
 }
 
 function setTab(t) {
+  if (!visitedTabs.value.has(t)) visitedTabs.value = new Set(visitedTabs.value).add(t)
   activeTab.value = t
-  if ((t === 'current' || t === 'tracking') && currentEntries.value.length === 0) reloadCurrent()
-  if (t === 'tracking') loadAgentFavorites()
+  const currentKey = accountId.value + ':' + gameFilter.value
+  if ((t === 'current' || t === 'tracking') && currentLoadedKey !== currentKey) reloadCurrent()
+  if (t === 'current' && cardMaterialLoadedAccount.value !== accountId.value) loadCardMaterialStock()
+  if (t === 'tracking' && favoriteLoadedAccount !== accountId.value) loadAgentFavorites()
 }
 
 async function onGameChange(game) {
@@ -3181,6 +3729,7 @@ async function onDeleteAccount(acc) {
 async function reloadCurrent(quiet) {
   if (!auth.isLoggedIn) {
     currentLoadSeq += 1
+    currentLoadedKey = ''
     currentEntries.value = []
     error.value = ''
     loading.value = false
@@ -3188,6 +3737,7 @@ async function reloadCurrent(quiet) {
   }
   if (!accountId.value) {
     currentLoadSeq += 1
+    currentLoadedKey = ''
     currentEntries.value = []
     error.value = ''
     loading.value = false
@@ -3195,6 +3745,7 @@ async function reloadCurrent(quiet) {
   }
   const targetAccount = accountId.value
   const targetGame = gameFilter.value
+  const targetKey = targetAccount + ':' + targetGame
   const seq = ++currentLoadSeq
   loading.value = true
   if (!quiet) error.value = ''
@@ -3218,6 +3769,7 @@ async function reloadCurrent(quiet) {
     }).sort(function (a, b) {
       return (b.level - a.level) || (b.starLevel - a.starLevel) || (b.elite - a.elite) || (operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id))
     })
+    currentLoadedKey = targetKey
   } catch (err) {
     if (seq !== currentLoadSeq || accountId.value !== targetAccount || gameFilter.value !== targetGame) return
     if (!quiet) error.value = humanErr(err, '加载失败，请稍后重试')
@@ -3317,6 +3869,31 @@ function handleAccountEvent(message) {
   if (!message) return
   if (message.event === 'account_stream_open') {
     scheduleEventRefresh()
+    return
+  }
+  if (message.event === 'operator-upgrade') {
+    const data = message.data || {}
+    if (data.account_id && data.account_id !== accountId.value) return
+    const transactionId = data.transaction_id || data.transactionId
+    if (transactionId && handledUpgradeTransactionIds.has(transactionId)) return
+    if (transactionId) handledUpgradeTransactionIds.add(transactionId)
+    const id = data.operator_id || data.operatorId
+    const entry = currentMap.value[id]
+    if (!entry) {
+      reloadCurrent(true)
+      if (visitedTabs.value.has('current')) loadCardMaterialStock()
+      return
+    }
+    const dimension = data.dimension
+    const next = Number(data.to) || 0
+    applyUpgradeOperator(entry, {
+      level: dimension === 'level' ? next : entry.level,
+      elite: dimension === 'elite' ? next : entry.elite,
+      star_level: dimension === 'huaji' ? next : entry.starLevel,
+      revision: data.operator_revision != null ? data.operator_revision : data.operatorRevision
+    })
+    applyUpgradeConsumption(data.consumed)
+    showQuickNotice(id, '养成与库存已同步', 2200)
     return
   }
   if (message.event !== 'operator_scan_import') return
@@ -3546,14 +4123,15 @@ function afterImport() {
   importText.value = ''
   importError.value = ''
   showImport.value = false
-  reloadCurrent()
+  subjectiveRefreshKey.value += 1
+  Promise.all([reloadCurrent(), loadOperatorAnnotations(), loadAgentFavorites()])
 }
 
 async function doExport() {
   if (!auth.isLoggedIn) { goLogin(); return }
   if (!accountId.value) { await dialog.alert({ message: '请先创建并选择一个子账号' }); return }
   try {
-    const opts = {}
+    const opts = { version: 3 }
     if (exportAll.value && accounts.value.length > 1) {
       opts.scope = 'all'
     } else {
@@ -3563,7 +4141,7 @@ async function doExport() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = 'operator-export.json'
+    link.download = 'operator-full-backup-v3.json'
     link.click()
     URL.revokeObjectURL(link.href)
   } catch (err) {
@@ -3573,6 +4151,18 @@ async function doExport() {
 
 function humanErr(err, fallback) {
   if (!err) return fallback
+  const byCode = {
+    annotation_revision_conflict: '养成状态或备注已在其他页面更新，已重新同步',
+    operator_state_stale: '密探养成状态已变化，请重新确认提升',
+    inventory_state_stale: '库存已变化，请重新确认提升',
+    insufficient_inventory: '库存材料不足，无法完成提升',
+    idempotency_conflict: '本次提升请求已变化，请重新打开预览',
+    invalid_growth_state: '养成状态无效',
+    invalid_upgrade_target: '当前目标不能通过快捷提升完成',
+    invalid_star_level: '化极目标超过该密探允许的范围',
+    preview_expired: '提升预览已过期，请重新确认'
+  }
+  if (err.code && byCode[err.code]) return byCode[err.code]
   const msg = err.message
   if (!msg) return fallback
   if (/Failed to fetch|NetworkError|fetch/i.test(msg)) return '网络异常，请检查后端服务是否已启动'
@@ -3585,8 +4175,7 @@ onMounted(async function () {
   document.addEventListener('pointerdown', handleCardPopoverOutside)
   window.addEventListener('scroll', hideDiscTooltip, true)
   window.addEventListener('resize', hideDiscTooltip)
-  await loadCatalog()
-  await loadAccounts()
+  await Promise.all([loadCatalog(), loadAccounts()])
   await Promise.all([reloadCurrent(), loadAgentFavorites()])
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent)
 })
@@ -3856,7 +4445,7 @@ onBeforeUnmount(function () {
 .mf-filter button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 4px rgba(73, 59, 44, .16) }
 .mf-filter button:hover:not(.on) { color: var(--ink) }
 
-/* ---- 属性 / 从属 筛选行 ---- */
+/* ---- 属性 / 职业 筛选行 ---- */
 .prof-filter { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px }
 .pf-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .pf-label { flex: none; min-width: 34px; font-size: 12.5px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
@@ -3884,6 +4473,10 @@ onBeforeUnmount(function () {
 .current-workbench-head h2 { min-width:0; overflow:hidden; font-family:var(--font-s); font-size:25px; font-weight:900; letter-spacing:.04em; text-overflow:ellipsis; white-space:nowrap }
 .current-game-tag { display:inline-flex; min-height:24px; align-items:center; padding:2px 8px; border:1px solid var(--line); border-radius:999px; background:var(--cream); color:var(--ink-60); font-size:10px; font-weight:800; white-space:nowrap }
 .current-workbench-head p { max-width:650px; margin-top:6px; color:var(--ink-60); font-size:12px; line-height:1.65 }
+.current-credit-link { display:inline-flex; align-items:baseline; gap:3px; padding:0 3px; border-radius:4px; color:var(--accent-strong); font-weight:900; text-decoration:underline; text-decoration-color:rgba(215,137,53,.5); text-decoration-thickness:1px; text-underline-offset:3px; transition:background-color .18s var(--ease),color .18s var(--ease),text-decoration-color .18s var(--ease) }
+.current-credit-link span { font-size:.88em; font-weight:900 }
+.current-credit-link:hover { background:rgba(239,210,142,.34); color:var(--tea); text-decoration-color:var(--tea) }
+.current-credit-link:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px; background:var(--cream); color:var(--tea) }
 .current-workbench-index { display:flex; min-width:0; align-items:stretch; gap:14px; padding:8px 10px; border:1px solid rgba(73,59,44,.1); border-radius:12px; background:rgba(255,253,246,.72) }
 .current-index-total { display:flex; min-width:60px; align-items:center; justify-content:center; flex-direction:column; padding-right:13px; border-right:1px dashed var(--line) }
 .current-index-total b { color:var(--accent-strong); font:900 24px/1 var(--font-d) }
@@ -3896,6 +4489,17 @@ onBeforeUnmount(function () {
 .current-status-index > .status-inactive::before { background:rgba(73,59,44,.35) }
 .current-status-index dt { overflow:hidden; color:var(--ink-60); font-size:9px; font-weight:800; text-overflow:ellipsis; white-space:nowrap }
 .current-status-index dd { margin:3px 0 0; color:var(--ink); font:900 14px/1 var(--font-d) }
+.current-upgrade-reminder { display:grid; min-width:0; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; margin-top:10px; padding:9px 11px; border:1px solid rgba(111,159,118,.38); border-radius:12px; background:linear-gradient(100deg,rgba(191,220,192,.5),rgba(255,253,246,.94) 58%); box-shadow:0 9px 22px -20px rgba(73,59,44,.5) }
+.current-upgrade-reminder.is-filtering { border-color:rgba(215,137,53,.5); background:linear-gradient(100deg,rgba(239,210,142,.46),rgba(255,253,246,.94) 58%) }
+.current-upgrade-reminder-icon { display:inline-flex; width:34px; height:34px; align-items:center; justify-content:center; border:1px solid rgba(111,159,118,.34); border-radius:10px; background:#BFDCC0; color:#315f38 }
+.current-upgrade-reminder-copy { display:flex; min-width:0; flex-direction:column; gap:2px }
+.current-upgrade-reminder-copy strong { color:var(--tea); font-family:var(--font-s); font-size:12.5px; font-weight:900; letter-spacing:.02em }
+.current-upgrade-reminder-copy small { color:var(--ink-60); font-size:10.5px; font-weight:700; line-height:1.45 }
+.current-upgrade-reminder button { display:inline-flex; min-height:36px; align-items:center; justify-content:center; padding:6px 12px; border:1px solid rgba(111,159,118,.55); border-radius:8px; background:var(--surface); color:#315f38; font:800 10.5px var(--font-b); white-space:nowrap; cursor:pointer; transition:border-color .2s var(--ease),background-color .2s var(--ease),color .2s var(--ease),transform .16s var(--ease) }
+.current-upgrade-reminder button:hover { border-color:var(--accent); color:var(--accent-strong) }
+.current-upgrade-reminder button.on { border-color:var(--tea); background:var(--tea); color:var(--cream) }
+.current-upgrade-reminder button:active { transform:scale(.97) }
+.current-upgrade-reminder button:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
 .current-prof-filter { margin-top:10px; gap:0; overflow:hidden; padding:0; border-radius:16px }
 .current-filter-head { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px dashed var(--line); background:var(--cream) }
 .current-filter-title { display:flex; min-width:0; align-items:baseline; gap:8px }
@@ -4095,6 +4699,11 @@ onBeforeUnmount(function () {
 .ledger-material-list small { flex:none; color:var(--ink-60); font:700 8px var(--font-b) }
 .ledger-material-list .is-lack small { color:var(--rouge) }
 .ledger-material-list em { color:var(--ink-35); font-size:9px; font-style:normal }
+.ledger-upgrade-popover { min-width:min(250px,calc(100vw - 28px)) }
+.ledger-popover-state { display:flex; min-height:54px; align-items:center; justify-content:center; gap:8px; padding:9px; border:1px dashed var(--line); border-radius:7px; color:var(--ink-60); font-size:10px; text-align:center }
+.ledger-popover-state.is-error { border-color:rgba(166,81,74,.35); background:rgba(240,207,200,.24); color:var(--rouge) }
+.ledger-popover-state button { flex:none; padding:5px 8px }
+.ledger-upgrade-summary { display:flex !important; flex-wrap:wrap; justify-content:space-between; gap:4px 8px !important; color:var(--ink-60); font:700 8.5px/1.4 var(--font-b) }
 .ledger-popover-blocked { align-self:flex-end; color:var(--rouge); font-size:9px; font-style:normal; font-weight:800 }
 .ledger-popover-actions { justify-content:flex-end }
 .ledger-popover-actions .cancel { margin-right:auto; background:var(--paper); color:var(--ink-60) }
@@ -4498,6 +5107,11 @@ onBeforeUnmount(function () {
   .current-status-index > div { padding-left:8px; }
   .current-status-index dt { font-size:9.5px; }
   .current-status-index dd { font-size:15px; }
+  .current-upgrade-reminder { grid-template-columns:auto minmax(0,1fr); gap:8px 10px; padding:10px; }
+  .current-upgrade-reminder-icon { width:38px; height:38px; }
+  .current-upgrade-reminder-copy strong { font-size:13px; line-height:1.4; }
+  .current-upgrade-reminder-copy small { font-size:11px; }
+  .current-upgrade-reminder button { min-height:44px; grid-column:1 / -1; padding-inline:14px; font-size:12px; }
   .prof-filter { margin-top: 10px; padding: 11px 12px; gap: 9px; }
   .pf-row { align-items: flex-start; gap: 8px; }
   .pf-label { padding-top: 7px; font-size: 12.5px; }

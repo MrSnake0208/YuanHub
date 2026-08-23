@@ -73,7 +73,7 @@ export const ASSIST_STAR_DESCRIPTIONS = {
   地空: '风属性抗性+'
 }
 
-// 部分星石只允许装备到指定从属或属性的密探。
+// 部分星石只允许装备到指定职业或属性的密探。
 export const STAR_STONE_RESTRICTIONS = {
   紫微: { subProf: ['龙盾'] },
   破军: { subProf: ['破军'] },

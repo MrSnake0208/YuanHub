@@ -118,7 +118,7 @@
                 <span class="op-search-count">本页 {{ pageOperators.length }} 位 · 已有数据 {{ hasDataOperators.length }} 位 · 目录 {{ catalogCount }} 位</span>
               </div>
 
-              <!-- 属性 / 从属 筛选（随翻页重置） -->
+              <!-- 属性 / 职业 筛选（随翻页重置） -->
               <div class="prof-filter" v-reveal>
                 <div class="pf-row">
                   <span class="pf-label">属性</span>
@@ -128,7 +128,7 @@
                   </div>
                 </div>
                 <div class="pf-row">
-                  <span class="pf-label">从属</span>
+                  <span class="pf-label">职业</span>
                   <div class="mf-filter">
                     <button :class="{ on: subProfFilter === 'all' }" @click="subProfFilter = 'all'">全部</button>
                     <button v-for="s in subProfOptions" :key="s" :class="{ on: subProfFilter === s }" @click="subProfFilter = s">{{ s }}</button>
@@ -351,7 +351,7 @@ const filterSuffix = computed(function () {
   if (search.value) parts.push('「' + search.value + '」')
   parts.push('版本「' + gameFilter.value + '」')
   if (profFilter.value !== 'all') parts.push('属性「' + profFilter.value + '」')
-  if (subProfFilter.value !== 'all') parts.push('从属「' + subProfFilter.value + '」')
+  if (subProfFilter.value !== 'all') parts.push('职业「' + subProfFilter.value + '」')
   return parts.length ? parts.join(' · ') : ''
 })
 
@@ -926,7 +926,7 @@ onMounted(async function () {
 .op-search-input:focus { border-color: var(--accent) }
 .op-search-count { font-size: 12px; color: var(--ink-35); font-weight: 600 }
 
-/* ---- 属性 / 从属 筛选行 ---- */
+/* ---- 属性 / 职业 筛选行 ---- */
 .prof-filter { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px }
 .pf-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
 .pf-label { flex: none; min-width: 34px; font-size: 12.5px; font-weight: 800; color: var(--ink); font-family: var(--font-b) }
