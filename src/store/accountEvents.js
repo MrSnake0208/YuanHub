@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { openAccountEventStream } from '../api/accountEvents.js'
+import { listRecords } from '../api/inventory.js'
 import { AGENT_CATALOG, ITEM_CATALOG } from '../data/inventory/catalog.js'
 import { activeAccount } from './activeAccount.js'
 import { auth } from './auth.js'
@@ -53,6 +54,18 @@ function formatInventoryEntry(entry, recordType) {
   return name + sign + count
 }
 
+function inventoryRecordId(record) {
+  return String(record && (record.record_id || record.recordId) || '').trim()
+}
+
+function inventoryRecordType(record) {
+  return String(record && (record.record_type || record.recordType) || '').trim()
+}
+
+function inventoryRecordChannel(record) {
+  return String(record && (record.acquisition_channel || record.acquisitionChannel) || '').trim()
+}
+
 function inventoryToastRecord(records) {
   const record = Array.isArray(records) ? records.find(function (item) {
     return Array.isArray(item && item.entries) && item.entries.length
@@ -62,7 +75,7 @@ function inventoryToastRecord(records) {
 
 function inventoryToastEntries(records, channel) {
   const matchingRecords = (Array.isArray(records) ? records : []).filter(function (record) {
-    return record && record.record_type !== 'stock_snapshot' && String(record.acquisition_channel || record.acquisitionChannel || '').trim() === channel && Array.isArray(record.entries)
+    return record && inventoryRecordType(record) !== 'stock_snapshot' && inventoryRecordChannel(record) === channel && Array.isArray(record.entries)
   })
   return matchingRecords.flatMap(function (record) {
     return record.entries.map(function (entry) {
@@ -70,7 +83,7 @@ function inventoryToastEntries(records, channel) {
       return Object.assign({}, entry, {
         name: entry && (entry.name || entityNames.get(entry.id) || entry.id),
         entityType: entityType,
-        display: formatInventoryEntry(entry, record.record_type),
+        display: formatInventoryEntry(entry, inventoryRecordType(record)),
         highlight: entry && entry.id === 'baijinbi'
           ? 'is-white-coin'
           : (entry && entry.id === 'zhuyu'
@@ -82,14 +95,57 @@ function inventoryToastEntries(records, channel) {
 }
 
 function inventoryToastDetail(records) {
+  return (Array.isArray(records) ? records : []).filter(function (record) {
+    return record && inventoryRecordType(record) !== 'stock_snapshot' && Array.isArray(record.entries)
+  }).flatMap(function (record) {
+    return record.entries.map(function (entry) {
+      return formatInventoryEntry(entry, inventoryRecordType(record))
+    })
+  }).join(' · ')
+}
+
+async function resolveInventoryToastRecords(data) {
+  const records = Array.isArray(data && data.records) ? data.records : []
+  const missingChannelIds = new Set(records.filter(function (record) {
+    return inventoryRecordType(record) !== 'stock_snapshot' && !inventoryRecordChannel(record) && inventoryRecordId(record)
+  }).map(inventoryRecordId))
+  if (!missingChannelIds.size || !auth.isLoggedIn) return records
+
+  const accountId = String(data.account_id || data.accountId || activeAccount.id || '').trim()
+  if (!accountId) return records
+  try {
+    const page = await listRecords({ accountId: accountId, limit: 100 })
+    const storedById = new Map((Array.isArray(page && page.items) ? page.items : []).map(function (record) {
+      return [inventoryRecordId(record), record]
+    }))
+    return records.map(function (record) {
+      if (inventoryRecordChannel(record)) return record
+      const stored = storedById.get(inventoryRecordId(record))
+      const channel = inventoryRecordChannel(stored)
+      return channel ? Object.assign({}, record, { acquisition_channel: channel }) : record
+    })
+  } catch (_) {
+    // Older event payloads omit the channel. A failed history lookup must not suppress the toast.
+    return records
+  }
+}
+
+async function notifyInventoryImport(data) {
+  const accountId = String(data.account_id || data.accountId || activeAccount.id || '').trim()
+  const records = await resolveInventoryToastRecords(data)
+  if (accountId && accountId !== activeAccount.id) return
   const record = inventoryToastRecord(records)
-  if (!record) return ''
-  const entries = record.entries.slice(0, 2).map(function (entry) {
-    return formatInventoryEntry(entry, record.record_type)
+  const isSnapshot = records.some(function (item) { return inventoryRecordType(item) === 'stock_snapshot' })
+  const channel = inventoryRecordChannel(record)
+  const isExpandedChannel = channel === '据点情报' || channel.indexOf('派遣') === 0
+  showToast({
+    kind: 'inventory',
+    title: isSnapshot ? '库存已同步' : (isExpandedChannel ? channel : '新增库存流水'),
+    detail: isSnapshot ? '' : (isExpandedChannel ? '' : (inventoryToastDetail(records) || '库存已同步')),
+    entries: isSnapshot || !isExpandedChannel ? [] : inventoryToastEntries(records, channel),
+    inventoryChannel: channel,
+    inventorySnapshot: isSnapshot
   })
-  const remaining = record.entries.length - entries.length
-  if (remaining > 0) entries.push('另 ' + remaining + ' 项')
-  return entries.join(' · ')
 }
 
 function notifyForEvent(message) {
@@ -110,18 +166,7 @@ function notifyForEvent(message) {
     }
     else if (data.status === 'review' || data.status === 'rejected') showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '采集结果尚未写入档案' })
   } else if (message.event === 'inventory_import') {
-    const record = inventoryToastRecord(data.records)
-    const isSnapshot = Array.isArray(data.records) && data.records.some(function (item) { return item && item.record_type === 'stock_snapshot' })
-    const channel = record && String(record.acquisition_channel || record.acquisitionChannel || '').trim()
-    const isExpandedChannel = channel === '据点情报' || channel.indexOf('派遣') === 0
-    showToast({
-      kind: 'inventory',
-      title: isSnapshot ? '库存已同步' : (isExpandedChannel ? channel : '新增库存流水'),
-      detail: isSnapshot ? '' : (isExpandedChannel ? '' : (inventoryToastDetail(data.records) || '库存已同步')),
-      entries: isSnapshot || !isExpandedChannel ? [] : inventoryToastEntries(data.records, channel),
-      inventoryChannel: channel,
-      inventorySnapshot: isSnapshot
-    })
+    void notifyInventoryImport(data)
   }
 }
 
