@@ -269,8 +269,26 @@ section{padding:0px 0 8px}
 .rv.in{opacity:1;transform:none}
 
 /* ---------------- 路由过渡 ---------------- */
-.fade-enter-active,.fade-leave-active{transition:opacity .25s var(--ease)}
+.fade-enter-active{transition:opacity .28s cubic-bezier(.22,1,.36,1)}
+.fade-leave-active{transition:opacity .14s ease-out}
 .fade-enter-from,.fade-leave-to{opacity:0}
+.route-loading{
+  position:fixed;top:env(safe-area-inset-top,0);right:0;left:0;z-index:999;height:4px;overflow:hidden;
+  background:rgba(255,248,236,.78);box-shadow:0 4px 14px rgba(73,59,44,.12);pointer-events:none;
+}
+.route-loading-bar{
+  display:block;width:42%;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,transparent,var(--accent),var(--yellow-deep),transparent);
+  animation:route-loading-sweep .9s linear infinite;
+}
+.route-loader-enter-active{transition:opacity .1s ease-out}
+.route-loader-leave-active{transition:opacity .18s ease-out}
+.route-loader-enter-from,.route-loader-leave-to{opacity:0}
+@keyframes route-loading-sweep{
+  0%{opacity:.3;transform:translateX(-110%) scaleX(.55)}
+  55%{opacity:1;transform:translateX(110%) scaleX(1)}
+  100%{opacity:.35;transform:translateX(250%) scaleX(.7)}
+}
 
 section[id]{scroll-margin-top:84px}
 .modal-mask{overscroll-behavior:contain;animation:mask-in .18s ease-out both}
@@ -623,4 +641,5 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
   .rv{opacity:1;transform:none}
+  .route-loading-bar{animation:none;transform:none;width:100%;opacity:1}
 }

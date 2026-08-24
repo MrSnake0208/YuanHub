@@ -1,5 +1,15 @@
 <template>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <Transition name="route-loader">
+    <div
+      v-if="routeLoadingState.active"
+      class="route-loading"
+      role="progressbar"
+      aria-label="正在切换页面"
+    >
+      <span class="route-loading-bar" aria-hidden="true"></span>
+    </div>
+  </Transition>
   <RouterView v-slot="{ Component }">
     <Transition name="fade" mode="out-in">
       <component :is="Component" />
@@ -19,6 +29,7 @@ import { auth } from '@/store/auth.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
 import { stopAccountEventStream, subscribeAccountEvents, syncAccountEventStream } from '@/store/accountEvents.js'
+import { routeLoadingState } from '@/router/index.js'
 
 let stopWatch = null
 let stopEventPrompt = null

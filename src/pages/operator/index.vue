@@ -4270,7 +4270,7 @@ onBeforeUnmount(function () {
 
 /* ---- 统一子账号：选择/管理已抽到共用组件 AccountWorkspace.vue ---- */
 
-.operator-tabs { display: flex; gap: 4px; background: rgba(73, 59, 44, .06); border-radius: 14px; padding: 4px; margin-top: 40px; flex-wrap: wrap; align-items: center }
+.operator-tabs { position: sticky; top: 24px; z-index: 45; display: flex; gap: 4px; background: rgba(255, 248, 236, .94); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 14px; padding: 4px; margin-top: 40px; flex-wrap: wrap; align-items: center; box-shadow: 0 12px 28px -22px rgba(73, 59, 44, .5) }
 .operator-tabs button { border: none; background: transparent; font-family: var(--font-b); font-weight: 700; font-size: 14px; padding: 10px 26px; border-radius: 10px; cursor: pointer; color: var(--ink-60); transition: all .3s var(--ease) }
 .operator-tabs button.on { background: var(--tea); color: var(--cream) }
 .operator-tabs button:hover:not(.on) { color: var(--ink) }
@@ -5144,7 +5144,7 @@ onBeforeUnmount(function () {
   .current-ledger-meta { flex-direction: column; gap: 4px; }
   .operator-main > section { padding-bottom: 40px }
   .page-operator :deep(.footer) { padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom)) }
-  .operator-tabs { gap: 8px; padding: 8px; }
+  .operator-tabs { position: static; gap: 8px; padding: 8px; }
   .operator-tabs .operator-tab-button, .operator-tabs .sp { display: none }
   .operator-tabs .admin-link { min-height: 44px }
   .operator-mobile-tabs {
