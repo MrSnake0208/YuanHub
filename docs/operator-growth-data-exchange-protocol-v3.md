@@ -1,9 +1,13 @@
 # 密探养成数据交换协议 v3
 
-状态：协议草案，待前后端与自动采集端联调  
+> 第三方接入导航、其他交换版本和 HTTP 传输方式统一收录在 [`exchange-specs/`](./exchange-specs/README.md)。本文继续作为密探 v3 的完整权威规范。
+
+状态：当前正式版本，浏览器导入/导出与自动采集 OpenAPI 已接入
+
 格式标识：`myshare-operator-exchange`  
 协议版本：`3`  
-更新时间：2026-08-21  
+更新时间：2026-08-24
+
 机器 Schema：[`schemas/operator-growth-exchange-v3.schema.json`](./schemas/operator-growth-exchange-v3.schema.json)  
 有效样例：[`examples/operator-growth-exchange-v3/full-backup.valid.json`](./examples/operator-growth-exchange-v3/full-backup.valid.json)、[`examples/operator-growth-exchange-v3/scan-sp.valid.json`](./examples/operator-growth-exchange-v3/scan-sp.valid.json)
 

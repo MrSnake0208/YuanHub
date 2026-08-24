@@ -1,0 +1,18 @@
+{
+  "format": "myshare-inventory-exchange",
+  "version": 2,
+  "exported_at": "2026-08-24T08:01:00Z",
+  "producer": { "platform": "example-editor", "version": "1.0.0" },
+  "accounts": [{ "id": "acc_demo", "name": "示例账号" }],
+  "records": [
+    {
+      "account_id": "acc_demo",
+      "record_id": "example-editor:heart-paper:20260824",
+      "record_type": "stock_snapshot",
+      "entity_type": "agent",
+      "effective_at": "2026-08-24T08:00:00Z",
+      "snapshot_scope": "listed",
+      "entries": [{ "id": "char_029_xiuqiu", "name": "绣球", "count": 3 }]
+    }
+  ]
+}
