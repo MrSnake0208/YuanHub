@@ -1,0 +1,22 @@
+{
+  "format": "myshare-inventory-exchange",
+  "version": 2,
+  "exported_at": "2026-08-24T08:01:00Z",
+  "producer": { "platform": "example-backup", "version": "1.0.0" },
+  "accounts": [{ "id": "acc_demo", "name": "示例账号" }],
+  "records": [
+    {
+      "account_id": "acc_demo",
+      "record_id": "example-backup:items:20260824",
+      "record_type": "stock_snapshot",
+      "entity_type": "item",
+      "acquisition_channel": "背包",
+      "effective_at": "2026-08-24T08:00:00Z",
+      "snapshot_scope": "full",
+      "entries": [
+        { "id": "baijinbi", "name": "白金币", "count": 100 },
+        { "id": "baimozhijiu", "name": "百末旨酒", "count": 25 }
+      ]
+    }
+  ]
+}

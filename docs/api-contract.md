@@ -1,209 +1,854 @@
-# BackEndV3-Share 用户接口契约（前端接入参考）
+# BackEndV3-Share API 接口契约（前端接入参考）
 
-> 依据 `~/BackEndV3-Share` 源码整理，前端实现必须与之一一对应。
+> 后端源码快照：`~/BackEndV3-Share` commit `a162003`（2026-08-24）。
+> 本文覆盖 YuanHub 当前使用的接口，以及同一后端已提供的账号事件、第三方 OpenAPI、密探管理和广陵账房接口。
+> 后端继续演进后，以源码与 Swagger 为最终依据，并同步更新本文顶部 commit。
 
-## 基础信息
+## 1. 基础约定
 
-- 后端地址（本地开发）：`http://localhost:8080`，无 context-path
-- CORS：已全开（allowedOriginPatterns=*，allowCredentials=true），前端 Vite dev 5173 端口可直接调用
-- 统一响应包装：`{ "status_code": number, "message": string|null, "data": T|null }`
-  - 成功：status_code=200，data 为业务数据
-  - 失败：status_code 对齐 HTTP 状态码，message 为中文提示（前端应直接展示 message）
-  - 注意 Jackson 配置 `property-naming-strategy: SNAKE_CASE`：**请求/响应 JSON 字段均为 snake_case**
-- 认证方式：请求头 `Authorization: Bearer <accessToken>`（后端 header 配置名即 Authorization）
-- 时间字段：`Instant` 序列化为 ISO-8601 字符串（如 `2025-01-01T00:00:00Z`）
-- 邮件验证码：600 秒（10 分钟）有效；发送间隔限制 = expire/10 = 60 秒（重复发送返回 403 "发送验证码的请求至少需要间隔 60 秒"）；本地调试 `debug.email.no-send: true` 时验证码打印在后端日志
-- Swagger UI：`http://localhost:8080/swagger-ui/index.html`（可在线对照）
+### 1.1 地址与调试
 
-## 接口清单
+- 后端本地地址：`http://localhost:8080`，无 context-path。
+- 前端通过 `VITE_API_BASE` 覆盖 API 地址；当前未配置时默认使用 `https://hub.maayuan.fun:16666`，不是 localhost。
+- Swagger UI：`http://localhost:8080/swagger-ui/index.html`。
+- OpenAPI JSON：`http://localhost:8080/v3/api-docs`。
+- CORS 当前为 `allowedOriginPatterns=*` 且允许 credentials；生产环境仍建议收敛来源。
 
-### 1. 登录 POST /user/login（匿名白名单）
-请求：`{"email": "xx@xx.com", "password": "..."}`（email 必填且格式校验，password 必填）
-成功 data：
+### 1.2 JSON、时间与字段命名
+
+- 普通请求使用 `Content-Type: application/json`；头像上传使用 `multipart/form-data`。
+- Jackson 全局采用 `SNAKE_CASE`，普通请求和响应字段使用 `snake_case`。
+- 时间字段为 ISO-8601/RFC 3339 字符串，例如 `2026-08-24T08:00:00Z`。
+- `Instant` 响应通常为 UTC；查询参数 `from`、`to` 接受带时区的 RFC 3339 时间。
+- 密探 v3 交换文档严格使用 [`operator-growth-exchange-v3.schema.json`](./schemas/operator-growth-exchange-v3.schema.json) 中的字段名。
+- 少量历史 DTO 有显式字段名，不遵循全局转换：
+  - 密探 v2 导入 entry 使用 `subProf`、`starLevel`、`starStones`；
+  - 管理端目录写请求使用 `subProf`、`starStones`、`spOf`，`specialOddityName` 与 `special_oddity_name` 均可读取；
+  - 对应响应仍按全局规则输出 `sub_prof`、`star_level`、`star_stones`、`sp_of`。
+
+### 1.3 响应与错误
+
+普通成功响应包装：
+
 ```json
 {
-  "token": "<accessToken>",
-  "valid_before": "2025-...Z",
-  "valid_after": "2025-...Z",
-  "refresh_token": "<refreshToken>",
-  "refresh_token_valid_before": "...",
-  "refresh_token_valid_after": "...",
-  "user_info": { "id": "...", "user_name": "...", "activated": true, "following_count": 0, "fans_count": 0 }
+  "status_code": 200,
+  "message": null,
+  "data": {}
 }
 ```
-失败：
-- 401 "用户不存在或者密码错误"
-- 401 "用户未启用"（status==0 未激活）
 
-### 2. 注册 POST /user/register（匿名白名单）
-请求：`{"email": "...", "user_name": "...", "password": "...", "registration_token": "验证码"}`
-- userName 4~24 位；password 8~32 位；registrationToken 邮箱验证码（可空串但注册必须真实有效）
-成功 data：`MaaUserInfo`（同 user_info 结构）
-失败：
-- 400 "用户名已存在,请重新取个名字吧" / "用户已存在"
-- 401 "验证码错误"（校验通过即消耗，防重放）
+普通业务失败包装：
 
-### 3. 发送注册验证码 POST /user/sendRegistrationToken（匿名白名单）
-请求：`{"email": "..."}`
-失败：
-- 400 "用户已存在"
-- 403 "发送验证码的请求至少需要间隔 60 秒"
+```json
+{
+  "status_code": 400,
+  "message": "错误提示"
+}
+```
 
-### 4. 发送重置密码验证码 POST /user/password/reset_request（公开）
-请求：`{"email": "..."}`
-失败：404 "找不到用户"
+库存、统一账号、密探及其 OpenAPI 的领域错误使用同一 envelope；库存/账号可带 `record_id`、`entry_id`，密探还可带 `operator_id`、`field_path`，无值字段可能省略：
 
-### 5. 重置密码 POST /user/password/reset（公开）
-请求：`{"email": "...", "active_code": "验证码", "password": "新密码"}`
-失败：401 "验证码错误"；404 "找不到用户"
+```json
+{
+  "error": {
+    "code": "schema_validation_failed",
+    "message": "错误说明",
+    "record_id": null,
+    "entry_id": null,
+    "operator_id": null,
+    "field_path": null
+  }
+}
+```
 
-### 6. 刷新 token POST /user/refresh（公开）
-请求：`{"refresh_token": "..."}`
-成功 data：同登录（新的 access + refresh，refresh 5 分钟内复用原 token）
-失败：401 "invalid token" 等
+注意：
 
-### 7. 用户公开信息 GET /user/info?userId=xxx（公开）
-成功 data：MaaUserInfo；404 "用户不存在: xxx"
+- 前端必须优先以 `status_code` 判断普通包装的业务成功，不能只看 `response.ok`。用户、帖子、账房等传统端点的业务失败可能仍是 HTTP 200，但响应体 `status_code != 200`。
+- 库存、账号、密探和 OpenAPI Token 的专用异常处理通常会让 HTTP 状态与错误状态一致。
+- 未认证访问 `/v1/inventory/**` 返回 HTTP 401 的库存错误包装；其他 JWT 端点通常返回 HTTP 401 的普通包装。
+- 库存和密探导出直接返回交换文档，不套 `ApiResult`。
+- SSE 返回 `text/event-stream`，不套 JSON 包装。
 
-### 8. 修改密码 POST /user/update/password（需 JWT）
-请求：`{"original_password": "...", "new_password": "8~32位"}`
-失败：400 "请输入原密码" / "原密码错误" / "密码修改过于频繁"(10分钟内)
+常见领域状态码：
 
-### 9. 更新信息 POST /user/update/info（需 JWT）
-请求：`{"user_name": "4~24位"}`
-失败：400 "用户名已存在,请重新取个名字吧" / "用户名长度应在4-24位之间"
+| HTTP | 含义 |
+|---|---|
+| 400 | JSON 无效或传统端点参数/业务校验失败 |
+| 401 | JWT/OpenAPI Token 缺失、无效或过期 |
+| 403 | 权限不足、账号映射越权 |
+| 404 | 账号、记录、密探、Token 或方案不存在；部分越权查询也统一返回 404 |
+| 409 | 幂等键冲突、revision 冲突、重复记录内容冲突、资源上限 |
+| 422 | 库存/密探 Schema、字段语义或查询参数校验失败 |
+| 429 | OpenAPI Token 或账房方案数量达到上限等限额错误 |
 
-### 10. 用户搜索 GET /user/search?userName=xx&page=1&size=10（公开，size≤50）
+### 1.4 认证类型
 
-## Token 参数（application.yml）
+#### 登录 JWT
 
-- accessToken 有效期：21600 秒（6 小时）
-- refreshToken 有效期：604800 秒（7 天）
-- 普通用户接口认证失败（未带/无效 token / 过期）：401 JSON `{"status_code":401,"message":"未登录或登录已过期",...}`
-- 库存接口认证失败：401 JSON `{"error":{"code":"unauthorized","message":"Authentication is required"}}`
+请求头：
 
-## 前端建议架构（贴合现有 Vue3+Vite 项目，无 axios/pinia）
+```http
+Authorization: Bearer <access-token>
+```
 
-1. `src/api/request.js`：基于 `fetch` 的轻量封装 —— 统一 baseURL、JSON 序列化/反序列化、自动带 `Authorization: Bearer`、401 时用 refreshToken 静默刷新并重放原请求、刷新失败则清登录态跳转登录页、非 200 统一抛错（message 直接取自响应 message）
-2. `src/api/user.js`：上述 10 个接口的函数
-3. `src/store/auth.js`：Vue reactive 单例 —— userInfo / accessToken / refreshToken，localStorage 持久化（如 `yh_auth` key），登录/登出/初始化/静默刷新
-4. 页面：`src/pages/user/login.vue`、`register.vue`、`forgot.vue`（或 reset.vue）
-5. 路由：`src/router/routes.js` 注册，path 建议 `/login` `/register` `/forgot`，display:false；路由守卫（router.beforeEach）按需保护
-6. 侧边栏 `src/components/IslandSidebar.vue`：底部"登录 / 注册"链接替换为真实路由跳转；已登录显示用户名 + 退出按钮
+- access token 有效期：21600 秒（6 小时）。
+- refresh token 有效期：604800 秒（7 天）。
+- refresh token 签发后 5 分钟内刷新会复用原 refresh token，否则签发新的 refresh token。
+- `/user/login`、`/user/register`、`/user/sendRegistrationToken` 是 anonymous-only；已认证请求不应携带 JWT 调用它们。
 
-## 库存接口契约（/v1/inventory，交换协议 v2）
+#### 第三方 OpenAPI Token
 
-> 需登录（JWT），/v1/inventory/catalog 公开。库存为私有数据，userId 取自 JWT，查询均需携带 account_id（多子账号）。
-> 统一响应：成功 {status_code:200, message, data}；库存端点出错返回 {error:{code,message,record_id?,entry_id?}}（非 ApiResult），HTTP 状态码对齐错误类型（401/403/404/409/422/500）。
+请求头格式相同，但 token 来自 `POST /user/open-api/token`：
 
-### 统一子账号（库存 × 密探共用，迁移后仅此一套）
+```http
+Authorization: Bearer <open-api-token>
+```
 
-> 子账号统一后，库存与密探共用同一批账号：一个子账号 = 一个游戏账号，库存、密探、特别关注全共用。游戏版本也是账号级字段，只允许 `代号鸢` / `如鸢`；缺省和存量账号统一按 `代号鸢` 处理，不提供 `all` / `universal`。
-> 账号 CRUD 只保留 `/v1/accounts`；旧地址 `/v1/inventory/accounts`、`/v1/operator/accounts` 已删除（返回 404）。
+- OpenAPI Token 绑定一个统一子账号，由 scopes 控制能力。
+- Token 当前无自动过期时间，删除 Token 或删除绑定账号时立即撤销。
+- 每个子账号最多 5 个 OpenAPI Token。
+- OpenAPI 数据接口不能使用普通 JWT 代替 OpenAPI Token。
 
-- POST /v1/accounts  body `{name,game}` → `{id,name,game,created_at,updated_at}`（id 形如 acc_<32hex>，重名 409；兼容旧客户端，缺失 game 时默认 `代号鸢`）
-- GET /v1/accounts → `[{id,name,game,created_at,updated_at}]`（按创建时间升序）
-- PATCH /v1/accounts/{accountId}  body `{name?,game?}` → 账号对象；至少提供一个字段，允许只改名或只改版本
-- DELETE /v1/accounts/{accountId} → **整账号级联删除**：库存、密探、特别关注与全部 token 一并清除，不可恢复；返回 true
-- 非法版本返回 422：`{"error":{"code":"invalid_game","message":"game 只允许 代号鸢 或 如鸢"}}`
+### 1.5 公开接口
 
-### 查询与导入导出
-- GET /v1/inventory/current?account_id=&entity_type=item|agent → [{entity_type, entries:{"<id>":{count,listed_baseline_at}}}]
-- GET /v1/inventory/acquired?account_id=&entity_type=&from=&to=（from/to 为 RFC 3339）→ {entity_type, from, to, acquired:{"<id>":count}}
-- GET /v1/inventory/records?account_id=&entity_type=&from=&to=&cursor=&limit=（游标分页，limit 1..100 默认 50）→ {items:[...], next_cursor}
-- DELETE /v1/inventory/records/{recordId}?account_id= → 删除单条并重放重建库存，返回 true
-- POST /v1/inventory/import  body 为完整交换文档 v2（见下）→ {accepted,duplicates,history_only,superseded,warnings}
-- GET /v1/inventory/export?account_id= 或 scope=all&include=current|current,rewards&from=&to= → 直接返回交换文档（无 ApiResult 包装）
-- GET /v1/inventory/catalog（公开）→ {catalog_version, entities:[{entity_type,id,name}]}
+无需 JWT 的主要接口：
 
-### 密探特别关注（已实现，可联调）
+- `GET /`、`GET /version`
+- 用户登录、注册、验证码、密码重置、刷新、公开信息和搜索
+- `GET /hub/post/**`
+- `GET /v1/inventory/catalog`
+- `GET /v1/operator/catalog`
+- `GET /avatar/**`
+- `GET /user/open-api/permissions`
+- `/open-api/**` 在 Spring Security 层公开，但控制器内部强制验证 OpenAPI Token
 
-> 完整前端接入要求见 [`frontend-handoff-agent-favorites.md`](./frontend-handoff-agent-favorites.md)，可复制的实施任务见 [`frontend-implementation-prompt-agent-favorites.md`](./frontend-implementation-prompt-agent-favorites.md)。
+## 2. 用户接口（/user）
 
-- GET /v1/inventory/agent-favorites?account_id= → `{account_id,agent_ids:[...]}`
-- PUT /v1/inventory/agent-favorites/{agentId}?account_id= → `{account_id,agent_id,favorite:true}`
-- DELETE /v1/inventory/agent-favorites/{agentId}?account_id= → `{account_id,agent_id,favorite:false}`
-- 三个接口只接受普通登录 JWT，不接受 OpenAPI Token；PUT/DELETE 无请求体且均幂等。
-- GET 的 `agent_ids` 去重并按完整 ID 字符串升序返回；这不是发布顺序。
-- 所有读写按 JWT 当前用户与 `account_id` 校验，切换子账号必须清空旧列表并重新查询。
-- 错误：未登录 `401 unauthorized`；账号不存在或不属于当前用户 `404 account_not_found`；缺少 `account_id` 为 `422 schema_validation_failed`；非法或未知密探分别为 `422 invalid_agent_id`、`422 unknown_agent`。
-- 关注状态不进入 current/acquired/records/export，不生成库存流水，也不进入交换档案 v2。
-- 本地真实 Mongo 已完成 64 次 PUT、并发度 16 的烟测：64 个 HTTP 200，数据库目标记录 1 行。
+### 2.1 登录与注册
 
-### 交换文档 v2（导入/导出一致）
+#### POST /user/login
+
+匿名接口。
+
+请求：
+
+```json
+{
+  "email": "xx@example.com",
+  "password": "password"
+}
+```
+
+成功 `data`：
+
+```json
+{
+  "token": "<access-token>",
+  "valid_before": "2026-08-24T14:00:00Z",
+  "valid_after": "2026-08-24T08:00:00Z",
+  "refresh_token": "<refresh-token>",
+  "refresh_token_valid_before": "2026-08-31T08:00:00Z",
+  "refresh_token_valid_after": "2026-08-24T08:00:00Z",
+  "user_info": {
+    "id": "user-id",
+    "user_name": "用户名",
+    "activated": true,
+    "following_count": 0,
+    "fans_count": 0
+  }
+}
+```
+
+常见失败：401 `用户不存在或者密码错误`；401 `用户未启用`。
+
+#### POST /user/sendRegistrationToken
+
+匿名接口。请求：`{"email":"xx@example.com"}`。
+
+- 邮件验证码有效期 600 秒。
+- 重发间隔 60 秒；过快返回 403 `发送验证码的请求至少需要间隔 60 秒`。
+- 用户已存在返回 400 `用户已存在`。
+- 本地 `debug.email.no-send=true` 时验证码只写后端日志。
+
+#### POST /user/register
+
+匿名接口。
+
+```json
+{
+  "email": "xx@example.com",
+  "user_name": "用户名",
+  "password": "password",
+  "registration_token": "验证码"
+}
+```
+
+- `user_name` 长度 4..24。
+- `password` 长度 8..32。
+- `registration_token` DTO 可空，但实际注册必须通过验证码校验，成功后验证码被消费。
+- 成功 `data` 为 `MaaUserInfo`。
+
+### 2.2 密码与 Token
+
+| 方法与路径 | 认证 | 请求 | 成功 data |
+|---|---|---|---|
+| `POST /user/password/reset_request` | 公开 | `{email}` | 无业务数据 |
+| `POST /user/password/reset` | 公开 | `{email,active_code,password}` | 无业务数据 |
+| `POST /user/refresh` | 公开 | `{refresh_token}` | 与登录成功相同 |
+| `POST /user/update/password` | JWT | `{original_password,new_password}` | 无业务数据 |
+
+补充规则：
+
+- 重置验证码错误返回 401 `验证码错误`；邮箱不存在返回 404 `找不到用户`。
+- `new_password` 长度 8..32。
+- 当前密码错误、缺少原密码或 10 分钟内修改过于频繁均返回业务错误。
+
+### 2.3 用户信息
+
+| 方法与路径 | 认证 | 参数/请求 | 成功 data |
+|---|---|---|---|
+| `GET /user/info` | 公开 | query `userId` | `MaaUserInfo` |
+| `GET /user/search` | 公开 | query `userName,page=1,size=10` | `MaaUserInfo[]` |
+| `POST /user/update/info` | JWT | `{user_name}` | 无业务数据 |
+
+- 搜索只返回已激活用户，`size <= 50`。
+- 用户名长度 4..24；重名返回 400 `用户名已存在,请重新取个名字吧`。
+
+## 3. 统一子账号（/v1/accounts）
+
+> 一个子账号代表一个游戏账号，库存、密探、特别关注、养成目标和 OpenAPI Token 共用。旧地址 `/v1/inventory/accounts`、`/v1/operator/accounts` 已删除。
+
+所有 CRUD 与 SSE 均需 JWT。
+
+| 方法与路径 | 请求 | 成功 data |
+|---|---|---|
+| `POST /v1/accounts` | `{name,game?}` | 账号对象 |
+| `GET /v1/accounts` | 无 | 账号对象数组，按创建时间升序 |
+| `PATCH /v1/accounts/{accountId}` | `{name?,game?}` | 更新后的账号对象 |
+| `DELETE /v1/accounts/{accountId}` | 无 | `true` |
+| `GET /v1/accounts/{accountId}/events` | `Accept: text/event-stream` | SSE 流 |
+
+账号对象：
+
+```json
+{
+  "id": "acc_0123456789abcdef0123456789abcdef",
+  "name": "大号",
+  "game": "代号鸢",
+  "created_at": "2026-08-24T08:00:00Z",
+  "updated_at": "2026-08-24T08:00:00Z"
+}
+```
+
+规则：
+
+- `name` 长度 1..64、不可为空白，同一用户内不可重名。
+- `game` 只允许 `代号鸢`、`如鸢`；创建时缺省为 `代号鸢`。
+- PATCH 至少提供一个字段。
+- 每个用户最多 10 个子账号，超限为 409 `account_limit_reached`。
+- 删除账号会级联删除库存、密探、特别关注、标注、目标及全部绑定 Token，不可恢复。
+- 账号不存在或不属于当前用户统一返回 404 `account_not_found`。
+
+### 3.1 账号 SSE
+
+浏览器原生 `EventSource` 不能设置 Authorization，前端使用带 JWT header 的 `fetch` 读取流。连接不补发历史事件；服务端约每 15 秒发送 keepalive comment，并在首次连接建议 3000ms 重连。
+
+当前事件名：
+
+#### operator_scan_import
+
+由 OpenAPI 密探自动采集 commit 产生：
+
+```json
+{
+  "event_id": "uuid",
+  "account_id": "acc_xxx",
+  "operator_id": "char_001_yangxiu",
+  "record_id": "scanner:record-id",
+  "status": "accepted",
+  "revision": 2,
+  "stale": false,
+  "observed_status": "valid",
+  "warnings": [],
+  "blocking_errors": [],
+  "occurred_at": "2026-08-24T08:00:00Z"
+}
+```
+
+#### inventory_import
+
+由 OpenAPI 库存导入产生；`records[].acquisition_channel` 已包含在最新事件中：
+
+```json
+{
+  "event_id": "uuid",
+  "account_id": "acc_xxx",
+  "accepted": 1,
+  "duplicates": 0,
+  "history_only": 0,
+  "superseded": 0,
+  "records": [{
+    "record_id": "producer:record-id",
+    "record_type": "reward_delta",
+    "entity_type": "item",
+    "acquisition_channel": "派遣-洛阳",
+    "entries": [{"id":"baijinbi","count":20}]
+  }],
+  "occurred_at": "2026-08-24T08:00:00Z"
+}
+```
+
+#### operator-upgrade
+
+由快捷提升 execute 成功产生：
+
+```json
+{
+  "account_id": "acc_xxx",
+  "transaction_id": "transaction-id",
+  "operator_id": "char_001_yangxiu",
+  "dimension": "level",
+  "from": 80,
+  "to": 90,
+  "consumed": [],
+  "operator_revision": 3,
+  "inventory_revision": 8,
+  "occurred_at": "2026-08-24T08:00:00Z"
+}
+```
+
+## 4. 库存接口（/v1/inventory，交换协议 v2）
+
+> 面向第三方开发者的交换规范、Schema 和可复制示例统一见 [`exchange-specs/`](./exchange-specs/README.md)。
+
+除 catalog 外均需 JWT；`user_id` 永远取自 JWT，私有查询必须传 `account_id`。
+
+### 4.1 查询、导入与导出
+
+| 方法与路径 | 参数/请求 | 成功 data/响应 |
+|---|---|---|
+| `GET /v1/inventory/catalog` | 无，公开 | `{format,version,catalog_version,entities}` |
+| `POST /v1/inventory/import` | 完整库存交换文档 v2 | `{accepted,duplicates,history_only,superseded,warnings}` |
+| `GET /v1/inventory/current` | `account_id` 必填；`entity_type=item\|agent` 可选 | 当前库存数组 |
+| `GET /v1/inventory/acquired` | `account_id,entity_type,from,to` 均必填 | 时段获得量，区间 `[from,to)` |
+| `GET /v1/inventory/records` | `account_id` 必填；`entity_type,from,to,cursor,limit` 可选 | `{items,next_cursor}` |
+| `DELETE /v1/inventory/records/{recordId}` | query `account_id` | `true`，删除后重放剩余记录 |
+| `GET /v1/inventory/export` | `account_id` 或 `scope=all`；`include,from,to` 可选 | 原始交换文档，无 ApiResult |
+
+`current` 单项：
+
+```json
+{
+  "user_id": "user-id",
+  "account_id": "acc_xxx",
+  "entity_type": "item",
+  "full_baseline_at": "2026-08-24T08:00:00Z",
+  "entries": {
+    "baijinbi": {"count":100,"listed_baseline_at":null}
+  },
+  "updated_at": "2026-08-24T08:00:00Z"
+}
+```
+
+`acquired` 响应：
+
+```json
+{
+  "account_id": "acc_xxx",
+  "entity_type": "item",
+  "from": "2026-08-01T00:00:00Z",
+  "to": "2026-09-01T00:00:00Z",
+  "acquired": {"baijinbi":120}
+}
+```
+
+`records.items[]` 包含：
+
+```json
+{
+  "account_id": "acc_xxx",
+  "record_id": "producer:record-id",
+  "record_type": "reward_delta",
+  "entity_type": "item",
+  "acquisition_channel": "派遣-洛阳",
+  "stamina_cost": 20,
+  "effective_at": "2026-08-24T08:00:00Z",
+  "received_at": "2026-08-24T08:00:01Z",
+  "stock_effect": "applied",
+  "transaction_id": null,
+  "entries": [{"id":"baijinbi","name":"白金币","count":20}]
+}
+```
+
+- `limit` 默认为 50，范围 1..100。
+- 记录按 `effective_at` 倒序，使用不透明 `next_cursor` 翻页。
+- `include` 默认为 `current`，也可为 `current,rewards`；附带 rewards 时可用 `from/to` 限制区间。
+
+### 4.2 密探特别关注
+
+| 方法与路径 | 参数 | 成功 data |
+|---|---|---|
+| `GET /v1/inventory/agent-favorites` | query `account_id` | `{account_id,agent_ids}` |
+| `PUT /v1/inventory/agent-favorites/{agentId}` | query `account_id`，无 body | `{account_id,agent_id,favorite:true}` |
+| `DELETE /v1/inventory/agent-favorites/{agentId}` | query `account_id`，无 body | `{account_id,agent_id,favorite:false}` |
+
+- 三个接口只接受普通 JWT，不接受 OpenAPI Token，PUT/DELETE 幂等。
+- `agent_ids` 去重并按完整 ID 升序返回，不代表发布顺序。
+- 状态不进入库存的 current/acquired/records/export，也不进入库存交换档案；密探 v3 导出可另行包含 favorite。
+- 常见错误：404 `account_not_found`；422 `invalid_agent_id`、`unknown_agent`。
+- YuanHub 的库存页和密探页均已接入特别关注。
+
+### 4.3 库存交换文档 v2
 
 ```json
 {
   "format": "myshare-inventory-exchange",
   "version": 2,
-  "exported_at": "2026-08-16T08:25:00+08:00",
-  "catalog_version": "2026-08-16",
-  "producer": { "platform": "myshare", "version": "5" },
-  "accounts": [ { "id": "acc_xxx", "name": "大号" } ],
-  "records": [ {
+  "exported_at": "2026-08-24T08:00:00Z",
+  "catalog_version": "2026-08-24",
+  "producer": {"platform":"myshare","version":"5"},
+  "accounts": [{"id":"acc_xxx","name":"大号"}],
+  "records": [{
     "account_id": "acc_xxx",
-    "record_id": "myshare:xxx",
-    "record_type": "reward_delta | stock_snapshot",
-    "entity_type": "item | agent",
-    "acquisition_channel": "派遣",
-    "effective_at": "2026-08-16T07:19:46.833+08:00",
-    "snapshot_scope": "full | listed",
-    "entries": [ { "id": "char_029_xiuqiu", "name": "绣球", "count": 1 } ]
-  } ]
+    "record_id": "producer:record-id",
+    "record_type": "reward_delta",
+    "entity_type": "item",
+    "acquisition_channel": "派遣-洛阳",
+    "stamina_cost": 20,
+    "effective_at": "2026-08-24T08:00:00Z",
+    "entries": [{"id":"baijinbi","name":"白金币","count":20}]
+  }]
 }
 ```
 
-密探心纸手动库存沿用上述 v2 文档：使用 `record_type=stock_snapshot`、`entity_type=agent`。
-`full` 替换该子账号完整密探库存，`listed` 只覆盖列出的密探。库存业务只使用
-`id` 和 `count`；`name` 是展示冗余，`rarity`、`prof`、`sub_prof` 等字段不能修改公共目录。
+关键规则：
 
-## 密探公共图鉴奇闻扩展（v3 前置，计划契约）
+- 顶层不得携带 `user_id`；`records` 数量 1..1000。
+- `record_type` 只允许 `reward_delta`、`stock_snapshot`。
+- `entity_type` 只允许 `item`、`agent`。
+- `stock_snapshot` 必须携带 `snapshot_scope=full|listed`；`reward_delta` 不携带该字段。
+- `acquisition_channel` 可选，长度 1..64；推荐稳定值包括 `背包`、`据点情报`、`派遣` 及更细分的派遣渠道。
+- 仅 `record_type=reward_delta` 且 `acquisition_channel` 包含“派遣”时 `stamina_cost` 必填；其他记录不得携带。
+- `reward_delta` 的 count 必须大于 0；快照 count 可为 0。
+- 心纸手动库存使用 `record_type=stock_snapshot`、`entity_type=agent`。YuanHub 已通过库存页接入手动编辑。
+- `full` 替换该账号对应实体类型的完整库存；`listed` 只覆盖列出的条目。
+- 业务只信任 `id` 与 `count`；`name` 是展示冗余，不能通过库存文档修改公共目录。
 
-> 本节是《密探养成数据交换协议 v3》的前置改造，尚不能视为现网已实现接口。正式字段以 [`operator-growth-data-exchange-protocol-v3.md`](./operator-growth-data-exchange-protocol-v3.md) 为准。
+## 5. 密探接口（/v1/operator）
 
-- `GET /v1/operator/catalog`：公开目录每位密探增加 `special_oddity_name` 和只读 `oddity_schema`；
-- `GET /v1/admin/operator-catalog`：管理员目录同样返回上述字段；
-- `POST /v1/admin/operator-catalog`、`PUT /v1/admin/operator-catalog/{operator_id}`：管理写入 DTO 增加 `special_oddity_name`；
-- `special_oddity_name` 由管理员维护，去除首尾空格后长度 `1..32`；新建密探要求填写，存量数据迁移期可为空；
-- `oddity_schema` 由服务端根据名称和 `rarity` 派生，客户端只读：
+除 catalog 外均需 JWT；领域错误为 `{error:{code,message,record_id?,entry_id?,operator_id?,field_path?}}`。
+
+### 5.1 公共图鉴
+
+#### GET /v1/operator/catalog
+
+公开接口。成功 `data`：
 
 ```json
 {
-  "special_oddity_name": "免伤值",
-  "oddity_schema": {
-    "attack": { "name": "攻击力", "max": 305 },
-    "hp": { "name": "生命值", "max": 1820 },
-    "special": { "name": "免伤值", "max": 11 }
-  }
+  "format": "myshare-operator-catalog",
+  "version": 1,
+  "catalog_version": "2026-08-24",
+  "operators": [{
+    "id": "char_001_yangxiu",
+    "name": "杨修",
+    "alias": null,
+    "rarity": 5,
+    "special_oddity_name": "免伤值",
+    "oddity_schema": {
+      "attack": {"name":"攻击力","max":500},
+      "hp": {"name":"生命值","max":2600},
+      "special": {"name":"免伤值","max":15}
+    },
+    "incomplete_fields": [],
+    "prof": ["阳"],
+    "sub_prof": [],
+    "games": ["代号鸢","如鸢"],
+    "discs": [],
+    "sp_of": null,
+    "avatar": "/avatar/char_001_yangxiu.webp"
+  }]
 }
 ```
 
-管理员只能改变第三项展示名称，不能改变 `attack / hp / special` 稳定键。上限按稀有度统一生成：3 星 `300/1560/9`、4 星 `305/1820/11`、5 星 `500/2600/15`。名称或稀有度修改必须更新 `catalog_version` 并刷新目录缓存；纯名称修改不迁移用户养成值。
+- 公共图鉴不返回用户养成，也不返回目录 `star_stones` 模板。
+- `avatar` 是相对路径，前端需拼接 API base URL。
+- `special_oddity_name` 可在存量迁移期为 null；此时 `incomplete_fields` 含 `special_oddity_name`。
+- 奇闻稳定键始终为 `attack`、`hp`、`special`。上限：3 星 `300/1560/9`、4 星 `305/1820/11`、5 星 `500/2600/15`。
 
-## OpenAPI Token 接口契约（/user/open-api）
+### 5.2 当前养成与记录
 
-> 生成/列举/删除需登录（JWT）；权限列表公开。Token 绑定统一子账号（`account_id` 来自 `GET /v1/accounts`），
-> token 权限完全由 scopes 决定，可只含库存、只含密探，也可两者混用（双域 Token）。每账号 ≤5 个。
+| 方法与路径 | 参数/请求 | 成功 data/响应 |
+|---|---|---|
+| `GET /v1/operator/current` | query `account_id` 必填，`game` 可选 | 当前养成数组 |
+| `PATCH /v1/operator/current/{operatorId}` | query `account_id,game` 均必填；body 见下 | 更新后的 entry |
+| `GET /v1/operator/records` | `account_id` 必填；`game,from,to,cursor,limit` 可选 | `{items,next_cursor}` |
+| `DELETE /v1/operator/records/{recordId}` | query `account_id` | `true`，删除后重放重建 |
 
-- GET /user/open-api/permissions（公开）→ [{scope,description}]，scope 为字符串 key：
-  inventory:read / inventory:write / inventory:export / operator:read / operator:write / operator:export
-- POST /user/open-api/token  body {account_id, scopes:[key...], remark} → {token_id, token, account_id, account_name, remark, scopes, created_at}（token 仅此一次返回）
-- GET /user/open-api/tokens → [{token_id, account_id, account_name, remark, scopes, created_at}]（不含 token 明文）
-- DELETE /user/open-api/tokens/{tokenId} → 删除（越权 403 / 不存在 404）
+当前养成 entry 主要字段：
 
-## 前端接入要点（本次适配）
+```json
+{
+  "elite": 17,
+  "star_level": 31,
+  "level": 100,
+  "discs": [],
+  "star_stones": [],
+  "disc_loadouts": [],
+  "combat_stats": null,
+  "revision": 3,
+  "listed_baseline_at": null,
+  "updated_at": "2026-08-24T08:00:00Z"
+}
+```
 
-- src/api/request.js 新增 raw=true（导出接口返回完整文档）；自动兼容库存 {error:{code,message}} 错误结构并提取 message。
-- src/api/accounts.js：统一子账号 CRUD（`/v1/accounts`）；src/api/inventory.js、src/api/operator.js 均从这里复用同一套账号。
-- src/api/openApi.js：生成传 account_id/scopes/remark（scopes 可跨库存/密探混用），删除走 DELETE /tokens/{tokenId}。
-- src/utils/openApiToken.js：scope 改为字符串 key 数组，时间字段为 ISO created_at。
-- 密探特别关注和密探心纸手动编辑尚待前端接入；实现范围、竞态处理、视觉约束和验收用例见 `docs/frontend-handoff-agent-favorites.md`。
+PATCH 使用乐观锁，`expected_revision` 与 `reason` 必填：
 
-## 设计规范约束（MaaYuan Share v1.0）
+```json
+{
+  "level": 100,
+  "elite": 17,
+  "star_level": 31,
+  "disc_loadouts": [],
+  "star_stones": [
+    {"name":"攻击力","type":"main1","level":60}
+  ],
+  "combat_stats": {
+    "manual_attack": 12000,
+    "display_mode": {"attack":"manual"},
+    "oddities": {"attack":{"current":500}}
+  },
+  "expected_revision": 2,
+  "reason": "manual_correction"
+}
+```
 
-- 骨架色：纸底 #F6EDD0 / 暖白卡 #FFFDF6 / 奶油 #FFF8EC / 暖棕 #493B2C / 茶棕 #5A4633
-- 点缀：蜜黄 #EFD28E（选中/标签底）/ 金橙 #D78935（hover）/ 绛红 #A6514A（≤3处）/ 海盐蓝 #5B6A8C（只描边）
-- 禁纯黑、禁大面积海盐蓝填充、禁黑底黄字
-- 标题思源宋体 900 + 加宽字距；正文 PingFang/雅黑；数字 Archivo
-- 现有全局样式 `src/styles/main.css` 已定义 CSS 变量（--paper/--surface/--cream/--ink/--tea/--yellow/--accent/--rouge/--brand-blue 等）与组件类（.chip/.tg/.btn-more 等），页面应直接复用变量，不新增色值
-- 表单风格参考现有站点：奶油底、大圆角（16~22px）、细描边 --line、蜜黄主按钮
+- 可更新字段：`level`、`elite`、`star_level`、`disc_loadouts`、`star_stones`、`combat_stats`。
+- `reason` 只允许 `manual_correction`、`local_migration`。
+- `level` 范围 0..100，`elite` 范围 0..17。
+- 普通密探 `star_level` 为 0..31；SP 密探为 0..5。
+- `disc_loadouts` 最多两套；`star_stones` 是六槽完整替换，缺失保留，空数组清空。
+- 六槽只允许 `main1..main3`、`assist1..assist3`。
+- entry 不存在时只允许 `expected_revision=0` 创建。
+- revision 冲突返回 HTTP 409 `operator_revision_conflict`。
+- `records.limit` 默认为 50，范围 1..100。
+
+### 5.3 主观标注与养成目标
+
+| 方法与路径 | 参数/请求 | 成功 data |
+|---|---|---|
+| `GET /v1/operator/annotations` | query `account_id` | `{account_id,items}` |
+| `PUT /v1/operator/annotations/{operatorId}` | query `account_id`；body `{growth_state?,note?,expected_revision}` | 标注对象 |
+| `GET /v1/operator/growth-targets` | query `account_id` | `{account_id,items}` |
+| `PUT /v1/operator/growth-targets/{operatorId}` | query `account_id`；body `{level?,elite?,star_level?,heart_paper?,targets?,expected_revision}` | 目标对象/删除结果 |
+| `DELETE /v1/operator/growth-targets/{operatorId}` | query `account_id,expected_revision` | `true` |
+
+标注对象：`{operator_id,growth_state,note,revision,updated_at}`。`growth_state` 只允许 `active`、`graduated`、`skip`；未返回的密探默认 `active`。`note=null` 明确清除备注，最长 1000 字符。
+
+目标对象：`{operator_id,level,elite,star_level,heart_paper,revision,updated_at}`。字段缺失保留旧值；`targets=null` 明确删除整组目标并返回空 data，YuanHub 前端清除时应优先调用 DELETE。`level` 为 0..100，`elite` 为 0..17，`star_level` 为 0..31，`heart_paper` 为 0..1000000。所有写操作使用 `expected_revision` 乐观锁。
+
+### 5.4 快捷提升
+
+| 方法与路径 | 请求 | 成功 data |
+|---|---|---|
+| `POST /v1/operator/upgrades/preview` | 提升请求 | 预览对象，不写数据库 |
+| `POST /v1/operator/upgrades/execute` | 执行请求 + `Idempotency-Key` header | 密探更新与库存扣减结果 |
+
+preview 请求：
+
+```json
+{
+  "account_id": "acc_xxx",
+  "game": "代号鸢",
+  "operator_id": "char_001_yangxiu",
+  "dimension": "level",
+  "target": 90,
+  "expected_operator_revision": 2
+}
+```
+
+`dimension` 只允许 `level`、`elite`、`huaji`。preview 返回：
+
+```json
+{
+  "available": true,
+  "dimension": "level",
+  "from": 80,
+  "to": 90,
+  "requirements": [],
+  "experience_required": 0,
+  "experience_overflow": 0,
+  "money_required": 0,
+  "blocking_reasons": [],
+  "operator_revision": 2,
+  "inventory_revision": 7,
+  "preview_token": "token",
+  "expires_at": "2026-08-24T08:01:00Z"
+}
+```
+
+execute body 在 preview 请求基础上增加 `expected_inventory_revision`、`preview_token`；header `Idempotency-Key` 长度 1..128。成功返回 `{transaction_id,operator,consumed,inventory_revision,created_at}`，并产生 `operator-upgrade` SSE。
+
+常见 409：`operator_state_stale`、`inventory_state_stale`、`insufficient_inventory`、`idempotency_conflict`。过期或不匹配的预览返回 422 `preview_expired`。
+
+### 5.5 导入与导出
+
+| 方法与路径 | 请求/参数 | 成功 data/响应 |
+|---|---|---|
+| `POST /v1/operator/import` | v2 文档，或 v3 浏览器导入包装 | v2 或 v3 commit 结果 |
+| `POST /v1/operator/import/preview` | v3 浏览器导入包装 | v3 preview 结果，不写数据 |
+| `GET /v1/operator/export` | `account_id` 或 `scope=all`；`version=2|3` | 原始交换文档 |
+
+v2 直接提交 `myshare-operator-exchange@2`；返回 `{accepted,duplicates,superseded,warnings}`。
+
+v3 浏览器导入通常使用包装体：
+
+```json
+{
+  "document": {"format":"myshare-operator-exchange","version":3,"accounts":[],"records":[]},
+  "account_mapping": {"source-account":"acc_xxx"},
+  "confirm_review": false
+}
+```
+
+来源账号 id 已经是当前 JWT 用户所拥有的目标账号 id 时，也可直接提交原始 v3 文档；需要跨账号映射或确认 review 时使用上述包装体。
+
+v3 preview 返回：
+
+```json
+{
+  "format": "myshare-operator-import-preview",
+  "version": 1,
+  "accepted": 0,
+  "partial": 0,
+  "review": 0,
+  "rejected": 0,
+  "unchanged": 0,
+  "items": []
+}
+```
+
+v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/version。`items[]` 包含 `account_id,operator_id,record_id,status,changes,warnings,blocking_errors,stale,target_revision,revision,observed_status`。
+
+完整 v3 结构与语义以以下文件为准：
+
+- [`operator-growth-data-exchange-protocol-v3.md`](./operator-growth-data-exchange-protocol-v3.md)
+- [`operator-growth-exchange-v3.schema.json`](./schemas/operator-growth-exchange-v3.schema.json)
+- [`examples/operator-growth-exchange-v3/`](./examples/operator-growth-exchange-v3/)
+
+`version=3` 导出包含客观档案、annotation、favorite 与 targets；默认 `version=2`。
+
+## 6. 密探公共图鉴管理（/v1/admin/operator-catalog）
+
+全部接口需要 JWT 且用户 `status >= 2`；否则返回 403 `forbidden`。
+
+| 方法与路径 | 请求 | 成功 data |
+|---|---|---|
+| `GET /v1/admin/operator-catalog` | 无 | 管理端目录数组 |
+| `POST /v1/admin/operator-catalog` | 目录写对象 | 新目录对象 |
+| `PUT /v1/admin/operator-catalog/{operatorId}` | 完整目录写对象 | 更新后的目录对象 |
+| `DELETE /v1/admin/operator-catalog/{operatorId}` | 无 | `true` |
+| `PUT /v1/admin/operator-catalog/{operatorId}/avatar` | multipart field `file` | 更新后的目录对象 |
+| `DELETE /v1/admin/operator-catalog/{operatorId}/avatar` | 无 | 更新后的目录对象 |
+
+目录写对象主要字段：
+
+```json
+{
+  "id": "char_999_test",
+  "name": "测试密探",
+  "alias": null,
+  "rarity": 4,
+  "specialOddityName": "免伤值",
+  "prof": ["阳"],
+  "subProf": [],
+  "games": ["代号鸢"],
+  "discs": [{"ot_name":"命盘词条"}],
+  "starStones": [{"name":"主星石","type":"main"}],
+  "spOf": null
+}
+```
+
+- `id` 必须匹配 `char_[A-Za-z0-9_]+`，PUT 时 path id 与 body id 必须一致。
+- `rarity` 只允许 3..5。
+- `specialOddityName` 新建必填，trim 后长度 1..32；更新时缺失或 null 表示保留旧值。
+- `games` 必须来自 `代号鸢`、`如鸢`。
+- 头像只接受非空 WebP，最大 500KB；上传同 id 会覆盖。
+- 目录名称、稀有度等有效修改会刷新 `catalog_version` 和公共目录缓存。
+
+## 7. OpenAPI Token 管理（/user/open-api）
+
+| 方法与路径 | 认证 | 请求 | 成功 data |
+|---|---|---|---|
+| `GET /user/open-api/permissions` | 公开 | 无 | `[{scope,description}]` |
+| `POST /user/open-api/token` | JWT | `{account_id,scopes,remark}` | 新 Token，明文仅返回一次 |
+| `GET /user/open-api/tokens` | JWT | 无 | 当前用户 Token 列表，不含明文 |
+| `DELETE /user/open-api/tokens/{tokenId}` | JWT | 无 | 无业务数据 |
+
+当前 scope：
+
+| scope | 用途 |
+|---|---|
+| `inventory:read` | 库存读取 |
+| `inventory:write` | 库存写入 |
+| `inventory:export` | 库存导出 |
+| `operator:read` | 密探读取 |
+| `operator:write` | 密探 v2 写入 |
+| `operator:export` | 密探 v2 导出 |
+| `operator:scan:write` | 密探 v3 自动采集 preview/commit |
+
+生成结果：
+
+```json
+{
+  "token_id": "uuid",
+  "token": "仅本次返回的明文",
+  "account_id": "acc_xxx",
+  "account_name": "大号",
+  "remark": "采集器",
+  "scopes": ["operator:scan:write"],
+  "created_at": "2026-08-24T08:00:00Z"
+}
+```
+
+- `scopes` 至少一个、不得重复、不得包含未知 scope。
+- Token 列表按创建时间倒序。
+- 生成达到每账号 5 个上限返回 HTTP 429。
+- 删除不存在或不属于当前用户的 Token 返回 HTTP 404。
+
+## 8. 第三方 OpenAPI 数据接口（/open-api）
+
+全部使用 OpenAPI Token，URL query 不传 `account_id`；服务端使用 Token 绑定账号。v2 交换文档内部仍必须携带 `account_id`，且所有记录必须严格属于 Token 绑定账号，否则返回 403 `account_scope_mismatch`。
+
+### 8.1 库存 OpenAPI
+
+| 方法与路径 | scope | 参数/请求 | 成功 data/响应 |
+|---|---|---|---|
+| `GET /open-api/inventory/account` | 仅需有效 Token | 无 | Token 绑定账号 |
+| `GET /open-api/inventory/current` | `inventory:read` | query `entity_type` 可选 | 当前库存数组 |
+| `POST /open-api/inventory/import` | `inventory:write` | 库存交换文档 v2 | 导入结果；产生 `inventory_import` SSE |
+| `GET /open-api/inventory/export` | `inventory:export` | `include=current|current,rewards`，`from/to` 可选 | 原始库存 v2 文档 |
+
+### 8.2 密探 OpenAPI
+
+| 方法与路径 | scope | 参数/请求 | 成功 data/响应 |
+|---|---|---|---|
+| `GET /open-api/operator/account` | 仅需有效 Token | 无 | Token 绑定账号 |
+| `GET /open-api/operator/current` | `operator:read` | query `game` 可选 | 当前养成数组 |
+| `POST /open-api/operator/import` | `operator:write` | 密探 v2 文档 | v2 导入结果 |
+| `GET /open-api/operator/export` | `operator:export` | 无 | 原始密探 v2 文档 |
+| `POST /open-api/operator/scan-import/preview` | `operator:scan:write` | 原始密探 v3 文档 | v3 preview 结果 |
+| `POST /open-api/operator/scan-import/commit` | `operator:scan:write` | 原始密探 v3 文档 | v3 commit 结果；产生 `operator_scan_import` SSE |
+
+自动采集限制：
+
+- 只允许单来源 `operator_snapshot`。
+- `source_kind=scan`、`snapshot_scope=listed`。
+- 来源账号始终强制映射到 Token 绑定账号。
+- 不接受 annotation/full/manual，不扣减库存。
+
+## 9. 广陵账房方案（/hub/ledger/plan）
+
+全部需 JWT，方案归属从 JWT 获取；不存在与越权统一返回业务 404。
+
+| 方法与路径 | 请求/参数 | 成功 data |
+|---|---|---|
+| `POST /hub/ledger/plan` | 完整方案 | 全量方案 |
+| `PUT /hub/ledger/plan/{id}` | 完整方案，整体替换 | 全量方案 |
+| `GET /hub/ledger/plan/{id}` | 无 | 全量方案 |
+| `GET /hub/ledger/plan` | query `version=daihao|ru` 可选 | 轻量方案数组 |
+| `DELETE /hub/ledger/plan/{id}` | 无 | `true` |
+
+请求主要结构：
+
+```json
+{
+  "name": "抽卡规划",
+  "version": "daihao",
+  "exchange_rate": 7.2,
+  "initial_points": 0,
+  "cart_items": [{
+    "content_id": 1,
+    "quantity": 1,
+    "package_snapshot": {
+      "name": "礼包",
+      "points": 100,
+      "draws": 1,
+      "limit": 1,
+      "price_usd": 4.99
+    }
+  }],
+  "custom_packages": []
+}
+```
+
+- `name` 最长 50；`version` 只允许 `daihao`、`ru`。
+- `cart_items` 最多 200，`custom_packages` 最多 50。
+- `daihao` 礼包必须提供 `price_usd`；`ru` 礼包必须提供 `price_cny`，另一版本价格会被清空。
+- 自定义礼包 id 由服务端重新生成；同名重复保留首个并回写购物车引用。
+- 每用户最多 50 个方案。
+- 创建、更新、删除限流为每 60 秒 10 次。
+- 列表按 `updated_at` 倒序，且不含 `cart_items`、`custom_packages` 大明细。
+- 全量响应包含 `{id,user_id,name,version,exchange_rate,initial_points,cart_items,custom_packages,summary,created_at,updated_at}`。
+- `summary={total_cny,total_points,total_draws}`；`total_points` 不含 `initial_points`。
+
+## 10. 其他现有后端接口
+
+这些端点当前没有对应 YuanHub API 模块，但属于后端已实现契约。
+
+### 10.1 系统
+
+- `GET /`：公开健康提示，返回普通包装，message 为 `Share Server is Running`，data 为 null。
+- `GET /version`：公开，返回 `{title,description,version,git}`。
+- `GET /ready`：仅 local profile 的 readiness 检查，不应作为生产公共契约依赖。
+
+### 10.2 Hub Post 示例业务
+
+| 方法与路径 | 认证 | 请求/响应 |
+|---|---|---|
+| `POST /hub/post` | JWT | body `{title,content}`，返回帖子对象 |
+| `GET /hub/post/{id}` | 公开 | 帖子对象 |
+| `GET /hub/post/user/{userId}` | 公开 | 该用户帖子数组 |
+| `GET /hub/post` | 公开 | 最近 50 条帖子 |
+
+帖子对象：`{id,user_id,user_name,title,content,created_at}`；标题最长 100，内容最长 5000。
+
+`/demo/**` 是后端示例接口，不纳入前端业务契约。
+
+## 11. YuanHub 前端对应关系
+
+| 模块 | 作用 |
+|---|---|
+| `src/api/request.js` | baseURL、JSON/multipart、JWT、401 refresh、raw 导出、错误提取 |
+| `src/api/user.js` | 用户 10 个接口 |
+| `src/api/accounts.js` | 统一子账号 CRUD |
+| `src/api/accountEvents.js` | 带 JWT 的 SSE 客户端 |
+| `src/api/inventory.js` | 库存、特别关注、库存 OpenAPI 导入 |
+| `src/api/operator.js` | 密探目录、养成、标注、目标、提升、导入导出和管理端 |
+| `src/api/openApi.js` | OpenAPI Token 管理 |
+| `src/api/ledger.js` | 广陵账房方案 CRUD |
+| `src/store/auth.js` | 登录态、持久化、刷新和退出 |
+| `src/store/accountEvents.js` | SSE 订阅、事件去重、通知与页面刷新 |
+
+实现注意：
+
+- `request(path,{auth:true})` 才自动携带登录 JWT；OpenAPI Token 需调用方显式设置 Authorization。
+- `raw:true` 用于库存/密探导出，否则会错误地按 ApiResult 解包。
+- `multipart:true` 上传头像时不要手动设置 `Content-Type`，由浏览器写 boundary。
+- `request()` 抛出的错误保留 `status`、`code`、`payload`，revision/idempotency 分支应使用 `code` 判断。
+- 401 自动刷新只针对 `auth:true` 的 JWT 请求；OpenAPI Token 401 不应触发用户 refresh。
+- 切换子账号时必须清空旧账号的库存、密探、关注和事件状态后重新加载。
+
+## 12. 更新检查清单
+
+后端接口变更时至少检查：
+
+- [ ] 更新本文顶部后端 commit 与日期
+- [ ] 对照所有 Controller mapping，确认方法、path、公开/JWT/OpenAPI/Admin 权限
+- [ ] 对照 request/response DTO，确认字段名、必填性、枚举、范围和 raw/ApiResult/SSE 包装
+- [ ] 对照异常处理器，确认 HTTP 状态与错误 envelope
+- [ ] 对照 `OpenApiPermission`，同步新增/删除 scope
+- [ ] 对照 `AccountEventService.publish` 调用点，更新 SSE 事件名和 payload
+- [ ] 同步 `src/api/*` 封装、页面调用和相关测试
+- [ ] v3 变更同步协议文档、JSON Schema 与 examples

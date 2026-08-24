@@ -1,0 +1,20 @@
+{
+  "format": "myshare-inventory-exchange",
+  "version": 2,
+  "exported_at": "2026-08-24T08:01:00Z",
+  "catalog_version": "2026-08-24",
+  "producer": { "platform": "example-scanner", "version": "1.0.0" },
+  "accounts": [{ "id": "acc_demo", "name": "示例账号" }],
+  "records": [
+    {
+      "account_id": "acc_demo",
+      "record_id": "example-scanner:dispatch:20260824-080000",
+      "record_type": "reward_delta",
+      "entity_type": "item",
+      "acquisition_channel": "派遣-洛阳",
+      "stamina_cost": 20,
+      "effective_at": "2026-08-24T08:00:00Z",
+      "entries": [{ "id": "baijinbi", "name": "白金币", "count": 20 }]
+    }
+  ]
+}
