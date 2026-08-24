@@ -1,3 +1,4 @@
+import { reactive } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
 import { auth, init as authInit } from '@/store/auth.js'
@@ -9,6 +10,45 @@ const router = createRouter({
     if (to.hash) return { el: to.hash, behavior: 'smooth', top: 0 }
     return savedPosition || { top: 0 }
   }
+})
+
+// 全站路由加载状态：仅真实路径切换时展示，初次进入及 query/hash 更新不打断用户。
+export const routeLoadingState = reactive({ active: false })
+const trackedNavigations = new WeakSet()
+let pendingNavigations = 0
+let loadingStartedAt = 0
+let loadingEndTimer = null
+
+function beginRouteLoading(to, from) {
+  if (!from.matched.length || to.path === from.path) return
+  trackedNavigations.add(to)
+  pendingNavigations += 1
+  if (loadingEndTimer) clearTimeout(loadingEndTimer)
+  if (!routeLoadingState.active) loadingStartedAt = Date.now()
+  routeLoadingState.active = true
+}
+
+function finishRouteLoading(to, force = false) {
+  if (force) {
+    pendingNavigations = 0
+  } else {
+    if (!trackedNavigations.has(to)) return
+    trackedNavigations.delete(to)
+    pendingNavigations = Math.max(0, pendingNavigations - 1)
+    if (pendingNavigations > 0) return
+  }
+
+  const elapsed = Date.now() - loadingStartedAt
+  const delay = Math.max(140, 280 - elapsed)
+  if (loadingEndTimer) clearTimeout(loadingEndTimer)
+  loadingEndTimer = setTimeout(() => {
+    if (pendingNavigations === 0) routeLoadingState.active = false
+  }, delay)
+}
+
+// 放在权限守卫前面，让异步登录态恢复和懒加载组件都能获得即时反馈。
+router.beforeEach((to, from) => {
+  beginRouteLoading(to, from)
 })
 
 // 首次导航前恢复登录态（async init 保证刷新页面后登录态已还原再判守卫）
@@ -39,6 +79,11 @@ router.beforeEach(async (to, from, next) => {
 
 router.afterEach((to) => {
   if (to.meta.title) document.title = to.meta.title
+  finishRouteLoading(to)
+})
+
+router.onError(() => {
+  finishRouteLoading(null, true)
 })
 
 export default router
