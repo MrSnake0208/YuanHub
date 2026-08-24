@@ -135,36 +135,40 @@ export function deleteOperatorGrowthTarget({ accountId, operatorId, expectedRevi
 
 // —— 服务端权威快捷提升 ——
 
-export function previewOperatorUpgrade({ accountId, game, operatorId, dimension, target, expectedOperatorRevision } = {}) {
+export function previewOperatorUpgrade({ accountId, game, operatorId, dimension, target, expectedOperatorRevision, skipBreakthroughMaterials } = {}) {
+  const body = {
+    account_id: accountId,
+    game: game,
+    operator_id: operatorId,
+    dimension: dimension,
+    target: target,
+    expected_operator_revision: Number(expectedOperatorRevision) || 0
+  }
+  if (skipBreakthroughMaterials) body.skip_breakthrough_materials = true
   return request(PATH + '/upgrades/preview', {
     method: 'POST',
     auth: true,
-    body: {
-      account_id: accountId,
-      game: game,
-      operator_id: operatorId,
-      dimension: dimension,
-      target: target,
-      expected_operator_revision: Number(expectedOperatorRevision) || 0
-    }
+    body: body
   })
 }
 
-export function executeOperatorUpgrade({ accountId, game, operatorId, dimension, target, expectedOperatorRevision, expectedInventoryRevision, previewToken, idempotencyKey } = {}) {
+export function executeOperatorUpgrade({ accountId, game, operatorId, dimension, target, expectedOperatorRevision, expectedInventoryRevision, previewToken, idempotencyKey, skipBreakthroughMaterials } = {}) {
+  const body = {
+    account_id: accountId,
+    game: game,
+    operator_id: operatorId,
+    dimension: dimension,
+    target: target,
+    expected_operator_revision: Number(expectedOperatorRevision) || 0,
+    expected_inventory_revision: Number(expectedInventoryRevision) || 0,
+    preview_token: previewToken
+  }
+  if (skipBreakthroughMaterials) body.skip_breakthrough_materials = true
   return request(PATH + '/upgrades/execute', {
     method: 'POST',
     auth: true,
     headers: { 'Idempotency-Key': idempotencyKey },
-    body: {
-      account_id: accountId,
-      game: game,
-      operator_id: operatorId,
-      dimension: dimension,
-      target: target,
-      expected_operator_revision: Number(expectedOperatorRevision) || 0,
-      expected_inventory_revision: Number(expectedInventoryRevision) || 0,
-      preview_token: previewToken
-    }
+    body: body
   })
 }
 

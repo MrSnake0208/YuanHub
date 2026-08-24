@@ -377,7 +377,7 @@
                   <section class="ledger-combat" aria-label="战斗面板与奇闻属性">
                     <div v-for="kind in ['attack', 'hp']" :key="kind" class="ledger-combat-stat" :class="{ 'is-manual': cardCombatMode(e, kind) === 'manual', 'is-stale': combatObservedStatus(e) === 'stale', 'is-saving': cardCombatSavingIds.has(e.id) }">
                       <div class="ledger-combat-head">
-                        <span>{{ kind === 'attack' ? '⚔ 攻击' : '♡ 生命' }}</span>
+                        <span><Swords v-if="kind === 'attack'" :size="12" aria-hidden="true" /><Heart v-else :size="12" aria-hidden="true" />{{ kind === 'attack' ? '攻击' : '生命' }}</span>
                         <button
                           class="ledger-combat-mode"
                           type="button"
@@ -393,7 +393,7 @@
                       </div>
                       <input class="ledger-combat-value" type="number" min="0" :value="cardCombatInputValue(e, kind)" :placeholder="cardCombatDisplay(e, kind)" :aria-label="e.name + (kind === 'attack' ? '攻击力' : '生命力')" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setCardCombatValue(e, kind, $event)" />
                       <small class="ledger-combat-source">{{ cardSubmitStates[e.id] === 'submitting' ? '保存中…' : cardCombatSource(e, kind) }}</small>
-                      <label class="ledger-oddity"><span class="ledger-oddity-icon" aria-hidden="true">🦋</span><input type="number" min="0" :value="cardOddityValue(e, kind)" :placeholder="cardOddityMax(e, kind)" :aria-label="e.name + (kind === 'attack' ? '奇闻属性攻击力' : '奇闻属性生命值')" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setCardOddityValue(e, kind, $event)" /><span>/ {{ cardOddityMax(e, kind) || '—' }}</span></label>
+                      <label class="ledger-oddity"><ButterflyIcon class="ledger-oddity-icon" /><input type="number" min="0" :value="cardOddityValue(e, kind)" :placeholder="cardOddityMax(e, kind)" :aria-label="e.name + (kind === 'attack' ? '奇闻属性攻击力' : '奇闻属性生命值')" :disabled="cardSubmitStates[e.id] === 'submitting'" @input="setCardOddityValue(e, kind, $event)" /><span>/ {{ cardOddityMax(e, kind) || '—' }}</span></label>
                     </div>
                   </section>
 
@@ -402,18 +402,18 @@
                       <span class="ledger-grow-label">等级</span>
                       <label class="ledger-inline-field"><span class="sr-only">等级</span><input class="ledger-editable ledger-inline-input" type="number" min="0" max="100" :value="cardGrowthValue(e, 'level')" :disabled="cardSubmitStates[e.id] === 'submitting'" aria-label="等级" @input="setGrowthInput(e, 'level', $event)" /></label>
                       <div class="ledger-step-actions"><button v-if="cardGrowthValue(e, 'level') < 100" type="button" class="ledger-popover-trigger" :class="growthActionClass(e, 'level', 5)" :disabled="cardSubmitStates[e.id] === 'submitting'" @click="openGrowthAction(e, 'level', 5)">{{ growthActionLabel(e, 'level', 5, '可 +5') }}</button><button v-else type="button" class="is-complete" disabled>已满级</button></div>
-                      <div v-if="cardPopoverKey === e.id + ':level'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'level') }}</p><div v-if="isGrowthPreviewBusy(e, 'level')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'level')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'level') }}<button type="button" @click="openGrowthAction(e, 'level', 5)">重试</button></div><template v-else-if="growthPreviewData(e, 'level')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'level')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'level').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'level')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'level')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'level')" @click="executeGrowthAction(e, 'level')">{{ isGrowthExecuteBusy(e, 'level') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'level').length && !growthPreviewHasMaterialGap(e, 'level')" class="ledger-popover-blocked">当前状态无法提升</em></template>
+                      <div v-if="cardPopoverKey === e.id + ':level'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'level') }}</p><label v-if="showLevelBreakthroughOption(e, 5)" class="ledger-breakthrough-toggle"><input type="checkbox" :checked="cardLevelBreakthrough(e)" :disabled="isGrowthPreviewBusy(e, 'level') || isGrowthExecuteBusy(e, 'level')" @change="setCardLevelBreakthrough(e, $event)" /><span>已突破？<small>不计突破材料</small></span></label><div v-if="isGrowthPreviewBusy(e, 'level')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'level')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'level') }}<button type="button" @click="openGrowthAction(e, 'level', 5)">重试</button></div><template v-else-if="growthPreviewData(e, 'level')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'level')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'level').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'level')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'level')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'level')" @click="executeGrowthAction(e, 'level')">{{ isGrowthExecuteBusy(e, 'level') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'level').length && !growthPreviewHasMaterialGap(e, 'level')" class="ledger-popover-blocked">当前状态无法提升</em></template>
                       </div>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">修为</span>
                       <label class="ledger-inline-field"><span class="sr-only">修为</span><input class="ledger-editable ledger-inline-input" type="number" min="0" :max="getMaxEliteForLevel(cardGrowthValue(e, 'level'))" :value="cardGrowthValue(e, 'elite')" :disabled="cardSubmitStates[e.id] === 'submitting'" aria-label="修为" @input="setGrowthInput(e, 'elite', $event)" /></label>
-                      <button class="ledger-smart-action ledger-popover-trigger" :class="growthActionClass(e, 'elite', 3)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level'))" @click="openGrowthAction(e, 'elite', 3)"><ChevronUp v-if="cardGrowthValue(e, 'elite') < getMaxEliteForLevel(cardGrowthValue(e, 'level')) && growthMaterialsReady(e, 'elite', 3)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level')) ? '已满级' : growthActionLabel(e, 'elite', 3, '升至 ' + growthTarget(e, 'elite')) }}</button>
-                      <div v-if="cardPopoverKey === e.id + ':elite'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'elite') }}</p><div v-if="isGrowthPreviewBusy(e, 'elite')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'elite')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'elite') }}<button type="button" @click="openGrowthAction(e, 'elite', 3)">重试</button></div><template v-else-if="growthPreviewData(e, 'elite')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'elite')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'elite').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'elite')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'elite')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'elite')" @click="executeGrowthAction(e, 'elite')">{{ isGrowthExecuteBusy(e, 'elite') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'elite').length && !growthPreviewHasMaterialGap(e, 'elite')" class="ledger-popover-blocked">当前状态无法提升</em></template></div>
+                      <button class="ledger-smart-action ledger-popover-trigger" :class="growthActionClass(e, 'elite', 1)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level'))" @click="openGrowthAction(e, 'elite', 1)"><ChevronUp v-if="cardGrowthValue(e, 'elite') < getMaxEliteForLevel(cardGrowthValue(e, 'level')) && growthMaterialsReady(e, 'elite', 1)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'elite') >= getMaxEliteForLevel(cardGrowthValue(e, 'level')) ? '已满级' : growthActionLabel(e, 'elite', 1, '升至 ' + growthTarget(e, 'elite')) }}</button>
+                      <div v-if="cardPopoverKey === e.id + ':elite'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'elite') }}</p><div v-if="isGrowthPreviewBusy(e, 'elite')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'elite')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'elite') }}<button type="button" @click="openGrowthAction(e, 'elite', 1)">重试</button></div><template v-else-if="growthPreviewData(e, 'elite')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'elite')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'elite').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'elite')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'elite')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'elite')" @click="executeGrowthAction(e, 'elite')">{{ isGrowthExecuteBusy(e, 'elite') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'elite').length && !growthPreviewHasMaterialGap(e, 'elite')" class="ledger-popover-blocked">当前状态无法提升</em></template></div>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">化极</span>
-                      <button class="ledger-editable ledger-popover-trigger" type="button" :aria-expanded="cardPopoverKey === e.id + ':star-edit'" @click="openCardPopover(e, 'star-edit')">{{ starLabel(cardGrowthValue(e, 'star'), e.spOf) }}</button>
+                      <button class="ledger-editable ledger-huaji-value ledger-popover-trigger" type="button" :aria-expanded="cardPopoverKey === e.id + ':star-edit'" @click="openCardPopover(e, 'star-edit')"><template v-if="starCardHasIcon(cardGrowthValue(e, 'star'))"><span>{{ starCardNumber(cardGrowthValue(e, 'star'), e.spOf) }}</span><Star :size="12" fill="currentColor" aria-hidden="true" /><span v-if="!e.spOf">· {{ starCardNode(cardGrowthValue(e, 'star')) }} 节点</span></template><template v-else>{{ starCardFallback(cardGrowthValue(e, 'star')) }}</template></button>
                       <button v-if="!e.spOf" class="ledger-next-action ledger-popover-trigger" :class="growthActionClass(e, 'star', 1)" type="button" :disabled="cardSubmitStates[e.id] === 'submitting' || cardGrowthValue(e, 'star') >= 31" @click="openGrowthAction(e, 'star', 1)"><ChevronUp v-if="cardGrowthValue(e, 'star') < 31 && growthMaterialsReady(e, 'star', 1)" :size="13" aria-hidden="true" />{{ cardGrowthValue(e, 'star') >= 31 ? (cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN ? '已觉醒' : '已满级') : growthActionLabel(e, 'star', 1, '下一节点') }}</button>
                       <div v-if="cardPopoverKey === e.id + ':star-edit'" class="ledger-popover ledger-star-popover"><p><CircleAlert :size="13" aria-hidden="true" />校正化极等级与节点</p><div class="ledger-star-controls"><select :value="starDraftGroup(e)" @change="setStarDraftGroup(e, $event)"><option value="0">未拥有</option><option v-for="group in 5" :key="group" :value="group">{{ group }} 星</option><option value="31">觉醒</option></select><select v-if="!e.spOf && starDraftGroup(e) > 0 && starDraftGroup(e) < 31" :value="starDraftNode(e)" @change="setStarDraftNode(e, $event)"><option v-for="node in 6" :key="node - 1" :value="node - 1">节点 {{ node - 1 }}</option></select></div><div class="ledger-popover-actions"><button type="button" @click="cardPopoverKey = ''">完成校正</button></div></div>
                       <div v-if="!e.spOf && cardPopoverKey === e.id + ':star'" class="ledger-popover ledger-upgrade-popover" aria-live="polite"><p><CircleAlert :size="13" aria-hidden="true" />{{ growthTargetLabel(e, 'star') }} </p><div v-if="isGrowthPreviewBusy(e, 'star')" class="ledger-popover-state">正在核对库存与养成版本…</div><div v-else-if="growthPreviewError(e, 'star')" class="ledger-popover-state is-error">{{ growthPreviewError(e, 'star') }}<button type="button" @click="openGrowthAction(e, 'star', 1)">重试</button></div><template v-else-if="growthPreviewData(e, 'star')"><div class="ledger-material-list"><span v-for="item in growthPreviewDisplayRequirements(e, 'star')" :key="(item.entity_type || item.entityType) + ':' + item.id" :class="{ 'is-lack': growthRequirementValue(item, 'balance_after') < 0 }">{{ growthRequirementName(item, e) }} ×{{ growthRequirementValue(item, 'required') }}<small>{{ growthRequirementBalanceLabel(item) }}</small></span><em v-if="!growthPreviewDisplayRequirements(e, 'star').length">无需扣除库存道具</em></div><em v-for="reason in growthPreviewBlockingReasons(e, 'star')" :key="reason.code + ':' + reason.message" class="ledger-popover-blocked">{{ growthReasonMessage(reason) }}</em><div v-if="growthPreviewAvailable(e, 'star')" class="ledger-popover-actions"><button type="button" :disabled="isGrowthExecuteBusy(e, 'star')" @click="executeGrowthAction(e, 'star')">{{ isGrowthExecuteBusy(e, 'star') ? '正在提升…' : '确认提升并扣除库存' }}</button></div><em v-else-if="!growthPreviewBlockingReasons(e, 'star').length && !growthPreviewHasMaterialGap(e, 'star')" class="ledger-popover-blocked">当前状态无法提升</em></template></div>
@@ -803,10 +803,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted, defineAsyncComponent } from 'vue'
-import { Archive, BookOpen, Calculator, ChevronUp, CircleAlert, Download, ListChecks, Pencil, RotateCcw, Save, ScanLine, Star, Target, Upload, X } from '@lucide/vue'
+import { Archive, BookOpen, Calculator, ChevronUp, CircleAlert, Download, Heart, ListChecks, Pencil, RotateCcw, Save, ScanLine, Star, Swords, Target, Upload, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
+import ButterflyIcon from '../../components/operator/ButterflyIcon.vue'
 const OperatorGrowthTracker = defineAsyncComponent(function () { return import('../../components/operator/OperatorGrowthTracker.vue') })
 import {
   getOperatorCatalog,
@@ -948,6 +949,7 @@ const growthPreviews = ref({})
 const growthPreviewBusyKeys = ref(new Set())
 const growthExecuteBusyKeys = ref(new Set())
 const growthExecutionKeys = new Map()
+const growthPreviewRequestSequences = new Map()
 const handledUpgradeTransactionIds = new Set()
 const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 
@@ -1700,6 +1702,27 @@ function starLabel(v, spOf) {
   return n
 }
 
+function starCardHasIcon(v) {
+  const n = Number(v) || 0
+  return n > 0 && n !== STAR_LEVEL_AWAKEN
+}
+
+function starCardNumber(v, spOf) {
+  const n = Number(v) || 0
+  return spOf ? n : Math.floor((n - 1) / 6) + 1
+}
+
+function starCardNode(v) {
+  return (Number(v) - 1) % 6
+}
+
+function starCardFallback(v) {
+  const n = Number(v) || 0
+  if (n === 0) return '未拥有'
+  if (n === STAR_LEVEL_AWAKEN) return '觉醒'
+  return n
+}
+
 // 星级分段胶囊 + 节点胶囊：把一维 starLevel 拆成「星级分组 + 节点」二维状态
 const starGroupName = computed(function () {
   const v = Number(editForm.value.starLevel) || 0
@@ -1867,7 +1890,7 @@ const upgradeReadyGroups = computed(function () {
     const status = operatorStatus(entry)
     if (status === 'growing') {
       const levelReady = quickGrowthActionAvailable(entry, 'level', 5)
-      const eliteReady = quickGrowthActionAvailable(entry, 'elite', 3)
+      const eliteReady = quickGrowthActionAvailable(entry, 'elite', 1)
       if (levelReady) groups.level.push(entry)
       if (eliteReady) groups.elite.push(entry)
       if (levelReady || eliteReady) groups.growth.push(entry)
@@ -2309,20 +2332,28 @@ function openCardPopover(entry, field) {
 }
 
 function cardLevelBreakthrough(entry) {
-  return Boolean(entry && cardLevelBreakthroughs.value[entry.id])
+  if (!showLevelBreakthroughOption(entry, 5)) return false
+  return Number(cardLevelBreakthroughs.value[entry.id]) === Number(cardGrowthValue(entry, 'level'))
+}
+
+function showLevelBreakthroughOption(entry, step) {
+  const level = Number(cardGrowthValue(entry, 'level')) || 0
+  return Number(step) === 5 && level >= 10 && level <= 90 && level % 10 === 0 && growthTarget(entry, 'level', step) > level
 }
 
 function setCardLevelBreakthrough(entry, event) {
   if (!entry || !entry.id) return
+  const checked = Boolean(event && event.target && event.target.checked)
   cardLevelBreakthroughs.value = Object.assign({}, cardLevelBreakthroughs.value, {
-    [entry.id]: Boolean(event && event.target && event.target.checked)
+    [entry.id]: checked ? Number(cardGrowthValue(entry, 'level')) : null
   })
+  openGrowthAction(entry, 'level', 5)
 }
 
 function growthTarget(entry, field, step) {
   const draft = ensureCardDraft(entry)
   if (!draft) return 0
-  const amount = Number(step == null ? cardPopoverStep.value : step) || (field === 'level' ? 5 : field === 'elite' ? 3 : 1)
+  const amount = Number(step == null ? cardPopoverStep.value : step) || (field === 'level' ? 5 : 1)
   if (field === 'level') return Math.min(100, draft.level + amount)
   if (field === 'elite') return Math.min(getMaxEliteForLevel(draft.level), draft.elite + amount)
   return Math.min(entry.spOf ? 5 : 31, draft.star + 1)
@@ -2348,7 +2379,7 @@ function growthPreviewError(entry, field) {
 
 function growthPreviewAvailable(entry, field) {
   const preview = growthPreviewData(entry, field)
-  return !!(preview && preview.available)
+  return !!(preview && preview.available && growthPreviewHonorsBreakthroughSkip(entry, field))
 }
 
 function growthPreviewRequirements(entry, field) {
@@ -2356,8 +2387,28 @@ function growthPreviewRequirements(entry, field) {
   return preview && Array.isArray(preview.requirements) ? preview.requirements : []
 }
 
+function levelBreakthroughMaterialIds(entry) {
+  const draft = ensureCardDraft(entry)
+  if (!draft) return new Set()
+  const withBreakthrough = calculateLevelRequirements(draft.level, growthTarget(entry, 'level'), firstSubProf(entry), false)
+  const withoutBreakthrough = calculateLevelRequirements(draft.level, growthTarget(entry, 'level'), firstSubProf(entry), true)
+  return new Set(Object.keys(withBreakthrough.items || {}).filter(function (id) {
+    return !withoutBreakthrough.items || !withoutBreakthrough.items[id]
+  }))
+}
+
+function growthPreviewHonorsBreakthroughSkip(entry, field) {
+  if (field !== 'level' || !cardLevelBreakthrough(entry)) return true
+  const breakthroughIds = levelBreakthroughMaterialIds(entry)
+  return !growthPreviewRequirements(entry, field).some(function (item) { return breakthroughIds.has(item && item.id) })
+}
+
 function growthPreviewDisplayRequirements(entry, field) {
-  const requirements = growthPreviewRequirements(entry, field).slice()
+  let requirements = growthPreviewRequirements(entry, field).slice()
+  if (field === 'level' && cardLevelBreakthrough(entry)) {
+    const breakthroughIds = levelBreakthroughMaterialIds(entry)
+    requirements = requirements.filter(function (item) { return !breakthroughIds.has(item && item.id) })
+  }
   if (field !== 'level' || cardMaterialLoadedAccount.value !== accountId.value) return requirements
   const bookIds = new Set(['liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan'])
   if (requirements.some(function (item) { return bookIds.has(item && item.id) })) return requirements
@@ -2414,9 +2465,13 @@ function growthPreviewBlockingReasons(entry, field) {
   const reasons = preview && Array.isArray(preview.blocking_reasons || preview.blockingReasons)
     ? (preview.blocking_reasons || preview.blockingReasons)
     : []
-  return reasons.filter(function (reason) {
+  const visibleReasons = reasons.filter(function (reason) {
     return String(reason && reason.code || '') !== 'insufficient_inventory'
   })
+  if (preview && !growthPreviewHonorsBreakthroughSkip(entry, field)) {
+    visibleReasons.push({ code: 'skip_breakthrough_unsupported', message: '本次预览仍包含突破材料，为避免误扣，暂不能执行' })
+  }
+  return visibleReasons
 }
 
 function growthPreviewHasMaterialGap(entry, field) {
@@ -2462,6 +2517,9 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
   }
   cardPopoverStep.value = step || 1
   const key = growthActionKey(entry, field)
+  const requestSequence = (growthPreviewRequestSequences.get(key) || 0) + 1
+  const skipBreakthroughMaterials = field === 'level' && cardLevelBreakthrough(entry)
+  growthPreviewRequestSequences.set(key, requestSequence)
   cardPopoverKey.value = key
   growthPreviewBusyKeys.value = new Set(growthPreviewBusyKeys.value).add(key)
   growthExecutionKeys.delete(key)
@@ -2473,12 +2531,13 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
       operatorId: entry.id,
       dimension: upgradeDimension(field),
       target: growthTarget(entry, field, step),
-      expectedOperatorRevision: Number(entry.revision) || 0
+      expectedOperatorRevision: Number(entry.revision) || 0,
+      skipBreakthroughMaterials: skipBreakthroughMaterials
     })
-    if (cardPopoverKey.value !== key) return
+    if (cardPopoverKey.value !== key || growthPreviewRequestSequences.get(key) !== requestSequence || skipBreakthroughMaterials !== (field === 'level' && cardLevelBreakthrough(entry))) return
     growthPreviews.value = Object.assign({}, growthPreviews.value, { [key]: { data: data, error: '' } })
   } catch (err) {
-    if (cardPopoverKey.value !== key) return
+    if (cardPopoverKey.value !== key || growthPreviewRequestSequences.get(key) !== requestSequence) return
     if (err && err.code === 'operator_state_stale' && !retriedAfterRefresh) {
       await reloadCurrent(true)
       resetCardDraftState(entry.id)
@@ -2487,9 +2546,11 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
     }
     growthPreviews.value = Object.assign({}, growthPreviews.value, { [key]: { data: null, error: humanErr(err, '提升预览失败') } })
   } finally {
-    const next = new Set(growthPreviewBusyKeys.value)
-    next.delete(key)
-    growthPreviewBusyKeys.value = next
+    if (growthPreviewRequestSequences.get(key) === requestSequence) {
+      const next = new Set(growthPreviewBusyKeys.value)
+      next.delete(key)
+      growthPreviewBusyKeys.value = next
+    }
   }
 }
 
@@ -2548,7 +2609,8 @@ async function executeGrowthAction(entry, field) {
       expectedOperatorRevision: operatorRevision,
       expectedInventoryRevision: inventoryRevision,
       previewToken: previewToken,
-      idempotencyKey: idempotencyKey
+      idempotencyKey: idempotencyKey,
+      skipBreakthroughMaterials: field === 'level' && cardLevelBreakthrough(entry)
     })
     const transactionId = result && (result.transaction_id || result.transactionId)
     if (transactionId) handledUpgradeTransactionIds.add(transactionId)
@@ -4594,6 +4656,7 @@ onBeforeUnmount(function () {
 .ledger-combat-stat.is-manual { border-color:rgba(215,137,53,.58); background:var(--cream) }
 .ledger-combat-stat.is-stale { border-color:rgba(166,81,74,.42) }
 .ledger-combat-head { display:flex; align-items:center; justify-content:space-between; gap:4px; color:var(--ink-60); font-size:10px; font-weight:800 }
+.ledger-combat-head > span { display:inline-flex; align-items:center; gap:3px }
 .ledger-combat-mode { width:20px; height:20px; display:grid; place-items:center; flex:none; padding:0; border:0; border-radius:4px; background:transparent; color:var(--ink-35); cursor:pointer; outline:none; transition:color .18s ease, background .18s ease }
 .ledger-combat-mode:hover:not(:disabled) { background:rgba(215,137,53,.12); color:var(--accent-strong) }
 .ledger-combat-mode.is-auto { color:var(--brand-blue) }
@@ -4606,7 +4669,7 @@ onBeforeUnmount(function () {
 .ledger-combat-value:focus::placeholder { color:transparent }
 .ledger-combat-source { display:block; margin-top:4px; min-height:12px; color:var(--ink-35); font-size:8px; font-weight:800; text-align:center }
 .ledger-oddity { display:flex; align-items:center; justify-content:center; gap:3px; margin-top:4px; color:var(--accent-strong); font:800 10px var(--font-d) }
-.ledger-oddity-icon { display:inline-flex; width:14px; justify-content:center; color:var(--accent-strong); font:900 10px var(--font-s) }
+.ledger-oddity-icon { display:block; width:14px; height:14px; flex:none; color:color-mix(in srgb,var(--rouge) 55%,var(--brand-blue)) }
 .ledger-oddity input { width:42px; min-width:0; padding:0 1px; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink-60); font:800 10px var(--font-d); text-align:center; -moz-appearance:textfield }
 .ledger-oddity input::-webkit-outer-spin-button,.ledger-oddity input::-webkit-inner-spin-button { -webkit-appearance:none }
 .ledger-oddity span { color:var(--ink-35); font-size:9px }
@@ -4616,6 +4679,8 @@ onBeforeUnmount(function () {
 .ledger-grow-label { width:32px; flex:none; color:var(--ink-60); font-weight:700 }
 .ledger-editable { padding:0 2px; border:0; border-bottom:1px dashed var(--accent); background:transparent; color:var(--ink); font:700 13px var(--font-d); cursor:pointer }
 .ledger-editable:hover { color:var(--accent-strong) }
+.ledger-huaji-value { display:inline-flex; align-items:center; gap:3px }
+.ledger-huaji-value svg { flex:none; color:var(--yellow-deep) }
 .ledger-step-actions { display:flex; gap:3px; margin-left:auto }
 .ledger-step-actions button,.ledger-next-action { border:1px solid var(--line); border-radius:4px; padding:3px 5px; background:var(--surface); color:var(--ink); font-size:10px; font-weight:800; text-align:center; cursor:pointer }
 .ledger-step-actions button:hover,.ledger-next-action:hover:not(:disabled) { border-color:var(--accent); background:var(--yellow) }
@@ -4627,8 +4692,12 @@ onBeforeUnmount(function () {
 .ledger-popover::before { position:absolute; top:-6px; left:20px; width:10px; height:10px; border-left:1px solid var(--accent); border-top:1px solid var(--accent); background:var(--surface); content:''; transform:rotate(45deg) }
 .ledger-popover p { display:flex; align-items:flex-start; gap:4px; color:var(--brand-blue); font-size:9.5px; line-height:1.35; font-weight:700 }
 .ledger-popover > div { display:flex; gap:5px }
-.ledger-breakthrough-toggle { display:inline-flex; align-items:center; align-self:flex-start; gap:5px; color:var(--ink-60); font-size:9px; font-weight:700; cursor:pointer }
-.ledger-breakthrough-toggle input { width:13px; height:13px; margin:0; accent-color:var(--accent) }
+.ledger-breakthrough-toggle { display:inline-flex; min-height:32px; align-items:center; align-self:stretch; gap:7px; padding:5px 7px; border:1px solid var(--line); border-radius:6px; background:var(--cream); color:var(--ink-60); font-size:9px; font-weight:800; cursor:pointer }
+.ledger-breakthrough-toggle span { display:flex; min-width:0; align-items:baseline; gap:5px }
+.ledger-breakthrough-toggle small { color:var(--ink-35); font-size:8px; font-weight:700 }
+.ledger-popover .ledger-breakthrough-toggle input { width:14px; height:14px; flex:none; margin:0; padding:0; accent-color:var(--accent) }
+.ledger-breakthrough-toggle:has(input:checked) { border-color:rgba(215,137,53,.45); background:rgba(239,210,142,.3); color:var(--tea) }
+.ledger-breakthrough-toggle:has(input:disabled) { cursor:wait; opacity:.68 }
 .ledger-popover input { min-width:0; width:100%; padding:4px 5px; border:1px solid var(--line); border-radius:4px; background:var(--cream); color:var(--ink); font:700 12px var(--font-d); outline:none }
 .ledger-popover input:focus { border-color:var(--accent) }
 .ledger-popover button { flex:none; border:0; border-radius:4px; padding:0 8px; background:var(--accent); color:#fff; font-size:10px; font-weight:800; cursor:pointer }
@@ -4716,7 +4785,7 @@ onBeforeUnmount(function () {
 .ledger-material-list small { flex:none; color:var(--ink-60); font:700 8px var(--font-b) }
 .ledger-material-list .is-lack small { color:var(--rouge) }
 .ledger-material-list em { color:var(--ink-35); font-size:9px; font-style:normal }
-.ledger-upgrade-popover { min-width:min(250px,calc(100vw - 28px)) }
+.ledger-upgrade-popover { left:0; right:0; width:auto; min-width:0 }
 .ledger-popover-state { display:flex; min-height:54px; align-items:center; justify-content:center; gap:8px; padding:9px; border:1px dashed var(--line); border-radius:7px; color:var(--ink-60); font-size:10px; text-align:center }
 .ledger-popover-state.is-error { border-color:rgba(166,81,74,.35); background:rgba(240,207,200,.24); color:var(--rouge) }
 .ledger-popover-state button { flex:none; padding:5px 8px }
@@ -5190,7 +5259,7 @@ onBeforeUnmount(function () {
   .ledger-step-actions { width: 100%; min-width: 0; margin-left: 0; }
   .ledger-step-actions button, .ledger-smart-action, .ledger-next-action { width: 100%; min-width: 0; min-height: 32px; margin-left: 0; padding: 4px 3px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
   .ledger-growth-row > .ledger-next-action { margin-top: 0; }
-  .ledger-growth-row > .ledger-popover { width: min(280px, calc(100vw - 24px)); max-width: calc(100vw - 24px); left: 0; right: auto; }
+  .ledger-growth-row > .ledger-popover { width: min(248px, calc(100vw - 64px)); max-width: calc(100vw - 64px); left: 0; right: auto; }
   .ledger-growth-row:nth-child(2) > .ledger-popover { left: 50%; transform: translateX(-50%); }
   .ledger-growth-row:nth-child(3) > .ledger-popover { left: auto; right: 0; }
   .ledger-popover { left: 0; right: -2px; }
