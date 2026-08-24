@@ -472,7 +472,7 @@
               />
 
               <div class="type-switch acquired-type-switch" aria-label="统计对象" v-reveal>
-                <button type="button" aria-label="全部（道具和心纸）" :aria-pressed="acquiredEntityType === 'all'" :class="{ on: acquiredEntityType === 'all' }" @click="setAcquiredEntityType('all')">ALL</button>
+                <button type="button" aria-label="全部（道具和心纸）" :aria-pressed="acquiredEntityType === 'all'" :class="{ on: acquiredEntityType === 'all' }" @click="setAcquiredEntityType('all')">查看全部</button>
                 <button type="button" :aria-pressed="acquiredEntityType === 'item'" :class="{ on: acquiredEntityType === 'item' }" @click="setAcquiredEntityType('item')">背包道具</button>
                 <button type="button" :aria-pressed="acquiredEntityType === 'agent'" :class="{ on: acquiredEntityType === 'agent' }" @click="setAcquiredEntityType('agent')">密探心纸</button>
               </div>
@@ -525,8 +525,12 @@
               </div>
 
               <section v-if="acquiredView === 'overview'" class="backpack acquired-overview" aria-label="获得总览" v-reveal>
-                <div class="bp-head">
+                <div class="bp-head acquired-overview-head">
                   <span class="bp-tip">{{ acquiredResultCaption }}</span>
+                  <label class="acquired-rarity-filter" :class="{ on: hideLowerRarityAgentRewards }">
+                    <input v-model="hideLowerRarityAgentRewards" type="checkbox" />
+                    <span>不看紫卡/蓝卡心纸</span>
+                  </label>
                 </div>
                 <div v-if="displayedAcquiredEntries.length === 0" class="state slim">没有匹配当前筛选的获得记录</div>
                 <ul v-else class="slot-grid acquired-slot-grid">
@@ -606,6 +610,11 @@
             <div class="records-head" v-reveal>
               <span class="hint">已加载 {{ recordsList.length }} 条导入记录 · 删除单条后自动重放剩余记录重建库存</span>
               <span class="sp"></span>
+              <div class="records-filter" role="group" aria-label="操作历史类型筛选">
+                <button type="button" :aria-pressed="recordsEntityType === 'all'" :class="{ on: recordsEntityType === 'all' }" :disabled="recordsLoading" @click="setRecordsEntityType('all')">全部</button>
+                <button type="button" :aria-pressed="recordsEntityType === 'item'" :class="{ on: recordsEntityType === 'item' }" :disabled="recordsLoading" @click="setRecordsEntityType('item')">道具</button>
+                <button type="button" :aria-pressed="recordsEntityType === 'agent'" :class="{ on: recordsEntityType === 'agent' }" :disabled="recordsLoading" @click="setRecordsEntityType('agent')">心纸</button>
+              </div>
               <button class="act-btn ghost" :disabled="recordsLoading" @click="loadRecords(true)">刷新</button>
             </div>
 
@@ -613,7 +622,7 @@
             <div v-else-if="recordsError" class="state err">{{ recordsError }}</div>
             <div v-else-if="recordsList.length === 0" class="state">暂无导入记录</div>
             <template v-else>
-              <ul class="record-list" v-reveal>
+              <ul class="record-list">
                 <li v-for="r in recordsList" :key="r.record_id" class="record">
                   <div class="record-main">
                     <div class="record-top">
@@ -718,6 +727,7 @@ const AGENT_STATUS_OPTIONS = [
   { id: 'missing', label: '无库存' }
 ]
 const AGENT_RARITIES = [5, 4, 3]
+const AGENT_RARITY_BY_ID = new Map(AGENT_CATALOG.map(function (agent) { return [agent.id, Number(agent.rarity)] }))
 const favoriteAgentIds = ref(new Set())
 const favoriteBusyIds = ref(new Set())
 const favoriteLoading = ref(false)
@@ -740,6 +750,7 @@ const acquiredView = ref('overview')
 const acquiredSearch = ref('')
 const acquiredSource = ref('all')
 const acquiredSort = ref('count')
+const hideLowerRarityAgentRewards = ref(false)
 const acquiredLoading = ref(false)
 const acquiredError = ref('')
 const acquiredRecords = ref([])
@@ -804,6 +815,7 @@ const currentAccountName = computed(function () {
 // —— 导入记录（游标分页） ——
 const recordsList = ref([])
 const recordsNextCursor = ref(null)
+const recordsEntityType = ref('all')
 const recordsLoading = ref(false)
 const recordsError = ref('')
 
@@ -1484,6 +1496,11 @@ function entryMatchesQuery(entry, query) {
   return [entry.id, name].filter(Boolean).join(' ').toLowerCase().includes(query)
 }
 
+function isLowerRarityAgentReward(entry) {
+  if (!entry || entry.entity_type !== 'agent' || !AGENT_RARITY_BY_ID.has(entry.id)) return false
+  return AGENT_RARITY_BY_ID.get(entry.id) < 5
+}
+
 const displayedAcquiredEntries = computed(function () {
   const query = acquiredSearch.value.toLowerCase()
   const source = acquiredSource.value
@@ -1498,6 +1515,7 @@ const displayedAcquiredEntries = computed(function () {
     const count = source === 'all' ? entry.count : Number(detail && detail.channels[source]) || 0
     return Object.assign({}, entry, { count: count, recordCount: recordCounts.get(entry.id) || 0 })
   }).filter(function (entry) {
+    if (hideLowerRarityAgentRewards.value && isLowerRarityAgentReward(entry)) return false
     return entry.count > 0 && entryMatchesQuery(entry, query)
   })
   return rows.sort(function (left, right) {
@@ -2032,6 +2050,14 @@ function humanErr(err, fallback) {
 function goLogin() { location.href = '/login' }
 
 // ---- 导入记录（游标分页） ----
+function setRecordsEntityType(type) {
+  if (!['all', 'item', 'agent'].includes(type) || type === recordsEntityType.value) return
+  recordsEntityType.value = type
+  recordsList.value = []
+  recordsNextCursor.value = null
+  loadRecords(true)
+}
+
 async function loadRecords(reset) {
   if (!accountId.value) {
     recordsList.value = []
@@ -2045,7 +2071,7 @@ async function loadRecords(reset) {
     const cursor = reset ? null : recordsNextCursor.value
     const page = await listRecords({
       accountId: accountId.value,
-      entityType: entityType.value,
+      entityType: recordsEntityType.value === 'all' ? undefined : recordsEntityType.value,
       cursor: cursor,
       limit: 50
     })
@@ -2507,6 +2533,12 @@ onBeforeUnmount(function () {
 .acquired-search > svg { position: absolute; left: 10px; bottom: 12px; z-index: 1; color: var(--ink-35); pointer-events: none }
 
 .acquired-overview { margin-top: 12px }
+.acquired-overview-head .bp-tip { min-width: 0; flex: 1 1 280px }
+.acquired-rarity-filter { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; gap: 8px; margin-left: auto; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60); font-size: 11px; font-weight: 800; cursor: pointer; transition: background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease) }
+.acquired-rarity-filter:hover { border-color: var(--accent); color: var(--ink) }
+.acquired-rarity-filter.on { border-color: var(--accent); background: var(--yellow); color: var(--ink) }
+.acquired-rarity-filter:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.acquired-rarity-filter input { width: 16px; height: 16px; margin: 0; accent-color: var(--tea); cursor: pointer }
 .acquired-overview .acquired-slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); justify-content: stretch; gap: 12px 8px; margin-top: 12px }
 .acquired-overview .slot-ic:not(.is-agent) { width: 68px; border-radius: 11px }
 .acquired-overview .slot-ic.is-agent { width: 68px; overflow: visible; border: 0; background: transparent; box-shadow: none }
@@ -2786,9 +2818,15 @@ onBeforeUnmount(function () {
 }
 
 /* ---- 导入记录 ---- */
-.records-head { display: flex; align-items: center; gap: 12px }
-.records-head .hint { font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
+.records-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
+.records-head .hint { min-width: 0; flex: 1 1 320px; font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
 .records-head .sp { flex: 1 }
+.records-filter { display: inline-grid; flex: 0 0 auto; grid-template-columns: repeat(3, minmax(58px, auto)); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper) }
+.records-filter button { min-height: 38px; padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 11.5px; font-weight: 800; cursor: pointer }
+.records-filter button.on { background: var(--tea); color: var(--cream) }
+.records-filter button:hover:not(.on):not(:disabled) { color: var(--ink) }
+.records-filter button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.records-filter button:disabled { opacity: .45; cursor: not-allowed }
 .record-list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 10px }
 .record {
   display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line);
@@ -2929,6 +2967,7 @@ onBeforeUnmount(function () {
   .manifest-items .slot-ph .ph-seal { display: none }
   .manifest-items .slot-ph .ph-mono { font-size: 18px }
   .acquired-overview { padding: 10px 8px 12px; border-radius: 14px }
+  .acquired-rarity-filter { width: 100%; justify-content: center; margin-left: 0 }
   .manifest-items .subsection-columns { margin-top: 5px }
   .manifest-items .item-subsection { padding: 8px 0 }
   .manifest-items .subsection-shelves .item-subsection { grid-template-columns: minmax(0, 1fr); row-gap: 7px }
@@ -3047,6 +3086,12 @@ onBeforeUnmount(function () {
   .detail-list li { grid-template-columns: 90px minmax(0, 1fr); gap: 8px; padding: 12px 2px }
   .detail-entries { grid-column: 1 / -1 }
   .details-head .act-btn { width: 100%; justify-content: center; min-height: 44px }
+  .records-head { align-items: stretch; flex-direction: column }
+  .records-head .hint { flex-basis: auto }
+  .records-head .sp { display: none }
+  .records-filter { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .records-filter button { min-height: 44px }
+  .records-head > .act-btn { width: 100%; min-height: 44px; justify-content: center }
   .record { align-items: flex-start; padding: 12px; flex-wrap: wrap }
   .record-time { margin-left: 0 }
   .record-del { min-height: 44px; width: 100% }
