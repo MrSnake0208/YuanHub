@@ -355,6 +355,7 @@ function onImageError(event) {
 .report-body > section { min-width: 0; padding: 17px 18px 19px }
 .report-body > section + section { border-left: 1px solid var(--line) }
 .lucky-days { display: flex; min-height: 0; flex-direction: column }
+.heart-ranking { display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto }
 .favorite-echo { background: var(--cream) }
 .subsection-heading { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 10px }
 .subsection-heading > div { display: flex; align-items: center; gap: 7px }
@@ -375,16 +376,16 @@ function onImageError(event) {
 .same-day-rewards > li > div { min-width: 0 }
 .same-day-rewards > li > div > span { display: block; color: var(--ink); font-size: 10px; font-weight: 900 }
 .same-day-rewards > li > div > small { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--ink-60); font-size: 9.5px; font-weight: 700; line-height: 1.55 }
-.lucky-day-timeline { position: relative; flex: 1 1 auto; margin-top: 8px; padding: 22px 0 2px 22px; border-top: 1px dashed var(--line); list-style: none }
+.lucky-day-timeline { position: relative; flex: 1 1 auto; margin-top: 8px; padding: 34px 0 2px 22px; border-top: 1px dashed var(--line); list-style: none }
 .lucky-day-timeline::before { position: absolute; top: 0; bottom: 0; left: 8px; width: 1px; background: var(--line); content: '' }
-.lucky-day-timeline > li { position: relative; min-width: 0; min-height: 104px; padding: 7px 4px 18px 4px }
-.lucky-day-timeline > li::before { position: absolute; top: 11px; left: -22px; box-sizing: border-box; width: 17px; height: 17px; border: 3px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); content: '' }
+.lucky-day-timeline > li { position: relative; min-width: 0; min-height: 104px; padding: 7px 0 18px }
 .lucky-day-timeline > li:last-child { min-height: 88px; padding-bottom: 6px }
-.lucky-day-timeline > li.is-empty::before { background: var(--surface); box-shadow: 0 0 0 1px var(--line) }
 .lucky-day-timeline span { display: block; color: var(--ink-60); font-size: 9.5px; font-weight: 800 }
-.lucky-day-timeline time { display: block; margin-top: 7px; color: var(--ink); font-family: var(--font-s); font-size: 18px; font-weight: 900; white-space: nowrap }
+.lucky-day-timeline time { position: relative; display: block; width: fit-content; margin-top: 7px; color: var(--ink); font-family: var(--font-s); font-size: 18px; font-weight: 900; line-height: 1.25; white-space: nowrap }
+.lucky-day-timeline time::before, .lucky-day-timeline > li.is-empty p::before { position: absolute; top: 50%; left: -22px; box-sizing: border-box; width: 17px; height: 17px; border: 3px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); content: ''; transform: translateY(-50%) }
 .lucky-day-timeline small, .lucky-day-timeline p { display: block; margin-top: 5px; color: var(--ink-60); font-size: 9.5px; font-weight: 700; line-height: 1.55 }
-.lucky-day-timeline p { margin-top: 11px; color: var(--ink-35) }
+.lucky-day-timeline p { position: relative; margin-top: 11px; color: var(--ink-35) }
+.lucky-day-timeline > li.is-empty p::before { top: .775em; background: var(--surface); box-shadow: 0 0 0 1px var(--line) }
 .ranking-heading { align-items: flex-start }
 .ranking-switch { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper) }
 .ranking-switch button { min-height: 32px; padding: 5px 9px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 10px; font-weight: 800; cursor: pointer; white-space: nowrap }

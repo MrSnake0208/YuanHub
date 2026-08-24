@@ -4787,6 +4787,7 @@ onBeforeUnmount(function () {
 .ledger-material-list .is-lack small { color:var(--rouge) }
 .ledger-material-list em { color:var(--ink-35); font-size:9px; font-style:normal }
 .ledger-upgrade-popover { left:0; right:0; width:auto; min-width:0 }
+.ledger-upgrade-popover::before { left:auto; right:24px }
 .ledger-popover-state { display:flex; min-height:54px; align-items:center; justify-content:center; gap:8px; padding:9px; border:1px dashed var(--line); border-radius:7px; color:var(--ink-60); font-size:10px; text-align:center }
 .ledger-popover-state.is-error { border-color:rgba(166,81,74,.35); background:rgba(240,207,200,.24); color:var(--rouge) }
 .ledger-popover-state button { flex:none; padding:5px 8px }
@@ -5263,6 +5264,9 @@ onBeforeUnmount(function () {
   .ledger-growth-row > .ledger-popover { width: min(248px, calc(100vw - 64px)); max-width: calc(100vw - 64px); left: 0; right: auto; }
   .ledger-growth-row:nth-child(2) > .ledger-popover { left: 50%; transform: translateX(-50%); }
   .ledger-growth-row:nth-child(3) > .ledger-popover { left: auto; right: 0; }
+  .ledger-growth-row:nth-child(1) > .ledger-upgrade-popover::before { left:32px; right:auto; }
+  .ledger-growth-row:nth-child(2) > .ledger-upgrade-popover::before { left:calc(50% - 5px); right:auto; }
+  .ledger-growth-row:nth-child(3) > .ledger-upgrade-popover::before { left:auto; right:32px; }
   .ledger-popover { left: 0; right: -2px; }
   .ledger-stats strong { font-size: 18px; }
   .ledger-destiny-row > span { font-size: 11px; }
