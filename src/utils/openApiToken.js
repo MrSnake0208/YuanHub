@@ -8,6 +8,23 @@ export function scopeKeys(scope) {
   if (scope == null || scope === '') return []
   return [scope]
 }
+
+// MaaYuan 当前实际使用的最小权限：单向上传库存 + 密探自动采集。
+// 查询 Token 绑定账号只要求 Token 有效，不需要额外 read 权限。
+export const MAAYUAN_REQUIRED_SCOPES = Object.freeze([
+  'inventory:write',
+  'operator:scan:write'
+])
+
+export function hasEveryScope(scope, required) {
+  const current = new Set(scopeKeys(scope))
+  return scopeKeys(required).every(function (key) { return current.has(key) })
+}
+
+// 为现有连接补权限时保留原有顺序和能力，避免完整替换接口误删其他用途。
+export function mergeScopes(scope, additions) {
+  return Array.from(new Set(scopeKeys(scope).concat(scopeKeys(additions))))
+}
 // 按 key 查描述：优先后端权限列表（{ scope, description }），
 // 其次兜底映射，最后返回 key 本身。
 export function descByKey(key, permissions, fallback = {}) {
@@ -66,7 +83,8 @@ export const FALLBACK_DESCRIPTIONS = {
   'inventory:export': '库存数据导出',
   'operator:read': '密探数据读取（只读）',
   'operator:write': '密探数据写入（只写）',
-  'operator:export': '密探数据导出'
+  'operator:export': '密探数据导出',
+  'operator:scan:write': '密探自动采集写入'
 }
 
 // 后端 created_at 为 ISO-8601 字符串（Instant），格式化为本地时间（无秒）。

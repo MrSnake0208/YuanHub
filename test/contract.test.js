@@ -19,6 +19,7 @@ const backendService = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/op
 const backendPermission = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiPermission.kt')
 const backendTokenCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/openapi/OpenApiTokenController.kt')
 const backendGenerateRequest = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenGenerateRequest.kt')
+const backendUpdateRequest = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/controller/request/openapi/OpenApiTokenScopesUpdateRequest.kt')
 const backendInventoryCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/InventoryController.kt')
 const backendInventoryRecordPage = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/inventory/response/InventoryRecordPageResponse.kt')
 const backendOperatorCtrl = readRel('BackEndV3-Share/src/main/kotlin/com/lhs/share/hub/controller/operator/OperatorController.kt')
@@ -43,10 +44,10 @@ test('token 列表字段契约：token_id/account_id/account_name/scopes/created
   assert.match(backendService, /val scopes: List<String>/)
   assert.match(backendService, /val createdAt: Instant/)
   // 前端列表项消费 token_id / account_name / scopes / created_at
-  assert.match(frontendProfile, /t\.token_id/)
-  assert.match(frontendProfile, /t\.account_name/)
-  assert.match(frontendProfile, /t\.scopes/)
-  assert.match(frontendProfile, /t\.created_at/)
+  assert.match(frontendProfile, /tokenItem\.token_id/)
+  assert.match(frontendProfile, /tokenItem\.account_name/)
+  assert.match(frontendProfile, /tokenItem\.scopes/)
+  assert.match(frontendProfile, /tokenItem\.created_at/)
   // 前端列表不再消费 t.token 明文或旧的 create_time
   assert.doesNotMatch(frontendProfile, /t\.token\b/)
   assert.doesNotMatch(frontendProfile, /t\.create_time/)
@@ -64,7 +65,7 @@ test('权限列表字段契约：scope/description（字符串 key，非数字 c
 test('scope key 前后端一致：inventory:* 与 operator:*', () => {
   for (const k of [
     'inventory:read', 'inventory:write', 'inventory:export',
-    'operator:read', 'operator:write', 'operator:export'
+    'operator:read', 'operator:write', 'operator:export', 'operator:scan:write'
   ]) {
     assert.ok(backendPermission.includes(k), '后端缺 ' + k)
     // openApi.js 只透传 scopes，不枚举 key；实际前端兜底/展示在 utils 与 profile
@@ -85,6 +86,14 @@ test('删除接口按 token_id：DELETE /user/open-api/tokens/{tokenId}', () => 
   assert.match(frontendApi, /\/user\/open-api\/tokens\/' \+ encodeURIComponent\(tokenId\)/)
 })
 
+test('更新权限接口完整替换 scopes，前后端路径与 body 一致', () => {
+  assert.match(backendUpdateRequest, /val scopes: List<String>/)
+  assert.match(backendTokenCtrl, /@PatchMapping\("\/tokens\/\{tokenId\}\/scopes"/)
+  assert.match(frontendApi, /encodeURIComponent\(tokenId\) \+ '\/scopes'/)
+  assert.match(frontendApi, /method: 'PATCH'/)
+  assert.match(frontendApi, /body: \{ scopes \}/)
+})
+
 test('统一子账号 CRUD 路径前后端一致（/v1/accounts，库存 × 密探共用）', () => {
   // 后端：AccountController @RequestMapping("/v1/accounts")
   assert.match(backendAccountCtrl, /RequestMapping\("\/v1\/accounts"/)
@@ -100,6 +109,8 @@ test('统一子账号 CRUD 路径前后端一致（/v1/accounts，库存 × 密�
   assert.match(frontendInventory, /from '\.\/accounts\.js'/)
   assert.match(frontendOperator, /from '\.\/accounts\.js'/)
   assert.match(frontendProfile, /from '\.\.\/\.\.\/api\/accounts\.js'/)
+  assert.match(frontendProfile, /await createAccount\(name, newAccountGame\.value\)/)
+  assert.doesNotMatch(frontendProfile, /请先去.*库存页.*创建/)
   // 旧地址的调用方式（PATH + '/accounts'）不得再出现于库存/密探 API 模块
   assert.doesNotMatch(frontendInventory, /PATH \+ '\/accounts'/)
   assert.doesNotMatch(frontendOperator, /PATH \+ '\/accounts'/)
