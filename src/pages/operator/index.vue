@@ -4632,8 +4632,9 @@ onBeforeUnmount(function () {
 .ledger-status-menu { position:relative; display:inline-flex; flex:none; max-width:86px; color:var(--ink) }
 .ledger-status-menu summary { list-style:none }
 .ledger-status-menu summary::-webkit-details-marker { display:none }
-.ledger-status-button { display:inline-flex; min-width:72px; min-height:30px; align-items:center; justify-content:space-between; gap:8px; padding:3px 8px; border:1px solid var(--line); border-radius:7px; background:var(--yellow); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer; user-select:none }
-.ledger-status-button::after { width:6px; height:6px; flex:none; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; content:''; transform:translateY(-2px) rotate(45deg) }
+.ledger-status-button { display:inline-grid; min-width:72px; min-height:30px; grid-template-columns:minmax(0,1fr) 6px; align-items:center; column-gap:8px; padding:3px 8px; border:1px solid var(--line); border-radius:7px; background:var(--yellow); color:var(--ink); font-size:10px; font-weight:800; cursor:pointer; user-select:none }
+.ledger-status-button > span { min-width:0; text-align:center }
+.ledger-status-button::after { width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; content:''; transform:translateY(-2px) rotate(45deg) }
 .ledger-status-menu.status-growing .ledger-status-button { border-color:rgba(111,159,118,.45); background:#BFDCC0; color:#315f38 }
 .ledger-status-menu.status-graduated .ledger-status-button { border-color:rgba(239,210,142,.85); background:var(--yellow); color:var(--ink) }
 .ledger-status-menu.status-inactive .ledger-status-button { border-color:rgba(73,59,44,.22); background:rgba(73,59,44,.12); color:var(--ink-60) }
@@ -4669,7 +4670,7 @@ onBeforeUnmount(function () {
 .ledger-combat-value:focus::placeholder { color:transparent }
 .ledger-combat-source { display:block; margin-top:4px; min-height:12px; color:var(--ink-35); font-size:8px; font-weight:800; text-align:center }
 .ledger-oddity { display:flex; align-items:center; justify-content:center; gap:3px; margin-top:4px; color:var(--accent-strong); font:800 10px var(--font-d) }
-.ledger-oddity-icon { display:block; width:14px; height:14px; flex:none; color:color-mix(in srgb,var(--rouge) 55%,var(--brand-blue)) }
+.ledger-oddity-icon { display:block; width:12px; height:12px; flex:none; color:var(--ink-60) }
 .ledger-oddity input { width:42px; min-width:0; padding:0 1px; border:0; border-bottom:1px dashed var(--line); outline:none; background:transparent; color:var(--ink-60); font:800 10px var(--font-d); text-align:center; -moz-appearance:textfield }
 .ledger-oddity input::-webkit-outer-spin-button,.ledger-oddity input::-webkit-inner-spin-button { -webkit-appearance:none }
 .ledger-oddity span { color:var(--ink-35); font-size:9px }
