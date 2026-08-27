@@ -17,6 +17,11 @@
         <BookUser :size="19" aria-hidden="true" />
         <span>我的密探</span>
       </router-link>
+      <router-link v-if="isLoggedIn" to="/notifications" :class="{ active: $route.path === '/notifications' }">
+        <Bell :size="19" aria-hidden="true" />
+        <span>通知</span>
+        <span v-if="unreadCount > 0" class="mobile-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+      </router-link>
       <router-link :to="isLoggedIn ? '/user/profile' : '/login'" :class="{ active: $route.path === '/user/profile' || $route.path === '/login' }">
         <component :is="isLoggedIn ? UserRound : LogIn" :size="19" aria-hidden="true" />
         <span>{{ isLoggedIn ? '我的' : '登录' }}</span>
@@ -38,6 +43,10 @@
       <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }"><span class="no">02</span>库存追踪</router-link>
       <router-link to="/operator" :class="{ active: $route.path.startsWith('/operator') }"><span class="no">03</span>我的密探</router-link>
       <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }"><span class="no">04</span>个人中心</router-link>
+      <router-link v-if="isLoggedIn" to="/notifications" :class="{ active: $route.path === '/notifications' }">
+        <span class="no">05</span>通知中心
+        <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+      </router-link>
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
       <a class="ext" href="#" style="--cc:var(--tea)"><span class="dot"></span>出战阵容编辑器<span class="who">BWiki</span></a>
@@ -63,18 +72,54 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { BookUser, LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Bell, BookUser, LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
 import { auth, logout as doLogout } from '@/store/auth.js'
+import { getUnreadNotificationCount } from '@/api/notifications.js'
 
 // 已登录状态（reactive，随 auth 变化）
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false)
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
+const unreadCount = ref(0)
+let unreadPollTimer = null
 
 function onLogout() {
   // store/auth.js 的 logout() 会清空登录态并跳转 /login
   doLogout()
 }
+
+async function fetchUnreadCount() {
+  if (!isLoggedIn.value) {
+    unreadCount.value = 0
+    return
+  }
+  try {
+    const data = await getUnreadNotificationCount()
+    unreadCount.value = data && data.count != null ? data.count : 0
+  } catch (_) {
+    // 静默失败
+  }
+}
+
+function startPolling() {
+  fetchUnreadCount()
+  unreadPollTimer = setInterval(fetchUnreadCount, 30000)
+}
+
+function stopPolling() {
+  if (unreadPollTimer) {
+    clearInterval(unreadPollTimer)
+    unreadPollTimer = null
+  }
+}
+
+onMounted(function () {
+  startPolling()
+})
+
+onBeforeUnmount(function () {
+  stopPolling()
+})
 </script>
 
 <style scoped>
@@ -106,5 +151,40 @@ function onLogout() {
 }
 .foot-logout:hover {
   color: var(--rouge);
+}
+.sidebar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 6px;
+  background: var(--rouge);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+.mobile-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--rouge);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+.mobile-nav a {
+  position: relative;
 }
 </style>
