@@ -173,7 +173,7 @@
                 <span class="pf-label">属性</span>
                 <div class="mf-filter" role="group" aria-label="按属性筛选密探图鉴">
                   <button type="button" :aria-pressed="profFilter === 'all'" :class="{ on: profFilter === 'all' }" @click="profFilter = 'all'">全部</button>
-                  <button v-for="p in profOptions" :key="p" type="button" :aria-pressed="profFilter === p" :class="{ on: profFilter === p }" @click="profFilter = p">{{ p }}</button>
+                  <button v-for="p in profOptions" :key="p" type="button" :aria-pressed="profFilter === p" :class="{ on: profFilter === p }" @click="profFilter = p"><img v-if="profIcon(p)" :src="profIcon(p)" alt="" aria-hidden="true" />{{ p }}</button>
                 </div>
               </div>
               <div class="pf-row pf-subprof-row">
@@ -304,6 +304,7 @@
                   <span class="current-filter-result" aria-live="polite"><b>{{ filteredCurrent.length }}</b> / {{ ownedCurrentEntries.length }} 位</span>
                   <button class="current-favorite-sort" :class="{ on: favoriteFirst }" type="button" :aria-pressed="favoriteFirst" @click="setFavoriteFirst(!favoriteFirst)"><Star :size="13" :fill="favoriteFirst ? 'currentColor' : 'none'" aria-hidden="true" />特别关注优先</button>
                   <button v-if="hasCurrentFilters" class="current-filter-reset" type="button" @click="resetCurrentFilters"><RotateCcw :size="13" aria-hidden="true" />重置</button>
+                  <button v-if="auth.isLoggedIn" class="current-batch-toggle" :class="{ on: batchSelectMode }" type="button" :aria-pressed="batchSelectMode" title="批量标注养成状态" @click="toggleBatchSelectMode"><ListChecks :size="13" aria-hidden="true" /><span class="current-batch-label">{{ batchSelectMode ? '退出批量' : '批量标注' }}</span></button>
                 </div>
               </div>
               <div class="current-filter-rows">
@@ -328,6 +329,19 @@
                   </div>
                 </div>
               </div>
+              <div v-if="batchSelectMode" class="batch-status-bar" aria-label="批量设置养成状态">
+                <div class="batch-quick-filters" aria-label="快捷筛选">
+                  <span class="batch-quick-title">快捷筛选</span>
+                  <button v-for="filter in BATCH_QUICK_FILTERS" :key="filter.key" type="button" :class="{ on: activeQuickFilterKeys.has(filter.key) }" :aria-pressed="activeQuickFilterKeys.has(filter.key)" :disabled="!quickFilterCounts[filter.key] || annotationBusyIds.size > 0" @click="batchQuickSelect(filter.key)">{{ filter.label }}<small>{{ quickFilterCounts[filter.key] }}</small></button>
+                </div>
+                <label class="batch-select-all" :class="{ disabled: !filteredCurrent.length || annotationBusyIds.size > 0 }"><input type="checkbox" :checked="batchAllSelected" :indeterminate="batchIndeterminate" :disabled="!filteredCurrent.length || annotationBusyIds.size > 0" @change="batchToggleAll" /><span>全选当前结果</span></label>
+                <span class="batch-selected-count">已选 <b>{{ batchSelectedCount }}</b> 位</span>
+                <div class="batch-status-actions">
+                  <button type="button" class="batch-status-action graduated" :disabled="!batchSelectedCount || annotationBusyIds.size > 0" @click="batchSetStatus('graduated')">设为已毕业</button>
+                  <button type="button" class="batch-status-action inactive" :disabled="!batchSelectedCount || annotationBusyIds.size > 0" @click="batchSetStatus('inactive')">设为养老中</button>
+                  <button v-if="batchSelectedCount" type="button" class="batch-clear" :disabled="annotationBusyIds.size > 0" @click="clearBatchSelected">清空</button>
+                </div>
+              </div>
             </div>
 
             <div v-if="annotationError" class="state err slim" role="alert">{{ annotationError }}</div>
@@ -348,8 +362,9 @@
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">没有匹配{{ currentFilterSuffix }}的已招募密探</div>
               <div v-else class="agent-ledger-grid" role="list">
-                <article v-for="e in filteredCurrent" :key="e.id" class="agent-ledger-card" :class="[{ 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated', 'is-draft': cardHasDraft(e), 'is-submit-success': cardSubmitStates[e.id] === 'success', 'is-popover-open': cardPopoverKey.indexOf(e.id + ':') === 0 }, 'rarity-r' + (e.rarity || 3), 'status-' + operatorStatus(e)]" :aria-busy="cardSubmitStates[e.id] === 'submitting'" role="listitem">
+                <article v-for="e in filteredCurrent" :key="e.id" class="agent-ledger-card" :class="[{ 'is-batch-selected': batchSelectedIds.has(e.id), 'is-scan-new': scanEffectById[e.id] === 'new', 'is-scan-updated': scanEffectById[e.id] === 'updated', 'is-draft': cardHasDraft(e), 'is-submit-success': cardSubmitStates[e.id] === 'success', 'is-popover-open': cardPopoverKey.indexOf(e.id + ':') === 0 }, 'rarity-r' + (e.rarity || 3), 'status-' + operatorStatus(e)]" :aria-busy="cardSubmitStates[e.id] === 'submitting'" role="listitem">
                   <header class="ledger-card-head">
+                    <label v-if="batchSelectMode" class="ledger-batch-select" :aria-label="(batchSelectedIds.has(e.id) ? '取消选择' : '选择') + (e.name || e.id)"><input type="checkbox" :checked="batchSelectedIds.has(e.id)" :disabled="annotationBusyIds.has(e.id)" @change="toggleBatchSelected(e.id, $event)" /></label>
                     <div class="ledger-avatar">
                       <img v-if="avOf(e.id)" :src="avatarUrl(avOf(e.id))" :alt="e.name" loading="lazy" />
                       <span v-else>{{ monogram(e) }}</span>
@@ -929,6 +944,15 @@ const annotationRevisions = ref({})
 const annotationBusyIds = ref(new Set())
 const annotationError = ref('')
 const subjectiveRefreshKey = ref(0)
+const batchSelectMode = ref(false)
+const batchSelectionBase = ref(new Set())
+const activeQuickFilterKeys = ref(new Set())
+const BATCH_QUICK_FILTERS = [
+  { key: 'level100', label: '等级 100', match: function (entry) { return Number(entry.level) === 100 } },
+  { key: 'elite17', label: '修为 17', match: function (entry) { return Number(entry.elite) === 17 } },
+  { key: 'star2', label: '二星以上', match: function (entry) { return operatorStarNumber(entry) >= 2 } },
+  { key: 'star4', label: '四星以上', match: function (entry) { return operatorStarNumber(entry) >= 4 } }
+]
 let annotationLoadSeq = 0
 const cardCombatDrafts = ref({})
 const cardCombatModes = ref({})
@@ -1921,11 +1945,35 @@ const activeUpgradeReadyIds = computed(function () {
 })
 
 const filteredCurrent = computed(function () {
+  const quickKeys = Array.from(activeQuickFilterKeys.value)
   return ownedCurrentEntries.value.filter(function (e) {
     return matchesProfSubFilter(e, profFilter.value, subProfFilter.value) &&
       (workbenchStatusFilter.value === 'all' || operatorStatus(e) === workbenchStatusFilter.value) &&
-      (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(e.id))
+      (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(e.id)) &&
+      (quickKeys.length === 0 || quickKeys.every(function (key) {
+        const filter = BATCH_QUICK_FILTERS.find(function (item) { return item.key === key })
+        return Boolean(filter && filter.match(e))
+      }))
   }).sort(compareCurrentEntries)
+})
+
+const batchSelectedIds = computed(function () {
+  if (activeQuickFilterKeys.value.size === 0) return new Set(batchSelectionBase.value)
+  return new Set(filteredCurrent.value.filter(function (entry) { return batchSelectionBase.value.has(entry.id) }).map(function (entry) { return entry.id }))
+})
+const batchSelectedCount = computed(function () { return batchSelectedIds.value.size })
+const batchAllSelected = computed(function () {
+  return filteredCurrent.value.length > 0 && filteredCurrent.value.every(function (e) { return batchSelectedIds.value.has(e.id) })
+})
+const batchIndeterminate = computed(function () {
+  return batchSelectedCount.value > 0 && !batchAllSelected.value
+})
+const quickFilterCounts = computed(function () {
+  const counts = {}
+  BATCH_QUICK_FILTERS.forEach(function (filter) {
+    counts[filter.key] = filteredCurrent.value.filter(filter.match).length
+  })
+  return counts
 })
 
 const currentFilterSuffix = computed(function () {
@@ -1936,11 +1984,16 @@ const currentFilterSuffix = computed(function () {
   if (workbenchStatusFilter.value !== 'all') parts.push('状态「' + statusLabel(workbenchStatusFilter.value) + '」')
   if (upgradeReadyFilter.value === 'growth') parts.push('「等级/修为可提升」')
   if (upgradeReadyFilter.value === 'huaji') parts.push('「可提升化极」')
+  const quickLabels = Array.from(activeQuickFilterKeys.value).map(function (key) {
+    const filter = BATCH_QUICK_FILTERS.find(function (item) { return item.key === key })
+    return filter ? filter.label : ''
+  }).filter(Boolean)
+  if (quickLabels.length) parts.push('快捷「' + quickLabels.join(' + ') + '」')
   return parts.length ? parts.join(' · ') : '当前条件'
 })
 
 const hasCurrentFilters = computed(function () {
-  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all' || Boolean(upgradeReadyFilter.value)
+  return profFilter.value !== 'all' || subProfFilter.value !== 'all' || workbenchStatusFilter.value !== 'all' || Boolean(upgradeReadyFilter.value) || activeQuickFilterKeys.value.size > 0
 })
 
 function resetCurrentFilters() {
@@ -1948,6 +2001,8 @@ function resetCurrentFilters() {
   subProfFilter.value = 'all'
   workbenchStatusFilter.value = 'all'
   upgradeReadyFilter.value = ''
+  activeQuickFilterKeys.value = new Set()
+  batchSelectionBase.value = new Set()
 }
 
 function toggleUpgradeReadyFilter(filter) {
@@ -2860,18 +2915,20 @@ function showQuickNotice(id, message, duration) {
 }
 
 async function setOperatorStatus(entry, value) {
-  if (!entry || !entry.id || annotationBusyIds.value.has(entry.id)) return
+  if (!entry || !entry.id || annotationBusyIds.value.has(entry.id)) return false
   const previous = operatorStatus(entry)
   workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [entry.id]: value })
   persistWorkbenchMap('statuses', workbenchStatuses.value)
   try {
     await saveOperatorAnnotation(entry, { growth_state: ANNOTATION_STATE_TO_API[value] || 'active' })
     showQuickNotice(entry.id, '养成状态已同步', 1800)
+    return true
   } catch (err) {
     if (!(err && err.code === 'annotation_revision_conflict')) {
       workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, { [entry.id]: previous })
     }
     showQuickNotice(entry.id, humanErr(err, '养成状态保存失败'))
+    return false
   }
 }
 
@@ -2879,6 +2936,74 @@ function setOperatorStatusAndClose(entry, value, event) {
   setOperatorStatus(entry, value)
   const details = event && event.currentTarget && event.currentTarget.closest ? event.currentTarget.closest('details') : null
   if (details) details.open = false
+}
+
+function operatorStarNumber(entry) {
+  const n = Number(entry && entry.starLevel) || 0
+  if (n === STAR_LEVEL_AWAKEN) return 5
+  if (entry && entry.spOf) return n
+  return Math.floor((n - 1) / 6) + 1
+}
+
+function batchQuickSelect(key) {
+  const filter = BATCH_QUICK_FILTERS.find(function (item) { return item.key === key })
+  if (!filter) return
+  const nextKeys = new Set(activeQuickFilterKeys.value)
+  if (nextKeys.has(key)) {
+    nextKeys.delete(key)
+  } else {
+    if (batchSelectionBase.value.size === 0) {
+      batchSelectionBase.value = new Set(filteredCurrent.value.map(function (entry) { return entry.id }))
+    }
+    nextKeys.add(key)
+  }
+  activeQuickFilterKeys.value = nextKeys
+}
+
+function toggleBatchSelectMode() {
+  batchSelectMode.value = !batchSelectMode.value
+  if (!batchSelectMode.value) {
+    batchSelectionBase.value = new Set()
+    activeQuickFilterKeys.value = new Set()
+  }
+}
+
+function toggleBatchSelected(id, event) {
+  const next = new Set(batchSelectionBase.value)
+  const checked = event && event.target ? event.target.checked : false
+  if (checked) next.add(id)
+  else next.delete(id)
+  batchSelectionBase.value = next
+}
+
+function batchToggleAll(event) {
+  const checked = event && event.target ? event.target.checked : false
+  batchSelectionBase.value = new Set(checked ? filteredCurrent.value.map(function (entry) { return entry.id }) : [])
+}
+
+function clearBatchSelected() {
+  batchSelectionBase.value = new Set()
+  activeQuickFilterKeys.value = new Set()
+}
+
+async function batchSetStatus(value) {
+  const entries = filteredCurrent.value.filter(function (entry) { return batchSelectedIds.value.has(entry.id) })
+  if (!entries.length || !auth.isLoggedIn || !accountId.value) return
+  const label = statusLabel(value)
+  const results = await Promise.all(entries.map(function (entry) {
+    return setOperatorStatus(entry, value)
+  }))
+  const succeededIds = entries.filter(function (entry, index) { return results[index] !== false }).map(function (entry) { return entry.id })
+  const failedIds = entries.filter(function (entry, index) { return results[index] === false }).map(function (entry) { return entry.id })
+  const failedCount = failedIds.length
+  batchSelectionBase.value = new Set(failedIds)
+  activeQuickFilterKeys.value = new Set()
+  if (failedCount > 0) {
+    annotationError.value = failedCount + ' 位养成状态保存失败，请重试'
+    return
+  }
+  batchSelectionBase.value = new Set()
+  if (succeededIds.length > 1) showQuickNotice(succeededIds[0], '已批量设为' + label + '（' + succeededIds.length + ' 位）', 2200)
 }
 
 function ensureQuickDraft(entry) {
@@ -4594,11 +4719,39 @@ onBeforeUnmount(function () {
 .current-filter-reset { display:inline-flex; min-height:30px; align-items:center; justify-content:center; gap:4px; padding:4px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink-60); font:800 10px var(--font-b); cursor:pointer }
 .current-filter-reset:hover { border-color:var(--accent); color:var(--accent-strong) }
 .current-filter-reset:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.current-batch-toggle { display:inline-flex; min-height:30px; align-items:center; justify-content:center; gap:4px; padding:4px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink-60); font:800 10px var(--font-b); cursor:pointer; transition:border-color .2s var(--ease),background .2s var(--ease),color .2s var(--ease) }
+.current-batch-toggle:hover { border-color:var(--accent); color:var(--accent-strong) }
+.current-batch-toggle.on { border-color:rgba(74,138,65,.55); background:rgba(191,220,192,.72); color:#315f38 }
+.current-batch-toggle:focus-visible { outline:2px solid var(--brand-blue); outline-offset:2px }
+.batch-status-bar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 14px; border-top:1px dashed var(--line); background:rgba(255,255,255,.55) }
+.batch-select-all { display:inline-flex; min-height:30px; align-items:center; gap:5px; color:var(--ink-60); font:800 10.5px var(--font-b); cursor:pointer; user-select:none }
+.batch-select-all input { width:15px; height:15px; flex:none; margin:0; accent-color:var(--accent); cursor:pointer }
+.batch-select-all.disabled { opacity:.55; cursor:not-allowed }
+.batch-select-all.disabled input { cursor:not-allowed }
+.batch-selected-count { color:var(--ink-60); font-size:10.5px; font-weight:800; white-space:nowrap }
+.batch-selected-count b { color:var(--accent-strong); font:900 13px var(--font-d) }
+.batch-status-actions { display:flex; align-items:center; gap:6px; margin-left:auto }
+.batch-status-action, .batch-clear { display:inline-flex; min-height:32px; align-items:center; justify-content:center; padding:4px 10px; border:1px solid var(--line); border-radius:7px; font:800 10.5px var(--font-b); cursor:pointer }
+.batch-status-action.graduated { border-color:rgba(239,210,142,.85); background:var(--yellow); color:var(--ink) }
+.batch-status-action.inactive { border-color:rgba(73,59,44,.28); background:rgba(73,59,44,.13); color:var(--ink) }
+.batch-clear { background:var(--surface); color:var(--ink-35) }
+.batch-status-action:disabled, .batch-clear:disabled { opacity:.5; cursor:not-allowed }
+.batch-status-bar button:focus-visible, .batch-select-all:focus-within { outline:2px solid var(--brand-blue); outline-offset:2px }
+.batch-quick-filters { display:flex; align-items:center; flex-wrap:wrap; gap:6px; min-width:100%; padding-bottom:2px }
+.batch-quick-title { flex:none; color:var(--ink-35); font-size:9.5px; font-weight:800 }
+.batch-quick-filters button { display:inline-flex; min-height:30px; align-items:center; justify-content:center; gap:4px; padding:4px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink-60); font:800 10px var(--font-b); cursor:pointer; transition:border-color .2s var(--ease),background .2s var(--ease),color .2s var(--ease) }
+.batch-quick-filters button small { color:var(--ink-35); font:800 9px var(--font-d) }
+.batch-quick-filters button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent-strong) }
+.batch-quick-filters button.on { border-color:rgb(246, 237, 208); background:rgb(246, 237, 208); color:var(--tea) }
+.batch-quick-filters button.on small { color:currentColor; opacity:.72 }
+.batch-quick-filters button:disabled { opacity:.5; cursor:not-allowed }
 .current-filter-rows { display:flex; flex-direction:column; gap:8px; padding:11px 14px 12px }
 .current-prof-filter .pf-label { display:inline-flex; min-height:28px; align-items:center; justify-content:center; padding:2px 7px; border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--tea); font-size:11px }
 .current-prof-filter .pf-row .mf-filter { min-width:0; flex:1 }
 .current-prof-filter .mf-filter button { display:inline-flex; align-items:center; justify-content:center; gap:4px }
 .current-prof-filter .mf-filter button img { width:14px; height:14px; flex:none; object-fit:contain }
+.catalog-prof-filter .mf-filter button { display:inline-flex; align-items:center; justify-content:center; gap:4px }
+.catalog-prof-filter .mf-filter button img { width:14px; height:14px; flex:none; object-fit:contain }
 .current-status-filter button small { margin-left:2px; color:var(--ink-35); font:800 9px var(--font-d) }
 .current-status-filter button.on small { color:currentColor; opacity:.72 }
 .current-status-filter button.status-growing.on { background:#BFDCC0; color:#315f38 }
@@ -4617,8 +4770,12 @@ onBeforeUnmount(function () {
 .agent-ledger-card.status-growing { border-left:3px solid #6f9f76 }
 .agent-ledger-card.status-graduated { border-left:3px solid var(--yellow-deep) }
 .agent-ledger-card.status-inactive { border-left:3px solid rgba(73,59,44,.35) }
+.agent-ledger-card.is-batch-selected { border-color:var(--accent); box-shadow:0 0 0 2px rgba(215,137,53,.22), 0 10px 26px rgba(73,59,44,.22), inset 0 1px 0 rgba(255,255,255,.8) }
 .ledger-card-head { position:relative; display:flex; gap:10px; align-items:center; min-width:0 }
 .ledger-card-head:has(.ledger-status-menu[open]) { z-index:50 }
+.ledger-batch-select { display:grid; width:20px; height:20px; flex:none; place-items:center; cursor:pointer }
+.ledger-batch-select input { width:16px; height:16px; margin:0; accent-color:var(--accent); cursor:pointer }
+.ledger-batch-select input:focus-visible { outline:2px solid var(--brand-blue); outline-offset:1px }
 .ledger-avatar { position:relative; flex:none; width:46px; height:46px; overflow:visible; border:2px solid var(--ledger-rarity-accent); border-radius:10px; background:color-mix(in srgb, var(--ledger-rarity-accent) 16%, var(--paper)) }
 .ledger-avatar img { width:100%; height:100%; display:block; object-fit:cover; border-radius:8px }
 .ledger-avatar > span { display:grid; width:100%; height:100%; place-items:center; font:900 21px var(--font-s); color:var(--ink-35) }
@@ -5217,11 +5374,19 @@ onBeforeUnmount(function () {
   .current-filter-head { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:6px; padding:8px 9px; }
   .current-filter-title { display:block; }
   .current-filter-title span { display:none; }
-  .current-filter-tools { width:auto; min-width:0; flex-wrap:nowrap; justify-content:flex-end; gap:4px; }
+  .current-filter-tools { width:auto; min-width:0; flex-wrap:wrap; justify-content:flex-end; gap:4px; }
   .current-filter-result { margin:0; font-size:9.5px; }
   .current-filter-result b { font-size:12px; }
   .current-favorite-sort,
-  .current-filter-reset { min-height:32px; gap:3px; padding:3px 6px; font-size:9.5px; touch-action:manipulation; }
+  .current-filter-reset,
+  .current-batch-toggle { min-height:32px; gap:3px; padding:3px 6px; font-size:9.5px; touch-action:manipulation; }
+  .current-batch-toggle { width:32px; justify-content:center; }
+  .current-batch-label { display:none; }
+  .batch-status-bar { align-items:stretch; flex-direction:column; gap:7px; padding:8px 9px; }
+  .batch-quick-filters { gap:4px; }
+  .batch-quick-filters button { flex:1; min-width:0; padding-inline:4px; }
+  .batch-status-actions { margin-left:0; flex-wrap:wrap; }
+  .batch-status-action, .batch-clear { flex:1; min-width:0; }
   .current-filter-rows { gap:5px; padding:7px 8px 8px; }
   .current-prof-filter .pf-row { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:5px; }
   .current-prof-filter .pf-label { width:32px; min-height:34px; box-sizing:border-box; padding:2px; font-size:10.5px; }
@@ -5230,6 +5395,7 @@ onBeforeUnmount(function () {
   .current-prof-filter .pf-subprof-row .mf-filter { grid-template-columns:repeat(6,minmax(0,1fr)); }
   .current-prof-filter .pf-status-row .mf-filter { grid-template-columns:repeat(4,minmax(0,1fr)); }
   .current-prof-filter .mf-filter button { width:100%; min-width:0; min-height:34px; gap:2px; padding:4px 2px; border-radius:6px; font-size:10.5px; line-height:1; white-space:nowrap; touch-action:manipulation; }
+  .catalog-prof-filter .pf-prof-row .mf-filter button img,
   .current-prof-filter .pf-prof-row .mf-filter button img { display:none; }
   .current-prof-filter .current-status-filter button small { margin-left:1px; font-size:8px; }
   .current-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px; }
