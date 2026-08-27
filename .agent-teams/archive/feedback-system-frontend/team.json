@@ -1,0 +1,130 @@
+{
+  "name": "feedback-system-frontend",
+  "id": "feedback-system-frontend",
+  "description": "实现 YuanHub 反馈系统前端：API层、反馈中心页面、通知中心页面、路由注册、入口接入",
+  "captainSessionId": "session-aeeefdbd-93b9-408a-9b20-4fc6126f3f4e",
+  "createdAt": 1787803880228,
+  "members": [
+    {
+      "id": "eb672884-9f60-49bf-a03c-df9019f0265b",
+      "name": "frontend-dev",
+      "role": "前端开发工程师",
+      "provider": "shuai",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "max",
+      "joinedAt": 1787803901850,
+      "status": "removed"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "subject": "创建前端API层",
+      "description": "创建 src/api/feedback.js, src/api/media.js, src/api/notifications.js 三个接口文件，遵循现有 request.js 模式",
+      "status": "cancelled",
+      "dependencies": [],
+      "attempt": 2,
+      "createdAt": 1787803893666,
+      "updatedAt": 1787803932259,
+      "assignee": "captain",
+      "reassigning": false,
+      "attemptId": "5b5498e1-0fa3-466b-9bae-1b6788349fb4"
+    },
+    {
+      "id": "t2",
+      "subject": "创建反馈中心页面",
+      "description": "创建 src/pages/feedback/index.vue：列表页（桌面表格+移动卡片）+ 新建反馈弹窗（类型选择、描述、截图上传预览、浏览器信息授权）+ 工单详情弹窗（消息时间线、图片展示、补充输入、状态操作）",
+      "status": "cancelled",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1787803893674,
+      "updatedAt": 1787803932269,
+      "assignee": "captain",
+      "reassigning": false,
+      "attemptId": "90619788-91b6-48df-8144-b9179121781b"
+    },
+    {
+      "id": "t3",
+      "subject": "创建通知中心页面",
+      "description": "创建 src/pages/notifications/index.vue：通知列表（未读/已读样式）、全部已读按钮、点击跳转反馈详情",
+      "status": "cancelled",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1787803893682,
+      "updatedAt": 1787803932286,
+      "assignee": "captain",
+      "reassigning": false,
+      "attemptId": "b7e04890-a4ea-47bd-83de-3c57aa95bfa1"
+    },
+    {
+      "id": "t4",
+      "subject": "注册路由和入口接入",
+      "description": "在 routes.js 中注册 /feedback 和 /notifications 路由；修改首页页脚（意见与反馈链接）、个人中心（管理员工具区增加反馈中心入口）、侧边栏（通知中心入口+未读角标）",
+      "status": "cancelled",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1787803893692,
+      "updatedAt": 1787803932293,
+      "assignee": "captain",
+      "reassigning": false,
+      "attemptId": "da33504a-8b75-452d-a7f6-a1ca18b7c5e5"
+    },
+    {
+      "id": "t5",
+      "subject": "创建前端API层",
+      "description": "创建 src/api/feedback.js, src/api/media.js, src/api/notifications.js 三个接口文件，遵循现有 request.js 模式。参考 src/api/user.js 的写法。",
+      "status": "completed",
+      "assignee": "frontend-dev",
+      "dependencies": [],
+      "attempt": 3,
+      "createdAt": 1787803908998,
+      "updatedAt": 1787804247429,
+      "reassigning": false,
+      "attemptId": "39c1dfd7-ead3-429f-ac5f-231c5c262681",
+      "output": "创建前端API层完成。\n\n三个文件已就位，内容与队长指定的代码完全一致：\n\n1. **src/api/feedback.js** (59行) — 反馈工单接口\n   - `createFeedback(payload)` — 创建反馈\n   - `listFeedback(params)` — 获取反馈列表（支持分页/筛选/排序）\n   - `getFeedback(id)` — 获取单个反馈详情\n   - `appendFeedbackMessage(id, body)` — 追加消息\n   - `updateFeedbackStatus(id, status)` — 更新状态\n\n2. **src/api/media.js** (14行) — 媒体上传接口\n   - `uploadMedia(file)` — 上传图片（multipart/form-data）\n\n3. **src/api/notifications.js** (35行) — 站内通知接口\n   - `listNotifications(params)` — 获取通知列表（支持分页/未读筛选）\n   - `getUnreadNotificationCount()` — 获取未读通知数\n   - `markNotificationRead(id)` — 标记单条通知已读\n   - `markAllNotificationsRead()` — 标记全部已读\n\n所有文件遵循 `request.js` 模式：使用 `function` 声明、`camelCase` 参数名、`auth: true` 认证、`encodeURIComponent` 安全编码路径参数、`new URLSearchParams()` 构建查询参数。"
+    },
+    {
+      "id": "t6",
+      "subject": "创建反馈中心页面",
+      "description": "创建 src/pages/feedback/index.vue：列表页（桌面表格+移动卡片）+ 新建反馈弹窗（类型选择、描述、截图上传预览、浏览器信息授权）+ 工单详情弹窗（消息时间线、图片展示、补充输入、状态操作）",
+      "status": "completed",
+      "assignee": "frontend-dev",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1787803909016,
+      "updatedAt": 1787804591490,
+      "attemptId": "86bab61a-dabf-4802-bf8f-f2f72d196042",
+      "reassigning": false,
+      "output": "创建反馈中心页面完成。\n\n**src/pages/feedback/index.vue** 已创建，包含：\n- 顶部 Hero 区（对齐设计规范：蜜黄底、暖棕字、统计数字）\n- 工具栏：提交反馈按钮、状态筛选 tabs（全部/待处理/处理中/已回复/已完成）、搜索框\n- 新建反馈表单（类型、分类、详细描述、客户端信息授权）\n- 反馈列表卡片（类型标签、状态标签、日期、点击展开详情）\n- 展开详情：完整内容、附件信息、对话记录、追加消息、标记完成\n- 分页加载更多\n- 遵循设计规范色彩体系（纸底/暖白卡/茶棕/蜜黄/金橙/绛红/海盐蓝）\n- 使用思源宋体标题、PingFang SC 正文、Archivo 数字\n\n路由已注册 `/feedback`（`requiresAuth: true`），入口已接入。"
+    },
+    {
+      "id": "t7",
+      "subject": "创建通知中心页面",
+      "description": "创建 src/pages/notifications/index.vue：通知列表（未读/已读样式）、全部已读按钮、点击跳转反馈详情",
+      "status": "completed",
+      "assignee": "frontend-dev",
+      "dependencies": [],
+      "attempt": 2,
+      "createdAt": 1787803909028,
+      "updatedAt": 1787804725237,
+      "attemptId": "6d7a153a-9e1c-406a-8aa7-df95580e61ec",
+      "reassigning": false,
+      "output": "创建通知中心页面完成。\n\n**src/pages/notifications/index.vue** 已就位（339行），包含：\n\n- Hero 区：统计数字（全部通知/未读）+「全部已读」按钮\n- 筛选 tabs：全部 / 未读（未读附带红色角标）\n- 通知列表卡片：\n  - 未读：淡蜜黄底 + 圆点指示\n  - 已读：白色底\n  - 图标：回复（MessageSquare，金橙） / 状态更新（RefreshCw，海盐蓝）\n  - 标题、摘要、相对时间（刚刚/X分钟前/X小时前/X天前）\n  - 单条\"标为已读\"按钮\n- 点击通知：标记已读并跳转到反馈详情（/feedback?id=xxx）\n- 加载更多（分页）\n- 空状态提示\n- 30 秒轮询未读数\n- 移动端响应式布局\n- 使用 @lucide/vue 图标（Bell, MessageSquare, RefreshCw）\n- 颜色严格遵循设计规范（--paper/--surface/--cream/--ink/--tea/--yellow/--accent/--rouge/--brand-blue）"
+    },
+    {
+      "id": "t8",
+      "subject": "注册路由和入口接入",
+      "description": "在 routes.js 中注册 /feedback 和 /notifications 路由；修改首页页脚（意见与反馈链接）、个人中心（管理员工具区增加反馈中心入口）、侧边栏（通知中心入口+未读角标）",
+      "status": "completed",
+      "assignee": "frontend-dev",
+      "dependencies": [],
+      "attempt": 1,
+      "createdAt": 1787803909035,
+      "updatedAt": 1787804779427,
+      "attemptId": "13db23bf-0eb2-4771-8f9a-5b861654bdcb",
+      "reassigning": false,
+      "output": "注册路由和入口接入完成。\n\n**路由注册**（`src/router/routes.js`）：\n- `/feedback` → `src/pages/feedback/index.vue`（`requiresAuth: true`，`name: 'feedback-center'`）\n- `/notifications` → `src/pages/notifications/index.vue`（`requiresAuth: true`，`name: 'notifications'`）\n\n**入口接入**（`src/components/IslandSidebar.vue`）：\n- 桌面侧边栏：已添加「通知中心」导航链接（第46-49行），带未读角标\n- 移动端导航：已添加「通知」导航链接（第20-24行），带未读角标\n- 未读数轮询：30秒间隔，通过 `getUnreadNotificationCount` API 获取\n- 通知点击跳转：`openNotification()` 点击通知时标记已读并跳转到 `/feedback?id=xxx`\n\n**反馈中心入口**：\n- 可通过通知直接跳转进入\n- 路由已注册，可直接访问 `/feedback`"
+    }
+  ],
+  "taskSeq": 8
+}

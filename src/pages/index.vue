@@ -92,7 +92,7 @@
       <SiteFooter>
         <template #big>YuanHub<br><span>祝各位凹关顺利</span></template>
         <template #fine>
-          <a href="#">MaaYuan 导航站</a> · <a href="#">意见与反馈</a><br>
+          <a href="#">MaaYuan 导航站</a> · <router-link to="/feedback">意见与反馈</router-link><br>
           <a href="#">MaaYuan GitHub Repo</a> · <a href="#">前端 Repo</a> · <a href="#">后端 Repo</a><br>
           作业制作者交流群：<b>1055262891</b>
         </template>

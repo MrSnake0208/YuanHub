@@ -30,6 +30,7 @@
               <p>维护公共密探目录、头像与导入校验数据。</p>
             </div>
             <router-link class="act-btn primary admin-entry" to="/operator/admin">管理图鉴</router-link>
+            <router-link class="act-btn primary admin-entry" to="/feedback">反馈中心</router-link>
           </div>
 
           <div class="connection-card" v-reveal>

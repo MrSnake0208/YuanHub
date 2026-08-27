@@ -147,5 +147,31 @@ export const routes = [
             title: '个人中心 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true
         }
+    },
+    {
+        path: '/feedback',
+        text: '反馈中心',
+        name: 'feedback-center',
+        display: false,
+        module: 'user',
+        icon: 'flag',
+        component: () => import('/src/pages/feedback/index.vue'),
+        meta: {
+            title: '反馈中心 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true
+        }
+    },
+    {
+        path: '/notifications',
+        text: '通知中心',
+        name: 'notifications',
+        display: false,
+        module: 'user',
+        icon: 'bell',
+        component: () => import('/src/pages/notifications/index.vue'),
+        meta: {
+            title: '通知中心 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true
+        }
     }
 ]
