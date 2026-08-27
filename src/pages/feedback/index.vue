@@ -39,61 +39,81 @@
             </div>
             <div class="search">
               <span class="ic" aria-hidden="true">⌕</span>
-              <input v-model="q" type="search" aria-label="搜索反馈" placeholder="搜标题 / 内容…">
+              <input v-model="q" type="search" name="feedback-search" aria-label="搜索反馈" placeholder="搜标题 / 内容…">
             </div>
           </div>
 
           <!-- 新建反馈表单 -->
-          <div v-if="showNewForm" class="new-feedback-card" v-reveal>
-            <h2>提交反馈</h2>
-            <form @submit.prevent="submitFeedback">
-              <div class="form-row">
-                <label class="field-label" for="feedback-type">类型</label>
-                <select id="feedback-type" v-model="newFeedback.type" class="form-control" required>
-                  <option value="">请选择类型</option>
-                  <option value="bug">问题报告（Bug）</option>
-                  <option value="feature">功能建议</option>
-                  <option value="improvement">体验优化</option>
-                  <option value="other">其他</option>
-                </select>
+          <Teleport to="body">
+            <div
+              v-if="showNewForm"
+              class="modal-mask feedback-modal-mask"
+              role="presentation"
+              @click.self="closeNewFeedback"
+            >
+              <div
+                class="modal feedback-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="feedback-modal-title"
+                @keydown.esc.prevent="closeNewFeedback"
+              >
+                <div class="modal-head">
+                  <h2 id="feedback-modal-title">提交反馈</h2>
+                  <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback">
+                    <X :size="20" />
+                  </button>
+                </div>
+                <form @submit.prevent="submitFeedback">
+                  <div class="form-row">
+                    <label class="field-label" for="feedback-type">类型</label>
+                    <select id="feedback-type" v-model="newFeedback.type" class="form-control" required>
+                      <option value="">请选择类型</option>
+                      <option value="bug">问题报告（Bug）</option>
+                      <option value="feature">功能建议</option>
+                      <option value="improvement">体验优化</option>
+                      <option value="other">其他</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label class="field-label" for="feedback-category">分类</label>
+                    <select id="feedback-category" v-model="newFeedback.category" class="form-control">
+                      <option value="">请选择分类（可选）</option>
+                      <option value="inventory">库存管理</option>
+                      <option value="operator">密探养成</option>
+                      <option value="ledger">广陵账房</option>
+                      <option value="plaza">作业广场</option>
+                      <option value="account">账号与连接</option>
+                      <option value="ui">界面与交互</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label class="field-label" for="feedback-content">详细描述</label>
+                    <textarea
+                      id="feedback-content"
+                      v-model="newFeedback.content"
+                      class="form-control"
+                      rows="5"
+                      placeholder="请详细描述您遇到的问题或建议…"
+                      required
+                    ></textarea>
+                  </div>
+                  <div class="form-row">
+                    <label class="field-label consent-label" for="feedback-client-info">
+                      <input id="feedback-client-info" type="checkbox" v-model="newFeedback.clientInfoConsent" />
+                      <span>允许附加客户端信息（浏览器版本、操作系统等），帮助定位问题</span>
+                    </label>
+                  </div>
+                  <div class="form-actions modal-foot">
+                    <button type="button" class="act-btn" @click="closeNewFeedback">取消</button>
+                    <button type="submit" class="act-btn primary" :disabled="submitting">
+                      {{ submitting ? '提交中…' : '提交反馈' }}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div class="form-row">
-                <label class="field-label" for="feedback-category">分类</label>
-                <select id="feedback-category" v-model="newFeedback.category" class="form-control">
-                  <option value="">请选择分类（可选）</option>
-                  <option value="inventory">库存管理</option>
-                  <option value="operator">密探养成</option>
-                  <option value="ledger">广陵账房</option>
-                  <option value="plaza">作业广场</option>
-                  <option value="account">账号与连接</option>
-                  <option value="ui">界面与交互</option>
-                </select>
-              </div>
-              <div class="form-row">
-                <label class="field-label" for="feedback-content">详细描述</label>
-                <textarea
-                  id="feedback-content"
-                  v-model="newFeedback.content"
-                  class="form-control"
-                  rows="5"
-                  placeholder="请详细描述您遇到的问题或建议…"
-                  required
-                ></textarea>
-              </div>
-              <div class="form-row">
-                <label class="field-label">
-                  <input type="checkbox" v-model="newFeedback.clientInfoConsent" />
-                  <span>允许附加客户端信息（浏览器版本、操作系统等），帮助定位问题</span>
-                </label>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="act-btn" @click="showNewForm = false">取消</button>
-                <button type="submit" class="act-btn primary" :disabled="submitting">
-                  {{ submitting ? '提交中…' : '提交反馈' }}
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
+          </Teleport>
 
           <!-- 反馈列表 -->
           <div class="feedback-list">
@@ -187,8 +207,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
+import { X } from '@lucide/vue'
 import { auth } from '@/store/auth.js'
 import {
   createFeedback,
@@ -289,6 +310,14 @@ async function loadMore() {
   await loadFeedback()
 }
 
+function closeNewFeedback() {
+  if (!submitting.value) showNewForm.value = false
+}
+
+function handleWindowKeydown(event) {
+  if (event.key === 'Escape') closeNewFeedback()
+}
+
 async function submitFeedback() {
   if (!newFeedback.value.content || !newFeedback.value.type) return
   submitting.value = true
@@ -335,7 +364,12 @@ async function closeFeedback(id) {
 }
 
 onMounted(() => {
+  window.addEventListener('keydown', handleWindowKeydown)
   loadFeedback()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleWindowKeydown)
 })
 </script>
 
@@ -350,22 +384,34 @@ onMounted(() => {
   --wm: '反馈';
 }
 
-/* 新建反馈卡片 */
-.new-feedback-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 28px 32px;
-  margin-bottom: 24px;
+/* 新建反馈弹窗 */
+.feedback-modal {
+  max-width: 560px;
 }
 
-.new-feedback-card h2 {
+.feedback-modal .modal-head h2 {
   font-family: var(--font-s);
   font-weight: 900;
   font-size: 20px;
   letter-spacing: 0.06em;
   color: var(--ink);
-  margin-bottom: 20px;
+}
+
+.feedback-modal .form-actions {
+  margin-top: 4px;
+}
+
+.feedback-modal .consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.feedback-modal .consent-label input {
+  width: auto;
+  flex: none;
+  margin-top: 3px;
 }
 
 .form-row {

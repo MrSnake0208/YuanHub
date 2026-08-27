@@ -16,8 +16,28 @@ export function createFeedback(payload) {
   })
 }
 
+function normalizeMessage(message) {
+  if (!message || typeof message !== 'object') return message
+  return {
+    ...message,
+    isAdmin: message.isAdmin ?? message.is_admin ?? false,
+    createdAt: message.createdAt ?? message.created_at ?? null
+  }
+}
+
+function normalizeFeedback(report) {
+  if (!report || typeof report !== 'object') return report
+  return {
+    ...report,
+    createdAt: report.createdAt ?? report.created_at ?? null,
+    updatedAt: report.updatedAt ?? report.updated_at ?? null,
+    mediaIds: report.mediaIds ?? report.media_ids ?? [],
+    messages: Array.isArray(report.messages) ? report.messages.map(normalizeMessage) : []
+  }
+}
+
 // 获取反馈列表
-export function listFeedback(params) {
+export async function listFeedback(params = {}) {
   const qs = new URLSearchParams()
   if (params.page != null) qs.set('page', String(params.page))
   if (params.pageSize != null) qs.set('pageSize', String(params.pageSize))
@@ -29,7 +49,19 @@ export function listFeedback(params) {
   if (params.sortBy) qs.set('sortBy', params.sortBy)
   if (params.sortOrder) qs.set('sortOrder', params.sortOrder)
   const query = qs.toString()
-  return request(`/v1/reports${query ? '?' + query : ''}`, { auth: true })
+  const data = await request(`/v1/reports${query ? '?' + query : ''}`, { auth: true })
+  const items = Array.isArray(data)
+    ? data
+    : Array.isArray(data && data.reports)
+      ? data.reports
+      : Array.isArray(data && data.items)
+        ? data.items
+        : []
+  return {
+    items: items.map(normalizeFeedback),
+    nextCursor: data && (data.nextCursor ?? data.next_cursor) || null,
+    total: data && data.total != null ? data.total : items.length
+  }
 }
 
 // 获取单个反馈详情
