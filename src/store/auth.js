@@ -8,6 +8,7 @@
 // request.js 仅在运行时通过「动态 import」读取本模块，故无模块初始化循环。
 import { reactive } from 'vue'
 import * as userApi from '../api/user.js'
+import { isAdminAccessToken } from '../utils/authPermissions.js'
 
 const STORAGE_KEY = 'yh_auth'
 
@@ -46,6 +47,9 @@ export const auth = reactive({
   refreshToken: saved.refreshToken,
   get isLoggedIn() {
     return !!auth.accessToken
+  },
+  get isAdmin() {
+    return isAdminAccessToken(auth.accessToken)
   },
 
   // 登录：调接口成功后保存 token 与用户信息

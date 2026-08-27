@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>密探台账卡片 - 校正交互版</title>
+<style>
+  :root {
+    --gold-primary: #C5A059;
+    --gold-light: #E8D4AC;
+    --bg-main: #2A2522;
+    --card-bg-top: #FDFBF8;
+    --card-bg-bottom: #F5EFE6;
+    --text-main: #3D352F;
+    --text-sub: #8B7E72;
+    --border-color: #DCCCB8;
+    --smart-green: #378B3A;
+    --smart-bg: #E8F4E9;
+    --blue-info: #3573A3;
+    --blue-info-bg: #EBF3F9;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 32px;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .dashboard-container {
+    width: 100%;
+    max-width: 1376px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .agent-card {
+    background: linear-gradient(180deg, var(--card-bg-top) 0%, var(--card-bg-bottom) 100%);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+    padding: 16px 14px;
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 1. 头部 */
+  .header { display: flex; gap: 12px; align-items: center; }
+  .avatar-box {
+    position: relative; flex-shrink: 0; width: 46px; height: 46px;
+    border-radius: 10px; border: 2px solid var(--gold-primary); background-color: #EADCD0;
+  }
+  .avatar { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 8px;}
+  .focus-star {
+    position: absolute; bottom: -6px; right: -6px; background: #fff; border-radius: 50%;
+    width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; font-size: 14px; border: 1px solid var(--border-color);
+  }
+  .focus-star.active { color: #F5A623; border-color: #F5A623; }
+  .header-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .name-row { display: flex; align-items: center; justify-content: space-between; }
+  .name { font-size: 16px; font-weight: bold; }
+  .status-select {
+    appearance: none; -webkit-appearance: none; background: var(--gold-primary); color: #fff;
+    border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; cursor: pointer; outline: none;
+  }
+  .element-info { font-size: 12px; color: var(--text-sub); }
+
+  /* 2. 核心养成 */
+  .grow-section {
+    background: rgba(255, 255, 255, 0.7); border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .grow-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .grow-label { color: var(--text-sub); display: flex; align-items: center;}
+  
+  /* =========================================
+     新增：校正编辑 Popover 相关样式 
+     ========================================= */
+  .edit-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-left: 4px;
+  }
+  .editable-value {
+    font-weight: 700; font-size: 13px; color: var(--text-main);
+    border-bottom: 1px dashed var(--gold-primary); cursor: pointer; 
+  }
+  .editable-value:hover { color: var(--gold-primary); }
+  
+  .edit-popover {
+    position: absolute; top: calc(100% + 8px); left: -10px; /* 偏左对齐数值 */
+    width: 170px; background: #fff; border: 1px solid var(--gold-primary);
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    padding: 10px; z-index: 20; display: flex; flex-direction: column; gap: 8px;
+    opacity: 0; visibility: hidden; transform: translateY(4px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* 触发条件 */
+  .edit-wrapper:hover .edit-popover,
+  .edit-wrapper:focus-within .edit-popover {
+    opacity: 1; visibility: visible; transform: translateY(0);
+  }
+  /* 小箭头：指向上方的数值 */
+  .edit-popover::after {
+    content: ""; position: absolute; bottom: 100%; left: 20px;
+    border-width: 6px; border-style: solid; border-color: transparent transparent var(--gold-primary) transparent;
+  }
+  .edit-popover::before {
+    content: ""; position: absolute; bottom: calc(100% - 1px); left: 20px;
+    border-width: 6px; border-style: solid; border-color: transparent transparent #fff transparent; z-index: 1;
+  }
+  
+  /* 防错提示条 */
+  .edit-warning {
+    background: var(--blue-info-bg); color: var(--blue-info);
+    font-size: 10px; padding: 4px 6px; border-radius: 4px;
+    display: flex; align-items: center; gap: 4px; font-weight: 600;
+  }
+  /* 输入组合 */
+  .edit-input-group { display: flex; gap: 6px; }
+  .edit-input {
+    flex: 1; width: 100%; min-width: 0; border: 1px solid var(--border-color);
+    border-radius: 4px; padding: 4px 6px; font-size: 12px; color: var(--text-main); outline: none;
+  }
+  .edit-input:focus { border-color: var(--gold-primary); }
+  .edit-save-btn {
+    background: var(--gold-primary); color: #fff; border: none;
+    border-radius: 4px; padding: 0 10px; font-size: 11px; font-weight: bold; cursor: pointer;
+  }
+  
+  /* 右侧动作按钮区 */
+  .action-group { display: flex; gap: 4px; position: relative; }
+  .btn-action {
+    background: #fff; border: 1px solid var(--border-color); padding: 4px 8px;
+    border-radius: 4px; font-size: 11px; color: var(--text-main); cursor: pointer; font-weight: 600;
+  }
+  .btn-action:hover { background: var(--gold-light); border-color: var(--gold-primary); }
+  .btn-smart { background: var(--smart-bg); color: var(--smart-green); border-color: #A5D6A7; }
+  .btn-smart:hover { background: #C8E6C9; }
+
+  /* 消耗确认 Popover */
+  .cost-popover-wrapper { position: relative; display: inline-block; }
+  .cost-popover {
+    position: absolute; bottom: calc(100% + 8px); right: 0; width: 170px;
+    background: #fff; border: 1px solid var(--gold-primary); border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 10px; z-index: 10;
+    display: flex; flex-direction: column; gap: 8px;
+    opacity: 0; visibility: hidden; transform: translateY(4px); transition: all 0.2s;
+  }
+  .cost-popover-wrapper:hover .cost-popover, .cost-popover-wrapper:focus-within .cost-popover {
+    opacity: 1; visibility: visible; transform: translateY(0);
+  }
+  .cost-popover::after { content: ""; position: absolute; top: 100%; right: 20px; border-width: 6px; border-style: solid; border-color: var(--gold-primary) transparent transparent transparent; }
+  .cost-popover::before { content: ""; position: absolute; top: calc(100% - 1px); right: 20px; border-width: 6px; border-style: solid; border-color: #fff transparent transparent transparent; z-index: 1; }
+  
+  .pop-title { font-size: 12px; font-weight: bold; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+  .mat-list { display: flex; flex-direction: column; gap: 4px; }
+  .mat-item { display: flex; justify-content: space-between; font-size: 11px; align-items: center; }
+  .mat-item .mat-name { color: var(--text-sub); }
+  .mat-item .mat-cost { font-family: monospace; font-weight: 600; color: var(--text-main); }
+  .pop-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .pop-btn { flex: 1; padding: 6px 0; border: none; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+  .pop-btn.confirm { background: var(--smart-green); color: #fff; }
+  .pop-btn.cancel { background: #F0EEE9; color: var(--text-sub); }
+
+  /* 其余原样保留... */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { background: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .stat-main { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 4px; }
+  .stat-sub { font-size: 11px; color: var(--text-sub); display: flex; align-items: center; gap: 4px; }
+  .icon-butterfly { color: var(--gold-primary); font-size: 12px; }
+  .destiny-section { display: flex; flex-direction: column; gap: 6px; }
+  .destiny-row { display: flex; align-items: flex-start; gap: 6px; }
+  .d-label { font-size: 11px; font-weight: 600; color: var(--gold-primary); white-space: nowrap; padding-top: 3px; }
+  .destiny-tags { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+  .d-tag { background: rgba(197, 160, 89, 0.15); border: 1px solid rgba(197, 160, 89, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #5A4725; }
+  .d-tag.empty { background: transparent; border-style: dashed; color: #A0968D; }
+  .starstone-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .s-slot { aspect-ratio: 1; border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; }
+  .s-name { font-size: 11px; font-weight: bold; color: var(--text-main); }
+  .s-lv { font-size: 9px; color: var(--text-sub); font-family: monospace; transform: scale(0.9); }
+  .s-slot.empty { background: transparent; }
+  .s-slot.empty::before { content: "+"; color: var(--border-color); font-size: 16px; }
+  .s-slot.empty .s-name, .s-slot.empty .s-lv { display: none; }
+  .divider { height: 1px; width: 100%; margin: 2px 0; background: linear-gradient(90deg, transparent, var(--border-color) 20%, var(--border-color) 80%, transparent); }
+  .footer-action { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+  .remark-textarea { width: 100%; box-sizing: border-box; background: transparent; border: none; border-bottom: 1px dashed var(--border-color); font-size: 11px; color: var(--text-main); padding: 4px 0; outline: none; resize: none; line-height: 1.4; overflow-y: hidden; }
+  .btn-edit { width: 100%; background: var(--text-main); color: #fff; border: none; padding: 8px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+
+<div class="dashboard-container">
+  
+  <div class="agent-card">
+    <div class="header">
+      <div class="avatar-box"><div class="focus-star active">★</div></div>
+      <div class="header-info">
+        <div class="name-row">
+          <span class="name">庞德</span>
+          <select class="status-select"><option selected>养成中</option><option>已毕业</option></select>
+        </div>
+        <div class="element-info">💧 水 · 破军</div>
+      </div>
+    </div>
+
+    <!-- 核心养成区 -->
+    <div class="grow-section">
+      
+      <!-- 1. 等级 (带校正 Popover) -->
+      <div class="grow-row">
+        <span class="grow-label">等级
+          <div class="edit-wrapper">
+            <span class="editable-value" tabindex="0">Lv 100</span>
+            <div class="edit-popover">
+              <div class="edit-warning">💡 仅校正记录，不扣减库存</div>
+              <div class="edit-input-group">
+                <input type="number" class="edit-input" value="100" min="1" max="100">
+                <button class="edit-save-btn">保存</button>
+              </div>
+            </div>
+          </div>
+        </span>
+        <div class="action-group"><button class="btn-action">+5</button><button class="btn-action">+10</button></div>
+      </div>
+
+      <!-- 2. 修为 (带校正 Popover + 材料确认 Popover) -->
+      <div class="grow-row">
+        <span class="grow-label">修为
+          <div class="edit-wrapper">
+            <span class="editable-value" tabindex="0">14</span>
+            <div class="edit-popover">
+              <div class="edit-warning">💡 仅校正记录，不扣减库存</div>
+              <div class="edit-input-group">
+                <input type="number" class="edit-input" value="14" min="0" max="20">
+                <button class="edit-save-btn">保存</button>
+              </div>
+            </div>
+          </div>
+        </span>
+        <div class="cost-popover-wrapper">
+          <button class="btn-action btn-smart">⬆ 升至17 (材料齐)</button>
+          <div class="cost-popover">
+            <div class="pop-title">预计消耗 (修14 → 17)</div>
+            <div class="mat-list">
+              <div class="mat-item"><span class="mat-name">📘 兵书残卷</span><span class="mat-cost">x 45</span></div>
+              <div class="mat-item"><span class="mat-name">💎 蒹葭</span><span class="mat-cost">x 12</span></div>
+            </div>
+            <div class="pop-actions"><button class="pop-btn cancel">取消</button><button class="pop-btn confirm">确认提升</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 化极 (带复合选择 Popover) -->
+      <div class="grow-row">
+        <span class="grow-label">化极
+          <div class="edit-wrapper">
+            <span class="editable-value" tabindex="0">1星·2</span>
+            <div class="edit-popover">
+              <div class="edit-warning">💡 仅校正记录，不扣减库存</div>
+              <div class="edit-input-group">
+                <select class="edit-input" style="padding-left: 2px;">
+                  <option>0星</option><option selected>1星</option><option>2星</option>
+                </select>
+                <select class="edit-input" style="padding-left: 2px;">
+                  <option>0节点</option><option>1节点</option><option selected>2节点</option>
+                </select>
+                <button class="edit-save-btn">✓</button>
+              </div>
+            </div>
+          </div>
+        </span>
+        <button class="btn-action">下一节点</button>
+      </div>
+
+    </div>
+
+    <!-- 剩余部分保持不变 -->
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-main">⚔️ 5284</div><div class="stat-sub"><span class="icon-butterfly">🦋</span> +500/500</div></div>
+      <div class="stat-card"><div class="stat-main">❤️ 1875</div><div class="stat-sub"><span class="icon-butterfly">🦋</span> +1.8k/2k</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="destiny-section">
+      <div class="destiny-row"><div class="d-label">命盘一</div><div class="destiny-tags"><span class="d-tag">苦击</span><span class="d-tag">生命小幅</span><span class="d-tag">死战</span></div></div>
+      <div class="destiny-row"><div class="d-label">命盘二</div><div class="destiny-tags"><span class="d-tag empty">+ 词条</span></div></div>
+    </div>
+    <div class="starstone-grid">
+      <div class="s-slot"><span class="s-name">天府</span><span class="s-lv">Lv60</span></div>
+      <div class="s-slot empty"></div><div class="s-slot empty"></div><div class="s-slot empty"></div><div class="s-slot empty"></div><div class="s-slot empty"></div>
+    </div>
+    <div class="footer-action">
+      <textarea class="remark-textarea" rows="2" placeholder="📝 添加备忘..."></textarea>
+      <button class="btn-edit">✏️ 完整编辑</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

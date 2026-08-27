@@ -18,8 +18,8 @@
               <div class="k">追踪目录更新日期</div>
               <div class="v catalog-date"><time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></div>
             </div>
-            <div><div class="k">背包道具</div><div class="v">{{ itemCatalogCount }}<small>种</small></div></div>
-            <div><div class="k">密探心纸</div><div class="v">{{ agentCatalogCount }}<small>种</small></div></div>
+            <div><div class="k">背包道具</div><div class="v">{{ itemCatalogCount }}<small class="stat-unit">种</small></div></div>
+            <div><div class="k">密探心纸</div><div class="v">{{ agentGameCatalogCount }}<small class="stat-unit">种</small></div></div>
             <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">已同步</div><div class="v">云端<small>可导入导出</small></div></div>
             <div v-else class="is-authed"><div class="k">未登录</div><div class="v">只读<small><router-link to="/login">去登录</router-link></small></div></div>
           </div>
@@ -31,13 +31,16 @@
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             v-model:accountId="accountId"
+            v-model:game="agentGameFilter"
             :accounts="accounts"
             :error="accountError"
-            :disabled="!auth.isLoggedIn || accountsLoading || editingStock"
+            :disabled="!auth.isLoggedIn || accountsLoading || accountBusy || editingStock"
+            :game-disabled="accountsLoading || accountBusy || editingStock"
             :busy="accountBusy"
             heading-title="选择要查看的账号"
-            heading-sub="库存、统计和操作历史都会切换到这个子账号；这里创建的账号在密探页同样可见。"
+            heading-sub="库存、密探和游戏版本都会跟随这个子账号，在两边自动保持一致。"
             @change="onAccountChange"
+            @game-change="onAccountGameChange"
             @create="onCreateAccount"
             @rename="onRenameAccount"
             @delete="onDeleteAccount"
@@ -148,7 +151,7 @@
               <div class="mf-stats">
                 <div class="mf-stat"><b class="mf-num">{{ manifestTotal }}</b><span class="mf-k">可追踪</span></div>
                 <div class="mf-stat"><b class="mf-num">{{ manifestOwned }}</b><span class="mf-k">已持有</span></div>
-                <div v-if="entityType === 'agent'" class="mf-stat"><b class="mf-num">{{ favoriteAgentIds.size }}</b><span class="mf-k">特别关注</span></div>
+                <div v-if="entityType === 'agent'" class="mf-stat"><b class="mf-num">{{ agentVersionFavoriteCount }}</b><span class="mf-k">特别关注</span></div>
                 <div class="mf-stat"><b class="mf-num">{{ manifestPercent }}</b><span class="mf-k">持有率</span></div>
               </div>
               <div class="mf-progress" title="当前追踪目录持有率"><i :style="{ '--progress': manifestProgressScale }"></i></div>
@@ -248,7 +251,7 @@
                 </details>
               </div>
               <button v-if="agentFiltersActive" type="button" class="agent-reset" @click="resetAgentFilters"><X :size="14" aria-hidden="true" />清除</button>
-              <span class="agent-result" role="status">显示 {{ editingStock ? visibleStockEditorEntries.length : manifestEntries.length }} / {{ agentCatalogCount }}</span>
+              <span class="agent-result" role="status">显示 {{ editingStock ? visibleStockEditorEntries.length : manifestEntries.length }} / {{ agentGameCatalogCount }} · {{ agentGameFilter }}</span>
               <span v-if="favoriteLoading" class="agent-sync-state" role="status">正在同步关注…</span>
               <span v-else-if="favoriteError" class="agent-sync-state is-error" role="status">{{ favoriteError }}</span>
             </div>
@@ -469,7 +472,7 @@
               />
 
               <div class="type-switch acquired-type-switch" aria-label="统计对象" v-reveal>
-                <button type="button" aria-label="全部（道具和心纸）" :aria-pressed="acquiredEntityType === 'all'" :class="{ on: acquiredEntityType === 'all' }" @click="setAcquiredEntityType('all')">ALL</button>
+                <button type="button" aria-label="全部（道具和心纸）" :aria-pressed="acquiredEntityType === 'all'" :class="{ on: acquiredEntityType === 'all' }" @click="setAcquiredEntityType('all')">查看全部</button>
                 <button type="button" :aria-pressed="acquiredEntityType === 'item'" :class="{ on: acquiredEntityType === 'item' }" @click="setAcquiredEntityType('item')">背包道具</button>
                 <button type="button" :aria-pressed="acquiredEntityType === 'agent'" :class="{ on: acquiredEntityType === 'agent' }" @click="setAcquiredEntityType('agent')">密探心纸</button>
               </div>
@@ -522,8 +525,12 @@
               </div>
 
               <section v-if="acquiredView === 'overview'" class="backpack acquired-overview" aria-label="获得总览" v-reveal>
-                <div class="bp-head">
+                <div class="bp-head acquired-overview-head">
                   <span class="bp-tip">{{ acquiredResultCaption }}</span>
+                  <label class="acquired-rarity-filter" :class="{ on: hideLowerRarityAgentRewards }">
+                    <input v-model="hideLowerRarityAgentRewards" type="checkbox" />
+                    <span>不看紫卡/蓝卡心纸</span>
+                  </label>
                 </div>
                 <div v-if="displayedAcquiredEntries.length === 0" class="state slim">没有匹配当前筛选的获得记录</div>
                 <ul v-else class="slot-grid acquired-slot-grid">
@@ -603,6 +610,11 @@
             <div class="records-head" v-reveal>
               <span class="hint">已加载 {{ recordsList.length }} 条导入记录 · 删除单条后自动重放剩余记录重建库存</span>
               <span class="sp"></span>
+              <div class="records-filter" role="group" aria-label="操作历史类型筛选">
+                <button type="button" :aria-pressed="recordsEntityType === 'all'" :class="{ on: recordsEntityType === 'all' }" :disabled="recordsLoading" @click="setRecordsEntityType('all')">全部</button>
+                <button type="button" :aria-pressed="recordsEntityType === 'item'" :class="{ on: recordsEntityType === 'item' }" :disabled="recordsLoading" @click="setRecordsEntityType('item')">道具</button>
+                <button type="button" :aria-pressed="recordsEntityType === 'agent'" :class="{ on: recordsEntityType === 'agent' }" :disabled="recordsLoading" @click="setRecordsEntityType('agent')">心纸</button>
+              </div>
               <button class="act-btn ghost" :disabled="recordsLoading" @click="loadRecords(true)">刷新</button>
             </div>
 
@@ -610,7 +622,7 @@
             <div v-else-if="recordsError" class="state err">{{ recordsError }}</div>
             <div v-else-if="recordsList.length === 0" class="state">暂无导入记录</div>
             <template v-else>
-              <ul class="record-list" v-reveal>
+              <ul class="record-list">
                 <li v-for="r in recordsList" :key="r.record_id" class="record">
                   <div class="record-main">
                     <div class="record-top">
@@ -646,19 +658,21 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Archive, ArrowDown, ArrowDownUp, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Info, Layers3, ListFilter, Minus, Pencil, Plus, RefreshCw, Save, Search, Star, Upload, X } from '@lucide/vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
 import AcquiredPeriodReport from '../../components/inventory/AcquiredPeriodReport.vue'
 import InventoryItemName from '../../components/inventory/InventoryItemName.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, renameAccount, deleteAccount, listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
+import { getCatalog, getCurrent, getAcquired, exportInventory, importInventory, listRecords, deleteRecord, listAccounts, createAccount, updateAccountGame, renameAccount, deleteAccount, listAgentFavorites, addAgentFavorite, removeAgentFavorite } from '../../api/inventory.js'
+import { getOperatorCatalog } from '../../api/operator.js'
 import { auth } from '../../store/auth.js'
-import { activeAccount } from '../../store/activeAccount.js'
+import { setInventoryToastFavoriteAgentIds, subscribeAccountEvents } from '../../store/accountEvents.js'
+import { activeAccount, isAccountGame } from '../../store/activeAccount.js'
 import { CATALOG_VERSION, ITEM_CATALOG, AGENT_CATALOG, AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { acquisitionChannel, buildAcquiredStats, buildRewardInsights, localDayKey, mapsHaveSameCounts, summarizeDispatchDuration } from '../../data/inventory/acquiredStats.js'
-import { buildAgentGroups, filterAgentEntries, HIDDEN_AGENT_IDS, sortAgentEntries, visibleAgentEntries } from '../../data/inventory/agentManifest.js'
+import { agentMatchesGame, buildAgentGroups, filterAgentEntries, HIDDEN_AGENT_IDS, sortAgentEntries, visibleAgentEntries } from '../../data/inventory/agentManifest.js'
 import { FRONTEND_HIDDEN_ITEM_IDS, buildItemCategorySections, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../../data/inventory/itemSections.js'
 import { buildManualStockSnapshot, nextManualSnapshotTime, preserveHiddenStockEntries } from '../../data/inventory/manualStock.js'
 import { staminaCostOf, validateInventoryExchangeDocument } from '../../data/inventory/exchange.js'
@@ -674,6 +688,7 @@ const agentStatusFilters = ref([])
 const agentRarityFilters = ref([])
 const agentProfFilters = ref([])
 const agentSubProfFilters = ref([])
+const agentGameScopes = ref(new Map())
 const agentGroupBy = ref('none')
 const agentSort = ref('latest')
 const agentSortDirection = ref('desc')
@@ -712,6 +727,7 @@ const AGENT_STATUS_OPTIONS = [
   { id: 'missing', label: '无库存' }
 ]
 const AGENT_RARITIES = [5, 4, 3]
+const AGENT_RARITY_BY_ID = new Map(AGENT_CATALOG.map(function (agent) { return [agent.id, Number(agent.rarity)] }))
 const favoriteAgentIds = ref(new Set())
 const favoriteBusyIds = ref(new Set())
 const favoriteLoading = ref(false)
@@ -720,6 +736,9 @@ const favoriteLoadedAccount = ref('')
 let favoriteLoadSeq = 0
 const loading = ref(false)
 const error = ref('')
+let accountEventRefreshTimer = null
+let inventoryEventRefreshPending = false
+let unsubscribeAccountEvents = null
 const catalog = ref({ entities: [] })
 const currentEntries = ref([])
 const acquiredEntries = ref([])
@@ -731,6 +750,7 @@ const acquiredView = ref('overview')
 const acquiredSearch = ref('')
 const acquiredSource = ref('all')
 const acquiredSort = ref('count')
+const hideLowerRarityAgentRewards = ref(false)
 const acquiredLoading = ref(false)
 const acquiredError = ref('')
 const acquiredRecords = ref([])
@@ -779,6 +799,10 @@ const accountId = computed({
   get: function () { return activeAccount.id },
   set: function (v) { activeAccount.set(v) }
 })
+const agentGameFilter = computed({
+  get: function () { return activeAccount.gameFor(accountId.value) },
+  set: function (v) { activeAccount.setGame(v, accountId.value) }
+})
 const accountsLoading = ref(false)
 const accountBusy = ref(false)
 const accountError = ref('')
@@ -791,6 +815,7 @@ const currentAccountName = computed(function () {
 // —— 导入记录（游标分页） ——
 const recordsList = ref([])
 const recordsNextCursor = ref(null)
+const recordsEntityType = ref('all')
 const recordsLoading = ref(false)
 const recordsError = ref('')
 
@@ -832,6 +857,7 @@ function clearAgentFavorites() {
   favoriteLoading.value = false
   favoriteError.value = ''
   favoriteLoadedAccount.value = ''
+  setInventoryToastFavoriteAgentIds([])
 }
 
 async function loadAgentFavorites(force) {
@@ -848,10 +874,12 @@ async function loadAgentFavorites(force) {
     const data = await listAgentFavorites(targetAccount)
     if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
     favoriteAgentIds.value = new Set(Array.isArray(data && data.agent_ids) ? data.agent_ids : [])
+    setInventoryToastFavoriteAgentIds(Array.from(favoriteAgentIds.value))
     favoriteLoadedAccount.value = targetAccount
   } catch (err) {
     if (seq !== favoriteLoadSeq || accountId.value !== targetAccount) return
     favoriteAgentIds.value = new Set()
+    setInventoryToastFavoriteAgentIds([])
     favoriteLoadedAccount.value = ''
     favoriteError.value = humanErr(err, '特别关注同步失败')
   } finally {
@@ -879,6 +907,7 @@ async function toggleAgentFavorite(entry) {
     if (data && data.favorite === false) confirmed.delete(id)
     else confirmed.add(id)
     favoriteAgentIds.value = confirmed
+    setInventoryToastFavoriteAgentIds(Array.from(confirmed))
     favoriteLoadedAccount.value = targetAccount
   } catch (err) {
     if (accountId.value !== targetAccount) return
@@ -886,6 +915,7 @@ async function toggleAgentFavorite(entry) {
     if (wasFavorite) rollback.add(id)
     else rollback.delete(id)
     favoriteAgentIds.value = rollback
+    setInventoryToastFavoriteAgentIds(Array.from(rollback))
     favoriteError.value = humanErr(err, '关注状态保存失败，请重试')
   } finally {
     if (accountId.value === targetAccount) {
@@ -926,6 +956,7 @@ async function loadAccounts() {
   try {
     const list = await listAccounts()
     accounts.value = Array.isArray(list) ? list : []
+    activeAccount.syncAccounts(accounts.value)
     if (accounts.value.length < 2) exportAll.value = false
     // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
@@ -955,15 +986,42 @@ function onAccountChange() {
   if (activeTab.value === 'records') loadRecords(true)
 }
 
-async function onCreateAccount(rawName) {
-  const name = (rawName || '').trim()
-  if (!name) return
+async function onAccountGameChange(game) {
+  const targetAccountId = accountId.value
+  const account = accounts.value.find(function (item) { return item.id === targetAccountId })
+  // 旧后端没有 game 字段时只使用本地映射；新版后端上线后再写回权威值。
+  if (!targetAccountId || !account || !isAccountGame(account.game)) return
+  const previousGame = account.game
   accountBusy.value = true
   accountError.value = ''
   try {
-    const created = await createAccount(name)
+    const updated = await updateAccountGame(targetAccountId, game)
+    if (accountId.value !== targetAccountId) return
+    Object.assign(account, updated || {}, { game: isAccountGame(updated && updated.game) ? updated.game : game })
+    activeAccount.setGame(account.game, targetAccountId)
+  } catch (err) {
+    if (accountId.value === targetAccountId) {
+      activeAccount.setGame(previousGame, targetAccountId)
+      accountError.value = humanErr(err, '游戏版本保存失败')
+    }
+  } finally {
+    if (accountId.value === targetAccountId) accountBusy.value = false
+  }
+}
+
+async function onCreateAccount(rawName) {
+  const name = (rawName || '').trim()
+  if (!name) return
+  const selectedGame = agentGameFilter.value
+  accountBusy.value = true
+  accountError.value = ''
+  try {
+    const created = await createAccount(name, selectedGame)
     await loadAccounts()
-    if (created && created.id) accountId.value = created.id
+    if (created && created.id) {
+      activeAccount.setGame(isAccountGame(created.game) ? created.game : selectedGame, created.id)
+      accountId.value = created.id
+    }
     onAccountChange()
   } catch (err) {
     accountError.value = humanErr(err, '创建账号失败')
@@ -995,6 +1053,7 @@ async function onDeleteAccount(acc) {
   accountError.value = ''
   try {
     await deleteAccount(acc.id)
+    activeAccount.forgetGame(acc.id)
     await loadAccounts()
     const still = accounts.value.some(function (a) { return a.id === accountId.value })
     if (!still) accountId.value = accounts.value.length ? accounts.value[0].id : ''
@@ -1135,6 +1194,21 @@ function applyAcquiredEntityType() {
 
 const visibleItemCatalog = visibleInventoryItems(ITEM_CATALOG)
 const visibleAgentCatalog = visibleAgentEntries(AGENT_CATALOG)
+const agentCatalogEntries = computed(function () {
+  const scopes = agentGameScopes.value
+  return visibleAgentCatalog.map(function (entry) {
+    const games = scopes.get(entry.id) || entry.games || []
+    return Object.assign({}, entry, { games: games })
+  })
+})
+const agentGameCatalogCount = computed(function () {
+  return agentCatalogEntries.value.filter(function (entry) { return agentMatchesGame(entry, agentGameFilter.value) }).length
+})
+const agentVersionFavoriteCount = computed(function () {
+  return agentCatalogEntries.value.filter(function (entry) {
+    return agentMatchesGame(entry, agentGameFilter.value) && favoriteAgentIds.value.has(entry.id)
+  }).length
+})
 const stockCatalogSections = buildItemCategorySections(sortItemsByGameOrder(visibleItemCatalog))
 const stockCatalogSubsections = new Map(
   stockCatalogSections.flatMap(function (section) { return section.subsections || [] })
@@ -1155,7 +1229,7 @@ const LOCAL_NAME = {
   agent: new Map(visibleAgentCatalog.map(function (e) { return [e.id, e.name] }))
 }
 const LOCAL_ITEM = new Map(ITEM_CATALOG.map(function (e) { return [e.id, e] }))
-const localCatalog = computed(function () { return entityType.value === 'agent' ? visibleAgentCatalog : visibleItemCatalog })
+const localCatalog = computed(function () { return entityType.value === 'agent' ? agentCatalogEntries.value : visibleItemCatalog })
 const visibleCurrentEntries = computed(function () {
   return entityType.value === 'item' ? visibleInventoryItems(currentEntries.value) : currentEntries.value
 })
@@ -1177,6 +1251,7 @@ const manifestEntries = computed(function () {
   if (entityType.value === 'agent') {
     const filtered = filterAgentEntries(manifestBaseEntries.value, {
       query: q,
+      game: agentGameFilter.value,
       statuses: agentStatusFilters.value,
       favoriteMode: agentFavoriteMode.value,
       rarities: agentRarityFilters.value,
@@ -1271,7 +1346,7 @@ function resetAgentFilters() {
 }
 
 const stockEditEntries = computed(function () {
-  const baseCatalog = entityType.value === 'agent' ? visibleAgentCatalog : visibleItemCatalog
+  const baseCatalog = entityType.value === 'agent' ? agentCatalogEntries.value : visibleItemCatalog
   const ids = new Set(baseCatalog.map(function (item) { return item.id }))
   const entries = baseCatalog.slice()
   visibleCurrentEntries.value.forEach(function (item) {
@@ -1292,6 +1367,7 @@ const visibleStockEditorEntries = computed(function () {
   })
   const filtered = filterAgentEntries(rows, {
     query: manifestSearch.value,
+    game: agentGameFilter.value,
     statuses: agentStatusFilters.value,
     favoriteMode: agentFavoriteMode.value,
     rarities: agentRarityFilters.value,
@@ -1313,10 +1389,15 @@ const stockChangedCount = computed(function () {
     return isValidStockCount(value) && Number(value) !== Number(stockOriginal.value[item.id] || 0)
   }).length
 })
-const manifestTotal = computed(function () { return localCatalog.value.length })
+const manifestTotal = computed(function () {
+  return entityType.value === 'agent' ? agentGameCatalogCount.value : localCatalog.value.length
+})
 const manifestOwned = computed(function () {
   const stock = currentMap.value
-  return localCatalog.value.filter(function (e) { return (stock[e.id] || 0) > 0 }).length
+  return localCatalog.value.filter(function (e) {
+    if (entityType.value === 'agent' && !agentMatchesGame(e, agentGameFilter.value)) return false
+    return (stock[e.id] || 0) > 0
+  }).length
 })
 const manifestPercent = computed(function () {
   if (!manifestTotal.value) return '0%'
@@ -1415,6 +1496,11 @@ function entryMatchesQuery(entry, query) {
   return [entry.id, name].filter(Boolean).join(' ').toLowerCase().includes(query)
 }
 
+function isLowerRarityAgentReward(entry) {
+  if (!entry || entry.entity_type !== 'agent' || !AGENT_RARITY_BY_ID.has(entry.id)) return false
+  return AGENT_RARITY_BY_ID.get(entry.id) < 5
+}
+
 const displayedAcquiredEntries = computed(function () {
   const query = acquiredSearch.value.toLowerCase()
   const source = acquiredSource.value
@@ -1429,6 +1515,7 @@ const displayedAcquiredEntries = computed(function () {
     const count = source === 'all' ? entry.count : Number(detail && detail.channels[source]) || 0
     return Object.assign({}, entry, { count: count, recordCount: recordCounts.get(entry.id) || 0 })
   }).filter(function (entry) {
+    if (hideLowerRarityAgentRewards.value && isLowerRarityAgentReward(entry)) return false
     return entry.count > 0 && entryMatchesQuery(entry, query)
   })
   return rows.sort(function (left, right) {
@@ -1629,6 +1716,7 @@ function cancelStockEdit() {
   restoreAgentSortAfterEdit()
   restoreAgentFavoriteModeAfterEdit()
   restoreAgentControlsAfterEdit()
+  if (inventoryEventRefreshPending) scheduleInventoryEventRefresh()
 }
 
 function manualSnapshotTime() {
@@ -1676,6 +1764,7 @@ async function saveStockEdit() {
     stockOriginal.value = {}
     stockEditScopeIds.value = null
     stockEditScopeName.value = ''
+    inventoryEventRefreshPending = false
     await reloadCurrent()
   } catch (err) {
     stockEditError.value = humanErr(err, '库存保存失败')
@@ -1721,6 +1810,32 @@ async function reloadCurrent(quiet) {
       return { id: id, name: nameOf(id, se.name), count: Number(se.count) || 0, category: item ? item.category : '', listedBaselineAt: se.listed_baseline_at || null }
     }).sort(function (a, b) { return b.count - a.count })
   }, quiet)
+}
+
+function scheduleInventoryEventRefresh() {
+  if (editingStock.value) {
+    inventoryEventRefreshPending = true
+    return
+  }
+  if (accountEventRefreshTimer != null) return
+  inventoryEventRefreshPending = false
+  accountEventRefreshTimer = setTimeout(function () {
+    accountEventRefreshTimer = null
+    reloadCurrent(true)
+    if (activeTab.value === 'acquired') loadAcquired()
+  }, 180)
+}
+
+function handleInventoryAccountEvent(message) {
+  if (!message) return
+  if (message.event === 'account_stream_open') {
+    scheduleInventoryEventRefresh()
+    return
+  }
+  if (message.event !== 'inventory_import') return
+  const data = message.data || {}
+  if (data.account_id && data.account_id !== accountId.value) return
+  scheduleInventoryEventRefresh()
 }
 
 function dayStartIso(dStr) {
@@ -1935,6 +2050,14 @@ function humanErr(err, fallback) {
 function goLogin() { location.href = '/login' }
 
 // ---- 导入记录（游标分页） ----
+function setRecordsEntityType(type) {
+  if (!['all', 'item', 'agent'].includes(type) || type === recordsEntityType.value) return
+  recordsEntityType.value = type
+  recordsList.value = []
+  recordsNextCursor.value = null
+  loadRecords(true)
+}
+
 async function loadRecords(reset) {
   if (!accountId.value) {
     recordsList.value = []
@@ -1948,7 +2071,7 @@ async function loadRecords(reset) {
     const cursor = reset ? null : recordsNextCursor.value
     const page = await listRecords({
       accountId: accountId.value,
-      entityType: entityType.value,
+      entityType: recordsEntityType.value === 'all' ? undefined : recordsEntityType.value,
       cursor: cursor,
       limit: 50
     })
@@ -2104,15 +2227,43 @@ async function doExport() {
   }
 }
 
-onMounted(async function () {
+async function loadAgentGameScopes() {
   try {
-    const data = await getCatalog()
-    if (data && data.entities) catalog.value = { entities: data.entities }
-  } catch (_e) {
-    catalog.value = { entities: [] }
+    const data = await getOperatorCatalog()
+    const operators = data && Array.isArray(data.operators) ? data.operators : []
+    const nextScopes = new Map()
+    operators.forEach(function (operator) {
+      const id = operator && (operator.operatorId || operator.operator_id || operator.id)
+      const rawGames = operator && (operator.games || operator.games_list)
+      const games = Array.isArray(rawGames) ? rawGames.filter(function (game) { return game === '代号鸢' || game === '如鸢' }) : []
+      if (id && games.length) nextScopes.set(id, games)
+    })
+    agentGameScopes.value = nextScopes
+  } catch (_error) {
+    agentGameScopes.value = new Map()
   }
+}
+
+onMounted(async function () {
+  await Promise.all([
+    (async function () {
+      try {
+        const data = await getCatalog()
+        if (data && data.entities) catalog.value = { entities: data.entities }
+      } catch (_error) {
+        catalog.value = { entities: [] }
+      }
+    })(),
+    loadAgentGameScopes()
+  ])
   await loadAccounts()
   reloadCurrent()
+  unsubscribeAccountEvents = subscribeAccountEvents(handleInventoryAccountEvent)
+})
+
+onBeforeUnmount(function () {
+  if (unsubscribeAccountEvents) unsubscribeAccountEvents()
+  if (accountEventRefreshTimer != null) clearTimeout(accountEventRefreshTimer)
 })
 </script>
 
@@ -2382,6 +2533,12 @@ onMounted(async function () {
 .acquired-search > svg { position: absolute; left: 10px; bottom: 12px; z-index: 1; color: var(--ink-35); pointer-events: none }
 
 .acquired-overview { margin-top: 12px }
+.acquired-overview-head .bp-tip { min-width: 0; flex: 1 1 280px }
+.acquired-rarity-filter { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; gap: 8px; margin-left: auto; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60); font-size: 11px; font-weight: 800; cursor: pointer; transition: background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease) }
+.acquired-rarity-filter:hover { border-color: var(--accent); color: var(--ink) }
+.acquired-rarity-filter.on { border-color: var(--accent); background: var(--yellow); color: var(--ink) }
+.acquired-rarity-filter:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 2px }
+.acquired-rarity-filter input { width: 16px; height: 16px; margin: 0; accent-color: var(--tea); cursor: pointer }
 .acquired-overview .acquired-slot-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); justify-content: stretch; gap: 12px 8px; margin-top: 12px }
 .acquired-overview .slot-ic:not(.is-agent) { width: 68px; border-radius: 11px }
 .acquired-overview .slot-ic.is-agent { width: 68px; overflow: visible; border: 0; background: transparent; box-shadow: none }
@@ -2661,9 +2818,15 @@ onMounted(async function () {
 }
 
 /* ---- 导入记录 ---- */
-.records-head { display: flex; align-items: center; gap: 12px }
-.records-head .hint { font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
+.records-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
+.records-head .hint { min-width: 0; flex: 1 1 320px; font-size: 12.5px; color: var(--ink-60); font-weight: 600 }
 .records-head .sp { flex: 1 }
+.records-filter { display: inline-grid; flex: 0 0 auto; grid-template-columns: repeat(3, minmax(58px, auto)); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper) }
+.records-filter button { min-height: 38px; padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 11.5px; font-weight: 800; cursor: pointer }
+.records-filter button.on { background: var(--tea); color: var(--cream) }
+.records-filter button:hover:not(.on):not(:disabled) { color: var(--ink) }
+.records-filter button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.records-filter button:disabled { opacity: .45; cursor: not-allowed }
 .record-list { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 10px }
 .record {
   display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line);
@@ -2734,6 +2897,7 @@ onMounted(async function () {
 @media (max-width: 640px) {
   .hero-stats .catalog-date { font-size: 19px; line-height: 1.3 }
   .hero-stats .catalog-date time { white-space: nowrap }
+  .hero-stats .v .stat-unit { display: inline; margin: 0 0 0 4px; vertical-align: baseline }
   .archive-toggle { width: 100%; min-height: 44px; transform: none }
   .inventory-tabs { margin: 0 }
   .archive-workspace { margin-top: 0; padding: 14px 16px 16px }
@@ -2803,6 +2967,7 @@ onMounted(async function () {
   .manifest-items .slot-ph .ph-seal { display: none }
   .manifest-items .slot-ph .ph-mono { font-size: 18px }
   .acquired-overview { padding: 10px 8px 12px; border-radius: 14px }
+  .acquired-rarity-filter { width: 100%; justify-content: center; margin-left: 0 }
   .manifest-items .subsection-columns { margin-top: 5px }
   .manifest-items .item-subsection { padding: 8px 0 }
   .manifest-items .subsection-shelves .item-subsection { grid-template-columns: minmax(0, 1fr); row-gap: 7px }
@@ -2846,7 +3011,7 @@ onMounted(async function () {
   .agent-favorite-mode button { min-height: 40px; padding-inline: 5px }
   .agent-filter-panel { grid-column: 4; grid-row: 1 }
   .agent-filter-panel summary { width: 100% }
-  .agent-filter-menu { left: 0; right: auto; width: min(320px, calc(100vw - 32px)) }
+  .agent-filter-menu { left: auto; right: calc(-58px - 7px); width: min(320px, calc(100vw - 32px)) }
   .agent-sort-row { display: grid; grid-column: 1 / -1; grid-row: 3; grid-template-columns: minmax(0, 1.05fr) 44px minmax(132px, 1fr); gap: 7px; min-width: 0 }
   .agent-sort-row .agent-menu-control { min-width: 0; width: 100% }
   .agent-sort-row .agent-sort-direction { width: 100% }
@@ -2921,6 +3086,12 @@ onMounted(async function () {
   .detail-list li { grid-template-columns: 90px minmax(0, 1fr); gap: 8px; padding: 12px 2px }
   .detail-entries { grid-column: 1 / -1 }
   .details-head .act-btn { width: 100%; justify-content: center; min-height: 44px }
+  .records-head { align-items: stretch; flex-direction: column }
+  .records-head .hint { flex-basis: auto }
+  .records-head .sp { display: none }
+  .records-filter { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .records-filter button { min-height: 44px }
+  .records-head > .act-btn { width: 100%; min-height: 44px; justify-content: center }
   .record { align-items: flex-start; padding: 12px; flex-wrap: wrap }
   .record-time { margin-left: 0 }
   .record-del { min-height: 44px; width: 100% }

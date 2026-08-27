@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "YuanHub Inventory Exchange v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "exported_at", "producer", "records"],
+  "properties": {
+    "format": { "const": "myshare-inventory-exchange" },
+    "version": { "const": 2 },
+    "exported_at": { "type": "string", "format": "date-time" },
+    "catalog_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "producer": { "$ref": "#/$defs/producer" },
+    "accounts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": { "$ref": "#/$defs/account" }
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/rewardRecord" },
+          { "$ref": "#/$defs/fullSnapshotRecord" },
+          { "$ref": "#/$defs/listedSnapshotRecord" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "accountId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform"],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/accountId" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "count"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "count": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
+      }
+    },
+    "recordCommon": {
+      "type": "object",
+      "properties": {
+        "account_id": { "$ref": "#/$defs/accountId" },
+        "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "entity_type": { "enum": ["item", "agent"] },
+        "acquisition_channel": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "effective_at": { "type": "string", "format": "date-time" },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+      }
+    },
+    "rewardRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["account_id", "record_id", "record_type", "entity_type", "effective_at", "entries"],
+          "properties": {
+            "account_id": { "$ref": "#/$defs/accountId" },
+            "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "record_type": { "const": "reward_delta" },
+            "entity_type": { "enum": ["item", "agent"] },
+            "acquisition_channel": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "stamina_cost": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+            "effective_at": { "type": "string", "format": "date-time" },
+            "entries": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "allOf": [
+                  { "$ref": "#/$defs/entry" },
+                  { "properties": { "count": { "minimum": 1 } } }
+                ]
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": ["acquisition_channel"],
+                "properties": { "acquisition_channel": { "pattern": "派遣" } }
+              },
+              "then": { "required": ["stamina_cost"] },
+              "else": { "not": { "required": ["stamina_cost"] } }
+            }
+          ]
+        }
+      ]
+    },
+    "fullSnapshotRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["account_id", "record_id", "record_type", "entity_type", "effective_at", "snapshot_scope", "entries"],
+          "properties": {
+            "account_id": { "$ref": "#/$defs/accountId" },
+            "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "record_type": { "const": "stock_snapshot" },
+            "entity_type": { "enum": ["item", "agent"] },
+            "acquisition_channel": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "effective_at": { "type": "string", "format": "date-time" },
+            "snapshot_scope": { "const": "full" },
+            "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+          }
+        }
+      ]
+    },
+    "listedSnapshotRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/recordCommon" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["account_id", "record_id", "record_type", "entity_type", "effective_at", "snapshot_scope", "entries"],
+          "properties": {
+            "account_id": { "$ref": "#/$defs/accountId" },
+            "record_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "record_type": { "const": "stock_snapshot" },
+            "entity_type": { "enum": ["item", "agent"] },
+            "acquisition_channel": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "effective_at": { "type": "string", "format": "date-time" },
+            "snapshot_scope": { "const": "listed" },
+            "entries": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/entry" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

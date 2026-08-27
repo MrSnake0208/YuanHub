@@ -15,7 +15,7 @@
 // 需要时才加载 store（仅读取 token / 调用 refresh() / logout()）。
 
 export const API_BASE =
-  import.meta.env.VITE_API_BASE || "https://hub.maayuan.fun:16666";
+  (import.meta.env && import.meta.env.VITE_API_BASE) || "https://hub.maayuan.fun:16666";
 
 /**
  * 把后端返回的相对资源路径拼成完整 URL。
@@ -33,6 +33,21 @@ export async function request(
   { method = "GET", body, auth = false, raw = false, multipart = false, headers: extraHeaders } = {},
 ) {
   let refreshed = false;
+
+  function requestError(message, status, payload) {
+    const detail = payload && payload.error
+      ? payload.error
+      : payload && payload.data && payload.data.error
+        ? payload.data.error
+        : payload && payload.data && typeof payload.data === 'object'
+          ? payload.data
+          : payload
+    const error = new Error(message || "请求失败")
+    error.status = status
+    error.code = detail && (detail.code || detail.error_code || detail.errorCode)
+    error.payload = payload
+    return error
+  }
 
   async function doRequest() {
     // multipart 上传时不能手动设 Content-Type（浏览器会带 boundary），仅保留认证头。
@@ -99,13 +114,13 @@ export async function request(
           location.href = "/login";
         }
       }
-      throw new Error(message || "请求失败");
+      throw requestError(message || "请求失败", res.status, payload);
     }
 
     // 成功
     if (statusCode === 200) {
       if (payload && payload.data != null) return payload.data;
-      throw new Error(message || "请求失败（返回数据为空）");
+      throw requestError(message || "请求失败（返回数据为空）", statusCode, payload);
     }
 
     // 401 且需要认证：用 refreshToken 静默刷新一次并重放
@@ -124,10 +139,10 @@ export async function request(
       if (typeof location !== "undefined") {
         location.href = "/login";
       }
-      throw new Error(message || "未认证，请重新登录");
+      throw requestError(message || "未认证，请重新登录", statusCode, payload);
     }
 
-    throw new Error(message || "请求失败");
+    throw requestError(message || "请求失败", statusCode, payload);
   }
 
   return doRequest();

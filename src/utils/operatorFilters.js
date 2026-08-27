@@ -39,6 +39,13 @@ export function tokens(v) {
   return String(v).split(/[、，,]/).map(function (s) { return s.trim() }).filter(Boolean)
 }
 
+// starLevel=0 是协议中的“未拥有”。等级、修为可能由 SP 本体同步，不能作为拥有依据。
+export function isOperatorOwned(entry) {
+  if (!entry) return false
+  const starLevel = entry.starLevel != null ? entry.starLevel : entry.star_level
+  return Number(starLevel) > 0
+}
+
 // 属性 + 从属 AND 匹配；prof/subProf 传 'all' 或空值 = 该维度不过滤
 export function matchesProfSubFilter(op, prof, subProf) {
   if (prof && prof !== 'all') {

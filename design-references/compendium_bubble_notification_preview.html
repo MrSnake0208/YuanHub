@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>图鉴解锁气泡通知设计</title>
+<style>
+:root{
+  --bg:#0b0e13;
+  --panel:#141922;
+  --card:#11161d;
+  --text:#edf1f7;
+  --muted:#8e99aa;
+  --border:rgba(255,255,255,.08);
+  --gold:#d7b35f;
+  --purple:#9483bf;
+  --blue:#9bb5cf;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(70,77,94,.22),transparent 40%),
+    var(--bg);
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:42px 22px 70px}
+h1{font-size:28px;margin:0 0 8px}
+.lead{color:var(--muted);line-height:1.7;margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.demo{
+  border:1px solid var(--border);
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(20,25,34,.9);
+}
+.stage{
+  min-height:260px;
+  position:relative;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+    #0d1117;
+  background-size:22px 22px;
+}
+.info{padding:17px 18px 20px;border-top:1px solid var(--border)}
+.info h2{font-size:17px;margin:0 0 7px}
+.info p{font-size:13px;line-height:1.65;color:var(--muted);margin:0 0 13px;min-height:62px}
+button{
+  border:0;border-radius:9px;padding:9px 13px;
+  background:#eef3f9;color:#111722;font-weight:700;cursor:pointer
+}
+
+/* generic */
+.bubble{
+  --accent:var(--gold);
+  position:relative;
+  width:min(330px,100%);
+  border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border));
+  background:rgba(16,21,28,.94);
+  color:var(--text);
+}
+.icon{
+  width:44px;height:44px;border-radius:10px;
+  display:grid;place-items:center;
+  font-size:24px;
+  background:color-mix(in srgb,var(--accent) 12%,#11161d);
+  border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);
+}
+.kicker{
+  font-size:10px;
+  letter-spacing:.13em;
+  color:var(--accent);
+  text-transform:uppercase;
+}
+.title{font-size:14px;font-weight:650;margin-top:2px}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.stars{font-size:11px;color:var(--accent);letter-spacing:.04em;white-space:nowrap}
+
+/* A minimal toast */
+.toast{
+  display:grid;
+  grid-template-columns:44px 1fr auto;
+  align-items:center;
+  gap:11px;
+  padding:11px 12px;
+  border-radius:14px;
+  box-shadow:0 14px 34px rgba(0,0,0,.25);
+  backdrop-filter:blur(12px);
+}
+.toast.play{animation:toastIn .34s cubic-bezier(.18,.82,.2,1) both}
+.toast.play::after{
+  content:"";
+  position:absolute;left:12px;right:12px;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  animation:lineFade 1.2s ease-out .1s both;
+}
+@keyframes toastIn{
+  0%{opacity:0;transform:translateX(18px) scale(.97)}
+  65%{opacity:1;transform:translateX(-2px) scale(1.01)}
+  100%{opacity:1;transform:none}
+}
+@keyframes lineFade{
+  0%{opacity:0;transform:scaleX(.2)}
+  25%{opacity:1}
+  100%{opacity:0;transform:scaleX(1)}
+}
+
+/* B capsule pop */
+.capsule{
+  width:auto;max-width:340px;
+  padding:8px 10px 8px 8px;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  box-shadow:0 10px 28px rgba(0,0,0,.23);
+}
+.capsule .icon{width:38px;height:38px;border-radius:50%;font-size:21px}
+.capsule .copy{padding-right:5px}
+.capsule .title{font-size:13px}
+.capsule.play{animation:capsulePop .62s cubic-bezier(.17,.9,.22,1) both}
+.capsule.play .icon{animation:iconPop .55s cubic-bezier(.17,.9,.22,1) .06s both}
+@keyframes capsulePop{
+  0%{opacity:0;transform:translateY(10px) scale(.82)}
+  55%{opacity:1;transform:translateY(-2px) scale(1.045)}
+  100%{transform:none}
+}
+@keyframes iconPop{
+  0%{transform:scale(.4) rotate(-12deg);filter:brightness(.7)}
+  65%{transform:scale(1.18) rotate(3deg);filter:brightness(1.5)}
+  100%{transform:scale(1);filter:none}
+}
+
+/* C compendium mini card */
+.compact-card{
+  border-radius:16px;
+  padding:10px;
+  display:grid;
+  grid-template-columns:58px 1fr;
+  gap:12px;
+  box-shadow:0 15px 34px rgba(0,0,0,.27);
+}
+.thumb{
+  position:relative;
+  width:58px;height:68px;border-radius:10px;
+  display:grid;place-items:center;
+  overflow:hidden;
+  font-size:28px;
+  background:
+    linear-gradient(145deg,color-mix(in srgb,var(--accent) 14%,#171b22),#0c1016);
+  border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
+}
+.thumb::after{
+  content:"";
+  position:absolute;left:5px;right:5px;top:-6px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),white,var(--accent),transparent);
+  box-shadow:0 0 8px var(--accent);
+  opacity:0;
+}
+.compact-card.play{animation:cardIn .36s ease-out both}
+.compact-card.play .thumb::after{animation:thumbScan .55s ease-out .08s both}
+@keyframes cardIn{
+  0%{opacity:0;transform:translateY(12px) scale(.96)}
+  100%{opacity:1;transform:none}
+}
+@keyframes thumbScan{
+  0%{top:-6px;opacity:0}
+  10%{opacity:1}
+  88%{opacity:1}
+  100%{top:72px;opacity:0}
+}
+.card-copy{display:flex;flex-direction:column;justify-content:center}
+.card-copy .title{font-size:15px}
+.card-copy .sub{margin-top:5px}
+
+/* D harvest */
+.harvest{
+  border-radius:16px;
+  padding:12px 14px;
+  display:flex;
+  gap:11px;
+  align-items:center;
+  overflow:visible;
+  box-shadow:0 14px 34px rgba(0,0,0,.24);
+}
+.harvest .sprig{
+  position:relative;
+  width:50px;height:50px;flex:0 0 50px;
+}
+.harvest .sun{
+  position:absolute;left:13px;top:13px;width:24px;height:24px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,229,156,.75),rgba(215,179,95,.08) 65%,transparent 70%);
+  opacity:0;
+}
+.harvest .stem{
+  position:absolute;left:25px;bottom:3px;width:2px;height:38px;
+  background:linear-gradient(to top,#8b713a,#d7b35f);
+  transform-origin:bottom;
+}
+.harvest .stem::before,.harvest .stem::after{
+  content:"";position:absolute;width:12px;height:5px;border-radius:70% 0 70% 0;background:#c4a452
+}
+.harvest .stem::before{left:-10px;top:11px;transform:rotate(-35deg)}
+.harvest .stem::after{left:0;top:20px;transform:rotate(35deg)}
+.harvest.play{animation:harvestIn .4s ease-out both}
+.harvest.play .stem{animation:stemGrow .62s cubic-bezier(.2,.82,.2,1) both}
+.harvest.play .sun{animation:sunPulse .8s ease-out .16s both}
+@keyframes harvestIn{
+  0%{opacity:0;transform:translateY(10px) scale(.96)}
+  100%{opacity:1;transform:none}
+}
+@keyframes stemGrow{
+  0%{opacity:0;transform:scaleY(.2) translateY(16px)}
+  100%{opacity:1;transform:scaleY(1) translateY(0)}
+}
+@keyframes sunPulse{
+  0%{opacity:0;transform:scale(.4)}
+  45%{opacity:.9}
+  100%{opacity:0;transform:scale(1.7)}
+}
+
+.palette{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.swatch{
+  width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.13);
+  cursor:pointer
+}
+.swatch[data-color="gold"]{background:var(--gold)}
+.swatch[data-color="purple"]{background:var(--purple)}
+.swatch[data-color="blue"]{background:var(--blue)}
+.note{
+  margin-top:23px;padding:17px 19px;border:1px solid var(--border);
+  border-radius:14px;background:#11161d;color:#a3aebe;font-size:14px;line-height:1.8
+}
+.note strong{color:var(--text)}
+@media(max-width:860px){.grid{grid-template-columns:1fr}.info p{min-height:auto}}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>图鉴解锁 · 气泡通知外观 / 动画</h1>
+  <p class="lead">只看视觉与动效。下面四种都可以直接套 Gold / Purple / Blue 稀有度色。</p>
+
+  <div class="grid">
+    <section class="demo">
+      <div class="stage">
+        <div class="bubble toast play" id="toast" style="--accent:var(--gold)">
+          <div class="icon">🌾</div>
+          <div>
+            <div class="kicker">NEW DISCOVERY</div>
+            <div class="title">丰穰之穗</div>
+            <div class="sub">已加入图鉴</div>
+          </div>
+          <div class="stars">★★★★★</div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>A · Minimal Toast</h2>
+        <p>最克制，也最耐用。轻微右侧滑入 + 稀有度色底部流光。适合作为真正的全局通知组件。</p>
+        <button data-replay="toast">重新播放</button>
+        <div class="palette" data-target="toast">
+          <button class="swatch" data-color="gold" aria-label="金色"></button>
+          <button class="swatch" data-color="purple" aria-label="紫色"></button>
+          <button class="swatch" data-color="blue" aria-label="蓝色"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo">
+      <div class="stage">
+        <div class="bubble capsule play" id="capsule" style="--accent:var(--purple)">
+          <div class="icon">🦋</div>
+          <div class="copy">
+            <div class="kicker">DISCOVERED</div>
+            <div class="title">暮紫蝶 · 已收录</div>
+          </div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>B · Capsule Pop</h2>
+        <p>更像游戏 HUD：胶囊气泡弹一下，头像/图标单独做轻微 overshoot。存在时间短也不会显得突兀。</p>
+        <button data-replay="capsule">重新播放</button>
+        <div class="palette" data-target="capsule">
+          <button class="swatch" data-color="gold"></button>
+          <button class="swatch" data-color="purple"></button>
+          <button class="swatch" data-color="blue"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo">
+      <div class="stage">
+        <div class="bubble compact-card play" id="compact" style="--accent:var(--blue)">
+          <div class="thumb">🪶</div>
+          <div class="card-copy">
+            <div class="kicker">COMPENDIUM UPDATED</div>
+            <div class="title">苍羽</div>
+            <div class="sub">首次发现 · ★★★</div>
+          </div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>C · Mini Compendium Card</h2>
+        <p>最像“图鉴自身伸出来的一小块”。缩略图里还有一次极短扫描，和你的解锁动画语言最统一。</p>
+        <button data-replay="compact">重新播放</button>
+        <div class="palette" data-target="compact">
+          <button class="swatch" data-color="gold"></button>
+          <button class="swatch" data-color="purple"></button>
+          <button class="swatch" data-color="blue"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo">
+      <div class="stage">
+        <div class="bubble harvest play" id="harvest" style="--accent:var(--gold)">
+          <div class="sprig">
+            <span class="sun"></span>
+            <span class="stem"></span>
+          </div>
+          <div>
+            <div class="kicker">HARVEST DISCOVERY</div>
+            <div class="title">丰穰之穗</div>
+            <div class="sub">新的丰收记录已点亮</div>
+          </div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>D · Harvest Bubble</h2>
+        <p>偏角色/主题专属。稻穗长出 + 暖光脉冲，不适合所有通知，但给丰收系条目会很有辨识度。</p>
+        <button data-replay="harvest">重新播放</button>
+        <div class="palette" data-target="harvest">
+          <button class="swatch" data-color="gold"></button>
+          <button class="swatch" data-color="purple"></button>
+          <button class="swatch" data-color="blue"></button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="note">
+    <strong>我最推荐的组合：</strong>
+    平时全局通知用 A；如果你希望“这就是图鉴系统的一部分”，用 C。
+    B 更轻、更像 HUD；D 适合某些角色或主题专属，不建议拿来做所有解锁的统一气泡。
+  </div>
+</div>
+
+<script>
+const colors={
+  gold:'var(--gold)',
+  purple:'var(--purple)',
+  blue:'var(--blue)'
+};
+function replay(id){
+  const el=document.getElementById(id);
+  el.classList.remove('play');
+  void el.offsetWidth;
+  el.classList.add('play');
+}
+document.querySelectorAll('[data-replay]').forEach(btn=>{
+  btn.addEventListener('click',()=>replay(btn.dataset.replay));
+});
+document.querySelectorAll('.palette').forEach(p=>{
+  p.querySelectorAll('.swatch').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById(p.dataset.target).style.setProperty('--accent',colors[btn.dataset.color]);
+      replay(p.dataset.target);
+    });
+  });
+});
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ const PATH = '/v1/inventory'
 export {
   listAccounts,
   createAccount,
+  updateAccountGame,
   renameAccount,
   deleteAccount
 } from './accounts.js'

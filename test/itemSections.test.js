@@ -27,10 +27,11 @@ test('目录道具按固定顺序完整排列', function () {
   assert.deepEqual(sorted.slice(-5).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币'])
 })
 
-test('调整库存时四种鸟食和白金币置顶', function () {
+test('调整库存时只展示四种鸟食并置顶', function () {
   const sorted = sortStockEditItems(visibleInventoryItems(ITEM_CATALOG))
 
-  assert.deepEqual(sorted.slice(0, 6).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币', '六韬兵书'])
+  assert.deepEqual(sorted.slice(0, 5).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '六韬兵书'])
+  assert.equal(sorted.some(function (item) { return item.name === '白金币' }), false)
 })
 
 test('资源道具顺序不受当前库存返回顺序影响', function () {
@@ -41,11 +42,12 @@ test('资源道具顺序不受当前库存返回顺序影响', function () {
   assert.deepEqual(sorted.map(function (item) { return item.name }), resourceNames)
 })
 
-test('前端暂不展示装金玻璃', function () {
+test('追踪清单不展示装金玻璃和白金币', function () {
   const visible = visibleInventoryItems(ITEM_CATALOG)
 
   assert.equal(visible.some(function (item) { return item.name === '装金玻璃' }), false)
-  assert.equal(visible.length, ITEM_CATALOG.length - 1)
+  assert.equal(visible.some(function (item) { return item.name === '白金币' }), false)
+  assert.equal(visible.length, ITEM_CATALOG.length - 2)
 })
 
 test('类别模式只展示资源道具和密探养成资源且不遗漏道具', function () {
@@ -53,8 +55,8 @@ test('类别模式只展示资源道具和密探养成资源且不遗漏道具',
   const flattened = sections.flatMap(function (section) { return section.entries })
 
   assert.deepEqual(sections.map(function (section) { return section.name }), ['资源道具', '密探养成资源'])
-  assert.equal(flattened.length, ITEM_CATALOG.length - 1)
-  assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length - 1)
+  assert.equal(flattened.length, ITEM_CATALOG.length - 2)
+  assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length - 2)
 })
 
 test('资源道具分为鸟食礼包、命盘&星石、密探经验三行资源架', function () {
@@ -63,7 +65,7 @@ test('资源道具分为鸟食礼包、命盘&星石、密探经验三行资源�
 
   assert.equal(resourceSection.subsectionLayout, 'shelves')
   assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['鸟食礼包', '命盘&星石', '密探经验'])
-  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币'])
+  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸'])
   assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), [
     '功过格', '善恶簿', '骨算筹', '金算筹', '解殃瓶', '解谪瓶', '解注瓶'
   ])

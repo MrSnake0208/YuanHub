@@ -15,18 +15,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { ELEMENT_LOCKS } from '../../data/inventory/elementColors.js'
 
 const props = defineProps({
   entry: { type: Object, required: true }
-})
-
-const ELEMENT_LOCKS = Object.freeze({
-  huaiyinjinsuo: { element: '阴', color: '#8a5ca6' },
-  yangmingjinsuo: { element: '阳', color: '#f6c87d', darkInk: true },
-  tianfengjinsuo: { element: '风', color: '#4a8a41' },
-  huoyuanjinsuo: { element: '火', color: '#d2772f' },
-  shuixinjinsuo: { element: '水', color: '#5eb6e0', darkInk: true },
-  zaidijinsuo: { element: '地', color: '#8d580d' }
 })
 
 const displayName = computed(function () { return props.entry.name || props.entry.id })

@@ -6,19 +6,37 @@
         <h2>{{ headingTitle }}</h2>
         <p>{{ headingSub }}</p>
       </div>
-      <div class="account-selector">
-        <label class="ac-label" :for="selectId">{{ selectLabel }}</label>
-        <select
-          :id="selectId"
-          :value="accountId"
-          :disabled="disabled"
-          :aria-invalid="!!error"
-          @change="onSelectChange"
-        >
-          <option v-if="!accounts.length" value="">（未创建）</option>
-          <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-        </select>
-        <span v-if="error" class="ac-warn">{{ error }}</span>
+      <div class="account-context">
+        <div class="account-selector">
+          <label class="ac-label" :for="selectId">{{ selectLabel }}</label>
+          <select
+            :id="selectId"
+            :value="accountId"
+            :disabled="disabled"
+            :aria-invalid="!!error"
+            @change="onSelectChange"
+          >
+            <option v-if="!accounts.length" value="">（未创建）</option>
+            <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+          </select>
+          <span v-if="error" class="ac-warn">{{ error }}</span>
+        </div>
+        <fieldset class="account-game" :disabled="gameDisabled">
+          <legend class="ac-label">游戏版本</legend>
+          <div class="account-game-options" role="radiogroup" aria-label="当前子账号游戏版本">
+            <label v-for="option in gameOptions" :key="option" :class="{ on: game === option }">
+              <input
+                type="radio"
+                :name="gameInputName"
+                :value="option"
+                :checked="game === option"
+                :aria-describedby="gameHelpId"
+                @change="onGameChange(option)"
+              />
+              <span>{{ option }}</span>
+            </label>
+          </div>
+        </fieldset>
       </div>
       <button
         type="button"
@@ -75,15 +93,20 @@
 // 这里只负责 UI：账号选择 + 管理（新建/改名/删除），创建/改名/删除动作向上冒泡由页面处理。
 import { ref, computed, useSlots } from 'vue'
 import { Users } from '@lucide/vue'
+import { ACCOUNT_GAMES } from '../store/activeAccount.js'
 
 const props = defineProps({
   // 当前选中账号 id（v-model:accountId）
   accountId: { type: String, default: '' },
+  // 当前子账号所属版本（v-model:game）；代号鸢目录即完整目录，不提供“全部”档。
+  game: { type: String, default: '代号鸢' },
   accounts: { type: Array, default: function () { return [] } },
   // 账号相关错误提示（加载/创建/改名/删除失败）
   error: { type: String, default: '' },
   // 禁用选择器与管理（未登录 / 装载中 / 正在编辑等）
   disabled: { type: Boolean, default: false },
+  // 版本可以在只读浏览时切换；仅在页面正在切换上下文或编辑时单独禁用。
+  gameDisabled: { type: Boolean, default: false },
   // 账号操作进行中（新建/改名/删除）
   busy: { type: Boolean, default: false },
   headingTitle: { type: String, default: '选择要查看的账号' },
@@ -98,7 +121,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:accountId', 'change', 'create', 'rename', 'delete'])
+const emit = defineEmits(['update:accountId', 'update:game', 'change', 'game-change', 'create', 'rename', 'delete'])
 
 const open = ref(false)
 const name = ref('')
@@ -107,11 +130,19 @@ const hasActions = computed(function () { return !!slots.actions })
 
 let uidSeq = 0
 const selectId = 'aw-account-' + (++uidSeq)
+const gameInputName = 'aw-game-' + uidSeq
+const gameHelpId = 'aw-game-help-' + uidSeq
+const gameOptions = ACCOUNT_GAMES
 
 function onSelectChange(e) {
   const val = e.target.value
   emit('update:accountId', val)
   emit('change', val)
+}
+
+function onGameChange(game) {
+  emit('update:game', game)
+  emit('game-change', game)
 }
 
 function submitCreate() {
@@ -126,17 +157,29 @@ function submitCreate() {
 /* —— 统一子账号「数据归属」工作区（库存 / 密探共用一套样式） —— */
 .account-workspace { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden }
 
-.account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 290px) auto; align-items: center; gap: 12px; padding: 22px 24px }
-.account-bar.with-actions { grid-template-columns: minmax(0, 1fr) minmax(220px, 290px) auto auto }
+.account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(410px, 520px) auto; align-items: center; gap: 12px; padding: 22px 24px }
+.account-bar.with-actions { grid-template-columns: minmax(410px, 1fr) auto auto }
+.account-bar.with-actions .account-heading { grid-column: 1 / -1 }
 .account-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
 .account-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
 .section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
 
-.account-selector { display: flex; flex-direction: column; gap: 6px }
+.account-context { display: grid; grid-template-columns: minmax(170px, 1fr) minmax(190px, .82fr); align-items: start; gap: 12px }
+.account-selector { display: flex; min-width: 0; flex-direction: column; gap: 6px }
 .ac-label { font-size: 11.5px; font-weight: 800; color: var(--ink-60); letter-spacing: .08em }
 .account-selector select { width: 100%; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s, box-shadow .3s }
 .account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
 .ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
+.account-game { min-width: 0; margin: 0; padding: 0; border: 0 }
+.account-game legend { margin-bottom: 6px }
+.account-game-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--paper) }
+.account-game-options label { position: relative; display: inline-flex; min-width: 0; min-height: 37px; align-items: center; justify-content: center; border-radius: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800; cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
+.account-game-options label.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
+.account-game-options label:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 1px }
+.account-game-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none }
+.account-game small { display: block; margin-top: 5px; color: var(--ink-35); font-size: 10px; font-weight: 700; line-height: 1.35; white-space: nowrap }
+.account-game:disabled { opacity: .52 }
+.account-game:disabled .account-game-options label { cursor: not-allowed }
 
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px }
 .account-manage { min-height: 44px; align-self: center; transform: translateY(9px) }
@@ -172,9 +215,15 @@ function submitCreate() {
 @media (max-width: 640px) {
   .account-workspace { border-radius: 16px }
   .account-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px 10px; padding: 18px 16px }
-  .account-heading, .account-selector { grid-column: 1 / -1 }
+  .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-heading, .account-context { grid-column: 1 / -1 }
+  .account-bar.with-actions > .account-manage,
+  .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0 }
+  .account-context { grid-template-columns: 1fr; gap: 13px }
   .account-selector { gap: 6px }
   .account-selector select { width: 100%; min-width: 0; min-height: 46px; font-size: 16px }
+  .account-game-options label { min-height: 44px }
+  .account-game small { white-space: normal }
   .account-manage { width: 100%; min-height: 44px; transform: none }
   .account-mgr { padding: 16px }
   .account-mgr-head { flex-direction: column; gap: 8px }
@@ -187,8 +236,13 @@ function submitCreate() {
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
-  .account-bar { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); }
+  .account-bar { grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr); }
   .account-heading { grid-column: 1 / -1; }
+  .account-context { grid-column: 1 / -1; }
   .account-manage { width: 100%; transform: none; }
+  .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .account-bar.with-actions .account-context { grid-column: 1 / -1; }
+  .account-bar.with-actions > .account-manage,
+  .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0; }
 }
 </style>

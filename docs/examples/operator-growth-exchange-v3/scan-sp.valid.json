@@ -1,0 +1,107 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 3,
+  "exported_at": "2026-08-21T10:30:00+08:00",
+  "catalog_version": "operators-2026-08-21",
+  "producer": {
+    "platform": "yuan-agent-collector",
+    "version": "0.4.0"
+  },
+  "accounts": [
+    {
+      "id": "local_default",
+      "name": "本次采集账号",
+      "game_scope": "如鸢"
+    }
+  ],
+  "records": [
+    {
+      "account_id": "local_default",
+      "record_id": "scan:01J6YSPDEMO",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-08-21T10:30:00+08:00",
+      "snapshot_scope": "listed",
+      "source_kind": "scan",
+      "coverage": {
+        "complete": false,
+        "record_count": 1,
+        "unmatched_count": 0,
+        "interrupted": false
+      },
+      "entries": [
+        {
+          "operator_id": "char_085_shizimiaosp",
+          "name": "史子眇·赴烛",
+          "observed_at": "2026-08-21T10:29:30+08:00",
+          "match": {
+            "status": "ready",
+            "method": "name",
+            "confidence": 1,
+            "raw_name": "史子眇·赴烛",
+            "candidates": []
+          },
+          "section_status": {
+            "basic": "ready",
+            "huaji": "ready",
+            "oddities": "ready",
+            "combat_stats": "ready",
+            "disc_loadouts": "ready",
+            "equipment": "ready"
+          },
+          "level": 100,
+          "elite": 17,
+          "star_level": 2,
+          "disc_loadouts": [
+            {
+              "id": "disc_1",
+              "name": "念兹仁心",
+              "discs": [
+                { "ot_name": "初始能量+3" },
+                { "ot_name": "仁心护持" },
+                { "ot_name": "念兹在兹" }
+              ]
+            },
+            {
+              "id": "disc_2",
+              "name": "命盘二",
+              "discs": [
+                { "ot_name": "重灵降诛" },
+                { "ot_name": "念兹在兹" },
+                { "ot_name": "攻击力中幅提升" }
+              ]
+            }
+          ],
+          "equipped_star_stones": [],
+          "combat_stats": {
+            "observed_attack": 4757,
+            "observed_hp": 30548,
+            "source": "scan",
+            "observed_at": "2026-08-21T10:29:30+08:00",
+            "observed_status": "valid",
+            "combat_input_signature": "sha256:sp-scan-demo",
+            "observed_inputs": {
+              "level": 100,
+              "elite": 17,
+              "star_level": 2,
+              "oddities_signature": "sha256:sp-oddities-demo",
+              "equipped_star_stones_signature": "sha256:empty-stones"
+            },
+            "oddities": {
+              "attack": { "current": 0 },
+              "hp": { "current": 2400 },
+              "special": { "current": 15 }
+            }
+          },
+          "diagnostics": {
+            "raw_huaji_layout": "sp",
+            "raw_oddity_labels": {
+              "special": "免伤值"
+            }
+          },
+          "warnings": []
+        }
+      ]
+    }
+  ]
+}
