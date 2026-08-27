@@ -14,9 +14,9 @@
           <p class="hero-sub">遇到问题或有建议？提交反馈工单，我们会尽快回复处理。你也可以在这里追踪已有工单的处理进度。</p>
           <div class="hero-stats">
             <div><div class="k">我的工单</div><div class="v">{{ myCount }}<small>条</small></div></div>
-            <div><div class="k">待处理</div><div class="v">{{ pendingCount }}<small>条</small></div></div>
-            <div><div class="k">已回复</div><div class="v">{{ repliedCount }}<small>条</small></div></div>
-            <div><div class="k">已完成</div><div class="v">{{ resolvedCount }}<small>条</small></div></div>
+            <div><div class="k">本页待处理</div><div class="v">{{ pendingCount }}<small>条</small></div></div>
+            <div><div class="k">本页有回复</div><div class="v">{{ repliedCount }}<small>条</small></div></div>
+            <div><div class="k">本页已结束</div><div class="v">{{ resolvedCount }}<small>条</small></div></div>
           </div>
         </div>
       </header>
@@ -31,7 +31,7 @@
             <div class="sp"></div>
             <div class="tabs">
               <button
-                v-for="t in ['全部', '待处理', '处理中', '已回复', '已完成']"
+                v-for="t in ['全部', '待处理', '已回复', '已完成', '已驳回']"
                 :key="t"
                 :class="{ on: filterStatus === t }"
                 @click="setFilter(t)"
@@ -66,25 +66,14 @@
                 </div>
                 <form @submit.prevent="submitFeedback">
                   <div class="form-row">
-                    <label class="field-label" for="feedback-type">类型</label>
-                    <select id="feedback-type" v-model="newFeedback.type" class="form-control" required>
-                      <option value="">请选择类型</option>
-                      <option value="bug">问题报告（Bug）</option>
-                      <option value="feature">功能建议</option>
-                      <option value="improvement">体验优化</option>
-                      <option value="other">其他</option>
-                    </select>
-                  </div>
-                  <div class="form-row">
-                    <label class="field-label" for="feedback-category">分类</label>
-                    <select id="feedback-category" v-model="newFeedback.category" class="form-control">
-                      <option value="">请选择分类（可选）</option>
-                      <option value="inventory">库存管理</option>
-                      <option value="operator">密探养成</option>
-                      <option value="ledger">广陵账房</option>
-                      <option value="plaza">作业广场</option>
-                      <option value="account">账号与连接</option>
-                      <option value="ui">界面与交互</option>
+                    <label class="field-label" for="feedback-category">反馈分类</label>
+                    <select id="feedback-category" v-model="newFeedback.category" class="form-control" required>
+                      <option value="">请选择分类</option>
+                      <option value="BUG">问题报告（Bug）</option>
+                      <option value="FEATURE">功能建议</option>
+                      <option value="CONTENT">内容问题</option>
+                      <option value="ACCOUNT">账号问题</option>
+                      <option value="OTHER">其他</option>
                     </select>
                   </div>
                   <div class="form-row">
@@ -94,6 +83,7 @@
                       v-model="newFeedback.content"
                       class="form-control"
                       rows="5"
+                      maxlength="1000"
                       placeholder="请详细描述您遇到的问题或建议…"
                       required
                     ></textarea>
@@ -104,6 +94,7 @@
                       <span>允许附加客户端信息（浏览器版本、操作系统等），帮助定位问题</span>
                     </label>
                   </div>
+                  <div v-if="formError" class="form-error" role="alert">{{ formError }}</div>
                   <div class="form-actions modal-foot">
                     <button type="button" class="act-btn" @click="closeNewFeedback">取消</button>
                     <button type="submit" class="act-btn primary" :disabled="submitting">
@@ -133,13 +124,16 @@
                 <div class="fc-head" @click="toggleExpand(item.id)">
                   <div class="fc-meta">
                     <span class="fc-type" :class="'type-' + item.type">{{ typeLabel(item.type) }}</span>
-                    <span class="fc-status" :class="'status-' + item.status">{{ statusLabel(item.status) }}</span>
+                    <span v-if="item.category" class="fc-category">{{ categoryLabel(item.category) }}</span>
+                    <span class="fc-status" :class="'status-' + item.status">{{ statusLabel(item.status, item.hasAdminReply) }}</span>
                     <span class="fc-date">{{ formatDate(item.createdAt) }}</span>
                   </div>
-                  <h3 class="fc-title">{{ item.content | truncate(80) }}</h3>
+                  <h3 class="fc-title">{{ truncate(item.content, 80) }}</h3>
                   <div class="fc-expand-indicator">{{ expandedId === item.id ? '收起' : '展开' }}</div>
                 </div>
                 <div v-if="expandedId === item.id" class="fc-body">
+                  <div v-if="detailLoading" class="detail-loading" role="status">加载详情中…</div>
+                  <div v-else-if="detailError" class="detail-error" role="alert">{{ detailError }}</div>
                   <div class="fc-content">{{ item.content }}</div>
                   <div v-if="item.mediaIds && item.mediaIds.length" class="fc-media">
                     <span class="fc-media-label">附件：</span>
@@ -157,12 +151,12 @@
                   </div>
                   <div class="fc-actions">
                     <button
-                      v-if="item.status === 'pending' || item.status === 'in_progress'"
+                      v-if="item.status === 'OPEN'"
                       class="act-btn small"
                       @click="showReplyForm(item.id)"
                     >追加消息</button>
                     <button
-                      v-if="item.status !== 'resolved' && item.status !== 'closed'"
+                      v-if="item.status === 'OPEN'"
                       class="act-btn small"
                       @click="closeFeedback(item.id)"
                     >标记完成</button>
@@ -193,11 +187,11 @@
           <!-- 加载更多 -->
           <div class="more-row" v-reveal>
             <div class="pg">
-              <button :disabled="page <= 1" @click="page--">‹</button>
+              <button :disabled="page <= 1 || loading" @click="changePage(page - 1)">‹</button>
             </div>
-            <button class="btn-more" :disabled="noMore" @click="loadMore">{{ noMore ? '没有更多了' : '加载更多' }}</button>
+            <button class="btn-more" :disabled="noMore || loading" @click="loadMore">{{ noMore ? '没有更多了' : '加载更多' }}</button>
             <div class="pg">
-              <button :disabled="noMore" @click="page++">›</button>
+              <button :disabled="noMore || loading" @click="changePage(page + 1)">›</button>
             </div>
           </div>
         </div>
@@ -207,10 +201,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import { X } from '@lucide/vue'
-import { auth } from '@/store/auth.js'
 import {
   createFeedback,
   listFeedback,
@@ -229,10 +223,14 @@ const noMore = ref(false)
 const q = ref('')
 const filterStatus = ref('全部')
 const expandedId = ref(null)
+const detailLoading = ref(false)
+const detailError = ref(null)
+const route = useRoute()
 
 // 新建表单
 const showNewForm = ref(false)
 const submitting = ref(false)
+const formError = ref('')
 const newFeedback = ref({
   type: '',
   category: '',
@@ -247,42 +245,87 @@ const replyContent = ref('')
 
 // 统计数据
 const myCount = computed(() => feedbacks.value.length)
-const pendingCount = computed(() => feedbacks.value.filter(f => f.status === 'pending').length)
-const repliedCount = computed(() => feedbacks.value.filter(f => f.status === 'in_progress' || f.status === 'replied').length)
-const resolvedCount = computed(() => feedbacks.value.filter(f => f.status === 'resolved' || f.status === 'closed').length)
+const pendingCount = computed(() => feedbacks.value.filter(f => f.status === 'OPEN' && !f.hasAdminReply).length)
+const repliedCount = computed(() => feedbacks.value.filter(f => f.status === 'OPEN' && f.hasAdminReply).length)
+const resolvedCount = computed(() => feedbacks.value.filter(f => f.status === 'RESOLVED' || f.status === 'DISMISSED').length)
 
-// 过滤后的列表
+// 过滤后的列表。列表接口只提供 OPEN/RESOLVED/DISMISSED，OPEN 再按管理员回复区分展示。
 const filtered = computed(() => {
   let list = feedbacks.value
   if (filterStatus.value !== '全部') {
-    const statusMap = { '待处理': 'pending', '处理中': 'in_progress', '已回复': 'replied', '已完成': 'resolved' }
-    const s = statusMap[filterStatus.value]
-    if (s) list = list.filter(f => f.status === s)
+    const match = {
+      '待处理': f => f.status === 'OPEN' && !f.hasAdminReply,
+      '已回复': f => f.status === 'OPEN' && f.hasAdminReply,
+      '已完成': f => f.status === 'RESOLVED',
+      '已驳回': f => f.status === 'DISMISSED'
+    }[filterStatus.value]
+    if (match) list = list.filter(match)
   }
-  if (q.value) {
-    const kw = q.value.toLowerCase()
-    list = list.filter(f => f.content.toLowerCase().includes(kw))
+  if (q.value.trim()) {
+    const kw = q.value.trim().toLowerCase()
+    list = list.filter(f => String(f.content || '').toLowerCase().includes(kw))
   }
   return list
 })
 
+function statusParam() {
+  return { '待处理': 'OPEN', '已回复': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
+}
+
 function setFilter(status) {
   filterStatus.value = status
   page.value = 1
+  loadFeedback()
 }
 
-function toggleExpand(id) {
-  expandedId.value = expandedId.value === id ? null : id
+async function toggleExpand(id) {
+  if (expandedId.value === id) {
+    expandedId.value = null
+    return
+  }
+  expandedId.value = id
+  const item = feedbacks.value.find(feedback => feedback.id === id)
+  if (!item || item.messages.length) return
+  await loadFeedbackDetail(id)
+}
+
+async function loadFeedbackDetail(id) {
+  detailLoading.value = true
+  detailError.value = null
+  try {
+    const detail = await getFeedback(id)
+    const index = feedbacks.value.findIndex(feedback => feedback.id === id)
+    if (index !== -1) {
+      feedbacks.value.splice(index, 1, detail)
+    } else {
+      feedbacks.value.unshift(detail)
+    }
+    expandedId.value = id
+  } catch (e) {
+    detailError.value = e.message || '详情加载失败'
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 function typeLabel(type) {
-  const map = { bug: '问题报告', feature: '功能建议', improvement: '体验优化', other: '其他' }
-  return map[type] || type
+  return type === 'FEEDBACK' ? '反馈工单' : (type || '反馈工单')
 }
 
-function statusLabel(status) {
-  const map = { pending: '待处理', in_progress: '处理中', replied: '已回复', resolved: '已完成', closed: '已关闭' }
-  return map[status] || status
+function categoryLabel(category) {
+  const map = { FEATURE: '功能建议', BUG: '问题报告', CONTENT: '内容问题', ACCOUNT: '账号问题', OTHER: '其他' }
+  return map[category] || category
+}
+
+function statusLabel(status, hasAdminReply) {
+  if (status === 'OPEN') return hasAdminReply ? '已回复' : '待处理'
+  const map = { RESOLVED: '已完成', DISMISSED: '已驳回' }
+  return map[status] || status || '未知状态'
+}
+
+function truncate(value, length) {
+  const text = String(value || '')
+  return text.length > length ? text.slice(0, length) + '…' : text
 }
 
 function formatDate(dateStr) {
@@ -291,13 +334,21 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-async function loadFeedback() {
+async function loadFeedback({ append = false } = {}) {
   loading.value = true
   error.value = null
   try {
-    const data = await listFeedback({ page: page.value, pageSize })
-    feedbacks.value = data.items || data || []
-    noMore.value = !data.nextCursor && (!data.items || data.items.length < pageSize)
+    const data = await listFeedback({
+      page: page.value,
+      pageSize,
+      status: statusParam(),
+      q: q.value.trim() || undefined
+    })
+    const items = data.items || []
+    feedbacks.value = append ? [...feedbacks.value, ...items] : items
+    noMore.value = data.total != null
+      ? page.value * pageSize >= data.total
+      : items.length < pageSize
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -305,13 +356,23 @@ async function loadFeedback() {
   }
 }
 
-async function loadMore() {
-  page.value++
+async function changePage(nextPage) {
+  if (nextPage < 1 || loading.value) return
+  page.value = nextPage
   await loadFeedback()
 }
 
+async function loadMore() {
+  if (noMore.value || loading.value) return
+  page.value++
+  await loadFeedback({ append: true })
+}
+
 function closeNewFeedback() {
-  if (!submitting.value) showNewForm.value = false
+  if (!submitting.value) {
+    showNewForm.value = false
+    formError.value = ''
+  }
 }
 
 function handleWindowKeydown(event) {
@@ -319,16 +380,18 @@ function handleWindowKeydown(event) {
 }
 
 async function submitFeedback() {
-  if (!newFeedback.value.content || !newFeedback.value.type) return
+  const content = newFeedback.value.content.trim()
+  if (!content || !newFeedback.value.category) return
+  formError.value = ''
   submitting.value = true
   try {
-    await createFeedback(newFeedback.value)
+    await createFeedback({ ...newFeedback.value, content })
     showNewForm.value = false
     newFeedback.value = { type: '', category: '', content: '', clientInfoConsent: false }
     page.value = 1
     await loadFeedback()
   } catch (e) {
-    error.value = e.message || '提交失败'
+    formError.value = e.message || '提交失败'
   } finally {
     submitting.value = false
   }
@@ -340,10 +403,11 @@ function showReplyForm(id) {
 }
 
 async function submitReply(id) {
-  if (!replyContent.value) return
+  const content = replyContent.value.trim()
+  if (!content) return
   replying.value = true
   try {
-    await appendFeedbackMessage(id, { content: replyContent.value })
+    await appendFeedbackMessage(id, { content })
     replyTarget.value = null
     replyContent.value = ''
     await loadFeedback()
@@ -356,16 +420,25 @@ async function submitReply(id) {
 
 async function closeFeedback(id) {
   try {
-    await updateFeedbackStatus(id, 'resolved')
+    await updateFeedbackStatus(id, 'RESOLVED')
     await loadFeedback()
   } catch (e) {
     error.value = e.message || '操作失败'
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('keydown', handleWindowKeydown)
-  loadFeedback()
+  await loadFeedback()
+  const reportId = route.query.id ? String(route.query.id) : ''
+  if (reportId) {
+    const item = feedbacks.value.find(feedback => feedback.id === reportId)
+    if (item && item.messages.length) {
+      expandedId.value = reportId
+    } else {
+      await loadFeedbackDetail(reportId)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -498,10 +571,18 @@ textarea.form-control {
   letter-spacing: 0.04em;
 }
 
-.fc-type.type-bug { background: var(--rouge); color: #fff; }
-.fc-type.type-feature { background: var(--accent); color: #fff; }
-.fc-type.type-improvement { background: var(--yellow); color: var(--ink); }
-.fc-type.type-other { background: var(--mist); color: var(--ink); }
+.fc-type.type-FEEDBACK { background: var(--tea); color: var(--cream); }
+
+.fc-category {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink-60);
+  font-size: 11px;
+  font-weight: 700;
+}
 
 .fc-status {
   display: inline-flex;
@@ -513,11 +594,9 @@ textarea.form-control {
   border: 1.5px solid transparent;
 }
 
-.fc-status.status-pending { border-color: var(--accent); color: var(--accent-strong); }
-.fc-status.status-in_progress { border-color: var(--brand-blue); color: var(--brand-blue); }
-.fc-status.status-replied { border-color: var(--yellow-deep); color: var(--tea-deep); }
-.fc-status.status-resolved { border-color: #BFDCC0; color: #2d6a2d; }
-.fc-status.status-closed { border-color: var(--line); color: var(--ink-60); }
+.fc-status.status-OPEN { border-color: var(--accent); color: var(--accent-strong); }
+.fc-status.status-RESOLVED { border-color: #BFDCC0; color: #2d6a2d; }
+.fc-status.status-DISMISSED { border-color: var(--line); color: var(--ink-60); }
 
 .fc-date {
   font-size: 12px;
@@ -545,6 +624,18 @@ textarea.form-control {
 .fc-body {
   padding: 0 20px 20px;
   border-top: 1px solid var(--line);
+}
+
+.detail-loading,
+.detail-error {
+  padding-top: 14px;
+  font-size: 13px;
+  color: var(--ink-60);
+}
+
+.detail-error,
+.form-error {
+  color: var(--rouge);
 }
 
 .fc-content {
