@@ -1,0 +1,54 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 3,
+  "exported_at": "2026-08-21T10:30:00+08:00",
+  "catalog_version": "operators-2026-08-21",
+  "producer": {
+    "platform": "yuan-agent-collector",
+    "version": "0.3.0"
+  },
+  "accounts": [
+    {
+      "id": "local_default",
+      "name": "语义复核样例",
+      "game_scope": "如鸢"
+    }
+  ],
+  "records": [
+    {
+      "account_id": "local_default",
+      "record_id": "scan:semantic-review-4star",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-08-21T10:30:00+08:00",
+      "snapshot_scope": "listed",
+      "source_kind": "scan",
+      "coverage": {
+        "complete": false,
+        "record_count": 1
+      },
+      "entries": [
+        {
+          "operator_id": "char_012_yanliang",
+          "name": "颜良",
+          "level": 100,
+          "elite": 17,
+          "combat_stats": {
+            "source": "scan",
+            "observed_status": "unverified",
+            "oddities": {
+              "attack": { "current": 0, "max": 350 },
+              "hp": { "current": 1820, "max": 1820 },
+              "special": { "current": 11, "max": 11 }
+            }
+          },
+          "section_status": {
+            "basic": "ready",
+            "oddities": "ready"
+          },
+          "warnings": []
+        }
+      ]
+    }
+  ]
+}

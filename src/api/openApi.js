@@ -1,5 +1,5 @@
 // 第三方开放接口（Open API）封装 —— 对照 BackEndV3-Share 契约
-// 用于管理「第三方 API Token」：生成 / 列举 / 删除，scope 为稳定字符串 key 数组。
+// 用于管理「第三方 API Token」：生成 / 列举 / 更新权限 / 删除，scope 为稳定字符串 key 数组。
 // 每个 token 绑定一个统一子账号（account_id，库存 × 密探共用），
 // token 能访问哪些数据完全由 scopes 决定，可同时包含 inventory:* 与 operator:*。
 // 约定同 src/api/user.js：函数入参一律 camelCase，内部转 snake_case。
@@ -26,6 +26,16 @@ export function generateOpenApiToken({ accountId, scopes, remark }) {
     method: 'POST',
     auth: true,
     body: { account_id: accountId, scopes, remark }
+  })
+}
+
+// 完整替换 Token 权限（PATCH，需登录）。Token 明文与绑定账号保持不变。
+// 返回更新后的列表项，不包含 Token 明文。
+export function updateOpenApiTokenScopes(tokenId, scopes) {
+  return request('/user/open-api/tokens/' + encodeURIComponent(tokenId) + '/scopes', {
+    method: 'PATCH',
+    auth: true,
+    body: { scopes }
   })
 }
 

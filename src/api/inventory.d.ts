@@ -10,6 +10,7 @@ type ImportDocument = InventoryExchangeDocument<InventoryExchangeRecord | Invent
 interface InventoryAccount {
   id: string
   name: string
+  game?: '代号鸢' | '如鸢'
   created_at?: string
   updated_at?: string
 }
@@ -23,7 +24,8 @@ interface InventoryImportResult {
 }
 
 export function listAccounts(): Promise<InventoryAccount[]>
-export function createAccount(name: string): Promise<InventoryAccount>
+export function createAccount(name: string, game?: '代号鸢' | '如鸢'): Promise<InventoryAccount>
+export function updateAccountGame(accountId: string, game: '代号鸢' | '如鸢'): Promise<InventoryAccount>
 export function renameAccount(accountId: string, name: string): Promise<InventoryAccount>
 export function deleteAccount(accountId: string): Promise<unknown>
 export function listAgentFavorites(accountId?: string): Promise<unknown>

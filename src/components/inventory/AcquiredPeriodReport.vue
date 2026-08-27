@@ -147,30 +147,24 @@
             <template v-else>{{ insights.agents.bias.label }} · {{ insights.agents.bias.leader.name }}占本期关注心纸的 {{ insights.agents.bias.percent }}%</template>
           </p>
 
-          <aside v-if="luckyCoframe" class="lucky-coframe" :class="{ 'has-overflow': coframeRemainingCount }">
-            <span class="coframe-sparkles" aria-hidden="true">✦ · ✧</span>
-            <div class="coframe-portraits" aria-hidden="true">
-              <span v-for="agent in luckyCoframe.agents.slice(0, 3)" :key="agent.id">
-                <span class="portrait-fallback">{{ monogram(agent.name) }}</span>
-                <img :src="agentIcon(agent.id)" alt="" width="42" height="42" loading="lazy" @load="onImageLoad" @error="onImageError" />
-              </span>
-              <span v-if="coframeRemainingCount" class="portrait-overflow">+{{ coframeRemainingCount }}</span>
+          <aside v-if="luckyCoframe" class="lucky-coframe" :aria-label="formatDay(luckyCoframe.date) + '幸运同框，' + coframeTypeCount + '人'">
+            <div class="coframe-head">
+              <div class="coframe-heading">
+                <span class="coframe-title">✦ LUCKY BURST</span>
+                <small>{{ formatDay(luckyCoframe.date) }} · {{ luckyCoframe.channel }}</small>
+              </div>
+              <span class="coframe-count">{{ coframeTypeCount }} 人同框</span>
             </div>
-            <div class="coframe-copy">
-              <span class="coframe-title">✦ LUCKY BURST</span>
-              <strong>{{ luckyCoframe.agents.map(function (agent) { return agent.name }).join(' · ') }}</strong>
-              <small class="coframe-meta">
-                <span>{{ formatDay(luckyCoframe.date) }} · {{ luckyCoframe.channel }}</span>
-                <span :title="coframeCountDetail">{{ coframeCountDetail }}</span>
-              </small>
-            </div>
-            <span class="coframe-seal" role="img" :aria-label="'同时获得 ' + coframeTypeCount + ' 种不同道具'">
-              <span class="coframe-constellation" :class="'stars-' + coframeVisibleStarCount" aria-hidden="true">
-                <i v-for="index in coframeVisibleStarCount" :key="index">✦</i>
-                <small v-if="coframeTypeCount > 6">{{ coframeTypeCount }}</small>
-              </span>
-              <span class="coframe-ribbon" aria-hidden="true">LUCKY</span>
-            </span>
+            <ul class="coframe-agents" aria-label="同框密探">
+              <li v-for="agent in luckyCoframe.agents" :key="agent.id" :aria-label="agent.name + '，心纸' + formatNumber(agent.count) + '张'">
+                <span class="coframe-portrait" aria-hidden="true">
+                  <span class="portrait-fallback">{{ monogram(agent.name) }}</span>
+                  <img :src="agentIcon(agent.id)" alt="" width="34" height="34" loading="lazy" @load="onImageLoad" @error="onImageError" />
+                </span>
+                <strong>{{ agent.name }}</strong>
+                <b>×{{ formatNumber(agent.count) }}</b>
+              </li>
+            </ul>
           </aside>
         </template>
       </section>
@@ -283,11 +277,6 @@ const absence = computed(function () {
 })
 const luckyCoframe = computed(function () { return props.insights.agents.luckyCoframes[0] || null })
 const coframeTypeCount = computed(function () { return luckyCoframe.value ? luckyCoframe.value.agents.length : 0 })
-const coframeVisibleStarCount = computed(function () { return Math.min(coframeTypeCount.value, 6) })
-const coframeRemainingCount = computed(function () { return Math.max(0, coframeTypeCount.value - 3) })
-const coframeCountDetail = computed(function () {
-  return luckyCoframe.value ? luckyCoframe.value.agents.map(function (agent) { return agent.name + ' × ' + formatNumber(agent.count) }).join(' · ') : ''
-})
 const rankingEmptyText = computed(function () {
   return effectiveRankingMode.value === 'favorites' ? '本期还没有获得特别关注密探的心纸' : '本期还没有心纸收获'
 })
@@ -366,6 +355,7 @@ function onImageError(event) {
 .report-body > section { min-width: 0; padding: 17px 18px 19px }
 .report-body > section + section { border-left: 1px solid var(--line) }
 .lucky-days { display: flex; min-height: 0; flex-direction: column }
+.heart-ranking { display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto }
 .favorite-echo { background: var(--cream) }
 .subsection-heading { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 10px }
 .subsection-heading > div { display: flex; align-items: center; gap: 7px }
@@ -386,16 +376,16 @@ function onImageError(event) {
 .same-day-rewards > li > div { min-width: 0 }
 .same-day-rewards > li > div > span { display: block; color: var(--ink); font-size: 10px; font-weight: 900 }
 .same-day-rewards > li > div > small { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--ink-60); font-size: 9.5px; font-weight: 700; line-height: 1.55 }
-.lucky-day-timeline { position: relative; flex: 1 1 auto; margin-top: 8px; padding: 22px 0 2px 22px; border-top: 1px dashed var(--line); list-style: none }
+.lucky-day-timeline { position: relative; flex: 1 1 auto; margin-top: 8px; padding: 34px 0 2px 22px; border-top: 1px dashed var(--line); list-style: none }
 .lucky-day-timeline::before { position: absolute; top: 0; bottom: 0; left: 8px; width: 1px; background: var(--line); content: '' }
-.lucky-day-timeline > li { position: relative; min-width: 0; min-height: 104px; padding: 7px 4px 18px 4px }
-.lucky-day-timeline > li::before { position: absolute; top: 11px; left: -22px; box-sizing: border-box; width: 17px; height: 17px; border: 3px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); content: '' }
+.lucky-day-timeline > li { position: relative; min-width: 0; min-height: 104px; padding: 7px 0 18px }
 .lucky-day-timeline > li:last-child { min-height: 88px; padding-bottom: 6px }
-.lucky-day-timeline > li.is-empty::before { background: var(--surface); box-shadow: 0 0 0 1px var(--line) }
 .lucky-day-timeline span { display: block; color: var(--ink-60); font-size: 9.5px; font-weight: 800 }
-.lucky-day-timeline time { display: block; margin-top: 7px; color: var(--ink); font-family: var(--font-s); font-size: 18px; font-weight: 900; white-space: nowrap }
+.lucky-day-timeline time { position: relative; display: block; width: fit-content; margin-top: 7px; color: var(--ink); font-family: var(--font-s); font-size: 18px; font-weight: 900; line-height: 1.25; white-space: nowrap }
+.lucky-day-timeline time::before, .lucky-day-timeline > li.is-empty p::before { position: absolute; top: 50%; left: -22px; box-sizing: border-box; width: 17px; height: 17px; border: 3px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent); content: ''; transform: translateY(-50%) }
 .lucky-day-timeline small, .lucky-day-timeline p { display: block; margin-top: 5px; color: var(--ink-60); font-size: 9.5px; font-weight: 700; line-height: 1.55 }
-.lucky-day-timeline p { margin-top: 11px; color: var(--ink-35) }
+.lucky-day-timeline p { position: relative; margin-top: 11px; color: var(--ink-35) }
+.lucky-day-timeline > li.is-empty p::before { top: .775em; background: var(--surface); box-shadow: 0 0 0 1px var(--line) }
 .ranking-heading { align-items: flex-start }
 .ranking-switch { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper) }
 .ranking-switch button { min-height: 32px; padding: 5px 9px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 10px; font-weight: 800; cursor: pointer; white-space: nowrap }
@@ -449,54 +439,32 @@ function onImageError(event) {
 .coverage-copy, .bias-copy { display: block; margin-top: 7px; color: var(--ink-60); font-size: 10px; font-weight: 700; line-height: 1.65 }
 .echo-divider { margin: 17px 0; border-top: 1px dashed var(--line) }
 .bias-copy { min-height: 3.3em }
-.lucky-coframe { position: relative; display: grid; min-height: 126px; grid-template-columns: minmax(68px, .28fr) minmax(0, 1fr) 58px; align-items: center; gap: 10px; margin-top: 17px; padding: 29px 13px 15px; overflow: hidden; border: 1px solid var(--accent); border-radius: 18px; background: radial-gradient(circle at 82% 10%, rgba(255,253,246,.72), transparent 36%), linear-gradient(145deg, var(--cream), var(--yellow)); box-shadow: inset 0 0 0 1px rgba(255,253,246,.58), 0 8px 18px rgba(73,59,44,.12) }
+.lucky-coframe { position: relative; margin-top: 17px; padding: 15px; overflow: hidden; border: 1px solid var(--accent); border-radius: 18px; background: radial-gradient(circle at 82% 10%, rgba(255,253,246,.72), transparent 36%), linear-gradient(145deg, var(--cream), var(--yellow)); box-shadow: inset 0 0 0 1px rgba(255,253,246,.58), 0 8px 18px rgba(73,59,44,.12); container-type: inline-size }
 .lucky-coframe::before { position: absolute; inset: 5px; border: 1px solid rgba(143,81,18,.2); border-radius: 13px; content: ''; pointer-events: none }
 .lucky-coframe::after { position: absolute; top: -45%; left: -15%; width: 24%; height: 190%; background: rgba(255,253,246,.42); content: ''; opacity: 0; transform: translateX(-220%) skewX(-18deg); animation: coframe-glint 900ms cubic-bezier(.22,1,.36,1) 250ms 1 both; pointer-events: none }
-.coframe-sparkles { position: absolute; top: 11px; left: 15px; z-index: 2; color: var(--accent-strong); font-family: var(--font-s); font-size: 10px; font-weight: 900; opacity: .58 }
-.coframe-portraits { display: flex; z-index: 1; align-items: center; justify-content: center; padding-left: 2px }
-.coframe-portraits > span { position: relative; display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; overflow: hidden; border: 2px solid var(--yellow); border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--accent), 0 3px 8px rgba(73,59,44,.16) }
-.coframe-portraits > span + span { margin-left: -12px }
-.lucky-coframe.has-overflow { grid-template-columns: minmax(100px, .31fr) minmax(0, 1fr) 58px }
-.lucky-coframe.has-overflow .coframe-portraits > span { width: 38px; height: 38px; flex-basis: 38px }
-.lucky-coframe.has-overflow .coframe-portraits > span + span { margin-left: -16px }
-.coframe-portraits img, .coframe-portraits .portrait-fallback { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit }
-.coframe-portraits img { object-fit: cover }
-.coframe-portraits .portrait-fallback { display: none; place-items: center; color: var(--ink); font-family: var(--font-s); font-size: 14px; font-weight: 900 }
-.coframe-portraits > span.has-image-error .portrait-fallback { display: grid }
-.coframe-portraits > .portrait-overflow, .lucky-coframe.has-overflow .coframe-portraits > .portrait-overflow { width: 28px; height: 28px; z-index: 4; flex-basis: 28px; overflow: visible; border-color: var(--cream); background: var(--tea); box-shadow: 0 0 0 1px var(--accent), 0 3px 8px rgba(73,59,44,.16); color: var(--cream); font-family: var(--font-d); font-size: 9px; font-style: normal; font-weight: 900 }
-.coframe-copy { min-width: 0; z-index: 1 }
-.coframe-copy > .coframe-title { display: block; overflow: hidden; color: var(--accent-strong); font-family: var(--font-d); font-size: 9.5px; font-weight: 800; letter-spacing: .15em; text-overflow: ellipsis; white-space: nowrap }
-.coframe-copy strong { display: -webkit-box; margin-top: 6px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--ink); font-family: var(--font-s); font-size: 15px; font-weight: 900; letter-spacing: .04em; line-height: 1.35 }
-.coframe-copy small { display: block; margin-top: 6px; color: var(--ink-60); font-size: 9.5px; font-weight: 700; line-height: 1.45 }
-.coframe-meta > span { display: block; min-width: 0 }
-.coframe-meta > span + span { margin-top: 2px; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap }
-.coframe-seal { position: relative; display: grid; width: 58px; height: 58px; z-index: 1; align-self: start; place-items: center; filter: drop-shadow(0 3px 3px rgba(73,59,44,.18)) }
-.coframe-seal::before { position: absolute; inset: 0; z-index: 1; border: 3px solid #9a652b; border-radius: 50%; background: var(--tea); box-shadow: inset 0 0 0 2px var(--yellow), inset 0 0 0 5px var(--tea), inset 0 0 0 6px rgba(239,210,142,.58); content: '' }
-.coframe-ribbon { position: absolute; right: 7px; bottom: -8px; left: 7px; height: 17px; z-index: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; background: #9a652b; clip-path: polygon(0 0, 100% 0, 86% 58%, 100% 100%, 0 100%, 14% 58%); color: var(--cream); font-family: var(--font-d); font-size: 6px; font-weight: 900; letter-spacing: .08em; line-height: 1 }
-.coframe-constellation { position: relative; width: 42px; height: 42px; z-index: 2; color: var(--cream) }
-.coframe-constellation i { position: absolute; font-family: var(--font-s); font-size: 10px; font-style: normal; line-height: 1; transform: translate(-50%, -50%); text-shadow: 0 1px 2px rgba(73,59,44,.3) }
-.coframe-constellation i:first-child { font-size: 13px }
-.coframe-constellation.stars-2 i:nth-child(1) { top: 36%; left: 38% }
-.coframe-constellation.stars-2 i:nth-child(2) { top: 65%; left: 67%; font-size: 9px }
-.coframe-constellation.stars-3 i:nth-child(1) { top: 28%; left: 50% }
-.coframe-constellation.stars-3 i:nth-child(2) { top: 66%; left: 31% }
-.coframe-constellation.stars-3 i:nth-child(3) { top: 66%; left: 69% }
-.coframe-constellation.stars-4 i:nth-child(1) { top: 18%; left: 50% }
-.coframe-constellation.stars-4 i:nth-child(2) { top: 50%; left: 25% }
-.coframe-constellation.stars-4 i:nth-child(3) { top: 50%; left: 75% }
-.coframe-constellation.stars-4 i:nth-child(4) { top: 82%; left: 50% }
-.coframe-constellation.stars-5 i:nth-child(1) { top: 16%; left: 50% }
-.coframe-constellation.stars-5 i:nth-child(2) { top: 50%; left: 22% }
-.coframe-constellation.stars-5 i:nth-child(3) { top: 50%; left: 50% }
-.coframe-constellation.stars-5 i:nth-child(4) { top: 50%; left: 78% }
-.coframe-constellation.stars-5 i:nth-child(5) { top: 84%; left: 50% }
-.coframe-constellation.stars-6 i:nth-child(1) { top: 15%; left: 50% }
-.coframe-constellation.stars-6 i:nth-child(2) { top: 36%; left: 24% }
-.coframe-constellation.stars-6 i:nth-child(3) { top: 36%; left: 76% }
-.coframe-constellation.stars-6 i:nth-child(4) { top: 70%; left: 24% }
-.coframe-constellation.stars-6 i:nth-child(5) { top: 70%; left: 76% }
-.coframe-constellation.stars-6 i:nth-child(6) { top: 88%; left: 50% }
-.coframe-constellation small { position: absolute; right: -1px; bottom: -1px; display: grid; min-width: 16px; height: 16px; place-items: center; border: 1px solid var(--yellow); border-radius: 50%; background: var(--tea); color: var(--cream); font-family: var(--font-d); font-size: 7px; font-weight: 900; line-height: 1 }
+.coframe-head { position: relative; display: flex; z-index: 1; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 1px 1px 12px; border-bottom: 1px dashed rgba(90,70,51,.24) }
+.coframe-heading { min-width: 0 }
+.coframe-title { display: block; overflow: hidden; color: var(--accent-strong); font-family: var(--font-d); font-size: 10px; font-weight: 800; letter-spacing: .15em; text-overflow: ellipsis; white-space: nowrap }
+.coframe-heading small { display: block; margin-top: 5px; color: var(--ink-60); font-size: 9.5px; font-weight: 700; line-height: 1.4 }
+.coframe-count { display: inline-flex; min-height: 24px; flex: 0 0 auto; align-items: center; padding: 4px 9px; border: 1px solid var(--yellow); border-radius: 999px; background: var(--tea); box-shadow: 0 2px 5px rgba(73,59,44,.12); color: var(--cream); font-family: var(--font-d); font-size: 9px; font-weight: 900; letter-spacing: .04em; line-height: 1; white-space: nowrap }
+.coframe-agents { position: relative; display: grid; z-index: 1; grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); gap: 7px; margin-top: 12px; padding: 0; list-style: none }
+.coframe-agents > li { display: grid; min-width: 0; min-height: 46px; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 8px 5px 5px; border: 1px solid rgba(143,81,18,.2); border-radius: 12px; background: rgba(255,253,246,.68); box-shadow: inset 0 1px 0 rgba(255,253,246,.72) }
+.coframe-portrait { position: relative; display: grid; width: 34px; height: 34px; place-items: center; overflow: hidden; border: 1px solid var(--accent); border-radius: 50%; background: var(--paper) }
+.coframe-portrait img, .coframe-portrait .portrait-fallback { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit }
+.coframe-portrait img { object-fit: cover }
+.coframe-portrait .portrait-fallback { display: none; place-items: center; color: var(--ink); font-family: var(--font-s); font-size: 12px; font-weight: 900 }
+.coframe-portrait.has-image-error .portrait-fallback { display: grid }
+.coframe-agents strong { min-width: 0; color: var(--ink); font-family: var(--font-s); font-size: 11.5px; font-weight: 900; letter-spacing: .03em; line-height: 1.25; overflow-wrap: anywhere }
+.coframe-agents b { color: var(--accent-strong); font-family: var(--font-d); font-size: 10px; font-weight: 900; white-space: nowrap }
+@container (max-width: 280px) {
+  .coframe-head { gap: 8px; padding-bottom: 11px }
+  .coframe-count { padding-inline: 7px }
+  .coframe-agents { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px }
+  .coframe-agents > li { min-height: 44px; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 5px; padding: 5px 6px 5px 4px }
+  .coframe-portrait { width: 30px; height: 30px }
+  .coframe-agents strong { font-size: 10.5px }
+  .coframe-agents b { font-size: 9px }
+}
 @keyframes coframe-glint {
   0% { opacity: 0; transform: translateX(-220%) skewX(-18deg) }
   22% { opacity: .72 }
@@ -523,18 +491,18 @@ function onImageError(event) {
   .podium { min-height: 248px; gap: 7px }
   .portrait { width: 52px }
   .place-1 .portrait { width: 62px }
-  .lucky-coframe { grid-template-columns: minmax(72px, .28fr) minmax(0, 1fr) 58px }
+  .lucky-coframe { padding: 14px }
 }
 @media (max-width: 440px) {
   .absence-contrast:not(.is-undetermined) { grid-template-columns: 48px minmax(0, 1fr) }
   .absence-meta { display: none }
-  .lucky-coframe { min-height: 124px; grid-template-columns: 66px minmax(0, 1fr) 52px; gap: 8px; padding-inline: 10px }
-  .lucky-coframe.has-overflow { grid-template-columns: 94px minmax(0, 1fr) 52px }
-  .coframe-portraits > span { width: 38px; height: 38px; flex-basis: 38px }
-  .coframe-seal { width: 52px; height: 52px }
-  .coframe-constellation { transform: scale(.86) }
-  .coframe-copy strong { font-size: 13px }
-  .coframe-copy small { font-size: 9px }
+  .lucky-coframe { padding: 13px }
+  .coframe-head { gap: 8px; padding-bottom: 11px }
+  .coframe-count { padding-inline: 7px }
+  .coframe-agents { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 6px }
+  .coframe-agents > li { min-height: 44px; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 6px; padding: 5px 7px 5px 5px }
+  .coframe-portrait { width: 32px; height: 32px }
+  .coframe-agents strong { font-size: 11px }
 }
 @media (max-width: 360px) {
   .ranking-heading { align-items: stretch; flex-direction: column }

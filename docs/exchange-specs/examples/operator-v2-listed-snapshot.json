@@ -1,0 +1,30 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 2,
+  "exported_at": "2026-08-24T08:01:00Z",
+  "producer": { "platform": "example-legacy-client", "version": "1.0.0" },
+  "accounts": [{ "id": "acc_demo", "name": "示例账号" }],
+  "records": [
+    {
+      "account_id": "acc_demo",
+      "record_id": "example-legacy-client:operators:20260824",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-08-24T08:00:00Z",
+      "snapshot_scope": "listed",
+      "entries": [
+        {
+          "id": "char_001_yangxiu",
+          "elite": 13,
+          "starLevel": 5,
+          "level": 80,
+          "discs": [{ "ot_name": "初始能量+2" }],
+          "starStones": [
+            { "name": "太阳", "type": "main1", "level": 60 },
+            { "name": "天府", "type": "assist1", "level": 60 }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>丰收 / 稻穗图鉴解锁动画</title>
+<style>
+:root{
+  --bg:#0b0e12;
+  --panel:#151a22;
+  --text:#eef2f7;
+  --muted:#8e99aa;
+  --gold:#d7b766;
+  --straw:#c9a95c;
+  --green:#89966d;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(87,72,42,.18),transparent 38%),
+    linear-gradient(#0b0e12,#090b0e);
+}
+.wrap{max-width:1180px;margin:0 auto;padding:42px 22px 70px}
+h1{font-size:29px;margin:0 0 9px}
+.lead{color:var(--muted);line-height:1.75;margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.demo{
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(20,25,34,.9);
+  box-shadow:0 18px 46px rgba(0,0,0,.28);
+}
+.stage{
+  min-height:300px;
+  display:grid;
+  place-items:center;
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(215,183,102,.05),transparent 34%),
+    #0d1014;
+}
+.info{padding:18px;border-top:1px solid rgba(255,255,255,.06)}
+.info h2{font-size:17px;margin:0 0 8px}
+.info p{font-size:13px;line-height:1.68;color:var(--muted);margin:0 0 14px;min-height:62px}
+button{
+  border:0;border-radius:10px;padding:9px 14px;
+  background:#eef3fa;color:#111722;font-weight:700;cursor:pointer
+}
+.card{
+  position:relative;
+  width:150px;height:176px;
+  border-radius:16px;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(145deg,#26251e,#121319);
+  border:1px solid rgba(215,183,102,.18);
+  box-shadow:0 20px 38px rgba(0,0,0,.44),inset 0 1px rgba(255,255,255,.04);
+}
+.subject{
+  position:relative;z-index:6;
+  width:76px;height:76px;
+  display:grid;place-items:center;
+  font-size:38px;
+  opacity:.15;
+  filter:grayscale(1) brightness(.45);
+  transform:scale(.9)
+}
+.label{
+  position:absolute;left:0;right:0;bottom:13px;
+  text-align:center;font-size:10px;letter-spacing:.14em;
+  color:#665a38;z-index:8
+}
+@keyframes fadeLabel{to{opacity:0;transform:translateY(4px)}}
+
+/* 1 wheat rise */
+.wheat-stage{
+  background:
+    linear-gradient(to top,rgba(121,97,43,.12),transparent 40%),
+    #0d1014;
+}
+.wheat-card .stalk{
+  position:absolute;bottom:-34px;width:2px;height:96px;
+  background:linear-gradient(to top,#8b723c,#d9bc6b);
+  transform-origin:bottom center;
+  opacity:0;z-index:3;
+}
+.wheat-card .stalk::before,
+.wheat-card .stalk::after{
+  content:"";
+  position:absolute;width:16px;height:6px;
+  border-radius:60% 0 60% 0;
+  background:#c7a956;
+}
+.wheat-card .stalk::before{left:-14px;top:22px;transform:rotate(-35deg)}
+.wheat-card .stalk::after{left:0;top:38px;transform:rotate(35deg)}
+.w1{left:28px;--r:-16deg}.w2{left:50px;--r:-7deg}.w3{left:74px;--r:3deg}.w4{left:98px;--r:11deg}.w5{left:120px;--r:18deg}
+.wheat-card .sun{
+  position:absolute;width:54px;height:54px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,227,144,.75),rgba(215,183,102,.12) 55%,transparent 72%);
+  opacity:0;z-index:2;
+}
+.wheat-card.play .stalk{animation:wheatGrow .82s cubic-bezier(.2,.82,.2,1) both}
+.wheat-card.play .w2{animation-delay:.05s}.wheat-card.play .w3{animation-delay:.1s}.wheat-card.play .w4{animation-delay:.15s}.wheat-card.play .w5{animation-delay:.2s}
+.wheat-card.play .sun{animation:sunPulse .95s ease-out .18s both}
+.wheat-card.play .subject{animation:harvestReveal .72s ease-out .28s both}
+.wheat-card.play .label{animation:fadeLabel .18s ease-out .24s both}
+@keyframes wheatGrow{
+  0%{opacity:0;transform:translateY(40px) scaleY(.3) rotate(var(--r))}
+  35%{opacity:.65}
+  100%{opacity:.8;transform:translateY(0) scaleY(1) rotate(var(--r))}
+}
+@keyframes sunPulse{
+  0%{opacity:0;transform:scale(.5)}
+  40%{opacity:.9}
+  100%{opacity:0;transform:scale(1.55)}
+}
+@keyframes harvestReveal{
+  0%{opacity:.15;filter:grayscale(1) brightness(.45);transform:scale(.88)}
+  54%{opacity:1;filter:grayscale(.15) brightness(1.65);transform:scale(1.08)}
+  100%{opacity:1;filter:none;transform:scale(1)}
+}
+
+/* 2 wreath */
+.wreath-card .arc{
+  position:absolute;
+  width:120px;height:120px;border-radius:50%;
+  border:2px solid transparent;
+  border-left-color:#c9a95c;
+  border-right-color:#c9a95c;
+  opacity:0;z-index:4;
+}
+.wreath-card .grain{
+  position:absolute;width:8px;height:18px;border-radius:60% 60% 60% 20%;
+  background:linear-gradient(#e0c878,#b99543);
+  opacity:0;z-index:5;
+}
+.g1{left:25px;top:58px;transform:rotate(-42deg)}
+.g2{left:30px;top:40px;transform:rotate(-28deg)}
+.g3{left:38px;top:26px;transform:rotate(-14deg)}
+.g4{right:25px;top:58px;transform:rotate(42deg)}
+.g5{right:30px;top:40px;transform:rotate(28deg)}
+.g6{right:38px;top:26px;transform:rotate(14deg)}
+.wreath-card.play .arc{animation:wreathArc .78s ease-out both}
+.wreath-card.play .grain{animation:grainPop .45s ease-out both}
+.wreath-card.play .g2,.wreath-card.play .g5{animation-delay:.08s}
+.wreath-card.play .g3,.wreath-card.play .g6{animation-delay:.16s}
+.wreath-card.play .subject{animation:harvestReveal .7s ease-out .2s both}
+.wreath-card.play .label{animation:fadeLabel .18s ease-out .2s both}
+@keyframes wreathArc{
+  0%{opacity:0;transform:scale(.72) rotate(-30deg)}
+  45%{opacity:.9}
+  100%{opacity:.35;transform:scale(1) rotate(0)}
+}
+@keyframes grainPop{
+  0%{opacity:0;transform:scale(.3) translateY(6px)}
+  60%{opacity:1}
+  100%{opacity:.75}
+}
+
+/* 3 grain sweep */
+.sweep-card .field{
+  position:absolute;left:-15%;right:-15%;bottom:0;height:72px;z-index:3;
+  background:
+    repeating-linear-gradient(
+      76deg,
+      transparent 0 10px,
+      rgba(203,169,92,.22) 10px 12px,
+      transparent 12px 19px
+    );
+  transform:translateY(72px);
+  opacity:0;
+}
+.sweep-card .sweep{
+  position:absolute;left:-48%;top:24px;width:70%;height:120px;z-index:5;
+  background:linear-gradient(105deg,transparent 0 36%,rgba(255,235,170,.15) 46%,rgba(255,245,202,.8) 50%,rgba(220,183,91,.25) 54%,transparent 64%);
+  opacity:0;transform:skewX(-8deg)
+}
+.sweep-card.play .field{animation:fieldRise .7s ease-out .06s both}
+.sweep-card.play .sweep{animation:harvestSweep .68s cubic-bezier(.2,.78,.2,1) .12s both}
+.sweep-card.play .subject{animation:sweepReveal .72s ease-out .14s both}
+.sweep-card.play .label{animation:fadeLabel .18s ease-out .18s both}
+@keyframes fieldRise{
+  0%{transform:translateY(72px);opacity:0}
+  100%{transform:translateY(0);opacity:.75}
+}
+@keyframes harvestSweep{
+  0%{left:-60%;opacity:0}
+  12%{opacity:1}
+  88%{opacity:1}
+  100%{left:95%;opacity:0}
+}
+@keyframes sweepReveal{
+  0%{opacity:.15;filter:grayscale(1) brightness(.4);transform:scale(.9)}
+  45%{opacity:.7;filter:grayscale(.6) brightness(1.25);transform:scale(1)}
+  78%{opacity:1;filter:grayscale(0) brightness(1.55);transform:scale(1.06)}
+  100%{opacity:1;filter:none;transform:scale(1)}
+}
+
+/* 4 seed ripple */
+.ripple-card .seed{
+  position:absolute;z-index:5;width:7px;height:11px;border-radius:70% 30% 70% 30%;
+  background:#d8bd6a;opacity:0;
+  left:72px;top:82px;
+}
+.ripple-card .ring{
+  position:absolute;left:50%;top:50%;z-index:3;
+  width:48px;height:48px;border-radius:50%;
+  border:1px solid rgba(213,183,102,.42);
+  transform:translate(-50%,-50%) scale(.3);opacity:0;
+}
+.ripple-card.play .ring{animation:earthRipple .95s ease-out both}
+.ripple-card.play .ring.r2{animation-delay:.16s}
+.ripple-card.play .ring.r3{animation-delay:.3s}
+.ripple-card.play .seed{animation:seedBurst .72s ease-out both}
+.ripple-card.play .s2{animation-delay:.05s}.ripple-card.play .s3{animation-delay:.1s}.ripple-card.play .s4{animation-delay:.15s}.ripple-card.play .s5{animation-delay:.2s}.ripple-card.play .s6{animation-delay:.25s}
+.ripple-card.play .subject{animation:harvestReveal .72s ease-out .25s both}
+.ripple-card.play .label{animation:fadeLabel .18s ease-out .22s both}
+.s1{--x:-46px;--y:-28px;--r:-25deg}.s2{--x:42px;--y:-34px;--r:31deg}.s3{--x:-52px;--y:14px;--r:-55deg}.s4{--x:50px;--y:18px;--r:58deg}.s5{--x:-24px;--y:48px;--r:-10deg}.s6{--x:28px;--y:46px;--r:16deg}
+@keyframes earthRipple{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}
+  22%{opacity:.7}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.7)}
+}
+@keyframes seedBurst{
+  0%{opacity:0;transform:translate(0,0) rotate(0) scale(.5)}
+  28%{opacity:1}
+  100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--r)) scale(1)}
+}
+
+.note{
+  margin-top:24px;
+  padding:18px 20px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;
+  background:#11161e;
+  color:#a6b0bf;
+  font-size:14px;
+  line-height:1.8;
+}
+.note strong{color:#eef2f7}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.info p{min-height:auto}}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>丰收 / 稻穗元素 · 图鉴解锁动画</h1>
+  <p class="lead">这次不再强调“扫描”，而是把丰收主题拆成四种不同的动画语义：生长、加冕、风吹稻田、种子涟漪。</p>
+
+  <div class="grid">
+    <section class="demo">
+      <div class="stage wheat-stage">
+        <div class="card wheat-card" id="wheat">
+          <span class="sun"></span>
+          <span class="stalk w1"></span><span class="stalk w2"></span><span class="stalk w3"></span><span class="stalk w4"></span><span class="stalk w5"></span>
+          <div class="subject">🌾</div>
+          <div class="label">DORMANT</div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>A · 稻穗生长</h2>
+        <p>从卡片底部长出几根稻穗，同时中央亮起一瞬暖光。最直观地表达“成熟 / 收获 / 生长完成”。</p>
+        <button onclick="replay('wheat')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="demo">
+      <div class="stage">
+        <div class="card wreath-card" id="wreath">
+          <span class="arc"></span>
+          <span class="grain g1"></span><span class="grain g2"></span><span class="grain g3"></span>
+          <span class="grain g4"></span><span class="grain g5"></span><span class="grain g6"></span>
+          <div class="subject">🏆</div>
+          <div class="label">UNCLAIMED</div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>B · 麦穗冠 / Harvest Wreath</h2>
+        <p>两侧麦穗聚拢成类似桂冠的结构，更像“丰收荣誉 / 达成 / 稀有收藏”。如果是高星级或成就类条目会非常合适。</p>
+        <button onclick="replay('wreath')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="demo">
+      <div class="stage">
+        <div class="card sweep-card" id="sweep">
+          <span class="field"></span>
+          <span class="sweep"></span>
+          <div class="subject">🌕</div>
+          <div class="label">UNKNOWN</div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>C · 风吹稻田 / Harvest Sweep</h2>
+        <p>底部先浮出稻田纹理，再有一道暖色光像风一样掠过。这一版最适合做“通用丰收主题解锁”，不会太具象。</p>
+        <button onclick="replay('sweep')">重新播放</button>
+      </div>
+    </section>
+
+    <section class="demo">
+      <div class="stage">
+        <div class="card ripple-card" id="ripple">
+          <span class="ring"></span><span class="ring r2"></span><span class="ring r3"></span>
+          <span class="seed s1"></span><span class="seed s2"></span><span class="seed s3"></span>
+          <span class="seed s4"></span><span class="seed s5"></span><span class="seed s6"></span>
+          <div class="subject">🌱</div>
+          <div class="label">SEALED</div>
+        </div>
+      </div>
+      <div class="info">
+        <h2>D · 种子涟漪 / Seed Ripple</h2>
+        <p>中心像种子落入土地一样扩散几圈暖色涟漪，再甩出少量谷粒。比符文法阵更自然，也更有“丰饶祝福”的感觉。</p>
+        <button onclick="replay('ripple')">重新播放</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="note">
+    <strong>我个人最看好 C 和 D。</strong>
+    C 更适合作为“丰收系通用主题”，因为不会把画面塞满稻穗；D 更适合特定角色或有祝福 / 农耕 / 土地意象的条目。
+    如果你想把它和之前的 5 星金色 Scanner 结合，最自然的是：先纵向金色扫描，再在结束点补一个很弱的 D 式涟漪，而不要把两套完整动画叠在一起。
+  </div>
+</div>
+
+<script>
+function replay(id){
+  const el=document.getElementById(id);
+  el.classList.remove('play');
+  void el.offsetWidth;
+  el.classList.add('play');
+}
+window.addEventListener('load',()=>{
+  ['wheat','wreath','sweep','ripple'].forEach((id,i)=>{
+    setTimeout(()=>document.getElementById(id).classList.add('play'),300+i*150);
+  })
+})
+</script>
+</body>
+</html>

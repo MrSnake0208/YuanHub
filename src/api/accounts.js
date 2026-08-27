@@ -6,35 +6,46 @@
 // - 旧地址 /v1/inventory/accounts、/v1/operator/accounts 已删除（返回 404）。
 //
 // 约定同 src/api/ledger.js：函数入参一律 camelCase，内部转 snake_case。
-// 响应元素与旧 InventoryAccountResponse / OperatorAccountResponse 完全同构：
-//   { "id": "acc_...", "name": "...", "created_at": "...", "updated_at": "..." }
+// 新版响应：
+//   { "id": "acc_...", "name": "...", "game": "代号鸢|如鸢", "created_at": "...", "updated_at": "..." }
+// 前端兼容尚未返回 game 的旧后端，直到账号版本迁移完成。
 // id 就是 account_id，业务接口继续用该值传 account_id，无需任何迁移。
 import { request } from './request.js'
 
 const PATH = '/v1/accounts'
 
 // 账号列表（需登录）——按创建时间升序
-// 返回 [{ id, name, created_at, updated_at }]
+// 返回 [{ id, name, game, created_at, updated_at }]
 export function listAccounts() {
   return request(PATH, { auth: true })
 }
 
-// 创建账号（POST，需登录）——body { name }
-export function createAccount(name) {
+// 创建账号（POST，需登录）——body { name, game }
+export function createAccount(name, game) {
+  const body = { name }
+  if (game) body.game = game
   return request(PATH, {
     method: 'POST',
     auth: true,
-    body: { name }
+    body: body
   })
 }
 
-// 改名（PATCH，需登录）——body { name }
-export function renameAccount(accountId, name) {
+// 局部修改（PATCH，需登录）——body { name?, game? }
+export function updateAccount(accountId, patch) {
   return request(PATH + '/' + encodeURIComponent(accountId), {
     method: 'PATCH',
     auth: true,
-    body: { name }
+    body: patch
   })
+}
+
+export function renameAccount(accountId, name) {
+  return updateAccount(accountId, { name })
+}
+
+export function updateAccountGame(accountId, game) {
+  return updateAccount(accountId, { game })
 }
 
 // 删除账号（DELETE，需登录）——整账号级联删除：
