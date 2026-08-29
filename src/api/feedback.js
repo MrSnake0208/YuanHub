@@ -1,14 +1,24 @@
 // 反馈工单接口封装（对照 BackEndV3-Share 契约）
 import { request } from './request.js'
 
-// 创建反馈。后端一期固定为 FEEDBACK，问题/建议等语义由 category 表达。
+const FEEDBACK_TYPES = new Set(['BUG', 'FEATURE', 'CONTENT', 'ACCOUNT', 'REPORT', 'OTHER'])
+const FEEDBACK_CATEGORIES = new Set(['INVENTORY', 'OPERATOR', 'LEDGER', 'PLAZA', 'ACCOUNT', 'UI', 'OTHER'])
+
+// 创建反馈。新契约中 type 是反馈类型，category 是前端板块。
 export async function createFeedback(payload) {
+  const rawType = String(payload.type || 'FEEDBACK').toUpperCase()
+  const rawCategory = String(payload.category || '').toUpperCase()
+  const rawArea = String(payload.area || '').toUpperCase()
+  const legacyType = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory) ? rawCategory : rawType
+  const category = FEEDBACK_CATEGORIES.has(rawCategory)
+    ? rawCategory
+    : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (rawCategory || 'OTHER'))
   const data = await request('/v1/reports', {
     method: 'POST',
     auth: true,
     body: {
-      type: 'FEEDBACK',
-      category: payload.category,
+      type: legacyType,
+      category,
       content: payload.content,
       media_ids: payload.mediaIds || [],
       client_info_consent: Boolean(payload.clientInfoConsent)
@@ -31,17 +41,37 @@ function normalizeMessage(message) {
 
 function normalizeFeedback(report) {
   if (!report || typeof report !== 'object') return report
+  const rawType = String(report.type || '').toUpperCase()
+  const rawCategory = String(report.category || '').toUpperCase()
+  const rawArea = String(report.area || '').toUpperCase()
+  const legacyCategory = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory)
+  const category = FEEDBACK_CATEGORIES.has(rawCategory)
+    ? rawCategory
+    : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (legacyCategory ? 'OTHER' : (rawCategory || 'OTHER')))
+  const type = legacyCategory ? rawCategory : rawType
+  const rawQuota = report.quota && typeof report.quota === 'object' ? report.quota : null
   return {
     ...report,
-    type: String(report.type || '').toUpperCase(),
-    category: String(report.category || '').toUpperCase(),
+    type,
+    category,
+    // area remains a read-only alias for older page consumers.
+    area: category,
     status: String(report.status || '').toUpperCase(),
     hasAdminReply: report.hasAdminReply ?? report.has_admin_reply ?? false,
     lastMessageSender: report.lastMessageSender ?? report.last_message_sender ?? '',
     createdAt: report.createdAt ?? report.created_at ?? null,
     updatedAt: report.updatedAt ?? report.updated_at ?? null,
     mediaIds: report.mediaIds ?? report.media_ids ?? [],
-    quota: report.quota || null,
+    quota: rawQuota
+      ? {
+          ...rawQuota,
+          pendingCount: rawQuota.pendingCount ?? rawQuota.pending_count ?? 0,
+          pendingLimit: rawQuota.pendingLimit ?? rawQuota.pending_limit ?? 0,
+          canAppend: rawQuota.canAppend ?? rawQuota.can_append ?? false
+        }
+      : null,
+    viewerIsReporter: report.viewerIsReporter ?? report.viewer_is_reporter ?? false,
+    viewerCanManage: report.viewerCanManage ?? report.viewer_can_manage ?? false,
     messages: Array.isArray(report.messages) ? report.messages.map(normalizeMessage) : []
   }
 }
@@ -53,6 +83,8 @@ export async function listFeedback(params = {}) {
   if (params.pageSize != null) qs.set('pageSize', String(params.pageSize))
   if (params.status) qs.set('status', params.status)
   if (params.type) qs.set('type', params.type)
+  if (params.category) qs.set('category', params.category)
+  else if (params.area) qs.set('area', params.area)
   if (params.mine != null) qs.set('mine', String(params.mine))
   if (params.reporterUserId) qs.set('reporterUserId', params.reporterUserId)
   if (params.q) qs.set('q', params.q)
@@ -79,6 +111,32 @@ export async function listFeedback(params = {}) {
 }
 
 // 获取单个反馈详情
+export function getFeedbackAccess() {
+  return request('/v1/reports/access', { auth: true })
+}
+
+export function listFeedbackAccessGrants() {
+  return request('/v1/admin/feedback-access', { auth: true })
+}
+
+export function updateFeedbackAccessGrant(userId, grant) {
+  return request('/v1/admin/feedback-access/' + encodeURIComponent(userId), {
+    method: 'PUT',
+    auth: true,
+    body: {
+      receive_categories: grant.receiveCategories || grant.receiveAreas || [],
+      manage_categories: grant.manageCategories || grant.manageAreas || []
+    }
+  })
+}
+
+export function deleteFeedbackAccessGrant(userId) {
+  return request('/v1/admin/feedback-access/' + encodeURIComponent(userId), {
+    method: 'DELETE',
+    auth: true
+  })
+}
+
 export async function getFeedback(id) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}`, { auth: true })
   return normalizeFeedback(data)

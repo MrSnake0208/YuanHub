@@ -162,6 +162,20 @@ export const routes = [
         }
     },
     {
+        path: '/feedback/admin',
+        text: '反馈权限管理',
+        name: 'feedback-access-admin',
+        display: false,
+        module: 'user',
+        icon: 'shield',
+        component: () => import('/src/pages/feedback/admin.vue'),
+        meta: {
+            title: '反馈权限管理 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiresAdmin: true
+        }
+    },
+    {
         path: '/notifications',
         text: '通知中心',
         name: 'notifications',

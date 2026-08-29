@@ -4,7 +4,10 @@ import {
   appendFeedbackMessage,
   createFeedback,
   getFeedback,
+  getFeedbackAccess,
   listFeedback,
+  listFeedbackAccessGrants,
+  updateFeedbackAccessGrant,
   updateFeedbackStatus
 } from '../src/api/feedback.js'
 
@@ -29,28 +32,45 @@ async function withFetch(handler, fn) {
   }
 }
 
-test('创建反馈发送后端接受的 FEEDBACK/category 字段', async () => {
+test('创建反馈发送 type/category 字段', async () => {
   let request
   await withFetch(async (url, options) => {
     request = { url: String(url), options }
-    return apiResponse({ id: 'rpt_1', type: 'FEEDBACK', category: 'BUG', status: 'OPEN', content: '坏了' })
+    return apiResponse({ id: 'rpt_1', type: 'BUG', category: 'INVENTORY', status: 'OPEN', content: '坏了' })
   }, async () => {
     const result = await createFeedback({
-      type: 'bug',
-      category: 'BUG',
+      type: 'BUG',
+      category: 'INVENTORY',
       content: '坏了',
       mediaIds: ['med_1'],
       clientInfoConsent: true
     })
     assert.match(request.url, /\/v1\/reports$/)
     assert.deepEqual(JSON.parse(request.options.body), {
-      type: 'FEEDBACK',
-      category: 'BUG',
+      type: 'BUG',
+      category: 'INVENTORY',
       content: '坏了',
       media_ids: ['med_1'],
       client_info_consent: true
     })
     assert.equal(result.status, 'OPEN')
+  })
+})
+
+test('创建反馈兼容旧的 type/category/area 请求', async () => {
+  let request
+  await withFetch(async (url, options) => {
+    request = { url: String(url), options }
+    return apiResponse({ id: 'rpt_legacy', type: 'BUG', category: 'INVENTORY', status: 'OPEN' })
+  }, async () => {
+    await createFeedback({ type: 'bug', category: 'BUG', area: 'INVENTORY', content: '坏了' })
+  })
+  assert.deepEqual(JSON.parse(request.options.body), {
+    type: 'BUG',
+    category: 'INVENTORY',
+    content: '坏了',
+    media_ids: [],
+    client_info_consent: false
   })
 })
 
@@ -62,8 +82,8 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
       return apiResponse({
         reports: [{
           id: 'rpt_1',
-          type: 'FEEDBACK',
-          category: 'FEATURE',
+          type: 'BUG',
+          category: 'OPERATOR',
           status: 'OPEN',
           content: '建议',
           has_admin_reply: true,
@@ -77,10 +97,12 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
     }
     return apiResponse({
       id: 'rpt_1',
-      type: 'FEEDBACK',
-      category: 'FEATURE',
+      type: 'BUG',
+      category: 'OPERATOR',
+      has_admin_reply: true,
       status: 'OPEN',
       content: '建议',
+      quota: { can_append: true, pending_count: 1, pending_limit: 3 },
       messages: [{
         id: 'rpm_1',
         sender_kind: 'ADMIN',
@@ -91,12 +113,49 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
   }, async () => {
     const list = await listFeedback({ page: 1, pageSize: 20 })
     assert.equal(list.items[0].hasAdminReply, true)
+    assert.equal(list.items[0].category, 'OPERATOR')
     assert.equal(list.items[0].createdAt, '2026-01-01T00:00:00Z')
     assert.equal(list.pageSize, 20)
     const detail = await getFeedback('rpt_1')
+    assert.equal(detail.type, 'BUG')
+    assert.equal(detail.category, 'OPERATOR')
+    assert.equal(detail.hasAdminReply, true)
+    assert.equal(detail.quota.canAppend, true)
     assert.equal(detail.messages[0].senderKind, 'ADMIN')
     assert.equal(detail.messages[0].isAdmin, true)
     assert.equal(detail.messages[0].createdAt, '2026-01-03T00:00:00Z')
+  })
+})
+
+test('列表类型、板块筛选和管理视图使用 type/category/mine 查询参数', async () => {
+  let requestUrl = ''
+  await withFetch(async (url) => {
+    requestUrl = String(url)
+    return apiResponse({ reports: [], total: 0, page: 1, page_size: 20 })
+  }, async () => {
+    await listFeedback({ page: 1, pageSize: 20, type: 'BUG', category: 'OPERATOR', mine: false })
+  })
+  assert.match(requestUrl, /type=BUG/)
+  assert.match(requestUrl, /category=OPERATOR/)
+  assert.match(requestUrl, /mine=false/)
+})
+
+test('反馈授权接口区分接收模块和管理模块', async () => {
+  const requests = []
+  await withFetch(async (url, options = {}) => {
+    requests.push({ url: String(url), options })
+    return apiResponse([])
+  }, async () => {
+    await getFeedbackAccess()
+    await listFeedbackAccessGrants()
+    await updateFeedbackAccessGrant('user/1', { receiveAreas: ['INVENTORY'], manageAreas: ['OPERATOR'] })
+  })
+  assert.match(requests[0].url, /\/v1\/reports\/access$/)
+  assert.match(requests[1].url, /\/v1\/admin\/feedback-access$/)
+  assert.match(requests[2].url, /\/v1\/admin\/feedback-access\/user%2F1$/)
+  assert.deepEqual(JSON.parse(requests[2].options.body), {
+    receive_categories: ['INVENTORY'],
+    manage_categories: ['OPERATOR']
   })
 })
 
