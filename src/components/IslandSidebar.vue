@@ -17,6 +17,10 @@
         <BookUser :size="19" aria-hidden="true" />
         <span>我的密探</span>
       </router-link>
+      <router-link to="/star" :class="{ active: $route.path === '/star' }">
+        <Gem :size="19" aria-hidden="true" />
+        <span>星石</span>
+      </router-link>
       <router-link :to="isLoggedIn ? '/user/profile' : '/login'" :class="{ active: $route.path === '/user/profile' || $route.path === '/login' }">
         <component :is="isLoggedIn ? UserRound : LogIn" :size="19" aria-hidden="true" />
         <span>{{ isLoggedIn ? '我的' : '登录' }}</span>
@@ -37,7 +41,8 @@
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"><span class="no">01</span>广陵账房</router-link>
       <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }"><span class="no">02</span>库存追踪</router-link>
       <router-link to="/operator" :class="{ active: $route.path.startsWith('/operator') }"><span class="no">03</span>我的密探</router-link>
-      <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }"><span class="no">04</span>个人中心</router-link>
+      <router-link to="/star" :class="{ active: $route.path === '/star' }"><span class="no">04</span>我的星石</router-link>
+      <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }"><span class="no">05</span>个人中心</router-link>
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
       <a class="ext" href="#" style="--cc:var(--tea)"><span class="dot"></span>出战阵容编辑器<span class="who">BWiki</span></a>
@@ -64,7 +69,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { BookUser, LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
+import { BookUser, Gem, LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
 import { auth, logout as doLogout } from '@/store/auth.js'
 
 // 已登录状态（reactive，随 auth 变化）
