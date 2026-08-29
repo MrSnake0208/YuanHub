@@ -494,7 +494,7 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
     color:var(--ink);text-decoration:none;font-family:var(--font-s);font-size:13px;font-weight:900;
   }
   .mobile-brand .brand-mark{width:32px;height:32px;border-radius:9px;flex:none}
-  .mobile-nav{min-width:0;flex:1;margin-left:auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+  .mobile-nav{min-width:0;flex:1;margin-left:auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
   .mobile-nav a{
     min-height:44px;padding:4px 6px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
     color:var(--ink-60);text-decoration:none;font-size:11px;font-weight:800;line-height:1.1;

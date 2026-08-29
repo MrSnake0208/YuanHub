@@ -74,6 +74,18 @@ export const routes = [
         }
     },
     {
+        path: '/star',
+        text: '我的星石',
+        name: 'star',
+        display: true,
+        module: 'tools',
+        icon: 'gem',
+        component: () => import('/src/pages/star/index.vue'),
+        meta: {
+            title: '星石 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/operator/quick',
         text: '快捷导入',
         name: 'operator-quick',
