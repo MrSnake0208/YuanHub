@@ -639,7 +639,28 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 
 `version=3` 导出包含客观档案、annotation、favorite 与 targets；默认 `version=2`。
 
-## 6. 密探公共图鉴管理（/v1/admin/operator-catalog）
+## 6. 反馈工单与权限管理（/v1/reports）
+
+反馈工单接口需要登录 JWT。个人反馈页面固定使用 mine=true，反馈工作台固定使用 mine=false；后端会按归一化后的 category 校验管理范围，不能依赖前端隐藏筛选项提供安全保障。
+
+| 方法与路径 | 认证 | 请求 | 成功 data |
+|---|---|---|---|
+| POST /v1/reports | JWT | {type,category,content,media_ids?,client_info_consent?} | 新工单 |
+| GET /v1/reports | JWT | page,pageSize,status,type,category,mine,q | {reports,total,page,page_size,mine,...} |
+| GET /v1/reports/{id} | JWT | 无 | 工单详情，含 viewer_is_reporter/viewer_can_manage |
+| POST /v1/reports/{id}/messages | JWT | {content,media_ids?} | 更新后的工单 |
+| PATCH /v1/reports/{id}/status | JWT | {status} | 更新后的工单 |
+| GET /v1/reports/access | JWT | 无 | 当前用户的接收/管理板块及超级管理员标识 |
+| GET /v1/admin/feedback-access | 超级管理员 | 无 | 授权列表 |
+| GET /v1/admin/feedback-access/users | 超级管理员 | q,page,size，q 非空，size 1..10 | 已激活用户候选 {id,user_name,email,activated}[] |
+| PUT /v1/admin/feedback-access/{userId} | 超级管理员 | {receive_categories,manage_categories} | 授权结果 |
+| DELETE /v1/admin/feedback-access/{userId} | 超级管理员 | 无 | 无业务数据 |
+
+候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
+
+旧授权字段 receive_areas/manage_areas 和旧反馈字段 area 继续兼容读取；新前端优先使用 receive_categories/manage_categories 与 category。
+
+## 7. 密探公共图鉴管理（/v1/admin/operator-catalog）
 
 全部接口需要 JWT 且用户 `status >= 2`；否则返回 403 `forbidden`。
 
@@ -677,7 +698,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 - 头像只接受非空 WebP，最大 500KB；上传同 id 会覆盖。
 - 目录名称、稀有度等有效修改会刷新 `catalog_version` 和公共目录缓存。
 
-## 7. OpenAPI Token 管理（/user/open-api）
+## 8. OpenAPI Token 管理（/user/open-api）
 
 | 方法与路径 | 认证 | 请求 | 成功 data |
 |---|---|---|---|
@@ -717,7 +738,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 - 生成达到每账号 5 个上限返回 HTTP 429。
 - 删除不存在或不属于当前用户的 Token 返回 HTTP 404。
 
-## 8. 第三方 OpenAPI 数据接口（/open-api）
+## 9. 第三方 OpenAPI 数据接口（/open-api）
 
 全部使用 OpenAPI Token，URL query 不传 `account_id`；服务端使用 Token 绑定账号。v2 交换文档内部仍必须携带 `account_id`，且所有记录必须严格属于 Token 绑定账号，否则返回 403 `account_scope_mismatch`。
 
@@ -748,7 +769,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 - 来源账号始终强制映射到 Token 绑定账号。
 - 不接受 annotation/full/manual，不扣减库存。
 
-## 9. 广陵账房方案（/hub/ledger/plan）
+## 10. 广陵账房方案（/hub/ledger/plan）
 
 全部需 JWT，方案归属从 JWT 获取；不存在与越权统一返回业务 404。
 
@@ -793,7 +814,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 - 全量响应包含 `{id,user_id,name,version,exchange_rate,initial_points,cart_items,custom_packages,summary,created_at,updated_at}`。
 - `summary={total_cny,total_points,total_draws}`；`total_points` 不含 `initial_points`。
 
-## 10. 其他现有后端接口
+## 11. 其他现有后端接口
 
 这些端点当前没有对应 YuanHub API 模块，但属于后端已实现契约。
 
@@ -816,18 +837,19 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 
 `/demo/**` 是后端示例接口，不纳入前端业务契约。
 
-## 11. YuanHub 前端对应关系
+## 12. YuanHub 前端对应关系
 
 | 模块 | 作用 |
 |---|---|
 | `src/api/request.js` | baseURL、JSON/multipart、JWT、401 refresh、raw 导出、错误提取 |
-| `src/api/user.js` | 用户 10 个接口 |
+| `src/api/user.js` | 用户公开接口与反馈权限候选搜索 |
 | `src/api/accounts.js` | 统一子账号 CRUD |
 | `src/api/accountEvents.js` | 带 JWT 的 SSE 客户端 |
 | `src/api/inventory.js` | 库存、特别关注、库存 OpenAPI 导入 |
 | `src/api/operator.js` | 密探目录、养成、标注、目标、提升、导入导出和管理端 |
 | `src/api/openApi.js` | OpenAPI Token 管理 |
 | `src/api/ledger.js` | 广陵账房方案 CRUD |
+| `src/api/feedback.js` | 个人反馈、反馈工作台、反馈权限管理与工单操作 |
 | `src/store/auth.js` | 登录态、持久化、刷新和退出 |
 | `src/store/accountEvents.js` | SSE 订阅、事件去重、通知与页面刷新 |
 
@@ -840,7 +862,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 - 401 自动刷新只针对 `auth:true` 的 JWT 请求；OpenAPI Token 401 不应触发用户 refresh。
 - 切换子账号时必须清空旧账号的库存、密探、关注和事件状态后重新加载。
 
-## 12. 更新检查清单
+## 13. 更新检查清单
 
 后端接口变更时至少检查：
 

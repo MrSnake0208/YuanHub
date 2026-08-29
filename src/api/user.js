@@ -85,6 +85,32 @@ export function updateInfo({ userName }) {
   })
 }
 
+function normalizeFeedbackAccessUser(user) {
+  return {
+    id: user.id || user.user_id,
+    userName: user.userName || user.user_name || '',
+    email: user.email || '',
+    activated: user.activated ?? false
+  }
+}
+
+// 反馈权限配置专用搜索，邮箱只对超级管理员端点返回。
+export async function searchFeedbackAccessUsers({ q, page = 1, size = 10 }) {
+  const params = new URLSearchParams()
+  if (q != null && q.trim()) params.set('q', q.trim())
+  params.set('page', String(page))
+  params.set('size', String(size))
+  const data = await request('/v1/admin/feedback-access/users?' + params.toString(), { auth: true })
+  const users = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.content)
+      ? data.content
+      : Array.isArray(data?.items)
+        ? data.items
+        : []
+  return users.map(normalizeFeedbackAccessUser)
+}
+
 // 用户搜索（公开，size≤50）
 export function searchUsers({ userName, page, size }) {
   const params = new URLSearchParams()

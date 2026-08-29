@@ -162,6 +162,19 @@ export const routes = [
         }
     },
     {
+        path: '/feedback/manage',
+        text: '待处理反馈',
+        name: 'feedback-manage',
+        display: false,
+        module: 'user',
+        icon: 'inbox',
+        component: () => import('/src/pages/feedback/manage.vue'),
+        meta: {
+            title: '反馈工作台 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/feedback/admin',
         text: '反馈权限管理',
         name: 'feedback-access-admin',

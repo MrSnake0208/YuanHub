@@ -257,9 +257,10 @@ async function markAllRead() {
 function openNotification(item) {
   // 标记已读
   if (!item.read_at) markRead(item)
-  // 跳转到反馈工单详情
+  // 新反馈通知来自管理队列，回复和状态通知仍属于个人工单。
   if (item.ref_type === 'FEEDBACK' && item.ref_id) {
-    router.push('/feedback?id=' + encodeURIComponent(item.ref_id))
+    const target = item.kind === 'FEEDBACK_ASSIGNED' ? '/feedback/manage' : '/feedback'
+    router.push(target + '?id=' + encodeURIComponent(item.ref_id))
   }
 }
 
