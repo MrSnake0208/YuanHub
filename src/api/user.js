@@ -96,8 +96,10 @@ function normalizeFeedbackAccessUser(user) {
 
 // 反馈权限配置专用搜索，邮箱只对超级管理员端点返回。
 export async function searchFeedbackAccessUsers({ q, page = 1, size = 10 }) {
+  const normalizedQuery = typeof q === 'string' ? q.trim() : ''
+  if (!normalizedQuery) return []
   const params = new URLSearchParams()
-  if (q != null && q.trim()) params.set('q', q.trim())
+  params.set('q', normalizedQuery)
   params.set('page', String(page))
   params.set('size', String(size))
   const data = await request('/v1/admin/feedback-access/users?' + params.toString(), { auth: true })
