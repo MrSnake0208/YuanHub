@@ -43,6 +43,28 @@
             </div>
           </div>
 
+          <div class="feedback-scope-bar">
+            <div v-if="canManageFeedback" class="scope-tabs" role="group" aria-label="反馈视图">
+              <button :class="{ on: viewMode === 'mine' }" type="button" @click="setViewMode('mine')">我的反馈</button>
+              <button :class="{ on: viewMode === 'managed' }" type="button" @click="setViewMode('managed')">待管理</button>
+            </div>
+            <label class="area-filter">
+              <span>反馈类型</span>
+              <select v-model="filterType" @change="reloadFromFirstPage">
+                <option value="">全部类型</option>
+                <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+              </select>
+            </label>
+            <label class="area-filter">
+              <span>反馈板块</span>
+              <select v-model="filterCategory" @change="reloadFromFirstPage">
+                <option value="">全部板块</option>
+                <option v-for="option in visibleCategoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+              </select>
+            </label>
+            <router-link v-if="access.superAdmin" class="access-admin-link" to="/feedback/admin">权限配置</router-link>
+          </div>
+
           <!-- 新建反馈表单 -->
           <Teleport to="body">
             <div
@@ -66,14 +88,16 @@
                 </div>
                 <form @submit.prevent="submitFeedback">
                   <div class="form-row">
-                    <label class="field-label" for="feedback-category">反馈分类</label>
+                    <label class="field-label" for="feedback-type">反馈类型</label>
+                    <select id="feedback-type" v-model="newFeedback.type" class="form-control" required>
+                      <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label class="field-label" for="feedback-category">反馈板块</label>
                     <select id="feedback-category" v-model="newFeedback.category" class="form-control" required>
-                      <option value="">请选择分类</option>
-                      <option value="BUG">问题报告（Bug）</option>
-                      <option value="FEATURE">功能建议</option>
-                      <option value="CONTENT">内容问题</option>
-                      <option value="ACCOUNT">账号问题</option>
-                      <option value="OTHER">其他</option>
+                      <option value="">请选择反馈板块</option>
+                      <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                     </select>
                   </div>
                   <div class="form-row">
@@ -123,7 +147,7 @@
               >
                 <div class="fc-head" @click="toggleExpand(item.id)">
                   <div class="fc-meta">
-                    <span class="fc-type" :class="'type-' + item.type">{{ typeLabel(item.type) }}</span>
+                    <span class="fc-type">{{ typeLabel(item.type) }}</span>
                     <span v-if="item.category" class="fc-category">{{ categoryLabel(item.category) }}</span>
                     <span class="fc-status" :class="'status-' + item.status">{{ statusLabel(item.status, item.hasAdminReply) }}</span>
                     <span class="fc-date">{{ formatDate(item.createdAt) }}</span>
@@ -143,7 +167,7 @@
                     <h4>对话记录</h4>
                     <div v-for="msg in item.messages" :key="msg.id" class="fc-message" :class="{ 'is-admin': msg.isAdmin }">
                       <div class="fc-msg-head">
-                        <span class="fc-msg-author">{{ msg.isAdmin ? '管理员' : '我' }}</span>
+                        <span class="fc-msg-author">{{ msg.isAdmin ? '管理员' : (viewMode === 'managed' ? '提交人' : '我') }}</span>
                         <span class="fc-msg-date">{{ formatDate(msg.createdAt) }}</span>
                       </div>
                       <div class="fc-msg-content">{{ msg.content }}</div>
@@ -151,15 +175,20 @@
                   </div>
                   <div class="fc-actions">
                     <button
-                      v-if="item.status === 'OPEN'"
+                      v-if="item.status === 'OPEN' && item.quota && item.quota.canAppend"
                       class="act-btn small"
                       @click="showReplyForm(item.id)"
                     >追加消息</button>
                     <button
-                      v-if="item.status === 'OPEN'"
+                      v-if="item.status === 'OPEN' && (item.viewerIsReporter || item.viewerCanManage)"
                       class="act-btn small"
                       @click="closeFeedback(item.id)"
                     >标记完成</button>
+                    <button
+                      v-if="viewMode === 'managed' && item.status === 'OPEN'"
+                      class="act-btn small danger"
+                      @click="dismissFeedback(item.id)"
+                    >驳回</button>
                   </div>
                   <div v-if="replyTarget === item.id" class="fc-reply-form">
                     <textarea
@@ -209,6 +238,7 @@ import {
   createFeedback,
   listFeedback,
   getFeedback,
+  getFeedbackAccess,
   appendFeedbackMessage,
   updateFeedbackStatus
 } from '@/api/feedback.js'
@@ -222,6 +252,33 @@ const pageSize = 20
 const noMore = ref(false)
 const q = ref('')
 const filterStatus = ref('全部')
+const filterType = ref('')
+const filterCategory = ref('')
+const viewMode = ref('mine')
+const access = ref({ superAdmin: false, receiveAreas: [], manageAreas: [], availableAreas: [] })
+const feedbackTypeOptions = [
+  { key: 'BUG', label: '问题报告' },
+  { key: 'FEATURE', label: '功能建议' },
+  { key: 'CONTENT', label: '内容问题' },
+  { key: 'ACCOUNT', label: '账号问题' },
+  { key: 'REPORT', label: '举报' },
+  { key: 'OTHER', label: '其他' }
+]
+const DEFAULT_AREAS = [
+  { key: 'INVENTORY', label: '库存管理' },
+  { key: 'OPERATOR', label: '密探养成' },
+  { key: 'LEDGER', label: '广陵账房' },
+  { key: 'PLAZA', label: '作业广场' },
+  { key: 'ACCOUNT', label: '账号与连接' },
+  { key: 'UI', label: '界面与交互' },
+  { key: 'OTHER', label: '其他模块' }
+]
+const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
+const canManageFeedback = computed(() => access.value.manageAreas.length > 0)
+const visibleCategoryOptions = computed(() => {
+  if (viewMode.value === 'mine') return categoryOptions.value
+  return categoryOptions.value.filter(option => access.value.manageAreas.includes(option.key))
+})
 const expandedId = ref(null)
 const detailLoading = ref(false)
 const detailError = ref(null)
@@ -232,7 +289,7 @@ const showNewForm = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 const newFeedback = ref({
-  type: '',
+  type: 'BUG',
   category: '',
   content: '',
   clientInfoConsent: false
@@ -272,10 +329,40 @@ function statusParam() {
   return { '待处理': 'OPEN', '已回复': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
 }
 
-function setFilter(status) {
-  filterStatus.value = status
+function reloadFromFirstPage() {
   page.value = 1
   loadFeedback()
+}
+
+function setFilter(status) {
+  filterStatus.value = status
+  reloadFromFirstPage()
+}
+
+function setViewMode(mode) {
+  viewMode.value = mode
+  if (mode === 'managed' && filterCategory.value && !access.value.manageAreas.includes(filterCategory.value)) {
+    filterCategory.value = ''
+  }
+  reloadFromFirstPage()
+}
+
+async function loadAccess() {
+  try {
+    const data = await getFeedbackAccess()
+    const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
+    access.value = {
+      superAdmin: Boolean(data.superAdmin ?? data.super_admin),
+      receiveAreas: data.receiveCategories || data.receive_categories || data.receiveAreas || data.receive_areas || [],
+      manageAreas: data.manageCategories || data.manage_categories || data.manageAreas || data.manage_areas || [],
+      availableAreas: rawAreas.map(option => ({
+        key: option.key,
+        label: option.label
+      }))
+    }
+  } catch (_e) {
+    access.value = { superAdmin: false, receiveAreas: [], manageAreas: [], availableAreas: [] }
+  }
 }
 
 async function toggleExpand(id) {
@@ -308,13 +395,13 @@ async function loadFeedbackDetail(id) {
   }
 }
 
-function typeLabel(type) {
-  return type === 'FEEDBACK' ? '反馈工单' : (type || '反馈工单')
+function categoryLabel(category) {
+  const option = categoryOptions.value.find(item => item.key === category)
+  return option ? option.label : (category || '其他模块')
 }
 
-function categoryLabel(category) {
-  const map = { FEATURE: '功能建议', BUG: '问题报告', CONTENT: '内容问题', ACCOUNT: '账号问题', OTHER: '其他' }
-  return map[category] || category
+function typeLabel(type) {
+  return feedbackTypeOptions.find(option => option.key === type)?.label || type || '其他'
 }
 
 function statusLabel(status, hasAdminReply) {
@@ -342,6 +429,9 @@ async function loadFeedback({ append = false } = {}) {
       page: page.value,
       pageSize,
       status: statusParam(),
+      type: filterType.value || undefined,
+      category: filterCategory.value || undefined,
+      mine: viewMode.value === 'mine',
       q: q.value.trim() || undefined
     })
     const items = data.items || []
@@ -381,13 +471,13 @@ function handleWindowKeydown(event) {
 
 async function submitFeedback() {
   const content = newFeedback.value.content.trim()
-  if (!content || !newFeedback.value.category) return
+  if (!content || !newFeedback.value.type || !newFeedback.value.category) return
   formError.value = ''
   submitting.value = true
   try {
     await createFeedback({ ...newFeedback.value, content })
     showNewForm.value = false
-    newFeedback.value = { type: '', category: '', content: '', clientInfoConsent: false }
+    newFeedback.value = { type: 'BUG', category: '', content: '', clientInfoConsent: false }
     page.value = 1
     await loadFeedback()
   } catch (e) {
@@ -427,8 +517,18 @@ async function closeFeedback(id) {
   }
 }
 
+async function dismissFeedback(id) {
+  try {
+    await updateFeedbackStatus(id, 'DISMISSED')
+    await loadFeedback()
+  } catch (e) {
+    error.value = e.message || '操作失败'
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('keydown', handleWindowKeydown)
+  await loadAccess()
   await loadFeedback()
   const reportId = route.query.id ? String(route.query.id) : ''
   if (reportId) {
@@ -455,6 +555,60 @@ onBeforeUnmount(() => {
 /* Hero 区 */
 .page-feedback .hero {
   --wm: '反馈';
+}
+
+.feedback-scope-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.scope-tabs {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.scope-tabs button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-60);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scope-tabs button:last-child { border-right: 0; }
+.scope-tabs button.on { background: var(--tea); color: var(--cream); }
+
+.area-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.area-filter select {
+  min-height: 34px;
+  padding: 0 30px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.access-admin-link {
+  margin-left: auto;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 /* 新建反馈弹窗 */
@@ -561,17 +715,16 @@ textarea.form-control {
   flex-wrap: wrap;
 }
 
-.fc-type {
+.fc-area {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
   border-radius: 6px;
+  background: var(--yellow);
+  color: var(--ink);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
 }
-
-.fc-type.type-FEEDBACK { background: var(--tea); color: var(--cream); }
 
 .fc-category {
   display: inline-flex;
@@ -791,6 +944,11 @@ textarea.form-control {
 .act-btn.small {
   padding: 5px 12px;
   font-size: 12px;
+}
+
+.act-btn.danger {
+  border-color: var(--rouge);
+  color: var(--rouge);
 }
 
 .act-btn:disabled {

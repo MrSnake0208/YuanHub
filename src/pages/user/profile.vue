@@ -31,6 +31,7 @@
             </div>
             <router-link class="act-btn primary admin-entry" to="/operator/admin">管理图鉴</router-link>
             <router-link class="act-btn primary admin-entry" to="/feedback">反馈中心</router-link>
+            <router-link class="act-btn primary admin-entry" to="/feedback/admin">反馈权限</router-link>
           </div>
 
           <div class="connection-card" v-reveal>
