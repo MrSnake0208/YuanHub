@@ -110,6 +110,14 @@ export async function listFeedback(params = {}) {
   }
 }
 
+export function listMyFeedback(params = {}) {
+  return listFeedback({ ...params, mine: true })
+}
+
+export function listManagedFeedback(params = {}) {
+  return listFeedback({ ...params, mine: false })
+}
+
 // 获取单个反馈详情
 export function getFeedbackAccess() {
   return request('/v1/reports/access', { auth: true })

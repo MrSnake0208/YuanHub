@@ -20,6 +20,10 @@
       <section>
         <div class="wrap">
           <div class="access-toolbar">
+            <div class="access-links">
+              <router-link to="/feedback">我的反馈</router-link>
+              <router-link v-if="currentAccess.manageAreas.length" to="/feedback/manage">待处理反馈</router-link>
+            </div>
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
               <input v-model.trim="filter" name="feedback-access-filter" type="search" placeholder="搜索用户名或用户 ID" aria-label="搜索反馈授权用户" />
@@ -67,15 +71,26 @@
           <div v-if="!form.userId" class="user-picker">
             <label>
               <span>用户</span>
-              <input v-model.trim="userQuery" name="feedback-access-user" type="search" placeholder="输入用户名" @input="scheduleUserSearch" />
+              <input v-model.trim="userQuery" name="feedback-access-user" type="search" placeholder="输入用户名或邮箱" @input="scheduleUserSearch" />
             </label>
             <div v-if="searchingUsers" class="picker-state">正在搜索…</div>
+            <div v-else-if="userQuery && !userResults.length && !editorError" class="picker-state">没有找到已激活用户</div>
             <button v-for="user in userResults" :key="user.id" class="user-result" type="button" @click="selectUser(user)">
-              <strong>{{ user.user_name || user.userName }}</strong><code>{{ user.id }}</code>
+              <span>
+                <strong>{{ user.userName || user.user_name }}</strong>
+                <small>{{ user.email || '未提供邮箱' }}</small>
+              </span>
+              <code>{{ user.id }}</code>
             </button>
           </div>
 
-          <div v-else class="selected-user"><strong>{{ form.userName }}</strong><code>{{ form.userId }}</code></div>
+          <div v-else class="selected-user">
+            <span>
+              <strong>{{ form.userName }}</strong>
+              <small>{{ selectedUser?.email || '未从授权记录返回邮箱' }}</small>
+            </span>
+            <code>{{ form.userId }}</code>
+          </div>
 
           <fieldset class="permission-group">
             <legend>接收新反馈通知</legend>
@@ -118,7 +133,8 @@ import {
   listFeedbackAccessGrants,
   updateFeedbackAccessGrant
 } from '@/api/feedback.js'
-import { searchUsers } from '@/api/user.js'
+import { searchFeedbackAccessUsers } from '@/api/user.js'
+import { dialog } from '@/utils/dialog.js'
 
 const DEFAULT_AREAS = [
   { key: 'INVENTORY', label: '库存管理' },
@@ -141,8 +157,10 @@ const editorError = ref('')
 const userQuery = ref('')
 const userResults = ref([])
 const searchingUsers = ref(false)
+const selectedUser = ref(null)
 let searchTimer = null
 const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [] })
+const currentAccess = ref({ manageAreas: [] })
 
 const receiverCount = computed(() => grants.value.reduce((sum, grant) => sum + grant.receiveAreas.length, 0))
 const managerCount = computed(() => grants.value.reduce((sum, grant) => sum + grant.manageAreas.length, 0))
@@ -176,7 +194,10 @@ async function load() {
   try {
     const [grantData, accessData] = await Promise.all([listFeedbackAccessGrants(), getFeedbackAccess()])
     grants.value = Array.isArray(grantData) ? grantData.map(normalizeGrant) : []
-    const rawAreas = accessData.availableAreas || accessData.available_areas || []
+    currentAccess.value = {
+      manageAreas: accessData.manageCategories || accessData.manage_categories || accessData.manageAreas || accessData.manage_areas || []
+    }
+    const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
     if (rawAreas.length) areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
   } catch (e) {
     error.value = e.message || '权限配置加载失败'
@@ -192,6 +213,7 @@ function resetForm() {
   form.manageAreas = []
   userQuery.value = ''
   userResults.value = []
+  selectedUser.value = null
   editorError.value = ''
 }
 
@@ -200,6 +222,7 @@ function openEdit(grant) {
   resetForm()
   form.userId = grant.userId
   form.userName = grant.userName
+  selectedUser.value = { id: grant.userId, userName: grant.userName, email: '' }
   form.receiveAreas = [...grant.receiveAreas]
   form.manageAreas = [...grant.manageAreas]
   editing.value = true
@@ -209,6 +232,7 @@ function closeEditor() { if (!saving.value) editing.value = false }
 function scheduleUserSearch() {
   clearTimeout(searchTimer)
   userResults.value = []
+  editorError.value = ''
   if (!userQuery.value) return
   searchTimer = setTimeout(runUserSearch, 250)
 }
@@ -216,8 +240,7 @@ function scheduleUserSearch() {
 async function runUserSearch() {
   searchingUsers.value = true
   try {
-    const data = await searchUsers({ userName: userQuery.value, page: 1, size: 10 })
-    userResults.value = Array.isArray(data) ? data : []
+    userResults.value = await searchFeedbackAccessUsers({ q: userQuery.value, page: 1, size: 10 })
   } catch (e) {
     editorError.value = e.message || '用户搜索失败'
   } finally {
@@ -227,12 +250,27 @@ async function runUserSearch() {
 
 function selectUser(user) {
   form.userId = user.id
-  form.userName = user.user_name || user.userName || user.id
+  form.userName = user.userName || user.user_name || user.id
+  selectedUser.value = { ...user, id: user.id, userName: form.userName }
   userResults.value = []
 }
 
 async function saveGrant() {
   if (!form.userId) return
+  const confirmed = await dialog.confirm({
+    title: '确认反馈授权',
+    message: [
+      '授权对象',
+      '用户名：' + form.userName,
+      '邮箱：' + (selectedUser.value?.email || '未从授权记录返回'),
+      '用户 ID：' + form.userId,
+      '',
+      '接收新反馈：' + (form.receiveAreas.map(areaLabel).join('、') || '无'),
+      '可管理反馈：' + (form.manageAreas.map(areaLabel).join('、') || '无')
+    ].join('\n'),
+    confirmText: '确认保存'
+  })
+  if (!confirmed) return
   saving.value = true
   editorError.value = ''
   try {
@@ -266,6 +304,8 @@ onMounted(load)
 .page-feedback-access { min-height: 100vh }
 .page-feedback-access .hero { --wm: '权限' }
 .access-toolbar { display: flex; align-items: center; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line) }
+.access-links { display: inline-flex; gap: 12px; margin-right: auto; font-size: 13px; font-weight: 700 }
+.access-links a { color: var(--accent-strong); text-decoration: none }
 .access-search { display: flex; align-items: center; gap: 8px; min-width: 260px; padding: 0 12px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60) }
 .access-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink) }
 .access-count { color: var(--ink-60); font-size: 12px; font-weight: 700; margin-right: auto }
@@ -289,6 +329,8 @@ onMounted(load)
 .user-picker input { height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink) }
 .picker-state { padding: 10px; color: var(--ink-60); font-size: 12px }
 .user-result { width: 100%; display: flex; justify-content: space-between; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
+.user-result span,.selected-user span { display: grid; gap: 3px; text-align: left }
+.user-result small,.selected-user small { color: var(--ink-60); font-size: 11px }
 .selected-user { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--line) }
 .selected-user code { color: var(--ink-60) }
 .permission-group { margin-top: 18px; padding: 0; border: 0 }

@@ -5,11 +5,14 @@ import {
   createFeedback,
   getFeedback,
   getFeedbackAccess,
+  listManagedFeedback,
+  listMyFeedback,
   listFeedback,
   listFeedbackAccessGrants,
   updateFeedbackAccessGrant,
   updateFeedbackStatus
 } from '../src/api/feedback.js'
+import { searchFeedbackAccessUsers } from '../src/api/user.js'
 
 function apiResponse(data) {
   return {
@@ -138,6 +141,39 @@ test('列表类型、板块筛选和管理视图使用 type/category/mine 查询
   assert.match(requestUrl, /type=BUG/)
   assert.match(requestUrl, /category=OPERATOR/)
   assert.match(requestUrl, /mine=false/)
+})
+
+test('个人和管理列表使用固定的 mine 语义', async () => {
+  const requestUrls = []
+  await withFetch(async (url) => {
+    requestUrls.push(String(url))
+    return apiResponse({ reports: [], total: 0, page: 1, page_size: 20 })
+  }, async () => {
+    await listMyFeedback({ mine: false })
+    await listManagedFeedback({ mine: true })
+  })
+  assert.match(requestUrls[0], /mine=true/)
+  assert.match(requestUrls[1], /mine=false/)
+})
+
+test('反馈授权候选搜索使用管理员接口并保留邮箱身份信息', async () => {
+  let request
+  await withFetch(async (url, options) => {
+    request = { url: String(url), options }
+    return apiResponse([{ id: 'user-1', user_name: 'alice', email: 'alice@example.com', activated: true }])
+  }, async () => {
+    const users = await searchFeedbackAccessUsers({ q: 'alice@example.com', page: 1, size: 10 })
+    assert.deepEqual(users[0], {
+      id: 'user-1',
+      userName: 'alice',
+      email: 'alice@example.com',
+      activated: true
+    })
+  })
+  assert.match(request.url, /\/v1\/admin\/feedback-access\/users\?/)
+  assert.match(request.url, /q=alice%40example.com/)
+  assert.doesNotMatch(request.url, /\/user\/search/)
+  assert.equal(request.options.method, 'GET')
 })
 
 test('反馈授权接口区分接收模块和管理模块', async () => {

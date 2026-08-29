@@ -44,10 +44,6 @@
           </div>
 
           <div class="feedback-scope-bar">
-            <div v-if="canManageFeedback" class="scope-tabs" role="group" aria-label="反馈视图">
-              <button :class="{ on: viewMode === 'mine' }" type="button" @click="setViewMode('mine')">我的反馈</button>
-              <button :class="{ on: viewMode === 'managed' }" type="button" @click="setViewMode('managed')">待管理</button>
-            </div>
             <label class="area-filter">
               <span>反馈类型</span>
               <select v-model="filterType" @change="reloadFromFirstPage">
@@ -59,10 +55,13 @@
               <span>反馈板块</span>
               <select v-model="filterCategory" @change="reloadFromFirstPage">
                 <option value="">全部板块</option>
-                <option v-for="option in visibleCategoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+                <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
               </select>
             </label>
-            <router-link v-if="access.superAdmin" class="access-admin-link" to="/feedback/admin">权限配置</router-link>
+            <div class="feedback-entry-links">
+              <router-link v-if="access.manageAreas.length" class="access-admin-link" to="/feedback/manage">待处理反馈</router-link>
+              <router-link v-if="access.superAdmin" class="access-admin-link" to="/feedback/admin">权限配置</router-link>
+            </div>
           </div>
 
           <!-- 新建反馈表单 -->
@@ -167,7 +166,7 @@
                     <h4>对话记录</h4>
                     <div v-for="msg in item.messages" :key="msg.id" class="fc-message" :class="{ 'is-admin': msg.isAdmin }">
                       <div class="fc-msg-head">
-                        <span class="fc-msg-author">{{ msg.isAdmin ? '管理员' : (viewMode === 'managed' ? '提交人' : '我') }}</span>
+                        <span class="fc-msg-author">{{ msg.isAdmin ? '管理员' : '我' }}</span>
                         <span class="fc-msg-date">{{ formatDate(msg.createdAt) }}</span>
                       </div>
                       <div class="fc-msg-content">{{ msg.content }}</div>
@@ -180,15 +179,10 @@
                       @click="showReplyForm(item.id)"
                     >追加消息</button>
                     <button
-                      v-if="item.status === 'OPEN' && (item.viewerIsReporter || item.viewerCanManage)"
+                      v-if="item.status === 'OPEN' && item.viewerIsReporter"
                       class="act-btn small"
                       @click="closeFeedback(item.id)"
                     >标记完成</button>
-                    <button
-                      v-if="viewMode === 'managed' && item.status === 'OPEN'"
-                      class="act-btn small danger"
-                      @click="dismissFeedback(item.id)"
-                    >驳回</button>
                   </div>
                   <div v-if="replyTarget === item.id" class="fc-reply-form">
                     <textarea
@@ -236,7 +230,7 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import { X } from '@lucide/vue'
 import {
   createFeedback,
-  listFeedback,
+  listMyFeedback,
   getFeedback,
   getFeedbackAccess,
   appendFeedbackMessage,
@@ -254,7 +248,6 @@ const q = ref('')
 const filterStatus = ref('全部')
 const filterType = ref('')
 const filterCategory = ref('')
-const viewMode = ref('mine')
 const access = ref({ superAdmin: false, receiveAreas: [], manageAreas: [], availableAreas: [] })
 const feedbackTypeOptions = [
   { key: 'BUG', label: '问题报告' },
@@ -274,11 +267,6 @@ const DEFAULT_AREAS = [
   { key: 'OTHER', label: '其他模块' }
 ]
 const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
-const canManageFeedback = computed(() => access.value.manageAreas.length > 0)
-const visibleCategoryOptions = computed(() => {
-  if (viewMode.value === 'mine') return categoryOptions.value
-  return categoryOptions.value.filter(option => access.value.manageAreas.includes(option.key))
-})
 const expandedId = ref(null)
 const detailLoading = ref(false)
 const detailError = ref(null)
@@ -339,14 +327,6 @@ function setFilter(status) {
   reloadFromFirstPage()
 }
 
-function setViewMode(mode) {
-  viewMode.value = mode
-  if (mode === 'managed' && filterCategory.value && !access.value.manageAreas.includes(filterCategory.value)) {
-    filterCategory.value = ''
-  }
-  reloadFromFirstPage()
-}
-
 async function loadAccess() {
   try {
     const data = await getFeedbackAccess()
@@ -382,6 +362,11 @@ async function loadFeedbackDetail(id) {
   try {
     const detail = await getFeedback(id)
     const index = feedbacks.value.findIndex(feedback => feedback.id === id)
+    if (index === -1 && !detail.viewerIsReporter) {
+      expandedId.value = null
+      detailError.value = '该工单不属于我的反馈'
+      return
+    }
     if (index !== -1) {
       feedbacks.value.splice(index, 1, detail)
     } else {
@@ -425,13 +410,12 @@ async function loadFeedback({ append = false } = {}) {
   loading.value = true
   error.value = null
   try {
-    const data = await listFeedback({
+    const data = await listMyFeedback({
       page: page.value,
       pageSize,
       status: statusParam(),
       type: filterType.value || undefined,
       category: filterCategory.value || undefined,
-      mine: viewMode.value === 'mine',
       q: q.value.trim() || undefined
     })
     const items = data.items || []
@@ -517,15 +501,6 @@ async function closeFeedback(id) {
   }
 }
 
-async function dismissFeedback(id) {
-  try {
-    await updateFeedbackStatus(id, 'DISMISSED')
-    await loadFeedback()
-  } catch (e) {
-    error.value = e.message || '操作失败'
-  }
-}
-
 onMounted(async () => {
   window.addEventListener('keydown', handleWindowKeydown)
   await loadAccess()
@@ -605,10 +580,16 @@ onBeforeUnmount(() => {
 }
 
 .access-admin-link {
-  margin-left: auto;
   color: var(--accent-strong);
   font-size: 13px;
   font-weight: 700;
+}
+
+.feedback-entry-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
 }
 
 /* 新建反馈弹窗 */
