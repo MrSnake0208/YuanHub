@@ -74,7 +74,7 @@
               <input v-model.trim="userQuery" name="feedback-access-user" type="search" placeholder="输入用户名或邮箱" @input="scheduleUserSearch" />
             </label>
             <div v-if="searchingUsers" class="picker-state">正在搜索…</div>
-            <div v-else-if="userQuery && !userResults.length && !editorError" class="picker-state">没有找到已激活用户</div>
+            <div v-else-if="userQuery.trim() && !userResults.length && !editorError" class="picker-state">没有找到已激活用户</div>
             <button v-for="user in userResults" :key="user.id" class="user-result" type="button" @click="selectUser(user)">
               <span>
                 <strong>{{ user.userName || user.user_name }}</strong>
@@ -233,14 +233,14 @@ function scheduleUserSearch() {
   clearTimeout(searchTimer)
   userResults.value = []
   editorError.value = ''
-  if (!userQuery.value) return
+  if (!userQuery.value.trim()) return
   searchTimer = setTimeout(runUserSearch, 250)
 }
 
 async function runUserSearch() {
   searchingUsers.value = true
   try {
-    userResults.value = await searchFeedbackAccessUsers({ q: userQuery.value, page: 1, size: 10 })
+    userResults.value = await searchFeedbackAccessUsers({ q: userQuery.value.trim(), page: 1, size: 10 })
   } catch (e) {
     editorError.value = e.message || '用户搜索失败'
   } finally {

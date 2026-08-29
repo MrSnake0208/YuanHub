@@ -176,6 +176,17 @@ test('反馈授权候选搜索使用管理员接口并保留邮箱身份信息',
   assert.equal(request.options.method, 'GET')
 })
 
+test('反馈授权候选搜索不会为全是空白的输入发送请求', async () => {
+  let called = false
+  await withFetch(async () => {
+    called = true
+    return apiResponse([])
+  }, async () => {
+    assert.deepEqual(await searchFeedbackAccessUsers({ q: '   ', page: 1, size: 10 }), [])
+  })
+  assert.equal(called, false)
+})
+
 test('反馈授权接口区分接收模块和管理模块', async () => {
   const requests = []
   await withFetch(async (url, options = {}) => {
