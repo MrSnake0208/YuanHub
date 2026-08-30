@@ -197,15 +197,15 @@ function submitCreate() {
 .ac-label { font-size: 11.5px; font-weight: 800; color: var(--ink-60); letter-spacing: .08em }
 .account-selector select { width: 100%; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s, box-shadow .3s }
 .account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
-.account-soft-dropdown { position: relative; width: 100%; min-width: 0 }
+.account-soft-dropdown { position: relative; width: 100%; min-width: 0; font-family: var(--font-b); font-size: 14px }
 .account-native-select { position: absolute; width: 1px !important; height: 1px; margin: -1px; padding: 0 !important; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; pointer-events: none }
-.account-soft-trigger { position: relative; display: flex; width: 100%; min-width: 160px; min-height: 42px; align-items: center; padding: 10px 34px 10px 13px; overflow: hidden; border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; font-family: var(--font-b); font-size: 15px; font-weight: 600; line-height: 1.25; text-align: left; text-overflow: ellipsis; white-space: nowrap; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
+.account-soft-trigger { position: relative; display: flex; width: 100%; min-width: 160px; min-height: 42px; align-items: center; padding: 10px 34px 10px 13px; overflow: hidden; border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
 .account-soft-trigger::after { position: absolute; top: 50%; right: 14px; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ''; opacity: .72; transform: translateY(-65%) rotate(45deg); transition: transform .2s var(--ease) }
 .account-soft-trigger[aria-expanded='true']::after { transform: translateY(-35%) rotate(225deg) }
 .account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13); outline: 0 }
 .account-soft-trigger:disabled { cursor: not-allowed; opacity: .55 }
-.account-soft-listbox { position: absolute; z-index: 80; top: calc(100% + 5px); right: 0; left: 0; display: grid; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); scrollbar-color: var(--yellow-deep) transparent; scrollbar-width: thin }
-.account-soft-option { width: 100%; padding: 8px 10px; overflow: hidden; border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font-family: var(--font-b); font-size: 15px; font-weight: 600; line-height: 1.25; text-align: left; text-overflow: ellipsis; white-space: nowrap }
+.account-soft-listbox { position: absolute; z-index: 80; top: calc(100% + 5px); right: 0; left: 0; display: grid; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); font: inherit; scrollbar-color: var(--yellow-deep) transparent; scrollbar-width: thin }
+.account-soft-option { width: 100%; padding: 8px 10px; overflow: hidden; border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap }
 .account-soft-option:hover:not(:disabled),.account-soft-option:focus-visible,.account-soft-option[aria-selected='true'] { background: var(--cream); outline: 0 }
 .account-soft-option:disabled { cursor: not-allowed; opacity: .55 }
 .ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
@@ -261,7 +261,8 @@ function submitCreate() {
   .account-context { grid-template-columns: 1fr; gap: 13px }
   .account-selector { gap: 6px }
   .account-selector select { width: 100%; min-width: 0; min-height: 46px; font-size: 16px }
-  .account-soft-trigger { min-width: 0; min-height: 46px; font-size: 16px }
+  .account-soft-dropdown { font-size: 16px }
+  .account-soft-trigger { min-width: 0; min-height: 46px }
   .account-game-options label { min-height: 44px }
   .account-game small { white-space: normal }
   .account-manage { width: 100%; min-height: 44px; transform: none }
