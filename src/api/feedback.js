@@ -33,9 +33,19 @@ function normalizeMessage(message) {
   return {
     ...message,
     senderKind,
+    author: normalizeUser(message.author),
     isAdmin: message.isAdmin ?? message.is_admin ?? senderKind === 'ADMIN',
     createdAt: message.createdAt ?? message.created_at ?? null,
     images: Array.isArray(message.images) ? message.images : []
+  }
+}
+
+function normalizeUser(user) {
+  if (!user || typeof user !== 'object') return null
+  return {
+    ...user,
+    id: user.id || user.userId || user.user_id || '',
+    userName: user.userName ?? user.user_name ?? ''
   }
 }
 
@@ -50,6 +60,8 @@ function normalizeFeedback(report) {
     : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (legacyCategory ? 'OTHER' : (rawCategory || 'OTHER')))
   const type = legacyCategory ? rawCategory : rawType
   const rawQuota = report.quota && typeof report.quota === 'object' ? report.quota : null
+  const reporter = normalizeUser(report.reporter)
+  const handler = normalizeUser(report.handler)
   return {
     ...report,
     type,
@@ -62,6 +74,10 @@ function normalizeFeedback(report) {
     createdAt: report.createdAt ?? report.created_at ?? null,
     updatedAt: report.updatedAt ?? report.updated_at ?? null,
     mediaIds: report.mediaIds ?? report.media_ids ?? [],
+    reporter,
+    reporterName: report.reporterName ?? report.reporter_name ?? reporter?.userName ?? '',
+    reporterUserId: report.reporterUserId ?? report.reporter_user_id ?? reporter?.id ?? '',
+    handler,
     quota: rawQuota
       ? {
           ...rawQuota,

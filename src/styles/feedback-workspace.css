@@ -1,0 +1,89 @@
+.feedback-page { min-height: 100vh; }
+.feedback-page .feedback-hero { --wm: '反馈'; padding-top: 44px; }
+.feedback-page .feedback-hero h1 { margin-top: 18px; font-size: 48px; line-height: 1.08; }
+.feedback-page .feedback-hero h1 .small { margin-bottom: 4px; font-size: 16px; padding: 8px 12px 9px; }
+.feedback-page .feedback-hero .hero-sub { margin-top: 12px; max-width: 72ch; font-size: 14px; line-height: 1.7; }
+.feedback-page .feedback-hero .hero-stats { margin-top: 24px; }
+.feedback-page .feedback-hero .hero-stats > div { padding: 14px 18px 18px; }
+.feedback-page .feedback-hero .hero-stats .v { font-size: 27px; }
+.feedback-page .feedback-content { padding-bottom: 12px; }
+
+.feedback-command-bar {
+  position: sticky;
+  top: 16px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 248, 236, .95);
+  box-shadow: 0 12px 30px -24px rgba(73, 59, 44, .35);
+  backdrop-filter: blur(12px);
+}
+
+.feedback-primary-action,.feedback-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 800 13px var(--font-b);
+  cursor: pointer;
+}
+
+.feedback-primary-action { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.feedback-button.danger { border-color: var(--rouge); color: var(--rouge); }
+.feedback-primary-action:disabled,.feedback-button:disabled { opacity: .5; cursor: default; }
+
+.feedback-status-tabs { min-width: 0; display: flex; gap: 3px; padding: 3px; border-radius: 7px; background: rgba(73, 59, 44, .06); }
+.feedback-status-tabs button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font: 800 12px var(--font-b); cursor: pointer; white-space: nowrap; }
+.feedback-status-tabs button.on { background: var(--yellow); color: var(--ink); }
+
+.feedback-search { min-width: 210px; flex: 1; display: flex; align-items: center; gap: 8px; margin-left: auto; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-35); }
+.feedback-search input { min-width: 0; width: 100%; height: 38px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 13px var(--font-b); }
+.feedback-search button { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); cursor: pointer; }
+
+.feedback-filter-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.feedback-filter { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-60); font-size: 11.5px; font-weight: 800; }
+.feedback-filter select { min-height: 36px; padding: 0 30px 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font-size: 13px; }
+.feedback-result-meta { margin-left: auto; color: var(--ink-60); font-size: 11.5px; font-weight: 700; }
+
+.feedback-form-control { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--surface); color: var(--ink); font: 14px var(--font-b); }
+.feedback-form-control:focus { border-color: var(--accent); }
+textarea.feedback-form-control { min-height: 86px; resize: vertical; }
+.feedback-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.feedback-reply-form { display: grid; gap: 10px; margin-top: 12px; }
+.feedback-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 1080px) {
+  .feedback-command-bar { top: 78px; }
+}
+
+@media (max-width: 767px) {
+  .feedback-page .feedback-hero { padding-top: 24px; }
+  .feedback-page .feedback-hero h1 { margin-top: 16px; font-size: 36px; }
+  .feedback-page .feedback-hero h1 .small { font-size: 13px; }
+  .feedback-page .feedback-hero .hero-sub { font-size: 13px; }
+  .feedback-page .feedback-hero .hero-stats { margin-top: 18px; }
+  .feedback-command-bar { position: relative; top: auto; flex-wrap: wrap; margin-top: 10px; }
+  .feedback-primary-action { order: 1; flex: 1; min-height: 44px; }
+  .feedback-status-tabs { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .feedback-status-tabs::-webkit-scrollbar { display: none; }
+  .feedback-status-tabs button { flex: 1 0 auto; min-height: 40px; }
+  .feedback-search { order: 2; min-width: 0; flex: 2; }
+  .feedback-search input { height: 42px; font-size: 16px; }
+  .feedback-filter-row { align-items: stretch; flex-wrap: wrap; gap: 8px; }
+  .feedback-filter { flex: 1 1 calc(50% - 4px); display: grid; gap: 5px; }
+  .feedback-filter select { width: 100%; min-height: 44px; font-size: 16px; }
+  .feedback-result-meta { width: 100%; margin-left: 0; }
+  .feedback-button { min-height: 44px; }
+  .feedback-form-control { font-size: 16px; }
+}
