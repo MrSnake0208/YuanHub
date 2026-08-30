@@ -114,9 +114,24 @@
                   <template #composer>
                     <div v-if="replyTarget === item.id" class="feedback-reply-form">
                       <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="输入处理回复"></textarea>
+                      <div class="feedback-media-field">
+                        <div class="feedback-media-heading"><span>截图</span><small>{{ replyMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
+                        <label class="feedback-media-picker-button">
+                          <Paperclip :size="15" aria-hidden="true" />
+                          添加截图
+                          <input type="file" :accept="FEEDBACK_MEDIA_ACCEPT" multiple :disabled="replying || replyMedia.uploading" @change="replyMedia.selectFiles" />
+                        </label>
+                        <div v-if="replyMedia.items.length" class="feedback-media-preview-grid">
+                          <div v-for="(media, index) in replyMedia.items" :key="media.previewUrl || media.file.name + index" class="feedback-media-preview">
+                            <img :src="media.previewUrl" :alt="'待上传截图 ' + (index + 1)" />
+                            <button type="button" :disabled="replying || replyMedia.uploading" :aria-label="'移除第 ' + (index + 1) + ' 张截图'" title="移除截图" @click="replyMedia.remove(index)"><X :size="14" aria-hidden="true" /></button>
+                          </div>
+                        </div>
+                        <div v-if="replyMedia.error" class="feedback-media-error" role="alert">{{ replyMedia.error }}</div>
+                      </div>
                       <div class="feedback-form-actions">
-                        <button class="feedback-button" type="button" @click="cancelReply">取消</button>
-                        <button class="feedback-primary-action" type="button" :disabled="replying" @click="submitReply(item.id)">
+                        <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
+                        <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading" @click="submitReply(item.id)">
                           <Send :size="16" />{{ replying ? '发送中…' : '发送回复' }}
                         </button>
                       </div>
@@ -135,7 +150,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
+import { ArrowRight, CheckCircle2, CircleX, MessageSquarePlus, Paperclip, Search, Send, ShieldAlert, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
@@ -149,6 +164,7 @@ import {
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
+import { FEEDBACK_MEDIA_ACCEPT, MAX_FEEDBACK_MEDIA_COUNT, useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import '@/styles/feedback-workspace.css'
 
 const PAGE_SIZE = 20
@@ -190,6 +206,7 @@ const detailError = ref('')
 const replyTarget = ref('')
 const replyContent = ref('')
 const replying = ref(false)
+const replyMedia = useFeedbackMedia()
 let loadRequestId = 0
 
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
@@ -325,11 +342,13 @@ function closeDetail() {
 }
 
 function showReplyForm(id) {
+  replyMedia.clear()
   replyTarget.value = id
   replyContent.value = ''
 }
 
 function cancelReply() {
+  replyMedia.clear()
   replyTarget.value = ''
   replyContent.value = ''
 }
@@ -339,7 +358,8 @@ async function submitReply(id) {
   if (!content) return
   replying.value = true
   try {
-    replaceTicket(await appendFeedbackMessage(id, { content }))
+    const mediaIds = await replyMedia.uploadAll()
+    replaceTicket(await appendFeedbackMessage(id, { content, mediaIds }))
     cancelReply()
   } catch (e) {
     if (!await handleForbidden(e)) detailError.value = e.message || '发送失败'

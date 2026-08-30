@@ -13,6 +13,7 @@ import {
   updateFeedbackAccessGrant,
   updateFeedbackStatus
 } from '../src/api/feedback.js'
+import { uploadMedia } from '../src/api/media.js'
 import { searchFeedbackAccessUsers } from '../src/api/user.js'
 
 function apiResponse(data) {
@@ -258,4 +259,20 @@ test('追加消息和更新状态使用正确路径、字段和大写状态', as
   assert.deepEqual(JSON.parse(requests[0].options.body), { content: '补充', media_ids: [] })
   assert.match(requests[1].url, /\/v1\/reports\/rpt%2F1\/status$/)
   assert.deepEqual(JSON.parse(requests[1].options.body), { status: 'RESOLVED' })
+})
+
+test('媒体上传使用 file multipart 字段并解包返回的媒体对象', async () => {
+  let request
+  await withFetch(async (url, options) => {
+    request = { url: String(url), options }
+    return apiResponse({ id: 'med_1', url: 'https://api.example.test/media/med_1.png' })
+  }, async () => {
+    const file = new File(['png'], 'screen.png', { type: 'image/png' })
+    const result = await uploadMedia(file)
+    assert.equal(result.id, 'med_1')
+    assert.equal(request.options.body instanceof FormData, true)
+    assert.equal(request.options.body.get('file'), file)
+  })
+  assert.match(request.url, /\/v1\/media\/upload$/)
+  assert.equal(request.options.method, 'POST')
 })
