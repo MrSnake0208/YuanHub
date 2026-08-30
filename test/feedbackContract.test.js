@@ -4,6 +4,7 @@ import {
   appendFeedbackMessage,
   createFeedback,
   deleteFeedbackAccessGrant,
+  downloadFeedbackAttachment,
   getFeedback,
   getFeedbackAccess,
   listManagedFeedback,
@@ -14,6 +15,7 @@ import {
   updateFeedbackStatus
 } from '../src/api/feedback.js'
 import { uploadMedia } from '../src/api/media.js'
+import { auth } from '../src/store/auth.js'
 import { searchFeedbackAccessUsers } from '../src/api/user.js'
 
 function apiResponse(data) {
@@ -121,6 +123,7 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
         author: { id: 'usr_2', user_name: '管理员' },
         content: '收到',
         images: [{ id: 'med_1', url: '/media/1.webp' }],
+        files: [{ id: 'med_log', name: 'error.log', mime: 'text/plain', size: 2048, download_url: '/v1/reports/rpt_1/attachments/med_log' }],
         created_at: '2026-01-03T00:00:00Z'
       }]
     })
@@ -149,8 +152,100 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
     assert.equal(detail.messages[0].isAdmin, true)
     assert.equal(detail.messages[0].author.userName, '管理员')
     assert.equal(detail.messages[0].images[0].url, '/media/1.webp')
+    assert.deepEqual(detail.messages[0].files[0], {
+      id: 'med_log',
+      name: 'error.log',
+      mime: 'text/plain',
+      size: 2048,
+      download_url: '/v1/reports/rpt_1/attachments/med_log',
+      downloadUrl: '/v1/reports/rpt_1/attachments/med_log'
+    })
     assert.equal(detail.messages[0].createdAt, '2026-01-03T00:00:00Z')
   })
+})
+
+test('历史消息缺少 files 时归一化为空数组', async () => {
+  await withFetch(async () => apiResponse({
+    id: 'rpt_old',
+    type: 'BUG',
+    category: 'OTHER',
+    status: 'OPEN',
+    messages: [{ id: 'rpm_old', content: '旧消息', images: [] }]
+  }), async () => {
+    const detail = await getFeedback('rpt_old')
+    assert.deepEqual(detail.messages[0].files, [])
+  })
+})
+
+test('附件下载携带 JWT 并返回 Blob 与响应头', async () => {
+  const previousToken = auth.accessToken
+  auth.accessToken = 'access-token'
+  let request
+  try {
+    const result = await withFetch(async (url, options) => {
+      request = { url: String(url), options }
+      return new Response(new Blob(['log body'], { type: 'text/plain' }), {
+        status: 200,
+        headers: {
+          'Content-Disposition': 'attachment; filename="error.log"',
+          'Content-Type': 'text/plain'
+        }
+      })
+    }, () => downloadFeedbackAttachment('rpt/1', 'med/1'))
+    assert.equal(await result.blob.text(), 'log body')
+    assert.equal(result.headers.get('content-type'), 'text/plain')
+    assert.equal(request.options.headers.Authorization, 'Bearer access-token')
+    assert.match(request.url, /\/v1\/reports\/rpt%2F1\/attachments\/med%2F1$/)
+  } finally {
+    auth.accessToken = previousToken
+  }
+})
+
+test('附件下载 401 刷新后只重放一次且 JSON 错误保持错误对象', async () => {
+  const previous = {
+    accessToken: auth.accessToken,
+    refreshToken: auth.refreshToken,
+    refresh: auth.refresh
+  }
+  auth.accessToken = 'old-token'
+  auth.refreshToken = 'refresh-token'
+  let refreshCount = 0
+  auth.refresh = async () => {
+    refreshCount += 1
+    auth.accessToken = 'new-token'
+    return true
+  }
+  const requests = []
+  try {
+    const result = await withFetch(async (_url, options) => {
+      requests.push(options.headers.Authorization)
+      if (requests.length === 1) {
+        return new Response(JSON.stringify({ status_code: 401, message: 'expired' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      return new Response(new Blob(['ok']), {
+        status: 200,
+        headers: { 'Content-Disposition': 'attachment; filename="ok.log"' }
+      })
+    }, () => downloadFeedbackAttachment('rpt_1', 'med_1'))
+    assert.equal(await result.blob.text(), 'ok')
+    assert.equal(refreshCount, 1)
+    assert.deepEqual(requests, ['Bearer old-token', 'Bearer new-token'])
+
+    await assert.rejects(
+      withFetch(async () => new Response(JSON.stringify({ status_code: 404, message: '附件不存在' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }), () => downloadFeedbackAttachment('rpt_1', 'missing')),
+      error => error.status === 404 && error.message === '附件不存在'
+    )
+  } finally {
+    auth.accessToken = previous.accessToken
+    auth.refreshToken = previous.refreshToken
+    auth.refresh = previous.refresh
+  }
 })
 
 test('列表类型、板块筛选和管理视图使用 type/category/mine 查询参数', async () => {

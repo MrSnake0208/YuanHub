@@ -30,7 +30,7 @@ export function avatarUrl(path) {
 
 export async function request(
   path,
-  { method = "GET", body, auth = false, raw = false, multipart = false, headers: extraHeaders } = {},
+  { method = "GET", body, auth = false, raw = false, multipart = false, responseType = "json", headers: extraHeaders } = {},
 ) {
   let refreshed = false;
 
@@ -73,6 +73,13 @@ export async function request(
     }
 
     const res = await fetch(API_BASE + path, opts);
+
+    const disposition = res.headers && typeof res.headers.get === 'function'
+      ? res.headers.get('content-disposition')
+      : ''
+    if (responseType === 'blob' && res.ok && disposition) {
+      return { blob: await res.blob(), headers: res.headers }
+    }
 
     // 反序列化响应体
     let payload = null;
@@ -124,6 +131,10 @@ export async function request(
       }
       if (statusCode === 403) await refreshAccessAfterForbidden()
       throw requestError(message || "请求失败", statusCode, payload);
+    }
+
+    if (responseType === 'blob' && res.ok && statusCode === 200) {
+      throw requestError("附件响应无效", statusCode, payload)
     }
 
     // 成功

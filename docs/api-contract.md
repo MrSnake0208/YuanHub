@@ -1,6 +1,6 @@
 # BackEndV3-Share API 接口契约（前端接入参考）
 
-> 后端源码快照：`~/BackEndV3-Share` commit `a162003`（2026-08-24）。
+> 后端源码基线：`BackEndV3-Share` commit `d5a4508`（2026-08-30），并包含当前工作区反馈附件实现。
 > 本文覆盖 YuanHub 当前使用的接口，以及同一后端已提供的账号事件、第三方 OpenAPI、密探管理和广陵账房接口。
 > 后端继续演进后，以源码与 Swagger 为最终依据，并同步更新本文顶部 commit。
 
@@ -16,7 +16,7 @@
 
 ### 1.2 JSON、时间与字段命名
 
-- 普通请求使用 `Content-Type: application/json`；头像上传使用 `multipart/form-data`。
+- 普通请求使用 `Content-Type: application/json`；头像和反馈附件上传使用 `multipart/form-data`。
 - Jackson 全局采用 `SNAKE_CASE`，普通请求和响应字段使用 `snake_case`。
 - 时间字段为 ISO-8601/RFC 3339 字符串，例如 `2026-08-24T08:00:00Z`。
 - `Instant` 响应通常为 UTC；查询参数 `from`、`to` 接受带时区的 RFC 3339 时间。
@@ -645,10 +645,12 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 
 | 方法与路径 | 认证 | 请求 | 成功 data |
 |---|---|---|---|
+| POST /v1/media/upload | JWT | multipart field `file` | `{id,kind,name,url,mime,size,created_at}` |
 | POST /v1/reports | JWT | {type,category,content,media_ids?,client_info_consent?} | 新工单 |
 | GET /v1/reports | JWT | page,pageSize,status,type,category,mine,q | {reports,total,page,page_size,mine,...} |
 | GET /v1/reports/{id} | JWT | 无 | 工单详情，含 viewer_is_reporter/viewer_can_manage |
 | POST /v1/reports/{id}/messages | JWT | {content,media_ids?} | 更新后的工单 |
+| GET /v1/reports/{id}/attachments/{mediaId} | JWT | 无 | 原始文件二进制 |
 | PATCH /v1/reports/{id}/status | JWT | {status} | 更新后的工单 |
 | GET /v1/reports/access | JWT | 无 | 当前用户的接收/管理板块及超级管理员标识 |
 | GET /v1/admin/feedback-access | 超级管理员 | 无 | 授权列表 |
@@ -659,6 +661,29 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
 
 旧授权字段 receive_areas/manage_areas 和旧反馈字段 area 继续兼容读取；新前端优先使用 receive_categories/manage_categories 与 category。
+
+反馈上传支持 JPG/JPEG、PNG、WebP、TXT、LOG、JSON、PDF、ZIP，单个附件最大 10 MiB；
+每条消息的截图与普通文件合计最多 3 个，创建和追加仍只提交一个 `media_ids` 数组。
+ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`，TXT/LOG 可接受浏览器未声明 MIME 的情况；
+服务端仍会复核扩展名、MIME、文件头或文本前缀。
+
+上传响应的 `kind` 为 `IMAGE` 或 `FILE`。图片 `url` 是原有绝对公开地址；普通文件 `url=null`。
+工单详情中图片继续位于 `messages[].images`，普通文件位于 `messages[].files`：
+
+```json
+{
+  "id": "med_log",
+  "name": "error.log",
+  "mime": "text/plain",
+  "size": 2048,
+  "download_url": "/v1/reports/rpt_xxx/attachments/med_log"
+}
+```
+
+历史消息缺少 `files` 时按空数组处理。普通文件不映射到 `/media/**`，下载接口会同时校验工单查看权限、
+消息文件引用、媒体元数据和磁盘文件；成功响应带 `Content-Disposition: attachment`、`nosniff` 与
+`Cache-Control: private, no-store`，403/404 错误继续使用 JSON `ApiResult`。前端必须通过带 JWT 的 Blob 请求下载，
+不能把 Bearer Token 放入 URL 或使用普通匿名链接。
 
 ## 7. 密探公共图鉴管理（/v1/admin/operator-catalog）
 
