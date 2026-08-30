@@ -8,7 +8,8 @@
 // request.js 仅在运行时通过「动态 import」读取本模块，故无模块初始化循环。
 import { reactive } from 'vue'
 import * as userApi from '../api/user.js'
-import { isAdminAccessToken } from '../utils/authPermissions.js'
+import { getCurrentAdminAccess } from '../api/admin.js'
+import { hasAnyAdminCapability } from '../utils/authPermissions.js'
 
 const STORAGE_KEY = 'yh_auth'
 
@@ -29,6 +30,8 @@ function loadSaved() {
 }
 
 const saved = loadSaved()
+let adminAccessRequest = null
+let initRequest = null
 
 function persist() {
   localStorage.setItem(
@@ -45,17 +48,22 @@ export const auth = reactive({
   userInfo: saved.userInfo,
   accessToken: saved.accessToken,
   refreshToken: saved.refreshToken,
+  adminAccess: null,
+  adminAccessLoading: false,
+  adminAccessLoaded: false,
+  adminAccessError: '',
   get isLoggedIn() {
     return !!auth.accessToken
   },
   get isAdmin() {
-    return isAdminAccessToken(auth.accessToken)
+    return hasAnyAdminCapability(auth.adminAccess)
   },
 
   // 登录：调接口成功后保存 token 与用户信息
   async login(email, password) {
     const data = await userApi.login({ email, password })
     setTokens(data)
+    await auth.refreshAdminAccess({ suppressErrors: true })
     return data
   },
 
@@ -65,10 +73,39 @@ export const auth = reactive({
     try {
       const data = await userApi.refreshToken(auth.refreshToken)
       setTokens(data)
+      await auth.refreshAdminAccess({ suppressErrors: true })
       return true
     } catch (_e) {
       return false
     }
+  },
+
+  async refreshAdminAccess({ suppressErrors = false } = {}) {
+    if (!auth.accessToken) {
+      clearAdminAccess()
+      return null
+    }
+    if (adminAccessRequest) return adminAccessRequest
+
+    auth.adminAccessLoading = true
+    auth.adminAccessError = ''
+    adminAccessRequest = getCurrentAdminAccess()
+      .then(function (access) {
+        auth.adminAccess = access
+        return access
+      })
+      .catch(function (error) {
+        auth.adminAccess = null
+        auth.adminAccessError = error && error.message ? error.message : '管理权限读取失败'
+        if (!suppressErrors) throw error
+        return null
+      })
+      .finally(function () {
+        auth.adminAccessLoading = false
+        auth.adminAccessLoaded = true
+        adminAccessRequest = null
+      })
+    return adminAccessRequest
   },
 
   // 登出：清空状态并跳转登录页
@@ -76,12 +113,21 @@ export const auth = reactive({
     auth.accessToken = ''
     auth.refreshToken = ''
     auth.userInfo = null
+    clearAdminAccess()
     localStorage.removeItem(STORAGE_KEY)
     if (typeof location !== 'undefined') {
       location.href = '/login'
     }
   }
 })
+
+function clearAdminAccess() {
+  auth.adminAccess = null
+  auth.adminAccessLoading = false
+  auth.adminAccessLoaded = false
+  auth.adminAccessError = ''
+  adminAccessRequest = null
+}
 
 // 用登录 / 刷新接口的 data 更新并持久化 token 与用户信息
 export function setTokens(payload) {
@@ -98,7 +144,14 @@ export function setTokens(payload) {
 
 // 启动时恢复（已在模块加载时用 loadSaved 初始化，此处保证幂等并返回 auth）
 export function init() {
-  return auth
+  if (initRequest) return initRequest
+  initRequest = Promise.resolve()
+    .then(function () {
+      if (!auth.accessToken) return null
+      return auth.refreshAdminAccess({ suppressErrors: true })
+    })
+    .then(function () { return auth })
+  return initRequest
 }
 
 // 模块级具名导出（兼容旧调用方，如 IslandSidebar 的 logout as doLogout）

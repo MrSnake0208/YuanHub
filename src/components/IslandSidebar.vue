@@ -47,6 +47,9 @@
         <span class="no">05</span>通知中心
         <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
       </router-link>
+      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path === '/feedback' }">
+        <span class="no">06</span>反馈中心
+      </router-link>
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
       <a class="ext" href="#" style="--cc:var(--tea)"><span class="dot"></span>出战阵容编辑器<span class="who">BWiki</span></a>

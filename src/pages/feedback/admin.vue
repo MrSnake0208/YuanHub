@@ -22,7 +22,9 @@
           <div class="access-toolbar">
             <div class="access-links">
               <router-link to="/feedback">我的反馈</router-link>
-              <router-link v-if="currentAccess.manageAreas.length" to="/feedback/manage">待处理反馈</router-link>
+              <router-link v-if="canManageFeedback" to="/feedback/manage">待处理反馈</router-link>
+              <router-link v-if="canManageRoles" to="/admin/roles">角色管理</router-link>
+              <router-link v-if="canReadAudit" to="/admin/audit">审计记录</router-link>
             </div>
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
@@ -46,7 +48,7 @@
                   <td><strong>{{ grant.userName }}</strong><code>{{ grant.userId }}</code></td>
                   <td><span v-for="area in grant.receiveAreas" :key="'r-' + area" class="area-tag">{{ areaLabel(area) }}</span><span v-if="!grant.receiveAreas.length" class="muted">未配置</span></td>
                   <td><span v-for="area in grant.manageAreas" :key="'m-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.manageAreas.length" class="muted">未配置</span></td>
-                  <td>{{ formatDate(grant.updatedAt) }}</td>
+                  <td><strong>{{ grant.updatedBy || '未知用户' }}</strong><small>{{ formatDate(grant.updatedAt) }}</small></td>
                   <td class="ops">
                     <button class="icon-command" type="button" title="编辑授权" :aria-label="'编辑 ' + grant.userName" @click="openEdit(grant)"><Pencil :size="16" /></button>
                     <button class="icon-command danger" type="button" title="删除授权" :aria-label="'删除 ' + grant.userName" @click="removeGrant(grant)"><Trash2 :size="16" /></button>
@@ -124,8 +126,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
+import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import {
   deleteFeedbackAccessGrant,
@@ -135,6 +138,8 @@ import {
 } from '@/api/feedback.js'
 import { searchFeedbackAccessUsers } from '@/api/user.js'
 import { dialog } from '@/utils/dialog.js'
+import { auth } from '@/store/auth.js'
+import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 
 const DEFAULT_AREAS = [
   { key: 'INVENTORY', label: '库存管理' },
@@ -160,10 +165,17 @@ const searchingUsers = ref(false)
 const selectedUser = ref(null)
 let searchTimer = null
 const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [] })
-const currentAccess = ref({ manageAreas: [] })
+const router = useRouter()
 
 const receiverCount = computed(() => grants.value.reduce((sum, grant) => sum + grant.receiveAreas.length, 0))
 const managerCount = computed(() => grants.value.reduce((sum, grant) => sum + grant.manageAreas.length, 0))
+const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
+const canManageRoles = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ROLE_MANAGE))
+const canReadAudit = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.AUDIT_READ))
+const currentUserId = computed(() => {
+  const user = auth.userInfo || {}
+  return user.id || user.user_id || user.userId || ''
+})
 const filteredGrants = computed(() => {
   const keyword = filter.value.toLowerCase()
   if (!keyword) return grants.value
@@ -176,6 +188,7 @@ function normalizeGrant(grant) {
     userName: grant.userName || grant.user_name || '未知用户',
     receiveAreas: grant.receiveCategories || grant.receive_categories || grant.receiveAreas || grant.receive_areas || [],
     manageAreas: grant.manageCategories || grant.manage_categories || grant.manageAreas || grant.manage_areas || [],
+    updatedBy: grant.updatedBy || grant.updated_by || '',
     updatedAt: grant.updatedAt || grant.updated_at || null
   }
 }
@@ -194,12 +207,10 @@ async function load() {
   try {
     const [grantData, accessData] = await Promise.all([listFeedbackAccessGrants(), getFeedbackAccess()])
     grants.value = Array.isArray(grantData) ? grantData.map(normalizeGrant) : []
-    currentAccess.value = {
-      manageAreas: accessData.manageCategories || accessData.manage_categories || accessData.manageAreas || accessData.manage_areas || []
-    }
     const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
     if (rawAreas.length) areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
   } catch (e) {
+    if (await handleForbidden(e)) return
     error.value = e.message || '权限配置加载失败'
   } finally {
     loading.value = false
@@ -242,6 +253,7 @@ async function runUserSearch() {
   try {
     userResults.value = await searchFeedbackAccessUsers({ q: userQuery.value.trim(), page: 1, size: 10 })
   } catch (e) {
+    if (await handleForbidden(e)) return
     editorError.value = e.message || '用户搜索失败'
   } finally {
     searchingUsers.value = false
@@ -274,13 +286,12 @@ async function saveGrant() {
   saving.value = true
   editorError.value = ''
   try {
-    const saved = await updateFeedbackAccessGrant(form.userId, form)
-    const normalized = normalizeGrant(saved)
-    const index = grants.value.findIndex(grant => grant.userId === normalized.userId)
-    if (index === -1) grants.value.push(normalized)
-    else grants.value.splice(index, 1, normalized)
+    await updateFeedbackAccessGrant(form.userId, form)
+    if (form.userId === currentUserId.value) await auth.refreshAdminAccess({ suppressErrors: true })
+    await load()
     editing.value = false
   } catch (e) {
+    if (await handleForbidden(e)) return
     editorError.value = e.message || '保存失败'
   } finally {
     saving.value = false
@@ -291,13 +302,23 @@ async function removeGrant(grant) {
   if (!confirm('删除“' + grant.userName + '”的反馈授权？')) return
   try {
     await deleteFeedbackAccessGrant(grant.userId)
-    grants.value = grants.value.filter(item => item.userId !== grant.userId)
+    if (grant.userId === currentUserId.value) await auth.refreshAdminAccess({ suppressErrors: true })
+    await load()
   } catch (e) {
+    if (await handleForbidden(e)) return
     error.value = e.message || '删除失败'
   }
 }
 
+async function handleForbidden(errorValue) {
+  if (!errorValue || errorValue.status !== 403) return false
+  editing.value = false
+  await router.replace({ path: '/forbidden', query: { from: '/feedback/admin' } })
+  return true
+}
+
 onMounted(load)
+onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 </script>
 
 <style scoped>
@@ -319,6 +340,7 @@ onMounted(load)
 .access-table th,.access-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
 .access-table th { background: var(--tea); color: var(--cream); font-size: 12px }
 .access-table td strong,.access-table td code { display: block }
+.access-table td small { display: block; margin-top: 4px; color: var(--ink-60); font-size: 11px }
 .access-table td code { margin-top: 3px; color: var(--ink-35); font-size: 11px }
 .access-table .ops { width: 92px; white-space: nowrap; text-align: right }
 .area-tag { display: inline-block; margin: 0 5px 5px 0; padding: 2px 7px; border-radius: 6px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 700 }

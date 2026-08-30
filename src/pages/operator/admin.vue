@@ -17,7 +17,7 @@
             <div><div class="k">目录条目</div><div class="v">{{ rows.length }}<small>位</small></div></div>
             <div><div class="k">SP 形态</div><div class="v">{{ spCount }}<small>位</small></div></div>
             <div><div class="k">奇闻待维护</div><div class="v" :class="{ warn: missingOddityCount }">{{ missingOddityCount }}<small>位</small></div></div>
-            <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">身份</div><div class="v">管理员<small>status ≥ 2</small></div></div>
+            <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">当前能力</div><div class="v">图鉴管理<small>已授权</small></div></div>
           </div>
         </div>
       </header>
@@ -317,7 +317,7 @@
         <template #big>密探公共图鉴<br><span>管理端</span></template>
         <template #fine>
           <b>YuanHub</b> · 密探公共图鉴管理<br>
-          仅管理员（status ≥ 2）可增删改查 · 与个人密探养成档案隔离<br>
+          仅具有公共图鉴写入权限的管理员可增删改查 · 与个人密探养成档案隔离<br>
           改动即时生效，请谨慎操作
         </template>
       </SiteFooter>
@@ -327,6 +327,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
@@ -346,6 +347,7 @@ import { elementAppearance } from '../../data/inventory/elementColors.js'
 import { OPERATOR_ODDITY_KEYS, normalizeOperatorOdditySchema } from '../../utils/operatorCombatStats.js'
 
 const rows = ref([])
+const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const forbidden = ref('')
@@ -573,6 +575,7 @@ async function uploadAvatar() {
     form.value.avatarPick = null
     notice.value = '头像已上传，即时对公共图鉴生效'
   } catch (err) {
+    if (await leaveIfForbidden(err)) return
     notice.value = humanErr(err, '头像上传失败')
     noticeError.value = true
   } finally {
@@ -595,6 +598,7 @@ async function removeAvatar() {
     form.value.avatarPick = null
     notice.value = '头像已删除'
   } catch (err) {
+    if (await leaveIfForbidden(err)) return
     notice.value = humanErr(err, '头像删除失败')
     noticeError.value = true
   } finally {
@@ -696,6 +700,7 @@ async function save() {
       load()
     }, 800)
   } catch (err) {
+    if (await leaveIfForbidden(err)) return
     notice.value = humanErr(err, '保存失败')
     noticeError.value = true
   } finally {
@@ -722,6 +727,7 @@ async function onDelete(r) {
     await deleteAdminOperatorCatalog(r.id)
     await load()
   } catch (err) {
+    if (await leaveIfForbidden(err)) return
     await dialog.alert({ title: '删除失败', message: humanErr(err, '删除失败') })
   }
 }
@@ -737,6 +743,7 @@ async function load() {
     if (entries === null) throw new Error('管理接口响应格式异常，请刷新后重试')
     rows.value = entries.map(normalizeRow).sort(compareOperatorIdDesc)
   } catch (err) {
+    if (await leaveIfForbidden(err)) return
     const msg = err && err.message ? err.message : ''
     if (/forbidden|管理|administrator/i.test(msg)) {
       forbidden.value = msg
@@ -748,6 +755,14 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+async function leaveIfForbidden(errorValue) {
+  if (!errorValue || errorValue.status !== 403) return false
+  rows.value = []
+  closeEditor()
+  await router.replace({ path: '/forbidden', query: { from: '/operator/admin' } })
+  return true
 }
 
 function fmtTime(iso) {
