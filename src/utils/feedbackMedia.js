@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { uploadMedia } from '@/api/media.js'
 
 export const FEEDBACK_MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp'
@@ -86,7 +86,7 @@ export function useFeedbackMedia() {
 
   onBeforeUnmount(clear)
 
-  return {
+  return reactive({
     items,
     error,
     uploading,
@@ -94,5 +94,5 @@ export function useFeedbackMedia() {
     remove,
     clear,
     uploadAll
-  }
+  })
 }
