@@ -24,3 +24,30 @@
 - status: success
 - meta.locale: zh-CN
 - meta.date: 2026-08-30 13:47:22
+
+## 2026-08-30 16:30:51
+
+- service: apply_patch, npm, Node
+- params: 反馈中心、反馈工作台、反馈权限页、共享反馈组件、移动导航与反馈 API 契约测试
+- result: 实现紧凑工作区、桌面主从详情、移动端全屏详情、稳定分页、准确总数、提交人字段归一化、消息附件展示及权限弹窗布局优化
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 16:30:51
+
+## 2026-08-30 17:03:56
+
+- service: apply_patch
+- params: `src/api/request.js`, `docs/api-contract.md`
+- result: 将 YuanHub 默认后端地址从 `https://hub.maayuan.fun:16666` 切换为 `http://192.168.31.55:8080`
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 17:03:56
+
+## 2026-08-30 17:31:55
+
+- service: apply_patch
+- params: `.env.example` / `.env`、`src/api/request.js`、API 配置说明
+- result: 移除源码中的固定后端地址，改由 Vite 环境变量 `VITE_API_BASE` 配置；未配置时使用当前站点
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 17:31:55

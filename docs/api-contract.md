@@ -9,7 +9,7 @@
 ### 1.1 地址与调试
 
 - 后端本地地址：`http://localhost:8080`，无 context-path。
-- 前端通过 `VITE_API_BASE` 覆盖 API 地址；当前未配置时默认使用 `https://hub.maayuan.fun:16666`，不是 localhost。
+- 前端通过 `YuanHub/.env` 中的 `VITE_API_BASE` 配置 API 地址；未配置时使用当前站点地址。
 - Swagger UI：`http://localhost:8080/swagger-ui/index.html`。
 - OpenAPI JSON：`http://localhost:8080/v3/api-docs`。
 - CORS 当前为 `allowedOriginPatterns=*` 且允许 credentials；生产环境仍建议收敛来源。
