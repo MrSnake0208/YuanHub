@@ -113,9 +113,10 @@
                   </template>
                   <template #composer>
                     <div v-if="replyTarget === item.id" class="feedback-reply-form">
-                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="输入处理回复"></textarea>
+                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="输入处理回复" @paste="handleReplyMediaPaste"></textarea>
                       <div class="feedback-media-field">
                         <div class="feedback-media-heading"><span>截图</span><small>{{ replyMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
+                        <small class="feedback-media-hint">请先点击上方文本框，再按 Ctrl/⌘ + V；未聚焦文本框时无法粘贴截图</small>
                         <label class="feedback-media-picker-button">
                           <Paperclip :size="15" aria-hidden="true" />
                           添加截图
@@ -312,6 +313,11 @@ async function selectTicket(id) {
   const item = feedbacks.value.find(ticket => ticket.id === id)
   if (!item || (item.messages && item.messages.length)) return
   await loadFeedbackDetail(id)
+}
+
+function handleReplyMediaPaste(event) {
+  if (replying.value) return
+  replyMedia.handlePaste(event)
 }
 
 async function loadFeedbackDetail(id) {

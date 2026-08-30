@@ -60,3 +60,39 @@
 - status: success
 - meta.locale: zh-CN
 - meta.date: 2026-08-30 21:00:06
+
+## 2026-08-30 21:36:19
+
+- service: devspace.write
+- params: `docs/plans/feedback-screenshot-paste-plan.md`
+- result: 基于只读调研新增反馈中心截图粘贴功能实施规划，包含现状、技术方案、改动范围、边界情况、测试建议与验收标准；未修改业务代码
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 21:36:19
+
+## 2026-08-30 21:50:08
+
+- service: apply_patch
+- params: `src/utils/feedbackMedia.js`, `src/pages/feedback/index.vue`, `src/pages/feedback/manage.vue`, `src/styles/feedback-workspace.css`
+- result: 统一文件选择与剪贴板图片入队，接入新建反馈、用户追加消息和管理员回复，补充忙碌状态保护、辅助提示及用户切换工单时的附件清理
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 21:50:08
+
+## 2026-08-30 22:33:12
+
+- service: apply_patch
+- params: `src/utils/feedbackMedia.js`
+- result: 针对实测粘贴无效补强剪贴板图片解析，兼容图片条目 MIME 与 File.type 不一致或为空的浏览器场景，并保护 getAsFile 异常
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 22:33:12
+
+## 2026-08-30 22:46:28
+
+- service: apply_patch
+- params: `src/pages/feedback/index.vue`, `src/pages/feedback/manage.vue`
+- result: 将三处截图粘贴提示改为明确要求先聚焦上方文本框，并说明未聚焦文本框时粘贴截图不会生效
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 22:46:28

@@ -116,9 +116,10 @@
                 </template>
                 <template #composer>
                   <div v-if="replyTarget === item.id" class="feedback-reply-form">
-                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="补充问题细节或回复内容"></textarea>
+                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="补充问题细节或回复内容" @paste="handleReplyMediaPaste"></textarea>
                       <div class="feedback-media-field">
                         <div class="feedback-media-heading"><span>截图</span><small>{{ replyMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
+                        <small class="feedback-media-hint">请先点击上方文本框，再按 Ctrl/⌘ + V；未聚焦文本框时无法粘贴截图</small>
                         <label class="feedback-media-picker-button">
                           <Paperclip :size="15" aria-hidden="true" />
                           添加截图
@@ -171,11 +172,12 @@
               </label>
               <label class="full">
                 <span>详细描述</span>
-                <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="请描述复现步骤、期望结果或具体建议" required></textarea>
+                <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="请描述复现步骤、期望结果或具体建议" required @paste="handleNewMediaPaste"></textarea>
                 <small>{{ newFeedback.content.length }} / 1000</small>
               </label>
               <div class="feedback-media-field full">
                 <div class="feedback-media-heading"><span>截图</span><small>{{ newMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
+                <small class="feedback-media-hint">请先点击上方文本框，再按 Ctrl/⌘ + V；未聚焦文本框时无法粘贴截图</small>
                 <label class="feedback-media-picker-button">
                   <Paperclip :size="15" aria-hidden="true" />
                   添加截图
@@ -363,10 +365,20 @@ async function changePage(nextPage) {
 
 async function selectTicket(id) {
   selectedId.value = id
-  replyTarget.value = ''
+  cancelReply()
   const item = feedbacks.value.find(ticket => ticket.id === id)
   if (!item || (item.messages && item.messages.length)) return
   await loadFeedbackDetail(id)
+}
+
+function handleNewMediaPaste(event) {
+  if (submitting.value) return
+  newMedia.handlePaste(event)
+}
+
+function handleReplyMediaPaste(event) {
+  if (replying.value) return
+  replyMedia.handlePaste(event)
 }
 
 async function loadFeedbackDetail(id) {
