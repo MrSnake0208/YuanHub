@@ -105,3 +105,21 @@
 - status: success
 - meta.locale: zh-CN
 - meta.date: 2026-08-30 23:37:52
+
+## 2026-08-30 23:45:55
+
+- service: apply_patch / exec_command
+- params: feedbackMedia TXT/LOG MIME aliases, focused tests, and API contract
+- result: maa.log files declared as text/x-log or application/octet-stream now pass frontend validation
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 23:45:55
+
+## 2026-08-30 23:57:28
+
+- service: apply_patch / exec_command
+- params: FeedbackAttachmentPicker, feedbackMedia composable, shared styles, focused tests, and API contract
+- result: added mixed image/file drag-and-drop, clipboard file paste, drag highlight, and pure-text paste preservation to all feedback composers
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 23:57:28

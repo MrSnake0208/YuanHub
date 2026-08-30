@@ -1,5 +1,12 @@
 <template>
-  <div class="feedback-media-field">
+  <div
+    class="feedback-media-field"
+    :class="{ 'is-dragging': dragging }"
+    @dragenter.prevent="handleDragEnter"
+    @dragover.prevent
+    @dragleave="handleDragLeave"
+    @drop.prevent="handleDrop"
+  >
     <div class="feedback-media-heading">
       <span>附件</span>
       <small>{{ media.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small>
@@ -45,7 +52,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { File, FileArchive, FileJson, FileText, ImagePlus, Paperclip, X } from '@lucide/vue'
 import {
   FEEDBACK_FILE_ACCEPT,
@@ -59,6 +66,28 @@ const props = defineProps({
 })
 
 const disabled = computed(() => props.busy || props.media.uploading)
+const dragDepth = ref(0)
+const dragging = computed(() => dragDepth.value > 0 && !disabled.value)
+
+function carriesFiles(event) {
+  const types = Array.from(event?.dataTransfer?.types || [])
+  return types.includes('Files') || Boolean(event?.dataTransfer?.files?.length)
+}
+
+function handleDragEnter(event) {
+  if (disabled.value || !carriesFiles(event)) return
+  dragDepth.value += 1
+}
+
+function handleDragLeave() {
+  dragDepth.value = Math.max(0, dragDepth.value - 1)
+}
+
+function handleDrop(event) {
+  dragDepth.value = 0
+  if (disabled.value) return
+  props.media.handleDrop(event)
+}
 
 function extension(file) {
   return String(file?.name || '').split('.').pop().toLowerCase()
