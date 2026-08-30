@@ -664,7 +664,10 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 
 反馈上传支持 JPG/JPEG、PNG、WebP、TXT、LOG、JSON、PDF、ZIP，单个附件最大 10 MiB；
 每条消息的截图与普通文件合计最多 3 个，创建和追加仍只提交一个 `media_ids` 数组。
-ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`，TXT/LOG 可接受浏览器未声明 MIME 的情况；
+新建反馈、用户追加和管理员回复均可通过选择、拖拽或在正文输入框粘贴来添加图片和普通文件；
+纯文本粘贴不会被附件逻辑拦截。
+ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/LOG 可接受浏览器未声明 MIME、
+`text/plain`、`text/x-log` 或 `application/octet-stream`，并统一保存为 `text/plain`；
 服务端仍会复核扩展名、MIME、文件头或文本前缀。
 
 上传响应的 `kind` 为 `IMAGE` 或 `FILE`。图片 `url` 是原有绝对公开地址；普通文件 `url=null`。

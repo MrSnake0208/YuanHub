@@ -15,8 +15,8 @@ const IMAGE_EXTENSIONS = {
 }
 const IMAGE_DEFAULT_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 const FILE_MIME_TYPES = {
-  txt: new Set(['', 'text/plain']),
-  log: new Set(['', 'text/plain']),
+  txt: new Set(['', 'text/plain', 'text/x-log', 'application/octet-stream']),
+  log: new Set(['', 'text/plain', 'text/x-log', 'application/octet-stream']),
   json: new Set(['application/json']),
   pdf: new Set(['application/pdf']),
   zip: new Set(['application/zip', 'application/x-zip-compressed'])
@@ -51,7 +51,8 @@ function normalizeClipboardFile(file, type) {
 
   const extension = IMAGE_DEFAULT_EXTENSIONS[mime]
   if (!extension) return null
-  const name = file.name && file.name.includes('.') ? file.name : `pasted-image.${extension}`
+  const baseName = String(file.name || 'pasted-image').replace(/\.[^.]+$/, '') || 'pasted-image'
+  const name = `${baseName}.${extension}`
 
   return new File([file], name, {
     type: mime,
@@ -59,10 +60,12 @@ function normalizeClipboardFile(file, type) {
   })
 }
 
-function getClipboardImageFile(item) {
+function getClipboardFile(item) {
   if (item?.kind !== 'file' || typeof item.getAsFile !== 'function') return null
   try {
-    return normalizeClipboardFile(item.getAsFile(), item.type)
+    const file = item.getAsFile()
+    if (!file) return null
+    return isImageType(file.type || item.type) ? normalizeClipboardFile(file, item.type) : file
   } catch (_) {
     return null
   }
@@ -114,19 +117,27 @@ export function useFeedbackMedia() {
 
     const clipboardData = event?.clipboardData
     const clipboardItems = Array.from(clipboardData?.items || [])
-    const imageFiles = clipboardItems
-      .map(getClipboardImageFile)
+    const itemFiles = clipboardItems
+      .map(getClipboardFile)
       .filter(Boolean)
 
     const fallbackType = clipboardItems.find(item => item?.kind === 'file' && isImageType(item.type))?.type
-    const files = imageFiles.length
-      ? imageFiles
+    const files = itemFiles.length
+      ? itemFiles
       : Array.from(clipboardData?.files || [])
-        .map(file => normalizeClipboardFile(file, fallbackType))
+        .map(file => isImageType(file.type || fallbackType) ? normalizeClipboardFile(file, fallbackType) : file)
         .filter(Boolean)
     if (!files.length) return
 
     event.preventDefault()
+    addFiles(files)
+  }
+
+  function handleDrop(event) {
+    if (uploading.value) return
+    const files = Array.from(event?.dataTransfer?.files || [])
+    if (!files.length) return
+    event.preventDefault?.()
     addFiles(files)
   }
 
@@ -172,6 +183,7 @@ export function useFeedbackMedia() {
     addFiles,
     selectFiles,
     handlePaste,
+    handleDrop,
     remove,
     clear,
     uploadAll
