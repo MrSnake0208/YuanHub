@@ -65,6 +65,7 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
 .feedback-media-field { display: grid; gap: 8px; }
 .feedback-media-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-60); font-size: 12px; font-weight: 800; }
 .feedback-media-heading small { color: var(--ink-35); font-size: 11px; font-weight: 700; }
+.feedback-media-hint { color: var(--ink-35); font-size: 11px; line-height: 1.4; }
 .feedback-media-picker-button { position: relative; width: fit-content; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px dashed var(--accent); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 800; cursor: pointer; }
 .feedback-media-picker-button:has(input:disabled) { opacity: .55; cursor: default; }
 .feedback-media-picker-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
