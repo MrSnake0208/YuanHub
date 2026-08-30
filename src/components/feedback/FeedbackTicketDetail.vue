@@ -24,7 +24,8 @@
         <p>{{ msg.content }}</p>
         <div v-if="msg.images && msg.images.length" class="detail-media-grid">
           <a v-for="image in msg.images" :key="image.id" :href="image.url" target="_blank" rel="noopener noreferrer">
-            <img :src="image.url" :alt="'反馈附件 ' + image.id" loading="lazy" />
+            <div v-if="failedImages.has(imageKey(msg, image))" class="detail-media-fallback" role="img" aria-label="反馈附件无法加载">图片暂时无法加载</div>
+            <img v-else :src="image.url" :alt="'反馈附件 ' + image.id" loading="lazy" @error="markImageError(imageKey(msg, image))" />
           </a>
         </div>
       </article>
@@ -38,13 +39,31 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue'
+
+const props = defineProps({
   item: { type: Object, required: true },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
   showReporter: { type: Boolean, default: false },
   reporterLabel: { type: String, default: '我' },
   formatDate: { type: Function, required: true }
+})
+
+const failedImages = ref(new Set())
+
+function imageKey(message, image) {
+  return `${message.id || ''}:${image.id || image.url || ''}`
+}
+
+function markImageError(key) {
+  const next = new Set(failedImages.value)
+  next.add(key)
+  failedImages.value = next
+}
+
+watch(() => props.item?.id, () => {
+  failedImages.value = new Set()
 })
 </script>
 
@@ -67,8 +86,9 @@ defineProps({
 .detail-message header strong { color: var(--ink); font-size: 11.5px; }
 .detail-message header time { color: var(--ink-35); font: 10.5px var(--font-d); }
 .detail-media-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.detail-media-grid a { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); aspect-ratio: 4 / 3; }
+.detail-media-grid a { position: relative; display: block; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); aspect-ratio: 4 / 3; }
 .detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; color: var(--ink-60); font-size: 11px; text-align: center; }
 .detail-action-area { position: sticky; bottom: -20px; margin: 0 -20px -20px; padding: 14px 20px 20px; background: rgba(255, 248, 236, .96); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
 
 @media (max-width: 767px) {

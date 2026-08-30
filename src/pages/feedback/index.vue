@@ -116,12 +116,27 @@
                 </template>
                 <template #composer>
                   <div v-if="replyTarget === item.id" class="feedback-reply-form">
-                    <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="补充问题细节或回复内容"></textarea>
-                    <div class="feedback-form-actions">
-                      <button class="feedback-button" type="button" @click="cancelReply">取消</button>
-                      <button class="feedback-primary-action" type="button" :disabled="replying" @click="submitReply(item.id)">
-                        <Send :size="16" />{{ replying ? '发送中…' : '发送' }}
-                      </button>
+                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="补充问题细节或回复内容"></textarea>
+                      <div class="feedback-media-field">
+                        <div class="feedback-media-heading"><span>截图</span><small>{{ replyMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
+                        <label class="feedback-media-picker-button">
+                          <Paperclip :size="15" aria-hidden="true" />
+                          添加截图
+                          <input type="file" :accept="FEEDBACK_MEDIA_ACCEPT" multiple :disabled="replying || replyMedia.uploading" @change="replyMedia.selectFiles" />
+                        </label>
+                        <div v-if="replyMedia.items.length" class="feedback-media-preview-grid">
+                          <div v-for="(media, index) in replyMedia.items" :key="media.previewUrl || media.file.name + index" class="feedback-media-preview">
+                            <img :src="media.previewUrl" :alt="'待上传截图 ' + (index + 1)" />
+                            <button type="button" :disabled="replying || replyMedia.uploading" :aria-label="'移除第 ' + (index + 1) + ' 张截图'" title="移除截图" @click="replyMedia.remove(index)"><X :size="14" aria-hidden="true" /></button>
+                          </div>
+                        </div>
+                        <div v-if="replyMedia.error" class="feedback-media-error" role="alert">{{ replyMedia.error }}</div>
+                      </div>
+                      <div class="feedback-form-actions">
+                        <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
+                        <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading" @click="submitReply(item.id)">
+                          <Send :size="16" />{{ replying ? '发送中…' : '发送' }}
+                        </button>
                     </div>
                   </div>
                 </template>
@@ -159,6 +174,21 @@
                 <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="请描述复现步骤、期望结果或具体建议" required></textarea>
                 <small>{{ newFeedback.content.length }} / 1000</small>
               </label>
+              <div class="feedback-media-field full">
+                <div class="feedback-media-heading"><span>截图</span><small>{{ newMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
+                <label class="feedback-media-picker-button">
+                  <Paperclip :size="15" aria-hidden="true" />
+                  添加截图
+                  <input type="file" :accept="FEEDBACK_MEDIA_ACCEPT" multiple :disabled="submitting || newMedia.uploading" @change="newMedia.selectFiles" />
+                </label>
+                <div v-if="newMedia.items.length" class="feedback-media-preview-grid">
+                  <div v-for="(media, index) in newMedia.items" :key="media.previewUrl || media.file.name + index" class="feedback-media-preview">
+                    <img :src="media.previewUrl" :alt="'待上传截图 ' + (index + 1)" />
+                    <button type="button" :disabled="submitting || newMedia.uploading" :aria-label="'移除第 ' + (index + 1) + ' 张截图'" title="移除截图" @click="newMedia.remove(index)"><X :size="14" aria-hidden="true" /></button>
+                  </div>
+                </div>
+                <div v-if="newMedia.error" class="feedback-media-error" role="alert">{{ newMedia.error }}</div>
+              </div>
               <label class="feedback-consent full">
                 <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
                 <span>允许附加浏览器和操作系统信息，帮助定位问题</span>
@@ -167,7 +197,7 @@
             <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
             <div class="modal-foot">
               <button type="button" class="feedback-button" @click="closeNewFeedback">取消</button>
-              <button type="submit" class="feedback-primary-action" :disabled="submitting">
+              <button type="submit" class="feedback-primary-action" :disabled="submitting || newMedia.uploading">
                 <Send :size="16" />{{ submitting ? '提交中…' : '提交反馈' }}
               </button>
             </div>
@@ -181,7 +211,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
+import { ArrowRight, CheckCircle2, MessageSquarePlus, Paperclip, Plus, Search, Send, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
@@ -196,6 +226,7 @@ import {
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
+import { FEEDBACK_MEDIA_ACCEPT, MAX_FEEDBACK_MEDIA_COUNT, useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import '@/styles/feedback-workspace.css'
 
 const PAGE_SIZE = 20
@@ -239,6 +270,8 @@ const replyTarget = ref('')
 const replying = ref(false)
 const replyContent = ref('')
 const newFeedback = ref({ type: 'BUG', category: '', content: '', clientInfoConsent: false })
+const newMedia = useFeedbackMedia()
+const replyMedia = useFeedbackMedia()
 let loadRequestId = 0
 
 const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
@@ -364,11 +397,13 @@ function closeDetail() {
 }
 
 function showReplyForm(id) {
+  replyMedia.clear()
   replyTarget.value = id
   replyContent.value = ''
 }
 
 function cancelReply() {
+  replyMedia.clear()
   replyTarget.value = ''
   replyContent.value = ''
 }
@@ -378,7 +413,8 @@ async function submitReply(id) {
   if (!content) return
   replying.value = true
   try {
-    replaceTicket(await appendFeedbackMessage(id, { content }))
+    const mediaIds = await replyMedia.uploadAll()
+    replaceTicket(await appendFeedbackMessage(id, { content, mediaIds }))
     cancelReply()
   } catch (e) {
     detailError.value = e.message || '发送失败'
@@ -400,6 +436,7 @@ function closeNewFeedback() {
   if (submitting.value) return
   showNewForm.value = false
   formError.value = ''
+  newMedia.clear()
 }
 
 async function submitFeedback() {
@@ -408,7 +445,9 @@ async function submitFeedback() {
   submitting.value = true
   formError.value = ''
   try {
-    const created = await createFeedback({ ...newFeedback.value, content })
+    const mediaIds = await newMedia.uploadAll()
+    const created = await createFeedback({ ...newFeedback.value, content, mediaIds })
+    newMedia.clear()
     newFeedback.value = { type: 'BUG', category: '', content: '', clientInfoConsent: false }
     showNewForm.value = false
     filterStatus.value = '全部'
