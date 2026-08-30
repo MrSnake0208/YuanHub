@@ -117,22 +117,7 @@
                 <template #composer>
                   <div v-if="replyTarget === item.id" class="feedback-reply-form">
                       <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="补充问题细节或回复内容" @paste="handleReplyMediaPaste"></textarea>
-                      <div class="feedback-media-field">
-                        <div class="feedback-media-heading"><span>截图</span><small>{{ replyMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
-                        <small class="feedback-media-hint">请先点击上方文本框，再按 Ctrl/⌘ + V；未聚焦文本框时无法粘贴截图</small>
-                        <label class="feedback-media-picker-button">
-                          <Paperclip :size="15" aria-hidden="true" />
-                          添加截图
-                          <input type="file" :accept="FEEDBACK_MEDIA_ACCEPT" multiple :disabled="replying || replyMedia.uploading" @change="replyMedia.selectFiles" />
-                        </label>
-                        <div v-if="replyMedia.items.length" class="feedback-media-preview-grid">
-                          <div v-for="(media, index) in replyMedia.items" :key="media.previewUrl || media.file.name + index" class="feedback-media-preview">
-                            <img :src="media.previewUrl" :alt="'待上传截图 ' + (index + 1)" />
-                            <button type="button" :disabled="replying || replyMedia.uploading" :aria-label="'移除第 ' + (index + 1) + ' 张截图'" title="移除截图" @click="replyMedia.remove(index)"><X :size="14" aria-hidden="true" /></button>
-                          </div>
-                        </div>
-                        <div v-if="replyMedia.error" class="feedback-media-error" role="alert">{{ replyMedia.error }}</div>
-                      </div>
+                      <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
                         <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
                         <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading" @click="submitReply(item.id)">
@@ -175,22 +160,7 @@
                 <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="请描述复现步骤、期望结果或具体建议" required @paste="handleNewMediaPaste"></textarea>
                 <small>{{ newFeedback.content.length }} / 1000</small>
               </label>
-              <div class="feedback-media-field full">
-                <div class="feedback-media-heading"><span>截图</span><small>{{ newMedia.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small></div>
-                <small class="feedback-media-hint">请先点击上方文本框，再按 Ctrl/⌘ + V；未聚焦文本框时无法粘贴截图</small>
-                <label class="feedback-media-picker-button">
-                  <Paperclip :size="15" aria-hidden="true" />
-                  添加截图
-                  <input type="file" :accept="FEEDBACK_MEDIA_ACCEPT" multiple :disabled="submitting || newMedia.uploading" @change="newMedia.selectFiles" />
-                </label>
-                <div v-if="newMedia.items.length" class="feedback-media-preview-grid">
-                  <div v-for="(media, index) in newMedia.items" :key="media.previewUrl || media.file.name + index" class="feedback-media-preview">
-                    <img :src="media.previewUrl" :alt="'待上传截图 ' + (index + 1)" />
-                    <button type="button" :disabled="submitting || newMedia.uploading" :aria-label="'移除第 ' + (index + 1) + ' 张截图'" title="移除截图" @click="newMedia.remove(index)"><X :size="14" aria-hidden="true" /></button>
-                  </div>
-                </div>
-                <div v-if="newMedia.error" class="feedback-media-error" role="alert">{{ newMedia.error }}</div>
-              </div>
+              <FeedbackAttachmentPicker class="full" :media="newMedia" :busy="submitting" />
               <label class="feedback-consent full">
                 <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
                 <span>允许附加浏览器和操作系统信息，帮助定位问题</span>
@@ -213,8 +183,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowRight, CheckCircle2, MessageSquarePlus, Paperclip, Plus, Search, Send, X } from '@lucide/vue'
+import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
+import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
@@ -228,7 +199,7 @@ import {
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
-import { FEEDBACK_MEDIA_ACCEPT, MAX_FEEDBACK_MEDIA_COUNT, useFeedbackMedia } from '@/utils/feedbackMedia.js'
+import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import '@/styles/feedback-workspace.css'
 
 const PAGE_SIZE = 20

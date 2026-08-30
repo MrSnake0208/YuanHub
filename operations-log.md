@@ -96,3 +96,12 @@
 - status: success
 - meta.locale: zh-CN
 - meta.date: 2026-08-30 22:46:28
+
+## 2026-08-30 23:37:52
+
+- service: apply_patch / exec_command
+- params: feedback attachment queue, three composer entry points, request Blob mode, detail downloads, shared styles, API contract, and focused tests
+- result: added mixed screenshot/file selection and display, authenticated downloads with refresh retry, and responsive file rows while preserving existing screenshot behavior
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 23:37:52

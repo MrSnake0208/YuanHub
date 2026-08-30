@@ -36,7 +36,17 @@ function normalizeMessage(message) {
     author: normalizeUser(message.author),
     isAdmin: message.isAdmin ?? message.is_admin ?? senderKind === 'ADMIN',
     createdAt: message.createdAt ?? message.created_at ?? null,
-    images: Array.isArray(message.images) ? message.images : []
+    images: Array.isArray(message.images) ? message.images : [],
+    files: Array.isArray(message.files)
+      ? message.files.map(file => ({
+          ...file,
+          id: file.id || '',
+          name: file.name || '',
+          mime: file.mime || 'application/octet-stream',
+          size: Number(file.size || 0),
+          downloadUrl: file.downloadUrl ?? file.download_url ?? ''
+        }))
+      : []
   }
 }
 
@@ -164,6 +174,13 @@ export function deleteFeedbackAccessGrant(userId) {
 export async function getFeedback(id) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}`, { auth: true })
   return normalizeFeedback(data)
+}
+
+export function downloadFeedbackAttachment(reportId, mediaId) {
+  return request(
+    `/v1/reports/${encodeURIComponent(reportId)}/attachments/${encodeURIComponent(mediaId)}`,
+    { auth: true, responseType: 'blob' }
+  )
 }
 
 // 追加消息
