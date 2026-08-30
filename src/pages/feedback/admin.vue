@@ -1,8 +1,8 @@
 <template>
-  <div class="page-feedback-access">
+  <div class="feedback-page page-feedback-access">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero">
+      <header class="hero feedback-hero">
         <div class="wrap">
           <div class="crumb">
             <span class="pill fill">反馈中心</span>
@@ -19,10 +19,9 @@
 
       <section>
         <div class="wrap">
+          <FeedbackWorkspaceNav active="admin" :can-manage="canManageFeedback" can-configure />
           <div class="access-toolbar">
             <div class="access-links">
-              <router-link to="/feedback">我的反馈</router-link>
-              <router-link v-if="canManageFeedback" to="/feedback/manage">待处理反馈</router-link>
               <router-link v-if="canManageRoles" to="/admin/roles">角色管理</router-link>
               <router-link v-if="canReadAudit" to="/admin/audit">审计记录</router-link>
             </div>
@@ -70,51 +69,53 @@
             <button type="button" aria-label="关闭" title="关闭" @click="closeEditor"><X :size="20" /></button>
           </div>
 
-          <div v-if="!form.userId" class="user-picker">
-            <label>
-              <span>用户</span>
-              <input v-model.trim="userQuery" name="feedback-access-user" type="search" placeholder="输入用户名或邮箱" @input="scheduleUserSearch" />
-            </label>
-            <div v-if="searchingUsers" class="picker-state">正在搜索…</div>
-            <div v-else-if="userQuery.trim() && !userResults.length && !editorError" class="picker-state">没有找到已激活用户</div>
-            <button v-for="user in userResults" :key="user.id" class="user-result" type="button" @click="selectUser(user)">
+          <div class="access-modal-body">
+            <div v-if="!form.userId" class="user-picker">
+              <label>
+                <span>用户</span>
+                <input v-model.trim="userQuery" name="feedback-access-user" type="search" placeholder="输入用户名或邮箱" @input="scheduleUserSearch" />
+              </label>
+              <div v-if="searchingUsers" class="picker-state">正在搜索…</div>
+              <div v-else-if="userQuery.trim() && !userResults.length && !editorError" class="picker-state">没有找到已激活用户</div>
+              <button v-for="user in userResults" :key="user.id" class="user-result" type="button" @click="selectUser(user)">
+                <span>
+                  <strong>{{ user.userName || user.user_name }}</strong>
+                  <small>{{ user.email || '未提供邮箱' }}</small>
+                </span>
+                <code>{{ user.id }}</code>
+              </button>
+            </div>
+
+            <div v-else class="selected-user">
               <span>
-                <strong>{{ user.userName || user.user_name }}</strong>
-                <small>{{ user.email || '未提供邮箱' }}</small>
+                <strong>{{ form.userName }}</strong>
+                <small>{{ selectedUser?.email || '未从授权记录返回邮箱' }}</small>
               </span>
-              <code>{{ user.id }}</code>
-            </button>
-          </div>
-
-          <div v-else class="selected-user">
-            <span>
-              <strong>{{ form.userName }}</strong>
-              <small>{{ selectedUser?.email || '未从授权记录返回邮箱' }}</small>
-            </span>
-            <code>{{ form.userId }}</code>
-          </div>
-
-          <fieldset class="permission-group">
-            <legend>接收新反馈通知</legend>
-            <div class="area-grid">
-              <label v-for="area in areas" :key="'receive-' + area.key" :class="{ on: form.receiveAreas.includes(area.key) }">
-                <input v-model="form.receiveAreas" type="checkbox" :value="area.key" />
-                <span>{{ area.label }}</span>
-              </label>
+              <code>{{ form.userId }}</code>
             </div>
-          </fieldset>
 
-          <fieldset class="permission-group">
-            <legend>查看、回复与处理工单</legend>
-            <div class="area-grid">
-              <label v-for="area in areas" :key="'manage-' + area.key" :class="{ on: form.manageAreas.includes(area.key) }">
-                <input v-model="form.manageAreas" type="checkbox" :value="area.key" />
-                <span>{{ area.label }}</span>
-              </label>
-            </div>
-          </fieldset>
+            <fieldset class="permission-group">
+              <legend>接收新反馈通知</legend>
+              <div class="area-grid">
+                <label v-for="area in areas" :key="'receive-' + area.key" :class="{ on: form.receiveAreas.includes(area.key) }">
+                  <input v-model="form.receiveAreas" type="checkbox" :value="area.key" />
+                  <span>{{ area.label }}</span>
+                </label>
+              </div>
+            </fieldset>
 
-          <div v-if="editorError" class="editor-error" role="alert">{{ editorError }}</div>
+            <fieldset class="permission-group">
+              <legend>查看、回复与处理工单</legend>
+              <div class="area-grid">
+                <label v-for="area in areas" :key="'manage-' + area.key" :class="{ on: form.manageAreas.includes(area.key) }">
+                  <input v-model="form.manageAreas" type="checkbox" :value="area.key" />
+                  <span>{{ area.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div v-if="editorError" class="editor-error" role="alert">{{ editorError }}</div>
+          </div>
           <div class="modal-foot">
             <button class="command secondary" type="button" @click="closeEditor">取消</button>
             <button class="command primary" type="button" :disabled="saving || !form.userId" @click="saveGrant"><Save :size="17" />{{ saving ? '保存中…' : '保存' }}</button>
@@ -130,6 +131,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
+import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import {
   deleteFeedbackAccessGrant,
   getFeedbackAccess,
@@ -140,6 +142,7 @@ import { searchFeedbackAccessUsers } from '@/api/user.js'
 import { dialog } from '@/utils/dialog.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
+import '@/styles/feedback-workspace.css'
 
 const DEFAULT_AREAS = [
   { key: 'INVENTORY', label: '库存管理' },
@@ -323,8 +326,8 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 
 <style scoped>
 .page-feedback-access { min-height: 100vh }
-.page-feedback-access .hero { --wm: '权限' }
-.access-toolbar { display: flex; align-items: center; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line) }
+.page-feedback-access .feedback-hero { --wm: '权限' }
+.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 0; border-bottom: 1px solid var(--line) }
 .access-links { display: inline-flex; gap: 12px; margin-right: auto; font-size: 13px; font-weight: 700 }
 .access-links a { color: var(--accent-strong); text-decoration: none }
 .access-search { display: flex; align-items: center; gap: 8px; min-width: 260px; padding: 0 12px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60) }
@@ -335,8 +338,8 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 .icon-command.danger { color: var(--rouge) }
 .state { padding: 40px 0; text-align: center; color: var(--ink-60) }
 .state.error,.editor-error { color: var(--rouge) }
-.access-table-wrap { overflow-x: auto; padding-bottom: 48px }
-.access-table { width: 100%; border-collapse: collapse; background: var(--surface) }
+.access-table-wrap { overflow-x: auto; padding-bottom: 48px; scrollbar-gutter: stable }
+.access-table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--surface) }
 .access-table th,.access-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
 .access-table th { background: var(--tea); color: var(--cream); font-size: 12px }
 .access-table td strong,.access-table td code { display: block }
@@ -347,6 +350,7 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 .area-tag.manage { background: transparent; border: 1px solid var(--brand-blue) }
 .muted,.empty-row { color: var(--ink-35) }
 .access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); overflow-y: auto }
+.access-modal-body { padding: 20px }
 .user-picker label { display: grid; gap: 6px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
 .user-picker input { height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink) }
 .picker-state { padding: 10px; color: var(--ink-60); font-size: 12px }
@@ -360,7 +364,7 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 .area-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
 .area-grid label { min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60); cursor: pointer }
 .area-grid label.on { border-color: var(--accent); background: rgba(239, 210, 142, .22); color: var(--ink) }
-.modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px }
 .command { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 700; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
@@ -370,5 +374,6 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
   .access-search { min-width: 0; flex: 1 1 calc(100% - 52px) }
   .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .access-table th:nth-child(4),.access-table td:nth-child(4) { display: none }
+  .access-modal-body { padding: 16px }
 }
 </style>

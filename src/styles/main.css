@@ -494,9 +494,10 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
     color:var(--ink);text-decoration:none;font-family:var(--font-s);font-size:13px;font-weight:900;
   }
   .mobile-brand .brand-mark{width:32px;height:32px;border-radius:9px;flex:none}
-  .mobile-nav{min-width:0;flex:1;margin-left:auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+  .mobile-nav{min-width:0;flex:1;margin-left:auto;display:flex;gap:3px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}
+  .mobile-nav::-webkit-scrollbar{display:none}
   .mobile-nav a{
-    min-height:44px;padding:4px 6px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    flex:0 0 68px;min-height:44px;padding:4px 6px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
     color:var(--ink-60);text-decoration:none;font-size:11px;font-weight:800;line-height:1.1;
   }
   .mobile-nav a.active,.mobile-nav a.router-link-active{background:var(--yellow);color:var(--ink)}
@@ -511,7 +512,7 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .mobile-shell{gap:6px;padding-inline:max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right))}
   .mobile-brand{gap:4px;padding-inline:3px;font-size:12px;white-space:nowrap}
   .mobile-nav{gap:2px}
-  .mobile-nav a{min-width:0;padding-inline:2px}
+  .mobile-nav a{flex-basis:62px;min-width:0;padding-inline:2px}
 }
 
 @media (max-width:767px){

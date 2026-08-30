@@ -91,6 +91,9 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
           status: 'OPEN',
           content: '建议',
           has_admin_reply: true,
+          last_message_sender: 'ADMIN',
+          reporter_user_id: 'usr_1',
+          reporter_name: '阿蝉',
           created_at: '2026-01-01T00:00:00Z',
           updated_at: '2026-01-02T00:00:00Z'
         }],
@@ -106,11 +109,17 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
       has_admin_reply: true,
       status: 'OPEN',
       content: '建议',
+      reporter: { id: 'usr_1', user_name: '阿蝉' },
+      handler: { id: 'usr_2', user_name: '管理员' },
+      viewer_is_reporter: true,
+      viewer_can_manage: false,
       quota: { can_append: true, pending_count: 1, pending_limit: 3 },
       messages: [{
         id: 'rpm_1',
         sender_kind: 'ADMIN',
+        author: { id: 'usr_2', user_name: '管理员' },
         content: '收到',
+        images: [{ id: 'med_1', url: '/media/1.webp' }],
         created_at: '2026-01-03T00:00:00Z'
       }]
     })
@@ -119,14 +128,26 @@ test('列表和详情归一化后端 snake_case 与 ADMIN 消息', async () => {
     assert.equal(list.items[0].hasAdminReply, true)
     assert.equal(list.items[0].category, 'OPERATOR')
     assert.equal(list.items[0].createdAt, '2026-01-01T00:00:00Z')
+    assert.equal(list.items[0].updatedAt, '2026-01-02T00:00:00Z')
+    assert.equal(list.items[0].lastMessageSender, 'ADMIN')
+    assert.equal(list.items[0].reporterName, '阿蝉')
+    assert.equal(list.items[0].reporterUserId, 'usr_1')
     assert.equal(list.pageSize, 20)
     const detail = await getFeedback('rpt_1')
     assert.equal(detail.type, 'BUG')
     assert.equal(detail.category, 'OPERATOR')
     assert.equal(detail.hasAdminReply, true)
     assert.equal(detail.quota.canAppend, true)
+    assert.equal(detail.quota.pendingCount, 1)
+    assert.equal(detail.quota.pendingLimit, 3)
+    assert.equal(detail.viewerIsReporter, true)
+    assert.equal(detail.viewerCanManage, false)
+    assert.equal(detail.reporter.userName, '阿蝉')
+    assert.equal(detail.handler.userName, '管理员')
     assert.equal(detail.messages[0].senderKind, 'ADMIN')
     assert.equal(detail.messages[0].isAdmin, true)
+    assert.equal(detail.messages[0].author.userName, '管理员')
+    assert.equal(detail.messages[0].images[0].url, '/media/1.webp')
     assert.equal(detail.messages[0].createdAt, '2026-01-03T00:00:00Z')
   })
 })

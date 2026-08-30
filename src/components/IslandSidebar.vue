@@ -22,6 +22,10 @@
         <span>通知</span>
         <span v-if="unreadCount > 0" class="mobile-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
       </router-link>
+      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
+        <MessageSquareText :size="19" aria-hidden="true" />
+        <span>反馈</span>
+      </router-link>
       <router-link :to="isLoggedIn ? '/user/profile' : '/login'" :class="{ active: $route.path === '/user/profile' || $route.path === '/login' }">
         <component :is="isLoggedIn ? UserRound : LogIn" :size="19" aria-hidden="true" />
         <span>{{ isLoggedIn ? '我的' : '登录' }}</span>
@@ -47,7 +51,7 @@
         <span class="no">05</span>通知中心
         <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
       </router-link>
-      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path === '/feedback' }">
+      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
         <span class="no">06</span>反馈中心
       </router-link>
       <!-- 协作看板（暂时隐藏）：
@@ -76,7 +80,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Bell, BookUser, LogIn, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
+import { Bell, BookUser, LogIn, MessageSquareText, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
 import { auth, logout as doLogout } from '@/store/auth.js'
 import { getUnreadNotificationCount } from '@/api/notifications.js'
 
