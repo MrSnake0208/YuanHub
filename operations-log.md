@@ -51,3 +51,12 @@
 - status: success
 - meta.locale: zh-CN
 - meta.date: 2026-08-30 17:31:55
+
+## 2026-08-30 21:00:06
+
+- service: apply_patch
+- params: `src/utils/feedbackMedia.js`
+- result: 将反馈媒体 composable 的局部 refs 包装为响应式对象，修复新建反馈、用户回复和管理员回复中嵌套状态未解包导致的截图选择器与提交控件持续禁用问题
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-30 21:00:06
