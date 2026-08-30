@@ -59,8 +59,8 @@
               </select>
             </label>
             <div class="feedback-entry-links">
-              <router-link v-if="access.manageAreas.length" class="access-admin-link" to="/feedback/manage">待处理反馈</router-link>
-              <router-link v-if="access.superAdmin" class="access-admin-link" to="/feedback/admin">权限配置</router-link>
+              <router-link v-if="canManageFeedback" class="access-admin-link" to="/feedback/manage">待处理反馈</router-link>
+              <router-link v-if="canConfigureFeedback" class="access-admin-link" to="/feedback/admin">权限配置</router-link>
             </div>
           </div>
 
@@ -236,6 +236,8 @@ import {
   appendFeedbackMessage,
   updateFeedbackStatus
 } from '@/api/feedback.js'
+import { auth } from '@/store/auth.js'
+import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 
 // 列表状态
 const feedbacks = ref([])
@@ -267,6 +269,8 @@ const DEFAULT_AREAS = [
   { key: 'OTHER', label: '其他模块' }
 ]
 const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
+const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
+const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const expandedId = ref(null)
 const detailLoading = ref(false)
 const detailError = ref(null)

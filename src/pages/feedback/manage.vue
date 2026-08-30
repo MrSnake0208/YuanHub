@@ -24,7 +24,7 @@
         <div class="wrap">
           <div class="manage-links">
             <router-link class="act-btn" to="/feedback">我的反馈</router-link>
-            <router-link v-if="access.superAdmin" class="act-btn" to="/feedback/admin">权限配置</router-link>
+            <router-link v-if="canConfigureFeedback" class="act-btn" to="/feedback/admin">权限配置</router-link>
           </div>
           <div v-if="loadingAccess" class="loading-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasPermission" class="permission-state" role="alert">
@@ -128,7 +128,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import {
   appendFeedbackMessage,
@@ -137,8 +137,11 @@ import {
   listManagedFeedback,
   updateFeedbackStatus
 } from '@/api/feedback.js'
+import { auth } from '@/store/auth.js'
+import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission as hasAdminPermission } from '@/utils/authPermissions.js'
 
 const route = useRoute()
+const router = useRouter()
 const PAGE_SIZE = 20
 const feedbacks = ref([])
 const access = ref({ superAdmin: false, manageAreas: [], availableAreas: [] })
@@ -176,7 +179,8 @@ const DEFAULT_AREAS = [
   { key: 'OTHER', label: '其他模块' }
 ]
 
-const hasPermission = computed(() => access.value.manageAreas.length > 0)
+const hasPermission = computed(() => canManageAnyFeedback(auth.adminAccess))
+const canConfigureFeedback = computed(() => hasAdminPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const categoryOptions = computed(() => {
   const all = access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS
   return all.filter(option => access.value.manageAreas.includes(option.key))
@@ -245,10 +249,11 @@ async function loadAccess() {
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
     access.value = {
       superAdmin: Boolean(data.superAdmin ?? data.super_admin),
-      manageAreas: data.manageCategories || data.manage_categories || data.manageAreas || data.manage_areas || [],
+      manageAreas: auth.adminAccess?.manageAreas || [],
       availableAreas: rawAreas.map(option => ({ key: option.key, label: option.label }))
     }
   } catch (e) {
+    if (await handleForbidden(e)) return
     error.value = e.message || '反馈权限加载失败'
   } finally {
     loadingAccess.value = false
@@ -272,6 +277,7 @@ async function loadFeedback({ append = false } = {}) {
     feedbacks.value = append ? [...feedbacks.value, ...items] : items
     noMore.value = data.total != null ? page.value * PAGE_SIZE >= data.total : items.length < PAGE_SIZE
   } catch (e) {
+    if (await handleForbidden(e)) return
     error.value = e.message || '加载失败'
   } finally {
     loading.value = false
@@ -312,6 +318,7 @@ async function loadFeedbackDetail(id) {
     else feedbacks.value.unshift(detail)
     expandedId.value = id
   } catch (e) {
+    if (await handleForbidden(e)) return
     detailError.value = e.message || '详情加载失败'
   } finally {
     detailLoading.value = false
@@ -331,6 +338,7 @@ async function submitReply(id) {
     replyContent.value = ''
     await loadFeedback()
   } catch (e) {
+    if (await handleForbidden(e)) return
     error.value = e.message || '发送失败'
   } finally {
     replying.value = false
@@ -347,8 +355,18 @@ async function updateStatus(id, status) {
     await updateFeedbackStatus(id, status)
     await loadFeedback()
   } catch (e) {
+    if (await handleForbidden(e)) return
     error.value = e.message || '操作失败'
   }
+}
+
+async function handleForbidden(errorValue) {
+  if (!errorValue || errorValue.status !== 403) return false
+  feedbacks.value = []
+  expandedId.value = null
+  replyTarget.value = null
+  await router.replace({ path: '/forbidden', query: { from: '/feedback/manage' } })
+  return true
 }
 
 onMounted(async () => {

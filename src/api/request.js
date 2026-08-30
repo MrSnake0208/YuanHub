@@ -97,11 +97,19 @@ export async function request(
           ? payload.message
           : res.statusText || "请求失败";
 
+    async function refreshAccessAfterForbidden() {
+      if (!auth || path === '/v1/admin/access/me') return
+      const mod = await import('../store/auth.js')
+      if (mod.auth && mod.auth.refreshAdminAccess) {
+        await mod.auth.refreshAdminAccess({ suppressErrors: true })
+      }
+    }
+
     // raw：返回完整 JSON（库存导出等无包装端点）
     if (raw) {
-      if (res.ok) return payload;
+      if (res.ok && statusCode !== 401 && statusCode !== 403) return payload;
       // 401 且需认证：静默刷新并重放一次
-      if (res.status === 401 && auth && !refreshed) {
+      if (statusCode === 401 && auth && !refreshed) {
         refreshed = true;
         const mod = await import("../store/auth.js");
         store = mod.auth;
@@ -114,13 +122,13 @@ export async function request(
           location.href = "/login";
         }
       }
-      throw requestError(message || "请求失败", res.status, payload);
+      if (statusCode === 403) await refreshAccessAfterForbidden()
+      throw requestError(message || "请求失败", statusCode, payload);
     }
 
     // 成功
     if (statusCode === 200) {
-      if (payload && payload.data != null) return payload.data;
-      throw requestError(message || "请求失败（返回数据为空）", statusCode, payload);
+      return payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : undefined;
     }
 
     // 401 且需要认证：用 refreshToken 静默刷新一次并重放
@@ -141,6 +149,8 @@ export async function request(
       }
       throw requestError(message || "未认证，请重新登录", statusCode, payload);
     }
+
+    if (statusCode === 403) await refreshAccessAfterForbidden()
 
     throw requestError(message || "请求失败", statusCode, payload);
   }

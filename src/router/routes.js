@@ -96,7 +96,7 @@ export const routes = [
         meta: {
             title: '密探图鉴管理 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true,
-            requiresAdmin: true
+            requiredPermission: 'operator_catalog:write'
         }
     },
     {
@@ -136,6 +136,19 @@ export const routes = [
         }
     },
     {
+        path: '/forbidden',
+        text: '无权限',
+        name: 'forbidden',
+        display: false,
+        module: 'user',
+        icon: 'shield-alert',
+        component: () => import('/src/pages/user/forbidden.vue'),
+        meta: {
+            title: '无权限 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/user/profile',
         text: '个人中心',
         name: 'profile',
@@ -171,7 +184,8 @@ export const routes = [
         component: () => import('/src/pages/feedback/manage.vue'),
         meta: {
             title: '反馈工作台 — 鸢鸢相抱 · YuanHub',
-            requiresAuth: true
+            requiresAuth: true,
+            requiresFeedbackManage: true
         }
     },
     {
@@ -185,7 +199,35 @@ export const routes = [
         meta: {
             title: '反馈权限管理 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true,
-            requiresAdmin: true
+            requiredPermission: 'admin:feedback_access:manage'
+        }
+    },
+    {
+        path: '/admin/roles',
+        text: '管理员角色',
+        name: 'admin-roles',
+        display: false,
+        module: 'user',
+        icon: 'users-round',
+        component: () => import('/src/pages/admin/roles.vue'),
+        meta: {
+            title: '管理员角色 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiredPermission: 'admin:role:manage'
+        }
+    },
+    {
+        path: '/admin/audit',
+        text: '管理员审计',
+        name: 'admin-audit',
+        display: false,
+        module: 'user',
+        icon: 'scroll-text',
+        component: () => import('/src/pages/admin/audit.vue'),
+        meta: {
+            title: '管理员审计 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiredPermission: 'admin:audit:read'
         }
     },
     {

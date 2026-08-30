@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
 import { auth, init as authInit } from '@/store/auth.js'
+import { canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -60,14 +61,18 @@ router.beforeEach(async (to, from, next) => {
   }
   const authed = !!(auth.accessToken && auth.userInfo)
   const requiresAuth = to.meta && to.meta.requiresAuth
-  const requiresAdmin = to.meta && to.meta.requiresAdmin
+  const requiredPermission = to.meta && to.meta.requiredPermission
+  const requiresFeedbackManage = to.meta && to.meta.requiresFeedbackManage
 
   if (requiresAuth && !authed) {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
-  if (requiresAdmin && !auth.isAdmin) {
-    return next('/user/profile')
+  if (requiredPermission && !hasPermission(auth.adminAccess, requiredPermission)) {
+    return next({ path: '/forbidden', query: { from: to.fullPath } })
+  }
+  if (requiresFeedbackManage && !canManageAnyFeedback(auth.adminAccess)) {
+    return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
   const authPages = ['/login', '/register', '/forgot']
   if (authed && authPages.includes(to.path)) {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   appendFeedbackMessage,
   createFeedback,
+  deleteFeedbackAccessGrant,
   getFeedback,
   getFeedbackAccess,
   listManagedFeedback,
@@ -204,6 +205,23 @@ test('反馈授权接口区分接收模块和管理模块', async () => {
     receive_categories: ['INVENTORY'],
     manage_categories: ['OPERATOR']
   })
+})
+
+test('删除反馈授权接受成功响应省略 data', async () => {
+  let request
+  await withFetch(async (url, options = {}) => {
+    request = { url: String(url), options }
+    return {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      async json() { return { status_code: 200, message: 'ok' } }
+    }
+  }, async () => {
+    assert.equal(await deleteFeedbackAccessGrant('user/1'), undefined)
+  })
+  assert.match(request.url, /\/v1\/admin\/feedback-access\/user%2F1$/)
+  assert.equal(request.options.method, 'DELETE')
 })
 
 test('追加消息和更新状态使用正确路径、字段和大写状态', async () => {
