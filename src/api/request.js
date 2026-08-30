@@ -1,5 +1,5 @@
 // 统一的 fetch 请求封装
-// - 统一 baseURL（VITE_API_BASE，默认为本地后端）
+// - 统一 baseURL（VITE_API_BASE，未配置时使用当前站点）
 // - 自动 JSON 序列化 / 反序列化
 // - auth=true 时自动附带 'Authorization: Bearer <accessToken>' 头
 // - 解析后端统一响应 { status_code, message, data }
@@ -15,7 +15,7 @@
 // 需要时才加载 store（仅读取 token / 调用 refresh() / logout()）。
 
 export const API_BASE =
-  (import.meta.env && import.meta.env.VITE_API_BASE) || "https://hub.maayuan.fun:16666";
+  (import.meta.env && import.meta.env.VITE_API_BASE) || "";
 
 /**
  * 把后端返回的相对资源路径拼成完整 URL。

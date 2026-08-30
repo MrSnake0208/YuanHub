@@ -10,6 +10,16 @@ npm run dev   # http://localhost:5173
 npm run build # 产物输出到 dist/
 ```
 
+### API 地址配置
+
+复制 `.env.example` 为 `.env`，按运行环境设置 `VITE_API_BASE`。Vite 会在启动和构建时读取该文件，构建完成后再修改 `.env` 不会改变已有产物。
+
+```dotenv
+VITE_API_BASE=http://127.0.0.1:8080
+```
+
+`.env` 已加入 Git 忽略规则，真实地址不应写回源码或提交到仓库。
+
 ## 页面
 
 | 路由 | 页面 | 对应原文件 |

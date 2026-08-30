@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.local
 .pnpm-store
+.env
+.env.*
+!.env.example
