@@ -123,3 +123,12 @@
 - status: success
 - meta.locale: zh-CN
 - meta.date: 2026-08-30 23:57:28
+
+## 2026-08-31 00:04:28
+
+- service: apply_patch / exec_command
+- params: feedback-workspace attachment picker button selector and focused frontend build
+- result: restored inline-flex inside modals, removed inherited label margin, and centered picker icon/text
+- status: success
+- meta.locale: zh-CN
+- meta.date: 2026-08-31 00:04:28
