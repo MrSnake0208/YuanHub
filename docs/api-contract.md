@@ -1,6 +1,6 @@
 # BackEndV3-Share API 接口契约（前端接入参考）
 
-> 后端源码基线：`BackEndV3-Share` commit `d5a4508`（2026-08-30），并包含当前工作区反馈附件实现。
+> 后端源码基线：`BackEndV3-Share` commit `d5a4508`（2026-08-30），并包含当前工作区反馈附件与操作身份实现。
 > 本文覆盖 YuanHub 当前使用的接口，以及同一后端已提供的账号事件、第三方 OpenAPI、密探管理和广陵账房接口。
 > 后端继续演进后，以源码与 Swagger 为最终依据，并同步更新本文顶部 commit。
 
@@ -649,9 +649,9 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 | POST /v1/reports | JWT | {type,category,content,media_ids?,client_info_consent?} | 新工单 |
 | GET /v1/reports | JWT | page,pageSize,status,type,category,mine,q | {reports,total,page,page_size,mine,...} |
 | GET /v1/reports/{id} | JWT | 无 | 工单详情，含 viewer_is_reporter/viewer_can_manage |
-| POST /v1/reports/{id}/messages | JWT | {content,media_ids?} | 更新后的工单 |
+| POST /v1/reports/{id}/messages | JWT | {content,media_ids?,actor_mode?} | 更新后的工单 |
 | GET /v1/reports/{id}/attachments/{mediaId} | JWT | 无 | 原始文件二进制 |
-| PATCH /v1/reports/{id}/status | JWT | {status} | 更新后的工单 |
+| PATCH /v1/reports/{id}/status | JWT | {status,actor_mode?} | 更新后的工单 |
 | GET /v1/reports/access | JWT | 无 | 当前用户的接收/管理板块及超级管理员标识 |
 | GET /v1/admin/feedback-access | 超级管理员 | 无 | 授权列表 |
 | GET /v1/admin/feedback-access/users | 超级管理员 | q,page,size，q 非空，size 1..10 | 已激活用户候选 {id,user_name,email,activated}[] |
@@ -661,6 +661,18 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
 
 旧授权字段 receive_areas/manage_areas 和旧反馈字段 area 继续兼容读取；新前端优先使用 receive_categories/manage_categories 与 category。
+
+消息追加和状态变更的 `actor_mode` 只允许 `REPORTER` 或 `ADMIN`，它表示本次操作意图而不是权限凭据。
+后端会重新校验：`REPORTER` 必须是工单提交人，`ADMIN` 必须拥有归一化后 category 的管理权限，越权返回业务
+`status_code=403`。兼容期允许省略该字段，但只在身份唯一时推断；同时是提交人和管理员时缺省返回业务
+`status_code=400`，非法值同样返回 400。YuanHub 的个人入口固定使用 `appendMyFeedbackMessage` /
+`updateMyFeedbackStatus`，管理工作台固定使用 `appendManagedFeedbackMessage` / `updateManagedFeedbackStatus`，
+页面参数不能覆盖包装函数注入的身份。
+
+详情中的 `quota.pending_count` 和 `quota.can_append` 始终表示提交人连续补充配额；管理工作台是否可回复应使用
+`viewer_can_manage && status == OPEN`。`viewer_is_reporter` 与 `viewer_can_manage` 可以同时为 true。管理员模式更新
+`sender_kind`、管理员摘要和处理字段，并在实际变化时通知提交人；管理员处理自己的工单保留管理员语义，但不生成
+自我通知。前端归一化消息时以 `sender_kind` 为准，只有该 canonical 字段缺失时才回退旧 `is_admin`。
 
 反馈上传支持 JPG/JPEG、PNG、WebP、TXT、LOG、JSON、PDF、ZIP，单个附件最大 10 MiB；
 每条消息的截图与普通文件合计最多 3 个，创建和追加仍只提交一个 `media_ids` 数组。

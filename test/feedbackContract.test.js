@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  appendFeedbackMessage,
+  appendManagedFeedbackMessage,
+  appendMyFeedbackMessage,
   createFeedback,
   deleteFeedbackAccessGrant,
   downloadFeedbackAttachment,
@@ -12,7 +13,8 @@ import {
   listFeedback,
   listFeedbackAccessGrants,
   updateFeedbackAccessGrant,
-  updateFeedbackStatus
+  updateManagedFeedbackStatus,
+  updateMyFeedbackStatus
 } from '../src/api/feedback.js'
 import { uploadMedia } from '../src/api/media.js'
 import { auth } from '../src/store/auth.js'
@@ -174,6 +176,25 @@ test('历史消息缺少 files 时归一化为空数组', async () => {
   }), async () => {
     const detail = await getFeedback('rpt_old')
     assert.deepEqual(detail.messages[0].files, [])
+  })
+})
+
+test('canonical sender_kind 优先于冲突的旧 is_admin', async () => {
+  await withFetch(async () => apiResponse({
+    id: 'rpt_identity',
+    type: 'BUG',
+    category: 'OTHER',
+    status: 'OPEN',
+    messages: [
+      { id: 'rpm_reporter', sender_kind: 'REPORTER', is_admin: true, content: '个人补充' },
+      { id: 'rpm_admin', sender_kind: 'ADMIN', is_admin: false, content: '管理员回复' },
+      { id: 'rpm_legacy', is_admin: true, content: '旧消息' }
+    ]
+  }), async () => {
+    const detail = await getFeedback('rpt_identity')
+    assert.equal(detail.messages[0].isAdmin, false)
+    assert.equal(detail.messages[1].isAdmin, true)
+    assert.equal(detail.messages[2].isAdmin, true)
   })
 })
 
@@ -341,19 +362,39 @@ test('删除反馈授权接受成功响应省略 data', async () => {
   assert.equal(request.options.method, 'DELETE')
 })
 
-test('追加消息和更新状态使用正确路径、字段和大写状态', async () => {
+test('个人和管理写操作固定发送各自 actor_mode 且调用参数不能覆盖', async () => {
   const requests = []
   await withFetch(async (url, options) => {
     requests.push({ url: String(url), options })
     return apiResponse({ id: 'rpt_1', type: 'FEEDBACK', status: 'RESOLVED', content: 'ok' })
   }, async () => {
-    await appendFeedbackMessage('rpt/1', { content: '补充', mediaIds: [] })
-    await updateFeedbackStatus('rpt/1', 'resolved')
+    await appendMyFeedbackMessage('rpt/1', { content: '个人补充', mediaIds: [], actorMode: 'ADMIN', actor_mode: 'ADMIN' })
+    await appendManagedFeedbackMessage('rpt/1', { content: '管理回复', mediaIds: [], actorMode: 'REPORTER' })
+    await updateMyFeedbackStatus('rpt/1', 'resolved', 'ADMIN')
+    await updateManagedFeedbackStatus('rpt/1', 'dismissed', 'REPORTER')
   })
   assert.match(requests[0].url, /\/v1\/reports\/rpt%2F1\/messages$/)
-  assert.deepEqual(JSON.parse(requests[0].options.body), { content: '补充', media_ids: [] })
-  assert.match(requests[1].url, /\/v1\/reports\/rpt%2F1\/status$/)
-  assert.deepEqual(JSON.parse(requests[1].options.body), { status: 'RESOLVED' })
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    content: '个人补充',
+    media_ids: [],
+    actor_mode: 'REPORTER'
+  })
+  assert.match(requests[1].url, /\/v1\/reports\/rpt%2F1\/messages$/)
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
+    content: '管理回复',
+    media_ids: [],
+    actor_mode: 'ADMIN'
+  })
+  assert.match(requests[2].url, /\/v1\/reports\/rpt%2F1\/status$/)
+  assert.deepEqual(JSON.parse(requests[2].options.body), {
+    status: 'RESOLVED',
+    actor_mode: 'REPORTER'
+  })
+  assert.match(requests[3].url, /\/v1\/reports\/rpt%2F1\/status$/)
+  assert.deepEqual(JSON.parse(requests[3].options.body), {
+    status: 'DISMISSED',
+    actor_mode: 'ADMIN'
+  })
 })
 
 test('媒体上传使用 file multipart 字段并解包返回的媒体对象', async () => {

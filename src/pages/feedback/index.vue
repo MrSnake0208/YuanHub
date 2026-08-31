@@ -190,12 +190,12 @@ import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import {
-  appendFeedbackMessage,
+  appendMyFeedbackMessage,
   createFeedback,
   getFeedback,
   getFeedbackAccess,
   listMyFeedback,
-  updateFeedbackStatus
+  updateMyFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
@@ -397,7 +397,7 @@ async function submitReply(id) {
   replying.value = true
   try {
     const mediaIds = await replyMedia.uploadAll()
-    replaceTicket(await appendFeedbackMessage(id, { content, mediaIds }))
+    replaceTicket(await appendMyFeedbackMessage(id, { content, mediaIds }))
     cancelReply()
   } catch (e) {
     detailError.value = e.message || '发送失败'
@@ -408,7 +408,7 @@ async function submitReply(id) {
 
 async function closeFeedback(id) {
   try {
-    await updateFeedbackStatus(id, 'RESOLVED')
+    await updateMyFeedbackStatus(id, 'RESOLVED')
     await reloadFromFirstPage()
   } catch (e) {
     detailError.value = e.message || '操作失败'
