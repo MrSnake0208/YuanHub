@@ -29,12 +29,15 @@ export async function createFeedback(payload) {
 
 function normalizeMessage(message) {
   if (!message || typeof message !== 'object') return message
-  const senderKind = message.senderKind ?? message.sender_kind ?? ''
+  const canonicalSenderKind = message.senderKind ?? message.sender_kind
+  const senderKind = canonicalSenderKind ?? ''
   return {
     ...message,
     senderKind,
     author: normalizeUser(message.author),
-    isAdmin: message.isAdmin ?? message.is_admin ?? senderKind === 'ADMIN',
+    isAdmin: canonicalSenderKind != null
+      ? senderKind === 'ADMIN'
+      : Boolean(message.isAdmin ?? message.is_admin ?? false),
     createdAt: message.createdAt ?? message.created_at ?? null,
     images: Array.isArray(message.images) ? message.images : [],
     files: Array.isArray(message.files)
@@ -183,25 +186,43 @@ export function downloadFeedbackAttachment(reportId, mediaId) {
   )
 }
 
-// 追加消息
-export async function appendFeedbackMessage(id, body) {
+async function appendFeedbackMessage(id, body, actorMode) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}/messages`, {
     method: 'POST',
     auth: true,
     body: {
       content: body.content,
-      media_ids: body.mediaIds || []
+      media_ids: body.mediaIds || [],
+      actor_mode: actorMode
     }
   })
   return normalizeFeedback(data)
 }
 
-// 更新状态
-export async function updateFeedbackStatus(id, status) {
+export function appendMyFeedbackMessage(id, body) {
+  return appendFeedbackMessage(id, body, 'REPORTER')
+}
+
+export function appendManagedFeedbackMessage(id, body) {
+  return appendFeedbackMessage(id, body, 'ADMIN')
+}
+
+async function updateFeedbackStatus(id, status, actorMode) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}/status`, {
     method: 'PATCH',
     auth: true,
-    body: { status: String(status).toUpperCase() }
+    body: {
+      status: String(status).toUpperCase(),
+      actor_mode: actorMode
+    }
   })
   return normalizeFeedback(data)
+}
+
+export function updateMyFeedbackStatus(id, status) {
+  return updateFeedbackStatus(id, status, 'REPORTER')
+}
+
+export function updateManagedFeedbackStatus(id, status) {
+  return updateFeedbackStatus(id, status, 'ADMIN')
 }
