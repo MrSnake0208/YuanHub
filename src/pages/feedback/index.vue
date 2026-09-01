@@ -5,17 +5,16 @@
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">反馈中心</span>
-            <span class="pill">我的反馈</span>
-          </div>
-          <h1>反馈中心<span class="small">提交 · 跟进 · 处理记录</span></h1>
-          <p class="hero-sub">提交问题或建议，并在同一处查看回复、补充信息和处理进度。</p>
-          <div class="hero-stats">
-            <div><div class="k">筛选结果</div><div class="v">{{ totalCount }}<small>条</small></div></div>
-            <div><div class="k">本页待回复</div><div class="v">{{ pendingCount }}<small>条</small></div></div>
-            <div><div class="k">本页有回复</div><div class="v">{{ repliedCount }}<small>条</small></div></div>
-            <div><div class="k">本页已结束</div><div class="v">{{ resolvedCount }}<small>条</small></div></div>
+          <div class="feedback-hero-kicker">ME / FEEDBACK CENTER</div>
+          <div class="feedback-hero-layout">
+            <div>
+              <h1>反馈中心</h1>
+              <p class="hero-sub">提交并跟进你的反馈。管理员回复后会收到站内通知，工单处理期间可随时补充说明与附件。</p>
+            </div>
+            <button class="feedback-primary-action feedback-hero-action" type="button" @click="showNewForm = true">
+              <Plus :size="18" aria-hidden="true" />
+              新建反馈
+            </button>
           </div>
         </div>
       </header>
@@ -29,10 +28,11 @@
           />
 
           <div class="feedback-command-bar">
-            <button class="feedback-primary-action" type="button" @click="showNewForm = true">
-              <Plus :size="17" aria-hidden="true" />
-              提交反馈
-            </button>
+            <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
+              <Search :size="18" aria-hidden="true" />
+              <input v-model="q" type="search" name="feedback-search" aria-label="搜索反馈" placeholder="搜索反馈内容或工单编号..." />
+              <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
+            </form>
             <div class="feedback-status-tabs" role="tablist" aria-label="工单状态">
               <button
                 v-for="status in statusTabs"
@@ -44,11 +44,6 @@
                 @click="setFilter(status)"
               >{{ status }}</button>
             </div>
-            <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
-              <Search :size="17" aria-hidden="true" />
-              <input v-model="q" type="search" name="feedback-search" aria-label="搜索反馈" placeholder="搜索内容或工单 ID" />
-              <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
-            </form>
           </div>
 
           <div class="feedback-filter-row">
@@ -137,7 +132,10 @@
       <div v-if="showNewForm" class="modal-mask" role="presentation" @click.self="closeNewFeedback">
         <div class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" @keydown.esc.prevent="closeNewFeedback">
           <div class="modal-head">
-            <h2 id="feedback-modal-title">提交反馈</h2>
+            <div>
+              <span class="feedback-modal-kicker">NEW / FEEDBACK</span>
+              <h2 id="feedback-modal-title">新建反馈</h2>
+            </div>
             <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback"><X :size="20" /></button>
           </div>
           <form @submit.prevent="submitFeedback">
@@ -251,9 +249,6 @@ const categoryOptions = computed(() => access.value.availableAreas.length ? acce
 const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
-const pendingCount = computed(() => feedbacks.value.filter(item => item.status === 'OPEN' && !item.hasAdminReply).length)
-const repliedCount = computed(() => feedbacks.value.filter(item => item.status === 'OPEN' && item.hasAdminReply).length)
-const resolvedCount = computed(() => feedbacks.value.filter(item => item.status !== 'OPEN').length)
 
 function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
@@ -462,18 +457,20 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.page-feedback .feedback-hero { --wm: '反馈'; }
 .feedback-modal { max-width: 620px; }
-.feedback-modal .modal-head h2 { color: var(--ink); font-family: var(--font-s); font-size: 19px; font-weight: 900; }
+.feedback-modal-kicker { display: block; margin-bottom: 5px; color: var(--feedback-accent); font: 800 10px var(--font-d); letter-spacing: .16em; }
+.feedback-modal .modal-head h2 { color: var(--feedback-text); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }
+.feedback-modal .modal-head button { color: var(--feedback-text-muted); }
+.feedback-modal form { background: var(--feedback-panel-deep); }
 .feedback-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .feedback-form-grid label { min-width: 0; margin: 0; }
-.feedback-form-grid label > span { display: block; margin-bottom: 6px; color: var(--ink-60); font-size: 12px; font-weight: 800; }
+.feedback-form-grid label > span { display: block; margin-bottom: 6px; color: var(--feedback-text-muted); font-size: 12px; font-weight: 800; }
 .feedback-form-grid .full { grid-column: 1 / -1; }
-.feedback-form-grid small { display: block; margin-top: 5px; color: var(--ink-35); font-size: 11px; text-align: right; }
+.feedback-form-grid small { display: block; margin-top: 5px; color: var(--feedback-text-dim); font-size: 11px; text-align: right; }
 .feedback-form-grid .feedback-consent { display: flex; align-items: flex-start; gap: 8px; }
 .feedback-form-grid .feedback-consent input { width: auto; flex: none; margin-top: 3px; }
 .feedback-form-grid .feedback-consent span { margin: 0; line-height: 1.6; }
-.feedback-form-error { color: var(--rouge); font-size: 12px; font-weight: 700; }
+.feedback-form-grid select option { background: var(--feedback-panel-deep); color: var(--feedback-text); }
 
 @media (max-width: 767px) {
   .feedback-form-grid { grid-template-columns: 1fr; }

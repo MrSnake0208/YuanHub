@@ -4,15 +4,16 @@
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">反馈中心</span>
-            <span class="pill">权限配置</span>
-          </div>
-          <h1>反馈权限<span class="small">模块接收 · 工单管理</span></h1>
-          <div class="hero-stats">
-            <div><div class="k">授权用户</div><div class="v">{{ grants.length }}<small>人</small></div></div>
-            <div><div class="k">接收配置</div><div class="v">{{ receiverCount }}<small>项</small></div></div>
-            <div><div class="k">管理配置</div><div class="v">{{ managerCount }}<small>项</small></div></div>
+          <div class="feedback-hero-kicker">ADMIN / ACCESS CONTROL</div>
+          <div class="feedback-hero-layout">
+            <div>
+              <h1>反馈权限</h1>
+              <p class="hero-sub">配置各板块的新反馈通知接收人，以及可以查看、回复和处理工单的管理员。</p>
+            </div>
+            <button class="feedback-primary-action feedback-hero-action" type="button" @click="openCreate">
+              <Plus :size="18" aria-hidden="true" />
+              新增授权
+            </button>
           </div>
         </div>
       </header>
@@ -21,18 +22,15 @@
         <div class="wrap">
           <FeedbackWorkspaceNav active="admin" :can-manage="canManageFeedback" can-configure />
           <div class="access-toolbar">
+            <label class="access-search">
+              <Search :size="18" aria-hidden="true" />
+              <input v-model.trim="filter" name="feedback-access-filter" type="search" placeholder="搜索用户名或用户 ID..." aria-label="搜索反馈授权用户" />
+            </label>
+            <span class="access-count">{{ filteredGrants.length }} 人</span>
             <div class="access-links">
               <router-link v-if="canManageRoles" to="/admin/roles">角色管理</router-link>
               <router-link v-if="canReadAudit" to="/admin/audit">审计记录</router-link>
             </div>
-            <label class="access-search">
-              <Search :size="18" aria-hidden="true" />
-              <input v-model.trim="filter" name="feedback-access-filter" type="search" placeholder="搜索用户名或用户 ID" aria-label="搜索反馈授权用户" />
-            </label>
-            <span class="access-count">{{ filteredGrants.length }} 人</span>
-            <button class="icon-command primary" type="button" title="新增授权" aria-label="新增授权" @click="openCreate">
-              <Plus :size="18" aria-hidden="true" />
-            </button>
           </div>
 
           <div v-if="loading" class="state" role="status">正在加载…</div>
@@ -170,8 +168,6 @@ let searchTimer = null
 const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [] })
 const router = useRouter()
 
-const receiverCount = computed(() => grants.value.reduce((sum, grant) => sum + grant.receiveAreas.length, 0))
-const managerCount = computed(() => grants.value.reduce((sum, grant) => sum + grant.manageAreas.length, 0))
 const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
 const canManageRoles = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ROLE_MANAGE))
 const canReadAudit = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.AUDIT_READ))
@@ -326,33 +322,36 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 
 <style scoped>
 .page-feedback-access { min-height: 100vh }
-.page-feedback-access .feedback-hero { --wm: '权限' }
-.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 0; border-bottom: 1px solid var(--line) }
-.access-links { display: inline-flex; gap: 12px; margin-right: auto; font-size: 13px; font-weight: 700 }
-.access-links a { color: var(--accent-strong); text-decoration: none }
-.access-search { display: flex; align-items: center; gap: 8px; min-width: 260px; padding: 0 12px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60) }
+.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-bottom: 14px }
+.access-links { display: inline-flex; gap: 16px; margin-left: auto; font-size: 12px; font-weight: 800 }
+.access-links a { color: var(--ink-60); text-decoration: none }
+.access-links a:hover { color: var(--accent-strong) }
+.access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
+.access-search:focus-within { border-color: var(--feedback-accent) }
 .access-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink) }
-.access-count { color: var(--ink-60); font-size: 12px; font-weight: 700; margin-right: auto }
-.icon-command { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer }
+.access-search input::placeholder { color: var(--feedback-text-dim) }
+.access-count { color: var(--feedback-text-dim); font: 11px var(--font-d) }
+.icon-command { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
 .icon-command.primary { background: var(--tea); color: var(--cream); border-color: var(--tea) }
 .icon-command.danger { color: var(--rouge) }
 .state { padding: 40px 0; text-align: center; color: var(--ink-60) }
 .state.error,.editor-error { color: var(--rouge) }
-.access-table-wrap { overflow-x: auto; padding-bottom: 48px; scrollbar-gutter: stable }
-.access-table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--surface) }
+.access-table-wrap { overflow-x: auto; margin-bottom: 48px; border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(73,59,44,.42); scrollbar-gutter: stable }
+.access-table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--feedback-panel) }
 .access-table th,.access-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
-.access-table th { background: var(--tea); color: var(--cream); font-size: 12px }
+.access-table th { background: var(--tea); color: var(--cream); font-size: 11px }
+.access-table tbody tr:hover { background: var(--feedback-panel-hover) }
 .access-table td strong,.access-table td code { display: block }
 .access-table td small { display: block; margin-top: 4px; color: var(--ink-60); font-size: 11px }
 .access-table td code { margin-top: 3px; color: var(--ink-35); font-size: 11px }
 .access-table .ops { width: 92px; white-space: nowrap; text-align: right }
-.area-tag { display: inline-block; margin: 0 5px 5px 0; padding: 2px 7px; border-radius: 6px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 700 }
-.area-tag.manage { background: transparent; border: 1px solid var(--brand-blue) }
+.area-tag { display: inline-block; margin: 0 5px 5px 0; padding: 2px 7px; border: 1px solid var(--yellow-deep); border-radius: 5px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 700 }
+.area-tag.manage { border-color: var(--brand-blue); background: transparent; color: var(--brand-blue) }
 .muted,.empty-row { color: var(--ink-35) }
 .access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); overflow-y: auto }
 .access-modal-body { padding: 20px }
 .user-picker label { display: grid; gap: 6px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
-.user-picker input { height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink) }
+.user-picker input { height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }
 .picker-state { padding: 10px; color: var(--ink-60); font-size: 12px }
 .user-result { width: 100%; display: flex; justify-content: space-between; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
 .user-result span,.selected-user span { display: grid; gap: 3px; text-align: left }
@@ -362,16 +361,17 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 .permission-group { margin-top: 18px; padding: 0; border: 0 }
 .permission-group legend { margin-bottom: 9px; color: var(--ink); font-weight: 800 }
 .area-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
-.area-grid label { min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60); cursor: pointer }
-.area-grid label.on { border-color: var(--accent); background: rgba(239, 210, 142, .22); color: var(--ink) }
+.area-grid label { min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-60); cursor: pointer; white-space: nowrap }
+.area-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px }
-.command { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 700; cursor: pointer }
+.command { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 7px; font-weight: 700; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .command:disabled { opacity: .5; cursor: default }
 @media (max-width: 720px) {
   .access-toolbar { flex-wrap: wrap }
-  .access-search { min-width: 0; flex: 1 1 calc(100% - 52px) }
+  .access-search { width: 100%; min-width: 0; flex: 1 1 100% }
+  .access-links { margin-left: 0 }
   .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .access-table th:nth-child(4),.access-table td:nth-child(4) { display: none }
   .access-modal-body { padding: 16px }

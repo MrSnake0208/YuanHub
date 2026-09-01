@@ -5,17 +5,12 @@
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">反馈中心</span>
-            <span class="pill">反馈工作台</span>
-          </div>
-          <h1>反馈工作台<span class="small">扫描 · 回复 · 结案</span></h1>
-          <p class="hero-sub">集中处理授权板块的反馈。列表用于快速扫描，选中工单后在独立详情区连续完成回复与状态操作。</p>
-          <div class="hero-stats">
-            <div><div class="k">筛选结果</div><div class="v">{{ totalCount }}<small>条</small></div></div>
-            <div><div class="k">本页待回复</div><div class="v">{{ pendingCount }}<small>条</small></div></div>
-            <div><div class="k">本页已回复</div><div class="v">{{ repliedCount }}<small>条</small></div></div>
-            <div><div class="k">负责板块</div><div class="v">{{ categoryOptions.length }}<small>个</small></div></div>
+          <div class="feedback-hero-kicker">ADMIN / FEEDBACK CENTER</div>
+          <div class="feedback-hero-layout">
+            <div>
+              <h1>反馈工作台</h1>
+              <p class="hero-sub">集中处理授权板块的反馈，查看提交记录，并在同一工单内完成回复、结案或驳回。</p>
+            </div>
           </div>
         </div>
       </header>
@@ -34,6 +29,11 @@
 
           <template v-else>
             <div class="feedback-command-bar">
+              <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
+                <Search :size="18" aria-hidden="true" />
+                <input v-model="q" type="search" name="managed-feedback-search" aria-label="搜索待处理反馈" placeholder="搜索反馈内容或工单编号..." />
+                <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
+              </form>
               <div class="feedback-status-tabs" role="tablist" aria-label="工单状态">
                 <button
                   v-for="status in statusTabs"
@@ -45,11 +45,6 @@
                   @click="setFilter(status)"
                 >{{ status }}</button>
               </div>
-              <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
-                <Search :size="17" aria-hidden="true" />
-                <input v-model="q" type="search" name="managed-feedback-search" aria-label="搜索待处理反馈" placeholder="搜索内容或工单 ID" />
-                <button type="submit" title="搜索" aria-label="搜索"><ArrowRight :size="16" /></button>
-              </form>
             </div>
 
             <div class="feedback-filter-row">
@@ -203,8 +198,6 @@ const categoryOptions = computed(() => {
   return access.value.superAdmin ? all : all.filter(option => access.value.manageAreas.includes(option.key))
 })
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
-const pendingCount = computed(() => feedbacks.value.filter(item => item.status === 'OPEN' && !item.hasAdminReply).length)
-const repliedCount = computed(() => feedbacks.value.filter(item => item.status === 'OPEN' && item.hasAdminReply).length)
 
 function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
@@ -392,8 +385,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.manage-feedback .feedback-hero { --wm: '工作台'; }
-.permission-state { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 16px 0 48px; padding: 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-60); text-align: center; }
-.permission-state strong { color: var(--ink); font-size: 18px; }
+.permission-state { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 16px 0 48px; padding: 28px; border: 1px solid var(--feedback-line); background: var(--feedback-panel); color: var(--feedback-text-muted); text-align: center; }
+.permission-state strong { color: var(--feedback-text); font-size: 18px; }
 .permission-state .feedback-primary-action { margin-top: 8px; text-decoration: none; }
 </style>
