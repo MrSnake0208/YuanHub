@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
 import { auth, init as authInit } from '@/store/auth.js'
-import { canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
+import { canManageAnyFeedback, hasAnyAdminCapability, hasPermission } from '@/utils/authPermissions.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -63,6 +63,7 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.meta && to.meta.requiresAuth
   const requiredPermission = to.meta && to.meta.requiredPermission
   const requiresFeedbackManage = to.meta && to.meta.requiresFeedbackManage
+  const requiresManagement = to.meta && to.meta.requiresManagement
 
   if (requiresAuth && !authed) {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳
@@ -72,6 +73,11 @@ router.beforeEach(async (to, from, next) => {
     return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
   if (requiresFeedbackManage && !canManageAnyFeedback(auth.adminAccess)) {
+    return next({ path: '/forbidden', query: { from: to.fullPath } })
+  }
+  // Keep authenticated users on the workbench when access lookup fails so the
+  // page can show the failure state instead of mislabeling it as forbidden.
+  if (requiresManagement && !auth.adminAccessError && !hasAnyAdminCapability(auth.adminAccess)) {
     return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
   const authPages = ['/login', '/register', '/forgot']

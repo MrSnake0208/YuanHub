@@ -15,11 +15,7 @@
       </header>
 
       <section class="wrap audit-content">
-        <nav class="admin-links" aria-label="管理页面">
-          <router-link to="/user/profile">个人中心</router-link>
-          <router-link v-if="canManageRoles" to="/admin/roles">角色管理</router-link>
-          <router-link v-if="canConfigureFeedback" to="/feedback/admin">反馈授权</router-link>
-        </nav>
+        <AdminWorkspaceNav active="admin-audit" />
         <div class="audit-toolbar">
           <span>第 {{ page }} 页</span>
           <button class="icon-command" type="button" title="刷新审计记录" :disabled="loading" @click="load(page)"><RefreshCw :size="17" aria-hidden="true" /></button>
@@ -59,9 +55,8 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronLeft, ChevronRight, RefreshCw } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
+import AdminWorkspaceNav from '../../components/admin/AdminWorkspaceNav.vue'
 import { listAdminAuditLogs } from '../../api/admin.js'
-import { auth } from '../../store/auth.js'
-import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 
 const PAGE_SIZE = 20
 const AREA_LABELS = { INVENTORY: '库存', OPERATOR: '密探', LEDGER: '账房', PLAZA: '作业广场', ACCOUNT: '账号', UI: '界面', OTHER: '其他' }
@@ -77,8 +72,6 @@ const page = ref(1)
 const total = ref(0)
 const hasNext = ref(false)
 const totalPages = computed(function () { return Math.max(1, Math.ceil(total.value / PAGE_SIZE)) })
-const canManageRoles = computed(function () { return hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ROLE_MANAGE) })
-const canConfigureFeedback = computed(function () { return hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE) })
 
 async function load(nextPage) {
   loading.value = true
@@ -123,9 +116,7 @@ onMounted(function () { load(1) })
 <style scoped>
 .page-admin-audit { min-height: 100vh }
 .page-admin-audit .hero { --wm: '审' }
-.audit-content { padding-top: 24px; padding-bottom: 56px }
-.admin-links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; font-size: 13px; font-weight: 800 }
-.admin-links a { color: var(--accent-strong); text-decoration: none }
+.audit-content { padding-bottom: 56px }
 .audit-toolbar { min-height: 48px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-block: 1px solid var(--line); color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
 .icon-command { width: 38px; height: 38px; display: inline-grid; place-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer }
 .state { padding: 52px 0; color: var(--ink-60); text-align: center }
