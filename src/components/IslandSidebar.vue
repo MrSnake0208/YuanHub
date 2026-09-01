@@ -46,14 +46,16 @@
       <router-link to="/operator" :class="{ active: $route.path.startsWith('/operator') }"><span class="no">01</span>我的密探</router-link>
       <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }"><span class="no">02</span>库存追踪</router-link>
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"><span class="no">03</span>广陵账房</router-link>
-      <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }"><span class="no">04</span>个人中心</router-link>
+      <div class="nav-separator" aria-hidden="true"></div>
       <router-link v-if="isLoggedIn" to="/notifications" :class="{ active: $route.path === '/notifications' }">
-        <span class="no">05</span>通知中心
+        通知中心
         <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
       </router-link>
       <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
-        <span class="no">06</span>反馈中心
+        反馈中心
       </router-link>
+      <div class="nav-separator" aria-hidden="true"></div>
+      <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }">个人中心</router-link>
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
       <a class="ext" href="#" style="--cc:var(--tea)"><span class="dot"></span>出战阵容编辑器<span class="who">BWiki</span></a>
@@ -173,6 +175,11 @@ onBeforeUnmount(function () {
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
+}
+.nav-separator {
+  height: 1px;
+  margin: 12px 12px;
+  background: var(--line);
 }
 .mobile-badge {
   position: absolute;
