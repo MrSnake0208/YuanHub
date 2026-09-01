@@ -9,14 +9,14 @@
       <code>{{ item.reporter?.id || item.reporterUserId || '' }}</code>
     </div>
 
-    <section class="detail-section">
+    <section v-if="!item.messages || !item.messages.length" class="detail-section">
       <h3>反馈内容</h3>
       <p class="detail-content">{{ item.content }}</p>
     </section>
 
     <section v-if="item.messages && item.messages.length" class="detail-section conversation-section">
-      <h3>对话记录 <span>{{ item.messages.length }}</span></h3>
-      <article v-for="msg in item.messages" :key="msg.id" class="detail-message" :class="{ 'is-admin': msg.isAdmin }">
+      <h3>沟通记录 <span>{{ item.messages.length }}</span></h3>
+      <article v-for="msg in item.messages" :key="msg.id" class="detail-message" :class="msg.isAdmin ? 'is-admin' : 'is-reporter'">
         <header>
           <strong>{{ msg.isAdmin ? '管理员' : reporterLabel }}</strong>
           <time :datetime="msg.createdAt">{{ formatDate(msg.createdAt) }}</time>
@@ -137,43 +137,50 @@ watch(() => props.item?.id, () => {
 </script>
 
 <style scoped>
-.detail-state { padding: 18px 0; color: var(--ink-60); font-size: 13px; }
-.detail-state.error { color: var(--rouge); }
-.detail-reporter { display: flex; align-items: baseline; gap: 8px; padding: 16px 0 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
-.detail-reporter span,.detail-reporter code { color: var(--ink-35); }
-.detail-reporter strong { color: var(--ink); }
+.detail-state { padding: 18px 0; color: var(--feedback-text-muted); font-size: 13px; }
+.detail-state.error { color: var(--feedback-danger); }
+.detail-reporter { display: flex; align-items: baseline; gap: 8px; padding: 16px 0 14px; border-bottom: 1px solid var(--feedback-line); font-size: 12px; }
+.detail-reporter span,.detail-reporter code { color: var(--feedback-text-dim); }
+.detail-reporter strong { color: var(--feedback-text); }
 .detail-reporter code { margin-left: auto; }
-.detail-section { padding: 18px 0; border-bottom: 1px solid var(--line); }
-.detail-section h3 { margin-bottom: 10px; color: var(--ink); font-size: 13px; font-weight: 900; }
-.detail-section h3 span { margin-left: 5px; color: var(--ink-35); font-size: 11px; }
-.detail-content,.detail-message p { color: var(--ink); font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; }
-.conversation-section { display: grid; gap: 9px; }
-.conversation-section h3 { margin-bottom: 1px; }
-.detail-message { padding: 12px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); }
-.detail-message.is-admin { border-left: 3px solid var(--yellow-deep); background: rgba(239, 210, 142, .13); }
-.detail-message header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
-.detail-message header strong { color: var(--ink); font-size: 11.5px; }
-.detail-message header time { color: var(--ink-35); font: 10.5px var(--font-d); }
+.detail-section { padding: 20px 0; border-bottom: 1px solid var(--feedback-line); }
+.detail-section h3 { margin-bottom: 14px; color: var(--feedback-text); font-size: 12px; font-weight: 900; }
+.detail-section h3 span { margin-left: 5px; color: var(--feedback-text-dim); font-size: 10px; }
+.detail-content,.detail-message p { color: var(--feedback-text); font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; }
+.conversation-section { display: grid; gap: 18px; }
+.conversation-section h3 { margin-bottom: 0; }
+.detail-message { width: min(78%, 640px); padding: 0; background: transparent; }
+.detail-message.is-reporter { justify-self: end; }
+.detail-message.is-admin { justify-self: start; }
+.detail-message header { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.detail-message.is-reporter header { flex-direction: row-reverse; }
+.detail-message header strong { color: var(--feedback-text); font-size: 11.5px; }
+.detail-message.is-admin header strong { color: var(--tea); }
+.detail-message header time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.detail-message > p { width: fit-content; max-width: 100%; padding: 11px 14px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); }
+.detail-message.is-reporter > p { margin-left: auto; border-color: var(--yellow-deep); background: var(--yellow); }
+.detail-message.is-admin > p { border-left: 3px solid var(--tea); background: var(--surface); }
 .detail-media-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.detail-media-grid a { position: relative; display: block; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); aspect-ratio: 4 / 3; }
+.detail-media-grid a { position: relative; display: block; overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); aspect-ratio: 4 / 3; }
 .detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; color: var(--ink-60); font-size: 11px; text-align: center; }
+.detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; color: var(--feedback-text-muted); font-size: 11px; text-align: center; }
 .detail-file-list { display: grid; gap: 7px; margin-top: 10px; }
-.detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 34px; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-60); }
+.detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 34px; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
 .detail-file-copy { min-width: 0; display: grid; gap: 2px; }
-.detail-file-copy strong { overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.detail-file-copy small { color: var(--ink-35); font: 10.5px var(--font-d); }
-.detail-file-copy .detail-file-error { color: var(--rouge); font-family: var(--font-b); }
-.detail-file-row button { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); cursor: pointer; }
+.detail-file-copy strong { overflow: hidden; color: var(--feedback-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.detail-file-copy small { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.detail-file-copy .detail-file-error { color: var(--feedback-danger); font-family: var(--font-b); }
+.detail-file-row button { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel-deep); color: var(--feedback-text); cursor: pointer; }
 .detail-file-row button:disabled { opacity: .55; cursor: default; }
 .is-spinning { animation: detail-file-spin .8s linear infinite; }
 @keyframes detail-file-spin { to { transform: rotate(360deg); } }
-.detail-action-area { position: sticky; bottom: -20px; margin: 0 -20px -20px; padding: 14px 20px 20px; background: rgba(255, 248, 236, .96); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
+.detail-action-area { position: sticky; bottom: -26px; margin: 0 -26px -26px; padding: 16px 26px 20px; background: rgba(255, 253, 246, .96); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
 
 @media (max-width: 767px) {
   .detail-reporter { align-items: flex-start; flex-wrap: wrap; }
   .detail-reporter code { width: 100%; margin-left: 0; overflow-wrap: anywhere; }
   .detail-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .detail-action-area { bottom: calc(-24px - env(safe-area-inset-bottom)); margin: 0 -16px calc(-24px - env(safe-area-inset-bottom)); padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); }
+  .detail-message { width: 92%; }
+  .detail-action-area { bottom: calc(-20px - env(safe-area-inset-bottom)); margin: 0 -16px calc(-20px - env(safe-area-inset-bottom)); padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); }
 }
 </style>

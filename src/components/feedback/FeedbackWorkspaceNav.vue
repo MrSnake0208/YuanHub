@@ -29,23 +29,23 @@ defineProps({
 .feedback-workspace-nav {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 20px;
-  padding: 4px;
-  border: 1px solid var(--line);
+  gap: 0;
+  margin-top: 18px;
+  border: 1px solid var(--feedback-line);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--feedback-panel-deep);
+  overflow: hidden;
 }
 
 .feedback-workspace-nav a {
-  min-height: 40px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 0 14px;
-  border-radius: 6px;
-  color: var(--ink-60);
-  font-size: 13px;
+  padding: 0 16px;
+  border-right: 1px solid var(--feedback-line);
+  color: var(--feedback-text-muted);
+  font-size: 12px;
   font-weight: 800;
   text-decoration: none;
 }
@@ -56,10 +56,12 @@ defineProps({
   color: var(--ink);
 }
 
+.feedback-workspace-nav a:last-child { border-right: 0; }
+
 @media (max-width: 767px) {
   .feedback-workspace-nav {
     width: 100%;
-    margin-top: 14px;
+    margin-top: 12px;
     overflow-x: auto;
     scrollbar-width: none;
   }
