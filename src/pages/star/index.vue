@@ -10,7 +10,12 @@
         <div class="hero-stats"><div><div class="k">当前背包</div><div class="v">{{ summary.currentCount }}<small class="stat-unit">颗</small></div></div><div><div class="k">养成计划</div><div class="v">{{ summary.planCount }}<small class="stat-unit">颗</small></div></div><div><div class="k">当前版本</div><div class="v game-stat">{{ summary.gameVersion }}</div></div><div class="is-authed"><div class="k">登录状态</div><div class="v">{{ auth.isLoggedIn ? '已登录' : '未登录' }}</div></div></div>
       </div></header>
       <section><div class="wrap">
-        <AccountWorkspace v-model:accountId="accountId" v-model:game="accountGame" :accounts="accounts" :error="accountError" :disabled="!auth.isLoggedIn || accountsLoading || accountBusy" :game-disabled="!auth.isLoggedIn || accountsLoading || accountBusy" :busy="accountBusy" stacked soft-dropdown heading-title="选择要查看的账号" heading-sub="星石、库存和密探都会跟随这个子账号，在各页面保持一致。" @change="onAccountChange" @game-change="onAccountGameChange" @create="onCreateAccount" @rename="onRenameAccount" @delete="onDeleteAccount" />
+        <AccountWorkspace v-model:accountId="accountId" v-model:game="accountGame" :accounts="accounts" :error="accountError" :disabled="!auth.isLoggedIn || accountsLoading || accountBusy" :game-disabled="!auth.isLoggedIn || accountsLoading || accountBusy" :busy="accountBusy" stacked soft-dropdown heading-title="选择要查看的账号" heading-sub="星石、库存和密探都会跟随这个子账号，在各页面保持一致。" @change="onAccountChange" @game-change="onAccountGameChange" @create="onCreateAccount" @rename="onRenameAccount" @delete="onDeleteAccount">
+          <template #actions>
+            <button type="button" class="act-btn star-sync-action" :disabled="cloudSyncBusy || !productReady || accountsLoading || accountBusy || !selectedHostAccount()" :aria-busy="cloudSyncBusy" @click="syncCurrentInventoryToCloud"><RefreshCw :size="15" aria-hidden="true" />{{ cloudSyncBusy ? '同步中…' : '同步背包' }}</button>
+          </template>
+        </AccountWorkspace>
+        <p v-if="cloudSyncMessage || cloudSyncError" class="star-sync-state" :class="{ 'is-error': cloudSyncError }" role="status" aria-live="polite">{{ cloudSyncError || cloudSyncMessage }}</p>
         <div class="star-tabs" role="tablist" aria-label="星石工作区"><button role="tab" :aria-selected="activeTab === 'import'" :class="{ on: activeTab === 'import' }" @click="setTab('import')">导入识别</button><button role="tab" :aria-selected="activeTab === 'review'" :class="{ on: activeTab === 'review' }" @click="setTab('review')">人工核对</button></div>
         <div id="product-root" ref="mountRoot"></div>
         <p v-if="mountError" class="yuanstar-mount-error" role="alert">YuanStar 产品页加载失败：{{ mountError }}</p>
@@ -29,6 +34,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { RefreshCw } from '@lucide/vue'
 import AccountWorkspace from '../../components/AccountWorkspace.vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
@@ -36,6 +42,7 @@ import { createAccount, deleteAccount, listAccounts, renameAccount, updateAccoun
 import { auth } from '../../store/auth.js'
 import { activeAccount, isAccountGame } from '../../store/activeAccount.js'
 import { disposeYuanStarHandle, waitForYuanStarDisposal } from './embedLifecycle.js'
+import { createHostStarInventorySync } from './hostStarInventorySync.js'
 
 const EMBED_MODULE_URL = '/yuanstar-embed/yuanstar-embed.js'
 const EMBED_STYLESHEET_URL = '/yuanstar-embed/yuanstar-embed.css'
@@ -48,6 +55,10 @@ const accountBusy = ref(false)
 const accountError = ref('')
 const activeTab = ref('import')
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: '如鸢' })
+const cloudSyncBusy = ref(false)
+const cloudSyncMessage = ref('')
+const cloudSyncError = ref('')
+const productReady = ref(false)
 let handle = null
 let unmounted = false
 let mountedAccountId = ''
@@ -60,6 +71,8 @@ function selectedHostAccount() {
   const account = accounts.value.find(function (item) { return item.id === accountId.value })
   return account ? { accountId: account.id, displayName: account.name, gameVersion: isAccountGame(account.game) ? account.game : accountGame.value } : null
 }
+const starInventorySync = createHostStarInventorySync(selectedHostAccount)
+function clearCloudSyncFeedback() { cloudSyncMessage.value = ''; cloudSyncError.value = '' }
 async function loadAccounts() {
   if (!auth.isLoggedIn) { accounts.value = []; accountId.value = ''; return }
   accountsLoading.value = true; accountError.value = ''
@@ -73,7 +86,7 @@ async function loadAccounts() {
 async function syncHostAccount() {
   if (!handle) return
   const host = selectedHostAccount()
-  try { await handle.setHostAccount(host); mountedAccountId = host?.accountId || '' } catch (error) { if (mountedAccountId) accountId.value = mountedAccountId; accountError.value = message(error, '星石账号切换失败'); throw error }
+  try { await handle.setHostAccount(host); mountedAccountId = host?.accountId || ''; clearCloudSyncFeedback() } catch (error) { if (mountedAccountId) accountId.value = mountedAccountId; accountError.value = message(error, '星石账号切换失败'); throw error }
 }
 async function onAccountChange() { try { await syncHostAccount() } catch (_error) {} }
 async function onAccountGameChange(game) {
@@ -103,21 +116,29 @@ function ensureEmbedStylesheet() {
   return new Promise(function (resolve, reject) { const link = document.createElement('link'); link.id = EMBED_STYLESHEET_ID; link.rel = 'stylesheet'; link.href = EMBED_STYLESHEET_URL; link.addEventListener('load', resolve, { once: true }); link.addEventListener('error', function () { reject(new Error('YuanStar 样式资源加载失败。')) }, { once: true }); document.head.appendChild(link) })
 }
 function loadEmbedModule() { return Function('url', 'return import(url)')(EMBED_MODULE_URL) }
+async function syncCurrentInventoryToCloud() {
+  if (cloudSyncBusy.value) return
+  clearCloudSyncFeedback()
+  if (!handle || !productReady.value) { cloudSyncError.value = '星石工作区尚未加载完成。'; return }
+  cloudSyncBusy.value = true
+  try { await handle.syncCurrentStarInventory(); cloudSyncMessage.value = '当前背包已同步' } catch (error) { cloudSyncError.value = message(error, '当前背包同步失败，请稍后重试。') } finally { cloudSyncBusy.value = false }
+}
 async function mountProduct() {
+  productReady.value = false
   try {
     await waitForYuanStarDisposal(); await ensureEmbedStylesheet(); const product = await loadEmbedModule()
     if (unmounted || !mountRoot.value) return
-    const mountedHandle = product.mountYuanStar(mountRoot.value, { assetBaseUrl: '/yuanstar-embed/', embedded: true, hostAccount: selectedHostAccount(), onSummaryChange: function (nextSummary) { summary.value = nextSummary } })
+    const mountedHandle = product.mountYuanStar(mountRoot.value, { assetBaseUrl: '/yuanstar-embed/', embedded: true, hostAccount: selectedHostAccount(), starInventorySync, onSummaryChange: function (nextSummary) { summary.value = nextSummary } })
     if (unmounted) { await mountedHandle.dispose(); return }
-    handle = mountedHandle; mountedAccountId = selectedHostAccount()?.accountId || ''
-  } catch (error) { if (!unmounted) mountError.value = message(error, '请稍后重试。') }
+    handle = mountedHandle; mountedAccountId = selectedHostAccount()?.accountId || ''; productReady.value = true
+  } catch (error) { productReady.value = false; if (!unmounted) mountError.value = message(error, '请稍后重试。') }
 }
 function setTab(tab) { activeTab.value = tab; handle?.setActiveTab(tab) }
 onMounted(async function () { await loadAccounts(); void mountProduct() })
-onBeforeUnmount(function () { unmounted = true; const current = handle; handle = null; if (current) void disposeYuanStarHandle(current).catch(function () {}) })
+onBeforeUnmount(function () { unmounted = true; productReady.value = false; const current = handle; handle = null; if (current) void disposeYuanStarHandle(current).catch(function () {}) })
 </script>
 
 <style scoped>
-.page-star { --wm: '星石' }.star-main { min-height: 100vh }.game-stat { font-size: 21px; line-height: 1.4 }.author-badge { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; padding: 8px 15px 8px 9px; border: 1px solid rgba(255, 248, 236, .38); border-radius: 999px; color: var(--cream); background: var(--tea); box-shadow: 0 12px 26px -14px rgba(73, 59, 44, .5); font-size: 12px; font-weight: 600; letter-spacing: .05em }.ab-mark { display: grid; width: 28px; height: 28px; flex: none; place-items: center; border-radius: 50%; color: var(--tea); background: var(--yellow); font-family: var(--font-d); font-size: 15px; font-weight: 900 }.author-badge b { color: var(--yellow); font-weight: 900 }.star-tabs { position: sticky; top: 24px; z-index: 45; display: flex; gap: 4px; margin-top: 32px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 248, 236, .94); backdrop-filter: blur(12px); box-shadow: 0 12px 28px -22px rgba(73, 59, 44, .5) }.star-tabs button { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; padding: 10px 26px; color: var(--ink-60); background: transparent; cursor: pointer; font-family: var(--font-b); font-size: 14px; font-weight: 700 }.star-tabs button.on { color: var(--cream); background: var(--tea) }.star-tabs button:hover:not(.on) { color: var(--ink) }#product-root { min-width: 0; background: transparent }.yuanstar-mount-error { margin: 24px 0; padding: 16px 20px; border: 1px solid rgba(166, 81, 74, .45); border-radius: 14px; color: var(--rouge); background: var(--surface); font-weight: 700; line-height: 1.7 }
-@media (max-width: 1080px) { .star-main > section { padding-bottom: 40px }.page-star :deep(.footer) { padding-bottom: calc(32px + 64px + env(safe-area-inset-bottom)) }.star-tabs { position: fixed; top: auto; right: 0; bottom: 0; left: 0; z-index: 55; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 7px max(12px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); border: 0; border-top: 1px solid var(--line); border-radius: 0; background: rgba(255, 248, 236, .96); box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, .48) }.star-tabs button { min-height: 48px; padding: 6px 8px; border-radius: 11px; font-size: 11.5px; line-height: 1.1 }.star-tabs button.on { color: var(--ink); background: var(--yellow) } }
+.page-star { --wm: '星石' }.star-main { min-height: 100vh }.game-stat { font-size: 21px; line-height: 1.4 }.author-badge { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; padding: 8px 15px 8px 9px; border: 1px solid rgba(255, 248, 236, .38); border-radius: 999px; color: var(--cream); background: var(--tea); box-shadow: 0 12px 26px -14px rgba(73, 59, 44, .5); font-size: 12px; font-weight: 600; letter-spacing: .05em }.ab-mark { display: grid; width: 28px; height: 28px; flex: none; place-items: center; border-radius: 50%; color: var(--tea); background: var(--yellow); font-family: var(--font-d); font-size: 15px; font-weight: 900 }.author-badge b { color: var(--yellow); font-weight: 900 }.star-sync-action { display: inline-flex; min-height: 44px; align-self: center; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border: 1.5px solid var(--line); border-radius: 999px; color: var(--ink-60); background: transparent; cursor: pointer; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; white-space: nowrap; transform: translateY(9px); transition: all .3s var(--ease) }.star-sync-action:disabled { cursor: not-allowed; opacity: .45 }.star-sync-action svg { flex: none }.star-sync-state { margin: 10px 2px -18px; color: var(--ink-60); font-size: 12px; font-weight: 700; line-height: 1.6 }.star-sync-state.is-error { color: var(--rouge) }.star-tabs { position: sticky; top: 24px; z-index: 45; display: flex; gap: 4px; margin-top: 32px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 248, 236, .94); backdrop-filter: blur(12px); box-shadow: 0 12px 28px -22px rgba(73, 59, 44, .5) }.star-tabs button { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; padding: 10px 26px; color: var(--ink-60); background: transparent; cursor: pointer; font-family: var(--font-b); font-size: 14px; font-weight: 700 }.star-tabs button.on { color: var(--cream); background: var(--tea) }.star-tabs button:hover:not(.on) { color: var(--ink) }#product-root { min-width: 0; background: transparent }.yuanstar-mount-error { margin: 24px 0; padding: 16px 20px; border: 1px solid rgba(166, 81, 74, .45); border-radius: 14px; color: var(--rouge); background: var(--surface); font-weight: 700; line-height: 1.7 }
+@media (max-width: 1080px) { .star-main > section { padding-bottom: 40px }.page-star :deep(.footer) { padding-bottom: calc(32px + 64px + env(safe-area-inset-bottom)) }.star-sync-action { width: 100%; transform: none }.star-sync-state { margin: 10px 0 -18px }.star-tabs { position: fixed; top: auto; right: 0; bottom: 0; left: 0; z-index: 55; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 7px max(12px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); border: 0; border-top: 1px solid var(--line); border-radius: 0; background: rgba(255, 248, 236, .96); box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, .48) }.star-tabs button { min-height: 48px; padding: 6px 8px; border-radius: 11px; font-size: 11.5px; line-height: 1.1 }.star-tabs button.on { color: var(--ink); background: var(--yellow) } }
 </style>
