@@ -53,6 +53,27 @@ test('registers the protected management workbench route', function () {
   assert.equal(route.meta.title.startsWith('管理工作台'), true)
 })
 
+test('adds a single accessible workbench back link to management detail pages', function () {
+  const backLink = readSource('../src/components/admin/AdminBackLink.vue')
+  const detailPages = [
+    '../src/pages/admin/roles.vue',
+    '../src/pages/admin/audit.vue',
+    '../src/pages/feedback/admin.vue',
+    '../src/pages/operator/admin.vue'
+  ].map(readSource)
+  const workbench = readSource('../src/pages/admin/index.vue')
+
+  assert.match(backLink, /<router-link[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/s)
+  assert.match(backLink, /<ArrowLeft[^>]+aria-hidden="true"/)
+  assert.match(backLink, /\.admin-back-link\s*\{[\s\S]*display:\s*inline-flex/)
+  assert.match(backLink, /@media\s*\(max-width:\s*767px\)[\s\S]*\.admin-back-link\s*\{[\s\S]*min-height:\s*40px/)
+  detailPages.forEach(function (source) {
+    assert.equal(source.match(/<AdminBackLink\s*\/>/g).length, 1)
+    assert.match(source, /<header class="hero(?: [^"]+)?">\s*<div class="wrap">\s*<AdminBackLink\s*\/>/s)
+  })
+  assert.doesNotMatch(workbench, /AdminBackLink/)
+})
+
 test('keeps shared navigation and notification entry points stable', function () {
   const sidebar = readSource('../src/components/IslandSidebar.vue')
   const feedbackNav = readSource('../src/components/feedback/FeedbackWorkspaceNav.vue')

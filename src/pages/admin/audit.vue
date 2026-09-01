@@ -4,6 +4,7 @@
     <main id="main-content">
       <header class="hero">
         <div class="wrap">
+          <AdminBackLink />
           <div class="crumb"><span class="pill fill">管理</span><span class="pill">审计</span></div>
           <h1>管理员审计<span class="small">只读记录</span></h1>
           <p class="hero-sub">按时间倒序查看角色与反馈授权的变更记录。</p>
@@ -15,7 +16,6 @@
       </header>
 
       <section class="wrap audit-content">
-        <AdminWorkspaceNav active="admin-audit" />
         <div class="audit-toolbar">
           <span>第 {{ page }} 页</span>
           <button class="icon-command" type="button" title="刷新审计记录" :disabled="loading" @click="load(page)"><RefreshCw :size="17" aria-hidden="true" /></button>
@@ -55,7 +55,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronLeft, ChevronRight, RefreshCw } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import AdminWorkspaceNav from '../../components/admin/AdminWorkspaceNav.vue'
+import AdminBackLink from '../../components/admin/AdminBackLink.vue'
 import { listAdminAuditLogs } from '../../api/admin.js'
 
 const PAGE_SIZE = 20
