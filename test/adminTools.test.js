@@ -59,18 +59,20 @@ test('adds a single accessible workbench back link to management detail pages', 
     '../src/pages/admin/roles.vue',
     '../src/pages/admin/audit.vue',
     '../src/pages/feedback/admin.vue',
+    '../src/pages/feedback/manage.vue',
     '../src/pages/operator/admin.vue'
   ].map(readSource)
   const workbench = readSource('../src/pages/admin/index.vue')
 
   assert.match(backLink, /<router-link[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/s)
-  assert.match(backLink, /<ArrowLeft[^>]+aria-hidden="true"/)
-  assert.match(backLink, /\.admin-back-link\s*\{[\s\S]*display:\s*inline-flex/)
-  assert.match(backLink, /@media\s*\(max-width:\s*767px\)[\s\S]*\.admin-back-link\s*\{[\s\S]*min-height:\s*40px/)
+  assert.match(backLink, /<ArrowLeft[^>]+:size="20"[^>]+aria-hidden="true"/)
+  assert.match(backLink, /\.admin-back-link\s*\{[\s\S]*display:\s*inline-flex[\s\S]*min-height:\s*48px[\s\S]*font:\s*800 16px/)
+  assert.match(backLink, /@media\s*\(max-width:\s*767px\)[\s\S]*\.admin-back-link\s*\{[\s\S]*font-size:\s*16px/)
   detailPages.forEach(function (source) {
-    assert.equal(source.match(/<AdminBackLink\s*\/>/g).length, 1)
+    assert.equal((source.match(/<AdminBackLink\s*\/>/g) || []).length, 1)
     assert.match(source, /<header class="hero(?: [^"]+)?">\s*<div class="wrap">\s*<AdminBackLink\s*\/>/s)
   })
+  assert.match(detailPages[3], /<FeedbackWorkspaceNav[^>]+:show-management="false"/)
   assert.doesNotMatch(workbench, /AdminBackLink/)
 })
 

@@ -5,6 +5,7 @@
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
+          <AdminBackLink />
           <div class="feedback-hero-kicker">ADMIN / FEEDBACK CENTER</div>
           <div class="feedback-hero-layout">
             <div>
@@ -17,7 +18,7 @@
 
       <section class="feedback-content">
         <div class="wrap">
-          <FeedbackWorkspaceNav active="manage" :can-manage="true" :can-configure="canConfigureFeedback" />
+          <FeedbackWorkspaceNav active="manage" :can-manage="true" :can-configure="canConfigureFeedback" :show-management="false" />
 
           <div v-if="loadingAccess" class="permission-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
@@ -133,6 +134,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
+import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
