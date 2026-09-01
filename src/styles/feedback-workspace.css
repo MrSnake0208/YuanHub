@@ -19,6 +19,9 @@
 .feedback-page #main-content { min-height: 100vh; color: var(--ink); }
 .feedback-page .wrap { max-width: 1320px; }
 .feedback-page .feedback-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 274px;
   padding: 58px 0 44px;
   border-radius: 0 0 36px 36px;
@@ -28,11 +31,13 @@
   background-position: center;
   background-size: auto, 1700px;
 }
-.feedback-page .feedback-hero::after { content: var(--wm, '反馈'); right: 10px; top: -86px; display: block; color: rgba(255, 253, 246, .18); font-size: 330px; }
-.feedback-hero-kicker { margin-bottom: 14px; color: var(--tea); font: 800 12px var(--font-d); letter-spacing: .16em; }
-.feedback-hero-layout { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
-.feedback-page .feedback-hero h1 { display: block; margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 44px; font-weight: 900; line-height: 1.15; letter-spacing: .04em; }
-.feedback-page .feedback-hero .hero-sub { max-width: 72ch; margin-top: 12px; color: var(--ink-60); font-size: 14px; line-height: 1.8; }
+.feedback-page .feedback-hero::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(255, 253, 246, .18), rgba(255, 253, 246, .06) 52%, rgba(255, 253, 246, .12)); }
+.feedback-page .feedback-hero::after { content: var(--wm, '反馈'); position: absolute; z-index: 0; right: 10px; top: -86px; display: block; color: rgba(255, 253, 246, .18); font-size: 330px; pointer-events: none; }
+.feedback-page .feedback-hero > .wrap { position: relative; z-index: 2; min-width: 0; }
+.feedback-hero-kicker { position: relative; z-index: 2; margin-bottom: 14px; color: var(--tea); font: 800 12px var(--font-d); letter-spacing: .16em; }
+.feedback-hero-layout { position: relative; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; min-width: 0; }
+.feedback-page .feedback-hero h1 { display: block; min-width: 0; margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 44px; font-weight: 900; line-height: 1.15; letter-spacing: .04em; overflow-wrap: anywhere; }
+.feedback-page .feedback-hero .hero-sub { width: min(100%, 72ch); max-width: 72ch; margin-top: 12px; color: var(--ink-60); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
 .feedback-hero-action { flex: none; min-width: 142px; min-height: 48px; }
 .feedback-content { padding: 0 0 12px; }
 
@@ -145,7 +150,7 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
 @media (max-width: 767px) {
   .feedback-page .wrap { padding-inline: 18px; }
   .feedback-page .feedback-hero { min-height: 0; padding: 34px 0 30px; border-radius: 0 0 24px 24px; }
-  .feedback-page .feedback-hero::after { right: -18px; top: -26px; font-size: 180px; }
+  .feedback-page .feedback-hero::after { right: -30px; top: -62px; font-size: 180px; }
   .feedback-hero-layout { align-items: stretch; flex-direction: column; gap: 22px; }
   .feedback-page .feedback-hero h1 { font-size: 34px; }
   .feedback-hero-action { width: 100%; min-height: 46px; }
@@ -162,4 +167,13 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
   .feedback-button { min-height: 44px; }
   .feedback-form-control { font-size: 16px; }
   .feedback-attachment-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 360px) {
+  .feedback-page .feedback-hero::after { right: -38px; top: -68px; font-size: 150px; }
+  .feedback-page .feedback-hero h1 { font-size: 32px; }
+}
+
+@media (min-width: 768px) and (max-width: 1080px) {
+  .feedback-page .feedback-hero::after { right: -24px; top: -68px; font-size: 280px; }
 }
