@@ -162,6 +162,20 @@ export const routes = [
         }
     },
     {
+        path: '/manage',
+        text: '管理工作台',
+        name: 'manage',
+        display: false,
+        module: 'admin',
+        icon: 'layout-dashboard',
+        component: () => import('/src/pages/admin/index.vue'),
+        meta: {
+            title: '管理工作台 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiresManagement: true
+        }
+    },
+    {
         path: '/feedback',
         text: '反馈中心',
         name: 'feedback-center',

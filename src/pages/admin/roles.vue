@@ -16,11 +16,7 @@
       </header>
 
       <section class="wrap role-content">
-        <nav class="admin-links" aria-label="管理页面">
-          <router-link to="/user/profile">个人中心</router-link>
-          <router-link v-if="canConfigureFeedback" to="/feedback/admin">反馈授权</router-link>
-          <router-link v-if="canReadAudit" to="/admin/audit">审计记录</router-link>
-        </nav>
+        <AdminWorkspaceNav active="admin-roles" />
 
         <div class="role-toolbar">
           <label class="search-box">
@@ -104,6 +100,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Pencil, Plus, RefreshCw, Save, Search, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
+import AdminWorkspaceNav from '../../components/admin/AdminWorkspaceNav.vue'
 import { listAdminRoleUsers, replaceAdminRoles } from '../../api/admin.js'
 import { searchFeedbackAccessUsers } from '../../api/user.js'
 import { auth } from '../../store/auth.js'
@@ -133,8 +130,6 @@ const filteredUsers = computed(function () {
 })
 const superAdminCount = computed(function () { return users.value.filter(function (user) { return user.roles.includes('SUPER_ADMIN') }).length })
 const inactiveCount = computed(function () { return users.value.filter(function (user) { return !user.activated }).length })
-const canConfigureFeedback = computed(function () { return hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE) })
-const canReadAudit = computed(function () { return hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.AUDIT_READ) })
 const currentUserId = computed(function () {
   const user = auth.userInfo || {}
   return user.id || user.user_id || user.userId || ''
@@ -266,9 +261,7 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 <style scoped>
 .page-admin-roles { min-height: 100vh }
 .page-admin-roles .hero { --wm: '角' }
-.role-content { padding-top: 24px; padding-bottom: 56px }
-.admin-links { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; font-size: 13px; font-weight: 800 }
-.admin-links a { color: var(--accent-strong); text-decoration: none }
+.role-content { padding-bottom: 56px }
 .role-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-block: 1px solid var(--line) }
 .search-box { min-width: 260px; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60) }
 .search-box input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit }

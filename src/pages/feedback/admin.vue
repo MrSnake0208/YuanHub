@@ -20,17 +20,13 @@
 
       <section>
         <div class="wrap">
-          <FeedbackWorkspaceNav active="admin" :can-manage="canManageFeedback" can-configure />
+          <AdminWorkspaceNav active="feedback-access" />
           <div class="access-toolbar">
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
               <input v-model.trim="filter" name="feedback-access-filter" type="search" placeholder="搜索用户名或用户 ID..." aria-label="搜索反馈授权用户" />
             </label>
             <span class="access-count">{{ filteredGrants.length }} 人</span>
-            <div class="access-links">
-              <router-link v-if="canManageRoles" to="/admin/roles">角色管理</router-link>
-              <router-link v-if="canReadAudit" to="/admin/audit">审计记录</router-link>
-            </div>
           </div>
 
           <div v-if="loading" class="state" role="status">正在加载…</div>
@@ -129,7 +125,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
-import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
+import AdminWorkspaceNav from '@/components/admin/AdminWorkspaceNav.vue'
 import {
   deleteFeedbackAccessGrant,
   getFeedbackAccess,
@@ -139,7 +135,7 @@ import {
 import { searchFeedbackAccessUsers } from '@/api/user.js'
 import { dialog } from '@/utils/dialog.js'
 import { auth } from '@/store/auth.js'
-import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
+import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import '@/styles/feedback-workspace.css'
 
 const DEFAULT_AREAS = [
@@ -168,9 +164,6 @@ let searchTimer = null
 const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [] })
 const router = useRouter()
 
-const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
-const canManageRoles = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ROLE_MANAGE))
-const canReadAudit = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.AUDIT_READ))
 const currentUserId = computed(() => {
   const user = auth.userInfo || {}
   return user.id || user.user_id || user.userId || ''
@@ -286,7 +279,10 @@ async function saveGrant() {
   editorError.value = ''
   try {
     await updateFeedbackAccessGrant(form.userId, form)
-    if (form.userId === currentUserId.value) await auth.refreshAdminAccess({ suppressErrors: true })
+    if (form.userId === currentUserId.value) {
+      await auth.refreshAdminAccess({ suppressErrors: true })
+      if (!hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE)) return leaveAfterPermissionChange()
+    }
     await load()
     editing.value = false
   } catch (e) {
@@ -301,7 +297,10 @@ async function removeGrant(grant) {
   if (!confirm('删除“' + grant.userName + '”的反馈授权？')) return
   try {
     await deleteFeedbackAccessGrant(grant.userId)
-    if (grant.userId === currentUserId.value) await auth.refreshAdminAccess({ suppressErrors: true })
+    if (grant.userId === currentUserId.value) {
+      await auth.refreshAdminAccess({ suppressErrors: true })
+      if (!hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE)) return leaveAfterPermissionChange()
+    }
     await load()
   } catch (e) {
     if (await handleForbidden(e)) return
@@ -316,6 +315,10 @@ async function handleForbidden(errorValue) {
   return true
 }
 
+async function leaveAfterPermissionChange() {
+  await router.replace({ path: '/forbidden', query: { from: '/feedback/admin' } })
+}
+
 onMounted(load)
 onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 </script>
@@ -323,9 +326,6 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 <style scoped>
 .page-feedback-access { min-height: 100vh }
 .access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-bottom: 14px }
-.access-links { display: inline-flex; gap: 16px; margin-left: auto; font-size: 12px; font-weight: 800 }
-.access-links a { color: var(--ink-60); text-decoration: none }
-.access-links a:hover { color: var(--accent-strong) }
 .access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
 .access-search:focus-within { border-color: var(--feedback-accent) }
 .access-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink) }
@@ -371,7 +371,6 @@ onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
 @media (max-width: 720px) {
   .access-toolbar { flex-wrap: wrap }
   .access-search { width: 100%; min-width: 0; flex: 1 1 100% }
-  .access-links { margin-left: 0 }
   .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .access-table th:nth-child(4),.access-table td:nth-child(4) { display: none }
   .access-modal-body { padding: 16px }

@@ -23,17 +23,29 @@
 
       <section>
         <div class="wrap">
-          <div v-if="auth.adminAccessLoaded && adminTools.length" class="admin-tools" v-reveal>
+          <div v-if="auth.adminAccessLoaded && adminToolGroups.length" class="admin-tools" v-reveal>
             <div class="admin-tools-head">
-              <span class="admin-kicker">管理员工具</span>
-              <h2>当前可用的管理入口</h2>
+              <span class="admin-kicker">管理入口</span>
+              <h2>当前可用的管理内容</h2>
+              <p>按当前授权显示。日常处理请进入管理工作台。</p>
             </div>
-            <nav class="admin-entry-grid" aria-label="管理员工具">
-              <router-link v-for="tool in adminTools" :key="tool.to" class="admin-entry" :to="tool.to">
-                <component :is="tool.icon" :size="18" aria-hidden="true" />
-                <span>{{ tool.label }}</span>
+            <div class="admin-tools-body">
+              <router-link class="admin-workbench-link" to="/manage">
+                <LayoutDashboard :size="17" aria-hidden="true" />
+                <span><b>打开管理工作台</b><small>从一个入口进入所有已授权的管理工具</small></span>
               </router-link>
-            </nav>
+              <div class="admin-entry-groups">
+                <section v-for="group in adminToolGroups" :key="group.key" class="admin-entry-group">
+                  <h3>{{ group.label }}</h3>
+                  <nav :aria-label="group.label">
+                    <router-link v-for="tool in group.tools" :key="tool.to" class="admin-entry" :to="tool.to">
+                      <component :is="tool.icon" :size="17" aria-hidden="true" />
+                      <span><b>{{ tool.label }}</b><small>{{ tool.description }}</small></span>
+                    </router-link>
+                  </nav>
+                </section>
+              </div>
+            </div>
           </div>
 
           <div class="connection-card" v-reveal>
@@ -254,11 +266,11 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Check, ChevronDown, Copy, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck, X } from '@lucide/vue'
+import { Check, ChevronDown, Copy, KeyRound, LayoutDashboard, Link2, PackageOpen, ScanLine, ShieldCheck, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
-import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '../../utils/authPermissions.js'
+import { getVisibleAdminToolGroups } from '../../utils/adminTools.js'
 import { createAccount, listAccounts } from '../../api/accounts.js'
 import { deleteOpenApiToken, generateOpenApiToken, getOpenApiPermissions, getOpenApiTokens, updateOpenApiTokenScopes } from '../../api/openApi.js'
 import { ACCOUNT_GAMES, DEFAULT_ACCOUNT_GAME } from '../../store/activeAccount.js'
@@ -299,16 +311,7 @@ const userName = computed(function () { return auth.userInfo && auth.userInfo.us
 const tokenCount = computed(function () { return tokens.value.length })
 const maaYuanReadyCount = computed(function () { return tokens.value.filter(supportsMaaYuan).length })
 const busy = computed(function () { return loading.value || creatingAccount.value || !!creatingMode.value || !!updatingTokenId.value })
-const adminTools = computed(function () {
-  const access = auth.adminAccess
-  return [
-    hasPermission(access, ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE) && { to: '/operator/admin', label: '公共图鉴', icon: ScanLine },
-    canManageAnyFeedback(access) && { to: '/feedback/manage', label: '模块反馈', icon: ShieldCheck },
-    hasPermission(access, ADMIN_PERMISSIONS.ROLE_MANAGE) && { to: '/admin/roles', label: '角色管理', icon: KeyRound },
-    hasPermission(access, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE) && { to: '/feedback/admin', label: '反馈授权', icon: Link2 },
-    hasPermission(access, ADMIN_PERMISSIONS.AUDIT_READ) && { to: '/admin/audit', label: '审计记录', icon: PackageOpen }
-  ].filter(Boolean)
-})
+const adminToolGroups = computed(function () { return getVisibleAdminToolGroups(auth.adminAccess) })
 const permissionGroups = computed(function () {
   return [
     { key: 'inventory', title: '库存数据', items: permissions.value.filter(function (permission) { return permission.scope.startsWith('inventory:') }) },
@@ -576,11 +579,19 @@ onBeforeUnmount(function () {
 .hero-stats .uname { font-family: var(--font-s); font-weight: 900; font-size: 26px; letter-spacing: .02em }
 .hero-stats .v small { vertical-align: baseline }
 .hero-stats div.is-authed .v { font-size: 26px }
-.admin-tools { margin-top: 40px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; display: grid; grid-template-columns: minmax(180px, .75fr) minmax(0, 1.5fr); align-items: center; gap: 24px }
+.admin-tools { margin-top: 40px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 20px 24px; display: grid; grid-template-columns: minmax(180px, .75fr) minmax(0, 1.5fr); align-items: start; gap: 24px }
 .admin-kicker,.section-kicker { color: var(--accent-strong); font-family: var(--font-d); font-size: 11px; font-weight: 800; letter-spacing: .12em }
 .admin-tools h2 { margin-top: 4px; color: var(--ink); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: .04em }
-.admin-entry-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px }
-.admin-entry { min-height: 44px; display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 8px 12px; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; font-weight: 800; line-height: 1.2; text-decoration: none }
+.admin-tools-head p { margin-top: 7px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
+.admin-tools-body { min-width: 0 }
+.admin-workbench-link { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 8px 12px; color: var(--cream); background: var(--tea); border-radius: 8px; text-decoration: none }
+.admin-workbench-link:hover { background: var(--accent) }
+.admin-workbench-link span,.admin-entry span { display: flex; min-width: 0; flex-direction: column; gap: 3px }
+.admin-workbench-link small,.admin-entry small { color: inherit; opacity: .72; font-size: 10.5px; font-weight: 600; line-height: 1.35 }
+.admin-entry-groups { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 14px }
+.admin-entry-group h3 { margin-bottom: 7px; color: var(--ink-60); font-size: 11px; font-weight: 800; letter-spacing: .06em }
+.admin-entry-group nav { display: grid; gap: 7px }
+.admin-entry { min-height: 52px; display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding: 8px 10px; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; font-weight: 800; line-height: 1.2; text-decoration: none }
 .admin-entry:hover { color: var(--accent-strong); border-color: var(--accent) }
 .connection-card { margin-top: 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 30px }
 .card-head h2 { margin-top: 5px; font-family: var(--font-s); font-weight: 900; font-size: 26px; letter-spacing: .04em; color: var(--ink) }
@@ -721,6 +732,7 @@ onBeforeUnmount(function () {
 
 @media (max-width: 820px) {
   .admin-tools { grid-template-columns: 1fr }
+  .admin-entry-groups { grid-template-columns: repeat(3,minmax(0,1fr)) }
   .app-pass { grid-template-columns: 76px minmax(0,1fr) }
   .app-seal { width: 72px; height: 72px; border-radius: 22px 22px 22px 9px }
   .app-seal img { width: 60px; height: 60px }
@@ -731,8 +743,8 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
-  .admin-tools { align-items: stretch; flex-direction: column }
-  .admin-entry-grid { grid-template-columns: repeat(2,minmax(0,1fr)) }
+  .admin-tools { padding: 18px 16px }
+  .admin-entry-groups { grid-template-columns: 1fr; gap: 14px }
   .connection-card { padding: 20px 16px; border-radius: 20px }
   .app-pass { grid-template-columns: 58px minmax(0,1fr); gap: 14px; padding: 17px }
   .app-pass::after { display: none }

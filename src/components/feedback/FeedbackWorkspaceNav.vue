@@ -12,16 +12,28 @@
       <ShieldCheck :size="17" aria-hidden="true" />
       <span>权限配置</span>
     </router-link>
+    <router-link v-if="showManagement && canAccessManagement" to="/manage" :class="{ active: active === 'workbench' }">
+      <LayoutDashboard :size="17" aria-hidden="true" />
+      <span>管理工作台</span>
+    </router-link>
   </nav>
 </template>
 
 <script setup>
-import { Inbox, MessageSquareText, ShieldCheck } from '@lucide/vue'
+import { computed } from 'vue'
+import { Inbox, LayoutDashboard, MessageSquareText, ShieldCheck } from '@lucide/vue'
+import { auth } from '@/store/auth.js'
+import { hasManagementCapability } from '@/utils/adminTools.js'
 
 defineProps({
   active: { type: String, required: true },
   canManage: { type: Boolean, default: false },
-  canConfigure: { type: Boolean, default: false }
+  canConfigure: { type: Boolean, default: false },
+  showManagement: { type: Boolean, default: true }
+})
+
+const canAccessManagement = computed(function () {
+  return hasManagementCapability(auth.adminAccess)
 })
 </script>
 

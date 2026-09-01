@@ -27,6 +27,7 @@ VITE_API_BASE=http://127.0.0.1:8080
 | `/` | 作业广场：Hero + 工具栏（Tab / 站点筛选 / 搜索 / 排序）+ 作业卡列表（分页加载）+ 三方共建 + 页脚 | `index.html` |
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
 | `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
+| `/manage` | 管理工作台：按权限进入反馈工作区、公共密探图鉴、角色管理、反馈授权和审计记录 | — |
 
 ## 目录结构
 
@@ -49,7 +50,8 @@ VITE_API_BASE=http://127.0.0.1:8080
     └── pages/                  # 页面（按模块分子目录）
         ├── index.vue           # 作业广场（/）
         ├── work/detail.vue     # 通关作业详情（/work/:id）
-        └── tools/cart.vue      # 广陵账房·礼包计算器（/cart）
+        ├── tools/cart.vue      # 广陵账房·礼包计算器（/cart）
+        └── admin/index.vue     # 管理工作台（/manage）
 ```
 
 ## 复刻要点
