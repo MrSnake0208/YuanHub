@@ -86,3 +86,12 @@ test('keeps shared navigation and notification entry points stable', function ()
   assert.match(feedbackNav, /to="\/manage"/)
   assert.match(notificationPage, /item\.kind === 'FEEDBACK_ASSIGNED' \? '\/feedback\/manage' : '\/feedback'/)
 })
+
+test('keeps the guest sidebar separator while grouping login-only entries', function () {
+  const sidebar = readSource('../src/components/IslandSidebar.vue')
+  const desktopNav = sidebar.match(/<nav class="nav">([\s\S]*?)<\/nav>/)[1]
+
+  assert.equal((desktopNav.match(/class="nav-separator"/g) || []).length, 2)
+  assert.match(desktopNav, /<div class="nav-separator" aria-hidden="true"><\/div>\s*<template v-if="isLoggedIn">/)
+  assert.match(desktopNav, /<template v-if="isLoggedIn">[\s\S]*to="\/notifications"[\s\S]*to="\/feedback"[\s\S]*<div class="nav-separator" aria-hidden="true"><\/div>\s*<\/template>/)
+})
