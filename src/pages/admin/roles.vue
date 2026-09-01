@@ -4,6 +4,7 @@
     <main id="main-content">
       <header class="hero">
         <div class="wrap">
+          <AdminBackLink />
           <div class="crumb"><span class="pill fill">管理</span><span class="pill">角色</span></div>
           <h1>管理员角色<span class="small">完整替换</span></h1>
           <p class="hero-sub">管理平台管理员与超级管理员的实际角色绑定。</p>
@@ -16,8 +17,6 @@
       </header>
 
       <section class="wrap role-content">
-        <AdminWorkspaceNav active="admin-roles" />
-
         <div class="role-toolbar">
           <label class="search-box">
             <Search :size="17" aria-hidden="true" />
@@ -100,7 +99,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Pencil, Plus, RefreshCw, Save, Search, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import AdminWorkspaceNav from '../../components/admin/AdminWorkspaceNav.vue'
+import AdminBackLink from '../../components/admin/AdminBackLink.vue'
 import { listAdminRoleUsers, replaceAdminRoles } from '../../api/admin.js'
 import { searchFeedbackAccessUsers } from '../../api/user.js'
 import { auth } from '../../store/auth.js'

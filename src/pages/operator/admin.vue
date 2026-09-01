@@ -6,6 +6,7 @@
       <!-- HERO -->
       <header class="hero">
         <div class="wrap">
+          <AdminBackLink />
           <div class="crumb">
             <span class="pill fill">密探</span>
             <span class="pill">公共图鉴</span>
@@ -24,7 +25,6 @@
 
       <section>
         <div class="wrap">
-          <AdminWorkspaceNav active="operator-catalog" />
           <!-- 非管理员 / 未授权提示 -->
           <div v-if="forbidden" class="state err banner" v-reveal>
             <b>仅管理员可访问</b>：{{ forbidden }} · 请用管理员账号登录后再试
@@ -332,7 +332,7 @@ import { useRouter } from 'vue-router'
 import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import AdminWorkspaceNav from '../../components/admin/AdminWorkspaceNav.vue'
+import AdminBackLink from '../../components/admin/AdminBackLink.vue'
 import {
   listAdminOperatorCatalog,
   createAdminOperatorCatalog,

@@ -4,6 +4,7 @@
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
+          <AdminBackLink />
           <div class="feedback-hero-kicker">ADMIN / ACCESS CONTROL</div>
           <div class="feedback-hero-layout">
             <div>
@@ -20,7 +21,6 @@
 
       <section>
         <div class="wrap">
-          <AdminWorkspaceNav active="feedback-access" />
           <div class="access-toolbar">
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
@@ -125,7 +125,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
-import AdminWorkspaceNav from '@/components/admin/AdminWorkspaceNav.vue'
+import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import {
   deleteFeedbackAccessGrant,
   getFeedbackAccess,
