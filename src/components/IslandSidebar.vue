@@ -47,14 +47,16 @@
       <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }"><span class="no">02</span>库存追踪</router-link>
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"><span class="no">03</span>广陵账房</router-link>
       <div class="nav-separator" aria-hidden="true"></div>
-      <router-link v-if="isLoggedIn" to="/notifications" :class="{ active: $route.path === '/notifications' }">
-        通知中心
-        <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-      </router-link>
-      <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
-        反馈中心
-      </router-link>
-      <div class="nav-separator" aria-hidden="true"></div>
+      <template v-if="isLoggedIn">
+        <router-link to="/notifications" :class="{ active: $route.path === '/notifications' }">
+          通知中心
+          <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+        </router-link>
+        <router-link to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
+          反馈中心
+        </router-link>
+        <div class="nav-separator" aria-hidden="true"></div>
+      </template>
       <router-link to="/user/profile" :class="{ active: $route.path === '/user/profile' }">个人中心</router-link>
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
