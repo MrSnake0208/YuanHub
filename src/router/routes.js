@@ -100,6 +100,18 @@ export const routes = [
         }
     },
     {
+        path: '/demo',
+        text: '养成规划演示',
+        name: 'demo-growth-planner',
+        display: false,
+        module: 'demo',
+        icon: 'target',
+        component: () => import('/src/pages/demo/index.vue'),
+        meta: {
+            title: '养成规划演示 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/login',
         text: '登录',
         name: 'login',

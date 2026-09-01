@@ -28,6 +28,7 @@ VITE_API_BASE=http://127.0.0.1:8080
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
 | `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
 | `/manage` | 管理工作台：按权限进入反馈工作区、公共密探图鉴、角色管理、反馈授权和审计记录；各管理详情页提供返回工作台入口 | — |
+| `/demo` | 养成规划演示：示例存档、养成目标、资源缺口、收集速度和密探档案；支持 `?view=overview|targets|materials|operator` 直接打开截图视图 | — |
 
 ## 目录结构
 
@@ -44,14 +45,15 @@ VITE_API_BASE=http://127.0.0.1:8080
     │   └── routes.js           # 路由表 + 新页面注册注释模板
     ├── App.vue                 # RouterView + 路由过渡
     ├── styles/main.css         # 设计规范 v1.0 全部令牌与样式
-    ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js
+    ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js / demoScenario.js
     ├── components/             # IslandSidebar / DetailSidebar / WorkCard / SiteFooter
     │   └── cart/               # PackageCard / ReceiptPanel / CustomPackageModal
     └── pages/                  # 页面（按模块分子目录）
         ├── index.vue           # 作业广场（/）
         ├── work/detail.vue     # 通关作业详情（/work/:id）
         ├── tools/cart.vue      # 广陵账房·礼包计算器（/cart）
-        └── admin/index.vue     # 管理工作台（/manage）
+        ├── admin/index.vue     # 管理工作台（/manage）
+        └── demo/index.vue      # 养成规划演示（/demo，仅使用本地示例数据）
 ```
 
 ## 复刻要点
