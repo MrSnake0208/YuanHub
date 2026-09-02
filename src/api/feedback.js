@@ -27,10 +27,10 @@ export async function createFeedback(payload) {
   return normalizeFeedback(data)
 }
 
-function normalizeMessage(message) {
+export function normalizeFeedbackMessage(message) {
   if (!message || typeof message !== 'object') return message
   const canonicalSenderKind = message.senderKind ?? message.sender_kind
-  const senderKind = canonicalSenderKind ?? ''
+  const senderKind = canonicalSenderKind == null ? '' : String(canonicalSenderKind).toUpperCase()
   return {
     ...message,
     senderKind,
@@ -62,7 +62,7 @@ function normalizeUser(user) {
   }
 }
 
-function normalizeFeedback(report) {
+export function normalizeFeedback(report) {
   if (!report || typeof report !== 'object') return report
   const rawType = String(report.type || '').toUpperCase()
   const rawCategory = String(report.category || '').toUpperCase()
@@ -75,6 +75,23 @@ function normalizeFeedback(report) {
   const rawQuota = report.quota && typeof report.quota === 'object' ? report.quota : null
   const reporter = normalizeUser(report.reporter)
   const handler = normalizeUser(report.handler)
+  const rawLastMessage = report.lastMessage ?? report.last_message
+  const lastMessage = rawLastMessage && typeof rawLastMessage === 'object'
+    ? normalizeFeedbackMessage(rawLastMessage)
+    : null
+  const lastMessageId = report.lastMessageId
+    ?? report.last_message_id
+    ?? lastMessage?.id
+    ?? ''
+  const lastMessageCreatedAt = report.lastMessageCreatedAt
+    ?? report.last_message_created_at
+    ?? lastMessage?.createdAt
+    ?? null
+  const lastMessageSender = report.lastMessageSender
+    ?? report.last_message_sender
+    ?? lastMessage?.senderKind
+    ?? ''
+  const updatedAt = report.updatedAt ?? report.updated_at ?? null
   return {
     ...report,
     type,
@@ -83,9 +100,12 @@ function normalizeFeedback(report) {
     area: category,
     status: String(report.status || '').toUpperCase(),
     hasAdminReply: report.hasAdminReply ?? report.has_admin_reply ?? false,
-    lastMessageSender: report.lastMessageSender ?? report.last_message_sender ?? '',
+    lastMessageSender: lastMessageSender == null ? '' : String(lastMessageSender).toUpperCase(),
+    lastMessageId,
+    lastMessageCreatedAt: lastMessageCreatedAt ?? updatedAt,
+    lastMessageIndex: report.lastMessageIndex ?? report.last_message_index ?? null,
     createdAt: report.createdAt ?? report.created_at ?? null,
-    updatedAt: report.updatedAt ?? report.updated_at ?? null,
+    updatedAt,
     mediaIds: report.mediaIds ?? report.media_ids ?? [],
     reporter,
     reporterName: report.reporterName ?? report.reporter_name ?? reporter?.userName ?? '',
@@ -101,7 +121,8 @@ function normalizeFeedback(report) {
       : null,
     viewerIsReporter: report.viewerIsReporter ?? report.viewer_is_reporter ?? false,
     viewerCanManage: report.viewerCanManage ?? report.viewer_can_manage ?? false,
-    messages: Array.isArray(report.messages) ? report.messages.map(normalizeMessage) : []
+    lastMessage: lastMessage || undefined,
+    messages: Array.isArray(report.messages) ? report.messages.map(normalizeFeedbackMessage) : []
   }
 }
 

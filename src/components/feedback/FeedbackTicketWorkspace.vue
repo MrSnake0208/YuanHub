@@ -37,6 +37,7 @@
             <td class="ticket-summary-cell" data-label="反馈内容">
               <strong>{{ truncate(item.content, 72) }}</strong>
               <code>{{ item.id }}</code>
+              <span v-if="isUnread(item)" class="ticket-unread-marker">有新更新</span>
             </td>
             <td v-if="showReporter" data-label="提交人">{{ reporterName(item) }}</td>
             <td data-label="状态">
@@ -130,6 +131,7 @@ const props = defineProps({
   pageSize: { type: Number, default: 20 },
   totalPages: { type: Number, default: 1 },
   showReporter: { type: Boolean, default: false },
+  unreadFeedbackIds: { type: Array, default: () => [] },
   typeLabel: { type: Function, required: true },
   categoryLabel: { type: Function, required: true },
   statusLabel: { type: Function, required: true },
@@ -149,6 +151,10 @@ function truncate(value, length) {
 
 function reporterName(item) {
   return item.reporterName || item.reporter?.userName || '未知用户'
+}
+
+function isUnread(item) {
+  return item && props.unreadFeedbackIds.includes(String(item.id))
 }
 
 function handleKeydown(event) {
@@ -179,6 +185,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-table tbody tr.selected { background: var(--feedback-panel-hover); box-shadow: inset 3px 0 var(--yellow-deep); }
 .ticket-summary-cell strong { display: block; overflow: hidden; color: var(--feedback-text); font-size: 13px; font-weight: 700; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
 .ticket-summary-cell code { display: block; margin-top: 5px; overflow: hidden; color: var(--feedback-text-dim); font: 10px var(--font-d); text-overflow: ellipsis; white-space: nowrap; }
+.ticket-unread-marker { display: inline-flex; align-items: center; min-height: 22px; margin-top: 7px; padding: 2px 7px; border: 1px solid var(--rouge); border-radius: 5px; color: var(--rouge); font-size: 10px; font-weight: 800; line-height: 1.2; }
 .ticket-table time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 .ticket-operation button { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--feedback-text); font: 800 12px var(--font-b); cursor: pointer; white-space: nowrap; }
 .ticket-operation button:hover { color: var(--accent-strong); }

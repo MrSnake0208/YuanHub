@@ -700,6 +700,25 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 `Cache-Control: private, no-store`，403/404 错误继续使用 JSON `ApiResult`。前端必须通过带 JWT 的 Blob 请求下载，
 不能把 Bearer Token 放入 URL 或使用普通匿名链接。
 
+### 6.1 站内通知（/v1/notifications）
+
+通知端点需要登录 JWT。后端响应使用 `snake_case`；YuanHub 的 `src/api/notifications.js` 在边界处统一归一化为
+`id`、`kind`、`title`、`body`、`refType`、`refId`、`readAt`、`createdAt`，页面不得再次读取 snake_case 字段。
+
+| 方法与路径 | 请求 | 成功 data |
+|---|---|---|
+| GET /v1/notifications | page,pageSize,unreadOnly | `{notifications,total,unread_count}` |
+| GET /v1/notifications/unread-count | 无 | `{count}` |
+| PATCH /v1/notifications/{id}/read | 无 | 已读后的通知对象 |
+| PATCH /v1/notifications/read-all | 无 | `{updated}` |
+
+通知 `ref_type=FEEDBACK` 且存在 `ref_id` 时，前端可显示关联反馈编号。`FEEDBACK_REPLY` 和
+`FEEDBACK_STATUS_UPDATED` 只跳转当前用户反馈；`FEEDBACK_ASSIGNED` 和 `FEEDBACK_MESSAGE_FROM_REPORTER` 只有具备 `manageAreas` 或超级管理员能力时才跳转
+反馈管理页。仅具备 `receiveAreas` 的用户仍可查看自己的通知及关联编号，但不会获得反馈管理或详情访问权限。
+
+反馈中心通过分页读取 `unreadOnly=true` 的通知，将去重后的 `ref_id` 映射到具体用户反馈行。打开反馈详情成功后，
+前端只调用既有单条已读端点处理同一 `ref_id` 的通知；接口失败时保留该反馈的未读标识。通知未读总数以服务端返回值为准。
+
 ## 7. 密探公共图鉴管理（/v1/admin/operator-catalog）
 
 全部接口需要 JWT 且用户 `status >= 2`；否则返回 403 `forbidden`。

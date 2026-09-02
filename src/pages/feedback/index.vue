@@ -76,6 +76,7 @@
             :category-label="categoryLabel"
             :status-label="statusLabel"
             :format-date="formatDate"
+            :unread-feedback-ids="unreadFeedbackIds"
             empty-message="暂无符合条件的反馈工单"
             @select="selectTicket"
             @close="closeDetail"
@@ -195,6 +196,11 @@ import {
   listMyFeedback,
   updateMyFeedbackStatus
 } from '@/api/feedback.js'
+import {
+  getUnreadFeedbackNotificationRefs,
+  listUnreadNotifications,
+  markFeedbackNotificationsRead
+} from '@/api/notifications.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
@@ -243,7 +249,11 @@ const replyContent = ref('')
 const newFeedback = ref({ type: 'BUG', category: '', content: '', clientInfoConsent: false })
 const newMedia = useFeedbackMedia()
 const replyMedia = useFeedbackMedia()
+const unreadFeedbackIds = ref([])
 let loadRequestId = 0
+let unreadFeedbackRequestId = 0
+let unreadFeedbackPollTimer = null
+let isMounted = false
 
 const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
 const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
@@ -306,6 +316,31 @@ async function loadFeedback() {
   }
 }
 
+async function loadUnreadFeedbackNotifications() {
+  const requestId = ++unreadFeedbackRequestId
+  try {
+    const notifications = await listUnreadNotifications()
+    if (requestId === unreadFeedbackRequestId) {
+      unreadFeedbackIds.value = getUnreadFeedbackNotificationRefs(notifications)
+    }
+  } catch (_) {
+    // 未读标识读取失败不应阻断反馈列表；保留最近一次成功状态。
+  }
+}
+
+async function clearFeedbackNotifications(id) {
+  const reportId = id == null ? '' : String(id)
+  if (!reportId) return
+  try {
+    const marked = await markFeedbackNotificationsRead(reportId)
+    if (marked.length > 0) {
+      unreadFeedbackIds.value = unreadFeedbackIds.value.filter(value => value !== reportId)
+    }
+  } catch (_) {
+    // 标记失败时保留标识，避免伪造已读状态。
+  }
+}
+
 async function reloadFromFirstPage() {
   page.value = 1
   closeDetail()
@@ -333,7 +368,11 @@ async function selectTicket(id) {
   selectedId.value = id
   cancelReply()
   const item = feedbacks.value.find(ticket => ticket.id === id)
-  if (!item || (item.messages && item.messages.length)) return
+  if (!item) return
+  if (item.messages && item.messages.length) {
+    await clearFeedbackNotifications(item.id)
+    return
+  }
   await loadFeedbackDetail(id)
 }
 
@@ -355,6 +394,7 @@ async function loadFeedbackDetail(id) {
     if (!detail.viewerIsReporter) throw new Error('该工单不属于我的反馈')
     replaceTicket(detail)
     selectedId.value = id
+    await clearFeedbackNotifications(detail.id || id)
   } catch (e) {
     detailError.value = e.message || '详情加载失败'
   } finally {
@@ -444,14 +484,20 @@ function handleWindowKeydown(event) {
 }
 
 onMounted(async () => {
+  isMounted = true
   window.addEventListener('keydown', handleWindowKeydown)
-  await Promise.all([loadAccess(), loadFeedback()])
+  await Promise.all([loadAccess(), loadFeedback(), loadUnreadFeedbackNotifications()])
+  if (!isMounted) return
+  unreadFeedbackPollTimer = setInterval(loadUnreadFeedbackNotifications, 30000)
   const reportId = route.query.id ? String(route.query.id) : ''
   if (reportId) await selectTicket(reportId)
 })
 
 onBeforeUnmount(() => {
+  isMounted = false
   loadRequestId += 1
+  unreadFeedbackRequestId += 1
+  if (unreadFeedbackPollTimer) clearInterval(unreadFeedbackPollTimer)
   window.removeEventListener('keydown', handleWindowKeydown)
 })
 </script>

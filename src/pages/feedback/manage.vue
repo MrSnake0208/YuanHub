@@ -78,6 +78,7 @@
               :category-label="categoryLabel"
               :status-label="statusLabel"
               :format-date="formatDate"
+              :unread-feedback-ids="unreadFeedbackIds"
               show-reporter
               empty-message="暂无符合条件的授权工单"
               @select="selectTicket"
@@ -149,6 +150,7 @@ import {
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
+import { hasUnreadFeedback, markFeedbackRead } from '@/utils/feedbackReadState.js'
 import '@/styles/feedback-workspace.css'
 
 const PAGE_SIZE = 20
@@ -192,6 +194,7 @@ const replyContent = ref('')
 const replying = ref(false)
 const replyMedia = useFeedbackMedia()
 let loadRequestId = 0
+const feedbackUnreadVersion = ref(0)
 
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const hasManagePermission = computed(() => access.value.superAdmin || access.value.manageAreas.length > 0)
@@ -200,6 +203,12 @@ const categoryOptions = computed(() => {
   return access.value.superAdmin ? all : all.filter(option => access.value.manageAreas.includes(option.key))
 })
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+const unreadFeedbackIds = computed(() => {
+  feedbackUnreadVersion.value
+  return feedbacks.value
+    .filter(item => hasUnreadFeedback(item, currentUserId()))
+    .map(item => String(item.id))
+})
 
 function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
@@ -221,6 +230,11 @@ function statusLabel(status, hasAdminReply) {
 function formatDate(value) {
   if (!value) return ''
   return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function currentUserId() {
+  const user = auth.userInfo
+  return user && (user.id || user.userId || user.user_id) ? String(user.id || user.userId || user.user_id) : ''
 }
 
 async function loadAccess() {
@@ -309,6 +323,8 @@ async function loadFeedbackDetail(id) {
     if (!detail.viewerCanManage) throw new Error('该工单不在当前管理范围内')
     replaceTicket(detail)
     selectedId.value = id
+    markFeedbackRead(currentUserId(), detail.id || id, detail)
+    feedbackUnreadVersion.value += 1
   } catch (e) {
     if (!await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
   } finally {

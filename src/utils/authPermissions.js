@@ -23,6 +23,15 @@ function uniqueStrings(value) {
   })))
 }
 
+function firstPermissionCollection(...values) {
+  const collections = values.filter(function (value) {
+    return Array.isArray(value) || value instanceof Set
+  })
+  return collections.find(function (value) {
+    return value.length > 0 || value.size > 0
+  }) || collections[0] || []
+}
+
 export function emptyAdminAccess() {
   return {
     roles: [],
@@ -38,8 +47,18 @@ export function normalizeAdminAccess(value) {
   return {
     roles: uniqueStrings(value.roles),
     permissions: uniqueStrings(value.permissions),
-    receiveAreas: uniqueStrings(value.receiveAreas || value.receive_areas),
-    manageAreas: uniqueStrings(value.manageAreas || value.manage_areas),
+    receiveAreas: uniqueStrings(firstPermissionCollection(
+      value.receiveCategories,
+      value.receive_categories,
+      value.receiveAreas,
+      value.receive_areas
+    )),
+    manageAreas: uniqueStrings(firstPermissionCollection(
+      value.manageCategories,
+      value.manage_categories,
+      value.manageAreas,
+      value.manage_areas
+    )),
     superAdmin: value.superAdmin === true || value.super_admin === true
   }
 }
