@@ -1,0 +1,58 @@
+:root {
+  --yellow: #EFD28E;
+  --yellow-deep: #DFB863;
+  --cream: #FFF8EC;
+  --paper: #F6EDD0;
+  --surface: #FFFDF6;
+  --mist: #C3CFDA;
+  --tea: #5A4633;
+  --accent: #D78935;
+  --accent-strong: #8F5112;
+  --rouge: #A6514A;
+  --ink: #493B2C;
+  --font-d: 'Archivo', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-s: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-b: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  position: relative;
+  isolation: isolate;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, .24), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(255, 255, 255, .2), transparent 20%),
+    linear-gradient(135deg, #f6edd0, #fff8ec 65%, #f6edd0);
+  font-family: var(--font-b);
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: .12;
+  background-image: url('/maayuan/maayuan-pattern.webp');
+  background-position: 0 0;
+  background-repeat: repeat;
+  background-size: 2400px 2400px;
+}
+
+::selection {
+  color: var(--ink);
+  background: var(--yellow);
+}

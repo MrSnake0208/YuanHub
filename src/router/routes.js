@@ -112,6 +112,18 @@ export const routes = [
         }
     },
     {
+        path: '/promo',
+        text: 'YuanHub 宣传页',
+        name: 'promo',
+        display: false,
+        module: 'promo',
+        icon: 'share-2',
+        component: () => import('/src/pages/promo/index.vue'),
+        meta: {
+            title: 'YuanHub 宣传页 — 鸢鸢相抱'
+        }
+    },
+    {
         path: '/login',
         text: '登录',
         name: 'login',
