@@ -647,7 +647,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 |---|---|---|---|
 | POST /v1/media/upload | JWT | multipart field `file` | `{id,kind,name,url,mime,size,created_at}` |
 | POST /v1/reports | JWT | {type,category,content,media_ids?,client_info_consent?} | 新工单 |
-| GET /v1/reports | JWT | page,pageSize,status,type,category,mine,q | {reports,total,page,page_size,mine,...} |
+| GET /v1/reports | JWT | page,pageSize,status,type,category,mine,q,sortBy,sortOrder | {reports,total,page,page_size,mine,...} |
 | GET /v1/reports/{id} | JWT | 无 | 工单详情，含 viewer_is_reporter/viewer_can_manage |
 | POST /v1/reports/{id}/messages | JWT | {content,media_ids?,actor_mode?} | 更新后的工单 |
 | GET /v1/reports/{id}/attachments/{mediaId} | JWT | 无 | 原始文件二进制 |
@@ -661,6 +661,14 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
 
 旧授权字段 receive_areas/manage_areas 和旧反馈字段 area 继续兼容读取；新前端优先使用 receive_categories/manage_categories 与 category。
+
+反馈管理列表的每个 `reports[]` 项还会返回可空的用户消息边界：
+`last_reporter_message_id`、`last_reporter_message_created_at` 和
+`last_reporter_message_index`。它们分别是 `messages` 中最后一条
+`sender_kind=REPORTER` 消息的真实 id、创建时间和零基数组索引；没有可可靠推导的用户消息时三者均为 `null`。
+`updated_at` 是工单（包括管理员状态变更）的更新时间，不能作为用户消息已读判断依据；
+`last_message_sender` 也不能替代 `last_reporter_message_*`。管理工作台请求列表时使用
+`sortBy=updatedAt&sortOrder=desc`，仅影响排序，不改变上述边界的含义。
 
 消息追加和状态变更的 `actor_mode` 只允许 `REPORTER` 或 `ADMIN`，它表示本次操作意图而不是权限凭据。
 后端会重新校验：`REPORTER` 必须是工单提交人，`ADMIN` 必须拥有归一化后 category 的管理权限，越权返回业务
