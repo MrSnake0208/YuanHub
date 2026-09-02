@@ -84,7 +84,8 @@ test('keeps shared navigation and notification entry points stable', function ()
   assert.match(sidebar, /to="\/cart"[\s\S]*to="\/inventory"[\s\S]*to="\/operator"[\s\S]*to="\/notifications"[\s\S]*to="\/feedback"[\s\S]*to="\/(?:user\/profile|login)"/)
   assert.doesNotMatch(sidebar, /to="\/manage"/)
   assert.match(feedbackNav, /to="\/manage"/)
-  assert.match(notificationPage, /item\.kind === 'FEEDBACK_ASSIGNED' \? '\/feedback\/manage' : '\/feedback'/)
+  assert.match(notificationPage, /function isManagementNotification\(kind\)/)
+  assert.match(notificationPage, /kind === 'FEEDBACK_ASSIGNED' \|\| kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'/)
 })
 
 test('keeps the guest sidebar separator while grouping login-only entries', function () {

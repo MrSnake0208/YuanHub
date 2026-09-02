@@ -38,6 +38,29 @@ test('checks concrete permissions and feedback management areas', function () {
   assert.equal(hasAnyAdminCapability(access), true)
 })
 
+test('normalizes category-named feedback permissions for the sidebar badge', function () {
+  const access = normalizeAdminAccess({
+    receive_categories: ['OPERATOR'],
+    manage_categories: ['OPERATOR']
+  })
+
+  assert.deepEqual(access.receiveAreas, ['OPERATOR'])
+  assert.deepEqual(access.manageAreas, ['OPERATOR'])
+  assert.equal(canManageAnyFeedback(access), true)
+})
+
+test('falls back to legacy feedback permissions when category aliases are empty', function () {
+  const access = normalizeAdminAccess({
+    receive_categories: [],
+    receive_areas: ['INVENTORY'],
+    manageCategories: [],
+    manage_areas: ['INVENTORY']
+  })
+
+  assert.deepEqual(access.receiveAreas, ['INVENTORY'])
+  assert.deepEqual(access.manageAreas, ['INVENTORY'])
+})
+
 test('treats missing access as having no management capability', function () {
   assert.equal(hasPermission(undefined, ADMIN_PERMISSIONS.AUDIT_READ), false)
   assert.equal(canManageAnyFeedback(undefined), false)

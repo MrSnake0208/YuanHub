@@ -9,7 +9,7 @@
             <span class="pill fill">通知中心</span>
           </div>
           <h1>通知中心<span class="small">站内消息</span></h1>
-          <p class="hero-sub">管理员回复或更新状态后的通知会出现在这里。</p>
+          <p class="hero-sub">反馈有新消息或状态更新时，通知会出现在这里。</p>
           <div class="hero-stats">
             <div><div class="k">全部通知</div><div class="v">{{ total }}<small>条</small></div></div>
             <div><div class="k">未读</div><div class="v">{{ unreadCount }}<small>条</small></div></div>
@@ -55,7 +55,7 @@
               <div class="empty-state">
                 <Bell :size="32" />
                 <strong>暂无通知</strong>
-                <span>当管理员回复你的反馈或更新状态时，通知会出现在这里。</span>
+                <span>当反馈有新消息或状态更新时，通知会出现在这里。</span>
               </div>
             </template>
             <template v-else>
@@ -63,22 +63,23 @@
                 v-for="item in notifications"
                 :key="item.id"
                 class="notification-item"
-                :class="{ unread: !item.read_at }"
+                :class="{ unread: !item.readAt }"
                 @click="openNotification(item)"
               >
-                <div class="ntf-icon" :class="item.kind === 'FEEDBACK_REPLY' ? 'reply' : 'status'">
-                  <component :is="item.kind === 'FEEDBACK_REPLY' ? MessageSquare : RefreshCw" :size="18" />
+                <div class="ntf-icon" :class="isMessageNotification(item.kind) ? 'reply' : 'status'">
+                  <component :is="isMessageNotification(item.kind) ? MessageSquare : RefreshCw" :size="18" />
                 </div>
                 <div class="ntf-body">
                   <div class="ntf-title">{{ item.title }}</div>
                   <p class="ntf-text">{{ item.body }}</p>
+                  <div v-if="item.refType === 'FEEDBACK' && item.refId" class="ntf-ref">关联反馈：{{ item.refId }}</div>
                   <div class="ntf-meta">
-                    <time>{{ formatTime(item.created_at) }}</time>
-                    <span v-if="!item.read_at" class="ntf-unread-dot" aria-label="未读"></span>
+                    <time>{{ formatTime(item.createdAt) }}</time>
+                    <span v-if="!item.readAt" class="ntf-unread-dot" aria-label="未读"></span>
                   </div>
                 </div>
                 <button
-                  v-if="!item.read_at"
+                  v-if="!item.readAt"
                   class="ntf-read-btn"
                   type="button"
                   :disabled="markingId === item.id"
@@ -111,13 +112,16 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, MessageSquare, RefreshCw } from '@lucide/vue'
+import { auth } from '../../store/auth.js'
+import { canManageAnyFeedback } from '../../utils/authPermissions.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import {
   listNotifications,
   getUnreadNotificationCount,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  NOTIFICATION_STATE_EVENT
 } from '../../api/notifications.js'
 
 const router = useRouter()
@@ -134,11 +138,17 @@ const markingId = ref('')
 const markingAll = ref(false)
 const page = ref(1)
 let unreadPollTimer = null
+let notificationRequestId = 0
+let unreadCountRequestId = 0
 
 const filterTabs = [
   { key: 'all', label: '全部' },
   { key: 'unread', label: '未读' }
 ]
+
+const canManageFeedback = computed(() => Boolean(
+  auth.adminAccess && (auth.adminAccess.superAdmin || canManageAnyFeedback(auth.adminAccess))
+))
 
 const hasMore = computed(function () {
   return notifications.value.length < total.value
@@ -175,6 +185,8 @@ function formatTime(iso) {
 }
 
 async function loadNotifications() {
+  const requestId = ++notificationRequestId
+  const countRequestId = ++unreadCountRequestId
   loading.value = true
   error.value = ''
   try {
@@ -184,53 +196,64 @@ async function loadNotifications() {
     }
     if (filter.value === 'unread') params.unreadOnly = true
     const data = await listNotifications(params)
+    if (requestId !== notificationRequestId) return
     notifications.value = Array.isArray(data.notifications) ? data.notifications : []
-    total.value = data.total || 0
+    total.value = data.total
+    if (countRequestId === unreadCountRequestId) unreadCount.value = data.unreadCount
   } catch (err) {
+    if (requestId !== notificationRequestId) return
     error.value = err.message || '通知加载失败'
     notifications.value = []
   } finally {
-    loading.value = false
+    if (requestId === notificationRequestId) loading.value = false
   }
 }
 
 async function loadMore() {
   if (loadingMore.value || !hasMore.value) return
   loadingMore.value = true
+  const requestId = notificationRequestId
+  const countRequestId = ++unreadCountRequestId
+  const nextPage = page.value + 1
   try {
-    page.value += 1
     const params = {
-      page: page.value,
+      page: nextPage,
       pageSize: PAGE_SIZE
     }
     if (filter.value === 'unread') params.unreadOnly = true
     const data = await listNotifications(params)
+    if (requestId !== notificationRequestId) return
+    page.value = nextPage
     if (Array.isArray(data.notifications)) {
       notifications.value = notifications.value.concat(data.notifications)
     }
-    total.value = data.total || total.value
-  } catch (err) {
-    page.value -= 1
+    total.value = data.total
+    if (countRequestId === unreadCountRequestId) unreadCount.value = data.unreadCount
+  } catch (_) {
+    // 保持当前页，避免失败的加载更多改变分页状态。
   } finally {
     loadingMore.value = false
   }
 }
 
 async function loadUnreadCount() {
+  const requestId = ++unreadCountRequestId
   try {
     const data = await getUnreadNotificationCount()
-    unreadCount.value = data && data.count != null ? data.count : 0
+    if (requestId === unreadCountRequestId) unreadCount.value = data.count
   } catch (_) {
     // 静默失败
   }
 }
 
 async function markRead(item) {
+  if (!item || item.readAt || markingId.value) return
   markingId.value = item.id
+  ++unreadCountRequestId
   try {
-    await markNotificationRead(item.id)
-    item.read_at = new Date().toISOString()
-    unreadCount.value = Math.max(0, unreadCount.value - 1)
+    const updated = await markNotificationRead(item.id)
+    if (updated) Object.assign(item, updated)
+    await Promise.all([loadUnreadCount(), loadNotifications()])
   } catch (_) {
     // 静默失败
   } finally {
@@ -241,12 +264,10 @@ async function markRead(item) {
 async function markAllRead() {
   if (markingAll.value) return
   markingAll.value = true
+  ++unreadCountRequestId
   try {
     await markAllNotificationsRead()
-    notifications.value.forEach(function (n) {
-      if (!n.read_at) n.read_at = new Date().toISOString()
-    })
-    unreadCount.value = 0
+    await Promise.all([loadUnreadCount(), loadNotifications()])
   } catch (_) {
     // 静默失败
   } finally {
@@ -256,12 +277,21 @@ async function markAllRead() {
 
 function openNotification(item) {
   // 标记已读
-  if (!item.read_at) markRead(item)
-  // 新反馈通知来自管理队列，回复和状态通知仍属于个人工单。
-  if (item.ref_type === 'FEEDBACK' && item.ref_id) {
-    const target = item.kind === 'FEEDBACK_ASSIGNED' ? '/feedback/manage' : '/feedback'
-    router.push(target + '?id=' + encodeURIComponent(item.ref_id))
+  if (!item.readAt) markRead(item)
+  // 分配和用户追加通知来自管理队列，回复和状态通知仍属于个人工单。
+  if (item.refType === 'FEEDBACK' && item.refId) {
+    const target = isManagementNotification(item.kind) ? '/feedback/manage' : '/feedback'
+    if (target === '/feedback/manage' && !canManageFeedback.value) return
+    router.push(target + '?id=' + encodeURIComponent(item.refId))
   }
+}
+
+function isMessageNotification(kind) {
+  return kind === 'FEEDBACK_REPLY' || kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'
+}
+
+function isManagementNotification(kind) {
+  return kind === 'FEEDBACK_ASSIGNED' || kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'
 }
 
 function startPolling() {
@@ -277,12 +307,16 @@ function stopPolling() {
 }
 
 onMounted(function () {
+  if (typeof window !== 'undefined') window.addEventListener(NOTIFICATION_STATE_EVENT, loadUnreadCount)
   loadNotifications()
   startPolling()
 })
 
 onBeforeUnmount(function () {
   stopPolling()
+  notificationRequestId += 1
+  unreadCountRequestId += 1
+  if (typeof window !== 'undefined') window.removeEventListener(NOTIFICATION_STATE_EVENT, loadUnreadCount)
 })
 </script>
 
@@ -316,6 +350,7 @@ onBeforeUnmount(function () {
 .ntf-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.4 }
 .notification-item.unread .ntf-title { font-weight: 900 }
 .ntf-text { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--ink-60); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.ntf-ref { margin-top: 7px; color: var(--accent-strong); font: 700 11px var(--font-d); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ntf-meta { margin-top: 8px; display: flex; align-items: center; gap: 8px }
 .ntf-meta time { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); font-weight: 700 }
 .ntf-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); flex: none }
