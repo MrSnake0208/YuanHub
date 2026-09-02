@@ -123,6 +123,7 @@ import {
 const props = defineProps({
   items: { type: Array, default: () => [] },
   selectedId: { type: String, default: '' },
+  selectedItem: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
   emptyMessage: { type: String, default: '暂无反馈工单' },
@@ -140,7 +141,7 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'close', 'retry', 'page'])
 
-const selectedItem = computed(() => props.items.find(item => item.id === props.selectedId) || null)
+const selectedItem = computed(() => props.selectedItem || props.items.find(item => item.id === props.selectedId) || null)
 const resultStart = computed(() => props.total ? (props.page - 1) * props.pageSize + 1 : 0)
 const resultEnd = computed(() => Math.min(props.total, resultStart.value + props.items.length - 1))
 

@@ -21,6 +21,12 @@
 
       <section>
         <div class="wrap">
+          <FeedbackWorkspaceNav
+            active="admin"
+            :can-manage="canManageFeedback"
+            :has-unread-feedback="canManageFeedback && feedbackUnreadState.count > 0"
+            :can-configure="canConfigureFeedback"
+          />
           <div class="access-toolbar">
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
@@ -126,6 +132,7 @@ import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
+import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import {
   deleteFeedbackAccessGrant,
   getFeedbackAccess,
@@ -135,7 +142,8 @@ import {
 import { searchFeedbackAccessUsers } from '@/api/user.js'
 import { dialog } from '@/utils/dialog.js'
 import { auth } from '@/store/auth.js'
-import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
+import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
+import { feedbackUnreadState } from '@/store/feedbackUnread.js'
 import '@/styles/feedback-workspace.css'
 
 const DEFAULT_AREAS = [
@@ -168,6 +176,8 @@ const currentUserId = computed(() => {
   const user = auth.userInfo || {}
   return user.id || user.user_id || user.userId || ''
 })
+const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
+const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const filteredGrants = computed(() => {
   const keyword = filter.value.toLowerCase()
   if (!keyword) return grants.value

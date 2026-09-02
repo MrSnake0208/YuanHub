@@ -92,6 +92,9 @@ export function normalizeFeedback(report) {
     ?? lastMessage?.senderKind
     ?? ''
   const updatedAt = report.updatedAt ?? report.updated_at ?? null
+  const lastReporterMessageIndex = report.lastReporterMessageIndex
+    ?? report.last_reporter_message_index
+    ?? null
   return {
     ...report,
     type,
@@ -104,6 +107,13 @@ export function normalizeFeedback(report) {
     lastMessageId,
     lastMessageCreatedAt: lastMessageCreatedAt ?? updatedAt,
     lastMessageIndex: report.lastMessageIndex ?? report.last_message_index ?? null,
+    lastReporterMessageId: report.lastReporterMessageId ?? report.last_reporter_message_id ?? null,
+    lastReporterMessageCreatedAt: report.lastReporterMessageCreatedAt
+      ?? report.last_reporter_message_created_at
+      ?? null,
+    lastReporterMessageIndex: lastReporterMessageIndex == null || !Number.isFinite(Number(lastReporterMessageIndex))
+      ? null
+      : Number(lastReporterMessageIndex),
     createdAt: report.createdAt ?? report.created_at ?? null,
     updatedAt,
     mediaIds: report.mediaIds ?? report.media_ids ?? [],

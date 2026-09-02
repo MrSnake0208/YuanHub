@@ -7,6 +7,7 @@
     <router-link v-if="canManage" to="/feedback/manage" :class="{ active: active === 'manage' }">
       <Inbox :size="17" aria-hidden="true" />
       <span>反馈工作台</span>
+      <span v-if="hasUnreadFeedback" class="feedback-workspace-nav-unread" role="img" aria-label="有未读反馈"></span>
     </router-link>
     <router-link v-if="canConfigure" to="/feedback/admin" :class="{ active: active === 'admin' }">
       <ShieldCheck :size="17" aria-hidden="true" />
@@ -28,6 +29,7 @@ import { hasManagementCapability } from '@/utils/adminTools.js'
 defineProps({
   active: { type: String, required: true },
   canManage: { type: Boolean, default: false },
+  hasUnreadFeedback: { type: Boolean, default: false },
   canConfigure: { type: Boolean, default: false },
   showManagement: { type: Boolean, default: true }
 })
@@ -66,6 +68,15 @@ const canAccessManagement = computed(function () {
 .feedback-workspace-nav a.active {
   background: var(--yellow);
   color: var(--ink);
+}
+
+.feedback-workspace-nav-unread {
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  margin-left: 1px;
+  border-radius: 50%;
+  background: var(--rouge);
 }
 
 .feedback-workspace-nav a:last-child { border-right: 0; }

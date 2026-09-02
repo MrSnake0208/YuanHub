@@ -24,6 +24,7 @@
           <FeedbackWorkspaceNav
             active="mine"
             :can-manage="canManageFeedback"
+            :has-unread-feedback="canManageFeedback && feedbackUnreadState.count > 0"
             :can-configure="canConfigureFeedback"
           />
 
@@ -202,6 +203,7 @@ import {
   markFeedbackNotificationsRead
 } from '@/api/notifications.js'
 import { auth } from '@/store/auth.js'
+import { feedbackUnreadState, subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import '@/styles/feedback-workspace.css'
@@ -253,6 +255,7 @@ const unreadFeedbackIds = ref([])
 let loadRequestId = 0
 let unreadFeedbackRequestId = 0
 let unreadFeedbackPollTimer = null
+let stopFeedbackUnread = null
 let isMounted = false
 
 const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
@@ -485,6 +488,7 @@ function handleWindowKeydown(event) {
 
 onMounted(async () => {
   isMounted = true
+  stopFeedbackUnread = subscribeFeedbackUnread()
   window.addEventListener('keydown', handleWindowKeydown)
   await Promise.all([loadAccess(), loadFeedback(), loadUnreadFeedbackNotifications()])
   if (!isMounted) return
@@ -498,6 +502,7 @@ onBeforeUnmount(() => {
   loadRequestId += 1
   unreadFeedbackRequestId += 1
   if (unreadFeedbackPollTimer) clearInterval(unreadFeedbackPollTimer)
+  if (stopFeedbackUnread) stopFeedbackUnread()
   window.removeEventListener('keydown', handleWindowKeydown)
 })
 </script>

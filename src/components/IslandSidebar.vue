@@ -25,7 +25,7 @@
       <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
         <MessageSquareText :size="19" aria-hidden="true" />
         <span>反馈</span>
-        <span v-if="feedbackUnreadCount > 0" class="mobile-badge">{{ feedbackUnreadCount > 99 ? '99+' : feedbackUnreadCount }}</span>
+        <span v-if="feedbackUnreadState.count > 0" class="mobile-badge">{{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}</span>
       </router-link>
       <router-link :to="isLoggedIn ? '/user/profile' : '/login'" :class="{ active: $route.path === '/user/profile' || $route.path === '/login' }">
         <component :is="isLoggedIn ? UserRound : LogIn" :size="19" aria-hidden="true" />
@@ -55,7 +55,7 @@
         </router-link>
         <router-link to="/feedback" :class="{ active: $route.path.startsWith('/feedback') }">
           反馈中心
-          <span v-if="feedbackUnreadCount > 0" class="sidebar-badge">{{ feedbackUnreadCount > 99 ? '99+' : feedbackUnreadCount }}</span>
+          <span v-if="feedbackUnreadState.count > 0" class="sidebar-badge">{{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}</span>
         </router-link>
         <div class="nav-separator" aria-hidden="true"></div>
       </template>
@@ -85,35 +85,19 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Bell, BookUser, LogIn, MessageSquareText, PackageOpen, ShoppingCart, UserRound } from '@lucide/vue'
 import { auth, logout as doLogout } from '@/store/auth.js'
-import { listManagedFeedback } from '@/api/feedback.js'
 import { getUnreadNotificationCount, NOTIFICATION_STATE_EVENT } from '@/api/notifications.js'
-import { countUnreadFeedback, FEEDBACK_READ_STATE_EVENT } from '@/utils/feedbackReadState.js'
+import { feedbackUnreadState, subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
 
 // 已登录状态（reactive，随 auth 变化）
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false)
 const userName = computed(() => (auth.userInfo && auth.userInfo.user_name) ? auth.userInfo.user_name : '用户')
 const unreadCount = ref(0)
-const feedbackUnreadCount = ref(0)
 let unreadPollTimer = null
 let unreadCountRequestId = 0
-let feedbackUnreadRequestId = 0
-let stopFeedbackAccessWatch = null
-
-function currentUserId() {
-  const user = auth.userInfo
-  return user && (user.id || user.userId || user.user_id) ? String(user.id || user.userId || user.user_id) : ''
-}
-
-const canReadManagedFeedback = computed(() => Boolean(
-  isLoggedIn.value &&
-  auth.adminAccessLoaded &&
-  !auth.adminAccessLoading &&
-  auth.adminAccess &&
-  (auth.adminAccess.superAdmin || (Array.isArray(auth.adminAccess.manageAreas) && auth.adminAccess.manageAreas.length > 0))
-))
+let stopFeedbackUnread = null
 
 function onLogout() {
   // store/auth.js 的 logout() 会清空登录态并跳转 /login
@@ -134,45 +118,10 @@ async function fetchUnreadCount() {
   }
 }
 
-async function fetchFeedbackUnreadCount() {
-  const requestId = ++feedbackUnreadRequestId
-  if (!canReadManagedFeedback.value) {
-    feedbackUnreadCount.value = 0
-    return
-  }
-
-  try {
-    const reports = []
-    let page = 1
-    let pageSize = 100
-    let total = null
-    while (page <= 100) {
-      const data = await listManagedFeedback({ page, pageSize })
-      const items = Array.isArray(data.items) ? data.items : []
-      reports.push(...items)
-      total = Number.isFinite(Number(data.total)) ? Number(data.total) : null
-      const returnedPageSize = Number(data.pageSize) > 0 ? Number(data.pageSize) : pageSize
-      if (!items.length || (total != null && reports.length >= total) || (total == null && items.length < returnedPageSize)) break
-      page += 1
-      pageSize = returnedPageSize
-    }
-    if (requestId !== feedbackUnreadRequestId || !canReadManagedFeedback.value) return
-    feedbackUnreadCount.value = countUnreadFeedback(reports, currentUserId())
-  } catch (_) {
-    // 反馈角标不能阻断侧栏；保留上次成功的展示。
-  }
-}
-
-function handleFeedbackReadStateChange(event) {
-  if (!event || !event.detail || event.detail.userId !== currentUserId()) return
-  fetchFeedbackUnreadCount()
-}
-
 function startPolling() {
   fetchUnreadCount()
   unreadPollTimer = setInterval(function () {
     fetchUnreadCount()
-    fetchFeedbackUnreadCount()
   }, 30000)
 }
 
@@ -184,24 +133,15 @@ function stopPolling() {
 }
 
 onMounted(function () {
-  stopFeedbackAccessWatch = watch(canReadManagedFeedback, function (canRead) {
-    if (canRead) fetchFeedbackUnreadCount()
-    else {
-      feedbackUnreadRequestId += 1
-      feedbackUnreadCount.value = 0
-    }
-  }, { immediate: true })
-  if (typeof window !== 'undefined') window.addEventListener(FEEDBACK_READ_STATE_EVENT, handleFeedbackReadStateChange)
+  stopFeedbackUnread = subscribeFeedbackUnread()
   if (typeof window !== 'undefined') window.addEventListener(NOTIFICATION_STATE_EVENT, fetchUnreadCount)
   startPolling()
 })
 
 onBeforeUnmount(function () {
   stopPolling()
-  feedbackUnreadRequestId += 1
   unreadCountRequestId += 1
-  if (stopFeedbackAccessWatch) stopFeedbackAccessWatch()
-  if (typeof window !== 'undefined') window.removeEventListener(FEEDBACK_READ_STATE_EVENT, handleFeedbackReadStateChange)
+  if (stopFeedbackUnread) stopFeedbackUnread()
   if (typeof window !== 'undefined') window.removeEventListener(NOTIFICATION_STATE_EVENT, fetchUnreadCount)
 })
 </script>

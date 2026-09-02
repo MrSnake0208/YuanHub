@@ -18,7 +18,7 @@
 
       <section class="feedback-content">
         <div class="wrap">
-          <FeedbackWorkspaceNav active="manage" :can-manage="true" :can-configure="canConfigureFeedback" :show-management="false" />
+          <FeedbackWorkspaceNav active="manage" :can-manage="hasManagePermission" :show-management="false" :has-unread-feedback="hasManagePermission && feedbackUnreadState.count > 0" :can-configure="canConfigureFeedback" />
 
           <div v-if="loadingAccess" class="permission-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
@@ -69,6 +69,7 @@
             <FeedbackTicketWorkspace
               :items="feedbacks"
               :selected-id="selectedId"
+              :selected-item="selectedDetail"
               :loading="loading"
               :error="error"
               :total="totalCount"
@@ -131,7 +132,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -148,9 +149,10 @@ import {
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
+import { feedbackUnreadState, subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
-import { hasUnreadFeedback, markFeedbackRead } from '@/utils/feedbackReadState.js'
+import { markFeedbackRead } from '@/utils/feedbackReadState.js'
 import '@/styles/feedback-workspace.css'
 
 const PAGE_SIZE = 20
@@ -187,6 +189,7 @@ const filterStatus = ref('全部')
 const filterType = ref('')
 const filterCategory = ref('')
 const selectedId = ref('')
+const selectedDetail = ref(null)
 const detailLoading = ref(false)
 const detailError = ref('')
 const replyTarget = ref('')
@@ -194,7 +197,9 @@ const replyContent = ref('')
 const replying = ref(false)
 const replyMedia = useFeedbackMedia()
 let loadRequestId = 0
-const feedbackUnreadVersion = ref(0)
+let detailRequestId = 0
+let feedbackRefreshTimer = null
+let stopFeedbackUnread = null
 
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const hasManagePermission = computed(() => access.value.superAdmin || access.value.manageAreas.length > 0)
@@ -203,12 +208,7 @@ const categoryOptions = computed(() => {
   return access.value.superAdmin ? all : all.filter(option => access.value.manageAreas.includes(option.key))
 })
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
-const unreadFeedbackIds = computed(() => {
-  feedbackUnreadVersion.value
-  return feedbacks.value
-    .filter(item => hasUnreadFeedback(item, currentUserId()))
-    .map(item => String(item.id))
-})
+const unreadFeedbackIds = computed(() => feedbackUnreadState.ids)
 
 function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
@@ -254,11 +254,13 @@ async function loadAccess() {
   }
 }
 
-async function loadFeedback() {
+async function loadFeedback({ background = false } = {}) {
   if (!hasManagePermission.value) return
   const requestId = ++loadRequestId
-  loading.value = true
-  error.value = ''
+  if (!background) {
+    loading.value = true
+    error.value = ''
+  }
   try {
     const data = await listManagedFeedback({
       page: page.value,
@@ -266,16 +268,17 @@ async function loadFeedback() {
       status: statusParam(),
       type: filterType.value || undefined,
       category: filterCategory.value || undefined,
-      q: q.value.trim() || undefined
+      q: q.value.trim() || undefined,
+      sortBy: 'updatedAt',
+      sortOrder: 'desc'
     })
     if (requestId !== loadRequestId) return
     feedbacks.value = data.items || []
     totalCount.value = Number(data.total ?? feedbacks.value.length)
-    if (!feedbacks.value.some(item => item.id === selectedId.value)) closeDetail()
   } catch (e) {
-    if (requestId === loadRequestId && !await handleForbidden(e)) error.value = e.message || '反馈加载失败'
+    if (requestId === loadRequestId && !await handleForbidden(e) && !background) error.value = e.message || '反馈加载失败'
   } finally {
-    if (requestId === loadRequestId) loading.value = false
+    if (requestId === loadRequestId && !background) loading.value = false
   }
 }
 
@@ -303,10 +306,9 @@ async function changePage(nextPage) {
 }
 
 async function selectTicket(id) {
-  selectedId.value = id
+  selectedId.value = String(id)
   cancelReply()
-  const item = feedbacks.value.find(ticket => ticket.id === id)
-  if (!item || (item.messages && item.messages.length)) return
+  selectedDetail.value = null
   await loadFeedbackDetail(id)
 }
 
@@ -316,30 +318,35 @@ function handleReplyMediaPaste(event) {
 }
 
 async function loadFeedbackDetail(id) {
+  const requestId = ++detailRequestId
   detailLoading.value = true
   detailError.value = ''
   try {
     const detail = await getFeedback(id)
+    if (requestId !== detailRequestId || String(selectedId.value) !== String(id)) return
     if (!detail.viewerCanManage) throw new Error('该工单不在当前管理范围内')
     replaceTicket(detail)
+    await nextTick()
+    if (requestId !== detailRequestId || String(selectedId.value) !== String(id)) return
     selectedId.value = id
     markFeedbackRead(currentUserId(), detail.id || id, detail)
-    feedbackUnreadVersion.value += 1
   } catch (e) {
-    if (!await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
+    if (requestId === detailRequestId && !await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
   } finally {
-    detailLoading.value = false
+    if (requestId === detailRequestId) detailLoading.value = false
   }
 }
 
 function replaceTicket(detail) {
+  selectedDetail.value = detail
   const index = feedbacks.value.findIndex(item => item.id === detail.id)
   if (index >= 0) feedbacks.value.splice(index, 1, detail)
-  else feedbacks.value.unshift(detail)
 }
 
 function closeDetail() {
+  detailRequestId += 1
   selectedId.value = ''
+  selectedDetail.value = null
   detailError.value = ''
   cancelReply()
 }
@@ -390,15 +397,25 @@ async function handleForbidden(value) {
 }
 
 onMounted(async () => {
+  stopFeedbackUnread = subscribeFeedbackUnread()
   await loadAccess()
   if (!hasManagePermission.value) return
   await loadFeedback()
+  feedbackRefreshTimer = setInterval(() => {
+    if (hasManagePermission.value) loadFeedback({ background: true })
+  }, 30000)
   const reportId = route.query.id ? String(route.query.id) : ''
   if (reportId) await selectTicket(reportId)
 })
 
 onBeforeUnmount(() => {
   loadRequestId += 1
+  detailRequestId += 1
+  if (feedbackRefreshTimer) {
+    clearInterval(feedbackRefreshTimer)
+    feedbackRefreshTimer = null
+  }
+  if (stopFeedbackUnread) stopFeedbackUnread()
 })
 </script>
 
