@@ -23,6 +23,10 @@
         <BookUser :size="19" aria-hidden="true" />
         <span>我的密探</span>
       </router-link>
+      <router-link to="/star" :class="{ active: $route.path === '/star' }">
+        <Gem :size="19" aria-hidden="true" />
+        <span>星石</span>
+      </router-link>
       <router-link
         v-if="isLoggedIn"
         to="/notifications"
@@ -86,6 +90,9 @@
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"
         ><span class="no">03</span>广陵账房</router-link
       >
+      <router-link to="/star" :class="{ active: $route.path === '/star' }"
+        ><span class="no">04</span>我的星石</router-link
+      >
       <div class="nav-separator" aria-hidden="true"></div>
       <template v-if="isLoggedIn">
         <router-link
@@ -111,7 +118,7 @@
       <router-link
         to="/user/profile"
         :class="{ active: $route.path === '/user/profile' }"
-        >个人中心</router-link
+        ><span class="no">05</span>个人中心</router-link
       >
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
@@ -147,6 +154,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   Bell,
   BookUser,
+  Gem,
   LogIn,
   MessageSquareText,
   PackageOpen,
