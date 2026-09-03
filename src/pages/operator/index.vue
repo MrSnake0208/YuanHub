@@ -5708,6 +5708,7 @@ function showQuickNotice(id, message, duration) {
 async function setOperatorStatus(entry, value) {
   if (!entry || !entry.id || annotationBusyIds.value.has(entry.id)) return false;
   const targetAccount = accountId.value;
+  const targetGame = saveGame.value;
   const previous = operatorStatus(entry);
   workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, {
     [entry.id]: value,
@@ -5717,10 +5718,17 @@ async function setOperatorStatus(entry, value) {
     const saved = await saveOperatorAnnotation(entry, {
       growth_state: ANNOTATION_STATE_TO_API[value] || "active",
     });
-    if (accountId.value !== targetAccount || saved == null) return false;
+    if (
+      accountId.value !== targetAccount ||
+      saveGame.value !== targetGame ||
+      saved == null
+    )
+      return false;
     showQuickNotice(entry.id, "养成状态已同步", 1800);
     return true;
   } catch (err) {
+    if (accountId.value !== targetAccount || saveGame.value !== targetGame)
+      return false;
     if (!(err && err.code === "annotation_revision_conflict")) {
       workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, {
         [entry.id]: previous,
@@ -5791,13 +5799,14 @@ function clearBatchSelected() {
 async function batchSetStatus(value) {
   const entries = filteredCurrent.value.filter(function (entry) { return batchSelectedIds.value.has(entry.id); });
   const targetAccount = accountId.value;
+  const targetGame = saveGame.value;
   if (!entries.length || !auth.isLoggedIn || !targetAccount) return;
   const label = statusLabel(value);
   const results = await Promise.all(entries.map(function (entry) {
     return setOperatorStatus(entry, value);
   }));
-  if (accountId.value !== targetAccount) return;
-  const succeededIds = entries.filter(function (entry, index) { return results[index] !== false; }).map(function (entry) { return entry.id; });
+  if (accountId.value !== targetAccount || saveGame.value !== targetGame) return;
+  const succeededIds = entries.filter(function (entry, index) { return results[index] === true; }).map(function (entry) { return entry.id; });
   const failedIds = entries.filter(function (entry, index) { return results[index] === false; }).map(function (entry) { return entry.id; });
   batchSelectionBase.value = new Set(failedIds);
   activeQuickFilterKeys.value = new Set();
