@@ -82,66 +82,6 @@
               </component>
             </div>
           </section>
-
-          <div
-            class="hero-flow"
-            role="img"
-            aria-label="示意：用户手动录入个人游戏记录，经授权范围内的 API Token 由软件调用。"
-          >
-            <div class="flow-caption">
-              <span>CONTRIBUTION FLOW</span>
-              <span class="caption-line"></span>
-              <span>示意数据</span>
-            </div>
-            <div class="flow-lane">
-              <article class="flow-node source-node">
-                <div class="node-topline">
-                  <span class="node-icon">+</span
-                  ><span class="node-type">PLAYER INPUT</span>
-                </div>
-                <h2>用户手动录入的记录</h2>
-                <p>我在游戏里有什么、进度如何<br />由用户自行填写</p>
-                <span class="demo-label">DEMO DATA</span>
-              </article>
-
-              <div class="flow-connector" aria-hidden="true">
-                <span>整理进入</span>
-                <i></i>
-              </div>
-
-              <article class="flow-node hub-node">
-                <span class="hub-ring ring-one"></span>
-                <span class="hub-ring ring-two"></span>
-                <div class="hub-core">YH</div>
-                <div class="node-type">USER-AUTHORIZED DATA</div>
-                <h2>YuanHub</h2>
-                <p>保存已经录入的内容<br />按授权范围提供调用</p>
-                <span class="demo-label">DEMO DATA</span>
-              </article>
-
-              <div class="flow-connector" aria-hidden="true">
-                <span>API 调用</span>
-                <i></i>
-              </div>
-
-              <div class="output-stack">
-                <article
-                  v-for="destination in destinations"
-                  :key="destination.name"
-                  class="flow-node output-node"
-                >
-                  <span class="output-symbol" :class="destination.tone">{{
-                    destination.symbol
-                  }}</span>
-                  <div>
-                    <h2>{{ destination.name }}</h2>
-                    <p>{{ destination.detail }}</p>
-                  </div>
-                  <span class="demo-label">示意</span>
-                </article>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
