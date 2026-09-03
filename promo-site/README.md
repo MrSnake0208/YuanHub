@@ -17,7 +17,7 @@ The build output is `dist/`. Upload the contents of that directory to the web ro
 
 `.github/workflows/promo-site-deploy.yml` builds and deploys this directory when `promo-site/**` changes on `main`. It also supports manual runs. It does not build or deploy the YuanHub main site.
 
-Configure these repository Secrets before enabling the workflow:
+Configure these repository Secrets before enabling the workflow. Do not put them only under an Environment unless the workflow job is also configured with that Environment:
 
 - `YUANHUB_PROMO_VPS_HOST`
 - `YUANHUB_PROMO_VPS_USER`
