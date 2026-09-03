@@ -41,45 +41,9 @@
               <div>
                 <div class="eyebrow"><span>01·A</span> COMMUNITY ECOSYSTEM</div>
                 <h2 id="ecosystem-title">四个社区项目，<em>共同起点</em></h2>
-                <p>四个社区项目并列呈现，项目关系与能力流转均为页面示意。</p>
+                <p>四个社区项目与对应潜在场景组合呈现，项目关系与能力流转均为页面示意。</p>
               </div>
               <span class="ecosystem-badge">页面示意</span>
-            </div>
-            <div class="ecosystem-grid">
-              <component
-                :is="partner.href ? 'a' : 'div'"
-                v-for="partner in partners"
-                :key="partner.name"
-                class="ecosystem-card"
-                :class="partner.tone"
-                :href="partner.href"
-                :target="partner.href ? '_blank' : undefined"
-                :rel="partner.href ? 'noreferrer' : undefined"
-                :data-mini-program-uri="partner.miniProgramUri"
-                :aria-label="
-                  partner.href
-                    ? `${partner.name}，访问外部入口`
-                    : `${partner.name}，${partner.action}`
-                "
-              >
-                <img
-                  class="ecosystem-icon"
-                  :src="partner.icon"
-                  :alt="`${partner.name} 图标`"
-                />
-                <span class="ecosystem-card-copy">
-                  <strong class="ecosystem-card-name">{{
-                    partner.name
-                  }}</strong>
-                  <span class="ecosystem-card-role">{{ partner.role }}</span>
-                  <span class="ecosystem-action">{{ partner.action }}</span>
-                  <small
-                    v-if="partner.miniProgramUri"
-                    class="ecosystem-card-uri"
-                    >{{ partner.miniProgramUri }}</small
-                  >
-                </span>
-              </component>
             </div>
             <section
               class="ecosystem-scenario-section"
@@ -89,28 +53,52 @@
                 <h3 id="ecosystem-scenario-title">潜在应用场景</h3>
                 <span class="ecosystem-scenario-badge">页面示意</span>
               </div>
-              <div class="ecosystem-scenario-grid">
-                <article
+              <div class="ecosystem-list">
+                <component
+                  :is="partner.href ? 'a' : 'div'"
                   v-for="partner in partners"
-                  :key="`scenario-${partner.name}`"
-                  class="ecosystem-scenario-column"
+                  :key="partner.name"
+                  class="ecosystem-row"
                   :class="partner.tone"
+                  :href="partner.href"
+                  :target="partner.href ? '_blank' : undefined"
+                  :rel="partner.href ? 'noreferrer' : undefined"
+                  :data-mini-program-uri="partner.miniProgramUri"
                 >
-                  <strong class="ecosystem-scenario-name">{{
-                    partner.name
-                  }}</strong>
-                  <span class="ecosystem-scenario-column-label"
-                    >潜在应用场景（页面示意）</span
-                  >
-                  <ul class="ecosystem-scenarios">
-                    <li
-                      v-for="scenario in partner.scenarios"
-                      :key="scenario"
+                  <span class="ecosystem-partner">
+                    <img
+                      class="ecosystem-icon"
+                      :src="partner.icon"
+                      :alt="`${partner.name} 图标`"
+                    />
+                    <span class="ecosystem-partner-copy">
+                      <strong class="ecosystem-partner-name">{{
+                        partner.name
+                      }}</strong>
+                      <span class="ecosystem-partner-role">{{ partner.role }}</span>
+                      <span class="ecosystem-action">{{ partner.action }}</span>
+                      <small
+                        v-if="partner.miniProgramUri"
+                        class="ecosystem-partner-uri"
+                        >{{ partner.miniProgramUri }}</small
+                      >
+                    </span>
+                  </span>
+                  <span class="ecosystem-row-split" aria-hidden="true">→</span>
+                  <span class="ecosystem-scenario">
+                    <span class="ecosystem-scenario-label"
+                      >潜在应用场景（页面示意）</span
                     >
-                      {{ scenario }}
-                    </li>
-                  </ul>
-                </article>
+                    <ul class="ecosystem-scenarios">
+                      <li
+                        v-for="scenario in partner.scenarios"
+                        :key="scenario"
+                      >
+                        {{ scenario }}
+                      </li>
+                    </ul>
+                  </span>
+                </component>
               </div>
             </section>
             <section
@@ -558,75 +546,85 @@ h2 em {
   font: 800 10px/1 var(--font-d);
   letter-spacing: 0.08em;
 }
-.ecosystem-grid {
+.ecosystem-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 23px;
+  gap: 14px;
+  margin-top: 12px;
 }
-.ecosystem-card {
-  display: flex;
-  min-width: 0;
-  min-height: 94px;
+.ecosystem-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) 24px minmax(0, 1.5fr);
   align-items: center;
-  gap: 12px;
-  padding: 13px;
+  gap: 20px;
+  min-width: 0;
+  min-height: 112px;
+  padding: 20px 22px;
   border: 1px solid var(--promo-line);
   border-top-width: 3px;
-  border-radius: 9px;
-  background: rgba(255, 253, 246, 0.72);
+  background: rgba(255, 253, 246, 0.48);
   color: inherit;
   text-decoration: none;
   transition:
     background-color 0.2s ease,
     transform 0.2s ease;
 }
-.ecosystem-card:hover {
+.ecosystem-row:hover {
   background: var(--surface);
   transform: translateY(-2px);
 }
-.ecosystem-card:focus-visible {
+.ecosystem-row:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
   background: var(--surface);
 }
-.ecosystem-card.maa {
+.ecosystem-row.maa {
   border-top-color: var(--yellow-deep);
 }
-.ecosystem-card.bwiki {
+.ecosystem-row.bwiki {
   border-top-color: var(--tea);
 }
-.ecosystem-card.yuanassist {
+.ecosystem-row.yuanassist {
   border-top-color: var(--rouge);
 }
-.ecosystem-card.piyong {
+.ecosystem-row.piyong {
   border-top-color: var(--accent);
+}
+.ecosystem-partner {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
 }
 .ecosystem-icon {
   display: block;
   flex: none;
-  width: 45px;
-  height: 45px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   border-radius: 10px;
   background: var(--paper);
 }
-.ecosystem-card-copy {
+.ecosystem-partner-copy {
   display: block;
   min-width: 0;
 }
-.ecosystem-card-name {
+.ecosystem-partner-name {
   display: block;
   color: var(--tea);
-  font: 900 15px/1.3 var(--font-s);
+  font: 900 16px/1.3 var(--font-s);
   overflow-wrap: anywhere;
 }
-.ecosystem-card-role {
+.ecosystem-partner-role {
   display: block;
   margin-top: 4px;
   color: var(--promo-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
+}
+.ecosystem-row-split {
+  color: var(--accent);
+  font: 900 20px/1 var(--font-d);
+  text-align: center;
 }
 .ecosystem-scenario-section {
   margin-top: 18px;
@@ -653,62 +651,27 @@ h2 em {
   font: 800 10px/1 var(--font-d);
   letter-spacing: 0.08em;
 }
-.ecosystem-scenario-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  margin-top: 12px;
-}
-.ecosystem-scenario-column {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 1fr);
-  column-gap: 18px;
-  align-items: start;
+.ecosystem-scenario {
   min-width: 0;
-  min-height: 84px;
-  padding: 16px 18px;
-  border: 1px solid var(--promo-line);
-  border-top-width: 3px;
-  background: rgba(255, 253, 246, 0.48);
+  padding-left: 20px;
+  border-left: 1px dashed var(--promo-line);
 }
-.ecosystem-scenario-column.maa {
-  border-top-color: var(--yellow-deep);
-}
-.ecosystem-scenario-column.bwiki {
-  border-top-color: var(--tea);
-}
-.ecosystem-scenario-column.yuanassist {
-  border-top-color: var(--rouge);
-}
-.ecosystem-scenario-column.piyong {
-  border-top-color: var(--accent);
-}
-.ecosystem-scenario-name {
+.ecosystem-scenario-label {
   display: block;
   min-width: 0;
-  color: var(--tea);
-  font: 900 14px/1.35 var(--font-s);
-  overflow-wrap: anywhere;
-}
-.ecosystem-scenario-column-label {
-  display: block;
-  min-width: 0;
-  margin-top: 0;
-  grid-column: 2;
   color: var(--accent-strong);
-  font: 800 10px/1.3 var(--font-d);
+  font: 800 11px/1.3 var(--font-d);
   letter-spacing: 0.03em;
   overflow-wrap: anywhere;
 }
 .ecosystem-scenarios {
   min-width: 0;
-  grid-column: 2;
-  margin: 3px 0 0;
+  margin: 7px 0 0;
   padding: 0;
   list-style: none;
   color: var(--promo-muted);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.7;
 }
 .ecosystem-scenarios li {
   overflow-wrap: anywhere;
@@ -727,11 +690,11 @@ h2 em {
   letter-spacing: 0.03em;
   overflow-wrap: anywhere;
 }
-.ecosystem-card-uri {
+.ecosystem-partner-uri {
   display: block;
   margin-top: 4px;
   color: var(--promo-muted);
-  font: 700 9px/1.35 var(--font-b);
+  font: 700 10px/1.35 var(--font-b);
   overflow-wrap: anywhere;
 }
 
@@ -1487,29 +1450,37 @@ h2 em {
   .ecosystem-badge {
     margin-top: 1px;
   }
-  .ecosystem-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 17px;
+  .ecosystem-list {
+    gap: 10px;
+    margin-top: 10px;
   }
-  .ecosystem-card {
-    min-height: 104px;
-    align-items: start;
-    gap: 9px;
-    padding: 11px 9px;
+  .ecosystem-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    min-height: 0;
+    padding: 16px 14px;
+  }
+  .ecosystem-row-split {
+    display: none;
+  }
+  .ecosystem-scenario {
+    padding-top: 14px;
+    padding-left: 0;
+    border-top: 1px dashed var(--promo-line);
+    border-left: 0;
   }
   .ecosystem-icon {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
     border-radius: 8px;
   }
-  .ecosystem-card-name {
-    font-size: 13px;
+  .ecosystem-partner-name {
+    font-size: 15px;
     line-height: 1.35;
   }
-  .ecosystem-card-role {
+  .ecosystem-partner-role {
     margin-top: 3px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .ecosystem-scenario-section {
     margin-top: 14px;
@@ -1518,26 +1489,13 @@ h2 em {
   .ecosystem-scenario-heading h3 {
     font-size: 14px;
   }
-  .ecosystem-scenario-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    margin-top: 10px;
-  }
-  .ecosystem-scenario-column {
-    min-height: 82px;
-    padding: 15px 13px;
-  }
-  .ecosystem-scenario-name {
-    font-size: 13px;
-  }
-  .ecosystem-scenario-column-label {
-    margin-top: 6px;
-    font-size: 9px;
+  .ecosystem-scenario-label {
+    font-size: 10px;
   }
   .ecosystem-scenarios {
-    margin-top: 3px;
-    font-size: 11px;
-    line-height: 1.5;
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 1.6;
   }
   .ecosystem-future-section {
     margin-top: 14px;
@@ -1561,7 +1519,7 @@ h2 em {
   }
   .ecosystem-action {
     margin-top: 6px;
-    font-size: 9px;
+    font-size: 10px;
   }
   .hero-flow {
     margin-top: 48px;
@@ -1709,20 +1667,6 @@ h2 em {
 }
 
 @media (max-width: 500px) {
-  .ecosystem-scenario-column {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 0;
-    min-height: 100px;
-    padding: 16px 13px;
-  }
-  .ecosystem-scenario-column-label,
-  .ecosystem-scenarios {
-    grid-column: 1;
-  }
-  .ecosystem-scenario-grid {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 10px;
-  }
   .ecosystem-future-grid {
     grid-template-columns: minmax(0, 1fr);
   }
