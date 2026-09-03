@@ -26,7 +26,6 @@ html {
 }
 
 body {
-  overflow-x: hidden;
   position: relative;
   isolation: isolate;
   color: var(--ink);
