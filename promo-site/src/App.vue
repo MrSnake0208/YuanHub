@@ -81,6 +81,38 @@
                 </span>
               </component>
             </div>
+            <section
+              class="ecosystem-scenario-section"
+              aria-labelledby="ecosystem-scenario-title"
+            >
+              <div class="ecosystem-scenario-heading">
+                <h3 id="ecosystem-scenario-title">潜在应用场景</h3>
+                <span class="ecosystem-scenario-badge">页面示意</span>
+              </div>
+              <div class="ecosystem-scenario-grid">
+                <article
+                  v-for="partner in partners"
+                  :key="`scenario-${partner.name}`"
+                  class="ecosystem-scenario-column"
+                  :class="partner.tone"
+                >
+                  <strong class="ecosystem-scenario-name">{{
+                    partner.name
+                  }}</strong>
+                  <span class="ecosystem-scenario-column-label"
+                    >潜在应用场景（页面示意）</span
+                  >
+                  <ul class="ecosystem-scenarios">
+                    <li
+                      v-for="scenario in partner.scenarios"
+                      :key="scenario"
+                    >
+                      {{ scenario }}
+                    </li>
+                  </ul>
+                </article>
+              </div>
+            </section>
           </section>
         </div>
       </section>
@@ -233,6 +265,7 @@ const partners = [
   {
     name: "MaaYuan",
     role: "社区项目示意",
+    scenarios: ["自动扫描背包数据并录入", "自动扫描密探数据并录入"],
     action: "访问官网 ↗",
     icon: "/icons/maa.png",
     href: "https://maayuan.com/",
@@ -241,6 +274,7 @@ const partners = [
   {
     name: "代号鸢 BWiki",
     role: "社区项目示意",
+    scenarios: ["读取 YuanHub 密探、背包数据参与计算"],
     action: "访问资料站 ↗",
     icon: "/icons/bwiki.png",
     href: "https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5",
@@ -249,6 +283,7 @@ const partners = [
   {
     name: "YuanAssist",
     role: "社区项目示意",
+    scenarios: ["适配更好的作业、密探数据参与日常"],
     action: "访问官网 ↗",
     icon: "/icons/yuanassist.png",
     href: "https://www.yuanassist.space/",
@@ -257,6 +292,7 @@ const partners = [
   {
     name: "辟雍学府",
     role: "社区项目示意",
+    scenarios: ["读取 YuanHub 密探数据参与 BOX 图制作"],
     action: "小程序入口",
     miniProgramUri: "#小程序://辟雍学府/OQufna612dh0plf",
     icon: "/icons/piyong.png",
@@ -355,7 +391,7 @@ main.promo-main {
   align-items: center;
   gap: 9px;
   color: var(--promo-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
@@ -369,7 +405,7 @@ main.promo-main {
   padding-left: 12px;
   border-left: 1px solid var(--promo-line);
   color: var(--accent-strong);
-  font: 800 10px/1 var(--font-d);
+  font: 800 11px/1 var(--font-d);
   letter-spacing: 0.14em;
 }
 
@@ -384,12 +420,12 @@ main.promo-main {
   align-items: center;
   gap: 12px;
   color: var(--accent-strong);
-  font: 800 11px/1.3 var(--font-d);
+  font: 800 12px/1.3 var(--font-d);
   letter-spacing: 0.15em;
 }
 .eyebrow span {
   color: var(--tea);
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.04em;
 }
 h1,
@@ -426,7 +462,7 @@ h2 em {
   border-left: 3px solid var(--yellow-deep);
   background: rgba(255, 253, 246, 0.58);
   color: var(--promo-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.75;
 }
 .notice-mark {
@@ -466,7 +502,7 @@ h2 em {
 .ecosystem-heading p {
   margin-top: 9px;
   color: var(--promo-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .ecosystem-badge {
@@ -475,7 +511,7 @@ h2 em {
   border: 1px solid var(--promo-line);
   border-radius: 4px;
   color: var(--accent-strong);
-  font: 800 9px/1 var(--font-d);
+  font: 800 10px/1 var(--font-d);
   letter-spacing: 0.08em;
 }
 .ecosystem-grid {
@@ -545,14 +581,105 @@ h2 em {
   display: block;
   margin-top: 4px;
   color: var(--promo-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
+}
+.ecosystem-scenario-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--promo-line);
+}
+.ecosystem-scenario-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.ecosystem-scenario-heading h3 {
+  color: var(--tea);
+  font: 900 17px/1.3 var(--font-s);
+  letter-spacing: 0.04em;
+}
+.ecosystem-scenario-badge {
+  flex: none;
+  padding: 5px 8px;
+  border: 1px solid var(--promo-line);
+  border-radius: 4px;
+  color: var(--accent-strong);
+  font: 800 10px/1 var(--font-d);
+  letter-spacing: 0.08em;
+}
+.ecosystem-scenario-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+.ecosystem-scenario-column {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 1fr);
+  column-gap: 18px;
+  align-items: start;
+  min-width: 0;
+  min-height: 84px;
+  padding: 16px 18px;
+  border: 1px solid var(--promo-line);
+  border-top-width: 3px;
+  background: rgba(255, 253, 246, 0.48);
+}
+.ecosystem-scenario-column.maa {
+  border-top-color: var(--yellow-deep);
+}
+.ecosystem-scenario-column.bwiki {
+  border-top-color: var(--tea);
+}
+.ecosystem-scenario-column.yuanassist {
+  border-top-color: var(--rouge);
+}
+.ecosystem-scenario-column.piyong {
+  border-top-color: var(--accent);
+}
+.ecosystem-scenario-name {
+  display: block;
+  min-width: 0;
+  color: var(--tea);
+  font: 900 14px/1.35 var(--font-s);
+  overflow-wrap: anywhere;
+}
+.ecosystem-scenario-column-label {
+  display: block;
+  min-width: 0;
+  margin-top: 0;
+  grid-column: 2;
+  color: var(--accent-strong);
+  font: 800 10px/1.3 var(--font-d);
+  letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
+}
+.ecosystem-scenarios {
+  min-width: 0;
+  grid-column: 2;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--promo-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ecosystem-scenarios li {
+  overflow-wrap: anywhere;
+}
+.ecosystem-scenarios li::before {
+  content: "·";
+  margin-right: 4px;
+  color: var(--accent);
+  font-weight: 900;
 }
 .ecosystem-action {
   display: block;
   margin-top: 7px;
   color: var(--accent-strong);
-  font: 800 9px/1.2 var(--font-d);
+  font: 800 10px/1.2 var(--font-d);
   letter-spacing: 0.03em;
   overflow-wrap: anywhere;
 }
@@ -560,7 +687,7 @@ h2 em {
   display: block;
   margin-top: 4px;
   color: var(--promo-muted);
-  font: 700 8px/1.35 var(--font-b);
+  font: 700 9px/1.35 var(--font-b);
   overflow-wrap: anywhere;
 }
 
@@ -577,7 +704,7 @@ h2 em {
   align-items: center;
   gap: 11px;
   color: var(--promo-muted);
-  font: 800 10px/1 var(--font-d);
+  font: 800 11px/1 var(--font-d);
   letter-spacing: 0.14em;
 }
 .caption-line {
@@ -613,7 +740,7 @@ h2 em {
   align-items: center;
   gap: 8px;
   color: var(--promo-muted);
-  font: 800 9px/1 var(--font-d);
+  font: 800 10px/1 var(--font-d);
   letter-spacing: 0.13em;
 }
 .node-icon {
@@ -635,7 +762,7 @@ h2 em {
 .flow-node p {
   margin-top: 10px;
   color: var(--promo-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.85;
 }
 .demo-label {
@@ -649,7 +776,7 @@ h2 em {
   border-radius: 4px;
   color: var(--accent-strong);
   background: rgba(239, 210, 142, 0.25);
-  font: 800 8px/1 var(--font-d);
+  font: 800 10px/1 var(--font-d);
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
@@ -666,7 +793,7 @@ h2 em {
   align-items: center;
   gap: 9px;
   color: var(--promo-muted);
-  font: 700 9px/1 var(--font-b);
+  font: 700 10px/1 var(--font-b);
   white-space: nowrap;
 }
 .flow-connector i {
@@ -720,7 +847,7 @@ h2 em {
   z-index: 2;
   margin-top: 18px;
   color: rgba(255, 248, 236, 0.7);
-  font: 800 8px/1 var(--font-d);
+  font: 800 9px/1 var(--font-d);
   letter-spacing: 0.14em;
 }
 .hub-node h2 {
@@ -771,7 +898,7 @@ h2 em {
 }
 .output-node p {
   margin-top: 3px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
 }
 .output-node .demo-label {
@@ -862,7 +989,7 @@ h2 em {
 }
 .board-kicker {
   color: var(--accent-strong);
-  font: 800 9px/1.3 var(--font-d);
+  font: 800 10px/1.3 var(--font-d);
   letter-spacing: 0.13em;
 }
 .board-head h3 {
@@ -876,7 +1003,7 @@ h2 em {
   padding: 6px 9px;
   border: 1px solid var(--rouge);
   color: var(--rouge);
-  font: 800 9px/1 var(--font-d);
+  font: 800 10px/1 var(--font-d);
   letter-spacing: 0.09em;
   transform: rotate(4deg);
 }
@@ -894,7 +1021,7 @@ h2 em {
 }
 .contribution-index {
   color: var(--accent-strong);
-  font: 800 10px/1 var(--font-d);
+  font: 800 11px/1 var(--font-d);
 }
 .contribution-seal {
   display: grid;
@@ -926,7 +1053,7 @@ h2 em {
   border-radius: 4px;
   color: var(--promo-muted);
   background: var(--paper);
-  font: 700 10px/1 var(--font-b);
+  font: 700 11px/1 var(--font-b);
 }
 .board-foot {
   display: flex;
@@ -934,7 +1061,7 @@ h2 em {
   gap: 9px;
   padding-top: 20px;
   color: var(--promo-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .foot-dash {
@@ -986,7 +1113,7 @@ h2 em {
 }
 .note-index {
   color: var(--accent-strong);
-  font: 900 11px/1 var(--font-d);
+  font: 900 12px/1 var(--font-d);
 }
 .stage-note strong {
   color: var(--tea);
@@ -996,7 +1123,7 @@ h2 em {
 .stage-hub small,
 .reuse-destination small {
   color: var(--promo-muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .stage-note .demo-label {
@@ -1008,7 +1135,7 @@ h2 em {
   align-items: center;
   gap: 8px;
   color: var(--promo-muted);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .stage-connector i {
@@ -1055,7 +1182,7 @@ h2 em {
 .stage-hub .node-type {
   display: block;
   color: rgba(255, 248, 236, 0.65);
-  font: 800 8px/1.3 var(--font-d);
+  font: 800 9px/1.3 var(--font-d);
   letter-spacing: 0.13em;
 }
 .stage-hub strong {
@@ -1091,7 +1218,7 @@ h2 em {
 }
 .reuse-number {
   color: var(--accent-strong);
-  font: 800 9px/1 var(--font-d);
+  font: 800 10px/1 var(--font-d);
 }
 .reuse-symbol {
   width: 30px;
@@ -1102,12 +1229,12 @@ h2 em {
 .reuse-destination strong {
   display: block;
   color: var(--tea);
-  font-size: 12px;
+  font-size: 13px;
 }
 .reuse-destination small {
   display: block;
   margin-top: 2px;
-  font-size: 9px;
+  font-size: 10px;
 }
 .reuse-destination .demo-label {
   padding: 3px 5px 2px;
@@ -1128,7 +1255,7 @@ h2 em {
 }
 .reuse-footnote p {
   color: var(--promo-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.9;
 }
 .reuse-footnote strong {
@@ -1151,7 +1278,7 @@ h2 em {
   display: block;
   margin-bottom: 11px;
   color: var(--yellow);
-  font: 800 9px/1 var(--font-d);
+  font: 800 10px/1 var(--font-d);
   letter-spacing: 0.16em;
 }
 .footer-inner strong {
@@ -1163,7 +1290,7 @@ h2 em {
 }
 .footer-note {
   color: rgba(255, 248, 236, 0.68);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.12em;
 }
 
@@ -1198,7 +1325,7 @@ h2 em {
   }
   .promo-header-note {
     gap: 6px;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 0.05em;
   }
   .header-code {
@@ -1217,12 +1344,12 @@ h2 em {
   }
   .hero-lede {
     margin-top: 21px;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.9;
   }
   .demo-notice {
     margin-top: 20px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .ecosystem-strip {
     margin-top: 46px;
@@ -1238,7 +1365,7 @@ h2 em {
   }
   .ecosystem-heading p {
     max-width: 250px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .ecosystem-badge {
     margin-top: 1px;
@@ -1265,11 +1392,39 @@ h2 em {
   }
   .ecosystem-card-role {
     margin-top: 3px;
+    font-size: 10px;
+  }
+  .ecosystem-scenario-section {
+    margin-top: 14px;
+    padding-top: 16px;
+  }
+  .ecosystem-scenario-heading h3 {
+    font-size: 14px;
+  }
+  .ecosystem-scenario-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .ecosystem-scenario-column {
+    min-height: 82px;
+    padding: 15px 13px;
+  }
+  .ecosystem-scenario-name {
+    font-size: 13px;
+  }
+  .ecosystem-scenario-column-label {
+    margin-top: 6px;
     font-size: 9px;
+  }
+  .ecosystem-scenarios {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.5;
   }
   .ecosystem-action {
     margin-top: 6px;
-    font-size: 8px;
+    font-size: 9px;
   }
   .hero-flow {
     margin-top: 48px;
@@ -1345,24 +1500,24 @@ h2 em {
     font-size: 12px;
   }
   .contribution-body strong {
-    font-size: 12px;
+    font-size: 13px;
   }
   .contribution-body span {
-    font-size: 10px;
+    font-size: 11px;
   }
   .row-tag {
-    font-size: 9px;
+    font-size: 10px;
   }
   .board-foot {
     align-items: flex-start;
-    font-size: 9px;
+    font-size: 10px;
   }
   .reuse-heading {
     align-items: flex-start;
     text-align: left;
   }
   .reuse-heading p {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.8;
   }
   .reuse-stage {
@@ -1413,6 +1568,23 @@ h2 em {
   }
   .footer-inner strong {
     font-size: 24px;
+  }
+}
+
+@media (max-width: 500px) {
+  .ecosystem-scenario-column {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+    min-height: 100px;
+    padding: 16px 13px;
+  }
+  .ecosystem-scenario-column-label,
+  .ecosystem-scenarios {
+    grid-column: 1;
+  }
+  .ecosystem-scenario-grid {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 10px;
   }
 }
 
