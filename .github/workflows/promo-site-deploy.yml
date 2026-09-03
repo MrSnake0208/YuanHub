@@ -45,6 +45,28 @@ jobs:
       - name: Check build output
         run: test -f dist/index.html
 
+      - name: Validate deployment SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+        run: |
+          set -eu
+          test -n "$DEPLOY_KEY" || {
+            echo "::error::YUANHUB_PROMO_VPS_SSH_KEY is empty or unavailable. Add it as a repository secret."
+            exit 1
+          }
+          case "$DEPLOY_KEY" in
+            "-----BEGIN OPENSSH PRIVATE KEY-----"*|"-----BEGIN RSA PRIVATE KEY-----"*) ;;
+            *)
+              echo "::error::YUANHUB_PROMO_VPS_SSH_KEY must contain the complete private key, including BEGIN and END lines."
+              exit 1
+              ;;
+          esac
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          chmod 600 "$key_file"
+          printf '%s\n' "$DEPLOY_KEY" > "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+
       - name: Upload build to temporary directory
         uses: appleboy/scp-action@v0.1.7
         with:
