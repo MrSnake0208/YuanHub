@@ -1,0 +1,78 @@
+name: Build and Deploy Promo Site
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "promo-site/**"
+      - ".github/workflows/promo-site-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: yuanhub-promo-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: promo-site
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: promo-site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build promo site
+        run: npm run build
+
+      - name: Check build output
+        run: test -f dist/index.html
+
+      - name: Upload build to temporary directory
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
+          username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
+          key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+          port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
+          source: "promo-site/dist/*"
+          target: "/tmp/yuanhub-promo-site-${{ github.sha }}/"
+          overwrite: true
+          strip_components: 2
+
+      - name: Replace deployed files
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_DIR: ${{ secrets.YUANHUB_PROMO_DEPLOY_DIR }}
+          TMP_DIR: /tmp/yuanhub-promo-site-${{ github.sha }}
+        with:
+          host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
+          username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
+          key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
+          port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
+          envs: DEPLOY_DIR,TMP_DIR
+          script_stop: true
+          script: |
+            set -eu
+            test -n "$DEPLOY_DIR"
+            sudo -n install -d -m 0755 "$DEPLOY_DIR"
+            sudo -n find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+            sudo -n cp -a "$TMP_DIR"/. "$DEPLOY_DIR"/
+            sudo -n rm -rf "$TMP_DIR"
