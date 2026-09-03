@@ -368,7 +368,7 @@ async function loadTargets() {
 }
 
 function defaultTarget(row) {
-  return { level: 100, elite: 17, starLevel: 31, heartPaper: null, revision: 0 }
+  return { level: 100, elite: 17, starLevel: 7, heartPaper: null, revision: 0 }
 }
 
 function targetFor(row) {
