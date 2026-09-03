@@ -113,6 +113,33 @@
                 </article>
               </div>
             </section>
+            <section
+              class="ecosystem-future-section"
+              aria-labelledby="ecosystem-future-title"
+            >
+              <div class="ecosystem-scenario-heading">
+                <h3 id="ecosystem-future-title">YuanHub 待开发功能</h3>
+                <span class="ecosystem-scenario-badge">页面示意</span>
+              </div>
+              <p class="ecosystem-future-note">
+                以下为待开发功能构想，不代表已上线能力或已确认接入。
+              </p>
+              <div class="ecosystem-future-grid">
+                <article
+                  v-for="feature in pendingFeatures"
+                  :key="feature.title"
+                  class="ecosystem-future-card"
+                  :class="feature.tone"
+                >
+                  <span class="ecosystem-future-mark">{{ feature.mark }}</span>
+                  <div class="contribution-body ecosystem-future-copy">
+                    <strong>{{ feature.title }}</strong>
+                    <span>{{ feature.detail }}</span>
+                  </div>
+                  <span class="demo-label">待开发功能 / 页面示意</span>
+                </article>
+              </div>
+            </section>
           </section>
         </div>
       </section>
@@ -297,6 +324,23 @@ const partners = [
     miniProgramUri: "#小程序://辟雍学府/OQufna612dh0plf",
     icon: "/icons/piyong.png",
     tone: "piyong",
+  },
+];
+
+const pendingFeatures = [
+  {
+    title: "密探 BOX 分享",
+    detail:
+      "以类似“神秘代码”的方式分享完整 BOX 或选中的密探，帮助代打等场景在不上号时初步查看是否满足需求。",
+    mark: "码",
+    tone: "feature-yellow",
+  },
+  {
+    title: "史君小铺",
+    detail:
+      "待开发构想：发布关卡与可用队伍需求，使用分享代码匹配 BOX，辅助接单或发单。",
+    mark: "铺",
+    tone: "feature-red",
   },
 ];
 
@@ -689,6 +733,79 @@ h2 em {
   color: var(--promo-muted);
   font: 700 9px/1.35 var(--font-b);
   overflow-wrap: anywhere;
+}
+
+.ecosystem-future-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--promo-line);
+}
+.ecosystem-future-note {
+  margin-top: 8px;
+  color: var(--promo-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ecosystem-future-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.ecosystem-future-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  column-gap: 11px;
+  min-width: 0;
+  min-height: 132px;
+  padding: 16px 18px;
+  border: 1px solid var(--promo-line);
+  border-top-width: 3px;
+  background: rgba(255, 253, 246, 0.48);
+}
+.ecosystem-future-card.feature-yellow {
+  border-top-color: var(--yellow-deep);
+}
+.ecosystem-future-card.feature-red {
+  border-top-color: var(--rouge);
+}
+.ecosystem-future-mark {
+  display: grid;
+  grid-row: 1 / span 2;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--tea);
+  background: var(--yellow);
+  font: 900 14px/1 var(--font-s);
+}
+.ecosystem-future-card.feature-red .ecosystem-future-mark {
+  color: var(--cream);
+  background: var(--rouge);
+}
+.ecosystem-future-copy {
+  grid-column: 2;
+  min-width: 0;
+}
+.ecosystem-future-copy strong {
+  font-size: 15px;
+}
+.ecosystem-future-copy span {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.ecosystem-future-card .demo-label {
+  grid-column: 2;
+  align-self: end;
+  margin-top: 12px;
+  justify-self: start;
+  white-space: normal;
+  line-height: 1.35;
+  text-align: left;
 }
 
 .hero-flow {
@@ -1422,6 +1539,26 @@ h2 em {
     font-size: 11px;
     line-height: 1.5;
   }
+  .ecosystem-future-section {
+    margin-top: 14px;
+    padding-top: 16px;
+  }
+  .ecosystem-future-note {
+    font-size: 11px;
+  }
+  .ecosystem-future-grid {
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .ecosystem-future-card {
+    column-gap: 9px;
+    min-height: 120px;
+    padding: 15px 13px;
+  }
+  .ecosystem-future-card .demo-label {
+    margin-top: 10px;
+    font-size: 9px;
+  }
   .ecosystem-action {
     margin-top: 6px;
     font-size: 9px;
@@ -1585,6 +1722,9 @@ h2 em {
   .ecosystem-scenario-grid {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 10px;
+  }
+  .ecosystem-future-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
