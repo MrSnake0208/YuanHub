@@ -90,11 +90,10 @@ jobs:
           key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
           port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
           envs: DEPLOY_DIR,TMP_DIR
-          script_stop: true
           script: |
             set -eu
             test -n "$DEPLOY_DIR"
-            sudo -n install -d -m 0755 "$DEPLOY_DIR"
-            sudo -n find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-            sudo -n cp -a "$TMP_DIR"/. "$DEPLOY_DIR"/
-            sudo -n rm -rf "$TMP_DIR"
+            install -d -m 0755 "$DEPLOY_DIR"
+            find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+            cp -a "$TMP_DIR"/. "$DEPLOY_DIR"/
+            rm -rf "$TMP_DIR"

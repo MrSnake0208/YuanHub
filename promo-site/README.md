@@ -25,7 +25,7 @@ Configure these repository Secrets before enabling the workflow. Do not put them
 - `YUANHUB_PROMO_VPS_SSH_KEY`
 - `YUANHUB_PROMO_DEPLOY_DIR` (for example `/var/www/hub-promo`)
 
-The SSH user must be able to run `sudo -n install`, `find`, `cp`, and `rm` for the deployment directory. Each run uploads to a temporary directory, replaces the target directory contents, and removes the temporary files.
+The SSH user must own the deployment directory and its parent must allow access. Each run uploads to a temporary directory, replaces the target directory contents, and removes the temporary files. The workflow does not use `sudo` or store a server password.
 
 ## Nginx
 
