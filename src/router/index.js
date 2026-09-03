@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
+import { isFeatureEnabled } from '@/config/features.js'
 import { auth, init as authInit } from '@/store/auth.js'
 import { canManageAnyFeedback, hasAnyAdminCapability, hasPermission } from '@/utils/authPermissions.js'
 
@@ -64,6 +65,11 @@ router.beforeEach(async (to, from, next) => {
   const requiredPermission = to.meta && to.meta.requiredPermission
   const requiresFeedbackManage = to.meta && to.meta.requiresFeedbackManage
   const requiresManagement = to.meta && to.meta.requiresManagement
+  const feature = to.meta && to.meta.feature
+
+  if (feature && !isFeatureEnabled(feature)) {
+    return next(to.meta.featureFallback || '/cart')
+  }
 
   if (requiresAuth && !authed) {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳

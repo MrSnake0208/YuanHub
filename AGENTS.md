@@ -10,8 +10,9 @@
 
 1. 前端设计规范：`docs/standards/design-system.md`
 2. 页面开发流程：`docs/standards/page-development.md`
+3. 功能开关发布规则：`docs/standards/feature-flags.md`
 
-以上两份文件是详细规则的唯一权威来源。`AGENTS.md` 只保留必须首先看到的硬约束摘要；详细色板、字体、组件与页面流程不要在这里重复维护。
+以上规范是详细规则的唯一权威来源。`AGENTS.md` 只保留必须首先看到的硬约束摘要；详细色板、字体、组件、页面流程与功能开关规则不要在这里重复维护。
 
 ## 关键硬约束
 
@@ -22,6 +23,8 @@
 - 标题体系使用设计规范指定的宋体方向；正文保持项目既有中文无衬线字体体系；数字按规范使用 Archivo。
 - 页面必须保留 MaaYuan 的暖色纸张背景体系和 `/maayuan/maayuan-pattern.webp` 吉祥物背景，不得在无明确设计变更要求时移除。
 - 运行时资源必须来自本仓库 `public/`，不要依赖仓库外的图片、原型目录或绝对路径。
+- 延后开放的前端功能必须注册到 `src/config/features.js`，生产构建默认关闭，并通过 `FEATURE_KEYS` 与 `isFeatureEnabled` 接入。
+- 该功能开关是构建时的前端展示控制，不是认证或安全边界；后端限制必须单独实现。
 
 ## 设计资源约定
 

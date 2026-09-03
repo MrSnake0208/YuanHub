@@ -186,6 +186,7 @@
               当前养成
             </button>
             <button
+              v-if="growthTrackingEnabled"
               type="button"
               class="operator-tab-button"
               role="tab"
@@ -2075,7 +2076,7 @@
           </div>
 
           <div
-            v-if="visitedTabs.has('tracking')"
+            v-if="growthTrackingEnabled && visitedTabs.has('tracking')"
             v-show="activeTab === 'tracking'"
             class="panel"
             :class="{ 'is-active': activeTab === 'tracking' }"
@@ -2117,6 +2118,7 @@
           <span>当前养成</span>
         </button>
         <button
+          v-if="growthTrackingEnabled"
           type="button"
           role="tab"
           :aria-selected="activeTab === 'tracking'"
@@ -2814,6 +2816,10 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
+import {
+  FEATURE_KEYS,
+  isFeatureEnabled,
+} from "../../config/features.js";
 const OperatorGrowthTracker = defineAsyncComponent(function () {
   return import("../../components/operator/OperatorGrowthTracker.vue");
 });
@@ -2889,6 +2895,9 @@ import {
 } from "../../utils/operatorV3Import.js";
 
 const ODDITY_KEYS = OPERATOR_ODDITY_KEYS;
+const growthTrackingEnabled = isFeatureEnabled(
+  FEATURE_KEYS.OPERATOR_GROWTH_TRACKING,
+);
 
 const activeTab = ref("catalog");
 const visitedTabs = ref(new Set(["catalog"]));
@@ -6873,6 +6882,7 @@ async function saveEdit() {
 }
 
 function setTab(t) {
+  if (t === "tracking" && !growthTrackingEnabled) return;
   if (!visitedTabs.value.has(t))
     visitedTabs.value = new Set(visitedTabs.value).add(t);
   activeTab.value = t;
