@@ -21,8 +21,8 @@
             <div class="eyebrow"><span>01</span> COMMUNITY DATA LAYER</div>
             <h1 id="promo-hero-title">让游戏数据<br><em>自由流动</em></h1>
             <p class="hero-lede">
-              玩家愿意分享的每一条资料，都可以成为社区继续建设的起点。
-              YuanHub 把分散的贡献整理成可被复用的公共数据。
+              用户自行录入的每一份游戏数据，都可以成为社区继续建设的起点。
+              YuanHub 把分散的贡献整理成可被复用的公共数据，资料站、社区 App、自动化工具等外部项目可以按需通过 API 调用 YuanHub 整理后的数据。
             </p>
             <div class="demo-notice">
               <span class="notice-mark">◎</span>
@@ -63,7 +63,7 @@
             </div>
           </section>
 
-          <div class="hero-flow" aria-label="玩家投稿经过 YuanHub 流向社区项目的示意图">
+          <div class="hero-flow" aria-label="用户录入自己的游戏数据，经过 YuanHub 整理，并由外部项目按需通过 API 调用的示意图">
             <div class="flow-caption">
               <span>CONTRIBUTION FLOW</span>
               <span class="caption-line"></span>
@@ -72,8 +72,8 @@
             <div class="flow-lane">
               <article class="flow-node source-node">
                 <div class="node-topline"><span class="node-icon">+</span><span class="node-type">PLAYER INPUT</span></div>
-                <h2>玩家投稿</h2>
-                <p>角色资料 · 材料数据<br>版本记录 · 修订信息</p>
+                <h2>用户录入</h2>
+                <p>密探资料 · 背包数据<br>社区共建 · 修订信息</p>
                 <span class="demo-label">DEMO DATA</span>
               </article>
 
@@ -93,7 +93,7 @@
               </article>
 
               <div class="flow-connector" aria-hidden="true">
-                <span>可被复用</span>
+                <span>API 调用</span>
                 <i></i>
               </div>
 
@@ -145,7 +145,7 @@
             </div>
             <div class="board-foot">
               <span class="foot-dash"></span>
-              <span>玩家贡献　→　YuanHub 归档　→　社区继续使用</span>
+              <span>用户录入　→　YuanHub 整理　→　外部项目通过 API 调用</span>
             </div>
           </div>
         </div>
@@ -156,14 +156,14 @@
           <div class="reuse-heading">
             <div class="eyebrow"><span>03</span> ONE CONTRIBUTION, MANY USES</div>
             <h2 id="reuse-title">一次投稿，<em>多处使用</em></h2>
-            <p>同一份社区知识，经过统一整理后，能够以不同的方式回到玩家身边。</p>
+            <p>同一份社区知识经过统一整理后，资料站、社区 App、自动化工具等外部项目可以按需通过 API 调用 YuanHub 数据，再以不同方式回到玩家身边。</p>
           </div>
 
-          <div class="reuse-stage" aria-label="一次投稿经过 YuanHub 统一整理后被不同社区项目复用的示意图">
+          <div class="reuse-stage" aria-label="一次投稿经过 YuanHub 统一整理后，由不同社区项目按需通过 API 调用的示意图">
             <div class="stage-note note-left">
               <span class="note-index">A</span>
-              <strong>玩家贡献</strong>
-              <small>一条可核对的资料</small>
+              <strong>用户录入</strong>
+              <small>用户自行录入属于自己的游戏内数据</small>
               <span class="demo-label">示意</span>
             </div>
             <div class="stage-connector connector-left" aria-hidden="true"><i></i><span>提交</span></div>
@@ -172,11 +172,11 @@
               <div>
                 <span class="node-type">ORGANIZE / PRESERVE</span>
                 <strong>YuanHub</strong>
-                <small>把贡献整理成公共基础</small>
+                <small>把贡献整理成可按需调用的公共基础</small>
               </div>
               <span class="demo-label">DEMO DATA</span>
             </div>
-            <div class="stage-connector connector-right" aria-hidden="true"><i></i><span>复用</span></div>
+            <div class="stage-connector connector-right" aria-hidden="true"><i></i><span>API 调用</span></div>
             <div class="reuse-destinations">
               <article v-for="(destination, index) in destinations" :key="`reuse-${destination.name}`" class="reuse-destination">
                 <span class="reuse-number">0{{ index + 1 }}</span>
@@ -192,7 +192,7 @@
 
           <div class="reuse-footnote">
             <span class="footnote-mark">✦</span>
-            <p><strong>YuanHub 是中间层。</strong> 它不替社区发声，也不把贡献锁在一个页面里；它让资料有迹可循，让不同项目拥有共同的起点。</p>
+            <p><strong>YuanHub 是中间层。</strong> 它不替社区发声，也不把贡献锁在一个页面里；外部项目可按需通过 API 调用整理后的数据，让资料有迹可循，让不同项目拥有共同的起点。</p>
           </div>
         </div>
       </section>
@@ -204,7 +204,7 @@
           <span class="footer-kicker">A SHARED STARTING POINT</span>
           <strong>YuanHub <span>·</span> 鸢鸢相抱</strong>
         </div>
-        <span class="footer-note">玩家贡献　社区共建　数据流动</span>
+        <span class="footer-note">用户录入　社区共建　数据流动</span>
       </div>
     </footer>
   </div>
@@ -226,10 +226,10 @@ const destinations = [
 ]
 
 const contributions = [
-  { title: '角色资料', detail: '把已确认的内容整理成可查阅记录', tag: '补充', mark: '录', tone: 'yellow' },
-  { title: '材料数据', detail: '让零散的经验有清晰的来处', tag: '归档', mark: '集', tone: 'orange' },
-  { title: '版本记录', detail: '标记变化，让资料可以继续校对', tag: '追踪', mark: '时', tone: 'blue' },
-  { title: '社区反馈', detail: '指出疑问，也留下下一次修订的线索', tag: '反馈', mark: '问', tone: 'red' }
+  { title: '密探资料', detail: '把已确认的内容整理成可查阅记录', tag: '补充', mark: '录', tone: 'yellow' },
+  { title: '背包数据', detail: '让零散的经验有清晰的来处', tag: '归档', mark: '集', tone: 'orange' },
+  { title: '社区共建', detail: '标记变化，让资料可以继续校对', tag: '追踪', mark: '时', tone: 'blue' },
+  { title: '社区反馈', detail: '用户与管理员双向接收并回应信息', tag: '双向', mark: '问', tone: 'red' }
 ]
 </script>
 
