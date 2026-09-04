@@ -31,6 +31,35 @@ export function getOperatorCatalog() {
   return request(PATH + '/catalog', { auth: false })
 }
 
+// —— 密探分享 ——
+
+function sharePath(accountId, suffix = '') {
+  const params = new URLSearchParams()
+  if (accountId != null && accountId !== '') params.set('account_id', accountId)
+  const query = params.toString()
+  return PATH + '/share' + suffix + (query ? '?' + query : '')
+}
+
+export function getOperatorShare(accountId) {
+  return request(sharePath(accountId), { auth: true })
+}
+
+export function createOperatorShare(accountId) {
+  return request(sharePath(accountId), { method: 'PUT', auth: true })
+}
+
+export function regenerateOperatorShare(accountId) {
+  return request(sharePath(accountId, '/regenerate'), { method: 'POST', auth: true })
+}
+
+export function revokeOperatorShare(accountId) {
+  return request(sharePath(accountId), { method: 'DELETE', auth: true })
+}
+
+export function viewOperatorShare(shareCode) {
+  return request(PATH + '/share/view/' + encodeURIComponent(shareCode), { auth: false })
+}
+
 // —— 个人密探数据 ——
 
 // 导入（POST，需登录）——body 为完整交换文档 v2（snake_case 原样透传）

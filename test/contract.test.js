@@ -108,7 +108,7 @@ test('统一子账号 CRUD 路径前后端一致（/v1/accounts，库存 × 密�
   // 库存 / 密探 / Token 页均复用这一套账号函数，不再各自调用被删的旧地址
   assert.match(frontendInventory, /from '\.\/accounts\.js'/)
   assert.match(frontendOperator, /from '\.\/accounts\.js'/)
-  assert.match(frontendProfile, /from '\.\.\/\.\.\/api\/accounts\.js'/)
+  assert.match(frontendProfile, /from ["']\.\.\/\.\.\/api\/accounts\.js["']/)
   assert.match(frontendProfile, /await createAccount\(name, newAccountGame\.value\)/)
   assert.doesNotMatch(frontendProfile, /请先去.*库存页.*创建/)
   // 旧地址的调用方式（PATH + '/accounts'）不得再出现于库存/密探 API 模块
@@ -181,7 +181,7 @@ test('账号级 SSE 事件契约：Bearer fetch、账号路径与密探事件', 
   assert.match(frontendOperatorPage, /operator_scan_import/)
   assert.match(frontendOperatorPage, /scheduleEventRefresh/)
   assert.match(frontendOperatorPage, /scrollIntoView/)
-  assert.match(frontendOperatorPage, /focusAndFlashScanOperator\(data\.operator_id/)
+  assert.match(frontendOperatorPage, /focusAndFlashScanOperator\(\s*data\.operator_id/)
   assert.match(frontendOperatorPage, /char_085_shizimiaosp/)
   assert.match(frontendOperatorPage, /operator-rune-ring-outer/)
   assert.match(frontendOperatorPage, /operator-rune-ripple-two/)
