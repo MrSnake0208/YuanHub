@@ -639,6 +639,26 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 
 `version=3` 导出包含客观档案、annotation、favorite 与 targets；默认 `version=2`。
 
+### 5.6 密探只读分享
+
+| 方法与路径 | 认证 | 参数 | 成功 data |
+|---|---|---|---|
+| `GET /v1/operator/share` | JWT | query `account_id` | `{account_id,active,share_code}` |
+| `PUT /v1/operator/share` | JWT | query `account_id` | 生成或复用当前分享状态 |
+| `POST /v1/operator/share/regenerate` | JWT | query `account_id` | 重新生成后的分享状态 |
+| `DELETE /v1/operator/share` | JWT | query `account_id` | 撤销后的分享状态 |
+| `GET /v1/operator/share/view/{shareCode}` | 公开 | path `shareCode` | `{game,catalog_version,updated_at,entries}` |
+
+- 重新生成或撤销后，旧代码立即失效。
+- 管理操作只使用 JWT 中的 `user_id` 加请求的 `account_id` 校验子账号归属；通用账号响应不返回
+  `share_token`，代码不会写入应用日志。只有 `/v1/operator/share/view/**` 精确公开，管理路径仍需 JWT。
+- 匿名响应只投影客观养成字段：已招募（`star_level > 0`）条目的 `level`、`elite`、`star_level`、
+  `disc_loadouts`、`star_stones`，以及 `combat_stats` 中的 `observed_attack`、`observed_hp`、
+  `manual_attack`、`manual_hp`、`oddities`；不包含备注、关注、目标、库存或登录信息，也不包含
+  `revision`、`listed_baseline_at`、观测来源/时间、签名和 `display_mode`。`entries` 的公共密探 ID 仅用于合并图鉴，页面不展示该 ID。
+- 尚无 current 数据时返回 200、空 `entries` 和空 `updated_at`；成功响应设置 `Cache-Control: no-store`；
+  无效、撤销或已删除代码统一返回 404 `share_not_found`。
+
 ## 6. 反馈工单与权限管理（/v1/reports）
 
 反馈工单接口需要登录 JWT。个人反馈页面固定使用 mine=true，反馈工作台固定使用 mine=false；后端会按归一化后的 category 校验管理范围，不能依赖前端隐藏筛选项提供安全保障。

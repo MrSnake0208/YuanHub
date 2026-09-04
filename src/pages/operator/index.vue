@@ -78,6 +78,11 @@
               </button>
             </template>
 
+            <OperatorShareManager
+              v-if="auth.isLoggedIn && accountId"
+              :account-id="accountId"
+            />
+
             <div v-if="showArchive" class="archive-workspace">
               <div class="archive-heading">
                 <div>
@@ -2816,6 +2821,7 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
+import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import {
   FEATURE_KEYS,
   isFeatureEnabled,

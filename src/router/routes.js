@@ -74,6 +74,18 @@ export const routes = [
         }
     },
     {
+        path: '/operator/share/:token?',
+        text: '密探 BOX 分享',
+        name: 'operator-share',
+        display: false,
+        module: 'tools',
+        icon: 'share-2',
+        component: () => import('/src/pages/operator/share.vue'),
+        meta: {
+            title: '密探 BOX 分享 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/star',
         text: '我的星石',
         name: 'star',
