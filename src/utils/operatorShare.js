@@ -1,3 +1,5 @@
+import { matchesProfSubFilter } from './operatorFilters.js'
+
 function text(value) {
   return value == null ? '' : String(value).trim()
 }
@@ -43,6 +45,7 @@ export function mergeOperatorShareEntries(share, catalog) {
     return {
       id: id,
       name: text(operator.name) || '未知密探',
+      alias: text(operator.alias),
       avatar: text(operator.avatar),
       rarity: Number(operator.rarity) || 0,
       prof: Array.isArray(operator.prof) ? operator.prof : text(operator.prof) ? [operator.prof] : [],
@@ -54,6 +57,17 @@ export function mergeOperatorShareEntries(share, catalog) {
     }
   }).sort(function (left, right) {
     return left.order - right.order || left.name.localeCompare(right.name, 'zh-CN')
+  })
+}
+
+export function filterOperatorShareEntries(entries, search, prof, subProf) {
+  const query = text(search).toLowerCase()
+  return (Array.isArray(entries) ? entries : []).filter(function (entry) {
+    if (!matchesProfSubFilter(entry, prof, subProf)) return false
+    if (!query) return true
+    return [entry.name, entry.alias, entry.id].some(function (value) {
+      return text(value).toLowerCase().includes(query)
+    })
   })
 }
 

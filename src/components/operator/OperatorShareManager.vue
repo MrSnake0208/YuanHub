@@ -25,15 +25,15 @@
         </label>
       </div>
       <div class="share-actions">
-        <button class="share-button" type="button" :disabled="busy" @click="copy(share.share_code, '神秘代码')">复制代码</button>
-        <button class="share-button" type="button" :disabled="busy" @click="copy(shareLink, '分享链接')">复制链接</button>
-        <button class="share-button subtle" type="button" :disabled="busy" @click="regenerate">重新生成</button>
-        <button class="share-button danger" type="button" :disabled="busy" @click="revoke">撤销分享</button>
+        <button class="share-button" type="button" :disabled="loading || busy" @click="copy(share.share_code, '神秘代码')">复制代码</button>
+        <button class="share-button" type="button" :disabled="loading || busy" @click="copy(shareLink, '分享链接')">复制链接</button>
+        <button class="share-button subtle" type="button" :disabled="loading || busy" @click="regenerate">重新生成</button>
+        <button class="share-button danger" type="button" :disabled="loading || busy" @click="revoke">撤销分享</button>
       </div>
     </template>
     <div v-else class="share-inactive">
       <p>当前账号尚未开启分享。生成后，拿到代码的人无需登录即可查看。</p>
-      <button class="share-button" type="button" :disabled="busy" @click="generate">
+      <button class="share-button" type="button" :disabled="loading || busy" @click="generate">
         {{ busy ? '正在生成…' : '生成神秘代码' }}
       </button>
     </div>
@@ -58,6 +58,7 @@ const busy = ref(false)
 const error = ref('')
 const message = ref('')
 let requestSeq = 0
+let loadSeq = 0
 
 const shareLink = computed(function () {
   if (!share.value || !share.value.share_code) return ''
@@ -76,6 +77,7 @@ function humanErr(err, fallback) {
 async function loadShare() {
   const accountId = props.accountId
   const seq = ++requestSeq
+  const loadRequestSeq = ++loadSeq
   share.value = null
   busy.value = false
   error.value = ''
@@ -88,7 +90,7 @@ async function loadShare() {
   } catch (err) {
     if (current(accountId, seq)) error.value = humanErr(err, '分享状态读取失败')
   } finally {
-    if (current(accountId, seq)) loading.value = false
+    if (loadRequestSeq === loadSeq) loading.value = false
   }
 }
 
@@ -169,7 +171,7 @@ async function copy(value, label) {
 }
 
 watch(function () { return props.accountId }, loadShare, { immediate: true, flush: 'sync' })
-onBeforeUnmount(function () { requestSeq += 1 })
+onBeforeUnmount(function () { requestSeq += 1; loadSeq += 1 })
 </script>
 
 <style scoped>
