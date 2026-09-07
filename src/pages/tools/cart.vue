@@ -19,7 +19,7 @@
           <div class="author-badge" v-reveal>
             <span class="ab-mark">©</span>
             <span class="ab-txt"
-              >独立创作 · 著作权归作者 <b>swerainy</b> 所有</span
+              >独立创作 · 著作权归作者 <b>binary</b> 所有</span
             >
           </div>
           <div class="hero-stats">
@@ -167,7 +167,7 @@
         <template #big>广陵账房<br /><span>精打细算 · 运筹帷幄</span></template>
         <template #fine>
           <b>YuanHub</b> · 礼包计算器<br />
-          作者：<b>swerainy</b> · 著作权归作者所有<br />
+          作者：<b>binary</b> · 著作权归作者所有<br />
           MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内商店为准
         </template>
@@ -948,7 +948,7 @@ function exportReceipt() {
 </script>
 
 <style scoped>
-/* ---- 作者版权醒目标识（广陵账房 · swerainy） ---- */
+/* ---- 作者版权醒目标识（广陵账房 · binary） ---- */
 .author-badge {
   display: inline-flex;
   align-items: center;
