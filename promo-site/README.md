@@ -29,7 +29,7 @@ The SSH user must own the deployment directory and its parent must allow access.
 
 ## Nginx
 
-The site is intended to serve `hub.maayuan.com/`. Keep the root page and its three static directories on an explicit allowlist. Do not use a global SPA fallback, so `/login`, `/admin`, `/operator`, and unknown paths return `404`.
+The site is intended to serve `hub.maayuan.com/`. Keep the root page and its static directories on an explicit allowlist. Do not use a global SPA fallback, so `/login`, `/admin`, `/operator`, and unknown paths return `404`.
 
 ```nginx
 server {
