@@ -208,7 +208,7 @@
               <label><span>Stage ID</span><input v-model.trim="form.stageId" autocomplete="off" /></label>
               <label><span>Level ID</span><input v-model.trim="form.levelId" autocomplete="off" /></label>
               <label><span>开放状态</span><select v-model="form.isOpen"><option :value="true">开放</option><option :value="false">未开放</option></select></label>
-              <label><span>目录状态</span><select v-model="form.status"><option value="ACTIVE">有效</option><option value="ARCHIVED">已归档</option></select></label>
+              <label><span>目录状态</span><select v-model="form.status" :disabled="!isNew" :title="isNew ? '' : '编辑已有关卡时请使用列表中的归档/恢复操作'"><option value="ACTIVE">有效</option><option value="ARCHIVED">已归档</option></select></label>
               <label><span>排序值</span><input v-model.number="form.sortOrder" type="number" min="0" step="1" /></label>
               <label class="wide"><span>结束时间（可选，需带时区）</span><input v-model.trim="form.endTime" autocomplete="off" placeholder="2026-09-07T23:59:59+08:00" /></label>
             </div>

@@ -74,6 +74,10 @@ test('builds snake_case write payloads with revision and import IDs', function (
     level_id: 'level/one', stage_id: 'stage_one', status: 'ACTIVE', is_open: true,
     sort_order: 2, end_time: null, expected_revision: 7
   })
+  const updatePayload = toLevelPayload(level, { includeExpectedRevision: true, includeStatus: false })
+  assert.equal(Object.hasOwn(updatePayload, 'status'), false)
+  assert.equal(updatePayload.end_time, null)
+  assert.equal(updatePayload.expected_revision, 7)
   assert.deepEqual(toLevelImportDocument({ levels: [level] }), {
     levels: [{
       id: 'lvl_1', game: '通用', cat_one: '地宫', cat_two: '灯之国', cat_three: '普通', name: '灯之国',
@@ -122,6 +126,7 @@ test('keeps the level page contracts for conflict handling and mobile readabilit
   assert.match(api, /expected_revision/)
   assert.match(api, /level_revision_conflict/)
   assert.match(page, /level_revision_conflict|isLevelRevisionConflict/)
+  assert.match(page, /:disabled="!isNew"/)
   assert.match(page, /重新加载最新数据后再保存/)
   assert.match(page, /class="level-table-wrap"/)
   assert.match(page, /class="level-mobile-list"/)

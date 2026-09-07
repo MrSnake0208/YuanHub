@@ -128,7 +128,7 @@ export function normalizeLevelHistory(value) {
   })
 }
 
-export function toLevelPayload(value = {}, { includeId = false, includeExpectedRevision = false } = {}) {
+export function toLevelPayload(value = {}, { includeId = false, includeExpectedRevision = false, includeStatus = true } = {}) {
   const source = value && typeof value === 'object' ? value : {}
   const payload = {
     game: String(pick(source, 'game') || '').trim(),
@@ -138,10 +138,12 @@ export function toLevelPayload(value = {}, { includeId = false, includeExpectedR
     name: String(pick(source, 'name') || '').trim(),
     level_id: String(pick(source, 'levelId', 'level_id') || '').trim(),
     stage_id: String(pick(source, 'stageId', 'stage_id') || '').trim(),
-    status: String(pick(source, 'status') || 'ACTIVE').toUpperCase(),
     is_open: pick(source, 'isOpen', 'is_open') == null ? true : Boolean(pick(source, 'isOpen', 'is_open')),
     sort_order: numberValue(pick(source, 'sortOrder', 'sort_order'), 0),
     end_time: pick(source, 'endTime', 'end_time') || null
+  }
+  if (includeStatus) {
+    payload.status = String(pick(source, 'status') || 'ACTIVE').toUpperCase()
   }
   if (includeId && pick(source, 'id', 'levelKey', 'level_key')) {
     payload.id = pick(source, 'id', 'levelKey', 'level_key')
@@ -206,7 +208,7 @@ export async function updateAdminLevel(levelKey, level) {
   return normalizeMutation(await request(ADMIN_PATH + '/' + encodeURIComponent(levelKey), {
     method: 'PUT',
     auth: true,
-    body: toLevelPayload(level, { includeExpectedRevision: true })
+    body: toLevelPayload(level, { includeExpectedRevision: true, includeStatus: false })
   }))
 }
 
