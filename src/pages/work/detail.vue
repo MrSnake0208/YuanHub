@@ -164,7 +164,7 @@
         >
         <template #fine>
           <b>YuanHub</b> · 作业分享<br />
-          MAA × 代号鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           关键词：{{ d.keywords.join(" / ") }}
         </template>
       </SiteFooter>

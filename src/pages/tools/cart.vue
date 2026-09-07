@@ -168,7 +168,7 @@
         <template #fine>
           <b>YuanHub</b> · 礼包计算器<br />
           作者：<b>swerainy</b> · 著作权归作者所有<br />
-          MAA × 代号鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内商店为准
         </template>
       </SiteFooter>

@@ -364,7 +364,7 @@
         <template #big>快捷导入<br /><span>首次建档 · 星阶批量</span></template>
         <template #fine>
           <b>YuanHub</b> · 密探养成档案· 快捷导入<br />
-          MAA × 代号鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内实际养成为准
         </template>
       </SiteFooter>
