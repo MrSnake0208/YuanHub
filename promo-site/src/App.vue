@@ -1,1685 +1,525 @@
 <template>
   <div class="promo-page">
-    <header class="promo-header">
-      <div class="promo-wrap promo-header-inner">
-        <div class="promo-brand">
-          <span class="promo-brand-mark">YH</span>
-          <span class="promo-brand-name">YuanHub</span>
-        </div>
-        <div class="promo-header-note">
-          <span class="header-dot"></span>
-          社区数据基础设施
-          <span class="header-code">DEMO EDITION</span>
-        </div>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="#top" aria-label="YuanHub 宣传页顶部">
+          <span class="brand-mark">YH</span>
+          <span class="brand-copy"><b>YuanHub</b><small>鸢鸢相抱</small></span>
+        </a>
+        <nav class="header-nav" aria-label="宣传页导航">
+          <a href="#product">能做什么</a>
+          <a href="#share">神秘代码</a>
+          <a href="#privacy">隐私授权</a>
+          <a href="#ecosystem">社区生态</a>
+        </nav>
+        <!-- PLACEHOLDER: 把正式 YuanHub 主站 URL 填到这里 -->
+        <a class="header-cta placeholder-link" href="#final-cta" data-placeholder="MAIN_APP_URL">
+          进入 YuanHub <span>↗</span>
+        </a>
       </div>
     </header>
 
-    <main id="main-content" class="promo-main">
-      <section class="promo-hero" aria-labelledby="promo-hero-title">
-        <div class="promo-wrap">
-          <div class="hero-intro">
-            <div class="eyebrow"><span>01</span> COMMUNITY DATA LAYER</div>
-            <h1 id="promo-hero-title">让游戏数据<br /><em>自由流动</em></h1>
+    <main id="top">
+      <section class="hero-section">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <div class="eyebrow"><span>01</span> YOUR GAME ARCHIVE</div>
+            <h1>把你的游戏资料，<br /><em>整理成真正属于你的档案</em></h1>
             <p class="hero-lede">
-              YuanHub
-              保存的是用户手动填写的个人游戏记录，比如“我在游戏里有什么、进度如何”。
-              这不是读取官方游戏数据，也不是读取游戏账号；记录不会默认公开。只有经用户授权，外部软件才能通过
-              API Token，调用 YuanHub 中已经录入、且属于 Token
-              绑定子账号与授权范围的数据；整理后的社区记录也可以成为继续建设的起点。
+              密探、库存、星石与多个游戏账号分别维护。需要时生成神秘代码分享 BOX，
+              也可以把你指定的数据授权给 MaaYuan 等社区工具使用。
             </p>
-            <div class="demo-notice">
-              <span class="notice-mark">◎</span>
-              <span
-                ><strong>页面示意</strong
-                >　图中卡片、节点与连线均为视觉演示，不代表当前统计或已确认接入。</span
-              >
+            <div class="hero-actions">
+              <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
+              <a class="secondary-btn" href="#share">神秘代码怎么玩 <span>→</span></a>
+            </div>
+            <div class="hero-trust">
+              <span><i>✓</i> 用户自行录入</span>
+              <span><i>✓</i> 不默认公开</span>
+              <span><i>✓</i> 按账号与权限授权</span>
             </div>
           </div>
 
-          <section class="ecosystem-strip" aria-labelledby="ecosystem-title">
-            <div class="ecosystem-heading">
-              <div>
-                <div class="eyebrow"><span>01·A</span> COMMUNITY ECOSYSTEM</div>
-                <h2 id="ecosystem-title">四个社区项目，<em>共同起点</em></h2>
-                <p>四个社区项目与对应潜在场景组合呈现，项目关系与能力流转均为页面示意。</p>
+          <div class="hero-demo-wrap" aria-label="YuanHub 产品流程演示">
+            <div class="demo-browser hero-browser">
+              <div class="browser-bar">
+                <span class="browser-dots"><i></i><i></i><i></i></span>
+                <span class="browser-title">YuanHub · 我的密探</span>
+                <span class="demo-badge">自动演示</span>
               </div>
-              <span class="ecosystem-badge">页面示意</span>
-            </div>
-            <section
-              class="ecosystem-scenario-section"
-              aria-labelledby="ecosystem-scenario-title"
-            >
-              <div class="ecosystem-scenario-heading">
-                <h3 id="ecosystem-scenario-title">潜在应用场景</h3>
-                <span class="ecosystem-scenario-badge">页面示意</span>
-              </div>
-              <div class="ecosystem-list">
-                <component
-                  :is="partner.href ? 'a' : 'div'"
-                  v-for="partner in partners"
-                  :key="partner.name"
-                  class="ecosystem-row"
-                  :class="partner.tone"
-                  :href="partner.href"
-                  :target="partner.href ? '_blank' : undefined"
-                  :rel="partner.href ? 'noreferrer' : undefined"
-                  :data-mini-program-uri="partner.miniProgramUri"
-                >
-                  <span class="ecosystem-partner">
-                    <img
-                      class="ecosystem-icon"
-                      :src="partner.icon"
-                      :alt="`${partner.name} 图标`"
-                    />
-                    <span class="ecosystem-partner-copy">
-                      <strong class="ecosystem-partner-name">{{
-                        partner.name
-                      }}</strong>
-                      <span class="ecosystem-partner-role">{{ partner.role }}</span>
-                      <span class="ecosystem-action">{{ partner.action }}</span>
-                      <small
-                        v-if="partner.miniProgramUri"
-                        class="ecosystem-partner-uri"
-                        >{{ partner.miniProgramUri }}</small
-                      >
-                    </span>
-                  </span>
-                  <span class="ecosystem-row-split" aria-hidden="true">→</span>
-                  <span class="ecosystem-scenario">
-                    <span class="ecosystem-scenario-label"
-                      >潜在应用场景（页面示意）</span
-                    >
-                    <ul class="ecosystem-scenarios">
-                      <li
-                        v-for="scenario in partner.scenarios"
-                        :key="scenario"
-                      >
-                        {{ scenario }}
-                      </li>
-                    </ul>
-                  </span>
-                </component>
-              </div>
-            </section>
-            <section
-              class="ecosystem-future-section"
-              aria-labelledby="ecosystem-future-title"
-            >
-              <div class="ecosystem-scenario-heading">
-                <h3 id="ecosystem-future-title">YuanHub 待开发功能</h3>
-                <span class="ecosystem-scenario-badge">页面示意</span>
-              </div>
-              <p class="ecosystem-future-note">
-                以下为待开发功能构想，不代表已上线能力或已确认接入。
-              </p>
-              <div class="ecosystem-future-grid">
-                <article
-                  v-for="feature in pendingFeatures"
-                  :key="feature.title"
-                  class="ecosystem-future-card"
-                  :class="feature.tone"
-                >
-                  <span class="ecosystem-future-mark">{{ feature.mark }}</span>
-                  <div class="contribution-body ecosystem-future-copy">
-                    <strong>{{ feature.title }}</strong>
-                    <span>{{ feature.detail }}</span>
-                  </div>
-                  <span class="demo-label">待开发功能 / 页面示意</span>
-                </article>
-              </div>
-            </section>
-          </section>
-        </div>
-      </section>
-
-      <section
-        class="promo-section builders-section"
-        aria-labelledby="builders-title"
-      >
-        <div class="promo-wrap builders-layout">
-          <div class="section-copy">
-            <div class="eyebrow"><span>02</span> OPEN CONTRIBUTION</div>
-            <h2 id="builders-title">玩家也是<br /><em>建设者</em></h2>
-            <p>
-              社区共建不等于公开每个人的个人记录：数据用户手动填写并管理自己的记录，
-              软件开发者可以为项目申请接入，但需遵守社区规则并通过审核，社区审核与维护者则帮助校对公开的社区基础。
-              接入后，软件只能使用权限受限的 API
-              Token，在用户授权范围内调用已录入的数据。
-            </p>
-            <div class="quote-mark">“</div>
-            <p class="copy-note">
-              普通用户入口与开发者接入说明地址待定；这里仅呈现参与方式，不提供占位链接。
-            </p>
-          </div>
-
-          <div class="contribution-board">
-            <div class="board-head">
-              <div>
-                <span class="board-kicker">SHARED RECORD / 示意档案</span>
-                <h3>一份持续生长的社区记录</h3>
-              </div>
-              <span class="stamp">示意数据</span>
-            </div>
-            <div class="board-rule"></div>
-            <div
-              v-for="(item, index) in contributions"
-              :key="item.title"
-              class="contribution-row"
-            >
-              <span class="contribution-index">0{{ index + 1 }}</span>
-              <span class="contribution-seal" :class="item.tone">{{
-                item.mark
-              }}</span>
-              <div class="contribution-body">
-                <strong>{{ item.title }}</strong>
-                <span>{{ item.detail }}</span>
-              </div>
-              <span class="row-tag">{{ item.tag }}</span>
-            </div>
-            <div class="board-foot">
-              <span class="foot-dash"></span>
-              <span
-                >用户手动录入个人记录　→　YuanHub 整理　→　通过审核的软件按
-                Token 调用已授权记录</span
-              >
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        class="promo-section reuse-section"
-        aria-labelledby="reuse-title"
-      >
-        <div class="promo-wrap">
-          <div class="reuse-heading">
-            <div class="eyebrow">
-              <span>03</span> ONE CONTRIBUTION, MANY USES
-            </div>
-            <h2 id="reuse-title">一次录入，<em>多处使用</em></h2>
-            <p>
-              用户先手动填写“我在游戏里有什么、进度如何”等个人记录。记录不会默认公开；符合社区规则并通过审核的软件项目，只有在用户授权后，才能按
-              Token 绑定的子账号与授权范围，通过 API Token 调用 YuanHub
-              中已经录入的数据，再以不同方式回到玩家身边。
-            </p>
-          </div>
-
-          <div
-            class="reuse-stage"
-            role="img"
-            aria-label="示意：用户手动录入的个人记录经 YuanHub 整理后，由通过审核的软件按 API Token 调用授权范围内的已录入数据。"
-          >
-            <div class="stage-note note-left">
-              <span class="note-index">A</span>
-              <strong>用户手动录入的记录</strong>
-              <small>用户填写自己在游戏里的内容与进度</small>
-              <span class="demo-label">示意</span>
-            </div>
-            <div class="stage-connector connector-left" aria-hidden="true">
-              <i></i><span>录入</span>
-            </div>
-            <div class="stage-hub">
-              <div class="stage-hub-mark">YH</div>
-              <div>
-                <span class="node-type">ORGANIZE / PRESERVE</span>
-                <strong>YuanHub</strong>
-                <small>只提供已录入且获授权的内容</small>
-              </div>
-              <span class="demo-label">DEMO DATA</span>
-            </div>
-            <div class="stage-connector connector-right" aria-hidden="true">
-              <i></i><span>API 调用</span>
-            </div>
-            <div class="reuse-destinations">
-              <article
-                v-for="(destination, index) in destinations"
-                :key="`reuse-${destination.name}`"
-                class="reuse-destination"
-              >
-                <span class="reuse-number">0{{ index + 1 }}</span>
-                <span class="reuse-symbol" :class="destination.tone">{{
-                  destination.symbol
-                }}</span>
-                <div>
-                  <strong>{{ destination.name }}</strong>
-                  <small>{{ destination.detail }}</small>
+              <div class="browser-body hero-demo-body">
+                <div class="demo-sidebar">
+                  <div class="mini-brand">YH</div>
+                  <span class="side-line active"></span>
+                  <span class="side-line"></span>
+                  <span class="side-line"></span>
+                  <span class="side-line short"></span>
                 </div>
-                <span class="demo-label">示意</span>
-              </article>
+                <div class="demo-workspace">
+                  <div class="demo-account">
+                    <div><small>当前游戏账号</small><strong>主账号 · 如鸢</strong></div>
+                    <span class="account-switch">切换⌄</span>
+                  </div>
+                  <div class="operator-toolbar">
+                    <div><small>密探养成</small><b>当前养成</b></div>
+                    <button class="share-trigger" type="button" tabindex="-1">分享当前 BOX</button>
+                  </div>
+                  <div class="operator-grid">
+                    <article class="operator-card card-a">
+                      <div class="portrait portrait-a">孙</div>
+                      <div class="operator-copy"><strong>孙尚香</strong><span>★★★★★ · 修为 18</span></div>
+                      <div class="level-line"><b>Lv.<span class="level-number">80</span></b><em>已满级</em></div>
+                      <div class="awakening-chip">✦ 已觉醒</div>
+                    </article>
+                    <article class="operator-card card-b">
+                      <div class="portrait portrait-b">傅</div>
+                      <div class="operator-copy"><strong>傅融</strong><span>★★★★ · 修为 16</span></div>
+                      <div class="level-line"><b>Lv.70</b><em>养成中</em></div>
+                    </article>
+                    <article class="operator-card card-c">
+                      <div class="portrait portrait-c">杨</div>
+                      <div class="operator-copy"><strong>杨修</strong><span>★★★★★ · 修为 18</span></div>
+                      <div class="level-line"><b>Lv.80</b><em>已毕业</em></div>
+                    </article>
+                  </div>
+
+                  <div class="share-popover">
+                    <span class="popover-kicker">神秘代码</span>
+                    <strong>YH-A7K9Q2</strong>
+                    <small>只分享客观养成数据</small>
+                    <div><span>复制代码</span><span>复制链接</span></div>
+                  </div>
+
+                  <div class="share-view-overlay">
+                    <span class="overlay-kicker">公开查看 · 无需登录</span>
+                    <b>密探 BOX</b>
+                    <small>神秘代码 YH-A7K9Q2</small>
+                    <div class="overlay-cards"><i>孙</i><i>傅</i><i>杨</i><i>陈</i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- PLACEHOLDER: 未来可用真实录屏/截图替换上方 CSS 演示 -->
+            <div class="media-placeholder compact-placeholder">
+              <span>REAL PRODUCT MEDIA PLACEHOLDER</span>
+              <small>建议替换：10 秒真实录屏 · 账号切换 → 养成 → 分享 BOX</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="product" class="section product-section">
+        <div class="wrap">
+          <div class="section-heading split-heading">
+            <div>
+              <div class="eyebrow"><span>02</span> WHAT YUANHUB DOES</div>
+              <h2>一个账号，<em>把这些都整理起来</em></h2>
+            </div>
+            <p>先看真实能力，再理解“社区数据层”。这里展示的功能均对应 YuanHub 当前项目页面；演示数据为占位内容。</p>
+          </div>
+
+          <div class="feature-shell">
+            <div class="feature-tabs" role="tablist" aria-label="YuanHub 核心功能">
+              <button v-for="feature in features" :key="feature.id" type="button" role="tab"
+                :aria-selected="activeFeature === feature.id" :class="{ active: activeFeature === feature.id }"
+                @click="selectFeature(feature.id)">
+                <span>{{ feature.index }}</span><b>{{ feature.name }}</b><small>{{ feature.short }}</small>
+              </button>
+            </div>
+
+            <div class="feature-stage">
+              <div class="feature-copy-panel">
+                <span class="feature-kicker">{{ currentFeature.kicker }}</span>
+                <h3>{{ currentFeature.title }}</h3>
+                <p>{{ currentFeature.description }}</p>
+                <ul>
+                  <li v-for="point in currentFeature.points" :key="point">{{ point }}</li>
+                </ul>
+              </div>
+
+              <div class="feature-demo-panel">
+                <div v-if="activeFeature === 'operator'" class="feature-visual operator-visual">
+                  <div class="visual-top"><b>密探养成</b><span>主账号 · 如鸢</span></div>
+                  <div class="mini-card-grid">
+                    <div class="mini-op-card owned"><i>香</i><b>孙尚香</b><span>★★★★★</span><em>已满级 · 已觉醒</em></div>
+                    <div class="mini-op-card"><i>融</i><b>傅融</b><span>★★★★</span><em>养成中</em></div>
+                    <div class="mini-op-card"><i>修</i><b>杨修</b><span>★★★★★</span><em>已毕业</em></div>
+                    <div class="mini-op-card muted"><i>？</i><b>未拥有</b><span>—</span><em>等待建档</em></div>
+                  </div>
+                  <div class="visual-status"><span></span> 养成状态与卡片信息会跟随你的记录更新</div>
+                </div>
+
+                <div v-else-if="activeFeature === 'inventory'" class="feature-visual inventory-visual">
+                  <div class="visual-top"><b>广陵库房</b><span>清点 · 归档 · 溯源</span></div>
+                  <div class="inventory-total"><small>白金币</small><strong><span>1,240</span><i>+300</i></strong><em>1,540</em></div>
+                  <div class="bar-chart"><i style="height:30%"></i><i style="height:46%"></i><i style="height:38%"></i><i style="height:66%"></i><i style="height:84%"></i><i style="height:72%"></i><i style="height:92%"></i></div>
+                  <div class="inventory-row"><span>本周获得</span><b>+520</b><small>较上周 +18%</small></div>
+                </div>
+
+                <div v-else-if="activeFeature === 'star'" class="feature-visual star-visual">
+                  <div class="visual-top"><b>星石识别</b><span>截图 → OCR → 人工核对</span></div>
+                  <div class="ocr-layout">
+                    <div class="fake-shot"><span class="scan-line"></span><i></i><i></i><i></i><small>截图占位符</small></div>
+                    <div class="ocr-arrow">→</div>
+                    <div class="star-result"><article><i>✦</i><div><b>天府</b><span>攻击 · 暴击</span></div></article><article><i>✦</i><div><b>七杀</b><span>生命 · 增伤</span></div></article><article><i>✦</i><div><b>破军</b><span>攻击 · 穿透</span></div></article></div>
+                  </div>
+                  <!-- PLACEHOLDER: 替换为真实游戏截图 + YuanHub OCR 结果截图 -->
+                </div>
+
+                <div v-else class="feature-visual connection-visual">
+                  <div class="visual-top"><b>应用连接</b><span>个人中心</span></div>
+                  <div class="connection-card">
+                    <img src="/icons/maa.png" alt="MaaYuan 图标" />
+                    <div><b>MaaYuan</b><span>连接至：主账号 · 如鸢</span></div>
+                    <em>已连接</em>
+                  </div>
+                  <div class="scope-pills"><span>✓ 读取密探</span><span>✓ 写入密探</span><span>✓ 读取库存</span><span>✓ 写入库存</span></div>
+                  <div class="token-line"><small>YuanHub 连接码</small><code>yh_live_••••••••••</code><button type="button" tabindex="-1">复制</button></div>
+                </div>
+
+                <div class="stage-placeholder-tag">DEMO UI · 真实素材待替换</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="share" class="section share-section">
+        <div class="wrap share-layout">
+          <div class="share-copy section-copy">
+            <div class="eyebrow"><span>03</span> SHARE WITHOUT LOGIN</div>
+            <h2>不上号，<br /><em>也能把 BOX 给别人看</em></h2>
+            <p>为当前游戏账号生成一个神秘代码。朋友、攻略作者或代打拿到代码后，无需登录即可查看你公开的客观养成信息。</p>
+            <div class="privacy-note"><span>🔒</span><div><b>不会一起分享</b><small>备注、特别关注、养成目标、登录信息与其他私有内容。</small></div></div>
+          </div>
+
+          <div class="share-animation-stage">
+            <div class="share-phone owner-panel">
+              <span class="panel-label">我的 YuanHub</span>
+              <b>分享当前密探 BOX</b>
+              <small>主账号 · 如鸢</small>
+              <div class="mystery-code"><span>神秘代码</span><strong>7K4P-M9X2</strong></div>
+              <button type="button" tabindex="-1">复制代码</button>
+            </div>
+            <div class="code-flight" aria-hidden="true"><span>7K4P-M9X2</span><i></i></div>
+            <div class="share-phone visitor-panel">
+              <span class="panel-label">对方打开 YuanHub</span>
+              <b>输入神秘代码</b>
+              <div class="fake-input"><span>7K4P-M9X2</span><em>查看</em></div>
+              <div class="visitor-box"><i>孙</i><i>傅</i><i>杨</i><i>陈</i><i>王</i><i>贾</i></div>
+              <small>无需登录 · 只读查看</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" class="section privacy-section">
+        <div class="wrap">
+          <div class="section-heading centered-heading">
+            <div class="eyebrow"><span>04</span> YOU DECIDE THE FLOW</div>
+            <h2>你的数据什么时候流动，<em>由你决定</em></h2>
+            <p>YuanHub 不直接读取官方游戏账号。第三方工具只能使用你创建的连接，并且只能访问绑定账号与获授权范围内的数据。</p>
+          </div>
+
+          <div class="permission-demo">
+            <div class="permission-card">
+              <div class="permission-head"><img src="/icons/maa.png" alt="MaaYuan 图标" /><div><small>连接应用</small><b>MaaYuan</b></div><span>主账号 · 如鸢</span></div>
+              <div class="permission-list">
+                <label v-for="scope in scopes" :key="scope.id" :class="{ disabled: !scope.enabled }">
+                  <span><b>{{ scope.name }}</b><small>{{ scope.detail }}</small></span>
+                  <button type="button" :aria-pressed="scope.enabled" @click="scope.enabled = !scope.enabled"><i></i></button>
+                </label>
+              </div>
+            </div>
+            <div class="permission-lines" aria-hidden="true">
+              <span v-for="scope in scopes" :key="`line-${scope.id}`" :class="{ off: !scope.enabled }"><i></i><em>{{ scope.enabled ? '允许' : '已断开' }}</em></span>
+            </div>
+            <div class="permission-result">
+              <span class="panel-label">第三方实际可用</span>
+              <article v-for="scope in scopes" :key="`result-${scope.id}`" :class="{ off: !scope.enabled }"><i>{{ scope.enabled ? '✓' : '×' }}</i><div><b>{{ scope.name }}</b><small>{{ scope.enabled ? '可访问' : '无权限' }}</small></div></article>
             </div>
           </div>
 
-          <div class="reuse-footnote">
-            <span class="footnote-mark">✦</span>
-            <p>
-              <strong>YuanHub 是中间层。</strong>
-              用户手动填写的个人游戏记录不默认公开，也不是由 YuanHub
-              直接读取官方游戏数据或游戏账号。用户授权后，符合社区规则并通过审核的软件才可按
-              API Token 的 scope 调用 Token
-              绑定子账号中已经录入且在授权范围内的记录。社区项目示意可以共享整理后的社区基础，让不同项目拥有共同的起点。
-            </p>
+          <div class="privacy-principles">
+            <article><span>01</span><b>不默认公开</b><p>个人记录由用户自己维护。除主动分享或授权外，不因为录入 YuanHub 就自动公开。</p></article>
+            <article><span>02</span><b>按子账号隔离</b><p>密探、库存和第三方连接都绑定具体游戏子账号，不需要把所有账号一起交出去。</p></article>
+            <article><span>03</span><b>按权限授权</b><p>连接码对应明确 scope。需要什么能力，就只授予什么能力，并可随时停止连接。</p></article>
           </div>
+        </div>
+      </section>
+
+      <section id="ecosystem" class="section ecosystem-section">
+        <div class="wrap">
+          <div class="section-heading split-heading">
+            <div>
+              <div class="eyebrow"><span>05</span> ONE ARCHIVE, MANY USES</div>
+              <h2>一次整理，<em>多处使用</em></h2>
+            </div>
+            <p>当玩家已经有一份结构化档案，不同社区项目就可以在用户授权和各自规则允许的范围内，从同一个起点继续建设。</p>
+          </div>
+
+          <div class="ecosystem-flow">
+            <div class="flow-source">
+              <span class="flow-label">USER ARCHIVE</span>
+              <b>我的游戏档案</b>
+              <div><i>密</i><i>库</i><i>星</i></div>
+            </div>
+            <div class="flow-line line-in"><span class="data-packet">Lv.80 · ★★★★★</span></div>
+            <div class="flow-hub"><span>YH</span><b>YuanHub</b><small>整理 · 保存 · 授权</small></div>
+            <div class="flow-line line-out"><span class="data-packet packet-two">密探 / 库存</span></div>
+            <div class="partner-stack">
+              <a v-for="partner in partners" :key="partner.name" class="partner-card" :href="partner.href || undefined" :target="partner.href ? '_blank' : undefined" :rel="partner.href ? 'noreferrer' : undefined">
+                <img :src="partner.icon" :alt="`${partner.name} 图标`" />
+                <div><b>{{ partner.name }}</b><small>{{ partner.scenario }}</small></div>
+                <span>{{ partner.status }}</span>
+              </a>
+            </div>
+          </div>
+
+          <p class="ecosystem-disclaimer">生态项目与具体接入能力需以实际合作、项目文档和授权范围为准。这里的流转动画用于解释 YuanHub 的产品方向，不代表所有项目均已完成正式接入。</p>
+        </div>
+      </section>
+
+      <section class="section roadmap-section">
+        <div class="wrap roadmap-layout">
+          <div class="section-copy">
+            <div class="eyebrow"><span>06</span> GROWING WITH THE COMMUNITY</div>
+            <h2>YuanHub，<br /><em>还会继续生长</em></h2>
+            <p>已经上线的能力与未来构想分开呈现，让宣传页不再把“当前功能”和“概念设想”混在一起。</p>
+          </div>
+          <div class="roadmap-board">
+            <article class="roadmap-row current"><span>NOW</span><div><b>当前功能</b><p>密探档案 · BOX 分享 · 库存 · 星石 · 礼包计算 · 应用连接</p></div><em>已上线 / 项目已有</em></article>
+            <article class="roadmap-row next"><span>NEXT</span><div><b>继续完善</b><p>养成规划与更多跨页面联动体验</p></div><em>持续迭代</em></article>
+            <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺</b><p>发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>规划占位</em></article>
+            <!-- PLACEHOLDER: 在此继续追加未来 Roadmap 项 -->
+          </div>
+        </div>
+      </section>
+
+      <section id="final-cta" class="final-cta-section">
+        <div class="wrap final-cta-card">
+          <span class="cta-watermark">YH</span>
+          <div>
+            <div class="eyebrow"><span>07</span> YOUR DATA, YOUR STARTING POINT</div>
+            <h2>先把自己的游戏档案，<em>整理好</em></h2>
+            <p>从一份属于自己的记录开始。之后要分享给朋友，还是连接社区工具，都由你决定。</p>
+          </div>
+          <!-- PLACEHOLDER: 正式上线时替换为 YuanHub 主站 /operator URL -->
+          <a class="final-button placeholder-link" href="#top" data-placeholder="MAIN_APP_OPERATOR_URL">进入 YuanHub <span>→</span><small>正式 URL 待填</small></a>
         </div>
       </section>
     </main>
 
-    <footer class="promo-footer">
-      <div class="promo-wrap footer-inner">
-        <div>
-          <span class="footer-kicker">A SHARED STARTING POINT</span>
-          <strong>YuanHub <span>·</span> 鸢鸢相抱</strong>
-        </div>
-        <span class="footer-note">用户录入　社区共建　数据流动</span>
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <div><span class="brand-mark small">YH</span><b>YuanHub · 鸢鸢相抱</b></div>
+        <p>用户录入 · 自主管理 · 按需分享 · 社区共建</p>
       </div>
     </footer>
   </div>
 </template>
 
 <script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+
+const features = [
+  { id: 'operator', index: '01', name: '密探 BOX', short: '养成档案', kicker: 'OPERATOR ARCHIVE', title: '把密探养成变成一份随时可看的档案', description: '多个游戏账号分别维护密探状态，记录星级、等级、修为、命盘、星石与养成状态。', points: ['当前养成与图鉴分开管理', '支持快捷导入与档案交换', '可生成神秘代码对外只读分享'] },
+  { id: 'inventory', index: '02', name: '库存', short: '清点与溯源', kicker: 'INVENTORY LEDGER', title: '不只记“现在有多少”，也看资源怎么变化', description: '库存页面用于清点当前背包、归档获得记录，并按周期查看资源变化。', points: ['多个子账号分别清点', '按周 / 月查看获得量', '支持完整交换档案'] },
+  { id: 'star', index: '03', name: '星石', short: '识别与计划', kicker: 'STAR INVENTORY', title: '从截图识别开始，把星石真正整理起来', description: '导入游戏截图后进行 OCR 与人工核对，再管理当前背包、养成计划与经验星曜。', points: ['本地截图导入与 OCR', '人工核对识别结果', '登录后同步当前账号数据'] },
+  { id: 'connection', index: '04', name: '工具连接', short: '授权与复用', kicker: 'APP CONNECTION', title: '已经录入的数据，不必在每个工具里重新填一遍', description: '在个人中心为 MaaYuan 或其他第三方项目创建连接，绑定具体子账号并授予明确权限。', points: ['连接绑定具体游戏账号', '权限 scope 可控', '连接可随时停止'] }
+]
+
+const activeFeature = ref('operator')
+const currentFeature = computed(() => features.find(item => item.id === activeFeature.value) || features[0])
+let featureTimer = null
+let userSelected = false
+
+function selectFeature(id) {
+  activeFeature.value = id
+  userSelected = true
+}
+
+const scopes = ref([
+  { id: 'operator-read', name: '读取密探', detail: '读取当前账号已录入的密探数据', enabled: true },
+  { id: 'operator-write', name: '写入密探', detail: '允许工具同步密探养成信息', enabled: true },
+  { id: 'inventory-read', name: '读取库存', detail: '读取当前账号库存数据', enabled: true },
+  { id: 'inventory-write', name: '写入库存', detail: '允许工具同步库存变化', enabled: false }
+])
+
 const partners = [
-  {
-    name: "MaaYuan",
-    role: "社区项目示意",
-    scenarios: ["自动扫描背包数据并录入", "自动扫描密探数据并录入"],
-    action: "访问官网 ↗",
-    icon: "/icons/maa.png",
-    href: "https://maayuan.com/",
-    tone: "maa",
-  },
-  {
-    name: "代号鸢 BWiki",
-    role: "社区项目示意",
-    scenarios: ["读取 YuanHub 密探、背包数据参与计算"],
-    action: "访问资料站 ↗",
-    icon: "/icons/bwiki-transparent.png",
-    href: "https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5",
-    tone: "bwiki",
-  },
-  {
-    name: "YuanAssist",
-    role: "社区项目示意",
-    scenarios: ["适配更好的作业、密探数据参与日常"],
-    action: "访问官网 ↗",
-    icon: "/icons/yuanassist-transparent.png",
-    href: "https://www.yuanassist.space/",
-    tone: "yuanassist",
-  },
-  {
-    name: "辟雍学府",
-    role: "社区项目示意",
-    scenarios: ["读取 YuanHub 密探数据参与 BOX 图制作"],
-    action: "小程序入口",
-    miniProgramUri: "#小程序://辟雍学府/OQufna612dh0plf",
-    icon: "/icons/piyong-transparent.png",
-    tone: "piyong",
-  },
-];
+  { name: 'MaaYuan', icon: '/icons/maa.png', scenario: '自动化录入与同步场景', status: '社区项目', href: 'https://maayuan.com/' },
+  { name: '代号鸢 BWiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算场景', status: '潜在场景', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
+  { name: 'YuanAssist', icon: '/icons/yuanassist-transparent.png', scenario: '作业与日常辅助场景', status: '潜在场景', href: 'https://www.yuanassist.space/' },
+  { name: '辟雍学府', icon: '/icons/piyong-transparent.png', scenario: 'BOX 图制作与展示场景', status: '潜在场景', href: '' }
+]
 
-const pendingFeatures = [
-  {
-    title: "密探 BOX 分享",
-    detail:
-      "以类似“神秘代码”的方式分享完整 BOX 或选中的密探，帮助代打等场景在不上号时初步查看是否满足需求。",
-    mark: "码",
-    tone: "feature-yellow",
-  },
-  {
-    title: "史君小铺",
-    detail:
-      "待开发构想：发布关卡与可用队伍需求，使用分享代码匹配 BOX，辅助接单或发单。",
-    mark: "铺",
-    tone: "feature-red",
-  },
-];
+onMounted(() => {
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduced) return
+  featureTimer = window.setInterval(() => {
+    if (userSelected) return
+    const index = features.findIndex(item => item.id === activeFeature.value)
+    activeFeature.value = features[(index + 1) % features.length].id
+  }, 4800)
+})
 
-const destinations = [
-  { name: "资料站", detail: "查阅与校对", symbol: "册", tone: "brown" },
-  { name: "社区 App", detail: "随身浏览", symbol: "屏", tone: "orange" },
-  { name: "自动化工具", detail: "辅助使用", symbol: "齿", tone: "blue" },
-  { name: "社区项目", detail: "继续建设", symbol: "↗", tone: "red" },
-];
-
-const contributions = [
-  {
-    title: "密探资料",
-    detail: "把BOX变成可随时调用的资料",
-    tag: "补充",
-    mark: "录",
-    tone: "yellow",
-  },
-  {
-    title: "背包数据",
-    detail: "让物品获取可视化",
-    tag: "归档",
-    mark: "集",
-    tone: "orange",
-  },
-  {
-    title: "社区共建",
-    detail: "每一位创作者都可以贡献自己的一份力",
-    tag: "追踪",
-    mark: "时",
-    tone: "blue",
-  },
-  {
-    title: "社区反馈",
-    detail: "用户与管理员都可双向接收并回应信息",
-    tag: "双向",
-    mark: "问",
-    tone: "red",
-  },
-];
+onBeforeUnmount(() => {
+  if (featureTimer) window.clearInterval(featureTimer)
+})
 </script>
 
 <style scoped>
 .promo-page {
-  --promo-line: rgba(90, 70, 51, 0.22);
-  --promo-soft-line: rgba(90, 70, 51, 0.13);
-  --promo-muted: rgba(73, 59, 44, 0.68);
+  --paper: #f6edd0;
+  --cream: #fff8ec;
+  --surface: #fffdf6;
+  --tea: #5a4633;
+  --ink: #493b2c;
+  --muted: rgba(73, 59, 44, .66);
+  --line: rgba(90, 70, 51, .18);
+  --soft-line: rgba(90, 70, 51, .1);
+  --yellow: #efd28e;
+  --yellow-deep: #dfb863;
+  --accent: #d78935;
+  --accent-strong: #8f5112;
+  --rouge: #a6514a;
+  --blue: #6d8797;
+  --font-d: 'Archivo', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-s: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
   min-height: 100vh;
   color: var(--ink);
-}
-
-main.promo-main {
-  margin-left: 0;
-}
-.promo-wrap {
-  width: min(100%, 1300px);
-  margin: 0 auto;
-  padding: 0 54px;
-}
-.promo-header {
-  border-bottom: 1px solid var(--promo-soft-line);
-}
-.promo-header-inner {
-  min-height: 78px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-.promo-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.promo-brand-mark {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 11px;
-  color: var(--cream);
-  background: var(--tea);
-  font: 900 14px/1 var(--font-d);
-  letter-spacing: 0.04em;
-}
-.promo-brand-name {
-  font: 900 18px/1 var(--font-d);
-  letter-spacing: 0.03em;
-}
-.promo-header-note {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--promo-muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-.header-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.header-code {
-  padding-left: 12px;
-  border-left: 1px solid var(--promo-line);
-  color: var(--accent-strong);
-  font: 800 11px/1 var(--font-d);
-  letter-spacing: 0.14em;
-}
-
-.promo-hero {
-  padding: 94px 0 112px;
-}
-.hero-intro {
-  max-width: 650px;
-}
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--accent-strong);
-  font: 800 12px/1.3 var(--font-d);
-  letter-spacing: 0.15em;
-}
-.eyebrow span {
-  color: var(--tea);
-  font-size: 14px;
-  letter-spacing: 0.04em;
-}
-h1,
-h2,
-h3,
-p {
-  overflow-wrap: anywhere;
-}
-.hero-intro h1 {
-  margin-top: 25px;
-  color: var(--tea);
-  font: 900 clamp(50px, 5.5rem, 98px)/1.13 var(--font-s);
-  letter-spacing: 0.035em;
-}
-h1 em,
-h2 em {
-  color: var(--accent);
-  font-style: normal;
-}
-.hero-lede {
-  max-width: 530px;
-  margin-top: 28px;
-  color: var(--promo-muted);
-  font-size: 16px;
-  line-height: 2;
-}
-.demo-notice {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 10px;
-  max-width: 560px;
-  margin-top: 26px;
-  padding: 11px 14px;
-  border-left: 3px solid var(--yellow-deep);
-  background: rgba(255, 253, 246, 0.58);
-  color: var(--promo-muted);
-  font-size: 12px;
-  line-height: 1.75;
-}
-.notice-mark {
-  flex: none;
-  color: var(--accent);
-  font-size: 17px;
-  line-height: 1.2;
-}
-.demo-notice strong {
-  color: var(--tea);
-}
-
-.ecosystem-strip {
-  margin-top: 62px;
-  padding-top: 24px;
-  border-top: 1px dashed var(--promo-line);
-}
-.ecosystem-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-}
-.ecosystem-heading > div,
-.board-head > div,
-.stage-hub > div,
-.output-node > div,
-.reuse-destination > div {
-  min-width: 0;
-}
-.ecosystem-heading h2 {
-  margin-top: 13px;
-  color: var(--tea);
-  font: 900 28px/1.25 var(--font-s);
-  letter-spacing: 0.04em;
-}
-.ecosystem-heading p {
-  margin-top: 9px;
-  color: var(--promo-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.ecosystem-badge {
-  flex: none;
-  padding: 6px 9px;
-  border: 1px solid var(--promo-line);
-  border-radius: 4px;
-  color: var(--accent-strong);
-  font: 800 10px/1 var(--font-d);
-  letter-spacing: 0.08em;
-}
-.ecosystem-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 12px;
-}
-.ecosystem-row {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.75fr) 24px minmax(0, 1.5fr);
-  align-items: center;
-  gap: 20px;
-  min-width: 0;
-  min-height: 112px;
-  padding: 20px 22px;
-  border: 1px solid var(--promo-line);
-  border-top-width: 3px;
-  background: rgba(255, 253, 246, 0.48);
-  color: inherit;
-  text-decoration: none;
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
-}
-.ecosystem-row:hover {
-  background: var(--surface);
-  transform: translateY(-2px);
-}
-.ecosystem-row:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
-  background: var(--surface);
-}
-.ecosystem-row.maa {
-  border-top-color: var(--yellow-deep);
-}
-.ecosystem-row.bwiki {
-  border-top-color: var(--tea);
-}
-.ecosystem-row.yuanassist {
-  border-top-color: var(--rouge);
-}
-.ecosystem-row.piyong {
-  border-top-color: var(--accent);
-}
-.ecosystem-partner {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 14px;
-}
-.ecosystem-icon {
-  display: block;
-  flex: none;
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  border-radius: 10px;
   background: var(--paper);
-}
-.ecosystem-partner-copy {
-  display: block;
-  min-width: 0;
-}
-.ecosystem-partner-name {
-  display: block;
-  color: var(--tea);
-  font: 900 16px/1.3 var(--font-s);
-  overflow-wrap: anywhere;
-}
-.ecosystem-partner-role {
-  display: block;
-  margin-top: 4px;
-  color: var(--promo-muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-.ecosystem-row-split {
-  color: var(--accent);
-  font: 900 20px/1 var(--font-d);
-  text-align: center;
-}
-.ecosystem-scenario-section {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px dashed var(--promo-line);
-}
-.ecosystem-scenario-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-}
-.ecosystem-scenario-heading h3 {
-  color: var(--tea);
-  font: 900 17px/1.3 var(--font-s);
-  letter-spacing: 0.04em;
-}
-.ecosystem-scenario-badge {
-  flex: none;
-  padding: 5px 8px;
-  border: 1px solid var(--promo-line);
-  border-radius: 4px;
-  color: var(--accent-strong);
-  font: 800 10px/1 var(--font-d);
-  letter-spacing: 0.08em;
-}
-.ecosystem-scenario {
-  min-width: 0;
-  padding-left: 20px;
-  border-left: 1px dashed var(--promo-line);
-}
-.ecosystem-scenario-label {
-  display: block;
-  min-width: 0;
-  color: var(--accent-strong);
-  font: 800 11px/1.3 var(--font-d);
-  letter-spacing: 0.03em;
-  overflow-wrap: anywhere;
-}
-.ecosystem-scenarios {
-  min-width: 0;
-  margin: 7px 0 0;
-  padding: 0;
-  list-style: none;
-  color: var(--promo-muted);
-  font-size: 13px;
-  line-height: 1.7;
-}
-.ecosystem-scenarios li {
-  overflow-wrap: anywhere;
-}
-.ecosystem-scenarios li::before {
-  content: "·";
-  margin-right: 4px;
-  color: var(--accent);
-  font-weight: 900;
-}
-.ecosystem-action {
-  display: block;
-  margin-top: 7px;
-  color: var(--accent-strong);
-  font: 800 10px/1.2 var(--font-d);
-  letter-spacing: 0.03em;
-  overflow-wrap: anywhere;
-}
-.ecosystem-partner-uri {
-  display: block;
-  margin-top: 4px;
-  color: var(--promo-muted);
-  font: 700 10px/1.35 var(--font-b);
-  overflow-wrap: anywhere;
-}
-
-.ecosystem-future-section {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px dashed var(--promo-line);
-}
-.ecosystem-future-note {
-  margin-top: 8px;
-  color: var(--promo-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.ecosystem-future-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-.ecosystem-future-card {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  align-items: start;
-  column-gap: 11px;
-  min-width: 0;
-  min-height: 132px;
-  padding: 16px 18px;
-  border: 1px solid var(--promo-line);
-  border-top-width: 3px;
-  background: rgba(255, 253, 246, 0.48);
-}
-.ecosystem-future-card.feature-yellow {
-  border-top-color: var(--yellow-deep);
-}
-.ecosystem-future-card.feature-red {
-  border-top-color: var(--rouge);
-}
-.ecosystem-future-mark {
-  display: grid;
-  grid-row: 1 / span 2;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  color: var(--tea);
-  background: var(--yellow);
-  font: 900 14px/1 var(--font-s);
-}
-.ecosystem-future-card.feature-red .ecosystem-future-mark {
-  color: var(--cream);
-  background: var(--rouge);
-}
-.ecosystem-future-copy {
-  grid-column: 2;
-  min-width: 0;
-}
-.ecosystem-future-copy strong {
-  font-size: 15px;
-}
-.ecosystem-future-copy span {
-  font-size: 12px;
-  line-height: 1.7;
-}
-.ecosystem-future-card .demo-label {
-  grid-column: 2;
-  align-self: end;
-  margin-top: 12px;
-  justify-self: start;
-  white-space: normal;
-  line-height: 1.35;
-  text-align: left;
-}
-
-.hero-flow {
-  margin-top: 80px;
-  padding: 24px 26px 30px;
-  border: 1px solid var(--promo-line);
-  border-radius: 18px;
-  background: rgba(255, 253, 246, 0.42);
-  box-shadow: 0 24px 46px -36px rgba(73, 59, 44, 0.48);
-}
-.flow-caption {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  color: var(--promo-muted);
-  font: 800 11px/1 var(--font-d);
-  letter-spacing: 0.14em;
-}
-.caption-line {
-  width: 42px;
-  border-top: 1px solid var(--accent);
-}
-.flow-caption span:last-child {
-  color: var(--accent-strong);
-}
-.flow-lane {
-  display: grid;
-  grid-template-columns: minmax(170px, 1fr) 68px minmax(
-      190px,
-      1.08fr
-    ) 68px minmax(290px, 1.55fr);
-  align-items: center;
-  gap: 12px;
-  margin-top: 22px;
-}
-.flow-node {
-  position: relative;
-  min-width: 0;
-  border: 1px solid var(--promo-line);
-  background: var(--surface);
-}
-.source-node {
-  min-height: 184px;
-  padding: 22px 20px;
-  border-radius: 13px 13px 13px 4px;
-}
-.node-topline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--promo-muted);
-  font: 800 10px/1 var(--font-d);
-  letter-spacing: 0.13em;
-}
-.node-icon {
-  display: grid;
-  width: 19px;
-  height: 19px;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--tea);
-  background: var(--yellow);
-  font: 700 16px/1 var(--font-b);
-}
-.flow-node h2 {
-  margin-top: 22px;
-  color: var(--tea);
-  font: 900 23px/1.2 var(--font-s);
-  letter-spacing: 0.05em;
-}
-.flow-node p {
-  margin-top: 10px;
-  color: var(--promo-muted);
-  font-size: 12px;
-  line-height: 1.85;
-}
-.demo-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: max-content;
-  max-width: 100%;
-  padding: 4px 7px 3px;
-  border: 1px solid var(--promo-line);
-  border-radius: 4px;
-  color: var(--accent-strong);
-  background: rgba(239, 210, 142, 0.25);
-  font: 800 10px/1 var(--font-d);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-.source-node .demo-label,
-.hub-node .demo-label {
-  position: absolute;
-  right: 13px;
-  bottom: 13px;
-}
-.flow-connector {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  color: var(--promo-muted);
-  font: 700 10px/1 var(--font-b);
-  white-space: nowrap;
-}
-.flow-connector i {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 1px;
-  background: var(--accent);
-}
-.flow-connector i::after {
-  position: absolute;
-  right: 0;
-  top: -3px;
-  width: 7px;
-  height: 7px;
-  border-top: 1px solid var(--accent);
-  border-right: 1px solid var(--accent);
-  content: "";
-  transform: rotate(45deg);
-}
-.hub-node {
-  display: flex;
-  min-height: 230px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-color: var(--tea);
-  border-radius: 50%;
-  background: var(--tea);
-  color: var(--cream);
-  text-align: center;
-  box-shadow: 0 14px 26px -20px rgba(73, 59, 44, 0.85);
-}
-.hub-node .hub-core {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  width: 66px;
-  height: 66px;
-  place-items: center;
-  border: 1px solid var(--yellow);
-  border-radius: 50%;
-  color: var(--tea);
-  background: var(--yellow);
-  font: 900 20px/1 var(--font-d);
-  letter-spacing: 0.04em;
-}
-.hub-node .node-type {
-  position: relative;
-  z-index: 2;
-  margin-top: 18px;
-  color: rgba(255, 248, 236, 0.7);
-  font: 800 9px/1 var(--font-d);
-  letter-spacing: 0.14em;
-}
-.hub-node h2 {
-  position: relative;
-  z-index: 2;
-  margin-top: 7px;
-  color: var(--cream);
-  font-size: 22px;
-}
-.hub-node p {
-  position: relative;
-  z-index: 2;
-  margin-top: 7px;
-  color: rgba(255, 248, 236, 0.72);
-}
-.hub-ring {
-  position: absolute;
-  border: 1px solid rgba(239, 210, 142, 0.4);
-  border-radius: 50%;
-  pointer-events: none;
-}
-.ring-one {
-  width: 170px;
-  height: 170px;
-}
-.ring-two {
-  width: 240px;
-  height: 240px;
-  border-color: rgba(239, 210, 142, 0.18);
-}
-.output-stack {
-  display: grid;
-  min-width: 0;
-  gap: 8px;
-}
-.output-node {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
-  gap: 11px;
-  padding: 8px 10px;
-  border-radius: 8px;
-}
-.output-node h2 {
-  margin: 0;
-  font-size: 14px;
-  letter-spacing: 0.03em;
-}
-.output-node p {
-  margin-top: 3px;
-  font-size: 11px;
-  line-height: 1.4;
-}
-.output-node .demo-label {
-  margin-left: auto;
-}
-.output-symbol,
-.reuse-symbol {
-  display: grid;
-  flex: none;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 9px;
-  font: 900 13px/1 var(--font-s);
-}
-.yellow {
-  color: var(--tea);
-  background: var(--yellow);
-}
-.orange {
-  color: var(--cream);
-  background: var(--accent);
-}
-.blue {
-  color: var(--tea);
-  background: var(--mist);
-}
-.red {
-  color: var(--cream);
-  background: var(--rouge);
-}
-.brown {
-  color: var(--cream);
-  background: var(--tea);
-}
-
-.promo-section {
-  border-top: 1px solid var(--promo-soft-line);
-}
-.builders-section {
-  padding: 112px 0 125px;
-  background: rgba(255, 253, 246, 0.3);
-}
-.builders-layout {
-  display: grid;
-  grid-template-columns: minmax(250px, 0.78fr) minmax(0, 1.22fr);
-  align-items: center;
-  gap: 86px;
-}
-.section-copy h2,
-.reuse-heading h2 {
-  margin-top: 22px;
-  color: var(--tea);
-  font: 900 clamp(38px, 3.8rem, 63px)/1.23 var(--font-s);
-  letter-spacing: 0.04em;
-}
-.section-copy > p:not(.copy-note) {
-  max-width: 400px;
-  margin-top: 25px;
-  color: var(--promo-muted);
-  font-size: 15px;
-  line-height: 2;
-}
-.quote-mark {
-  margin-top: 25px;
-  color: var(--yellow-deep);
-  font: 900 54px/0.7 var(--font-s);
-}
-.copy-note {
-  max-width: 360px;
-  margin-top: 1px;
-  color: var(--tea);
-  font: 700 13px/1.8 var(--font-s);
-}
-.contribution-board {
-  min-width: 0;
-  padding: 28px 30px 23px;
-  border: 1px solid var(--promo-line);
-  border-radius: 15px;
-  background: rgba(255, 253, 246, 0.72);
-  box-shadow: 0 25px 55px -42px rgba(73, 59, 44, 0.65);
-}
-.board-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-.board-kicker {
-  color: var(--accent-strong);
-  font: 800 10px/1.3 var(--font-d);
-  letter-spacing: 0.13em;
-}
-.board-head h3 {
-  margin-top: 9px;
-  color: var(--tea);
-  font: 900 22px/1.35 var(--font-s);
-  letter-spacing: 0.04em;
-}
-.stamp {
-  flex: none;
-  padding: 6px 9px;
-  border: 1px solid var(--rouge);
-  color: var(--rouge);
-  font: 800 10px/1 var(--font-d);
-  letter-spacing: 0.09em;
-  transform: rotate(4deg);
-}
-.board-rule {
-  margin-top: 24px;
-  border-top: 1px dashed var(--promo-line);
-}
-.contribution-row {
-  display: grid;
-  grid-template-columns: 24px 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 77px;
-  border-bottom: 1px solid var(--promo-soft-line);
-}
-.contribution-index {
-  color: var(--accent-strong);
-  font: 800 11px/1 var(--font-d);
-}
-.contribution-seal {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font: 900 14px/1 var(--font-s);
-}
-.contribution-body {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-}
-.contribution-body strong {
-  color: var(--tea);
-  font-size: 14px;
-}
-.contribution-body span {
-  color: var(--promo-muted);
-  font-size: 11px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.row-tag {
-  padding: 4px 7px;
-  border-radius: 4px;
-  color: var(--promo-muted);
-  background: var(--paper);
-  font: 700 11px/1 var(--font-b);
-}
-.board-foot {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding-top: 20px;
-  color: var(--promo-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-.foot-dash {
-  width: 28px;
-  border-top: 1px solid var(--accent);
-}
-
-.reuse-section {
-  padding: 112px 0 118px;
-}
-.reuse-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-.reuse-heading h2 {
-  margin-top: 19px;
-}
-.reuse-heading p {
-  margin-top: 16px;
-  color: var(--promo-muted);
-  font-size: 15px;
-}
-.reuse-stage {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.75fr) 55px minmax(
-      280px,
-      1.3fr
-    ) 55px minmax(310px, 1.65fr);
-  align-items: center;
-  gap: 14px;
-  margin-top: 56px;
-  padding: 26px 28px;
-  border: 1px solid var(--promo-line);
-  border-radius: 17px;
-  background: rgba(255, 253, 246, 0.4);
-}
-.stage-note {
-  display: flex;
-  min-height: 144px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 7px;
-  padding: 18px;
-  border-left: 3px solid var(--yellow-deep);
-  background: rgba(239, 210, 142, 0.27);
-}
-.note-index {
-  color: var(--accent-strong);
-  font: 900 12px/1 var(--font-d);
-}
-.stage-note strong {
-  color: var(--tea);
-  font: 900 20px/1.25 var(--font-s);
-}
-.stage-note small,
-.stage-hub small,
-.reuse-destination small {
-  color: var(--promo-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-.stage-note .demo-label {
-  margin-top: 6px;
-}
-.stage-connector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--promo-muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.stage-connector i {
-  position: relative;
-  display: block;
-  width: 100%;
-  border-top: 1px solid var(--accent);
-}
-.stage-connector i::after {
-  position: absolute;
-  right: -1px;
-  top: -4px;
-  width: 7px;
-  height: 7px;
-  border-top: 1px solid var(--accent);
-  border-right: 1px solid var(--accent);
-  content: "";
-  transform: rotate(45deg);
-}
-.stage-hub {
-  position: relative;
-  display: flex;
-  min-height: 144px;
-  align-items: center;
-  gap: 17px;
-  padding: 23px 25px;
-  border: 1px solid var(--tea);
-  border-radius: 12px;
-  color: var(--cream);
-  background: var(--tea);
-}
-.stage-hub-mark {
-  display: grid;
-  flex: none;
-  width: 61px;
-  height: 61px;
-  place-items: center;
-  border: 1px solid var(--yellow);
-  border-radius: 50%;
-  color: var(--tea);
-  background: var(--yellow);
-  font: 900 18px/1 var(--font-d);
-}
-.stage-hub .node-type {
-  display: block;
-  color: rgba(255, 248, 236, 0.65);
-  font: 800 9px/1.3 var(--font-d);
-  letter-spacing: 0.13em;
-}
-.stage-hub strong {
-  display: block;
-  margin-top: 8px;
-  color: var(--cream);
-  font: 900 23px/1.2 var(--font-s);
-}
-.stage-hub small {
-  display: block;
-  margin-top: 6px;
-  color: rgba(255, 248, 236, 0.74);
-}
-.stage-hub .demo-label {
-  position: absolute;
-  right: 14px;
-  bottom: 13px;
-  border-color: rgba(255, 248, 236, 0.4);
-  color: var(--yellow);
-  background: transparent;
-}
-.reuse-destinations {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-.reuse-destination {
-  display: grid;
-  grid-template-columns: 20px 31px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  min-height: 32px;
-}
-.reuse-number {
-  color: var(--accent-strong);
-  font: 800 10px/1 var(--font-d);
-}
-.reuse-symbol {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
-  font-size: 11px;
-}
-.reuse-destination strong {
-  display: block;
-  color: var(--tea);
-  font-size: 13px;
-}
-.reuse-destination small {
-  display: block;
-  margin-top: 2px;
-  font-size: 10px;
-}
-.reuse-destination .demo-label {
-  padding: 3px 5px 2px;
-}
-.reuse-footnote {
-  display: flex;
-  max-width: 720px;
-  align-items: flex-start;
-  gap: 12px;
-  margin: 51px auto 0;
-  padding-top: 20px;
-  border-top: 1px dashed var(--promo-line);
-}
-.footnote-mark {
-  color: var(--accent);
-  font-size: 16px;
-  line-height: 1.7;
-}
-.reuse-footnote p {
-  color: var(--promo-muted);
-  font-size: 13px;
-  line-height: 1.9;
-}
-.reuse-footnote strong {
-  color: var(--tea);
-}
-
-.promo-footer {
-  border-top: 1px solid var(--promo-soft-line);
-  background: var(--tea);
-  color: var(--cream);
-}
-.footer-inner {
-  display: flex;
-  min-height: 166px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 26px;
-}
-.footer-kicker {
-  display: block;
-  margin-bottom: 11px;
-  color: var(--yellow);
-  font: 800 10px/1 var(--font-d);
-  letter-spacing: 0.16em;
-}
-.footer-inner strong {
-  font: 900 28px/1.25 var(--font-s);
-  letter-spacing: 0.03em;
-}
-.footer-inner strong span {
-  color: var(--yellow);
-}
-.footer-note {
-  color: rgba(255, 248, 236, 0.68);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-}
-
+  background-image: radial-gradient(circle at 18% 12%, rgba(255,255,255,.5), transparent 24%), linear-gradient(135deg, #f6edd0, #fff8ec 58%, #f2e4c0);
+}
+.promo-page::before { position: fixed; z-index: 0; inset: 0; content: ''; pointer-events: none; opacity: .08; background: url('/maayuan/maayuan-pattern.webp') repeat; background-size: 2100px; }
+.promo-page > * { position: relative; z-index: 1; }
+* { box-sizing: border-box; }
+.wrap { width: min(100%, 1280px); margin: 0 auto; padding-inline: 44px; }
+a { color: inherit; }
+.site-header { position: sticky; z-index: 20; top: 0; border-bottom: 1px solid var(--soft-line); background: rgba(246,237,208,.86); backdrop-filter: blur(14px); }
+.header-inner { min-height: 72px; display: flex; align-items: center; gap: 28px; }
+.brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+.brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; color: var(--cream); background: var(--tea); font: 900 13px/1 var(--font-d); letter-spacing: .05em; }
+.brand-mark.small { width: 30px; height: 30px; border-radius: 9px; font-size: 10px; }
+.brand-copy { display: grid; gap: 2px; }
+.brand-copy b { font: 900 16px/1 var(--font-d); }
+.brand-copy small { color: var(--muted); font-size: 10px; letter-spacing: .08em; }
+.header-nav { display: flex; gap: 24px; margin-left: auto; }
+.header-nav a { color: var(--muted); font-size: 12px; font-weight: 800; text-decoration: none; }
+.header-nav a:hover { color: var(--accent-strong); }
+.header-cta { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 16px; border: 1px solid var(--tea); border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 12px; font-weight: 800; text-decoration: none; }
+.hero-section { padding: 92px 0 104px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0,.9fr) minmax(520px,1.1fr); align-items: center; gap: 72px; }
+.eyebrow { display: flex; align-items: center; gap: 11px; color: var(--accent-strong); font: 800 11px/1.2 var(--font-d); letter-spacing: .15em; }
+.eyebrow span { color: var(--tea); font-size: 14px; letter-spacing: .03em; }
+.hero-copy h1, .section-heading h2, .section-copy h2, .final-cta-card h2 { margin: 22px 0 0; color: var(--tea); font-family: var(--font-s); font-weight: 900; letter-spacing: .025em; }
+.hero-copy h1 { font-size: clamp(48px,5.2vw,76px); line-height: 1.13; }
+em { color: var(--accent); font-style: normal; }
+.hero-lede { max-width: 600px; margin-top: 28px; color: var(--muted); font-size: 16px; line-height: 1.95; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.primary-btn, .secondary-btn { display: inline-flex; min-height: 46px; align-items: center; gap: 12px; padding: 0 18px; border-radius: 999px; font-size: 13px; font-weight: 800; text-decoration: none; }
+.primary-btn { color: var(--cream); background: var(--tea); }
+.secondary-btn { border: 1px solid var(--line); background: rgba(255,253,246,.56); }
+.hero-trust { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 22px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.hero-trust i { color: var(--accent-strong); font-style: normal; }
+.hero-demo-wrap { min-width: 0; }
+.demo-browser { overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 34px 80px -44px rgba(73,59,44,.6); }
+.browser-bar { min-height: 48px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--soft-line); background: rgba(246,237,208,.52); }
+.browser-dots { display: flex; gap: 5px; }
+.browser-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.browser-dots i:first-child { background: var(--rouge); }.browser-dots i:nth-child(2) { background: var(--yellow-deep); }.browser-dots i:nth-child(3) { background: #8eaa8c; }
+.browser-title { color: var(--muted); font: 800 10px/1 var(--font-d); letter-spacing: .07em; }
+.demo-badge { justify-self: end; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--accent-strong); font: 800 9px/1 var(--font-d); letter-spacing: .06em; }
+.hero-demo-body { min-height: 455px; display: grid; grid-template-columns: 54px minmax(0,1fr); }
+.demo-sidebar { display: flex; align-items: center; flex-direction: column; gap: 17px; padding-top: 17px; border-right: 1px solid var(--soft-line); background: rgba(246,237,208,.36); }
+.mini-brand { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; color: var(--cream); background: var(--tea); font: 900 9px var(--font-d); }
+.side-line { width: 20px; height: 5px; border-radius: 999px; background: var(--line); }.side-line.active { background: var(--accent); }.side-line.short { width: 13px; }
+.demo-workspace { position: relative; overflow: hidden; padding: 22px; }
+.demo-account, .operator-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.demo-account { padding-bottom: 15px; border-bottom: 1px dashed var(--line); }
+.demo-account small, .operator-toolbar small { display: block; color: var(--muted); font-size: 9px; letter-spacing: .06em; }
+.demo-account strong { display: block; margin-top: 3px; font: 900 14px var(--font-s); }
+.account-switch { padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 9px; }
+.operator-toolbar { margin-top: 18px; }
+.operator-toolbar b { display: block; margin-top: 4px; font: 900 18px var(--font-s); }
+.share-trigger { border: 1px solid var(--accent); border-radius: 999px; padding: 8px 12px; color: var(--accent-strong); background: transparent; font: 800 10px var(--font-d); animation: buttonPulse 10s infinite; }
+.operator-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 16px; }
+.operator-card { position: relative; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--cream); opacity: 0; transform: translateY(12px); animation: cardEnter 10s infinite; }
+.card-b { animation-delay: .35s; }.card-c { animation-delay: .7s; }
+.portrait { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; color: var(--cream); background: var(--tea); font: 900 18px var(--font-s); }.portrait-b { background: var(--blue); }.portrait-c { background: var(--rouge); }
+.operator-copy { display: grid; gap: 4px; margin-top: 10px; }.operator-copy strong { font: 900 13px var(--font-s); }.operator-copy span { color: var(--muted); font-size: 9px; }
+.level-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; }.level-line b { font: 900 12px var(--font-d); }.level-line em { padding: 3px 5px; border-radius: 999px; color: var(--accent-strong); background: rgba(239,210,142,.45); font-size: 8px; font-style: normal; }
+.level-number { animation: levelFlash 10s infinite; }
+.awakening-chip { margin-top: 7px; color: var(--accent-strong); font-size: 9px; font-weight: 800; opacity: 0; animation: awaken 10s infinite; }
+.share-popover { position: absolute; z-index: 4; right: 22px; top: 102px; width: 205px; padding: 14px; border: 1px solid var(--accent); border-radius: 13px; background: var(--surface); box-shadow: 0 20px 35px -25px rgba(73,59,44,.7); opacity: 0; transform: translateY(-8px) scale(.96); animation: sharePopover 10s infinite; }
+.share-popover > span, .share-popover > small { display: block; }.popover-kicker { color: var(--accent-strong); font-size: 9px; font-weight: 900; letter-spacing: .12em; }.share-popover strong { display: block; margin-top: 5px; font: 900 19px var(--font-d); letter-spacing: .08em; }.share-popover small { margin-top: 5px; color: var(--muted); font-size: 9px; }.share-popover div { display: flex; gap: 6px; margin-top: 11px; }.share-popover div span { padding: 6px 8px; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 8px; }
+.share-view-overlay { position: absolute; z-index: 6; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; background: rgba(255,253,246,.98); opacity: 0; transform: translateX(45px); animation: shareView 10s infinite; }.overlay-kicker { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-view-overlay b { margin-top: 8px; font: 900 28px var(--font-s); }.share-view-overlay small { margin-top: 5px; color: var(--muted); font-size: 10px; }.overlay-cards { display: flex; gap: 8px; margin-top: 22px; }.overlay-cards i { display: grid; width: 45px; height: 58px; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); font: 900 16px var(--font-s); font-style: normal; opacity: 0; transform: translateY(12px) rotate(3deg); animation: overlayCard 10s infinite; }.overlay-cards i:nth-child(2){animation-delay:.18s}.overlay-cards i:nth-child(3){animation-delay:.36s}.overlay-cards i:nth-child(4){animation-delay:.54s}
+.media-placeholder { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px dashed var(--line); color: var(--muted); background: rgba(255,253,246,.35); }.compact-placeholder { margin-top: 10px; padding: 9px 12px; border-radius: 9px; }.media-placeholder span { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .1em; }.media-placeholder small { font-size: 9px; }
+.section { padding: 108px 0; border-top: 1px solid var(--soft-line); }
+.section-heading h2, .section-copy h2 { font-size: clamp(38px,4vw,58px); line-height: 1.18; }
+.split-heading { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(300px,.8fr); align-items: end; gap: 60px; }.split-heading p, .centered-heading p, .section-copy > p { color: var(--muted); font-size: 14px; line-height: 1.85; }.split-heading p { max-width: 480px; justify-self: end; }.centered-heading { max-width: 760px; margin: 0 auto; text-align: center; }.centered-heading .eyebrow { justify-content: center; }.centered-heading p { margin: 20px auto 0; }
+.feature-shell { margin-top: 50px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,253,246,.5); overflow: hidden; }
+.feature-tabs { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--line); }.feature-tabs button { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; row-gap: 3px; min-height: 86px; padding: 17px 18px; border: 0; border-right: 1px solid var(--soft-line); color: var(--muted); background: transparent; text-align: left; cursor: pointer; }.feature-tabs button:last-child { border-right: 0; }.feature-tabs button.active { color: var(--ink); background: var(--surface); box-shadow: inset 0 -3px var(--accent); }.feature-tabs button > span { grid-row: 1 / span 2; color: var(--accent-strong); font: 800 10px var(--font-d); }.feature-tabs b { font: 900 15px var(--font-s); }.feature-tabs small { font-size: 10px; }
+.feature-stage { display: grid; grid-template-columns: minmax(280px,.75fr) minmax(0,1.25fr); min-height: 430px; }.feature-copy-panel { padding: 46px 38px; border-right: 1px solid var(--line); }.feature-kicker { color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .14em; }.feature-copy-panel h3 { margin-top: 15px; color: var(--tea); font: 900 28px/1.35 var(--font-s); }.feature-copy-panel p { margin-top: 17px; color: var(--muted); font-size: 13px; line-height: 1.85; }.feature-copy-panel ul { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }.feature-copy-panel li { position: relative; padding-left: 18px; font-size: 12px; }.feature-copy-panel li::before { position: absolute; left: 0; color: var(--accent); content: '✦'; }
+.feature-demo-panel { position: relative; min-width: 0; padding: 34px; background: linear-gradient(135deg,rgba(239,210,142,.18),rgba(255,253,246,.58)); }.feature-visual { height: 100%; min-height: 360px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 26px 45px -38px rgba(73,59,44,.7); }.visual-top { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px dashed var(--line); }.visual-top b { font: 900 18px var(--font-s); }.visual-top span { color: var(--muted); font-size: 10px; }.stage-placeholder-tag { position: absolute; right: 45px; bottom: 45px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--cream); font: 800 8px var(--font-d); letter-spacing: .08em; }
+.mini-card-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 18px; }.mini-op-card { display: grid; grid-template-columns: 38px 1fr auto; gap: 4px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }.mini-op-card i { grid-row: 1 / span 3; display: grid; width: 38px; height: 44px; place-items: center; border-radius: 9px; color: var(--cream); background: var(--tea); font: 900 15px var(--font-s); font-style: normal; }.mini-op-card b { font: 900 12px var(--font-s); }.mini-op-card span { color: var(--accent-strong); font-size: 9px; }.mini-op-card em { grid-column: 2 / span 2; color: var(--muted); font-size: 9px; font-style: normal; }.mini-op-card.muted { opacity: .46; }.visual-status { margin-top: 17px; color: var(--muted); font-size: 10px; }.visual-status span { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.5s infinite; }
+.inventory-total { position: relative; margin-top: 24px; padding: 20px; border-radius: 14px; background: var(--cream); }.inventory-total small { display: block; color: var(--muted); }.inventory-total strong { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 900 34px var(--font-d); }.inventory-total strong span { text-decoration: line-through; opacity: .32; }.inventory-total strong i { color: var(--rouge); font: 800 12px var(--font-d); font-style: normal; animation: stockPlus 4s infinite; }.inventory-total em { display: block; margin-top: 4px; color: var(--accent-strong); font: 900 42px var(--font-d); font-style: normal; animation: stockTotal 4s infinite; }.bar-chart { height: 90px; display: flex; align-items: end; gap: 8px; margin-top: 20px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); }.bar-chart i { flex: 1; border-radius: 5px 5px 0 0; background: var(--yellow-deep); transform-origin: bottom; animation: barGrow 2.8s ease-in-out infinite alternate; }.inventory-row { display: grid; grid-template-columns: 1fr auto; gap: 3px; margin-top: 13px; font-size: 10px; }.inventory-row b { color: var(--accent-strong); }.inventory-row small { grid-column: 1 / -1; color: var(--muted); }
+.ocr-layout { display: grid; grid-template-columns: 1fr 34px 1fr; align-items: center; gap: 12px; margin-top: 22px; }.fake-shot { position: relative; overflow: hidden; height: 220px; border-radius: 14px; background: linear-gradient(145deg,#504333,#80664a); }.fake-shot i { position: absolute; left: 13%; width: 74%; height: 42px; border: 1px solid rgba(239,210,142,.7); border-radius: 8px; }.fake-shot i:nth-of-type(1){top:18%}.fake-shot i:nth-of-type(2){top:43%}.fake-shot i:nth-of-type(3){top:68%}.fake-shot small { position: absolute; right: 10px; bottom: 8px; color: rgba(255,255,255,.65); font-size: 8px; }.scan-line { position: absolute; z-index: 3; top: 0; left: 0; width: 100%; height: 2px; background: var(--yellow); box-shadow: 0 0 15px var(--yellow); animation: scan 3.2s infinite; }.ocr-arrow { color: var(--accent); font: 900 22px var(--font-d); text-align: center; }.star-result { display: grid; gap: 9px; }.star-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--cream); opacity: 0; transform: translateX(10px); animation: resultIn 3.2s infinite; }.star-result article:nth-child(2){animation-delay:.25s}.star-result article:nth-child(3){animation-delay:.5s}.star-result article > i { color: var(--accent); font-style: normal; }.star-result b,.star-result span { display: block; }.star-result b { font: 900 12px var(--font-s); }.star-result span { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.connection-card { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 13px; margin-top: 25px; padding: 16px; border: 1px solid var(--line); border-radius: 13px; background: var(--cream); }.connection-card img { width: 48px; height: 48px; object-fit: contain; border-radius: 10px; }.connection-card b,.connection-card span { display: block; }.connection-card b { font: 900 14px var(--font-s); }.connection-card span { margin-top: 4px; color: var(--muted); font-size: 9px; }.connection-card em { padding: 5px 7px; border-radius: 999px; color: #5c755b; background: rgba(142,170,140,.18); font-size: 8px; font-style: normal; font-weight: 800; }.scope-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }.scope-pills span { padding: 7px 9px; border-radius: 999px; color: var(--accent-strong); background: rgba(239,210,142,.35); font-size: 9px; font-weight: 800; }.token-line { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 20px; padding: 15px; border: 1px dashed var(--line); border-radius: 12px; }.token-line small { grid-column: 1 / -1; color: var(--muted); font-size: 8px; }.token-line code { font-size: 11px; }.token-line button { border: 0; border-radius: 999px; padding: 5px 9px; color: var(--cream); background: var(--tea); font-size: 8px; }
+.share-section { background: rgba(255,253,246,.36); }.share-layout { display: grid; grid-template-columns: minmax(0,.72fr) minmax(540px,1.28fr); align-items: center; gap: 80px; }.section-copy > p { margin-top: 22px; }.privacy-note { display: flex; gap: 13px; margin-top: 28px; padding: 15px 17px; border-left: 3px solid var(--yellow-deep); background: rgba(255,253,246,.55); }.privacy-note span { font-size: 20px; }.privacy-note b,.privacy-note small { display: block; }.privacy-note b { font-size: 12px; }.privacy-note small { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.share-animation-stage { position: relative; min-height: 440px; display: grid; grid-template-columns: 1fr 110px 1fr; align-items: center; }.share-phone { position: relative; z-index: 2; min-height: 310px; padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 30px 52px -42px rgba(73,59,44,.7); }.panel-label { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-phone > b { display: block; margin-top: 13px; font: 900 20px var(--font-s); }.share-phone > small { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; }.mystery-code { margin-top: 38px; padding: 17px; border-radius: 13px; background: var(--cream); text-align: center; }.mystery-code span,.mystery-code strong { display: block; }.mystery-code span { color: var(--muted); font-size: 9px; }.mystery-code strong { margin-top: 7px; font: 900 21px var(--font-d); letter-spacing: .1em; }.owner-panel button { display: block; width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 10px; font-weight: 800; }.fake-input { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding: 10px 10px 10px 13px; border: 1px solid var(--line); border-radius: 10px; font: 800 10px var(--font-d); }.fake-input em { padding: 5px 8px; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 8px; font-style: normal; }.visitor-box { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-top: 18px; }.visitor-box i { display: grid; height: 46px; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); font: 900 13px var(--font-s); font-style: normal; opacity: 0; transform: translateY(10px); animation: visitorCard 5.2s infinite; }.visitor-box i:nth-child(2){animation-delay:.1s}.visitor-box i:nth-child(3){animation-delay:.2s}.visitor-box i:nth-child(4){animation-delay:.3s}.visitor-box i:nth-child(5){animation-delay:.4s}.visitor-box i:nth-child(6){animation-delay:.5s}.code-flight { position: relative; z-index: 4; display: flex; align-items: center; justify-content: center; }.code-flight span { position: absolute; z-index: 3; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 8px; background: var(--cream); font: 900 8px var(--font-d); letter-spacing: .08em; animation: codeFly 5.2s infinite; }.code-flight i { width: 100%; border-top: 1px dashed var(--accent); }
+.permission-demo { display: grid; grid-template-columns: minmax(330px,1fr) 120px minmax(260px,.78fr); align-items: center; max-width: 1020px; margin: 50px auto 0; }.permission-card,.permission-result { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 28px 50px -42px rgba(73,59,44,.7); }.permission-card { padding: 22px; }.permission-head { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px dashed var(--line); }.permission-head img { width: 42px; height: 42px; object-fit: contain; }.permission-head small,.permission-head b { display: block; }.permission-head small { color: var(--muted); font-size: 8px; }.permission-head b { margin-top: 3px; font: 900 14px var(--font-s); }.permission-head > span { color: var(--muted); font-size: 9px; }.permission-list { display: grid; margin-top: 8px; }.permission-list label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 62px; border-bottom: 1px solid var(--soft-line); }.permission-list label:last-child { border-bottom: 0; }.permission-list label.disabled { opacity: .52; }.permission-list b,.permission-list small { display: block; }.permission-list b { font-size: 11px; }.permission-list small { margin-top: 4px; color: var(--muted); font-size: 8px; }.permission-list button { position: relative; width: 37px; height: 21px; border: 0; border-radius: 999px; background: var(--accent); cursor: pointer; transition: background .2s ease; }.permission-list button i { position: absolute; top: 3px; right: 3px; width: 15px; height: 15px; border-radius: 50%; background: white; transition: transform .2s ease; }.permission-list label.disabled button { background: var(--line); }.permission-list label.disabled button i { transform: translateX(-16px); }.permission-lines { display: grid; gap: 20px; padding: 0 8px; }.permission-lines span { position: relative; display: flex; align-items: center; gap: 5px; color: var(--accent-strong); font-size: 8px; }.permission-lines i { flex: 1; border-top: 1px solid var(--accent); transition: opacity .2s ease; }.permission-lines em { font-style: normal; }.permission-lines span.off { color: var(--muted); }.permission-lines span.off i { border-top-style: dashed; opacity: .25; }.permission-result { display: grid; gap: 9px; padding: 22px; }.permission-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; background: var(--cream); }.permission-result article.off { opacity: .38; }.permission-result article > i { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #5c755b; background: rgba(142,170,140,.18); font-style: normal; font-weight: 900; }.permission-result b,.permission-result small { display: block; }.permission-result b { font-size: 10px; }.permission-result small { margin-top: 2px; color: var(--muted); font-size: 8px; }.privacy-principles { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 54px; }.privacy-principles article { padding: 24px; border-top: 2px solid var(--yellow-deep); background: rgba(255,253,246,.45); }.privacy-principles span { color: var(--accent-strong); font: 800 9px var(--font-d); }.privacy-principles b { display: block; margin-top: 12px; font: 900 16px var(--font-s); }.privacy-principles p { margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.7; }
+.ecosystem-flow { display: grid; grid-template-columns: 190px 90px 170px 90px 1fr; align-items: center; gap: 10px; margin-top: 52px; }.flow-source,.flow-hub { padding: 22px; border: 1px solid var(--line); background: var(--surface); text-align: center; }.flow-source { border-radius: 16px; }.flow-label { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .12em; }.flow-source b { display: block; margin-top: 9px; font: 900 16px var(--font-s); }.flow-source div { display: flex; justify-content: center; gap: 6px; margin-top: 15px; }.flow-source i { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--cream); font: 900 11px var(--font-s); font-style: normal; }.flow-hub { min-height: 170px; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; }.flow-hub > span { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 13px; color: var(--cream); background: var(--tea); font: 900 13px var(--font-d); }.flow-hub b { margin-top: 10px; font: 900 16px var(--font-s); }.flow-hub small { margin-top: 5px; color: var(--muted); font-size: 8px; }.flow-line { position: relative; height: 1px; border-top: 1px dashed var(--accent); }.data-packet { position: absolute; top: -14px; left: 0; padding: 5px 7px; border: 1px solid var(--accent); border-radius: 7px; background: var(--cream); font: 800 7px var(--font-d); white-space: nowrap; animation: packetMove 4s linear infinite; }.packet-two { animation-delay: 1.2s; }.partner-stack { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }.partner-card { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,246,.65); text-decoration: none; }.partner-card img { width: 42px; height: 42px; object-fit: contain; border-radius: 9px; }.partner-card b,.partner-card small { display: block; }.partner-card b { font: 900 11px var(--font-s); }.partner-card small { margin-top: 4px; color: var(--muted); font-size: 8px; }.partner-card > span { color: var(--accent-strong); font-size: 7px; font-weight: 800; }.ecosystem-disclaimer { max-width: 880px; margin: 28px auto 0; color: var(--muted); font-size: 9px; line-height: 1.75; text-align: center; }
+.roadmap-section { background: rgba(255,253,246,.34); }.roadmap-layout { display: grid; grid-template-columns: .62fr 1.38fr; align-items: start; gap: 70px; }.roadmap-board { border-top: 1px solid var(--line); }.roadmap-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 18px; min-height: 112px; border-bottom: 1px solid var(--line); }.roadmap-row > span { color: var(--accent-strong); font: 900 10px var(--font-d); letter-spacing: .12em; }.roadmap-row b { font: 900 16px var(--font-s); }.roadmap-row p { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.6; }.roadmap-row em { padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 8px; font-style: normal; }.roadmap-row.current em { color: #5c755b; border-color: rgba(92,117,91,.25); }.roadmap-row.future { opacity: .72; }
+.final-cta-section { padding: 80px 0 100px; }.final-cta-card { position: relative; overflow: hidden; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 50px; min-height: 300px; padding: 55px 64px; border-radius: 28px; color: var(--cream); background: var(--tea); }.final-cta-card .eyebrow { color: var(--yellow); }.final-cta-card .eyebrow span { color: var(--cream); }.final-cta-card h2 { color: var(--cream); font-size: clamp(38px,4vw,58px); }.final-cta-card h2 em { color: var(--yellow); }.final-cta-card p { max-width: 650px; margin-top: 18px; color: rgba(255,248,236,.72); font-size: 13px; line-height: 1.8; }.cta-watermark { position: absolute; right: 22%; bottom: -70px; color: rgba(255,255,255,.035); font: 900 230px/1 var(--font-d); }.final-button { position: relative; z-index: 2; display: grid; grid-template-columns: auto auto; align-items: center; gap: 5px 15px; min-width: 180px; padding: 17px 18px; border-radius: 16px; color: var(--tea); background: var(--yellow); font-size: 13px; font-weight: 900; text-decoration: none; }.final-button span { justify-self: end; font-size: 20px; }.final-button small { grid-column: 1 / -1; color: rgba(73,59,44,.56); font-size: 8px; font-weight: 700; }.site-footer { border-top: 1px solid var(--soft-line); }.footer-inner { min-height: 118px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }.footer-inner > div { display: flex; align-items: center; gap: 10px; }.footer-inner b { font: 900 13px var(--font-s); }.footer-inner p { color: var(--muted); font-size: 10px; }
+@keyframes cardEnter { 0%,7%{opacity:0;transform:translateY(12px)} 12%,86%{opacity:1;transform:none} 92%,100%{opacity:0;transform:translateY(-5px)} }
+@keyframes levelFlash { 0%,20%{opacity:.45} 28%,86%{opacity:1} 100%{opacity:.45} }
+@keyframes awaken { 0%,28%{opacity:0;transform:translateY(4px)} 34%,86%{opacity:1;transform:none} 100%{opacity:0} }
+@keyframes buttonPulse { 0%,38%,100%{box-shadow:none} 44%,54%{box-shadow:0 0 0 5px rgba(215,137,53,.16)} }
+@keyframes sharePopover { 0%,43%{opacity:0;transform:translateY(-8px) scale(.96)} 48%,66%{opacity:1;transform:none} 72%,100%{opacity:0;transform:translateY(-4px)} }
+@keyframes shareView { 0%,68%{opacity:0;transform:translateX(45px)} 74%,91%{opacity:1;transform:none} 96%,100%{opacity:0;transform:translateX(-20px)} }
+@keyframes overlayCard { 0%,73%{opacity:0;transform:translateY(12px) rotate(3deg)} 78%,91%{opacity:1;transform:none} 96%,100%{opacity:0} }
+@keyframes blink { 50%{opacity:.3} }
+@keyframes stockPlus { 0%,30%{opacity:0;transform:translateY(5px)} 45%,90%{opacity:1;transform:none} 100%{opacity:0} }
+@keyframes stockTotal { 0%,30%{opacity:.25;transform:translateY(3px)} 45%,100%{opacity:1;transform:none} }
+@keyframes barGrow { from{transform:scaleY(.45)} to{transform:scaleY(1)} }
+@keyframes scan { 0%{transform:translateY(10px);opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{transform:translateY(210px);opacity:0} }
+@keyframes resultIn { 0%,25%{opacity:0;transform:translateX(10px)} 40%,86%{opacity:1;transform:none} 100%{opacity:0} }
+@keyframes codeFly { 0%,15%{opacity:0;transform:translateX(-40px) rotate(-4deg)} 28%,58%{opacity:1;transform:translateX(0)} 70%,100%{opacity:0;transform:translateX(45px) rotate(3deg)} }
+@keyframes visitorCard { 0%,48%{opacity:0;transform:translateY(10px)} 58%,88%{opacity:1;transform:none} 100%{opacity:0} }
+@keyframes packetMove { 0%{left:0;opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{left:calc(100% - 42px);opacity:0} }
 @media (max-width: 1050px) {
-  .promo-wrap {
-    padding-right: 34px;
-    padding-left: 34px;
-  }
-  .flow-lane {
-    grid-template-columns: minmax(150px, 1fr) 44px minmax(
-        170px,
-        1fr
-      ) 44px minmax(250px, 1.45fr);
-    gap: 8px;
-  }
-  .builders-layout {
-    gap: 45px;
-  }
-  .reuse-stage {
-    grid-template-columns: minmax(120px, 0.7fr) 38px minmax(
-        240px,
-        1.2fr
-      ) 38px minmax(260px, 1.45fr);
-    gap: 9px;
-    padding: 20px;
-  }
+  .header-nav { display: none; }
+  .hero-grid { grid-template-columns: 1fr; gap: 52px; }.hero-copy { max-width: 760px; }.hero-demo-wrap { width: min(100%,780px); }
+  .share-layout { grid-template-columns: 1fr; gap: 48px; }.share-copy { max-width: 700px; }.share-animation-stage { max-width: 760px; }
+  .ecosystem-flow { grid-template-columns: 150px 60px 150px 60px 1fr; }.partner-stack { grid-template-columns: 1fr; }
+  .roadmap-layout { grid-template-columns: 1fr; gap: 42px; }
 }
-
-@media (max-width: 850px) {
-  .promo-header-inner {
-    min-height: 67px;
-  }
-  .promo-header-note {
-    gap: 6px;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-  }
-  .header-code {
-    display: none;
-  }
-  .promo-wrap {
-    padding-right: 20px;
-    padding-left: 20px;
-  }
-  .promo-hero {
-    padding: 60px 0 70px;
-  }
-  .hero-intro h1 {
-    margin-top: 20px;
-    font-size: clamp(45px, 4.25rem, 68px);
-  }
-  .hero-lede {
-    margin-top: 21px;
-    font-size: 15px;
-    line-height: 1.9;
-  }
-  .demo-notice {
-    margin-top: 20px;
-    font-size: 11px;
-  }
-  .ecosystem-strip {
-    margin-top: 46px;
-    padding-top: 20px;
-  }
-  .ecosystem-heading {
-    align-items: flex-start;
-    gap: 14px;
-  }
-  .ecosystem-heading h2 {
-    margin-top: 11px;
-    font-size: 23px;
-  }
-  .ecosystem-heading p {
-    max-width: 250px;
-    font-size: 11px;
-  }
-  .ecosystem-badge {
-    margin-top: 1px;
-  }
-  .ecosystem-list {
-    gap: 10px;
-    margin-top: 10px;
-  }
-  .ecosystem-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
-    min-height: 0;
-    padding: 16px 14px;
-  }
-  .ecosystem-row-split {
-    display: none;
-  }
-  .ecosystem-scenario {
-    padding-top: 14px;
-    padding-left: 0;
-    border-top: 1px dashed var(--promo-line);
-    border-left: 0;
-  }
-  .ecosystem-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 8px;
-  }
-  .ecosystem-partner-name {
-    font-size: 15px;
-    line-height: 1.35;
-  }
-  .ecosystem-partner-role {
-    margin-top: 3px;
-    font-size: 11px;
-  }
-  .ecosystem-scenario-section {
-    margin-top: 14px;
-    padding-top: 16px;
-  }
-  .ecosystem-scenario-heading h3 {
-    font-size: 14px;
-  }
-  .ecosystem-scenario-label {
-    font-size: 10px;
-  }
-  .ecosystem-scenarios {
-    margin-top: 5px;
-    font-size: 12px;
-    line-height: 1.6;
-  }
-  .ecosystem-future-section {
-    margin-top: 14px;
-    padding-top: 16px;
-  }
-  .ecosystem-future-note {
-    font-size: 11px;
-  }
-  .ecosystem-future-grid {
-    gap: 8px;
-    margin-top: 10px;
-  }
-  .ecosystem-future-card {
-    column-gap: 9px;
-    min-height: 120px;
-    padding: 15px 13px;
-  }
-  .ecosystem-future-card .demo-label {
-    margin-top: 10px;
-    font-size: 9px;
-  }
-  .ecosystem-action {
-    margin-top: 6px;
-    font-size: 10px;
-  }
-  .hero-flow {
-    margin-top: 48px;
-    padding: 19px 15px 21px;
-  }
-  .flow-lane {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    margin-top: 18px;
-  }
-  .source-node {
-    min-height: 142px;
-  }
-  .hub-node {
-    align-self: center;
-    width: min(100%, 218px);
-    min-height: 218px;
-    margin: 4px 0;
-  }
-  .flow-connector {
-    width: 100%;
-    min-height: 35px;
-    justify-content: center;
-    flex-direction: row;
-    gap: 10px;
-  }
-  .flow-connector i {
-    width: 72px;
-    transform: rotate(90deg);
-  }
-  .flow-connector i::after {
-    right: -1px;
-  }
-  .output-stack {
-    width: 100%;
-  }
-  .output-node {
-    min-height: 52px;
-  }
-  .builders-section,
-  .reuse-section {
-    padding: 72px 0 80px;
-  }
-  .builders-layout {
-    display: block;
-  }
-  .section-copy h2 {
-    font-size: clamp(38px, 3.375rem, 54px);
-  }
-  .reuse-heading h2 {
-    font-size: clamp(30px, 2.625rem, 42px);
-  }
-  .section-copy > p:not(.copy-note) {
-    font-size: 14px;
-  }
-  .contribution-board {
-    margin-top: 42px;
-    padding: 22px 17px 19px;
-  }
-  .board-head h3 {
-    font-size: 18px;
-  }
-  .contribution-row {
-    grid-template-columns: 20px 30px minmax(0, 1fr) auto;
-    gap: 8px;
-    min-height: 73px;
-  }
-  .contribution-seal {
-    width: 30px;
-    height: 30px;
-    font-size: 12px;
-  }
-  .contribution-body strong {
-    font-size: 13px;
-  }
-  .contribution-body span {
-    font-size: 11px;
-  }
-  .row-tag {
-    font-size: 10px;
-  }
-  .board-foot {
-    align-items: flex-start;
-    font-size: 10px;
-  }
-  .reuse-heading {
-    align-items: flex-start;
-    text-align: left;
-  }
-  .reuse-heading p {
-    font-size: 14px;
-    line-height: 1.8;
-  }
-  .reuse-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    margin-top: 37px;
-    padding: 15px;
-  }
-  .stage-note {
-    min-height: 110px;
-  }
-  .stage-connector {
-    min-height: 39px;
-    flex-direction: row;
-    justify-content: center;
-    gap: 10px;
-  }
-  .stage-connector i {
-    width: 64px;
-    transform: rotate(90deg);
-  }
-  .stage-hub {
-    min-height: 130px;
-    padding: 18px 17px;
-  }
-  .stage-hub strong {
-    font-size: 20px;
-  }
-  .reuse-destinations {
-    margin-top: 7px;
-    padding: 10px 4px 4px;
-    border-top: 1px dashed var(--promo-line);
-  }
-  .reuse-destination {
-    min-height: 38px;
-  }
-  .reuse-footnote {
-    margin-top: 37px;
-  }
-  .footer-inner {
-    min-height: 140px;
-    align-items: flex-start;
-    justify-content: center;
-    flex-direction: column;
-    gap: 15px;
-  }
-  .footer-inner strong {
-    font-size: 24px;
-  }
+@media (max-width: 780px) {
+  .wrap { padding-inline: 20px; }.header-inner { min-height: 64px; }.header-cta { margin-left: auto; }.brand-copy small { display: none; }
+  .hero-section { padding: 58px 0 72px; }.hero-copy h1 { font-size: clamp(42px,12vw,62px); }.hero-lede { font-size: 14px; }
+  .hero-demo-body { grid-template-columns: 42px minmax(0,1fr); min-height: 420px; }.demo-workspace { padding: 16px; }.operator-grid { grid-template-columns: 1fr 1fr; }.card-c { display: none; }
+  .media-placeholder { align-items: flex-start; flex-direction: column; }
+  .section { padding: 76px 0; }.split-heading { grid-template-columns: 1fr; gap: 18px; }.split-heading p { justify-self: start; }
+  .feature-tabs { grid-template-columns: repeat(2,1fr); }.feature-tabs button:nth-child(2) { border-right: 0; }.feature-tabs button:nth-child(-n+2) { border-bottom: 1px solid var(--soft-line); }
+  .feature-stage { grid-template-columns: 1fr; }.feature-copy-panel { padding: 30px 22px; border-right: 0; border-bottom: 1px solid var(--line); }.feature-demo-panel { padding: 18px; }.stage-placeholder-tag { right: 28px; bottom: 28px; }
+  .share-animation-stage { grid-template-columns: 1fr; gap: 20px; }.code-flight { min-height: 50px; transform: rotate(90deg); }.code-flight span { transform: rotate(-90deg); animation: none; }.share-phone { min-height: 280px; }
+  .permission-demo { grid-template-columns: 1fr; gap: 20px; }.permission-lines { display: none; }.permission-result { grid-template-columns: repeat(2,1fr); }.permission-result > .panel-label { grid-column: 1 / -1; }
+  .privacy-principles { grid-template-columns: 1fr; }
+  .ecosystem-flow { grid-template-columns: 1fr; gap: 18px; }.flow-line { width: 1px; height: 48px; justify-self: center; border-top: 0; border-left: 1px dashed var(--accent); }.data-packet { display: none; }.flow-hub { width: 170px; justify-self: center; }.partner-stack { width: 100%; grid-template-columns: 1fr 1fr; }
+  .final-cta-card { grid-template-columns: 1fr; padding: 38px 28px; }.cta-watermark { right: -20px; }
 }
-
-@media (max-width: 500px) {
-  .ecosystem-future-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+@media (max-width: 520px) {
+  .header-cta { padding: 0 12px; font-size: 10px; }.hero-actions { align-items: stretch; flex-direction: column; }.primary-btn,.secondary-btn { justify-content: space-between; }
+  .browser-bar { grid-template-columns: 1fr auto; }.browser-title { display: none; }.operator-grid { grid-template-columns: 1fr; }.card-b { display: none; }.share-popover { right: 12px; width: calc(100% - 24px); }
+  .feature-tabs button { min-height: 76px; padding: 13px 12px; }.mini-card-grid { grid-template-columns: 1fr; }.ocr-layout { grid-template-columns: 1fr; }.ocr-arrow { transform: rotate(90deg); }.fake-shot { height: 180px; }
+  .permission-result { grid-template-columns: 1fr; }.permission-result > .panel-label { grid-column: auto; }.partner-stack { grid-template-columns: 1fr; }
+  .roadmap-row { grid-template-columns: 58px 1fr; gap: 10px; padding: 16px 0; }.roadmap-row em { grid-column: 2; justify-self: start; }
+  .footer-inner { min-height: 110px; align-items: flex-start; justify-content: center; flex-direction: column; }.footer-inner p { line-height: 1.6; }
 }
-
-@media print {
-  .promo-page {
-    color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .promo-header {
-    position: relative;
-  }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .operator-card,.awakening-chip,.share-view-overlay,.overlay-cards i,.visitor-box i,.star-result article { opacity: 1; transform: none; }
+  .share-popover { display: none; }
 }
 </style>

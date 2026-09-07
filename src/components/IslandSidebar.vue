@@ -1,6 +1,6 @@
 <template>
   <header class="mobile-shell">
-    <router-link class="mobile-brand" to="/cart">
+    <router-link class="mobile-brand" to="/" aria-label="返回首页">
       <span class="brand-mark" aria-hidden="true">♥</span>
       <span>YuanHub</span>
     </router-link>
@@ -18,7 +18,7 @@
       </router-link>
       <router-link
         to="/operator"
-        :class="{ active: $route.path.startsWith('/operator') }"
+        :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
       >
         <BookUser :size="19" aria-hidden="true" />
         <span>我的密探</span>
@@ -66,7 +66,7 @@
   </header>
 
   <aside class="island" aria-label="主要导航">
-    <div class="brand">
+    <router-link class="brand" to="/" aria-label="返回首页">
       <div class="brand-mark" aria-hidden="true">H</div>
       <div class="brand-txt">
         <div class="brand-line">
@@ -74,12 +74,12 @@
         </div>
         <b>鸢鸢相抱♥️</b>
       </div>
-    </div>
+    </router-link>
     <nav class="nav">
       <!-- 作业广场（暂时隐藏）：<router-link to="/" :class="{ active: $route.path === '/' }"><span class="no">01</span>作业广场</router-link> -->
       <router-link
         to="/operator"
-        :class="{ active: $route.path.startsWith('/operator') }"
+        :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
         ><span class="no">01</span>我的密探</router-link
       >
       <router-link
