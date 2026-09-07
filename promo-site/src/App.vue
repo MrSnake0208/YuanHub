@@ -317,11 +317,63 @@
         </div>
       </section>
 
+      <section id="legal" class="section legal-section">
+        <div class="wrap legal-layout">
+          <div class="section-copy legal-heading">
+            <div class="eyebrow"><span>07</span> COPYRIGHT &amp; NON-COMMERCIAL</div>
+            <h2>版权声明与<em>非商业说明</em></h2>
+            <p>尊重游戏权利人、社区合作方与内容创作者的权利，也把 YuanHub 自行创作内容的许可边界说明清楚。</p>
+          </div>
+
+          <div class="legal-card">
+            <article>
+              <span class="legal-index">01</span>
+              <div>
+                <h3>第三方名称、商标与游戏素材</h3>
+                <p>本站涉及的游戏名称、公司名称、商标、角色名称及其他第三方标识，均归其各自权利人所有，仅用于识别、资料整理与说明相关内容。本站中出现的游戏图片、角色立绘、图标、文本原文及其他游戏素材，其权利归相应游戏及素材权利人所有；YuanHub 不主张对这些第三方素材享有著作权。</p>
+                <p>部分资料或素材可能由 BWiki 等社区合作项目依据合作约定提供或协助整理，其使用范围以对应授权与合作约定为准。</p>
+              </div>
+            </article>
+
+            <article>
+              <span class="legal-index">02</span>
+              <div>
+                <h3>YuanHub 自创内容许可</h3>
+                <p>除另有声明以及第三方素材、程序源码之外，本站由 YuanHub 自行创作并有权许可的宣传文案、说明文字与原创视觉内容，采用 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.zh" target="_blank" rel="noreferrer">知识共享 署名-非商业性使用 4.0 国际许可协议（CC BY-NC 4.0）</a>进行许可。</p>
+                <p>转载或再传播上述可许可内容时，请注明来源为 YuanHub，并保留相应版权与许可说明以及指向原页面的链接；未经另行许可，不得将该部分内容或其衍生作品用于商业目的。</p>
+              </div>
+            </article>
+
+            <article>
+              <span class="legal-index">03</span>
+              <div>
+                <h3>非商业社区项目</h3>
+                <p>YuanHub 当前为非商业社区项目，以方便玩家整理个人游戏档案、进行社区交流与数据复用为目的，不以游戏素材获取商业收益。本站仅提供档案整理、展示、分享与数据连接能力，不提供任何游戏账号实际操作服务。</p>
+                <p>如未来项目的运营、赞助或许可方式发生变化，将另行更新相关说明；任何第三方项目的商业行为不当然代表 YuanHub 的立场或授权。</p>
+              </div>
+            </article>
+
+            <article>
+              <span class="legal-index">04</span>
+              <div>
+                <h3>源码与权利反馈</h3>
+                <p>程序源码的使用与再分发以项目仓库中单独公布的开源许可为准；在正式添加源码许可证前，本页的 CC BY-NC 4.0 声明不自动适用于程序源码。</p>
+                <p>如您是相关权利人，并认为本站的素材使用、署名或说明存在不妥，请联系我们核实并处理。</p>
+                <!-- PLACEHOLDER: 替换为正式版权/权利反馈邮箱或工单入口 -->
+                <p class="legal-contact"><b>版权与权利反馈</b><span data-placeholder="RIGHTS_CONTACT">联系方式待补充</span></p>
+              </div>
+            </article>
+
+            <p class="legal-footnote">本站为社区项目，与游戏官方及各第三方权利人之间的关系以实际授权、合作说明或官方公告为准；除明确说明外，不应理解为官方产品或官方背书。</p>
+          </div>
+        </div>
+      </section>
+
       <section id="final-cta" class="final-cta-section">
         <div class="wrap final-cta-card">
           <span class="cta-watermark">YH</span>
           <div>
-            <div class="eyebrow"><span>07</span> YOUR DATA, YOUR STARTING POINT</div>
+            <div class="eyebrow"><span>08</span> YOUR DATA, YOUR STARTING POINT</div>
             <h2>先把自己的游戏档案，<em>整理好</em></h2>
             <p>从一份属于自己的记录开始。之后要分享给朋友，还是连接社区工具，都由你决定。</p>
           </div>
@@ -334,7 +386,7 @@
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <div><span class="brand-mark small">YH</span><b>YuanHub · 鸢鸢相抱</b></div>
-        <p>用户录入 · 自主管理 · 按需分享 · 社区共建</p>
+        <p>用户录入 · 自主管理 · 按需分享 · 社区共建 · <a href="#legal">版权与非商业声明</a></p>
       </div>
     </footer>
   </div>
@@ -563,7 +615,20 @@ em { color: var(--accent); font-style: normal; }
 .permission-demo { display: grid; grid-template-columns: minmax(330px,1fr) 120px minmax(260px,.78fr); align-items: center; max-width: 1020px; margin: 50px auto 0; }.permission-card,.permission-result { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 28px 50px -42px rgba(73,59,44,.7); }.permission-card { padding: 22px; }.permission-head { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px dashed var(--line); }.permission-head img { width: 42px; height: 42px; object-fit: contain; }.permission-head small,.permission-head b { display: block; }.permission-head small { color: var(--muted); font-size: 8px; }.permission-head b { margin-top: 3px; font: 900 14px var(--font-s); }.permission-head > span { color: var(--muted); font-size: 9px; }.permission-list { display: grid; margin-top: 8px; }.permission-list label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 62px; border-bottom: 1px solid var(--soft-line); }.permission-list label:last-child { border-bottom: 0; }.permission-list label.disabled { opacity: .52; }.permission-list b,.permission-list small { display: block; }.permission-list b { font-size: 11px; }.permission-list small { margin-top: 4px; color: var(--muted); font-size: 8px; }.permission-list button { position: relative; width: 37px; height: 21px; border: 0; border-radius: 999px; background: var(--accent); cursor: pointer; transition: background .2s ease; }.permission-list button i { position: absolute; top: 3px; right: 3px; width: 15px; height: 15px; border-radius: 50%; background: white; transition: transform .2s ease; }.permission-list label.disabled button { background: var(--line); }.permission-list label.disabled button i { transform: translateX(-16px); }.permission-lines { display: grid; gap: 20px; padding: 0 8px; }.permission-lines span { position: relative; display: flex; align-items: center; gap: 5px; color: var(--accent-strong); font-size: 8px; }.permission-lines i { flex: 1; border-top: 1px solid var(--accent); transition: opacity .2s ease; }.permission-lines em { font-style: normal; }.permission-lines span.off { color: var(--muted); }.permission-lines span.off i { border-top-style: dashed; opacity: .25; }.permission-result { display: grid; gap: 9px; padding: 22px; }.permission-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; background: var(--cream); }.permission-result article.off { opacity: .38; }.permission-result article > i { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #5c755b; background: rgba(142,170,140,.18); font-style: normal; font-weight: 900; }.permission-result b,.permission-result small { display: block; }.permission-result b { font-size: 10px; }.permission-result small { margin-top: 2px; color: var(--muted); font-size: 8px; }.privacy-principles { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 54px; }.privacy-principles article { padding: 24px; border-top: 2px solid var(--yellow-deep); background: rgba(255,253,246,.45); }.privacy-principles span { color: var(--accent-strong); font: 800 9px var(--font-d); }.privacy-principles b { display: block; margin-top: 12px; font: 900 16px var(--font-s); }.privacy-principles p { margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.7; }
 .ecosystem-flow { display: grid; grid-template-columns: 190px 90px 170px 90px 1fr; align-items: center; gap: 10px; margin-top: 52px; }.flow-source,.flow-hub { padding: 22px; border: 1px solid var(--line); background: var(--surface); text-align: center; }.flow-source { border-radius: 16px; }.flow-label { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .12em; }.flow-source b { display: block; margin-top: 9px; font: 900 16px var(--font-s); }.flow-source div { display: flex; justify-content: center; gap: 6px; margin-top: 15px; }.flow-source i { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--cream); font: 900 11px var(--font-s); font-style: normal; }.flow-hub { min-height: 170px; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; }.flow-hub > span { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 13px; color: var(--cream); background: var(--tea); font: 900 13px var(--font-d); }.flow-hub b { margin-top: 10px; font: 900 16px var(--font-s); }.flow-hub small { margin-top: 5px; color: var(--muted); font-size: 8px; }.flow-line { position: relative; height: 1px; border-top: 1px dashed var(--accent); }.data-packet { position: absolute; top: -14px; left: 0; padding: 5px 7px; border: 1px solid var(--accent); border-radius: 7px; background: var(--cream); font: 800 7px var(--font-d); white-space: nowrap; animation: packetMove 4s linear infinite; }.packet-two { animation-delay: 1.2s; }.partner-stack { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }.partner-card { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,246,.65); text-decoration: none; }.partner-card img { width: 42px; height: 42px; object-fit: contain; border-radius: 9px; }.partner-card b,.partner-card small { display: block; }.partner-card b { font: 900 11px var(--font-s); }.partner-card small { margin-top: 4px; color: var(--muted); font-size: 8px; }.partner-card > span { color: var(--accent-strong); font-size: 7px; font-weight: 800; }.ecosystem-disclaimer { max-width: 880px; margin: 28px auto 0; color: var(--muted); font-size: 9px; line-height: 1.75; text-align: center; }
 .roadmap-section { background: rgba(255,253,246,.34); }.roadmap-layout { display: grid; grid-template-columns: .62fr 1.38fr; align-items: start; gap: 70px; }.roadmap-board { border-top: 1px solid var(--line); }.roadmap-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 18px; min-height: 112px; border-bottom: 1px solid var(--line); }.roadmap-row > span { color: var(--accent-strong); font: 900 10px var(--font-d); letter-spacing: .12em; }.roadmap-row b { font: 900 16px var(--font-s); }.roadmap-row p { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.6; }.roadmap-row em { padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 8px; font-style: normal; }.roadmap-row.current em { color: #5c755b; border-color: rgba(92,117,91,.25); }.roadmap-row.future { opacity: .72; }
+.legal-section { background: rgba(246,237,208,.38); }
+.legal-layout { display: grid; grid-template-columns: minmax(260px,.56fr) minmax(0,1.44fr); align-items: start; gap: 68px; }
+.legal-heading { position: sticky; top: 94px; }
+.legal-card { overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,253,246,.74); box-shadow: 0 26px 60px -52px rgba(73,59,44,.78); }
+.legal-card article { display: grid; grid-template-columns: 46px 1fr; gap: 18px; padding: 26px 28px; border-bottom: 1px solid var(--soft-line); }
+.legal-index { color: var(--accent-strong); font: 900 10px var(--font-d); letter-spacing: .12em; }
+.legal-card h3 { color: var(--tea); font: 900 17px/1.45 var(--font-s); }
+.legal-card article p { margin-top: 10px; color: var(--muted); font-size: 10.5px; line-height: 1.9; }
+.legal-card a { color: var(--accent-strong); font-weight: 800; text-underline-offset: 2px; }
+.legal-contact { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 14px !important; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; background: var(--cream); }
+.legal-contact b { color: var(--ink); font-size: 10px; }.legal-contact span { font-size: 9px; }
+.legal-footnote { margin: 0; padding: 18px 28px 20px; color: var(--muted); background: rgba(239,210,142,.16); font-size: 9px; line-height: 1.8; }
 .final-cta-section { padding: 80px 0 100px; }.final-cta-card { position: relative; overflow: hidden; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 50px; min-height: 300px; padding: 55px 64px; border-radius: 28px; color: var(--cream); background: var(--tea); }.final-cta-card .eyebrow { color: var(--yellow); }.final-cta-card .eyebrow span { color: var(--cream); }.final-cta-card h2 { color: var(--cream); font-size: clamp(38px,4vw,58px); }.final-cta-card h2 em { color: var(--yellow); }.final-cta-card p { max-width: 650px; margin-top: 18px; color: rgba(255,248,236,.72); font-size: 13px; line-height: 1.8; }.cta-watermark { position: absolute; right: 22%; bottom: -70px; color: rgba(255,255,255,.035); font: 900 230px/1 var(--font-d); }.final-button { position: relative; z-index: 2; display: grid; grid-template-columns: auto auto; align-items: center; gap: 5px 15px; min-width: 180px; padding: 17px 18px; border-radius: 16px; color: var(--tea); background: var(--yellow); font-size: 13px; font-weight: 900; text-decoration: none; }.final-button span { justify-self: end; font-size: 20px; }.final-button small { grid-column: 1 / -1; color: rgba(73,59,44,.56); font-size: 8px; font-weight: 700; }.site-footer { border-top: 1px solid var(--soft-line); }.footer-inner { min-height: 118px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }.footer-inner > div { display: flex; align-items: center; gap: 10px; }.footer-inner b { font: 900 13px var(--font-s); }.footer-inner p { color: var(--muted); font-size: 10px; }
+.footer-inner p a { color: inherit; font-weight: 800; text-underline-offset: 2px; }
 @keyframes cardEnter { 0%,7%{opacity:0;transform:translateY(12px)} 12%,86%{opacity:1;transform:none} 92%,100%{opacity:0;transform:translateY(-5px)} }
 @keyframes levelFlash { 0%,20%{opacity:.45} 28%,86%{opacity:1} 100%{opacity:.45} }
 @keyframes awaken { 0%,28%{opacity:0;transform:translateY(4px)} 34%,86%{opacity:1;transform:none} 100%{opacity:0} }
@@ -586,6 +651,7 @@ em { color: var(--accent); font-style: normal; }
   .share-layout { grid-template-columns: 1fr; gap: 48px; }.share-copy { max-width: 700px; }.share-animation-stage { max-width: 760px; }
   .ecosystem-flow { grid-template-columns: 150px 60px 150px 60px 1fr; }.partner-stack { grid-template-columns: 1fr; }
   .roadmap-layout { grid-template-columns: 1fr; gap: 42px; }
+  .legal-layout { grid-template-columns: 1fr; gap: 38px; }.legal-heading { position: static; }
 }
 @media (max-width: 780px) {
   .wrap { padding-inline: 20px; }.header-inner { min-height: 64px; }.header-cta { margin-left: auto; }.brand-copy small { display: none; }
@@ -607,6 +673,7 @@ em { color: var(--accent); font-style: normal; }
   .feature-tabs button { min-height: 76px; padding: 13px 12px; }.mini-card-grid { grid-template-columns: 1fr; }.ocr-layout { grid-template-columns: 1fr; }.ocr-arrow { transform: rotate(90deg); }.fake-shot { height: 180px; }
   .permission-result { grid-template-columns: 1fr; }.permission-result > .panel-label { grid-column: auto; }.partner-stack { grid-template-columns: 1fr; }
   .roadmap-row { grid-template-columns: 58px 1fr; gap: 10px; padding: 16px 0; }.roadmap-row em { grid-column: 2; justify-self: start; }
+  .legal-card article { grid-template-columns: 34px 1fr; gap: 10px; padding: 22px 18px; }.legal-footnote { padding: 16px 18px 18px; }
   .footer-inner { min-height: 110px; align-items: flex-start; justify-content: center; flex-direction: column; }.footer-inner p { line-height: 1.6; }
 }
 @media (prefers-reduced-motion: reduce) {
