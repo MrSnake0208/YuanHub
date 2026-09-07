@@ -1,6 +1,6 @@
 # MaaYuan Share 设计规范 v1.0
 
-> 本站由 **MAA · 代号鸢BWiki · 辟雍学府 · YuanAssist** 四方共建。
+> 本站由 **MAA · 鸢BWiki · 辟雍学府 · YuanAssist** 四方共建。
 > 定位：MAA 主导的 JSON 作业站，同时是各家功能的联合看板入口。
 > 目标用户：如鸢 / 代号鸢玩家（女性向），整体气质：温暖、柔和、书卷气。
 

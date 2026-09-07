@@ -1233,9 +1233,7 @@
                 </p>
                 <p v-if="periodDispatchDuration.unconvertedRecordCount">
                   有
-                  {{
-                    periodDispatchDuration.unconvertedRecordCount
-                  }}
+                  {{ periodDispatchDuration.unconvertedRecordCount }}
                   条派遣流水缺少可换算的消耗体力，未计入派遣总时长。
                 </p>
               </div>
@@ -1708,7 +1706,7 @@
         <template #big>广陵库房<br /><span>清点 · 归档 · 溯源</span></template>
         <template #fine>
           <b>YuanHub</b> · 库存与奖励台账<br />
-          MAA × 代号鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内实际库存为准
         </template>
       </SiteFooter>
@@ -5642,10 +5640,9 @@ onBeforeUnmount(function () {
   display: grid;
   width: 100%;
   min-height: 72px;
-  grid-template-columns: 34px minmax(150px, 1fr) 90px 90px minmax(
-      170px,
-      1.2fr
-    ) 24px;
+  grid-template-columns:
+    34px minmax(150px, 1fr) 90px 90px minmax(170px, 1.2fr)
+    24px;
   align-items: center;
   gap: 12px;
   padding: 10px 4px;
@@ -7547,10 +7544,9 @@ onBeforeUnmount(function () {
   .agent-controls {
     top: 72px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) minmax(
-        82px,
-        auto
-      ) 58px;
+    grid-template-columns:
+      minmax(0, 1fr) 44px minmax(0, 1fr) minmax(82px, auto)
+      58px;
     align-items: end;
     gap: 7px;
     padding: 8px;
