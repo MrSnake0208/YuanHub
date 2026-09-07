@@ -9,8 +9,14 @@ import {
   viewOperatorShare
 } from '../src/api/operator.js'
 import {
+  compareOperatorShareEntries,
   filterOperatorShareEntries,
   mergeOperatorShareEntries,
+  operatorShareCombatSource,
+  operatorShareCombatValue,
+  operatorShareEliteComplete,
+  operatorShareLevelComplete,
+  operatorShareStarCompleteLabel,
   operatorShareStarLabel,
   parseOperatorShareToken
 } from '../src/utils/operatorShare.js'
@@ -22,6 +28,7 @@ function read(rel) {
 const routes = read('src/router/routes.js')
 const sharePage = read('src/pages/operator/share.vue')
 const operatorPage = read('src/pages/operator/index.vue')
+const sharedLedgerStyles = read('src/styles/operator-ledger-shared.css')
 const manager = read('src/components/operator/OperatorShareManager.vue')
 
 test('神秘代码输入同时支持原始代码和完整链接', () => {
@@ -45,7 +52,7 @@ test('匿名 entries 按公共密探 ID 合并图鉴字段并保留 snake_case �
     }
   }, {
     operators: [
-      { id: 'char_a', name: '甲', alias: '甲将', avatar: '/avatar/a.webp', prof: ['阳'], oddity_schema: { attack: { name: '攻击力', max: 500 } } },
+      { id: 'char_a', name: '甲', alias: '甲将', avatar: '/avatar/a.webp', prof: ['阳'], discs: [{ ot_name: '命盘甲', desp: '命盘说明' }], oddity_schema: { attack: { name: '攻击力', max: 500 } } },
       { id: 'char_b', name: '乙', sub_prof: ['辅助'] }
     ]
   })
@@ -55,6 +62,7 @@ test('匿名 entries 按公共密探 ID 合并图鉴字段并保留 snake_case �
   assert.equal(entries[0].alias, '甲将')
   assert.equal(entries[0].avatar, '/avatar/a.webp')
   assert.deepEqual(entries[0].prof, ['阳'])
+  assert.equal(entries[0].discs[0].desp, '命盘说明')
   assert.equal(entries[0].oddity_schema.attack.max, 500)
   assert.equal(entries[0].growth.star_level, 27)
   assert.equal(entries[2].name, '未知密探')
@@ -76,10 +84,61 @@ test('分享条目筛选支持名称、别名、ID及属性职业 AND 组合并�
   assert.deepEqual(filterOperatorShareEntries(entries, '没有这个', 'all', 'all'), [])
 })
 
+test('分享卡片按当前养成的状态、稀有度、等级、化极、属性与实装顺序排序', () => {
+  const entries = [
+    { id: 'char_003', name: '丙', rarity: 5, prof: ['阴'], growth: { growth_state: 'skip', level: 100, star_level: 31 } },
+    { id: 'char_005', name: '戊', rarity: 4, prof: ['阳'], growth: { growth_state: 'active', level: 100, star_level: 31 } },
+    { id: 'char_004', name: '丁', rarity: 5, prof: ['阴'], growth: { growth_state: 'active', level: 90, star_level: 27 } },
+    { id: 'char_002', name: '乙', rarity: 5, prof: ['阳'], growth: { growth_state: 'graduated', level: 100, star_level: 31 } },
+    { id: 'char_001', name: '甲', rarity: 5, prof: ['地'], growth: { growth_state: 'active', level: 90, star_level: 27 } }
+  ]
+  entries.sort(compareOperatorShareEntries)
+  assert.deepEqual(entries.map((entry) => entry.id), ['char_001', 'char_004', 'char_005', 'char_002', 'char_003'])
+})
+
 test('化极文案区分普通密探、SP 密探与觉醒', () => {
   assert.equal(operatorShareStarLabel(27, false), '5 星 · 2 节点')
   assert.equal(operatorShareStarLabel(3, true), '3 星')
   assert.equal(operatorShareStarLabel(31, false), '觉醒')
+})
+
+test('分享养成完成态保留数值并单独判断已满级和已觉醒标签', () => {
+  assert.equal(operatorShareLevelComplete(99), false)
+  assert.equal(operatorShareLevelComplete(100), true)
+  assert.equal(operatorShareEliteComplete(90, 14), false)
+  assert.equal(operatorShareEliteComplete(90, 15), true)
+  assert.equal(operatorShareEliteComplete(100, 17), true)
+  assert.equal(operatorShareStarLabel(31, false), '觉醒')
+  assert.equal(operatorShareStarCompleteLabel(31, false), '已觉醒')
+  assert.equal(operatorShareStarCompleteLabel(5, true), '')
+})
+
+test('分享页攻击生命复用当前养成 Wiki 自动计算', () => {
+  const entry = {
+    name: '杨修',
+    oddity_schema: {
+      attack: { name: '攻击力', max: 500 },
+      hp: { name: '生命值', max: 2600 },
+      special: { name: '增伤值', max: 15 }
+    },
+    growth: {
+      level: 100,
+      elite: 17,
+      star_level: 3,
+      star_stones: [],
+      combat_stats: {
+        oddities: {
+          attack: { current: 10 },
+          hp: { current: 20 },
+          special: { current: 0 }
+        }
+      }
+    }
+  }
+  assert.notEqual(operatorShareCombatValue(entry, 'attack'), '—')
+  assert.notEqual(operatorShareCombatValue(entry, 'hp'), '—')
+  assert.equal(operatorShareCombatSource(entry, 'attack'), '自动计算')
+  assert.equal(operatorShareCombatSource(entry, 'hp'), '自动计算')
 })
 
 test('分享 API 方法、路径、参数与认证边界符合固定契约', async () => {
@@ -152,8 +211,16 @@ test('分享页概览完整复刻 ledger 只读区块并提供键盘可访问的
   assert.match(card[0], /class="ledger-oddity"/)
   assert.match(card[0], /oddityValue\(entry, kind\)/)
   assert.match(card[0], /class="ledger-growth share-ledger-growth" aria-label="核心养成"/)
+  assert.match(card[0], /<Star :size="12" fill="currentColor" aria-hidden="true" \/>/)
+  assert.match(card[0], /starCardNumber\(entry\.growth\.star_level, entry\.sp_of\)/)
+  assert.match(operatorPage, /from "\.\.\/\.\.\/utils\/operatorStarDisplay\.js"/)
+  assert.match(sharePage, /from '\.\.\/\.\.\/utils\/operatorStarDisplay\.js'/)
   assert.match(card[0], /class="ledger-destiny" aria-label="双命盘"/)
   assert.match(card[0], /v-for="\(loadout, index\) in loadouts\(entry\)"/)
+  assert.match(card[0], /loadoutDiscEntries\(entry, loadout\)/)
+  assert.match(card[0], /@mouseenter\.stop="showDiscTooltip\(\$event, disc\.description\)"/)
+  assert.match(sharePage, /class="disc-floating-tooltip"/)
+  assert.match(sharePage, /window\.addEventListener\('scroll', hideDiscTooltip, true\)/)
   assert.match(card[0], /class="ledger-stones" aria-label="已装备星石"/)
   assert.match(card[0], /starStoneSlots\(entry\)/)
   assert.match(sharePage, /const STONE_SLOT_TYPES = \['main1', 'main2', 'main3', 'assist1', 'assist2', 'assist3'\]/)
@@ -164,6 +231,8 @@ test('分享页概览完整复刻 ledger 只读区块并提供键盘可访问的
   assert.match(sharePage, /<div v-else class="current-ledger share-ledger">/)
   assert.match(card[0], /class="operator-card agent-ledger-card"/)
   assert.match(card[0], /class="ledger-card-head"/)
+  assert.match(card[0], /'status-' \+ shareStatusClass\(entry\)/)
+  assert.match(card[0], /shareStatusLabel\(entry\)/)
   assert.match(card[0], /class="ledger-combat"/)
   assert.match(card[0], /class="ledger-growth share-ledger-growth"/)
   assert.match(sharePage, /v-model="searchQuery"/)
@@ -172,10 +241,19 @@ test('分享页概览完整复刻 ledger 只读区块并提供键盘可访问的
   assert.match(sharePage, /filterOperatorShareEntries\(entries\.value, searchQuery\.value, profFilter\.value, subProfFilter\.value\)/)
   assert.match(sharePage, /AGENT_PROFS/)
   assert.match(sharePage, /deriveSubProfOptions\(entries\.value\)/)
-  assert.match(sharePage, /\.operator-grid \{ display: grid; grid-template-columns: repeat\(5, minmax\(0, 1fr\)\); gap: 14px \}/)
+  assert.match(sharePage, /\.growth-summary \{ display: grid; grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/)
+  assert.match(sharePage, /\.oddity-list \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) \}/)
+  assert.match(sharePage, /\.loadout-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) \}/)
   assert.match(sharePage, /\.share-ledger \{[^\n]*background: linear-gradient\(145deg, var\(--tea\), var\(--tea-deep\)\)/)
-  assert.match(sharePage, /\.agent-ledger-card \{ --ledger-rarity-accent:/)
-  assert.match(sharePage, /@media \(max-width: 920px\) \{\s+\.operator-grid \{ grid-template-columns: 1fr \}/)
+  assert.match(sharePage, /<style scoped src="\.\.\/\.\.\/styles\/operator-ledger-shared\.css"><\/style>/)
+  assert.match(operatorPage, /<style scoped src="\.\.\/\.\.\/styles\/operator-ledger-shared\.css"><\/style>/)
+  assert.match(sharedLedgerStyles, /\.agent-ledger-grid \{[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/)
+  assert.match(sharedLedgerStyles, /\.agent-ledger-card \{[\s\S]*?--ledger-rarity-accent: #99b5cf/)
+  assert.match(sharedLedgerStyles, /@media \(max-width: 1080px\)[\s\S]*?\.agent-ledger-grid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/)
+  assert.match(sharedLedgerStyles, /@media \(max-width: 640px\)[\s\S]*?\.agent-ledger-grid \{ grid-template-columns: 1fr; gap: 12px; \}/)
+  assert.match(sharedLedgerStyles, /\.ledger-combat \{ display: grid; grid-template-columns: 1fr 1fr; gap: 7px; \}/)
+  assert.match(sharedLedgerStyles, /\.ledger-destiny-row em\.empty/)
+  assert.match(sharedLedgerStyles, /\.ledger-stones \{[\s\S]*?grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/)
 
   assert.match(sharePage, /role="dialog"/)
   assert.match(sharePage, /@click\.self="closeDetail"/)
