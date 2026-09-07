@@ -26,8 +26,8 @@
             <div class="eyebrow"><span>01</span> YOUR GAME ARCHIVE</div>
             <h1>把你的游戏资料，<br /><em>整理成真正属于你的档案</em></h1>
             <p class="hero-lede">
-              密探、库存、星石与多个游戏账号分别维护。需要时生成神秘代码分享 BOX，
-              也可以把你指定的数据授权给 MaaYuan 等社区工具使用。
+              密探、库存、星石与多个游戏档案分别维护。需要时生成神秘代码把 BOX 分享给朋友，
+              也可以把 YuanHub 中你指定的数据开放给 MaaYuan 等社区工具使用。
             </p>
             <div class="hero-actions">
               <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
@@ -36,7 +36,7 @@
             <div class="hero-trust">
               <span><i>✓</i> 用户自行录入</span>
               <span><i>✓</i> 不默认公开</span>
-              <span><i>✓</i> 按账号与权限授权</span>
+              <span><i>✓</i> 按档案与权限开放</span>
             </div>
           </div>
 
@@ -57,7 +57,7 @@
                 </div>
                 <div class="demo-workspace">
                   <div class="demo-account">
-                    <div><small>当前游戏账号</small><strong>主账号 · 如鸢</strong></div>
+                    <div><small>当前游戏档案</small><strong>主档案 · 如鸢</strong></div>
                     <span class="account-switch">切换⌄</span>
                   </div>
                   <div class="operator-toolbar">
@@ -65,21 +65,22 @@
                     <button class="share-trigger" type="button" tabindex="-1">分享当前 BOX</button>
                   </div>
                   <div class="operator-grid">
-                    <article class="operator-card card-a">
-                      <div class="portrait portrait-a">孙</div>
-                      <div class="operator-copy"><strong>孙尚香</strong><span>★★★★★ · 修为 18</span></div>
-                      <div class="level-line"><b>Lv.<span class="level-number">80</span></b><em>已满级</em></div>
-                      <div class="awakening-chip">✦ 已觉醒</div>
-                    </article>
-                    <article class="operator-card card-b">
-                      <div class="portrait portrait-b">傅</div>
-                      <div class="operator-copy"><strong>傅融</strong><span>★★★★ · 修为 16</span></div>
-                      <div class="level-line"><b>Lv.70</b><em>养成中</em></div>
-                    </article>
-                    <article class="operator-card card-c">
-                      <div class="portrait portrait-c">杨</div>
-                      <div class="operator-copy"><strong>杨修</strong><span>★★★★★ · 修为 18</span></div>
-                      <div class="level-line"><b>Lv.80</b><em>已毕业</em></div>
+                    <article
+                      v-for="(agent, index) in heroAgents"
+                      :key="agent.id"
+                      class="operator-card"
+                      :class="`card-${String.fromCharCode(97 + index)}`"
+                    >
+                      <img class="portrait" :src="agent.avatar" :alt="`${agent.name} 头像`" />
+                      <div class="operator-copy">
+                        <strong>{{ agent.name }}</strong>
+                        <span>化极 {{ huajiLabel(growthFor(agent).starLevel) }} · 修为 {{ growthFor(agent).elite }} · {{ agent.prof }} · {{ agent.subProf }}</span>
+                      </div>
+                      <div class="level-line">
+                        <b>Lv.<span class="level-number">{{ growthFor(agent).level }}</span></b>
+                        <em>{{ levelComplete(growthFor(agent).level) ? '已满级' : growthStateLabel(growthFor(agent).growthState) }}</em>
+                      </div>
+                      <div v-if="awakened(growthFor(agent).starLevel)" class="awakening-chip">✦ 已觉醒</div>
                     </article>
                   </div>
 
@@ -94,7 +95,11 @@
                     <span class="overlay-kicker">公开查看 · 无需登录</span>
                     <b>密探 BOX</b>
                     <small>神秘代码 YH-A7K9Q2</small>
-                    <div class="overlay-cards"><i>孙</i><i>傅</i><i>杨</i><i>陈</i></div>
+                    <div class="overlay-cards">
+                      <i v-for="agent in sharedAgents.slice(0, 4)" :key="`overlay-${agent.id}`">
+                        <img :src="agent.avatar" :alt="`${agent.name} 头像`" />
+                      </i>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -139,12 +144,24 @@
 
               <div class="feature-demo-panel">
                 <div v-if="activeFeature === 'operator'" class="feature-visual operator-visual">
-                  <div class="visual-top"><b>密探养成</b><span>主账号 · 如鸢</span></div>
+                  <div class="visual-top"><b>密探养成</b><span>主档案 · 如鸢</span></div>
                   <div class="mini-card-grid">
-                    <div class="mini-op-card owned"><i>香</i><b>孙尚香</b><span>★★★★★</span><em>已满级 · 已觉醒</em></div>
-                    <div class="mini-op-card"><i>融</i><b>傅融</b><span>★★★★</span><em>养成中</em></div>
-                    <div class="mini-op-card"><i>修</i><b>杨修</b><span>★★★★★</span><em>已毕业</em></div>
-                    <div class="mini-op-card muted"><i>？</i><b>未拥有</b><span>—</span><em>等待建档</em></div>
+                    <div
+                      v-for="(agent, index) in sharedAgents.slice(0, 4)"
+                      :key="`mini-${agent.id}`"
+                      class="mini-op-card"
+                      :class="{ owned: index === 0 }"
+                    >
+                      <i><img :src="agent.avatar" :alt="`${agent.name} 头像`" /></i>
+                      <b>{{ agent.name }}</b>
+                      <span>{{ huajiLabel(growthFor(agent).starLevel) }}</span>
+                      <em>
+                        Lv.{{ growthFor(agent).level }} · 修为 {{ growthFor(agent).elite }}
+                        <template v-if="levelComplete(growthFor(agent).level)"> · 已满级</template>
+                        <template v-if="eliteComplete(growthFor(agent).level, growthFor(agent).elite)"> · 修为已满</template>
+                        <template v-if="awakened(growthFor(agent).starLevel)"> · 已觉醒</template>
+                      </em>
+                    </div>
                   </div>
                   <div class="visual-status"><span></span> 养成状态与卡片信息会跟随你的记录更新</div>
                 </div>
@@ -187,9 +204,9 @@
       <section id="share" class="section share-section">
         <div class="wrap share-layout">
           <div class="share-copy section-copy">
-            <div class="eyebrow"><span>03</span> SHARE WITHOUT LOGIN</div>
-            <h2>不上号，<br /><em>也能把 BOX 给别人看</em></h2>
-            <p>为当前游戏账号生成一个神秘代码。朋友、攻略作者或代打拿到代码后，无需登录即可查看你公开的客观养成信息。</p>
+            <div class="eyebrow"><span>03</span> SHARE WITH FRIENDS</div>
+            <h2>无需登录，<br /><em>也能把 BOX 分享给朋友</em></h2>
+            <p>为当前游戏档案生成一个神秘代码。朋友、攻略作者或社区伙伴拿到代码后，无需登录即可查看你主动公开的客观养成信息。</p>
             <div class="privacy-note"><span>🔒</span><div><b>不会一起分享</b><small>备注、特别关注、养成目标、登录信息与其他私有内容。</small></div></div>
           </div>
 
@@ -197,7 +214,7 @@
             <div class="share-phone owner-panel">
               <span class="panel-label">我的 YuanHub</span>
               <b>分享当前密探 BOX</b>
-              <small>主账号 · 如鸢</small>
+              <small>主档案 · 如鸢</small>
               <div class="mystery-code"><span>神秘代码</span><strong>7K4P-M9X2</strong></div>
               <button type="button" tabindex="-1">复制代码</button>
             </div>
@@ -206,7 +223,11 @@
               <span class="panel-label">对方打开 YuanHub</span>
               <b>输入神秘代码</b>
               <div class="fake-input"><span>7K4P-M9X2</span><em>查看</em></div>
-              <div class="visitor-box"><i>孙</i><i>傅</i><i>杨</i><i>陈</i><i>王</i><i>贾</i></div>
+              <div class="visitor-box">
+                <i v-for="agent in sharedAgents" :key="`visitor-${agent.id}`">
+                  <img :src="agent.avatar" :alt="`${agent.name} 头像`" />
+                </i>
+              </div>
               <small>无需登录 · 只读查看</small>
             </div>
           </div>
@@ -218,12 +239,12 @@
           <div class="section-heading centered-heading">
             <div class="eyebrow"><span>04</span> YOU DECIDE THE FLOW</div>
             <h2>你的数据什么时候流动，<em>由你决定</em></h2>
-            <p>YuanHub 不直接读取官方游戏账号。第三方工具只能使用你创建的连接，并且只能访问绑定账号与获授权范围内的数据。</p>
+            <p>YuanHub 展示和流转的是你在 YuanHub 中维护的档案数据。社区工具只能使用你主动创建的连接，并且只能使用指定档案与明确开放范围内的数据。</p>
           </div>
 
           <div class="permission-demo">
             <div class="permission-card">
-              <div class="permission-head"><img src="/icons/maa.png" alt="MaaYuan 图标" /><div><small>连接应用</small><b>MaaYuan</b></div><span>主账号 · 如鸢</span></div>
+              <div class="permission-head"><img src="/icons/maa.png" alt="MaaYuan 图标" /><div><small>连接应用</small><b>MaaYuan</b></div><span>主档案 · 如鸢</span></div>
               <div class="permission-list">
                 <label v-for="scope in scopes" :key="scope.id" :class="{ disabled: !scope.enabled }">
                   <span><b>{{ scope.name }}</b><small>{{ scope.detail }}</small></span>
@@ -321,9 +342,80 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { AGENT_CATALOG } from '../../src/data/inventory/catalog.js'
+import { OPERATOR_STAR_LEVEL_AWAKEN, starCardNumber, starCardNode, starCardFallback } from '../../src/utils/operatorStarDisplay.js'
+
+// 密探静态信息取自主站真实目录；头像复制自后端 BackEndV3-Share/data/avatar，
+// 放入 promo-site/public，保证宣传页作为独立静态站部署时仍可直接访问。
+const promoAgentIds = [
+  'char_001_yangxiu',
+  'char_002_jiaxu',
+  'char_003_sunshangxiang',
+  'char_004_guojia',
+  'char_005_lusu',
+  'char_007_lvmeng'
+]
+const promoAgents = promoAgentIds.map((id) => {
+  const source = AGENT_CATALOG.find((entry) => entry.id === id)
+  return source ? { ...source, avatar: `/operator-avatars/${id}.webp` } : null
+}).filter(Boolean)
+const heroAgents = promoAgents.slice(0, 3)
+const sharedAgents = promoAgents.slice(0, 6)
+
+// 演示养成数据遵守前后端共同约束：
+// level 0..100；elite 0..17 且 elite <= min(17, floor(level / 5) - 3)；
+// 普通密探 starLevel 0..31，31 才是觉醒，25..30 为五星各节点。
+const demoGrowthById = {
+  char_001_yangxiu: { level: 100, elite: 17, starLevel: 31, growthState: 'graduated' },
+  char_002_jiaxu: { level: 90, elite: 15, starLevel: 29, growthState: 'active' },
+  char_003_sunshangxiang: { level: 80, elite: 13, starLevel: 30, growthState: 'skip' },
+  char_004_guojia: { level: 70, elite: 11, starLevel: 24, growthState: 'active' },
+  char_005_lusu: { level: 60, elite: 9, starLevel: 18, growthState: 'active' },
+  char_007_lvmeng: { level: 50, elite: 7, starLevel: 12, growthState: 'active' }
+}
+
+function maxEliteForLevel(level) {
+  const normalized = Math.min(100, Math.max(0, Math.trunc(Number(level) || 0)))
+  return Math.min(17, Math.max(0, Math.floor(normalized / 5) - 3))
+}
+
+function growthFor(agent) {
+  return demoGrowthById[agent && agent.id] || { level: 0, elite: 0, starLevel: 0, growthState: 'active' }
+}
+
+function growthStateLabel(state) {
+  return state === 'graduated' ? '已毕业' : state === 'skip' ? '养老中' : '养成中'
+}
+
+function huajiLabel(starLevel) {
+  const value = Math.max(0, Math.trunc(Number(starLevel) || 0))
+  if (value === OPERATOR_STAR_LEVEL_AWAKEN) return starCardFallback(value)
+  if (value <= 0) return starCardFallback(value)
+  return `${starCardNumber(value)} ⭐ · ${starCardNode(value)} 节点`
+}
+
+function levelComplete(level) {
+  return Number(level) >= 100
+}
+
+function eliteComplete(level, elite) {
+  const max = maxEliteForLevel(level)
+  return max > 0 && Number(elite) >= max
+}
+
+function awakened(starLevel) {
+  return Number(starLevel) === OPERATOR_STAR_LEVEL_AWAKEN
+}
+
+Object.entries(demoGrowthById).forEach(([id, growth]) => {
+  const valid = growth.level >= 0 && growth.level <= 100 &&
+    growth.elite >= 0 && growth.elite <= maxEliteForLevel(growth.level) &&
+    growth.starLevel >= 0 && growth.starLevel <= OPERATOR_STAR_LEVEL_AWAKEN
+  if (!valid) throw new Error(`Invalid promo operator growth demo: ${id}`)
+})
 
 const features = [
-  { id: 'operator', index: '01', name: '密探 BOX', short: '养成档案', kicker: 'OPERATOR ARCHIVE', title: '把密探养成变成一份随时可看的档案', description: '多个游戏账号分别维护密探状态，记录星级、等级、修为、命盘、星石与养成状态。', points: ['当前养成与图鉴分开管理', '支持快捷导入与档案交换', '可生成神秘代码对外只读分享'] },
+  { id: 'operator', index: '01', name: '密探 BOX', short: '养成档案', kicker: 'OPERATOR ARCHIVE', title: '把密探养成变成一份随时可看的档案', description: '多个游戏账号分别维护密探状态，记录等级、修为、化极、命盘、星石与养成状态。', points: ['当前养成与图鉴分开管理', '支持快捷导入与档案交换', '可生成神秘代码对外只读分享'] },
   { id: 'inventory', index: '02', name: '库存', short: '清点与溯源', kicker: 'INVENTORY LEDGER', title: '不只记“现在有多少”，也看资源怎么变化', description: '库存页面用于清点当前背包、归档获得记录，并按周期查看资源变化。', points: ['多个子账号分别清点', '按周 / 月查看获得量', '支持完整交换档案'] },
   { id: 'star', index: '03', name: '星石', short: '识别与计划', kicker: 'STAR INVENTORY', title: '从截图识别开始，把星石真正整理起来', description: '导入游戏截图后进行 OCR 与人工核对，再管理当前背包、养成计划与经验星曜。', points: ['本地截图导入与 OCR', '人工核对识别结果', '登录后同步当前账号数据'] },
   { id: 'connection', index: '04', name: '工具连接', short: '授权与复用', kicker: 'APP CONNECTION', title: '已经录入的数据，不必在每个工具里重新填一遍', description: '在个人中心为 MaaYuan 或其他第三方项目创建连接，绑定具体子账号并授予明确权限。', points: ['连接绑定具体游戏账号', '权限 scope 可控', '连接可随时停止'] }
@@ -446,14 +538,14 @@ em { color: var(--accent); font-style: normal; }
 .operator-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 16px; }
 .operator-card { position: relative; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--cream); opacity: 0; transform: translateY(12px); animation: cardEnter 10s infinite; }
 .card-b { animation-delay: .35s; }.card-c { animation-delay: .7s; }
-.portrait { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; color: var(--cream); background: var(--tea); font: 900 18px var(--font-s); }.portrait-b { background: var(--blue); }.portrait-c { background: var(--rouge); }
+.portrait { display: block; width: 42px; height: 56px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); object-fit: cover; object-position: center top; }
 .operator-copy { display: grid; gap: 4px; margin-top: 10px; }.operator-copy strong { font: 900 13px var(--font-s); }.operator-copy span { color: var(--muted); font-size: 9px; }
 .level-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; }.level-line b { font: 900 12px var(--font-d); }.level-line em { padding: 3px 5px; border-radius: 999px; color: var(--accent-strong); background: rgba(239,210,142,.45); font-size: 8px; font-style: normal; }
 .level-number { animation: levelFlash 10s infinite; }
 .awakening-chip { margin-top: 7px; color: var(--accent-strong); font-size: 9px; font-weight: 800; opacity: 0; animation: awaken 10s infinite; }
 .share-popover { position: absolute; z-index: 4; right: 22px; top: 102px; width: 205px; padding: 14px; border: 1px solid var(--accent); border-radius: 13px; background: var(--surface); box-shadow: 0 20px 35px -25px rgba(73,59,44,.7); opacity: 0; transform: translateY(-8px) scale(.96); animation: sharePopover 10s infinite; }
 .share-popover > span, .share-popover > small { display: block; }.popover-kicker { color: var(--accent-strong); font-size: 9px; font-weight: 900; letter-spacing: .12em; }.share-popover strong { display: block; margin-top: 5px; font: 900 19px var(--font-d); letter-spacing: .08em; }.share-popover small { margin-top: 5px; color: var(--muted); font-size: 9px; }.share-popover div { display: flex; gap: 6px; margin-top: 11px; }.share-popover div span { padding: 6px 8px; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 8px; }
-.share-view-overlay { position: absolute; z-index: 6; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; background: rgba(255,253,246,.98); opacity: 0; transform: translateX(45px); animation: shareView 10s infinite; }.overlay-kicker { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-view-overlay b { margin-top: 8px; font: 900 28px var(--font-s); }.share-view-overlay small { margin-top: 5px; color: var(--muted); font-size: 10px; }.overlay-cards { display: flex; gap: 8px; margin-top: 22px; }.overlay-cards i { display: grid; width: 45px; height: 58px; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); font: 900 16px var(--font-s); font-style: normal; opacity: 0; transform: translateY(12px) rotate(3deg); animation: overlayCard 10s infinite; }.overlay-cards i:nth-child(2){animation-delay:.18s}.overlay-cards i:nth-child(3){animation-delay:.36s}.overlay-cards i:nth-child(4){animation-delay:.54s}
+.share-view-overlay { position: absolute; z-index: 6; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; background: rgba(255,253,246,.98); opacity: 0; transform: translateX(45px); animation: shareView 10s infinite; }.overlay-kicker { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-view-overlay b { margin-top: 8px; font: 900 28px var(--font-s); }.share-view-overlay small { margin-top: 5px; color: var(--muted); font-size: 10px; }.overlay-cards { display: flex; gap: 8px; margin-top: 22px; }.overlay-cards i { display: grid; width: 45px; height: 58px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); font-style: normal; opacity: 0; transform: translateY(12px) rotate(3deg); animation: overlayCard 10s infinite; }.overlay-cards i img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }.overlay-cards i:nth-child(2){animation-delay:.18s}.overlay-cards i:nth-child(3){animation-delay:.36s}.overlay-cards i:nth-child(4){animation-delay:.54s}
 .media-placeholder { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px dashed var(--line); color: var(--muted); background: rgba(255,253,246,.35); }.compact-placeholder { margin-top: 10px; padding: 9px 12px; border-radius: 9px; }.media-placeholder span { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .1em; }.media-placeholder small { font-size: 9px; }
 .section { padding: 108px 0; border-top: 1px solid var(--soft-line); }
 .section-heading h2, .section-copy h2 { font-size: clamp(38px,4vw,58px); line-height: 1.18; }
@@ -462,12 +554,12 @@ em { color: var(--accent); font-style: normal; }
 .feature-tabs { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--line); }.feature-tabs button { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; row-gap: 3px; min-height: 86px; padding: 17px 18px; border: 0; border-right: 1px solid var(--soft-line); color: var(--muted); background: transparent; text-align: left; cursor: pointer; }.feature-tabs button:last-child { border-right: 0; }.feature-tabs button.active { color: var(--ink); background: var(--surface); box-shadow: inset 0 -3px var(--accent); }.feature-tabs button > span { grid-row: 1 / span 2; color: var(--accent-strong); font: 800 10px var(--font-d); }.feature-tabs b { font: 900 15px var(--font-s); }.feature-tabs small { font-size: 10px; }
 .feature-stage { display: grid; grid-template-columns: minmax(280px,.75fr) minmax(0,1.25fr); min-height: 430px; }.feature-copy-panel { padding: 46px 38px; border-right: 1px solid var(--line); }.feature-kicker { color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .14em; }.feature-copy-panel h3 { margin-top: 15px; color: var(--tea); font: 900 28px/1.35 var(--font-s); }.feature-copy-panel p { margin-top: 17px; color: var(--muted); font-size: 13px; line-height: 1.85; }.feature-copy-panel ul { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }.feature-copy-panel li { position: relative; padding-left: 18px; font-size: 12px; }.feature-copy-panel li::before { position: absolute; left: 0; color: var(--accent); content: '✦'; }
 .feature-demo-panel { position: relative; min-width: 0; padding: 34px; background: linear-gradient(135deg,rgba(239,210,142,.18),rgba(255,253,246,.58)); }.feature-visual { height: 100%; min-height: 360px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 26px 45px -38px rgba(73,59,44,.7); }.visual-top { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px dashed var(--line); }.visual-top b { font: 900 18px var(--font-s); }.visual-top span { color: var(--muted); font-size: 10px; }.stage-placeholder-tag { position: absolute; right: 45px; bottom: 45px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--cream); font: 800 8px var(--font-d); letter-spacing: .08em; }
-.mini-card-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 18px; }.mini-op-card { display: grid; grid-template-columns: 38px 1fr auto; gap: 4px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }.mini-op-card i { grid-row: 1 / span 3; display: grid; width: 38px; height: 44px; place-items: center; border-radius: 9px; color: var(--cream); background: var(--tea); font: 900 15px var(--font-s); font-style: normal; }.mini-op-card b { font: 900 12px var(--font-s); }.mini-op-card span { color: var(--accent-strong); font-size: 9px; }.mini-op-card em { grid-column: 2 / span 2; color: var(--muted); font-size: 9px; font-style: normal; }.mini-op-card.muted { opacity: .46; }.visual-status { margin-top: 17px; color: var(--muted); font-size: 10px; }.visual-status span { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.5s infinite; }
+.mini-card-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 18px; }.mini-op-card { display: grid; grid-template-columns: 44px 1fr auto; gap: 4px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }.mini-op-card i { grid-row: 1 / span 3; display: block; width: 44px; height: 58px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); font-style: normal; }.mini-op-card i img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }.mini-op-card b { font: 900 12px var(--font-s); }.mini-op-card span { color: var(--accent-strong); font-size: 9px; }.mini-op-card em { grid-column: 2 / span 2; color: var(--muted); font-size: 9px; line-height: 1.45; font-style: normal; }.visual-status { margin-top: 17px; color: var(--muted); font-size: 10px; }.visual-status span { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.5s infinite; }
 .inventory-total { position: relative; margin-top: 24px; padding: 20px; border-radius: 14px; background: var(--cream); }.inventory-total small { display: block; color: var(--muted); }.inventory-total strong { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 900 34px var(--font-d); }.inventory-total strong span { text-decoration: line-through; opacity: .32; }.inventory-total strong i { color: var(--rouge); font: 800 12px var(--font-d); font-style: normal; animation: stockPlus 4s infinite; }.inventory-total em { display: block; margin-top: 4px; color: var(--accent-strong); font: 900 42px var(--font-d); font-style: normal; animation: stockTotal 4s infinite; }.bar-chart { height: 90px; display: flex; align-items: end; gap: 8px; margin-top: 20px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); }.bar-chart i { flex: 1; border-radius: 5px 5px 0 0; background: var(--yellow-deep); transform-origin: bottom; animation: barGrow 2.8s ease-in-out infinite alternate; }.inventory-row { display: grid; grid-template-columns: 1fr auto; gap: 3px; margin-top: 13px; font-size: 10px; }.inventory-row b { color: var(--accent-strong); }.inventory-row small { grid-column: 1 / -1; color: var(--muted); }
 .ocr-layout { display: grid; grid-template-columns: 1fr 34px 1fr; align-items: center; gap: 12px; margin-top: 22px; }.fake-shot { position: relative; overflow: hidden; height: 220px; border-radius: 14px; background: linear-gradient(145deg,#504333,#80664a); }.fake-shot i { position: absolute; left: 13%; width: 74%; height: 42px; border: 1px solid rgba(239,210,142,.7); border-radius: 8px; }.fake-shot i:nth-of-type(1){top:18%}.fake-shot i:nth-of-type(2){top:43%}.fake-shot i:nth-of-type(3){top:68%}.fake-shot small { position: absolute; right: 10px; bottom: 8px; color: rgba(255,255,255,.65); font-size: 8px; }.scan-line { position: absolute; z-index: 3; top: 0; left: 0; width: 100%; height: 2px; background: var(--yellow); box-shadow: 0 0 15px var(--yellow); animation: scan 3.2s infinite; }.ocr-arrow { color: var(--accent); font: 900 22px var(--font-d); text-align: center; }.star-result { display: grid; gap: 9px; }.star-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--cream); opacity: 0; transform: translateX(10px); animation: resultIn 3.2s infinite; }.star-result article:nth-child(2){animation-delay:.25s}.star-result article:nth-child(3){animation-delay:.5s}.star-result article > i { color: var(--accent); font-style: normal; }.star-result b,.star-result span { display: block; }.star-result b { font: 900 12px var(--font-s); }.star-result span { margin-top: 3px; color: var(--muted); font-size: 8px; }
 .connection-card { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 13px; margin-top: 25px; padding: 16px; border: 1px solid var(--line); border-radius: 13px; background: var(--cream); }.connection-card img { width: 48px; height: 48px; object-fit: contain; border-radius: 10px; }.connection-card b,.connection-card span { display: block; }.connection-card b { font: 900 14px var(--font-s); }.connection-card span { margin-top: 4px; color: var(--muted); font-size: 9px; }.connection-card em { padding: 5px 7px; border-radius: 999px; color: #5c755b; background: rgba(142,170,140,.18); font-size: 8px; font-style: normal; font-weight: 800; }.scope-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }.scope-pills span { padding: 7px 9px; border-radius: 999px; color: var(--accent-strong); background: rgba(239,210,142,.35); font-size: 9px; font-weight: 800; }.token-line { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 20px; padding: 15px; border: 1px dashed var(--line); border-radius: 12px; }.token-line small { grid-column: 1 / -1; color: var(--muted); font-size: 8px; }.token-line code { font-size: 11px; }.token-line button { border: 0; border-radius: 999px; padding: 5px 9px; color: var(--cream); background: var(--tea); font-size: 8px; }
 .share-section { background: rgba(255,253,246,.36); }.share-layout { display: grid; grid-template-columns: minmax(0,.72fr) minmax(540px,1.28fr); align-items: center; gap: 80px; }.section-copy > p { margin-top: 22px; }.privacy-note { display: flex; gap: 13px; margin-top: 28px; padding: 15px 17px; border-left: 3px solid var(--yellow-deep); background: rgba(255,253,246,.55); }.privacy-note span { font-size: 20px; }.privacy-note b,.privacy-note small { display: block; }.privacy-note b { font-size: 12px; }.privacy-note small { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.6; }
-.share-animation-stage { position: relative; min-height: 440px; display: grid; grid-template-columns: 1fr 110px 1fr; align-items: center; }.share-phone { position: relative; z-index: 2; min-height: 310px; padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 30px 52px -42px rgba(73,59,44,.7); }.panel-label { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-phone > b { display: block; margin-top: 13px; font: 900 20px var(--font-s); }.share-phone > small { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; }.mystery-code { margin-top: 38px; padding: 17px; border-radius: 13px; background: var(--cream); text-align: center; }.mystery-code span,.mystery-code strong { display: block; }.mystery-code span { color: var(--muted); font-size: 9px; }.mystery-code strong { margin-top: 7px; font: 900 21px var(--font-d); letter-spacing: .1em; }.owner-panel button { display: block; width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 10px; font-weight: 800; }.fake-input { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding: 10px 10px 10px 13px; border: 1px solid var(--line); border-radius: 10px; font: 800 10px var(--font-d); }.fake-input em { padding: 5px 8px; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 8px; font-style: normal; }.visitor-box { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-top: 18px; }.visitor-box i { display: grid; height: 46px; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); font: 900 13px var(--font-s); font-style: normal; opacity: 0; transform: translateY(10px); animation: visitorCard 5.2s infinite; }.visitor-box i:nth-child(2){animation-delay:.1s}.visitor-box i:nth-child(3){animation-delay:.2s}.visitor-box i:nth-child(4){animation-delay:.3s}.visitor-box i:nth-child(5){animation-delay:.4s}.visitor-box i:nth-child(6){animation-delay:.5s}.code-flight { position: relative; z-index: 4; display: flex; align-items: center; justify-content: center; }.code-flight span { position: absolute; z-index: 3; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 8px; background: var(--cream); font: 900 8px var(--font-d); letter-spacing: .08em; animation: codeFly 5.2s infinite; }.code-flight i { width: 100%; border-top: 1px dashed var(--accent); }
+.share-animation-stage { position: relative; min-height: 440px; display: grid; grid-template-columns: 1fr 110px 1fr; align-items: center; }.share-phone { position: relative; z-index: 2; min-height: 310px; padding: 24px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 30px 52px -42px rgba(73,59,44,.7); }.panel-label { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-phone > b { display: block; margin-top: 13px; font: 900 20px var(--font-s); }.share-phone > small { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; }.mystery-code { margin-top: 38px; padding: 17px; border-radius: 13px; background: var(--cream); text-align: center; }.mystery-code span,.mystery-code strong { display: block; }.mystery-code span { color: var(--muted); font-size: 9px; }.mystery-code strong { margin-top: 7px; font: 900 21px var(--font-d); letter-spacing: .1em; }.owner-panel button { display: block; width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 10px; font-weight: 800; }.fake-input { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 28px; padding: 10px 10px 10px 13px; border: 1px solid var(--line); border-radius: 10px; font: 800 10px var(--font-d); }.fake-input em { padding: 5px 8px; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 8px; font-style: normal; }.visitor-box { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-top: 18px; }.visitor-box i { display: grid; height: 46px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); font-style: normal; opacity: 0; transform: translateY(10px); animation: visitorCard 5.2s infinite; }.visitor-box i img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }.visitor-box i:nth-child(2){animation-delay:.1s}.visitor-box i:nth-child(3){animation-delay:.2s}.visitor-box i:nth-child(4){animation-delay:.3s}.visitor-box i:nth-child(5){animation-delay:.4s}.visitor-box i:nth-child(6){animation-delay:.5s}.code-flight { position: relative; z-index: 4; display: flex; align-items: center; justify-content: center; }.code-flight span { position: absolute; z-index: 3; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 8px; background: var(--cream); font: 900 8px var(--font-d); letter-spacing: .08em; animation: codeFly 5.2s infinite; }.code-flight i { width: 100%; border-top: 1px dashed var(--accent); }
 .permission-demo { display: grid; grid-template-columns: minmax(330px,1fr) 120px minmax(260px,.78fr); align-items: center; max-width: 1020px; margin: 50px auto 0; }.permission-card,.permission-result { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 28px 50px -42px rgba(73,59,44,.7); }.permission-card { padding: 22px; }.permission-head { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px dashed var(--line); }.permission-head img { width: 42px; height: 42px; object-fit: contain; }.permission-head small,.permission-head b { display: block; }.permission-head small { color: var(--muted); font-size: 8px; }.permission-head b { margin-top: 3px; font: 900 14px var(--font-s); }.permission-head > span { color: var(--muted); font-size: 9px; }.permission-list { display: grid; margin-top: 8px; }.permission-list label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 62px; border-bottom: 1px solid var(--soft-line); }.permission-list label:last-child { border-bottom: 0; }.permission-list label.disabled { opacity: .52; }.permission-list b,.permission-list small { display: block; }.permission-list b { font-size: 11px; }.permission-list small { margin-top: 4px; color: var(--muted); font-size: 8px; }.permission-list button { position: relative; width: 37px; height: 21px; border: 0; border-radius: 999px; background: var(--accent); cursor: pointer; transition: background .2s ease; }.permission-list button i { position: absolute; top: 3px; right: 3px; width: 15px; height: 15px; border-radius: 50%; background: white; transition: transform .2s ease; }.permission-list label.disabled button { background: var(--line); }.permission-list label.disabled button i { transform: translateX(-16px); }.permission-lines { display: grid; gap: 20px; padding: 0 8px; }.permission-lines span { position: relative; display: flex; align-items: center; gap: 5px; color: var(--accent-strong); font-size: 8px; }.permission-lines i { flex: 1; border-top: 1px solid var(--accent); transition: opacity .2s ease; }.permission-lines em { font-style: normal; }.permission-lines span.off { color: var(--muted); }.permission-lines span.off i { border-top-style: dashed; opacity: .25; }.permission-result { display: grid; gap: 9px; padding: 22px; }.permission-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; background: var(--cream); }.permission-result article.off { opacity: .38; }.permission-result article > i { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #5c755b; background: rgba(142,170,140,.18); font-style: normal; font-weight: 900; }.permission-result b,.permission-result small { display: block; }.permission-result b { font-size: 10px; }.permission-result small { margin-top: 2px; color: var(--muted); font-size: 8px; }.privacy-principles { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 54px; }.privacy-principles article { padding: 24px; border-top: 2px solid var(--yellow-deep); background: rgba(255,253,246,.45); }.privacy-principles span { color: var(--accent-strong); font: 800 9px var(--font-d); }.privacy-principles b { display: block; margin-top: 12px; font: 900 16px var(--font-s); }.privacy-principles p { margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.7; }
 .ecosystem-flow { display: grid; grid-template-columns: 190px 90px 170px 90px 1fr; align-items: center; gap: 10px; margin-top: 52px; }.flow-source,.flow-hub { padding: 22px; border: 1px solid var(--line); background: var(--surface); text-align: center; }.flow-source { border-radius: 16px; }.flow-label { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .12em; }.flow-source b { display: block; margin-top: 9px; font: 900 16px var(--font-s); }.flow-source div { display: flex; justify-content: center; gap: 6px; margin-top: 15px; }.flow-source i { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--cream); font: 900 11px var(--font-s); font-style: normal; }.flow-hub { min-height: 170px; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; }.flow-hub > span { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 13px; color: var(--cream); background: var(--tea); font: 900 13px var(--font-d); }.flow-hub b { margin-top: 10px; font: 900 16px var(--font-s); }.flow-hub small { margin-top: 5px; color: var(--muted); font-size: 8px; }.flow-line { position: relative; height: 1px; border-top: 1px dashed var(--accent); }.data-packet { position: absolute; top: -14px; left: 0; padding: 5px 7px; border: 1px solid var(--accent); border-radius: 7px; background: var(--cream); font: 800 7px var(--font-d); white-space: nowrap; animation: packetMove 4s linear infinite; }.packet-two { animation-delay: 1.2s; }.partner-stack { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }.partner-card { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,246,.65); text-decoration: none; }.partner-card img { width: 42px; height: 42px; object-fit: contain; border-radius: 9px; }.partner-card b,.partner-card small { display: block; }.partner-card b { font: 900 11px var(--font-s); }.partner-card small { margin-top: 4px; color: var(--muted); font-size: 8px; }.partner-card > span { color: var(--accent-strong); font-size: 7px; font-weight: 800; }.ecosystem-disclaimer { max-width: 880px; margin: 28px auto 0; color: var(--muted); font-size: 9px; line-height: 1.75; text-align: center; }
 .roadmap-section { background: rgba(255,253,246,.34); }.roadmap-layout { display: grid; grid-template-columns: .62fr 1.38fr; align-items: start; gap: 70px; }.roadmap-board { border-top: 1px solid var(--line); }.roadmap-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 18px; min-height: 112px; border-bottom: 1px solid var(--line); }.roadmap-row > span { color: var(--accent-strong); font: 900 10px var(--font-d); letter-spacing: .12em; }.roadmap-row b { font: 900 16px var(--font-s); }.roadmap-row p { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.6; }.roadmap-row em { padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 8px; font-style: normal; }.roadmap-row.current em { color: #5c755b; border-color: rgba(92,117,91,.25); }.roadmap-row.future { opacity: .72; }
