@@ -53,6 +53,11 @@ server {
         try_files $uri =404;
     }
 
+    # 宣传页演示用密探头像，源自 BackEndV3-Share/data/avatar 的选定副本。
+    location /operator-avatars/ {
+        try_files $uri =404;
+    }
+
     location / {
         return 404;
     }
