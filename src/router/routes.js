@@ -11,9 +11,9 @@
 
 export const routes = [
     {
-        // 作业广场暂时隐藏：/ 重定向到广陵账房；恢复时删除 redirect 并把 display 改回 true
+        // 作业广场暂时隐藏：/ 重定向到我的密探；恢复时删除 redirect 并把 display 改回 true
         path: '/',
-        redirect: '/cart',
+        redirect: '/operator',
         text: '作业广场',
         name: 'plaza',
         display: false,

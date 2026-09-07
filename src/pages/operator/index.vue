@@ -204,6 +204,11 @@
             <span class="sp"></span>
             <router-link
               class="act-btn ghost admin-link"
+              to="/operator/share"
+              >查看他人 BOX</router-link
+            >
+            <router-link
+              class="act-btn ghost admin-link"
               :to="quickHref"
               @click="showImport = false"
               >首次 / 快捷导入</router-link

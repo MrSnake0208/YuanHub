@@ -27,6 +27,7 @@
       <div class="share-actions">
         <button class="share-button" type="button" :disabled="loading || busy" @click="copy(share.share_code, '神秘代码')">复制代码</button>
         <button class="share-button" type="button" :disabled="loading || busy" @click="copy(shareLink, '分享链接')">复制链接</button>
+        <a class="share-button visit" :href="shareLink">访问我的分享</a>
         <button class="share-button subtle" type="button" :disabled="loading || busy" @click="regenerate">重新生成</button>
         <button class="share-button danger" type="button" :disabled="loading || busy" @click="revoke">撤销分享</button>
       </div>
@@ -186,6 +187,7 @@ onBeforeUnmount(function () { requestSeq += 1; loadSeq += 1 })
 .share-actions,.share-inactive { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px }
 .share-inactive { justify-content: space-between }
 .share-button { min-height: 40px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 15px; color: var(--cream); background: var(--tea); cursor: pointer; font: 700 12.5px var(--font-b) }
+.share-button.visit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; text-decoration: none; border-color: var(--accent); color: var(--accent-strong); background: transparent }
 .share-button.subtle { border-color: var(--line); color: var(--ink-60); background: transparent }
 .share-button.danger { border-color: rgba(166, 81, 74, .45); color: var(--rouge); background: transparent }
 .share-button:hover:not(:disabled),.share-button:focus-visible { border-color: var(--accent); outline: 2px solid transparent; box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }

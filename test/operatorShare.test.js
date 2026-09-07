@@ -30,6 +30,7 @@ const sharePage = read('src/pages/operator/share.vue')
 const operatorPage = read('src/pages/operator/index.vue')
 const sharedLedgerStyles = read('src/styles/operator-ledger-shared.css')
 const manager = read('src/components/operator/OperatorShareManager.vue')
+const sidebar = read('src/components/IslandSidebar.vue')
 
 test('神秘代码输入同时支持原始代码和完整链接', () => {
   const token = '550e8400-e29b-41d4-a716-446655440000'
@@ -275,6 +276,10 @@ test('当前子账号工作区提供分享管理，账号切换会使旧请求�
   assert.equal((manager.match(/const seq = requestSeq\s+const ok = await dialog\.confirm/g) || []).length, 2)
   assert.equal((manager.match(/ok && current\(accountId, seq\)/g) || []).length, 2)
   assert.match(manager, /window\.location\.origin \+ '\/operator\/share\/'/)
+  assert.match(manager, /<a class="share-button visit" :href="shareLink">访问我的分享<\/a>/)
+  assert.match(operatorPage, /to="\/operator\/share"/)
+  assert.match(operatorPage, /查看他人 BOX<\/router-link\s*>/)
+  assert.equal((sidebar.match(/!\$route\.path\.startsWith\('\/operator\/share'\)/g) || []).length, 2)
   assert.match(manager, /dialog\.confirm/)
   assert.match(manager, /createOperatorShare|regenerateOperatorShare|revokeOperatorShare/)
   const operationButtons = manager.split('\n').filter(function (line) {
