@@ -24,6 +24,7 @@ test('maps every management tool to its existing permission boundary', function 
     '/feedback/manage',
     '/feedback/admin',
     '/operator/admin',
+    '/level/admin',
     '/admin/roles',
     '/admin/audit'
   ])
