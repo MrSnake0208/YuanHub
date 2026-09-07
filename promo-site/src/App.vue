@@ -354,7 +354,7 @@
                   <h4>广陵账房</h4>
                   <p>面向礼包、资源价值与购买决策的社区计算工具。</p>
                 </div>
-                <strong>swerainy</strong>
+                <strong>binary</strong>
               </article>
             </div>
           </div>
@@ -442,7 +442,7 @@
             <p>已经上线的能力与未来构想分开呈现，让宣传页不再把“当前功能”和“概念设想”混在一起。</p>
           </div>
           <div class="roadmap-board">
-            <article class="roadmap-row current"><span>NOW</span><div><b>当前功能</b><p>密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算） · 应用连接</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>swerainy</b> 所有</small></div><em>已上线 / 项目已有</em></article>
+            <article class="roadmap-row current"><span>NOW</span><div><b>当前功能</b><p>密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算） · 应用连接</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>binary</b> 所有</small></div><em>已上线 / 项目已有</em></article>
             <article class="roadmap-row next"><span>NEXT</span><div><b>继续完善</b><p>养成规划与更多跨页面联动体验</p></div><em>持续迭代</em></article>
             <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺</b><p>发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>规划占位</em></article>
             <!-- PLACEHOLDER: 在此继续追加未来 Roadmap 项 -->
@@ -474,7 +474,7 @@
                 <h3>YuanHub 自创内容许可</h3>
                 <p>除另有声明以及第三方素材、程序源码之外，本站由 YuanHub 自行创作并有权许可的宣传文案、说明文字与原创视觉内容，采用 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.zh" target="_blank" rel="noreferrer">知识共享 署名-非商业性使用 4.0 国际许可协议（CC BY-NC 4.0）</a>进行许可。</p>
                 <p>转载或再传播上述可许可内容时，请注明来源为 YuanHub，并保留相应版权与许可说明以及指向原页面的链接；未经另行许可，不得将该部分内容或其衍生作品用于商业目的。</p>
-                <p>站内另行标注作者或权利归属的独立创作内容，不属于上述 YuanHub 自创内容许可范围。其中，星石识别与星石养成相关独立创作内容的著作权归作者 <b>Drifty Yan</b> 所有；广陵账房（礼包计算）相关独立创作内容的著作权归作者 <b>swerainy</b> 所有。</p>
+                <p>站内另行标注作者或权利归属的独立创作内容，不属于上述 YuanHub 自创内容许可范围。其中，星石识别与星石养成相关独立创作内容的著作权归作者 <b>Drifty Yan</b> 所有；广陵账房（礼包计算）相关独立创作内容的著作权归作者 <b>binary</b> 所有。</p>
               </div>
             </article>
 
@@ -547,12 +547,12 @@ import { OPERATOR_STAR_LEVEL_AWAKEN, starCardNumber, starCardNode, starCardFallb
 // 密探静态信息取自主站真实目录；头像复制自后端 BackEndV3-Share/data/avatar，
 // 放入 promo-site/public，保证宣传页作为独立静态站部署时仍可直接访问。
 const promoAgentIds = [
-  'char_001_yangxiu',
-  'char_002_jiaxu',
-  'char_003_sunshangxiang',
-  'char_004_guojia',
-  'char_005_lusu',
-  'char_007_lvmeng'
+  'char_104_zhugeliang',
+  'char_101_lvbu',
+  'char_099_pangxi',
+  'char_096_xiahouyuan',
+  'char_125_zhaoyun',
+  'char_113_luzhi'
 ]
 const promoAgents = promoAgentIds.map((id) => {
   const source = AGENT_CATALOG.find((entry) => entry.id === id)
@@ -565,12 +565,12 @@ const sharedAgents = promoAgents.slice(0, 6)
 // level 0..100；elite 0..17 且 elite <= min(17, floor(level / 5) - 3)；
 // 普通密探 starLevel 0..31，31 才是觉醒，25..30 为五星各节点。
 const demoGrowthById = {
-  char_001_yangxiu: { level: 100, elite: 17, starLevel: 31, growthState: 'graduated' },
-  char_002_jiaxu: { level: 90, elite: 15, starLevel: 29, growthState: 'active' },
-  char_003_sunshangxiang: { level: 80, elite: 13, starLevel: 30, growthState: 'skip' },
-  char_004_guojia: { level: 70, elite: 11, starLevel: 24, growthState: 'active' },
-  char_005_lusu: { level: 60, elite: 9, starLevel: 18, growthState: 'active' },
-  char_007_lvmeng: { level: 50, elite: 7, starLevel: 12, growthState: 'active' }
+  char_104_zhugeliang: { level: 100, elite: 17, starLevel: 31, growthState: 'graduated' },
+  char_101_lvbu: { level: 90, elite: 15, starLevel: 29, growthState: 'active' },
+  char_099_pangxi: { level: 80, elite: 13, starLevel: 30, growthState: 'skip' },
+  char_096_xiahouyuan: { level: 70, elite: 11, starLevel: 24, growthState: 'active' },
+  char_125_zhaoyun: { level: 60, elite: 9, starLevel: 18, growthState: 'active' },
+  char_113_luzhi: { level: 50, elite: 7, starLevel: 12, growthState: 'active' }
 }
 
 function maxEliteForLevel(level) {
