@@ -117,7 +117,7 @@
                   v-for="entry in filteredEntries"
                   :key="entry.id"
                   class="operator-card agent-ledger-card"
-                  :class="'rarity-r' + (entry.rarity || 3)"
+                  :class="['rarity-r' + (entry.rarity || 3), 'status-' + shareStatusClass(entry)]"
                   tabindex="0"
                   role="button"
                   :aria-label="'查看 ' + entry.name + ' 的详情'"
@@ -137,6 +137,7 @@
                           <img v-if="profIcon(entry.prof[0])" :src="profIcon(entry.prof[0])" alt="" aria-hidden="true" />
                           {{ entry.prof.length ? entry.prof.join('、') : '未知属性' }} · {{ subProfText(entry) }}
                         </span>
+                        <span class="ledger-status-button share-ledger-status" :class="'status-' + shareStatusClass(entry)">{{ shareStatusLabel(entry) }}</span>
                         <strong v-if="entry.rarity" class="rarity" :aria-label="entry.rarity + '星稀有度'">{{ '★'.repeat(entry.rarity) }}</strong>
                       </div>
                       <span class="ledger-prof">
@@ -158,7 +159,7 @@
                         </span>
                       </div>
                       <strong class="ledger-combat-value">{{ combatValue(entry, kind) }}</strong>
-                      <small class="ledger-combat-source">分享记录</small>
+                      <small class="ledger-combat-source">{{ combatSource(entry, kind) }}</small>
                       <div class="ledger-oddity" :aria-label="(kind === 'attack' ? '攻击' : '生命') + '奇闻数值'">
                         <ButterflyIcon class="ledger-oddity-icon" aria-hidden="true" />
                         <span>{{ oddityValue(entry, kind).current }} / {{ oddityValue(entry, kind).max }}</span>
@@ -169,15 +170,25 @@
                   <section class="ledger-growth share-ledger-growth" aria-label="核心养成">
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">等级</span>
-                      <span class="share-ledger-growth-value">Lv {{ number(entry.growth.level) }}</span>
+                      <span class="share-ledger-growth-value">{{ number(entry.growth.level) }}</span>
+                      <span v-if="operatorShareLevelComplete(entry.growth.level)" class="share-growth-complete">已满级</span>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">修为</span>
                       <span class="share-ledger-growth-value">{{ number(entry.growth.elite) }}</span>
+                      <span v-if="operatorShareEliteComplete(entry.growth.level, entry.growth.elite)" class="share-growth-complete">已满级</span>
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">化极</span>
-                      <span class="share-ledger-growth-value" :title="operatorShareStarLabel(entry.growth.star_level, entry.sp_of)">{{ operatorShareStarLabel(entry.growth.star_level, entry.sp_of) }}</span>
+                      <span class="share-ledger-growth-value ledger-huaji-value" :title="operatorShareStarLabel(entry.growth.star_level, entry.sp_of)">
+                        <template v-if="starCardHasIcon(entry.growth.star_level)">
+                          <span>{{ starCardNumber(entry.growth.star_level, entry.sp_of) }}</span>
+                          <Star :size="12" fill="currentColor" aria-hidden="true" />
+                          <span v-if="!entry.sp_of">· {{ starCardNode(entry.growth.star_level) }} 节点</span>
+                        </template>
+                        <template v-else>{{ starCardFallback(entry.growth.star_level) }}</template>
+                      </span>
+                      <span v-if="operatorShareStarCompleteLabel(entry.growth.star_level, entry.sp_of)" class="share-growth-complete is-awakened">{{ operatorShareStarCompleteLabel(entry.growth.star_level, entry.sp_of) }}</span>
                     </div>
                   </section>
 
@@ -185,8 +196,18 @@
                     <div v-for="(loadout, index) in loadouts(entry)" :key="index" class="ledger-destiny-row">
                       <span>命盘{{ index === 0 ? '一' : '二' }}</span>
                       <div class="ledger-destiny-values">
-                        <template v-if="loadoutDiscs(loadout).length">
-                          <em v-for="disc in loadoutDiscs(loadout)" :key="disc" class="disc-term">{{ disc }}</em>
+                        <template v-if="loadoutDiscEntries(entry, loadout).length">
+                          <em
+                            v-for="disc in loadoutDiscEntries(entry, loadout)"
+                            :key="disc.name"
+                            class="disc-term"
+                            :class="{ 'has-description': disc.description }"
+                            :tabindex="disc.description ? 0 : undefined"
+                            @mouseenter.stop="showDiscTooltip($event, disc.description)"
+                            @mouseleave="hideDiscTooltip"
+                            @focus="showDiscTooltip($event, disc.description)"
+                            @blur="hideDiscTooltip"
+                          >{{ disc.name }}</em>
                         </template>
                         <em v-else class="empty">+ 命盘</em>
                       </div>
@@ -236,9 +257,9 @@
 
                 <div class="share-detail-scroll">
                   <dl class="growth-summary share-detail-growth">
-                    <div><dt>等级</dt><dd>Lv {{ number(detailEntry.growth.level) }}</dd></div>
-                    <div><dt>修为</dt><dd>{{ number(detailEntry.growth.elite) }}</dd></div>
-                    <div><dt>化极</dt><dd>{{ operatorShareStarLabel(detailEntry.growth.star_level, detailEntry.sp_of) }}</dd></div>
+                    <div><dt>等级</dt><dd class="share-growth-display"><span>{{ number(detailEntry.growth.level) }}</span><span v-if="operatorShareLevelComplete(detailEntry.growth.level)" class="share-growth-complete">已满级</span></dd></div>
+                    <div><dt>修为</dt><dd class="share-growth-display"><span>{{ number(detailEntry.growth.elite) }}</span><span v-if="operatorShareEliteComplete(detailEntry.growth.level, detailEntry.growth.elite)" class="share-growth-complete">已满级</span></dd></div>
+                    <div><dt>化极</dt><dd class="share-growth-display"><span class="ledger-huaji-value"><template v-if="starCardHasIcon(detailEntry.growth.star_level)"><span>{{ starCardNumber(detailEntry.growth.star_level, detailEntry.sp_of) }}</span><Star :size="13" fill="currentColor" aria-hidden="true" /><span v-if="!detailEntry.sp_of">· {{ starCardNode(detailEntry.growth.star_level) }} 节点</span></template><template v-else>{{ starCardFallback(detailEntry.growth.star_level) }}</template></span><span v-if="operatorShareStarCompleteLabel(detailEntry.growth.star_level, detailEntry.sp_of)" class="share-growth-complete is-awakened">{{ operatorShareStarCompleteLabel(detailEntry.growth.star_level, detailEntry.sp_of) }}</span></dd></div>
                     <div><dt>攻击</dt><dd>{{ combatValue(detailEntry, 'attack') }}</dd></div>
                     <div><dt>生命</dt><dd>{{ combatValue(detailEntry, 'hp') }}</dd></div>
                   </dl>
@@ -275,6 +296,19 @@
               </section>
             </div>
           </Teleport>
+
+          <Teleport to="body">
+            <div
+              v-if="discTooltip.visible"
+              id="disc-floating-tooltip"
+              class="disc-floating-tooltip"
+              :class="'is-' + discTooltip.placement"
+              :style="{ left: discTooltip.x + 'px', top: discTooltip.y + 'px' }"
+              role="tooltip"
+            >
+              {{ discTooltip.text }}
+            </div>
+          </Teleport>
         </div>
       </section>
 
@@ -288,7 +322,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Heart, Swords } from '@lucide/vue'
+import { Heart, Star, Swords } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
@@ -298,9 +332,16 @@ import { avatarUrl } from '../../api/request.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { normalizeDiscNames } from '../../utils/operatorDiscLoadouts.js'
 import { subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
+import { starCardFallback, starCardHasIcon, starCardNode, starCardNumber } from '../../utils/operatorStarDisplay.js'
 import {
   filterOperatorShareEntries,
   mergeOperatorShareEntries,
+  operatorShareCombatSource,
+  operatorShareCombatValue,
+  operatorShareEliteComplete,
+  operatorShareGrowthState,
+  operatorShareLevelComplete,
+  operatorShareStarCompleteLabel,
   operatorShareStarLabel,
   parseOperatorShareToken
 } from '../../utils/operatorShare.js'
@@ -318,6 +359,7 @@ const profFilter = ref('all')
 const subProfFilter = ref('all')
 const detailEntry = ref(null)
 const detailCloseButton = ref(null)
+const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 const profOptions = AGENT_PROFS
 const PROF_ICON_FILES = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }
 const STONE_SLOT_TYPES = ['main1', 'main2', 'main3', 'assist1', 'assist2', 'assist3']
@@ -432,16 +474,27 @@ function subProfText(entry) {
   return values.length ? values.join('、') : '未标注职业'
 }
 
+function shareStatusClass(entry) {
+  const state = operatorShareGrowthState(entry)
+  return state === 'graduated' ? 'graduated' : state === 'skip' ? 'inactive' : 'growing'
+}
+
+function shareStatusLabel(entry) {
+  const state = operatorShareGrowthState(entry)
+  return state === 'graduated' ? '已毕业' : state === 'skip' ? '养老中' : '养成中'
+}
+
 function formattedNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? Math.round(parsed).toLocaleString('zh-CN') : '—'
 }
 
 function combatValue(entry, key) {
-  const stats = entry.growth.combat_stats || {}
-  const manual = stats['manual_' + key]
-  const observed = stats['observed_' + key]
-  return formattedNumber(manual != null ? manual : observed)
+  return operatorShareCombatValue(entry, key)
+}
+
+function combatSource(entry, key) {
+  return operatorShareCombatSource(entry, key)
 }
 
 function oddities(entry) {
@@ -485,6 +538,59 @@ function loadoutDiscs(loadout) {
   return normalizeDiscNames(values)
 }
 
+function discName(disc) {
+  if (!disc) return ''
+  if (typeof disc === 'string') return disc.trim()
+  return String(disc.ot_name || disc.otName || '').trim()
+}
+
+function discDescription(disc) {
+  if (!disc || typeof disc === 'string') return ''
+  return String(disc.desp || disc.description || disc.desc || '').trim()
+}
+
+function loadoutDiscEntries(entry, loadout) {
+  const raw = [loadout && loadout.discs, loadout && loadout.discNames, loadout && loadout.disc_names]
+    .find(function (value) { return Array.isArray(value) && value.length }) || []
+  const rawByName = new Map(raw.map(function (disc) { return [discName(disc), disc] }).filter(function (pair) { return pair[0] }))
+  const catalogByName = new Map((Array.isArray(entry && entry.discs) ? entry.discs : []).map(function (disc) { return [discName(disc), disc] }).filter(function (pair) { return pair[0] }))
+  return normalizeDiscNames(raw).map(function (name) {
+    const source = rawByName.get(name)
+    const catalog = catalogByName.get(name)
+    return {
+      name: name,
+      description: discDescription(source) || discDescription(catalog)
+    }
+  })
+}
+
+function showDiscTooltip(event, description) {
+  const content = String(description || '').trim()
+  const target = event && event.currentTarget
+  if (!content || !(target && target.getBoundingClientRect)) {
+    hideDiscTooltip()
+    return
+  }
+  const rect = target.getBoundingClientRect()
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth
+  const tooltipHalfWidth = Math.min(140, Math.max(0, (viewportWidth - 24) / 2))
+  const center = rect.left + rect.width / 2
+  const x = Math.max(12 + tooltipHalfWidth, Math.min(viewportWidth - 12 - tooltipHalfWidth, center))
+  const placement = rect.top >= 96 ? 'top' : 'bottom'
+  discTooltip.value = {
+    visible: true,
+    text: content,
+    x: x,
+    y: placement === 'top' ? rect.top - 8 : rect.bottom + 8,
+    placement: placement
+  }
+}
+
+function hideDiscTooltip() {
+  if (!discTooltip.value.visible) return
+  discTooltip.value = Object.assign({}, discTooltip.value, { visible: false })
+}
+
 function starStones(entry) {
   return Array.isArray(entry.growth.star_stones)
     ? entry.growth.star_stones.filter(function (stone) { return stone && (stone.name || stone.type) })
@@ -512,10 +618,14 @@ function hideBrokenImage(event) {
 
 onMounted(function () {
   window.addEventListener('keydown', handleDetailKeydown)
+  window.addEventListener('scroll', hideDiscTooltip, true)
+  window.addEventListener('resize', hideDiscTooltip)
 })
 
 onBeforeUnmount(function () {
   window.removeEventListener('keydown', handleDetailKeydown)
+  window.removeEventListener('scroll', hideDiscTooltip, true)
+  window.removeEventListener('resize', hideDiscTooltip)
 })
 
 watch(function () { return route.params.token }, function () {
@@ -564,13 +674,16 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .current-ledger-meta { display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 14px; color: rgba(255, 248, 236, .76); font-size: 11px; font-weight: 700; line-height: 1.6 }
 .current-ledger-meta span { min-width: 0; overflow-wrap: anywhere }
 .current-ledger-meta span:last-child { color: var(--yellow) }
-.operator-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px }
+.operator-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px }
 .agent-ledger-card { --ledger-rarity-accent: #99b5cf; position: relative; min-width: 0; display: flex; flex-direction: column; gap: 11px; padding: 14px 12px 12px; color: var(--ink); border: 1px solid var(--line); border-top: 2px solid var(--ledger-rarity-accent); border-radius: 12px; background: linear-gradient(180deg, var(--surface), var(--cream)); box-shadow: 0 8px 24px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .8); cursor: pointer; transition: transform .35s var(--ease), box-shadow .35s var(--ease) }
 .agent-ledger-card:hover { z-index: 20; transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
 .agent-ledger-card:focus-visible { z-index: 20; outline: 2px solid var(--brand-blue); outline-offset: 2px; transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
 .agent-ledger-card.rarity-r5 { --ledger-rarity-accent: var(--accent) }
 .agent-ledger-card.rarity-r4 { --ledger-rarity-accent: #8672b2 }
 .agent-ledger-card.rarity-r3 { --ledger-rarity-accent: #99b5cf }
+.agent-ledger-card.status-growing { border-left: 3px solid #6f9f76 }
+.agent-ledger-card.status-graduated { border-left: 3px solid var(--yellow-deep) }
+.agent-ledger-card.status-inactive { border-left: 3px solid rgba(73, 59, 44, .35) }
 .ledger-card-head { position: relative; display: flex; gap: 10px; align-items: center; min-width: 0 }
 .ledger-avatar { position: relative; flex: none; width: 46px; height: 46px; overflow: hidden; border: 2px solid var(--ledger-rarity-accent); border-radius: 10px; background: color-mix(in srgb, var(--ledger-rarity-accent) 16%, var(--paper)) }
 .ledger-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 8px }
@@ -579,6 +692,10 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .ledger-name-row { display: flex; min-width: 0; align-items: center; gap: 5px }
 .ledger-name-row h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 900 16px var(--font-s) }
 .ledger-name-row .rarity { margin-left: auto }
+.share-ledger-status { min-width: 0; min-height: 24px; display: inline-grid; place-items: center; flex: none; border: 1px solid transparent; border-radius: 999px; padding: 3px 8px; font-size: 9px; font-weight: 800; white-space: nowrap }
+.share-ledger-status.status-growing { border-color: rgba(111, 159, 118, .45); background: #bfdcc0; color: #315f38 }
+.share-ledger-status.status-graduated { border-color: rgba(239, 210, 142, .85); background: var(--yellow); color: var(--ink) }
+.share-ledger-status.status-inactive { border-color: rgba(73, 59, 44, .22); background: rgba(73, 59, 44, .12); color: var(--ink-60) }
 .ledger-mobile-prof { display: none }
 .ledger-prof { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; color: var(--ink-60); font-size: 10.5px; font-weight: 700 }
 .ledger-prof-copy { display: flex; min-width: 0; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
@@ -601,11 +718,15 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .ledger-growth-row { display: flex; min-width: 0; min-height: 24px; align-items: center; gap: 5px; font-size: 11px }
 .ledger-grow-label { width: 32px; flex: none; color: var(--ink-60); font-weight: 700 }
 .share-ledger-growth-value { min-width: 0; margin: 0; overflow: hidden; color: var(--ink); font: 700 13px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
+.share-growth-complete { display: inline-flex; min-height: 28px; align-items: center; justify-content: center; margin-left: auto; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(73, 59, 44, .08); color: var(--ink-60); font: 800 10px var(--font-b); line-height: 1; white-space: nowrap; opacity: .72 }
+.share-growth-complete.is-awakened { border-color: #c9d8c5; background: #eef5ec; color: #6f846b }
 .ledger-destiny { display: flex; flex-direction: column; gap: 5px; padding-top: 2px }
 .ledger-destiny-row { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0 }
 .ledger-destiny-row > span { display: inline-flex; flex: none; align-items: center; color: var(--accent-strong); font-size: 10px; font-weight: 800; line-height: 1.2 }
 .ledger-destiny-row > .ledger-destiny-values { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0 }
 .ledger-destiny-row em { display: inline-flex; align-items: center; justify-content: center; padding: 2px 5px; border: 1px solid rgba(215, 137, 53, .28); border-radius: 4px; background: rgba(215, 137, 53, .12); color: var(--ink); font-size: 9px; font-style: normal; font-weight: 500; line-height: 1.2 }
+.disc-term.has-description { position: relative; cursor: help }
+.disc-term.has-description:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .ledger-destiny-row em.empty { border-style: dashed; background: transparent; color: var(--ink-35) }
 .ledger-destiny-row:nth-child(1) > span { color: #a66c2b }
 .ledger-destiny-row:nth-child(1) em { border-color: #e7c89c; background: #faf1e4 }
@@ -618,23 +739,33 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .ledger-stones > .stone-slot.is-empty { min-height: 0; background: transparent; color: var(--line); font-size: 15px }
 .ledger-stones strong { max-width: 100%; overflow: hidden; color: var(--ink); font-size: 8px; text-overflow: ellipsis; white-space: nowrap }
 .ledger-stones small { color: var(--ink-60); font: 8px var(--font-d) }
-.growth-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 18px }
+.growth-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-top: 18px }
 .growth-summary div { min-width: 0; border-radius: 10px; padding: 9px 7px; background: var(--paper); text-align: center }
 .growth-summary dt { color: var(--ink-60); font-size: 10px; font-weight: 700 }
 .growth-summary dd { margin-top: 4px; overflow-wrap: anywhere; font: 900 14px var(--font-d) }
+.growth-summary .share-growth-display { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap }
+.growth-summary .share-growth-complete { min-height: 24px; margin-left: 0; padding: 3px 7px; font-size: 9px }
 .share-detail-section { margin-top: 17px; padding-top: 14px; border-top: 1px dashed var(--line) }
 .share-detail-section h3 { font: 900 14px var(--font-s) }
-.oddity-list,.loadout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 10px }
+.oddity-list,.loadout-grid { display: grid; gap: 7px; margin-top: 10px }
+.oddity-list { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+.loadout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
 .oddity-list div,.loadout { min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 9px; background: var(--cream) }
 .oddity-list dt { overflow: hidden; color: var(--ink-60); font-size: 10px; text-overflow: ellipsis; white-space: nowrap }
 .oddity-list dd { margin-top: 3px; font: 900 14px var(--font-d) }
 .oddity-list small { color: var(--ink-35); font-size: 10px }
-.loadout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
 .loadout b { font-size: 11px }
 .loadout p,.muted { margin-top: 4px; color: var(--ink-60); font-size: 11px; line-height: 1.6 }
 .stone-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; list-style: none }
 .stone-list li { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 9px; background: var(--paper); font-size: 10.5px }
 .stone-list span { color: var(--accent-strong); font-family: var(--font-d); font-weight: 800 }
+.disc-floating-tooltip { position: fixed; z-index: 240; width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--tea); color: var(--cream); box-shadow: 0 10px 24px rgba(73, 59, 44, .28); font: 700 11px/1.5 var(--font-b); text-align: left; white-space: normal; overflow-wrap: anywhere; pointer-events: none; animation: disc-tooltip-in .14s ease both }
+.disc-floating-tooltip.is-top { transform: translate(-50%, -100%) }
+.disc-floating-tooltip.is-bottom { transform: translate(-50%, 0) }
+.disc-floating-tooltip::after { position: absolute; left: 50%; width: 8px; height: 8px; background: var(--tea); content: ''; transform: translateX(-50%) rotate(45deg) }
+.disc-floating-tooltip.is-top::after { bottom: -5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line) }
+.disc-floating-tooltip.is-bottom::after { top: -5px; border-left: 1px solid var(--line); border-top: 1px solid var(--line) }
+@keyframes disc-tooltip-in { from { opacity: 0 } to { opacity: 1 } }
 .share-detail-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: rgba(73, 59, 44, .52); backdrop-filter: blur(6px) }
 .share-detail-dialog { width: min(760px, 100%); max-height: min(820px, calc(100vh - 48px)); max-height: min(820px, calc(100dvh - 48px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 30px 90px rgba(73, 59, 44, .32) }
 .share-detail-head { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line) }
@@ -647,8 +778,11 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .share-detail-close:hover,.share-detail-close:focus-visible { border-color: var(--accent); background: var(--accent); outline: 2px solid transparent }
 .share-detail-scroll { min-height: 0; overflow-y: auto; padding: 0 24px 24px; overscroll-behavior: contain }
 .share-detail-growth { margin-top: 20px }
+@media (max-width: 1080px) {
+  .operator-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .current-ledger-meta { flex-direction: column; gap: 4px }
+}
 @media (max-width: 920px) {
-  .operator-grid { grid-template-columns: 1fr }
   .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
 }
 @media (max-width: 640px) {
@@ -663,6 +797,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   .share-filters button { width: 100% }
   .share-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px }
   .current-ledger-meta { flex-direction: column; gap: 4px; padding-bottom: 12px; font-size: 12px; line-height: 1.5 }
+  .operator-grid { grid-template-columns: 1fr; gap: 12px }
   .agent-ledger-card { padding: 14px 12px 12px; gap: 12px }
   .ledger-card-head { gap: 9px }
   .ledger-avatar { width: 44px; height: 44px }
@@ -682,6 +817,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   .ledger-growth-row { display: flex; min-width: 0; min-height: 72px; align-items: stretch; flex-direction: column; gap: 5px }
   .ledger-grow-label { width: auto; min-height: 18px; font-size: 11px; text-align: center }
   .share-ledger-growth-value { display: grid; width: 100%; min-height: 34px; align-items: center; justify-content: center; padding-inline: 2px; font-size: 15px; text-align: center }
+  .share-ledger-growth .share-growth-complete { width: 100%; min-height: 28px; margin-left: 0 }
   .ledger-destiny-row > span { font-size: 11px }
   .ledger-stones { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px }
   .ledger-stones > .stone-slot { aspect-ratio: 1 }
@@ -695,5 +831,21 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   .share-detail-identity .ledger-avatar { width: 54px; height: 58px; border-radius: 10px }
   .share-detail-identity h2 { font-size: 21px }
   .share-detail-scroll { padding: 0 16px calc(20px + env(safe-area-inset-bottom)) }
+}
+</style>
+<style scoped src="../../styles/operator-ledger-shared.css"></style>
+<style scoped>
+@media (max-width: 640px) {
+  .share-ledger-growth .ledger-growth-row { min-height: 72px; }
+  .share-ledger-growth-value {
+    display: grid;
+    width: 100%;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 2px;
+    font-size: 15px;
+    text-align: center;
+  }
 }
 </style>

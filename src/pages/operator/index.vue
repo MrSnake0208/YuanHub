@@ -2864,6 +2864,12 @@ import {
   createDiscLoadoutState,
 } from "../../utils/operatorDiscLoadouts.js";
 import {
+  starCardFallback,
+  starCardHasIcon,
+  starCardNode,
+  starCardNumber,
+} from "../../utils/operatorStarDisplay.js";
+import {
   MAIN_STAR_OPTIONS,
   ASSIST_STAR_OPTIONS,
   ASSIST_STAR_DESCRIPTIONS,
@@ -3968,27 +3974,6 @@ function starLabel(v, spOf) {
     const node = (n - 1) % 6;
     return star + " ⭐ · " + node + " 节点";
   }
-  return n;
-}
-
-function starCardHasIcon(v) {
-  const n = Number(v) || 0;
-  return n > 0 && n !== STAR_LEVEL_AWAKEN;
-}
-
-function starCardNumber(v, spOf) {
-  const n = Number(v) || 0;
-  return spOf ? n : Math.floor((n - 1) / 6) + 1;
-}
-
-function starCardNode(v) {
-  return (Number(v) - 1) % 6;
-}
-
-function starCardFallback(v) {
-  const n = Number(v) || 0;
-  if (n === 0) return "未拥有";
-  if (n === STAR_LEVEL_AWAKEN) return "觉醒";
   return n;
 }
 
@@ -10274,15 +10259,6 @@ onBeforeUnmount(function () {
 .ledger-editable:hover {
   color: var(--accent-strong);
 }
-.ledger-huaji-value {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-.ledger-huaji-value svg {
-  flex: none;
-  color: var(--yellow-deep);
-}
 .ledger-step-actions {
   display: flex;
   gap: 3px;
@@ -14179,3 +14155,4 @@ onBeforeUnmount(function () {
   }
 }
 </style>
+<style scoped src="../../styles/operator-ledger-shared.css"></style>
