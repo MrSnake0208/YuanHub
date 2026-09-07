@@ -1,5 +1,6 @@
 export const ADMIN_PERMISSIONS = Object.freeze({
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
+  LEVEL_CATALOG_WRITE: 'level_catalog:write',
   ROLE_MANAGE: 'admin:role:manage',
   FEEDBACK_ACCESS_MANAGE: 'admin:feedback_access:manage',
   AUDIT_READ: 'admin:audit:read'

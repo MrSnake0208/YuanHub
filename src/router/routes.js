@@ -124,6 +124,20 @@ export const routes = [
         }
     },
     {
+        path: '/level/admin',
+        text: '关卡管理',
+        name: 'level-admin',
+        display: false,
+        module: 'tools',
+        icon: 'book-open',
+        component: () => import('/src/pages/level/admin.vue'),
+        meta: {
+            title: '关卡管理 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiredPermission: 'level_catalog:write'
+        }
+    },
+    {
         path: '/demo',
         text: '养成规划演示',
         name: 'demo-growth-planner',

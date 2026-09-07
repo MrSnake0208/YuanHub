@@ -1,4 +1,4 @@
-import { KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
+import { BookOpen, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
 import {
   ADMIN_PERMISSIONS,
   canManageAnyFeedback,
@@ -42,6 +42,17 @@ const ADMIN_TOOLS = Object.freeze([
     icon: ScanLine,
     isVisible: function (access) {
       return hasPermission(access, ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE)
+    }
+  },
+  {
+    key: 'level-catalog',
+    to: '/level/admin',
+    label: '关卡管理',
+    description: '维护全站公共关卡、分类和开放状态',
+    group: 'content',
+    icon: BookOpen,
+    isVisible: function (access) {
+      return hasPermission(access, ADMIN_PERMISSIONS.LEVEL_CATALOG_WRITE)
     }
   },
   {
