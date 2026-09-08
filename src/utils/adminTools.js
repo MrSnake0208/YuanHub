@@ -1,4 +1,4 @@
-import { BookOpen, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
+import { BookOpen, FilePenLine, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
 import {
   ADMIN_PERMISSIONS,
   canManageAnyFeedback,
@@ -53,6 +53,17 @@ const ADMIN_TOOLS = Object.freeze([
     icon: BookOpen,
     isVisible: function (access) {
       return hasPermission(access, ADMIN_PERMISSIONS.LEVEL_CATALOG_WRITE)
+    }
+  },
+  {
+    key: 'changelog',
+    to: '/admin/changelog',
+    label: '更新日志',
+    description: '编写、审核和发布站点更新日志',
+    group: 'content',
+    icon: FilePenLine,
+    isVisible: function (access) {
+      return hasPermission(access, ADMIN_PERMISSIONS.CHANGELOG_WRITE) || hasPermission(access, ADMIN_PERMISSIONS.CHANGELOG_REVIEW)
     }
   },
   {

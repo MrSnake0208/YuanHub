@@ -63,6 +63,7 @@ router.beforeEach(async (to, from, next) => {
   const authed = !!(auth.accessToken && auth.userInfo)
   const requiresAuth = to.meta && to.meta.requiresAuth
   const requiredPermission = to.meta && to.meta.requiredPermission
+  const requiredAnyPermission = to.meta && to.meta.requiredAnyPermission
   const requiresFeedbackManage = to.meta && to.meta.requiresFeedbackManage
   const requiresManagement = to.meta && to.meta.requiresManagement
   const feature = to.meta && to.meta.feature
@@ -76,6 +77,9 @@ router.beforeEach(async (to, from, next) => {
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
   if (requiredPermission && !hasPermission(auth.adminAccess, requiredPermission)) {
+    return next({ path: '/forbidden', query: { from: to.fullPath } })
+  }
+  if (Array.isArray(requiredAnyPermission) && !requiredAnyPermission.some(function (permission) { return hasPermission(auth.adminAccess, permission) })) {
     return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
   if (requiresFeedbackManage && !canManageAnyFeedback(auth.adminAccess)) {

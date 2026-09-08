@@ -62,7 +62,8 @@ const PAGE_SIZE = 20
 const AREA_LABELS = { INVENTORY: '库存', OPERATOR: '密探', LEDGER: '账房', PLAZA: '作业广场', ACCOUNT: '账号', UI: '界面', OTHER: '其他' }
 const ACTION_LABELS = {
   ROLE_GRANTED: '授予角色', ROLE_REVOKED: '回收角色', ROLE_REPLACED: '替换角色',
-  FEEDBACK_ACCESS_UPDATED: '更新反馈授权', FEEDBACK_ACCESS_DELETED: '删除反馈授权'
+  FEEDBACK_ACCESS_UPDATED: '更新反馈授权', FEEDBACK_ACCESS_DELETED: '删除反馈授权',
+  CHANGELOG_PUBLISHED: '发布更新日志', CHANGELOG_REJECTED: '退回更新日志', CHANGELOG_WITHDRAWN: '撤回更新日志'
 }
 const router = useRouter()
 const logs = ref([])
@@ -94,7 +95,14 @@ async function load(nextPage) {
 }
 
 function actionLabel(action) { return ACTION_LABELS[action] || action || '未知动作' }
-function roleLabel(role) { return role === 'SUPER_ADMIN' ? '超级管理员' : role === 'PLATFORM_ADMIN' ? '平台管理员' : role }
+function roleLabel(role) {
+  return {
+    SUPER_ADMIN: '超级管理员',
+    PLATFORM_ADMIN: '平台管理员',
+    CHANGELOG_EDITOR: '更新日志编辑员',
+    CHANGELOG_REVIEWER: '更新日志审核员'
+  }[role] || role
+}
 function areaLabel(area) { return AREA_LABELS[area] || area }
 function snapshotParts(snapshot) {
   if (!snapshot) return ['无']

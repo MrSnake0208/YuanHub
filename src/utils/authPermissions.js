@@ -1,12 +1,14 @@
 export const ADMIN_PERMISSIONS = Object.freeze({
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
   LEVEL_CATALOG_WRITE: 'level_catalog:write',
+  CHANGELOG_WRITE: 'changelog:write',
+  CHANGELOG_REVIEW: 'changelog:review',
   ROLE_MANAGE: 'admin:role:manage',
   FEEDBACK_ACCESS_MANAGE: 'admin:feedback_access:manage',
   AUDIT_READ: 'admin:audit:read'
 })
 
-export const ADMIN_ROLES = Object.freeze(['PLATFORM_ADMIN', 'SUPER_ADMIN'])
+export const ADMIN_ROLES = Object.freeze(['PLATFORM_ADMIN', 'CHANGELOG_EDITOR', 'CHANGELOG_REVIEWER', 'SUPER_ADMIN'])
 export const FEEDBACK_AREAS = Object.freeze([
   'INVENTORY',
   'OPERATOR',
