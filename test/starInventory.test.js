@@ -135,7 +135,8 @@ test('星石路由与桌面、移动导航均提供入口', function () {
   assert.match(routes, /src\/pages\/star\/index\.vue/)
   assert.match(sidebar, /to="\/star"/)
   assert.match(sidebar, /<span class="no">04<\/span>我的星石/)
-  assert.match(sidebar, /<span class="no">05<\/span>个人中心/)
+  assert.match(sidebar, /<span class="no">05<\/span>更新日志/)
+  assert.match(sidebar, /<span class="no">06<\/span>个人中心/)
   assert.match(sidebar, /<span>星石<\/span>/)
 })
 

@@ -25,6 +25,7 @@ test('maps every management tool to its existing permission boundary', function 
     '/feedback/admin',
     '/operator/admin',
     '/level/admin',
+    '/admin/changelog',
     '/admin/roles',
     '/admin/audit'
   ])
@@ -61,7 +62,8 @@ test('adds a single accessible workbench back link to management detail pages', 
     '../src/pages/admin/audit.vue',
     '../src/pages/feedback/admin.vue',
     '../src/pages/feedback/manage.vue',
-    '../src/pages/operator/admin.vue'
+    '../src/pages/operator/admin.vue',
+    '../src/pages/changelog/admin.vue'
   ].map(readSource)
   const workbench = readSource('../src/pages/admin/index.vue')
 

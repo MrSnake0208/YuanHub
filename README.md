@@ -20,6 +20,9 @@ VITE_API_BASE=http://127.0.0.1:8080
 
 `.env` 已加入 Git 忽略规则，真实地址不应写回源码或提交到仓库。
 
+完整前后端接口契约见 [`docs/api-contract.md`](docs/api-contract.md)。公共关卡读取使用 `/v1/level/catalog`，
+关卡管理页使用 `/v1/admin/level-catalog/**`，后者需要登录 JWT 与 `level_catalog:write`。
+
 ## 页面
 
 | 路由 | 页面 | 对应原文件 |
@@ -27,7 +30,10 @@ VITE_API_BASE=http://127.0.0.1:8080
 | `/` | 作业广场：Hero + 工具栏（Tab / 站点筛选 / 搜索 / 排序）+ 作业卡列表（分页加载）+ 三方共建 + 页脚 | `index.html` |
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
 | `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
-| `/manage` | 管理工作台：按权限进入反馈工作区、公共密探图鉴、角色管理、反馈授权和审计记录；各管理详情页提供返回工作台入口 | — |
+| `/changelog` | 更新日志：公开查看已审核发布的富文本与图片内容 | — |
+| `/manage` | 管理工作台：按权限进入反馈工作区、公共密探图鉴、关卡管理、更新日志、角色管理、反馈授权和审计记录；各管理详情页提供返回工作台入口 | — |
+| `/level/admin` | 公共关卡管理：真实 API 列表/筛选、新建编辑、归档恢复、目录树、revision 冲突提示、批量导入预览/提交与 JSON 导出；需要 `level_catalog:write` | — |
+| `/admin/changelog` | 更新日志管理：所见即所得编辑、图片上传、提交审核、发布/退回/撤回；需要 `changelog:write` 或 `changelog:review` | — |
 | `/demo` | 养成规划演示：示例存档、养成目标、资源缺口、收集速度和密探档案；支持 `?view=overview|targets|materials|operator` 直接打开截图视图 | — |
 
 ## 目录结构
@@ -43,6 +49,9 @@ VITE_API_BASE=http://127.0.0.1:8080
     ├── router/                 # 路由（对齐 frontend-v2-plus 结构）
     │   ├── index.js            # createWebHistory 路由实例 + scrollBehavior
     │   └── routes.js           # 路由表 + 新页面注册注释模板
+    ├── api/
+    │   ├── level.js            # 公共关卡目录 + 管理员 CRUD/归档/导入导出 API 封装
+    │   └── changelog.js        # 公开更新日志 + 管理审核状态流转 API 封装
     ├── App.vue                 # RouterView + 路由过渡
     ├── styles/main.css         # 设计规范 v1.0 全部令牌与样式
     ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js / demoScenario.js
@@ -53,6 +62,8 @@ VITE_API_BASE=http://127.0.0.1:8080
         ├── work/detail.vue     # 通关作业详情（/work/:id）
         ├── tools/cart.vue      # 广陵账房·礼包计算器（/cart）
         ├── admin/index.vue     # 管理工作台（/manage）
+        ├── changelog/          # 公开阅读与所见即所得管理页
+        ├── level/admin.vue     # 公共关卡管理（/level/admin，需 level_catalog:write）
         └── demo/index.vue      # 养成规划演示（/demo，仅使用本地示例数据）
 ```
 
@@ -65,4 +76,4 @@ VITE_API_BASE=http://127.0.0.1:8080
 - **动效**：IntersectionObserver 滚动出现（v-reveal 指令，支持错峰 delay）、路由淡入淡出。
 - 原站 10 条作业数据中，仅「阳泰山府10 无庞统」有详情链接，其余卡片不可点击（与原站一致）。
 - **广陵账房页**（`/cart`）：由 `yuanpaid`（React 版游戏礼包购物车）迁移，数据（101+41 个礼包、28 档累充奖励）逐字保留，交互逻辑（限购、汇率、筛选、自定义、导出图片）忠实移植，并按设计规范 v1.0 整体重新上色。
-- 依赖：`@lucide/vue`（图标）、`html2canvas`（导出图片）。
+- 依赖：`@lucide/vue`（图标）、`html2canvas`（导出图片）、Tiptap（更新日志所见即所得编辑与只读渲染）。

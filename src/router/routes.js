@@ -307,6 +307,32 @@ export const routes = [
         }
     },
     {
+        path: '/changelog',
+        text: '更新日志',
+        name: 'changelog',
+        display: true,
+        module: 'site',
+        icon: 'scroll-text',
+        component: () => import('/src/pages/changelog/index.vue'),
+        meta: {
+            title: '更新日志 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
+        path: '/admin/changelog',
+        text: '更新日志管理',
+        name: 'admin-changelog',
+        display: false,
+        module: 'admin',
+        icon: 'file-pen-line',
+        component: () => import('/src/pages/changelog/admin.vue'),
+        meta: {
+            title: '更新日志管理 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiredAnyPermission: ['changelog:write', 'changelog:review']
+        }
+    },
+    {
         path: '/notifications',
         text: '通知中心',
         name: 'notifications',

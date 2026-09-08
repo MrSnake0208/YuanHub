@@ -244,8 +244,22 @@ async function leaveAfterPermissionChange() {
   await router.replace({ path: '/forbidden', query: { from: '/admin/roles' } })
 }
 
-function roleLabel(role) { return role === 'SUPER_ADMIN' ? '超级管理员' : '平台管理员' }
-function roleDescription(role) { return role === 'SUPER_ADMIN' ? '继承平台能力，并管理角色、反馈授权与审计' : '维护公共密探图鉴' }
+function roleLabel(role) {
+  return {
+    SUPER_ADMIN: '超级管理员',
+    PLATFORM_ADMIN: '平台管理员',
+    CHANGELOG_EDITOR: '更新日志编辑员',
+    CHANGELOG_REVIEWER: '更新日志审核员'
+  }[role] || role
+}
+function roleDescription(role) {
+  return {
+    SUPER_ADMIN: '继承全部平台能力，并管理角色、反馈授权与审计',
+    PLATFORM_ADMIN: '维护公共密探图鉴与关卡目录',
+    CHANGELOG_EDITOR: '编写更新日志并提交审核',
+    CHANGELOG_REVIEWER: '审核、发布和撤回更新日志'
+  }[role] || ''
+}
 function formatTime(value) {
   if (!value) return '无'
   const date = new Date(value)

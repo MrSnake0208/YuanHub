@@ -1,7 +1,7 @@
 # BackEndV3-Share API 接口契约（前端接入参考）
 
-> 后端源码基线：`BackEndV3-Share` commit `3e8a8b3`（2026-09-04），并包含当前工作区反馈附件、操作身份和密探分享实现。
-> 本文覆盖 YuanHub 当前使用的接口，以及同一后端已提供的账号事件、第三方 OpenAPI、密探管理和广陵账房接口。
+> 后端源码基线：`BackEndV3-Share` commit `f8303ad`（2026-09-07），并包含当前工作区反馈附件、操作身份、密探分享与公共关卡目录实现。
+> 本文覆盖 YuanHub 当前使用的接口，以及同一后端已提供的账号事件、第三方 OpenAPI、密探管理、公共关卡目录和广陵账房接口。
 > 后端继续演进后，以源码与 Swagger 为最终依据，并同步更新本文顶部 commit。
 
 ## 1. 基础约定
@@ -77,9 +77,9 @@
 | 400 | JSON 无效或传统端点参数/业务校验失败 |
 | 401 | JWT/OpenAPI Token 缺失、无效或过期 |
 | 403 | 权限不足、账号映射越权 |
-| 404 | 账号、记录、密探、Token 或方案不存在；部分越权查询也统一返回 404 |
-| 409 | 幂等键冲突、revision 冲突、重复记录内容冲突、资源上限 |
-| 422 | 库存/密探 Schema、字段语义或查询参数校验失败 |
+| 404 | 账号、记录、密探、关卡、Token 或方案不存在；部分越权查询也统一返回 404 |
+| 409 | 幂等键冲突、revision 冲突、关卡业务键冲突、重复记录内容冲突、资源上限 |
+| 422 | 库存/密探/关卡 Schema、字段语义或查询参数校验失败 |
 | 429 | OpenAPI Token 或账房方案数量达到上限等限额错误 |
 
 ### 1.4 认证类型
@@ -119,6 +119,8 @@ Authorization: Bearer <open-api-token>
 - `GET /hub/post/**`
 - `GET /v1/inventory/catalog`
 - `GET /v1/operator/catalog`
+- `GET /v1/level/catalog`、`GET /v1/level/catalog/{levelKey}`
+- `GET /v1/changelog`
 - `GET /avatar/**`
 - `GET /user/open-api/permissions`
 - `/open-api/**` 在 Spring Security 层公开，但控制器内部强制验证 OpenAPI Token
@@ -785,7 +787,226 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 - 头像只接受非空 WebP，最大 500KB；上传同 id 会覆盖。
 - 目录名称、稀有度等有效修改会刷新 `catalog_version` 和公共目录缓存。
 
-## 8. OpenAPI Token 管理（/user/open-api）
+## 8. 公共关卡目录与管理员管理（/v1/level/catalog）
+
+公共关卡目录是 YuanHub、旧 MaaYuan 兼容层及第三方工具共享的关卡基础数据。权威数据保存在
+`HubBackend.level_catalog`，每条记录使用稳定的 `id`（后端 `levelKey`）作为业务身份；修改 `stage_id` 或
+`level_id` 不会改变该 `id`。历史审计保存在 `HubBackend.level_catalog_revisions`。
+
+### 8.1 公共读取
+
+公共读取无需 JWT，成功响应使用普通 `ApiResult` 包装。
+
+| 方法与路径 | 参数 | 成功 data |
+|---|---|---|
+| `GET /v1/level/catalog` | `game`、`cat_one`、`cat_two`、`q`、`include_archived=false`、`open_only=false` | `{catalog_version,levels}` |
+| `GET /v1/level/catalog/{levelKey}` | path `levelKey` | 单条公共关卡对象 |
+
+列表默认只返回 `status=ACTIVE` 的条目；`include_archived=true` 可显式包含归档条目，`open_only=true` 只保留
+`is_open=true`。`q` 会匹配游戏、三级分类、名称、`stage_id` 和 `level_id`。`game` 只允许 `代号鸢`、`如鸢`、`通用`。
+单条读取按稳定 `levelKey` 查询，不因条目被归档而改变身份或路径。
+
+公共列表示例：
+
+```json
+{
+  "status_code": 200,
+  "message": null,
+  "data": {
+    "catalog_version": "2026-09-07T14:01:04.991Z",
+    "levels": [{
+      "id": "lvl_xxx",
+      "game": "代号鸢",
+      "cat_one": "主线",
+      "cat_two": "",
+      "cat_three": "",
+      "name": "示例关卡",
+      "level_id": "level_xxx",
+      "stage_id": "stage_xxx",
+      "status": "ACTIVE",
+      "is_open": true,
+      "end_time": null,
+      "sort_order": 0
+    }]
+  }
+}
+```
+
+`catalog_version` 是当前目录最近一次权威变更的时间版本；空目录返回字符串 `"0"`。客户端可将其作为缓存失效依据。
+`end_time` 只是关卡元数据，不会由读取接口自动改变 `is_open`。
+
+### 8.2 管理接口与权限
+
+全部 `/v1/admin/level-catalog/**` 接口需要登录 JWT，并要求 `level_catalog:write`。当前
+`PLATFORM_ADMIN` 与 `SUPER_ADMIN` 获得该权限；前端隐藏入口和路由 guard 只用于体验，真实安全边界仍由后端检查。
+
+| 方法与路径 | 请求/参数 | 成功 data |
+|---|---|---|
+| `GET /v1/admin/level-catalog` | 与公共列表相同；`include_archived` 默认 `true` | 管理端关卡数组，含 revision/审计元数据 |
+| `POST /v1/admin/level-catalog` | 关卡写对象 | 新关卡对象 |
+| `PUT /v1/admin/level-catalog/{levelKey}` | 局部写对象 + `expected_revision` | 更新后的关卡对象 |
+| `POST /v1/admin/level-catalog/{levelKey}/archive` | body `{expected_revision}` 或同名 query | 归档后的关卡对象 |
+| `POST /v1/admin/level-catalog/{levelKey}/restore` | body `{expected_revision}` 或同名 query | 恢复后的关卡对象 |
+| `POST /v1/admin/level-catalog/import/preview` | `{levels:[...]}` | 导入差异统计，不写库 |
+| `POST /v1/admin/level-catalog/import/commit` | `{levels:[...]}` | 实际导入统计 |
+| `GET /v1/admin/level-catalog/export` | 无 | 完整可回导目录文档 |
+| `GET /v1/admin/level-catalog/{levelKey}/history` | 无 | 按时间倒序的 revision history |
+
+管理员对象除公共字段外还返回：
+
+```json
+{
+  "revision": 3,
+  "created_at": "2026-09-07T14:01:04.991Z",
+  "updated_at": "2026-09-07T14:30:00Z",
+  "created_by": "user-or-migration-actor",
+  "updated_by": "user-or-migration-actor"
+}
+```
+
+### 8.3 新建、编辑与并发规则
+
+新建请求至少需要 `game`、`cat_one`、`name`、`level_id`、`stage_id`；`cat_two`、`cat_three` 可为空。
+`status` 默认 `ACTIVE`，`is_open` 默认 `true`，`sort_order` 默认 `0`，`end_time` 默认 `null`。
+
+```json
+{
+  "game": "代号鸢",
+  "cat_one": "活动",
+  "cat_two": "示例活动",
+  "cat_three": "",
+  "name": "示例关卡",
+  "level_id": "level_example_1",
+  "stage_id": "stage_example_1",
+  "is_open": true,
+  "end_time": null,
+  "sort_order": 100
+}
+```
+
+更新是局部更新，但必须提交当前 `expected_revision`；成功后 revision 加 1。字段未出现时保留旧值，
+`end_time: null` 明确清空结束时间。普通 `PUT` 不用于 ACTIVE/ARCHIVED 状态切换，归档和恢复必须走专用端点，
+从而保留 `ARCHIVE` / `RESTORE` 审计动作。
+
+同一 `game` 内 `stage_id` 与 `level_id` 分别唯一；不同 game 可以复用相同 ID。服务端使用 revision 条件更新防止并发静默覆盖，
+过期 revision 返回 HTTP 409 `level_revision_conflict`，调用方应重新加载最新对象后再保存。
+
+字段限制：
+
+- `game`：`代号鸢` / `如鸢` / `通用`；
+- `status`：`ACTIVE` / `ARCHIVED`；
+- `cat_one/cat_two/cat_three` 最长 128 字符；
+- `name` 最长 256 字符；
+- `level_id/stage_id` 最长 512 字符；
+- `sort_order` 范围 `-1000000..1000000`；
+- `end_time` 为带时区的 ISO-8601 时间字符串或 `null`。
+
+### 8.4 导入、导出与历史
+
+标准导入文档使用：
+
+```json
+{
+  "levels": [{
+    "id": "lvl_xxx",
+    "game": "代号鸢",
+    "cat_one": "主线",
+    "cat_two": "",
+    "cat_three": "",
+    "name": "示例关卡",
+    "level_id": "level_xxx",
+    "stage_id": "stage_xxx",
+    "status": "ACTIVE",
+    "is_open": true,
+    "end_time": null,
+    "sort_order": 0
+  }]
+}
+```
+
+`id` 可省略；新增记录省略时由服务端生成稳定 `lvl_...`。preview 只做规范化、重复/冲突检查和差异统计，不写数据库；
+commit 会重新执行相同校验。只要存在 invalid/conflict，commit 整批失败，不做部分静默覆盖。成功统计字段为：
+
+```text
+created_count / updated_count / unchanged_count / duplicate_count /
+error_count / conflict_count / conflicts / errors / catalog_version
+```
+
+导出响应的 `data` 为：
+
+```json
+{
+  "format": "yuanhub-level-catalog",
+  "version": 1,
+  "catalog_version": "2026-09-07T14:01:04.991Z",
+  "levels": []
+}
+```
+
+导出包含 ACTIVE 与 ARCHIVED 全量条目，但不包含 Mongo `_id`、操作者或内部 revision，可直接作为后续 import 的标准备份。
+历史接口返回 `CREATE`、`UPDATE`、`ARCHIVE`、`RESTORE`、`IMPORT` 动作，并包含 `revision`、`actor_user_id`、
+`before`、`after`、`occurred_at`。
+
+### 8.5 错误结构
+
+关卡领域错误使用真实 HTTP 状态，不压成 200；控制器领域错误结构为：
+
+```json
+{
+  "error": {
+    "code": "level_revision_conflict",
+    "message": "Level revision has changed",
+    "level_key": "lvl_xxx",
+    "field_path": "expected_revision"
+  }
+}
+```
+
+常见错误：
+
+| HTTP | code | 含义 |
+|---|---|---|
+| 401 | 全局 JWT 错误 | 管理接口未登录或登录态无效 |
+| 403 | `forbidden` | 缺少 `level_catalog:write` |
+| 404 | `level_not_found` | `levelKey` 不存在 |
+| 409 | `level_revision_conflict` | `expected_revision` 已过期 |
+| 409 | `level_conflict` | 同 game 的 `stage_id` 或 `level_id` 冲突 |
+| 409 | `level_import_conflict` | 导入文档存在冲突 |
+| 422 | `schema_validation_failed` | 缺字段、空值、范围或时间格式不合法 |
+| 422 | `invalid_game` / `invalid_level_status` | 游戏或状态枚举不合法 |
+| 422 | `level_import_invalid` | 导入文档结构或条目不合法 |
+
+## 9. 更新日志（/v1/changelog）
+
+公开接口 `GET /v1/changelog?page=1&size=10` 无需登录，按发布时间倒序返回分页对象
+`{has_next,page,total,data}`。公开条目仅含 `id`、`revision`、`title`、`version_label`、`body`、
+`published_at`；草稿、待审修订、退回原因和操作者信息不会返回。
+
+管理接口需要 JWT，并由后端逐项校验 `changelog:write` 或 `changelog:review`：
+
+| 方法与路径 | 权限 | 请求 |
+|---|---|---|
+| `GET /v1/admin/changelog` | 任一更新日志权限 | `page=1&size=20` |
+| `POST /v1/admin/changelog` | `changelog:write` | `{title,version_label,body}` |
+| `PUT /v1/admin/changelog/{id}/draft` | `changelog:write` | 内容字段 + `expected_version` |
+| `POST /v1/admin/changelog/{id}/submit` | `changelog:write` | `{expected_version}` |
+| `POST /v1/admin/changelog/{id}/approve` | `changelog:review` | `{expected_version}` |
+| `POST /v1/admin/changelog/{id}/reject` | `changelog:review` | `{expected_version,reason}` |
+| `POST /v1/admin/changelog/{id}/withdraw` | `changelog:review` | `{expected_version}` |
+
+正文是受限 Tiptap JSON，只允许段落、二/三级标题、粗体、斜体、列表、引用、链接、换行和图片。
+链接仅允许站内 `/` 路径及 HTTP(S)；图片必须引用 `/v1/media/upload` 返回的有效 JPG、PNG、WebP
+`media_id`。正文上限 200 KiB、1000 个节点。所有更新使用 Mongo 文档 `version` 作为并发令牌；
+过期版本返回 HTTP 409。作者自审返回 403，退回原因必填；发布、退回和撤回写入管理员审计日志。
+
+管理响应保留条目的 `created_by/created_at`、`updated_by/updated_at`；待审修订包含
+`authored_by`、`submitted_by/submitted_at`，发布快照继续保留提交人与提交时间，并增加
+`approved_by/published_at`。公开响应不包含这些管理字段。
+
+角色映射：`CHANGELOG_EDITOR` → `changelog:write`，`CHANGELOG_REVIEWER` → `changelog:review`，
+`SUPER_ADMIN` 继承两者，`PLATFORM_ADMIN` 不继承。
+
+## 10. OpenAPI Token 管理（/user/open-api）
 
 | 方法与路径 | 认证 | 请求 | 成功 data |
 |---|---|---|---|
@@ -825,11 +1046,11 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 - 生成达到每账号 5 个上限返回 HTTP 429。
 - 删除不存在或不属于当前用户的 Token 返回 HTTP 404。
 
-## 9. 第三方 OpenAPI 数据接口（/open-api）
+## 11. 第三方 OpenAPI 数据接口（/open-api）
 
 全部使用 OpenAPI Token，URL query 不传 `account_id`；服务端使用 Token 绑定账号。v2 交换文档内部仍必须携带 `account_id`，且所有记录必须严格属于 Token 绑定账号，否则返回 403 `account_scope_mismatch`。
 
-### 8.1 库存 OpenAPI
+### 11.1 库存 OpenAPI
 
 | 方法与路径 | scope | 参数/请求 | 成功 data/响应 |
 |---|---|---|---|
@@ -838,7 +1059,7 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 | `POST /open-api/inventory/import` | `inventory:write` | 库存交换文档 v2 | 导入结果；产生 `inventory_import` SSE |
 | `GET /open-api/inventory/export` | `inventory:export` | `include=current|current,rewards`，`from/to` 可选 | 原始库存 v2 文档 |
 
-### 8.2 密探 OpenAPI
+### 11.2 密探 OpenAPI
 
 | 方法与路径 | scope | 参数/请求 | 成功 data/响应 |
 |---|---|---|---|
@@ -856,7 +1077,7 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 - 来源账号始终强制映射到 Token 绑定账号。
 - 不接受 annotation/full/manual，不扣减库存。
 
-## 10. 广陵账房方案（/hub/ledger/plan）
+## 12. 广陵账房方案（/hub/ledger/plan）
 
 全部需 JWT，方案归属从 JWT 获取；不存在与越权统一返回业务 404。
 
@@ -901,17 +1122,17 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 - 全量响应包含 `{id,user_id,name,version,exchange_rate,initial_points,cart_items,custom_packages,summary,created_at,updated_at}`。
 - `summary={total_cny,total_points,total_draws}`；`total_points` 不含 `initial_points`。
 
-## 11. 其他现有后端接口
+## 13. 其他现有后端接口
 
 这些端点当前没有对应 YuanHub API 模块，但属于后端已实现契约。
 
-### 10.1 系统
+### 13.1 系统
 
 - `GET /`：公开健康提示，返回普通包装，message 为 `Share Server is Running`，data 为 null。
 - `GET /version`：公开，返回 `{title,description,version,git}`。
 - `GET /ready`：仅 local profile 的 readiness 检查，不应作为生产公共契约依赖。
 
-### 10.2 Hub Post 示例业务
+### 13.2 Hub Post 示例业务
 
 | 方法与路径 | 认证 | 请求/响应 |
 |---|---|---|
@@ -924,7 +1145,7 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 
 `/demo/**` 是后端示例接口，不纳入前端业务契约。
 
-## 12. YuanHub 前端对应关系
+## 14. YuanHub 前端对应关系
 
 | 模块 | 作用 |
 |---|---|
@@ -934,22 +1155,26 @@ ZIP 的 `application/x-zip-compressed` 会归一化为 `application/zip`；TXT/L
 | `src/api/accountEvents.js` | 带 JWT 的 SSE 客户端 |
 | `src/api/inventory.js` | 库存、特别关注、库存 OpenAPI 导入 |
 | `src/api/operator.js` | 密探目录、养成、标注、目标、提升、导入导出和管理端 |
+| `src/api/level.js` | 公共关卡目录读取、管理员 CRUD、archive/restore、导入预览/提交、导出与历史 |
+| `src/api/changelog.js` | 公开更新日志读取、草稿保存和审核状态流转 |
 | `src/api/openApi.js` | OpenAPI Token 管理 |
 | `src/api/ledger.js` | 广陵账房方案 CRUD |
 | `src/api/feedback.js` | 个人反馈、反馈工作台、反馈权限管理与工单操作 |
 | `src/store/auth.js` | 登录态、持久化、刷新和退出 |
 | `src/store/accountEvents.js` | SSE 订阅、事件去重、通知与页面刷新 |
+| `src/pages/level/admin.vue` | `/level/admin` 关卡管理工作台；入口和路由要求 `level_catalog:write` |
+| `src/pages/changelog/admin.vue` | `/admin/changelog` 更新日志所见即所得编辑与审核工作台 |
 
 实现注意：
 
 - `request(path,{auth:true})` 才自动携带登录 JWT；OpenAPI Token 需调用方显式设置 Authorization。
-- `raw:true` 用于库存/密探导出，否则会错误地按 ApiResult 解包。
+- `raw:true` 主要用于库存/密探原始导出；关卡导出也使用它取得完整 JSON，再由 `src/api/level.js` 兼容解开 ApiResult。
 - `multipart:true` 上传头像时不要手动设置 `Content-Type`，由浏览器写 boundary。
 - `request()` 抛出的错误保留 `status`、`code`、`payload`，revision/idempotency 分支应使用 `code` 判断。
 - 401 自动刷新只针对 `auth:true` 的 JWT 请求；OpenAPI Token 401 不应触发用户 refresh。
 - 切换子账号时必须清空旧账号的库存、密探、关注和事件状态后重新加载。
 
-## 13. 更新检查清单
+## 15. 更新检查清单
 
 后端接口变更时至少检查：
 
