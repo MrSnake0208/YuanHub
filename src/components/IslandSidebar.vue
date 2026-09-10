@@ -31,6 +31,10 @@
         <ScrollText :size="19" aria-hidden="true" />
         <span>更新</span>
       </router-link>
+      <router-link to="/install" :class="{ active: $route.path === '/install' }">
+        <Download :size="19" aria-hidden="true" />
+        <span>桌面</span>
+      </router-link>
       <router-link
         v-if="isLoggedIn"
         to="/notifications"
@@ -161,6 +165,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   Bell,
   BookUser,
+  Download,
   Gem,
   LogIn,
   MessageSquareText,

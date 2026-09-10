@@ -16,6 +16,7 @@
     </Transition>
   </RouterView>
   <AccountEventToasts />
+  <MobileInstallPrompt />
   <!-- 全站自定义弹窗（alert / confirm / prompt），Teleport 到 body -->
   <AppDialog />
 </template>
@@ -25,6 +26,7 @@ import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
+import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
 import { auth } from '@/store/auth.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
