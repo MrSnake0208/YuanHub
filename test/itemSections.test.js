@@ -9,7 +9,7 @@ const GAME_BAG_ORDER = [
   '低光荷', '鸢羽', '蒹葭', '星汉镜', '水镜', '悲回风扇', '仙门扇', '木兰坠露', '霸王泪', '宝石镜', '鎏金镜',
   '羽扇', '金丝扇', '灵山泉', '百末旨酒', '六博镜', '铜镜', '翠扇', '绢扇', '清酒', '浊酒', '解殃瓶', '功过格', '金算筹',
   '骨算筹', '解谪瓶', '善恶簿', '解注瓶', '怀阴金锁', '阳明金锁', '天风金锁', '火源金锁', '水心金锁', '载地金锁',
-  '鸡炙', '麻籽', '蛇肉', '茱萸', '白金币'
+  '鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币'
 ]
 
 test('背包游戏顺序覆盖指定道具', function () {
@@ -24,30 +24,29 @@ test('目录道具按固定顺序完整排列', function () {
   const sorted = sortItemsByGameOrder(ITEM_CATALOG)
 
   assert.equal(sorted.length, ITEM_CATALOG.length)
-  assert.deepEqual(sorted.slice(-5).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币'])
+  assert.deepEqual(sorted.slice(-7).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币'])
 })
 
-test('调整库存时只展示四种鸟食并置顶', function () {
+test('调整库存时鸟食与抽卡资源置顶', function () {
   const sorted = sortStockEditItems(visibleInventoryItems(ITEM_CATALOG))
 
-  assert.deepEqual(sorted.slice(0, 5).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '六韬兵书'])
-  assert.equal(sorted.some(function (item) { return item.name === '白金币' }), false)
+  assert.deepEqual(sorted.slice(0, 7).map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币'])
 })
 
 test('资源道具顺序不受当前库存返回顺序影响', function () {
-  const resourceNames = ['鸡炙', '麻籽', '蛇肉', '茱萸', '白金币']
+  const resourceNames = ['鸡炙', '麻籽', '蛇肉', '茱萸', '符传', '天机符传', '白金币']
   const shuffled = ITEM_CATALOG.filter(function (item) { return resourceNames.includes(item.name) }).reverse()
   const sorted = sortItemsByGameOrder(shuffled)
 
   assert.deepEqual(sorted.map(function (item) { return item.name }), resourceNames)
 })
 
-test('追踪清单不展示装金玻璃和白金币', function () {
+test('追踪清单隐藏装金玻璃但展示白金币', function () {
   const visible = visibleInventoryItems(ITEM_CATALOG)
 
   assert.equal(visible.some(function (item) { return item.name === '装金玻璃' }), false)
-  assert.equal(visible.some(function (item) { return item.name === '白金币' }), false)
-  assert.equal(visible.length, ITEM_CATALOG.length - 2)
+  assert.equal(visible.some(function (item) { return item.name === '白金币' }), true)
+  assert.equal(visible.length, ITEM_CATALOG.length - 1)
 })
 
 test('类别模式只展示资源道具和密探养成资源且不遗漏道具', function () {
@@ -55,21 +54,22 @@ test('类别模式只展示资源道具和密探养成资源且不遗漏道具',
   const flattened = sections.flatMap(function (section) { return section.entries })
 
   assert.deepEqual(sections.map(function (section) { return section.name }), ['资源道具', '密探养成资源'])
-  assert.equal(flattened.length, ITEM_CATALOG.length - 2)
-  assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length - 2)
+  assert.equal(flattened.length, ITEM_CATALOG.length - 1)
+  assert.equal(new Set(flattened.map(function (item) { return item.id })).size, ITEM_CATALOG.length - 1)
 })
 
-test('资源道具分为鸟食礼包、命盘&星石、密探经验三行资源架', function () {
+test('资源道具包含独立的抽卡资源二级分类', function () {
   const sections = buildItemCategorySections(sortItemsByGameOrder(visibleInventoryItems(ITEM_CATALOG)))
   const resourceSection = sections[0]
 
   assert.equal(resourceSection.subsectionLayout, 'shelves')
-  assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['鸟食礼包', '命盘&星石', '密探经验'])
+  assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['鸟食礼包', '抽卡资源', '命盘&星石', '密探经验'])
   assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸'])
-  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), [
+  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), ['符传', '天机符传', '白金币'])
+  assert.deepEqual(resourceSection.subsections[2].entries.map(function (item) { return item.name }), [
     '功过格', '善恶簿', '骨算筹', '金算筹', '解殃瓶', '解谪瓶', '解注瓶'
   ])
-  assert.deepEqual(resourceSection.subsections[2].entries.map(function (item) { return item.name }), ['六韬兵书', '兵书全卷', '兵书残卷'])
+  assert.deepEqual(resourceSection.subsections[3].entries.map(function (item) { return item.name }), ['六韬兵书', '兵书全卷', '兵书残卷'])
 })
 
 test('密探养成资源三个子类别使用全宽行布局并保持游戏顺序', function () {
@@ -83,7 +83,7 @@ test('密探养成资源三个子类别使用全宽行布局并保持游戏顺�
     '羽扇', '金丝扇', '灵山泉', '百末旨酒', '六博镜', '铜镜', '翠扇', '绢扇', '清酒', '浊酒'
   ])
   assert.deepEqual(development.subsections[0].subgroups.map(function (group) { return group.name }), [
-    '火&风（扇）', '地&水（露、泪、酒、泉）', '阴&阳（镜）'
+    '火&风', '地&水', '阴&阳'
   ])
   assert.deepEqual(development.subsections[0].subgroups[0].entries.map(function (item) { return item.name }), [
     '悲回风扇', '仙门扇', '羽扇', '金丝扇', '翠扇', '绢扇'
