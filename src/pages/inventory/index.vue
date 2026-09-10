@@ -1788,6 +1788,7 @@ import {
   buildAgentGroups,
   filterAgentEntries,
   HIDDEN_AGENT_IDS,
+  normalizeOperatorCatalog,
   sortAgentEntries,
   visibleAgentEntries,
 } from "../../data/inventory/agentManifest.js";
@@ -1819,7 +1820,7 @@ const agentStatusFilters = ref([]);
 const agentRarityFilters = ref([]);
 const agentProfFilters = ref([]);
 const agentSubProfFilters = ref([]);
-const agentGameScopes = ref(new Map());
+const operatorCatalog = ref(AGENT_CATALOG);
 const agentGroupBy = ref("none");
 const agentSort = ref("latest");
 const agentSortDirection = ref("desc");
@@ -1866,11 +1867,13 @@ const AGENT_STATUS_OPTIONS = [
   { id: "missing", label: "无库存" },
 ];
 const AGENT_RARITIES = [5, 4, 3];
-const AGENT_RARITY_BY_ID = new Map(
-  AGENT_CATALOG.map(function (agent) {
-    return [agent.id, Number(agent.rarity)];
-  }),
-);
+const agentRarityById = computed(function () {
+  return new Map(
+    operatorCatalog.value.map(function (agent) {
+      return [agent.id, Number(agent.rarity)];
+    }),
+  );
+});
 const favoriteAgentIds = ref(new Set());
 const favoriteBusyIds = ref(new Set());
 const favoriteLoading = ref(false);
@@ -1983,7 +1986,10 @@ function setTab(t) {
   }
   activeTab.value = t;
   if (t === "manifest" && currentEntries.value.length === 0) reloadCurrent();
-  if (t === "manifest" && entityType.value === "agent") loadAgentFavorites();
+  if (t === "manifest" && entityType.value === "agent") {
+    loadAgentCatalog();
+    loadAgentFavorites();
+  }
   if (t === "acquired" && appliedAcquiredKey.value !== currentAcquiredKey.value)
     loadAcquired();
   if (t === "records") loadRecords(true);
@@ -1996,7 +2002,10 @@ function setEntityType(t) {
   currentFullBaselineAt.value = null;
   error.value = "";
   reloadCurrent();
-  if (t === "agent") loadAgentFavorites();
+  if (t === "agent") {
+    loadAgentCatalog();
+    loadAgentFavorites();
+  }
 }
 
 function setAcquiredEntityType(t) {
@@ -2366,7 +2375,8 @@ function monogram(e) {
 
 function nameOf(id, name, requestedType) {
   const type = requestedType || entityType.value;
-  const local = LOCAL_NAME[type] ? LOCAL_NAME[type].get(id) : null;
+  const local =
+    type === "agent" ? agentNameById.value.get(id) : LOCAL_NAME.item.get(id);
   if (local) return local;
   if (name) return name;
   if (!catalog.value.entities.length) return id;
@@ -2424,13 +2434,11 @@ function applyAcquiredEntityType() {
 }
 
 const visibleItemCatalog = visibleInventoryItems(ITEM_CATALOG);
-const visibleAgentCatalog = visibleAgentEntries(AGENT_CATALOG);
+const visibleAgentCatalog = computed(function () {
+  return visibleAgentEntries(operatorCatalog.value);
+});
 const agentCatalogEntries = computed(function () {
-  const scopes = agentGameScopes.value;
-  return visibleAgentCatalog.map(function (entry) {
-    const games = scopes.get(entry.id) || entry.games || [];
-    return Object.assign({}, entry, { games: games });
-  });
+  return visibleAgentCatalog.value;
 });
 const agentGameCatalogCount = computed(function () {
   return agentCatalogEntries.value.filter(function (entry) {
@@ -2458,16 +2466,17 @@ const stockCatalogSubsections = new Map(
     }),
 );
 const itemCatalogCount = visibleItemCatalog.length;
-const agentCatalogCount = visibleAgentCatalog.length;
-const agentSubProfs = Array.from(
-  new Set(
-    visibleAgentCatalog
-      .map(function (entry) {
-        return entry.subProf;
-      })
-      .filter(Boolean),
-  ),
-);
+const agentSubProfs = computed(function () {
+  return Array.from(
+    new Set(
+      visibleAgentCatalog.value
+        .map(function (entry) {
+          return entry.subProf;
+        })
+        .filter(Boolean),
+    ),
+  );
+});
 const agentFacetCount = computed(function () {
   return (
     agentStatusFilters.value.length +
@@ -2486,12 +2495,14 @@ const LOCAL_NAME = {
       return [e.id, e.name];
     }),
   ),
-  agent: new Map(
-    visibleAgentCatalog.map(function (e) {
+};
+const agentNameById = computed(function () {
+  return new Map(
+    visibleAgentCatalog.value.map(function (e) {
       return [e.id, e.name];
     }),
-  ),
-};
+  );
+});
 const LOCAL_ITEM = new Map(
   ITEM_CATALOG.map(function (e) {
     return [e.id, e];
@@ -2786,7 +2797,7 @@ const acquiredAgentRecords = computed(function () {
   });
 });
 const favoriteAgentsForStats = computed(function () {
-  return AGENT_CATALOG.filter(function (agent) {
+  return operatorCatalog.value.filter(function (agent) {
     return favoriteAgentIds.value.has(agent.id);
   });
 });
@@ -2889,10 +2900,10 @@ function isLowerRarityAgentReward(entry) {
   if (
     !entry ||
     entry.entity_type !== "agent" ||
-    !AGENT_RARITY_BY_ID.has(entry.id)
+    !agentRarityById.value.has(entry.id)
   )
     return false;
-  return AGENT_RARITY_BY_ID.get(entry.id) < 5;
+  return agentRarityById.value.get(entry.id) < 5;
 }
 
 const displayedAcquiredEntries = computed(function () {
@@ -3890,27 +3901,14 @@ async function doExport() {
   }
 }
 
-async function loadAgentGameScopes() {
+async function loadAgentCatalog() {
   try {
     const data = await getOperatorCatalog();
     const operators =
       data && Array.isArray(data.operators) ? data.operators : [];
-    const nextScopes = new Map();
-    operators.forEach(function (operator) {
-      const id =
-        operator &&
-        (operator.operatorId || operator.operator_id || operator.id);
-      const rawGames = operator && (operator.games || operator.games_list);
-      const games = Array.isArray(rawGames)
-        ? rawGames.filter(function (game) {
-            return game === "代号鸢" || game === "如鸢";
-          })
-        : [];
-      if (id && games.length) nextScopes.set(id, games);
-    });
-    agentGameScopes.value = nextScopes;
+    operatorCatalog.value = normalizeOperatorCatalog(operators);
   } catch (_error) {
-    agentGameScopes.value = new Map();
+    // 保留最近一次成功目录；首次加载失败时自然使用内置目录兜底。
   }
 }
 
@@ -3924,7 +3922,7 @@ onMounted(async function () {
         catalog.value = { entities: [] };
       }
     })(),
-    loadAgentGameScopes(),
+    loadAgentCatalog(),
   ]);
   await loadAccounts();
   reloadCurrent();
