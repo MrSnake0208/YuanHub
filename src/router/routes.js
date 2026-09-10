@@ -162,6 +162,18 @@ export const routes = [
         }
     },
     {
+        path: '/install',
+        text: '添加到桌面',
+        name: 'install',
+        display: false,
+        module: 'help',
+        icon: 'download',
+        component: () => import('/src/pages/install/index.vue'),
+        meta: {
+            title: '添加到桌面 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/login',
         text: '登录',
         name: 'login',

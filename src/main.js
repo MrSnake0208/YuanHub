@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { init as authInit } from '@/store/auth.js'
+import { initPwaInstall } from '@/utils/pwaInstall.js'
 import './styles/main.css'
 
 // 滚动出现指令：进入视口时加上 .in（复刻原站 IntersectionObserver 动效）
@@ -56,6 +57,9 @@ const reveal = {
     if (el.__revealVisibilityObserver) el.__revealVisibilityObserver.disconnect()
   }
 }
+
+// 尽早监听浏览器 PWA 安装事件，避免页面组件挂载后才开始捕获。
+initPwaInstall()
 
 // 挂载前先恢复登录态（store/auth.js 在模块加载时已同步从 localStorage 恢复，
 // init() 仅作幂等收口，保证刷新页面后导航守卫/侧边栏拿到的状态正确）
