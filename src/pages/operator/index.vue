@@ -2965,6 +2965,7 @@
 </template>
 
 <script setup>
+import { usePersistedTab } from "../../utils/persistedTab.js";
 import {
   ref,
   computed,
@@ -3094,8 +3095,12 @@ const ledgerCardVersionClass = operatorLedgerCardVersionClass();
 const ledgerCardIsV2 =
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2;
 
-const activeTab = ref("catalog");
-const visitedTabs = ref(new Set(["catalog"]));
+const activeTab = usePersistedTab(
+  "operator-tabs",
+  "catalog",
+  growthTrackingEnabled ? ["catalog", "current", "tracking"] : ["catalog", "current"],
+);
+const visitedTabs = ref(new Set(["catalog", activeTab.value]));
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const profFilter = ref("all");
@@ -7961,6 +7966,7 @@ onMounted(async function () {
   window.addEventListener("resize", hideDiscTooltip);
   await Promise.all([loadCatalog(), loadAccounts()]);
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
+  setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
 });
 
