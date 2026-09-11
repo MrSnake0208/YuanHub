@@ -1,31 +1,32 @@
 /*
  * Agent ledger card v2.
  *
- * V2 inherits v1 and keeps its changes scoped to the editable current-growth
- * card. The public read-only share card therefore keeps the stable v1 layout.
+ * V2 inherits v1 and applies its compact ledger skin to both the editable
+ * current-growth card and the read-only share card. Interactive controls only
+ * render in the editable card markup.
  */
-.agent-ledger-card.agent-ledger-card--editable.agent-ledger-card--v2 {
+.agent-ledger-card:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 {
   gap: 9px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-card-head {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-card-head {
   gap: 20px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-identity {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-identity {
   position: relative;
   top: -3px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-status-menu {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-status-menu {
   top: 1px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat {
   gap: 6px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-stat {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-stat {
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) 34px;
   align-items: center;
@@ -35,17 +36,17 @@
   background: rgba(255, 253, 246, 0.76);
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-head {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-head {
   grid-column: 1;
   justify-content: flex-start;
   font-size: 9.5px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-head > span {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-head > span {
   gap: 0;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-value {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-value {
   grid-column: 2 / -1;
   min-height: 25px;
   margin: 0;
@@ -54,34 +55,100 @@
   text-align: center;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-oddity {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) 34px;
   align-items: center;
   gap: 4px;
   min-width: 0;
+  min-height: 20px;
   margin-top: 0;
   font-size: 9px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-oddity input {
+.agent-ledger-card--share.agent-ledger-card--v2 .stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .stat-icon svg {
+  display: block;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-stat {
+  grid-template-columns: minmax(0, 1fr) 14px max-content minmax(0, 1fr);
+  column-gap: 8px;
+  padding: 4px 2px 8px;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-head {
+  grid-column: 2;
+  grid-row: 1;
+  width: 14px;
+  align-self: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-head > .stat-icon,
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-oddity > .stat-icon {
+  align-self: center;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-oddity > .stat-icon {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-value {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-oddity {
+  display: contents;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-oddity > span:last-child {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: center;
+  justify-self: center;
+  min-width: 0;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-value {
+  border-bottom: 0;
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity input {
   width: 100%;
   min-width: 48px;
+  min-height: 20px;
   font-size: 9px;
   text-align: center;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-oddity span {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity span {
   font-size: 8.5px;
   text-align: left;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat + .ledger-growth {
-  margin-top: -4.5px;
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat + .ledger-growth {
+  margin-top: -6.75px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth {
   --ledger-growth-column-gap: 10px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -90,7 +157,7 @@
   padding: 5px 7px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row {
   display: grid;
   grid-template-columns: auto minmax(32px, 1fr) 30px;
   align-items: center;
@@ -99,14 +166,14 @@
   min-height: 26px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(3) {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(3) {
   grid-column: 1 / -1;
   grid-template-columns: 32px minmax(0, 1fr) 30px;
   padding-top: 0;
   border-top: 0;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-grow-label {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-grow-label {
   width: auto;
   min-height: 0;
   font-size: 9.5px;
@@ -115,27 +182,27 @@
   white-space: nowrap;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-inline-field,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-inline-input {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-inline-field,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-inline-input {
   width: 100%;
   min-width: 0;
   min-height: 26px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-inline-input {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-inline-input {
   padding-inline: 1px;
   font-size: 13px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-step-actions {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions {
   width: 26px;
   min-width: 26px;
   margin-left: 0;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-step-actions button,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-smart-action,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-next-action {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions button,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-smart-action,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-next-action {
   width: 26px;
   min-width: 26px;
   height: 26px;
@@ -147,20 +214,20 @@
   border-radius: 6px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-step-actions button svg,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-smart-action svg,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-next-action svg {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions button svg,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-smart-action svg,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-next-action svg {
   display: block;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-step-actions button:focus-visible,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-smart-action:focus-visible,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-next-action:focus-visible {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions button:focus-visible,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-smart-action:focus-visible,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-next-action:focus-visible {
   outline: 2px solid var(--brand-blue);
   outline-offset: 2px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-huaji-value {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-huaji-value {
   width: 100%;
   min-width: 0;
   min-height: 26px;
@@ -171,7 +238,7 @@
   white-space: nowrap;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-huaji-value > span {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-huaji-value > span {
   display: inline-flex;
   height: 14px;
   align-items: center;
@@ -179,37 +246,55 @@
   transform: translateY(1px);
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-huaji-value > svg {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-huaji-value > svg {
   display: block;
   transform: translateY(1px);
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(1) > .ledger-popover,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(2) > .ledger-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(1) > .ledger-popover,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(2) > .ledger-popover {
   width: calc(200% + var(--ledger-growth-column-gap));
   max-width: none;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(1) > .ledger-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(1) > .ledger-popover {
   left: 0;
   right: auto;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(2) > .ledger-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(2) > .ledger-popover {
   left: calc(-100% - var(--ledger-growth-column-gap));
   right: auto;
   transform: none;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(3) > .ledger-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(3) > .ledger-popover {
   width: 100%;
   max-width: none;
   left: 0;
   right: auto;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny {
   --ledger-destiny-column-gap: 8px;
+  --trait-text: #55483c;
+  --fate2-trait-text: #4e4752;
+  --trait-disabled-text: #969087;
+  --trait-neutral-border: rgba(73, 59, 44, 0.2);
+  --trait-neutral-bg: #fffdf6;
+  --fate1-accent: #b8772c;
+  --fate1-soft: #f7e8d6;
+  --fate2-accent: #7e7886;
+  --fate2-soft: #eeebf2;
+  --rarity-gold: #b9852d;
+  --rarity-gold-border: #dfc287;
+  --rarity-gold-bg: #fbf2df;
+  --rarity-purple: #8c70a4;
+  --rarity-purple-border: #c4b0d1;
+  --rarity-purple-bg: #f4eef8;
+  --rarity-blue: #65879f;
+  --rarity-blue-border: #a9bfd0;
+  --rarity-blue-bg: #eef4f8;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
@@ -217,21 +302,34 @@
   padding-top: 2px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row {
+  --fate-series-accent: var(--fate1-accent);
+  --fate-series-soft: var(--fate1-soft);
   display: flex;
   min-width: 0;
   align-items: stretch;
   flex-direction: column;
   gap: 5px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--fate-series-soft) 12%, transparent);
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row > span {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .ledger-destiny-row:nth-child(2) {
+  --fate-series-accent: var(--fate2-accent);
+  --fate-series-soft: var(--fate2-soft);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row > span {
   width: 100%;
-  padding-top: 0;
+  padding: 0 3px 2px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--fate-series-accent) 28%, transparent);
+  color: var(--fate-series-accent);
   font-size: 10.5px;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row > .ledger-destiny-values {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row > .ledger-destiny-values {
   display: grid;
   width: 100%;
   max-height: 80px;
@@ -242,7 +340,7 @@
   overflow: visible;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row em {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row em {
   width: 100%;
   min-width: 0;
   min-height: 24px;
@@ -255,81 +353,162 @@
   white-space: nowrap;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row:nth-child(1) > .ledger-disc-popover,
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row:nth-child(2) > .ledger-disc-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .ledger-destiny-row em:not(.empty) {
+  border-color: var(--trait-neutral-border);
+  background: var(--trait-neutral-bg);
+  color: var(--trait-text);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .ledger-destiny-row:nth-child(2)
+  em:not(.empty):not(.is-disabled) {
+  color: var(--fate2-trait-text);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .ledger-destiny-row em.is-disabled {
+  color: var(--trait-disabled-text);
+  opacity: 0.78;
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .fate-trait-style-a
+  .ledger-destiny-row
+  em.rarity-gold {
+  border-color: var(--rarity-gold-border);
+  background: var(--rarity-gold-bg);
+  box-shadow: inset 3px 0 0 var(--rarity-gold);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .fate-trait-style-a
+  .ledger-destiny-row
+  em.rarity-purple {
+  border-color: var(--rarity-purple-border);
+  background: var(--rarity-purple-bg);
+  box-shadow: inset 3px 0 0 var(--rarity-purple);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .fate-trait-style-a
+  .ledger-destiny-row
+  em.rarity-blue {
+  border-color: var(--rarity-blue-border);
+  background: var(--rarity-blue-bg);
+  box-shadow: inset 3px 0 0 var(--rarity-blue);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .fate-trait-style-c
+  .ledger-destiny-row
+  em.rarity-gold {
+  border-color: var(--rarity-gold-border);
+  background: linear-gradient(180deg, #fffdf9 0%, var(--rarity-gold-bg) 100%);
+  box-shadow: inset 0 -3px 0 var(--rarity-gold);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .fate-trait-style-c
+  .ledger-destiny-row
+  em.rarity-purple {
+  border-color: var(--rarity-purple-border);
+  background: linear-gradient(
+    180deg,
+    #fffdf9 0%,
+    var(--rarity-purple-bg) 100%
+  );
+  box-shadow: inset 0 -3px 0 var(--rarity-purple);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2
+  .fate-trait-style-c
+  .ledger-destiny-row
+  em.rarity-blue {
+  border-color: var(--rarity-blue-border);
+  background: linear-gradient(180deg, #fffdf9 0%, var(--rarity-blue-bg) 100%);
+  box-shadow: inset 0 -3px 0 var(--rarity-blue);
+}
+
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row:nth-child(1) > .ledger-disc-popover,
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row:nth-child(2) > .ledger-disc-popover {
   width: calc(200% + var(--ledger-destiny-column-gap));
   max-width: none;
   right: auto;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row:nth-child(1) > .ledger-disc-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row:nth-child(1) > .ledger-disc-popover {
   left: 0;
 }
 
-.agent-ledger-card--editable.agent-ledger-card--v2 .ledger-destiny-row:nth-child(2) > .ledger-disc-popover {
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-destiny-row:nth-child(2) > .ledger-disc-popover {
   left: calc(-100% - var(--ledger-destiny-column-gap));
 }
 
 @media (max-width: 640px) {
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-stat {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-stat {
     padding: 8px 8px 11px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-name-row {
+  .agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-stat {
+    padding-bottom: 11px;
+  }
+
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-name-row {
     gap: 15px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-head {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-head {
     font-size: 10.5px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat-value {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat-value {
     min-height: 28px;
     font-size: 20px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-oddity,
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-oddity input {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity,
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity input {
     font-size: 11.5px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-oddity input {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-oddity input {
     min-height: 24px;
     font-size: 12.5px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row {
     grid-template-columns: auto minmax(32px, 1fr) 30px;
     min-height: 30px;
     align-items: center;
     flex-direction: initial;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row:nth-child(3) {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(3) {
     grid-template-columns: 32px minmax(0, 1fr) 30px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-grow-label {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-grow-label {
     min-height: 0;
     font-size: 10.5px;
     text-align: left;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-inline-field,
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-inline-input,
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-growth-row > .ledger-editable {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-inline-field,
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-inline-input,
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row > .ledger-editable {
     width: 100%;
     min-height: 30px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-step-actions {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions {
     width: 30px;
     min-width: 30px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-step-actions button,
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-smart-action,
-  .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-next-action {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions button,
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-smart-action,
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-next-action {
     width: 30px;
     min-width: 30px;
     height: 30px;

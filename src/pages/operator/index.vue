@@ -2036,7 +2036,9 @@
                     </div>
                   </section>
 
-                  <div class="ledger-destiny">
+                  <div
+                    class="ledger-destiny fate-trait-style-a"
+                  >
                     <div
                       v-for="index in 2"
                       :key="index"
@@ -2061,9 +2063,15 @@
                             v-for="disc in cardLoadoutDiscs(e, index - 1)"
                             :key="disc"
                             class="disc-term"
-                            :class="{
-                              'has-description': cardDiscDescription(e, disc),
-                            }"
+                            :class="[
+                              cardDiscRarityClass(e, disc),
+                              {
+                                'has-description': cardDiscDescription(
+                                  e,
+                                  disc,
+                                ),
+                              },
+                            ]"
                             :aria-label="ledgerCardIsV2 ? disc : undefined"
                             tabindex="0"
                             @mouseenter.stop="
@@ -6265,6 +6273,20 @@ function cardDiscAbbreviation(entry, name) {
       ? disc.abbreviation.trim()
       : "";
   return abbreviation || name;
+}
+
+const DISC_RARITY_CLASS = Object.freeze({
+  金: "rarity-gold",
+  紫: "rarity-purple",
+  蓝: "rarity-blue",
+  gold: "rarity-gold",
+  purple: "rarity-purple",
+  blue: "rarity-blue",
+});
+
+function cardDiscRarityClass(entry, name) {
+  const disc = cardDiscCatalogItem(entry, name);
+  return (disc && DISC_RARITY_CLASS[disc.color]) || "";
 }
 
 function cardDiscDescription(entry, name) {
