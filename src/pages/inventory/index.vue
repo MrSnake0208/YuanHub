@@ -1126,6 +1126,29 @@
               </div>
             </section>
 
+            <header v-if="acquiredLoading || (reportBook === 'base' && !periodHasData)" class="report-book-fallback">
+              <div><span>周期获得账簿</span><h2>{{ reportBook === 'resources' ? '抽卡资源收支' : '据点收获统计' }}</h2></div>
+              <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
+              <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
+              <button type="button" aria-label="据点收获统计账簿" :aria-pressed="reportBook === 'base'" :class="{ on: reportBook === 'base' }" @click="reportBook = 'base'"><span class="report-book-label-full">据点收获统计</span><span class="report-book-label-compact" aria-hidden="true">据点收获</span></button>
+            </div>
+            </header>
+            <ResourceBalanceReport
+              v-if="reportBook === 'resources' && !acquiredLoading"
+              :records="acquiredAllRecords"
+              :from="resourceReportRange.from"
+              :to="resourceReportRange.to"
+              :error="acquiredError || acquiredRecordsError"
+              :truncated="acquiredRecordsTruncated"
+            >
+              <template #actions>
+                <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
+              <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
+              <button type="button" aria-label="据点收获统计账簿" :aria-pressed="reportBook === 'base'" :class="{ on: reportBook === 'base' }" @click="reportBook = 'base'"><span class="report-book-label-full">据点收获统计</span><span class="report-book-label-compact" aria-hidden="true">据点收获</span></button>
+            </div>
+              </template>
+            </ResourceBalanceReport>
+            <template v-if="reportBook === 'base' || acquiredLoading">
             <div
               v-if="acquiredLoading"
               class="state acquired-loading"
@@ -1161,7 +1184,14 @@
                 :favorite-loading="favoriteLoading"
                 :favorite-error="favoriteError"
                 v-reveal
-              />
+              >
+                <template #actions>
+                  <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
+              <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
+              <button type="button" aria-label="据点收获统计账簿" :aria-pressed="reportBook === 'base'" :class="{ on: reportBook === 'base' }" @click="reportBook = 'base'"><span class="report-book-label-full">据点收获统计</span><span class="report-book-label-compact" aria-hidden="true">据点收获</span></button>
+            </div>
+                </template>
+              </AcquiredPeriodReport>
 
               <div
                 class="type-switch acquired-type-switch"
@@ -1569,6 +1599,7 @@
                 </section>
               </template>
             </template>
+            </template>
           </div>
 
           <!-- 导入记录 -->
@@ -1715,6 +1746,7 @@
 </template>
 
 <script setup>
+import { usePersistedTab } from "../../utils/persistedTab.js";
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import {
   Archive,
@@ -1741,6 +1773,7 @@ import {
   X,
 } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -1809,7 +1842,11 @@ import {
   validateInventoryExchangeDocument,
 } from "../../data/inventory/exchange.js";
 
-const activeTab = ref("manifest");
+const activeTab = usePersistedTab(
+  "inventory-tabs",
+  "manifest",
+  ["manifest", "acquired", "records"],
+);
 const manifestPanel = ref(null);
 const entityType = ref("item");
 const manifestSearch = ref("");
@@ -1893,6 +1930,8 @@ const rangeFrom = ref(localDate(new Date(Date.now() - 29 * 86400000)));
 const rangeTo = ref(localDate(new Date()));
 const rangePreset = ref("30d");
 const acquiredView = ref("overview");
+const reportBook = ref("resources");
+const resourceReportRange = ref({ from: rangeFrom.value, to: rangeTo.value });
 const acquiredSearch = ref("");
 const acquiredSource = ref("all");
 const acquiredSort = ref("count");
@@ -3659,13 +3698,14 @@ async function loadAcquired() {
       );
     }
     applyAcquiredEntityType();
+    resourceReportRange.value = { from: localDate(fromDate), to: localDate(toDate) };
     appliedAcquiredKey.value = queryKey;
     if (
       itemTotalsResult.status === "rejected" &&
       agentTotalsResult.status === "rejected" &&
       recordsResult.status === "rejected"
     ) {
-      acquiredError.value = "本期总账和奖励流水均加载失败，请稍后重试";
+      acquiredError.value = "据点收获统计和奖励流水均加载失败，请稍后重试";
     }
   } finally {
     if (seq === acquiredSeq) acquiredLoading.value = false;
@@ -3926,6 +3966,7 @@ onMounted(async function () {
   ]);
   await loadAccounts();
   reloadCurrent();
+  if (activeTab.value !== "manifest") setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(
     handleInventoryAccountEvent,
   );
@@ -7969,5 +8010,24 @@ onBeforeUnmount(function () {
     width: 100%;
     transform: none;
   }
+}
+
+.report-book-switch.acquired-type-switch { display: flex; flex-wrap: wrap; justify-content: flex-end; margin-top: 0; gap: 8px }
+.report-book-switch.acquired-type-switch > button { flex: 0 1 auto; min-height: 44px; height: auto; white-space: nowrap }
+.report-book-label-compact { display: none }
+.report-book-fallback { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 16px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+.report-book-fallback > div > span { color: var(--accent-strong); font-size: 12px; font-weight: 800 }
+.report-book-fallback h2 { font-family: var(--font-s); font-size: 20px; color: var(--ink) }
+@media (max-width: 760px) {
+  .report-book-switch.acquired-type-switch { width: fit-content; max-width: 100%; flex: 0 0 auto; flex-wrap: nowrap; gap: 2px; margin-left: auto; padding: 3px }
+  .report-book-switch.acquired-type-switch > button { min-height: 40px; padding: 6px 8px; font-size: 11px; line-height: 1.2 }
+  .report-book-label-full { display: none }
+  .report-book-label-compact { display: inline }
+  .report-book-fallback { align-items: center; flex-wrap: nowrap; gap: 8px; padding: 14px }
+  .report-book-fallback > div:first-child { min-width: 0 }
+  .report-book-fallback h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+}
+@media (max-width: 360px) {
+  .report-book-switch.acquired-type-switch > button { min-height: 38px; padding-inline: 6px; font-size: 10px }
 }
 </style>
