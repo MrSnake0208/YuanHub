@@ -71,28 +71,27 @@
               <button type="button" class="ghost" @click="resetInput">重新输入</button>
             </div>
 
-            <div v-if="status === 'ready'" class="share-filters" role="search" aria-label="筛选分享密探">
-              <label class="share-filter-search" for="operator-share-search">
-                <span>搜索密探</span>
-                <input id="operator-share-search" v-model="searchQuery" type="search" autocomplete="off" placeholder="名称、别名或 ID" />
-              </label>
-              <label for="operator-share-prof">
-                <span>属性</span>
-                <select id="operator-share-prof" v-model="profFilter">
-                  <option value="all">全部属性</option>
-                  <option v-for="prof in profOptions" :key="prof" :value="prof">{{ prof }}</option>
-                </select>
-              </label>
-              <label for="operator-share-sub-prof">
-                <span>职业</span>
-                <select id="operator-share-sub-prof" v-model="subProfFilter">
-                  <option value="all">全部职业</option>
-                  <option v-for="subProf in availableSubProfOptions" :key="subProf" :value="subProf">{{ subProf }}</option>
-                </select>
-              </label>
-              <span class="share-result-count" aria-live="polite">显示 {{ filteredEntries.length }} / {{ entries.length }} 位</span>
-              <button v-if="hasFilters" type="button" class="ghost" @click="clearFilters">清空条件</button>
-            </div>
+            <OperatorFilterDossier
+              v-if="status === 'ready'"
+              v-model:search-query="searchQuery"
+              v-model:prof-filter="profFilter"
+              v-model:sub-prof-filter="subProfFilter"
+              v-model:status-filter="statusFilter"
+              class="share-filter-dossier"
+              context-label="分享密探"
+              description="筛选后按稀有度、等级、化极、属性与实装顺序排列"
+              :result-count="filteredEntries.length"
+              :total-count="entries.length"
+              :prof-options="profOptions"
+              :sub-prof-options="availableSubProfOptions"
+              :status-options="shareStatusOptions"
+              :status-counts="shareStatusCounts"
+              :prof-icon="profIcon"
+              :has-filters="hasFilters"
+              searchable
+              search-placeholder="搜索名称 / 别名 / ID"
+              @reset="clearFilters"
+            />
 
             <div v-if="status === 'empty'" class="share-state">
               <span class="state-mark" aria-hidden="true">0</span>
@@ -176,11 +175,10 @@
                         <template v-if="starCardHasIcon(entry.growth.star_level)">
                           <span>{{ starCardNumber(entry.growth.star_level, entry.sp_of) }}</span>
                           <Star :size="12" fill="currentColor" aria-hidden="true" />
-                          <span v-if="!entry.sp_of">· {{ starCardNode(entry.growth.star_level) }} 节点</span>
+                          <span v-if="!entry.sp_of">{{ starCardNode(entry.growth.star_level) }}</span>
                         </template>
                         <template v-else>{{ starCardFallback(entry.growth.star_level) }}</template>
                       </span>
-                      <span v-if="operatorShareStarCompleteLabel(entry.growth.star_level, entry.sp_of)" class="share-growth-complete is-awakened">{{ operatorShareStarCompleteLabel(entry.growth.star_level, entry.sp_of) }}</span>
                     </div>
                   </section>
 
@@ -188,23 +186,20 @@
                     <div v-for="(loadout, index) in loadouts(entry)" :key="index" class="ledger-destiny-row">
                       <span>命盘{{ index === 0 ? '一' : '二' }}</span>
                       <div class="ledger-destiny-values">
-                        <template v-if="loadoutDiscEntries(entry, loadout).length">
-                          <em
-                            v-for="disc in loadoutDiscEntries(entry, loadout)"
-                            :key="disc.name"
-                            class="disc-term"
-                            :class="[
-                              discRarityClass(disc),
-                              { 'has-description': disc.description },
-                            ]"
-                            :tabindex="disc.description ? 0 : undefined"
-                            @mouseenter.stop="showDiscTooltip($event, disc.description)"
-                            @mouseleave="hideDiscTooltip"
-                            @focus="showDiscTooltip($event, disc.description)"
-                            @blur="hideDiscTooltip"
-                          >{{ disc.name }}</em>
-                        </template>
-                        <em v-else class="empty">+ 命盘</em>
+                        <em
+                          v-for="disc in loadoutDiscEntries(entry, loadout)"
+                          :key="disc.name"
+                          class="disc-term"
+                          :class="[
+                            discRarityClass(disc),
+                            { 'has-description': disc.description },
+                          ]"
+                          :tabindex="disc.description ? 0 : undefined"
+                          @mouseenter.stop="showDiscTooltip($event, disc.description)"
+                          @mouseleave="hideDiscTooltip"
+                          @focus="showDiscTooltip($event, disc.description)"
+                          @blur="hideDiscTooltip"
+                        >{{ disc.name }}</em>
                       </div>
                     </div>
                   </div>
@@ -253,6 +248,7 @@ import { useRoute, useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import ButterflyIcon from '../../components/operator/ButterflyIcon.vue'
+import OperatorFilterDossier from '../../components/operator/OperatorFilterDossier.vue'
 import { operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
 import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
@@ -265,7 +261,6 @@ import {
   mergeOperatorShareEntries,
   operatorShareCombatValue,
   operatorShareGrowthState,
-  operatorShareStarCompleteLabel,
   operatorShareStarLabel,
   parseOperatorShareToken
 } from '../../utils/operatorShare.js'
@@ -282,6 +277,7 @@ const entries = ref([])
 const searchQuery = ref('')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
+const statusFilter = ref('all')
 const discTooltip = ref({ visible: false, text: '', x: 0, y: 0, placement: 'top' })
 const profOptions = AGENT_PROFS
 const PROF_ICON_FILES = { 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' }
@@ -289,11 +285,23 @@ const STONE_SLOT_TYPES = ['main1', 'main2', 'main3', 'assist1', 'assist2', 'assi
 const availableSubProfOptions = computed(function () {
   return deriveSubProfOptions(entries.value)
 })
+const shareStatusOptions = [
+  { value: 'all', label: '全部' },
+  { value: 'growing', label: '养成中' },
+  { value: 'graduated', label: '已毕业' },
+  { value: 'inactive', label: '养老中' }
+]
+const shareStatusCounts = computed(function () {
+  return entries.value.reduce(function (counts, entry) {
+    counts[shareStatusClass(entry)] += 1
+    return counts
+  }, { growing: 0, graduated: 0, inactive: 0 })
+})
 const filteredEntries = computed(function () {
-  return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value)
+  return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value, statusFilter.value)
 })
 const hasFilters = computed(function () {
-  return Boolean(searchQuery.value.trim() || profFilter.value !== 'all' || subProfFilter.value !== 'all')
+  return Boolean(searchQuery.value.trim() || profFilter.value !== 'all' || subProfFilter.value !== 'all' || statusFilter.value !== 'all')
 })
 let loadSeq = 0
 
@@ -315,6 +323,7 @@ function clearFilters() {
   searchQuery.value = ''
   profFilter.value = 'all'
   subProfFilter.value = 'all'
+  statusFilter.value = 'all'
 }
 
 async function loadShare() {
@@ -555,13 +564,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .share-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 14px 18px }
 .share-toolbar p { flex: 1; color: var(--ink-60); font-size: 12.5px }
 .share-toolbar button { min-height: 38px; padding: 7px 14px; font-size: 12px }
-.share-filters { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(120px, 170px)) auto auto; align-items: end; gap: 10px; margin-bottom: 20px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 253, 246, .78) }
-.share-filters label { display: grid; gap: 5px; min-width: 0; color: var(--ink-60); font-size: 11px; font-weight: 800 }
-.share-filters input,.share-filters select { width: 100%; min-height: 38px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; color: var(--ink); background: var(--paper); font: 12px var(--font-b); outline: none }
-.share-filters input:focus,.share-filters select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
-.share-filters select { cursor: pointer }
-.share-result-count { align-self: center; color: var(--ink-60); font: 11px var(--font-d); white-space: nowrap }
-.share-filters button { min-height: 38px; padding: 7px 14px; font-size: 12px }
+.share-filter-dossier { margin-bottom: 20px }
 .share-ledger { margin-top: 16px; padding: 16px; border: 1px solid rgba(255, 248, 236, .22); border-radius: 20px; background: linear-gradient(145deg, var(--tea), var(--tea-deep)); box-shadow: 0 20px 40px -24px rgba(73, 59, 44, .55) }
 .current-ledger-meta { display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 14px; color: rgba(255, 248, 236, .76); font-size: 11px; font-weight: 700; line-height: 1.6 }
 .current-ledger-meta span { min-width: 0; overflow-wrap: anywhere }
@@ -646,10 +649,6 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   .share-entry-row { grid-template-columns: 1fr }
   .share-toolbar { align-items: stretch; flex-direction: column }
   .share-toolbar button { width: 100% }
-  .share-filters { grid-template-columns: 1fr; align-items: stretch }
-  .share-filters label { gap: 6px }
-  .share-result-count { align-self: auto }
-  .share-filters button { width: 100% }
   .share-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px }
   .current-ledger-meta { flex-direction: column; gap: 4px; padding-bottom: 12px; font-size: 12px; line-height: 1.5 }
   .operator-grid { grid-template-columns: 1fr; gap: 12px }
@@ -681,18 +680,3 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>
-<style scoped>
-@media (max-width: 640px) {
-  .share-ledger-growth .ledger-growth-row { min-height: 30px; }
-  .share-ledger-growth-value {
-    display: grid;
-    width: 100%;
-    min-height: 30px;
-    align-items: center;
-    justify-content: center;
-    padding-inline: 2px;
-    font-size: 15px;
-    text-align: center;
-  }
-}
-</style>

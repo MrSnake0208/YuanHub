@@ -80,7 +80,7 @@
 .agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-stat {
   grid-template-columns: minmax(0, 1fr) 14px max-content minmax(0, 1fr);
   column-gap: 8px;
-  padding: 4px 2px 8px;
+  padding: 4px 2px 8px 0px;
 }
 
 .agent-ledger-card--share.agent-ledger-card--v2 .ledger-combat-head {
@@ -173,6 +173,53 @@
   border-top: 0;
 }
 
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 6px;
+  row-gap: 0;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row,
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row:nth-child(3) {
+  grid-column: auto;
+  grid-template-columns: auto auto;
+  gap: 3px;
+  width: max-content;
+  max-width: 100%;
+  min-height: 26px;
+  padding-top: 0;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row:nth-child(1) {
+  justify-self: start;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row:nth-child(2) {
+  justify-self: center;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row:nth-child(3) {
+  justify-self: end;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value > span,
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value > svg {
+  flex: none;
+}
+
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-grow-label {
   width: auto;
   min-height: 0;
@@ -249,6 +296,21 @@
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-huaji-value > svg {
   display: block;
   transform: translateY(1px);
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value.ledger-huaji-value {
+  width: auto;
+  min-height: 0;
+  justify-content: flex-start;
+  overflow: visible;
+  padding: 0;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value.ledger-huaji-value > span,
+.agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value.ledger-huaji-value > svg {
+  height: auto;
+  line-height: 1;
+  transform: none;
 }
 
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(1) > .ledger-popover,
@@ -486,6 +548,21 @@
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-growth-row:nth-child(3) {
     grid-template-columns: 32px minmax(0, 1fr) 30px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row,
+  .agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth .ledger-growth-row:nth-child(3) {
+    grid-template-columns: auto auto;
+    min-height: 30px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v2 .share-ledger-growth-value {
+    min-height: 0;
+    font-size: 14px;
   }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-grow-label {

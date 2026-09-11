@@ -33,7 +33,7 @@ function operatorId(operator) {
   return text(operator && (operator.operator_id || operator.operatorId || operator.id))
 }
 
-const SHARE_STATUS_ORDER = { active: 0, graduated: 1, skip: 2 }
+const SHARE_GROWTH_STATES = new Set(['active', 'graduated', 'skip'])
 const SHARE_PROF_ORDER = { 地: 0, 水: 1, 火: 2, 风: 3, 阳: 4, 阴: 5, 混沌: 6 }
 const OPERATOR_LEVEL_MAX = 100
 const OPERATOR_ELITE_MAX = 17
@@ -41,7 +41,7 @@ const OPERATOR_ELITE_MAX = 17
 export function operatorShareGrowthState(entry) {
   const growth = entry && entry.growth && typeof entry.growth === 'object' ? entry.growth : {}
   const state = text(growth.growth_state || growth.growthState || entry && (entry.growth_state || entry.growthState))
-  return Object.prototype.hasOwnProperty.call(SHARE_STATUS_ORDER, state) ? state : 'active'
+  return SHARE_GROWTH_STATES.has(state) ? state : 'active'
 }
 
 function operatorReleaseOrder(id) {
@@ -62,9 +62,7 @@ function growthNumber(entry, snakeKey, camelKey) {
 }
 
 export function compareOperatorShareEntries(a, b) {
-  let difference = (SHARE_STATUS_ORDER[operatorShareGrowthState(a)] ?? 99) - (SHARE_STATUS_ORDER[operatorShareGrowthState(b)] ?? 99)
-  if (difference) return difference
-  difference = (Number(b && b.rarity) || 0) - (Number(a && a.rarity) || 0)
+  let difference = (Number(b && b.rarity) || 0) - (Number(a && a.rarity) || 0)
   if (difference) return difference
   difference = growthNumber(b, 'level', 'level') - growthNumber(a, 'level', 'level')
   if (difference) return difference
@@ -104,10 +102,13 @@ export function mergeOperatorShareEntries(share, catalog) {
   }).sort(compareOperatorShareEntries)
 }
 
-export function filterOperatorShareEntries(entries, search, prof, subProf) {
+export function filterOperatorShareEntries(entries, search, prof, subProf, status = 'all') {
   const query = text(search).toLowerCase()
   return (Array.isArray(entries) ? entries : []).filter(function (entry) {
     if (!matchesProfSubFilter(entry, prof, subProf)) return false
+    const growthState = operatorShareGrowthState(entry)
+    const displayStatus = growthState === 'graduated' ? 'graduated' : growthState === 'skip' ? 'inactive' : 'growing'
+    if (status !== 'all' && displayStatus !== status) return false
     if (!query) return true
     return [entry.name, entry.alias, entry.id].some(function (value) {
       return text(value).toLowerCase().includes(query)

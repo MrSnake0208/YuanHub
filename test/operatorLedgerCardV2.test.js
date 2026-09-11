@@ -51,6 +51,8 @@ test('v2 将两套命盘分两列展示目录简称，每列最多容纳三条',
   assert.match(v2Styles, /\.ledger-destiny \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
   assert.match(v2Styles, /\.ledger-destiny-row > \.ledger-destiny-values \{[\s\S]*?max-height: 80px;[\s\S]*?grid-auto-rows: 24px;/)
   assert.match(v2Styles, /\.ledger-destiny-row em \{[\s\S]*?font-size: 11px;/)
+  assert.match(operatorPage, /v-if="cardLoadoutNeedsPlaceholder\(e, index - 1\)"/)
+  assert.match(operatorPage, /function cardLoadoutNeedsPlaceholder\(entry, index\)[\s\S]*?return ledgerCardIsV2 \? count < 3 : count === 0;/)
 })
 
 test('v2 进一步压缩等级修为化极面板高度', () => {
