@@ -5,35 +5,44 @@
       <span>YuanHub</span>
     </router-link>
     <nav class="mobile-nav" aria-label="主要导航">
-      <router-link to="/cart" :class="{ active: $route.path === '/cart' }">
-        <ShoppingCart :size="19" aria-hidden="true" />
-        <span>账房</span>
+      <router-link
+        to="/operator"
+        :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
+      >
+        <BookUser :size="19" aria-hidden="true" />
+        <span>密探</span>
       </router-link>
       <router-link
         to="/inventory"
         :class="{ active: $route.path === '/inventory' }"
       >
         <PackageOpen :size="19" aria-hidden="true" />
-        <span>库存追踪</span>
-      </router-link>
-      <router-link
-        to="/operator"
-        :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
-      >
-        <BookUser :size="19" aria-hidden="true" />
-        <span>我的密探</span>
+        <span>库存</span>
       </router-link>
       <router-link to="/star" :class="{ active: $route.path === '/star' }">
         <Gem :size="19" aria-hidden="true" />
         <span>星石</span>
       </router-link>
+      <router-link
+        :to="isLoggedIn ? '/user/profile' : '/login'"
+        :class="{
+          active: $route.path === '/user/profile' || $route.path === '/login',
+        }"
+      >
+        <component
+          :is="isLoggedIn ? UserRound : LogIn"
+          :size="19"
+          aria-hidden="true"
+        />
+        <span>{{ isLoggedIn ? "账号" : "登录" }}</span>
+      </router-link>
+      <router-link to="/cart" :class="{ active: $route.path === '/cart' }">
+        <ShoppingCart :size="19" aria-hidden="true" />
+        <span>账房</span>
+      </router-link>
       <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
         <ScrollText :size="19" aria-hidden="true" />
         <span>更新</span>
-      </router-link>
-      <router-link to="/install" :class="{ active: $route.path === '/install' }">
-        <Download :size="19" aria-hidden="true" />
-        <span>桌面</span>
       </router-link>
       <router-link
         v-if="isLoggedIn"
@@ -57,18 +66,9 @@
           feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
         }}</span>
       </router-link>
-      <router-link
-        :to="isLoggedIn ? '/user/profile' : '/login'"
-        :class="{
-          active: $route.path === '/user/profile' || $route.path === '/login',
-        }"
-      >
-        <component
-          :is="isLoggedIn ? UserRound : LogIn"
-          :size="19"
-          aria-hidden="true"
-        />
-        <span>{{ isLoggedIn ? "我的" : "登录" }}</span>
+      <router-link to="/install" :class="{ active: $route.path === '/install' }">
+        <Download :size="19" aria-hidden="true" />
+        <span>桌面</span>
       </router-link>
     </nav>
   </header>
@@ -95,14 +95,11 @@
         :class="{ active: $route.path === '/inventory' }"
         ><span class="no">02</span>库存追踪</router-link
       >
-      <router-link to="/cart" :class="{ active: $route.path === '/cart' }"
-        ><span class="no">03</span>广陵账房</router-link
-      >
       <router-link to="/star" :class="{ active: $route.path === '/star' }"
-        ><span class="no">04</span>我的星石</router-link
+        ><span class="no">03</span>星石背包</router-link
       >
-      <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }"
-        ><span class="no">05</span>更新日志</router-link
+      <router-link to="/cart" :class="{ active: $route.path === '/cart' }"
+        ><span class="no">04</span>广陵账房</router-link
       >
       <div class="nav-separator" aria-hidden="true"></div>
       <template v-if="isLoggedIn">
@@ -126,10 +123,14 @@
         </router-link>
         <div class="nav-separator" aria-hidden="true"></div>
       </template>
+
       <router-link
         to="/user/profile"
         :class="{ active: $route.path === '/user/profile' }"
-        ><span class="no">06</span>个人中心</router-link
+        >我的连接码</router-link
+      >
+      <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }"
+        >YuanHub 更新日志</router-link
       >
       <!-- 协作看板（暂时隐藏）：
       <div class="nav-lb">协作看板 · 快捷跳转</div>
