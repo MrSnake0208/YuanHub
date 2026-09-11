@@ -1,3 +1,9 @@
+/*
+ * Agent ledger card v1 — frozen visual baseline.
+ *
+ * Keep this file unchanged when evolving the card. Version-specific changes
+ * belong in operator-ledger-card.v2.css and are activated by the version class.
+ */
 .agent-ledger-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

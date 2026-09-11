@@ -724,20 +724,25 @@
                   <h2>{{ currentAccountName }}</h2>
                   <span class="current-game-tag">{{ gameFilter }}</span>
                 </div>
-                <p>
-                  点按虚线数值可直接修改数据。快捷提升按钮会真实扣除库存；手动校正与完整编辑不扣库存
+                <p v-if="ledgerCardIsV2">
+                  点按虚线数值可直接修改；快捷提升会核对并扣除库存
                 </p>
-                <p>
-                  密探面板自动计算机制源自
-                  <a
-                    class="current-credit-link"
-                    href="https://wiki.biligame.com/yuan/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >bwiki编辑部<span aria-hidden="true">↗</span></a
-                  >
-                  及技术外援，因为计算精度问题，数据会存在个位数误差，仅供殿下们参考
-                </p>
+                <template v-else>
+                  <p>
+                    点按虚线数值可直接修改数据。快捷提升按钮会真实扣除库存；手动校正与完整编辑不扣库存
+                  </p>
+                  <p>
+                    密探面板自动计算机制源自
+                    <a
+                      class="current-credit-link"
+                      href="https://wiki.biligame.com/yuan/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >bwiki编辑部<span aria-hidden="true">↗</span></a
+                    >
+                    及技术外援，因为计算精度问题，数据会存在个位数误差，仅供殿下们参考
+                  </p>
+                </template>
               </div>
               <div
                 class="current-workbench-index"
@@ -1112,7 +1117,11 @@
                     · 仅看「可提升化极」</template
                   ></span
                 >
-                <span>快捷提升会真实扣除库存；手动校正与完整编辑不扣库存</span>
+                <span>{{
+                  ledgerCardIsV2
+                    ? "快捷提升会真实扣除库存；卡片编辑与完整编辑不扣库存"
+                    : "快捷提升会真实扣除库存；手动校正与完整编辑不扣库存"
+                }}</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">
                 没有匹配{{ currentFilterSuffix }}的已招募密探
@@ -1121,7 +1130,7 @@
                 <article
                   v-for="e in filteredCurrent"
                   :key="e.id"
-                  class="agent-ledger-card"
+                  class="agent-ledger-card agent-ledger-card--editable"
                   :class="[
                     {
                       'is-batch-selected': batchSelectedIds.has(e.id),
@@ -1134,6 +1143,7 @@
                     },
                     'rarity-r' + (e.rarity || 3),
                     'status-' + operatorStatus(e),
+                    ledgerCardVersionClass,
                   ]"
                   :aria-busy="cardSubmitStates[e.id] === 'submitting'"
                   role="listitem"
@@ -1283,22 +1293,35 @@
                       :key="kind"
                       class="ledger-combat-stat"
                       :class="{
-                        'is-manual': cardCombatMode(e, kind) === 'manual',
-                        'is-stale': combatObservedStatus(e) === 'stale',
+                        'is-manual':
+                          !ledgerCardIsV2 &&
+                          cardCombatMode(e, kind) === 'manual',
+                        'is-stale':
+                          !ledgerCardIsV2 &&
+                          combatObservedStatus(e) === 'stale',
                         'is-saving': cardCombatSavingIds.has(e.id),
                       }"
                     >
                       <div class="ledger-combat-head">
                         <span
+                          :aria-label="
+                            ledgerCardIsV2
+                              ? kind === 'attack'
+                                ? '攻击'
+                                : '生命'
+                              : undefined
+                          "
                           ><Swords
                             v-if="kind === 'attack'"
                             :size="12"
                             aria-hidden="true"
-                          /><Heart v-else :size="12" aria-hidden="true" />{{
-                            kind === "attack" ? "攻击" : "生命"
-                          }}</span
+                          /><Heart v-else :size="12" aria-hidden="true" /><template
+                            v-if="!ledgerCardIsV2"
+                            >{{ kind === "attack" ? "攻击" : "生命" }}</template
+                          ></span
                         >
                         <button
+                          v-if="!ledgerCardIsV2"
                           class="ledger-combat-mode"
                           type="button"
                           :class="{
@@ -1338,19 +1361,29 @@
                         class="ledger-combat-value"
                         type="number"
                         min="0"
-                        :value="cardCombatInputValue(e, kind)"
-                        :placeholder="cardCombatDisplay(e, kind)"
+                        :value="
+                          ledgerCardIsV2
+                            ? cardCombatSimpleValue(e, kind)
+                            : cardCombatInputValue(e, kind)
+                        "
+                        :placeholder="
+                          ledgerCardIsV2 ? '—' : cardCombatDisplay(e, kind)
+                        "
                         :aria-label="
                           e.name + (kind === 'attack' ? '攻击力' : '生命力')
                         "
                         :disabled="cardSubmitStates[e.id] === 'submitting'"
                         @input="setCardCombatValue(e, kind, $event)"
                       />
-                      <small class="ledger-combat-source">{{
+                      <small
+                        v-if="!ledgerCardIsV2"
+                        class="ledger-combat-source"
+                        >{{
                         cardSubmitStates[e.id] === "submitting"
                           ? "保存中…"
                           : cardCombatSource(e, kind)
-                      }}</small>
+                      }}</small
+                      >
                       <label class="ledger-oddity"
                         ><ButterflyIcon class="ledger-oddity-icon" /><input
                           type="number"
@@ -1394,18 +1427,49 @@
                           class="ledger-popover-trigger"
                           :class="growthActionClass(e, 'level', 5)"
                           :disabled="cardSubmitStates[e.id] === 'submitting'"
+                          :aria-label="
+                            ledgerCardIsV2
+                              ? '等级：' +
+                                growthActionLabel(e, 'level', 5, '提升 5 级')
+                              : undefined
+                          "
+                          :title="
+                            ledgerCardIsV2
+                              ? '等级：' +
+                                growthActionLabel(e, 'level', 5, '提升 5 级')
+                              : undefined
+                          "
                           @click="openGrowthAction(e, 'level', 5)"
                         >
-                          {{
+                          <template v-if="ledgerCardIsV2"
+                            ><CircleAlert
+                              v-if="!growthMaterialsReady(e, 'level', 5)"
+                              :size="14"
+                              aria-hidden="true"
+                            /><ChevronUp
+                              v-else
+                              :size="15"
+                              aria-hidden="true"
+                            /><span class="sr-only">{{
+                              growthActionLabel(e, "level", 5, "提升 5 级")
+                            }}</span></template
+                          ><template v-else>{{
                             growthActionLabel(e, "level", 5, "可 +5")
-                          }}</button
+                          }}</template></button
                         ><button
                           v-else
                           type="button"
                           class="is-complete"
                           disabled
+                          :aria-label="ledgerCardIsV2 ? '等级已满级' : undefined"
+                          :title="ledgerCardIsV2 ? '等级已满级' : undefined"
                         >
-                          已满级
+                          <template v-if="ledgerCardIsV2"
+                            ><Check :size="14" aria-hidden="true" /><span
+                              class="sr-only"
+                              >已满级</span
+                            ></template
+                          ><template v-else>已满级</template>
                         </button>
                       </div>
                       <div
@@ -1545,28 +1609,85 @@
                           cardGrowthValue(e, 'elite') >=
                             getMaxEliteForLevel(cardGrowthValue(e, 'level'))
                         "
+                        :aria-label="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'elite') >=
+                              getMaxEliteForLevel(cardGrowthValue(e, 'level'))
+                              ? '修为已满级'
+                              : '修为：' +
+                                growthActionLabel(
+                                  e,
+                                  'elite',
+                                  1,
+                                  '升至 ' + growthTarget(e, 'elite'),
+                                )
+                            : undefined
+                        "
+                        :title="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'elite') >=
+                              getMaxEliteForLevel(cardGrowthValue(e, 'level'))
+                              ? '修为已满级'
+                              : '修为：' +
+                                growthActionLabel(
+                                  e,
+                                  'elite',
+                                  1,
+                                  '升至 ' + growthTarget(e, 'elite'),
+                                )
+                            : undefined
+                        "
                         @click="openGrowthAction(e, 'elite', 1)"
                       >
-                        <ChevronUp
-                          v-if="
-                            cardGrowthValue(e, 'elite') <
-                              getMaxEliteForLevel(
-                                cardGrowthValue(e, 'level'),
-                              ) && growthMaterialsReady(e, 'elite', 1)
-                          "
-                          :size="13"
-                          aria-hidden="true"
-                        />{{
-                          cardGrowthValue(e, "elite") >=
-                          getMaxEliteForLevel(cardGrowthValue(e, "level"))
-                            ? "已满级"
-                            : growthActionLabel(
-                                e,
-                                "elite",
-                                1,
-                                "升至 " + growthTarget(e, "elite"),
-                              )
-                        }}
+                        <template v-if="ledgerCardIsV2"
+                          ><Check
+                            v-if="
+                              cardGrowthValue(e, 'elite') >=
+                              getMaxEliteForLevel(cardGrowthValue(e, 'level'))
+                            "
+                            :size="14"
+                            aria-hidden="true"
+                          /><CircleAlert
+                            v-else-if="!growthMaterialsReady(e, 'elite', 1)"
+                            :size="14"
+                            aria-hidden="true"
+                          /><ChevronUp
+                            v-else
+                            :size="15"
+                            aria-hidden="true"
+                          /><span class="sr-only">{{
+                            cardGrowthValue(e, "elite") >=
+                            getMaxEliteForLevel(cardGrowthValue(e, "level"))
+                              ? "已满级"
+                              : growthActionLabel(
+                                  e,
+                                  "elite",
+                                  1,
+                                  "升至 " + growthTarget(e, "elite"),
+                                )
+                          }}</span></template
+                        ><template v-else
+                          ><ChevronUp
+                            v-if="
+                              cardGrowthValue(e, 'elite') <
+                                getMaxEliteForLevel(
+                                  cardGrowthValue(e, 'level'),
+                                ) && growthMaterialsReady(e, 'elite', 1)
+                            "
+                            :size="13"
+                            aria-hidden="true"
+                          />{{
+                            cardGrowthValue(e, "elite") >=
+                            getMaxEliteForLevel(cardGrowthValue(e, "level"))
+                              ? "已满级"
+                              : growthActionLabel(
+                                  e,
+                                  "elite",
+                                  1,
+                                  "升至 " + growthTarget(e, "elite"),
+                                )
+                          }}</template
+                        >
                       </button>
                       <div
                         v-if="cardPopoverKey === e.id + ':elite'"
@@ -1683,9 +1804,9 @@
                             fill="currentColor"
                             aria-hidden="true"
                           /><span v-if="!e.spOf"
-                            >·
+                            >
                             {{ starCardNode(cardGrowthValue(e, "star")) }}
-                            节点</span
+                             节点</span
                           ></template
                         ><template v-else>{{
                           starCardFallback(cardGrowthValue(e, "star"))
@@ -1700,22 +1821,74 @@
                           cardSubmitStates[e.id] === 'submitting' ||
                           cardGrowthValue(e, 'star') >= 31
                         "
+                        :aria-label="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'star') >= 31
+                              ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
+                                ? '化极已觉醒'
+                                : '化极已满级'
+                              : '化极：' +
+                                growthActionLabel(
+                                  e,
+                                  'star',
+                                  1,
+                                  '提升至下一节点',
+                                )
+                            : undefined
+                        "
+                        :title="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'star') >= 31
+                              ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
+                                ? '化极已觉醒'
+                                : '化极已满级'
+                              : '化极：' +
+                                growthActionLabel(
+                                  e,
+                                  'star',
+                                  1,
+                                  '提升至下一节点',
+                                )
+                            : undefined
+                        "
                         @click="openGrowthAction(e, 'star', 1)"
                       >
-                        <ChevronUp
-                          v-if="
-                            cardGrowthValue(e, 'star') < 31 &&
-                            growthMaterialsReady(e, 'star', 1)
-                          "
-                          :size="13"
-                          aria-hidden="true"
-                        />{{
-                          cardGrowthValue(e, "star") >= 31
-                            ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
-                              ? "已觉醒"
-                              : "已满级"
-                            : growthActionLabel(e, "star", 1, "下一节点")
-                        }}
+                        <template v-if="ledgerCardIsV2"
+                          ><Check
+                            v-if="cardGrowthValue(e, 'star') >= 31"
+                            :size="14"
+                            aria-hidden="true"
+                          /><CircleAlert
+                            v-else-if="!growthMaterialsReady(e, 'star', 1)"
+                            :size="14"
+                            aria-hidden="true"
+                          /><ChevronUp
+                            v-else
+                            :size="15"
+                            aria-hidden="true"
+                          /><span class="sr-only">{{
+                            cardGrowthValue(e, "star") >= 31
+                              ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
+                                ? "已觉醒"
+                                : "已满级"
+                              : growthActionLabel(e, "star", 1, "下一节点")
+                          }}</span></template
+                        ><template v-else
+                          ><ChevronUp
+                            v-if="
+                              cardGrowthValue(e, 'star') < 31 &&
+                              growthMaterialsReady(e, 'star', 1)
+                            "
+                            :size="13"
+                            aria-hidden="true"
+                          />{{
+                            cardGrowthValue(e, "star") >= 31
+                              ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
+                                ? "已觉醒"
+                                : "已满级"
+                              : growthActionLabel(e, "star", 1, "下一节点")
+                          }}</template
+                        >
                       </button>
                       <div
                         v-if="cardPopoverKey === e.id + ':star-edit'"
@@ -1891,6 +2064,7 @@
                             :class="{
                               'has-description': cardDiscDescription(e, disc),
                             }"
+                            :aria-label="ledgerCardIsV2 ? disc : undefined"
                             tabindex="0"
                             @mouseenter.stop="
                               showDiscTooltip(
@@ -1906,7 +2080,11 @@
                               )
                             "
                             @blur="hideDiscTooltip"
-                            >{{ disc }}</em
+                            >{{
+                              ledgerCardIsV2
+                                ? cardDiscAbbreviation(e, disc)
+                                : disc
+                            }}</em
                           ></template
                         ><em v-else class="empty">+ 命盘</em>
                       </div>
@@ -2876,6 +3054,7 @@ import {
   Archive,
   BookOpen,
   Calculator,
+  Check,
   ChevronUp,
   CircleAlert,
   Download,
@@ -2897,6 +3076,11 @@ import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
+import {
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION,
+  OPERATOR_LEDGER_CARD_VERSIONS,
+  operatorLedgerCardVersionClass,
+} from "../../config/operatorLedgerCard.js";
 const OperatorGrowthTracker = defineAsyncComponent(function () {
   return import("../../components/operator/OperatorGrowthTracker.vue");
 });
@@ -2981,6 +3165,9 @@ const ODDITY_KEYS = OPERATOR_ODDITY_KEYS;
 const growthTrackingEnabled = isFeatureEnabled(
   FEATURE_KEYS.OPERATOR_GROWTH_TRACKING,
 );
+const ledgerCardVersionClass = operatorLedgerCardVersionClass();
+const ledgerCardIsV2 =
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2;
 
 const activeTab = ref("catalog");
 const visitedTabs = ref(new Set(["catalog"]));
@@ -3083,6 +3270,7 @@ const BATCH_QUICK_FILTERS = [
 let annotationLoadSeq = 0;
 const cardCombatDrafts = ref({});
 const cardCombatModes = ref({});
+const cardCombatEditedKeys = ref(new Set());
 const cardCombatSavingIds = ref(new Set());
 const cardGrowthDrafts = ref({});
 const cardPopoverKey = ref("");
@@ -3180,6 +3368,7 @@ watch(
     annotationRevisions.value = {};
     annotationError.value = "";
     cardCombatModes.value = readWorkbenchMap("combat-modes");
+    cardCombatEditedKeys.value = new Set();
     favoriteFirst.value = readFavoriteFirstPreference();
     cardLevelBreakthroughs.value = {};
     upgradeReadyFilter.value = "";
@@ -4067,7 +4256,7 @@ function starLabel(v, spOf) {
   if (n >= 1 && n <= 30) {
     const star = Math.floor((n - 1) / 6) + 1;
     const node = (n - 1) % 6;
-    return star + " ⭐ · " + node + " 节点";
+    return star + " ⭐ " + node + " 节点";
   }
   return n;
 }
@@ -5780,6 +5969,10 @@ function cancelCardDraft(entry) {
           : baseline.oddityHp,
     },
   });
+  const editedKeys = new Set(cardCombatEditedKeys.value);
+  editedKeys.delete(entry.id + ":attack");
+  editedKeys.delete(entry.id + ":hp");
+  cardCombatEditedKeys.value = editedKeys;
   cardPopoverKey.value = "";
 }
 
@@ -6059,10 +6252,23 @@ function cardDiscOptions(entry) {
   return sortDiscsForPicker(catalog && catalog.discs);
 }
 
-function cardDiscDescription(entry, name) {
-  const disc = cardDiscOptions(entry).find(function (item) {
+function cardDiscCatalogItem(entry, name) {
+  return cardDiscOptions(entry).find(function (item) {
     return discKey(item) === name;
   });
+}
+
+function cardDiscAbbreviation(entry, name) {
+  const disc = cardDiscCatalogItem(entry, name);
+  const abbreviation =
+    disc && typeof disc.abbreviation === "string"
+      ? disc.abbreviation.trim()
+      : "";
+  return abbreviation || name;
+}
+
+function cardDiscDescription(entry, name) {
+  const disc = cardDiscCatalogItem(entry, name);
   return discDescription(disc);
 }
 
@@ -6310,6 +6516,18 @@ function cardCombatInputValue(entry, kind) {
   return value == null ? "" : value;
 }
 
+function cardCombatSimpleValue(entry, kind) {
+  if (cardCombatEditedKeys.value.has(entry.id + ":" + kind)) {
+    const draftValue = cardCombatDraft(entry)[kind];
+    return draftValue == null ? "" : draftValue;
+  }
+  const stats = entry.combatStats || {};
+  const latestValue = stats[kind];
+  if (latestValue != null) return latestValue;
+  const fallbackValue = kind === "attack" ? stats.manualAttack : stats.manualHp;
+  return fallbackValue == null ? "" : fallbackValue;
+}
+
 function cardCombatSource(entry, kind) {
   const mode = cardCombatMode(entry, kind);
   const result = cardCombatResult(entry);
@@ -6362,6 +6580,11 @@ function setCardCombatValue(entry, kind, event) {
   const draft = cardCombatDraft(entry);
   const raw = event && event.target ? event.target.value : "";
   draft[kind] = raw === "" ? null : Number(raw);
+  cardCombatEditedKeys.value = new Set([
+    ...cardCombatEditedKeys.value,
+    entry.id + ":" + kind,
+  ]);
+  if (ledgerCardIsV2) return;
   const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, {
     [kind]: "manual",
   });
@@ -6582,6 +6805,10 @@ function mergePatchedCurrentEntry(entry, payload) {
         stats.oddities && stats.oddities.hp ? stats.oddities.hp.current : 0,
     },
   });
+  const editedKeys = new Set(cardCombatEditedKeys.value);
+  editedKeys.delete(entry.id + ":attack");
+  editedKeys.delete(entry.id + ":hp");
+  cardCombatEditedKeys.value = editedKeys;
   if (growth)
     cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, {
       [entry.id]: cardDraftSnapshot(entry),
@@ -14303,4 +14530,5 @@ onBeforeUnmount(function () {
   }
 }
 </style>
-<style scoped src="../../styles/operator-ledger-shared.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v1.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v2.css"></style>
