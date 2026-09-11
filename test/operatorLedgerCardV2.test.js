@@ -69,6 +69,27 @@ test('v2 战斗面板上下内边距对称，移动端蝶属性输入保留舒�
   assert.match(v2Styles, /@media \(max-width: 640px\)[\s\S]*?\.ledger-name-row \{\s*gap: 15px;/)
 })
 
+test('v2 桌面端给蝶属性行保留更多垂直空间', () => {
+  assert.match(v2Styles, /\.ledger-oddity \{[\s\S]*?min-height: 20px;/)
+  assert.match(v2Styles, /\.ledger-oddity input \{[\s\S]*?min-height: 20px;/)
+})
+
 test('v2 收紧战斗面板与养成面板的垂直间距', () => {
-  assert.match(v2Styles, /\.ledger-combat \+ \.ledger-growth \{\s*margin-top: -4\.5px;/)
+  assert.match(v2Styles, /\.ledger-combat \+ \.ledger-growth \{\s*margin-top: -6\.75px;/)
+})
+
+test('v2 固定使用 A 浅底色并按单个命盘条目应用稀有度', () => {
+  assert.match(operatorPage, /class="ledger-destiny fate-trait-style-a"/)
+  assert.doesNotMatch(operatorPage, /fateTraitStyleToggleVisible|FATE_TRAIT_STYLE_OPTIONS/)
+  assert.match(operatorPage, /cardDiscRarityClass\(e, disc\)/)
+  assert.match(operatorPage, /const DISC_RARITY_CLASS = Object\.freeze\(/)
+  assert.match(v2Styles, /--trait-text: #55483c;/)
+  assert.match(v2Styles, /--fate2-trait-text: #4e4752;/)
+  assert.match(v2Styles, /--rarity-gold: #b9852d;/)
+  assert.match(v2Styles, /--rarity-purple: #8c70a4;/)
+  assert.match(v2Styles, /--rarity-blue: #65879f;/)
+  assert.match(v2Styles, /\.fate-trait-style-a[\s\S]*em\.rarity-gold[\s\S]*box-shadow: inset 3px 0 0 var\(--rarity-gold\)/)
+  assert.match(v2Styles, /\.fate-trait-style-c[\s\S]*em\.rarity-gold[\s\S]*box-shadow: inset 0 -3px 0 var\(--rarity-gold\)/)
+  assert.match(v2Styles, /\.ledger-destiny-row:nth-child\(2\)[\s\S]*--fate-series-accent: var\(--fate2-accent\)/)
+  assert.match(v2Styles, /\.ledger-destiny-row:nth-child\(2\)[\s\S]*color: var\(--fate2-trait-text\)/)
 })
