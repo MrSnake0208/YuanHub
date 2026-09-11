@@ -853,149 +853,60 @@
             </div>
 
             <!-- 当前养成案卷筛选 -->
-            <div class="prof-filter current-prof-filter" v-reveal>
-              <div class="current-filter-head">
-                <div class="current-filter-title">
-                  <strong>筛选案卷</strong
-                  ><span
-                    >筛选后按状态、稀有度、等级、化极、属性与实装顺序排列</span
+            <OperatorFilterDossier
+              v-reveal
+              :result-count="filteredCurrent.length"
+              :total-count="ownedCurrentEntries.length"
+              :prof-options="profOptions"
+              :sub-prof-options="subProfOptions"
+              :status-options="workbenchStatusOptions"
+              :status-counts="currentStatusCounts"
+              v-model:prof-filter="profFilter"
+              v-model:sub-prof-filter="subProfFilter"
+              :status-filter="workbenchStatusFilter"
+              :prof-icon="profIcon"
+              :has-filters="hasCurrentFilters"
+              description="筛选后按状态、稀有度、等级、化极、属性与实装顺序排列"
+              @update:status-filter="setWorkbenchStatusFilter"
+              @reset="resetCurrentFilters"
+            >
+              <template #primary-tool>
+                <button
+                  class="current-favorite-sort"
+                  :class="{ on: favoriteFirst }"
+                  type="button"
+                  :aria-pressed="favoriteFirst"
+                  @click="setFavoriteFirst(!favoriteFirst)"
+                >
+                  <Star
+                    :size="13"
+                    :fill="favoriteFirst ? 'currentColor' : 'none'"
+                    aria-hidden="true"
+                  />特别关注优先
+                </button>
+              </template>
+              <template #secondary-tool>
+                <button
+                  v-if="auth.isLoggedIn"
+                  class="current-batch-toggle"
+                  :class="{ on: batchSelectMode }"
+                  type="button"
+                  :aria-pressed="batchSelectMode"
+                  title="批量标注养成状态"
+                  @click="toggleBatchSelectMode"
+                >
+                  <ListChecks :size="13" aria-hidden="true" /><span
+                    class="current-batch-label"
+                    >{{ batchSelectMode ? "退出批量" : "批量标注" }}</span
                   >
-                </div>
-                <div class="current-filter-tools">
-                  <span class="current-filter-result" aria-live="polite"
-                    ><b>{{ filteredCurrent.length }}</b> /
-                    {{ ownedCurrentEntries.length }} 位</span
-                  >
-                  <button
-                    class="current-favorite-sort"
-                    :class="{ on: favoriteFirst }"
-                    type="button"
-                    :aria-pressed="favoriteFirst"
-                    @click="setFavoriteFirst(!favoriteFirst)"
-                  >
-                    <Star
-                      :size="13"
-                      :fill="favoriteFirst ? 'currentColor' : 'none'"
-                      aria-hidden="true"
-                    />特别关注优先
-                  </button>
-                  <button
-                    v-if="hasCurrentFilters"
-                    class="current-filter-reset"
-                    type="button"
-                    @click="resetCurrentFilters"
-                  >
-                    <RotateCcw :size="13" aria-hidden="true" />重置
-                  </button>
-                  <button
-                    v-if="auth.isLoggedIn"
-                    class="current-batch-toggle"
-                    :class="{ on: batchSelectMode }"
-                    type="button"
-                    :aria-pressed="batchSelectMode"
-                    title="批量标注养成状态"
-                    @click="toggleBatchSelectMode"
-                  >
-                    <ListChecks :size="13" aria-hidden="true" /><span
-                      class="current-batch-label"
-                      >{{ batchSelectMode ? "退出批量" : "批量标注" }}</span
-                    >
-                  </button>
-                </div>
-              </div>
-              <div class="current-filter-rows">
-                <div class="pf-row pf-prof-row">
-                  <span class="pf-label">属性</span>
-                  <div
-                    class="mf-filter"
-                    role="group"
-                    aria-label="按属性筛选当前养成"
-                  >
-                    <button
-                      type="button"
-                      :aria-pressed="profFilter === 'all'"
-                      :class="{ on: profFilter === 'all' }"
-                      @click="profFilter = 'all'"
-                    >
-                      全部
-                    </button>
-                    <button
-                      v-for="p in profOptions"
-                      :key="p"
-                      type="button"
-                      :aria-pressed="profFilter === p"
-                      :class="{ on: profFilter === p }"
-                      @click="profFilter = p"
-                    >
-                      <img
-                        v-if="profIcon(p)"
-                        :src="profIcon(p)"
-                        alt=""
-                        aria-hidden="true"
-                      />{{ p }}
-                    </button>
-                  </div>
-                </div>
-                <div class="pf-row pf-subprof-row">
-                  <span class="pf-label">职业</span>
-                  <div
-                    class="mf-filter"
-                    role="group"
-                    aria-label="按职业筛选当前养成"
-                  >
-                    <button
-                      type="button"
-                      :aria-pressed="subProfFilter === 'all'"
-                      :class="{ on: subProfFilter === 'all' }"
-                      @click="subProfFilter = 'all'"
-                    >
-                      全部
-                    </button>
-                    <button
-                      v-for="s in subProfOptions"
-                      :key="s"
-                      type="button"
-                      :aria-pressed="subProfFilter === s"
-                      :class="{ on: subProfFilter === s }"
-                      @click="subProfFilter = s"
-                    >
-                      {{ s }}
-                    </button>
-                  </div>
-                </div>
-                <div class="pf-row pf-status-row">
-                  <span class="pf-label">状态</span>
-                  <div
-                    class="mf-filter current-status-filter"
-                    role="group"
-                    aria-label="按养成状态筛选当前养成"
-                  >
-                    <button
-                      v-for="option in workbenchStatusOptions"
-                      :key="option.value"
-                      type="button"
-                      :aria-pressed="workbenchStatusFilter === option.value"
-                      :class="[
-                        'status-' + option.value,
-                        { on: workbenchStatusFilter === option.value },
-                      ]"
-                      @click="setWorkbenchStatusFilter(option.value)"
-                    >
-                      {{ option.label
-                      }}<small>{{
-                        option.value === "all"
-                          ? ownedCurrentEntries.length
-                          : currentStatusCounts[option.value]
-                      }}</small>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-if="batchSelectMode"
-                class="batch-status-bar"
-                aria-label="批量设置养成状态"
-              >
+                </button>
+              </template>
+              <template #footer>
+                <div
+                  v-if="batchSelectMode"
+                  class="batch-status-bar"
+                  aria-label="批量设置养成状态"
+                >
                 <div class="batch-quick-filters" aria-label="快捷筛选">
                   <span class="batch-quick-title">快捷筛选</span>
                   <button
@@ -1067,8 +978,9 @@
                     清空
                   </button>
                 </div>
-              </div>
-            </div>
+                </div>
+              </template>
+            </OperatorFilterDossier>
 
             <div v-if="annotationError" class="state err slim" role="alert">
               {{ annotationError }}
@@ -2058,8 +1970,8 @@
                     >
                       <span>命盘{{ index === 1 ? "一" : "二" }}</span>
                       <div class="ledger-destiny-values">
-                        <template v-if="cardLoadoutDiscs(e, index - 1).length"
-                          ><em
+                        <template v-if="cardLoadoutDiscs(e, index - 1).length">
+                          <em
                             v-for="disc in cardLoadoutDiscs(e, index - 1)"
                             :key="disc"
                             class="disc-term"
@@ -2092,9 +2004,13 @@
                               ledgerCardIsV2
                                 ? cardDiscAbbreviation(e, disc)
                                 : disc
-                            }}</em
-                          ></template
-                        ><em v-else class="empty">+ 命盘</em>
+                            }}</em>
+                        </template>
+                        <em
+                          v-if="cardLoadoutNeedsPlaceholder(e, index - 1)"
+                          class="empty"
+                          >+ 命盘</em
+                        >
                       </div>
                       <div
                         v-if="cardPopoverKey === e.id + ':disc-' + (index - 1)"
@@ -3082,6 +2998,7 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
+import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
 import {
@@ -6244,6 +6161,11 @@ function cardLoadoutDiscs(entry, index) {
   return loadout && Array.isArray(loadout.discNames)
     ? loadout.discNames.slice(0, 3)
     : [];
+}
+
+function cardLoadoutNeedsPlaceholder(entry, index) {
+  const count = cardLoadoutDiscs(entry, index).length;
+  return ledgerCardIsV2 ? count < 3 : count === 0;
 }
 
 function cardStoneSlots(entry) {
@@ -10087,10 +10009,9 @@ onBeforeUnmount(function () {
   min-height: 28px;
   align-items: center;
   justify-content: center;
-  padding: 2px 7px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--paper);
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
   color: var(--tea);
   font-size: 11px;
 }
