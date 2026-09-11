@@ -25,7 +25,8 @@ const PERMISSIONS = [
   { scope: 'operator:read', description: '密探数据读取' },
   { scope: 'operator:write', description: '密探数据写入' },
   { scope: 'operator:export', description: '密探数据导出' },
-  { scope: 'operator:scan:write', description: '密探自动采集写入' }
+  { scope: 'operator:scan:write', description: '密探自动采集写入' },
+  { scope: 'star:capture:write', description: '上传星石背包临时采集结果' }
 ]
 const FALLBACK = FALLBACK_DESCRIPTIONS
 
@@ -105,28 +106,29 @@ test('scopeDomain 识别库存/密探/空/混合', () => {
   assert.equal(scopeDomain(null), '')
 })
 
-test('FALLBACK_DESCRIPTIONS 覆盖六个 scope', () => {
+test('FALLBACK_DESCRIPTIONS 覆盖 MaaYuan 所需星石采集 scope', () => {
   assert.equal(FALLBACK_DESCRIPTIONS['inventory:read'], '库存数据读取（只读）')
   assert.equal(FALLBACK_DESCRIPTIONS['operator:read'], '密探数据读取（只读）')
   assert.equal(FALLBACK_DESCRIPTIONS['operator:write'], '密探数据写入（只写）')
   assert.equal(FALLBACK_DESCRIPTIONS['operator:export'], '密探数据导出')
   assert.equal(FALLBACK_DESCRIPTIONS['operator:scan:write'], '密探自动采集写入')
+  assert.equal(FALLBACK_DESCRIPTIONS['star:capture:write'], '上传星石背包临时采集结果')
 })
 
 test('MaaYuan 最小权限不包含任何 read 或 export', () => {
-  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write'])
+  assert.deepEqual(MAAYUAN_REQUIRED_SCOPES, ['inventory:write', 'operator:scan:write', 'star:capture:write'])
   assert.equal(MAAYUAN_REQUIRED_SCOPES.some((scope) => /:(read|export)$/.test(scope)), false)
 })
 
 test('hasEveryScope 判断现有 Token 是否可供 MaaYuan 使用', () => {
-  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write'], MAAYUAN_REQUIRED_SCOPES), true)
-  assert.equal(hasEveryScope(['inventory:write'], MAAYUAN_REQUIRED_SCOPES), false)
+  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write', 'star:capture:write'], MAAYUAN_REQUIRED_SCOPES), true)
+  assert.equal(hasEveryScope(['inventory:write', 'operator:scan:write'], MAAYUAN_REQUIRED_SCOPES), false)
 })
 
 test('mergeScopes 补全 MaaYuan 权限时保留已有权限并去重', () => {
   assert.deepEqual(
     mergeScopes(['inventory:read', 'inventory:write'], MAAYUAN_REQUIRED_SCOPES),
-    ['inventory:read', 'inventory:write', 'operator:scan:write']
+    ['inventory:read', 'inventory:write', 'operator:scan:write', 'star:capture:write']
   )
 })
 
