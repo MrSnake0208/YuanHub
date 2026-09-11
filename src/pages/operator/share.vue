@@ -117,7 +117,7 @@
                   v-for="entry in filteredEntries"
                   :key="entry.id"
                   class="operator-card agent-ledger-card"
-                  :class="['rarity-r' + (entry.rarity || 3), 'status-' + shareStatusClass(entry)]"
+                  :class="['rarity-r' + (entry.rarity || 3), 'status-' + shareStatusClass(entry), ledgerCardVersionClass]"
                   tabindex="0"
                   role="button"
                   :aria-label="'查看 ' + entry.name + ' 的详情'"
@@ -327,6 +327,7 @@ import { useRoute, useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import ButterflyIcon from '../../components/operator/ButterflyIcon.vue'
+import { operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
 import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
@@ -348,6 +349,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const ledgerCardVersionClass = operatorLedgerCardVersionClass()
 const inputValue = ref('')
 const inputError = ref('')
 const loadError = ref('')
@@ -833,7 +835,8 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   .share-detail-scroll { padding: 0 16px calc(20px + env(safe-area-inset-bottom)) }
 }
 </style>
-<style scoped src="../../styles/operator-ledger-shared.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v1.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v2.css"></style>
 <style scoped>
 @media (max-width: 640px) {
   .share-ledger-growth .ledger-growth-row { min-height: 72px; }
