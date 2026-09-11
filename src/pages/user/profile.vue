@@ -125,6 +125,12 @@
                       aria-hidden="true"
                     />上传密探采集结果</span
                   >
+                  <span
+                    ><Sparkles
+                      :size="15"
+                      aria-hidden="true"
+                    />上传星石背包临时采集结果</span
+                  >
                   <span class="no-read"
                     ><ShieldCheck
                       :size="15"
@@ -280,6 +286,9 @@
                       :size="17"
                       aria-hidden="true"
                     />上传自动采集到的密探数据
+                  </p>
+                  <p>
+                    <Check :size="17" aria-hidden="true" />上传星石背包临时采集结果
                   </p>
                 </div>
                 <div class="grant-column deny">
@@ -634,6 +643,7 @@ import {
   PackageOpen,
   ScanLine,
   ShieldCheck,
+  Sparkles,
   X,
 } from "@lucide/vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -744,6 +754,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "operator:write": "导入并更新密探数据",
   "operator:export": "下载完整密探备份",
   "operator:scan:write": "上传密探自动采集结果",
+  "star:capture:write": "上传星石背包临时采集结果",
 };
 
 function friendlyPermissionTitle(scope) {

@@ -77,7 +77,10 @@ export async function request(
     const disposition = res.headers && typeof res.headers.get === 'function'
       ? res.headers.get('content-disposition')
       : ''
-    if (responseType === 'blob' && res.ok && disposition) {
+    const contentType = res.headers && typeof res.headers.get === 'function'
+      ? res.headers.get('content-type') || ''
+      : ''
+    if (responseType === 'blob' && res.ok && (disposition || !/application\/json/i.test(contentType))) {
       return { blob: await res.blob(), headers: res.headers }
     }
 
