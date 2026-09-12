@@ -88,7 +88,7 @@
       <router-link
         to="/operator"
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
-        ><span class="no">01</span>我的密探</router-link
+        ><span class="no">01</span>密探名册</router-link
       >
       <router-link
         to="/inventory"
