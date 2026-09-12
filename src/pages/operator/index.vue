@@ -1115,14 +1115,7 @@
                         @change="toggleBatchSelected(e.id, $event)"
                       />
                     </label>
-                    <div class="ledger-avatar">
-                      <img
-                        v-if="avOf(e.id)"
-                        :src="avatarUrl(avOf(e.id))"
-                        :alt="e.name"
-                        loading="lazy"
-                      />
-                      <span v-else>{{ monogram(e) }}</span>
+                    <OperatorAvatar :avatar="avOf(e.id)" :name="e.name || e.id" :rarity="Number(e.rarity) || 3">
                       <button
                         class="ledger-favorite"
                         :class="{ on: favoriteAgentIds.has(e.id) }"
@@ -1144,7 +1137,7 @@
                           aria-hidden="true"
                         />
                       </button>
-                    </div>
+                    </OperatorAvatar>
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
                         <h3>{{ e.name || e.id }}</h3>
@@ -3041,6 +3034,8 @@ import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
+import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import { levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
 import {
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION,
@@ -5804,29 +5799,6 @@ function levelBookDeductions(required, stock) {
     });
 }
 
-function levelBookGapBundle(experienceGap) {
-  const gap = Math.max(0, Number(experienceGap) || 0);
-  if (!gap) return [];
-  // 绝境历练每轮固定掉落：兵书全卷 9 + 兵书残卷 100，
-  // 对应 19,000 点兵书经验；按整轮向上取整，避免推荐经验不足。
-  const runs = Math.ceil(gap / 19000);
-  return [
-    {
-      id: "bingshuquanjuan",
-      name: itemNameById("bingshuquanjuan"),
-      required: runs * 9,
-      owned: 0,
-      lack: runs * 9,
-    },
-    {
-      id: "bingshucanjuan",
-      name: itemNameById("bingshucanjuan"),
-      required: runs * 100,
-      owned: 0,
-      lack: runs * 100,
-    },
-  ];
-}
 
 function growthMaterials(entry, field, step) {
   const draft = ensureCardDraft(entry);
