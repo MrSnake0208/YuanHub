@@ -1,5 +1,17 @@
 <template>
-  <div class="account-workspace" v-reveal>
+  <div class="account-workspace" :class="{ 'split-workspace': split }" v-reveal>
+    <div v-if="split" class="workspace-summary">
+      <div class="workspace-status" aria-live="polite">
+        <slot name="status" />
+        <span v-if="compact && error" class="ac-warn">{{ error }}</span>
+      </div>
+      <button type="button" class="act-btn workspace-toggle" :aria-expanded="!compact" :aria-controls="selectId + '-panels'" @click="compact = !compact">
+        {{ compact ? summaryLabel : '收起面板' }}
+      </button>
+      <slot name="summary-actions" />
+    </div>
+    <div :id="selectId + '-panels'" v-show="!split || !compact" :class="{ 'workspace-panels': split }">
+    <div class="workspace-account">
     <div class="account-bar" :class="{ 'with-actions': usesStackedLayout }">
       <div class="account-heading">
         <span class="section-kicker">数据归属</span>
@@ -77,7 +89,7 @@
         <li v-for="a in accounts" :key="a.id" class="ac-item" :class="{ selected: a.id === accountId }">
           <span class="ac-dot"></span>
           <div class="ac-meta">
-            <span class="ac-name">{{ a.name }}<em v-if="a.id === accountId">当前</em></span>
+            <span class="ac-name"><span class="ac-name-text">{{ a.name }}</span><em v-if="a.id === accountId">当前</em></span>
             <code class="ac-id">{{ a.id }}</code>
           </div>
           <button type="button" class="ac-btn" :disabled="busy" @click="emit('rename', a)">改名</button>
@@ -87,8 +99,11 @@
       <p v-else class="ac-empty">{{ emptyText }}</p>
     </div>
 
-    <!-- 页面自身追加的区块（如库存页的「数据交换」面板） -->
+    <!-- 数据交换跟随账号区，移动端排在分享链接之前。 -->
     <slot />
+    </div>
+    <div v-if="split && slots.side" class="workspace-side"><slot name="side" /></div>
+    </div>
   </div>
 </template>
 
@@ -101,6 +116,8 @@ import { Users } from '@lucide/vue'
 import { ACCOUNT_GAMES } from '../store/activeAccount.js'
 
 const props = defineProps({
+  split: { type: Boolean, default: false },
+  summaryLabel: { type: String, default: '更改账号与分享状态' },
   // 当前选中账号 id（v-model:accountId）
   accountId: { type: String, default: '' },
   // 当前子账号所属版本（v-model:game）；代号鸢目录即完整目录，不提供“全部”档。
@@ -132,6 +149,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:accountId', 'update:game', 'change', 'game-change', 'create', 'rename', 'delete'])
 
+const compact = defineModel('compact', { type: Boolean, default: true })
 const open = ref(false)
 const name = ref('')
 const accountDropdownOpen = ref(false)
@@ -251,7 +269,31 @@ function submitCreate() {
 
 .ac-empty { margin-top: 12px; font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
 
+.workspace-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px }
+.workspace-status:empty { display: none }
+.workspace-status { display: flex; flex-wrap: wrap; gap: 8px 18px; min-width: 0; color: var(--ink-60); font-size: 12.5px; overflow-wrap: anywhere }
+.workspace-toggle { min-height: 44px; flex: none }
+.workspace-toggle:hover, .workspace-toggle:focus-visible { border-color: var(--accent); color: var(--ink) }
+.workspace-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.workspace-panels { border-top: 1px solid var(--line) }
+.workspace-account, .workspace-side { min-width: 0 }
+.split-workspace .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start }
+.split-workspace .account-context { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) }
+.split-workspace .account-manage { transform: none; align-self: stretch }
+.split-workspace .account-bar.with-actions > :deep(.archive-toggle) { transform: none; align-self: stretch; min-height: 44px }
+.split-workspace .account-bar { padding: 20px 24px 22px }
+.split-workspace .account-heading h2 { font-size: 18px }
+.split-workspace .account-context { margin-top: 4px }
+.split-workspace .account-selector select { min-height: 44px }
+.split-workspace .account-selector select { min-width: 0 }
+@media (min-width: 1024px) {
+  .workspace-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .workspace-side { border-left: 1px solid var(--line); background: var(--cream) }
+  .workspace-side :deep(.share-manager) { border-top: 0 }
+}
 @media (max-width: 640px) {
+  .workspace-summary { padding: 10px 16px }
+  .split-workspace .account-context { grid-template-columns: 1fr }
   .account-workspace { border-radius: 16px }
   .account-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px 10px; padding: 18px 16px }
   .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -285,5 +327,66 @@ function submitCreate() {
   .account-bar.with-actions .account-context { grid-column: 1 / -1; }
   .account-bar.with-actions > .account-manage,
   .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0; }
+}
+@media (max-width: 640px) {
+  .account-workspace .account-mgr { padding: 12px 16px }
+  .account-workspace .account-mgr-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; margin-bottom: 10px }
+  .account-workspace .account-mgr-head > div { display: contents }
+  .account-workspace .account-mgr-head h3 { grid-column: 1; grid-row: 1 }
+  .account-workspace .account-count { grid-column: 2; grid-row: 1; padding: 3px 8px }
+  .account-workspace .account-mgr-head p { grid-column: 1 / -1; margin-top: 0; line-height: 1.5 }
+  .account-workspace .ac-new { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px }
+  .account-workspace .ac-new input { padding: 8px 10px }
+  .account-workspace .ac-new .btn { min-height: 44px; padding: 8px 12px; white-space: nowrap }
+  .account-workspace .ac-list { margin-top: 10px; gap: 6px }
+  .account-workspace .ac-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 8px }
+  .account-workspace .ac-dot { display: none }
+  .account-workspace .ac-name { flex-wrap: wrap; gap: 3px 6px; font-size: 13px }
+  .account-workspace .ac-name-text { min-width: 0; overflow-wrap: anywhere }
+  .account-workspace .ac-name em { flex: none }
+  .account-workspace .ac-btn { min-width: 44px; min-height: 44px; padding: 6px 8px }
+  .account-workspace .ac-empty { margin-top: 8px }
+  .account-workspace .account-bar.with-actions { padding: 14px 16px; gap: 10px }
+  .account-workspace .account-heading h2 { font-size: 17px }
+  .account-workspace .account-heading p { margin-top: 3px; font-size: 12px; line-height: 1.5 }
+  .account-workspace .section-kicker { margin-bottom: 3px }
+  .account-workspace .account-context { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 0 }
+  .account-workspace .account-selector { gap: 4px }
+  .account-workspace .account-game legend { margin-bottom: 4px }
+  .account-workspace .account-selector select { min-height: 46px; padding: 9px 8px }
+  .account-workspace .account-soft-trigger { min-width: 0; padding: 9px 28px 9px 8px }
+  .account-workspace .account-bar.with-actions > :deep(.star-sync-action) { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; transform: none }
+  .account-workspace .account-game-options { padding: 1px; gap: 1px }
+  .account-workspace .account-game-options label { min-height: 41px; font-size: 12px }
+  .account-workspace .account-manage,
+  .account-workspace .account-bar.with-actions > :deep(.archive-toggle) { padding: 8px 10px }
+}
+
+/* 数据交换在半宽账号栏和手机上共用紧凑排布。 */
+.split-workspace :deep(.archive-workspace) { padding: 14px 24px }
+.split-workspace :deep(.archive-actions) { grid-template-columns: 1fr; gap: 8px; margin-top: 10px; padding-top: 10px }
+.split-workspace :deep(.export-group) { grid-template-columns: minmax(0, 1fr) auto; gap: 8px }
+.split-workspace :deep(.export-label) { grid-column: 1 / -1 }
+.split-workspace :deep(.archive-import),
+.split-workspace :deep(.export-submit) { min-height: 44px; padding: 8px 12px }
+@media (max-width: 640px) {
+  .account-workspace :deep(.archive-workspace) { padding: 12px 16px }
+  .account-workspace :deep(.archive-heading) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; align-items: center }
+  .account-workspace :deep(.archive-heading > div) { display: contents }
+  .account-workspace :deep(.archive-heading .section-kicker) { grid-column: 1; margin-bottom: 0 }
+  .account-workspace :deep(.archive-heading h2) { grid-column: 1; font-size: 17px }
+  .account-workspace :deep(.archive-format) { grid-column: 2; grid-row: 1 / 3; padding: 3px 8px }
+  .account-workspace :deep(.archive-heading p) { grid-column: 1 / -1; margin-top: 0; font-size: 12px; line-height: 1.5 }
+  .account-workspace :deep(.archive-actions) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; padding-top: 10px }
+  .account-workspace :deep(.export-group) { display: contents }
+  .account-workspace :deep(.export-label) { grid-column: 1 / -1 }
+  .account-workspace :deep(.export-options) { grid-column: 1 / -1; gap: 8px }
+  .account-workspace :deep(.export-option) { min-height: 44px; padding: 6px 8px }
+  .account-workspace :deep(.archive-import),
+  .account-workspace :deep(.export-submit) { min-height: 44px; padding: 8px 10px; width: 100% }
+  .account-workspace :deep(.export-label) { grid-row: 1 }
+  .account-workspace :deep(.export-options) { grid-row: 2 }
+  .account-workspace :deep(.archive-import),
+  .account-workspace :deep(.export-submit) { grid-row: 3 }
 }
 </style>

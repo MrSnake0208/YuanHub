@@ -2,13 +2,13 @@
   <section class="share-manager" aria-labelledby="operator-share-manager-title">
     <div class="share-manager-heading">
       <div>
-        <span class="section-kicker">神秘代码</span>
+        <span class="section-kicker">分享链接</span>
         <h2 id="operator-share-manager-title">分享当前密探 BOX</h2>
-        <p>只分享客观养成数据，不包含备注、关注、目标或登录信息。</p>
       </div>
       <button class="share-button subtle" type="button" :disabled="loading || busy" @click="loadShare">
         刷新状态
       </button>
+      <p class="share-description">只分享客观养成数据，不包含备注、关注、目标或登录信息。</p>
     </div>
 
     <p v-if="loading" class="share-state" role="status">正在读取分享状态…</p>
@@ -16,16 +16,11 @@
     <template v-else-if="share && share.active && share.share_code">
       <div class="share-values">
         <label>
-          <span>神秘代码</span>
-          <input :value="share.share_code" readonly aria-label="当前神秘代码" />
-        </label>
-        <label>
           <span>分享链接</span>
           <input :value="shareLink" readonly aria-label="当前分享链接" />
         </label>
       </div>
       <div class="share-actions">
-        <button class="share-button" type="button" :disabled="loading || busy" @click="copy(share.share_code, '神秘代码')">复制代码</button>
         <button class="share-button" type="button" :disabled="loading || busy" @click="copy(shareLink, '分享链接')">复制链接</button>
         <a class="share-button visit" :href="shareLink">访问我的分享</a>
         <button class="share-button subtle" type="button" :disabled="loading || busy" @click="regenerate">重新生成</button>
@@ -33,9 +28,9 @@
       </div>
     </template>
     <div v-else class="share-inactive">
-      <p>当前账号尚未开启分享。生成后，拿到代码的人无需登录即可查看。</p>
+      <p>当前账号尚未开启分享。生成后，拿到链接的人无需登录即可查看。</p>
       <button class="share-button" type="button" :disabled="loading || busy" @click="generate">
-        {{ busy ? '正在生成…' : '生成神秘代码' }}
+        {{ busy ? '正在生成…' : '生成分享链接' }}
       </button>
     </div>
     <p v-if="message" class="share-message" role="status" aria-live="polite">{{ message }}</p>
@@ -53,11 +48,14 @@ import {
 import { dialog } from '../../utils/dialog.js'
 
 const props = defineProps({ accountId: { type: String, required: true } })
+const emit = defineEmits(['status-change', 'share-change'])
 const share = ref(null)
 const loading = ref(false)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
+const status = computed(() => loading.value ? '读取中…' : busy.value ? '更新中…' : error.value ? '状态异常，请展开查看' : share.value?.active && share.value?.share_code ? '已开启' : '未开启')
+watch(status, value => emit('status-change', value), { immediate: true, flush: 'sync' })
 let requestSeq = 0
 let loadSeq = 0
 
@@ -65,6 +63,11 @@ const shareLink = computed(function () {
   if (!share.value || !share.value.share_code) return ''
   return window.location.origin + '/operator/share/' + encodeURIComponent(share.value.share_code)
 })
+
+watch([status, shareLink, () => props.accountId], () => {
+  emit('share-change', { accountId: props.accountId, status: status.value, link: status.value === '已开启' ? shareLink.value : '' })
+}, { immediate: true })
+defineExpose({ copyCurrentShare: () => status.value === '已开启' ? copy(shareLink.value, '分享链接') : false })
 
 function current(accountId, seq) {
   return props.accountId === accountId && seq === requestSeq
@@ -116,19 +119,19 @@ async function updateShare(action, success, inactive) {
 }
 
 function generate() {
-  return updateShare(createOperatorShare, '神秘代码已生成')
+  return updateShare(createOperatorShare, '分享链接已生成')
 }
 
 async function regenerate() {
   const accountId = props.accountId
   const seq = requestSeq
   const ok = await dialog.confirm({
-    title: '重新生成神秘代码',
-    message: '旧代码和链接会立即失效，是否继续？',
+    title: '重新生成分享链接',
+    message: '旧链接会立即失效，是否继续？',
     confirmText: '重新生成',
     type: 'danger'
   })
-  if (ok && current(accountId, seq)) await updateShare(regenerateOperatorShare, '新的神秘代码已生成')
+  if (ok && current(accountId, seq)) await updateShare(regenerateOperatorShare, '新的分享链接已生成')
 }
 
 async function revoke() {
@@ -136,7 +139,7 @@ async function revoke() {
   const seq = requestSeq
   const ok = await dialog.confirm({
     title: '撤销分享',
-    message: '撤销后当前代码和链接会立即失效。',
+    message: '撤销后当前链接会立即失效。',
     confirmText: '撤销',
     type: 'danger'
   })
@@ -164,11 +167,12 @@ async function copy(value, label) {
     }
     if (!copied) {
       error.value = '复制失败，请手动选中复制'
-      return
+      return false
     }
   }
   error.value = ''
   message.value = label + '已复制'
+  return true
 }
 
 watch(function () { return props.accountId }, loadShare, { immediate: true, flush: 'sync' })
@@ -177,16 +181,18 @@ onBeforeUnmount(function () { requestSeq += 1; loadSeq += 1 })
 
 <style scoped>
 .share-manager { border-top: 1px dashed var(--line); padding: 20px 24px 22px; background: var(--cream) }
-.share-manager-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px }
-.share-manager h2 { font-family: var(--font-s); font-size: 18px; font-weight: 900 }
+.share-manager-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 5px 12px }
+.share-description { grid-column: 1 / -1 }
+.share-manager-heading > button { white-space: nowrap; min-height: 44px; padding-inline: 12px }
+.share-manager h2 { font-family: var(--font-s); font-size: 18px; line-height: 1.3; letter-spacing: .04em; font-weight: 900 }
 .share-manager p { color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
 .section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
-.share-values { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(300px, 1.4fr); gap: 12px; margin-top: 16px }
+.share-values { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 16px }
 .share-values label { display: grid; gap: 6px; min-width: 0; color: var(--ink-60); font-size: 11.5px; font-weight: 800 }
-.share-values input { min-width: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--ink); background: var(--paper); font: 12px var(--font-d) }
+.share-values input { width: 100%; box-sizing: border-box; min-height: 44px; min-width: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--ink); background: var(--paper); font: 12px var(--font-d) }
 .share-actions,.share-inactive { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px }
 .share-inactive { justify-content: space-between }
-.share-button { min-height: 40px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 15px; color: var(--cream); background: var(--tea); cursor: pointer; font: 700 12.5px var(--font-b) }
+.share-button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 8px 15px; color: var(--cream); background: var(--tea); cursor: pointer; font: 700 12.5px var(--font-b) }
 .share-button.visit { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; text-decoration: none; border-color: var(--accent); color: var(--accent-strong); background: transparent }
 .share-button.subtle { border-color: var(--line); color: var(--ink-60); background: transparent }
 .share-button.danger { border-color: rgba(166, 81, 74, .45); color: var(--rouge); background: transparent }
@@ -196,10 +202,21 @@ onBeforeUnmount(function () { requestSeq += 1; loadSeq += 1 })
 .share-state.is-error { color: var(--rouge) }
 .share-message { color: var(--accent-strong) }
 @media (max-width: 640px) {
-  .share-manager { padding: 18px 16px }
-  .share-manager-heading { align-items: stretch; flex-direction: column }
+  .share-manager { padding: 14px 16px }
+  .share-manager-heading { gap: 3px 8px }
+  .share-manager h2 { font-size: 17px }
+  .share-manager p { font-size: 12px; line-height: 1.5 }
+  .section-kicker { margin-bottom: 3px }
+  .share-manager-heading > button { padding: 6px 10px; font-size: 12px }
+  .share-values { margin-top: 10px; gap: 8px }
+  .share-values label { gap: 4px }
+  .share-values input { padding: 8px 10px; font-size: 16px }
+  .share-state,.share-message { margin-top: 10px }
   .share-values { grid-template-columns: 1fr }
-  .share-actions,.share-inactive { align-items: stretch; flex-direction: column }
-  .share-button { width: 100% }
+  .share-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px }
+  .share-actions .share-button { padding: 7px 10px }
+  .share-inactive { gap: 8px; margin-top: 10px }
+  .share-inactive p { flex: 1 1 180px }
+  .share-inactive .share-button { flex: none }
 }
 </style>
