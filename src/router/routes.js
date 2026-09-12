@@ -70,7 +70,7 @@ export const routes = [
         icon: 'users',
         component: () => import('/src/pages/operator/index.vue'),
         meta: {
-            title: '密探 — 鸢鸢相抱 · YuanHub'
+            title: '我的密探 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
@@ -99,14 +99,14 @@ export const routes = [
     },
     {
         path: '/operator/quick',
-        text: '快捷导入',
+        text: '快捷录入',
         name: 'operator-quick',
         display: false,
         module: 'tools',
         icon: 'zap',
         component: () => import('/src/pages/operator/quick.vue'),
         meta: {
-            title: '快捷导入 — 鸢鸢相抱 · YuanHub'
+            title: '快捷录入 — 鸢鸢相抱 · YuanHub'
         }
     },
     {

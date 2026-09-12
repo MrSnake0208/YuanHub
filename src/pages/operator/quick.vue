@@ -9,9 +9,9 @@
           <div class="crumb">
             <span class="pill fill">密探</span>
             <span class="pill">养成</span>
-            <span class="pill">首次 / 快捷导入</span>
+            <span class="pill">首次 / 快捷录入</span>
           </div>
-          <h1>快捷导入<span class="small">首次建档 · 星阶批量</span></h1>
+          <h1>快捷录入<span class="small">首次建档 · 星阶批量</span></h1>
           <p class="hero-sub">
             按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页批量设置「等级
             /
@@ -88,7 +88,7 @@
 
           <!-- 未登录 / 未建账号 -->
           <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
-            请先登录后再使用快捷导入
+            请先登录后再使用快捷录入
             <router-link class="link" to="/login">去登录</router-link>
           </div>
           <div
@@ -96,7 +96,7 @@
             class="state"
             v-reveal
           >
-            正在加载快捷导入数据…
+            正在加载快捷录入数据…
           </div>
           <div v-else-if="!accounts.length" class="state err" v-reveal>
             尚未创建子账号，请先返回密探页创建
@@ -361,9 +361,9 @@
       </section>
 
       <SiteFooter>
-        <template #big>快捷导入<br /><span>首次建档 · 星阶批量</span></template>
+        <template #big>快捷录入<br /><span>首次建档 · 批量录入</span></template>
         <template #fine>
-          <b>YuanHub</b> · 密探养成档案· 快捷导入<br />
+          <b>YuanHub</b> · 密探养成档案· 快捷录入<br />
           MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
           数据仅供参考，请以游戏内实际养成为准
         </template>

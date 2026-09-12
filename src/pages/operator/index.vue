@@ -49,6 +49,12 @@
         <div class="wrap">
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
+            id="operator-account-workspace"
+            class="operator-account-workspace"
+            :class="{ 'is-compact': accountWorkspaceCompact }"
+            v-model:compact="accountWorkspaceCompact"
+            summary-label="账号与分享"
+            split
             v-model:accountId="accountId"
             v-model:game="gameFilter"
             :accounts="accounts"
@@ -78,10 +84,23 @@
               </button>
             </template>
 
-            <OperatorShareManager
-              v-if="auth.isLoggedIn && accountId"
-              :account-id="accountId"
-            />
+            <template #summary-actions>
+              <router-link class="act-btn ghost workspace-mobile-link" to="/operator/share">查看他人 BOX</router-link>
+              <router-link class="act-btn ghost workspace-mobile-link" :to="quickHref" @click="showImport = false">首次/快捷录入</router-link>
+            </template>
+            <template #side>
+              <OperatorShareManager
+                v-if="auth.isLoggedIn && accountId"
+                ref="operatorShareManager"
+                :account-id="accountId"
+                @share-change="operatorShare = $event"
+              />
+              <div v-else class="operator-share-placeholder">
+                <span class="section-kicker">分享链接</span>
+                <h2>分享当前密探 BOX</h2>
+                <p>{{ !auth.isLoggedIn ? '登录并选择账号后，可生成分享链接。' : '创建并选择账号后，可生成分享链接。' }}</p>
+              </div>
+            </template>
 
             <div v-if="showArchive" class="archive-workspace">
               <div class="archive-heading">
@@ -209,8 +228,15 @@
               class="act-btn ghost admin-link"
               :to="quickHref"
               @click="showImport = false"
-              >首次 / 快捷导入</router-link
+              >首次 / 快捷录入</router-link
             >
+            <button
+              type="button"
+              class="act-btn ghost admin-link workspace-tabs-toggle"
+              :aria-expanded="!accountWorkspaceCompact"
+              aria-controls="operator-account-workspace"
+              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
+            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
           </div>
 
           <!-- 导入档案 -->
@@ -719,7 +745,14 @@
           >
             <div class="current-workbench-head" v-reveal>
               <div class="current-workbench-copy">
-                <span class="section-kicker">当前账号 · 养成台账</span>
+                <div class="current-ledger-heading">
+                  <span class="section-kicker">当前账号 · 养成台账</span>
+                  <div class="ledger-share-control">
+                  <button v-if="isOperatorSharing" type="button" class="ledger-share-badge is-sharing" aria-label="分享中，点击复制分享链接" title="点击复制分享链接" @click="copyLedgerShare">分享中</button>
+                  <span v-else class="ledger-share-badge">{{ ledgerShareStatus }}</span>
+                  <span v-if="shareCopyFeedback" class="ledger-share-feedback" role="status">{{ shareCopyFeedback }}</span>
+                  </div>
+                </div>
                 <div class="current-workbench-title">
                   <h2>{{ currentAccountName }}</h2>
                   <span class="current-game-tag">{{ gameFilter }}</span>
@@ -804,13 +837,16 @@
                   type="button"
                   :class="{ on: upgradeReadyFilter === 'growth' }"
                   :aria-pressed="upgradeReadyFilter === 'growth'"
+                  :aria-label="upgradeReadyFilter === 'growth' ? '显示全部' : '只看可提升等级/修为'"
+                  :title="upgradeReadyFilter === 'growth' ? '显示全部' : '只看可提升等级/修为'"
                   @click="toggleUpgradeReadyFilter('growth')"
                 >
-                  {{
+                  <Eye class="upgrade-filter-icon" :size="18" aria-hidden="true" />
+                  <span class="upgrade-filter-label">{{
                     upgradeReadyFilter === "growth"
                       ? "显示全部"
                       : "只看可提升等级/修为"
-                  }}
+                  }}</span>
                 </button>
               </div>
               <div
@@ -843,11 +879,14 @@
                   type="button"
                   :class="{ on: upgradeReadyFilter === 'huaji' }"
                   :aria-pressed="upgradeReadyFilter === 'huaji'"
+                  :aria-label="upgradeReadyFilter === 'huaji' ? '显示全部' : '只看可化极'"
+                  :title="upgradeReadyFilter === 'huaji' ? '显示全部' : '只看可化极'"
                   @click="toggleUpgradeReadyFilter('huaji')"
                 >
-                  {{
+                  <Eye class="upgrade-filter-icon" :size="18" aria-hidden="true" />
+                  <span class="upgrade-filter-label">{{
                     upgradeReadyFilter === "huaji" ? "显示全部" : "只看可化极"
-                  }}
+                  }}</span>
                 </button>
               </div>
             </div>
@@ -1002,7 +1041,7 @@
               <template v-else-if="currentEntries.length === 0"
                 >暂无已招募的密探养成记录 ·
                 <router-link class="link" :to="quickHref"
-                  >前往首次 / 快捷导入</router-link
+                  >前往首次 / 快捷录入</router-link
                 ></template
               >
               <template v-else
@@ -2984,6 +3023,7 @@ import {
   CircleAlert,
   Download,
   Heart,
+  Eye,
   ListChecks,
   Pencil,
   RotateCcw,
@@ -3315,6 +3355,28 @@ watch(
   },
   { immediate: true },
 );
+const accountWorkspaceCompact = ref(true);
+const operatorShareManager = ref(null);
+const operatorShare = ref(null);
+const shareCopyFeedback = ref("");
+let shareCopyTimer;
+let shareCopySeq = 0;
+const isOperatorSharing = computed(() => auth.isLoggedIn && operatorShare.value?.accountId === accountId.value && !!operatorShare.value?.link);
+const ledgerShareStatus = computed(() => {
+  if (!auth.isLoggedIn || !accountId.value) return "未分享";
+  if (operatorShare.value?.accountId !== accountId.value) return "读取中…";
+  return operatorShare.value.status === "未开启" ? "未分享" : operatorShare.value.status;
+});
+watch(accountId, () => { clearTimeout(shareCopyTimer); shareCopySeq += 1; shareCopyFeedback.value = ""; });
+async function copyLedgerShare() {
+  const targetAccount = accountId.value;
+  const seq = ++shareCopySeq;
+  clearTimeout(shareCopyTimer);
+  const ok = await operatorShareManager.value?.copyCurrentShare();
+  if (seq !== shareCopySeq || targetAccount !== accountId.value) return;
+  shareCopyFeedback.value = ok ? "分享链接已复制" : "复制失败，请展开面板手动复制链接";
+  shareCopyTimer = setTimeout(() => { shareCopyFeedback.value = ""; }, ok ? 2200 : 4000);
+}
 const accountsLoading = ref(false);
 const accountBusy = ref(false);
 const accountError = ref("");
@@ -7971,6 +8033,8 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  clearTimeout(shareCopyTimer);
+  shareCopySeq += 1;
   document.removeEventListener("pointerdown", handleCardPopoverOutside);
   window.removeEventListener("scroll", hideDiscTooltip, true);
   window.removeEventListener("resize", hideDiscTooltip);
@@ -7981,6 +8045,26 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.workspace-mobile-link { display: none; }
+.current-ledger-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.current-ledger-heading .section-kicker { margin-bottom: 0; }
+.ledger-share-badge { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font: 700 12px var(--font-b); }
+.ledger-share-badge::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-35); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-35) 12%, transparent); }
+.ledger-share-badge.is-sharing::before { background: #6f9f76; box-shadow: 0 0 0 3px rgba(111, 159, 118, .14), 0 0 7px rgba(111, 159, 118, .22); }
+.ledger-share-badge.is-sharing { color: var(--ink); cursor: pointer; }
+.ledger-share-badge.is-sharing:hover { background: var(--paper); }
+.ledger-share-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ledger-share-feedback { color: var(--accent-strong); font-size: 12px; }
+@media (max-width: 1080px) {
+  .page-operator .operator-tabs { display: none; }
+  .page-operator :deep(.workspace-summary) { flex-wrap: wrap; justify-content: flex-start; gap: 6px; padding: 10px; }
+  .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { display: inline-flex; min-height: 44px; padding: 8px 10px; font-size: 12px; justify-content: center; flex: 1 1 auto; white-space: nowrap; }
+}
+
+.operator-share-placeholder { padding: 22px 24px; }
+.operator-share-placeholder h2 { font: 900 18px var(--font-s); }
+.operator-share-placeholder p { margin-top: 6px; font-size: 12.5px; color: var(--ink-60); line-height: 1.7; }
+
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
 .operator-main {
   padding-bottom: 0;
@@ -8002,12 +8086,12 @@ onBeforeUnmount(function () {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 4px;
-  margin-top: 40px;
+  margin-top: 16px;
   flex-wrap: wrap;
   align-items: center;
   box-shadow: 0 12px 28px -22px rgba(73, 59, 44, 0.5);
 }
-.operator-tabs button {
+.operator-tabs .operator-tab-button {
   border: none;
   background: transparent;
   font-family: var(--font-b);
@@ -8019,11 +8103,11 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
   transition: all 0.3s var(--ease);
 }
-.operator-tabs button.on {
+.operator-tabs .operator-tab-button.on {
   background: var(--tea);
   color: var(--cream);
 }
-.operator-tabs button:hover:not(.on) {
+.operator-tabs .operator-tab-button:hover:not(.on) {
   color: var(--ink);
 }
 .operator-tabs .sp {
@@ -8805,7 +8889,7 @@ onBeforeUnmount(function () {
 .archive-toggle {
   min-height: 44px;
   align-self: center;
-  transform: translateY(9px);
+  transform: none;
   background: transparent;
 }
 .archive-actions svg {
@@ -13818,7 +13902,7 @@ onBeforeUnmount(function () {
     max-height: 130px;
   }
   .operator-tabs {
-    margin-top: 24px;
+    margin-top: 12px;
   }
   .operator-tabs .admin-link {
     padding-inline: 12px;
@@ -14477,6 +14561,51 @@ onBeforeUnmount(function () {
     width: 100%;
     transform: none;
   }
+}
+
+.ledger-share-control { position: relative; flex: none; }
+.ledger-share-control .ledger-share-feedback { position: absolute; z-index: 5; top: calc(100% + 4px); right: 0; width: max-content; max-width: min(240px, 70vw); padding: 8px 12px; border-radius: 10px; background: var(--tea); color: var(--cream); box-shadow: 0 5px 16px rgba(73, 59, 44, .15); font-size: 12px; line-height: 1.5; pointer-events: none; }
+.ledger-share-feedback::before { content: ''; position: absolute; top: -4px; right: 18px; width: 8px; height: 8px; background: var(--tea); transform: rotate(45deg); }
+.upgrade-filter-icon { display: none; }
+@media (max-width: 1080px) {
+  .page-operator :deep(.workspace-summary) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 6px 8px; gap: 6px; background: var(--cream); }
+  .page-operator :deep(.workspace-status:not(:empty)) { grid-column: 1 / -1; }
+  .page-operator :deep(.workspace-toggle) { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; color: var(--tea); font-weight: 800; }
+  .page-operator .workspace-mobile-link { min-width: 0; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink-60); text-decoration: none; font-weight: 700; }
+  .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { padding: 6px 4px; min-height: 44px; font-size: 12px; }
+  .page-operator .workspace-mobile-link:hover { color: var(--ink); border-color: var(--accent); background: var(--paper); text-decoration: none; }
+  .page-operator .workspace-mobile-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+}
+@media (max-width: 640px) {
+  .current-workbench-index { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: 0; }
+  .current-status-index { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+  .current-status-index > div { align-items: center; text-align: center; padding: 0 4px; }
+  .current-status-index > div::before { left: 5px; }
+  .current-index-total { min-width: 0; padding-right: 0; }
+  .current-upgrade-reminder { grid-template-columns: auto minmax(0, 1fr) 44px; gap: 8px; }
+  .current-upgrade-reminder button { grid-column: 3; grid-row: 1; width: 44px; min-height: 44px; padding: 0; }
+  .current-upgrade-reminder .upgrade-filter-icon { display: block; }
+  .current-upgrade-reminder .upgrade-filter-label { display: none; }
+  .current-upgrade-reminder-icon { width: 30px; height: 30px; }
+}
+
+@media (min-width: 901px) {
+  .current-workbench-head { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; gap: 4px 28px; padding: 16px 22px; }
+  .current-workbench-copy, .current-ledger-heading { display: contents; }
+  .current-ledger-heading > .section-kicker { grid-column: 1; grid-row: 1; align-self: center; margin: 0; }
+  .ledger-share-control { grid-column: 2; grid-row: 1; justify-self: end; }
+  .current-workbench-title { grid-column: 1; grid-row: 2; margin-top: 0; }
+  .current-workbench-copy > p { grid-column: 1; margin-top: 2px; }
+  .current-workbench-head .current-workbench-index { grid-column: 2; grid-row: 2 / span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); width: 100%; box-sizing: border-box; gap: 10px; padding: 10px 12px; align-self: start; }
+  .current-workbench-index .current-status-index { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .ledger-share-control .ledger-share-badge { min-height: 32px; padding: 4px 8px; }
+}
+
+@media (min-width: 1081px) {
+  .operator-account-workspace.is-compact { display: none; }
+  .operator-account-workspace :deep(.workspace-summary) { display: none; }
+  .operator-account-workspace :deep(.workspace-panels) { border-top: 0; }
+  .operator-tabs .workspace-tabs-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
