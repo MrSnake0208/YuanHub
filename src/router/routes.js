@@ -70,7 +70,7 @@ export const routes = [
         icon: 'users',
         component: () => import('/src/pages/operator/index.vue'),
         meta: {
-            title: '我的密探 — 鸢鸢相抱 · YuanHub'
+            title: '密探名册 — 鸢鸢相抱 · YuanHub'
         }
     },
     {

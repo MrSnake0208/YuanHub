@@ -267,6 +267,16 @@
   display: block;
 }
 
+:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-action-ratio {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  font: 700 9px/1 var(--font-d);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-step-actions button:focus-visible,
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-smart-action:focus-visible,
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-next-action:focus-visible {

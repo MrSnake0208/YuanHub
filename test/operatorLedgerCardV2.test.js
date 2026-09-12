@@ -63,6 +63,21 @@ test('v2 进一步压缩等级修为化极面板高度', () => {
   assert.match(v2Styles, /@media \(max-width: 640px\)[\s\S]*?min-height: 30px;[\s\S]*?width: 30px;/)
 })
 
+test('v2 化极材料不足时直接显示当前库存与下一节点需求', () => {
+  assert.match(
+    operatorPage,
+    /class="ledger-action-ratio"[\s\S]*?growthActionLabel\(e, "star", 1, "下一节点"\)/,
+  )
+  assert.match(
+    operatorPage,
+    /function growthActionLabel\([\s\S]*?field === "star"[\s\S]*?const shortage = materials\.find\([\s\S]*?item\.lack > 0/,
+  )
+  assert.match(
+    v2Styles,
+    /\.ledger-action-ratio \{[\s\S]*?font: 700 9px\/1 var\(--font-d\);[\s\S]*?white-space: nowrap;/,
+  )
+})
+
 test('v2 战斗面板上下内边距对称，移动端蝶属性输入保留舒适宽度', () => {
   assert.match(v2Styles, /\.ledger-combat-stat \{[\s\S]*?padding: 6px 7px 9px;/)
   assert.match(v2Styles, /\.ledger-oddity input \{[\s\S]*?min-width: 48px;[\s\S]*?text-align: center;/)

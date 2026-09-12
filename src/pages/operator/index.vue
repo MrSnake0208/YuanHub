@@ -207,7 +207,7 @@
               :class="{ on: activeTab === 'current' }"
               @click="setTab('current')"
             >
-              当前养成
+              养成总览
             </button>
             <button
               v-if="growthTrackingEnabled"
@@ -218,7 +218,7 @@
               :class="{ on: activeTab === 'tracking' }"
               @click="setTab('tracking')"
             >
-              养成追踪
+              养成规划
             </button>
             <span class="sp"></span>
             <router-link class="act-btn ghost admin-link" to="/operator/share"
@@ -427,7 +427,7 @@
               {{ importResult.accepted + importResult.partial }} 条 · 拒绝
               {{ importResult.rejected }} 条 · 无变化
               {{ importResult.unchanged }} 条
-              <button class="ok" @click="afterImport">查看当前养成</button>
+              <button class="ok" @click="afterImport">查看养成总览</button>
             </div>
           </div>
 
@@ -869,7 +869,7 @@
                           favoriteHuajiNames.join("、")
                         }}</b
                       ></template
-                    >。</small
+                    ></small
                   >
                   <small v-else
                     >库存或密探状态已经变化，可以返回查看全部卡片。</small
@@ -1802,10 +1802,11 @@
                             v-if="cardGrowthValue(e, 'star') >= 31"
                             :size="14"
                             aria-hidden="true"
-                          /><CircleAlert
+                          /><span
                             v-else-if="!growthMaterialsReady(e, 'star', 1)"
-                            :size="14"
+                            class="ledger-action-ratio"
                             aria-hidden="true"
+                            >{{ growthActionLabel(e, "star", 1, "下一节点") }}</span
                           /><ChevronUp
                             v-else
                             :size="15"
@@ -2301,10 +2302,31 @@
               :favorite-ids="favoriteAgentIds"
               :is-logged-in="auth.isLoggedIn"
               :refresh-key="subjectiveRefreshKey"
-              :initial-current-items="cardMaterialStock"
-              :initial-current-agents="cardHeartStock"
-              :current-inventory-ready="cardMaterialLoadedAccount === accountId"
-            />
+              :active="activeTab === 'tracking'"
+              :graduate-operator="graduateOperatorFromTracker"
+              :is-remark-editing="row => cardHasDraft(trackerRemarkEntry(row))"
+              @refresh-operators="reloadCurrent(true)"
+            >
+              <template #remark="{ row }">
+                <div class="ledger-card-footer growth-card-remark">
+                  <textarea
+                    :value="operatorRemark(trackerRemarkEntry(row))"
+                    rows="2"
+                    maxlength="1000"
+                    :aria-label="(row.name || row.id) + '备忘'"
+                    placeholder="添加备忘…"
+                    :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
+                    @input="setOperatorRemarkDraft(trackerRemarkEntry(row), $event.target.value)"
+                  ></textarea>
+                  <div v-if="cardHasDraft(trackerRemarkEntry(row))" class="ledger-card-actions">
+                    <button class="ledger-card-cancel" type="button" :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="cancelCardDraft(trackerRemarkEntry(row))">取消</button>
+                    <button class="ledger-card-save" type="button" :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="saveCardDraft(trackerRemarkEntry(row))"><Save :size="13" aria-hidden="true" />{{ cardSubmitStates[row.id] === 'submitting' ? '保存中…' : '保存' }}</button>
+                  </div>
+                  <p v-if="cardSubmitStates[row.id] === 'error'" class="growth-remark-error" role="alert">{{ quickNotices[row.id] || '保存失败，请重试' }}</p>
+                  <p v-else-if="cardSubmitStates[row.id] === 'success'" class="growth-remark-notice" role="status">已保存</p>
+                </div>
+              </template>
+            </OperatorGrowthTracker>
           </div>
         </div>
       </section>
@@ -2339,7 +2361,7 @@
           @click="setTab('tracking')"
         >
           <Target :size="19" aria-hidden="true" />
-          <span>养成追踪</span>
+          <span>养成规划</span>
         </button>
       </nav>
 
@@ -3035,7 +3057,7 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
-import { levelBookGapBundle } from "../../data/operatorTraining.js";
+import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
 import {
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION,
@@ -3343,7 +3365,7 @@ watch(
     annotationBusyIds.value = new Set();
     loadOperatorAnnotations();
     if (
-      visitedTabs.value.has("current") &&
+      (visitedTabs.value.has("current") || visitedTabs.value.has("tracking")) &&
       cardMaterialLoadedAccount.value !== accountId.value
     )
       loadCardMaterialStock();
@@ -4492,7 +4514,7 @@ const growthReadySummary = computed(function () {
     upgradeReadyGroups.value.level.length +
     " 位 · 修为可提升 " +
     upgradeReadyGroups.value.elite.length +
-    " 位。"
+    " 位"
   );
 });
 const favoriteHuajiNames = computed(function () {
@@ -4968,10 +4990,8 @@ async function loadCardMaterialStock() {
       return;
     const items = flattenInventoryCurrent(results[0]);
     cardMaterialStock.value = Object.assign({}, items, {
-      __experience__:
-        (Number(items.bingshucanjuan) || 0) * 100 +
-        (Number(items.bingshuquanjuan) || 0) * 1000 +
-        (Number(items.liutaobingshu) || 0) * 10000,
+      // 与体力规划器共用经验道具换算，避免两个页面口径漂移。
+      __experience__: bookExperience(items),
     });
     cardHeartStock.value = flattenInventoryCurrent(results[1]);
     cardMaterialLoadedAccount.value = targetAccount;
@@ -5504,10 +5524,7 @@ function applyUpgradeConsumption(consumed) {
   });
   const stock = cardMaterialStock.value;
   cardMaterialStock.value = Object.assign({}, stock, {
-    __experience__:
-      (Number(stock.bingshucanjuan) || 0) * 100 +
-      (Number(stock.bingshuquanjuan) || 0) * 1000 +
-      (Number(stock.liutaobingshu) || 0) * 10000,
+    __experience__: bookExperience(stock),
   });
 }
 
@@ -5733,10 +5750,10 @@ function growthActionLabel(entry, field, step, readyLabel) {
     return readyLabel;
   if (field === "level") return "查看经验缺口";
   if (field === "star") {
-    const heart = materials.find(function (item) {
-      return item.id === "__heart__";
+    const shortage = materials.find(function (item) {
+      return item.lack > 0;
     });
-    if (heart && heart.lack > 0) return heart.owned + "/" + heart.required;
+    if (shortage) return shortage.owned + "/" + shortage.required;
   }
   return "查看材料缺口";
 }
@@ -5758,9 +5775,9 @@ function growthPopoverTitle(entry, field) {
 function levelBookDeductions(required, stock) {
   let remaining = Math.max(0, Number(required) || 0);
   const books = [
-    { id: "liutaobingshu", value: 10000 },
-    { id: "bingshuquanjuan", value: 1000 },
-    { id: "bingshucanjuan", value: 100 },
+    { id: "liutaobingshu", value: BOOK_VALUES.liutaobingshu },
+    { id: "bingshuquanjuan", value: BOOK_VALUES.bingshuquanjuan },
+    { id: "bingshucanjuan", value: BOOK_VALUES.bingshucanjuan },
   ].map(function (book) {
     return Object.assign({}, book, {
       available: Number(stock[book.id]) || 0,
@@ -6010,6 +6027,13 @@ async function setOperatorStatus(entry, value) {
     showQuickNotice(entry.id, humanErr(err, "养成状态保存失败"));
     return false;
   }
+}
+
+async function graduateOperatorFromTracker(entry) {
+  const current = currentEntries.value.find(function (item) {
+    return item && entry && item.id === entry.id;
+  }) || entry;
+  return setOperatorStatus(current, "graduated");
 }
 
 function setOperatorStatusAndClose(entry, value, event) {
@@ -6344,6 +6368,10 @@ function operatorRemark(entry) {
   if (Object.prototype.hasOwnProperty.call(workbenchRemarks.value, entry.id))
     return workbenchRemarks.value[entry.id];
   return entry.remark || entry.note || "";
+}
+
+function trackerRemarkEntry(row) {
+  return currentEntries.value.find(entry => entry.id === row.id) || row;
 }
 
 function setOperatorRemarkDraft(entry, value) {
@@ -7240,7 +7268,7 @@ function setTab(t) {
   const currentKey = accountId.value + ":" + gameFilter.value;
   if ((t === "current" || t === "tracking") && currentLoadedKey !== currentKey)
     reloadCurrent();
-  if (t === "current" && cardMaterialLoadedAccount.value !== accountId.value)
+  if ((t === "current" || t === "tracking") && cardMaterialLoadedAccount.value !== accountId.value)
     loadCardMaterialStock();
   if (t === "tracking" && favoriteLoadedAccount !== accountId.value)
     loadAgentFavorites();
@@ -11241,6 +11269,9 @@ onBeforeUnmount(function () {
 .ledger-card-footer textarea::placeholder {
   color: var(--ink-35);
 }
+.growth-card-remark { margin-top: 12px; }
+.growth-remark-error, .growth-remark-notice { font: 11px/1.5 var(--font-b); color: var(--ink-60); }
+.growth-remark-error { color: var(--rouge); }
 .ledger-inline-field {
   display: inline-flex;
   min-width: 34px;
