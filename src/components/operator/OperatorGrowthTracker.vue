@@ -34,7 +34,7 @@
 
       <div class="cloud-status" role="status" aria-live="polite">
         {{ cloudLoading || scheduleLoading ? '正在读取云端计划…' : workspaceState.saving || scheduleState.saving ? '正在保存到云端…' : cloudError ? '云端同步未完成' : '计划与日程按子账号保存到云端' }}
-        <span v-if="fixedSchedule"> · 日程时区 {{ scheduleTimezone }}</span>
+        <span v-if="fixedSchedule"> · 日界线北京时间 05:00</span>
       </div>
       <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
       <div v-for="kind in ['workspace', 'schedule']" :key="kind">
@@ -194,16 +194,18 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CalendarDays, Check, CircleAlert, Info, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
-import { plannerDateInZone, plannerTimezone } from '../../data/operatorPlannerRemote.js'
+import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
+import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
 import { TRAINING_GROUPS, bookExperience, levelBookGapBundle, normalizeTrainingLevels, trainingMaterialEtas, trainingRate } from '../../data/operatorTraining.js'
 import { FAVORITES_PLAN_ID, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
-import { getCurrent, getAcquiredSummary } from '../../api/inventory.js'
+import { getCurrent, listRecords } from '../../api/inventory.js'
 import { avatarUrl } from '../../api/request.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getOperatorGrowthTargets, putOperatorGrowthTarget } from '../../api/operator.js'
 import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
 import { calculateLevelRequirements, calculateStarRequirements, calculateXiuweiRequirements, mergeRequirements, netRequirement, starLabelForStage, starStageFromLevel } from '../../data/operatorRequirements.js'
+import { localDayKey } from '../../data/inventory/acquiredStats.js'
 import PlannerDateTabs from './PlannerDateTabs.vue'
 import CultivationProgress from './CultivationProgress.vue'
 import { createFixedSchedule, fixedScheduleDifferences, fixedScheduleTimeline, reviseFixedSchedule } from '../../data/fixedPlannerSchedule.js'
@@ -228,7 +230,7 @@ const targetBusyIds = ref(new Set())
 const { workspace, snapshot: cloudSnapshot, workspaceState, scheduleState, cloudLoading, scheduleLoading, cloudError,
   migration, migrationBusy, cloudBlocked, workspacePending, schedulePending, loadCloud, saveWorkspace, saveSchedule,
   removeMember, prepareMigration, importLocal, keepCloud, compareMigrationAgain, recover, refreshCloud } = useOperatorPlannerCloud(props, targets, emit)
-const scheduleTimezone = ref(plannerTimezone())
+const scheduleTimezone = ref(BUSINESS_TIMEZONE)
 const planError = ref('')
 const planNotice = ref('')
 const undoWorkspace = ref(null)
@@ -248,9 +250,9 @@ const strategy = ref('overall')
 const plannerOrder = ref([])
 const manualPlans = ref({})
 const fixedSchedule = ref(null)
-const plannerToday = ref(formatLocalDate(new Date()))
+const plannerToday = ref(plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR))
 const plannerWorkspaceRef = ref(null)
-const plannerStartDate = ref(formatLocalDate(new Date()))
+const plannerStartDate = ref(plannerToday.value)
 const selectedDate = ref(plannerStartDate.value)
 const rosterDragId = ref('')
 const starTargetId = ref('')
@@ -434,8 +436,7 @@ function plannerStateTotal(state) { return Object.values(aggregatePlannerState(s
 function resourceIcon(id) { const key = id === '__xp__' ? 'bingshuquanjuan' : id; return ITEM_CATALOG.some(item => item.id === key) ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(key) + '.png' : '' }
 function operatorIcon(row) { return row?.id ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/agents/' + encodeURIComponent(row.id) + '.png' : '' }
 function resourceName(id) { return PLANNER_RESOURCE_LABELS[id] || itemMap.value[id] || id }
-function formatLocalDate(date) { const value = new Date(date); return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, '0'), String(value.getDate()).padStart(2, '0')].join('-') }
-function addDays(dateText, amount) { const date = new Date(dateText + 'T12:00:00'); date.setDate(date.getDate() + amount); return formatLocalDate(date) }
+function addDays(dateText, amount) { return addCalendarDays(dateText, amount) }
 function dateOffset(dateText) { const start = new Date(plannerStartDate.value + 'T12:00:00'); const date = new Date(dateText + 'T12:00:00'); const offset = Math.round((date - start) / 86400000); return Number.isFinite(offset) ? offset : 0 }
 function formatLongDate(dateText) { if (!dateText) return '未选择日期'; const [year, month, day] = dateText.split('-'); return year === String(new Date().getFullYear()) ? `${Number(month)}月${Number(day)}日` : `${year}年${Number(month)}月${Number(day)}日` }
 function formatNumber(value) { return (Number(value) || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 }) }
@@ -454,11 +455,42 @@ function rateFor(id) { return trainingRate(id, workspace.value.trainingLevels) |
 function rateLabel(id) { const training = trainingRate(id, workspace.value.trainingLevels); return training != null ? (training > 0 ? '历练约 ' + formatNumber(training) + '/日' : '所需层数未开放') : '未配置获取途径' }
 function materialEtaLabel(row, gap) { if (row.calculation.level.items?.[gap.id]) return '等级突破道具'; const etas = row.calculation.materialEtas || {}; if (Object.prototype.hasOwnProperty.call(etas, gap.id)) { const days = etas[gap.id]; return days == null ? '所需层数未开放' : '约 ' + formatEta(days) } return '暂无模拟产出' }
 async function loadRecentHeartHistory(account, endDate) {
-  const result = await getAcquiredSummary({ accountId: account, entityType: 'agent', fromDate: addDays(endDate, -29),
-    toDate: addDays(endDate, 1), timezone: scheduleTimezone.value })
-  return Object.fromEntries(Object.entries(result.items || {}).map(([id, item]) => {
-    const acquired = Number(item.acquired) || 0, activeDays = Number(item.active_days) || 0
-    return [id, { acquired, activeDays, average: activeDays ? acquired / activeDays : 0 }]
+  const fromDate = addDays(endDate, -29)
+  const toDate = addDays(endDate, 1)
+  const from = businessDayStartIso(fromDate)
+  const to = businessDayStartIso(toDate)
+  if (!from || !to) return {}
+
+  const records = []
+  const seenCursors = new Set()
+  let cursor = null
+  while (true) {
+    const page = await listRecords({ accountId: account, entityType: 'agent', from, to, cursor, limit: 100 })
+    const items = Array.isArray(page?.items) ? page.items : []
+    records.push(...items)
+    const next = page?.next_cursor || null
+    if (!next || seenCursors.has(next)) break
+    seenCursors.add(next)
+    cursor = next
+  }
+
+  const totals = new Map()
+  const activeDays = new Map()
+  records.forEach(record => {
+    if (record?.record_type !== 'reward_delta') return
+    const day = localDayKey(record.effective_at)
+    if (!day) return
+    for (const entry of Array.isArray(record.entries) ? record.entries : []) {
+      const count = Number(entry?.count) || 0
+      if (!entry?.id || count <= 0) continue
+      totals.set(entry.id, (totals.get(entry.id) || 0) + count)
+      if (!activeDays.has(entry.id)) activeDays.set(entry.id, new Set())
+      activeDays.get(entry.id).add(day)
+    }
+  })
+  return Object.fromEntries(Array.from(totals.entries()).map(([id, acquired]) => {
+    const days = activeDays.get(id)?.size || 0
+    return [id, { acquired, activeDays: days, average: days ? acquired / days : 0 }]
   }))
 }
 function heartHistoryFor(row) { return heartHistory.value[row?.id] || { acquired: 0, activeDays: 0, average: 0 } }
@@ -553,8 +585,8 @@ function applyPlannerSnapshot(snapshot) {
   plannerOrder.value = snapshot?.agentOrder || []
   manualPlans.value = snapshot?.manualPlans || {}
   fixedSchedule.value = snapshot?.schedule || null
-  scheduleTimezone.value = snapshot?.timezone || plannerTimezone()
-  plannerToday.value = plannerDateInZone(scheduleTimezone.value)
+  scheduleTimezone.value = fixedSchedule.value ? snapshot?.timezone || BUSINESS_TIMEZONE : BUSINESS_TIMEZONE
+  plannerToday.value = plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR)
   plannerStartDate.value = snapshot?.schedule?.startDate || plannerToday.value
   if (!plannerDates.value.includes(selectedDate.value)) selectedDate.value = plannerDates.value.includes(plannerToday.value) ? plannerToday.value : plannerDates.value[0]
 }
@@ -722,7 +754,7 @@ async function loadInventory() {
   }
   const account = props.accountId
   const sequence = ++inventoryLoadSeq
-  const today = plannerDateInZone(scheduleTimezone.value)
+  const today = plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR)
   plannerToday.value = today
   if (!fixedSchedule.value && plannerStartDate.value !== today) { plannerStartDate.value = today; selectedDate.value = today }
   loading.value = true
@@ -751,7 +783,7 @@ async function loadInventory() {
 }
 function scheduleInventoryRefresh(message) { const eventAccount = message?.data?.account_id || message?.data?.accountId; if (eventAccount && eventAccount !== props.accountId) return; if (inventoryEventRefreshTimer != null) return; inventoryEventRefreshTimer = setTimeout(() => { inventoryEventRefreshTimer = null; loadInventory() }, 180) }
 function syncPlannerClock() {
-  const today = plannerDateInZone(scheduleTimezone.value)
+  const today = plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR)
   if (plannerToday.value === today) return
   plannerToday.value = today
   if (!fixedSchedule.value) { plannerStartDate.value = today; selectedDate.value = today }

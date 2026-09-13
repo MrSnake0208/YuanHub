@@ -21,11 +21,11 @@
 | GET / PUT | `/v1/operator/training-plans/{planId}/stamina-schedule` | 偏好、顺序、自定义安排及完整固定日程 |
 | POST | `/v1/operator/training-plans/{planId}/members/{operatorId}/remove` | 原子移除与可选毕业，保留备注 |
 | POST | `/v1/operator/training-workspace/import-local` | 工作区、日程与导入回执同事务提交 |
-| GET | `/v1/inventory/acquired-summary` | 按当地日期统计正数奖励总量和实际获得天数 |
+| GET | `/v1/inventory/records` | 读取近 30 个业务日的密探奖励流水，前端按 05:00 业务日聚合 |
 
-工作区与日程分别维护 revision，PUT 携带 expected_revision。日程 schema_version=1、rules_version=13，并保存 IANA timezone。历史日期以保存时区判定，跨设备旅行不会改变日程的日期边界。
+工作区与日程分别维护 revision，PUT 携带 expected_revision。日程 schema_version=1、rules_version=13，并保留时区字段以兼容既有数据；当前 YuanHub 固定使用 `Asia/Shanghai`（北京/上海时间），每天 05:00 作为新一天的开始。历史日程日期键保持不变，跨设备旅行不会改变日期边界。
 
-心纸统计传入 `entity_type=agent`、`from_date`、`to_date`（左闭右开）和 `timezone`。使用近 30 个当地日期内的正数 reward_delta；每位密探平均值为 acquired / active_days，保持页面当前口径。无需再拉取最多 5000 条流水后截断统计。
+心纸统计从流水接口读取 `entity_type=agent` 在 `[业务日05:00, 次日05:00)` 内的记录，并在前端按 `Asia/Shanghai` 业务日聚合近 30 个业务日期内的正数 `reward_delta`；每位密探平均值为 `acquired / active_days`，保持页面当前口径。这样不依赖后端把日期聚合从自然日午夜切换到 05:00。
 
 ## 本机迁移与恢复
 

@@ -1841,6 +1841,13 @@ import {
   staminaCostOf,
   validateInventoryExchangeDocument,
 } from "../../data/inventory/exchange.js";
+import {
+  addCalendarDays,
+  businessDate,
+  businessDayStartIso,
+  BUSINESS_TIMEZONE,
+  nextBusinessDayStartIso,
+} from "../../utils/businessDay.js";
 
 const activeTab = usePersistedTab(
   "inventory-tabs",
@@ -1926,8 +1933,8 @@ const catalog = ref({ entities: [] });
 const currentEntries = ref([]);
 const acquiredEntries = ref([]);
 const acquiredEntityType = ref("all");
-const rangeFrom = ref(localDate(new Date(Date.now() - 29 * 86400000)));
-const rangeTo = ref(localDate(new Date()));
+const rangeFrom = ref(addCalendarDays(businessDate(new Date()), -29));
+const rangeTo = ref(businessDate(new Date()));
 const rangePreset = ref("30d");
 const acquiredView = ref("overview");
 const reportBook = ref("resources");
@@ -2308,7 +2315,7 @@ async function onDeleteAccount(acc) {
   }
 }
 
-// ISO 日期（本地时区 YYYY-MM-DD），供 <input type=date> 与后端 [from,to) 区间
+// 展示用日期（输入框仍使用 YYYY-MM-DD）；统计区间的实际边界由北京时间 05:00 生成。
 function localDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -2349,7 +2356,7 @@ function markCustomRange() {
 }
 
 function applyRangePreset(id) {
-  const today = inputDate(localDate(new Date()));
+  const today = inputDate(businessDate(new Date()));
   let from = today;
   let to = today;
   if (id === "7d") from = addLocalDays(today, -6);
@@ -3460,19 +3467,11 @@ function handleInventoryAccountEvent(message) {
 }
 
 function dayStartIso(dStr) {
-  const p = String(dStr || "")
-    .split("-")
-    .map(Number);
-  if (p.length !== 3 || p.some(isNaN)) return null;
-  return new Date(p[0], p[1] - 1, p[2]).toISOString();
+  return businessDayStartIso(dStr);
 }
 
 function nextDayStartIso(dStr) {
-  const p = String(dStr || "")
-    .split("-")
-    .map(Number);
-  if (p.length !== 3 || p.some(isNaN)) return null;
-  return new Date(p[0], p[1] - 1, p[2] + 1).toISOString();
+  return nextBusinessDayStartIso(dStr);
 }
 
 let acquiredSeq = 0;
@@ -3527,6 +3526,7 @@ function fmtRecordDay(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value || "";
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: BUSINESS_TIMEZONE,
     month: "long",
     day: "numeric",
     weekday: "short",
@@ -3537,6 +3537,7 @@ function fmtRecordClock(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: BUSINESS_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -3797,7 +3798,7 @@ function fmtTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString("zh-CN", { hour12: false });
+  return d.toLocaleString("zh-CN", { hour12: false, timeZone: BUSINESS_TIMEZONE });
 }
 
 function entrySummary(entries, recordType) {
