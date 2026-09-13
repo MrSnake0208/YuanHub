@@ -1081,6 +1081,7 @@
                 <article
                   v-for="e in filteredCurrent"
                   :key="e.id"
+                  :ref="(element) => setCurrentLedgerCardElement(e.id, element)"
                   class="agent-ledger-card agent-ledger-card--editable"
                   :class="[
                     {
@@ -3210,6 +3211,7 @@ let scanFocusSeq = 0;
 let finishPendingScanScroll = null;
 const scanEffectTimers = new Map();
 const operatorSlotElements = new Map();
+const currentLedgerCardElements = new Map();
 
 // 当前养成台账卡的交互状态。状态与备忘以云端 annotation 为真相源；
 // localStorage 只保留迁移与断网回退用途。
@@ -6189,18 +6191,22 @@ async function quickCorrect(entry, field, rawValue) {
   patch[field === "star" ? "star_level" : field] = value;
   quickSavingIds.value = new Set([...quickSavingIds.value, entry.id]);
   try {
-    await patchOperatorCurrent({
+    const response = await patchOperatorCurrent({
       accountId: accountId.value,
       operatorId: entry.id,
       game: saveGame.value,
       patch,
     });
+    if (!applyPatchedCurrentEntry(entry.id, response)) {
+      await reloadCurrent(true);
+    }
     quickNotices.value = Object.assign({}, quickNotices.value, {
       [entry.id]: "已保存",
     });
     quickEditorKey.value = "";
     quickConfirmKey.value = "";
-    await reloadCurrent(true);
+    await nextTick();
+    restoreCurrentLedgerCardPosition(entry.id);
     window.setTimeout(function () {
       const next = Object.assign({}, quickNotices.value);
       delete next[entry.id];
@@ -6825,6 +6831,28 @@ function mergePatchedCurrentEntry(entry, payload) {
     });
 }
 
+function applyPatchedCurrentEntry(operatorId, payload) {
+  const entry = currentEntries.value.find(function (item) {
+    return item.id === operatorId;
+  });
+  const raw =
+    payload && payload.entry && typeof payload.entry === "object"
+      ? payload.entry
+      : payload && payload.operator && typeof payload.operator === "object"
+        ? payload.operator
+        : payload;
+  if (
+    !entry ||
+    !raw ||
+    typeof raw !== "object" ||
+    Array.isArray(raw) ||
+    Object.keys(raw).length === 0
+  )
+    return false;
+  mergePatchedCurrentEntry(entry, payload);
+  return true;
+}
+
 async function saveCardCombat(entry) {
   if (!accountId.value || cardCombatSavingIds.value.has(entry.id)) return;
   const draft = cardCombatDraft(entry);
@@ -7204,8 +7232,9 @@ async function saveEdit() {
   editNotice.value = "";
   editNoticeError.value = false;
   try {
+    let response;
     try {
-      await patchOperatorCurrent({
+      response = await patchOperatorCurrent({
         accountId: accountId.value,
         operatorId: op.id,
         game: saveGame.value,
@@ -7221,7 +7250,7 @@ async function saveEdit() {
       const legacyPatch = JSON.parse(JSON.stringify(patch));
       if (legacyPatch.combat_stats)
         delete legacyPatch.combat_stats.display_mode;
-      await patchOperatorCurrent({
+      response = await patchOperatorCurrent({
         accountId: accountId.value,
         operatorId: op.id,
         game: saveGame.value,
@@ -7230,10 +7259,17 @@ async function saveEdit() {
       editNotice.value = "已保存；当前后端暂不支持跨设备记忆显示偏好";
     }
     persistCombatDisplayMode(op.id);
-    await reloadCurrent(true);
+    if (!applyPatchedCurrentEntry(op.id, response)) {
+      // 完整编辑从当前卡片打开；只有卡片在保存期间被外部刷新移除时，
+      // 才需要重新拉取整张台账。
+      resetCardDraftState(op.id);
+      await reloadCurrent(true);
+    }
+    await nextTick();
     editNotice.value = "养成资料与已装备星石均已保存";
     setTimeout(function () {
       closeEditor();
+      restoreCurrentLedgerCardPosition(op.id);
     }, 800);
   } catch (err) {
     if (
@@ -7528,6 +7564,31 @@ async function reloadCurrent(quiet) {
   }
 }
 
+function setCurrentLedgerCardElement(operatorId, element) {
+  if (!operatorId) return;
+  if (element) currentLedgerCardElements.set(operatorId, element);
+  else currentLedgerCardElements.delete(operatorId);
+}
+
+function restoreCurrentLedgerCardPosition(operatorId) {
+  if (!operatorId) return;
+  nextTick(function () {
+    const element = currentLedgerCardElements.get(operatorId);
+    if (!element || !document.contains(element)) return;
+    const rect = element.getBoundingClientRect();
+    const isVisible = rect.top >= 96 && rect.bottom <= window.innerHeight - 96;
+    if (isVisible) return;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    element.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "center",
+      inline: "nearest",
+    });
+  });
+}
+
 function scheduleEventRefresh() {
   if (accountEventRefreshTimer != null) return;
   accountEventRefreshTimer = setTimeout(function () {
@@ -7715,6 +7776,7 @@ function stopAccountEventSubscription() {
   if (finishPendingScanScroll) finishPendingScanScroll();
   finishPendingScanScroll = null;
   operatorSlotElements.clear();
+  currentLedgerCardElements.clear();
   scanEffectTimers.forEach(clearTimeout);
   scanEffectTimers.clear();
 }
