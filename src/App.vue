@@ -31,10 +31,12 @@ import { auth } from '@/store/auth.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
 import { stopAccountEventStream, subscribeAccountEvents, syncAccountEventStream } from '@/store/accountEvents.js'
+import { starCaptureRouteForEvent } from '@/pages/star/captureTransport.js'
 import { routeLoadingState } from '@/router/index.js'
 
 let stopWatch = null
 let stopEventPrompt = null
+let stopStarCaptureRoute = null
 let monitorPromptPending = false
 const MONITOR_DISMISSED_KEY = 'yuanhub:operator-monitor-prompt-dismissed:v1'
 const router = useRouter()
@@ -88,6 +90,16 @@ async function promptOperatorMonitor(message) {
   }
 }
 
+function routeStarCapture(message) {
+  const target = starCaptureRouteForEvent(message, activeAccount.id)
+  if (!target) return
+  if (route.path === '/star') {
+    void router.replace(target)
+    return
+  }
+  void router.push(target)
+}
+
 onMounted(function () {
   resetMonitorPromptForFreshNavigation()
   stopWatch = watch(
@@ -96,11 +108,13 @@ onMounted(function () {
     { immediate: true }
   )
   stopEventPrompt = subscribeAccountEvents(promptOperatorMonitor)
+  stopStarCaptureRoute = subscribeAccountEvents(routeStarCapture)
 })
 
 onBeforeUnmount(function () {
   if (stopWatch) stopWatch()
   if (stopEventPrompt) stopEventPrompt()
+  if (stopStarCaptureRoute) stopStarCaptureRoute()
   stopAccountEventStream()
 })
 </script>
