@@ -3032,6 +3032,7 @@ import {
   onMounted,
   defineAsyncComponent,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   Archive,
   BookOpen,
@@ -3092,6 +3093,11 @@ import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
+import { operatorUpdateFromEvent } from "../../utils/operatorEvents.js";
+import {
+  OPERATOR_TAB_STORAGE_KEY,
+  setActiveOperatorTab,
+} from "../../utils/operatorTabs.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
   isOperatorOwned,
@@ -3155,12 +3161,16 @@ const ledgerCardVersionClass = operatorLedgerCardVersionClass();
 const ledgerCardIsV2 =
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2;
 
+const route = useRoute();
+const router = useRouter();
 const activeTab = usePersistedTab(
-  "operator-tabs",
+  OPERATOR_TAB_STORAGE_KEY,
   "catalog",
   growthTrackingEnabled ? ["catalog", "current", "tracking"] : ["catalog", "current"],
 );
 const visitedTabs = ref(new Set(["catalog", activeTab.value]));
+watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
+let operatorNavigationReady = false;
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const profFilter = ref("all");
@@ -7301,12 +7311,14 @@ function setTab(t) {
     visitedTabs.value = new Set(visitedTabs.value).add(t);
   activeTab.value = t;
   const currentKey = accountId.value + ":" + gameFilter.value;
+  let currentLoad = Promise.resolve();
   if ((t === "current" || t === "tracking") && currentLoadedKey !== currentKey)
-    reloadCurrent();
+    currentLoad = reloadCurrent();
   if ((t === "current" || t === "tracking") && cardMaterialLoadedAccount.value !== accountId.value)
     loadCardMaterialStock();
   if (t === "tracking" && favoriteLoadedAccount !== accountId.value)
     loadAgentFavorites();
+  return currentLoad;
 }
 
 async function onGameChange(game) {
@@ -7514,25 +7526,12 @@ async function reloadCurrent(quiet) {
     list.forEach(function (doc) {
       const entriesObj = doc && doc.entries ? doc.entries : {};
       Object.keys(entriesObj).forEach(function (id) {
-        const op = catalogMap.value[id] || {};
-        combined[id] = normalizeEntry(entriesObj[id], op.odditySchema);
+        combined[id] = entriesObj[id];
       });
     });
     currentEntries.value = Object.keys(combined)
       .map(function (id) {
-        const op = catalogMap.value[id] || {};
-        return Object.assign(
-          {
-            id: id,
-            name: op.name || "",
-            rarity: op.rarity,
-            prof: op.prof || "",
-            subProf: op.subProf || "",
-            games: op.games || [],
-            spOf: op.spOf || "",
-          },
-          combined[id],
-        );
+        return normalizeCurrentEntry(id, combined[id]);
       })
       .filter(function (e) {
         return matchesGame(e, targetGame);
@@ -7561,6 +7560,92 @@ async function reloadCurrent(quiet) {
       gameFilter.value === targetGame
     )
       loading.value = false;
+  }
+}
+
+function normalizeCurrentEntry(operatorId, raw) {
+  const op = catalogMap.value[operatorId] || {};
+  return Object.assign(
+    {
+      id: operatorId,
+      name: op.name || "",
+      rarity: op.rarity,
+      prof: op.prof || "",
+      subProf: op.subProf || "",
+      games: op.games || [],
+      spOf: op.spOf || "",
+    },
+    normalizeEntry(raw, op.odditySchema),
+  );
+}
+
+function currentEntryRawFromResponse(data, operatorId) {
+  const list = Array.isArray(data) ? data : data ? [data] : [];
+  let raw = null;
+  list.forEach(function (doc) {
+    const entries = doc && doc.entries;
+    if (
+      entries &&
+      typeof entries === "object" &&
+      Object.prototype.hasOwnProperty.call(entries, operatorId)
+    ) {
+      raw = entries[operatorId];
+    }
+  });
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+}
+
+function applyCurrentEntrySnapshot(operatorId, raw) {
+  if (!operatorId || !raw) return false;
+  const entry = currentEntries.value.find(function (item) {
+    return item.id === operatorId;
+  });
+  if (!entry) {
+    currentEntries.value = currentEntries.value.concat([
+      normalizeCurrentEntry(operatorId, raw),
+    ]);
+    return true;
+  }
+
+  // 有未保存的卡片编辑时只更新条目本身，保留用户正在编辑的草稿；
+  // 没有草稿则同步卡片派生状态、基线和战斗数值。
+  const hasDraft = cardHasDraft(entry);
+  if (hasDraft) {
+    Object.assign(entry, normalizeCurrentEntry(operatorId, raw));
+  } else {
+    mergePatchedCurrentEntry(entry, { entry: raw });
+  }
+  return true;
+}
+
+async function reloadCurrentEntry(operatorId, quiet) {
+  if (!operatorId || !auth.isLoggedIn || !accountId.value) return false;
+  const targetAccount = accountId.value;
+  const targetGame = gameFilter.value;
+  const seq = ++currentLoadSeq;
+  try {
+    const data = await getOperatorCurrent({
+      accountId: targetAccount,
+      game: targetGame,
+    });
+    if (
+      seq !== currentLoadSeq ||
+      accountId.value !== targetAccount ||
+      gameFilter.value !== targetGame
+    )
+      return false;
+    const raw = currentEntryRawFromResponse(data, operatorId);
+    if (!raw) return false;
+    return applyCurrentEntrySnapshot(operatorId, raw);
+  } catch (err) {
+    if (
+      !quiet &&
+      seq === currentLoadSeq &&
+      accountId.value === targetAccount &&
+      gameFilter.value === targetGame
+    )
+      error.value = humanErr(err, "加载失败，请稍后重试");
+    return false;
   }
 }
 
@@ -7631,24 +7716,34 @@ function waitForScanScroll(reducedMotion) {
   });
 }
 
-async function focusAndFlashScanOperator(operatorId, effect) {
+async function focusAndFlashScanOperator(operatorId, effect, targetTab = "catalog") {
   if (!operatorId) return;
   const focusSeq = ++scanFocusSeq;
   if (finishPendingScanScroll) finishPendingScanScroll();
-  activeTab.value = "catalog";
-  if (
-    !manifestEntries.value.some(function (entry) {
+  const nextTab = targetTab === "current" ? "current" : "catalog";
+  await setTab(nextTab);
+  if (nextTab === "catalog") {
+    if (
+      !manifestEntries.value.some(function (entry) {
+        return entry.id === operatorId;
+      })
+    ) {
+      manifestSearch.value = "";
+      manifestFilter.value = "all";
+      profFilter.value = "all";
+      subProfFilter.value = "all";
+    }
+  } else if (
+    !filteredCurrent.value.some(function (entry) {
       return entry.id === operatorId;
     })
   ) {
-    manifestSearch.value = "";
-    manifestFilter.value = "all";
-    profFilter.value = "all";
-    subProfFilter.value = "all";
+    resetCurrentFilters();
   }
   await nextTick();
   if (focusSeq !== scanFocusSeq) return;
-  const target = operatorSlotElements.get(operatorId);
+  const targetMap = nextTab === "current" ? currentLedgerCardElements : operatorSlotElements;
+  const target = targetMap.get(operatorId);
   if (!target) {
     flashScanOperator(operatorId, effect);
     return;
@@ -7710,6 +7805,33 @@ function scheduleSubjectiveRefresh(kind) {
   }, 180);
 }
 
+function routeQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+async function consumeOperatorNavigation() {
+  const requestedTab = routeQueryValue(route.query.tab);
+  const operatorId = routeQueryValue(route.query.focus);
+  const effect = routeQueryValue(route.query.effect) === "new" ? "new" : "updated";
+  const targetTab = requestedTab === "current" || requestedTab === "catalog" ? requestedTab : "";
+  if (!targetTab && !operatorId) return;
+  if (operatorId) await focusAndFlashScanOperator(operatorId, effect, targetTab || "catalog");
+  else if (targetTab) await setTab(targetTab);
+
+  const cleanedQuery = Object.assign({}, route.query);
+  delete cleanedQuery.tab;
+  delete cleanedQuery.focus;
+  delete cleanedQuery.effect;
+  await router.replace({ query: cleanedQuery }).catch(function () { /* 页面离开时无需处理 */ });
+}
+
+watch(
+  function () { return [route.query.tab, route.query.focus, route.query.effect]; },
+  function () {
+    if (operatorNavigationReady) void consumeOperatorNavigation();
+  },
+);
+
 function handleAccountEvent(message) {
   if (!message) return;
   const eventAccount = message.data?.account_id || message.data?.accountId;
@@ -7752,16 +7874,24 @@ function handleAccountEvent(message) {
     showQuickNotice(id, "养成与库存已同步", 2200);
     return;
   }
-  if (message.event !== "operator_scan_import") return;
   const data = message.data || {};
-  if (data.account_id && data.account_id !== accountId.value) return;
-  if (data.status === "accepted" || data.status === "partial") {
-    if (!data.preview) scheduleEventRefresh();
-    focusAndFlashScanOperator(
-      data.operator_id,
-      Number(data.revision) === 1 ? "new" : "updated",
-    );
+  // operator_scan_import（以及兼容的目录更新事件）统一在工具函数中归一化。
+  const update = operatorUpdateFromEvent(message);
+  if (!update) return;
+  const operatorId = data.operator_id || data.operatorId || update.operatorId;
+  if (activeTab.value === "current") {
+    const refresh = update.preview
+      ? Promise.resolve(true)
+      : reloadCurrentEntry(operatorId, true);
+    void refresh.then(function (updated) {
+      if (activeTab.value === "current" && (update.preview || updated))
+        void focusAndFlashScanOperator(data.operator_id || operatorId, update.effect, "current");
+    });
+    return;
   }
+  if (!update.preview) scheduleEventRefresh();
+  if (activeTab.value === "catalog")
+    void focusAndFlashScanOperator(data.operator_id || operatorId, update.effect, "catalog");
 }
 
 function stopAccountEventSubscription() {
@@ -8112,6 +8242,8 @@ onMounted(async function () {
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
   setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
+  operatorNavigationReady = true;
+  void consumeOperatorNavigation();
 });
 
 onBeforeUnmount(function () {
@@ -8573,6 +8705,36 @@ onBeforeUnmount(function () {
     box-shadow: 0 0 0 0 rgba(215, 137, 53, 0);
   }
 }
+@keyframes operator-ledger-card-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  32% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.018);
+  }
+}
+@keyframes operator-ledger-card-sweep {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  12% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
 @keyframes operator-scanner-line {
   0% {
     transform: translateY(0);
@@ -8923,6 +9085,10 @@ onBeforeUnmount(function () {
   }
   .build-row.is-scan-updated,
   .build-row.is-scan-new,
+  .agent-ledger-card.is-scan-new::before,
+  .agent-ledger-card.is-scan-new::after,
+  .agent-ledger-card.is-scan-updated::before,
+  .agent-ledger-card.is-scan-updated::after,
   .slot.is-scan-new .slot-ic,
   .slot.is-scan-updated .slot-ic,
   .slot.is-scan-new .slot-ic::before,
@@ -10279,6 +10445,68 @@ onBeforeUnmount(function () {
   box-shadow:
     0 18px 30px rgba(73, 59, 44, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.agent-ledger-card.is-scan-new,
+.agent-ledger-card.is-scan-updated {
+  --ledger-scan-accent: var(--accent);
+}
+.agent-ledger-card.rarity-r4.is-scan-new,
+.agent-ledger-card.rarity-r4.is-scan-updated {
+  --ledger-scan-accent: #8672b2;
+}
+.agent-ledger-card.rarity-r3.is-scan-new,
+.agent-ledger-card.rarity-r3.is-scan-updated {
+  --ledger-scan-accent: #99b5cf;
+}
+.agent-ledger-card.is-scan-new::before,
+.agent-ledger-card.is-scan-updated::before {
+  position: absolute;
+  z-index: 3;
+  inset: -3px;
+  border: 1.5px solid color-mix(in srgb, var(--ledger-scan-accent) 72%, var(--surface));
+  border-radius: inherit;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  animation: operator-ledger-card-ring 0.84s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.agent-ledger-card.is-scan-new::after,
+.agent-ledger-card.is-scan-updated::after {
+  position: absolute;
+  z-index: 3;
+  top: -1px;
+  right: 12px;
+  left: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ledger-scan-accent) 68%, var(--surface)),
+    transparent
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ledger-scan-accent) 58%, transparent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: operator-ledger-card-sweep 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.agent-ledger-card.is-scan-updated::before {
+  animation-duration: 0.68s;
+}
+.agent-ledger-card.is-scan-updated::after {
+  animation-duration: 0.62s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-ledger-card.is-scan-new::before,
+  .agent-ledger-card.is-scan-new::after,
+  .agent-ledger-card.is-scan-updated::before,
+  .agent-ledger-card.is-scan-updated::after {
+    animation: none !important;
+    opacity: 0;
+  }
 }
 .agent-ledger-card.rarity-r5 {
   --ledger-rarity-accent: var(--accent);

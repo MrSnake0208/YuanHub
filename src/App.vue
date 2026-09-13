@@ -17,7 +17,7 @@
   </RouterView>
   <AccountEventToasts />
   <MobileInstallPrompt />
-  <!-- 全站自定义弹窗（alert / confirm / prompt），Teleport 到 body -->
+  <!-- 全站自定义弹窗（alert / confirm / choice / prompt），Teleport 到 body -->
   <AppDialog />
 </template>
 
@@ -32,6 +32,8 @@ import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
 import { stopAccountEventStream, subscribeAccountEvents, syncAccountEventStream } from '@/store/accountEvents.js'
 import { routeLoadingState } from '@/router/index.js'
+import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
+import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
 
 let stopWatch = null
 let stopEventPrompt = null
@@ -60,29 +62,37 @@ function dismissMonitorPromptForSession() {
   try { sessionStorage.setItem(MONITOR_DISMISSED_KEY, '1') } catch (_) { /* sessionStorage may be unavailable */ }
 }
 
-function isMonitorableAccountEvent(message) {
-  if (!message || message.data && message.data.preview) return false
-  if (message.event !== 'operator_scan_import') return false
-  const status = message.data && message.data.status
-  return status === 'accepted' || status === 'partial'
+function isOperatorWorkspaceTab() {
+  const activeTab = readActiveOperatorTab()
+  return route.path === '/operator' && (activeTab === 'catalog' || activeTab === 'current')
 }
 
 async function promptOperatorMonitor(message) {
-  if (!isMonitorableAccountEvent(message) || route.path === '/operator' || monitorPromptPending || monitorPromptDismissed() || dialog._state.visible) return
+  const update = operatorUpdateFromEvent(message)
+  if (!update || update.preview || isOperatorWorkspaceTab() || monitorPromptPending || monitorPromptDismissed() || dialog._state.visible) return
   monitorPromptPending = true
   try {
-    const shouldGo = await dialog.confirm({
-      title: '发现数据更新',
-      message: 'MaaYuan正在为殿下吭哧吭哧地录入密探数据，是否前往密探图鉴实时监工？选择“不跳转”后，本窗口后续更新将不再自动询问。',
-      confirmText: '去密探图鉴',
-      cancelText: '本次不跳转',
+    const result = await dialog.choose({
+      title: '收到密探更新',
+      message: 'MaaYuan 已为殿下同步一位密探的资料。要现在查看更新吗？',
+      choices: [
+        { value: 'catalog', label: '去密探图鉴', description: '查看刚刚同步的密探资料', tone: 'primary' },
+        { value: 'current', label: '去养成总览', description: '查看这位密探的养成状态', tone: 'secondary' },
+        { value: 'stay', label: '暂不跳转', description: '继续留在当前页面', tone: 'quiet' }
+      ],
+      checkboxLabel: '本标签页内不再询问是否跳转',
       type: 'info'
     })
-    if (!shouldGo) {
-      dismissMonitorPromptForSession()
-      return
-    }
-    await router.push('/operator')
+    if (result && result.checked) dismissMonitorPromptForSession()
+    if (!result || (result.value !== 'catalog' && result.value !== 'current')) return
+    await router.push({
+      path: '/operator',
+      query: {
+        tab: result.value,
+        focus: update.operatorId || undefined,
+        effect: update.effect || undefined
+      }
+    })
   } finally {
     monitorPromptPending = false
   }
