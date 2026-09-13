@@ -4,6 +4,7 @@ import { listRecords } from '../api/inventory.js'
 import { AGENT_CATALOG, ITEM_CATALOG } from '../data/inventory/catalog.js'
 import { activeAccount } from './activeAccount.js'
 import { auth } from './auth.js'
+import { operatorUpdateFromEvent } from '../utils/operatorEvents.js'
 
 const listeners = new Set()
 const seenEventIds = new Set()
@@ -150,21 +151,24 @@ async function notifyInventoryImport(data) {
 
 function notifyForEvent(message) {
   const data = message.data || {}
-  if (message.event === 'operator_scan_import') {
+  const operatorUpdate = operatorUpdateFromEvent(message)
+  if (operatorUpdate) {
+    const operatorId = operatorUpdate.operatorId
+    const operator = AGENT_CATALOG.find(function (entry) { return entry.id === operatorId })
+    const name = (operator && operator.name) || entityNames.get(operatorId) || operatorId || '密探'
+    const isRecruitment = operatorUpdate.effect === 'new'
+    showToast({
+      kind: 'operator',
+      operatorId: operatorId,
+      rarity: operator && operator.rarity,
+      action: isRecruitment ? 'recruited' : 'updated',
+      title: name + ' · ' + (isRecruitment ? '已招募' : '已更新'),
+      detail: isRecruitment ? 'NEW RECRUITMENT' : 'COMPENDIUM UPDATED'
+    })
+  } else if (message.event === 'operator_scan_import' && (data.status === 'review' || data.status === 'rejected')) {
     const operator = AGENT_CATALOG.find(function (entry) { return entry.id === data.operator_id })
     const name = (operator && operator.name) || entityNames.get(data.operator_id) || data.operator_id || '密探'
-    if (data.status === 'accepted' || data.status === 'partial') {
-      const isRecruitment = Number(data.revision) === 1
-      showToast({
-        kind: 'operator',
-        operatorId: data.operator_id,
-        rarity: operator && operator.rarity,
-        action: isRecruitment ? 'recruited' : 'updated',
-        title: name + ' · ' + (isRecruitment ? '已招募' : '已更新'),
-        detail: isRecruitment ? 'NEW RECRUITMENT' : 'COMPENDIUM UPDATED'
-      })
-    }
-    else if (data.status === 'review' || data.status === 'rejected') showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '采集结果尚未写入档案' })
+    showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '采集结果尚未写入档案' })
   } else if (message.event === 'inventory_import') {
     void notifyInventoryImport(data)
   }
