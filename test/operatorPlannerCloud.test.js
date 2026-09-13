@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { emptyTrainingWorkspace, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
 import { createFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
 import { createGain, createSpend, normalizePlannerSnapshot, plannerStorageKey } from '../src/data/cultivationPlanner.js'
-import { buildPlannerMigration, plannerDateInZone, readLocalPlannerBundle, scheduleBody, scheduleFromRemote, workspaceBody, workspaceFromRemote } from '../src/data/operatorPlannerRemote.js'
+import { buildPlannerMigration, plannerDateInZone, plannerTimezone, readLocalPlannerBundle, scheduleBody, scheduleFromRemote, workspaceBody, workspaceFromRemote } from '../src/data/operatorPlannerRemote.js'
 import { createPlannerSnapshotWriter } from '../src/data/plannerSnapshotWriter.js'
 const memory = () => { const values = new Map(); return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) } }
 const tick = () => new Promise(resolve => setImmediate(resolve))
@@ -50,9 +50,12 @@ test('migration preserves originals, uses legacy default schedule, and adds inde
   const first = buildPlannerMigration(bundle, emptyTrainingWorkspace(accountId), new Set(), {})
   assert.ok(first.schedules.favorites)
 })
-test('stored timezone decides midnight across travel and DST', () => {
+test('日期工具仍支持午夜兼容检查，并可按北京时间 5 点切日', () => {
+  assert.equal(plannerTimezone(), 'Asia/Shanghai')
   assert.equal(plannerDateInZone('Asia/Shanghai', new Date('2026-09-12T16:00:00Z')), '2026-09-13')
   assert.equal(plannerDateInZone('America/New_York', new Date('2026-09-12T16:00:00Z')), '2026-09-12')
+  assert.equal(plannerDateInZone('Asia/Shanghai', new Date('2026-09-12T20:59:59Z'), 5), '2026-09-12')
+  assert.equal(plannerDateInZone('Asia/Shanghai', new Date('2026-09-12T21:00:00Z'), 5), '2026-09-13')
 })
 function writerFixture(write) {
   let remote = { revision: 0, value: 0 }

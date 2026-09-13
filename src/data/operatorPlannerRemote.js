@@ -1,5 +1,6 @@
 import { normalizeTrainingWorkspace, readTrainingWorkspace, trainingWorkspaceKey, trainingPlanMemberIds } from './operatorTrainingPlans.js'
 import { PLANNER_RULES, normalizePlannerSnapshot, plannerStorageKey } from './cultivationPlanner.js'
+import { BUSINESS_TIMEZONE, dateInZone } from '../utils/businessDay.js'
 
 // Only schema fields change case. Resource IDs, date keys and operator IDs stay intact.
 const fields = ['activePlanId', 'trainingLevels', 'operatorIds', 'excludedOperatorIds', 'starLevel', 'agentOrder', 'purchaseCount',
@@ -25,22 +26,22 @@ export function workspaceFromRemote(data, accountId) {
   if (data.schema_version !== 1 || data.account_id !== accountId) throw new Error('云端培养计划版本或子账号不匹配')
   return normalizeTrainingWorkspace({ ...mapFields(data, camel), version: 1, accountId, updatedAt: data.updated_at }, accountId)
 }
-export function plannerTimezone() { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai' }
-export function plannerDateInZone(timezone, value = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(value)
-  const get = type => parts.find(part => part.type === type).value
-  return `${get('year')}-${get('month')}-${get('day')}`
+// Planner dates use the site's fixed business timezone. The optional boundary
+// keeps this helper useful for existing midnight-based compatibility checks.
+export function plannerTimezone() { return BUSINESS_TIMEZONE }
+export function plannerDateInZone(timezone, value = new Date(), dayStartHour = 0) {
+  return dateInZone(timezone, value, dayStartHour)
 }
 export function scheduleBody(snapshot, revision = snapshot.revision || 0) {
   return { schema_version: 1, rules_version: PLANNER_RULES.version, expected_revision: revision,
-    timezone: snapshot.timezone || plannerTimezone(), ...mapFields({ strategy: snapshot.strategy, agentOrder: snapshot.agentOrder,
+    timezone: snapshot.timezone || BUSINESS_TIMEZONE, ...mapFields({ strategy: snapshot.strategy, agentOrder: snapshot.agentOrder,
       preferences: snapshot.preferences, manualPlans: snapshot.manualPlans, schedule: snapshot.schedule }, snake) }
 }
 export function scheduleFromRemote(data, accountId) {
   if (data.schema_version !== 1 || data.rules_version !== PLANNER_RULES.version || data.account_id !== accountId) throw new Error('云端日程版本或子账号不匹配，请更新页面后重试')
   // Saved snapshots must not be normalized by newer simulation rules on read.
   return { ...mapFields(data, camel), version: 1, accountId, revision: data.revision,
-    timezone: data.revision ? data.timezone : plannerTimezone(), updatedAt: data.updated_at }
+    timezone: data.revision ? data.timezone || BUSINESS_TIMEZONE : BUSINESS_TIMEZONE, updatedAt: data.updated_at }
 }
 export const migrationKey = accountId => 'yuanhub:planner-cloud-migration:v1:' + accountId
 export function readLocalPlannerBundle(storage, accountId) {
@@ -55,7 +56,7 @@ export function readLocalPlannerBundle(storage, accountId) {
     if (parsed.version !== 1 || parsed.accountId !== accountId) throw new Error('本机日程版本或子账号不匹配，原数据已保留')
     const normalized = normalizePlannerSnapshot(parsed, accountId)
     if (parsed.schedule && !normalized.schedule) throw new Error('本机固定日程无法读取，原数据已保留')
-    schedules[plan.id] = { ...normalized, timezone: parsed.timezone || plannerTimezone() }
+    schedules[plan.id] = { ...normalized, timezone: parsed.timezone || BUSINESS_TIMEZONE }
   }
   return hasWorkspace || Object.keys(schedules).length ? { workspace, schedules } : null
 }
