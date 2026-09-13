@@ -32,6 +32,30 @@
       <p v-if="targetError" class="planner-error" role="alert">{{ targetError }}</p>
       <p v-else-if="targetNotice" class="planner-notice planner-inline-notice" role="status">{{ targetNotice }}</p>
 
+      <div class="cloud-status" role="status" aria-live="polite">
+        {{ cloudLoading || scheduleLoading ? '正在读取云端计划…' : workspaceState.saving || scheduleState.saving ? '正在保存到云端…' : cloudError ? '云端同步未完成' : '计划与日程按子账号保存到云端' }}
+        <span v-if="fixedSchedule"> · 日程时区 {{ scheduleTimezone }}</span>
+      </div>
+      <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
+      <div v-for="kind in ['workspace', 'schedule']" :key="kind">
+        <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" class="cloud-recovery" role="alert">
+          <p>{{ kind === 'workspace' ? '清单' : '日程' }}尚未确认保存：{{ (kind === 'workspace' ? workspaceState : scheduleState).error.message }}</p>
+          <p v-if="(kind === 'workspace' ? workspaceState : scheduleState).latest">云端版本 {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.revision }} · {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.updatedAt }}</p>
+          <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind, true); planError = ''">放弃本次修改并读取云端</button></div>
+        </div>
+      </div>
+      <section v-if="migration" class="cloud-migration" aria-label="本机计划导入">
+        <h3>发现本机培养计划</h3>
+        <p>{{ migration.existingCloud ? '云端已有计划，本机清单将作为独立计划新增，原有云端清单保持当前设置。' : '可将本机清单和日程导入当前子账号，之后在其他设备继续使用。' }}本机原始数据会保留。</p>
+        <p v-if="migration.localError" role="alert">本机数据无法导入：{{ migration.localError }}</p>
+        <ul v-if="migration.local"><li v-for="plan in migration.local.workspace.plans" :key="plan.id">{{ plan.name }} · {{ plan.operatorIds.length }} 位手动成员<span v-if="migration.local.schedules[plan.id]?.schedule"> · 固定日程始于 {{ migration.local.schedules[plan.id].schedule.startDate }}</span></li></ul>
+        <template v-if="migration.request">
+          <p>{{ migration.resume ? '上次导入尚未确认完成，重试会核对同一份导入回执。' : '确认后将一次性保存以下清单及关联日程：' }}</p>
+          <ul><li v-for="plan in migration.request.workspace.plans" :key="plan.id">{{ plan.name }} · {{ plan.operator_ids.length }} 位手动成员<span v-if="migration.request.schedules[plan.id]"> · 含体力日程</span></li></ul>
+        </template>
+        <div class="cloud-actions"><button v-if="!migration.request && !migration.localError" type="button" :disabled="targetLoading || migrationBusy" @click="prepareMigration">预览导入结果</button><button v-else-if="migration.request" type="button" :disabled="migrationBusy" @click="importLocal">{{ migrationBusy ? '正在导入…' : migration.resume ? '重试本次导入' : '确认导入' }}</button><button v-if="migration.conflict" type="button" :disabled="migrationBusy" @click="compareMigrationAgain">重新比较本机与云端</button><button type="button" :disabled="migrationBusy" @click="keepCloud">使用云端，保留本机备份</button></div>
+      </section>
+      <fieldset class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
       <section class="planner-status" aria-label="培养计划状态">
         <div class="status-main">
           <div class="status-title">
@@ -43,7 +67,7 @@
               :catalog-entries="catalogEntries"
               :account-id="accountId"
               :error="planError"
-              :disabled="targetBusyIds.size > 0 || targetLoading"
+              :disabled="cloudBlocked || schedulePending || targetBusyIds.size > 0 || targetLoading"
               @select="selectPlan"
               @save="savePlan"
               @remove="removePlan"
@@ -68,18 +92,18 @@
                 <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p></div></div><span class="growth-percent">{{ rowProgress(row) }}<small>%</small></span></div>
                 <div class="growth-progress-list">
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label"><span>等级</span><div class="progress-values"><b>Lv{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /></div></div>
+                    <div class="growth-progress-label"><span>等级</span><div class="progress-values"><b>Lv{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /></div></div>
                     <div class="growth-track"><i :style="{ width: progress(row.level, targetFor(row).level) + '%' }"></i></div>
                     <small>{{ experienceSummary(row.calculation.experienceGap) }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label"><span>修为</span><div class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /></div></div>
+                    <div class="growth-progress-label"><span>修为</span><div class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /></div></div>
                     <div class="growth-track mint"><i :style="{ width: progress(row.elite, targetFor(row).elite) + '%' }"></i></div>
                     <small>{{ materialSummary(row.calculation.xiuwei) || '无需补充修为材料' }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><button class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + starLabel(targetFor(row).starLevel)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ starLabel(targetFor(row).starLevel) }}</button></div>
-                      <div v-if="starTargetId === row.id" :id="'tracker-star-target-' + row.id" class="tracker-star-popover" role="dialog" :aria-label="row.name + '的目标化极'"><div class="tracker-popover-title"><Info :size="13" aria-hidden="true" />设置目标星级与节点</div><div class="tracker-star-controls"><select :value="starTargetGroup" aria-label="目标星级" :disabled="targetBusyIds.has(row.id)" @change="setStarTargetGroup(row, $event)"><option v-for="group in starGroupsFor(row)" :key="group" :value="group">{{ group === 0 ? '未拥有' : group === 31 ? '觉醒' : group + ' 星' }}</option></select><select v-if="starTargetGroup > 0 && starTargetGroup < 5" v-model.number="starTargetDraft" aria-label="目标节点" :disabled="targetBusyIds.has(row.id)"><option v-for="stage in starNodesFor(row, starTargetGroup)" :key="stage.value" :value="stage.value">节点 {{ (stage.value - 1) % 6 }}</option></select></div><div class="tracker-popover-actions"><button type="button" class="cancel" :disabled="targetBusyIds.has(row.id)" @click="closeStarTarget(true)">取消</button><button type="button" :disabled="targetBusyIds.has(row.id)" @click="saveStarTarget(row)">{{ targetBusyIds.has(row.id) ? '保存中…' : '保存目标' }}</button></div></div>
+                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><button class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + starLabel(targetFor(row).starLevel)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ starLabel(targetFor(row).starLevel) }}</button></div>
+                      <div v-if="starTargetId === row.id" :id="'tracker-star-target-' + row.id" class="tracker-star-popover" role="dialog" :aria-label="row.name + '的目标化极'"><div class="tracker-popover-title"><Info :size="13" aria-hidden="true" />设置目标星级与节点</div><div class="tracker-star-controls"><select :value="starTargetGroup" aria-label="目标星级" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @change="setStarTargetGroup(row, $event)"><option v-for="group in starGroupsFor(row)" :key="group" :value="group">{{ group === 0 ? '未拥有' : group === 31 ? '觉醒' : group + ' 星' }}</option></select><select v-if="starTargetGroup > 0 && starTargetGroup < 5" v-model.number="starTargetDraft" aria-label="目标节点" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)"><option v-for="stage in starNodesFor(row, starTargetGroup)" :key="stage.value" :value="stage.value">节点 {{ (stage.value - 1) % 6 }}</option></select></div><div class="tracker-popover-actions"><button type="button" class="cancel" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="closeStarTarget(true)">取消</button><button type="button" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="saveStarTarget(row)">{{ targetBusyIds.has(row.id) ? '保存中…' : '保存目标' }}</button></div></div>
                     </div>
                     <div class="growth-track rose"><i :style="{ width: progress(starStage(row.starLevel), starStage(targetFor(row).starLevel)) + '%' }"></i></div>
                     <small class="heart-progress-note">心纸 {{ formatNumber(row.calculation.heartOwned) }} / {{ formatNumber(row.calculation.heartRequired) }} · <span class="heart-gap">缺 <span class="heart-gap-number">{{ formatNumber(row.calculation.heartGap) }}</span></span><span class="heart-average"> · {{ heartDailyAverageLabel(row) }}</span></small>
@@ -87,7 +111,7 @@
                 </div>
                 <slot name="remark" :row="row" />
                 <div v-if="row.completed" v-show="!isRemarkEditing(row)" class="growth-materials growth-complete">
-                  <button class="tracker-remove" type="button" :disabled="targetLoading || targetBusyIds.size > 0" @click="removePlanMember(row)"><X :size="14" aria-hidden="true" />从清单中移除</button>
+                  <button class="tracker-remove" type="button" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.size > 0" @click="removePlanMember(row)"><X :size="14" aria-hidden="true" />从清单中移除</button>
                 </div>
                 <details v-else class="growth-materials"><summary>查看材料缺口与预计耗时 <span>{{ rowGapCount(row) }} 项</span></summary><div v-if="!row.calculation.gaps.length && !row.calculation.experienceGap && !row.calculation.heartGap" class="materials-clear">当前目标材料已备齐</div><div v-else class="growth-material-chips"><span v-for="gap in row.calculation.gaps" :key="gap.id" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(gap.id)" alt="" loading="lazy" /><b>{{ itemName(gap.id) }}</b><em>缺 {{ formatNumber(gap.gap) }}<small v-if="materialEtaLabel(row, gap)" class="growth-material-eta">{{ materialEtaLabel(row, gap) }}</small></em></span><span v-if="row.calculation.experienceGap" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon('bingshuquanjuan')" alt="" loading="lazy" /><b>经验</b><em>缺 {{ formatNumber(row.calculation.experienceGap) }} XP</em></span><span v-if="row.calculation.heartGap" class="growth-material-chip heart-chip"><img class="growth-material-icon" :src="operatorIcon(row)" alt="" loading="lazy" /><b>心纸</b><em>缺 {{ formatNumber(row.calculation.heartGap) }}<small v-if="heartEtaLabel(row)" class="growth-material-eta">{{ heartEtaLabel(row) }}</small></em></span></div><p class="growth-material-note">库存按当前清单共享分配，以下为分配后缺口；单项 ETA 按独占对应历练估算。</p></details>
               </article>
@@ -100,7 +124,7 @@
       <section v-if="plannerOpen && (planRows.length || fixedSchedule)" ref="plannerWorkspaceRef" class="planner-workspace" aria-label="体力规划工作区">
         <div class="planner-workspace-head"><div><span class="section-kicker">每日执行</span><h2>体力日程</h2><p>{{ plannerCycleNotice }}</p></div><div class="workspace-head-actions"><button type="button" class="workspace-link" @click="viewMode === 'display' ? editSchedule() : openPlanner('display')">{{ viewMode === 'display' ? '编辑日程' : '返回日程' }}</button><button type="button" class="workspace-close" aria-label="收起体力日程" @click="plannerOpen = false"><X :size="16" aria-hidden="true" /></button></div></div>
 
-        <div v-if="fixedSchedule" class="schedule-saved-note" role="status"><Check :size="14" aria-hidden="true" /><span>日程已固定保存到本机 · 始于 {{ formatLongDate(fixedSchedule.startDate) }}，过去的日期可随时回顾。</span></div>
+        <div v-if="fixedSchedule" class="schedule-saved-note" role="status"><Check :size="14" aria-hidden="true" /><span>{{ schedulePending ? '日程修改等待云端保存' : '日程已固定保存到云端' }} · 始于 {{ formatLongDate(fixedSchedule.startDate) }}，过去的日期可随时回顾。</span></div>
         <div v-if="scheduleNeedsUpdate" class="schedule-update" role="status">
           <div><strong>{{ scheduleDifferences.goalsChanged ? '培养目标或清单已有变化' : '当前库存与计划预测有差异' }}</strong><p>{{ scheduleDifferenceLabel }}更新后从今天重新安排，保留过去的日程和未来的自定义安排。</p></div>
           <button type="button" class="action-button" :disabled="loading || targetLoading" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />按当前库存更新</button>
@@ -113,10 +137,10 @@
         <p v-if="currentDay.warnings?.length" class="planner-footnote">{{ currentDay.warnings.join('；') }}</p>
         <section v-if="viewMode === 'display' || reviewingHistory" class="planner-view planner-display" aria-label="体力规划展示">
           <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" @select="selectDate" />
-          <div class="display-grid"><section class="planner-card day-plan"><div class="card-heading"><div><span class="card-kicker">{{ currentDateLabel }} · 模拟账本</span><h3>当日方案</h3></div><span class="plan-badge" :class="{ manual: currentDay.manual }">{{ currentDay.manual ? '手工计划' : '推荐方案' }}</span></div><div class="day-summary"><div class="summary-metric gain"><span>获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div><span class="summary-op">−</span><div class="summary-metric spend"><span>支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div><span class="summary-op">=</span><div class="summary-balance" :class="{ negative: todayTotals.balance < 0 }"><span>当日结余</span><b>{{ signedNumber(todayTotals.balance) }}</b></div></div><div class="flow-section"><div class="flow-heading"><span>体力获取</span><b class="gain-text">{{ formatStamina(todayTotals.gains) }}</b></div><div class="channel-chips"><span v-for="gain in currentDay.planned.gains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><span class="channel-dot"></span><span>{{ gain.label }}</span><small v-if="gain.kind === 'count'">×{{ formatStamina(gain.value) }}</small><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong></span><span v-if="!currentDay.planned.gains.length" class="flow-empty">暂无体力来源</span></div></div><div class="flow-section"><div class="flow-heading"><span>体力支出</span><b class="spend-text">{{ formatStamina(todayTotals.spends) }}</b></div><div class="channel-chips spend-chips"><span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><span class="channel-dot"></span><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small>×{{ formatStamina(spend.value) }}</small><strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong></span><span v-if="!currentDay.planned.spends.length" class="flow-empty">暂无体力支出</span></div></div><p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p></section><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><p class="planner-footnote">{{ currentDay.manual ? '此日采用手工计划；未来未手工调整的日期已按新的材料缺口重新生成。' : '这是按当前偏好生成的推荐方案；编辑任意一天后，完整日程会固定保存。' }} 培养推进为从计划保存起点计算的模拟进度，不代表真实流水。{{ aggregateMoneyLabel }}。按完整一天自然恢复与进膳预算计算；不模拟满体损失，日末结余暂不自动结转，可手工添加储备来源。</p>
+          <div class="display-grid"><section class="planner-card day-plan"><div class="card-heading"><div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div><span class="plan-badge" :class="{ manual: currentDay.manual }">{{ currentDay.manual ? '自定义计划' : '自动推荐方案' }}</span></div><div class="day-summary"><div class="summary-metric gain"><span>获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div><span class="summary-op">−</span><div class="summary-metric spend"><span>支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div><span class="summary-op">=</span><div class="summary-balance" :class="{ negative: todayTotals.balance < 0 }"><span>当日结余</span><b>{{ signedNumber(todayTotals.balance) }}</b></div></div><div class="flow-section"><div class="flow-heading"><span>体力获取</span><b class="gain-text">{{ formatStamina(todayTotals.gains) }}</b></div><div class="channel-chips"><span v-for="gain in currentDay.planned.gains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><span class="channel-dot"></span><span>{{ gain.label }}</span><small v-if="gain.kind === 'count'">×{{ formatStamina(gain.value) }}</small><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong></span><span v-if="!currentDay.planned.gains.length" class="flow-empty">暂无体力来源</span></div></div><div class="flow-section"><div class="flow-heading"><span>体力支出</span><b class="spend-text">{{ formatStamina(todayTotals.spends) }}</b></div><div class="channel-chips spend-chips"><span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><span class="channel-dot"></span><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small>×{{ formatStamina(spend.value) }}</small><strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong></span><span v-if="!currentDay.planned.spends.length" class="flow-empty">暂无体力支出</span></div></div><p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p></section><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><p class="planner-footnote">{{ currentDay.manual ? '此日采用手工计划；未来未手工调整的日期已按新的材料缺口重新生成。' : '这是按当前偏好生成的推荐方案；编辑任意一天后，完整日程会固定保存。' }} 培养推进为从计划保存起点计算的模拟进度，不代表真实流水。{{ aggregateMoneyLabel }}。按完整一天自然恢复与进膳预算计算；不模拟满体损失，日末结余暂不自动结转，可手工添加储备来源。</p>
         </section>
 
-        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑"><div class="edit-grid"><aside class="planner-sidebar panel"><section class="side-section"><div class="side-title"><span>培养清单</span><span class="side-hint">拖动排序 · 右上角移除</span></div><div class="edit-roster"><div v-for="row in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)"><div class="drag-handle" aria-hidden="true">⋮⋮</div><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div><button type="button" class="roster-remove" :aria-label="'将 ' + (row.name || row.id) + ' 移出培养清单'" @click="removePlanMember(row)"><X :size="15" aria-hidden="true" /></button><div class="target-fields"><label><span>等级</span><span class="progress-values"><b>{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '目标等级'" @change="setTarget(row, 'level', $event)" /></span></label><label><span>修为</span><span class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '目标修为'" @change="setTarget(row, 'elite', $event)" /></span></label><label class="target-star"><span>化极</span><span class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><select class="tracker-editable target-star-select" :value="targetFor(row).starLevel" :aria-label="row.name + '目标化极'" @change="setTarget(row, 'starLevel', $event)"><option v-for="stage in starStagesFor(row)" :key="stage.value" :value="stage.value">{{ stage.label }}</option></select></span></label></div></div></div><p class="drag-note">拖动左侧把手调整顺序；点击右上角 X 将密探移出当前清单。</p></section></aside><div class="editor-main"><section class="planner-card compare-card">
+        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑"><div class="edit-grid"><aside class="planner-sidebar panel"><section class="side-section"><div class="side-title"><span>培养清单</span><span class="side-hint">拖动排序 · 右上角移除</span></div><div class="edit-roster"><div v-for="row in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)"><div class="drag-handle" aria-hidden="true">⋮⋮</div><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div><button type="button" class="roster-remove" :aria-label="'将 ' + (row.name || row.id) + ' 移出培养清单'" @click="removePlanMember(row)"><X :size="15" aria-hidden="true" /></button><div class="target-fields"><label><span>等级</span><span class="progress-values"><b>{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '目标等级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'level', $event)" /></span></label><label><span>修为</span><span class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '目标修为'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'elite', $event)" /></span></label><label class="target-star"><span>化极</span><span class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><select class="tracker-editable target-star-select" :value="targetFor(row).starLevel" :aria-label="row.name + '目标化极'" @change="setTarget(row, 'starLevel', $event)"><option v-for="stage in starStagesFor(row)" :key="stage.value" :value="stage.value">{{ stage.label }}</option></select></span></label></div></div></div><p class="drag-note">拖动左侧把手调整顺序；点击右上角 X 将密探移出当前清单。</p></section></aside><div class="editor-main"><section class="planner-card compare-card">
   <div class="compare-heading"><h3>方案对比</h3><span>仅调整推荐，固定日不变</span></div>
   <div class="compare-grid" role="group" aria-label="选择购买体力方案">
     <button v-for="option in compareOptions" :key="option.purchaseCount" type="button" class="compare-option" :class="{ active: option.purchaseCount === plannerPreferences.purchaseCount }" :aria-pressed="option.purchaseCount === plannerPreferences.purchaseCount" @click="applyComparison(option.purchaseCount)">
@@ -132,6 +156,7 @@
   <template v-else><button v-for="channel in SPEND_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addSpend(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></template>
 </div></div><div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" :stamina-balance="todayTotals.balance" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；后续未固定日期会继续按新的缺口自动重算。' : '修改获取或支出后，该日会固定为手工计划，并向后传播材料状态。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天推荐</button><button type="button" class="action-button primary" @click="openPlanner('display')"><Save :size="14" aria-hidden="true" />完成编辑</button></div></section></div></div></section>
       </section>
+      </fieldset>
     </template>
 
     <Teleport to="body">
@@ -168,10 +193,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { CalendarDays, Check, CircleAlert, Info, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
+import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
+import { plannerDateInZone, plannerTimezone } from '../../data/operatorPlannerRemote.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
 import { TRAINING_GROUPS, bookExperience, levelBookGapBundle, normalizeTrainingLevels, trainingMaterialEtas, trainingRate } from '../../data/operatorTraining.js'
-import { FAVORITES_PLAN_ID, emptyTrainingWorkspace, readTrainingWorkspace, trainingWorkspaceKey, trainingPlanMemberIds, writeTrainingWorkspace } from '../../data/operatorTrainingPlans.js'
-import { getCurrent, listRecords } from '../../api/inventory.js'
+import { FAVORITES_PLAN_ID, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
+import { getCurrent, getAcquiredSummary } from '../../api/inventory.js'
 import { avatarUrl } from '../../api/request.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getOperatorGrowthTargets, putOperatorGrowthTarget } from '../../api/operator.js'
@@ -180,11 +207,11 @@ import { calculateLevelRequirements, calculateStarRequirements, calculateXiuweiR
 import PlannerDateTabs from './PlannerDateTabs.vue'
 import CultivationProgress from './CultivationProgress.vue'
 import { createFixedSchedule, fixedScheduleDifferences, fixedScheduleTimeline, reviseFixedSchedule } from '../../data/fixedPlannerSchedule.js'
-import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, estimatePlannerDays, normalizePlannerPlan, normalizePlannerPreferences, normalizePlannerSnapshot, plannerStorageKey, planTotals } from '../../data/cultivationPlanner.js'
+import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, estimatePlannerDays, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, graduateOperator: { type: Function, default: null }, isRemarkEditing: { type: Function, default: () => false } })
+const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false } })
 
-const emit = defineEmits(['refresh-operators'])
+const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
 const plannerRules = PLANNER_RULES
 const loading = ref(false)
 const error = ref('')
@@ -198,7 +225,10 @@ const targetLoading = ref(false)
 const targetError = ref('')
 const targetNotice = ref('')
 const targetBusyIds = ref(new Set())
-const workspace = ref(emptyTrainingWorkspace(props.accountId))
+const { workspace, snapshot: cloudSnapshot, workspaceState, scheduleState, cloudLoading, scheduleLoading, cloudError,
+  migration, migrationBusy, cloudBlocked, workspacePending, schedulePending, loadCloud, saveWorkspace, saveSchedule,
+  removeMember, prepareMigration, importLocal, keepCloud, compareMigrationAgain, recover, refreshCloud } = useOperatorPlannerCloud(props, targets, emit)
+const scheduleTimezone = ref(plannerTimezone())
 const planError = ref('')
 const planNotice = ref('')
 const undoWorkspace = ref(null)
@@ -235,6 +265,7 @@ let targetLoadSeq = 0
 let targetNoticeTimer = null
 let inventoryLoadSeq = 0
 let inventoryEventRefreshTimer = null
+let targetEventRefreshTimer = null
 let unsubscribeAccountEvents = null
 let plannerClockTimer = null
 
@@ -418,47 +449,17 @@ function progress(current, target) { const a = Number(current) || 0; const b = N
 function itemName(id) { return id === '__heart__' ? '心纸' : itemMap.value[id] || id }
 function materialSummary(requirement) { return Object.keys(requirement?.items || {}).filter(id => requirement.items[id] > 0).slice(0, 3).map(id => itemName(id) + '×' + formatNumber(requirement.items[id])).join('、') }
 function experienceStock(stock) { return Math.max(bookExperience(stock), Number(stock?.__experience__) || 0) }
-function experienceSummary(gap) { const value = Math.max(0, Number(gap) || 0); if (!value) return '经验道具已备齐'; const books = levelBookGapBundle(value, plannerLevels.value.experience); const bookText = books.map(book => book.name + '×' + formatNumber(book.lack)).join('、'); const stage624Runs = Math.ceil(value / Math.max(1, plannerRules.stage624Experience)); return '经验还缺 ' + formatNumber(value) + ' XP · ' + bookText + ' · 6-24约 ' + stage624Runs + ' 次' }
+function experienceSummary(gap) { const value = Math.max(0, Number(gap) || 0); if (!value) return '经验道具已备齐'; const books = levelBookGapBundle(value, plannerLevels.value.experience); const bookText = books.map(book => book.name + '×' + formatNumber(book.lack)).join('、'); const stage624Runs = Math.ceil(value / Math.max(1, plannerRules.stage624Experience)); return bookText + ' · 6-24 约 ' + stage624Runs + ' 次' }
 function rateFor(id) { return trainingRate(id, workspace.value.trainingLevels) || 0 }
 function rateLabel(id) { const training = trainingRate(id, workspace.value.trainingLevels); return training != null ? (training > 0 ? '历练约 ' + formatNumber(training) + '/日' : '所需层数未开放') : '未配置获取途径' }
 function materialEtaLabel(row, gap) { if (row.calculation.level.items?.[gap.id]) return '等级突破道具'; const etas = row.calculation.materialEtas || {}; if (Object.prototype.hasOwnProperty.call(etas, gap.id)) { const days = etas[gap.id]; return days == null ? '所需层数未开放' : '约 ' + formatEta(days) } return '暂无模拟产出' }
-function heartHistorySummary(records) {
-  const totals = {}
-  const activeDays = {}
-  ;(Array.isArray(records) ? records : []).filter(record => record?.record_type === 'reward_delta').forEach(record => {
-    const day = localDayKey(record.effective_at)
-    if (!day) return
-    ;(Array.isArray(record.entries) ? record.entries : []).forEach(entry => {
-      const count = Math.max(0, Number(entry?.count) || 0)
-      if (!entry?.id || !count) return
-      totals[entry.id] = (totals[entry.id] || 0) + count
-      if (!activeDays[entry.id]) activeDays[entry.id] = new Set()
-      activeDays[entry.id].add(day)
-    })
-  })
-  return Object.fromEntries(Object.keys(totals).map(id => {
-    const days = activeDays[id]?.size || 0
-    return [id, { acquired: totals[id], activeDays: days, average: days ? totals[id] / days : 0 }]
-  }))
-}
-function localDayKey(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : formatLocalDate(date) }
-function dayStartIso(dateText) { const [year, month, day] = String(dateText || '').split('-').map(Number); return year && month && day ? new Date(year, month - 1, day).toISOString() : '' }
 async function loadRecentHeartHistory(account, endDate) {
-  const records = []
-  let cursor = null
-  const seenCursors = new Set()
-  const from = dayStartIso(addDays(endDate, -29))
-  const to = dayStartIso(addDays(endDate, 1))
-  for (let page = 0; page < 50; page += 1) {
-    const result = await listRecords({ accountId: account, entityType: 'agent', from, to, cursor, limit: 100 })
-    records.push(...(Array.isArray(result?.items) ? result.items : []))
-    const nextCursor = result?.next_cursor || null
-    if (!nextCursor) break
-    if (seenCursors.has(nextCursor)) break
-    seenCursors.add(nextCursor)
-    cursor = nextCursor
-  }
-  return records
+  const result = await getAcquiredSummary({ accountId: account, entityType: 'agent', fromDate: addDays(endDate, -29),
+    toDate: addDays(endDate, 1), timezone: scheduleTimezone.value })
+  return Object.fromEntries(Object.entries(result.items || {}).map(([id, item]) => {
+    const acquired = Number(item.acquired) || 0, activeDays = Number(item.active_days) || 0
+    return [id, { acquired, activeDays, average: activeDays ? acquired / activeDays : 0 }]
+  }))
 }
 function heartHistoryFor(row) { return heartHistory.value[row?.id] || { acquired: 0, activeDays: 0, average: 0 } }
 function heartDailyAverage(row) { return Number(heartHistoryFor(row).average) || 0 }
@@ -479,10 +480,35 @@ function rowProgress(row) { const level = progress(row.level, targetFor(row).lev
 function trainingGroupForSpend(spend) { const groupId = spend?.groupId || ({ feng: 'fh', dishui: 'ds', yinyang: 'yy', experience: 'experience' }[spend?.id]); return TRAINING_GROUPS.find(group => group.id === groupId) }
 
 function workspaceCopy() { return JSON.parse(JSON.stringify(workspace.value)) }
-function loadWorkspace() { planError.value = ''; planNotice.value = ''; undoWorkspace.value = null; workspace.value = emptyTrainingWorkspace(props.accountId); if (!props.isLoggedIn || !props.accountId) return; try { workspace.value = readTrainingWorkspace(localStorage, props.accountId) } catch (err) { planError.value = '本地计划读取失败：' + err.message } }
-function commitWorkspace(next, notice = '', undoable = false) { try { const previous = workspaceCopy(); next.revision = workspace.value.revision; workspace.value = writeTrainingWorkspace(localStorage, next); undoWorkspace.value = undoable ? previous : null; planError.value = ''; planNotice.value = notice; return true } catch (err) { planError.value = '本地计划保存失败：' + err.message; return false } }
-function selectPlan(id) { if (targetBusyIds.value.size) return; const next = workspaceCopy(); next.activePlanId = id; if (commitWorkspace(next)) { closeStarTarget(); targetError.value = ''; targetNotice.value = '' } }
-function savePlan(draft, onSaved) { const next = workspaceCopy(); const id = draft.id || crypto.randomUUID(); let plan = next.plans.find(item => item.id === id); if (!plan) { plan = { id, name: draft.name, source: 'custom', operatorIds: [], excludedOperatorIds: [], targets: {} }; next.plans.push(plan) } plan.name = draft.name; if (plan.source === 'favorites') { plan.operatorIds = draft.operatorIds.filter(item => !props.favoriteIds.has(item)); plan.excludedOperatorIds = [...props.favoriteIds].filter(item => !draft.operatorIds.includes(item)) } else { plan.operatorIds = draft.operatorIds; for (const memberId of draft.operatorIds) if (!plan.targets[memberId]) plan.targets[memberId] = targetFor({ id: memberId, ...currentMap.value[memberId] }) } next.activePlanId = id; if (commitWorkspace(next, draft.id ? '清单已保存到本机' : '培养计划已创建')) { closeStarTarget(); onSaved?.() } }
+async function commitWorkspace(next, notice = '', undoable = false) {
+  const previous = workspaceCopy()
+  const account = props.accountId
+  const saved = await saveWorkspace(next)
+  if (props.accountId !== account) return false
+  if (saved) { undoWorkspace.value = undoable ? previous : null; planError.value = ''; planNotice.value = notice }
+  else planError.value = workspaceState.value.error?.message || '请先处理未完成的云端保存，再修改清单'
+  return saved
+}
+async function selectPlan(id) {
+  if (targetBusyIds.value.size || cloudBlocked.value || schedulePending.value) return
+  const next = workspaceCopy(); next.activePlanId = id
+  if (await commitWorkspace(next)) { closeStarTarget(); targetError.value = ''; targetNotice.value = '' }
+}
+async function savePlan(draft, onSaved) {
+  const next = workspaceCopy(), id = draft.id || crypto.randomUUID()
+  let plan = next.plans.find(item => item.id === id)
+  if (!plan) { plan = { id, name: draft.name, source: 'custom', operatorIds: [], excludedOperatorIds: [], targets: {} }; next.plans.push(plan) }
+  plan.name = draft.name
+  if (plan.source === 'favorites') {
+    plan.operatorIds = draft.operatorIds.filter(item => !props.favoriteIds.has(item))
+    plan.excludedOperatorIds = [...props.favoriteIds].filter(item => !draft.operatorIds.includes(item))
+  } else {
+    plan.operatorIds = draft.operatorIds
+    for (const memberId of draft.operatorIds) if (!plan.targets[memberId]) plan.targets[memberId] = targetFor({ id: memberId, ...currentMap.value[memberId] })
+  }
+  next.activePlanId = id
+  if (await commitWorkspace(next, draft.id ? '清单已保存到云端' : '培养计划已创建')) { closeStarTarget(); onSaved?.() }
+}
 async function removePlanMember(row) {
   if (!row?.id || targetLoading.value || targetBusyIds.value.size > 0 || removePromptBusy.value) return
   removePromptError.value = ''
@@ -497,69 +523,60 @@ function closeRemovePrompt() {
 }
 async function confirmRemove(graduate) {
   const row = removePromptRow.value
-  if (!row || removePromptBusy.value) return
-  const name = row.name || row.id
-  removePromptBusy.value = true
-  removePromptError.value = ''
-  if (graduate && props.graduateOperator) {
-    let saved = false
-    try {
-      saved = await props.graduateOperator(row)
-    } catch (_) {
-      saved = false
+  if (!row || removePromptBusy.value || cloudBlocked.value || schedulePending.value) return
+  const account = props.accountId, previous = workspaceCopy()
+  removePromptBusy.value = true; removePromptError.value = ''
+  try {
+    if (await removeMember(activePlan.value.id, row.id, graduate, Number(props.annotationRevisions[row.id]) || 0)) {
+      undoWorkspace.value = previous
+      planNotice.value = (row.name || row.id) + (graduate ? '已毕业并移出清单；撤销仅恢复清单' : '已移出当前清单，特别关注不变')
+      closeStarTarget(); targetNotice.value = ''; removePromptRow.value = null
     }
-    if (!saved) {
-      removePromptError.value = name + '的养成状态保存失败，暂未移出清单'
-      removePromptBusy.value = false
-      return
-    }
-  }
-  const next = workspaceCopy()
-  const plan = next.plans.find(item => item.id === activePlan.value.id)
-  if (!plan) {
-    removePromptError.value = '当前培养计划不存在，请刷新后重试'
-    removePromptBusy.value = false
-    return
-  }
-  plan.operatorIds = plan.operatorIds.filter(id => id !== row.id)
-  if (plan.source === 'favorites') plan.excludedOperatorIds = [...new Set([...plan.excludedOperatorIds, row.id])]
-  if (commitWorkspace(next, name + '已移出当前清单，特别关注不变', true)) {
-    closeStarTarget()
-    targetNotice.value = ''
-    removePromptRow.value = null
-    removePromptError.value = ''
-  } else {
-    removePromptError.value = planError.value || '清单保存失败，请重试'
-  }
-  removePromptBusy.value = false
+  } catch (err) {
+    if (props.accountId === account) removePromptError.value = '移除未确认成功，已尝试重新同步，请核对清单后重试：' + err.message
+  } finally { if (props.accountId === account) removePromptBusy.value = false }
 }
-function removePlan() { if (activePlan.value.source === 'favorites' || targetBusyIds.value.size) return; const next = workspaceCopy(); next.plans = next.plans.filter(plan => plan.id !== activePlan.value.id); next.activePlanId = FAVORITES_PLAN_ID; if (commitWorkspace(next, '培养计划已删除', true)) { closeStarTarget(); targetNotice.value = '' } }
+async function removePlan() {
+  if (activePlan.value.source === 'favorites' || targetBusyIds.value.size) return
+  const next = workspaceCopy(); next.plans = next.plans.filter(plan => plan.id !== activePlan.value.id); next.activePlanId = FAVORITES_PLAN_ID
+  if (await commitWorkspace(next, '培养计划已删除', true)) { closeStarTarget(); targetNotice.value = '' }
+}
 function undoPlanChange() { if (undoWorkspace.value) commitWorkspace(JSON.parse(JSON.stringify(undoWorkspace.value)), '已恢复清单') }
-function setTrainingLevel(groupId, event) { const next = workspaceCopy(); next.trainingLevels[groupId] = Number(event.target.value); if (!commitWorkspace(next)) event.target.value = workspace.value.trainingLevels[groupId]; else persistPlannerSnapshot() }
-function syncStorage(event) { if (event.key === trainingWorkspaceKey(props.accountId)) { closeStarTarget(); loadWorkspace() } if (event.key === scopedPlannerStorageKey()) loadPlannerSnapshot() }
-
-function scopedPlannerStorageKey() { return plannerStorageKey(props.accountId) + ':plan:' + encodeURIComponent(activePlan.value?.id || FAVORITES_PLAN_ID) }
-function loadPlannerSnapshot() {
-  const snapshot = normalizePlannerSnapshot(readPlannerSnapshotSafe(), props.accountId)
-  plannerPreferences.value = snapshot.preferences
-  strategy.value = snapshot.strategy
-  plannerOrder.value = snapshot.agentOrder
-  manualPlans.value = snapshot.manualPlans
-  fixedSchedule.value = snapshot.schedule
-  plannerStartDate.value = snapshot.schedule?.startDate || plannerToday.value
-  selectedDate.value = plannerDates.value.includes(plannerToday.value) ? plannerToday.value : plannerDates.value[0]
+async function setTrainingLevel(groupId, event) {
+  const next = workspaceCopy(); next.trainingLevels[groupId] = Number(event.target.value)
+  if (!await commitWorkspace(next)) event.target.value = workspace.value.trainingLevels[groupId]
+  else persistPlannerSnapshot()
 }
-function readPlannerSnapshotSafe() { if (!props.accountId || typeof localStorage === 'undefined') return null; try { const text = localStorage.getItem(scopedPlannerStorageKey()) || (activePlan.value?.id === FAVORITES_PLAN_ID ? localStorage.getItem(plannerStorageKey(props.accountId)) : null); const parsed = text ? JSON.parse(text) : null; return parsed?.accountId === props.accountId && parsed?.version === 1 ? parsed : null } catch (_) { return null } }
+function applyPlannerSnapshot(snapshot) {
+  plannerPreferences.value = snapshot?.preferences || normalizePlannerPreferences()
+  strategy.value = snapshot?.strategy || 'overall'
+  plannerOrder.value = snapshot?.agentOrder || []
+  manualPlans.value = snapshot?.manualPlans || {}
+  fixedSchedule.value = snapshot?.schedule || null
+  scheduleTimezone.value = snapshot?.timezone || plannerTimezone()
+  plannerToday.value = plannerDateInZone(scheduleTimezone.value)
+  plannerStartDate.value = snapshot?.schedule?.startDate || plannerToday.value
+  if (!plannerDates.value.includes(selectedDate.value)) selectedDate.value = plannerDates.value.includes(plannerToday.value) ? plannerToday.value : plannerDates.value[0]
+}
 function persistPlannerSnapshot(revise = true) {
-  if (!props.accountId || typeof localStorage === 'undefined') return
+  if (cloudBlocked.value) return false
   const previous = fixedSchedule.value
   try {
     if (revise && fixedSchedule.value) fixedSchedule.value = reviseFixedSchedule(fixedSchedule.value, liveScheduleContext.value, manualPlans.value)
-    localStorage.setItem(scopedPlannerStorageKey(), JSON.stringify({ version: 1, accountId: props.accountId,
+    return saveSchedule({ version: 1, accountId: props.accountId, timezone: scheduleTimezone.value,
       strategy: strategy.value, agentOrder: orderedRosterIds.value, preferences: plannerPreferences.value,
-      manualPlans: manualPlans.value, schedule: fixedSchedule.value }))
-    return true
+      manualPlans: manualPlans.value, schedule: fixedSchedule.value })
   } catch (err) { fixedSchedule.value = previous; planError.value = '体力规划保存失败：' + err.message; return false }
+}
+function downloadPending(kind) {
+  const value = kind === 'workspace' ? workspaceState.value.pending : scheduleState.value.pending
+  if (!value) return
+  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }))
+  const link = document.createElement('a'); link.href = url; link.download = 'planner-' + kind + '-' + props.accountId + '.json'; link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+function beforeLeave(event) {
+  if (workspacePending.value || schedulePending.value || migrationBusy.value) { event.preventDefault(); event.returnValue = '' }
 }
 function updateSavedSchedule() {
   if (loading.value || targetLoading.value || error.value) return
@@ -579,7 +596,7 @@ function setStrategy(value) { strategy.value = value; persistPlannerSnapshot() }
 function savePreferences() { plannerPreferences.value = normalizePlannerPreferences(plannerPreferences.value); persistPlannerSnapshot() }
 function changePreference(key, delta) { plannerPreferences.value = normalizePlannerPreferences({ ...plannerPreferences.value, [key]: (Number(plannerPreferences.value[key]) || 0) + delta }); persistPlannerSnapshot() }
 function onRosterDragStart(id) { rosterDragId.value = id }
-function onRosterDrop(targetId) { const ids = [...orderedRosterIds.value]; const from = ids.indexOf(rosterDragId.value); const to = ids.indexOf(targetId); if (from < 0 || to < 0 || from === to) return; ids.splice(from, 1); ids.splice(to, 0, rosterDragId.value); plannerOrder.value = ids; rosterDragId.value = ''; persistPlannerSnapshot() }
+function onRosterDrop(targetId) { if (cloudBlocked.value) return; const ids = [...orderedRosterIds.value]; const from = ids.indexOf(rosterDragId.value); const to = ids.indexOf(targetId); if (from < 0 || to < 0 || from === to) return; ids.splice(from, 1); ids.splice(to, 0, rosterDragId.value); plannerOrder.value = ids; rosterDragId.value = ''; persistPlannerSnapshot() }
 function selectDate(date) { selectedDate.value = date; addMenu.value = ''; pendingSpendChannel.value = '' }
 function ensureManualPlan() { const date = selectedDate.value; const current = currentDay.value; const next = clonePlannerValue(manualPlans.value); if (!next[date]) next[date] = normalizePlannerPlan(clonePlannerValue(current.planned)); return { next, plan: next[date] } }
 function commitManualPlan(next) {
@@ -636,9 +653,59 @@ function cacheTargets() { if (typeof localStorage !== 'undefined' && props.accou
 function targetErrorMessage(err, fallback) { if (err?.code === 'growth_target_revision_conflict') return '养成目标已在其他页面更新，已重新同步'; if (err?.code === 'invalid_growth_target') return '目标数值或组合不符合要求'; return err?.message || fallback }
 function applyTargetItem(id, item) { if (id && item) targets.value = { ...targets.value, [id]: normalizedTargetItem(item) } }
 async function migrateLocalTargets(targetAccount, remoteIds) { if (typeof localStorage === 'undefined' || localStorage.getItem(targetMigrationKey()) === 'done') return; const local = readLocalTargets(); for (const id of Object.keys(local).filter(item => !remoteIds.has(item))) { const saved = local[id] || {}; const body = { expected_revision: 0 }; if (saved.level != null) body.level = Number(saved.level); if (saved.elite != null) body.elite = Number(saved.elite); if (saved.starLevel != null || saved.star_level != null) body.star_level = Number(saved.starLevel != null ? saved.starLevel : saved.star_level); if (Object.keys(body).length === 1) continue; const item = await putOperatorGrowthTarget({ accountId: targetAccount, operatorId: id, target: body }); if (props.accountId !== targetAccount) return; applyTargetItem(id, item) } localStorage.setItem(targetMigrationKey(), 'done') }
-async function loadTargets() { closeStarTarget(); targets.value = {}; targetError.value = ''; if (!props.isLoggedIn || !props.accountId) { targetLoadSeq += 1; targetLoading.value = false; return } const account = props.accountId; const sequence = ++targetLoadSeq; targetLoading.value = true; try { const data = await getOperatorGrowthTargets(account); if (sequence !== targetLoadSeq || props.accountId !== account) return; const mapped = {}; const remoteIds = new Set(); (Array.isArray(data?.items) ? data.items : []).forEach(item => { const id = item?.operator_id || item?.operatorId; if (id) { remoteIds.add(id); mapped[id] = normalizedTargetItem(item) } }); targets.value = mapped; await migrateLocalTargets(account, remoteIds); if (sequence === targetLoadSeq && props.accountId === account) cacheTargets() } catch (err) { if (sequence !== targetLoadSeq || props.accountId !== account) return; targets.value = readLocalTargets(); targetError.value = targetErrorMessage(err, '养成目标同步失败，当前显示本地缓存') } finally { if (sequence === targetLoadSeq && props.accountId === account) targetLoading.value = false } }
+async function loadTargets() { closeStarTarget(); targets.value = {}; targetBusyIds.value = new Set(); targetError.value = ''; if (!props.isLoggedIn || !props.accountId) { targetLoadSeq += 1; targetLoading.value = false; return } const account = props.accountId; const sequence = ++targetLoadSeq; targetLoading.value = true; try { const data = await getOperatorGrowthTargets(account); if (sequence !== targetLoadSeq || props.accountId !== account) return; const mapped = {}; const remoteIds = new Set(); (Array.isArray(data?.items) ? data.items : []).forEach(item => { const id = item?.operator_id || item?.operatorId; if (id) { remoteIds.add(id); mapped[id] = normalizedTargetItem(item) } }); targets.value = mapped; await migrateLocalTargets(account, remoteIds); if (sequence === targetLoadSeq && props.accountId === account) cacheTargets() } catch (err) { if (sequence !== targetLoadSeq || props.accountId !== account) return; targets.value = readLocalTargets(); targetError.value = targetErrorMessage(err, '养成目标同步失败，当前显示本地缓存') } finally { if (sequence === targetLoadSeq && props.accountId === account) targetLoading.value = false } }
 function resetTargetInput(row, field, event) { event.target.value = targetFor(planRows.value.find(item => item.id === row.id) || row)[field] }
-async function setTarget(row, field, event) { const id = row?.id; if (!id || targetLoading.value || targetBusyIds.value.has(id)) return false; const current = currentMap.value[id] || {}; const target = { ...targetFor(row) }; const raw = event?.target ? event.target.value : event; if (event?.target?.validity?.badInput || raw === '') { if (event?.target) resetTargetInput(row, field, event); return false } const max = field === 'level' ? 100 : field === 'elite' ? 17 : 31; target[field] = Math.min(max, Math.max(Number(current[field]) || 0, Math.trunc(Number(raw)) || 0)); const eliteLimit = Math.min(17, Math.max(0, Math.floor(target.level / 5) - 3)); if (field === 'elite' || field === 'level') target.elite = Math.max(Number(current.elite) || 0, Math.min(target.elite, eliteLimit)); if (target[field] === targetFor(row)[field]) { if (event?.target) resetTargetInput(row, field, event); return true } if (activePlan.value.source === 'custom') { const next = workspaceCopy(); next.plans.find(plan => plan.id === activePlan.value.id).targets[id] = target; const saved = commitWorkspace(next, (row.name || id) + '的目标已保存到本机'); if (event?.target) { await nextTick(); resetTargetInput(row, field, event) } return saved } const previous = targets.value[id]; targets.value = { ...targets.value, [id]: target }; targetBusyIds.value = new Set(targetBusyIds.value).add(id); targetError.value = ''; try { const body = { expected_revision: Number(previous?.revision) || 0 }; body[field === 'starLevel' ? 'star_level' : field] = target[field]; if (field === 'level' && target.elite !== previous?.elite) body.elite = target.elite; const item = await putOperatorGrowthTarget({ accountId: props.accountId, operatorId: id, target: body }); applyTargetItem(id, item); cacheTargets(); targetNotice.value = (row.name || id) + '的养成目标已同步'; if (targetNoticeTimer) clearTimeout(targetNoticeTimer); targetNoticeTimer = setTimeout(() => { targetNotice.value = '' }, 1800); return true } catch (err) { targets.value = { ...targets.value, [id]: previous || defaultTarget() }; targetError.value = targetErrorMessage(err, '养成目标保存失败'); return false } finally { const next = new Set(targetBusyIds.value); next.delete(id); targetBusyIds.value = next; if (event?.target) { await nextTick(); resetTargetInput(row, field, event) } } }
+async function setTarget(row, field, event) {
+  const id = row?.id, account = props.accountId, sequence = targetLoadSeq
+  if (!id || cloudBlocked.value || schedulePending.value || targetLoading.value || targetBusyIds.value.has(id)) return false
+  const current = currentMap.value[id] || {}, target = { ...targetFor(row) }
+  const raw = event?.target ? event.target.value : event
+  if (event?.target?.validity?.badInput || raw === '') { if (event?.target) resetTargetInput(row, field, event); return false }
+  const max = field === 'level' ? 100 : field === 'elite' ? 17 : 31
+  target[field] = Math.min(max, Math.max(Number(current[field]) || 0, Math.trunc(Number(raw)) || 0))
+  const eliteLimit = Math.min(17, Math.max(0, Math.floor(target.level / 5) - 3))
+  if (field === 'elite' || field === 'level') target.elite = Math.max(Number(current.elite) || 0, Math.min(target.elite, eliteLimit))
+  if (target[field] === targetFor(row)[field]) { if (event?.target) resetTargetInput(row, field, event); return true }
+  if (activePlan.value.source === 'custom') {
+    const next = workspaceCopy(); next.plans.find(plan => plan.id === activePlan.value.id).targets[id] = target
+    const saved = await commitWorkspace(next, (row.name || id) + '的目标已保存到云端')
+    if (event?.target && props.accountId === account) { await nextTick(); resetTargetInput(row, field, event) }
+    return saved
+  }
+  const previous = targets.value[id]
+  targets.value = { ...targets.value, [id]: target }
+  targetBusyIds.value = new Set(targetBusyIds.value).add(id); targetError.value = ''
+  try {
+    const body = { expected_revision: Number(previous?.revision) || 0 }
+    body[field === 'starLevel' ? 'star_level' : field] = target[field]
+    if (field === 'level' && target.elite !== previous?.elite) body.elite = target.elite
+    const item = await putOperatorGrowthTarget({ accountId: account, operatorId: id, target: body })
+    if (props.accountId !== account || sequence !== targetLoadSeq) return false
+    applyTargetItem(id, item); cacheTargets(); targetNotice.value = (row.name || id) + '的养成目标已同步'
+    if (targetNoticeTimer) clearTimeout(targetNoticeTimer)
+    targetNoticeTimer = setTimeout(() => { targetNotice.value = '' }, 1800)
+    return true
+  } catch (err) {
+    if (props.accountId !== account || sequence !== targetLoadSeq) return false
+    targets.value = { ...targets.value, [id]: previous || defaultTarget() }
+    targetError.value = err.message || '养成目标保存失败'
+    if (err.status === 409) {
+      try {
+        const data = await getOperatorGrowthTargets(account)
+        if (props.accountId !== account || sequence !== targetLoadSeq) return false
+        const latest = (data.items || []).find(item => (item.operator_id || item.operatorId) === id)
+        applyTargetItem(id, latest || defaultTarget()); cacheTargets()
+        targetError.value = '养成目标已在其他页面更新，已读取云端目标，请核对后重新修改'
+      } catch (_) { targetError.value = '养成目标存在冲突，重新同步失败，请刷新后重试' }
+    }
+    return false
+  } finally {
+    if (props.accountId === account && sequence === targetLoadSeq) {
+      const next = new Set(targetBusyIds.value); next.delete(id); targetBusyIds.value = next
+      if (event?.target) { await nextTick(); resetTargetInput(row, field, event) }
+    }
+  }
+}
 
 function flattenCurrent(data) { const result = {}; const rows = Array.isArray(data) ? data : data ? [data] : []; rows.forEach(row => Object.entries(row?.entries || {}).forEach(([id, value]) => { result[id] = Number(value?.count != null ? value.count : value) || 0 })); return result }
 async function loadInventory() {
@@ -655,7 +722,7 @@ async function loadInventory() {
   }
   const account = props.accountId
   const sequence = ++inventoryLoadSeq
-  const today = formatLocalDate(new Date())
+  const today = plannerDateInZone(scheduleTimezone.value)
   plannerToday.value = today
   if (!fixedSchedule.value && plannerStartDate.value !== today) { plannerStartDate.value = today; selectedDate.value = today }
   loading.value = true
@@ -674,7 +741,7 @@ async function loadInventory() {
     currentAgents.value = flattenCurrent(results[0].value[1])
   }
   if (results[1].status === 'fulfilled') {
-    heartHistory.value = heartHistorySummary(results[1].value)
+    heartHistory.value = results[1].value
     heartHistoryReady.value = true
   } else {
     heartHistory.value = {}
@@ -684,30 +751,54 @@ async function loadInventory() {
 }
 function scheduleInventoryRefresh(message) { const eventAccount = message?.data?.account_id || message?.data?.accountId; if (eventAccount && eventAccount !== props.accountId) return; if (inventoryEventRefreshTimer != null) return; inventoryEventRefreshTimer = setTimeout(() => { inventoryEventRefreshTimer = null; loadInventory() }, 180) }
 function syncPlannerClock() {
-  const today = formatLocalDate(new Date())
+  const today = plannerDateInZone(scheduleTimezone.value)
   if (plannerToday.value === today) return
   plannerToday.value = today
   if (!fixedSchedule.value) { plannerStartDate.value = today; selectedDate.value = today }
 }
-function refreshSnapshot() { syncPlannerClock(); emit('refresh-operators'); loadInventory() }
-function handleInventoryEvent(message) { if (!message || !['inventory_import', 'account_stream_open', 'operator_scan_import', 'operator-upgrade'].includes(message.event)) return; scheduleInventoryRefresh(message) }
+function refreshSnapshot() { syncPlannerClock(); emit('refresh-operators'); refreshCloud(); loadInventory() }
+function scheduleTargetRefresh() {
+  if (targetEventRefreshTimer != null) return
+  targetEventRefreshTimer = setTimeout(() => {
+    targetEventRefreshTimer = null
+    if (targetBusyIds.value.size) scheduleTargetRefresh()
+    else loadTargets()
+  }, 180)
+}
+function handleInventoryEvent(message) {
+  if (!message) return
+  const account = message.data?.account_id || message.data?.accountId
+  if (account && account !== props.accountId) return
+  if (['operator_training_workspace', 'operator_stamina_schedule', 'account_stream_open'].includes(message.event)) refreshCloud()
+  if (['operator_growth_target', 'account_stream_open'].includes(message.event)) scheduleTargetRefresh()
+  if (['inventory_import', 'account_stream_open', 'operator_scan_import', 'operator-upgrade'].includes(message.event)) scheduleInventoryRefresh(message)
+}
 
-watch(() => [props.accountId, props.isLoggedIn], () => { currentItems.value = {}; currentAgents.value = {}; loadWorkspace() }, { immediate: true })
+watch(() => [props.accountId, props.isLoggedIn], () => { currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false }, { immediate: true })
 watch(() => [props.accountId, props.isLoggedIn, props.refreshKey, props.active], () => { if (props.active) { syncPlannerClock(); emit('refresh-operators'); loadTargets(); loadInventory() } }, { immediate: true })
-watch(() => [props.accountId, activePlan.value?.id], loadPlannerSnapshot, { immediate: true })
-watch(() => [loading.value, targetLoading.value, activePlan.value?.id], () => {
-  if (loading.value || targetLoading.value || error.value || !props.isLoggedIn || !planRows.value.length || fixedSchedule.value || !Object.keys(manualPlans.value).length) return
+watch(cloudSnapshot, applyPlannerSnapshot)
+watch(scheduleTimezone, () => { if (props.active) loadInventory() })
+watch(() => [loading.value, targetLoading.value, activePlan.value?.id, scheduleLoading.value], () => {
+  if (cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value || !props.isLoggedIn || !planRows.value.length || fixedSchedule.value || !Object.keys(manualPlans.value).length) return
   fixedSchedule.value = createFixedSchedule(liveScheduleContext.value, manualPlans.value)
   plannerStartDate.value = fixedSchedule.value.startDate
   persistPlannerSnapshot(false)
 })
 watch(() => plannerDates.value, dates => { if (!dates.includes(selectedDate.value)) selectedDate.value = dates[0] }, { immediate: true })
-onMounted(() => { plannerClockTimer = setInterval(syncPlannerClock, 30000); window.addEventListener('focus', syncPlannerClock); window.addEventListener('storage', syncStorage); document.addEventListener('pointerdown', dismissStarTarget); document.addEventListener('focusin', dismissStarTarget); unsubscribeAccountEvents = subscribeAccountEvents(handleInventoryEvent) })
-onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventListener('focus', syncPlannerClock); window.removeEventListener('storage', syncStorage); document.removeEventListener('pointerdown', dismissStarTarget); document.removeEventListener('focusin', dismissStarTarget); if (targetNoticeTimer) clearTimeout(targetNoticeTimer); if (inventoryEventRefreshTimer != null) clearTimeout(inventoryEventRefreshTimer); if (unsubscribeAccountEvents) unsubscribeAccountEvents() })
+onMounted(() => { plannerClockTimer = setInterval(syncPlannerClock, 30000); window.addEventListener('focus', syncPlannerClock); window.addEventListener('beforeunload', beforeLeave); document.addEventListener('pointerdown', dismissStarTarget); document.addEventListener('focusin', dismissStarTarget); unsubscribeAccountEvents = subscribeAccountEvents(handleInventoryEvent) })
+onBeforeUnmount(() => { clearInterval(plannerClockTimer); window.removeEventListener('focus', syncPlannerClock); window.removeEventListener('beforeunload', beforeLeave); document.removeEventListener('pointerdown', dismissStarTarget); document.removeEventListener('focusin', dismissStarTarget); if (targetNoticeTimer) clearTimeout(targetNoticeTimer); if (inventoryEventRefreshTimer != null) clearTimeout(inventoryEventRefreshTimer); if (targetEventRefreshTimer != null) clearTimeout(targetEventRefreshTimer); if (unsubscribeAccountEvents) unsubscribeAccountEvents() })
 </script>
 
 <style scoped>
 .growth-tracker { --planner-page: #f5efe7; --planner-card: #fffaf3; --planner-line: #eadfce; --planner-muted: #988575; --planner-deep: #6c533e; --planner-gold: #b79050; --planner-gain: #6d9474; --planner-spend: #b75c53; min-width: 0; max-width: 100%; margin-top: 18px; padding: 22px; overflow-x: clip; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); color: var(--ink); }
+.planner-cloud-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.cloud-status { margin-top: 12px; color: var(--ink-60); font-size: 12px; }
+.cloud-recovery, .cloud-migration { margin-top: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); font-size: 13px; line-height: 1.7; }
+.cloud-recovery { color: var(--rouge); }
+.cloud-migration h3 { font: 800 18px var(--font-s); }
+.cloud-migration ul { padding-left: 20px; }
+.cloud-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cloud-actions button, .cloud-recovery > button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); }
 .planner-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 18px; border-bottom: 1px dashed var(--line); }
 .section-kicker, .card-kicker, .goal-kicker { display: block; color: var(--accent-strong); font-size: 11px; font-weight: 800; }
 .planner-heading h2 { margin-top: 6px; color: var(--ink); font: 900 23px/1.28 var(--font-s); }
@@ -729,15 +820,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .planner-notice { display: flex; align-items: center; gap: 7px; margin: 10px 0; color: var(--accent-strong); font-size: 12px; }
 .planner-inline-notice { display: block; }
 .planner-status { margin-top: 18px; padding-top: 4px; }
-.status-metrics { display: grid; grid-template-columns: 1.18fr 1fr 1fr 1fr; }
-.status-metric { min-width: 0; padding: 13px 14px; border-left: 1px solid var(--planner-line); }
+.status-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); }
+.status-metric { position: relative; min-width: 0; min-height: 112px; padding: 17px; border-left: 1px solid var(--line); background: var(--surface); }
 .status-metric:first-child { border-left: 0; }
-.status-metric-primary { background: linear-gradient(135deg, #f3e2bf, #f0e6cf); }
-.status-metric span { display: block; color: var(--planner-muted); font-size: 10px; font-weight: 780; }
-.status-metric strong { display: block; margin-top: 3px; color: var(--ink); font: 850 21px/1.2 var(--font-d); font-variant-numeric: tabular-nums; }
-.status-metric-primary strong { color: var(--planner-deep); }
+.status-metric-primary { background: var(--cream); }
+.status-metric span { display: block; padding-right: 8px; color: var(--ink-60); font-size: 11px; font-weight: 800; }
+.status-metric strong { display: block; margin-top: 10px; color: var(--ink); font: 900 28px/1 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.status-metric-primary strong { color: var(--accent-strong); font-size: 30px; }
 .status-metric strong.negative { color: var(--rouge); }
-.status-metric strong small { margin-left: 3px; font: 700 11px var(--font-b); }
+.status-metric strong small { margin-left: 5px; color: var(--accent-strong); font: 800 10px/1 var(--font-b); }
 .planner-view { display: grid; gap: 12px; }.plan-badge { display: inline-flex; min-height: 24px; align-items: center; padding: 0 10px; border: 1px solid rgba(155, 122, 70, .12); border-radius: 999px; background: #f7eddc; color: #8a6a38; font-size: 10px; font-weight: 780; }.plan-badge.manual { background: #f0e8f6; color: #7e6699; }
 .display-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.planner-card { min-width: 0; padding: 18px; }.card-heading, .ledger-heading, .compare-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.card-heading h3 { margin-top: 3px; color: var(--ink); font: 900 18px/1.3 var(--font-s); }.card-heading p { margin-top: 4px; color: var(--planner-muted); font-size: 11px; line-height: 1.5; }.day-summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 13px; padding: 8px 0 14px; border-bottom: 1px solid var(--planner-line); font-variant-numeric: tabular-nums; }.summary-metric { display: inline-flex; align-items: baseline; gap: 7px; }.summary-metric span, .summary-balance span { color: var(--planner-muted); font-size: 13px; font-weight: 650; }.summary-metric b, .summary-balance b { font: 830 17px var(--font-d); }.gain b, .gain-text, .gain-total b { color: var(--planner-gain); }.spend b, .spend-text, .spend-total b { color: var(--planner-spend); }.summary-op { color: #c7b8aa; font-weight: 800; }.summary-balance { display: inline-flex; align-items: baseline; gap: 7px; padding: 5px 9px; }.summary-balance.negative b { color: var(--rouge); }.flow-section { padding-top: 14px; }.flow-section + .flow-section { margin-top: 11px; border-top: 1px solid var(--planner-line); }.flow-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #877462; font-size: 13px; font-weight: 780; }.channel-chips { display: flex; flex-wrap: wrap; gap: 8px; }.channel-chip { --channel: #887e8f; display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 11px; background: color-mix(in srgb, var(--channel) 8%, #fffaf4); color: color-mix(in srgb, var(--channel) 84%, #34291f); font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }.channel-chip small { color: color-mix(in srgb, var(--channel) 68%, #6f6258); font-size: 11px; }.channel-chip strong { margin-left: 6px; font-size: 12px; }.channel-dot, .channel-label i, .swatch i { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--channel); }.channel-chip strong { color: var(--planner-gain); }.channel-chip:not(.natural):not(.meal):not(.buy):not(.mail):not(.event):not(.gift) strong { color: var(--planner-spend); }.flow-empty { color: var(--planner-muted); font-size: 12px; }.balance-warning { display: flex; align-items: flex-start; gap: 6px; margin-top: 14px; padding: 9px 10px; border-radius: 9px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 11px; line-height: 1.6; }
 .progress-card { display: flex; flex-direction: column; }.progress-tags { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }.progress-tag { padding: 5px 8px; border: 1px solid rgba(155, 122, 70, .1); border-radius: 10px; background: #f6eee1; color: #8f7b68; font-size: 10px; font-weight: 730; white-space: nowrap; }.progress-tag.key { background: #f0e8f6; }.progress-tag b { color: var(--ink); }.progress-list { display: grid; gap: 13px; margin-top: 16px; }.progress-item { display: grid; gap: 6px; }.progress-item-head, .progress-item-foot { display: flex; justify-content: space-between; gap: 8px; color: var(--planner-muted); font-size: 11px; }.progress-item-head > span:first-child { color: var(--ink); font-size: 13px; font-weight: 800; }.progress-item-head b, .progress-item-foot b { color: var(--planner-gain); }.progress-track { position: relative; height: 10px; overflow: hidden; border-radius: 999px; background: #efe4d4; }.progress-track i { position: absolute; top: 0; bottom: 0; display: block; }.progress-current { left: 0; background: #c48b4d; }.progress-old { left: 0; background: #c48b4d; }.progress-today { background: #e8bc6c; }.progress-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; color: var(--planner-muted); font-size: 10px; }.progress-legend span { display: inline-flex; align-items: center; gap: 4px; }.progress-legend i { width: 10px; height: 6px; border-radius: 99px; }.legend-current { background: #c48b4d; }.legend-old { background: #c48b4d; }.legend-today { background: #e8bc6c; }.planner-footnote { color: var(--ink-60); font-size: 11px; line-height: 1.7; }
@@ -764,9 +855,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-rule span:last-child { transform: scaleX(-1); }
 .status-rule i { font-style: normal; white-space: nowrap; }
 .planner-status .status-roster { display: block; padding: 0; }
-.planner-status .status-metrics { border-top: 1px solid rgba(183, 144, 80, .2); }
-.planner-status .status-metric { padding: 14px 17px 15px; }
-.planner-status .status-metric-primary { background: linear-gradient(135deg, rgba(243, 226, 191, .78), rgba(250, 241, 219, .45)); }
+.planner-status .status-metrics { margin-top: 0; }
+.planner-status .status-metric { padding: 17px; }
+.planner-status .status-metric-primary { background: var(--cream); }
 .growth-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 14px; margin-top: 0; }
 .growth-card { position: relative; align-self: start; min-width: 0; padding: 14px 12px; border: 1px solid var(--yellow-deep); border-top-width: 3px; border-radius: 15px; background: linear-gradient(180deg, var(--cream), var(--surface)); box-shadow: 0 4px 12px rgba(73, 59, 44, .04); }
 .growth-card.complete { border-color: var(--yellow-deep); border-top-width: 3px; background: linear-gradient(160deg, var(--paper), color-mix(in srgb, var(--yellow) 65%, var(--paper))); }
@@ -921,7 +1012,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .status-title h2 { font-size: 22px; }
   .status-rule { padding-right: 0; padding-left: 0; }
   .planner-status .status-roster { padding-right: 0; padding-left: 0; }
-  .planner-status .status-metric { padding-right: 11px; padding-left: 11px; }
+  .status-metric { min-height: 108px; padding: 15px 13px; }
+  .status-metric strong, .status-metric-primary strong { font-size: 24px; }
+  .planner-status .status-metric { padding-right: 13px; padding-left: 13px; }
   .planner-edit-toolbar { align-items: stretch; flex-direction: column; }
   .growth-card-grid { grid-template-columns: 1fr; }
   .workspace-head-actions { width: 100%; justify-content: space-between; }

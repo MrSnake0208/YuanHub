@@ -42,7 +42,7 @@
         </label>
         <p v-if="!filteredEntries.length">没有找到密探</p>
       </div>
-      <div class="plan-dialog-actions"><button v-if="!creating && activePlan.source === 'custom'" type="button" class="plan-delete" :disabled="disabled" @click="emit('remove'); dialog.close()">删除计划</button><button type="button" @click="dialog.close()">取消</button><button type="submit" :disabled="!name.trim()">{{ creating ? '创建计划' : '保存清单' }}</button></div>
+      <div class="plan-dialog-actions"><button v-if="!creating && activePlan.source === 'custom'" type="button" class="plan-delete" :disabled="disabled" @click="emit('remove'); dialog.close()">删除计划</button><button type="button" @click="dialog.close()">取消</button><button type="submit" :disabled="disabled || !name.trim()">{{ creating ? '创建计划' : '保存清单' }}</button></div>
     </form>
   </dialog>
 </template>
