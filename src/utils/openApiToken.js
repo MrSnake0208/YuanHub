@@ -9,11 +9,12 @@ export function scopeKeys(scope) {
   return [scope]
 }
 
-// MaaYuan 当前实际使用的最小权限：单向上传库存 + 密探自动采集。
+// MaaYuan 默认权限：上传库存、密探自动采集，并读取密探养成状态以筛选养成中密探。
 // 查询 Token 绑定账号只要求 Token 有效，不需要额外 read 权限。
 export const MAAYUAN_REQUIRED_SCOPES = Object.freeze([
   'inventory:write',
-  'operator:scan:write'
+  'operator:scan:write',
+  'operator:read'
 ])
 
 export function hasEveryScope(scope, required) {

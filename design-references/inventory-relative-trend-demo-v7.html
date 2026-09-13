@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>三资源库存趋势 Demo v7</title>
+<style>
+:root{
+  --bg:#f5efe6;--card:#fffaf3;--card2:#fbf4ea;--ink:#443529;--muted:#8d7b68;
+  --faint:#b8a894;--line:#e4d7c5;--line2:#eee4d7;--shadow:0 10px 30px rgba(80,58,38,.07);
+  --coin:#b8792e;--pass:#74869d;--tianji:#8b739f;--up:#6f9276;--down:#c76e68;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--ink);
+  background:radial-gradient(circle at 8% -5%,rgba(255,255,255,.78),transparent 28%),linear-gradient(180deg,#f8f3eb,#f2eadf);
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+button,select{font:inherit}
+.app{max-width:1100px;margin:auto;padding:28px 18px 60px}
+.head{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:16px}
+h1{font-size:28px;margin:0 0 7px;letter-spacing:-.02em}
+.sub{margin:0;color:var(--muted);font-size:13px;line-height:1.65;max-width:760px}
+select{border:1px solid var(--line);background:rgba(255,250,243,.9);color:var(--ink);border-radius:12px;padding:9px 12px;outline:none}
+
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.res-card{border:1px solid var(--line);border-radius:16px;background:rgba(255,250,243,.94);padding:14px 15px}
+.res-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.res-name{font-weight:850;font-size:14px;display:flex;gap:8px;align-items:center}
+.res-icon{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;background:var(--card2);font-size:13px}
+.res-state{font-size:10px;color:var(--muted)}
+.res-value{font-size:29px;font-weight:900;letter-spacing:-.03em}
+.res-foot{display:flex;justify-content:space-between;gap:10px;margin-top:7px;font-size:11px;color:var(--muted)}
+.res-foot b{font-size:12px}.up{color:var(--up)}.down{color:var(--down)}
+.coin-t{color:var(--coin)}.pass-t{color:var(--pass)}.tianji-t{color:var(--tianji)}
+
+.panel{border:1px solid var(--line);background:rgba(255,250,243,.95);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.panel-top{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px}
+.panel-title{font-size:17px;font-weight:850}
+.panel-desc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+.segment{display:flex;gap:5px;padding:4px;background:rgba(237,227,214,.76);border:1px solid var(--line);border-radius:12px}
+.seg-btn{border:0;background:transparent;color:var(--muted);padding:8px 12px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:750}
+.seg-btn.active{background:var(--card);color:var(--ink);box-shadow:0 2px 8px rgba(80,58,38,.07)}
+.view{display:none}.view.active{display:block}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-bottom:10px}
+.legend span{display:flex;align-items:center;gap:5px}
+.swatch{width:9px;height:9px;border-radius:50%;display:inline-block}
+.swatch.coin{background:var(--coin)}.swatch.pass{background:var(--pass)}.swatch.tianji{background:var(--tianji)}
+.sample{width:18px;border-top:2px dashed var(--faint);display:inline-block}
+
+/* calendar */
+.weekdays,.calendar{display:grid;grid-template-columns:repeat(7,1fr)}
+.weekdays{color:var(--muted);font-size:11px;border-bottom:1px solid var(--line2)}
+.weekdays div{text-align:center;padding:7px 0}
+.calendar{border-left:1px solid var(--line2);border-top:1px solid var(--line2)}
+.day{min-height:116px;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:8px;background:rgba(255,253,248,.58);cursor:pointer}
+.day:hover{background:#fffaf1}.day.empty{background:rgba(249,245,238,.4);cursor:default}
+.date{font-size:12px;font-weight:850;margin-bottom:9px}
+.rows{display:grid;gap:5px}
+.rrow{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:5px;font-size:11px}
+.rrow .icon{font-weight:900;text-align:center}.rrow .change{font-weight:800}.rrow .stock-mini{font-size:9px;color:var(--muted)}
+.rrow.missing{color:var(--faint)}.rrow.missing .change{font-weight:600}
+.detail{margin-top:13px;border:1px solid var(--line);border-radius:14px;background:var(--card2);padding:13px}
+.detail-title{font-size:14px;font-weight:850;margin-bottom:9px}
+.detail-grid{display:grid;grid-template-columns:1.15fr repeat(3,1fr);gap:8px;font-size:11px}
+.detail-grid>div{padding:8px 9px;background:#fffaf3;border:1px solid var(--line2);border-radius:10px}
+.detail-grid .h{font-size:9px;color:var(--muted);margin-bottom:4px}.detail-grid .v{font-size:13px;font-weight:850}
+
+/* trends */
+.chart-card{border:1px solid var(--line2);border-radius:15px;background:linear-gradient(#fffdf9,#fbf5ec);padding:10px;overflow:hidden}
+svg{display:block;width:100%;height:auto}
+.chart-title{font-size:13px;font-weight:850;margin:4px 0 3px}
+.chart-desc{font-size:10px;color:var(--muted);line-height:1.55;margin-bottom:9px}
+.trend-grid{display:grid;grid-template-columns:1fr;gap:14px}
+.note-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
+.note-card{border:1px solid var(--line2);background:var(--card2);border-radius:12px;padding:10px}
+.note-card .l{font-size:10px;color:var(--muted);margin-bottom:4px}.note-card .v{font-size:13px;font-weight:850}
+.tip{position:fixed;z-index:20;pointer-events:none;opacity:0;background:#45362a;color:white;padding:8px 9px;border-radius:8px;font-size:10px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.tip.show{opacity:1}
+.footnote{margin-top:12px;font-size:10px;color:var(--muted);line-height:1.65}
+
+@media(max-width:800px){
+  .app{padding:18px 10px 40px}.head{align-items:flex-start;flex-direction:column}.summary{grid-template-columns:1fr}
+  .panel{padding:11px}.panel-top{align-items:flex-start;flex-direction:column}.segment{width:100%}.seg-btn{flex:1}
+  .day{min-height:100px;padding:6px 5px}.rrow{grid-template-columns:15px 1fr;font-size:10px}.stock-mini{display:none}
+  .note-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <div>
+      <h1>资源库存</h1>
+      <p class="sub">三种资源共用一个时间视图。月历看记录变化，趋势图看整体走势；不同库存量级会自动适配。</p>
+    </div>
+    <select id="scenario">
+      <option value="mixed">极端量级差异</option>
+      <option value="balanced">较均衡库存</option>
+    </select>
+  </header>
+
+  <section class="summary" id="summary"></section>
+
+  <section class="panel">
+    <div class="panel-top">
+      <div>
+        <div class="panel-title">2026 年 8 月</div>
+        <div class="panel-desc">月历看“哪天有记录变化”，趋势看“三种资源整月走势”。</div>
+      </div>
+      <div class="segment">
+        <button class="seg-btn active" data-view="calendarView">月历</button>
+        <button class="seg-btn" data-view="trendView">趋势</button>
+      </div>
+    </div>
+
+    <div class="view active" id="calendarView">
+      <div class="legend">
+        <span><i class="swatch coin"></i>白金币</span>
+        <span><i class="swatch pass"></i>符传</span>
+        <span><i class="swatch tianji"></i>天机符传</span>
+      </div>
+      <div class="weekdays"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+      <div class="calendar" id="calendar"></div>
+</div>
+
+    <div class="view" id="trendView">
+      <div class="legend">
+        <span><i class="swatch coin"></i>白金币</span>
+        <span><i class="swatch pass"></i>符传</span>
+        <span><i class="swatch tianji"></i>天机符传</span>
+        <span><i class="sample"></i>跨缺测区间</span>
+      </div>
+
+      <div class="trend-grid">
+        <div>
+          <div class="chart-title">库存趋势</div>
+          <div class="chart-desc">三条线可直接比较涨跌方向和相对幅度；纵向位置仅用于视觉比较，不代表三种道具使用同一数量单位。</div>
+          <div class="chart-card"><svg id="trendChart" viewBox="0 0 1000 360"></svg></div>
+        </div>
+
+        <div>
+          <div class="chart-title">变化幅度</div>
+          <div class="chart-desc">柱高按各自库存规模自动调整；柱旁和 tooltip 始终显示真实变化量。跨多日的变化不会被拆成每日变化。</div>
+          <div class="chart-card"><svg id="deltaChart" viewBox="0 0 1000 280"></svg></div>
+        </div>
+      </div>
+
+      <div class="note-row" id="noteRow"></div>
+
+      <div class="footnote">
+        同一资源内部使用固定的周期起始库存作为视觉缩放基准，因此白金币六位数、符传个位数时仍能同时看清。
+        缺测日期不补零，也不对跨日变化进行日均分摊。
+      </div>
+    </div>
+  </section>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const scenarios={
+  mixed:{
+    coin:{name:"白金币",icon:"◈",cls:"coin",state:"盘点后推算",
+      days:{1:145000,2:143200,4:146800,6:141900,8:139500,11:136000,12:134900,15:131500,17:133200,20:129800,22:128400,25:124600,28:127900,31:126400}},
+    pass:{name:"符传",icon:"✦",cls:"pass",state:"实际盘点",
+      days:{2:5,5:5,8:6,11:6,14:7,18:7,23:8,27:7,31:7}},
+    tianji:{name:"天机符传",icon:"✧",cls:"tianji",state:"盘点后推算",
+      days:{3:5,10:5,16:4,18:2,24:3,30:2,31:3}}
+  },
+  balanced:{
+    coin:{name:"白金币",icon:"◈",cls:"coin",state:"盘点后推算",
+      days:{1:10000,2:9800,4:10400,6:10050,7:9600,10:9400,12:9900,15:8750,17:9210,20:8920,22:8250,25:7500,28:8500,31:9040}},
+    pass:{name:"符传",icon:"✦",cls:"pass",state:"实际盘点",
+      days:{2:60,5:62,8:65,11:66,14:71,17:73,20:75,23:80,27:82,29:84}},
+    tianji:{name:"天机符传",icon:"✧",cls:"tianji",state:"盘点后推算",
+      days:{3:14,10:15,18:9,24:10,30:9,31:11}}
+  }
+};
+let scenario="mixed";
+const $=s=>document.querySelector(s);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=n=>(n>0?"+":"")+n.toLocaleString("zh-CN");
+
+function resources(){return Object.values(scenarios[scenario])}
+function pts(r){return Object.entries(r.days).map(([d,v])=>({d:+d,v:+v}))}
+function prevDay(days,d){for(let x=d-1;x>=1;x--)if(days[x]!=null)return x;return null}
+function colorFor(cls){return cls==="coin"?css("--coin"):cls==="pass"?css("--pass"):css("--tianji")}
+function xDay(d,L,PW){return L+(d-1)*PW/30}
+
+function renderSummary(){
+  $("#summary").innerHTML=resources().map(r=>{
+    const p=pts(r),start=p[0].v,end=p[p.length-1].v,net=end-start;
+    return `<div class="res-card">
+      <div class="res-top">
+        <div class="res-name"><span class="res-icon ${r.cls}-t">${r.icon}</span>${r.name}</div>
+        <div class="res-state">${r.state}</div>
+      </div>
+      <div class="res-value">${end.toLocaleString()}</div>
+      <div class="res-foot"><span>本期净变化</span><b class="${net>=0?"up":"down"}">${fmt(net)}</b></div>
+    </div>`
+  }).join("")
+}
+
+function renderCalendar(){
+  const rs=resources();
+  let html="";
+  for(let i=0;i<6;i++)html+=`<div class="day empty"></div>`;
+  for(let d=1;d<=31;d++){
+    let rows="";
+    rs.forEach(r=>{
+      const v=r.days[d],p=prevDay(r.days,d);
+      if(v==null){
+        rows+=`<div class="rrow missing"><span class="icon ${r.cls}-t">${r.icon}</span><span class="change">—</span><span class="stock-mini"></span></div>`;
+      }else{
+        const delta=p?v-r.days[p]:null;
+        rows+=`<div class="rrow"><span class="icon ${r.cls}-t">${r.icon}</span><span class="change ${delta==null?"":delta>=0?"up":"down"}">${delta==null?"起始":fmt(delta)}</span><span class="stock-mini">${v.toLocaleString()}</span></div>`;
+      }
+    });
+    html+=`<div class="day" data-day="${d}"><div class="date">${d}</div><div class="rows">${rows}</div></div>`;
+  }
+  $("#calendar").innerHTML=html;
+
+}
+
+function renderDetail(){
+  const rs=resources();
+  const cards=rs.map(r=>{
+    const v=r.days[selectedDay],p=prevDay(r.days,selectedDay);
+    if(v==null)return `<div><div class="h">${r.name}</div><div class="v">无更新</div></div>`;
+    const delta=p?v-r.days[p]:null,gap=p?selectedDay-p:null;
+    return `<div><div class="h">${r.name}</div><div class="v">${v.toLocaleString()}</div>
+      <div class="${delta==null?"":delta>=0?"up":"down"}" style="font-size:10px;margin-top:3px">
+        ${delta==null?"本期起始":`${fmt(delta)} · 较 ${p} 日${gap>1?`（跨 ${gap} 日）`:""}`}
+      </div></div>`;
+  }).join("");
+  $("#detail").innerHTML=`<div><div class="detail-title">8 月 ${selectedDay} 日</div><div style="font-size:10px;color:var(--muted)">三种资源独立判断是否有更新。</div></div>${cards}`;
+}
+
+function showTip(e,txt){
+  const t=$("#tip");t.innerHTML=txt;t.classList.add("show");
+  let x=e.clientX+10,y=e.clientY+10;
+  if(x+t.offsetWidth>innerWidth-10)x=e.clientX-t.offsetWidth-10;
+  if(y+t.offsetHeight>innerHeight-10)y=e.clientY-t.offsetHeight-10;
+  t.style.left=x+"px";t.style.top=y+"px";
+}
+function bindTips(root){
+  root.querySelectorAll("[data-tip]").forEach(el=>{
+    el.style.cursor="pointer";
+    el.onmousemove=e=>showTip(e,el.dataset.tip);
+    el.onmouseleave=()=>$("#tip").classList.remove("show");
+  })
+}
+function seg(x1,y1,x2,y2,c,dashed=false,w=2.3){
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" ${dashed?'stroke-dasharray="7 6"':""}/>`
+}
+
+function renderTrend(){
+  const rs=resources(),W=1000,H=360,L=58,R=24,T=24,B=42,PW=W-L-R,PH=H-T-B;
+  let allRel=[];
+  const prepared=rs.map(r=>{
+    const p=pts(r),base=p[0].v;
+    const arr=p.map(x=>({...x,rel:x.v/base}));
+    allRel.push(...arr.map(x=>x.rel));
+    return {r,base,arr};
+  });
+  let min=Math.min(...allRel),max=Math.max(...allRel),pad=Math.max(.04,(max-min)*.15);min-=pad;max+=pad;
+  const y=v=>T+(max-v)/(max-min||1)*PH;
+  let s="";
+  for(let i=0;i<5;i++){
+    const yy=T+i*PH/4;
+    s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="#eee4d7"/>`;
+  }
+  [1,5,10,15,20,25,31].forEach(d=>s+=`<text x="${xDay(d,L,PW)}" y="${H-14}" text-anchor="middle" font-size="10" fill="#8d7b68">${d}</text>`);
+  prepared.forEach(({r,base,arr})=>{
+    const c=colorFor(r.cls);
+    for(let i=1;i<arr.length;i++){
+      const a=arr[i-1],b=arr[i],gap=b.d-a.d;
+      s+=seg(xDay(a.d,L,PW),y(a.rel),xDay(b.d,L,PW),y(b.rel),gap===1?c:"#b8a894",gap>1)
+    }
+    arr.forEach((p,i)=>{
+      const prev=i?arr[i-1]:null;
+      const delta=prev?p.v-prev.v:null;
+      const fromStart=(p.v/base-1)*100;
+      s+=`<circle data-tip="${r.name} · 8月${p.d}日<br>库存 ${p.v.toLocaleString()}${delta==null?"":`<br>较上次 ${fmt(delta)}`}<br>本期 ${fromStart>=0?"+":""}${fromStart.toFixed(1)}%"
+      cx="${xDay(p.d,L,PW)}" cy="${y(p.rel)}" r="5.1" fill="${c}" stroke="#fffaf3" stroke-width="2"/>`;
+    })
+  });
+  $("#trendChart").innerHTML=s;bindTips($("#trendChart"))
+}
+
+function renderDelta(){
+  const rs=resources(),W=1000,H=280,L=58,R=24,T=20,B=42,PW=W-L-R;
+  const baseline=135,amp=92;
+  let s=`<line x1="${L}" x2="${W-R}" y1="${baseline}" y2="${baseline}" stroke="#cfc0ae"/>`;
+  [1,5,10,15,20,25,31].forEach(d=>s+=`<text x="${xDay(d,L,PW)}" y="${H-13}" text-anchor="middle" font-size="10" fill="#8d7b68">${d}</text>`);
+  const offsets={coin:-7,pass:0,tianji:7};
+  rs.forEach(r=>{
+    const p=pts(r),base=p[0].v,c=colorFor(r.cls);
+    for(let i=1;i<p.length;i++){
+      const prev=p[i-1],cur=p[i],delta=cur.v-prev.v,gap=cur.d-prev.d;
+      const scaled=delta/base; // same fixed period-start scale
+      const h=Math.min(amp,Math.abs(scaled)*amp*4.2);
+      const yy=delta>=0?baseline-h:baseline;
+      s+=`<rect data-tip="${r.name} · 8月${cur.d}日<br>较上次 ${fmt(delta)}${gap>1?`<br>跨 ${gap} 日`:""}"
+        x="${xDay(cur.d,L,PW)+offsets[r.cls]-3}" y="${yy}" width="6" height="${Math.max(h,2)}" rx="3" fill="${c}" opacity=".92"/>`;
+    }
+  });
+  $("#deltaChart").innerHTML=s;bindTips($("#deltaChart"))
+}
+
+function renderNotes(){
+  $("#noteRow").innerHTML=resources().map(r=>{
+    const p=pts(r),start=p[0].v,end=p[p.length-1].v,net=end-start;
+    return `<div class="note-card"><div class="l">${r.name}</div><div class="v">${start.toLocaleString()} → ${end.toLocaleString()} <span class="${net>=0?"up":"down"}">(${fmt(net)})</span></div></div>`;
+  }).join("")
+}
+
+function renderAll(){renderSummary();renderCalendar();renderTrend();renderNotes()}
+
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("active",x===b));
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===b.dataset.view))
+});
+$("#scenario").onchange=e=>{scenario=e.target.value;renderAll()};
+renderAll();
+</script>
+</body>
+</html>

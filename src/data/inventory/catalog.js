@@ -3,15 +3,15 @@
 // 由 scripts/build-inventory-catalog.mjs 自动生成 —— 请勿手改本文件，
 // 数据更新时改上游 JSON 后重跑生成脚本。
 // 数据源（上游一图流识别数据）：
-//   items.json（58 项物品）→ ITEM_CATALOG
+//   items.json（60 项物品）→ ITEM_CATALOG
 //   operators (12).json（121 位密探）→ AGENT_CATALOG
 // 跨平台主键 = (entity_type, id)；展示名称以本目录为准。
 // ============================================================
 
-export const CATALOG_VERSION = '2026-08-16'
+export const CATALOG_VERSION = '2026-09-10'
 
 // 物品分类（按 items.json 出现顺序）
-export const ITEM_CATEGORIES = ["未分类","修为进阶材料","养成材料","命盘材料","密探突破材料","星石材料","鸟食","货币"]
+export const ITEM_CATEGORIES = ["未分类","修为进阶材料","养成材料","命盘材料","密探突破材料","星石材料","鸟食","招募道具","货币"]
 
 // 密探属性（按 operators.json 出现顺序）
 export const AGENT_PROFS = ["阳","阴","火","风","水","地","混沌"]
@@ -74,6 +74,8 @@ export const ITEM_CATALOG = [
   { id: 'mazi', name: '麻籽', category: '鸟食' },
   { id: 'sherou', name: '蛇肉', category: '鸟食' },
   { id: 'zhuyu', name: '茱萸', category: '鸟食' },
+  { id: 'fuchuan', name: '符传', category: '招募道具' },
+  { id: 'tianjifuchuan', name: '天机符传', category: '招募道具' },
   { id: 'baijinbi', name: '白金币', category: '货币' },
 ]
 

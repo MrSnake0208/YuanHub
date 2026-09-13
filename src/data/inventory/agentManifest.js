@@ -13,6 +13,22 @@ export function visibleAgentEntries(entries) {
   })
 }
 
+export function normalizeOperatorCatalog(entries) {
+  return (Array.isArray(entries) ? entries : []).map(function (entry) {
+    const profs = Array.isArray(entry && entry.prof) ? entry.prof : [entry && entry.prof].filter(Boolean)
+    const rawSubProfs = entry && (entry.sub_prof || entry.subProf)
+    const subProfs = Array.isArray(rawSubProfs) ? rawSubProfs : [rawSubProfs].filter(Boolean)
+    return {
+      id: entry.id,
+      name: entry.name,
+      rarity: Number(entry.rarity),
+      prof: profs[0] || '',
+      subProf: subProfs[0] || '',
+      games: Array.isArray(entry.games) ? entry.games.slice() : []
+    }
+  })
+}
+
 // The order shown by the in-game agent inventory. Names missing from this list
 // have not been verified yet and are kept together at the end of the sort.
 export const AGENT_BACKPACK_ORDER = [

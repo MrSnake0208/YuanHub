@@ -17,6 +17,27 @@
 
           <div class="dialog-body">
             <p class="dialog-msg">{{ state.message }}</p>
+            <div v-if="state.mode === 'choice'" class="dialog-choices">
+              <button
+                v-for="(choice, index) in state.choices"
+                :key="choice.value"
+                :ref="index === 0 ? setFirstChoice : undefined"
+                type="button"
+                class="dialog-choice"
+                :class="'is-' + (choice.tone || 'secondary')"
+                @click="onChoice(choice.value)"
+              >
+                <span class="dialog-choice-copy">
+                  <strong>{{ choice.label }}</strong>
+                  <small v-if="choice.description">{{ choice.description }}</small>
+                </span>
+                <ChevronRight :size="17" aria-hidden="true" />
+              </button>
+            </div>
+            <label v-if="state.mode === 'choice' && state.checkboxLabel" class="dialog-check">
+              <input v-model="state.checkboxChecked" type="checkbox" />
+              <span>{{ state.checkboxLabel }}</span>
+            </label>
             <label v-if="state.mode === 'prompt'" class="dialog-field">
               <span v-if="state.inputLabel" class="dialog-field-label">{{ state.inputLabel }}</span>
               <input
@@ -34,7 +55,7 @@
             </label>
           </div>
 
-          <div class="dialog-foot">
+          <div v-if="state.mode !== 'choice'" class="dialog-foot">
             <button v-if="state.mode !== 'alert'" type="button" class="dlg-btn ghost" @click="onCancel">
               {{ state.cancelText }}
             </button>
@@ -57,12 +78,13 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { X, Info, AlertTriangle, CheckCircle2 } from '@lucide/vue'
+import { X, Info, AlertTriangle, CheckCircle2, ChevronRight } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
 
 const state = dialog._state
 const inputEl = ref(null)
 const confirmEl = ref(null)
+const firstChoiceEl = ref(null)
 
 const ICONS = { info: Info, danger: AlertTriangle, success: CheckCircle2 }
 const icon = computed(function () {
@@ -72,6 +94,7 @@ const icon = computed(function () {
 const defaultTitle = computed(function () {
   if (state.mode === 'alert') return '提示'
   if (state.mode === 'confirm') return '请确认'
+  if (state.mode === 'choice') return '请选择'
   return '请输入'
 })
 const confirmDisabled = computed(function () {
@@ -83,12 +106,19 @@ function onConfirm() {
   if (confirmDisabled.value) return
   dialog._confirm()
 }
+function onChoice(value) {
+  dialog._choose(value)
+}
 function onCancel() {
   dialog._cancel()
 }
 function onBackdrop() {
-  // 点遮罩关闭（alert / confirm / prompt 共用，按模式结算结果）
+  // 点遮罩关闭（alert / confirm / choice / prompt 共用，按模式结算结果）
   dialog._cancel()
+}
+
+function setFirstChoice(element) {
+  firstChoiceEl.value = element
 }
 
 // 打开时聚焦：prompt 聚焦输入框并全选；其余聚焦确认按钮，便于回车/空格操作
@@ -97,7 +127,9 @@ watch(
   function (visible) {
     if (!visible) return
     nextTick(function () {
-      if (state.mode === 'prompt' && inputEl.value) {
+      if (state.mode === 'choice' && firstChoiceEl.value) {
+        firstChoiceEl.value.focus()
+      } else if (state.mode === 'prompt' && inputEl.value) {
         inputEl.value.focus()
         inputEl.value.select()
       } else if (confirmEl.value) {
@@ -186,7 +218,7 @@ watch(
   display: grid;
   place-items: center;
   border-radius: 8px;
-  transition: all .3s;
+  transition: color .2s ease, background-color .2s ease;
 }
 .dialog-close:hover { color: var(--ink); background: var(--paper) }
 
@@ -200,6 +232,53 @@ watch(
   font-weight: 600;
   white-space: pre-line;
   word-break: break-word;
+}
+.dialog-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.dialog-choice {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 13px 10px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+  color: var(--ink);
+  text-align: left;
+  font: 800 13px/1.35 var(--font-b);
+  cursor: pointer;
+  transition: transform .16s var(--ease), border-color .2s ease, background-color .2s ease, color .2s ease;
+  touch-action: manipulation;
+}
+.dialog-choice:active { transform: scale(.98); transition-duration: 0s; }
+.dialog-choice:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.dialog-choice.is-primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.dialog-choice.is-quiet { background: var(--paper); color: var(--ink-60); }
+.dialog-choice-copy { display: grid; min-width: 0; gap: 2px; }
+.dialog-choice-copy strong { font-weight: 900; }
+.dialog-choice-copy small { color: inherit; font-size: 11px; font-weight: 700; opacity: .72; }
+.dialog-check {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dialog-check input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent); }
+.dialog-check input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .dialog-choice:hover { border-color: var(--accent); background: var(--surface); }
+  .dialog-choice.is-primary:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
 }
 .dialog-field {
   display: block;
@@ -222,7 +301,7 @@ watch(
   color: var(--ink);
   background: var(--paper);
   outline: none;
-  transition: all .3s;
+  transition: border-color .2s ease, background-color .2s ease;
 }
 .dialog-field input:focus { border-color: var(--accent); background: var(--surface) }
 
@@ -244,14 +323,23 @@ watch(
   font-weight: 800;
   font-family: var(--font-b);
   cursor: pointer;
-  transition: all .3s var(--ease);
+  transition: transform .16s var(--ease), background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), opacity .2s ease;
   border: 1.5px solid transparent;
 }
 .dlg-btn:disabled { opacity: .45; cursor: not-allowed }
+.dlg-btn:active:not(:disabled) { transform: scale(.98); transition-duration: 0s; }
 .dlg-btn.ghost { background: var(--paper); border-color: var(--line); color: var(--ink) }
 .dlg-btn.ghost:hover:not(:disabled) { background: var(--cream); border-color: var(--ink) }
 .dlg-btn.primary { background: var(--tea); color: var(--cream) }
 .dlg-btn.primary:hover:not(:disabled) { background: var(--accent); color: #fff }
 .dlg-btn.primary.danger { background: var(--rouge) }
 .dlg-btn.primary.danger:hover:not(:disabled) { background: var(--rouge); filter: brightness(.94) }
+@media (prefers-reduced-motion: reduce) {
+  .dialog-enter-active,
+  .dialog-leave-active,
+  .dialog-enter-active .dialog,
+  .dialog-leave-active .dialog,
+  .dialog-choice,
+  .dlg-btn { transition: none; }
+}
 </style>
