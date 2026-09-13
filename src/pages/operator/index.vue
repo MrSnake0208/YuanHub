@@ -2303,7 +2303,9 @@
               :is-logged-in="auth.isLoggedIn"
               :refresh-key="subjectiveRefreshKey"
               :active="activeTab === 'tracking'"
-              :graduate-operator="graduateOperatorFromTracker"
+              :annotation-revisions="annotationRevisions"
+              @annotation-updated="applyAnnotationItem"
+              @refresh-annotations="loadOperatorAnnotations"
               :is-remark-editing="row => cardHasDraft(trackerRemarkEntry(row))"
               @refresh-operators="reloadCurrent(true)"
             >
@@ -3201,6 +3203,8 @@ let currentLoadSeq = 0;
 let currentLoadedKey = "";
 let favoriteLoadedAccount = "";
 let accountEventRefreshTimer = null;
+let subjectiveEventRefreshTimer = null;
+const subjectiveEventKinds = new Set();
 let unsubscribeAccountEvents = null;
 let scanFocusSeq = 0;
 let finishPendingScanScroll = null;
@@ -6029,12 +6033,7 @@ async function setOperatorStatus(entry, value) {
   }
 }
 
-async function graduateOperatorFromTracker(entry) {
-  const current = currentEntries.value.find(function (item) {
-    return item && entry && item.id === entry.id;
-  }) || entry;
-  return setOperatorStatus(current, "graduated");
-}
+
 
 function setOperatorStatusAndClose(entry, value, event) {
   setOperatorStatus(entry, value);
@@ -7639,9 +7638,27 @@ function flashScanOperator(operatorId, effect) {
   });
 }
 
+function scheduleSubjectiveRefresh(kind) {
+  subjectiveEventKinds.add(kind);
+  if (subjectiveEventRefreshTimer != null) return;
+  subjectiveEventRefreshTimer = setTimeout(function () {
+    subjectiveEventRefreshTimer = null;
+    if (subjectiveEventKinds.has("operator_annotation")) loadOperatorAnnotations();
+    if (subjectiveEventKinds.has("operator_favorites")) loadAgentFavorites();
+    subjectiveEventKinds.clear();
+  }, 180);
+}
+
 function handleAccountEvent(message) {
   if (!message) return;
+  const eventAccount = message.data?.account_id || message.data?.accountId;
+  if (eventAccount && eventAccount !== accountId.value) return;
+  if (message.event === "operator_annotation") { scheduleSubjectiveRefresh(message.event); return; }
+  if (message.event === "operator_favorites") { scheduleSubjectiveRefresh(message.event); return; }
+
   if (message.event === "account_stream_open") {
+    loadOperatorAnnotations();
+    loadAgentFavorites();
     scheduleEventRefresh();
     return;
   }
@@ -7689,6 +7706,9 @@ function handleAccountEvent(message) {
 function stopAccountEventSubscription() {
   if (accountEventRefreshTimer != null) clearTimeout(accountEventRefreshTimer);
   accountEventRefreshTimer = null;
+  if (subjectiveEventRefreshTimer != null) clearTimeout(subjectiveEventRefreshTimer);
+  subjectiveEventRefreshTimer = null;
+  subjectiveEventKinds.clear();
   if (unsubscribeAccountEvents) unsubscribeAccountEvents();
   unsubscribeAccountEvents = null;
   scanFocusSeq += 1;
