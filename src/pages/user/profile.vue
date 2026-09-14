@@ -110,7 +110,7 @@
                 </div>
                 <p>
                   把游戏内采集到的库存与密探信息安全上传到
-                  YuanHub，不读取你已经保存在站内的数据。
+                  YuanHub，并读取密探养成状态，支持仅扫描和更新“养成中”的密探。
                 </p>
                 <div
                   class="app-capabilities"
@@ -129,7 +129,7 @@
                     ><ShieldCheck
                       :size="15"
                       aria-hidden="true"
-                    />不授予读取权限</span
+                    />读取密探养成状态</span
                   >
                 </div>
               </div>
@@ -265,7 +265,7 @@
                 <span class="step-mark">2</span>
                 <div>
                   <h3>确认 MaaYuan 可以做什么</h3>
-                  <p>系统已经按当前实际用途配置为最小权限。</p>
+                  <p>默认包含上传权限与密探读取权限，用于按养成状态筛选。</p>
                 </div>
               </div>
 
@@ -281,6 +281,9 @@
                       aria-hidden="true"
                     />上传自动采集到的密探数据
                   </p>
+                  <p>
+                    <Check :size="17" aria-hidden="true" />读取当前密探数据与养成状态
+                  </p>
                 </div>
                 <div class="grant-column deny">
                   <h4>不会允许</h4>
@@ -288,7 +291,7 @@
                     <X :size="17" aria-hidden="true" />读取 YuanHub 中已有的库存
                   </p>
                   <p>
-                    <X :size="17" aria-hidden="true" />读取或导出已有密探数据
+                    <X :size="17" aria-hidden="true" />导出完整密探备份
                   </p>
                   <p><X :size="17" aria-hidden="true" />访问其他子账号</p>
                 </div>
@@ -296,7 +299,7 @@
 
               <p class="stable-token-note">
                 <KeyRound :size="17" aria-hidden="true" />以后 MaaYuan
-                新增权限时，你只需在这里确认更新，已填写的连接码不会变化。
+                新增权限时，你只需在这里确认更新，已填写的连接码不会变化。旧连接码如需使用“仅扫描养成中”，请在下方点击“让它支持 MaaYuan”补齐权限。
               </p>
               <div class="panel-actions">
                 <button
@@ -740,7 +743,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "inventory:read": "查看当前库存",
   "inventory:write": "导入并更新库存",
   "inventory:export": "下载完整库存备份",
-  "operator:read": "查看当前密探养成",
+  "operator:read": "查看当前密探数据与养成状态",
   "operator:write": "导入并更新密探数据",
   "operator:export": "下载完整密探备份",
   "operator:scan:write": "上传密探自动采集结果",
@@ -986,7 +989,7 @@ async function upgradeForMaaYuan(tokenItem) {
     !confirm(
       "将为“" +
         label +
-        "”补充 MaaYuan 所需的上传权限。连接码不会变化，原有权限也会保留。是否继续？",
+        "”补齐 MaaYuan 的库存上传、密探采集上传和密探读取权限，以支持仅扫描养成中的密探。连接码不会变化，原有权限也会保留。是否继续？",
     )
   )
     return;

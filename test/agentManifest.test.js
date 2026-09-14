@@ -6,6 +6,7 @@ import {
   agentReleaseOrder,
   buildAgentGroups,
   filterAgentEntries,
+  normalizeOperatorCatalog,
   sortAgentEntries,
   visibleAgentEntries
 } from '../src/data/inventory/agentManifest.js'
@@ -28,6 +29,28 @@ test('暂不展示指定的限定变体', function () {
     { id: 'char_085_shizimiaosp', name: '史子眇·赴烛' },
     { id: 'char_013_chendeng', name: '陈登' }
   ]).map(function (entry) { return entry.name }), ['陈登'])
+})
+
+test('服务端公共目录可直接生成包含新增密探的心纸清单', function () {
+  const catalog = normalizeOperatorCatalog([
+    {
+      id: 'char_126_new',
+      name: '新密探',
+      rarity: 5,
+      prof: ['阳'],
+      sub_prof: ['神纪'],
+      games: ['如鸢']
+    }
+  ])
+
+  assert.deepEqual(catalog, [{
+    id: 'char_126_new',
+    name: '新密探',
+    rarity: 5,
+    prof: '阳',
+    subProf: '神纪',
+    games: ['如鸢']
+  }])
 })
 
 test('最新排序按编号降序且非法 id 排末尾', function () {
