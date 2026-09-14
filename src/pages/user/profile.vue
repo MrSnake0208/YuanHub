@@ -125,6 +125,12 @@
                       aria-hidden="true"
                     />上传密探采集结果</span
                   >
+                  <span
+                    ><Sparkles
+                      :size="15"
+                      aria-hidden="true"
+                    />上传星石背包临时采集结果</span
+                  >
                   <span class="no-read"
                     ><ShieldCheck
                       :size="15"
@@ -283,6 +289,9 @@
                   </p>
                   <p>
                     <Check :size="17" aria-hidden="true" />读取当前密探数据与养成状态
+                  </p>
+                  <p>
+                    <Check :size="17" aria-hidden="true" />上传星石背包临时采集结果
                   </p>
                 </div>
                 <div class="grant-column deny">
@@ -637,6 +646,7 @@ import {
   PackageOpen,
   ScanLine,
   ShieldCheck,
+  Sparkles,
   X,
 } from "@lucide/vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -734,6 +744,13 @@ const permissionGroups = computed(function () {
         return permission.scope.startsWith("operator:");
       }),
     },
+    {
+      key: "star",
+      title: "星石采集",
+      items: permissions.value.filter(function (permission) {
+        return permission.scope.startsWith("star:");
+      }),
+    },
   ].filter(function (group) {
     return group.items.length;
   });
@@ -747,6 +764,7 @@ const FRIENDLY_PERMISSION_TITLES = {
   "operator:write": "导入并更新密探数据",
   "operator:export": "下载完整密探备份",
   "operator:scan:write": "上传密探自动采集结果",
+  "star:capture:write": "上传星石背包临时采集结果",
 };
 
 function friendlyPermissionTitle(scope) {
@@ -989,7 +1007,7 @@ async function upgradeForMaaYuan(tokenItem) {
     !confirm(
       "将为“" +
         label +
-        "”补齐 MaaYuan 的库存上传、密探采集上传和密探读取权限，以支持仅扫描养成中的密探。连接码不会变化，原有权限也会保留。是否继续？",
+        "”补齐 MaaYuan 的库存上传、密探采集上传、密探读取和星石截图上传权限。连接码不会变化，原有权限也会保留。是否继续？",
     )
   )
     return;
