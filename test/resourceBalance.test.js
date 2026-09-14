@@ -7,7 +7,7 @@ const build = records => buildResourceBalance(records, '2026-08-01', '2026-08-31
 test('draw resource colors keep the report legend mapping stable', () => {
   assert.deepEqual(DRAW_RESOURCES.map(resource => [resource.id, resource.color]), [
     ['baijinbi', '#719eaf'],
-    ['fuchuan', '#bd8fa5'],
+    ['fuchuan', '#785454'],
     ['tianjifuchuan', '#d5a064']
   ])
 })
