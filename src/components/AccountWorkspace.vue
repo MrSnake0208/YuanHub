@@ -1,5 +1,5 @@
 <template>
-  <div class="account-workspace" :class="{ 'split-workspace': split }" v-reveal>
+  <div class="account-workspace" :class="{ 'split-workspace': split, 'soft-dropdown-workspace': softDropdown }" v-reveal>
     <div v-if="split" class="workspace-summary">
       <div class="workspace-status" aria-live="polite">
         <slot name="status" />
@@ -202,6 +202,7 @@ function submitCreate() {
 <style scoped>
 /* —— 统一子账号「数据归属」工作区（库存 / 密探共用一套样式） —— */
 .account-workspace { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden }
+.account-workspace.soft-dropdown-workspace { overflow: visible }
 
 .account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(410px, 520px) auto; align-items: center; gap: 12px; padding: 22px 24px }
 .account-bar.with-actions { grid-template-columns: minmax(410px, 1fr) auto auto }
