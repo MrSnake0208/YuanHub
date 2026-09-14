@@ -63,9 +63,9 @@ test('资源道具包含独立的抽卡资源二级分类', function () {
   const resourceSection = sections[0]
 
   assert.equal(resourceSection.subsectionLayout, 'shelves')
-  assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['鸟食礼包', '抽卡资源', '命盘&星石', '密探经验'])
-  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸'])
-  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), ['符传', '天机符传', '白金币'])
+  assert.deepEqual(resourceSection.subsections.map(function (section) { return section.name }), ['抽卡资源', '鸟食礼包', '命盘&星石', '密探经验'])
+  assert.deepEqual(resourceSection.subsections[0].entries.map(function (item) { return item.name }), ['符传', '天机符传', '白金币'])
+  assert.deepEqual(resourceSection.subsections[1].entries.map(function (item) { return item.name }), ['鸡炙', '麻籽', '蛇肉', '茱萸'])
   assert.deepEqual(resourceSection.subsections[2].entries.map(function (item) { return item.name }), [
     '功过格', '善恶簿', '骨算筹', '金算筹', '解殃瓶', '解谪瓶', '解注瓶'
   ])
