@@ -56,15 +56,18 @@ export const GAME_BAG_ITEM_IDS = Object.freeze([
   'mazi',
   'sherou',
   'zhuyu',
+  'fuchuan',
+  'tianjifuchuan',
   'baijinbi'
 ])
 
-export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze(['zhuangjinboli', 'baijinbi'])
+export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze(['zhuangjinboli'])
 
 const GAME_BAG_POSITION = new Map(GAME_BAG_ITEM_IDS.map(function (id, index) { return [id, index] }))
-const STOCK_EDIT_LEADING_IDS = ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi']
+const STOCK_EDIT_LEADING_IDS = ['jizhi', 'mazi', 'sherou', 'zhuyu', 'fuchuan', 'tianjifuchuan', 'baijinbi']
 const RESOURCE_SUBCATEGORIES = Object.freeze([
-  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi'] },
+  { id: 'draw-resources', name: '抽卡资源', itemIds: ['fuchuan', 'tianjifuchuan', 'baijinbi'] },
+  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: ['jizhi', 'mazi', 'sherou', 'zhuyu'] },
   { id: 'divination-stone', name: '命盘&星石', itemIds: ['gongguoge', 'shanebu', 'gusuanchou', 'jinsuanchou', 'jieyangping', 'jiezheping', 'jiezhuping'] },
   { id: 'agent-experience', name: '密探经验', itemIds: ['liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan'] }
 ])
@@ -73,7 +76,7 @@ const CULTIVATION_SUBGROUPS = Object.freeze([
   { id: 'earth-water', name: '地&水', itemIds: ['mulanzhuilu', 'bawanglei', 'lingshanquan', 'baimozhijiu', 'qingjiu', 'zhuojiu'] },
   { id: 'yin-yang', name: '阴&阳', itemIds: ['xinghanjing', 'shuijing', 'baoshijing', 'liujinjing', 'liubojing', 'tongjing'] }
 ])
-const AGENT_EXPERIENCE_IDS = new Set(RESOURCE_SUBCATEGORIES[2].itemIds)
+const AGENT_EXPERIENCE_IDS = new Set(RESOURCE_SUBCATEGORIES[3].itemIds)
 
 export function sortItemsByGameOrder(entries) {
   return entries

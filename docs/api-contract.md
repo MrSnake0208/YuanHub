@@ -570,7 +570,14 @@ preview 请求：
 }
 ```
 
-`dimension` 只允许 `level`、`elite`、`huaji`。preview 返回：
+`dimension` 只允许 `level`、`elite`、`huaji`。
+
+等级提升勾选“已突破”时，preview 与 execute 请求均传入
+`skip_breakthrough_materials: true`（省略时默认 `false`）。后端只计算并扣除经验道具，
+不计突破材料及突破铜钱提示；突破材料不足不阻止执行。该选项绑定预览令牌和幂等请求，
+切换后必须重新预览。该字段仅影响 `level` 维度。
+
+preview 返回：
 
 ```json
 {

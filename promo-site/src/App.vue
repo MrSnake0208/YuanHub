@@ -45,7 +45,7 @@
             <div class="demo-browser hero-browser">
               <div class="browser-bar">
                 <span class="browser-dots"><i></i><i></i><i></i></span>
-                <span class="browser-title">YuanHub · 我的密探</span>
+                <span class="browser-title">YuanHub · 密探名册</span>
                 <span class="demo-badge">自动演示</span>
               </div>
               <div class="browser-body hero-demo-body">

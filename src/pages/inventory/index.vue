@@ -1126,6 +1126,29 @@
               </div>
             </section>
 
+            <header v-if="acquiredLoading || (reportBook === 'base' && !periodHasData)" class="report-book-fallback">
+              <div><span>周期获得账簿</span><h2>{{ reportBook === 'resources' ? '抽卡资源收支' : '据点收获统计' }}</h2></div>
+              <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
+              <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
+              <button type="button" aria-label="据点收获统计账簿" :aria-pressed="reportBook === 'base'" :class="{ on: reportBook === 'base' }" @click="reportBook = 'base'"><span class="report-book-label-full">据点收获统计</span><span class="report-book-label-compact" aria-hidden="true">据点收获</span></button>
+            </div>
+            </header>
+            <ResourceBalanceReport
+              v-if="reportBook === 'resources' && !acquiredLoading"
+              :records="acquiredAllRecords"
+              :from="resourceReportRange.from"
+              :to="resourceReportRange.to"
+              :error="acquiredError || acquiredRecordsError"
+              :truncated="acquiredRecordsTruncated"
+            >
+              <template #actions>
+                <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
+              <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
+              <button type="button" aria-label="据点收获统计账簿" :aria-pressed="reportBook === 'base'" :class="{ on: reportBook === 'base' }" @click="reportBook = 'base'"><span class="report-book-label-full">据点收获统计</span><span class="report-book-label-compact" aria-hidden="true">据点收获</span></button>
+            </div>
+              </template>
+            </ResourceBalanceReport>
+            <template v-if="reportBook === 'base' || acquiredLoading">
             <div
               v-if="acquiredLoading"
               class="state acquired-loading"
@@ -1161,7 +1184,14 @@
                 :favorite-loading="favoriteLoading"
                 :favorite-error="favoriteError"
                 v-reveal
-              />
+              >
+                <template #actions>
+                  <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
+              <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
+              <button type="button" aria-label="据点收获统计账簿" :aria-pressed="reportBook === 'base'" :class="{ on: reportBook === 'base' }" @click="reportBook = 'base'"><span class="report-book-label-full">据点收获统计</span><span class="report-book-label-compact" aria-hidden="true">据点收获</span></button>
+            </div>
+                </template>
+              </AcquiredPeriodReport>
 
               <div
                 class="type-switch acquired-type-switch"
@@ -1569,6 +1599,7 @@
                 </section>
               </template>
             </template>
+            </template>
           </div>
 
           <!-- 导入记录 -->
@@ -1715,6 +1746,7 @@
 </template>
 
 <script setup>
+import { usePersistedTab } from "../../utils/persistedTab.js";
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import {
   Archive,
@@ -1741,6 +1773,7 @@ import {
   X,
 } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -1788,6 +1821,7 @@ import {
   buildAgentGroups,
   filterAgentEntries,
   HIDDEN_AGENT_IDS,
+  normalizeOperatorCatalog,
   sortAgentEntries,
   visibleAgentEntries,
 } from "../../data/inventory/agentManifest.js";
@@ -1807,8 +1841,19 @@ import {
   staminaCostOf,
   validateInventoryExchangeDocument,
 } from "../../data/inventory/exchange.js";
+import {
+  addCalendarDays,
+  businessDate,
+  businessDayStartIso,
+  BUSINESS_TIMEZONE,
+  nextBusinessDayStartIso,
+} from "../../utils/businessDay.js";
 
-const activeTab = ref("manifest");
+const activeTab = usePersistedTab(
+  "inventory-tabs",
+  "manifest",
+  ["manifest", "acquired", "records"],
+);
 const manifestPanel = ref(null);
 const entityType = ref("item");
 const manifestSearch = ref("");
@@ -1819,7 +1864,7 @@ const agentStatusFilters = ref([]);
 const agentRarityFilters = ref([]);
 const agentProfFilters = ref([]);
 const agentSubProfFilters = ref([]);
-const agentGameScopes = ref(new Map());
+const operatorCatalog = ref(AGENT_CATALOG);
 const agentGroupBy = ref("none");
 const agentSort = ref("latest");
 const agentSortDirection = ref("desc");
@@ -1866,11 +1911,13 @@ const AGENT_STATUS_OPTIONS = [
   { id: "missing", label: "无库存" },
 ];
 const AGENT_RARITIES = [5, 4, 3];
-const AGENT_RARITY_BY_ID = new Map(
-  AGENT_CATALOG.map(function (agent) {
-    return [agent.id, Number(agent.rarity)];
-  }),
-);
+const agentRarityById = computed(function () {
+  return new Map(
+    operatorCatalog.value.map(function (agent) {
+      return [agent.id, Number(agent.rarity)];
+    }),
+  );
+});
 const favoriteAgentIds = ref(new Set());
 const favoriteBusyIds = ref(new Set());
 const favoriteLoading = ref(false);
@@ -1886,10 +1933,12 @@ const catalog = ref({ entities: [] });
 const currentEntries = ref([]);
 const acquiredEntries = ref([]);
 const acquiredEntityType = ref("all");
-const rangeFrom = ref(localDate(new Date(Date.now() - 29 * 86400000)));
-const rangeTo = ref(localDate(new Date()));
+const rangeFrom = ref(addCalendarDays(businessDate(new Date()), -29));
+const rangeTo = ref(businessDate(new Date()));
 const rangePreset = ref("30d");
 const acquiredView = ref("overview");
+const reportBook = ref("resources");
+const resourceReportRange = ref({ from: rangeFrom.value, to: rangeTo.value });
 const acquiredSearch = ref("");
 const acquiredSource = ref("all");
 const acquiredSort = ref("count");
@@ -1983,7 +2032,10 @@ function setTab(t) {
   }
   activeTab.value = t;
   if (t === "manifest" && currentEntries.value.length === 0) reloadCurrent();
-  if (t === "manifest" && entityType.value === "agent") loadAgentFavorites();
+  if (t === "manifest" && entityType.value === "agent") {
+    loadAgentCatalog();
+    loadAgentFavorites();
+  }
   if (t === "acquired" && appliedAcquiredKey.value !== currentAcquiredKey.value)
     loadAcquired();
   if (t === "records") loadRecords(true);
@@ -1996,7 +2048,10 @@ function setEntityType(t) {
   currentFullBaselineAt.value = null;
   error.value = "";
   reloadCurrent();
-  if (t === "agent") loadAgentFavorites();
+  if (t === "agent") {
+    loadAgentCatalog();
+    loadAgentFavorites();
+  }
 }
 
 function setAcquiredEntityType(t) {
@@ -2260,7 +2315,7 @@ async function onDeleteAccount(acc) {
   }
 }
 
-// ISO 日期（本地时区 YYYY-MM-DD），供 <input type=date> 与后端 [from,to) 区间
+// 展示用日期（输入框仍使用 YYYY-MM-DD）；统计区间的实际边界由北京时间 05:00 生成。
 function localDate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -2301,7 +2356,7 @@ function markCustomRange() {
 }
 
 function applyRangePreset(id) {
-  const today = inputDate(localDate(new Date()));
+  const today = inputDate(businessDate(new Date()));
   let from = today;
   let to = today;
   if (id === "7d") from = addLocalDays(today, -6);
@@ -2366,7 +2421,8 @@ function monogram(e) {
 
 function nameOf(id, name, requestedType) {
   const type = requestedType || entityType.value;
-  const local = LOCAL_NAME[type] ? LOCAL_NAME[type].get(id) : null;
+  const local =
+    type === "agent" ? agentNameById.value.get(id) : LOCAL_NAME.item.get(id);
   if (local) return local;
   if (name) return name;
   if (!catalog.value.entities.length) return id;
@@ -2424,13 +2480,11 @@ function applyAcquiredEntityType() {
 }
 
 const visibleItemCatalog = visibleInventoryItems(ITEM_CATALOG);
-const visibleAgentCatalog = visibleAgentEntries(AGENT_CATALOG);
+const visibleAgentCatalog = computed(function () {
+  return visibleAgentEntries(operatorCatalog.value);
+});
 const agentCatalogEntries = computed(function () {
-  const scopes = agentGameScopes.value;
-  return visibleAgentCatalog.map(function (entry) {
-    const games = scopes.get(entry.id) || entry.games || [];
-    return Object.assign({}, entry, { games: games });
-  });
+  return visibleAgentCatalog.value;
 });
 const agentGameCatalogCount = computed(function () {
   return agentCatalogEntries.value.filter(function (entry) {
@@ -2458,16 +2512,17 @@ const stockCatalogSubsections = new Map(
     }),
 );
 const itemCatalogCount = visibleItemCatalog.length;
-const agentCatalogCount = visibleAgentCatalog.length;
-const agentSubProfs = Array.from(
-  new Set(
-    visibleAgentCatalog
-      .map(function (entry) {
-        return entry.subProf;
-      })
-      .filter(Boolean),
-  ),
-);
+const agentSubProfs = computed(function () {
+  return Array.from(
+    new Set(
+      visibleAgentCatalog.value
+        .map(function (entry) {
+          return entry.subProf;
+        })
+        .filter(Boolean),
+    ),
+  );
+});
 const agentFacetCount = computed(function () {
   return (
     agentStatusFilters.value.length +
@@ -2486,12 +2541,14 @@ const LOCAL_NAME = {
       return [e.id, e.name];
     }),
   ),
-  agent: new Map(
-    visibleAgentCatalog.map(function (e) {
+};
+const agentNameById = computed(function () {
+  return new Map(
+    visibleAgentCatalog.value.map(function (e) {
       return [e.id, e.name];
     }),
-  ),
-};
+  );
+});
 const LOCAL_ITEM = new Map(
   ITEM_CATALOG.map(function (e) {
     return [e.id, e];
@@ -2786,7 +2843,7 @@ const acquiredAgentRecords = computed(function () {
   });
 });
 const favoriteAgentsForStats = computed(function () {
-  return AGENT_CATALOG.filter(function (agent) {
+  return operatorCatalog.value.filter(function (agent) {
     return favoriteAgentIds.value.has(agent.id);
   });
 });
@@ -2889,10 +2946,10 @@ function isLowerRarityAgentReward(entry) {
   if (
     !entry ||
     entry.entity_type !== "agent" ||
-    !AGENT_RARITY_BY_ID.has(entry.id)
+    !agentRarityById.value.has(entry.id)
   )
     return false;
-  return AGENT_RARITY_BY_ID.get(entry.id) < 5;
+  return agentRarityById.value.get(entry.id) < 5;
 }
 
 const displayedAcquiredEntries = computed(function () {
@@ -3410,19 +3467,11 @@ function handleInventoryAccountEvent(message) {
 }
 
 function dayStartIso(dStr) {
-  const p = String(dStr || "")
-    .split("-")
-    .map(Number);
-  if (p.length !== 3 || p.some(isNaN)) return null;
-  return new Date(p[0], p[1] - 1, p[2]).toISOString();
+  return businessDayStartIso(dStr);
 }
 
 function nextDayStartIso(dStr) {
-  const p = String(dStr || "")
-    .split("-")
-    .map(Number);
-  if (p.length !== 3 || p.some(isNaN)) return null;
-  return new Date(p[0], p[1] - 1, p[2] + 1).toISOString();
+  return nextBusinessDayStartIso(dStr);
 }
 
 let acquiredSeq = 0;
@@ -3477,6 +3526,7 @@ function fmtRecordDay(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value || "";
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: BUSINESS_TIMEZONE,
     month: "long",
     day: "numeric",
     weekday: "short",
@@ -3487,6 +3537,7 @@ function fmtRecordClock(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: BUSINESS_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -3648,13 +3699,14 @@ async function loadAcquired() {
       );
     }
     applyAcquiredEntityType();
+    resourceReportRange.value = { from: localDate(fromDate), to: localDate(toDate) };
     appliedAcquiredKey.value = queryKey;
     if (
       itemTotalsResult.status === "rejected" &&
       agentTotalsResult.status === "rejected" &&
       recordsResult.status === "rejected"
     ) {
-      acquiredError.value = "本期总账和奖励流水均加载失败，请稍后重试";
+      acquiredError.value = "据点收获统计和奖励流水均加载失败，请稍后重试";
     }
   } finally {
     if (seq === acquiredSeq) acquiredLoading.value = false;
@@ -3746,7 +3798,7 @@ function fmtTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString("zh-CN", { hour12: false });
+  return d.toLocaleString("zh-CN", { hour12: false, timeZone: BUSINESS_TIMEZONE });
 }
 
 function entrySummary(entries, recordType) {
@@ -3890,27 +3942,14 @@ async function doExport() {
   }
 }
 
-async function loadAgentGameScopes() {
+async function loadAgentCatalog() {
   try {
     const data = await getOperatorCatalog();
     const operators =
       data && Array.isArray(data.operators) ? data.operators : [];
-    const nextScopes = new Map();
-    operators.forEach(function (operator) {
-      const id =
-        operator &&
-        (operator.operatorId || operator.operator_id || operator.id);
-      const rawGames = operator && (operator.games || operator.games_list);
-      const games = Array.isArray(rawGames)
-        ? rawGames.filter(function (game) {
-            return game === "代号鸢" || game === "如鸢";
-          })
-        : [];
-      if (id && games.length) nextScopes.set(id, games);
-    });
-    agentGameScopes.value = nextScopes;
+    operatorCatalog.value = normalizeOperatorCatalog(operators);
   } catch (_error) {
-    agentGameScopes.value = new Map();
+    // 保留最近一次成功目录；首次加载失败时自然使用内置目录兜底。
   }
 }
 
@@ -3924,10 +3963,11 @@ onMounted(async function () {
         catalog.value = { entities: [] };
       }
     })(),
-    loadAgentGameScopes(),
+    loadAgentCatalog(),
   ]);
   await loadAccounts();
   reloadCurrent();
+  if (activeTab.value !== "manifest") setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(
     handleInventoryAccountEvent,
   );
@@ -7971,5 +8011,24 @@ onBeforeUnmount(function () {
     width: 100%;
     transform: none;
   }
+}
+
+.report-book-switch.acquired-type-switch { display: flex; flex-wrap: wrap; justify-content: flex-end; margin-top: 0; gap: 8px }
+.report-book-switch.acquired-type-switch > button { flex: 0 1 auto; min-height: 44px; height: auto; white-space: nowrap }
+.report-book-label-compact { display: none }
+.report-book-fallback { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 16px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+.report-book-fallback > div > span { color: var(--accent-strong); font-size: 12px; font-weight: 800 }
+.report-book-fallback h2 { font-family: var(--font-s); font-size: 20px; color: var(--ink) }
+@media (max-width: 760px) {
+  .report-book-switch.acquired-type-switch { width: fit-content; max-width: 100%; flex: 0 0 auto; flex-wrap: nowrap; gap: 2px; margin-left: auto; padding: 3px }
+  .report-book-switch.acquired-type-switch > button { min-height: 40px; padding: 6px 8px; font-size: 11px; line-height: 1.2 }
+  .report-book-label-full { display: none }
+  .report-book-label-compact { display: inline }
+  .report-book-fallback { align-items: center; flex-wrap: nowrap; gap: 8px; padding: 14px }
+  .report-book-fallback > div:first-child { min-width: 0 }
+  .report-book-fallback h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+}
+@media (max-width: 360px) {
+  .report-book-switch.acquired-type-switch > button { min-height: 38px; padding-inline: 6px; font-size: 10px }
 }
 </style>

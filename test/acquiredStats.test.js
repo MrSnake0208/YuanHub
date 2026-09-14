@@ -6,6 +6,7 @@ import {
   buildAcquiredStats,
   buildRewardInsights,
   dispatchHoursForStaminaCost,
+  localDayKey,
   summarizeDispatchDuration,
   mapsHaveSameCounts
 } from '../src/data/inventory/acquiredStats.js'
@@ -33,6 +34,12 @@ const records = [
     entries: [{ id: 'a', name: '绣球', count: 99 }]
   }
 ]
+
+test('流水按北京时间凌晨 5 点归属统计日', function () {
+  assert.equal(localDayKey('2026-09-12T20:59:59Z'), '2026-09-12')
+  assert.equal(localDayKey('2026-09-12T21:00:00Z'), '2026-09-13')
+  assert.equal(localDayKey('2026-09-12T21:00:01Z'), '2026-09-13')
+})
 
 test('聚合时只统计奖励流水', function () {
   const stats = buildAcquiredStats(records)

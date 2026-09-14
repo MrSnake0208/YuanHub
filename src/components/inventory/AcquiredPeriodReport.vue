@@ -1,8 +1,11 @@
 <template>
   <section class="period-report" aria-labelledby="period-report-title">
     <header class="report-head">
-      <span>周期获得账簿</span>
-      <h2 id="period-report-title">本期总账</h2>
+      <div class="report-head-copy">
+        <span>周期获得账簿</span>
+        <h2 id="period-report-title">据点收获统计</h2>
+      </div>
+      <slot name="actions" />
     </header>
 
     <div class="report-metrics">
@@ -330,9 +333,9 @@ function onImageError(event) {
 
 <style scoped>
 .period-report { margin-top: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
-.report-head { padding: 16px 20px 13px; border-bottom: 1px solid var(--line) }
-.report-head > span, .subsection-heading > div > svg { color: var(--accent-strong) }
-.report-head > span { display: block; font-size: 10px; font-weight: 900 }
+.report-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 20px 13px; border-bottom: 1px solid var(--line) }
+.report-head-copy > span, .subsection-heading > div > svg { color: var(--accent-strong) }
+.report-head-copy > span { display: block; font-size: 10px; font-weight: 900 }
 .report-head h2 { margin-top: 2px; color: var(--ink); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0 }
 .report-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--line) }
 .report-metric { position: relative; min-width: 0; min-height: 128px; padding: 18px 17px 16px }
@@ -475,7 +478,9 @@ function onImageError(event) {
   .favorite-echo { grid-column: 1 / -1; border-top: 1px solid var(--line); border-left: 0 !important }
 }
 @media (max-width: 760px) {
-  .report-head { padding: 14px 14px 11px }
+  .report-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 8px; padding: 14px 14px 11px }
+  .report-head-copy { min-width: 0 }
+  .report-head-copy h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
   .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .report-metric { min-height: 116px; padding: 15px 13px }
   .report-metric:nth-child(3) { border-top: 1px solid var(--line); border-left: 0 }

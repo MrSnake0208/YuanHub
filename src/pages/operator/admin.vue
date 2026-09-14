@@ -160,7 +160,7 @@
       </section>
 
       <!-- 新增 / 编辑弹窗 -->
-      <div v-if="editing" class="editor-mask" @click.self="closeEditor" @keyup.esc="closeEditor">
+      <div v-if="editing" class="editor-mask" @keyup.esc="closeEditor">
         <div class="editor-panel" role="dialog" aria-modal="true" aria-labelledby="catalog-editor-title">
           <div class="editor-head">
             <div>

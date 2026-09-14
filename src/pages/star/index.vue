@@ -128,6 +128,7 @@
 </template>
 
 <script setup>
+import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { RefreshCw } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
@@ -157,7 +158,11 @@ const accounts = ref([]);
 const accountsLoading = ref(false);
 const accountBusy = ref(false);
 const accountError = ref("");
-const activeTab = ref("import");
+const activeTab = usePersistedTab(
+  "star-tabs",
+  "import",
+  ["import", "review"],
+);
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
 const cloudSyncBusy = ref(false);
 const cloudSyncMessage = ref("");
@@ -398,6 +403,7 @@ async function mountProduct() {
       return;
     }
     handle = mountedHandle;
+    handle.setActiveTab(activeTab.value);
     mountedAccountId = selectedHostAccount()?.accountId || "";
     productReady.value = true;
   } catch (error) {
