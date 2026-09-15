@@ -58,9 +58,9 @@
             :accounts="accounts"
             :error="accountError"
             :disabled="
-              !auth.isLoggedIn || accountsLoading || accountBusy || editingStock
+              !auth.isLoggedIn || accountsLoading || accountBusy || editingStock || rewardImportBusy
             "
-            :game-disabled="accountsLoading || accountBusy || editingStock"
+            :game-disabled="accountsLoading || accountBusy || editingStock || rewardImportBusy"
             :busy="accountBusy"
             heading-title="选择要查看的账号"
             heading-sub="库存、密探和游戏版本都会跟随这个子账号，在两边自动保持一致。"
@@ -1573,6 +1573,14 @@
 
           <!-- 导入记录 -->
           <div v-show="activeTab === 'records'" class="panel">
+            <RewardEntryWorkspace
+              :account-id="accountId"
+              :account-name="currentAccountName"
+              :latest-inventory-at="latestInventoryRecordAt"
+              :disabled="!auth.isLoggedIn || !accountId || accountsLoading || accountBusy || editingStock"
+              @busy="rewardImportBusy = $event"
+              @imported="onRewardImported"
+            />
             <div class="records-head" v-reveal>
               <span class="hint"
                 >已加载 {{ recordsList.length }} 条导入记录 ·
@@ -1743,6 +1751,7 @@ import {
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
+import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import {
@@ -1971,6 +1980,26 @@ const recordsNextCursor = ref(null);
 const recordsEntityType = ref("all");
 const recordsLoading = ref(false);
 const recordsError = ref("");
+const rewardImportBusy = ref(false);
+const latestInventoryRecordAt = computed(function () {
+  const stockRecords = recordsList.value.filter(function (record) {
+    return record && record.record_type === "stock_snapshot" && record.effective_at;
+  });
+  if (!stockRecords.length) return "";
+  return stockRecords.reduce(function (latest, record) {
+    return new Date(record.effective_at).getTime() > new Date(latest).getTime()
+      ? record.effective_at
+      : latest;
+  }, stockRecords[0].effective_at);
+});
+
+function onRewardImported(targetAccountId) {
+  if (targetAccountId !== accountId.value) return;
+  reloadCurrent();
+  resetAcquiredData();
+  loadRecords(true);
+  if (activeTab.value === "acquired") loadAcquired();
+}
 
 function setTab(t) {
   if (editingStock.value && t !== "manifest") {
