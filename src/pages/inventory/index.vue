@@ -1155,6 +1155,7 @@
               <AcquiredPeriodReport
                 :insights="periodInsights"
                 :dispatch-duration="periodDispatchDuration"
+                :gold-agent-ids="goldAgentIdsForStats"
                 :item-totals-available="!acquiredTotalsErrors.item"
                 :agent-totals-available="!acquiredTotalsErrors.agent"
                 :records-available="!acquiredRecordsError"
@@ -2817,6 +2818,13 @@ const acquiredAgentRecords = computed(function () {
 const favoriteAgentsForStats = computed(function () {
   return AGENT_CATALOG.filter(function (agent) {
     return favoriteAgentIds.value.has(agent.id);
+  });
+});
+const goldAgentIdsForStats = computed(function () {
+  return AGENT_CATALOG.filter(function (agent) {
+    return Number(agent.rarity) === 5;
+  }).map(function (agent) {
+    return agent.id;
   });
 });
 const periodInsights = computed(function () {
