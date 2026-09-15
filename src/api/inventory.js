@@ -138,3 +138,9 @@ export function deleteRecord(recordId, accountId) {
     auth: true
   })
 }
+
+// Positive rewards and distinct acquisition dates in [fromDate, toDate), in the selected timezone.
+export function getAcquiredSummary({ accountId, entityType, fromDate, toDate, timezone }) {
+  const params = new URLSearchParams({ account_id: accountId, entity_type: entityType, from_date: fromDate, to_date: toDate, timezone })
+  return request(PATH + '/acquired-summary?' + params, { auth: true })
+}
