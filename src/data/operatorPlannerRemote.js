@@ -6,7 +6,8 @@ import { BUSINESS_TIMEZONE, dateInZone } from '../utils/businessDay.js'
 const fields = ['activePlanId', 'trainingLevels', 'operatorIds', 'excludedOperatorIds', 'starLevel', 'agentOrder', 'purchaseCount',
   'manualPlans', 'startDate', 'baselineDate', 'initialState', 'requiredState', 'progressRows', 'plannedYield',
   'etaDays', 'lastProgressDay', 'costPer', 'groupId', 'stageLevel', 'colorKey', 'defaultValue', 'costCoins',
-  'totalCoins', 'initialExtra', 'dailyCoins', 'beforePercent', 'todayPercent', 'startRemaining']
+  'totalCoins', 'initialExtra', 'dailyCoins', 'beforePercent', 'todayPercent', 'startRemaining', 'planBaselines', 'awaitingRecalculation',
+  'displayStartDate', 'fromDate', 'completionDays', 'agentDays']
 const snake = Object.fromEntries(fields.map(key => [key, key.replace(/[A-Z]/g, c => '_' + c.toLowerCase())]))
 const camel = Object.fromEntries(Object.entries(snake).map(([a, b]) => [b, a]))
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -44,6 +45,20 @@ export function scheduleFromRemote(data, accountId) {
     timezone: data.revision ? data.timezone || BUSINESS_TIMEZONE : BUSINESS_TIMEZONE, updatedAt: data.updated_at }
 }
 export const migrationKey = accountId => 'yuanhub:planner-cloud-migration:v1:' + accountId
+export const scheduleCacheKey = (accountId, planId) => 'yuanhub:planner-cloud-cache:v1:' + encodeURIComponent(accountId) + ':' + encodeURIComponent(planId)
+export function readScheduleCache(storage, accountId, planId) {
+  if (!storage || !accountId || !planId) return null
+  try {
+    const cached = JSON.parse(storage.getItem(scheduleCacheKey(accountId, planId)) || 'null')
+    return cached?.version === 1 && cached.rulesVersion === PLANNER_RULES.version
+      && cached.accountId === accountId && cached.planId === planId
+      && cached.snapshot?.version === 1 && cached.snapshot.accountId === accountId ? cached.snapshot : null
+  } catch (_) { return null }
+}
+export function writeScheduleCache(storage, accountId, planId, snapshot) {
+  if (!storage || !accountId || !planId || !snapshot) return
+  try { storage.setItem(scheduleCacheKey(accountId, planId), JSON.stringify({ version: 1, rulesVersion: PLANNER_RULES.version, accountId, planId, snapshot, cachedAt: Date.now() })) } catch (_) {}
+}
 export function readLocalPlannerBundle(storage, accountId) {
   const hasWorkspace = storage.getItem(trainingWorkspaceKey(accountId)) != null
   const workspace = readTrainingWorkspace(storage, accountId)

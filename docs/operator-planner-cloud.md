@@ -11,6 +11,10 @@
 
 保存预测不改写实际库存、奖励流水或密探练度。默认清单继续使用特别关注与云端 growth-targets；自建计划持有独立目标。
 
+最近一次成功读取或保存的云端日程会按子账号和培养计划缓存在 `localStorage`，进入页面时可先用于快速展示，随后仍向云端校验并以云端响应为准。缓存随规划规则版本失效，不承接离线编辑，也不改变云端作为权威数据源的边界；清除浏览器站点数据只会移除这份加速缓存和未提交草稿，不会删除已保存的云端日程。
+
+每日获取或支出编辑先保存账本与现有安排，只有点击「重新计算当日及后续日程」才重新推荐。完整日程的可选 `context.plan_baselines` 保存各日期首次编辑前的计划，用于跨刷新恢复提示；未重算且现有安排不足以完成时，通过 `result.awaiting_recalculation` 标记待重算，`eta_days` 为空；沿用原有 `horizon` 状态枚举以兼容现有校验。元数据随完整快照原样保存。重算保留当天体力来源、派遣、自定义支出与未来手工日，重新安排当天历练和 6-24。详见 [日程编辑与回顾](operator-stamina-schedules.md)。
+
 ## 所需后端接口
 
 以下接口使用普通登录 JWT，query 参数 `account_id` 指定子账号，响应为既有 ApiResult。
@@ -33,7 +37,9 @@
 
 迁移请求和 migration_id 在发送前完整保存在本机，失败重试复用相同回执。明确的版本冲突可重新比较。日程保存失败时可重试、导出待保存 JSON，或明确放弃草稿并读取云端；未完成保存会提示离开页面，账号切换不会应用旧账号请求的响应。
 
-账号 SSE 的 `operator_training_workspace`、`operator_stamina_schedule`、`operator_annotation`、`operator_growth_target`、`operator_favorites` 以及重连会触发对应补读。有未保存草稿时先处理草稿，避免被事件刷新覆盖。
+账号 SSE 的 `operator_training_workspace`、`operator_stamina_schedule`、`operator_annotation`、`operator_growth_target`、`operator_favorites` 以及断线重连会触发对应补读。首次建立 SSE 连接不重复执行页面初始化时已经发出的读取；断线重连才进行补读。工作区和日程补读并行执行，同一时刻的重复刷新请求会合并。有未保存草稿时先处理草稿，避免被事件刷新覆盖。
+
+体力获取、支出次数、单次体力和单次产出的数字输入在确认变更（失焦或回车）后进入保存队列，不再随每个键入字符发送一次保存。保存器仍会串行提交并合并尚未发出的连续修改。
 
 ## 验证与发布
 

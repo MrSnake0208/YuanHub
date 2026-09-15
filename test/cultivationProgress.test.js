@@ -60,7 +60,7 @@ test('编辑态包含紧凑方案选择、无序号五卡清单；两种视图�
   assert.match(templateText, /class="target-fields".*class="progress-values"/s)
   assert.match(templateText, /addTrainingSpend\(stage.level\)/)
   assert.match(source, /grid-auto-rows: 136px.*min-height: 708px/)
-  assert.match(source, /@input="updatePlanValue\('spends'/)
+  assert.match(source, /@change="updatePlanValue\('spends'/)
   assert.match(source, /function editableSpendYield\(spend\) \{ return spend.custom \}/)
 })
 

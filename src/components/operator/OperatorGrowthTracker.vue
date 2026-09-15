@@ -79,7 +79,7 @@
           </div>
         </div>
         <div class="status-metrics" role="group" aria-label="培养进度概览">
-          <div class="status-metric status-metric-primary"><span>预计耗时</span><strong>{{ plannerEtaLabel }}</strong></div>
+          <div class="status-metric status-metric-primary"><span>从今天起预计还需（含今天）</span><strong>{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
           <div class="status-metric"><span>等级&修为进度</span><strong>{{ plannerProgress }}<small>%</small></strong></div>
           <div class="status-metric"><span>心纸状态</span><strong>{{ formatNumber(totalHeartStock) }}<small> 张</small></strong></div>
           <div class="status-metric"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
@@ -121,13 +121,21 @@
 
       <div v-if="!planRows.length" class="planner-state empty"><Star :size="18" aria-hidden="true" /><span>当前清单还没有密探，可通过上方「管理密探」添加，或新建培养计划。</span></div>
 
-      <section v-if="plannerOpen && (planRows.length || fixedSchedule)" ref="plannerWorkspaceRef" class="planner-workspace" aria-label="体力规划工作区">
-        <div class="planner-workspace-head"><div><span class="section-kicker">每日执行</span><h2>体力日程</h2><p>{{ plannerCycleNotice }}</p></div><div class="workspace-head-actions"><button type="button" class="workspace-link" @click="viewMode === 'display' ? editSchedule() : openPlanner('display')">{{ viewMode === 'display' ? '编辑日程' : '返回日程' }}</button><button type="button" class="workspace-close" aria-label="收起体力日程" @click="plannerOpen = false"><X :size="16" aria-hidden="true" /></button></div></div>
+      <section v-if="plannerOpen && (planRows.length || fixedSchedule)" ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
+        <div class="planner-workspace-head">
+          <div class="workspace-heading-content"><span class="section-kicker">每日执行</span>
+            <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
+              <button type="button" class="plan-icon" :aria-label="viewMode === 'display' ? '编辑日程' : '返回日程'" :title="viewMode === 'display' ? '编辑日程' : '返回日程'" @click="viewMode === 'display' ? editSchedule() : openPlanner('display')"><component :is="viewMode === 'display' ? Pencil : CalendarDays" :size="17" aria-hidden="true" /></button>
+            </div></div>
+            <p>{{ plannerCycleNotice }} <button v-if="!reviewingHistory && !globalShortestPlanAdopted" type="button" class="workspace-link" @click="openExactOptimizer">可进入编辑日程界面计算全局最优解</button></p>
+          </div>
+          <button type="button" class="workspace-close" aria-label="收起体力日程" @click="plannerOpen = false"><X :size="16" aria-hidden="true" /></button>
+        </div>
 
-        <div v-if="fixedSchedule" class="schedule-saved-note" role="status"><Check :size="14" aria-hidden="true" /><span>{{ schedulePending ? '日程修改等待云端保存' : '日程已固定保存到云端' }} · 始于 {{ formatLongDate(fixedSchedule.startDate) }}，过去的日期可随时回顾。</span></div>
+        <div v-if="fixedSchedule" class="schedule-saved-note" role="status"><Check :size="14" aria-hidden="true" /><span>{{ schedulePending ? '日程修改等待云端保存' : '日程已固定保存到云端' }} · 当前阶段始于 {{ formatLongDate(fixedSchedule.context.displayStartDate || fixedSchedule.startDate) }}。</span></div>
         <div v-if="scheduleNeedsUpdate" class="schedule-update" role="status">
           <div><strong>{{ scheduleDifferences.goalsChanged ? '培养目标或清单已有变化' : '当前库存与计划预测有差异' }}</strong><p>{{ scheduleDifferenceLabel }}更新后从今天重新安排，保留过去的日程和未来的自定义安排。</p></div>
-          <button type="button" class="action-button" :disabled="loading || targetLoading" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />按当前库存更新</button>
+          <button type="button" class="action-button" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error)" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />按当前库存更新</button>
         </div>
         <p v-if="currentDay.legacy" class="planner-footnote">此日来自旧版手工日程，未记录历史库存，仅保留原安排。</p>
         <p v-if="reviewingHistory" class="planner-footnote">正在回顾已过日期的已保存安排与预测产出；「已过」不代表实际执行完成。</p>
@@ -136,30 +144,58 @@
         <p v-else-if="currentDay.paused" class="balance-warning" role="status">前面的日期有无效日程，修正后继续推进。</p>
         <p v-if="currentDay.warnings?.length" class="planner-footnote">{{ currentDay.warnings.join('；') }}</p>
         <section v-if="viewMode === 'display' || reviewingHistory" class="planner-view planner-display" aria-label="体力规划展示">
-          <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" @select="selectDate" />
-          <div class="display-grid"><section class="planner-card day-plan"><div class="card-heading"><div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div><span class="plan-badge" :class="{ manual: currentDay.manual }">{{ currentDay.manual ? '自定义计划' : '自动推荐方案' }}</span></div><div class="day-summary"><div class="summary-line"><div class="summary-metric gain"><span>体力获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div><span class="summary-op">−</span><div class="summary-metric spend"><span>体力支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div><span class="summary-op">=</span><div class="summary-balance" :class="{ negative: todayTotals.balance < 0 }"><span>当日结余</span><b>{{ signedNumber(todayTotals.balance) }}</b></div></div><div class="summary-line summary-money"><div class="summary-metric coin-spend"><span>白金币支出</span><b>{{ formatNumber(todayTotals.coinsSpent) }}</b></div></div></div><div class="flow-section"><div class="flow-heading"><span>体力获取</span><b class="gain-text">{{ formatStamina(todayTotals.gains) }}</b></div><div class="channel-chips"><span v-for="gain in currentDay.planned.gains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><span class="channel-dot"></span><span>{{ gain.label }}</span><small v-if="gain.kind === 'count'">×{{ formatStamina(gain.value) }}</small><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong></span><span v-if="!currentDay.planned.gains.length" class="flow-empty">暂无体力来源</span></div></div><div class="flow-section"><div class="flow-heading"><span>体力支出</span><b class="spend-text">{{ formatStamina(todayTotals.spends) }}</b></div><div class="channel-chips spend-chips"><span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><span class="channel-dot"></span><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small>×{{ formatStamina(spend.value) }}</small><strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong></span><span v-if="!currentDay.planned.spends.length" class="flow-empty">暂无体力支出</span></div></div><p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p></section><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><p class="planner-footnote">{{ currentDay.manual ? '此日采用手工计划；未来未手工调整的日期已按新的材料缺口重新生成。' : '这是按当前偏好生成的推荐方案；编辑任意一天后，完整日程会固定保存。' }} 培养推进为从计划保存起点计算的模拟进度，不代表真实流水。{{ aggregateMoneyLabel }}。按完整一天自然恢复与进膳预算计算；不模拟满体损失，日末结余暂不自动结转，可手工添加储备来源。</p>
+          <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
+          <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
+
+          <div class="display-grid"><section class="planner-card day-plan"><div class="card-heading"><div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div><span class="plan-badge" :class="{ manual: currentDay.manual }">{{ currentDay.manual ? '自定义计划' : '自动推荐方案' }}</span></div><div class="day-summary"><div class="summary-line"><div class="summary-metric gain"><span>体力获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div><span class="summary-op">−</span><div class="summary-metric spend"><span>体力支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div><span class="summary-op">=</span><div class="summary-balance" :class="{ negative: todayTotals.balance < 0 }"><span>当日结余</span><b>{{ signedNumber(todayTotals.balance) }}</b></div></div><div class="summary-line summary-money"><div class="summary-metric coin-spend"><span>白金币支出</span><b>{{ formatNumber(todayTotals.coinsSpent) }}</b></div></div></div><div class="flow-section"><div class="flow-heading"><span>体力获取</span><b class="gain-text">{{ formatStamina(todayTotals.gains) }}</b></div><div class="channel-chips"><span v-for="gain in currentDay.planned.gains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><span class="channel-dot"></span><span>{{ gain.label }}</span><small v-if="gain.kind === 'count'">×{{ formatStamina(gain.value) }}</small><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong></span><span v-if="!currentDay.planned.gains.length" class="flow-empty">暂无体力来源</span></div></div><div class="flow-section"><div class="flow-heading"><span>体力支出</span><b class="spend-text">{{ formatStamina(todayTotals.spends) }}</b></div><div class="channel-chips spend-chips"><span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><span class="channel-dot"></span><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small>×{{ formatStamina(spend.value) }}</small><strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong></span><span v-if="!currentDay.planned.spends.length" class="flow-empty">暂无体力支出</span></div></div><p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p></section><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><p class="planner-footnote">{{ currentDay.manual ? '此日采用手工计划；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' : '这是按当前偏好生成的推荐方案；编辑任意一天后，完整日程会固定保存。' }} 培养推进为从计划保存起点计算的模拟进度，不代表真实流水。{{ aggregateMoneyLabel }}。按完整一天自然恢复与进膳预算计算；不模拟满体损失，日末结余暂不自动结转，可手工添加储备来源。</p>
         </section>
 
-        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑"><div class="edit-grid"><aside class="planner-sidebar panel"><section class="side-section"><div class="side-title"><span>培养清单</span><span class="side-hint">拖动排序 · 右上角移除</span></div><div class="edit-roster"><div v-for="row in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)"><div class="drag-handle" aria-hidden="true">⋮⋮</div><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div><button type="button" class="roster-remove" :aria-label="'将 ' + (row.name || row.id) + ' 移出培养清单'" @click="removePlanMember(row)"><X :size="15" aria-hidden="true" /></button><div class="target-fields"><label><span>等级</span><span class="progress-values"><b>{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '目标等级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'level', $event)" /></span></label><label><span>修为</span><span class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '目标修为'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'elite', $event)" /></span></label><label class="target-star"><span>化极</span><span class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><select class="tracker-editable target-star-select" :value="targetFor(row).starLevel" :aria-label="row.name + '目标化极'" @change="setTarget(row, 'starLevel', $event)"><option v-for="stage in starStagesFor(row)" :key="stage.value" :value="stage.value">{{ stage.label }}</option></select></span></label></div></div></div><p class="drag-note">拖动左侧把手调整顺序；点击右上角 X 将密探移出当前清单。</p></section></aside><div class="editor-main"><section class="planner-card compare-card">
-  <div class="compare-heading"><h3>方案对比</h3><span>仅调整推荐，固定日不变</span></div>
-  <div class="compare-grid" role="group" aria-label="选择购买体力方案">
-    <button v-for="option in compareOptions" :key="option.purchaseCount" type="button" class="compare-option" :class="{ active: option.purchaseCount === plannerPreferences.purchaseCount }" :aria-pressed="option.purchaseCount === plannerPreferences.purchaseCount" @click="applyComparison(option.purchaseCount)">
-      <span><b>{{ option.tag }}</b><small>{{ formatNumber(option.dailyCoins) }} 白金币/日 · 合计 {{ option.totalCoins == null ? '待定' : formatNumber(option.totalCoins) }}</small></span>
-      <strong>{{ option.label }}</strong>
-    </button>
+        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑"><div class="edit-grid"><aside class="planner-sidebar panel"><section class="side-section"><div class="side-title"><span>培养清单</span><span class="side-hint">拖动排序 · 右上角移除</span></div><div class="edit-roster"><div v-for="row in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)"><div class="drag-handle" aria-hidden="true">⋮⋮</div><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div><button type="button" class="roster-remove" :aria-label="'将 ' + (row.name || row.id) + ' 移出培养清单'" @click="removePlanMember(row)"><X :size="15" aria-hidden="true" /></button><div class="target-fields"><label><span>等级</span><span class="progress-values"><b>{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '目标等级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'level', $event)" /></span></label><label><span>修为</span><span class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '目标修为'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'elite', $event)" /></span></label><label class="target-star"><span>化极</span><span class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><select class="tracker-editable target-star-select" :value="targetFor(row).starLevel" :aria-label="row.name + '目标化极'" @change="setTarget(row, 'starLevel', $event)"><option v-for="stage in starStagesFor(row)" :key="stage.value" :value="stage.value">{{ stage.label }}</option></select></span></label></div></div></div><p class="drag-note">拖动左侧把手调整顺序；点击右上角 X 将密探移出当前清单。</p></section></aside><div class="editor-main"><section class="planning-panel" aria-label="日程规划与方案对比">
+  <header class="planning-panel-heading"><div><h3>日程规划</h3><p>设定培养目标与体力条件，对比后选择采用。</p></div><button type="button" class="workspace-link planning-settings-toggle" :aria-expanded="settingsOpen" aria-controls="planning-conditions" @click="settingsOpen = !settingsOpen"><SlidersHorizontal :size="15" aria-hidden="true" />{{ settingsOpen ? '收起条件' : '展开条件' }}</button></header>
+  <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true; settingsOpen = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
+  <p v-if="!settingsOpen" class="planning-condition-summary">{{ goalMode ? '目标：期限内最低白金币' : strategy === 'priority' ? '策略：按清单顺序优先完成' : '策略：整体最早完成' }} · 当前每日购买 {{ plannerPreferences.purchaseCount }} 次</p>
+<section v-if="settingsOpen" id="planning-conditions" class="settings-panel"><div v-if="goalMode" class="settings-block goal-conditions">
+  <div class="settings-block-head"><h3>目标天数</h3><span>独立试算</span></div>
+  <label class="goal-days-label" for="goal-days">从今天起的目标天数<input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /></label>
+  <div class="goal-shortcuts"><button v-for="days in [7, 10, 14, 21]" :key="days" type="button" :class="{ active: Number(goalDays) === days }" @click="goalDays = days">{{ days }} 天</button></div>
+</div><div v-if="!goalMode" class="settings-block"><div class="settings-block-head"><h3>培养策略</h3><span>{{ strategy === 'priority' ? '顺序参与规划' : '清单仅用于展示' }}</span></div><div class="strategy-switch"><button type="button" :class="{ active: strategy === 'overall' }" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成以整张清单最早备齐为目标；优先完成按清单顺序依次优化各密探的备齐日期。下方方案对比沿用此策略。</p></div><div class="settings-block"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)">−</button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)">＋</button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)">−</button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)">＋</button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)">−</button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)">＋</button></div></div></div><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></div><div class="settings-block training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<select :value="workspace.trainingLevels[group.id]" @change="setTrainingLevel(group.id, $event)"><option v-for="stage in group.stages" :key="stage.level" :value="stage.level">{{ stage.name }}</option></select></label></div></div><section v-if="goalMode" class="reserve-management" aria-labelledby="reserve-management-title">
+  <div class="reserve-management-heading"><div><h3 id="reserve-management-title">体力储备</h3><p>已到账体力计入第一天；待领取储备由求解器安排整笔领取日期。</p></div><span class="reserve-total">待领取 {{ goalReserveSources.length }} 笔 · {{ goalReserveSources.reduce((sum, source) => sum + Math.max(0, Number(source.amount) || 0), 0) }} 体力</span></div>
+  <div class="reserve-management-body">
+    <div class="reserve-initial"><label for="goal-initial-extra">起始日额外体力</label><div class="reserve-amount"><input id="goal-initial-extra" type="number" min="0" max="99999" step="1" v-model.number.lazy="goalInitialExtra" /><span>体力</span></div><p>已经到账，仅第一天可用，不跨日结转。</p></div>
+    <div class="reserve-packs"><div class="reserve-packs-heading"><h4>待领取储备</h4><button type="button" class="workspace-link" @click="addGoalReserve"><Plus :size="14" aria-hidden="true" />添加储备</button></div>
+      <p v-if="!goalReserveSources.length" class="reserve-empty">可添加礼包、邮件或道具，每条代表一次可独立领取的整笔体力。</p>
+      <div class="reserve-pack-list"><div v-for="(source, index) in goalReserveSources" :key="source.id" class="reserve-pack-row">
+        <input v-model.lazy="source.name" maxlength="32" class="reserve-pack-name" :aria-label="'第 ' + (index + 1) + ' 条储备名称'" />
+        <div class="reserve-amount"><input type="number" min="1" max="99999" step="1" v-model.number.lazy="source.amount" :aria-label="'第 ' + (index + 1) + ' 条储备体力数量'" /><span>体力</span></div>
+        <button type="button" class="workspace-link reserve-remove" :aria-label="'删除第 ' + (index + 1) + ' 条储备'" @click="goalReserveSources.splice(index, 1)"><X :size="15" aria-hidden="true" /></button>
+      </div></div>
+    </div>
   </div>
-</section><div class="planner-edit-toolbar panel"><div><span>日程调整</span><small>体力设置与目标天数不会改写培养目标。</small></div><div class="edit-toolbar-actions"><button type="button" class="toolbar-button" :class="{ active: settingsOpen }" @click="toggleSettings"><SlidersHorizontal :size="14" aria-hidden="true" />调整设置</button><button type="button" class="toolbar-button goal" :class="{ active: goalMode }" @click="goalMode = !goalMode; settingsOpen = false"><Target :size="14" aria-hidden="true" />按目标天数规划</button></div></div><section v-if="settingsOpen" class="settings-panel panel"><div class="settings-block"><div class="settings-block-head"><h3>培养策略</h3><span>{{ strategy === 'priority' ? '顺序参与规划' : '清单仅用于展示' }}</span></div><div class="strategy-switch"><button type="button" :class="{ active: strategy === 'overall' }" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成会合并缺口，按有效产出逐次推荐；优先完成会按清单顺序分配每日产出。</p></div><div class="settings-block"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)">−</button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)">＋</button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)">−</button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)">＋</button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)">−</button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)">＋</button></div></div></div><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></div><div class="settings-block training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<select :value="workspace.trainingLevels[group.id]" @change="setTrainingLevel(group.id, $event)"><option v-for="stage in group.stages" :key="stage.level" :value="stage.level">{{ stage.name }}</option></select></label></div></div></section><section v-if="goalMode" class="goal-panel panel"><div class="goal-kicker">独立规划模式</div><h3>按目标天数规划</h3><p>输入期限后，系统会比较每日购买 0–8 次的贪心方案，寻找本次模拟中可达期限的最低购买档位；这里的结果不会改写常规偏好。</p><div class="goal-fields"><label for="goal-days">目标完成天数<input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /></label><label for="goal-extra">体力储备 / 额外体力<input id="goal-extra" type="number" min="0" max="9999" step="10" v-model.number.lazy="goalExtraStamina" /></label></div><div class="goal-field-help"><span>支持 1–90 天</span><span>只计入规划第一天</span></div><div class="goal-shortcuts"><button v-for="days in [7, 10, 14, 21]" :key="days" type="button" :class="{ active: Number(goalDays) === days }" @click="goalDays = days">{{ days }} 天</button></div><div class="goal-result" :class="{ feasible: goalResult.feasible }"><div class="goal-result-title">{{ goalResult.feasible ? '当前设置下可完成' : '当前设置下暂不可完成' }}</div><div v-if="goalResult.feasible" class="goal-metrics"><div><span>模拟购买档位</span><b>{{ goalResult.purchaseCount }} 次 / 日</b></div><div><span>白金币</span><b>{{ goalResult.dailyCoins }} / 日</b></div><div><span>预计完成</span><b>{{ formatEta(goalResult.etaDays) }}</b></div><div><span>累计白金币</span><b>{{ formatNumber(goalResult.totalCoins) }}</b></div></div><p v-else>当前贪心模拟未找到 {{ goalDays || 0 }} 天内备齐材料的方案，并非不可完成的证明。请先检查未配置获取途径或未开放层数的缺口，再调整体力或期限。</p></div></section><PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" @select="selectDate" /><div class="edit-simulation"><div class="ledger-grid"><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力获取</h3><span>推荐 {{ formatStamina(recommendedTotals.gains) }}</span></div><div v-for="(gain, index) in currentDay.planned.gains" :key="gain.id" class="ledger-row"><div class="ledger-label-wrap"><span class="channel-label" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><i></i>{{ gain.label }}</span><label v-if="gain.custom" class="custom-name-field">名称<input type="text" maxlength="32" :value="gain.name || gain.label" :aria-label="'体力来源名称，第 ' + (index + 1) + ' 项'" @change="updateCustomName('gains', index, $event)" /></label></div><div class="ledger-input-wrap"><label :for="'gain-value-' + index">数量</label><input :id="'gain-value-' + index" type="number" min="0" step="1" :value="gain.value" :aria-label="gain.label + '数量'" @input="updatePlanValue('gains', index, $event)" /><span>{{ gain.kind === 'count' ? '次' : '体力' }}</span></div><span class="recommendation">推荐 {{ recommendedValue('gains', gain.id) }}</span><button type="button" class="row-remove" :aria-label="'移除 ' + gain.label" @click="removePlanRow('gains', index)"><X :size="14" aria-hidden="true" /></button></div><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span>推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><div v-for="(spend, index) in currentDay.planned.spends" :key="spend.id" class="ledger-row spend-ledger-row"><div class="ledger-label-wrap"><span class="channel-label" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><i></i><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span></span><label v-if="spend.custom" class="custom-name-field">名称<input type="text" maxlength="32" :value="spend.name || spend.label" :aria-label="'体力支出名称，第 ' + (index + 1) + ' 项'" @change="updateCustomName('spends', index, $event)" /></label><label v-if="spend.custom" class="custom-cost-field">每次<input type="number" min="0" step="1" :value="spend.costPer" :aria-label="spend.label + '每次体力'" @input="updateSpendCost(index, $event)" /> 体力</label><div v-if="editableSpendYield(spend)" class="yield-editor"><label v-for="(amount, id) in spend.yield" :key="id">{{ resourceName(id) }}<input type="number" min="0" :value="amount" :aria-label="spend.label + '每次产出' + resourceName(id)" @input="updateSpendYield(index, id, $event)" /><button type="button" :aria-label="'移除产出' + resourceName(id)" @click="removeSpendYield(index, id)">×</button></label><select aria-label="添加每次产出的材料" value="" @change="addSpendYield(index, $event)"><option value="">添加每次产出…</option><option v-for="resource in yieldResourceOptions.filter(item => !spend.yield?.[item.id])" :key="resource.id" :value="resource.id">{{ resource.name }}</option></select></div></div><div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" @input="updatePlanValue('spends', index, $event)" /><span>次</span></div><span class="recommendation">推荐 {{ recommendedValue('spends', spend.id) }}</span><button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button></div><div class="add-wrap"><button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />添加支出</button><div v-if="addMenu === 'spend'" id="planner-spend-menu" class="add-menu" :class="{ 'stage-menu': pendingTrainingGroup }" role="menu" :aria-label="pendingTrainingGroup ? pendingTrainingGroup.name + '选择层数' : '选择支出渠道'" @keydown.esc.prevent.stop="cancelSpendMenu">
+</section></section>
+          <PlannerExactOptimizer embedded ref="exactOptimizerRef" :input="exactPlannerInput" :agent-names="exactAgentNames" :date-label="goalMode ? formatLongDate(plannerToday) : currentDateLabel" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || (!goalMode && (currentDay.paused || scheduleDifferences.goalsChanged))" @apply="adoptExactPlan" @apply-alternative="adoptDeadlineAlternative" />
+</section>
+
+<PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
+          <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
+
+          <div class="edit-simulation"><div class="ledger-grid"><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力获取</h3><span>推荐 {{ formatStamina(recommendedTotals.gains) }}</span></div><div v-for="(gain, index) in currentDay.planned.gains" :key="gain.id" class="ledger-row"><div class="ledger-label-wrap"><span class="channel-label" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><i></i>{{ gain.label }}</span><label v-if="gain.custom" class="custom-name-field">名称<input type="text" maxlength="32" :value="gain.name || gain.label" :aria-label="'体力来源名称，第 ' + (index + 1) + ' 项'" @change="updateCustomName('gains', index, $event)" /></label></div><div class="ledger-input-wrap"><label :for="'gain-value-' + index">数量</label><input :id="'gain-value-' + index" type="number" min="0" step="1" :value="gain.value" :aria-label="gain.label + '数量'" @change="updatePlanValue('gains', index, $event)" /><span>{{ gain.kind === 'count' ? '次' : '体力' }}</span></div><span class="recommendation">推荐 {{ recommendedValue('gains', gain.id) }}</span><button type="button" class="row-remove" :aria-label="'移除 ' + gain.label" @click="removePlanRow('gains', index)"><X :size="14" aria-hidden="true" /></button></div><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span>推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><div v-for="(spend, index) in currentDay.planned.spends" :key="spend.id" class="ledger-row spend-ledger-row"><div class="ledger-label-wrap"><span class="channel-label" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><i></i><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span></span><label v-if="spend.custom" class="custom-name-field">名称<input type="text" maxlength="32" :value="spend.name || spend.label" :aria-label="'体力支出名称，第 ' + (index + 1) + ' 项'" @change="updateCustomName('spends', index, $event)" /></label><label v-if="spend.custom" class="custom-cost-field">每次<input type="number" min="0" step="1" :value="spend.costPer" :aria-label="spend.label + '每次体力'" @change="updateSpendCost(index, $event)" /> 体力</label><div v-if="editableSpendYield(spend)" class="yield-editor"><label v-for="(amount, id) in spend.yield" :key="id">{{ resourceName(id) }}<input type="number" min="0" :value="amount" :aria-label="spend.label + '每次产出' + resourceName(id)" @change="updateSpendYield(index, id, $event)" /><button type="button" :aria-label="'移除产出' + resourceName(id)" @click="removeSpendYield(index, id)">×</button></label><select aria-label="添加每次产出的材料" value="" @change="addSpendYield(index, $event)"><option value="">添加每次产出…</option><option v-for="resource in yieldResourceOptions.filter(item => !spend.yield?.[item.id])" :key="resource.id" :value="resource.id">{{ resource.name }}</option></select></div></div><div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" @change="updatePlanValue('spends', index, $event)" /><span>次</span></div><span class="recommendation">推荐 {{ recommendedValue('spends', spend.id) }}</span><button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button></div><div class="add-wrap"><button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />添加支出</button><div v-if="addMenu === 'spend'" id="planner-spend-menu" class="add-menu" :class="{ 'stage-menu': pendingTrainingGroup }" role="menu" :aria-label="pendingTrainingGroup ? pendingTrainingGroup.name + '选择层数' : '选择支出渠道'" @keydown.esc.prevent.stop="cancelSpendMenu">
   <template v-if="pendingTrainingGroup">
     <div class="stage-menu-heading"><button type="button" role="menuitem" @click="pendingSpendChannel = ''; focusSpendMenu()">‹ 返回渠道</button><span>{{ pendingTrainingGroup.name }} · 选择层数</span></div>
     <button v-for="stage in addTrainingStages" :key="stage.level" type="button" role="menuitem" @click="addTrainingSpend(stage.level)">{{ stage.name.replace(/第\s*(\d+)\s*层/, '$1 层') }}</button>
   </template>
   <template v-else><button v-for="channel in SPEND_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addSpend(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></template>
-</div></div><div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" :stamina-balance="todayTotals.balance" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；后续未固定日期会继续按新的缺口自动重算。' : '修改获取或支出后，该日会固定为手工计划，并向后传播材料状态。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天推荐</button><button type="button" class="action-button primary" @click="openPlanner('display')"><Save :size="14" aria-hidden="true" />完成编辑</button></div></section></div></div></section>
+</div></div><div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" :stamina-balance="todayTotals.balance" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天推荐</button><button type="button" class="action-button primary" @click="openPlanner('display')"><Save :size="14" aria-hidden="true" />完成编辑</button></div></section></div></div></section>
       </section>
       </fieldset>
     </template>
 
     <Teleport to="body">
+      <dialog ref="scheduleActionDialog" class="tracker-remove-dialog schedule-action-dialog" aria-labelledby="schedule-action-title" aria-describedby="schedule-action-description" @cancel.prevent="closeScheduleAction" @click="event => { if (event.target === scheduleActionDialog) { const box = scheduleActionDialog.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeScheduleAction() } }">
+        <div class="tracker-remove-dialog-head"><div><span class="section-kicker">日程操作</span><h3 id="schedule-action-title">{{ scheduleActionTitle }}</h3></div><button type="button" class="tracker-dialog-close" aria-label="关闭" @click="closeScheduleAction"><X :size="17" aria-hidden="true" /></button></div>
+        <div class="tracker-remove-dialog-body"><Info :size="18" aria-hidden="true" /><p id="schedule-action-description">{{ scheduleActionDescription }}</p></div>
+        <p v-if="scheduleAction === 'reset' && planError" class="tracker-remove-dialog-error" role="alert">{{ planError }}</p>
+        <div class="tracker-remove-dialog-actions"><button type="button" class="tracker-dialog-button ghost" autofocus @click="closeScheduleAction">取消</button><button type="button" class="tracker-dialog-button primary" :disabled="scheduleAction === 'reset' && scheduleActionBlocked" @click="confirmScheduleAction">{{ scheduleAction === 'reset' ? '确认从今天重新规划' : scheduleActionTitle }}</button></div>
+      </dialog>
       <Transition name="tracker-dialog">
         <div v-if="removePromptRow" class="tracker-remove-dialog-mask" @click.self="closeRemovePrompt">
           <div class="tracker-remove-dialog" role="dialog" aria-modal="true" aria-labelledby="tracker-remove-dialog-title" @keydown.esc.prevent="closeRemovePrompt">
@@ -191,7 +227,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarDays, Check, CircleAlert, Info, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
+import { CalendarDays, Check, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
 import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
@@ -207,9 +243,11 @@ import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
 import { calculateLevelRequirements, calculateStarRequirements, calculateXiuweiRequirements, mergeRequirements, netRequirement, starLabelForStage, starStageFromLevel } from '../../data/operatorRequirements.js'
 import { localDayKey } from '../../data/inventory/acquiredStats.js'
 import PlannerDateTabs from './PlannerDateTabs.vue'
+import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
+import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
-import { createFixedSchedule, fixedScheduleDifferences, fixedScheduleTimeline, reviseFixedSchedule } from '../../data/fixedPlannerSchedule.js'
-import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, estimatePlannerDays, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
+import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerTiming, resetFixedSchedule, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
+import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
 const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false } })
 
@@ -233,13 +271,37 @@ const { workspace, snapshot: cloudSnapshot, workspaceState, scheduleState, cloud
 const scheduleTimezone = ref(BUSINESS_TIMEZONE)
 const planError = ref('')
 const planNotice = ref('')
+const scheduleAction = ref('')
+const scheduleActionDialog = ref(null)
+const scheduleActionBlocked = computed(() => cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || Boolean(error.value))
+const scheduleActionTitle = computed(() => scheduleAction.value === 'reset' ? '重设日程起始日期' : hidePastSchedule.value ? '展开已过日程' : '收起已过日程')
+const scheduleActionDescription = computed(() => scheduleAction.value === 'reset'
+  ? `从 ${formatLongDate(plannerToday.value)} 开始，按当前库存和清单重新规划。今天及未来的手工安排将清除，按当前体力偏好重新推荐；此前阶段不再出现在日期栏中。`
+  : hidePastSchedule.value ? `重新显示当前阶段的 ${pastScheduleCount.value} 条已过日程，供回顾原有安排。`
+      : `收起当前阶段的 ${pastScheduleCount.value} 条已过日程，仅改变显示。今天及未来安排保持不变，可随时展开；本机会记住选择。`)
+async function openScheduleAction(action) {
+  if (action === 'reset' && scheduleActionBlocked.value) return
+  scheduleAction.value = action
+  if (action === 'reset') planError.value = ''
+  await nextTick()
+  scheduleActionDialog.value?.showModal()
+}
+function closeScheduleAction() { scheduleActionDialog.value?.close(); scheduleAction.value = '' }
+function confirmScheduleAction() {
+  if (scheduleAction.value === 'reset') { resetSavedSchedule(); return }
+  if (scheduleAction.value === 'history') togglePastSchedule()
+  closeScheduleAction()
+}
 const undoWorkspace = ref(null)
 const viewMode = ref('display')
 const plannerOpen = ref(true)
 const settingsOpen = ref(false)
 const goalMode = ref(false)
 const goalDays = ref(10)
-const goalExtraStamina = ref(0)
+const goalInitialExtra = ref(0)
+const goalReserveSources = ref([])
+let goalReserveSequence = 0
+function addGoalReserve() { goalReserveSources.value.push({ id: 'goal-reserve-' + (++goalReserveSequence), name: '体力储备 ' + goalReserveSequence, amount: 120 }) }
 const addMenu = ref('')
 const pendingSpendChannel = ref('')
 const spendAddRef = ref(null)
@@ -252,8 +314,16 @@ const manualPlans = ref({})
 const fixedSchedule = ref(null)
 const plannerToday = ref(plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR))
 const plannerWorkspaceRef = ref(null)
+const exactOptimizerRef = ref(null)
 const plannerStartDate = ref(plannerToday.value)
 const selectedDate = ref(plannerStartDate.value)
+const hidePastSchedule = ref(readHidePastSchedule())
+function readHidePastSchedule() { try { return localStorage.getItem('yuanhub:planner:hide-past') === 'true' } catch (_) { return false } }
+function togglePastSchedule() {
+  hidePastSchedule.value = !hidePastSchedule.value
+  try { localStorage.setItem('yuanhub:planner:hide-past', String(hidePastSchedule.value)) } catch (_) {}
+  if (hidePastSchedule.value && selectedDate.value < plannerToday.value) selectedDate.value = plannerDates.value[0]
+}
 const rosterDragId = ref('')
 const starTargetId = ref('')
 const starTargetDraft = ref(0)
@@ -365,22 +435,42 @@ const scheduleDifferenceLabel = computed(() => {
   return resources.slice(0, 3).map(item => `${resourceName(item.id)}：计划 ${formatNumber(item.planned)} / 当前 ${formatNumber(item.actual)}`).join('；') + (resources.length > 3 ? ` 等 ${resources.length} 项。` : resources.length ? '。' : '')
 })
 const reviewingHistory = computed(() => Boolean(fixedSchedule.value && selectedDate.value < plannerToday.value))
-const plannerEtaDays = computed(() => plannerSimulation.value.etaDays)
-const plannerTimeline = computed(() => fixedSchedule.value ? fixedScheduleTimeline(fixedSchedule.value) : plannerSimulation.value.timeline)
+const globalShortestPlanAdopted = computed(() => {
+  if (scheduleDifferences.value.goalsChanged) return false
+  const optimization = fixedSchedule.value?.result?.optimization
+  return optimization?.status === 'optimal' && optimization?.objective === 'overall'
+})
+const pendingRecalculation = computed(() => reviewingHistory.value ? false : pendingScheduleEdits(fixedSchedule.value, selectedDate.value))
+const scheduleTiming = computed(() => plannerTiming(plannerSimulation.value, fixedSchedule.value?.baselineDate || plannerStartDate.value, plannerToday.value))
+const plannerTimeline = computed(() => fixedSchedule.value ? visibleFixedScheduleTimeline(fixedSchedule.value) : plannerSimulation.value.timeline)
 const plannerCycleDays = computed(() => Math.min(plannerRules.maxEtaDays, Math.max(1, plannerTimeline.value.length, dateOffset(selectedDate.value) + 1)))
-const plannerDates = computed(() => [...new Set([
+const allPlannerDates = computed(() => [...new Set([
   ...(fixedSchedule.value ? plannerTimeline.value.map(day => day.date) : Array.from({ length: plannerCycleDays.value }, (_, index) => addDays(plannerStartDate.value, index))),
-  ...Object.keys(manualPlans.value)
+  ...Object.keys(manualPlans.value).filter(date => !fixedSchedule.value?.context.displayStartDate || date >= fixedSchedule.value.context.displayStartDate)
 ])].sort())
+const pastScheduleCount = computed(() => allPlannerDates.value.filter(date => date < plannerToday.value).length)
+const plannerDates = computed(() => {
+  if (!hidePastSchedule.value) return allPlannerDates.value
+  const future = allPlannerDates.value.filter(date => date >= plannerToday.value)
+  return future.length ? future : [plannerToday.value]
+})
 const plannerCycleNotice = computed(() => {
+  if (scheduleDifferences.value.goalsChanged) return '培养清单或目标已变化，旧方案已过期。请按当前库存更新，或重设日程起始日期。'
   const result = plannerSimulation.value
+  if (result.optimization) {
+    const proof = result.optimization
+    return proof.status === 'optimal'
+      ? `已采用从 ${formatLongDate(proof.fromDate)} 起的${proof.objective === 'priority' ? '按清单顺序全局最优' : '全局最短'}方案；结论基于当前规则与固定安排。`
+      : '已采用整数规划找到的可行方案，尚未证明全局最优。'
+  }
+  if (result.awaitingRecalculation) return '体力获取与支出编辑已保存；现有安排尚未备齐材料，点击「重新计算当日及后续日程」可更新推荐。'
   if (result.status === 'invalid') return '日程包含体力不足、次数超限或未开放层数；无效日不计入产出，后续模拟暂停，请先修正。'
-  if (result.status === 'blocked') return (result.lastProgressDay ? '可模拟部分推进至第 ' + result.lastProgressDay + ' 天。' : '') + '剩余缺口无法由当前已配置渠道继续补齐，详见培养推进；增加体力不一定能解决。'
-  if (result.status === 'horizon') return '当前推荐在 90 天内尚未备齐材料；这是贪心估算，不是推荐天数或不可完成的证明。'
-  return '材料备齐即停止推荐；推荐为逐日贪心估算，不保证全局最短。'
+  if (result.status === 'blocked') return (result.lastProgressDay ? '从计算基准日起，可模拟部分推进至第 ' + result.lastProgressDay + ' 天。' : '') + '剩余缺口无法由当前已配置渠道继续补齐，详见培养推进；增加体力不一定能解决。'
+  if (result.status === 'horizon') return '当前推荐从计算基准日起 90 天内尚未备齐材料；这是贪心估算，不是推荐天数或不可完成的证明。'
+  return '材料备齐即停止推荐；当前推荐为快速估算。'
 })
 const futureManualCount = computed(() => Object.keys(manualPlans.value).filter(date => date > selectedDate.value).length)
-const outsideManualDates = computed(() => Object.keys(manualPlans.value).filter(date => date >= plannerStartDate.value && !plannerTimeline.value.some(day => day.date === date)).sort())
+const outsideManualDates = computed(() => Object.keys(manualPlans.value).filter(date => date >= (fixedSchedule.value?.context.displayStartDate || plannerStartDate.value) && !plannerTimeline.value.some(day => day.date === date)).sort())
 const currentDay = computed(() => {
   const day = plannerTimeline.value.find(item => item.date === selectedDate.value)
   if (day) return day
@@ -396,7 +486,31 @@ const currentDay = computed(() => {
 const currentDateLabel = computed(() => formatLongDate(currentDay.value.date))
 const todayTotals = computed(() => planTotals(currentDay.value.planned))
 const recommendedTotals = computed(() => planTotals(currentDay.value.recommended))
-const plannerEtaLabel = computed(() => loading.value ? '同步中' : error.value ? '库存未同步' : simulationLabel(plannerSimulation.value))
+const exactAgentNames = computed(() => Object.fromEntries(orderedPlanRows.value.map(row => [row.id, row.name || row.id])))
+const exactPlannerInput = computed(() => {
+  const context = { ...liveScheduleContext.value, accountId: props.accountId, planId: activePlan.value?.id }
+  if (!goalMode.value && scheduleDifferences.value.goalsChanged) return null
+  if (goalMode.value) return {
+    ...context, objective: 'coins', initialState: plannerInitialState.value, manualPlans: {},
+    dates: Array.from({ length: Math.min(90, Math.max(1, Math.trunc(Number(goalDays.value)) || 1)) }, (_, index) => addDays(plannerToday.value, index)),
+    initialExtra: Math.max(0, Number(goalInitialExtra.value) || 0),
+    reserveSources: goalReserveSources.value.map(source => ({ ...source, mode: 'flexible', date: plannerToday.value }))
+  }
+  const baseline = fixedSchedule.value?.baselineDate || plannerToday.value
+  const offset = Math.round((Date.parse(selectedDate.value + 'T00:00:00Z') - Date.parse(baseline + 'T00:00:00Z')) / 86400000)
+  return { ...context, objective: strategy.value, initialState: currentDay.value.start,
+    firstDay: currentDay.value.planned, manualPlans: manualPlans.value,
+    dates: Array.from({ length: Math.max(0, 90 - Math.max(0, offset)) }, (_, index) => addDays(selectedDate.value, index)) }
+})
+const plannerEtaLabel = computed(() => loading.value ? '同步中' : error.value ? '库存未同步'
+  : scheduleDifferences.value.goalsChanged ? '旧方案待更新' : scheduleTiming.value.remainingDays == null ? simulationLabel(plannerSimulation.value)
+    : scheduleTiming.value.remainingDays === 0 ? (fixedSchedule.value ? '按计划应已备齐' : '材料已备齐') : formatEta(scheduleTiming.value.remainingDays))
+const plannerEtaExplanation = computed(() => {
+  if (loading.value || error.value) return '等待库存同步后估算。'
+  if (scheduleDifferences.value.goalsChanged) return '清单或目标已变化，请更新日程后查看新预计耗时。'
+  const date = scheduleTiming.value.completionDate
+  return (date ? `预计 ${formatLongDate(date)} 备齐。` : '') + (fixedSchedule.value ? '按已保存日程预测。' : '按当前库存与推荐安排估算。')
+})
 const plannerProgress = computed(() => {
   const required = aggregatePlannerState(plannerRequirementState.value)
   const remaining = aggregatePlannerState(plannerInitialState.value)
@@ -411,6 +525,7 @@ const yieldResourceOptions = computed(() => [...new Set(['__xp__', ...Object.key
   ...TRAINING_GROUPS.flatMap(group => group.items?.map(item => item.id) || group.stages.flatMap(stage => Object.keys(stage.rewards)))])]
   .filter(id => !EXPERIENCE_BOOK_IDS.has(id)).map(id => ({ id, name: resourceName(id) })))
 function simulationLabel(result) {
+  if (result.awaitingRecalculation) return '待重新计算'
   if (result.status === 'invalid') return '日程待修正'
   if (result.status === 'blocked') return '获取途径待补充'
   if (result.status === 'horizon') return '90 天内未备齐'
@@ -418,20 +533,6 @@ function simulationLabel(result) {
 }
 const purchaseCostLabel = computed(() => formatNumber(PURCHASE_CUMULATIVE[normalizePlannerPreferences(plannerPreferences.value).purchaseCount]) + ' 白金币')
 const aggregateMoneyLabel = computed(() => { const money = planRows.value.reduce((sum, row) => sum + Number(row.calculation.total.money || 0), 0); return `目标五铢钱需求 ${formatNumber(money)}` })
-const comparePurchaseCounts = computed(() => { const current = normalizePlannerPreferences(plannerPreferences.value).purchaseCount; return [...new Set([0, 2, current])] })
-const compareOptions = computed(() => comparePurchaseCounts.value.map(purchaseCount => {
-  const preferences = { ...plannerPreferences.value, purchaseCount }
-  const result = fixedSchedule.value
-    ? reviseFixedSchedule(fixedSchedule.value, { ...liveScheduleContext.value, preferences }, manualPlans.value).result
-    : simulatePlanner({ initialState: plannerInitialState.value, groups: TRAINING_GROUPS, levels: plannerLevels.value,
-      strategy: strategy.value, agentOrder: plannerOrderForOptimization.value, preferences, dates: plannerHorizonDates.value })
-  return { purchaseCount, ...result, label: simulationLabel(result), dailyCoins: PURCHASE_CUMULATIVE[purchaseCount],
-    totalCoins: result.etaDays == null ? null : result.timeline.reduce((sum, day) => sum + PURCHASE_CUMULATIVE[day.planned.gains.filter(gain => gain.id === 'buy').reduce((n, gain) => n + gain.value, 0)], 0),
-    tag: purchaseCount === 0 ? '零额外投入' : purchaseCount === 2 ? '每日购买两次' : '当前设置' }
-}))
-
-const goalResult = computed(() => { const days = Math.min(90, Math.max(1, Math.trunc(Number(goalDays.value)) || 1)); const extra = Math.max(0, Number(goalExtraStamina.value) || 0); for (let purchaseCount = 0; purchaseCount <= plannerRules.maxPurchaseCount; purchaseCount += 1) { const etaDays = estimatePlannerDays({ initialState: plannerInitialState.value, groups: TRAINING_GROUPS, levels: plannerLevels.value, strategy: strategy.value, agentOrder: plannerOrderForOptimization.value, preferences: { ...plannerPreferences.value, purchaseCount }, dates: plannerHorizonDates.value, initialExtra: extra, maxDays: days }); if (etaDays != null && etaDays <= days) return { feasible: true, purchaseCount, etaDays, dailyCoins: PURCHASE_CUMULATIVE[purchaseCount], totalCoins: PURCHASE_CUMULATIVE[purchaseCount] * etaDays } } return { feasible: false, purchaseCount: null, etaDays: null, dailyCoins: 0, totalCoins: 0 } })
-
 function plannerStateTotal(state) { return Object.values(aggregatePlannerState(state || {})).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0) }
 function resourceIcon(id) { const key = id === '__xp__' ? 'bingshuquanjuan' : id; return ITEM_CATALOG.some(item => item.id === key) ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/items/' + encodeURIComponent(key) + '.png' : '' }
 function operatorIcon(row) { return row?.id ? (import.meta.env?.BASE_URL || '/') + 'inventory-icons/agents/' + encodeURIComponent(row.id) + '.png' : '' }
@@ -580,6 +681,7 @@ async function setTrainingLevel(groupId, event) {
   else persistPlannerSnapshot()
 }
 function applyPlannerSnapshot(snapshot) {
+  closeScheduleAction()
   plannerPreferences.value = snapshot?.preferences || normalizePlannerPreferences()
   strategy.value = snapshot?.strategy || 'overall'
   plannerOrder.value = snapshot?.agentOrder || []
@@ -611,7 +713,7 @@ function beforeLeave(event) {
   if (workspacePending.value || schedulePending.value || migrationBusy.value) { event.preventDefault(); event.returnValue = '' }
 }
 function updateSavedSchedule() {
-  if (loading.value || targetLoading.value || error.value) return
+  if (cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value) return
   const previous = fixedSchedule.value
   fixedSchedule.value = createFixedSchedule(liveScheduleContext.value, manualPlans.value, previous)
   plannerStartDate.value = fixedSchedule.value.startDate
@@ -620,24 +722,71 @@ function updateSavedSchedule() {
     planNotice.value = '已按当前库存更新今天及之后的日程，过去的安排已保留'
   } else { fixedSchedule.value = previous; plannerStartDate.value = previous?.startDate || plannerToday.value }
 }
+function resetSavedSchedule() {
+  if (cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value) return
+  const previous = fixedSchedule.value, previousPlans = manualPlans.value, previousStart = plannerStartDate.value
+  try {
+    const next = resetFixedSchedule(liveScheduleContext.value, previousPlans, previous)
+    fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans
+    plannerStartDate.value = next.schedule.startDate
+    if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerStartDate.value = previousStart; return }
+    selectedDate.value = plannerToday.value; closeScheduleAction()
+    planError.value = ''; planNotice.value = '已从今天按当前库存和清单重新规划，此前阶段不再展示'
+  } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerStartDate.value = previousStart; planError.value = '重设失败：' + err.message }
+}
 function editSchedule() {
   if (reviewingHistory.value) selectedDate.value = plannerDates.value.find(date => date >= plannerToday.value) || selectedDate.value
   viewMode.value = 'edit'; settingsOpen.value = true
+}
+async function openExactOptimizer() {
+  editSchedule()
+  await nextTick()
+  exactOptimizerRef.value?.$el?.scrollIntoView({ behavior: 'auto', block: 'center' })
+}
+function adoptDeadlineAlternative(outcome) {
+  if (scheduleActionBlocked.value || !goalMode.value) return
+  const previous = fixedSchedule.value, previousPlans = manualPlans.value
+  try {
+    const next = applyDeadlineAlternative(previous, outcome, exactPlannerInput.value)
+    fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans
+    if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previous; manualPlans.value = previousPlans; return }
+    plannerStartDate.value = next.schedule.startDate; selectedDate.value = plannerToday.value
+    goalMode.value = false; viewMode.value = 'display'
+    planNotice.value = '已采用补足日程，请按每日安排准备额外体力并调整派遣与购买'
+  } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; planError.value = err.message }
+}
+function adoptExactPlan(outcome) {
+  if (cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value || reviewingHistory.value || scheduleDifferences.value.goalsChanged) return
+  const previous = fixedSchedule.value, previousPlans = manualPlans.value, previousPreferences = plannerPreferences.value
+  try {
+    const base = previous || createFixedSchedule(liveScheduleContext.value, previousPlans)
+    const next = applyExactComparisonResult(base, selectedDate.value, outcome, exactPlannerInput.value, previousPlans)
+    fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans; plannerPreferences.value = next.preferences
+    if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerPreferences.value = previousPreferences; return }
+    planError.value = ''; planNotice.value = outcome.status === 'optimal' ? '已采用全局最优方案，并保留此前日期与未来手工安排' : '已采用当前可行方案，尚未证明全局最优'
+  } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerPreferences.value = previousPreferences; planError.value = '方案采用失败：' + err.message }
 }
 function setStrategy(value) { strategy.value = value; persistPlannerSnapshot() }
 function savePreferences() { plannerPreferences.value = normalizePlannerPreferences(plannerPreferences.value); persistPlannerSnapshot() }
 function changePreference(key, delta) { plannerPreferences.value = normalizePlannerPreferences({ ...plannerPreferences.value, [key]: (Number(plannerPreferences.value[key]) || 0) + delta }); persistPlannerSnapshot() }
 function onRosterDragStart(id) { rosterDragId.value = id }
 function onRosterDrop(targetId) { if (cloudBlocked.value) return; const ids = [...orderedRosterIds.value]; const from = ids.indexOf(rosterDragId.value); const to = ids.indexOf(targetId); if (from < 0 || to < 0 || from === to) return; ids.splice(from, 1); ids.splice(to, 0, rosterDragId.value); plannerOrder.value = ids; rosterDragId.value = ''; persistPlannerSnapshot() }
-function selectDate(date) { selectedDate.value = date; addMenu.value = ''; pendingSpendChannel.value = '' }
+function selectDate(date) { if (fixedSchedule.value?.context.displayStartDate && date < fixedSchedule.value.context.displayStartDate) return; selectedDate.value = date; addMenu.value = ''; pendingSpendChannel.value = '' }
 function ensureManualPlan() { const date = selectedDate.value; const current = currentDay.value; const next = clonePlannerValue(manualPlans.value); if (!next[date]) next[date] = normalizePlannerPlan(clonePlannerValue(current.planned)); return { next, plan: next[date] } }
 function commitManualPlan(next) {
-  if (loading.value || targetLoading.value || error.value || reviewingHistory.value) return
+  if (cloudBlocked.value || loading.value || targetLoading.value || error.value || reviewingHistory.value) return
   const previousPlans = manualPlans.value
   const previousSchedule = fixedSchedule.value
+  const previousDay = currentDay.value
   manualPlans.value = next
-  if (!fixedSchedule.value) fixedSchedule.value = createFixedSchedule(liveScheduleContext.value, previousPlans)
-  if (!persistPlannerSnapshot()) { manualPlans.value = previousPlans; fixedSchedule.value = previousSchedule }
+  try {
+    if (!fixedSchedule.value) fixedSchedule.value = createFixedSchedule(liveScheduleContext.value, previousPlans)
+    fixedSchedule.value = updateFixedSchedulePlan(fixedSchedule.value, selectedDate.value, next[selectedDate.value], previousDay)
+    if (!persistPlannerSnapshot(false)) { manualPlans.value = previousPlans; fixedSchedule.value = previousSchedule }
+  } catch (err) {
+    manualPlans.value = previousPlans; fixedSchedule.value = previousSchedule
+    planError.value = '体力规划保存失败：' + err.message
+  }
 }
 function updatePlanValue(kind, index, event) { const { next, plan } = ensureManualPlan(); const value = Math.max(0, Number(event.target.value) || 0); plan[kind][index].value = value; commitManualPlan(next) }
 function updateCustomName(kind, index, event) { const { next, plan } = ensureManualPlan(); const value = String(event.target.value || '').trim().slice(0, 32) || (kind === 'gains' ? '自定义来源' : '自定义支出'); plan[kind][index].name = value; plan[kind][index].label = value; commitManualPlan(next) }
@@ -645,6 +794,22 @@ function updateSpendCost(index, event) { const { next, plan } = ensureManualPlan
 function removePlanRow(kind, index) { const { next, plan } = ensureManualPlan(); plan[kind].splice(index, 1); commitManualPlan(next) }
 function toggleAddMenu(kind) { pendingSpendChannel.value = ''; addMenu.value = addMenu.value === kind ? '' : kind; if (kind === 'spend' && addMenu.value) focusSpendMenu() }
 function addGain(channelId) { const { next, plan } = ensureManualPlan(); const existing = plan.gains.find(gain => gain.id === channelId && !gain.custom); if (existing) existing.value += createGain(channelId).value; else plan.gains.push(createGain(channelId)); commitManualPlan(next); addMenu.value = '' }
+async function recalculateFromCurrentDay() {
+  if (scheduleDifferences.value.goalsChanged || !pendingRecalculation.value || cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value || reviewingHistory.value) return
+  const previousSchedule = fixedSchedule.value, previousPlans = manualPlans.value
+  try {
+    const next = recalculateFixedScheduleFrom(previousSchedule, selectedDate.value, previousPlans, liveScheduleContext.value)
+    fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans
+    if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previousSchedule; manualPlans.value = previousPlans; return }
+    planError.value = ''
+    planNotice.value = `已重新计算 ${formatLongDate(selectedDate.value)} 及之后的日程，原有体力来源与未来手工安排已保留`
+    await nextTick()
+    plannerWorkspaceRef.value?.focus({ preventScroll: true })
+  } catch (err) {
+    fixedSchedule.value = previousSchedule; manualPlans.value = previousPlans
+    planError.value = '重新计算失败：' + err.message
+  }
+}
 function spendChannelName(spend) { const group = trainingGroupForSpend(spend); return group ? group.name + '历练' : spend.label }
 function spendStageName(spend) { const group = trainingGroupForSpend(spend); return group ? (group.id === 'experience' ? group.stages.find(stage => stage.level === spend.stageLevel)?.name || '' : spend.stageLevel + ' 层') : '' }
 function focusSpendMenu() { nextTick(() => document.querySelector('#planner-spend-menu [role="menuitem"]')?.focus()) }
@@ -671,11 +836,10 @@ function editableSpendYield(spend) { return spend.custom }
 function updateSpendYield(index, id, event) { const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: Math.max(0, Number(event.target.value) || 0) }; commitManualPlan(next) }
 function addSpendYield(index, event) { const id = event.target.value; if (!id) return; const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: 1 }; commitManualPlan(next); event.target.value = '' }
 function removeSpendYield(index, id) { const { next, plan } = ensureManualPlan(); delete plan.spends[index].yield[id]; commitManualPlan(next) }
-function applyComparison(purchaseCount) { plannerPreferences.value = { ...plannerPreferences.value, purchaseCount }; persistPlannerSnapshot() }
 function restoreCurrentDay() { const next = { ...manualPlans.value }; delete next[selectedDate.value]; manualPlans.value = next; persistPlannerSnapshot() }
 function clearFutureManualPlans() { const removed = futureManualCount.value; manualPlans.value = Object.fromEntries(Object.entries(manualPlans.value).filter(([date]) => date <= selectedDate.value)); persistPlannerSnapshot(); planNotice.value = removed ? `已清除后续 ${removed} 个固定日，推荐会自动重算` : '未来推荐本来就会随设置自动刷新' }
 function openPlanner(mode = 'display') { plannerOpen.value = true; viewMode.value = mode; if (mode === 'display') { goalMode.value = false; settingsOpen.value = false } else { settingsOpen.value = true; goalMode.value = false } nextTick(() => { const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches; plannerWorkspaceRef.value?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' }) }) }
-function toggleSettings() { goalMode.value = false; settingsOpen.value = !settingsOpen.value; plannerOpen.value = true; viewMode.value = 'edit' }
+function toggleSettings() { settingsOpen.value = !settingsOpen.value; plannerOpen.value = true; viewMode.value = 'edit' }
 
 function normalizedTargetItem(item) { return { level: item.level == null ? null : Number(item.level), elite: item.elite == null ? null : Number(item.elite), starLevel: (item.star_level != null ? item.star_level : item.starLevel) == null ? null : Number(item.star_level != null ? item.star_level : item.starLevel), revision: Number(item.revision) || 0 } }
 function targetStorageKey() { return 'yuanhub:operator-targets:' + props.accountId }
@@ -801,6 +965,7 @@ function handleInventoryEvent(message) {
   if (!message) return
   const account = message.data?.account_id || message.data?.accountId
   if (account && account !== props.accountId) return
+  if (message.event === 'account_stream_open' && !message.data?.reconnected) return
   if (['operator_training_workspace', 'operator_stamina_schedule', 'account_stream_open'].includes(message.event)) refreshCloud()
   if (['operator_growth_target', 'account_stream_open'].includes(message.event)) scheduleTargetRefresh()
   if (['inventory_import', 'account_stream_open', 'operator_scan_import', 'operator-upgrade'].includes(message.event)) scheduleInventoryRefresh(message)
@@ -858,6 +1023,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-metric-primary { background: var(--cream); }
 .status-metric span { display: block; padding-right: 8px; color: var(--ink-60); font-size: 11px; font-weight: 800; }
 .status-metric strong { display: block; margin-top: 10px; color: var(--ink); font: 900 28px/1 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metric-explanation { margin: 8px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .status-metric-primary strong { color: var(--accent-strong); font-size: 30px; }
 .status-metric strong.negative { color: var(--rouge); }
 .status-metric strong small { margin-left: 5px; color: var(--accent-strong); font: 800 10px/1 var(--font-b); }
@@ -985,7 +1151,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-tracker.planner-expanded > .planner-workspace { order: 2; }
 .planner-workspace { display: grid; min-width: 0; max-width: 100%; gap: 12px; margin-top: 18px; padding-top: 18px; overflow-x: clip; border-top: 1px solid rgba(183, 144, 80, .28); scroll-margin-top: 16px; }
 .planner-workspace-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-.planner-workspace-head h2 { margin-top: 4px; color: var(--ink); font: 900 20px var(--font-s); }
+.workspace-heading-content { min-width: 0; }
+.workspace-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.plan-heading-actions { display: flex; gap: 4px; }
+.plan-heading-actions .plan-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }
+.plan-heading-actions .plan-icon:hover:not(:disabled) { background: var(--paper); color: var(--tea); }
+.plan-heading-actions .plan-icon:disabled { opacity: .5; cursor: default; }
+.plan-heading-actions .plan-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.schedule-action-dialog { margin: auto; padding: 0; max-height: calc(100dvh - 40px); overflow-y: auto; }
+.schedule-action-dialog::backdrop { background: rgba(73, 59, 44, .5); backdrop-filter: blur(3px); }
+.schedule-action-dialog .tracker-dialog-button, .schedule-action-dialog .tracker-dialog-close { min-height: 44px; min-width: 44px; font-size: 12px; }
+.planner-workspace-head h2 { display: flex; align-items: center; min-height: 44px; margin: 0; color: var(--ink); font: 900 20px/1.3 var(--font-s); }
 .planner-workspace-head p { max-width: 720px; margin-top: 5px; color: var(--planner-muted); font-size: 11px; line-height: 1.6; }
 .workspace-close { width: 40px; padding: 0; color: var(--planner-muted); }
 .workspace-close:hover { border-color: var(--rouge); color: var(--rouge); }
@@ -999,6 +1175,44 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .roster-remove:hover { border-color: rgba(166, 81, 74, .2); background: rgba(166, 81, 74, .08); color: var(--rouge); }
 .edit-roster-name b { font-size: 12px; }
 .edit-roster-name small { font-size: 10px; }
+ .planning-panel { min-width: 0; overflow: hidden; border: 1px solid var(--planner-line); border-radius: 14px; background: var(--surface); }
+.planning-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 18px 10px; }
+.planning-panel-heading h3 { margin: 0; color: var(--tea); font: 900 18px/1.4 var(--font-s); }
+.planning-panel-heading p { margin: 5px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.planning-settings-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; flex-shrink: 0; }
+.planning-mode { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 18px 16px; width: fit-content; max-width: calc(100% - 36px); }
+.planning-mode button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--planner-line); border-radius: 9px; background: var(--cream); color: var(--tea); font: 800 13px var(--font-b); cursor: pointer; }
+.planning-mode button svg { flex-shrink: 0; }
+.planning-mode button.active { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.planning-mode button.goal-mode { border-color: #c8b2d6; background: #faf6fc; color: #7e6699; }
+.planning-mode button.goal-mode.active { border-color: #7e6699; background: #f0e8f6; color: #69517f; box-shadow: inset 0 -3px #7e6699; }
+.planning-mode button:hover:not(.active) { border-color: var(--tea); }
+.planning-mode button.goal-mode:hover:not(.active) { border-color: #7e6699; }
+.planning-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.planning-condition-summary { margin: 0; padding: 0 18px 14px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.planning-panel > .settings-panel { padding: 6px 18px 18px; }
+ .goal-conditions label { display: grid; gap: 5px; color: var(--ink); font-size: 12px; }
+.goal-conditions input, .goal-conditions select { width: 100%; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 13px var(--font-b); }
+.goal-conditions .goal-shortcuts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.goal-conditions .goal-shortcuts button { min-height: 44px; padding: 6px 9px; }
+ .reserve-management { grid-column: 1 / -1; min-width: 0; padding-top: 16px; border-top: 1px solid var(--planner-line); }
+.reserve-management-heading, .reserve-packs-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
+.reserve-management h3, .reserve-management h4 { margin: 0; color: var(--tea); font-size: 13px; }
+.reserve-management p { margin: 5px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.reserve-total { color: var(--tea); font-size: 12px; font-variant-numeric: tabular-nums; }
+.reserve-management-body { display: grid; grid-template-columns: minmax(140px, .75fr) minmax(0, 2fr); gap: 18px; margin-top: 12px; }
+.reserve-initial { padding-right: 18px; border-right: 1px solid var(--planner-line); }
+.reserve-initial > label { display: block; margin: 7px 0 8px; font-size: 12px; color: var(--ink); }
+.reserve-amount { display: flex; align-items: center; min-width: 0; gap: 6px; }
+.reserve-amount span { flex: none; color: var(--ink-60); font-size: 12px; }
+.reserve-management input { min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 13px var(--font-b); }
+.reserve-amount input { font-family: var(--font-d); }
+.reserve-packs-heading button, .reserve-remove { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; min-height: 44px; }
+.reserve-pack-list { display: grid; gap: 6px; max-height: 280px; overflow-y: auto; }
+.reserve-pack-row { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(95px, 130px) 44px; align-items: center; gap: 6px; }
+.reserve-empty { padding: 8px 0; }
+@media (max-width: 640px) { .reserve-management-body { grid-template-columns: 1fr; gap: 12px; }.reserve-initial { display: grid; grid-template-columns: 1fr minmax(100px, 140px); align-items: center; gap: 4px 12px; padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--planner-line); }.reserve-initial p { grid-column: 1 / -1; }.reserve-pack-row { grid-template-columns: minmax(70px, 1fr) minmax(80px, 100px) 44px; } }
+@media (max-width: 640px) { .planning-panel-heading { align-items: flex-start; flex-wrap: wrap; }.planning-mode { width: auto; }.planning-mode button { flex: 1; }.planning-panel > .settings-panel { padding: 6px 14px 14px; } }
 .planner-edit-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
 .planner-edit-toolbar > div:first-child { display: grid; gap: 3px; }
 .planner-edit-toolbar > div:first-child > span { color: var(--ink); font-size: 12px; font-weight: 850; }
@@ -1033,7 +1247,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 }
 
 @media (max-width: 900px) {
-  .status-main, .planner-workspace-head { flex-direction: column; }
+  .status-main { flex-direction: column; }
   .status-actions { width: 100%; }
   .status-action { flex: 1; }
   .settings-panel { grid-template-columns: 1fr 1fr; }

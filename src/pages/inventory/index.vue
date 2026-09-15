@@ -3494,6 +3494,7 @@ function scheduleInventoryEventRefresh() {
 function handleInventoryAccountEvent(message) {
   if (!message) return;
   if (message.event === "account_stream_open") {
+    if (!message.data?.reconnected) return;
     scheduleInventoryEventRefresh();
     return;
   }
