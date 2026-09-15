@@ -232,7 +232,9 @@ export function energyFromGain(gain) {
 export function planTotals(plan) {
   const gains = (plan?.gains || []).reduce((sum, gain) => sum + energyFromGain(gain), 0)
   const spends = (plan?.spends || []).reduce((sum, spend) => sum + decimal(spend.value) * decimal(spend.costPer), 0)
-  return { gains, spends, balance: gains - spends }
+  const purchaseCount = (plan?.gains || []).filter(gain => gain.id === 'buy').reduce((sum, gain) => sum + decimal(gain.value), 0)
+  const coinsSpent = PURCHASE_CUMULATIVE[purchaseCount] || 0
+  return { gains, spends, balance: gains - spends, coinsSpent }
 }
 
 export function createInitialPlannerState(rows = []) {
