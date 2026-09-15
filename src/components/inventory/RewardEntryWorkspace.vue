@@ -108,7 +108,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { getCatalog, importInventory } from '../../api/inventory.js'
 import { buildRewardDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
-import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
+import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
@@ -243,7 +243,7 @@ async function previewManual() {
   clearPreview()
   try {
     const draft = manual.value
-    const acquisitionChannel = draft.channel === '手动补录' ? draft.customChannel?.trim() : draft.channel
+    const acquisitionChannel = manualAcquisitionChannel(draft.channel, draft.customChannel)
     const record = {
       record_id: `yuanhub:reward:${crypto.randomUUID()}`, record_type: 'reward_delta',
       entity_type: draft.entityType, acquisition_channel: acquisitionChannel,

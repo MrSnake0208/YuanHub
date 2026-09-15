@@ -1,5 +1,5 @@
 import { ITEM_CATALOG, AGENT_CATALOG } from './catalog.js'
-import { sortItemsByGameOrder } from './itemSections.js'
+import { FRONTEND_HIDDEN_ITEM_IDS, sortItemsByGameOrder } from './itemSections.js'
 import { HIDDEN_AGENT_IDS } from './agentManifest.js'
 import { isDispatchReward, staminaCostOf } from './exchange.js'
 
@@ -10,6 +10,7 @@ export const REWARD_CHANNELS = Object.freeze([
   { id: '历练', label: '历练', hint: '兵书与修为材料', entityType: 'item', icon: 'book' },
   { id: '手动补录', label: '其他奖励', hint: '自行选择类型', entityType: null, icon: 'pencil' },
 ])
+const OTHER_REWARD_CHANNEL = '手动补录'
 const LUOYANG_IDS = new Set(['jizhi', 'sherou', 'mazi', 'zhuyu', 'baijinbi'])
 const TRAINING_IDS = new Set([
   'liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan',
@@ -19,6 +20,11 @@ const METADATA = new Map([
   ...ITEM_CATALOG.map(item => [`item:${item.id}`, item]),
   ...AGENT_CATALOG.map(agent => [`agent:${agent.id}`, agent]),
 ])
+
+export function manualAcquisitionChannel(channel, customChannel) {
+  if (channel !== OTHER_REWARD_CHANNEL) return channel
+  return typeof customChannel === 'string' ? customChannel.trim() : ''
+}
 
 function isSpAgent(entity) {
   return entity?.entity_type === 'agent' && (
@@ -34,6 +40,7 @@ export function rewardOptionsForChannel(channel, entities, fallbackType = 'item'
   const options = entities.filter(entity => {
     if (entity.entity_type !== type) return false
     if (isSpAgent(entity)) return false
+    if (channel === '手动补录' && type === 'item' && FRONTEND_HIDDEN_ITEM_IDS.includes(entity.id)) return false
     if (channel === '派遣-洛阳') return LUOYANG_IDS.has(entity.id)
     if (channel === '历练') return TRAINING_IDS.has(entity.id)
     return true
