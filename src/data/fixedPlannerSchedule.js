@@ -113,6 +113,7 @@ export function updateFixedSchedulePlan(schedule, date, plan, fallbackDay = null
     blocked: plannerBlockedResources(state, next.context.groups, next.context.levels),
     etaDays: complete ? plannerStateIsEmpty(next.context.initialState) ? 0 : elapsedDays : null })
   delete next.result.optimization
+  delete next.result.planSource
   return next
 }
 
@@ -126,7 +127,7 @@ export function applyDeadlineAlternative(previous, outcome, input) {
   const schedule = createFixedSchedule({ ...input, date, displayStartDate: date }, {}, previous)
   // Exact daily purchases, reserve claims and dispatch changes must stay fixed.
   const manualPlans = Object.fromEntries(checked.timeline.map(day => [day.date, day.planned]))
-  schedule.result = { ...checked, timeline: checked.timeline.map(day => ({ ...day, progressRows: plannerProgressRows(input.requiredState, input.initialState, day, input.stock) })) }
+  schedule.result = { ...checked, planSource: 'deadline-alternative', timeline: checked.timeline.map(day => ({ ...day, progressRows: plannerProgressRows(input.requiredState, input.initialState, day, input.stock) })) }
   schedule.context.planBaselines = {}
   return { schedule, manualPlans }
 }

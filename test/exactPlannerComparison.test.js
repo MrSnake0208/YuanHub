@@ -4,7 +4,7 @@ import loadHighs from '../public/solver/highs-1.15.3/highs.mjs'
 import { exactComparisonScenarios, exactCurrentSettingsScenario } from '../src/data/exactPlannerComparison.js'
 import { solveExactPlanner } from '../src/data/exactPlanner.js'
 import { createExactComparisonRunner } from '../src/data/exactPlannerRunner.js'
-import { applyExactComparisonResult, createFixedSchedule, plannerDateAfter } from '../src/data/fixedPlannerSchedule.js'
+import { applyExactComparisonResult, createFixedSchedule, plannerDateAfter, updateFixedSchedulePlan } from '../src/data/fixedPlannerSchedule.js'
 import { clonePlannerValue, createGain, createSpend, normalizePlannerPlan } from '../src/data/cultivationPlanner.js'
 import { scheduleBody, scheduleFromRemote } from '../src/data/operatorPlannerRemote.js'
 const highs = await loadHighs()
@@ -195,8 +195,14 @@ test('补足日程采用前校验输入，采用后保留历史并固定每日�
   const outcome = { ...solve(scenario.input), inputKey: JSON.stringify(scenario.input), comparisonInputKey: JSON.stringify(original), comparisonId: scenario.id }
   const applied = applyDeadlineAlternative(null, outcome, original)
   assert.equal(applied.schedule.result.status, 'complete')
+  assert.equal(applied.schedule.result.planSource, 'deadline-alternative')
   assert.ok(Object.keys(applied.manualPlans).length > 0)
   assert.equal(applied.schedule.context.displayStartDate, original.date)
+  const wire = scheduleBody({ ...applied, strategy: 'overall', agentOrder: ['a'] })
+  const restored = scheduleFromRemote({ ...wire, account_id: 'a', revision: 1 }, 'a')
+  assert.equal(restored.schedule.result.planSource, 'deadline-alternative')
+  const edited = updateFixedSchedulePlan(applied.schedule, original.date, applied.schedule.result.timeline[0].planned)
+  assert.equal(edited.result.planSource, undefined)
   assert.throws(() => applyDeadlineAlternative(null, { ...outcome, comparisonInputKey: 'old' }, original), /条件已变化/)
 })
 

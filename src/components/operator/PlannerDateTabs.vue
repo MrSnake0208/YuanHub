@@ -10,7 +10,6 @@
         <button type="button" class="date-step" aria-label="后一天" title="后一天" :disabled="activeIndex >= dates.length - 1" @click="step(1)"><ChevronRight :size="18" aria-hidden="true" /></button>
       </div>
     </div>
-    <p class="date-caption">共 {{ dates.length }} 条日程记录，其中 {{ dates.filter(date => date < today).length }} 条已过；记录数量不是剩余天数。</p>
     <div ref="scroller" class="date-tabs" :class="{ dragging }" @pointerdown="onPointerDown" @pointermove="drag.move"
       @pointerup="drag.finish" @pointercancel="drag.finish" @lostpointercapture="drag.finish" @pointerleave="drag.leave"
       @click.capture="drag.click" @dragstart.prevent @keydown="onKeydown">
@@ -19,7 +18,7 @@
         :data-date="date" :aria-pressed="date === selected" :tabindex="date === selected ? 0 : -1"
         :aria-label="date + '，第' + (index + 1) + '条日程，' + dateStatus(date)" :title="date + ' · ' + dateStatus(date)"
         @click="emit('select', date)">
-        <span class="day-number">{{ date === today ? '今天' : '日程 ' + (index + 1) }}</span>
+        <span class="day-number">{{ date === today ? '今天' : '第 ' + (index + 1) + ' 天' }}</span>
         <time :datetime="date">{{ shortDate(date) }}</time>
         <span class="date-status" :class="{ manual: manualPlans[date] }">
           <History v-if="isPast(date)" :size="11" aria-hidden="true" />
