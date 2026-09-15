@@ -10,6 +10,8 @@ export const PLANNER_RULES = Object.freeze({
   stage624Stamina: 10,
   stage624Experience: 38 * BOOK_VALUES.bingshucanjuan,
   maxPurchaseCount: 8,
+  // Estimated daily external top-up limit; configured gains and owned reserves are separate.
+  maxDailyExtraStamina: 1500,
   maxDispatchCount: 4,
   trainingDailyLimit: 6,
   maxEtaDays: 90
@@ -356,22 +358,30 @@ function spendColor(group) {
 }
 
 
-export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, initialExtra = 0 }) {
+export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels = {}, strategy = 'overall', agentOrder = [], preferences = {}, initialExtra = 0, gains, fixedSpends }) {
   const prefs = normalizePlannerPreferences(preferences)
   const plan = { gains: [
     { id: 'natural', label: '自然恢复', colorKey: 'natural', kind: 'energy', value: 288, rec: 288 },
     { id: 'meal', label: '每日进膳', colorKey: 'meal', kind: 'energy', value: 120, rec: 120 }
   ], spends: [] }
   const candidates = plannerActions(groups, levels)
-  if (!candidates.some(action => scoreYield(state, action.yield, agentOrder, strategy) > 0)) return plan
+  if (gains === undefined && !candidates.some(action => scoreYield(state, action.yield, agentOrder, strategy) > 0)) return plan
   if (prefs.purchaseCount) plan.gains.push({ id: 'buy', label: '购买体力', colorKey: 'buy', kind: 'count', value: prefs.purchaseCount, rec: prefs.purchaseCount })
   if (initialExtra > 0) plan.gains.push({ id: 'reserve', label: '体力储备', colorKey: 'custom', kind: 'energy', value: decimal(initialExtra), rec: decimal(initialExtra), custom: true })
   for (const id of ['luoyang', 'shouchun']) {
     if (prefs[id]) plan.spends.push(createSpend(id, { value: prefs[id], rec: prefs[id] }))
   }
+  // Explicit recalculation uses the day's actual ledger, including custom sources
+  // and purchases. Do not add the default daily budget a second time.
+  if (gains !== undefined) plan.gains = clonePlannerValue(gains)
+  if (fixedSpends !== undefined) plan.spends = fixedSpends.map(spend => normalizePlannerSpend(clonePlannerValue(spend), groups))
   let energy = planTotals(plan).balance
   let working = clonePlannerState(state)
   const runs = {}
+  for (const spend of plan.spends) {
+    working = applyPlannerYield(working, Object.fromEntries(Object.entries(spend.yield || {}).map(([id, amount]) => [id, amount * spend.value])), agentOrder, strategy)
+    if (spend.groupId) runs[spend.groupId] = (runs[spend.groupId] || 0) + spend.value
+  }
   // Compare every available category by useful gain per stamina, not fixed category order.
   // This remains a rolling greedy recommendation, not a proof of global optimality.
   while (energy >= PLANNER_RULES.stage624Stamina) {
@@ -392,7 +402,7 @@ export function buildRecommendedPlan({ state, groups = TRAINING_GROUPS, levels =
   return plan
 }
 
-function plannerActions(groups, levels) {
+export function plannerActions(groups, levels) {
   const limits = normalizeTrainingLevels(levels)
   return groups.flatMap(group => group.stages.filter(stage => stage.level <= (limits[group.id] || 0)).map(stage => ({
     id: 'training-' + group.id + '-' + stage.level, label: spendLabel(group, stage),

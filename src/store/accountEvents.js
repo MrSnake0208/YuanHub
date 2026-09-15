@@ -195,11 +195,14 @@ export function syncAccountEventStream() {
   if (!accountId) return
   streamAccountId = accountId
   seenEventIds.clear()
+  let openCount = 0
   stream = openAccountEventStream({
     accountId: accountId,
     onOpen: function () {
+      const reconnected = openCount > 0
+      openCount += 1
       listeners.forEach(function (listener) {
-        listener({ event: 'account_stream_open', data: { account_id: accountId } })
+        listener({ event: 'account_stream_open', data: { account_id: accountId, reconnected } })
       })
     },
     onEvent: publish,

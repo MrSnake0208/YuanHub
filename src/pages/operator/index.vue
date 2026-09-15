@@ -7840,6 +7840,7 @@ function handleAccountEvent(message) {
   if (message.event === "operator_favorites") { scheduleSubjectiveRefresh(message.event); return; }
 
   if (message.event === "account_stream_open") {
+    if (!message.data?.reconnected) return;
     loadOperatorAnnotations();
     loadAgentFavorites();
     scheduleEventRefresh();
