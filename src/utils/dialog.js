@@ -12,6 +12,7 @@
 // 返回值：
 //   alert()  → 恒为 true
 //   confirm()→ true 确定 / false 取消
+//   choose() → { value, checked }，关闭时 value 为 null
 //   prompt() → 输入字符串（trim 后） / null 取消
 //
 // 可选参数：
@@ -21,7 +22,7 @@ import { reactive } from 'vue'
 
 const state = reactive({
   visible: false,
-  mode: 'alert', // 'alert' | 'confirm' | 'prompt'
+  mode: 'alert', // 'alert' | 'confirm' | 'choice' | 'prompt'
   type: 'info', // 'info' | 'danger' | 'success'
   title: '',
   message: '',
@@ -30,6 +31,9 @@ const state = reactive({
   placeholder: '',
   inputLabel: '',
   requiredValue: '',
+  choices: [],
+  checkboxLabel: '',
+  checkboxChecked: false,
   value: '', // 输入框初始值
   input: '' // 输入框实时值
 })
@@ -52,6 +56,9 @@ function open(opts) {
     placeholder: opts.placeholder || '',
     inputLabel: opts.inputLabel || '',
     requiredValue: opts.requiredValue != null ? String(opts.requiredValue) : '',
+    choices: Array.isArray(opts.choices) ? opts.choices : [],
+    checkboxLabel: opts.checkboxLabel || '',
+    checkboxChecked: Boolean(opts.checkboxChecked),
     value: opts.value != null ? String(opts.value) : '',
     input: opts.value != null ? String(opts.value) : ''
   })
@@ -68,22 +75,30 @@ function settle(result) {
 }
 
 function confirm() {
+  if (state.mode === 'choice') return settle({ value: null, checked: state.checkboxChecked })
   if (state.mode === 'prompt') return settle(state.input.trim())
   return settle(true)
+}
+
+function choose(value) {
+  return settle({ value: value, checked: state.checkboxChecked })
 }
 
 function cancel() {
   if (state.mode === 'alert') return settle(true) // 纯提示：关闭即视为已读
   if (state.mode === 'confirm') return settle(false)
+  if (state.mode === 'choice') return settle({ value: null, checked: state.checkboxChecked })
   return settle(null) // prompt：取消
 }
 
 export const dialog = {
   alert(options) { return open(Object.assign({ mode: 'alert' }, normalize(options))) },
   confirm(options) { return open(Object.assign({ mode: 'confirm' }, normalize(options))) },
+  choose(options) { return open(Object.assign({ mode: 'choice' }, normalize(options))) },
   prompt(options) { return open(Object.assign({ mode: 'prompt' }, normalize(options))) },
   // AppDialog 组件专用（勿在页面直接使用）
   _state: state,
   _confirm: confirm,
+  _choose: choose,
   _cancel: cancel
 }

@@ -49,6 +49,12 @@
         <div class="wrap">
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
+            id="operator-account-workspace"
+            class="operator-account-workspace"
+            :class="{ 'is-compact': accountWorkspaceCompact }"
+            v-model:compact="accountWorkspaceCompact"
+            summary-label="账号与分享"
+            split
             v-model:accountId="accountId"
             v-model:game="gameFilter"
             :accounts="accounts"
@@ -78,10 +84,23 @@
               </button>
             </template>
 
-            <OperatorShareManager
-              v-if="auth.isLoggedIn && accountId"
-              :account-id="accountId"
-            />
+            <template #summary-actions>
+              <router-link class="act-btn ghost workspace-mobile-link" to="/operator/share">查看他人 BOX</router-link>
+              <router-link class="act-btn ghost workspace-mobile-link" :to="quickHref" @click="showImport = false">首次/快捷录入</router-link>
+            </template>
+            <template #side>
+              <OperatorShareManager
+                v-if="auth.isLoggedIn && accountId"
+                ref="operatorShareManager"
+                :account-id="accountId"
+                @share-change="operatorShare = $event"
+              />
+              <div v-else class="operator-share-placeholder">
+                <span class="section-kicker">分享链接</span>
+                <h2>分享当前密探 BOX</h2>
+                <p>{{ !auth.isLoggedIn ? '登录并选择账号后，可生成分享链接。' : '创建并选择账号后，可生成分享链接。' }}</p>
+              </div>
+            </template>
 
             <div v-if="showArchive" class="archive-workspace">
               <div class="archive-heading">
@@ -188,7 +207,7 @@
               :class="{ on: activeTab === 'current' }"
               @click="setTab('current')"
             >
-              当前养成
+              养成总览
             </button>
             <button
               v-if="growthTrackingEnabled"
@@ -199,7 +218,7 @@
               :class="{ on: activeTab === 'tracking' }"
               @click="setTab('tracking')"
             >
-              养成追踪
+              养成规划
             </button>
             <span class="sp"></span>
             <router-link class="act-btn ghost admin-link" to="/operator/share"
@@ -209,8 +228,15 @@
               class="act-btn ghost admin-link"
               :to="quickHref"
               @click="showImport = false"
-              >首次 / 快捷导入</router-link
+              >首次 / 快捷录入</router-link
             >
+            <button
+              type="button"
+              class="act-btn ghost admin-link workspace-tabs-toggle"
+              :aria-expanded="!accountWorkspaceCompact"
+              aria-controls="operator-account-workspace"
+              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
+            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
           </div>
 
           <!-- 导入档案 -->
@@ -401,7 +427,7 @@
               {{ importResult.accepted + importResult.partial }} 条 · 拒绝
               {{ importResult.rejected }} 条 · 无变化
               {{ importResult.unchanged }} 条
-              <button class="ok" @click="afterImport">查看当前养成</button>
+              <button class="ok" @click="afterImport">查看养成总览</button>
             </div>
           </div>
 
@@ -719,25 +745,37 @@
           >
             <div class="current-workbench-head" v-reveal>
               <div class="current-workbench-copy">
-                <span class="section-kicker">当前账号 · 养成台账</span>
+                <div class="current-ledger-heading">
+                  <span class="section-kicker">当前账号 · 养成台账</span>
+                  <div class="ledger-share-control">
+                  <button v-if="isOperatorSharing" type="button" class="ledger-share-badge is-sharing" aria-label="分享中，点击复制分享链接" title="点击复制分享链接" @click="copyLedgerShare">分享中</button>
+                  <span v-else class="ledger-share-badge">{{ ledgerShareStatus }}</span>
+                  <span v-if="shareCopyFeedback" class="ledger-share-feedback" role="status">{{ shareCopyFeedback }}</span>
+                  </div>
+                </div>
                 <div class="current-workbench-title">
                   <h2>{{ currentAccountName }}</h2>
                   <span class="current-game-tag">{{ gameFilter }}</span>
                 </div>
-                <p>
-                  点按虚线数值可直接修改数据。快捷提升按钮会真实扣除库存；手动校正与完整编辑不扣库存
+                <p v-if="ledgerCardIsV2">
+                  点按虚线数值可直接修改；快捷提升会核对并扣除库存
                 </p>
-                <p>
-                  密探面板自动计算机制源自
-                  <a
-                    class="current-credit-link"
-                    href="https://wiki.biligame.com/yuan/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >bwiki编辑部<span aria-hidden="true">↗</span></a
-                  >
-                  及技术外援，因为计算精度问题，数据会存在个位数误差，仅供殿下们参考
-                </p>
+                <template v-else>
+                  <p>
+                    点按虚线数值可直接修改数据。快捷提升按钮会真实扣除库存；手动校正与完整编辑不扣库存
+                  </p>
+                  <p>
+                    密探面板自动计算机制源自
+                    <a
+                      class="current-credit-link"
+                      href="https://wiki.biligame.com/yuan/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >bwiki编辑部<span aria-hidden="true">↗</span></a
+                    >
+                    及技术外援，因为计算精度问题，数据会存在个位数误差，仅供殿下们参考
+                  </p>
+                </template>
               </div>
               <div
                 class="current-workbench-index"
@@ -799,13 +837,16 @@
                   type="button"
                   :class="{ on: upgradeReadyFilter === 'growth' }"
                   :aria-pressed="upgradeReadyFilter === 'growth'"
+                  :aria-label="upgradeReadyFilter === 'growth' ? '显示全部' : '只看可提升等级/修为'"
+                  :title="upgradeReadyFilter === 'growth' ? '显示全部' : '只看可提升等级/修为'"
                   @click="toggleUpgradeReadyFilter('growth')"
                 >
-                  {{
+                  <Eye class="upgrade-filter-icon" :size="18" aria-hidden="true" />
+                  <span class="upgrade-filter-label">{{
                     upgradeReadyFilter === "growth"
                       ? "显示全部"
                       : "只看可提升等级/修为"
-                  }}
+                  }}</span>
                 </button>
               </div>
               <div
@@ -828,7 +869,7 @@
                           favoriteHuajiNames.join("、")
                         }}</b
                       ></template
-                    >。</small
+                    ></small
                   >
                   <small v-else
                     >库存或密探状态已经变化，可以返回查看全部卡片。</small
@@ -838,159 +879,73 @@
                   type="button"
                   :class="{ on: upgradeReadyFilter === 'huaji' }"
                   :aria-pressed="upgradeReadyFilter === 'huaji'"
+                  :aria-label="upgradeReadyFilter === 'huaji' ? '显示全部' : '只看可化极'"
+                  :title="upgradeReadyFilter === 'huaji' ? '显示全部' : '只看可化极'"
                   @click="toggleUpgradeReadyFilter('huaji')"
                 >
-                  {{
+                  <Eye class="upgrade-filter-icon" :size="18" aria-hidden="true" />
+                  <span class="upgrade-filter-label">{{
                     upgradeReadyFilter === "huaji" ? "显示全部" : "只看可化极"
-                  }}
+                  }}</span>
                 </button>
               </div>
             </div>
 
             <!-- 当前养成案卷筛选 -->
-            <div class="prof-filter current-prof-filter" v-reveal>
-              <div class="current-filter-head">
-                <div class="current-filter-title">
-                  <strong>筛选案卷</strong
-                  ><span
-                    >筛选后按状态、稀有度、等级、化极、属性与实装顺序排列</span
+            <OperatorFilterDossier
+              v-reveal
+              :result-count="filteredCurrent.length"
+              :total-count="ownedCurrentEntries.length"
+              :prof-options="profOptions"
+              :sub-prof-options="subProfOptions"
+              :status-options="workbenchStatusOptions"
+              :status-counts="currentStatusCounts"
+              v-model:prof-filter="profFilter"
+              v-model:sub-prof-filter="subProfFilter"
+              :status-filter="workbenchStatusFilter"
+              :prof-icon="profIcon"
+              :has-filters="hasCurrentFilters"
+              description="筛选后按状态、稀有度、等级、化极、属性与实装顺序排列"
+              @update:status-filter="setWorkbenchStatusFilter"
+              @reset="resetCurrentFilters"
+            >
+              <template #primary-tool>
+                <button
+                  class="current-favorite-sort"
+                  :class="{ on: favoriteFirst }"
+                  type="button"
+                  :aria-pressed="favoriteFirst"
+                  @click="setFavoriteFirst(!favoriteFirst)"
+                >
+                  <Star
+                    :size="13"
+                    :fill="favoriteFirst ? 'currentColor' : 'none'"
+                    aria-hidden="true"
+                  />特别关注优先
+                </button>
+              </template>
+              <template #secondary-tool>
+                <button
+                  v-if="auth.isLoggedIn"
+                  class="current-batch-toggle"
+                  :class="{ on: batchSelectMode }"
+                  type="button"
+                  :aria-pressed="batchSelectMode"
+                  title="批量标注养成状态"
+                  @click="toggleBatchSelectMode"
+                >
+                  <ListChecks :size="13" aria-hidden="true" /><span
+                    class="current-batch-label"
+                    >{{ batchSelectMode ? "退出批量" : "批量标注" }}</span
                   >
-                </div>
-                <div class="current-filter-tools">
-                  <span class="current-filter-result" aria-live="polite"
-                    ><b>{{ filteredCurrent.length }}</b> /
-                    {{ ownedCurrentEntries.length }} 位</span
-                  >
-                  <button
-                    class="current-favorite-sort"
-                    :class="{ on: favoriteFirst }"
-                    type="button"
-                    :aria-pressed="favoriteFirst"
-                    @click="setFavoriteFirst(!favoriteFirst)"
-                  >
-                    <Star
-                      :size="13"
-                      :fill="favoriteFirst ? 'currentColor' : 'none'"
-                      aria-hidden="true"
-                    />特别关注优先
-                  </button>
-                  <button
-                    v-if="hasCurrentFilters"
-                    class="current-filter-reset"
-                    type="button"
-                    @click="resetCurrentFilters"
-                  >
-                    <RotateCcw :size="13" aria-hidden="true" />重置
-                  </button>
-                  <button
-                    v-if="auth.isLoggedIn"
-                    class="current-batch-toggle"
-                    :class="{ on: batchSelectMode }"
-                    type="button"
-                    :aria-pressed="batchSelectMode"
-                    title="批量标注养成状态"
-                    @click="toggleBatchSelectMode"
-                  >
-                    <ListChecks :size="13" aria-hidden="true" /><span
-                      class="current-batch-label"
-                      >{{ batchSelectMode ? "退出批量" : "批量标注" }}</span
-                    >
-                  </button>
-                </div>
-              </div>
-              <div class="current-filter-rows">
-                <div class="pf-row pf-prof-row">
-                  <span class="pf-label">属性</span>
-                  <div
-                    class="mf-filter"
-                    role="group"
-                    aria-label="按属性筛选当前养成"
-                  >
-                    <button
-                      type="button"
-                      :aria-pressed="profFilter === 'all'"
-                      :class="{ on: profFilter === 'all' }"
-                      @click="profFilter = 'all'"
-                    >
-                      全部
-                    </button>
-                    <button
-                      v-for="p in profOptions"
-                      :key="p"
-                      type="button"
-                      :aria-pressed="profFilter === p"
-                      :class="{ on: profFilter === p }"
-                      @click="profFilter = p"
-                    >
-                      <img
-                        v-if="profIcon(p)"
-                        :src="profIcon(p)"
-                        alt=""
-                        aria-hidden="true"
-                      />{{ p }}
-                    </button>
-                  </div>
-                </div>
-                <div class="pf-row pf-subprof-row">
-                  <span class="pf-label">职业</span>
-                  <div
-                    class="mf-filter"
-                    role="group"
-                    aria-label="按职业筛选当前养成"
-                  >
-                    <button
-                      type="button"
-                      :aria-pressed="subProfFilter === 'all'"
-                      :class="{ on: subProfFilter === 'all' }"
-                      @click="subProfFilter = 'all'"
-                    >
-                      全部
-                    </button>
-                    <button
-                      v-for="s in subProfOptions"
-                      :key="s"
-                      type="button"
-                      :aria-pressed="subProfFilter === s"
-                      :class="{ on: subProfFilter === s }"
-                      @click="subProfFilter = s"
-                    >
-                      {{ s }}
-                    </button>
-                  </div>
-                </div>
-                <div class="pf-row pf-status-row">
-                  <span class="pf-label">状态</span>
-                  <div
-                    class="mf-filter current-status-filter"
-                    role="group"
-                    aria-label="按养成状态筛选当前养成"
-                  >
-                    <button
-                      v-for="option in workbenchStatusOptions"
-                      :key="option.value"
-                      type="button"
-                      :aria-pressed="workbenchStatusFilter === option.value"
-                      :class="[
-                        'status-' + option.value,
-                        { on: workbenchStatusFilter === option.value },
-                      ]"
-                      @click="setWorkbenchStatusFilter(option.value)"
-                    >
-                      {{ option.label
-                      }}<small>{{
-                        option.value === "all"
-                          ? ownedCurrentEntries.length
-                          : currentStatusCounts[option.value]
-                      }}</small>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-if="batchSelectMode"
-                class="batch-status-bar"
-                aria-label="批量设置养成状态"
-              >
+                </button>
+              </template>
+              <template #footer>
+                <div
+                  v-if="batchSelectMode"
+                  class="batch-status-bar"
+                  aria-label="批量设置养成状态"
+                >
                 <div class="batch-quick-filters" aria-label="快捷筛选">
                   <span class="batch-quick-title">快捷筛选</span>
                   <button
@@ -1062,8 +1017,9 @@
                     清空
                   </button>
                 </div>
-              </div>
-            </div>
+                </div>
+              </template>
+            </OperatorFilterDossier>
 
             <div v-if="annotationError" class="state err slim" role="alert">
               {{ annotationError }}
@@ -1085,7 +1041,7 @@
               <template v-else-if="currentEntries.length === 0"
                 >暂无已招募的密探养成记录 ·
                 <router-link class="link" :to="quickHref"
-                  >前往首次 / 快捷导入</router-link
+                  >前往首次 / 快捷录入</router-link
                 ></template
               >
               <template v-else
@@ -1112,7 +1068,11 @@
                     · 仅看「可提升化极」</template
                   ></span
                 >
-                <span>快捷提升会真实扣除库存；手动校正与完整编辑不扣库存</span>
+                <span>{{
+                  ledgerCardIsV2
+                    ? "快捷提升会真实扣除库存；卡片编辑与完整编辑不扣库存"
+                    : "快捷提升会真实扣除库存；手动校正与完整编辑不扣库存"
+                }}</span>
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">
                 没有匹配{{ currentFilterSuffix }}的已招募密探
@@ -1121,7 +1081,8 @@
                 <article
                   v-for="e in filteredCurrent"
                   :key="e.id"
-                  class="agent-ledger-card"
+                  :ref="(element) => setCurrentLedgerCardElement(e.id, element)"
+                  class="agent-ledger-card agent-ledger-card--editable"
                   :class="[
                     {
                       'is-batch-selected': batchSelectedIds.has(e.id),
@@ -1134,6 +1095,7 @@
                     },
                     'rarity-r' + (e.rarity || 3),
                     'status-' + operatorStatus(e),
+                    ledgerCardVersionClass,
                   ]"
                   :aria-busy="cardSubmitStates[e.id] === 'submitting'"
                   role="listitem"
@@ -1154,14 +1116,7 @@
                         @change="toggleBatchSelected(e.id, $event)"
                       />
                     </label>
-                    <div class="ledger-avatar">
-                      <img
-                        v-if="avOf(e.id)"
-                        :src="avatarUrl(avOf(e.id))"
-                        :alt="e.name"
-                        loading="lazy"
-                      />
-                      <span v-else>{{ monogram(e) }}</span>
+                    <OperatorAvatar :avatar="avOf(e.id)" :name="e.name || e.id" :rarity="Number(e.rarity) || 3">
                       <button
                         class="ledger-favorite"
                         :class="{ on: favoriteAgentIds.has(e.id) }"
@@ -1183,7 +1138,7 @@
                           aria-hidden="true"
                         />
                       </button>
-                    </div>
+                    </OperatorAvatar>
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
                         <h3>{{ e.name || e.id }}</h3>
@@ -1283,22 +1238,35 @@
                       :key="kind"
                       class="ledger-combat-stat"
                       :class="{
-                        'is-manual': cardCombatMode(e, kind) === 'manual',
-                        'is-stale': combatObservedStatus(e) === 'stale',
+                        'is-manual':
+                          !ledgerCardIsV2 &&
+                          cardCombatMode(e, kind) === 'manual',
+                        'is-stale':
+                          !ledgerCardIsV2 &&
+                          combatObservedStatus(e) === 'stale',
                         'is-saving': cardCombatSavingIds.has(e.id),
                       }"
                     >
                       <div class="ledger-combat-head">
                         <span
+                          :aria-label="
+                            ledgerCardIsV2
+                              ? kind === 'attack'
+                                ? '攻击'
+                                : '生命'
+                              : undefined
+                          "
                           ><Swords
                             v-if="kind === 'attack'"
                             :size="12"
                             aria-hidden="true"
-                          /><Heart v-else :size="12" aria-hidden="true" />{{
-                            kind === "attack" ? "攻击" : "生命"
-                          }}</span
+                          /><Heart v-else :size="12" aria-hidden="true" /><template
+                            v-if="!ledgerCardIsV2"
+                            >{{ kind === "attack" ? "攻击" : "生命" }}</template
+                          ></span
                         >
                         <button
+                          v-if="!ledgerCardIsV2"
                           class="ledger-combat-mode"
                           type="button"
                           :class="{
@@ -1338,19 +1306,29 @@
                         class="ledger-combat-value"
                         type="number"
                         min="0"
-                        :value="cardCombatInputValue(e, kind)"
-                        :placeholder="cardCombatDisplay(e, kind)"
+                        :value="
+                          ledgerCardIsV2
+                            ? cardCombatSimpleValue(e, kind)
+                            : cardCombatInputValue(e, kind)
+                        "
+                        :placeholder="
+                          ledgerCardIsV2 ? '—' : cardCombatDisplay(e, kind)
+                        "
                         :aria-label="
                           e.name + (kind === 'attack' ? '攻击力' : '生命力')
                         "
                         :disabled="cardSubmitStates[e.id] === 'submitting'"
                         @input="setCardCombatValue(e, kind, $event)"
                       />
-                      <small class="ledger-combat-source">{{
+                      <small
+                        v-if="!ledgerCardIsV2"
+                        class="ledger-combat-source"
+                        >{{
                         cardSubmitStates[e.id] === "submitting"
                           ? "保存中…"
                           : cardCombatSource(e, kind)
-                      }}</small>
+                      }}</small
+                      >
                       <label class="ledger-oddity"
                         ><ButterflyIcon class="ledger-oddity-icon" /><input
                           type="number"
@@ -1394,18 +1372,49 @@
                           class="ledger-popover-trigger"
                           :class="growthActionClass(e, 'level', 5)"
                           :disabled="cardSubmitStates[e.id] === 'submitting'"
+                          :aria-label="
+                            ledgerCardIsV2
+                              ? '等级：' +
+                                growthActionLabel(e, 'level', 5, '提升 5 级')
+                              : undefined
+                          "
+                          :title="
+                            ledgerCardIsV2
+                              ? '等级：' +
+                                growthActionLabel(e, 'level', 5, '提升 5 级')
+                              : undefined
+                          "
                           @click="openGrowthAction(e, 'level', 5)"
                         >
-                          {{
+                          <template v-if="ledgerCardIsV2"
+                            ><CircleAlert
+                              v-if="!growthMaterialsReady(e, 'level', 5)"
+                              :size="14"
+                              aria-hidden="true"
+                            /><ChevronUp
+                              v-else
+                              :size="15"
+                              aria-hidden="true"
+                            /><span class="sr-only">{{
+                              growthActionLabel(e, "level", 5, "提升 5 级")
+                            }}</span></template
+                          ><template v-else>{{
                             growthActionLabel(e, "level", 5, "可 +5")
-                          }}</button
+                          }}</template></button
                         ><button
                           v-else
                           type="button"
                           class="is-complete"
                           disabled
+                          :aria-label="ledgerCardIsV2 ? '等级已满级' : undefined"
+                          :title="ledgerCardIsV2 ? '等级已满级' : undefined"
                         >
-                          已满级
+                          <template v-if="ledgerCardIsV2"
+                            ><Check :size="14" aria-hidden="true" /><span
+                              class="sr-only"
+                              >已满级</span
+                            ></template
+                          ><template v-else>已满级</template>
                         </button>
                       </div>
                       <div
@@ -1545,28 +1554,85 @@
                           cardGrowthValue(e, 'elite') >=
                             getMaxEliteForLevel(cardGrowthValue(e, 'level'))
                         "
+                        :aria-label="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'elite') >=
+                              getMaxEliteForLevel(cardGrowthValue(e, 'level'))
+                              ? '修为已满级'
+                              : '修为：' +
+                                growthActionLabel(
+                                  e,
+                                  'elite',
+                                  1,
+                                  '升至 ' + growthTarget(e, 'elite'),
+                                )
+                            : undefined
+                        "
+                        :title="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'elite') >=
+                              getMaxEliteForLevel(cardGrowthValue(e, 'level'))
+                              ? '修为已满级'
+                              : '修为：' +
+                                growthActionLabel(
+                                  e,
+                                  'elite',
+                                  1,
+                                  '升至 ' + growthTarget(e, 'elite'),
+                                )
+                            : undefined
+                        "
                         @click="openGrowthAction(e, 'elite', 1)"
                       >
-                        <ChevronUp
-                          v-if="
-                            cardGrowthValue(e, 'elite') <
-                              getMaxEliteForLevel(
-                                cardGrowthValue(e, 'level'),
-                              ) && growthMaterialsReady(e, 'elite', 1)
-                          "
-                          :size="13"
-                          aria-hidden="true"
-                        />{{
-                          cardGrowthValue(e, "elite") >=
-                          getMaxEliteForLevel(cardGrowthValue(e, "level"))
-                            ? "已满级"
-                            : growthActionLabel(
-                                e,
-                                "elite",
-                                1,
-                                "升至 " + growthTarget(e, "elite"),
-                              )
-                        }}
+                        <template v-if="ledgerCardIsV2"
+                          ><Check
+                            v-if="
+                              cardGrowthValue(e, 'elite') >=
+                              getMaxEliteForLevel(cardGrowthValue(e, 'level'))
+                            "
+                            :size="14"
+                            aria-hidden="true"
+                          /><CircleAlert
+                            v-else-if="!growthMaterialsReady(e, 'elite', 1)"
+                            :size="14"
+                            aria-hidden="true"
+                          /><ChevronUp
+                            v-else
+                            :size="15"
+                            aria-hidden="true"
+                          /><span class="sr-only">{{
+                            cardGrowthValue(e, "elite") >=
+                            getMaxEliteForLevel(cardGrowthValue(e, "level"))
+                              ? "已满级"
+                              : growthActionLabel(
+                                  e,
+                                  "elite",
+                                  1,
+                                  "升至 " + growthTarget(e, "elite"),
+                                )
+                          }}</span></template
+                        ><template v-else
+                          ><ChevronUp
+                            v-if="
+                              cardGrowthValue(e, 'elite') <
+                                getMaxEliteForLevel(
+                                  cardGrowthValue(e, 'level'),
+                                ) && growthMaterialsReady(e, 'elite', 1)
+                            "
+                            :size="13"
+                            aria-hidden="true"
+                          />{{
+                            cardGrowthValue(e, "elite") >=
+                            getMaxEliteForLevel(cardGrowthValue(e, "level"))
+                              ? "已满级"
+                              : growthActionLabel(
+                                  e,
+                                  "elite",
+                                  1,
+                                  "升至 " + growthTarget(e, "elite"),
+                                )
+                          }}</template
+                        >
                       </button>
                       <div
                         v-if="cardPopoverKey === e.id + ':elite'"
@@ -1683,9 +1749,9 @@
                             fill="currentColor"
                             aria-hidden="true"
                           /><span v-if="!e.spOf"
-                            >·
+                            >
                             {{ starCardNode(cardGrowthValue(e, "star")) }}
-                            节点</span
+                             节点</span
                           ></template
                         ><template v-else>{{
                           starCardFallback(cardGrowthValue(e, "star"))
@@ -1700,22 +1766,75 @@
                           cardSubmitStates[e.id] === 'submitting' ||
                           cardGrowthValue(e, 'star') >= 31
                         "
+                        :aria-label="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'star') >= 31
+                              ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
+                                ? '化极已觉醒'
+                                : '化极已满级'
+                              : '化极：' +
+                                growthActionLabel(
+                                  e,
+                                  'star',
+                                  1,
+                                  '提升至下一节点',
+                                )
+                            : undefined
+                        "
+                        :title="
+                          ledgerCardIsV2
+                            ? cardGrowthValue(e, 'star') >= 31
+                              ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
+                                ? '化极已觉醒'
+                                : '化极已满级'
+                              : '化极：' +
+                                growthActionLabel(
+                                  e,
+                                  'star',
+                                  1,
+                                  '提升至下一节点',
+                                )
+                            : undefined
+                        "
                         @click="openGrowthAction(e, 'star', 1)"
                       >
-                        <ChevronUp
-                          v-if="
-                            cardGrowthValue(e, 'star') < 31 &&
-                            growthMaterialsReady(e, 'star', 1)
-                          "
-                          :size="13"
-                          aria-hidden="true"
-                        />{{
-                          cardGrowthValue(e, "star") >= 31
-                            ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
-                              ? "已觉醒"
-                              : "已满级"
-                            : growthActionLabel(e, "star", 1, "下一节点")
-                        }}
+                        <template v-if="ledgerCardIsV2"
+                          ><Check
+                            v-if="cardGrowthValue(e, 'star') >= 31"
+                            :size="14"
+                            aria-hidden="true"
+                          /><span
+                            v-else-if="!growthMaterialsReady(e, 'star', 1)"
+                            class="ledger-action-ratio"
+                            aria-hidden="true"
+                            >{{ growthActionLabel(e, "star", 1, "下一节点") }}</span
+                          /><ChevronUp
+                            v-else
+                            :size="15"
+                            aria-hidden="true"
+                          /><span class="sr-only">{{
+                            cardGrowthValue(e, "star") >= 31
+                              ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
+                                ? "已觉醒"
+                                : "已满级"
+                              : growthActionLabel(e, "star", 1, "下一节点")
+                          }}</span></template
+                        ><template v-else
+                          ><ChevronUp
+                            v-if="
+                              cardGrowthValue(e, 'star') < 31 &&
+                              growthMaterialsReady(e, 'star', 1)
+                            "
+                            :size="13"
+                            aria-hidden="true"
+                          />{{
+                            cardGrowthValue(e, "star") >= 31
+                              ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
+                                ? "已觉醒"
+                                : "已满级"
+                              : growthActionLabel(e, "star", 1, "下一节点")
+                          }}</template
+                        >
                       </button>
                       <div
                         v-if="cardPopoverKey === e.id + ':star-edit'"
@@ -1863,7 +1982,9 @@
                     </div>
                   </section>
 
-                  <div class="ledger-destiny">
+                  <div
+                    class="ledger-destiny fate-trait-style-a"
+                  >
                     <div
                       v-for="index in 2"
                       :key="index"
@@ -1883,14 +2004,21 @@
                     >
                       <span>命盘{{ index === 1 ? "一" : "二" }}</span>
                       <div class="ledger-destiny-values">
-                        <template v-if="cardLoadoutDiscs(e, index - 1).length"
-                          ><em
+                        <template v-if="cardLoadoutDiscs(e, index - 1).length">
+                          <em
                             v-for="disc in cardLoadoutDiscs(e, index - 1)"
                             :key="disc"
                             class="disc-term"
-                            :class="{
-                              'has-description': cardDiscDescription(e, disc),
-                            }"
+                            :class="[
+                              cardDiscRarityClass(e, disc),
+                              {
+                                'has-description': cardDiscDescription(
+                                  e,
+                                  disc,
+                                ),
+                              },
+                            ]"
+                            :aria-label="ledgerCardIsV2 ? disc : undefined"
                             tabindex="0"
                             @mouseenter.stop="
                               showDiscTooltip(
@@ -1906,9 +2034,17 @@
                               )
                             "
                             @blur="hideDiscTooltip"
-                            >{{ disc }}</em
-                          ></template
-                        ><em v-else class="empty">+ 命盘</em>
+                            >{{
+                              ledgerCardIsV2
+                                ? cardDiscAbbreviation(e, disc)
+                                : disc
+                            }}</em>
+                        </template>
+                        <em
+                          v-if="cardLoadoutNeedsPlaceholder(e, index - 1)"
+                          class="empty"
+                          >+ 命盘</em
+                        >
                       </div>
                       <div
                         v-if="cardPopoverKey === e.id + ':disc-' + (index - 1)"
@@ -2167,10 +2303,33 @@
               :favorite-ids="favoriteAgentIds"
               :is-logged-in="auth.isLoggedIn"
               :refresh-key="subjectiveRefreshKey"
-              :initial-current-items="cardMaterialStock"
-              :initial-current-agents="cardHeartStock"
-              :current-inventory-ready="cardMaterialLoadedAccount === accountId"
-            />
+              :active="activeTab === 'tracking'"
+              :annotation-revisions="annotationRevisions"
+              @annotation-updated="applyAnnotationItem"
+              @refresh-annotations="loadOperatorAnnotations"
+              :is-remark-editing="row => cardHasDraft(trackerRemarkEntry(row))"
+              @refresh-operators="reloadCurrent(true)"
+            >
+              <template #remark="{ row }">
+                <div class="ledger-card-footer growth-card-remark">
+                  <textarea
+                    :value="operatorRemark(trackerRemarkEntry(row))"
+                    rows="2"
+                    maxlength="1000"
+                    :aria-label="(row.name || row.id) + '备忘'"
+                    placeholder="添加备忘…"
+                    :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)"
+                    @input="setOperatorRemarkDraft(trackerRemarkEntry(row), $event.target.value)"
+                  ></textarea>
+                  <div v-if="cardHasDraft(trackerRemarkEntry(row))" class="ledger-card-actions">
+                    <button class="ledger-card-cancel" type="button" :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="cancelCardDraft(trackerRemarkEntry(row))">取消</button>
+                    <button class="ledger-card-save" type="button" :disabled="cardSubmitStates[row.id] === 'submitting' || annotationBusyIds.has(row.id)" @click="saveCardDraft(trackerRemarkEntry(row))"><Save :size="13" aria-hidden="true" />{{ cardSubmitStates[row.id] === 'submitting' ? '保存中…' : '保存' }}</button>
+                  </div>
+                  <p v-if="cardSubmitStates[row.id] === 'error'" class="growth-remark-error" role="alert">{{ quickNotices[row.id] || '保存失败，请重试' }}</p>
+                  <p v-else-if="cardSubmitStates[row.id] === 'success'" class="growth-remark-notice" role="status">已保存</p>
+                </div>
+              </template>
+            </OperatorGrowthTracker>
           </div>
         </div>
       </section>
@@ -2205,7 +2364,7 @@
           @click="setTab('tracking')"
         >
           <Target :size="19" aria-hidden="true" />
-          <span>养成追踪</span>
+          <span>养成规划</span>
         </button>
       </nav>
 
@@ -2863,6 +3022,7 @@
 </template>
 
 <script setup>
+import { usePersistedTab } from "../../utils/persistedTab.js";
 import {
   ref,
   computed,
@@ -2872,14 +3032,17 @@ import {
   onMounted,
   defineAsyncComponent,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   Archive,
   BookOpen,
   Calculator,
+  Check,
   ChevronUp,
   CircleAlert,
   Download,
   Heart,
+  Eye,
   ListChecks,
   Pencil,
   RotateCcw,
@@ -2895,8 +3058,16 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
+import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
+import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
+import {
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION,
+  OPERATOR_LEDGER_CARD_VERSIONS,
+  operatorLedgerCardVersionClass,
+} from "../../config/operatorLedgerCard.js";
 const OperatorGrowthTracker = defineAsyncComponent(function () {
   return import("../../components/operator/OperatorGrowthTracker.vue");
 });
@@ -2922,6 +3093,11 @@ import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
+import { operatorUpdateFromEvent } from "../../utils/operatorEvents.js";
+import {
+  OPERATOR_TAB_STORAGE_KEY,
+  setActiveOperatorTab,
+} from "../../utils/operatorTabs.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
   isOperatorOwned,
@@ -2981,9 +3157,20 @@ const ODDITY_KEYS = OPERATOR_ODDITY_KEYS;
 const growthTrackingEnabled = isFeatureEnabled(
   FEATURE_KEYS.OPERATOR_GROWTH_TRACKING,
 );
+const ledgerCardVersionClass = operatorLedgerCardVersionClass();
+const ledgerCardIsV2 =
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2;
 
-const activeTab = ref("catalog");
-const visitedTabs = ref(new Set(["catalog"]));
+const route = useRoute();
+const router = useRouter();
+const activeTab = usePersistedTab(
+  OPERATOR_TAB_STORAGE_KEY,
+  "catalog",
+  growthTrackingEnabled ? ["catalog", "current", "tracking"] : ["catalog", "current"],
+);
+const visitedTabs = ref(new Set(["catalog", activeTab.value]));
+watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
+let operatorNavigationReady = false;
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const profFilter = ref("all");
@@ -3027,11 +3214,14 @@ let currentLoadSeq = 0;
 let currentLoadedKey = "";
 let favoriteLoadedAccount = "";
 let accountEventRefreshTimer = null;
+let subjectiveEventRefreshTimer = null;
+const subjectiveEventKinds = new Set();
 let unsubscribeAccountEvents = null;
 let scanFocusSeq = 0;
 let finishPendingScanScroll = null;
 const scanEffectTimers = new Map();
 const operatorSlotElements = new Map();
+const currentLedgerCardElements = new Map();
 
 // 当前养成台账卡的交互状态。状态与备忘以云端 annotation 为真相源；
 // localStorage 只保留迁移与断网回退用途。
@@ -3083,6 +3273,7 @@ const BATCH_QUICK_FILTERS = [
 let annotationLoadSeq = 0;
 const cardCombatDrafts = ref({});
 const cardCombatModes = ref({});
+const cardCombatEditedKeys = ref(new Set());
 const cardCombatSavingIds = ref(new Set());
 const cardGrowthDrafts = ref({});
 const cardPopoverKey = ref("");
@@ -3180,6 +3371,7 @@ watch(
     annotationRevisions.value = {};
     annotationError.value = "";
     cardCombatModes.value = readWorkbenchMap("combat-modes");
+    cardCombatEditedKeys.value = new Set();
     favoriteFirst.value = readFavoriteFirstPreference();
     cardLevelBreakthroughs.value = {};
     upgradeReadyFilter.value = "";
@@ -3189,13 +3381,35 @@ watch(
     annotationBusyIds.value = new Set();
     loadOperatorAnnotations();
     if (
-      visitedTabs.value.has("current") &&
+      (visitedTabs.value.has("current") || visitedTabs.value.has("tracking")) &&
       cardMaterialLoadedAccount.value !== accountId.value
     )
       loadCardMaterialStock();
   },
   { immediate: true },
 );
+const accountWorkspaceCompact = ref(true);
+const operatorShareManager = ref(null);
+const operatorShare = ref(null);
+const shareCopyFeedback = ref("");
+let shareCopyTimer;
+let shareCopySeq = 0;
+const isOperatorSharing = computed(() => auth.isLoggedIn && operatorShare.value?.accountId === accountId.value && !!operatorShare.value?.link);
+const ledgerShareStatus = computed(() => {
+  if (!auth.isLoggedIn || !accountId.value) return "未分享";
+  if (operatorShare.value?.accountId !== accountId.value) return "读取中…";
+  return operatorShare.value.status === "未开启" ? "未分享" : operatorShare.value.status;
+});
+watch(accountId, () => { clearTimeout(shareCopyTimer); shareCopySeq += 1; shareCopyFeedback.value = ""; });
+async function copyLedgerShare() {
+  const targetAccount = accountId.value;
+  const seq = ++shareCopySeq;
+  clearTimeout(shareCopyTimer);
+  const ok = await operatorShareManager.value?.copyCurrentShare();
+  if (seq !== shareCopySeq || targetAccount !== accountId.value) return;
+  shareCopyFeedback.value = ok ? "分享链接已复制" : "复制失败，请展开面板手动复制链接";
+  shareCopyTimer = setTimeout(() => { shareCopyFeedback.value = ""; }, ok ? 2200 : 4000);
+}
 const accountsLoading = ref(false);
 const accountBusy = ref(false);
 const accountError = ref("");
@@ -4067,7 +4281,7 @@ function starLabel(v, spOf) {
   if (n >= 1 && n <= 30) {
     const star = Math.floor((n - 1) / 6) + 1;
     const node = (n - 1) % 6;
-    return star + " ⭐ · " + node + " 节点";
+    return star + " ⭐ " + node + " 节点";
   }
   return n;
 }
@@ -4316,7 +4530,7 @@ const growthReadySummary = computed(function () {
     upgradeReadyGroups.value.level.length +
     " 位 · 修为可提升 " +
     upgradeReadyGroups.value.elite.length +
-    " 位。"
+    " 位"
   );
 });
 const favoriteHuajiNames = computed(function () {
@@ -4792,10 +5006,8 @@ async function loadCardMaterialStock() {
       return;
     const items = flattenInventoryCurrent(results[0]);
     cardMaterialStock.value = Object.assign({}, items, {
-      __experience__:
-        (Number(items.bingshucanjuan) || 0) * 100 +
-        (Number(items.bingshuquanjuan) || 0) * 1000 +
-        (Number(items.liutaobingshu) || 0) * 10000,
+      // 与体力规划器共用经验道具换算，避免两个页面口径漂移。
+      __experience__: bookExperience(items),
     });
     cardHeartStock.value = flattenInventoryCurrent(results[1]);
     cardMaterialLoadedAccount.value = targetAccount;
@@ -5328,10 +5540,7 @@ function applyUpgradeConsumption(consumed) {
   });
   const stock = cardMaterialStock.value;
   cardMaterialStock.value = Object.assign({}, stock, {
-    __experience__:
-      (Number(stock.bingshucanjuan) || 0) * 100 +
-      (Number(stock.bingshuquanjuan) || 0) * 1000 +
-      (Number(stock.liutaobingshu) || 0) * 10000,
+    __experience__: bookExperience(stock),
   });
 }
 
@@ -5557,10 +5766,10 @@ function growthActionLabel(entry, field, step, readyLabel) {
     return readyLabel;
   if (field === "level") return "查看经验缺口";
   if (field === "star") {
-    const heart = materials.find(function (item) {
-      return item.id === "__heart__";
+    const shortage = materials.find(function (item) {
+      return item.lack > 0;
     });
-    if (heart && heart.lack > 0) return heart.owned + "/" + heart.required;
+    if (shortage) return shortage.owned + "/" + shortage.required;
   }
   return "查看材料缺口";
 }
@@ -5582,9 +5791,9 @@ function growthPopoverTitle(entry, field) {
 function levelBookDeductions(required, stock) {
   let remaining = Math.max(0, Number(required) || 0);
   const books = [
-    { id: "liutaobingshu", value: 10000 },
-    { id: "bingshuquanjuan", value: 1000 },
-    { id: "bingshucanjuan", value: 100 },
+    { id: "liutaobingshu", value: BOOK_VALUES.liutaobingshu },
+    { id: "bingshuquanjuan", value: BOOK_VALUES.bingshuquanjuan },
+    { id: "bingshucanjuan", value: BOOK_VALUES.bingshucanjuan },
   ].map(function (book) {
     return Object.assign({}, book, {
       available: Number(stock[book.id]) || 0,
@@ -5623,29 +5832,6 @@ function levelBookDeductions(required, stock) {
     });
 }
 
-function levelBookGapBundle(experienceGap) {
-  const gap = Math.max(0, Number(experienceGap) || 0);
-  if (!gap) return [];
-  // 绝境历练每轮固定掉落：兵书全卷 9 + 兵书残卷 100，
-  // 对应 19,000 点兵书经验；按整轮向上取整，避免推荐经验不足。
-  const runs = Math.ceil(gap / 19000);
-  return [
-    {
-      id: "bingshuquanjuan",
-      name: itemNameById("bingshuquanjuan"),
-      required: runs * 9,
-      owned: 0,
-      lack: runs * 9,
-    },
-    {
-      id: "bingshucanjuan",
-      name: itemNameById("bingshucanjuan"),
-      required: runs * 100,
-      owned: 0,
-      lack: runs * 100,
-    },
-  ];
-}
 
 function growthMaterials(entry, field, step) {
   const draft = ensureCardDraft(entry);
@@ -5780,6 +5966,10 @@ function cancelCardDraft(entry) {
           : baseline.oddityHp,
     },
   });
+  const editedKeys = new Set(cardCombatEditedKeys.value);
+  editedKeys.delete(entry.id + ":attack");
+  editedKeys.delete(entry.id + ":hp");
+  cardCombatEditedKeys.value = editedKeys;
   cardPopoverKey.value = "";
 }
 
@@ -5854,6 +6044,8 @@ async function setOperatorStatus(entry, value) {
     return false;
   }
 }
+
+
 
 function setOperatorStatusAndClose(entry, value, event) {
   setOperatorStatus(entry, value);
@@ -6009,18 +6201,22 @@ async function quickCorrect(entry, field, rawValue) {
   patch[field === "star" ? "star_level" : field] = value;
   quickSavingIds.value = new Set([...quickSavingIds.value, entry.id]);
   try {
-    await patchOperatorCurrent({
+    const response = await patchOperatorCurrent({
       accountId: accountId.value,
       operatorId: entry.id,
       game: saveGame.value,
       patch,
     });
+    if (!applyPatchedCurrentEntry(entry.id, response)) {
+      await reloadCurrent(true);
+    }
     quickNotices.value = Object.assign({}, quickNotices.value, {
       [entry.id]: "已保存",
     });
     quickEditorKey.value = "";
     quickConfirmKey.value = "";
-    await reloadCurrent(true);
+    await nextTick();
+    restoreCurrentLedgerCardPosition(entry.id);
     window.setTimeout(function () {
       const next = Object.assign({}, quickNotices.value);
       delete next[entry.id];
@@ -6045,6 +6241,11 @@ function cardLoadoutDiscs(entry, index) {
     : [];
 }
 
+function cardLoadoutNeedsPlaceholder(entry, index) {
+  const count = cardLoadoutDiscs(entry, index).length;
+  return ledgerCardIsV2 ? count < 3 : count === 0;
+}
+
 function cardStoneSlots(entry) {
   const draft = ensureCardDraft(entry);
   const stones =
@@ -6059,10 +6260,37 @@ function cardDiscOptions(entry) {
   return sortDiscsForPicker(catalog && catalog.discs);
 }
 
-function cardDiscDescription(entry, name) {
-  const disc = cardDiscOptions(entry).find(function (item) {
+function cardDiscCatalogItem(entry, name) {
+  return cardDiscOptions(entry).find(function (item) {
     return discKey(item) === name;
   });
+}
+
+function cardDiscAbbreviation(entry, name) {
+  const disc = cardDiscCatalogItem(entry, name);
+  const abbreviation =
+    disc && typeof disc.abbreviation === "string"
+      ? disc.abbreviation.trim()
+      : "";
+  return abbreviation || name;
+}
+
+const DISC_RARITY_CLASS = Object.freeze({
+  金: "rarity-gold",
+  紫: "rarity-purple",
+  蓝: "rarity-blue",
+  gold: "rarity-gold",
+  purple: "rarity-purple",
+  blue: "rarity-blue",
+});
+
+function cardDiscRarityClass(entry, name) {
+  const disc = cardDiscCatalogItem(entry, name);
+  return (disc && DISC_RARITY_CLASS[disc.color]) || "";
+}
+
+function cardDiscDescription(entry, name) {
+  const disc = cardDiscCatalogItem(entry, name);
   return discDescription(disc);
 }
 
@@ -6155,6 +6383,10 @@ function operatorRemark(entry) {
   if (Object.prototype.hasOwnProperty.call(workbenchRemarks.value, entry.id))
     return workbenchRemarks.value[entry.id];
   return entry.remark || entry.note || "";
+}
+
+function trackerRemarkEntry(row) {
+  return currentEntries.value.find(entry => entry.id === row.id) || row;
 }
 
 function setOperatorRemarkDraft(entry, value) {
@@ -6310,6 +6542,18 @@ function cardCombatInputValue(entry, kind) {
   return value == null ? "" : value;
 }
 
+function cardCombatSimpleValue(entry, kind) {
+  if (cardCombatEditedKeys.value.has(entry.id + ":" + kind)) {
+    const draftValue = cardCombatDraft(entry)[kind];
+    return draftValue == null ? "" : draftValue;
+  }
+  const stats = entry.combatStats || {};
+  const latestValue = stats[kind];
+  if (latestValue != null) return latestValue;
+  const fallbackValue = kind === "attack" ? stats.manualAttack : stats.manualHp;
+  return fallbackValue == null ? "" : fallbackValue;
+}
+
 function cardCombatSource(entry, kind) {
   const mode = cardCombatMode(entry, kind);
   const result = cardCombatResult(entry);
@@ -6362,6 +6606,11 @@ function setCardCombatValue(entry, kind, event) {
   const draft = cardCombatDraft(entry);
   const raw = event && event.target ? event.target.value : "";
   draft[kind] = raw === "" ? null : Number(raw);
+  cardCombatEditedKeys.value = new Set([
+    ...cardCombatEditedKeys.value,
+    entry.id + ":" + kind,
+  ]);
+  if (ledgerCardIsV2) return;
   const next = Object.assign({}, cardCombatModes.value[entry.id] || {}, {
     [kind]: "manual",
   });
@@ -6582,10 +6831,36 @@ function mergePatchedCurrentEntry(entry, payload) {
         stats.oddities && stats.oddities.hp ? stats.oddities.hp.current : 0,
     },
   });
+  const editedKeys = new Set(cardCombatEditedKeys.value);
+  editedKeys.delete(entry.id + ":attack");
+  editedKeys.delete(entry.id + ":hp");
+  cardCombatEditedKeys.value = editedKeys;
   if (growth)
     cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, {
       [entry.id]: cardDraftSnapshot(entry),
     });
+}
+
+function applyPatchedCurrentEntry(operatorId, payload) {
+  const entry = currentEntries.value.find(function (item) {
+    return item.id === operatorId;
+  });
+  const raw =
+    payload && payload.entry && typeof payload.entry === "object"
+      ? payload.entry
+      : payload && payload.operator && typeof payload.operator === "object"
+        ? payload.operator
+        : payload;
+  if (
+    !entry ||
+    !raw ||
+    typeof raw !== "object" ||
+    Array.isArray(raw) ||
+    Object.keys(raw).length === 0
+  )
+    return false;
+  mergePatchedCurrentEntry(entry, payload);
+  return true;
 }
 
 async function saveCardCombat(entry) {
@@ -6967,8 +7242,9 @@ async function saveEdit() {
   editNotice.value = "";
   editNoticeError.value = false;
   try {
+    let response;
     try {
-      await patchOperatorCurrent({
+      response = await patchOperatorCurrent({
         accountId: accountId.value,
         operatorId: op.id,
         game: saveGame.value,
@@ -6984,7 +7260,7 @@ async function saveEdit() {
       const legacyPatch = JSON.parse(JSON.stringify(patch));
       if (legacyPatch.combat_stats)
         delete legacyPatch.combat_stats.display_mode;
-      await patchOperatorCurrent({
+      response = await patchOperatorCurrent({
         accountId: accountId.value,
         operatorId: op.id,
         game: saveGame.value,
@@ -6993,10 +7269,17 @@ async function saveEdit() {
       editNotice.value = "已保存；当前后端暂不支持跨设备记忆显示偏好";
     }
     persistCombatDisplayMode(op.id);
-    await reloadCurrent(true);
+    if (!applyPatchedCurrentEntry(op.id, response)) {
+      // 完整编辑从当前卡片打开；只有卡片在保存期间被外部刷新移除时，
+      // 才需要重新拉取整张台账。
+      resetCardDraftState(op.id);
+      await reloadCurrent(true);
+    }
+    await nextTick();
     editNotice.value = "养成资料与已装备星石均已保存";
     setTimeout(function () {
       closeEditor();
+      restoreCurrentLedgerCardPosition(op.id);
     }, 800);
   } catch (err) {
     if (
@@ -7028,12 +7311,14 @@ function setTab(t) {
     visitedTabs.value = new Set(visitedTabs.value).add(t);
   activeTab.value = t;
   const currentKey = accountId.value + ":" + gameFilter.value;
+  let currentLoad = Promise.resolve();
   if ((t === "current" || t === "tracking") && currentLoadedKey !== currentKey)
-    reloadCurrent();
-  if (t === "current" && cardMaterialLoadedAccount.value !== accountId.value)
+    currentLoad = reloadCurrent();
+  if ((t === "current" || t === "tracking") && cardMaterialLoadedAccount.value !== accountId.value)
     loadCardMaterialStock();
   if (t === "tracking" && favoriteLoadedAccount !== accountId.value)
     loadAgentFavorites();
+  return currentLoad;
 }
 
 async function onGameChange(game) {
@@ -7241,25 +7526,12 @@ async function reloadCurrent(quiet) {
     list.forEach(function (doc) {
       const entriesObj = doc && doc.entries ? doc.entries : {};
       Object.keys(entriesObj).forEach(function (id) {
-        const op = catalogMap.value[id] || {};
-        combined[id] = normalizeEntry(entriesObj[id], op.odditySchema);
+        combined[id] = entriesObj[id];
       });
     });
     currentEntries.value = Object.keys(combined)
       .map(function (id) {
-        const op = catalogMap.value[id] || {};
-        return Object.assign(
-          {
-            id: id,
-            name: op.name || "",
-            rarity: op.rarity,
-            prof: op.prof || "",
-            subProf: op.subProf || "",
-            games: op.games || [],
-            spOf: op.spOf || "",
-          },
-          combined[id],
-        );
+        return normalizeCurrentEntry(id, combined[id]);
       })
       .filter(function (e) {
         return matchesGame(e, targetGame);
@@ -7289,6 +7561,117 @@ async function reloadCurrent(quiet) {
     )
       loading.value = false;
   }
+}
+
+function normalizeCurrentEntry(operatorId, raw) {
+  const op = catalogMap.value[operatorId] || {};
+  return Object.assign(
+    {
+      id: operatorId,
+      name: op.name || "",
+      rarity: op.rarity,
+      prof: op.prof || "",
+      subProf: op.subProf || "",
+      games: op.games || [],
+      spOf: op.spOf || "",
+    },
+    normalizeEntry(raw, op.odditySchema),
+  );
+}
+
+function currentEntryRawFromResponse(data, operatorId) {
+  const list = Array.isArray(data) ? data : data ? [data] : [];
+  let raw = null;
+  list.forEach(function (doc) {
+    const entries = doc && doc.entries;
+    if (
+      entries &&
+      typeof entries === "object" &&
+      Object.prototype.hasOwnProperty.call(entries, operatorId)
+    ) {
+      raw = entries[operatorId];
+    }
+  });
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+}
+
+function applyCurrentEntrySnapshot(operatorId, raw) {
+  if (!operatorId || !raw) return false;
+  const entry = currentEntries.value.find(function (item) {
+    return item.id === operatorId;
+  });
+  if (!entry) {
+    currentEntries.value = currentEntries.value.concat([
+      normalizeCurrentEntry(operatorId, raw),
+    ]);
+    return true;
+  }
+
+  // 有未保存的卡片编辑时只更新条目本身，保留用户正在编辑的草稿；
+  // 没有草稿则同步卡片派生状态、基线和战斗数值。
+  const hasDraft = cardHasDraft(entry);
+  if (hasDraft) {
+    Object.assign(entry, normalizeCurrentEntry(operatorId, raw));
+  } else {
+    mergePatchedCurrentEntry(entry, { entry: raw });
+  }
+  return true;
+}
+
+async function reloadCurrentEntry(operatorId, quiet) {
+  if (!operatorId || !auth.isLoggedIn || !accountId.value) return false;
+  const targetAccount = accountId.value;
+  const targetGame = gameFilter.value;
+  const seq = ++currentLoadSeq;
+  try {
+    const data = await getOperatorCurrent({
+      accountId: targetAccount,
+      game: targetGame,
+    });
+    if (
+      seq !== currentLoadSeq ||
+      accountId.value !== targetAccount ||
+      gameFilter.value !== targetGame
+    )
+      return false;
+    const raw = currentEntryRawFromResponse(data, operatorId);
+    if (!raw) return false;
+    return applyCurrentEntrySnapshot(operatorId, raw);
+  } catch (err) {
+    if (
+      !quiet &&
+      seq === currentLoadSeq &&
+      accountId.value === targetAccount &&
+      gameFilter.value === targetGame
+    )
+      error.value = humanErr(err, "加载失败，请稍后重试");
+    return false;
+  }
+}
+
+function setCurrentLedgerCardElement(operatorId, element) {
+  if (!operatorId) return;
+  if (element) currentLedgerCardElements.set(operatorId, element);
+  else currentLedgerCardElements.delete(operatorId);
+}
+
+function restoreCurrentLedgerCardPosition(operatorId) {
+  if (!operatorId) return;
+  nextTick(function () {
+    const element = currentLedgerCardElements.get(operatorId);
+    if (!element || !document.contains(element)) return;
+    const rect = element.getBoundingClientRect();
+    const isVisible = rect.top >= 96 && rect.bottom <= window.innerHeight - 96;
+    if (isVisible) return;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    element.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "center",
+      inline: "nearest",
+    });
+  });
 }
 
 function scheduleEventRefresh() {
@@ -7333,24 +7716,34 @@ function waitForScanScroll(reducedMotion) {
   });
 }
 
-async function focusAndFlashScanOperator(operatorId, effect) {
+async function focusAndFlashScanOperator(operatorId, effect, targetTab = "catalog") {
   if (!operatorId) return;
   const focusSeq = ++scanFocusSeq;
   if (finishPendingScanScroll) finishPendingScanScroll();
-  activeTab.value = "catalog";
-  if (
-    !manifestEntries.value.some(function (entry) {
+  const nextTab = targetTab === "current" ? "current" : "catalog";
+  await setTab(nextTab);
+  if (nextTab === "catalog") {
+    if (
+      !manifestEntries.value.some(function (entry) {
+        return entry.id === operatorId;
+      })
+    ) {
+      manifestSearch.value = "";
+      manifestFilter.value = "all";
+      profFilter.value = "all";
+      subProfFilter.value = "all";
+    }
+  } else if (
+    !filteredCurrent.value.some(function (entry) {
       return entry.id === operatorId;
     })
   ) {
-    manifestSearch.value = "";
-    manifestFilter.value = "all";
-    profFilter.value = "all";
-    subProfFilter.value = "all";
+    resetCurrentFilters();
   }
   await nextTick();
   if (focusSeq !== scanFocusSeq) return;
-  const target = operatorSlotElements.get(operatorId);
+  const targetMap = nextTab === "current" ? currentLedgerCardElements : operatorSlotElements;
+  const target = targetMap.get(operatorId);
   if (!target) {
     flashScanOperator(operatorId, effect);
     return;
@@ -7401,9 +7794,54 @@ function flashScanOperator(operatorId, effect) {
   });
 }
 
+function scheduleSubjectiveRefresh(kind) {
+  subjectiveEventKinds.add(kind);
+  if (subjectiveEventRefreshTimer != null) return;
+  subjectiveEventRefreshTimer = setTimeout(function () {
+    subjectiveEventRefreshTimer = null;
+    if (subjectiveEventKinds.has("operator_annotation")) loadOperatorAnnotations();
+    if (subjectiveEventKinds.has("operator_favorites")) loadAgentFavorites();
+    subjectiveEventKinds.clear();
+  }, 180);
+}
+
+function routeQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+async function consumeOperatorNavigation() {
+  const requestedTab = routeQueryValue(route.query.tab);
+  const operatorId = routeQueryValue(route.query.focus);
+  const effect = routeQueryValue(route.query.effect) === "new" ? "new" : "updated";
+  const targetTab = requestedTab === "current" || requestedTab === "catalog" ? requestedTab : "";
+  if (!targetTab && !operatorId) return;
+  if (operatorId) await focusAndFlashScanOperator(operatorId, effect, targetTab || "catalog");
+  else if (targetTab) await setTab(targetTab);
+
+  const cleanedQuery = Object.assign({}, route.query);
+  delete cleanedQuery.tab;
+  delete cleanedQuery.focus;
+  delete cleanedQuery.effect;
+  await router.replace({ query: cleanedQuery }).catch(function () { /* 页面离开时无需处理 */ });
+}
+
+watch(
+  function () { return [route.query.tab, route.query.focus, route.query.effect]; },
+  function () {
+    if (operatorNavigationReady) void consumeOperatorNavigation();
+  },
+);
+
 function handleAccountEvent(message) {
   if (!message) return;
+  const eventAccount = message.data?.account_id || message.data?.accountId;
+  if (eventAccount && eventAccount !== accountId.value) return;
+  if (message.event === "operator_annotation") { scheduleSubjectiveRefresh(message.event); return; }
+  if (message.event === "operator_favorites") { scheduleSubjectiveRefresh(message.event); return; }
+
   if (message.event === "account_stream_open") {
+    loadOperatorAnnotations();
+    loadAgentFavorites();
     scheduleEventRefresh();
     return;
   }
@@ -7436,27 +7874,39 @@ function handleAccountEvent(message) {
     showQuickNotice(id, "养成与库存已同步", 2200);
     return;
   }
-  if (message.event !== "operator_scan_import") return;
   const data = message.data || {};
-  if (data.account_id && data.account_id !== accountId.value) return;
-  if (data.status === "accepted" || data.status === "partial") {
-    if (!data.preview) scheduleEventRefresh();
-    focusAndFlashScanOperator(
-      data.operator_id,
-      Number(data.revision) === 1 ? "new" : "updated",
-    );
+  // operator_scan_import（以及兼容的目录更新事件）统一在工具函数中归一化。
+  const update = operatorUpdateFromEvent(message);
+  if (!update) return;
+  const operatorId = data.operator_id || data.operatorId || update.operatorId;
+  if (activeTab.value === "current") {
+    const refresh = update.preview
+      ? Promise.resolve(true)
+      : reloadCurrentEntry(operatorId, true);
+    void refresh.then(function (updated) {
+      if (activeTab.value === "current" && (update.preview || updated))
+        void focusAndFlashScanOperator(data.operator_id || operatorId, update.effect, "current");
+    });
+    return;
   }
+  if (!update.preview) scheduleEventRefresh();
+  if (activeTab.value === "catalog")
+    void focusAndFlashScanOperator(data.operator_id || operatorId, update.effect, "catalog");
 }
 
 function stopAccountEventSubscription() {
   if (accountEventRefreshTimer != null) clearTimeout(accountEventRefreshTimer);
   accountEventRefreshTimer = null;
+  if (subjectiveEventRefreshTimer != null) clearTimeout(subjectiveEventRefreshTimer);
+  subjectiveEventRefreshTimer = null;
+  subjectiveEventKinds.clear();
   if (unsubscribeAccountEvents) unsubscribeAccountEvents();
   unsubscribeAccountEvents = null;
   scanFocusSeq += 1;
   if (finishPendingScanScroll) finishPendingScanScroll();
   finishPendingScanScroll = null;
   operatorSlotElements.clear();
+  currentLedgerCardElements.clear();
   scanEffectTimers.forEach(clearTimeout);
   scanEffectTimers.clear();
 }
@@ -7790,10 +8240,15 @@ onMounted(async function () {
   window.addEventListener("resize", hideDiscTooltip);
   await Promise.all([loadCatalog(), loadAccounts()]);
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
+  setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
+  operatorNavigationReady = true;
+  void consumeOperatorNavigation();
 });
 
 onBeforeUnmount(function () {
+  clearTimeout(shareCopyTimer);
+  shareCopySeq += 1;
   document.removeEventListener("pointerdown", handleCardPopoverOutside);
   window.removeEventListener("scroll", hideDiscTooltip, true);
   window.removeEventListener("resize", hideDiscTooltip);
@@ -7804,6 +8259,26 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.workspace-mobile-link { display: none; }
+.current-ledger-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.current-ledger-heading .section-kicker { margin-bottom: 0; }
+.ledger-share-badge { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font: 700 12px var(--font-b); }
+.ledger-share-badge::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-35); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-35) 12%, transparent); }
+.ledger-share-badge.is-sharing::before { background: #6f9f76; box-shadow: 0 0 0 3px rgba(111, 159, 118, .14), 0 0 7px rgba(111, 159, 118, .22); }
+.ledger-share-badge.is-sharing { color: var(--ink); cursor: pointer; }
+.ledger-share-badge.is-sharing:hover { background: var(--paper); }
+.ledger-share-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ledger-share-feedback { color: var(--accent-strong); font-size: 12px; }
+@media (max-width: 1080px) {
+  .page-operator .operator-tabs { display: none; }
+  .page-operator :deep(.workspace-summary) { flex-wrap: wrap; justify-content: flex-start; gap: 6px; padding: 10px; }
+  .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { display: inline-flex; min-height: 44px; padding: 8px 10px; font-size: 12px; justify-content: center; flex: 1 1 auto; white-space: nowrap; }
+}
+
+.operator-share-placeholder { padding: 22px 24px; }
+.operator-share-placeholder h2 { font: 900 18px var(--font-s); }
+.operator-share-placeholder p { margin-top: 6px; font-size: 12.5px; color: var(--ink-60); line-height: 1.7; }
+
 /* —— 复用全局 CSS 变量（不新增色值），对齐库存（inventory）页版式 —— */
 .operator-main {
   padding-bottom: 0;
@@ -7825,12 +8300,12 @@ onBeforeUnmount(function () {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 4px;
-  margin-top: 40px;
+  margin-top: 16px;
   flex-wrap: wrap;
   align-items: center;
   box-shadow: 0 12px 28px -22px rgba(73, 59, 44, 0.5);
 }
-.operator-tabs button {
+.operator-tabs .operator-tab-button {
   border: none;
   background: transparent;
   font-family: var(--font-b);
@@ -7842,11 +8317,11 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
   transition: all 0.3s var(--ease);
 }
-.operator-tabs button.on {
+.operator-tabs .operator-tab-button.on {
   background: var(--tea);
   color: var(--cream);
 }
-.operator-tabs button:hover:not(.on) {
+.operator-tabs .operator-tab-button:hover:not(.on) {
   color: var(--ink);
 }
 .operator-tabs .sp {
@@ -8230,6 +8705,36 @@ onBeforeUnmount(function () {
     box-shadow: 0 0 0 0 rgba(215, 137, 53, 0);
   }
 }
+@keyframes operator-ledger-card-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  32% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.018);
+  }
+}
+@keyframes operator-ledger-card-sweep {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  12% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
 @keyframes operator-scanner-line {
   0% {
     transform: translateY(0);
@@ -8580,6 +9085,10 @@ onBeforeUnmount(function () {
   }
   .build-row.is-scan-updated,
   .build-row.is-scan-new,
+  .agent-ledger-card.is-scan-new::before,
+  .agent-ledger-card.is-scan-new::after,
+  .agent-ledger-card.is-scan-updated::before,
+  .agent-ledger-card.is-scan-updated::after,
   .slot.is-scan-new .slot-ic,
   .slot.is-scan-updated .slot-ic,
   .slot.is-scan-new .slot-ic::before,
@@ -8628,7 +9137,7 @@ onBeforeUnmount(function () {
 .archive-toggle {
   min-height: 44px;
   align-self: center;
-  transform: translateY(9px);
+  transform: none;
   background: transparent;
 }
 .archive-actions svg {
@@ -9838,10 +10347,9 @@ onBeforeUnmount(function () {
   min-height: 28px;
   align-items: center;
   justify-content: center;
-  padding: 2px 7px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--paper);
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
   color: var(--tea);
   font-size: 11px;
 }
@@ -9937,6 +10445,68 @@ onBeforeUnmount(function () {
   box-shadow:
     0 18px 30px rgba(73, 59, 44, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.agent-ledger-card.is-scan-new,
+.agent-ledger-card.is-scan-updated {
+  --ledger-scan-accent: var(--accent);
+}
+.agent-ledger-card.rarity-r4.is-scan-new,
+.agent-ledger-card.rarity-r4.is-scan-updated {
+  --ledger-scan-accent: #8672b2;
+}
+.agent-ledger-card.rarity-r3.is-scan-new,
+.agent-ledger-card.rarity-r3.is-scan-updated {
+  --ledger-scan-accent: #99b5cf;
+}
+.agent-ledger-card.is-scan-new::before,
+.agent-ledger-card.is-scan-updated::before {
+  position: absolute;
+  z-index: 3;
+  inset: -3px;
+  border: 1.5px solid color-mix(in srgb, var(--ledger-scan-accent) 72%, var(--surface));
+  border-radius: inherit;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  animation: operator-ledger-card-ring 0.84s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.agent-ledger-card.is-scan-new::after,
+.agent-ledger-card.is-scan-updated::after {
+  position: absolute;
+  z-index: 3;
+  top: -1px;
+  right: 12px;
+  left: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ledger-scan-accent) 68%, var(--surface)),
+    transparent
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ledger-scan-accent) 58%, transparent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: operator-ledger-card-sweep 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.agent-ledger-card.is-scan-updated::before {
+  animation-duration: 0.68s;
+}
+.agent-ledger-card.is-scan-updated::after {
+  animation-duration: 0.62s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-ledger-card.is-scan-new::before,
+  .agent-ledger-card.is-scan-new::after,
+  .agent-ledger-card.is-scan-updated::before,
+  .agent-ledger-card.is-scan-updated::after {
+    animation: none !important;
+    opacity: 0;
+  }
 }
 .agent-ledger-card.rarity-r5 {
   --ledger-rarity-accent: var(--accent);
@@ -11009,6 +11579,9 @@ onBeforeUnmount(function () {
 .ledger-card-footer textarea::placeholder {
   color: var(--ink-35);
 }
+.growth-card-remark { margin-top: 12px; }
+.growth-remark-error, .growth-remark-notice { font: 11px/1.5 var(--font-b); color: var(--ink-60); }
+.growth-remark-error { color: var(--rouge); }
 .ledger-inline-field {
   display: inline-flex;
   min-width: 34px;
@@ -13642,7 +14215,7 @@ onBeforeUnmount(function () {
     max-height: 130px;
   }
   .operator-tabs {
-    margin-top: 24px;
+    margin-top: 12px;
   }
   .operator-tabs .admin-link {
     padding-inline: 12px;
@@ -14302,5 +14875,51 @@ onBeforeUnmount(function () {
     transform: none;
   }
 }
+
+.ledger-share-control { position: relative; flex: none; }
+.ledger-share-control .ledger-share-feedback { position: absolute; z-index: 5; top: calc(100% + 4px); right: 0; width: max-content; max-width: min(240px, 70vw); padding: 8px 12px; border-radius: 10px; background: var(--tea); color: var(--cream); box-shadow: 0 5px 16px rgba(73, 59, 44, .15); font-size: 12px; line-height: 1.5; pointer-events: none; }
+.ledger-share-feedback::before { content: ''; position: absolute; top: -4px; right: 18px; width: 8px; height: 8px; background: var(--tea); transform: rotate(45deg); }
+.upgrade-filter-icon { display: none; }
+@media (max-width: 1080px) {
+  .page-operator :deep(.workspace-summary) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 6px 8px; gap: 6px; background: var(--cream); }
+  .page-operator :deep(.workspace-status:not(:empty)) { grid-column: 1 / -1; }
+  .page-operator :deep(.workspace-toggle) { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; color: var(--tea); font-weight: 800; }
+  .page-operator .workspace-mobile-link { min-width: 0; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink-60); text-decoration: none; font-weight: 700; }
+  .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { padding: 6px 4px; min-height: 44px; font-size: 12px; }
+  .page-operator .workspace-mobile-link:hover { color: var(--ink); border-color: var(--accent); background: var(--paper); text-decoration: none; }
+  .page-operator .workspace-mobile-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+}
+@media (max-width: 640px) {
+  .current-workbench-index { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: 0; }
+  .current-status-index { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+  .current-status-index > div { align-items: center; text-align: center; padding: 0 4px; }
+  .current-status-index > div::before { left: 5px; }
+  .current-index-total { min-width: 0; padding-right: 0; }
+  .current-upgrade-reminder { grid-template-columns: auto minmax(0, 1fr) 44px; gap: 8px; }
+  .current-upgrade-reminder button { grid-column: 3; grid-row: 1; width: 44px; min-height: 44px; padding: 0; }
+  .current-upgrade-reminder .upgrade-filter-icon { display: block; }
+  .current-upgrade-reminder .upgrade-filter-label { display: none; }
+  .current-upgrade-reminder-icon { width: 30px; height: 30px; }
+}
+
+@media (min-width: 901px) {
+  .current-workbench-head { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; gap: 4px 28px; padding: 16px 22px; }
+  .current-workbench-copy, .current-ledger-heading { display: contents; }
+  .current-ledger-heading > .section-kicker { grid-column: 1; grid-row: 1; align-self: center; margin: 0; }
+  .ledger-share-control { grid-column: 2; grid-row: 1; justify-self: end; }
+  .current-workbench-title { grid-column: 1; grid-row: 2; margin-top: 0; }
+  .current-workbench-copy > p { grid-column: 1; margin-top: 2px; }
+  .current-workbench-head .current-workbench-index { grid-column: 2; grid-row: 2 / span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); width: 100%; box-sizing: border-box; gap: 10px; padding: 10px 12px; align-self: start; }
+  .current-workbench-index .current-status-index { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .ledger-share-control .ledger-share-badge { min-height: 32px; padding: 4px 8px; }
+}
+
+@media (min-width: 1081px) {
+  .operator-account-workspace.is-compact { display: none; }
+  .operator-account-workspace :deep(.workspace-summary) { display: none; }
+  .operator-account-workspace :deep(.workspace-panels) { border-top: 0; }
+  .operator-tabs .workspace-tabs-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+}
 </style>
-<style scoped src="../../styles/operator-ledger-shared.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v1.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v2.css"></style>

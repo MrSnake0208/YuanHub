@@ -6,10 +6,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 // 两个仓库的共同父目录：/Users/mrsnake/Desktop/yituliu
 // test/ 位于 YuanHub/ 下，故向上两级到共同父目录
-const ROOT = new URL('../../', import.meta.url).pathname
+const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
 function readRel(rel) {
   return readFileSync(ROOT + rel, 'utf8')
@@ -62,10 +63,11 @@ test('权限列表字段契约：scope/description（字符串 key，非数字 c
   assert.doesNotMatch(frontendUtil, /hit\.desc\b/)
 })
 
-test('scope key 前后端一致：inventory:* 与 operator:*', () => {
+test('scope key 前后端一致：inventory、operator 与星石采集写权限', () => {
   for (const k of [
     'inventory:read', 'inventory:write', 'inventory:export',
-    'operator:read', 'operator:write', 'operator:export', 'operator:scan:write'
+    'operator:read', 'operator:write', 'operator:export', 'operator:scan:write',
+    'star:capture:write'
   ]) {
     assert.ok(backendPermission.includes(k), '后端缺 ' + k)
     // openApi.js 只透传 scopes，不枚举 key；实际前端兜底/展示在 utils 与 profile
