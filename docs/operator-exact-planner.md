@@ -18,7 +18,7 @@ HiGHS 的最优间隙设为零；每个候选方案还会通过现有日程结�
 
 ## 保存与运行资源
 
-采用结果的证明信息存于 `schedule.result.optimization`，包含状态、目标、起算日期、完成天数、范围和求解器版本。修改日程会移除此信息，防止继续展示过期证明。待重算提示仍存于 `context.planBaselines`。云端沿用现有日程状态和嵌套元数据，不增加顶层协议字段。
+采用结果的证明信息存于 `schedule.result.optimization`，包含状态、目标、起算日期、完成天数、范围和求解器版本。期限补足方案另外以 `schedule.result.planSource = deadline-alternative` 标记，供日程展示区分于快速推荐。修改日程会移除这些采用标记，防止继续展示过期方案语义。待重算提示仍存于 `context.planBaselines`。云端沿用现有日程状态和嵌套元数据，不增加顶层协议字段。
 
 运行资源固定于 `public/solver/highs-1.15.3/`，包含原始 MIT 许可与来源说明，无运行时 CDN 或仓库外依赖。WASM 约 3.5 MB，仅点击计算后请求；不会纳入现有 PWA 的 JS/CSS/HTML 预缓存匹配范围。
 
