@@ -1110,27 +1110,27 @@ visualViewport.height 明显因软键盘缩小时
 
 ---
 
-# 19. 图标与正式 Logo 尚未确定的处理
+# 19. 正式 Logo 与 PWA 图标
 
-不等待正式 Logo。
+截至 2026-09-16，YuanHub 正式 Logo 已应用到主站与宣传页。
 
-本功能与品牌 Logo 解耦：
+当前固定资源映射：
 
 ```text
-先用 YuanHub 临时识别图标上线 PWA
-↓
-正式 Logo 定稿
-↓
-覆盖 public/pwa 同名图标
-↓
-重新构建发布
+125圆角.png
+→ public/brand/yuanhub-logo.png
+→ 页面品牌标识（不透明底，适配浅色页面）
+→ public/pwa/icon-192.png
+→ public/pwa/icon-512.png
+→ public/pwa/apple-touch-icon.png
+
+正方.png
+→ public/pwa/icon-maskable-512.png
 ```
 
-需要提醒：
+主站与 `promo-site` 使用同一组 Logo/PWA 资产和稳定路径。后续如果只迭代 Logo 图稿，继续覆盖这些固定文件并重新构建即可，不需要修改 PWA 安装逻辑。
 
-部分手机系统会缓存已安装 PWA 图标，因此正式 Logo 替换后，已经安装的用户不一定立即刷新桌面图标。
-
-因此临时图标不要做得过于随意，至少应达到「可作为 Beta / 预热阶段图标长期使用一段时间」的质量。
+需要提醒：部分手机系统会缓存已安装 PWA 图标，因此图标更新后，已经安装的用户不一定立即刷新桌面图标。
 
 ---
 
@@ -1394,7 +1394,7 @@ YuanHub
 11. **关闭提示后 7 天不再主动显示。**
 12. **已 standalone 运行时不显示安装提示。**
 13. **新增 `/install` 独立教程页，路由 `display: false`。**
-14. **正式 Logo 未定不阻塞开发，先使用质量合格的临时 YuanHub PWA 图标，并固定资源路径。**
+14. **正式 Logo 已于 2026-09-16 接入，主站与宣传页共用固定品牌/PWA 资源路径。**
 15. **必须 Android + iPhone 真机验收，桌面模拟不作为最终验收。**
 16. **PWA 更新机制不得自动刷新并打断用户正在编辑的业务数据。**
 

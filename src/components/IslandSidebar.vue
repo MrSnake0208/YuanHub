@@ -1,7 +1,7 @@
 <template>
   <header class="mobile-shell">
     <router-link class="mobile-brand" to="/" aria-label="返回首页">
-      <span class="brand-mark" aria-hidden="true">♥</span>
+      <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
       <span>YuanHub</span>
     </router-link>
     <nav class="mobile-nav" aria-label="主要导航">
@@ -75,7 +75,7 @@
 
   <aside class="island" aria-label="主要导航">
     <router-link class="brand" to="/" aria-label="返回首页">
-      <div class="brand-mark" aria-hidden="true">H</div>
+      <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
       <div class="brand-txt">
         <div class="brand-line">
           <span>YuanHub</span><span class="beta">Beta</span>

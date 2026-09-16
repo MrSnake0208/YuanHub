@@ -3,6 +3,8 @@ import { reactive } from 'vue'
 export const PWA_DISMISSED_KEY = 'yuanhub:pwa-install-prompt-dismissed-until:v1'
 export const PWA_SESSION_CANCELLED_KEY = 'yuanhub:pwa-install-native-cancelled:v1'
 export const PWA_DISMISS_MS = 7 * 24 * 60 * 60 * 1000
+// 与 src/styles/main.css 中 .mobile-shell 的响应式切换保持一致。
+export const PWA_MOBILE_VIEWPORT_QUERY = '(max-width: 1080px)'
 
 let deferredInstallPrompt = null
 let initialized = false
@@ -12,6 +14,7 @@ export const pwaInstallState = reactive({
   installable: false,
   installed: false,
   standalone: false,
+  viewportMobile: false,
   mobile: false,
   ios: false,
   android: false,
@@ -44,6 +47,11 @@ export function detectMobileLike(navigatorLike = typeof navigator !== 'undefined
   return detectIos(navigatorLike)
 }
 
+export function detectMobileViewport(windowLike = typeof window !== 'undefined' ? window : null) {
+  if (!windowLike || typeof windowLike.matchMedia !== 'function') return false
+  return windowLike.matchMedia(PWA_MOBILE_VIEWPORT_QUERY).matches
+}
+
 export function detectStandalone(windowLike = typeof window !== 'undefined' ? window : null) {
   if (!windowLike) return false
   const displayStandalone = typeof windowLike.matchMedia === 'function'
@@ -71,11 +79,17 @@ function readSessionCancelled(storage = typeof sessionStorage !== 'undefined' ? 
   }
 }
 
-function syncEnvironment() {
+function syncMobileEnvironment(viewportMobile = detectMobileViewport()) {
   pwaInstallState.ios = detectIos()
   pwaInstallState.android = detectAndroid()
   pwaInstallState.safari = detectSafari()
-  pwaInstallState.mobile = detectMobileLike()
+  pwaInstallState.viewportMobile = Boolean(viewportMobile)
+  // UI 是否处于移动体验优先看实时 viewport；UA 只作为真实移动设备横屏等能力兜底。
+  pwaInstallState.mobile = pwaInstallState.viewportMobile || detectMobileLike()
+}
+
+function syncEnvironment() {
+  syncMobileEnvironment()
   pwaInstallState.standalone = detectStandalone()
   pwaInstallState.installed = pwaInstallState.installed || pwaInstallState.standalone
   pwaInstallState.dismissedUntil = readDismissedUntil()
@@ -86,7 +100,7 @@ function onBeforeInstallPrompt(event) {
   if (typeof event.preventDefault === 'function') event.preventDefault()
   deferredInstallPrompt = event
   pwaInstallState.installable = true
-  pwaInstallState.mobile = detectMobileLike()
+  syncMobileEnvironment()
 }
 
 function onAppInstalled() {
@@ -104,6 +118,10 @@ function onDisplayModeChanged() {
   if (standalone) pwaInstallState.installed = true
 }
 
+function onMobileViewportChanged(event) {
+  syncMobileEnvironment(event.matches)
+}
+
 export function initPwaInstall() {
   if (initialized || typeof window === 'undefined') return pwaInstallState
   initialized = true
@@ -111,8 +129,14 @@ export function initPwaInstall() {
   window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
   window.addEventListener('appinstalled', onAppInstalled)
   if (typeof window.matchMedia === 'function') {
-    const media = window.matchMedia('(display-mode: standalone)')
-    if (typeof media.addEventListener === 'function') media.addEventListener('change', onDisplayModeChanged)
+    const displayModeMedia = window.matchMedia('(display-mode: standalone)')
+    if (typeof displayModeMedia.addEventListener === 'function') {
+      displayModeMedia.addEventListener('change', onDisplayModeChanged)
+    }
+    const mobileMedia = window.matchMedia(PWA_MOBILE_VIEWPORT_QUERY)
+    if (typeof mobileMedia.addEventListener === 'function') {
+      mobileMedia.addEventListener('change', onMobileViewportChanged)
+    }
   }
   pwaInstallState.initialized = true
   return pwaInstallState

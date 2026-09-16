@@ -43,7 +43,14 @@ jobs:
         run: npm run build
 
       - name: Check build output
-        run: test -f dist/index.html
+        run: |
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          test -f dist/pwa/icon-192.png
+          test -f dist/pwa/icon-512.png
+          test -f dist/pwa/icon-maskable-512.png
+          test -f dist/pwa/apple-touch-icon.png
 
       - name: Validate deployment SSH key
         env:

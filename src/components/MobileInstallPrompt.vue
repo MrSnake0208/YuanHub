@@ -26,11 +26,10 @@
 
         <div v-if="showQuickGuide" class="pwa-install-guide" aria-live="polite">
           <template v-if="pwaInstallState.ios">
-            <p v-if="!pwaInstallState.safari" class="pwa-install-note">建议先使用 Safari 打开 YuanHub。</p>
             <ol>
-              <li><Share2 :size="15" aria-hidden="true" /><span>点击 Safari 的“分享”按钮</span></li>
+              <li><Share2 :size="15" aria-hidden="true" /><span>打开浏览器的“分享”菜单</span></li>
               <li><SquarePlus :size="15" aria-hidden="true" /><span>选择“添加到主屏幕”</span></li>
-              <li><Check :size="15" aria-hidden="true" /><span>点击“添加”完成</span></li>
+              <li><Check :size="15" aria-hidden="true" /><span>如显示“作为 Web App 打开”，保持开启后点击“添加”</span></li>
             </ol>
           </template>
           <template v-else>
@@ -71,6 +70,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { Check, Download, MoreVertical, Share2, SquarePlus, X } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
 import {
@@ -80,13 +80,14 @@ import {
   shouldShowPwaInstallPrompt
 } from '@/utils/pwaInstall.js'
 
+const route = useRoute()
 const ready = ref(false)
 const showQuickGuide = ref(false)
 const installing = ref(false)
 let revealTimer = null
 
 const visible = computed(function () {
-  return ready.value && !dialog._state.visible && shouldShowPwaInstallPrompt()
+  return route.path !== '/install' && ready.value && !dialog._state.visible && shouldShowPwaInstallPrompt()
 })
 
 function closePrompt() {
@@ -203,7 +204,6 @@ onBeforeUnmount(function () {
 .pwa-install-guide ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .pwa-install-guide li { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
 .pwa-install-guide li svg { flex: none; color: var(--accent-strong); }
-.pwa-install-note { margin: 0 0 9px; color: var(--rouge); font-size: 11px; font-weight: 800; }
 .pwa-install-actions {
   display: flex;
   align-items: center;

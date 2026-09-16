@@ -17,6 +17,7 @@ export default defineConfig({
         'pwa/icon-maskable-512.png'
       ],
       manifest: {
+        id: '/',
         name: 'YuanHub · 鸢鸢相抱',
         short_name: 'YuanHub',
         description: '代号鸢 / 如鸢礼包计算、库存清点、密探与通关作业工具。',
