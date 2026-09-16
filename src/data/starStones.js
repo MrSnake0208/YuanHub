@@ -1,50 +1,6 @@
-// 星石可选名称/描述（参考 MaaYuan-Share-frontend /src/data/star-stones.ts）
-// 用于密探编辑弹窗中的星石选择；不包含“任意”占位选项，
-// 未装备统一用空字符串表示。
-
-export const MAIN_STAR_OPTIONS = [
-  '天府',
-  '天相',
-  '巨门',
-  '太阳',
-  '廉贞',
-  '太阴',
-  '紫微',
-  '七杀',
-  '天机',
-  '武曲',
-  '破军',
-  '天同',
-  '天梁',
-  '贪狼'
-]
-
-export const ASSIST_STAR_OPTIONS = [
-  '红鸾',
-  '阴煞',
-  '天魁',
-  '八座',
-  '陀螺',
-  '地劫',
-  '解神',
-  '禄存',
-  '文曲',
-  '天钺',
-  '火星',
-  '文昌',
-  '天巫',
-  '左辅',
-  '铃星',
-  '恩光',
-  '三台',
-  '擎羊',
-  '天贵',
-  '天姚',
-  '天马',
-  '天刑',
-  '右弼',
-  '地空'
-]
+// Canonical main/support names are generated from YuanStar data/star_catalog.json.
+export { MAIN_STAR_OPTIONS, ASSIST_STAR_OPTIONS } from './starCatalog.js'
+import { subProfList, tokens } from '../utils/operatorFilters.js'
 
 export const ASSIST_STAR_DESCRIPTIONS = {
   红鸾: '受治疗加成+',
@@ -85,4 +41,18 @@ export const STAR_STONE_RESTRICTIONS = {
   右弼: { prof: ['风'] },
   天马: { prof: ['阴'] },
   擎羊: { prof: ['阳'] }
+}
+
+export function isStarStoneAllowedForOperator(starName, operator) {
+  const restriction = STAR_STONE_RESTRICTIONS[starName]
+  if (!restriction || !operator) return true
+  if (restriction.subProf) {
+    const subProfs = subProfList(operator)
+    if (subProfs.length && !restriction.subProf.some(function (value) { return subProfs.includes(value) })) return false
+  }
+  if (restriction.prof) {
+    const profs = tokens(operator.prof)
+    if (profs.length && !restriction.prof.some(function (value) { return profs.includes(value) })) return false
+  }
+  return true
 }
