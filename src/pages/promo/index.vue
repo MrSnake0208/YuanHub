@@ -3,7 +3,7 @@
     <header class="promo-header">
       <div class="promo-wrap promo-header-inner">
         <div class="promo-brand">
-          <span class="promo-brand-mark">YH</span>
+          <img class="promo-brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
           <span class="promo-brand-name">YuanHub</span>
         </div>
         <div class="promo-header-note">
@@ -85,7 +85,7 @@
               <article class="flow-node hub-node">
                 <span class="hub-ring ring-one"></span>
                 <span class="hub-ring ring-two"></span>
-                <div class="hub-core">YH</div>
+                <img class="hub-core" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
                 <div class="node-type">SHARED DATA LAYER</div>
                 <h2>YuanHub</h2>
                 <p>统一整理<br>保留贡献脉络</p>
@@ -168,7 +168,7 @@
             </div>
             <div class="stage-connector connector-left" aria-hidden="true"><i></i><span>提交</span></div>
             <div class="stage-hub">
-              <div class="stage-hub-mark">YH</div>
+              <img class="stage-hub-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
               <div>
                 <span class="node-type">ORGANIZE / PRESERVE</span>
                 <strong>YuanHub</strong>
@@ -248,7 +248,7 @@ main.promo-main { margin-left: 0; }
 .promo-header { border-bottom: 1px solid var(--promo-soft-line); }
 .promo-header-inner { min-height: 78px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .promo-brand { display: flex; align-items: center; gap: 12px; }
-.promo-brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 11px; color: var(--cream); background: var(--tea); font: 900 14px/1 var(--font-d); letter-spacing: .04em; }
+.promo-brand-mark { display: block; width: 38px; height: 38px; object-fit: contain; }
 .promo-brand-name { font: 900 18px/1 var(--font-d); letter-spacing: .03em; }
 .promo-header-note { display: flex; align-items: center; gap: 9px; color: var(--promo-muted); font-size: 11px; font-weight: 800; letter-spacing: .1em; }
 .header-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
@@ -303,7 +303,7 @@ h1 em, h2 em { color: var(--accent); font-style: normal; }
 .flow-connector i { position: relative; display: block; width: 100%; height: 1px; background: var(--accent); }
 .flow-connector i::after { position: absolute; right: 0; top: -3px; width: 7px; height: 7px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); content: ''; transform: rotate(45deg); }
 .hub-node { display: flex; min-height: 230px; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; border-color: var(--tea); border-radius: 50%; background: var(--tea); color: var(--cream); text-align: center; box-shadow: 0 14px 26px -20px rgba(73, 59, 44, .85); }
-.hub-node .hub-core { position: relative; z-index: 2; display: grid; width: 66px; height: 66px; place-items: center; border: 1px solid var(--yellow); border-radius: 50%; color: var(--tea); background: var(--yellow); font: 900 20px/1 var(--font-d); letter-spacing: .04em; }
+.hub-node .hub-core { position: relative; z-index: 2; display: block; width: 66px; height: 66px; object-fit: contain; }
 .hub-node .node-type { position: relative; z-index: 2; margin-top: 18px; color: rgba(255, 248, 236, .7); font: 800 8px/1 var(--font-d); letter-spacing: .14em; }
 .hub-node h2 { position: relative; z-index: 2; margin-top: 7px; color: var(--cream); font-size: 22px; }
 .hub-node p { position: relative; z-index: 2; margin-top: 7px; color: rgba(255, 248, 236, .72); }
@@ -359,7 +359,7 @@ h1 em, h2 em { color: var(--accent); font-style: normal; }
 .stage-connector i { position: relative; display: block; width: 100%; border-top: 1px solid var(--accent); }
 .stage-connector i::after { position: absolute; right: -1px; top: -4px; width: 7px; height: 7px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); content: ''; transform: rotate(45deg); }
 .stage-hub { position: relative; display: flex; min-height: 144px; align-items: center; gap: 17px; padding: 23px 25px; border: 1px solid var(--tea); border-radius: 12px; color: var(--cream); background: var(--tea); }
-.stage-hub-mark { display: grid; flex: none; width: 61px; height: 61px; place-items: center; border: 1px solid var(--yellow); border-radius: 50%; color: var(--tea); background: var(--yellow); font: 900 18px/1 var(--font-d); }
+.stage-hub-mark { display: block; flex: none; width: 61px; height: 61px; object-fit: contain; }
 .stage-hub .node-type { display: block; color: rgba(255, 248, 236, .65); font: 800 8px/1.3 var(--font-d); letter-spacing: .13em; }
 .stage-hub strong { display: block; margin-top: 8px; color: var(--cream); font: 900 23px/1.2 var(--font-s); }
 .stage-hub small { display: block; margin-top: 6px; color: rgba(255, 248, 236, .74); }

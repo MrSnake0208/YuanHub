@@ -7,7 +7,7 @@
         <!-- 极简页头：小品牌标 + 标题 + 一句副题（去掉 hero 渐变/胶囊/水印） -->
         <header class="auth-head">
           <div class="auth-brand">
-            <span class="brand-mark" aria-hidden="true">♥</span>
+            <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
             <span class="brand-name">YuanHub</span>
           </div>
           <h1 class="auth-title">{{ title }}</h1>
@@ -59,14 +59,9 @@ defineProps({
 .auth-brand .brand-mark {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
-  background: var(--tea);
-  color: var(--cream);
-  display: grid;
-  place-items: center;
-  font-family: var(--font-d);
-  font-weight: 900;
-  font-size: 15px;
+  display: block;
+  flex: none;
+  object-fit: contain;
 }
 .auth-brand .brand-name {
   font-family: var(--font-d);

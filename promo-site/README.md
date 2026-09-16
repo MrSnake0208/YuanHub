@@ -2,6 +2,8 @@
 
 This directory is a standalone Vite + Vue build of the YuanHub promotional page. It has one Vue entry point, static demo content, and no router, store, API, backend, or business-page dependency.
 
+The promo root is also installable as the YuanHub PWA. Its manifest deliberately uses the same root identity (`id: "/"`, `start_url: "/"`) and app icons as the main YuanHub site. The promo Service Worker does not cache page responses, so a future main-site deployment on the same origin can replace the landing page without leaving users stuck on an old promotional shell.
+
 ## Local development
 
 ```bash
@@ -55,6 +57,21 @@ server {
 
     # 宣传页演示用密探头像，源自 BackEndV3-Share/data/avatar 的选定副本。
     location /operator-avatars/ {
+        try_files $uri =404;
+    }
+
+    # PWA install identity and icons. Keep sw.js revalidated so a future
+    # main-site worker can replace the temporary promo worker promptly.
+    location = /manifest.webmanifest {
+        try_files $uri =404;
+    }
+
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    location /pwa/ {
         try_files $uri =404;
     }
 

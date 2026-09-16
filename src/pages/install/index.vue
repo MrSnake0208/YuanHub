@@ -16,11 +16,11 @@
 
       <section class="wrap install-content">
         <div class="install-overview">
-          <img src="/pwa/icon-192.png" alt="YuanHub 临时应用图标" width="86" height="86" />
+          <img src="/pwa/icon-192.png" alt="YuanHub 应用图标" width="86" height="86" />
           <div>
             <span class="eyebrow">MOBILE · PWA</span>
             <h2>像 App 一样从桌面打开</h2>
-            <p>无需应用商店。Android 支持时可以直接调用系统安装；iPhone / iPad 使用 Safari 的“添加到主屏幕”。</p>
+            <p>无需应用商店。Android 支持时可以直接调用系统安装；iPhone / iPad 可从浏览器的分享菜单选择“添加到主屏幕”。</p>
           </div>
         </div>
 
@@ -52,13 +52,12 @@
 
         <article v-else class="guide-card" role="tabpanel">
           <header class="guide-head"><div><span class="eyebrow">IPHONE / IPAD GUIDE</span><h2>iPhone / iPad 添加步骤</h2></div></header>
-          <p v-if="pwaInstallState.ios && !pwaInstallState.safari" class="browser-note"><Info :size="17" aria-hidden="true" /> 当前不是 Safari。建议复制或重新使用 Safari 打开 YuanHub，再按以下步骤操作。</p>
-          <p class="guide-intro">iPhone / iPad 不提供网页内的一键安装按钮，需要通过 Safari 的系统分享菜单添加到主屏幕。</p>
+          <p class="guide-intro">iPhone / iPad 不提供网页内的一键安装按钮，需要通过浏览器的系统分享菜单添加到主屏幕。</p>
           <ol class="steps">
-            <li><span class="step-no">01</span><div><h3>使用 Safari 打开 YuanHub</h3><p>在 Safari 中访问本站，并保持当前页面打开。</p></div><Compass :size="22" aria-hidden="true" /></li>
-            <li><span class="step-no">02</span><div><h3>点击“分享”</h3><p>点击 Safari 工具栏中的分享按钮。</p></div><Share2 :size="22" aria-hidden="true" /></li>
+            <li><span class="step-no">01</span><div><h3>在浏览器中打开 YuanHub</h3><p>在 iPhone / iPad 的浏览器中访问本站，并保持当前页面打开；较旧系统可优先使用 Safari。</p></div><Compass :size="22" aria-hidden="true" /></li>
+            <li><span class="step-no">02</span><div><h3>打开“分享”菜单</h3><p>点击浏览器工具栏或页面菜单中的分享按钮。</p></div><Share2 :size="22" aria-hidden="true" /></li>
             <li><span class="step-no">03</span><div><h3>选择“添加到主屏幕”</h3><p>在分享菜单中向下查找“添加到主屏幕”。</p></div><SquarePlus :size="22" aria-hidden="true" /></li>
-            <li><span class="step-no">04</span><div><h3>确认名称</h3><p>保留 YuanHub 名称，点击右上角“添加”。</p></div><CircleCheck :size="22" aria-hidden="true" /></li>
+            <li><span class="step-no">04</span><div><h3>确认添加</h3><p>保留 YuanHub 名称；如系统显示“作为 Web App 打开”，保持开启，然后点击“添加”。</p></div><CircleCheck :size="22" aria-hidden="true" /></li>
             <li><span class="step-no">05</span><div><h3>从桌面进入</h3><p>之后直接点击桌面的 YuanHub 图标即可。</p></div><AppWindow :size="22" aria-hidden="true" /></li>
           </ol>
         </article>
@@ -86,7 +85,6 @@ import {
   Compass,
   Download,
   Globe2,
-  Info,
   MoreVertical,
   Share2,
   ShieldCheck,
@@ -130,8 +128,6 @@ onMounted(function () {
 .install-now { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font: 800 12.5px var(--font-b); cursor: pointer; white-space: nowrap; }
 .install-now:hover:not(:disabled) { border-color: var(--accent); background: var(--accent); }
 .install-now:disabled { opacity: .55; cursor: wait; }
-.browser-note { display: flex; align-items: flex-start; gap: 8px; margin: 18px 0 0; padding: 11px 13px; border: 1px solid rgba(166,81,74,.35); border-radius: 12px; background: rgba(240,207,200,.25); color: var(--rouge); font-size: 12px; font-weight: 800; line-height: 1.55; }
-.browser-note svg { flex: none; margin-top: 1px; }
 .steps { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }
 .steps li { display: grid; grid-template-columns: 46px minmax(0, 1fr) 28px; align-items: center; gap: 13px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--paper); }
 .step-no { color: var(--accent-strong); font: 900 18px var(--font-d); }

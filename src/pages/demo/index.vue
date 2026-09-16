@@ -1,7 +1,7 @@
 <template>
   <div class="demo-page">
     <aside class="demo-side" aria-label="演示导航">
-      <div class="demo-side-brand"><span class="demo-side-mark">H</span><span><b>YuanHub</b><small>养成规划预览</small></span></div>
+      <div class="demo-side-brand"><img class="demo-side-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" /><span><b>YuanHub</b><small>养成规划预览</small></span></div>
       <nav class="demo-side-nav">
         <router-link to="/demo" class="active"><span>01</span>养成规划演示</router-link>
         <router-link to="/operator"><span>02</span>正式密探页面</router-link>
@@ -384,7 +384,7 @@ function hideBrokenImage(event) { event.target.style.display = 'none' }
 
 .demo-side{position:fixed;left:28px;top:28px;bottom:28px;width:236px;z-index:50;display:flex;flex-direction:column;padding:30px 26px 24px;background:var(--cream);border:1px solid var(--demo-line);border-radius:26px;box-shadow:0 24px 60px -24px rgba(73,59,44,.28),0 2px 8px rgba(73,59,44,.05)}
 .demo-side-brand{display:flex;align-items:center;gap:10px;padding-bottom:24px;border-bottom:1px dashed var(--demo-line)}
-.demo-side-mark{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;background:var(--tea);color:var(--cream);font:900 15px var(--font-d)}
+.demo-side-mark{display:block;width:34px;height:34px;flex:none;object-fit:contain}
 .demo-side-brand b,.demo-side-brand small{display:block}
 .demo-side-brand b{font:800 14px var(--font-d)}
 .demo-side-brand small{margin-top:3px;color:var(--demo-muted);font-size:11px}
