@@ -3104,7 +3104,6 @@ import {
   matchesProfSubFilter,
   subProfList,
   subProfOptions as deriveSubProfOptions,
-  tokens,
 } from "../../utils/operatorFilters.js";
 import {
   automaticDiscLoadoutName,
@@ -3121,6 +3120,7 @@ import {
   ASSIST_STAR_OPTIONS,
   ASSIST_STAR_DESCRIPTIONS,
   STAR_STONE_RESTRICTIONS,
+  isStarStoneAllowedForOperator as isStarStoneAllowed,
 } from "../../data/starStones.js";
 import {
   getCurrent as getInventoryCurrent,
@@ -3888,32 +3888,6 @@ function starOptionsFor(type) {
   )
     return [current].concat(available);
   return available;
-}
-
-function isStarStoneAllowed(name, operator) {
-  const restriction = STAR_STONE_RESTRICTIONS[name];
-  if (!restriction || !operator) return true;
-  if (restriction.subProf) {
-    const subProfs = subProfList(operator);
-    if (
-      subProfs.length &&
-      !restriction.subProf.some(function (value) {
-        return subProfs.indexOf(value) !== -1;
-      })
-    )
-      return false;
-  }
-  if (restriction.prof) {
-    const profs = tokens(operator.prof);
-    if (
-      profs.length &&
-      !restriction.prof.some(function (value) {
-        return profs.indexOf(value) !== -1;
-      })
-    )
-      return false;
-  }
-  return true;
 }
 
 function starStoneRestrictionLabel(name) {
