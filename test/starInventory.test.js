@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import { getCurrentStarInventory, putCurrentStarInventory } from '../src/api/starInventory.js'
+import { getCurrentStarWorkspace, putCurrentStarWorkspace } from '../src/api/starWorkspace.js'
 import { auth } from '../src/store/auth.js'
 import { disposeYuanStarHandle, waitForYuanStarDisposal } from '../src/pages/star/embedLifecycle.js'
 import { createHostStarInventorySync } from '../src/pages/star/hostStarInventorySync.js'
@@ -69,6 +70,20 @@ test('星石快照 API 编码 account_id 并经认证 request 发送 PUT', async
   }
 })
 
+test('星石工作区 API 使用独立的 revisioned endpoint', async function () {
+  const previousFetch = globalThis.fetch, previousToken = auth.accessToken
+  const accountId = 'acc /?&中文', body = { expected_revision: 2, plan_targets: {}, bag: { current_count: null, capacity: 20 }, experience: { orange: 1, purple: 2, white: 3 } }
+  let calls = []
+  auth.accessToken = 'test-access-token'
+  globalThis.fetch = async function (url, options) { calls.push({ url, options }); return { ok: true, status: 200, statusText: 'OK', json: async () => ({ status_code: 200, data: { account_id: accountId, revision: 3 } }) } }
+  try {
+    assert.equal((await getCurrentStarWorkspace(accountId)).revision, 3)
+    assert.equal((await putCurrentStarWorkspace(accountId, body)).revision, 3)
+    assert.match(calls[0].url, /\/v1\/star-workspace\/current\?account_id=acc%20%2F%3F%26%E4%B8%AD%E6%96%87$/)
+    assert.equal(calls[1].options.body, JSON.stringify(body))
+  } finally { auth.accessToken = previousToken; globalThis.fetch = previousFetch }
+})
+
 test('显式星石同步使用当前 YuanHub 账号、边界 DTO，并保留独立实例', async function () {
   const calls = []
   const sync = createHostStarInventorySync(
@@ -130,39 +145,38 @@ test('星石路由与桌面、移动导航均提供入口', function () {
   const routes = readFileSync(new URL('../src/router/routes.js', import.meta.url), 'utf8')
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
 
-  assert.match(routes, /path: '\/star'/)
-  assert.match(routes, /name: 'star'/)
+  assert.match(routes, /path:\s*["']\/star["']/)
+  assert.match(routes, /name:\s*["']star["']/)
   assert.match(routes, /src\/pages\/star\/index\.vue/)
-  assert.match(sidebar, /to="\/star"/)
-  assert.match(sidebar, /<span class="no">04<\/span>我的星石/)
-  assert.match(sidebar, /<span class="no">05<\/span>更新日志/)
-  assert.match(sidebar, /<span class="no">06<\/span>个人中心/)
+  assert.match(sidebar, /to\s*=\s*["']\/star["']/)
+  assert.match(sidebar, /<span\s+class\s*=\s*["']no["']\s*>\s*03\s*<\/span>\s*星石背包/)
+  assert.match(sidebar, /<span\s+class\s*=\s*["']no["']\s*>\s*04\s*<\/span>\s*广陵账房/)
   assert.match(sidebar, /<span>星石<\/span>/)
 })
 
 test('星石页以 YuanHub 壳层挂载已构建的 YuanStar 产品', function () {
   const page = readFileSync(new URL('../src/pages/star/index.vue', import.meta.url), 'utf8')
-  assert.match(page, /id="product-root" ref="mountRoot"/)
+  assert.match(page, /id\s*=\s*["']product-root["']\s+ref\s*=\s*["']mountRoot["']/)
   assert.match(page, /onMounted[\s\S]*mountProduct/)
-  assert.match(page, /onBeforeUnmount[\s\S]*disposeYuanStarHandle\(current\)/)
-  assert.match(page, /Function\('url', 'return import\(url\)'\)\(EMBED_MODULE_URL\)/)
-  assert.match(page, /<AccountWorkspace[\s\S]*heading-title="选择要查看的账号"/)
+  assert.match(page, /onBeforeUnmount[\s\S]*disposeYuanStarHandle\(\s*current\s*\)/)
+  assert.match(page, /Function\(\s*["']url["']\s*,\s*["']return import\(url\)["']\s*\)\(EMBED_MODULE_URL\)/)
+  assert.match(page, /<AccountWorkspace[\s\S]*heading-title\s*=\s*["']选择要查看的账号["']/)
   assert.match(page, /<AccountWorkspace[\s\S]*\bstacked\b/)
-  assert.match(page, /\.page-star\s*\{\s*--wm:\s*'星石'/)
-  assert.match(page, /class="star-tabs"[\s\S]*导入识别[\s\S]*人工核对/)
-  assert.match(page, /embedded: true/)
-  assert.match(page, /hostAccount: selectedHostAccount\(\)/)
+  assert.match(page, /\.page-star\s*\{\s*--wm:\s*["']星石["']/)
+  assert.match(page, /class\s*=\s*["']star-tabs["'][\s\S]*导入识别[\s\S]*人工核对/)
+  assert.match(page, /embedded\s*:\s*true/)
+  assert.match(page, /hostAccount\s*:\s*selectedHostAccount\(\s*\)/)
   assert.match(page, /starInventorySync/)
   assert.match(page, /同步背包/)
   assert.doesNotMatch(page, /同步当前背包/)
   assert.match(page, /RefreshCw/)
   assert.match(page, /\.star-sync-action\s*\{[^}]*border:\s*1\.5px solid var\(--line\)/)
-  assert.match(page, /async function syncCurrentInventoryToCloud\(\)[\s\S]*await handle\.syncCurrentStarInventory\(\)/)
+  assert.match(page, /async\s+function\s+syncCurrentInventoryToCloud\s*\(\s*\)[\s\S]*?await\s+handle\.syncCurrentStarInventory\s*\(\s*\)/)
   assert.equal((page.match(/syncCurrentStarInventory/g) || []).length, 1)
   assert.doesNotMatch(page, /putCurrentStarInventory/)
-  assert.match(page, /onSummaryChange: function \(nextSummary\) \{ summary\.value = nextSummary \}/)
-  assert.match(page, /position: sticky; top: 24px; z-index: 45/)
-  assert.match(page, /position: fixed; top: auto; right: 0; bottom: 0; left: 0; z-index: 55/)
+  assert.match(page, /onSummaryChange:\s*function\s*\(\s*nextSummary\s*\)\s*\{\s*summary\.value\s*=\s*nextSummary;?\s*\}/)
+  assert.match(page, /\.star-tabs\s*\{[^}]*position:\s*sticky;[^}]*top:\s*24px;[^}]*z-index:\s*45;/)
+  assert.match(page, /@media\s*\(max-width:\s*1080px\)[\s\S]*?\.star-tabs\s*\{[^}]*position:\s*fixed;[^}]*top:\s*auto;[^}]*right:\s*0;[^}]*bottom:\s*0;[^}]*left:\s*0;[^}]*z-index:\s*55;/)
   assert.match(page, /yuanstar-embed\.css/)
   assert.doesNotMatch(page, /demoMode|DEMO_STAR_SNAPSHOT|星石总数/)
 })

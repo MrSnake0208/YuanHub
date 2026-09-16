@@ -8,7 +8,7 @@ const conflict = () => Object.assign(new Error('云端已有其他修改。请�
 
 // One sequential CAS writer per account + plan. Pending drafts survive navigation
 // and failed responses; retries first reconcile a potentially committed request.
-export function createPlannerSnapshotWriter({ initial, read, write, body, storage, key, onChange = () => {}, onSaved = () => {} }) {
+export function createPlannerSnapshotWriter({ initial, read, write, body, storage, key, equals, onChange = () => {}, onSaved = () => {} }) {
   const owners = activeWriters.get(storage) || new Map()
   activeWriters.set(storage, owners)
   const owner = {}
@@ -24,7 +24,7 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
     if (pending) storage.setItem(key, JSON.stringify({ pending, sent, revision: base.revision }))
     else storage.removeItem(key)
   }
-  function same(a, b) { return stable(body(a, 0)) === stable(body(b, 0)) }
+  function same(a, b) { return equals ? equals(a, b) : stable(body(a, 0)) === stable(body(b, 0)) }
   async function drain() {
     while (pending && !error && active()) {
       const draft = pending
@@ -53,6 +53,7 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
     state,
     async save(value) {
       if (error || !active()) return false
+      if (!pending && !running && same(value, base)) return false
       pending = clone(value)
       try { persist() } catch (err) { error = new Error('本机无法保留待保存内容：' + err.message); notify(); return false }
       return start()

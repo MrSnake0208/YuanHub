@@ -1,0 +1,185 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { createStarCloudCoordinator } from '../src/pages/star/starCloudCoordinator.js'
+
+function memoryStorage() {
+  const values = new Map()
+  return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) }
+}
+function snapshot() {
+  return { inventory: [{ starInstanceId: 'main-1', kind: '主星', name: '天府', quality: '橙', level: 10 }], planTargets: { 'main-1': 20 }, bag: { currentCount: 3, capacity: 40 }, experience: { orange: 1, purple: null, white: 2 } }
+}
+function tick() { return new Promise(resolve => setTimeout(resolve, 0)) }
+
+test('empty cloud bootstraps independent inventory and workspace domains without a hydrate loop', async function () {
+  let accountId = 'account-a', applied = 0, inventoryPuts = 0, workspacePuts = 0
+  const handle = { getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => { applied += 1 } }
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 0, entries: [] }), getWorkspace: async () => ({ revision: 0 }),
+    putInventory: async (_account, body) => { inventoryPuts += 1; return { revision: inventoryPuts, entries: body.entries } },
+    putWorkspace: async (_account, body) => { workspacePuts += 1; return { revision: workspacePuts, plan_targets: body.plan_targets, bag: body.bag, experience: body.experience } },
+  })
+  assert.equal(await coordinator.enter(handle), true)
+  await tick(); await tick()
+  assert.equal(applied, 0)
+  assert.equal(inventoryPuts, 1)
+  assert.equal(workspacePuts, 1)
+  assert.equal(coordinator.committed({ accountId, inventoryChanged: false, workspaceChanged: false, snapshot: snapshot() }), false)
+  await tick()
+  assert.equal(inventoryPuts, 1, 'unchanged business state must not PUT')
+  assert.equal(workspacePuts, 1, 'unchanged business state must not PUT')
+})
+
+test('existing cloud data hydrates the combined business snapshot', async function () {
+  let applied = null
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-a' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 2, entries: [{ instance_id: 'support-1', kind: 'support', name: '文曲', quality: 'white', level: 3 }] }),
+    getWorkspace: async () => ({ revision: 4, plan_targets: { 'support-1': 30 }, bag: { current_count: 9, capacity: 60 }, experience: { orange: 5, purple: 4, white: 3 } }),
+  })
+  await coordinator.enter({ getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async value => { applied = value } })
+  assert.deepEqual(applied, { inventory: [{ starInstanceId: 'support-1', kind: '辅星', name: '文曲', quality: '白', level: 3 }], planTargets: { 'support-1': 30 }, bag: { currentCount: 9, capacity: 60 }, experience: { orange: 5, purple: 4, white: 3 } })
+})
+
+test('mixed cloud domains hydrate one compatible side and bootstrap only the other', async function () {
+  const local = snapshot()
+  const compatibleInventoryLocal = { ...local, inventory: [{ starInstanceId: 'support-1', kind: '辅星', name: '文曲', quality: '白', level: 3 }], planTargets: { 'support-1': 20 } }
+  const inventoryOnlyApplies = [], inventoryOnlyPuts = { inventory: 0, workspace: 0 }
+  const inventoryOnly = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-inventory' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 2, entries: [{ instance_id: 'support-1', kind: 'support', name: '文曲', quality: 'white', level: 3 }] }),
+    getWorkspace: async () => ({ revision: 0 }),
+    putInventory: async () => { inventoryOnlyPuts.inventory += 1 },
+    putWorkspace: async (_account, body) => { inventoryOnlyPuts.workspace += 1; return { revision: 1, plan_targets: body.plan_targets, bag: body.bag, experience: body.experience } },
+  })
+  await inventoryOnly.enter({ getCloudBusinessSnapshot: async () => compatibleInventoryLocal, applyCloudBusinessSnapshot: async value => inventoryOnlyApplies.push(value) })
+  await tick(); await tick()
+  assert.equal(inventoryOnlyPuts.inventory, 0)
+  assert.equal(inventoryOnlyPuts.workspace, 1)
+  assert.deepEqual(inventoryOnlyApplies[0], compatibleInventoryLocal)
+
+  const workspaceOnlyApplies = [], workspaceOnlyPuts = { inventory: 0, workspace: 0 }
+  const workspaceOnly = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-workspace' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 0, entries: [] }),
+    getWorkspace: async () => ({ revision: 4, plan_targets: { 'main-1': 30 }, bag: { current_count: 8, capacity: 88 }, experience: { orange: 7, purple: 6, white: 5 } }),
+    putInventory: async (_account, body) => { workspaceOnlyPuts.inventory += 1; return { revision: 1, entries: body.entries } },
+    putWorkspace: async () => { workspaceOnlyPuts.workspace += 1 },
+  })
+  await workspaceOnly.enter({ getCloudBusinessSnapshot: async () => local, applyCloudBusinessSnapshot: async value => workspaceOnlyApplies.push(value) })
+  await tick(); await tick()
+  assert.equal(workspaceOnlyPuts.inventory, 1)
+  assert.equal(workspaceOnlyPuts.workspace, 0)
+  assert.deepEqual(workspaceOnlyApplies[0], { ...local, planTargets: { 'main-1': 30 }, bag: { currentCount: 8, capacity: 88 }, experience: { orange: 7, purple: 6, white: 5 } })
+})
+
+test('incompatible mixed cloud domains fail hydration without bootstrap or local replacement', async function () {
+  const local = snapshot()
+  let localBusinessSnapshot = structuredClone(local)
+  let inventoryPuts = 0, workspacePuts = 0
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-incompatible' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 2, entries: [{ instance_id: 'support-1', kind: 'support', name: '文曲', quality: 'white', level: 3 }] }),
+    getWorkspace: async () => ({ revision: 0 }),
+    putInventory: async () => { inventoryPuts += 1 },
+    putWorkspace: async () => { workspacePuts += 1 },
+  })
+  const handle = {
+    getCloudBusinessSnapshot: async () => localBusinessSnapshot,
+    applyCloudBusinessSnapshot: async value => {
+      const inventoryIds = new Set(value.inventory.map(item => item.starInstanceId))
+      if (Object.keys(value.planTargets).some(instanceId => !inventoryIds.has(instanceId))) throw new Error('养成计划引用了当前背包中不存在的星石实例。')
+      localBusinessSnapshot = value
+    },
+  }
+  assert.equal(await coordinator.enter(handle), false)
+  await tick(); await tick()
+  assert.equal(inventoryPuts, 0)
+  assert.equal(workspacePuts, 0)
+  assert.deepEqual(localBusinessSnapshot, local)
+  assert.match(coordinator.state().error.message, /不存在的星石实例/)
+})
+
+test('network failure retains the account-bound pending workspace draft for retry', async function () {
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-network' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 1, entries: [] }), getWorkspace: async () => ({ revision: 1 }),
+    putInventory: async (_account, body) => ({ revision: 2, entries: body.entries }),
+    putWorkspace: async () => { throw new Error('network down') },
+  })
+  const handle = { getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} }
+  await coordinator.enter(handle)
+  assert.equal(coordinator.committed({ accountId: 'account-network', inventoryChanged: false, workspaceChanged: true, snapshot: snapshot() }), true)
+  await tick(); await tick()
+  const state = coordinator.state().workspace.state()
+  assert.match(state.error.message, /network down/)
+  assert.deepEqual(state.pending.planTargets, { 'main-1': 20 })
+})
+
+test('an inventory-only business commit uses now when remote effective_at is missing and sends no workspace PUT', async function () {
+  const inventoryBodies = []
+  let workspacePuts = 0
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-effective-at' }), storage: memoryStorage(), now: () => '2026-09-15T00:00:00.000Z',
+    getInventory: async () => ({ revision: 1, entries: [] }), getWorkspace: async () => ({ revision: 1 }),
+    putInventory: async (_account, body) => { inventoryBodies.push(body); return { revision: 2, entries: body.entries } },
+    putWorkspace: async () => { workspacePuts += 1; return { revision: 2 } },
+  })
+  const handle = { getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} }
+  await coordinator.enter(handle)
+  coordinator.committed({ accountId: 'account-effective-at', inventoryChanged: true, workspaceChanged: false, snapshot: snapshot() })
+  await tick(); await tick()
+  assert.equal(inventoryBodies.length, 1)
+  assert.match(inventoryBodies[0].effective_at, /^2026-09-15T00:00:00\.000Z$/)
+  assert.deepEqual(inventoryBodies[0].entries, [{ instance_id: 'main-1', kind: 'main', name: '天府', quality: 'orange', level: 10 }])
+  assert.equal(workspacePuts, 0)
+})
+
+test('inventory effective_at is strictly after the remote floor and increases for consecutive writes', async function () {
+  const inventoryBodies = []
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-remote-effective-at' }), storage: memoryStorage(), now: () => '2026-09-15T00:00:00.000Z',
+    getInventory: async () => ({ revision: 7, effective_at: '2026-09-16T00:00:00.000Z', entries: [] }), getWorkspace: async () => ({ revision: 1 }),
+    putInventory: async (_account, body) => { inventoryBodies.push(body); return { revision: 8 + inventoryBodies.length, entries: body.entries } },
+  })
+  const handle = { getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} }
+  await coordinator.enter(handle)
+  coordinator.committed({ accountId: 'account-remote-effective-at', inventoryChanged: true, workspaceChanged: false, snapshot: snapshot() })
+  await tick(); await tick()
+  const nextSnapshot = snapshot(); nextSnapshot.inventory[0].level = 11
+  coordinator.committed({ accountId: 'account-remote-effective-at', inventoryChanged: true, workspaceChanged: false, snapshot: nextSnapshot })
+  await tick(); await tick()
+  assert.equal(inventoryBodies.length, 2)
+  assert.ok(Date.parse(inventoryBodies[0].effective_at) > Date.parse('2026-09-16T00:00:00.000Z'))
+  assert.ok(Date.parse(inventoryBodies[1].effective_at) > Date.parse(inventoryBodies[0].effective_at))
+})
+
+test('account switch keeps delayed writes bound to their original account and conflicts preserve pending state', async function () {
+  let accountId = 'account-a', releaseA, writes = []
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 1, entries: [] }), getWorkspace: async () => ({ revision: 1 }),
+    putInventory: async (account, body) => { writes.push(account); if (account === 'account-a') return await new Promise(resolve => { releaseA = () => resolve({ revision: 2, entries: body.entries }) }); return { revision: 2, entries: body.entries } },
+    putWorkspace: async (_account, body) => ({ revision: 2, plan_targets: body.plan_targets, bag: body.bag, experience: body.experience }),
+  })
+  const handle = { getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} }
+  await coordinator.enter(handle)
+  coordinator.committed({ accountId: 'account-a', inventoryChanged: true, workspaceChanged: false, snapshot: snapshot() })
+  await tick()
+  accountId = 'account-b'
+  await coordinator.enter(handle)
+  releaseA(); await tick(); await tick()
+  assert.deepEqual(writes, ['account-a'], 'A write must never be redirected to B after switch')
+
+  const conflict = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-c' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 1, entries: [] }), getWorkspace: async () => ({ revision: 1 }),
+    putInventory: async (_account, body) => ({ revision: 2, entries: body.entries }),
+    putWorkspace: async () => { throw Object.assign(new Error('conflict'), { status: 409 }) },
+  })
+  await conflict.enter(handle)
+  conflict.committed({ accountId: 'account-c', inventoryChanged: false, workspaceChanged: true, snapshot: snapshot() })
+  await tick(); await tick()
+  assert.equal(conflict.state().workspace.state().error?.status, 409, 'CAS conflict must remain visible for explicit retry/discard')
+})

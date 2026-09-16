@@ -149,6 +149,8 @@ import {
   waitForYuanStarDisposal,
 } from "./embedLifecycle.js";
 import { createHostStarInventorySync } from "./hostStarInventorySync.js";
+import { createStarCloudCoordinator } from "./starCloudCoordinator.js";
+import { starCloudFeedback } from "./starCloudStatus.js";
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isStarCaptureReadyEvent, loadAndImportStarCapture } from "./captureTransport.js";
@@ -219,6 +221,14 @@ function selectedHostAccount() {
     : null;
 }
 const starInventorySync = createHostStarInventorySync(selectedHostAccount);
+const starCloud = createStarCloudCoordinator({
+  selectedHostAccount,
+  onState: function (state) {
+    const feedback = starCloudFeedback(state);
+    cloudSyncMessage.value = feedback.message;
+    cloudSyncError.value = feedback.error;
+  },
+});
 function clearCloudSyncFeedback() {
   cloudSyncMessage.value = "";
   cloudSyncError.value = "";
@@ -335,6 +345,8 @@ async function syncHostAccount() {
     await handle.setHostAccount(host);
     mountedAccountId = host?.accountId || "";
     clearCloudSyncFeedback();
+    if (host && !(await starCloud.enter(handle))) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+    if (!host) await starCloud.enter(handle);
   } catch (error) {
     if (mountedAccountId) accountId.value = mountedAccountId;
     accountError.value = message(error, "星石账号切换失败");
@@ -469,8 +481,19 @@ async function syncCurrentInventoryToCloud() {
   }
   cloudSyncBusy.value = true;
   try {
+    // A successful B1 coordinator already owns the current snapshot, so a
+    // manual click must not create a no-op Inventory PUT. Retrying is reserved
+    // for an actual retained draft/error. The old bridge remains a transition
+    // fallback when coordinator bootstrap was unavailable.
+    if (starCloud.needsRetry()) {
+      const retried = await starCloud.retry();
+      if (retried.some(Boolean) && !starCloud.needsRetry()) { cloudSyncMessage.value = "星石云端状态已保存"; return; }
+      cloudSyncError.value = "星石云端保存仍未完成，请稍后重试。";
+      return;
+    }
+    if (starCloud.state()?.ready) { cloudSyncMessage.value = "星石云端状态已保存"; return; }
     await handle.syncCurrentStarInventory();
-    cloudSyncMessage.value = "当前背包已同步";
+    cloudSyncMessage.value = "当前背包已通过兼容同步完成";
   } catch (error) {
     cloudSyncError.value = message(error, "当前背包同步失败，请稍后重试。");
   } finally {
@@ -489,6 +512,7 @@ async function mountProduct() {
       embedded: true,
       hostAccount: selectedHostAccount(),
       starInventorySync,
+      onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onSummaryChange: function (nextSummary) {
         summary.value = nextSummary;
       },
@@ -499,7 +523,7 @@ async function mountProduct() {
     }
     handle = mountedHandle;
     handle.setActiveTab(activeTab.value);
-    mountedAccountId = selectedHostAccount()?.accountId || "";
+    await syncHostAccount();
     productReady.value = true;
     if (pendingCapture) void importPendingCapture();
   } catch (error) {
