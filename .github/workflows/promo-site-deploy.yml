@@ -45,6 +45,7 @@ jobs:
       - name: Check build output
         run: |
           test -f dist/index.html
+          test -f dist/brand/yuanhub-logo.png
           test -f dist/manifest.webmanifest
           test -f dist/sw.js
           test -f dist/pwa/icon-192.png
@@ -104,3 +105,29 @@ jobs:
             find "$DEPLOY_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
             cp -a "$TMP_DIR"/. "$DEPLOY_DIR"/
             rm -rf "$TMP_DIR"
+
+      - name: Verify deployed promo resources
+        env:
+          SITE_URL: https://hub.maayuan.com
+        run: |
+          set -eu
+          check_url() {
+            path="$1"
+            curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --retry 4 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              -H 'Cache-Control: no-cache' \
+              "${SITE_URL}${path}?deploy=${GITHUB_SHA}" \
+              >/dev/null
+          }
+
+          check_url "/"
+          check_url "/brand/yuanhub-logo.png"
+          check_url "/pwa/icon-192.png"
+          check_url "/manifest.webmanifest"
+          check_url "/sw.js"
