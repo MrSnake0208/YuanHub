@@ -1,5 +1,6 @@
 import { getCurrentStarInventory, putCurrentStarInventory } from '../../api/starInventory.js'
 import { getCurrentStarWorkspace, putCurrentStarWorkspace } from '../../api/starWorkspace.js'
+import { replaceStarExchange } from '../../api/starExchange.js'
 import { createPlannerSnapshotWriter } from '../../data/plannerSnapshotWriter.js'
 
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -48,6 +49,13 @@ function inventoryBody(value, effectiveAt) { return { effective_at: effectiveAt(
 function workspaceBody(value, expectedRevision) {
   return { expected_revision: expectedRevision, plan_targets: clone(value.planTargets), bag: { current_count: value.bag.currentCount, capacity: value.bag.capacity }, experience: clone(value.experience) }
 }
+function replacementBody(accountId, snapshot, inventoryRevision, workspaceRevision, effectiveAt) {
+  return {
+    account_id: accountId,
+    inventory: { expected_revision: inventoryRevision, ...inventoryBody(snapshot, effectiveAt) },
+    workspace: workspaceBody(snapshot, workspaceRevision),
+  }
+}
 function errorMessage(error, fallback) { return error instanceof Error && error.message ? error.message : fallback }
 function timestamp(value) {
   const parsed = typeof value === 'string' ? Date.parse(value) : NaN
@@ -69,6 +77,7 @@ function inventoryEffectiveAtClock(remote, now) {
 export function createStarCloudCoordinator({
   selectedHostAccount, getInventory = getCurrentStarInventory, putInventory = putCurrentStarInventory,
   getWorkspace = getCurrentStarWorkspace, putWorkspace = putCurrentStarWorkspace,
+  replace = replaceStarExchange,
   storage = globalThis.localStorage, now = () => new Date().toISOString(), onState = () => {},
 } = {}) {
   let active = null, sequence = 0
@@ -99,7 +108,7 @@ export function createStarCloudCoordinator({
       write: async body => workspaceState(await putWorkspace(accountId, body), { inventory: [] }),
       body: (value, expectedRevision) => workspaceBody(value, expectedRevision), equals: workspaceSame, onChange: emit,
     })
-    return { accountId, inventory, workspace }
+    return { accountId, inventory, workspace, nextEffectiveAt, replacing: false }
   }
   async function enter(handle) {
     const host = selectedHostAccount && selectedHostAccount()
@@ -138,7 +147,7 @@ export function createStarCloudCoordinator({
     }
   }
   function committed(event) {
-    if (!active || !active.ready || event.accountId !== active.accountId || selectedHostAccount()?.accountId !== event.accountId) return false
+    if (!active || !active.ready || active.replacing || event.accountId !== active.accountId || selectedHostAccount()?.accountId !== event.accountId) return false
     if (event.inventoryChanged) void active.inventory.save({ revision: active.inventory.state().revision, inventory: clone(event.snapshot.inventory) })
     if (event.workspaceChanged) void active.workspace.save({ revision: active.workspace.state().revision, ...workspaceFields({}), inventory: clone(event.snapshot.inventory), planTargets: clone(event.snapshot.planTargets), bag: clone(event.snapshot.bag), experience: clone(event.snapshot.experience) })
     return event.inventoryChanged || event.workspaceChanged
@@ -149,13 +158,34 @@ export function createStarCloudCoordinator({
     const workspace = active.workspace.state()
     return Boolean(inventory.pending || inventory.error || workspace.pending || workspace.error)
   }
+  async function replaceImport(snapshot) {
+    if (!active?.ready || !selectedHostAccount()?.accountId || selectedHostAccount().accountId !== active.accountId) throw new Error('星石云端状态尚未就绪，请重新加载后重试。')
+    const inventory = active.inventory.state(), workspace = active.workspace.state()
+    if (inventory.pending || inventory.saving || inventory.error || workspace.pending || workspace.saving || workspace.error) {
+      throw Object.assign(new Error('存在未完成的星石云端保存，请重新加载后重试。'), { status: 409 })
+    }
+    active.replacing = true
+    emit()
+    try {
+      const saved = await replace(replacementBody(active.accountId, snapshot, inventory.revision, workspace.revision, active.nextEffectiveAt))
+      if (!active?.replacing || selectedHostAccount()?.accountId !== active.accountId) throw new Error('账号已切换，导入结果未写入当前工作区。')
+      const adoptedInventory = active.inventory.adopt(inventoryState(saved.inventory))
+      const adoptedWorkspace = active.workspace.adopt(workspaceState(saved.workspace, snapshot))
+      if (!adoptedInventory || !adoptedWorkspace) throw new Error('本地云端版本已变化，请重新加载后重试。')
+      return saved
+    } finally {
+      if (active) active.replacing = false
+      emit()
+    }
+  }
   return {
     enter,
     committed,
     retry: async () => active?.inventory?.retry && active?.workspace?.retry ? Promise.all([active.inventory.retry(), active.workspace.retry()]) : [false, false],
     needsRetry,
+    replaceImport,
     state: () => active,
   }
 }
 
-export { cloudInventory, workspaceBody, inventorySame, workspaceSame }
+export { cloudInventory, workspaceBody, replacementBody, inventorySame, workspaceSame }

@@ -96,6 +96,12 @@ export function createPlannerSnapshotWriter({ initial, read, write, body, storag
       // A write may have begun while GET was in flight.
       if (!active() || running || pending || remote.revision < base.revision) return false
       base = remote; onSaved(remote, false); notify(); return true
+    },
+    adopt(value) {
+      if (!active() || running || pending || error) return false
+      base = clone(value); sent = null; latest = null
+      try { persist() } catch (err) { error = new Error('本机无法更新云端版本：' + err.message); notify(); return false }
+      onSaved(base, false); notify(); return true
     }
   }
 }

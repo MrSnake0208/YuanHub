@@ -183,3 +183,45 @@ test('account switch keeps delayed writes bound to their original account and co
   await tick(); await tick()
   assert.equal(conflict.state().workspace.state().error?.status, 409, 'CAS conflict must remain visible for explicit retry/discard')
 })
+
+test('replacement import sends one CAS request, adopts both revisions, and never uses normal PUTs', async function () {
+  let inventoryPuts = 0, workspacePuts = 0, replacement = null
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-replace' }), storage: memoryStorage(), now: () => '2026-09-17T00:00:00.000Z',
+    getInventory: async () => ({ revision: 7, entries: [{ instance_id: 'old', kind: 'main', name: '天府', quality: 'orange', level: 10 }] }),
+    getWorkspace: async () => ({ revision: 9, plan_targets: { old: 20 }, bag: { current_count: 2, capacity: 20 }, experience: { orange: 1, purple: 2, white: 3 } }),
+    putInventory: async () => { inventoryPuts += 1 }, putWorkspace: async () => { workspacePuts += 1 },
+    replace: async body => {
+      replacement = body
+      return {
+        inventory: { revision: 8, entries: body.inventory.entries },
+        workspace: { revision: 10, plan_targets: body.workspace.plan_targets, bag: body.workspace.bag, experience: body.workspace.experience },
+      }
+    },
+  })
+  const handle = { getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} }
+  await coordinator.enter(handle)
+  const imported = { inventory: [{ starInstanceId: 'new-main', kind: '主星', name: '天府', quality: '橙', level: 33 }], planTargets: { 'new-main': 40 }, bag: { currentCount: 8, capacity: 88 }, experience: { orange: 5, purple: 4, white: 3 } }
+  await coordinator.replaceImport(imported)
+  assert.deepEqual(replacement, {
+    account_id: 'account-replace',
+    inventory: { expected_revision: 7, effective_at: '2026-09-17T00:00:00.000Z', entries: [{ instance_id: 'new-main', kind: 'main', name: '天府', quality: 'orange', level: 33 }] },
+    workspace: { expected_revision: 9, plan_targets: { 'new-main': 40 }, bag: { current_count: 8, capacity: 88 }, experience: { orange: 5, purple: 4, white: 3 } },
+  })
+  assert.equal(inventoryPuts, 0)
+  assert.equal(workspacePuts, 0)
+  assert.equal(coordinator.state().inventory.state().revision, 8)
+  assert.equal(coordinator.state().workspace.state().revision, 10)
+})
+
+test('replacement import preserves both writer bases when Backend rejects stale CAS', async function () {
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-stale' }), storage: memoryStorage(),
+    getInventory: async () => ({ revision: 3, entries: [] }), getWorkspace: async () => ({ revision: 4 }),
+    replace: async () => { throw Object.assign(new Error('star_inventory_revision_conflict'), { status: 409 }) },
+  })
+  await coordinator.enter({ getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} })
+  await assert.rejects(coordinator.replaceImport(snapshot()), error => error.status === 409)
+  assert.equal(coordinator.state().inventory.state().revision, 3)
+  assert.equal(coordinator.state().workspace.state().revision, 4)
+})

@@ -75,7 +75,7 @@
                 class="act-btn archive-toggle"
                 :disabled="!auth.isLoggedIn || editingStock"
                 :aria-expanded="showArchive"
-                @click="showArchive = !showArchive"
+                @click="toggleInventoryArchive"
               >
                 <Archive :size="15" aria-hidden="true" />{{
                   showArchive ? "收起数据交换" : "数据交换"
@@ -83,82 +83,19 @@
               </button>
             </template>
 
-            <!-- 档案操作：默认收起，避免抢占库存主流程的注意力 -->
-            <div v-if="showArchive && !editingStock" class="archive-workspace">
-              <div class="archive-heading">
-                <div>
-                  <span class="section-kicker">数据交换</span>
-                  <h2>导入或导出档案</h2>
-                  <p>用于在不同平台之间迁移库存；导出前请确认账号范围。</p>
-                </div>
-                <span class="archive-format">JSON · v2</span>
-              </div>
-              <div class="archive-actions">
-                <button
-                  class="act-btn archive-import"
-                  :disabled="!auth.isLoggedIn || editingStock"
-                  @click="showImport = !showImport"
-                >
-                  <Upload :size="16" aria-hidden="true" />{{
-                    showImport ? "收起导入" : "导入档案"
-                  }}
-                </button>
-                <div class="export-group">
-                  <div class="export-label">导出范围</div>
-                  <div
-                    class="export-options"
-                    role="radiogroup"
-                    aria-label="导出范围"
-                  >
-                    <label
-                      class="export-option"
-                      :class="{ active: !exportAll }"
-                    >
-                      <input
-                        v-model="exportAll"
-                        type="radio"
-                        :value="false"
-                        name="inventory-export-scope"
-                      />
-                      <span
-                        ><b>当前账号</b
-                        ><small>{{ currentAccountName }}</small></span
-                      >
-                    </label>
-                    <label
-                      class="export-option"
-                      :class="{
-                        active: exportAll,
-                        disabled: accounts.length < 2,
-                      }"
-                    >
-                      <input
-                        v-model="exportAll"
-                        type="radio"
-                        :value="true"
-                        name="inventory-export-scope"
-                        :disabled="accounts.length < 2"
-                      />
-                      <span
-                        ><b>全部账号</b
-                        ><small>{{
-                          accounts.length > 1
-                            ? accounts.length + " 个账号"
-                            : "至少需要 2 个账号"
-                        }}</small></span
-                      >
-                    </label>
-                  </div>
-                  <button
-                    class="act-btn export-submit"
-                    :disabled="!auth.isLoggedIn || !accountId"
-                    @click="doExport"
-                  >
-                    <Download :size="16" aria-hidden="true" />导出档案
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ArchiveExchangePanel
+              v-if="showArchive && !editingStock"
+              :description="'用于在不同平台之间迁移库存；导出前请确认账号范围。'"
+              :import-open="showImport"
+              :import-disabled="!auth.isLoggedIn || editingStock"
+              :export-disabled="!auth.isLoggedIn || !accountId"
+              :scope="exportAll ? 'all' : 'current'"
+              scope-name="inventory-export-scope"
+              :scope-options="inventoryExportScopeOptions"
+              @toggle-import="toggleInventoryImport"
+              @update:scope="exportAll = $event === 'all'"
+              @export="doExport"
+            />
           </AccountWorkspace>
 
           <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
@@ -197,7 +134,7 @@
           </div>
 
           <!-- 导入档案 -->
-          <div v-if="showImport" class="import-box" v-reveal>
+          <div v-if="showArchive && !editingStock && showImport" class="import-box" v-reveal>
             <p id="inventory-import-tip" class="tip">
               粘贴符合《库存数据交换协议 v2》的 JSON
               文档，或选择文件上传；导入结果会在下方展示。
@@ -1758,7 +1695,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Download,
   Info,
   Layers3,
   ListFilter,
@@ -1769,10 +1705,10 @@ import {
   Save,
   Search,
   Star,
-  Upload,
   X,
 } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
@@ -1980,6 +1916,18 @@ const stockDraft = ref({});
 const stockOriginal = ref({});
 const stockEditError = ref("");
 const stockSaveNotice = ref("");
+
+function toggleInventoryArchive() {
+  showArchive.value = !showArchive.value;
+  if (!showArchive.value) showImport.value = false;
+}
+function toggleInventoryImport() {
+  if (!showArchive.value || editingStock.value) {
+    showImport.value = false;
+    return;
+  }
+  showImport.value = !showImport.value;
+}
 const stockEditScopeIds = ref(null);
 const stockEditScopeName = ref("");
 const currentFullBaselineAt = ref(null);
@@ -2007,6 +1955,17 @@ const accountsLoading = ref(false);
 const accountBusy = ref(false);
 const accountError = ref("");
 const exportAll = ref(false);
+const inventoryExportScopeOptions = computed(function () {
+  return [
+    { value: "current", label: "当前账号", detail: currentAccountName.value },
+    {
+      value: "all",
+      label: "全部账号",
+      detail: accounts.value.length > 1 ? accounts.value.length + " 个账号" : "至少需要 2 个账号",
+      disabled: accounts.value.length < 2,
+    },
+  ];
+});
 const currentAccountName = computed(function () {
   const account = accounts.value.find(function (item) {
     return item.id === accountId.value;
@@ -3987,40 +3946,6 @@ onBeforeUnmount(function () {
   transform: translateY(9px);
   background: transparent;
 }
-.archive-actions svg {
-  flex: none;
-}
-.archive-heading h2 {
-  font-family: var(--font-s);
-  font-size: 21px;
-  line-height: 1.3;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-}
-.archive-heading p {
-  margin-top: 5px;
-  color: var(--ink-60);
-  font-size: 12.5px;
-  line-height: 1.7;
-}
-.section-kicker {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--accent-strong);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-.archive-format {
-  flex: none;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 10px;
-  color: var(--ink-60);
-  font-size: 11px;
-  font-weight: 800;
-  white-space: nowrap;
-}
 .load-more {
   display: block;
   margin: 16px auto 0;
@@ -4126,110 +4051,6 @@ onBeforeUnmount(function () {
 .act-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-/* ---- 档案操作：导入与导出同区，导出范围用明确的单选项表达 ---- */
-.archive-workspace {
-  border-top: 1px dashed var(--line);
-  background: var(--cream);
-  padding: 16px 24px 18px;
-}
-.archive-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-.archive-actions {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.36fr) minmax(0, 1fr);
-  gap: 18px;
-  align-items: stretch;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--line);
-}
-.archive-import {
-  min-height: 52px;
-  border-radius: 12px;
-  background: var(--surface);
-}
-.export-group {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-.export-label {
-  color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-.export-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-.export-option {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 52px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--surface);
-  cursor: pointer;
-  transition:
-    border-color 0.25s,
-    background-color 0.25s,
-    box-shadow 0.25s;
-}
-.export-option.active {
-  border-color: var(--accent);
-  background: var(--cream);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-.export-option.disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.export-option input {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--accent);
-  flex: none;
-}
-.export-option span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.export-option b {
-  color: var(--ink);
-  font-size: 12.5px;
-  white-space: nowrap;
-}
-.export-option small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-60);
-  font-size: 11px;
-}
-.export-submit {
-  min-height: 52px;
-  padding-inline: 18px;
-  border-color: var(--tea);
-  background: var(--tea);
-  color: var(--cream);
-}
-.export-submit:hover:not(:disabled) {
-  border-color: var(--tea-deep);
-  background: var(--tea-deep);
-  color: var(--cream);
 }
 
 .import-box {
@@ -7215,46 +7036,6 @@ onBeforeUnmount(function () {
   }
   .inventory-tabs {
     margin: 0;
-  }
-  .archive-workspace {
-    margin-top: 0;
-    padding: 14px 16px 16px;
-  }
-  .archive-heading {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .archive-actions {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-top: 14px;
-    padding-top: 14px;
-  }
-  .archive-import {
-    width: 100%;
-    min-height: 46px;
-  }
-  .export-group {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .export-label {
-    font-size: 11.5px;
-  }
-  .export-options {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .export-option {
-    min-height: 58px;
-    padding: 8px 9px;
-  }
-  .export-option b {
-    font-size: 12px;
-  }
-  .export-submit {
-    width: 100%;
-    min-height: 46px;
   }
   .import-box {
     padding: 14px;

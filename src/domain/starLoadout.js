@@ -81,13 +81,51 @@ export function normalizeStarInventoryEntry(entry) {
 }
 
 function operatorName(operatorId, map, resolver) {
-  if (typeof resolver === 'function') return resolver(operatorId) || operatorId
-  if (map instanceof Map) return map.get(operatorId) || operatorId
-  return (map && map[operatorId]) || operatorId
+  const mapped = map instanceof Map ? map.get(operatorId) : map && map[operatorId]
+  if (mapped) return mapped
+  if (typeof resolver === 'function') return resolver(operatorId) || '其他密探'
+  return '其他密探'
 }
 
 function targetOperatorFrom(args) {
   return args.targetOperator || args.operator || { id: args.targetOperatorId }
+}
+
+export function groupSlots(kind) {
+  return kind === 'main' ? ['main1', 'main2', 'main3'] : kind === 'support' ? ['support1', 'support2', 'support3'] : []
+}
+
+export function nextGroupSlot({ loadout, kind, replacementSlot = null }) {
+  if (replacementSlot && slotKind(replacementSlot) === kind) return replacementSlot
+  const normalized = normalizeLoadout(loadout)
+  return groupSlots(kind).find(function (slot) { return !normalized[slot] }) || null
+}
+
+function inventoryNameByInstance(inventoryEntries, id) {
+  const entry = (inventoryEntries || []).find(function (item) {
+    return normalizeStarInventoryEntry(item).instanceId === id
+  })
+  return entry ? normalizeStarInventoryEntry(entry).name : ''
+}
+
+export function groupContainsStarName({ loadouts, targetOperatorId, targetSlot, name, inventoryEntries }) {
+  const kind = slotKind(targetSlot)
+  if (!kind || !name) return false
+  const loadout = normalizeLoadout((loadouts || {})[String(targetOperatorId || '').trim()])
+  return groupSlots(kind).some(function (slot) {
+    return slot !== targetSlot && inventoryNameByInstance(inventoryEntries, loadout[slot]) === name
+  })
+}
+
+export function canAssignStarInstance({ loadouts, targetOperatorId, targetSlot, instanceId: nextInstanceId, inventoryEntries }) {
+  const id = instanceId(nextInstanceId)
+  if (!id || !slotKind(targetSlot)) return { allowed: false, reason: '请选择有效星石槽位' }
+  const name = inventoryNameByInstance(inventoryEntries, id)
+  if (!name) return { allowed: true, reason: '' }
+  if (groupContainsStarName({ loadouts, targetOperatorId, targetSlot, name, inventoryEntries })) {
+    return { allowed: false, reason: '当前' + (slotKind(targetSlot) === 'main' ? '主星' : '辅星') + '已选择「' + name + '」' }
+  }
+  return { allowed: true, reason: '' }
 }
 
 export function buildStarLoadoutCandidates(args = {}) {
@@ -134,13 +172,15 @@ function dedupeLoadouts(loadouts, preferred) {
   return loadouts
 }
 
-export function assignInstanceToDraft({ loadouts, targetOperatorId, targetSlot, instanceId: nextInstanceId }) {
+export function assignInstanceToDraft({ loadouts, targetOperatorId, targetSlot, instanceId: nextInstanceId, inventoryEntries }) {
   const targetId = String(targetOperatorId || '').trim()
   const id = instanceId(nextInstanceId)
   if (!targetId) throw new TypeError('targetOperatorId is required')
   if (!slotKind(targetSlot)) throw new TypeError('targetSlot must be one of the six star loadout slots')
   const draft = normalizeLoadouts(loadouts)
   if (!draft[targetId]) draft[targetId] = emptyLoadout()
+  const allowed = canAssignStarInstance({ loadouts: draft, targetOperatorId: targetId, targetSlot, instanceId: id, inventoryEntries })
+  if (id && !allowed.allowed) return dedupeLoadouts(draft)
   if (id) {
     Object.keys(draft).forEach(function (operatorId) {
       STAR_LOADOUT_SLOTS.forEach(function (slot) {

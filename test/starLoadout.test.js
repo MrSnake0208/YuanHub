@@ -13,11 +13,13 @@ import {
   STAR_LOADOUT_SLOTS,
   assignInstanceToDraft,
   buildStarLoadoutCandidates,
+  canAssignStarInstance,
   chooseBestMatchingInstance,
   clearDraftSlot,
   cloneLoadout,
   emptyLoadout,
   normalizeLoadout,
+  nextGroupSlot,
   slotKind,
 } from '../src/domain/starLoadout.js'
 
@@ -130,11 +132,12 @@ test('candidate builder uses only inventory order, kind, restriction and occupan
     loadouts,
     targetOperator: target,
     selectedSlot: 'main1',
-    operatorDisplayNameMap: { other: '其他密探' },
+    operatorDisplayNameMap: { other: '张飞' },
+    resolveOperatorName: function () { return '其他密探' },
     planTargets: { ignored: { main1: 'never-an-inventory-instance' } },
   })
   assert.deepEqual(main.map(function (candidate) { return candidate.instanceId }), ['m-free', 'm-other'])
-  assert.deepEqual(main[1].occupiedBy, { operatorId: 'other', operatorName: '其他密探', slot: 'main1' })
+  assert.deepEqual(main[1].occupiedBy, { operatorId: 'other', operatorName: '张飞', slot: 'main1' })
   const support = buildStarLoadoutCandidates({ inventoryEntries, loadouts, targetOperator: target, selectedSlot: 'support2' })
   assert.deepEqual(support.map(function (candidate) { return candidate.instanceId }), ['s-allowed', 's-own'])
   assert.equal(support[1].occupiedBy.operatorId, 'target')
@@ -142,6 +145,14 @@ test('candidate builder uses only inventory order, kind, restriction and occupan
   assert.deepEqual(hidden.map(function (candidate) { return candidate.instanceId }), ['m-free'])
   const ownStillVisible = buildStarLoadoutCandidates({ inventoryEntries, loadouts, targetOperator: target, selectedSlot: 'support1', hideEquipped: true })
   assert.deepEqual(ownStillVisible.map(function (candidate) { return candidate.instanceId }), ['s-allowed', 's-own'])
+  const unknownOwner = buildStarLoadoutCandidates({
+    inventoryEntries,
+    loadouts,
+    targetOperator: target,
+    selectedSlot: 'main1',
+    resolveOperatorName: function () { return '其他密探' },
+  })
+  assert.equal(unknownOwner[1].occupiedBy.operatorName, '其他密探')
 })
 
 test('candidate and resolver use YuanStar default business order instead of Backend instanceId or input order', function () {
@@ -217,6 +228,31 @@ test('draft assignment moves free, own, and other-owner instances with global un
   assert.equal(new Set(allIds).size, allIds.length)
   const cleared = clearDraftSlot({ loadouts: stolen, targetOperatorId: 'target', targetSlot: 'support2' })
   assert.equal(cleared.target.support2, null)
+})
+
+test('同组同名约束阻止填空，但允许替换该名称原所在槽位', function () {
+  const inventoryEntries = [entry('main-a', 'main', '天府'), entry('main-b', 'main', '天府'), entry('main-c', 'main', '武曲'), entry('support-a', 'support', '文曲'), entry('support-b', 'support', '文曲')]
+  const loadouts = { target: { main1: 'main-a', main2: null, main3: 'main-c', support1: 'support-a', support2: null, support3: null } }
+  assert.equal(canAssignStarInstance({ loadouts, targetOperatorId: 'target', targetSlot: 'main2', instanceId: 'main-b', inventoryEntries }).allowed, false)
+  assert.equal(canAssignStarInstance({ loadouts, targetOperatorId: 'target', targetSlot: 'support2', instanceId: 'support-b', inventoryEntries }).allowed, false)
+  assert.equal(canAssignStarInstance({ loadouts, targetOperatorId: 'target', targetSlot: 'main1', instanceId: 'main-b', inventoryEntries }).allowed, true)
+  const blocked = assignInstanceToDraft({ loadouts, targetOperatorId: 'target', targetSlot: 'main2', instanceId: 'main-b', inventoryEntries })
+  assert.equal(blocked.target.main2, null)
+  const replacement = assignInstanceToDraft({ loadouts, targetOperatorId: 'target', targetSlot: 'main1', instanceId: 'main-b', inventoryEntries })
+  assert.equal(replacement.target.main1, 'main-b')
+})
+
+test('按组连续选择始终填第一个空槽，满组必须显式 replacement', function () {
+  let loadout = emptyLoadout()
+  assert.equal(nextGroupSlot({ loadout, kind: 'main' }), 'main1')
+  loadout.main1 = 'a'
+  assert.equal(nextGroupSlot({ loadout, kind: 'main' }), 'main2')
+  loadout.main2 = 'b'
+  assert.equal(nextGroupSlot({ loadout, kind: 'main' }), 'main3')
+  loadout.main3 = 'c'
+  assert.equal(nextGroupSlot({ loadout, kind: 'main' }), null)
+  assert.equal(nextGroupSlot({ loadout, kind: 'main', replacementSlot: 'main2' }), 'main2')
+  assert.equal(nextGroupSlot({ loadout, kind: 'support', replacementSlot: 'main2' }), 'support1')
 })
 
 test('resolver uses own then free then unprotected occupied inventory candidates without re-sorting', function () {
