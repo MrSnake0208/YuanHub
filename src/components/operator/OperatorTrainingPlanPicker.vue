@@ -58,7 +58,6 @@
         </section>
 
         <div class="plan-roster-meta">
-          <p aria-live="polite"><strong>{{ filteredEntries.length }}</strong> / {{ props.catalogEntries.length }} 位密探<span>· 按实装时间倒序</span></p>
           <p v-if="invalidSelectedCount" class="plan-picker-invalid">保存时将清理 {{ invalidSelectedCount }} 位已失效密探</p>
         </div>
         <p v-if="error" class="plan-picker-error" role="alert">{{ error }}</p>
@@ -71,7 +70,8 @@
               <img v-if="profIcon(entry.prof)" class="plan-candidate-prof" :src="profIcon(entry.prof)" alt="" aria-hidden="true" />
             </span>
             <span class="plan-candidate-copy">
-              <span class="plan-candidate-name">
+              <span class="plan-candidate-name" :class="{ 'is-three-plus': candidateNameLength(entry) >= 3 }">
+                <span class="plan-candidate-status-mark" :class="['is-' + growthStatus(entry), { 'is-favorite': favoriteIds.has(entry.id) }]" role="img" :aria-label="'养成状态：' + growthStatusLabel(entry) + (favoriteIds.has(entry.id) ? '，特别关注' : '')" :title="growthStatusLabel(entry) + (favoriteIds.has(entry.id) ? ' · 特别关注' : '')"><Star v-if="favoriteIds.has(entry.id)" :size="10" fill="currentColor" aria-hidden="true" /></span>
                 <b>{{ entry.name || entry.id }}</b>
                 <span v-if="favoriteIds.has(entry.id)" class="plan-candidate-favorite" role="img" aria-label="特别关注" title="特别关注"><Star :size="11" fill="currentColor" aria-hidden="true" /></span>
               </span>
@@ -178,6 +178,9 @@ function profIcon(value) {
 function professionLabel(entry) {
   const values = subProfList(entry)
   return values.length ? values.join('、') : '职业待补'
+}
+function candidateNameLength(entry) {
+  return Array.from(String(entry?.name || entry?.id || '')).length
 }
 function growthStatus(entry) {
   const growth = entry?.growth && typeof entry.growth === 'object' ? entry.growth : {}
@@ -311,14 +314,14 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-name-control input { width: 100%; min-width: 0; min-height: 42px; padding: 7px 10px 7px 34px; border: 1.5px solid color-mix(in srgb, var(--tea) 48%, var(--line)); border-radius: 9px; background: var(--surface); box-shadow: inset 0 1px 2px rgba(73,59,44,.06); font-size: 13px; font-weight: 750; }
 .plan-name-control input:hover:not([readonly]) { border-color: var(--tea); }
 .plan-name-control input[readonly] { border-color: var(--line); background: color-mix(in srgb, var(--paper) 70%, var(--surface)); color: var(--tea); }
-.plan-inline-delete { min-width: 94px; min-height: 42px; border-color: color-mix(in srgb, var(--rouge) 38%, var(--line)); background: var(--surface); color: var(--rouge); }
+.plan-inline-delete { width: 94px; min-width: 94px; min-height: 42px; border-color: color-mix(in srgb, var(--rouge) 38%, var(--line)); background: var(--surface); color: var(--rouge); }
 .plan-inline-delete:hover:not(:disabled) { border-color: var(--rouge); background: color-mix(in srgb, var(--rouge) 6%, var(--surface)); color: var(--rouge); }
 
-.plan-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; margin-top: 10px; }
+.plan-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; margin-top: 10px; padding-right: 10px; }
 .plan-search { position: relative; display: flex; min-width: 0; align-items: center; }
 .plan-search > svg { position: absolute; left: 11px; z-index: 1; color: var(--ink-60); pointer-events: none; }
 .plan-search input { width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px 8px 34px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 12px; }
-.plan-filter-toggle { min-width: 88px; background: var(--surface); color: var(--ink-60); }
+.plan-filter-toggle { width: 94px; min-width: 94px; background: var(--surface); color: var(--ink-60); }
 .plan-filter-toggle.on { border-color: var(--accent); color: var(--ink); }
 .plan-filter-toggle > span { display: grid; min-width: 17px; height: 17px; place-items: center; border-radius: 999px; background: var(--yellow); color: var(--ink); font: 800 9px var(--font-d); }
 
@@ -353,6 +356,7 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-candidate-prof { position: absolute; z-index: 1; top: 1px; left: 1px; display: block; width: 14px; height: 14px; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(73,59,44,.22)); }
 .plan-candidate-copy { display: block; width: 100%; min-width: 0; }
 .plan-candidate-name { display: flex; min-width: 0; align-items: center; gap: 3px; }
+.plan-candidate-status-mark { display: none; }
 .plan-candidate b { display: block; min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .plan-candidate-favorite { display: inline-grid; width: 13px; height: 13px; flex: none; place-items: center; color: var(--accent); }
 .plan-candidate-labels { display: flex; min-width: 0; gap: 3px; margin-top: 4px; overflow: hidden; }
@@ -391,8 +395,10 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
   .plan-source-choice { grid-template-columns: 1fr; }
   .plan-source-choice label { min-height: 52px; }
   .plan-name-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px; }
+  .plan-toolbar { padding-right: 8px; }
   .plan-name-meta small { display: none; }
-  .plan-inline-delete { min-width: 88px; padding-inline: 9px; }
+  .plan-inline-delete, .plan-filter-toggle { width: 88px; min-width: 88px; }
+  .plan-inline-delete { padding-inline: 9px; }
   .plan-name-control input, .plan-search input { min-height: 44px; font-size: 16px; }
   .plan-selection-tabs button { min-height: 40px; }
   .plan-filter-options button { min-height: 38px; padding-inline: 10px; }
@@ -403,13 +409,22 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
   .plan-candidate input { position: absolute; width: 1px; height: 1px; overflow: hidden; margin: -1px; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
   .plan-candidate-avatar { width: 42px; height: 42px; }
   .plan-candidate-prof { top: -0.5px; left: -0.5px; width: 15px; height: 15px; }
-  .plan-candidate-copy { width: 100%; }
-  .plan-candidate-name { justify-content: center; }
-  .plan-candidate-favorite { width: 11px; height: 11px; }
-  .plan-candidate-favorite svg { width: 10px; height: 10px; }
+  .plan-candidate-copy { display: grid; width: 100%; justify-items: center; }
+  .plan-candidate-name { position: relative; display: block; width: fit-content; max-width: calc(100% - 14px); margin-inline: auto; transform: translateX(3px); }
+  .plan-candidate-name.is-three-plus { transform: translateX(4.5px); }
+  .plan-candidate-status-mark { position: absolute; top: 50%; right: calc(100% + 3px); display: inline-grid; width: 11px; height: 12px; place-items: center; transform: translateY(calc(-50% + .5px)); }
+  .plan-candidate-status-mark:not(.is-favorite)::before { box-sizing: border-box; width: 7px; height: 7px; border-radius: 50%; content: ''; }
+  .plan-candidate-status-mark.is-growing:not(.is-favorite)::before { border: 1px solid #56805d; background: #6f9f76; }
+  .plan-candidate-status-mark.is-graduated:not(.is-favorite)::before { border: 1px solid var(--accent-strong); background: var(--accent); }
+  .plan-candidate-status-mark.is-inactive:not(.is-favorite)::before { border: 1px solid var(--ink-60); background: var(--ink-35); }
+  .plan-candidate-status-mark.is-favorite.is-growing { color: #56805d; }
+  .plan-candidate-status-mark.is-favorite.is-graduated { color: var(--accent); }
+  .plan-candidate-status-mark.is-favorite.is-inactive { color: var(--ink-60); }
+  .plan-candidate-status-mark svg { width: 10px; height: 10px; }
+  .plan-candidate-favorite { display: none; }
   .plan-candidate-labels { display: none; }
   .plan-selected-check { position: absolute; top: 5px; right: 5px; display: block; width: 17px; height: 17px; padding: 2px; border-radius: 50%; background: var(--tea); color: var(--cream); }
-  .plan-candidate b { font-size: 11px; }
+  .plan-candidate b { max-width: 100%; font-size: 11px; text-align: center; }
   :deep(.plan-candidate .operator-avatar) { width: 42px; height: 42px; }
   .plan-dialog-actions { min-height: 66px; padding: 10px 12px; border-radius: 0 0 15px 15px; }
   .plan-dialog-actions > p span { display: none; }
