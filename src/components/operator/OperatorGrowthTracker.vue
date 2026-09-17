@@ -64,7 +64,9 @@
               :plans="workspace.plans"
               :active-plan="activePlan"
               :member-ids="activeMemberIds"
+              :favorite-ids="favoriteIds"
               :catalog-entries="catalogEntries"
+              :growth-states="growthStates"
               :account-id="accountId"
               :error="planError"
               :disabled="cloudBlocked || schedulePending || targetBusyIds.size > 0 || targetLoading"
@@ -73,20 +75,20 @@
               @remove="removePlan"
             />
           </div>
-          <div class="status-actions">
+          <div v-if="activePlan" class="status-actions">
             <button type="button" class="status-action secondary" @click="toggleSettings"><SlidersHorizontal :size="15" aria-hidden="true" />调整设置</button>
             <button type="button" class="status-action primary" @click="openPlanner('display')"><CalendarDays :size="15" aria-hidden="true" />查看体力日程</button>
           </div>
         </div>
-        <div class="status-metrics" role="group" aria-label="培养进度概览">
+        <div v-if="activePlan" class="status-metrics" role="group" aria-label="培养进度概览">
           <div class="status-metric status-metric-primary"><span>预计还需</span><strong>{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
           <div class="status-metric"><span>等级&修为进度</span><strong>{{ plannerProgress }}<small>%</small></strong></div>
           <div class="status-metric"><span>心纸状态</span><strong>{{ formatNumber(totalHeartStock) }}<small> 张</small></strong></div>
           <div class="status-metric"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
         </div>
         <p v-if="loading" class="status-sync-note" role="status"><RefreshCw :size="13" class="spin" aria-hidden="true" />正在同步当前库存；已保存的日程会保留，存在差异时可选择更新。</p>
-        <div class="status-rule" aria-hidden="true"><span></span><i>养成清单</i><span></span></div>
-        <div class="status-roster">
+        <div v-if="activePlan" class="status-rule" aria-hidden="true"><span></span><i>养成清单</i><span></span></div>
+        <div v-if="activePlan" class="status-roster">
           <div class="growth-card-grid">
               <article v-for="row in orderedPlanRows" :key="row.id" class="growth-card" :class="['rarity-r' + (row.rarity || 3), { complete: row.completed }]">
                 <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p></div></div><span class="growth-percent">{{ rowProgress(row) }}<small>%</small></span></div>
@@ -123,7 +125,8 @@
         </div>
       </section>
 
-      <div v-if="!planRows.length" class="planner-state empty"><Star :size="18" aria-hidden="true" /><span>当前清单还没有密探，可通过上方「管理密探」添加，或新建培养计划。</span></div>
+      <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。点击上方「添加」，可优先根据特别关注建立第一张清单。</span></div>
+      <div v-else-if="!planRows.length" class="planner-state empty"><Star :size="18" aria-hidden="true" /><span>当前清单还没有密探，可通过上方「编辑清单」添加，或新建培养计划。</span></div>
 
       <section v-if="plannerOpen && (planRows.length || fixedSchedule)" ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
         <div class="planner-workspace-head">
@@ -246,7 +249,7 @@ import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
 import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
 import { TRAINING_GROUPS, bookExperience, levelBookGapBundle, normalizeTrainingLevels, trainingMaterialEtas, trainingRate } from '../../data/operatorTraining.js'
-import { FAVORITES_PLAN_ID, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
+import { FAVORITES_PLAN_ID, sanitizeTrainingWorkspaceOperators, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
 import { getCurrent, listRecords } from '../../api/inventory.js'
 import { avatarUrl } from '../../api/request.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
@@ -261,7 +264,7 @@ import CultivationProgress from './CultivationProgress.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerTiming, resetFixedSchedule, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
+const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
 const plannerRules = PLANNER_RULES
@@ -364,7 +367,12 @@ const EXPERIENCE_BOOK_IDS = new Set(['bingshucanjuan', 'bingshuquanjuan', 'liuta
 const channelColors = Object.freeze({ natural: '#6F9A74', meal: '#678E91', buy: '#6E8FB6', mail: '#6B9D99', event: '#9978AD', gift: '#B47F67', custom: '#887E8F', luoyang: '#7089A2', shouchun: '#eb9685', yinyang: '#8E72A4', exp: '#C58B43', stage624: '#789569', feng: '#B76D58', dishui: '#668FA7' })
 
 const activePlan = computed(() => workspace.value.plans.find(plan => plan.id === workspace.value.activePlanId) || workspace.value.plans[0])
-const activeMemberIds = computed(() => trainingPlanMemberIds(activePlan.value, props.favoriteIds))
+const activeMemberIds = computed(() => {
+  const members = trainingPlanMemberIds(activePlan.value, props.favoriteIds)
+  if (activePlan.value?.source !== 'favorites') return members
+  const known = new Set(props.catalogEntries.map(entry => entry.id).filter(Boolean))
+  return new Set([...members].filter(id => known.has(id)))
+})
 const currentMap = computed(() => Object.fromEntries(props.currentEntries.map(entry => [entry.id, entry])))
 const itemMap = computed(() => { const map = Object.fromEntries(ITEM_CATALOG.map(item => [item.id, item.name])); props.catalogEntries.forEach(item => { if (item.id) map[item.id] = item.name || map[item.id] || item.id }); return map })
 const starStages = [{ value: 0, label: '未拥有' }].concat(Array.from({ length: 24 }, (_, index) => { const value = index + 1; return { value, label: starLabelForStage(starStageFromLevel(value)).replace(/^.+星升/, '升') } }), [{ value: 30, label: '五星' }, { value: 31, label: '觉醒' }])
@@ -772,9 +780,10 @@ async function selectPlan(id) {
   if (await commitWorkspace(next)) { closeStarTarget(); targetError.value = ''; targetNotice.value = '' }
 }
 async function savePlan(draft, onSaved) {
-  const next = workspaceCopy(), id = draft.id || crypto.randomUUID()
+  let next = workspaceCopy()
+  const id = draft.id || (draft.source === 'favorites' ? FAVORITES_PLAN_ID : crypto.randomUUID())
   let plan = next.plans.find(item => item.id === id)
-  if (!plan) { plan = { id, name: draft.name, source: 'custom', operatorIds: [], excludedOperatorIds: [], targets: {} }; next.plans.push(plan) }
+  if (!plan) { plan = { id, name: draft.name, source: draft.source === 'favorites' ? 'favorites' : 'custom', operatorIds: [], excludedOperatorIds: [], targets: {} }; next.plans.push(plan) }
   plan.name = draft.name
   if (plan.source === 'favorites') {
     plan.operatorIds = draft.operatorIds.filter(item => !props.favoriteIds.has(item))
@@ -784,7 +793,12 @@ async function savePlan(draft, onSaved) {
     for (const memberId of draft.operatorIds) if (!plan.targets[memberId]) plan.targets[memberId] = targetFor({ id: memberId, ...currentMap.value[memberId] })
   }
   next.activePlanId = id
-  if (await commitWorkspace(next, draft.id ? '清单已保存到云端' : '培养计划已创建')) { closeStarTarget(); onSaved?.() }
+  const validIds = new Set(props.catalogEntries.map(entry => entry.id).filter(Boolean))
+  const invalidIds = new Set()
+  if (validIds.size) next.plans.forEach(item => [...(item.operatorIds || []), ...(item.excludedOperatorIds || []), ...Object.keys(item.targets || {})].forEach(operatorId => { if (!validIds.has(operatorId)) invalidIds.add(operatorId) }))
+  if (validIds.size) next = sanitizeTrainingWorkspaceOperators(next, validIds)
+  const cleanup = invalidIds.size ? `，已移除 ${invalidIds.size} 位已失效密探` : ''
+  if (await commitWorkspace(next, (draft.id ? '清单已保存到云端' : '培养计划已创建') + cleanup)) { closeStarTarget(); onSaved?.() }
 }
 async function removePlanMember(row) {
   if (!row?.id || targetLoading.value || targetBusyIds.value.size > 0 || removePromptBusy.value) return
@@ -813,10 +827,13 @@ async function confirmRemove(graduate) {
     if (props.accountId === account) removePromptError.value = '移除未确认成功，已尝试重新同步，请核对清单后重试：' + err.message
   } finally { if (props.accountId === account) removePromptBusy.value = false }
 }
-async function removePlan() {
-  if (activePlan.value.source === 'favorites' || targetBusyIds.value.size) return
-  const next = workspaceCopy(); next.plans = next.plans.filter(plan => plan.id !== activePlan.value.id); next.activePlanId = FAVORITES_PLAN_ID
-  if (await commitWorkspace(next, '培养计划已删除', true)) { closeStarTarget(); targetNotice.value = '' }
+async function removePlan(onRemoved) {
+  if (!activePlan.value || targetBusyIds.value.size) return
+  const next = workspaceCopy()
+  const removedIndex = next.plans.findIndex(plan => plan.id === activePlan.value.id)
+  next.plans = next.plans.filter(plan => plan.id !== activePlan.value.id)
+  next.activePlanId = next.plans[Math.min(Math.max(removedIndex, 0), next.plans.length - 1)]?.id || null
+  if (await commitWorkspace(next, '培养清单已删除', true)) { closeStarTarget(); targetNotice.value = ''; onRemoved?.() }
 }
 function undoPlanChange() { if (undoWorkspace.value) commitWorkspace(JSON.parse(JSON.stringify(undoWorkspace.value)), '已恢复清单') }
 async function setTrainingLevel(groupId, event) {
