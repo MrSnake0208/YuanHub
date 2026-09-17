@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { TRAINING_GROUPS, bookExperience, levelBookGapBundle, trainingRate, trainingSchedule, trainingMaterialEtas, growthTargetReached } from '../src/data/operatorTraining.js'
-import { emptyTrainingWorkspace, readTrainingWorkspace, writeTrainingWorkspace, trainingPlanMemberIds, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
+import { emptyTrainingWorkspace, normalizeTrainingWorkspace, readTrainingWorkspace, sanitizeTrainingWorkspaceOperators, writeTrainingWorkspace, trainingPlanMemberIds, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
 
 test('历练表覆盖三类十二层奖励以及八档经验奖励', () => {
   assert.deepEqual(TRAINING_GROUPS.map(group => group.stages.length), [12, 12, 12, 8])
@@ -99,4 +99,27 @@ test('本地计划按子账号隔离并保留独立目标、修订和迁移版�
   assert.throws(() => writeTrainingWorkspace(storage, workspace), /其他页面更新/)
   storage.setItem(trainingWorkspaceKey('acc-a'), JSON.stringify({ ...saved, version: 99 }))
   assert.throws(() => readTrainingWorkspace(storage, 'acc-a'), /版本/)
+})
+
+test('培养清单可全部删除，空工作区不会自动补回特别关注清单', () => {
+  const workspace = emptyTrainingWorkspace('acc')
+  workspace.plans = []
+  workspace.activePlanId = null
+  const normalized = normalizeTrainingWorkspace(workspace, 'acc')
+  assert.deepEqual(normalized.plans, [])
+  assert.equal(normalized.activePlanId, null)
+})
+
+test('重新保存清单时移除未知密探的成员、排除项和目标', () => {
+  const workspace = emptyTrainingWorkspace('acc')
+  workspace.plans[0].operatorIds = ['char_known', 'char_130_zhoutai']
+  workspace.plans[0].excludedOperatorIds = ['char_130_zhoutai']
+  workspace.plans.push({ id: 'custom', name: '主队', source: 'custom', operatorIds: ['char_known', 'char_unknown'], excludedOperatorIds: [], targets: {
+    char_known: { level: 80, elite: 13, starLevel: 7 }, char_unknown: { level: 100, elite: 17, starLevel: 31 }
+  } })
+  const cleaned = sanitizeTrainingWorkspaceOperators(workspace, new Set(['char_known']))
+  assert.deepEqual(cleaned.plans[0].operatorIds, ['char_known'])
+  assert.deepEqual(cleaned.plans[0].excludedOperatorIds, [])
+  assert.deepEqual(cleaned.plans[1].operatorIds, ['char_known'])
+  assert.deepEqual(Object.keys(cleaned.plans[1].targets), ['char_known'])
 })

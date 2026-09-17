@@ -2301,6 +2301,7 @@
               :current-entries="currentEntries"
               :catalog-entries="catalogOperators"
               :favorite-ids="favoriteAgentIds"
+              :growth-states="workbenchStatuses"
               :is-logged-in="auth.isLoggedIn"
               :refresh-key="subjectiveRefreshKey"
               :active="activeTab === 'tracking'"

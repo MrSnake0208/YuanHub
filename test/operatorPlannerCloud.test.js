@@ -32,6 +32,17 @@ test('current simulator snapshot survives remote wire roundtrip including invali
   assert.deepEqual(Object.keys(body.plans[1].targets.x).sort(), ['elite', 'level', 'star_level'])
   assert.equal(workspaceFromRemote({ ...body, account_id: accountId, revision: 3 }, accountId).revision, 3)
 })
+test('empty workspace survives cloud wire roundtrip with no active plan', () => {
+  const workspace = emptyTrainingWorkspace('account')
+  workspace.plans = []
+  workspace.activePlanId = null
+  const body = workspaceBody(workspace, 4)
+  assert.deepEqual(body.plans, [])
+  assert.equal(body.active_plan_id, null)
+  const restored = workspaceFromRemote({ ...body, account_id: 'account', revision: 5 }, 'account')
+  assert.deepEqual(restored.plans, [])
+  assert.equal(restored.activePlanId, null)
+})
 test('migration preserves originals, uses legacy default schedule, and adds independent plans to an existing cloud', () => {
   const { accountId, snapshot, id } = fixture(), storage = memory()
   const local = emptyTrainingWorkspace(accountId)

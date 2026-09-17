@@ -39,6 +39,49 @@ export function tokens(v) {
   return String(v).split(/[、，,]/).map(function (s) { return s.trim() }).filter(Boolean)
 }
 
+// 密探目录 id 的末段是稳定拼音 slug（如 char_001_yangxiu）。搜索时同时兼容：
+// - 中文名 / 属性 / 从属
+// - 完整拼音或带空格拼音（yangxiu / yang xiu）
+// - 从首字母输入习惯产生的有序缩写（yx / ssx）
+// 后端若后续直接提供 pinyin 字段，也会优先一并纳入，无需修改调用方。
+function compactLatin(value) {
+  return String(value || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function isOrderedAbbreviation(query, source) {
+  if (!query || !source || query[0] !== source[0]) return false
+  let cursor = 0
+  for (const character of source) {
+    if (character === query[cursor]) cursor += 1
+    if (cursor === query.length) return true
+  }
+  return false
+}
+
+export function operatorPinyinTokens(entry) {
+  if (!entry) return []
+  const idPinyin = String(entry.id || '').match(/^char_\d+_(.+)$/i)?.[1] || ''
+  return [...new Set([entry.pinyin, entry.namePinyin, entry.name_pinyin, entry.romanizedName, idPinyin]
+    .map(compactLatin)
+    .filter(Boolean))]
+}
+
+export function matchesOperatorSearch(entry, rawQuery) {
+  const query = String(rawQuery || '').trim().toLowerCase()
+  if (!query) return true
+
+  const directText = [entry?.name, entry?.id, entry?.prof, entry?.subProf, entry?.sub_prof]
+    .flatMap(value => Array.isArray(value) ? value : [value])
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  if (directText.includes(query)) return true
+
+  const latinQuery = compactLatin(query)
+  if (!latinQuery || !/^[a-z]/.test(latinQuery)) return false
+  return operatorPinyinTokens(entry).some(token => token.includes(latinQuery) || isOrderedAbbreviation(latinQuery, token))
+}
+
 // starLevel=0 是协议中的“未拥有”。等级、修为可能由 SP 本体同步，不能作为拥有依据。
 export function isOperatorOwned(entry) {
   if (!entry) return false

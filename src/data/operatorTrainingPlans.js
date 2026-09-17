@@ -16,7 +16,7 @@ export function normalizeTrainingWorkspace(raw, accountId) {
   if (!raw) return base
   if (raw.version !== TRAINING_WORKSPACE_VERSION || raw.accountId !== accountId) throw new Error('培养计划版本或子账号不匹配，未覆盖原数据')
   const seen = new Set()
-  const plans = (Array.isArray(raw.plans) ? raw.plans : []).filter(plan => {
+  const plans = (Array.isArray(raw.plans) ? raw.plans : base.plans).filter(plan => {
     if (!plan || typeof plan.id !== 'string' || !plan.id || seen.has(plan.id)) return false
     seen.add(plan.id)
     return true
@@ -29,10 +29,24 @@ export function normalizeTrainingWorkspace(raw, accountId) {
       starLevel: Math.max(0, Math.min(31, Math.trunc(Number(target.starLevel)) || 0))
     }]))
   }))
-  if (!plans.some(plan => plan.id === FAVORITES_PLAN_ID)) plans.unshift(base.plans[0])
   return { ...base, plans, revision: Math.max(0, Number(raw.revision) || 0), updatedAt: raw.updatedAt || null,
-    activePlanId: plans.some(plan => plan.id === raw.activePlanId) ? raw.activePlanId : FAVORITES_PLAN_ID,
+    activePlanId: plans.some(plan => plan.id === raw.activePlanId) ? raw.activePlanId : (plans[0]?.id || null),
     trainingLevels: normalizeTrainingLevels(raw.trainingLevels) }
+}
+
+export function sanitizeTrainingPlanOperators(plan, validOperatorIds) {
+  const valid = validOperatorIds instanceof Set ? validOperatorIds : new Set(validOperatorIds || [])
+  const keep = id => valid.has(id)
+  return {
+    ...plan,
+    operatorIds: uniqueIds(plan?.operatorIds).filter(keep),
+    excludedOperatorIds: uniqueIds(plan?.excludedOperatorIds).filter(keep),
+    targets: Object.fromEntries(Object.entries(plan?.targets || {}).filter(([id]) => keep(id)))
+  }
+}
+
+export function sanitizeTrainingWorkspaceOperators(workspace, validOperatorIds) {
+  return { ...workspace, plans: (workspace.plans || []).map(plan => sanitizeTrainingPlanOperators(plan, validOperatorIds)) }
 }
 
 // 持久化边界集中于此；后续远端 repository 可复用相同 workspace 模型。

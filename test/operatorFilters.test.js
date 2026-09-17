@@ -6,7 +6,9 @@ import {
   isOperatorOwned,
   tokens,
   matchesProfSubFilter,
-  subProfOptions
+  subProfOptions,
+  operatorPinyinTokens,
+  matchesOperatorSearch
 } from '../src/utils/operatorFilters.js'
 
 test('图鉴拥有状态只由 starLevel 决定', function () {
@@ -91,4 +93,26 @@ test('subProfOptions 从目录去重推导并保持出现顺序', function () {
   assert.deepEqual(subProfOptions(ops), ['神纪', '破军', '龙盾', '岐黄'])
   assert.deepEqual(subProfOptions([]), [])
   assert.deepEqual(subProfOptions(null), [])
+})
+
+test('密探搜索兼容中文、完整拼音、空格拼音与首字母缩写', function () {
+  const yangxiu = { id: 'char_001_yangxiu', name: '杨修', prof: '阳', subProf: '神纪' }
+  const sunshangxiang = { id: 'char_003_sunshangxiang', name: '孙尚香', prof: '火', subProf: '破军' }
+
+  assert.deepEqual(operatorPinyinTokens(yangxiu), ['yangxiu'])
+  assert.equal(matchesOperatorSearch(yangxiu, '杨修'), true)
+  assert.equal(matchesOperatorSearch(yangxiu, 'yangxiu'), true)
+  assert.equal(matchesOperatorSearch(yangxiu, 'yang xiu'), true)
+  assert.equal(matchesOperatorSearch(yangxiu, 'yx'), true)
+  assert.equal(matchesOperatorSearch(sunshangxiang, 'ssx'), true)
+  assert.equal(matchesOperatorSearch(yangxiu, '神纪'), true)
+  assert.equal(matchesOperatorSearch(yangxiu, 'zx'), false)
+})
+
+test('密探搜索兼容后端显式拼音字段和无目录 id 的记录', function () {
+  const entry = { id: 'legacy-zhou-tai', name: '周泰', name_pinyin: 'zhou tai' }
+  assert.deepEqual(operatorPinyinTokens(entry), ['zhoutai'])
+  assert.equal(matchesOperatorSearch(entry, 'zhoutai'), true)
+  assert.equal(matchesOperatorSearch(entry, 'zt'), true)
+  assert.equal(matchesOperatorSearch(entry, ''), true)
 })
