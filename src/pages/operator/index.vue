@@ -2305,6 +2305,28 @@
               :refresh-key="subjectiveRefreshKey"
               :active="activeTab === 'tracking'"
               :annotation-revisions="annotationRevisions"
+              :quick-upgrade="openPlannerGrowthAction"
+              :quick-upgrade-state="plannerQuickUpgradeState"
+              :growth-action-popover-key="cardPopoverKey"
+              :growth-action-entry="trackerRemarkEntry"
+              :growth-action-target-label="growthTargetLabel"
+              :growth-action-show-breakthrough="showLevelBreakthroughOption"
+              :growth-action-breakthrough="cardLevelBreakthrough"
+              :growth-action-preview-busy="isGrowthPreviewBusy"
+              :growth-action-preview-error="growthPreviewError"
+              :growth-action-preview="growthPreviewData"
+              :growth-action-display-requirements="growthPreviewDisplayRequirements"
+              :growth-action-blocking-reasons="growthPreviewBlockingReasons"
+              :growth-action-available="growthPreviewAvailable"
+              :growth-action-has-material-gap="growthPreviewHasMaterialGap"
+              :growth-action-execute-busy="isGrowthExecuteBusy"
+              :growth-action-requirement-name="growthRequirementName"
+              :growth-action-requirement-value="growthRequirementValue"
+              :growth-action-requirement-balance-label="growthRequirementBalanceLabel"
+              :growth-action-reason-message="growthReasonMessage"
+              :growth-action-execute="executeGrowthAction"
+              :growth-action-breakthrough-change="setCardLevelBreakthrough"
+              :growth-action-notice="plannerGrowthActionNotice"
               @annotation-updated="applyAnnotationItem"
               @refresh-annotations="loadOperatorAnnotations"
               :is-remark-editing="row => cardHasDraft(trackerRemarkEntry(row))"
@@ -5575,7 +5597,7 @@ async function executeGrowthAction(entry, field) {
   const key = growthActionKey(entry, field);
   const preview = growthPreviewData(entry, field);
   if (!preview || !preview.available || growthExecuteBusyKeys.value.has(key))
-    return;
+    return false;
   const target = Number(preview.to);
   const operatorRevision =
     Number(
@@ -5615,6 +5637,7 @@ async function executeGrowthAction(entry, field) {
     cardPopoverKey.value = "";
     growthExecutionKeys.delete(key);
     showQuickNotice(entry.id, "已提升并扣除库存", 2200);
+    return true;
   } catch (err) {
     const refreshable =
       err &&
@@ -5637,6 +5660,7 @@ async function executeGrowthAction(entry, field) {
         cardPopoverStep.value,
       );
     }
+    return false;
   } finally {
     const next = new Set(growthExecuteBusyKeys.value);
     next.delete(key);
@@ -5772,6 +5796,41 @@ function growthActionLabel(entry, field, step, readyLabel) {
     if (shortage) return shortage.owned + "/" + shortage.required;
   }
   return "查看材料缺口";
+}
+
+function plannerQuickUpgradeState(row, field, step, readyLabel) {
+  const entry = row && currentMap.value[row.id];
+  if (!entry || !auth.isLoggedIn || !accountId.value || (field === "star" && entry.spOf)) {
+    return { visible: false, disabled: true };
+  }
+  const currentValue = Number(cardGrowthValue(entry, field)) || 0;
+  const max =
+    field === "level"
+      ? OPERATOR_LEVEL_MAX
+      : field === "elite"
+        ? getMaxEliteForLevel(cardGrowthValue(entry, "level"))
+        : MAX_STAR_LEVEL;
+  const complete = currentValue >= max;
+  const fieldLabel = field === "level" ? "等级" : field === "elite" ? "修为" : "化极";
+  const label = complete
+    ? field === "star" && currentValue === STAR_LEVEL_AWAKEN
+      ? "已觉醒"
+      : "已满级"
+    : growthActionLabel(entry, field, step, readyLabel);
+  return {
+    visible: true,
+    disabled: cardSubmitStates.value[entry.id] === "submitting" || complete,
+    className: complete ? "is-complete" : growthActionClass(entry, field, step),
+    icon: complete ? "check" : growthMaterialsReady(entry, field, step) ? "up" : "alert",
+    label: label,
+    title: complete
+      ? fieldLabel + (field === "star" && currentValue === STAR_LEVEL_AWAKEN ? "已觉醒" : "已满级")
+      : "在养成规划中查看" + fieldLabel + "快捷提升",
+  };
+}
+
+function plannerGrowthActionNotice(entry) {
+  return entry && entry.id ? quickNotices.value[entry.id] || "" : "";
 }
 
 function growthTargetLabel(entry, field) {
@@ -7319,6 +7378,12 @@ function setTab(t) {
   if (t === "tracking" && favoriteLoadedAccount !== accountId.value)
     loadAgentFavorites();
   return currentLoad;
+}
+
+async function openPlannerGrowthAction(row, field, step) {
+  const entry = row && currentMap.value[row.id];
+  if (!entry) return;
+  await openGrowthAction(entry, field, step);
 }
 
 async function onGameChange(game) {
