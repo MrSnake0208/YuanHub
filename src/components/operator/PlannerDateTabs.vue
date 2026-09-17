@@ -1,8 +1,10 @@
 <template>
   <nav class="planner-dates" :aria-label="label">
     <div class="date-navigation">
-      <span class="date-context"><CalendarDays :size="15" aria-hidden="true" />{{ monthLabel }}<small>{{ activeIndex + 1 }} / {{ dates.length }} 天</small></span>
+      <span class="date-context"><CalendarDays :size="15" aria-hidden="true" />{{ monthLabel }}<small>第 {{ activeIndex + 1 }} / {{ dates.length }} 条记录</small></span>
       <div class="date-actions">
+        <button v-if="fixed" type="button" class="date-step" aria-label="重设日程起始日期" title="重设日程起始日期" :disabled="resetDisabled" @click="emit('reset')"><RotateCcw :size="17" aria-hidden="true" /></button>
+        <button v-if="pastCount" type="button" class="date-step" :aria-label="hidePast ? '展开已过日程' : '收起已过日程'" :title="hidePast ? '展开已过日程' : '收起已过日程'" @click="emit('toggle-history')"><component :is="hidePast ? Eye : EyeOff" :size="17" aria-hidden="true" /></button>
         <button v-if="dates.includes(today) && selected !== today" type="button" class="date-today" @click="emit('select', today)">返回今日</button>
         <button type="button" class="date-step" aria-label="前一天" title="前一天" :disabled="activeIndex <= 0" @click="step(-1)"><ChevronLeft :size="18" aria-hidden="true" /></button>
         <button type="button" class="date-step" aria-label="后一天" title="后一天" :disabled="activeIndex >= dates.length - 1" @click="step(1)"><ChevronRight :size="18" aria-hidden="true" /></button>
@@ -14,7 +16,7 @@
       <button v-for="(date, index) in dates" :key="date" type="button" class="date-tab"
         :class="{ selected: date === selected, past: isPast(date), today: date === today }"
         :data-date="date" :aria-pressed="date === selected" :tabindex="date === selected ? 0 : -1"
-        :aria-label="date + '，第' + (index + 1) + '天，' + dateStatus(date)" :title="date + ' · ' + dateStatus(date)"
+        :aria-label="date + '，第' + (index + 1) + '条日程，' + dateStatus(date)" :title="date + ' · ' + dateStatus(date)"
         @click="emit('select', date)">
         <span class="day-number">{{ date === today ? '今天' : '第 ' + (index + 1) + ' 天' }}</span>
         <time :datetime="date">{{ shortDate(date) }}</time>
@@ -30,12 +32,12 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarDays, ChevronLeft, ChevronRight, History, PenLine } from '@lucide/vue'
+import { CalendarDays, ChevronLeft, ChevronRight, History, PenLine, Eye, EyeOff, RotateCcw } from '@lucide/vue'
 import { createPlannerDateDrag, plannerDateRevealOffset } from '../../data/plannerDateDrag.js'
 const props = defineProps({ dates: { type: Array, required: true }, selected: { type: String, required: true },
-  manualPlans: { type: Object, default: () => ({}) }, today: { type: String, default: '' }, fixed: Boolean,
+  manualPlans: { type: Object, default: () => ({}) }, today: { type: String, default: '' }, fixed: Boolean, pastCount: { type: Number, default: 0 }, hidePast: Boolean, resetDisabled: Boolean,
   label: { type: String, default: '选择日程日期' } })
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'reset', 'toggle-history'])
 const scroller = ref(null)
 const dragging = ref(false)
 const drag = createPlannerDateDrag(value => { dragging.value = value })
@@ -77,13 +79,14 @@ onBeforeUnmount(() => { observer?.disconnect(); drag.dispose() })
 </script>
 
 <style scoped>
+.date-caption { margin: 4px 0 8px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .planner-dates { min-width: 0; padding: 0 0 4px; border-bottom: 1px solid var(--line); }
 .date-navigation, .date-context, .date-actions { display: flex; align-items: center; }
-.date-navigation { justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.date-navigation { flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .date-context { gap: 8px; min-width: 0; color: var(--tea); font: 700 13px var(--font-b); }
 .date-context > svg { flex: none; color: var(--accent-strong); }
 .date-context small { color: var(--ink-60); font: 12px var(--font-d); white-space: nowrap; }
-.date-actions { gap: 2px; }
+.date-actions { gap: 4px; margin-left: auto; flex-wrap: wrap; }
 .date-step, .date-today { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 44px; height: 44px; padding: 0 8px; border: 0; border-radius: 9px; background: transparent; color: var(--tea); cursor: pointer; }
 .date-today { font: 700 12px var(--font-b); }
 .date-step:disabled { opacity: .3; cursor: default; }

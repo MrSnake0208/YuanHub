@@ -434,6 +434,7 @@ Authorization: Bearer <open-api-token>
 - 仅 `record_type=reward_delta` 且 `acquisition_channel` 包含“派遣”时 `stamina_cost` 必填；其他记录不得携带。
 - `reward_delta` 的 count 必须大于 0；快照 count 可为 0。
 - 心纸手动库存使用 `record_type=stock_snapshot`、`entity_type=agent`。YuanHub 已通过库存页接入手动编辑。
+- 库存页「操作历史」已接入手动奖励补录及 MaaY TXT / v2 JSON 奖励报告预览导入，复用 `POST /v1/inventory/import`；账号绑定、原始 ID 去重与重试说明见[库存奖励补录](./inventory-reward-recovery.md)。
 - `full` 替换该账号对应实体类型的完整库存；`listed` 只覆盖列出的条目。
 - 业务只信任 `id` 与 `count`；`name` 是展示冗余，不能通过库存文档修改公共目录。
 

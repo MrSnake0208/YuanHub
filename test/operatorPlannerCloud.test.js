@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { emptyTrainingWorkspace, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
 import { createFixedSchedule } from '../src/data/fixedPlannerSchedule.js'
 import { createGain, createSpend, normalizePlannerSnapshot, plannerStorageKey } from '../src/data/cultivationPlanner.js'
-import { buildPlannerMigration, plannerDateInZone, plannerTimezone, readLocalPlannerBundle, scheduleBody, scheduleFromRemote, workspaceBody, workspaceFromRemote } from '../src/data/operatorPlannerRemote.js'
+import { buildPlannerMigration, plannerDateInZone, plannerTimezone, readLocalPlannerBundle, readScheduleCache, scheduleBody, scheduleCacheKey, scheduleFromRemote, workspaceBody, workspaceFromRemote, writeScheduleCache } from '../src/data/operatorPlannerRemote.js'
 import { createPlannerSnapshotWriter } from '../src/data/plannerSnapshotWriter.js'
 const memory = () => { const values = new Map(); return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) } }
 const tick = () => new Promise(resolve => setImmediate(resolve))
@@ -56,6 +56,26 @@ test('日期工具仍支持午夜兼容检查，并可按北京时间 5 点切�
   assert.equal(plannerDateInZone('America/New_York', new Date('2026-09-12T16:00:00Z')), '2026-09-12')
   assert.equal(plannerDateInZone('Asia/Shanghai', new Date('2026-09-12T20:59:59Z'), 5), '2026-09-12')
   assert.equal(plannerDateInZone('Asia/Shanghai', new Date('2026-09-12T21:00:00Z'), 5), '2026-09-13')
+})
+test('最近成功的云端日程缓存按账号和计划隔离，并拒绝无效数据', () => {
+  const storage = memory()
+  const { snapshot } = fixture()
+  writeScheduleCache(storage, 'account', 'plan-a', snapshot)
+  assert.deepEqual(readScheduleCache(storage, 'account', 'plan-a'), JSON.parse(JSON.stringify(snapshot)))
+  assert.equal(readScheduleCache(storage, 'account', 'plan-b'), null)
+  assert.equal(readScheduleCache(storage, 'other', 'plan-a'), null)
+
+  storage.setItem(scheduleCacheKey('account', 'broken'), '{')
+  assert.equal(readScheduleCache(storage, 'account', 'broken'), null)
+
+  const key = scheduleCacheKey('account', 'plan-a')
+  const stale = JSON.parse(storage.getItem(key))
+  stale.rulesVersion += 1
+  storage.setItem(key, JSON.stringify(stale))
+  assert.equal(readScheduleCache(storage, 'account', 'plan-a'), null)
+
+  writeScheduleCache(storage, 'account', 'wrong-snapshot', { ...snapshot, accountId: 'other' })
+  assert.equal(readScheduleCache(storage, 'account', 'wrong-snapshot'), null)
 })
 function writerFixture(write) {
   let remote = { revision: 0, value: 0 }

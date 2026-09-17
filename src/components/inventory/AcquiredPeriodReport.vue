@@ -87,6 +87,10 @@
             <button type="button" :aria-pressed="effectiveRankingMode === 'all'" :class="{ on: effectiveRankingMode === 'all' }" @click="rankingMode = 'all'">全部密探</button>
           </div>
         </header>
+        <label v-if="effectiveRankingMode === 'all'" class="ranking-rarity-checkbox">
+          <input v-model="goldOnly" type="checkbox" />
+          <span>只看金卡</span>
+        </label>
 
         <p v-if="favoriteLoading" class="ranking-state" role="status">正在同步特别关注名单…</p>
         <p v-else-if="!agentTotalsAvailable" class="ranking-state">密探心纸汇总未能加载</p>
@@ -182,6 +186,7 @@ import { CircleDollarSign, Clock3, Flame, Heart, HeartHandshake, PartyPopper, Sp
 const props = defineProps({
   insights: { type: Object, required: true },
   dispatchDuration: { type: Object, required: true },
+  goldAgentIds: { type: Array, default: () => [] },
   itemTotalsAvailable: { type: Boolean, default: true },
   agentTotalsAvailable: { type: Boolean, default: true },
   recordsAvailable: { type: Boolean, default: true },
@@ -190,8 +195,10 @@ const props = defineProps({
 })
 
 const rankingMode = ref('favorites')
+const goldOnly = ref(false)
 const absenceSeal = import.meta.env.BASE_URL + 'longtimenosee.png'
 const hasFavorites = computed(function () { return props.insights.agents.favoriteCount > 0 })
+const goldAgentIdSet = computed(function () { return new Set(props.goldAgentIds) })
 const hasFavoriteTotal = computed(function () {
   return !props.favoriteLoading && !props.favoriteError && props.agentTotalsAvailable && hasFavorites.value
 })
@@ -216,7 +223,10 @@ const effectiveRankingMode = computed(function () {
   return rankingMode.value === 'favorites' && hasFavorites.value ? 'favorites' : 'all'
 })
 const ranking = computed(function () {
-  return effectiveRankingMode.value === 'favorites' ? props.insights.agents.favoriteRanking : props.insights.agents.ranking
+  const source = effectiveRankingMode.value === 'favorites' ? props.insights.agents.favoriteRanking : props.insights.agents.ranking
+  return effectiveRankingMode.value === 'all' && goldOnly.value
+    ? source.filter(function (agent) { return goldAgentIdSet.value.has(agent.id) })
+    : source
 })
 const podium = computed(function () {
   return ranking.value.slice(0, 3).map(function (agent, index) {
@@ -281,7 +291,8 @@ const absence = computed(function () {
 const luckyCoframe = computed(function () { return props.insights.agents.luckyCoframes[0] || null })
 const coframeTypeCount = computed(function () { return luckyCoframe.value ? luckyCoframe.value.agents.length : 0 })
 const rankingEmptyText = computed(function () {
-  return effectiveRankingMode.value === 'favorites' ? '本期还没有获得特别关注密探的心纸' : '本期还没有心纸收获'
+  if (effectiveRankingMode.value === 'favorites') return '本期还没有获得特别关注密探的心纸'
+  return goldOnly.value ? '本期还没有获得金卡密探的心纸' : '本期还没有心纸收获'
 })
 const favoriteLuckyEmptyText = computed(function () {
   if (!props.recordsAvailable) return '明细暂不可用'
@@ -358,7 +369,7 @@ function onImageError(event) {
 .report-body > section { min-width: 0; padding: 17px 18px 19px }
 .report-body > section + section { border-left: 1px solid var(--line) }
 .lucky-days { display: flex; min-height: 0; flex-direction: column }
-.heart-ranking { display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto }
+.heart-ranking { position: relative; display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto }
 .favorite-echo { background: var(--cream) }
 .subsection-heading { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 10px }
 .subsection-heading > div { display: flex; align-items: center; gap: 7px }
@@ -395,6 +406,9 @@ function onImageError(event) {
 .ranking-switch button.on { background: var(--tea); color: var(--cream) }
 .ranking-switch button:disabled { opacity: .42; cursor: not-allowed }
 .ranking-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.ranking-rarity-checkbox { position: absolute; top: 52px; right: 18px; z-index: 2; display: inline-flex; min-height: 32px; align-items: center; gap: 5px; padding: 4px 0 4px 6px; color: var(--ink-60); font-size: 10px; font-weight: 800; cursor: pointer; user-select: none }
+.ranking-rarity-checkbox input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent) }
+.ranking-rarity-checkbox input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 .ranking-state { display: grid; min-height: 220px; place-items: center; color: var(--ink-35); font-size: 11px; font-weight: 700; text-align: center }
 .ranking-hint { margin-top: 12px; color: var(--ink-35); font-size: 10px; font-weight: 700; text-align: center }
 .ranking-hint.is-error, .ranking-state.is-error { color: var(--rouge) }
@@ -493,6 +507,7 @@ function onImageError(event) {
   .lucky-day-timeline > li { min-height: 96px }
   .lucky-day-timeline time { font-size: 17px }
   .ranking-switch button { min-height: 44px; padding-inline: 8px }
+  .ranking-rarity-checkbox { min-height: 44px; padding-left: 8px }
   .podium { min-height: 248px; gap: 7px }
   .portrait { width: 52px }
   .place-1 .portrait { width: 62px }
@@ -511,7 +526,8 @@ function onImageError(event) {
 }
 @media (max-width: 360px) {
   .ranking-heading { align-items: stretch; flex-direction: column }
-  .ranking-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .ranking-switch { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .ranking-rarity-checkbox { top: 88px; right: 14px }
 }
 @media (prefers-reduced-motion: reduce) {
   .ranking-switch button { transition: none }

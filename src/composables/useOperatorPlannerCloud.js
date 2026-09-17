@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import * as api from '../api/operatorPlanner.js'
 import { emptyTrainingWorkspace } from '../data/operatorTrainingPlans.js'
-import { buildPlannerMigration, migrationKey, readLocalPlannerBundle, scheduleBody, scheduleFromRemote, workspaceBody, workspaceFromRemote } from '../data/operatorPlannerRemote.js'
+import { buildPlannerMigration, migrationKey, readLocalPlannerBundle, readScheduleCache, scheduleBody, scheduleFromRemote, workspaceBody, workspaceFromRemote, writeScheduleCache } from '../data/operatorPlannerRemote.js'
 import { createPlannerSnapshotWriter } from '../data/plannerSnapshotWriter.js'
 
 const idle = () => ({ pending: null, saving: false, error: null, latest: null })
@@ -11,7 +11,7 @@ export function useOperatorPlannerCloud(props, targets, emit) {
   const workspaceState = shallowRef(idle()), scheduleState = shallowRef(idle())
   const loading = ref(false), scheduleLoading = ref(false), error = ref('')
   const migration = shallowRef(null), migrationBusy = ref(false)
-  let workspaceWriter = null, scheduleWriter = null, generation = 0, scheduleGeneration = 0
+  let workspaceWriter = null, scheduleWriter = null, generation = 0, scheduleGeneration = 0, refreshPromise = null
   let localBundle = null, refreshAgain = false
   const workspacePending = computed(() => Boolean(workspaceState.value.pending || workspaceState.value.saving))
   const schedulePending = computed(() => Boolean(scheduleState.value.pending || scheduleState.value.saving))
@@ -35,6 +35,7 @@ export function useOperatorPlannerCloud(props, targets, emit) {
   async function load() {
     const token = ++generation
     ++scheduleGeneration
+    refreshPromise = null
     workspaceWriter = null; scheduleWriter = null
     workspaceState.value = idle(); scheduleState.value = idle(); snapshot.value = null
     workspace.value = emptyTrainingWorkspace(props.accountId)
@@ -61,15 +62,18 @@ export function useOperatorPlannerCloud(props, targets, emit) {
     const token = ++scheduleGeneration, account = props.accountId, plan = workspace.value.activePlanId
     scheduleWriter = null; snapshot.value = null; scheduleState.value = idle()
     if (loading.value || !workspaceWriter || !props.isLoggedIn || !account) return
+    const cached = readScheduleCache(localStorage, account, plan)
+    if (cached) snapshot.value = cached
     scheduleLoading.value = true
     try {
       const remote = await getSchedule(account, plan)
       if (token !== scheduleGeneration) return
+      writeScheduleCache(localStorage, account, plan, remote)
       scheduleWriter = createPlannerSnapshotWriter({ initial: remote, read: () => getSchedule(account, plan),
         write: async body => scheduleFromRemote(await api.putStaminaSchedule(account, plan, body), account), body: scheduleBody,
         storage: localStorage, key: storageKey(account, 'schedule:' + plan),
         onChange: state => { if (token === scheduleGeneration) scheduleState.value = state },
-        onSaved: (saved, hasPending) => { if (token === scheduleGeneration && !hasPending) snapshot.value = saved }
+        onSaved: (saved, hasPending) => { if (token === scheduleGeneration && !hasPending) { snapshot.value = saved; writeScheduleCache(localStorage, account, plan, saved) } }
       })
       scheduleState.value = scheduleWriter.state()
       snapshot.value = scheduleState.value.pending || remote
@@ -143,13 +147,23 @@ export function useOperatorPlannerCloud(props, targets, emit) {
   }
   async function refresh() {
     if (workspacePending.value || schedulePending.value) { refreshAgain = true; return }
-    if (loading.value || migration.value || error.value) return
+    if (loading.value || scheduleLoading.value || migration.value || error.value || !workspaceWriter || !scheduleWriter) return
+    if (refreshPromise) { refreshAgain = true; return refreshPromise }
     refreshAgain = false
     const token = generation
-    try {
-      await workspaceWriter?.refresh()
-      await scheduleWriter?.refresh()
-    } catch (err) { if (token === generation) error.value = '云端计划同步失败：' + err.message }
+    const workspaceReader = workspaceWriter, scheduleReader = scheduleWriter
+    const currentRefresh = refreshPromise = (async () => {
+      try {
+        await Promise.all([workspaceReader.refresh(), scheduleReader.refresh()])
+      } catch (err) { if (token === generation) error.value = '云端计划同步失败：' + err.message; return false }
+      return true
+    })()
+    try { return await currentRefresh } finally {
+      if (refreshPromise === currentRefresh) {
+        refreshPromise = null
+        if (refreshAgain && !workspacePending.value && !schedulePending.value && !loading.value && !scheduleLoading.value && !migration.value && !error.value) void refresh()
+      }
+    }
   }
   watch(() => [props.accountId, props.isLoggedIn], load, { immediate: true })
   watch(() => [workspace.value.accountId, workspace.value.activePlanId, loading.value], () => {
