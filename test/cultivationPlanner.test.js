@@ -216,6 +216,7 @@ test('体力账本按 v13 基础来源、购买和支出对称计算', () => {
   assert.equal(totals.gains, PLANNER_RULES.baseDailyStamina + 2 * PLANNER_RULES.purchaseStamina)
   assert.equal(totals.spends, 132)
   assert.equal(totals.balance, 396)
+  assert.equal(totals.coinsSpent, PURCHASE_CUMULATIVE[2])
 })
 
 test('共享库存只抵扣一次，剩余缺口仍能按优先顺序分配', () => {
