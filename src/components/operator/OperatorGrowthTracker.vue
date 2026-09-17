@@ -32,18 +32,6 @@
       <p v-if="targetError" class="planner-error" role="alert">{{ targetError }}</p>
       <p v-else-if="targetNotice" class="planner-notice planner-inline-notice" role="status">{{ targetNotice }}</p>
 
-      <div class="cloud-status" role="status" aria-live="polite">
-        {{ cloudLoading || scheduleLoading ? '正在读取云端计划…' : workspaceState.saving || scheduleState.saving ? '正在保存到云端…' : cloudError ? '云端同步未完成' : '计划与日程按子账号保存到云端' }}
-        <span v-if="fixedSchedule"> · 日界线北京时间 05:00</span>
-      </div>
-      <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
-      <div v-for="kind in ['workspace', 'schedule']" :key="kind">
-        <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" class="cloud-recovery" role="alert">
-          <p>{{ kind === 'workspace' ? '清单' : '日程' }}尚未确认保存：{{ (kind === 'workspace' ? workspaceState : scheduleState).error.message }}</p>
-          <p v-if="(kind === 'workspace' ? workspaceState : scheduleState).latest">云端版本 {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.revision }} · {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.updatedAt }}</p>
-          <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind, true); planError = ''">放弃本次修改并读取云端</button></div>
-        </div>
-      </div>
       <section v-if="migration" class="cloud-migration" aria-label="本机计划导入">
         <h3>发现本机培养计划</h3>
         <p>{{ migration.existingCloud ? '云端已有计划，本机清单将作为独立计划新增，原有云端清单保持当前设置。' : '可将本机清单和日程导入当前子账号，之后在其他设备继续使用。' }}本机原始数据会保留。</p>
@@ -128,22 +116,43 @@
       <div v-if="!activePlan" class="planner-state empty"><Plus :size="18" aria-hidden="true" /><span>还没有培养清单。点击上方「添加」，可优先根据特别关注建立第一张清单。</span></div>
       <div v-else-if="!planRows.length" class="planner-state empty"><Star :size="18" aria-hidden="true" /><span>当前清单还没有密探，可通过上方「编辑清单」添加，或新建培养计划。</span></div>
 
-      <section v-if="plannerOpen && (planRows.length || fixedSchedule)" ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
-        <div class="planner-workspace-head">
+      </fieldset>
+      <section ref="plannerWorkspaceRef" tabindex="-1" class="planner-workspace" aria-label="体力规划工作区">
+        <div v-if="planRows.length || fixedSchedule" class="planner-workspace-head">
           <div class="workspace-heading-content"><span class="section-kicker">每日执行</span>
             <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
-              <button type="button" class="plan-icon" :aria-label="viewMode === 'display' ? '编辑日程' : '返回日程'" :title="viewMode === 'display' ? '编辑日程' : '返回日程'" @click="viewMode === 'display' ? editSchedule() : openPlanner('display')"><component :is="viewMode === 'display' ? Pencil : CalendarDays" :size="17" aria-hidden="true" /></button>
+              <button v-if="viewMode === 'display'" type="button" class="plan-icon" aria-label="编辑日程" title="编辑日程" :disabled="cloudBlocked" @click="editSchedule"><Pencil :size="17" aria-hidden="true" /></button>
             </div></div>
-            <p>{{ plannerCycleNotice }} <button v-if="!reviewingHistory && !globalShortestPlanAdopted && !deadlineAlternativePlanAdopted" type="button" class="workspace-link" @click="openExactOptimizer">可进入编辑日程界面计算全局最优解</button></p>
           </div>
-          <button type="button" class="workspace-close" aria-label="收起体力日程" @click="plannerOpen = false"><X :size="16" aria-hidden="true" /></button>
+          <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display')"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
         </div>
 
-        <div v-if="fixedSchedule" class="schedule-saved-note" role="status"><Check :size="14" aria-hidden="true" /><span>{{ schedulePending ? '日程修改等待云端保存' : '日程已固定保存到云端' }} · 当前阶段始于 {{ formatLongDate(fixedSchedule.context.displayStartDate || fixedSchedule.startDate) }}。</span></div>
-        <div v-if="scheduleNeedsUpdate" class="schedule-update" role="status">
-          <div><strong>{{ scheduleDifferences.goalsChanged ? '培养目标或清单已有变化' : '当前库存与计划预测有差异' }}</strong><p>{{ scheduleDifferenceLabel }}更新后从今天重新安排，保留过去的日程和未来的自定义安排。</p></div>
-          <button type="button" class="action-button" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error)" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />按当前库存更新</button>
+        <div class="workspace-feedback">
+          <div class="cloud-status" role="status" aria-live="polite">
+            {{ cloudStatusLabel }}
+            <span v-if="fixedSchedule"> · 日界线北京时间 05:00</span>
+          </div>
+          <div v-if="cloudError" class="cloud-recovery" role="alert"><p>{{ cloudError }}</p><button v-if="!migration" type="button" @click="loadCloud">重新读取</button></div>
+          <template v-for="kind in ['workspace', 'schedule']" :key="kind">
+            <div v-if="(kind === 'workspace' ? workspaceState : scheduleState).error" class="cloud-recovery" role="alert">
+              <p>{{ kind === 'workspace' ? '清单' : '日程' }}尚未确认保存：{{ (kind === 'workspace' ? workspaceState : scheduleState).error.message }}</p>
+              <p v-if="(kind === 'workspace' ? workspaceState : scheduleState).latest">云端版本 {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.revision }} · {{ (kind === 'workspace' ? workspaceState : scheduleState).latest.updatedAt }}</p>
+              <div class="cloud-actions"><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind)">重试保存</button><button type="button" @click="downloadPending(kind)">导出未保存内容</button><button type="button" :disabled="(kind === 'workspace' ? workspaceState : scheduleState).saving" @click="recover(kind, true); planError = ''">放弃本次修改并读取云端</button></div>
+            </div>
+          </template>
+          <div v-if="planRows.length || fixedSchedule" class="schedule-guidance" :class="{ 'schedule-update': scheduleNeedsUpdate }" role="status">
+            <template v-if="scheduleNeedsUpdate">
+              <div>
+                <strong>{{ scheduleDifferences.goalsChanged ? '清单或培养目标已变更，日程需要更新' : '库存有变化，可更新日程' }}</strong>
+                <p>按当前库存和培养目标重新安排今天及之后的日程，保留过去的记录和未来的自定义安排。</p>
+                <details v-if="scheduleDifferenceLabel" class="schedule-difference-details"><summary>查看库存差异</summary><p>{{ scheduleDifferenceLabel }}</p></details>
+              </div>
+              <button type="button" class="action-button" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error)" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />更新日程</button>
+            </template>
+            <p v-else class="schedule-plan-note">{{ plannerCycleNotice }} <button v-if="!scheduleDifferences.goalsChanged && !reviewingHistory && !globalShortestPlanAdopted && !deadlineAlternativePlanAdopted" type="button" class="workspace-link" :disabled="cloudBlocked" @click="openExactOptimizer">优化日程</button></p>
+          </div>
         </div>
+        <fieldset v-if="planRows.length || fixedSchedule" class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
         <p v-if="currentDay.legacy" class="planner-footnote">此日来自旧版手工日程，未记录历史库存，仅保留原安排。</p>
         <p v-if="reviewingHistory" class="planner-footnote">正在回顾已过日期的已保存安排与预测产出；「已过」不代表实际执行完成。</p>
         <p v-if="outsideManualDates.length" class="planner-footnote">周期外固定日仍保留，可查看或恢复推荐：<button v-for="date in outsideManualDates" :key="date" type="button" class="workspace-link" @click="selectDate(date); viewMode = 'edit'; settingsOpen = true">{{ formatLongDate(date) }}</button></p>
@@ -199,8 +208,8 @@
   </template>
   <template v-else><button v-for="channel in SPEND_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addSpend(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></template>
 </div></div><div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" :stamina-balance="todayTotals.balance" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天推荐</button><button type="button" class="action-button primary" @click="openPlanner('display')"><Save :size="14" aria-hidden="true" />完成编辑</button></div></section></div></div></section>
+        </fieldset>
       </section>
-      </fieldset>
     </template>
 
     <Teleport to="body">
@@ -533,17 +542,24 @@ const plannerDates = computed(() => {
   const future = allPlannerDates.value.filter(date => date >= plannerToday.value)
   return future.length ? future : [plannerToday.value]
 })
+const cloudStatusLabel = computed(() => {
+  if (cloudLoading.value || scheduleLoading.value) return '正在读取云端计划…'
+  if (cloudError.value || workspaceState.value.error || scheduleState.value.error) return '云端同步未完成，请处理下方提示'
+  if (workspaceState.value.saving || scheduleState.value.saving) return '正在保存到云端…'
+  if (workspacePending.value || schedulePending.value) return '修改等待云端保存'
+  return fixedSchedule.value ? '日程已保存到云端' : '计划与日程按子账号保存到云端'
+})
 const plannerCycleNotice = computed(() => {
-  if (scheduleDifferences.value.goalsChanged) return '培养清单或目标已变化，旧方案已过期。请按当前库存更新，或重设日程起始日期。'
+  if (scheduleDifferences.value.goalsChanged) return '清单或培养目标已变更，当前显示的是更新前的日程。'
   if (deadlineAlternativePlanAdopted.value) return '已采用期限补足方案；当前日程按所选期限固定，具体补体力、购买与派遣安排请以每日方案为准。'
   const result = plannerSimulation.value
   if (result.optimization) {
     const proof = result.optimization
     return proof.status === 'optimal'
       ? `已采用从 ${formatLongDate(proof.fromDate)} 起的${proof.objective === 'priority' ? '按清单顺序全局最优' : '全局最短'}方案；结论基于当前规则与固定安排。`
-      : '已采用整数规划找到的可行方案，尚未证明全局最优。'
+      : '当前方案可完成培养目标，但不保证耗时最短。'
   }
-  if (result.awaitingRecalculation) return '体力获取与支出编辑已保存；现有安排尚未备齐材料，点击「重新计算当日及后续日程」可更新推荐。'
+  if (result.awaitingRecalculation) return '体力获取与支出已修改；现有安排尚未备齐材料，点击「重新计算当日及后续日程」可更新推荐。'
   if (result.status === 'invalid') return '日程包含体力不足、次数超限或未开放层数；无效日不计入产出，后续模拟暂停，请先修正。'
   if (result.status === 'blocked') return (result.lastProgressDay ? '从计算基准日起，可模拟部分推进至第 ' + result.lastProgressDay + ' 天。' : '') + '剩余缺口无法由当前已配置渠道继续补齐，详见培养推进；增加体力不一定能解决。'
   if (result.status === 'horizon') return '当前推荐从计算基准日起 90 天内尚未备齐材料；这是贪心估算，不是推荐天数或不可完成的证明。'
@@ -1190,7 +1206,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-metric strong.negative { color: var(--rouge); }
 .status-metric strong small { margin-left: 5px; color: var(--accent-strong); font: 800 10px/1 var(--font-b); }
 .planner-view { display: grid; gap: 12px; }.plan-badge { display: inline-flex; min-height: 24px; align-items: center; padding: 0 10px; border: 1px solid rgba(155, 122, 70, .12); border-radius: 999px; background: #f7eddc; color: #8a6a38; font-size: 10px; font-weight: 780; white-space: nowrap; }.plan-badge.manual { background: #f0e8f6; color: #7e6699; }.plan-badge.exact { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
-.display-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.planner-card { min-width: 0; padding: 18px; }.card-heading, .ledger-heading, .compare-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.card-heading h3 { margin-top: 3px; color: var(--ink); font: 900 18px/1.3 var(--font-s); }.card-heading p { margin-top: 4px; color: var(--planner-muted); font-size: 11px; line-height: 1.5; }.day-plan { display: grid; gap: 14px; }.day-summary { display: grid; gap: 8px; margin-top: 0; padding: 8px 0 14px; border-bottom: 1px dashed var(--planner-line); font-variant-numeric: tabular-nums; }.summary-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }.summary-money { padding-top: 8px; border-top: 1px dashed var(--planner-line); }.summary-metric { display: inline-flex; align-items: baseline; gap: 7px; }.summary-metric span, .summary-balance span { color: var(--planner-muted); font-size: 13px; font-weight: 650; }.summary-metric b, .summary-balance b { font: 830 17px var(--font-d); }.gain b, .gain-text, .gain-total b { color: var(--planner-gain); }.spend b, .spend-text, .spend-total b { color: var(--planner-spend); }.summary-op { color: #c7b8aa; font-weight: 800; }.summary-balance { display: inline-flex; align-items: baseline; gap: 7px; }.summary-balance.negative b { color: var(--rouge); }.coin-spend b { color: var(--accent); }.flow-section { padding-top: 14px; }.flow-section + .flow-section { margin-top: 11px; border-top: 1px solid var(--planner-line); }.day-plan .flow-section { padding-top: 0; }.day-plan .flow-section + .flow-section { margin-top: 0; padding-top: 14px; border-top: 1px dashed var(--planner-line); }.flow-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #877462; font-size: 13px; font-weight: 780; }.channel-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }.channel-chip { --channel: #887e8f; display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 11px; background: color-mix(in srgb, var(--channel) 8%, #fffaf4); color: color-mix(in srgb, var(--channel) 84%, #34291f); font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }.channel-chip small { color: color-mix(in srgb, var(--channel) 68%, #6f6258); font-size: 11px; }.channel-chip strong { margin-left: 6px; font-size: 12px; }.channel-dot, .channel-label i, .swatch i { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--channel); }.channel-chip strong { color: var(--planner-gain); }.channel-chip:not(.natural):not(.meal):not(.buy):not(.mail):not(.event):not(.gift) strong { color: var(--planner-spend); }.flow-empty { color: var(--planner-muted); font-size: 12px; }.balance-warning { display: flex; align-items: flex-start; gap: 6px; margin-top: 14px; padding: 9px 10px; border-radius: 9px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 11px; line-height: 1.6; }.day-plan .balance-warning { margin-top: 0; }
+.display-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.planner-card { min-width: 0; padding: 18px; }.card-heading, .ledger-heading, .compare-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.card-heading h3 { margin-top: 3px; color: var(--ink); font: 900 18px/1.3 var(--font-s); }.card-heading p { margin-top: 4px; color: var(--planner-muted); font-size: 11px; line-height: 1.5; }.day-plan { display: grid; align-content: start; gap: 14px; }.day-summary { display: grid; gap: 8px; margin-top: 0; padding: 8px 0 14px; border-bottom: 1px dashed var(--planner-line); font-variant-numeric: tabular-nums; }.summary-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }.summary-money { padding-top: 8px; border-top: 1px dashed var(--planner-line); }.summary-metric { display: inline-flex; align-items: baseline; gap: 7px; }.summary-metric span, .summary-balance span { color: var(--planner-muted); font-size: 13px; font-weight: 650; }.summary-metric b, .summary-balance b { font: 830 17px var(--font-d); }.gain b, .gain-text, .gain-total b { color: var(--planner-gain); }.spend b, .spend-text, .spend-total b { color: var(--planner-spend); }.summary-op { color: #c7b8aa; font-weight: 800; }.summary-balance { display: inline-flex; align-items: baseline; gap: 7px; }.summary-balance.negative b { color: var(--rouge); }.coin-spend b { color: var(--accent); }.flow-section { padding-top: 14px; }.flow-section + .flow-section { margin-top: 11px; border-top: 1px solid var(--planner-line); }.day-plan .flow-section { padding-top: 0; }.day-plan .flow-section + .flow-section { margin-top: 0; padding-top: 14px; border-top: 1px dashed var(--planner-line); }.flow-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #877462; font-size: 13px; font-weight: 780; }.channel-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }.channel-chip { --channel: #887e8f; display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 11px; background: color-mix(in srgb, var(--channel) 8%, #fffaf4); color: color-mix(in srgb, var(--channel) 84%, #34291f); font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }.channel-chip small { color: color-mix(in srgb, var(--channel) 68%, #6f6258); font-size: 11px; }.channel-chip strong { margin-left: 6px; font-size: 12px; }.channel-dot, .channel-label i, .swatch i { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--channel); }.channel-chip strong { color: var(--planner-gain); }.channel-chip:not(.natural):not(.meal):not(.buy):not(.mail):not(.event):not(.gift) strong { color: var(--planner-spend); }.flow-empty { color: var(--planner-muted); font-size: 12px; }.balance-warning { display: flex; align-items: flex-start; gap: 6px; margin-top: 14px; padding: 9px 10px; border-radius: 9px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 11px; line-height: 1.6; }.day-plan .balance-warning { margin-top: 0; }
 .progress-card { display: flex; flex-direction: column; }.progress-tags { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }.progress-tag { padding: 5px 8px; border: 1px solid rgba(155, 122, 70, .1); border-radius: 10px; background: #f6eee1; color: #8f7b68; font-size: 10px; font-weight: 730; white-space: nowrap; }.progress-tag.key { background: #f0e8f6; }.progress-tag b { color: var(--ink); }.progress-list { display: grid; gap: 13px; margin-top: 16px; }.progress-item { display: grid; gap: 6px; }.progress-item-head, .progress-item-foot { display: flex; justify-content: space-between; gap: 8px; color: var(--planner-muted); font-size: 11px; }.progress-item-head > span:first-child { color: var(--ink); font-size: 13px; font-weight: 800; }.progress-item-head b, .progress-item-foot b { color: var(--planner-gain); }.progress-track { position: relative; height: 10px; overflow: hidden; border-radius: 999px; background: #efe4d4; }.progress-track i { position: absolute; top: 0; bottom: 0; display: block; }.progress-current { left: 0; background: #c48b4d; }.progress-old { left: 0; background: #c48b4d; }.progress-today { background: #e8bc6c; }.progress-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; color: var(--planner-muted); font-size: 10px; }.progress-legend span { display: inline-flex; align-items: center; gap: 4px; }.progress-legend i { width: 10px; height: 6px; border-radius: 99px; }.legend-current { background: #c48b4d; }.legend-old { background: #c48b4d; }.legend-today { background: #e8bc6c; }.planner-footnote { color: var(--ink-60); font-size: 11px; line-height: 1.7; }
 .edit-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 12px; align-items: start; }.planner-sidebar { position: sticky; top: 10px; padding: 12px; }.side-section { padding: 12px 0; }.side-section + .side-section { border-top: 1px solid var(--planner-line); }.side-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12px; font-weight: 820; }.side-hint { color: var(--planner-muted); font-size: 9px; font-weight: 600; }.side-explain, .drag-note, .purchase-note, .side-details p, .field-help, .goal-panel > p { color: var(--planner-muted); font-size: 10px; line-height: 1.6; }.side-explain { margin-top: 8px; }.strategy-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border: 1px solid var(--planner-line); border-radius: 10px; background: #f6ecdc; }.strategy-switch button { min-height: 38px; padding: 6px 5px; border: 0; border-radius: 7px; background: transparent; color: #8d7966; font-size: 10px; font-weight: 780; }.strategy-switch button.active { background: var(--planner-deep); color: #fff; }
 .edit-roster { display: grid; grid-auto-rows: 184px; align-content: start; gap: 6px; min-height: 948px; max-height: 948px; overflow: auto; padding: 2px; }.edit-roster-item { display: grid; grid-template-columns: 14px 28px minmax(0, 1fr) auto; align-items: center; gap: 5px; padding: 7px 5px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--planner-card); }.edit-roster-item:hover { border-color: var(--accent); }.drag-handle { color: #b19f8c; cursor: grab; font-size: 12px; letter-spacing: -3px; }.edit-roster-name { min-width: 0; }.edit-roster-name b, .edit-roster-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.edit-roster-name b { font-size: 11px; }.edit-roster-name small { margin-top: 2px; color: var(--planner-muted); font-size: 9px; }.move-buttons { display: flex; flex-direction: column; gap: 2px; }.move-buttons button { display: grid; width: 24px; height: 22px; place-items: center; padding: 0; border: 1px solid var(--planner-line); border-radius: 5px; background: #f2e6d3; color: #8f7c6b; }.move-buttons button:disabled { opacity: .35; cursor: not-allowed; }.target-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding-top: 5px; border-top: 1px dashed var(--planner-line); }.target-fields label, .setting-line label, .ledger-input-wrap label, .custom-name-field, .custom-cost-field, .goal-panel label { display: flex; flex-direction: column; gap: 4px; color: var(--planner-muted); font-size: 9px; font-weight: 750; }.target-fields input, .target-fields select, .counter input, .ledger-input-wrap input, .custom-name-field input, .custom-cost-field input, .goal-panel input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 7px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 700 11px var(--font-d); }.target-fields select { font-family: var(--font-b); }.drag-note { margin-top: 7px; }.setting-line { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: 8px; }.setting-line label { color: var(--ink); font-size: 10px; }.counter { display: flex; overflow: hidden; border: 1px solid var(--planner-line); border-radius: 8px; }.counter button { width: 30px; min-height: 36px; border: 0; background: #f4e9d8; color: var(--ink); font-size: 16px; }.counter input { width: 42px; min-height: 36px; border: 0; border-right: 1px solid var(--planner-line); border-left: 1px solid var(--planner-line); border-radius: 0; background: var(--planner-card); text-align: center; }.purchase-note { margin-top: 7px; }
@@ -1206,7 +1222,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-title { min-width: 0; flex: 1 1 auto; }
 .status-title h2 { margin-top: 5px; color: var(--ink); font: 900 25px/1.22 var(--font-s); letter-spacing: .02em; }
 .status-actions, .workspace-head-actions, .edit-toolbar-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.status-action, .workspace-link, .workspace-close, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--planner-line); border-radius: 10px; background: rgba(255, 253, 246, .84); color: var(--ink); font-size: 11px; font-weight: 800; }
+.status-action, .workspace-link, .workspace-return, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--planner-line); border-radius: 10px; background: rgba(255, 253, 246, .84); color: var(--ink); font-size: 11px; font-weight: 800; }
 .status-action:hover, .workspace-link:hover, .toolbar-button:hover { border-color: var(--accent); color: var(--accent-strong); }
 .status-action.primary { border-color: var(--planner-deep); background: var(--planner-deep); color: var(--cream); }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; color: var(--accent-strong); font-size: 10px; }
@@ -1339,8 +1355,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .schedule-action-dialog .tracker-dialog-button, .schedule-action-dialog .tracker-dialog-close { min-height: 44px; min-width: 44px; font-size: 12px; }
 .planner-workspace-head h2 { display: flex; align-items: center; min-height: 44px; margin: 0; color: var(--ink); font: 900 20px/1.3 var(--font-s); }
 .planner-workspace-head p { max-width: 720px; margin-top: 5px; color: var(--planner-muted); font-size: 11px; line-height: 1.6; }
-.workspace-close { width: 40px; padding: 0; color: var(--planner-muted); }
-.workspace-close:hover { border-color: var(--rouge); color: var(--rouge); }
+.workspace-return { flex: none; min-height: 44px; color: var(--ink); }
+.workspace-return:hover { border-color: var(--rouge); color: var(--rouge); }
 .planner-view, .planner-display, .planner-edit, .editor-main, .edit-grid, .settings-panel, .ledger-grid { min-width: 0; max-width: 100%; }
 
 @media (min-width: 901px) { .edit-grid { grid-template-columns: 292px minmax(0, 1fr); } }
@@ -1523,11 +1539,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .add-menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (max-width: 640px) { .stage-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .target-fields .progress-values input, .target-fields .progress-values select { min-height: 44px; height: 44px; } }
-.schedule-saved-note { display: flex; align-items: center; gap: 6px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
-.schedule-saved-note > svg { flex: none; color: var(--accent-strong); }
+.planner-workspace > .planner-cloud-fields { display: grid; gap: 16px; }
+.workspace-feedback { display: grid; gap: 8px; }
+.workspace-feedback .cloud-status, .workspace-feedback .cloud-recovery { margin-top: 0; }
+.schedule-plan-note { margin: 0; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
 .schedule-update { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--cream); }
 .schedule-update strong { color: var(--tea); font-size: 13px; }.schedule-update p { margin-top: 5px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
 .schedule-update button { flex: none; min-height: 44px; }
+.schedule-difference-details { margin-top: 8px; color: var(--ink-60); font-size: 12px; }
+.schedule-difference-details summary { cursor: pointer; }
 @media (max-width: 640px) { .schedule-update { flex-direction: column; align-items: stretch; } }
 .day-plan { gap: 10px; }
 .day-summary { gap: 6px; padding-bottom: 12px; }
