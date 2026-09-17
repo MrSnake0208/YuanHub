@@ -12,6 +12,14 @@ import {
   validateInventoryExchangeDocument
 } from '../src/data/inventory/exchange.js'
 
+const inventoryPage = readFileSync(new URL('../src/pages/inventory/index.vue', import.meta.url), 'utf8')
+
+test('inventory import panel follows the shared archive visibility state', function () {
+  assert.match(inventoryPage, /v-if="showArchive && !editingStock && showImport"/)
+  assert.match(inventoryPage, /function toggleInventoryArchive\(\)[\s\S]*if \(!showArchive\.value\) showImport\.value = false/)
+  assert.match(inventoryPage, /function toggleInventoryImport\(\)[\s\S]*if \(!showArchive\.value \|\| editingStock\.value\)[\s\S]*showImport\.value = false/)
+})
+
 function reward(overrides = {}) {
   return Object.assign({
     record_id: 'dispatch:1',
