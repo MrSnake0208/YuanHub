@@ -79,7 +79,7 @@
           </div>
         </div>
         <div class="status-metrics" role="group" aria-label="培养进度概览">
-          <div class="status-metric status-metric-primary"><span>从今天起预计还需（含今天）</span><strong>{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
+          <div class="status-metric status-metric-primary"><span>预计还需</span><strong>{{ plannerEtaLabel }}</strong><p class="metric-explanation">{{ plannerEtaExplanation }}</p></div>
           <div class="status-metric"><span>等级&修为进度</span><strong>{{ plannerProgress }}<small>%</small></strong></div>
           <div class="status-metric"><span>心纸状态</span><strong>{{ formatNumber(totalHeartStock) }}<small> 张</small></strong></div>
           <div class="status-metric"><span>所选日体力结余</span><strong :class="{ negative: todayTotals.balance < 0 }">{{ signedNumber(todayTotals.balance) }}</strong></div>
@@ -88,24 +88,28 @@
         <div class="status-rule" aria-hidden="true"><span></span><i>养成清单</i><span></span></div>
         <div class="status-roster">
           <div class="growth-card-grid">
-              <article v-for="row in orderedPlanRows" :key="row.id" class="growth-card" :class="{ complete: row.completed }">
+              <article v-for="row in orderedPlanRows" :key="row.id" class="growth-card" :class="['rarity-r' + (row.rarity || 3), { complete: row.completed }]">
                 <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p></div></div><span class="growth-percent">{{ rowProgress(row) }}<small>%</small></span></div>
+                <p v-if="growthActionNotice(row)" class="growth-action-notice" role="status">{{ growthActionNotice(row) }}</p>
                 <div class="growth-progress-list">
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label"><span>等级</span><div class="progress-values"><b>Lv{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /></div></div>
+                    <div class="growth-progress-label"><span>等级</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>Lv{{ row.level }}</b><span>/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /><button v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'level', 5, '提升 5 级').className" :disabled="quickUpgradeState(row, 'level', 5, '提升 5 级').disabled" :aria-label="row.name + '快捷提升等级：' + quickUpgradeState(row, 'level', 5, '提升 5 级').label" :title="quickUpgradeState(row, 'level', 5, '提升 5 级').title" @click="requestQuickUpgrade(row, 'level', 5)"><ChevronUp v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
                     <div class="growth-track"><i :style="{ width: progress(row.level, targetFor(row).level) + '%' }"></i></div>
+                    <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'level', 5)" @retry="requestQuickUpgrade(row, 'level', 5)" @execute="executeGrowthAction(row, 'level')" @breakthrough-change="changeGrowthBreakthrough(row, $event)" />
                     <small>{{ experienceSummary(row.calculation.experienceGap) }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label"><span>修为</span><div class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /></div></div>
+                    <div class="growth-progress-label"><span>修为</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ row.elite }}</b><span>/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /><button v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).className" :disabled="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).disabled" :aria-label="row.name + '快捷提升修为：' + quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).label" :title="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).title" @click="requestQuickUpgrade(row, 'elite', 1)"><ChevronUp v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
                     <div class="growth-track mint"><i :style="{ width: progress(row.elite, targetFor(row).elite) + '%' }"></i></div>
+                    <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'elite', 1)" @retry="requestQuickUpgrade(row, 'elite', 1)" @execute="executeGrowthAction(row, 'elite')" />
                     <small>{{ materialSummary(row.calculation.xiuwei) || '无需补充修为材料' }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><button class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + starLabel(targetFor(row).starLevel)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ starLabel(targetFor(row).starLevel) }}</button></div>
+                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ starLabel(row.starLevel) }}</b><span>/</span><span class="growth-progress-side-label">目标</span><button class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + starLabel(targetFor(row).starLevel)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ starLabel(targetFor(row).starLevel) }}</button><button v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'star', 1, '提升至下一节点').className" :disabled="quickUpgradeState(row, 'star', 1, '提升至下一节点').disabled" :aria-label="row.name + '快捷提升化极：' + quickUpgradeState(row, 'star', 1, '提升至下一节点').label" :title="quickUpgradeState(row, 'star', 1, '提升至下一节点').title" @click="requestQuickUpgrade(row, 'star', 1)"><ChevronUp v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div>
                       <div v-if="starTargetId === row.id" :id="'tracker-star-target-' + row.id" class="tracker-star-popover" role="dialog" :aria-label="row.name + '的目标化极'"><div class="tracker-popover-title"><Info :size="13" aria-hidden="true" />设置目标星级与节点</div><div class="tracker-star-controls"><select :value="starTargetGroup" aria-label="目标星级" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @change="setStarTargetGroup(row, $event)"><option v-for="group in starGroupsFor(row)" :key="group" :value="group">{{ group === 0 ? '未拥有' : group === 31 ? '觉醒' : group + ' 星' }}</option></select><select v-if="starTargetGroup > 0 && starTargetGroup < 5" v-model.number="starTargetDraft" aria-label="目标节点" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)"><option v-for="stage in starNodesFor(row, starTargetGroup)" :key="stage.value" :value="stage.value">节点 {{ (stage.value - 1) % 6 }}</option></select></div><div class="tracker-popover-actions"><button type="button" class="cancel" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="closeStarTarget(true)">取消</button><button type="button" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="saveStarTarget(row)">{{ targetBusyIds.has(row.id) ? '保存中…' : '保存目标' }}</button></div></div>
                     </div>
                     <div class="growth-track rose"><i :style="{ width: progress(starStage(row.starLevel), starStage(targetFor(row).starLevel)) + '%' }"></i></div>
+                    <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'star', 1)" @retry="requestQuickUpgrade(row, 'star', 1)" @execute="executeGrowthAction(row, 'star')" />
                     <small class="heart-progress-note">心纸 {{ formatNumber(row.calculation.heartOwned) }} / {{ formatNumber(row.calculation.heartRequired) }} · <span class="heart-gap">缺 <span class="heart-gap-number">{{ formatNumber(row.calculation.heartGap) }}</span></span><span class="heart-average"> · {{ heartDailyAverageLabel(row) }}</span></small>
                   </div>
                 </div>
@@ -234,8 +238,9 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
+import { CalendarDays, Check, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
+import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
 import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
 import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
@@ -256,7 +261,7 @@ import CultivationProgress from './CultivationProgress.vue'
 import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerTiming, resetFixedSchedule, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
-const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false } })
+const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
 
 const emit = defineEmits(['refresh-operators', 'refresh-annotations', 'annotation-updated'])
 const plannerRules = PLANNER_RULES
@@ -399,6 +404,57 @@ function closeStarTarget(restoreFocus = false) { starTargetId.value = ''; if (re
 async function saveStarTarget(row) { const saved = await setTarget(row, 'starLevel', starTargetDraft.value); if (saved && starTargetId.value === row.id) { await nextTick(); closeStarTarget(true) } }
 function dismissStarTarget(event) { if (addMenu.value && !event.target.closest('.add-wrap')) { addMenu.value = ''; pendingSpendChannel.value = '' } if (starTargetId.value && !event.target.closest('.tracker-star-anchor')) closeStarTarget(); if (goalDatePickerOpen.value && !goalDatePickerWrap.value?.contains(event.target)) closeGoalDatePicker(false) }
 function growthTargetReachedLocal(current, target) { const currentStar = Number(current.starLevel) >= 25 && Number(current.starLevel) < 31 ? 25 : Number(current.starLevel) || 0; const targetStar = Number(target.starLevel) >= 25 && Number(target.starLevel) < 31 ? 25 : Number(target.starLevel) || 0; return currentStar >= targetStar && Number(current.level) >= target.level && Number(current.elite) >= target.elite }
+function quickUpgradeState(row, field, step, readyLabel) {
+  const fallback = { visible: Boolean(props.quickUpgrade && row?.owned), disabled: false, className: '', icon: 'up', label: readyLabel, title: '在养成规划中查看快捷提升' }
+  if (typeof props.quickUpgradeState !== 'function') return fallback
+  return Object.assign(fallback, props.quickUpgradeState(row, field, step, readyLabel) || {})
+}
+function requestQuickUpgrade(row, field, step) {
+  if (typeof props.quickUpgrade === 'function') props.quickUpgrade(row, field, step)
+}
+function growthActionEntry(row) {
+  if (typeof props.growthActionEntry === 'function') return props.growthActionEntry(row) || row
+  return row
+}
+function growthActionNotice(row) {
+  return typeof props.growthActionNotice === 'function' ? props.growthActionNotice(growthActionEntry(row)) : ''
+}
+function callGrowthAction(name, ...args) {
+  const handler = props[name]
+  return typeof handler === 'function' ? handler(...args) : null
+}
+function growthActionPopoverProps(row, field, step) {
+  const entry = growthActionEntry(row)
+  const previewBusy = Boolean(callGrowthAction('growthActionPreviewBusy', entry, field))
+  const executeBusy = Boolean(callGrowthAction('growthActionExecuteBusy', entry, field))
+  return {
+    open: Boolean(entry?.id && props.growthActionPopoverKey === entry.id + ':' + field),
+    targetLabel: callGrowthAction('growthActionTargetLabel', entry, field) || '',
+    showBreakthrough: field === 'level' && Boolean(callGrowthAction('growthActionShowBreakthrough', entry, step)),
+    breakthrough: Boolean(callGrowthAction('growthActionBreakthrough', entry)),
+    breakthroughDisabled: previewBusy || executeBusy,
+    previewBusy,
+    previewError: callGrowthAction('growthActionPreviewError', entry, field) || '',
+    preview: callGrowthAction('growthActionPreview', entry, field),
+    displayRequirements: callGrowthAction('growthActionDisplayRequirements', entry, field) || [],
+    blockingReasons: callGrowthAction('growthActionBlockingReasons', entry, field) || [],
+    available: Boolean(callGrowthAction('growthActionAvailable', entry, field)),
+    hasMaterialGap: Boolean(callGrowthAction('growthActionHasMaterialGap', entry, field)),
+    executeBusy,
+    requirementName: item => callGrowthAction('growthActionRequirementName', item, entry) || item.name || item.id,
+    requirementValue: (item, key) => callGrowthAction('growthActionRequirementValue', item, key) ?? item[key] ?? 0,
+    requirementBalanceLabel: item => callGrowthAction('growthActionRequirementBalanceLabel', item) || '',
+    reasonMessage: reason => callGrowthAction('growthActionReasonMessage', reason) || reason.message || reason.code || '当前状态无法提升',
+  }
+}
+async function executeGrowthAction(row, field) {
+  const handler = props.growthActionExecute
+  if (typeof handler === 'function' && await handler(growthActionEntry(row), field)) await loadInventory()
+}
+function changeGrowthBreakthrough(row, event) {
+  const handler = props.growthActionBreakthroughChange
+  if (typeof handler === 'function') handler(growthActionEntry(row), event)
+}
 
 const requirementPlanRows = computed(() => activeMemberIds.value.size ? props.catalogEntries.filter(entry => activeMemberIds.value.has(entry.id)).map(entry => { const current = currentMap.value[entry.id] || {}; const target = targetFor({ ...entry, ...current }); const level = calculateLevelRequirements(current.level || 0, target.level, firstSubProf(entry)); const xiuwei = calculateXiuweiRequirements(current.elite || 0, target.elite, xiuweiJob(entry.prof)); const star = calculateStarRequirements(current.starLevel || 0, target.starLevel); const total = mergeRequirements(level, xiuwei, star); const net = netRequirement(total, currentItems.value); const ownedExperience = experienceStock(currentItems.value); const experienceGap = Math.max(level.experience - ownedExperience, 0); const heartOwned = Number(currentAgents.value[entry.id]) || 0; const heartRequired = Number(star.heart) || 0; const heartGap = Math.max(heartRequired - heartOwned, 0); const gaps = net.gaps.filter(gap => !EXPERIENCE_BOOK_IDS.has(gap.id)); return { ...entry, ...current, avatar: entry.avatar || '', level: Number(current.level) || 0, elite: Number(current.elite) || 0, starLevel: Number(current.starLevel) || 0, owned: Boolean(current.level || current.elite || current.starLevel), completed: Boolean((current.level || current.elite || current.starLevel) && growthTargetReachedLocal(current, target)), calculation: { level, xiuwei, star, total, net, experienceGap, heartOwned, heartRequired, heartGap, gaps, materialEtas: trainingMaterialEtas(gaps, workspace.value.trainingLevels) } } }) : [])
 const completedCount = computed(() => planRows.value.filter(row => row.completed).length)
@@ -1146,7 +1202,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .planner-status .status-metric { padding: 17px; }
 .planner-status .status-metric-primary { background: var(--cream); }
 .growth-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 14px; margin-top: 0; }
-.growth-card { position: relative; align-self: start; min-width: 0; padding: 14px 12px; border: 1px solid var(--yellow-deep); border-top-width: 3px; border-radius: 15px; background: linear-gradient(180deg, var(--cream), var(--surface)); box-shadow: 0 4px 12px rgba(73, 59, 44, .04); }
+.growth-card { --growth-rarity-accent: var(--yellow-deep); --growth-rarity-border: var(--yellow-deep); --growth-rarity-start: var(--cream); position: relative; align-self: start; min-width: 0; padding: 14px 12px; border: 1px solid var(--growth-rarity-border); border-top: 3px solid var(--growth-rarity-accent); border-radius: 15px; background: linear-gradient(180deg, var(--growth-rarity-start), var(--surface)); box-shadow: 0 4px 12px rgba(73, 59, 44, .04); }
+.growth-card.rarity-r5 { --growth-rarity-accent: var(--yellow-deep); }
+.growth-card.rarity-r4 { --growth-rarity-accent: #a996c5; --growth-rarity-border: color-mix(in srgb, #a996c5 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, #8672b2 8%, var(--cream)); }
+.growth-card.rarity-r3 { --growth-rarity-accent: #bfcee0; --growth-rarity-border: color-mix(in srgb, #bfcee0 58%, var(--line)); --growth-rarity-start: color-mix(in srgb, #99b5cf 8%, var(--cream)); }
 .growth-card.complete { border-color: var(--yellow-deep); border-top-width: 3px; background: linear-gradient(160deg, var(--paper), color-mix(in srgb, var(--yellow) 65%, var(--paper))); }
 .tracker-remove { display: flex; min-height: 36px; align-items: center; justify-content: center; gap: 5px; width: 100%; margin-top: 12px; padding: 6px 8px; border: 1px solid var(--planner-line); border-radius: 8px; background: var(--surface); color: var(--ink-60); font-size: 11px; font-weight: 700; }
 .tracker-remove:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); }
@@ -1192,11 +1251,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-card.complete .growth-percent { color: #b88507; }
 .growth-percent small { margin-left: 2px; font: 700 10px var(--font-b); }
 .growth-progress-list { display: grid; gap: 10px; margin-top: 14px; }
-.growth-progress-row { display: grid; gap: 5px; }
+.growth-progress-row { position: relative; display: grid; gap: 5px; }
 .growth-progress-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; color: var(--planner-muted); font-size: 10px; }
 .growth-progress-label > span { font-weight: 800; }
-.growth-progress-label b { color: var(--ink); font: 750 10px var(--font-d); white-space: nowrap; }
+.growth-progress-side-label { flex: none; color: var(--planner-muted); font: 750 10px/1.3 var(--font-b); white-space: nowrap; }
+.growth-progress-label b { color: var(--ink); font: 750 10px/1.3 var(--font-d); white-space: nowrap; }
 .progress-values { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-family: var(--font-d); }
+.growth-progress-label .progress-values { font: 750 10px/1.3 var(--font-d); }
+.growth-progress-label .tracker-number-input, .growth-progress-label .tracker-star-trigger { font: 750 10px/1.3 var(--font-d); }
 .growth-progress-row > small { overflow: hidden; color: var(--planner-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .heart-gap { color: var(--planner-muted); font-weight: inherit; }
 .heart-gap-number { color: var(--rouge); font: inherit; font-weight: inherit; }
@@ -1206,6 +1268,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-track i { display: block; height: 100%; border-radius: inherit; background: #c48b4d; transition: width .2s ease; }
 .growth-track.mint i { background: #88b296; }
 .growth-track.rose i { background: #b88ba2; }
+.growth-quick-action { display: inline-grid; width: 32px; min-width: 32px; height: 32px; min-height: 32px; flex: none; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); cursor: pointer; }
+.growth-quick-action svg { display: block; }
+.growth-quick-action:hover:not(:disabled) { border-color: var(--accent); background: var(--yellow); color: var(--ink); }
+.growth-quick-action:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.growth-quick-action.is-ready { border-color: #c9d8c5; background: #eef5ec; color: #6f846b; }
+.growth-quick-action.is-lack { border-color: #e4c49c; background: #fbf1e3; color: #a66f2e; }
+.growth-quick-action.is-complete, .growth-quick-action:disabled { border-color: var(--line); background: rgba(73, 59, 44, .08); color: var(--ink-60); opacity: .72; cursor: not-allowed; }
+.growth-action-notice { margin: 7px 0 0; color: var(--accent-strong); font-size: 10px; font-weight: 750; line-height: 1.5; }
 .growth-materials { margin-top: 10px; padding-top: 0; border-top: 0; }
 .growth-materials summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); font-size: 10px; font-weight: 800; cursor: pointer; }
 .growth-materials summary span { color: var(--planner-muted); font-size: 9px; font-weight: 600; }
@@ -1446,4 +1516,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .day-summary { gap: 6px; padding-bottom: 12px; }
 .summary-money { padding-top: 10px; }
 .flow-heading { margin-bottom: 12px; }
+@media (max-width: 640px) {
+  .growth-quick-action { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+}
 </style>
