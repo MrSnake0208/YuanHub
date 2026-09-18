@@ -11,6 +11,10 @@
 
 - [`operator-v2-listed-snapshot.json`](./operator-v2-listed-snapshot.json)：旧版局部养成快照，展示历史 camelCase 字段。
 
+作业 v1：
+
+- [`work-v1.json`](./work-v1.json)：包含基础动作、目标切换、等待、检测与密探专属动作的完整示例。
+
 密探 v3 示例继续放在权威目录 [`../../examples/operator-growth-exchange-v3/`](../../examples/operator-growth-exchange-v3/) 中，避免复制后发生漂移。
 
 示例中的账号、时间、目录 ID 和生产者信息仅用于说明。实际请求必须替换为调用者拥有或已映射的目标账号，并确认 ID 存在于当前公共目录。
