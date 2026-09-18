@@ -254,7 +254,7 @@ v1 刻意只存密探名称，不把 YuanHub 密探目录 ID 作为执行协议�
 }
 ```
 
-`enemy_turn_wait_ms` 对应 YuanAssist 在我方行动结束后等待敌方回合完成的 `waitTurn` 语义。
+`enemy_turn_wait_ms` 对应 YuanAssist 的回合延迟 `waitTurn`。该字段名保留目标扩展的既有命名，不表示动作级延迟。
 
 ## 6. 回合
 
@@ -731,4 +731,3 @@ JSON Schema 负责结构校验，下列规则由 YuanHub 后端/编辑器语义�
   ]
 }
 ```
-
