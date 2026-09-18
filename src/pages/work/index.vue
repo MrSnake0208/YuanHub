@@ -27,7 +27,10 @@
               <span class="eyebrow">PUBLIC WORKS</span>
               <h2>公开作业</h2>
             </div>
-            <p>当前后端暂不提供搜索、筛选或自定义排序。</p>
+            <div class="works-heading-actions">
+              <p>Legacy 与 YuanHub 原生公开作业统一展示。</p>
+              <router-link to="/work/new">创建作业</router-link>
+            </div>
           </div>
 
           <div class="works-live" aria-live="polite" aria-atomic="true">
@@ -70,7 +73,7 @@
 
       <SiteFooter>
         <template #big>YuanHub<br><span>公开作业与兼容性</span></template>
-        <template #fine>本阶段仅提供读取与展示，不提供上传、编辑或导出执行。</template>
+        <template #fine>新建作业以 Work Protocol v1 为唯一执行事实源，目标平台文档由 Adapter 生成。</template>
       </SiteFooter>
     </main>
   </div>
@@ -148,6 +151,8 @@ watch(function () { return route.query.page }, function (value) {
 .works-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 2px solid var(--ink); }
 .works-heading h2 { margin-top: 5px; font: 900 clamp(28px, 3vw, 40px) var(--font-s); letter-spacing: .06em; }
 .works-heading p { color: var(--ink-60); font-size: 13px; }
+.works-heading-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.works-heading-actions a { min-height: 44px; display: inline-flex; align-items: center; padding: 9px 17px; border-radius: 999px; background: var(--tea); color: var(--cream); font-size: 13px; font-weight: 800; text-decoration: none; }
 .eyebrow { color: var(--accent-strong); font: 800 11px var(--font-d); letter-spacing: .18em; }
 .source-value { font-size: 28px !important; }
 .works-live { min-height: 300px; }
@@ -165,6 +170,7 @@ watch(function () { return route.query.page }, function (value) {
 @media (max-width: 767px) {
   .works-content { padding-top: 28px; }
   .works-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .works-heading-actions { width: 100%; justify-content: space-between; }
   .list { grid-template-columns: 1fr; gap: 12px; }
   .works-state { min-height: 240px; margin-top: 16px; border-radius: 16px; }
   .works-pagination { justify-content: space-between; gap: 8px; }

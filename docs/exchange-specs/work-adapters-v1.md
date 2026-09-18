@@ -2,7 +2,11 @@
 
 本文定义 `yuanhub-work@1` 到 MaaYuan 与 YuanAssist 的转换边界。
 
-它不定义最终 HTTP API 路径；后端实现可以通过 `/export?to=...`、内部服务调用或其他稳定接口暴露 Adapter。
+YuanHub 当前通过 `POST /v1/works/compatibility?to=...` 预览未保存的
+`WorkDocument`，通过 `GET /v1/works/{id}/compatibility?to=...` 分析已保存
+或 Legacy 转换后的文档。两条路径复用同一 Adapter；目标文档是派生输出，
+不得写回基础协议。Adapter 的 `partial/unsupported` 只描述目标兼容性，不阻止
+合法基础文档保存或发布。
 
 协议正文：[`work-v1.md`](./work-v1.md)
 

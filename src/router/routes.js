@@ -36,6 +36,19 @@ export const routes = [
         }
     },
     {
+        path: '/work/new',
+        text: '新建作业',
+        name: 'work-new',
+        display: false,
+        module: 'work',
+        icon: 'file-plus',
+        component: () => import('/src/pages/work/editor.vue'),
+        meta: {
+            title: '新建作业 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true
+        }
+    },
+    {
         path: '/work/:id',
         text: '通关作业',
         name: 'detail',
@@ -46,6 +59,20 @@ export const routes = [
         props: true,
         meta: {
             title: '通关作业 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
+        path: '/work/:id/edit',
+        text: '编辑作业',
+        name: 'work-edit',
+        display: false,
+        module: 'work',
+        icon: 'file-pen-line',
+        component: () => import('/src/pages/work/editor.vue'),
+        props: true,
+        meta: {
+            title: '编辑作业 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true
         }
     },
     {

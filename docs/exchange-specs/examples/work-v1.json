@@ -5,8 +5,8 @@
   "level_id": "lvl_example",
   "stage_name": "爬塔21",
   "doc": {
-    "title": "六月白鹄",
-    "details": "示例作业"
+    "title": "YuanHub 原生创作示例",
+    "details": "本 WorkDocument 是保存与编辑的执行事实源；目标文档由 Adapter 派生。"
   },
   "operators": [
     "王粲",

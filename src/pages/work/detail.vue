@@ -14,7 +14,7 @@
       <div v-else-if="invalidId" class="detail-state-wrap" aria-live="polite">
         <div class="detail-state error-state">
           <strong>无效的作业链接</strong>
-          <span>作业 ID 必须是正整数，本次没有发送网络请求。</span>
+          <span>作业 ID 必须是 Legacy 正整数或 w_ 开头的原生 ID，本次没有发送网络请求。</span>
           <router-link to="/works">← 返回作业广场</router-link>
         </div>
       </div>
@@ -42,6 +42,7 @@
         <header class="hero" :style="{ '--wm': JSON.stringify(String(metadata.id || '作业')) }">
           <div class="wrap">
             <router-link class="back-link" :to="backTarget">← 返回作业广场</router-link>
+            <router-link v-if="canEdit" class="edit-link" :to="'/work/' + metadata.id + '/edit'">编辑此作业</router-link>
             <div class="crumb">
               <span class="pill fill">{{ gameName }}</span>
               <span class="pill">{{ stageName }}</span>
@@ -132,7 +133,7 @@
             <p v-else class="section-note">没有可展示的回合动作。</p>
           </section>
 
-          <section aria-labelledby="legacy-title">
+          <section v-if="!isNative" aria-labelledby="legacy-title">
             <div class="sec-head">
               <span class="idx">05</span><h2 id="legacy-title">Legacy 转换</h2><span class="en">Source to Work v1</span>
             </div>
@@ -157,30 +158,13 @@
                   </button>
                 </header>
                 <div v-if="expanded[target.key]" class="target-body" aria-live="polite">
-                  <p v-if="compatibility[target.key].status === 'loading'">正在分析兼容性…</p>
-                  <div v-else-if="compatibility[target.key].status === 'error'" class="target-error" role="alert">
-                    <span>{{ compatibility[target.key].error }}</span>
-                    <button type="button" @click="loadCompatibility(target.key)">重试</button>
-                  </div>
-                  <template v-else-if="compatibility[target.key].data">
-                    <div class="compat-summary" :class="'status-' + compatibility[target.key].data.status">
-                      <div><span>{{ target.label }}</span><strong>{{ statusInfo(compatibility[target.key].data.status).label }}</strong></div>
-                      <p>{{ statusInfo(compatibility[target.key].data.status).description }}</p>
-                    </div>
-                    <IssueList :issues="compatibility[target.key].data.issues" empty-text="目标平台没有报告兼容性问题。" />
-                    <details v-if="compatibility[target.key].data.target_document" class="document-viewer">
-                      <summary>查看标准化文档</summary>
-                      <button type="button" @click="copyText(safeJson(compatibility[target.key].data.target_document), target.key)">复制标准化文档</button>
-                      <pre>{{ safeJson(compatibility[target.key].data.target_document) }}</pre>
-                    </details>
-                    <p v-else class="document-note">此分析没有返回目标文档，不提供下载或执行入口。</p>
-                  </template>
+                  <WorkCompatibilityResult :label="target.label" :state="compatibility[target.key]" @retry="loadCompatibility(target.key)" />
                 </div>
               </article>
             </div>
           </section>
 
-          <section aria-labelledby="source-title">
+          <section v-if="!isNative" aria-labelledby="source-title">
             <div class="sec-head">
               <span class="idx">07</span><h2 id="source-title">原始来源</h2><span class="en">Raw Source</span>
             </div>
@@ -204,40 +188,21 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getWork, getWorkCompatibility } from '@/api/work.js'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+import IssueList from '@/components/work/IssueList.vue'
+import WorkCompatibilityResult from '@/components/work/WorkCompatibilityResult.vue'
 import { AV } from '@/data/avatars.js'
-import { buildRoundRows, formatDate, formatMetric, normalizeOperators, safeJson, statusInfo } from '@/utils/workDisplay.js'
+import { auth } from '@/store/auth.js'
+import { buildRoundRows, formatDate, formatMetric, normalizeOperators, statusInfo } from '@/utils/workDisplay.js'
 
 const TARGETS = Object.freeze([
   { key: 'MAAYUAN', label: 'MAAYUAN', provider: 'MaaYuan Adapter' },
   { key: 'YUANASSIST', label: 'YUANASSIST', provider: 'YuanAssist Adapter' }
 ])
-
-const IssueList = defineComponent({
-  props: { issues: { type: Array, default: function () { return [] } }, emptyText: { type: String, required: true } },
-  setup(props) {
-    return function () {
-      if (!props.issues.length) return h('p', { class: 'issue-empty' }, props.emptyText)
-      return h('ul', { class: 'issue-list' }, props.issues.map(function (issue, index) {
-        return h('li', { key: (issue && issue.code) || index }, [
-          h('div', { class: 'issue-head' }, [
-            h('span', { class: ['severity', 'severity-' + (issue && issue.severity)] }, (issue && issue.severity) || 'unknown'),
-            h('strong', null, (issue && issue.message) || '未提供问题说明')
-          ]),
-          h('dl', null, [
-            h('div', null, [h('dt', null, 'feature'), h('dd', null, (issue && issue.feature) || '未提供')]),
-            h('div', null, [h('dt', null, 'path'), h('dd', null, (issue && issue.path) || '未提供')]),
-            h('div', null, [h('dt', null, 'code'), h('dd', null, (issue && issue.code) || '未提供')])
-          ])
-        ])
-      }))
-    }
-  }
-})
 
 const props = defineProps({ id: { type: String, default: '' } })
 const route = useRoute()
@@ -260,6 +225,14 @@ const stageName = computed(function () { return (detail.value && detail.value.le
 const rawSource = computed(function () { return detail.value && detail.value.source && detail.value.source.raw_content != null ? String(detail.value.source.raw_content) : '未提供原始数据' })
 const legacyStatusKey = computed(function () { return detail.value && detail.value.conversion && detail.value.conversion.status || 'unknown' })
 const legacyStatus = computed(function () { return statusInfo(legacyStatusKey.value) })
+const isNative = computed(function () { return String(detail.value?.source?.type || '').toLowerCase() === 'native' })
+const canEdit = computed(function () {
+  if (!isNative.value || !auth.isLoggedIn) return false
+  const user = auth.userInfo || {}
+  const userId = String(user.id || user.userId || user.user_id || '')
+  const ownerId = String(metadata.value.owner_id || metadata.value.ownerId || metadata.value.uploader_id || '')
+  return Boolean(userId && userId === ownerId)
+})
 const backTarget = computed(function () {
   const page = Number(route.query.page)
   return { path: '/works', query: { page: Number.isInteger(page) && page > 0 ? page : 1 } }
@@ -279,7 +252,7 @@ function resetCompatibility() {
 async function loadDetail() {
   const version = ++requestVersion
   detail.value = null
-  invalidId.value = !/^[1-9]\d*$/.test(props.id)
+  invalidId.value = !/^(?:[1-9]\d*|w_[0-9a-fA-F]{24})$/.test(props.id)
   notFound.value = false
   error.value = ''
   copyFeedback.value = ''
@@ -341,6 +314,7 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 .state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .loading-mark { width: 38px; height: 38px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: detail-spin .8s linear infinite; }
 .back-link { display: inline-flex; min-height: 44px; align-items: center; margin-bottom: 22px; color: var(--ink); font-weight: 800; text-decoration: none; }
+.edit-link { min-height: 44px; display: inline-flex; align-items: center; margin: 0 0 22px 12px; padding: 8px 15px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font-size: 13px; font-weight: 800; text-decoration: none; }
 .date-value { max-width: 240px; font: 800 17px/1.5 var(--font-b) !important; letter-spacing: 0 !important; }
 .detail-content { padding-top: 56px; }
 .detail-content section + section { margin-top: 64px; }
