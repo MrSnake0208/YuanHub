@@ -10,7 +10,7 @@
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
       >
         <House :size="19" aria-hidden="true" />
-        <span>TODAY</span>
+        <span>今日一览</span>
       </router-link>
       <router-link
         to="/operator"
@@ -103,7 +103,7 @@
       <router-link
         to="/"
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
-        ><span class="no">00</span>TODAY</router-link
+        ><span class="no">00</span>今日一览</router-link
       >
       <router-link
         to="/operator"

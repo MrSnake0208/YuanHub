@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { routes } from '../src/router/routes.js'
 
-test('uses the Start / Today hub as the default page', function () {
+test('uses 今日一览 as the default page', function () {
   const route = routes.find(function (item) { return item.path === '/' })
   assert.equal(route.name, 'today')
   assert.equal(route.alias, '/today')
@@ -12,7 +12,9 @@ test('uses the Start / Today hub as the default page', function () {
 
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
   assert.match(sidebar, /<House :size="19"/)
-  assert.match(sidebar, /<span class="no">00<\/span>TODAY/)
+  assert.match(sidebar, /<span class="no">00<\/span>今日一览/)
+  assert.equal(route.text, '今日一览')
+  assert.equal(route.meta.title, '今日一览 — 鸢鸢相抱 · YuanHub')
 
   const page = readFileSync(new URL('../src/pages/today/index.vue', import.meta.url), 'utf8')
   assert.match(page, /今天先做/)

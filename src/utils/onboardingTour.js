@@ -8,13 +8,13 @@ export const ONBOARDING_STEPS = [
   {
     id: FIRST_STEP_ID,
     title: '欢迎来到 YuanHub',
-    description: '用不到一分钟认识 TODAY、密探养成和库存追踪。你可以随时跳过，之后也能重新查看。'
+    description: '用不到一分钟认识今日一览、密探养成和库存追踪。你可以随时跳过，之后也能重新查看。'
   },
   {
     id: 'today-overview',
     route: '/',
     target: 'today-overview',
-    title: '从 TODAY 开始',
+    title: '从今日一览开始',
     description: '这里会根据当前状态告诉你今天适合做什么，也能直接找到 YuanHub 的常用功能。'
   },
   {
