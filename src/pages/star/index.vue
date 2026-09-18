@@ -114,13 +114,20 @@
             </ArchiveExchangePanel>
           </AccountWorkspace>
           <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError"
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
             aria-live="polite"
           >
-            {{ cloudSyncError || captureTransportError || cloudSyncMessage || captureTransportMessage }}
+            <span>{{ cloudSyncError || captureTransportError || cloudSyncMessage || captureTransportMessage }}</span>
+            <button
+              v-if="cloudNeedsRetry || cloudRetryBusy"
+              type="button"
+              class="star-sync-retry"
+              :disabled="cloudRetryBusy"
+              @click="retryStarCloud"
+            >{{ cloudRetryBusy ? '重试中…' : '重试' }}</button>
           </p>
           <div class="star-tabs" role="tablist" aria-label="星石工作区">
             <button
@@ -205,6 +212,8 @@ const activeTab = usePersistedTab(
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
+const cloudNeedsRetry = ref(false);
+const cloudRetryBusy = ref(false);
 const productReady = ref(false);
 const showArchive = ref(false);
 const showStarImport = ref(false);
@@ -269,11 +278,24 @@ const starCloud = createStarCloudCoordinator({
     const feedback = starCloudFeedback(state);
     cloudSyncMessage.value = feedback.message;
     cloudSyncError.value = feedback.error;
+    cloudNeedsRetry.value = Boolean(state.recoveryRequired);
   },
 });
 function clearCloudSyncFeedback() {
+  if (cloudNeedsRetry.value || cloudRetryBusy.value) return;
   cloudSyncMessage.value = "";
   cloudSyncError.value = "";
+}
+async function retryStarCloud() {
+  if (!cloudNeedsRetry.value || cloudRetryBusy.value) return;
+  cloudRetryBusy.value = true;
+  try {
+    await starCloud.retry();
+  } catch (error) {
+    cloudSyncError.value = "星石云端保存失败，请重试。";
+  } finally {
+    cloudRetryBusy.value = false;
+  }
 }
 function resetStarImportState() {
   starImportPreview.value = null;
@@ -753,6 +775,21 @@ onBeforeUnmount(function () {
 .star-sync-state.is-error {
   color: var(--rouge);
 }
+.star-sync-retry {
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--tea);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.star-sync-retry:hover:not(:disabled) { color: var(--accent); }
+.star-sync-retry:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; border-radius: 2px; }
+.star-sync-retry:disabled { opacity: .55; cursor: wait; }
 .star-tabs {
   position: sticky;
   top: 24px;
