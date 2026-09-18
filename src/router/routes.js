@@ -18,7 +18,7 @@ export const routes = [
         display: true,
         module: 'today',
         icon: 'house',
-        component: () => import('/src/pages/demo/index.vue'),
+        component: () => import('/src/pages/today/index.vue'),
         meta: {
             title: 'TODAY — 鸢鸢相抱 · YuanHub'
         }

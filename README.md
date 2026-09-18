@@ -27,7 +27,7 @@ VITE_API_BASE=http://127.0.0.1:8080
 
 | 路由 | 页面 | 对应原文件 |
 |---|---|---|
-| `/`、`/today` | TODAY：养成规划总览、目标、资源缺口与密探档案；使用本地示例存档引导用户认识工作流 | `7f080d7` 初版演示页 |
+| `/`、`/today` | Start / TODAY：集中说明常用功能，并根据真实账号、密探、库存与通知状态推荐今天先做什么；未登录时显示明确标注的演示状态 | — |
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
 | `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
 | `/changelog` | 更新日志：公开查看已审核发布的富文本与图片内容 | — |
@@ -54,7 +54,7 @@ VITE_API_BASE=http://127.0.0.1:8080
     │   └── changelog.js        # 公开更新日志 + 管理审核状态流转 API 封装
     ├── App.vue                 # RouterView + 路由过渡
     ├── styles/main.css         # 设计规范 v1.0 全部令牌与样式
-    ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js / demoScenario.js
+    ├── data/                   # avatars.js / works.js / detail.js / packages.js / rewards.js / demoScenario.js / todayData.js
     ├── components/             # IslandSidebar / DetailSidebar / WorkCard / SiteFooter
     │   └── cart/               # PackageCard / ReceiptPanel / CustomPackageModal
     └── pages/                  # 页面（按模块分子目录）
@@ -64,7 +64,8 @@ VITE_API_BASE=http://127.0.0.1:8080
         ├── admin/index.vue     # 管理工作台（/manage）
         ├── changelog/          # 公开阅读与所见即所得管理页
         ├── level/admin.vue     # 公共关卡管理（/level/admin，需 level_catalog:write）
-        └── demo/index.vue      # TODAY（/、/today）及兼容演示入口（/demo，仅使用本地示例数据）
+        ├── today/index.vue     # Start / TODAY 功能入口与真实状态摘要（/、/today）
+        └── demo/index.vue      # 独立演示入口（/demo，仅使用本地示例数据）
 ```
 
 ## 复刻要点
