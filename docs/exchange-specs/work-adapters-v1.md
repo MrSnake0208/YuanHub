@@ -251,6 +251,22 @@ scriptContent
 
 Adapter 不需要让 YuanAssist 直接理解 Work Protocol；只需要输出 YuanAssist 原生导入结构。
 
+~~~json
+{
+  "scriptContent": "1回合\t1A\t\t\t\t",
+  "instructions": [],
+  "config": {
+    "intervalAttack": 5000,
+    "intervalSkill": 5000,
+    "waitTurn": 7800
+  }
+}
+~~~
+
+这三个目标原生字段以及 config 内字段保持 camelCase，不受 YuanHub API 外层 snake_case 命名策略影响。Adapter 仅在整体状态为 `exact` 时返回该文档；`partial` 和 `unsupported` 不返回可执行文档。
+
+编译时保持同一 `turn + step` 的指令数组顺序。但在 YuanAssist 确认该数组的执行顺序前，同位置多指令不能判定为 `exact`，Adapter 应返回兼容性问题并省略目标文档。
+
 ### 4.2 基础动作
 
 | Work v1 | YuanAssist | 兼容 |
@@ -335,7 +351,7 @@ YuanAssist 当前龙气比较支持：
 
 因此：
 
-- `party_survives + on_fail=restart`：当前 `ALL_WIPE_CHECK` 自带再次挑战恢复逻辑，可视为 exact。
+- `party_survives + on_fail=restart`：当前 `ALL_WIPE_CHECK` 自带再次挑战恢复逻辑，但固定在 `step=0`；仅当检测是 Work 回合首动作时可视为 exact，其他位置不能无损导出。
 - `operator_alive`、`operator_copied`、`crit`、橙/紫星、`dragon_qi` + `on_fail=restart`：只有 Adapter 能从 `level_id`/Level Catalog 上下文生成 YuanAssist 支持的关卡自动导航目标时才是 exact；否则应为 partial/unsupported，不能把“返回后停止”声明成“自动重开”。
 - `on_fail=stop` 或 `on_fail=pause`：必须按 YuanAssist 实际指令行为单独判断，不能因为存在检测指令就默认支持。
 
@@ -362,7 +378,15 @@ intervalSkill
 waitTurn
 ~~~
 
-其中 `waitTurn` 与 Work `exec.delays_ms` 无关；它来自：
+字段语义：
+
+~~~text
+intervalAttack -> 攻击和防御延迟
+intervalSkill  -> 技能（上拉）延迟
+waitTurn       -> 回合延迟
+~~~
+
+其中 `waitTurn` 与 Work 的动作级 `exec.delays_ms` 无关；它来自：
 
 ~~~text
 exec.extensions.yuanassist.enemy_turn_wait_ms
@@ -372,12 +396,18 @@ exec.extensions.yuanassist.enemy_turn_wait_ms
 
 ~~~text
 attack   -> intervalAttack 基准
-ultimate -> intervalSkill 基准
-defense  -> 以 intervalAttack 为基准，通过 step DELAY_ADD/DELAY_SUBTRACT 校正
+ultimate -> intervalSkill 基准（上拉技能）
+defense  -> intervalAttack 基准；若 Work 的防御延迟不同，通过 step DELAY_ADD/DELAY_SUBTRACT 校正
 sp       -> 以当前 YuanAssist SP 的基础执行延迟为基准，通过 step delta 校正
 ~~~
 
 这样即使 Work 的 `attack` 与 `defense` 不相同，也不必丢失差异。
+
+生成完整 config 时不得猜测 YuanAssist 默认值：`intervalAttack`、`intervalSkill`、`waitTurn` 分别要求 Work 提供 `delays_ms.attack`、`delays_ms.ultimate`、`extensions.yuanassist.enemy_turn_wait_ms`。任一缺失时结果至少为 `partial`，不生成目标文档。
+
+YuanAssist 对 `圈`/SP 使用何种基础延时尚无可靠约定。Work 包含 SP 动作且显式提供 `delays_ms.sp` 时，Adapter 当前不能证明该延时可被保留，必须报告兼容性问题；不得套用大招或普攻基准。
+
+当前 Level Catalog 也没有到 `STAGE_AUTO_NAV` 的稳定编码字段。仅凭关卡名称或分类推断编码不可靠，因此除 `ALL_WIPE_CHECK` 自带恢复逻辑外，依赖检测失败后重新进入关卡的动作仍不能达到 `exact`。
 
 ## 5. Legacy MaaYuan-Share -> Work v1
 
