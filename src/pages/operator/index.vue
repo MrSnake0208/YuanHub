@@ -1145,6 +1145,15 @@
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
                         <h3 :title="e.name || e.id">{{ e.name || e.id }}</h3>
+                        <span v-if="ledgerCardIsV2" class="ledger-prof-tab">
+                          <img
+                            v-if="profIcon(e.prof)"
+                            :src="profIcon(e.prof)"
+                            :alt="(e.prof || '未知') + '属性'"
+                            :title="(e.prof || '未知') + '属性'"
+                          />
+                          <span v-if="firstSubProf(e)">{{ firstSubProf(e) }}</span>
+                        </span>
                         <div v-if="ledgerCardIsV2" class="ledger-name-combat">
                           <span v-for="kind in ['attack', 'hp']" :key="kind">
                             <Swords v-if="kind === 'attack'" :size="12" aria-hidden="true" />
@@ -2267,13 +2276,15 @@
                         ><button
                           class="ledger-card-save"
                           type="button"
+                          aria-label="保存"
+                          title="保存"
                           :disabled="
                             cardSubmitStates[e.id] === 'submitting' ||
                             annotationBusyIds.has(e.id)
                           "
                           @click="saveCardDraft(e)"
                         >
-                          <Save :size="13" aria-hidden="true" />保存
+                          <Save :size="13" aria-hidden="true" /><span class="ledger-save-label">保存</span>
                         </button></template
                       ><button
                         v-else
