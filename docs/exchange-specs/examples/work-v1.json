@@ -1,0 +1,96 @@
+{
+  "format": "yuanhub-work",
+  "version": 1,
+  "game": "如鸢",
+  "level_id": "lvl_example",
+  "stage_name": "爬塔21",
+  "doc": {
+    "title": "六月白鹄",
+    "details": "示例作业"
+  },
+  "operators": [
+    "王粲",
+    "赵云",
+    "郭嘉",
+    "吕布",
+    null
+  ],
+  "exec": {
+    "delays_ms": {
+      "attack": 3000,
+      "ultimate": 5000,
+      "defense": 3000,
+      "sp": 5000
+    },
+    "extensions": {
+      "maayuan": {
+        "level_type": "活动",
+        "recognition_name": "爬塔21跟打",
+        "rec_target_offset": [0, 0, 0, 0]
+      },
+      "yuanassist": {
+        "enemy_turn_wait_ms": 8000
+      }
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "remark": "",
+      "actions": [
+        {
+          "slot": 2,
+          "type": "defense"
+        },
+        {
+          "slot": 3,
+          "type": "attack"
+        },
+        {
+          "type": "switch_target",
+          "direction": "right"
+        },
+        {
+          "slot": 4,
+          "type": "ultimate"
+        },
+        {
+          "type": "wait",
+          "duration_ms": 1200
+        },
+        {
+          "type": "check",
+          "condition": {
+            "type": "operator_alive",
+            "slot": 4
+          },
+          "on_fail": "restart"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "actions": [
+        {
+          "slot": 1,
+          "type": "sp"
+        },
+        {
+          "type": "check",
+          "condition": {
+            "type": "star_count",
+            "color": "orange",
+            "operator": ">=",
+            "value": 1
+          },
+          "on_fail": "restart"
+        },
+        {
+          "type": "operator_action",
+          "slot": 4,
+          "action": "switch_form"
+        }
+      ]
+    }
+  ]
+}

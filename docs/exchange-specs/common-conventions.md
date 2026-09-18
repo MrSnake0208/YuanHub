@@ -1,13 +1,13 @@
 # 数据交换公共约定
 
-本文适用于库存 v2、密探 v2/v3 和公共目录 v1。单项协议另有更严格规定时，以单项协议为准。
+本文适用于库存 v2、密探 v2/v3、作业 v1 和公共目录 v1。单项协议另有更严格规定时，以单项协议为准。
 
 ## 1. JSON 与字段命名
 
 - 文档编码为 UTF-8，媒体类型使用 `application/json`。
 - 协议字段原则上使用 `snake_case`。
 - 密探 v2 导入中的 `subProf`、`starLevel`、`starStones` 是历史兼容字段，必须保留该拼写；详见 [密探交换 v2](./operator-v2.md)。
-- 不要发送 `null` 代替省略可选字段。只有密探 v3 Schema 明确允许的 `null` 才具有清除含义。
+- 不要发送 `null` 代替省略可选字段。只有单项协议明确允许的 `null` 才有语义；例如作业 v1 的 `operators[0..4]` 允许用 `null` 表示该槽位未指定密探。
 - 生产者不要依赖服务端忽略未知字段。密探 v3 与本目录 Schema 均按严格字段集合校验。
 
 ## 2. 顶层标识
@@ -25,6 +25,7 @@
 | 库存交换 | `myshare-inventory-exchange` | 2 |
 | 密探交换（兼容） | `myshare-operator-exchange` | 2 |
 | 密探交换（推荐） | `myshare-operator-exchange` | 3 |
+| 自动战斗作业 | `yuanhub-work` | 1 |
 | 实体目录 | `myshare-entity-catalog` | 1 |
 | 密探目录 | `myshare-operator-catalog` | 1 |
 | 密探导入预览响应 | `myshare-operator-import-preview` | 1 |
