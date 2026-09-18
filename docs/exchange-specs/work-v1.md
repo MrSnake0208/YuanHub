@@ -1,6 +1,6 @@
 # YuanHub 作业协议 v1
 
-状态：Draft / 准备实现  
+状态：v1 已实现
 格式标识：`yuanhub-work@1`  
 面向对象：YuanHub、MaaYuan、YuanAssist 以及其他自动战斗/跟打程序
 
@@ -15,6 +15,11 @@ YuanHub 作业协议描述的是：
 > 一份自动战斗作业“想让执行器做什么”。
 
 它是跨自动化程序的语义中间层，不等同于任何一个客户端的原生存储格式。
+
+在 YuanHub 原生创作链路中，编辑器、创建与整体替换接口只读写完整
+`WorkDocument`；它是新建作业唯一的执行事实源。作者、发布状态、revision、
+浏览量和时间戳由 Work API 外层记录管理，MaaYuan/YuanAssist 目标文档与
+compatibility 结果均由 Adapter 现算，不回写或缓存为第二份可编辑事实。
 
 本协议明确不承担以下职责：
 
@@ -643,7 +648,7 @@ YuanHub Work semantic model
 JSON Schema 负责结构校验，下列规则由 YuanHub 后端/编辑器语义校验器负责：
 
 1. `rounds[].round` 必须唯一。
-2. `rounds` 建议升序；服务端可规范化排序。
+2. `rounds` 建议升序；原生创作存储不自动重排回合或回合内动作。
 3. `operator_action.slot` 对应的 `operators[slot-1]` 应非空。
 4. Legacy 特定密探动作迁移时必须能唯一定位目标槽位。
 5. `level_id` 存在时必须在 YuanHub Level Catalog 中存在，并与 `game` 匹配。
