@@ -49,6 +49,7 @@
           <div class="status-title">
             <span class="section-kicker">当前培养清单</span>
             <OperatorTrainingPlanPicker
+              ref="trainingPlanPickerRef"
               :plans="workspace.plans"
               :active-plan="activePlan"
               :member-ids="activeMemberIds"
@@ -57,7 +58,7 @@
               :growth-states="growthStates"
               :account-id="accountId"
               :error="planError"
-              :disabled="cloudBlocked || schedulePending || targetBusyIds.size > 0 || targetLoading"
+              :disabled="planPickerDisabled"
               @select="selectPlan"
               @save="savePlan"
               @remove="removePlan"
@@ -79,23 +80,23 @@
         <div v-if="activePlan" class="status-roster">
           <div class="growth-card-grid">
               <article v-for="row in orderedPlanRows" :key="row.id" class="growth-card" :class="['rarity-r' + (row.rarity || 3), { complete: row.completed }]">
-                <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p></div></div><span class="growth-percent">{{ rowProgress(row) }}<small>%</small></span></div>
+                <div class="growth-card-head"><div class="growth-identity"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div><h3>{{ row.name || row.id }}</h3><p class="growth-identity-meta"><span v-if="profList(row.prof).length" class="growth-prof-list"><span v-for="prof in profList(row.prof)" :key="prof" class="growth-prof"><img :src="profIcon(prof)" alt="" aria-hidden="true" /><span>{{ prof }}</span></span></span><span v-else class="growth-prof-fallback">未知属性</span><span class="growth-identity-separator" aria-hidden="true">·</span><span>{{ firstSubProf(row) || '未标注职业' }}</span></p></div></div><span class="growth-percent"><span class="growth-mobile-status">{{ row.completed ? '已达目标' : '目标进度' }}</span>{{ rowProgress(row) }}<small>%</small></span></div>
                 <p v-if="growthActionNotice(row)" class="growth-action-notice" role="status">{{ growthActionNotice(row) }}</p>
                 <div class="growth-progress-list">
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label"><span>等级</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>Lv{{ row.level }}</b><span>/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /><button v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'level', 5, '提升 5 级').className" :disabled="quickUpgradeState(row, 'level', 5, '提升 5 级').disabled" :aria-label="row.name + '快捷提升等级：' + quickUpgradeState(row, 'level', 5, '提升 5 级').label" :title="quickUpgradeState(row, 'level', 5, '提升 5 级').title" @click="requestQuickUpgrade(row, 'level', 5)"><ChevronUp v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
+                    <div class="growth-progress-label"><span>等级</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>Lv{{ row.level }}</b><span class="growth-value-divider" aria-hidden="true">/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '的目标等级'" title="点击修改目标等级" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'level', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'level', $event)" /><button v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'level', 5, '提升 5 级').className" :disabled="quickUpgradeState(row, 'level', 5, '提升 5 级').disabled" :aria-label="row.name + '快捷提升等级：' + quickUpgradeState(row, 'level', 5, '提升 5 级').label" :title="quickUpgradeState(row, 'level', 5, '提升 5 级').title" @click="requestQuickUpgrade(row, 'level', 5)"><ChevronUp v-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'level', 5, '提升 5 级').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
                     <div class="growth-track"><i :style="{ width: progress(row.level, targetFor(row).level) + '%' }"></i></div>
                     <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'level', 5)" @retry="requestQuickUpgrade(row, 'level', 5)" @execute="executeGrowthAction(row, 'level')" @breakthrough-change="changeGrowthBreakthrough(row, $event)" />
                     <small>{{ experienceSummary(row.calculation.experienceGap) }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label"><span>修为</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ row.elite }}</b><span>/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /><button v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).className" :disabled="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).disabled" :aria-label="row.name + '快捷提升修为：' + quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).label" :title="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).title" @click="requestQuickUpgrade(row, 'elite', 1)"><ChevronUp v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
+                    <div class="growth-progress-label"><span>修为</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ row.elite }}</b><span class="growth-value-divider" aria-hidden="true">/</span><span class="growth-progress-side-label">目标</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '的目标修为'" title="点击修改目标修为，上限随目标等级调整" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @focus="$event.target.select()" @change="setTarget(row, 'elite', $event)" @keydown.enter.prevent="$event.target.blur()" @keydown.esc.prevent="resetTargetInput(row, 'elite', $event)" /><button v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).className" :disabled="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).disabled" :aria-label="row.name + '快捷提升修为：' + quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).label" :title="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).title" @click="requestQuickUpgrade(row, 'elite', 1)"><ChevronUp v-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'elite', 1, '升至 ' + (row.elite + 1)).icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div></div>
                     <div class="growth-track mint"><i :style="{ width: progress(row.elite, targetFor(row).elite) + '%' }"></i></div>
                     <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'elite', 1)" @retry="requestQuickUpgrade(row, 'elite', 1)" @execute="executeGrowthAction(row, 'elite')" />
                     <small>{{ materialSummary(row.calculation.xiuwei) || '无需补充修为材料' }}</small>
                   </div>
                   <div class="growth-progress-row">
-                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ starLabel(row.starLevel) }}</b><span>/</span><span class="growth-progress-side-label">目标</span><button class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + starLabel(targetFor(row).starLevel)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ starLabel(targetFor(row).starLevel) }}</button><button v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'star', 1, '提升至下一节点').className" :disabled="quickUpgradeState(row, 'star', 1, '提升至下一节点').disabled" :aria-label="row.name + '快捷提升化极：' + quickUpgradeState(row, 'star', 1, '提升至下一节点').label" :title="quickUpgradeState(row, 'star', 1, '提升至下一节点').title" @click="requestQuickUpgrade(row, 'star', 1)"><ChevronUp v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div>
+                    <div class="growth-progress-label tracker-star-anchor" @keydown.esc.prevent.stop="closeStarTarget(true)"><span>化极</span><div class="progress-values"><span class="growth-progress-side-label">当前</span><b>{{ starLabel(row.starLevel) }}</b><span class="growth-value-divider" aria-hidden="true">/</span><span class="growth-progress-side-label">目标</span><button class="tracker-editable tracker-star-trigger" type="button" :aria-label="row.name + '的目标化极：' + starLabel(targetFor(row).starLevel)" aria-haspopup="dialog" :aria-expanded="starTargetId === row.id" :aria-controls="starTargetId === row.id ? 'tracker-star-target-' + row.id : undefined" title="点击修改目标星级与节点" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @click="openStarTarget(row, $event)">{{ starLabel(targetFor(row).starLevel) }}</button><button v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').visible" type="button" class="growth-quick-action" :class="quickUpgradeState(row, 'star', 1, '提升至下一节点').className" :disabled="quickUpgradeState(row, 'star', 1, '提升至下一节点').disabled" :aria-label="row.name + '快捷提升化极：' + quickUpgradeState(row, 'star', 1, '提升至下一节点').label" :title="quickUpgradeState(row, 'star', 1, '提升至下一节点').title" @click="requestQuickUpgrade(row, 'star', 1)"><ChevronUp v-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'up'" :size="13" aria-hidden="true" /><CircleAlert v-else-if="quickUpgradeState(row, 'star', 1, '提升至下一节点').icon === 'alert'" :size="13" aria-hidden="true" /><Check v-else :size="13" aria-hidden="true" /></button></div>
                       <div v-if="starTargetId === row.id" :id="'tracker-star-target-' + row.id" class="tracker-star-popover" role="dialog" :aria-label="row.name + '的目标化极'"><div class="tracker-popover-title"><Info :size="13" aria-hidden="true" />设置目标星级与节点</div><div class="tracker-star-controls"><select :value="starTargetGroup" aria-label="目标星级" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @change="setStarTargetGroup(row, $event)"><option v-for="group in starGroupsFor(row)" :key="group" :value="group">{{ group === 0 ? '未拥有' : group === 31 ? '觉醒' : group + ' 星' }}</option></select><select v-if="starTargetGroup > 0 && starTargetGroup < 5" v-model.number="starTargetDraft" aria-label="目标节点" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)"><option v-for="stage in starNodesFor(row, starTargetGroup)" :key="stage.value" :value="stage.value">节点 {{ (stage.value - 1) % 6 }}</option></select></div><div class="tracker-popover-actions"><button type="button" class="cancel" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="closeStarTarget(true)">取消</button><button type="button" :disabled="cloudBlocked || schedulePending || targetBusyIds.has(row.id)" @click="saveStarTarget(row)">{{ targetBusyIds.has(row.id) ? '保存中…' : '保存目标' }}</button></div></div>
                     </div>
                     <div class="growth-track rose"><i :style="{ width: progress(starStage(row.starLevel), starStage(targetFor(row).starLevel)) + '%' }"></i></div>
@@ -121,7 +122,7 @@
         <div v-if="planRows.length || fixedSchedule" class="planner-workspace-head">
           <div class="workspace-heading-content"><span class="section-kicker">每日执行</span>
             <div class="workspace-title-row"><h2>体力日程</h2><div class="plan-heading-actions" role="group" aria-label="体力日程操作">
-              <button v-if="viewMode === 'display'" type="button" class="plan-icon" aria-label="编辑日程" title="编辑日程" :disabled="cloudBlocked" @click="editSchedule"><Pencil :size="17" aria-hidden="true" /></button>
+              <button v-if="viewMode === 'display'" type="button" class="plan-icon" aria-label="编辑日程" title="编辑日程" :disabled="cloudBlocked" @click="editSchedule()"><Pencil :size="17" aria-hidden="true" /></button>
             </div></div>
           </div>
           <button v-if="viewMode === 'edit'" type="button" class="workspace-return" @click="openPlanner('display')"><ChevronLeft :size="16" aria-hidden="true" />返回日程</button>
@@ -149,13 +150,16 @@
               </div>
               <button type="button" class="action-button" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error)" @click="updateSavedSchedule"><RefreshCw :size="14" aria-hidden="true" />更新日程</button>
             </template>
-            <p v-else class="schedule-plan-note">{{ plannerCycleNotice }} <button v-if="!scheduleDifferences.goalsChanged && !reviewingHistory && !globalShortestPlanAdopted && !deadlineAlternativePlanAdopted" type="button" class="workspace-link" :disabled="cloudBlocked" @click="openExactOptimizer">优化日程</button></p>
+            <p v-else class="schedule-plan-note">
+              <span>{{ plannerCycleNotice }}</span>
+              <button v-if="!scheduleDifferences.goalsChanged && !reviewingHistory && !globalShortestPlanAdopted && !deadlineAlternativePlanAdopted" type="button" class="schedule-optimize" :disabled="cloudBlocked" @click="openExactOptimizer">优化日程</button>
+            </p>
           </div>
         </div>
         <fieldset v-if="planRows.length || fixedSchedule" class="planner-cloud-fields" :disabled="cloudBlocked" :aria-busy="cloudLoading || workspaceState.saving || scheduleLoading">
         <p v-if="currentDay.legacy" class="planner-footnote">此日来自旧版手工日程，未记录历史库存，仅保留原安排。</p>
         <p v-if="reviewingHistory" class="planner-footnote">正在回顾已过日期的已保存安排与预测产出；「已过」不代表实际执行完成。</p>
-        <p v-if="outsideManualDates.length" class="planner-footnote">周期外固定日仍保留，可查看或恢复推荐：<button v-for="date in outsideManualDates" :key="date" type="button" class="workspace-link" @click="selectDate(date); viewMode = 'edit'; settingsOpen = true">{{ formatLongDate(date) }}</button></p>
+        <p v-if="outsideManualDates.length" class="planner-footnote">周期外固定日仍保留，可查看或恢复推荐：<span v-for="date in outsideManualDates" :key="date" class="outside-manual-date"><time :datetime="date">{{ formatLongDate(date) }}</time><button type="button" class="workspace-link" :aria-label="'查看 ' + formatLongDate(date) + ' 日程'" :title="'查看 ' + formatLongDate(date) + ' 日程'" @click="selectDate(date); viewMode = 'edit'; setPlannerStep('daily', false)"><CalendarDays :size="18" aria-hidden="true" /></button></span></p>
         <p v-if="currentDay.errors?.length" class="balance-warning" role="alert">{{ currentDay.errors.join('；') }}。当日与后续推进暂停，修正后重算。</p>
         <p v-else-if="currentDay.paused" class="balance-warning" role="status">前面的日期有无效日程，修正后继续推进。</p>
         <p v-if="currentDay.warnings?.length" class="planner-footnote">{{ currentDay.warnings.join('；') }}</p>
@@ -163,51 +167,181 @@
           <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
           <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
 
-          <div class="display-grid"><section class="planner-card day-plan"><div class="card-heading"><div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div><span class="plan-badge" :class="{ manual: currentDay.manual, exact: deadlineAlternativePlanAdopted }">{{ planBadgeLabel }}</span></div><div class="day-summary"><div class="summary-line"><div class="summary-metric gain"><span>体力获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div><span class="summary-op">−</span><div class="summary-metric spend"><span>体力支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div><span class="summary-op">=</span><div class="summary-balance" :class="{ negative: todayTotals.balance < 0 }"><span>当日结余</span><b>{{ signedNumber(todayTotals.balance) }}</b></div></div><div class="summary-line summary-money"><div class="summary-metric coin-spend"><span>白金币支出</span><b>{{ formatNumber(todayTotals.coinsSpent) }}</b></div></div></div><div class="flow-section"><div class="flow-heading"><span>体力获取</span><b class="gain-text">{{ formatStamina(todayTotals.gains) }}</b></div><div class="channel-chips"><span v-for="gain in currentDay.planned.gains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><span class="channel-dot"></span><span>{{ gain.label }}</span><small v-if="gain.kind === 'count'">×{{ formatStamina(gain.value) }}</small><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong></span><span v-if="!currentDay.planned.gains.length" class="flow-empty">暂无体力来源</span></div></div><div class="flow-section"><div class="flow-heading"><span>体力支出</span><b class="spend-text">{{ formatStamina(todayTotals.spends) }}</b></div><div class="channel-chips spend-chips"><span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><span class="channel-dot"></span><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small>×{{ formatStamina(spend.value) }}</small><strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong></span><span v-if="!currentDay.planned.spends.length" class="flow-empty">暂无体力支出</span></div></div><p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p></section><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><p class="planner-footnote">{{ deadlineAlternativePlanAdopted ? '此日属于已采用的期限补足方案；请按每日安排准备体力，并以方案中的购买与派遣为准。' : currentDay.manual ? '此日采用手工计划；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' : '这是按当前偏好生成的推荐方案；编辑任意一天后，完整日程会固定保存。' }} 培养推进为从计划保存起点计算的模拟进度，不代表真实流水。{{ aggregateMoneyLabel }}。按完整一天自然恢复与进膳预算计算；不模拟满体损失，日末结余暂不自动结转，可手工添加储备来源。</p>
+          <div class="display-grid">
+            <section class="planner-card day-plan">
+              <div class="card-heading">
+                <div><span class="card-kicker">{{ currentDateLabel }} · 模拟计划</span><h3>当日方案</h3></div>
+                <span class="plan-badge" :class="{ manual: currentDay.manual, exact: deadlineAlternativePlanAdopted }">{{ planBadgeLabel }}</span>
+              </div>
+              <dl class="day-totals" aria-label="当日体力与白金币概览">
+                <div class="gain"><dt>体力获取</dt><dd>{{ formatStamina(todayTotals.gains) }}</dd></div>
+                <div class="spend"><dt>体力支出</dt><dd>{{ formatStamina(todayTotals.spends) }}</dd></div>
+                <div class="day-balance" :class="{ negative: todayTotals.balance < 0 }"><dt>当日结余</dt><dd>{{ signedNumber(todayTotals.balance) }}</dd></div>
+                <div class="coin-spend"><dt>白金币支出</dt><dd>{{ formatNumber(todayTotals.coinsSpent) }}</dd></div>
+              </dl>
+              <p v-if="todayTotals.balance < 0" class="balance-warning" role="alert"><CircleAlert :size="15" aria-hidden="true" />当日计划超出可用体力 {{ formatStamina(Math.abs(todayTotals.balance)) }}，请增加来源或减少支出。</p>
+              <div class="flow-section spend-flow">
+                <div class="flow-heading"><span>刷取与派遣</span></div>
+                <div class="channel-chips spend-chips">
+                  <span v-for="spend in currentDay.planned.spends" :key="spend.id" class="channel-chip" :class="spend.colorKey" :style="channelStyle(spend.colorKey)">
+                    <span class="channel-dot" aria-hidden="true"></span>
+                    <span class="spend-main"><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span><small class="spend-count">×{{ formatStamina(spend.value) }}</small></span>
+                    <strong>−{{ formatStamina(spend.value * spend.costPer) }}</strong>
+                  </span>
+                  <span v-if="!currentDay.planned.spends.length" class="flow-empty">暂无体力支出</span>
+                </div>
+              </div>
+              <div class="flow-section gain-flow">
+                <div class="flow-heading"><span>体力来源</span></div>
+                <div v-if="actionDayGains.length" class="channel-chips action-gains">
+                  <span v-for="gain in actionDayGains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)">
+                    <span class="channel-dot" aria-hidden="true"></span><span>{{ gain.label }}</span>
+                    <small v-if="gain.kind === 'count'">×{{ formatStamina(gain.value) }}</small><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong>
+                  </span>
+                </div>
+                <button v-if="routineDayGains.length" class="routine-gains-toggle" type="button" :aria-expanded="routineGainsOpen" aria-controls="planner-routine-gains" @click="routineGainsOpen = !routineGainsOpen">
+                  <span>固定来源 · {{ routineDayGains.length }} 项</span><strong>+{{ formatStamina(routineDayGains.reduce((total, gain) => total + energyFromGain(gain), 0)) }}</strong>
+                  <ChevronDown :size="16" :class="{ expanded: routineGainsOpen }" aria-hidden="true" />
+                </button>
+                <div v-if="routineDayGains.length" id="planner-routine-gains" class="channel-chips routine-gains" :class="{ expanded: routineGainsOpen }">
+                  <span v-for="gain in routineDayGains" :key="gain.id" class="channel-chip" :class="gain.colorKey" :style="channelStyle(gain.colorKey)">
+                    <span class="channel-dot" aria-hidden="true"></span><span>{{ gain.label }}</span><strong>+{{ formatStamina(energyFromGain(gain)) }}</strong>
+                  </span>
+                </div>
+                <span v-if="!currentDay.planned.gains.length" class="flow-empty">暂无体力来源</span>
+              </div>
+            </section>
+            <CultivationProgress :rows="progressItems" :date-label="currentDateLabel" />
+          </div>
+          <p class="planner-footnote">{{ deadlineAlternativePlanAdopted ? '此日属于已采用的期限补足方案；请按每日安排准备体力，并以方案中的购买与派遣为准。' : currentDay.manual ? '此日采用手工计划；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' : '这是按当前偏好生成的推荐方案；编辑任意一天后，完整日程会固定保存。' }} 培养推进为从计划保存起点计算的模拟进度，不代表真实流水。{{ aggregateMoneyLabel }}。按完整一天自然恢复与进膳预算计算；不模拟满体损失，日末结余暂不自动结转，可手工添加储备来源。</p>
         </section>
 
-        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑"><div class="edit-grid"><aside class="planner-sidebar panel"><section class="side-section"><div class="side-title"><span>培养清单</span><span class="side-hint">拖动排序 · 右上角移除</span></div><div class="edit-roster"><div v-for="row in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)"><div class="drag-handle" aria-hidden="true">⋮⋮</div><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" /><div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div><button type="button" class="roster-remove" :aria-label="'将 ' + (row.name || row.id) + ' 移出培养清单'" @click="removePlanMember(row)"><X :size="15" aria-hidden="true" /></button><div class="target-fields"><label><span>等级</span><span class="progress-values"><b>{{ row.level }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '目标等级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'level', $event)" /></span></label><label><span>修为</span><span class="progress-values"><b>{{ row.elite }}</b><span>/</span><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '目标修为'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'elite', $event)" /></span></label><label class="target-star"><span>化极</span><span class="progress-values"><b>{{ starLabel(row.starLevel) }}</b><span>/</span><select class="tracker-editable target-star-select" :value="targetFor(row).starLevel" :aria-label="row.name + '目标化极'" @change="setTarget(row, 'starLevel', $event)"><option v-for="stage in starStagesFor(row)" :key="stage.value" :value="stage.value">{{ stage.label }}</option></select></span></label></div></div></div><p class="drag-note">拖动左侧把手调整顺序；点击右上角 X 将密探移出当前清单。</p></section></aside><div class="editor-main"><section class="planning-panel" aria-label="日程规划与方案对比">
-  <header class="planning-panel-heading"><div><h3>日程规划</h3><p>设定培养目标与体力条件，对比后选择采用。</p></div><button type="button" class="workspace-link planning-settings-toggle" :aria-expanded="settingsOpen" aria-controls="planning-conditions" @click="settingsOpen = !settingsOpen"><SlidersHorizontal :size="15" aria-hidden="true" />{{ settingsOpen ? '收起条件' : '展开条件' }}</button></header>
-  <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true; settingsOpen = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
-  <p v-if="!settingsOpen" class="planning-condition-summary">{{ goalMode ? '目标：期限内最低白金币' : strategy === 'priority' ? '策略：按清单顺序优先完成' : '策略：整体最早完成' }} · 当前每日购买 {{ plannerPreferences.purchaseCount }} 次</p>
-<section v-if="settingsOpen" id="planning-conditions" class="settings-panel"><div v-if="goalMode" class="settings-block goal-conditions">
+        <section v-else class="planner-view planner-edit" aria-label="体力规划编辑">
+          <nav ref="plannerStepsRef" class="planner-steps" aria-label="日程编辑步骤">
+            <ol>
+              <li v-for="(step, index) in plannerSteps" :key="step.id">
+                <button type="button" :aria-current="plannerStep === step.id ? 'step' : undefined" :aria-controls="'planner-step-' + step.id" @click="setPlannerStep(step.id)">
+                  <span class="step-number" aria-hidden="true">{{ index + 1 }}</span><span>{{ step.label }}</span>
+                </button>
+              </li>
+            </ol>
+          </nav>
+          <div class="edit-grid" :class="{ 'has-roster': plannerStep === 'conditions' }">
+            <aside v-show="plannerStep === 'conditions'" class="planner-sidebar panel" :class="{ 'roster-expanded': mobileRosterOpen }">
+              <button class="roster-toggle" type="button" :aria-expanded="mobileRosterOpen" aria-controls="planner-roster-content" @click="mobileRosterOpen = !mobileRosterOpen">
+                <span class="roster-toggle-label">培养清单 <small>{{ orderedPlanRows.length }} 位</small></span>
+                <span class="roster-toggle-action">{{ mobileRosterOpen ? '收起' : '管理' }}<ChevronDown :size="16" aria-hidden="true" /></span>
+              </button>
+              <div class="roster-preview" role="list" aria-label="清单成员">
+                <span v-for="row in orderedPlanRows" :key="row.id" role="listitem" :aria-label="row.name || row.id" :title="row.name || row.id"><OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" aria-hidden="true" /></span>
+              </div>
+              <section id="planner-roster-content" class="side-section">
+                <div class="side-title"><span>培养清单</span><span class="side-hint">当前 → 目标</span></div>
+                <div class="edit-roster">
+                  <div v-for="(row, rowIndex) in orderedPlanRows" :key="row.id" class="edit-roster-item" draggable="true" @dragstart="onRosterDragStart(row.id)" @dragover.prevent @drop="onRosterDrop(row.id)">
+                    <div class="drag-handle" aria-hidden="true">⋮⋮</div>
+                    <OperatorAvatar :avatar="row.avatar || ''" :name="row.name || row.id" :rarity="Number(row.rarity) || 3" />
+                    <div class="edit-roster-name"><b>{{ row.name || row.id }}</b></div>
+                    <div class="roster-move-actions" role="group" :aria-label="row.name + '排序'">
+                      <button type="button" :disabled="cloudBlocked || schedulePending || rowIndex === 0" :aria-label="'上移' + row.name" title="上移" @click="moveRosterMember(row.id, -1)"><ChevronUp :size="16" aria-hidden="true" /></button>
+                      <button type="button" :disabled="cloudBlocked || schedulePending || rowIndex === orderedPlanRows.length - 1" :aria-label="'下移' + row.name" title="下移" @click="moveRosterMember(row.id, 1)"><ChevronDown :size="16" aria-hidden="true" /></button>
+                    </div>
+                    <button type="button" class="roster-remove" :aria-label="'将 ' + (row.name || row.id) + ' 移出培养清单'" @click="removePlanMember(row)"><X :size="15" aria-hidden="true" /></button>
+                    <div class="target-fields">
+                      <label><span class="target-field-label">等级 <small>{{ row.level }} →</small></span><span class="progress-values"><input class="tracker-editable tracker-number-input" type="number" :min="row.level" max="100" step="1" :value="targetFor(row).level" :aria-label="row.name + '目标等级'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'level', $event)" /></span></label>
+                      <label><span class="target-field-label">修为 <small>{{ row.elite }} →</small></span><span class="progress-values"><input class="tracker-editable tracker-number-input" type="number" :min="row.elite" :max="targetEliteMax(row)" step="1" :value="targetFor(row).elite" :aria-label="row.name + '目标修为'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @change="setTarget(row, 'elite', $event)" /></span></label>
+                      <label class="target-star"><span class="target-field-label">化极 <small>{{ starLabel(row.starLevel).replace('⭐', '星') }} →</small></span><span class="progress-values"><PlannerSelect class="target-star-select" compact :model-value="targetFor(row).starLevel" :options="starStagesFor(row)" :label="row.name + '目标化极'" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.has(row.id)" @update:model-value="setTarget(row, 'starLevel', $event)" /></span></label>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="roster-add" aria-haspopup="dialog" :disabled="!activePlan || planPickerDisabled" @click="trainingPlanPickerRef?.openMemberPicker()"><Plus :size="18" aria-hidden="true" />新增密探</button>
+              </section>
+            </aside>
+            <div class="editor-main">
+              <section v-show="plannerStep === 'conditions'" id="planner-step-conditions" ref="plannerConditionsRef" class="planning-panel" tabindex="-1" aria-label="规划条件">
+                <header class="planning-panel-heading"><div><h3>规划条件</h3><p>设定培养目标、体力偏好与可刷层数。</p></div></header>
+  <div class="planning-mode" role="group" aria-label="规划模式"><button type="button" :class="{ active: !goalMode }" :aria-pressed="!goalMode" @click="goalMode = false"><CalendarDays :size="17" aria-hidden="true" />常规日程规划</button><button type="button" class="goal-mode" :class="{ active: goalMode }" :aria-pressed="goalMode" @click="goalMode = true"><Target :size="17" aria-hidden="true" />按目标天数规划</button></div>
+<section id="planning-conditions" class="settings-panel"><div v-if="goalMode" class="settings-block goal-conditions">
   <div class="settings-block-head"><h3>目标天数</h3><span>独立试算</span></div>
-  <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择完成日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-label="选择完成日期">
+  <div class="goal-days-field"><label for="goal-days">从今天起的目标天数</label><div ref="goalDatePickerWrap" class="goal-days-input-wrap" @keydown.esc.prevent.stop="closeGoalDatePicker()"><input id="goal-days" type="number" min="1" max="90" step="1" v-model.number.lazy="goalDays" /><button ref="goalDateTrigger" type="button" class="goal-date-trigger" aria-label="选择养成截止日期" :aria-expanded="goalDatePickerOpen" aria-controls="goal-date-picker" @click="toggleGoalDatePicker"><CalendarDays :size="17" aria-hidden="true" /></button><div v-if="goalDatePickerOpen" id="goal-date-picker" ref="goalDatePickerRef" class="goal-date-popover" role="dialog" aria-labelledby="goal-date-picker-title" aria-describedby="goal-date-picker-description">
+    <header class="goal-calendar-context"><h4 id="goal-date-picker-title">选择养成截止日期</h4><p id="goal-date-picker-description">希望最晚在这一天完成当前清单的养成。</p></header>
     <div class="goal-calendar-heading"><button type="button" aria-label="上个月" :disabled="!goalDatePickerCanPrevious" @click="changeGoalDatePickerMonth(-1)"><ChevronLeft :size="18" aria-hidden="true" /></button><strong aria-live="polite">{{ goalDatePickerYear }} 年 {{ goalDatePickerMonth + 1 }} 月</strong><button type="button" aria-label="下个月" :disabled="!goalDatePickerCanNext" @click="changeGoalDatePickerMonth(1)"><ChevronRight :size="18" aria-hidden="true" /></button></div>
     <div class="goal-calendar-week" aria-hidden="true"><span v-for="day in ['一', '二', '三', '四', '五', '六', '日']" :key="day">{{ day }}</span></div>
     <div class="goal-calendar-days"><span v-for="blank in goalDatePickerOffset" :key="`goal-blank-${blank}`" /><button v-for="day in goalDatePickerDays" :key="day" :data-goal-day="day" :tabindex="day === goalDatePickerFocusedDay ? 0 : -1" :class="{ selected: goalDatePickerKey(day) === goalCompletionDate, today: goalDatePickerKey(day) === plannerToday }" :disabled="!isGoalDateSelectable(day)" :aria-label="`${goalDatePickerYear} 年 ${goalDatePickerMonth + 1} 月 ${day} 日`" :aria-pressed="goalDatePickerKey(day) === goalCompletionDate" :aria-current="goalDatePickerKey(day) === plannerToday ? 'date' : undefined" @keydown="moveGoalDatePickerDay($event, day)" @click="selectGoalDatePickerDay(day)">{{ day }}</button></div>
     <button type="button" class="goal-today-button" @click="selectGoalDatePickerToday">回到今天</button>
   </div></div></div>
-  <p class="goal-completion-date">完成日期：<time :datetime="goalCompletionDate">{{ formatLongDate(goalCompletionDate) }}</time></p>
+  <p class="goal-completion-date">截止日期：<time :datetime="goalCompletionDate">{{ formatLongDate(goalCompletionDate) }}</time></p>
   <p class="goal-date-help">日期按“含今天”换算，最多支持 90 天。</p>
   <div class="goal-shortcuts"><button v-for="days in [7, 10, 14, 21]" :key="days" type="button" :class="{ active: Number(goalDays) === days }" @click="goalDays = days">{{ days }} 天</button></div>
-</div><div v-if="!goalMode" class="settings-block"><div class="settings-block-head"><h3>培养策略</h3><span>{{ strategy === 'priority' ? '顺序参与规划' : '清单仅用于展示' }}</span></div><div class="strategy-switch"><button type="button" :class="{ active: strategy === 'overall' }" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成以整张清单最早备齐为目标；优先完成按清单顺序依次优化各密探的备齐日期。下方方案对比沿用此策略。</p></div><div class="settings-block"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)">−</button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)">＋</button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)">−</button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)">＋</button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)">−</button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)">＋</button></div></div></div><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></div><div class="settings-block training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<select :value="workspace.trainingLevels[group.id]" @change="setTrainingLevel(group.id, $event)"><option v-for="stage in group.stages" :key="stage.level" :value="stage.level">{{ stage.name }}</option></select></label></div></div><section v-if="goalMode" class="reserve-management" aria-labelledby="reserve-management-title">
+</div><div v-if="!goalMode" class="settings-block"><div class="settings-block-head"><h3>培养策略</h3><span>{{ strategy === 'priority' ? '顺序参与规划' : '清单仅用于展示' }}</span></div><div class="strategy-switch"><button type="button" :class="{ active: strategy === 'overall' }" @click="setStrategy('overall')">整体完成</button><button type="button" :class="{ active: strategy === 'priority' }" @click="setStrategy('priority')">优先完成密探</button></div><p class="setting-help">整体完成以整张清单最早备齐为目标；优先完成按清单顺序依次优化各密探的备齐日期。下一步方案对比沿用此策略。</p></div><div class="settings-block"><div class="settings-block-head"><h3>推荐偏好</h3><span>每天重复使用</span></div><div class="settings-fields"><div class="setting-line"><label for="pref-luoyang">洛阳派遣</label><div class="counter"><button type="button" aria-label="减少洛阳派遣次数" :disabled="plannerPreferences.luoyang <= 0" @click="changePreference('luoyang', -1)">−</button><input id="pref-luoyang" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.luoyang" @change="savePreferences" /><button type="button" aria-label="增加洛阳派遣次数" :disabled="plannerPreferences.luoyang >= 4" @click="changePreference('luoyang', 1)">＋</button></div></div><div class="setting-line"><label for="pref-shouchun">寿春派遣</label><div class="counter"><button type="button" aria-label="减少寿春派遣次数" :disabled="plannerPreferences.shouchun <= 0" @click="changePreference('shouchun', -1)">−</button><input id="pref-shouchun" type="number" min="0" max="4" v-model.number.lazy="plannerPreferences.shouchun" @change="savePreferences" /><button type="button" aria-label="增加寿春派遣次数" :disabled="plannerPreferences.shouchun >= 4" @click="changePreference('shouchun', 1)">＋</button></div></div><div class="setting-line"><label for="pref-purchase">购买体力</label><div class="counter"><button type="button" aria-label="减少购买体力次数" :disabled="plannerPreferences.purchaseCount <= 0" @click="changePreference('purchaseCount', -1)">−</button><input id="pref-purchase" type="number" min="0" max="8" v-model.number.lazy="plannerPreferences.purchaseCount" @change="savePreferences" /><button type="button" aria-label="增加购买体力次数" :disabled="plannerPreferences.purchaseCount >= 8" @click="changePreference('purchaseCount', 1)">＋</button></div></div></div><p class="purchase-note">{{ purchaseCostLabel }} / 日；每日体力来源会计入日程账本。派遣仅消耗体力，无素材产出。</p></div><div class="settings-block training-settings-block"><div class="settings-block-head"><h3>可刷层数</h3><span>用于每日推荐</span></div><div class="training-levels"><label v-for="group in TRAINING_GROUPS" :key="group.id">{{ group.name }}最高层<PlannerSelect class="training-level-select" :model-value="workspace.trainingLevels[group.id]" :options="group.stages.map(stage => ({ value: stage.level, label: stage.name }))" :label="group.name + '最高层'" :disabled="cloudBlocked" @update:model-value="setTrainingLevel(group.id, $event)" /></label></div></div><section v-if="goalMode" class="reserve-management" aria-labelledby="reserve-management-title">
   <div class="reserve-management-heading"><div><h3 id="reserve-management-title">体力储备</h3><p>已到账体力计入第一天；待领取储备由求解器安排整笔领取日期。</p></div><span class="reserve-total">待领取 {{ goalReserveSources.length }} 笔 · {{ goalReserveSources.reduce((sum, source) => sum + Math.max(0, Number(source.amount) || 0), 0) }} 体力</span></div>
   <div class="reserve-management-body">
     <div class="reserve-initial"><label for="goal-initial-extra">起始日额外体力</label><div class="reserve-amount"><input id="goal-initial-extra" type="number" min="0" max="99999" step="1" v-model.number.lazy="goalInitialExtra" /><span>体力</span></div><p>已经到账，仅第一天可用，不跨日结转。</p></div>
-    <div class="reserve-packs"><div class="reserve-packs-heading"><h4>待领取储备</h4><button type="button" class="workspace-link" @click="addGoalReserve"><Plus :size="14" aria-hidden="true" />添加储备</button></div>
+    <div class="reserve-packs"><div class="reserve-packs-heading"><h4>待领取储备</h4><button type="button" class="workspace-link" aria-label="添加储备" title="添加储备" @click="addGoalReserve"><Plus :size="18" aria-hidden="true" /></button></div>
       <p v-if="!goalReserveSources.length" class="reserve-empty">可添加礼包、邮件或道具，每条代表一次可独立领取的整笔体力。</p>
       <div class="reserve-pack-list"><div v-for="(source, index) in goalReserveSources" :key="source.id" class="reserve-pack-row">
         <input v-model.lazy="source.name" maxlength="32" class="reserve-pack-name" :aria-label="'第 ' + (index + 1) + ' 条储备名称'" />
         <div class="reserve-amount"><input type="number" min="1" max="99999" step="1" v-model.number.lazy="source.amount" :aria-label="'第 ' + (index + 1) + ' 条储备体力数量'" /><span>体力</span></div>
-        <button type="button" class="workspace-link reserve-remove" :aria-label="'删除第 ' + (index + 1) + ' 条储备'" @click="goalReserveSources.splice(index, 1)"><X :size="15" aria-hidden="true" /></button>
+        <button type="button" class="workspace-link reserve-remove" :aria-label="'删除第 ' + (index + 1) + ' 条储备'" :title="'删除第 ' + (index + 1) + ' 条储备'" @click="goalReserveSources.splice(index, 1)"><X :size="18" aria-hidden="true" /></button>
       </div></div>
     </div>
   </div>
 </section></section>
-          <PlannerExactOptimizer embedded ref="exactOptimizerRef" :input="exactPlannerInput" :agent-names="exactAgentNames" :date-label="goalMode ? formatLongDate(plannerToday) : currentDateLabel" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || (!goalMode && (currentDay.paused || scheduleDifferences.goalsChanged))" @apply="adoptExactPlan" @apply-alternative="adoptDeadlineAlternative" />
-</section>
-
+                <footer class="planner-step-actions">
+                  <button type="button" class="workspace-link" aria-label="直接编辑每日" title="直接编辑每日" @click="setPlannerStep('daily')"><Pencil :size="18" aria-hidden="true" /></button>
+                  <button type="button" class="action-button primary" @click="setPlannerStep('comparison')">下一步：方案对比<ChevronRight :size="16" aria-hidden="true" /></button>
+                </footer>
+              </section>
+              <section v-show="plannerStep === 'comparison'" id="planner-step-comparison" ref="plannerComparisonRef" class="planning-panel planner-comparison-step" tabindex="-1" aria-label="方案对比">
+                <div class="planning-condition-summary"><p>{{ plannerConditionSummary }}</p><button type="button" class="workspace-link" aria-label="修改条件" title="修改条件" @click="setPlannerStep('conditions')"><SlidersHorizontal :size="18" aria-hidden="true" /></button></div>
+          <PlannerExactOptimizer embedded date-selection-hint="可在「编辑每日」步骤切换对比起点。" :input="exactPlannerInput" :agent-names="exactAgentNames" :date-label="goalMode ? formatLongDate(plannerToday) : currentDateLabel" :disabled="cloudBlocked || schedulePending || loading || targetLoading || Boolean(error) || (!goalMode && (currentDay.paused || scheduleDifferences.goalsChanged))" @apply="adoptExactPlan" @apply-alternative="adoptDeadlineAlternative" />
+                <footer class="planner-step-actions">
+                  <p>采用方案后进入每日编辑，也可继续调整当前日程。</p>
+                  <button type="button" class="workspace-link" aria-label="上一步：规划条件" title="上一步：规划条件" @click="setPlannerStep('conditions')"><ChevronLeft :size="18" aria-hidden="true" /></button>
+                  <button type="button" class="action-button primary" @click="setPlannerStep('daily')">编辑当前日程<ChevronRight :size="16" aria-hidden="true" /></button>
+                </footer>
+              </section>
+              <section v-show="plannerStep === 'daily'" id="planner-step-daily" ref="plannerDailyRef" class="planner-daily-step" tabindex="-1" aria-label="编辑每日">
 <PlannerDateTabs :dates="plannerDates" :selected="selectedDate" :manual-plans="manualPlans" :today="plannerToday" :fixed="Boolean(fixedSchedule)" :past-count="pastScheduleCount" :hide-past="hidePastSchedule" :reset-disabled="scheduleActionBlocked" @reset="openScheduleAction('reset')" @toggle-history="openScheduleAction('history')" @select="selectDate" />
           <PlannerRecalculateNotice v-if="pendingRecalculation" :date-label="currentDateLabel" :busy="schedulePending" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || scheduleDifferences.goalsChanged || currentDay.paused" @recalculate="recalculateFromCurrentDay" />
 
-          <div class="edit-simulation"><div class="ledger-grid"><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力获取</h3><span>推荐 {{ formatStamina(recommendedTotals.gains) }}</span></div><div v-for="(gain, index) in currentDay.planned.gains" :key="gain.id" class="ledger-row"><div class="ledger-label-wrap"><span class="channel-label" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><i></i>{{ gain.label }}</span><label v-if="gain.custom" class="custom-name-field">名称<input type="text" maxlength="32" :value="gain.name || gain.label" :aria-label="'体力来源名称，第 ' + (index + 1) + ' 项'" @change="updateCustomName('gains', index, $event)" /></label></div><div class="ledger-input-wrap"><label :for="'gain-value-' + index">数量</label><input :id="'gain-value-' + index" type="number" min="0" step="1" :value="gain.value" :aria-label="gain.label + '数量'" @change="updatePlanValue('gains', index, $event)" /><span>{{ gain.kind === 'count' ? '次' : '体力' }}</span></div><span class="recommendation">推荐 {{ recommendedValue('gains', gain.id) }}</span><button type="button" class="row-remove" :aria-label="'移除 ' + gain.label" @click="removePlanRow('gains', index)"><X :size="14" aria-hidden="true" /></button></div><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span>推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><div v-for="(spend, index) in currentDay.planned.spends" :key="spend.id" class="ledger-row spend-ledger-row"><div class="ledger-label-wrap"><span class="channel-label" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><i></i><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span></span><label v-if="spend.custom" class="custom-name-field">名称<input type="text" maxlength="32" :value="spend.name || spend.label" :aria-label="'体力支出名称，第 ' + (index + 1) + ' 项'" @change="updateCustomName('spends', index, $event)" /></label><label v-if="spend.custom" class="custom-cost-field">每次<input type="number" min="0" step="1" :value="spend.costPer" :aria-label="spend.label + '每次体力'" @change="updateSpendCost(index, $event)" /> 体力</label><div v-if="editableSpendYield(spend)" class="yield-editor"><label v-for="(amount, id) in spend.yield" :key="id">{{ resourceName(id) }}<input type="number" min="0" :value="amount" :aria-label="spend.label + '每次产出' + resourceName(id)" @change="updateSpendYield(index, id, $event)" /><button type="button" :aria-label="'移除产出' + resourceName(id)" @click="removeSpendYield(index, id)">×</button></label><select aria-label="添加每次产出的材料" value="" @change="addSpendYield(index, $event)"><option value="">添加每次产出…</option><option v-for="resource in yieldResourceOptions.filter(item => !spend.yield?.[item.id])" :key="resource.id" :value="resource.id">{{ resource.name }}</option></select></div></div><div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" @change="updatePlanValue('spends', index, $event)" /><span>次</span></div><span class="recommendation">推荐 {{ recommendedValue('spends', spend.id) }}</span><button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button></div><div class="add-wrap"><button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />添加支出</button><div v-if="addMenu === 'spend'" id="planner-spend-menu" class="add-menu" :class="{ 'stage-menu': pendingTrainingGroup }" role="menu" :aria-label="pendingTrainingGroup ? pendingTrainingGroup.name + '选择层数' : '选择支出渠道'" @keydown.esc.prevent.stop="cancelSpendMenu">
+          <div class="edit-simulation"><div class="ledger-grid"><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力获取</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.gains) }}</span></div><template v-for="(gain, index) in currentDay.planned.gains" :key="gain.id">
+  <PlannerCustomEntry v-if="gain.custom" :entry="gain" kind="gain" :index="index" :total="energyFromGain(gain)" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || reviewingHistory"
+    @change-name="updateCustomName('gains', index, $event)" @change-value="updatePlanValue('gains', index, $event)" @remove="removePlanRow('gains', index)" />
+  <div v-else class="ledger-row">
+    <div class="ledger-label-wrap"><span class="channel-label" :class="gain.colorKey" :style="channelStyle(gain.colorKey)"><i></i>{{ gain.label }}</span></div>
+    <div class="ledger-input-wrap"><label :for="'gain-value-' + index">数量</label><input :id="'gain-value-' + index" type="number" min="0" step="1" :value="gain.value" :aria-label="gain.label + '数量'" @change="updatePlanValue('gains', index, $event)" /><span>{{ gain.kind === 'count' ? '次' : '体力' }}</span></div>
+    <span class="recommendation" :class="{ 'matches-plan': gain.value === recommendedValue('gains', gain) }">推荐 {{ recommendedValue('gains', gain) }}</span>
+    <button type="button" class="row-remove" :aria-label="'移除 ' + gain.label" @click="removePlanRow('gains', index)"><X :size="14" aria-hidden="true" /></button>
+  </div>
+</template><div class="add-wrap"><button type="button" class="add-button" :aria-expanded="addMenu === 'gain'" @click="toggleAddMenu('gain')"><Plus :size="14" aria-hidden="true" />添加获取</button><div v-if="addMenu === 'gain'" class="add-menu" role="menu"><button v-for="channel in GAIN_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addGain(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></div></div><div class="ledger-total gain-total"><span>当日获取</span><b>{{ formatStamina(todayTotals.gains) }}</b></div></section><section class="planner-card ledger-card"><div class="ledger-heading"><h3>体力支出</h3><span title="按当前套用的基础方案">推荐 {{ formatStamina(recommendedTotals.spends) }}</span></div><template v-for="(spend, index) in currentDay.planned.spends" :key="spend.id">
+  <PlannerCustomEntry v-if="spend.custom" :entry="spend" kind="spend" :index="index" :total="spend.value * spend.costPer" :resources="yieldResourceOptions" :resource-name="resourceName" :disabled="cloudBlocked || loading || targetLoading || Boolean(error) || reviewingHistory"
+    @change-name="updateCustomName('spends', index, $event)" @change-value="updatePlanValue('spends', index, $event)" @change-cost="updateSpendCost(index, $event)"
+    @change-yield="(id, event) => updateSpendYield(index, id, event)" @add-yield="addSpendYield(index, $event)" @remove-yield="removeSpendYield(index, $event)" @remove="removePlanRow('spends', index)" />
+  <div v-else class="ledger-row spend-ledger-row">
+    <div class="ledger-label-wrap"><span class="channel-label" :class="spend.colorKey" :style="channelStyle(spend.colorKey)"><i></i><span class="spend-name"><b>{{ spendChannelName(spend) }}</b><span v-if="spendStageName(spend)" class="spend-stage">{{ spendStageName(spend) }}</span></span></span></div>
+    <div class="ledger-input-wrap"><label :for="'spend-value-' + index">次数</label><input :id="'spend-value-' + index" type="number" min="0" step="1" :value="spend.value" :aria-label="spend.label + '次数'" @change="updatePlanValue('spends', index, $event)" /><span>次</span></div>
+    <span class="recommendation" :class="{ 'matches-plan': spend.value === recommendedValue('spends', spend) }">推荐 {{ recommendedValue('spends', spend) }}</span>
+    <button type="button" class="row-remove" :aria-label="'移除 ' + spend.label" @click="removePlanRow('spends', index)"><X :size="14" aria-hidden="true" /></button>
+  </div>
+</template><div class="add-wrap"><button ref="spendAddRef" type="button" class="add-button" aria-controls="planner-spend-menu" :aria-expanded="addMenu === 'spend'" @click="toggleAddMenu('spend')"><Plus :size="14" aria-hidden="true" />添加支出</button><div v-if="addMenu === 'spend'" id="planner-spend-menu" class="add-menu" :class="{ 'stage-menu': pendingTrainingGroup }" role="menu" :aria-label="pendingTrainingGroup ? pendingTrainingGroup.name + '选择层数' : '选择支出渠道'" @keydown.esc.prevent.stop="cancelSpendMenu">
   <template v-if="pendingTrainingGroup">
     <div class="stage-menu-heading"><button type="button" role="menuitem" @click="pendingSpendChannel = ''; focusSpendMenu()">‹ 返回渠道</button><span>{{ pendingTrainingGroup.name }} · 选择层数</span></div>
     <button v-for="stage in addTrainingStages" :key="stage.level" type="button" role="menuitem" @click="addTrainingSpend(stage.level)">{{ stage.name.replace(/第\s*(\d+)\s*层/, '$1 层') }}</button>
   </template>
   <template v-else><button v-for="channel in SPEND_CHANNELS" :key="channel.id" type="button" role="menuitem" @click="addSpend(channel.id)"><span class="channel-label" :class="channel.colorKey" :style="channelStyle(channel.colorKey)"><i></i>{{ channel.label }}</span></button></template>
-</div></div><div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" :stamina-balance="todayTotals.balance" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天推荐</button><button type="button" class="action-button primary" @click="openPlanner('display')"><Save :size="14" aria-hidden="true" />完成编辑</button></div></section></div></div></section>
+</div></div><div class="spend-summary">
+  <div class="ledger-total spend-total"><span>当日支出</span><b>{{ formatStamina(todayTotals.spends) }}</b></div>
+  <div class="spend-balance" :class="{ negative: todayTotals.balance < 0 }" role="status" aria-live="polite" aria-atomic="true"><span>{{ todayTotals.balance < 0 ? '超出可用体力' : '未分配体力' }}</span><strong>{{ formatStamina(Math.abs(todayTotals.balance)) }}</strong></div>
+</div></section></div><CultivationProgress :rows="progressItems" :date-label="currentDateLabel" /></div><section class="editor-actions panel"><p>{{ currentDay.manual ? '该日为手工计划；调整获取或支出后会更新账本；点击提示才会重新安排当日及后续日程。' : '修改后会保存完整日程；调整体力获取或支出后，可点击提示重新计算当日及后续日程。' }}</p><div><button v-if="futureManualCount" type="button" class="action-button" @click="clearFutureManualPlans"><RotateCcw :size="14" aria-hidden="true" />清除后续 {{ futureManualCount }} 个固定日</button><button type="button" class="action-button" title="恢复当前套用方案中的当日安排" @click="restoreCurrentDay"><RotateCcw :size="14" aria-hidden="true" />恢复当天方案</button></div></section>
+                <footer class="planner-step-actions">
+                  <button type="button" class="workspace-link" aria-label="上一步：方案对比" title="上一步：方案对比" @click="setPlannerStep('comparison')"><ChevronLeft :size="18" aria-hidden="true" /></button>
+                  <button type="button" class="action-button primary" @click="openPlanner('display')"><Check :size="16" aria-hidden="true" />完成编辑</button>
+                </footer>
+              </section>
+            </div>
+          </div>
+        </section>
         </fieldset>
       </section>
     </template>
@@ -250,7 +384,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Info, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, Star, Target, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import OperatorGrowthActionPopover from './OperatorGrowthActionPopover.vue'
 import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerCloud.js'
@@ -267,10 +401,12 @@ import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
 import { calculateLevelRequirements, calculateStarRequirements, calculateXiuweiRequirements, mergeRequirements, netRequirement, starLabelForStage, starStageFromLevel } from '../../data/operatorRequirements.js'
 import { localDayKey } from '../../data/inventory/acquiredStats.js'
 import PlannerDateTabs from './PlannerDateTabs.vue'
+import PlannerSelect from './PlannerSelect.vue'
+import PlannerCustomEntry from './PlannerCustomEntry.vue'
 import PlannerRecalculateNotice from './PlannerRecalculateNotice.vue'
 import PlannerExactOptimizer from './PlannerExactOptimizer.vue'
 import CultivationProgress from './CultivationProgress.vue'
-import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerTiming, resetFixedSchedule, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
+import { applyDeadlineAlternative, applyExactComparisonResult, createFixedSchedule, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../../data/fixedPlannerSchedule.js'
 import { GAIN_CHANNELS, PLANNER_RESOURCE_LABELS, PLANNER_RULES, PURCHASE_CUMULATIVE, SPEND_CHANNELS, aggregatePlannerState, allocateSharedPlannerStock, buildRecommendedPlan, simulatePlanner, settlePlannerDay, plannerProgressRows, plannerResourcesFromCalculation, clonePlannerValue, createGain, createInitialPlannerState, createSpend, energyFromGain, normalizePlannerPlan, normalizePlannerPreferences, planTotals } from '../../data/cultivationPlanner.js'
 
 const props = defineProps({ accountId: { type: String, default: '' }, currentEntries: { type: Array, default: () => [] }, catalogEntries: { type: Array, default: () => [] }, favoriteIds: { type: Object, default: () => new Set() }, growthStates: { type: Object, default: () => ({}) }, isLoggedIn: { type: Boolean, default: false }, refreshKey: { type: Number, default: 0 }, active: { type: Boolean, default: true }, annotationRevisions: { type: Object, default: () => ({}) }, isRemarkEditing: { type: Function, default: () => false }, quickUpgrade: { type: Function, default: null }, quickUpgradeState: { type: Function, default: null }, growthActionPopoverKey: { type: String, default: '' }, growthActionEntry: { type: Function, default: null }, growthActionTargetLabel: { type: Function, default: null }, growthActionShowBreakthrough: { type: Function, default: null }, growthActionBreakthrough: { type: Function, default: null }, growthActionPreviewBusy: { type: Function, default: null }, growthActionPreviewError: { type: Function, default: null }, growthActionPreview: { type: Function, default: null }, growthActionDisplayRequirements: { type: Function, default: null }, growthActionBlockingReasons: { type: Function, default: null }, growthActionAvailable: { type: Function, default: null }, growthActionHasMaterialGap: { type: Function, default: null }, growthActionExecuteBusy: { type: Function, default: null }, growthActionRequirementName: { type: Function, default: null }, growthActionRequirementValue: { type: Function, default: null }, growthActionRequirementBalanceLabel: { type: Function, default: null }, growthActionReasonMessage: { type: Function, default: null }, growthActionExecute: { type: Function, default: null }, growthActionBreakthroughChange: { type: Function, default: null }, growthActionNotice: { type: Function, default: null } })
@@ -289,9 +425,11 @@ const targetLoading = ref(false)
 const targetError = ref('')
 const targetNotice = ref('')
 const targetBusyIds = ref(new Set())
+const trainingPlanPickerRef = ref(null)
 const { workspace, snapshot: cloudSnapshot, workspaceState, scheduleState, cloudLoading, scheduleLoading, cloudError,
   migration, migrationBusy, cloudBlocked, workspacePending, schedulePending, loadCloud, saveWorkspace, saveSchedule,
   removeMember, prepareMigration, importLocal, keepCloud, compareMigrationAgain, recover, refreshCloud } = useOperatorPlannerCloud(props, targets, emit)
+const planPickerDisabled = computed(() => cloudBlocked.value || schedulePending.value || targetBusyIds.value.size > 0 || targetLoading.value)
 const scheduleTimezone = ref(BUSINESS_TIMEZONE)
 const planError = ref('')
 const planNotice = ref('')
@@ -319,7 +457,14 @@ function confirmScheduleAction() {
 const undoWorkspace = ref(null)
 const viewMode = ref('display')
 const plannerOpen = ref(true)
-const settingsOpen = ref(false)
+const plannerSteps = [{ id: 'conditions', label: '规划条件' }, { id: 'comparison', label: '方案对比' }, { id: 'daily', label: '编辑每日' }]
+const plannerStep = ref('conditions')
+const plannerStepsRef = ref(null)
+const plannerConditionsRef = ref(null)
+const plannerComparisonRef = ref(null)
+const plannerDailyRef = ref(null)
+const mobileRosterOpen = ref(false)
+const routineGainsOpen = ref(false)
 const goalMode = ref(false)
 const goalDays = ref(10)
 const goalDatePickerOpen = ref(false)
@@ -340,12 +485,16 @@ const pendingTrainingGroup = computed(() => trainingGroupForSpend({ id: pendingS
 const addTrainingStages = computed(() => pendingTrainingGroup.value?.stages.filter(stage => stage.level <= plannerLevels.value[pendingTrainingGroup.value.id]) || [])
 const plannerPreferences = ref(normalizePlannerPreferences())
 const strategy = ref('overall')
+const plannerConditionSummary = computed(() => [
+  goalMode.value ? `${goalDays.value} 天内完成 · 最低白金币` : strategy.value === 'priority' ? '按清单顺序优先完成' : '整体最早完成',
+  `每日购买 ${plannerPreferences.value.purchaseCount} 次`,
+  `洛阳 ${plannerPreferences.value.luoyang} 次 · 寿春 ${plannerPreferences.value.shouchun} 次`
+].join(' · '))
 const plannerOrder = ref([])
 const manualPlans = ref({})
 const fixedSchedule = ref(null)
 const plannerToday = ref(plannerDateInZone(BUSINESS_TIMEZONE, new Date(), BUSINESS_DAY_START_HOUR))
 const plannerWorkspaceRef = ref(null)
-const exactOptimizerRef = ref(null)
 const plannerStartDate = ref(plannerToday.value)
 const selectedDate = ref(plannerStartDate.value)
 const hidePastSchedule = ref(readHidePastSchedule())
@@ -582,7 +731,11 @@ const currentDay = computed(() => {
 const planBadgeLabel = computed(() => deadlineAlternativePlanAdopted.value ? '期限补足方案' : currentDay.value.manual ? '自定义计划' : '自动推荐方案')
 const currentDateLabel = computed(() => formatLongDate(currentDay.value.date))
 const todayTotals = computed(() => planTotals(currentDay.value.planned))
-const recommendedTotals = computed(() => planTotals(currentDay.value.recommended))
+function isRoutineGain(gain) { return gain.id === 'natural' || gain.id === 'meal' }
+const routineDayGains = computed(() => currentDay.value.planned.gains.filter(isRoutineGain))
+const actionDayGains = computed(() => currentDay.value.planned.gains.filter(gain => !isRoutineGain(gain)))
+const basePlan = computed(() => plannerBasePlan(fixedSchedule.value, currentDay.value))
+const recommendedTotals = computed(() => planTotals(basePlan.value))
 const exactAgentNames = computed(() => Object.fromEntries(orderedPlanRows.value.map(row => [row.id, row.name || row.id])))
 const exactPlannerInput = computed(() => {
   const context = { ...liveScheduleContext.value, accountId: props.accountId, planId: activePlan.value?.id }
@@ -714,7 +867,7 @@ function formatStamina(value) { return formatNumber(Math.round(Number(value) || 
 function signedNumber(value) { const number = Math.round(Number(value) || 0); return number > 0 ? '+' + formatStamina(number) : formatStamina(number) }
 function formatEta(days) { if (days == null) return '暂不可估算'; if (days <= 0) return '无需等待'; if (days < 1) return '不足 1 天'; return Math.ceil(days) + ' 天' }
 function channelStyle(key) { return { '--channel': channelColors[key] || channelColors.custom } }
-function recommendedValue(kind, id) { return currentDay.value.recommended?.[kind]?.find(item => item.id === id)?.value ?? 0 }
+function recommendedValue(kind, entry) { return plannerBaseValue(basePlan.value, kind, entry) }
 function progress(current, target) { const a = Number(current) || 0; const b = Number(target) || 0; return b <= 0 ? 100 : Math.min(100, Math.round(a * 100 / b)) }
 function itemName(id) { return id === '__heart__' ? '心纸' : itemMap.value[id] || id }
 function materialSummary(requirement) { return Object.keys(requirement?.items || {}).filter(id => requirement.items[id] > 0).slice(0, 3).map(id => itemName(id) + '×' + formatNumber(requirement.items[id])).join('、') }
@@ -852,10 +1005,9 @@ async function removePlan(onRemoved) {
   if (await commitWorkspace(next, '培养清单已删除', true)) { closeStarTarget(); targetNotice.value = ''; onRemoved?.() }
 }
 function undoPlanChange() { if (undoWorkspace.value) commitWorkspace(JSON.parse(JSON.stringify(undoWorkspace.value)), '已恢复清单') }
-async function setTrainingLevel(groupId, event) {
-  const next = workspaceCopy(); next.trainingLevels[groupId] = Number(event.target.value)
-  if (!await commitWorkspace(next)) event.target.value = workspace.value.trainingLevels[groupId]
-  else persistPlannerSnapshot()
+async function setTrainingLevel(groupId, value) {
+  const next = workspaceCopy(); next.trainingLevels[groupId] = Number(value)
+  if (await commitWorkspace(next)) persistPlannerSnapshot()
 }
 function applyPlannerSnapshot(snapshot) {
   closeScheduleAction()
@@ -911,15 +1063,26 @@ function resetSavedSchedule() {
     planError.value = ''; planNotice.value = '已从今天按当前库存和清单重新规划，此前阶段不再展示'
   } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerStartDate.value = previousStart; planError.value = '重设失败：' + err.message }
 }
-function editSchedule() {
-  if (reviewingHistory.value) selectedDate.value = plannerDates.value.find(date => date >= plannerToday.value) || selectedDate.value
-  viewMode.value = 'edit'; settingsOpen.value = true
-}
-async function openExactOptimizer() {
-  editSchedule()
+async function setPlannerStep(step, validate = true) {
+  if (!plannerSteps.some(item => item.id === step)) return
+  if (validate && plannerStep.value === 'conditions' && step === 'comparison') {
+    const invalid = [...(plannerConditionsRef.value?.querySelectorAll('input, select') || [])].find(input => !input.disabled && !input.checkValidity())
+    if (invalid) { invalid.reportValidity(); return }
+  }
+  closeGoalDatePicker(false)
+  addMenu.value = ''; pendingSpendChannel.value = ''
+  plannerStep.value = step
   await nextTick()
-  exactOptimizerRef.value?.$el?.scrollIntoView({ behavior: 'auto', block: 'center' })
+  const panel = { conditions: plannerConditionsRef, comparison: plannerComparisonRef, daily: plannerDailyRef }[step]
+  panel.value?.focus({ preventScroll: true })
+  plannerStepsRef.value?.scrollIntoView({ behavior: 'auto', block: 'start' })
 }
+function editSchedule(step = 'conditions') {
+  if (reviewingHistory.value) selectedDate.value = plannerDates.value.find(date => date >= plannerToday.value) || selectedDate.value
+  viewMode.value = 'edit'
+  setPlannerStep(step, false)
+}
+function openExactOptimizer() { editSchedule('comparison') }
 function adoptDeadlineAlternative(outcome) {
   if (scheduleActionBlocked.value || !goalMode.value) return
   const previous = fixedSchedule.value, previousPlans = manualPlans.value
@@ -928,7 +1091,8 @@ function adoptDeadlineAlternative(outcome) {
     fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans
     if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previous; manualPlans.value = previousPlans; return }
     plannerStartDate.value = next.schedule.startDate; selectedDate.value = plannerToday.value
-    goalMode.value = false; viewMode.value = 'display'
+    goalMode.value = false
+    setPlannerStep('daily', false)
     planNotice.value = '已采用补足日程，请按每日安排准备额外体力并调整派遣与购买'
   } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; planError.value = err.message }
 }
@@ -940,12 +1104,23 @@ function adoptExactPlan(outcome) {
     const next = applyExactComparisonResult(base, selectedDate.value, outcome, exactPlannerInput.value, previousPlans)
     fixedSchedule.value = next.schedule; manualPlans.value = next.manualPlans; plannerPreferences.value = next.preferences
     if (!persistPlannerSnapshot(false)) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerPreferences.value = previousPreferences; return }
+    setPlannerStep('daily', false)
     planError.value = ''; planNotice.value = outcome.status === 'optimal' ? '已采用全局最优方案，并保留此前日期与未来手工安排' : '已采用当前可行方案，尚未证明全局最优'
   } catch (err) { fixedSchedule.value = previous; manualPlans.value = previousPlans; plannerPreferences.value = previousPreferences; planError.value = '方案采用失败：' + err.message }
 }
 function setStrategy(value) { strategy.value = value; persistPlannerSnapshot() }
 function savePreferences() { plannerPreferences.value = normalizePlannerPreferences(plannerPreferences.value); persistPlannerSnapshot() }
 function changePreference(key, delta) { plannerPreferences.value = normalizePlannerPreferences({ ...plannerPreferences.value, [key]: (Number(plannerPreferences.value[key]) || 0) + delta }); persistPlannerSnapshot() }
+function moveRosterMember(id, delta) {
+  if (cloudBlocked.value || schedulePending.value) return
+  const ids = [...orderedRosterIds.value]
+  const from = ids.indexOf(id), to = from + delta
+  if (from < 0 || to < 0 || to >= ids.length) return
+  ids.splice(from, 1)
+  ids.splice(to, 0, id)
+  plannerOrder.value = ids
+  persistPlannerSnapshot()
+}
 function onRosterDragStart(id) { rosterDragId.value = id }
 function onRosterDrop(targetId) { if (cloudBlocked.value) return; const ids = [...orderedRosterIds.value]; const from = ids.indexOf(rosterDragId.value); const to = ids.indexOf(targetId); if (from < 0 || to < 0 || from === to) return; ids.splice(from, 1); ids.splice(to, 0, rosterDragId.value); plannerOrder.value = ids; rosterDragId.value = ''; persistPlannerSnapshot() }
 function selectDate(date) { if (fixedSchedule.value?.context.displayStartDate && date < fixedSchedule.value.context.displayStartDate) return; selectedDate.value = date; addMenu.value = ''; pendingSpendChannel.value = '' }
@@ -1009,14 +1184,40 @@ function addTrainingSpend(stageLevel) {
   else plan.spends.push({ ...createSpend(pendingSpendChannel.value, { stageLevel }), id: 'training-' + group.id + '-' + stageLevel })
   finishSpendAddition(next)
 }
-function editableSpendYield(spend) { return spend.custom }
 function updateSpendYield(index, id, event) { const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: Math.max(0, Number(event.target.value) || 0) }; commitManualPlan(next) }
-function addSpendYield(index, event) { const id = event.target.value; if (!id) return; const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: 1 }; commitManualPlan(next); event.target.value = '' }
+function addSpendYield(index, id) { if (!id) return; const { next, plan } = ensureManualPlan(); plan.spends[index].yield = { ...plan.spends[index].yield, [id]: 1 }; commitManualPlan(next) }
 function removeSpendYield(index, id) { const { next, plan } = ensureManualPlan(); delete plan.spends[index].yield[id]; commitManualPlan(next) }
-function restoreCurrentDay() { const next = { ...manualPlans.value }; delete next[selectedDate.value]; manualPlans.value = next; persistPlannerSnapshot() }
+function restoreCurrentDay() {
+  if (cloudBlocked.value || loading.value || targetLoading.value || error.value || reviewingHistory.value) return
+  const previous = fixedSchedule.value, previousPlans = manualPlans.value
+  try {
+    if (previous) {
+      const restored = restoreFixedScheduleDay(previous, selectedDate.value, previousPlans, currentDay.value)
+      if (restored.schedule === previous) return
+      fixedSchedule.value = restored.schedule
+      manualPlans.value = restored.manualPlans
+    } else {
+      manualPlans.value = { ...previousPlans }
+      delete manualPlans.value[selectedDate.value]
+    }
+    if (persistPlannerSnapshot(false)) planNotice.value = '已恢复当前套用方案的当日安排'
+    else { fixedSchedule.value = previous; manualPlans.value = previousPlans }
+  } catch (err) {
+    fixedSchedule.value = previous; manualPlans.value = previousPlans
+    planError.value = '恢复当日方案失败：' + err.message
+  }
+}
 function clearFutureManualPlans() { const removed = futureManualCount.value; manualPlans.value = Object.fromEntries(Object.entries(manualPlans.value).filter(([date]) => date <= selectedDate.value)); persistPlannerSnapshot(); planNotice.value = removed ? `已清除后续 ${removed} 个固定日，推荐会自动重算` : '未来推荐本来就会随设置自动刷新' }
-function openPlanner(mode = 'display') { plannerOpen.value = true; viewMode.value = mode; if (mode === 'display') { goalMode.value = false; settingsOpen.value = false } else { settingsOpen.value = true; goalMode.value = false } nextTick(() => { const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches; plannerWorkspaceRef.value?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' }) }) }
-function toggleSettings() { settingsOpen.value = !settingsOpen.value; plannerOpen.value = true; viewMode.value = 'edit' }
+function openPlanner(mode = 'display') {
+  plannerOpen.value = true
+  if (mode === 'edit') { editSchedule('conditions'); return }
+  viewMode.value = 'display'; goalMode.value = false
+  nextTick(() => {
+    plannerWorkspaceRef.value?.focus({ preventScroll: true })
+    plannerWorkspaceRef.value?.scrollIntoView({ behavior: 'auto', block: 'start' })
+  })
+}
+function toggleSettings() { plannerOpen.value = true; editSchedule('conditions') }
 
 function normalizedTargetItem(item) { return { level: item.level == null ? null : Number(item.level), elite: item.elite == null ? null : Number(item.elite), starLevel: (item.star_level != null ? item.star_level : item.starLevel) == null ? null : Number(item.star_level != null ? item.star_level : item.starLevel), revision: Number(item.revision) || 0 } }
 function targetStorageKey() { return 'yuanhub:operator-targets:' + props.accountId }
@@ -1151,7 +1352,7 @@ function handleInventoryEvent(message) {
 watch(() => [props.accountId, props.isLoggedIn], () => { currentItems.value = {}; currentAgents.value = {}; closeStarTarget(); undoWorkspace.value = null; planError.value = ''; planNotice.value = ''; removePromptRow.value = null; removePromptBusy.value = false }, { immediate: true })
 watch(() => [props.accountId, props.isLoggedIn, props.refreshKey, props.active], () => { if (props.active) { syncPlannerClock(); emit('refresh-operators'); loadTargets(); loadInventory() } }, { immediate: true })
 watch(cloudSnapshot, applyPlannerSnapshot)
-watch(() => [settingsOpen.value, goalMode.value], ([open, mode]) => { if (!open || !mode) closeGoalDatePicker(false) })
+watch(() => [plannerStep.value, goalMode.value], ([step, mode]) => { if (step !== 'conditions' || !mode) closeGoalDatePicker(false) })
 watch(scheduleTimezone, () => { if (props.active) loadInventory() })
 watch(() => [loading.value, targetLoading.value, activePlan.value?.id, scheduleLoading.value], () => {
   if (cloudBlocked.value || schedulePending.value || loading.value || targetLoading.value || error.value || !props.isLoggedIn || !planRows.value.length || fixedSchedule.value || !Object.keys(manualPlans.value).length) return
@@ -1206,16 +1407,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-metric strong.negative { color: var(--rouge); }
 .status-metric strong small { margin-left: 5px; color: var(--accent-strong); font: 800 10px/1 var(--font-b); }
 .planner-view { display: grid; gap: 12px; }.plan-badge { display: inline-flex; min-height: 24px; align-items: center; padding: 0 10px; border: 1px solid rgba(155, 122, 70, .12); border-radius: 999px; background: #f7eddc; color: #8a6a38; font-size: 10px; font-weight: 780; white-space: nowrap; }.plan-badge.manual { background: #f0e8f6; color: #7e6699; }.plan-badge.exact { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
-.display-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.planner-card { min-width: 0; padding: 18px; }.card-heading, .ledger-heading, .compare-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.card-heading h3 { margin-top: 3px; color: var(--ink); font: 900 18px/1.3 var(--font-s); }.card-heading p { margin-top: 4px; color: var(--planner-muted); font-size: 11px; line-height: 1.5; }.day-plan { display: grid; align-content: start; gap: 14px; }.day-summary { display: grid; gap: 8px; margin-top: 0; padding: 8px 0 14px; border-bottom: 1px dashed var(--planner-line); font-variant-numeric: tabular-nums; }.summary-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }.summary-money { padding-top: 8px; border-top: 1px dashed var(--planner-line); }.summary-metric { display: inline-flex; align-items: baseline; gap: 7px; }.summary-metric span, .summary-balance span { color: var(--planner-muted); font-size: 13px; font-weight: 650; }.summary-metric b, .summary-balance b { font: 830 17px var(--font-d); }.gain b, .gain-text, .gain-total b { color: var(--planner-gain); }.spend b, .spend-text, .spend-total b { color: var(--planner-spend); }.summary-op { color: #c7b8aa; font-weight: 800; }.summary-balance { display: inline-flex; align-items: baseline; gap: 7px; }.summary-balance.negative b { color: var(--rouge); }.coin-spend b { color: var(--accent); }.flow-section { padding-top: 14px; }.flow-section + .flow-section { margin-top: 11px; border-top: 1px solid var(--planner-line); }.day-plan .flow-section { padding-top: 0; }.day-plan .flow-section + .flow-section { margin-top: 0; padding-top: 14px; border-top: 1px dashed var(--planner-line); }.flow-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #877462; font-size: 13px; font-weight: 780; }.channel-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }.channel-chip { --channel: #887e8f; display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 11px; background: color-mix(in srgb, var(--channel) 8%, #fffaf4); color: color-mix(in srgb, var(--channel) 84%, #34291f); font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }.channel-chip small { color: color-mix(in srgb, var(--channel) 68%, #6f6258); font-size: 11px; }.channel-chip strong { margin-left: 6px; font-size: 12px; }.channel-dot, .channel-label i, .swatch i { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--channel); }.channel-chip strong { color: var(--planner-gain); }.channel-chip:not(.natural):not(.meal):not(.buy):not(.mail):not(.event):not(.gift) strong { color: var(--planner-spend); }.flow-empty { color: var(--planner-muted); font-size: 12px; }.balance-warning { display: flex; align-items: flex-start; gap: 6px; margin-top: 14px; padding: 9px 10px; border-radius: 9px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 11px; line-height: 1.6; }.day-plan .balance-warning { margin-top: 0; }
+.display-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }.planner-card { min-width: 0; padding: 18px; }.card-heading, .ledger-heading, .compare-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.card-heading h3 { margin-top: 3px; color: var(--ink); font: 900 18px/1.3 var(--font-s); }.card-heading p { margin-top: 4px; color: var(--planner-muted); font-size: 11px; line-height: 1.5; }.day-plan { display: grid; align-content: start; gap: 14px; }.gain b, .gain-text, .gain-total b { color: var(--planner-gain); }.spend b, .spend-text, .spend-total b { color: var(--planner-spend); }.coin-spend b { color: var(--accent); }.flow-section { padding-top: 14px; }.flow-section + .flow-section { margin-top: 11px; border-top: 1px solid var(--planner-line); }.day-plan .flow-section { padding-top: 0; }.day-plan .flow-section + .flow-section { margin-top: 0; padding-top: 14px; border-top: 1px dashed var(--planner-line); }.flow-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; color: #877462; font-size: 13px; font-weight: 780; }.channel-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }.channel-chip { --channel: #887e8f; display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 11px; background: color-mix(in srgb, var(--channel) 8%, #fffaf4); color: color-mix(in srgb, var(--channel) 84%, #34291f); font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }.channel-chip small { color: color-mix(in srgb, var(--channel) 68%, #6f6258); font-size: 11px; }.channel-chip strong { margin-left: 6px; font-size: 12px; }.channel-dot, .channel-label i, .swatch i { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--channel); }.channel-chip strong { color: var(--planner-gain); }.channel-chip:not(.natural):not(.meal):not(.buy):not(.mail):not(.event):not(.gift) strong { color: var(--planner-spend); }.flow-empty { color: var(--planner-muted); font-size: 12px; }.balance-warning { display: flex; align-items: flex-start; gap: 6px; margin-top: 14px; padding: 9px 10px; border-radius: 9px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 11px; line-height: 1.6; }.day-plan .balance-warning { margin-top: 0; }
 .progress-card { display: flex; flex-direction: column; }.progress-tags { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }.progress-tag { padding: 5px 8px; border: 1px solid rgba(155, 122, 70, .1); border-radius: 10px; background: #f6eee1; color: #8f7b68; font-size: 10px; font-weight: 730; white-space: nowrap; }.progress-tag.key { background: #f0e8f6; }.progress-tag b { color: var(--ink); }.progress-list { display: grid; gap: 13px; margin-top: 16px; }.progress-item { display: grid; gap: 6px; }.progress-item-head, .progress-item-foot { display: flex; justify-content: space-between; gap: 8px; color: var(--planner-muted); font-size: 11px; }.progress-item-head > span:first-child { color: var(--ink); font-size: 13px; font-weight: 800; }.progress-item-head b, .progress-item-foot b { color: var(--planner-gain); }.progress-track { position: relative; height: 10px; overflow: hidden; border-radius: 999px; background: #efe4d4; }.progress-track i { position: absolute; top: 0; bottom: 0; display: block; }.progress-current { left: 0; background: #c48b4d; }.progress-old { left: 0; background: #c48b4d; }.progress-today { background: #e8bc6c; }.progress-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; padding-top: 16px; color: var(--planner-muted); font-size: 10px; }.progress-legend span { display: inline-flex; align-items: center; gap: 4px; }.progress-legend i { width: 10px; height: 6px; border-radius: 99px; }.legend-current { background: #c48b4d; }.legend-old { background: #c48b4d; }.legend-today { background: #e8bc6c; }.planner-footnote { color: var(--ink-60); font-size: 11px; line-height: 1.7; }
 .edit-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 12px; align-items: start; }.planner-sidebar { position: sticky; top: 10px; padding: 12px; }.side-section { padding: 12px 0; }.side-section + .side-section { border-top: 1px solid var(--planner-line); }.side-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12px; font-weight: 820; }.side-hint { color: var(--planner-muted); font-size: 9px; font-weight: 600; }.side-explain, .drag-note, .purchase-note, .side-details p, .field-help, .goal-panel > p { color: var(--planner-muted); font-size: 10px; line-height: 1.6; }.side-explain { margin-top: 8px; }.strategy-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border: 1px solid var(--planner-line); border-radius: 10px; background: #f6ecdc; }.strategy-switch button { min-height: 38px; padding: 6px 5px; border: 0; border-radius: 7px; background: transparent; color: #8d7966; font-size: 10px; font-weight: 780; }.strategy-switch button.active { background: var(--planner-deep); color: #fff; }
-.edit-roster { display: grid; grid-auto-rows: 184px; align-content: start; gap: 6px; min-height: 948px; max-height: 948px; overflow: auto; padding: 2px; }.edit-roster-item { display: grid; grid-template-columns: 14px 28px minmax(0, 1fr) auto; align-items: center; gap: 5px; padding: 7px 5px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--planner-card); }.edit-roster-item:hover { border-color: var(--accent); }.drag-handle { color: #b19f8c; cursor: grab; font-size: 12px; letter-spacing: -3px; }.edit-roster-name { min-width: 0; }.edit-roster-name b, .edit-roster-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.edit-roster-name b { font-size: 11px; }.edit-roster-name small { margin-top: 2px; color: var(--planner-muted); font-size: 9px; }.move-buttons { display: flex; flex-direction: column; gap: 2px; }.move-buttons button { display: grid; width: 24px; height: 22px; place-items: center; padding: 0; border: 1px solid var(--planner-line); border-radius: 5px; background: #f2e6d3; color: #8f7c6b; }.move-buttons button:disabled { opacity: .35; cursor: not-allowed; }.target-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding-top: 5px; border-top: 1px dashed var(--planner-line); }.target-fields label, .setting-line label, .ledger-input-wrap label, .custom-name-field, .custom-cost-field, .goal-panel label { display: flex; flex-direction: column; gap: 4px; color: var(--planner-muted); font-size: 9px; font-weight: 750; }.target-fields input, .target-fields select, .counter input, .ledger-input-wrap input, .custom-name-field input, .custom-cost-field input, .goal-panel input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 7px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 700 11px var(--font-d); }.target-fields select { font-family: var(--font-b); }.drag-note { margin-top: 7px; }.setting-line { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: 8px; }.setting-line label { color: var(--ink); font-size: 10px; }.counter { display: flex; overflow: hidden; border: 1px solid var(--planner-line); border-radius: 8px; }.counter button { width: 30px; min-height: 36px; border: 0; background: #f4e9d8; color: var(--ink); font-size: 16px; }.counter input { width: 42px; min-height: 36px; border: 0; border-right: 1px solid var(--planner-line); border-left: 1px solid var(--planner-line); border-radius: 0; background: var(--planner-card); text-align: center; }.purchase-note { margin-top: 7px; }
-.side-actions { display: grid; gap: 6px; margin-top: 10px; }.side-button, .back-button, .action-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--planner-line); border-radius: 9px; background: var(--planner-card); color: var(--ink); font-size: 10px; font-weight: 800; }.side-button:hover, .back-button:hover, .action-button:hover { border-color: var(--accent); }.side-button.primary, .action-button.primary { border-color: var(--planner-deep); background: var(--planner-deep); color: #fff; }.side-button.goal { border-color: #e5d8ef; background: #f0e8f6; color: #7e6699; }.side-details summary { color: var(--ink); font-size: 11px; font-weight: 800; cursor: pointer; }.training-levels { display: grid; gap: 7px; margin-top: 9px; }.training-levels label { display: flex; align-items: center; justify-content: space-between; gap: 7px; color: var(--planner-muted); font-size: 10px; }.training-levels select { min-width: 100px; min-height: 36px; padding: 6px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font-size: 10px; }
+.edit-roster { display: grid; grid-auto-rows: 184px; align-content: start; gap: 6px; min-height: 948px; max-height: 948px; overflow: auto; padding: 2px; }.edit-roster-item { display: grid; grid-template-columns: 14px 28px minmax(0, 1fr) auto; align-items: center; gap: 5px; padding: 7px 5px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--planner-card); }.edit-roster-item:hover { border-color: var(--accent); }.drag-handle { color: #b19f8c; cursor: grab; font-size: 12px; letter-spacing: -3px; }.edit-roster-name { min-width: 0; }.edit-roster-name b, .edit-roster-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.edit-roster-name b { font-size: 11px; }.edit-roster-name small { margin-top: 2px; color: var(--planner-muted); font-size: 9px; }.move-buttons { display: flex; flex-direction: column; gap: 2px; }.move-buttons button { display: grid; width: 24px; height: 22px; place-items: center; padding: 0; border: 1px solid var(--planner-line); border-radius: 5px; background: #f2e6d3; color: #8f7c6b; }.move-buttons button:disabled { opacity: .35; cursor: not-allowed; }.target-fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding-top: 5px; border-top: 1px dashed var(--planner-line); }.target-fields label, .setting-line label, .ledger-input-wrap label, .goal-panel label { display: flex; flex-direction: column; gap: 4px; color: var(--planner-muted); font-size: 9px; font-weight: 750; }.target-fields input, .counter input, .ledger-input-wrap input, .goal-panel input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 7px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 700 11px var(--font-d); }.drag-note { margin-top: 7px; }.setting-line { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: 8px; }.setting-line label { color: var(--ink); font-size: 10px; }.counter { display: flex; overflow: hidden; border: 1px solid var(--planner-line); border-radius: 8px; }.counter button { width: 30px; min-height: 36px; border: 0; background: #f4e9d8; color: var(--ink); font-size: 16px; }.counter input { width: 42px; min-height: 36px; border: 0; border-right: 1px solid var(--planner-line); border-left: 1px solid var(--planner-line); border-radius: 0; background: var(--planner-card); text-align: center; }.purchase-note { margin-top: 7px; }
+.side-actions { display: grid; gap: 6px; margin-top: 10px; }.side-button, .back-button, .action-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--planner-line); border-radius: 9px; background: var(--planner-card); color: var(--ink); font-size: 10px; font-weight: 800; }.side-button:hover, .back-button:hover, .action-button:hover { border-color: var(--accent); }.side-button.primary, .action-button.primary { border-color: var(--planner-deep); background: var(--planner-deep); color: #fff; }.side-button.goal { border-color: #e5d8ef; background: #f0e8f6; color: #7e6699; }.side-details summary { color: var(--ink); font-size: 11px; font-weight: 800; cursor: pointer; }.training-levels { display: grid; gap: 7px; margin-top: 9px; }.training-levels label { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink-60); font-size: 12px; }.training-level-select { flex: 0 1 132px; width: 132px; }
 .goal-panel { padding: 8px 2px 2px; }.goal-panel h3 { margin-top: 4px; color: var(--ink); font: 900 20px var(--font-s); }.goal-panel > p { margin-top: 6px; }.goal-panel label { margin-top: 14px; color: var(--ink); font-size: 11px; }.goal-panel input { min-height: 44px; margin-top: 1px; font-size: 15px; }.field-help { margin-top: 4px; }.goal-shortcuts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }.goal-shortcuts button { min-height: 32px; padding: 0 9px; border: 1px solid var(--planner-line); border-radius: 8px; background: var(--planner-card); color: var(--planner-muted); font-size: 10px; font-weight: 800; }.goal-shortcuts button.active { border-color: var(--planner-deep); background: var(--planner-deep); color: #fff; }.goal-result { margin-top: 14px; padding: 11px; border: 1px solid rgba(166, 81, 74, .2); border-radius: 11px; background: rgba(166, 81, 74, .06); }.goal-result.feasible { border-color: rgba(109, 148, 116, .3); background: rgba(109, 148, 116, .08); }.goal-result-title { color: var(--ink); font-size: 12px; font-weight: 850; }.goal-result p { margin-top: 7px; color: var(--rouge); font-size: 10px; line-height: 1.6; }.goal-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }.goal-metrics div { padding: 8px; border: 1px solid rgba(149, 126, 100, .1); border-radius: 8px; background: rgba(255, 255, 255, .58); }.goal-metrics span, .goal-metrics b { display: block; }.goal-metrics span { color: var(--planner-muted); font-size: 9px; }.goal-metrics b { margin-top: 3px; color: var(--ink); font: 800 13px var(--font-d); }.back-button { width: 100%; margin-top: 12px; }
-.editor-main { display: grid; min-width: 0; gap: 12px; }.ledger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.ledger-card { padding: 12px; }.ledger-heading h3, .compare-heading h3 { color: var(--ink); font-size: 13px; }.ledger-heading span, .compare-heading span { color: var(--planner-muted); font-size: 9px; }.ledger-row { display: grid; grid-template-columns: minmax(100px, 1fr) 82px 55px 26px; align-items: center; gap: 7px; padding: 10px 0; border-top: 1px solid var(--planner-line); }.ledger-row:first-of-type { margin-top: 5px; }.ledger-label-wrap { display: grid; min-width: 0; gap: 5px; }.channel-label { --channel: #887e8f; display: inline-flex; width: max-content; max-width: 100%; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 8px; background: color-mix(in srgb, var(--channel) 9%, white); color: color-mix(in srgb, var(--channel) 82%, #34291f); font-size: 12px; line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }.channel-label i { width: 6px; height: 6px; }.custom-name-field, .custom-cost-field { font-size: 8px; }.custom-name-field input, .custom-cost-field input { min-height: 32px; background: #fffdf6; font-family: var(--font-b); }.custom-cost-field { display: inline-flex; flex-direction: row; align-items: center; gap: 4px; }.custom-cost-field input { width: 52px; }.ledger-input-wrap { display: flex; align-items: center; gap: 4px; }.ledger-input-wrap label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }.ledger-input-wrap input { width: 50px; min-height: 34px; padding: 4px; border: 0; border-bottom: 1px solid #cdb997; border-radius: 0; background: transparent; text-align: right; }.ledger-input-wrap > span { padding-bottom: 0; color: var(--planner-muted); font-size: 8px; white-space: nowrap; }.recommendation { padding-top: 0; color: var(--planner-muted); font-size: 8px; text-align: right; }.row-remove { display: grid; width: 26px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--planner-muted); }.row-remove:hover { background: rgba(166, 81, 74, .08); color: var(--rouge); }.add-wrap { position: relative; margin-top: 6px; }.add-button { display: inline-flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 5px; border: 1px dashed var(--planner-line); border-radius: 8px; background: var(--planner-card); color: var(--planner-muted); font-size: 10px; font-weight: 780; }.add-menu { position: absolute; z-index: 20; right: 0; bottom: calc(100% + 5px); left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--planner-card); box-shadow: 0 12px 26px rgba(70, 50, 32, .14); }.add-menu button { display: flex; min-height: 38px; align-items: center; padding: 4px; border: 0; border-radius: 7px; background: transparent; text-align: left; }.add-menu button:hover { background: #f5ebdc; }.ledger-total { display: flex; align-items: baseline; justify-content: space-between; margin-top: 7px; padding-top: 8px; border-top: 1px dashed var(--planner-line); color: var(--planner-muted); font-size: 10px; }.ledger-total b { font: 850 15px var(--font-d); }.compare-card { padding: 12px; }.compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }.compare-option { min-width: 0; padding: 10px; border: 1px solid rgba(149, 126, 100, .13); border-radius: 11px; background: var(--planner-card); }.compare-option.active { border-color: #d1b88b; background: #f8f1e5; }.compare-option span, .compare-option small, .compare-option em { display: block; color: var(--planner-muted); font-size: 8px; line-height: 1.5; }.compare-option b { display: block; margin-top: 2px; font-size: 10px; }.compare-option strong { display: block; margin-top: 5px; font: 860 18px var(--font-d); }.compare-option em { margin-top: 4px; color: var(--accent-strong); font-style: normal; }.editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }.editor-actions p { max-width: 560px; color: var(--planner-muted); font-size: 10px; line-height: 1.6; }.editor-actions > div { display: flex; gap: 6px; flex-wrap: wrap; }.action-button { min-height: 38px; }
+.editor-main { display: grid; min-width: 0; gap: 12px; }.ledger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }.ledger-card { padding: 12px; }.ledger-heading h3, .compare-heading h3 { color: var(--ink); font-size: 13px; }.ledger-heading span, .compare-heading span { color: var(--planner-muted); font-size: 9px; }.ledger-row { display: grid; grid-template-columns: minmax(100px, 1fr) 82px 55px 26px; align-items: center; gap: 7px; padding: 10px 0; border-top: 1px solid var(--planner-line); }.ledger-row:first-of-type { margin-top: 5px; }.ledger-label-wrap { display: grid; min-width: 0; gap: 5px; }.channel-label { --channel: #887e8f; display: inline-flex; width: max-content; max-width: 100%; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--channel) 20%, #d9cbb9); border-radius: 8px; background: color-mix(in srgb, var(--channel) 9%, white); color: color-mix(in srgb, var(--channel) 82%, #34291f); font-size: 12px; line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }.channel-label i { width: 6px; height: 6px; }.ledger-input-wrap { display: flex; align-items: center; gap: 4px; }.ledger-input-wrap label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }.ledger-input-wrap input { width: 50px; min-height: 34px; padding: 4px; border: 0; border-bottom: 1px solid #cdb997; border-radius: 0; background: transparent; text-align: right; }.ledger-input-wrap > span { padding-bottom: 0; color: var(--planner-muted); font-size: 8px; white-space: nowrap; }.recommendation { padding-top: 0; color: var(--planner-muted); font-size: 8px; text-align: right; }.row-remove { display: grid; width: 26px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--planner-muted); }.row-remove:hover { background: rgba(166, 81, 74, .08); color: var(--rouge); }.add-wrap { position: relative; margin-top: 6px; }.add-button { display: inline-flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 5px; border: 1px dashed var(--planner-line); border-radius: 8px; background: var(--planner-card); color: var(--planner-muted); font-size: 10px; font-weight: 780; }.add-menu { position: absolute; z-index: 20; bottom: calc(100% + 5px); left: 0; width: min(100%, 320px); max-height: min(360px, 60vh); overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--planner-card); box-shadow: 0 12px 26px rgba(70, 50, 32, .14); }.add-menu button { display: flex; min-width: 0; min-height: 44px; align-items: center; gap: 8px; padding: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--tea); font: 13px/1.5 var(--font-b); text-align: left; overflow-wrap: anywhere; }.add-menu button:hover { background: var(--cream); }.ledger-total { display: flex; align-items: baseline; justify-content: space-between; margin-top: 7px; padding-top: 8px; border-top: 1px dashed var(--planner-line); color: var(--planner-muted); font-size: 10px; }.ledger-total b { font: 850 15px var(--font-d); }.compare-card { padding: 12px; }.compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }.compare-option { min-width: 0; padding: 10px; border: 1px solid rgba(149, 126, 100, .13); border-radius: 11px; background: var(--planner-card); }.compare-option.active { border-color: #d1b88b; background: #f8f1e5; }.compare-option span, .compare-option small, .compare-option em { display: block; color: var(--planner-muted); font-size: 8px; line-height: 1.5; }.compare-option b { display: block; margin-top: 2px; font-size: 10px; }.compare-option strong { display: block; margin-top: 5px; font: 860 18px var(--font-d); }.compare-option em { margin-top: 4px; color: var(--accent-strong); font-style: normal; }.editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }.editor-actions p { max-width: 560px; color: var(--planner-muted); font-size: 10px; line-height: 1.6; }.editor-actions > div { display: flex; gap: 6px; flex-wrap: wrap; }.action-button { min-height: 38px; }
 @media (max-width: 1080px) { .edit-grid { grid-template-columns: 270px minmax(0, 1fr); } }
 @media (max-width: 900px) { .display-grid, .edit-grid, .ledger-grid, .notes-grid { grid-template-columns: 1fr; }.planner-sidebar { position: static; } }
-@media (max-width: 640px) { .growth-tracker { padding: 15px; border-radius: 17px; }.planner-heading { flex-direction: column; }.planner-heading h2 { font-size: 21px; }.planner-refresh { width: 100%; justify-content: center; }.status-metrics { grid-template-columns: 1fr 1fr; }.status-metric:nth-child(3), .status-metric:nth-child(4) { border-top: 1px solid var(--planner-line); }.status-metric:nth-child(3) { border-left: 0; }.planner-card { padding: 14px; }.card-heading { flex-direction: column; }.progress-tags { justify-content: flex-start; }.compare-grid { grid-template-columns: 1fr; }.ledger-row { grid-template-columns: minmax(90px, 1fr) 72px 50px 24px; }.editor-actions { align-items: stretch; flex-direction: column; }.editor-actions > div { width: 100%; }.action-button { flex: 1; }.target-fields input, .target-fields select, .counter input, .counter button, .ledger-input-wrap input, .goal-panel input { min-height: 44px; }.add-menu { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .growth-tracker { padding: 15px; border-radius: 17px; }.planner-heading { flex-direction: column; }.planner-heading h2 { font-size: 21px; }.planner-refresh { width: 100%; justify-content: center; }.status-metrics { grid-template-columns: 1fr 1fr; }.status-metric:nth-child(3), .status-metric:nth-child(4) { border-top: 1px solid var(--planner-line); }.status-metric:nth-child(3) { border-left: 0; }.planner-card { padding: 14px; }.card-heading { flex-direction: column; }.progress-tags { justify-content: flex-start; }.compare-grid { grid-template-columns: 1fr; }.ledger-row { grid-template-columns: minmax(90px, 1fr) 72px 50px 24px; }.editor-actions { align-items: stretch; flex-direction: column; }.editor-actions > div { width: 100%; }.action-button { flex: 1; }.target-fields input, .counter input, .counter button, .ledger-input-wrap input, .goal-panel input { min-height: 44px; }.add-menu { grid-template-columns: 1fr; } }
 /* The planner is a user-facing tool: the status header carries the visual identity,
    followed by the always-visible roster and schedule. */
 .status-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 14px 0 18px; }
@@ -1224,6 +1425,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .status-actions, .workspace-head-actions, .edit-toolbar-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .status-action, .workspace-link, .workspace-return, .toolbar-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--planner-line); border-radius: 10px; background: rgba(255, 253, 246, .84); color: var(--ink); font-size: 11px; font-weight: 800; }
 .status-action:hover, .workspace-link:hover, .toolbar-button:hover { border-color: var(--accent); color: var(--accent-strong); }
+.workspace-link { flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; vertical-align: middle; }
+.workspace-link > svg { flex: none; }
+.outside-manual-date { display: inline-flex; align-items: center; gap: 6px; margin: 4px 8px 0 0; }
 .status-action.primary { border-color: var(--planner-deep); background: var(--planner-deep); color: var(--cream); }
 .status-sync-note { display: inline-flex; align-items: center; gap: 6px; margin: 0 22px 10px; color: var(--accent-strong); font-size: 10px; }
 .status-rule { display: flex; align-items: center; gap: 10px; padding: 16px 0 12px; color: #9d7c4e; font: 700 10px var(--font-s); letter-spacing: .16em; }
@@ -1280,6 +1484,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-prof { display: inline-flex; align-items: center; gap: 3px; }
 .growth-prof img { width: 12px; height: 12px; flex: none; object-fit: contain; }
 .growth-prof-fallback, .growth-identity-separator { flex: none; }
+.growth-mobile-status { display: none; }
 .growth-percent { color: var(--planner-deep); font: 850 20px var(--font-d); }
 .growth-card.complete .growth-percent { color: #b88507; }
 .growth-percent small { margin-left: 2px; font: 700 10px var(--font-b); }
@@ -1326,7 +1531,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .tracker-editable:disabled, .tracker-star-popover :disabled { opacity: .58; cursor: wait; }
 .tracker-number-input { width: 4ch; min-width: 32px; text-align: center; appearance: textfield; cursor: text; }
 .tracker-number-input::-webkit-outer-spin-button, .tracker-number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.target-star-select { appearance: none; -webkit-appearance: none; }
+.target-star-select { width: 100%; }
 .tracker-star-anchor { position: relative; }
 .tracker-star-trigger { cursor: pointer; white-space: nowrap; }
 .tracker-star-popover { position: absolute; z-index: 20; top: calc(100% + 7px); right: 0; left: 0; display: flex; flex-direction: column; gap: 9px; padding: 10px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 25px rgba(73, 59, 44, .22); }
@@ -1384,7 +1589,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .planning-condition-summary { margin: 0; padding: 0 18px 14px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .planning-panel > .settings-panel { padding: 6px 18px 18px; }
  .goal-conditions label { display: grid; gap: 5px; color: var(--ink); font-size: 12px; }
-.goal-conditions input, .goal-conditions select { width: 100%; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 13px var(--font-b); }
+.goal-conditions input { width: 100%; min-width: 0; min-height: 44px; padding: 8px; border: 1px solid var(--planner-line); border-radius: 7px; background: var(--cream); color: var(--ink); font: 13px var(--font-b); }
 .goal-days-field { min-width: 0; }
 .goal-days-input-wrap { position: relative; display: flex; min-width: 0; align-items: center; border: 1px solid var(--planner-line); border-radius: 9px; background: var(--cream); }
 .goal-days-input-wrap:focus-within { outline: 2px solid var(--tea); outline-offset: 2px; }
@@ -1393,11 +1598,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .goal-date-trigger { display: inline-flex; width: 40px; min-width: 40px; height: 42px; min-height: 42px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; }
 .goal-date-trigger:hover:not(:disabled) { background: var(--paper); }
 .goal-date-trigger:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
-.goal-date-popover { position: absolute; z-index: 65; top: calc(100% + 8px); left: 0; width: min(296px, calc(100vw - 80px)); box-sizing: border-box; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 16px 40px -12px rgba(73, 59, 44, .24), inset 0 0 0 4px var(--cream); }
+.goal-date-popover { position: absolute; z-index: 65; top: calc(100% + 8px); left: -1px; width: calc(100% + 2px); min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 28px rgba(73, 59, 44, .14); }
 .goal-date-popover button { appearance: none; display: inline-flex; min-width: 36px; min-height: 36px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
 .goal-date-popover button:hover:not(:disabled) { background: var(--paper); }
 .goal-date-popover button:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
 .goal-date-popover button:disabled { opacity: .45; cursor: not-allowed; }
+.goal-calendar-context { margin-bottom: 8px; padding: 2px 2px 10px; border-bottom: 1px solid var(--line); }
+.goal-calendar-context h4 { margin: 0; color: var(--tea); font: 900 14px/1.5 var(--font-s); }
+.goal-calendar-context p { margin: 4px 0 0; color: var(--ink-60); font: 12px/1.6 var(--font-b); }
 .goal-calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .goal-calendar-heading strong { font-family: var(--font-s); font-size: 14px; }
 .goal-calendar-week, .goal-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
@@ -1446,8 +1654,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .setting-help { margin-top: 8px; color: var(--planner-muted); font-size: 10px; line-height: 1.6; }
 .settings-fields { display: grid; gap: 6px; }
 .training-settings-block .training-levels { margin-top: 0; }
-.training-settings-block .training-levels label { font-size: 10px; }
-.training-settings-block .training-levels select { min-height: 34px; }
+
+
 .goal-panel { padding: 15px; }
 .goal-panel h3 { margin-top: 4px; }
 .goal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
@@ -1481,7 +1689,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .planner-edit-toolbar { align-items: stretch; flex-direction: column; }
   .growth-card-grid { grid-template-columns: 1fr; }
   .workspace-head-actions { width: 100%; justify-content: space-between; }
-  .workspace-link { flex: 1; }
 
   .settings-panel, .goal-fields { grid-template-columns: 1fr; }
   .settings-block + .settings-block, .settings-block:last-child { grid-column: auto; padding-top: 13px; padding-left: 0; border-top: 1px solid var(--planner-line); border-left: 0; }
@@ -1498,12 +1705,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 
 .edit-simulation { display: grid; gap: 12px; align-items: start; min-width: 0; }
 .edit-simulation .ledger-grid { min-width: 0; grid-template-columns: minmax(0, 1fr); }
-.yield-editor { display: grid; gap: 6px; }
-.yield-editor label { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; }
-.yield-editor input { width: 80px; min-height: 40px; }
-.yield-editor select { min-width: 0; width: 100%; min-height: 40px; }
-.yield-editor input, .yield-editor select { color: var(--ink); background: var(--cream); border: 1px solid var(--planner-line); border-radius: 6px; padding: 4px; }
-.yield-editor button { min-width: 40px; min-height: 40px; border: 1px solid var(--planner-line); border-radius: 6px; color: var(--rouge); background: var(--cream); }
 .compare-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .compare-option small, .compare-option span, .compare-option em { font-size: 12px; }
 .compare-option .action-button { margin-top: 8px; }
@@ -1516,9 +1717,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .compare-option small { font-size: 11px; }.compare-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Give each spending channel a stable reading order: category, stage, runs, cost. */
-.spend-name { display: inline-flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 6px; }
-.spend-name b { color: inherit; font-size: 12px; line-height: 1.5; font-weight: 750; }
-.spend-stage { padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--channel) 22%, transparent); border-radius: 5px; background: var(--surface); font: 650 11px/1.5 var(--font-d); white-space: nowrap; }
+.spend-main { display: inline-flex; min-width: 0; align-items: center; gap: 5px; }
+.spend-name { display: inline-flex; min-width: 0; align-items: center; gap: 5px; }
+.spend-name b { min-width: 0; margin: 0; color: inherit; font-size: 12px; line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }
+.spend-stage { display: inline-flex; flex: none; align-items: center; justify-content: center; margin: 0; padding: 2px 5px; border: 1px solid color-mix(in srgb, var(--channel) 22%, transparent); border-radius: 5px; background: var(--surface); font: 650 11px/1.5 var(--font-d); white-space: nowrap; }
+.spend-count { flex: none; white-space: nowrap; font-family: var(--font-d); }
 .ledger-row .channel-label { width: fit-content; min-height: 36px; padding: 5px 8px; }.ledger-row .channel-label .spend-name b { font: inherit; }
 .spend-chips .channel-chip { width: fit-content; max-width: 100%; gap: 7px; }
 .spend-chips .spend-name { flex: 0 1 auto; }
@@ -1531,18 +1734,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .target-fields .progress-values > b { color: var(--ink); font: 700 10px/1.3 var(--font-d); white-space: nowrap; }
 .target-fields .progress-values > span { color: var(--planner-muted); }
 .target-fields .progress-values input { width: 4ch; min-width: 28px; min-height: 28px; height: 28px; padding: 2px; border: 0; border-bottom: 1px dashed var(--accent); border-radius: 0; background: transparent; color: var(--ink); font: 700 11px var(--font-d); text-align: center; }
-.target-fields .progress-values select { width: 100%; min-width: 0; min-height: 28px; height: 28px; padding: 2px 3px; border: 0; border-bottom: 1px dashed var(--accent); border-radius: 0; background: transparent; color: var(--ink); font: 700 10px var(--font-b); }
 .edit-roster-name b { white-space: normal; overflow-wrap: anywhere; }
 .stage-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: 300px; overflow-y: auto; }
 .stage-menu-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--ink-60); font-size: 11px; }
 .add-menu button { min-height: 44px; }.stage-menu > button { justify-content: center; border: 1px solid var(--planner-line); font-size: 12px; color: var(--ink); background: var(--cream); }
 .add-menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (max-width: 640px) { .stage-menu { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .target-fields .progress-values input, .target-fields .progress-values select { min-height: 44px; height: 44px; } }
+@media (max-width: 640px) { .target-fields .progress-values input { min-height: 44px; height: 44px; } }
 .planner-workspace > .planner-cloud-fields { display: grid; gap: 16px; }
 .workspace-feedback { display: grid; gap: 8px; }
 .workspace-feedback .cloud-status, .workspace-feedback .cloud-recovery { margin-top: 0; }
 .schedule-plan-note { margin: 0; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
+.schedule-optimize { display: inline; margin-left: 6px; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--accent-strong); font: inherit; font-weight: 700; vertical-align: baseline; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; cursor: pointer; }
+.schedule-optimize:disabled { opacity: .5; cursor: default; }
+.schedule-optimize:active:not(:disabled) { color: var(--tea); }
+@media (hover: hover) { .schedule-optimize:hover:not(:disabled) { color: var(--tea); } }
 .schedule-update { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--cream); }
 .schedule-update strong { color: var(--tea); font-size: 13px; }.schedule-update p { margin-top: 5px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
 .schedule-update button { flex: none; min-height: 44px; }
@@ -1550,10 +1756,181 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .schedule-difference-details summary { cursor: pointer; }
 @media (max-width: 640px) { .schedule-update { flex-direction: column; align-items: stretch; } }
 .day-plan { gap: 10px; }
-.day-summary { gap: 6px; padding-bottom: 12px; }
-.summary-money { padding-top: 10px; }
 .flow-heading { margin-bottom: 12px; }
 @media (max-width: 640px) {
   .growth-quick-action { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+}
+
+/* Compact execution summary; labels and figures retain a stable reading order. */
+.day-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 0; padding: 4px 0 14px; border-bottom: 1px dashed var(--planner-line); }
+.day-totals > div { display: grid; min-width: 0; gap: 4px; padding: 10px 6px; border-radius: 8px; background: color-mix(in srgb, var(--paper) 62%, var(--surface)); text-align: center; }
+.day-totals dt { color: var(--ink-60); font-size: 12px; }
+.day-totals dd { margin: 0; color: var(--tea); font: 800 20px/1.25 var(--font-d); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.day-totals .gain dd { color: var(--planner-gain); }
+.day-totals .spend dd, .day-totals .negative dd { color: var(--rouge); }
+.day-totals .coin-spend dd { color: var(--accent-strong); }
+.spend-summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-top: 7px; padding-top: 10px; border-top: 1px dashed var(--planner-line); }
+.spend-summary .ledger-total { gap: 8px; margin: 0; padding: 0; border: 0; font-size: 12px; }
+.spend-balance { display: flex; align-items: baseline; gap: 8px; color: var(--ink-60); font-size: 12px; }
+.spend-balance strong { color: var(--planner-gain); font: 850 15px var(--font-d); font-variant-numeric: tabular-nums; }
+.spend-balance.negative, .spend-balance.negative strong { color: var(--rouge); }
+.routine-gains { margin-top: 8px; }
+.routine-gains-toggle, .roster-toggle, .roster-preview { display: none; }
+.roster-move-actions { display: none; }
+.roster-add { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; margin-top: 8px; padding: 8px 12px; border: 1px dashed var(--planner-line); border-radius: 8px; background: var(--cream); color: var(--tea); font: 700 13px var(--font-b); cursor: pointer; }
+.roster-add:disabled { opacity: .55; cursor: default; }
+@media (hover: hover) { .roster-add:hover:not(:disabled) { border-color: var(--accent); background: var(--paper); } }
+.roster-move-actions button { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--tea); cursor: pointer; }
+.roster-move-actions button:disabled { opacity: .3; cursor: default; }
+.roster-toggle:focus-visible, .routine-gains-toggle:focus-visible, .roster-move-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.target-fields .target-field-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px; color: var(--ink-60); }
+.target-field-label small { color: var(--ink-60); font: 400 11px/1.4 var(--font-d); white-space: nowrap; }
+.edit-grid:not(.has-roster) { grid-template-columns: minmax(0, 1fr); }
+.planner-steps { min-width: 0; scroll-margin-top: 16px; }
+.planner-steps ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.planner-steps li { min-width: 0; }
+.planner-steps button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 8px; border: 1px solid var(--planner-line); border-radius: 10px; background: var(--surface); color: var(--ink-60); font: 700 14px var(--font-b); cursor: pointer; }
+.planner-steps button[aria-current="step"] { border-color: var(--tea); background: var(--cream); color: var(--tea); box-shadow: inset 0 -2px var(--accent); }
+.step-number { display: grid; flex: none; place-items: center; width: 24px; height: 24px; border: 1px solid var(--planner-line); border-radius: 50%; font: 700 12px var(--font-d); }
+[aria-current="step"] .step-number { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.planner-steps button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.planner-daily-step { display: grid; min-width: 0; gap: 12px; }
+.planner-step-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--planner-line); }
+.planner-step-actions > p { flex-basis: 100%; margin: 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.planner-step-actions button { min-height: 44px; font-size: 13px; }
+.planner-daily-step > .planner-step-actions { padding-right: 0; padding-left: 0; }
+.planner-comparison-step > .planning-condition-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; background: var(--cream); }
+.planning-condition-summary p { min-width: 0; margin: 0; line-height: 1.7; }
+.planning-condition-summary button { flex: none; min-height: 44px; }
+@media (hover: hover) { .roster-move-actions button:hover:not(:disabled), .planner-steps button:hover { background: var(--paper); } }
+@media (max-width: 900px) {
+  .planner-sidebar { padding: 0 10px; }
+  .roster-toggle { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 4px 0; border: 0; background: transparent; color: var(--tea); text-align: left; cursor: pointer; }
+  .roster-toggle-label { flex: 1; font-size: 14px; font-weight: 750; }
+  .roster-toggle-label small { color: var(--ink-60); font-size: 12px; font-weight: 400; white-space: nowrap; }
+  .roster-preview { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px; }
+  .roster-preview :deep(.operator-avatar) { width: 44px; height: 44px; border-radius: 8px; }
+  .roster-preview :deep(.operator-avatar > span) { font-size: 17px; }
+  .roster-toggle-action { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+  .roster-expanded .roster-toggle-action svg { transform: rotate(180deg); }
+  .planner-sidebar:not(.roster-expanded) > .side-section { display: none; }
+  .planner-sidebar .side-title, .planner-sidebar .drag-handle { display: none; }
+  .planner-sidebar .side-section { padding-top: 0; padding-bottom: 8px; }
+  .planner-sidebar .edit-roster { min-height: 0; max-height: none; grid-auto-rows: auto; gap: 6px; overflow: visible; }
+  .planner-sidebar .edit-roster-item { grid-template-columns: 30px minmax(0, 1fr) 88px 44px; grid-template-rows: 44px auto; gap: 3px 4px; padding: 5px 8px 8px; }
+  .edit-roster-item > :deep(.operator-avatar) { grid-column: 1; grid-row: 1; width: 30px; height: 30px; border-radius: 8px; }
+  .edit-roster-item > :deep(.operator-avatar > span) { font-size: 17px; }
+  .planner-sidebar .edit-roster-name { grid-column: 2; grid-row: 1; }
+  .planner-sidebar .edit-roster-name b { font-size: 13px; }
+  .roster-move-actions { display: flex; grid-column: 3; grid-row: 1; }
+  .planner-sidebar .roster-remove { grid-column: 4; grid-row: 1; width: 44px; height: 44px; }
+  .planner-sidebar .target-fields { grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; padding-top: 6px; }
+  .planner-sidebar .target-fields label { gap: 3px; }
+  .planner-sidebar .target-fields .target-field-label { font-size: 12px; font-weight: 500; }
+  .planner-sidebar .target-fields .progress-values { width: 100%; }
+  .planner-sidebar .target-fields .progress-values input { width: 100%; min-height: 44px; height: 44px; padding: 4px; border: 1px solid var(--planner-line); border-radius: 6px; background: var(--surface); font-size: 16px; }
+}
+@media (max-width: 640px) {
+  .planner-steps ol { gap: 5px; }
+  .planner-steps button { flex-direction: column; gap: 5px; min-height: 66px; padding: 7px 3px; font-size: 13px; }
+  .planner-step-actions { gap: 8px; padding: 12px; }
+  .planner-step-actions button { padding: 6px 8px; font-size: 12px; }
+  .planner-comparison-step > .planning-condition-summary { padding: 12px; }
+  .planning-panel-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding: 12px 14px 8px; }
+  .planning-panel-heading > div { display: contents; }
+  .planning-panel-heading h3 { grid-column: 1; grid-row: 1; }
+  .planning-panel-heading p { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+  .planning-mode { margin: 0 14px 12px; max-width: calc(100% - 28px); gap: 6px; }
+  .planning-mode button { gap: 5px; padding: 8px 6px; font-size: 12px; }
+  .planning-mode button svg { width: 15px; height: 15px; }
+  .day-plan .card-heading { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .day-plan .plan-badge { padding: 4px 8px; font-size: 12px; white-space: normal; }
+  .day-totals { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .day-totals > div { padding: 8px 2px; }
+  .day-totals dt, .day-totals dd { white-space: nowrap; }
+  .day-totals dd { font-size: 18px; }
+  .day-plan .flow-heading { margin-bottom: 6px; color: var(--tea); font-size: 14px; }
+  .day-plan .spend-chips { display: grid; gap: 6px; }
+  .day-plan .spend-chips .channel-chip { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 8px; width: 100%; min-height: 40px; padding: 7px 9px; border: 1px solid var(--planner-line); border-left: 3px solid var(--channel); border-radius: 7px; background: var(--surface); }
+  .day-plan .spend-chips .channel-dot { display: none; }
+  .day-plan .spend-chips .spend-name b { color: var(--ink); font-size: 13px; }
+  .day-plan .spend-chips .spend-stage { background: color-mix(in srgb, var(--channel) 10%, var(--surface)); }
+  .day-plan .spend-chips .spend-stage, .day-plan .channel-chip small { font-size: 12px; }
+  .day-plan .spend-chips .channel-chip strong { min-width: 4ch; margin: 0; text-align: right; font-family: var(--font-d); }
+  .routine-gains-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 4px 0; border: 0; background: transparent; color: var(--ink-60); text-align: left; font: 12px var(--font-b); cursor: pointer; }
+  .routine-gains-toggle strong { margin-left: auto; color: var(--tea); font-family: var(--font-d); }
+  .routine-gains-toggle svg.expanded { transform: rotate(180deg); }
+  .routine-gains:not(.expanded) { display: none; }
+  .routine-gains { margin-top: 0; }
+  .day-plan .balance-warning { font-size: 12px; }
+  .ledger-row { grid-template-columns: minmax(0, 1fr) 72px 44px; gap: 4px 8px; }
+  .spend-ledger-row { grid-template-columns: minmax(0, 1fr) 64px 44px; gap: 4px 6px; }
+  .spend-ledger-row .channel-label { padding-right: 5px; padding-left: 5px; }
+  .spend-ledger-row .channel-label > i { display: none; }
+  .ledger-row .ledger-label-wrap { grid-column: 1; grid-row: 1 / span 2; }
+  .ledger-row .ledger-input-wrap { grid-column: 2; grid-row: 1; }
+  .ledger-row .ledger-input-wrap input { font-size: 16px; }
+  .ledger-row .ledger-input-wrap > span { font-size: 12px; }
+  .ledger-row .recommendation { grid-column: 2; grid-row: 2; font-size: 12px; }
+  .ledger-row .recommendation.matches-plan { display: none; }
+  .ledger-row .row-remove { grid-column: 3; grid-row: 1 / span 2; width: 44px; min-height: 44px; }
+
+}
+@media (max-width: 380px) {
+  .day-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .day-totals .day-balance { display: none; }
+}
+
+/* The mobile roster uses the same paper nameplate as current growth. */
+@media (max-width: 640px) {
+  .growth-card-grid { gap: 28px; padding-top: 20px; }
+  .growth-card {
+    padding: 0 10px 8px;
+    border: 1px solid var(--growth-rarity-border);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: 0 3px 10px rgba(73, 59, 44, .05);
+  }
+  .growth-card.complete { border-top-width: 1px; background: var(--surface); }
+  .growth-card-head { align-items: center; gap: 8px; min-height: 44px; margin-top: -23px; }
+  .growth-identity :deep(.operator-avatar), .growth-identity-meta { display: none; }
+  .growth-identity { min-width: 0; }
+  .growth-identity h3 {
+    padding: 2px 6px;
+    background: var(--surface);
+    font-size: 16px;
+    letter-spacing: .06em;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .growth-percent { display: inline-flex; flex: none; align-items: baseline; gap: 3px; padding: 2px 6px; background: var(--surface); font-size: 16px; }
+  .growth-mobile-status { display: inline; margin-right: 3px; color: var(--tea); font: 600 12px/1.5 var(--font-b); }
+  .growth-percent small { margin: 0; font-size: 12px; }
+  .growth-progress-list { gap: 4px; margin-top: 0; }
+  .growth-progress-row { gap: 0; padding-bottom: 3px; }
+  .growth-progress-label { min-height: 44px; gap: 8px; font-size: 12px; }
+  .growth-progress-label .progress-values { gap: 8px; font-size: 13px; }
+  .growth-progress-side-label { font-size: 11px; }
+  .growth-progress-label b, .growth-progress-label .tracker-number-input, .growth-progress-label .tracker-star-trigger { font-size: 13px; }
+  .growth-progress-label .tracker-editable { min-height: 44px; min-width: 44px; font-size: 16px; }
+  .growth-value-divider { font-size: 0; }
+  .growth-value-divider::after { content: "→"; font-size: 13px; }
+  .growth-quick-action { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+  .growth-track { height: 2px; }
+  /* Detailed requirements remain available in the material disclosure below. */
+  .growth-progress-row > small { display: none; }
+  .growth-materials { margin-top: 4px; }
+  .growth-materials summary { min-height: 44px; font-size: 12px; }
+  .growth-materials summary span { font-size: 12px; }
+  .growth-material-chip { min-height: 36px; font-size: 12px; }
+  .growth-material-chip small, .growth-material-note { font-size: 11px; }
+  .growth-material-chip em { flex-wrap: wrap; justify-content: flex-end; white-space: normal; }
+  .growth-material-chip .growth-material-eta { margin-left: 0; }
+  .growth-action-notice { font-size: 12px; }
+  .tracker-remove { min-height: 44px; font-size: 12px; }
+}
+@media (max-width: 380px) {
+  .growth-progress-side-label { display: none; }
+  .growth-progress-label .progress-values { gap: 6px; }
 }
 </style>

@@ -202,21 +202,28 @@ const filteredEntries = computed(() => {
     return true
   }).sort(compareOperatorIdDesc)
 })
-async function openEditor(isNew) {
+async function openEditor(isNew, { selectNewMembers = false } = {}) {
+  if (props.disabled) return
   creating.value = isNew
   firstPlanSuggestion.value = isNew && !props.plans.length
   firstPlanMode.value = firstPlanSuggestion.value ? 'favorites' : 'custom'
   name.value = isNew ? (firstPlanMode.value === 'favorites' ? '特别关注' : '') : props.activePlan?.name || ''
   resetFilters()
+  if (selectNewMembers) selectionFilter.value = 'unselected'
   selected.value = isNew ? new Set(firstPlanMode.value === 'favorites' ? validFavoriteIds.value : []) : new Set(props.memberIds)
   confirmingDelete.value = false
   filtersOpen.value = false
   dialog.value.showModal()
   await nextTick()
   if (firstPlanSuggestion.value) sourceFirstInput.value?.focus()
-  else if (editingFavorites.value) searchInput.value?.focus()
+  else if (selectNewMembers || editingFavorites.value) searchInput.value?.focus()
   else nameInput.value?.focus()
 }
+function openMemberPicker() {
+  if (!props.activePlan) return
+  return openEditor(false, { selectNewMembers: true })
+}
+defineExpose({ openMemberPicker })
 function toggle(id) { const next = new Set(selected.value); if (next.has(id)) next.delete(id); else next.add(id); selected.value = next }
 function resetFilters() { search.value = ''; profFilter.value = 'all'; subProfFilter.value = 'all'; selectionFilter.value = 'all' }
 function resetAdvancedFilters() { profFilter.value = 'all'; subProfFilter.value = 'all' }
