@@ -5,7 +5,7 @@
       <header class="today-hero">
         <div class="wrap today-wrap">
           <div class="hero-copy">
-            <span class="today-kicker">START · TODAY</span>
+            <span class="today-kicker">YUANHUB · 今日一览</span>
             <h1>今天也来啦</h1>
             <p>不用记住所有页面。先看看今天值得做什么，再从这里去到对应工具。</p>
             <div class="hero-actions">
@@ -24,7 +24,7 @@
             </span>
             <label v-if="auth.isLoggedIn && accounts.length" class="account-picker">
               <span>当前子账号</span>
-              <select v-model="accountId" :disabled="loading" aria-label="选择 Today 数据子账号">
+              <select v-model="accountId" :disabled="loading" aria-label="选择今日一览的数据子账号">
                 <option v-for="account in accounts" :key="account.id" :value="account.id">
                   {{ account.name }} · {{ account.game || activeAccount.gameFor(account.id) }}
                 </option>
@@ -197,7 +197,7 @@ const todayTasks = computed(function () {
       : summary.value.favoriteCount
       ? { title: '看看密探近况', description: `已录入 ${summary.value.operatorCount} 位，${summary.value.favoriteCount} 位特别关注。`, to: '/operator?tab=current', icon: Users }
       : { title: '选出特别关注', description: '把最近要养的密探放到最前面。', to: '/operator?tab=current', icon: Heart }
-    : { title: '录入密探进度', description: '先建立 BOX，之后 Today 才能给出更贴合的提示。', to: '/operator/quick', icon: Zap })
+    : { title: '录入密探进度', description: '先建立 BOX，之后今日一览才能给出更贴合的提示。', to: '/operator/quick', icon: Zap })
   tasks.push(summary.value.inventoryKindCount == null
     ? { title: '打开库存追踪', description: '库存状态暂未读取，可以到库存页继续查看。', to: '/inventory', icon: PackageOpen }
     : summary.value.inventoryKindCount
@@ -257,7 +257,7 @@ async function loadDashboard() {
     }
     await loadSummary(sequence)
   } catch (error) {
-    if (sequence === loadSequence) errorMessage.value = readableError(error, 'Today 数据读取失败')
+    if (sequence === loadSequence) errorMessage.value = readableError(error, '今日一览数据读取失败')
   } finally {
     if (sequence === loadSequence) loading.value = false
   }

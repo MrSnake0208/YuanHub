@@ -13,14 +13,14 @@ export const routes = [
     {
         path: '/',
         alias: '/today',
-        text: 'TODAY',
+        text: '今日一览',
         name: 'today',
         display: true,
         module: 'today',
         icon: 'house',
         component: () => import('/src/pages/today/index.vue'),
         meta: {
-            title: 'TODAY — 鸢鸢相抱 · YuanHub'
+            title: '今日一览 — 鸢鸢相抱 · YuanHub'
         }
     },
     {
