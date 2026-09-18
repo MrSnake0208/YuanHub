@@ -24,6 +24,18 @@ export const routes = [
         }
     },
     {
+        path: '/works',
+        text: '作业广场',
+        name: 'works',
+        display: true,
+        module: 'work',
+        icon: 'layout-grid',
+        component: () => import('/src/pages/work/index.vue'),
+        meta: {
+            title: '作业广场 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/work/:id',
         text: '通关作业',
         name: 'detail',

@@ -1,15 +1,17 @@
 // 密探头像（如鸢 BWiki 立绘）
 export const AV = {
-  '诸葛亮': 'https://patchwiki.biligame.com/images/yuan/a/ab/qf07yu4758yus20frue1v6l4kysecd6.png',
-  '黄月英': 'https://patchwiki.biligame.com/images/yuan/6/6d/axqt2koc81gc5ir6z3y8gla2n8mu647.png',
-  '徐庶': 'https://patchwiki.biligame.com/images/yuan/f/f5/gkfydyxawtbvqqma50b9akrjrt2pscl.png',
-  '祢衡': 'https://patchwiki.biligame.com/images/yuan/d/d7/7b2neout1g5qn4859gfierv393kj964.png',
-  '董奉': 'https://patchwiki.biligame.com/images/yuan/3/3b/d5rm75bn32umgcexeh3t7usxhwqnmg3.png',
-  '庞统': 'https://patchwiki.biligame.com/images/yuan/a/aa/533r9r7we2m4yzmk55c58skr95xaaxl.png',
-  '满宠': 'https://patchwiki.biligame.com/images/yuan/e/e0/8xa1beylh9zw655bjrwbwgnaw7keikg.png',
-  '庞羲': 'https://patchwiki.biligame.com/images/yuan/8/84/q5nylii04553ce8odilnn7n7hl0pt46.png',
-  '士燮': 'https://patchwiki.biligame.com/images/yuan/3/3d/e0n1eo6aon5k20wpmbcmhe15p6d43ql.png',
-  '酆公珠': 'https://patchwiki.biligame.com/images/yuan/6/6b/lmm6lncechg5owlgyxd985enytbccxj.png',
-  '酆公玖': 'https://patchwiki.biligame.com/images/yuan/9/97/8wybrjuuvfdeseuaef8fxi50v3jpp1x.png',
-  '孟获': 'https://patchwiki.biligame.com/images/yuan/7/77/eur1wvcnbkeve3riitgryeaaqz112pz.png'
+  '诸葛亮': '/inventory-icons/agents/char_104_zhugeliang.png',
+  '黄月英': '/inventory-icons/agents/char_068_huangyueying.png',
+  '徐庶': '/inventory-icons/agents/char_063_xushu.png',
+  '祢衡': '/inventory-icons/agents/char_087_miheng.png',
+  '董奉': '/inventory-icons/agents/char_070_dongfeng.png',
+  '庞统': '/inventory-icons/agents/char_051_pangtong.png',
+  '满宠': '/inventory-icons/agents/char_075_manchong.png',
+  '庞羲': '/inventory-icons/agents/char_099_pangxi.png',
+  '士燮': '/inventory-icons/agents/char_093_shixie.png',
+  '酆公珠': '/inventory-icons/agents/char_110_fenggongzhu.png',
+  '酆公玖': '/inventory-icons/agents/char_111_fenggongjiu.png',
+  '孟获': '/inventory-icons/agents/char_121_menghuo.png',
+  '王粲': '/inventory-icons/agents/char_042_wangcan.png',
+  '赵云': '/inventory-icons/agents/char_125_zhaoyun.png'
 }

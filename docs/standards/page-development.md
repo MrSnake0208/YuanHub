@@ -21,7 +21,8 @@ YuanHub/src/pages/<模块>/
 
 现有示例包括：
 
-- `YuanHub/src/pages/index.vue`
+- `YuanHub/src/pages/today/index.vue`
+- `YuanHub/src/pages/work/index.vue`
 - `YuanHub/src/pages/work/detail.vue`
 - `YuanHub/src/pages/tools/cart.vue`
 
