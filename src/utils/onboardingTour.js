@@ -15,7 +15,7 @@ export const ONBOARDING_STEPS = [
     route: '/',
     target: 'today-overview',
     title: '从 TODAY 开始',
-    description: '这里汇总当前最值得关注的养成目标、资源缺口和下一步行动。'
+    description: '这里会根据当前状态告诉你今天适合做什么，也能直接找到 YuanHub 的常用功能。'
   },
   {
     id: 'operator-workspace',
