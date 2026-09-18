@@ -11,17 +11,16 @@
 
 export const routes = [
     {
-        // 作业广场暂时隐藏：/ 重定向到我的密探；恢复时删除 redirect 并把 display 改回 true
         path: '/',
-        redirect: '/operator',
-        text: '作业广场',
-        name: 'plaza',
-        display: false,
-        module: 'plaza',
-        icon: 'grid',
-        component: () => import('/src/pages/index.vue'),
+        alias: '/today',
+        text: 'TODAY',
+        name: 'today',
+        display: true,
+        module: 'today',
+        icon: 'house',
+        component: () => import('/src/pages/demo/index.vue'),
         meta: {
-            title: '作业广场 — 鸢鸢相抱 · YuanHub'
+            title: 'TODAY — 鸢鸢相抱 · YuanHub'
         }
     },
     {

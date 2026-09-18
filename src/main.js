@@ -1,8 +1,10 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { init as authInit } from '@/store/auth.js'
 import { initPwaInstall } from '@/utils/pwaInstall.js'
+import 'driver.js/dist/driver.css'
 import './styles/main.css'
 
 // 滚动出现指令：进入视口时加上 .in（复刻原站 IntersectionObserver 动效）
@@ -66,5 +68,6 @@ initPwaInstall()
 authInit()
 const app = createApp(App)
 app.directive('reveal', reveal)
+app.use(createPinia())
 app.use(router)
 app.mount('#app')

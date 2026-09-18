@@ -6,6 +6,13 @@
     </router-link>
     <nav class="mobile-nav" aria-label="主要导航">
       <router-link
+        to="/"
+        :class="{ active: $route.path === '/' || $route.path === '/today' }"
+      >
+        <House :size="19" aria-hidden="true" />
+        <span>TODAY</span>
+      </router-link>
+      <router-link
         to="/operator"
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
       >
@@ -70,6 +77,15 @@
         <Download :size="19" aria-hidden="true" />
         <span>桌面</span>
       </router-link>
+      <button
+        type="button"
+        class="mobile-tour-trigger"
+        data-tour="replay-entry"
+        @click="restartTutorial"
+      >
+        <CircleHelp :size="19" aria-hidden="true" />
+        <span>教程</span>
+      </button>
     </nav>
   </header>
 
@@ -84,7 +100,11 @@
       </div>
     </router-link>
     <nav class="nav">
-      <!-- 作业广场（暂时隐藏）：<router-link to="/" :class="{ active: $route.path === '/' }"><span class="no">01</span>作业广场</router-link> -->
+      <router-link
+        to="/"
+        :class="{ active: $route.path === '/' || $route.path === '/today' }"
+        ><span class="no">00</span>TODAY</router-link
+      >
       <router-link
         to="/operator"
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
@@ -145,6 +165,14 @@
       -->
     </nav>
     <div class="island-foot">
+      <button
+        type="button"
+        class="foot-tour"
+        data-tour="replay-entry"
+        @click="restartTutorial"
+      >
+        <CircleHelp :size="14" aria-hidden="true" />重新查看新手教程
+      </button>
       <template v-if="isLoggedIn">
         <router-link to="/user/profile" class="foot-user">{{
           userName
@@ -166,8 +194,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   Bell,
   BookUser,
+  CircleHelp,
   Download,
   Gem,
+  House,
   LogIn,
   MessageSquareText,
   PackageOpen,
@@ -176,6 +206,8 @@ import {
   UserRound,
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
+import { useRouter } from "vue-router";
+import { restartOnboardingTour } from "@/utils/onboardingTour.js";
 import {
   getUnreadNotificationCount,
   NOTIFICATION_STATE_EVENT,
@@ -191,6 +223,7 @@ const userName = computed(() =>
   auth.userInfo && auth.userInfo.user_name ? auth.userInfo.user_name : "用户",
 );
 const unreadCount = ref(0);
+const router = useRouter();
 let unreadPollTimer = null;
 let unreadCountRequestId = 0;
 let stopFeedbackUnread = null;
@@ -198,6 +231,10 @@ let stopFeedbackUnread = null;
 function onLogout() {
   // store/auth.js 的 logout() 会清空登录态并跳转 /login
   doLogout();
+}
+
+function restartTutorial() {
+  void restartOnboardingTour(router);
 }
 
 async function fetchUnreadCount() {
@@ -313,5 +350,55 @@ onBeforeUnmount(function () {
 }
 .mobile-nav a {
   position: relative;
+}
+.mobile-tour-trigger {
+  position: relative;
+  flex: 0 0 68px;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-60);
+  font-family: var(--font-b);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+}
+.mobile-tour-trigger:hover {
+  background: var(--yellow);
+  color: var(--ink);
+}
+.foot-tour {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-60);
+  font-family: var(--font-b);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.foot-tour:hover {
+  color: var(--accent);
+}
+@media (max-width: 480px) {
+  .mobile-tour-trigger {
+    flex-basis: 62px;
+    min-width: 0;
+    padding-inline: 2px;
+  }
 }
 </style>

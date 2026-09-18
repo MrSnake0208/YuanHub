@@ -73,6 +73,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Check, Download, MoreVertical, Share2, SquarePlus, X } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
+import { useOnboardingStore } from '@/stores/onboarding.js'
 import {
   dismissPwaInstallPrompt,
   pwaInstallState,
@@ -81,13 +82,14 @@ import {
 } from '@/utils/pwaInstall.js'
 
 const route = useRoute()
+const onboarding = useOnboardingStore()
 const ready = ref(false)
 const showQuickGuide = ref(false)
 const installing = ref(false)
 let revealTimer = null
 
 const visible = computed(function () {
-  return route.path !== '/install' && ready.value && !dialog._state.visible && shouldShowPwaInstallPrompt()
+  return route.path !== '/install' && ready.value && !dialog._state.visible && !onboarding.active && shouldShowPwaInstallPrompt()
 })
 
 function closePrompt() {

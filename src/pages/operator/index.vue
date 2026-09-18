@@ -50,6 +50,7 @@
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             id="operator-account-workspace"
+            data-tour="operator-workspace"
             class="operator-account-workspace"
             :class="{ 'is-compact': accountWorkspaceCompact }"
             v-model:compact="accountWorkspaceCompact"

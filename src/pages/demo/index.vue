@@ -1,14 +1,6 @@
 <template>
   <div class="demo-page">
-    <aside class="demo-side" aria-label="演示导航">
-      <div class="demo-side-brand"><img class="demo-side-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" /><span><b>YuanHub</b><small>养成规划预览</small></span></div>
-      <nav class="demo-side-nav">
-        <router-link to="/demo" class="active"><span>01</span>养成规划演示</router-link>
-        <router-link to="/operator"><span>02</span>正式密探页面</router-link>
-        <router-link to="/inventory"><span>03</span>正式库存页面</router-link>
-      </nav>
-      <p class="demo-side-note">本页使用示例存档<br>不会读取真实账号</p>
-    </aside>
+    <IslandSidebar />
 
     <main id="main-content" class="demo-main">
       <header class="demo-hero">
@@ -31,7 +23,7 @@
 
       <section class="demo-content">
         <div class="wrap demo-wrap">
-          <nav class="demo-tabs" aria-label="演示视图">
+          <nav class="demo-tabs" aria-label="演示视图" data-tour="today-overview">
             <button v-for="item in viewItems" :key="item.id" type="button" :class="{ active: view === item.id }" :aria-current="view === item.id ? 'page' : undefined" @click="setView(item.id)">
               <component :is="item.icon" :size="16" aria-hidden="true" />
               <span>{{ item.label }}</span>
@@ -110,6 +102,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, BookOpen, ChevronRight, CircleCheck, Clock3, Heart as HeartIcon, Info, PackageOpen, RotateCcw, Sparkles, Target, TrendingUp, UserRound, Zap } from '@lucide/vue'
+import IslandSidebar from '../../components/IslandSidebar.vue'
 import { DEMO_SCENARIO, calculateDemoSummary, calculateEtaDays, calculateMaterialPlans, calculateOperatorProgress, createDemoState, normalizeDemoView, updateDemoTarget } from '../../data/demoScenario.js'
 
 const route = useRoute()
@@ -382,35 +375,22 @@ function hideBrokenImage(event) { event.target.style.display = 'none' }
 .demo-footer{padding:23px 0 30px;border-top:1px solid var(--demo-line);color:var(--demo-muted);font-size:10px}
 .demo-footer .wrap{display:flex;justify-content:space-between;gap:18px}
 
-.demo-side{position:fixed;left:28px;top:28px;bottom:28px;width:236px;z-index:50;display:flex;flex-direction:column;padding:30px 26px 24px;background:var(--cream);border:1px solid var(--demo-line);border-radius:26px;box-shadow:0 24px 60px -24px rgba(73,59,44,.28),0 2px 8px rgba(73,59,44,.05)}
-.demo-side-brand{display:flex;align-items:center;gap:10px;padding-bottom:24px;border-bottom:1px dashed var(--demo-line)}
-.demo-side-mark{display:block;width:34px;height:34px;flex:none;object-fit:contain}
-.demo-side-brand b,.demo-side-brand small{display:block}
-.demo-side-brand b{font:800 14px var(--font-d)}
-.demo-side-brand small{margin-top:3px;color:var(--demo-muted);font-size:11px}
-.demo-side-nav{display:flex;flex-direction:column;gap:5px;margin-top:28px}
-.demo-side-nav a{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:11px;color:var(--demo-muted);font-size:13px;font-weight:700;text-decoration:none;transition:background-color .2s ease,color .2s ease}
-.demo-side-nav a span{color:var(--demo-muted);font:800 10px var(--font-d)}
-.demo-side-nav a.active,.demo-side-nav a:hover{background:var(--yellow);color:var(--ink)}
-.demo-side-nav a.active span,.demo-side-nav a:hover span{color:var(--ink)}
-.demo-side-note{margin-top:auto;padding-top:18px;border-top:1px dashed var(--demo-line);color:var(--demo-muted);font-size:11px;line-height:1.8}
-
 @keyframes demo-in{from{opacity:.2;transform:translateY(5px)}to{opacity:1;transform:none}}
 
 @media (max-width:1100px){
-  .demo-side{display:none}
-  .demo-main{margin-left:0}
   .demo-overview-grid,.demo-operator-grid{grid-template-columns:1fr}
   .demo-target-row{grid-template-columns:minmax(180px,1fr) minmax(220px,1.2fr) 36px}
   .demo-target-progress{grid-column:2}
   .demo-target-edit{grid-column:1 / -1}
   .demo-icon-button{grid-column:3;grid-row:1;justify-self:end}
 }
+@media (max-width:1080px){
+  .demo-main{margin-left:0}
+}
 @media (min-width:768px) and (max-width:1100px){
   .demo-hero::after{right:-24px;top:-68px;font-size:300px}
 }
 @media (max-width:767px){
-  .demo-side{display:none}
   .demo-main{margin-left:0}
   .demo-hero{padding-top:27px;border-radius:0 0 24px 24px}
   .demo-hero::after{top:-62px;right:-28px;font-size:160px}
