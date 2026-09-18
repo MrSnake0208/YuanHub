@@ -83,14 +83,15 @@
             <div class="sec-head">
               <span class="idx">02</span><h2 id="team-title">五槽位阵容</h2><span class="en">Operators</span>
             </div>
-            <div v-if="work" class="operator-grid">
+            <div v-if="work" class="operator-grid" aria-label="五槽位阵容表" tabindex="0">
               <article v-for="(operator, index) in operators" :key="index" class="operator-card">
-                <span class="slot-number">{{ index + 1 }}号位</span>
+                <span class="slot-number"><b>{{ index + 1 }}</b>{{ index + 1 }}号位</span>
                 <img v-if="operator && AV[operator]" :src="AV[operator]" :alt="operator" width="88" height="88">
                 <span v-else class="operator-fallback" aria-hidden="true">{{ operator ? operator.slice(0, 1) : '—' }}</span>
                 <strong>{{ operator || '未指定' }}</strong>
               </article>
             </div>
+            <p v-if="work" class="operator-hint">五位横排，窄屏可横向滑动查看完整阵容。</p>
             <p v-else class="section-note">协议转换未生成 Work 文档，无法展示槽位。</p>
           </section>
 
@@ -107,7 +108,7 @@
             </div>
             <div v-if="roundRows.length" class="round-table-wrap">
               <table class="round-table">
-                <thead><tr><th>回合</th><th v-for="slot in 5" :key="slot">{{ slot }}号位</th><th>流程 / 检查</th></tr></thead>
+                <thead><tr><th>回合</th><th v-for="slot in 5" :key="slot"><span>{{ slot }}号位</span><strong>{{ operators[slot - 1] || '未指定' }}</strong></th><th><span>其他</span><strong>流程 / 检查</strong></th></tr></thead>
                 <tbody>
                   <tr v-for="row in roundRows" :key="row.round">
                     <th scope="row">{{ row.round }}</th>
@@ -349,18 +350,23 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 .level-card span { color: var(--ink-60); }
 .level-card code { margin-left: auto; color: var(--brand-blue); overflow-wrap: anywhere; }
 .level-card.unmatched { border-style: dashed; }
-.operator-grid { margin-top: 28px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
-.operator-card { min-width: 0; display: grid; justify-items: center; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); text-align: center; }
+.operator-grid { max-width: 100%; margin-top: 28px; display: grid; grid-template-columns: repeat(5, minmax(132px, 1fr)); gap: 1px; overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--line); scrollbar-gutter: stable; }
+.operator-card { position: relative; min-width: 0; display: grid; justify-items: center; gap: 10px; padding: 42px 16px 18px; background: var(--surface); text-align: center; }
 .operator-card img, .operator-fallback { width: 88px; height: 88px; display: grid; place-items: center; border-radius: 18px; background: var(--paper); object-fit: cover; }
 .operator-fallback { color: var(--ink-35); font: 900 28px var(--font-s); }
-.slot-number { color: var(--ink-60); font: 800 11px var(--font-d); }
+.slot-number { position: absolute; top: 12px; right: 13px; display: inline-flex; align-items: center; gap: 5px; color: var(--ink-60); font: 800 10px var(--font-d); }
+.slot-number b { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--slate); color: var(--cream); font-size: 11px; }
 .operator-card strong { overflow-wrap: anywhere; }
+.operator-hint { display: none; margin-top: 8px; color: var(--ink-35); font-size: 11px; text-align: right; }
 .work-details, .section-note { margin-top: 28px; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
 .section-note { color: var(--ink-60); }
 .round-table-wrap { margin-top: 28px; overflow-x: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .round-table { width: 100%; min-width: 980px; border-collapse: collapse; }
 .round-table th, .round-table td { padding: 14px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .round-table thead th { background: var(--tea); color: var(--cream); font-size: 12px; }
+.round-table thead th span, .round-table thead th strong { display: block; }
+.round-table thead th span { color: rgba(255, 248, 236, .64); font-size: 9px; letter-spacing: .08em; }
+.round-table thead th strong { margin-top: 3px; font-size: 12px; }
 .round-table tbody th { background: var(--paper); font: 900 18px var(--font-d); }
 .action-list { min-width: 110px; display: grid; gap: 8px; list-style: none; }
 .action-list li { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
@@ -407,7 +413,6 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 .copy-feedback { min-height: 24px; margin-top: 14px; color: var(--accent-strong); font-size: 12px; }
 @keyframes detail-spin { to { transform: rotate(360deg); } }
 @media (max-width: 900px) {
-  .operator-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .target-grid { grid-template-columns: 1fr; }
   .detail-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -418,8 +423,8 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
   .detail-content section + section { margin-top: 44px; }
   .detail-meta-grid { grid-template-columns: 1fr; }
   .level-card code { width: 100%; margin-left: 0; }
-  .operator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .operator-card:last-child { grid-column: 1 / -1; }
+  .operator-grid { margin-inline: -16px; max-width: calc(100% + 32px); border-radius: 0; }
+  .operator-hint { display: block; }
   .target-card > header { align-items: flex-start; flex-direction: column; }
   .target-card > header button { width: 100%; }
   .round-table-wrap { margin-inline: -16px; border-radius: 0; }

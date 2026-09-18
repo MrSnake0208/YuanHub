@@ -144,12 +144,14 @@ watch(function () { return route.query.page }, function (value) {
 
 <style scoped>
 .works-content { padding: 48px 0 8px; }
+.works-page .hero { --wm: '作业'; }
 .works-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 2px solid var(--ink); }
 .works-heading h2 { margin-top: 5px; font: 900 clamp(28px, 3vw, 40px) var(--font-s); letter-spacing: .06em; }
 .works-heading p { color: var(--ink-60); font-size: 13px; }
 .eyebrow { color: var(--accent-strong); font: 800 11px var(--font-d); letter-spacing: .18em; }
 .source-value { font-size: 28px !important; }
 .works-live { min-height: 300px; }
+.list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .works-state { min-height: 300px; margin-top: 28px; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 48px 24px; border: 1.5px dashed var(--line); border-radius: 22px; background: var(--surface); color: var(--ink-60); text-align: center; }
 .works-state strong { color: var(--ink); font: 900 20px var(--font-s); }
 .works-state span { max-width: 520px; font-size: 13px; line-height: 1.7; }
@@ -163,6 +165,7 @@ watch(function () { return route.query.page }, function (value) {
 @media (max-width: 767px) {
   .works-content { padding-top: 28px; }
   .works-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .list { grid-template-columns: 1fr; gap: 12px; }
   .works-state { min-height: 240px; margin-top: 16px; border-radius: 16px; }
   .works-pagination { justify-content: space-between; gap: 8px; }
   .works-pagination span { text-align: center; }
