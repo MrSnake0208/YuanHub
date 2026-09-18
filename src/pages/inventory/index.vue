@@ -164,6 +164,7 @@
           <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
           <div
             class="inventory-tabs"
+            data-tour="inventory-workspace"
             role="tablist"
             aria-label="库存工作区"
             v-reveal

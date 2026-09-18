@@ -27,7 +27,7 @@ VITE_API_BASE=http://127.0.0.1:8080
 
 | 路由 | 页面 | 对应原文件 |
 |---|---|---|
-| `/` | 作业广场：Hero + 工具栏（Tab / 站点筛选 / 搜索 / 排序）+ 作业卡列表（分页加载）+ 三方共建 + 页脚 | `index.html` |
+| `/`、`/today` | TODAY：养成规划总览、目标、资源缺口与密探档案；使用本地示例存档引导用户认识工作流 | `7f080d7` 初版演示页 |
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
 | `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
 | `/changelog` | 更新日志：公开查看已审核发布的富文本与图片内容 | — |
@@ -58,13 +58,13 @@ VITE_API_BASE=http://127.0.0.1:8080
     ├── components/             # IslandSidebar / DetailSidebar / WorkCard / SiteFooter
     │   └── cart/               # PackageCard / ReceiptPanel / CustomPackageModal
     └── pages/                  # 页面（按模块分子目录）
-        ├── index.vue           # 作业广场（/）
+        ├── index.vue           # 历史作业广场页面（当前未注册入口）
         ├── work/detail.vue     # 通关作业详情（/work/:id）
         ├── tools/cart.vue      # 广陵账房·礼包计算器（/cart）
         ├── admin/index.vue     # 管理工作台（/manage）
         ├── changelog/          # 公开阅读与所见即所得管理页
         ├── level/admin.vue     # 公共关卡管理（/level/admin，需 level_catalog:write）
-        └── demo/index.vue      # 养成规划演示（/demo，仅使用本地示例数据）
+        └── demo/index.vue      # TODAY（/、/today）及兼容演示入口（/demo，仅使用本地示例数据）
 ```
 
 ## 复刻要点
@@ -74,6 +74,7 @@ VITE_API_BASE=http://127.0.0.1:8080
 - **加载更多**：原站按钮无逻辑，复刻版实现了分页（每页 6 条）+ ‹ › 翻页。
 - **详情页**：scrollspy 高亮 + 平滑锚点滚动 + 密探星级/星石/要点全数据化。
 - **动效**：IntersectionObserver 滚动出现（v-reveal 指令，支持错峰 delay）、路由淡入淡出。
+- **新手引导**：首次访问自动展示 5 步教程，完成或跳过后在本机记忆；可通过桌面侧栏或移动导航的“教程”入口重新查看。
 - 原站 10 条作业数据中，仅「阳泰山府10 无庞统」有详情链接，其余卡片不可点击（与原站一致）。
 - **广陵账房页**（`/cart`）：由 `yuanpaid`（React 版游戏礼包购物车）迁移，数据（101+41 个礼包、28 档累充奖励）逐字保留，交互逻辑（限购、汇率、筛选、自定义、导出图片）忠实移植，并按设计规范 v1.0 整体重新上色。
-- 依赖：`@lucide/vue`（图标）、`html2canvas`（导出图片）、Tiptap（更新日志所见即所得编辑与只读渲染）。
+- 依赖：`@lucide/vue`（图标）、`html2canvas`（导出图片）、Tiptap（更新日志编辑与渲染）、Pinia（新手引导状态）与 Driver.js（页面引导）。

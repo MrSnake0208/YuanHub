@@ -35,10 +35,12 @@ import { starCaptureRouteForEvent } from '@/pages/star/captureTransport.js'
 import { routeLoadingState } from '@/router/index.js'
 import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
 import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
+import { initializeOnboardingTour } from '@/utils/onboardingTour.js'
 
 let stopWatch = null
 let stopEventPrompt = null
 let stopStarCaptureRoute = null
+let stopOnboarding = null
 let monitorPromptPending = false
 const MONITOR_DISMISSED_KEY = 'yuanhub:operator-monitor-prompt-dismissed:v1'
 const router = useRouter()
@@ -112,6 +114,7 @@ function routeStarCapture(message) {
 
 onMounted(function () {
   resetMonitorPromptForFreshNavigation()
+  stopOnboarding = initializeOnboardingTour(router)
   stopWatch = watch(
     function () { return [auth.accessToken, activeAccount.id] },
     syncAccountEventStream,
@@ -125,6 +128,7 @@ onBeforeUnmount(function () {
   if (stopWatch) stopWatch()
   if (stopEventPrompt) stopEventPrompt()
   if (stopStarCaptureRoute) stopStarCaptureRoute()
+  if (stopOnboarding) stopOnboarding()
   stopAccountEventStream()
 })
 </script>
