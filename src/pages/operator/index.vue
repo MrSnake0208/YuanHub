@@ -891,6 +891,17 @@
               </div>
             </div>
 
+            <section v-if="orphanCurrentEntries.length" class="orphan-current" aria-label="已从公共图鉴删除的密探">
+              <p>以下密探已从公共图鉴删除，旧养成仍保存在此子账号中。核对 ID 后可移除。</p>
+              <ul>
+                <li v-for="entry in orphanCurrentEntries" :key="entry.id">
+                  <span><b>{{ entry.name || entry.id }}</b><small>Lv.{{ entry.level }} · 修为 {{ entry.elite }}<template v-if="entry.name"> · {{ entry.id }}</template></small></span>
+                  <button type="button" class="btn ghost" :disabled="!!removingOrphanId || loading || accountBusy" @click="removeOrphanCurrent(entry)">{{ removingOrphanId === entry.id ? '移除中…' : '移除旧养成' }}</button>
+                </li>
+              </ul>
+            </section>
+            <p v-if="orphanNotice" class="state slim" role="status">{{ orphanNotice }}</p>
+
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
               v-reveal
@@ -1100,6 +1111,21 @@
                   :aria-busy="cardSubmitStates[e.id] === 'submitting'"
                   role="listitem"
                 >
+                  <picture
+                    v-if="ledgerCardIsV3 && operatorPortraits[e.id] && !failedPortraitIds.has(e.id)"
+                    class="ledger-portrait"
+                    aria-hidden="true"
+                  >
+                    <source media="(max-width: 640px)" :srcset="operatorPortraits[e.id]" />
+                    <img
+                      alt=""
+                      width="480"
+                      height="350"
+                      loading="lazy"
+                      decoding="async"
+                      @error="failedPortraitIds.add(e.id)"
+                    />
+                  </picture>
                   <header class="ledger-card-head">
                     <label
                       v-if="batchSelectMode"
@@ -1140,12 +1166,22 @@
                           />
                         </button>
                       </OperatorAvatar>
-                      <h3 :title="e.name || e.id">{{ e.name || e.id }}</h3>
+                      <h3
+                        :class="{
+                          'is-three-char-name': Array.from(e.name || e.id).length === 3,
+                          'is-long-name': Array.from(e.name || e.id).length > 3,
+                        }"
+                        :title="e.name || e.id"
+                      ><template v-if="ledgerCardIsV3 && e.name === '陈登·黍王'">陈登·<span class="ledger-name-continuation">黍王</span></template><template v-else>{{ e.name || e.id }}</template></h3>
                     </div>
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
                         <h3 :title="e.name || e.id">{{ e.name || e.id }}</h3>
-                        <span v-if="ledgerCardIsV2" class="ledger-prof-tab">
+                        <span
+                          v-if="ledgerCardIsV2"
+                          class="ledger-prof-tab"
+                          :class="{ 'ledger-prof-tab--fuzhu': e.id === 'char_085_shizimiaosp' }"
+                        >
                           <img
                             v-if="profIcon(e.prof)"
                             :src="profIcon(e.prof)"
@@ -3143,6 +3179,7 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import operatorPortraits from "../../data/operatorPortraits.json";
 import PlannerSelect from "../../components/operator/PlannerSelect.vue";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
@@ -3162,6 +3199,7 @@ import {
   renameOperatorAccount,
   deleteOperatorAccount,
   getOperatorCurrent,
+  removeOrphanOperatorCurrent,
   patchOperatorCurrent,
   getOperatorAnnotations,
   putOperatorAnnotation,
@@ -3241,8 +3279,12 @@ const growthTrackingEnabled = isFeatureEnabled(
   FEATURE_KEYS.OPERATOR_GROWTH_TRACKING,
 );
 const ledgerCardVersionClass = operatorLedgerCardVersionClass();
+const ledgerCardIsV3 =
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V3;
+// V3 uses the V2 controls and data presentation beneath its portrait skin.
 const ledgerCardIsV2 =
-  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2;
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2 || ledgerCardIsV3;
+const failedPortraitIds = ref(new Set());
 
 const route = useRoute();
 const router = useRouter();
@@ -3276,8 +3318,10 @@ const catalogLoading = ref(false);
 const error = ref("");
 const catalogError = ref("");
 const catalogVersion = ref("");
-const backendCatalog = ref([]);
+const backendCatalog = ref(null);
 const currentEntries = ref([]);
+const removingOrphanId = ref("");
+const orphanNotice = ref("");
 const showArchive = ref(false);
 const showImport = ref(false);
 const importText = ref("");
@@ -4074,7 +4118,7 @@ watch(editing, async function (isOpen) {
 });
 
 const catalogOperators = computed(function () {
-  if (backendCatalog.value.length)
+  if (Array.isArray(backendCatalog.value))
     return backendCatalog.value.map(normalizeOperator);
   // 后端不可达时的本地兜底：库存角色目录已含 id/name/稀有度/属性，足够展示基础图鉴
   return AGENT_CATALOG.map(function (e) {
@@ -4431,6 +4475,41 @@ const currentMap = computed(function () {
   return m;
 });
 
+const orphanCurrentEntries = computed(function () {
+  if (!Array.isArray(backendCatalog.value) || catalogLoading.value || loading.value || error.value) return [];
+  return currentEntries.value.filter(entry => !catalogMap.value[entry.id]);
+});
+
+async function removeOrphanCurrent(entry) {
+  if (removingOrphanId.value || !auth.isLoggedIn || !accountId.value) return;
+  const targetAccount = accountId.value;
+  const confirmed = await dialog.confirm({
+    title: "移除旧养成",
+    message: "确定移除「" + currentAccountName.value + "」中「" + entry.id + "」的旧养成？此子账号各版本中的该 ID 都会移除，历史导入记录保留。若需要保留练度，请先导出备份。",
+    confirmText: "移除旧养成",
+    type: "danger",
+  });
+  if (!confirmed || accountId.value !== targetAccount || removingOrphanId.value) return;
+  removingOrphanId.value = entry.id;
+  orphanNotice.value = "";
+  try {
+    await removeOrphanOperatorCurrent({ accountId: targetAccount, operatorId: entry.id });
+    if (accountId.value !== targetAccount) return;
+    currentEntries.value = currentEntries.value.filter(item => item.id !== entry.id);
+    orphanNotice.value = "已移除旧养成：" + entry.id;
+    await reloadCurrent();
+  } catch (err) {
+    if (accountId.value !== targetAccount) return;
+    orphanNotice.value = err.code === "operator_still_in_catalog"
+      ? "该密探仍在公共图鉴中，无法移除，请刷新图鉴后核对。"
+      : humanErr(err, "旧养成移除失败，请重试");
+  } finally {
+    removingOrphanId.value = "";
+  }
+}
+
+watch(accountId, () => { orphanNotice.value = ""; });
+
 // 图鉴顶部统计口径（不跟随属性/职业/搜索/已拥有筛选）：仅按游戏过滤的全量
 const statsEntries = computed(function () {
   const state = currentMap.value;
@@ -4519,7 +4598,7 @@ const filterSuffix = computed(function () {
 
 // 当前养成首要口径：只展示已拥有，再叠加属性 / 职业筛选。
 const ownedCurrentEntries = computed(function () {
-  return currentEntries.value.filter(isOperatorOwned);
+  return currentEntries.value.filter(entry => catalogMap.value[entry.id] && isOperatorOwned(entry));
 });
 
 const currentStatusCounts = computed(function () {
@@ -7547,11 +7626,12 @@ async function loadCatalog() {
   catalogError.value = "";
   try {
     const data = await getOperatorCatalog();
+    if (!Array.isArray(data?.operators)) throw new Error("公共图鉴响应无效");
     backendCatalog.value =
       data && Array.isArray(data.operators) ? data.operators : [];
     catalogVersion.value = (data && data.catalog_version) || "";
   } catch (err) {
-    backendCatalog.value = [];
+    backendCatalog.value = null;
     catalogError.value = humanErr(err, "图鉴加载失败，当前显示本地兜底目录");
   } finally {
     catalogLoading.value = false;
@@ -8447,6 +8527,14 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.orphan-current { margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
+.orphan-current p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }
+.orphan-current ul { list-style: none; margin: 0; padding: 0; }
+.orphan-current li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 0; }
+.orphan-current li > span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.orphan-current small { display: block; margin-top: 4px; }
+.orphan-current button { min-height: 44px; }
+
 .workspace-mobile-link { display: none; }
 .current-ledger-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
 .current-ledger-heading .section-kicker { margin-bottom: 0; }
@@ -15106,3 +15194,4 @@ onBeforeUnmount(function () {
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v3.css"></style>
