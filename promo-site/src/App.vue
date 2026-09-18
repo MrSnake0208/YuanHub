@@ -11,6 +11,7 @@
           <a href="#share">神秘代码</a>
           <a href="#privacy">隐私授权</a>
           <a href="#ecosystem">社区生态</a>
+          <a href="#feature-preview">功能预告</a>
           <a href="#community-build">社区共建</a>
         </nav>
         <!-- PLACEHOLDER: 把正式 YuanHub 主站 URL 填到这里 -->
@@ -24,11 +25,11 @@
       <section class="hero-section">
         <div class="wrap hero-grid">
           <div class="hero-copy">
-            <div class="eyebrow"><span>01</span> YOUR GAME ARCHIVE</div>
-            <h1>把你的游戏资料，<br /><em>整理成真正属于你的档案</em></h1>
+            <div class="eyebrow"><span>01</span> AUTOMATION &amp; DAILY PLANNING</div>
+            <h1>自动同步采集结果，<br /><em>今天该做什么一眼看清</em></h1>
             <p class="hero-lede">
-              密探、库存、星石与多个游戏档案分别维护。需要时生成神秘代码把 BOX 分享给朋友，
-              也可以把 YuanHub 中你指定的数据开放给 MaaYuan 等社区工具使用。
+              用户授权并绑定游戏档案后，MaaYuan 将自动采集结果上传至 YuanHub；YuanHub 统一整理密探与库存，
+              用于今日一览、养成规划预览和 BOX 分享。采集与日常执行由你授权的社区工具完成，YuanHub 负责整理、规划和分享。
             </p>
             <div class="hero-actions">
               <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
@@ -36,9 +37,9 @@
               <button class="secondary-btn promo-install-trigger" type="button" @click="installPanelOpen = true">先保存 YuanHub 到桌面 <span>＋</span></button>
             </div>
             <div class="hero-trust">
-              <span><i>✓</i> 用户自行录入</span>
-              <span><i>✓</i> 不默认公开</span>
-              <span><i>✓</i> 按档案与权限开放</span>
+              <span><i>✓</i> MaaYuan 自动采集并上传</span>
+              <span><i>✓</i> 今日一览与养成规划预览</span>
+              <span><i>✓</i> 绑定档案 · 权限可控</span>
             </div>
           </div>
 
@@ -46,8 +47,8 @@
             <div class="demo-browser hero-browser">
               <div class="browser-bar">
                 <span class="browser-dots"><i></i><i></i><i></i></span>
-                <span class="browser-title">YuanHub · 密探名册</span>
-                <span class="demo-badge">自动演示</span>
+                <span class="browser-title">MaaYuan → YuanHub · 采集结果已同步</span>
+                <span class="demo-badge">页面示意</span>
               </div>
               <div class="browser-body hero-demo-body">
                 <div class="demo-sidebar">
@@ -120,9 +121,9 @@
           <div class="section-heading split-heading">
             <div>
               <div class="eyebrow"><span>02</span> WHAT YUANHUB DOES</div>
-              <h2>一个账号，<em>把这些都整理起来</em></h2>
+              <h2>一次采集，<em>把今天和养成都串起来</em></h2>
             </div>
-            <p>先看真实能力，再理解“社区数据层”。这里展示的功能均对应 YuanHub 当前项目页面；演示数据为占位内容。</p>
+            <p>先看 MaaYuan 自动采集结果如何进入 YuanHub，再用于今日一览、养成规划与分享。演示数据为占位内容。</p>
           </div>
 
           <div class="feature-shell">
@@ -188,13 +189,13 @@
                 </div>
 
                 <div v-else class="feature-visual connection-visual">
-                  <div class="visual-top"><b>应用连接</b><span>个人中心</span></div>
+                  <div class="visual-top"><b>自动采集结果同步</b><span>页面示意</span></div>
                   <div class="connection-card">
                     <img src="/icons/maa.png" alt="MaaYuan 图标" />
-                    <div><b>MaaYuan</b><span>连接至：主账号 · 如鸢</span></div>
-                    <em>已连接</em>
+                    <div><b>MaaYuan</b><span>采集结果 → 主账号 · 如鸢</span></div>
+                    <em>已授权</em>
                   </div>
-                  <div class="scope-pills"><span>✓ 读取密探</span><span>✓ 写入密探</span><span>✓ 读取库存</span><span>✓ 写入库存</span></div>
+                  <div class="scope-pills"><span>✓ 上传密探</span><span>✓ 读取养成状态</span><span>✓ 上传库存</span><span>✓ 上传星石</span></div>
                   <div class="token-line"><small>YuanHub 连接码</small><code>yh_live_••••••••••</code><button type="button" tabindex="-1">复制</button></div>
                 </div>
 
@@ -435,17 +436,18 @@
         </div>
       </section>
 
-      <section class="section roadmap-section">
+      <section id="feature-preview" class="section roadmap-section">
         <div class="wrap roadmap-layout">
           <div class="section-copy">
-            <div class="eyebrow"><span>07</span> GROWING WITH THE COMMUNITY</div>
-            <h2>YuanHub，<br /><em>还会继续生长</em></h2>
-            <p>已经上线的能力与未来构想分开呈现，让宣传页不再把“当前功能”和“概念设想”混在一起。</p>
+            <div class="eyebrow"><span>07</span> FEATURE PREVIEW</div>
+            <h2>现在能用什么，<br /><em>下一步做什么</em></h2>
+            <p>当前能力、持续完善项与待开发概念分开呈现。</p>
           </div>
           <div class="roadmap-board">
-            <article class="roadmap-row current"><span>NOW</span><div><b>当前功能</b><p>密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算） · 应用连接</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>binary</b> 所有</small></div><em>已上线 / 项目已有</em></article>
-            <article class="roadmap-row next"><span>NEXT</span><div><b>继续完善</b><p>养成规划与更多跨页面联动体验</p></div><em>持续迭代</em></article>
-            <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺</b><p>发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>规划占位</em></article>
+            <article class="roadmap-row current"><span>NOW</span><div><b>当前可用</b><p>MaaYuan 自动采集结果同步 · 今日一览 · 养成规划预览 · 密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算）</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>binary</b> 所有</small></div><em>已上线 / 项目已有</em></article>
+            <article class="roadmap-row next"><span>NEXT</span><div><b>今日与养成体验</b><p>继续完善资源缺口提醒、日程调整与相关页面间的快捷跳转。</p></div><em>持续完善</em></article>
+            <article class="roadmap-row future"><span>FUTURE</span><div><b>日常自动化联动 · 页面示意</b><p>待开发功能：探索把每日安排交给受支持的社区工具，并将结果带回档案；具体接入与执行能力以上线版本为准。</p></div><em>待开发功能</em></article>
+            <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺 · 页面示意</b><p>待开发功能：发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>待开发功能</em></article>
             <!-- PLACEHOLDER: 在此继续追加未来 Roadmap 项 -->
           </div>
         </div>
@@ -618,14 +620,14 @@ Object.entries(demoGrowthById).forEach(([id, growth]) => {
 })
 
 const features = [
-  { id: 'operator', index: '01', name: '密探 BOX', short: '养成档案', kicker: 'OPERATOR ARCHIVE', title: '把密探养成变成一份随时可看的档案', description: '多个游戏账号分别维护密探状态，记录等级、修为、化极、命盘、星石与养成状态。', points: ['当前养成与图鉴分开管理', '支持快捷导入与档案交换', '可生成神秘代码对外只读分享'] },
-  { id: 'inventory', index: '02', name: '库存', short: '清点与溯源', kicker: 'INVENTORY LEDGER', title: '不只记“现在有多少”，也看资源怎么变化', description: '库存页面用于清点当前背包、归档获得记录，并按周期查看资源变化。', points: ['多个子账号分别清点', '按周 / 月查看获得量', '支持完整交换档案'] },
-  { id: 'star', index: '03', name: '星石', short: '识别与计划', kicker: 'STAR INVENTORY', title: '从截图识别开始，把星石真正整理起来', description: '星石识别与养成相关内容为 Drifty Yan 独立创作。可导入游戏截图进行 OCR 与人工核对，并管理当前背包、养成计划与经验星曜。', points: ['本地截图导入与 OCR', '人工核对识别结果', '登录后同步当前账号数据'] },
-  { id: 'connection', index: '04', name: '工具连接', short: '授权与复用', kicker: 'APP CONNECTION', title: '已经录入的数据，不必在每个工具里重新填一遍', description: '在个人中心为 MaaYuan 或其他第三方项目创建连接，绑定具体子账号并授予明确权限。', points: ['连接绑定具体游戏账号', '权限 scope 可控', '连接可随时停止'] }
+  { id: 'connection', index: '01', name: '自动同步', short: '采集结果直达', kicker: 'MAAYUAN SYNC', title: '采集一次，今日与养成安排接着用', description: '用户授权后，MaaYuan 可通过绑定具体游戏账号的连接上传自动采集结果；YuanHub 统一整理这些数据，供今日一览、养成规划预览与分享使用。', points: ['连接只绑定指定游戏账号', '授权范围按 scope 控制', '可随时停用连接并停止访问'] },
+  { id: 'operator', index: '02', name: '密探 BOX', short: '养成档案', kicker: 'OPERATOR ARCHIVE', title: '把密探养成变成一份随时可看的档案', description: '多个游戏账号分别维护密探状态，记录等级、修为、化极、命盘、星石与养成状态。', points: ['当前养成与图鉴分开管理', '支持快捷导入与档案交换', '可生成神秘代码对外只读分享'] },
+  { id: 'inventory', index: '03', name: '库存', short: '清点与溯源', kicker: 'INVENTORY LEDGER', title: '不只记“现在有多少”，也看资源怎么变化', description: '库存页面用于清点当前背包、归档获得记录，并按周期查看资源变化。', points: ['多个子账号分别清点', '按周 / 月查看获得量', '支持完整交换档案'] },
+  { id: 'star', index: '04', name: '星石', short: '识别与计划', kicker: 'STAR INVENTORY', title: '从截图识别开始，把星石真正整理起来', description: '星石识别与养成相关内容为 Drifty Yan 独立创作。可导入游戏截图进行 OCR 与人工核对，并管理当前背包、养成计划与经验星曜。', points: ['本地截图导入与 OCR', '人工核对识别结果', '登录后同步当前账号数据'] }
 ]
 
 const installPanelOpen = ref(false)
-const activeFeature = ref('operator')
+const activeFeature = ref('connection')
 const currentFeature = computed(() => features.find(item => item.id === activeFeature.value) || features[0])
 let featureTimer = null
 let userSelected = false
@@ -827,7 +829,7 @@ em { color: var(--accent); font-style: normal; }
 .community-process { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 9px; margin-top: 22px; padding: 16px 20px; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted); background: rgba(246,237,208,.3); font-size: 10.5px; font-weight: 800; }
 .community-process span { color: var(--tea); }
 .community-process i { color: var(--accent); font-style: normal; }
-.roadmap-section { background: rgba(255,253,246,.34); }.roadmap-layout { display: grid; grid-template-columns: .62fr 1.38fr; align-items: start; gap: 70px; }.roadmap-board { border-top: 1px solid var(--line); }.roadmap-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 18px; min-height: 112px; border-bottom: 1px solid var(--line); }.roadmap-row > span { color: var(--accent-strong); font: 900 10px var(--font-d); letter-spacing: .12em; }.roadmap-row b { font: 900 16px var(--font-s); }.roadmap-row p { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.6; }.roadmap-row em { padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 8px; font-style: normal; }.roadmap-row.current em { color: #5c755b; border-color: rgba(92,117,91,.25); }.roadmap-credit { display: block; margin-top: 7px; color: var(--muted); font-size: 8px; line-height: 1.5; }.roadmap-credit b { color: var(--ink); font: inherit; font-weight: 900; }.roadmap-row.future { opacity: .72; }
+.roadmap-section { scroll-margin-top: 72px; background: rgba(255,253,246,.34); }.roadmap-layout { display: grid; grid-template-columns: .62fr 1.38fr; align-items: start; gap: 70px; }.roadmap-board { border-top: 1px solid var(--line); }.roadmap-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 18px; min-height: 112px; border-bottom: 1px solid var(--line); }.roadmap-row > span { color: var(--accent-strong); font: 900 10px var(--font-d); letter-spacing: .12em; }.roadmap-row b { font: 900 16px var(--font-s); }.roadmap-row p { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.6; }.roadmap-row em { padding: 6px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 8px; font-style: normal; }.roadmap-row.current em { color: #5c755b; border-color: rgba(92,117,91,.25); }.roadmap-credit { display: block; margin-top: 7px; color: var(--muted); font-size: 8px; line-height: 1.5; }.roadmap-credit b { color: var(--ink); font: inherit; font-weight: 900; }.roadmap-row.future { opacity: .72; }
 .legal-section { background: rgba(246,237,208,.38); }
 .legal-layout { display: grid; grid-template-columns: minmax(260px,.56fr) minmax(0,1.44fr); align-items: start; gap: 68px; }
 .legal-heading { position: sticky; top: 94px; }
