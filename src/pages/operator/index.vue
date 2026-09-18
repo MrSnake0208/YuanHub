@@ -1116,32 +1116,43 @@
                         @change="toggleBatchSelected(e.id, $event)"
                       />
                     </label>
-                    <OperatorAvatar :avatar="avOf(e.id)" :name="e.name || e.id" :rarity="Number(e.rarity) || 3">
-                      <button
-                        class="ledger-favorite"
-                        :class="{ on: favoriteAgentIds.has(e.id) }"
-                        type="button"
-                        :aria-label="
-                          favoriteAgentIds.has(e.id)
-                            ? '取消特别关注' + e.name
-                            : '特别关注' + e.name
-                        "
-                        :aria-pressed="favoriteAgentIds.has(e.id)"
-                        :disabled="favoriteBusyIds.has(e.id)"
-                        @click="toggleAgentFavorite(e)"
-                      >
-                        <Star
-                          :size="14"
-                          :fill="
-                            favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'
+                    <div class="ledger-name-tab">
+                      <OperatorAvatar :avatar="avOf(e.id)" :name="e.name || e.id" :rarity="Number(e.rarity) || 3">
+                        <button
+                          class="ledger-favorite"
+                          :class="{ on: favoriteAgentIds.has(e.id) }"
+                          type="button"
+                          :aria-label="
+                            favoriteAgentIds.has(e.id)
+                              ? '取消特别关注' + e.name
+                              : '特别关注' + e.name
                           "
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </OperatorAvatar>
+                          :aria-pressed="favoriteAgentIds.has(e.id)"
+                          :disabled="favoriteBusyIds.has(e.id)"
+                          @click="toggleAgentFavorite(e)"
+                        >
+                          <Star
+                            :size="14"
+                            :fill="
+                              favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'
+                            "
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </OperatorAvatar>
+                      <h3 :title="e.name || e.id">{{ e.name || e.id }}</h3>
+                    </div>
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
-                        <h3>{{ e.name || e.id }}</h3>
+                        <h3 :title="e.name || e.id">{{ e.name || e.id }}</h3>
+                        <div v-if="ledgerCardIsV2" class="ledger-name-combat">
+                          <span v-for="kind in ['attack', 'hp']" :key="kind">
+                            <Swords v-if="kind === 'attack'" :size="12" aria-hidden="true" />
+                            <Heart v-else :size="12" aria-hidden="true" />
+                            <span class="sr-only">{{ kind === 'attack' ? '攻击' : '生命' }}</span>
+                            <b>{{ cardCombatSimpleValue(e, kind) === '' ? '—' : cardCombatSimpleValue(e, kind) }}</b>
+                          </span>
+                        </div>
                         <span class="ledger-mobile-prof"
                           ><img
                             v-if="profIcon(e.prof)"
@@ -1164,6 +1175,7 @@
                             "
                           >
                             <span>{{ statusLabel(operatorStatus(e)) }}</span>
+                            <ChevronDown v-if="ledgerCardIsV2" class="ledger-status-chevron" :size="14" aria-hidden="true" />
                           </summary>
                           <div
                             class="ledger-status-options"
@@ -1353,7 +1365,7 @@
                   <section class="ledger-growth" aria-label="核心养成">
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">等级</span>
-                      <label class="ledger-inline-field"
+                      <label class="ledger-inline-field" title="等级"
                         ><span class="sr-only">等级</span
                         ><input
                           class="ledger-editable ledger-inline-input"
@@ -1531,7 +1543,7 @@
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">修为</span>
-                      <label class="ledger-inline-field"
+                      <label class="ledger-inline-field" title="修为"
                         ><span class="sr-only">修为</span
                         ><input
                           class="ledger-editable ledger-inline-input"
@@ -1736,6 +1748,8 @@
                       <button
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
                         type="button"
+                        :aria-label="'化极：' + starLabel(cardGrowthValue(e, 'star'), e.spOf)"
+                        title="化极"
                         :aria-expanded="cardPopoverKey === e.id + ':star-edit'"
                         @click="openCardPopover(e, 'star-edit')"
                       >
@@ -1982,6 +1996,7 @@
                     </div>
                   </section>
 
+                  <div class="ledger-loadouts">
                   <div
                     class="ledger-destiny fate-trait-style-a"
                   >
@@ -1991,18 +2006,23 @@
                       class="ledger-destiny-row ledger-popover-trigger"
                       role="button"
                       tabindex="0"
+                      :aria-label="'编辑命盘' + (index === 1 ? '一' : '二')"
+                      :title="'命盘' + (index === 1 ? '一' : '二')"
                       :aria-expanded="
                         cardPopoverKey === e.id + ':disc-' + (index - 1)
                       "
                       @click="openCardPopover(e, 'disc-' + (index - 1))"
-                      @keydown.enter.prevent="
+                      @keydown.enter.self.prevent="
                         openCardPopover(e, 'disc-' + (index - 1))
                       "
-                      @keydown.space.prevent="
+                      @keydown.space.self.prevent="
                         openCardPopover(e, 'disc-' + (index - 1))
                       "
                     >
                       <span>命盘{{ index === 1 ? "一" : "二" }}</span>
+                      <svg v-if="ledgerCardIsV2" class="ledger-destiny-marker" width="6" height="16" viewBox="0 0 6 16" aria-hidden="true">
+                        <circle v-for="dot in index" :key="dot" cx="3" :cy="index === 1 ? 8 : dot === 1 ? 5 : 11" r="2" fill="currentColor" />
+                      </svg>
                       <div class="ledger-destiny-values">
                         <template v-if="cardLoadoutDiscs(e, index - 1).length">
                           <em
@@ -2050,13 +2070,23 @@
                         v-if="cardPopoverKey === e.id + ':disc-' + (index - 1)"
                         class="ledger-popover ledger-disc-popover"
                         @click.stop
+                        @keydown.esc.stop="cardPopoverKey = ''"
                       >
-                        <p>
-                          <CircleAlert
-                            :size="13"
-                            aria-hidden="true"
-                          />编辑命盘{{ index === 1 ? "一" : "二" }}（最多 3 个）
-                        </p>
+                        <div class="ledger-loadout-editor-head">
+                          <p>
+                            <CircleAlert :size="13" aria-hidden="true" />编辑命盘{{ index === 1 ? "一" : "二" }}
+                            <span class="ledger-loadout-legacy-detail">（最多 3 个）</span>
+                          </p>
+                          <span class="ledger-loadout-editor-count" aria-live="polite">
+                            已选 {{ cardLoadoutDiscs(e, index - 1).length }} / 3
+                          </span>
+                          <button
+                            class="ledger-loadout-editor-close"
+                            type="button"
+                            aria-label="关闭命盘编辑"
+                            @click.stop="cardPopoverKey = ''"
+                          ><X :size="18" aria-hidden="true" /></button>
+                        </div>
                         <div class="ledger-disc-options">
                           <label
                             v-for="disc in cardDiscOptions(e)"
@@ -2067,6 +2097,7 @@
                           >
                             <input
                               type="checkbox"
+                              :aria-label="discKey(disc)"
                               :checked="cardDiscSelected(e, index - 1, disc)"
                               @change.stop="
                                 toggleCardDisc(e, index - 1, disc, $event)
@@ -2083,18 +2114,25 @@
                                 showDiscTooltip($event, discDescription(disc))
                               "
                               @blur="hideDiscTooltip"
-                              >{{ discKey(disc) }}</span
+                              >{{ cardDiscAbbreviation(e, discKey(disc)) }}</span
                             >
                           </label>
                         </div>
-                        <button type="button" @click.stop="cardPopoverKey = ''">
-                          完成
-                        </button>
+                        <div class="ledger-popover-actions ledger-loadout-editor-actions">
+                          <span class="ledger-loadout-editor-hint">修改后在卡片保存</span>
+                          <button
+                            class="ledger-loadout-editor-done"
+                            type="button"
+                            @click.stop="cardPopoverKey = ''"
+                          >完成</button>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <div class="ledger-stones" aria-label="已装备星石">
+                    <span class="ledger-stone-row-label" aria-hidden="true">主星</span>
+                    <span class="ledger-stone-row-label" aria-hidden="true">辅星</span>
                     <button
                       v-for="(stone, index) in cardStoneSlots(e)"
                       :key="index"
@@ -2102,9 +2140,9 @@
                       class="stone-slot ledger-popover-trigger"
                       :class="{ 'is-empty': !stone }"
                       :aria-label="
-                        stone
+                        stoneSlots[index].label + '，' + (stone
                           ? stone.name + '，等级 ' + (stone.level || 0)
-                          : '空星石槽位'
+                          : '未装备')
                       "
                       :aria-expanded="
                         cardPopoverKey === e.id + ':stone-' + index
@@ -2120,6 +2158,7 @@
                       v-if="cardPopoverKey.indexOf(e.id + ':stone-') === 0"
                       class="ledger-popover ledger-stone-popover"
                       @click.stop
+                      @keydown.esc.stop="cardPopoverKey = ''"
                     >
                       <template
                         v-for="(stone, index) in cardStoneSlots(e)"
@@ -2128,25 +2167,28 @@
                         <template
                           v-if="cardPopoverKey === e.id + ':stone-' + index"
                         >
-                          <p>
-                            <CircleAlert :size="13" aria-hidden="true" />编辑{{
-                              stoneSlots[index].label
-                            }}
-                          </p>
-                          <select
-                            :value="cardStoneValue(e, index).name"
-                            :aria-label="stoneSlots[index].label + '名称'"
-                            @change="setCardStoneName(e, index, $event)"
-                          >
-                            <option value="">未装备</option>
-                            <option
-                              v-for="name in cardStoneOptions(e, index)"
-                              :key="name"
-                              :value="name"
-                            >
-                              {{ name }}
-                            </option>
-                          </select>
+                          <div class="ledger-loadout-editor-head">
+                            <p><CircleAlert :size="13" aria-hidden="true" />编辑{{ stoneSlots[index].label }}</p>
+                            <button
+                              class="ledger-loadout-editor-close"
+                              type="button"
+                              aria-label="关闭星石编辑"
+                              @click.stop="cardPopoverKey = ''"
+                            ><X :size="18" aria-hidden="true" /></button>
+                          </div>
+                          <label class="ledger-stone-name-field">
+                            <span class="ledger-stone-name-label">星石</span>
+                            <PlannerSelect
+                              class="ledger-stone-select"
+                              :model-value="cardStoneValue(e, index).name"
+                              :label="stoneSlots[index].label + '名称'"
+                              :options="[
+                                { value: '', label: '未装备' },
+                                ...cardStoneOptions(e, index).map(name => ({ value: name, label: name })),
+                              ]"
+                              @update:model-value="setCardStoneName(e, index, $event)"
+                            />
+                          </label>
                           <div class="ledger-stone-level-row">
                             <label
                               >等级
@@ -2162,6 +2204,7 @@
                               class="ledger-stone-levels"
                               aria-label="快捷设置星石等级"
                             >
+                              <span class="ledger-stone-presets-label">快捷等级</span>
                               <button
                                 v-for="level in STONE_QUICK_LEVELS"
                                 :key="level"
@@ -2176,14 +2219,17 @@
                               </button>
                             </div>
                           </div>
-                          <div class="ledger-popover-actions">
+                          <div class="ledger-popover-actions ledger-loadout-editor-actions">
                             <button
                               type="button"
                               class="cancel"
                               @click.stop="removeCardStone(e, index)"
                             >
-                              卸下</button
-                            ><button
+                              卸下
+                            </button>
+                            <span class="ledger-loadout-editor-hint">修改后在卡片保存</span>
+                            <button
+                              class="ledger-loadout-editor-done"
                               type="button"
                               @click.stop="cardPopoverKey = ''"
                             >
@@ -2195,6 +2241,7 @@
                     </div>
                   </div>
 
+                  </div>
                   <div class="ledger-card-footer">
                     <textarea
                       :value="operatorRemark(e)"
@@ -3061,6 +3108,7 @@ import {
   BookOpen,
   Calculator,
   Check,
+  ChevronDown,
   ChevronUp,
   CircleAlert,
   Download,
@@ -3084,6 +3132,7 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import PlannerSelect from "../../components/operator/PlannerSelect.vue";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
 import {
@@ -5212,6 +5261,67 @@ function openCardPopover(entry, field) {
       : entry.id + ":" + field;
 }
 
+// The compact loadout editors follow their own trigger, not the card footer.
+watch(cardPopoverKey, (key, _previous, onCleanup) => {
+  if (!ledgerCardIsV2 || !/:(disc|stone)-\d+$/.test(key)) return;
+  const card = currentLedgerCardElements.get(key.slice(0, key.lastIndexOf(":")));
+  const loadouts = card?.querySelector(".ledger-loadouts");
+  const trigger = loadouts?.querySelector('[aria-expanded="true"]');
+  const panel = loadouts?.querySelector(".ledger-popover");
+  if (!trigger || !panel) return;
+
+  let frame = 0;
+  function position() {
+    frame = 0;
+    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    const viewport = window.visualViewport;
+    const bounds = loadouts.getBoundingClientRect();
+    const anchor = trigger.getBoundingClientRect();
+    const header = document.querySelector(".mobile-shell")?.getBoundingClientRect();
+    const tabs = document.querySelector(".operator-mobile-tabs")?.getBoundingClientRect();
+    const topEdge = Math.max(viewport?.offsetTop || 0, header?.bottom || 0) + 8;
+    const bottomEdge = Math.min(
+      (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight),
+      tabs?.height ? tabs.top : window.innerHeight,
+    ) - 8;
+    if (anchor.bottom < topEdge || anchor.top > bottomEdge) {
+      cardPopoverKey.value = "";
+      return;
+    }
+    const below = Math.max(0, bottomEdge - anchor.bottom - 7);
+    const above = Math.max(0, anchor.top - topEdge - 7);
+    const desiredHeight = Math.min(320, panel.scrollHeight + 2);
+    const upwards = below < desiredHeight && above > below;
+    const maxHeight = Math.min(320, upwards ? above : below);
+    const top = upwards
+      ? anchor.top - 7 - Math.min(desiredHeight, maxHeight)
+      : anchor.bottom + 7;
+    panel.style.setProperty("--ledger-loadout-popover-top", `${top - bounds.top - loadouts.clientTop}px`);
+    panel.style.setProperty("--ledger-loadout-popover-height", `${maxHeight}px`);
+  }
+  function schedulePosition() {
+    if (!frame) frame = window.requestAnimationFrame(position);
+  }
+
+  position();
+  const observer = new ResizeObserver(schedulePosition);
+  observer.observe(loadouts);
+  observer.observe(trigger);
+  observer.observe(panel);
+  window.addEventListener("scroll", schedulePosition, true);
+  window.addEventListener("resize", schedulePosition);
+  window.visualViewport?.addEventListener("resize", schedulePosition);
+  window.visualViewport?.addEventListener("scroll", schedulePosition);
+  onCleanup(() => {
+    window.cancelAnimationFrame(frame);
+    observer.disconnect();
+    window.removeEventListener("scroll", schedulePosition, true);
+    window.removeEventListener("resize", schedulePosition);
+    window.visualViewport?.removeEventListener("resize", schedulePosition);
+    window.visualViewport?.removeEventListener("scroll", schedulePosition);
+  });
+}, { flush: "post" });
+
 function cardLevelBreakthrough(entry) {
   if (!showLevelBreakthroughOption(entry, 5)) return false;
   return (
@@ -6412,9 +6522,9 @@ function cardStoneOptions(entry, index) {
   return available;
 }
 
-function setCardStoneName(entry, index, event) {
+function setCardStoneName(entry, index, value) {
   const stone = cardStoneValue(entry, index);
-  const name = String(event && event.target ? event.target.value : "");
+  const name = String(value || "");
   stone.name = name;
   if (!name) stone.level = 0;
   else if (Number(stone.level) < 1) stone.level = 1;
@@ -10735,6 +10845,7 @@ onBeforeUnmount(function () {
   min-width: 0;
   text-align: center;
 }
+.ledger-status-chevron { display: none; }
 .ledger-status-button::after {
   width: 6px;
   height: 6px;
@@ -11547,16 +11658,8 @@ onBeforeUnmount(function () {
   right: 0;
   top: calc(100% + 7px);
 }
-.ledger-stone-popover select {
-  width: 100%;
-  min-width: 0;
-  padding: 5px 6px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+.ledger-stone-select :deep(.planner-select-trigger) {
   background: var(--cream);
-  color: var(--ink);
-  font: 700 10px var(--font-b);
-  outline: none;
 }
 .ledger-stone-level-row {
   display: flex !important;
@@ -11647,6 +11750,11 @@ onBeforeUnmount(function () {
   color: var(--ink-35);
 }
 .growth-card-remark { margin-top: 12px; }
+@media (max-width: 640px) {
+  .growth-card-remark { margin-top: 4px; padding-top: 0; }
+  .growth-card-remark textarea { height: 44px; min-height: 44px; padding: 10px 0; font-size: 16px; }
+  .growth-card-remark .ledger-card-actions button { min-height: 44px; font-size: 12px; }
+}
 .growth-remark-error, .growth-remark-notice { font: 11px/1.5 var(--font-b); color: var(--ink-60); }
 .growth-remark-error { color: var(--rouge); }
 .ledger-inline-field {
@@ -14772,9 +14880,6 @@ onBeforeUnmount(function () {
   .ledger-stone-levels button {
     flex: 1;
     min-height: 36px;
-  }
-  .ledger-stone-popover select {
-    min-height: 40px;
   }
   .ledger-card-footer textarea {
     min-height: 44px;

@@ -1,4 +1,4 @@
-import { aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, normalizePlannerPlan, PLANNER_RULES, plannerBlockedResources, plannerProgressRows, plannerStateIsEmpty, plannerStateRemaining, settlePlannerDay, simulatePlanner } from './cultivationPlanner.js'
+import { aggregatePlannerState, buildRecommendedPlan, clonePlannerValue, normalizePlannerPlan, normalizePlannerSpend, PLANNER_RULES, plannerBlockedResources, plannerProgressRows, plannerStateIsEmpty, plannerStateRemaining, settlePlannerDay, simulatePlanner } from './cultivationPlanner.js'
 import { evaluateExactPlans, prepareExactPlanner } from './exactPlanner.js'
 import { exactComparisonScenarios, exactDeadlineAlternatives } from './exactPlannerComparison.js'
 
@@ -67,6 +67,35 @@ export function pendingScheduleEdits(schedule, date) {
   const baseline = schedule?.context.planBaselines?.[date]
   const day = schedule?.result.timeline.find(day => day.date === date)
   return Boolean(baseline && day && JSON.stringify(normalizePlannerPlan(day.planned)) !== JSON.stringify(normalizePlannerPlan(baseline)))
+}
+
+// The applied arrangement is the reference, including exact/custom plans. The
+// first edit saves that arrangement so subsequent edits cannot move the target.
+export function plannerBasePlan(schedule, day) {
+  return schedule?.context.planBaselines?.[day.date] || day.planned || day.recommended
+}
+
+// Restore the saved arrangement without running the quick estimator or
+// replacing another day's actions. Keep an untouched applied result intact.
+export function restoreFixedScheduleDay(schedule, date, manualPlans = {}, fallbackDay = null) {
+  const day = schedule.result.timeline.find(day => day.date === date) || fallbackDay
+  if (!day || day.date !== date || date < schedule.baselineDate) throw new Error('该日期尚无可恢复的日程')
+  const plan = clonePlannerValue(plannerBasePlan(schedule, day))
+  if (JSON.stringify(normalizePlannerPlan(day.planned)) === JSON.stringify(normalizePlannerPlan(plan))) return { schedule, manualPlans }
+  return { schedule: updateFixedSchedulePlan(schedule, date, plan, day),
+    manualPlans: { ...clonePlannerValue(manualPlans), [date]: plan } }
+}
+
+export function plannerBaseValue(plan, kind, entry) {
+  const key = item => {
+    if (kind === 'spends' && !item.custom) {
+      const spend = normalizePlannerSpend(item)
+      if (spend.kind === 'training') return `training:${spend.groupId}:${spend.stageLevel}`
+    }
+    return `id:${item.id}`
+  }
+  const entryKey = key(entry)
+  return (plan?.[kind] || []).reduce((total, item) => total + (key(item) === entryKey ? Number(item.value) || 0 : 0), 0)
 }
 
 // Save ledger edits. Replay saved actions for accurate validation/progress, but
