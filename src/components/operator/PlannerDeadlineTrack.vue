@@ -124,5 +124,22 @@ p { margin: 6px 0 0; font-size: 12px; line-height: 1.7; }
 @keyframes deadline-found { 0% { transform: rotate(-12deg) scale(.85); } 60% { transform: rotate(6deg) scale(1.08); } 100% { transform: none; } }
 @keyframes deadline-thinking { 50% { opacity: .45; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .deadline-journey *, .deadline-journey *::before, .deadline-journey *::after { animation: none !important; transition: none !important; } .deadline-chip:hover, .deadline-chip:active, .deadline-step-enter-from, .deadline-option-enter-from { transform: none; } }
-@media (max-width: 640px) { .deadline-journey { padding: 16px 12px 4px; } .deadline-node { flex-basis: 196px; } }
+@media (max-width: 640px) {
+  .deadline-journey { margin: 8px 0; padding: 12px 10px 0; border-radius: 10px; }
+  .deadline-heading { gap: 6px; }
+  h4 { font-size: 15px; }
+  .deadline-heading p { margin-top: 4px; line-height: 1.5; }
+  .deadline-count { padding: 3px 7px; border-radius: 5px; }
+  .deadline-limit { margin-top: 8px; line-height: 1.5; color: var(--ink-60); }
+  .deadline-track { gap: 10px; padding: 16px 2px 12px; }
+  .deadline-node { flex-basis: 168px; }
+  .deadline-node:not(:last-child)::after { top: 48px; width: 10px; }
+  .deadline-square { gap: 5px; padding: 12px 8px 8px; border-radius: 10px; }
+  .deadline-caption { letter-spacing: .02em; }
+  .deadline-date strong { font-size: 26px; }
+  .deadline-state { min-height: 22px; gap: 4px; }
+  .deadline-options { gap: 6px; margin-top: 8px; }
+  .deadline-chip { gap: 5px; padding: 8px; border-radius: 8px; }
+  .deadline-extra b { font-size: 17px; }
+}
 </style>

@@ -1,0 +1,9 @@
+__pycache__/
+.venv/
+models/*.onnx
+models/*.download
+source-update/
+archive/
+metadata.json
+.update.lock
+.update-*/

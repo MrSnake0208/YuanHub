@@ -163,6 +163,7 @@
 }
 .ledger-oddity-icon { display: block; width: 12px; height: 12px; flex: none; color: var(--ink-60); }
 .ledger-oddity span { color: var(--ink-35); font-size: 9px; }
+.share-card-stats .ledger-growth,
 .ledger-combat + .ledger-growth { margin-top: -10px; }
 
 .ledger-growth {

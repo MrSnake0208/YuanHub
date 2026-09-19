@@ -1,5 +1,5 @@
 <template>
-  <header class="mobile-shell detail-mobile-shell">
+  <MobileHeader class="detail-mobile-shell">
     <router-link class="mobile-brand" to="/cart" aria-label="返回广陵账房">
       <ArrowLeft :size="19" aria-hidden="true" />
       <span>返回</span>
@@ -12,7 +12,7 @@
         :class="{ active: activeId === item.id }"
       >{{ item.label }}</a>
     </nav>
-  </header>
+  </MobileHeader>
 
   <aside class="island" aria-label="作业章节">
     <div class="brand">
@@ -38,6 +38,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ArrowLeft } from '@lucide/vue'
+import MobileHeader from './MobileHeader.vue'
 
 defineProps({
   author: { type: String, default: '' },

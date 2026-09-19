@@ -4,7 +4,7 @@ import loadHighs from '../public/solver/highs-1.15.3/highs.mjs'
 import { exactComparisonScenarios, exactCurrentSettingsScenario } from '../src/data/exactPlannerComparison.js'
 import { solveExactPlanner } from '../src/data/exactPlanner.js'
 import { createExactComparisonRunner } from '../src/data/exactPlannerRunner.js'
-import { applyExactComparisonResult, createFixedSchedule, plannerDateAfter, updateFixedSchedulePlan } from '../src/data/fixedPlannerSchedule.js'
+import { applyExactComparisonResult, createFixedSchedule, plannerBasePlan, plannerBaseValue, restoreFixedScheduleDay, plannerDateAfter, updateFixedSchedulePlan } from '../src/data/fixedPlannerSchedule.js'
 import { clonePlannerValue, createGain, createSpend, normalizePlannerPlan } from '../src/data/cultivationPlanner.js'
 import { scheduleBody, scheduleFromRemote } from '../src/data/operatorPlannerRemote.js'
 const highs = await loadHighs()
@@ -62,6 +62,19 @@ test('采用对比项同步购买偏好与日程，云端往返保留；过期�
   const restored = scheduleFromRemote({ ...wire, account_id: 'a', revision: 1 }, 'a')
   assert.equal(restored.preferences.purchaseCount, 2)
   assert.equal(restored.schedule.result.etaDays, 2)
+  const day = restored.schedule.result.timeline[0]
+  assert.deepEqual(plannerBasePlan(restored.schedule, day), day.planned)
+  const editedPlan = clonePlannerValue(day.planned)
+  editedPlan.spends[0].value = 1
+  const edited = updateFixedSchedulePlan(restored.schedule, day.date, editedPlan)
+  const reference = plannerBasePlan(edited, edited.result.timeline[0])
+  assert.deepEqual(reference, day.planned)
+  assert.equal(plannerBaseValue(reference, 'spends', editedPlan.spends[0]), day.planned.spends[0].value)
+  assert.equal(restoreFixedScheduleDay(restored.schedule, day.date, restored.manualPlans).schedule, restored.schedule)
+  const reset = restoreFixedScheduleDay(edited, day.date, { ...restored.manualPlans, [day.date]: editedPlan })
+  assert.deepEqual(reset.schedule.result.timeline.map(item => item.planned), restored.schedule.result.timeline.map(item => item.planned))
+  assert.deepEqual(reset.manualPlans[day.date], day.planned)
+  assert.equal(reset.manualPlans[day.date].gains.find(gain => gain.id === 'buy').value, 2)
   assert.throws(() => applyExactComparisonResult(base, original.date, result, { ...original, planId: 'changed' }, {}), /条件已变化/)
   assert.throws(() => applyExactComparisonResult(base, original.date, { ...result, comparisonId: 'bad' }, original, {}), /找不到/)
 })

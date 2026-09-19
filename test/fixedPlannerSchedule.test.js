@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createFixedSchedule, fixedScheduleTimeline, fixedScheduleDifferences, pendingScheduleEdits, plannerTiming, resetFixedSchedule, visibleFixedScheduleTimeline, plannerDateAfter, projectedPlannerStock, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../src/data/fixedPlannerSchedule.js'
+import { createFixedSchedule, fixedScheduleTimeline, fixedScheduleDifferences, pendingScheduleEdits, plannerBasePlan, plannerBaseValue, plannerTiming, resetFixedSchedule, restoreFixedScheduleDay, visibleFixedScheduleTimeline, plannerDateAfter, projectedPlannerStock, recalculateFixedScheduleFrom, reviseFixedSchedule, updateFixedSchedulePlan } from '../src/data/fixedPlannerSchedule.js'
 import { clonePlannerValue, createGain, createSpend, normalizePlannerPlan, normalizePlannerSnapshot, readPlannerSnapshot, settlePlannerDay, writePlannerSnapshot } from '../src/data/cultivationPlanner.js'
 import { scheduleBody, scheduleFromRemote } from '../src/data/operatorPlannerRemote.js'
 
@@ -9,6 +9,74 @@ const context = () => ({ date: '2026-09-12', initialState: { a: { shuijing: 2000
   levels: { yy: 12 }, strategy: 'overall', agentOrder: ['a'], preferences: { purchaseCount: 0 } })
 const manual = () => ({ gains: [{ id: 'natural', kind: 'energy', value: 408 }],
   spends: [createSpend('yinyang', { stageLevel: 12, value: 1 })] })
+
+test('推荐跟随套用方案，连续编辑和云端恢复不回退到快速估算', () => {
+  const date = context().date
+  const applied = manual()
+  const schedule = createFixedSchedule(context(), { [date]: applied })
+  const day = schedule.result.timeline[0]
+  assert.notDeepEqual(day.planned.spends, day.recommended.spends)
+  assert.equal(plannerBaseValue(plannerBasePlan(schedule, day), 'spends', applied.spends[0]), 1)
+  assert.equal(plannerBaseValue(plannerBasePlan(null, day), 'spends', applied.spends[0]), 1)
+
+  const plan = clonePlannerValue(day.planned)
+  plan.spends[0].value = 2
+  const edited = updateFixedSchedulePlan(schedule, date, plan)
+  plan.spends[0].value = 3
+  const second = updateFixedSchedulePlan(edited, date, plan)
+  const wire = scheduleBody({ ...normalizePlannerSnapshot(null, 'a'), schedule: second, manualPlans: { [date]: plan } })
+  const restored = scheduleFromRemote({ ...wire, account_id: 'a', revision: 1 }, 'a').schedule
+  for (const saved of [edited, second, restored]) {
+    const reference = plannerBasePlan(saved, saved.result.timeline[0])
+    assert.deepEqual(reference, day.planned)
+    assert.equal(plannerBaseValue(reference, 'spends', plan.spends[0]), 1)
+  }
+})
+
+test('重新添加历练按渠道和层数匹配基准，不混用不同层数或自定义条目', () => {
+  const plan = { gains: [createGain('buy', { value: 2 })], spends: [
+    createSpend('yinyang', { stageLevel: 12, value: 7 }),
+    { ...createSpend('yinyang', { stageLevel: 11, value: 3 }), id: 'training-yy-11' },
+    createSpend('luoyang', { value: 2 }),
+    createSpend('custom', { value: 5 })
+  ] }
+  assert.equal(plannerBaseValue(plan, 'spends', { id: 'training-yy-12' }), 7)
+  assert.equal(plannerBaseValue(plan, 'spends', createSpend('yinyang', { stageLevel: 11 })), 3)
+  assert.equal(plannerBaseValue(plan, 'spends', { id: 'training-ds-12' }), 0)
+  assert.equal(plannerBaseValue(plan, 'spends', { id: 'training-yy-10' }), 0)
+  assert.equal(plannerBaseValue(plan, 'spends', createSpend('luoyang')), 2)
+  assert.equal(plannerBaseValue(plan, 'spends', plan.spends[3]), 5)
+  assert.equal(plannerBaseValue(plan, 'spends', createSpend('custom')), 0)
+  assert.equal(plannerBaseValue(plan, 'gains', createGain('buy')), 2)
+})
+
+test('恢复当天方案使用编辑前的套用安排，云端重载后仍保留其他日期并解除无效状态', () => {
+  const date = context().date, future = plannerDateAfter(date, 2)
+  const plans = { [date]: manual(), [future]: manual() }
+  const initial = createFixedSchedule(context(), plans)
+  const baseline = initial.result.timeline[0].planned
+  assert.notDeepEqual(baseline, initial.result.timeline[0].recommended)
+  const draft = clonePlannerValue(baseline)
+  draft.gains.push(createGain('custom', { name: '临时来源', value: 20 }))
+  draft.spends[0].value = 99
+  const edited = updateFixedSchedulePlan(initial, date, draft)
+  assert.equal(edited.result.status, 'invalid')
+  const wire = scheduleBody({ ...normalizePlannerSnapshot(null, 'a'), schedule: edited, manualPlans: { ...plans, [date]: draft } })
+  const loaded = scheduleFromRemote(clonePlannerValue({ ...wire, account_id: 'a', revision: 1 }), 'a')
+  const original = structuredClone(loaded)
+  const restored = restoreFixedScheduleDay(loaded.schedule, date, loaded.manualPlans)
+  assert.deepEqual(restored.schedule.result.timeline[0].planned, baseline)
+  assert.deepEqual(restored.manualPlans[date], baseline)
+  assert.deepEqual(restored.manualPlans[future], loaded.manualPlans[future])
+  assert.deepEqual(restored.schedule.result.timeline.slice(1).map(day => day.planned), loaded.schedule.result.timeline.slice(1).map(day => day.planned))
+  assert.deepEqual(restored.schedule.history, loaded.schedule.history)
+  assert.equal(pendingScheduleEdits(restored.schedule, date), false)
+  assert.ok(restored.schedule.result.timeline.every(day => !day.errors.length && !day.paused))
+  assert.deepEqual(loaded, original)
+  const again = restoreFixedScheduleDay(restored.schedule, date, restored.manualPlans)
+  assert.equal(again.schedule, restored.schedule)
+  assert.throws(() => restoreFixedScheduleDay(initial, plannerDateAfter(date, -1), plans), /可恢复/)
+})
 
 test('首次自定义完整保存输入、推荐日、手工日和预测，重载不会受当前日期与库存影响', () => {
   const input = context()

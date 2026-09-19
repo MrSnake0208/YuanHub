@@ -31,6 +31,15 @@ export function getOperatorCatalog() {
   return request(PATH + '/catalog', { auth: false })
 }
 
+// 仅移除公共图鉴已删除的 ID；后端保留导入历史并记录清理事件。
+export function removeOrphanOperatorCurrent({ accountId, operatorId } = {}) {
+  const params = new URLSearchParams({ account_id: accountId })
+  return request(PATH + '/current/' + encodeURIComponent(operatorId) + '?' + params, {
+    method: 'DELETE',
+    auth: true,
+  })
+}
+
 // —— 密探分享 ——
 
 function sharePath(accountId, suffix = '') {

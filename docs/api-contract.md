@@ -486,6 +486,7 @@ Authorization: Bearer <open-api-token>
 |---|---|---|
 | `GET /v1/operator/current` | query `account_id` 必填，`game` 可选 | 当前养成数组 |
 | `PATCH /v1/operator/current/{operatorId}` | query `account_id,game` 均必填；body 见下 | 更新后的 entry |
+| `DELETE /v1/operator/current/{operatorId}` | query `account_id` 必填；仅允许公共图鉴已删除的 ID | `true`，清理当前账号各版本的旧养成并保留历史 |
 | `GET /v1/operator/records` | `account_id` 必填；`game,from,to,cursor,limit` 可选 | `{items,next_cursor}` |
 | `DELETE /v1/operator/records/{recordId}` | query `account_id` | `true`，删除后重放重建 |
 
@@ -536,6 +537,7 @@ PATCH 使用乐观锁，`expected_revision` 与 `reason` 必填：
 - entry 不存在时只允许 `expected_revision=0` 创建。
 - revision 冲突返回 HTTP 409 `operator_revision_conflict`。
 - `records.limit` 默认为 50，范围 1..100。
+- DELETE current 校验本人子账号；仍在公共图鉴的 ID 返回 409 `operator_still_in_catalog`。清理包含旧通用版本，并记录清理事件，历史重放不会恢复已清理条目；不迁移 ID 或清理心纸库存。详见 [目录 ID 变更修复](./backend-operator-catalog-id-repair.md)。
 
 ### 5.3 主观标注与养成目标
 

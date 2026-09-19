@@ -106,7 +106,8 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
-import { getCatalog, importInventory } from '../../api/inventory.js'
+import { importInventory } from '../../api/inventory.js'
+import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { buildRewardDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
@@ -183,11 +184,12 @@ async function showError(message) {
 async function loadCatalog() {
   if (catalogLoading.value) return
   catalogLoading.value = true
-  error.value = ''
+  clearPreview()
+  entities.value = []
   try {
-    const catalog = await getCatalog()
-    if (!Array.isArray(catalog?.entities) || !catalog.entities.length) throw new Error('奖励目录为空，请稍后重试')
-    entities.value = catalog.entities
+    const catalog = await getRewardCatalog()
+    if (!catalog.length) throw new Error('奖励目录为空，请稍后重试')
+    entities.value = catalog
   } catch (err) { await showError(err.message || '奖励目录加载失败') }
   finally { catalogLoading.value = false }
 }
@@ -200,7 +202,8 @@ async function open(nextMode) {
   mode.value = nextMode
   await nextTick()
   heading.value?.focus()
-  if (!entities.value.length) await loadCatalog()
+  // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
+  await loadCatalog()
 }
 function close() {
   if (locked.value) return

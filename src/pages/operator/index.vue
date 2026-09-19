@@ -900,6 +900,17 @@
               </div>
             </div>
 
+            <section v-if="orphanCurrentEntries.length" class="orphan-current" aria-label="已从公共图鉴删除的密探">
+              <p>以下密探已从公共图鉴删除，旧养成仍保存在此子账号中。核对 ID 后可移除。</p>
+              <ul>
+                <li v-for="entry in orphanCurrentEntries" :key="entry.id">
+                  <span><b>{{ entry.name || entry.id }}</b><small>Lv.{{ entry.level }} · 修为 {{ entry.elite }}<template v-if="entry.name"> · {{ entry.id }}</template></small></span>
+                  <button type="button" class="btn ghost" :disabled="!!removingOrphanId || loading || accountBusy" @click="removeOrphanCurrent(entry)">{{ removingOrphanId === entry.id ? '移除中…' : '移除旧养成' }}</button>
+                </li>
+              </ul>
+            </section>
+            <p v-if="orphanNotice" class="state slim" role="status">{{ orphanNotice }}</p>
+
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
               v-reveal
@@ -1109,6 +1120,21 @@
                   :aria-busy="cardSubmitStates[e.id] === 'submitting'"
                   role="listitem"
                 >
+                  <picture
+                    v-if="ledgerCardIsV3 && operatorPortraits[e.id] && !failedPortraitIds.has(e.id)"
+                    class="ledger-portrait"
+                    aria-hidden="true"
+                  >
+                    <img
+                      :src="operatorPortraits[e.id]"
+                      alt=""
+                      width="480"
+                      height="350"
+                      loading="lazy"
+                      decoding="async"
+                      @error="failedPortraitIds.add(e.id)"
+                    />
+                  </picture>
                   <header class="ledger-card-head">
                     <label
                       v-if="batchSelectMode"
@@ -1125,32 +1151,66 @@
                         @change="toggleBatchSelected(e.id, $event)"
                       />
                     </label>
-                    <OperatorAvatar :avatar="avOf(e.id)" :name="e.name || e.id" :rarity="Number(e.rarity) || 3">
-                      <button
-                        class="ledger-favorite"
-                        :class="{ on: favoriteAgentIds.has(e.id) }"
-                        type="button"
-                        :aria-label="
-                          favoriteAgentIds.has(e.id)
-                            ? '取消特别关注' + e.name
-                            : '特别关注' + e.name
-                        "
-                        :aria-pressed="favoriteAgentIds.has(e.id)"
-                        :disabled="favoriteBusyIds.has(e.id)"
-                        @click="toggleAgentFavorite(e)"
-                      >
-                        <Star
-                          :size="14"
-                          :fill="
-                            favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'
+                    <div class="ledger-name-tab">
+                      <OperatorAvatar :avatar="avOf(e.id)" :name="e.name || e.id" :rarity="Number(e.rarity) || 3">
+                        <button
+                          class="ledger-favorite"
+                          :class="{ on: favoriteAgentIds.has(e.id) }"
+                          type="button"
+                          :aria-label="
+                            favoriteAgentIds.has(e.id)
+                              ? '取消特别关注' + e.name
+                              : '特别关注' + e.name
                           "
-                          aria-hidden="true"
-                        />
-                      </button>
-                    </OperatorAvatar>
+                          :aria-pressed="favoriteAgentIds.has(e.id)"
+                          :disabled="favoriteBusyIds.has(e.id)"
+                          @click="toggleAgentFavorite(e)"
+                        >
+                          <Star
+                            :size="14"
+                            :fill="
+                              favoriteAgentIds.has(e.id) ? 'currentColor' : 'none'
+                            "
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </OperatorAvatar>
+                      <h3
+                        :class="{
+                          'is-three-char-name': Array.from(e.name || e.id).length === 3,
+                          'is-long-name': Array.from(e.name || e.id).length > 3,
+                          'is-single-column-name': e.name === '史子眇·赴烛',
+                        }"
+                        :title="e.name || e.id"
+                      ><template v-if="ledgerCardIsV3 && e.name === '陈登·黍王'">陈登·<span class="ledger-name-continuation ledger-name-continuation--natural">黍王</span></template><template v-else-if="ledgerCardIsV3 && e.name === '史子眇·赴烛'">史子眇·<span class="ledger-name-continuation">赴烛</span></template><template v-else>{{ e.name || e.id }}</template></h3>
+                    </div>
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
-                        <h3>{{ e.name || e.id }}</h3>
+                        <h3 :title="e.name || e.id">{{ e.name || e.id }}</h3>
+                        <span
+                          v-if="ledgerCardIsV2"
+                          class="ledger-prof-tab"
+                          :class="{
+                            'ledger-prof-tab--fuzhu': e.id === 'char_085_shizimiaosp',
+                            'ledger-prof-tab--sp': Boolean(e.spOf),
+                          }"
+                        >
+                          <img
+                            v-if="profIcon(e.prof)"
+                            :src="profIcon(e.prof)"
+                            :alt="(e.prof || '未知') + '属性'"
+                            :title="(e.prof || '未知') + '属性'"
+                          />
+                          <span v-if="firstSubProf(e)">{{ firstSubProf(e) }}</span>
+                        </span>
+                        <div v-if="ledgerCardIsV2" class="ledger-name-combat">
+                          <span v-for="kind in ['attack', 'hp']" :key="kind">
+                            <Swords v-if="kind === 'attack'" :size="12" aria-hidden="true" />
+                            <Heart v-else :size="12" aria-hidden="true" />
+                            <span class="sr-only">{{ kind === 'attack' ? '攻击' : '生命' }}</span>
+                            <b>{{ cardCombatSimpleValue(e, kind) === '' ? '—' : cardCombatSimpleValue(e, kind) }}</b>
+                          </span>
+                        </div>
                         <span class="ledger-mobile-prof"
                           ><img
                             v-if="profIcon(e.prof)"
@@ -1173,6 +1233,7 @@
                             "
                           >
                             <span>{{ statusLabel(operatorStatus(e)) }}</span>
+                            <ChevronDown v-if="ledgerCardIsV2" class="ledger-status-chevron" :size="14" aria-hidden="true" />
                           </summary>
                           <div
                             class="ledger-status-options"
@@ -1238,6 +1299,14 @@
                     </div>
                   </header>
 
+                  <ShareCardStats
+                    :enabled="ledgerCardIsV3 && compactStats"
+                    :name="e.name || e.id"
+                    editable
+                    initial-growth
+                    @change="cardPopoverKey = ''"
+                  >
+                    <template #combat>
                   <section
                     class="ledger-combat"
                     aria-label="战斗面板与奇闻属性"
@@ -1353,16 +1422,18 @@
                           :disabled="cardSubmitStates[e.id] === 'submitting'"
                           @input="setCardOddityValue(e, kind, $event)"
                         /><span
-                          >/ {{ cardOddityMax(e, kind) || "—" }}</span
+                          >{{ ledgerCardIsV3 && compactStats ? "最大 " : "/ " }}{{ cardOddityMax(e, kind) || "—" }}</span
                         ></label
                       >
                     </div>
                   </section>
 
+                    </template>
+                    <template #growth>
                   <section class="ledger-growth" aria-label="核心养成">
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">等级</span>
-                      <label class="ledger-inline-field"
+                      <label class="ledger-inline-field" title="等级"
                         ><span class="sr-only">等级</span
                         ><input
                           class="ledger-editable ledger-inline-input"
@@ -1540,7 +1611,7 @@
                     </div>
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">修为</span>
-                      <label class="ledger-inline-field"
+                      <label class="ledger-inline-field" title="修为"
                         ><span class="sr-only">修为</span
                         ><input
                           class="ledger-editable ledger-inline-input"
@@ -1745,6 +1816,8 @@
                       <button
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
                         type="button"
+                        :aria-label="'化极：' + starLabel(cardGrowthValue(e, 'star'), e.spOf)"
+                        title="化极"
                         :aria-expanded="cardPopoverKey === e.id + ':star-edit'"
                         @click="openCardPopover(e, 'star-edit')"
                       >
@@ -1760,7 +1833,7 @@
                           /><span v-if="!e.spOf"
                             >
                             {{ starCardNode(cardGrowthValue(e, "star")) }}
-                             节点</span
+                            <span class="ledger-node-label">&nbsp;节点</span></span
                           ></template
                         ><template v-else>{{
                           starCardFallback(cardGrowthValue(e, "star"))
@@ -1991,6 +2064,10 @@
                     </div>
                   </section>
 
+                    </template>
+                  </ShareCardStats>
+
+                  <div class="ledger-loadouts">
                   <div
                     class="ledger-destiny fate-trait-style-a"
                   >
@@ -2000,18 +2077,23 @@
                       class="ledger-destiny-row ledger-popover-trigger"
                       role="button"
                       tabindex="0"
+                      :aria-label="'编辑命盘' + (index === 1 ? '一' : '二')"
+                      :title="'命盘' + (index === 1 ? '一' : '二')"
                       :aria-expanded="
                         cardPopoverKey === e.id + ':disc-' + (index - 1)
                       "
                       @click="openCardPopover(e, 'disc-' + (index - 1))"
-                      @keydown.enter.prevent="
+                      @keydown.enter.self.prevent="
                         openCardPopover(e, 'disc-' + (index - 1))
                       "
-                      @keydown.space.prevent="
+                      @keydown.space.self.prevent="
                         openCardPopover(e, 'disc-' + (index - 1))
                       "
                     >
                       <span>命盘{{ index === 1 ? "一" : "二" }}</span>
+                      <svg v-if="ledgerCardIsV2" class="ledger-destiny-marker" width="6" height="16" viewBox="0 0 6 16" aria-hidden="true">
+                        <circle v-for="dot in index" :key="dot" cx="3" :cy="index === 1 ? 8 : dot === 1 ? 5 : 11" r="2" fill="currentColor" />
+                      </svg>
                       <div class="ledger-destiny-values">
                         <template v-if="cardLoadoutDiscs(e, index - 1).length">
                           <em
@@ -2059,13 +2141,23 @@
                         v-if="cardPopoverKey === e.id + ':disc-' + (index - 1)"
                         class="ledger-popover ledger-disc-popover"
                         @click.stop
+                        @keydown.esc.stop="cardPopoverKey = ''"
                       >
-                        <p>
-                          <CircleAlert
-                            :size="13"
-                            aria-hidden="true"
-                          />编辑命盘{{ index === 1 ? "一" : "二" }}（最多 3 个）
-                        </p>
+                        <div class="ledger-loadout-editor-head">
+                          <p>
+                            <CircleAlert :size="13" aria-hidden="true" />编辑命盘{{ index === 1 ? "一" : "二" }}
+                            <span class="ledger-loadout-legacy-detail">（最多 3 个）</span>
+                          </p>
+                          <span class="ledger-loadout-editor-count" aria-live="polite">
+                            已选 {{ cardLoadoutDiscs(e, index - 1).length }} / 3
+                          </span>
+                          <button
+                            class="ledger-loadout-editor-close"
+                            type="button"
+                            aria-label="关闭命盘编辑"
+                            @click.stop="cardPopoverKey = ''"
+                          ><X :size="18" aria-hidden="true" /></button>
+                        </div>
                         <div class="ledger-disc-options">
                           <label
                             v-for="disc in cardDiscOptions(e)"
@@ -2076,6 +2168,7 @@
                           >
                             <input
                               type="checkbox"
+                              :aria-label="discKey(disc)"
                               :checked="cardDiscSelected(e, index - 1, disc)"
                               @change.stop="
                                 toggleCardDisc(e, index - 1, disc, $event)
@@ -2092,18 +2185,25 @@
                                 showDiscTooltip($event, discDescription(disc))
                               "
                               @blur="hideDiscTooltip"
-                              >{{ discKey(disc) }}</span
+                              >{{ cardDiscAbbreviation(e, discKey(disc)) }}</span
                             >
                           </label>
                         </div>
-                        <button type="button" @click.stop="cardPopoverKey = ''">
-                          完成
-                        </button>
+                        <div class="ledger-popover-actions ledger-loadout-editor-actions">
+                          <span class="ledger-loadout-editor-hint">修改后在卡片保存</span>
+                          <button
+                            class="ledger-loadout-editor-done"
+                            type="button"
+                            @click.stop="cardPopoverKey = ''"
+                          >完成</button>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <div class="ledger-stones" aria-label="已装备星石">
+                    <span class="ledger-stone-row-label" aria-hidden="true">主星</span>
+                    <span class="ledger-stone-row-label" aria-hidden="true">辅星</span>
                     <button
                       v-for="(stone, index) in cardStoneSlots(e)"
                       :key="index"
@@ -2111,9 +2211,9 @@
                       class="stone-slot ledger-popover-trigger"
                       :class="{ 'is-empty': !stone }"
                       :aria-label="
-                        stone
+                        stoneSlots[index].label + '，' + (stone
                           ? stone.name + '，等级 ' + (stone.level || 0)
-                          : '空星石槽位'
+                          : '未装备')
                       "
                       @click="openStarLoadout(e, stoneSlots[index].type.replace('assist', 'support'))"
                     >
@@ -2124,6 +2224,7 @@
                     </button>
                   </div>
 
+                  </div>
                   <div class="ledger-card-footer">
                     <textarea
                       :value="operatorRemark(e)"
@@ -2149,13 +2250,15 @@
                         ><button
                           class="ledger-card-save"
                           type="button"
+                          aria-label="保存"
+                          title="保存"
                           :disabled="
                             cardSubmitStates[e.id] === 'submitting' ||
                             annotationBusyIds.has(e.id)
                           "
                           @click="saveCardDraft(e)"
                         >
-                          <Save :size="13" aria-hidden="true" />保存
+                          <Save :size="13" aria-hidden="true" /><span class="ledger-save-label">保存</span>
                         </button></template
                       ><button
                         v-else
@@ -2230,6 +2333,7 @@
               :current-entries="currentEntries"
               :catalog-entries="catalogOperators"
               :favorite-ids="favoriteAgentIds"
+              :growth-states="workbenchStatuses"
               :is-logged-in="auth.isLoggedIn"
               :refresh-key="subjectiveRefreshKey"
               :active="activeTab === 'tracking'"
@@ -2876,6 +2980,7 @@ import {
   BookOpen,
   Calculator,
   Check,
+  ChevronDown,
   ChevronUp,
   CircleAlert,
   Download,
@@ -2901,6 +3006,8 @@ import OperatorShareManager from "../../components/operator/OperatorShareManager
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
+import ShareCardStats from "../../components/operator/ShareCardStats.vue";
+import operatorPortraits from "../../data/operatorPortraits.json";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
 import {
@@ -2919,6 +3026,7 @@ import {
   renameOperatorAccount,
   deleteOperatorAccount,
   getOperatorCurrent,
+  removeOrphanOperatorCurrent,
   patchOperatorCurrent,
   getOperatorAnnotations,
   putOperatorAnnotation,
@@ -2995,8 +3103,18 @@ const growthTrackingEnabled = isFeatureEnabled(
   FEATURE_KEYS.OPERATOR_GROWTH_TRACKING,
 );
 const ledgerCardVersionClass = operatorLedgerCardVersionClass();
+const ledgerCardIsV3 =
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V3;
+// V3 uses the V2 controls and data presentation beneath its portrait skin.
 const ledgerCardIsV2 =
-  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2;
+  ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2 || ledgerCardIsV3;
+const failedPortraitIds = ref(new Set());
+const compactStats = ref(false);
+let compactStatsQuery = null;
+
+function syncCompactStats() {
+  compactStats.value = compactStatsQuery.matches;
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -3030,8 +3148,10 @@ const catalogLoading = ref(false);
 const error = ref("");
 const catalogError = ref("");
 const catalogVersion = ref("");
-const backendCatalog = ref([]);
+const backendCatalog = ref(null);
 const currentEntries = ref([]);
+const removingOrphanId = ref("");
+const orphanNotice = ref("");
 const showArchive = ref(false);
 const showImport = ref(false);
 const importText = ref("");
@@ -3756,7 +3876,7 @@ watch(editing, async function (isOpen) {
 });
 
 const catalogOperators = computed(function () {
-  if (backendCatalog.value.length)
+  if (Array.isArray(backendCatalog.value))
     return backendCatalog.value.map(normalizeOperator);
   // 后端不可达时的本地兜底：库存角色目录已含 id/name/稀有度/属性，足够展示基础图鉴
   return AGENT_CATALOG.map(function (e) {
@@ -4121,6 +4241,41 @@ const currentMap = computed(function () {
   return m;
 });
 
+const orphanCurrentEntries = computed(function () {
+  if (!Array.isArray(backendCatalog.value) || catalogLoading.value || loading.value || error.value) return [];
+  return currentEntries.value.filter(entry => !catalogMap.value[entry.id]);
+});
+
+async function removeOrphanCurrent(entry) {
+  if (removingOrphanId.value || !auth.isLoggedIn || !accountId.value) return;
+  const targetAccount = accountId.value;
+  const confirmed = await dialog.confirm({
+    title: "移除旧养成",
+    message: "确定移除「" + currentAccountName.value + "」中「" + entry.id + "」的旧养成？此子账号各版本中的该 ID 都会移除，历史导入记录保留。若需要保留练度，请先导出备份。",
+    confirmText: "移除旧养成",
+    type: "danger",
+  });
+  if (!confirmed || accountId.value !== targetAccount || removingOrphanId.value) return;
+  removingOrphanId.value = entry.id;
+  orphanNotice.value = "";
+  try {
+    await removeOrphanOperatorCurrent({ accountId: targetAccount, operatorId: entry.id });
+    if (accountId.value !== targetAccount) return;
+    currentEntries.value = currentEntries.value.filter(item => item.id !== entry.id);
+    orphanNotice.value = "已移除旧养成：" + entry.id;
+    await reloadCurrent();
+  } catch (err) {
+    if (accountId.value !== targetAccount) return;
+    orphanNotice.value = err.code === "operator_still_in_catalog"
+      ? "该密探仍在公共图鉴中，无法移除，请刷新图鉴后核对。"
+      : humanErr(err, "旧养成移除失败，请重试");
+  } finally {
+    removingOrphanId.value = "";
+  }
+}
+
+watch(accountId, () => { orphanNotice.value = ""; });
+
 // 图鉴顶部统计口径（不跟随属性/职业/搜索/已拥有筛选）：仅按游戏过滤的全量
 const statsEntries = computed(function () {
   const state = currentMap.value;
@@ -4209,7 +4364,7 @@ const filterSuffix = computed(function () {
 
 // 当前养成首要口径：只展示已拥有，再叠加属性 / 职业筛选。
 const ownedCurrentEntries = computed(function () {
-  return currentEntries.value.filter(isOperatorOwned);
+  return currentEntries.value.filter(entry => catalogMap.value[entry.id] && isOperatorOwned(entry));
 });
 
 const currentStatusCounts = computed(function () {
@@ -4961,6 +5116,67 @@ function openCardPopover(entry, field) {
       ? ""
       : entry.id + ":" + field;
 }
+
+// The compact loadout editors follow their own trigger, not the card footer.
+watch(cardPopoverKey, (key, _previous, onCleanup) => {
+  if (!ledgerCardIsV2 || !/:(disc|stone)-\d+$/.test(key)) return;
+  const card = currentLedgerCardElements.get(key.slice(0, key.lastIndexOf(":")));
+  const loadouts = card?.querySelector(".ledger-loadouts");
+  const trigger = loadouts?.querySelector('[aria-expanded="true"]');
+  const panel = loadouts?.querySelector(".ledger-popover");
+  if (!trigger || !panel) return;
+
+  let frame = 0;
+  function position() {
+    frame = 0;
+    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    const viewport = window.visualViewport;
+    const bounds = loadouts.getBoundingClientRect();
+    const anchor = trigger.getBoundingClientRect();
+    const header = document.querySelector(".mobile-shell")?.getBoundingClientRect();
+    const tabs = document.querySelector(".operator-mobile-tabs")?.getBoundingClientRect();
+    const topEdge = Math.max(viewport?.offsetTop || 0, header?.bottom || 0) + 8;
+    const bottomEdge = Math.min(
+      (viewport?.offsetTop || 0) + (viewport?.height || window.innerHeight),
+      tabs?.height ? tabs.top : window.innerHeight,
+    ) - 8;
+    if (anchor.bottom < topEdge || anchor.top > bottomEdge) {
+      cardPopoverKey.value = "";
+      return;
+    }
+    const below = Math.max(0, bottomEdge - anchor.bottom - 7);
+    const above = Math.max(0, anchor.top - topEdge - 7);
+    const desiredHeight = Math.min(320, panel.scrollHeight + 2);
+    const upwards = below < desiredHeight && above > below;
+    const maxHeight = Math.min(320, upwards ? above : below);
+    const top = upwards
+      ? anchor.top - 7 - Math.min(desiredHeight, maxHeight)
+      : anchor.bottom + 7;
+    panel.style.setProperty("--ledger-loadout-popover-top", `${top - bounds.top - loadouts.clientTop}px`);
+    panel.style.setProperty("--ledger-loadout-popover-height", `${maxHeight}px`);
+  }
+  function schedulePosition() {
+    if (!frame) frame = window.requestAnimationFrame(position);
+  }
+
+  position();
+  const observer = new ResizeObserver(schedulePosition);
+  observer.observe(loadouts);
+  observer.observe(trigger);
+  observer.observe(panel);
+  window.addEventListener("scroll", schedulePosition, true);
+  window.addEventListener("resize", schedulePosition);
+  window.visualViewport?.addEventListener("resize", schedulePosition);
+  window.visualViewport?.addEventListener("scroll", schedulePosition);
+  onCleanup(() => {
+    window.cancelAnimationFrame(frame);
+    observer.disconnect();
+    window.removeEventListener("scroll", schedulePosition, true);
+    window.removeEventListener("resize", schedulePosition);
+    window.visualViewport?.removeEventListener("resize", schedulePosition);
+    window.visualViewport?.removeEventListener("scroll", schedulePosition);
+  });
+}, { flush: "post" });
 
 function cardLevelBreakthrough(entry) {
   if (!showLevelBreakthroughOption(entry, 5)) return false;
@@ -7239,11 +7455,12 @@ async function loadCatalog() {
   catalogError.value = "";
   try {
     const data = await getOperatorCatalog();
+    if (!Array.isArray(data?.operators)) throw new Error("公共图鉴响应无效");
     backendCatalog.value =
       data && Array.isArray(data.operators) ? data.operators : [];
     catalogVersion.value = (data && data.catalog_version) || "";
   } catch (err) {
-    backendCatalog.value = [];
+    backendCatalog.value = null;
     catalogError.value = humanErr(err, "图鉴加载失败，当前显示本地兜底目录");
   } finally {
     catalogLoading.value = false;
@@ -8116,6 +8333,9 @@ function goLogin() {
 }
 
 onMounted(async function () {
+  compactStatsQuery = window.matchMedia("(max-width: 640px)");
+  syncCompactStats();
+  compactStatsQuery.addEventListener("change", syncCompactStats);
   document.addEventListener("pointerdown", handleCardPopoverOutside);
   window.addEventListener("scroll", hideDiscTooltip, true);
   window.addEventListener("resize", hideDiscTooltip);
@@ -8128,6 +8348,7 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  compactStatsQuery?.removeEventListener("change", syncCompactStats);
   clearTimeout(shareCopyTimer);
   shareCopySeq += 1;
   document.removeEventListener("pointerdown", handleCardPopoverOutside);
@@ -8140,6 +8361,14 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.orphan-current { margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
+.orphan-current p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }
+.orphan-current ul { list-style: none; margin: 0; padding: 0; }
+.orphan-current li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 0; }
+.orphan-current li > span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.orphan-current small { display: block; margin-top: 4px; }
+.orphan-current button { min-height: 44px; }
+
 .workspace-mobile-link { display: none; }
 .current-ledger-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
 .current-ledger-heading .section-kicker { margin-bottom: 0; }
@@ -10549,6 +10778,7 @@ onBeforeUnmount(function () {
   min-width: 0;
   text-align: center;
 }
+.ledger-status-chevron { display: none; }
 .ledger-status-button::after {
   width: 6px;
   height: 6px;
@@ -11394,6 +11624,11 @@ onBeforeUnmount(function () {
   color: var(--ink-35);
 }
 .growth-card-remark { margin-top: 12px; }
+@media (max-width: 640px) {
+  .growth-card-remark { margin-top: 4px; padding-top: 0; }
+  .growth-card-remark textarea { height: 44px; min-height: 44px; padding: 10px 0; font-size: 16px; }
+  .growth-card-remark .ledger-card-actions button { min-height: 44px; font-size: 12px; }
+}
 .growth-remark-error, .growth-remark-notice { font: 11px/1.5 var(--font-b); color: var(--ink-60); }
 .growth-remark-error { color: var(--rouge); }
 .ledger-inline-field {
@@ -14700,3 +14935,4 @@ onBeforeUnmount(function () {
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v3.css"></style>
