@@ -1,9 +1,5 @@
 <template>
   <section class="cultivation-progress" :aria-label="dateLabel + '培养推进'">
-    <div v-if="staminaBalance !== null" class="stamina-balance" :class="{ negative: staminaBalance < 0 }" role="status" aria-live="polite">
-      <span>实时体力结余</span>
-      <strong>{{ signed(staminaBalance) }}</strong>
-    </div>
     <div class="resource-list" aria-live="polite">
       <article v-for="item in visibleRows" :key="item.id" class="resource" :class="{ complete: item.required > 0 && item.remaining <= 0 }">
         <span class="resource-icon" aria-hidden="true"><img v-if="item.icon && !failedIcons.has(item.icon)" :src="item.icon" alt="" width="42" height="42" loading="lazy" draggable="false" @error="failedIcons.add(item.icon)" /><span v-else>{{ (item.name || item.id).slice(0, 1) }}</span></span>
@@ -22,7 +18,7 @@
 
 <script setup>
 import { computed, reactive } from 'vue'
-const props = defineProps({ rows: { type: Array, required: true }, dateLabel: { type: String, default: '' }, staminaBalance: { type: Number, default: null } })
+const props = defineProps({ rows: { type: Array, required: true }, dateLabel: { type: String, default: '' } })
 const failedIcons = reactive(new Set())
 // Keep materials completed today visible; hide only those already covered at day start.
 const visibleRows = computed(() => {
@@ -32,14 +28,10 @@ const visibleRows = computed(() => {
   return experience ? [experience, ...rows.filter(item => item !== experience)] : rows
 })
 function number(value) { return Number(value || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 }) }
-function signed(value) { const amount = Math.round(Number(value) || 0); return amount > 0 ? '+' + number(amount) : number(amount) }
 </script>
 
 <style scoped>
 .cultivation-progress { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); }
-.stamina-balance { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; color: var(--ink-60); font-size: 12px; }
-.stamina-balance strong { color: var(--planner-gain, #517654); font: 850 18px var(--font-d); font-variant-numeric: tabular-nums; }
-.stamina-balance.negative strong { color: var(--rouge); }
 .resource-list { display: grid; gap: 0; }
 .resource { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 2px; }
 .resource + .resource { border-top: 1px dashed var(--line); }
@@ -55,4 +47,13 @@ function signed(value) { const amount = Math.round(Number(value) || 0); return a
 .track { position: relative; height: 7px; overflow: hidden; border-radius: 999px; background: var(--paper); }
 .track i { position: absolute; top: 0; bottom: 0; }.before { left: 0; background: #c48b4d; }.today { background: #e8bc6c; }
 @media (max-width: 760px) { .cultivation-progress { padding: 14px; } }
+@media (max-width: 640px) {
+  .resource { grid-template-columns: 32px minmax(0, 1fr); gap: 8px; padding: 10px 0; }
+  .resource-icon, .resource-icon img { width: 32px; height: 32px; }
+  .resource-head { align-items: flex-start; gap: 8px; }
+  .resource-title { display: grid; gap: 3px; }
+  .resource-title > b { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+  .resource-summary { overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; }
+  .resource-percent { padding-top: 2px; font-size: 12px; }
+}
 </style>

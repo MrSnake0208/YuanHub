@@ -19,7 +19,7 @@
 - `PUT /v1/operator/training-workspace?account_id=...`：完整快照原子更新，使用 expected_revision 防止覆盖。
 - `POST /v1/operator/training-workspace/import-local?account_id=...`：接收已转换/确认的本地 v1 快照，保留 UUID，按 migration_id 幂等导入，workspace 与 receipt 同事务提交。
 - 全部接口验证登录用户对子账号的访问权。账号级隔离，不信任请求提供的用户归属。保留现有默认每密探目标接口；禁止任何清单操作修改星标、档案、库存或养成状态。
-- 严格按主要契约校验默认 favorites 计划、自建 UUID/成员/目标、active_plan_id、层数、版本；不得静默截断或纠正导致用户数据丢失。请求成功后返回实际保存的完整 workspace。
+- 严格按主要契约校验可选的 favorites 计划、自建 UUID/成员/目标、active_plan_id、层数、版本；必须允许 `plans: []` 与 `active_plan_id: null`，以便用户删除全部清单。不得静默截断或纠正导致用户数据丢失。请求成功后返回实际保存的完整 workspace。
 - 历练计算和完成态当前在前端派生，无须存储 ETA、材料缺口或 completed；如后端也计算，复用同一表格与测试口径，明确仅为保守估算。
 
 默认计划成员是动态星标集合加手工添加、减手工排除。不要把当前星标快照写成固定成员，也不要将「从清单移出」实现成取消特别关注。自建目标按 `(account_id,plan_id,operator_id)` 隔离；默认目标继续使用旧 `(account_id,operator_id)` 存储。旧 `heart_paper` 不参与新追踪，不需要破坏性迁移。
@@ -29,7 +29,7 @@
 必须添加数据库迁移（含回滚/兼容说明）、服务与请求校验、API 集成测试，并覆盖：
 
 - 首次读取/创建、更新修订、过期写入冲突；两个客户端同时更新同一账号只能一个成功。
-- 不同子账号隔离、越权读写/导入拒绝；默认计划不可删除，自建同密探不同目标不互相覆盖。
+- 不同子账号隔离、越权读写/导入拒绝；favorites 与自建计划均可删除，全部删除后刷新仍返回空 workspace；自建同密探不同目标不互相覆盖。
 - 非法 ID/层数/目标组合/schema/active_plan_id 拒绝，不触发半写入。
 - 同迁移 ID 重试不重复创建；内容改变冲突；模拟中途失败无半份 workspace 或 receipt。
 - 不修改现有 favorites、annotations、密探客观档案、inventory、v2/v3 导入导出或默认 targets 接口行为。

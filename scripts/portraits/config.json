@@ -1,0 +1,83 @@
+{
+  "output": {
+    "width": 960,
+    "height": 700,
+    "pixel_ratio": 3,
+    "format": "webp",
+    "quality": 96,
+    "method": 6
+  },
+  "references": [
+    {
+      "id": "char_112_pangde",
+      "path": "references/char_112_pangde.webp"
+    },
+    {
+      "id": "char_069_zhangmiao",
+      "path": "references/char_069_zhangmiao.webp"
+    },
+    {
+      "id": "char_088_liubao",
+      "path": "references/char_088_liubao.webp"
+    },
+    {
+      "id": "char_101_lvbu",
+      "path": "references/char_101_lvbu.webp"
+    }
+  ],
+  "target": {
+    "center_x": null,
+    "center_y": null,
+    "face_scale": null,
+    "face_aspect": null
+  },
+  "display": {
+    "width": 360,
+    "height": 190,
+    "right": 25
+  },
+  "detector": {
+    "input_size": 640,
+    "threads": 2,
+    "candidate_threshold": 0.25,
+    "confidence_threshold": 0.65,
+    "ambiguity_threshold": 0.45,
+    "nms_iou": 0.45
+  },
+  "feather": {
+    "left": 0.18,
+    "right": 0.18,
+    "protect_face": true
+  },
+  "bottom_trim": {
+    "alpha_threshold": 8,
+    "trim_black": true,
+    "black_threshold": 12,
+    "black_row_fraction": 0.995,
+    "black_min_coverage": 0.95,
+    "black_min_rows": 2,
+    "max_fraction": 0.25
+  },
+  "safety": {
+    "top_margin": 0.02,
+    "head_policy": "warn",
+    "bottom_fill_max_scale_change": 0.08
+  },
+  "preview": {
+    "columns": 4,
+    "rows": 6,
+    "width": 320,
+    "height": 234
+  },
+  "update": {
+    "source_dir": "source-update",
+    "archive_dir": "archive",
+    "output_dir": "../../public/assets/operator-portraits",
+    "public_prefix": "/assets/operator-portraits",
+    "portrait_index": "../../src/data/operatorPortraits.json",
+    "metadata_path": "metadata.json",
+    "catalog_url": null,
+    "catalog_timeout_seconds": 30,
+    "use_environment_proxy": false
+  }
+}
