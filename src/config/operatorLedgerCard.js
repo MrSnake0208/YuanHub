@@ -12,7 +12,7 @@ export function operatorLedgerCardVersionClass(version = ACTIVE_OPERATOR_LEDGER_
     ? version
     : ACTIVE_OPERATOR_LEDGER_CARD_VERSION
 
-  // V3 retains the compact V2 layout and adds its own portrait skin.
+  // V3 reuses V2 controls and adds responsive portrait layouts.
   if (selected === OPERATOR_LEDGER_CARD_VERSIONS.V3) {
     return 'agent-ledger-card--v2 agent-ledger-card--v3'
   }
