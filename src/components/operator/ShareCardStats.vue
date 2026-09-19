@@ -1,5 +1,5 @@
 <template>
-  <div class="share-card-stats" :class="{ 'is-enabled': enabled, 'is-instant': instant }">
+  <div class="share-card-stats" :class="{ 'is-enabled': enabled, 'is-instant': instant, 'is-editable': editable }">
     <button
       v-if="enabled"
       type="button"
@@ -36,18 +36,22 @@
 import { ref, useId } from 'vue'
 import { ArrowLeftRight } from '@lucide/vue'
 
-defineProps({
+const props = defineProps({
   enabled: { type: Boolean, default: false },
-  name: { type: String, required: true }
+  name: { type: String, required: true },
+  editable: { type: Boolean, default: false },
+  initialGrowth: { type: Boolean, default: false }
 })
+const emit = defineEmits(['change'])
 
 const panelId = useId()
-const showGrowth = ref(false)
+const showGrowth = ref(props.initialGrowth)
 const instant = ref(false)
 
 function toggle(event) {
   instant.value = event.detail === 0
   showGrowth.value = !showGrowth.value
+  emit('change', showGrowth.value)
 }
 </script>
 
@@ -67,7 +71,7 @@ function toggle(event) {
   max-width: 172px;
   /* Keep the content and touch target stable while sizing the background separately. */
   height: 48px;
-  margin: 5px 0 0 -3px;
+  margin: 3px 0 0 -3px;
   padding-right: 22px;
   border-radius: 8px 6px 6px 6px;
 }
@@ -98,6 +102,10 @@ function toggle(event) {
   touch-action: manipulation;
 }
 .share-stats-toggle:active { transform: none; }
+.share-stats-toggle:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
 .share-stats-next {
   position: absolute;
   /* Align the visual control with the top-aligned data; keep the full-panel hit area. */
@@ -114,12 +122,32 @@ function toggle(event) {
 }
 .share-stats-next::before {
   position: absolute;
-  inset: 0 auto 3px 0;
+  inset: 0 auto 2px 0;
   width: 1px;
   background: var(--line);
   content: '';
 }
 .share-stats-next > span { writing-mode: vertical-rl; text-orientation: upright; }
+
+/* Editable panels reserve a separate toggle rail so inputs remain reachable. */
+.share-card-stats.is-enabled.is-editable {
+  height: auto;
+  min-height: 80px;
+  max-width: calc(var(--ledger-growth-data-width, 150px) + 22px);
+  margin: 0;
+  padding-right: 22px;
+}
+.is-enabled.is-editable::before { bottom: 0; }
+.is-enabled.is-editable:has(.ledger-popover) { z-index: 4; }
+.is-editable .share-stats-toggle {
+  left: auto;
+  right: -2px;
+  width: 24px;
+}
+.is-editable .share-stats-next {
+  inset: 4px 2px;
+  width: 20px;
+}
 
 /* Both views size the same grid cell, so switching never moves the cards below. */
 .is-enabled .share-stats-view {

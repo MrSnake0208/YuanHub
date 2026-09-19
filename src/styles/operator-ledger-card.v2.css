@@ -144,6 +144,7 @@
   text-align: left;
 }
 
+.agent-ledger-card--editable.agent-ledger-card--v2 .share-card-stats .ledger-growth,
 :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v2 .ledger-combat + .ledger-growth {
   margin-top: -6.75px;
 }
@@ -977,6 +978,7 @@
     display: none;
   }
 
+  .agent-ledger-card--editable.agent-ledger-card--v2 .share-card-stats .ledger-growth,
   .agent-ledger-card--editable.agent-ledger-card--v2 .ledger-combat + .ledger-growth {
     --ledger-growth-column-gap: 6px;
     position: relative;

@@ -1054,6 +1054,8 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
     grid-column: 1 / -1;
     grid-template-rows: repeat(2, minmax(24px, auto));
     min-width: 0;
+    padding-left: 5px;
+    margin-bottom: 1px;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny {
