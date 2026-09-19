@@ -116,7 +116,7 @@
                   v-for="entry in filteredEntries"
                   :key="entry.id"
                   class="operator-card agent-ledger-card agent-ledger-card--share"
-                  :class="['status-' + shareStatusClass(entry), ledgerCardVersionClass]"
+                  :class="['status-' + shareStatusClass(entry), ledgerCardVersionClass, { ['rarity-r' + (entry.rarity || 3)]: ledgerCardIsV3 }]"
                   role="listitem"
                 >
                   <picture
@@ -124,8 +124,7 @@
                     class="ledger-portrait"
                     aria-hidden="true"
                   >
-                    <source media="(max-width: 640px)" :srcset="operatorPortraits[entry.id]" />
-                    <img alt="" width="480" height="350" loading="lazy" decoding="async" @error="failedPortraitIds.add(entry.id)" />
+                    <img :src="operatorPortraits[entry.id]" alt="" width="480" height="350" loading="lazy" decoding="async" @error="failedPortraitIds.add(entry.id)" />
                   </picture>
                   <header
                     class="ledger-card-head"
@@ -137,7 +136,7 @@
                     }"
                   >
                     <div class="ledger-avatar">
-                      <img v-if="entry.avatar" :src="avatarUrl(entry.avatar)" :alt="entry.name + '头像'" loading="lazy" @error="hideBrokenImage" />
+                      <img v-if="entry.avatar && !failedAvatarIds.has(entry.id)" :src="avatarUrl(entry.avatar)" :alt="entry.name + '头像'" loading="lazy" @error="failedAvatarIds.add(entry.id)" />
                       <span v-else aria-hidden="true">{{ monogram(entry) }}</span>
                     </div>
                     <div class="ledger-identity">
@@ -187,16 +186,16 @@
                     </template>
                     <template #growth>
                       <section class="ledger-growth share-ledger-growth" aria-label="核心养成">
-                        <div class="ledger-growth-row">
-                          <span class="ledger-grow-label">等级</span>
-                          <span class="share-ledger-growth-value">{{ number(entry.growth.level) }}</span>
+                        <div class="ledger-growth-row" role="group" aria-label="等级">
+                          <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">等级</span>
+                          <span class="share-ledger-growth-value"><template v-if="ledgerCardIsV3 && !compactStats">Lv</template>{{ number(entry.growth.level) }}</span>
                         </div>
-                        <div class="ledger-growth-row">
-                          <span class="ledger-grow-label">修为</span>
-                          <span class="share-ledger-growth-value">{{ number(entry.growth.elite) }}</span>
+                        <div class="ledger-growth-row" role="group" aria-label="修为">
+                          <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">修为</span>
+                          <span class="share-ledger-growth-value"><template v-if="ledgerCardIsV3 && !compactStats">+</template>{{ number(entry.growth.elite) }}</span>
                         </div>
-                        <div class="ledger-growth-row">
-                          <span class="ledger-grow-label">化极</span>
+                        <div class="ledger-growth-row" role="group" aria-label="化极">
+                          <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">化极</span>
                           <span class="share-ledger-growth-value ledger-huaji-value" :title="operatorShareStarLabel(entry.growth.star_level, entry.sp_of)">
                             <template v-if="starCardHasIcon(entry.growth.star_level)">
                               <span>{{ starCardNumber(entry.growth.star_level, entry.sp_of) }}</span>
@@ -310,6 +309,7 @@ function syncCompactStats() {
 }
 
 const failedPortraitIds = ref(new Set())
+const failedAvatarIds = ref(new Set())
 const inputValue = ref('')
 const inputError = ref('')
 const loadError = ref('')
@@ -562,10 +562,6 @@ function monogram(entry) {
   return Array.from(entry.name || entry.id || '?')[0]
 }
 
-function hideBrokenImage(event) {
-  event.currentTarget.hidden = true
-}
-
 onMounted(function () {
   compactStatsQuery = window.matchMedia('(max-width: 640px)')
   syncCompactStats()
@@ -742,12 +738,12 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   box-shadow: none;
 }
 
-/* The slot wrappers preserve the original desktop spacing between sections. */
-.agent-ledger-card--share .share-card-stats:not(.is-enabled) .ledger-growth {
+/* Preserve the stacked V1/V2 spacing; V3 defines its own summary rows. */
+.agent-ledger-card--share:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
   margin-top: -10px;
 }
 
-.agent-ledger-card--share.agent-ledger-card--v2 .share-card-stats:not(.is-enabled) .ledger-growth {
+.agent-ledger-card--share.agent-ledger-card--v2:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
   margin-top: -6.75px;
 }
 

@@ -12,18 +12,18 @@
   display: none;
 }
 
-/* Desktop current-growth cards: five compact dossiers with data over the portrait.
+/* Desktop current-growth and share cards use the same portrait composition.
  * Keep the card overflow visible so status and editing menus remain accessible.
- * The read-only share layout and compact mobile composition stay independent.
+ * Share-specific rules below adapt data fields without introducing editing controls.
  */
 @media (min-width: 641px) {
-  .agent-ledger-grid:has(.agent-ledger-card--editable.agent-ledger-card--v3) {
+  .agent-ledger-grid:has(:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3) {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
     gap: 10px;
     align-items: start;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 {
     --ledger-control-paper: color-mix(in srgb, var(--surface) 82%, transparent);
     --ledger-favorite-gold: #C49A32;
     --ledger-seal-center: 14px;
@@ -40,7 +40,7 @@
     box-shadow: 0 6px 18px color-mix(in srgb, var(--tea) 12%, transparent);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:hover {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 24px color-mix(in srgb, var(--tea) 20%, transparent);
   }
@@ -62,7 +62,7 @@
 
   .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-status-menu[open]) { z-index: 22; }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-portrait {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-portrait {
     position: absolute;
     z-index: -1;
     inset: 0 0 auto;
@@ -75,7 +75,7 @@
     user-select: none;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-portrait img {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-portrait img {
     position: absolute;
     top: 0;
     left: calc(43% + 17px);
@@ -89,16 +89,16 @@
     filter: saturate(.88);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-portrait::after {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-portrait::after {
     position: absolute;
     inset: 0;
     background:
       linear-gradient(90deg, color-mix(in srgb, var(--surface) 24%, transparent), transparent 30%, transparent 66%, color-mix(in srgb, var(--surface) 80%, transparent)),
-      linear-gradient(180deg, transparent 48%, color-mix(in srgb, var(--surface) 38%, transparent) 74%, var(--surface) 100%);
+      var(--ledger-portrait-bottom-fade, linear-gradient(180deg, transparent 48%, color-mix(in srgb, var(--surface) 38%, transparent) 74%, var(--surface) 100%));
     content: '';
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-head {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-card-head {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) max-content max-content;
@@ -109,14 +109,14 @@
     padding: 6px 0 0;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 :is(.ledger-identity, .ledger-name-row, .operator-avatar) { display: contents; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 :is(.ledger-identity, .ledger-name-row, .operator-avatar) { display: contents; }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .operator-avatar :deep(> img),
   .agent-ledger-card--editable.agent-ledger-card--v3 .operator-avatar :deep(> span),
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-row > h3,
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-copy { display: none; }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-tab > h3 {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3 {
     position: static;
     grid-area: 1 / 3;
     justify-self: end;
@@ -135,14 +135,14 @@
     text-shadow: 0 0 4px var(--surface), 0 0 12px var(--surface);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name {
     max-height: 104px;
     max-width: 52px;
     font-size: 18px;
     letter-spacing: .06em;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab {
     position: static;
     grid-area: 1 / 2;
     align-self: start;
@@ -159,9 +159,9 @@
   }
 
   /* Short SP names flow in one column; longer epithets stay together. */
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-continuation:not(.ledger-name-continuation--natural) { display: block; white-space: nowrap; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab img { width: 15px; height: 15px; object-fit: contain; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab > span { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: .12em; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-continuation:not(.ledger-name-continuation--natural) { display: block; white-space: nowrap; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab img { width: 15px; height: 15px; object-fit: contain; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab > span { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: .12em; }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-favorite {
     top: -2px;
@@ -253,7 +253,7 @@
     font: 900 30px var(--font-s);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .share-card-stats {
     position: relative;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -263,7 +263,7 @@
     margin-top: 5px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-combat {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-combat {
     grid-area: 1 / 2;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: repeat(2, minmax(0, 1fr));
@@ -271,21 +271,21 @@
     gap: 4px;
     padding: 0;
   }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-combat-stat {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-combat-stat {
     grid-template-columns: 10px minmax(0, 1fr);
     gap: 0 3px;
     padding: 3px 4px;
     border-color: var(--ledger-panel-line);
     background: var(--ledger-panel-paper);
   }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-combat-value { min-height: 23px; padding: 1px 0; font-size: 12px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-combat-value { min-height: 23px; padding: 1px 0; font-size: 12px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-combat-head :deep(svg),
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity-icon { width: 10px; height: 10px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity { grid-template-columns: 10px minmax(0, 1fr) auto; min-height: 0; gap: 0 2px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity input { min-width: 0; min-height: 18px; padding-inline: 0; font-size: 8px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-oddity > span { font-size: 8px; line-height: 12px; text-align: center; }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats .ledger-growth {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .share-card-stats .ledger-growth {
     grid-area: 1 / 1;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: repeat(3, minmax(0, 1fr));
@@ -306,12 +306,12 @@
     gap: 1px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-grow-label { color: var(--tea); font-size: 10px; text-shadow: none; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-grow-label { color: var(--tea); font-size: 10px; text-shadow: none; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-inline-field,
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-huaji-value { min-height: 26px; border-radius: 0; background: transparent; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-inline-input { font-size: 11px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-huaji-value { gap: 0; padding-inline: 0; font-size: 10.5px; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-huaji-value svg { width: 10px; height: 10px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-huaji-value svg { width: 10px; height: 10px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-node-label { display: none; }
   .agent-ledger-card--editable.agent-ledger-card--v3 :is(.ledger-step-actions, .ledger-step-actions button, .ledger-smart-action, .ledger-next-action) { width: 24px; min-width: 24px; height: 26px; min-height: 26px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-action-ratio { font-size: 8px; letter-spacing: -.04em; }
@@ -328,21 +328,21 @@
   }
   .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats .ledger-oddity input { --ledger-input-line: var(--line); }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-loadouts { display: grid; gap: 5px; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny { grid-template-columns: minmax(0, 1fr); gap: 3px; padding-top: 0; border-top: 0; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row { flex-direction: row; align-items: center; gap: 4px; background: transparent; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row > span { flex: none; width: 28px; padding: 0; border: 0; font-size: 9px; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(22px, auto); gap: 3px; max-height: none; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row em { min-height: 22px; padding: 2px 1px; font-size: 10px; white-space: normal; overflow-wrap: anywhere; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .fate-trait-style-a .ledger-destiny-row em[class] { box-shadow: none; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-loadouts { display: grid; gap: 5px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny { grid-template-columns: minmax(0, 1fr); gap: 3px; padding-top: 0; border-top: 0; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row { flex-direction: row; align-items: center; gap: 4px; background: transparent; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row > span { flex: none; width: 28px; padding: 0; border: 0; font-size: 9px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(22px, auto); gap: 3px; max-height: none; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row em { min-height: 22px; padding: 2px 1px; font-size: 10px; white-space: normal; overflow-wrap: anywhere; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .fate-trait-style-a .ledger-destiny-row em[class] { box-shadow: none; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row:nth-child(n) > .ledger-disc-popover { left: 0; width: 100%; max-width: 100%; transform: none; }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones { gap: 3px; padding: 0; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones > .stone-slot { height: auto; min-height: 0; aspect-ratio: 1; border-radius: 4px; background: color-mix(in srgb, var(--cream) 80%, var(--surface)); }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones > .stone-slot:nth-of-type(n+4) { background: var(--surface); border-radius: 7px; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones > .stone-slot.is-empty { border-style: dashed; color: var(--ink-35); }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones strong { font-size: 9px; line-height: 12px; }
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones small { margin-top: 0; font-size: 9px; line-height: 11px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones { gap: 3px; padding: 0; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones > .stone-slot { height: auto; min-height: 0; aspect-ratio: 1; border-radius: 4px; background: color-mix(in srgb, var(--cream) 80%, var(--surface)); }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones > .stone-slot:nth-of-type(n+4) { background: var(--surface); border-radius: 7px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones > .stone-slot.is-empty { border-style: dashed; color: var(--ink-35); }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones strong { font-size: 9px; line-height: 12px; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones small { margin-top: 0; font-size: 9px; line-height: 11px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stone-popover { left: 0; right: auto; width: 100%; max-width: 100%; }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-footer { gap: 6px; padding-top: 0; border-top: 0; margin-top: -4px; }
@@ -352,9 +352,286 @@
   .agent-ledger-card--editable.agent-ledger-card--v3 :is(button, input, textarea, [role='button']):focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 }
 
+/* Read-only cards use full-width rows: growth summary, combat, then loadouts. */
+@media (min-width: 641px) {
+  .agent-ledger-grid:has(.agent-ledger-card--share.agent-ledger-card--v3) {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+    gap: 12px;
+  }
+
+  .agent-ledger-card.agent-ledger-card--share.agent-ledger-card--v3 {
+    --share-card-padding: 10px;
+    --share-corner-radius: 14px;
+    --share-header-inset: calc(var(--share-corner-radius) + 2px - var(--share-card-padding));
+    --ledger-portrait-bottom-fade: linear-gradient(180deg,
+      transparent 36%,
+      color-mix(in srgb, var(--surface) 78%, transparent) 70%,
+      var(--surface) 92%);
+    container-type: inline-size;
+    gap: 10px;
+    padding: var(--share-card-padding);
+    border-radius: var(--share-corner-radius);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head {
+    /* Both corner groups begin beyond the rounded border's tangent. */
+    padding: var(--share-header-inset) var(--share-header-inset) 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 :is(.ledger-avatar, .ledger-prof, .share-ledger-prof-attribute) {
+    display: none;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3 {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-identity--chendeng-sp .ledger-name-continuation {
+    display: inline;
+    white-space: normal;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status {
+    top: var(--share-header-inset);
+    right: auto;
+    left: var(--share-header-inset);
+    width: 28px;
+    min-height: 66px;
+    padding: 6px 3px;
+    border: 3px double currentColor;
+    border-radius: 5px 4px 6px 4px;
+    background: var(--ledger-control-paper);
+    font: 900 12px/1.4 var(--font-s);
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: .1em;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status.status-growing {
+    background: color-mix(in srgb, #bfdcc0 24%, var(--surface));
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status.status-graduated {
+    color: color-mix(in srgb, var(--ledger-favorite-gold) 50%, var(--tea));
+    border-color: var(--ledger-favorite-gold);
+    background: color-mix(in srgb, var(--yellow) 24%, var(--surface));
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3:not(:has(.ledger-portrait)) .ledger-avatar {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 68px;
+    height: 68px;
+    transform: translateX(-65%);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--cream);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-avatar > span {
+    color: var(--tea);
+    font: 900 30px var(--font-s);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    margin-top: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats .ledger-growth {
+    grid-area: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto;
+    align-items: center;
+    justify-content: center;
+    place-self: center;
+    width: 100%;
+    max-width: 100%;
+    gap: 0;
+    margin-top: 5px;
+    padding: 6px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .ledger-growth-row:nth-child(n) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 0;
+    gap: 0;
+    padding: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .ledger-growth-row + .ledger-growth-row {
+    border-left: 1px solid var(--ledger-panel-line);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth-value {
+    justify-content: center;
+    min-height: 0;
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat {
+    position: relative;
+    grid-area: 2 / 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+    gap: 0;
+    padding: 3px 0;
+    border: 1px solid var(--ledger-panel-line);
+    border-radius: 7px;
+    background: var(--ledger-panel-paper);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat::before {
+    position: absolute;
+    inset: 6px auto 6px 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--ledger-panel-line);
+    content: '';
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-stat {
+    grid-template-columns: 12px max-content;
+    grid-template-rows: 20px 12px;
+    justify-content: center;
+    gap: 0 4px;
+    padding-block: 0;
+    padding-inline: 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-head,
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > .stat-icon {
+    grid-column: 1;
+    width: 12px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-head svg,
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-value,
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > span:last-child {
+    grid-column: 2;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > span:last-child {
+    color: var(--ink-60);
+    font-size: 10px;
+    line-height: 12px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-value {
+    min-height: 20px;
+    padding-block: 0;
+    font-size: 15px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-loadouts {
+    gap: 8px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny {
+    gap: 6px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row {
+    min-height: 26px;
+    gap: 6px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
+    width: 32px;
+    font-size: 10px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values {
+    grid-auto-rows: minmax(26px, auto);
+    gap: 4px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row em {
+    min-height: 26px;
+    padding: 3px 2px;
+    font-size: 11px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones {
+    gap: 4px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot {
+    min-height: 34px;
+    aspect-ratio: auto;
+    padding: 3px 1px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones strong {
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones small {
+    font-size: 10px;
+    line-height: 12px;
+  }
+}
+
+/* Keep five cards across desktop screens, even when the catalog has few entries. */
+@media (min-width: 1280px) {
+  .agent-ledger-grid:has(.agent-ledger-card--share.agent-ledger-card--v3) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+/* Compact the contents when five columns leave less room inside each card. */
+@media (min-width: 641px) {
+  @container (max-width: 200px) {
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-stat {
+      grid-template-columns: 10px max-content;
+      column-gap: 2px;
+      padding-inline: 3px;
+    }
+
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-value { font-size: 12px; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > span:last-child { font-size: 8px; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-head,
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > .stat-icon,
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-head svg,
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity-icon { width: 10px; height: 10px; }
+
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row { gap: 3px; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span { width: 28px; font-size: 9px; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values { gap: 3px; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row em { padding-inline: 1px; font-size: 10px; }
+
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones { gap: 2px; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot { padding-inline: 0; }
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones strong,
+    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones small { font-size: 9px; }
+  }
+}
+
 @media (min-width: 641px) and (prefers-reduced-motion: reduce) {
-  .agent-ledger-card--editable.agent-ledger-card--v3 { transition: none; }
-  .agent-ledger-card--editable.agent-ledger-card--v3:hover { transform: none; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 { transition: none; }
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:hover { transform: none; }
 }
 
 @media (max-width: 640px) {
