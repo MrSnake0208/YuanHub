@@ -37,6 +37,14 @@
               <li><MoreVertical :size="15" aria-hidden="true" /><span>打开浏览器菜单</span></li>
               <li><Download :size="15" aria-hidden="true" /><span>选择“安装应用”或“添加到主屏幕”</span></li>
             </ol>
+            <div class="pwa-install-permission">
+              <Settings2 :size="16" aria-hidden="true" />
+              <div>
+                <strong>点了“添加”却没反应？</strong>
+                <p>部分 Android 系统会单独限制浏览器的“添加桌面快捷方式”权限。打开 <b>系统设置 → 应用/应用管理 → 当前浏览器 → 权限/其他权限</b>，允许“添加桌面快捷方式”或“创建桌面快捷方式”，再回来重试。</p>
+                <span>不同品牌入口名称可能不同，也可以直接在系统设置里搜索“桌面快捷方式”。</span>
+              </div>
+            </div>
           </template>
         </div>
 
@@ -71,7 +79,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Check, Download, MoreVertical, Share2, SquarePlus, X } from '@lucide/vue'
+import { Check, Download, MoreVertical, Settings2, Share2, SquarePlus, X } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
 import { useOnboardingStore } from '@/stores/onboarding.js'
 import {
@@ -103,7 +111,7 @@ async function installNow() {
   try {
     const result = await requestPwaInstall()
     if (result.outcome === 'accepted') ready.value = false
-    else if (result.outcome === 'unavailable') showQuickGuide.value = true
+    else if (result.outcome === 'unavailable' || result.outcome === 'failed') showQuickGuide.value = true
   } finally {
     installing.value = false
   }
@@ -206,6 +214,20 @@ onBeforeUnmount(function () {
 .pwa-install-guide ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .pwa-install-guide li { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
 .pwa-install-guide li svg { flex: none; color: var(--accent-strong); }
+.pwa-install-permission {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(90, 70, 51, .22);
+  color: var(--ink);
+}
+.pwa-install-permission > svg { flex: none; margin-top: 1px; color: var(--accent-strong); }
+.pwa-install-permission strong { display: block; font-family: var(--font-s); font-size: 11.5px; font-weight: 900; }
+.pwa-install-permission p { margin: 3px 0 0; color: var(--ink-60); font-size: 10.8px; font-weight: 600; line-height: 1.55; }
+.pwa-install-permission p b { color: var(--ink); font-weight: 800; }
+.pwa-install-permission span { display: block; margin-top: 4px; color: var(--ink-60); font-size: 10px; line-height: 1.5; }
 .pwa-install-actions {
   display: flex;
   align-items: center;

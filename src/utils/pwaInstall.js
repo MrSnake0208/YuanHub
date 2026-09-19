@@ -19,6 +19,7 @@ export const pwaInstallState = reactive({
   ios: false,
   android: false,
   safari: false,
+  installHelpNeeded: false,
   dismissedUntil: 0,
   nativeCancelledThisSession: false
 })
@@ -100,6 +101,7 @@ function onBeforeInstallPrompt(event) {
   if (typeof event.preventDefault === 'function') event.preventDefault()
   deferredInstallPrompt = event
   pwaInstallState.installable = true
+  pwaInstallState.installHelpNeeded = false
   syncMobileEnvironment()
 }
 
@@ -108,6 +110,7 @@ function onAppInstalled() {
   pwaInstallState.installable = false
   pwaInstallState.installed = true
   pwaInstallState.standalone = true
+  pwaInstallState.installHelpNeeded = false
   pwaInstallState.nativeCancelledThisSession = false
   try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
 }
@@ -147,18 +150,20 @@ export function shouldShowPwaInstallPrompt(now = Date.now()) {
   if (pwaInstallState.installed || pwaInstallState.standalone) return false
   if (pwaInstallState.dismissedUntil > now) return false
   if (pwaInstallState.nativeCancelledThisSession) return false
-  return pwaInstallState.installable || pwaInstallState.ios || pwaInstallState.android
+  return pwaInstallState.installable || pwaInstallState.ios || pwaInstallState.android || pwaInstallState.installHelpNeeded
 }
 
 export function dismissPwaInstallPrompt(now = Date.now()) {
   const until = now + PWA_DISMISS_MS
   pwaInstallState.dismissedUntil = until
+  pwaInstallState.installHelpNeeded = false
   try { localStorage.setItem(PWA_DISMISSED_KEY, String(until)) } catch (_) { /* unavailable */ }
   return until
 }
 
 export function clearPwaInstallDismissal() {
   pwaInstallState.dismissedUntil = 0
+  pwaInstallState.installHelpNeeded = false
   pwaInstallState.nativeCancelledThisSession = false
   try { localStorage.removeItem(PWA_DISMISSED_KEY) } catch (_) { /* unavailable */ }
   try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
@@ -166,20 +171,32 @@ export function clearPwaInstallDismissal() {
 
 export async function requestPwaInstall() {
   if (!deferredInstallPrompt || !pwaInstallState.installable) {
+    pwaInstallState.installHelpNeeded = true
     return { outcome: 'unavailable' }
   }
   const promptEvent = deferredInstallPrompt
   deferredInstallPrompt = null
   pwaInstallState.installable = false
-  await promptEvent.prompt()
-  const choice = await promptEvent.userChoice
-  const outcome = choice?.outcome || 'dismissed'
-  if (outcome === 'accepted') {
-    pwaInstallState.installed = true
+  try {
+    await promptEvent.prompt()
+    const choice = await promptEvent.userChoice
+    const outcome = choice?.outcome || 'dismissed'
+    if (outcome === 'accepted') {
+      pwaInstallState.installed = true
+      pwaInstallState.installHelpNeeded = false
+      pwaInstallState.nativeCancelledThisSession = false
+    } else {
+      pwaInstallState.installHelpNeeded = false
+      pwaInstallState.nativeCancelledThisSession = true
+      try { sessionStorage.setItem(PWA_SESSION_CANCELLED_KEY, '1') } catch (_) { /* unavailable */ }
+    }
+    return { outcome }
+  } catch (error) {
+    // 部分 Android 浏览器会因为系统/OEM 的“添加桌面快捷方式”权限被拒绝而失败。
+    // 网页无法直接读取或开启这项 App 级权限，因此把失败交给 UI 展示设置引导，而不是静默抛错。
+    pwaInstallState.installHelpNeeded = true
     pwaInstallState.nativeCancelledThisSession = false
-  } else {
-    pwaInstallState.nativeCancelledThisSession = true
-    try { sessionStorage.setItem(PWA_SESSION_CANCELLED_KEY, '1') } catch (_) { /* unavailable */ }
+    try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
+    return { outcome: 'failed', error }
   }
-  return { outcome }
 }
