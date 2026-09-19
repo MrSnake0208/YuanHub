@@ -1170,6 +1170,7 @@
                         :class="{
                           'is-three-char-name': Array.from(e.name || e.id).length === 3,
                           'is-long-name': Array.from(e.name || e.id).length > 3,
+                          'is-single-column-name': e.name === '史子眇·赴烛',
                         }"
                         :title="e.name || e.id"
                       ><template v-if="ledgerCardIsV3 && e.name === '陈登·黍王'">陈登·<span class="ledger-name-continuation ledger-name-continuation--natural">黍王</span></template><template v-else-if="ledgerCardIsV3 && e.name === '史子眇·赴烛'">史子眇·<span class="ledger-name-continuation">赴烛</span></template><template v-else>{{ e.name || e.id }}</template></h3>
