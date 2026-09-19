@@ -1180,7 +1180,10 @@
                         <span
                           v-if="ledgerCardIsV2"
                           class="ledger-prof-tab"
-                          :class="{ 'ledger-prof-tab--fuzhu': e.id === 'char_085_shizimiaosp' }"
+                          :class="{
+                            'ledger-prof-tab--fuzhu': e.id === 'char_085_shizimiaosp',
+                            'ledger-prof-tab--sp': Boolean(e.spOf),
+                          }"
                         >
                           <img
                             v-if="profIcon(e.prof)"
@@ -1286,6 +1289,14 @@
                     </div>
                   </header>
 
+                  <ShareCardStats
+                    :enabled="ledgerCardIsV3 && compactStats"
+                    :name="e.name || e.id"
+                    editable
+                    initial-growth
+                    @change="cardPopoverKey = ''"
+                  >
+                    <template #combat>
                   <section
                     class="ledger-combat"
                     aria-label="战斗面板与奇闻属性"
@@ -1401,12 +1412,14 @@
                           :disabled="cardSubmitStates[e.id] === 'submitting'"
                           @input="setCardOddityValue(e, kind, $event)"
                         /><span
-                          >/ {{ cardOddityMax(e, kind) || "—" }}</span
+                          >{{ ledgerCardIsV3 && compactStats ? "最大 " : "/ " }}{{ cardOddityMax(e, kind) || "—" }}</span
                         ></label
                       >
                     </div>
                   </section>
 
+                    </template>
+                    <template #growth>
                   <section class="ledger-growth" aria-label="核心养成">
                     <div class="ledger-growth-row">
                       <span class="ledger-grow-label">等级</span>
@@ -2040,6 +2053,9 @@
                       </div>
                     </div>
                   </section>
+
+                    </template>
+                  </ShareCardStats>
 
                   <div class="ledger-loadouts">
                   <div
@@ -3179,6 +3195,7 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import ShareCardStats from "../../components/operator/ShareCardStats.vue";
 import operatorPortraits from "../../data/operatorPortraits.json";
 import PlannerSelect from "../../components/operator/PlannerSelect.vue";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
@@ -3285,6 +3302,12 @@ const ledgerCardIsV3 =
 const ledgerCardIsV2 =
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V2 || ledgerCardIsV3;
 const failedPortraitIds = ref(new Set());
+const compactStats = ref(false);
+let compactStatsQuery = null;
+
+function syncCompactStats() {
+  compactStats.value = compactStatsQuery.matches;
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -8503,6 +8526,9 @@ function goLogin() {
 }
 
 onMounted(async function () {
+  compactStatsQuery = window.matchMedia("(max-width: 640px)");
+  syncCompactStats();
+  compactStatsQuery.addEventListener("change", syncCompactStats);
   document.addEventListener("pointerdown", handleCardPopoverOutside);
   window.addEventListener("scroll", hideDiscTooltip, true);
   window.addEventListener("resize", hideDiscTooltip);
@@ -8515,6 +8541,7 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  compactStatsQuery?.removeEventListener("change", syncCompactStats);
   clearTimeout(shareCopyTimer);
   shareCopySeq += 1;
   document.removeEventListener("pointerdown", handleCardPopoverOutside);

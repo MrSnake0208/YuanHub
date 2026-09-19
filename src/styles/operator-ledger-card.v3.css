@@ -58,7 +58,7 @@
     content: '';
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-combat + .ledger-growth {
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats .ledger-growth {
     grid-column: 1;
     grid-row: 1;
     width: 100%;
@@ -69,6 +69,66 @@
     row-gap: 2px;
     margin-top: 0;
     padding-left: var(--ledger-growth-inset);
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled :is(.ledger-combat, .ledger-growth) {
+    grid-area: 1 / 1;
+    min-width: 0;
+    margin: 0;
+    padding: 2px;
+    border: 0;
+    background: transparent;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-growth {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-combat {
+    display: grid;
+    align-content: center;
+    gap: 4px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-combat-stat {
+    grid-template-columns: 12px minmax(0, 1fr);
+    grid-template-rows: 28px 24px;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-combat-value {
+    padding-inline: 0;
+    font-size: 12px;
+  }
+
+  /* Raise the dashed rule without shrinking the input's touch area. */
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled :is(.ledger-combat-value, .ledger-oddity input) {
+    --ledger-input-line: var(--accent);
+    border-bottom-color: transparent;
+    background: repeating-linear-gradient(90deg, var(--ledger-input-line) 0 3px, transparent 3px 6px)
+      left bottom 4px / 100% 1px no-repeat;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-oddity {
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-oddity input {
+    --ledger-input-line: var(--line);
+    min-width: 0;
+    font-size: 11px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-oddity > span {
+    grid-column: 2;
+    justify-self: stretch;
+    transform: translateY(-4px);
+    font-size: 8px;
+    text-align: center;
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-growth-row:nth-child(n) {
@@ -365,6 +425,20 @@
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab.ledger-prof-tab--fuzhu {
     margin-top: var(--ledger-prof-top, 3px);
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-head {
+    --ledger-name-top: 0px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-tab > h3 {
+    align-self: center;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3
+    .ledger-card-head:not(:has(.is-three-char-name, .is-long-name)) .ledger-prof-tab:not(.ledger-prof-tab--sp) {
+    align-self: center;
+    margin-top: 0;
   }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab > img {
