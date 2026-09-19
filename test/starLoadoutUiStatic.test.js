@@ -95,3 +95,9 @@ test('operator page loads user-global presets independently from account-scoped 
   const accountReset = page.slice(accountWatchStart, accountWatchStart + 1000)
   assert.doesNotMatch(accountReset, /starLoadoutPresetStore\.clear/)
 })
+
+test('operator loadout loading and saving stay bound to the account that opened the editor', function () {
+  assert.match(page, /:disabled="[\s\S]*?editing \|\|[\s\S]*?starLoadoutOpen \|\|[\s\S]*?starLoadoutLoading \|\|[\s\S]*?starLoadoutSaving/)
+  assert.match(page, /const targetAccount = accountId\.value;[\s\S]*?getCurrentStarInventory\(targetAccount\)[\s\S]*?getCurrentStarLoadout\(targetAccount\)[\s\S]*?accountId\.value !== targetAccount/)
+  assert.match(page, /const targetAccount = starLoadoutAccountId\.value;[\s\S]*?accountId\.value !== targetAccount[\s\S]*?putCurrentStarLoadout\(targetAccount,[\s\S]*?starLoadoutAccountId\.value !== targetAccount/)
+})
