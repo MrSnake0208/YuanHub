@@ -50,9 +50,9 @@
             v-model:game="accountGame"
             :accounts="accounts"
             :error="accountError"
-            :disabled="!auth.isLoggedIn || accountsLoading || accountBusy"
-            :game-disabled="!auth.isLoggedIn || accountsLoading || accountBusy"
-            :busy="accountBusy"
+            :disabled="!auth.isLoggedIn || accountsLoading || accountBusy || starExchangeBusy"
+            :game-disabled="!auth.isLoggedIn || accountsLoading || accountBusy || starExchangeBusy"
+            :busy="accountBusy || starExchangeBusy"
             stacked
             soft-dropdown
             heading-title="选择要查看的账号"
@@ -66,31 +66,68 @@
             <template #actions>
               <button
                 type="button"
-                class="act-btn star-sync-action"
+                class="act-btn archive-toggle"
                 :disabled="
-                  cloudSyncBusy ||
                   !productReady ||
                   accountsLoading ||
                   accountBusy ||
+                  starExchangeBusy ||
                   !selectedHostAccount()
                 "
-                :aria-busy="cloudSyncBusy"
-                @click="syncCurrentInventoryToCloud"
+                :aria-expanded="showArchive"
+                @click="showArchive = !showArchive"
               >
-                <RefreshCw :size="15" aria-hidden="true" />{{
-                  cloudSyncBusy ? "同步中…" : "同步背包"
-                }}
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起数据交换" : "数据交换" }}
               </button>
             </template>
+            <ArchiveExchangePanel
+              v-if="showArchive"
+              :description="'用于替换当前账号的星石背包、养成计划和经验星曜。'"
+              :import-open="showStarImport"
+              :import-disabled="!productReady || starExchangeBusy"
+              :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
+              scope="current"
+              scope-name="star-export-scope"
+              :scope-options="starExportScopeOptions"
+              @toggle-import="toggleStarImport"
+              @export="exportStarArchive"
+            >
+              <template #import>
+                <section v-if="showStarImport" class="star-exchange-import">
+                  <p class="tip">选择 YuanStar 导出的 JSON 档案。确认后将替换当前账号的星石数据，不会恢复旧实例 ID、密探佩戴关系或 OCR 证据。</p>
+                  <label class="btn ghost file-label">
+                    选择 JSON 文件
+                    <input ref="starImportFile" type="file" accept=".json,application/json" @change="onStarImportFile" />
+                  </label>
+                  <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
+                  <div v-if="starImportPreview" class="star-exchange-preview">
+                    <dl>
+                      <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }} · {{ starImportPreview.preview.format.toUpperCase() }}</dd></div>
+                      <div><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
+                      <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
+                      <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '—' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '—' }} · 白 {{ starImportPreview.preview.experience.white ?? '—' }}</dd></div>
+                    </dl>
+                    <button type="button" class="btn primary" :disabled="starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换当前账号数据' }}</button>
+                  </div>
+                </section>
+              </template>
+            </ArchiveExchangePanel>
           </AccountWorkspace>
           <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError"
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
             aria-live="polite"
           >
-            {{ cloudSyncError || captureTransportError || cloudSyncMessage || captureTransportMessage }}
+            <span>{{ cloudSyncError || captureTransportError || cloudSyncMessage || captureTransportMessage }}</span>
+            <button
+              v-if="cloudNeedsRetry || cloudRetryBusy"
+              type="button"
+              class="star-sync-retry"
+              :disabled="cloudRetryBusy"
+              @click="retryStarCloud"
+            >{{ cloudRetryBusy ? '重试中…' : '重试' }}</button>
           </p>
           <div class="star-tabs" role="tablist" aria-label="星石工作区">
             <button
@@ -131,8 +168,9 @@
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { RefreshCw } from "@lucide/vue";
+import { Archive } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import {
@@ -148,7 +186,9 @@ import {
   disposeYuanStarHandle,
   waitForYuanStarDisposal,
 } from "./embedLifecycle.js";
-import { createHostStarInventorySync } from "./hostStarInventorySync.js";
+import { createStarCloudCoordinator } from "./starCloudCoordinator.js";
+import { starCloudFeedback } from "./starCloudStatus.js";
+import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExchangePreviewScope.js";
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isStarCaptureReadyEvent, loadAndImportStarCapture } from "./captureTransport.js";
@@ -170,10 +210,17 @@ const activeTab = usePersistedTab(
   ["import", "review"],
 );
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
-const cloudSyncBusy = ref(false);
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
+const cloudNeedsRetry = ref(false);
+const cloudRetryBusy = ref(false);
 const productReady = ref(false);
+const showArchive = ref(false);
+const showStarImport = ref(false);
+const starImportPreview = ref(null);
+const starImportFile = ref(null);
+const starExchangeError = ref("");
+const starExchangeBusy = ref(false);
 const captureTransportMessage = ref("");
 const captureTransportError = ref("");
 let handle = null;
@@ -218,10 +265,49 @@ function selectedHostAccount() {
       }
     : null;
 }
-const starInventorySync = createHostStarInventorySync(selectedHostAccount);
+const starExportScopeOptions = computed(function () {
+  return [{
+    value: "current",
+    label: "当前账号",
+    detail: selectedHostAccount()?.displayName || "当前账号",
+  }];
+});
+const starCloud = createStarCloudCoordinator({
+  selectedHostAccount,
+  onState: function (state) {
+    const feedback = starCloudFeedback(state);
+    cloudSyncMessage.value = feedback.message;
+    cloudSyncError.value = feedback.error;
+    cloudNeedsRetry.value = Boolean(state.recoveryRequired);
+  },
+});
 function clearCloudSyncFeedback() {
+  if (cloudNeedsRetry.value || cloudRetryBusy.value) return;
   cloudSyncMessage.value = "";
   cloudSyncError.value = "";
+}
+async function retryStarCloud() {
+  if (!cloudNeedsRetry.value || cloudRetryBusy.value) return;
+  cloudRetryBusy.value = true;
+  try {
+    await starCloud.retry();
+  } catch (error) {
+    cloudSyncError.value = "星石云端保存失败，请重试。";
+  } finally {
+    cloudRetryBusy.value = false;
+  }
+}
+function resetStarImportState() {
+  starImportPreview.value = null;
+  starExchangeError.value = "";
+  showStarImport.value = false;
+  if (starImportFile.value) starImportFile.value.value = "";
+}
+function rejectStaleStarImportPreview() {
+  starImportPreview.value = null;
+  showStarImport.value = false;
+  if (starImportFile.value) starImportFile.value.value = "";
+  starExchangeError.value = "账号已切换，请重新选择 JSON 档案后再试。";
 }
 function stopCaptureRetry() {
   if (captureRetryTimer != null) clearInterval(captureRetryTimer);
@@ -331,10 +417,15 @@ async function loadAccounts() {
 async function syncHostAccount() {
   if (!handle) return;
   const host = selectedHostAccount();
+  const previousAccountId = mountedAccountId;
   try {
     await handle.setHostAccount(host);
     mountedAccountId = host?.accountId || "";
+    if (previousAccountId && previousAccountId !== mountedAccountId)
+      resetStarImportState();
     clearCloudSyncFeedback();
+    if (host && !(await starCloud.enter(handle))) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+    if (!host) await starCloud.enter(handle);
   } catch (error) {
     if (mountedAccountId) accountId.value = mountedAccountId;
     accountError.value = message(error, "星石账号切换失败");
@@ -342,6 +433,11 @@ async function syncHostAccount() {
   }
 }
 async function onAccountChange() {
+  if (starExchangeBusy.value) {
+    if (mountedAccountId) accountId.value = mountedAccountId;
+    return;
+  }
+  resetStarImportState();
   discardForeignPendingCapture();
   try {
     await syncHostAccount();
@@ -353,6 +449,10 @@ async function onAccountGameChange(game) {
     return item.id === accountId.value;
   });
   if (!account) return;
+  if (starExchangeBusy.value) {
+    if (isAccountGame(account.game)) accountGame.value = account.game;
+    return;
+  }
   const oldGame = isAccountGame(account.game)
     ? account.game
     : accountGame.value;
@@ -364,6 +464,7 @@ async function onAccountGameChange(game) {
       game: isAccountGame(updated && updated.game) ? updated.game : game,
     });
     activeAccount.setGame(account.game, account.id);
+    resetStarImportState();
     await syncHostAccount();
   } catch (error) {
     account.game = oldGame;
@@ -374,6 +475,7 @@ async function onAccountGameChange(game) {
   }
 }
 async function onCreateAccount(rawName) {
+  if (starExchangeBusy.value) return;
   const name = String(rawName || "").trim();
   if (!name) return;
   accountBusy.value = true;
@@ -396,6 +498,7 @@ async function onCreateAccount(rawName) {
   }
 }
 async function onRenameAccount(account) {
+  if (starExchangeBusy.value) return;
   const name = prompt("修改子账号名称（1~64 字）：", account.name || "");
   if (name == null) return;
   const trimmed = name.trim();
@@ -418,6 +521,7 @@ async function onRenameAccount(account) {
   }
 }
 async function onDeleteAccount(account) {
+  if (starExchangeBusy.value) return;
   if (
     !confirm(
       "删除子账号「" +
@@ -460,21 +564,71 @@ function ensureEmbedStylesheet() {
 function loadEmbedModule() {
   return Function("url", "return import(url)")(EMBED_MODULE_URL);
 }
-async function syncCurrentInventoryToCloud() {
-  if (cloudSyncBusy.value) return;
+function toggleStarImport() {
   clearCloudSyncFeedback();
   if (!handle || !productReady.value) {
     cloudSyncError.value = "星石工作区尚未加载完成。";
     return;
   }
-  cloudSyncBusy.value = true;
+  showStarImport.value = !showStarImport.value;
+  starExchangeError.value = "";
+}
+function downloadStarArchive(data) {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(data.blob);
+  link.download = data.filename;
+  link.click();
+  window.setTimeout(function () { URL.revokeObjectURL(link.href); }, 0);
+}
+function exportStarArchive() {
+  clearCloudSyncFeedback();
+  if (!handle || !productReady.value) {
+    cloudSyncError.value = "星石工作区尚未加载完成。";
+    return;
+  }
   try {
-    await handle.syncCurrentStarInventory();
-    cloudSyncMessage.value = "当前背包已同步";
+    downloadStarArchive(handle.exportDataExchange());
   } catch (error) {
-    cloudSyncError.value = message(error, "当前背包同步失败，请稍后重试。");
+    starExchangeError.value = message(error, "导出档案失败。");
+  }
+}
+async function onStarImportFile(event) {
+  const file = event?.target?.files?.[0];
+  if (!file || !handle || !productReady.value) return;
+  const previewAccountId = accountId.value;
+  starExchangeError.value = "";
+  try {
+    const preview = await handle.previewDataExchangeImport(file);
+    if (previewAccountId !== accountId.value) return;
+    starImportPreview.value = bindStarExchangePreview(preview, previewAccountId);
+  } catch (error) {
+    if (previewAccountId !== accountId.value) return;
+    starImportPreview.value = null;
+    starExchangeError.value = message(error, "导入档案校验失败。");
+  }
+}
+async function confirmStarImport() {
+  if (!handle || !starImportPreview.value || starExchangeBusy.value) return;
+  if (!isStarExchangePreviewCurrent(starImportPreview.value, accountId.value)) {
+    rejectStaleStarImportPreview();
+    return;
+  }
+  const preview = starImportPreview.value.preview;
+  starExchangeBusy.value = true;
+  starExchangeError.value = "";
+  try {
+    await handle.confirmDataExchangeImport(preview);
+    starImportPreview.value = null;
+    showStarImport.value = false;
+  } catch (error) {
+    const status = Number(error?.status || 0);
+    starExchangeError.value = status === 409
+      ? "云端数据已更新，请重新加载后重试。导入预览仍保留。"
+      : status === 422
+        ? "导入数据无效：" + message(error, "请检查文件内容。")
+        : "导入未完成：" + message(error, "当前数据保持不变。");
   } finally {
-    cloudSyncBusy.value = false;
+    starExchangeBusy.value = false;
   }
 }
 async function mountProduct() {
@@ -488,7 +642,8 @@ async function mountProduct() {
       assetBaseUrl: "/yuanstar-embed/",
       embedded: true,
       hostAccount: selectedHostAccount(),
-      starInventorySync,
+      onBusinessStateCommitted: function (event) { starCloud.committed(event); },
+      onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
       onSummaryChange: function (nextSummary) {
         summary.value = nextSummary;
       },
@@ -499,7 +654,7 @@ async function mountProduct() {
     }
     handle = mountedHandle;
     handle.setActiveTab(activeTab.value);
-    mountedAccountId = selectedHostAccount()?.accountId || "";
+    await syncHostAccount();
     productReady.value = true;
     if (pendingCapture) void importPendingCapture();
   } catch (error) {
@@ -573,7 +728,7 @@ onBeforeUnmount(function () {
   color: var(--yellow);
   font-weight: 900;
 }
-.star-sync-action {
+.archive-toggle {
   display: inline-flex;
   min-height: 44px;
   align-self: center;
@@ -593,13 +748,23 @@ onBeforeUnmount(function () {
   transform: translateY(9px);
   transition: all 0.3s var(--ease);
 }
-.star-sync-action:disabled {
+.archive-toggle:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
-.star-sync-action svg {
+.archive-toggle svg {
   flex: none;
 }
+.star-exchange-import { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
+.star-exchange-import .tip { margin: 0 0 12px; color: var(--ink-60); font-size: 12.5px; line-height: 1.8; }
+.star-exchange-import .file-label { display: inline-flex; cursor: pointer; }
+.star-exchange-import .file-label input { display: none; }
+.star-exchange-error { margin: 8px 0 0; color: var(--rouge); font-size: 12.5px; font-weight: 700; line-height: 1.6; }
+.star-exchange-preview { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); padding: 12px 14px; }
+.star-exchange-preview dl { display: grid; gap: 4px; margin: 0; }
+.star-exchange-preview dl div { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; }
+.star-exchange-preview dt { color: var(--ink-60); font-size: 11px; font-weight: 800; }
+.star-exchange-preview dd { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
 .star-sync-state {
   margin: 10px 2px -18px;
   color: var(--ink-60);
@@ -610,6 +775,21 @@ onBeforeUnmount(function () {
 .star-sync-state.is-error {
   color: var(--rouge);
 }
+.star-sync-retry {
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--tea);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.star-sync-retry:hover:not(:disabled) { color: var(--accent); }
+.star-sync-retry:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; border-radius: 2px; }
+.star-sync-retry:disabled { opacity: .55; cursor: wait; }
 .star-tabs {
   position: sticky;
   top: 24px;
@@ -666,10 +846,12 @@ onBeforeUnmount(function () {
   .page-star :deep(.footer) {
     padding-bottom: calc(32px + 64px + env(safe-area-inset-bottom));
   }
-  .star-sync-action {
+  .archive-toggle {
     width: 100%;
     transform: none;
   }
+  .star-exchange-preview { align-items: stretch; flex-direction: column; }
+  .star-exchange-preview .btn { width: 100%; }
   .star-sync-state {
     margin: 10px 0 -18px;
   }

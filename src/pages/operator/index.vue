@@ -2107,93 +2107,13 @@
                           ? stone.name + '，等级 ' + (stone.level || 0)
                           : '空星石槽位'
                       "
-                      :aria-expanded="
-                        cardPopoverKey === e.id + ':stone-' + index
-                      "
-                      @click="openCardPopover(e, 'stone-' + index)"
+                      @click="openStarLoadout(e, stoneSlots[index].type.replace('assist', 'support'))"
                     >
                       <template v-if="stone"
                         ><strong>{{ stone.name || "星石" }}</strong
                         ><small>{{ stone.level || 0 }}</small></template
                       ><span v-else>+</span>
                     </button>
-                    <div
-                      v-if="cardPopoverKey.indexOf(e.id + ':stone-') === 0"
-                      class="ledger-popover ledger-stone-popover"
-                      @click.stop
-                    >
-                      <template
-                        v-for="(stone, index) in cardStoneSlots(e)"
-                        :key="index"
-                      >
-                        <template
-                          v-if="cardPopoverKey === e.id + ':stone-' + index"
-                        >
-                          <p>
-                            <CircleAlert :size="13" aria-hidden="true" />编辑{{
-                              stoneSlots[index].label
-                            }}
-                          </p>
-                          <select
-                            :value="cardStoneValue(e, index).name"
-                            :aria-label="stoneSlots[index].label + '名称'"
-                            @change="setCardStoneName(e, index, $event)"
-                          >
-                            <option value="">未装备</option>
-                            <option
-                              v-for="name in cardStoneOptions(e, index)"
-                              :key="name"
-                              :value="name"
-                            >
-                              {{ name }}
-                            </option>
-                          </select>
-                          <div class="ledger-stone-level-row">
-                            <label
-                              >等级
-                              <input
-                                type="number"
-                                min="1"
-                                max="60"
-                                :value="cardStoneValue(e, index).level || ''"
-                                :disabled="!cardStoneValue(e, index).name"
-                                @input="setCardStoneLevel(e, index, $event)"
-                            /></label>
-                            <div
-                              class="ledger-stone-levels"
-                              aria-label="快捷设置星石等级"
-                            >
-                              <button
-                                v-for="level in STONE_QUICK_LEVELS"
-                                :key="level"
-                                type="button"
-                                :class="{
-                                  on: cardStoneValue(e, index).level === level,
-                                }"
-                                :disabled="!cardStoneValue(e, index).name"
-                                @click="setCardStoneLevel(e, index, level)"
-                              >
-                                {{ level }}
-                              </button>
-                            </div>
-                          </div>
-                          <div class="ledger-popover-actions">
-                            <button
-                              type="button"
-                              class="cancel"
-                              @click.stop="removeCardStone(e, index)"
-                            >
-                              卸下</button
-                            ><button
-                              type="button"
-                              @click.stop="cardPopoverKey = ''"
-                            >
-                              完成
-                            </button>
-                          </div>
-                        </template>
-                      </template>
-                    </div>
                   </div>
 
                   <div class="ledger-card-footer">
@@ -2829,141 +2749,16 @@
             <div class="editor-row">
               <span class="editor-label">星石</span>
               <div class="stone-editor">
-                <div class="stone-presets">
-                  <div class="stone-preset-heading">
-                    <strong>载入已有预设</strong>
-                    <span>主星与辅星预设分别载入</span>
-                  </div>
-                  <div class="stone-preset-grid">
-                    <div
-                      v-for="kind in stonePresetKinds"
-                      :key="kind.id"
-                      class="stone-preset-item"
-                    >
-                      <label :for="'stone-preset-' + kind.id">{{
-                        kind.label
-                      }}</label>
-                      <select
-                        :id="'stone-preset-' + kind.id"
-                        v-model="selectedStonePresetIds[kind.id]"
-                        :disabled="!stonePresetOptions[kind.id].length"
-                      >
-                        <option value="">
-                          {{
-                            stonePresetOptions[kind.id].length
-                              ? "请选择预设"
-                              : "暂无可用预设"
-                          }}
-                        </option>
-                        <option
-                          v-for="preset in stonePresetOptions[kind.id]"
-                          :key="preset.id"
-                          :value="String(preset.id)"
-                        >
-                          {{ preset.name }}
-                        </option>
-                      </select>
-                      <button
-                        type="button"
-                        class="stone-preset-load"
-                        :disabled="!selectedStonePresetIds[kind.id]"
-                        @click="loadStonePreset(kind.id)"
-                      >
-                        载入
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div class="stone-current-heading">
-                  <strong>当前装备中的星石</strong>
-                  <span>以下内容将随密探档案保存</span>
-                </div>
-                <div
-                  v-for="(slot, slotIndex) in stoneSlots"
-                  :key="slot.type"
-                  class="stone-item"
-                  :class="
-                    slot.type.indexOf('main') === 0 ? 'is-main' : 'is-assist'
-                  "
-                  :style="{ '--stone-grid-row': String((slotIndex % 3) + 3) }"
-                >
-                  <div class="stone-item-head">
-                    <span class="stone-name">{{ slot.label }}</span>
-                    <span
-                      v-if="editForm.stones[slot.type].name"
-                      class="stone-item-actions"
-                    >
-                      <span class="stone-current"
-                        >Lv {{ editForm.stones[slot.type].level || 0 }}</span
-                      >
-                      <button
-                        type="button"
-                        class="stone-remove"
-                        :aria-label="'卸除' + slot.label + '星石'"
-                        title="快捷卸除"
-                        @click="removeStone(slot.type)"
-                      >
-                        <X :size="14" aria-hidden="true" />
-                      </button>
-                    </span>
-                  </div>
-                  <select
-                    v-model="editForm.stones[slot.type].name"
-                    class="stone-select"
-                    :aria-label="slot.label + '名称'"
-                  >
-                    <option value="">未装备</option>
-                    <option
-                      v-for="opt in starOptionsFor(slot.type)"
-                      :key="opt"
-                      :value="opt"
-                      :disabled="!isStarStoneAllowed(opt, editingOp)"
-                    >
-                      {{ opt
-                      }}<template
-                        v-if="
-                          slot.type.indexOf('assist') === 0 &&
-                          starDesc(slot.type, opt)
-                        "
-                      >
-                        · {{ starDesc(slot.type, opt) }}</template
-                      ><template v-if="!isStarStoneAllowed(opt, editingOp)">
-                        · {{ starStoneRestrictionLabel(opt) }}</template
-                      >
-                    </option>
-                  </select>
-                  <template v-if="editForm.stones[slot.type].name">
-                    <div class="stone-level-row">
-                      <label class="stone-level-field">
-                        <span>等级</span>
-                        <input
-                          type="number"
-                          v-model.number="editForm.stones[slot.type].level"
-                          inputmode="numeric"
-                          min="1"
-                          max="60"
-                        />
-                      </label>
-                      <div class="stone-quick" aria-label="快捷设置等级">
-                        <span>快捷设为</span>
-                        <button
-                          v-for="lv in STONE_QUICK_LEVELS"
-                          :key="lv"
-                          type="button"
-                          class="stone-lv-chip"
-                          :class="{
-                            on: editForm.stones[slot.type].level === lv,
-                          }"
-                          :aria-label="'将' + slot.label + '设为' + lv + '级'"
-                          @click="editForm.stones[slot.type].level = lv"
-                        >
-                          {{ lv === 60 ? "满级" : lv + "级" }}
-                        </button>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-                <p class="hint">主星与辅星各 3 个；选择星石后再设置等级。</p>
+                <StarLoadoutEditor
+                  v-if="editingOp"
+                  inline
+                  :target-operator="editingOp"
+                  :inventory-entries="starInventoryEntries"
+                  :draft-loadouts="starLoadoutDrafts"
+                  :initial-slot="starLoadoutInlineSlot"
+                  :operator-display-name-map="starOperatorDisplayNames"
+                  @update:draft-loadouts="starLoadoutDrafts = $event"
+                />
               </div>
             </div>
           </div>
@@ -3040,6 +2835,18 @@
           数据仅供参考，请以游戏内实际养成为准
         </template>
       </SiteFooter>
+      <StarLoadoutModal
+        :open="starLoadoutOpen"
+        :target-operator="starLoadoutTarget"
+        :inventory-entries="starInventoryEntries"
+        :draft-loadouts="starLoadoutDrafts"
+        :initial-slot="starLoadoutActiveSlot"
+        :saving="starLoadoutSaving"
+        :error="starLoadoutError"
+        :operator-display-name-map="starOperatorDisplayNames"
+        @request-close="requestCloseStarLoadout"
+        @update:draft-loadouts="starLoadoutDrafts = $event"
+      />
     </main>
   </div>
 </template>
@@ -3084,6 +2891,8 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
+import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
 import {
@@ -3127,7 +2936,6 @@ import {
   matchesProfSubFilter,
   subProfList,
   subProfOptions as deriveSubProfOptions,
-  tokens,
 } from "../../utils/operatorFilters.js";
 import {
   automaticDiscLoadoutName,
@@ -3140,17 +2948,15 @@ import {
   starCardNumber,
 } from "../../utils/operatorStarDisplay.js";
 import {
-  MAIN_STAR_OPTIONS,
-  ASSIST_STAR_OPTIONS,
-  ASSIST_STAR_DESCRIPTIONS,
-  STAR_STONE_RESTRICTIONS,
-} from "../../data/starStones.js";
-import {
   getCurrent as getInventoryCurrent,
   listAgentFavorites,
   addAgentFavorite,
   removeAgentFavorite,
 } from "../../api/inventory.js";
+import { getCurrentStarInventory } from "../../api/starInventory.js";
+import { getCurrentStarLoadout, putCurrentStarLoadout } from "../../api/starLoadout.js";
+import { emptyLoadout, normalizeLoadout } from "../../domain/starLoadout.js";
+import { starLoadoutPresetStore } from "../../domain/starLoadoutPresets.js";
 import { ITEM_CATALOG } from "../../data/inventory/catalog.js";
 import {
   calculateLevelRequirements,
@@ -3345,8 +3151,17 @@ const editNoticeError = ref(false);
 const savingEdit = ref(false);
 const editOriginalStoneSignature = ref("");
 const editConflictDraft = ref(null);
-const stonePresetOptions = ref({ main: [], assist: [] });
-const selectedStonePresetIds = ref({ main: "", assist: "" });
+// C2 source of truth: Current Inventory + Current Star Loadout only.
+const starLoadoutOpen = ref(false);
+const starLoadoutTarget = ref(null);
+const starLoadoutActiveSlot = ref("main1");
+const starLoadoutInlineSlot = ref("main1");
+const starInventoryEntries = ref([]);
+const starLoadoutCurrent = ref({});
+const starLoadoutDrafts = ref({});
+const starLoadoutRevision = ref(0);
+const starLoadoutSaving = ref(false);
+const starLoadoutError = ref("");
 const editorPanelEl = ref(null);
 let bodyOverflowBeforeEditor = "";
 let bodyLockedByEditor = false;
@@ -3389,6 +3204,10 @@ watch(
     return [accountId.value, saveGame.value];
   },
   function () {
+    starInventoryEntries.value = [];
+    starLoadoutCurrent.value = {};
+    starLoadoutDrafts.value = {};
+    starLoadoutRevision.value = 0;
     workbenchStatuses.value = readWorkbenchMap("statuses");
     workbenchRemarks.value = readWorkbenchMap("remarks");
     annotationRevisions.value = {};
@@ -3890,99 +3709,6 @@ const stoneSlots = computed(function () {
   ];
 });
 
-const stonePresetKinds = [
-  { id: "main", label: "主星预设" },
-  { id: "assist", label: "辅星预设" },
-];
-
-function starOptionsFor(type) {
-  const options =
-    type.indexOf("assist") === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS;
-  const available = options.filter(function (name) {
-    return isStarStoneAllowed(name, editingOp.value);
-  });
-  const current =
-    editForm.value.stones[type] && editForm.value.stones[type].name;
-  // 历史数据即使不符合新限制也要保留在选择框中，避免打开编辑器时静默清空。
-  if (
-    current &&
-    options.indexOf(current) !== -1 &&
-    available.indexOf(current) === -1
-  )
-    return [current].concat(available);
-  return available;
-}
-
-function isStarStoneAllowed(name, operator) {
-  const restriction = STAR_STONE_RESTRICTIONS[name];
-  if (!restriction || !operator) return true;
-  if (restriction.subProf) {
-    const subProfs = subProfList(operator);
-    if (
-      subProfs.length &&
-      !restriction.subProf.some(function (value) {
-        return subProfs.indexOf(value) !== -1;
-      })
-    )
-      return false;
-  }
-  if (restriction.prof) {
-    const profs = tokens(operator.prof);
-    if (
-      profs.length &&
-      !restriction.prof.some(function (value) {
-        return profs.indexOf(value) !== -1;
-      })
-    )
-      return false;
-  }
-  return true;
-}
-
-function starStoneRestrictionLabel(name) {
-  const restriction = STAR_STONE_RESTRICTIONS[name];
-  if (!restriction) return "";
-  if (restriction.subProf) return "仅" + restriction.subProf.join(" / ");
-  if (restriction.prof) return "仅" + restriction.prof.join(" / ") + "属性";
-  return "";
-}
-
-function starDesc(type, name) {
-  if (type.indexOf("assist") !== 0) return "";
-  return ASSIST_STAR_DESCRIPTIONS[name] || "";
-}
-
-function removeStone(type) {
-  if (!editForm.value.stones[type]) return;
-  editForm.value.stones[type].name = "";
-  editForm.value.stones[type].level = 0;
-  editForm.value.stones[type].rarity = null;
-}
-
-function loadStonePreset(kind) {
-  const presetId = selectedStonePresetIds.value[kind];
-  const preset = (stonePresetOptions.value[kind] || []).find(function (item) {
-    return String(item.id) === String(presetId);
-  });
-  if (!preset || !Array.isArray(preset.stones)) return;
-  for (let index = 0; index < 3; index += 1) {
-    const type = kind + (index + 1);
-    const stone = preset.stones[index] || {};
-    editForm.value.stones[type] = {
-      name: stone.name || "",
-      type: type,
-      level: Number(stone.level) || 0,
-    };
-  }
-  editNotice.value =
-    "已载入「" +
-    preset.name +
-    "」" +
-    (kind === "main" ? "主星" : "辅星") +
-    "预设";
-  editNoticeError.value = false;
-}
-
 // 修为不能超过当前等级上限，等级变化时自动修正
 watch(
   function () {
@@ -4042,6 +3768,17 @@ const catalogMap = computed(function () {
     m[op.id] = op;
   });
   return m;
+});
+
+const starOperatorDisplayNames = computed(function () {
+  const names = {};
+  currentEntries.value.forEach(function (entry) {
+    if (entry && entry.id && entry.name) names[entry.id] = entry.name;
+  });
+  Object.values(catalogMap.value).forEach(function (operator) {
+    if (operator && operator.id && operator.name && !names[operator.id]) names[operator.id] = operator.name;
+  });
+  return names;
 });
 
 const catalogCount = computed(function () {
@@ -4293,9 +4030,6 @@ const MAX_STAR_LEVEL = 31;
 const STAR_LEVEL_AWAKEN = 31;
 const STAR_RANGE = [1, 2, 3, 4, 5];
 const NODE_RANGE = [0, 1, 2, 3, 4, 5];
-// 星石快捷等级（星石最高 60 级）
-const STONE_QUICK_LEVELS = [40, 50, 60];
-
 function starLabel(v, spOf) {
   const n = Number(v) || 0;
   if (n === 0) return "未拥有";
@@ -6307,12 +6041,137 @@ function cardLoadoutNeedsPlaceholder(entry, index) {
 }
 
 function cardStoneSlots(entry) {
-  const draft = ensureCardDraft(entry);
-  const stones =
-    draft && Array.isArray(draft.starStones) ? draft.starStones : [];
-  return stones.map(function (stone) {
-    return stone && stone.name ? stone : null;
+  return stoneSlots.value.map(function (slot) {
+    return starLoadoutSlotEntry(entry && entry.id, slot.type.replace("assist", "support"));
   });
+}
+
+function starSnapshotEntries(snapshot) {
+  const rows = Array.isArray(snapshot) ? snapshot : snapshot ? [snapshot] : [];
+  return rows.flatMap(function (row) {
+    if (Array.isArray(row && row.entries)) return row.entries;
+    if (row && row.entries && typeof row.entries === "object") return Object.values(row.entries);
+    if (Array.isArray(row && row.inventory)) return row.inventory;
+    return [];
+  });
+}
+
+function normalizeCloudLoadouts(snapshot) {
+  const row = Array.isArray(snapshot) ? snapshot[0] : snapshot || {};
+  const source = (row && (row.loadouts || row.entries)) || {};
+  return Object.fromEntries(Object.entries(source).map(function ([id, loadout]) {
+    return [id, normalizeLoadout(loadout)];
+  }));
+}
+
+function starPresetUserScope() {
+  const user = auth.userInfo || {};
+  return String(user.id || user.user_id || user.email || (auth.isLoggedIn ? "authenticated-user" : ""));
+}
+
+async function loadStarLoadoutPresets() {
+  if (!auth.isLoggedIn) {
+    starLoadoutPresetStore.clear();
+    return;
+  }
+  try {
+    await starLoadoutPresetStore.load(starPresetUserScope());
+  } catch (_) {
+    // Preset errors remain visible in the manager without blocking the operator page.
+  }
+}
+
+function starLoadoutSlotEntry(operatorId, slot) {
+  const instanceId = starLoadoutCurrent.value[operatorId] && starLoadoutCurrent.value[operatorId][slot];
+  if (!instanceId) return null;
+  return starInventoryEntries.value.find(function (entry) {
+    return (entry.instance_id || entry.instanceId || entry.id) === instanceId;
+  }) || null;
+}
+
+async function openStarLoadout(operator, slot) {
+  if (!operator || !auth.isLoggedIn || !accountId.value) return;
+  if (await prepareStarLoadout(operator, slot)) starLoadoutOpen.value = true;
+}
+
+async function prepareStarLoadout(operator, slot) {
+  if (!operator || !auth.isLoggedIn || !accountId.value) return false;
+  starLoadoutError.value = "";
+  try {
+    const [inventory, loadout] = await Promise.all([
+      getCurrentStarInventory(accountId.value),
+      getCurrentStarLoadout(accountId.value),
+    ]);
+    starInventoryEntries.value = starSnapshotEntries(inventory);
+    starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
+    starLoadoutDrafts.value = JSON.parse(JSON.stringify(starLoadoutCurrent.value));
+    if (!starLoadoutDrafts.value[operator.id]) starLoadoutDrafts.value[operator.id] = emptyLoadout();
+    starLoadoutRevision.value = Number((Array.isArray(loadout) ? loadout[0] : loadout)?.revision || 0);
+    starLoadoutTarget.value = operator;
+    starLoadoutActiveSlot.value = slot;
+    starLoadoutInlineSlot.value = slot;
+    return true;
+  } catch (err) {
+    starLoadoutError.value = humanErr(err, "无法加载当前星石数据");
+    return false;
+  }
+}
+
+async function loadStarLoadoutSnapshot(targetAccount) {
+  if (!targetAccount) return;
+  try {
+    const [inventory, loadout] = await Promise.all([
+      getCurrentStarInventory(targetAccount),
+      getCurrentStarLoadout(targetAccount),
+    ]);
+    if (accountId.value !== targetAccount) return;
+    starInventoryEntries.value = starSnapshotEntries(inventory);
+    starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
+    starLoadoutRevision.value = Number((Array.isArray(loadout) ? loadout[0] : loadout)?.revision || 0);
+  } catch (_) {
+    // The operator ledger remains usable if the independent star snapshot is unavailable.
+  }
+}
+
+function closeStarLoadout() {
+  starLoadoutOpen.value = false;
+  starLoadoutError.value = "";
+}
+
+function starLoadoutSnapshotSignature(loadouts) {
+  return JSON.stringify(Object.keys(loadouts || {}).sort().map(function (operatorId) {
+    return [operatorId, normalizeLoadout(loadouts[operatorId])];
+  }));
+}
+
+function starLoadoutIsDirty() {
+  return starLoadoutSnapshotSignature(starLoadoutDrafts.value) !== starLoadoutSnapshotSignature(starLoadoutCurrent.value);
+}
+
+async function persistStarLoadout() {
+  if (!accountId.value || !starLoadoutIsDirty()) return true;
+  starLoadoutSaving.value = true;
+  starLoadoutError.value = "";
+  try {
+    const response = await putCurrentStarLoadout(accountId.value, {
+      expected_revision: starLoadoutRevision.value,
+      loadouts: starLoadoutDrafts.value,
+    });
+    starLoadoutCurrent.value = normalizeCloudLoadouts(response);
+    if (!Object.keys(starLoadoutCurrent.value).length) starLoadoutCurrent.value = JSON.parse(JSON.stringify(starLoadoutDrafts.value));
+    starLoadoutRevision.value = Number(response && response.revision || starLoadoutRevision.value + 1);
+    return true;
+  } catch (err) {
+    starLoadoutError.value = humanErr(err, "保存星石装配失败");
+    return false;
+  } finally {
+    starLoadoutSaving.value = false;
+  }
+}
+
+async function requestCloseStarLoadout() {
+  if (starLoadoutSaving.value) return;
+  if (await persistStarLoadout()) closeStarLoadout();
 }
 
 function cardDiscOptions(entry) {
@@ -6378,65 +6237,6 @@ function toggleCardDisc(entry, loadoutIndex, disc, event) {
       [entry.id]: "每套命盘最多选择 3 个",
     });
   }
-}
-
-function cardStoneValue(entry, index) {
-  const draft = ensureCardDraft(entry);
-  return draft && draft.starStones && draft.starStones[index]
-    ? draft.starStones[index]
-    : {
-        type: stoneSlots.value[index]
-          ? stoneSlots.value[index].type
-          : "stone" + (index + 1),
-        name: "",
-        level: 0,
-      };
-}
-
-function cardStoneOptions(entry, index) {
-  const slot = stoneSlots.value[index];
-  const type = slot ? slot.type : "main1";
-  const catalog = catalogMap.value[entry && entry.id];
-  const options =
-    type.indexOf("assist") === 0 ? ASSIST_STAR_OPTIONS : MAIN_STAR_OPTIONS;
-  const available = options.filter(function (name) {
-    return isStarStoneAllowed(name, catalog);
-  });
-  const current = cardStoneValue(entry, index).name;
-  if (
-    current &&
-    options.indexOf(current) !== -1 &&
-    available.indexOf(current) === -1
-  )
-    return [current].concat(available);
-  return available;
-}
-
-function setCardStoneName(entry, index, event) {
-  const stone = cardStoneValue(entry, index);
-  const name = String(event && event.target ? event.target.value : "");
-  stone.name = name;
-  if (!name) stone.level = 0;
-  else if (Number(stone.level) < 1) stone.level = 1;
-}
-
-function setCardStoneLevel(entry, index, eventOrValue) {
-  const stone = cardStoneValue(entry, index);
-  if (!stone.name) return;
-  const raw =
-    eventOrValue && eventOrValue.target
-      ? eventOrValue.target.value
-      : eventOrValue;
-  const value = Math.trunc(Number(raw) || 0);
-  stone.level = Math.max(1, Math.min(60, value));
-}
-
-function removeCardStone(entry, index) {
-  const stone = cardStoneValue(entry, index);
-  stone.name = "";
-  stone.level = 0;
-  stone.rarity = null;
-  cardPopoverKey.value = "";
 }
 
 function operatorRemark(entry) {
@@ -7017,6 +6817,7 @@ async function openEdit(id) {
   editConflictDraft.value = null;
   editNotice.value = "";
   editNoticeError.value = false;
+  await prepareStarLoadout(op, "main1");
   editing.value = true;
 }
 
@@ -7072,7 +6873,6 @@ function applyEditorEntry(existing, op, id, allowCache) {
     : loadCombatDisplayMode(id);
   combatDisplaySignature = currentSignature;
   editOriginalStoneSignature.value = stoneSignature(stones);
-  selectedStonePresetIds.value = { main: "", assist: "" };
 }
 
 function restoreConflictDraft() {
@@ -7167,27 +6967,7 @@ async function saveEdit() {
     editNoticeError.value = true;
     return;
   }
-  const stoneValues = Object.keys(editForm.value.stones || {}).map(
-    function (type) {
-      const stone = editForm.value.stones[type];
-      return Object.assign({ type: type }, stone || {});
-    },
-  );
-  const invalidStone = stoneValues.find(function (stone) {
-    if (!stone.name) return false;
-    const stoneLevel = Number(stone.level);
-    return (
-      !validInteger(stone.level, stoneLevel) ||
-      stoneLevel < 1 ||
-      stoneLevel > 60
-    );
-  });
   const op = editingOp.value;
-  if (invalidStone) {
-    editNotice.value = "已装备星石的等级需为 1..60 的整数";
-    editNoticeError.value = true;
-    return;
-  }
   const combatStats = editForm.value.combatStats || {};
   const optionalNonNegativeNumber = function (value) {
     return (
@@ -7248,17 +7028,6 @@ async function saveEdit() {
     elite: elite,
     star_level: starLevel,
     disc_loadouts: discLoadouts,
-    star_stones: stoneValues
-      .filter(function (s) {
-        return s && s.name;
-      })
-      .map(function (s) {
-        return {
-          name: s.name,
-          type: s.type,
-          level: Number(s.level) || 0,
-        };
-      }),
     combat_stats: {
       manual_attack: normalizedManual(combatStats.manualAttack),
       manual_hp: normalizedManual(combatStats.manualHp),
@@ -7335,8 +7104,13 @@ async function saveEdit() {
       resetCardDraftState(op.id);
       await reloadCurrent(true);
     }
+    if (!(await persistStarLoadout())) {
+      editNotice.value = starLoadoutError.value || "星石装配保存失败，已保留本次修改";
+      editNoticeError.value = true;
+      return;
+    }
     await nextTick();
-    editNotice.value = "养成资料与已装备星石均已保存";
+    editNotice.value = "养成资料已保存";
     setTimeout(function () {
       closeEditor();
       restoreCurrentLedgerCardPosition(op.id);
@@ -7611,6 +7385,7 @@ async function reloadCurrent(quiet) {
         );
       });
     currentLoadedKey = targetKey;
+    await loadStarLoadoutSnapshot(targetAccount);
   } catch (err) {
     if (
       seq !== currentLoadSeq ||
@@ -8305,7 +8080,7 @@ onMounted(async function () {
   document.addEventListener("pointerdown", handleCardPopoverOutside);
   window.addEventListener("scroll", hideDiscTooltip, true);
   window.addEventListener("resize", hideDiscTooltip);
-  await Promise.all([loadCatalog(), loadAccounts()]);
+  await Promise.all([loadCatalog(), loadAccounts(), loadStarLoadoutPresets()]);
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
   setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
@@ -11542,73 +11317,6 @@ onBeforeUnmount(function () {
   color: var(--line);
   font-size: 15px;
 }
-.ledger-stone-popover {
-  left: 0;
-  right: 0;
-  top: calc(100% + 7px);
-}
-.ledger-stone-popover select {
-  width: 100%;
-  min-width: 0;
-  padding: 5px 6px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--cream);
-  color: var(--ink);
-  font: 700 10px var(--font-b);
-  outline: none;
-}
-.ledger-stone-level-row {
-  display: flex !important;
-  align-items: center;
-  gap: 6px !important;
-}
-.ledger-stone-level-row > label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: none;
-  color: var(--ink-60);
-  font-size: 9px;
-  font-weight: 800;
-}
-.ledger-stone-level-row input {
-  width: 42px;
-  min-width: 0;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--cream);
-  color: var(--ink);
-  font: 800 11px var(--font-d);
-  text-align: center;
-  outline: none;
-}
-.ledger-stone-levels {
-  display: flex !important;
-  flex: 1;
-  gap: 3px !important;
-  justify-content: flex-end;
-}
-.ledger-stone-levels button {
-  min-width: 28px;
-  padding: 4px 5px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--ink-60);
-  font: 800 9px var(--font-d);
-  cursor: pointer;
-}
-.ledger-stone-levels button.on {
-  border-color: var(--yellow-deep);
-  background: var(--yellow);
-  color: var(--ink);
-}
-.ledger-stone-levels button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 .ledger-stones strong {
   max-width: 100%;
   overflow: hidden;
@@ -13343,11 +13051,9 @@ onBeforeUnmount(function () {
   color: var(--cream);
 }
 .stone-editor {
-  display: grid;
+  display: block;
   width: 100%;
   max-width: 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
   flex: 1;
   min-width: 0;
   box-sizing: border-box;
@@ -13431,26 +13137,6 @@ onBeforeUnmount(function () {
 .stone-preset-load:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-.stone-current-heading {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 3px 2px 0;
-  border-top: 1px dashed var(--line);
-}
-.stone-current-heading strong {
-  color: var(--tea);
-  font-family: var(--font-s);
-  font-size: 13px;
-  font-weight: 900;
-}
-.stone-current-heading span {
-  color: var(--ink-35);
-  font-size: 10.5px;
-  font-weight: 700;
 }
 .stone-item {
   display: flex;
@@ -14475,8 +14161,7 @@ onBeforeUnmount(function () {
   .stone-preset-load {
     min-height: 38px;
   }
-  .stone-preset-heading,
-  .stone-current-heading {
+  .stone-preset-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 3px;
@@ -14761,20 +14446,6 @@ onBeforeUnmount(function () {
   }
   .ledger-destiny-row > .ledger-destiny-values {
     flex: 1;
-  }
-  .ledger-stone-level-row {
-    flex-wrap: wrap;
-  }
-  .ledger-stone-levels {
-    flex-basis: 100%;
-    justify-content: space-between;
-  }
-  .ledger-stone-levels button {
-    flex: 1;
-    min-height: 36px;
-  }
-  .ledger-stone-popover select {
-    min-height: 40px;
   }
   .ledger-card-footer textarea {
     min-height: 44px;
