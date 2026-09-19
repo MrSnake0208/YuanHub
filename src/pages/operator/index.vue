@@ -60,7 +60,15 @@
             v-model:game="gameFilter"
             :accounts="accounts"
             :error="accountError"
-            :disabled="!auth.isLoggedIn || accountsLoading || accountBusy"
+            :disabled="
+              !auth.isLoggedIn ||
+              accountsLoading ||
+              accountBusy ||
+              editing ||
+              starLoadoutOpen ||
+              starLoadoutLoading ||
+              starLoadoutSaving
+            "
             :game-disabled="accountsLoading || accountBusy || editing"
             :busy="accountBusy"
             heading-title="选择要查看的账号"
@@ -3160,8 +3168,11 @@ const starInventoryEntries = ref([]);
 const starLoadoutCurrent = ref({});
 const starLoadoutDrafts = ref({});
 const starLoadoutRevision = ref(0);
+const starLoadoutAccountId = ref("");
+const starLoadoutLoading = ref(false);
 const starLoadoutSaving = ref(false);
 const starLoadoutError = ref("");
+let starLoadoutLoadSeq = 0;
 const editorPanelEl = ref(null);
 let bodyOverflowBeforeEditor = "";
 let bodyLockedByEditor = false;
@@ -3204,6 +3215,11 @@ watch(
     return [accountId.value, saveGame.value];
   },
   function () {
+    starLoadoutLoadSeq += 1;
+    starLoadoutAccountId.value = "";
+    starLoadoutLoading.value = false;
+    closeStarLoadout();
+    if (editing.value) closeEditor();
     starInventoryEntries.value = [];
     starLoadoutCurrent.value = {};
     starLoadoutDrafts.value = {};
@@ -6096,12 +6112,17 @@ async function openStarLoadout(operator, slot) {
 
 async function prepareStarLoadout(operator, slot) {
   if (!operator || !auth.isLoggedIn || !accountId.value) return false;
+  const targetAccount = accountId.value;
+  const seq = ++starLoadoutLoadSeq;
+  starLoadoutLoading.value = true;
   starLoadoutError.value = "";
   try {
     const [inventory, loadout] = await Promise.all([
-      getCurrentStarInventory(accountId.value),
-      getCurrentStarLoadout(accountId.value),
+      getCurrentStarInventory(targetAccount),
+      getCurrentStarLoadout(targetAccount),
     ]);
+    if (seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
+      return false;
     starInventoryEntries.value = starSnapshotEntries(inventory);
     starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
     starLoadoutDrafts.value = JSON.parse(JSON.stringify(starLoadoutCurrent.value));
@@ -6110,10 +6131,15 @@ async function prepareStarLoadout(operator, slot) {
     starLoadoutTarget.value = operator;
     starLoadoutActiveSlot.value = slot;
     starLoadoutInlineSlot.value = slot;
+    starLoadoutAccountId.value = targetAccount;
     return true;
   } catch (err) {
+    if (seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
+      return false;
     starLoadoutError.value = humanErr(err, "无法加载当前星石数据");
     return false;
+  } finally {
+    if (seq === starLoadoutLoadSeq) starLoadoutLoading.value = false;
   }
 }
 
@@ -6149,14 +6175,23 @@ function starLoadoutIsDirty() {
 }
 
 async function persistStarLoadout() {
-  if (!accountId.value || !starLoadoutIsDirty()) return true;
+  const targetAccount = starLoadoutAccountId.value;
+  if (!targetAccount || accountId.value !== targetAccount) {
+    starLoadoutError.value = "账号已切换，请关闭编辑器后重新打开。";
+    return false;
+  }
+  if (!starLoadoutIsDirty()) return true;
   starLoadoutSaving.value = true;
   starLoadoutError.value = "";
   try {
-    const response = await putCurrentStarLoadout(accountId.value, {
+    const response = await putCurrentStarLoadout(targetAccount, {
       expected_revision: starLoadoutRevision.value,
       loadouts: starLoadoutDrafts.value,
     });
+    if (accountId.value !== targetAccount || starLoadoutAccountId.value !== targetAccount) {
+      starLoadoutError.value = "账号已切换，原账号的保存结果未应用到当前页面。";
+      return false;
+    }
     starLoadoutCurrent.value = normalizeCloudLoadouts(response);
     if (!Object.keys(starLoadoutCurrent.value).length) starLoadoutCurrent.value = JSON.parse(JSON.stringify(starLoadoutDrafts.value));
     starLoadoutRevision.value = Number(response && response.revision || starLoadoutRevision.value + 1);
@@ -6817,7 +6852,11 @@ async function openEdit(id) {
   editConflictDraft.value = null;
   editNotice.value = "";
   editNoticeError.value = false;
-  await prepareStarLoadout(op, "main1");
+  if (!(await prepareStarLoadout(op, "main1"))) {
+    editingId.value = "";
+    editingOp.value = null;
+    return;
+  }
   editing.value = true;
 }
 
