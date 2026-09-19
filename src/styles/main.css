@@ -491,7 +491,10 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
     padding:calc(8px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));
     background:rgba(255,248,236,.96);border-bottom:1px solid var(--line);
     box-shadow:0 8px 24px -20px rgba(73,59,44,.45);
+    transform:translateY(0);transition:transform .18s cubic-bezier(.25,1,.5,1);
   }
+  .mobile-shell--hidden{transform:translateY(calc(-100% - 12px))}
+  .mobile-shell:has(:focus-visible){transform:translateY(0);transition:none}
   .mobile-brand{
     flex:none;min-height:44px;display:flex;align-items:center;gap:8px;padding:5px 8px;
     color:var(--ink);text-decoration:none;font-family:var(--font-s);font-size:13px;font-weight:900;
@@ -647,6 +650,7 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
 
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
+  .mobile-shell{transition:none}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
   .rv{opacity:1;transform:none}
   .route-loading-bar{animation:none;transform:none;width:100%;opacity:1}
