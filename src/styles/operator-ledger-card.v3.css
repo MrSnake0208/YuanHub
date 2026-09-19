@@ -4,6 +4,10 @@
  * Editing controls stay scoped to current-growth cards; V2 stays intact.
  * Only the decorative layer is clipped; menus can extend beyond the card.
  */
+.agent-ledger-grid:has(:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3) {
+  row-gap: 8px;
+}
+
 .agent-ledger-card--v3 .ledger-portrait {
   display: none;
 }
@@ -190,7 +194,7 @@
 /* A vertical inscription inside the card replaces the V2 tabs on mobile. */
 @media (max-width: 640px) {
   .agent-ledger-grid:has(:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3) {
-    gap: 14px;
+    column-gap: 14px;
     padding-top: 0;
   }
 

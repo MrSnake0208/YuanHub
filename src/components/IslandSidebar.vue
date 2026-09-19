@@ -1,5 +1,5 @@
 <template>
-  <header class="mobile-shell">
+  <MobileHeader>
     <router-link class="mobile-brand" to="/" aria-label="返回首页">
       <span class="brand-mark" aria-hidden="true">♥</span>
       <span>YuanHub</span>
@@ -71,7 +71,7 @@
         <span>桌面</span>
       </router-link>
     </nav>
-  </header>
+  </MobileHeader>
 
   <aside class="island" aria-label="主要导航">
     <router-link class="brand" to="/" aria-label="返回首页">
@@ -163,6 +163,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import MobileHeader from "./MobileHeader.vue";
 import {
   Bell,
   BookUser,
