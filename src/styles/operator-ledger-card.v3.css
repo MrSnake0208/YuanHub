@@ -1,6 +1,7 @@
 /*
  * Agent ledger card v3 — mobile portrait skin, layered over the V2 layout.
- * Keep portrait composition and translucent surfaces here so V2 stays intact.
+ * Share portrait composition and translucent surfaces with read-only cards.
+ * Editing controls stay scoped to current-growth cards; V2 stays intact.
  * Only the decorative layer is clipped; menus can extend beyond the card.
  */
 .agent-ledger-card--v3 .ledger-portrait {
@@ -8,13 +9,13 @@
 }
 
 @media (max-width: 640px) {
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait) {
     --ledger-control-paper: color-mix(in srgb, var(--surface) 76%, transparent);
     --ledger-control-hover: color-mix(in srgb, var(--surface) 91%, transparent);
     isolation: isolate;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-portrait {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-portrait {
     display: block;
     position: absolute;
     z-index: -1;
@@ -144,33 +145,33 @@
     opacity: .9;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait)
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait)
     .fate-trait-style-a .ledger-destiny-row em[class] {
     --ledger-slot-tint: var(--trait-neutral-bg);
     background: color-mix(in srgb, var(--ledger-slot-tint) 76%, transparent);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait)
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait)
     .fate-trait-style-a .ledger-destiny-row em.rarity-gold {
     --ledger-slot-tint: var(--rarity-gold-bg);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait)
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait)
     .fate-trait-style-a .ledger-destiny-row em.rarity-purple {
     --ledger-slot-tint: var(--rarity-purple-bg);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait)
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait)
     .fate-trait-style-a .ledger-destiny-row em.rarity-blue {
     --ledger-slot-tint: var(--rarity-blue-bg);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait)
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait)
     .ledger-stones > .stone-slot:nth-of-type(n) {
     background: var(--ledger-control-paper);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait)
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait)
     .ledger-stones > .stone-slot.is-empty {
     background: color-mix(in srgb, var(--surface) 48%, transparent);
     color: var(--tea);
@@ -181,19 +182,19 @@
     background: var(--ledger-control-hover);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-portrait) .ledger-stones small {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-portrait) .ledger-stones small {
     color: var(--tea);
   }
 }
 
 /* A vertical inscription inside the card replaces the V2 tabs on mobile. */
 @media (max-width: 640px) {
-  .agent-ledger-grid:has(.agent-ledger-card--editable.agent-ledger-card--v3) {
+  .agent-ledger-grid:has(:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3) {
     gap: 14px;
     padding-top: 0;
   }
 
-  .agent-ledger-card.agent-ledger-card--editable.agent-ledger-card--v3 {
+  .agent-ledger-card:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 {
     --ledger-card-inset: 6px;
     --ledger-card-inset-left: 10px;
     --ledger-inscription-width: 86px;
@@ -210,7 +211,7 @@
     grid-column: 1 / -1;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 > .ledger-loadouts {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 > .ledger-loadouts {
     /* Reserve a compact 3 × 2 stone grid, including below V2's stacking breakpoint. */
     grid-template-columns: minmax(0, 1fr) clamp(90px, 28vw, 112px);
     grid-template-rows: repeat(2, minmax(32px, auto));
@@ -219,20 +220,20 @@
     padding-left: 2px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny {
     grid-row: 1 / -1;
     grid-template-rows: subgrid;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row {
     min-height: 32px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row:first-child {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row:first-child {
     padding-top: 8px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones {
     grid-column: 2;
     grid-row: 1 / -1;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -241,12 +242,12 @@
     padding: 0;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-stones > .stone-slot:nth-of-type(n) {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-stones > .stone-slot:nth-of-type(n) {
     /* Place all six buttons in DOM order instead of V2's narrow-screen single row. */
     grid-area: auto;
   }
 
-  .agent-ledger-card.agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-name-tab > .is-long-name) {
+  .agent-ledger-card:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3:has(.ledger-name-tab > .is-long-name) {
     --ledger-inscription-width: 100px;
   }
 
@@ -254,7 +255,7 @@
     z-index: 22;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-head {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-card-head {
     position: static;
     grid-column: 2;
     grid-row: 1;
@@ -269,11 +270,11 @@
     padding: 0;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-card-head::after {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-card-head::after {
     content: none;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 :is(.ledger-name-tab, .ledger-name-row, .operator-avatar) {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 :is(.ledger-name-tab, .ledger-name-row, .operator-avatar) {
     display: contents;
   }
 
@@ -283,7 +284,7 @@
     display: none;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-tab > h3 {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3 {
     grid-column: 2;
     grid-row: 1 / 3;
     justify-self: end;
@@ -293,7 +294,7 @@
     height: max-content;
     max-height: 70px;
     /* Include the top inset in layout so long names cannot overlap loadouts. */
-    margin: 8px 8px 0 0;
+    margin: var(--ledger-name-top, 8px) 8px 0 0;
     padding: 0 1px;
     /* Let the paper-colored glow extend beyond the narrow vertical name box. */
     overflow: visible;
@@ -312,23 +313,23 @@
       0 1px 12px var(--surface);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name {
     max-height: 76px;
     font-size: 17px;
     line-height: 1.35;
     letter-spacing: .03em;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-tab > h3.is-three-char-name {
-    margin-top: 3px;
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-tab > h3.is-three-char-name {
+    margin-top: var(--ledger-name-top, 3px);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-name-continuation {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-name-continuation {
     display: block;
     white-space: nowrap;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab {
     grid-column: 1;
     grid-row: 1 / 3;
     justify-self: end;
@@ -340,7 +341,7 @@
     width: 20px;
     max-width: 100%;
     height: auto;
-    margin: 7px 0 0;
+    margin: var(--ledger-prof-top, 7px) 0 0;
     padding: 5px 2px;
     border: 1px solid color-mix(in srgb, var(--tea) 14%, transparent);
     border-radius: 999px;
@@ -353,22 +354,22 @@
     text-shadow: none;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3
     .ledger-card-head:has(.ledger-name-tab > .is-three-char-name) .ledger-prof-tab {
-    margin-top: 2px;
+    margin-top: var(--ledger-prof-top, 2px);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab.ledger-prof-tab--fuzhu {
-    margin-top: 3px;
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab.ledger-prof-tab--fuzhu {
+    margin-top: var(--ledger-prof-top, 3px);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab > img {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab > img {
     flex: none;
     width: 12px;
     height: 12px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab > span {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab > span {
     writing-mode: vertical-rl;
     text-orientation: upright;
     letter-spacing: .08em;
@@ -513,11 +514,11 @@
 }
 
 @media (max-width: 359px) {
-  .agent-ledger-card.agent-ledger-card--editable.agent-ledger-card--v3 {
+  .agent-ledger-card:is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 {
     --ledger-growth-data-width: 136px;
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-destiny-row em {
+  :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-destiny-row em {
     padding-inline: 3px;
   }
 

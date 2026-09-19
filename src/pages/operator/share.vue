@@ -119,17 +119,40 @@
                   :class="['status-' + shareStatusClass(entry), ledgerCardVersionClass]"
                   role="listitem"
                 >
-                  <header class="ledger-card-head">
+                  <picture
+                    v-if="ledgerCardIsV3 && operatorPortraits[entry.id] && !failedPortraitIds.has(entry.id)"
+                    class="ledger-portrait"
+                    aria-hidden="true"
+                  >
+                    <source media="(max-width: 640px)" :srcset="operatorPortraits[entry.id]" />
+                    <img alt="" width="480" height="350" loading="lazy" decoding="async" @error="failedPortraitIds.add(entry.id)" />
+                  </picture>
+                  <header
+                    class="ledger-card-head"
+                    :class="{
+                      'share-identity--two-char': Array.from(entry.name).length === 2,
+                      'share-identity--three-char': Array.from(entry.name).length === 3,
+                      'share-identity--chendeng-sp': entry.id === 'char_084_chendengsp' && entry.name === '陈登·黍王',
+                      'share-identity--shizimiao-sp': entry.id === 'char_085_shizimiaosp' && entry.name === '史子眇·赴烛',
+                    }"
+                  >
                     <div class="ledger-avatar">
                       <img v-if="entry.avatar" :src="avatarUrl(entry.avatar)" :alt="entry.name + '头像'" loading="lazy" @error="hideBrokenImage" />
                       <span v-else aria-hidden="true">{{ monogram(entry) }}</span>
                     </div>
                     <div class="ledger-identity">
-                      <div class="ledger-name-row">
-                        <h3>{{ entry.name }}</h3>
-                        <span class="ledger-mobile-prof">
-                          <img v-if="profIcon(entry.prof[0])" :src="profIcon(entry.prof[0])" alt="" aria-hidden="true" />
-                          {{ entry.prof.length ? entry.prof.join('、') : '未知属性' }} · {{ subProfText(entry) }}
+                      <div class="ledger-name-row ledger-name-tab">
+                        <h3
+                          :class="{
+                            'is-three-char-name': Array.from(entry.name).length === 3,
+                            'is-long-name': Array.from(entry.name).length > 3,
+                          }"
+                          :title="entry.name"
+                        ><template v-if="ledgerCardIsV3 && entry.name === '陈登·黍王'"><span class="ledger-name-prefix">陈登·</span><span class="ledger-name-continuation">黍王</span></template><template v-else-if="ledgerCardIsV3 && entry.name === '史子眇·赴烛'"><span class="ledger-name-prefix">史子眇·</span><span class="ledger-name-continuation">赴烛</span></template><template v-else>{{ entry.name }}</template></h3>
+                        <span class="ledger-mobile-prof ledger-prof-tab">
+                          <img v-if="profIcon(entry.prof[0])" :src="profIcon(entry.prof[0])" :alt="entry.prof.join('、') + '属性'" />
+                          <span class="share-ledger-prof-attribute">{{ entry.prof.length ? entry.prof.join('、') : '未知属性' }} · </span>
+                          <span>{{ subProfText(entry) }}</span>
                         </span>
                       </div>
                       <span class="ledger-prof">
@@ -182,35 +205,38 @@
                     </div>
                   </section>
 
-                  <div class="ledger-destiny fate-trait-style-a" aria-label="双命盘">
-                    <div v-for="(loadout, index) in loadouts(entry)" :key="index" class="ledger-destiny-row">
-                      <span>命盘{{ index === 0 ? '一' : '二' }}</span>
-                      <div class="ledger-destiny-values">
-                        <em
-                          v-for="disc in loadoutDiscEntries(entry, loadout)"
-                          :key="disc.name"
-                          class="disc-term"
-                          :class="[
-                            discRarityClass(disc),
-                            { 'has-description': disc.description },
-                          ]"
-                          :tabindex="disc.description ? 0 : undefined"
-                          @mouseenter.stop="showDiscTooltip($event, disc.description)"
-                          @mouseleave="hideDiscTooltip"
-                          @focus="showDiscTooltip($event, disc.description)"
-                          @blur="hideDiscTooltip"
-                        >{{ disc.name }}</em>
+                  <div class="ledger-loadouts">
+                    <div class="ledger-destiny fate-trait-style-a" aria-label="双命盘">
+                      <div v-for="(loadout, index) in loadouts(entry)" :key="index" class="ledger-destiny-row">
+                        <span>命盘{{ index === 0 ? '一' : '二' }}</span>
+                        <div class="ledger-destiny-values">
+                          <em
+                            v-for="disc in loadoutDiscEntries(entry, loadout)"
+                            :key="disc.name"
+                            class="disc-term"
+                            :class="[
+                              discRarityClass(disc),
+                              { 'has-description': disc.description },
+                            ]"
+                            :title="disc.name"
+                            :tabindex="disc.description ? 0 : undefined"
+                            @mouseenter.stop="showDiscTooltip($event, disc.description)"
+                            @mouseleave="hideDiscTooltip"
+                            @focus="showDiscTooltip($event, disc.description)"
+                            @blur="hideDiscTooltip"
+                          >{{ disc.displayName }}</em>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div class="ledger-stones" aria-label="已装备星石">
-                    <div v-for="(stone, index) in starStoneSlots(entry)" :key="index" class="stone-slot" :class="{ 'is-empty': !stone }">
-                      <template v-if="stone">
-                        <strong>{{ stone.name || '星石' }}</strong>
-                        <small>{{ stone.level || 0 }}</small>
-                      </template>
-                      <span v-else aria-hidden="true">+</span>
+                    <div class="ledger-stones" aria-label="已装备星石">
+                      <div v-for="(stone, index) in starStoneSlots(entry)" :key="index" class="stone-slot" :class="{ 'is-empty': !stone }">
+                        <template v-if="stone">
+                          <strong>{{ stone.name || '星石' }}</strong>
+                          <small>{{ stone.level || 0 }}</small>
+                        </template>
+                        <span v-else aria-hidden="true">+</span>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -249,10 +275,11 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import ButterflyIcon from '../../components/operator/ButterflyIcon.vue'
 import OperatorFilterDossier from '../../components/operator/OperatorFilterDossier.vue'
-import { operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
+import { ACTIVE_OPERATOR_LEDGER_CARD_VERSION, OPERATOR_LEDGER_CARD_VERSIONS, operatorLedgerCardVersionClass } from '../../config/operatorLedgerCard.js'
 import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
+import operatorPortraits from '../../data/operatorPortraits.json'
 import { normalizeDiscNames } from '../../utils/operatorDiscLoadouts.js'
 import { subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 import { starCardFallback, starCardHasIcon, starCardNode, starCardNumber } from '../../utils/operatorStarDisplay.js'
@@ -268,6 +295,8 @@ import {
 const route = useRoute()
 const router = useRouter()
 const ledgerCardVersionClass = operatorLedgerCardVersionClass()
+const ledgerCardIsV3 = ACTIVE_OPERATOR_LEDGER_CARD_VERSION === OPERATOR_LEDGER_CARD_VERSIONS.V3
+const failedPortraitIds = ref(new Set())
 const inputValue = ref('')
 const inputError = ref('')
 const loadError = ref('')
@@ -444,6 +473,10 @@ function discDescription(disc) {
   return String(disc.desp || disc.description || disc.desc || '').trim()
 }
 
+function discAbbreviation(disc) {
+  return disc && typeof disc.abbreviation === 'string' ? disc.abbreviation.trim() : ''
+}
+
 function loadoutDiscEntries(entry, loadout) {
   const raw = [loadout && loadout.discs, loadout && loadout.discNames, loadout && loadout.disc_names]
     .find(function (value) { return Array.isArray(value) && value.length }) || []
@@ -454,6 +487,7 @@ function loadoutDiscEntries(entry, loadout) {
     const catalog = catalogByName.get(name)
     return {
       name: name,
+      displayName: discAbbreviation(catalog) || discAbbreviation(source) || name,
       description: discDescription(source) || discDescription(catalog),
       color: (source && source.color) || (catalog && catalog.color) || ''
     }
@@ -680,3 +714,334 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v3.css"></style>
+<style scoped>
+/* Read-only adaptation of the current-growth V3 portrait card. */
+.agent-ledger-card--share .ledger-loadouts {
+  display: contents;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v2 .fate-trait-style-a .ledger-destiny-row em.disc-term {
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .share-ledger:has(.agent-ledger-card--v3) {
+    margin-inline: 0;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .share-ledger:has(.agent-ledger-card--v3) .current-ledger-meta,
+  .share-ledger:has(.agent-ledger-card--v3) .current-ledger-meta span:last-child {
+    color: var(--ink-60);
+  }
+
+  .agent-ledger-card.agent-ledger-card--share.agent-ledger-card--v3 {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: 0 3px 10px rgba(73, 59, 44, .05);
+    transform: none;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head {
+    --ledger-name-top: 0px;
+    --ledger-prof-top: 3px;
+    grid-row: 1 / 3;
+    column-gap: 0;
+    align-self: start;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--two-char {
+    --ledger-name-top: 4px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--three-char {
+    --ledger-name-top: 0px;
+    --ledger-prof-top: 1px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--chendeng-sp {
+    --ledger-name-top: 1px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--shizimiao-sp {
+    --ledger-name-top: 0px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3 {
+    margin-right: 2px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-identity {
+    display: contents;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 :is(.ledger-avatar, .ledger-prof),
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-prof-tab:has(img) .share-ledger-prof-attribute {
+    display: none;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-prof-tab {
+    /* Use the name's line-box whitespace to tighten the visible gap. */
+    margin-right: -2px;
+    margin-top: 2px;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  /* Keep each SP title and its profession in one continuous vertical column. */
+  .agent-ledger-card--share.agent-ledger-card--v3
+    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp) {
+    grid-template-columns: max-content max-content 26px;
+    grid-template-rows: max-content max-content;
+    gap: 2px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3
+    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp) .ledger-name-tab > h3 {
+    grid-column: 1 / 3;
+    grid-row: 1 / 3;
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-template-rows: subgrid;
+    align-self: stretch;
+    justify-self: stretch;
+    width: auto;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    writing-mode: horizontal-tb;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3
+    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp)
+    :is(.ledger-name-prefix, .ledger-name-continuation) {
+    align-self: start;
+    justify-self: center;
+    margin-top: var(--ledger-name-top);
+    padding-inline: 1px;
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-prefix {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-continuation {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3
+    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp) .ledger-prof-tab {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    margin: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status {
+    --ledger-seal-ink: var(--ink-60);
+    --ledger-seal-paper: var(--surface);
+    position: static;
+    grid-column: 3;
+    grid-row: 1 / 3;
+    justify-self: center;
+    width: 26px;
+    min-height: 48px;
+    /* Match the top and right card insets so the two rounded corners nest. */
+    margin-top: 0;
+    padding: 6px 2px;
+    border: 3px double color-mix(in srgb, var(--ledger-seal-ink) 66%, transparent);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--ledger-seal-paper) 85%, transparent);
+    color: var(--ledger-seal-ink);
+    font: 900 11.5px/1.3 var(--font-s);
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: .06em;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status.status-growing {
+    --ledger-seal-ink: #315f38;
+    --ledger-seal-paper: color-mix(in srgb, #bfdcc0 26%, var(--surface));
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status.status-graduated {
+    --ledger-seal-ink: var(--accent-strong);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-growth.share-ledger-growth {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: repeat(3, max-content);
+    justify-content: start;
+    align-self: start;
+    align-content: start;
+    max-width: 220px;
+    gap: 6px;
+    margin: 0;
+    padding: 0 0 0 6px;
+    border: 0;
+    background: transparent;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .ledger-growth-row:nth-child(n) {
+    grid-column: auto;
+    grid-template-columns: auto auto;
+    justify-self: start;
+    width: auto;
+    min-height: 24px;
+    gap: 2px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-grow-label {
+    color: var(--tea);
+    font-size: 11px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .share-ledger-growth-value {
+    min-height: 24px;
+    padding: 2px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--surface) 56%, transparent);
+  }
+
+  /* Reserve two elite digits and three level digits, including value padding. */
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .ledger-growth-row:nth-child(-n + 2) > .share-ledger-growth-value {
+    width: calc(2ch + 4px);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .ledger-growth-row:first-child > .share-ledger-growth-value {
+    width: calc(3ch + 4px);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth-value.ledger-huaji-value {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    min-width: 0;
+    max-width: 180px;
+    gap: 4px;
+    padding-left: var(--ledger-growth-inset);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-stat {
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 3px;
+    padding: 6px 4px;
+    border: 0;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--surface) 76%, transparent);
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-head,
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > .stat-icon {
+    grid-column: 1;
+    width: 12px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-value {
+    grid-column: 2;
+    min-height: 20px;
+    padding: 0;
+    font-size: 15px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > span:last-child {
+    grid-column: 2;
+    color: var(--tea);
+    font-size: 9px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-loadouts {
+    display: grid;
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    row-gap: 4px;
+    padding-top: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row {
+    display: grid;
+    grid-template-columns: 6px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
+    position: relative;
+    width: 6px;
+    padding: 0;
+    border: 0;
+    font-size: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span::before {
+    display: block;
+    width: 5px;
+    height: 5px;
+    border: 1px solid var(--fate-series-accent);
+    transform: rotate(45deg);
+    content: '';
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 3px;
+    max-height: none;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .fate-trait-style-a .ledger-destiny-row em {
+    width: auto;
+    max-width: 100%;
+    min-height: 24px;
+    padding: 3px;
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones {
+    align-content: start;
+    margin: 0;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot {
+    height: 32px;
+    min-height: 32px;
+    aspect-ratio: auto;
+    align-self: center;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot:nth-of-type(n+4) {
+    border-radius: 8px;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot.is-empty {
+    border-style: dashed;
+  }
+}
+</style>
