@@ -322,12 +322,12 @@
             <div class="origin-copy">
               <small>共同发起 · OUR BEGINNING</small>
               <b>辟雍学府</b>
-              <p>YuanHub 最初由 <strong>MaaYuan × 代号鸢 BWiki × 辟雍学府 × YuanAssist</strong> 共同牵头建设。辟雍学府现已停止运营，感谢它曾与我们一同参与 YuanHub 的起点。</p>
+              <p>YuanHub 最初由 <strong>MaaYuan × 代号鸢 BWiki × 辟雍学府 × YuanAssist</strong> 共同牵头建设。辟雍学府将于 <strong>2026 年 10 月 9 日</strong> 停止运营，感谢它曾与我们一同参与 YuanHub 的起点。</p>
             </div>
-            <span class="origin-status">已停止运营</span>
+            <span class="origin-status">将于 10 月 9 日停止运营</span>
           </div>
 
-          <p class="ecosystem-disclaimer">当前确认的自动流程为 MaaYuan 采集并上传，YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。代号鸢 BWiki 与 YuanAssist 仍保持各自独立运行，后续会与 YuanHub 逐步展开功能联动；辟雍学府现已停止运营。</p>
+          <p class="ecosystem-disclaimer">当前确认的自动流程为 MaaYuan 采集并上传，YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。代号鸢 BWiki 与 YuanAssist 仍保持各自独立运行，后续会与 YuanHub 逐步展开功能联动；辟雍学府将于 2026 年 10 月 9 日停止运营。</p>
         </div>
       </section>
 
@@ -630,7 +630,7 @@ Object.entries(demoGrowthById).forEach(([id, growth]) => {
 })
 
 const features = [
-  { id: 'connection', index: '01', name: '自动同步', short: '采集结果直达', kicker: 'MAAYUAN SYNC', title: '采集一次，今日与养成安排接着用', description: '用户授权后，MaaYuan 可通过绑定具体游戏账号的连接上传自动采集结果；YuanHub 统一整理这些数据，供今日一览、养成规划预览与分享使用。', points: ['连接只绑定指定游戏账号', '授权范围按 scope 控制', '可随时停用连接并停止访问'] },
+  { id: 'connection', index: '01', name: '自动同步', short: '日常结果自动记账', kicker: 'MAAYUAN SYNC', title: '派遣收菜、情报扫荡，资源变化自动记下来', description: '用户授权后，MaaYuan 可将派遣收菜、情报扫荡等日常操作的采集结果上传至 YuanHub；白金币、鸟食、心纸等资源会自动统计到对应游戏账号，继续用于今日一览、库存变化与后续规划。', points: ['派遣收菜结果自动统计', '情报扫荡资源自动统计', '白金币 / 鸟食 / 心纸等按账号归档'] },
   { id: 'operator', index: '02', name: '密探 BOX', short: '养成档案', kicker: 'OPERATOR ARCHIVE', title: '把密探养成变成一份随时可看的档案', description: '多个游戏账号分别维护密探状态，记录等级、修为、化极、命盘、星石与养成状态。', points: ['当前养成与图鉴分开管理', '支持快捷导入与档案交换', '可生成神秘代码对外只读分享'] },
   { id: 'inventory', index: '03', name: '库存', short: '清点与溯源', kicker: 'INVENTORY LEDGER', title: '不只记“现在有多少”，也看资源怎么变化', description: '库存页面用于清点当前背包、归档获得记录，并按周期查看资源变化。', points: ['多个子账号分别清点', '按周 / 月查看获得量', '支持完整交换档案'] },
   { id: 'star', index: '04', name: '星石', short: '识别与计划', kicker: 'STAR INVENTORY', title: '从截图识别开始，把星石真正整理起来', description: '星石识别与养成相关内容为 Drifty Yan 独立创作。可导入游戏截图进行 OCR 与人工核对，并管理当前背包、养成计划与经验星曜。', points: ['本地截图导入与 OCR', '人工核对识别结果', '登录后同步当前账号数据'] }
