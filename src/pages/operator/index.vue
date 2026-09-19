@@ -1116,8 +1116,8 @@
                     class="ledger-portrait"
                     aria-hidden="true"
                   >
-                    <source media="(max-width: 640px)" :srcset="operatorPortraits[e.id]" />
                     <img
+                      :src="operatorPortraits[e.id]"
                       alt=""
                       width="480"
                       height="350"
@@ -1172,7 +1172,7 @@
                           'is-long-name': Array.from(e.name || e.id).length > 3,
                         }"
                         :title="e.name || e.id"
-                      ><template v-if="ledgerCardIsV3 && e.name === '陈登·黍王'">陈登·<span class="ledger-name-continuation">黍王</span></template><template v-else>{{ e.name || e.id }}</template></h3>
+                      ><template v-if="ledgerCardIsV3 && e.name === '陈登·黍王'">陈登·<span class="ledger-name-continuation ledger-name-continuation--natural">黍王</span></template><template v-else-if="ledgerCardIsV3 && e.name === '史子眇·赴烛'">史子眇·<span class="ledger-name-continuation">赴烛</span></template><template v-else>{{ e.name || e.id }}</template></h3>
                     </div>
                     <div class="ledger-identity">
                       <div class="ledger-name-row">
@@ -1823,7 +1823,7 @@
                           /><span v-if="!e.spOf"
                             >
                             {{ starCardNode(cardGrowthValue(e, "star")) }}
-                             节点</span
+                            <span class="ledger-node-label">&nbsp;节点</span></span
                           ></template
                         ><template v-else>{{
                           starCardFallback(cardGrowthValue(e, "star"))
