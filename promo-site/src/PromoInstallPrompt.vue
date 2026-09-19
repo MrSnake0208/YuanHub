@@ -42,6 +42,11 @@
               <li><b>01</b><span>打开浏览器菜单</span></li>
               <li><b>02</b><span>选择“安装应用”或“添加到主屏幕”</span></li>
             </ol>
+            <div class="promo-install-permission">
+              <strong>点了“添加”却没反应？</strong>
+              <p>部分 Android 系统会单独限制浏览器的“添加桌面快捷方式”权限。请到 <b>系统设置 → 应用/应用管理 → 当前浏览器 → 权限/其他权限</b>，允许“添加桌面快捷方式”或“创建桌面快捷方式”，再回来重试。</p>
+              <span>不同品牌入口名称可能不同，也可以在系统设置里搜索“桌面快捷方式”。</span>
+            </div>
           </template>
         </div>
 
@@ -118,7 +123,7 @@ async function installNow() {
   try {
     const result = await requestPwaInstall()
     if (result.outcome === 'accepted') closeWithoutCooldown()
-    else if (result.outcome === 'unavailable') showQuickGuide.value = true
+    else if (result.outcome === 'unavailable' || result.outcome === 'failed') showQuickGuide.value = true
   } finally {
     installing.value = false
   }
@@ -228,6 +233,33 @@ onBeforeUnmount(() => {
 .promo-install-guide ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .promo-install-guide li { display: grid; grid-template-columns: 24px 1fr; align-items: start; gap: 7px; color: #493b2c; font-size: 11.5px; font-weight: 700; line-height: 1.5; }
 .promo-install-guide b { color: #8f5112; font: 900 10px/1.5 'Archivo', sans-serif; }
+.promo-install-permission {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(90, 70, 51, .24);
+}
+.promo-install-permission strong {
+  display: block;
+  color: #493b2c;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+.promo-install-permission p {
+  margin: 4px 0 0;
+  color: rgba(73, 59, 44, .7);
+  font-size: 10.8px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.promo-install-permission p b { color: #493b2c; font: inherit; font-weight: 800; }
+.promo-install-permission span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(73, 59, 44, .58);
+  font-size: 10px;
+  line-height: 1.5;
+}
 .promo-install-actions {
   display: flex;
   align-items: center;

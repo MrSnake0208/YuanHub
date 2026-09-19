@@ -41,6 +41,7 @@
             </button>
           </header>
           <p class="guide-intro">推荐使用 Chrome、Edge 或支持 PWA 安装的 Android 浏览器。如果上方出现“立即添加到桌面”，可以直接使用，无需再打开浏览器菜单。</p>
+          <p v-if="installFeedback" class="install-feedback" role="status">{{ installFeedback }}</p>
           <ol class="steps">
             <li><span class="step-no">01</span><div><h3>打开 YuanHub</h3><p>使用 Chrome、Edge 或其他支持安装 Web App 的浏览器访问本站。</p></div><Globe2 :size="22" aria-hidden="true" /></li>
             <li><span class="step-no">02</span><div><h3>打开浏览器菜单</h3><p>点击浏览器右上角的 <b>⋮</b> 或菜单按钮。</p></div><MoreVertical :size="22" aria-hidden="true" /></li>
@@ -48,6 +49,16 @@
             <li><span class="step-no">04</span><div><h3>确认添加</h3><p>在系统弹窗中确认安装。完成后桌面或应用列表会出现 YuanHub 图标。</p></div><CircleCheck :size="22" aria-hidden="true" /></li>
             <li><span class="step-no">05</span><div><h3>从桌面启动</h3><p>以后直接点击 YuanHub 图标即可，它会以独立窗口打开。</p></div><AppWindow :size="22" aria-hidden="true" /></li>
           </ol>
+
+          <div class="shortcut-permission-help">
+            <Settings2 :size="22" aria-hidden="true" />
+            <div>
+              <h3>点了“添加到桌面”却没反应？</h3>
+              <p>部分 Android 系统会把“添加桌面快捷方式 / 创建桌面快捷方式”作为浏览器 App 的单独系统权限。YuanHub 网页无法直接读取或替你开启这项权限。</p>
+              <p><b>请打开：系统设置 → 应用 / 应用管理 → 当前浏览器 → 权限 / 其他权限</b>，允许“添加桌面快捷方式”或“创建桌面快捷方式”，然后返回浏览器重新尝试。</p>
+              <span>不同手机品牌的入口名称会略有不同；找不到时，可以直接在系统设置中搜索“桌面快捷方式”。</span>
+            </div>
+          </div>
         </article>
 
         <article v-else class="guide-card" role="tabpanel">
@@ -87,6 +98,7 @@ import {
   Globe2,
   MoreVertical,
   Share2,
+  Settings2,
   ShieldCheck,
   Smartphone,
   SquarePlus
@@ -97,11 +109,22 @@ import { pwaInstallState, requestPwaInstall } from '@/utils/pwaInstall.js'
 
 const activeTab = ref('android')
 const installing = ref(false)
+const installFeedback = ref('')
 
 async function installNow() {
   if (installing.value) return
   installing.value = true
-  try { await requestPwaInstall() } finally { installing.value = false }
+  installFeedback.value = ''
+  try {
+    const result = await requestPwaInstall()
+    if (result.outcome === 'dismissed') {
+      installFeedback.value = '本次添加没有完成；如果你并未主动取消、也没有看到系统确认，请检查下方的桌面快捷方式权限。'
+    } else if (result.outcome === 'failed' || result.outcome === 'unavailable') {
+      installFeedback.value = '浏览器没有完成这次添加。请先按下方说明检查“添加 / 创建桌面快捷方式”权限，再重新尝试。'
+    }
+  } finally {
+    installing.value = false
+  }
 }
 
 onMounted(function () {
@@ -128,12 +151,19 @@ onMounted(function () {
 .install-now { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font: 800 12.5px var(--font-b); cursor: pointer; white-space: nowrap; }
 .install-now:hover:not(:disabled) { border-color: var(--accent); background: var(--accent); }
 .install-now:disabled { opacity: .55; cursor: wait; }
+.install-feedback { margin: 14px 0 0; padding: 10px 12px; border: 1px solid rgba(215,137,53,.42); border-radius: 12px; background: rgba(239,210,142,.24); color: var(--ink); font-size: 12px; font-weight: 700; line-height: 1.6; }
 .steps { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }
 .steps li { display: grid; grid-template-columns: 46px minmax(0, 1fr) 28px; align-items: center; gap: 13px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--paper); }
 .step-no { color: var(--accent-strong); font: 900 18px var(--font-d); }
 .steps h3 { font-family: var(--font-s); font-size: 16px; font-weight: 900; }
 .steps p { margin-top: 4px; color: var(--ink-60); font-size: 12.5px; line-height: 1.65; }
 .steps > li > svg { color: var(--accent-strong); }
+.shortcut-permission-help { display: flex; align-items: flex-start; gap: 12px; margin-top: 18px; padding: 16px 18px; border: 1px dashed rgba(215,137,53,.52); border-radius: 15px; background: rgba(255,248,236,.78); }
+.shortcut-permission-help > svg { flex: none; margin-top: 2px; color: var(--accent-strong); }
+.shortcut-permission-help h3 { font-family: var(--font-s); font-size: 15px; font-weight: 900; }
+.shortcut-permission-help p { margin-top: 5px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
+.shortcut-permission-help p b { color: var(--ink); font-weight: 800; }
+.shortcut-permission-help span { display: block; margin-top: 6px; color: var(--ink-60); font-size: 11px; line-height: 1.6; }
 .install-note { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px; border: 1px dashed var(--line); border-radius: 16px; background: rgba(255,248,236,.75); }
 .install-note > svg { flex: none; color: var(--accent-strong); margin-top: 2px; }
 .install-note strong { font-family: var(--font-s); font-size: 14px; }

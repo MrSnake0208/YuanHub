@@ -106,3 +106,27 @@ test('updates the promo install prompt when viewport crosses its mobile breakpoi
     browser.restore()
   }
 })
+
+test('keeps the promo permission fallback visible when the native install prompt fails', async function () {
+  const mobileQuery = '(max-width: 780px)'
+  const browser = installFakeBrowser(mobileQuery)
+  try {
+    const install = await import(`../src/pwaInstall.js?permission-failure=${Date.now()}`)
+    install.initPwaInstall()
+    browser.mobileMedia.setMatches(true)
+    browser.fireWindow('beforeinstallprompt', {
+      preventDefault() {},
+      async prompt() { throw new Error('shortcut permission denied') },
+      userChoice: Promise.resolve({ outcome: 'dismissed' })
+    })
+
+    const result = await install.requestPwaInstall()
+    assert.equal(result.outcome, 'failed')
+    assert.match(result.error.message, /permission denied/)
+    assert.equal(install.pwaInstallState.installHelpNeeded, true)
+    assert.equal(install.pwaInstallState.nativeCancelledThisSession, false)
+    assert.equal(install.shouldShowPwaInstallPrompt(), true)
+  } finally {
+    browser.restore()
+  }
+})
