@@ -188,6 +188,7 @@ import {
 } from "./embedLifecycle.js";
 import { createStarCloudCoordinator } from "./starCloudCoordinator.js";
 import { starCloudFeedback } from "./starCloudStatus.js";
+import { createLatestAccountSync } from "./latestAccountSync.js";
 import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExchangePreviewScope.js";
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
@@ -230,6 +231,7 @@ let pendingCapture = null;
 let captureRetryTimer = null;
 let stopCaptureEvents = null;
 let captureImportBusy = false;
+const queueAccountSync = createLatestAccountSync();
 
 const accountId = computed({
   get: function () {
@@ -415,22 +417,29 @@ async function loadAccounts() {
   }
 }
 async function syncHostAccount() {
-  if (!handle) return;
+  if (!handle) return false;
   const host = selectedHostAccount();
-  const previousAccountId = mountedAccountId;
-  try {
-    await handle.setHostAccount(host);
-    mountedAccountId = host?.accountId || "";
-    if (previousAccountId && previousAccountId !== mountedAccountId)
-      resetStarImportState();
-    clearCloudSyncFeedback();
-    if (host && !(await starCloud.enter(handle))) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
-    if (!host) await starCloud.enter(handle);
-  } catch (error) {
-    if (mountedAccountId) accountId.value = mountedAccountId;
-    accountError.value = message(error, "星石账号切换失败");
-    throw error;
-  }
+  return queueAccountSync(async function (isLatest) {
+    const currentHandle = handle;
+    const previousAccountId = mountedAccountId;
+    try {
+      await currentHandle.setHostAccount(host);
+      if (!isLatest() || currentHandle !== handle) return false;
+      mountedAccountId = host?.accountId || "";
+      if (previousAccountId && previousAccountId !== mountedAccountId)
+        resetStarImportState();
+      clearCloudSyncFeedback();
+      const entered = await starCloud.enter(currentHandle);
+      if (!isLatest() || currentHandle !== handle) return false;
+      if (host && !entered) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+      return true;
+    } catch (error) {
+      if (!isLatest() || currentHandle !== handle) return false;
+      if (mountedAccountId) accountId.value = mountedAccountId;
+      accountError.value = message(error, "星石账号切换失败");
+      throw error;
+    }
+  });
 }
 async function onAccountChange() {
   if (starExchangeBusy.value) {
@@ -440,8 +449,7 @@ async function onAccountChange() {
   resetStarImportState();
   discardForeignPendingCapture();
   try {
-    await syncHostAccount();
-    await recoverPendingCapture();
+    if (await syncHostAccount()) await recoverPendingCapture();
   } catch (_error) {}
 }
 async function onAccountGameChange(game) {

@@ -260,6 +260,47 @@ test('a failed ordered hold prevents later inventory-only commits from bypassing
   assert.equal(typeof hold.lease, 'string')
 })
 
+test('an ordered hold survives localStorage failure in memory and retries after storage recovers', async function () {
+  const stored = memoryStorage(), writes = []
+  let storageUnavailable = false
+  const storage = {
+    getItem: stored.getItem,
+    removeItem: stored.removeItem,
+    setItem: function (key, value) {
+      if (storageUnavailable) throw new Error('quota exceeded')
+      stored.setItem(key, value)
+    },
+  }
+  const states = []
+  const coordinator = createStarCloudCoordinator({
+    selectedHostAccount: () => ({ accountId: 'account-storage-failure' }), storage,
+    getInventory: async () => ({ revision: 1, entries: [] }), getWorkspace: async () => ({ revision: 1 }),
+    putWorkspace: async (_account, body) => {
+      writes.push('workspace')
+      return { revision: 2, plan_targets: body.plan_targets, bag: body.bag, experience: body.experience }
+    },
+    putInventory: async (_account, body) => {
+      writes.push('inventory')
+      return { revision: 2, entries: body.entries }
+    },
+    onState: state => states.push(state),
+  })
+  await coordinator.enter({ getCloudBusinessSnapshot: async () => snapshot(), applyCloudBusinessSnapshot: async () => {} })
+  storageUnavailable = true
+
+  assert.equal(coordinator.committed({ accountId: 'account-storage-failure', inventoryChanged: true, workspaceChanged: true, snapshot: snapshot() }), false)
+  assert.deepEqual(writes, [])
+  assert.equal(coordinator.needsRetry(), true)
+  assert.match(states.at(-1).error.message, /quota exceeded/)
+  assert.equal(states.at(-1).recoveryRequired, true)
+
+  storageUnavailable = false
+  await coordinator.retry()
+  assert.deepEqual(writes, ['workspace', 'inventory'])
+  assert.equal(states.at(-1).error, null)
+  assert.equal(states.at(-1).recoveryRequired, false)
+})
+
 test('retry sends the newest ordered hold after a workspace failure', async function () {
   let workspaceAttempts = 0
   const writes = []

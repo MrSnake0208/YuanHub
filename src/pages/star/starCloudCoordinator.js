@@ -99,9 +99,10 @@ export function createStarCloudCoordinator({
       inventory, workspace,
       hasOrderedHold: Boolean(active.orderedHold),
       restoredHoldAwaitingRetry: Boolean(active.restoredHoldAwaitingRetry),
-      needsRetry: Boolean(active.ready && (active.orderedHold || inventory.pending || inventory.error || workspace.pending || workspace.error)),
+      error: active.orderedError,
+      needsRetry: Boolean(active.ready && (active.orderedHold || active.orderedError || inventory.pending || inventory.error || workspace.pending || workspace.error)),
       recoveryRequired: Boolean(active.ready && (
-        active.restoredHoldAwaitingRetry || inventory.error || workspace.error ||
+        active.restoredHoldAwaitingRetry || active.orderedError || inventory.error || workspace.error ||
         (!saving && (inventory.pending || workspace.pending))
       )),
     })
@@ -141,20 +142,24 @@ export function createStarCloudCoordinator({
     const session = {
       accountId, inventory, workspace, nextEffectiveAt, replacing: false, barrier: null,
       orderedHold: restoredOrderedHold, orderedGeneration: restoredOrderedHold ? 1 : 0, orderedDriving: null,
-      restoredHoldAwaitingRetry: Boolean(restoredOrderedHold),
+      restoredHoldAwaitingRetry: Boolean(restoredOrderedHold), orderedError: null,
     }
     session.isCurrent = () => sessions.get(accountId) === session
     session.ownsOrderedHold = function () {
       try {
         return JSON.parse(storage.getItem(orderedKey) || 'null')?.lease === orderedLease
-      } catch (_) {
+      } catch (error) {
+        session.orderedError = new Error('本机无法读取待保存内容：' + errorMessage(error, '本地存储不可用。'))
+        emit()
         return false
       }
     }
     if (restoredOrderedHold) {
       try {
         storage.setItem(orderedKey, JSON.stringify({ ...restoredOrderedHold, lease: orderedLease }))
-      } catch (_) {}
+      } catch (error) {
+        session.orderedError = new Error('本机无法保留待保存内容：' + errorMessage(error, '本地存储不可用。'))
+      }
     }
     session.enqueue = function (action) {
       if (!session.barrier) {
@@ -179,15 +184,18 @@ export function createStarCloudCoordinator({
     }
     session.coalesceOrderedHold = function (snapshot) {
       const hold = orderedBusinessSnapshot(snapshot)
+      session.orderedHold = hold
+      session.orderedGeneration += 1
       try {
         // Persist before the first Workspace request so a reload cannot lose
         // the Inventory intent that must remain ordered behind it.
         storage.setItem(orderedKey, JSON.stringify({ ...hold, lease: orderedLease }))
-      } catch (_) {
+        session.orderedError = null
+      } catch (error) {
+        session.orderedError = new Error('本机无法保留待保存内容：' + errorMessage(error, '本地存储不可用。'))
+        emit()
         return false
       }
-      session.orderedHold = hold
-      session.orderedGeneration += 1
       emit()
       return true
     }
@@ -195,10 +203,13 @@ export function createStarCloudCoordinator({
       if (!session.isCurrent() || !session.ownsOrderedHold()) return false
       try {
         storage.removeItem(orderedKey)
-      } catch (_) {
+      } catch (error) {
+        session.orderedError = new Error('本机无法清除已保存内容：' + errorMessage(error, '本地存储不可用。'))
+        emit()
         return false
       }
       session.orderedHold = null
+      session.orderedError = null
       session.orderedGeneration += 1
       session.restoredHoldAwaitingRetry = false
       emit()
@@ -237,7 +248,7 @@ export function createStarCloudCoordinator({
         await session.inventory.save({ revision: inventoryState.revision, inventory: clone(hold.inventory) })
         inventoryState = session.inventory.state()
         if (inventoryState.pending || inventoryState.saving || inventoryState.error) return false
-        if (session.orderedHold && session.orderedGeneration === generation) session.clearOrderedHold()
+        if (session.orderedHold && session.orderedGeneration === generation && !session.clearOrderedHold()) return false
       }
       return true
     }
@@ -317,7 +328,7 @@ export function createStarCloudCoordinator({
   function needsRetry() {
     if (!active?.ready) return false
     const inventory = active.inventory.state(), workspace = active.workspace.state()
-    return Boolean(active.orderedHold || inventory.pending || inventory.error || workspace.pending || workspace.error)
+    return Boolean(active.orderedHold || active.orderedError || inventory.pending || inventory.error || workspace.pending || workspace.error)
   }
   async function replaceImport(snapshot) {
     if (!active?.ready || !selectedHostAccount()?.accountId || selectedHostAccount().accountId !== active.accountId) throw new Error('星石云端状态尚未就绪，请重新加载后重试。')
@@ -346,6 +357,7 @@ export function createStarCloudCoordinator({
       const session = active
       if (!session?.inventory?.retry || !session.workspace?.retry) return [false, false]
       if (!session.orderedHold) return Promise.all([session.inventory.retry(), session.workspace.retry()])
+      if (session.orderedError && !session.coalesceOrderedHold(session.orderedHold)) return [false, false]
       if (session.restoredHoldAwaitingRetry) {
         session.restoredHoldAwaitingRetry = false
         emit()
