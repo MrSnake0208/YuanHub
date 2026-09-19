@@ -10,9 +10,9 @@
           <a href="#product">能做什么</a>
           <a href="#share">神秘代码</a>
           <a href="#privacy">隐私授权</a>
-          <a href="#ecosystem">社区生态</a>
+          <a href="#ecosystem">使用流程</a>
           <a href="#feature-preview">功能预告</a>
-          <a href="#community-build">社区共建</a>
+          <a href="#community-build">功能与接入</a>
         </nav>
         <!-- PLACEHOLDER: 把正式 YuanHub 主站 URL 填到这里 -->
         <a class="header-cta placeholder-link" href="#final-cta" data-placeholder="MAIN_APP_URL">
@@ -29,7 +29,7 @@
             <h1>自动同步采集结果，<br /><em>今天该做什么一眼看清</em></h1>
             <p class="hero-lede">
               用户授权并绑定游戏档案后，MaaYuan 将自动采集结果上传至 YuanHub；YuanHub 统一整理密探与库存，
-              用于今日一览、养成规划预览和 BOX 分享。采集与日常执行由你授权的社区工具完成，YuanHub 负责整理、规划和分享。
+              用于今日一览、养成规划预览和 BOX 分享。采集由你授权的 MaaYuan 完成，YuanHub 负责整理、规划和分享。
             </p>
             <div class="hero-actions">
               <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
@@ -106,11 +106,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-            <!-- PLACEHOLDER: 未来可用真实录屏/截图替换上方 CSS 演示 -->
-            <div class="media-placeholder compact-placeholder">
-              <span>REAL PRODUCT MEDIA PLACEHOLDER</span>
-              <small>建议替换：10 秒真实录屏 · 账号切换 → 养成 → 分享 BOX</small>
             </div>
           </div>
         </div>
@@ -199,7 +194,6 @@
                   <div class="token-line"><small>YuanHub 连接码</small><code>yh_live_••••••••••</code><button type="button" tabindex="-1">复制</button></div>
                 </div>
 
-                <div class="stage-placeholder-tag">DEMO UI · 真实素材待替换</div>
               </div>
             </div>
           </div>
@@ -219,7 +213,7 @@
           <div class="share-copy section-copy">
             <div class="eyebrow"><span>03</span> SHARE WITH FRIENDS</div>
             <h2>无需登录，<br /><em>也能把 BOX 分享给朋友</em></h2>
-            <p>为当前游戏档案生成一个神秘代码。朋友、攻略作者或社区伙伴拿到代码后，无需登录即可查看你主动公开的客观养成信息。</p>
+            <p>为当前游戏档案生成一个神秘代码。朋友或攻略作者拿到代码后，无需登录即可查看你主动公开的客观养成信息。</p>
             <p class="share-value-line"><strong>不光 BOX 完整</strong>，等级、修为、命盘、生命、攻击数值也能无损查询。</p>
             <div class="privacy-note"><span>🔒</span><div><b>不会一起分享</b><small>备注、特别关注、养成目标、登录信息与其他私有内容。</small></div></div>
           </div>
@@ -259,7 +253,7 @@
           <div class="section-heading centered-heading">
             <div class="eyebrow"><span>04</span> YOU DECIDE THE FLOW</div>
             <h2>你的数据什么时候流动，<em>由你决定</em></h2>
-            <p>YuanHub 展示和流转的是你在 YuanHub 中维护的档案数据。社区工具只能使用你主动创建的连接，并且只能使用指定档案与明确开放范围内的数据。</p>
+            <p>YuanHub 展示和流转的是你在 YuanHub 中维护的档案数据。已授权的工具只能使用你主动创建的连接，并且只能使用指定档案与明确开放范围内的数据。</p>
           </div>
 
           <div class="permission-demo">
@@ -293,21 +287,21 @@
         <div class="wrap">
           <div class="section-heading split-heading">
             <div>
-              <div class="eyebrow"><span>05</span> ONE ARCHIVE, MANY USES</div>
-              <h2>一次整理，<em>多处使用</em></h2>
+              <div class="eyebrow"><span>05</span> AUTOMATIC SYNC &amp; DAILY USE</div>
+              <h2>MaaYuan 自动采集，<em>YuanHub 接着整理</em></h2>
             </div>
-            <p>当玩家已经有一份结构化档案，不同社区项目就可以在用户授权和各自规则允许的范围内，从同一个起点继续建设。</p>
+            <p>MaaYuan 自动采集并上传密探、库存与星石结果；YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。</p>
           </div>
 
           <div class="ecosystem-flow">
             <div class="flow-source">
-              <span class="flow-label">USER ARCHIVE</span>
-              <b>我的游戏档案</b>
+              <span class="flow-label">AUTO COLLECTION</span>
+              <b>MaaYuan 自动采集</b>
               <div><i>密</i><i>库</i><i>星</i></div>
             </div>
-            <div class="flow-line line-in"><span class="data-packet">Lv.80 · ★★★★★</span></div>
+            <div class="flow-line line-in"><span class="data-packet">上传密探 / 库存 / 星石</span></div>
             <div class="flow-hub"><img class="flow-hub-logo" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" /><b>YuanHub</b><small>整理 · 保存 · 授权</small></div>
-            <div class="flow-line line-out"><span class="data-packet packet-two">密探 / 库存</span></div>
+            <div class="flow-line line-out"><span class="data-packet packet-two">今日 / 养成 / BOX</span></div>
             <div class="partner-stack">
               <a v-for="partner in partners" :key="partner.name" class="partner-card" :href="partner.href || undefined" :target="partner.href ? '_blank' : undefined" :rel="partner.href ? 'noreferrer' : undefined">
                 <img :src="partner.icon" :alt="`${partner.name} 图标`" />
@@ -317,7 +311,17 @@
             </div>
           </div>
 
-          <p class="ecosystem-disclaimer">生态项目与具体接入能力需以实际合作、项目文档和授权范围为准。这里的流转动画用于解释 YuanHub 的产品方向，不代表所有项目均已完成正式接入。</p>
+          <div class="ecosystem-origin">
+            <div class="origin-icon"><img src="/icons/piyong-transparent.png" alt="辟雍学府图标" /></div>
+            <div class="origin-copy">
+              <small>共同发起 · OUR BEGINNING</small>
+              <b>从这里，一起出发</b>
+              <p>YuanHub 最初由 <strong>MaaYuan × 代号鸢 BWiki × 辟雍学府 × YuanAssist</strong> 共同牵头建设。辟雍学府现已停止运营，感谢它曾与我们一同参与 YuanHub 的起点。</p>
+            </div>
+            <span class="origin-status">辟雍学府 · 已停止运营</span>
+          </div>
+
+          <p class="ecosystem-disclaimer">当前确认的自动流程为 MaaYuan 采集并上传，YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。代号鸢 BWiki 与 YuanAssist 为独立工具；辟雍学府现已停止运营。</p>
         </div>
       </section>
 
@@ -325,19 +329,19 @@
         <div class="wrap">
           <div class="section-heading split-heading community-build-heading">
             <div>
-              <div class="eyebrow"><span>06</span> BUILD WITH YUANHUB</div>
-              <h2>你做的好东西，<br /><em>也可以在 YuanHub 继续生长</em></h2>
+              <div class="eyebrow"><span>06</span> CREATE WITH YUANHUB</div>
+              <h2>你做的实用功能，<br /><em>也可以接入 YuanHub</em></h2>
             </div>
-            <p>如果你为《如鸢》《代号鸢》玩家开发了实用工具、数据整理功能、计算器或新的档案玩法，我们欢迎原创作者与 YuanHub 一起把它做得更完整。加入 YuanHub，不等于把作品著作权交给 YuanHub。</p>
+            <p>如果你为《如鸢》《代号鸢》玩家开发了实用工具、数据整理功能、计算器或新的档案玩法，可以与 YuanHub 一起把具体功能做得更完整。接入 YuanHub，不等于把作品著作权交给 YuanHub。</p>
           </div>
 
           <div class="community-showcase">
             <div class="community-showcase-head">
               <div>
-                <span class="community-kicker">COMMUNITY ORIGINALS</span>
-                <h3>已经在 YuanHub 生长起来的独立创作</h3>
+                <span class="community-kicker">INDEPENDENT WORKS</span>
+                <h3>已经加入 YuanHub 的独立创作</h3>
               </div>
-              <p>平台提供账号、档案、数据与展示基础设施；作者的名字和独立创作归属继续被明确保留。</p>
+              <p>YuanHub 提供账号、档案、数据交换与展示能力；作者的名字和独立创作归属继续被明确保留。</p>
             </div>
             <div class="community-author-grid">
               <article class="community-author-card">
@@ -354,7 +358,7 @@
                 <div>
                   <small>独立创作 · 已加入 YuanHub</small>
                   <h4>广陵账房</h4>
-                  <p>面向礼包、资源价值与购买决策的社区计算工具。</p>
+                  <p>面向礼包、资源价值与购买决策的计算工具。</p>
                 </div>
                 <strong>binary</strong>
               </article>
@@ -367,14 +371,14 @@
               <div class="community-path-copy">
                 <small>CONTRIBUTE A FEATURE</small>
                 <h3>把原创功能加入 YuanHub</h3>
-                <p>适合已经做出计算器、规划器、数据工具或新玩法的个人作者与小团队。你负责创意与核心实现，YuanHub 可以承接账号、档案、数据交换、统一入口与部署基础设施。</p>
+                <p>适合已经做出计算器、规划器、数据工具或新玩法的个人作者与小团队。你负责创意与核心实现，YuanHub 可以承接账号、档案、数据交换、统一入口与部署能力。</p>
                 <ul>
                   <li>作者署名不会因为加入 YuanHub 而消失</li>
                   <li>原创核心逻辑与作品归属按实际约定保留</li>
                   <li>一个人开发的小工具也欢迎来聊</li>
                 </ul>
               </div>
-              <a class="community-path-link" href="#community-principles">了解共建原则 <span>→</span></a>
+              <a class="community-path-link" href="#community-principles">了解接入原则 <span>→</span></a>
             </article>
 
             <article class="community-path-card">
@@ -389,13 +393,13 @@
                   <li>用户可以随时停止连接</li>
                 </ul>
               </div>
-              <a class="community-path-link" href="https://github.com/MrSnake0208/YuanHub/blob/main/docs/api-contract.md" target="_blank" rel="noreferrer">查看开发者接口文档 <span>↗</span></a>
+              <span class="community-path-link">开发者文档与公开仓库正在整理，暂未开放</span>
             </article>
           </div>
 
           <div class="community-dev-note">
             <div><span>直接参与 YuanHub 开发</span><p>前端、后端、设计、文档与数据整理贡献都欢迎。想直接参与项目建设，可以从公开仓库开始了解当前实现。</p></div>
-            <a href="https://github.com/MrSnake0208/YuanHub" target="_blank" rel="noreferrer">前往 GitHub <span>↗</span></a>
+            <span>开发者文档与公开仓库正在整理，暂未开放</span>
           </div>
 
           <div id="community-principles" class="community-principles">
@@ -413,7 +417,7 @@
 
             <article class="community-integrity-card">
               <span class="community-kicker">CREATE WITH RESPECT</span>
-              <h3>尊重创作，是共建的前提</h3>
+              <h3>尊重创作，是合作的前提</h3>
               <p>功能目标相似，本身不等于抄袭。独立实现、不同算法或重新设计的作品仍然欢迎；我们关注的是实现来源和权利来源是否透明。</p>
               <div class="integrity-reject-list">
                 <span>拒绝搬运</span>
@@ -426,7 +430,7 @@
             </article>
           </div>
 
-          <div class="community-process" aria-label="社区共建流程">
+          <div class="community-process" aria-label="功能接入流程">
             <span>01 提交想法</span><i>→</i>
             <span>02 来源检查</span><i>→</i>
             <span>03 产品 / 技术评估</span><i>→</i>
@@ -446,7 +450,7 @@
           <div class="roadmap-board">
             <article class="roadmap-row current"><span>NOW</span><div><b>当前可用</b><p>MaaYuan 自动采集结果同步 · 今日一览 · 养成规划预览 · 密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算）</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>binary</b> 所有</small></div><em>已上线 / 项目已有</em></article>
             <article class="roadmap-row next"><span>NEXT</span><div><b>今日与养成体验</b><p>继续完善资源缺口提醒、日程调整与相关页面间的快捷跳转。</p></div><em>持续完善</em></article>
-            <article class="roadmap-row future"><span>FUTURE</span><div><b>日常自动化联动 · 页面示意</b><p>待开发功能：探索把每日安排交给受支持的社区工具，并将结果带回档案；具体接入与执行能力以上线版本为准。</p></div><em>待开发功能</em></article>
+            <article class="roadmap-row future"><span>FUTURE</span><div><b>日常自动化联动 · 页面示意</b><p>待开发功能：探索把每日安排交给未来支持的自动化工具，并将结果带回档案；具体接入与执行能力以上线版本为准。</p></div><em>待开发功能</em></article>
             <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺 · 页面示意</b><p>待开发功能：发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>待开发功能</em></article>
             <!-- PLACEHOLDER: 在此继续追加未来 Roadmap 项 -->
           </div>
@@ -458,7 +462,7 @@
           <div class="section-copy legal-heading">
             <div class="eyebrow"><span>08</span> COPYRIGHT &amp; NON-COMMERCIAL</div>
             <h2>版权声明与<em>非商业说明</em></h2>
-            <p>尊重游戏权利人、社区合作方与内容创作者的权利，也把 YuanHub 自行创作内容和社区共建作品的许可边界说明清楚。</p>
+            <p>尊重游戏权利人、资料提供方与内容创作者的权利，也把 YuanHub 自行创作内容和共同开发作品的许可边界说明清楚。</p>
           </div>
 
           <div class="legal-card">
@@ -467,7 +471,7 @@
               <div>
                 <h3>第三方名称、商标与游戏素材</h3>
                 <p>本网站所展示的《如鸢》《代号鸢》相关游戏名称、角色、图片、角色立绘、图标、文本原文及游戏资料，仅用于更好地展示、整理与说明游戏信息。其相关版权及知识产权归《如鸢》/上海灵犀互动娱乐有限公司及《代号鸢》/Qookka Games Inc. 等相关权利方所有；YuanHub 不主张对上述第三方游戏素材享有著作权或其他知识产权。</p>
-                <p>部分资料或素材可能由 BWiki 等社区合作项目依据合作约定提供或协助整理，其使用范围以对应授权与合作约定为准。</p>
+                <p>部分资料或素材可能由 BWiki 等资料提供方依据合作约定提供或协助整理，其使用范围以对应授权与合作约定为准。</p>
               </div>
             </article>
 
@@ -484,18 +488,18 @@
             <article>
               <span class="legal-index">03</span>
               <div>
-                <h3>社区共建、署名与来源</h3>
-                <p>原创作者将作品加入 YuanHub 或与 YuanHub 进行功能共建，不当然意味着作者将著作权、署名权或其他权利转让给 YuanHub；具体许可、维护与使用边界以作者声明、开源许可证或双方另行约定为准。</p>
+                <h3>共同开发、署名与来源</h3>
+                <p>原创作者将作品加入 YuanHub 或与 YuanHub 共同开发功能，不当然意味着作者将著作权、署名权或其他权利转让给 YuanHub；具体许可、维护与使用边界以作者声明、开源许可证或双方另行约定为准。</p>
                 <p>YuanHub 欢迎相似需求的独立实现、不同算法、新交互，以及许可证允许范围内的合法二次开发；但不接受搬运、洗稿、简单换皮后冒充原创、去除原作者署名，或无法合理说明代码、素材、数据与整理成果来源的内容。功能目标相似本身不作为认定抄袭的依据。</p>
-                <p>如社区共建内容出现可信的权利争议，YuanHub 可根据现有材料暂时隐藏、暂停接入或要求补充来源说明；审核或展示不构成 YuanHub 对最终权利归属的法律担保。</p>
+                <p>如共同开发内容出现可信的权利争议，YuanHub 可根据现有材料暂时隐藏、暂停接入或要求补充来源说明；审核或展示不构成 YuanHub 对最终权利归属的法律担保。</p>
               </div>
             </article>
 
             <article>
               <span class="legal-index">04</span>
               <div>
-                <h3>非商业社区项目</h3>
-                <p>YuanHub 当前为非商业社区项目，以方便玩家整理个人游戏档案、进行社区交流与数据复用为目的，不以游戏素材获取商业收益。本站仅提供档案整理、展示、分享与数据连接能力，不提供任何游戏账号实际操作服务。</p>
+                <h3>非商业玩家工具</h3>
+                <p>YuanHub 当前为非商业玩家工具，以方便玩家整理个人游戏档案、与其他玩家交流并复用数据为目的，不以游戏素材获取商业收益。本站仅提供档案整理、展示、分享与数据连接能力，不提供任何游戏账号实际操作服务。</p>
                 <p>如未来项目的运营、赞助或许可方式发生变化，将另行更新相关说明；任何第三方项目的商业行为不当然代表 YuanHub 的立场或授权。</p>
               </div>
             </article>
@@ -511,7 +515,7 @@
               </div>
             </article>
 
-            <p class="legal-footnote">本站为社区项目，与游戏官方及各第三方权利人之间的关系以实际授权、合作说明或官方公告为准；除明确说明外，不应理解为官方产品或官方背书。</p>
+            <p class="legal-footnote">本站为玩家自发开发的非官方工具，与游戏官方及各第三方权利人之间的关系以实际授权、合作说明或官方公告为准；除明确说明外，不应理解为官方产品或官方背书。</p>
           </div>
         </div>
       </section>
@@ -522,7 +526,7 @@
           <div>
             <div class="eyebrow"><span>09</span> YOUR DATA, YOUR STARTING POINT</div>
             <h2>先把自己的游戏档案，<em>整理好</em></h2>
-            <p>从一份属于自己的记录开始。之后要分享给朋友，还是连接社区工具，都由你决定。</p>
+            <p>从 MaaYuan 自动同步采集结果，再查看今日一览、规划养成或分享 BOX，都由你决定。</p>
           </div>
           <!-- PLACEHOLDER: 正式上线时替换为 YuanHub 主站 /operator URL -->
           <a class="final-button placeholder-link" href="#top" data-placeholder="MAIN_APP_OPERATOR_URL">进入 YuanHub <span>→</span><small>正式 URL 待填</small></a>
@@ -534,7 +538,7 @@
       <div class="wrap footer-inner">
         <div><img class="brand-mark small" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" /><b>YuanHub · 鸢鸢相抱</b></div>
         <div class="footer-copy">
-          <p>用户录入 · 自主管理 · 按需分享 · 社区共建 · <a href="#legal">版权与非商业声明</a></p>
+          <p>自动同步 · 今日一览 · 养成规划 · BOX 分享 · <a href="#legal">版权与非商业声明</a></p>
           <small>* 展示效果仅供说明，具体功能与界面以实际上线版本为准。</small>
         </div>
       </div>
@@ -645,10 +649,9 @@ const scopes = ref([
 ])
 
 const partners = [
-  { name: 'MaaYuan', icon: '/icons/maa.png', scenario: '自动化录入与同步场景', status: '社区项目', href: 'https://maayuan.com/' },
-  { name: '代号鸢 BWiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算场景', status: '潜在场景', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
-  { name: 'YuanAssist', icon: '/icons/yuanassist-transparent.png', scenario: '作业与日常辅助场景', status: '潜在场景', href: 'https://www.yuanassist.space/' },
-  { name: '辟雍学府', icon: '/icons/piyong-transparent.png', scenario: 'BOX 图制作与展示场景', status: '潜在场景', href: '' }
+  { name: 'MaaYuan', icon: '/icons/maa.png', scenario: '自动采集并上传档案', status: '已接入', href: 'https://maayuan.com/' },
+  { name: '代号鸢 BWiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算 · 未接入 YuanHub', status: '独立工具', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
+  { name: 'YuanAssist', icon: '/icons/yuanassist-transparent.png', scenario: '作业与日常辅助 · 未接入 YuanHub', status: '独立工具', href: 'https://www.yuanassist.space/' }
 ]
 
 onMounted(() => {
@@ -753,7 +756,6 @@ em { color: var(--accent); font-style: normal; }
 .share-popover { position: absolute; z-index: 4; right: 22px; top: 102px; width: 205px; padding: 14px; border: 1px solid var(--accent); border-radius: 13px; background: var(--surface); box-shadow: 0 20px 35px -25px rgba(73,59,44,.7); opacity: 0; transform: translateY(-8px) scale(.96); animation: sharePopover 10s infinite; }
 .share-popover > span, .share-popover > small { display: block; }.popover-kicker { color: var(--accent-strong); font-size: 9px; font-weight: 900; letter-spacing: .12em; }.share-popover strong { display: block; margin-top: 5px; font: 900 19px var(--font-d); letter-spacing: .08em; }.share-popover small { margin-top: 5px; color: var(--muted); font-size: 9px; }.share-popover div { display: flex; gap: 6px; margin-top: 11px; }.share-popover div span { padding: 6px 8px; border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 8px; }
 .share-view-overlay { position: absolute; z-index: 6; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; background: rgba(255,253,246,.98); opacity: 0; transform: translateX(45px); animation: shareView 10s infinite; }.overlay-kicker { color: var(--accent-strong); font: 800 9px var(--font-d); letter-spacing: .12em; }.share-view-overlay b { margin-top: 8px; font: 900 28px var(--font-s); }.share-view-overlay small { margin-top: 5px; color: var(--muted); font-size: 10px; }.overlay-cards { display: flex; gap: 8px; margin-top: 22px; }.overlay-cards i { display: grid; width: 45px; height: 58px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); font-style: normal; opacity: 0; transform: translateY(12px) rotate(3deg); animation: overlayCard 10s infinite; }.overlay-cards i img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }.overlay-cards i:nth-child(2){animation-delay:.18s}.overlay-cards i:nth-child(3){animation-delay:.36s}.overlay-cards i:nth-child(4){animation-delay:.54s}
-.media-placeholder { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px dashed var(--line); color: var(--muted); background: rgba(255,253,246,.35); }.compact-placeholder { margin-top: 10px; padding: 9px 12px; border-radius: 9px; }.media-placeholder span { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .1em; }.media-placeholder small { font-size: 9px; }
 .section { padding: 108px 0; border-top: 1px solid var(--soft-line); }
 .section-heading h2, .section-copy h2 { font-size: clamp(38px,4vw,58px); line-height: 1.18; }
 .split-heading { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(300px,.8fr); align-items: end; gap: 60px; }.split-heading p, .centered-heading p, .section-copy > p { color: var(--muted); font-size: 14px; line-height: 1.85; }.split-heading p { max-width: 480px; justify-self: end; }.centered-heading { max-width: 760px; margin: 0 auto; text-align: center; }.centered-heading .eyebrow { justify-content: center; }.centered-heading p { margin: 20px auto 0; }
@@ -764,7 +766,7 @@ em { color: var(--accent); font-style: normal; }
 .release-disclaimer p { margin-top: 5px; color: var(--muted); font-size: 11.5px; line-height: 1.75; }
 .feature-tabs { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--line); }.feature-tabs button { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; row-gap: 3px; min-height: 86px; padding: 17px 18px; border: 0; border-right: 1px solid var(--soft-line); color: var(--muted); background: transparent; text-align: left; cursor: pointer; }.feature-tabs button:last-child { border-right: 0; }.feature-tabs button.active { color: var(--ink); background: var(--surface); box-shadow: inset 0 -3px var(--accent); }.feature-tabs button > span { grid-row: 1 / span 2; color: var(--accent-strong); font: 800 10px var(--font-d); }.feature-tabs b { font: 900 15px var(--font-s); }.feature-tabs small { font-size: 10px; }
 .feature-stage { display: grid; grid-template-columns: minmax(280px,.75fr) minmax(0,1.25fr); min-height: 430px; }.feature-copy-panel { padding: 46px 38px; border-right: 1px solid var(--line); }.feature-kicker { color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .14em; }.feature-copy-panel h3 { margin-top: 15px; color: var(--tea); font: 900 28px/1.35 var(--font-s); }.feature-copy-panel p { margin-top: 17px; color: var(--muted); font-size: 13px; line-height: 1.85; }.feature-copy-panel ul { display: grid; gap: 10px; margin: 24px 0 0; padding: 0; list-style: none; }.feature-copy-panel li { position: relative; padding-left: 18px; font-size: 12px; }.feature-copy-panel li::before { position: absolute; left: 0; color: var(--accent); content: '✦'; }.feature-author-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,253,246,.6); font-size: 9px; line-height: 1.4; }.feature-author-badge > span { display: grid; width: 17px; height: 17px; place-items: center; border-radius: 50%; color: var(--cream); background: var(--tea); font-size: 9px; }.feature-author-badge b { color: var(--ink); }
-.feature-demo-panel { position: relative; min-width: 0; padding: 34px; background: linear-gradient(135deg,rgba(239,210,142,.18),rgba(255,253,246,.58)); }.feature-visual { height: 100%; min-height: 360px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 26px 45px -38px rgba(73,59,44,.7); }.visual-top { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px dashed var(--line); }.visual-top b { font: 900 18px var(--font-s); }.visual-top span { color: var(--muted); font-size: 10px; }.stage-placeholder-tag { position: absolute; right: 45px; bottom: 45px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--cream); font: 800 8px var(--font-d); letter-spacing: .08em; }
+.feature-demo-panel { position: relative; min-width: 0; padding: 34px; background: linear-gradient(135deg,rgba(239,210,142,.18),rgba(255,253,246,.58)); }.feature-visual { height: 100%; min-height: 360px; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 26px 45px -38px rgba(73,59,44,.7); }.visual-top { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px dashed var(--line); }.visual-top b { font: 900 18px var(--font-s); }.visual-top span { color: var(--muted); font-size: 10px; }
 .mini-card-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 18px; }.mini-op-card { display: grid; grid-template-columns: 44px 1fr auto; gap: 4px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }.mini-op-card i { grid-row: 1 / span 3; display: block; width: 44px; aspect-ratio: 1 / 1.24; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); font-style: normal; }.mini-op-card i img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }.mini-op-card b { font: 900 12px var(--font-s); }.mini-op-card span { color: var(--accent-strong); font-size: 9px; }.mini-op-card em { grid-column: 2 / span 2; color: var(--muted); font-size: 9px; line-height: 1.45; font-style: normal; }.visual-status { margin-top: 17px; color: var(--muted); font-size: 10px; }.visual-status span { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.5s infinite; }
 .inventory-total { position: relative; margin-top: 24px; padding: 20px; border-radius: 14px; background: var(--cream); }.inventory-total small { display: block; color: var(--muted); }.inventory-total strong { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 900 34px var(--font-d); }.inventory-total strong span { text-decoration: line-through; opacity: .32; }.inventory-total strong i { color: var(--rouge); font: 800 12px var(--font-d); font-style: normal; animation: stockPlus 4s infinite; }.inventory-total em { display: block; margin-top: 4px; color: var(--accent-strong); font: 900 42px var(--font-d); font-style: normal; animation: stockTotal 4s infinite; }.bar-chart { height: 90px; display: flex; align-items: end; gap: 8px; margin-top: 20px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); }.bar-chart i { flex: 1; border-radius: 5px 5px 0 0; background: var(--yellow-deep); transform-origin: bottom; animation: barGrow 2.8s ease-in-out infinite alternate; }.inventory-row { display: grid; grid-template-columns: 1fr auto; gap: 3px; margin-top: 13px; font-size: 10px; }.inventory-row b { color: var(--accent-strong); }.inventory-row small { grid-column: 1 / -1; color: var(--muted); }
 .star-author-line { display: flex; align-items: center; gap: 6px; margin-top: 13px; color: var(--muted); font-size: 9px; }.star-author-line > span { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; color: var(--cream); background: var(--tea); font-size: 9px; }.star-author-line b { color: var(--ink); }.ocr-layout { display: grid; grid-template-columns: 1fr 34px 1fr; align-items: center; gap: 12px; margin-top: 18px; }.fake-shot { position: relative; overflow: hidden; height: 220px; border-radius: 14px; background: linear-gradient(145deg,#504333,#80664a); }.fake-shot i { position: absolute; left: 13%; width: 74%; height: 42px; border: 1px solid rgba(239,210,142,.7); border-radius: 8px; }.fake-shot i:nth-of-type(1){top:18%}.fake-shot i:nth-of-type(2){top:43%}.fake-shot i:nth-of-type(3){top:68%}.fake-shot small { position: absolute; right: 10px; bottom: 8px; color: rgba(255,255,255,.65); font-size: 8px; }.scan-line { position: absolute; z-index: 3; top: 0; left: 0; width: 100%; height: 2px; background: var(--yellow); box-shadow: 0 0 15px var(--yellow); animation: scan 3.2s infinite; }.ocr-arrow { color: var(--accent); font: 900 22px var(--font-d); text-align: center; }.star-result { display: grid; gap: 9px; }.star-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--cream); opacity: 0; transform: translateX(10px); animation: resultIn 3.2s infinite; }.star-result article:nth-child(2){animation-delay:.25s}.star-result article:nth-child(3){animation-delay:.5s}.star-result article > i { color: var(--accent); font-style: normal; }.star-result b,.star-result span { display: block; }.star-result b { font: 900 12px var(--font-s); }.star-result span { margin-top: 3px; color: var(--muted); font-size: 8px; }
@@ -786,7 +788,7 @@ em { color: var(--accent); font-style: normal; }
 .visitor-detail-line span { padding: 4px 6px; border-radius: 999px; color: var(--accent-strong); background: rgba(239,210,142,.32); font-size: 8px; font-weight: 900; }
 .visitor-detail-line em { margin-left: auto; color: var(--muted); font-size: 8px; font-style: normal; font-weight: 800; }
 .permission-demo { display: grid; grid-template-columns: minmax(330px,1fr) 120px minmax(260px,.78fr); align-items: center; max-width: 1020px; margin: 50px auto 0; }.permission-card,.permission-result { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 28px 50px -42px rgba(73,59,44,.7); }.permission-card { padding: 22px; }.permission-head { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px dashed var(--line); }.permission-head img { width: 42px; height: 42px; object-fit: contain; }.permission-head small,.permission-head b { display: block; }.permission-head small { color: var(--muted); font-size: 8px; }.permission-head b { margin-top: 3px; font: 900 14px var(--font-s); }.permission-head > span { color: var(--muted); font-size: 9px; }.permission-list { display: grid; margin-top: 8px; }.permission-list label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 62px; border-bottom: 1px solid var(--soft-line); }.permission-list label:last-child { border-bottom: 0; }.permission-list label.disabled { opacity: .52; }.permission-list b,.permission-list small { display: block; }.permission-list b { font-size: 11px; }.permission-list small { margin-top: 4px; color: var(--muted); font-size: 8px; }.permission-list button { position: relative; width: 37px; height: 21px; border: 0; border-radius: 999px; background: var(--accent); cursor: pointer; transition: background .2s ease; }.permission-list button i { position: absolute; top: 3px; right: 3px; width: 15px; height: 15px; border-radius: 50%; background: white; transition: transform .2s ease; }.permission-list label.disabled button { background: var(--line); }.permission-list label.disabled button i { transform: translateX(-16px); }.permission-lines { display: grid; gap: 20px; padding: 0 8px; }.permission-lines span { position: relative; display: flex; align-items: center; gap: 5px; color: var(--accent-strong); font-size: 8px; }.permission-lines i { flex: 1; border-top: 1px solid var(--accent); transition: opacity .2s ease; }.permission-lines em { font-style: normal; }.permission-lines span.off { color: var(--muted); }.permission-lines span.off i { border-top-style: dashed; opacity: .25; }.permission-result { display: grid; gap: 9px; padding: 22px; }.permission-result article { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; background: var(--cream); }.permission-result article.off { opacity: .38; }.permission-result article > i { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #5c755b; background: rgba(142,170,140,.18); font-style: normal; font-weight: 900; }.permission-result b,.permission-result small { display: block; }.permission-result b { font-size: 10px; }.permission-result small { margin-top: 2px; color: var(--muted); font-size: 8px; }.privacy-principles { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 54px; }.privacy-principles article { padding: 24px; border-top: 2px solid var(--yellow-deep); background: rgba(255,253,246,.45); }.privacy-principles span { color: var(--accent-strong); font: 800 9px var(--font-d); }.privacy-principles b { display: block; margin-top: 12px; font: 900 16px var(--font-s); }.privacy-principles p { margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.7; }
-.ecosystem-flow { display: grid; grid-template-columns: 190px 90px 170px 90px 1fr; align-items: center; gap: 10px; margin-top: 52px; }.flow-source,.flow-hub { padding: 22px; border: 1px solid var(--line); background: var(--surface); text-align: center; }.flow-source { border-radius: 16px; }.flow-label { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .12em; }.flow-source b { display: block; margin-top: 9px; font: 900 16px var(--font-s); }.flow-source div { display: flex; justify-content: center; gap: 6px; margin-top: 15px; }.flow-source i { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--cream); font: 900 11px var(--font-s); font-style: normal; }.flow-hub { min-height: 170px; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; }.flow-hub-logo { display: block; width: 46px; height: 46px; object-fit: contain; }.flow-hub b { margin-top: 10px; font: 900 16px var(--font-s); }.flow-hub small { margin-top: 5px; color: var(--muted); font-size: 8px; }.flow-line { position: relative; height: 1px; border-top: 1px dashed var(--accent); }.data-packet { position: absolute; top: -14px; left: 0; padding: 5px 7px; border: 1px solid var(--accent); border-radius: 7px; background: var(--cream); font: 800 7px var(--font-d); white-space: nowrap; animation: packetMove 4s linear infinite; }.packet-two { animation-delay: 1.2s; }.partner-stack { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }.partner-card { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,246,.65); text-decoration: none; }.partner-card img { width: 42px; height: 42px; object-fit: contain; border-radius: 9px; }.partner-card b,.partner-card small { display: block; }.partner-card b { font: 900 11px var(--font-s); }.partner-card small { margin-top: 4px; color: var(--muted); font-size: 8px; }.partner-card > span { color: var(--accent-strong); font-size: 7px; font-weight: 800; }.ecosystem-disclaimer { max-width: 880px; margin: 28px auto 0; color: var(--muted); font-size: 9px; line-height: 1.75; text-align: center; }
+.ecosystem-flow { display: grid; grid-template-columns: 190px 90px 170px 90px 1fr; align-items: center; gap: 10px; margin-top: 52px; }.flow-source,.flow-hub { padding: 22px; border: 1px solid var(--line); background: var(--surface); text-align: center; }.flow-source { border-radius: 16px; }.flow-label { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .12em; }.flow-source b { display: block; margin-top: 9px; font: 900 16px var(--font-s); }.flow-source div { display: flex; justify-content: center; gap: 6px; margin-top: 15px; }.flow-source i { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: var(--cream); font: 900 11px var(--font-s); font-style: normal; }.flow-hub { min-height: 170px; display: flex; align-items: center; justify-content: center; flex-direction: column; border-radius: 50%; }.flow-hub-logo { display: block; width: 46px; height: 46px; object-fit: contain; }.flow-hub b { margin-top: 10px; font: 900 16px var(--font-s); }.flow-hub small { margin-top: 5px; color: var(--muted); font-size: 8px; }.flow-line { position: relative; height: 1px; border-top: 1px dashed var(--accent); }.data-packet { position: absolute; top: -14px; left: 0; padding: 5px 7px; border: 1px solid var(--accent); border-radius: 7px; background: var(--cream); font: 800 7px var(--font-d); white-space: nowrap; animation: packetMove 4s linear infinite; }.packet-two { animation-delay: 1.2s; }.partner-stack { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }.partner-card { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,246,.65); text-decoration: none; }.partner-card:last-child:nth-child(odd) { grid-column: 1 / -1; }.partner-card img { width: 42px; height: 42px; object-fit: contain; border-radius: 9px; }.partner-card b,.partner-card small { display: block; }.partner-card b { font: 900 11px var(--font-s); }.partner-card small { margin-top: 4px; color: var(--muted); font-size: 8px; }.partner-card > span { color: var(--accent-strong); font-size: 7px; font-weight: 800; }.ecosystem-origin { display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: center; gap: 16px; max-width: 880px; margin: 24px auto 0; padding: 17px 20px; border: 1px dashed var(--line); border-radius: 16px; background: rgba(246,237,208,.32); }.origin-icon { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 14px; background: rgba(255,253,246,.72); }.origin-icon img { width: 42px; height: 42px; object-fit: contain; filter: saturate(.55); opacity: .72; }.origin-copy small,.origin-copy b { display: block; }.origin-copy small { color: var(--accent-strong); font: 800 8px var(--font-d); letter-spacing: .12em; }.origin-copy b { margin-top: 5px; color: var(--tea); font: 900 14px var(--font-s); }.origin-copy p { margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.65; }.origin-copy strong { color: var(--ink); }.origin-status { padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,253,246,.62); font-size: 8px; font-weight: 800; white-space: nowrap; }.ecosystem-disclaimer { max-width: 880px; margin: 18px auto 0; color: var(--muted); font-size: 9px; line-height: 1.75; text-align: center; }
 .community-build-section { scroll-margin-top: 72px; background: rgba(255,253,246,.24); }
 .community-build-heading { align-items: end; }
 .community-showcase { margin-top: 50px; padding: 30px; border: 1px solid var(--line); border-radius: 24px; background: rgba(255,253,246,.68); box-shadow: 0 30px 70px -58px rgba(73,59,44,.72); }
@@ -811,12 +813,11 @@ em { color: var(--accent); font-style: normal; }
 .community-path-copy li, .community-principles li { position: relative; padding-left: 18px; color: var(--ink); font-size: 12px; line-height: 1.6; }
 .community-path-copy li::before, .community-principles li::before { position: absolute; left: 0; color: var(--accent); content: '✦'; }
 .community-path-link { grid-column: 2; display: inline-flex; align-items: center; justify-content: space-between; gap: 18px; width: fit-content; margin-top: 24px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--tea); background: var(--cream); font-size: 11px; font-weight: 900; text-decoration: none; }
-.community-path-link:hover { border-color: var(--accent); color: var(--accent-strong); }
+a.community-path-link:hover { border-color: var(--accent); color: var(--accent-strong); }
 .community-dev-note { display: flex; align-items: center; justify-content: space-between; gap: 26px; margin-top: 18px; padding: 20px 24px; border: 1px dashed var(--line); border-radius: 18px; background: rgba(246,237,208,.3); }
 .community-dev-note > div > span { color: var(--tea); font: 900 15px var(--font-s); }
 .community-dev-note p { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.community-dev-note > a { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; padding: 9px 13px; border: 1px solid var(--tea); border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 11px; font-weight: 900; text-decoration: none; }
-.community-dev-note > a span { color: inherit; font: inherit; }
+.community-dev-note > span { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; padding: 9px 13px; border: 1px solid var(--tea); border-radius: 999px; color: var(--cream); background: var(--tea); font-size: 11px; font-weight: 900; }
 .community-principles { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); gap: 16px; margin-top: 18px; scroll-margin-top: 100px; }
 .community-principles article { padding: 28px 30px; border-radius: 20px; }
 .community-welcome-card { border: 1px solid var(--line); background: rgba(239,210,142,.2); }
@@ -864,8 +865,6 @@ em { color: var(--accent); font-style: normal; }
 .popover-kicker, .share-popover small { font-size: 10px; }
 .share-popover div span { font-size: 9.5px; }
 .overlay-kicker, .share-view-overlay small { font-size: 10.5px; }
-.media-placeholder span { font-size: 9.5px; }
-.media-placeholder small { font-size: 10.5px; }
 .split-heading p, .centered-heading p, .section-copy > p { font-size: 15.5px; }
 .feature-tabs button > span, .feature-kicker { font-size: 11px; }
 .feature-tabs b { font-size: 16px; }
@@ -876,7 +875,6 @@ em { color: var(--accent); font-style: normal; }
 .feature-author-badge { font-size: 10.5px; }
 .feature-author-badge > span { font-size: 10px; }
 .visual-top span { font-size: 11px; }
-.stage-placeholder-tag { font-size: 9.5px; }
 .mini-op-card b { font-size: 13px; }
 .mini-op-card span, .mini-op-card em { font-size: 10px; }
 .visual-status, .inventory-row { font-size: 11px; }
@@ -926,7 +924,7 @@ em { color: var(--accent); font-style: normal; }
 .community-path-copy li, .community-principles li { font-size: 13px; }
 .community-path-link { font-size: 12px; }
 .community-dev-note p { font-size: 13px; }
-.community-dev-note > a { font-size: 12px; }
+.community-dev-note > span { font-size: 12px; }
 .community-integrity-card > p { font-size: 14px; }
 .integrity-reject-list span { font-size: 11px; }
 .community-integrity-card > small { font-size: 12px; }
@@ -977,10 +975,9 @@ em { color: var(--accent); font-style: normal; }
   .wrap { padding-inline: 20px; }.header-inner { min-height: 64px; }.header-cta { margin-left: auto; }.brand-copy small { display: none; }
   .hero-section { padding: 58px 0 72px; }.hero-copy h1 { font-size: clamp(42px,12vw,62px); }.hero-lede { font-size: 16px; }
   .hero-demo-body { grid-template-columns: 42px minmax(0,1fr); min-height: 420px; }.demo-workspace { padding: 16px; }.operator-grid { grid-template-columns: 1fr 1fr; }.card-c { display: none; }
-  .media-placeholder { align-items: flex-start; flex-direction: column; }
   .section { padding: 76px 0; }.split-heading { grid-template-columns: 1fr; gap: 18px; }.split-heading p { justify-self: start; }
   .feature-tabs { grid-template-columns: repeat(2,1fr); }.feature-tabs button:nth-child(2) { border-right: 0; }.feature-tabs button:nth-child(-n+2) { border-bottom: 1px solid var(--soft-line); }
-  .feature-stage { grid-template-columns: 1fr; }.feature-copy-panel { padding: 30px 22px; border-right: 0; border-bottom: 1px solid var(--line); }.feature-demo-panel { padding: 18px; }.stage-placeholder-tag { right: 28px; bottom: 28px; }
+  .feature-stage { grid-template-columns: 1fr; }.feature-copy-panel { padding: 30px 22px; border-right: 0; border-bottom: 1px solid var(--line); }.feature-demo-panel { padding: 18px; }
   .share-animation-stage { grid-template-columns: 1fr; gap: 20px; }.code-flight { min-height: 50px; transform: rotate(90deg); }.code-flight span { transform: rotate(-90deg); animation: none; }.share-phone { min-height: 280px; }
   .permission-demo { grid-template-columns: 1fr; gap: 20px; }.permission-lines { display: none; }.permission-result { grid-template-columns: repeat(2,1fr); }.permission-result > .panel-label { grid-column: 1 / -1; }
   .privacy-principles { grid-template-columns: 1fr; }
@@ -992,7 +989,7 @@ em { color: var(--accent); font-style: normal; }
   .header-cta { padding: 0 12px; font-size: 12px; }.hero-actions { align-items: stretch; flex-direction: column; }.primary-btn,.secondary-btn { justify-content: space-between; }
   .browser-bar { grid-template-columns: 1fr auto; }.browser-title { display: none; }.operator-grid { grid-template-columns: 1fr; }.card-b { display: none; }.share-popover { right: 12px; width: calc(100% - 24px); }
   .feature-tabs button { min-height: 76px; padding: 13px 12px; }.mini-card-grid { grid-template-columns: 1fr; }.ocr-layout { grid-template-columns: 1fr; }.ocr-arrow { transform: rotate(90deg); }.fake-shot { height: 180px; }
-  .permission-result { grid-template-columns: 1fr; }.permission-result > .panel-label { grid-column: auto; }.partner-stack { grid-template-columns: 1fr; }
+  .permission-result { grid-template-columns: 1fr; }.permission-result > .panel-label { grid-column: auto; }.partner-stack { grid-template-columns: 1fr; }.partner-card:last-child:nth-child(odd) { grid-column: auto; }.ecosystem-origin { grid-template-columns: 44px 1fr; gap: 12px; padding: 16px; }.origin-icon { width: 44px; height: 44px; }.origin-icon img { width: 36px; height: 36px; }.origin-status { grid-column: 2; justify-self: start; }
   .community-showcase { padding: 20px 18px; }.community-author-card { grid-template-columns: 42px 1fr; gap: 12px; padding: 16px; }.community-author-mark { width: 42px; height: 42px; }.community-author-card strong { grid-column: 2; justify-self: start; }.community-path-card { grid-template-columns: 36px 1fr; gap: 0 12px; padding: 22px 18px; }.community-path-index { width: 36px; height: 36px; }.community-path-copy h3 { font-size: 21px; }.community-path-link { grid-column: 2; }.community-principles article { padding: 22px 18px; }.community-process { align-items: flex-start; flex-direction: column; }.community-process i { display: none; }
   .roadmap-row { grid-template-columns: 58px 1fr; gap: 10px; padding: 16px 0; }.roadmap-row em { grid-column: 2; justify-self: start; }
   .legal-card article { grid-template-columns: 34px 1fr; gap: 10px; padding: 22px 18px; }.legal-footnote { padding: 16px 18px 18px; }

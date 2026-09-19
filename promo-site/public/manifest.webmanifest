@@ -2,7 +2,7 @@
   "id": "/",
   "name": "YuanHub · 鸢鸢相抱",
   "short_name": "YuanHub",
-  "description": "代号鸢 / 如鸢玩家的游戏档案、库存、密探、星石与社区工具入口。",
+  "description": "代号鸢 / 如鸢玩家的密探、库存与星石档案工具，支持 MaaYuan 自动同步、今日一览、养成规划预览和 BOX 分享。",
   "lang": "zh-CN",
   "start_url": "/",
   "scope": "/",
