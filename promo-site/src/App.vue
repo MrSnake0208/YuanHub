@@ -28,7 +28,7 @@
             <div class="eyebrow"><span>01</span> AUTOMATION &amp; DAILY PLANNING</div>
             <h1>自动同步采集结果，<br /><em>今天该做什么一眼看清</em></h1>
             <p class="hero-lede">
-              用户授权并绑定游戏档案后，MaaYuan 将自动采集结果上传至 YuanHub；YuanHub 统一整理密探与库存，
+              用户创建完子账户并授权MaaYuan后，MaaYuan 将自动采集结果上传至 YuanHub；YuanHub 统一整理密探与库存，
               用于今日一览、养成规划预览和 BOX 分享。采集由你授权的 MaaYuan 完成，YuanHub 负责整理、规划和分享。
             </p>
             <div class="hero-actions">
@@ -321,7 +321,7 @@
             <span class="origin-status">辟雍学府 · 已停止运营</span>
           </div>
 
-          <p class="ecosystem-disclaimer">当前确认的自动流程为 MaaYuan 采集并上传，YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。代号鸢 BWiki 与 YuanAssist 为独立工具；辟雍学府现已停止运营。</p>
+          <p class="ecosystem-disclaimer">当前确认的自动流程为 MaaYuan 采集并上传，YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。代号鸢 BWiki 与 YuanAssist 目前仍独立运行，后续计划逐步接入 YuanHub；辟雍学府现已停止运营。</p>
         </div>
       </section>
 
@@ -650,8 +650,8 @@ const scopes = ref([
 
 const partners = [
   { name: 'MaaYuan', icon: '/icons/maa.png', scenario: '自动采集并上传档案', status: '已接入', href: 'https://maayuan.com/' },
-  { name: '代号鸢 BWiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算 · 未接入 YuanHub', status: '独立工具', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
-  { name: 'YuanAssist', icon: '/icons/yuanassist-transparent.png', scenario: '作业与日常辅助 · 未接入 YuanHub', status: '独立工具', href: 'https://www.yuanassist.space/' }
+  { name: '代号鸢 BWiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算 · 计划接入 YuanHub', status: '计划接入', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
+  { name: 'YuanAssist', icon: '/icons/yuanassist-transparent.png', scenario: '作业与日常辅助 · 计划接入 YuanHub', status: '计划接入', href: 'https://www.yuanassist.space/' }
 ]
 
 onMounted(() => {
