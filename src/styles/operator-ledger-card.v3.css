@@ -476,7 +476,7 @@
 
   .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+    gap: 4px;
     margin-top: 0;
   }
 
@@ -491,7 +491,7 @@
     width: 100%;
     max-width: 100%;
     gap: 0;
-    margin-top: 5px;
+    margin-top: 8px;
     padding: 6px;
   }
 
@@ -595,7 +595,7 @@
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny {
-    gap: 6px;
+    gap: 4px;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row {
