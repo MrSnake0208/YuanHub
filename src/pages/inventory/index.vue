@@ -112,7 +112,7 @@
               :class="{ on: activeTab === 'manifest' }"
               @click="setTab('manifest')"
             >
-              <Layers3 :size="17" aria-hidden="true" /><span>追踪清单</span>
+              <Layers3 :size="17" aria-hidden="true" /><span>库存清单</span>
             </button>
             <button
               role="tab"
@@ -625,7 +625,6 @@
                   v-for="e in visibleStockEditorEntries"
                   :key="e.id"
                   class="slot stock-edit-slot"
-                  :title="e.name || e.id"
                 >
                   <div
                     class="slot-ic"
@@ -739,7 +738,6 @@
                       :key="e.id"
                       class="slot"
                       :class="{ 'is-missing': !e.owned }"
-                      :title="slotTitle(e)"
                     >
                       <div class="slot-ic">
                         <div class="slot-ph">
@@ -820,7 +818,6 @@
                                 :key="e.id"
                                 class="slot"
                                 :class="{ 'is-missing': !e.owned }"
-                                :title="slotTitle(e)"
                               >
                                 <div class="slot-ic">
                                   <div class="slot-ph">
@@ -856,7 +853,6 @@
                             :key="e.id"
                             class="slot"
                             :class="{ 'is-missing': !e.owned }"
-                            :title="slotTitle(e)"
                           >
                             <div class="slot-ic">
                               <div class="slot-ph">
@@ -911,7 +907,6 @@
                           'is-missing': !e.owned,
                           'is-favorite': favoriteAgentIds.has(e.id),
                         }"
-                        :title="slotTitle(e)"
                       >
                         <div class="slot-ic is-agent">
                           <div class="slot-ph">
@@ -1806,7 +1801,10 @@ const entityType = ref("item");
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const agentFavoriteMode = ref("priority");
-const agentControlsCollapsed = ref(false);
+const agentControlsCollapsed = ref(
+  typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 640px)").matches,
+);
 const agentStatusFilters = ref([]);
 const agentRarityFilters = ref([]);
 const agentProfFilters = ref([]);
@@ -3189,19 +3187,6 @@ const detailResultCaption = computed(function () {
   parts.push(filteredRewardRecords.value.length + " 条奖励流水");
   return parts.join(" · ");
 });
-
-function slotTitle(e) {
-  const parts = [e.name || e.id];
-  if (entityType.value === "item" && e.category) parts.push(e.category);
-  if (entityType.value === "agent") {
-    let line = e.rarity != null ? e.rarity + "★" : "";
-    if (e.prof) line = line ? line + " · " + e.prof : e.prof;
-    if (e.subProf) line = line ? line + " · " + e.subProf : e.subProf;
-    parts.push(line);
-  }
-  parts.push("× " + fmtCount(e.count));
-  return parts.join(" ｜ ");
-}
 
 function isValidStockCount(value) {
   if (value === "" || value == null) return false;
@@ -7564,30 +7549,38 @@ onBeforeUnmount(function () {
     margin-top: 7px;
   }
   .manifest-agents .agent-slot-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 9px 4px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 7px 3px;
     margin-top: 8px;
   }
   .manifest-agents .agent-card .slot-ic {
-    width: min(100%, 64px);
+    width: min(100%, 42px);
   }
   .manifest-agents .agent-card .slot-name {
     height: 2.6em;
-    margin-top: 2px;
+    margin-top: -3px;
     font-size: 9.5px;
     line-height: 1.3;
   }
   .manifest-agents .agent-card .slot-count {
-    right: 1px;
-    bottom: 2px;
-    min-width: 22px;
-    height: 18px;
-    padding-inline: 4px;
+    right: -1px;
+    bottom: -1px;
+    min-width: 20px;
+    height: 16px;
+    padding: 1px 4px 0;
     font-size: 9.5px;
   }
   .manifest-agents .agent-favorite-btn {
-    top: -7px;
-    right: -12px;
+    /* 抵消圆形星标的内缩，让可见边缘贴齐心纸右上角。 */
+    top: -13px;
+    right: -14.5px;
+  }
+  .manifest-agents .agent-favorite-btn::before {
+    inset: 13px;
+  }
+  .manifest-agents .agent-favorite-btn svg {
+    width: 10px;
+    height: 10px;
   }
   .is-agent-editor .stock-edit-grid {
     grid-template-columns: minmax(0, 1fr);
