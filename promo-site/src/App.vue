@@ -8,11 +8,10 @@
         </a>
         <nav class="header-nav" aria-label="宣传页导航">
           <a href="#product">能做什么</a>
-          <a href="#share">神秘代码</a>
+          <a href="#share">BOX 分享</a>
           <a href="#privacy">隐私授权</a>
-          <a href="#ecosystem">使用流程</a>
-          <a href="#feature-preview">功能预告</a>
-          <a href="#community-build">功能与接入</a>
+          <a href="#ecosystem">自动联动</a>
+          <a href="#feature-preview">现在与未来</a>
         </nav>
         <!-- PLACEHOLDER: 把正式 YuanHub 主站 URL 填到这里 -->
         <a class="header-cta placeholder-link" href="#final-cta" data-placeholder="MAIN_APP_URL">
@@ -28,8 +27,8 @@
             <div class="eyebrow"><span>01</span> AUTOMATION &amp; DAILY PLANNING</div>
             <h1>自动同步采集结果，<br /><em>今天该做什么一眼看清</em></h1>
             <p class="hero-lede">
-              用户创建完子账户并授权MaaYuan后，MaaYuan 将自动采集结果上传至 YuanHub；YuanHub 统一整理密探与库存，
-              用于今日一览、养成规划预览和 BOX 分享。采集由你授权的 MaaYuan 完成，YuanHub 负责整理、规划和分享。
+              授权 MaaYuan 后，采集结果会自动进入 YuanHub。密探、库存与星石整理成同一份游戏档案，
+              接着用于今日一览、养成规划预览和 BOX 分享。
             </p>
             <div class="hero-actions">
               <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
@@ -37,9 +36,9 @@
               <button class="secondary-btn promo-install-trigger" type="button" @click="installPanelOpen = true">先保存 YuanHub 到桌面 <span>＋</span></button>
             </div>
             <div class="hero-trust">
-              <span><i>✓</i> MaaYuan 自动采集并上传</span>
-              <span><i>✓</i> 今日一览与养成规划预览</span>
-              <span><i>✓</i> 绑定档案 · 权限可控</span>
+              <span><i>✓</i> MaaYuan 自动采集</span>
+              <span><i>✓</i> 一份档案串起今日 / 养成 / BOX</span>
+              <span><i>✓</i> 不默认公开 · 按权限授权</span>
             </div>
           </div>
 
@@ -118,7 +117,7 @@
               <div class="eyebrow"><span>02</span> WHAT YUANHUB DOES</div>
               <h2>一次采集，<em>把今天和养成都串起来</em></h2>
             </div>
-            <p>先看 MaaYuan 自动采集结果如何进入 YuanHub，再用于今日一览、养成规划与分享。演示数据为占位内容。</p>
+            <p>先看四件最常用的事：自动同步、密探 BOX、库存与星石。点一下就能直接看对应的页面示意。</p>
           </div>
 
           <div class="feature-shell">
@@ -296,7 +295,7 @@
               <div class="eyebrow"><span>05</span> AUTOMATIC SYNC &amp; DAILY USE</div>
               <h2>MaaYuan 自动采集，<em>YuanHub 接着整理</em></h2>
             </div>
-            <p>MaaYuan 自动采集并上传密探、库存与星石结果；YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。</p>
+            <p>自动采集只负责把结果带进来；整理、规划、分享与后续联动，都在 YuanHub 继续完成。</p>
           </div>
 
           <div class="ecosystem-flow">
@@ -322,12 +321,29 @@
             <div class="origin-copy">
               <small>共同发起 · OUR BEGINNING</small>
               <b>辟雍学府</b>
-              <p>YuanHub 最初由 <strong>MaaYuan × 代号鸢 BWiki × 辟雍学府 × YuanAssist</strong> 共同牵头建设。辟雍学府将于 <strong>2026 年 10 月 9 日</strong> 停止运营，感谢它曾与我们一同参与 YuanHub 的起点。</p>
+              <p>YuanHub 最初由 <strong>MaaYuan × 鸢Bwiki × 辟雍学府 × YuanAssist</strong> 共同牵头建设。辟雍学府将于 <strong>2026 年 10 月 9 日</strong> 停止运营，感谢它曾与我们一同参与 YuanHub 的起点。</p>
             </div>
             <span class="origin-status">将于 10 月 9 日停止运营</span>
           </div>
 
-          <p class="ecosystem-disclaimer">当前确认的自动流程为 MaaYuan 采集并上传，YuanHub 整理后用于今日一览、养成规划预览和 BOX 分享。代号鸢 BWiki 与 YuanAssist 仍保持各自独立运行，后续会与 YuanHub 逐步展开功能联动；辟雍学府将于 2026 年 10 月 9 日停止运营。</p>
+          <p class="ecosystem-disclaimer"><b>当前关系说明：</b>MaaYuan 已用于自动采集与上传；鸢Bwiki、YuanAssist 仍各自独立运行，后续计划与 YuanHub 展开功能联动；辟雍学府将于 2026 年 10 月 9 日停止运营。</p>
+        </div>
+      </section>
+
+      <section id="feature-preview" class="section roadmap-section">
+        <div class="wrap roadmap-layout">
+          <div class="section-copy">
+            <div class="eyebrow"><span>06</span> FEATURE PREVIEW</div>
+            <h2>现在能用什么，<br /><em>下一步做什么</em></h2>
+            <p>已上线、持续完善和待开发分开写清楚，不把规划中的能力说成已经可用。</p>
+          </div>
+          <div class="roadmap-board">
+            <article class="roadmap-row current"><span>NOW</span><div><b>当前可用</b><p>MaaYuan 自动采集结果同步 · 今日一览 · 养成规划预览 · 密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算）</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>binary</b> 所有</small></div><em>已上线 / 项目已有</em></article>
+            <article class="roadmap-row next"><span>NEXT</span><div><b>今日与养成体验</b><p>继续完善资源缺口提醒、日程调整与相关页面间的快捷跳转。</p></div><em>持续完善</em></article>
+            <article class="roadmap-row future"><span>FUTURE</span><div><b>日常自动化联动 · 页面示意</b><p>待开发功能：探索把每日安排交给未来支持的自动化工具，并将结果带回档案；具体接入与执行能力以上线版本为准。</p></div><em>待开发功能</em></article>
+            <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺 · 页面示意</b><p>待开发功能：发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>待开发功能</em></article>
+            <!-- PLACEHOLDER: 在此继续追加未来 Roadmap 项 -->
+          </div>
         </div>
       </section>
 
@@ -335,10 +351,10 @@
         <div class="wrap">
           <div class="section-heading split-heading community-build-heading">
             <div>
-              <div class="eyebrow"><span>06</span> CREATE WITH YUANHUB</div>
+              <div class="eyebrow"><span>07</span> CREATE WITH YUANHUB</div>
               <h2>你做的实用功能，<br /><em>也可以接入 YuanHub</em></h2>
             </div>
-            <p>如果你为《如鸢》《代号鸢》玩家开发了实用工具、数据整理功能、计算器或新的档案玩法，可以与 YuanHub 一起把具体功能做得更完整。接入 YuanHub，不等于把作品著作权交给 YuanHub。</p>
+            <p>这里面向创作者和第三方项目：原创功能可以加入 YuanHub，已有项目也可以保持独立、只做数据联动。作品归属不会因为接入而自动转让。</p>
           </div>
 
           <div class="community-showcase">
@@ -370,6 +386,13 @@
               </article>
             </div>
           </div>
+
+          <details class="community-more">
+            <summary>
+              <span><b>想参与开发或接入项目？</b><small>展开查看参与方式、接入原则与来源要求</small></span>
+              <i aria-hidden="true">＋</i>
+            </summary>
+            <div class="community-more-body">
 
           <div class="community-paths">
             <article class="community-path-card">
@@ -443,23 +466,8 @@
             <span>04 联调</span><i>→</i>
             <span>05 上线并保留署名</span>
           </div>
-        </div>
-      </section>
-
-      <section id="feature-preview" class="section roadmap-section">
-        <div class="wrap roadmap-layout">
-          <div class="section-copy">
-            <div class="eyebrow"><span>07</span> FEATURE PREVIEW</div>
-            <h2>现在能用什么，<br /><em>下一步做什么</em></h2>
-            <p>当前能力、持续完善项与待开发概念分开呈现。</p>
-          </div>
-          <div class="roadmap-board">
-            <article class="roadmap-row current"><span>NOW</span><div><b>当前可用</b><p>MaaYuan 自动采集结果同步 · 今日一览 · 养成规划预览 · 密探档案 · BOX 分享 · 库存 · 星石 · 广陵账房（礼包计算）</p><small class="roadmap-credit">© 独立创作 · 星石识别与星石养成著作权归作者 <b>Drifty Yan</b> 所有</small><small class="roadmap-credit">© 独立创作 · 广陵账房著作权归作者 <b>binary</b> 所有</small></div><em>已上线 / 项目已有</em></article>
-            <article class="roadmap-row next"><span>NEXT</span><div><b>今日与养成体验</b><p>继续完善资源缺口提醒、日程调整与相关页面间的快捷跳转。</p></div><em>持续完善</em></article>
-            <article class="roadmap-row future"><span>FUTURE</span><div><b>日常自动化联动 · 页面示意</b><p>待开发功能：探索把每日安排交给未来支持的自动化工具，并将结果带回档案；具体接入与执行能力以上线版本为准。</p></div><em>待开发功能</em></article>
-            <article class="roadmap-row future"><span>FUTURE</span><div><b>史君小铺 · 页面示意</b><p>待开发功能：发布关卡与可用队伍需求，结合分享代码与 BOX 做需求匹配。</p></div><em>待开发功能</em></article>
-            <!-- PLACEHOLDER: 在此继续追加未来 Roadmap 项 -->
-          </div>
+            </div>
+          </details>
         </div>
       </section>
 
@@ -471,7 +479,16 @@
             <p>尊重游戏权利人、资料提供方与内容创作者的权利，也把 YuanHub 自行创作内容和共同开发作品的许可边界说明清楚。</p>
           </div>
 
-          <div class="legal-card">
+          <details class="legal-details">
+            <summary>
+              <div>
+                <span class="legal-summary-kicker">KEY NOTICE</span>
+                <b>非官方、非商业玩家工具</b>
+                <p>第三方游戏素材与名称归原权利方所有；YuanHub 自创宣传内容按页面声明许可，独立创作继续保留作者署名与权利归属。</p>
+              </div>
+              <span class="legal-summary-action">查看完整说明 <i aria-hidden="true">＋</i></span>
+            </summary>
+            <div class="legal-card">
             <article>
               <span class="legal-index">01</span>
               <div>
@@ -522,7 +539,8 @@
             </article>
 
             <p class="legal-footnote">本站为玩家自发开发的非官方工具，与游戏官方及各第三方权利人之间的关系以实际授权、合作说明或官方公告为准；除明确说明外，不应理解为官方产品或官方背书。</p>
-          </div>
+            </div>
+          </details>
         </div>
       </section>
 
@@ -656,7 +674,7 @@ const scopes = ref([
 
 const partners = [
   { name: 'MaaYuan', icon: '/icons/maa.png', scenario: '自动采集并上传档案', status: '已接入', href: 'https://maayuan.com/' },
-  { name: '代号鸢 BWiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算 · 计划与 YuanHub 联动', status: '计划联动', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
+  { name: '鸢Bwiki', icon: '/icons/bwiki-transparent.png', scenario: '资料查询与数据计算 · 计划与 YuanHub 联动', status: '计划联动', href: 'https://wiki.biligame.com/yuan/%E9%A6%96%E9%A1%B5' },
   { name: 'YuanAssist', icon: '/icons/yuanassist-transparent.png', scenario: '作业与日常辅助 · 计划与 YuanHub 联动', status: '计划联动', href: 'https://www.yuanassist.space/' }
 ]
 
@@ -952,6 +970,117 @@ a.community-path-link:hover { border-color: var(--accent); color: var(--accent-s
 .footer-inner b { font-size: 14px; }
 .footer-inner p { font-size: 11.5px; }
 
+
+/* Information architecture pass: keep the product demos, shorten the default reading path. */
+.hero-section { padding: 78px 0 86px; }
+.section { padding: 88px 0; }
+.hero-lede { max-width: 570px; margin-top: 22px; }
+.hero-actions { margin-top: 24px; }
+.hero-trust { gap: 8px; margin-top: 16px; }
+.hero-trust > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--soft-line);
+  border-radius: 999px;
+  background: rgba(255,253,246,.48);
+}
+.feature-shell { margin-top: 38px; }
+.feature-tabs button { min-height: 76px; padding: 14px 16px; }
+.feature-stage { min-height: 390px; }
+.feature-copy-panel { padding: 36px 34px; }
+.feature-demo-panel { padding: 28px; }
+.feature-visual { min-height: 330px; }
+.share-animation-stage { min-height: 400px; }
+.community-showcase { margin-top: 34px; padding: 24px; }
+.community-showcase-head { gap: 30px; padding-bottom: 18px; }
+.community-author-grid { margin-top: 18px; }
+.community-more {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,253,246,.58);
+}
+.community-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 18px 20px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.community-more > summary::-webkit-details-marker,
+.legal-details > summary::-webkit-details-marker { display: none; }
+.community-more > summary span { display: grid; gap: 4px; }
+.community-more > summary b { color: var(--tea); font: 900 16px var(--font-s); }
+.community-more > summary small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.community-more > summary > i {
+  display: grid;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--accent-strong);
+  background: var(--cream);
+  font-style: normal;
+  transition: transform .2s ease;
+}
+.community-more[open] > summary { border-bottom: 1px solid var(--soft-line); background: rgba(239,210,142,.12); }
+.community-more[open] > summary > i { transform: rotate(45deg); }
+.community-more-body { padding: 0 18px 20px; }
+.community-more .community-paths { margin-top: 18px; }
+.community-more .community-path-card { min-height: 310px; padding: 24px; box-shadow: none; }
+.roadmap-layout { gap: 52px; }
+.roadmap-row { min-height: 96px; }
+.legal-layout { gap: 44px; }
+.legal-heading { position: static; }
+.legal-details {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255,253,246,.68);
+  box-shadow: 0 24px 54px -48px rgba(73,59,44,.7);
+}
+.legal-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 24px 26px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.legal-details > summary > div { min-width: 0; }
+.legal-summary-kicker { color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .14em; }
+.legal-details > summary b { display: block; margin-top: 8px; color: var(--tea); font: 900 19px var(--font-s); }
+.legal-details > summary p { max-width: 650px; margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.legal-summary-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--tea);
+  background: var(--cream);
+  font-size: 11px;
+  font-weight: 900;
+}
+.legal-summary-action i { color: var(--accent-strong); font-style: normal; transition: transform .2s ease; }
+.legal-details[open] > summary { border-bottom: 1px solid var(--soft-line); }
+.legal-details[open] .legal-summary-action i { transform: rotate(45deg); }
+.legal-details .legal-card { margin: 14px; border-radius: 16px; box-shadow: none; }
+.final-cta-section { padding: 70px 0 84px; }
+
 @keyframes cardEnter { 0%,7%{opacity:0;transform:translateY(12px)} 12%,86%{opacity:1;transform:none} 92%,100%{opacity:0;transform:translateY(-5px)} }
 @keyframes levelFlash { 0%,20%{opacity:.45} 28%,86%{opacity:1} 100%{opacity:.45} }
 @keyframes awaken { 0%,28%{opacity:0;transform:translateY(4px)} 34%,86%{opacity:1;transform:none} 100%{opacity:0} }
@@ -1002,6 +1131,36 @@ a.community-path-link:hover { border-color: var(--accent); color: var(--accent-s
   .legal-card article { grid-template-columns: 34px 1fr; gap: 10px; padding: 22px 18px; }.legal-footnote { padding: 16px 18px 18px; }
   .footer-inner { min-height: 110px; align-items: flex-start; justify-content: center; flex-direction: column; }.footer-inner p { line-height: 1.6; }.footer-inner .footer-copy { text-align: left; }
 }
+
+@media (max-width: 780px) {
+  .hero-section { padding: 50px 0 62px; }
+  .section { padding: 64px 0; }
+  .hero-trust > span { width: fit-content; }
+  .feature-shell { margin-top: 30px; }
+  .feature-copy-panel { padding: 26px 22px; }
+  .feature-demo-panel { padding: 16px; }
+  .feature-visual { min-height: 300px; }
+  .community-showcase { margin-top: 28px; padding: 20px; }
+  .community-more > summary { padding: 16px 17px; }
+  .community-more-body { padding: 0 14px 16px; }
+  .community-more .community-path-card { min-height: 0; }
+  .roadmap-layout { gap: 30px; }
+  .legal-layout { gap: 24px; }
+  .legal-details > summary { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px; }
+  .legal-summary-action { align-self: flex-start; }
+  .legal-details .legal-card { margin: 10px; }
+  .final-cta-section { padding: 58px 0 72px; }
+}
+@media (max-width: 520px) {
+  .hero-trust { align-items: flex-start; flex-direction: column; }
+  .hero-trust > span { max-width: 100%; white-space: normal; }
+  .community-showcase { padding: 18px 16px; }
+  .community-more > summary b { font-size: 15px; }
+  .community-more > summary small { font-size: 10.5px; }
+  .community-more-body { padding-inline: 10px; }
+  .legal-details > summary p { font-size: 11.5px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .operator-card,.awakening-chip,.share-view-overlay,.overlay-cards i,.visitor-box i,.visitor-card,.star-result article { opacity: 1; transform: none; }
