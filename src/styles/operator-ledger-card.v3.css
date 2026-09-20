@@ -179,6 +179,21 @@
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab img { width: 15px; height: 15px; object-fit: contain; }
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-prof-tab > span { writing-mode: vertical-rl; text-orientation: upright; letter-spacing: .12em; }
 
+  .agent-ledger-card--editable.agent-ledger-card--v3 :is(.ledger-name-tab > h3, .ledger-prof-tab) {
+    transform: translateX(3px);
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab {
+    gap: 4px;
+    padding: 5px 3px;
+    font-size: 10px;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-prof-tab img {
+    width: 13px;
+    height: 13px;
+  }
+
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-favorite {
     top: var(--ledger-header-inset-top);
     left: calc(var(--ledger-seal-center) - 16px);

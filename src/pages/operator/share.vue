@@ -213,6 +213,9 @@
                     <div class="ledger-destiny fate-trait-style-a" aria-label="双命盘">
                       <div v-for="(loadout, index) in loadouts(entry)" :key="index" class="ledger-destiny-row">
                         <span>命盘{{ index === 0 ? '一' : '二' }}</span>
+                        <svg v-if="ledgerCardIsV3" class="ledger-destiny-marker" width="6" height="16" viewBox="0 0 6 16" aria-hidden="true">
+                          <circle v-for="dot in index + 1" :key="dot" cx="3" :cy="index === 0 ? 8 : dot === 1 ? 5 : 11" r="2" fill="currentColor" />
+                        </svg>
                         <div class="ledger-destiny-values">
                           <em
                             v-for="disc in loadoutDiscEntries(entry, loadout)"
@@ -756,7 +759,11 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   font-weight: 600;
 }
 
-/* Share cards use the same destiny markers at every viewport width. */
+/* Desktop keeps diamond markers; mobile matches the growth card's dot markers. */
+.agent-ledger-card--share .ledger-destiny-marker {
+  display: none;
+}
+
 .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
   position: relative;
   width: 11px;
@@ -785,6 +792,15 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 }
 
 @media (max-width: 640px) {
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
+    display: none;
+  }
+
+  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-marker {
+    display: block;
+    color: var(--fate-series-accent);
+  }
+
   .share-ledger:has(.agent-ledger-card--v3) {
     margin-inline: 0;
     padding: 8px 0;
@@ -1101,9 +1117,9 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row:nth-child(n) {
     display: grid;
-    grid-template-columns: 11px minmax(0, 1fr);
+    grid-template-columns: 10px minmax(0, 1fr);
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     min-height: 24px;
     padding-top: 0;
     background: transparent;
