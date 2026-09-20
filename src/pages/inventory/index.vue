@@ -625,7 +625,6 @@
                   v-for="e in visibleStockEditorEntries"
                   :key="e.id"
                   class="slot stock-edit-slot"
-                  :title="e.name || e.id"
                 >
                   <div
                     class="slot-ic"
@@ -739,7 +738,6 @@
                       :key="e.id"
                       class="slot"
                       :class="{ 'is-missing': !e.owned }"
-                      :title="slotTitle(e)"
                     >
                       <div class="slot-ic">
                         <div class="slot-ph">
@@ -820,7 +818,6 @@
                                 :key="e.id"
                                 class="slot"
                                 :class="{ 'is-missing': !e.owned }"
-                                :title="slotTitle(e)"
                               >
                                 <div class="slot-ic">
                                   <div class="slot-ph">
@@ -856,7 +853,6 @@
                             :key="e.id"
                             class="slot"
                             :class="{ 'is-missing': !e.owned }"
-                            :title="slotTitle(e)"
                           >
                             <div class="slot-ic">
                               <div class="slot-ph">
@@ -911,7 +907,6 @@
                           'is-missing': !e.owned,
                           'is-favorite': favoriteAgentIds.has(e.id),
                         }"
-                        :title="slotTitle(e)"
                       >
                         <div class="slot-ic is-agent">
                           <div class="slot-ph">
@@ -3189,19 +3184,6 @@ const detailResultCaption = computed(function () {
   parts.push(filteredRewardRecords.value.length + " 条奖励流水");
   return parts.join(" · ");
 });
-
-function slotTitle(e) {
-  const parts = [e.name || e.id];
-  if (entityType.value === "item" && e.category) parts.push(e.category);
-  if (entityType.value === "agent") {
-    let line = e.rarity != null ? e.rarity + "★" : "";
-    if (e.prof) line = line ? line + " · " + e.prof : e.prof;
-    if (e.subProf) line = line ? line + " · " + e.subProf : e.subProf;
-    parts.push(line);
-  }
-  parts.push("× " + fmtCount(e.count));
-  return parts.join(" ｜ ");
-}
 
 function isValidStockCount(value) {
   if (value === "" || value == null) return false;
