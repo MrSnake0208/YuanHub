@@ -1801,7 +1801,10 @@ const entityType = ref("item");
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const agentFavoriteMode = ref("priority");
-const agentControlsCollapsed = ref(false);
+const agentControlsCollapsed = ref(
+  typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 640px)").matches,
+);
 const agentStatusFilters = ref([]);
 const agentRarityFilters = ref([]);
 const agentProfFilters = ref([]);
@@ -7546,12 +7549,12 @@ onBeforeUnmount(function () {
     margin-top: 7px;
   }
   .manifest-agents .agent-slot-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 9px 4px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 7px 3px;
     margin-top: 8px;
   }
   .manifest-agents .agent-card .slot-ic {
-    width: min(100%, 64px);
+    width: min(100%, 42px);
   }
   .manifest-agents .agent-card .slot-name {
     height: 2.6em;
@@ -7560,16 +7563,24 @@ onBeforeUnmount(function () {
     line-height: 1.3;
   }
   .manifest-agents .agent-card .slot-count {
-    right: 1px;
-    bottom: 2px;
-    min-width: 22px;
-    height: 18px;
-    padding-inline: 4px;
+    right: -1px;
+    bottom: -1px;
+    min-width: 20px;
+    height: 16px;
+    padding: 1px 4px 0;
     font-size: 9.5px;
   }
   .manifest-agents .agent-favorite-btn {
-    top: -7px;
-    right: -12px;
+    /* 抵消圆形星标的内缩，让可见边缘贴齐心纸右上角。 */
+    top: -13px;
+    right: -14.5px;
+  }
+  .manifest-agents .agent-favorite-btn::before {
+    inset: 13px;
+  }
+  .manifest-agents .agent-favorite-btn svg {
+    width: 10px;
+    height: 10px;
   }
   .is-agent-editor .stock-edit-grid {
     grid-template-columns: minmax(0, 1fr);
