@@ -112,7 +112,7 @@
               :class="{ on: activeTab === 'manifest' }"
               @click="setTab('manifest')"
             >
-              <Layers3 :size="17" aria-hidden="true" /><span>追踪清单</span>
+              <Layers3 :size="17" aria-hidden="true" /><span>库存清单</span>
             </button>
             <button
               role="tab"
