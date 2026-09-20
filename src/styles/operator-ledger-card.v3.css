@@ -378,7 +378,7 @@
   .agent-ledger-card.agent-ledger-card--share.agent-ledger-card--v3 {
     --share-card-padding: 10px;
     --share-corner-radius: 14px;
-    --share-header-inset: calc(var(--share-corner-radius) + 2px - var(--share-card-padding));
+    --share-header-inset: 2px;
     --ledger-portrait-bottom-fade: linear-gradient(180deg,
       transparent 36%,
       color-mix(in srgb, var(--surface) 78%, transparent) 70%,
@@ -390,7 +390,7 @@
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head {
-    /* Both corner groups begin beyond the rounded border's tangent. */
+    /* Keep both corner groups close to the edges with a small inner inset. */
     padding: var(--share-header-inset) var(--share-header-inset) 0;
   }
 
@@ -578,11 +578,6 @@
     gap: 6px;
   }
 
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
-    width: 32px;
-    font-size: 10px;
-  }
-
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values {
     grid-auto-rows: minmax(26px, auto);
     gap: 4px;
@@ -640,7 +635,6 @@
     .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity-icon { width: 10px; height: 10px; }
 
     .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row { gap: 3px; }
-    .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span { width: 28px; font-size: 9px; }
     .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values { gap: 3px; }
     .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row em { padding-inline: 1px; font-size: 10px; }
 
