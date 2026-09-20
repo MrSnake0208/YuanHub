@@ -3,13 +3,13 @@
     <div class="workspace-actions">
       <span v-if="disabled" class="muted">登录并选择子账号后可补录奖励</span>
       <button ref="manualButton" type="button" class="entry-button" :class="{ active: mode === 'manual' }" :disabled="disabled || locked" :aria-expanded="mode === 'manual'" aria-controls="reward-entry-panel" @click="open('manual')"><Plus :size="15" aria-hidden="true" />添加奖励流水</button>
-      <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入上报报告</button>
+      <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入本地报告</button>
     </div>
 
     <section v-if="mode" id="reward-entry-panel" class="reward-panel" :class="`mode-${mode}`" aria-labelledby="reward-entry-title" :aria-busy="busy">
       <header class="panel-heading">
         <span class="heading-emblem" aria-hidden="true"><BookOpen v-if="mode === 'manual'" :size="25" /><ScrollText v-else :size="25" /></span>
-        <div class="heading-copy"><span class="eyebrow">广陵库房 · 奖励入簿</span><h3 id="reward-entry-title" ref="heading" tabindex="-1">{{ mode === 'manual' ? '添加奖励流水' : '导入上报报告' }}</h3></div>
+        <div class="heading-copy"><span class="eyebrow">广陵库房 · 奖励入簿</span><h3 id="reward-entry-title" ref="heading" tabindex="-1">{{ mode === 'manual' ? '添加奖励流水' : '导入本地报告' }}</h3></div>
         <span class="account-badge"><span class="account-dot" />{{ accountName }}</span>
         <button type="button" class="icon-button close-button" :disabled="locked" aria-label="收起奖励补录" @click="close"><X :size="18" aria-hidden="true" /></button>
       </header>
@@ -72,7 +72,7 @@
               <input ref="fileInput" class="sr-only" type="file" tabindex="-1" aria-label="选择上报报告文件" accept=".txt,.json,text/plain,application/json" @change="pickFile" />
               <button type="button" class="file-drop" :class="{ dragging: dragActive, loaded: fileName }" :disabled="readingFile" @click="fileInput?.click()" @dragover.prevent="dragActive = true" @dragleave.prevent="dragActive = false" @drop.prevent="dropFile">
                 <span class="file-emblem"><FileCheck2 v-if="fileName" :size="27" aria-hidden="true" /><Upload v-else :size="27" aria-hidden="true" /></span>
-                <span class="file-description"><b>{{ readingFile ? '正在读取报告…' : fileName || '点击选择，或拖入上报报告' }}</b><small>{{ fileName ? '已读取 · 点击更换文件' : 'DailyRewards TXT / 库存交换 JSON · 最大 5 MB' }}</small></span><ArrowUpRight :size="20" aria-hidden="true" />
+                <span class="file-description"><b>{{ readingFile ? '正在读取报告…' : fileName || '点击选择，或拖入本地报告' }}</b><small>{{ fileName ? '已读取 · 点击更换文件' : 'DailyRewards TXT / 库存交换 JSON · 最大 5 MB' }}</small></span><ArrowUpRight :size="20" aria-hidden="true" />
               </button>
             </div>
             <div class="import-notes"><span><Check :size="14" aria-hidden="true" />默认选中上报失败的奖励</span><span><Check :size="14" aria-hidden="true" />重复记录自动去重</span><span><Check :size="14" aria-hidden="true" />未注明账号时归入「{{ accountName }}」</span></div>
