@@ -69,7 +69,7 @@
               starLoadoutLoading ||
               starLoadoutSaving
             "
-            :game-disabled="accountsLoading || accountBusy || editing"
+            :game-disabled="accountsLoading || accountBusy || editing || starLoadoutOpen || starLoadoutLoading || starLoadoutSaving"
             :busy="accountBusy"
             heading-title="选择要查看的账号"
             heading-sub="密探、库存和游戏版本都会跟随这个子账号，在两边自动保持一致。"
@@ -3069,7 +3069,7 @@ import {
   addAgentFavorite,
   removeAgentFavorite,
 } from "../../api/inventory.js";
-import { getCurrentStarInventory } from "../../api/starInventory.js";
+import { getCurrentStarState } from "../../api/starState.js";
 import { getCurrentStarLoadout, putCurrentStarLoadout } from "../../api/starLoadout.js";
 import { emptyLoadout, normalizeLoadout } from "../../domain/starLoadout.js";
 import { starLoadoutPresetStore } from "../../domain/starLoadoutPresets.js";
@@ -3289,10 +3289,12 @@ const starLoadoutCurrent = ref({});
 const starLoadoutDrafts = ref({});
 const starLoadoutRevision = ref(0);
 const starLoadoutAccountId = ref("");
+const starStateGeneration = ref(0);
 const starLoadoutLoading = ref(false);
 const starLoadoutSaving = ref(false);
 const starLoadoutError = ref("");
 let starLoadoutLoadSeq = 0;
+let starLoadoutSaveSeq = 0;
 const editorPanelEl = ref(null);
 let bodyOverflowBeforeEditor = "";
 let bodyLockedByEditor = false;
@@ -3336,14 +3338,19 @@ watch(
   },
   function () {
     starLoadoutLoadSeq += 1;
+    starLoadoutSaveSeq += 1;
     starLoadoutAccountId.value = "";
     starLoadoutLoading.value = false;
+    starLoadoutSaving.value = false;
     closeStarLoadout();
+    starLoadoutTarget.value = null;
     if (editing.value) closeEditor();
+    starLoadoutError.value = "";
     starInventoryEntries.value = [];
     starLoadoutCurrent.value = {};
     starLoadoutDrafts.value = {};
     starLoadoutRevision.value = 0;
+    starStateGeneration.value = 0;
     workbenchStatuses.value = readWorkbenchMap("statuses");
     workbenchRemarks.value = readWorkbenchMap("remarks");
     annotationRevisions.value = {};
@@ -6296,6 +6303,30 @@ function normalizeCloudLoadouts(snapshot) {
   }));
 }
 
+function validStarLoadoutDrafts(loadouts, inventory) {
+  const byId = new Map(inventory.map(function (entry) { return [entry.instance_id || entry.instanceId || entry.id, entry]; }));
+  const occupied = new Set();
+  return Object.fromEntries(Object.entries(loadouts).map(function ([operatorId, slots]) {
+    return [operatorId, Object.fromEntries(Object.entries(normalizeLoadout(slots)).map(function ([slot, id]) {
+      const entry = byId.get(id);
+      const kind = slot.startsWith('main') ? 'main' : 'support';
+      if (!id || !entry || occupied.has(id) || ![kind, kind === 'main' ? '主星' : '辅星'].includes(entry.kind)) return [slot, null];
+      occupied.add(id);
+      return [slot, id];
+    }))];
+  }));
+}
+
+async function readStarLoadoutPair(targetAccount) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const [state, loadout] = await Promise.all([
+      getCurrentStarState(targetAccount), getCurrentStarLoadout(targetAccount),
+    ]);
+    if (Number(state?.generation || 0) === Number(loadout?.generation || 0)) return [state, loadout];
+  }
+  throw new Error("星石状态已更新，请重新打开装配。");
+}
+
 function starPresetUserScope() {
   const user = auth.userInfo || {};
   return String(user.id || user.user_id || user.email || (auth.isLoggedIn ? "authenticated-user" : ""));
@@ -6317,13 +6348,16 @@ function starLoadoutSlotEntry(operatorId, slot) {
   const instanceId = starLoadoutCurrent.value[operatorId] && starLoadoutCurrent.value[operatorId][slot];
   if (!instanceId) return null;
   return starInventoryEntries.value.find(function (entry) {
-    return (entry.instance_id || entry.instanceId || entry.id) === instanceId;
+    const kind = slot.startsWith('main') ? 'main' : 'support';
+    return (entry.instance_id || entry.instanceId || entry.id) === instanceId &&
+      [kind, kind === 'main' ? '主星' : '辅星'].includes(entry.kind);
   }) || null;
 }
 
 async function openStarLoadout(operator, slot) {
   if (!operator || !auth.isLoggedIn || !accountId.value) return;
-  if (await prepareStarLoadout(operator, slot)) starLoadoutOpen.value = true;
+  const targetAccount = accountId.value;
+  if (await prepareStarLoadout(operator, slot) && accountId.value === targetAccount) starLoadoutOpen.value = true;
 }
 
 async function prepareStarLoadout(operator, slot) {
@@ -6333,15 +6367,16 @@ async function prepareStarLoadout(operator, slot) {
   starLoadoutLoading.value = true;
   starLoadoutError.value = "";
   try {
-    const [inventory, loadout] = await Promise.all([
-      getCurrentStarInventory(targetAccount),
-      getCurrentStarLoadout(targetAccount),
-    ]);
+    const [inventory, loadout] = await readStarLoadoutPair(targetAccount);
     if (seq !== starLoadoutLoadSeq || accountId.value !== targetAccount)
       return false;
     starInventoryEntries.value = starSnapshotEntries(inventory);
     starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
-    starLoadoutDrafts.value = JSON.parse(JSON.stringify(starLoadoutCurrent.value));
+    starLoadoutDrafts.value = validStarLoadoutDrafts(starLoadoutCurrent.value, starInventoryEntries.value);
+    starStateGeneration.value = Number(inventory?.generation || 0);
+    if (starLoadoutSnapshotSignature(starLoadoutDrafts.value) !== starLoadoutSnapshotSignature(starLoadoutCurrent.value)) {
+      starLoadoutError.value = "旧佩戴中有已失效的星石，保存时会清除这些槽位。";
+    }
     if (!starLoadoutDrafts.value[operator.id]) starLoadoutDrafts.value[operator.id] = emptyLoadout();
     starLoadoutRevision.value = Number((Array.isArray(loadout) ? loadout[0] : loadout)?.revision || 0);
     starLoadoutTarget.value = operator;
@@ -6362,14 +6397,24 @@ async function prepareStarLoadout(operator, slot) {
 async function loadStarLoadoutSnapshot(targetAccount) {
   if (!targetAccount) return;
   try {
-    const [inventory, loadout] = await Promise.all([
-      getCurrentStarInventory(targetAccount),
-      getCurrentStarLoadout(targetAccount),
-    ]);
+    const [inventory, loadout] = await readStarLoadoutPair(targetAccount);
     if (accountId.value !== targetAccount) return;
+    const generation = Number(inventory?.generation || 0);
+    if (starLoadoutOpen.value && starStateGeneration.value !== generation) {
+      starLoadoutSaveSeq += 1;
+      starLoadoutSaving.value = false;
+      starLoadoutOpen.value = false;
+      starLoadoutAccountId.value = "";
+      starLoadoutTarget.value = null;
+      starLoadoutError.value = "星石背包已重建，请重新打开装配。";
+    }
+    const keepCurrentDraft = starLoadoutOpen.value && starStateGeneration.value === generation;
+    const nextRevision = Number((Array.isArray(loadout) ? loadout[0] : loadout)?.revision || 0);
     starInventoryEntries.value = starSnapshotEntries(inventory);
     starLoadoutCurrent.value = normalizeCloudLoadouts(loadout);
-    starLoadoutRevision.value = Number((Array.isArray(loadout) ? loadout[0] : loadout)?.revision || 0);
+    starLoadoutDrafts.value = validStarLoadoutDrafts(keepCurrentDraft ? starLoadoutDrafts.value : starLoadoutCurrent.value, starInventoryEntries.value);
+    starStateGeneration.value = generation;
+    if (!keepCurrentDraft || nextRevision === starLoadoutRevision.value) starLoadoutRevision.value = nextRevision;
   } catch (_) {
     // The operator ledger remains usable if the independent star snapshot is unavailable.
   }
@@ -6397,26 +6442,46 @@ async function persistStarLoadout() {
     return false;
   }
   if (!starLoadoutIsDirty()) return true;
+  const targetGeneration = starStateGeneration.value;
+  const targetRevision = starLoadoutRevision.value;
+  const saveSeq = ++starLoadoutSaveSeq;
   starLoadoutSaving.value = true;
   starLoadoutError.value = "";
   try {
     const response = await putCurrentStarLoadout(targetAccount, {
-      expected_revision: starLoadoutRevision.value,
-      loadouts: starLoadoutDrafts.value,
+      expected_revision: targetRevision,
+      expected_generation: targetGeneration,
+      loadouts: validStarLoadoutDrafts(starLoadoutDrafts.value, starInventoryEntries.value),
     });
-    if (accountId.value !== targetAccount || starLoadoutAccountId.value !== targetAccount) {
-      starLoadoutError.value = "账号已切换，原账号的保存结果未应用到当前页面。";
-      return false;
-    }
+    if (saveSeq !== starLoadoutSaveSeq || accountId.value !== targetAccount ||
+      starLoadoutAccountId.value !== targetAccount || starStateGeneration.value !== targetGeneration ||
+      starLoadoutRevision.value !== targetRevision) return false;
     starLoadoutCurrent.value = normalizeCloudLoadouts(response);
-    if (!Object.keys(starLoadoutCurrent.value).length) starLoadoutCurrent.value = JSON.parse(JSON.stringify(starLoadoutDrafts.value));
     starLoadoutRevision.value = Number(response && response.revision || starLoadoutRevision.value + 1);
     return true;
   } catch (err) {
-    starLoadoutError.value = humanErr(err, "保存星石装配失败");
+    if (saveSeq === starLoadoutSaveSeq && accountId.value === targetAccount &&
+      starLoadoutAccountId.value === targetAccount && starStateGeneration.value === targetGeneration &&
+      starLoadoutRevision.value === targetRevision) {
+      if (err?.code === "star_generation_changed") {
+        starLoadoutLoadSeq += 1;
+        starLoadoutAccountId.value = "";
+        starLoadoutOpen.value = false;
+        starLoadoutTarget.value = null;
+        starInventoryEntries.value = [];
+        starLoadoutCurrent.value = {};
+        starLoadoutDrafts.value = {};
+        starLoadoutRevision.value = 0;
+        starStateGeneration.value = 0;
+        starLoadoutError.value = "星石背包已重建，旧装配草稿已失效；请重新打开装配。";
+        void loadStarLoadoutSnapshot(targetAccount);
+      } else {
+        starLoadoutError.value = humanErr(err, "保存星石装配失败");
+      }
+    }
     return false;
   } finally {
-    starLoadoutSaving.value = false;
+    if (saveSeq === starLoadoutSaveSeq) starLoadoutSaving.value = false;
   }
 }
 
