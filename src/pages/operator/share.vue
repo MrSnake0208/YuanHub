@@ -738,6 +738,25 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   box-shadow: none;
 }
 
+/* Share cards use the same destiny markers at every viewport width. */
+.agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
+  position: relative;
+  width: 10px;
+  padding: 0 2px;
+  border: 0;
+  font-size: 0;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span::before {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--fate-series-accent);
+  transform: rotate(45deg);
+  content: '';
+}
+
+
 /* Preserve the stacked V1/V2 spacing; V3 defines its own summary rows. */
 .agent-ledger-card--share:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
   margin-top: -10px;
@@ -1064,29 +1083,12 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row:nth-child(n) {
     display: grid;
-    grid-template-columns: 6px minmax(0, 1fr);
+    grid-template-columns: 10px minmax(0, 1fr);
     align-items: center;
     gap: 8px;
     min-height: 24px;
     padding-top: 0;
     background: transparent;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
-    position: relative;
-    width: 6px;
-    padding: 0;
-    border: 0;
-    font-size: 0;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span::before {
-    display: block;
-    width: 5px;
-    height: 5px;
-    border: 1px solid var(--fate-series-accent);
-    transform: rotate(45deg);
-    content: '';
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values {
