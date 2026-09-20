@@ -629,6 +629,11 @@ async function confirmStarImport() {
     starImportPreview.value = null;
     showStarImport.value = false;
   } catch (error) {
+    if (message(error, "").startsWith("云端档案已替换")) {
+      starImportPreview.value = null;
+      starExchangeError.value = message(error, "云端档案已替换，请重新加载工作区。");
+      return;
+    }
     const status = Number(error?.status || 0);
     starExchangeError.value = status === 409
       ? "云端数据已更新，请重新加载后重试。导入预览仍保留。"
@@ -651,7 +656,11 @@ async function mountProduct() {
       embedded: true,
       hostAccount: selectedHostAccount(),
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
+      onOcrRebuild: function (snapshot, recoveryPointId) { return starCloud.rebuildOcr(snapshot, recoveryPointId); },
       onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
+      onListRecoveryPoints: function () { return starCloud.listRecoveryPoints(); },
+      onRestoreRecoveryPoint: function (pointId) { return starCloud.restorePoint(pointId); },
+      onRestoreLocalPoint: function (snapshot) { return starCloud.restoreLocal(snapshot); },
       onSummaryChange: function (nextSummary) {
         summary.value = nextSummary;
       },

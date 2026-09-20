@@ -102,7 +102,7 @@ watch(function () { return [props.targetOperator?.id, props.initialSlot] }, func
 
 function slotEntry(slot) { return instanceMap.value[loadout.value[slot]] || null }
 function slotLabel(slot) { return (slotKind(slot) === 'main' ? '主星' : '辅星') + slot.slice(-1) }
-function filledCount(kind) { return groupSlots(kind).filter(function (slot) { return Boolean(loadout.value[slot]) }).length }
+function filledCount(kind) { return groupSlots(kind).filter(function (slot) { return Boolean(slotEntry(slot)) }).length }
 function activateKind(kind) { activeKind.value = kind; replacementSlot.value = null; notice.value = '' }
 function chooseReplacement(slot) { activeKind.value = slotKind(slot); replacementSlot.value = replacementSlot.value === slot ? null : slot; notice.value = '' }
 function publish(next) { emit('update:draftLoadouts', next) }

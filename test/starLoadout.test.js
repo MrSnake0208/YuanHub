@@ -215,13 +215,14 @@ test('draft assignment moves free, own, and other-owner instances with global un
     target: { main1: 'own-main', main2: 'duplicate' },
     other: { support1: 'other-support', support2: 'duplicate' },
   }
-  const free = assignInstanceToDraft({ loadouts: base, targetOperatorId: 'target', targetSlot: 'support1', instanceId: 'free' })
+  const inventoryEntries = [entry('own-main', 'main', '天府'), entry('duplicate', 'main', '武曲'), entry('other-support', 'support', '文曲'), entry('free', 'support', '天相')]
+  const free = assignInstanceToDraft({ loadouts: base, targetOperatorId: 'target', targetSlot: 'support1', instanceId: 'free', inventoryEntries })
   assert.equal(free.target.support1, 'free')
   assert.equal(base.target.support1, undefined)
-  const ownMove = assignInstanceToDraft({ loadouts: free, targetOperatorId: 'target', targetSlot: 'main3', instanceId: 'own-main' })
+  const ownMove = assignInstanceToDraft({ loadouts: free, targetOperatorId: 'target', targetSlot: 'main3', instanceId: 'own-main', inventoryEntries })
   assert.equal(ownMove.target.main1, null)
   assert.equal(ownMove.target.main3, 'own-main')
-  const stolen = assignInstanceToDraft({ loadouts: ownMove, targetOperatorId: 'target', targetSlot: 'support2', instanceId: 'other-support' })
+  const stolen = assignInstanceToDraft({ loadouts: ownMove, targetOperatorId: 'target', targetSlot: 'support2', instanceId: 'other-support', inventoryEntries })
   assert.equal(stolen.other.support1, null)
   assert.equal(stolen.target.support2, 'other-support')
   const allIds = Object.values(stolen).flatMap(function (loadout) { return Object.values(loadout).filter(Boolean) })
@@ -240,6 +241,15 @@ test('同组同名约束阻止填空，但允许替换该名称原所在槽位',
   assert.equal(blocked.target.main2, null)
   const replacement = assignInstanceToDraft({ loadouts, targetOperatorId: 'target', targetSlot: 'main1', instanceId: 'main-b', inventoryEntries })
   assert.equal(replacement.target.main1, 'main-b')
+})
+
+test('unknown or wrong-kind stars cannot be assigned to a draft', function () {
+  const inventoryEntries = [entry('main-a', 'main', '天府')]
+  const loadouts = { target: emptyLoadout() }
+  assert.equal(canAssignStarInstance({ loadouts, targetOperatorId: 'target', targetSlot: 'main1', instanceId: 'old-ocr-id', inventoryEntries }).allowed, false)
+  assert.equal(canAssignStarInstance({ loadouts, targetOperatorId: 'target', targetSlot: 'support1', instanceId: 'main-a', inventoryEntries }).allowed, false)
+  assert.equal(assignInstanceToDraft({ loadouts, targetOperatorId: 'target', targetSlot: 'main1', instanceId: 'old-ocr-id', inventoryEntries }).target.main1, null)
+  assert.equal(assignInstanceToDraft({ loadouts, targetOperatorId: 'target', targetSlot: 'support1', instanceId: 'main-a', inventoryEntries }).target.support1, null)
 })
 
 test('按组连续选择始终填第一个空槽，满组必须显式 replacement', function () {
