@@ -108,22 +108,25 @@ function inventoryNameByInstance(inventoryEntries, id) {
   return entry ? normalizeStarInventoryEntry(entry).name : ''
 }
 
-export function groupContainsStarName({ loadouts, targetOperatorId, targetSlot, name, inventoryEntries }) {
+export function groupContainsStarName({ loadouts, targetOperatorId, targetSlot, name, instanceId: movingId, inventoryEntries }) {
   const kind = slotKind(targetSlot)
   if (!kind || !name) return false
   const loadout = normalizeLoadout((loadouts || {})[String(targetOperatorId || '').trim()])
   return groupSlots(kind).some(function (slot) {
-    return slot !== targetSlot && inventoryNameByInstance(inventoryEntries, loadout[slot]) === name
+    return slot !== targetSlot && loadout[slot] !== movingId && inventoryNameByInstance(inventoryEntries, loadout[slot]) === name
   })
 }
 
 export function canAssignStarInstance({ loadouts, targetOperatorId, targetSlot, instanceId: nextInstanceId, inventoryEntries }) {
   const id = instanceId(nextInstanceId)
-  if (!id || !slotKind(targetSlot)) return { allowed: false, reason: '请选择有效星石槽位' }
-  const name = inventoryNameByInstance(inventoryEntries, id)
-  if (!name) return { allowed: true, reason: '' }
-  if (groupContainsStarName({ loadouts, targetOperatorId, targetSlot, name, inventoryEntries })) {
-    return { allowed: false, reason: '当前' + (slotKind(targetSlot) === 'main' ? '主星' : '辅星') + '已选择「' + name + '」' }
+  const kind = slotKind(targetSlot)
+  if (!id || !kind) return { allowed: false, reason: '请选择有效星石槽位' }
+  const entry = (inventoryEntries || []).map(normalizeStarInventoryEntry).find(function (item) { return item.instanceId === id })
+  if (!entry?.name) return { allowed: false, reason: '星石已不在当前背包中，请刷新后重试。' }
+  if (entry.kind !== kind) return { allowed: false, reason: '星石大类与目标槽位不匹配，请重新选择。' }
+  const name = entry.name
+  if (groupContainsStarName({ loadouts, targetOperatorId, targetSlot, name, instanceId: id, inventoryEntries })) {
+    return { allowed: false, reason: '当前' + (kind === 'main' ? '主星' : '辅星') + '已选择「' + name + '」' }
   }
   return { allowed: true, reason: '' }
 }
