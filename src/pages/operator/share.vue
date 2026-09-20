@@ -188,21 +188,21 @@
                       <section class="ledger-growth share-ledger-growth" aria-label="核心养成">
                         <div class="ledger-growth-row" role="group" aria-label="等级">
                           <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">等级</span>
-                          <span class="share-ledger-growth-value"><template v-if="ledgerCardIsV3 && !compactStats">Lv</template>{{ number(entry.growth.level) }}</span>
+                          <span class="share-ledger-growth-value"><span v-if="ledgerCardIsV3 && !compactStats" class="share-growth-prefix">Lv</span><span class="share-growth-number">{{ number(entry.growth.level) }}</span></span>
                         </div>
                         <div class="ledger-growth-row" role="group" aria-label="修为">
                           <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">修为</span>
-                          <span class="share-ledger-growth-value"><template v-if="ledgerCardIsV3 && !compactStats">+</template>{{ number(entry.growth.elite) }}</span>
+                          <span class="share-ledger-growth-value"><template v-if="ledgerCardIsV3 && !compactStats">+</template><span class="share-growth-number">{{ number(entry.growth.elite) }}</span></span>
                         </div>
                         <div class="ledger-growth-row" role="group" aria-label="化极">
                           <span v-if="!ledgerCardIsV3 || compactStats" class="ledger-grow-label">化极</span>
                           <span class="share-ledger-growth-value ledger-huaji-value" :title="operatorShareStarLabel(entry.growth.star_level, entry.sp_of)">
                             <template v-if="starCardHasIcon(entry.growth.star_level)">
-                              <span>{{ starCardNumber(entry.growth.star_level, entry.sp_of) }}</span>
+                              <span class="share-growth-number">{{ starCardNumber(entry.growth.star_level, entry.sp_of) }}</span>
                               <Star :size="12" fill="currentColor" aria-hidden="true" />
-                              <span v-if="!entry.sp_of">{{ starCardNode(entry.growth.star_level) }}</span>
+                              <span v-if="!entry.sp_of" class="share-growth-number">{{ starCardNode(entry.growth.star_level) }}</span>
                             </template>
-                            <template v-else>{{ starCardFallback(entry.growth.star_level) }}</template>
+                            <span v-else class="share-growth-number">{{ starCardFallback(entry.growth.star_level) }}</span>
                           </span>
                         </div>
                       </section>
@@ -738,6 +738,24 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   box-shadow: none;
 }
 
+/* Keep both summary panels on the same numeric type treatment. */
+.agent-ledger-card--share.agent-ledger-card--v3 :is(.share-ledger-growth-value, .ledger-combat-value) {
+  font-family: var(--font-d);
+  font-weight: 000;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .share-growth-number {
+  font-weight: 900;
+}
+
+.agent-ledger-card--share.agent-ledger-card--v3 .share-growth-prefix {
+  position: relative;
+  top: 1px;
+  font-size: .8em;
+  font-weight: 600;
+}
+
 /* Share cards use the same destiny markers at every viewport width. */
 .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
   position: relative;
@@ -1055,7 +1073,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
     grid-column: 2;
     min-height: 20px;
     padding: 0;
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > span:last-child {
