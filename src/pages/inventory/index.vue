@@ -7558,7 +7558,7 @@ onBeforeUnmount(function () {
   }
   .manifest-agents .agent-card .slot-name {
     height: 2.6em;
-    margin-top: 2px;
+    margin-top: -3px;
     font-size: 9.5px;
     line-height: 1.3;
   }
