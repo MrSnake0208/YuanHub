@@ -759,8 +759,8 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 /* Share cards use the same destiny markers at every viewport width. */
 .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
   position: relative;
-  width: 10px;
-  padding: 0 2px;
+  width: 11px;
+  padding: 0 3px 0 3px;
   border: 0;
   font-size: 0;
 }
@@ -1101,7 +1101,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row:nth-child(n) {
     display: grid;
-    grid-template-columns: 10px minmax(0, 1fr);
+    grid-template-columns: 11px minmax(0, 1fr);
     align-items: center;
     gap: 8px;
     min-height: 24px;

@@ -590,6 +590,8 @@
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-loadouts {
     gap: 8px;
+    /* Match the 8px internal fate-to-stone gap below the 10px card grid gap. */
+    margin-top: -3px;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny {
