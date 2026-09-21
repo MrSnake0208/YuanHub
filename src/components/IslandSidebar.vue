@@ -12,10 +12,10 @@
         <House :size="19" aria-hidden="true" />
         <span>今日一览</span>
       </router-link>
-      <router-link to="/works" :class="{ active: $route.path === '/works' || $route.path.startsWith('/work/') }">
+      <!-- <router-link to="/works" :class="{ active: $route.path === '/works' || $route.path.startsWith('/work/') }">
         <LayoutGrid :size="19" aria-hidden="true" />
         <span>作业</span>
-      </router-link>
+      </router-link> -->
       <router-link
         to="/operator"
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
@@ -109,11 +109,11 @@
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
         ><span class="no">00</span>今日一览</router-link
       >
-      <router-link
+      <!-- <router-link
         to="/works"
         :class="{ active: $route.path === '/works' || $route.path.startsWith('/work/') }"
         ><span class="no">作业</span>作业广场</router-link
-      >
+      > -->
       <router-link
         to="/operator"
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
