@@ -13,6 +13,7 @@ import {
 } from '../src/data/inventory/exchange.js'
 
 const inventoryPage = readFileSync(new URL('../src/pages/inventory/index.vue', import.meta.url), 'utf8')
+const mobileHeader = readFileSync(new URL('../src/components/MobileHeader.vue', import.meta.url), 'utf8')
 
 test('inventory import panel follows the shared archive visibility state', function () {
   assert.match(inventoryPage, /v-if="showArchive && !editingStock && showImport"/)
@@ -20,22 +21,48 @@ test('inventory import panel follows the shared archive visibility state', funct
   assert.match(inventoryPage, /function toggleInventoryImport\(\)[\s\S]*if \(!showArchive\.value \|\| editingStock\.value\)[\s\S]*showImport\.value = false/)
 })
 
-test('库存类型切换复用单一入口，桌面右对齐且手机断点悬浮显示', function () {
+test('库存类型切换复用单一入口，桌面遵循模式到工具动线且手机端顶部 sticky', function () {
   const switchMarkers = inventoryPage.match(/class="type-switch manifest-type-switch"/g) || []
-  const barIndex = inventoryPage.indexOf('class="manifest-bar"')
-  const leftIndex = inventoryPage.indexOf('class="manifest-bar-left"', barIndex)
-  const toolsIndex = inventoryPage.indexOf('class="manifest-item-tools"', leftIndex)
-  const switchIndex = inventoryPage.indexOf('class="type-switch manifest-type-switch"', barIndex)
+  const toolbarIndex = inventoryPage.indexOf('class="manifest-toolbar"')
+  const switchIndex = inventoryPage.indexOf('class="type-switch manifest-type-switch"', toolbarIndex)
+  const barIndex = inventoryPage.indexOf('class="manifest-bar"', switchIndex)
+  const dividerIndex = inventoryPage.indexOf('class="manifest-bar-divider"', switchIndex)
+  const summaryIndex = inventoryPage.indexOf('class="manifest-bar-summary"', dividerIndex)
+  const toolsIndex = inventoryPage.indexOf('class="manifest-item-tools"', summaryIndex)
 
   assert.equal(switchMarkers.length, 1)
-  assert.ok(barIndex >= 0 && leftIndex > barIndex && toolsIndex > leftIndex && switchIndex > toolsIndex)
+  assert.ok(
+    toolbarIndex >= 0 &&
+      switchIndex > toolbarIndex &&
+      barIndex > switchIndex &&
+      dividerIndex > switchIndex &&
+      summaryIndex > dividerIndex &&
+      toolsIndex > summaryIndex
+  )
   assert.match(inventoryPage, /class="type-switch manifest-type-switch"[\s\S]*aria-label="库存类型"[\s\S]*@click="setEntityType\('item'\)"[\s\S]*@click="setEntityType\('agent'\)"/)
   assert.match(inventoryPage, /manifest-type-label-compact"[\s\S]*>道具<[\s\S]*manifest-type-label-compact"[\s\S]*>心纸</)
   assert.match(inventoryPage, /class="manifest-item-tools"[\s\S]*id="manifest-search"[\s\S]*class="mf-filter"/)
-  assert.match(inventoryPage, /@media \(min-width: 1081px\)[\s\S]*\.manifest-bar\s*\{[\s\S]*position:\s*sticky;[\s\S]*display:\s*flex;[\s\S]*flex-wrap:\s*wrap;/)
-  assert.match(inventoryPage, /\.manifest-bar \.manifest-type-switch\s*\{[\s\S]*margin-left:\s*auto;/)
-  assert.match(inventoryPage, /@media \(max-width: 640px\)[\s\S]*\.manifest-type-switch\s*\{[\s\S]*position:\s*fixed;[\s\S]*flex-direction:\s*column;[\s\S]*safe-area-inset-bottom/)
-  assert.match(inventoryPage, /v-if="!editingStock" class="manifest-bar"[\s\S]*class="type-switch manifest-type-switch"/)
+  assert.match(inventoryPage, /@media \(min-width: 1081px\)[\s\S]*\.manifest-toolbar\s*\{[\s\S]*position:\s*sticky;[\s\S]*display:\s*flex;[\s\S]*flex-wrap:\s*wrap;/)
+  assert.match(inventoryPage, /\.manifest-bar-spacer\s*\{[\s\S]*flex:\s*1 1 24px;/)
+  assert.match(inventoryPage, /\.manifest-bar-divider\s*\{[\s\S]*width:\s*1px;[\s\S]*height:\s*30px;/)
+  assert.match(inventoryPage, /@media \(max-width: 640px\)[\s\S]*\.manifest-type-switch\s*\{[\s\S]*position:\s*sticky;[\s\S]*top:\s*var\([\s\S]*--mobile-shell-follow-top,[\s\S]*72px[\s\S]*safe-area-inset-top[\s\S]*\);[\s\S]*bottom:\s*auto;[\s\S]*width:\s*min\(100%, 360px\);/)
+  assert.doesNotMatch(inventoryPage, /page-inventory:has\(\.mobile-shell--hidden\)/)
+  assert.match(inventoryPage, /\.manifest-type-switch > button\s*\{[\s\S]*min-height:\s*44px;/)
+  assert.match(inventoryPage, /\.manifest-type-label-compact\s*\{[\s\S]*display:\s*none;/)
+  assert.match(inventoryPage, /v-if="!editingStock" class="manifest-toolbar"[\s\S]*class="type-switch manifest-type-switch"[\s\S]*class="manifest-bar"/)
+})
+
+test('库存类型切换后台刷新时不让目录因 loading 状态塌陷', function () {
+  assert.match(inventoryPage, /function setEntityType\(t\)[\s\S]*reloadCurrent\(false, true\)/)
+  assert.match(inventoryPage, /async function safeLoad\(fn, quiet, preserveContent\)[\s\S]*if \(!preserveContent\) loading\.value = true;[\s\S]*finally \{[\s\S]*if \(!preserveContent\) loading\.value = false;/)
+  assert.match(inventoryPage, /async function reloadCurrent\(quiet, preserveContent\)[\s\S]*safeLoad\([\s\S]*quiet,\s*preserveContent\s*\)/)
+})
+
+test('手机顶部导航隐藏状态通过 CSS 变量显式驱动库存 sticky 偏移', function () {
+  assert.match(inventoryPage, /top:\s*var\([\s\S]*--mobile-shell-follow-top,[\s\S]*72px[\s\S]*safe-area-inset-top/)
+  assert.doesNotMatch(inventoryPage, /page-inventory:has\(\.mobile-shell--hidden\)/)
+  assert.match(mobileHeader, /--mobile-shell-follow-top/)
+  assert.match(mobileHeader, /hidden\.value[\s\S]*8px[\s\S]*72px/)
 })
 
 function reward(overrides = {}) {

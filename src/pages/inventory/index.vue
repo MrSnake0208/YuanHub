@@ -272,8 +272,34 @@
               </aside>
             </div>
 
-            <div v-if="!editingStock" class="manifest-bar" v-reveal>
-              <div class="manifest-bar-left">
+            <div v-if="!editingStock" class="manifest-toolbar">
+              <div
+                class="type-switch manifest-type-switch"
+                role="group"
+                aria-label="库存类型"
+              >
+                <button
+                  :aria-pressed="entityType === 'item'"
+                  :class="{ on: entityType === 'item' }"
+                  aria-label="切换到背包道具"
+                  @click="setEntityType('item')"
+                >
+                  <span class="manifest-type-label-full">背包道具</span>
+                  <span class="manifest-type-label-compact" aria-hidden="true">道具</span>
+                </button>
+                <button
+                  :aria-pressed="entityType === 'agent'"
+                  :class="{ on: entityType === 'agent' }"
+                  aria-label="切换到密探心纸"
+                  @click="setEntityType('agent')"
+                >
+                  <span class="manifest-type-label-full">密探心纸</span>
+                  <span class="manifest-type-label-compact" aria-hidden="true">心纸</span>
+                </button>
+                <span class="sp"></span>
+              </div>
+              <div class="manifest-bar">
+                <span class="manifest-bar-divider" aria-hidden="true"></span>
                 <div class="manifest-bar-summary">
                   <div class="mf-stats">
                     <div class="mf-stat">
@@ -297,6 +323,7 @@
                     <i :style="{ '--progress': manifestProgressScale }"></i>
                   </div>
                 </div>
+                <span class="manifest-bar-spacer" aria-hidden="true"></span>
                 <div v-if="entityType === 'item'" class="manifest-item-tools">
                   <input
                     id="manifest-search"
@@ -331,35 +358,10 @@
                     </button>
                   </div>
                 </div>
-              </div>
-              <div
-                class="type-switch manifest-type-switch"
-                role="group"
-                aria-label="库存类型"
-              >
-                <button
-                  :aria-pressed="entityType === 'item'"
-                  :class="{ on: entityType === 'item' }"
-                  aria-label="切换到背包道具"
-                  @click="setEntityType('item')"
+                <span v-if="error" class="mf-sync-error" role="status"
+                  >云端库存同步失败：{{ error }}（数量按 0 显示）</span
                 >
-                  <span class="manifest-type-label-full">背包道具</span>
-                  <span class="manifest-type-label-compact" aria-hidden="true">道具</span>
-                </button>
-                <button
-                  :aria-pressed="entityType === 'agent'"
-                  :class="{ on: entityType === 'agent' }"
-                  aria-label="切换到密探心纸"
-                  @click="setEntityType('agent')"
-                >
-                  <span class="manifest-type-label-full">密探心纸</span>
-                  <span class="manifest-type-label-compact" aria-hidden="true">心纸</span>
-                </button>
-                <span class="sp"></span>
               </div>
-              <span v-if="error" class="mf-sync-error" role="status"
-                >云端库存同步失败：{{ error }}（数量按 0 显示）</span
-              >
             </div>
 
             <div
@@ -2044,7 +2046,7 @@ function setEntityType(t) {
   currentEntries.value = [];
   currentFullBaselineAt.value = null;
   error.value = "";
-  reloadCurrent();
+  reloadCurrent(false, true);
   if (t === "agent") {
     loadAgentCatalog();
     loadAgentFavorites();
@@ -3375,25 +3377,25 @@ async function saveStockEdit() {
   }
 }
 
-async function safeLoad(fn, quiet) {
-  loading.value = true;
+async function safeLoad(fn, quiet, preserveContent) {
+  if (!preserveContent) loading.value = true;
   if (!quiet) error.value = "";
   try {
     await fn();
   } catch (err) {
     if (!quiet) error.value = humanErr(err, "加载失败，请稍后重试");
   } finally {
-    loading.value = false;
+    if (!preserveContent) loading.value = false;
   }
 }
 
-async function reloadCurrent(quiet) {
+async function reloadCurrent(quiet, preserveContent) {
   // 未登录时不请求云端库存（避免 401 触发自动跳转登录页），数量保持初始 0
   if (!auth.isLoggedIn) {
     currentEntries.value = [];
     currentFullBaselineAt.value = null;
     error.value = "";
-    loading.value = false;
+    if (!preserveContent) loading.value = false;
     return;
   }
   // 未选择账号时不请求（后端 /current 需要 account_id）
@@ -3401,7 +3403,7 @@ async function reloadCurrent(quiet) {
     currentEntries.value = [];
     currentFullBaselineAt.value = null;
     error.value = "";
-    loading.value = false;
+    if (!preserveContent) loading.value = false;
     return;
   }
   await safeLoad(async function () {
@@ -3428,7 +3430,7 @@ async function reloadCurrent(quiet) {
       .sort(function (a, b) {
         return b.count - a.count;
       });
-  }, quiet);
+  }, quiet, preserveContent);
 }
 
 function scheduleInventoryEventRefresh() {
@@ -4306,7 +4308,7 @@ onBeforeUnmount(function () {
   background: var(--ink);
   color: var(--cream);
 }
-.manifest-bar {
+.manifest-toolbar {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -4317,23 +4319,32 @@ onBeforeUnmount(function () {
   border-radius: 16px;
   padding: 12px 16px;
 }
-.manifest-bar .manifest-type-switch {
+.manifest-toolbar .manifest-type-switch {
   flex: none;
 }
-.manifest-bar-left,
+.manifest-bar {
+  display: contents;
+}
 .manifest-bar-summary,
 .manifest-item-tools {
   display: flex;
   align-items: center;
   gap: 16px;
   min-width: 0;
-}
-.manifest-bar-left {
-  flex: 1 1 auto;
-}
-.manifest-bar-summary,
-.manifest-item-tools {
   flex: none;
+}
+.manifest-bar-summary {
+  flex-wrap: nowrap;
+}
+.manifest-bar-divider {
+  flex: none;
+  width: 1px;
+  height: 30px;
+  background: var(--line);
+}
+.manifest-bar-spacer {
+  flex: 1 1 24px;
+  min-width: 12px;
 }
 .mf-stats {
   display: flex;
@@ -4376,7 +4387,7 @@ onBeforeUnmount(function () {
   transform-origin: left;
   transition: transform 0.45s var(--ease);
 }
-.manifest-bar .sp {
+.manifest-toolbar .sp {
   flex: 1;
 }
 .mf-search {
@@ -7069,7 +7080,7 @@ onBeforeUnmount(function () {
 }
 
 @media (min-width: 1081px) {
-  .manifest-bar {
+  .manifest-toolbar {
     position: sticky;
     top: 84px;
     z-index: 40;
@@ -7080,12 +7091,6 @@ onBeforeUnmount(function () {
     backdrop-filter: blur(12px);
     box-shadow: 0 12px 30px -26px rgba(73, 59, 44, 0.62);
   }
-  .manifest-bar-left {
-    flex-wrap: wrap;
-  }
-  .manifest-bar .manifest-type-switch {
-    margin-left: auto;
-  }
   .manifest-item-tools .mf-search {
     width: clamp(140px, 12vw, 180px);
   }
@@ -7093,7 +7098,7 @@ onBeforeUnmount(function () {
 
 @media (max-width: 640px) {
   .inventory-main > section {
-    padding-bottom: calc(176px + env(safe-area-inset-bottom));
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
   .hero-stats .catalog-date {
     font-size: 19px;
@@ -7187,41 +7192,43 @@ onBeforeUnmount(function () {
     min-height: 44px;
   }
   .manifest-type-switch {
-    position: fixed;
-    right: max(6px, env(safe-area-inset-right));
-    bottom: calc(96px + env(safe-area-inset-bottom));
+    position: sticky;
+    top: var(
+      --mobile-shell-follow-top,
+      calc(72px + env(safe-area-inset-top))
+    );
+    right: auto;
+    bottom: auto;
     left: auto;
-    z-index: 56;
-    width: 54px;
+    z-index: 50;
+    width: min(100%, 360px);
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin: 0;
-    padding: 3px;
+    flex-direction: row;
+    gap: 4px;
+    margin: 12px auto 0;
+    padding: 4px;
     border: 1px solid var(--line);
-    border-radius: 14px 4px 4px 14px;
+    border-radius: 16px;
     background: rgba(255, 253, 246, 0.96);
     backdrop-filter: blur(12px);
-    box-shadow: 0 12px 28px -18px rgba(73, 59, 44, 0.58);
+    box-shadow: 0 10px 24px -18px rgba(73, 59, 44, 0.5);
+    transform: none;
+    transition:
+      top 0.18s cubic-bezier(0.25, 1, 0.5, 1),
+      box-shadow 0.18s cubic-bezier(0.25, 1, 0.5, 1);
   }
   .manifest-type-switch > button {
-    flex: none;
-    width: 100%;
-    min-height: 36px;
-    padding: 6px 4px;
-    border-radius: 10px;
-    font-size: 11px;
+    flex: 1 1 0;
+    width: auto;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 12px;
     line-height: 1.2;
     white-space: nowrap;
   }
   .manifest-type-switch > .sp {
     display: none;
-  }
-  .manifest-type-switch .manifest-type-label-full {
-    display: none;
-  }
-  .manifest-type-switch .manifest-type-label-compact {
-    display: inline;
   }
   .acquired-type-switch {
     display: grid;
@@ -7404,12 +7411,20 @@ onBeforeUnmount(function () {
     flex-direction: column;
     align-items: stretch;
   }
+  .manifest-toolbar {
+    display: contents;
+  }
   .manifest-bar {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
   }
-  .manifest-bar-left,
   .manifest-bar-summary,
   .manifest-item-tools {
     width: 100%;
@@ -7417,7 +7432,11 @@ onBeforeUnmount(function () {
     align-items: stretch;
     gap: 10px;
   }
-  .manifest-bar .sp {
+  .manifest-bar-divider,
+  .manifest-bar-spacer {
+    display: none;
+  }
+  .manifest-toolbar .sp {
     display: none;
   }
   .type-switch {
