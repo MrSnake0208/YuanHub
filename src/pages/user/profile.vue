@@ -88,6 +88,7 @@
             </div>
           </div>
 
+          <BetaNotice />
           <div class="connection-card" v-reveal>
             <div class="card-head">
               <div>
@@ -635,7 +636,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   Check,
   ChevronDown,
@@ -652,6 +653,8 @@ import {
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { auth } from "../../store/auth.js";
+import { beta } from "../../store/beta.js";
+import BetaNotice from "../../components/beta/BetaNotice.vue";
 import { getVisibleAdminToolGroups } from "../../utils/adminTools.js";
 import { createAccount, listAccounts } from "../../api/accounts.js";
 import {
@@ -850,6 +853,11 @@ async function loadTokens() {
 }
 
 async function loadAccounts() {
+  if (!beta.canUseBetaFeatures) {
+    accounts.value = []; accountsLoading.value = false;
+    accountLoadError.value = "云端游戏账号需先取得内测资格；现有连接仍可查看和撤销。";
+    return;
+  }
   accountsLoading.value = true;
   accountLoadError.value = "";
   try {
@@ -865,6 +873,7 @@ async function loadAccounts() {
 }
 
 async function createInlineAccount() {
+  if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   if (creatingAccount.value) return;
   const name = newAccountName.value.trim();
   if (!name) {
@@ -910,6 +919,7 @@ async function loadPermissions() {
 }
 
 function openMaaYuanConnect() {
+  if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   showMaaYuanConnect.value = !showMaaYuanConnect.value;
   if (showMaaYuanConnect.value) applyDefaultAccounts();
 }
@@ -944,6 +954,7 @@ function keepFocusedTokenVisible() {
 }
 
 async function createMaaYuanConnection() {
+  if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   if (creatingMode.value) return;
   if (!maaAccountId.value) {
     toast("请先选择数据要保存到哪个游戏账号", true);
@@ -969,6 +980,7 @@ async function createMaaYuanConnection() {
 }
 
 async function createAdvancedToken() {
+  if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   if (creatingMode.value) return;
   if (!customAccountId.value) {
     toast("请先选择要绑定的游戏账号", true);
@@ -999,6 +1011,7 @@ async function createAdvancedToken() {
 }
 
 async function upgradeForMaaYuan(tokenItem) {
+  if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   const id = tokenItem && tokenItem.token_id;
   if (!id || updatingTokenId.value) return;
   const nextScopes = mergeScopes(tokenItem.scopes, MAAYUAN_REQUIRED_SCOPES);
@@ -1080,9 +1093,14 @@ function finishNewToken() {
   tokenCopied.value = false;
 }
 
+watch(() => beta.canUseBetaFeatures, () => {
+  if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
+  void loadAccounts();
+});
 onMounted(function () {
   window.addEventListener("resize", keepFocusedTokenVisible);
-  Promise.all([loadPermissions(), loadAccounts(), loadTokens()]);
+  Promise.all([loadPermissions(), loadTokens()]);
+  void beta.loadMe().then(loadAccounts);
 });
 onBeforeUnmount(function () {
   window.removeEventListener("resize", keepFocusedTokenVisible);

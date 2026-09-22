@@ -1,8 +1,11 @@
 import { API_BASE } from './request.js'
 import { auth } from '../store/auth.js'
+import { beta } from '../store/beta.js'
+import { isBetaAccessError } from '../utils/betaAccess.js'
 
 // Account SSE client. EventSource cannot send a Bearer header, so use fetch.
 export function openAccountEventStream({ accountId, onEvent, onError, onOpen } = {}) {
+  const ownerUserId = auth.userInfo?.id || ''
   let closed = false
   let controller = new AbortController()
   let retryTimer = null
@@ -19,6 +22,9 @@ export function openAccountEventStream({ accountId, onEvent, onError, onOpen } =
 
   async function connect() {
     if (closed || !accountId || !auth.accessToken) return
+    if (auth.userInfo?.id !== ownerUserId) { close(); return }
+    await beta.loadMe({ force: true })
+    if (closed || !beta.canUseBetaFeatures) { close(); return }
     controller = new AbortController()
     try {
       const response = await fetch(API_BASE + '/v1/accounts/' + encodeURIComponent(accountId) + '/events', {
@@ -42,6 +48,8 @@ export function openAccountEventStream({ accountId, onEvent, onError, onOpen } =
         }
         const error = new Error('账号事件连接失败')
         error.status = response.status
+        try { const payload = await response.json(); error.code = payload?.error?.code; error.message = payload?.error?.message || error.message } catch (_) { /* Not JSON. */ }
+        if (isBetaAccessError(error)) { beta.invalidate(error.status === 503 ? error.message : ''); close() }
         throw error
       }
       retryDelay = 1000

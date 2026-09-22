@@ -14,6 +14,11 @@ export const ADMIN_TOOL_GROUPS = Object.freeze([
 
 const ADMIN_TOOLS = Object.freeze([
   {
+    key: 'beta-manage', to: '/admin/beta', label: '内测管理',
+    description: '查看预留与候补、暂停新增及扩大体验容量', group: 'platform', icon: ShieldCheck,
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.BETA_MANAGE)
+  },
+  {
     key: 'feedback-manage',
     to: '/feedback/manage',
     label: '待处理反馈',

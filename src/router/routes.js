@@ -11,6 +11,16 @@
 
 export const routes = [
     {
+        path: '/beta', name: 'beta', text: '参与内测', display: false, module: 'user', icon: 'ticket',
+        component: () => import('/src/pages/beta/index.vue'),
+        meta: { title: '参与内测 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
+        path: '/admin/beta', name: 'beta-admin', text: '内测管理', display: false, module: 'admin', icon: 'shield',
+        component: () => import('/src/pages/admin/beta.vue'),
+        meta: { title: '内测管理 — YuanHub', requiresAuth: true, requiredPermission: 'beta:manage' }
+    },
+    {
         path: '/',
         alias: '/today',
         text: '今日一览',
@@ -20,6 +30,8 @@ export const routes = [
         icon: 'house',
         component: () => import('/src/pages/today/index.vue'),
         meta: {
+            requiresBeta: true,
+            requiresAuth: true,
             title: '今日一览 — 鸢鸢相抱 · YuanHub'
         }
     },
@@ -96,6 +108,8 @@ export const routes = [
         icon: 'package-open',
         component: () => import('/src/pages/inventory/index.vue'),
         meta: {
+            requiresBeta: true,
+            requiresAuth: true,
             title: '库存 — 鸢鸢相抱 · YuanHub'
         }
     },
@@ -108,6 +122,8 @@ export const routes = [
         icon: 'users',
         component: () => import('/src/pages/operator/index.vue'),
         meta: {
+            requiresBeta: true,
+            requiresAuth: true,
             title: '密探名册 — 鸢鸢相抱 · YuanHub'
         }
     },
@@ -132,6 +148,8 @@ export const routes = [
         icon: 'gem',
         component: () => import('/src/pages/star/index.vue'),
         meta: {
+            requiresBeta: true,
+            requiresAuth: true,
             title: '星石 — 鸢鸢相抱 · YuanHub'
         }
     },
@@ -144,6 +162,8 @@ export const routes = [
         icon: 'zap',
         component: () => import('/src/pages/operator/quick.vue'),
         meta: {
+            requiresBeta: true,
+            requiresAuth: true,
             title: '快捷录入 — 鸢鸢相抱 · YuanHub'
         }
     },

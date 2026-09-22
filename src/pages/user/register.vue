@@ -1,6 +1,6 @@
 <template>
-  <AuthLayout title="创建账号" sub="注册后即可发布与收藏作业">
-    <p class="back"><router-link to="/login">← 返回登录</router-link></p>
+  <AuthLayout title="创建账号" sub="创建统一账号 · 注册不占用内测名额">
+    <p class="back"><router-link :to="authDestination('/login')">← 返回登录</router-link></p>
 
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
@@ -60,18 +60,23 @@
           </button>
         </form>
 
-    <p class="auth-switch">已有账号？<router-link to="/login"><b>直接登录</b></router-link></p>
+    <p class="auth-switch">已有账号？<router-link :to="authDestination('/login')"><b>直接登录</b></router-link></p>
+  <BetaNotice />
   </AuthLayout>
 </template>
 
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'
+import BetaNotice from '../../components/beta/BetaNotice.vue'
+import { safeBetaRedirect } from '../../utils/betaAccess.js'
 // api/user.js 由 eng-api 按契约提供：sendRegistrationToken({email}) { register({email,userName,password,registrationToken}) }
 import { sendRegistrationToken, register } from '@/api/user.js'
 
 const router = useRouter()
+const route = useRoute()
+function authDestination(path) { return { path, query: { redirect: safeBetaRedirect(route.query.redirect, '/beta') } } }
 const loading = ref(false)
 const sending = ref(false)
 const serverMsg = ref('')
@@ -140,7 +145,7 @@ async function onSubmit() {
       registrationToken: form.registrationToken
     })
     clearTimer()
-    router.push('/login')
+    router.push(authDestination('/login'))
   } catch (e) {
     serverMsg.value = (e && e.message) || '注册失败，请稍后再试'
   } finally {

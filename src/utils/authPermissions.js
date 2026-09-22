@@ -1,4 +1,5 @@
 export const ADMIN_PERMISSIONS = Object.freeze({
+  BETA_MANAGE: 'beta:manage',
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
   LEVEL_CATALOG_WRITE: 'level_catalog:write',
   CHANGELOG_WRITE: 'changelog:write',
