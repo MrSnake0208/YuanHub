@@ -3,7 +3,7 @@
     :title="step === 1 ? '找回密码' : '设置新密码'"
     :sub="step === 1 ? '通过邮箱验证码重置密码' : '验证成功 · 请设置新密码'"
   >
-    <p class="back"><router-link to="/login">← 返回登录</router-link></p>
+    <p class="back"><router-link :to="authDestination('/login')">← 返回登录</router-link></p>
 
     <!-- 步骤一：发送验证码 -->
         <form v-if="step === 1" class="auth-form" @submit.prevent="onSend" novalidate>
@@ -56,23 +56,28 @@
         </form>
 
     <div class="auth-switch" v-if="step === 2">
-      <router-link to="/login">返回登录</router-link>
-      <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
+      <router-link :to="authDestination('/login')">返回登录</router-link>
+      <router-link :to="authDestination('/register')">还没有账号？<b>立即注册</b></router-link>
     </div>
     <div class="auth-switch" v-else>
-      <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
+      <router-link :to="authDestination('/register')">还没有账号？<b>立即注册</b></router-link>
     </div>
+  <BetaNotice />
   </AuthLayout>
 </template>
 
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'
+import BetaNotice from '../../components/beta/BetaNotice.vue'
+import { safeBetaRedirect } from '../../utils/betaAccess.js'
 // api/user.js 由 eng-api 按契约提供：sendResetVCode({email}) { resetPassword({email,activeCode,password}) }
 import { sendResetVCode, resetPassword } from '@/api/user.js'
 
 const router = useRouter()
+const route = useRoute()
+function authDestination(path) { return { path, query: { redirect: safeBetaRedirect(route.query.redirect, '/beta') } } }
 const step = ref(1)
 const loading = ref(false)
 const sending = ref(false)
@@ -138,7 +143,7 @@ async function onSubmit() {
       password: form.password
     })
     clearTimer()
-    router.push('/login')
+    router.push(authDestination('/login'))
   } catch (e) {
     serverMsg.value = (e && e.message) || '重置失败，请稍后再试'
   } finally {

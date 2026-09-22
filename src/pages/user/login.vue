@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout title="欢迎回来" sub="登录后即可保存作业 · 同步进度">
+  <AuthLayout title="欢迎回来" sub="登录统一账号 · 内测资格单独领取">
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
             <label for="login-email">邮箱 <em>*</em></label>
@@ -44,9 +44,10 @@
         </form>
 
     <div class="auth-switch">
-      <router-link to="/register">还没有账号？<b>立即注册</b></router-link>
-      <router-link to="/forgot">忘记密码？</router-link>
+      <router-link :to="authDestination('/register')">还没有账号？<b>立即注册</b></router-link>
+      <router-link :to="authDestination('/forgot')">忘记密码？</router-link>
     </div>
+  <BetaNotice />
   </AuthLayout>
 </template>
 
@@ -54,11 +55,14 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'
+import BetaNotice from '../../components/beta/BetaNotice.vue'
+import { safeBetaRedirect } from '../../utils/betaAccess.js'
 // store/auth.js 由 eng-api 按契约提供：{ login(email, password) } 返回 Promise
 import { auth } from '@/store/auth.js'
 
 const router = useRouter()
 const route = useRoute()
+function authDestination(path) { return { path, query: { redirect: safeBetaRedirect(route.query.redirect, '/beta') } } }
 const loading = ref(false)
 const serverMsg = ref('')
 const focusField = ref('')
@@ -85,7 +89,7 @@ async function onSubmit() {
   try {
     await auth.login(form.email, form.password)
     // 支持守卫重定向回跳（?redirect=...），默认回首页
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    const redirect = safeBetaRedirect(route.query.redirect, '/beta')
     router.push(redirect)
   } catch (e) {
     serverMsg.value = (e && e.message) || '登录失败，请稍后再试'

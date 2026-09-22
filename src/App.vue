@@ -28,6 +28,8 @@ import AppDialog from '@/components/AppDialog.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
 import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
 import { auth } from '@/store/auth.js'
+import { beta } from '@/store/beta.js'
+import { betaLandingFor } from '@/utils/betaAccess.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
 import { stopAccountEventStream, subscribeAccountEvents, syncAccountEventStream } from '@/store/accountEvents.js'
@@ -41,6 +43,9 @@ let stopWatch = null
 let stopEventPrompt = null
 let stopStarCaptureRoute = null
 let stopOnboarding = null
+let stopBetaSubscription = null
+let stopIdentityWatch = null
+let stopAccessWatch = null
 let monitorPromptPending = false
 const MONITOR_DISMISSED_KEY = 'yuanhub:operator-monitor-prompt-dismissed:v1'
 const router = useRouter()
@@ -72,6 +77,7 @@ function isOperatorWorkspaceTab() {
 }
 
 async function promptOperatorMonitor(message) {
+  if (!beta.canUseBetaFeatures) return
   const update = operatorUpdateFromEvent(message)
   if (!update || update.preview || isOperatorWorkspaceTab() || monitorPromptPending || monitorPromptDismissed() || dialog._state.visible) return
   monitorPromptPending = true
@@ -103,6 +109,7 @@ async function promptOperatorMonitor(message) {
 }
 
 function routeStarCapture(message) {
+  if (!beta.canUseBetaFeatures) return
   const target = starCaptureRouteForEvent(message, activeAccount.id)
   if (!target) return
   if (route.path === '/star') {
@@ -114,9 +121,23 @@ function routeStarCapture(message) {
 
 onMounted(function () {
   resetMonitorPromptForFreshNavigation()
-  stopOnboarding = initializeOnboardingTour(router)
+  stopIdentityWatch = watch(() => auth.userInfo?.id || '', userId => {
+    beta.setIdentity(userId)
+    if (stopBetaSubscription) stopBetaSubscription()
+    stopBetaSubscription = userId ? beta.subscribe() : null
+  }, { immediate: true })
+  stopAccessWatch = watch(() => [beta.canUseBetaFeatures, route.fullPath, beta.personalLoaded, beta.personalLoading], () => {
+    const workspace = route.meta?.requiresBeta === true
+    if (beta.canUseBetaFeatures && workspace) {
+      if (!stopOnboarding) stopOnboarding = initializeOnboardingTour(router)
+    } else {
+      if (stopOnboarding) stopOnboarding()
+      stopOnboarding = null
+      if (workspace && beta.personalLoaded && !beta.personalLoading) void router.replace(betaLandingFor(route.fullPath))
+    }
+  }, { immediate: true })
   stopWatch = watch(
-    function () { return [auth.accessToken, activeAccount.id] },
+    function () { return [auth.accessToken, activeAccount.id, beta.canUseBetaFeatures] },
     syncAccountEventStream,
     { immediate: true }
   )
@@ -129,6 +150,9 @@ onBeforeUnmount(function () {
   if (stopEventPrompt) stopEventPrompt()
   if (stopStarCaptureRoute) stopStarCaptureRoute()
   if (stopOnboarding) stopOnboarding()
+  if (stopIdentityWatch) stopIdentityWatch()
+  if (stopAccessWatch) stopAccessWatch()
+  if (stopBetaSubscription) stopBetaSubscription()
   stopAccountEventStream()
 })
 </script>

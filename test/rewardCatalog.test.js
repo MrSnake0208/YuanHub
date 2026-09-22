@@ -1,3 +1,5 @@
+import { installBetaAccessFixture } from '../test-support/betaContractFixture.js'
+installBetaAccessFixture()
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { getRewardCatalog } from '../src/api/rewardCatalog.js'

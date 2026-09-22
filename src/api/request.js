@@ -1,3 +1,5 @@
+import { isBetaAccessError, requiresBetaApi } from '../utils/betaAccess.js'
+
 // 统一的 fetch 请求封装
 // - 统一 baseURL（VITE_API_BASE，未配置时使用当前站点）
 // - 自动 JSON 序列化 / 反序列化
@@ -64,6 +66,13 @@ export async function request(
       }
     }
 
+    // Covers cloud calls from profile, local calculator and iframe bridges, not just route navigation.
+    if (requiresBetaApi(method, path)) {
+      const { beta } = await import('../store/beta.js')
+      const { auth: currentAuth } = await import('../store/auth.js')
+      beta.setIdentity(currentAuth.userInfo?.id || '')
+      await beta.requireAccess()
+    }
     const opts = { method, headers };
     if (multipart) {
       // body 是调用方构造的 FormData，原样透传
@@ -72,6 +81,7 @@ export async function request(
       opts.body = JSON.stringify(body);
     }
 
+    if (path.startsWith('/v1/beta') || path.startsWith('/v1/admin/beta')) opts.cache = 'no-store'
     const res = await fetch(API_BASE + path, opts);
 
     const disposition = res.headers && typeof res.headers.get === 'function'
@@ -106,6 +116,13 @@ export async function request(
         : payload && payload.message != null
           ? payload.message
           : res.statusText || "请求失败";
+
+    const betaFailure = requestError(message, statusCode, payload)
+    if (isBetaAccessError(betaFailure) && !path.startsWith('/v1/beta/')) {
+      const { beta } = await import('../store/beta.js')
+      beta.invalidate(betaFailure.status === 503 ? betaFailure.message : '')
+      throw betaFailure
+    }
 
     async function refreshAccessAfterForbidden() {
       if (!auth || path === '/v1/admin/access/me') return

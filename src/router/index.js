@@ -1,4 +1,6 @@
 import { reactive } from 'vue'
+import { beta } from '../store/beta.js'
+import { betaLandingFor, safeBetaRedirect } from '../utils/betaAccess.js'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
 import { isFeatureEnabled } from '@/config/features.js'
@@ -72,17 +74,41 @@ router.beforeEach(async (to, from, next) => {
     return next(to.meta.featureFallback || '/cart')
   }
 
+  beta.setIdentity(authed ? auth.userInfo.id : '')
+  if (to.meta?.requiresBeta) {
+    if (authed) {
+      await beta.loadMe({ force: true })
+      if (!beta.canUseBetaFeatures) return next(betaLandingFor(to.fullPath))
+    } else {
+      await beta.loadPublic()
+      if (beta.campaign?.accessMode !== 'OPEN' || beta.publicError) return next(betaLandingFor(to.fullPath))
+    }
+  }
   if (requiresAuth && !authed) {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
-  if (requiredPermission && !hasPermission(auth.adminAccess, requiredPermission)) {
+  async function refreshAdminAccessOnce(check) {
+    if (check()) return true
+    await auth.refreshAdminAccess({ suppressErrors: true })
+    return check()
+  }
+
+  if (requiredPermission && !await refreshAdminAccessOnce(function () {
+    return hasPermission(auth.adminAccess, requiredPermission)
+  })) {
     return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
-  if (Array.isArray(requiredAnyPermission) && !requiredAnyPermission.some(function (permission) { return hasPermission(auth.adminAccess, permission) })) {
+  if (Array.isArray(requiredAnyPermission) && !await refreshAdminAccessOnce(function () {
+    return requiredAnyPermission.some(function (permission) {
+      return hasPermission(auth.adminAccess, permission)
+    })
+  })) {
     return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
-  if (requiresFeedbackManage && !canManageAnyFeedback(auth.adminAccess)) {
+  if (requiresFeedbackManage && !await refreshAdminAccessOnce(function () {
+    return canManageAnyFeedback(auth.adminAccess)
+  })) {
     return next({ path: '/forbidden', query: { from: to.fullPath } })
   }
   // Keep authenticated users on the workbench when access lookup fails so the
@@ -93,7 +119,7 @@ router.beforeEach(async (to, from, next) => {
   const authPages = ['/login', '/register', '/forgot']
   if (authed && authPages.includes(to.path)) {
     // 已登录访问登录/注册/找回 → 回首页
-    return next('/')
+    return next(safeBetaRedirect(to.query.redirect, '/beta'))
   }
   next()
 })

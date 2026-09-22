@@ -5,6 +5,7 @@
       <span>YuanHub</span>
     </router-link>
     <nav class="mobile-nav" aria-label="主要导航">
+      <router-link to="/beta" :class="{ active: $route.path === '/beta' }"><span>内测</span></router-link>
       <router-link
         to="/"
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
@@ -94,6 +95,7 @@
   </MobileHeader>
 
   <aside class="island" aria-label="主要导航">
+    <router-link class="beta-entry" to="/beta">参与内测 / 查看资格 →</router-link>
     <router-link class="brand" to="/" aria-label="返回首页">
       <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
       <div class="brand-txt">
@@ -293,6 +295,7 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.beta-entry { display: block; margin: 4px 10px 12px; font-size: 12px; color: var(--tea); text-underline-offset: 4px; }
 .foot-user {
   color: var(--ink);
   font-weight: 800;

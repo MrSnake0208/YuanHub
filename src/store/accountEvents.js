@@ -4,6 +4,7 @@ import { listRecords } from '../api/inventory.js'
 import { AGENT_CATALOG, ITEM_CATALOG } from '../data/inventory/catalog.js'
 import { activeAccount } from './activeAccount.js'
 import { auth } from './auth.js'
+import { beta } from './beta.js'
 import { operatorUpdateFromEvent } from '../utils/operatorEvents.js'
 
 const listeners = new Set()
@@ -13,6 +14,7 @@ const entityNames = new Map(ITEM_CATALOG.concat(AGENT_CATALOG).map(function (ent
 let inventoryToastFavoriteAgentIds = new Set()
 let stream = null
 let streamAccountId = ''
+let streamUserId = ''
 
 export const accountEvents = reactive({
   toasts: []
@@ -189,11 +191,13 @@ export function subscribeAccountEvents(listener) {
 }
 
 export function syncAccountEventStream() {
-  const accountId = auth.isLoggedIn ? activeAccount.id : ''
-  if (stream && streamAccountId === accountId) return
+  const accountId = auth.isLoggedIn && beta.canUseBetaFeatures ? activeAccount.id : ''
+  const userId = auth.userInfo?.id || ''
+  if (stream && streamAccountId === accountId && streamUserId === userId) return
   stopAccountEventStream()
   if (!accountId) return
   streamAccountId = accountId
+  streamUserId = userId
   seenEventIds.clear()
   let openCount = 0
   stream = openAccountEventStream({
@@ -205,7 +209,7 @@ export function syncAccountEventStream() {
         listener({ event: 'account_stream_open', data: { account_id: accountId, reconnected } })
       })
     },
-    onEvent: publish,
+    onEvent: message => { if (beta.canUseBetaFeatures && auth.userInfo?.id === userId) publish(message) },
     onError: function () { /* Reconnect is handled by the stream client. */ }
   })
 }
@@ -214,6 +218,7 @@ export function stopAccountEventStream() {
   if (stream) stream.close()
   stream = null
   streamAccountId = ''
+  streamUserId = ''
 }
 
 export function dismissAccountEventToast(id) {

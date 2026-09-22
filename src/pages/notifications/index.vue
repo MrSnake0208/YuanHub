@@ -279,6 +279,7 @@ function openNotification(item) {
   // 标记已读
   if (!item.readAt) markRead(item)
   // 分配和用户追加通知来自管理队列，回复和状态通知仍属于个人工单。
+  if (item.refType === 'BETA') { router.push('/beta'); return }
   if (item.refType === 'FEEDBACK' && item.refId) {
     const target = isManagementNotification(item.kind) ? '/feedback/manage' : '/feedback'
     if (target === '/feedback/manage' && !canManageFeedback.value) return

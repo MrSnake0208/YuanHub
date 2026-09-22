@@ -7,6 +7,7 @@
 // 依赖关系：store/auth.js 依赖 api/user.js（接口），api/user.js 依赖 api/request.js，
 // request.js 仅在运行时通过「动态 import」读取本模块，故无模块初始化循环。
 import { reactive } from 'vue'
+import { beta } from './beta.js'
 import * as userApi from '../api/user.js'
 import { getCurrentAdminAccess } from '../api/admin.js'
 import { hasAnyAdminCapability } from '../utils/authPermissions.js'
@@ -113,6 +114,7 @@ export const auth = reactive({
     auth.accessToken = ''
     auth.refreshToken = ''
     auth.userInfo = null
+    beta.setIdentity('')
     clearAdminAccess()
     localStorage.removeItem(STORAGE_KEY)
     if (typeof location !== 'undefined') {
@@ -138,6 +140,7 @@ export function setTokens(payload) {
   auth.accessToken = token || ''
   auth.refreshToken = refresh_token || ''
   auth.userInfo = user_info || auth.userInfo || null
+  beta.setIdentity(auth.userInfo?.id || '')
   persist()
   return auth
 }
