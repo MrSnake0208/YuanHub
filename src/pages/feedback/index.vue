@@ -9,7 +9,7 @@
           <div class="feedback-hero-layout">
             <div>
               <h1>反馈中心</h1>
-              <p class="hero-sub">提交并跟进你的反馈。管理员回复后会收到站内通知，工单处理期间可随时补充说明与附件。</p>
+              <p class="hero-sub">提交并跟进你的反馈。管理员回复后会收到站内通知，工单处理期间可补充说明与附件。</p>
             </div>
             <button class="feedback-primary-action feedback-hero-action" type="button" @click="showNewForm = true">
               <Plus :size="18" aria-hidden="true" />
@@ -68,6 +68,7 @@
           <FeedbackTicketWorkspace
             :items="feedbacks"
             :selected-id="selectedId"
+            :selected-item="selectedDetail"
             :loading="loading"
             :error="error"
             :total="totalCount"
@@ -92,6 +93,9 @@
                 :format-date="formatDate"
               >
                 <template #actions>
+                  <p v-if="item.status === 'OPEN' && item.viewerIsReporter && item.quota?.canAppend === false" class="feedback-result-meta" role="status">
+                    连续补充已达 {{ item.quota.pendingLimit }} 条，请等待管理员回复后继续补充。
+                  </p>
                   <div class="feedback-detail-actions">
                     <button
                       v-if="item.status === 'OPEN' && item.quota?.canAppend"
@@ -105,6 +109,7 @@
                       v-if="item.status === 'OPEN' && item.viewerIsReporter"
                       class="feedback-button"
                       type="button"
+                      :disabled="updatingStatus || replying || detailLoading"
                       @click="closeFeedback(item.id)"
                     >
                       <CheckCircle2 :size="16" />标记完成
@@ -113,7 +118,7 @@
                 </template>
                 <template #composer>
                   <div v-if="replyTarget === item.id" class="feedback-reply-form">
-                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="补充问题细节或回复内容" @paste="handleReplyMediaPaste"></textarea>
+                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" maxlength="1000" placeholder="补充问题细节或回复内容" @paste="handleReplyMediaPaste"></textarea>
                       <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
                         <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
@@ -163,7 +168,7 @@
               <FeedbackAttachmentPicker class="full" :media="newMedia" :busy="submitting" />
               <label class="feedback-consent full">
                 <input v-model="newFeedback.clientInfoConsent" type="checkbox" />
-                <span>允许附加浏览器和操作系统信息，帮助定位问题</span>
+                <span>允许附加浏览器、操作系统和 IP 地址信息，帮助定位问题</span>
               </label>
             </div>
             <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
@@ -181,7 +186,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -240,6 +245,7 @@ const filterStatus = ref('全部')
 const filterType = ref('')
 const filterCategory = ref('')
 const selectedId = ref('')
+const selectedDetail = ref(null)
 const detailLoading = ref(false)
 const detailError = ref('')
 const showNewForm = ref(false)
@@ -247,12 +253,15 @@ const submitting = ref(false)
 const formError = ref('')
 const replyTarget = ref('')
 const replying = ref(false)
+const updatingStatus = ref(false)
 const replyContent = ref('')
 const newFeedback = ref({ type: 'BUG', category: '', content: '', clientInfoConsent: false })
 const newMedia = useFeedbackMedia()
 const replyMedia = useFeedbackMedia()
 const unreadFeedbackIds = ref([])
 let loadRequestId = 0
+let detailRequestId = 0
+let ready = false
 let unreadFeedbackRequestId = 0
 let unreadFeedbackPollTimer = null
 let stopFeedbackUnread = null
@@ -311,7 +320,6 @@ async function loadFeedback() {
     if (requestId !== loadRequestId) return
     feedbacks.value = data.items || []
     totalCount.value = Number(data.total ?? feedbacks.value.length)
-    if (!feedbacks.value.some(item => item.id === selectedId.value)) closeDetail()
   } catch (e) {
     if (requestId === loadRequestId) error.value = e.message || '反馈加载失败'
   } finally {
@@ -368,15 +376,10 @@ async function changePage(nextPage) {
 }
 
 async function selectTicket(id) {
-  selectedId.value = id
+  selectedId.value = String(id)
+  selectedDetail.value = { id: String(id) }
   cancelReply()
-  const item = feedbacks.value.find(ticket => ticket.id === id)
-  if (!item) return
-  if (item.messages && item.messages.length) {
-    await clearFeedbackNotifications(item.id)
-    return
-  }
-  await loadFeedbackDetail(id)
+  await loadFeedbackDetail(String(id))
 }
 
 function handleNewMediaPaste(event) {
@@ -389,29 +392,45 @@ function handleReplyMediaPaste(event) {
   replyMedia.handlePaste(event)
 }
 
+function currentUserId() {
+  const user = auth.userInfo || {}
+  return String(user.id || user.userId || user.user_id || '')
+}
+
+function isCurrentDetail(requestId, id, userId) {
+  return isMounted && requestId === detailRequestId && selectedId.value === id && currentUserId() === userId
+}
+
 async function loadFeedbackDetail(id) {
+  const requestId = ++detailRequestId
+  const userId = currentUserId()
   detailLoading.value = true
   detailError.value = ''
   try {
     const detail = await getFeedback(id)
+    if (!isCurrentDetail(requestId, id, userId)) return
     if (!detail.viewerIsReporter) throw new Error('该工单不属于我的反馈')
     replaceTicket(detail)
-    selectedId.value = id
+    await nextTick()
+    if (!isCurrentDetail(requestId, id, userId)) return
     await clearFeedbackNotifications(detail.id || id)
   } catch (e) {
-    detailError.value = e.message || '详情加载失败'
+    if (isCurrentDetail(requestId, id, userId)) detailError.value = e.message || '详情加载失败'
   } finally {
-    detailLoading.value = false
+    if (isCurrentDetail(requestId, id, userId)) detailLoading.value = false
   }
 }
 
 function replaceTicket(detail) {
+  selectedDetail.value = detail
   const index = feedbacks.value.findIndex(item => item.id === detail.id)
   if (index >= 0) feedbacks.value.splice(index, 1, detail)
-  else feedbacks.value.unshift(detail)
 }
 
 function closeDetail() {
+  detailRequestId += 1
+  detailLoading.value = false
+  selectedDetail.value = null
   selectedId.value = ''
   detailError.value = ''
   cancelReply()
@@ -431,25 +450,42 @@ function cancelReply() {
 
 async function submitReply(id) {
   const content = replyContent.value.trim()
-  if (!content) return
+  if (!content || replying.value || updatingStatus.value || detailLoading.value) return
+  if (content.length > 1000) {
+    detailError.value = '消息长度不能超过 1000 字符'
+    return
+  }
+  const requestId = detailRequestId
+  const userId = currentUserId()
   replying.value = true
+  detailError.value = ''
   try {
     const mediaIds = await replyMedia.uploadAll()
-    replaceTicket(await appendMyFeedbackMessage(id, { content, mediaIds }))
+    if (!isCurrentDetail(requestId, id, userId)) return
+    const detail = await appendMyFeedbackMessage(id, { content, mediaIds })
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
     cancelReply()
   } catch (e) {
-    detailError.value = e.message || '发送失败'
+    if (isCurrentDetail(requestId, id, userId)) detailError.value = e.message || '发送失败'
   } finally {
     replying.value = false
   }
 }
 
 async function closeFeedback(id) {
+  if (updatingStatus.value || replying.value || detailLoading.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  updatingStatus.value = true
+  detailError.value = ''
   try {
     await updateMyFeedbackStatus(id, 'RESOLVED')
-    await reloadFromFirstPage()
+    if (isCurrentDetail(requestId, id, userId)) await reloadFromFirstPage()
   } catch (e) {
-    detailError.value = e.message || '操作失败'
+    if (isCurrentDetail(requestId, id, userId)) detailError.value = e.message || '操作失败'
+  } finally {
+    updatingStatus.value = false
   }
 }
 
@@ -462,21 +498,28 @@ function closeNewFeedback() {
 
 async function submitFeedback() {
   const content = newFeedback.value.content.trim()
-  if (!content || !newFeedback.value.category) return
+  if (!content || !newFeedback.value.category || submitting.value) return
+  const payload = { ...newFeedback.value, content }
+  const userId = currentUserId()
   submitting.value = true
   formError.value = ''
   try {
     const mediaIds = await newMedia.uploadAll()
-    const created = await createFeedback({ ...newFeedback.value, content, mediaIds })
+    if (!isMounted || currentUserId() !== userId) return
+    const created = await createFeedback({ ...payload, mediaIds })
+    if (!isMounted || currentUserId() !== userId) return
     newMedia.clear()
     newFeedback.value = { type: 'BUG', category: '', content: '', clientInfoConsent: false }
     showNewForm.value = false
     filterStatus.value = '全部'
+    filterType.value = ''
+    filterCategory.value = ''
+    q.value = ''
     page.value = 1
     await loadFeedback()
-    if (feedbacks.value.some(item => item.id === created.id)) await selectTicket(created.id)
+    if (isMounted && currentUserId() === userId) await selectTicket(created.id)
   } catch (e) {
-    formError.value = e.message || '提交失败'
+    if (isMounted && currentUserId() === userId) formError.value = e.message || '提交失败'
   } finally {
     submitting.value = false
   }
@@ -492,13 +535,22 @@ onMounted(async () => {
   window.addEventListener('keydown', handleWindowKeydown)
   await Promise.all([loadAccess(), loadFeedback(), loadUnreadFeedbackNotifications()])
   if (!isMounted) return
+  ready = true
   unreadFeedbackPollTimer = setInterval(loadUnreadFeedbackNotifications, 30000)
   const reportId = route.query.id ? String(route.query.id) : ''
   if (reportId) await selectTicket(reportId)
 })
 
+watch(() => route.query.id, id => {
+  if (!isMounted || !ready) return
+  if (id) selectTicket(String(id))
+  else closeDetail()
+})
+
 onBeforeUnmount(() => {
   isMounted = false
+  ready = false
+  detailRequestId += 1
   loadRequestId += 1
   unreadFeedbackRequestId += 1
   if (unreadFeedbackPollTimer) clearInterval(unreadFeedbackPollTimer)

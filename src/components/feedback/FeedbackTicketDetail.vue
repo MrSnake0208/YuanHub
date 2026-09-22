@@ -51,7 +51,7 @@
       </article>
     </section>
 
-    <div class="detail-action-area">
+    <div v-if="!loading" class="detail-action-area">
       <slot name="actions" :item="item" />
       <slot name="composer" :item="item" />
     </div>

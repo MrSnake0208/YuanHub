@@ -20,6 +20,24 @@ test('inventory import panel follows the shared archive visibility state', funct
   assert.match(inventoryPage, /function toggleInventoryImport\(\)[\s\S]*if \(!showArchive\.value \|\| editingStock\.value\)[\s\S]*showImport\.value = false/)
 })
 
+test('库存类型切换复用单一入口，桌面右对齐且手机断点悬浮显示', function () {
+  const switchMarkers = inventoryPage.match(/class="type-switch manifest-type-switch"/g) || []
+  const barIndex = inventoryPage.indexOf('class="manifest-bar"')
+  const leftIndex = inventoryPage.indexOf('class="manifest-bar-left"', barIndex)
+  const toolsIndex = inventoryPage.indexOf('class="manifest-item-tools"', leftIndex)
+  const switchIndex = inventoryPage.indexOf('class="type-switch manifest-type-switch"', barIndex)
+
+  assert.equal(switchMarkers.length, 1)
+  assert.ok(barIndex >= 0 && leftIndex > barIndex && toolsIndex > leftIndex && switchIndex > toolsIndex)
+  assert.match(inventoryPage, /class="type-switch manifest-type-switch"[\s\S]*aria-label="库存类型"[\s\S]*@click="setEntityType\('item'\)"[\s\S]*@click="setEntityType\('agent'\)"/)
+  assert.match(inventoryPage, /manifest-type-label-compact"[\s\S]*>道具<[\s\S]*manifest-type-label-compact"[\s\S]*>心纸</)
+  assert.match(inventoryPage, /class="manifest-item-tools"[\s\S]*id="manifest-search"[\s\S]*class="mf-filter"/)
+  assert.match(inventoryPage, /@media \(min-width: 1081px\)[\s\S]*\.manifest-bar\s*\{[\s\S]*position:\s*sticky;[\s\S]*display:\s*flex;[\s\S]*flex-wrap:\s*wrap;/)
+  assert.match(inventoryPage, /\.manifest-bar \.manifest-type-switch\s*\{[\s\S]*margin-left:\s*auto;/)
+  assert.match(inventoryPage, /@media \(max-width: 640px\)[\s\S]*\.manifest-type-switch\s*\{[\s\S]*position:\s*fixed;[\s\S]*flex-direction:\s*column;[\s\S]*safe-area-inset-bottom/)
+  assert.match(inventoryPage, /v-if="!editingStock" class="manifest-bar"[\s\S]*class="type-switch manifest-type-switch"/)
+})
+
 function reward(overrides = {}) {
   return Object.assign({
     record_id: 'dispatch:1',

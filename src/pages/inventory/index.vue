@@ -210,26 +210,6 @@
               :class="{ 'is-editing': editingStock }"
               v-reveal
             >
-              <div class="type-switch">
-                <button
-                  :disabled="editingStock"
-                  :aria-pressed="entityType === 'item'"
-                  :class="{ on: entityType === 'item' }"
-                  @click="setEntityType('item')"
-                >
-                  背包道具
-                </button>
-                <button
-                  :disabled="editingStock"
-                  :aria-pressed="entityType === 'agent'"
-                  :class="{ on: entityType === 'agent' }"
-                  @click="setEntityType('agent')"
-                >
-                  密探心纸
-                </button>
-                <span class="sp"></span>
-              </div>
-
               <aside
                 class="manifest-scope"
                 :class="{ 'is-editing': editingStock }"
@@ -293,60 +273,89 @@
             </div>
 
             <div v-if="!editingStock" class="manifest-bar" v-reveal>
-              <div class="mf-stats">
-                <div class="mf-stat">
-                  <b class="mf-num">{{ manifestTotal }}</b
-                  ><span class="mf-k">可追踪</span>
+              <div class="manifest-bar-left">
+                <div class="manifest-bar-summary">
+                  <div class="mf-stats">
+                    <div class="mf-stat">
+                      <b class="mf-num">{{ manifestTotal }}</b
+                      ><span class="mf-k">可追踪</span>
+                    </div>
+                    <div class="mf-stat">
+                      <b class="mf-num">{{ manifestOwned }}</b
+                      ><span class="mf-k">已持有</span>
+                    </div>
+                    <div v-if="entityType === 'agent'" class="mf-stat">
+                      <b class="mf-num">{{ agentVersionFavoriteCount }}</b
+                      ><span class="mf-k">特别关注</span>
+                    </div>
+                    <div class="mf-stat">
+                      <b class="mf-num">{{ manifestPercent }}</b
+                      ><span class="mf-k">持有率</span>
+                    </div>
+                  </div>
+                  <div class="mf-progress" title="当前追踪目录持有率">
+                    <i :style="{ '--progress': manifestProgressScale }"></i>
+                  </div>
                 </div>
-                <div class="mf-stat">
-                  <b class="mf-num">{{ manifestOwned }}</b
-                  ><span class="mf-k">已持有</span>
-                </div>
-                <div v-if="entityType === 'agent'" class="mf-stat">
-                  <b class="mf-num">{{ agentVersionFavoriteCount }}</b
-                  ><span class="mf-k">特别关注</span>
-                </div>
-                <div class="mf-stat">
-                  <b class="mf-num">{{ manifestPercent }}</b
-                  ><span class="mf-k">持有率</span>
+                <div v-if="entityType === 'item'" class="manifest-item-tools">
+                  <input
+                    id="manifest-search"
+                    v-model.trim="manifestSearch"
+                    name="manifest-search"
+                    class="mf-search"
+                    type="search"
+                    aria-label="搜索库存名称或 ID"
+                    placeholder="搜索名称 / id"
+                  />
+                  <div class="mf-filter">
+                    <button
+                      :aria-pressed="manifestFilter === 'all'"
+                      :class="{ on: manifestFilter === 'all' }"
+                      @click="manifestFilter = 'all'"
+                    >
+                      全部
+                    </button>
+                    <button
+                      :aria-pressed="manifestFilter === 'owned'"
+                      :class="{ on: manifestFilter === 'owned' }"
+                      @click="manifestFilter = 'owned'"
+                    >
+                      已持有
+                    </button>
+                    <button
+                      :aria-pressed="manifestFilter === 'missing'"
+                      :class="{ on: manifestFilter === 'missing' }"
+                      @click="manifestFilter = 'missing'"
+                    >
+                      未持有
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div class="mf-progress" title="当前追踪目录持有率">
-                <i :style="{ '--progress': manifestProgressScale }"></i>
-              </div>
-              <span class="sp"></span>
-              <input
-                v-if="entityType === 'item'"
-                id="manifest-search"
-                v-model.trim="manifestSearch"
-                name="manifest-search"
-                class="mf-search"
-                type="search"
-                aria-label="搜索库存名称或 ID"
-                placeholder="搜索名称 / id"
-              />
-              <div v-if="entityType === 'item'" class="mf-filter">
+              <div
+                class="type-switch manifest-type-switch"
+                role="group"
+                aria-label="库存类型"
+              >
                 <button
-                  :aria-pressed="manifestFilter === 'all'"
-                  :class="{ on: manifestFilter === 'all' }"
-                  @click="manifestFilter = 'all'"
+                  :aria-pressed="entityType === 'item'"
+                  :class="{ on: entityType === 'item' }"
+                  aria-label="切换到背包道具"
+                  @click="setEntityType('item')"
                 >
-                  全部
+                  <span class="manifest-type-label-full">背包道具</span>
+                  <span class="manifest-type-label-compact" aria-hidden="true">道具</span>
                 </button>
                 <button
-                  :aria-pressed="manifestFilter === 'owned'"
-                  :class="{ on: manifestFilter === 'owned' }"
-                  @click="manifestFilter = 'owned'"
+                  :aria-pressed="entityType === 'agent'"
+                  :class="{ on: entityType === 'agent' }"
+                  aria-label="切换到密探心纸"
+                  @click="setEntityType('agent')"
                 >
-                  已持有
+                  <span class="manifest-type-label-full">密探心纸</span>
+                  <span class="manifest-type-label-compact" aria-hidden="true">心纸</span>
                 </button>
-                <button
-                  :aria-pressed="manifestFilter === 'missing'"
-                  :class="{ on: manifestFilter === 'missing' }"
-                  @click="manifestFilter = 'missing'"
-                >
-                  未持有
-                </button>
+                <span class="sp"></span>
               </div>
               <span v-if="error" class="mf-sync-error" role="status"
                 >云端库存同步失败：{{ error }}（数量按 0 显示）</span
@@ -4218,16 +4227,17 @@ onBeforeUnmount(function () {
   align-items: center;
   gap: 14px;
 }
-.manifest-intro .type-switch {
-  flex: none;
+.manifest-type-label-compact {
+  display: none;
 }
 .manifest-scope {
   display: flex;
   align-items: center;
   gap: 7px;
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 4px 0 4px 14px;
-  border-left: 1px dashed var(--line);
+  padding: 4px 14px 4px 0;
+  border-right: 1px dashed var(--line);
   color: var(--ink-60);
 }
 .manifest-scope > svg {
@@ -4306,6 +4316,24 @@ onBeforeUnmount(function () {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 12px 16px;
+}
+.manifest-bar .manifest-type-switch {
+  flex: none;
+}
+.manifest-bar-left,
+.manifest-bar-summary,
+.manifest-item-tools {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.manifest-bar-left {
+  flex: 1 1 auto;
+}
+.manifest-bar-summary,
+.manifest-item-tools {
+  flex: none;
 }
 .mf-stats {
   display: flex;
@@ -7040,7 +7068,33 @@ onBeforeUnmount(function () {
   }
 }
 
+@media (min-width: 1081px) {
+  .manifest-bar {
+    position: sticky;
+    top: 84px;
+    z-index: 40;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    background: rgba(255, 253, 246, 0.96);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 30px -26px rgba(73, 59, 44, 0.62);
+  }
+  .manifest-bar-left {
+    flex-wrap: wrap;
+  }
+  .manifest-bar .manifest-type-switch {
+    margin-left: auto;
+  }
+  .manifest-item-tools .mf-search {
+    width: clamp(140px, 12vw, 180px);
+  }
+}
+
 @media (max-width: 640px) {
+  .inventory-main > section {
+    padding-bottom: calc(176px + env(safe-area-inset-bottom));
+  }
   .hero-stats .catalog-date {
     font-size: 19px;
     line-height: 1.3;
@@ -7087,6 +7141,7 @@ onBeforeUnmount(function () {
     margin-top: 12px;
     padding: 10px 2px;
     border-left: 0;
+    border-right: 0;
     border-top: 1px dashed var(--line);
     border-bottom: 1px dashed var(--line);
   }
@@ -7130,6 +7185,43 @@ onBeforeUnmount(function () {
   .type-switch > button {
     flex: 1 1 calc(50% - 4px);
     min-height: 44px;
+  }
+  .manifest-type-switch {
+    position: fixed;
+    right: max(6px, env(safe-area-inset-right));
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    left: auto;
+    z-index: 56;
+    width: 54px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 14px 4px 4px 14px;
+    background: rgba(255, 253, 246, 0.96);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 28px -18px rgba(73, 59, 44, 0.58);
+  }
+  .manifest-type-switch > button {
+    flex: none;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .manifest-type-switch > .sp {
+    display: none;
+  }
+  .manifest-type-switch .manifest-type-label-full {
+    display: none;
+  }
+  .manifest-type-switch .manifest-type-label-compact {
+    display: inline;
   }
   .acquired-type-switch {
     display: grid;
@@ -7313,6 +7405,14 @@ onBeforeUnmount(function () {
     align-items: stretch;
   }
   .manifest-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .manifest-bar-left,
+  .manifest-bar-summary,
+  .manifest-item-tools {
+    width: 100%;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;

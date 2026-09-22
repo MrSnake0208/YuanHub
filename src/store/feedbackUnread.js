@@ -79,6 +79,7 @@ async function fetchFeedbackUnread() {
         sortBy: 'updatedAt',
         sortOrder: 'desc'
       })
+      if (currentRequestId !== requestId || !canReadManagedFeedback.value) return
       const items = Array.isArray(data.items) ? data.items : []
       reports.push(...items)
       total = Number.isFinite(Number(data.total)) ? Number(data.total) : null
@@ -118,10 +119,13 @@ function handleReadStateChange(event) {
 function startFeedbackUnread() {
   if (stopPermissionWatch) return
   stopPermissionWatch = watch(feedbackUnreadContext, function () {
-    if (canReadManagedFeedback.value) refreshFeedbackUnread()
-    else {
-      requestId += 1
-      clearFeedbackUnread()
+    // A new identity/scope must not deduplicate onto the previous user's request.
+    requestId += 1
+    requestPromise = null
+    clearFeedbackUnread()
+    if (canReadManagedFeedback.value) {
+      feedbackUnreadState.loaded = false
+      refreshFeedbackUnread()
     }
   }, { immediate: true })
   if (typeof window !== 'undefined') window.addEventListener(FEEDBACK_READ_STATE_EVENT, handleReadStateChange)
