@@ -94,7 +94,7 @@
               <code>{{ form.userId }}</code>
             </div>
 
-            <fieldset class="permission-group">
+            <fieldset class="permission-group" :disabled="saving">
               <legend>接收新反馈通知</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'receive-' + area.key" :class="{ on: form.receiveAreas.includes(area.key) }">
@@ -104,7 +104,7 @@
               </div>
             </fieldset>
 
-            <fieldset class="permission-group">
+            <fieldset class="permission-group" :disabled="saving">
               <legend>查看、回复与处理工单</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'manage-' + area.key" :class="{ on: form.manageAreas.includes(area.key) }">
@@ -169,6 +169,9 @@ const userResults = ref([])
 const searchingUsers = ref(false)
 const selectedUser = ref(null)
 let searchTimer = null
+let searchRequestId = 0
+let loadRequestId = 0
+let isMounted = false
 const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [] })
 const router = useRouter()
 
@@ -204,22 +207,26 @@ function formatDate(value) {
 }
 
 async function load() {
+  if (!isMounted) return
+  const requestId = ++loadRequestId
   loading.value = true
   error.value = ''
   try {
     const [grantData, accessData] = await Promise.all([listFeedbackAccessGrants(), getFeedbackAccess()])
+    if (!isMounted || requestId !== loadRequestId) return
     grants.value = Array.isArray(grantData) ? grantData.map(normalizeGrant) : []
     const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
     if (rawAreas.length) areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
   } catch (e) {
     if (await handleForbidden(e)) return
-    error.value = e.message || '权限配置加载失败'
+    if (isMounted && requestId === loadRequestId) error.value = e.message || '权限配置加载失败'
   } finally {
-    loading.value = false
+    if (isMounted && requestId === loadRequestId) loading.value = false
   }
 }
 
 function resetForm() {
+  cancelUserSearch()
   form.userId = ''
   form.userName = ''
   form.receiveAreas = []
@@ -230,8 +237,9 @@ function resetForm() {
   editorError.value = ''
 }
 
-function openCreate() { resetForm(); editing.value = true }
+function openCreate() { if (!saving.value) { resetForm(); editing.value = true } }
 function openEdit(grant) {
+  if (saving.value) return
   resetForm()
   form.userId = grant.userId
   form.userName = grant.userName
@@ -240,29 +248,46 @@ function openEdit(grant) {
   form.manageAreas = [...grant.manageAreas]
   editing.value = true
 }
-function closeEditor() { if (!saving.value) editing.value = false }
-
-function scheduleUserSearch() {
-  clearTimeout(searchTimer)
-  userResults.value = []
-  editorError.value = ''
-  if (!userQuery.value.trim()) return
-  searchTimer = setTimeout(runUserSearch, 250)
+function closeEditor() {
+  if (saving.value) return
+  editing.value = false
+  cancelUserSearch()
 }
 
-async function runUserSearch() {
+function cancelUserSearch() {
+  searchRequestId += 1
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = null
+  searchingUsers.value = false
+  userResults.value = []
+}
+
+function scheduleUserSearch() {
+  cancelUserSearch()
+  editorError.value = ''
+  const keyword = userQuery.value.trim()
+  if (!keyword || saving.value) return
+  const requestId = searchRequestId
   searchingUsers.value = true
+  searchTimer = setTimeout(() => runUserSearch(requestId, keyword), 250)
+}
+
+async function runUserSearch(requestId, keyword) {
+  if (!isMounted || !editing.value || requestId !== searchRequestId) return
   try {
-    userResults.value = await searchFeedbackAccessUsers({ q: userQuery.value.trim(), page: 1, size: 10 })
+    const users = await searchFeedbackAccessUsers({ q: keyword, page: 1, size: 10 })
+    if (isMounted && editing.value && requestId === searchRequestId) userResults.value = users
   } catch (e) {
-    if (await handleForbidden(e)) return
+    if (!isMounted || requestId !== searchRequestId || await handleForbidden(e)) return
     editorError.value = e.message || '用户搜索失败'
   } finally {
-    searchingUsers.value = false
+    if (requestId === searchRequestId) searchingUsers.value = false
   }
 }
 
 function selectUser(user) {
+  if (saving.value) return
+  cancelUserSearch()
   form.userId = user.id
   form.userName = user.userName || user.user_name || user.id
   selectedUser.value = { ...user, id: user.id, userName: form.userName }
@@ -270,33 +295,37 @@ function selectUser(user) {
 }
 
 async function saveGrant() {
-  if (!form.userId) return
-  const confirmed = await dialog.confirm({
-    title: '确认反馈授权',
-    message: [
-      '授权对象',
-      '用户名：' + form.userName,
-      '邮箱：' + (selectedUser.value?.email || '未从授权记录返回'),
-      '用户 ID：' + form.userId,
-      '',
-      '接收新反馈：' + (form.receiveAreas.map(areaLabel).join('、') || '无'),
-      '可管理反馈：' + (form.manageAreas.map(areaLabel).join('、') || '无')
-    ].join('\n'),
-    confirmText: '确认保存'
-  })
-  if (!confirmed) return
+  if (!form.userId || saving.value || !isMounted) return
+  const actorId = currentUserId.value
+  const grant = { ...form, receiveAreas: [...form.receiveAreas], manageAreas: [...form.manageAreas] }
+  const email = selectedUser.value?.email || '未从授权记录返回'
   saving.value = true
   editorError.value = ''
   try {
-    await updateFeedbackAccessGrant(form.userId, form)
-    if (form.userId === currentUserId.value) {
+    const confirmed = await dialog.confirm({
+      title: '确认反馈授权',
+      message: [
+        '授权对象',
+        '用户名：' + grant.userName,
+        '邮箱：' + email,
+        '用户 ID：' + grant.userId,
+        '',
+        '接收新反馈：' + (grant.receiveAreas.map(areaLabel).join('、') || '无'),
+        '可管理反馈：' + (grant.manageAreas.map(areaLabel).join('、') || '无')
+      ].join('\n'),
+      confirmText: '确认保存'
+    })
+    if (!confirmed || !isMounted || currentUserId.value !== actorId) return
+    await updateFeedbackAccessGrant(grant.userId, grant)
+    if (!isMounted || currentUserId.value !== actorId) return
+    if (grant.userId === currentUserId.value) {
       await auth.refreshAdminAccess({ suppressErrors: true })
       if (!hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE)) return leaveAfterPermissionChange()
     }
     await load()
     editing.value = false
   } catch (e) {
-    if (await handleForbidden(e)) return
+    if (!isMounted || currentUserId.value !== actorId || await handleForbidden(e)) return
     editorError.value = e.message || '保存失败'
   } finally {
     saving.value = false
@@ -319,8 +348,9 @@ async function removeGrant(grant) {
 }
 
 async function handleForbidden(errorValue) {
-  if (!errorValue || errorValue.status !== 403) return false
+  if (!isMounted || !errorValue || errorValue.status !== 403) return false
   editing.value = false
+  cancelUserSearch()
   await router.replace({ path: '/forbidden', query: { from: '/feedback/admin' } })
   return true
 }
@@ -329,8 +359,8 @@ async function leaveAfterPermissionChange() {
   await router.replace({ path: '/forbidden', query: { from: '/feedback/admin' } })
 }
 
-onMounted(load)
-onBeforeUnmount(function () { if (searchTimer) clearTimeout(searchTimer) })
+onMounted(() => { isMounted = true; load() })
+onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch() })
 </script>
 
 <style scoped>

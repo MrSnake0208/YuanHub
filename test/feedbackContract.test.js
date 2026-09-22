@@ -12,6 +12,7 @@ import {
   listMyFeedback,
   listFeedback,
   listFeedbackAccessGrants,
+  normalizeFeedback,
   updateFeedbackAccessGrant,
   updateManagedFeedbackStatus,
   updateMyFeedbackStatus
@@ -411,4 +412,27 @@ test('媒体上传使用 file multipart 字段并解包返回的媒体对象', a
   })
   assert.match(request.url, /\/v1\/media\/upload$/)
   assert.equal(request.options.method, 'POST')
+})
+
+test('旧 FEEDBACK 的 ACCOUNT 类型不覆盖旧 area 板块，无板块的旧类型回落 OTHER', async () => {
+  const bodies = []
+  await withFetch(async (_url, options) => {
+    bodies.push(JSON.parse(options.body))
+    return apiResponse({ id: 'rpt_legacy', type: 'ACCOUNT', category: 'OPERATOR', status: 'OPEN' })
+  }, async () => {
+    await createFeedback({ type: 'FEEDBACK', category: 'ACCOUNT', area: 'OPERATOR', content: '旧账号反馈' })
+    await createFeedback({ type: 'FEEDBACK', category: 'BUG', content: '旧问题反馈' })
+  })
+  assert.equal(bodies[0].type, 'ACCOUNT')
+  assert.equal(bodies[0].category, 'OPERATOR')
+  assert.equal(bodies[1].type, 'BUG')
+  assert.equal(bodies[1].category, 'OTHER')
+})
+
+test('历史响应的板块解析优先有效 area，与后端详情授权一致', () => {
+  const report = normalizeFeedback({ type: ' FEEDBACK ', category: ' ACCOUNT ', area: ' operator ', status: 'OPEN' })
+  assert.equal(report.type, 'ACCOUNT')
+  assert.equal(report.category, 'OPERATOR')
+  assert.equal(normalizeFeedback({ type: 'FEEDBACK', category: 'BUG', area: null }).category, 'OTHER')
+  assert.equal(normalizeFeedback({ type: 'BUG', category: 'OTHER', area: 'OPERATOR' }).category, 'OPERATOR')
 })

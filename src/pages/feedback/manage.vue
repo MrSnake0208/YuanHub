@@ -101,17 +101,17 @@
                       <button v-if="item.status === 'OPEN'" class="feedback-button" type="button" @click="showReplyForm(item.id)">
                         <MessageSquarePlus :size="16" />回复
                       </button>
-                      <button v-if="item.status === 'OPEN'" class="feedback-button" type="button" @click="updateStatus(item.id, 'RESOLVED')">
+                      <button v-if="item.status === 'OPEN'" class="feedback-button" type="button" :disabled="updatingStatus || replying || detailLoading" @click="updateStatus(item.id, 'RESOLVED')">
                         <CheckCircle2 :size="16" />标记完成
                       </button>
-                      <button v-if="item.status === 'OPEN'" class="feedback-button danger" type="button" @click="updateStatus(item.id, 'DISMISSED')">
+                      <button v-if="item.status === 'OPEN'" class="feedback-button danger" type="button" :disabled="updatingStatus || replying || detailLoading" @click="updateStatus(item.id, 'DISMISSED')">
                         <CircleX :size="16" />驳回
                       </button>
                     </div>
                   </template>
                   <template #composer>
                     <div v-if="replyTarget === item.id" class="feedback-reply-form">
-                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" placeholder="输入处理回复" @paste="handleReplyMediaPaste"></textarea>
+                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" maxlength="1000" placeholder="输入处理回复" @paste="handleReplyMediaPaste"></textarea>
                       <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
                         <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
@@ -132,7 +132,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -195,7 +195,10 @@ const detailError = ref('')
 const replyTarget = ref('')
 const replyContent = ref('')
 const replying = ref(false)
+const updatingStatus = ref(false)
 const replyMedia = useFeedbackMedia()
+let isMounted = false
+let ready = false
 let loadRequestId = 0
 let detailRequestId = 0
 let feedbackRefreshTimer = null
@@ -241,6 +244,7 @@ async function loadAccess() {
   loadingAccess.value = true
   try {
     const data = await getFeedbackAccess()
+    if (!isMounted) return
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
     access.value = {
       superAdmin: Boolean(data.superAdmin ?? data.super_admin),
@@ -248,14 +252,14 @@ async function loadAccess() {
       availableAreas: rawAreas.map(option => ({ key: option.key, label: option.label }))
     }
   } catch (e) {
-    if (!await handleForbidden(e)) error.value = e.message || '反馈权限加载失败'
+    if (isMounted && !await handleForbidden(e)) error.value = e.message || '反馈权限加载失败'
   } finally {
     loadingAccess.value = false
   }
 }
 
 async function loadFeedback({ background = false } = {}) {
-  if (!hasManagePermission.value) return
+  if (!isMounted || !hasManagePermission.value || (background && loading.value)) return
   const requestId = ++loadRequestId
   if (!background) {
     loading.value = true
@@ -308,8 +312,8 @@ async function changePage(nextPage) {
 async function selectTicket(id) {
   selectedId.value = String(id)
   cancelReply()
-  selectedDetail.value = null
-  await loadFeedbackDetail(id)
+  selectedDetail.value = { id: String(id) }
+  await loadFeedbackDetail(String(id))
 }
 
 function handleReplyMediaPaste(event) {
@@ -317,23 +321,28 @@ function handleReplyMediaPaste(event) {
   replyMedia.handlePaste(event)
 }
 
+function isCurrentDetail(requestId, id, userId) {
+  return isMounted && requestId === detailRequestId && selectedId.value === id && currentUserId() === userId
+}
+
 async function loadFeedbackDetail(id) {
   const requestId = ++detailRequestId
+  const userId = currentUserId()
   detailLoading.value = true
   detailError.value = ''
   try {
     const detail = await getFeedback(id)
-    if (requestId !== detailRequestId || String(selectedId.value) !== String(id)) return
+    if (!isCurrentDetail(requestId, id, userId)) return
     if (!detail.viewerCanManage) throw new Error('该工单不在当前管理范围内')
     replaceTicket(detail)
     await nextTick()
-    if (requestId !== detailRequestId || String(selectedId.value) !== String(id)) return
+    if (!isCurrentDetail(requestId, id, userId)) return
     selectedId.value = id
     markFeedbackRead(currentUserId(), detail.id || id, detail)
   } catch (e) {
-    if (requestId === detailRequestId && !await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
   } finally {
-    if (requestId === detailRequestId) detailLoading.value = false
+    if (isCurrentDetail(requestId, id, userId)) detailLoading.value = false
   }
 }
 
@@ -345,6 +354,7 @@ function replaceTicket(detail) {
 
 function closeDetail() {
   detailRequestId += 1
+  detailLoading.value = false
   selectedId.value = ''
   selectedDetail.value = null
   detailError.value = ''
@@ -365,30 +375,47 @@ function cancelReply() {
 
 async function submitReply(id) {
   const content = replyContent.value.trim()
-  if (!content) return
+  if (!content || replying.value || updatingStatus.value || detailLoading.value) return
+  if (content.length > 1000) {
+    detailError.value = '消息长度不能超过 1000 字符'
+    return
+  }
+  const requestId = detailRequestId
+  const userId = currentUserId()
   replying.value = true
+  detailError.value = ''
   try {
     const mediaIds = await replyMedia.uploadAll()
-    replaceTicket(await appendManagedFeedbackMessage(id, { content, mediaIds }))
+    if (!isCurrentDetail(requestId, id, userId)) return
+    const detail = await appendManagedFeedbackMessage(id, { content, mediaIds })
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
     cancelReply()
   } catch (e) {
-    if (!await handleForbidden(e)) detailError.value = e.message || '发送失败'
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '发送失败'
   } finally {
     replying.value = false
   }
 }
 
 async function updateStatus(id, status) {
+  if (updatingStatus.value || replying.value || detailLoading.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  updatingStatus.value = true
+  detailError.value = ''
   try {
     await updateManagedFeedbackStatus(id, status)
-    await reloadFromFirstPage()
+    if (isCurrentDetail(requestId, id, userId)) await reloadFromFirstPage()
   } catch (e) {
-    if (!await handleForbidden(e)) detailError.value = e.message || '操作失败'
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '操作失败'
+  } finally {
+    updatingStatus.value = false
   }
 }
 
 async function handleForbidden(value) {
-  if (!value || value.status !== 403) return false
+  if (!isMounted || !value || value.status !== 403) return false
   loadRequestId += 1
   feedbacks.value = []
   closeDetail()
@@ -397,10 +424,13 @@ async function handleForbidden(value) {
 }
 
 onMounted(async () => {
+  isMounted = true
   stopFeedbackUnread = subscribeFeedbackUnread()
   await loadAccess()
-  if (!hasManagePermission.value) return
+  if (!isMounted || !hasManagePermission.value) return
   await loadFeedback()
+  if (!isMounted) return
+  ready = true
   feedbackRefreshTimer = setInterval(() => {
     if (hasManagePermission.value) loadFeedback({ background: true })
   }, 30000)
@@ -408,7 +438,15 @@ onMounted(async () => {
   if (reportId) await selectTicket(reportId)
 })
 
+watch(() => route.query.id, id => {
+  if (!isMounted || !ready || !hasManagePermission.value) return
+  if (id) selectTicket(String(id))
+  else closeDetail()
+})
+
 onBeforeUnmount(() => {
+  isMounted = false
+  ready = false
   loadRequestId += 1
   detailRequestId += 1
   if (feedbackRefreshTimer) {

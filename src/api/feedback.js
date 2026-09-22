@@ -6,13 +6,13 @@ const FEEDBACK_CATEGORIES = new Set(['INVENTORY', 'OPERATOR', 'LEDGER', 'PLAZA',
 
 // 创建反馈。新契约中 type 是反馈类型，category 是前端板块。
 export async function createFeedback(payload) {
-  const rawType = String(payload.type || 'FEEDBACK').toUpperCase()
-  const rawCategory = String(payload.category || '').toUpperCase()
-  const rawArea = String(payload.area || '').toUpperCase()
+  const rawType = String(payload.type || 'FEEDBACK').trim().toUpperCase()
+  const rawCategory = String(payload.category || '').trim().toUpperCase()
+  const rawArea = String(payload.area || '').trim().toUpperCase()
   const legacyType = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory) ? rawCategory : rawType
-  const category = FEEDBACK_CATEGORIES.has(rawCategory)
-    ? rawCategory
-    : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (rawCategory || 'OTHER'))
+  const category = rawType === 'FEEDBACK'
+    ? (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : 'OTHER'))
+    : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (rawCategory || 'OTHER')))
   const data = await request('/v1/reports', {
     method: 'POST',
     auth: true,
@@ -64,13 +64,14 @@ function normalizeUser(user) {
 
 export function normalizeFeedback(report) {
   if (!report || typeof report !== 'object') return report
-  const rawType = String(report.type || '').toUpperCase()
-  const rawCategory = String(report.category || '').toUpperCase()
-  const rawArea = String(report.area || '').toUpperCase()
+  const rawType = String(report.type || '').trim().toUpperCase()
+  const rawCategory = String(report.category || '').trim().toUpperCase()
+  const rawArea = String(report.area || '').trim().toUpperCase()
   const legacyCategory = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory)
-  const category = FEEDBACK_CATEGORIES.has(rawCategory)
-    ? rawCategory
-    : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (legacyCategory ? 'OTHER' : (rawCategory || 'OTHER')))
+  // Legacy area has the same precedence used by backend scope authorization.
+  const category = FEEDBACK_CATEGORIES.has(rawArea)
+    ? rawArea
+    : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : 'OTHER')
   const type = legacyCategory ? rawCategory : rawType
   const rawQuota = report.quota && typeof report.quota === 'object' ? report.quota : null
   const reporter = normalizeUser(report.reporter)

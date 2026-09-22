@@ -141,7 +141,7 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'close', 'retry', 'page'])
 
-const selectedItem = computed(() => props.selectedItem || props.items.find(item => item.id === props.selectedId) || null)
+const selectedItem = computed(() => props.selectedItem || props.items.find(item => item.id === props.selectedId) || (props.selectedId ? { id: props.selectedId } : null))
 const resultStart = computed(() => props.total ? (props.page - 1) * props.pageSize + 1 : 0)
 const resultEnd = computed(() => Math.min(props.total, resultStart.value + props.items.length - 1))
 
