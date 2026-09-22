@@ -1,157 +1,162 @@
 <template>
   <div class="page-beta">
-    <IslandSidebar />
-    <main id="main-content">
-      <header class="hero beta-hero">
-        <div class="wrap">
-          <div class="beta-hero-grid">
-            <div class="beta-intro">
-              <div class="crumb">
-                <span class="pill fill">YuanHub</span>
-                <span class="plain">邀请测试</span>
-              </div>
+    <main id="main-content" class="beta-main">
+      <div class="beta-page">
+        <div class="beta-topbar-wrap">
+          <nav class="beta-topbar wrap" aria-label="内测页导航">
+            <router-link class="beta-brand-link" to="/" aria-label="返回 YuanHub 首页">
+              <img class="beta-brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true">
+              <span class="beta-brand-name">YuanHub</span>
+            </router-link>
+            <span class="beta-topbar-divider" aria-hidden="true"></span>
+            <span class="beta-topbar-label">邀请测试</span>
 
-              <p class="beta-kicker">WELCOME TO YUANHUB</p>
-              <h1>
-                先来坐坐吧
-                <span class="small">一起把它变得更好</span>
-              </h1>
-              <p class="hero-sub">
-                我们正在邀请第一批殿下提前体验 YuanHub。不用写申请，也不用懂技术；
-                正常用一用、告诉我们哪里顺手或哪里别扭，就是最有帮助的反馈。
-              </p>
-
-              <div class="beta-promises" aria-label="参与说明">
-                <span><CheckCircle2 :size="16" aria-hidden="true" /> 不需要人工审核</span>
-                <span><CheckCircle2 :size="16" aria-hidden="true" /> 报名满额自动候补</span>
-                <span><CheckCircle2 :size="16" aria-hidden="true" /> 不影响公开功能</span>
+            <div class="beta-topbar-actions">
+              <div v-if="campaign?.localTestMode" class="local-inline" role="note">
+                <span class="local-chip">LOCAL</span>
+                <span>本地模拟</span>
+                <button
+                  v-if="canResetLocalTest"
+                  class="local-inline-reset"
+                  type="button"
+                  :disabled="resetting"
+                  @click="resetLocalTest"
+                >
+                  {{ resetting ? '重置中…' : '重置' }}
+                </button>
               </div>
+              <router-link class="beta-home-link" to="/">返回首页</router-link>
             </div>
+          </nav>
+        </div>
 
-            <section class="invite-card" :class="'tone-' + copy.tone" aria-labelledby="beta-status-title">
-              <div class="invite-paper" aria-hidden="true"></div>
-              <div class="invite-card-inner">
-                <div class="invite-card-top">
-                  <span class="invite-status">
-                    <i class="status-dot" aria-hidden="true"></i>
-                    {{ statusLabel }}
-                  </span>
-                  <button
-                    v-if="showRefresh"
-                    class="icon-refresh"
-                    type="button"
-                    :disabled="refreshing"
-                    :aria-label="refreshing ? '正在重新确认状态' : '重新确认状态'"
-                    @click="refresh"
-                  >
-                    <RefreshCw :size="17" :class="{ spinning: refreshing }" aria-hidden="true" />
-                  </button>
+        <section class="beta-intro-section">
+          <div class="wrap">
+            <div class="beta-hero-grid">
+              <div class="beta-intro">
+                <p class="beta-kicker">WELCOME TO YUANHUB</p>
+                <h1 class="beta-title">
+                  先来坐坐吧
+                  <span class="beta-title-tag">一起把它变得更好</span>
+                </h1>
+                <p class="beta-intro-copy">
+                  我们正在邀请第一批殿下提前体验 YuanHub。不用写申请，也不用懂技术；
+                  正常用一用、告诉我们哪里顺手或哪里别扭，就是最有帮助的反馈。
+                </p>
+
+                <div class="beta-promises" aria-label="参与说明">
+                  <span><CheckCircle2 :size="16" aria-hidden="true" /> 不需要人工审核</span>
+                  <span><CheckCircle2 :size="16" aria-hidden="true" /> 报名满额自动候补</span>
+                  <span><CheckCircle2 :size="16" aria-hidden="true" /> 不影响公开功能</span>
                 </div>
+              </div>
 
-                <div class="invite-seal" aria-hidden="true">
-                  <Sparkles :size="28" />
-                </div>
-
-                <p class="invite-eyebrow">{{ invitationEyebrow }}</p>
-                <h2 id="beta-status-title">{{ copy.title }}</h2>
-                <p class="invite-description">{{ copy.description }}</p>
-                <p v-if="error" class="beta-error" role="alert">{{ error }}</p>
-
-                <div class="invite-action">
-                  <template v-if="!auth.isLoggedIn">
-                    <router-link class="beta-button primary" :to="authLink('/login')">
-                      登录后参与
-                      <ArrowRight :size="17" aria-hidden="true" />
-                    </router-link>
-                    <router-link class="beta-text-link" :to="authLink('/register')">还没有账号？注册一个</router-link>
-                    <p class="action-note">已有作业站账号可以直接登录，注册本身不会占用内测名额。</p>
-                  </template>
-
-                  <template v-else-if="granted || campaign?.accessMode === 'OPEN'">
-                    <router-link class="beta-button primary" :to="entryTarget">
-                      进入 YuanHub
-                      <ArrowRight :size="17" aria-hidden="true" />
-                    </router-link>
-                    <p class="action-note">{{ campaign?.accessMode === 'OPEN' ? 'YuanHub 已正式开放，现在无需内测资格。' : '资格已经开通，不需要重新登录。第一次来可以从「今日一览」开始。' }}</p>
-                  </template>
-
-                  <template v-else-if="waiting">
-                    <div class="waiting-note">
-                      <Clock3 :size="18" aria-hidden="true" />
-                      <span>已经排上啦，有位置时会自动开通，不用反复刷新。</span>
-                    </div>
-                    <button class="beta-text-button" type="button" :disabled="submitting" @click="withdraw">
-                      {{ submitting ? '正在处理…' : '不想等了，取消候补' }}
-                    </button>
-                    <p class="action-note">取消后如果再次报名，会重新排到队尾。</p>
-                  </template>
-
-                  <template v-else-if="canJoin">
-                    <button class="beta-button primary" type="button" :disabled="submitting" @click="join">
-                      {{ submitting ? '正在确认…' : joinButtonLabel }}
-                      <ArrowRight v-if="!submitting" :size="17" aria-hidden="true" />
-                    </button>
-                    <p class="action-note">点击即表示你已了解这是测试版本；如果当前批次满额，会自动加入候补。</p>
-
-                    <details class="preference-details">
-                      <summary>顺便告诉我们，你最想体验什么？<span>选填</span></summary>
-                      <div class="beta-interests">
-                        <label v-for="intent in BETA_INTENTS" :key="intent.key" class="beta-interest">
-                          <input v-model="intentTags" type="checkbox" :value="intent.key">
-                          <span>{{ intent.label }}</span>
-                        </label>
-                      </div>
-                    </details>
-                  </template>
-
-                  <template v-else>
+              <section class="invite-card" :class="'tone-' + copy.tone" aria-labelledby="beta-status-title">
+                <div class="invite-paper" aria-hidden="true"></div>
+                <div class="invite-card-inner">
+                  <div class="invite-card-top">
+                    <span class="invite-status">
+                      <i class="status-dot" aria-hidden="true"></i>
+                      {{ statusLabel }}
+                    </span>
                     <button
                       v-if="showRefresh"
-                      class="beta-button secondary"
+                      class="icon-refresh"
                       type="button"
                       :disabled="refreshing"
+                      :aria-label="refreshing ? '正在重新确认状态' : '重新确认状态'"
                       @click="refresh"
                     >
-                      <RefreshCw :size="16" :class="{ spinning: refreshing }" aria-hidden="true" />
-                      {{ refreshing ? '正在确认…' : '重新确认状态' }}
+                      <RefreshCw :size="17" :class="{ spinning: refreshing }" aria-hidden="true" />
                     </button>
-                    <p v-else class="action-note">可以先看看下面能体验到什么，开放后再回来参加。</p>
-                  </template>
+                  </div>
 
-                  <p
-                    v-if="submitMessage"
-                    class="beta-feedback"
-                    :class="{ 'is-error': submitFailed }"
-                    :role="submitFailed ? 'alert' : 'status'"
-                  >
-                    {{ submitMessage }}
-                  </p>
+                  <div class="invite-seal" aria-hidden="true">
+                    <Sparkles :size="28" />
+                  </div>
+
+                  <p class="invite-eyebrow">{{ invitationEyebrow }}</p>
+                  <h2 id="beta-status-title">{{ copy.title }}</h2>
+                  <p class="invite-description">{{ copy.description }}</p>
+                  <p v-if="error" class="beta-error" role="alert">{{ error }}</p>
+
+                  <div class="invite-action">
+                    <template v-if="!auth.isLoggedIn">
+                      <router-link class="beta-button primary" :to="authLink('/login')">
+                        登录后参与
+                        <ArrowRight :size="17" aria-hidden="true" />
+                      </router-link>
+                      <router-link class="beta-text-link" :to="authLink('/register')">还没有账号？注册一个</router-link>
+                      <p class="action-note">已有作业站账号可以直接登录，注册本身不会占用内测名额。</p>
+                    </template>
+
+                    <template v-else-if="granted || campaign?.accessMode === 'OPEN'">
+                      <router-link class="beta-button primary" :to="entryTarget">
+                        进入 YuanHub
+                        <ArrowRight :size="17" aria-hidden="true" />
+                      </router-link>
+                      <p class="action-note">{{ campaign?.accessMode === 'OPEN' ? 'YuanHub 已正式开放，现在无需内测资格。' : '资格已经开通，不需要重新登录。第一次来可以从「今日一览」开始。' }}</p>
+                    </template>
+
+                    <template v-else-if="waiting">
+                      <div class="waiting-note">
+                        <Clock3 :size="18" aria-hidden="true" />
+                        <span>已经排上啦，有位置时会自动开通，不用反复刷新。</span>
+                      </div>
+                      <button class="beta-text-button" type="button" :disabled="submitting" @click="withdraw">
+                        {{ submitting ? '正在处理…' : '不想等了，取消候补' }}
+                      </button>
+                      <p class="action-note">取消后如果再次报名，会重新排到队尾。</p>
+                    </template>
+
+                    <template v-else-if="canJoin">
+                      <button class="beta-button primary" type="button" :disabled="submitting" @click="join">
+                        {{ submitting ? '正在确认…' : joinButtonLabel }}
+                        <ArrowRight v-if="!submitting" :size="17" aria-hidden="true" />
+                      </button>
+                      <p class="action-note">点击即表示你已了解这是测试版本；如果当前批次满额，会自动加入候补。</p>
+
+                      <details class="preference-details">
+                        <summary>顺便告诉我们，你最想体验什么？<span>选填</span></summary>
+                        <div class="beta-interests">
+                          <label v-for="intent in BETA_INTENTS" :key="intent.key" class="beta-interest">
+                            <input v-model="intentTags" type="checkbox" :value="intent.key">
+                            <span>{{ intent.label }}</span>
+                          </label>
+                        </div>
+                      </details>
+                    </template>
+
+                    <template v-else>
+                      <button
+                        v-if="showRefresh"
+                        class="beta-button secondary"
+                        type="button"
+                        :disabled="refreshing"
+                        @click="refresh"
+                      >
+                        <RefreshCw :size="16" :class="{ spinning: refreshing }" aria-hidden="true" />
+                        {{ refreshing ? '正在确认…' : '重新确认状态' }}
+                      </button>
+                      <p v-else class="action-note">可以先看看下面能体验到什么，开放后再回来参加。</p>
+                    </template>
+
+                    <p
+                      v-if="submitMessage"
+                      class="beta-feedback"
+                      :class="{ 'is-error': submitFailed }"
+                      :role="submitFailed ? 'alert' : 'status'"
+                    >
+                      {{ submitMessage }}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </header>
-
-      <section class="beta-content wrap">
-        <div v-if="campaign?.localTestMode" class="local-banner" role="note">
-          <div class="local-banner-copy">
-            <span class="local-chip">LOCAL</span>
-            <div>
-              <b>当前是本地内测模拟</b>
-              <p>报名、候补和资格都与正式活动隔离，可以放心反复测试流程。</p>
+              </section>
             </div>
           </div>
-          <button
-            v-if="canResetLocalTest"
-            class="local-reset"
-            type="button"
-            :disabled="resetting"
-            @click="resetLocalTest"
-          >
-            {{ resetting ? '正在重置…' : '重置测试状态' }}
-          </button>
-        </div>
+        </section>
+
+        <section class="beta-content wrap">
 
         <section class="experience-section" aria-labelledby="experience-title">
           <div class="section-heading">
@@ -307,6 +312,7 @@
         <template #big>从这里，一起完善<br><span>YuanHub · 邀请测试</span></template>
         <template #fine>不用懂技术，也不用刻意找问题<br>真实使用感受，就是最有用的反馈</template>
       </SiteFooter>
+      </div>
     </main>
   </div>
 </template>
@@ -324,7 +330,6 @@ import {
   Share2,
   Sparkles
 } from '@lucide/vue'
-import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
@@ -460,56 +465,223 @@ onBeforeUnmount(() => { unsubscribe?.() })
   min-height: 100vh;
 }
 
-.page-beta .hero {
-  --wm: '邀';
+.beta-main {
+  margin-left: 0;
+  background: #f7f2e8;
 }
 
-.beta-hero {
-  padding-bottom: clamp(54px, 7vw, 84px);
+.beta-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(231, 196, 111, .18), transparent 31rem),
+    radial-gradient(circle at 88% 19%, rgba(176, 138, 86, .08), transparent 25rem),
+    linear-gradient(180deg, #fbf8f1 0%, #f7f2e8 58%, #f5efe4 100%);
+}
+
+.beta-page::before,
+.beta-page::after {
+  position: absolute;
+  z-index: -1;
+  width: 320px;
+  height: 320px;
+  border: 1px solid rgba(97, 74, 50, .07);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.beta-page::before {
+  top: 150px;
+  right: -190px;
+}
+
+.beta-page::after {
+  top: 640px;
+  left: -230px;
+}
+
+.beta-topbar-wrap {
+  border-bottom: 1px solid rgba(73, 59, 44, .1);
+  background: rgba(251, 248, 241, .86);
+  backdrop-filter: blur(16px);
+}
+
+.beta-topbar {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 12px;
+}
+
+.beta-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.beta-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+.beta-brand-name {
+  font-size: 14px;
+  letter-spacing: .02em;
+}
+
+.beta-topbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(73, 59, 44, .16);
+}
+
+.beta-topbar-label {
+  color: var(--ink-60);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.beta-topbar-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.beta-home-link {
+  color: var(--tea);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.beta-home-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.local-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 4px 6px 4px 8px;
+  border: 1px solid rgba(215, 137, 53, .32);
+  border-radius: 999px;
+  background: rgba(255, 253, 246, .72);
+  color: var(--ink-60);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.local-chip {
+  flex: none;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: 900 9px var(--font-d);
+  letter-spacing: .08em;
+}
+
+.local-inline-reset {
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(73, 59, 44, .07);
+  color: var(--tea);
+  font: 800 10.5px var(--font-b);
+  cursor: pointer;
+}
+
+.local-inline-reset:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.beta-intro-section {
+  position: relative;
+  padding: clamp(72px, 9vw, 118px) 0 clamp(72px, 9vw, 112px);
+  border-bottom: 1px solid rgba(73, 59, 44, .1);
+}
+
+.beta-intro-section::after {
+  position: absolute;
+  right: 4%;
+  bottom: 8%;
+  width: 140px;
+  height: 42px;
+  border-top: 1px solid rgba(73, 59, 44, .08);
+  border-bottom: 1px solid rgba(73, 59, 44, .06);
+  content: '';
+  transform: rotate(-7deg);
+  pointer-events: none;
 }
 
 .beta-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(340px, .72fr);
+  grid-template-columns: minmax(0, 1.06fr) minmax(350px, .72fr);
   align-items: center;
-  gap: clamp(36px, 6vw, 74px);
+  gap: clamp(44px, 7vw, 88px);
 }
 
 .beta-intro {
   min-width: 0;
-  padding-bottom: 8px;
 }
 
 .beta-kicker,
 .section-kicker {
-  margin: 30px 0 0;
+  margin: 0;
   color: var(--accent-strong);
   font: 900 11px/1.4 var(--font-d);
   letter-spacing: .18em;
 }
 
-.beta-intro h1 {
+.beta-title {
   display: block;
-  max-width: 700px;
-  margin-top: 12px;
-  font-size: clamp(58px, 7vw, 96px);
-  line-height: .98;
+  max-width: 720px;
+  margin: 15px 0 0;
+  color: var(--ink);
+  font: 900 clamp(58px, 7vw, 96px)/.98 var(--font-s);
+  letter-spacing: .035em;
 }
 
-.beta-intro h1 .small {
+.beta-title-tag {
   display: block;
   width: fit-content;
-  margin: 18px 0 0 3px;
+  margin-top: 18px;
   padding: 9px 15px 10px;
-  font-size: clamp(16px, 1.7vw, 23px);
+  border-radius: 10px;
+  background: var(--tea);
+  color: var(--cream);
+  font: 800 clamp(16px, 1.7vw, 23px)/1.25 var(--font-s);
+  letter-spacing: .12em;
+}
+
+.beta-intro-copy {
+  width: min(100%, 660px);
+  margin: 24px 0 0;
+  color: rgba(73, 59, 44, .72);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.95;
 }
 
 .beta-promises {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 18px;
-  margin-top: 24px;
-  color: rgba(73, 59, 44, .72);
+  margin-top: 25px;
+  color: rgba(73, 59, 44, .68);
   font-size: 12.5px;
   font-weight: 700;
 }
@@ -870,63 +1042,6 @@ onBeforeUnmount(() => { unsubscribe?.() })
   padding-bottom: 54px;
 }
 
-.local-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: calc(clamp(54px, 7vw, 84px) * -0.45);
-  padding: 14px 17px;
-  border: 1px dashed var(--accent);
-  border-radius: 16px;
-  background: var(--cream);
-}
-
-.local-banner-copy {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 13px;
-}
-
-.local-banner-copy b {
-  display: block;
-  color: var(--ink);
-  font-size: 13px;
-}
-
-.local-banner-copy p {
-  margin: 2px 0 0;
-  color: var(--ink-60);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.local-chip {
-  flex: none;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font: 900 10px var(--font-d);
-  letter-spacing: .08em;
-}
-
-.local-reset {
-  flex: none;
-  border: 0;
-  background: transparent;
-  color: var(--tea);
-  font: 800 12px var(--font-b);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  cursor: pointer;
-}
-
-.local-reset:disabled {
-  opacity: .5;
-}
-
 .section-heading {
   max-width: 680px;
 }
@@ -1158,7 +1273,9 @@ onBeforeUnmount(() => { unsubscribe?.() })
 .beta-text-button:focus-visible,
 .beta-text-link:focus-visible,
 .icon-refresh:focus-visible,
-.local-reset:focus-visible,
+.local-inline-reset:focus-visible,
+.beta-brand-link:focus-visible,
+.beta-home-link:focus-visible,
 .preference-details summary:focus-visible,
 .faq-list summary:focus-visible,
 .beta-interest:focus-within,
@@ -1183,86 +1300,331 @@ onBeforeUnmount(() => { unsubscribe?.() })
 }
 
 @media (max-width: 760px) {
-  .beta-hero {
-    padding-bottom: 48px;
+  .beta-page::before {
+    top: 210px;
+    right: -250px;
   }
 
-  .beta-intro h1 {
-    font-size: clamp(50px, 16vw, 72px);
+  .beta-page::after {
+    display: none;
   }
 
-  .beta-intro h1 .small {
-    margin-top: 15px;
+  .beta-topbar-wrap {
+    position: sticky;
+    z-index: 20;
+    top: 0;
   }
 
-  .beta-promises {
-    display: grid;
+  .beta-topbar {
+    min-height: 58px;
     gap: 9px;
   }
 
+  .beta-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .beta-intro-section {
+    padding: 38px 0 54px;
+  }
+
+  .beta-intro-section::after {
+    display: none;
+  }
+
+  .beta-hero-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .beta-intro {
+    display: contents;
+  }
+
+  .beta-intro .beta-kicker {
+    order: 1;
+  }
+
+  .beta-title {
+    order: 2;
+    margin-top: 10px;
+    font-size: clamp(42px, 12vw, 58px);
+    line-height: 1.02;
+    letter-spacing: .025em;
+  }
+
+  .beta-title-tag {
+    margin-top: 12px;
+    padding: 7px 12px 8px;
+    border-radius: 8px;
+    font-size: 15px;
+    letter-spacing: .08em;
+  }
+
   .invite-card {
+    order: 3;
     width: 100%;
-    padding: 5px;
+    margin-top: 26px;
+    padding: 0;
   }
 
   .invite-paper {
-    inset: 15px 1px 0 13px;
+    display: none;
   }
 
   .invite-card-inner {
     min-height: 0;
-    padding: 24px 21px 26px;
+    padding: 21px 19px 22px;
+    border-radius: 22px;
+    box-shadow: 0 20px 48px -38px rgba(73, 59, 44, .5);
+  }
+
+  .invite-card-inner::after {
+    right: 18px;
+    bottom: 18px;
+    width: 52px;
+    height: 52px;
   }
 
   .invite-seal {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
+    margin-top: 18px;
+    box-shadow: inset 0 0 0 4px var(--surface);
+  }
+
+  .invite-seal svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .invite-eyebrow {
+    margin-top: 14px;
+  }
+
+  .invite-card h2 {
+    font-size: 26px;
+    line-height: 1.28;
+  }
+
+  .invite-description {
+    margin-top: 9px;
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .invite-action {
+    gap: 9px;
+    margin-top: 18px;
+    padding-top: 17px;
+  }
+
+  .beta-button {
+    min-height: 46px;
+  }
+
+  .beta-intro-copy {
+    order: 4;
     margin-top: 24px;
+    font-size: 13.5px;
+    line-height: 1.85;
+  }
+
+  .beta-promises {
+    order: 5;
+    display: grid;
+    gap: 8px;
+    margin-top: 17px;
+    font-size: 12px;
+  }
+
+  .beta-content {
+    gap: 48px;
+    padding-top: 46px;
+    padding-bottom: 40px;
+  }
+
+  .section-heading h2,
+  .feedback-callout h2 {
+    font-size: 29px;
+    line-height: 1.3;
+  }
+
+  .section-heading.compact h2 {
+    font-size: 27px;
+  }
+
+  .section-heading > p:last-child,
+  .feedback-callout > div > p:last-child {
+    margin-top: 9px;
+    font-size: 12.5px;
+    line-height: 1.75;
   }
 
   .experience-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .experience-card {
+    display: block;
+    padding: 15px;
+    border-radius: 16px;
+  }
+
+  .experience-icon {
+    width: 39px;
+    height: 39px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .experience-icon svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .experience-card h3 {
+    margin: 0 0 5px;
+    font-size: 13.5px;
+  }
+
+  .experience-card p {
+    font-size: 11.5px;
+    line-height: 1.65;
   }
 
   .beta-steps {
     grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 22px;
+    border: 0;
   }
 
   .beta-steps li,
   .beta-steps li + li {
-    grid-template-columns: 40px minmax(0, 1fr);
+    position: relative;
+    grid-template-columns: 34px minmax(0, 1fr);
     gap: 12px;
-    padding: 19px 0;
-    border-left: 0;
-    border-top: 1px solid var(--line);
+    padding: 0 0 22px;
+    border: 0;
   }
 
-  .beta-steps li:first-child {
-    border-top: 0;
+  .beta-steps li:last-child {
+    padding-bottom: 0;
+  }
+
+  .beta-steps li:not(:last-child)::after {
+    position: absolute;
+    top: 34px;
+    bottom: 0;
+    left: 16px;
+    width: 1px;
+    background: var(--line);
+    content: '';
+  }
+
+  .step-number {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: 33px;
+    height: 33px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--yellow);
+    color: var(--ink);
+    font-size: 10px;
+    letter-spacing: .04em;
+  }
+
+  .beta-steps b {
+    font-size: 14px;
+  }
+
+  .beta-steps p {
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  .faq-list {
+    margin-top: 18px;
+  }
+
+  .faq-list summary {
+    min-height: 58px;
+    padding-block: 12px;
+    font-size: 13.5px;
+  }
+
+  .faq-body {
+    padding: 0 26px 18px 2px;
+  }
+
+  .faq-body p {
+    font-size: 12px;
+    line-height: 1.75;
   }
 
   .feedback-callout {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
+    gap: 18px;
+    padding: 21px 19px;
+    border-radius: 18px;
   }
 
-  .local-banner {
-    align-items: flex-start;
-    flex-direction: column;
+  .feedback-callout .beta-button {
+    width: 100%;
   }
 
-  .local-reset {
-    align-self: flex-end;
+  .beta-links {
+    gap: 10px 18px;
+    margin-top: -18px;
+  }
+
+  .local-feedback {
+    margin-top: -26px;
   }
 }
 
 @media (max-width: 520px) {
-  .beta-kicker {
-    margin-top: 24px;
+  .beta-brand-name {
+    display: none;
   }
 
-  .invite-card h2 {
-    font-size: 28px;
+  .beta-topbar-divider {
+    display: none;
+  }
+
+  .beta-topbar-label {
+    font-size: 12px;
+  }
+
+  .beta-topbar-actions {
+    gap: 7px;
+  }
+
+  .local-inline {
+    min-height: 29px;
+    padding: 3px 5px;
+  }
+
+  .local-inline > span:not(.local-chip) {
+    display: none;
+  }
+
+  .local-inline-reset {
+    min-height: 23px;
+    padding-inline: 7px;
+  }
+
+  .beta-home-link {
+    display: none;
   }
 
   .invite-action,
@@ -1282,20 +1644,40 @@ onBeforeUnmount(() => { unsubscribe?.() })
     justify-self: start;
   }
 
-  .experience-card {
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 12px;
-    padding: 18px;
+  .waiting-note {
+    max-width: none;
   }
 
-  .experience-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 13px;
+  .preference-details {
+    width: 100%;
   }
 
   .faq-list summary small {
     display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .beta-topbar-label {
+    display: none;
+  }
+
+  .beta-title {
+    font-size: 40px;
+  }
+
+  .experience-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .experience-card {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 11px;
+  }
+
+  .experience-icon {
+    margin-bottom: 0;
   }
 }
 
