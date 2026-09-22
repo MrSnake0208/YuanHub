@@ -189,6 +189,7 @@ import {
 import { createStarCloudCoordinator } from "./starCloudCoordinator.js";
 import { starCloudFeedback } from "./starCloudStatus.js";
 import { createLatestAccountSync } from "./latestAccountSync.js";
+import { migrateLegacyYuanStarHostAccount } from "./legacyHostAccountMigration.js";
 import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExchangePreviewScope.js";
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
@@ -423,6 +424,7 @@ async function syncHostAccount() {
     const currentHandle = handle;
     const previousAccountId = mountedAccountId;
     try {
+      if (host) await migrateLegacyYuanStarHostAccount(host);
       await currentHandle.setHostAccount(host);
       if (!isLatest() || currentHandle !== handle) return false;
       mountedAccountId = host?.accountId || "";
@@ -651,10 +653,14 @@ async function mountProduct() {
     await ensureEmbedStylesheet();
     const product = await loadEmbedModule();
     if (unmounted || !mountRoot.value) return;
+    const initialHostAccount = selectedHostAccount();
+    if (initialHostAccount)
+      await migrateLegacyYuanStarHostAccount(initialHostAccount);
+    if (unmounted || !mountRoot.value) return;
     const mountedHandle = product.mountYuanStar(mountRoot.value, {
       assetBaseUrl: "/yuanstar-embed/",
       embedded: true,
-      hostAccount: selectedHostAccount(),
+      hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onOcrRebuild: function (snapshot, recoveryPointId) { return starCloud.rebuildOcr(snapshot, recoveryPointId); },
       onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
