@@ -86,8 +86,10 @@ async function loadShare() {
   busy.value = false
   error.value = ''
   message.value = ''
+  // Clearing the account invalidates the previous request, including its finally.
+  // Reset loading here so the empty-account state cannot remain stuck waiting.
+  loading.value = Boolean(accountId)
   if (!accountId) return
-  loading.value = true
   try {
     const data = await getOperatorShare(accountId)
     if (current(accountId, seq)) share.value = data || { account_id: accountId, active: false, share_code: null }
