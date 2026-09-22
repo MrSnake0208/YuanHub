@@ -26,13 +26,36 @@ test('redirect only keeps safe internal destinations without authentication loop
 })
 test('state text distinguishes public full, reserved eligibility, paused, CLOSED and failures', () => {
   assert.match(betaStatusCopy({ ...base, publicState: 'PUBLIC_FULL_RESERVED_REMAIN' }, null).title, /公开.*已满/)
-  assert.match(betaStatusCopy(base, { shareSnapshotEligible: true }).title, /Share/)
+  assert.match(betaStatusCopy(base, { shareSnapshotEligible: true }).title, /MaaYuan Share 用户预留/)
   assert.match(betaStatusCopy({ ...base, localTestMode: true }, { shareSnapshotEligible: true }).title, /本地模拟/)
   assert.match(betaStatusCopy({ ...base, accessMode: 'CLOSED' }, { canUseBetaFeatures: true }).title, /维护/)
   assert.match(betaStatusCopy({ ...base, admissionsPaused: true }, { canUseBetaFeatures: true }).title, /已获得/)
   assert.match(betaStatusCopy({ ...base, accessMode: 'OPEN' }, { enrollmentStatus: 'WAITING' }).title, /正式开放/)
   assert.match(betaStatusCopy(base, null, 'offline').title, /无法读取/)
   assert.equal(betaAccessError({ personalError: 'offline' }).status, 503)
+})
+
+test('every status copy carries a visual tone the beta page can style', () => {
+  const tones = [
+    betaStatusCopy(base, null, 'offline'),
+    betaStatusCopy(null, null),
+    betaStatusCopy({ ...base, accessMode: 'CLOSED' }, null),
+    betaStatusCopy({ ...base, publicState: 'NOT_STARTED' }, null),
+    betaStatusCopy({ ...base, accessMode: 'OPEN' }, null),
+    betaStatusCopy(base, { canUseBetaFeatures: true }),
+    betaStatusCopy({ ...base, admissionsPaused: true }, null),
+    betaStatusCopy(base, { enrollmentStatus: 'WAITING' }),
+    betaStatusCopy(base, { shareSnapshotEligible: true }),
+    betaStatusCopy({ ...base, publicState: 'PUBLIC_FULL_RESERVED_REMAIN' }, null),
+    betaStatusCopy({ ...base, publicState: 'FULL' }, null),
+    betaStatusCopy(base, null)
+  ]
+  for (const copy of tones) {
+    assert.equal(typeof copy.title, 'string')
+    assert.ok(copy.title.length > 0)
+    assert.equal(typeof copy.description, 'string')
+    assert.match(copy.tone, /^(error|loading|closed|pending|open|granted|paused|waiting|reserved|join|full|info)$/)
+  }
 })
 
 test('actual routes protect only the intended workspaces, never the landing page itself', async () => {

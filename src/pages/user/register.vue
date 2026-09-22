@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout title="创建账号" sub="创建统一账号 · 注册不占用内测名额">
+  <AuthLayout title="创建账号" sub="创建本站账号 · 注册不占用内测名额">
     <p class="back"><router-link :to="authDestination('/login')">← 返回登录</router-link></p>
 
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>

@@ -1,5 +1,5 @@
 <template>
-  <AuthLayout title="欢迎回来" sub="登录统一账号 · 内测资格单独领取">
+  <AuthLayout title="欢迎回来" sub="登录本站账号 · 内测资格另行领取">
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
             <label for="login-email">邮箱 <em>*</em></label>
