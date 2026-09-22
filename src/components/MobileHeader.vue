@@ -17,10 +17,19 @@ const route = useRoute()
 const header = ref(null)
 const hidden = ref(false)
 const directionThreshold = 8
+const followTopProperty = '--mobile-shell-follow-top'
 let mobileQuery = null
 let previousY = 0
 let directionStartY = 0
 let direction = 0
+
+function syncFollowTop() {
+  if (typeof document === 'undefined') return
+  const value = hidden.value
+    ? 'calc(8px + env(safe-area-inset-top))'
+    : 'calc(72px + env(safe-area-inset-top))'
+  document.documentElement.style.setProperty(followTopProperty, value)
+}
 
 function scrollY() {
   const root = document.scrollingElement || document.documentElement
@@ -66,16 +75,20 @@ function syncViewport() {
 }
 
 watch(() => route.fullPath, reset)
+watch(hidden, syncFollowTop, { flush: 'sync' })
 
 onMounted(() => {
   // 与 main.css 的移动导航断点保持一致。
   mobileQuery = window.matchMedia('(max-width: 1080px)')
   mobileQuery.addEventListener('change', syncViewport)
   syncViewport()
+  syncFollowTop()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
   mobileQuery?.removeEventListener('change', syncViewport)
+  if (typeof document !== 'undefined')
+    document.documentElement.style.removeProperty(followTopProperty)
 })
 </script>
