@@ -133,30 +133,39 @@ export async function migrateLegacyYuanStarHostAccount(
   try {
     if (!hasRequiredStores(database)) return false;
 
-    const accountTransaction = database.transaction(["accounts"], "readonly");
-    const accountTransactionDone = transactionDone(accountTransaction);
+    // The existence check and every store move share one write transaction.
+    // Separate read/write transactions let two tabs both observe a missing host
+    // account and later overwrite a newer canonical workspace with stale data.
+    const migrationTransaction = database.transaction(REQUIRED_STORES, "readwrite");
+    const migrationDone = transactionDone(migrationTransaction);
+    // A request may reject before the caller reaches the final transaction await.
+    // Keep the rejection observed, but still propagate it from the awaited path.
+    migrationDone.catch(function () {});
     const accounts = await requestValue(
-      accountTransaction.objectStore("accounts").getAll(),
+      migrationTransaction.objectStore("accounts").getAll(),
     );
-    await accountTransactionDone;
 
     if (
       accounts.some(function (account) {
         return account?.accountId === hostId;
       })
-    )
+    ) {
+      await migrationDone;
       return false;
+    }
 
     const legacyAccount = findLegacyHostAccount(accounts, {
       accountId: hostId,
       displayName,
       gameVersion,
     });
-    if (!legacyAccount) return false;
+    if (!legacyAccount) {
+      await migrationDone;
+      return false;
+    }
 
     const legacyId = legacyAccount.accountId;
-    const readTransaction = database.transaction(REQUIRED_STORES, "readonly");
-    const readTransactionDone = transactionDone(readTransaction);
+    const readTransaction = migrationTransaction;
     const workspaceRequest = readTransaction
       .objectStore("workspaces")
       .get(legacyId);
@@ -189,9 +198,15 @@ export async function migrateLegacyYuanStarHostAccount(
       requestValue(restorePointImagesRequest),
       requestValue(currentAccountRequest),
     ]);
-    await readTransactionDone;
-
-    if (!workspace || targetWorkspace) return false;
+    // Interrupted historical imports can leave canonical assets without an
+    // account/workspace. Do not overwrite those compound keys or guess a merge.
+    const targetHasAssets = [images, restorePoints, restorePointImages].some(
+      (records) => records.some((record) => record.accountId === hostId),
+    );
+    if (!workspace || targetWorkspace || targetHasAssets) {
+      await migrationDone;
+      return false;
+    }
 
     const legacyImages = images.filter(function (record) {
       return record?.accountId === legacyId;
@@ -204,8 +219,7 @@ export async function migrateLegacyYuanStarHostAccount(
     });
 
     const now = new Date().toISOString();
-    const writeTransaction = database.transaction(REQUIRED_STORES, "readwrite");
-    const writeTransactionDone = transactionDone(writeTransaction);
+    const writeTransaction = migrationTransaction;
     const accountStore = writeTransaction.objectStore("accounts");
     const workspaceStore = writeTransaction.objectStore("workspaces");
     const imageStore = writeTransaction.objectStore("images");
@@ -262,7 +276,7 @@ export async function migrateLegacyYuanStarHostAccount(
     if (currentAccountId === legacyId)
       metaStore.put(hostId, CURRENT_ACCOUNT_META_KEY);
 
-    await writeTransactionDone;
+    await migrationDone;
     return true;
   } finally {
     database.close();

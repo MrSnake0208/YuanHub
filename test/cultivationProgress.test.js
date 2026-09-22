@@ -38,31 +38,8 @@ test('移除支出会重新渲染当日零产出，并保留全部目标材料',
   assert.equal((html.match(/class="resource"/g) || []).length, 2)
 })
 
-test('编辑态包含紧凑方案选择、无序号五卡清单；两种视图共用推进组件', () => {
-  const filename = new URL('../src/components/operator/OperatorGrowthTracker.vue', import.meta.url)
-  const source = readFileSync(filename, 'utf8')
-  const { descriptor, errors } = parse(source)
-  assert.deepEqual(errors, [])
-  const script = compileScript(descriptor, { id: 'tracker-test' })
-  const template = compileTemplate({ source: descriptor.template.content, filename: filename.pathname, id: 'tracker-test', compilerOptions: { bindingMetadata: script.bindings } })
-  assert.deepEqual(template.errors, [])
-  const templateText = descriptor.template.content
-  const editorIndex = templateText.indexOf('class="planner-view planner-edit"')
-  assert.ok(editorIndex > 0)
-  assert.ok(templateText.indexOf('class="planner-card compare-card"') > editorIndex)
-  assert.equal((templateText.match(/class="planner-card compare-card"/g) || []).length, 1)
-  assert.equal((templateText.match(/<CultivationProgress /g) || []).length, 2)
-  assert.doesNotMatch(source, /rank-number/)
-  assert.doesNotMatch(source, /spend-yield-note|spendYieldLabel/)
-  assert.doesNotMatch(templateText, /datebar-right|class="stage-field"/)
-  assert.equal((templateText.match(/<PlannerDateTabs /g) || []).length, 2)
-  assert.doesNotMatch(templateText, /class="current-field"/)
-  assert.match(templateText, /class="target-fields".*class="progress-values"/s)
-  assert.match(templateText, /addTrainingSpend\(stage.level\)/)
-  assert.match(source, /grid-auto-rows: 136px.*min-height: 708px/)
-  assert.match(source, /@change="updatePlanValue\('spends'/)
-  assert.match(source, /function editableSpendYield\(spend\) \{ return spend.custom \}/)
-})
+// Replaced by mounted behavior tests; see docs/testing.md (no pixel/source-shape gate).
+
 
 test('仅隐藏当日开始已满足的材料，当日补满仍展示，伴随掉落仍可查看', async () => {
   const rows = [

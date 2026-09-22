@@ -80,17 +80,8 @@ test('adds a single accessible workbench back link to management detail pages', 
   assert.doesNotMatch(workbench, /AdminBackLink/)
 })
 
-test('keeps shared navigation and notification entry points stable', function () {
-  const sidebar = readSource('../src/components/IslandSidebar.vue')
-  const feedbackNav = readSource('../src/components/feedback/FeedbackWorkspaceNav.vue')
-  const notificationPage = readSource('../src/pages/notifications/index.vue')
+// Replaced by mounted behavior tests; see docs/testing.md (no pixel/source-shape gate).
 
-  assert.match(sidebar, /to="\/cart"[\s\S]*to="\/inventory"[\s\S]*to="\/operator"[\s\S]*to="\/notifications"[\s\S]*to="\/feedback"[\s\S]*to="\/(?:user\/profile|login)"/)
-  assert.doesNotMatch(sidebar, /to="\/manage"/)
-  assert.match(feedbackNav, /to="\/manage"/)
-  assert.match(notificationPage, /function isManagementNotification\(kind\)/)
-  assert.match(notificationPage, /kind === 'FEEDBACK_ASSIGNED' \|\| kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'/)
-})
 
 test('keeps the guest sidebar separator while grouping login-only entries', function () {
   const sidebar = readSource('../src/components/IslandSidebar.vue')
