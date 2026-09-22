@@ -22,6 +22,7 @@ export function normalizeBetaMe(value) {
   if (!['NOT_JOINED', 'WAITING', 'ACTIVE', 'WITHDRAWN'].includes(data.enrollmentStatus)) throw new Error('本人资格响应异常，请重试。')
   data.canUseBetaFeatures = data.canUseBetaFeatures === true
   data.shareSnapshotEligible = data.shareSnapshotEligible === true
+  data.canResetLocalTest = data.canResetLocalTest === true
   return data
 }
 
@@ -41,6 +42,8 @@ export async function joinBeta({ campaignId, rulesVersion, acceptedTerms, accept
   }))
 }
 export async function withdrawBeta() { return normalizeBetaMe(await request('/v1/beta/waitlist', { method: 'DELETE', auth: true })) }
+/** Local test mode only; clears the isolated local campaign so a tester can retry the flow. */
+export async function resetLocalTest() { return normalizeBetaMe(await request('/v1/beta/test-reset', { method: 'POST', auth: true })) }
 export async function getBetaAdmin() { return normalizeBetaAdmin(await request('/v1/admin/beta', { auth: true })) }
 export async function updateBetaAdmin(action, body) {
   if (!['admissions', 'capacity', 'mode'].includes(action)) throw new Error('未知内测管理操作')

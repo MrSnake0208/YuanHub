@@ -45,6 +45,24 @@ test('uncertain join re-queries authoritative membership without submitting twic
   beta.setIdentity('A'); await assert.rejects(beta.join({}), /timeout/)
   assert.equal(joins, 1); assert.equal(beta.canUseBetaFeatures, true)
 })
+test('self-service local reset stores only the server result and re-queries on failure', async () => {
+  const updated = { campaign: { ...campaign, campaignId: 'yuanhub-beta-local' }, enrollmentStatus: 'NOT_JOINED', canUseBetaFeatures: false, canResetLocalTest: true }
+  let failReset = false
+  const beta = createBetaStore({
+    resetLocalTest: async () => { if (failReset) throw new Error('offline'); return updated },
+    getBetaMe: async () => updated,
+  })
+  beta.setIdentity('A')
+  const result = await beta.resetLocalTest()
+  assert.equal(result.enrollmentStatus, 'NOT_JOINED')
+  assert.equal(beta.mine.enrollmentStatus, 'NOT_JOINED')
+  assert.equal(beta.mine.canResetLocalTest, true)
+  assert.equal(beta.personalError, '')
+  failReset = true
+  await assert.rejects(beta.resetLocalTest(), /offline/)
+  assert.equal(beta.personalLoading, false)
+})
+
 test('withdraw returns real result and OPEN admits historical waiters while CLOSED blocks ACTIVE', async () => {
   const beta = createBetaStore({ withdrawBeta: async () => me('WITHDRAWN'), getBetaMe: async () => me('WAITING', 'OPEN') })
   beta.setIdentity('A'); assert.equal((await beta.withdraw()).enrollmentStatus, 'WITHDRAWN')

@@ -129,6 +129,24 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         throw error
       }
     },
+    async resetLocalTest() {
+      generation += 1; meRequest = null; meAt = 0; state.personalLoading = false
+      const owner = state.userId; const revision = generation
+      try {
+        const result = await client.resetLocalTest()
+        if (owner !== state.userId || revision !== generation) return null
+        generation += 1; meRequest = null; state.personalLoading = false
+        state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
+        state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
+        return result
+      } catch (error) {
+        if (owner === state.userId && revision === generation) {
+          generation += 1; meRequest = null; state.personalLoading = false
+          await state.loadMe({ force: true })
+        }
+        throw error
+      }
+    },
     subscribe() {
       subscribers += 1
       if (subscribers === 1 && typeof window !== 'undefined') {
