@@ -1,22 +1,41 @@
 <template>
   <div class="reward-workspace">
-    <div class="workspace-actions">
+    <div class="workspace-actions" aria-label="新增或导入奖励记录">
       <span v-if="disabled" class="muted">登录并选择子账号后可补录奖励</span>
-      <button ref="manualButton" type="button" class="entry-button" :class="{ active: mode === 'manual' }" :disabled="disabled || locked" :aria-expanded="mode === 'manual'" aria-controls="reward-entry-panel" @click="open('manual')"><Plus :size="15" aria-hidden="true" />添加奖励流水</button>
-      <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入本地报告</button>
+      <button ref="manualButton" type="button" class="entry-button" :class="{ active: mode === 'manual' }" :disabled="disabled || locked" :aria-expanded="mode === 'manual'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('manual')"><Plus :size="15" aria-hidden="true" />添加奖励流水</button>
+      <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入本地报告</button>
     </div>
 
-    <section v-if="mode" id="reward-entry-panel" class="reward-panel" :class="`mode-${mode}`" aria-labelledby="reward-entry-title" :aria-busy="busy">
-      <header class="panel-heading">
-        <span class="heading-emblem" aria-hidden="true"><BookOpen v-if="mode === 'manual'" :size="25" /><ScrollText v-else :size="25" /></span>
-        <div class="heading-copy"><span class="eyebrow">广陵库房 · 奖励入簿</span><h3 id="reward-entry-title" ref="heading" tabindex="-1">{{ mode === 'manual' ? '添加奖励流水' : '导入本地报告' }}</h3></div>
-        <span class="account-badge"><span class="account-dot" />{{ accountName }}</span>
-        <button type="button" class="icon-button close-button" :disabled="locked" aria-label="收起奖励补录" @click="close"><X :size="18" aria-hidden="true" /></button>
-      </header>
+    <Teleport to="body">
+      <Transition name="reward-dialog">
+        <div v-if="mode" class="reward-dialog-mask" role="presentation" @click.self="requestClose">
+          <section
+            id="reward-entry-panel"
+            ref="dialogEl"
+            class="reward-panel reward-dialog"
+            :class="`mode-${mode}`"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reward-entry-title"
+            :aria-describedby="locked ? 'reward-dialog-lock-status' : undefined"
+            :aria-busy="busy"
+            tabindex="-1"
+            @keydown="onDialogKeydown"
+          >
+            <header class="panel-heading">
+              <span class="heading-emblem" aria-hidden="true"><BookOpen v-if="mode === 'manual'" :size="25" /><ScrollText v-else :size="25" /></span>
+              <div class="heading-copy"><span class="eyebrow">广陵库房 · 奖励入簿</span><h3 id="reward-entry-title" ref="heading" tabindex="-1">{{ mode === 'manual' ? '添加奖励流水' : '导入本地报告' }}</h3></div>
+              <div class="dialog-header-meta">
+                <span class="account-badge"><span class="account-dot" />{{ accountName }}</span>
+                <span v-if="locked" id="reward-dialog-lock-status" ref="lockNotice" class="dialog-lock-note" role="status" tabindex="-1">{{ closeLockMessage }}</span>
+              </div>
+              <button type="button" class="icon-button close-button" :aria-disabled="locked ? 'true' : 'false'" :aria-label="locked ? closeLockMessage : '关闭奖励工作台'" :title="locked ? closeLockMessage : '关闭奖励工作台'" @click="requestClose"><X :size="18" aria-hidden="true" /></button>
+            </header>
 
-      <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}</span></div>
-      <div v-if="catalogLoading" class="loading-state" role="status">正在准备奖励目录…</div>
-      <button v-else-if="!entities.length" type="button" class="outline-button retry-catalog" :disabled="busy" @click="loadCatalog">重新加载奖励目录</button>
+            <div class="reward-dialog-scroll">
+              <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}</span></div>
+              <div v-if="catalogLoading" class="loading-state" role="status">正在准备奖励目录…</div>
+              <button v-else-if="!entities.length" type="button" class="outline-button retry-catalog" :disabled="busy" @click="loadCatalog">重新加载奖励目录</button>
 
       <form v-if="mode === 'manual' && entities.length" class="manual-form" novalidate @submit.prevent="previewManual">
         <fieldset :disabled="locked || !!result || disabled">
@@ -98,13 +117,17 @@
         <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认补录结果。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在补录…' : pendingDocument ? '原样重试补录' : `确认补录 ${selectedRecords.length} 条` }}</button></div>
       </div>
       <div v-if="result" class="result" role="status"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : '奖励已入簿' }}</h4><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
-      <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。</footer>
-    </section>
+              <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。</footer>
+            </div>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { importInventory } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
@@ -122,6 +145,8 @@ const error = ref('')
 const result = ref(null)
 const errorBox = ref(null)
 const heading = ref(null)
+const dialogEl = ref(null)
+const lockNotice = ref(null)
 const manualButton = ref(null)
 const reportButton = ref(null)
 const fileInput = ref(null)
@@ -139,6 +164,11 @@ const rarity = ref(0)
 const failedImages = ref(new Set())
 const expandedRows = ref(new Set())
 const locked = computed(() => busy.value || !!pendingDocument.value)
+const closeLockMessage = computed(() => {
+  if (busy.value) return '正在提交本次入账，请等待完成后再关闭工作台。'
+  if (pendingDocument.value) return '上次提交结果未确认，请先原样重试；为避免重复入账，当前工作台暂不能关闭。'
+  return ''
+})
 const selectedRecords = computed(() => rows.value.filter(row => row.selected && !row.error).map(row => row.record))
 const channelIcons = { bird: Bird, flower: Flower2, scroll: ScrollText, book: BookOpen, pencil: Pencil }
 const qualities = [{ id: 0, label: '全部' }, { id: 5, label: '金' }, { id: 4, label: '紫' }, { id: 3, label: '蓝' }]
@@ -162,8 +192,61 @@ const counts = computed(() => new Map(manual.value.entries.map(entry => [entry.i
 const countOf = id => counts.value.get(id) || 0
 const qualityColor = rarity => ({ 5: 'var(--accent)', 4: 'var(--brand-blue)', 3: 'var(--line)' })[rarity] || 'var(--line)'
 const iconSrc = entity => `${import.meta.env.BASE_URL}inventory-icons/${entity.entity_type === 'agent' ? 'agents' : 'items'}/${encodeURIComponent(entity.id)}.png`
+const focusableSelector = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+let restoreFocusEl = null
+let bodyOverflowBefore = ''
+let rootOverflowBefore = ''
+let bodyPaddingRightBefore = ''
+let bodyScrollLocked = false
+
+function lockBackgroundScroll() {
+  if (typeof document === 'undefined' || bodyScrollLocked) return
+  bodyOverflowBefore = document.body.style.overflow
+  rootOverflowBefore = document.documentElement.style.overflow
+  bodyPaddingRightBefore = document.body.style.paddingRight
+  const scrollbarGap = Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+  if (scrollbarGap > 0) {
+    const currentPadding = Number.parseFloat(window.getComputedStyle(document.body).paddingRight) || 0
+    document.body.style.paddingRight = `${currentPadding + scrollbarGap}px`
+  }
+  document.body.style.overflow = 'hidden'
+  document.documentElement.style.overflow = 'hidden'
+  bodyScrollLocked = true
+}
+
+function unlockBackgroundScroll() {
+  if (typeof document === 'undefined' || !bodyScrollLocked) return
+  document.body.style.overflow = bodyOverflowBefore
+  document.documentElement.style.overflow = rootOverflowBefore
+  document.body.style.paddingRight = bodyPaddingRightBefore
+  bodyScrollLocked = false
+}
+
+function focusableDialogElements() {
+  if (!dialogEl.value) return []
+  return Array.from(dialogEl.value.querySelectorAll(focusableSelector)).filter(element => {
+    return element instanceof HTMLElement &&
+      !element.hasAttribute('hidden') &&
+      !element.disabled
+  })
+}
 
 watch(locked, value => emit('busy', value), { flush: 'sync' })
+watch(mode, async (value, previous) => {
+  if (value && !previous) {
+    lockBackgroundScroll()
+    await nextTick()
+    heading.value?.focus({ preventScroll: true })
+    return
+  }
+  if (!value && previous) {
+    unlockBackgroundScroll()
+    const trigger = restoreFocusEl || (previous === 'manual' ? manualButton.value : reportButton.value)
+    restoreFocusEl = null
+    await nextTick()
+    if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true })
+  }
+})
 watch(() => props.accountId, () => {
   fileReadSeq++
   readingFile.value = false
@@ -195,13 +278,12 @@ async function loadCatalog() {
 }
 async function open(nextMode) {
   if (props.disabled || locked.value) return
+  if (!mode.value) restoreFocusEl = nextMode === 'manual' ? manualButton.value : reportButton.value
   if (mode.value !== nextMode) {
     if (mode.value === 'manual' && result.value) manual.value = freshManual()
     fileReadSeq++; readingFile.value = false; clearPreview()
   }
   mode.value = nextMode
-  await nextTick()
-  heading.value?.focus()
   // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
   await loadCatalog()
 }
@@ -209,9 +291,43 @@ function close() {
   if (locked.value) return
   if (mode.value === 'manual' && result.value) manual.value = freshManual()
   fileReadSeq++; readingFile.value = false
-  const button = mode.value === 'manual' ? manualButton : reportButton
   mode.value = ''
-  button.value?.focus()
+}
+async function requestClose() {
+  if (!locked.value) {
+    close()
+    return
+  }
+  await nextTick()
+  lockNotice.value?.focus({ preventScroll: true })
+}
+function onDialogKeydown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    requestClose()
+    return
+  }
+  if (event.key !== 'Tab') return
+  const items = focusableDialogElements()
+  if (!items.length) {
+    event.preventDefault()
+    heading.value?.focus({ preventScroll: true })
+    return
+  }
+  const first = items[0]
+  const last = items[items.length - 1]
+  const current = document.activeElement
+  if (!items.includes(current)) {
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  } else if (event.shiftKey && current === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && current === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 function clearPreview() { rows.value = []; skipped.value = 0; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear() }
 function clearReportPreview() { fileReadSeq++; readingFile.value = false; fileName.value = ''; clearPreview() }
@@ -313,36 +429,49 @@ function warningText(warning) { return typeof warning === 'string' ? warning : w
 function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
 function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : value === '手动添加' ? '手动添加' : '待核对' }
+onBeforeUnmount(unlockBackgroundScroll)
 </script>
 
 <style scoped>
-.reward-workspace { --reward-gold: #af884d; --reward-gold-soft: rgba(175,136,77,.2); margin-bottom: 24px; color: var(--ink); font-family: var(--font-b); }
+.reward-workspace, .reward-dialog-mask { --reward-gold: #af884d; --reward-gold-soft: rgba(175,136,77,.2); color: var(--ink); font-family: var(--font-b); }
 .reward-workspace *, .reward-workspace *::before, .reward-workspace *::after { box-sizing: border-box; }
+.reward-dialog-mask, .reward-dialog-mask *, .reward-dialog-mask *::before, .reward-dialog-mask *::after { box-sizing: border-box; }
 .workspace-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }
 button, input, textarea { font: inherit; color: inherit; }
 button { appearance: none; border: 0; cursor: pointer; background: transparent; padding: 0; transition: background .16s, border-color .16s, box-shadow .16s; }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, .error-message:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, .error-message:focus, .dialog-lock-note:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
 h3:focus { outline: none; }
 input, textarea { appearance: none; border-radius: 0; }
 input:disabled { cursor: not-allowed; }
-.entry-button, .outline-button, .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 42px; padding: 10px 17px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; font-weight: 800; }
+.entry-button, .outline-button, .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 17px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; font-weight: 800; }
 .entry-button { background: var(--surface); box-shadow: 0 3px 8px -6px rgba(73,59,44,.3); }
 .entry-button:hover:not(:disabled), .entry-button.active { background: var(--cream); border-color: var(--reward-gold); }
 .entry-button.active { box-shadow: inset 0 -2px 0 var(--reward-gold); }
 .muted { color: var(--ink-60); font-size: 12px; }
-.reward-panel { position: relative; margin-top: 16px; border: 1px solid var(--reward-gold-soft); border-radius: 20px; background: var(--surface); box-shadow: 0 16px 40px -32px rgba(73,59,44,.45), 0 2px 6px rgba(73,59,44,.03); }
+.reward-dialog-enter-active, .reward-dialog-leave-active { transition: opacity .2s var(--ease); }
+.reward-dialog-enter-active .reward-dialog, .reward-dialog-leave-active .reward-dialog { transition: transform .2s var(--ease), opacity .2s var(--ease); }
+.reward-dialog-enter-from, .reward-dialog-leave-to { opacity: 0; }
+.reward-dialog-enter-from .reward-dialog, .reward-dialog-leave-to .reward-dialog { opacity: 0; transform: translateY(12px) scale(.985); }
+.reward-dialog-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(73,59,44,.5); backdrop-filter: blur(6px); overscroll-behavior: none; }
+.reward-panel { position: relative; width: min(1240px, 100%); max-height: calc(100dvh - 48px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--reward-gold-soft); border-radius: 20px; background: var(--surface); box-shadow: 0 32px 90px -34px rgba(73,59,44,.48), 0 2px 6px rgba(73,59,44,.06); }
 .reward-panel::before { content: ''; position: absolute; inset: 5px; border: 1px solid var(--reward-gold-soft); border-radius: 15px; pointer-events: none; }
-.panel-heading { display: flex; align-items: center; gap: 15px; padding: 26px 30px 23px; position: relative; border-bottom: 1px solid var(--line); background: linear-gradient(110deg, var(--cream), var(--surface) 70%); border-radius: 20px 20px 0 0; }
+.reward-dialog-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 20px; padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+.reward-dialog-scroll :is(button, input, textarea, select, [tabindex]):focus-visible { scroll-margin-block: 18px; }
+.panel-heading { z-index: 1; display: flex; align-items: center; gap: 15px; flex: 0 0 auto; padding: 22px 26px 20px; position: relative; border-bottom: 1px solid var(--line); background: linear-gradient(110deg, var(--cream), var(--surface) 70%); border-radius: 20px 20px 0 0; }
 .heading-emblem { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--reward-gold); border: 1px solid var(--reward-gold-soft); box-shadow: 0 0 0 4px var(--surface), 0 0 0 5px var(--reward-gold-soft); }
+.heading-copy { min-width: 0; flex: 1 1 260px; }
 .eyebrow { display: block; font-size: 10px; letter-spacing: .14em; font-weight: 600; color: var(--ink-60); }
 h3, h4 { font-family: var(--font-s); font-weight: 900; margin: 0; }
 h3 { font-size: 23px; letter-spacing: .06em; line-height: 1.35; margin-top: 5px; }
 h4 { font-size: 17px; letter-spacing: .04em; }
-.account-badge { margin-left: auto; border: 1px solid var(--line); border-radius: 99px; display: flex; align-items: center; gap: 7px; padding: 7px 11px; max-width: 220px; overflow-wrap: anywhere; font-size: 12px; }
+.dialog-header-meta { display: flex; min-width: 0; max-width: min(42%, 420px); flex-direction: column; align-items: flex-end; gap: 6px; }
+.account-badge { border: 1px solid var(--line); border-radius: 99px; display: flex; align-items: center; gap: 7px; padding: 7px 11px; max-width: 100%; overflow-wrap: anywhere; font-size: 12px; }
 .account-dot { width: 5px; height: 5px; background: var(--reward-gold); border-radius: 50%; flex-shrink: 0; }
-.icon-button { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; color: var(--ink-60); }
-.icon-button:hover:not(:disabled) { background: var(--paper); }
+.dialog-lock-note { max-width: 420px; color: var(--rouge); font-size: 10px; line-height: 1.55; text-align: right; }
+.icon-button { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; color: var(--ink-60); }
+.icon-button:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--paper); }
+.icon-button[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .channel-section { padding: 22px 30px; }
 .section-label { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; font-size: 12px; font-weight: 800; }
@@ -501,9 +630,17 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
   .report-source { grid-template-columns: minmax(0,1fr) 200px; gap: 20px; }
   .reward-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 760px) {
-  .panel-heading { padding: 22px; gap: 12px; }
-  .heading-emblem { width: 39px; height: 39px; }
+@media (max-width: 767px) {
+  .reward-dialog-mask { padding: 0; place-items: stretch; }
+  .reward-panel { width: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; }
+  .reward-panel::before { display: none; }
+  .reward-dialog-scroll { padding-bottom: env(safe-area-inset-bottom); }
+  .panel-heading { display: grid; grid-template-columns: minmax(0,1fr) 44px; align-items: center; padding: calc(14px + env(safe-area-inset-top)) 18px 14px; gap: 8px 12px; border-radius: 0; }
+  .heading-emblem { display: none; }
+  .heading-copy { grid-column: 1; min-width: 0; }
+  .dialog-header-meta { grid-column: 1 / -1; grid-row: 2; max-width: none; align-items: flex-start; }
+  .dialog-lock-note { max-width: none; text-align: left; }
+  .close-button { grid-column: 2; grid-row: 1; }
   h3 { font-size: 20px; }
   .channel-section { padding: 20px; }
   .channel-options { grid-template-columns: repeat(3,minmax(0,1fr)); }
@@ -520,14 +657,17 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
   .import-notes { gap: 9px; }
   .preview-section { padding: 20px 22px 0; }
   .result { margin: 20px; flex-wrap: wrap; }
+  .confirm-bar { scroll-margin-bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 900px), (pointer: coarse) {
+  .clear-search, .rarity-options button, .type-options button, .quantity-control button, .remove-reward, .record-info, .paste-toggle, .text-button { min-width: 44px; min-height: 44px; }
+  .quantity-control input { height: 44px; }
 }
 @media (max-width: 480px) {
   .workspace-actions { gap: 8px; }
-  .entry-button { padding: 10px 12px; font-size: 11px; }
-  .panel-heading { padding: 20px 17px; gap: 10px; flex-wrap: wrap; }
-  .heading-emblem { display: none; }
-  .account-badge { font-size: 10px; max-width: 110px; padding: 5px 8px; }
-  .close-button { width: 26px; height: 32px; }
+  .entry-button { flex: 1 1 138px; padding: 10px 12px; font-size: 11px; }
+  .panel-heading { padding: calc(12px + env(safe-area-inset-top)) 16px 12px; gap: 6px 10px; }
+  .account-badge { font-size: 10px; max-width: 100%; padding: 5px 8px; }
   .eyebrow { font-size: 9px; }
   h3 { font-size: 19px; }
   .channel-section, .reward-picker, .reward-receipt { padding: 18px 16px; }
@@ -557,15 +697,17 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
   .preview-record { gap: 8px; align-items: flex-start; }
   .record-date { width: 53px; padding-right: 5px; margin-top: 3px; }
   .record-date b { font-size: 15px; }
-  .record-checkbox { width: 22px; }
+  .record-checkbox { width: 44px; }
   .record-title { gap: 6px; }
   .record-title > b { font-size: 11px; }
-  .record-info { width: 23px; }
+  .record-info { width: 44px; }
   .record-rewards { gap: 5px 10px; font-size: 10px; }
   .confirm-bar { flex-direction: column; align-items: stretch; gap: 12px; }
   .panel-footnote { padding: 12px 17px; font-size: 9px; align-items: flex-start; }
   .panel-footnote svg { margin-top: 2px; }
   .error-message { margin: 16px; }
 }
-@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  button, .reward-dialog-enter-active, .reward-dialog-leave-active, .reward-dialog-enter-active .reward-dialog, .reward-dialog-leave-active .reward-dialog { transition: none; }
+}
 </style>
