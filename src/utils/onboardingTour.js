@@ -8,34 +8,55 @@ export const ONBOARDING_STEPS = [
   {
     id: FIRST_STEP_ID,
     title: '欢迎来到 YuanHub',
-    description: '用不到一分钟认识今日一览、密探养成和库存追踪。你可以随时跳过，之后也能重新查看。'
+    description: '先认识最常用的 4 件事：看今天要做什么、管理密探、追踪库存，以及用 MaaYuan 自动同步。整个教程可以随时跳过，也能之后重看。',
+    side: 'bottom',
+    align: 'center'
   },
   {
     id: 'today-overview',
     route: '/',
     target: 'today-overview',
-    title: '从今日一览开始',
-    description: '这里会根据当前状态告诉你今天适合做什么，也能直接找到 YuanHub 的常用功能。'
+    title: '先看「今日一览」',
+    description: '不知道从哪里开始时就来这里。它会汇总今天值得关注的事项，并把常用功能集中成入口。',
+    side: 'bottom',
+    align: 'start'
   },
   {
     id: 'operator-workspace',
     route: '/operator',
     target: 'operator-workspace',
     title: '管理密探档案',
-    description: '选择游戏账号后，可以维护密探图鉴、养成进度并分享自己的 BOX。'
+    description: '这里先确认当前子账号与游戏版本；展开“账号与分享”后，可以继续维护密探养成进度、数据交换和 BOX 分享。',
+    side: 'bottom',
+    align: 'start'
   },
   {
     id: 'inventory-workspace',
     route: '/inventory',
     target: 'inventory-workspace',
     title: '追踪库存变化',
-    description: '在库存工作区清点资源、查看统计报告，并让库存与密探账号保持一致。'
+    description: '在这里切换背包道具与密探心纸，查看库存、记录变化和统计结果。账号会与密探页保持一致。',
+    side: 'bottom',
+    align: 'start'
   },
   {
     id: 'replay-entry',
     target: 'replay-entry',
-    title: '随时重新查看',
-    description: '以后想再看一遍，可以从这里重新启动新手教程。'
+    title: '忘了也没关系',
+    description: '以后需要复习时，从这个入口就能重新启动教程，不用记住每个页面的位置。',
+    side: 'right',
+    align: 'center'
+  },
+  {
+    id: 'maayuan-sync',
+    route: '/user/profile',
+    target: 'maayuan-sync',
+    title: '推荐：连接 MaaYuan 自动同步',
+    description: '创建 MaaYuan 连接码前先确认账号与权限，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息、背包道具和星石。点击“打开连接设置”后，页面会继续给出具体任务与开关位置。<br><br>以后也可以从左侧“我的连接码”回来管理；如果还没有子账号，连接面板里也可以补建。',
+    side: 'top',
+    align: 'start',
+    doneBtnText: '打开连接设置',
+    completionAction: 'click-target'
   }
 ]
 
@@ -45,15 +66,25 @@ let preserveStateOnDestroy = false
 let removeRouteHook = null
 
 function isVisible(element) {
-  return !!element && (element.offsetWidth > 0 || element.offsetHeight > 0 || element.getClientRects().length > 0)
+  if (!element) return false
+  if (element.offsetWidth > 0 || element.offsetHeight > 0) return true
+  if (typeof element.getClientRects === 'function') return element.getClientRects().length > 0
+  return true
 }
 
 function findTarget(target) {
   if (typeof document === 'undefined' || !target) return null
-  if (target === 'replay-entry') {
-    return Array.from(document.querySelectorAll('[data-tour="replay-entry"]')).find(isVisible) || null
-  }
-  return document.querySelector(`[data-tour="${target}"]`)
+  const elements = Array.from(document.querySelectorAll(`[data-tour="${target}"]`))
+  return elements.find(isVisible) || null
+}
+
+export function runOnboardingCompletionAction(step) {
+  if (!step || step.completionAction !== 'click-target' || !step.target) return false
+  const element = findTarget(step.target)
+  if (!element || typeof element.click !== 'function') return false
+  if (element.getAttribute?.('aria-expanded') === 'true') return true
+  element.click()
+  return true
 }
 
 export function waitForElement(target, timeout = TARGET_TIMEOUT) {
@@ -77,6 +108,42 @@ export function waitForElement(target, timeout = TARGET_TIMEOUT) {
     })
     observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true })
   })
+}
+
+function revealTourTarget(element) {
+  const revealElement = element?.closest?.('.rv')
+  if (revealElement) revealElement.classList.add('in')
+}
+
+function waitForLayoutFrames(count = 1) {
+  if (count <= 0 || typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+    return Promise.resolve()
+  }
+  return new Promise(resolve => {
+    window.requestAnimationFrame(() => {
+      void waitForLayoutFrames(count - 1).then(resolve)
+    })
+  })
+}
+
+function bringTargetIntoView(element) {
+  if (!element || typeof window === 'undefined' || typeof element.getBoundingClientRect !== 'function') return
+  const rect = element.getBoundingClientRect()
+  const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0
+  const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0
+  if (!viewportHeight || !viewportWidth) return
+
+  const verticalMargin = Math.min(96, Math.max(24, viewportHeight * 0.12))
+  const horizontalMargin = Math.min(48, Math.max(16, viewportWidth * 0.06))
+  const outsideSafeViewport =
+    rect.top < verticalMargin ||
+    rect.bottom > viewportHeight - verticalMargin ||
+    rect.left < horizontalMargin ||
+    rect.right > viewportWidth - horizontalMargin
+
+  if (outsideSafeViewport && typeof element.scrollIntoView === 'function') {
+    element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' })
+  }
 }
 
 function stepIndex(stepId) {
@@ -118,8 +185,9 @@ function createDriver(router) {
       popover: {
         title: step.title,
         description: step.description,
-        side: 'bottom',
-        align: 'start'
+        side: step.side || 'bottom',
+        align: step.align || 'start',
+        doneBtnText: step.doneBtnText
       }
     })),
     onNextClick: (_element, _step, options) => {
@@ -129,8 +197,10 @@ function createDriver(router) {
       void moveToIndex(router, (options.index ?? 0) - 1)
     },
     onDoneClick: () => {
+      const activeStep = ONBOARDING_STEPS[instance.getActiveIndex() ?? -1]
       store.complete()
       destroyDriver()
+      runOnboardingCompletionAction(activeStep)
     },
     onCloseClick: () => {
       store.skip()
@@ -164,16 +234,29 @@ async function showStep(router, index) {
   if (step.route && router.currentRoute.value.path !== step.route) {
     destroyDriver(true)
     await router.push(step.route)
+    await waitForLayoutFrames(1)
   }
 
-  if (step.target && !await waitForElement(step.target)) {
+  let targetElement = step.target ? await waitForElement(step.target) : null
+  if (step.target && !targetElement) {
     store.skip()
     destroyDriver()
     return false
   }
 
+  revealTourTarget(targetElement)
+  bringTargetIntoView(targetElement)
+  await waitForLayoutFrames(2)
+
+  if (step.target) {
+    targetElement = findTarget(step.target) || targetElement
+    revealTourTarget(targetElement)
+  }
+
   const instance = driverInstance?.isActive() ? driverInstance : createDriver(router)
   instance.drive(index)
+  await waitForLayoutFrames(2)
+  instance.refresh?.()
   return true
 }
 

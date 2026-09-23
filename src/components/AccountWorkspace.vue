@@ -1,6 +1,6 @@
 <template>
   <div class="account-workspace" :class="{ 'split-workspace': split, 'soft-dropdown-workspace': softDropdown }" v-reveal>
-    <div v-if="split" class="workspace-summary">
+    <div v-if="split" class="workspace-summary" :data-tour="tourTarget || undefined">
       <div class="workspace-status" aria-live="polite">
         <slot name="status" />
         <span v-if="compact && error" class="ac-warn">{{ error }}</span>
@@ -117,6 +117,7 @@ import { ACCOUNT_GAMES } from '../store/activeAccount.js'
 
 const props = defineProps({
   split: { type: Boolean, default: false },
+  tourTarget: { type: String, default: '' },
   summaryLabel: { type: String, default: '更改账号与分享状态' },
   // 当前选中账号 id（v-model:accountId）
   accountId: { type: String, default: '' },

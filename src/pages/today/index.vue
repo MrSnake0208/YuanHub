@@ -52,98 +52,136 @@
             <div class="onboarding-heading">
               <div>
                 <span class="onboarding-kicker">FIRST DATA · 第一次建档</span>
-                <h2 id="data-onboarding-title">还没有可用于今日一览的数据</h2>
-                <p>
-                  你可以手动录入，也可以让 MaaYuan 自动录入。更推荐自动同步：
-                  以后日常采集完成后，YuanHub 会直接收到结果，不必反复手填。
-                </p>
+                <h2 id="data-onboarding-title">{{ onboardingTitle }}</h2>
+                <p>{{ onboardingDescription }}</p>
               </div>
-              <span class="onboarding-note">两种方式都可以，之后也能随时切换</span>
+              <span class="onboarding-note">{{ onboardingNote }}</span>
             </div>
 
-            <div class="data-entry-grid">
-              <article class="entry-card recommended-entry">
-                <div class="entry-card-head">
+            <div v-if="onboardingStage === 'auth'" class="auth-onboarding-card">
+              <span class="entry-icon" aria-hidden="true"><Users :size="20" /></span>
+              <div class="auth-onboarding-copy">
+                <h3>先登录 YuanHub</h3>
+                <p>登录后会继续检查你有没有子账号，再分别检查密探、库存和星石。已经有的数据不会要求你重复录入。</p>
+              </div>
+              <div class="auth-onboarding-actions">
+                <router-link class="entry-primary-action" :to="{ path: '/login', query: { redirect: '/' } }">
+                  登录并继续
+                  <ArrowRight :size="16" aria-hidden="true" />
+                </router-link>
+                <router-link class="entry-secondary-action" to="/register">还没有账号？注册</router-link>
+              </div>
+            </div>
+
+            <form
+              v-else-if="onboardingStage === 'account'"
+              class="inline-account-card"
+              data-tour="today-create-account"
+              aria-labelledby="inline-account-title"
+              @submit.prevent="createTodayAccount"
+            >
+              <div class="inline-account-intro">
+                <span class="entry-icon" aria-hidden="true"><Users :size="20" /></span>
+                <div>
+                  <h3 id="inline-account-title">创建第一个子账号</h3>
+                  <p>名称只用于区分你的游戏存档；密探、库存、奖励和连接码都会归到这个账号。</p>
+                </div>
+              </div>
+
+              <fieldset class="account-game-choice">
+                <legend>游戏版本</legend>
+                <div class="account-game-options">
+                  <label
+                    v-for="game in ACCOUNT_GAMES"
+                    :key="game"
+                    :class="{ selected: newAccountGame === game }"
+                  >
+                    <input
+                      v-model="newAccountGame"
+                      type="radio"
+                      name="today-account-game"
+                      :value="game"
+                      :disabled="creatingAccount"
+                    />
+                    <span>{{ game }}</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <label class="account-name-field" for="today-account-name">
+                <span>账号名称</span>
+                <input
+                  id="today-account-name"
+                  v-model="newAccountName"
+                  maxlength="64"
+                  autocomplete="off"
+                  placeholder="例如：大鸟大号"
+                  :disabled="creatingAccount"
+                />
+              </label>
+
+              <div class="inline-account-actions">
+                <p v-if="accountCreateError" class="account-create-error" role="alert">
+                  {{ accountCreateError }}
+                </p>
+                <button
+                  type="submit"
+                  class="entry-primary-button"
+                  :disabled="creatingAccount || !newAccountName.trim()"
+                >
+                  {{ creatingAccount ? '正在创建…' : '创建并开始录入' }}
+                  <ArrowRight :size="16" aria-hidden="true" />
+                </button>
+              </div>
+            </form>
+
+            <div v-else-if="onboardingStage === 'data'" class="entry-choice-wrap" data-tour="today-entry-choice">
+              <p v-if="createdAccountName" class="account-created-note" role="status">
+                已创建“{{ createdAccountName }}”。下面会按功能分别检查，已经有的数据不会重复要求录入。
+              </p>
+              <div class="data-readiness-grid" aria-label="当前账号的数据准备状态">
+                <article
+                  v-for="item in dataSetupItems"
+                  :key="item.key"
+                  class="data-readiness-card"
+                  :class="{ 'is-ready': item.status === 'ready', 'is-unknown': item.status === 'unknown' }"
+                >
+                  <div class="readiness-card-head">
+                    <span class="readiness-icon" aria-hidden="true"><component :is="item.icon" :size="19" /></span>
+                    <div>
+                      <h3>{{ item.title }}</h3>
+                      <span class="readiness-status">{{ item.statusLabel }}</span>
+                    </div>
+                  </div>
+                  <p>{{ item.description }}</p>
+                  <router-link
+                    v-if="item.status === 'empty'"
+                    class="readiness-action"
+                    :to="item.manualTo"
+                  >
+                    {{ item.manualLabel }}
+                    <ArrowRight :size="14" aria-hidden="true" />
+                  </router-link>
+                </article>
+              </div>
+
+              <article v-if="autoSyncMissingItems.length" class="sync-recommendation">
+                <div class="sync-recommendation-copy">
                   <span class="entry-icon" aria-hidden="true"><Link2 :size="20" /></span>
                   <div>
                     <span class="recommend-badge">推荐</span>
-                    <h3>MaaYuan 自动同步</h3>
-                    <p>适合日常长期使用。连接一次后，支持的数据会持续同步到你选择的子账号。</p>
+                    <h3>不想手填，可以连接 MaaYuan</h3>
+                    <p>
+                      当前可帮助你自动补齐：{{ autoSyncMissingLabel }}。
+                      连接后，以后完成对应 MaaYuan 任务就会同步到这个子账号。
+                    </p>
+                    <small v-if="dataReadiness.star === 'empty'">星石自动同步仍在接入中，当前请先从「星石背包」手动录入。</small>
                   </div>
                 </div>
-
-                <ol class="sync-steps" aria-label="MaaYuan 自动同步设置步骤">
-                  <li>
-                    <span class="step-number">1</span>
-                    <div>
-                      <strong>进入 YuanHub 的应用连接</strong>
-                      <p>打开「我的账户 → 应用与数据连接」，点击「连接 MaaYuan」。</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="step-number">2</span>
-                    <div>
-                      <strong>选择账号并创建连接码</strong>
-                      <p>选择要绑定的子账号；还没有子账号时，可以在连接流程里直接创建。确认权限后创建连接码。</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="step-number">3</span>
-                    <div>
-                      <strong>复制刚生成的连接码</strong>
-                      <p>连接码只会完整显示这一次，请先复制，再离开这个页面。</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="step-number">4</span>
-                    <div>
-                      <strong>在 MaaYuan 填入连接码</strong>
-                      <p>打开 MaaYuan 的「同步至YuanHub」选项，找到「YuanHub连接码」，粘贴刚才复制的内容。</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="step-number">5</span>
-                    <div>
-                      <strong>之后照常使用 MaaYuan</strong>
-                      <p>完成日常采集后，密探、库存与星石等支持的数据会同步到刚才绑定的账号，再回到今日一览即可查看。</p>
-                    </div>
-                  </li>
-                </ol>
-
-                <router-link class="entry-primary-action" to="/user/profile#maayuan-app-title">
-                  开始连接 MaaYuan
+                <router-link class="entry-primary-action" :to="maaYuanConnectTo">
+                  去生成连接码
                   <ArrowRight :size="16" aria-hidden="true" />
                 </router-link>
-              </article>
-
-              <article class="entry-card manual-entry">
-                <div class="entry-card-head">
-                  <span class="entry-icon" aria-hidden="true"><Zap :size="20" /></span>
-                  <div>
-                    <span class="manual-badge">手动方式</span>
-                    <h3>自己录入</h3>
-                    <p>适合只想先补少量数据，或者暂时不使用 MaaYuan 的情况。</p>
-                  </div>
-                </div>
-                <div class="manual-copy">
-                  <strong>{{ accounts.length ? '已有子账号，可以直接开始录入' : '先建立一个子账号' }}</strong>
-                  <p>
-                    {{
-                      accounts.length
-                        ? '快捷录入适合批量补密探进度；库存也可以在库存追踪中单独维护。'
-                        : '密探和库存都需要归属到一个游戏账号。先创建子账号，再继续录入即可。'
-                    }}
-                  </p>
-                </div>
-                <div class="manual-actions">
-                  <router-link class="entry-secondary-action" :to="manualEntryTo">
-                    {{ manualEntryLabel }}
-                    <ArrowRight :size="16" aria-hidden="true" />
-                  </router-link>
-                  <router-link v-if="accounts.length" class="entry-text-action" to="/inventory">
-                    单独录入库存
-                  </router-link>
-                </div>
               </article>
             </div>
           </section>
@@ -239,22 +277,71 @@ import {
 } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import { listAccounts } from '../../api/accounts.js'
+import { createAccount, listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent, listAgentFavorites } from '../../api/inventory.js'
 import { getUnreadNotificationCount } from '../../api/notifications.js'
+import { getCurrentStarState } from '../../api/starState.js'
 import { auth } from '../../store/auth.js'
-import { activeAccount } from '../../store/activeAccount.js'
-import { shouldShowTodayDataOnboarding, summarizeTodayData } from '../../data/todayData.js'
+import { ACCOUNT_GAMES, DEFAULT_ACCOUNT_GAME, activeAccount } from '../../store/activeAccount.js'
+import {
+  getTodayDataReadiness,
+  getTodayOnboardingStage,
+  shouldShowTodayDataOnboarding,
+  summarizeTodayData
+} from '../../data/todayData.js'
 
-const DEMO_SUMMARY = Object.freeze({ operatorCount: 3, favoriteCount: 2, inventoryKindCount: 5, unreadCount: 1 })
-const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, unreadCount: 0 })
+const DEMO_SUMMARY = Object.freeze({ operatorCount: 3, favoriteCount: 2, inventoryKindCount: 5, starCount: 6, unreadCount: 1 })
+const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, starCount: 0, unreadCount: 0 })
+const DATA_SETUP_CONFIG = Object.freeze([
+  {
+    key: 'operator',
+    title: '密探',
+    countKey: 'operatorCount',
+    unit: '位',
+    icon: Users,
+    manualTo: '/operator?tab=current',
+    manualLabel: '去密探名册录入',
+    emptyDescription: '还没有密探养成数据。可以从密探名册手动录入，也可以让 MaaYuan 自动采集。',
+    readyDescription: '密探数据已经可用于今日一览和养成相关功能。',
+    autoSync: true
+  },
+  {
+    key: 'inventory',
+    title: '库存',
+    countKey: 'inventoryKindCount',
+    unit: '种',
+    icon: PackageOpen,
+    manualTo: '/inventory',
+    manualLabel: '去库存追踪录入',
+    emptyDescription: '还没有库存数据。可以从库存追踪手动维护，也可以让 MaaYuan 自动识别背包。',
+    readyDescription: '库存数据已经可用于今日一览和材料相关功能。',
+    autoSync: true
+  },
+  {
+    key: 'star',
+    title: '星石',
+    countKey: 'starCount',
+    unit: '颗',
+    icon: Gem,
+    manualTo: '/star',
+    manualLabel: '去星石背包录入',
+    emptyDescription: '还没有星石数据。当前先从星石背包录入；MaaYuan 星石自动同步仍在接入中。',
+    readyDescription: '星石数据已经可用于背包整理和密探搭配。',
+    autoSync: false
+  }
+])
 
 const accounts = ref([])
 const realSummary = ref({ ...EMPTY_SUMMARY })
 const loading = ref(false)
 const errorMessage = ref('')
 const accountLoadFailed = ref(false)
+const creatingAccount = ref(false)
+const newAccountName = ref('')
+const newAccountGame = ref(DEFAULT_ACCOUNT_GAME)
+const accountCreateError = ref('')
+const createdAccountName = ref('')
 let loadSequence = 0
 
 const accountId = computed({
@@ -264,22 +351,88 @@ const accountId = computed({
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
 const summary = computed(function () { return auth.isLoggedIn ? realSummary.value : DEMO_SUMMARY })
-const showDataOnboarding = computed(function () {
-  if (!auth.isLoggedIn || loading.value || accountLoadFailed.value) return false
-  return shouldShowTodayDataOnboarding({
+const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
+const onboardingStage = computed(function () {
+  return getTodayOnboardingStage({
+    isLoggedIn: auth.isLoggedIn,
     hasAccounts: accounts.value.length > 0,
     summary: realSummary.value
   })
 })
-const manualEntryTo = computed(function () { return accounts.value.length ? '/operator/quick' : '/operator' })
-const manualEntryLabel = computed(function () { return accounts.value.length ? '打开快捷录入' : '先创建子账号' })
+const showDataOnboarding = computed(function () {
+  if (auth.isLoggedIn && (accountLoadFailed.value || loading.value)) return false
+  return shouldShowTodayDataOnboarding({
+    isLoggedIn: auth.isLoggedIn,
+    hasAccounts: accounts.value.length > 0,
+    summary: realSummary.value
+  })
+})
+const dataSetupItems = computed(function () {
+  return DATA_SETUP_CONFIG.map(function (item) {
+    const status = dataReadiness.value[item.key]
+    const count = realSummary.value[item.countKey]
+    return {
+      ...item,
+      status,
+      statusLabel: status === 'ready'
+        ? '已录入 ' + count + ' ' + item.unit
+        : status === 'unknown'
+          ? '暂时无法读取'
+          : '尚未录入',
+      description: status === 'ready'
+        ? item.readyDescription
+        : status === 'unknown'
+          ? '这项数据暂时读取失败，不会要求你重新录入。'
+          : item.emptyDescription
+    }
+  })
+})
+const missingDataItems = computed(function () {
+  return dataSetupItems.value.filter(function (item) { return item.status === 'empty' })
+})
+const autoSyncMissingItems = computed(function () {
+  return missingDataItems.value.filter(function (item) { return item.autoSync })
+})
+const autoSyncMissingLabel = computed(function () {
+  return autoSyncMissingItems.value.map(function (item) { return item.title }).join('、')
+})
+const onboardingTitle = computed(function () {
+  if (onboardingStage.value === 'auth') return '先登录，再开始建立今日一览'
+  if (onboardingStage.value === 'account') return '先建立你的游戏子账号'
+  const names = missingDataItems.value.map(function (item) { return item.title })
+  return names.length === 1 ? '还差 ' + names[0] + ' 数据' : '还有 ' + names.length + ' 项数据可以补齐'
+})
+const onboardingDescription = computed(function () {
+  if (onboardingStage.value === 'auth') {
+    return '今日一览会根据你的真实数据给出提示。先登录，之后会继续判断是否需要创建子账号。'
+  }
+  if (onboardingStage.value === 'account') {
+    return '密探、库存、星石和自动同步数据都需要先归属到一个游戏子账号。直接在这里创建即可。'
+  }
+  return 'YuanHub 已分别检查当前子账号的密探、库存和星石。缺哪一项就只补哪一项，已有数据不会重复要求录入。'
+})
+const onboardingNote = computed(function () {
+  if (onboardingStage.value === 'auth') return '第 1 步 · 登录'
+  if (onboardingStage.value === 'account') return '第 2 步 · 子账号'
+  return '第 3 步 · 按功能补数据'
+})
+const maaYuanConnectTo = computed(function () {
+  return {
+    path: '/user/profile',
+    query: { connect: 'maayuan', from: 'today' },
+    hash: '#maayuan-app-title'
+  }
+})
 const heroPrimaryTo = computed(function () {
-  if (!auth.isLoggedIn) return '/login'
-  return showDataOnboarding.value ? '/user/profile#maayuan-app-title' : '/operator/quick'
+  if (onboardingStage.value === 'auth') return { path: '/login', query: { redirect: '/' } }
+  if (showDataOnboarding.value) return '/#data-onboarding-title'
+  return '/operator/quick'
 })
 const heroPrimaryLabel = computed(function () {
-  if (!auth.isLoggedIn) return '登录同步我的数据'
-  return showDataOnboarding.value ? '连接 MaaYuan 自动同步' : '快速更新数据'
+  if (onboardingStage.value === 'auth') return '登录并开始'
+  if (onboardingStage.value === 'account') return '先创建子账号'
+  if (onboardingStage.value === 'data') return '继续补齐 ' + missingDataItems.value.length + ' 项数据'
+  return '快速更新数据'
 })
 const summaryCaption = computed(function () {
   if (!auth.isLoggedIn) return '示例账号 · 登录后显示你的真实状态'
@@ -290,8 +443,8 @@ const summaryCaption = computed(function () {
 const summaryItems = computed(function () {
   return [
     { label: '已录入密探', value: summary.value.operatorCount, icon: Users },
-    { label: '特别关注', value: summary.value.favoriteCount, icon: Heart },
     { label: '有库存材料', value: summary.value.inventoryKindCount, icon: PackageOpen },
+    { label: '已录入星石', value: summary.value.starCount, icon: Gem },
     { label: '未读通知', value: summary.value.unreadCount, icon: Bell }
   ]
 })
@@ -299,15 +452,14 @@ const summaryItems = computed(function () {
 const todayTasks = computed(function () {
   if (!auth.isLoggedIn) {
     return [
-      { title: '认识密探名册', description: '看图鉴、养成状态和自己的密探 BOX。', to: '/operator', icon: Users },
-      { title: '试试快捷录入', description: '用一条流程快速建立密探与库存数据。', to: '/operator/quick', icon: Zap },
-      { title: '看看库存追踪', description: '知道材料有多少、最近从哪里获得。', to: '/inventory', icon: PackageOpen }
+      { title: '登录并开始建档', description: '登录后会继续检查子账号和三类核心数据。', to: { path: '/login', query: { redirect: '/' } }, icon: Users },
+      { title: '先看看完整演示', description: '不用录入数据，也可以先看看 YuanHub 能做什么。', to: '/demo', icon: Zap },
+      { title: '看看最近更新', description: '了解 YuanHub 最近新增和调整了哪些功能。', to: '/changelog', icon: ScrollText }
     ]
   }
   if (!accounts.value.length) {
     return [
-      { title: '建立第一个子账号', description: '密探和库存会统一归到这个游戏账号。', to: '/operator', icon: Users },
-      { title: '从快捷录入开始', description: '已有数据时，可以一次导入后继续整理。', to: '/operator/quick', icon: Zap }
+      { title: '建立第一个子账号', description: '密探、库存和星石都会统一归到这个游戏账号。', to: '/#data-onboarding-title', icon: Users }
     ]
   }
 
@@ -326,11 +478,11 @@ const todayTasks = computed(function () {
     : summary.value.inventoryKindCount
     ? { title: '核对当前库存', description: `已有 ${summary.value.inventoryKindCount} 种材料，看看是否需要更新。`, to: '/inventory', icon: PackageOpen }
     : { title: '建立库存快照', description: '录入现有材料，后续获取与消耗才有依据。', to: '/inventory', icon: PackageOpen })
-  tasks.push(summary.value.unreadCount == null
-    ? { title: '打开通知中心', description: '未读状态暂未读取，可以到通知中心继续查看。', to: '/notifications', icon: Bell }
-    : summary.value.unreadCount
-    ? { title: '处理新通知', description: `还有 ${summary.value.unreadCount} 条未读消息。`, to: '/notifications', icon: Bell }
-    : { title: '整理星石背包', description: '记录已拥有的星石，方便按密探搭配。', to: '/star', icon: Gem })
+  tasks.push(summary.value.starCount == null
+    ? { title: '打开星石背包', description: '星石状态暂未读取，可以到星石背包继续查看。', to: '/star', icon: Gem }
+    : summary.value.starCount
+    ? { title: '整理星石背包', description: `已有 ${summary.value.starCount} 颗星石，看看是否需要更新搭配。`, to: '/star', icon: Gem }
+    : { title: '录入星石背包', description: '记录已拥有的星石，之后可以按密探整理搭配。', to: '/star', icon: Gem })
   return tasks
 })
 
@@ -365,6 +517,33 @@ function readableError(error, fallback) {
   return /Failed to fetch|NetworkError|fetch/i.test(error.message) ? '网络异常，请稍后重试' : error.message
 }
 
+async function createTodayAccount() {
+  if (creatingAccount.value) return
+  const name = newAccountName.value.trim()
+  if (!name) {
+    accountCreateError.value = '请填写一个方便辨认的账号名称'
+    return
+  }
+
+  creatingAccount.value = true
+  accountCreateError.value = ''
+  try {
+    const created = await createAccount(name, newAccountGame.value)
+    if (!created || !created.id) throw new Error('账号已创建，但没有返回账号编号，请重新加载')
+
+    accounts.value = accounts.value.concat(created)
+    activeAccount.syncAccounts(accounts.value)
+    activeAccount.set(created.id)
+    createdAccountName.value = created.name || name
+    newAccountName.value = ''
+    realSummary.value = { ...EMPTY_SUMMARY }
+  } catch (error) {
+    accountCreateError.value = readableError(error, '子账号创建失败，请稍后重试')
+  } finally {
+    creatingAccount.value = false
+  }
+}
+
 async function loadDashboard() {
   if (!auth.isLoggedIn) return
   const sequence = ++loadSequence
@@ -397,7 +576,8 @@ async function loadSummary(sequence) {
     requests.push(
       getOperatorCurrent({ accountId: targetAccount, game: accountGame.value }),
       getCurrent({ accountId: targetAccount, entityType: 'item' }),
-      listAgentFavorites(targetAccount)
+      listAgentFavorites(targetAccount),
+      getCurrentStarState(targetAccount)
     )
   }
   const results = await Promise.allSettled(requests)
@@ -408,12 +588,14 @@ async function loadSummary(sequence) {
     notifications: results[0].status === 'fulfilled' ? results[0].value : null,
     current: results[1] && results[1].status === 'fulfilled' ? results[1].value : null,
     inventory: results[2] && results[2].status === 'fulfilled' ? results[2].value : null,
-    favorites: results[3] && results[3].status === 'fulfilled' ? results[3].value : null
+    favorites: results[3] && results[3].status === 'fulfilled' ? results[3].value : null,
+    starState: results[4] && results[4].status === 'fulfilled' ? results[4].value : null
   })
   if (results[0].status === 'rejected') realSummary.value.unreadCount = null
   if (targetAccount && results[1].status === 'rejected') realSummary.value.operatorCount = null
   if (targetAccount && results[2].status === 'rejected') realSummary.value.inventoryKindCount = null
   if (targetAccount && results[3].status === 'rejected') realSummary.value.favoriteCount = null
+  if (targetAccount && results[4].status === 'rejected') realSummary.value.starCount = null
   errorMessage.value = failures.length ? '部分状态暂时读取失败，页面没有使用演示数据补齐。' : ''
 }
 
@@ -462,7 +644,50 @@ onMounted(loadDashboard)
 .onboarding-heading h2 { margin-top: 9px; font-family: var(--font-s); font-size: 27px; font-weight: 900; }
 .onboarding-heading p { margin-top: 9px; color: rgba(73, 59, 44, .68); font-size: 13px; line-height: 1.75; }
 .onboarding-note { flex: 0 0 auto; max-width: 180px; color: rgba(73, 59, 44, .52); font-size: 11px; line-height: 1.6; text-align: right; }
-.data-entry-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 14px; margin-top: 22px; }
+.auth-onboarding-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px 18px; margin-top: 22px; padding: 22px; border: 1px solid rgba(156, 122, 77, .24); border-radius: 14px; background: rgba(255, 253, 246, .9); }
+.auth-onboarding-copy h3 { font-family: var(--font-s); font-size: 19px; font-weight: 900; }
+.auth-onboarding-copy p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
+.auth-onboarding-actions { display: flex; align-items: center; gap: 9px; }
+.inline-account-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(260px, .8fr); gap: 18px 24px; margin-top: 22px; padding: 22px; border: 1px solid rgba(215, 137, 53, .36); border-radius: 14px; background: rgba(255, 253, 246, .9); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .32); }
+.inline-account-intro { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 13px; grid-column: 1 / -1; }
+.inline-account-intro h3 { font-family: var(--font-s); font-size: 19px; font-weight: 900; }
+.inline-account-intro p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
+.account-game-choice { margin: 0; padding: 0; border: 0; }
+.account-game-choice legend, .account-name-field > span { display: block; margin-bottom: 8px; color: rgba(73, 59, 44, .66); font-size: 11px; font-weight: 900; letter-spacing: .05em; }
+.account-game-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.account-game-options label { position: relative; display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid rgba(156, 122, 77, .28); border-radius: 9px; background: var(--surface); color: rgba(73, 59, 44, .72); font-size: 12px; font-weight: 800; cursor: pointer; }
+.account-game-options label.selected { border-color: rgba(215, 137, 53, .58); background: rgba(239, 210, 142, .2); color: var(--ink); }
+.account-game-options input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.account-game-options label:focus-within { outline: 2px solid rgba(215, 137, 53, .42); outline-offset: 2px; }
+.account-name-field { display: block; }
+.account-name-field input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid rgba(156, 122, 77, .34); border-radius: 9px; background: var(--surface); color: var(--ink); font: 700 13px var(--font-b); }
+.account-name-field input:focus { border-color: rgba(215, 137, 53, .7); outline: 2px solid rgba(215, 137, 53, .16); outline-offset: 1px; }
+.inline-account-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding-top: 2px; }
+.account-create-error { margin-right: auto; color: var(--rouge); font-size: 11px; font-weight: 700; line-height: 1.5; }
+.entry-primary-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); font: 900 12px var(--font-b); cursor: pointer; }
+.entry-primary-button:disabled { opacity: .5; cursor: not-allowed; }
+.entry-choice-wrap { margin-top: 18px; }
+.account-created-note { margin-bottom: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(98, 128, 93, .1); color: #4f684b; font-size: 11.5px; font-weight: 800; line-height: 1.55; }
+.data-readiness-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.data-readiness-card { display: flex; min-height: 188px; flex-direction: column; padding: 18px; border: 1px solid rgba(215, 137, 53, .34); border-radius: 13px; background: rgba(255, 253, 246, .9); }
+.data-readiness-card.is-ready { border-color: rgba(98, 128, 93, .28); background: rgba(98, 128, 93, .07); }
+.data-readiness-card.is-unknown { border-style: dashed; border-color: rgba(91, 106, 140, .28); }
+.readiness-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 11px; }
+.readiness-icon { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px; background: rgba(215, 137, 53, .1); color: var(--accent); }
+.is-ready .readiness-icon { background: rgba(98, 128, 93, .12); color: #587253; }
+.readiness-card-head h3 { font-family: var(--font-s); font-size: 17px; font-weight: 900; }
+.readiness-status { display: block; margin-top: 3px; color: var(--accent); font-size: 10.5px; font-weight: 900; }
+.is-ready .readiness-status { color: #587253; }
+.is-unknown .readiness-status { color: var(--brand-blue); }
+.data-readiness-card > p { margin-top: 13px; color: rgba(73, 59, 44, .6); font-size: 11.5px; line-height: 1.65; }
+.readiness-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; margin-top: auto; padding: 0 11px; border-radius: 8px; background: rgba(156, 122, 77, .08); color: var(--ink); font-size: 11.5px; font-weight: 900; text-decoration: none; }
+.readiness-action:hover { background: rgba(239, 210, 142, .22); }
+.sync-recommendation { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 14px; padding: 18px 20px; border: 1px solid rgba(215, 137, 53, .36); border-radius: 13px; background: rgba(239, 210, 142, .11); }
+.sync-recommendation-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
+.sync-recommendation h3 { margin-top: 5px; font-family: var(--font-s); font-size: 17px; font-weight: 900; }
+.sync-recommendation p { margin-top: 5px; color: rgba(73, 59, 44, .62); font-size: 11.5px; line-height: 1.65; }
+.sync-recommendation small { display: block; margin-top: 6px; color: rgba(73, 59, 44, .52); font-size: 10.5px; line-height: 1.55; }
+.data-entry-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .85fr); gap: 14px; }
 .entry-card { padding: 22px; border: 1px solid rgba(156, 122, 77, .24); border-radius: 14px; background: rgba(255, 253, 246, .88); }
 .recommended-entry { border-color: rgba(215, 137, 53, .42); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .42); }
 .entry-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 13px; align-items: start; }
@@ -473,18 +698,27 @@ onMounted(loadDashboard)
 .recommend-badge { background: rgba(239, 210, 142, .48); color: var(--tea); }
 .manual-badge { border: 1px solid rgba(91, 106, 140, .32); color: var(--brand-blue); }
 .sync-steps { display: grid; gap: 0; margin: 20px 0; padding: 0; list-style: none; }
+.sync-steps.compact { margin-bottom: 18px; }
 .sync-steps li { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 9px 0; }
 .sync-steps li:not(:last-child)::after { position: absolute; top: 36px; bottom: -1px; left: 13px; width: 1px; background: rgba(156, 122, 77, .2); content: ''; }
 .step-number { position: relative; z-index: 1; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(215, 137, 53, .38); border-radius: 50%; background: var(--surface); color: var(--accent); font: 900 11px/1 var(--font-d); }
 .sync-steps strong, .manual-copy strong { font-size: 12px; font-weight: 900; }
 .sync-steps p, .manual-copy p { margin-top: 4px; color: rgba(73, 59, 44, .58); font-size: 11px; line-height: 1.65; }
+.sync-task-map { display: grid; gap: 6px; margin-top: 10px; }
+.sync-task-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, auto); align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(156, 122, 77, .07); }
+.sync-task-row > span:first-child { color: rgba(73, 59, 44, .68); font-size: 11px; font-weight: 800; }
+.sync-task-target { display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: var(--ink); font-size: 11px; font-weight: 900; text-align: right; }
+.sync-task-target::before { color: rgba(215, 137, 53, .82); content: '→'; }
+.sync-task-coming { padding: 2px 5px; border-radius: 999px; background: rgba(91, 106, 140, .1); color: var(--brand-blue); font-size: 9px; font-style: normal; font-weight: 900; white-space: nowrap; }
 .entry-primary-action, .entry-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 15px; border-radius: 9px; font-size: 12px; font-weight: 900; text-decoration: none; }
 .entry-primary-action { background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); }
 .entry-secondary-action { border: 1px solid rgba(73, 59, 44, .22); color: var(--ink); }
 .manual-entry { display: flex; flex-direction: column; }
-.manual-copy { margin-top: 28px; padding: 16px 0; border-top: 1px solid rgba(156, 122, 77, .18); border-bottom: 1px solid rgba(156, 122, 77, .18); }
+.manual-copy { margin-top: 20px; padding: 16px 0; border-top: 1px solid rgba(156, 122, 77, .18); border-bottom: 1px solid rgba(156, 122, 77, .18); }
+.manual-page-links { display: grid; gap: 7px; margin-top: 12px; }
+.manual-page-links a { display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 11px; border-radius: 8px; background: rgba(156, 122, 77, .07); color: var(--ink); font-size: 11.5px; font-weight: 850; text-decoration: none; }
+.manual-page-links a:hover { background: rgba(239, 210, 142, .18); }
 .manual-actions { display: grid; align-items: start; gap: 12px; margin-top: auto; padding-top: 22px; }
-.entry-text-action { width: max-content; color: rgba(73, 59, 44, .68); font-size: 11px; font-weight: 800; text-underline-offset: 3px; }
 .today-section + .today-section { margin-top: 52px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
 .section-heading > div { display: flex; align-items: baseline; gap: 12px; }
@@ -532,8 +766,22 @@ onMounted(loadDashboard)
   .onboarding-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
   .onboarding-heading h2 { font-size: 23px; }
   .onboarding-note { max-width: none; text-align: left; }
+  .auth-onboarding-card { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 18px 16px; }
+  .auth-onboarding-actions { grid-column: 1 / -1; align-items: stretch; flex-direction: column; }
+  .inline-account-card { grid-template-columns: 1fr; padding: 18px 16px; }
+  .inline-account-intro, .inline-account-actions { grid-column: auto; }
+  .account-game-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-game-options label { width: 100%; }
+  .inline-account-actions { align-items: stretch; flex-direction: column; }
+  .account-create-error { margin-right: 0; }
+  .entry-primary-button { width: 100%; }
+  .data-readiness-grid { grid-template-columns: 1fr; }
+  .data-readiness-card { min-height: 0; }
+  .sync-recommendation { align-items: stretch; flex-direction: column; }
   .data-entry-grid { grid-template-columns: 1fr; }
   .entry-card { padding: 18px 16px; }
+  .sync-task-row { grid-template-columns: 1fr; gap: 3px; }
+  .sync-task-target { justify-content: flex-start; text-align: left; }
   .entry-primary-action, .entry-secondary-action { width: 100%; }
   .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .task-grid, .tool-groups { grid-template-columns: 1fr; }

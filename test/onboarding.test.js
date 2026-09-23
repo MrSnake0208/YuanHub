@@ -7,7 +7,11 @@ import {
   ONBOARDING_VERSION,
   useOnboardingStore
 } from '../src/stores/onboarding.js'
-import { ONBOARDING_STEPS, waitForElement } from '../src/utils/onboardingTour.js'
+import {
+  ONBOARDING_STEPS,
+  runOnboardingCompletionAction,
+  waitForElement
+} from '../src/utils/onboardingTour.js'
 
 function storage(initial = {}) {
   const values = new Map(Object.entries(initial))
@@ -93,8 +97,8 @@ test('restores valid progress and ignores malformed saved state', function () {
   }
 })
 
-test('uses five stable step ids and data-tour anchors', function () {
-  assert.equal(ONBOARDING_STEPS.length, 5)
+test('uses six stable step ids and data-tour anchors including MaaYuan sync', function () {
+  assert.equal(ONBOARDING_STEPS.length, 6)
   assert.equal(new Set(ONBOARDING_STEPS.map(step => step.id)).size, ONBOARDING_STEPS.length)
   assert.ok(ONBOARDING_STEPS.every(step => /[a-z]/i.test(step.id)))
 
@@ -102,10 +106,86 @@ test('uses five stable step ids and data-tour anchors', function () {
     '../src/components/IslandSidebar.vue',
     '../src/pages/demo/index.vue',
     '../src/pages/operator/index.vue',
-    '../src/pages/inventory/index.vue'
+    '../src/pages/inventory/index.vue',
+    '../src/pages/user/profile.vue'
   ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n')
   for (const step of ONBOARDING_STEPS.filter(step => step.target)) {
+    if (step.target === 'operator-workspace') {
+      assert.match(files, /tour-target=["']operator-workspace["']/)
+      continue
+    }
     assert.match(files, new RegExp(`data-tour=["']${step.target}["']`))
+  }
+
+  const accountWorkspace = readFileSync(new URL('../src/components/AccountWorkspace.vue', import.meta.url), 'utf8')
+  assert.match(accountWorkspace, /class=["']workspace-summary["'][^>]*:data-tour=["']tourTarget \|\| undefined["']/)
+
+  const syncStep = ONBOARDING_STEPS.find(step => step.id === 'maayuan-sync')
+  assert.equal(syncStep.route, '/user/profile')
+  assert.equal(syncStep.target, 'maayuan-sync')
+  assert.equal(syncStep.doneBtnText, '打开连接设置')
+  assert.equal(syncStep.completionAction, 'click-target')
+  assert.match(syncStep.description, /创建 MaaYuan 连接码/)
+  assert.match(syncStep.description, /确认账号与权限/)
+  assert.match(syncStep.description, /左侧“我的连接码”/)
+  assert.match(syncStep.description, /连接面板里也可以补建/)
+})
+
+test('MaaYuan final onboarding action opens the existing connect entry once', function () {
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
+  let clicks = 0
+  const element = {
+    click() { clicks += 1 },
+    getAttribute(name) { return name === 'aria-expanded' ? 'false' : null }
+  }
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: {
+      querySelectorAll(selector) {
+        return selector === '[data-tour="maayuan-sync"]' ? [element] : []
+      }
+    }
+  })
+  try {
+    const syncStep = ONBOARDING_STEPS.find(step => step.id === 'maayuan-sync')
+    assert.equal(runOnboardingCompletionAction(syncStep), true)
+    assert.equal(clicks, 1)
+
+    element.getAttribute = name => name === 'aria-expanded' ? 'true' : null
+    assert.equal(runOnboardingCompletionAction(syncStep), true)
+    assert.equal(clicks, 1)
+  } finally {
+    if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
+    else delete globalThis.document
+  }
+})
+
+test('waitForElement picks the visible anchor when responsive duplicates exist', async function () {
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
+  const hidden = {
+    offsetWidth: 0,
+    offsetHeight: 0,
+    getClientRects() { return [] }
+  }
+  const visible = {
+    offsetWidth: 120,
+    offsetHeight: 44,
+    getClientRects() { return [{}] }
+  }
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: {
+      documentElement: {},
+      querySelectorAll(selector) {
+        return selector === '[data-tour="operator-workspace"]' ? [hidden, visible] : []
+      }
+    }
+  })
+  try {
+    assert.equal(await waitForElement('operator-workspace', 5), visible)
+  } finally {
+    if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
+    else delete globalThis.document
   }
 })
 
