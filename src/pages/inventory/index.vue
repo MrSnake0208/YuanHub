@@ -7165,6 +7165,27 @@ onBeforeUnmount(function () {
 }
 
 @media (min-width: 1081px) {
+  .records-overview-actions {
+    width: max-content;
+    max-width: 100%;
+    justify-self: end;
+  }
+  .records-count {
+    width: 100%;
+    justify-content: flex-start;
+    transform: translateY(10px);
+  }
+  .records-overview-actions :deep(.reward-workspace) {
+    width: 100%;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: -28px;
+  }
+  .records-overview-actions :deep(.workspace-actions) {
+    width: 100%;
+  }
   .manifest-toolbar {
     position: sticky;
     top: 84px;
