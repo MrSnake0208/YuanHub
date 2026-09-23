@@ -93,7 +93,10 @@
 .feedback-filter { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-60); font-size: 11px; font-weight: 800; }
 .feedback-filter select { min-height: 38px; padding: 0 32px 0 11px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--surface); color: var(--ink); font-size: 12px; }
 .feedback-filter select:focus { border-color: var(--accent); }
-.feedback-result-meta { margin-left: auto; color: var(--ink-35); font: 11px var(--font-d); }
+.feedback-result-tools { min-width: 0; display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.feedback-result-meta { color: var(--ink-35); font: 11px var(--font-d); }
+.feedback-mark-read-button { min-height: 38px; padding: 0 11px; white-space: nowrap; }
+.feedback-mark-read-count { min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 999px; background: var(--yellow); color: var(--ink); font: 800 10px/1 var(--font-d); }
 
 .feedback-form-control { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--surface); color: var(--ink); font: 14px var(--font-b); }
 .feedback-form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .1); }
@@ -163,7 +166,9 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
   .feedback-filter-row { align-items: stretch; flex-wrap: wrap; gap: 8px; }
   .feedback-filter { flex: 1 1 calc(50% - 4px); display: grid; gap: 5px; }
   .feedback-filter select { width: 100%; min-height: 44px; font-size: 16px; }
-  .feedback-result-meta { width: 100%; margin-left: 0; }
+  .feedback-result-tools { width: 100%; align-items: center; gap: 12px; margin-left: 0; }
+  .feedback-result-meta { min-width: 0; flex: 1 1 auto; }
+  .feedback-mark-read-button { min-height: 44px; flex: none; }
   .feedback-button { min-height: 44px; }
   .feedback-form-control { font-size: 16px; }
   .feedback-attachment-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }

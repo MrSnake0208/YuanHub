@@ -227,6 +227,30 @@ export function markFeedbackRead(userId, reportId, reportOrMessage) {
   return result
 }
 
+export function markFeedbackListRead(userId, reports) {
+  const normalizedUserId = normalizeUserId(userId)
+  if (!normalizedUserId || !Array.isArray(reports) || !reports.length) return 0
+
+  const state = readState(normalizedUserId)
+  let changed = 0
+
+  for (const report of reports) {
+    const reportId = normalizeReportId(report && (report.id ?? report.reportId ?? report.report_id))
+    const boundary = getFeedbackReporterBoundary(report)
+    if (!reportId || !boundary) continue
+
+    const previous = state[reportId]
+    if (previous && compareBoundaries(boundary, previous) <= 0) continue
+    state[reportId] = boundary
+    changed += 1
+  }
+
+  if (!changed) return 0
+  writeState(normalizedUserId, state)
+  dispatchStateChange(normalizedUserId, '')
+  return changed
+}
+
 export function clearFeedbackReadState(userId) {
   const normalizedUserId = normalizeUserId(userId)
   if (!normalizedUserId) return false
