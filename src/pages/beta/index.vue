@@ -298,7 +298,6 @@
         </section>
 
         <div class="beta-links">
-          <router-link to="/works">看看公开作业</router-link>
           <router-link to="/cart">使用本地账房</router-link>
           <router-link to="/feedback">反馈问题</router-link>
         </div>

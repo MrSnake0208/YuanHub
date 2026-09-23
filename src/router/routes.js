@@ -1,3 +1,5 @@
+import { FEATURE_KEYS } from '../config/features.js'
+
 // {
 //     path: '/',  访问路径
 //     text: '作业广场',  导航展示的文本
@@ -44,7 +46,9 @@ export const routes = [
         icon: 'layout-grid',
         component: () => import('/src/pages/work/index.vue'),
         meta: {
-            title: '作业广场 — 鸢鸢相抱 · YuanHub'
+            title: '作业广场 — 鸢鸢相抱 · YuanHub',
+            feature: FEATURE_KEYS.WORK_SYSTEM,
+            featureFallback: '/'
         }
     },
     {
@@ -57,7 +61,9 @@ export const routes = [
         component: () => import('/src/pages/work/editor.vue'),
         meta: {
             title: '新建作业 — 鸢鸢相抱 · YuanHub',
-            requiresAuth: true
+            requiresAuth: true,
+            feature: FEATURE_KEYS.WORK_SYSTEM,
+            featureFallback: '/'
         }
     },
     {
@@ -70,7 +76,9 @@ export const routes = [
         component: () => import('/src/pages/work/detail.vue'),
         props: true,
         meta: {
-            title: '通关作业 — 鸢鸢相抱 · YuanHub'
+            title: '通关作业 — 鸢鸢相抱 · YuanHub',
+            feature: FEATURE_KEYS.WORK_SYSTEM,
+            featureFallback: '/'
         }
     },
     {
@@ -84,7 +92,9 @@ export const routes = [
         props: true,
         meta: {
             title: '编辑作业 — 鸢鸢相抱 · YuanHub',
-            requiresAuth: true
+            requiresAuth: true,
+            feature: FEATURE_KEYS.WORK_SYSTEM,
+            featureFallback: '/'
         }
     },
     {

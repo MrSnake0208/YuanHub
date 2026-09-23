@@ -55,7 +55,7 @@ export function betaAccessError(state) {
 export function betaStatusCopy(campaign, mine, error = '') {
   if (error) return { tone: 'error', title: '暂时无法读取开放状态', description: '请检查网络后再点一次「刷新状态」。这不代表名额已满，也不影响注册和登录。' }
   if (!campaign) return { tone: 'loading', title: '正在读取内测状态', description: '稍等一下就好；注册账号不会占用体验名额。' }
-  if (campaign.accessMode === 'CLOSED') return { tone: 'closed', title: '内测正在维护，暂时关闭', description: '公开作业、本地账房和反馈入口仍可正常使用。' }
+  if (campaign.accessMode === 'CLOSED') return { tone: 'closed', title: '内测正在维护，暂时关闭', description: '本地账房和反馈入口仍可正常使用。' }
   if (campaign.publicState === 'NOT_STARTED') return { tone: 'pending', title: '本轮报名还没有开始', description: '按下方公布的时间回来报名即可，不需要提前注册多个账号。' }
   if (campaign.accessMode === 'OPEN') return { tone: 'open', title: 'YuanHub 已正式开放', description: '现在无需内测资格；登录后即可使用个人云端数据。' }
   if (mine?.canUseBetaFeatures) return { tone: 'granted', title: '你已获得本轮体验资格', description: campaign.admissionsPaused ? '本轮暂缓新增名额，但你仍可继续体验。' : '欢迎开始体验；用一次、遇到问题反馈一下，都很有帮助。' }
