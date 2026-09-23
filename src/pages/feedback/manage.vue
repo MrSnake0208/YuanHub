@@ -63,7 +63,23 @@
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
-              <span class="feedback-result-meta">第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
+              <div class="feedback-result-tools">
+                <span class="feedback-result-meta">第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
+                <button
+                  class="feedback-button feedback-mark-read-button"
+                  type="button"
+                  :disabled="markingAllRead || feedbackUnreadState.loading || feedbackUnreadState.count === 0"
+                  :title="markAllReadHint"
+                  :aria-label="markAllReadHint"
+                  @click="markAllUnreadFeedback"
+                >
+                  <CheckCheck :size="15" aria-hidden="true" />
+                  <span>{{ markingAllRead ? '标记中…' : '一键已读' }}</span>
+                  <span v-if="feedbackUnreadState.count > 0" class="feedback-mark-read-count" aria-hidden="true">
+                    {{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <FeedbackTicketWorkspace
@@ -135,7 +151,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
+import { ArrowRight, CheckCheck, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
@@ -150,12 +166,13 @@ import {
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
-import { feedbackUnreadState, subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
+import * as feedbackUnreadStore from '@/store/feedbackUnread.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { markFeedbackRead } from '@/utils/feedbackReadState.js'
 import '@/styles/feedback-workspace.css'
 
+const { feedbackUnreadState, subscribeFeedbackUnread } = feedbackUnreadStore
 const PAGE_SIZE = 20
 const statusTabs = ['全部', '处理中', '已完成', '已驳回']
 const feedbackTypeOptions = [
@@ -197,6 +214,7 @@ const replyTarget = ref('')
 const replyContent = ref('')
 const replying = ref(false)
 const updatingStatus = ref(false)
+const markingAllRead = ref(false)
 const replyMedia = useFeedbackMedia()
 let isMounted = false
 let ready = false
@@ -213,6 +231,9 @@ const categoryOptions = computed(() => {
 })
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 const unreadFeedbackIds = computed(() => feedbackUnreadState.ids)
+const markAllReadHint = computed(() => feedbackUnreadState.count > 0
+  ? `将当前管理范围内 ${feedbackUnreadState.count} 条未读反馈全部标记为已读`
+  : '当前没有未读反馈')
 
 function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
@@ -301,6 +322,18 @@ function setFilter(status) {
 
 function searchFeedback() {
   reloadFromFirstPage()
+}
+
+async function markAllUnreadFeedback() {
+  if (markingAllRead.value || feedbackUnreadState.loading || feedbackUnreadState.count === 0) return
+  const markAllRead = feedbackUnreadStore.markAllManagedFeedbackRead
+  if (typeof markAllRead !== 'function') return
+  markingAllRead.value = true
+  try {
+    await markAllRead()
+  } finally {
+    markingAllRead.value = false
+  }
 }
 
 async function changePage(nextPage) {

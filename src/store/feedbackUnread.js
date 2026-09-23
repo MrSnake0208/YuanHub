@@ -5,7 +5,8 @@ import { canManageAnyFeedback } from '../utils/authPermissions.js'
 import {
   countUnreadFeedback,
   FEEDBACK_READ_STATE_EVENT,
-  getUnreadFeedbackIds
+  getUnreadFeedbackIds,
+  markFeedbackListRead
 } from '../utils/feedbackReadState.js'
 
 const PAGE_SIZE = 100
@@ -43,6 +44,7 @@ let requestPromise = null
 let pollTimer = null
 let stopPermissionWatch = null
 let subscriberCount = 0
+let managedFeedbackSnapshot = []
 
 function currentUserId() {
   const user = auth.userInfo
@@ -52,6 +54,7 @@ function currentUserId() {
 }
 
 function clearFeedbackUnread() {
+  managedFeedbackSnapshot = []
   feedbackUnreadState.count = 0
   feedbackUnreadState.ids = []
   feedbackUnreadState.loading = false
@@ -91,6 +94,7 @@ async function fetchFeedbackUnread() {
 
     if (currentRequestId !== requestId || !canReadManagedFeedback.value) return
     const userId = currentUserId()
+    managedFeedbackSnapshot = reports
     feedbackUnreadState.count = countUnreadFeedback(reports, userId)
     feedbackUnreadState.ids = getUnreadFeedbackIds(reports, userId)
     feedbackUnreadState.loaded = true
@@ -109,6 +113,23 @@ export function refreshFeedbackUnread() {
   })
   requestPromise = trackedPromise
   return trackedPromise
+}
+
+export async function markAllManagedFeedbackRead() {
+  if (!canReadManagedFeedback.value) return 0
+  if (!feedbackUnreadState.loaded || feedbackUnreadState.loading) await refreshFeedbackUnread()
+  if (!canReadManagedFeedback.value || !managedFeedbackSnapshot.length) return 0
+
+  const userId = currentUserId()
+  const unreadIds = new Set(feedbackUnreadState.ids)
+  const targets = managedFeedbackSnapshot.filter(report => {
+    const reportId = report && (report.id ?? report.reportId ?? report.report_id)
+    return reportId != null && unreadIds.has(String(reportId))
+  })
+  const marked = markFeedbackListRead(userId, targets)
+  feedbackUnreadState.count = countUnreadFeedback(managedFeedbackSnapshot, userId)
+  feedbackUnreadState.ids = getUnreadFeedbackIds(managedFeedbackSnapshot, userId)
+  return marked
 }
 
 function handleReadStateChange(event) {
