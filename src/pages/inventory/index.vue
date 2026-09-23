@@ -1549,18 +1549,33 @@
 
           <!-- 导入记录 -->
           <div v-show="activeTab === 'records'" class="panel">
-            <RewardEntryWorkspace
-              :account-id="accountId"
-              :account-name="currentAccountName"
-              :latest-inventory-at="latestInventoryRecordAt"
-              :disabled="!auth.isLoggedIn || !accountId || accountsLoading || accountBusy || editingStock"
-              @busy="rewardImportBusy = $event"
-              @imported="onRewardImported"
-            />
+            <section class="records-overview" aria-labelledby="records-overview-title">
+              <div class="records-overview-copy">
+                <span class="records-kicker">库存追踪 · 操作历史</span>
+                <h2 id="records-overview-title">浏览库存变更记录</h2>
+                <p>
+                  这里按时间保留库存更新与奖励流水。新增奖励或导入本地报告会在独立工作台中完成，不会打断当前浏览位置。
+                </p>
+              </div>
+              <div class="records-overview-actions">
+                <div class="records-count" aria-live="polite">
+                  <span>当前已加载</span>
+                  <strong>{{ recordsList.length }}</strong>
+                  <small>条记录</small>
+                </div>
+                <RewardEntryWorkspace
+                  :account-id="accountId"
+                  :account-name="currentAccountName"
+                  :latest-inventory-at="latestInventoryRecordAt"
+                  :disabled="!auth.isLoggedIn || !accountId || accountsLoading || accountBusy || editingStock"
+                  @busy="rewardImportBusy = $event"
+                  @imported="onRewardImported"
+                />
+              </div>
+            </section>
             <div class="records-head" v-reveal>
               <span class="hint"
-                >已加载 {{ recordsList.length }} 条导入记录 ·
-                删除单条后自动重放剩余记录重建库存</span
+                >筛选要查看的记录类型；删除单条后会自动重放剩余记录并重建库存。</span
               >
               <span class="sp"></span>
               <div
@@ -6831,11 +6846,81 @@ onBeforeUnmount(function () {
 }
 
 /* ---- 导入记录 ---- */
+.records-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.78fr);
+  gap: 28px;
+  align-items: center;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    linear-gradient(118deg, rgba(255, 248, 236, 0.92), rgba(255, 253, 246, 0.98));
+  box-shadow: 0 14px 34px -32px rgba(73, 59, 44, 0.48);
+}
+.records-overview-copy {
+  min-width: 0;
+}
+.records-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+.records-overview h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-s);
+  font-size: clamp(20px, 2vw, 25px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.records-overview p {
+  max-width: 64ch;
+  margin: 8px 0 0;
+  color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.75;
+}
+.records-overview-actions {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  justify-items: stretch;
+}
+.records-overview-actions :deep(.reward-workspace) {
+  width: 100%;
+}
+.records-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-60);
+  font-size: 11px;
+  font-weight: 700;
+}
+.records-count strong {
+  color: var(--ink);
+  font-family: "Archivo", var(--font-b);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.records-count small {
+  font-size: 10px;
+}
 .records-head {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 4px 0;
 }
 .records-head .hint {
   min-width: 0;
@@ -7888,6 +7973,17 @@ onBeforeUnmount(function () {
   .records-head {
     align-items: stretch;
     flex-direction: column;
+  }
+  .records-overview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px 16px;
+  }
+  .records-overview-actions {
+    gap: 10px;
+  }
+  .records-count {
+    justify-content: flex-start;
   }
   .records-head .hint {
     flex-basis: auto;
