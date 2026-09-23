@@ -16,9 +16,18 @@
 
     <section v-if="item.messages && item.messages.length" class="detail-section conversation-section">
       <h3>沟通记录 <span>{{ item.messages.length }}</span></h3>
-      <article v-for="msg in item.messages" :key="msg.id" class="detail-message" :class="msg.isAdmin ? 'is-admin' : 'is-reporter'">
+      <article
+        v-for="msg in item.messages"
+        :key="msg.id"
+        class="detail-message"
+        :class="[msg.isAdmin ? 'is-admin' : 'is-reporter', isOwnMessage(msg) ? 'is-self' : 'is-other']"
+      >
         <header>
-          <strong>{{ msg.isAdmin ? '管理员' : reporterLabel }}</strong>
+          <span v-if="msg.isAdmin" class="detail-admin-label">
+            <ShieldCheck :size="13" aria-hidden="true" />
+            <strong>管理员</strong>
+          </span>
+          <strong v-else>{{ isOwnMessage(msg) ? '我' : reporterLabel }}</strong>
           <time :datetime="msg.createdAt">{{ formatDate(msg.createdAt) }}</time>
         </header>
         <p>{{ msg.content }}</p>
@@ -51,7 +60,30 @@
       </article>
     </section>
 
-    <div v-if="!loading" class="detail-action-area">
+    <section
+      v-if="!loading && (item.status === 'RESOLVED' || item.status === 'DISMISSED')"
+      class="detail-closure"
+      :class="item.status === 'RESOLVED' ? 'is-resolved' : 'is-dismissed'"
+      role="status"
+    >
+      <CheckCircle2 v-if="item.status === 'RESOLVED'" :size="20" class="detail-closure-icon" aria-hidden="true" />
+      <CircleX v-else :size="20" class="detail-closure-icon" aria-hidden="true" />
+      <div>
+        <strong>{{ item.status === 'RESOLVED' ? '此反馈已处理完成' : '此反馈已结束处理' }}</strong>
+        <p>
+          {{ item.status === 'RESOLVED'
+            ? '当前工单已结案，无法继续补充；如仍有问题，请新建一条反馈。'
+            : '当前工单已结束，无法继续补充；如果情况有变化，可以重新提交反馈。' }}
+        </p>
+        <div v-if="item.handler?.userName" class="detail-closure-meta">
+          <span>最近处理</span>
+          <strong>{{ item.handler.userName }}</strong>
+          <time v-if="item.updatedAt" :datetime="item.updatedAt">{{ formatDate(item.updatedAt) }}</time>
+        </div>
+      </div>
+    </section>
+
+    <div v-if="!loading && item.status === 'OPEN'" class="detail-action-area">
       <slot name="actions" :item="item" />
       <slot name="composer" :item="item" />
     </div>
@@ -60,7 +92,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { Download, File, FileArchive, FileJson, FileText, LoaderCircle } from '@lucide/vue'
+import { CheckCircle2, CircleX, Download, File, FileArchive, FileJson, FileText, LoaderCircle, ShieldCheck } from '@lucide/vue'
 import { downloadFeedbackAttachment } from '@/api/feedback.js'
 
 const props = defineProps({
@@ -69,8 +101,29 @@ const props = defineProps({
   error: { type: String, default: '' },
   showReporter: { type: Boolean, default: false },
   reporterLabel: { type: String, default: '我' },
+  viewerUserId: { type: String, default: '' },
+  viewerActorMode: {
+    type: String,
+    default: 'REPORTER',
+    validator: value => ['REPORTER', 'ADMIN'].includes(value)
+  },
   formatDate: { type: Function, required: true }
 })
+
+function isOwnMessage(message) {
+  const authorId = String(message?.author?.id || '').trim()
+  const viewerUserId = String(props.viewerUserId || '').trim()
+  const senderKind = String(
+    message?.senderKind || (message?.isAdmin ? 'ADMIN' : 'REPORTER')
+  ).trim().toUpperCase()
+
+  return Boolean(
+    authorId &&
+    viewerUserId &&
+    authorId === viewerUserId &&
+    senderKind === props.viewerActorMode
+  )
+}
 
 const failedImages = ref(new Set())
 const downloadingId = ref('')
@@ -150,16 +203,26 @@ watch(() => props.item?.id, () => {
 .conversation-section { display: grid; gap: 18px; }
 .conversation-section h3 { margin-bottom: 0; }
 .detail-message { width: min(78%, 640px); padding: 0; background: transparent; }
-.detail-message.is-reporter { justify-self: end; }
-.detail-message.is-admin { justify-self: start; }
+.detail-message.is-self { justify-self: end; }
+.detail-message.is-other { justify-self: start; }
 .detail-message header { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.detail-message.is-reporter header { flex-direction: row-reverse; }
+.detail-message.is-self header { flex-direction: row-reverse; }
 .detail-message header strong { color: var(--feedback-text); font-size: 11.5px; }
+.detail-admin-label { display: inline-flex; align-items: center; gap: 4px; color: var(--tea); }
 .detail-message.is-admin header strong { color: var(--tea); }
 .detail-message header time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 .detail-message > p { width: fit-content; max-width: 100%; padding: 11px 14px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); }
-.detail-message.is-reporter > p { margin-left: auto; border-color: var(--yellow-deep); background: var(--yellow); }
-.detail-message.is-admin > p { border-left: 3px solid var(--tea); background: var(--surface); }
+.detail-message.is-self > p { margin-left: auto; }
+.detail-message.is-reporter > p { border-color: var(--feedback-line); background: var(--surface); }
+.detail-message.is-reporter.is-self > p {
+  border-color: color-mix(in srgb, var(--feedback-line-strong) 74%, var(--tea));
+  border-right: 2px solid color-mix(in srgb, var(--tea) 58%, var(--feedback-line-strong));
+  background: color-mix(in srgb, var(--feedback-panel) 86%, var(--tea) 14%);
+}
+.detail-message.is-reporter.is-self header > strong { color: var(--tea); }
+.detail-message.is-admin > p { border-color: var(--yellow-deep); background: var(--yellow); }
+.detail-message.is-admin.is-self > p { border-right: 3px solid var(--tea); }
+.detail-message.is-admin.is-other > p { border-left: 3px solid var(--tea); }
 .detail-media-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .detail-media-grid a { position: relative; display: block; overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); aspect-ratio: 4 / 3; }
 .detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
@@ -174,6 +237,16 @@ watch(() => props.item?.id, () => {
 .detail-file-row button:disabled { opacity: .55; cursor: default; }
 .is-spinning { animation: detail-file-spin .8s linear infinite; }
 @keyframes detail-file-spin { to { transform: rotate(360deg); } }
+.detail-closure { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 11px; margin-top: 18px; padding: 14px 15px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
+.detail-closure-icon { margin-top: 1px; color: var(--feedback-text-dim); }
+.detail-closure.is-resolved .detail-closure-icon { color: var(--feedback-success); }
+.detail-closure.is-dismissed .detail-closure-icon { color: var(--feedback-danger); }
+.detail-closure > div > strong { display: block; color: var(--feedback-text); font-size: 13px; font-weight: 900; }
+.detail-closure p { margin-top: 4px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.65; }
+.detail-closure-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--feedback-line); }
+.detail-closure-meta span { color: var(--feedback-text-dim); font-size: 10px; font-weight: 800; }
+.detail-closure-meta strong { color: var(--feedback-text); font-size: 11.5px; }
+.detail-closure-meta time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 .detail-action-area { position: sticky; bottom: -26px; margin: 0 -26px -26px; padding: 16px 26px 20px; background: rgba(255, 253, 246, .96); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
 
 @media (max-width: 767px) {

@@ -91,6 +91,8 @@
                 :loading="detailLoading"
                 :error="detailError"
                 :format-date="formatDate"
+                :viewer-user-id="currentUserId()"
+                viewer-actor-mode="REPORTER"
               >
                 <template #actions>
                   <p v-if="item.status === 'OPEN' && item.viewerIsReporter && item.quota?.canAppend === false" class="feedback-result-meta" role="status">
