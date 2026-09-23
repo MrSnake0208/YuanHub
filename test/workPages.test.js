@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { FEATURE_KEYS } from '../src/config/features.js'
 import { routes } from '../src/router/routes.js'
 import {
   buildRoundRows,
@@ -16,14 +17,23 @@ function readSource(path) {
   return readFileSync(new URL(path, import.meta.url), 'utf8')
 }
 
-test('注册真实作业列表并保留既有首页与详情路由', function () {
+test('作业系统路由保留但默认由统一 feature flag 封存', function () {
   assert.equal(routes.find(function (route) { return route.path === '/' }).name, 'today')
   assert.match(String(routes.find(function (route) { return route.path === '/works' }).component), /pages\/work\/index\.vue/)
   assert.equal(routes.filter(function (route) { return route.path === '/work/:id' }).length, 1)
   assert.equal(routes.find(function (route) { return route.path === '/work/new' }).meta.requiresAuth, true)
   assert.equal(routes.find(function (route) { return route.path === '/work/:id/edit' }).meta.requiresAuth, true)
+
+  for (const path of ['/works', '/work/new', '/work/:id', '/work/:id/edit']) {
+    const route = routes.find(function (item) { return item.path === path })
+    assert.equal(route.meta.feature, FEATURE_KEYS.WORK_SYSTEM, path)
+    assert.equal(route.meta.featureFallback, '/', path)
+  }
+
   const sidebar = readSource('../src/components/IslandSidebar.vue')
-  assert.match(sidebar, /to="\/works"/)
+  const betaPage = readSource('../src/pages/beta/index.vue')
+  assert.doesNotMatch(sidebar, /to="\/works"/)
+  assert.doesNotMatch(betaPage, /to="\/works"/)
 })
 
 test('列表页覆盖真实分页状态且不提供伪搜索筛选', function () {

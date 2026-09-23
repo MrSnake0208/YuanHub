@@ -22,6 +22,14 @@ test('growth tracking is enabled only in Vite dev mode', function () {
   assert.equal(isFeatureEnabled('missingFeature'), false)
 })
 
+test('work system is explicitly disabled until it is ready to reopen', function () {
+  const key = FEATURE_KEYS.WORK_SYSTEM
+
+  assert.equal(key, 'workSystem')
+  assert.equal(FEATURE_FLAGS[key], false)
+  assert.equal(isFeatureEnabled(key), false)
+})
+
 test('operator tracking is guarded at both tabs, panel, and state transition', function () {
   assert.equal((operatorPage.match(/v-if="growthTrackingEnabled"/g) || []).length, 2)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
