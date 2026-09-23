@@ -36,6 +36,15 @@ export function normalizeTrainingLevels(value = {}) {
   ]))
 }
 
+export function experienceTrainingDays(experienceGap) {
+  const gap = Math.max(0, Number(experienceGap) || 0)
+  if (!gap) return 0
+  const group = TRAINING_GROUPS.find(item => item.id === 'experience')
+  const stage = group?.stages?.[7]
+  const dailyExperience = bookExperience(stage?.rewards) * TRAINING_DAILY_LIMIT
+  return dailyExperience > 0 ? Math.ceil(gap / dailyExperience) : null
+}
+
 // 与当前养成快捷提升共用：默认绝境历练 9 全卷 + 100 残卷 = 19,000 经验。
 export function levelBookGapBundle(experienceGap, maxLevel = 8) {
   const gap = Math.max(0, Number(experienceGap) || 0)
