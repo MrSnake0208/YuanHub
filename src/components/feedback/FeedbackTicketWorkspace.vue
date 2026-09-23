@@ -89,14 +89,26 @@
             </button>
           </header>
           <div class="ticket-detail-meta">
-            <div class="ticket-badges">
-              <span class="ticket-type">{{ typeLabel(selectedItem.type) }}</span>
-              <span class="ticket-category">{{ categoryLabel(selectedItem.category) }}</span>
-              <span class="ticket-status" :class="'status-' + selectedItem.status">
+            <div class="ticket-detail-overview">
+              <span class="ticket-status ticket-detail-status" :class="'status-' + selectedItem.status">
                 {{ statusLabel(selectedItem.status, selectedItem.hasAdminReply) }}
               </span>
+              <span v-if="showReporter" class="ticket-detail-fact">
+                <span>提交人</span>
+                <strong>{{ reporterName(selectedItem) }}</strong>
+              </span>
+              <span class="ticket-detail-fact">
+                <span>提交于</span>
+                <time :datetime="selectedItem.createdAt">{{ formatDate(selectedItem.createdAt) }}</time>
+              </span>
             </div>
-            <code>{{ selectedItem.id }}</code>
+            <div class="ticket-detail-context">
+              <div class="ticket-badges ticket-badges-secondary">
+                <span class="ticket-type">类型 · {{ typeLabel(selectedItem.type) }}</span>
+                <span class="ticket-category">板块 · {{ categoryLabel(selectedItem.category) }}</span>
+              </div>
+              <code><span>工单</span>{{ selectedItem.id }}</code>
+            </div>
           </div>
           <div class="ticket-detail-scroll">
             <slot name="detail" :item="selectedItem" />
@@ -236,9 +248,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-detail-head h2 { color: var(--feedback-text); font-family: var(--font-s); font-size: 25px; font-weight: 900; letter-spacing: .04em; }
 .ticket-detail-head > button { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 1px solid var(--feedback-line-strong); border-radius: 7px; background: transparent; color: var(--feedback-text); cursor: pointer; }
 .ticket-detail-head > button:hover { border-color: var(--accent); color: var(--accent-strong); }
-.ticket-detail-meta { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 26px 0; }
+.ticket-detail-meta { display: grid; gap: 12px; padding: 18px 26px 0; }
+.ticket-detail-overview { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--feedback-line); }
+.ticket-detail-status { min-height: 30px; padding: 4px 10px; font-size: 11px; }
+.ticket-detail-fact { display: inline-flex; align-items: baseline; gap: 6px; color: var(--feedback-text-muted); font-size: 11.5px; }
+.ticket-detail-fact > span { color: var(--feedback-text-dim); font-size: 10px; font-weight: 800; }
+.ticket-detail-fact strong { color: var(--feedback-text); font-size: 12px; }
+.ticket-detail-fact time { color: var(--feedback-text-muted); font: 10.5px var(--font-d); }
+.ticket-detail-context { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .ticket-badges { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.ticket-detail-meta code { overflow-wrap: anywhere; color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.ticket-badges-secondary .ticket-type,
+.ticket-badges-secondary .ticket-category { border-color: var(--feedback-line); background: var(--feedback-panel); color: var(--feedback-text-muted); }
+.ticket-detail-meta code { display: inline-flex; align-items: baseline; gap: 6px; overflow-wrap: anywhere; color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.ticket-detail-meta code span { color: var(--feedback-text-dim); font: 800 9.5px var(--font-b); letter-spacing: .04em; }
 .ticket-detail-scroll { min-height: 0; overflow-y: auto; padding: 0 26px 26px; }
 
 @media (max-width: 767px) {
@@ -259,7 +281,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   .ticket-detail-dialog { width: 100%; max-height: 100dvh; min-height: 100dvh; border: 0; border-radius: 0; }
   .ticket-detail-head { min-height: calc(86px + env(safe-area-inset-top)); padding: calc(14px + env(safe-area-inset-top)) 16px 14px; }
   .ticket-detail-head h2 { font-size: 21px; }
-  .ticket-detail-meta { align-items: flex-start; flex-direction: column; padding: 16px 16px 0; }
+  .ticket-detail-meta { padding: 16px 16px 0; }
+  .ticket-detail-overview { align-items: flex-start; gap: 9px 14px; }
+  .ticket-detail-context { align-items: flex-start; flex-direction: column; gap: 10px; }
   .ticket-detail-scroll { padding: 0 16px calc(20px + env(safe-area-inset-bottom)); }
 }
 </style>

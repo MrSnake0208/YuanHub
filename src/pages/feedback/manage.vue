@@ -93,7 +93,8 @@
                   :loading="detailLoading"
                   :error="detailError"
                   :format-date="formatDate"
-                  show-reporter
+                  :viewer-user-id="currentUserId()"
+                  viewer-actor-mode="ADMIN"
                   reporter-label="提交人"
                 >
                   <template #actions>
