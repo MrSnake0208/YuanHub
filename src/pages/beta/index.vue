@@ -95,7 +95,7 @@
                         进入 YuanHub
                         <ArrowRight :size="17" aria-hidden="true" />
                       </router-link>
-                      <p class="action-note">{{ campaign?.accessMode === 'OPEN' ? 'YuanHub 已正式开放，现在无需内测资格。' : '资格已经开通，不需要重新登录。第一次来可以从「今日一览」开始。' }}</p>
+                      <p class="action-note">{{ adminBypass ? '管理员账号不参与内测名额分配，可直接进入 YuanHub。' : campaign?.accessMode === 'OPEN' ? 'YuanHub 已正式开放，现在无需内测资格。' : '资格已经开通，不需要重新登录。第一次来可以从「今日一览」开始。' }}</p>
                     </template>
 
                     <template v-else-if="waiting">
@@ -361,19 +361,27 @@ const resetFailed = ref(false)
 const campaign = computed(() => beta.campaign)
 const mine = computed(() => beta.mine)
 const error = computed(() => beta.publicError || beta.personalError)
-const copy = computed(() => betaStatusCopy(campaign.value, mine.value, error.value))
+const adminBypass = computed(() => !error.value && auth.isAdmin && mine.value?.canUseBetaFeatures === true)
+const copy = computed(() => adminBypass.value
+  ? {
+      tone: 'granted',
+      title: '管理员账号可直接进入',
+      description: '管理员不受邀请测试资格、名额和开放状态限制，也不会占用体验名额。'
+    }
+  : betaStatusCopy(campaign.value, mine.value, error.value))
 const refreshing = computed(() => beta.publicLoading || beta.personalLoading)
 const entryTarget = computed(() => betaEntryTarget(route.query.redirect))
-const statusLabel = computed(() => STATUS_LABELS[copy.value.tone] || '邀请测试')
+const statusLabel = computed(() => adminBypass.value ? '管理员直通' : STATUS_LABELS[copy.value.tone] || '邀请测试')
 const canJoin = computed(() => !error.value && mine.value?.nextAction === 'JOIN' && campaign.value?.accessMode === 'BETA')
 const waiting = computed(() => mine.value?.enrollmentStatus === 'WAITING')
-const granted = computed(() => !error.value && !!mine.value?.canUseBetaFeatures && campaign.value?.accessMode !== 'CLOSED')
+const granted = computed(() => !error.value && !!mine.value?.canUseBetaFeatures)
 const showSteps = computed(() => !['granted', 'open'].includes(copy.value.tone))
 const canResetLocalTest = computed(() => mine.value?.canResetLocalTest === true)
 const inBeta = computed(() => campaign.value?.accessMode === 'BETA' && !!campaign.value?.snapshotAt)
 const showRefresh = computed(() => ['error', 'loading', 'waiting'].includes(copy.value.tone))
 const invitationEyebrow = computed(() => {
   if (!auth.isLoggedIn) return '先登录，再参加'
+  if (adminBypass.value) return '管理员账号'
   if (granted.value) return '欢迎进来'
   if (waiting.value) return '已经为你登记'
   if (canJoin.value) return '现在就可以参加'

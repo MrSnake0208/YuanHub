@@ -63,10 +63,10 @@ test('self-service local reset stores only the server result and re-queries on f
   assert.equal(beta.personalLoading, false)
 })
 
-test('withdraw returns real result and OPEN admits historical waiters while CLOSED blocks ACTIVE', async () => {
+test('withdraw returns real result and access trusts the server decision', async () => {
   const beta = createBetaStore({ withdrawBeta: async () => me('WITHDRAWN'), getBetaMe: async () => me('WAITING', 'OPEN') })
   beta.setIdentity('A'); assert.equal((await beta.withdraw()).enrollmentStatus, 'WITHDRAWN')
   await beta.loadMe({ force: true }); assert.equal(beta.canUseBetaFeatures, true)
-  beta.campaign = { ...campaign, accessMode: 'CLOSED' }; assert.equal(beta.canUseBetaFeatures, false)
+  beta.campaign = { ...campaign, accessMode: 'CLOSED' }; assert.equal(beta.canUseBetaFeatures, true)
   beta.setIdentity(''); assert.equal(beta.mine, null)
 })
