@@ -1411,7 +1411,13 @@
                       <label class="ledger-oddity"
                         ><ButterflyIcon class="ledger-oddity-icon" /><input
                           type="number"
+                          inputmode="decimal"
                           min="0"
+                          :max="
+                            cardOddityMax(e, kind) === ''
+                              ? undefined
+                              : cardOddityMax(e, kind)
+                          "
                           :value="cardOddityValue(e, kind)"
                           :placeholder="cardOddityMax(e, kind)"
                           :aria-label="
@@ -2725,6 +2731,7 @@
                         min="0"
                         :max="editForm.combatStats.oddities[key].max"
                         :aria-label="oddityInputLabel(key)"
+                        @input="normalizeEditOddityValue(key, $event)"
                       />
                       <span
                         class="oddity-limit"
@@ -4166,6 +4173,55 @@ function oddityInputLabel(key) {
 function oddityLimitTitle(key) {
   const max = oddityLimitLabel(key);
   return max === "—" ? "等待公共图鉴返回上限" : "公共图鉴上限 " + max;
+}
+
+function boundedOddityValue(rawValue, maxValue) {
+  if (rawValue === "" || rawValue == null) {
+    return { value: rawValue, adjusted: false, reason: "", max: null };
+  }
+  const numericValue = Number(rawValue);
+  if (!Number.isFinite(numericValue)) {
+    return { value: rawValue, adjusted: false, reason: "", max: null };
+  }
+  const numericMax =
+    maxValue !== "" && maxValue != null && Number.isFinite(Number(maxValue))
+      ? Math.max(0, Number(maxValue))
+      : null;
+  let value = Math.max(0, numericValue);
+  let reason = value !== numericValue ? "min" : "";
+  if (numericMax != null && value > numericMax) {
+    value = numericMax;
+    reason = "max";
+  }
+  return {
+    value: value,
+    adjusted: value !== numericValue,
+    reason: reason,
+    max: numericMax,
+  };
+}
+
+function normalizeEditOddityValue(key, event) {
+  const oddity =
+    editForm.value.combatStats &&
+    editForm.value.combatStats.oddities &&
+    editForm.value.combatStats.oddities[key];
+  if (!oddity) return;
+  const raw = event && event.target ? event.target.value : oddity.current;
+  if (raw === "") return;
+  const normalized = boundedOddityValue(raw, oddity.max);
+  if (!Number.isFinite(Number(normalized.value))) return;
+  oddity.current = normalized.value;
+  if (!normalized.adjusted) return;
+  if (event && event.target) event.target.value = String(normalized.value);
+  editNotice.value =
+    normalized.reason === "max"
+      ? oddityFieldName(key) +
+        "不能超过上限 " +
+        normalized.max +
+        "，已自动调整"
+      : oddityFieldName(key) + "不能小于 0，已自动调整";
+  editNoticeError.value = false;
 }
 
 // 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
@@ -6817,12 +6873,31 @@ function cardOddityMax(entry, kind) {
   return oddity && oddity.max != null ? oddity.max : "";
 }
 
+function boundedCardOddityCurrent(entry, kind, rawValue) {
+  const normalized = boundedOddityValue(rawValue, cardOddityMax(entry, kind));
+  return Number.isFinite(Number(normalized.value)) ? Number(normalized.value) : 0;
+}
+
 function setCardOddityValue(entry, kind, event) {
   ensureCardDraft(entry);
   const draft = cardCombatDraft(entry);
   const raw = event && event.target ? event.target.value : "";
-  draft[kind === "attack" ? "oddityAttack" : "oddityHp"] =
-    raw === "" ? 0 : Number(raw);
+  const normalized = boundedOddityValue(raw, cardOddityMax(entry, kind));
+  const value =
+    raw === "" || !Number.isFinite(Number(normalized.value))
+      ? 0
+      : normalized.value;
+  draft[kind === "attack" ? "oddityAttack" : "oddityHp"] = value;
+  if (!normalized.adjusted) return;
+  if (event && event.target) event.target.value = String(value);
+  const label = kind === "attack" ? "攻击力奇闻" : "生命值奇闻";
+  showQuickNotice(
+    entry.id,
+    normalized.reason === "max"
+      ? label + "不能超过上限 " + normalized.max + "，已自动调整"
+      : label + "不能小于 0，已自动调整",
+    2200,
+  );
 }
 
 function cardPatch(entry) {
@@ -6880,10 +6955,20 @@ function cardPatch(entry) {
         combat.hp == null || combat.hp === "" ? null : Number(combat.hp),
       display_mode: { attack: modes.attack || null, hp: modes.hp || null },
       oddities: {
-        attack: { current: Number(combat.oddityAttack) || 0 },
-        hp: { current: Number(combat.oddityHp) || 0 },
+        attack: {
+          current: boundedCardOddityCurrent(
+            entry,
+            "attack",
+            combat.oddityAttack,
+          ),
+        },
+        hp: {
+          current: boundedCardOddityCurrent(entry, "hp", combat.oddityHp),
+        },
         special: {
-          current: Number(
+          current: boundedCardOddityCurrent(
+            entry,
+            "special",
             entry.combatStats &&
               entry.combatStats.oddities &&
               entry.combatStats.oddities.special
@@ -7070,10 +7155,20 @@ async function saveCardCombat(entry) {
         hp: modes.hp || null,
       },
       oddities: {
-        attack: { current: Number(draft.oddityAttack) || 0 },
-        hp: { current: Number(draft.oddityHp) || 0 },
+        attack: {
+          current: boundedCardOddityCurrent(
+            entry,
+            "attack",
+            draft.oddityAttack,
+          ),
+        },
+        hp: {
+          current: boundedCardOddityCurrent(entry, "hp", draft.oddityHp),
+        },
         special: {
-          current: Number(
+          current: boundedCardOddityCurrent(
+            entry,
+            "special",
             entry.combatStats &&
               entry.combatStats.oddities &&
               entry.combatStats.oddities.special
