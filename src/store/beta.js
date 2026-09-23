@@ -17,7 +17,9 @@ export function createBetaStore(client = api, now = () => Date.now()) {
     campaign: null, mine: null, userId: '', publicLoading: false, personalLoading: false,
     publicError: '', personalError: '', personalLoaded: false,
     get canUseBetaFeatures() {
-      return !!state.userId && !state.personalError && !state.publicError && state.campaign?.accessMode !== 'CLOSED' && state.campaign?.publicState !== 'NOT_STARTED' && state.mine?.canUseBetaFeatures === true
+      // The backend owns the final access decision. This also lets administrators bypass
+      // beta campaign state without the browser re-applying ordinary-user restrictions.
+      return !!state.userId && !state.personalError && !state.publicError && state.mine?.canUseBetaFeatures === true
     },
     setIdentity(value) {
       const id = value ? String(value) : ''

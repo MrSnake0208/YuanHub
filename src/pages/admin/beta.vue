@@ -7,7 +7,7 @@
       <div v-if="data?.campaign?.localTestMode" class="admin-message local-mode" role="note"><b>LOCAL · 本地内测模式</b><span>当前操作的是隔离活动 {{ data.campaign.campaignId }}，不会修改正式内测的快照、报名或资格。</span></div>
       <button class="admin-btn secondary" :disabled="busy" @click="load">{{ busy ? '正在读取/提交…' : '刷新管理状态' }}</button>
       <template v-if="data">
-        <div v-if="!data.configured || data.snapshotStatus !== 'READY'" class="admin-card"><h2>活动尚未初始化</h2><p>受限功能默认关闭。请先使用后端准备工具核实来源、导入并锁定快照；本页不能上传普通用户申请或绕过配额发资格。</p></div>
+        <div v-if="!data.configured || data.snapshotStatus !== 'READY'" class="admin-card"><h2>活动尚未初始化</h2><p>普通用户的受限功能默认关闭，管理员仍可直接进入。请先使用后端准备工具核实来源、导入并锁定快照；本页不能上传普通用户申请或绕过配额发资格。</p></div>
         <div class="admin-card"><h2>活动与名额</h2>
           <div class="admin-metrics"><div v-for="metric in metrics" :key="metric.label"><span>{{ metric.label }}</span><b>{{ metric.value }}</b></div></div>
           <p>模式：<b>{{ data.campaign.accessMode }}</b> · {{ data.campaign.admissionsPaused ? '暂停新增' : '正常新增' }} · 配置版本 {{ data.configVersion }}</p>
@@ -29,12 +29,12 @@
             <button v-for="size in [150, 200]" :key="size" class="admin-btn secondary" :disabled="disabled || data.campaign.capacity >= size || size > data.campaign.maxCapacity" @click="mutate('capacity', { capacity: size }, '将当前容量提高到 ' + size + '？新增名额全部公开，已有候补优先。')">扩至 {{ size }} 人</button>
           </div>
           <div class="admin-actions">
-            <button class="admin-btn secondary" :disabled="disabled || data.campaign.accessMode === 'CLOSED'" @click="mutate('mode', { access_mode: 'CLOSED' }, '进入维护关闭？所有用户将暂停受限云功能，但账号和管理入口保留。')">维护关闭</button>
+            <button class="admin-btn secondary" :disabled="disabled || data.campaign.accessMode === 'CLOSED'" @click="mutate('mode', { access_mode: 'CLOSED' }, '进入维护关闭？普通用户将暂停受限云功能；管理员仍可直接进入，账号和管理入口保留。')">维护关闭</button>
             <button class="admin-btn secondary" :disabled="disabled || !!data.publicOpenedAt || data.snapshotStatus !== 'READY' || data.campaign.accessMode === 'BETA'" @click="mutate('mode', { access_mode: 'BETA' }, '进入内测模式？仍严格遵守开始时间、快照和当前容量。')">进入内测模式</button>
             <button class="admin-btn" :disabled="disabled || data.campaign.accessMode === 'OPEN'" @click="mutate('mode', { access_mode: 'OPEN' }, '确认正式开放？将取消所有来源的内测资格限制；之后不能退回旧内测配额，仅可维护关闭。')">正式开放</button>
             <button v-if="data.campaign.localTestMode" class="admin-btn local-reset" :disabled="disabled" @click="resetLocal">重置本地内测</button>
           </div>
-          <p>暂停新增不会延长 72 小时预留期；到期仍释放，恢复新增后继续递补。没有内测资格的管理员也能管理，但体验普通云功能仍需计入名额。</p>
+          <p>暂停新增不会延长 72 小时预留期；到期仍释放，恢复新增后继续递补。所有具备管理能力的管理员账号都不参与内测资格与名额分配，可在任意开放状态下直接进入普通云功能；普通用户仍按当前内测规则进入。</p>
         </div>
         <div class="admin-card"><h2>期限维护</h2><p>已释放预留：{{ data.releasedCount }} · 释放记录：{{ time(data.releasedAt) }}</p><p>本实例最近维护：{{ time(data.lastMaintenanceAt) }}</p><p v-if="data.lastMaintenanceError" class="error">{{ data.lastMaintenanceError }}</p><p>正式开放记录：{{ time(data.publicOpenedAt) }}</p></div>
       </template>
