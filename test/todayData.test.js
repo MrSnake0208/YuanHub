@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { summarizeTodayData } from '../src/data/todayData.js'
+import { shouldShowTodayDataOnboarding, summarizeTodayData } from '../src/data/todayData.js'
 
 test('summarizes real Today data without counting duplicates or empty inventory', function () {
   assert.deepEqual(summarizeTodayData({
@@ -20,4 +20,31 @@ test('summarizes real Today data without counting duplicates or empty inventory'
     inventoryKindCount: 2,
     unreadCount: 2
   })
+})
+
+test('shows Today onboarding only when there is no account or both core data sets are empty', function () {
+  assert.equal(shouldShowTodayDataOnboarding({
+    hasAccounts: false,
+    summary: { operatorCount: 0, inventoryKindCount: 0 }
+  }), true)
+
+  assert.equal(shouldShowTodayDataOnboarding({
+    hasAccounts: true,
+    summary: { operatorCount: 0, inventoryKindCount: 0 }
+  }), true)
+
+  assert.equal(shouldShowTodayDataOnboarding({
+    hasAccounts: true,
+    summary: { operatorCount: 1, inventoryKindCount: 0 }
+  }), false)
+
+  assert.equal(shouldShowTodayDataOnboarding({
+    hasAccounts: true,
+    summary: { operatorCount: 0, inventoryKindCount: 1 }
+  }), false)
+
+  assert.equal(shouldShowTodayDataOnboarding({
+    hasAccounts: true,
+    summary: { operatorCount: null, inventoryKindCount: 0 }
+  }), false)
 })

@@ -359,9 +359,10 @@
                 </div>
               </div>
               <ol v-if="newTokenKind === 'maayuan'" class="paste-steps">
-                <li><span>1</span>打开 MaaYuan 的“同步至YuanHub”选项</li>
-                <li><span>2</span>找到“YuanHub连接码”</li>
-                <li><span>3</span>粘贴下方连接码</li>
+                <li><span>1</span>先复制下方连接码，它只会完整显示这一次</li>
+                <li><span>2</span>打开 MaaYuan，并开启“同步至YuanHub”选项</li>
+                <li><span>3</span>找到“YuanHub连接码”，粘贴刚复制的连接码</li>
+                <li><span>4</span>之后照常使用 MaaYuan，支持的采集结果会同步到上方绑定的 YuanHub 子账号</li>
               </ol>
               <div class="nt-row">
                 <code class="nt-code">{{ newToken.token }}</code>

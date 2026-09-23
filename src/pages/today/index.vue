@@ -9,8 +9,8 @@
             <h1>今天也来啦</h1>
             <p>不用记住所有页面。先看看今天值得做什么，再从这里去到对应工具。</p>
             <div class="hero-actions">
-              <router-link class="primary-action" :to="auth.isLoggedIn ? '/operator/quick' : '/login'">
-                {{ auth.isLoggedIn ? '快速更新数据' : '登录同步我的数据' }}
+              <router-link class="primary-action" :to="heroPrimaryTo">
+                {{ heroPrimaryLabel }}
                 <ArrowRight :size="16" aria-hidden="true" />
               </router-link>
               <router-link class="secondary-action" to="/demo">看看完整演示</router-link>
@@ -43,6 +43,110 @@
             <span>{{ errorMessage }}</span>
             <button type="button" @click="loadDashboard">重试</button>
           </div>
+
+          <section
+            v-if="showDataOnboarding"
+            class="data-onboarding"
+            aria-labelledby="data-onboarding-title"
+          >
+            <div class="onboarding-heading">
+              <div>
+                <span class="onboarding-kicker">FIRST DATA · 第一次建档</span>
+                <h2 id="data-onboarding-title">还没有可用于今日一览的数据</h2>
+                <p>
+                  你可以手动录入，也可以让 MaaYuan 自动录入。更推荐自动同步：
+                  以后日常采集完成后，YuanHub 会直接收到结果，不必反复手填。
+                </p>
+              </div>
+              <span class="onboarding-note">两种方式都可以，之后也能随时切换</span>
+            </div>
+
+            <div class="data-entry-grid">
+              <article class="entry-card recommended-entry">
+                <div class="entry-card-head">
+                  <span class="entry-icon" aria-hidden="true"><Link2 :size="20" /></span>
+                  <div>
+                    <span class="recommend-badge">推荐</span>
+                    <h3>MaaYuan 自动同步</h3>
+                    <p>适合日常长期使用。连接一次后，支持的数据会持续同步到你选择的子账号。</p>
+                  </div>
+                </div>
+
+                <ol class="sync-steps" aria-label="MaaYuan 自动同步设置步骤">
+                  <li>
+                    <span class="step-number">1</span>
+                    <div>
+                      <strong>进入 YuanHub 的应用连接</strong>
+                      <p>打开「我的账户 → 应用与数据连接」，点击「连接 MaaYuan」。</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="step-number">2</span>
+                    <div>
+                      <strong>选择账号并创建连接码</strong>
+                      <p>选择要绑定的子账号；还没有子账号时，可以在连接流程里直接创建。确认权限后创建连接码。</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="step-number">3</span>
+                    <div>
+                      <strong>复制刚生成的连接码</strong>
+                      <p>连接码只会完整显示这一次，请先复制，再离开这个页面。</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="step-number">4</span>
+                    <div>
+                      <strong>在 MaaYuan 填入连接码</strong>
+                      <p>打开 MaaYuan 的「同步至YuanHub」选项，找到「YuanHub连接码」，粘贴刚才复制的内容。</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="step-number">5</span>
+                    <div>
+                      <strong>之后照常使用 MaaYuan</strong>
+                      <p>完成日常采集后，密探、库存与星石等支持的数据会同步到刚才绑定的账号，再回到今日一览即可查看。</p>
+                    </div>
+                  </li>
+                </ol>
+
+                <router-link class="entry-primary-action" to="/user/profile#maayuan-app-title">
+                  开始连接 MaaYuan
+                  <ArrowRight :size="16" aria-hidden="true" />
+                </router-link>
+              </article>
+
+              <article class="entry-card manual-entry">
+                <div class="entry-card-head">
+                  <span class="entry-icon" aria-hidden="true"><Zap :size="20" /></span>
+                  <div>
+                    <span class="manual-badge">手动方式</span>
+                    <h3>自己录入</h3>
+                    <p>适合只想先补少量数据，或者暂时不使用 MaaYuan 的情况。</p>
+                  </div>
+                </div>
+                <div class="manual-copy">
+                  <strong>{{ accounts.length ? '已有子账号，可以直接开始录入' : '先建立一个子账号' }}</strong>
+                  <p>
+                    {{
+                      accounts.length
+                        ? '快捷录入适合批量补密探进度；库存也可以在库存追踪中单独维护。'
+                        : '密探和库存都需要归属到一个游戏账号。先创建子账号，再继续录入即可。'
+                    }}
+                  </p>
+                </div>
+                <div class="manual-actions">
+                  <router-link class="entry-secondary-action" :to="manualEntryTo">
+                    {{ manualEntryLabel }}
+                    <ArrowRight :size="16" aria-hidden="true" />
+                  </router-link>
+                  <router-link v-if="accounts.length" class="entry-text-action" to="/inventory">
+                    单独录入库存
+                  </router-link>
+                </div>
+              </article>
+            </div>
+          </section>
 
           <section class="today-section" data-tour="today-overview" aria-labelledby="today-actions-title">
             <div class="section-heading">
@@ -125,6 +229,7 @@ import {
   Bell,
   Gem,
   Heart,
+  Link2,
   MessageSquareText,
   PackageOpen,
   ScrollText,
@@ -140,7 +245,7 @@ import { getCurrent, listAgentFavorites } from '../../api/inventory.js'
 import { getUnreadNotificationCount } from '../../api/notifications.js'
 import { auth } from '../../store/auth.js'
 import { activeAccount } from '../../store/activeAccount.js'
-import { summarizeTodayData } from '../../data/todayData.js'
+import { shouldShowTodayDataOnboarding, summarizeTodayData } from '../../data/todayData.js'
 
 const DEMO_SUMMARY = Object.freeze({ operatorCount: 3, favoriteCount: 2, inventoryKindCount: 5, unreadCount: 1 })
 const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, unreadCount: 0 })
@@ -149,6 +254,7 @@ const accounts = ref([])
 const realSummary = ref({ ...EMPTY_SUMMARY })
 const loading = ref(false)
 const errorMessage = ref('')
+const accountLoadFailed = ref(false)
 let loadSequence = 0
 
 const accountId = computed({
@@ -158,6 +264,23 @@ const accountId = computed({
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
 const summary = computed(function () { return auth.isLoggedIn ? realSummary.value : DEMO_SUMMARY })
+const showDataOnboarding = computed(function () {
+  if (!auth.isLoggedIn || loading.value || accountLoadFailed.value) return false
+  return shouldShowTodayDataOnboarding({
+    hasAccounts: accounts.value.length > 0,
+    summary: realSummary.value
+  })
+})
+const manualEntryTo = computed(function () { return accounts.value.length ? '/operator/quick' : '/operator' })
+const manualEntryLabel = computed(function () { return accounts.value.length ? '打开快捷录入' : '先创建子账号' })
+const heroPrimaryTo = computed(function () {
+  if (!auth.isLoggedIn) return '/login'
+  return showDataOnboarding.value ? '/user/profile#maayuan-app-title' : '/operator/quick'
+})
+const heroPrimaryLabel = computed(function () {
+  if (!auth.isLoggedIn) return '登录同步我的数据'
+  return showDataOnboarding.value ? '连接 MaaYuan 自动同步' : '快速更新数据'
+})
 const summaryCaption = computed(function () {
   if (!auth.isLoggedIn) return '示例账号 · 登录后显示你的真实状态'
   const account = accounts.value.find(function (item) { return item.id === accountId.value })
@@ -247,6 +370,7 @@ async function loadDashboard() {
   const sequence = ++loadSequence
   loading.value = true
   errorMessage.value = ''
+  accountLoadFailed.value = false
   try {
     const data = await listAccounts()
     if (sequence !== loadSequence) return
@@ -257,7 +381,10 @@ async function loadDashboard() {
     }
     await loadSummary(sequence)
   } catch (error) {
-    if (sequence === loadSequence) errorMessage.value = readableError(error, '今日一览数据读取失败')
+    if (sequence === loadSequence) {
+      accountLoadFailed.value = true
+      errorMessage.value = readableError(error, '今日一览数据读取失败')
+    }
   } finally {
     if (sequence === loadSequence) loading.value = false
   }
@@ -328,6 +455,36 @@ onMounted(loadDashboard)
 .today-content { padding: 38px 0 72px; }
 .today-alert { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding: 12px 14px; border: 1px solid rgba(166, 81, 74, .28); border-radius: 10px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 12px; }
 .today-alert button { padding: 7px 11px; border: 1px solid currentColor; border-radius: 7px; background: transparent; color: inherit; font-weight: 800; cursor: pointer; }
+.data-onboarding { margin-bottom: 46px; padding: 26px; border: 1px solid rgba(156, 122, 77, .3); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); box-shadow: 0 14px 36px rgba(73, 59, 44, .06); }
+.onboarding-heading { display: flex; align-items: end; justify-content: space-between; gap: 32px; }
+.onboarding-heading > div { max-width: 760px; }
+.onboarding-kicker { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
+.onboarding-heading h2 { margin-top: 9px; font-family: var(--font-s); font-size: 27px; font-weight: 900; }
+.onboarding-heading p { margin-top: 9px; color: rgba(73, 59, 44, .68); font-size: 13px; line-height: 1.75; }
+.onboarding-note { flex: 0 0 auto; max-width: 180px; color: rgba(73, 59, 44, .52); font-size: 11px; line-height: 1.6; text-align: right; }
+.data-entry-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .75fr); gap: 14px; margin-top: 22px; }
+.entry-card { padding: 22px; border: 1px solid rgba(156, 122, 77, .24); border-radius: 14px; background: rgba(255, 253, 246, .88); }
+.recommended-entry { border-color: rgba(215, 137, 53, .42); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .42); }
+.entry-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 13px; align-items: start; }
+.entry-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: rgba(215, 137, 53, .1); color: var(--accent); }
+.entry-card-head h3 { margin-top: 5px; font-family: var(--font-s); font-size: 19px; font-weight: 900; }
+.entry-card-head p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
+.recommend-badge, .manual-badge { display: inline-flex; align-items: center; width: max-content; min-height: 23px; padding: 0 8px; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .04em; }
+.recommend-badge { background: rgba(239, 210, 142, .48); color: var(--tea); }
+.manual-badge { border: 1px solid rgba(91, 106, 140, .32); color: var(--brand-blue); }
+.sync-steps { display: grid; gap: 0; margin: 20px 0; padding: 0; list-style: none; }
+.sync-steps li { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 9px 0; }
+.sync-steps li:not(:last-child)::after { position: absolute; top: 36px; bottom: -1px; left: 13px; width: 1px; background: rgba(156, 122, 77, .2); content: ''; }
+.step-number { position: relative; z-index: 1; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(215, 137, 53, .38); border-radius: 50%; background: var(--surface); color: var(--accent); font: 900 11px/1 var(--font-d); }
+.sync-steps strong, .manual-copy strong { font-size: 12px; font-weight: 900; }
+.sync-steps p, .manual-copy p { margin-top: 4px; color: rgba(73, 59, 44, .58); font-size: 11px; line-height: 1.65; }
+.entry-primary-action, .entry-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 15px; border-radius: 9px; font-size: 12px; font-weight: 900; text-decoration: none; }
+.entry-primary-action { background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); }
+.entry-secondary-action { border: 1px solid rgba(73, 59, 44, .22); color: var(--ink); }
+.manual-entry { display: flex; flex-direction: column; }
+.manual-copy { margin-top: 28px; padding: 16px 0; border-top: 1px solid rgba(156, 122, 77, .18); border-bottom: 1px solid rgba(156, 122, 77, .18); }
+.manual-actions { display: grid; align-items: start; gap: 12px; margin-top: auto; padding-top: 22px; }
+.entry-text-action { width: max-content; color: rgba(73, 59, 44, .68); font-size: 11px; font-weight: 800; text-underline-offset: 3px; }
 .today-section + .today-section { margin-top: 52px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
 .section-heading > div { display: flex; align-items: baseline; gap: 12px; }
@@ -371,6 +528,13 @@ onMounted(loadDashboard)
   .today-hero h1 { font-size: 42px; }
   .hero-actions { align-items: stretch; flex-direction: column; }
   .today-content { padding: 26px 0 54px; }
+  .data-onboarding { margin-bottom: 36px; padding: 20px 16px; }
+  .onboarding-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .onboarding-heading h2 { font-size: 23px; }
+  .onboarding-note { max-width: none; text-align: left; }
+  .data-entry-grid { grid-template-columns: 1fr; }
+  .entry-card { padding: 18px 16px; }
+  .entry-primary-action, .entry-secondary-action { width: 100%; }
   .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
   .task-grid, .tool-groups { grid-template-columns: 1fr; }
   .task-card { min-height: 128px; }

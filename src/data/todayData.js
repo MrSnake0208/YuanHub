@@ -16,3 +16,9 @@ export function summarizeTodayData({ current, inventory, favorites, notification
     unreadCount: Number.isFinite(unread) && unread > 0 ? Math.floor(unread) : 0
   }
 }
+
+export function shouldShowTodayDataOnboarding({ hasAccounts, summary } = {}) {
+  if (!hasAccounts) return true
+  if (!summary) return false
+  return summary.operatorCount === 0 && summary.inventoryKindCount === 0
+}
