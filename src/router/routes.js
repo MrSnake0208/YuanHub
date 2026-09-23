@@ -33,7 +33,6 @@ export const routes = [
         component: () => import('/src/pages/today/index.vue'),
         meta: {
             requiresBeta: true,
-            requiresAuth: true,
             title: '今日一览 — 鸢鸢相抱 · YuanHub'
         }
     },

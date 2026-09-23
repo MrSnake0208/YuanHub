@@ -50,7 +50,7 @@
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             id="operator-account-workspace"
-            data-tour="operator-workspace"
+            tour-target="operator-workspace"
             class="operator-account-workspace"
             :class="{ 'is-compact': accountWorkspaceCompact }"
             v-model:compact="accountWorkspaceCompact"
@@ -196,6 +196,7 @@
             class="operator-tabs"
             role="tablist"
             aria-label="密探工作区"
+            data-tour="operator-workspace"
             v-reveal
           >
             <button

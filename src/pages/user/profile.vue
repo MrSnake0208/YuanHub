@@ -100,13 +100,19 @@
               </div>
             </div>
 
-            <article class="app-pass" aria-labelledby="maayuan-app-title">
+            <article
+              ref="maaYuanAppCard"
+              class="app-pass"
+              aria-labelledby="maayuan-app-title"
+            >
               <div class="app-seal" aria-hidden="true">
                 <img src="/icons/maa.png" alt="" />
               </div>
               <div class="app-copy">
                 <div class="app-title-row">
-                  <h3 id="maayuan-app-title">MaaYuan</h3>
+                  <h3 id="maayuan-app-title" ref="maaYuanAppTitle" tabindex="-1">
+                    MaaYuan
+                  </h3>
                   <span class="brand-outline">联合共建</span>
                 </div>
                 <p>
@@ -143,6 +149,7 @@
               <button
                 class="act-btn primary app-connect"
                 type="button"
+                data-tour="maayuan-sync"
                 :disabled="busy"
                 :aria-expanded="showMaaYuanConnect"
                 aria-controls="maayuan-connect-panel"
@@ -168,6 +175,10 @@
                   <p>连接码只会绑定一个子账号，不能访问你的其他账号。</p>
                 </div>
               </div>
+              <p v-if="cameFromToday" class="today-connect-note" role="note">
+                你已经从「今日一览」来到这里。以后需要新建或管理连接码时，
+                直接从左侧「我的连接码」进入即可。
+              </p>
 
               <div
                 v-if="accountsLoading"
@@ -359,10 +370,37 @@
                 </div>
               </div>
               <ol v-if="newTokenKind === 'maayuan'" class="paste-steps">
-                <li><span>1</span>先复制下方连接码，它只会完整显示这一次</li>
-                <li><span>2</span>打开 MaaYuan，并开启“同步至YuanHub”选项</li>
-                <li><span>3</span>找到“YuanHub连接码”，粘贴刚复制的连接码</li>
-                <li><span>4</span>之后照常使用 MaaYuan，支持的采集结果会同步到上方绑定的 YuanHub 子账号</li>
+                <li>
+                  <span>1</span>
+                  <div class="paste-step-copy">
+                    <strong>先复制下方连接码</strong>
+                    <small>连接码只会完整显示这一次。</small>
+                  </div>
+                </li>
+                <li>
+                  <span>2</span>
+                  <div class="paste-step-copy">
+                    <strong>找到你要实时统计的任务</strong>
+                    <small>派遣 / 情报掉落 → 据点日常</small>
+                    <small>密探练度 → 百宝箱 · 采集密探信息</small>
+                    <small>道具 / 心纸数量 → 百宝箱 · 自动识别背包</small>
+                    <small>星石 → 百宝箱 · 采集星石（即将支持）</small>
+                  </div>
+                </li>
+                <li>
+                  <span>3</span>
+                  <div class="paste-step-copy">
+                    <strong>打开同步选项</strong>
+                    <small>在对应任务中开启“同步至YuanHub”。据点日常还需开启“记录奖励内容及数量”。</small>
+                  </div>
+                </li>
+                <li>
+                  <span>4</span>
+                  <div class="paste-step-copy">
+                    <strong>粘贴连接码并照常使用</strong>
+                    <small>在“YuanHub连接码”粘贴刚复制的内容；完成对应任务后，采集结果会同步到上方绑定的 YuanHub 子账号。</small>
+                  </div>
+                </li>
               </ol>
               <div class="nt-row">
                 <code class="nt-code">{{ newToken.token }}</code>
@@ -638,6 +676,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import {
   Check,
   ChevronDown,
@@ -709,6 +748,9 @@ const newAccountName = ref("");
 const newAccountGame = ref(DEFAULT_ACCOUNT_GAME);
 const accountCreateError = ref("");
 const maaAccountSelect = ref(null);
+const maaYuanAppCard = ref(null);
+const maaYuanAppTitle = ref(null);
+const route = useRoute();
 
 const userName = computed(function () {
   return auth.userInfo && auth.userInfo.user_name
@@ -731,6 +773,9 @@ const busy = computed(function () {
 });
 const adminToolGroups = computed(function () {
   return getVisibleAdminToolGroups(auth.adminAccess);
+});
+const cameFromToday = computed(function () {
+  return route.query.connect === "maayuan" && route.query.from === "today";
 });
 const permissionGroups = computed(function () {
   return [
@@ -925,6 +970,28 @@ function openMaaYuanConnect() {
   if (showMaaYuanConnect.value) applyDefaultAccounts();
 }
 
+async function openMaaYuanFromRoute() {
+  if (route.query.connect !== "maayuan" || !beta.canUseBetaFeatures) return;
+  showMaaYuanConnect.value = true;
+  applyDefaultAccounts();
+  await nextTick();
+
+  const appCard = maaYuanAppCard.value;
+  if (appCard) {
+    const reduceMotion =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    appCard.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }
+
+  if (maaYuanAppTitle.value) {
+    maaYuanAppTitle.value.focus({ preventScroll: true });
+  }
+}
+
 function showCreatedToken(created, kind) {
   newToken.value = created || null;
   newTokenKind.value = kind;
@@ -1098,10 +1165,19 @@ watch(() => beta.canUseBetaFeatures, () => {
   if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
   void loadAccounts();
 });
+watch(
+  () => route.query.connect,
+  function (value) {
+    if (value === "maayuan") void openMaaYuanFromRoute();
+  },
+);
 onMounted(function () {
   window.addEventListener("resize", keepFocusedTokenVisible);
   Promise.all([loadPermissions(), loadTokens()]);
-  void beta.loadMe().then(loadAccounts);
+  void beta.loadMe().then(async function () {
+    await loadAccounts();
+    await openMaaYuanFromRoute();
+  });
 });
 onBeforeUnmount(function () {
   window.removeEventListener("resize", keepFocusedTokenVisible);
@@ -1257,6 +1333,7 @@ onBeforeUnmount(function () {
 .app-pass {
   position: relative;
   margin-top: 24px;
+  scroll-margin-top: 24px;
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) auto;
   align-items: center;
@@ -1386,6 +1463,17 @@ onBeforeUnmount(function () {
   color: var(--ink-60);
   font-size: 12.5px;
   line-height: 1.6;
+}
+.today-connect-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(215, 137, 53, 0.24);
+  border-radius: 10px;
+  background: rgba(239, 210, 142, 0.14);
+  color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.65;
 }
 .step-mark {
   flex: none;
@@ -1697,22 +1785,37 @@ onBeforeUnmount(function () {
 .paste-steps {
   margin: 15px 0 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   list-style: none;
 }
 .paste-steps li {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 9px;
   min-height: 44px;
-  padding: 8px 10px;
+  padding: 10px;
   color: var(--ink);
   background: rgba(255, 253, 246, 0.68);
   border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
+}
+.paste-step-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.paste-step-copy strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+.paste-step-copy small {
+  color: var(--ink-60);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
 }
 .paste-steps li span {
   flex: none;
@@ -2158,6 +2261,12 @@ onBeforeUnmount(function () {
 }
 .permission-state.error {
   color: var(--rouge);
+}
+
+@media (max-width: 1080px) {
+  .app-pass {
+    scroll-margin-top: calc(var(--mobile-shell-follow-top, 72px) + 12px);
+  }
 }
 
 @media (max-width: 820px) {
