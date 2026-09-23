@@ -95,6 +95,15 @@
                         进入 YuanHub
                         <ArrowRight :size="17" aria-hidden="true" />
                       </router-link>
+                      <button
+                        v-if="showBetaCommunityEntry"
+                        class="beta-button secondary"
+                        type="button"
+                        @click="openBetaCommunity"
+                      >
+                        <UsersRound :size="17" aria-hidden="true" />
+                        查看内测交流群
+                      </button>
                       <p class="action-note">{{ adminBypass ? '管理员账号不参与内测名额分配，可直接进入 YuanHub。' : campaign?.accessMode === 'OPEN' ? 'YuanHub 已正式开放，现在无需内测资格。' : '资格已经开通，不需要重新登录。第一次来可以从「今日一览」开始。' }}</p>
                     </template>
 
@@ -328,11 +337,13 @@ import {
   PackageOpen,
   RefreshCw,
   Share2,
-  Sparkles
+  Sparkles,
+  UsersRound
 } from '@lucide/vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
+import { betaCommunity } from '../../store/betaCommunity.js'
 import { BETA_INTENTS, betaEntryTarget, betaStatusCopy, formatBetaDay } from '../../utils/betaAccess.js'
 
 const STATUS_LABELS = {
@@ -376,10 +387,19 @@ const statusLabel = computed(() => adminBypass.value ? '管理员直通' : STATU
 const canJoin = computed(() => !error.value && mine.value?.nextAction === 'JOIN' && campaign.value?.accessMode === 'BETA')
 const waiting = computed(() => mine.value?.enrollmentStatus === 'WAITING')
 const granted = computed(() => !error.value && !!mine.value?.canUseBetaFeatures)
+const showBetaCommunityEntry = computed(() =>
+  campaign.value?.accessMode === 'BETA' &&
+  mine.value?.canUseBetaFeatures === true &&
+  (adminBypass.value || mine.value?.enrollmentStatus === 'ACTIVE')
+)
 const showSteps = computed(() => !['granted', 'open'].includes(copy.value.tone))
 const canResetLocalTest = computed(() => mine.value?.canResetLocalTest === true)
 const inBeta = computed(() => campaign.value?.accessMode === 'BETA' && !!campaign.value?.snapshotAt)
 const showRefresh = computed(() => ['error', 'loading', 'waiting'].includes(copy.value.tone))
+function openBetaCommunity() {
+  betaCommunity.open('manual')
+}
+
 const invitationEyebrow = computed(() => {
   if (!auth.isLoggedIn) return '先登录，再参加'
   if (adminBypass.value) return '管理员账号'
