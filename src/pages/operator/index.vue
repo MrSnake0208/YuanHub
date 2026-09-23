@@ -6427,9 +6427,16 @@ function closeStarLoadout() {
 }
 
 function starLoadoutSnapshotSignature(loadouts) {
-  return JSON.stringify(Object.keys(loadouts || {}).sort().map(function (operatorId) {
-    return [operatorId, normalizeLoadout(loadouts[operatorId])];
-  }));
+  return JSON.stringify(
+    Object.keys(loadouts || {})
+      .sort()
+      .map(function (operatorId) {
+        return [operatorId, normalizeLoadout(loadouts[operatorId])];
+      })
+      .filter(function (entry) {
+        return Object.values(entry[1]).some(Boolean);
+      }),
+  );
 }
 
 function starLoadoutIsDirty() {
