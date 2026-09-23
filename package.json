@@ -6,6 +6,7 @@
   "description": "YuanHub 鸢鸢相抱 · 由 Vite + Vue 3 复刻",
   "scripts": {
     "dev": "vite",
+    "dev:tunnel": "VITE_API_BASE= vite --mode tunnel",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",

@@ -1,70 +1,103 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
-// @ 别名与参考项目（frontend-v2-plus）保持一致：'@' -> src
-export default defineConfig({
-  plugins: [
-    vue(),
-    VitePWA({
-      registerType: 'prompt',
-      injectRegister: 'auto',
-      includeAssets: [
-        'pwa/apple-touch-icon.png',
-        'pwa/icon-192.png',
-        'pwa/icon-512.png',
-        'pwa/icon-maskable-512.png'
-      ],
-      manifest: {
-        id: '/',
-        name: 'YuanHub · 鸢鸢相抱',
-        short_name: 'YuanHub',
-        description: '代号鸢 / 如鸢礼包计算、库存清点、密探与通关作业工具。',
-        lang: 'zh-CN',
-        start_url: '/',
-        scope: '/',
-        display: 'standalone',
-        background_color: '#F6EDD0',
-        theme_color: '#F6EDD0',
-        icons: [
-          {
-            src: '/pwa/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: '/pwa/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: '/pwa/icon-maskable-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
-      },
-      // 第一阶段只缓存应用壳层，不缓存业务 API、账户数据、OCR 模型和大批静态资料图。
-      workbox: {
-        globPatterns: ['**/*.{js,css,html}'],
-        globIgnores: ['yuanstar-embed/**'],
-        cleanupOutdatedCaches: true,
-        navigateFallback: '/index.html'
-      }
-    })
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  },
-  server: {
+const DEFAULT_TUNNEL_HOST = 'hubf.maayuan.fun'
+const DEFAULT_TUNNEL_API_TARGET = 'http://127.0.0.1:8080'
+
+export function buildDevServerConfig(mode, env = {}) {
+  const isTunnel = mode === 'tunnel'
+  const tunnelHost = env.YUANHUB_TUNNEL_HOST || DEFAULT_TUNNEL_HOST
+  const apiTarget = env.YUANHUB_TUNNEL_API_TARGET || DEFAULT_TUNNEL_API_TARGET
+
+  const config = {
     port: 5173,
-    host: true,
-    allowedHosts: ['hubf.maayuan.fun']
+    host: isTunnel ? '127.0.0.1' : true,
+    allowedHosts: Array.from(new Set([DEFAULT_TUNNEL_HOST, tunnelHost].filter(Boolean)))
+  }
+
+  if (isTunnel) {
+    const proxyTarget = {
+      target: apiTarget,
+      changeOrigin: true
+    }
+    config.proxy = {
+      '/v1': proxyTarget,
+      '/user': proxyTarget,
+      '/hub': proxyTarget,
+      '/open-api': proxyTarget,
+      '/avatar': proxyTarget,
+      '/ready': proxyTarget,
+      '/version': proxyTarget
+    }
+  }
+
+  return config
+}
+
+// @ 别名与参考项目（frontend-v2-plus）保持一致：'@' -> src
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [
+      vue(),
+      VitePWA({
+        registerType: 'prompt',
+        injectRegister: 'auto',
+        includeAssets: [
+          'pwa/apple-touch-icon.png',
+          'pwa/icon-192.png',
+          'pwa/icon-512.png',
+          'pwa/icon-maskable-512.png'
+        ],
+        manifest: {
+          id: '/',
+          name: 'YuanHub · 鸢鸢相抱',
+          short_name: 'YuanHub',
+          description: '代号鸢 / 如鸢礼包计算、库存清点、密探与通关作业工具。',
+          lang: 'zh-CN',
+          start_url: '/',
+          scope: '/',
+          display: 'standalone',
+          background_color: '#F6EDD0',
+          theme_color: '#F6EDD0',
+          icons: [
+            {
+              src: '/pwa/icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa/icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa/icon-maskable-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
+            }
+          ]
+        },
+        // 第一阶段只缓存应用壳层，不缓存业务 API、账户数据、OCR 模型和大批静态资料图。
+        workbox: {
+          globPatterns: ['**/*.{js,css,html}'],
+          globIgnores: ['yuanstar-embed/**'],
+          cleanupOutdatedCaches: true,
+          navigateFallback: '/index.html'
+        }
+      })
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      }
+    },
+    server: buildDevServerConfig(mode, env)
   }
 })
