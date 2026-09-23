@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { useRoute } from 'vue-router'
@@ -53,6 +55,21 @@ const compose = async (wrapper, text) => {
   await wrapper.get('.feedback-detail-actions button').trigger('click')
   await wrapper.get('.feedback-reply-form textarea').setValue(text)
 }
+
+it('keeps reporter messages on the left and admin messages on the right', () => {
+  const source = readFileSync(join(process.cwd(), 'src/components/feedback/FeedbackTicketDetail.vue'), 'utf8')
+  const declarationsFor = selector => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const match = source.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+    expect(match, `Missing style rule for ${selector}`).toBeTruthy()
+    return match[1]
+  }
+
+  expect(declarationsFor('.detail-message.is-reporter')).toContain('justify-self: start')
+  expect(declarationsFor('.detail-message.is-admin')).toContain('justify-self: end')
+  expect(declarationsFor('.detail-message.is-admin header')).toContain('flex-direction: row-reverse')
+  expect(declarationsFor('.detail-message.is-admin > p')).toContain('margin-left: auto')
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
