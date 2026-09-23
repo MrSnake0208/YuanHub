@@ -30,6 +30,11 @@
               授权 MaaYuan 后，采集结果会自动进入 YuanHub。密探、库存与星石整理成同一份游戏档案，
               接着用于今日一览、养成规划预览和 BOX 分享。
             </p>
+            <div class="hero-game-support" aria-label="YuanHub 支持的游戏版本">
+              <span class="hero-game-support-label">支持游戏版本</span>
+              <span class="hero-game-badge">代号鸢</span>
+              <span class="hero-game-badge">如鸢</span>
+            </div>
             <div class="hero-actions">
               <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
               <a class="secondary-btn" href="#share">神秘代码怎么玩 <span>→</span></a>
@@ -59,7 +64,7 @@
                 </div>
                 <div class="demo-workspace">
                   <div class="demo-account">
-                    <div><small>当前游戏档案</small><strong>主档案 · 如鸢</strong></div>
+                    <div><small>当前示例档案</small><strong>主档案 · 如鸢</strong></div>
                     <span class="account-switch">切换⌄</span>
                   </div>
                   <div class="operator-toolbar">
@@ -741,6 +746,10 @@ a { color: inherit; }
 .hero-copy h1 { font-size: clamp(48px,5.2vw,76px); line-height: 1.13; }
 em { color: var(--accent); font-style: normal; }
 .hero-lede { max-width: 600px; margin-top: 28px; color: var(--muted); font-size: 16px; line-height: 1.95; }
+.hero-game-support { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; color: var(--muted); font-size: 12px; font-weight: 800; }
+.hero-game-support-label { margin-right: 2px; }
+.hero-game-badge { display: inline-flex; min-height: 28px; align-items: center; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--tea); background: rgba(255,253,246,.56); font: 900 12px/1 var(--font-s); letter-spacing: .03em; white-space: nowrap; }
+.hero-game-support + .hero-actions { margin-top: 20px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .primary-btn, .secondary-btn { display: inline-flex; min-height: 46px; align-items: center; gap: 12px; padding: 0 18px; border-radius: 999px; font-size: 13px; font-weight: 800; text-decoration: none; }
 .primary-btn { color: var(--cream); background: var(--tea); }
