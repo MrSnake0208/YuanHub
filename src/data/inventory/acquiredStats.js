@@ -1,5 +1,5 @@
 import { isDispatchReward, staminaCostOf } from './exchange.js'
-import { BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE, dateInZone } from '../../utils/businessDay.js'
+import { addCalendarDays, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE, dateInZone } from '../../utils/businessDay.js'
 
 export const UNKNOWN_ACQUISITION_CHANNEL = '未标注来源'
 
@@ -10,6 +10,42 @@ export function acquisitionChannel(value) {
 
 export function localDayKey(value) {
   return dateInZone(BUSINESS_TIMEZONE, value, BUSINESS_DAY_START_HOUR)
+}
+
+export function recentBusinessDayKeys(endDate, dayCount = 30) {
+  const count = Math.max(1, Math.trunc(Number(dayCount)) || 30)
+  const days = Array.from({ length: count }, function (_, index) {
+    return addCalendarDays(endDate, index - count + 1)
+  })
+  return days.every(Boolean) ? days : []
+}
+
+export function buildRecentAcquisitionHistory(records, endDate, dayCount = 30) {
+  const days = recentBusinessDayKeys(endDate, dayCount)
+  if (!days.length) return {}
+  const allowedDays = new Set(days)
+  const countsByEntity = new Map()
+
+  ;(Array.isArray(records) ? records : []).forEach(function (record) {
+    if (record?.record_type !== 'reward_delta') return
+    const day = localDayKey(record.effective_at)
+    if (!allowedDays.has(day)) return
+    ;(Array.isArray(record.entries) ? record.entries : []).forEach(function (entry) {
+      const id = entry?.id
+      const count = Number(entry?.count) || 0
+      if (!id || count <= 0) return
+      if (!countsByEntity.has(id)) countsByEntity.set(id, new Map())
+      const byDay = countsByEntity.get(id)
+      byDay.set(day, (byDay.get(day) || 0) + count)
+    })
+  })
+
+  return Object.fromEntries(Array.from(countsByEntity.entries()).map(function ([id, byDay]) {
+    const series = days.map(function (date) { return { date, count: byDay.get(date) || 0 } })
+    const acquired = series.reduce(function (sum, point) { return sum + point.count }, 0)
+    const activeDays = series.filter(function (point) { return point.count > 0 }).length
+    return [id, { acquired, activeDays, average: activeDays ? acquired / activeDays : 0, series }]
+  }))
 }
 
 function ensureEntity(map, id, name) {

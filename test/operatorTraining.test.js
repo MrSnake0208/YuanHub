@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { TRAINING_GROUPS, bookExperience, levelBookGapBundle, trainingRate, trainingSchedule, trainingMaterialEtas, growthTargetReached } from '../src/data/operatorTraining.js'
+import { TRAINING_DAILY_LIMIT, TRAINING_GROUPS, bookExperience, experienceTrainingDays, levelBookGapBundle, trainingRate, trainingSchedule, trainingMaterialEtas, growthTargetReached } from '../src/data/operatorTraining.js'
 import { emptyTrainingWorkspace, normalizeTrainingWorkspace, readTrainingWorkspace, sanitizeTrainingWorkspaceOperators, writeTrainingWorkspace, trainingPlanMemberIds, trainingWorkspaceKey } from '../src/data/operatorTrainingPlans.js'
 
 test('历练表覆盖三类十二层奖励以及八档经验奖励', () => {
@@ -17,6 +17,15 @@ test('经验缺口与快捷提升使用相同整轮比例，已有三类兵书�
   assert.deepEqual(levelBookGapBundle(42401 - stock).map(book => [book.id, book.lack]), [['bingshuquanjuan', 18], ['bingshucanjuan', 200]])
   assert.deepEqual(levelBookGapBundle(0), [])
   assert.deepEqual(levelBookGapBundle(2501, 1).map(book => [book.id, book.lack]), [['bingshucanjuan', 50]])
+})
+
+test('经验 ETA 固定按绝境历练单次经验与每日六次上限计算', () => {
+  assert.equal(TRAINING_DAILY_LIMIT, 6)
+  assert.equal(bookExperience(TRAINING_GROUPS[3].stages[7].rewards), 19000)
+  assert.equal(experienceTrainingDays(1), 1)
+  assert.equal(experienceTrainingDays(114000), 1)
+  assert.equal(experienceTrainingDays(114001), 2)
+  assert.equal(experienceTrainingDays(0), 0)
 })
 
 test('同层双材料共用刷取次数，不能把每项分别按六次相加', () => {

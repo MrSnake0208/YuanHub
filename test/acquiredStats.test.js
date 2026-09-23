@@ -4,6 +4,7 @@ import {
   UNKNOWN_ACQUISITION_CHANNEL,
   acquisitionChannel,
   buildAcquiredStats,
+  buildRecentAcquisitionHistory,
   buildRewardInsights,
   dispatchHoursForStaminaCost,
   localDayKey,
@@ -39,6 +40,26 @@ test('流水按北京时间凌晨 5 点归属统计日', function () {
   assert.equal(localDayKey('2026-09-12T20:59:59Z'), '2026-09-12')
   assert.equal(localDayKey('2026-09-12T21:00:00Z'), '2026-09-13')
   assert.equal(localDayKey('2026-09-12T21:00:01Z'), '2026-09-13')
+})
+
+test('近 30 个业务日序列补零并按密探 id 隔离，继续沿用北京时间 05:00 日界线', function () {
+  const history = buildRecentAcquisitionHistory([
+    { record_type: 'reward_delta', effective_at: '2026-09-18T04:59:59+08:00', entries: [{ id: 'agent-a', count: 2 }] },
+    { record_type: 'reward_delta', effective_at: '2026-09-18T05:00:00+08:00', entries: [{ id: 'agent-a', count: 3 }, { id: 'agent-b', count: 7 }] },
+    { record_type: 'reward_delta', effective_at: '2026-08-19T12:00:00+08:00', entries: [{ id: 'agent-a', count: 99 }] },
+    { record_type: 'stock_snapshot', effective_at: '2026-09-18T08:00:00+08:00', entries: [{ id: 'agent-a', count: 88 }] }
+  ], '2026-09-18')
+
+  assert.equal(history['agent-a'].series.length, 30)
+  assert.equal(history['agent-a'].series[0].date, '2026-08-20')
+  assert.equal(history['agent-a'].series[29].date, '2026-09-18')
+  assert.equal(history['agent-a'].series.find(point => point.date === '2026-09-16').count, 0)
+  assert.equal(history['agent-a'].series.find(point => point.date === '2026-09-17').count, 2)
+  assert.equal(history['agent-a'].series.find(point => point.date === '2026-09-18').count, 3)
+  assert.equal(history['agent-a'].acquired, 5)
+  assert.equal(history['agent-b'].acquired, 7)
+  assert.equal(history['agent-b'].series.find(point => point.date === '2026-09-17').count, 0)
+  assert.equal(history['agent-b'].series.find(point => point.date === '2026-09-18').count, 7)
 })
 
 test('聚合时只统计奖励流水', function () {

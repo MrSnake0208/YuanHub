@@ -101,14 +101,14 @@
                     </div>
                     <div class="growth-track rose"><i :style="{ width: progress(starStage(row.starLevel), starStage(targetFor(row).starLevel)) + '%' }"></i></div>
                     <OperatorGrowthActionPopover v-bind="growthActionPopoverProps(row, 'star', 1)" @retry="requestQuickUpgrade(row, 'star', 1)" @execute="executeGrowthAction(row, 'star')" />
-                    <small class="heart-progress-note">心纸 {{ formatNumber(row.calculation.heartOwned) }} / {{ formatNumber(row.calculation.heartRequired) }} · <span class="heart-gap">缺 <span class="heart-gap-number">{{ formatNumber(row.calculation.heartGap) }}</span></span><span class="heart-average"> · {{ heartDailyAverageLabel(row) }}</span></small>
+                    <small class="heart-progress-note">心纸 {{ formatNumber(row.calculation.heartOwned) }} / {{ formatNumber(row.calculation.heartRequired) }} · <span class="heart-gap">缺 <span class="heart-gap-number">{{ formatNumber(row.calculation.heartGap) }}</span></span></small>
                   </div>
                 </div>
                 <slot name="remark" :row="row" />
                 <div v-if="row.completed" v-show="!isRemarkEditing(row)" class="growth-materials growth-complete">
                   <button class="tracker-remove" type="button" :disabled="cloudBlocked || schedulePending || targetLoading || targetBusyIds.size > 0" @click="removePlanMember(row)"><X :size="14" aria-hidden="true" />从清单中移除</button>
                 </div>
-                <details v-else class="growth-materials"><summary>查看材料缺口与预计耗时 <span>{{ rowGapCount(row) }} 项</span></summary><div v-if="!row.calculation.gaps.length && !row.calculation.experienceGap && !row.calculation.heartGap" class="materials-clear">当前目标材料已备齐</div><div v-else class="growth-material-chips"><span v-for="gap in row.calculation.gaps" :key="gap.id" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(gap.id)" alt="" loading="lazy" /><b>{{ itemName(gap.id) }}</b><em>缺 {{ formatNumber(gap.gap) }}<small v-if="materialEtaLabel(row, gap)" class="growth-material-eta">{{ materialEtaLabel(row, gap) }}</small></em></span><span v-if="row.calculation.experienceGap" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon('bingshuquanjuan')" alt="" loading="lazy" /><b>经验</b><em>缺 {{ formatNumber(row.calculation.experienceGap) }} XP</em></span><span v-if="row.calculation.heartGap" class="growth-material-chip heart-chip"><img class="growth-material-icon" :src="operatorIcon(row)" alt="" loading="lazy" /><b>心纸</b><em>缺 {{ formatNumber(row.calculation.heartGap) }}<small v-if="heartEtaLabel(row)" class="growth-material-eta">{{ heartEtaLabel(row) }}</small></em></span></div><p class="growth-material-note">库存按当前清单共享分配，以下为分配后缺口；单项 ETA 按独占对应历练估算。</p></details>
+                <details v-else class="growth-materials"><summary>查看材料缺口与预计耗时 <span>{{ rowGapCount(row) }} 项</span></summary><div v-if="!row.calculation.gaps.length && !row.calculation.experienceGap && !row.calculation.heartGap" class="materials-clear">当前目标材料已备齐</div><div v-else class="growth-material-chips"><span v-for="gap in row.calculation.gaps" :key="gap.id" class="growth-material-chip"><img class="growth-material-icon" :src="resourceIcon(gap.id)" alt="" loading="lazy" /><b>{{ itemName(gap.id) }}</b><em>缺 {{ formatNumber(gap.gap) }}<small v-if="materialEtaLabel(row, gap)" class="growth-material-eta">{{ materialEtaLabel(row, gap) }}</small></em></span><span v-if="row.calculation.experienceGap" class="growth-material-chip experience-chip"><img class="growth-material-icon" :src="resourceIcon('bingshuquanjuan')" alt="" loading="lazy" /><b>经验</b><em>{{ experienceEtaLabel(row.calculation.experienceGap) }}</em></span><div v-if="row.calculation.heartGap" class="growth-material-chip heart-chip"><img class="growth-material-icon" :src="operatorIcon(row)" alt="" loading="lazy" /><b>心纸</b><em>缺 {{ formatNumber(row.calculation.heartGap) }}</em><span class="heart-history" role="img" :aria-label="heartHistorySummary(row)"><span class="heart-history-label" aria-hidden="true"><span>近 30 日获取</span><small v-if="heartHistoryError">暂不可用</small><small v-else-if="!heartHistoryReady">同步中…</small></span><span v-if="heartHistoryReady && !heartHistoryError && heartHasRecentAcquisition(row)" class="heart-history-bars" aria-hidden="true"><i v-for="point in heartSeries(row)" :key="point.date" class="heart-history-bar" :style="{ height: heartBarHeight(row, point) }"></i></span><span v-else-if="heartHistoryReady && !heartHistoryError" class="heart-history-empty" aria-hidden="true">暂无心纸获取记录</span></span></div></div><p class="growth-material-note">库存按当前清单共享分配，以下为分配后缺口；单项 ETA 按独占对应历练估算。</p></details>
               </article>
             </div>
         </div>
@@ -391,7 +391,7 @@ import { useOperatorPlannerCloud } from '../../composables/useOperatorPlannerClo
 import { plannerDateInZone } from '../../data/operatorPlannerRemote.js'
 import { addCalendarDays, businessDayStartIso, BUSINESS_DAY_START_HOUR, BUSINESS_TIMEZONE } from '../../utils/businessDay.js'
 import OperatorTrainingPlanPicker from './OperatorTrainingPlanPicker.vue'
-import { TRAINING_GROUPS, bookExperience, levelBookGapBundle, normalizeTrainingLevels, trainingMaterialEtas, trainingRate } from '../../data/operatorTraining.js'
+import { TRAINING_GROUPS, bookExperience, experienceTrainingDays, normalizeTrainingLevels, trainingMaterialEtas, trainingRate } from '../../data/operatorTraining.js'
 import { FAVORITES_PLAN_ID, sanitizeTrainingWorkspaceOperators, trainingPlanMemberIds } from '../../data/operatorTrainingPlans.js'
 import { getCurrent, listRecords } from '../../api/inventory.js'
 import { avatarUrl } from '../../api/request.js'
@@ -399,7 +399,7 @@ import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getOperatorGrowthTargets, putOperatorGrowthTarget } from '../../api/operator.js'
 import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
 import { calculateLevelRequirements, calculateStarRequirements, calculateXiuweiRequirements, mergeRequirements, netRequirement, starLabelForStage, starStageFromLevel } from '../../data/operatorRequirements.js'
-import { localDayKey } from '../../data/inventory/acquiredStats.js'
+import { buildRecentAcquisitionHistory, recentBusinessDayKeys } from '../../data/inventory/acquiredStats.js'
 import PlannerDateTabs from './PlannerDateTabs.vue'
 import PlannerSelect from './PlannerSelect.vue'
 import PlannerCustomEntry from './PlannerCustomEntry.vue'
@@ -872,7 +872,8 @@ function progress(current, target) { const a = Number(current) || 0; const b = N
 function itemName(id) { return id === '__heart__' ? '心纸' : itemMap.value[id] || id }
 function materialSummary(requirement) { return Object.keys(requirement?.items || {}).filter(id => requirement.items[id] > 0).slice(0, 3).map(id => itemName(id) + '×' + formatNumber(requirement.items[id])).join('、') }
 function experienceStock(stock) { return Math.max(bookExperience(stock), Number(stock?.__experience__) || 0) }
-function experienceSummary(gap) { const value = Math.max(0, Number(gap) || 0); if (!value) return '经验道具已备齐'; const books = levelBookGapBundle(value, plannerLevels.value.experience); const bookText = books.map(book => book.name + '×' + formatNumber(book.lack)).join('、'); const stage624Runs = Math.ceil(value / Math.max(1, plannerRules.stage624Experience)); return bookText + ' · 6-24 约 ' + stage624Runs + ' 次' }
+function experienceEtaLabel(gap) { const days = experienceTrainingDays(gap); return days ? '仅刷绝境历练约 ' + days + ' 天' : '' }
+function experienceSummary(gap) { return experienceEtaLabel(gap) || '经验道具已备齐' }
 function rateFor(id) { return trainingRate(id, workspace.value.trainingLevels) || 0 }
 function rateLabel(id) { const training = trainingRate(id, workspace.value.trainingLevels); return training != null ? (training > 0 ? '历练约 ' + formatNumber(training) + '/日' : '所需层数未开放') : '未配置获取途径' }
 function materialEtaLabel(row, gap) { if (row.calculation.level.items?.[gap.id]) return '等级突破道具'; const etas = row.calculation.materialEtas || {}; if (Object.prototype.hasOwnProperty.call(etas, gap.id)) { const days = etas[gap.id]; return days == null ? '所需层数未开放' : '约 ' + formatEta(days) } return '暂无模拟产出' }
@@ -896,38 +897,24 @@ async function loadRecentHeartHistory(account, endDate) {
     cursor = next
   }
 
-  const totals = new Map()
-  const activeDays = new Map()
-  records.forEach(record => {
-    if (record?.record_type !== 'reward_delta') return
-    const day = localDayKey(record.effective_at)
-    if (!day) return
-    for (const entry of Array.isArray(record.entries) ? record.entries : []) {
-      const count = Number(entry?.count) || 0
-      if (!entry?.id || count <= 0) continue
-      totals.set(entry.id, (totals.get(entry.id) || 0) + count)
-      if (!activeDays.has(entry.id)) activeDays.set(entry.id, new Set())
-      activeDays.get(entry.id).add(day)
-    }
-  })
-  return Object.fromEntries(Array.from(totals.entries()).map(([id, acquired]) => {
-    const days = activeDays.get(id)?.size || 0
-    return [id, { acquired, activeDays: days, average: days ? acquired / days : 0 }]
-  }))
+  return buildRecentAcquisitionHistory(records, endDate)
 }
-function heartHistoryFor(row) { return heartHistory.value[row?.id] || { acquired: 0, activeDays: 0, average: 0 } }
-function heartDailyAverage(row) { return Number(heartHistoryFor(row).average) || 0 }
-function heartDailyAverageLabel(row) {
-  if (heartHistoryError.value) return '近30日流水暂不可用'
-  if (!heartHistoryReady.value) return '近30日流水同步中'
-  return '近 30 天 ' + formatNumber(heartDailyAverage(row)) + ' 片 / 日'
+function heartHistoryFor(row) {
+  const history = heartHistory.value[row?.id]
+  if (Array.isArray(history?.series) && history.series.length) return history
+  return { acquired: 0, series: recentBusinessDayKeys(plannerToday.value).map(date => ({ date, count: 0 })) }
 }
-function heartEtaLabel(row) {
-  if (!heartHistoryReady.value || heartHistoryError.value) return ''
-  const gap = Math.max(0, Number(row?.calculation?.heartGap) || 0)
-  if (!gap) return ''
-  const average = heartDailyAverage(row)
-  return average > 0 ? '约 ' + Math.ceil(gap / average) + ' 天' : '暂无近30日获取记录'
+function heartSeries(row) { return heartHistoryFor(row).series }
+function heartHasRecentAcquisition(row) { return Number(heartHistoryFor(row).acquired) > 0 }
+function heartBarHeight(row, point) {
+  const max = Math.max(0, ...heartSeries(row).map(item => Number(item.count) || 0))
+  const count = Math.max(0, Number(point?.count) || 0)
+  return max > 0 && count > 0 ? Math.round(count * 100 / max) + '%' : '0%'
+}
+function heartHistorySummary(row) {
+  if (heartHistoryError.value) return '近30个业务日心纸流水暂不可用'
+  if (!heartHistoryReady.value) return '近30个业务日心纸流水同步中'
+  return '近30个业务日共获得 ' + formatNumber(heartHistoryFor(row).acquired) + ' 片心纸'
 }
 function rowGapCount(row) { return row.calculation.gaps.length + (row.calculation.experienceGap > 0 ? 1 : 0) + (row.calculation.heartGap > 0 ? 1 : 0) }
 function rowProgress(row) { const level = progress(row.level, targetFor(row).level); const elite = progress(row.elite, targetFor(row).elite); const fate = progress(starStage(row.starLevel), starStage(targetFor(row).starLevel)); return Math.round((level + elite + fate) / 3) }
@@ -1500,7 +1487,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-progress-row > small { overflow: hidden; color: var(--planner-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .heart-gap { color: var(--planner-muted); font-weight: inherit; }
 .heart-gap-number { color: var(--rouge); font: inherit; font-weight: inherit; }
-.heart-average { color: var(--planner-muted); }
 .heart-progress-note { overflow: visible !important; line-height: 1.5; text-overflow: clip !important; white-space: normal !important; }
 .growth-track { height: 7px; overflow: hidden; border-radius: 99px; background: #efe4d4; }
 .growth-track i { display: block; height: 100%; border-radius: inherit; background: #c48b4d; transition: width .2s ease; }
@@ -1524,6 +1510,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-material-chip em { display: inline-flex; min-width: 0; align-items: baseline; gap: 3px; overflow: hidden; color: var(--rouge); font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .growth-material-chip .growth-material-eta { margin-left: 8px; }
 .growth-material-chip small { min-width: 0; overflow: hidden; color: var(--planner-muted); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.experience-chip em { color: var(--accent-strong); }
+.heart-history { grid-column: 2 / -1; display: grid; min-width: 0; max-width: 100%; gap: 3px; padding-top: 1px; color: var(--planner-muted); }
+.heart-history-label { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 6px; font-size: 8px; line-height: 1.35; }
+.heart-history-label small { flex: none; }
+.heart-history-bars { display: grid; width: 100%; min-width: 0; height: 22px; grid-template-columns: repeat(30, minmax(0, 1fr)); align-items: end; gap: 2px; overflow: hidden; }
+.heart-history-bar { display: block; min-width: 0; max-width: 100%; border-radius: 2px 2px 0 0; background: var(--accent); opacity: .68; }
+.heart-history-empty { min-height: 22px; display: flex; align-items: center; color: var(--planner-muted); font-size: 8px; line-height: 1.35; }
 .growth-material-note { margin-top: 8px; color: var(--planner-muted); font-size: 9px; line-height: 1.6; }
 .tracker-editable { min-height: 28px; padding: 2px; border: 0; border-bottom: 1px dashed var(--accent); border-radius: 0; background: transparent; color: var(--ink); font: 700 13px var(--font-d); }
 .tracker-editable:hover:not(:disabled) { color: var(--accent-strong); }
@@ -1926,6 +1919,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .growth-material-chip small, .growth-material-note { font-size: 11px; }
   .growth-material-chip em { flex-wrap: wrap; justify-content: flex-end; white-space: normal; }
   .growth-material-chip .growth-material-eta { margin-left: 0; }
+  .heart-history { width: 100%; min-width: 0; max-width: 100%; }
+  .heart-history-label { font-size: 10px; }
+  .heart-history-bars { width: 100%; min-width: 0; height: 20px; gap: 1px; overflow: hidden; }
+  .heart-history-empty { min-height: 20px; font-size: 10px; }
   .growth-action-notice { font-size: 12px; }
   .tracker-remove { min-height: 44px; font-size: 12px; }
 }
