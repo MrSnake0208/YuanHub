@@ -17,6 +17,7 @@
   </RouterView>
   <AccountEventToasts />
   <MobileInstallPrompt />
+  <BetaCommunityDialog />
   <!-- 全站自定义弹窗（alert / confirm / choice / prompt），Teleport 到 body -->
   <AppDialog />
 </template>
@@ -27,8 +28,10 @@ import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
 import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
+import BetaCommunityDialog from '@/components/beta/BetaCommunityDialog.vue'
 import { auth } from '@/store/auth.js'
 import { beta } from '@/store/beta.js'
+import { betaCommunity } from '@/store/betaCommunity.js'
 import { betaLandingFor } from '@/utils/betaAccess.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
@@ -46,6 +49,7 @@ let stopOnboarding = null
 let stopBetaSubscription = null
 let stopIdentityWatch = null
 let stopAccessWatch = null
+let stopCommunityWatch = null
 let monitorPromptPending = false
 const MONITOR_DISMISSED_KEY = 'yuanhub:operator-monitor-prompt-dismissed:v1'
 const router = useRouter()
@@ -79,7 +83,7 @@ function isOperatorWorkspaceTab() {
 async function promptOperatorMonitor(message) {
   if (!beta.canUseBetaFeatures) return
   const update = operatorUpdateFromEvent(message)
-  if (!update || update.preview || isOperatorWorkspaceTab() || monitorPromptPending || monitorPromptDismissed() || dialog._state.visible) return
+  if (!update || update.preview || isOperatorWorkspaceTab() || monitorPromptPending || monitorPromptDismissed() || dialog._state.visible || betaCommunity.visible) return
   monitorPromptPending = true
   try {
     const result = await dialog.choose({
@@ -126,16 +130,50 @@ onMounted(function () {
     if (stopBetaSubscription) stopBetaSubscription()
     stopBetaSubscription = userId ? beta.subscribe() : null
   }, { immediate: true })
-  stopAccessWatch = watch(() => [beta.canUseBetaFeatures, route.fullPath, beta.personalLoaded, beta.personalLoading], () => {
-    const workspace = route.meta?.requiresBeta === true
-    if (beta.canUseBetaFeatures && workspace) {
-      if (!stopOnboarding) stopOnboarding = initializeOnboardingTour(router)
-    } else {
-      if (stopOnboarding) stopOnboarding()
-      stopOnboarding = null
-      if (workspace && beta.personalLoaded && !beta.personalLoading) void router.replace(betaLandingFor(route.fullPath))
-    }
-  }, { immediate: true })
+  stopCommunityWatch = watch(
+    () => [
+      auth.userInfo?.id || '',
+      auth.isAdmin,
+      beta.campaign?.campaignId || '',
+      beta.campaign?.accessMode || '',
+      beta.mine?.enrollmentStatus || '',
+      beta.mine?.grantedAt || '',
+      beta.mine?.canUseBetaFeatures === true,
+      dialog._state.visible
+    ],
+    () => {
+      if (dialog._state.visible) return
+      betaCommunity.tryAutoOpen({
+        userId: auth.userInfo?.id || '',
+        campaign: beta.campaign,
+        mine: beta.mine,
+        isAdmin: auth.isAdmin
+      })
+    },
+    { immediate: true }
+  )
+  stopAccessWatch = watch(
+    () => [
+      beta.canUseBetaFeatures,
+      route.fullPath,
+      beta.personalLoaded,
+      beta.personalLoading,
+      betaCommunity.visible
+    ],
+    () => {
+      const workspace = route.meta?.requiresBeta === true
+      if (beta.canUseBetaFeatures && workspace && !betaCommunity.visible) {
+        if (!stopOnboarding) stopOnboarding = initializeOnboardingTour(router)
+      } else {
+        if (stopOnboarding) stopOnboarding()
+        stopOnboarding = null
+        if (workspace && beta.personalLoaded && !beta.personalLoading && !beta.canUseBetaFeatures) {
+          void router.replace(betaLandingFor(route.fullPath))
+        }
+      }
+    },
+    { immediate: true }
+  )
   stopWatch = watch(
     function () { return [auth.accessToken, activeAccount.id, beta.canUseBetaFeatures] },
     syncAccountEventStream,
@@ -152,6 +190,7 @@ onBeforeUnmount(function () {
   if (stopOnboarding) stopOnboarding()
   if (stopIdentityWatch) stopIdentityWatch()
   if (stopAccessWatch) stopAccessWatch()
+  if (stopCommunityWatch) stopCommunityWatch()
   if (stopBetaSubscription) stopBetaSubscription()
   stopAccountEventStream()
 })

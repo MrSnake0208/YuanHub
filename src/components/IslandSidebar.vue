@@ -74,6 +74,15 @@
           feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
         }}</span>
       </router-link>
+      <button
+        v-if="showBetaCommunityEntry"
+        type="button"
+        class="mobile-tour-trigger mobile-community-trigger"
+        @click="openBetaCommunity"
+      >
+        <UsersRound :size="19" aria-hidden="true" />
+        <span>交流群</span>
+      </button>
       <router-link to="/install" :class="{ active: $route.path === '/install' }">
         <Download :size="19" aria-hidden="true" />
         <span>桌面</span>
@@ -143,6 +152,15 @@
             feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
           }}</span>
         </router-link>
+        <button
+          v-if="showBetaCommunityEntry"
+          type="button"
+          class="nav-community"
+          @click="openBetaCommunity"
+        >
+          <span>内测交流群</span>
+          <UsersRound :size="16" aria-hidden="true" />
+        </button>
         <div class="nav-separator" aria-hidden="true"></div>
       </template>
 
@@ -206,9 +224,12 @@ import {
   PackageOpen,
   ScrollText,
   ShoppingCart,
+  UsersRound,
   UserRound,
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
+import { beta } from "@/store/beta.js";
+import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRouter } from "vue-router";
 import { restartOnboardingTour } from "@/utils/onboardingTour.js";
 import {
@@ -222,6 +243,13 @@ import {
 
 // 已登录状态（reactive，随 auth 变化）
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
+const showBetaCommunityEntry = computed(
+  () =>
+    !!isLoggedIn.value &&
+    beta.campaign?.accessMode === "BETA" &&
+    beta.mine?.canUseBetaFeatures === true &&
+    (auth.isAdmin || beta.mine?.enrollmentStatus === "ACTIVE"),
+);
 const userName = computed(() =>
   auth.userInfo && auth.userInfo.user_name ? auth.userInfo.user_name : "用户",
 );
@@ -238,6 +266,10 @@ function onLogout() {
 
 function restartTutorial() {
   void restartOnboardingTour(router);
+}
+
+function openBetaCommunity() {
+  betaCommunity.open("manual");
 }
 
 async function fetchUnreadCount() {
@@ -334,6 +366,51 @@ onBeforeUnmount(function () {
   height: 1px;
   margin: 12px 12px;
   background: var(--line);
+}
+.nav-community {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-60);
+  font-family: var(--font-b);
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  transition: color .35s var(--ease), background-color .35s var(--ease);
+}
+.nav-community svg {
+  margin-left: auto;
+  color: var(--tea);
+}
+.nav-community::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yellow-deep);
+  transform: translateY(-50%) scale(0);
+  transition: transform .4s var(--ease);
+}
+.nav-community:hover {
+  color: var(--ink);
+  background: rgba(232, 193, 91, .22);
+}
+.nav-community:hover::before {
+  transform: translateY(-50%) scale(1);
+}
+.nav-community:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
 }
 .mobile-badge {
   position: absolute;
