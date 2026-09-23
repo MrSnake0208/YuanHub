@@ -30,3 +30,14 @@ test('高级权限选择器展示星石采集权限分组', () => {
   assert.match(profile, /title: "星石采集"/)
   assert.match(profile, /permission\.scope\.startsWith\("star:"\)/)
 })
+
+test('MaaYuan 新连接创建后给出从复制连接码到开始同步的完整步骤', () => {
+  const stepsStart = profile.indexOf('<ol v-if="newTokenKind === \'maayuan\'" class="paste-steps">')
+  const stepsEnd = profile.indexOf('</ol>', stepsStart)
+  const steps = profile.slice(stepsStart, stepsEnd)
+  assert.ok(stepsStart >= 0 && stepsEnd > stepsStart)
+  assert.match(steps, /只会完整显示这一次/)
+  assert.match(steps, /同步至YuanHub/)
+  assert.match(steps, /YuanHub连接码/)
+  assert.match(steps, /采集结果会同步/)
+})
