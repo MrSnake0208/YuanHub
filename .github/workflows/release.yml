@@ -3,13 +3,19 @@ name: Release
 # 生产发布：仅由 v* tag 触发，普通 push 不会部署。
 # 发布前强制校验 VERSION 与 tag 完全一致，不一致立即停止。
 #
-# 复用 promo-site-deploy.yml 已在用的同一台 VPS 与同一套 SSH 凭据：
-#   secrets.YUANHUB_PROMO_VPS_SSH_KEY / _HOST / _USER / _PORT
-# 因此无需新建任何连接类配置。仅下列「本应用」专属项需要新增（Variables）：
-#   YUANHUB_FRONTEND_DEPLOY_DIR / YUANHUB_FRONTEND_URL / YUANHUB_FRONTEND_API_BASE / YUANHUB_KEEP_RELEASES
+# 普通 CI 继续使用 GitHub-hosted runner；Release 通过 SSH 驱动服务器 A：
+#   服务器缓存源码 → checkout 精确 tag/commit → npm ci/build → 原子切换 current。
+# 不再从 GitHub Runner SCP 整套 dist，避免大体积静态资源反复跨网传输。
 #
-# 部署形态（原子切换，避免线上出现半套文件）：
-#   $YUANHUB_FRONTEND_DEPLOY_DIR/releases/<version>/   ← 每次发布一个新目录
+# SSH 连接继续复用服务器 A 的既有凭据：
+#   secrets.YUANHUB_PROMO_VPS_SSH_KEY / _HOST / _USER / _PORT
+# 本应用专属 Variables：
+#   YUANHUB_FRONTEND_DEPLOY_DIR / YUANHUB_FRONTEND_URL /
+#   YUANHUB_FRONTEND_API_BASE / YUANHUB_KEEP_RELEASES
+#
+# 部署形态：
+#   $YUANHUB_FRONTEND_DEPLOY_DIR/.source                  ← 服务器源码缓存
+#   $YUANHUB_FRONTEND_DEPLOY_DIR/releases/<version>/      ← 每次发布一个完整构建
 #   $YUANHUB_FRONTEND_DEPLOY_DIR/current -> releases/<version>
 # Web 服务器（nginx 等）的 root 应指向 .../current。
 
@@ -80,26 +86,6 @@ jobs:
       - name: Repository tests
         run: npm run test:repo
 
-      - name: Build
-        env:
-          # 生产固定走独立 API 域名；内测与正式开放保持同一后端地址。
-          VITE_API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
-        run: npm run build
-
-      - name: Collect release metadata
-        run: |
-          set -eu
-          test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
-          test -n "$(ls -A dist/assets)" || { echo "::error::dist/assets is empty"; exit 1; }
-          if ! grep -rqF "$YUANHUB_VERSION" dist/assets; then
-            echo "::error::productVersion $YUANHUB_VERSION missing from the bundle"
-            exit 1
-          fi
-          # 部署后用主入口文件名核对线上确实是本次构建。
-          entry="$(grep -o 'assets/[^"]*\.js' dist/index.html | head -n 1)"
-          test -n "$entry" || { echo "::error::cannot detect entry asset in dist/index.html"; exit 1; }
-          echo "YUANHUB_ENTRY_ASSET=$entry" >> "$GITHUB_ENV"
-          echo "Deploying version $YUANHUB_VERSION (entry $entry, commit ${YUANHUB_RELEASE_COMMIT::7})"
 
       - name: Validate deployment configuration
         env:
@@ -152,43 +138,119 @@ jobs:
           printf '%s\n' "$DEPLOY_KEY" > "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Upload release directory
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
-        with:
-          host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
-          username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
-          key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
-          port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
-          source: "dist/*"
-          target: "${{ vars.YUANHUB_FRONTEND_DEPLOY_DIR }}/releases/${{ env.YUANHUB_VERSION }}/"
-          overwrite: true
-          strip_components: 1
-
-      - name: Activate release atomically
+      - name: Build and activate release on server
         uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         env:
           FRONTEND_ROOT: ${{ vars.YUANHUB_FRONTEND_DEPLOY_DIR }}
           RELEASE_VERSION: ${{ env.YUANHUB_VERSION }}
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+          RELEASE_COMMIT: ${{ env.YUANHUB_RELEASE_COMMIT }}
+          API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
           KEEP_RELEASES: ${{ vars.YUANHUB_KEEP_RELEASES }}
+          REPO_URL: https://github.com/${{ github.repository }}.git
         with:
           host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
           username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
           key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
           port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
-          envs: FRONTEND_ROOT,RELEASE_VERSION,KEEP_RELEASES
+          envs: FRONTEND_ROOT,RELEASE_VERSION,RELEASE_TAG,RELEASE_COMMIT,API_BASE,KEEP_RELEASES,REPO_URL
+          command_timeout: 30m
           script: |
             set -eu
+
             test -n "$FRONTEND_ROOT"
             test -n "$RELEASE_VERSION"
-            release_dir="$FRONTEND_ROOT/releases/$RELEASE_VERSION"
-            test -f "$release_dir/index.html" || {
-              echo "release directory is incomplete: $release_dir"
-              exit 1
-            }
+            test -n "$RELEASE_TAG"
+            test -n "$RELEASE_COMMIT"
+            test -n "$API_BASE"
+            test -n "$REPO_URL"
 
-            # 先建临时符号链接再原子替换，切换过程中线上始终指向完整的一套文件。
-            ln -sfn "releases/$RELEASE_VERSION" "$FRONTEND_ROOT/.current-tmp"
+            release_dir="$FRONTEND_ROOT/releases/$RELEASE_VERSION"
+            meta_file="$release_dir/deploy-meta.json"
+            expected_link="releases/$RELEASE_VERSION"
+            mkdir -p "$FRONTEND_ROOT/releases"
+
+            # 同一 tag/commit 已完整发布时直接复用，支持安全重跑。
+            reuse_release=0
+            if [ -f "$meta_file" ] &&
+               grep -qF "\"version\":\"$RELEASE_VERSION\"" "$meta_file" &&
+               grep -qF "\"commit\":\"$RELEASE_COMMIT\"" "$meta_file"; then
+              reuse_release=1
+              echo "Reusing existing release: $release_dir"
+            fi
+
+            if [ "$reuse_release" -ne 1 ]; then
+              for tool in git node npm; do
+                command -v "$tool" >/dev/null 2>&1 || {
+                  echo "$tool is required on the deployment server"
+                  exit 1
+                }
+              done
+
+              node_major="$(node -p 'process.versions.node.split(".")[0]')"
+              if [ "$node_major" != "22" ]; then
+                echo "Node.js 22 is required on the deployment server; found $(node --version)"
+                exit 1
+              fi
+
+              source_dir="$FRONTEND_ROOT/.source"
+              if [ ! -d "$source_dir/.git" ]; then
+                rm -rf "$source_dir"
+                git clone --filter=blob:none "$REPO_URL" "$source_dir"
+              fi
+
+              cd "$source_dir"
+              git remote set-url origin "$REPO_URL"
+              git fetch --force --prune --tags origin
+              git checkout --detach "$RELEASE_TAG"
+              git reset --hard "$RELEASE_TAG"
+
+              actual_commit="$(git rev-parse HEAD)"
+              if [ "$actual_commit" != "$RELEASE_COMMIT" ]; then
+                echo "Checked-out commit $actual_commit does not match expected $RELEASE_COMMIT"
+                exit 1
+              fi
+
+              # 清掉上一次构建残留；npm 下载缓存仍保留在部署用户主目录。
+              git clean -ffdx
+              npm ci --no-audit --no-fund
+              VITE_API_BASE="$API_BASE" npm run build
+
+              test -f dist/index.html || {
+                echo "dist/index.html missing after server build"
+                exit 1
+              }
+              test -n "$(ls -A dist/assets)" || {
+                echo "dist/assets is empty after server build"
+                exit 1
+              }
+              if ! grep -rqF "$RELEASE_VERSION" dist/assets; then
+                echo "productVersion $RELEASE_VERSION missing from server build"
+                exit 1
+              fi
+
+              stage_dir="$FRONTEND_ROOT/releases/.${RELEASE_VERSION}.tmp"
+              rm -rf "$stage_dir"
+              mkdir -p "$stage_dir"
+              cp -a dist/. "$stage_dir/"
+              printf '{"version":"%s","tag":"%s","commit":"%s"}\n' \
+                "$RELEASE_VERSION" "$RELEASE_TAG" "$RELEASE_COMMIT" \
+                > "$stage_dir/deploy-meta.json"
+
+              active_target="$(readlink "$FRONTEND_ROOT/current" 2>/dev/null || true)"
+              if [ "$active_target" = "$expected_link" ] && [ -d "$release_dir" ]; then
+                echo "Refusing to replace the currently active release in place: $release_dir"
+                exit 1
+              fi
+
+              rm -rf "$release_dir"
+              mv "$stage_dir" "$release_dir"
+            fi
+
+            # 临时链接 + rename，保证 current 始终指向完整 release。
+            ln -sfn "$expected_link" "$FRONTEND_ROOT/.current-tmp"
             mv -T "$FRONTEND_ROOT/.current-tmp" "$FRONTEND_ROOT/current"
+            echo "current -> $(readlink "$FRONTEND_ROOT/current")"
 
             keep="${KEEP_RELEASES:-5}"
             case "$keep" in
@@ -196,7 +258,6 @@ jobs:
             esac
             if [ "$keep" -gt 0 ]; then
               cd "$FRONTEND_ROOT/releases"
-              # shellcheck disable=SC2012
               ls -1dt -- */ 2>/dev/null | tail -n "+$((keep + 1))" | while read -r old; do
                 case "$old" in
                   "$RELEASE_VERSION"/*) continue ;;
@@ -205,55 +266,57 @@ jobs:
               done
             fi
 
-            echo "current -> $(readlink "$FRONTEND_ROOT/current")"
-
       - name: Health check
         env:
           SITE_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
-          ENTRY_ASSET: ${{ env.YUANHUB_ENTRY_ASSET }}
+          EXPECTED_VERSION: ${{ env.YUANHUB_VERSION }}
+          EXPECTED_COMMIT: ${{ env.YUANHUB_RELEASE_COMMIT }}
         run: |
           set -eu
           test -n "$SITE_URL" || { echo "::error::YUANHUB_FRONTEND_URL is not configured"; exit 1; }
           base="${SITE_URL%/}"
           attempt=1
           while [ "$attempt" -le 10 ]; do
-            if body="$(curl --fail --silent --show-error --location \
-                 -H 'Cache-Control: no-cache' \
-                 "${base}/?deploy=${GITHUB_SHA}")"; then
-              if printf '%s' "$body" | grep -qF "$ENTRY_ASSET"; then
-                echo "Health check passed: serving ${ENTRY_ASSET}"
-                exit 0
-              fi
-              echo "Attempt ${attempt}: served HTML does not reference ${ENTRY_ASSET} yet"
-            else
-              echo "Attempt ${attempt}: ${base} not reachable yet"
+            payload="$(curl --fail --silent --show-error --location \
+              -H 'Cache-Control: no-cache' \
+              "${base}/deploy-meta.json?deploy=${EXPECTED_COMMIT}" || true)"
+            version="$(printf '%s' "$payload" | jq -r '.version // ""' 2>/dev/null || true)"
+            commit="$(printf '%s' "$payload" | jq -r '.commit // ""' 2>/dev/null || true)"
+            if [ "$version" = "$EXPECTED_VERSION" ] && [ "$commit" = "$EXPECTED_COMMIT" ]; then
+              echo "Health check passed: version=$version commit=${commit::7}"
+              exit 0
             fi
+            echo "Attempt $attempt: version='$version' commit='${commit:0:7}'"
             attempt=$((attempt + 1))
             sleep 6
           done
-          echo "::error::Health check failed: ${base} is not serving the new build (${ENTRY_ASSET})"
+          echo "::error::Health check failed: $base is not serving version=$EXPECTED_VERSION commit=$EXPECTED_COMMIT"
           exit 1
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           FRONTEND_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
         run: |
           set -eu
-          archive="yuanhub-frontend-${RELEASE_TAG}.tar.gz"
-          tar -czf "$archive" -C dist .
           notes="$(mktemp)"
           {
             echo "## YuanHub ${RELEASE_TAG}"
             echo
             echo "- productVersion: \`${YUANHUB_VERSION}\`"
             echo "- frontendCommit: \`${YUANHUB_RELEASE_COMMIT::7}\`"
-            echo "- buildTime: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`"
             echo "- deployedTo: \`${FRONTEND_URL}\`"
             echo
-            echo "更新日志见 https://${FRONTEND_URL#*//}/changelog"
+            echo "更新日志见 ${FRONTEND_URL%/}/changelog"
           } > "$notes"
-          gh release create "$RELEASE_TAG" "$archive" \
-            --title "YuanHub $RELEASE_TAG" \
-            --notes-file "$notes" \
-            --verify-tag
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --title "YuanHub $RELEASE_TAG" \
+              --notes-file "$notes"
+          else
+            gh release create "$RELEASE_TAG" \
+              --title "YuanHub $RELEASE_TAG" \
+              --notes-file "$notes" \
+              --verify-tag
+          fi

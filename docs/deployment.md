@@ -3,7 +3,7 @@
 本仓库可独立 clone / build / release / deploy，不依赖任何外部仓库。
 
 - **CI**（`.github/workflows/ci.yml`）：`push main`、PR、手动触发。只做静态检查、单测、行为测试、`npm run build`，并校验 `VERSION` 真的进入了产物。**不做任何生产部署。**
-- **Release**（`.github/workflows/release.yml`）：仅由 `v*` tag 触发，使用 `environment: production`，通过 SSH 发布到生产服务器。
+- **Release**（`.github/workflows/release.yml`）：仅由 `v*` tag 触发，使用 `environment: production`。GitHub 通过 SSH 驱动服务器 A 自动拉取指定 tag、在服务器本地构建并原子发布，不再上传整套 `dist`。
 
 ## 1. 版本来源
 
@@ -48,23 +48,34 @@
 
 ## 3. 服务器需要提前准备
 
-内测阶段域名：
+内测阶段域名与服务器：
 
-- `hub.maayuan.com`：继续服务现有宣传页。
-- `beta-hub.maayuan.com`：YuanHub 前端。
-- `api-hub.maayuan.com`：YuanHub 后端，内测与正式开放保持不变。
+- `hub.maayuan.com`：服务器 A，继续服务现有宣传页。
+- `beta-hub.maayuan.com`：服务器 A，YuanHub 前端。
+- `api-hub.maayuan.com`：服务器 A，对用户提供 API 入口并反代到服务器 B。
+- `api-hub.maayuan.top`：服务器 B，YuanHub Backend 源站。
 
-Cloudflare DNS 新增 `beta-hub` 和 `api-hub` 指向正式服务器；`hub` 现有记录保持不变。采用一级子域名可以直接适配常见的 Universal SSL 覆盖范围。
+前端始终请求 `https://api-hub.maayuan.com`，不直接感知服务器 B 的 `.top` 源站域名。
 
-1. 同一台 VPS 上已有 promo 站的部署用户（`YUANHUB_PROMO_VPS_USER`）；主站复用它即可，无需新建账号。
-2. 主站部署根目录存在且可写：
+1. 服务器 A 上复用 promo 站的部署用户（`YUANHUB_PROMO_VPS_USER`）。
+2. 服务器 A 必须安装 `git`、Node.js 22、npm；Release 会在服务器本地构建：
+
+   ```bash
+   git --version
+   node --version   # 必须为 v22.x
+   npm --version
+   ```
+
+3. 主站部署根目录存在且对部署用户可写：
 
    ```bash
    sudo mkdir -p /var/www/yuanhub/releases
-   sudo chown -R deploy:deploy /var/www/yuanhub
+   sudo chown -R <部署用户>:<部署用户组> /var/www/yuanhub
    ```
 
-3. Web 服务器（示例 nginx）指向 `current` 符号链接，并做 SPA 回退：
+   Release 会自动维护 `/var/www/yuanhub/.source` 作为源码缓存。首次发布需要拉取完整仓库；后续只需 fetch Git 增量。
+
+4. Web 服务器（示例 nginx）指向 `current` 符号链接，并做 SPA 回退：
 
    ```nginx
    server {
@@ -87,7 +98,7 @@ Cloudflare DNS 新增 `beta-hub` 和 `api-hub` 指向正式服务器；`hub` 现
    }
    ```
 
-4. 服务器需为 Linux（workflow 使用 GNU coreutils 的 `mv -T` 做原子符号链接切换）。
+5. 服务器 A 需为 Linux（workflow 使用 GNU coreutils 的 `mv -T` 做原子符号链接切换）。
 
 ## 4. 发布流程
 
@@ -101,13 +112,17 @@ Cloudflare DNS 新增 `beta-hub` 和 `api-hub` 指向正式服务器；`hub` 现
    ```
 
 4. workflow 依次执行：
-   - 校验 `VERSION == tag`（不一致立即失败，不发布）
-   - `npm ci` → 静态检查 → 单测 → `npm run build`
-   - 上传 `dist` 到 `$YUANHUB_FRONTEND_DEPLOY_DIR/releases/0.0.1-beta.2/`
-   - 原子切换 `current` 符号链接（先建临时链接再 `mv -T`，线上不会出现半套文件）
-   - health check：抓取站首页并确认引用了本次构建的主入口文件
-   - 创建 GitHub Release（附 `dist` 打包附件）
+   - GitHub-hosted runner 校验 `VERSION == tag`，并运行 `test:static` / `test:repo`
+   - 通过 SSH 连接服务器 A；首次创建 `.source`，之后复用源码缓存
+   - `git fetch --tags`，checkout 精确 tag，并再次核对 commit 与 GitHub 本次发布 commit 完全一致
+   - 服务器 A 执行 `npm ci` 与 `VITE_API_BASE=... npm run build`
+   - 构建完成后写入 `$YUANHUB_FRONTEND_DEPLOY_DIR/releases/<version>/`，并生成 `deploy-meta.json`
+   - 原子切换 `current` 符号链接（先建临时链接再 `mv -T`）
+   - GitHub-hosted runner 通过公网读取 `deploy-meta.json`，核对线上 version + commit
+   - 创建或更新 GitHub Release
    - 按 `YUANHUB_KEEP_RELEASES` 清理旧版本目录
+
+首次发布仍需要服务器 A 从 GitHub 拉取完整仓库；后续发布使用同一 `.source`，只 fetch Git 增量，不再传输整套 `dist`。
 
 > 只 push `main` 不会部署；只有 tag 会。
 
@@ -137,10 +152,18 @@ ln -sfn releases/0.0.1-beta.1 .current-tmp && mv -T .current-tmp current
 
 ## 7. 本地验证
 
+独立前端仓库：
+
 ```bash
 npm ci
 npm run test:static
-npm test
+npm run test:repo
+npm run test:behavior
 npm run build
-grep -o 'assets/[^"]*\.js' dist/index.html | head -1   # 产物入口
+```
+
+如果当前目录位于 `YuanHub-All` 且相邻的 `BackEndV3-Share` 存在，可额外运行跨仓库契约测试：
+
+```bash
+npm run test:contract
 ```
