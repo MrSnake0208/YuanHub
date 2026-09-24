@@ -295,7 +295,7 @@ async function loadFeedback({ background = false } = {}) {
       type: filterType.value || undefined,
       category: filterCategory.value || undefined,
       q: q.value.trim() || undefined,
-      sortBy: 'updatedAt',
+      sortBy: 'createdAt',
       sortOrder: 'desc'
     })
     if (requestId !== loadRequestId) return
