@@ -364,7 +364,7 @@ export function calculateWikiOperatorCombatStats(input) {
   }
 }
 
-export function calculateOperatorCombatStats({ stored, input, calculator } = {}) {
+export function calculateOperatorCombatStats({ stored, input, calculator, allowAutomatic = true } = {}) {
   const normalized = normalizeOperatorCombatStats(stored)
   const signature = combatInputSignature(input)
   const localReferenceSignature = normalized.frontendObservedSignature || (normalized.observedInputs && (normalized.observedInputs.signature || normalized.observedInputs.inputSignature))
@@ -388,7 +388,9 @@ export function calculateOperatorCombatStats({ stored, input, calculator } = {})
     : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature))
   const hasManualCorrection = normalized.manualAttack != null || normalized.manualHp != null
 
-  const compute = calculator || calculateWikiOperatorCombatStats
+  // 临时关闭前端密探自动面板时，由调用方传 allowAutomatic: false。
+  // 保留 Wiki 计算器实现，后续恢复时只需移除调用方的禁用参数。
+  const compute = allowAutomatic ? (calculator || calculateWikiOperatorCombatStats) : null
   if (compute && typeof compute === 'function') {
     const result = calculator
       ? (compute({ stored: normalized, input: input || {}, signature: signature }) || {})

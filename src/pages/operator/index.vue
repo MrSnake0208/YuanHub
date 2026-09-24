@@ -4014,6 +4014,8 @@ const calculatedCombatStats = computed(function () {
   return calculateOperatorCombatStats({
     stored: editForm.value.combatStats,
     input: combatStatsInput.value,
+    // 临时不向密探编辑页开放攻击 / 生命自动计算。
+    allowAutomatic: false,
   });
 });
 
@@ -6721,6 +6723,8 @@ function cardCombatResult(entry) {
       }),
     }),
     input: cardCombatInput(entry),
+    // 临时不向密探卡片开放攻击 / 生命自动计算。
+    allowAutomatic: false,
   });
 }
 
