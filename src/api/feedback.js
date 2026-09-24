@@ -1,10 +1,13 @@
 // 反馈工单接口封装（对照 BackEndV3-Share 契约）
 import { request } from './request.js'
+import { feedbackDiagnostics } from '../config/buildInfo.js'
 
 const FEEDBACK_TYPES = new Set(['BUG', 'FEATURE', 'CONTENT', 'ACCOUNT', 'REPORT', 'OTHER'])
 const FEEDBACK_CATEGORIES = new Set(['INVENTORY', 'OPERATOR', 'LEDGER', 'PLAZA', 'ACCOUNT', 'UI', 'OTHER'])
 
 // 创建反馈。新契约中 type 是反馈类型，category 是前端板块。
+// diagnostics 始终取自本次构建实际运行的前端版本，与 clientInfoConsent 无关：
+// consent 只控制 IP / User-Agent 等浏览器信息，版本与 Build 属于应用诊断信息。
 export async function createFeedback(payload) {
   const rawType = String(payload.type || 'FEEDBACK').trim().toUpperCase()
   const rawCategory = String(payload.category || '').trim().toUpperCase()
@@ -21,10 +24,24 @@ export async function createFeedback(payload) {
       category,
       content: payload.content,
       media_ids: payload.mediaIds || [],
-      client_info_consent: Boolean(payload.clientInfoConsent)
+      client_info_consent: Boolean(payload.clientInfoConsent),
+      diagnostics: feedbackDiagnostics()
     }
   })
   return normalizeFeedback(data)
+}
+
+function normalizeDiagnostics(value) {
+  if (!value || typeof value !== 'object') return null
+  const productVersion = value.productVersion ?? value.product_version ?? ''
+  const frontendCommit = value.frontendCommit ?? value.frontend_commit ?? ''
+  const buildTime = value.buildTime ?? value.build_time ?? ''
+  if (!productVersion && !frontendCommit && !buildTime) return null
+  return {
+    productVersion: String(productVersion || ''),
+    frontendCommit: String(frontendCommit || ''),
+    buildTime: String(buildTime || '')
+  }
 }
 
 export function normalizeFeedbackMessage(message) {
@@ -102,6 +119,8 @@ export function normalizeFeedback(report) {
     category,
     // area remains a read-only alias for older page consumers.
     area: category,
+    // 旧工单没有 diagnostics 时保持 null，页面需要兼容。
+    diagnostics: normalizeDiagnostics(report.diagnostics ?? report.diagnostics_data),
     status: String(report.status || '').toUpperCase(),
     hasAdminReply: report.hasAdminReply ?? report.has_admin_reply ?? false,
     lastMessageSender: lastMessageSender == null ? '' : String(lastMessageSender).toUpperCase(),

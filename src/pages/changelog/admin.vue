@@ -118,6 +118,7 @@ import {
   withdrawChangelog
 } from '../../api/changelog.js'
 import { uploadMedia } from '../../api/media.js'
+import { productVersionLabel } from '../../config/buildInfo.js'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { changelogExtensions, emptyChangelogBody, isChangelogBodyEmpty } from '../../utils/changelogContent.js'
@@ -222,6 +223,8 @@ function applyEntry(entry) {
 function startNew() {
   if (!confirmDiscard()) return
   applyEntry({ id: '', version: 0, workingRevision: null, publishedRevision: null, updatedAt: null })
+  // 新建日志默认填入当前产品版本，仍允许手动改成历史版本标签。
+  form.versionLabel = productVersionLabel
   nextTick(function () { dirty.value = true })
 }
 

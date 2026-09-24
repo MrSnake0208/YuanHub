@@ -205,6 +205,13 @@
       ><!-- · 简体中文<br>
       <a href="#">创建新作业</a><br>
       <div class="grp">作业制作者交流群<br>1055262891</div> -->
+      <router-link
+        to="/changelog"
+        class="foot-version"
+        :title="buildInfoLine"
+        :aria-label="'YuanHub ' + productVersionLabel + '，查看更新日志'"
+        >YuanHub {{ productVersionLabel }}</router-link
+      >
     </div>
   </aside>
 </template>
@@ -232,6 +239,7 @@ import { beta } from "@/store/beta.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRouter } from "vue-router";
 import { restartOnboardingTour } from "@/utils/onboardingTour.js";
+import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import {
   getUnreadNotificationCount,
   NOTIFICATION_STATE_EVENT,
@@ -253,6 +261,8 @@ const showBetaCommunityEntry = computed(
 const userName = computed(() =>
   auth.userInfo && auth.userInfo.user_name ? auth.userInfo.user_name : "用户",
 );
+// 次级区域的低干扰版本入口：完整诊断信息只放在 title 里，不占用主导航层级。
+const buildInfoLine = computed(() => formatBuildInfo() + " · 查看更新日志");
 const unreadCount = ref(0);
 const router = useRouter();
 let unreadPollTimer = null;
@@ -474,6 +484,28 @@ onBeforeUnmount(function () {
 }
 .foot-tour:hover {
   color: var(--accent);
+}
+/* 次级区域版本入口：低干扰、单行、可聚焦；移动端侧栏本身不渲染。 */
+.foot-version {
+  display: block;
+  margin-top: 10px;
+  color: var(--ink-60);
+  font-family: var(--font-d);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.6;
+  white-space: nowrap;
+  border-bottom: 0;
+  transition: color .25s var(--ease);
+}
+.foot-version:hover {
+  color: var(--accent);
+}
+.foot-version:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 @media (max-width: 480px) {
   .mobile-tour-trigger {

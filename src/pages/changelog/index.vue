@@ -2,7 +2,7 @@
   <div class="page-changelog">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero"><div class="wrap"><div class="crumb"><span class="pill fill">YuanHub</span><span class="pill">更新日志</span></div><h1>更新日志<span class="small">Changelog</span></h1><p class="hero-sub">了解 YuanHub 最近新增与改进的内容。</p></div></header>
+      <header class="hero"><div class="wrap"><div class="crumb"><span class="pill fill">YuanHub</span><span class="pill">更新日志</span><span class="pill">当前版本 {{ productVersionLabel }}</span></div><h1>更新日志<span class="small">Changelog</span></h1><p class="hero-sub">了解 YuanHub 最近新增与改进的内容。</p></div></header>
       <section class="wrap changelog-feed" aria-live="polite">
         <p v-if="loading && !entries.length" class="state">正在加载更新日志…</p>
         <p v-else-if="error && !entries.length" class="state error" role="alert">{{ error }} <button type="button" @click="load(1)">重试</button></p>
@@ -22,6 +22,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { listChangelog } from '../../api/changelog.js'
+import { productVersionLabel } from '../../config/buildInfo.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import ChangelogContent from '../../components/changelog/ChangelogContent.vue'
@@ -56,6 +57,7 @@ onMounted(function () { load(1) })
 <style scoped>
 .page-changelog { min-height: 100vh; }
 .page-changelog .hero { --wm: '新'; }
+.page-changelog .crumb .pill { white-space: nowrap; }
 .changelog-feed { display: grid; gap: 22px; padding-bottom: 12px; }
 .changelog-card { padding: clamp(22px, 4vw, 42px); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(73,59,44,.45); }
 .changelog-card header { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 9px 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }

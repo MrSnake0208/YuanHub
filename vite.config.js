@@ -2,9 +2,50 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const DEFAULT_TUNNEL_HOST = 'hubf.maayuan.fun'
 const DEFAULT_TUNNEL_API_TARGET = 'http://127.0.0.1:8080'
+const UNKNOWN_BUILD_VALUE = 'unknown'
+
+/**
+ * 产品版本唯一来源：仓库根目录 VERSION。缺失时降级，不让构建失败。
+ */
+export function readProductVersion(root = process.cwd()) {
+  try {
+    return readFileSync(resolve(root, 'VERSION'), 'utf8').trim() || UNKNOWN_BUILD_VALUE
+  } catch (error) {
+    return UNKNOWN_BUILD_VALUE
+  }
+}
+
+/**
+ * 当前前端 commit。无 Git 环境（源码压缩包、浅克隆等）时降级为 unknown。
+ */
+export function readFrontendCommit(root = process.cwd()) {
+  try {
+    const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'ignore']
+    })
+      .toString()
+      .trim()
+    return sha || UNKNOWN_BUILD_VALUE
+  } catch (error) {
+    return UNKNOWN_BUILD_VALUE
+  }
+}
+
+/** 注入到前端的构建信息，字段名与 src/config/buildInfo.js 保持一致。 */
+export function collectBuildInfo(root = process.cwd(), now = new Date()) {
+  return {
+    productVersion: readProductVersion(root),
+    frontendCommit: readFrontendCommit(root),
+    buildTime: now.toISOString()
+  }
+}
 
 export function buildDevServerConfig(mode, env = {}) {
   const isTunnel = mode === 'tunnel'
@@ -97,6 +138,10 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
+    },
+    // 版本 / commit / 构建时间只在构建期注入一次，页面统一从 src/config/buildInfo.js 读取。
+    define: {
+      __YUANHUB_BUILD_INFO__: JSON.stringify(collectBuildInfo())
     },
     server: buildDevServerConfig(mode, env)
   }

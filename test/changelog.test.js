@@ -93,5 +93,9 @@ test('registers public and any-permission admin routes', function () {
   assert.deepEqual(adminRoute.meta.requiredAnyPermission, ['changelog:write', 'changelog:review'])
 
   const sidebar = readFileSync(new URL('../src/components/IslandSidebar.vue', import.meta.url), 'utf8')
-  assert.equal((sidebar.match(/to="\/changelog"/g) || []).length, 2)
+  // 更新日志入口：移动端导航、桌面端导航，以及桌面次级区域的产品版本入口（YuanHub vX.Y.Z）
+  assert.equal((sidebar.match(/to="\/changelog"/g) || []).length, 3)
+  // 次级版本入口以低权重方式展示当前产品版本，并指向更新日志
+  assert.match(sidebar, /class="foot-version"/)
+  assert.match(sidebar, /productVersionLabel/)
 })

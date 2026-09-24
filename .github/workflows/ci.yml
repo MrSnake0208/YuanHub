@@ -1,0 +1,71 @@
+name: CI
+
+# 普通 push / PR 只做检查与构建，不做任何生产部署。
+# 生产发布由 tag 触发的 release.yml 负责。
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: yuanhub-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Frontend checks and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 复用仓库既有命令，不另建测试体系。
+      - name: Static source check
+        run: npm run test:static
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Behavior tests
+        run: npm run test:behavior
+
+      - name: Build
+        run: npm run build
+
+      # 校验 VERSION / commit / buildTime 确实进入了构建产物，
+      # 否则版本入口与 Feedback 诊断会在线上显示错误信息。
+      - name: Verify injected build info
+        run: |
+          set -eu
+          version="$(tr -d '[:space:]' < VERSION)"
+          test -n "$version" || { echo "::error::VERSION is empty"; exit 1; }
+          test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
+          if ! grep -rqF "$version" dist/assets; then
+            echo "::error::productVersion $version was not found in the built assets"
+            exit 1
+          fi
+          echo "Injected productVersion: $version"
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: yuanhub-dist-${{ github.sha }}
+          path: dist
+          retention-days: 7
