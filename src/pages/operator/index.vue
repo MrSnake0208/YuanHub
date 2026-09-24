@@ -496,8 +496,21 @@
               </div>
             </div>
 
-            <!-- 属性 / 职业 筛选 -->
+            <!-- 稀有度 / 属性 / 职业 筛选 -->
             <div class="prof-filter catalog-prof-filter" v-reveal>
+              <div class="pf-row pf-rarity-row">
+                <span class="pf-label">稀有</span>
+                <div class="mf-filter rarity-filter" role="group" aria-label="按稀有度筛选密探图鉴">
+                  <button
+                    v-for="option in rarityOptions"
+                    :key="option.value"
+                    type="button"
+                    :aria-pressed="rarityFilter === option.value"
+                    :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+                    @click="rarityFilter = option.value"
+                  >{{ option.label }}</button>
+                </div>
+              </div>
               <div class="pf-row pf-prof-row">
                 <span class="pf-label">属性</span>
                 <div
@@ -575,6 +588,9 @@
                   <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录
                   <b class="bp-num">{{ catalogVersion || "本地兜底" }}</b> ·
                   当前版本「{{ gameFilter }}」
+                  <template v-if="rarityFilter !== 'all'">
+                    · 稀有「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
+                  >
                   <template v-if="profFilter !== 'all'">
                     · 属性「{{ profFilter }}」</template
                   >
@@ -741,6 +757,7 @@
                     </button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
+                  <OperatorRarityBadge class="slot-rarity-badge" :rarity="Number(e.rarity) || 3" compact />
                 </li>
               </ul>
             </div>
@@ -917,10 +934,12 @@
               v-reveal
               :result-count="filteredCurrent.length"
               :total-count="ownedCurrentEntries.length"
+              :rarity-options="rarityOptions"
               :prof-options="profOptions"
               :sub-prof-options="subProfOptions"
               :status-options="workbenchStatusOptions"
               :status-counts="currentStatusCounts"
+              v-model:rarity-filter="rarityFilter"
               v-model:prof-filter="profFilter"
               v-model:sub-prof-filter="subProfFilter"
               :status-filter="workbenchStatusFilter"
@@ -1075,7 +1094,9 @@
             <div v-else class="current-ledger" v-reveal>
               <div class="current-ledger-meta">
                 <span
-                  >版本「{{ gameFilter }}」<template
+                  >版本「{{ gameFilter }}」<template v-if="rarityFilter !== 'all'">
+                    · 稀有「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
+                  ><template
                     v-if="profFilter !== 'all'"
                   >
                     · 属性「{{ profFilter }}」</template
@@ -1213,7 +1234,7 @@
                           </span>
                         </div>
                         <span class="ledger-mobile-prof"
-                          ><img
+                          ><OperatorRarityBadge :rarity="Number(e.rarity) || 3" compact /><img
                             v-if="profIcon(e.prof)"
                             :src="profIcon(e.prof)"
                             alt=""
@@ -1282,7 +1303,7 @@
                         </details>
                       </div>
                       <span class="ledger-prof"
-                        ><span class="ledger-prof-copy"
+                        ><OperatorRarityBadge :rarity="Number(e.rarity) || 3" compact /><span class="ledger-prof-copy"
                           ><img
                             v-if="profIcon(e.prof)"
                             :src="profIcon(e.prof)"
@@ -3012,6 +3033,7 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
+import OperatorRarityBadge from "../../components/operator/OperatorRarityBadge.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
@@ -3136,11 +3158,19 @@ watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
+const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
 const workbenchStatusFilter = ref("all");
 const upgradeReadyFilter = ref("");
 const favoriteFirst = ref(false);
+const rarityOptions = [
+  { value: "all", label: "全部" },
+  { value: 3, label: "隐密" },
+  { value: 4, label: "机密" },
+  { value: 5, label: "绝密" },
+];
+const rarityLabelMap = { 3: "隐密", 4: "机密", 5: "绝密" };
 const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
@@ -4370,7 +4400,7 @@ const manifestPercent = computed(function () {
   );
 });
 
-// 图鉴展示列表：在全量基础上叠加 属性/职业/搜索/已拥有 筛选
+// 图鉴展示列表：在全量基础上叠加稀有度 / 属性 / 职业 / 搜索 / 已拥有筛选
 const manifestEntries = computed(function () {
   const state = currentMap.value;
   const q = manifestSearch.value.toLowerCase();
@@ -4388,6 +4418,8 @@ const manifestEntries = computed(function () {
     })
     .filter(function (e) {
       if (!matchesGame(e, gameFilter.value)) return false;
+      if (rarityFilter.value !== "all" && Number(e.rarity) !== Number(rarityFilter.value))
+        return false;
       if (!matchesProfSubFilter(e, profFilter.value, subProfFilter.value))
         return false;
       if (f === "owned" && !e.owned) return false;
@@ -4419,6 +4451,8 @@ const filterSuffix = computed(function () {
   const parts = [];
   if (manifestSearch.value) parts.push("「" + manifestSearch.value + "」");
   parts.push("版本「" + gameFilter.value + "」");
+  if (rarityFilter.value !== "all")
+    parts.push("稀有「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
   if (profFilter.value !== "all")
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
@@ -4428,7 +4462,7 @@ const filterSuffix = computed(function () {
   return parts.length ? parts.join(" · ") : "";
 });
 
-// 当前养成首要口径：只展示已拥有，再叠加属性 / 职业筛选。
+// 当前养成首要口径：只展示已拥有，再叠加稀有度 / 属性 / 职业等筛选。
 const ownedCurrentEntries = computed(function () {
   return currentEntries.value.filter(entry => catalogMap.value[entry.id] && isOperatorOwned(entry));
 });
@@ -4548,6 +4582,7 @@ const activeUpgradeReadyIds = computed(function () {
 
 function matchesCurrentFilters(entry) {
   return (
+    (rarityFilter.value === "all" || Number(entry.rarity) === Number(rarityFilter.value)) &&
     matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
     (workbenchStatusFilter.value === "all" ||
       operatorStatus(entry) === workbenchStatusFilter.value) &&
@@ -4614,6 +4649,8 @@ const quickFilterCounts = computed(function () {
 const currentFilterSuffix = computed(function () {
   const parts = [];
   parts.push("版本「" + gameFilter.value + "」");
+  if (rarityFilter.value !== "all")
+    parts.push("稀有「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
   if (profFilter.value !== "all")
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
@@ -4636,6 +4673,7 @@ const currentFilterSuffix = computed(function () {
 
 const hasCurrentFilters = computed(function () {
   return (
+    rarityFilter.value !== "all" ||
     profFilter.value !== "all" ||
     subProfFilter.value !== "all" ||
     workbenchStatusFilter.value !== "all" ||
@@ -4645,6 +4683,7 @@ const hasCurrentFilters = computed(function () {
 });
 
 function resetCurrentFilters() {
+  rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
   workbenchStatusFilter.value = "all";
@@ -7999,6 +8038,7 @@ async function focusAndFlashScanOperator(operatorId, effect, targetTab = "catalo
     ) {
       manifestSearch.value = "";
       manifestFilter.value = "all";
+      rarityFilter.value = "all";
       profFilter.value = "all";
       subProfFilter.value = "all";
     }
@@ -9924,6 +9964,18 @@ onBeforeUnmount(function () {
   color: var(--accent-strong);
   box-shadow: 0 1px 4px rgba(73, 59, 44, 0.16);
 }
+.rarity-filter button.rarity-r3.on {
+  background: color-mix(in srgb, #99b5cf 34%, var(--surface));
+  color: #47647d;
+}
+.rarity-filter button.rarity-r4.on {
+  background: color-mix(in srgb, #8672b2 25%, var(--surface));
+  color: #62508b;
+}
+.rarity-filter button.rarity-r5.on {
+  background: color-mix(in srgb, var(--yellow) 62%, var(--surface));
+  color: var(--accent-strong);
+}
 .mf-filter button:hover:not(.on) {
   color: var(--ink);
 }
@@ -11042,6 +11094,7 @@ onBeforeUnmount(function () {
 }
 .ledger-prof-copy {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: 4px;
   min-width: 0;
@@ -12327,6 +12380,10 @@ onBeforeUnmount(function () {
 }
 .slot:hover .slot-name {
   color: var(--accent-strong);
+}
+.slot-rarity-badge {
+  align-self: center;
+  margin-top: 2px;
 }
 .prof-badge {
   position: absolute;

@@ -51,8 +51,9 @@
           <button v-for="option in selectionOptions" :key="option.value" type="button" :class="{ on: selectionFilter === option.value }" :aria-pressed="selectionFilter === option.value" @click="selectionFilter = option.value">{{ option.label }}<span>{{ selectionCount(option.value) }}</span></button>
         </div>
 
-        <section v-if="filtersOpen" id="plan-advanced-filters" class="plan-filters" aria-label="属性与职业筛选">
+        <section v-if="filtersOpen" id="plan-advanced-filters" class="plan-filters" aria-label="稀有度、属性与职业筛选">
           <div class="plan-filter-head"><span>精细筛选</span><button v-if="hasAdvancedFilters" type="button" class="plan-filter-reset" @click="resetAdvancedFilters">清除</button></div>
+          <div class="plan-filter-row"><span class="plan-filter-label">稀有</span><div class="plan-filter-options" role="group" aria-label="按稀有度筛选"><button v-for="option in rarityOptions" :key="option.value" type="button" class="rarity-option" :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]" :aria-pressed="rarityFilter === option.value" @click="rarityFilter = option.value">{{ option.label }}</button></div></div>
           <div class="plan-filter-row"><span class="plan-filter-label">属性</span><div class="plan-filter-options" role="group" aria-label="按属性筛选"><button v-for="option in profOptions" :key="option" type="button" :class="{ on: profFilter === option }" :aria-pressed="profFilter === option" @click="profFilter = option">{{ option === 'all' ? '全部' : option }}</button></div></div>
           <div class="plan-filter-row"><span class="plan-filter-label">职业</span><div class="plan-filter-options" role="group" aria-label="按职业筛选"><button v-for="option in subProfOptions" :key="option" type="button" :class="{ on: subProfFilter === option }" :aria-pressed="subProfFilter === option" @click="subProfFilter = option">{{ option === 'all' ? '全部' : option }}</button></div></div>
         </section>
@@ -76,6 +77,7 @@
                 <span v-if="favoriteIds.has(entry.id)" class="plan-candidate-favorite" role="img" aria-label="特别关注" title="特别关注"><Star :size="11" fill="currentColor" aria-hidden="true" /></span>
               </span>
               <span class="plan-candidate-labels">
+                <OperatorRarityBadge :rarity="Number(entry.rarity) || 3" compact />
                 <span class="plan-candidate-label profession">{{ professionLabel(entry) }}</span>
                 <span class="plan-candidate-label status" :class="'is-' + growthStatus(entry)">{{ growthStatusLabel(entry) }}</span>
               </span>
@@ -98,6 +100,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronDown, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
+import OperatorRarityBadge from './OperatorRarityBadge.vue'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
@@ -114,6 +117,7 @@ const deleteConfirm = ref(null)
 const creating = ref(false)
 const name = ref('')
 const search = ref('')
+const rarityFilter = ref('all')
 const profFilter = ref('all')
 const subProfFilter = ref('all')
 const selectionFilter = ref('all')
@@ -124,14 +128,15 @@ const confirmingDelete = ref(false)
 const filtersOpen = ref(false)
 const switcherOpen = ref(false)
 const selectionOptions = [{ value: 'all', label: '全部' }, { value: 'selected', label: '已选' }, { value: 'unselected', label: '未选' }]
+const rarityOptions = [{ value: 'all', label: '全部' }, { value: 3, label: '隐密' }, { value: 4, label: '机密' }, { value: 5, label: '绝密' }]
 const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
 const catalogIds = computed(() => new Set(props.catalogEntries.map(entry => entry.id).filter(Boolean)))
 const validFavoriteIds = computed(() => [...props.favoriteIds].filter(id => catalogIds.value.has(id)))
 const validSelectedCount = computed(() => [...selected.value].filter(id => catalogIds.value.has(id)).length)
 const invalidSelectedCount = computed(() => selected.value.size - validSelectedCount.value)
 const editingFavorites = computed(() => (!creating.value && props.activePlan?.source === 'favorites') || (firstPlanSuggestion.value && firstPlanMode.value === 'favorites'))
-const hasAdvancedFilters = computed(() => profFilter.value !== 'all' || subProfFilter.value !== 'all')
-const advancedFilterCount = computed(() => Number(profFilter.value !== 'all') + Number(subProfFilter.value !== 'all'))
+const hasAdvancedFilters = computed(() => rarityFilter.value !== 'all' || profFilter.value !== 'all' || subProfFilter.value !== 'all')
+const advancedFilterCount = computed(() => Number(rarityFilter.value !== 'all') + Number(profFilter.value !== 'all') + Number(subProfFilter.value !== 'all'))
 const profOptions = computed(() => {
   const present = new Set(props.catalogEntries.flatMap(entry => tokens(entry.prof)))
   return ['all', ...AGENT_PROFS, ...[...present].filter(prof => !AGENT_PROFS.includes(prof))]
@@ -196,6 +201,7 @@ function growthStatusLabel(entry) {
 const filteredEntries = computed(() => {
   return props.catalogEntries.filter(entry => {
     if (!matchesOperatorSearch(entry, search.value)) return false
+    if (rarityFilter.value !== 'all' && Number(entry.rarity) !== Number(rarityFilter.value)) return false
     if (!matchesProfSubFilter(entry, profFilter.value, subProfFilter.value)) return false
     if (selectionFilter.value === 'selected' && !selected.value.has(entry.id)) return false
     if (selectionFilter.value === 'unselected' && selected.value.has(entry.id)) return false
@@ -225,8 +231,8 @@ function openMemberPicker() {
 }
 defineExpose({ openMemberPicker })
 function toggle(id) { const next = new Set(selected.value); if (next.has(id)) next.delete(id); else next.add(id); selected.value = next }
-function resetFilters() { search.value = ''; profFilter.value = 'all'; subProfFilter.value = 'all'; selectionFilter.value = 'all' }
-function resetAdvancedFilters() { profFilter.value = 'all'; subProfFilter.value = 'all' }
+function resetFilters() { search.value = ''; rarityFilter.value = 'all'; profFilter.value = 'all'; subProfFilter.value = 'all'; selectionFilter.value = 'all' }
+function resetAdvancedFilters() { rarityFilter.value = 'all'; profFilter.value = 'all'; subProfFilter.value = 'all' }
 function applyFirstPlanMode() {
   const favorites = firstPlanMode.value === 'favorites'
   name.value = favorites ? '特别关注' : ''
@@ -345,6 +351,9 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-filter-options { display: flex; min-width: 0; flex: 1; flex-wrap: wrap; gap: 3px; }
 .plan-filter-options button { min-height: 30px; padding: 4px 9px; border: 0; border-radius: 999px; background: rgba(73,59,44,.06); color: var(--ink-60); font-size: 11px; }
 .plan-filter-options button.on { background: var(--yellow); color: var(--ink); }
+.plan-filter-options .rarity-option.rarity-r3.on { background: color-mix(in srgb, #99b5cf 34%, var(--surface)); color: #47647d; }
+.plan-filter-options .rarity-option.rarity-r4.on { background: color-mix(in srgb, #8672b2 25%, var(--surface)); color: #62508b; }
+.plan-filter-options .rarity-option.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--accent-strong); }
 
 .plan-roster-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 1px 6px; color: var(--ink-60); font-size: 10px; }
 .plan-roster-meta p { margin: 0; }
@@ -367,8 +376,9 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-candidate b { display: block; min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .plan-candidate-favorite { display: inline-grid; width: 13px; height: 13px; flex: none; place-items: center; color: var(--accent); }
 .plan-candidate-labels { display: flex; min-width: 0; gap: 3px; margin-top: 4px; overflow: hidden; }
+.plan-candidate-labels :deep(.operator-rarity-badge) { flex: none; }
 .plan-candidate-label { display: inline-flex; min-width: 0; height: 17px; align-items: center; padding: 0 5px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); font-size: 9px; font-weight: 750; line-height: 1; white-space: nowrap; }
-.plan-candidate-label.profession { max-width: 58%; overflow: hidden; background: var(--paper); text-overflow: ellipsis; }
+.plan-candidate-label.profession { max-width: 44%; overflow: hidden; background: var(--paper); text-overflow: ellipsis; }
 .plan-candidate-label.status { flex: none; }
 .plan-candidate-label.status.is-growing { border-color: rgba(111,159,118,.45); background: #bfdcc0; color: #315f38; }
 .plan-candidate-label.status.is-graduated { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--yellow) 35%, var(--surface)); color: var(--accent-strong); }
@@ -429,7 +439,8 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
   .plan-candidate-status-mark.is-favorite.is-inactive { color: var(--ink-60); }
   .plan-candidate-status-mark svg { width: 10px; height: 10px; }
   .plan-candidate-favorite { display: none; }
-  .plan-candidate-labels { display: none; }
+  .plan-candidate-labels { display: flex; justify-content: center; margin-top: 3px; overflow: visible; }
+  .plan-candidate-labels .plan-candidate-label { display: none; }
   .plan-selected-check { position: absolute; top: 5px; right: 5px; display: block; width: 17px; height: 17px; padding: 2px; border-radius: 50%; background: var(--tea); color: var(--cream); }
   .plan-candidate b { max-width: 100%; font-size: 11px; text-align: center; }
   :deep(.plan-candidate .operator-avatar) { width: 42px; height: 42px; }

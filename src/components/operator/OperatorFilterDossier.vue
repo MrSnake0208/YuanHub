@@ -39,6 +39,20 @@
     </div>
 
     <div class="current-filter-rows">
+      <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
+        <span class="pf-label">稀有</span>
+        <div class="mf-filter rarity-filter" role="group" :aria-label="`按稀有度筛选${contextLabel}`">
+          <button
+            v-for="option in rarityOptions"
+            :key="option.value"
+            type="button"
+            :aria-pressed="rarityFilter === option.value"
+            :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+            @click="$emit('update:rarityFilter', option.value)"
+          >{{ option.label }}</button>
+        </div>
+      </div>
+
       <div class="pf-row pf-prof-row">
         <span class="pf-label">属性</span>
         <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
@@ -117,10 +131,12 @@ const props = defineProps({
   contextLabel: { type: String, default: '当前养成' },
   resultCount: { type: Number, default: 0 },
   totalCount: { type: Number, default: 0 },
+  rarityOptions: { type: Array, default: function () { return [] } },
   profOptions: { type: Array, default: function () { return [] } },
   subProfOptions: { type: Array, default: function () { return [] } },
   statusOptions: { type: Array, default: function () { return [] } },
   statusCounts: { type: Object, default: function () { return {} } },
+  rarityFilter: { type: [String, Number], default: 'all' },
   profFilter: { type: String, default: 'all' },
   subProfFilter: { type: String, default: 'all' },
   statusFilter: { type: String, default: 'all' },
@@ -132,6 +148,7 @@ const props = defineProps({
 })
 
 defineEmits([
+  'update:rarityFilter',
   'update:profFilter',
   'update:subProfFilter',
   'update:statusFilter',
@@ -307,6 +324,9 @@ function statusCount(value) {
   color: var(--accent-strong);
   box-shadow: 0 1px 4px rgba(73, 59, 44, 0.16);
 }
+.rarity-filter button.rarity-r3.on { background: color-mix(in srgb, #99b5cf 34%, var(--surface)); color: #47647d; }
+.rarity-filter button.rarity-r4.on { background: color-mix(in srgb, #8672b2 25%, var(--surface)); color: #62508b; }
+.rarity-filter button.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--accent-strong); }
 .mf-filter button:focus-visible {
   outline: 2px solid var(--brand-blue);
   outline-offset: 1px;
