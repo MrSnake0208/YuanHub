@@ -24,9 +24,25 @@
           <label class="reason-label" for="beta-admin-reason">本次变更原因（必填，写入审计）</label>
           <textarea ref="reasonInput" id="beta-admin-reason" v-model.trim="reason" maxlength="300" rows="3" placeholder="例如：同步流程稳定，开放下一批候补" />
           <p class="reason-hint">运营操作会写入审计记录；未填写原因时点击按钮会提示补充，不会静默禁用。</p>
+          <section class="capacity-panel" aria-labelledby="beta-capacity-title">
+            <div class="capacity-head">
+              <h3 id="beta-capacity-title">自定义扩容</h3>
+              <p class="capacity-current">当前容量 <b>{{ data.campaign.capacity }}</b> 人</p>
+            </div>
+            <div class="capacity-field">
+              <label for="beta-capacity-target">目标总容量</label>
+              <div class="capacity-input">
+                <input id="beta-capacity-target" ref="capacityInput" v-model.number="targetCapacity" type="number" inputmode="numeric" step="1" :min="data.campaign.capacity + 1" :max="data.capacityHardLimit" :disabled="disabled" :aria-invalid="capacityError ? 'true' : 'false'" :aria-describedby="capacityError ? 'beta-capacity-hint beta-capacity-error' : 'beta-capacity-hint'" @keydown.enter.prevent="submitCapacity" />
+                <span aria-hidden="true">人</span>
+              </div>
+              <p id="beta-capacity-hint" class="capacity-hint"><template v-if="addedCount > 0">本次将新增 <b>{{ addedCount }}</b> 个公开名额</template><template v-else>填写目标总容量后，这里会显示本次实际新增的公开名额。</template></p>
+              <p v-if="capacityError" id="beta-capacity-error" class="capacity-error" role="alert">{{ capacityError }}</p>
+            </div>
+            <button class="admin-btn" :disabled="disabled || !capacityValid" @click="submitCapacity">确认扩容</button>
+            <p class="capacity-note">扩容只增加公开名额：Share 预留保持现有数量，已有候补会按顺序自动递补。系统安全上限 {{ data.capacityHardLimit }} 人，仅用于防止误输入极端数字。</p>
+          </section>
           <div class="admin-actions">
             <button class="admin-btn" :disabled="disabled" @click="mutate('admissions', { paused: !data.campaign.admissionsPaused }, data.campaign.admissionsPaused ? '恢复新增，并优先递补已有候补？' : '暂停所有新增资格？已开通用户仍可使用。')">{{ data.campaign.admissionsPaused ? '恢复新增' : '暂停新增' }}</button>
-            <button v-for="size in [150, 200]" :key="size" class="admin-btn secondary" :disabled="disabled || data.campaign.capacity >= size || size > data.campaign.maxCapacity" @click="mutate('capacity', { capacity: size }, '将当前容量提高到 ' + size + '？新增名额全部公开，已有候补优先。')">扩至 {{ size }} 人</button>
           </div>
           <div class="admin-actions">
             <button class="admin-btn secondary" :disabled="disabled || data.campaign.accessMode === 'CLOSED'" @click="mutate('mode', { access_mode: 'CLOSED' }, '进入维护关闭？普通用户将暂停受限云功能；管理员仍可直接进入，账号和管理入口保留。')">维护关闭</button>
@@ -45,7 +61,7 @@
   </main></div>
 </template>
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { getBetaAdmin, resetLocalBeta, updateBetaAdmin } from '../../api/beta.js'
@@ -57,7 +73,20 @@ const error = ref('')
 const message = ref('')
 const reason = ref('')
 const reasonInput = ref(null)
+const targetCapacity = ref(null)
+const capacityInput = ref(null)
 const disabled = computed(() => busy.value || !data.value?.configured || data.value.snapshotStatus !== 'READY')
+const hasTargetInput = computed(() => targetCapacity.value !== null && targetCapacity.value !== '' && targetCapacity.value !== undefined)
+const targetNumber = computed(() => (typeof targetCapacity.value === 'number' && Number.isInteger(targetCapacity.value) && targetCapacity.value > 0 ? targetCapacity.value : null))
+const capacityError = computed(() => {
+  if (!data.value || !hasTargetInput.value) return ''
+  if (targetNumber.value === null) return '目标容量必须是正整数'
+  if (targetNumber.value <= data.value.campaign.capacity) return '目标容量必须大于当前容量'
+  if (targetNumber.value > data.value.capacityHardLimit) return '目标容量超过系统安全上限'
+  return ''
+})
+const addedCount = computed(() => (!data.value || targetNumber.value === null ? 0 : targetNumber.value - data.value.campaign.capacity))
+const capacityValid = computed(() => !!data.value && hasTargetInput.value && targetNumber.value !== null && capacityError.value === '')
 const metrics = computed(() => data.value ? [
   { label: '当前容量', value: data.value.campaign.capacity }, { label: '已开通', value: data.value.campaign.grantedCount },
   { label: '公开剩余', value: data.value.campaign.publicRemaining }, { label: '有效预留', value: data.value.campaign.reservedRemaining },
@@ -69,7 +98,7 @@ async function load() {
   try { data.value = await getBetaAdmin() } catch (e) { error.value = e.message }
   finally { busy.value = false }
 }
-async function mutate(action, payload, confirmation) {
+async function mutate(action, payload, confirmation, afterSuccess) {
   if (disabled.value) return
   if (reason.value.trim().length < 2) {
     error.value = '请先填写 2～300 字的变更原因，运营操作会写入审计记录。'
@@ -79,16 +108,36 @@ async function mutate(action, payload, confirmation) {
   }
   if (!window.confirm(confirmation)) return
   busy.value = true; error.value = ''; message.value = ''
+  let succeeded = false
   try {
     data.value = await updateBetaAdmin(action, { ...payload, reason: reason.value, expected_config_version: data.value.configVersion })
     message.value = '服务器已确认变更，名额将按统一规则处理。'; reason.value = ''
     await beta.refresh()
+    succeeded = true
   } catch (e) {
     if (e.status === 409 || e.status === 503) {
       try { data.value = await getBetaAdmin() } catch (_) { /* Preserve the original operation error. */ }
     }
     error.value = e.message || '变更结果暂未确认，请刷新后检查。'
   } finally { busy.value = false }
+  if (succeeded && afterSuccess) await afterSuccess()
+}
+function submitCapacity() {
+  if (disabled.value || !capacityValid.value) return
+  const from = data.value.campaign.capacity
+  const to = targetNumber.value
+  const confirmation = [
+    '确认扩容？',
+    `当前容量 ${from} → 目标容量 ${to}`,
+    `本次新增 ${to - from} 个公开名额`,
+    '扩容不会重新按比例增加 Share 预留',
+    '已有候补将按顺序自动递补',
+  ].join('\n')
+  return mutate('capacity', { capacity: to }, confirmation, async () => {
+    targetCapacity.value = null
+    await nextTick()
+    capacityInput.value?.focus()
+  })
 }
 async function resetLocal() {
   if (disabled.value || !data.value?.campaign?.localTestMode) return
@@ -136,5 +185,21 @@ textarea { box-sizing: border-box; width: 100%; border: 1px solid var(--line); b
 .admin-message.local-mode span { font-size: 13px; line-height: 1.7; }
 .admin-btn.local-reset { border-color: var(--rouge); background: transparent; color: var(--rouge); }
 .error { color: var(--rouge); }
-@media (max-width: 560px) { .admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } dl { grid-template-columns: 1fr; gap: 4px; } dd { margin-bottom: 12px; } }
+.capacity-panel { display: grid; gap: 12px; margin-top: 18px; padding: clamp(14px, 2.4vw, 22px); border: 1px dashed var(--line); border-radius: 14px; background: var(--cream); }
+.capacity-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.capacity-head h3 { margin: 0; font: 800 18px/1.5 var(--font-s); color: var(--ink); }
+.capacity-current { margin: 0; font-size: 13px; color: var(--ink-60); }
+.capacity-current b { margin: 0 2px; font: 800 20px/1 var(--font-d); color: var(--tea); }
+.capacity-field { display: grid; gap: 7px; }
+.capacity-field > label { font-weight: 700; }
+.capacity-input { display: inline-flex; align-items: center; gap: 8px; }
+.capacity-input input { box-sizing: border-box; width: 100%; max-width: 220px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--surface); color: var(--ink); font: 700 18px var(--font-d); }
+.capacity-input input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.capacity-input input[aria-invalid='true'] { border-color: var(--rouge); }
+.capacity-input span { color: var(--ink-60); }
+.capacity-hint { margin: 0; font-size: 13px; color: var(--ink-60); }
+.capacity-hint b { margin: 0 2px; font: 800 20px/1 var(--font-d); color: var(--accent); }
+.capacity-error { margin: 0; font-size: 13px; font-weight: 700; color: var(--rouge); }
+.capacity-note { margin: 0; font-size: 12px; line-height: 1.7; color: var(--ink-60); }
+@media (max-width: 560px) { .admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } dl { grid-template-columns: 1fr; gap: 4px; } dd { margin-bottom: 12px; } .capacity-input input { max-width: none; } }
 </style>

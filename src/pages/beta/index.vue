@@ -256,7 +256,7 @@
               <div class="faq-body">
                 <p>YuanHub 仍处于开发早期，本轮只开放少量名额验证稳定性。</p>
                 <p>本轮不主动删档，但无法保证绝对不会丢档；同步异常、数据错误、回滚等意外情况都可能发生，还请理解。</p>
-                <p v-if="campaign">本轮当前容量为 <b>{{ campaign.capacity }}</b> 人，最多可扩到 <b>{{ campaign.maxCapacity }}</b> 人；是否扩容会根据测试情况决定。</p>
+                <p v-if="campaign">本轮当前容量为 <b>{{ campaign.capacity }}</b> 人；后续是否扩容会根据测试情况决定。</p>
               </div>
             </details>
 
