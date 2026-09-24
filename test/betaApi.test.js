@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { normalizeBetaStatus, normalizeBetaMe, normalizeBetaAdmin } from '../src/api/beta.js'
-const wire = { campaign_id: 'test', access_mode: 'BETA', public_state: 'FULL', server_now: '2026-09-21T12:00:00Z', initial_capacity: 100, capacity: 150, max_capacity: 200, reserved_initial: 25, reserved_remaining: 0, granted_count: 150, public_remaining: 0, local_test_mode: true }
+const wire = { campaign_id: 'test', access_mode: 'BETA', public_state: 'FULL', server_now: '2026-09-21T12:00:00Z', initial_capacity: 100, capacity: 150, reserved_initial: 25, reserved_remaining: 0, granted_count: 150, public_remaining: 0, local_test_mode: true }
 test('normalizes actual snake_case campaign and me/admin nested contracts', () => {
   assert.equal(normalizeBetaStatus(wire).reservedInitial, 25)
   assert.equal(normalizeBetaStatus(wire).localTestMode, true)
@@ -10,15 +10,22 @@ test('normalizes actual snake_case campaign and me/admin nested contracts', () =
   assert.equal(mine.canResetLocalTest, false)
   assert.equal(mine.campaign.capacity, 150)
   assert.equal(normalizeBetaMe({ campaign: wire, enrollment_status: 'WAITING', can_reset_local_test: true }).canResetLocalTest, true)
-  const admin = normalizeBetaAdmin({ campaign: wire, config_version: 2, waiting_count: 45 })
+  const admin = normalizeBetaAdmin({ campaign: wire, config_version: 2, capacity_hard_limit: 100000, waiting_count: 45 })
   assert.equal(admin.configVersion, 2)
+  assert.equal(admin.capacityHardLimit, 100000)
   assert.equal(admin.waitingCount, 45)
+})
+test('the public campaign status no longer requires the removed max_capacity field', () => {
+  assert.equal(normalizeBetaStatus(wire).maxCapacity, undefined)
+  assert.doesNotThrow(() => normalizeBetaStatus({ ...wire, max_capacity: 200 }))
 })
 test('missing or invalid backend data is an error, never fabricated full or grant', () => {
   assert.throws(() => normalizeBetaStatus({}), /响应/)
   assert.throws(() => normalizeBetaStatus({ ...wire, granted_count: -1 }), /异常/)
   assert.throws(() => normalizeBetaMe({ campaign: wire, enrollment_status: 'UNRECOGNIZED' }), /异常/)
   assert.throws(() => normalizeBetaAdmin({ campaign: wire }), /缺失/)
+  assert.throws(() => normalizeBetaAdmin({ campaign: wire, config_version: 1 }), /安全上限/)
+  assert.throws(() => normalizeBetaAdmin({ campaign: wire, config_version: 1, capacity_hard_limit: 0 }), /安全上限/)
   assert.equal(normalizeBetaMe({ campaign: wire, enrollment_status: 'ACTIVE', can_use_beta_features: 'true' }).canUseBetaFeatures, false)
 })
 

@@ -10,7 +10,7 @@ export function normalizeBetaStatus(value) {
   if (!data.campaignId || !['CLOSED', 'BETA', 'OPEN'].includes(data.accessMode) || !data.publicState || !Number.isFinite(Date.parse(data.serverNow))) {
     throw new Error('内测状态响应不完整，请重试。')
   }
-  for (const key of ['initialCapacity', 'capacity', 'maxCapacity', 'reservedInitial', 'reservedRemaining', 'grantedCount', 'publicRemaining']) {
+  for (const key of ['initialCapacity', 'capacity', 'reservedInitial', 'reservedRemaining', 'grantedCount', 'publicRemaining']) {
     if (!Number.isInteger(data[key]) || data[key] < 0) throw new Error('内测名额响应异常，请重试。')
   }
   return data
@@ -30,6 +30,7 @@ export function normalizeBetaAdmin(value) {
   const data = camelObject(value)
   data.campaign = normalizeBetaStatus(data.campaign)
   if (!Number.isInteger(data.configVersion)) throw new Error('管理配置版本缺失，请重试。')
+  if (!Number.isInteger(data.capacityHardLimit) || data.capacityHardLimit < 1) throw new Error('内测系统安全上限响应异常，请重试。')
   return data
 }
 
