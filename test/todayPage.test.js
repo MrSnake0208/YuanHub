@@ -19,11 +19,14 @@ test('uses 今日一览 as the default page', function () {
   assert.equal(route.meta.title, '今日一览 — 鸢鸢相抱 · YuanHub')
 
   const page = readFileSync(new URL('../src/pages/today/index.vue', import.meta.url), 'utf8')
-  assert.match(page, /今天先做/)
-  assert.match(page, /你可以在这里/)
-  assert.match(page, /密探名册/)
-  assert.match(page, /库存追踪/)
-  assert.match(page, /广陵账房/)
+  // 01「今天先做」/ 02「一眼看懂现在」/ 03「你可以在这里」暂时下线，只保留施工占位。
+  assert.match(page, /老鸢赶工中/)
+  assert.match(page, /today-coming-soon-title/)
+  assert.match(page, /data-tour="today-overview"/)
+  assert.doesNotMatch(page, /class="task-grid"/)
+  assert.doesNotMatch(page, /class="summary-grid"/)
+  assert.doesNotMatch(page, /class="tool-groups"/)
+  assert.doesNotMatch(page, /todayTasks|toolGroups|summaryItems|summaryCaption/)
   assert.match(page, /先登录，再开始建立今日一览/)
   assert.match(page, /登录并继续/)
   assert.match(page, /先建立你的游戏子账号/)
@@ -55,7 +58,6 @@ test('uses 今日一览 as the default page', function () {
 
 test('keeps guest demo state inside the hub and the full demo route isolated', function () {
   const today = readFileSync(new URL('../src/pages/today/index.vue', import.meta.url), 'utf8')
-  assert.match(today, /DEMO_SUMMARY/)
   assert.match(today, /if \(!auth\.isLoggedIn\) return/)
   assert.match(today, /演示数据/)
 

@@ -185,72 +185,15 @@
             </div>
           </section>
 
-          <section class="today-section" data-tour="today-overview" aria-labelledby="today-actions-title">
-            <div class="section-heading">
-              <div>
-                <span class="section-index">01</span>
-                <h2 id="today-actions-title">今天先做</h2>
-              </div>
-              <p>{{ auth.isLoggedIn ? '根据当前账号状态整理' : '用演示状态带你认识常用流程' }}</p>
-            </div>
-            <div class="task-grid" :aria-busy="loading">
-              <router-link v-for="(task, index) in todayTasks" :key="task.title" class="task-card" :to="task.to">
-                <span class="task-number">0{{ index + 1 }}</span>
-                <component :is="task.icon" :size="22" aria-hidden="true" />
-                <div>
-                  <h3>{{ task.title }}</h3>
-                  <p>{{ task.description }}</p>
-                </div>
-                <ArrowRight class="task-arrow" :size="18" aria-hidden="true" />
-              </router-link>
-            </div>
-          </section>
-
-          <section class="today-section" aria-labelledby="today-status-title">
-            <div class="section-heading">
-              <div>
-                <span class="section-index">02</span>
-                <h2 id="today-status-title">一眼看懂现在</h2>
-              </div>
-              <p>{{ summaryCaption }}</p>
-            </div>
-            <div class="summary-grid" :aria-busy="loading">
-              <div v-for="item in summaryItems" :key="item.label" class="summary-card">
-                <component :is="item.icon" :size="19" aria-hidden="true" />
-                <strong>{{ (loading && auth.isLoggedIn) || item.value == null ? '—' : item.value }}</strong>
-                <span>{{ item.label }}</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="today-section" aria-labelledby="today-tools-title">
-            <div class="section-heading">
-              <div>
-                <span class="section-index">03</span>
-                <h2 id="today-tools-title">你可以在这里</h2>
-              </div>
-              <p>按目的找功能，不用记菜单层级</p>
-            </div>
-
-            <div class="tool-groups">
-              <div v-for="group in toolGroups" :key="group.title" class="tool-group">
-                <div class="tool-group-heading">
-                  <span>{{ group.eyebrow }}</span>
-                  <h3>{{ group.title }}</h3>
-                </div>
-                <div class="tool-list">
-                  <router-link v-for="tool in group.tools" :key="tool.title" class="tool-card" :to="tool.to">
-                    <span class="tool-icon"><component :is="tool.icon" :size="21" aria-hidden="true" /></span>
-                    <span class="tool-copy">
-                      <strong>{{ tool.title }}</strong>
-                      <small>{{ tool.description }}</small>
-                    </span>
-                    <span v-if="tool.badge" class="tool-badge">{{ tool.badge }}</span>
-                    <ArrowRight class="tool-arrow" :size="17" aria-hidden="true" />
-                  </router-link>
-                </div>
-              </div>
-            </div>
+          <section
+            class="today-section today-coming-soon"
+            data-tour="today-overview"
+            aria-labelledby="today-coming-soon-title"
+          >
+            <span class="coming-soon-emblem" aria-hidden="true"><Hammer :size="26" /></span>
+            <span class="coming-soon-kicker">WORK IN PROGRESS</span>
+            <h2 id="today-coming-soon-title">老鸢赶工中…</h2>
+            <p>「今天先做」「一眼看懂现在」和功能入口正在重做，很快就会回到这里。这段时间可以从左侧栏继续使用密探名册、库存追踪和星石背包。</p>
           </section>
         </div>
       </section>
@@ -261,19 +204,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  ArrowRight,
-  Bell,
-  Gem,
-  Heart,
-  Link2,
-  MessageSquareText,
-  PackageOpen,
-  ScrollText,
-  ShoppingCart,
-  Users,
-  Zap
-} from '@lucide/vue'
+import { ArrowRight, Gem, Hammer, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import { createAccount, listAccounts } from '../../api/accounts.js'
@@ -290,7 +221,6 @@ import {
   summarizeTodayData
 } from '../../data/todayData.js'
 
-const DEMO_SUMMARY = Object.freeze({ operatorCount: 3, favoriteCount: 2, inventoryKindCount: 5, starCount: 6, unreadCount: 1 })
 const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, starCount: 0, unreadCount: 0 })
 const DATA_SETUP_CONFIG = Object.freeze([
   {
@@ -349,7 +279,6 @@ const accountId = computed({
 })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
-const summary = computed(function () { return auth.isLoggedIn ? realSummary.value : DEMO_SUMMARY })
 const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
 const onboardingStage = computed(function () {
   return getTodayOnboardingStage({
@@ -433,83 +362,6 @@ const heroPrimaryLabel = computed(function () {
   if (onboardingStage.value === 'data') return '继续补齐 ' + missingDataItems.value.length + ' 项数据'
   return '快速更新数据'
 })
-const summaryCaption = computed(function () {
-  if (!auth.isLoggedIn) return '示例账号 · 登录后显示你的真实状态'
-  const account = accounts.value.find(function (item) { return item.id === accountId.value })
-  return account ? `${account.name} · ${account.game || accountGame.value}` : '等待建立第一个子账号'
-})
-
-const summaryItems = computed(function () {
-  return [
-    { label: '已录入密探', value: summary.value.operatorCount, icon: Users },
-    { label: '有库存材料', value: summary.value.inventoryKindCount, icon: PackageOpen },
-    { label: '已录入星石', value: summary.value.starCount, icon: Gem },
-    { label: '未读通知', value: summary.value.unreadCount, icon: Bell }
-  ]
-})
-
-const todayTasks = computed(function () {
-  if (!auth.isLoggedIn) {
-    return [
-      { title: '登录并开始建档', description: '登录后会继续检查子账号和三类核心数据。', to: { path: '/login', query: { redirect: '/' } }, icon: Users },
-      { title: '看看最近更新', description: '了解 YuanHub 最近新增和调整了哪些功能。', to: '/changelog', icon: ScrollText }
-    ]
-  }
-  if (!accounts.value.length) {
-    return [
-      { title: '建立第一个子账号', description: '密探、库存和星石都会统一归到这个游戏账号。', to: '/#data-onboarding-title', icon: Users }
-    ]
-  }
-
-  const tasks = []
-  tasks.push(summary.value.operatorCount == null
-    ? { title: '打开密探名册', description: '密探状态暂未读取，可以到名册中继续查看。', to: '/operator?tab=current', icon: Users }
-    : summary.value.operatorCount
-    ? summary.value.favoriteCount == null
-      ? { title: '看看密探近况', description: `已录入 ${summary.value.operatorCount} 位，关注状态暂未读取。`, to: '/operator?tab=current', icon: Users }
-      : summary.value.favoriteCount
-      ? { title: '看看密探近况', description: `已录入 ${summary.value.operatorCount} 位，${summary.value.favoriteCount} 位特别关注。`, to: '/operator?tab=current', icon: Users }
-      : { title: '选出特别关注', description: '把最近要养的密探放到最前面。', to: '/operator?tab=current', icon: Heart }
-    : { title: '录入密探进度', description: '先建立 BOX，之后今日一览才能给出更贴合的提示。', to: '/operator/quick', icon: Zap })
-  tasks.push(summary.value.inventoryKindCount == null
-    ? { title: '打开库存追踪', description: '库存状态暂未读取，可以到库存页继续查看。', to: '/inventory', icon: PackageOpen }
-    : summary.value.inventoryKindCount
-    ? { title: '核对当前库存', description: `已有 ${summary.value.inventoryKindCount} 种材料，看看是否需要更新。`, to: '/inventory', icon: PackageOpen }
-    : { title: '建立库存快照', description: '录入现有材料，后续获取与消耗才有依据。', to: '/inventory', icon: PackageOpen })
-  tasks.push(summary.value.starCount == null
-    ? { title: '打开星石背包', description: '星石状态暂未读取，可以到星石背包继续查看。', to: '/star', icon: Gem }
-    : summary.value.starCount
-    ? { title: '整理星石背包', description: `已有 ${summary.value.starCount} 颗星石，看看是否需要更新搭配。`, to: '/star', icon: Gem }
-    : { title: '录入星石背包', description: '记录已拥有的星石，之后可以按密探整理搭配。', to: '/star', icon: Gem })
-  return tasks
-})
-
-const toolGroups = computed(function () {
-  const unreadBadge = auth.isLoggedIn && summary.value.unreadCount ? `${summary.value.unreadCount} 条新消息` : ''
-  return [
-    {
-      eyebrow: 'LOOK AROUND',
-      title: '看一看',
-      tools: [
-        { title: '密探名册', description: '看图鉴、养成进度与密探 BOX', to: '/operator', icon: Users },
-        { title: '库存追踪', description: '看材料余量、来源与变化记录', to: '/inventory', icon: PackageOpen },
-        { title: '星石背包', description: '看已有星石与密探搭配', to: '/star', icon: Gem },
-        { title: '更新日志', description: '看看 YuanHub 最近新增了什么', to: '/changelog', icon: ScrollText }
-      ]
-    },
-    {
-      eyebrow: 'GET THINGS DONE',
-      title: '动手做',
-      tools: [
-        { title: '快捷录入', description: '快速更新密探与库存数据', to: '/operator/quick', icon: Zap },
-        { title: '广陵账房', description: '计算礼包性价比，整理购买计划', to: '/cart', icon: ShoppingCart },
-        { title: '通知中心', description: auth.isLoggedIn ? '处理反馈回复与站内消息' : '登录后接收反馈回复与站内消息', to: '/notifications', icon: Bell, badge: unreadBadge },
-        { title: '反馈中心', description: auth.isLoggedIn ? '提交建议并跟进处理进度' : '登录后提交建议并跟进进度', to: '/feedback', icon: MessageSquareText }
-      ]
-    }
-  ]
-})
-
 function readableError(error, fallback) {
   if (!error || !error.message) return fallback
   return /Failed to fetch|NetworkError|fetch/i.test(error.message) ? '网络异常，请稍后重试' : error.message
@@ -617,7 +469,7 @@ onMounted(loadDashboard)
 .today-hero { position: relative; overflow: hidden; padding: 64px 0 48px; border-bottom: 1px solid rgba(156, 122, 77, .26); background: linear-gradient(135deg, rgba(255, 253, 246, .9), rgba(239, 210, 142, .2)); }
 .today-hero::after { position: absolute; top: -160px; right: -100px; width: 420px; height: 420px; border: 1px solid rgba(156, 122, 77, .18); border-radius: 50%; box-shadow: 0 0 0 46px rgba(156, 122, 77, .04), 0 0 0 92px rgba(156, 122, 77, .035); content: ''; pointer-events: none; }
 .today-hero .today-wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: end; gap: 72px; }
-.today-kicker, .section-index, .tool-group-heading span { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
+.today-kicker { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
 .today-hero h1 { margin-top: 12px; font-family: var(--font-s); font-size: clamp(42px, 5vw, 68px); font-weight: 900; letter-spacing: -.04em; }
 .hero-copy > p { max-width: 610px; margin-top: 12px; color: rgba(73, 59, 44, .7); font-size: 15px; line-height: 1.8; }
 .hero-actions { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
@@ -717,38 +569,16 @@ onMounted(loadDashboard)
 .manual-page-links a:hover { background: rgba(239, 210, 142, .18); }
 .manual-actions { display: grid; align-items: start; gap: 12px; margin-top: auto; padding-top: 22px; }
 .today-section + .today-section { margin-top: 52px; }
-.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
-.section-heading > div { display: flex; align-items: baseline; gap: 12px; }
-.section-heading h2 { font-family: var(--font-s); font-size: 26px; font-weight: 900; }
-.section-heading > p { color: rgba(73, 59, 44, .56); font-size: 12px; }
-.task-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.task-card { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 13px; min-height: 146px; padding: 25px 20px 20px; overflow: hidden; border: 1px solid rgba(156, 122, 77, .3); border-radius: 14px; background: var(--surface); color: var(--ink); text-decoration: none; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
-.task-card:hover { transform: translateY(-2px); border-color: rgba(156, 122, 77, .58); box-shadow: 0 12px 28px rgba(73, 59, 44, .08); }
-.task-card > svg:first-of-type { color: var(--accent); }
-.task-number { position: absolute; top: 8px; right: 12px; color: rgba(156, 122, 77, .14); font: 900 38px/1 var(--font-d); }
-.task-card h3 { font-size: 15px; font-weight: 900; }
-.task-card p { margin-top: 8px; color: rgba(73, 59, 44, .62); font-size: 12px; line-height: 1.65; }
-.task-arrow { align-self: end; color: rgba(73, 59, 44, .4); }
-.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid rgba(156, 122, 77, .28); border-radius: 14px; background: rgba(255, 253, 246, .58); }
-.summary-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 3px 12px; padding: 22px; }
-.summary-card + .summary-card { border-left: 1px solid rgba(156, 122, 77, .22); }
-.summary-card svg { grid-row: span 2; color: var(--accent); }
-.summary-card strong { font: 900 24px/1 var(--font-d); }
-.summary-card span { color: rgba(73, 59, 44, .58); font-size: 11px; font-weight: 700; }
-.tool-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.tool-group { overflow: hidden; border: 1px solid rgba(156, 122, 77, .28); border-radius: 14px; background: var(--surface); }
-.tool-group-heading { padding: 20px 22px 15px; border-bottom: 1px solid rgba(156, 122, 77, .18); }
-.tool-group-heading h3 { margin-top: 7px; font-family: var(--font-s); font-size: 20px; }
-.tool-list { display: grid; }
-.tool-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 13px; min-height: 78px; padding: 14px 18px; color: var(--ink); text-decoration: none; }
-.tool-card + .tool-card { border-top: 1px solid rgba(156, 122, 77, .16); }
-.tool-card:hover { background: rgba(239, 210, 142, .1); }
-.tool-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: rgba(156, 122, 77, .1); color: var(--accent); }
-.tool-copy { display: grid; gap: 5px; min-width: 0; }
-.tool-copy strong { font-size: 13px; }
-.tool-copy small { overflow: hidden; color: rgba(73, 59, 44, .58); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.tool-badge { padding: 4px 7px; border-radius: 999px; background: rgba(166, 81, 74, .1); color: var(--rouge); font-size: 10px; font-weight: 800; }
-.tool-arrow { color: rgba(73, 59, 44, .34); }
+.today-coming-soon { position: relative; display: grid; align-content: center; justify-items: center; gap: 12px; min-height: 340px; padding: 56px 32px; overflow: hidden; border: 1px dashed rgba(156, 122, 77, .45); border-radius: 16px; background: linear-gradient(150deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .16)); text-align: center; }
+.today-coming-soon::after { position: absolute; top: -120px; left: 50%; width: 320px; height: 320px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle, rgba(239, 210, 142, .3), rgba(239, 210, 142, 0) 70%); content: ''; pointer-events: none; }
+.coming-soon-emblem { position: relative; z-index: 1; display: grid; width: 64px; height: 64px; place-items: center; border: 1px solid rgba(156, 122, 77, .24); border-radius: 50%; background: rgba(239, 210, 142, .28); color: var(--tea); }
+.coming-soon-kicker { position: relative; z-index: 1; color: var(--tea); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
+.today-coming-soon h2 { position: relative; z-index: 1; margin-top: 4px; font-family: var(--font-s); font-size: clamp(30px, 4vw, 44px); font-weight: 900; letter-spacing: -.02em; }
+.today-coming-soon p { position: relative; z-index: 1; max-width: 44ch; color: rgba(73, 59, 44, .78); font-size: 13px; line-height: 1.85; }
+@media (prefers-reduced-motion: no-preference) {
+  .coming-soon-emblem { animation: coming-soon-bob 3.6s ease-in-out infinite; }
+}
+@keyframes coming-soon-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @media (max-width: 980px) {
   .today-main { margin-left: 0; }
   .today-hero .today-wrap { gap: 36px; }
@@ -780,16 +610,9 @@ onMounted(loadDashboard)
   .sync-task-row { grid-template-columns: 1fr; gap: 3px; }
   .sync-task-target { justify-content: flex-start; text-align: left; }
   .entry-primary-action, .entry-secondary-action { width: 100%; }
-  .section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
-  .task-grid, .tool-groups { grid-template-columns: 1fr; }
-  .task-card { min-height: 128px; }
-  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .summary-card:nth-child(odd) { border-left: 0; }
-  .summary-card:nth-child(n + 3) { border-top: 1px solid rgba(156, 122, 77, .22); }
-  .tool-card { padding-inline: 14px; }
-  .tool-badge { display: none; }
+  .today-coming-soon { min-height: 280px; padding: 40px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .task-card { transition: none; }
+  .coming-soon-emblem { animation: none; }
 }
 </style>
