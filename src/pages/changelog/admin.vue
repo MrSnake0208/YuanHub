@@ -69,7 +69,7 @@
               <button type="button" :aria-pressed="editor.isActive('orderedList')" aria-label="有序列表" @click="editor.chain().focus().toggleOrderedList().run()">1. 列表</button>
               <button type="button" :aria-pressed="editor.isActive('blockquote')" aria-label="引用" @click="editor.chain().focus().toggleBlockquote().run()">引用</button>
               <button type="button" :aria-pressed="editor.isActive('link')" aria-label="设置链接" @click="setLink">链接</button>
-              <button type="button" aria-label="上传并插入图片" :disabled="uploading" @click="chooseImage">{{ uploading ? '上传中…' : '图片' }}</button>
+              <button type="button" aria-label="上传并插入图片" :disabled="uploading" @click="chooseImage">{{ imageUploadStage === 'optimizing' ? '优化中…' : (uploading ? '上传中…' : '图片') }}</button>
               <button v-if="editor.isActive('image')" type="button" aria-label="修改图片说明" @click="editImageAlt">图片说明</button>
               <button type="button" aria-label="撤销" :disabled="!editor.can().undo()" @click="editor.chain().focus().undo().run()">撤销</button>
               <button type="button" aria-label="重做" :disabled="!editor.can().redo()" @click="editor.chain().focus().redo().run()">重做</button>
@@ -119,6 +119,7 @@ import {
 } from '../../api/changelog.js'
 import { uploadMedia } from '../../api/media.js'
 import { productVersionLabel } from '../../config/buildInfo.js'
+import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from '../../utils/imageUpload.js'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { changelogExtensions, emptyChangelogBody, isChangelogBodyEmpty } from '../../utils/changelogContent.js'
@@ -128,6 +129,7 @@ const selected = ref(null)
 const loading = ref(true)
 const busy = ref(false)
 const uploading = ref(false)
+const imageUploadStage = ref('')
 const dirty = ref(false)
 const conflict = ref(false)
 const preview = ref(false)
@@ -286,13 +288,20 @@ async function uploadImage(event) {
   const alt = window.prompt('请填写图片说明，便于无法查看图片的用户理解内容', '')
   if (alt === null) return
   uploading.value = true
+  imageUploadStage.value = 'optimizing'
   actionError.value = ''
   try {
-    const media = await uploadMedia(file)
+    const optimized = await prepareImageUpload(file, IMAGE_UPLOAD_PROFILES.CHANGELOG)
+    imageUploadStage.value = 'uploading'
+    const media = await uploadMedia(optimized.file)
     if (!media?.id || !media?.url) throw new Error('图片上传响应无效')
     editor.value.chain().focus().setImage({ src: media.url, alt: alt.trim(), title: null, media_id: media.id }).run()
-  } catch (error) { actionError.value = error?.message || '图片上传失败' }
-  finally { uploading.value = false }
+  } catch (error) {
+    actionError.value = error?.message || '图片上传失败'
+  } finally {
+    imageUploadStage.value = ''
+    uploading.value = false
+  }
 }
 function editImageAlt() {
   const alt = window.prompt('图片说明', editor.value.getAttributes('image').alt || '')

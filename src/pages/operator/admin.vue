@@ -167,7 +167,7 @@
               <h3 id="catalog-editor-title">{{ isNew ? '新增密探' : (form.name || form.id) }}</h3>
               <p class="editor-sub">{{ isNew ? '写入公共图鉴字典，即时对公共图鉴与导入校验生效' : (form.id + ' · 修改会整条覆盖保存' ) }}</p>
             </div>
-            <button class="editor-close" type="button" aria-label="关闭编辑器" @click="closeEditor"><X :size="22" aria-hidden="true" /></button>
+            <button class="editor-close" type="button" :disabled="saving || avatarUploading || avatarOptimizing" aria-label="关闭编辑器" @click="closeEditor"><X :size="22" aria-hidden="true" /></button>
           </div>
 
           <div class="editor-body">
@@ -179,13 +179,13 @@
                   <img v-else-if="form.avatar" :src="avatarUrl(form.avatar)" class="avatar-preview" alt="当前头像" />
                   <span v-else class="avatar-placeholder">无头像</span>
                   <div class="avatar-actions">
-                    <input ref="avatarInput" type="file" accept="image/webp" class="avatar-file" @change="onAvatarPick" />
-                    <button class="btn ghost mini" type="button" @click="pickAvatar">选择图片</button>
-                    <button class="btn primary mini" type="button" :disabled="!form.avatarPick || avatarUploading" @click="uploadAvatar">{{ avatarUploading ? '上传中…' : '上传' }}</button>
-                    <button class="btn ghost mini" type="button" :disabled="avatarUploading || !form.avatar" @click="removeAvatar">删除头像</button>
+                    <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="avatar-file" :disabled="avatarUploading || avatarOptimizing" @change="onAvatarPick" />
+                    <button class="btn ghost mini" type="button" :disabled="avatarUploading || avatarOptimizing" @click="pickAvatar">{{ avatarOptimizing ? '优化中…' : '选择图片' }}</button>
+                    <button class="btn primary mini" type="button" :disabled="!form.avatarPick || avatarUploading || avatarOptimizing" @click="uploadAvatar">{{ avatarUploading ? '上传中…' : '上传' }}</button>
+                    <button class="btn ghost mini" type="button" :disabled="avatarUploading || avatarOptimizing || !form.avatar" @click="removeAvatar">删除头像</button>
                   </div>
                 </div>
-                <p class="hint">仅支持 webp，≤500KB；上传即保存并即时对公共图鉴生效，不依赖下方「保存」按钮</p>
+                <p class="hint">支持 JPG、PNG、WebP；选择后会在本地自动转为 WebP 并压至 ≤500KB。上传即保存并即时对公共图鉴生效，不依赖下方「保存」按钮</p>
               </div>
             </div>
 
@@ -306,8 +306,8 @@
           </div>
 
           <div class="editor-actions">
-            <button class="btn ghost" type="button" :disabled="saving" @click="closeEditor">取消</button>
-            <button class="btn primary" type="button" :disabled="saving" @click="save">
+            <button class="btn ghost" type="button" :disabled="saving || avatarUploading || avatarOptimizing" @click="closeEditor">取消</button>
+            <button class="btn primary" type="button" :disabled="saving || avatarUploading || avatarOptimizing" @click="save">
               {{ saving ? '保存中…' : (isNew ? '新增到公共图鉴' : '保存修改') }}
             </button>
           </div>
@@ -344,6 +344,7 @@ import {
 import { avatarUrl } from '../../api/request.js'
 import { auth } from '../../store/auth.js'
 import { dialog } from '../../utils/dialog.js'
+import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from '../../utils/imageUpload.js'
 import { adminCatalogEntries, compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
 import { elementAppearance } from '../../data/inventory/elementColors.js'
 import { OPERATOR_ODDITY_KEYS, normalizeOperatorOdditySchema } from '../../utils/operatorCombatStats.js'
@@ -418,6 +419,7 @@ const specialOddityError = ref('')
 
 // —— 头像上传 / 删除 ——
 const avatarUploading = ref(false)
+const avatarOptimizing = ref(false)
 const avatarInput = ref(null)
 
 const PROF_OPTIONS = ['地', '水', '火', '风', '阳', '阴', '混沌']
@@ -538,8 +540,17 @@ function openEdit(r) {
 
 function closeEditor() {
   if (saving.value) return
-  if (avatarUploading.value) return
+  if (avatarUploading.value || avatarOptimizing.value) return
+  revokeAvatarPreview()
   editing.value = false
+}
+
+function revokeAvatarPreview() {
+  const preview = form.value.avatarPreview
+  if (preview && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(preview)
+  }
+  form.value.avatarPreview = ''
 }
 
 function pickAvatar() {
@@ -547,10 +558,30 @@ function pickAvatar() {
   if (el) { el.value = ''; el.click() }
 }
 
-function onAvatarPick(e) {
+async function onAvatarPick(e) {
   const file = e.target.files && e.target.files[0]
-  form.value.avatarPick = file || null
-  form.value.avatarPreview = file ? URL.createObjectURL(file) : ''
+  if (e.target) e.target.value = ''
+  if (!file) return
+
+  revokeAvatarPreview()
+  form.value.avatarPick = null
+  avatarOptimizing.value = true
+  notice.value = '正在本地优化头像…'
+  noticeError.value = false
+
+  try {
+    const optimized = await prepareImageUpload(file, IMAGE_UPLOAD_PROFILES.AVATAR)
+    form.value.avatarPick = optimized.file
+    form.value.avatarPreview = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
+      ? URL.createObjectURL(optimized.file)
+      : ''
+    notice.value = ''
+  } catch (err) {
+    notice.value = err?.message || '头像优化失败，请更换图片后重试'
+    noticeError.value = true
+  } finally {
+    avatarOptimizing.value = false
+  }
 }
 
 // 上传头像：独立动作，上传即存、即时对公共图鉴生效（不依赖表单「保存」）
@@ -562,8 +593,8 @@ async function uploadAvatar() {
   }
   const file = form.value.avatarPick
   if (!file) { notice.value = '请先选择图片'; noticeError.value = true; return }
-  if (!/^image\/webp$/i.test(file.type)) { notice.value = '仅支持 webp 图片'; noticeError.value = true; return }
-  if (file.size > 500 * 1024) { notice.value = '图片不能超过 500KB'; noticeError.value = true; return }
+  if (!/^image\/webp$/i.test(file.type)) { notice.value = '头像优化结果不是 WebP，请重新选择图片'; noticeError.value = true; return }
+  if (file.size > 500 * 1024) { notice.value = '头像优化后仍超过 500KB，请重新选择图片'; noticeError.value = true; return }
   avatarUploading.value = true
   notice.value = ''
   noticeError.value = false
@@ -573,7 +604,7 @@ async function uploadAvatar() {
     const row = rows.value.find(function (r) { return r.id === form.value.id })
     if (row) row.avatar = path
     form.value.avatar = path
-    form.value.avatarPreview = ''
+    revokeAvatarPreview()
     form.value.avatarPick = null
     notice.value = '头像已上传，即时对公共图鉴生效'
   } catch (err) {
@@ -596,7 +627,7 @@ async function removeAvatar() {
     const row = rows.value.find(function (r) { return r.id === form.value.id })
     if (row) row.avatar = ''
     form.value.avatar = ''
-    form.value.avatarPreview = ''
+    revokeAvatarPreview()
     form.value.avatarPick = null
     notice.value = '头像已删除'
   } catch (err) {

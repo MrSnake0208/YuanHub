@@ -124,7 +124,7 @@
                       <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
                         <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
-                        <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading" @click="submitReply(item.id)">
+                        <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading || replyMedia.optimizing" @click="submitReply(item.id)">
                           <Send :size="16" />{{ replying ? '发送中…' : '发送' }}
                         </button>
                     </div>
@@ -176,7 +176,7 @@
             <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
             <div class="modal-foot">
               <button type="button" class="feedback-button" @click="closeNewFeedback">取消</button>
-              <button type="submit" class="feedback-primary-action" :disabled="submitting || newMedia.uploading">
+              <button type="submit" class="feedback-primary-action" :disabled="submitting || newMedia.uploading || newMedia.optimizing">
                 <Send :size="16" />{{ submitting ? '提交中…' : '提交反馈' }}
               </button>
             </div>

@@ -1,5 +1,6 @@
 import { getCurrentInstance, onBeforeUnmount, reactive, ref } from 'vue'
 import { uploadMedia } from '../api/media.js'
+import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from './imageUpload.js'
 
 export const FEEDBACK_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
 export const FEEDBACK_FILE_ACCEPT = '.txt,.log,.json,.pdf,.zip,text/plain,application/json,application/pdf,application/zip,application/x-zip-compressed'
@@ -74,10 +75,12 @@ function getClipboardFile(item) {
 export function useFeedbackMedia() {
   const items = ref([])
   const error = ref('')
+  const optimizing = ref(false)
   const uploading = ref(false)
+  let preparationVersion = 0
 
-  function addFiles(files) {
-    if (uploading.value) return
+  async function addFiles(files) {
+    if (uploading.value || optimizing.value) return
     const nextFiles = Array.from(files || [])
     if (!nextFiles.length) return
 
@@ -87,33 +90,65 @@ export function useFeedbackMedia() {
       return
     }
     for (const file of nextFiles) {
-      if (!classifyFile(file)) {
+      const kind = classifyFile(file)
+      if (!kind) {
         error.value = '仅支持 JPG、PNG、WebP、TXT、LOG、JSON、PDF 或 ZIP'
         return
       }
-      if (file.size > MAX_FEEDBACK_MEDIA_SIZE) {
+      if (kind !== 'IMAGE' && file.size > MAX_FEEDBACK_MEDIA_SIZE) {
         error.value = '单个附件不能超过 10 MiB'
         return
       }
     }
 
-    items.value = items.value.concat(nextFiles.map(file => ({
+    const version = ++preparationVersion
+    const startIndex = items.value.length
+    const batchItems = nextFiles.map(file => ({
       file,
       kind: classifyFile(file),
       previewUrl: classifyFile(file) === 'IMAGE' ? createPreview(file) : '',
       mediaId: null
-    })))
+    }))
+    items.value = items.value.concat(batchItems)
+
+    const hasImage = batchItems.some(item => item.kind === 'IMAGE')
+    if (!hasImage || typeof Image !== 'function') return
+    optimizing.value = true
+
+    try {
+      for (let index = 0; index < batchItems.length; index += 1) {
+        if (batchItems[index].kind !== 'IMAGE') continue
+
+        const optimized = await prepareImageUpload(batchItems[index].file, IMAGE_UPLOAD_PROFILES.FEEDBACK)
+        if (version !== preparationVersion) return
+
+        const item = items.value[startIndex + index]
+        if (!item) return
+        revokePreview(item)
+        item.file = optimized.file
+        item.kind = classifyFile(optimized.file)
+        item.previewUrl = createPreview(optimized.file)
+      }
+    } catch (cause) {
+      if (version === preparationVersion) {
+        items.value.slice(startIndex, startIndex + batchItems.length).forEach(revokePreview)
+        items.value.splice(startIndex, batchItems.length)
+        error.value = cause?.message || '图片优化失败，请更换图片后重试'
+      }
+    } finally {
+      optimizing.value = false
+    }
   }
 
-  function selectFiles(event) {
+  async function selectFiles(event) {
     const input = event?.target
     const files = Array.from(input?.files || [])
     if (input) input.value = ''
-    addFiles(files)
+    await addFiles(files)
   }
 
-  function handlePaste(event) {
-    if (uploading.value) return
+  async function handlePaste(event) {
+    if (uploading.value || optimizing.value) return
 
     const clipboardData = event?.clipboardData
     const clipboardItems = Array.from(clipboardData?.items || [])
@@ -130,19 +165,19 @@ export function useFeedbackMedia() {
     if (!files.length) return
 
     event.preventDefault()
-    addFiles(files)
+    await addFiles(files)
   }
 
-  function handleDrop(event) {
-    if (uploading.value) return
+  async function handleDrop(event) {
+    if (uploading.value || optimizing.value) return
     const files = Array.from(event?.dataTransfer?.files || [])
     if (!files.length) return
     event.preventDefault?.()
-    addFiles(files)
+    await addFiles(files)
   }
 
   function remove(index) {
-    if (uploading.value) return
+    if (uploading.value || optimizing.value) return
     const item = items.value[index]
     if (!item) return
     revokePreview(item)
@@ -151,12 +186,14 @@ export function useFeedbackMedia() {
   }
 
   function clear() {
+    preparationVersion += 1
     items.value.forEach(revokePreview)
     items.value = []
     error.value = ''
   }
 
   async function uploadAll() {
+    if (optimizing.value) throw new Error('图片仍在优化，请稍后再发送')
     uploading.value = true
     try {
       const mediaIds = []
@@ -179,6 +216,7 @@ export function useFeedbackMedia() {
   return reactive({
     items,
     error,
+    optimizing,
     uploading,
     addFiles,
     selectFiles,
