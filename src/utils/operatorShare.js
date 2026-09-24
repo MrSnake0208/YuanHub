@@ -1,5 +1,6 @@
 import { matchesProfSubFilter } from './operatorFilters.js'
 import { calculateOperatorCombatStats, normalizeOperatorCombatStats } from './operatorCombatStats.js'
+import { OPERATOR_LEVEL_MAX, getMaxEliteForLevel } from './operatorGrowthRules.js'
 
 function text(value) {
   return value == null ? '' : String(value).trim()
@@ -35,8 +36,6 @@ function operatorId(operator) {
 
 const SHARE_GROWTH_STATES = new Set(['active', 'graduated', 'skip'])
 const SHARE_PROF_ORDER = { 地: 0, 水: 1, 火: 2, 风: 3, 阳: 4, 阴: 5, 混沌: 6 }
-const OPERATOR_LEVEL_MAX = 100
-const OPERATOR_ELITE_MAX = 17
 
 export function operatorShareGrowthState(entry) {
   const growth = entry && entry.growth && typeof entry.growth === 'object' ? entry.growth : {}
@@ -133,7 +132,7 @@ export function operatorShareLevelComplete(value) {
 export function operatorShareEliteComplete(levelValue, eliteValue) {
   const level = Math.min(OPERATOR_LEVEL_MAX, Math.max(0, Math.trunc(Number(levelValue) || 0)))
   const elite = Math.max(0, Math.trunc(Number(eliteValue) || 0))
-  const maxElite = Math.min(OPERATOR_ELITE_MAX, Math.max(0, Math.floor(level / 5) - 3))
+  const maxElite = getMaxEliteForLevel(level)
   return maxElite > 0 && elite >= maxElite
 }
 

@@ -423,27 +423,19 @@ import {
   subProfOptions as deriveSubProfOptions,
 } from "../../utils/operatorFilters.js";
 import { compareOperatorIdDesc } from "../../utils/operatorAdmin.js";
+import {
+  OPERATOR_LEVEL_MAX,
+  OPERATOR_ELITE_MAX,
+  getMaxEliteForLevel,
+} from "../../utils/operatorGrowthRules.js";
 
 const router = useRouter();
 const route = useRoute();
 
 // —— 星阶常量（与后端 OperatorService.MAX_STAR_LEVEL 对齐） ——
-const OPERATOR_LEVEL_MAX = 100;
-const OPERATOR_ELITE_MAX = 17;
 const MAX_STAR_LEVEL = 31;
 const STAR_LEVEL_AWAKEN = 31;
 const NODE_RANGE = [0, 1, 2, 3, 4, 5];
-
-function getMaxEliteForLevel(level) {
-  const normalizedLevel = Math.min(
-    OPERATOR_LEVEL_MAX,
-    Math.max(0, Math.trunc(Number(level) || 0)),
-  );
-  return Math.min(
-    OPERATOR_ELITE_MAX,
-    Math.max(0, Math.floor(normalizedLevel / 5) - 3),
-  );
-}
 
 // —— 步骤定义 ——
 const starSteps = [
