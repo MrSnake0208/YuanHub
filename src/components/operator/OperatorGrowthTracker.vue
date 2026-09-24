@@ -399,6 +399,7 @@ import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { getOperatorGrowthTargets, putOperatorGrowthTarget } from '../../api/operator.js'
 import { ITEM_CATALOG } from '../../data/inventory/catalog.js'
 import { calculateLevelRequirements, calculateStarRequirements, calculateXiuweiRequirements, mergeRequirements, netRequirement, starLabelForStage, starStageFromLevel } from '../../data/operatorRequirements.js'
+import { getMaxEliteForLevel } from '../../utils/operatorGrowthRules.js'
 import { buildRecentAcquisitionHistory, recentBusinessDayKeys } from '../../data/inventory/acquiredStats.js'
 import PlannerDateTabs from './PlannerDateTabs.vue'
 import PlannerSelect from './PlannerSelect.vue'
@@ -536,8 +537,8 @@ const itemMap = computed(() => { const map = Object.fromEntries(ITEM_CATALOG.map
 const starStages = [{ value: 0, label: '未拥有' }].concat(Array.from({ length: 24 }, (_, index) => { const value = index + 1; return { value, label: starLabelForStage(starStageFromLevel(value)).replace(/^.+星升/, '升') } }), [{ value: 30, label: '五星' }, { value: 31, label: '觉醒' }])
 
 function defaultTarget() { return { level: 100, elite: 17, starLevel: 7, revision: 0 } }
-function targetFor(row, plan = activePlan.value) { if (!row?.id) return defaultTarget(); const saved = (plan?.source === 'custom' ? plan.targets[row.id] : targets.value[row.id]) || defaultTarget(); const currentLevel = Number(row.level) || 0; const currentElite = Number(row.elite) || 0; const level = Math.max(currentLevel, Math.min(100, Number(saved.level == null ? 100 : saved.level) || 0)); const eliteLimit = Math.min(17, Math.max(0, Math.floor(level / 5) - 3)); const elite = Math.max(currentElite, Math.min(eliteLimit, Number(saved.elite == null ? 17 : saved.elite) || 0)); const savedStar = Math.min(31, Math.max(0, Number(saved.starLevel == null ? 7 : saved.starLevel) || 0)); const currentStar = Number(row.starLevel) || 0; return { level, elite, starLevel: starStage(savedStar) < starStage(currentStar) ? currentStar : savedStar, revision: Number(saved.revision) || 0 } }
-function targetEliteMax(row) { return Math.max(Number(row?.elite) || 0, Math.min(17, Math.max(0, Math.floor(targetFor(row).level / 5) - 3))) }
+function targetFor(row, plan = activePlan.value) { if (!row?.id) return defaultTarget(); const saved = (plan?.source === 'custom' ? plan.targets[row.id] : targets.value[row.id]) || defaultTarget(); const currentLevel = Number(row.level) || 0; const currentElite = Number(row.elite) || 0; const level = Math.max(currentLevel, Math.min(100, Number(saved.level == null ? 100 : saved.level) || 0)); const eliteLimit = getMaxEliteForLevel(level); const elite = Math.max(currentElite, Math.min(eliteLimit, Number(saved.elite == null ? 17 : saved.elite) || 0)); const savedStar = Math.min(31, Math.max(0, Number(saved.starLevel == null ? 7 : saved.starLevel) || 0)); const currentStar = Number(row.starLevel) || 0; return { level, elite, starLevel: starStage(savedStar) < starStage(currentStar) ? currentStar : savedStar, revision: Number(saved.revision) || 0 } }
+function targetEliteMax(row) { return Math.max(Number(row?.elite) || 0, getMaxEliteForLevel(targetFor(row).level)) }
 function firstSubProf(row) { return Array.isArray(row?.subProf) ? row.subProf[0] : String(row?.subProf || '').split('、')[0] }
 const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
 function profList(value) {
@@ -1224,7 +1225,7 @@ async function setTarget(row, field, event) {
   if (event?.target?.validity?.badInput || raw === '') { if (event?.target) resetTargetInput(row, field, event); return false }
   const max = field === 'level' ? 100 : field === 'elite' ? 17 : 31
   target[field] = Math.min(max, Math.max(Number(current[field]) || 0, Math.trunc(Number(raw)) || 0))
-  const eliteLimit = Math.min(17, Math.max(0, Math.floor(target.level / 5) - 3))
+  const eliteLimit = getMaxEliteForLevel(target.level)
   if (field === 'elite' || field === 'level') target.elite = Math.max(Number(current.elite) || 0, Math.min(target.elite, eliteLimit))
   if (target[field] === targetFor(row)[field]) { if (event?.target) resetTargetInput(row, field, event); return true }
   if (activePlan.value.source === 'custom') {

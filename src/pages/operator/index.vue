@@ -3073,6 +3073,11 @@ import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
 import { operatorUpdateFromEvent } from "../../utils/operatorEvents.js";
 import {
+  OPERATOR_LEVEL_MAX,
+  OPERATOR_ELITE_MAX,
+  getMaxEliteForLevel,
+} from "../../utils/operatorGrowthRules.js";
+import {
   OPERATOR_TAB_STORAGE_KEY,
   setActiveOperatorTab,
 } from "../../utils/operatorTabs.js";
@@ -3997,22 +4002,6 @@ function normalizeEntry(e, odditySchema) {
     ),
     listedBaselineAt: e.listedBaselineAt || e.listed_baseline_at || null,
   };
-}
-
-// 修为与等级关系（参考 MaaYuan-Share-frontend operatorRequirementModel）：
-// 每 5 级增加 1 点修为上限，100 级时上限为 17。
-const OPERATOR_LEVEL_MAX = 100;
-const OPERATOR_ELITE_MAX = 17;
-
-function getMaxEliteForLevel(level) {
-  const normalizedLevel = Math.min(
-    OPERATOR_LEVEL_MAX,
-    Math.max(0, Math.trunc(Number(level) || 0)),
-  );
-  return Math.min(
-    OPERATOR_ELITE_MAX,
-    Math.max(0, Math.floor(normalizedLevel / 5) - 3),
-  );
 }
 
 // 修为材料按密探属性归入三类职业；与养成追踪组件保持同一映射。
