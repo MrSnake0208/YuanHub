@@ -9,7 +9,7 @@
   >
     <div class="feedback-media-heading">
       <span>附件</span>
-      <small>{{ media.items.length }} / {{ MAX_FEEDBACK_MEDIA_COUNT }}</small>
+      <small role="status" aria-live="polite">{{ media.optimizing ? '正在优化图片…' : media.items.length + ' / ' + MAX_FEEDBACK_MEDIA_COUNT }}</small>
     </div>
     <div class="feedback-media-picker-actions">
       <label class="feedback-media-picker-button">
@@ -65,7 +65,7 @@ const props = defineProps({
   busy: { type: Boolean, default: false }
 })
 
-const disabled = computed(() => props.busy || props.media.uploading)
+const disabled = computed(() => props.busy || props.media.uploading || props.media.optimizing)
 const dragDepth = ref(0)
 const dragging = computed(() => dragDepth.value > 0 && !disabled.value)
 

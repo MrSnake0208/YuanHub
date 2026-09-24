@@ -132,7 +132,7 @@
                       <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
                         <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
-                        <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading" @click="submitReply(item.id)">
+                        <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading || replyMedia.optimizing" @click="submitReply(item.id)">
                           <Send :size="16" />{{ replying ? '发送中…' : '发送回复' }}
                         </button>
                       </div>
