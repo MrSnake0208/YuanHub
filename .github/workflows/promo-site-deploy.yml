@@ -76,7 +76,7 @@ jobs:
           ssh-keygen -y -f "$key_file" >/dev/null
 
       - name: Upload build to temporary directory
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
           username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
@@ -88,7 +88,7 @@ jobs:
           strip_components: 2
 
       - name: Replace deployed files
-        uses: appleboy/ssh-action@v1.2.2
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         env:
           DEPLOY_DIR: ${{ secrets.YUANHUB_PROMO_DEPLOY_DIR }}
           TMP_DIR: /tmp/yuanhub-promo-site-${{ github.sha }}

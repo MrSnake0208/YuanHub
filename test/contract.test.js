@@ -1,4 +1,6 @@
-// 前后端契约一致性测试（node:test，零依赖）
+// 前后端跨仓库契约一致性测试（node:test，零依赖）
+// 需要 YuanHub 与 BackEndV3-Share 位于同一父目录；独立前端 CI 不执行。
+// 手动运行：npm run test:contract；YuanHub-All 的 ./test all 仍会通过 npm test 覆盖本文件。
 // 校验后端 OpenApiTokenService/OpenApiPermission/InventoryController 与前端
 // openApi.js/inventory.js/profile.vue/utils 的字段名、路径、scope key 一致，
 // 防止再次出现 create_time vs created_at、{key,code,desc} vs {scope,description}、

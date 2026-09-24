@@ -39,14 +39,22 @@
 | 名称 | 示例 | 说明 |
 | --- | --- | --- |
 | `YUANHUB_FRONTEND_DEPLOY_DIR` | `/var/www/yuanhub` | 主站部署根目录。**必须与 promo 站点的 `YUANHUB_PROMO_DEPLOY_DIR` 不同**，否则会互相覆盖。 |
-| `YUANHUB_FRONTEND_URL` | `https://app.example.com` | 主站公网地址，health check 与 Release 说明使用。promo 站硬编码的是 `https://hub.maayuan.com`，主站必须是另一个地址。 |
-| `YUANHUB_FRONTEND_API_BASE` | 留空 | 可选。与后端同源时留空；跨域时填后端基址。 |
+| `YUANHUB_FRONTEND_URL` | `https://beta-hub.maayuan.com` | 主站公网地址，health check 与 Release 说明使用。promo 站硬编码的是 `https://hub.maayuan.com`，主站必须是另一个地址。 |
+| `YUANHUB_FRONTEND_API_BASE` | `https://api-hub.maayuan.com` | 后端稳定公网地址；内测与正式开放都保持不变。 |
 | `YUANHUB_KEEP_RELEASES` | `5` | 可选。服务器保留的历史版本目录数量，默认 5。 |
 
 > `environment: production` 会在首次运行时由 GitHub 自动创建，不需要手工建；如果希望发布需要人工批准，
 > 在 **Settings → Environments → production** 加 Required reviewers 即可。
 
 ## 3. 服务器需要提前准备
+
+内测阶段域名：
+
+- `hub.maayuan.com`：继续服务现有宣传页。
+- `beta-hub.maayuan.com`：YuanHub 前端。
+- `api-hub.maayuan.com`：YuanHub 后端，内测与正式开放保持不变。
+
+Cloudflare DNS 新增 `beta-hub` 和 `api-hub` 指向正式服务器；`hub` 现有记录保持不变。采用一级子域名可以直接适配常见的 Universal SSL 覆盖范围。
 
 1. 同一台 VPS 上已有 promo 站的部署用户（`YUANHUB_PROMO_VPS_USER`）；主站复用它即可，无需新建账号。
 2. 主站部署根目录存在且可写：
@@ -61,7 +69,7 @@
    ```nginx
    server {
      listen 443 ssl;
-     server_name hub.example.com;
+     server_name beta-hub.maayuan.com;
      root /var/www/yuanhub/current;
      index index.html;
 
@@ -103,7 +111,18 @@
 
 > 只 push `main` 不会部署；只有 tag 会。
 
-## 5. 人工回滚
+## 5. 正式开放时切换
+
+正式开放当天只切域名入口，不迁应用路径：
+
+1. 把 `YUANHUB_FRONTEND_URL` 改为 `https://hub.maayuan.com`；API 地址继续使用 `https://api-hub.maayuan.com`。
+2. 把 `hub.maayuan.com` 的 Web 根目录切到 `/var/www/yuanhub/current`。
+3. 把 `beta-hub.maayuan.com` 设为永久跳转到 `hub.maayuan.com`，并保留原路径。
+4. 确认主站稳定后停用 `promo-site-deploy.yml`；宣传页文件可暂时保留作人工回退材料。
+
+宣传页 Service Worker 是 network-only，不缓存宣传内容，所以域名切换后不会长期把旧宣传页留在用户端。
+
+## 6. 人工回滚
 
 前端是纯静态的，回滚就是切回旧目录：
 
@@ -116,7 +135,7 @@ ln -sfn releases/0.0.1-beta.1 .current-tmp && mv -T .current-tmp current
 
 回滚后无需重启任何服务（nginx 直接跟随符号链接）。如需让线上版本号也回退，可再执行一次对应 tag 的 Release workflow（`workflow_dispatch` 输入 tag）。
 
-## 6. 本地验证
+## 7. 本地验证
 
 ```bash
 npm ci
