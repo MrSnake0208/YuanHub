@@ -77,7 +77,6 @@
                 <span v-if="favoriteIds.has(entry.id)" class="plan-candidate-favorite" role="img" aria-label="特别关注" title="特别关注"><Star :size="11" fill="currentColor" aria-hidden="true" /></span>
               </span>
               <span class="plan-candidate-labels">
-                <OperatorRarityBadge :rarity="Number(entry.rarity) || 3" compact />
                 <span class="plan-candidate-label profession">{{ professionLabel(entry) }}</span>
                 <span class="plan-candidate-label status" :class="'is-' + growthStatus(entry)">{{ growthStatusLabel(entry) }}</span>
               </span>
@@ -100,7 +99,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronDown, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
-import OperatorRarityBadge from './OperatorRarityBadge.vue'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
@@ -376,9 +374,8 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-candidate b { display: block; min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .plan-candidate-favorite { display: inline-grid; width: 13px; height: 13px; flex: none; place-items: center; color: var(--accent); }
 .plan-candidate-labels { display: flex; min-width: 0; gap: 3px; margin-top: 4px; overflow: hidden; }
-.plan-candidate-labels :deep(.operator-rarity-badge) { flex: none; }
 .plan-candidate-label { display: inline-flex; min-width: 0; height: 17px; align-items: center; padding: 0 5px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); font-size: 9px; font-weight: 750; line-height: 1; white-space: nowrap; }
-.plan-candidate-label.profession { max-width: 44%; overflow: hidden; background: var(--paper); text-overflow: ellipsis; }
+.plan-candidate-label.profession { max-width: 58%; overflow: hidden; background: var(--paper); text-overflow: ellipsis; }
 .plan-candidate-label.status { flex: none; }
 .plan-candidate-label.status.is-growing { border-color: rgba(111,159,118,.45); background: #bfdcc0; color: #315f38; }
 .plan-candidate-label.status.is-graduated { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--yellow) 35%, var(--surface)); color: var(--accent-strong); }
@@ -439,8 +436,7 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
   .plan-candidate-status-mark.is-favorite.is-inactive { color: var(--ink-60); }
   .plan-candidate-status-mark svg { width: 10px; height: 10px; }
   .plan-candidate-favorite { display: none; }
-  .plan-candidate-labels { display: flex; justify-content: center; margin-top: 3px; overflow: visible; }
-  .plan-candidate-labels .plan-candidate-label { display: none; }
+  .plan-candidate-labels { display: none; }
   .plan-selected-check { position: absolute; top: 5px; right: 5px; display: block; width: 17px; height: 17px; padding: 2px; border-radius: 50%; background: var(--tea); color: var(--cream); }
   .plan-candidate b { max-width: 100%; font-size: 11px; text-align: center; }
   :deep(.plan-candidate .operator-avatar) { width: 42px; height: 42px; }
