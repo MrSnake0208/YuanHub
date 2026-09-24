@@ -35,7 +35,8 @@
               <span class="hero-game-badge">如鸢</span>
             </div>
             <div class="hero-actions">
-              <a class="primary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
+              <a class="primary-btn" href="https://beta-hub.maayuan.com">进入 YuanHub 内测 <span>→</span></a>
+              <a class="secondary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
               <a class="secondary-btn" href="#share">神秘代码怎么玩 <span>→</span></a>
               <button class="secondary-btn promo-install-trigger" type="button" @click="installPanelOpen = true">先保存 YuanHub 到桌面 <span>＋</span></button>
             </div>
