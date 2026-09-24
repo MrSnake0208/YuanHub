@@ -40,8 +40,10 @@ jobs:
       - name: Static source check
         run: npm run test:static
 
-      - name: Unit tests
-        run: npm test
+      # 这里只跑 YuanHub 仓库内可独立执行的 node:test。
+      # 跨仓库契约测试 test/contract.test.js 由 YuanHub-All 的本地完整测试负责。
+      - name: Repository tests
+        run: npm run test:repo
 
       - name: Behavior tests
         run: npm run test:behavior

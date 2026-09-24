@@ -13,9 +13,8 @@
           <a href="#ecosystem">自动联动</a>
           <a href="#feature-preview">现在与未来</a>
         </nav>
-        <!-- PLACEHOLDER: 把正式 YuanHub 主站 URL 填到这里 -->
-        <a class="header-cta placeholder-link" href="#final-cta" data-placeholder="MAIN_APP_URL">
-          进入 YuanHub <span>↗</span>
+        <a class="header-cta" href="https://beta-hub.maayuan.com">
+          进入 YuanHub 内测 <span>↗</span>
         </a>
       </div>
     </header>
@@ -557,8 +556,7 @@
             <h2>先把自己的游戏档案，<em>整理好</em></h2>
             <p>从 MaaYuan 自动同步采集结果，再查看今日一览、规划养成或分享 BOX，都由你决定。</p>
           </div>
-          <!-- PLACEHOLDER: 正式上线时替换为 YuanHub 主站 /operator URL -->
-          <a class="final-button placeholder-link" href="#top" data-placeholder="MAIN_APP_OPERATOR_URL">进入 YuanHub <span>→</span><small>正式 URL 待填</small></a>
+          <a class="final-button" href="https://beta-hub.maayuan.com">进入 YuanHub 内测 <span>→</span><small>内测入口</small></a>
         </div>
       </section>
     </main>

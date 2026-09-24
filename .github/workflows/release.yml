@@ -59,8 +59,10 @@ jobs:
             echo "::error::VERSION ($version) does not match tag $RELEASE_TAG (expected $expected). Refusing to publish."
             exit 1
           fi
+          release_commit="$(git rev-parse HEAD)"
           echo "VERSION matches tag: $version"
           echo "YUANHUB_VERSION=$version" >> "$GITHUB_ENV"
+          echo "YUANHUB_RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -79,7 +81,7 @@ jobs:
 
       - name: Build
         env:
-          # 可选：与后端同源部署时留空即可（默认空值 = 当前站点）。
+          # 生产固定走独立 API 域名；内测与正式开放保持同一后端地址。
           VITE_API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
         run: npm run build
 
@@ -96,7 +98,36 @@ jobs:
           entry="$(grep -o 'assets/[^"]*\.js' dist/index.html | head -n 1)"
           test -n "$entry" || { echo "::error::cannot detect entry asset in dist/index.html"; exit 1; }
           echo "YUANHUB_ENTRY_ASSET=$entry" >> "$GITHUB_ENV"
-          echo "Deploying version $YUANHUB_VERSION (entry $entry, commit ${GITHUB_SHA::7})"
+          echo "Deploying version $YUANHUB_VERSION (entry $entry, commit ${YUANHUB_RELEASE_COMMIT::7})"
+
+      - name: Validate deployment configuration
+        env:
+          FRONTEND_ROOT: ${{ vars.YUANHUB_FRONTEND_DEPLOY_DIR }}
+          FRONTEND_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
+          API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
+          PROMO_ROOT: ${{ secrets.YUANHUB_PROMO_DEPLOY_DIR }}
+        run: |
+          set -eu
+          test -n "$FRONTEND_ROOT" || { echo "::error::YUANHUB_FRONTEND_DEPLOY_DIR is not configured"; exit 1; }
+          test "$FRONTEND_ROOT" != "/" || { echo "::error::YUANHUB_FRONTEND_DEPLOY_DIR must not be /"; exit 1; }
+          case "$FRONTEND_ROOT" in
+            /*) ;;
+            *) echo "::error::YUANHUB_FRONTEND_DEPLOY_DIR must be an absolute path"; exit 1 ;;
+          esac
+          test -n "$FRONTEND_URL" || { echo "::error::YUANHUB_FRONTEND_URL is not configured"; exit 1; }
+          case "$FRONTEND_URL" in
+            https://*) ;;
+            *) echo "::error::YUANHUB_FRONTEND_URL must use https://"; exit 1 ;;
+          esac
+          test -n "$API_BASE" || { echo "::error::YUANHUB_FRONTEND_API_BASE is not configured"; exit 1; }
+          case "$API_BASE" in
+            https://*) ;;
+            *) echo "::error::YUANHUB_FRONTEND_API_BASE must use https://"; exit 1 ;;
+          esac
+          if [ -n "$PROMO_ROOT" ] && [ "$FRONTEND_ROOT" = "$PROMO_ROOT" ]; then
+            echo "::error::YUANHUB_FRONTEND_DEPLOY_DIR must differ from YUANHUB_PROMO_DEPLOY_DIR"
+            exit 1
+          fi
 
       - name: Validate deployment SSH key
         env:
@@ -121,7 +152,7 @@ jobs:
           ssh-keygen -y -f "$key_file" >/dev/null
 
       - name: Upload release directory
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
           username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
@@ -133,7 +164,7 @@ jobs:
           strip_components: 1
 
       - name: Activate release atomically
-        uses: appleboy/ssh-action@v1.2.2
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         env:
           FRONTEND_ROOT: ${{ vars.YUANHUB_FRONTEND_DEPLOY_DIR }}
           RELEASE_VERSION: ${{ env.YUANHUB_VERSION }}
@@ -215,7 +246,7 @@ jobs:
             echo "## YuanHub ${RELEASE_TAG}"
             echo
             echo "- productVersion: \`${YUANHUB_VERSION}\`"
-            echo "- frontendCommit: \`${GITHUB_SHA::7}\`"
+            echo "- frontendCommit: \`${YUANHUB_RELEASE_COMMIT::7}\`"
             echo "- buildTime: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`"
             echo "- deployedTo: \`${FRONTEND_URL}\`"
             echo

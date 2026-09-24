@@ -10,6 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
+    "test:repo": "node scripts/run-node-tests.mjs --exclude test/contract.test.js",
+    "test:contract": "node --test test/contract.test.js",
     "test:behavior": "vitest run",
     "test:property": "node --test test/property/*.test.js",
     "test:static": "node scripts/check-source.mjs",
