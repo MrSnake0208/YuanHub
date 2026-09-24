@@ -266,8 +266,21 @@
                 >
               </div>
 
-              <!-- 属性 / 职业 筛选（随翻页重置） -->
+              <!-- 稀有度 / 属性 / 职业筛选（随翻页重置） -->
               <div class="prof-filter" v-reveal>
+                <div class="pf-row">
+                  <span class="pf-label">稀有</span>
+                  <div class="mf-filter rarity-filter" role="group" aria-label="按稀有度筛选快捷录入密探">
+                    <button
+                      v-for="option in rarityOptions"
+                      :key="option.value"
+                      type="button"
+                      :aria-pressed="rarityFilter === option.value"
+                      :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+                      @click="rarityFilter = option.value"
+                    >{{ option.label }}</button>
+                  </div>
+                </div>
                 <div class="pf-row">
                   <span class="pf-label">属性</span>
                   <div class="mf-filter">
@@ -477,8 +490,16 @@ const steps = starSteps;
 const stepIndex = ref(0);
 const maxUnlockedStep = ref(0);
 const search = ref("");
+const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
+const rarityOptions = [
+  { value: "all", label: "全部" },
+  { value: 3, label: "隐密" },
+  { value: 4, label: "机密" },
+  { value: 5, label: "绝密" },
+];
+const rarityLabelMap = { 3: "隐密", 4: "机密", 5: "绝密" };
 const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
@@ -613,6 +634,9 @@ const pageOperators = computed(function () {
       return matchesGame(op, gameFilter.value);
     })
     .filter(function (op) {
+      return rarityFilter.value === "all" || Number(op.rarity) === Number(rarityFilter.value);
+    })
+    .filter(function (op) {
       return matchesProfSubFilter(op, profFilter.value, subProfFilter.value);
     })
     .filter(function (op) {
@@ -643,6 +667,8 @@ const filterSuffix = computed(function () {
   const parts = [];
   if (search.value) parts.push("「" + search.value + "」");
   parts.push("版本「" + gameFilter.value + "」");
+  if (rarityFilter.value !== "all")
+    parts.push("稀有「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
   if (profFilter.value !== "all")
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
@@ -1033,6 +1059,7 @@ function goStep(key) {
   if (idx === -1 || idx > maxUnlockedStep.value) return;
   stepIndex.value = idx;
   search.value = "";
+  rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
   pageSave.show = false;
@@ -1060,6 +1087,7 @@ async function nextStep() {
   maxUnlockedStep.value = Math.max(maxUnlockedStep.value, nextIndex);
   stepIndex.value = nextIndex;
   search.value = "";
+  rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
 }
@@ -1710,6 +1738,18 @@ onMounted(async function () {
   background: var(--surface);
   color: var(--accent-strong);
   box-shadow: 0 1px 4px rgba(73, 59, 44, 0.16);
+}
+.rarity-filter button.rarity-r3.on {
+  background: color-mix(in srgb, #99b5cf 34%, var(--surface));
+  color: #47647d;
+}
+.rarity-filter button.rarity-r4.on {
+  background: color-mix(in srgb, #8672b2 25%, var(--surface));
+  color: #62508b;
+}
+.rarity-filter button.rarity-r5.on {
+  background: color-mix(in srgb, var(--yellow) 62%, var(--surface));
+  color: var(--accent-strong);
 }
 .mf-filter button:hover:not(.on) {
   color: var(--ink);
