@@ -42,6 +42,16 @@ async function withFetch(handler, fn) {
   }
 }
 
+// 应用诊断契约：三个 snake_case 键齐全且都是非空字符串（缺一后端就收不到该维度）。
+function assertDiagnosticsPayload(diagnostics) {
+  assert.ok(diagnostics && typeof diagnostics === 'object', 'diagnostics 必须存在')
+  assert.deepEqual(Object.keys(diagnostics).sort(), ['build_time', 'frontend_commit', 'product_version'])
+  for (const [key, value] of Object.entries(diagnostics)) {
+    assert.equal(typeof value, 'string', `${key} 必须是字符串`)
+    assert.notEqual(value, '', `${key} 不能为空`)
+  }
+}
+
 test('创建反馈发送 type/category 字段', async () => {
   let request
   await withFetch(async (url, options) => {
@@ -56,7 +66,10 @@ test('创建反馈发送 type/category 字段', async () => {
       clientInfoConsent: true
     })
     assert.match(request.url, /\/v1\/reports$/)
-    assert.deepEqual(JSON.parse(request.options.body), {
+    const body = JSON.parse(request.options.body)
+    assertDiagnosticsPayload(body.diagnostics)
+    delete body.diagnostics
+    assert.deepEqual(body, {
       type: 'BUG',
       category: 'INVENTORY',
       content: '坏了',
@@ -75,12 +88,74 @@ test('创建反馈兼容旧的 type/category/area 请求', async () => {
   }, async () => {
     await createFeedback({ type: 'bug', category: 'BUG', area: 'INVENTORY', content: '坏了' })
   })
-  assert.deepEqual(JSON.parse(request.options.body), {
+  const body = JSON.parse(request.options.body)
+  assertDiagnosticsPayload(body.diagnostics)
+  delete body.diagnostics
+  assert.deepEqual(body, {
     type: 'BUG',
     category: 'INVENTORY',
     content: '坏了',
     media_ids: [],
     client_info_consent: false
+  })
+})
+
+test('未勾选 clientInfoConsent 时仍然上报版本与构建诊断', async () => {
+  const bodies = []
+  await withFetch(async (_url, options) => {
+    bodies.push(JSON.parse(options.body))
+    return apiResponse({ id: 'rpt_diag', type: 'BUG', category: 'OTHER', status: 'OPEN' })
+  }, async () => {
+    await createFeedback({ type: 'BUG', category: 'OTHER', content: '没勾选同意', clientInfoConsent: false })
+  })
+  assert.equal(bodies[0].client_info_consent, false)
+  assertDiagnosticsPayload(bodies[0].diagnostics)
+})
+
+test('详情归一化 snake_case diagnostics，缺失时兼容为 null', async () => {
+  await withFetch(async () => apiResponse({
+    id: 'rpt_diag',
+    type: 'BUG',
+    category: 'OTHER',
+    status: 'OPEN',
+    messages: [],
+    diagnostics: {
+      product_version: '0.9.0-beta.1',
+      frontend_commit: 'abc1234',
+      build_time: '2026-01-02T03:04:05Z'
+    }
+  }), async () => {
+    const detail = await getFeedback('rpt_diag')
+    assert.deepEqual(detail.diagnostics, {
+      productVersion: '0.9.0-beta.1',
+      frontendCommit: 'abc1234',
+      buildTime: '2026-01-02T03:04:05Z'
+    })
+  })
+
+  // 旧工单没有 diagnostics 字段时不得抛错，也不得伪造版本
+  await withFetch(async () => apiResponse({
+    id: 'rpt_old',
+    type: 'BUG',
+    category: 'OTHER',
+    status: 'OPEN',
+    messages: []
+  }), async () => {
+    const detail = await getFeedback('rpt_old')
+    assert.equal(detail.diagnostics, null)
+  })
+
+  // 全空对象同样归一化为 null
+  await withFetch(async () => apiResponse({
+    id: 'rpt_blank',
+    type: 'BUG',
+    category: 'OTHER',
+    status: 'OPEN',
+    messages: [],
+    diagnostics: { product_version: '', frontend_commit: '', build_time: '' }
+  }), async () => {
+    const detail = await getFeedback('rpt_blank')
+    assert.equal(detail.diagnostics, null)
   })
 })
 

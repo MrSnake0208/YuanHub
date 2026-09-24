@@ -1,0 +1,221 @@
+name: Release
+
+# 生产发布：仅由 v* tag 触发，普通 push 不会部署。
+# 发布前强制校验 VERSION 与 tag 完全一致，不一致立即停止。
+#
+# 部署形态（原子切换，避免线上出现半套文件）：
+#   $PRODUCTION_FRONTEND_PATH/releases/<version>/   ← 每次发布一个新目录
+#   $PRODUCTION_FRONTEND_PATH/current -> releases/<version>
+# Web 服务器（nginx 等）的 root 应指向 .../current。
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的已存在 tag（例如 v0.0.1-beta.2）"
+        required: true
+
+concurrency:
+  group: yuanhub-frontend-production
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and deploy to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      # 关键闸门：VERSION 去掉前缀后必须与 tag 完全一致，否则不发布。
+      - name: Verify VERSION matches tag
+        run: |
+          set -eu
+          version="$(tr -d '[:space:]' < VERSION)"
+          expected="${RELEASE_TAG#v}"
+          test -n "$version" || { echo "::error::VERSION is empty"; exit 1; }
+          if [ "$version" != "$expected" ]; then
+            echo "::error::VERSION ($version) does not match tag $RELEASE_TAG (expected $expected). Refusing to publish."
+            exit 1
+          fi
+          echo "VERSION matches tag: $version"
+          echo "YUANHUB_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Static source check
+        run: npm run test:static
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        env:
+          # 可选：同源部署时留空即可（默认空值 = 当前站点）。
+          VITE_API_BASE: ${{ vars.PRODUCTION_API_BASE }}
+        run: npm run build
+
+      - name: Collect release metadata
+        run: |
+          set -eu
+          test -f dist/index.html || { echo "::error::dist/index.html missing"; exit 1; }
+          test -n "$(ls -A dist/assets)" || { echo "::error::dist/assets is empty"; exit 1; }
+          if ! grep -rqF "$YUANHUB_VERSION" dist/assets; then
+            echo "::error::productVersion $YUANHUB_VERSION missing from the bundle"
+            exit 1
+          fi
+          # 部署后用主入口文件名核对线上确实是本次构建。
+          entry="$(grep -o 'assets/[^"]*\.js' dist/index.html | head -n 1)"
+          test -n "$entry" || { echo "::error::cannot detect entry asset in dist/index.html"; exit 1; }
+          echo "YUANHUB_ENTRY_ASSET=$entry" >> "$GITHUB_ENV"
+          echo "Deploying version $YUANHUB_VERSION (entry $entry, commit ${GITHUB_SHA::7})"
+
+      - name: Validate deployment SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        run: |
+          set -eu
+          test -n "$DEPLOY_KEY" || {
+            echo "::error::PRODUCTION_SSH_KEY is empty or unavailable. Add it as an environment secret."
+            exit 1
+          }
+          case "$DEPLOY_KEY" in
+            "-----BEGIN OPENSSH PRIVATE KEY-----"*|"-----BEGIN RSA PRIVATE KEY-----"*) ;;
+            *)
+              echo "::error::PRODUCTION_SSH_KEY must contain the complete private key, including BEGIN and END lines."
+              exit 1
+              ;;
+          esac
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          chmod 600 "$key_file"
+          printf '%s\n' "$DEPLOY_KEY" > "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+
+      - name: Upload release directory
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ vars.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ vars.PRODUCTION_PORT }}
+          source: "dist/*"
+          target: "${{ vars.PRODUCTION_FRONTEND_PATH }}/releases/${{ env.YUANHUB_VERSION }}/"
+          overwrite: true
+          strip_components: 1
+
+      - name: Activate release atomically
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          FRONTEND_ROOT: ${{ vars.PRODUCTION_FRONTEND_PATH }}
+          RELEASE_VERSION: ${{ env.YUANHUB_VERSION }}
+          KEEP_RELEASES: ${{ vars.YUANHUB_KEEP_RELEASES }}
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ vars.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ vars.PRODUCTION_PORT }}
+          envs: FRONTEND_ROOT,RELEASE_VERSION,KEEP_RELEASES
+          script: |
+            set -eu
+            test -n "$FRONTEND_ROOT"
+            test -n "$RELEASE_VERSION"
+            release_dir="$FRONTEND_ROOT/releases/$RELEASE_VERSION"
+            test -f "$release_dir/index.html" || {
+              echo "release directory is incomplete: $release_dir"
+              exit 1
+            }
+
+            # 先建临时符号链接再原子替换，切换过程中线上始终指向完整的一套文件。
+            ln -sfn "releases/$RELEASE_VERSION" "$FRONTEND_ROOT/.current-tmp"
+            mv -T "$FRONTEND_ROOT/.current-tmp" "$FRONTEND_ROOT/current"
+
+            keep="${KEEP_RELEASES:-5}"
+            case "$keep" in
+              ''|*[!0-9]*) keep=5 ;;
+            esac
+            if [ "$keep" -gt 0 ]; then
+              cd "$FRONTEND_ROOT/releases"
+              # shellcheck disable=SC2012
+              ls -1dt -- */ 2>/dev/null | tail -n "+$((keep + 1))" | while read -r old; do
+                case "$old" in
+                  "$RELEASE_VERSION"/*) continue ;;
+                esac
+                rm -rf -- "$old"
+              done
+            fi
+
+            echo "current -> $(readlink "$FRONTEND_ROOT/current")"
+
+      - name: Health check
+        env:
+          SITE_URL: ${{ vars.PRODUCTION_FRONTEND_URL }}
+          ENTRY_ASSET: ${{ env.YUANHUB_ENTRY_ASSET }}
+        run: |
+          set -eu
+          test -n "$SITE_URL" || { echo "::error::PRODUCTION_FRONTEND_URL is not configured"; exit 1; }
+          base="${SITE_URL%/}"
+          attempt=1
+          while [ "$attempt" -le 10 ]; do
+            if body="$(curl --fail --silent --show-error --location \
+                 -H 'Cache-Control: no-cache' \
+                 "${base}/?deploy=${GITHUB_SHA}")"; then
+              if printf '%s' "$body" | grep -qF "$ENTRY_ASSET"; then
+                echo "Health check passed: serving ${ENTRY_ASSET}"
+                exit 0
+              fi
+              echo "Attempt ${attempt}: served HTML does not reference ${ENTRY_ASSET} yet"
+            else
+              echo "Attempt ${attempt}: ${base} not reachable yet"
+            fi
+            attempt=$((attempt + 1))
+            sleep 6
+          done
+          echo "::error::Health check failed: ${base} is not serving the new build (${ENTRY_ASSET})"
+          exit 1
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCTION_FRONTEND_URL: ${{ vars.PRODUCTION_FRONTEND_URL }}
+        run: |
+          set -eu
+          archive="yuanhub-frontend-${RELEASE_TAG}.tar.gz"
+          tar -czf "$archive" -C dist .
+          notes="$(mktemp)"
+          {
+            echo "## YuanHub ${RELEASE_TAG}"
+            echo
+            echo "- productVersion: \`${YUANHUB_VERSION}\`"
+            echo "- frontendCommit: \`${GITHUB_SHA::7}\`"
+            echo "- buildTime: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`"
+            echo "- deployedTo: \`${PRODUCTION_FRONTEND_URL}\`"
+            echo
+            echo "更新日志见 https://${PRODUCTION_FRONTEND_URL#*//}/changelog"
+          } > "$notes"
+          gh release create "$RELEASE_TAG" "$archive" \
+            --title "YuanHub $RELEASE_TAG" \
+            --notes-file "$notes" \
+            --verify-tag

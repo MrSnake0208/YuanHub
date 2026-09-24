@@ -9,6 +9,11 @@
       <code>{{ item.reporter?.id || item.reporterUserId || '' }}</code>
     </div>
 
+    <!-- 应用诊断信息：版本与 Build 即使未勾选 consent 也会记录；旧工单没有该字段时不渲染。 -->
+    <p v-if="showReporter && diagnosticsLine" class="detail-build" :title="diagnosticsTitle">
+      {{ diagnosticsLine }}
+    </p>
+
     <section v-if="!item.messages || !item.messages.length" class="detail-section">
       <h3>反馈内容</h3>
       <p class="detail-content">{{ item.content }}</p>
@@ -91,9 +96,10 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { CheckCircle2, CircleX, Download, File, FileArchive, FileJson, FileText, LoaderCircle, ShieldCheck } from '@lucide/vue'
 import { downloadFeedbackAttachment } from '@/api/feedback.js'
+import { formatBuildInfo } from '@/config/buildInfo.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -128,6 +134,17 @@ function isOwnMessage(message) {
 const failedImages = ref(new Set())
 const downloadingId = ref('')
 const downloadErrors = ref({})
+
+// 只在后端确实返回了产品版本时展示，避免旧工单或缺失字段出现占位版本号。
+const diagnosticsLine = computed(() => {
+  const info = props.item?.diagnostics
+  return info && info.productVersion ? formatBuildInfo(info) : ''
+})
+const diagnosticsTitle = computed(() => {
+  const info = props.item?.diagnostics
+  if (!info || !info.buildTime || info.buildTime === 'unknown') return diagnosticsLine.value
+  return diagnosticsLine.value + ' · 构建于 ' + info.buildTime
+})
 
 function imageKey(message, image) {
   return `${message.id || ''}:${image.id || image.url || ''}`
@@ -196,6 +213,8 @@ watch(() => props.item?.id, () => {
 .detail-reporter span,.detail-reporter code { color: var(--feedback-text-dim); }
 .detail-reporter strong { color: var(--feedback-text); }
 .detail-reporter code { margin-left: auto; }
+/* 应用诊断行：低视觉权重，单行显示，不参与对话消息的左右布局。 */
+.detail-build { padding: 0 0 12px; color: var(--feedback-text-dim); font: 10.5px var(--font-d); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .detail-section { padding: 20px 0; border-bottom: 1px solid var(--feedback-line); }
 .detail-section h3 { margin-bottom: 14px; color: var(--feedback-text); font-size: 12px; font-weight: 900; }
 .detail-section h3 span { margin-left: 5px; color: var(--feedback-text-dim); font-size: 10px; }

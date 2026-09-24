@@ -65,10 +65,12 @@ it('keeps reporter messages on the left and admin messages on the right', () => 
     return match[1]
   }
 
-  expect(declarationsFor('.detail-message.is-reporter')).toContain('justify-self: start')
-  expect(declarationsFor('.detail-message.is-admin')).toContain('justify-self: end')
-  expect(declarationsFor('.detail-message.is-admin header')).toContain('flex-direction: row-reverse')
-  expect(declarationsFor('.detail-message.is-admin > p')).toContain('margin-left: auto')
+  // 组件在 5822bc1 之后按「自己 / 对方」对齐气泡（对方靠左，自己靠右）。
+  // 管理员查看工单时，提交人 = is-other（左），管理员 = is-self（右），与本用例意图一致。
+  expect(declarationsFor('.detail-message.is-other')).toContain('justify-self: start')
+  expect(declarationsFor('.detail-message.is-self')).toContain('justify-self: end')
+  expect(declarationsFor('.detail-message.is-self header')).toContain('flex-direction: row-reverse')
+  expect(declarationsFor('.detail-message.is-self > p')).toContain('margin-left: auto')
 })
 
 beforeEach(() => {
