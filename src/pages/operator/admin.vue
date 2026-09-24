@@ -420,7 +420,7 @@ const specialOddityError = ref('')
 const avatarUploading = ref(false)
 const avatarInput = ref(null)
 
-const PROF_OPTIONS = ['阳', '阴', '火', '风', '水', '地', '混沌']
+const PROF_OPTIONS = ['地', '水', '火', '风', '阳', '阴', '混沌']
 const BASE_SUB_PROF_OPTIONS = [
   { value: 'shenji', label: '神纪' },
   { value: 'guidao', label: '诡道' },
