@@ -757,7 +757,6 @@
                     </button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
-                  <OperatorRarityBadge class="slot-rarity-badge" :rarity="Number(e.rarity) || 3" compact />
                 </li>
               </ul>
             </div>
@@ -1234,7 +1233,7 @@
                           </span>
                         </div>
                         <span class="ledger-mobile-prof"
-                          ><OperatorRarityBadge :rarity="Number(e.rarity) || 3" compact /><img
+                          ><img
                             v-if="profIcon(e.prof)"
                             :src="profIcon(e.prof)"
                             alt=""
@@ -1303,7 +1302,7 @@
                         </details>
                       </div>
                       <span class="ledger-prof"
-                        ><OperatorRarityBadge :rarity="Number(e.rarity) || 3" compact /><span class="ledger-prof-copy"
+                        ><span class="ledger-prof-copy"
                           ><img
                             v-if="profIcon(e.prof)"
                             :src="profIcon(e.prof)"
@@ -3033,7 +3032,6 @@ import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
-import OperatorRarityBadge from "../../components/operator/OperatorRarityBadge.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
 import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
@@ -11083,7 +11081,6 @@ onBeforeUnmount(function () {
 }
 .ledger-prof-copy {
   display: flex;
-  flex: 1;
   align-items: center;
   gap: 4px;
   min-width: 0;
@@ -12369,10 +12366,6 @@ onBeforeUnmount(function () {
 }
 .slot:hover .slot-name {
   color: var(--accent-strong);
-}
-.slot-rarity-badge {
-  align-self: center;
-  margin-top: 2px;
 }
 .prof-badge {
   position: absolute;

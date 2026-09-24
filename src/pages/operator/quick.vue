@@ -348,7 +348,7 @@
                         <span class="op-meta">
                           <span class="op-name">{{ op.name }}</span>
                           <span class="op-sub"
-                            >{{ op.prof }} · {{ op.rarity }}★</span
+                            >{{ op.prof }} · {{ rarityLabelMap[op.rarity] || op.rarity + "★" }}</span
                           >
                         </span>
                       </label>
