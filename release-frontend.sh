@@ -129,7 +129,7 @@ if [ -z "$TARGET_VERSION" ]; then
 fi
 
 if ! [[ "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
-  die "版本号格式无效：$TARGET_VERSION（例如 0.0.1-beta.4）"
+  die "版本号格式无效：${TARGET_VERSION}（例如 0.0.1-beta.4）"
 fi
 
 TAG="v$TARGET_VERSION"
@@ -163,7 +163,7 @@ if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
   git add VERSION
   git commit -m "chore: bump version to $TARGET_VERSION"
 else
-  ok "VERSION 已是 $TARGET_VERSION，无需额外版本提交"
+  ok "VERSION 已是 ${TARGET_VERSION}，无需额外版本提交"
 fi
 
 RELEASE_COMMIT="$(git rev-parse HEAD)"
@@ -201,7 +201,7 @@ CI_RUN_ID="$(find_workflow_run "CI" "main" "$RELEASE_COMMIT")" ||   die "没有�
 
 printf 'CI run: %s\n' "$CI_RUN_ID"
 if ! gh run watch "$CI_RUN_ID" --exit-status; then
-  die "CI 未通过，因此没有创建 $TAG。修复并推送后，可用同一版本号重新执行本脚本"
+  die "CI 未通过，因此没有创建 ${TAG}。修复并推送后，可用同一版本号重新执行本脚本"
 fi
 ok "CI 已通过"
 
