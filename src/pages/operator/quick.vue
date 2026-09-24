@@ -575,8 +575,16 @@ function normalizeOperator(op) {
     games: op.games || op.games_list || [],
     discs: op.discs || op.discs_list || [],
     starStones: op.starStones || op.star_stones || [],
+    spOf: op.spOf || op.sp_of || "",
     avatar: op.avatar || "",
   };
+}
+
+function isSpOperator(op) {
+  return !!(
+    op &&
+    (op.spOf || op.sp_of || /sp$/i.test(String(op.id || "")))
+  );
 }
 
 const catalogOperators = computed(function () {
@@ -624,6 +632,9 @@ const pageOperators = computed(function () {
   return catalogOperators.value
     .filter(function (op) {
       return matchesGame(op, gameFilter.value);
+    })
+    .filter(function (op) {
+      return !isAwaken.value || !isSpOperator(op);
     })
     .filter(function (op) {
       return rarityFilter.value === "all" || Number(op.rarity) === Number(rarityFilter.value);
@@ -1002,8 +1013,11 @@ function buildPageEntries(key) {
         clampInt(f.elite, OPERATOR_ELITE_MAX),
         getMaxEliteForLevel(level),
       );
-      const starLevel =
-        key === "awaken"
+      const isSp = isSpOperator(op);
+      if (isSp && key === "awaken") return null;
+      const starLevel = isSp
+        ? clampInt(Number(key), 5)
+        : key === "awaken"
           ? STAR_LEVEL_AWAKEN
           : 6 * (Number(key) - 1) + (f.node == null ? 0 : f.node) + 1;
       return {
