@@ -13,8 +13,8 @@ export const CATALOG_VERSION = '2026-09-10'
 // 物品分类（按 items.json 出现顺序）
 export const ITEM_CATEGORIES = ["未分类","修为进阶材料","养成材料","命盘材料","密探突破材料","星石材料","鸟食","招募道具","货币"]
 
-// 密探属性（按 operators.json 出现顺序）
-export const AGENT_PROFS = ["阳","阴","火","风","水","地","混沌"]
+// 密探属性（按游戏界面顺序；未知新属性追加在末尾）
+export const AGENT_PROFS = ["地","水","火","风","阳","阴","混沌"]
 
 export const ITEM_CATALOG = [
   { id: 'zhuangjinboli', name: '装金玻璃', category: '未分类' },

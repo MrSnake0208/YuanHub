@@ -60,10 +60,14 @@ const agents = operatorsDoc.OPERATORS.map((o) => ({
   subProf: (o.subProf && subProfName[o.subProf]) || o.subProf || ''
 }))
 
-const agentProfs = []
+const sourceAgentProfs = []
 for (const a of agents) {
-  if (!agentProfs.includes(a.prof)) agentProfs.push(a.prof)
+  if (!sourceAgentProfs.includes(a.prof)) sourceAgentProfs.push(a.prof)
 }
+const preferredAgentProfOrder = ['地', '水', '火', '风', '阳', '阴', '混沌']
+const agentProfs = preferredAgentProfOrder
+  .filter((prof) => sourceAgentProfs.includes(prof))
+  .concat(sourceAgentProfs.filter((prof) => !preferredAgentProfOrder.includes(prof)))
 
 const date = new Date().toISOString().slice(0, 10)
 
@@ -83,7 +87,7 @@ L.push('')
 L.push('// 物品分类（按 items.json 出现顺序）')
 L.push(`export const ITEM_CATEGORIES = ${JSON.stringify(categories)}`)
 L.push('')
-L.push('// 密探属性（按 operators.json 出现顺序）')
+L.push('// 密探属性（按游戏界面顺序；未知新属性追加在末尾）')
 L.push(`export const AGENT_PROFS = ${JSON.stringify(agentProfs)}`)
 L.push('')
 L.push('export const ITEM_CATALOG = [')

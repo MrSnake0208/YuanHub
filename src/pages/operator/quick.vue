@@ -220,6 +220,22 @@
                 <button
                   class="mini"
                   type="button"
+                  :disabled="importing || !blueCardCount"
+                  @click="selectRarityPage(3)"
+                >
+                  蓝卡全选
+                </button>
+                <button
+                  class="mini"
+                  type="button"
+                  :disabled="importing || !purpleCardCount"
+                  @click="selectRarityPage(4)"
+                >
+                  紫卡全选
+                </button>
+                <button
+                  class="mini"
+                  type="button"
                   :disabled="importing"
                   @click="selectAllPage"
                 >
@@ -393,6 +409,7 @@ import {
   matchesProfSubFilter,
   subProfOptions as deriveSubProfOptions,
 } from "../../utils/operatorFilters.js";
+import { compareOperatorIdDesc } from "../../utils/operatorAdmin.js";
 
 const router = useRouter();
 const route = useRoute();
@@ -606,9 +623,19 @@ const pageOperators = computed(function () {
         .toLowerCase();
       return hay.indexOf(q) !== -1;
     })
-    .sort(function (a, b) {
-      return String(a.name).localeCompare(String(b.name), "zh");
-    });
+    .sort(compareOperatorIdDesc);
+});
+
+const blueCardCount = computed(function () {
+  return pageOperators.value.filter(function (op) {
+    return Number(op.rarity) === 3;
+  }).length;
+});
+
+const purpleCardCount = computed(function () {
+  return pageOperators.value.filter(function (op) {
+    return Number(op.rarity) === 4;
+  }).length;
 });
 
 // 筛选条件摘要（用于空态提示）
@@ -806,12 +833,9 @@ async function toggleOperator(id, event) {
   }
 }
 
-async function selectAllPage() {
+async function selectPageIds(ids, actionLabel) {
   const key = currentKey.value;
   const cur = checkedByKey[key] || [];
-  const ids = pageOperators.value.map(function (op) {
-    return op.id;
-  });
   const toAdd = [];
   // 对「跨页冲突 / 已有数据」的密探逐个确认：点“否/跳过”只跳过那一个，其余照常勾选。
   for (const id of ids) {
@@ -825,7 +849,9 @@ async function selectAllPage() {
           name +
           "」已在" +
           stepLabel(fromKey) +
-          "选择，全选时是否覆盖到" +
+          "选择，" +
+          actionLabel +
+          "时是否覆盖到" +
           stepLabel(key) +
           "？",
         confirmText: "覆盖并勾选",
@@ -850,7 +876,9 @@ async function selectAllPage() {
           name +
           "」" +
           detail +
-          "，全选时是否覆盖为" +
+          "，" +
+          actionLabel +
+          "时是否覆盖为" +
           stepLabel(key) +
           "的设置？\n已有的命盘和星石会继续保留。",
         confirmText: "覆盖并勾选",
@@ -863,6 +891,25 @@ async function selectAllPage() {
   if (!toAdd.length) return;
   removeFromOtherSteps(toAdd, key);
   checkedByKey[key] = Array.from(new Set(cur.concat(toAdd)));
+}
+
+async function selectRarityPage(rarity) {
+  const label = Number(rarity) === 3 ? "蓝卡全选" : "紫卡全选";
+  const ids = pageOperators.value
+    .filter(function (op) {
+      return Number(op.rarity) === Number(rarity);
+    })
+    .map(function (op) {
+      return op.id;
+    });
+  await selectPageIds(ids, label);
+}
+
+async function selectAllPage() {
+  const ids = pageOperators.value.map(function (op) {
+    return op.id;
+  });
+  await selectPageIds(ids, "全选本页");
 }
 
 function clearPage() {
