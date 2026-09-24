@@ -14,7 +14,7 @@
           <a href="#feature-preview">现在与未来</a>
         </nav>
         <a class="header-cta" href="https://beta-hub.maayuan.com">
-          进入 YuanHub 内测 <span>↗</span>
+          加入 YuanHub 内测 <span>↗</span>
         </a>
       </div>
     </header>
@@ -35,7 +35,7 @@
               <span class="hero-game-badge">如鸢</span>
             </div>
             <div class="hero-actions">
-              <a class="primary-btn" href="https://beta-hub.maayuan.com">进入 YuanHub 内测 <span>→</span></a>
+              <a class="primary-btn" href="https://beta-hub.maayuan.com">加入 YuanHub 内测 <span>→</span></a>
               <a class="secondary-btn" href="#product">看看 YuanHub 能做什么 <span>↓</span></a>
               <a class="secondary-btn" href="#share">神秘代码怎么玩 <span>→</span></a>
               <button class="secondary-btn promo-install-trigger" type="button" @click="installPanelOpen = true">先保存 YuanHub 到桌面 <span>＋</span></button>
@@ -557,7 +557,7 @@
             <h2>先把自己的游戏档案，<em>整理好</em></h2>
             <p>从 MaaYuan 自动同步采集结果，再查看今日一览、规划养成或分享 BOX，都由你决定。</p>
           </div>
-          <a class="final-button" href="https://beta-hub.maayuan.com">进入 YuanHub 内测 <span>→</span><small>内测入口</small></a>
+          <a class="final-button" href="https://beta-hub.maayuan.com">加入 YuanHub 内测 <span>→</span><small>内测入口</small></a>
         </div>
       </section>
     </main>
