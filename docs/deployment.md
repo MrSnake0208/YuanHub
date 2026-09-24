@@ -20,30 +20,36 @@
 
 ## 2. 需要配置的 GitHub 项
 
-在仓库 **Settings → Environments → production** 下配置（推荐同时开启 Required reviewers，让发布需要人工批准）：
+**SSH 连接直接复用本仓库已有的 `promo-site-deploy.yml` 那套凭据 —— 不需要新建，也不需要重新填值。**
+只有本应用专属的目录 / 域名需要新增。
 
-### Secrets
+### 复用（已存在，无需操作）
 
-| 名称 | 说明 |
+`promo-site-deploy.yml` 已在用下列 **repository secrets**，`release.yml` 读的是同一批：
+
+| 名称 | 用途 |
 | --- | --- |
-| `PRODUCTION_SSH_KEY` | 部署用私钥全文（含 `BEGIN` / `END` 行）。只在日志外使用，workflow 不会回显。 |
+| `YUANHUB_PROMO_VPS_SSH_KEY` | 部署私钥全文（含 `BEGIN` / `END` 行），两套部署共用同一台 VPS |
+| `YUANHUB_PROMO_VPS_HOST` | 服务器地址 |
+| `YUANHUB_PROMO_VPS_USER` | SSH 用户 |
+| `YUANHUB_PROMO_VPS_PORT` | SSH 端口 |
 
-### Variables
+### 新增（Variables：Settings → Secrets and variables → Actions → Variables）
 
 | 名称 | 示例 | 说明 |
 | --- | --- | --- |
-| `PRODUCTION_HOST` | `203.0.113.10` | 生产服务器地址 |
-| `PRODUCTION_USER` | `deploy` | SSH 用户 |
-| `PRODUCTION_PORT` | `22` | SSH 端口 |
-| `PRODUCTION_FRONTEND_PATH` | `/var/www/yuanhub` | 前端部署根目录，需要该用户可写 |
-| `PRODUCTION_FRONTEND_URL` | `https://hub.example.com` | health check 与 Release 说明使用 |
-| `PRODUCTION_API_BASE` | 留空 | 可选。后端与前端同源时留空；跨域时填后端基址 |
-| `YUANHUB_KEEP_RELEASES` | `5` | 可选。服务器保留的历史版本目录数量，默认 5 |
+| `YUANHUB_FRONTEND_DEPLOY_DIR` | `/var/www/yuanhub` | 主站部署根目录。**必须与 promo 站点的 `YUANHUB_PROMO_DEPLOY_DIR` 不同**，否则会互相覆盖。 |
+| `YUANHUB_FRONTEND_URL` | `https://app.example.com` | 主站公网地址，health check 与 Release 说明使用。promo 站硬编码的是 `https://hub.maayuan.com`，主站必须是另一个地址。 |
+| `YUANHUB_FRONTEND_API_BASE` | 留空 | 可选。与后端同源时留空；跨域时填后端基址。 |
+| `YUANHUB_KEEP_RELEASES` | `5` | 可选。服务器保留的历史版本目录数量，默认 5。 |
+
+> `environment: production` 会在首次运行时由 GitHub 自动创建，不需要手工建；如果希望发布需要人工批准，
+> 在 **Settings → Environments → production** 加 Required reviewers 即可。
 
 ## 3. 服务器需要提前准备
 
-1. 一个可 SSH 登录的部署用户，其公钥写入 `~/.ssh/authorized_keys`；对应私钥存到 `PRODUCTION_SSH_KEY`。
-2. 部署根目录存在且可写：
+1. 同一台 VPS 上已有 promo 站的部署用户（`YUANHUB_PROMO_VPS_USER`）；主站复用它即可，无需新建账号。
+2. 主站部署根目录存在且可写：
 
    ```bash
    sudo mkdir -p /var/www/yuanhub/releases
@@ -89,7 +95,7 @@
 4. workflow 依次执行：
    - 校验 `VERSION == tag`（不一致立即失败，不发布）
    - `npm ci` → 静态检查 → 单测 → `npm run build`
-   - 上传 `dist` 到 `$PRODUCTION_FRONTEND_PATH/releases/0.0.1-beta.2/`
+   - 上传 `dist` 到 `$YUANHUB_FRONTEND_DEPLOY_DIR/releases/0.0.1-beta.2/`
    - 原子切换 `current` 符号链接（先建临时链接再 `mv -T`，线上不会出现半套文件）
    - health check：抓取站首页并确认引用了本次构建的主入口文件
    - 创建 GitHub Release（附 `dist` 打包附件）
