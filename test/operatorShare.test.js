@@ -130,7 +130,7 @@ test('只读分享卡片不为未配置的命盘显示添加占位', () => {
   assert.doesNotMatch(card[0], /class="empty">\+ 命盘/)
 })
 
-test('分享页攻击生命复用当前养成 Wiki 自动计算', () => {
+test('分享页当前不向前端开放 Wiki 攻击生命自动计算', () => {
   const entry = {
     name: '杨修',
     oddity_schema: {
@@ -152,10 +152,10 @@ test('分享页攻击生命复用当前养成 Wiki 自动计算', () => {
       }
     }
   }
-  assert.notEqual(operatorShareCombatValue(entry, 'attack'), '—')
-  assert.notEqual(operatorShareCombatValue(entry, 'hp'), '—')
-  assert.equal(operatorShareCombatSource(entry, 'attack'), '自动计算')
-  assert.equal(operatorShareCombatSource(entry, 'hp'), '自动计算')
+  assert.equal(operatorShareCombatValue(entry, 'attack'), '—')
+  assert.equal(operatorShareCombatValue(entry, 'hp'), '—')
+  assert.equal(operatorShareCombatSource(entry, 'attack'), '暂无可用面板数据')
+  assert.equal(operatorShareCombatSource(entry, 'hp'), '暂无可用面板数据')
 })
 
 test('分享 API 方法、路径、参数与认证边界符合固定契约', async () => {
