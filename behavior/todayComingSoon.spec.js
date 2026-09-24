@@ -43,13 +43,13 @@ beforeEach(() => {
   getCurrentStarState.mockResolvedValue({ inventory: [] })
 })
 
-it('访客看到施工占位，01/02/03 三个板块不再渲染', async () => {
+it('访客看到重做占位，01/02/03 三个板块不再渲染', async () => {
   const wrapper = render()
   await flushPromises()
 
   expect(wrapper.find('.today-coming-soon').exists()).toBe(true)
   expect(wrapper.text()).toContain('老鸢赶工中…')
-  expect(wrapper.text()).toContain('施工中')
+  expect(wrapper.text()).toContain('WORK IN PROGRESS')
 
   expect(wrapper.find('.task-grid').exists()).toBe(false)
   expect(wrapper.find('.summary-grid').exists()).toBe(false)
