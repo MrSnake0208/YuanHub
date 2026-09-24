@@ -76,8 +76,9 @@ jobs:
       - name: Static source check
         run: npm run test:static
 
-      - name: Unit tests
-        run: npm test
+      # Release 与独立 CI 保持同一仓库边界：不读取相邻后端仓库。
+      - name: Repository tests
+        run: npm run test:repo
 
       - name: Build
         env:
