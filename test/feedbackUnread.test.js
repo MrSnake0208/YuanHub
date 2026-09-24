@@ -306,7 +306,7 @@ test('反馈未读状态已接入导航角标和管理详情', () => {
   assert.match(accessPage, /<FeedbackWorkspaceNav[\s\S]*active="admin"/)
   assert.match(accessPage, /:has-unread-feedback="canManageFeedback && feedbackUnreadState\.count > 0"/)
   assert.match(managePage, /markFeedbackRead\(currentUserId\(\), detail\.id \|\| id, detail\)/)
-  assert.match(managePage, /sortBy: 'updatedAt'/)
+  assert.match(managePage, /sortBy: 'createdAt'/)
   assert.match(managePage, /sortOrder: 'desc'/)
   assert.match(managePage, /setInterval\([\s\S]*loadFeedback\(\{ background: true \}\)/)
   assert.match(managePage, /:selected-item="selectedDetail"/)
