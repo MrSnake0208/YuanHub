@@ -13,7 +13,6 @@
                 {{ heroPrimaryLabel }}
                 <ArrowRight :size="16" aria-hidden="true" />
               </router-link>
-              <router-link class="secondary-action" to="/demo">看看完整演示</router-link>
             </div>
           </div>
 
@@ -453,7 +452,6 @@ const todayTasks = computed(function () {
   if (!auth.isLoggedIn) {
     return [
       { title: '登录并开始建档', description: '登录后会继续检查子账号和三类核心数据。', to: { path: '/login', query: { redirect: '/' } }, icon: Users },
-      { title: '先看看完整演示', description: '不用录入数据，也可以先看看 YuanHub 能做什么。', to: '/demo', icon: Zap },
       { title: '看看最近更新', description: '了解 YuanHub 最近新增和调整了哪些功能。', to: '/changelog', icon: ScrollText }
     ]
   }
@@ -625,7 +623,6 @@ onMounted(loadDashboard)
 .hero-actions { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
 .hero-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 800; text-decoration: none; }
 .primary-action { gap: 8px; background: var(--tea); color: var(--cream); box-shadow: 0 8px 20px rgba(73, 59, 44, .15); }
-.secondary-action { border: 1px solid rgba(73, 59, 44, .2); color: var(--ink); }
 .account-context { display: grid; gap: 14px; padding: 20px; border: 1px solid rgba(156, 122, 77, .28); border-radius: 14px; background: rgba(255, 253, 246, .72); backdrop-filter: blur(10px); }
 .account-context > p { color: rgba(73, 59, 44, .68); font-size: 12px; line-height: 1.6; }
 .data-badge { display: inline-flex; align-items: center; gap: 7px; width: max-content; color: var(--tea); font-size: 11px; font-weight: 900; }
