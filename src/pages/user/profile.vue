@@ -89,6 +89,16 @@
           </div>
 
           <BetaNotice />
+
+          <GameAccountManager
+            id="game-accounts"
+            v-model:accounts="accounts"
+            v-model:accountId="managedAccountId"
+            :loading="accountsLoading"
+            :load-error="accountLoadError"
+            @reload="loadAccounts"
+          />
+
           <div class="connection-card" v-reveal>
             <div class="card-head">
               <div>
@@ -227,56 +237,12 @@
                 aria-labelledby="quick-account-title"
               >
                 <div class="quick-account-heading">
-                  <h4 id="quick-account-title">还没有子账号，先在这里创建</h4>
+                  <h4 id="quick-account-title">还没有游戏账号</h4>
+                  <p>请先在本页上方「游戏账号」区域统一创建；创建完成后这里会自动出现可绑定账号。</p>
                 </div>
-                <fieldset class="game-choice">
-                  <legend>游戏版本</legend>
-                  <div class="game-options">
-                    <label
-                      v-for="game in ACCOUNT_GAMES"
-                      :key="game"
-                      :class="{ selected: newAccountGame === game }"
-                    >
-                      <input
-                        v-model="newAccountGame"
-                        type="radio"
-                        name="profile-account-game"
-                        :value="game"
-                        :disabled="creatingAccount"
-                      />
-                      <span>{{ game }}</span>
-                    </label>
-                  </div>
-                </fieldset>
-                <label class="field-label" for="quick-account-name"
-                  >账号名称</label
-                >
-                <div class="quick-account-row">
-                  <input
-                    id="quick-account-name"
-                    v-model="newAccountName"
-                    class="form-control"
-                    maxlength="64"
-                    autocomplete="off"
-                    placeholder="例如：大鸟大号"
-                    :disabled="creatingAccount"
-                    @keydown.enter.prevent="createInlineAccount"
-                  />
-                  <button
-                    class="act-btn primary"
-                    type="button"
-                    :disabled="creatingAccount || !newAccountName.trim()"
-                    @click="createInlineAccount"
-                  >
-                    {{ creatingAccount ? "正在创建…" : "创建并继续" }}
-                  </button>
-                </div>
-                <p v-if="accountCreateError" class="field-error" role="alert">
-                  {{ accountCreateError }}
-                </p>
-                <p class="field-help">
-                  名称只是方便你区分不同存档，之后可以在库存页或密探页修改。
-                </p>
+                <a class="act-btn primary quick-account-manage-link" href="#game-accounts">
+                  去创建游戏账号
+                </a>
               </section>
 
               <div class="panel-title grant-title">
@@ -695,8 +661,9 @@ import SiteFooter from "../../components/SiteFooter.vue";
 import { auth } from "../../store/auth.js";
 import { beta } from "../../store/beta.js";
 import BetaNotice from "../../components/beta/BetaNotice.vue";
+import GameAccountManager from "../../components/GameAccountManager.vue";
 import { getVisibleAdminToolGroups } from "../../utils/adminTools.js";
-import { createAccount, listAccounts } from "../../api/accounts.js";
+import { listAccounts } from "../../api/accounts.js";
 import {
   deleteOpenApiToken,
   generateOpenApiToken,
@@ -704,10 +671,7 @@ import {
   getOpenApiTokens,
   updateOpenApiTokenScopes,
 } from "../../api/openApi.js";
-import {
-  ACCOUNT_GAMES,
-  DEFAULT_ACCOUNT_GAME,
-} from "../../store/activeAccount.js";
+import { activeAccount } from "../../store/activeAccount.js";
 import {
   FALLBACK_DESCRIPTIONS as FALLBACK_SCOPES,
   MAAYUAN_REQUIRED_SCOPES,
@@ -743,14 +707,19 @@ const newToken = ref(null);
 const newTokenPanel = ref(null);
 const newTokenKind = ref("maayuan");
 const tokenCopied = ref(false);
-const creatingAccount = ref(false);
-const newAccountName = ref("");
-const newAccountGame = ref(DEFAULT_ACCOUNT_GAME);
-const accountCreateError = ref("");
 const maaAccountSelect = ref(null);
 const maaYuanAppCard = ref(null);
 const maaYuanAppTitle = ref(null);
 const route = useRoute();
+
+const managedAccountId = computed({
+  get: function () {
+    return activeAccount.id;
+  },
+  set: function (value) {
+    activeAccount.set(value);
+  },
+});
 
 const userName = computed(function () {
   return auth.userInfo && auth.userInfo.user_name
@@ -766,7 +735,6 @@ const maaYuanReadyCount = computed(function () {
 const busy = computed(function () {
   return (
     loading.value ||
-    creatingAccount.value ||
     !!creatingMode.value ||
     !!updatingTokenId.value
   );
@@ -909,42 +877,16 @@ async function loadAccounts() {
   try {
     const data = await listAccounts();
     accounts.value = Array.isArray(data) ? data : [];
+    activeAccount.syncAccounts(accounts.value);
+    if (!accounts.value.some(function (account) { return account.id === activeAccount.id; })) {
+      activeAccount.set(accounts.value[0] && accounts.value[0].id);
+    }
   } catch (err) {
     accounts.value = [];
     accountLoadError.value = humanErr(err, "游戏账号加载失败，请重新加载");
   } finally {
     accountsLoading.value = false;
     applyDefaultAccounts();
-  }
-}
-
-async function createInlineAccount() {
-  if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
-  if (creatingAccount.value) return;
-  const name = newAccountName.value.trim();
-  if (!name) {
-    toast("请填写游戏账号名称", true);
-    return;
-  }
-  creatingAccount.value = true;
-  accountCreateError.value = "";
-  try {
-    const created = await createAccount(name, newAccountGame.value);
-    if (!created || !created.id)
-      throw new Error("账号已创建，但没有返回账号编号，请重新加载");
-    accounts.value = accounts.value.concat(created);
-    accountLoadError.value = "";
-    maaAccountId.value = created.id;
-    customAccountId.value = created.id;
-    newAccountName.value = "";
-    await nextTick();
-    if (maaAccountSelect.value) maaAccountSelect.value.focus();
-    toast("游戏账号已创建并选中，可以继续确认连接");
-  } catch (err) {
-    accountCreateError.value = humanErr(err, "游戏账号创建失败，请稍后重试");
-    toast(accountCreateError.value, true);
-  } finally {
-    creatingAccount.value = false;
   }
 }
 
@@ -1164,6 +1106,9 @@ function finishNewToken() {
 watch(() => beta.canUseBetaFeatures, () => {
   if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
   void loadAccounts();
+});
+watch(accounts, function () {
+  applyDefaultAccounts();
 });
 watch(
   () => route.query.connect,

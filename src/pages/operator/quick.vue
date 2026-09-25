@@ -35,9 +35,9 @@
             <div class="is-authed">
               <div class="k">{{ auth.isLoggedIn ? "保存到" : "登录状态" }}</div>
               <div class="v">
-                {{ auth.isLoggedIn ? accountName || "—" : "未登录"
+                {{ auth.isLoggedIn ? (accountName ? gameFilter + " · " + accountName : "—") : "未登录"
                 }}<small>{{
-                  auth.isLoggedIn ? "子账号" : "需登录后使用"
+                  auth.isLoggedIn ? "当前数据账号" : "需登录后使用"
                 }}</small>
               </div>
             </div>
@@ -47,15 +47,15 @@
 
       <section>
         <div class="wrap">
-          <!-- 统一子账号 + 版本 -->
+          <!-- 当前数据账号：这里只切换，不修改账号属性 -->
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
-              <span class="ac-label">子账号</span>
+              <span class="ac-label">当前账号</span>
               <select
                 id="quick-account"
                 v-model="accountId"
                 :disabled="
-                  !auth.isLoggedIn || accountsLoading || importing || gameSaving
+                  !auth.isLoggedIn || accountsLoading || importing
                 "
                 @change="onAccountChange"
               >
@@ -68,19 +68,15 @@
                 accountError
               }}</span>
             </div>
-            <span class="ac-sel">
-              <span class="ac-label">版本</span>
-              <select
-                id="quick-game"
-                v-model="gameFilter"
-                :disabled="importing || gameSaving"
-                @change="onGameChange"
-              >
-                <option value="代号鸢">代号鸢</option>
-                <option value="如鸢">如鸢</option>
-              </select>
-            </span>
+            <div class="ac-sel account-game-static">
+              <span class="ac-label">所属游戏</span>
+              <strong>{{ gameFilter }}</strong>
+              <small>正在录入 → {{ gameFilter }} · {{ accountName || '未选择账号' }}</small>
+            </div>
             <span class="sp"></span>
+            <router-link class="act-btn ghost" to="/user/profile#game-accounts"
+              >管理游戏账号</router-link
+            >
             <router-link class="act-btn ghost" to="/operator"
               >返回密探页</router-link
             >
@@ -99,8 +95,8 @@
             正在加载快捷录入数据…
           </div>
           <div v-else-if="!accounts.length" class="state err" v-reveal>
-            尚未创建子账号，请先返回密探页创建
-            <router-link class="link" to="/operator">去创建</router-link>
+            尚未创建游戏账号，请先前往个人中心统一创建
+            <router-link class="link" to="/user/profile#game-accounts">去创建</router-link>
           </div>
           <div
             v-else-if="catalogError && !catalogOperators.length"
@@ -409,13 +405,12 @@ import SiteFooter from "../../components/SiteFooter.vue";
 import {
   getOperatorCatalog,
   listOperatorAccounts,
-  updateOperatorAccountGame,
   getOperatorCurrent,
   importOperator,
 } from "../../api/operator.js";
 import { avatarUrl } from "../../api/request.js";
 import { auth } from "../../store/auth.js";
-import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
+import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
@@ -522,7 +517,6 @@ const catalogVersion = ref("");
 const backendCatalog = ref([]);
 const currentEntries = ref([]);
 const importing = ref(false);
-const gameSaving = ref(false);
 const sessionSavedCount = ref(0);
 // 每页是否已保存过（用于步骤条“已存”标记 + 返回已保存页时的提示）
 const savedByKey = reactive({});
@@ -1153,41 +1147,6 @@ function onAccountChange() {
   reloadCurrent();
 }
 
-async function onGameChange() {
-  const targetAccountId = accountId.value;
-  const account = accounts.value.find(function (item) {
-    return item.id === targetAccountId;
-  });
-  const requestedGame = gameFilter.value;
-  if (targetAccountId && account && isAccountGame(account.game)) {
-    const previousGame = account.game;
-    gameSaving.value = true;
-    accountError.value = "";
-    try {
-      const updated = await updateOperatorAccountGame(
-        targetAccountId,
-        requestedGame,
-      );
-      if (accountId.value !== targetAccountId) return;
-      Object.assign(account, updated || {}, {
-        game: isAccountGame(updated && updated.game)
-          ? updated.game
-          : requestedGame,
-      });
-      activeAccount.setGame(account.game, targetAccountId);
-    } catch (err) {
-      if (accountId.value === targetAccountId) {
-        activeAccount.setGame(previousGame, targetAccountId);
-        accountError.value = humanErr(err, "游戏版本保存失败");
-      }
-    } finally {
-      if (accountId.value === targetAccountId) gameSaving.value = false;
-    }
-  }
-  currentEntries.value = [];
-  reloadCurrent();
-}
-
 async function reloadCurrent() {
   const loadToken = ++currentLoadToken;
   if (!auth.isLoggedIn || !accountId.value) {
@@ -1383,6 +1342,29 @@ onMounted(async function () {
 }
 .ac-sel select:focus {
   border-color: var(--accent);
+}
+.account-game-static {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 4px 10px;
+}
+.account-game-static strong {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--cream);
+  font-size: 13px;
+  font-weight: 900;
+}
+.account-game-static small {
+  grid-column: 1 / -1;
+  color: var(--ink-60);
+  font-size: 11px;
+  font-weight: 700;
 }
 .ac-warn {
   font-size: 12px;

@@ -50,18 +50,14 @@
             v-model:game="accountGame"
             :accounts="accounts"
             :error="accountError"
-            :disabled="!auth.isLoggedIn || accountsLoading || accountBusy || starExchangeBusy"
-            :game-disabled="!auth.isLoggedIn || accountsLoading || accountBusy || starExchangeBusy"
-            :busy="accountBusy || starExchangeBusy"
+            :disabled="!auth.isLoggedIn || accountsLoading || starExchangeBusy"
+            :game-editable="false"
+            :manage-enabled="false"
             stacked
             soft-dropdown
-            heading-title="选择要查看的账号"
-            heading-sub="星石、库存和密探都会跟随这个子账号，在各页面保持一致。"
+            heading-title="当前数据账号"
+            heading-sub="这里只切换本次查看和录入的账号；账号名称与所属游戏统一在个人中心管理。"
             @change="onAccountChange"
-            @game-change="onAccountGameChange"
-            @create="onCreateAccount"
-            @rename="onRenameAccount"
-            @delete="onDeleteAccount"
           >
             <template #actions>
               <button
@@ -70,7 +66,6 @@
                 :disabled="
                   !productReady ||
                   accountsLoading ||
-                  accountBusy ||
                   starExchangeBusy ||
                   !selectedHostAccount()
                 "
@@ -173,13 +168,7 @@ import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
-import {
-  createAccount,
-  deleteAccount,
-  listAccounts,
-  renameAccount,
-  updateAccountGame,
-} from "../../api/accounts.js";
+import { listAccounts } from "../../api/accounts.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
@@ -204,7 +193,6 @@ const mountRoot = ref(null);
 const mountError = ref("");
 const accounts = ref([]);
 const accountsLoading = ref(false);
-const accountBusy = ref(false);
 const accountError = ref("");
 const activeTab = usePersistedTab(
   "star-tabs",
@@ -453,105 +441,6 @@ async function onAccountChange() {
   try {
     if (await syncHostAccount()) await recoverPendingCapture();
   } catch (_error) {}
-}
-async function onAccountGameChange(game) {
-  const account = accounts.value.find(function (item) {
-    return item.id === accountId.value;
-  });
-  if (!account) return;
-  if (starExchangeBusy.value) {
-    if (isAccountGame(account.game)) accountGame.value = account.game;
-    return;
-  }
-  const oldGame = isAccountGame(account.game)
-    ? account.game
-    : accountGame.value;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    const updated = await updateAccountGame(account.id, game);
-    Object.assign(account, updated || {}, {
-      game: isAccountGame(updated && updated.game) ? updated.game : game,
-    });
-    activeAccount.setGame(account.game, account.id);
-    resetStarImportState();
-    await syncHostAccount();
-  } catch (error) {
-    account.game = oldGame;
-    activeAccount.setGame(oldGame, account.id);
-    accountError.value = message(error, "游戏版本保存失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-async function onCreateAccount(rawName) {
-  if (starExchangeBusy.value) return;
-  const name = String(rawName || "").trim();
-  if (!name) return;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    const created = await createAccount(name, accountGame.value);
-    await loadAccounts();
-    if (created?.id) {
-      activeAccount.setGame(
-        isAccountGame(created.game) ? created.game : accountGame.value,
-        created.id,
-      );
-      accountId.value = created.id;
-    }
-    await syncHostAccount();
-  } catch (error) {
-    accountError.value = message(error, "创建账号失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-async function onRenameAccount(account) {
-  if (starExchangeBusy.value) return;
-  const name = prompt("修改子账号名称（1~64 字）：", account.name || "");
-  if (name == null) return;
-  const trimmed = name.trim();
-  if (!trimmed) {
-    accountError.value = "名称不能为空";
-    return;
-  }
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    const updated = await renameAccount(account.id, trimmed);
-    Object.assign(account, updated || {}, {
-      name: (updated && updated.name) || trimmed,
-    });
-    if (account.id === accountId.value) await syncHostAccount();
-  } catch (error) {
-    accountError.value = message(error, "改名失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-async function onDeleteAccount(account) {
-  if (starExchangeBusy.value) return;
-  if (
-    !confirm(
-      "删除子账号「" +
-        account.name +
-        "」？该账号的库存数据、密探数据、特别关注和所有 API Token 都会被一并清除，且不可恢复。",
-    )
-  )
-    return;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    await deleteAccount(account.id);
-    activeAccount.forgetGame(account.id);
-    await loadAccounts();
-    await syncHostAccount();
-  } catch (error) {
-    accountError.value = message(error, "删除账号失败");
-  } finally {
-    accountBusy.value = false;
-  }
 }
 function ensureEmbedStylesheet() {
   if (document.getElementById(EMBED_STYLESHEET_ID)) return Promise.resolve();
