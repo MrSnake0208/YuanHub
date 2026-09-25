@@ -22,10 +22,10 @@
               {{ auth.isLoggedIn ? '真实数据' : '演示数据' }}
             </span>
             <label v-if="auth.isLoggedIn && accounts.length" class="account-picker">
-              <span>当前子账号</span>
-              <select v-model="accountId" :disabled="loading" aria-label="选择今日一览的数据子账号">
+              <span>切换当前账号</span>
+              <select v-model="accountId" :disabled="loading" aria-label="选择今日一览的数据账号">
                 <option v-for="account in accounts" :key="account.id" :value="account.id">
-                  {{ account.name }} · {{ account.game || activeAccount.gameFor(account.id) }}
+                  {{ account.game || activeAccount.gameFor(account.id) }} · {{ account.name }}
                 </option>
               </select>
             </label>
@@ -38,6 +38,15 @@
 
       <section class="today-content">
         <div class="wrap today-wrap">
+          <DataAccountContextBar
+            :accounts="accounts"
+            :account-id="accountId"
+            :game="accountGame"
+            :is-logged-in="auth.isLoggedIn"
+            :loading="loading && !accounts.length && auth.isLoggedIn"
+            description="今日一览中的密探、库存、星石状态均读取自此账号。"
+          />
+
           <div v-if="errorMessage" class="today-alert" role="alert">
             <span>{{ errorMessage }}</span>
             <button type="button" @click="loadDashboard">重试</button>
@@ -164,6 +173,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { ArrowRight, Gem, Hammer, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
+import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent, listAgentFavorites } from '../../api/inventory.js'

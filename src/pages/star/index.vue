@@ -33,7 +33,7 @@
               </div>
             </div>
             <div>
-              <div class="k">当前版本</div>
+              <div class="k">所属游戏</div>
               <div class="v game-stat">{{ summary.gameVersion }}</div>
             </div>
             <div class="is-authed">
@@ -45,6 +45,15 @@
       </header>
       <section>
         <div class="wrap">
+          <DataAccountContextBar
+            :accounts="accounts"
+            :account-id="accountId"
+            :game="accountGame"
+            :is-logged-in="auth.isLoggedIn"
+            :loading="accountsLoading"
+            description="当前星石背包、养成计划与同步数据均归属此账号。"
+          />
+
           <AccountWorkspace
             v-model:accountId="accountId"
             v-model:game="accountGame"
@@ -165,6 +174,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Archive } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";

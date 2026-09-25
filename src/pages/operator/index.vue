@@ -28,7 +28,7 @@
               <div class="v">{{ manifestOwned }}<small>位</small></div>
             </div>
             <div>
-              <div class="k">当前版本</div>
+              <div class="k">所属游戏</div>
               <div class="v">{{ gameFilter }}</div>
             </div>
             <div v-if="auth.isLoggedIn" class="is-authed">
@@ -47,6 +47,15 @@
 
       <section>
         <div class="wrap">
+          <DataAccountContextBar
+            :accounts="accounts"
+            :account-id="accountId"
+            :game="gameFilter"
+            :is-logged-in="auth.isLoggedIn"
+            :loading="accountsLoading"
+            description="当前密探养成、培养计划与导入数据均归属此账号。"
+          />
+
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             id="operator-account-workspace"
@@ -581,7 +590,7 @@
                   <b class="bp-num">{{ manifestOwned }}</b> 位 · 未招募
                   <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录
                   <b class="bp-num">{{ catalogVersion || "本地兜底" }}</b> ·
-                  当前版本「{{ gameFilter }}」
+                  所属游戏「{{ gameFilter }}」
                   <template v-if="rarityFilter !== 'all'">
                     · 稀有「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
                   >
@@ -3022,6 +3031,7 @@ import {
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
