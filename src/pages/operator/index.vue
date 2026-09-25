@@ -223,13 +223,12 @@
               养成总览
             </button>
             <button
-              v-if="growthTrackingEnabled"
               type="button"
               class="operator-tab-button"
               role="tab"
               :aria-selected="activeTab === 'tracking'"
               :class="{ on: activeTab === 'tracking' }"
-              @click="setTab('tracking')"
+              @click="openGrowthPlanningPreview"
             >
               养成规划
             </button>
@@ -2441,12 +2440,11 @@
           <span>当前养成</span>
         </button>
         <button
-          v-if="growthTrackingEnabled"
           type="button"
           role="tab"
           :aria-selected="activeTab === 'tracking'"
           :class="{ on: activeTab === 'tracking' }"
-          @click="setTab('tracking')"
+          @click="openGrowthPlanningPreview"
         >
           <Target :size="19" aria-hidden="true" />
           <span>养成规划</span>
@@ -7589,6 +7587,17 @@ async function saveEdit() {
   } finally {
     savingEdit.value = false;
   }
+}
+
+async function openGrowthPlanningPreview() {
+  if (!growthTrackingEnabled) {
+    await dialog.alert({
+      title: "养成规划",
+      message: "将在 v0.0.2 上线",
+    });
+    return;
+  }
+  setTab("tracking");
 }
 
 function setTab(t) {
