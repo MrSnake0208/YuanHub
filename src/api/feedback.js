@@ -146,6 +146,10 @@ export function normalizeFeedback(report) {
     publishedAt: report.publishedAt ?? report.published_at ?? null,
     publicUpdatedAt: report.publicUpdatedAt ?? report.public_updated_at ?? null,
     completedAt: report.completedAt ?? report.completed_at ?? null,
+    targetVersionId: report.targetVersionId ?? report.target_version_id ?? null,
+    targetVersionLabel: report.targetVersionLabel ?? report.target_version_label ?? null,
+    completedVersionId: report.completedVersionId ?? report.completed_version_id ?? null,
+    completedVersionLabel: report.completedVersionLabel ?? report.completed_version_label ?? null,
     createdAt: report.createdAt ?? report.created_at ?? null,
     updatedAt,
     mediaIds: report.mediaIds ?? report.media_ids ?? [],
@@ -327,6 +331,19 @@ export async function mergeFeedback(id, targetFeedbackId) {
     method: 'POST',
     auth: true,
     body: { target_feedback_id: targetFeedbackId }
+  })
+  return normalizeFeedback(data)
+}
+
+// 关联/清除目标版本与完成版本;传 null 或空字符串表示清除。
+export async function updateFeedbackVersions(id, payload = {}) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/versions`, {
+    method: 'PATCH',
+    auth: true,
+    body: {
+      target_version_id: payload.targetVersionId || null,
+      completed_version_id: payload.completedVersionId || null
+    }
   })
   return normalizeFeedback(data)
 }

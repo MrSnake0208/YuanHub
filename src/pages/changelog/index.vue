@@ -10,6 +10,7 @@
         <article v-for="entry in entries" :key="entry.id + '-' + entry.revision" class="changelog-card">
           <header><span class="version">{{ entry.versionLabel }}</span><time :datetime="entry.publishedAt">{{ formatDate(entry.publishedAt) }}</time><h2>{{ entry.title }}</h2></header>
           <ChangelogContent :body="entry.body" />
+          <ChangelogRelatedFeedback :version-id="entry.id" />
         </article>
         <p v-if="error && entries.length" class="inline-error" role="alert">{{ error }}</p>
         <button v-if="hasNext" class="load-more" type="button" :disabled="loading" @click="load(page + 1)">{{ loading ? '正在加载…' : '加载更多' }}</button>
@@ -26,6 +27,7 @@ import { productVersionLabel } from '../../config/buildInfo.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import ChangelogContent from '../../components/changelog/ChangelogContent.vue'
+import ChangelogRelatedFeedback from '../../components/changelog/ChangelogRelatedFeedback.vue'
 
 const entries = ref([])
 const page = ref(1)
