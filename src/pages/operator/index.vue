@@ -498,21 +498,8 @@
               </div>
             </div>
 
-            <!-- 品质 / 属性 / 职业 筛选 -->
+            <!-- 属性 / 职业 / 品质 筛选 -->
             <div class="prof-filter catalog-prof-filter" v-reveal>
-              <div class="pf-row pf-rarity-row">
-                <span class="pf-label">品质</span>
-                <div class="mf-filter rarity-filter" role="group" aria-label="按品质筛选密探图鉴">
-                  <button
-                    v-for="option in rarityOptions"
-                    :key="option.value"
-                    type="button"
-                    :aria-pressed="rarityFilter === option.value"
-                    :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-                    @click="rarityFilter = option.value"
-                  >{{ option.label }}</button>
-                </div>
-              </div>
               <div class="pf-row pf-prof-row">
                 <span class="pf-label">属性</span>
                 <div
@@ -570,6 +557,19 @@
                   >
                     {{ s }}
                   </button>
+                </div>
+              </div>
+              <div class="pf-row pf-rarity-row">
+                <span class="pf-label">品质</span>
+                <div class="mf-filter rarity-filter" role="group" aria-label="按品质筛选密探图鉴">
+                  <button
+                    v-for="option in rarityOptions"
+                    :key="option.value"
+                    type="button"
+                    :aria-pressed="rarityFilter === option.value"
+                    :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+                    @click="rarityFilter = option.value"
+                  >{{ option.label }}</button>
                 </div>
               </div>
             </div>

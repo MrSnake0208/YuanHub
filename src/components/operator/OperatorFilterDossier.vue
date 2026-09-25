@@ -39,20 +39,6 @@
     </div>
 
     <div class="current-filter-rows">
-      <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
-        <span class="pf-label">品质</span>
-        <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
-          <button
-            v-for="option in rarityOptions"
-            :key="option.value"
-            type="button"
-            :aria-pressed="rarityFilter === option.value"
-            :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-            @click="$emit('update:rarityFilter', option.value)"
-          >{{ option.label }}</button>
-        </div>
-      </div>
-
       <div class="pf-row pf-prof-row">
         <span class="pf-label">属性</span>
         <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
@@ -98,6 +84,20 @@
           >
             {{ subProf }}
           </button>
+        </div>
+      </div>
+
+      <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
+        <span class="pf-label">品质</span>
+        <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
+          <button
+            v-for="option in rarityOptions"
+            :key="option.value"
+            type="button"
+            :aria-pressed="rarityFilter === option.value"
+            :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+            @click="$emit('update:rarityFilter', option.value)"
+          >{{ option.label }}</button>
         </div>
       </div>
 
