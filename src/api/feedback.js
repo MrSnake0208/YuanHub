@@ -345,6 +345,19 @@ export async function updateFeedbackType(id, type) {
   return normalizeFeedback(data)
 }
 
+// 获取反馈管理可关联的版本：目标版本可包含草稿，完成版本需由调用方筛 published=true。
+export async function listFeedbackVersionOptions() {
+  const data = await request('/v1/admin/feedback/version-options', { auth: true })
+  const items = Array.isArray(data) ? data : []
+  return items
+    .map(item => ({
+      id: String(item?.id || ''),
+      versionLabel: String(item?.versionLabel ?? item?.version_label ?? ''),
+      published: Boolean(item?.published)
+    }))
+    .filter(item => item.id && item.versionLabel)
+}
+
 // 关联/清除目标版本与完成版本;传 null 或空字符串表示清除。
 export async function updateFeedbackVersions(id, payload = {}) {
   const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/versions`, {
