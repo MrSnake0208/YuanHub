@@ -26,6 +26,10 @@ vi.mock('../src/api/notifications.js', () => ({
   markFeedbackNotificationsRead: vi.fn().mockResolvedValue([])
 }))
 vi.mock('../src/api/media.js', () => ({ uploadMedia: vi.fn() }))
+vi.mock('../src/api/changelog.js', () => ({
+  // restoreMocks 会重置 mockResolvedValue,因此用默认实现保证版本选择器不触发真实请求。
+  listChangelog: vi.fn(() => Promise.resolve({ data: [], page: 1, total: 0, hasNext: false }))
+}))
 vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'tester' }, adminAccess: { superAdmin: true, permissions: [] } } }))
 vi.mock('../src/store/feedbackUnread.js', () => ({
   feedbackUnreadState: { ids: [], count: 0 }, subscribeFeedbackUnread: () => () => {}

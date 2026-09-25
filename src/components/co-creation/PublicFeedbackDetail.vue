@@ -33,9 +33,18 @@
         <a :href="'/co-creation?feedback=' + encodeURIComponent(item.mergedInto.id)">查看主反馈：{{ item.mergedInto.publicTitle }}</a>
       </section>
 
-      <section v-if="item.publicStatus === 'COMPLETED' && item.completedAt" class="public-detail-done" role="status">
+      <section v-if="item.publicStatus === 'COMPLETED' && (item.completedVersionLabel || item.completedAt)" class="public-detail-done" role="status">
         <CheckCircle2 :size="18" aria-hidden="true" />
-        <span>已于 {{ formatDate(item.completedAt) }} 标记为完成。</span>
+        <span v-if="item.completedVersionLabel">已在 {{ item.completedVersionLabel }} 上线</span>
+        <span v-else>已于 {{ formatDate(item.completedAt) }} 标记为完成。</span>
+      </section>
+
+      <section v-if="item.targetVersionLabel || item.completedVersionLabel" class="public-detail-section">
+        <h3>版本</h3>
+        <ul class="public-detail-versions">
+          <li v-if="item.targetVersionLabel"><span>目标版本</span><strong>{{ item.targetVersionLabel }}</strong></li>
+          <li v-if="item.completedVersionLabel"><span>完成版本</span><strong>{{ item.completedVersionLabel }}</strong></li>
+        </ul>
       </section>
 
       <footer class="public-detail-foot">
@@ -76,6 +85,10 @@ defineEmits(['updated'])
 .public-detail-merged strong { font-size: 13px; }
 .public-detail-merged p { margin-top: 4px; color: var(--feedback-text-muted); font-size: 12px; }
 .public-detail-merged a { display: inline-block; margin-top: 6px; color: var(--accent-strong); font-size: 12px; font-weight: 800; }
+.public-detail-versions { display: grid; gap: 6px; list-style: none; }
+.public-detail-versions li { display: inline-flex; align-items: baseline; gap: 8px; }
+.public-detail-versions span { color: var(--feedback-text-dim); font-size: 10.5px; font-weight: 800; }
+.public-detail-versions strong { color: var(--feedback-text); font: 12px var(--font-d); font-weight: 700; }
 .public-detail-done { display: inline-flex; align-items: center; gap: 8px; color: var(--feedback-success); font-size: 12.5px; font-weight: 800; }
 .public-detail-foot { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 </style>

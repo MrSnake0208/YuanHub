@@ -115,6 +115,14 @@
                   @unpublish="unpublishPublicInfo"
                   @merge="openMergeDialog"
                 />
+                <AdminFeedbackVersionSelector
+                  v-if="item.viewerCanManage"
+                  :item="item"
+                  :busy="versionBusy"
+                  :message="versionMessage"
+                  :error="versionError"
+                  @save="saveVersions"
+                />
                 <FeedbackTicketDetail
                   :item="item"
                   :loading="detailLoading"
@@ -175,6 +183,7 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import AdminFeedbackMergeDialog from '@/components/feedback/AdminFeedbackMergeDialog.vue'
 import AdminFeedbackPublishPanel from '@/components/feedback/AdminFeedbackPublishPanel.vue'
+import AdminFeedbackVersionSelector from '@/components/feedback/AdminFeedbackVersionSelector.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
@@ -187,6 +196,7 @@ import {
   mergeFeedback,
   publishFeedback,
   unpublishFeedback,
+  updateFeedbackVersions,
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
@@ -242,6 +252,9 @@ const markingAllRead = ref(false)
 const publicBusy = ref(false)
 const publicMessage = ref('')
 const publicError = ref('')
+const versionBusy = ref(false)
+const versionMessage = ref('')
+const versionError = ref('')
 const mergeOpen = ref(false)
 const mergeBusy = ref(false)
 const replyMedia = useFeedbackMedia()
@@ -432,6 +445,29 @@ function resetPublicPanel() {
   publicError.value = ''
   mergeOpen.value = false
   mergeBusy.value = false
+  versionBusy.value = false
+  versionMessage.value = ''
+  versionError.value = ''
+}
+
+async function saveVersions(payload) {
+  const id = selectedId.value
+  if (!id || versionBusy.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  versionBusy.value = true
+  versionMessage.value = ''
+  versionError.value = ''
+  try {
+    const detail = await updateFeedbackVersions(id, payload)
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
+    versionMessage.value = '版本关联已更新'
+  } catch (e) {
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) versionError.value = e.message || '版本关联失败'
+  } finally {
+    versionBusy.value = false
+  }
 }
 
 async function savePublicInfo(payload) {
