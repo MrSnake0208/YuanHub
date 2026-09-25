@@ -6,21 +6,23 @@
         <h3>关联版本</h3>
       </div>
     </header>
-    <p class="admin-version-hint">关联更新日志中的版本，不需要重复维护更新记录。</p>
+    <p class="admin-version-hint">目标版本可以选择尚未发布的草稿；完成版本只允许关联已经发布的更新日志。</p>
 
     <div class="admin-version-grid">
       <label>
         <span>目标版本</span>
         <select v-model="targetId" class="feedback-form-control">
           <option value="">未指定</option>
-          <option v-for="option in options" :key="'t-' + option.id" :value="option.id">{{ option.label }}</option>
+          <option v-for="option in options" :key="'t-' + option.id" :value="option.id">
+            {{ option.versionLabel }}{{ option.published ? '' : '（草稿）' }}
+          </option>
         </select>
       </label>
       <label>
         <span>完成版本</span>
         <select v-model="completedId" class="feedback-form-control">
           <option value="">未指定</option>
-          <option v-for="option in options" :key="'c-' + option.id" :value="option.id">{{ option.label }}</option>
+          <option v-for="option in publishedOptions" :key="'c-' + option.id" :value="option.id">{{ option.versionLabel }}</option>
         </select>
       </label>
     </div>
@@ -39,8 +41,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
-import { listChangelog } from '@/api/changelog.js'
+import { computed, onMounted, ref, watch } from 'vue'
+import { listFeedbackVersionOptions } from '@/api/feedback.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -52,6 +54,7 @@ const props = defineProps({
 const emit = defineEmits(['save'])
 
 const options = ref([])
+const publishedOptions = computed(() => options.value.filter(option => option.published))
 const loadingVersions = ref(false)
 const versionError = ref('')
 const targetId = ref('')
@@ -68,10 +71,7 @@ async function loadVersions() {
   loadingVersions.value = true
   versionError.value = ''
   try {
-    const result = await listChangelog({ page: 1, size: 100 })
-    options.value = (result.data || [])
-      .filter(entry => entry.id && entry.versionLabel)
-      .map(entry => ({ id: entry.id, label: entry.versionLabel }))
+    options.value = await listFeedbackVersionOptions()
   } catch (e) {
     versionError.value = e.message || '版本列表加载失败'
   } finally {
