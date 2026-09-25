@@ -1,8 +1,7 @@
 import { reactive } from 'vue'
 
 export const BETA_COMMUNITY = Object.freeze({
-  groupNumber: '978744071',
-  qrSrc: '/community/yuanhub-beta-qq-group.jpg'
+  groupNumber: '978744071'
 })
 
 const AUTO_SHOWN_PREFIX = 'yuanhub:beta-community-auto-shown:v1'

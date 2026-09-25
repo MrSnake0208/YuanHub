@@ -84,19 +84,49 @@
      root /var/www/yuanhub/current;
      index index.html;
 
-     # 带 hash 的静态资源可长期缓存；HTML 必须每次校验
+     # 带 hash 的静态资源可长期缓存；入口 HTML 与 PWA 更新文件必须始终重新验证。
      location /assets/ {
        expires 1y;
        add_header Cache-Control "public, immutable";
      }
+
      location = /index.html {
-       add_header Cache-Control "no-cache";
+       expires -1;
+       add_header Cache-Control "no-cache, must-revalidate" always;
      }
+
+     # Service Worker 文件名固定为 /sw.js。它一旦被 CDN / 浏览器按普通 JS 缓存，
+     # 不同用户就可能继续被旧 worker 控制，出现刷新后回退到旧前端版本。
+     location = /sw.js {
+       expires -1;
+       add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+     }
+     location = /registerSW.js {
+       expires -1;
+       add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+     }
+     location = /manifest.webmanifest {
+       expires -1;
+       add_header Cache-Control "no-cache, must-revalidate" always;
+     }
+     location = /deploy-meta.json {
+       expires -1;
+       add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+     }
+
      location / {
        try_files $uri $uri/ /index.html;
      }
    }
    ```
+
+   如果主站前面接了阿里云 ESA，还要在 **规则 → 缓存规则** 增加一条 PWA 更新文件规则：
+
+   - 匹配路径：`/sw.js`、`/registerSW.js`、`/manifest.webmanifest`、`/deploy-meta.json`
+   - Cache Eligibility：**Bypass Cache / 绕过缓存**
+   - 不要把 `/assets/*` 放进这条规则；带 hash 的构建资源继续长期缓存
+
+   固定文件名的 Service Worker 必须由源站响应头或 ESA URL 规则明确禁止边缘缓存；仅依赖浏览器请求里的 `Cache-Control: no-cache` 不够。
 
 5. 服务器 A 需为 Linux（workflow 使用 GNU coreutils 的 `mv -T` 做原子符号链接切换）。
 

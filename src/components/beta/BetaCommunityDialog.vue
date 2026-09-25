@@ -47,21 +47,6 @@
             </p>
 
             <div class="community-main">
-              <div class="qr-card">
-                <img
-                  v-if="!qrFailed"
-                  :src="BETA_COMMUNITY.qrSrc"
-                  alt="YuanHub 内测交流群二维码，群号 978744071"
-                  @error="qrFailed = true"
-                >
-                <div v-else class="qr-placeholder" role="note">
-                  <QrCode :size="42" aria-hidden="true" />
-                  <strong>二维码暂未配置</strong>
-                  <span>可先通过右侧群号加入</span>
-                </div>
-                <span class="qr-caption">扫码加入交流群</span>
-              </div>
-
               <div class="community-details">
                 <div>
                   <span class="detail-label">内测交流群号</span>
@@ -99,10 +84,9 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Copy, MessageSquareText, QrCode, UsersRound, X } from '@lucide/vue'
+import { Copy, MessageSquareText, UsersRound, X } from '@lucide/vue'
 import { BETA_COMMUNITY, betaCommunity } from '@/store/betaCommunity.js'
 
-const qrFailed = ref(false)
 const copyState = ref('复制群号')
 const dialogEl = ref(null)
 const primaryButton = ref(null)
@@ -157,7 +141,6 @@ watch(
   visible => {
     if (visible) {
       opener = document.activeElement
-      qrFailed.value = false
       copyState.value = '复制群号'
       nextTick(() => primaryButton.value?.focus())
       return
@@ -201,7 +184,7 @@ watch(
 }
 
 .community-dialog {
-  width: min(680px, 100%);
+  width: min(560px, 100%);
   max-height: min(760px, calc(100vh - 44px));
   overflow: auto;
   border: 1px solid var(--line);
@@ -279,61 +262,7 @@ watch(
 }
 
 .community-main {
-  display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
-  gap: 20px;
-  align-items: stretch;
-}
-
-.qr-card {
-  min-height: 230px;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--cream);
-}
-
-.qr-card img,
-.qr-placeholder {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.qr-card img {
-  display: block;
-  object-fit: contain;
-}
-
-.qr-placeholder {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 7px;
-  padding: 16px;
-  border: 1px dashed var(--line);
-  color: var(--ink-60);
-  text-align: center;
-}
-
-.qr-placeholder strong {
-  color: var(--ink);
-  font-size: 13px;
-}
-
-.qr-placeholder span {
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.qr-caption {
-  color: var(--ink-60);
-  font: 750 11px/1.4 var(--font-b);
-  text-align: center;
+  min-width: 0;
 }
 
 .community-details {
@@ -342,7 +271,7 @@ watch(
   flex-direction: column;
   justify-content: space-between;
   gap: 18px;
-  padding: 6px 0;
+  padding: 0;
 }
 
 .detail-label {
@@ -475,17 +404,6 @@ watch(
 
   .community-intro {
     margin-bottom: 14px;
-  }
-
-  .community-main {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  .qr-card {
-    width: min(220px, 72vw);
-    min-height: 0;
-    margin: 0 auto;
   }
 
   .community-details {
