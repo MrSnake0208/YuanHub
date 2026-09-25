@@ -18,7 +18,8 @@ vi.mock('vue-router', async () => {
 vi.mock('../src/api/feedback.js', () => ({
   getFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(),
   createFeedback: vi.fn(), appendMyFeedbackMessage: vi.fn(), appendManagedFeedbackMessage: vi.fn(),
-  updateMyFeedbackStatus: vi.fn(), updateManagedFeedbackStatus: vi.fn(), downloadFeedbackAttachment: vi.fn()
+  updateMyFeedbackStatus: vi.fn(), updateManagedFeedbackStatus: vi.fn(), downloadFeedbackAttachment: vi.fn(),
+  listFeedbackVersionOptions: vi.fn(() => Promise.resolve([]))
 }))
 vi.mock('../src/api/notifications.js', () => ({
   listUnreadNotifications: vi.fn().mockResolvedValue([]),
