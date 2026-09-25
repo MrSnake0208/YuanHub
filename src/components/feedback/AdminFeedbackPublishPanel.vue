@@ -22,6 +22,12 @@
         <textarea v-model="form.publicSummary" class="feedback-form-control" rows="3" maxlength="1000" placeholder="适合公开展示的描述，不要包含用户隐私"></textarea>
       </label>
       <label>
+        <span>反馈类型</span>
+        <select v-model="form.type" class="feedback-form-control">
+          <option v-for="option in typeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
+        </select>
+      </label>
+      <label>
         <span>公开状态</span>
         <select v-model="form.publicStatus" class="feedback-form-control">
           <option v-for="option in statusOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
@@ -54,7 +60,7 @@
 
 <script setup>
 import { computed, reactive, watch } from 'vue'
-import { PUBLIC_STATUS_OPTIONS } from '@/utils/feedbackPublic.js'
+import { PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -67,14 +73,16 @@ const props = defineProps({
 const emit = defineEmits(['save', 'unpublish', 'merge'])
 
 const statusOptions = PUBLIC_STATUS_OPTIONS
+const typeOptions = PUBLIC_TYPE_OPTIONS
 const isPublic = computed(() => String(props.item?.visibility || '').toUpperCase() === 'PUBLIC')
 
-const form = reactive({ publicTitle: '', publicSummary: '', publicStatus: 'COLLECTING' })
+const form = reactive({ publicTitle: '', publicSummary: '', publicStatus: 'COLLECTING', type: 'BUG' })
 
 function sync() {
   form.publicTitle = props.item?.publicTitle || props.item?.title || ''
   form.publicSummary = props.item?.publicSummary || ''
   form.publicStatus = props.item?.publicStatus || 'COLLECTING'
+  form.type = props.item?.type || 'BUG'
 }
 
 watch(() => [props.item?.id, props.item?.visibility], sync, { immediate: true })
@@ -85,7 +93,8 @@ function save() {
   emit('save', {
     publicTitle,
     publicSummary: form.publicSummary.trim() || null,
-    publicStatus: form.publicStatus || 'COLLECTING'
+    publicStatus: form.publicStatus || 'COLLECTING',
+    type: form.type || undefined
   })
 }
 </script>

@@ -14,6 +14,7 @@ import {
   listFeedbackAccessGrants,
   normalizeFeedback,
   updateFeedbackAccessGrant,
+  updateFeedbackType,
   updateManagedFeedbackStatus,
   updateMyFeedbackStatus
 } from '../src/api/feedback.js'
@@ -41,6 +42,19 @@ async function withFetch(handler, fn) {
     globalThis.fetch = previous
   }
 }
+
+test('管理员修改反馈类型使用 PATCH 与规范化后的类型', async () => {
+  let captured = null
+  const result = await withFetch(async (url, opts) => {
+    captured = { url, opts }
+    return apiResponse({ id: 'rpt_1', type: 'FEATURE' })
+  }, () => updateFeedbackType('rpt_1', 'feature'))
+
+  assert.equal(captured.opts.method, 'PATCH')
+  assert.match(captured.url, /\/v1\/admin\/feedback\/rpt_1\/type$/)
+  assert.deepEqual(JSON.parse(captured.opts.body), { type: 'FEATURE' })
+  assert.equal(result.type, 'FEATURE')
+})
 
 // 应用诊断契约：三个 snake_case 键齐全且都是非空字符串（缺一后端就收不到该维度）。
 function assertDiagnosticsPayload(diagnostics) {

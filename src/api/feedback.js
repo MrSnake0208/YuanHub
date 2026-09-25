@@ -335,6 +335,16 @@ export async function mergeFeedback(id, targetFeedbackId) {
   return normalizeFeedback(data)
 }
 
+// 修改反馈类型;影响反馈广场展示与许愿池(PUBLIC + FEATURE)归属。
+export async function updateFeedbackType(id, type) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/type`, {
+    method: 'PATCH',
+    auth: true,
+    body: { type: String(type || '').toUpperCase() }
+  })
+  return normalizeFeedback(data)
+}
+
 // 关联/清除目标版本与完成版本;传 null 或空字符串表示清除。
 export async function updateFeedbackVersions(id, payload = {}) {
   const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/versions`, {
