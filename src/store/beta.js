@@ -2,6 +2,8 @@ import { reactive } from 'vue'
 import * as api from '../api/beta.js'
 import { betaAccessError } from '../utils/betaAccess.js'
 
+const PERSONAL_RATE_LIMIT_COOLDOWN_MS = 65_000
+
 /** Factory also lets Node tests verify real async race handling, rather than source-string guesses. */
 export function createBetaStore(client = api, now = () => Date.now()) {
   let generation = 0
@@ -10,6 +12,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
   let meRequest = null
   let publicAt = 0
   let meAt = 0
+  let meRateLimitedUntil = 0
   let pollTimer = null
   let deadlineTimer = null
   let subscribers = 0
@@ -27,6 +30,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       generation += 1
       meRequest = null
       meAt = 0
+      meRateLimitedUntil = 0
       state.userId = id
       state.mine = null
       state.personalError = ''
@@ -37,6 +41,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       generation += 1
       meRequest = null
       meAt = 0
+      meRateLimitedUntil = 0
       state.mine = null
       state.personalLoaded = true
       state.personalLoading = false
@@ -64,12 +69,14 @@ export function createBetaStore(client = api, now = () => Date.now()) {
     async loadMe({ force = false } = {}) {
       if (!state.userId) return null
       if (meRequest) return meRequest
+      if (meRateLimitedUntil > now()) return state.mine
       if (!force && state.mine && !state.personalError && now() - meAt < 15000) return state.mine
       const owner = state.userId
       const revision = generation
       state.personalLoading = true
       const pending = client.getBetaMe().then(data => {
         if (owner === state.userId && revision === generation) {
+          meRateLimitedUntil = 0
           state.mine = data; state.personalError = ''; state.personalLoaded = true; meAt = now()
           publicRevision += 1
           state.campaign = data.campaign; state.publicError = ''; publicAt = now(); armDeadline()
@@ -77,7 +84,14 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         return owner === state.userId && revision === generation ? data : null
       }).catch(error => {
         if (owner === state.userId && revision === generation) {
-          state.mine = null; state.personalError = error.message || '本人资格读取失败'; state.personalLoaded = true
+          if (error && error.status === 429) {
+            meRateLimitedUntil = now() + PERSONAL_RATE_LIMIT_COOLDOWN_MS
+            state.personalLoaded = true
+            if (!state.mine) state.personalError = '状态刷新过于频繁，已暂缓自动刷新，请稍后再试。'
+          } else {
+            meRateLimitedUntil = 0
+            state.mine = null; state.personalError = error.message || '本人资格读取失败'; state.personalLoaded = true
+          }
         }
         return null
       }).finally(() => {
@@ -100,7 +114,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         const result = await client.joinBeta(payload)
         if (owner !== state.userId || revision !== generation) return null
         // Invalidate reads started while this mutation was in flight.
-        generation += 1; meRequest = null; state.personalLoading = false
+        generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
@@ -119,7 +133,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       try {
         const result = await client.withdrawBeta()
         if (owner !== state.userId || revision !== generation) return null
-        generation += 1; meRequest = null; state.personalLoading = false
+        generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
@@ -137,7 +151,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       try {
         const result = await client.resetLocalTest()
         if (owner !== state.userId || revision !== generation) return null
-        generation += 1; meRequest = null; state.personalLoading = false
+        generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
