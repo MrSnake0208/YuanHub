@@ -1,4 +1,5 @@
 <template>
+  <VersionUpdateBanner />
   <a class="skip-link" href="#main-content">跳到主要内容</a>
   <Transition name="route-loader">
     <div
@@ -26,6 +27,7 @@
 import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
+import VersionUpdateBanner from '@/components/VersionUpdateBanner.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
 import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
 import BetaCommunityDialog from '@/components/beta/BetaCommunityDialog.vue'
