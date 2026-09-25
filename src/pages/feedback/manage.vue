@@ -104,25 +104,6 @@
               @page="changePage"
             >
               <template #detail="{ item }">
-                <AdminFeedbackPublishPanel
-                  v-if="item.viewerCanManage"
-                  :item="item"
-                  :busy="publicBusy"
-                  :message="publicMessage"
-                  :error="publicError"
-                  :format-date="formatDate"
-                  @save="savePublicInfo"
-                  @unpublish="unpublishPublicInfo"
-                  @merge="openMergeDialog"
-                />
-                <AdminFeedbackVersionSelector
-                  v-if="item.viewerCanManage"
-                  :item="item"
-                  :busy="versionBusy"
-                  :message="versionMessage"
-                  :error="versionError"
-                  @save="saveVersions"
-                />
                 <FeedbackTicketDetail
                   :item="item"
                   :loading="detailLoading"
@@ -132,6 +113,47 @@
                   viewer-actor-mode="ADMIN"
                   reporter-label="提交人"
                 >
+                  <template #management>
+                    <section v-if="item.viewerCanManage" class="feedback-admin-settings" aria-label="反馈管理设置">
+                      <header class="feedback-admin-settings-head">
+                        <div>
+                          <span>ADMIN / SETTINGS</span>
+                          <h3>管理设置</h3>
+                        </div>
+                        <small>按需展开</small>
+                      </header>
+                      <p class="feedback-admin-settings-lead">公开展示、版本归属和重复反馈属于后续管理操作，不影响日常查看与回复。</p>
+
+                      <div class="feedback-admin-settings-stack">
+                        <AdminFeedbackPublishPanel
+                          :item="item"
+                          :busy="publicBusy"
+                          :message="publicMessage"
+                          :error="publicError"
+                          :format-date="formatDate"
+                          @save="savePublicInfo"
+                          @unpublish="unpublishPublicInfo"
+                        />
+                        <AdminFeedbackVersionSelector
+                          :item="item"
+                          :busy="versionBusy"
+                          :message="versionMessage"
+                          :error="versionError"
+                          @save="saveVersions"
+                        />
+                      </div>
+
+                      <div class="feedback-admin-merge-row">
+                        <div>
+                          <strong>合并反馈</strong>
+                          <span>将重复工单合并到主反馈，统一后续跟踪。</span>
+                        </div>
+                        <button class="feedback-button" type="button" :disabled="mergeBusy" @click="openMergeDialog">
+                          {{ mergeBusy ? '处理中…' : '合并反馈' }}
+                        </button>
+                      </div>
+                    </section>
+                  </template>
                   <template #actions>
                     <div v-if="item.viewerCanManage" class="feedback-detail-actions">
                       <button v-if="item.status === 'OPEN'" class="feedback-button" type="button" @click="showReplyForm(item.id)">
@@ -641,4 +663,22 @@ onBeforeUnmount(() => {
 .permission-state { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 16px 0 48px; padding: 28px; border: 1px solid var(--feedback-line); background: var(--feedback-panel); color: var(--feedback-text-muted); text-align: center; }
 .permission-state strong { color: var(--feedback-text); font-size: 18px; }
 .permission-state .feedback-primary-action { margin-top: 8px; text-decoration: none; }
+.feedback-admin-settings { display: grid; gap: 10px; }
+.feedback-admin-settings-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 2px; }
+.feedback-admin-settings-head span { display: block; margin-bottom: 5px; color: var(--feedback-text-dim); font: 800 9.5px var(--font-d); letter-spacing: .14em; }
+.feedback-admin-settings-head h3 { color: var(--feedback-text); font-family: var(--font-s); font-size: 14px; font-weight: 900; }
+.feedback-admin-settings-head small { color: var(--feedback-text-dim); font-size: 10.5px; font-weight: 700; }
+.feedback-admin-settings-lead { margin: -2px 2px 2px; color: var(--feedback-text-muted); font-size: 11.5px; line-height: 1.65; }
+.feedback-admin-settings-stack { display: grid; gap: 8px; }
+.feedback-admin-merge-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.feedback-admin-merge-row > div { min-width: 0; display: grid; gap: 4px; }
+.feedback-admin-merge-row strong { color: var(--feedback-text); font-size: 12px; font-weight: 900; }
+.feedback-admin-merge-row span { color: var(--feedback-text-muted); font-size: 11px; line-height: 1.55; }
+.feedback-admin-merge-row .feedback-button { flex: none; }
+
+@media (max-width: 640px) {
+  .feedback-admin-settings-head { align-items: flex-start; }
+  .feedback-admin-merge-row { align-items: stretch; flex-direction: column; }
+  .feedback-admin-merge-row .feedback-button { width: 100%; justify-content: center; }
+}
 </style>

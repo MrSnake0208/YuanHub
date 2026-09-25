@@ -224,6 +224,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-detail-mask {
   --feedback-panel-deep: var(--surface);
   --feedback-panel: var(--cream);
+  --feedback-panel-hover: rgba(239, 210, 142, .16);
   --feedback-line: var(--line);
   --feedback-line-strong: rgba(156, 122, 77, .46);
   --feedback-text: var(--ink);
