@@ -88,6 +88,10 @@
       </div>
     </section>
 
+    <div v-if="!loading && !error && $slots.management" class="detail-management-area">
+      <slot name="management" :item="item" />
+    </div>
+
     <div v-if="!loading && item.status === 'OPEN'" class="detail-action-area">
       <slot name="actions" :item="item" />
       <slot name="composer" :item="item" />
@@ -266,6 +270,7 @@ watch(() => props.item?.id, () => {
 .detail-closure-meta span { color: var(--feedback-text-dim); font-size: 10px; font-weight: 800; }
 .detail-closure-meta strong { color: var(--feedback-text); font-size: 11.5px; }
 .detail-closure-meta time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.detail-management-area { padding: 22px 0 24px; }
 .detail-action-area { position: sticky; bottom: -26px; margin: 0 -26px -26px; padding: 16px 26px 20px; background: rgba(255, 253, 246, .96); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
 
 @media (max-width: 767px) {
