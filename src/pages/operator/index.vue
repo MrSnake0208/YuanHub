@@ -63,22 +63,16 @@
             :disabled="
               !auth.isLoggedIn ||
               accountsLoading ||
-              accountBusy ||
               editing ||
               starLoadoutOpen ||
               starLoadoutLoading ||
               starLoadoutSaving
             "
-            :game-disabled="accountsLoading || accountBusy || editing || starLoadoutOpen || starLoadoutLoading || starLoadoutSaving"
-            :busy="accountBusy"
-            heading-title="选择要查看的账号"
-            heading-sub="密探、库存和游戏版本都会跟随这个子账号，在两边自动保持一致。"
-            new-placeholder="新子账号名称（1~64 字）"
+            :game-editable="false"
+            :manage-enabled="false"
+            heading-title="当前数据账号"
+            heading-sub="这里只切换本次查看和录入的账号；账号名称与所属游戏统一在个人中心管理。"
             @change="onAccountChange"
-            @game-change="onGameChange"
-            @create="onCreateAccount"
-            @rename="onRenameAccount"
-            @delete="onDeleteAccount"
           >
             <template #actions>
               <button
@@ -922,7 +916,7 @@
               <ul>
                 <li v-for="entry in orphanCurrentEntries" :key="entry.id">
                   <span><b>{{ entry.name || entry.id }}</b><small>Lv.{{ entry.level }} · 修为 {{ entry.elite }}<template v-if="entry.name"> · {{ entry.id }}</template></small></span>
-                  <button type="button" class="btn ghost" :disabled="!!removingOrphanId || loading || accountBusy" @click="removeOrphanCurrent(entry)">{{ removingOrphanId === entry.id ? '移除中…' : '移除旧养成' }}</button>
+                  <button type="button" class="btn ghost" :disabled="!!removingOrphanId || loading" @click="removeOrphanCurrent(entry)">{{ removingOrphanId === entry.id ? '移除中…' : '移除旧养成' }}</button>
                 </li>
               </ul>
             </section>
@@ -3049,10 +3043,6 @@ const OperatorGrowthTracker = defineAsyncComponent(function () {
 import {
   getOperatorCatalog,
   listOperatorAccounts,
-  createOperatorAccount,
-  updateOperatorAccountGame,
-  renameOperatorAccount,
-  deleteOperatorAccount,
   getOperatorCurrent,
   removeOrphanOperatorCurrent,
   patchOperatorCurrent,
@@ -3067,7 +3057,7 @@ import {
 import { avatarUrl } from "../../api/request.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import { auth } from "../../store/auth.js";
-import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
+import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
 import { operatorUpdateFromEvent } from "../../utils/operatorEvents.js";
 import {
@@ -3437,7 +3427,6 @@ async function copyLedgerShare() {
   shareCopyTimer = setTimeout(() => { shareCopyFeedback.value = ""; }, ok ? 2200 : 4000);
 }
 const accountsLoading = ref(false);
-const accountBusy = ref(false);
 const accountError = ref("");
 const exportAll = ref(false);
 const currentAccountName = computed(function () {
@@ -7614,39 +7603,6 @@ async function openPlannerGrowthAction(row, field, step) {
   await openGrowthAction(entry, field, step);
 }
 
-async function onGameChange(game) {
-  importConfirmReview.value = false;
-  importResult.value = null;
-  resetImportPreview();
-  const targetAccountId = accountId.value;
-  const account = accounts.value.find(function (item) {
-    return item.id === targetAccountId;
-  });
-  // 未升级的账号响应没有 game，继续使用本地映射；新版后端则写回账号权威值。
-  if (targetAccountId && account && isAccountGame(account.game)) {
-    const previousGame = account.game;
-    accountBusy.value = true;
-    accountError.value = "";
-    try {
-      const updated = await updateOperatorAccountGame(targetAccountId, game);
-      if (accountId.value !== targetAccountId) return;
-      Object.assign(account, updated || {}, {
-        game: isAccountGame(updated && updated.game) ? updated.game : game,
-      });
-      activeAccount.setGame(account.game, targetAccountId);
-    } catch (err) {
-      if (accountId.value === targetAccountId) {
-        activeAccount.setGame(previousGame, targetAccountId);
-        accountError.value = humanErr(err, "游戏版本保存失败");
-      }
-    } finally {
-      if (accountId.value === targetAccountId) accountBusy.value = false;
-    }
-  }
-  currentEntries.value = [];
-  reloadCurrent();
-}
-
 // —— 公开目录 ——
 async function loadCatalog() {
   catalogLoading.value = true;
@@ -7700,84 +7656,6 @@ function onAccountChange() {
   clearAgentFavorites();
   loadAgentFavorites();
   reloadCurrent();
-}
-
-async function onCreateAccount(rawName) {
-  const name = (rawName || "").trim();
-  if (!name) return;
-  const selectedGame = gameFilter.value;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    const created = await createOperatorAccount(name, selectedGame);
-    await loadAccounts();
-    if (created && created.id) {
-      activeAccount.setGame(
-        isAccountGame(created.game) ? created.game : selectedGame,
-        created.id,
-      );
-      accountId.value = created.id;
-    }
-    onAccountChange();
-  } catch (err) {
-    accountError.value = humanErr(err, "创建子账号失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-
-async function onRenameAccount(acc) {
-  const name = await dialog.prompt({
-    title: "修改子账号名称",
-    message: "修改子账号名称（1~64 字）：",
-    value: acc.name || "",
-  });
-  if (name == null) return;
-  const trimmed = name.trim();
-  if (!trimmed) {
-    accountError.value = "名称不能为空";
-    return;
-  }
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    await renameOperatorAccount(acc.id, trimmed);
-    await loadAccounts();
-  } catch (err) {
-    accountError.value = humanErr(err, "改名失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-
-async function onDeleteAccount(acc) {
-  const ok = await dialog.confirm({
-    title: "删除子账号",
-    message:
-      "删除子账号「" +
-      acc.name +
-      "」？该账号的密探数据、库存数据、特别关注和所有 API Token 都会被一并清除，且不可恢复。",
-    type: "danger",
-    confirmText: "删除",
-  });
-  if (!ok) return;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    await deleteOperatorAccount(acc.id);
-    activeAccount.forgetGame(acc.id);
-    await loadAccounts();
-    const still = accounts.value.some(function (a) {
-      return a.id === accountId.value;
-    });
-    if (!still)
-      accountId.value = accounts.value.length ? accounts.value[0].id : "";
-    onAccountChange();
-  } catch (err) {
-    accountError.value = humanErr(err, "删除账号失败");
-  } finally {
-    accountBusy.value = false;
-  }
 }
 
 // —— 当前养成 ——

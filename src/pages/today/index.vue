@@ -30,7 +30,7 @@
               </select>
             </label>
             <p v-else-if="auth.isLoggedIn && loading">正在读取你的账号状态…</p>
-            <p v-else-if="auth.isLoggedIn">尚未建立子账号，先从今天的第一步开始。</p>
+            <p v-else-if="auth.isLoggedIn">尚未建立游戏账号，请先前往个人中心创建。</p>
             <p v-else>这是示例状态。登录后会换成你的账号、密探和库存数据。</p>
           </div>
         </div>
@@ -72,72 +72,29 @@
               </div>
             </div>
 
-            <form
+            <div
               v-else-if="onboardingStage === 'account'"
-              class="inline-account-card"
+              class="inline-account-card account-management-card"
               data-tour="today-create-account"
               aria-labelledby="inline-account-title"
-              @submit.prevent="createTodayAccount"
             >
               <div class="inline-account-intro">
                 <span class="entry-icon" aria-hidden="true"><Users :size="20" /></span>
                 <div>
-                  <h3 id="inline-account-title">创建第一个子账号</h3>
-                  <p>名称只用于区分你的游戏存档；密探、库存、奖励和连接码都会归到这个账号。</p>
+                  <h3 id="inline-account-title">先建立你的游戏账号</h3>
+                  <p>账号名称和所属游戏统一在个人中心维护。创建完成后，今日一览会自动继续检查这个账号的数据。</p>
                 </div>
               </div>
-
-              <fieldset class="account-game-choice">
-                <legend>游戏版本</legend>
-                <div class="account-game-options">
-                  <label
-                    v-for="game in ACCOUNT_GAMES"
-                    :key="game"
-                    :class="{ selected: newAccountGame === game }"
-                  >
-                    <input
-                      v-model="newAccountGame"
-                      type="radio"
-                      name="today-account-game"
-                      :value="game"
-                      :disabled="creatingAccount"
-                    />
-                    <span>{{ game }}</span>
-                  </label>
-                </div>
-              </fieldset>
-
-              <label class="account-name-field" for="today-account-name">
-                <span>账号名称</span>
-                <input
-                  id="today-account-name"
-                  v-model="newAccountName"
-                  maxlength="64"
-                  autocomplete="off"
-                  placeholder="例如：大鸟大号"
-                  :disabled="creatingAccount"
-                />
-              </label>
-
-              <div class="inline-account-actions">
-                <p v-if="accountCreateError" class="account-create-error" role="alert">
-                  {{ accountCreateError }}
-                </p>
-                <button
-                  type="submit"
-                  class="entry-primary-button"
-                  :disabled="creatingAccount || !newAccountName.trim()"
-                >
-                  {{ creatingAccount ? '正在创建…' : '创建并开始录入' }}
-                  <ArrowRight :size="16" aria-hidden="true" />
-                </button>
-              </div>
-            </form>
+              <router-link
+                class="entry-primary-action account-management-action"
+                :to="{ path: '/user/profile', hash: '#game-accounts' }"
+              >
+                去个人中心创建账号
+                <ArrowRight :size="16" aria-hidden="true" />
+              </router-link>
+            </div>
 
             <div v-else-if="onboardingStage === 'data'" class="entry-choice-wrap" data-tour="today-entry-choice">
-              <p v-if="createdAccountName" class="account-created-note" role="status">
-                已创建“{{ createdAccountName }}”。下面会按功能分别检查，已经有的数据不会重复要求录入。
-              </p>
               <div class="data-readiness-grid" aria-label="当前账号的数据准备状态">
                 <article
                   v-for="item in dataSetupItems"
@@ -207,13 +164,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { ArrowRight, Gem, Hammer, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import { createAccount, listAccounts } from '../../api/accounts.js'
+import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent, listAgentFavorites } from '../../api/inventory.js'
 import { getUnreadNotificationCount } from '../../api/notifications.js'
 import { getCurrentStarState } from '../../api/starState.js'
 import { auth } from '../../store/auth.js'
-import { ACCOUNT_GAMES, DEFAULT_ACCOUNT_GAME, activeAccount } from '../../store/activeAccount.js'
+import { activeAccount } from '../../store/activeAccount.js'
 import {
   getTodayDataReadiness,
   getTodayOnboardingStage,
@@ -266,11 +223,6 @@ const realSummary = ref({ ...EMPTY_SUMMARY })
 const loading = ref(false)
 const errorMessage = ref('')
 const accountLoadFailed = ref(false)
-const creatingAccount = ref(false)
-const newAccountName = ref('')
-const newAccountGame = ref(DEFAULT_ACCOUNT_GAME)
-const accountCreateError = ref('')
-const createdAccountName = ref('')
 let loadSequence = 0
 
 const accountId = computed({
@@ -335,7 +287,7 @@ const onboardingDescription = computed(function () {
     return '今日一览会根据你的真实数据给出提示。先登录，之后会继续判断是否需要创建子账号。'
   }
   if (onboardingStage.value === 'account') {
-    return '密探、库存、星石和自动同步数据都需要先归属到一个游戏子账号。直接在这里创建即可。'
+    return '密探、库存、星石和自动同步数据都需要先归属到一个游戏账号。账号统一在个人中心创建和维护。'
   }
   return 'YuanHub 已分别检查当前子账号的密探、库存和星石。缺哪一项就只补哪一项，已有数据不会重复要求录入。'
 })
@@ -353,45 +305,19 @@ const maaYuanConnectTo = computed(function () {
 })
 const heroPrimaryTo = computed(function () {
   if (onboardingStage.value === 'auth') return { path: '/login', query: { redirect: '/' } }
+  if (onboardingStage.value === 'account') return { path: '/user/profile', hash: '#game-accounts' }
   if (showDataOnboarding.value) return '/#data-onboarding-title'
   return '/operator/quick'
 })
 const heroPrimaryLabel = computed(function () {
   if (onboardingStage.value === 'auth') return '登录并开始'
-  if (onboardingStage.value === 'account') return '先创建子账号'
+  if (onboardingStage.value === 'account') return '去创建游戏账号'
   if (onboardingStage.value === 'data') return '继续补齐 ' + missingDataItems.value.length + ' 项数据'
   return '快速更新数据'
 })
 function readableError(error, fallback) {
   if (!error || !error.message) return fallback
   return /Failed to fetch|NetworkError|fetch/i.test(error.message) ? '网络异常，请稍后重试' : error.message
-}
-
-async function createTodayAccount() {
-  if (creatingAccount.value) return
-  const name = newAccountName.value.trim()
-  if (!name) {
-    accountCreateError.value = '请填写一个方便辨认的账号名称'
-    return
-  }
-
-  creatingAccount.value = true
-  accountCreateError.value = ''
-  try {
-    const created = await createAccount(name, newAccountGame.value)
-    if (!created || !created.id) throw new Error('账号已创建，但没有返回账号编号，请重新加载')
-
-    accounts.value = accounts.value.concat(created)
-    activeAccount.syncAccounts(accounts.value)
-    activeAccount.set(created.id)
-    createdAccountName.value = created.name || name
-    newAccountName.value = ''
-    realSummary.value = { ...EMPTY_SUMMARY }
-  } catch (error) {
-    accountCreateError.value = readableError(error, '子账号创建失败，请稍后重试')
-  } finally {
-    creatingAccount.value = false
-  }
 }
 
 async function loadDashboard() {
@@ -501,6 +427,9 @@ onMounted(loadDashboard)
 .inline-account-intro { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 13px; grid-column: 1 / -1; }
 .inline-account-intro h3 { font-family: var(--font-s); font-size: 19px; font-weight: 900; }
 .inline-account-intro p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
+.account-management-card { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.account-management-card .inline-account-intro { grid-column: auto; }
+.account-management-action { white-space: nowrap; }
 .account-game-choice { margin: 0; padding: 0; border: 0; }
 .account-game-choice legend, .account-name-field > span { display: block; margin-bottom: 8px; color: rgba(73, 59, 44, .66); font-size: 11px; font-weight: 900; letter-spacing: .05em; }
 .account-game-options { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -58,17 +58,13 @@
             :accounts="accounts"
             :error="accountError"
             :disabled="
-              !auth.isLoggedIn || accountsLoading || accountBusy || editingStock || rewardImportBusy
+              !auth.isLoggedIn || accountsLoading || editingStock || rewardImportBusy
             "
-            :game-disabled="accountsLoading || accountBusy || editingStock || rewardImportBusy"
-            :busy="accountBusy"
-            heading-title="选择要查看的账号"
-            heading-sub="库存、密探和游戏版本都会跟随这个子账号，在两边自动保持一致。"
+            :game-editable="false"
+            :manage-enabled="false"
+            heading-title="当前数据账号"
+            heading-sub="这里只切换本次查看和录入的账号；账号名称与所属游戏统一在个人中心管理。"
             @change="onAccountChange"
-            @game-change="onAccountGameChange"
-            @create="onCreateAccount"
-            @rename="onRenameAccount"
-            @delete="onDeleteAccount"
           >
             <template #actions>
               <button
@@ -1567,7 +1563,7 @@
                   :account-id="accountId"
                   :account-name="currentAccountName"
                   :latest-inventory-at="latestInventoryRecordAt"
-                  :disabled="!auth.isLoggedIn || !accountId || accountsLoading || accountBusy || editingStock"
+                  :disabled="!auth.isLoggedIn || !accountId || accountsLoading || editingStock"
                   @busy="rewardImportBusy = $event"
                   @imported="onRewardImported"
                 />
@@ -1755,10 +1751,6 @@ import {
   listRecords,
   deleteRecord,
   listAccounts,
-  createAccount,
-  updateAccountGame,
-  renameAccount,
-  deleteAccount,
   listAgentFavorites,
   addAgentFavorite,
   removeAgentFavorite,
@@ -1769,7 +1761,7 @@ import {
   setInventoryToastFavoriteAgentIds,
   subscribeAccountEvents,
 } from "../../store/accountEvents.js";
-import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
+import { activeAccount } from "../../store/activeAccount.js";
 import {
   CATALOG_VERSION,
   ITEM_CATALOG,
@@ -1987,7 +1979,6 @@ const agentGameFilter = computed({
   },
 });
 const accountsLoading = ref(false);
-const accountBusy = ref(false);
 const accountError = ref("");
 const exportAll = ref(false);
 const inventoryExportScopeOptions = computed(function () {
@@ -2228,105 +2219,6 @@ function onAccountChange() {
   if (entityType.value === "agent") loadAgentFavorites();
   if (activeTab.value === "acquired") loadAcquired();
   if (activeTab.value === "records") loadRecords(true);
-}
-
-async function onAccountGameChange(game) {
-  const targetAccountId = accountId.value;
-  const account = accounts.value.find(function (item) {
-    return item.id === targetAccountId;
-  });
-  // 旧后端没有 game 字段时只使用本地映射；新版后端上线后再写回权威值。
-  if (!targetAccountId || !account || !isAccountGame(account.game)) return;
-  const previousGame = account.game;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    const updated = await updateAccountGame(targetAccountId, game);
-    if (accountId.value !== targetAccountId) return;
-    Object.assign(account, updated || {}, {
-      game: isAccountGame(updated && updated.game) ? updated.game : game,
-    });
-    activeAccount.setGame(account.game, targetAccountId);
-  } catch (err) {
-    if (accountId.value === targetAccountId) {
-      activeAccount.setGame(previousGame, targetAccountId);
-      accountError.value = humanErr(err, "游戏版本保存失败");
-    }
-  } finally {
-    if (accountId.value === targetAccountId) accountBusy.value = false;
-  }
-}
-
-async function onCreateAccount(rawName) {
-  const name = (rawName || "").trim();
-  if (!name) return;
-  const selectedGame = agentGameFilter.value;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    const created = await createAccount(name, selectedGame);
-    await loadAccounts();
-    if (created && created.id) {
-      activeAccount.setGame(
-        isAccountGame(created.game) ? created.game : selectedGame,
-        created.id,
-      );
-      accountId.value = created.id;
-    }
-    onAccountChange();
-  } catch (err) {
-    accountError.value = humanErr(err, "创建账号失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-
-async function onRenameAccount(acc) {
-  const name = prompt("修改子账号名称（1~64 字）：", acc.name || "");
-  if (name == null) return;
-  const trimmed = name.trim();
-  if (!trimmed) {
-    accountError.value = "名称不能为空";
-    return;
-  }
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    await renameAccount(acc.id, trimmed);
-    await loadAccounts();
-  } catch (err) {
-    accountError.value = humanErr(err, "改名失败");
-  } finally {
-    accountBusy.value = false;
-  }
-}
-
-async function onDeleteAccount(acc) {
-  if (
-    !confirm(
-      "删除子账号「" +
-        acc.name +
-        "」？该账号的库存数据、密探数据、特别关注和所有 API Token 都会被一并清除，且不可恢复。",
-    )
-  )
-    return;
-  accountBusy.value = true;
-  accountError.value = "";
-  try {
-    await deleteAccount(acc.id);
-    activeAccount.forgetGame(acc.id);
-    await loadAccounts();
-    const still = accounts.value.some(function (a) {
-      return a.id === accountId.value;
-    });
-    if (!still)
-      accountId.value = accounts.value.length ? accounts.value[0].id : "";
-    onAccountChange();
-  } catch (err) {
-    accountError.value = humanErr(err, "删除账号失败");
-  } finally {
-    accountBusy.value = false;
-  }
 }
 
 // 展示用日期（输入框仍使用 YYYY-MM-DD）；统计区间的实际边界由北京时间 05:00 生成。

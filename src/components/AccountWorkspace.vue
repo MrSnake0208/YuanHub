@@ -38,9 +38,9 @@
           </select>
           <span v-if="error" class="ac-warn">{{ error }}</span>
         </div>
-        <fieldset class="account-game" :disabled="gameDisabled">
-          <legend class="ac-label">游戏版本</legend>
-          <div class="account-game-options" role="radiogroup" aria-label="当前子账号游戏版本">
+        <fieldset v-if="gameEditable" class="account-game" :disabled="gameDisabled">
+          <legend class="ac-label">所属游戏</legend>
+          <div class="account-game-options" role="radiogroup" aria-label="当前账号所属游戏">
             <label v-for="option in gameOptions" :key="option" :class="{ on: game === option }">
               <input
                 type="radio"
@@ -54,8 +54,14 @@
             </label>
           </div>
         </fieldset>
+        <div v-else class="account-game account-game-readonly">
+          <span class="ac-label">所属游戏</span>
+          <strong>{{ game }}</strong>
+          <small>账号属性仅在个人中心修改</small>
+        </div>
       </div>
       <button
+        v-if="manageEnabled"
         type="button"
         class="act-btn account-manage"
         :disabled="disabled"
@@ -64,10 +70,13 @@
       >
         <Users :size="15" aria-hidden="true" />{{ open ? '收起账号管理' : '管理账号' }}
       </button>
+      <router-link v-else class="act-btn account-manage account-manage-link" :to="manageTo">
+        <Users :size="15" aria-hidden="true" />管理游戏账号
+      </router-link>
       <slot name="actions" />
     </div>
 
-    <div v-if="open && !disabled" class="account-mgr">
+    <div v-if="manageEnabled && open && !disabled" class="account-mgr">
       <div class="account-mgr-head">
         <div>
           <h3>账号列表</h3>
@@ -128,8 +137,12 @@ const props = defineProps({
   error: { type: String, default: '' },
   // 禁用选择器与管理（未登录 / 装载中 / 正在编辑等）
   disabled: { type: Boolean, default: false },
-  // 版本可以在只读浏览时切换；仅在页面正在切换上下文或编辑时单独禁用。
+  // 只有统一账号管理入口允许修改所属游戏；业务页面只读展示。
+  gameEditable: { type: Boolean, default: true },
   gameDisabled: { type: Boolean, default: false },
+  // 业务页面关闭账号 CRUD，仅保留跳转到统一管理入口。
+  manageEnabled: { type: Boolean, default: true },
+  manageTo: { type: [String, Object], default: '/user/profile#game-accounts' },
   // 账号操作进行中（新建/改名/删除）
   busy: { type: Boolean, default: false },
   // Gives pages without an action slot the same title-first layout as inventory.
@@ -237,11 +250,13 @@ function submitCreate() {
 .account-game-options label:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .account-game-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none }
 .account-game small { display: block; margin-top: 5px; color: var(--ink-35); font-size: 10px; font-weight: 700; line-height: 1.35; white-space: nowrap }
+.account-game-readonly strong { display: flex; min-height: 44px; align-items: center; margin-top: 6px; padding: 0 13px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--cream); color: var(--ink); font-size: 13px; font-weight: 900 }
 .account-game:disabled { opacity: .52 }
 .account-game:disabled .account-game-options label { cursor: not-allowed }
 
 .act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px }
 .account-manage { min-height: 44px; align-self: center; transform: translateY(9px) }
+.account-manage-link { text-decoration: none }
 .account-manage svg { flex: none }
 
 .account-mgr { border-top: 1px dashed var(--line); background: var(--cream); padding: 20px 24px 22px }
