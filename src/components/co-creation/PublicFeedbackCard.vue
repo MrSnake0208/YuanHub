@@ -14,8 +14,19 @@
     </header>
     <h3 class="public-card-title">{{ item.publicTitle || '未命名反馈' }}</h3>
     <p v-if="item.publicSummary" class="public-card-summary">{{ item.publicSummary }}</p>
+    <p v-if="showVersion && item.targetVersionLabel" class="public-card-version">目标版本：{{ item.targetVersionLabel }}</p>
     <footer class="public-card-foot">
-      <span class="public-card-support">
+      <FeedbackSupportButton
+        v-if="showSupport"
+        class="public-card-support-button"
+        :id="item.id"
+        :type="item.type"
+        :supported="item.supportedByCurrentUser"
+        :support-count="item.supportCount"
+        @click.stop
+        @updated="$emit('updated', $event)"
+      />
+      <span v-else class="public-card-support">
         <Heart :size="14" aria-hidden="true" />
         {{ item.supportCount }} 人支持
       </span>
@@ -28,13 +39,16 @@
 import { Heart } from '@lucide/vue'
 import FeedbackStatusBadge from '@/components/feedback/FeedbackStatusBadge.vue'
 import FeedbackTypeBadge from '@/components/feedback/FeedbackTypeBadge.vue'
+import FeedbackSupportButton from '@/components/co-creation/FeedbackSupportButton.vue'
 
 defineProps({
   item: { type: Object, required: true },
-  formatDate: { type: Function, required: true }
+  formatDate: { type: Function, required: true },
+  showSupport: { type: Boolean, default: false },
+  showVersion: { type: Boolean, default: false }
 })
 
-defineEmits(['open'])
+defineEmits(['open', 'updated'])
 </script>
 
 <style scoped>
@@ -64,7 +78,9 @@ defineEmits(['open'])
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+.public-card-version { color: var(--feedback-text-dim); font: 11px var(--font-d); }
 .public-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
 .public-card-support { display: inline-flex; align-items: center; gap: 5px; color: var(--rouge); font-size: 12px; font-weight: 800; }
+.public-card-support-button { flex: none; }
 .public-card-foot time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 </style>

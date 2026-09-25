@@ -23,6 +23,8 @@ export function normalizePublicFeedback(raw) {
     publishedAt: raw.publishedAt ?? raw.published_at ?? null,
     publicUpdatedAt: raw.publicUpdatedAt ?? raw.public_updated_at ?? null,
     completedAt: raw.completedAt ?? raw.completed_at ?? null,
+    targetVersionLabel: raw.targetVersionLabel ?? raw.target_version_label ?? '',
+    completedVersionLabel: raw.completedVersionLabel ?? raw.completed_version_label ?? '',
     mergedInto: normalizeMerged(raw.mergedInto ?? raw.merged_into)
   }
 }
@@ -34,6 +36,7 @@ export async function listPublicFeedback(params = {}) {
   if (params.type) qs.set('type', params.type)
   if (params.status) qs.set('status', params.status)
   if (params.keyword) qs.set('keyword', params.keyword)
+  if (params.completedVersionId) qs.set('completedVersionId', params.completedVersionId)
   if (params.sort) qs.set('sort', params.sort)
   const query = qs.toString()
   const data = await request('/v1/reports/public' + (query ? '?' + query : ''), {})

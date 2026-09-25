@@ -75,37 +75,24 @@
       </div>
     </footer>
 
-    <Teleport to="body">
-      <div v-if="detailOpen" class="modal-mask" role="presentation" @click.self="closeDetail">
-        <div class="modal plaza-detail-modal" role="dialog" aria-modal="true" aria-labelledby="public-detail-title" @keydown.esc.prevent="closeDetail">
-          <div class="modal-head">
-            <div>
-              <span class="plaza-detail-kicker">PLAZA / FEEDBACK</span>
-              <h2 id="public-detail-title">反馈详情</h2>
-            </div>
-            <button type="button" aria-label="关闭详情" title="关闭" @click="closeDetail"><X :size="20" /></button>
-          </div>
-          <div class="plaza-detail-body">
-            <PublicFeedbackDetail
-              :item="detail"
-              :loading="detailLoading"
-              :error="detailError"
-              :format-date="formatDate"
-              @updated="onDetailUpdated"
-            />
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <PublicFeedbackDetailModal
+      :open="detailOpen"
+      :item="detail"
+      :loading="detailLoading"
+      :error="detailError"
+      :format-date="formatDate"
+      @close="closeDetail"
+      @updated="onDetailUpdated"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowRight, ChevronLeft, ChevronRight, Inbox, RefreshCw, Search, X } from '@lucide/vue'
+import { ArrowRight, ChevronLeft, ChevronRight, Inbox, RefreshCw, Search } from '@lucide/vue'
 import PublicFeedbackCard from '@/components/co-creation/PublicFeedbackCard.vue'
-import PublicFeedbackDetail from '@/components/co-creation/PublicFeedbackDetail.vue'
+import PublicFeedbackDetailModal from '@/components/co-creation/PublicFeedbackDetailModal.vue'
 import { getPublicFeedback, listPublicFeedback } from '@/api/coCreation.js'
 import { PUBLIC_SORT_OPTIONS, PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
 
@@ -267,7 +254,5 @@ onBeforeUnmount(() => {
 .plaza-pagination button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
 .plaza-pagination button:first-child { border-left: 0; }
 .plaza-pagination button:disabled { opacity: .3; cursor: default; }
-.plaza-detail-modal { width: min(720px, calc(100vw - 28px)); max-height: min(820px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
-.plaza-detail-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .16em; }
-.plaza-detail-body { min-height: 0; overflow-y: auto; padding: 18px 20px 22px; }
+
 </style>

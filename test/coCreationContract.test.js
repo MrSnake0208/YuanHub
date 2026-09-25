@@ -93,6 +93,26 @@ test('listPublicFeedback sends filters and normalizes the page envelope', async 
   assert.equal(result.items[0].supportCount, 3)
 })
 
+test('normalizePublicFeedback keeps version labels for roadmap/detail', () => {
+  const item = normalizePublicFeedback({
+    id: 'rpt_versioned',
+    target_version_label: '0.0.2',
+    completed_version_label: '0.0.1-beta.5'
+  })
+  assert.equal(item.targetVersionLabel, '0.0.2')
+  assert.equal(item.completedVersionLabel, '0.0.1-beta.5')
+})
+
+test('listPublicFeedback forwards completedVersionId for changelog back-reference', async () => {
+  let captured = null
+  await withFetch(async url => {
+    captured = url
+    return apiResponse({ items: [], total: 0, page: 1, page_size: 12 })
+  }, () => listPublicFeedback({ completedVersionId: 'chg_1', page: 1, pageSize: 12 }))
+
+  assert.match(captured, /completedVersionId=chg_1/)
+})
+
 test('findSimilarFeedback returns a normalized list and encodes the title', async () => {
   let captured = null
   const result = await withFetch(async url => {

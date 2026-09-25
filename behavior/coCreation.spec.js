@@ -3,6 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import FeedbackPlaza from '../src/components/co-creation/FeedbackPlaza.vue'
 import FeedbackSupportButton from '../src/components/co-creation/FeedbackSupportButton.vue'
 import SimilarFeedbackList from '../src/components/co-creation/SimilarFeedbackList.vue'
+import FeatureWishPool from '../src/components/co-creation/FeatureWishPool.vue'
+import DevelopmentRoadmap from '../src/components/co-creation/DevelopmentRoadmap.vue'
 import * as api from '../src/api/coCreation.js'
 
 vi.mock('vue-router', () => ({
@@ -126,5 +128,51 @@ describe('SimilarFeedbackList', () => {
   it('renders nothing when there are no candidates and not loading', () => {
     const wrapper = render(SimilarFeedbackList, { props: { items: [], loading: false } })
     expect(wrapper.text()).toBe('')
+  })
+})
+
+describe('FeatureWishPool', () => {
+  it('requests only FEATURE feedback and renders support buttons', async () => {
+    api.listPublicFeedback.mockResolvedValue({
+      items: [publicItem({ id: 'rpt_wish', type: 'FEATURE', publicTitle: '暗色模式', supportCount: 126 })],
+      total: 1,
+      page: 1,
+      pageSize: 12
+    })
+    const wrapper = render(FeatureWishPool)
+    await flushPromises()
+
+    expect(api.listPublicFeedback).toHaveBeenCalledWith(expect.objectContaining({ type: 'FEATURE', sort: 'hot' }))
+    expect(wrapper.text()).toContain('暗色模式')
+    expect(wrapper.text()).toContain('不代表最终开发优先级')
+    expect(wrapper.find('.support-button').exists()).toBe(true)
+  })
+
+  it('shows the wish-pool empty state', async () => {
+    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 12 })
+    const wrapper = render(FeatureWishPool)
+    await flushPromises()
+    expect(wrapper.get('.wish-state.empty').text()).toContain('暂时还没有公开的功能建议')
+  })
+})
+
+describe('DevelopmentRoadmap', () => {
+  it('groups public feedback by publicStatus into three columns', async () => {
+    api.listPublicFeedback.mockImplementation(({ status }) => Promise.resolve({
+      items: [publicItem({ id: 'rpt_' + status, publicTitle: '标题 ' + status, publicStatus: status })],
+      total: 1,
+      page: 1,
+      pageSize: 12
+    }))
+    const wrapper = render(DevelopmentRoadmap)
+    await flushPromises()
+
+    expect(api.listPublicFeedback).toHaveBeenCalledTimes(3)
+    expect(wrapper.text()).toContain('计划中')
+    expect(wrapper.text()).toContain('开发中')
+    expect(wrapper.text()).toContain('最近完成')
+    expect(wrapper.text()).toContain('标题 PLANNED')
+    expect(wrapper.text()).toContain('标题 IN_PROGRESS')
+    expect(wrapper.text()).toContain('标题 COMPLETED')
   })
 })
