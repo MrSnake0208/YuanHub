@@ -51,6 +51,15 @@
 
       <section>
         <div class="wrap">
+          <DataAccountContextBar
+            :accounts="accounts"
+            :account-id="accountId"
+            :game="agentGameFilter"
+            :is-logged-in="auth.isLoggedIn"
+            :loading="accountsLoading"
+            description="当前库存、奖励流水与统计数据均归属此账号。"
+          />
+
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             v-model:accountId="accountId"
@@ -1735,6 +1744,7 @@ import {
   X,
 } from "@lucide/vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";

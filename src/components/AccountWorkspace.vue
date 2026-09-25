@@ -24,17 +24,17 @@
           <div v-if="softDropdown" ref="softDropdownRoot" class="account-soft-dropdown" @keydown.escape.prevent="closeAccountDropdown">
             <select ref="accountSelect" :id="selectId" class="account-native-select" :value="accountId" :disabled="disabled" :aria-invalid="!!error" aria-hidden="true" tabindex="-1" @change="onSelectChange">
               <option v-if="!accounts.length" value="">（未创建）</option>
-              <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+              <option v-for="a in accounts" :key="a.id" :value="a.id">{{ accountOptionLabel(a) }}</option>
             </select>
             <button type="button" class="account-soft-trigger" :disabled="disabled" aria-haspopup="listbox" :aria-expanded="accountDropdownOpen" @click="toggleAccountDropdown">{{ selectedAccountLabel }}</button>
             <div v-if="accountDropdownOpen" class="account-soft-listbox" role="listbox">
               <button v-if="!accounts.length" type="button" class="account-soft-option" role="option" aria-selected="true" disabled>（未创建）</button>
-              <button v-for="a in accounts" :key="a.id" type="button" class="account-soft-option" role="option" :aria-selected="a.id === accountId" @click="selectAccountOption(a.id)">{{ a.name }}</button>
+              <button v-for="a in accounts" :key="a.id" type="button" class="account-soft-option" role="option" :aria-selected="a.id === accountId" @click="selectAccountOption(a.id)">{{ accountOptionLabel(a) }}</button>
             </div>
           </div>
           <select v-else :id="selectId" :value="accountId" :disabled="disabled" :aria-invalid="!!error" @change="onSelectChange">
             <option v-if="!accounts.length" value="">（未创建）</option>
-            <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+            <option v-for="a in accounts" :key="a.id" :value="a.id">{{ accountOptionLabel(a) }}</option>
           </select>
           <span v-if="error" class="ac-warn">{{ error }}</span>
         </div>
@@ -122,7 +122,7 @@
 // 这里只负责 UI：账号选择 + 管理（新建/改名/删除），创建/改名/删除动作向上冒泡由页面处理。
 import { ref, computed, onBeforeUnmount, onMounted, useSlots } from 'vue'
 import { Users } from '@lucide/vue'
-import { ACCOUNT_GAMES } from '../store/activeAccount.js'
+import { ACCOUNT_GAMES, normalizeAccountGame } from '../store/activeAccount.js'
 
 const props = defineProps({
   split: { type: Boolean, default: false },
@@ -172,7 +172,13 @@ const softDropdownRoot = ref(null)
 const slots = useSlots()
 const hasActions = computed(function () { return !!slots.actions })
 const usesStackedLayout = computed(function () { return hasActions.value || props.stacked })
-const selectedAccountLabel = computed(function () { return props.accounts.find(function (account) { return account.id === props.accountId })?.name || '（未创建）' })
+function accountOptionLabel(account) {
+  if (!account) return '（未创建）'
+  return normalizeAccountGame(account.game || props.game) + ' · ' + (account.name || '未命名账号')
+}
+const selectedAccountLabel = computed(function () {
+  return accountOptionLabel(props.accounts.find(function (account) { return account.id === props.accountId }))
+})
 
 let uidSeq = 0
 const selectId = 'aw-account-' + (++uidSeq)

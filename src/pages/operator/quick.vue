@@ -47,6 +47,15 @@
 
       <section>
         <div class="wrap">
+          <DataAccountContextBar
+            :accounts="accounts"
+            :account-id="accountId"
+            :game="gameFilter"
+            :is-logged-in="auth.isLoggedIn"
+            :loading="accountsLoading"
+            description="当前快捷录入保存的数据均归属此账号；保存前请再次确认账号是否正确。"
+          />
+
           <!-- 当前数据账号：这里只切换，不修改账号属性 -->
           <div class="account-bar" v-reveal>
             <div class="ac-sel">
@@ -61,17 +70,12 @@
               >
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">
-                  {{ a.name }}
+                  {{ a.game || activeAccount.gameFor(a.id) }} · {{ a.name }}
                 </option>
               </select>
               <span v-if="accountError" class="ac-warn">{{
                 accountError
               }}</span>
-            </div>
-            <div class="ac-sel account-game-static">
-              <span class="ac-label">所属游戏</span>
-              <strong>{{ gameFilter }}</strong>
-              <small>正在录入 → {{ gameFilter }} · {{ accountName || '未选择账号' }}</small>
             </div>
             <span class="sp"></span>
             <router-link class="act-btn ghost" to="/user/profile#game-accounts"
@@ -402,6 +406,7 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
+import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import {
   getOperatorCatalog,
   listOperatorAccounts,
@@ -1342,29 +1347,6 @@ onMounted(async function () {
 }
 .ac-sel select:focus {
   border-color: var(--accent);
-}
-.account-game-static {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 4px 10px;
-}
-.account-game-static strong {
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  padding: 0 12px;
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  background: var(--cream);
-  font-size: 13px;
-  font-weight: 900;
-}
-.account-game-static small {
-  grid-column: 1 / -1;
-  color: var(--ink-60);
-  font-size: 11px;
-  font-weight: 700;
 }
 .ac-warn {
   font-size: 12px;
