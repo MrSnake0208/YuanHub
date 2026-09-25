@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const DEFAULT_TUNNEL_HOST = 'hubf.maayuan.fun'
-const DEFAULT_TUNNEL_API_TARGET = 'http://127.0.0.1:8080'
+const DEFAULT_DEV_API_TARGET = 'https://api-hub.maayuan.com'
 const UNKNOWN_BUILD_VALUE = 'unknown'
 
 /**
@@ -50,7 +50,9 @@ export function collectBuildInfo(root = process.cwd(), now = new Date()) {
 export function buildDevServerConfig(mode, env = {}) {
   const isTunnel = mode === 'tunnel'
   const tunnelHost = env.YUANHUB_TUNNEL_HOST || DEFAULT_TUNNEL_HOST
-  const apiTarget = env.YUANHUB_TUNNEL_API_TARGET || DEFAULT_TUNNEL_API_TARGET
+  const apiTarget = isTunnel
+    ? env.YUANHUB_TUNNEL_API_TARGET || env.YUANHUB_DEV_API_TARGET || DEFAULT_DEV_API_TARGET
+    : env.YUANHUB_DEV_API_TARGET || DEFAULT_DEV_API_TARGET
 
   const config = {
     port: 5173,
@@ -58,20 +60,26 @@ export function buildDevServerConfig(mode, env = {}) {
     allowedHosts: Array.from(new Set([DEFAULT_TUNNEL_HOST, tunnelHost].filter(Boolean)))
   }
 
-  if (isTunnel) {
-    const proxyTarget = {
-      target: apiTarget,
-      changeOrigin: true
+  const proxyTarget = {
+    target: apiTarget,
+    changeOrigin: true,
+    configure(proxy) {
+      // 浏览器对同源 POST 也会携带 Origin；如果原样转发到公网 API，
+      // 后端会把 localhost / Tunnel 来源判为无效 CORS 请求并返回 403。
+      // 开发代理是服务端到服务端转发，因此在发往上游前移除 Origin。
+      proxy.on('proxyReq', (proxyReq) => {
+        proxyReq.removeHeader('origin')
+      })
     }
-    config.proxy = {
-      '/v1': proxyTarget,
-      '/user': proxyTarget,
-      '/hub': proxyTarget,
-      '/open-api': proxyTarget,
-      '/avatar': proxyTarget,
-      '/ready': proxyTarget,
-      '/version': proxyTarget
-    }
+  }
+  config.proxy = {
+    '/v1': proxyTarget,
+    '/user': proxyTarget,
+    '/hub': proxyTarget,
+    '/open-api': proxyTarget,
+    '/avatar': proxyTarget,
+    '/ready': proxyTarget,
+    '/version': proxyTarget
   }
 
   return config
@@ -85,8 +93,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       VitePWA({
-        registerType: 'prompt',
-        injectRegister: 'auto',
+        // 不让旧 Service Worker 长时间等待用户手动确认更新。
+        // 这里不接入 virtual:pwa-register 的自动 reload，因此不会在用户编辑表单时强制刷新页面；
+        // 新 worker 会立即激活并接管，下一次导航自然进入最新构建。
+        registerType: 'autoUpdate',
+        // 注册代码直接内联到 index.html，避免再引入一个固定文件名的 registerSW.js 缓存点。
+        injectRegister: 'inline',
         includeAssets: [
           'pwa/apple-touch-icon.png',
           'pwa/icon-192.png',
@@ -125,12 +137,16 @@ export default defineConfig(({ mode }) => {
             }
           ]
         },
-        // 第一阶段只缓存应用壳层，不缓存业务 API、账户数据、OCR 模型和大批静态资料图。
+        // 只预缓存带内容 hash 的 JS / CSS，不缓存 index.html。
+        // HTML 导航始终走网络，避免旧 worker 把旧 index.html 再次送回浏览器造成版本回退。
+        // 业务 API、账户数据、OCR 模型和大批静态资料图仍不进入 Workbox 缓存。
         workbox: {
-          globPatterns: ['**/*.{js,css,html}'],
+          globPatterns: ['**/*.{js,css}'],
           globIgnores: ['yuanstar-embed/**'],
           cleanupOutdatedCaches: true,
-          navigateFallback: '/index.html'
+          navigateFallback: null,
+          clientsClaim: true,
+          skipWaiting: true
         }
       })
     ],

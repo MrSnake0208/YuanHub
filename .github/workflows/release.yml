@@ -233,8 +233,13 @@ jobs:
               rm -rf "$stage_dir"
               mkdir -p "$stage_dir"
               cp -a dist/. "$stage_dir/"
-              printf '{"version":"%s","tag":"%s","commit":"%s"}\n' \
-                "$RELEASE_VERSION" "$RELEASE_TAG" "$RELEASE_COMMIT" \
+              test -f "$stage_dir/sw.js" || {
+                echo "dist/sw.js missing after server build"
+                exit 1
+              }
+              sw_sha256="$(sha256sum "$stage_dir/sw.js" | awk '{print $1}')"
+              printf '{"version":"%s","tag":"%s","commit":"%s","swSha256":"%s"}\n' \
+                "$RELEASE_VERSION" "$RELEASE_TAG" "$RELEASE_COMMIT" "$sw_sha256" \
                 > "$stage_dir/deploy-meta.json"
 
               active_target="$(readlink "$FRONTEND_ROOT/current" 2>/dev/null || true)"
@@ -275,6 +280,8 @@ jobs:
           set -eu
           test -n "$SITE_URL" || { echo "::error::YUANHUB_FRONTEND_URL is not configured"; exit 1; }
           base="${SITE_URL%/}"
+          sw_file="$(mktemp)"
+          trap 'rm -f "$sw_file"' EXIT
           attempt=1
           while [ "$attempt" -le 10 ]; do
             payload="$(curl --fail --silent --show-error --location \
@@ -282,15 +289,27 @@ jobs:
               "${base}/deploy-meta.json?deploy=${EXPECTED_COMMIT}" || true)"
             version="$(printf '%s' "$payload" | jq -r '.version // ""' 2>/dev/null || true)"
             commit="$(printf '%s' "$payload" | jq -r '.commit // ""' 2>/dev/null || true)"
-            if [ "$version" = "$EXPECTED_VERSION" ] && [ "$commit" = "$EXPECTED_COMMIT" ]; then
-              echo "Health check passed: version=$version commit=${commit::7}"
+            expected_sw_sha="$(printf '%s' "$payload" | jq -r '.swSha256 // ""' 2>/dev/null || true)"
+            actual_sw_sha=""
+            : > "$sw_file"
+            if [ -n "$expected_sw_sha" ] && curl --fail --silent --show-error --location \
+              -H 'Cache-Control: no-cache' \
+              -o "$sw_file" \
+              "${base}/sw.js?deploy=${EXPECTED_COMMIT}"; then
+              actual_sw_sha="$(sha256sum "$sw_file" | awk '{print $1}')"
+            fi
+            if [ "$version" = "$EXPECTED_VERSION" ] &&
+               [ "$commit" = "$EXPECTED_COMMIT" ] &&
+               [ -n "$expected_sw_sha" ] &&
+               [ "$actual_sw_sha" = "$expected_sw_sha" ]; then
+              echo "Health check passed: version=$version commit=${commit::7} sw=${actual_sw_sha::12}"
               exit 0
             fi
-            echo "Attempt $attempt: version='$version' commit='${commit:0:7}'"
+            echo "Attempt $attempt: version='$version' commit='${commit:0:7}' expected_sw='${expected_sw_sha:0:12}' actual_sw='${actual_sw_sha:0:12}'"
             attempt=$((attempt + 1))
             sleep 6
           done
-          echo "::error::Health check failed: $base is not serving version=$EXPECTED_VERSION commit=$EXPECTED_COMMIT"
+          echo "::error::Health check failed: $base is not serving a consistent version=$EXPECTED_VERSION commit=$EXPECTED_COMMIT and sw.js"
           exit 1
 
       - name: Create or update GitHub Release
