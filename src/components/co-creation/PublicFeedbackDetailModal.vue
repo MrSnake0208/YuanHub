@@ -7,7 +7,7 @@
             <span class="public-detail-kicker">PLAZA / FEEDBACK</span>
             <h2 id="public-detail-title">反馈详情</h2>
           </div>
-          <button type="button" aria-label="关闭详情" title="关闭" @click="$emit('close')"><X :size="20" /></button>
+          <button ref="closeButton" type="button" aria-label="关闭详情" title="关闭" @click="$emit('close')"><X :size="20" /></button>
         </div>
         <div class="public-detail-body">
           <PublicFeedbackDetail
@@ -24,10 +24,11 @@
 </template>
 
 <script setup>
+import { nextTick, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import PublicFeedbackDetail from '@/components/co-creation/PublicFeedbackDetail.vue'
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
   item: { type: Object, default: null },
   loading: { type: Boolean, default: false },
@@ -36,6 +37,20 @@ defineProps({
 })
 
 defineEmits(['close', 'updated'])
+
+// 打开时把焦点移入弹窗,关闭时还给触发元素。
+const closeButton = ref(null)
+let previousFocus = null
+watch(() => props.open, async open => {
+  if (open) {
+    previousFocus = typeof document !== 'undefined' ? document.activeElement : null
+    await nextTick()
+    closeButton.value?.focus?.()
+  } else if (previousFocus && typeof previousFocus.focus === 'function') {
+    previousFocus.focus()
+    previousFocus = null
+  }
+})
 </script>
 
 <style scoped>

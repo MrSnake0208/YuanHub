@@ -196,6 +196,7 @@ import {
   mergeFeedback,
   publishFeedback,
   unpublishFeedback,
+  updateFeedbackType,
   updateFeedbackVersions,
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
@@ -479,6 +480,10 @@ async function savePublicInfo(payload) {
   publicMessage.value = ''
   publicError.value = ''
   try {
+    if (payload.type && payload.type !== selectedDetail.value?.type) {
+      await updateFeedbackType(id, payload.type)
+      if (!isCurrentDetail(requestId, id, userId)) return
+    }
     const detail = await publishFeedback(id, payload)
     if (!isCurrentDetail(requestId, id, userId)) return
     replaceTicket(detail)

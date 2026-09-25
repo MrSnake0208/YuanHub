@@ -4,7 +4,7 @@
       <div class="modal merge-dialog" role="dialog" aria-modal="true" aria-labelledby="merge-dialog-title" @keydown.esc.prevent="$emit('close')">
         <div class="modal-head">
           <h2 id="merge-dialog-title">合并反馈</h2>
-          <button type="button" aria-label="关闭" title="关闭" @click="$emit('close')"><X :size="20" /></button>
+          <button ref="closeButton" type="button" aria-label="关闭" title="关闭" @click="$emit('close')"><X :size="20" /></button>
         </div>
         <div class="merge-body">
           <p class="merge-lead">将当前反馈合并至：</p>
@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
 import { listManagedFeedback } from '@/api/feedback.js'
 import { publicStatusLabel } from '@/utils/feedbackPublic.js'
@@ -64,6 +64,8 @@ const candidates = ref([])
 const loading = ref(false)
 const error = ref('')
 const selectedId = ref('')
+const closeButton = ref(null)
+let previousFocus = null
 let timer = null
 let requestId = 0
 let mounted = true
@@ -103,15 +105,22 @@ function confirm() {
   emit('confirm', selectedId.value)
 }
 
-watch(() => props.open, value => {
+watch(() => props.open, async value => {
   if (value) {
     query.value = ''
     selectedId.value = ''
     error.value = ''
     candidates.value = []
+    previousFocus = typeof document !== 'undefined' ? document.activeElement : null
+    await nextTick()
+    closeButton.value?.focus?.()
     search()
-  } else if (timer) {
-    clearTimeout(timer)
+  } else {
+    if (timer) clearTimeout(timer)
+    if (previousFocus && typeof previousFocus.focus === 'function') {
+      previousFocus.focus()
+      previousFocus = null
+    }
   }
 })
 
