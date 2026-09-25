@@ -56,6 +56,63 @@
             description="当前密探养成、培养计划与导入数据均归属此账号。"
           />
 
+          <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
+          <div
+            class="operator-tabs"
+            role="tablist"
+            aria-label="密探工作区"
+            data-tour="operator-workspace"
+            v-reveal
+          >
+            <button
+              type="button"
+              class="operator-tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'catalog'"
+              :class="{ on: activeTab === 'catalog' }"
+              @click="setTab('catalog')"
+            >
+              密探图鉴
+            </button>
+            <button
+              type="button"
+              class="operator-tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'current'"
+              :class="{ on: activeTab === 'current' }"
+              @click="setTab('current')"
+            >
+              养成总览
+            </button>
+            <button
+              type="button"
+              class="operator-tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'tracking'"
+              :class="{ on: activeTab === 'tracking' }"
+              @click="openGrowthPlanningPreview"
+            >
+              养成规划
+            </button>
+            <span class="sp"></span>
+            <router-link class="act-btn ghost admin-link" to="/operator/share"
+              >查看他人 BOX</router-link
+            >
+            <router-link
+              class="act-btn ghost admin-link"
+              :to="quickHref"
+              @click="showImport = false"
+              >首次 / 快捷录入</router-link
+            >
+            <button
+              type="button"
+              class="act-btn ghost admin-link workspace-tabs-toggle"
+              :aria-expanded="!accountWorkspaceCompact"
+              aria-controls="operator-account-workspace"
+              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
+            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
+          </div>
+
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             id="operator-account-workspace"
@@ -193,63 +250,6 @@
               </div>
             </div>
           </AccountWorkspace>
-
-          <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
-          <div
-            class="operator-tabs"
-            role="tablist"
-            aria-label="密探工作区"
-            data-tour="operator-workspace"
-            v-reveal
-          >
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'catalog'"
-              :class="{ on: activeTab === 'catalog' }"
-              @click="setTab('catalog')"
-            >
-              密探图鉴
-            </button>
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'current'"
-              :class="{ on: activeTab === 'current' }"
-              @click="setTab('current')"
-            >
-              养成总览
-            </button>
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'tracking'"
-              :class="{ on: activeTab === 'tracking' }"
-              @click="openGrowthPlanningPreview"
-            >
-              养成规划
-            </button>
-            <span class="sp"></span>
-            <router-link class="act-btn ghost admin-link" to="/operator/share"
-              >查看他人 BOX</router-link
-            >
-            <router-link
-              class="act-btn ghost admin-link"
-              :to="quickHref"
-              @click="showImport = false"
-              >首次 / 快捷录入</router-link
-            >
-            <button
-              type="button"
-              class="act-btn ghost admin-link workspace-tabs-toggle"
-              :aria-expanded="!accountWorkspaceCompact"
-              aria-controls="operator-account-workspace"
-              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
-            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
-          </div>
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
