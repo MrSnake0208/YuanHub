@@ -167,7 +167,7 @@
       <router-link
         to="/user/profile"
         :class="{ active: $route.path === '/user/profile' }"
-        >我的连接码</router-link
+        >账号与连接码</router-link
       >
       <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }"
         >YuanHub 更新日志</router-link
