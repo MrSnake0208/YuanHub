@@ -71,5 +71,5 @@ test('今日一览可以直接跳到连接码页面并自动展开 MaaYuan 连�
   assert.match(profile, /scroll-margin-top: 24px/)
   assert.match(profile, /--mobile-shell-follow-top/)
   assert.match(profile, /以后需要新建或管理连接码时/)
-  assert.match(profile, /左侧「我的连接码」/)
+  assert.match(profile, /左侧「账号与连接码」/)
 })

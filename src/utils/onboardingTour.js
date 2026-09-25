@@ -52,7 +52,7 @@ export const ONBOARDING_STEPS = [
     route: '/user/profile',
     target: 'maayuan-sync',
     title: '推荐：连接 MaaYuan 自动同步',
-    description: '创建 MaaYuan 连接码前先确认账号与权限，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息、背包道具和星石。点击“打开连接设置”后，页面会继续给出具体任务与开关位置。<br><br>以后也可以从左侧“我的连接码”回来管理；如果还没有子账号，连接面板里也可以补建。',
+    description: '创建 MaaYuan 连接码前先确认账号与权限，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息、背包道具和星石。点击“打开连接设置”后，页面会继续给出具体任务与开关位置。<br><br>以后也可以从左侧“账号与连接码”回来管理；如果还没有子账号，连接面板里也可以补建。',
     side: 'top',
     align: 'start',
     doneBtnText: '打开连接设置',

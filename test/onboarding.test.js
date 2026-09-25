@@ -127,7 +127,7 @@ test('uses six stable step ids and data-tour anchors including MaaYuan sync', fu
   assert.equal(syncStep.completionAction, 'click-target')
   assert.match(syncStep.description, /创建 MaaYuan 连接码/)
   assert.match(syncStep.description, /确认账号与权限/)
-  assert.match(syncStep.description, /左侧“我的连接码”/)
+  assert.match(syncStep.description, /左侧“账号与连接码”/)
   assert.match(syncStep.description, /连接面板里也可以补建/)
 })
 

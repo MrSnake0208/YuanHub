@@ -187,7 +187,7 @@
               </div>
               <p v-if="cameFromToday" class="today-connect-note" role="note">
                 你已经从「今日一览」来到这里。以后需要新建或管理连接码时，
-                直接从左侧「我的连接码」进入即可。
+                直接从左侧「账号与连接码」进入即可。
               </p>
 
               <div
