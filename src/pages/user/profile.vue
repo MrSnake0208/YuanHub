@@ -12,7 +12,7 @@
           </div>
           <h1>我的账户<span class="small">账号 · 应用 · 数据连接</span></h1>
           <p class="hero-sub">
-            在这里连接 MaaYuan
+            在这里管理子账号、连接 MaaYuan
             或管理其他第三方工具。每条连接只访问你选中的游戏账号，也可以随时停止。
           </p>
           <div class="hero-stats">
