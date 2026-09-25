@@ -599,6 +599,10 @@
                   <template v-if="subProfFilter !== 'all'">
                     · 职业「{{ subProfFilter }}」</template
                   >
+                  <template v-if="hasManifestFilters">
+                    · 筛选出
+                    <b class="bp-num">{{ manifestEntries.length }}</b> 位密探</template
+                  >
                   <template v-if="!auth.isLoggedIn">
                     · 未登录：仅展示图鉴，不显示云端养成</template
                   >
@@ -4444,6 +4448,16 @@ const filterSuffix = computed(function () {
   if (manifestFilter.value === "owned") parts.push("「已拥有」");
   if (manifestFilter.value === "missing") parts.push("「未拥有」");
   return parts.length ? parts.join(" · ") : "";
+});
+
+const hasManifestFilters = computed(function () {
+  return (
+    rarityFilter.value !== "all" ||
+    profFilter.value !== "all" ||
+    subProfFilter.value !== "all" ||
+    manifestFilter.value !== "all" ||
+    Boolean(manifestSearch.value.trim())
+  );
 });
 
 // 当前养成首要口径：只展示已拥有，再叠加稀有度 / 属性 / 职业等筛选。
