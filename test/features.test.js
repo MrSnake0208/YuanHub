@@ -30,8 +30,9 @@ test('work system is explicitly disabled until it is ready to reopen', function 
   assert.equal(isFeatureEnabled(key), false)
 })
 
-test('operator tracking is guarded at both tabs, panel, and state transition', function () {
-  assert.equal((operatorPage.match(/v-if="growthTrackingEnabled"/g) || []).length, 2)
+test('operator tracking stays visible as a preview while the real panel remains feature-guarded', function () {
+  assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 2)
+  assert.match(operatorPage, /message: "将在 v0\.0\.2 上线"/)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
   assert.match(operatorPage, /function setTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)
   assert.match(operatorPage, /return import\("\.\.\/\.\.\/components\/operator\/OperatorGrowthTracker\.vue"\)/)
