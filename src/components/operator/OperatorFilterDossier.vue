@@ -40,8 +40,8 @@
 
     <div class="current-filter-rows">
       <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
-        <span class="pf-label">稀有</span>
-        <div class="mf-filter rarity-filter" role="group" :aria-label="`按稀有度筛选${contextLabel}`">
+        <span class="pf-label">品质</span>
+        <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
           <button
             v-for="option in rarityOptions"
             :key="option.value"
@@ -407,6 +407,7 @@ function statusCount(value) {
     gap: 3px;
     padding: 3px;
   }
+  .pf-rarity-row .mf-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pf-prof-row .mf-filter { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .pf-subprof-row .mf-filter { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .pf-status-row .mf-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
