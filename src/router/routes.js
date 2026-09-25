@@ -330,6 +330,18 @@ export const routes = [
         }
     },
     {
+        path: '/co-creation',
+        text: '共创中心',
+        name: 'co-creation',
+        display: true,
+        module: 'user',
+        icon: 'users-round',
+        component: () => import('/src/pages/co-creation/index.vue'),
+        meta: {
+            title: '共创中心 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/feedback/manage',
         text: '待处理反馈',
         name: 'feedback-manage',

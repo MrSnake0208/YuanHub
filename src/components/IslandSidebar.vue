@@ -74,6 +74,13 @@
           feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
         }}</span>
       </router-link>
+      <router-link
+        to="/co-creation"
+        :class="{ active: $route.path.startsWith('/co-creation') }"
+      >
+        <Lightbulb :size="19" aria-hidden="true" />
+        <span>共创</span>
+      </router-link>
       <button
         v-if="showBetaCommunityEntry"
         type="button"
@@ -165,6 +172,11 @@
       </template>
 
       <router-link
+        to="/co-creation"
+        :class="{ active: $route.path.startsWith('/co-creation') }"
+        >共创中心</router-link
+      >
+      <router-link
         to="/user/profile"
         :class="{ active: $route.path === '/user/profile' }"
         >账号与连接码</router-link
@@ -226,6 +238,7 @@ import {
   Download,
   Gem,
   House,
+  Lightbulb,
   LogIn,
   MessageSquareText,
   PackageOpen,

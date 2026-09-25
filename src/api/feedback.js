@@ -16,18 +16,18 @@ export async function createFeedback(payload) {
   const category = rawType === 'FEEDBACK'
     ? (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : 'OTHER'))
     : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (rawCategory || 'OTHER')))
-  const data = await request('/v1/reports', {
-    method: 'POST',
-    auth: true,
-    body: {
-      type: legacyType,
-      category,
-      content: payload.content,
-      media_ids: payload.mediaIds || [],
-      client_info_consent: Boolean(payload.clientInfoConsent),
-      diagnostics: feedbackDiagnostics()
-    }
-  })
+  const title = payload.title ? String(payload.title).trim() : ''
+  const body = {
+    type: legacyType,
+    category,
+    content: payload.content,
+    media_ids: payload.mediaIds || [],
+    client_info_consent: Boolean(payload.clientInfoConsent),
+    diagnostics: feedbackDiagnostics()
+  }
+  // 旧客户端不带标题时保持请求体不变，避免破坏既有契约。
+  if (title) body.title = title
+  const data = await request('/v1/reports', { method: 'POST', auth: true, body })
   return normalizeFeedback(data)
 }
 
@@ -134,6 +134,22 @@ export function normalizeFeedback(report) {
     lastReporterMessageIndex: lastReporterMessageIndex == null || !Number.isFinite(Number(lastReporterMessageIndex))
       ? null
       : Number(lastReporterMessageIndex),
+    // 公开共创字段：后端全局 SNAKE_CASE，这里同时兼容 camelCase。
+    title: report.title ?? null,
+    visibility: String(report.visibility || 'PRIVATE').toUpperCase(),
+    publicTitle: report.publicTitle ?? report.public_title ?? null,
+    publicSummary: report.publicSummary ?? report.public_summary ?? null,
+    publicStatus: report.publicStatus ?? report.public_status ?? null,
+    supportCount: Number(report.supportCount ?? report.support_count ?? 0),
+    mergedIntoId: report.mergedIntoId ?? report.merged_into_id ?? null,
+    mergedCount: Number(report.mergedCount ?? report.merged_count ?? 0),
+    publishedAt: report.publishedAt ?? report.published_at ?? null,
+    publicUpdatedAt: report.publicUpdatedAt ?? report.public_updated_at ?? null,
+    completedAt: report.completedAt ?? report.completed_at ?? null,
+    targetVersionId: report.targetVersionId ?? report.target_version_id ?? null,
+    targetVersionLabel: report.targetVersionLabel ?? report.target_version_label ?? null,
+    completedVersionId: report.completedVersionId ?? report.completed_version_id ?? null,
+    completedVersionLabel: report.completedVersionLabel ?? report.completed_version_label ?? null,
     createdAt: report.createdAt ?? report.created_at ?? null,
     updatedAt,
     mediaIds: report.mediaIds ?? report.media_ids ?? [],
@@ -276,4 +292,81 @@ export function updateMyFeedbackStatus(id, status) {
 
 export function updateManagedFeedbackStatus(id, status) {
   return updateFeedbackStatus(id, status, 'ADMIN')
+}
+
+// ===== 管理员公开管理（共创中心第一轮） =====
+
+export async function publishFeedback(id, payload = {}) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/publish`, {
+    method: 'PATCH',
+    auth: true,
+    body: {
+      public_title: payload.publicTitle,
+      public_summary: payload.publicSummary || null,
+      public_status: payload.publicStatus || null
+    }
+  })
+  return normalizeFeedback(data)
+}
+
+export async function unpublishFeedback(id) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/unpublish`, {
+    method: 'PATCH',
+    auth: true
+  })
+  return normalizeFeedback(data)
+}
+
+export async function updateFeedbackPublicStatus(id, publicStatus) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/public-status`, {
+    method: 'PATCH',
+    auth: true,
+    body: { public_status: String(publicStatus || '').toUpperCase() }
+  })
+  return normalizeFeedback(data)
+}
+
+export async function mergeFeedback(id, targetFeedbackId) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/merge`, {
+    method: 'POST',
+    auth: true,
+    body: { target_feedback_id: targetFeedbackId }
+  })
+  return normalizeFeedback(data)
+}
+
+// 修改反馈类型;影响反馈广场展示与许愿池(PUBLIC + FEATURE)归属。
+export async function updateFeedbackType(id, type) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/type`, {
+    method: 'PATCH',
+    auth: true,
+    body: { type: String(type || '').toUpperCase() }
+  })
+  return normalizeFeedback(data)
+}
+
+// 获取反馈管理可关联的版本：目标版本可包含草稿，完成版本需由调用方筛 published=true。
+export async function listFeedbackVersionOptions() {
+  const data = await request('/v1/admin/feedback/version-options', { auth: true })
+  const items = Array.isArray(data) ? data : []
+  return items
+    .map(item => ({
+      id: String(item?.id || ''),
+      versionLabel: String(item?.versionLabel ?? item?.version_label ?? ''),
+      published: Boolean(item?.published)
+    }))
+    .filter(item => item.id && item.versionLabel)
+}
+
+// 关联/清除目标版本与完成版本;传 null 或空字符串表示清除。
+export async function updateFeedbackVersions(id, payload = {}) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/versions`, {
+    method: 'PATCH',
+    auth: true,
+    body: {
+      target_version_id: payload.targetVersionId || null,
+      completed_version_id: payload.completedVersionId || null
+    }
+  })
+  return normalizeFeedback(data)
 }

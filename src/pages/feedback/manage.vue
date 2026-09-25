@@ -104,6 +104,25 @@
               @page="changePage"
             >
               <template #detail="{ item }">
+                <AdminFeedbackPublishPanel
+                  v-if="item.viewerCanManage"
+                  :item="item"
+                  :busy="publicBusy"
+                  :message="publicMessage"
+                  :error="publicError"
+                  :format-date="formatDate"
+                  @save="savePublicInfo"
+                  @unpublish="unpublishPublicInfo"
+                  @merge="openMergeDialog"
+                />
+                <AdminFeedbackVersionSelector
+                  v-if="item.viewerCanManage"
+                  :item="item"
+                  :busy="versionBusy"
+                  :message="versionMessage"
+                  :error="versionError"
+                  @save="saveVersions"
+                />
                 <FeedbackTicketDetail
                   :item="item"
                   :loading="detailLoading"
@@ -145,6 +164,14 @@
         </div>
       </section>
     </main>
+
+    <AdminFeedbackMergeDialog
+      :open="mergeOpen"
+      :source-id="selectedId"
+      :busy="mergeBusy"
+      @close="mergeOpen = false"
+      @confirm="confirmMerge"
+    />
   </div>
 </template>
 
@@ -154,6 +181,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CheckCheck, CheckCircle2, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
+import AdminFeedbackMergeDialog from '@/components/feedback/AdminFeedbackMergeDialog.vue'
+import AdminFeedbackPublishPanel from '@/components/feedback/AdminFeedbackPublishPanel.vue'
+import AdminFeedbackVersionSelector from '@/components/feedback/AdminFeedbackVersionSelector.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
@@ -163,6 +193,11 @@ import {
   getFeedback,
   getFeedbackAccess,
   listManagedFeedback,
+  mergeFeedback,
+  publishFeedback,
+  unpublishFeedback,
+  updateFeedbackType,
+  updateFeedbackVersions,
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
@@ -215,6 +250,14 @@ const replyContent = ref('')
 const replying = ref(false)
 const updatingStatus = ref(false)
 const markingAllRead = ref(false)
+const publicBusy = ref(false)
+const publicMessage = ref('')
+const publicError = ref('')
+const versionBusy = ref(false)
+const versionMessage = ref('')
+const versionError = ref('')
+const mergeOpen = ref(false)
+const mergeBusy = ref(false)
 const replyMedia = useFeedbackMedia()
 let isMounted = false
 let ready = false
@@ -346,6 +389,7 @@ async function changePage(nextPage) {
 async function selectTicket(id) {
   selectedId.value = String(id)
   cancelReply()
+  resetPublicPanel()
   selectedDetail.value = { id: String(id) }
   await loadFeedbackDetail(String(id))
 }
@@ -393,6 +437,108 @@ function closeDetail() {
   selectedDetail.value = null
   detailError.value = ''
   cancelReply()
+  resetPublicPanel()
+}
+
+function resetPublicPanel() {
+  publicBusy.value = false
+  publicMessage.value = ''
+  publicError.value = ''
+  mergeOpen.value = false
+  mergeBusy.value = false
+  versionBusy.value = false
+  versionMessage.value = ''
+  versionError.value = ''
+}
+
+async function saveVersions(payload) {
+  const id = selectedId.value
+  if (!id || versionBusy.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  versionBusy.value = true
+  versionMessage.value = ''
+  versionError.value = ''
+  try {
+    const detail = await updateFeedbackVersions(id, payload)
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
+    versionMessage.value = '版本关联已更新'
+  } catch (e) {
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) versionError.value = e.message || '版本关联失败'
+  } finally {
+    versionBusy.value = false
+  }
+}
+
+async function savePublicInfo(payload) {
+  const id = selectedId.value
+  if (!id || publicBusy.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  publicBusy.value = true
+  publicMessage.value = ''
+  publicError.value = ''
+  try {
+    if (payload.type && payload.type !== selectedDetail.value?.type) {
+      await updateFeedbackType(id, payload.type)
+      if (!isCurrentDetail(requestId, id, userId)) return
+    }
+    const detail = await publishFeedback(id, payload)
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
+    publicMessage.value = detail.visibility === 'PUBLIC' ? '已发布到反馈广场' : '已更新公开信息'
+  } catch (e) {
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) publicError.value = e.message || '操作失败'
+  } finally {
+    publicBusy.value = false
+  }
+}
+
+async function unpublishPublicInfo() {
+  const id = selectedId.value
+  if (!id || publicBusy.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  publicBusy.value = true
+  publicMessage.value = ''
+  publicError.value = ''
+  try {
+    const detail = await unpublishFeedback(id)
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
+    publicMessage.value = '已取消公开；已记录的支持会保留。'
+  } catch (e) {
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) publicError.value = e.message || '操作失败'
+  } finally {
+    publicBusy.value = false
+  }
+}
+
+function openMergeDialog() {
+  publicMessage.value = ''
+  publicError.value = ''
+  mergeOpen.value = true
+}
+
+async function confirmMerge(targetId) {
+  const id = selectedId.value
+  if (!id || mergeBusy.value) return
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  mergeBusy.value = true
+  publicError.value = ''
+  try {
+    const detail = await mergeFeedback(id, targetId)
+    if (!isCurrentDetail(requestId, id, userId)) return
+    replaceTicket(detail)
+    mergeOpen.value = false
+    publicMessage.value = '已合并到主反馈；后续进度统一跟随主反馈。'
+  } catch (e) {
+    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) publicError.value = e.message || '合并失败'
+  } finally {
+    mergeBusy.value = false
+  }
 }
 
 function showReplyForm(id) {
