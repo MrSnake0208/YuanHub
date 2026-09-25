@@ -8,9 +8,18 @@ export const ONBOARDING_STEPS = [
   {
     id: FIRST_STEP_ID,
     title: '欢迎来到 YuanHub',
-    description: '先认识最常用的 4 件事：看今天要做什么、管理密探、追踪库存，以及用 MaaYuan 自动同步。整个教程可以随时跳过，也能之后重看。',
+    description: '先认识最常用的 5 件事：创建游戏子账号、查看今天要做什么、管理密探、追踪库存，以及用 MaaYuan 自动同步。整个教程可以随时跳过，也能之后重看。',
     side: 'bottom',
     align: 'center'
+  },
+  {
+    id: 'account-create',
+    route: '/user/profile',
+    target: 'account-create',
+    title: '先创建一个子账号',
+    description: '在“统一管理游戏账号”里创建一个或多个游戏子账号。选择所属游戏并填写名称后，点击“创建账号”；密探、库存、星石、奖励流水和连接码都会归属到这个子账号。',
+    side: 'bottom',
+    align: 'start'
   },
   {
     id: 'today-overview',
@@ -40,23 +49,23 @@ export const ONBOARDING_STEPS = [
     align: 'start'
   },
   {
+    id: 'maayuan-sync',
+    route: '/user/profile',
+    target: 'maayuan-sync',
+    title: '推荐：连接 MaaYuan 自动同步',
+    description: '创建 MaaYuan 连接码前先确认账号与权限，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息、背包道具和星石。点击“打开连接设置”后，页面会继续给出具体任务与开关位置。<br><br>以后也可以从左侧“账号与连接码”回来管理；如果还没有子账号，连接面板里也可以补建。（可选步骤，也可以手动录入数据）',
+    side: 'top',
+    align: 'start',
+    doneBtnText: '打开连接设置',
+    completionAction: 'click-target'
+  },
+  {
     id: 'replay-entry',
     target: 'replay-entry',
     title: '忘了也没关系',
     description: '以后需要复习时，从这个入口就能重新启动教程，不用记住每个页面的位置。',
     side: 'right',
     align: 'center'
-  },
-  {
-    id: 'maayuan-sync',
-    route: '/user/profile',
-    target: 'maayuan-sync',
-    title: '推荐：连接 MaaYuan 自动同步',
-    description: '创建 MaaYuan 连接码前先确认账号与权限，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息、背包道具和星石。点击“打开连接设置”后，页面会继续给出具体任务与开关位置。<br><br>以后也可以从左侧“账号与连接码”回来管理；如果还没有子账号，连接面板里也可以补建。',
-    side: 'top',
-    align: 'start',
-    doneBtnText: '打开连接设置',
-    completionAction: 'click-target'
   }
 ]
 
