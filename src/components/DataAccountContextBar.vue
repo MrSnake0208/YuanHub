@@ -86,7 +86,7 @@ const resolvedGame = computed(function () {
 })
 
 const currentPath = computed(function () {
-  return route.fullPath || '/'
+  return route?.fullPath || '/'
 })
 </script>
 
