@@ -28,6 +28,11 @@
             :can-configure="canConfigureFeedback"
           />
 
+          <div v-if="publicNotice" class="feedback-public-notice" role="status">
+            <span>{{ publicNotice }}</span>
+            <button type="button" aria-label="关闭提示" title="关闭" @click="publicNotice = ''">×</button>
+          </div>
+
           <div class="feedback-command-bar">
             <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
               <Search :size="18" aria-hidden="true" />
@@ -151,7 +156,7 @@
             <div class="feedback-form-grid">
               <label>
                 <span>反馈类型</span>
-                <select v-model="newFeedback.type" class="feedback-form-control" required>
+                <select v-model="newFeedback.type" class="feedback-form-control" required @change="scheduleSimilarSearch">
                   <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
@@ -162,6 +167,17 @@
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
+              <label class="full">
+                <span>标题</span>
+                <input v-model="newFeedback.title" class="feedback-form-control" type="text" maxlength="120" placeholder="用一句话描述问题或建议" @input="scheduleSimilarSearch" />
+              </label>
+              <SimilarFeedbackList
+                class="full"
+                :items="similarItems"
+                :loading="similarLoading"
+                @support="handleSimilarSupport"
+                @view="handleSimilarView"
+              />
               <label class="full">
                 <span>详细描述</span>
                 <textarea v-model="newFeedback.content" class="feedback-form-control" rows="6" maxlength="1000" placeholder="请描述复现步骤、期望结果或具体建议" required @paste="handleNewMediaPaste"></textarea>
@@ -189,13 +205,14 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
+import SimilarFeedbackList from '@/components/co-creation/SimilarFeedbackList.vue'
 import {
   appendMyFeedbackMessage,
   createFeedback,
@@ -204,6 +221,7 @@ import {
   listMyFeedback,
   updateMyFeedbackStatus
 } from '@/api/feedback.js'
+import { findSimilarFeedback } from '@/api/coCreation.js'
 import {
   getUnreadFeedbackNotificationRefs,
   listUnreadNotifications,
@@ -257,8 +275,14 @@ const replyTarget = ref('')
 const replying = ref(false)
 const updatingStatus = ref(false)
 const replyContent = ref('')
-const newFeedback = ref({ type: 'BUG', category: '', content: '', clientInfoConsent: false })
+const newFeedback = ref({ type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false })
 const newMedia = useFeedbackMedia()
+const similarItems = ref([])
+const similarLoading = ref(false)
+const publicNotice = ref('')
+const router = useRouter()
+let similarTimer = null
+let similarRequestId = 0
 const replyMedia = useFeedbackMedia()
 const unreadFeedbackIds = ref([])
 let loadRequestId = 0
@@ -496,6 +520,55 @@ function closeNewFeedback() {
   showNewForm.value = false
   formError.value = ''
   newMedia.clear()
+  resetSimilar()
+}
+
+function resetSimilar() {
+  similarRequestId += 1
+  if (similarTimer) clearTimeout(similarTimer)
+  similarTimer = null
+  similarItems.value = []
+  similarLoading.value = false
+}
+
+function scheduleSimilarSearch() {
+  if (similarTimer) clearTimeout(similarTimer)
+  const title = newFeedback.value.title.trim()
+  if (title.length < 2) {
+    resetSimilar()
+    return
+  }
+  similarLoading.value = true
+  const requestId = ++similarRequestId
+  similarTimer = setTimeout(() => runSimilarSearch(requestId, title), 350)
+}
+
+async function runSimilarSearch(requestId, title) {
+  try {
+    const items = await findSimilarFeedback(title, newFeedback.value.type)
+    if (!isMounted || requestId !== similarRequestId || !showNewForm.value) return
+    similarItems.value = items
+  } catch (_) {
+    if (isMounted && requestId === similarRequestId) similarItems.value = []
+  } finally {
+    if (isMounted && requestId === similarRequestId) similarLoading.value = false
+  }
+}
+
+function handleSimilarSupport(detail) {
+  if (!detail) return
+  resetSimilar()
+  publicNotice.value = '已记录你的支持，这个问题将统一在主反馈中跟踪。'
+  showNewForm.value = false
+  formError.value = ''
+  newMedia.clear()
+  newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
+}
+
+function handleSimilarView(item) {
+  showNewForm.value = false
+  resetSimilar()
+  router.push({ path: '/co-creation', query: { feedback: item.id } })
 }
 
 async function submitFeedback() {
@@ -511,7 +584,8 @@ async function submitFeedback() {
     const created = await createFeedback({ ...payload, mediaIds })
     if (!isMounted || currentUserId() !== userId) return
     newMedia.clear()
-    newFeedback.value = { type: 'BUG', category: '', content: '', clientInfoConsent: false }
+    resetSimilar()
+    newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
     showNewForm.value = false
     filterStatus.value = '全部'
     filterType.value = ''
@@ -562,6 +636,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.feedback-public-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 10px 14px; border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); font-size: 12.5px; font-weight: 700; }
+.feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .feedback-modal { max-width: 620px; }
 .feedback-modal-kicker { display: block; margin-bottom: 5px; color: var(--feedback-accent); font: 800 10px var(--font-d); letter-spacing: .16em; }
 .feedback-modal .modal-head h2 { color: var(--feedback-text); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }

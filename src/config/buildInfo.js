@@ -7,7 +7,8 @@
 // 无 Git 环境（例如源码压缩包构建）时 commit 降级为 "unknown"，不会让构建失败。
 
 const UNKNOWN = 'unknown'
-const FALLBACK_PRODUCT_VERSION = '0.0.0-dev'
+// 无 VERSION / 无构建注入时的占位版本；版本检测据此判定“不可比较”，避免永久提示。
+export const FALLBACK_PRODUCT_VERSION = '0.0.0-dev'
 
 function text(value) {
   if (value == null) return ''
