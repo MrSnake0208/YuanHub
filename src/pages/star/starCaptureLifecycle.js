@@ -2,6 +2,10 @@ export const STAR_CAPTURE_LIFECYCLE_KEY = 'yuanhub:star-capture-lifecycle:v1'
 
 const validStates = new Set(['imported', 'consume_pending'])
 
+// 页面会话内的“已消费批次”备忘上限（按账号计）。跨刷新的抑制由 localStorage 生命周期
+// 负责，这里只挡同一会话内迟到的 pending / SSE 回放，不需要无限增长。
+const CONSUMED_IN_PAGE_LIMIT = 20
+
 function normalized(value) {
   return String(value || '').trim()
 }
@@ -75,23 +79,44 @@ export function createStarCaptureLifecycle(storage, now = Date.now) {
   }
 }
 
-export async function importAndMarkStarCapture({ lifecycle, accountId, captureId, importCapture, isCurrent }) {
+export async function importAndMarkStarCapture({ lifecycle, accountId, captureId, importCapture, isCurrent, onMarkFailure = function () {} }) {
   const completed = await importCapture()
   if (!completed || !isCurrent()) return false
-  lifecycle.markImported(accountId, captureId)
+  try {
+    lifecycle.markImported(accountId, captureId)
+  } catch (error) {
+    // 图片已经真正进入 embed 的 Draft；本地生命周期只是加速恢复的缓存。
+    // 持久化失败只能降级为提示，不能把导入报成失败，否则调用方会保留
+    // pendingCapture 并可能重复导入。
+    onMarkFailure(error)
+  }
   return true
 }
 
 export function createStarCaptureInbox(lifecycle) {
-  const consumedInPage = new Set()
+  const consumedInPage = new Map()
   const key = (accountId, captureId) => normalized(accountId) + '\u0000' + normalized(captureId)
+
+  function remember(accountId, captureId) {
+    const account = normalized(accountId)
+    if (!account) return
+    const seen = consumedInPage.get(account) || new Set()
+    const entry = key(accountId, captureId)
+    seen.delete(entry)
+    seen.add(entry)
+    while (seen.size > CONSUMED_IN_PAGE_LIMIT) seen.delete(seen.values().next().value)
+    consumedInPage.set(account, seen)
+  }
+
   return {
     captureAction(accountId, captureId) {
-      if (consumedInPage.has(key(accountId, captureId))) return 'consumed'
+      const account = normalized(accountId)
+      const seen = consumedInPage.get(account)
+      if (seen && seen.has(key(accountId, captureId))) return 'consumed'
       return lifecycle.captureAction(accountId, captureId)
     },
     markConsumed(accountId, captureId) {
-      consumedInPage.add(key(accountId, captureId))
+      remember(accountId, captureId)
     },
   }
 }
@@ -110,11 +135,14 @@ export function createStarCaptureHost({ lifecycle, consume, onState = function (
         await consume(record.accountId, record.captureId)
       } catch (error) {
         if (error?.status !== 404 && error?.code !== 'star_capture_not_found') {
+          // 必须发出终态事件，否则界面会一直停在“重试中…”。
           if (lifecycle.shouldSuppressImport(record.accountId, record.captureId) === 'consume_pending') onState({ type: 'failed', ...record })
+          else onState({ type: 'superseded', ...record })
           return false
         }
       }
       if (lifecycle.clearIfMatches(record.accountId, record.captureId)) onState({ type: 'consumed', ...record })
+      else onState({ type: 'superseded', ...record })
       return true
     })().finally(function () { inFlight.delete(key) })
     inFlight.set(key, operation)
