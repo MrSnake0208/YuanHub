@@ -35,6 +35,12 @@ vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'tester' }, adm
 vi.mock('../src/store/feedbackUnread.js', () => ({
   feedbackUnreadState: { ids: [], count: 0 }, subscribeFeedbackUnread: () => () => {}
 }))
+vi.mock('../src/store/notificationUnread.js', () => ({
+  notificationUnreadState: { feedbackRefIds: [] },
+  refreshNotificationUnreadDetails: vi.fn().mockResolvedValue([]),
+  removeNotificationUnreadItems: vi.fn(),
+  subscribeNotificationUnread: () => () => {}
+}))
 
 function deferred() {
   let resolve, reject

@@ -48,7 +48,7 @@ it('board permission changes clear old markers and cannot reuse the previous req
   expect(feedbackUnreadState.ids).toEqual(['rpt_operator'])
   const pending = deferred()
   listManagedFeedback.mockReturnValue(pending.promise)
-  refreshFeedbackUnread(); await flushPromises()
+  refreshFeedbackUnread({ force: true }); await flushPromises()
   auth.adminAccess = { superAdmin: false, manageAreas: ['INVENTORY'] }; await flushPromises()
   expect(listManagedFeedback).toHaveBeenCalledTimes(3)
   expect(feedbackUnreadState.ids).toEqual([])
