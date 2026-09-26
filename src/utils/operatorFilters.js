@@ -113,3 +113,42 @@ export function subProfOptions(ops) {
   })
   return out
 }
+
+// 品质（原“稀有度”）共用选项：按品质从高到低排列。
+// 图鉴 / 当前养成 / 快捷录入 / 养成规划共用这一份，避免各页顺序与文案分叉。
+export const OPERATOR_RARITY_OPTIONS = [
+  { value: 'all', label: '全部' },
+  { value: 5, label: '绝密' },
+  { value: 4, label: '机密' },
+  { value: 3, label: '隐密' }
+]
+
+export const OPERATOR_RARITY_LABELS = { 3: '隐密', 4: '机密', 5: '绝密' }
+
+// 图鉴列表的筛选口径：必须与图鉴实际展示的列表保持同一套条件，
+// 否则“筛选出 N 位密探”会与列表数量不一致。
+export function matchesManifestFilters(entry, filters) {
+  if (!entry) return false
+  const f = filters || {}
+  if (f.rarityFilter != null && f.rarityFilter !== 'all' && Number(entry.rarity) !== Number(f.rarityFilter)) return false
+  if (!matchesProfSubFilter(entry, f.profFilter, f.subProfFilter)) return false
+  if (f.manifestFilter === 'owned' && !entry.owned) return false
+  if (f.manifestFilter === 'missing' && entry.owned) return false
+  const query = String(f.search || '').trim().toLowerCase()
+  if (query) {
+    const hay = [entry.name, entry.alias, entry.id, entry.prof, entry.subProf].filter(Boolean).join(' ').toLowerCase()
+    if (hay.indexOf(query) === -1) return false
+  }
+  return true
+}
+
+export function hasActiveManifestFilters(filters) {
+  const f = filters || {}
+  return Boolean(
+    (f.rarityFilter != null && f.rarityFilter !== 'all') ||
+    (f.profFilter != null && f.profFilter !== 'all') ||
+    (f.subProfFilter != null && f.subProfFilter !== 'all') ||
+    (f.manifestFilter != null && f.manifestFilter !== 'all') ||
+    String(f.search || '').trim()
+  )
+}

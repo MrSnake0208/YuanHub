@@ -51,9 +51,9 @@
           <button v-for="option in selectionOptions" :key="option.value" type="button" :class="{ on: selectionFilter === option.value }" :aria-pressed="selectionFilter === option.value" @click="selectionFilter = option.value">{{ option.label }}<span>{{ selectionCount(option.value) }}</span></button>
         </div>
 
-        <section v-if="filtersOpen" id="plan-advanced-filters" class="plan-filters" aria-label="稀有度、属性与职业筛选">
+        <section v-if="filtersOpen" id="plan-advanced-filters" class="plan-filters" aria-label="品质、属性与职业筛选">
           <div class="plan-filter-head"><span>精细筛选</span><button v-if="hasAdvancedFilters" type="button" class="plan-filter-reset" @click="resetAdvancedFilters">清除</button></div>
-          <div class="plan-filter-row"><span class="plan-filter-label">稀有</span><div class="plan-filter-options" role="group" aria-label="按稀有度筛选"><button v-for="option in rarityOptions" :key="option.value" type="button" class="rarity-option" :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]" :aria-pressed="rarityFilter === option.value" @click="rarityFilter = option.value">{{ option.label }}</button></div></div>
+          <div class="plan-filter-row"><span class="plan-filter-label">品质</span><div class="plan-filter-options" role="group" aria-label="按品质筛选"><button v-for="option in rarityOptions" :key="option.value" type="button" class="rarity-option" :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]" :aria-pressed="rarityFilter === option.value" @click="rarityFilter = option.value">{{ option.label }}</button></div></div>
           <div class="plan-filter-row"><span class="plan-filter-label">属性</span><div class="plan-filter-options" role="group" aria-label="按属性筛选"><button v-for="option in profOptions" :key="option" type="button" :class="{ on: profFilter === option }" :aria-pressed="profFilter === option" @click="profFilter = option">{{ option === 'all' ? '全部' : option }}</button></div></div>
           <div class="plan-filter-row"><span class="plan-filter-label">职业</span><div class="plan-filter-options" role="group" aria-label="按职业筛选"><button v-for="option in subProfOptions" :key="option" type="button" :class="{ on: subProfFilter === option }" :aria-pressed="subProfFilter === option" @click="subProfFilter = option">{{ option === 'all' ? '全部' : option }}</button></div></div>
         </section>
@@ -100,7 +100,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronDown, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
+import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
 const props = defineProps({ plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
 const emit = defineEmits(['select', 'save', 'remove'])
@@ -126,7 +126,7 @@ const confirmingDelete = ref(false)
 const filtersOpen = ref(false)
 const switcherOpen = ref(false)
 const selectionOptions = [{ value: 'all', label: '全部' }, { value: 'selected', label: '已选' }, { value: 'unselected', label: '未选' }]
-const rarityOptions = [{ value: 'all', label: '全部' }, { value: 3, label: '隐密' }, { value: 4, label: '机密' }, { value: 5, label: '绝密' }]
+const rarityOptions = OPERATOR_RARITY_OPTIONS
 const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
 const catalogIds = computed(() => new Set(props.catalogEntries.map(entry => entry.id).filter(Boolean)))
 const validFavoriteIds = computed(() => [...props.favoriteIds].filter(id => catalogIds.value.has(id)))
