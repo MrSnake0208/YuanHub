@@ -123,6 +123,26 @@ test('old consume completion cannot clear a newer capture or emit its success', 
   assert.equal(await work, true)
   assert.equal(lifecycle.get('A').captureId, 'M2')
   assert.equal(events.includes('consumed'), false)
+  // 即使清理结果被新的 capture 取代，也必须发出终态事件，否则界面会停在“重试中…”。
+  assert.equal(events.includes('superseded'), true)
+})
+
+test('a superseded consume failure also emits a terminal state', async () => {
+  const lifecycle = createStarCaptureLifecycle(storage())
+  const gate = deferred()
+  const events = []
+  const host = createStarCaptureHost({
+    lifecycle,
+    consume: () => gate.promise.then(() => { throw Object.assign(new Error('offline'), { status: 503 }) }),
+    onState: state => events.push(state.type),
+  })
+  const work = host.onCaptureCommitted({ source: 'maayuan', accountId: 'A', captureId: 'M1' })
+  lifecycle.markImported('A', 'M2')
+  gate.resolve()
+  assert.equal(await work, false)
+  assert.equal(events.includes('failed'), false)
+  assert.equal(events.includes('superseded'), true)
+  assert.equal(lifecycle.get('A').captureId, 'M2')
 })
 
 test('account records are isolated and callback uses its event account', async () => {
@@ -177,4 +197,32 @@ test('a late pending response or duplicate SSE cannot reimport after consume suc
   }
   assert.equal(inbox.captureAction('A', 'M2'), 'import')
   assert.equal(inbox.captureAction('B', 'M1'), 'import')
+})
+
+test('a successful import is not downgraded when the local lifecycle write fails', async () => {
+  const failingLifecycle = {
+    markImported() { throw new Error('QuotaExceededError') },
+    get() { return null },
+  }
+  const failures = []
+  const result = await importAndMarkStarCapture({
+    lifecycle: failingLifecycle,
+    accountId: 'A',
+    captureId: 'M1',
+    importCapture: async () => true,
+    isCurrent: () => true,
+    onMarkFailure: error => failures.push(error.message),
+  })
+  assert.equal(result, true)
+  assert.deepEqual(failures, ['QuotaExceededError'])
+})
+
+test('in-page consumed memo stays bounded per account and keeps the newest entries', () => {
+  const lifecycle = createStarCaptureLifecycle(storage())
+  const inbox = createStarCaptureInbox(lifecycle)
+  for (let index = 0; index < 25; index += 1) inbox.markConsumed('A', 'M' + index)
+  assert.equal(inbox.captureAction('A', 'M24'), 'consumed')
+  assert.equal(inbox.captureAction('A', 'M6'), 'consumed')
+  assert.equal(inbox.captureAction('A', 'M0'), 'import')
+  assert.equal(inbox.captureAction('B', 'M24'), 'import')
 })
