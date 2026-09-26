@@ -56,6 +56,63 @@
             description="当前密探养成、培养计划与导入数据均归属此账号。"
           />
 
+          <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
+          <div
+            class="operator-tabs"
+            role="tablist"
+            aria-label="密探工作区"
+            data-tour="operator-workspace"
+            v-reveal
+          >
+            <button
+              type="button"
+              class="operator-tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'catalog'"
+              :class="{ on: activeTab === 'catalog' }"
+              @click="setTab('catalog')"
+            >
+              密探图鉴
+            </button>
+            <button
+              type="button"
+              class="operator-tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'current'"
+              :class="{ on: activeTab === 'current' }"
+              @click="setTab('current')"
+            >
+              养成总览
+            </button>
+            <button
+              type="button"
+              class="operator-tab-button"
+              role="tab"
+              :aria-selected="activeTab === 'tracking'"
+              :class="{ on: activeTab === 'tracking' }"
+              @click="openGrowthPlanningPreview"
+            >
+              养成规划
+            </button>
+            <span class="sp"></span>
+            <router-link class="act-btn ghost admin-link" to="/operator/share"
+              >查看他人 BOX</router-link
+            >
+            <router-link
+              class="act-btn ghost admin-link"
+              :to="quickHref"
+              @click="showImport = false"
+              >首次 / 快捷录入</router-link
+            >
+            <button
+              type="button"
+              class="act-btn ghost admin-link workspace-tabs-toggle"
+              :aria-expanded="!accountWorkspaceCompact"
+              aria-controls="operator-account-workspace"
+              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
+            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
+          </div>
+
           <!-- 统一子账号（库存 × 密探共用） -->
           <AccountWorkspace
             id="operator-account-workspace"
@@ -193,63 +250,6 @@
               </div>
             </div>
           </AccountWorkspace>
-
-          <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
-          <div
-            class="operator-tabs"
-            role="tablist"
-            aria-label="密探工作区"
-            data-tour="operator-workspace"
-            v-reveal
-          >
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'catalog'"
-              :class="{ on: activeTab === 'catalog' }"
-              @click="setTab('catalog')"
-            >
-              密探图鉴
-            </button>
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'current'"
-              :class="{ on: activeTab === 'current' }"
-              @click="setTab('current')"
-            >
-              养成总览
-            </button>
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'tracking'"
-              :class="{ on: activeTab === 'tracking' }"
-              @click="openGrowthPlanningPreview"
-            >
-              养成规划
-            </button>
-            <span class="sp"></span>
-            <router-link class="act-btn ghost admin-link" to="/operator/share"
-              >查看他人 BOX</router-link
-            >
-            <router-link
-              class="act-btn ghost admin-link"
-              :to="quickHref"
-              @click="showImport = false"
-              >首次 / 快捷录入</router-link
-            >
-            <button
-              type="button"
-              class="act-btn ghost admin-link workspace-tabs-toggle"
-              :aria-expanded="!accountWorkspaceCompact"
-              aria-controls="operator-account-workspace"
-              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
-            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
-          </div>
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
@@ -498,21 +498,8 @@
               </div>
             </div>
 
-            <!-- 稀有度 / 属性 / 职业 筛选 -->
+            <!-- 属性 / 职业 / 品质 筛选 -->
             <div class="prof-filter catalog-prof-filter" v-reveal>
-              <div class="pf-row pf-rarity-row">
-                <span class="pf-label">稀有</span>
-                <div class="mf-filter rarity-filter" role="group" aria-label="按稀有度筛选密探图鉴">
-                  <button
-                    v-for="option in rarityOptions"
-                    :key="option.value"
-                    type="button"
-                    :aria-pressed="rarityFilter === option.value"
-                    :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-                    @click="rarityFilter = option.value"
-                  >{{ option.label }}</button>
-                </div>
-              </div>
               <div class="pf-row pf-prof-row">
                 <span class="pf-label">属性</span>
                 <div
@@ -572,6 +559,19 @@
                   </button>
                 </div>
               </div>
+              <div class="pf-row pf-rarity-row">
+                <span class="pf-label">品质</span>
+                <div class="mf-filter rarity-filter" role="group" aria-label="按品质筛选密探图鉴">
+                  <button
+                    v-for="option in rarityOptions"
+                    :key="option.value"
+                    type="button"
+                    :aria-pressed="rarityFilter === option.value"
+                    :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+                    @click="rarityFilter = option.value"
+                  >{{ option.label }}</button>
+                </div>
+              </div>
             </div>
 
             <div v-if="catalogLoading" class="state">正在加载密探图鉴…</div>
@@ -591,13 +591,17 @@
                   <b class="bp-num">{{ catalogVersion || "本地兜底" }}</b> ·
                   所属游戏「{{ gameFilter }}」
                   <template v-if="rarityFilter !== 'all'">
-                    · 稀有「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
+                    · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
                   >
                   <template v-if="profFilter !== 'all'">
                     · 属性「{{ profFilter }}」</template
                   >
                   <template v-if="subProfFilter !== 'all'">
                     · 职业「{{ subProfFilter }}」</template
+                  >
+                  <template v-if="hasManifestFilters">
+                    · 筛选出
+                    <b class="bp-num">{{ manifestEntries.length }}</b> 位密探</template
                   >
                   <template v-if="!auth.isLoggedIn">
                     · 未登录：仅展示图鉴，不显示云端养成</template
@@ -946,7 +950,7 @@
               :status-filter="workbenchStatusFilter"
               :prof-icon="profIcon"
               :has-filters="hasCurrentFilters"
-              description="筛选后按状态、稀有度、等级、化极、属性与实装顺序排列"
+              description="筛选后按状态、品质、等级、化极、属性与实装顺序排列"
               @update:status-filter="setWorkbenchStatusFilter"
               @reset="resetCurrentFilters"
             >
@@ -1096,7 +1100,7 @@
               <div class="current-ledger-meta">
                 <span
                   >版本「{{ gameFilter }}」<template v-if="rarityFilter !== 'all'">
-                    · 稀有「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
+                    · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
                   ><template
                     v-if="profFilter !== 'all'"
                   >
@@ -3167,9 +3171,9 @@ const upgradeReadyFilter = ref("");
 const favoriteFirst = ref(false);
 const rarityOptions = [
   { value: "all", label: "全部" },
-  { value: 3, label: "隐密" },
-  { value: 4, label: "机密" },
   { value: 5, label: "绝密" },
+  { value: 4, label: "机密" },
+  { value: 3, label: "隐密" },
 ];
 const rarityLabelMap = { 3: "隐密", 4: "机密", 5: "绝密" };
 const profOptions = AGENT_PROFS;
@@ -4436,7 +4440,7 @@ const filterSuffix = computed(function () {
   if (manifestSearch.value) parts.push("「" + manifestSearch.value + "」");
   parts.push("版本「" + gameFilter.value + "」");
   if (rarityFilter.value !== "all")
-    parts.push("稀有「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
+    parts.push("品质「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
   if (profFilter.value !== "all")
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
@@ -4444,6 +4448,16 @@ const filterSuffix = computed(function () {
   if (manifestFilter.value === "owned") parts.push("「已拥有」");
   if (manifestFilter.value === "missing") parts.push("「未拥有」");
   return parts.length ? parts.join(" · ") : "";
+});
+
+const hasManifestFilters = computed(function () {
+  return (
+    rarityFilter.value !== "all" ||
+    profFilter.value !== "all" ||
+    subProfFilter.value !== "all" ||
+    manifestFilter.value !== "all" ||
+    Boolean(manifestSearch.value.trim())
+  );
 });
 
 // 当前养成首要口径：只展示已拥有，再叠加稀有度 / 属性 / 职业等筛选。
@@ -4634,7 +4648,7 @@ const currentFilterSuffix = computed(function () {
   const parts = [];
   parts.push("版本「" + gameFilter.value + "」");
   if (rarityFilter.value !== "all")
-    parts.push("稀有「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
+    parts.push("品质「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
   if (profFilter.value !== "all")
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
@@ -13991,6 +14005,9 @@ onBeforeUnmount(function () {
     gap: 3px;
     padding: 3px;
   }
+  .catalog-prof-filter .pf-rarity-row .mf-filter {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .catalog-prof-filter .pf-prof-row .mf-filter {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
@@ -14101,6 +14118,9 @@ onBeforeUnmount(function () {
     box-sizing: border-box;
     gap: 3px;
     padding: 3px;
+  }
+  .current-prof-filter .pf-rarity-row .mf-filter {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .current-prof-filter .pf-prof-row .mf-filter {
     grid-template-columns: repeat(8, minmax(0, 1fr));

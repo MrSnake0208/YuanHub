@@ -97,12 +97,21 @@ test('restores valid progress and ignores malformed saved state', function () {
   }
 })
 
-test('uses six stable step ids and data-tour anchors including MaaYuan sync', function () {
-  assert.equal(ONBOARDING_STEPS.length, 6)
+test('uses seven stable step ids and data-tour anchors including account creation', function () {
+  assert.equal(ONBOARDING_STEPS.length, 7)
   assert.equal(new Set(ONBOARDING_STEPS.map(step => step.id)).size, ONBOARDING_STEPS.length)
   assert.ok(ONBOARDING_STEPS.every(step => /[a-z]/i.test(step.id)))
+  assert.deepEqual(
+    ONBOARDING_STEPS.slice(0, 3).map(step => step.id),
+    ['welcome', 'account-create', 'today-overview']
+  )
+  assert.ok(
+    ONBOARDING_STEPS.findIndex(step => step.id === 'maayuan-sync') <
+    ONBOARDING_STEPS.findIndex(step => step.id === 'replay-entry')
+  )
 
   const files = [
+    '../src/components/GameAccountManager.vue',
     '../src/components/IslandSidebar.vue',
     '../src/pages/demo/index.vue',
     '../src/pages/operator/index.vue',
@@ -117,6 +126,14 @@ test('uses six stable step ids and data-tour anchors including MaaYuan sync', fu
     assert.match(files, new RegExp(`data-tour=["']${step.target}["']`))
   }
 
+  const accountStep = ONBOARDING_STEPS.find(step => step.id === 'account-create')
+  assert.equal(accountStep.route, '/user/profile')
+  assert.equal(accountStep.target, 'account-create')
+  assert.match(accountStep.description, /统一管理游戏账号/)
+  assert.match(accountStep.description, /游戏子账号/)
+  assert.match(accountStep.description, /所属游戏/)
+  assert.match(accountStep.description, /创建账号/)
+
   const accountWorkspace = readFileSync(new URL('../src/components/AccountWorkspace.vue', import.meta.url), 'utf8')
   assert.match(accountWorkspace, /class=["']workspace-summary["'][^>]*:data-tour=["']tourTarget \|\| undefined["']/)
 
@@ -127,7 +144,7 @@ test('uses six stable step ids and data-tour anchors including MaaYuan sync', fu
   assert.equal(syncStep.completionAction, 'click-target')
   assert.match(syncStep.description, /创建 MaaYuan 连接码/)
   assert.match(syncStep.description, /确认账号与权限/)
-  assert.match(syncStep.description, /左侧“我的连接码”/)
+  assert.match(syncStep.description, /左侧“账号与连接码”/)
   assert.match(syncStep.description, /连接面板里也可以补建/)
 })
 

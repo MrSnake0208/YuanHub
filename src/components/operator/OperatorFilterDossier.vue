@@ -39,20 +39,6 @@
     </div>
 
     <div class="current-filter-rows">
-      <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
-        <span class="pf-label">稀有</span>
-        <div class="mf-filter rarity-filter" role="group" :aria-label="`按稀有度筛选${contextLabel}`">
-          <button
-            v-for="option in rarityOptions"
-            :key="option.value"
-            type="button"
-            :aria-pressed="rarityFilter === option.value"
-            :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-            @click="$emit('update:rarityFilter', option.value)"
-          >{{ option.label }}</button>
-        </div>
-      </div>
-
       <div class="pf-row pf-prof-row">
         <span class="pf-label">属性</span>
         <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
@@ -98,6 +84,20 @@
           >
             {{ subProf }}
           </button>
+        </div>
+      </div>
+
+      <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
+        <span class="pf-label">品质</span>
+        <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
+          <button
+            v-for="option in rarityOptions"
+            :key="option.value"
+            type="button"
+            :aria-pressed="rarityFilter === option.value"
+            :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+            @click="$emit('update:rarityFilter', option.value)"
+          >{{ option.label }}</button>
         </div>
       </div>
 
@@ -407,6 +407,7 @@ function statusCount(value) {
     gap: 3px;
     padding: 3px;
   }
+  .pf-rarity-row .mf-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pf-prof-row .mf-filter { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .pf-subprof-row .mf-filter { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .pf-status-row .mf-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }

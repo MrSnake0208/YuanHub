@@ -12,7 +12,7 @@
           </div>
           <h1>我的账户<span class="small">账号 · 应用 · 数据连接</span></h1>
           <p class="hero-sub">
-            在这里连接 MaaYuan
+            在这里管理子账号、连接 MaaYuan
             或管理其他第三方工具。每条连接只访问你选中的游戏账号，也可以随时停止。
           </p>
           <div class="hero-stats">
@@ -187,7 +187,7 @@
               </div>
               <p v-if="cameFromToday" class="today-connect-note" role="note">
                 你已经从「今日一览」来到这里。以后需要新建或管理连接码时，
-                直接从左侧「我的连接码」进入即可。
+                直接从左侧「账号与连接码」进入即可。
               </p>
 
               <div
