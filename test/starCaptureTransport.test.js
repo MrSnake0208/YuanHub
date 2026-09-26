@@ -30,7 +30,7 @@ test('full three-section manifest is reconstructed in global order without impor
   let consumed = 0
   let options = 'not-called'
   await importLoadedStarCapture({ async consume() { consumed += 1 } }, 'account-1', 'capture-1', { importCaptureBatch(_batch, nextOptions) { options = nextOptions } }, batch)
-  assert.equal(consumed, 1)
+  assert.equal(consumed, 0)
   assert.equal(options, undefined)
 })
 
@@ -50,8 +50,33 @@ test('an account switch while downloading prevents both import and consume', asy
   assert.equal(consumed, 0)
 })
 
-test('consume clears only capture query fields', () => {
+test('completed import clears only capture query fields', () => {
   const next = clearStarCaptureRouteQuery({ capture_id: 'capture-1', account_id: 'account-1', tab: 'import' })
   assert.deepEqual(next, { tab: 'import' })
   assert.equal(captureIdFromRouteQuery(next), '')
+})
+
+test('async import must resolve before the handoff completes and never consumes', async () => {
+  let finishImport
+  let settled = false
+  let consumed = 0
+  const imported = new Promise(resolve => { finishImport = resolve })
+  const handoff = importLoadedStarCapture({ consume() { consumed += 1 } }, 'A', 'M1', {
+    importCaptureBatch() { return imported },
+  }, { captureId: 'M1' }).then(value => { settled = true; return value })
+  await Promise.resolve()
+  assert.equal(settled, false)
+  finishImport()
+  assert.equal(await handoff, true)
+  assert.equal(consumed, 0)
+})
+
+test('account switch while async import is pending makes the handoff stale', async () => {
+  let finishImport
+  let active = true
+  const imported = new Promise(resolve => { finishImport = resolve })
+  const handoff = importLoadedStarCapture({}, 'A', 'M1', { importCaptureBatch() { return imported } }, {}, () => active)
+  active = false
+  finishImport()
+  assert.equal(await handoff, false)
 })

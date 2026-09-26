@@ -92,11 +92,10 @@ export async function loadStarCaptureBatch(api, accountId, captureId, createFile
   throw new Error('星石截图批次缺少完整三段采集。')
 }
 
-export async function importLoadedStarCapture(api, accountId, captureId, handle, batch, isCurrent = function () { return true }) {
+export async function importLoadedStarCapture(_api, _accountId, _captureId, handle, batch, isCurrent = function () { return true }) {
   if (!isCurrent()) return false
-  handle.importCaptureBatch(batch)
+  await handle.importCaptureBatch(batch)
   if (!isCurrent()) return false
-  await api.consume(accountId, captureId)
   return true
 }
 
