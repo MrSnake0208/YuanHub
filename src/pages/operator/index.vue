@@ -3083,7 +3083,11 @@ import {
 } from "../../utils/operatorTabs.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
+  OPERATOR_RARITY_LABELS,
+  OPERATOR_RARITY_OPTIONS,
+  hasActiveManifestFilters,
   isOperatorOwned,
+  matchesManifestFilters,
   matchesProfSubFilter,
   subProfList,
   subProfOptions as deriveSubProfOptions,
@@ -3169,13 +3173,8 @@ const subProfFilter = ref("all");
 const workbenchStatusFilter = ref("all");
 const upgradeReadyFilter = ref("");
 const favoriteFirst = ref(false);
-const rarityOptions = [
-  { value: "all", label: "全部" },
-  { value: 5, label: "绝密" },
-  { value: 4, label: "机密" },
-  { value: 3, label: "隐密" },
-];
-const rarityLabelMap = { 3: "隐密", 4: "机密", 5: "绝密" };
+const rarityOptions = OPERATOR_RARITY_OPTIONS;
+const rarityLabelMap = OPERATOR_RARITY_LABELS;
 const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
@@ -3927,7 +3926,7 @@ watch(editing, async function (isOpen) {
 const catalogOperators = computed(function () {
   if (Array.isArray(backendCatalog.value))
     return backendCatalog.value.map(normalizeOperator);
-  // 后端不可达时的本地兜底：库存角色目录已含 id/name/稀有度/属性，足够展示基础图鉴
+  // 后端不可达时的本地兜底：库存角色目录已含 id/name/品质/属性，足够展示基础图鉴
   return AGENT_CATALOG.map(function (e) {
     return {
       id: e.id,
@@ -4388,11 +4387,9 @@ const manifestPercent = computed(function () {
   );
 });
 
-// 图鉴展示列表：在全量基础上叠加稀有度 / 属性 / 职业 / 搜索 / 已拥有筛选
+// 图鉴展示列表：在全量基础上叠加品质 / 属性 / 职业 / 搜索 / 已拥有筛选
 const manifestEntries = computed(function () {
   const state = currentMap.value;
-  const q = manifestSearch.value.toLowerCase();
-  const f = manifestFilter.value;
   return catalogOperators.value
     .map(function (op) {
       const build = state[op.id];
@@ -4406,20 +4403,13 @@ const manifestEntries = computed(function () {
     })
     .filter(function (e) {
       if (!matchesGame(e, gameFilter.value)) return false;
-      if (rarityFilter.value !== "all" && Number(e.rarity) !== Number(rarityFilter.value))
-        return false;
-      if (!matchesProfSubFilter(e, profFilter.value, subProfFilter.value))
-        return false;
-      if (f === "owned" && !e.owned) return false;
-      if (f === "missing" && e.owned) return false;
-      if (q) {
-        const hay = [e.name, e.alias, e.id, e.prof, e.subProf]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (hay.indexOf(q) === -1) return false;
-      }
-      return true;
+      return matchesManifestFilters(e, {
+        rarityFilter: rarityFilter.value,
+        profFilter: profFilter.value,
+        subProfFilter: subProfFilter.value,
+        manifestFilter: manifestFilter.value,
+        search: manifestSearch.value,
+      });
     })
     .sort(function (a, b) {
       return (
@@ -4451,16 +4441,16 @@ const filterSuffix = computed(function () {
 });
 
 const hasManifestFilters = computed(function () {
-  return (
-    rarityFilter.value !== "all" ||
-    profFilter.value !== "all" ||
-    subProfFilter.value !== "all" ||
-    manifestFilter.value !== "all" ||
-    Boolean(manifestSearch.value.trim())
-  );
+  return hasActiveManifestFilters({
+    rarityFilter: rarityFilter.value,
+    profFilter: profFilter.value,
+    subProfFilter: subProfFilter.value,
+    manifestFilter: manifestFilter.value,
+    search: manifestSearch.value,
+  });
 });
 
-// 当前养成首要口径：只展示已拥有，再叠加稀有度 / 属性 / 职业等筛选。
+// 当前养成首要口径：只展示已拥有，再叠加品质 / 属性 / 职业等筛选。
 const ownedCurrentEntries = computed(function () {
   return currentEntries.value.filter(entry => catalogMap.value[entry.id] && isOperatorOwned(entry));
 });

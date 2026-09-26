@@ -2,9 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
+  OPERATOR_RARITY_OPTIONS,
   subProfList,
   canonicalSubProf,
+  hasActiveManifestFilters,
   isOperatorOwned,
+  matchesManifestFilters,
   tokens,
   matchesProfSubFilter,
   subProfOptions,
@@ -128,8 +131,59 @@ test('密探图鉴在筛选激活时显示筛选后的密探数量', function ()
     operatorPage,
     /v-if="hasManifestFilters"[\s\S]*?筛选出\s*<b class="bp-num">\{\{\s*manifestEntries\.length\s*\}\}<\/b>\s*位密探/
   )
-  assert.match(
-    operatorPage,
-    /const hasManifestFilters = computed\(function \(\) \{[\s\S]*?rarityFilter\.value !== "all"[\s\S]*?profFilter\.value !== "all"[\s\S]*?subProfFilter\.value !== "all"[\s\S]*?manifestFilter\.value !== "all"[\s\S]*?Boolean\(manifestSearch\.value\.trim\(\)\)/
-  )
+  // 数量必须来自与列表同一套筛选口径，页面不得再内联另一份过滤条件。
+  assert.match(operatorPage, /matchesManifestFilters\(e, \{/)
+  assert.match(operatorPage, /return hasActiveManifestFilters\(\{/)
+})
+
+test('图鉴筛选口径与列表数量保持一致', function () {
+  const entries = [
+    { id: 'a', name: '孙策', alias: '策', prof: '火', subProf: ['神纪'], rarity: 5, owned: true },
+    { id: 'b', name: '周瑜', alias: '', prof: '火', subProf: ['破军'], rarity: 4, owned: false },
+    { id: 'c', name: '鲁肃', alias: '', prof: '水', subProf: ['神纪'], rarity: 3, owned: true }
+  ]
+  const filtered = function (patch) {
+    const filters = Object.assign({ rarityFilter: 'all', profFilter: 'all', subProfFilter: 'all', manifestFilter: 'all', search: '' }, patch)
+    return entries.filter(function (entry) { return matchesManifestFilters(entry, filters) })
+  }
+  assert.equal(filtered({}).length, 3)
+  assert.equal(filtered({ rarityFilter: 5 }).length, 1)
+  assert.equal(filtered({ rarityFilter: '4' }).length, 1)
+  assert.equal(filtered({ profFilter: '火' }).length, 2)
+  assert.equal(filtered({ subProfFilter: '神纪' }).length, 2)
+  assert.equal(filtered({ manifestFilter: 'owned' }).length, 2)
+  assert.equal(filtered({ manifestFilter: 'missing' }).length, 1)
+  assert.equal(filtered({ search: '策' }).length, 1)
+  // 图鉴搜索沿用原有的名称/别名/id 直接匹配，不启用拼音（保持既有行为）。
+  assert.equal(filtered({ search: 'zhou' }).length, 0)
+})
+
+test('筛选激活判定与实际过滤条件同源', function () {
+  assert.equal(hasActiveManifestFilters({ rarityFilter: 'all', profFilter: 'all', subProfFilter: 'all', manifestFilter: 'all', search: '' }), false)
+  assert.equal(hasActiveManifestFilters({ rarityFilter: 'all', profFilter: 'all', subProfFilter: 'all', manifestFilter: 'all', search: '   ' }), false)
+  assert.equal(hasActiveManifestFilters({ rarityFilter: 5 }), true)
+  assert.equal(hasActiveManifestFilters({ profFilter: '火' }), true)
+  assert.equal(hasActiveManifestFilters({ subProfFilter: '神纪' }), true)
+  assert.equal(hasActiveManifestFilters({ manifestFilter: 'owned' }), true)
+  assert.equal(hasActiveManifestFilters({ search: '策' }), true)
+})
+
+test('品质选项按品质从高到低排列且各页共用同一份', function () {
+  assert.deepEqual(OPERATOR_RARITY_OPTIONS, [
+    { value: 'all', label: '全部' },
+    { value: 5, label: '绝密' },
+    { value: 4, label: '机密' },
+    { value: 3, label: '隐密' }
+  ])
+  const pages = [
+    '../src/pages/operator/index.vue',
+    '../src/pages/operator/quick.vue',
+    '../src/components/operator/OperatorTrainingPlanPicker.vue'
+  ]
+  for (const page of pages) {
+    const source = readFileSync(new URL(page, import.meta.url), 'utf8')
+    assert.match(source, /OPERATOR_RARITY_OPTIONS/, page)
+    // 不允许再各页内联一份顺序不一致的品质选项。
+    assert.doesNotMatch(source, /const rarityOptions = \[\s*\{ value: ['"]all['"]/, page)
+  }
 })

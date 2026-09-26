@@ -16,8 +16,8 @@ export const ONBOARDING_STEPS = [
     id: 'account-create',
     route: '/user/profile',
     target: 'account-create',
-    title: '先创建一个子账号',
-    description: '在“统一管理游戏账号”里创建一个或多个游戏子账号。选择所属游戏并填写名称后，点击“创建账号”；密探、库存、星石、奖励流水和连接码都会归属到这个子账号。',
+    title: '先确认子账号',
+    description: '在“统一管理游戏账号”里确认已有的游戏子账号，或新建一个。选择所属游戏并填写名称后点击“创建账号”；密探、库存、星石、奖励流水和连接码都会归属到这个子账号。',
     side: 'bottom',
     align: 'start'
   },
