@@ -80,14 +80,14 @@ export async function getUnreadNotificationCount() {
 }
 
 // 标记单条通知已读
-export async function markNotificationRead(id) {
+export async function markNotificationRead(id, { notify = true } = {}) {
   const result = await request(`/v1/notifications/${encodeURIComponent(id)}/read`, {
     method: 'PATCH',
     auth: true,
     body: {}
   })
   const notification = normalizeNotification(result)
-  notifyStateChange()
+  if (notify) notifyStateChange()
   return notification
 }
 
@@ -157,8 +157,9 @@ export async function markFeedbackNotificationsRead(refId, notifications) {
   const marked = []
   for (const item of matches) {
     if (!item.id) continue
-    marked.push(await markNotificationRead(item.id))
+    marked.push(await markNotificationRead(item.id, { notify: false }))
   }
+  if (marked.length) notifyStateChange()
   return marked
 }
 

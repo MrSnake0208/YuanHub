@@ -229,7 +229,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted } from "vue";
 import MobileHeader from "./MobileHeader.vue";
 import {
   Bell,
@@ -253,10 +253,7 @@ import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRouter } from "vue-router";
 import { restartOnboardingTour } from "@/utils/onboardingTour.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
-import {
-  getUnreadNotificationCount,
-  NOTIFICATION_STATE_EVENT,
-} from "@/api/notifications.js";
+import { notificationUnreadState } from "@/store/notificationUnread.js";
 import {
   feedbackUnreadState,
   subscribeFeedbackUnread,
@@ -276,10 +273,8 @@ const userName = computed(() =>
 );
 // 次级区域的低干扰版本入口：完整诊断信息只放在 title 里，不占用主导航层级。
 const buildInfoLine = computed(() => formatBuildInfo() + " · 查看更新日志");
-const unreadCount = ref(0);
+const unreadCount = computed(() => notificationUnreadState.count);
 const router = useRouter();
-let unreadPollTimer = null;
-let unreadCountRequestId = 0;
 let stopFeedbackUnread = null;
 
 function onLogout() {
@@ -295,47 +290,12 @@ function openBetaCommunity() {
   betaCommunity.open("manual");
 }
 
-async function fetchUnreadCount() {
-  const requestId = ++unreadCountRequestId;
-  if (!isLoggedIn.value) {
-    unreadCount.value = 0;
-    return;
-  }
-  try {
-    const data = await getUnreadNotificationCount();
-    if (requestId === unreadCountRequestId) unreadCount.value = data.count;
-  } catch (_) {
-    // 静默失败
-  }
-}
-
-function startPolling() {
-  fetchUnreadCount();
-  unreadPollTimer = setInterval(function () {
-    fetchUnreadCount();
-  }, 30000);
-}
-
-function stopPolling() {
-  if (unreadPollTimer) {
-    clearInterval(unreadPollTimer);
-    unreadPollTimer = null;
-  }
-}
-
 onMounted(function () {
   stopFeedbackUnread = subscribeFeedbackUnread();
-  if (typeof window !== "undefined")
-    window.addEventListener(NOTIFICATION_STATE_EVENT, fetchUnreadCount);
-  startPolling();
 });
 
 onBeforeUnmount(function () {
-  stopPolling();
-  unreadCountRequestId += 1;
   if (stopFeedbackUnread) stopFeedbackUnread();
-  if (typeof window !== "undefined")
-    window.removeEventListener(NOTIFICATION_STATE_EVENT, fetchUnreadCount);
 });
 </script>
 

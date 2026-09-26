@@ -100,8 +100,8 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       meRequest = pending
       return pending
     },
-    async refresh() {
-      return state.userId ? state.loadMe({ force: true }) : state.loadPublic({ force: true })
+    async refresh({ force = false } = {}) {
+      return state.userId ? state.loadMe({ force }) : state.loadPublic({ force })
     },
     async requireAccess() {
       await state.loadMe()

@@ -23,7 +23,7 @@ export function openAccountEventStream({ accountId, onEvent, onError, onOpen } =
   async function connect() {
     if (closed || !accountId || !auth.accessToken) return
     if (auth.userInfo?.id !== ownerUserId) { close(); return }
-    await beta.loadMe({ force: true })
+    await beta.refresh()
     if (closed || !beta.canUseBetaFeatures) { close(); return }
     controller = new AbortController()
     try {

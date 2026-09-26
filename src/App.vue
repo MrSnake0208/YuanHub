@@ -34,6 +34,7 @@ import BetaCommunityDialog from '@/components/beta/BetaCommunityDialog.vue'
 import { auth } from '@/store/auth.js'
 import { beta } from '@/store/beta.js'
 import { betaCommunity } from '@/store/betaCommunity.js'
+import { subscribeNotificationUnread } from '@/store/notificationUnread.js'
 import { betaLandingFor } from '@/utils/betaAccess.js'
 import { activeAccount } from '@/store/activeAccount.js'
 import { dialog } from '@/utils/dialog.js'
@@ -49,6 +50,7 @@ let stopEventPrompt = null
 let stopStarCaptureRoute = null
 let stopOnboarding = null
 let stopBetaSubscription = null
+let stopNotificationUnread = null
 let stopIdentityWatch = null
 let stopAccessWatch = null
 let stopCommunityWatch = null
@@ -127,6 +129,7 @@ function routeStarCapture(message) {
 
 onMounted(function () {
   resetMonitorPromptForFreshNavigation()
+  stopNotificationUnread = subscribeNotificationUnread()
   stopIdentityWatch = watch(() => auth.userInfo?.id || '', userId => {
     beta.setIdentity(userId)
     if (stopBetaSubscription) stopBetaSubscription()
@@ -194,6 +197,7 @@ onBeforeUnmount(function () {
   if (stopAccessWatch) stopAccessWatch()
   if (stopCommunityWatch) stopCommunityWatch()
   if (stopBetaSubscription) stopBetaSubscription()
+  if (stopNotificationUnread) stopNotificationUnread()
   stopAccountEventStream()
 })
 </script>

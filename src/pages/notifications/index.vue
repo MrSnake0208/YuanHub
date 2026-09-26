@@ -118,11 +118,13 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import {
   listNotifications,
-  getUnreadNotificationCount,
   markNotificationRead,
-  markAllNotificationsRead,
-  NOTIFICATION_STATE_EVENT
+  markAllNotificationsRead
 } from '../../api/notifications.js'
+import {
+  notificationUnreadState,
+  setNotificationUnreadCount
+} from '../../store/notificationUnread.js'
 
 const router = useRouter()
 
@@ -130,16 +132,14 @@ const PAGE_SIZE = 20
 const filter = ref('all')
 const notifications = ref([])
 const total = ref(0)
-const unreadCount = ref(0)
+const unreadCount = computed(() => notificationUnreadState.count)
 const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref('')
 const markingId = ref('')
 const markingAll = ref(false)
 const page = ref(1)
-let unreadPollTimer = null
 let notificationRequestId = 0
-let unreadCountRequestId = 0
 
 const filterTabs = [
   { key: 'all', label: '全部' },
@@ -186,7 +186,6 @@ function formatTime(iso) {
 
 async function loadNotifications() {
   const requestId = ++notificationRequestId
-  const countRequestId = ++unreadCountRequestId
   loading.value = true
   error.value = ''
   try {
@@ -199,7 +198,7 @@ async function loadNotifications() {
     if (requestId !== notificationRequestId) return
     notifications.value = Array.isArray(data.notifications) ? data.notifications : []
     total.value = data.total
-    if (countRequestId === unreadCountRequestId) unreadCount.value = data.unreadCount
+    setNotificationUnreadCount(data.unreadCount)
   } catch (err) {
     if (requestId !== notificationRequestId) return
     error.value = err.message || '通知加载失败'
@@ -213,7 +212,6 @@ async function loadMore() {
   if (loadingMore.value || !hasMore.value) return
   loadingMore.value = true
   const requestId = notificationRequestId
-  const countRequestId = ++unreadCountRequestId
   const nextPage = page.value + 1
   try {
     const params = {
@@ -228,7 +226,7 @@ async function loadMore() {
       notifications.value = notifications.value.concat(data.notifications)
     }
     total.value = data.total
-    if (countRequestId === unreadCountRequestId) unreadCount.value = data.unreadCount
+    setNotificationUnreadCount(data.unreadCount)
   } catch (_) {
     // 保持当前页，避免失败的加载更多改变分页状态。
   } finally {
@@ -236,24 +234,13 @@ async function loadMore() {
   }
 }
 
-async function loadUnreadCount() {
-  const requestId = ++unreadCountRequestId
-  try {
-    const data = await getUnreadNotificationCount()
-    if (requestId === unreadCountRequestId) unreadCount.value = data.count
-  } catch (_) {
-    // 静默失败
-  }
-}
-
 async function markRead(item) {
   if (!item || item.readAt || markingId.value) return
   markingId.value = item.id
-  ++unreadCountRequestId
   try {
     const updated = await markNotificationRead(item.id)
     if (updated) Object.assign(item, updated)
-    await Promise.all([loadUnreadCount(), loadNotifications()])
+    await loadNotifications()
   } catch (_) {
     // 静默失败
   } finally {
@@ -264,10 +251,9 @@ async function markRead(item) {
 async function markAllRead() {
   if (markingAll.value) return
   markingAll.value = true
-  ++unreadCountRequestId
   try {
     await markAllNotificationsRead()
-    await Promise.all([loadUnreadCount(), loadNotifications()])
+    await loadNotifications()
   } catch (_) {
     // 静默失败
   } finally {
@@ -295,29 +281,12 @@ function isManagementNotification(kind) {
   return kind === 'FEEDBACK_ASSIGNED' || kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'
 }
 
-function startPolling() {
-  loadUnreadCount()
-  unreadPollTimer = setInterval(loadUnreadCount, 30000)
-}
-
-function stopPolling() {
-  if (unreadPollTimer) {
-    clearInterval(unreadPollTimer)
-    unreadPollTimer = null
-  }
-}
-
 onMounted(function () {
-  if (typeof window !== 'undefined') window.addEventListener(NOTIFICATION_STATE_EVENT, loadUnreadCount)
   loadNotifications()
-  startPolling()
 })
 
 onBeforeUnmount(function () {
-  stopPolling()
   notificationRequestId += 1
-  unreadCountRequestId += 1
-  if (typeof window !== 'undefined') window.removeEventListener(NOTIFICATION_STATE_EVENT, loadUnreadCount)
 })
 </script>
 

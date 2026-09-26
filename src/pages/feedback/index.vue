@@ -222,13 +222,15 @@ import {
   updateMyFeedbackStatus
 } from '@/api/feedback.js'
 import { findSimilarFeedback } from '@/api/coCreation.js'
-import {
-  getUnreadFeedbackNotificationRefs,
-  listUnreadNotifications,
-  markFeedbackNotificationsRead
-} from '@/api/notifications.js'
+import { markFeedbackNotificationsRead } from '@/api/notifications.js'
 import { auth } from '@/store/auth.js'
 import { feedbackUnreadState, subscribeFeedbackUnread } from '@/store/feedbackUnread.js'
+import {
+  notificationUnreadState,
+  refreshNotificationUnreadDetails,
+  removeNotificationUnreadItems,
+  subscribeNotificationUnread
+} from '@/store/notificationUnread.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import '@/styles/feedback-workspace.css'
@@ -284,12 +286,11 @@ const router = useRouter()
 let similarTimer = null
 let similarRequestId = 0
 const replyMedia = useFeedbackMedia()
-const unreadFeedbackIds = ref([])
+const unreadFeedbackIds = computed(() => notificationUnreadState.feedbackRefIds)
 let loadRequestId = 0
 let detailRequestId = 0
 let ready = false
-let unreadFeedbackRequestId = 0
-let unreadFeedbackPollTimer = null
+let stopNotificationUnread = null
 let stopFeedbackUnread = null
 let isMounted = false
 
@@ -353,26 +354,13 @@ async function loadFeedback() {
   }
 }
 
-async function loadUnreadFeedbackNotifications() {
-  const requestId = ++unreadFeedbackRequestId
-  try {
-    const notifications = await listUnreadNotifications()
-    if (requestId === unreadFeedbackRequestId) {
-      unreadFeedbackIds.value = getUnreadFeedbackNotificationRefs(notifications)
-    }
-  } catch (_) {
-    // 未读标识读取失败不应阻断反馈列表；保留最近一次成功状态。
-  }
-}
-
 async function clearFeedbackNotifications(id) {
   const reportId = id == null ? '' : String(id)
   if (!reportId) return
   try {
-    const marked = await markFeedbackNotificationsRead(reportId)
-    if (marked.length > 0) {
-      unreadFeedbackIds.value = unreadFeedbackIds.value.filter(value => value !== reportId)
-    }
+    const unreadNotifications = await refreshNotificationUnreadDetails()
+    const marked = await markFeedbackNotificationsRead(reportId, unreadNotifications)
+    if (marked.length > 0) removeNotificationUnreadItems(marked.map(item => item && item.id))
   } catch (_) {
     // 标记失败时保留标识，避免伪造已读状态。
   }
@@ -607,12 +595,12 @@ function handleWindowKeydown(event) {
 
 onMounted(async () => {
   isMounted = true
+  stopNotificationUnread = subscribeNotificationUnread({ details: true })
   stopFeedbackUnread = subscribeFeedbackUnread()
   window.addEventListener('keydown', handleWindowKeydown)
-  await Promise.all([loadAccess(), loadFeedback(), loadUnreadFeedbackNotifications()])
+  await Promise.all([loadAccess(), loadFeedback(), refreshNotificationUnreadDetails()])
   if (!isMounted) return
   ready = true
-  unreadFeedbackPollTimer = setInterval(loadUnreadFeedbackNotifications, 30000)
   const reportId = route.query.id ? String(route.query.id) : ''
   if (reportId) await selectTicket(reportId)
 })
@@ -628,8 +616,7 @@ onBeforeUnmount(() => {
   ready = false
   detailRequestId += 1
   loadRequestId += 1
-  unreadFeedbackRequestId += 1
-  if (unreadFeedbackPollTimer) clearInterval(unreadFeedbackPollTimer)
+  if (stopNotificationUnread) stopNotificationUnread()
   if (stopFeedbackUnread) stopFeedbackUnread()
   window.removeEventListener('keydown', handleWindowKeydown)
 })
