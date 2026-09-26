@@ -9,8 +9,9 @@
 任何新增或修改页面、组件、样式、配色、视觉元素前，必须先读取并遵守：
 
 1. 前端设计规范：`docs/standards/design-system.md`
-2. 页面开发流程：`docs/standards/page-development.md`
-3. 功能开关发布规则：`docs/standards/feature-flags.md`
+2. 响应式开发规范：`docs/standards/responsive-development.md`
+3. 页面开发流程：`docs/standards/page-development.md`
+4. 功能开关发布规则：`docs/standards/feature-flags.md`
 
 以上规范是详细规则的唯一权威来源。`AGENTS.md` 只保留必须首先看到的硬约束摘要；详细色板、字体、组件、页面流程与功能开关规则不要在这里重复维护。
 
@@ -57,7 +58,9 @@ npm run build
 
 - 页面统一放在 `src/pages/<模块>/` 下，新页面必须在 `src/router/routes.js` 注册。
 - `src/router/index.js` 只负责创建路由实例并导入 `routes`，不要另建第二套路由注册体系。
-- 新增页面、组件或视觉样式前必须读取 `docs/standards/design-system.md`。
+- 新增页面、组件或视觉样式前必须读取 `docs/standards/design-system.md` 与 `docs/standards/responsive-development.md`。
+- 任何 UI 改动都必须同时保证手机、平板与桌面可用；不得以桌面端正常作为完成标准，也不得采用“先完成 PC、再补移动端”的开发方式。
+- 开发过程中至少同时检查 390px 与 1440px；完成前按 320 / 390 / 430 / 768 / 1024 / 1440px 视口矩阵验收，具体规则以 `responsive-development.md` 为准。
 - 禁止使用纯黑、黑底黄字、荧光黄大标题块，以及大面积 `brand-blue` 填充。
 - 标题体系使用设计规范指定的宋体方向；正文保持项目既有中文无衬线字体体系；数字按规范使用 Archivo。
 - 页面必须保留 MaaYuan 的暖色纸张背景体系和 `/maayuan/maayuan-pattern.webp` 吉祥物背景，不得在无明确设计变更要求时移除。
@@ -77,6 +80,8 @@ npm run build
 ## 改动前自查
 
 - [ ] 已读取 `docs/standards/design-system.md`
+- [ ] 涉及任何 UI 改动时已读取 `docs/standards/responsive-development.md`
+- [ ] UI 改动已同时考虑 390px 手机主基准与 1440px 桌面主基准，并计划按完整视口矩阵验收
 - [ ] 涉及页面新增或路由调整时已读取 `docs/standards/page-development.md`
 - [ ] 新页面位于 `src/pages/<模块>/` 并注册到 `src/router/routes.js`
 - [ ] 未引入第二套设计规范或重复路由体系
