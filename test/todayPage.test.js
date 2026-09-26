@@ -53,7 +53,8 @@ test('uses 今日一览 as the default page', function () {
   assert.match(page, /shouldShowTodayDataOnboarding/)
   assert.match(page, /getOperatorCurrent/)
   assert.match(page, /getCurrentStarState/)
-  assert.match(page, /getUnreadNotificationCount/)
+  assert.match(page, /refreshNotificationUnread\(\)/)
+  assert.doesNotMatch(page, /getUnreadNotificationCount/)
   assert.doesNotMatch(page, /DemoPage|OperatorGrowthTracker/)
 })
 
