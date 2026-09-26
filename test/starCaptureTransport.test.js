@@ -1,6 +1,17 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, importLoadedStarCapture, isStarCaptureReadyEvent, loadAndImportStarCapture, loadStarCaptureBatch, starCaptureRouteForEvent } from '../src/pages/star/captureTransport.js'
+import {
+  STAR_CAPTURE_CONTRACT_CODE,
+  STAR_CAPTURE_IMPORT_SUPERSEDED_CODE,
+  captureIdFromRouteQuery,
+  clearStarCaptureRouteQuery,
+  importLoadedStarCapture,
+  isRetryableCaptureImportError,
+  isStarCaptureReadyEvent,
+  loadAndImportStarCapture,
+  loadStarCaptureBatch,
+  starCaptureRouteForEvent,
+} from '../src/pages/star/captureTransport.js'
 
 const event = { event: 'star_capture_ready', data: { account_id: 'account-1', capture_id: 'capture-1', section: 'full', image_count: 4 } }
 
@@ -29,7 +40,7 @@ test('full three-section manifest is reconstructed in global order without impor
   assert.equal(batch.sections.main.adjacentRelations[0].currentSourceImageId, 'main-2')
   let consumed = 0
   let options = 'not-called'
-  await importLoadedStarCapture({ async consume() { consumed += 1 } }, 'account-1', 'capture-1', { importCaptureBatch(_batch, nextOptions) { options = nextOptions } }, batch)
+  await importLoadedStarCapture({ importCaptureBatch(_batch, nextOptions) { options = nextOptions } }, batch)
   assert.equal(consumed, 0)
   assert.equal(options, undefined)
 })
@@ -61,7 +72,7 @@ test('async import must resolve before the handoff completes and never consumes'
   let settled = false
   let consumed = 0
   const imported = new Promise(resolve => { finishImport = resolve })
-  const handoff = importLoadedStarCapture({ consume() { consumed += 1 } }, 'A', 'M1', {
+  const handoff = importLoadedStarCapture({
     importCaptureBatch() { return imported },
   }, { captureId: 'M1' }).then(value => { settled = true; return value })
   await Promise.resolve()
@@ -75,8 +86,42 @@ test('account switch while async import is pending makes the handoff stale', asy
   let finishImport
   let active = true
   const imported = new Promise(resolve => { finishImport = resolve })
-  const handoff = importLoadedStarCapture({}, 'A', 'M1', { importCaptureBatch() { return imported } }, {}, () => active)
+  const handoff = importLoadedStarCapture({ importCaptureBatch() { return imported } }, {}, () => active)
   active = false
   finishImport()
   assert.equal(await handoff, false)
+})
+
+test('embed reporting a superseded batch fails the handoff instead of reporting a false success', async () => {
+  let calls = 0
+  await assert.rejects(
+    importLoadedStarCapture({ importCaptureBatch() { calls += 1; return false } }, { captureId: 'M1' }),
+    error => error.code === STAR_CAPTURE_IMPORT_SUPERSEDED_CODE,
+  )
+  assert.equal(calls, 1)
+})
+
+test('embed without a verdict keeps the legacy accepted behaviour', async () => {
+  assert.equal(await importLoadedStarCapture({ importCaptureBatch() { return undefined } }, {}), true)
+})
+
+test('capture contract violations are tagged as non-retryable', async () => {
+  await assert.rejects(
+    loadStarCaptureBatch({ async getManifest() { return {} } }, 'A', 'M1', function () { return {} }),
+    error => error.code === STAR_CAPTURE_CONTRACT_CODE,
+  )
+  assert.equal(isRetryableCaptureImportError({ code: STAR_CAPTURE_CONTRACT_CODE }), false)
+})
+
+test('import retry policy separates transient failures from contract errors', () => {
+  assert.equal(isRetryableCaptureImportError({ code: 'capture_import_locked' }), true)
+  assert.equal(isRetryableCaptureImportError({ code: 'capture_workspace_unavailable' }), true)
+  assert.equal(isRetryableCaptureImportError({ code: STAR_CAPTURE_IMPORT_SUPERSEDED_CODE }), true)
+  assert.equal(isRetryableCaptureImportError({ status: 503 }), true)
+  assert.equal(isRetryableCaptureImportError({ status: 429 }), true)
+  assert.equal(isRetryableCaptureImportError({ status: 408 }), true)
+  assert.equal(isRetryableCaptureImportError(new TypeError('Failed to fetch')), true)
+  assert.equal(isRetryableCaptureImportError({ status: 400 }), false)
+  assert.equal(isRetryableCaptureImportError({ status: 404 }), false)
+  assert.equal(isRetryableCaptureImportError({ code: STAR_CAPTURE_CONTRACT_CODE }), false)
 })

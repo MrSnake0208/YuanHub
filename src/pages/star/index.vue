@@ -118,7 +118,7 @@
             </ArchiveExchangePanel>
           </AccountWorkspace>
           <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy"
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
@@ -140,6 +140,13 @@
               :disabled="captureRetryBusy"
               @click="retryCaptureConsume"
             >{{ captureRetryBusy ? '重试中…' : '重试清理' }}</button>
+            <button
+              v-if="captureImportNeedsRetry"
+              type="button"
+              class="star-sync-retry"
+              :disabled="captureImportBusy"
+              @click="retryCaptureImport"
+            >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
           <div class="star-tabs" role="tablist" aria-label="星石工作区">
             <button
@@ -200,7 +207,7 @@ import { migrateLegacyYuanStarHostAccount } from "./legacyHostAccountMigration.j
 import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExchangePreviewScope.js";
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
-import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isStarCaptureReadyEvent, loadAndImportStarCapture } from "./captureTransport.js";
+import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isRetryableCaptureImportError, isStarCaptureReadyEvent, loadAndImportStarCapture } from "./captureTransport.js";
 import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecycle, importAndMarkStarCapture } from "./starCaptureLifecycle.js";
 
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
@@ -234,6 +241,8 @@ const captureTransportMessage = ref("");
 const captureTransportError = ref("");
 const captureNeedsRetry = ref(false);
 const captureRetryBusy = ref(false);
+const captureImportNeedsRetry = ref(false);
+const captureImportBusy = ref(false);
 const captureLifecycle = createStarCaptureLifecycle();
 const captureInbox = createStarCaptureInbox(captureLifecycle);
 const captureHost = createStarCaptureHost({
@@ -259,6 +268,10 @@ const captureHost = createStarCaptureHost({
       captureTransportError.value = '';
       captureTransportMessage.value = '识别已完成，临时截图已清理。';
       clearCaptureRoute(state.accountId, state.captureId);
+    } else if (state.type === 'superseded') {
+      // 本次清理已被更新的 capture 取代：结束重试态，但不能清除新 capture 的待清理状态。
+      captureRetryBusy.value = false;
+      captureNeedsRetry.value = captureLifecycle.get(state.accountId)?.state === 'consume_pending';
     } else if (state.type === 'storage_failed') {
       captureRetryBusy.value = false;
       captureTransportError.value = '本地截图清理状态保存失败，请检查浏览器存储。';
@@ -271,7 +284,6 @@ let mountedAccountId = "";
 let pendingCapture = null;
 let captureQueueVersion = 0;
 let stopCaptureEvents = null;
-let captureImportBusy = false;
 const queueAccountSync = createLatestAccountSync();
 
 const accountId = computed({
@@ -364,6 +376,7 @@ function currentCaptureStillActive(current) {
 function discardForeignPendingCapture() {
   if (pendingCapture && !isCurrentStarCapture(pendingCapture, accountId.value)) pendingCapture = null;
   captureRetryBusy.value = false;
+  captureImportNeedsRetry.value = false;
   captureNeedsRetry.value = captureLifecycle.get(accountId.value)?.state === 'consume_pending';
   captureTransportError.value = '';
   captureTransportMessage.value = '';
@@ -379,10 +392,11 @@ async function retryCaptureConsume() {
   if (record?.state === 'consume_pending') await captureHost.retry(record.accountId, record.captureId);
 }
 async function importPendingCapture() {
-  if (!pendingCapture || !handle || !productReady.value || unmounted || captureImportBusy) return;
+  if (!pendingCapture || !handle || !productReady.value || unmounted || captureImportBusy.value) return;
   const current = pendingCapture;
   if (!currentCaptureStillActive(current)) return;
-  captureImportBusy = true;
+  captureImportBusy.value = true;
+  let markFailed = false;
   try {
     const completed = await importAndMarkStarCapture({
       lifecycle: captureLifecycle,
@@ -390,21 +404,32 @@ async function importPendingCapture() {
       captureId: current.captureId,
       importCapture: function () { return loadAndImportStarCapture(captureApi(), current, handle, createCaptureFile, function () { return currentCaptureStillActive(current); }); },
       isCurrent: function () { return currentCaptureStillActive(current); },
+      onMarkFailure: function () { markFailed = true; },
     });
     if (!completed || !currentCaptureStillActive(current)) return;
     pendingCapture = null;
+    captureImportNeedsRetry.value = false;
     captureNeedsRetry.value = false;
     captureRetryBusy.value = false;
     captureTransportError.value = "";
-    captureTransportMessage.value = "三段截图已导入，等待你点击“开始识别”。";
+    captureTransportMessage.value = markFailed
+      ? "三段截图已导入；本地清理状态保存失败，请检查浏览器存储后继续识别。"
+      : "三段截图已导入，等待你点击“开始识别”。";
     clearCaptureRoute(current.accountId, current.captureId);
   } catch (error) {
     if (pendingCapture !== current) return;
     captureTransportError.value = message(error, "星石截图导入失败。");
+    captureImportNeedsRetry.value = isRetryableCaptureImportError(error);
   } finally {
-    captureImportBusy = false;
+    captureImportBusy.value = false;
     if (pendingCapture && pendingCapture !== current && currentCaptureStillActive(pendingCapture)) void importPendingCapture();
   }
+}
+function retryCaptureImport() {
+  if (!pendingCapture || captureImportBusy.value) return;
+  captureImportNeedsRetry.value = false;
+  captureTransportError.value = "";
+  void importPendingCapture();
 }
 function queueCapture(captureId) {
   const normalizedCaptureId = String(captureId || "").trim();
@@ -414,6 +439,7 @@ function queueCapture(captureId) {
   if (action !== 'import') {
     if (pendingCapture?.accountId === currentAccountId && pendingCapture.captureId === normalizedCaptureId) pendingCapture = null;
     if (action === 'imported') {
+      captureImportNeedsRetry.value = false;
       captureTransportError.value = '';
       captureTransportMessage.value = '已恢复本地待识别截图，等待你继续识别。';
       clearCaptureRoute(currentAccountId, normalizedCaptureId);
@@ -427,6 +453,7 @@ function queueCapture(captureId) {
   if (!pendingCapture || pendingCapture.captureId !== normalizedCaptureId || pendingCapture.accountId !== currentAccountId) {
     captureQueueVersion += 1;
     pendingCapture = { accountId: currentAccountId, captureId: normalizedCaptureId, batch: null };
+    captureImportNeedsRetry.value = false;
     captureTransportMessage.value = "";
     captureTransportError.value = "";
   }

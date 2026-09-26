@@ -1,0 +1,4 @@
+# YuanStar embed 是从 YuanStar 仓库构建后同步进来的产物（见 docs/yuanstar-embed-sync.md）。
+# 不参与文本 diff，并在 GitHub 上折叠为 generated，避免 7800+ 行的机器生成差异淹没真实改动。
+public/yuanstar-embed/yuanstar-embed.js linguist-generated=true -diff
+public/yuanstar-embed/assets/** linguist-generated=true -diff
