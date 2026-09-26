@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   subProfList,
   canonicalSubProf,
@@ -10,6 +11,11 @@ import {
   operatorPinyinTokens,
   matchesOperatorSearch
 } from '../src/utils/operatorFilters.js'
+
+const operatorPage = readFileSync(
+  new URL('../src/pages/operator/index.vue', import.meta.url),
+  'utf8'
+)
 
 test('图鉴拥有状态只由 starLevel 决定', function () {
   assert.equal(isOperatorOwned({ level: 100, elite: 17, starLevel: 0 }), false)
@@ -115,4 +121,15 @@ test('密探搜索兼容后端显式拼音字段和无目录 id 的记录', func
   assert.equal(matchesOperatorSearch(entry, 'zhoutai'), true)
   assert.equal(matchesOperatorSearch(entry, 'zt'), true)
   assert.equal(matchesOperatorSearch(entry, ''), true)
+})
+
+test('密探图鉴在筛选激活时显示筛选后的密探数量', function () {
+  assert.match(
+    operatorPage,
+    /v-if="hasManifestFilters"[\s\S]*?筛选出\s*<b class="bp-num">\{\{\s*manifestEntries\.length\s*\}\}<\/b>\s*位密探/
+  )
+  assert.match(
+    operatorPage,
+    /const hasManifestFilters = computed\(function \(\) \{[\s\S]*?rarityFilter\.value !== "all"[\s\S]*?profFilter\.value !== "all"[\s\S]*?subProfFilter\.value !== "all"[\s\S]*?manifestFilter\.value !== "all"[\s\S]*?Boolean\(manifestSearch\.value\.trim\(\)\)/
+  )
 })

@@ -16,7 +16,7 @@
     </div>
 
     <template v-else>
-      <form class="create-card" @submit.prevent="createNewAccount">
+      <form class="create-card" data-tour="account-create" @submit.prevent="createNewAccount">
         <div class="create-copy">
           <h3>新建游戏账号</h3>
           <p>先确定所属游戏，再填写一个方便辨认的名称。</p>
