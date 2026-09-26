@@ -118,13 +118,14 @@
             </ArchiveExchangePanel>
           </AccountWorkspace>
           <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy"
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
             aria-live="polite"
           >
-            <span>{{ cloudSyncError || captureTransportError || cloudSyncMessage || captureTransportMessage }}</span>
+            <span v-if="cloudSyncError || cloudSyncMessage">{{ cloudSyncError || cloudSyncMessage }}</span>
+            <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudSyncMessage) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
             <button
               v-if="cloudNeedsRetry || cloudRetryBusy"
               type="button"
@@ -132,6 +133,13 @@
               :disabled="cloudRetryBusy"
               @click="retryStarCloud"
             >{{ cloudRetryBusy ? '重试中…' : '重试' }}</button>
+            <button
+              v-if="captureNeedsRetry || captureRetryBusy"
+              type="button"
+              class="star-sync-retry"
+              :disabled="captureRetryBusy"
+              @click="retryCaptureConsume"
+            >{{ captureRetryBusy ? '重试中…' : '重试清理' }}</button>
           </p>
           <div class="star-tabs" role="tablist" aria-label="星石工作区">
             <button
@@ -193,6 +201,7 @@ import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExc
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isStarCaptureReadyEvent, loadAndImportStarCapture } from "./captureTransport.js";
+import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecycle, importAndMarkStarCapture } from "./starCaptureLifecycle.js";
 
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
 const EMBED_STYLESHEET_URL = "/yuanstar-embed/yuanstar-embed.css";
@@ -223,11 +232,44 @@ const starExchangeError = ref("");
 const starExchangeBusy = ref(false);
 const captureTransportMessage = ref("");
 const captureTransportError = ref("");
+const captureNeedsRetry = ref(false);
+const captureRetryBusy = ref(false);
+const captureLifecycle = createStarCaptureLifecycle();
+const captureInbox = createStarCaptureInbox(captureLifecycle);
+const captureHost = createStarCaptureHost({
+  lifecycle: captureLifecycle,
+  consume: consumeStarCapture,
+  onState: function (state) {
+    if (state.type === 'consumed') {
+      captureInbox.markConsumed(state.accountId, state.captureId);
+      captureQueueVersion += 1;
+    }
+    if (state.accountId !== accountId.value || unmounted) return;
+    if (state.type === 'retrying') {
+      captureRetryBusy.value = true;
+      captureTransportError.value = '';
+      captureTransportMessage.value = '识别已完成，正在清理临时截图…';
+    } else if (state.type === 'failed') {
+      captureRetryBusy.value = false;
+      captureNeedsRetry.value = true;
+      captureTransportError.value = '识别已完成，临时截图清理失败，可重试。';
+    } else if (state.type === 'consumed') {
+      captureRetryBusy.value = false;
+      captureNeedsRetry.value = false;
+      captureTransportError.value = '';
+      captureTransportMessage.value = '识别已完成，临时截图已清理。';
+      clearCaptureRoute(state.accountId, state.captureId);
+    } else if (state.type === 'storage_failed') {
+      captureRetryBusy.value = false;
+      captureTransportError.value = '本地截图清理状态保存失败，请检查浏览器存储。';
+    }
+  },
+});
 let handle = null;
 let unmounted = false;
 let mountedAccountId = "";
 let pendingCapture = null;
-let captureRetryTimer = null;
+let captureQueueVersion = 0;
 let stopCaptureEvents = null;
 let captureImportBusy = false;
 const queueAccountSync = createLatestAccountSync();
@@ -310,16 +352,8 @@ function rejectStaleStarImportPreview() {
   if (starImportFile.value) starImportFile.value.value = "";
   starExchangeError.value = "账号已切换，请重新选择 JSON 档案后再试。";
 }
-function stopCaptureRetry() {
-  if (captureRetryTimer != null) clearInterval(captureRetryTimer);
-  captureRetryTimer = null;
-}
-function startCaptureRetry() {
-  if (captureRetryTimer != null) return;
-  captureRetryTimer = setInterval(function () { void importPendingCapture(); }, 2000);
-}
 function captureApi() {
-  return { getManifest: getStarCaptureManifest, getImage: getStarCaptureImage, consume: consumeStarCapture };
+  return { getManifest: getStarCaptureManifest, getImage: getStarCaptureImage };
 }
 function createCaptureFile(blob, name) {
   return new File([blob], name, { type: "image/png" });
@@ -328,11 +362,21 @@ function currentCaptureStillActive(current) {
   return pendingCapture === current && isCurrentStarCapture(current, accountId.value) && mountedAccountId === current.accountId;
 }
 function discardForeignPendingCapture() {
-  stopCaptureRetry();
   if (pendingCapture && !isCurrentStarCapture(pendingCapture, accountId.value)) pendingCapture = null;
+  captureRetryBusy.value = false;
+  captureNeedsRetry.value = captureLifecycle.get(accountId.value)?.state === 'consume_pending';
+  captureTransportError.value = '';
+  captureTransportMessage.value = '';
 }
-function clearConsumedCaptureRoute() {
-  if (captureIdFromRouteQuery(route.query)) void router.replace({ path: route.path, query: clearStarCaptureRouteQuery(route.query), hash: route.hash });
+function clearCaptureRoute(account, capture) {
+  if (captureIdFromRouteQuery(route.query) !== capture) return;
+  const routeAccount = String(route.query.account_id || '').trim();
+  if (routeAccount && routeAccount !== account) return;
+  void router.replace({ path: route.path, query: clearStarCaptureRouteQuery(route.query), hash: route.hash });
+}
+async function retryCaptureConsume() {
+  const record = captureLifecycle.get(accountId.value);
+  if (record?.state === 'consume_pending') await captureHost.retry(record.accountId, record.captureId);
 }
 async function importPendingCapture() {
   if (!pendingCapture || !handle || !productReady.value || unmounted || captureImportBusy) return;
@@ -340,21 +384,23 @@ async function importPendingCapture() {
   if (!currentCaptureStillActive(current)) return;
   captureImportBusy = true;
   try {
-    const completed = await loadAndImportStarCapture(captureApi(), current, handle, createCaptureFile, function () { return currentCaptureStillActive(current); });
+    const completed = await importAndMarkStarCapture({
+      lifecycle: captureLifecycle,
+      accountId: current.accountId,
+      captureId: current.captureId,
+      importCapture: function () { return loadAndImportStarCapture(captureApi(), current, handle, createCaptureFile, function () { return currentCaptureStillActive(current); }); },
+      isCurrent: function () { return currentCaptureStillActive(current); },
+    });
     if (!completed || !currentCaptureStillActive(current)) return;
     pendingCapture = null;
-    stopCaptureRetry();
+    captureNeedsRetry.value = false;
+    captureRetryBusy.value = false;
     captureTransportError.value = "";
     captureTransportMessage.value = "三段截图已导入，等待你点击“开始识别”。";
-    clearConsumedCaptureRoute();
+    clearCaptureRoute(current.accountId, current.captureId);
   } catch (error) {
     if (pendingCapture !== current) return;
-    if (error && error.code === "capture_import_not_empty") {
-      captureTransportError.value = "请先清空当前待识别图片；星石截图会自动重试导入。";
-      startCaptureRetry();
-      return;
-    }
-    captureTransportError.value = message(error, "星石截图导入失败；临时采集尚未消费。");
+    captureTransportError.value = message(error, "星石截图导入失败。");
   } finally {
     captureImportBusy = false;
     if (pendingCapture && pendingCapture !== current && currentCaptureStillActive(pendingCapture)) void importPendingCapture();
@@ -364,7 +410,22 @@ function queueCapture(captureId) {
   const normalizedCaptureId = String(captureId || "").trim();
   const currentAccountId = String(accountId.value || "").trim();
   if (!normalizedCaptureId || !currentAccountId) return;
+  const action = captureInbox.captureAction(currentAccountId, normalizedCaptureId);
+  if (action !== 'import') {
+    if (pendingCapture?.accountId === currentAccountId && pendingCapture.captureId === normalizedCaptureId) pendingCapture = null;
+    if (action === 'imported') {
+      captureTransportError.value = '';
+      captureTransportMessage.value = '已恢复本地待识别截图，等待你继续识别。';
+      clearCaptureRoute(currentAccountId, normalizedCaptureId);
+    } else if (action === 'consume_pending') {
+      void captureHost.retry(currentAccountId, normalizedCaptureId);
+    } else {
+      clearCaptureRoute(currentAccountId, normalizedCaptureId);
+    }
+    return;
+  }
   if (!pendingCapture || pendingCapture.captureId !== normalizedCaptureId || pendingCapture.accountId !== currentAccountId) {
+    captureQueueVersion += 1;
     pendingCapture = { accountId: currentAccountId, captureId: normalizedCaptureId, batch: null };
     captureTransportMessage.value = "";
     captureTransportError.value = "";
@@ -379,11 +440,16 @@ function queueRouteCapture() {
 async function recoverPendingCapture() {
   if (!accountId.value) return;
   const recoveryAccountId = accountId.value;
+  const recoveryQueueVersion = captureQueueVersion;
+  const record = captureLifecycle.get(recoveryAccountId);
+  if (record?.state === 'consume_pending') void captureHost.retry(recoveryAccountId, record.captureId);
   try {
     const pending = await getPendingStarCapture(recoveryAccountId);
-    if (recoveryAccountId !== accountId.value || !pending) return;
+    if (recoveryAccountId !== accountId.value || recoveryQueueVersion !== captureQueueVersion || !pending) return;
     queueCapture(pending.capture_id || pending.captureId);
   } catch (error) {
+    if (recoveryAccountId !== accountId.value) return;
+    if (error?.status === 404) return;
     captureTransportError.value = message(error, "读取待导入星石截图失败。");
   }
 }
@@ -561,6 +627,7 @@ async function mountProduct() {
       embedded: true,
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
+      onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
       onOcrRebuild: function (snapshot, recoveryPointId) { return starCloud.rebuildOcr(snapshot, recoveryPointId); },
       onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
       onListRecoveryPoints: function () { return starCloud.listRecoveryPoints(); },
@@ -598,7 +665,6 @@ onMounted(async function () {
 });
 onBeforeUnmount(function () {
   unmounted = true;
-  stopCaptureRetry();
   if (stopCaptureEvents) stopCaptureEvents();
   productReady.value = false;
   const current = handle;
