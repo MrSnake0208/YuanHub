@@ -76,12 +76,11 @@ router.beforeEach(async (to, from, next) => {
 
   beta.setIdentity(authed ? auth.userInfo.id : '')
   if (to.meta?.requiresBeta) {
+    await beta.refresh()
     if (authed) {
-      await beta.loadMe({ force: true })
       if (!beta.canUseBetaFeatures) return next(betaLandingFor(to.fullPath))
-    } else {
-      await beta.loadPublic()
-      if (beta.campaign?.accessMode !== 'OPEN' || beta.publicError) return next(betaLandingFor(to.fullPath))
+    } else if (beta.campaign?.accessMode !== 'OPEN' || beta.publicError) {
+      return next(betaLandingFor(to.fullPath))
     }
   }
   if (requiresAuth && !authed) {

@@ -12,6 +12,7 @@ import {
 const PAGE_SIZE = 100
 const MAX_PAGES = 100
 const POLL_INTERVAL = 30000
+const FRESH_TTL = 15000
 
 export const feedbackUnreadState = reactive({
   count: 0,
@@ -45,6 +46,8 @@ let pollTimer = null
 let stopPermissionWatch = null
 let subscriberCount = 0
 let managedFeedbackSnapshot = []
+let loadedAt = 0
+let activeContext = ''
 
 function currentUserId() {
   const user = auth.userInfo
@@ -63,6 +66,7 @@ function clearFeedbackUnread() {
 
 async function fetchFeedbackUnread() {
   const currentRequestId = ++requestId
+  const requestContext = feedbackUnreadContext.value
   if (!canReadManagedFeedback.value) {
     clearFeedbackUnread()
     return
@@ -82,7 +86,11 @@ async function fetchFeedbackUnread() {
         sortBy: 'updatedAt',
         sortOrder: 'desc'
       })
-      if (currentRequestId !== requestId || !canReadManagedFeedback.value) return
+      if (
+        currentRequestId !== requestId ||
+        requestContext !== feedbackUnreadContext.value ||
+        !canReadManagedFeedback.value
+      ) return
       const items = Array.isArray(data.items) ? data.items : []
       reports.push(...items)
       total = Number.isFinite(Number(data.total)) ? Number(data.total) : null
@@ -92,12 +100,17 @@ async function fetchFeedbackUnread() {
       pageSize = returnedPageSize
     }
 
-    if (currentRequestId !== requestId || !canReadManagedFeedback.value) return
+    if (
+      currentRequestId !== requestId ||
+      requestContext !== feedbackUnreadContext.value ||
+      !canReadManagedFeedback.value
+    ) return
     const userId = currentUserId()
     managedFeedbackSnapshot = reports
     feedbackUnreadState.count = countUnreadFeedback(reports, userId)
     feedbackUnreadState.ids = getUnreadFeedbackIds(reports, userId)
     feedbackUnreadState.loaded = true
+    loadedAt = Date.now()
   } catch (_) {
     // 反馈角标读取失败不应阻断页面；保留最近一次成功状态。
   } finally {
@@ -105,8 +118,15 @@ async function fetchFeedbackUnread() {
   }
 }
 
-export function refreshFeedbackUnread() {
+export function refreshFeedbackUnread({ force = false } = {}) {
+  if (!canReadManagedFeedback.value) {
+    clearFeedbackUnread()
+    return Promise.resolve()
+  }
   if (requestPromise) return requestPromise
+  if (!force && feedbackUnreadState.loaded && Date.now() - loadedAt < FRESH_TTL) {
+    return Promise.resolve()
+  }
   const promise = fetchFeedbackUnread()
   const trackedPromise = promise.finally(function () {
     if (requestPromise === trackedPromise) requestPromise = null
@@ -129,34 +149,48 @@ export async function markAllManagedFeedbackRead() {
   const marked = markFeedbackListRead(userId, targets)
   feedbackUnreadState.count = countUnreadFeedback(managedFeedbackSnapshot, userId)
   feedbackUnreadState.ids = getUnreadFeedbackIds(managedFeedbackSnapshot, userId)
+  loadedAt = Date.now()
   return marked
 }
 
 function handleReadStateChange(event) {
   if (!event || !event.detail || event.detail.userId !== currentUserId()) return
-  refreshFeedbackUnread()
+  void refreshFeedbackUnread({ force: true })
+}
+
+function refreshVisible() {
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+  void refreshFeedbackUnread()
 }
 
 function startFeedbackUnread() {
   if (stopPermissionWatch) return
-  stopPermissionWatch = watch(feedbackUnreadContext, function () {
+  stopPermissionWatch = watch(feedbackUnreadContext, function (context) {
+    if (context === activeContext) {
+      if (canReadManagedFeedback.value) void refreshFeedbackUnread()
+      return
+    }
+
     // A new identity/scope must not deduplicate onto the previous user's request.
+    activeContext = context
     requestId += 1
     requestPromise = null
+    loadedAt = 0
     clearFeedbackUnread()
     if (canReadManagedFeedback.value) {
       feedbackUnreadState.loaded = false
-      refreshFeedbackUnread()
+      void refreshFeedbackUnread({ force: true })
     }
   }, { immediate: true })
-  if (typeof window !== 'undefined') window.addEventListener(FEEDBACK_READ_STATE_EVENT, handleReadStateChange)
-  pollTimer = setInterval(refreshFeedbackUnread, POLL_INTERVAL)
+  if (typeof window !== 'undefined') {
+    window.addEventListener(FEEDBACK_READ_STATE_EVENT, handleReadStateChange)
+    pollTimer = setInterval(refreshVisible, POLL_INTERVAL)
+  }
 }
 
 function stopFeedbackUnread() {
-  requestId += 1
-  requestPromise = null
-  feedbackUnreadState.loading = false
+  // 路由切换只释放 timer/watch；共享 in-flight Promise 保持到自然完成，
+  // 以便新的订阅者能继续复用同一请求。
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null

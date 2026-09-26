@@ -177,7 +177,7 @@ import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent, listAgentFavorites } from '../../api/inventory.js'
-import { getUnreadNotificationCount } from '../../api/notifications.js'
+import { refreshNotificationUnread } from '../../store/notificationUnread.js'
 import { getCurrentStarState } from '../../api/starState.js'
 import { auth } from '../../store/auth.js'
 import { activeAccount } from '../../store/activeAccount.js'
@@ -357,7 +357,7 @@ async function loadDashboard() {
 
 async function loadSummary(sequence) {
   const targetAccount = accountId.value
-  const requests = [getUnreadNotificationCount()]
+  const requests = [refreshNotificationUnread()]
   if (targetAccount) {
     requests.push(
       getOperatorCurrent({ accountId: targetAccount, game: accountGame.value }),
