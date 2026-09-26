@@ -129,8 +129,11 @@ test('uses seven stable step ids and data-tour anchors including account creatio
   const accountStep = ONBOARDING_STEPS.find(step => step.id === 'account-create')
   assert.equal(accountStep.route, '/user/profile')
   assert.equal(accountStep.target, 'account-create')
+  assert.match(accountStep.title, /确认子账号/)
+  assert.match(accountStep.title, /确认/, '已有子账号的用户同样适用，不能写死“先创建”')
   assert.match(accountStep.description, /统一管理游戏账号/)
   assert.match(accountStep.description, /游戏子账号/)
+  assert.match(accountStep.description, /已有/)
   assert.match(accountStep.description, /所属游戏/)
   assert.match(accountStep.description, /创建账号/)
 

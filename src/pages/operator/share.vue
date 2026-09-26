@@ -79,7 +79,7 @@
               v-model:status-filter="statusFilter"
               class="share-filter-dossier"
               context-label="分享密探"
-              description="筛选后按稀有度、等级、化极、属性与实装顺序排列"
+              description="筛选后按品质、等级、化极、属性与实装顺序排列"
               :result-count="filteredEntries.length"
               :total-count="entries.length"
               :prof-options="profOptions"

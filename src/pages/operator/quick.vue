@@ -266,11 +266,11 @@
                 >
               </div>
 
-              <!-- 稀有度 / 属性 / 职业筛选（随翻页重置） -->
+              <!-- 品质 / 属性 / 职业筛选（随翻页重置） -->
               <div class="prof-filter" v-reveal>
                 <div class="pf-row">
-                  <span class="pf-label">稀有</span>
-                  <div class="mf-filter rarity-filter" role="group" aria-label="按稀有度筛选快捷录入密探">
+                  <span class="pf-label">品质</span>
+                  <div class="mf-filter rarity-filter" role="group" aria-label="按品质筛选快捷录入密探">
                     <button
                       v-for="option in rarityOptions"
                       :key="option.value"
@@ -419,6 +419,8 @@ import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
+  OPERATOR_RARITY_LABELS,
+  OPERATOR_RARITY_OPTIONS,
   matchesProfSubFilter,
   subProfOptions as deriveSubProfOptions,
 } from "../../utils/operatorFilters.js";
@@ -485,13 +487,8 @@ const search = ref("");
 const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
-const rarityOptions = [
-  { value: "all", label: "全部" },
-  { value: 3, label: "隐密" },
-  { value: 4, label: "机密" },
-  { value: 5, label: "绝密" },
-];
-const rarityLabelMap = { 3: "隐密", 4: "机密", 5: "绝密" };
+const rarityOptions = OPERATOR_RARITY_OPTIONS;
+const rarityLabelMap = OPERATOR_RARITY_LABELS;
 const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
@@ -670,7 +667,7 @@ const filterSuffix = computed(function () {
   if (search.value) parts.push("「" + search.value + "」");
   parts.push("版本「" + gameFilter.value + "」");
   if (rarityFilter.value !== "all")
-    parts.push("稀有「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
+    parts.push("品质「" + (rarityLabelMap[rarityFilter.value] || rarityFilter.value) + "」");
   if (profFilter.value !== "all")
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
