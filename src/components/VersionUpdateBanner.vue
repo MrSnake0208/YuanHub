@@ -30,7 +30,7 @@ const versionLine = computed(() =>
 /* 顶部信息条：暖茶棕底 + 奶油字 + 蜜黄按钮，属“更新提示”而非错误告警。 */
 .version-update {
   position: relative;
-  z-index: 45;
+  z-index: 70;
   background: var(--tea);
   color: var(--cream);
   border-bottom: 1px solid rgba(255, 248, 236, 0.18);
@@ -40,9 +40,8 @@ const versionLine = computed(() =>
   align-items: center;
   gap: 10px 16px;
   flex-wrap: wrap;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 9px 48px;
+  width: 100%;
+  padding: 9px clamp(16px, 2.4vw, 48px);
 }
 .version-update__icon {
   display: inline-flex;
@@ -91,9 +90,15 @@ const versionLine = computed(() =>
   transform: none;
 }
 @media (min-width: 1081px) {
-  /* 与 main 的左边距一致：桌面端横幅只占内容列，不压住悬浮侧边栏。 */
+  /* 站点级更新提示固定在整个视口顶部；侧边栏由全局布局规则同步下移。 */
   .version-update {
-    margin-left: 292px;
+    position: sticky;
+    top: 0;
+    height: 53px;
+  }
+  .version-update__inner {
+    height: 100%;
+    flex-wrap: nowrap;
   }
 }
 @media (max-width: 767px) {
