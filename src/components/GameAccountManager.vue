@@ -48,6 +48,7 @@
       </form>
 
       <p v-if="localError" class="manager-error" role="alert">{{ localError }}</p>
+      <p v-if="localSuccess" class="manager-success" role="status"><span>{{ localSuccess }}</span><button type="button" aria-label="关闭成功提示" @click="localSuccess = ''">×</button></p>
 
       <div v-if="accounts.length" class="account-groups">
         <section v-for="group in groupedAccounts" :key="group.game" class="account-group" :aria-labelledby="'game-account-group-' + group.game">
@@ -66,20 +67,22 @@
               class="account-card"
               :class="{ current: account.id === accountId }"
             >
-              <button
-                type="button"
-                class="account-main"
-                :class="{ selected: account.id === accountId }"
-                :aria-pressed="account.id === accountId"
-                :disabled="busyAccountId === account.id"
-                @click="selectAccount(account)"
-              >
-                <span class="account-name-line">
-                  <b>{{ account.name }}</b>
-                  <em v-if="account.id === accountId">当前账号</em>
-                </span>
-                <small>{{ account.id }}</small>
-              </button>
+              <div class="account-identity">
+                <button
+                  type="button"
+                  class="account-main"
+                  :class="{ selected: account.id === accountId }"
+                  :aria-pressed="account.id === accountId"
+                  :disabled="busyAccountId === account.id"
+                  @click="selectAccount(account)"
+                >
+                  <span class="account-name-line">
+                    <b>{{ account.name }}</b>
+                    <em v-if="account.id === accountId">当前账号</em>
+                  </span>
+                </button>
+                <AccountIdDetails :value="account.id" label="查看账号编号" />
+              </div>
 
               <div class="account-controls">
                 <label class="game-field">
@@ -133,6 +136,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Pencil, Plus, Trash2, Users } from '@lucide/vue'
+import AccountIdDetails from './AccountIdDetails.vue'
 import {
   createAccount,
   deleteAccount,
@@ -162,6 +166,7 @@ const newGame = ref(DEFAULT_ACCOUNT_GAME)
 const createBusy = ref(false)
 const busyAccountId = ref('')
 const localError = ref('')
+const localSuccess = ref('')
 
 const groupedAccounts = computed(function () {
   return ACCOUNT_GAMES.map(function (game) {
@@ -196,6 +201,7 @@ function replaceAccount(updatedAccount) {
 
 function selectAccount(account) {
   if (!account || !account.id || busyAccountId.value) return
+  localSuccess.value = ''
   activeAccount.set(account.id)
   activeAccount.setGame(resolvedGame(account), account.id)
   emit('update:accountId', account.id)
@@ -204,6 +210,7 @@ function selectAccount(account) {
 async function createNewAccount() {
   const name = newName.value.trim()
   if (!name || createBusy.value) return
+  localSuccess.value = ''
   createBusy.value = true
   localError.value = ''
   try {
@@ -229,6 +236,7 @@ async function createNewAccount() {
 
 async function changeGame(account, game) {
   if (!account || !account.id || !isAccountGame(game) || busyAccountId.value) return
+  localSuccess.value = ''
   const previousGame = resolvedGame(account)
   if (previousGame === game) return
   busyAccountId.value = account.id
@@ -267,9 +275,11 @@ async function rename(account) {
   }
   busyAccountId.value = account.id
   localError.value = ''
+  localSuccess.value = ''
   try {
     const updated = await renameAccount(account.id, name)
     replaceAccount({ ...account, ...(updated || {}), name: (updated && updated.name) || name })
+    localSuccess.value = '已将游戏账号改名为“' + ((updated && updated.name) || name) + '”。'
   } catch (error) {
     localError.value = readableError(error, '账号改名失败，请稍后重试')
   } finally {
@@ -292,6 +302,7 @@ async function remove(account) {
 
   busyAccountId.value = account.id
   localError.value = ''
+  localSuccess.value = ''
   try {
     await deleteAccount(account.id)
     activeAccount.forgetGame(account.id)
@@ -305,6 +316,7 @@ async function remove(account) {
     emit('update:accounts', next)
     emit('update:accountId', nextId)
     emit('changed', next)
+    localSuccess.value = '已删除游戏账号“' + account.name + '”。'
   } catch (error) {
     localError.value = readableError(error, '删除游戏账号失败，请稍后重试')
   } finally {
@@ -379,6 +391,10 @@ async function remove(account) {
 .manager-error {
   color: var(--rouge);
 }
+.manager-success { position: fixed; z-index: var(--z-toast); left: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; max-width: min(360px, calc(100vw - 32px)); align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); box-shadow: 0 8px 24px rgba(73,59,44,.18); font-size: 12px; font-weight: 800; }
+.manager-success button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; }
+@media (max-width: 767px) { .manager-success { bottom: calc(78px + env(safe-area-inset-bottom)); } }
+.account-identity { min-width: 0; }
 .text-button {
   border: 0;
   background: transparent;
@@ -576,6 +592,7 @@ async function remove(account) {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 .account-main {
+  width: 100%;
   min-width: 0;
   padding: 6px 8px;
   border: 0;
@@ -612,16 +629,6 @@ async function remove(account) {
   font-size: 10px;
   font-style: normal;
   font-weight: 800;
-}
-.account-main small {
-  display: block;
-  margin-top: 3px;
-  overflow: hidden;
-  color: var(--ink-35);
-  font-family: var(--font-d);
-  font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .account-controls {
   display: flex;

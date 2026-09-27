@@ -1,7 +1,17 @@
 <template>
   <div class="account-event-toasts" aria-live="polite" aria-atomic="false">
+    <details v-if="accountEvents.history.length" class="account-event-history" aria-live="off">
+      <summary>最近事件（{{ accountEvents.history.length }}）</summary>
+      <ul>
+        <li v-for="entry in accountEvents.history" :key="entry.id">
+          <b>{{ entry.title }}</b>
+          <small v-if="entry.detail">{{ entry.detail }}</small>
+          <small v-if="entry.entries?.length">{{ entry.entries.map(item => item.display).join(' · ') }}</small>
+        </li>
+      </ul>
+    </details>
     <TransitionGroup name="account-toast">
-      <div v-for="toast in accountEvents.toasts" :key="toast.id" class="account-event-toast" :class="['is-' + toast.tone, 'is-' + toast.kind, toast.kind === 'operator' && toast.action ? 'is-capsule' : '', toast.kind === 'operator' && toast.rarity ? 'rarity-r' + toast.rarity : '']" role="status">
+      <div v-for="toast in accountEvents.toasts" :key="toast.id" class="account-event-toast" :class="['is-' + toast.tone, 'is-' + toast.kind, toast.kind === 'operator' && toast.action ? 'is-capsule' : '', toast.kind === 'operator' && toast.rarity ? 'rarity-r' + toast.rarity : '']" :role="toast.tone === 'warning' ? 'alert' : 'status'">
         <span class="toast-badge" aria-hidden="true">
           <img v-if="toast.kind === 'operator' && toast.action" class="toast-agent-icon" :src="agentIconSrc(toast.operatorId)" alt="" />
           <PackageOpen v-if="toast.kind === 'inventory'" :size="18" />
@@ -50,6 +60,11 @@ function agentIconSrc(operatorId) {
 
 <style scoped>
 .account-event-toasts { position: fixed; z-index: var(--z-toast); top: 22px; right: 24px; display: flex; width: min(340px, calc(100vw - 40px)); flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none }
+.account-event-history { max-width: 100%; max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 12px; pointer-events: auto; }
+.account-event-history summary { min-height: 44px; display: flex; align-items: center; padding: 8px 12px; cursor: pointer; font-weight: 800; }
+.account-event-history ul { max-height: 34vh; overflow: auto; margin: 0; padding: 0 12px 12px 28px; }
+.account-event-history li { margin-top: 8px; }
+.account-event-history small { display: block; color: var(--ink-60); overflow-wrap: anywhere; }
 .account-event-toast { --toast-accent: var(--yellow-deep); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 28px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; border: 1.5px solid var(--toast-accent); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .9); font-size: 12.5px; line-height: 1.35; pointer-events: auto }
 .account-event-toast::after { position: absolute; right: 17px; bottom: -8px; width: 14px; height: 14px; border-right: 1.5px solid var(--yellow-deep); border-bottom: 1.5px solid var(--yellow-deep); border-radius: 0 0 4px; background: var(--surface); content: ''; transform: skewY(34deg) rotate(20deg) }
 .account-event-toast.is-capsule::after { display: none }

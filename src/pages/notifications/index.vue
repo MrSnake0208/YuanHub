@@ -72,7 +72,7 @@
                 <div class="ntf-body">
                   <div class="ntf-title">{{ item.title }}</div>
                   <p class="ntf-text">{{ item.body }}</p>
-                  <div v-if="item.refType === 'FEEDBACK' && item.refId" class="ntf-ref">关联反馈：{{ item.refId }}</div>
+                  <AccountIdDetails v-if="item.refType === 'FEEDBACK' && item.refId" :value="item.refId" label="查看关联反馈编号" />
                   <div class="ntf-meta">
                     <time>{{ formatTime(item.createdAt) }}</time>
                     <span v-if="!item.readAt" class="ntf-unread-dot" aria-label="未读"></span>
@@ -116,6 +116,7 @@ import { auth } from '../../store/auth.js'
 import { canManageAnyFeedback } from '../../utils/authPermissions.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
+import AccountIdDetails from '../../components/AccountIdDetails.vue'
 import {
   listNotifications,
   markNotificationRead,
@@ -320,7 +321,6 @@ onBeforeUnmount(function () {
 .ntf-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.4 }
 .notification-item.unread .ntf-title { font-weight: 900 }
 .ntf-text { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--ink-60); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
-.ntf-ref { margin-top: 7px; color: var(--accent-strong); font: 700 11px var(--font-d); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .ntf-meta { margin-top: 8px; display: flex; align-items: center; gap: 8px }
 .ntf-meta time { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); font-weight: 700 }
 .ntf-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); flex: none }
