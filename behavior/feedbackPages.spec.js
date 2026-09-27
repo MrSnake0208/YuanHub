@@ -19,6 +19,7 @@ vi.mock('../src/api/feedback.js', () => ({
   getFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(),
   createFeedback: vi.fn(), appendMyFeedbackMessage: vi.fn(), appendManagedFeedbackMessage: vi.fn(),
   updateMyFeedbackStatus: vi.fn(), updateManagedFeedbackStatus: vi.fn(), downloadFeedbackAttachment: vi.fn(),
+  mergeFeedback: vi.fn(),
   listFeedbackVersionOptions: vi.fn(() => Promise.resolve([]))
 }))
 vi.mock('../src/api/notifications.js', () => ({
@@ -53,9 +54,13 @@ const ticket = id => ({
   messages: [{ id: `${id}-initial`, senderKind: 'REPORTER', isAdmin: false, content: `conversation ${id}`, author: { id: 'tester' } }]
 })
 const summary = id => ({ ...ticket(id), messages: [], quota: null, viewerCanManage: false, viewerIsReporter: false })
-const render = component => mount(component, { global: { stubs: {
-  IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true, RouterLink: true
-} } })
+const render = (component, options = {}) => mount(component, {
+  ...options,
+  global: {
+    ...(options.global || {}),
+    stubs: { IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true, RouterLink: true }
+  }
+})
 const choose = async (wrapper, id) => {
   const row = wrapper.findAll('tbody tr').find(row => row.text().includes(id))
   expect(row, `Missing ticket row ${id}`).toBeTruthy()
@@ -257,4 +262,20 @@ it('personal quota exhaustion explains why supplementing is unavailable without 
   await choose(wrapper, 'rpt_a')
   expect(wrapper.get('[role="dialog"]').text()).toContain('请等待管理员回复后继续补充')
   expect(wrapper.findAll('.feedback-detail-actions button').map(button => button.text())).toEqual(['标记完成'])
+})
+
+it('escape inside the nested merge dialog closes only the merge dialog', async () => {
+  // 详情层的 Escape 监听挂在 window 上，必须真实挂载到 document 才能复现冒泡路径。
+  const wrapper = render(ManagedFeedback, { attachTo: document.body }); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  await wrapper.get('.feedback-admin-merge-row button').trigger('click'); await flushPromises()
+  const merge = wrapper.get('.merge-dialog')
+  expect(merge.exists()).toBe(true)
+
+  merge.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+
+  // 合并反馈是压在工单详情之上的二级弹窗，Escape 只能关闭最上层。
+  expect(wrapper.find('.merge-dialog').exists()).toBe(false)
+  expect(wrapper.find('.ticket-detail-dialog').exists()).toBe(true)
 })

@@ -30,7 +30,7 @@ const versionLine = computed(() =>
 /* 顶部信息条：暖茶棕底 + 奶油字 + 蜜黄按钮，属“更新提示”而非错误告警。 */
 .version-update {
   position: relative;
-  z-index: 70;
+  z-index: var(--z-banner, 70);
   background: var(--tea);
   color: var(--cream);
   border-bottom: 1px solid rgba(255, 248, 236, 0.18);

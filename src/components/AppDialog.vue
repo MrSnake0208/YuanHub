@@ -164,7 +164,7 @@ watch(
   inset: 0;
   background: rgba(73, 59, 44, .5);
   backdrop-filter: blur(3px);
-  z-index: 200;
+  z-index: var(--z-overlay-blocking, 200);
   display: flex;
   align-items: center;
   justify-content: center;
