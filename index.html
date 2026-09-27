@@ -12,11 +12,57 @@
 <title>鸢鸢相抱 — YuanHub</title>
 <link rel="icon" href="/pwa/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" sizes="180x180" href="/pwa/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Noto+Serif+SC:wght@600;700;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 字体不参与首屏渲染阻塞：先用系统字体渲染，样式表异步生效（display=swap，不会 FOIT）。
+     外链字体在内地网络不一定可达，若作为 render-blocking 样式表会拖住首次绘制，
+     造成「只有背景色」的观感。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Noto+Serif+SC:wght@600;700;900&display=swap" media="print" onload="this.media='all'">
+<noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=Noto+Serif+SC:wght@600;700;900&display=swap">
+</noscript>
+<style>
+/* 首屏启动反馈（PWA / 移动端冷启动）。
+   只在启动明显变慢时出现：自带 400ms 延迟淡入，快速启动不会闪一下。
+   它没有自己的背景色，直接落在 body 的纸张背景与吉祥物纹理之上，
+   因此看起来是「网站正在启动」，而不是另一屏。
+   首次导航完成后由 src/utils/startupFeedback.js 立即从 DOM 移除，
+   并且 pointer-events:none、z-index 低于所有应用浮层，绝不会遮挡已渲染页面。 */
+#startup-splash{
+  position:fixed;inset:0;z-index:5;display:grid;place-content:center;justify-items:center;
+  gap:14px;pointer-events:none;opacity:0;
+  animation:startup-splash-in .3s ease-out .4s both;
+  color:#493B2C;
+  font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+}
+#startup-splash img{width:64px;height:64px;border-radius:16px}
+#startup-splash p{font-size:14px;font-weight:600;letter-spacing:.08em;color:rgba(73,59,44,.78)}
+#startup-splash i{display:block;width:132px;height:4px;border-radius:999px;overflow:hidden;
+  background:rgba(255,248,236,.75);box-shadow:0 2px 8px rgba(73,59,44,.1)}
+#startup-splash i::after{content:'';display:block;width:42%;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,transparent,#D78935,#DFB863,transparent);
+  animation:startup-splash-sweep .9s linear infinite}
+@keyframes startup-splash-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes startup-splash-sweep{
+  0%{opacity:.3;transform:translateX(-110%) scaleX(.55)}
+  55%{opacity:1;transform:translateX(110%) scaleX(1)}
+  100%{opacity:.35;transform:translateX(250%) scaleX(.7)}
+}
+@keyframes startup-splash-reveal{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  /* 保留延迟出现（不闪烁），但去掉位移与扫光动画 */
+  #startup-splash{animation:startup-splash-reveal 1ms linear .4s forwards}
+  #startup-splash i::after{animation:none;width:100%;opacity:1;transform:none}
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
+<div id="startup-splash" role="status">
+  <img src="/brand/yuanhub-logo.png" alt="" width="64" height="64">
+  <p>正在加载…</p>
+  <i aria-hidden="true"></i>
+</div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>
