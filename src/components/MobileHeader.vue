@@ -2,7 +2,7 @@
   <header
     ref="header"
     class="mobile-shell"
-    :class="{ 'mobile-shell--hidden': hidden }"
+    :class="{ 'mobile-shell--hidden': hidden && !pinned }"
     @focusin="reset"
   >
     <slot />
@@ -13,6 +13,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+const { pinned = false } = defineProps({ pinned: Boolean })
 const route = useRoute()
 const header = ref(null)
 const hidden = ref(false)
@@ -71,7 +72,7 @@ function onScroll() {
 function syncViewport() {
   window.removeEventListener('scroll', onScroll)
   reset()
-  if (mobileQuery.matches) window.addEventListener('scroll', onScroll, { passive: true })
+  if (mobileQuery.matches && !pinned) window.addEventListener('scroll', onScroll, { passive: true })
 }
 
 watch(() => route.fullPath, reset)

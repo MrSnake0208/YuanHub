@@ -43,6 +43,11 @@
                   我们正在邀请第一批殿下提前体验 YuanHub。不用写申请，也不用懂技术；
                   正常用一用、告诉我们哪里顺手或哪里别扭，就是最有帮助的反馈。
                 </p>
+                <p v-if="requestedPage" class="beta-redirect-note" role="status">
+                  你刚才想打开「{{ requestedPage }}」，因此来到了内测资格页。
+                  <template v-if="granted || campaign?.accessMode === 'OPEN'">现在可以点击「{{ entryButtonLabel }}」继续。</template>
+                  <template v-else>这个页面目前需要体验资格。可按本页指引报名或候补；资格开通后点击「{{ entryButtonLabel }}」就能返回。</template>
+                </p>
 
                 <div class="beta-promises" aria-label="参与说明">
                   <span><CheckCircle2 :size="16" aria-hidden="true" /> 不需要人工审核</span>
@@ -92,7 +97,7 @@
 
                     <template v-else-if="granted || campaign?.accessMode === 'OPEN'">
                       <router-link class="beta-button primary" :to="entryTarget">
-                        进入 YuanHub
+                        {{ entryButtonLabel }}
                         <ArrowRight :size="17" aria-hidden="true" />
                       </router-link>
                       <button
@@ -328,7 +333,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowRight,
   CalendarDays,
@@ -362,6 +367,7 @@ const STATUS_LABELS = {
 }
 
 const route = useRoute()
+const router = useRouter()
 const intentTags = ref([])
 const submitting = ref(false)
 const submitMessage = ref('')
@@ -383,6 +389,11 @@ const copy = computed(() => adminBypass.value
   : betaStatusCopy(campaign.value, mine.value, error.value))
 const refreshing = computed(() => beta.publicLoading || beta.personalLoading)
 const entryTarget = computed(() => betaEntryTarget(route.query.redirect))
+const requestedPage = computed(() => {
+  if (typeof route.query.redirect !== 'string' || !route.query.redirect.startsWith('/')) return ''
+  return router.resolve(entryTarget.value).meta.title?.split(' — ')[0] || 'YuanHub'
+})
+const entryButtonLabel = computed(() => requestedPage.value ? `返回${requestedPage.value}` : '进入 YuanHub')
 const statusLabel = computed(() => adminBypass.value ? '管理员直通' : STATUS_LABELS[copy.value.tone] || '邀请测试')
 const canJoin = computed(() => !error.value && mine.value?.nextAction === 'JOIN' && campaign.value?.accessMode === 'BETA')
 const waiting = computed(() => mine.value?.enrollmentStatus === 'WAITING')
@@ -703,6 +714,8 @@ onBeforeUnmount(() => { unsubscribe?.() })
   font-weight: 500;
   line-height: 1.95;
 }
+
+.beta-redirect-note { margin:20px 0 0; padding:14px 16px; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; background:var(--surface); color:var(--ink); font-size:14px; line-height:1.75; }
 
 .beta-promises {
   display: flex;
@@ -1460,6 +1473,8 @@ onBeforeUnmount(() => { unsubscribe?.() })
     font-size: 13.5px;
     line-height: 1.85;
   }
+
+  .beta-redirect-note { order:2; margin-top:18px; }
 
   .beta-promises {
     order: 5;

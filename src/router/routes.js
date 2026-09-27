@@ -435,5 +435,10 @@ export const routes = [
             title: '通知中心 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true
         }
+    },
+    {
+        path: '/:pathMatch(.*)*', name: 'not-found', text: '页面未找到', display: false, module: 'site', icon: 'circle-help',
+        component: () => import('/src/pages/site/not-found.vue'),
+        meta: { title: '页面未找到 — 鸢鸢相抱 · YuanHub' }
     }
 ]

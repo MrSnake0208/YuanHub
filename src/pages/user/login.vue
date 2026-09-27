@@ -1,5 +1,6 @@
 <template>
   <AuthLayout title="欢迎回来" sub="登录本站账号 · 内测资格另行领取">
+    <p v-if="route.query.loggedOut === '1'" class="logout-result" role="status">已退出登录。再次访问个人数据需要登录。</p>
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
             <label for="login-email">邮箱 <em>*</em></label>
@@ -100,6 +101,7 @@ async function onSubmit() {
 </script>
 
 <style scoped>
+.logout-result { margin-top:20px; padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--tea); font-weight:700; }
 .auth-form { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
 .field label {
   display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-60); margin-bottom: 6px;

@@ -143,7 +143,7 @@ export const auth = reactive({
   },
 
   // 登出：清空状态并跳转登录页
-  async logout() {
+  async logout(destination = '/login') {
     auth.accessToken = ''
     auth.refreshToken = ''
     auth.userInfo = null
@@ -156,7 +156,7 @@ export const auth = reactive({
       // 与 persist 同理：storage 不可用时不影响内存中的登出结果。
     }
     if (typeof location !== 'undefined') {
-      location.href = '/login'
+      location.href = destination
     }
   }
 })
@@ -208,6 +208,6 @@ export async function login(email, password) {
 export async function refresh() {
   return auth.refresh()
 }
-export async function logout() {
-  return auth.logout()
+export async function logout(destination) {
+  return auth.logout(destination)
 }
