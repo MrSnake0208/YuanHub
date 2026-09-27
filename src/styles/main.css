@@ -525,6 +525,7 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
 }
 
 @media (max-width:1080px){
+  body.mobile-nav-open{overflow:hidden}
   .mobile-shell{
     position:sticky;top:0;z-index:var(--z-popover);display:flex;align-items:center;gap:8px;
     min-height:calc(64px + env(safe-area-inset-top));
