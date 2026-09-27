@@ -312,7 +312,7 @@ onMounted(function () { load(1) })
 </script>
 
 <style scoped>
-.page-changelog-admin { min-height: 100vh }
+.page-changelog-admin { min-height: 100vh; min-height: 100dvh }
 .page-changelog-admin .hero { --wm: '更' }
 .workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; padding-block: 32px 60px }
 .entry-list,.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px }

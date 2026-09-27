@@ -27,7 +27,7 @@
   transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
 .agent-ledger-card:hover,
-.agent-ledger-card.is-popover-open { z-index: 20; }
+.agent-ledger-card.is-popover-open { z-index: var(--z-content-raised); }
 .agent-ledger-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 18px 30px rgba(73, 59, 44, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -234,7 +234,7 @@
 .disc-term-label:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .disc-floating-tooltip {
   position: fixed;
-  z-index: 240;
+  z-index: var(--z-popover);
   width: max-content;
   max-width: min(280px, calc(100vw - 24px));
   padding: 8px 10px;

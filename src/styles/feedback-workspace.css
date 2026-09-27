@@ -13,10 +13,10 @@
   --feedback-success: #5f7f61;
   --feedback-warn: var(--accent-strong);
   --feedback-danger: var(--rouge);
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
 }
 
-.feedback-page #main-content { min-height: 100vh; color: var(--ink); }
+.feedback-page #main-content { min-height: 100vh; min-height: 100dvh; color: var(--ink); }
 .feedback-page .wrap { max-width: 1320px; }
 .feedback-page .feedback-hero {
   position: relative;

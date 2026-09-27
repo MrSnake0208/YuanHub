@@ -53,7 +53,7 @@ const emit = defineEmits(['retry', 'execute', 'breakthrough-change'])
 </script>
 
 <style scoped>
-.growth-action-popover { position: absolute; z-index: 20; top: calc(100% + 7px); right: 0; left: 0; display: flex; flex-direction: column; gap: 7px; padding: 9px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 25px rgba(73, 59, 44, .22); }
+.growth-action-popover { position: absolute; z-index: var(--z-popover); top: calc(100% + 7px); right: 0; left: 0; display: flex; flex-direction: column; gap: 7px; padding: 9px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 25px rgba(73, 59, 44, .22); }
 .growth-action-popover::before { position: absolute; top: -6px; right: 24px; width: 10px; height: 10px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); background: var(--surface); content: ''; transform: rotate(45deg); }
 .growth-action-popover p { display: flex; align-items: flex-start; gap: 4px; color: var(--brand-blue); font-size: 9.5px; line-height: 1.35; font-weight: 700; }
 .growth-action-popover p svg { flex: none; }
@@ -79,7 +79,7 @@ const emit = defineEmits(['retry', 'execute', 'breakthrough-change'])
 .ledger-popover-actions { justify-content: flex-end; }
 .ledger-popover-actions button { min-height: 32px; }
 @media (max-width: 640px) {
-  .growth-action-popover { max-height: min(52vh, 320px); overflow: auto; overscroll-behavior: contain; }
+  .growth-action-popover { max-height: min(52vh, 320px); max-height: min(52dvh, 320px); overflow: auto; overscroll-behavior: contain; }
   .growth-action-popover button { min-height: 36px; }
 }
 </style>

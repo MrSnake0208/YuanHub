@@ -125,7 +125,7 @@ onMounted(function () { load(1) })
 </script>
 
 <style scoped>
-.page-admin-audit { min-height: 100vh }
+.page-admin-audit { min-height: 100vh; min-height: 100dvh }
 .page-admin-audit .hero { --wm: '审' }
 .audit-content { padding-bottom: 56px }
 .audit-toolbar { min-height: 48px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-block: 1px solid var(--line); color: var(--ink-60); font-family: var(--font-d); font-size: 12px }

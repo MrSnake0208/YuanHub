@@ -57,7 +57,7 @@ onMounted(function () { load(1) })
 </script>
 
 <style scoped>
-.page-changelog { min-height: 100vh; }
+.page-changelog { min-height: 100vh; min-height: 100dvh; }
 .page-changelog .hero { --wm: '新'; }
 .page-changelog .crumb .pill { white-space: nowrap; }
 .changelog-feed { display: grid; gap: 22px; padding-bottom: 12px; }

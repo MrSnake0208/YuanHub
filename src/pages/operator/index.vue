@@ -8502,7 +8502,7 @@ onBeforeUnmount(function () {
 .operator-tabs {
   position: sticky;
   top: 24px;
-  z-index: 45;
+  z-index: var(--z-sticky-controls);
   display: flex;
   gap: 4px;
   background: rgba(255, 248, 236, 0.94);
@@ -10660,7 +10660,7 @@ onBeforeUnmount(function () {
 }
 .agent-ledger-card:hover,
 .agent-ledger-card.is-popover-open {
-  z-index: 20;
+  z-index: var(--z-content-raised);
 }
 .agent-ledger-card:hover {
   transform: translateY(-5px);
@@ -10763,7 +10763,7 @@ onBeforeUnmount(function () {
   min-width: 0;
 }
 .ledger-card-head:has(.ledger-status-menu[open]) {
-  z-index: 50;
+  z-index: var(--z-popover);
 }
 .ledger-batch-select {
   display: grid;
@@ -10920,7 +10920,7 @@ onBeforeUnmount(function () {
 }
 .ledger-status-options {
   position: absolute;
-  z-index: 40;
+  z-index: var(--z-popover);
   top: calc(100% + 5px);
   right: 0;
   display: flex;
@@ -11260,7 +11260,7 @@ onBeforeUnmount(function () {
 }
 .ledger-popover {
   position: absolute;
-  z-index: 20;
+  z-index: var(--z-popover);
   left: 24px;
   right: 0;
   top: calc(100% + 7px);
@@ -11579,7 +11579,7 @@ onBeforeUnmount(function () {
 }
 .disc-floating-tooltip {
   position: fixed;
-  z-index: 240;
+  z-index: var(--z-popover);
   width: max-content;
   max-width: min(280px, calc(100vw - 24px));
   padding: 8px 10px;
@@ -11970,7 +11970,7 @@ onBeforeUnmount(function () {
 .ledger-submit-overlay {
   position: absolute;
   inset: 0;
-  z-index: 30;
+  z-index: var(--z-popover);
   display: grid;
   place-items: center;
   padding: 12px;
@@ -12545,7 +12545,7 @@ onBeforeUnmount(function () {
 .editor-mask {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-overlay-panel);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13832,7 +13832,7 @@ onBeforeUnmount(function () {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 55;
+    z-index: var(--z-popover);
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
@@ -14813,7 +14813,7 @@ onBeforeUnmount(function () {
     left: 0;
     right: 0;
     max-width: 100%;
-    max-height: min(52vh, 320px);
+    max-height: min(52vh, 320px); max-height: min(52dvh, 320px);
     overflow: auto;
     overscroll-behavior: contain;
   }

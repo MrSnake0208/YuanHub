@@ -92,7 +92,7 @@ const toolGroups = computed(function () {
 
 <style scoped>
 .page-admin-workbench {
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
 }
 
 .page-admin-workbench .hero {

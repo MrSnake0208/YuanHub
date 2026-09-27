@@ -132,7 +132,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.merge-dialog { width: min(680px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+.merge-dialog { width: min(680px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); max-height: min(760px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
 .merge-body { min-height: 0; overflow-y: auto; padding: 18px 20px; }
 .merge-lead { margin-bottom: 10px; color: var(--ink); font-weight: 800; }
 .merge-list { display: grid; gap: 8px; margin-top: 14px; list-style: none; }

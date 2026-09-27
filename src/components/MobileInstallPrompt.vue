@@ -131,7 +131,7 @@ onBeforeUnmount(function () {
 <style scoped>
 .pwa-install-prompt {
   position: fixed;
-  z-index: 150;
+  z-index: var(--z-popover);
   right: 12px;
   bottom: max(12px, env(safe-area-inset-bottom));
   left: 12px;

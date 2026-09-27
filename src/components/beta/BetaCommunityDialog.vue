@@ -174,7 +174,7 @@ watch(
 .community-mask {
   position: fixed;
   inset: 0;
-  z-index: 230;
+  z-index: var(--z-overlay-panel);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -186,6 +186,7 @@ watch(
 .community-dialog {
   width: min(560px, 100%);
   max-height: min(760px, calc(100vh - 44px));
+  max-height: min(760px, calc(100dvh - 44px));
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -385,7 +386,8 @@ watch(
 
   .community-dialog {
     width: 100%;
-    max-height: min(88vh, 760px);
+    max-height: min(88vh, 760px, calc(100vh - 44px));
+    max-height: min(88dvh, 760px, calc(100dvh - 44px));
     border-width: 1px 0 0;
     border-radius: 24px 24px 0 0;
   }

@@ -453,7 +453,7 @@ input:disabled { cursor: not-allowed; }
 .reward-dialog-enter-active .reward-dialog, .reward-dialog-leave-active .reward-dialog { transition: transform .2s var(--ease), opacity .2s var(--ease); }
 .reward-dialog-enter-from, .reward-dialog-leave-to { opacity: 0; }
 .reward-dialog-enter-from .reward-dialog, .reward-dialog-leave-to .reward-dialog { opacity: 0; transform: translateY(12px) scale(.985); }
-.reward-dialog-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(73,59,44,.5); backdrop-filter: blur(6px); overscroll-behavior: none; }
+.reward-dialog-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 24px; background: rgba(73,59,44,.5); backdrop-filter: blur(6px); overscroll-behavior: none; }
 .reward-panel { position: relative; width: min(1240px, 100%); max-height: calc(100dvh - 48px); min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--reward-gold-soft); border-radius: 20px; background: var(--surface); box-shadow: 0 32px 90px -34px rgba(73,59,44,.48), 0 2px 6px rgba(73,59,44,.06); }
 .reward-panel::before { content: ''; position: absolute; inset: 5px; border: 1px solid var(--reward-gold-soft); border-radius: 15px; pointer-events: none; }
 .reward-dialog-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 20px; padding-bottom: max(0px, env(safe-area-inset-bottom)); }

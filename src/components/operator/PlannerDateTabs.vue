@@ -133,7 +133,7 @@ button:active:not(:disabled) { background: var(--paper); }
   .date-menu > summary::-webkit-details-marker { display: none; }
   .date-menu > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .date-menu[open] > summary { background: var(--paper); }
-  .date-menu-options { position: absolute; z-index: 10; top: calc(100% + 4px); right: 0; display: grid; width: 192px; max-width: calc(100vw - 32px); gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .12); }
+  .date-menu-options { position: absolute; z-index: var(--z-popover); top: calc(100% + 4px); right: 0; display: grid; width: 192px; max-width: calc(100vw - 32px); gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .12); }
   .date-menu-options button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--tea); text-align: left; font: 13px/1.5 var(--font-b); cursor: pointer; }
   .date-menu-options button > svg { flex: none; }
   .date-menu-options button:hover:not(:disabled) { background: var(--cream); }

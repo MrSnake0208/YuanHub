@@ -243,7 +243,7 @@ function submitCreate() {
 .account-soft-trigger[aria-expanded='true']::after { transform: translateY(-35%) rotate(225deg) }
 .account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13); outline: 0 }
 .account-soft-trigger:disabled { cursor: not-allowed; opacity: .55 }
-.account-soft-listbox { position: absolute; z-index: 80; top: calc(100% + 5px); right: 0; left: 0; display: grid; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); font: inherit; scrollbar-color: var(--yellow-deep) transparent; scrollbar-width: thin }
+.account-soft-listbox { position: absolute; z-index: var(--z-popover); top: calc(100% + 5px); right: 0; left: 0; display: grid; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); font: inherit; scrollbar-color: var(--yellow-deep) transparent; scrollbar-width: thin }
 .account-soft-option { width: 100%; padding: 8px 10px; overflow: hidden; border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap }
 .account-soft-option:hover:not(:disabled),.account-soft-option:focus-visible,.account-soft-option[aria-selected='true'] { background: var(--cream); outline: 0 }
 .account-soft-option:disabled { cursor: not-allowed; opacity: .55 }

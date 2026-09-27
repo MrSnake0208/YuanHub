@@ -705,7 +705,7 @@ onBeforeUnmount(function () {
   --wm: "星石";
 }
 .star-main {
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
 }
 .game-stat {
   font-size: 21px;
@@ -808,7 +808,7 @@ onBeforeUnmount(function () {
 .star-tabs {
   position: sticky;
   top: 24px;
-  z-index: 45;
+  z-index: var(--z-sticky-controls);
   display: flex;
   gap: 4px;
   margin-top: 32px;
@@ -876,7 +876,7 @@ onBeforeUnmount(function () {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 55;
+    z-index: var(--z-popover);
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;

@@ -364,7 +364,7 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 </script>
 
 <style scoped>
-.page-feedback-access { min-height: 100vh }
+.page-feedback-access { min-height: 100vh; min-height: 100dvh }
 .access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-bottom: 14px }
 .access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
 .access-search:focus-within { border-color: var(--feedback-accent) }
@@ -388,7 +388,7 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .area-tag { display: inline-block; margin: 0 5px 5px 0; padding: 2px 7px; border: 1px solid var(--yellow-deep); border-radius: 5px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 700 }
 .area-tag.manage { border-color: var(--brand-blue); background: transparent; color: var(--brand-blue) }
 .muted,.empty-row { color: var(--ink-35) }
-.access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); overflow-y: auto }
+.access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow-y: auto }
 .access-modal-body { padding: 20px }
 .user-picker label { display: grid; gap: 6px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
 .user-picker input { height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }

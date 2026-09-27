@@ -536,7 +536,7 @@ load()
 </script>
 
 <style scoped>
-.page-level-admin { min-height: 100vh }
+.page-level-admin { min-height: 100vh; min-height: 100dvh }
 .page-level-admin .hero::after { content: '关' }
 .level-content { padding-bottom: 20px }
 .hero-stats .compact { font-size: clamp(16px, 2vw, 24px); line-height: 1.35; overflow-wrap: anywhere }
@@ -613,8 +613,8 @@ load()
 .import-stat strong { display: block; color: var(--ink); font: 900 19px var(--font-d) }
 .import-stat span { color: var(--ink-60); font-size: 10px; white-space: nowrap }
 .import-details { grid-column: 1 / -1; max-height: 100px; overflow: auto; margin: 2px 0 0; padding-left: 20px; color: var(--rouge); font-size: 11px; line-height: 1.6 }
-.editor-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px) }
-.editor-panel { width: min(720px, 100%); max-height: 90vh; overflow-y: auto; padding: 24px 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
+.editor-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 24px; background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px) }
+.editor-panel { width: min(720px, 100%); max-height: 90vh; max-height: 90dvh; overflow-y: auto; padding: 24px 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
 .editor-head { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px dashed var(--line); padding-bottom: 14px }
 .editor-head h2 { margin-top: 4px; color: var(--ink); font: 900 23px var(--font-s) }
 .editor-head p { margin-top: 5px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
@@ -637,7 +637,7 @@ load()
   .page-level-admin .hero-stats { grid-template-columns: repeat(2, 1fr); margin-top: 18px }
   .page-level-admin .hero-stats > div { padding: 13px 14px 16px }
   .page-level-admin .hero-stats .v { font-size: 22px }
-  .level-toolbar { position: sticky; top: 64px; z-index: 30; display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 9px; margin-top: 16px; padding: 11px; box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58) }
+  .level-toolbar { position: sticky; top: 64px; z-index: var(--z-sticky-low); display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 9px; margin-top: 16px; padding: 11px; box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58) }
   .level-toolbar label { min-width: 0 }
   .level-search { grid-column: 1 / -1; min-width: 0; min-height: 44px }
   .level-search input { min-height: 40px; font-size: 16px }
@@ -659,7 +659,7 @@ load()
   .tree-panel, .import-panel { padding: 16px }
   .import-preview { grid-template-columns: repeat(3, minmax(0, 1fr)) }
   .editor-mask { align-items: end; padding: 10px }
-  .editor-panel { max-height: 92vh; padding: 20px 16px }
+  .editor-panel { max-height: 92vh; max-height: 92dvh; padding: 20px 16px }
   .editor-fields { grid-template-columns: 1fr; gap: 11px }
   .editor-fields label.wide { grid-column: auto }
   .editor-actions .command { min-height: 44px; flex: 1 }

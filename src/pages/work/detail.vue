@@ -306,7 +306,7 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 </script>
 
 <style scoped>
-.detail-state-wrap { min-height: 100vh; display: grid; place-items: center; padding: 80px 48px; }
+.detail-state-wrap { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 80px 48px; }
 .detail-state { width: min(620px, 100%); min-height: 300px; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 40px; border: 1.5px dashed var(--line); border-radius: 24px; background: var(--surface); color: var(--ink-60); text-align: center; }
 .detail-state strong { color: var(--ink); font: 900 24px var(--font-s); }
 .detail-state span { line-height: 1.7; }

@@ -888,8 +888,8 @@ load()
 .ops-btn.danger:hover { background: rgba(166, 81, 74, .1) }
 
 /* —— 弹窗 —— */
-.editor-mask { position: fixed; inset: 0; background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 90; padding: 24px }
-.editor-panel { width: min(720px, 100%); max-height: 86vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px 26px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
+.editor-mask { position: fixed; inset: 0; background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: var(--z-overlay-panel); padding: 24px }
+.editor-panel { width: min(720px, 100%); max-height: 86vh; max-height: 86dvh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px 26px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
 .editor-head { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px dashed var(--line); padding-bottom: 14px }
 .editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 22px; letter-spacing: .02em; color: var(--ink) }
 .editor-sub { font-size: 12px; color: var(--ink-60); margin-top: 4px }
@@ -981,7 +981,7 @@ load()
   .admin-bar {
     position: sticky;
     top: 64px;
-    z-index: 30;
+    z-index: var(--z-sticky-low);
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px 12px;

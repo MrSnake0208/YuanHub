@@ -193,8 +193,8 @@ function hideBrokenImage(event) { event.target.style.display = 'none' }
   --demo-shadow:0 22px 50px -30px rgba(73,59,44,.42);
 }
 
-.demo-page{min-height:100vh;color:var(--ink);font-family:var(--font-b)}
-.demo-main{min-height:100vh;margin-left:292px;overflow:hidden}
+.demo-page{min-height:100vh; min-height:100dvh;color:var(--ink);font-family:var(--font-b)}
+.demo-main{min-height:100vh; min-height:100dvh;margin-left:292px;overflow:hidden}
 .demo-wrap{max-width:1240px}
 .demo-hero{position:relative;isolation:isolate;overflow:hidden;padding:42px 0 34px;background:linear-gradient(154deg,var(--yellow) 0%,#e8c66e 72%,var(--yellow-deep) 130%);border-radius:0 0 38px 38px}
 .demo-hero::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(255,253,246,.18),rgba(255,253,246,.06) 52%,rgba(255,253,246,.12))}
