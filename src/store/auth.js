@@ -4,6 +4,13 @@
 // - 方法均挂在 auth 对象上：auth.login() / auth.logout() / auth.refresh()
 // - init() 启动时恢复；setTokens() 供登录/刷新成功后更新
 //
+// 职责分层（重要）：
+// - auth.refresh() 只负责「用 refreshToken 换新 token」这一件事，成功返回 true。
+//   它绝不能再隐式调用 refreshAdminAccess()：那会与调用方（例如 request.js 的 401
+//   恢复、init() 的首屏恢复）正在等待的 refreshAdminAccess() 形成互相等待的死锁，
+//   首次路由守卫便永远拿不到结果，用户只能看到 PWA 背景色。
+// - 管理权限由真正需要它的调用方显式发起：登录成功后、管理员路由导航前、403 恢复时。
+//
 // 依赖关系：store/auth.js 依赖 api/user.js（接口），api/user.js 依赖 api/request.js，
 // request.js 仅在运行时通过「动态 import」读取本模块，故无模块初始化循环。
 import { reactive } from 'vue'
@@ -33,16 +40,22 @@ function loadSaved() {
 const saved = loadSaved()
 let adminAccessRequest = null
 let initRequest = null
+// token 刷新单飞：多个请求同时 401 时复用同一次刷新，避免并发消耗 refresh token。
+let refreshRequest = null
 
 function persist() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      userInfo: auth.userInfo,
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken
-    })
-  )
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        userInfo: auth.userInfo,
+        accessToken: auth.accessToken,
+        refreshToken: auth.refreshToken
+      })
+    )
+  } catch (_e) {
+    // 隐私模式 / 配额不足时 localStorage 会抛错；登录态仍保留在内存中，不影响本次会话。
+  }
 }
 
 export const auth = reactive({
@@ -53,6 +66,8 @@ export const auth = reactive({
   adminAccessLoading: false,
   adminAccessLoaded: false,
   adminAccessError: '',
+  // 仅当后端明确拒绝 refresh token（401/403）时为 true；超时/断网等临时失败不算。
+  refreshRejected: false,
   get isLoggedIn() {
     return !!auth.accessToken
   },
@@ -64,20 +79,38 @@ export const auth = reactive({
   async login(email, password) {
     const data = await userApi.login({ email, password })
     setTokens(data)
+    auth.refreshRejected = false
+    // 登录是「刚建立会话」的确定时刻，此时显式同步管理权限，不存在并发刷新。
     await auth.refreshAdminAccess({ suppressErrors: true })
     return data
   },
 
-  // 静默刷新：成功返回 true 并更新 token；失败返回 false（调用方决定登出/跳转）
+  // 静默刷新：成功返回 true 并更新 token；失败返回 false（调用方决定登出/跳转）。
+  // 只做 token 刷新，不再牵连管理权限；并发调用共享同一次请求。
   async refresh() {
-    if (!auth.refreshToken) return false
-    try {
-      const data = await userApi.refreshToken(auth.refreshToken)
-      setTokens(data)
-      await auth.refreshAdminAccess({ suppressErrors: true })
-      return true
-    } catch (_e) {
+    if (!auth.refreshToken) {
+      auth.refreshRejected = true
       return false
+    }
+    if (refreshRequest) return refreshRequest
+
+    const pending = (async function () {
+      try {
+        const data = await userApi.refreshToken(auth.refreshToken)
+        setTokens(data)
+        auth.refreshRejected = false
+        return true
+      } catch (error) {
+        // 只有后端明确拒绝才算登录态失效；超时 / 断网不能把用户直接踢下线。
+        auth.refreshRejected = !!(error && (error.status === 401 || error.status === 403))
+        return false
+      }
+    })()
+    refreshRequest = pending
+    try {
+      return await pending
+    } finally {
+      if (refreshRequest === pending) refreshRequest = null
     }
   },
 
@@ -114,9 +147,14 @@ export const auth = reactive({
     auth.accessToken = ''
     auth.refreshToken = ''
     auth.userInfo = null
+    auth.refreshRejected = false
     beta.setIdentity('')
     clearAdminAccess()
-    localStorage.removeItem(STORAGE_KEY)
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch (_e) {
+      // 与 persist 同理：storage 不可用时不影响内存中的登出结果。
+    }
     if (typeof location !== 'undefined') {
       location.href = '/login'
     }
@@ -146,12 +184,18 @@ export function setTokens(payload) {
 }
 
 // 启动时恢复（已在模块加载时用 loadSaved 初始化，此处保证幂等并返回 auth）
+//
+// 首屏只保证「登录态」可用；管理权限改为后台加载：
+// 它只是权限感知 UI（侧边栏入口、内测弹窗）的数据来源，绝不能让首次路由导航
+// 等待 /v1/admin/access/me。管理员路由会在守卫里显式 await auth.refreshAdminAccess()，
+// 因此不会因为这里的异步化造成权限绕过。
 export function init() {
   if (initRequest) return initRequest
   initRequest = Promise.resolve()
     .then(function () {
       if (!auth.accessToken) return null
-      return auth.refreshAdminAccess({ suppressErrors: true })
+      void auth.refreshAdminAccess({ suppressErrors: true })
+      return null
     })
     .then(function () { return auth })
   return initRequest

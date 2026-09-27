@@ -5,7 +5,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
 import { isFeatureEnabled } from '@/config/features.js'
 import { auth, init as authInit } from '@/store/auth.js'
-import { canManageAnyFeedback, hasAnyAdminCapability, hasPermission } from '@/utils/authPermissions.js'
+import { isRouteAccessAllowed, needsAdminAccess } from '@/utils/routeAccess.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -55,19 +55,19 @@ router.beforeEach((to, from) => {
   beginRouteLoading(to, from)
 })
 
-// 首次导航前恢复登录态（async init 保证刷新页面后登录态已还原再判守卫）
+// 首次导航前恢复登录态。
+//
+// authInit() 只保证「登录态」可用（模块加载期已同步从 localStorage 恢复），
+// 管理权限是后台异步加载的，因此首次导航不会再被 /v1/admin/access/me 阻塞。
+// 需要管理权限的路由在下面显式等待权限结果，不存在权限绕过。
 let authReady = false
-router.beforeEach(async (to, from, next) => {
+export async function authGuard(to, from, next) {
   if (!authReady) {
     await authInit()
     authReady = true
   }
   const authed = !!(auth.accessToken && auth.userInfo)
   const requiresAuth = to.meta && to.meta.requiresAuth
-  const requiredPermission = to.meta && to.meta.requiredPermission
-  const requiredAnyPermission = to.meta && to.meta.requiredAnyPermission
-  const requiresFeedbackManage = to.meta && to.meta.requiresFeedbackManage
-  const requiresManagement = to.meta && to.meta.requiresManagement
   const feature = to.meta && to.meta.feature
 
   if (feature && !isFeatureEnabled(feature)) {
@@ -87,41 +87,28 @@ router.beforeEach(async (to, from, next) => {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
-  async function refreshAdminAccessOnce(check) {
-    if (check()) return true
-    await auth.refreshAdminAccess({ suppressErrors: true })
-    return check()
+
+  // 只有真正需要管理权限的路由才等待 /v1/admin/access/me。
+  // 普通页面（/、/today、/cart…）不走这个分支，首屏不会被权限接口拖住。
+  if (needsAdminAccess(to.meta)) {
+    if (!isRouteAccessAllowed(to.meta, auth.adminAccess, auth.adminAccessError)) {
+      // refreshAdminAccess 内部单飞：init() 已发起时这里只会复用同一个请求。
+      await auth.refreshAdminAccess({ suppressErrors: true })
+    }
+    if (!isRouteAccessAllowed(to.meta, auth.adminAccess, auth.adminAccessError)) {
+      return next({ path: '/forbidden', query: { from: to.fullPath } })
+    }
   }
 
-  if (requiredPermission && !await refreshAdminAccessOnce(function () {
-    return hasPermission(auth.adminAccess, requiredPermission)
-  })) {
-    return next({ path: '/forbidden', query: { from: to.fullPath } })
-  }
-  if (Array.isArray(requiredAnyPermission) && !await refreshAdminAccessOnce(function () {
-    return requiredAnyPermission.some(function (permission) {
-      return hasPermission(auth.adminAccess, permission)
-    })
-  })) {
-    return next({ path: '/forbidden', query: { from: to.fullPath } })
-  }
-  if (requiresFeedbackManage && !await refreshAdminAccessOnce(function () {
-    return canManageAnyFeedback(auth.adminAccess)
-  })) {
-    return next({ path: '/forbidden', query: { from: to.fullPath } })
-  }
-  // Keep authenticated users on the workbench when access lookup fails so the
-  // page can show the failure state instead of mislabeling it as forbidden.
-  if (requiresManagement && !auth.adminAccessError && !hasAnyAdminCapability(auth.adminAccess)) {
-    return next({ path: '/forbidden', query: { from: to.fullPath } })
-  }
   const authPages = ['/login', '/register', '/forgot']
   if (authed && authPages.includes(to.path)) {
     // 已登录访问登录/注册/找回 → 回首页
     return next(safeBetaRedirect(to.query.redirect, '/beta'))
   }
   next()
-})
+}
+
+router.beforeEach(authGuard)
 
 router.afterEach((to) => {
   if (to.meta.title) document.title = to.meta.title
