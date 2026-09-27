@@ -62,11 +62,11 @@
               <span class="ac-label">当前账号</span>
               <select
                 id="quick-account"
-                v-model="accountId"
+                :value="accountId"
                 :disabled="
                   !auth.isLoggedIn || accountsLoading || importing
                 "
-                @change="onAccountChange"
+                @change="onAccountChange($event)"
               >
                 <option v-if="!accounts.length" value="">（未创建）</option>
                 <option v-for="a in accounts" :key="a.id" :value="a.id">
@@ -124,7 +124,7 @@
                   done: isStepDone(s.key),
                   locked: !isStepUnlocked(s.key),
                 }"
-                :disabled="importing || !isStepUnlocked(s.key)"
+                :disabled="completed || importing || !isStepUnlocked(s.key)"
                 :title="
                   isStepUnlocked(s.key)
                     ? s.title
@@ -143,9 +143,16 @@
                 >
               </button>
             </div>
+            <p v-if="!completed" class="step-help">后续星阶需在当前页点击「保存本页并下一步」解锁；本页未勾选密探时也可继续。</p>
 
             <!-- 单页：勾选某星阶密探 + 批量修为/等级，逐页即存 -->
-            <div class="wiz-card" v-reveal>
+            <div v-if="completed" class="wiz-card quick-complete" role="status" v-reveal>
+              <h2>快捷录入已完成</h2>
+              <p>本次共保存 {{ sessionSavedCount }} 位密探到「{{ accountName }}」。</p>
+              <p v-if="quickDirty">其他步骤仍有未保存选择；返回密探页前会再次确认。</p>
+              <button class="btn primary" type="button" @click="goBack">返回密探页查看养成</button>
+            </div>
+            <div v-else class="wiz-card" v-reveal>
               <div class="wiz-head">
                 <h2>{{ currentStep.title }}</h2>
                 <p class="wiz-sub">
@@ -417,6 +424,8 @@ import { avatarUrl } from "../../api/request.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
+import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
+import { quickDraftSignature } from "../../utils/quickDraft.js";
 import { AGENT_CATALOG, AGENT_PROFS } from "../../data/inventory/catalog.js";
 import {
   OPERATOR_RARITY_LABELS,
@@ -520,6 +529,8 @@ const backendCatalog = ref([]);
 const currentEntries = ref([]);
 const importing = ref(false);
 const sessionSavedCount = ref(0);
+const sessionSavedIds = new Set();
+const completed = ref(false);
 // 每页是否已保存过（用于步骤条“已存”标记 + 返回已保存页时的提示）
 const savedByKey = reactive({});
 // 本页最近一次保存结果（成功 / 失败提示）
@@ -540,6 +551,12 @@ starSteps.forEach(function (s) {
   formByKey[s.key] = { elite: 0, level: 0, node: 0 };
   if (!checkedByKey[s.key]) checkedByKey[s.key] = [];
 });
+const draftBaselineByKey = reactive({});
+starSteps.forEach(s => { draftBaselineByKey[s.key] = quickDraftSignature([], null); });
+const quickDirty = computed(() => starSteps.some(s =>
+  quickDraftSignature(checkedByKey[s.key], formByKey[s.key]) !== draftBaselineByKey[s.key]
+));
+const confirmQuickDiscard = useUnsavedChanges(quickDirty, "快捷录入草稿");
 
 // —— 派生状态 ——
 const currentStep = computed(function () {
@@ -937,10 +954,16 @@ async function selectAllPage() {
   await selectPageIds(ids, "全选本页");
 }
 
-function clearPage() {
+async function clearPage() {
   const ids = pageOperators.value.map(function (op) {
     return op.id;
   });
+  const selectedCount = (checkedByKey[currentKey.value] || []).filter(id => ids.includes(id)).length;
+  if (!selectedCount || !(await dialog.confirm({
+    title: '清空本页选择？',
+    message: '将取消当前筛选下 ' + selectedCount + ' 位密探的勾选。',
+    type: 'danger', confirmText: '确认清空', cancelText: '保留选择',
+  }))) return;
   checkedByKey[currentKey.value] = (
     checkedByKey[currentKey.value] || []
   ).filter(function (id) {
@@ -1067,15 +1090,14 @@ function goStep(key) {
   pageSave.show = false;
 }
 
-// 「保存本页并下一步」：先保存当前页，成功后再翻页；觉醒页保存后完成返回密探页。
+// 「保存本页并下一步」：先保存当前页，成功后再翻页；觉醒页由用户确认结果后离开。
 async function nextStep() {
   if (importing.value) return;
   const hasEntries = buildPageEntries(currentKey.value).length > 0;
   const ok = await saveCurrentPage();
   if (!ok) return;
   if (stepIndex.value >= steps.length - 1) {
-    // 觉醒页：保存后返回密探页（留一点时间展示「已保存」）
-    setTimeout(goBack, 600);
+    completed.value = true;
     return;
   }
   if (hasEntries) {
@@ -1144,7 +1166,26 @@ async function loadAccounts() {
   }
 }
 
-function onAccountChange() {
+async function onAccountChange(event) {
+  const nextId = event.target.value;
+  if (nextId === accountId.value) return;
+  if (!(await confirmQuickDiscard())) {
+    event.target.value = accountId.value;
+    return;
+  }
+  starSteps.forEach(function (step) {
+    checkedByKey[step.key] = [];
+    formByKey[step.key] = { elite: 0, level: 0, node: 0 };
+    draftBaselineByKey[step.key] = quickDraftSignature([], null);
+    delete savedByKey[step.key];
+  });
+  sessionSavedCount.value = 0;
+  sessionSavedIds.clear();
+  stepIndex.value = 0;
+  maxUnlockedStep.value = 0;
+  completed.value = false;
+  pageSave.show = false;
+  accountId.value = nextId;
   currentEntries.value = [];
   reloadCurrent();
 }
@@ -1243,7 +1284,9 @@ async function saveCurrentPage() {
   importing.value = true;
   try {
     await importOperator(doc);
-    sessionSavedCount.value += entries.length;
+    draftBaselineByKey[key] = quickDraftSignature(checkedByKey[key], formByKey[key]);
+    entries.forEach(entry => sessionSavedIds.add(entry.id));
+    sessionSavedCount.value = sessionSavedIds.size;
     savedByKey[key] = true;
     pageSave.show = true;
     pageSave.ok = true;
@@ -1414,6 +1457,13 @@ onMounted(async function () {
   background: var(--paper);
   border-style: dashed;
 }
+.step-help {
+  margin: 6px 0 0;
+  color: var(--ink-60);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.quick-complete p { margin: 12px 0; line-height: 1.6; }
 .step .step-no {
   width: 24px;
   height: 24px;
@@ -1946,6 +1996,11 @@ onMounted(async function () {
 }
 
 @media (max-width: 640px) {
+  .btn, .mini, .mf-filter button, .act-btn, .ac-sel select,
+  .op-search-input, .batch-fields input, .page-save .link, .state .link {
+    min-height: 44px;
+  }
+  .page-save .link, .state .link { display: inline-flex; align-items: center; }
   .wiz-card {
     padding: 16px 14px 18px;
   }
