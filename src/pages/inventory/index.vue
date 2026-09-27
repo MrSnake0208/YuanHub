@@ -3932,7 +3932,7 @@ onBeforeUnmount(function () {
 .inventory-tabs {
   position: sticky;
   top: 24px;
-  z-index: 45;
+  z-index: var(--z-sticky-controls);
   display: flex;
   gap: 4px;
   background: rgba(255, 248, 236, 0.94);
@@ -4362,7 +4362,7 @@ onBeforeUnmount(function () {
 .agent-controls {
   position: sticky;
   top: 16px;
-  z-index: 24;
+  z-index: var(--z-sticky-low);
   display: flex;
   align-items: flex-end;
   gap: 8px;
@@ -4480,7 +4480,7 @@ onBeforeUnmount(function () {
   background: var(--paper);
 }
 .agent-menu-control[open] {
-  z-index: 40;
+  z-index: var(--z-sticky);
 }
 .agent-menu-control[open] summary {
   border-color: var(--accent);
@@ -4498,7 +4498,7 @@ onBeforeUnmount(function () {
   position: absolute;
   top: calc(100% + 7px);
   left: 0;
-  z-index: 50;
+  z-index: var(--z-popover);
   width: max-content;
   min-width: 100%;
   max-width: min(220px, calc(100vw - 32px));
@@ -4696,7 +4696,7 @@ onBeforeUnmount(function () {
   font-size: 10px;
 }
 .agent-filter-panel[open] {
-  z-index: 30;
+  z-index: var(--z-sticky-low);
 }
 .agent-filter-panel[open] summary {
   border-color: var(--accent);
@@ -4711,9 +4711,10 @@ onBeforeUnmount(function () {
   position: absolute;
   top: calc(100% + 7px);
   left: 0;
-  z-index: 30;
+  z-index: var(--z-popover);
   width: min(380px, calc(100vw - 32px));
   max-height: min(560px, calc(100vh - 140px));
+  max-height: min(560px, calc(100dvh - 140px));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 12px;
@@ -4858,7 +4859,7 @@ onBeforeUnmount(function () {
 .agent-controls-toggle::after,
 .agent-select-control::after {
   position: absolute;
-  z-index: 80;
+  z-index: var(--z-popover);
   width: max-content;
   max-width: 180px;
   padding: 5px 8px;
@@ -5902,7 +5903,7 @@ onBeforeUnmount(function () {
   position: absolute;
   left: calc(100% + 8px);
   top: 50%;
-  z-index: 20;
+  z-index: var(--z-content-raised);
   width: max-content;
   max-width: 220px;
   padding: 6px 9px;
@@ -5925,6 +5926,16 @@ onBeforeUnmount(function () {
 .subsection-edit:focus-visible::after {
   opacity: 1;
   transform: translate(0, -50%);
+}
+@media (max-width: 640px) {
+  .subsection-edit::after,
+  .subsection-edit:hover::after,
+  .subsection-edit:focus-visible::after {
+    left: 50%;
+    top: calc(100% + 6px);
+    max-width: min(220px, calc(100vw - 32px));
+    transform: translateX(-50%);
+  }
 }
 .item-subsection > .slot-grid {
   flex: 1;
@@ -7032,7 +7043,7 @@ onBeforeUnmount(function () {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 55;
+    z-index: var(--z-popover);
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
@@ -7091,7 +7102,7 @@ onBeforeUnmount(function () {
   .manifest-toolbar {
     position: sticky;
     top: 84px;
-    z-index: 40;
+    z-index: var(--z-sticky);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -7161,7 +7172,7 @@ onBeforeUnmount(function () {
   .manifest-scope.is-editing {
     position: sticky;
     top: 64px;
-    z-index: 45;
+    z-index: var(--z-sticky-controls);
     margin-top: 12px;
     padding: 10px;
     border: 1px solid var(--line);
@@ -7208,7 +7219,7 @@ onBeforeUnmount(function () {
     right: auto;
     bottom: auto;
     left: auto;
-    z-index: 50;
+    z-index: var(--z-popover);
     width: min(100%, 360px);
     display: flex;
     flex-direction: row;
@@ -7528,9 +7539,10 @@ onBeforeUnmount(function () {
     right: 16px;
     bottom: calc(84px + env(safe-area-inset-bottom));
     top: auto;
-    z-index: 60;
+    z-index: var(--z-popover);
     width: min(343px, calc(100vw - 32px));
     max-height: calc(100vh - 100px);
+    max-height: calc(100dvh - 100px);
     overflow-y: auto;
     margin: 0;
   }

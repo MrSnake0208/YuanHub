@@ -97,7 +97,7 @@
 ### 5.5 浮层层级（z-index）
 
 - 浮层顺序统一登记在 `src/styles/main.css` 的 `:root` 层级刻度中，组件只引用变量，不得再各写魔数。
-- 刻度顺序（由低到高）：`--z-overlay`(60) 一级弹窗 → `--z-banner`(70) 顶部信息条 → `--z-overlay-panel`(90) 页面级详情/编辑弹窗 → `--z-overlay-raised`(100) 二级弹窗 → `--z-overlay-blocking`(200) 阻断式对话框。
+- 刻度顺序（由低到高）：`--z-content-raised`(20)、`--z-card-active`(21)、`--z-card-open`(22) 供卡片局部浮起；`--z-sticky-low`(30)、`--z-sticky`(40)、`--z-sticky-controls`(45) 供页面固定工具；`--z-popover`(55) 普通下拉/提示；`--z-overlay`(60) 一级弹窗；`--z-banner`(70) 顶部信息条；`--z-overlay-panel`(90) 页面级详情/编辑弹窗；`--z-overlay-raised`(100) 二级弹窗；`--z-overlay-blocking`(200) 阻断式对话框；`--z-toast`(210) 全局通知；`--z-progress`(220) 路由进度；`--z-skip-link`(230) 键盘跳转入口。局部装饰可用 0–9，不作为全局浮层。
 - 从一级弹窗或详情弹窗内部打开的弹窗属于二级弹窗，必须复用 `.modal-mask.is-raised`（或 `--z-overlay-raised`），否则会被宿主遮罩压住而不可见、不可交互。
 - 下层弹窗不得越过上层弹窗响应 Escape：顶层弹窗打开时，详情层必须让出 Escape，只关闭最上层。
 

@@ -67,7 +67,7 @@
     box-shadow: 0 0 0 2px #6f9f76, 0 6px 18px color-mix(in srgb, var(--tea) 12%, transparent);
   }
 
-  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-status-menu[open]) { z-index: 22; }
+  .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-status-menu[open]) { z-index: var(--z-card-open); }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-portrait {
     position: absolute;
@@ -995,7 +995,7 @@
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3:has(.ledger-status-menu[open]) {
-    z-index: 22;
+    z-index: var(--z-card-open);
   }
 
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-card-head {

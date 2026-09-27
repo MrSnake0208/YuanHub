@@ -133,7 +133,7 @@ onMounted(function () {
 </script>
 
 <style scoped>
-.page-install { min-height: 100vh; }
+.page-install { min-height: 100vh; min-height: 100dvh; }
 .install-hero { --wm: '桌'; }
 .installed-banner { width: fit-content; max-width: 100%; display: flex; align-items: center; gap: 9px; margin-top: 22px; padding: 10px 14px; border: 1px solid var(--yellow-deep); border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 12.5px; font-weight: 800; }
 .installed-banner svg { color: var(--accent-strong); flex: none; }

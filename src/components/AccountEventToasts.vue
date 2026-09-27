@@ -49,7 +49,7 @@ function agentIconSrc(operatorId) {
 </script>
 
 <style scoped>
-.account-event-toasts { position: fixed; z-index: 120; top: 22px; right: 24px; display: flex; width: min(340px, calc(100vw - 40px)); flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none }
+.account-event-toasts { position: fixed; z-index: var(--z-toast); top: 22px; right: 24px; display: flex; width: min(340px, calc(100vw - 40px)); flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none }
 .account-event-toast { --toast-accent: var(--yellow-deep); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 28px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; border: 1.5px solid var(--toast-accent); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .9); font-size: 12.5px; line-height: 1.35; pointer-events: auto }
 .account-event-toast::after { position: absolute; right: 17px; bottom: -8px; width: 14px; height: 14px; border-right: 1.5px solid var(--yellow-deep); border-bottom: 1.5px solid var(--yellow-deep); border-radius: 0 0 4px; background: var(--surface); content: ''; transform: skewY(34deg) rotate(20deg) }
 .account-event-toast.is-capsule::after { display: none }
@@ -96,7 +96,7 @@ function agentIconSrc(operatorId) {
 @keyframes capsule-icon-pop { 0% { transform: scale(.4) rotate(-12deg); filter: brightness(.7) } 65% { transform: scale(1.18) rotate(3deg); filter: brightness(1.35) } 100% { transform: scale(1); filter: none } }
 @keyframes inventory-refined-in { 0% { opacity: 0; transform: translateY(-10px) scale(.98) } 65% { opacity: 1; transform: translateY(1px) scale(1.005) } 100% { opacity: 1; transform: none } }
 @keyframes inventory-icon-ring { 0% { box-shadow: 0 0 0 0 rgba(215, 137, 53, .28) } 100% { box-shadow: 0 0 0 10px rgba(215, 137, 53, 0) } }
-.account-event-preview { position: fixed; z-index: 119; right: 22px; bottom: 22px; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(73, 59, 44, .16) }
+.account-event-preview { position: fixed; z-index: var(--z-popover); right: 22px; bottom: 22px; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(73, 59, 44, .16) }
 .account-event-preview strong { padding: 0 7px; color: var(--ink-60); font-size: 10px; white-space: nowrap }
 .account-event-preview button { min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); font: 800 10.5px var(--font-b); cursor: pointer }
 .account-event-preview button:hover { border-color: var(--accent); color: var(--accent-strong) }

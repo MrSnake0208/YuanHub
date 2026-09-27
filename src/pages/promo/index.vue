@@ -238,7 +238,7 @@ const contributions = [
   --promo-line: rgba(90, 70, 51, .22);
   --promo-soft-line: rgba(90, 70, 51, .13);
   --promo-muted: rgba(73, 59, 44, .68);
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
   color: var(--ink);
   overflow: hidden;
 }

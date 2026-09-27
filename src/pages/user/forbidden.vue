@@ -24,7 +24,7 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 </script>
 
 <style scoped>
-.forbidden-band { min-height: 100vh; display: grid; place-items: center; padding: 48px }
+.forbidden-band { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 48px }
 .forbidden-panel { width: min(620px, 100%); padding: 40px; background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--rouge); border-radius: 8px }
 .forbidden-panel>svg { color: var(--rouge) }
 .eyebrow { display: block; margin-top: 20px; color: var(--accent-strong); font-family: var(--font-d); font-size: 11px; font-weight: 800; letter-spacing: .12em }

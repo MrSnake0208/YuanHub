@@ -490,7 +490,7 @@ onBeforeUnmount(() => { unsubscribe?.() })
 
 <style scoped>
 .page-beta {
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
 }
 
 .beta-main {
@@ -1339,7 +1339,7 @@ onBeforeUnmount(() => { unsubscribe?.() })
 
   .beta-topbar-wrap {
     position: sticky;
-    z-index: 20;
+    z-index: var(--z-content-raised);
     top: 0;
   }
 

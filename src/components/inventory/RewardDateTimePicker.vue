@@ -94,7 +94,7 @@ button:hover:not(:disabled) { background: var(--paper); }
 button:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
 button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
 .date-input button { min-width: 40px; height: 42px; }
-.calendar, .time-popover { position: absolute; left: 0; top: calc(100% + 8px); z-index: 65; width: min(296px, calc(100vw - 80px)); padding: 14px; border: 1px solid var(--line); border-radius: 14px; box-sizing: border-box; background: var(--surface); box-shadow: 0 16px 40px -12px rgba(73,59,44,.24), inset 0 0 0 4px var(--cream); }
+.calendar, .time-popover { position: absolute; left: 0; top: calc(100% + 8px); z-index: var(--z-popover); width: min(296px, calc(100vw - 80px)); padding: 14px; border: 1px solid var(--line); border-radius: 14px; box-sizing: border-box; background: var(--surface); box-shadow: 0 16px 40px -12px rgba(73,59,44,.24), inset 0 0 0 4px var(--cream); }
 .calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .calendar-heading strong { font-family: var(--font-s); font-size: 14px; }
 .calendar-week, .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; text-align: center; }

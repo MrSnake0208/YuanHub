@@ -622,8 +622,8 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .operator-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px }
 .agent-ledger-card { --ledger-rarity-accent: #99b5cf; position: relative; min-width: 0; display: flex; flex-direction: column; gap: 11px; padding: 14px 12px 12px; color: var(--ink); border: 1px solid var(--line); border-top: 2px solid var(--ledger-rarity-accent); border-radius: 12px; background: linear-gradient(180deg, var(--surface), var(--cream)); box-shadow: 0 8px 24px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .8); cursor: pointer; transition: transform .35s var(--ease), box-shadow .35s var(--ease) }
 .agent-ledger-card--share { cursor: default }
-.agent-ledger-card:hover { z-index: 20; transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
-.agent-ledger-card:focus-visible { z-index: 20; outline: 2px solid var(--brand-blue); outline-offset: 2px; transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
+.agent-ledger-card:hover { z-index: var(--z-content-raised); transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
+.agent-ledger-card:focus-visible { z-index: var(--z-content-raised); outline: 2px solid var(--brand-blue); outline-offset: 2px; transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
 .agent-ledger-card.status-growing { border-left: 3px solid #6f9f76 }
 .agent-ledger-card.status-graduated { border-left: 3px solid var(--yellow-deep) }
 .agent-ledger-card.status-inactive { border-left: 3px solid rgba(73, 59, 44, .35) }
@@ -679,7 +679,7 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .ledger-stones > .stone-slot.is-empty { min-height: 0; background: transparent; color: var(--line); font-size: 15px }
 .ledger-stones strong { max-width: 100%; overflow: hidden; color: var(--ink); font-size: 8px; text-overflow: ellipsis; white-space: nowrap }
 .ledger-stones small { color: var(--ink-60); font: 8px var(--font-d) }
-.disc-floating-tooltip { position: fixed; z-index: 240; width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--tea); color: var(--cream); box-shadow: 0 10px 24px rgba(73, 59, 44, .28); font: 700 11px/1.5 var(--font-b); text-align: left; white-space: normal; overflow-wrap: anywhere; pointer-events: none; animation: disc-tooltip-in .14s ease both }
+.disc-floating-tooltip { position: fixed; z-index: var(--z-popover); width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--tea); color: var(--cream); box-shadow: 0 10px 24px rgba(73, 59, 44, .28); font: 700 11px/1.5 var(--font-b); text-align: left; white-space: normal; overflow-wrap: anywhere; pointer-events: none; animation: disc-tooltip-in .14s ease both }
 .disc-floating-tooltip.is-top { transform: translate(-50%, -100%) }
 .disc-floating-tooltip.is-bottom { transform: translate(-50%, 0) }
 .disc-floating-tooltip::after { position: absolute; left: 50%; width: 8px; height: 8px; background: var(--tea); content: ''; transform: translateX(-50%) rotate(45deg) }

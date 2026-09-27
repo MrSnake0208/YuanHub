@@ -54,7 +54,7 @@ watch(() => props.open, async open => {
 </script>
 
 <style scoped>
-.public-detail-modal { width: min(720px, calc(100vw - 28px)); max-height: min(820px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+.public-detail-modal { width: min(720px, calc(100vw - 28px)); max-height: min(820px, calc(100vh - 32px)); max-height: min(820px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
 .public-detail-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .16em; }
 .public-detail-body { min-height: 0; overflow-y: auto; padding: 18px 20px 22px; }
 </style>

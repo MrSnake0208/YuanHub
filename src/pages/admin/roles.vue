@@ -272,7 +272,7 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 </script>
 
 <style scoped>
-.page-admin-roles { min-height: 100vh }
+.page-admin-roles { min-height: 100vh; min-height: 100dvh }
 .page-admin-roles .hero { --wm: '角' }
 .role-content { padding-bottom: 56px }
 .role-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-block: 1px solid var(--line) }
@@ -300,8 +300,8 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 .status-tag { background: rgba(191,220,192,.6) }
 .status-tag.inactive { color: var(--rouge); background: rgba(240,207,200,.55) }
 .empty-row { color: var(--ink-60); text-align: center !important }
-.modal-layer { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 16px; background: rgba(73,59,44,.28) }
-.role-modal { width: min(620px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(73,59,44,.28) }
+.modal-layer { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 16px; background: rgba(73,59,44,.28) }
+.role-modal { width: min(620px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(73,59,44,.28) }
 .modal-head,.selected-user,.modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px }
 .eyebrow { color: var(--accent-strong); font-family: var(--font-d); font-size: 11px; font-weight: 800; letter-spacing: .12em }
 .modal-head h2 { margin-top: 4px; font-family: var(--font-s); font-size: 22px; font-weight: 900; letter-spacing: 0 }

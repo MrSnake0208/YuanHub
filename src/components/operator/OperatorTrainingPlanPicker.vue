@@ -265,7 +265,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .plan-title-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plan-title-trigger > svg { flex: none; color: var(--ink-60); transition: transform 160ms ease; }
 .plan-title-trigger > svg.open { transform: rotate(180deg); }
-.plan-switcher-menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; display: grid; box-sizing: border-box; width: 100%; min-width: 100%; max-width: 100%; max-height: min(360px, 60dvh); gap: 2px; overflow-y: auto; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 38px rgba(73,59,44,.2); }
+.plan-switcher-menu { position: absolute; z-index: var(--z-popover); top: calc(100% + 6px); left: 0; display: grid; box-sizing: border-box; width: 100%; min-width: 100%; max-width: 100%; max-height: min(360px, 60dvh); gap: 2px; overflow-y: auto; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 38px rgba(73,59,44,.2); }
 .plan-switcher-menu button { width: 100%; min-width: 0; min-height: 40px; justify-content: flex-start; padding: 7px 10px 7px 7px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font-size: 12px; text-align: left; }
 .plan-switcher-menu button:hover, .plan-switcher-menu button:focus-visible { background: var(--cream); color: var(--ink); }
 .plan-switcher-menu button.active { background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); color: var(--tea); }

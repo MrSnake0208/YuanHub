@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // 浮层层级回归契约。
 // 背景：管理端“反馈工单详情”本身就是 z-index 90 的全屏遮罩，从它内部打开的
@@ -90,4 +92,40 @@ test('合并反馈弹窗作为二级弹窗必须压在反馈工单详情之上',
   const mergeZ = resolve(zIndexRef(mainCss, '.modal-mask.is-raised', '合并反馈遮罩'), scale)
   const detailZ = resolve(zIndexRef(workspace, '.ticket-detail-mask', '反馈工单详情遮罩'), scale)
   assert.ok(mergeZ > detailZ, `合并反馈(${mergeZ}) 必须高于工单详情(${detailZ})`)
+})
+
+test('普通浮层低于遮罩和阻断对话框，Toast 与跳转链接有登记层级', () => {
+  const scale = zIndexScale()
+  const ordered = [
+    '--z-content-raised', '--z-sticky', '--z-popover', '--z-overlay',
+    '--z-banner', '--z-overlay-panel', '--z-overlay-raised',
+    '--z-overlay-blocking', '--z-toast', '--z-progress', '--z-skip-link'
+  ]
+  for (let index = 1; index < ordered.length; index += 1) {
+    assert.ok(scale[ordered[index - 1]] < scale[ordered[index]], `${ordered[index - 1]} 必须低于 ${ordered[index]}`)
+  }
+  assert.equal(zIndexRef(read('src/components/AccountEventToasts.vue'), '.account-event-toasts', '事件通知').token, '--z-toast')
+  assert.equal(zIndexRef(read('src/components/beta/BetaCommunityDialog.vue'), '.community-mask', '内测交流弹窗').token, '--z-overlay-panel')
+  assert.equal(zIndexRef(read('src/pages/operator/index.vue'), '.disc-floating-tooltip', '密探浮动提示').token, '--z-popover')
+})
+
+test('高层浮层不再使用未登记的数字 z-index', () => {
+  const src = fileURLToPath(new URL('../src/', import.meta.url))
+  const scale = zIndexScale()
+  function walk(dir) {
+    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+      const name = path.join(dir, item.name)
+      if (item.isDirectory()) walk(name)
+      else if (/\.(?:vue|css)$/.test(name)) {
+        const source = fs.readFileSync(name, 'utf8')
+        for (const match of source.matchAll(/z-index\s*:\s*(\d+)\b/g)) {
+          assert.ok(Number(match[1]) < 10, `${path.relative(src, name)} 存在未登记 z-index: ${match[1]}`)
+        }
+        for (const match of source.matchAll(/z-index\s*:\s*var\(\s*(--z-[\w-]+)/g)) {
+          assert.ok(match[1] in scale, `${path.relative(src, name)} 引用了未登记层级 ${match[1]}`)
+        }
+      }
+    }
+  }
+  walk(src)
 })

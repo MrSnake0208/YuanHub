@@ -399,8 +399,8 @@ onMounted(loadDashboard)
 </script>
 
 <style scoped>
-.today-page { min-height: 100vh; color: var(--ink); }
-.today-main { min-height: 100vh; margin-left: 228px; }
+.today-page { min-height: 100vh; min-height: 100dvh; color: var(--ink); }
+.today-main { min-height: 100vh; min-height: 100dvh; margin-left: 228px; }
 .today-wrap { max-width: 1180px; }
 .today-hero { position: relative; overflow: hidden; padding: 64px 0 48px; border-bottom: 1px solid rgba(156, 122, 77, .26); background: linear-gradient(135deg, rgba(255, 253, 246, .9), rgba(239, 210, 142, .2)); }
 .today-hero::after { position: absolute; top: -160px; right: -100px; width: 420px; height: 420px; border: 1px solid rgba(156, 122, 77, .18); border-radius: 50%; box-shadow: 0 0 0 46px rgba(156, 122, 77, .04), 0 0 0 92px rgba(156, 122, 77, .035); content: ''; pointer-events: none; }
