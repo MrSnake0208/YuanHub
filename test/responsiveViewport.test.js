@@ -65,3 +65,12 @@ test('主要小控件的交互命中区达到 44px', () => {
     assert.match(rule, /(?:min-height|height):\s*44px/, `${file}: ${selector} 命中区高度不足`)
   }
 })
+
+test('手机端图鉴属性和职业筛选与养成总览保持单行', () => {
+  const page = read('src/pages/operator/index.vue')
+  for (const [row, columns] of [['prof', 8], ['subprof', 6]]) {
+    const rules = [...page.matchAll(new RegExp(`\\.catalog-prof-filter \\.pf-${row}-row \\.mf-filter\\s*\\{([^}]*)\\}`, 'g'))]
+    const lastRule = rules.at(-1)?.[1] || ''
+    assert.match(lastRule, new RegExp(`grid-template-columns:\\s*repeat\\(${columns},\\s*minmax\\(0,\\s*1fr\\)\\)`), `${row} 最终生效的列数应与养成总览一致`)
+  }
+})
