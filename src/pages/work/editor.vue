@@ -5,11 +5,11 @@
       <header class="hero">
         <div class="wrap">
           <router-link class="back-link" :to="savedId ? '/work/' + savedId : '/works'">← {{ savedId ? '返回作业详情' : '返回作业广场' }}</router-link>
-          <div class="crumb"><span class="pill fill">Work v1</span><span class="pill">{{ savedId ? '编辑' : '新建' }}</span></div>
-          <h1>{{ savedId ? '编辑基础作业' : '新建基础作业' }}<span class="small">唯一执行事实源</span></h1>
-          <p class="hero-sub">按顺序编辑回合动作，再显式保存。目标平台文档仅用于兼容性预览。</p>
+          <div class="crumb"><span class="pill fill">作业创作</span><span class="pill">{{ savedId ? '编辑' : '新建' }}</span></div>
+          <h1>{{ savedId ? '编辑基础作业' : '新建基础作业' }}<span class="small">逐回合编写</span></h1>
+          <p class="hero-sub">按顺序编辑回合动作，保存后可预览不同平台的适用情况。</p>
           <div class="editor-meta" aria-live="polite">
-            <span>{{ savedId || '尚未保存' }}</span><span>{{ status }}</span><span>revision {{ revision }}</span><span>{{ dirty ? '有未保存修改' : '已保存' }}</span>
+            <span>{{ savedId ? '已有草稿' : '尚未保存' }}</span><span>{{ status === 'PUBLIC' ? '已发布' : '草稿' }}</span><span>版本 {{ revision }}</span><span>{{ dirty ? '有未保存修改' : '已保存' }}</span>
           </div>
         </div>
       </header>
@@ -26,73 +26,74 @@
           </div>
           <p v-if="actionMessage" class="notice" :class="{ error: actionError }" :role="actionError ? 'alert' : 'status'">{{ actionMessage }}</p>
           <ul v-if="validationIssues.length" id="work-validation-summary" class="validation-list" role="alert" aria-label="保存前校验错误">
-            <li v-for="item in validationIssues" :key="item.path"><code>{{ item.path }}</code>{{ item.message }}</li>
+            <li v-for="item in validationIssues" :key="item.path"><button type="button" @click="focusIssue(item.path)">{{ issueLabel(item.path) }}</button>{{ item.message }}</li>
           </ul>
 
           <form class="work-form" :aria-invalid="validationIssues.length > 0" :aria-describedby="validationIssues.length ? 'work-validation-summary' : undefined" @submit.prevent="save">
             <section class="editor-section" aria-labelledby="basic-title">
               <div class="section-head"><span>01</span><div><h2 id="basic-title">基本信息</h2><p>游戏、关卡和文档说明。</p></div></div>
               <div class="field-grid">
-                <label>游戏<select v-model="document.game" :aria-invalid="fieldInvalid('$.game')" :aria-describedby="fieldInvalid('$.game') ? 'work-validation-summary' : undefined"><option>如鸢</option><option>代号鸢</option></select></label>
-                <label>Level Catalog
+                <label data-work-path="$.game" :class="{ 'has-issue': fieldInvalid('$.game') }">游戏<select v-model="document.game" :aria-invalid="fieldInvalid('$.game')" :aria-describedby="fieldInvalid('$.game') ? 'work-validation-summary' : undefined"><option>如鸢</option><option>代号鸢</option></select></label>
+                <label data-work-path="$.level_id" :class="{ 'has-issue': fieldInvalid('$.level_id') }">关卡目录
                   <select v-model="document.level_id" @change="selectLevel">
                     <option value="">不关联（使用关卡名称）</option>
                     <option v-for="level in gameLevels" :key="level.id" :value="level.id">{{ level.name }} · {{ level.id }}</option>
                   </select>
                 </label>
-                <label>关卡名称<input v-model="document.stage_name" maxlength="256" required :aria-invalid="fieldInvalid('$.stage_name')" :aria-describedby="fieldInvalid('$.stage_name') ? 'work-validation-summary' : undefined"></label>
-                <label>作业标题<input v-model="document.doc.title" maxlength="256" required :aria-invalid="fieldInvalid('$.doc.title')" :aria-describedby="fieldInvalid('$.doc.title') ? 'work-validation-summary' : undefined"></label>
-                <label class="wide">打法说明<textarea v-model="document.doc.details" rows="5" maxlength="20000" :aria-invalid="fieldInvalid('$.doc.details')" :aria-describedby="fieldInvalid('$.doc.details') ? 'work-validation-summary' : undefined"></textarea></label>
+                <p v-if="levelLoadError" class="level-load-error" role="alert">关卡目录暂时不可用，可手动填写关卡名称。<button type="button" @click="loadLevels">重试关卡目录</button></p>
+                <label data-work-path="$.stage_name" :class="{ 'has-issue': fieldInvalid('$.stage_name') }">关卡名称<input v-model="document.stage_name" maxlength="256" required :aria-invalid="fieldInvalid('$.stage_name')" :aria-describedby="fieldInvalid('$.stage_name') ? 'work-validation-summary' : undefined"></label>
+                <label data-work-path="$.doc.title" :class="{ 'has-issue': fieldInvalid('$.doc.title') }">作业标题<input v-model="document.doc.title" maxlength="256" required :aria-invalid="fieldInvalid('$.doc.title')" :aria-describedby="fieldInvalid('$.doc.title') ? 'work-validation-summary' : undefined"></label>
+                <label class="wide" data-work-path="$.doc.details">打法说明<textarea v-model="document.doc.details" rows="5" maxlength="20000" :aria-invalid="fieldInvalid('$.doc.details')" :aria-describedby="fieldInvalid('$.doc.details') ? 'work-validation-summary' : undefined"></textarea></label>
               </div>
             </section>
 
-            <section class="editor-section" aria-labelledby="operators-title">
+            <section class="editor-section" aria-labelledby="operators-title" data-work-path="$.operators" :class="{ 'has-issue': issueWithin('$.operators') }">
               <div class="section-head"><span>02</span><div><h2 id="operators-title">固定五槽阵容</h2><p>空槽保持为空；所有动作槽位均从 1 开始。</p></div></div>
               <div class="operator-fields">
-                <label v-for="slot in 5" :key="slot"><span>{{ slot }} 号位</span><input v-model="document.operators[slot - 1]" :aria-label="slot + '号位密探'" maxlength="128" placeholder="留空表示未指定"></label>
+                <label v-for="slot in 5" :key="slot" :data-work-path="`$.operators[${slot - 1}]`"><span>{{ slot }} 号位</span><input v-model="document.operators[slot - 1]" :aria-label="slot + '号位密探'" maxlength="128" placeholder="留空表示未指定"></label>
               </div>
             </section>
 
-            <section class="editor-section" aria-labelledby="rounds-title">
+            <section class="editor-section" aria-labelledby="rounds-title" data-work-path="$.rounds" :class="{ 'has-issue': issueWithin('$.rounds') }">
               <div class="section-head with-command"><span>03</span><div><h2 id="rounds-title">回合与有序动作</h2><p>列表顺序就是执行顺序；使用按钮调整，不自动重排。</p></div><button type="button" class="command" @click="addRound">新增回合</button></div>
-              <article v-for="(round, roundIndex) in document.rounds" :key="roundIndex" class="round-editor">
+              <article v-for="(round, roundIndex) in document.rounds" :key="roundIndex" class="round-editor" :class="{ 'has-issue': issueWithin(roundPath(roundIndex)) }" :data-work-path="roundPath(roundIndex)">
                 <header>
-                  <label>回合 <input v-model.number="round.round" type="number" min="1" max="50"></label>
-                  <label class="round-remark">备注 <input v-model="round.remark" maxlength="2000"></label>
+                  <label :data-work-path="roundPath(roundIndex) + '.round'">回合 <input v-model.number="round.round" type="number" min="1" max="50"></label>
+                  <label class="round-remark" :data-work-path="roundPath(roundIndex) + '.remark'">备注 <input v-model="round.remark" maxlength="2000"></label>
                   <button type="button" class="danger-link" :disabled="document.rounds.length === 1" @click="removeRound(roundIndex)">删除回合</button>
                 </header>
                 <ol class="action-editors">
-                  <li v-for="(action, actionIndex) in round.actions" :key="actionIndex" class="action-editor">
+                  <li v-for="(action, actionIndex) in round.actions" :key="actionIndex" class="action-editor" :class="{ 'has-issue': issueWithin(actionPath(roundIndex, actionIndex)) }" :data-work-path="actionPath(roundIndex, actionIndex)">
                     <span class="action-order">{{ actionIndex + 1 }}</span>
-                    <label>动作
+                    <label :data-work-path="actionPath(roundIndex, actionIndex) + '.type'">动作
                       <select :value="action.type" :aria-label="'回合 ' + round.round + ' 第 ' + (actionIndex + 1) + ' 个动作类型'" @change="replaceAction(round, actionIndex, $event.target.value)">
                         <option v-for="option in WORK_ACTION_TYPES" :key="option[0]" :value="option[0]">{{ option[1] }}</option>
                       </select>
                     </label>
-                    <label v-if="slotAction(action)">槽位 <select v-model.number="action.slot"><option v-for="slot in 5" :key="slot" :value="slot">{{ slot }}</option></select></label>
-                    <label v-if="action.type === 'wait'">毫秒 <input v-model.number="action.duration_ms" type="number" min="1" max="600000"></label>
+                    <label v-if="slotAction(action)" :data-work-path="actionPath(roundIndex, actionIndex) + '.slot'">槽位 <select v-model.number="action.slot"><option v-for="slot in 5" :key="slot" :value="slot">{{ slot }}</option></select></label>
+                    <label v-if="action.type === 'wait'" :data-work-path="actionPath(roundIndex, actionIndex) + '.duration_ms'">毫秒 <input v-model.number="action.duration_ms" type="number" min="1" max="600000"></label>
                     <template v-if="action.type === 'switch_target'">
-                      <label>方向 <select v-model="action.direction"><option value="left">左</option><option value="right">右</option></select></label>
-                      <label>次数 <input v-model.number="action.count" type="number" min="1" max="100"></label>
+                      <label :data-work-path="actionPath(roundIndex, actionIndex) + '.direction'">方向 <select v-model="action.direction"><option value="left">左</option><option value="right">右</option></select></label>
+                      <label :data-work-path="actionPath(roundIndex, actionIndex) + '.count'">次数 <input v-model.number="action.count" type="number" min="1" max="100"></label>
                     </template>
-                    <label v-if="action.type === 'auto_battle'">状态 <select v-model="action.enabled"><option :value="true">开启</option><option :value="false">关闭</option></select></label>
+                    <label v-if="action.type === 'auto_battle'" :data-work-path="actionPath(roundIndex, actionIndex) + '.enabled'">状态 <select v-model="action.enabled"><option :value="true">开启</option><option :value="false">关闭</option></select></label>
                     <template v-if="action.type === 'check'">
-                      <label>条件
+                      <label :data-work-path="actionPath(roundIndex, actionIndex) + '.condition.type'">条件
                         <select :value="action.condition.type" @change="action.condition = createWorkCondition($event.target.value)">
                           <option v-for="option in WORK_CONDITION_TYPES" :key="option[0]" :value="option[0]">{{ option[1] }}</option>
                         </select>
                       </label>
-                      <label v-if="conditionSlot(action.condition)">槽位 <select v-model.number="action.condition.slot"><option v-for="slot in 5" :key="slot" :value="slot">{{ slot }}</option></select></label>
-                      <label v-if="action.condition.type === 'dragon_qi'">槽位（可选） <select v-model="action.condition.slot"><option value="">全局</option><option v-for="slot in 5" :key="slot" :value="slot">{{ slot }}</option></select></label>
-                      <label v-if="action.condition.type === 'star_count'">颜色 <select v-model="action.condition.color"><option value="orange">橙</option><option value="purple">紫</option><option value="blue">蓝</option></select></label>
-                      <label v-if="['dragon_qi', 'star_count'].includes(action.condition.type)">比较 <select v-model="action.condition.operator"><option v-for="operator in ['<', '<=', '=', '>=', '>']" :key="operator">{{ operator }}</option></select></label>
-                      <label v-if="['dragon_qi', 'star_count'].includes(action.condition.type)">数值 <input v-model.number="action.condition.value" type="number" min="0" max="999"></label>
-                      <label>失败处理 <select v-model="action.on_fail"><option value="restart">重开</option><option value="stop">停止</option><option value="pause">暂停</option></select></label>
+                      <label v-if="conditionSlot(action.condition)" :data-work-path="actionPath(roundIndex, actionIndex) + '.condition.slot'">槽位 <select v-model.number="action.condition.slot"><option v-for="slot in 5" :key="slot" :value="slot">{{ slot }}</option></select></label>
+                      <label v-if="action.condition.type === 'dragon_qi'" :data-work-path="actionPath(roundIndex, actionIndex) + '.condition.slot'">槽位（可选） <select v-model="action.condition.slot"><option value="">全局</option><option v-for="slot in 5" :key="slot" :value="slot">{{ slot }}</option></select></label>
+                      <label v-if="action.condition.type === 'star_count'" :data-work-path="actionPath(roundIndex, actionIndex) + '.condition.color'">颜色 <select v-model="action.condition.color"><option value="orange">橙</option><option value="purple">紫</option><option value="blue">蓝</option></select></label>
+                      <label v-if="['dragon_qi', 'star_count'].includes(action.condition.type)" :data-work-path="actionPath(roundIndex, actionIndex) + '.condition.operator'">比较 <select v-model="action.condition.operator"><option v-for="operator in ['<', '<=', '=', '>=', '>']" :key="operator">{{ operator }}</option></select></label>
+                      <label v-if="['dragon_qi', 'star_count'].includes(action.condition.type)" :data-work-path="actionPath(roundIndex, actionIndex) + '.condition.value'">数值 <input v-model.number="action.condition.value" type="number" min="0" max="999"></label>
+                      <label :data-work-path="actionPath(roundIndex, actionIndex) + '.on_fail'">失败处理 <select v-model="action.on_fail"><option value="restart">重开</option><option value="stop">停止</option><option value="pause">暂停</option></select></label>
                     </template>
                     <div class="action-buttons" aria-label="动作顺序操作">
                       <button type="button" :disabled="actionIndex === 0" @click="moveAction(round, actionIndex, -1)">上移</button>
                       <button type="button" :disabled="actionIndex === round.actions.length - 1" @click="moveAction(round, actionIndex, 1)">下移</button>
-                      <button type="button" class="danger-link" :disabled="round.actions.length === 1" @click="round.actions.splice(actionIndex, 1)">删除</button>
+                      <button type="button" class="danger-link" :disabled="round.actions.length === 1" @click="removeAction(round, actionIndex)">删除</button>
                     </div>
                   </li>
                 </ol>
@@ -100,10 +101,10 @@
               </article>
             </section>
 
-            <section class="editor-section" aria-labelledby="exec-title">
-              <div class="section-head"><span>04</span><div><h2 id="exec-title">执行配置与扩展</h2><p>公共延迟与目标平台专属导航参数。</p></div></div>
+            <section class="editor-section" aria-labelledby="exec-title" data-work-path="$.exec" :class="{ 'has-issue': issueWithin('$.exec') }">
+              <div class="section-head"><span>04</span><div><h2 id="exec-title">执行设置</h2><p>设置动作等待时间和目标平台的额外选项。</p></div></div>
               <div class="delay-grid">
-                <label v-for="key in ['attack', 'ultimate', 'defense', 'sp']" :key="key">{{ key }} 延迟（ms）<input v-model.number="document.exec.delays_ms[key]" type="number" min="0" max="600000"></label>
+                <label v-for="key in ['attack', 'ultimate', 'defense', 'sp']" :key="key" :data-work-path="'$.exec.delays_ms.' + key">{{ key }} 延迟（ms）<input v-model.number="document.exec.delays_ms[key]" type="number" min="0" max="600000"></label>
               </div>
               <details class="extension-panel">
                 <summary>MaaYuan / YuanAssist 高级扩展</summary>
@@ -113,14 +114,15 @@
                   <label>难度<input v-model="document.exec.extensions.maayuan.difficulty" maxlength="128"></label>
                   <label>洞窟方向<select v-model="document.exec.extensions.maayuan.cave_type"><option value="">不指定</option><option>左</option><option>右</option></select></label>
                   <label class="checkbox"><input v-model="document.exec.extensions.maayuan.lantai_nav" type="checkbox">启用兰台导航</label>
-                  <label>YuanAssist 敌方回合等待（ms）<input v-model.number="document.exec.extensions.yuanassist.enemy_turn_wait_ms" type="number" min="0" max="600000"></label>
-                  <fieldset class="offset-field"><legend>MaaYuan 识别偏移（四个整数）</legend><input v-for="(_, index) in document.exec.extensions.maayuan.rec_target_offset" :key="index" v-model.number="document.exec.extensions.maayuan.rec_target_offset[index]" type="number" :aria-label="'识别偏移 ' + (index + 1)"></fieldset>
+                  <label data-work-path="$.exec.extensions.yuanassist.enemy_turn_wait_ms">YuanAssist 敌方回合等待（ms）<input v-model.number="document.exec.extensions.yuanassist.enemy_turn_wait_ms" type="number" min="0" max="600000"></label>
+                  <fieldset class="offset-field" data-work-path="$.exec.extensions.maayuan.rec_target_offset"><legend>MaaYuan 识别偏移（四个整数）</legend><input v-for="(_, index) in document.exec.extensions.maayuan.rec_target_offset" :key="index" v-model.number="document.exec.extensions.maayuan.rec_target_offset[index]" type="number" :aria-label="'识别偏移 ' + (index + 1)"></fieldset>
                 </div>
               </details>
             </section>
 
             <footer class="form-actions">
-              <button type="button" class="secondary" :disabled="busy" @click="previewCompatibility">预览两个 Adapter</button>
+              <p v-if="actionMessage" class="form-action-message" :class="{ error: actionError }" :role="actionError ? 'alert' : 'status'">{{ actionMessage }}</p>
+              <button type="button" class="secondary" :disabled="busy" @click="previewCompatibility">预览平台适用情况</button>
               <button type="submit" :disabled="busy || conflict">{{ busy ? '处理中…' : '保存草稿' }}</button>
               <button v-if="savedId && status !== 'PUBLIC'" type="button" :disabled="busy || dirty || conflict" @click="publish">发布</button>
               <button v-if="savedId && status === 'PUBLIC'" type="button" class="secondary" :disabled="busy || dirty || conflict" @click="unpublish">取消发布</button>
@@ -129,7 +131,7 @@
           </form>
 
           <section class="preview-section" aria-labelledby="preview-title">
-            <div class="section-head"><span>05</span><div><h2 id="preview-title">兼容性预览</h2><p>结果由现有 Adapter 现算，不会写回基础协议。</p></div></div>
+            <div class="section-head"><span>05</span><div><h2 id="preview-title">平台适用预览</h2><p>预览只供检查，不会改动你保存的作业。</p></div></div>
             <div class="target-grid">
               <article v-for="target in TARGETS" :key="target.key" class="target-card">
                 <header><div><span>{{ target.provider }}</span><h3>{{ target.label }}</h3></div></header>
@@ -139,19 +141,20 @@
           </section>
         </template>
       </div>
-      <SiteFooter><template #big>Work v1<br><span>一次编辑，多端适配</span></template><template #fine>本页使用显式保存，不提供自动保存、拖拽或多人协作。</template></SiteFooter>
+      <SiteFooter><template #big>作业创作<br><span>一次编辑，多端适配</span></template><template #fine>请主动保存修改；离开前会提示未保存内容。</template></SiteFooter>
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router'
 import { createWork, deleteWork, getOwnedWork, previewWorkCompatibility, publishWork, unpublishWork, updateWork } from '@/api/work.js'
 import { listLevelCatalog } from '@/api/level.js'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import WorkCompatibilityResult from '@/components/work/WorkCompatibilityResult.vue'
+import { dialog } from '@/utils/dialog.js'
 import {
   WORK_ACTION_TYPES, WORK_CONDITION_TYPES, buildWorkDocument, createEmptyWorkDocument,
   createWorkAction, createWorkCondition, hydrateWorkDocument, validateWorkDocument
@@ -160,8 +163,8 @@ import {
 const props = defineProps({ id: { type: String, default: '' } })
 const router = useRouter()
 const TARGETS = Object.freeze([
-  { key: 'MAAYUAN', label: 'MAAYUAN', provider: 'MaaYuan Adapter' },
-  { key: 'YUANASSIST', label: 'YUANASSIST', provider: 'YuanAssist Adapter' }
+  { key: 'MAAYUAN', label: 'MaaYuan', provider: 'MaaYuan 平台' },
+  { key: 'YUANASSIST', label: 'YuanAssist', provider: 'YuanAssist 平台' }
 ])
 const document = reactive(createEmptyWorkDocument())
 const levels = ref([])
@@ -173,6 +176,7 @@ const busy = ref(false)
 const dirty = ref(false)
 const conflict = ref(false)
 const loadError = ref('')
+const levelLoadError = ref(false)
 const actionMessage = ref('')
 const actionError = ref(false)
 const validationIssues = ref([])
@@ -189,7 +193,7 @@ function recordStatus(value) { return String(value?.metadata?.status || value?.d
 
 function applyRecord(value) {
   const work = recordDocument(value)
-  if (!work) throw new Error('作业响应缺少 WorkDocument')
+  if (!work) throw new Error('作业数据不完整，请重新加载')
   applying = true
   Object.assign(document, hydrateWorkDocument(work))
   savedId.value = recordId(value)
@@ -209,6 +213,12 @@ async function load() {
   finally { loading.value = false }
 }
 
+async function loadLevels() {
+  levelLoadError.value = false
+  try { levels.value = (await listLevelCatalog()).levels }
+  catch (_) { levels.value = []; levelLoadError.value = true }
+}
+
 function reloadLatest() {
   if (window.confirm('重新载入会丢弃当前本地修改，确定继续吗？')) void load()
 }
@@ -223,7 +233,18 @@ function addRound() {
   while (used.has(number) && number < 50) number += 1
   document.rounds.push({ round: number, remark: '', actions: [createWorkAction()] })
 }
-function removeRound(index) { if (document.rounds.length > 1) document.rounds.splice(index, 1) }
+async function removeRound(index) {
+  if (document.rounds.length <= 1) return
+  const round = document.rounds[index]
+  if (!await dialog.confirm({ title: '删除回合？', message: `第 ${round.round} 回合及其中 ${round.actions.length} 个动作将被删除。`, type: 'danger', confirmText: '删除回合' })) return
+  if (document.rounds[index] === round) document.rounds.splice(index, 1)
+}
+async function removeAction(round, index) {
+  if (round.actions.length <= 1) return
+  const action = round.actions[index]
+  if (!await dialog.confirm({ title: '删除动作？', message: `确定删除第 ${round.round} 回合的第 ${index + 1} 个动作吗？`, type: 'danger', confirmText: '删除动作' })) return
+  if (round.actions[index] === action) round.actions.splice(index, 1)
+}
 function replaceAction(round, index, type) { round.actions.splice(index, 1, createWorkAction(type)) }
 function moveAction(round, index, distance) {
   const target = index + distance
@@ -237,9 +258,34 @@ function conditionSlot(condition) { return ['operator_alive', 'operator_present'
 function validatedDocument() {
   const payload = buildWorkDocument(document)
   validationIssues.value = validateWorkDocument(payload, levels.value)
+  if (validationIssues.value.length) void nextTick(function () { focusIssue(validationIssues.value[0].path) })
   return validationIssues.value.length ? null : payload
 }
 function fieldInvalid(path) { return validationIssues.value.some(function (issue) { return issue.path === path }) }
+function issueWithin(path) { return validationIssues.value.some(function (issue) { return issue.path === path || issue.path.startsWith(path + '.') || issue.path.startsWith(path + '[') }) }
+function roundPath(index) { return `$.rounds[${index}]` }
+function actionPath(roundIndex, actionIndex) { return `${roundPath(roundIndex)}.actions[${actionIndex}]` }
+function issueLabel(path) {
+  const labels = { '$.game': '游戏', '$.level_id': '关卡目录', '$.stage_name': '关卡名称', '$.doc.title': '作业标题', '$.doc.details': '打法说明', '$.operators': '五槽位阵容', '$.rounds': '回合与动作' }
+  if (labels[path]) return labels[path]
+  const action = path.match(/^\$\.rounds\[(\d+)\]\.actions\[(\d+)\]/)
+  if (action) return `第 ${Number(action[1]) + 1} 回合第 ${Number(action[2]) + 1} 个动作`
+  const round = path.match(/^\$\.rounds\[(\d+)\]/)
+  if (round) return `第 ${Number(round[1]) + 1} 回合`
+  if (path.startsWith('$.exec.')) return '执行配置'
+  if (path.startsWith('$.operators[')) return `${Number(path.match(/\[(\d+)\]/)?.[1] || 0) + 1} 号位密探`
+  return '作业内容'
+}
+function focusIssue(path) {
+  const matches = [...window.document.querySelectorAll('[data-work-path]')].filter(function (element) {
+    const field = element.dataset.workPath
+    return path === field || path.startsWith(field + '.') || path.startsWith(field + '[')
+  })
+  const target = matches.sort(function (a, b) { return b.dataset.workPath.length - a.dataset.workPath.length })[0]
+  const control = (target?.matches('input,select,textarea,button') ? target : target?.querySelector('input,select,textarea,button')) || window.document.querySelector('#work-validation-summary button')
+  control?.focus()
+  control?.scrollIntoView?.({ block: 'center' })
+}
 function showAction(message, error = false) { actionMessage.value = message; actionError.value = error }
 function handleMutationError(error, fallback) {
   showAction(error?.message || fallback, true)
@@ -262,15 +308,18 @@ async function save() {
   finally { busy.value = false }
 }
 
-async function mutateStatus(action, success, fallback) {
+async function mutateStatus(action, success, fallback, confirmation) {
   if (dirty.value) { showAction('请先保存当前修改。', true); return }
   busy.value = true
-  try { applyRecord(await action(savedId.value, revision.value)); showAction(success) }
+  try {
+    if (!await dialog.confirm({ title: confirmation, message: '这会改变其他玩家能否在作业广场看到这份作业。', confirmText: confirmation })) return
+    applyRecord(await action(savedId.value, revision.value)); showAction(success)
+  }
   catch (error) { handleMutationError(error, fallback) }
   finally { busy.value = false }
 }
-function publish() { void mutateStatus(publishWork, '作业已发布。', '发布失败') }
-function unpublish() { void mutateStatus(unpublishWork, '作业已取消发布。', '取消发布失败') }
+function publish() { void mutateStatus(publishWork, '作业已发布。', '发布失败', '确认发布作业') }
+function unpublish() { void mutateStatus(unpublishWork, '作业已取消发布。', '取消发布失败', '确认取消发布') }
 async function remove() {
   if (!window.confirm('删除后作业将不再显示，确定继续吗？')) return
   busy.value = true
@@ -314,8 +363,7 @@ watch(function () { return document.game }, function () {
 })
 onMounted(async function () {
   window.addEventListener('beforeunload', beforeUnload)
-  try { levels.value = (await listLevelCatalog()).levels }
-  catch (_) { levels.value = [] }
+  void loadLevels()
   await load()
 })
 onBeforeUnmount(function () { window.removeEventListener('beforeunload', beforeUnload) })
@@ -335,6 +383,11 @@ onBeforeUnmount(function () { window.removeEventListener('beforeunload', beforeU
 .notice.conflict button { min-height: 44px; padding: 8px 13px; border: 1px solid var(--rouge); border-radius: 999px; background: var(--surface); color: var(--rouge); font-weight: 800; cursor: pointer; }
 .validation-list { margin-bottom: 18px; display: grid; gap: 7px; padding: 16px 20px; border: 1px solid rgba(166,81,74,.45); border-radius: 14px; background: var(--surface); list-style: none; color: var(--rouge); font-size: 13px; }
 .validation-list code { margin-right: 10px; color: var(--ink-60); }
+.validation-list button { min-height:44px;margin-right:10px;border:0;background:transparent;color:var(--rouge);font:800 13px var(--font-b);text-decoration:underline;cursor:pointer; }
+.has-issue { border-color:var(--rouge) !important; }
+.has-issue input, .has-issue select, .has-issue textarea { border-color:var(--rouge); }
+.level-load-error { grid-column:1/-1;color:var(--rouge);font-size:12px; }
+.level-load-error button { min-height:44px;border:0;background:transparent;color:var(--rouge);font-weight:800;text-decoration:underline;cursor:pointer; }
 .work-form, .preview-section { display: grid; gap: 24px; }
 .editor-section, .preview-section { padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .preview-section { margin-top: 24px; }
@@ -372,6 +425,7 @@ button:disabled { opacity: .45; cursor: default; }
 .form-actions { position: sticky; bottom: 10px; z-index: 3; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,246,.96); box-shadow: 0 8px 28px rgba(73,59,44,.12); }
 .form-actions .secondary { background: var(--surface); color: var(--tea); }
 .form-actions .danger { border-color: var(--rouge); background: var(--surface); color: var(--rouge); }
+.form-action-message { display:none; }
 .target-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .target-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
 .target-card > header { padding: 18px 20px; background: var(--cream); }
@@ -392,6 +446,8 @@ button:disabled { opacity: .45; cursor: default; }
   .action-buttons button { flex: 1; }
   .offset-field { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-actions { position: static; }
+  .form-action-message { display:block;flex-basis:100%;margin:0;color:var(--ink);font-size:13px;font-weight:800; }
+  .form-action-message.error { color:var(--rouge); }
   .form-actions button { flex: 1 1 42%; }
 }
 </style>

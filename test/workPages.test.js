@@ -62,7 +62,7 @@ test('详情页覆盖错误、不可转换、兼容性和安全文本边界', fu
   assert.match(page, /YUANASSIST/)
   assert.match(compatibility, /target_document/)
   assert.match(page, /requestVersion/)
-  assert.match(page, /raw source（默认折叠）/)
+  assert.match(page, /原始作业数据（默认折叠）/)
   assert.match(page, /navigator\.clipboard\.writeText/)
   assert.match(page, /aria-live="polite"/)
   assert.doesNotMatch(page, /DETAILS|data\/detail|v-html/)

@@ -7,14 +7,14 @@
         <div class="detail-state skeleton-state">
           <span class="loading-mark" aria-hidden="true"></span>
           <strong>正在加载作业详情</strong>
-          <span>正在读取协议内容与 Legacy 转换结果。</span>
+          <span>正在读取通关步骤与旧版作业转换结果。</span>
         </div>
       </div>
 
       <div v-else-if="invalidId" class="detail-state-wrap" aria-live="polite">
         <div class="detail-state error-state">
           <strong>无效的作业链接</strong>
-          <span>作业 ID 必须是 Legacy 正整数或 w_ 开头的原生 ID，本次没有发送网络请求。</span>
+          <span>作业链接格式有误，请返回广场重新选择。</span>
           <router-link to="/works">← 返回作业广场</router-link>
         </div>
       </div>
@@ -48,7 +48,7 @@
               <span class="pill">{{ stageName }}</span>
               <span class="plain">#{{ metadata.id }}</span>
             </div>
-            <h1>{{ metadata.title || '未命名作业' }}<span class="small">真实 Work 数据</span></h1>
+            <h1>{{ metadata.title || '未命名作业' }}<span class="small">通关步骤</span></h1>
             <p class="hero-sub">{{ work ? (work.doc && work.doc.details) || '未提供打法说明' : '原作业暂时无法转换，以下仍保留元数据、问题报告与原始来源。' }}</p>
             <div class="hero-stats" aria-label="作业元数据">
               <div><div class="k">浏览量</div><div class="v">{{ metadata.views }}<small>次</small></div></div>
@@ -71,10 +71,10 @@
               <div><div class="k">关卡</div><div class="v">{{ stageName }}</div></div>
             </div>
             <div class="level-card" :class="{ unmatched: !detail.level }">
-              <strong>Level Catalog 关联</strong>
+              <strong>关卡关联</strong>
               <template v-if="detail.level">
                 <span>{{ detail.level.name || '名称未提供' }} · {{ detail.level.game || '游戏未提供' }}</span>
-                <code>{{ detail.level.id || '稳定 key 未提供' }}</code>
+                <code>{{ detail.level.id || '关卡编号未提供' }}</code>
               </template>
               <span v-else>未可靠关联</span>
             </div>
@@ -93,7 +93,7 @@
               </article>
             </div>
             <p v-if="work" class="operator-hint">五位横排，窄屏可横向滑动查看完整阵容。</p>
-            <p v-else class="section-note">协议转换未生成 Work 文档，无法展示槽位。</p>
+            <p v-else class="section-note">这份旧版作业暂时无法展示密探槽位。</p>
           </section>
 
           <section aria-labelledby="details-title">
@@ -107,7 +107,8 @@
             <div class="sec-head">
               <span class="idx">04</span><h2 id="rounds-title">回合动作</h2><span class="en">Round Actions</span>
             </div>
-            <div v-if="roundRows.length" class="round-table-wrap">
+            <p v-if="roundRows.length" class="round-scroll-hint">← 左右滑动查看全部密探槽位与流程 →</p>
+            <div v-if="roundRows.length" class="round-table-wrap" role="region" aria-label="回合动作表，可左右滚动" tabindex="0">
               <table class="round-table">
                 <thead><tr><th>回合</th><th v-for="slot in 5" :key="slot"><span>{{ slot }}号位</span><strong>{{ operators[slot - 1] || '未指定' }}</strong></th><th><span>其他</span><strong>流程 / 检查</strong></th></tr></thead>
                 <tbody>
@@ -135,20 +136,20 @@
 
           <section v-if="!isNative" aria-labelledby="legacy-title">
             <div class="sec-head">
-              <span class="idx">05</span><h2 id="legacy-title">Legacy 转换</h2><span class="en">Source to Work v1</span>
+              <span class="idx">05</span><h2 id="legacy-title">旧版作业转换</h2><span class="en">旧版来源</span>
             </div>
             <div class="compat-summary" :class="'status-' + legacyStatusKey">
-              <div><span>Legacy Source → Work v1</span><strong>{{ legacyStatus.label }}</strong></div>
+              <div><span>旧版作业转换结果</span><strong>{{ legacyStatus.label }}</strong></div>
               <p>{{ legacyStatus.description }}</p>
             </div>
-            <IssueList :issues="detail.conversion && detail.conversion.issues" empty-text="Legacy 转换没有报告问题。" />
+            <IssueList :issues="detail.conversion && detail.conversion.issues" empty-text="旧版作业转换没有发现问题。" />
           </section>
 
           <section aria-labelledby="compatibility-title">
             <div class="sec-head">
               <span class="idx">06</span><h2 id="compatibility-title">目标平台兼容性</h2><span class="en">Adapters</span>
             </div>
-            <p class="section-note compat-note">这是 Work v1 → 目标平台的分析，与上方 Legacy 转换状态相互独立。</p>
+            <p class="section-note compat-note">这里显示作业在目标平台的适用情况，与上方旧版转换结果分别计算。</p>
             <div class="target-grid">
               <article v-for="target in TARGETS" :key="target.key" class="target-card">
                 <header>
@@ -169,8 +170,8 @@
               <span class="idx">07</span><h2 id="source-title">原始来源</h2><span class="en">Raw Source</span>
             </div>
             <details class="raw-source">
-              <summary>查看 raw source（默认折叠）</summary>
-              <button type="button" @click="copyText(rawSource, 'raw')">复制原始 JSON</button>
+              <summary>查看原始作业数据（默认折叠）</summary>
+              <button type="button" @click="copyText(rawSource, 'raw')">复制原始数据</button>
               <pre>{{ rawSource }}</pre>
             </details>
           </section>
@@ -179,8 +180,8 @@
         </div>
 
         <SiteFooter>
-          <template #big>Work v1<br><span>忠实展示兼容性</span></template>
-          <template #fine>页面不推断接口未提供的阵容练度、关卡关系或执行能力。</template>
+          <template #big>通关作业<br><span>查看完整打法</span></template>
+          <template #fine>阵容、关卡和平台适用情况以作业实际提供的信息为准。</template>
         </SiteFooter>
       </template>
     </main>
@@ -200,8 +201,8 @@ import { auth } from '@/store/auth.js'
 import { buildRoundRows, formatDate, formatMetric, normalizeOperators, statusInfo } from '@/utils/workDisplay.js'
 
 const TARGETS = Object.freeze([
-  { key: 'MAAYUAN', label: 'MAAYUAN', provider: 'MaaYuan Adapter' },
-  { key: 'YUANASSIST', label: 'YUANASSIST', provider: 'YuanAssist Adapter' }
+  { key: 'MAAYUAN', label: 'MaaYuan', provider: 'MaaYuan 平台' },
+  { key: 'YUANASSIST', label: 'YuanAssist', provider: 'YuanAssist 平台' }
 ])
 
 const props = defineProps({ id: { type: String, default: '' } })
@@ -335,6 +336,8 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 .work-details, .section-note { margin-top: 28px; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
 .section-note { color: var(--ink-60); }
 .round-table-wrap { margin-top: 28px; overflow-x: auto; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.round-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.round-scroll-hint { display: none; }
 .round-table { width: 100%; min-width: 980px; border-collapse: collapse; }
 .round-table th, .round-table td { padding: 14px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .round-table thead th { background: var(--tea); color: var(--cream); font-size: 12px; }
@@ -402,6 +405,7 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
   .target-card > header { align-items: flex-start; flex-direction: column; }
   .target-card > header button { width: 100%; }
   .round-table-wrap { margin-inline: -16px; border-radius: 0; }
+  .round-scroll-hint { display: block; margin: 22px 0 -18px; color: var(--ink-60); font-size: 12px; font-weight: 700; }
 }
 @media (prefers-reduced-motion: reduce) { .loading-mark { animation: none; } }
 </style>
