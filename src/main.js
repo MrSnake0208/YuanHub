@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import { init as authInit } from '@/store/auth.js'
 import { initPwaInstall } from '@/utils/pwaInstall.js'
+import { watchStartupReadiness } from '@/utils/startupFeedback.js'
 import 'driver.js/dist/driver.css'
 import './styles/main.css'
 
@@ -66,6 +67,11 @@ initPwaInstall()
 // 挂载前先恢复登录态（store/auth.js 在模块加载时已同步从 localStorage 恢复，
 // init() 仅作幂等收口，保证刷新页面后导航守卫/侧边栏拿到的状态正确）
 authInit()
+
+// 首次导航一旦确认完成，立刻移除 index.html 里的启动反馈。
+// 「何时出现」由 index.html 的 CSS 延迟（400ms）决定，快速启动不会闪现 Loading。
+watchStartupReadiness(router)
+
 const app = createApp(App)
 app.directive('reveal', reveal)
 app.use(createPinia())
