@@ -56,3 +56,32 @@ MaaUserInfo = { id, user_name, activated(=status==1), following_count, fans_coun
 - eng-pages：视觉复用 main.css 变量；表单布局参考 .toolbar/.notice/.btn 风格；验证码按钮 60s 倒计时。
 - eng-ui：侧边栏底部登录/注册入口路由跳转；已登录显示 user_name + 退出(auth.logout)。
 - reviewer：对照 api-contract.md 与 main.css 设计约束（禁纯黑/禁大面积海盐蓝/禁黑底黄字）。
+
+## 5. 冷启动登录态恢复契约（2026-09-27 修复后，勿回退）
+
+线上曾出现「添加到主屏幕后隔天打开只剩背景色」。根因是 `auth.refresh()` 在刷新
+token 成功后隐式 `await auth.refreshAdminAccess()`，与调用方正在等待的
+`refreshAdminAccess()` 互相等待，Promise 永不 resolve，首次路由守卫无法 `next()`。
+
+必须保持的分层：
+
+1. **登录态**（`accessToken` / `refreshToken` / `userInfo`）在 `store/auth.js` 模块加载期
+   同步从 `localStorage['yh_auth']` 恢复；`init()` 只做幂等收口，`await` 它即可判定导航。
+2. **管理权限**（`/v1/admin/access/me`）只在真正需要它的地方等待：
+   `needsAdminAccess(meta)` 为 true 的路由（`requiredPermission` /
+   `requiredAnyPermission` / `requiresFeedbackManage` / `requiresManagement`）。
+   普通页面首屏不得等待。判定逻辑在 `src/utils/routeAccess.js`（纯函数，含单测）。
+3. **`auth.refresh()` 只做 token 刷新**，不得调用 `refreshAdminAccess()`；
+   并发 401 复用同一次刷新（single-flight，`refreshRequest`）。
+4. **失效与临时失败要区分**：只有后端 401/403 明确拒绝 refresh token 才 `logout()` 并跳
+   `/login`（`auth.refreshRejected`）；超时 / 断网只抛错，不得强制登出。
+5. **请求超时**统一在 `src/utils/requestTimeout.js`：普通 12s、multipart 上传 120s、
+   blob 下载 60s；调用方可用 `timeoutMs` 覆盖、传 `0` 关闭。SSE 走
+   `api/accountEvents.js` 自己的 fetch，不套用该超时。
+6. **启动反馈**在 `index.html`（400ms 延迟淡入，快速启动不闪），
+   由 `src/utils/startupFeedback.js` 在首次导航确认后移除；不使用 `setTimeout` 硬等。
+7. PWA navigation caching 仍为「HTML 走网络、不预缓存 index.html」，避免版本回退。
+
+回归测试：`test/authStartup.test.js`、`test/authInit.test.js`、
+`test/requestTimeout.test.js`、`test/routeAccess.test.js`、
+`test/startupFeedback.test.js`、`behavior/authStartupGuard.spec.js`。
