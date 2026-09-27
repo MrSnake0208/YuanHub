@@ -14,8 +14,7 @@
           aria-modal="true"
           aria-labelledby="beta-community-title"
           aria-describedby="beta-community-description"
-          @keydown.esc.prevent="close"
-          @keydown.tab="trapFocus"
+          tabindex="-1"
         >
           <header class="community-head">
             <div class="community-heading">
@@ -83,35 +82,19 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Copy, MessageSquareText, UsersRound, X } from '@lucide/vue'
 import { BETA_COMMUNITY, betaCommunity } from '@/store/betaCommunity.js'
+import { useModalFocus } from '@/composables/useModalFocus.js'
 
 const copyState = ref('复制群号')
 const dialogEl = ref(null)
 const primaryButton = ref(null)
-let opener = null
 
 const autoOpened = computed(() => betaCommunity.source === 'auto')
 
 function close() {
   betaCommunity.close()
-}
-
-function trapFocus(event) {
-  const elements = Array.from(
-    dialogEl.value?.querySelectorAll('button:not([disabled]), a[href]') || []
-  )
-  if (!elements.length) return
-  const first = elements[0]
-  const last = elements[elements.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
 }
 
 async function copyGroupNumber() {
@@ -125,10 +108,14 @@ async function copyGroupNumber() {
       input.setAttribute('readonly', '')
       input.style.position = 'fixed'
       input.style.opacity = '0'
-      document.body.appendChild(input)
-      input.select()
-      document.execCommand('copy')
-      input.remove()
+      dialogEl.value.appendChild(input)
+      try {
+        input.select()
+        document.execCommand('copy')
+      } finally {
+        input.remove()
+        dialogEl.value.querySelector('.copy-button')?.focus()
+      }
     }
     copyState.value = '已复制'
   } catch (_) {
@@ -136,20 +123,11 @@ async function copyGroupNumber() {
   }
 }
 
-watch(
-  () => betaCommunity.visible,
-  visible => {
-    if (visible) {
-      opener = document.activeElement
-      copyState.value = '复制群号'
-      nextTick(() => primaryButton.value?.focus())
-      return
-    }
-    const target = opener
-    opener = null
-    nextTick(() => target?.focus?.())
-  }
-)
+watch(() => betaCommunity.visible, visible => { if (visible) copyState.value = '复制群号' })
+useModalFocus(() => betaCommunity.visible, dialogEl, {
+  initialFocus: () => primaryButton.value,
+  onEscape: close
+})
 </script>
 
 <style scoped>
