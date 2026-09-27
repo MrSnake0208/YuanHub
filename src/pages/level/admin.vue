@@ -546,14 +546,14 @@ load()
 }
 .level-toolbar label { display: flex; flex-direction: column; gap: 5px; min-width: 128px; color: var(--ink-60); font-size: 11px; font-weight: 800 }
 .level-toolbar select, .level-search input {
-  min-height: 40px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px;
+  min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px;
   color: var(--ink); background: var(--paper); font: 13px var(--font-b); outline: none;
 }
 .level-toolbar select:focus, .level-search:focus-within, .level-search input:focus { border-color: var(--accent); outline: none }
-.level-search { min-width: min(280px, 100%); flex: 1; flex-direction: row !important; align-items: center; min-height: 40px; padding: 0 11px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink-35) !important; background: var(--paper) }
+.level-search { min-width: min(280px, 100%); flex: 1; flex-direction: row !important; align-items: center; min-height: 44px; padding: 0 11px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink-35) !important; background: var(--paper) }
 .level-search input { width: 100%; min-width: 0; border: 0; padding-left: 0; background: transparent }
 .toolbar-spacer { flex: 1 }
-.command { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; padding: 9px 14px; font: 800 13px var(--font-b); cursor: pointer; text-decoration: none; transition: background-color .25s, transform .25s, opacity .25s }
+.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; padding: 9px 14px; font: 800 13px var(--font-b); cursor: pointer; text-decoration: none; transition: background-color .25s, transform .25s, opacity .25s }
 .command:hover:not(:disabled) { transform: translateY(-1px) }
 .command:disabled { opacity: .45; cursor: not-allowed }
 .command.primary { color: var(--cream); background: var(--tea) }
@@ -562,7 +562,7 @@ load()
 .command.secondary:hover:not(:disabled) { border-color: var(--accent); background: var(--cream) }
 .state { min-height: 160px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; padding: 28px; color: var(--ink-60); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; text-align: center }
 .state.error { color: var(--rouge); flex-wrap: wrap }
-.state-retry { min-height: 36px; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer }
+.state-retry { min-height: 44px; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer }
 .list-summary { display: flex; align-items: center; gap: 16px; min-height: 40px; margin-top: 14px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
 .notice-text { color: var(--accent-strong) }
 .level-table-wrap { margin-top: 2px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; scrollbar-gutter: stable }
@@ -582,7 +582,7 @@ load()
 .ops-col { position: sticky; right: 0; z-index: 2; min-width: 160px; background: var(--surface); box-shadow: -10px 0 16px -17px rgba(73, 59, 44, .8) }
 .level-table thead .ops-col { z-index: 3 }
 .level-table tbody tr:hover .ops-col { background: color-mix(in srgb, var(--surface) 95%, var(--tea)) }
-.table-action { min-height: 34px; display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; color: var(--ink-60); background: transparent; font: 800 11px var(--font-b); cursor: pointer }
+.table-action { min-height: 44px; display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; color: var(--ink-60); background: transparent; font: 800 11px var(--font-b); cursor: pointer }
 .table-action:hover { color: var(--ink); border-color: var(--ink) }
 .table-action.danger { color: var(--rouge); border-color: rgba(166, 81, 74, .35) }
 .empty-row { padding: 38px 20px !important; color: var(--ink-35); text-align: center !important }
@@ -621,11 +621,11 @@ load()
 .icon-command { flex: none; width: 44px; height: 44px; display: grid; place-items: center; margin: -8px -8px 0 auto; border: 0; border-radius: 10px; color: var(--ink-60); background: transparent; cursor: pointer }
 .icon-command:hover { color: var(--ink); background: var(--paper) }
 .editor-error { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: rgba(166, 81, 74, .1) }
-.editor-error button { min-height: 32px; padding: 5px 9px; border: 1px solid rgba(166, 81, 74, .35); border-radius: 8px; color: var(--rouge); background: transparent; font: 800 11px var(--font-b); cursor: pointer }
+.editor-error button { min-height: 44px; padding: 5px 9px; border: 1px solid rgba(166, 81, 74, .35); border-radius: 8px; color: var(--rouge); background: transparent; font: 800 11px var(--font-b); cursor: pointer }
 .editor-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 14px; padding-top: 18px }
 .editor-fields label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .editor-fields label.wide { grid-column: 1 / -1 }
-.editor-fields input, .editor-fields select { min-height: 40px; width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); background: var(--paper); font: 13px var(--font-b); outline: none }
+.editor-fields input, .editor-fields select { min-height: 44px; width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); background: var(--paper); font: 13px var(--font-b); outline: none }
 .editor-fields input:focus, .editor-fields select:focus { border-color: var(--accent) }
 .revision-note { margin-top: 12px; color: var(--ink-35); font: 11px var(--font-d) }
 .editor-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; border-top: 1px dashed var(--line); padding-top: 16px }
@@ -640,7 +640,7 @@ load()
   .level-toolbar { position: sticky; top: 64px; z-index: var(--z-sticky-low); display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 9px; margin-top: 16px; padding: 11px; box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58) }
   .level-toolbar label { min-width: 0 }
   .level-search { grid-column: 1 / -1; min-width: 0; min-height: 44px }
-  .level-search input { min-height: 40px; font-size: 16px }
+  .level-search input { min-height: 44px; font-size: 16px }
   .toolbar-spacer { display: none }
   .level-toolbar .command { min-height: 44px; padding: 8px 9px; font-size: 12px }
   .level-toolbar .command.primary { grid-column: 1 / -1 }

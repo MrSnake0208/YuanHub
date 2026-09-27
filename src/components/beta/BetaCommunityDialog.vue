@@ -276,7 +276,7 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 
 .copy-button,
 .community-primary {
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 12px;
   font-family: var(--font-b);

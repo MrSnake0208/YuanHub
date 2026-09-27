@@ -343,7 +343,7 @@ onMounted(function () { load(1) })
 .fields input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215,137,53,.16) }
 .editor-label { display: flex; justify-content: space-between; padding: 20px 20px 8px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; border-block: 1px solid var(--line); background: var(--paper) }
-.toolbar button { min-height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
+.toolbar button { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
 .toolbar button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
 .toolbar button:disabled { opacity: .45; cursor: default }
 .editor-surface { margin: 0 20px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
@@ -361,8 +361,8 @@ onMounted(function () { load(1) })
 .preview header span { display: inline-block; margin-bottom: 8px; padding: 3px 9px; border-radius: 999px; background: var(--yellow); font-size: 11px; font-weight: 800 }
 .preview h2 { font-family: var(--font-s) }
 .actions { justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--line); border-bottom: 0 }
-.button { min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
-.button.compact { min-height: 34px; padding-inline: 12px }
+.button { min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
+.button.compact { min-height: 44px; padding-inline: 12px }
 .button.primary { border-color: var(--tea); background: var(--tea); color: var(--cream) }
 .button.secondary { background: var(--surface); color: var(--ink) }
 .button.danger { border-color: var(--rouge); background: var(--rouge); color: var(--cream) }

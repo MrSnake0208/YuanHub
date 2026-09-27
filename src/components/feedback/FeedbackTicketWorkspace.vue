@@ -207,7 +207,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-summary-cell code { display: block; margin-top: 5px; overflow: hidden; color: var(--feedback-text-dim); font: 10px var(--font-d); text-overflow: ellipsis; white-space: nowrap; }
 .ticket-unread-marker { display: inline-flex; align-items: center; min-height: 22px; margin-top: 7px; padding: 2px 7px; border: 1px solid var(--rouge); border-radius: 5px; color: var(--rouge); font-size: 10px; font-weight: 800; line-height: 1.2; }
 .ticket-table time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
-.ticket-operation button { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--feedback-text); font: 800 12px var(--font-b); cursor: pointer; white-space: nowrap; }
+.ticket-operation button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--feedback-text); font: 800 12px var(--font-b); cursor: pointer; white-space: nowrap; }
 .ticket-operation button:hover { color: var(--accent-strong); }
 .ticket-type,
 .ticket-category,
@@ -224,7 +224,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-state.empty strong { color: var(--feedback-text); }
 .ticket-pagination { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 18px; color: var(--feedback-text-dim); font: 11px var(--font-d); }
 .ticket-pagination > div { display: flex; align-items: center; overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
-.ticket-pagination button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
+.ticket-pagination button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
 .ticket-pagination button:first-child { border-left: 0; }
 .ticket-pagination button:disabled { opacity: .3; cursor: default; }
 .ticket-pagination strong { min-width: 70px; color: var(--feedback-text); font-weight: 700; text-align: center; }

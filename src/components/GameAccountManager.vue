@@ -459,7 +459,7 @@ async function remove(account) {
 .game-options label {
   position: relative;
   display: flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border-radius: 7px;

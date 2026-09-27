@@ -371,7 +371,7 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .access-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink) }
 .access-search input::placeholder { color: var(--feedback-text-dim) }
 .access-count { color: var(--feedback-text-dim); font: 11px var(--font-d) }
-.icon-command { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
+.icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
 .icon-command.primary { background: var(--tea); color: var(--cream); border-color: var(--tea) }
 .icon-command.danger { color: var(--rouge) }
 .state { padding: 40px 0; text-align: center; color: var(--ink-60) }
@@ -391,7 +391,7 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow-y: auto }
 .access-modal-body { padding: 20px }
 .user-picker label { display: grid; gap: 6px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
-.user-picker input { height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }
+.user-picker input { height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }
 .picker-state { padding: 10px; color: var(--ink-60); font-size: 12px }
 .user-result { width: 100%; display: flex; justify-content: space-between; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
 .user-result span,.selected-user span { display: grid; gap: 3px; text-align: left }
@@ -401,10 +401,10 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .permission-group { margin-top: 18px; padding: 0; border: 0 }
 .permission-group legend { margin-bottom: 9px; color: var(--ink); font-weight: 800 }
 .area-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
-.area-grid label { min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-60); cursor: pointer; white-space: nowrap }
+.area-grid label { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-60); cursor: pointer; white-space: nowrap }
 .area-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px }
-.command { min-height: 38px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 7px; font-weight: 700; cursor: pointer }
+.command { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 7px; font-weight: 700; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .command:disabled { opacity: .5; cursor: default }

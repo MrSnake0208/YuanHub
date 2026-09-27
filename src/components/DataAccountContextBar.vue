@@ -196,7 +196,7 @@ const currentPath = computed(function () {
 }
 .context-action {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   flex: none;
   align-items: center;
   justify-content: center;

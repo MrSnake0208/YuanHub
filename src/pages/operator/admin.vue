@@ -826,7 +826,7 @@ load()
 
 .admin-bar { display: flex; align-items: center; gap: 14px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
 .admin-bar .sp { flex: 1 }
-.adm-search-wrap { width: 280px; min-height: 40px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; color: var(--ink-35); background: var(--paper); transition: border-color .25s, box-shadow .25s }
+.adm-search-wrap { width: 280px; min-height: 44px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; color: var(--ink-35); background: var(--paper); transition: border-color .25s, box-shadow .25s }
 .adm-search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
 .adm-search { min-width: 0; flex: 1; border: 0; padding: 9px 0; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: transparent; outline: none }
 .adm-search::placeholder { color: var(--ink-35) }
@@ -908,12 +908,12 @@ load()
 .oddity-choice-field legend { margin-bottom: 8px }
 .oddity-choice-field legend b { color: var(--rouge) }
 .oddity-choice-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
-.oddity-choice-grid label { display: inline-flex; min-width: 0; min-height: 40px; align-items: center; justify-content: center; gap: 7px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 9px; background: var(--paper); color: var(--ink-60); cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
+.oddity-choice-grid label { display: inline-flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; gap: 7px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 9px; background: var(--paper); color: var(--ink-60); cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
 .oddity-choice-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .oddity-choice-grid label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
 .oddity-choice-grid input { flex: none; width: 16px; height: 16px; accent-color: var(--accent) }
 .oddity-custom-field { display: flex; flex-direction: column; gap: 5px }
-.oddity-custom-field input { min-height: 40px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; outline: none; background: var(--paper); color: var(--ink); font: 13px var(--font-b); transition: border-color .25s, box-shadow .25s }
+.oddity-custom-field input { min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; outline: none; background: var(--paper); color: var(--ink); font: 13px var(--font-b); transition: border-color .25s, box-shadow .25s }
 .oddity-custom-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
 .oddity-custom-field input[aria-invalid="true"] { border-color: var(--rouge) }
 .field-error { color: var(--rouge); font-size: 11.5px; font-weight: 700 }
@@ -926,7 +926,7 @@ load()
 .multi-field legend { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .multi-field legend small { flex: none; color: var(--ink-35); font-size: 11px; font-weight: 600 }
 .multi-pick { display: flex; flex-wrap: wrap; gap: 8px }
-.multi-pick label { min-width: 58px; min-height: 38px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 11px; background: var(--paper); color: var(--ink-60); font-size: 13px; font-weight: 800; cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
+.multi-pick label { min-width: 58px; min-height: 44px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 11px; background: var(--paper); color: var(--ink-60); font-size: 13px; font-weight: 800; cursor: pointer; transition: border-color .2s, background-color .2s, color .2s }
 .multi-pick label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
 .multi-pick label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
 .fields-2col .multi-pick input { flex: none; width: 16px; height: 16px; min-height: 16px; padding: 0; border: 0; background: transparent; accent-color: var(--accent) }
@@ -947,7 +947,7 @@ load()
 .sub-sm { flex: 1; min-width: 80px }
 .sub-desp { flex: 3; min-width: 120px }
 .sub-color { flex: .8; min-width: 76px }
-.sub-del { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: none; border-radius: 8px; background: transparent; color: var(--ink-35); cursor: pointer }
+.sub-del { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: none; border-radius: 8px; background: transparent; color: var(--ink-35); cursor: pointer }
 .sub-del:hover { color: var(--rouge) }
 .btn.mini { padding: 6px 12px; font-size: 12px; align-self: flex-start }
 .hint { font-size: 11.5px; color: var(--ink-35); font-weight: 600 }
@@ -965,7 +965,7 @@ load()
 
 .state { text-align: center; padding: 40px 20px; color: var(--ink-60); font-size: 13.5px; margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
 .state.err { color: var(--rouge) }
-.state-retry { min-width: 44px; min-height: 28px; margin-left: 6px; padding: 2px 6px; border: 0; background: transparent; color: var(--accent-strong); font: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; cursor: pointer }
+.state-retry { min-width: 44px; min-height: 44px; margin-left: 6px; padding: 2px 6px; border: 0; background: transparent; color: var(--accent-strong); font: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; cursor: pointer }
 .state-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 
 .admin-bar button:focus-visible,

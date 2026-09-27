@@ -587,6 +587,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 
 .beta-brand-link {
   display: inline-flex;
+  min-width: 44px;
   min-height: 44px;
   align-items: center;
   gap: 10px;
@@ -667,7 +668,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .local-inline-reset {
-  min-height: 24px;
+  min-height: 44px;
   padding: 2px 8px;
   border: 0;
   border-radius: 999px;
@@ -991,6 +992,9 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 
 .beta-text-link,
 .beta-text-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   border: 0;
   background: transparent;
   color: var(--tea);
@@ -1073,7 +1077,7 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 .beta-interest {
   position: relative;
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   padding: 7px 11px;
   border: 1px solid var(--line);
@@ -1343,6 +1347,9 @@ onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 }
 
 .beta-links a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: var(--tea);
   font-size: 12.5px;
   font-weight: 800;

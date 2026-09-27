@@ -67,7 +67,7 @@ onMounted(function () { load(1) })
 .version { width: max-content; padding: 4px 11px; background: var(--yellow); border-radius: 999px; font-family: var(--font-d); font-size: 12px; font-weight: 800; }
 .changelog-card time { color: var(--ink-60); font-family: var(--font-d); font-size: 12px; }
 .state { min-height: 220px; display: grid; place-content: center; text-align: center; color: var(--ink-60); background: rgba(255,253,246,.7); border: 1px dashed var(--line); border-radius: 18px; }
-.state button, .load-more { margin: 12px auto 0; padding: 10px 22px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-weight: 800; cursor: pointer; }
+.state button, .load-more { min-height: 44px; margin: 12px auto 0; padding: 10px 22px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-weight: 800; cursor: pointer; }
 .inline-error { color: var(--rouge); text-align: center; }
 .load-more { display: block; }
 .load-more:disabled { opacity: .55; cursor: wait; }

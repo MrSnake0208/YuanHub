@@ -261,14 +261,14 @@ function submitCreate() {
 .account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13); outline: 0 }
 .account-soft-trigger:disabled { cursor: not-allowed; opacity: .55 }
 .account-soft-listbox { position: absolute; z-index: var(--z-popover); top: calc(100% + 5px); right: 0; left: 0; display: grid; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); font: inherit; scrollbar-color: var(--yellow-deep) transparent; scrollbar-width: thin }
-.account-soft-option { width: 100%; padding: 8px 10px; overflow: hidden; border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap }
+.account-soft-option { width: 100%; min-height: 44px; padding: 8px 10px; overflow: hidden; border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap }
 .account-soft-option:hover:not(:disabled),.account-soft-option:focus-visible,.account-soft-option[aria-selected='true'] { background: var(--cream); outline: 0 }
 .account-soft-option:disabled { cursor: not-allowed; opacity: .55 }
 .ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
 .account-game { min-width: 0; margin: 0; padding: 0; border: 0 }
 .account-game legend { margin-bottom: 6px }
 .account-game-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--paper) }
-.account-game-options label { position: relative; display: inline-flex; min-width: 0; min-height: 37px; align-items: center; justify-content: center; border-radius: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800; cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
+.account-game-options label { position: relative; display: inline-flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; border-radius: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800; cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
 .account-game-options label.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
 .account-game-options label:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .account-game-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none }
@@ -300,7 +300,7 @@ function submitCreate() {
 .ac-name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--ink) }
 .ac-name em { font-style: normal; background: var(--yellow); border-radius: 999px; padding: 2px 7px; font-size: 10px; letter-spacing: .03em }
 
-.ac-btn { flex: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .25s, background-color .25s, border-color .25s }
+.ac-btn { flex: none; min-height: 44px; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .25s, background-color .25s, border-color .25s }
 .ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
 .ac-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
 .ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
@@ -354,7 +354,7 @@ function submitCreate() {
   .ac-new .btn { width: 100% }
   .ac-item { align-items: flex-start; gap: 8px; padding: 12px; flex-wrap: wrap }
   .ac-meta { flex-basis: calc(100% - 24px) }
-  .ac-btn { min-height: 40px; flex: 1 }
+  .ac-btn { min-height: 44px; flex: 1 }
 }
 
 @media (min-width: 641px) and (max-width: 900px) {
@@ -396,7 +396,7 @@ function submitCreate() {
   .account-workspace .account-soft-trigger { min-width: 0; padding: 9px 28px 9px 8px }
   .account-workspace .account-bar.with-actions > :deep(.star-sync-action) { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; transform: none }
   .account-workspace .account-game-options { padding: 1px; gap: 1px }
-  .account-workspace .account-game-options label { min-height: 41px; font-size: 12px }
+  .account-workspace .account-game-options label { min-height: 44px; font-size: 12px }
   .account-workspace .account-manage,
   .account-workspace .account-bar.with-actions > :deep(.archive-toggle) { padding: 8px 10px }
 }
