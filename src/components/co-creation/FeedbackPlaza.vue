@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
 .plaza-state.error { color: var(--feedback-danger); }
 .plaza-pagination { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 8px; color: var(--feedback-text-dim); font: 11px var(--font-d); }
 .plaza-pagination > div { display: flex; overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
-.plaza-pagination button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
+.plaza-pagination button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
 .plaza-pagination button:first-child { border-left: 0; }
 .plaza-pagination button:disabled { opacity: .3; cursor: default; }
 

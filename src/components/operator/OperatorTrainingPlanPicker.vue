@@ -292,7 +292,7 @@ button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-s
 .plan-dialog-kicker { display: block; margin-bottom: 1px; color: var(--ink-60); font-size: 10px; font-weight: 800; letter-spacing: .16em; }
 .plan-dialog-head h3 { margin: 0; font: 900 19px/1.25 var(--font-s); letter-spacing: .025em; }
 .plan-dialog-head-actions { display: flex; flex: none; align-items: center; gap: 4px; }
-.plan-dialog-close { display: grid; width: 40px; height: 40px; min-height: 40px; place-items: center; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--ink-60); cursor: pointer; }
+.plan-dialog-close { display: grid; width: 44px; height: 44px; min-height: 44px; place-items: center; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--ink-60); cursor: pointer; }
 .plan-dialog-close:hover { background: rgba(73,59,44,.07); color: var(--ink); }
 
 .plan-dialog-body { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 14px 18px 16px; overscroll-behavior: contain; }

@@ -4281,7 +4281,7 @@ onBeforeUnmount(function () {
   justify-content: center;
   gap: 4px;
   flex: none;
-  min-height: 36px;
+  min-height: 44px;
   padding: 6px 8px;
   border: 0;
   border-radius: 8px;
@@ -4424,6 +4424,7 @@ onBeforeUnmount(function () {
   padding: 4px;
 }
 .mf-filter button {
+  min-height: 44px;
   border: none;
   background: transparent;
   font-family: var(--font-b);
@@ -4609,7 +4610,7 @@ onBeforeUnmount(function () {
 .agent-menu-options button {
   display: flex;
   width: 100%;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
@@ -4727,7 +4728,7 @@ onBeforeUnmount(function () {
   background: var(--paper);
 }
 .agent-favorite-mode button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 6px 11px;
   border: 0;
   border-radius: 5px;
@@ -4832,7 +4833,7 @@ onBeforeUnmount(function () {
   font-weight: 900;
 }
 .agent-filter-menu-head button {
-  min-height: 28px;
+  min-height: 44px;
   padding: 3px 6px;
   border: 0;
   border-radius: 4px;
@@ -4871,7 +4872,7 @@ onBeforeUnmount(function () {
 }
 .agent-filter-menu label {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   gap: 8px;
   padding: 5px 8px;
@@ -5077,7 +5078,7 @@ onBeforeUnmount(function () {
   flex-wrap: wrap;
 }
 .quick-range button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 6px 15px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -5349,7 +5350,7 @@ onBeforeUnmount(function () {
   background: var(--surface);
 }
 .acquired-views button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 7px 15px;
   border: 0;
   border-radius: 8px;
@@ -5756,7 +5757,7 @@ onBeforeUnmount(function () {
 
 .details-head .act-btn {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   gap: 5px;
 }
@@ -6217,11 +6218,11 @@ onBeforeUnmount(function () {
   margin: 0;
 }
 .stock-stepper {
-  width: min(100%, 132px);
-  height: 40px;
+  width: min(100%, 140px);
+  height: 44px;
   margin-top: 6px;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: stretch;
   border: 1.5px solid var(--accent);
   border-radius: 8px;
@@ -6986,7 +6987,7 @@ onBeforeUnmount(function () {
   background: var(--paper);
 }
 .records-filter button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 6px 12px;
   border: 0;
   border-radius: 7px;

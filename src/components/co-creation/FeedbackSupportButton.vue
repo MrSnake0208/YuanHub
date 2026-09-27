@@ -69,7 +69,7 @@ async function toggle() {
 <style scoped>
 .support-control { display: inline-flex; flex-direction: column; gap: 6px; }
 .support-button {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;

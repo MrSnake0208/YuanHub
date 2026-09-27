@@ -58,7 +58,7 @@ const emit = defineEmits(['retry', 'execute', 'breakthrough-change'])
 .growth-action-popover p { display: flex; align-items: flex-start; gap: 4px; color: var(--brand-blue); font-size: 9.5px; line-height: 1.35; font-weight: 700; }
 .growth-action-popover p svg { flex: none; }
 .growth-action-popover > div { display: flex; gap: 5px; }
-.ledger-breakthrough-toggle { display: inline-flex; min-height: 32px; align-items: center; align-self: stretch; gap: 7px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink-60); font-size: 9px; font-weight: 800; cursor: pointer; }
+.ledger-breakthrough-toggle { display: inline-flex; min-height: 44px; align-items: center; align-self: stretch; gap: 7px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink-60); font-size: 9px; font-weight: 800; cursor: pointer; }
 .ledger-breakthrough-toggle span { display: flex; min-width: 0; align-items: baseline; gap: 5px; }
 .ledger-breakthrough-toggle small { color: var(--ink-35); font-size: 8px; font-weight: 700; }
 .ledger-breakthrough-toggle input { width: 14px; height: 14px; flex: none; margin: 0; padding: 0; accent-color: var(--accent); }

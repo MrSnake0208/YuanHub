@@ -87,13 +87,13 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', outside); do
 .date-input, .clock-input { display: flex; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; min-width: 0; }
 .date-input { flex: 1; }
 .clock-input { justify-content: flex-start; gap: 7px; width: 122px; padding: 0 10px; box-sizing: border-box; font: 13px 'Archivo', var(--font-b); }
-input { appearance: none; background: transparent; color: var(--ink); border: 0; outline: none; font: 13px 'Archivo', var(--font-b); width: 100%; min-width: 0; height: 42px; padding: 0 10px; box-sizing: border-box; }
+input { appearance: none; background: transparent; color: var(--ink); border: 0; outline: none; font: 13px 'Archivo', var(--font-b); width: 100%; min-width: 0; height: 44px; padding: 0 10px; box-sizing: border-box; }
 .date-input:focus-within, .clock-input:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
-button { appearance: none; display: inline-flex; justify-content: center; align-items: center; border: 0; border-radius: 8px; color: var(--ink); background: transparent; min-width: 36px; min-height: 36px; padding: 0; font: inherit; cursor: pointer; }
+button { appearance: none; display: inline-flex; justify-content: center; align-items: center; border: 0; border-radius: 8px; color: var(--ink); background: transparent; min-width: 44px; min-height: 44px; padding: 0; font: inherit; cursor: pointer; }
 button:hover:not(:disabled) { background: var(--paper); }
 button:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
 button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
-.date-input button { min-width: 40px; height: 42px; }
+.date-input button { min-width: 44px; height: 44px; }
 .calendar, .time-popover { position: absolute; left: 0; top: calc(100% + 8px); z-index: var(--z-popover); width: min(296px, calc(100vw - 80px)); padding: 14px; border: 1px solid var(--line); border-radius: 14px; box-sizing: border-box; background: var(--surface); box-shadow: 0 16px 40px -12px rgba(73,59,44,.24), inset 0 0 0 4px var(--cream); }
 .calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .calendar-heading strong { font-family: var(--font-s); font-size: 14px; }
@@ -111,7 +111,7 @@ button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
 .time-column { min-width: 0; }
 .time-column-label { display: block; margin-bottom: 5px; color: var(--ink-60); text-align: center; font-size: 10px; }
 .time-options { display: grid; grid-template-columns: minmax(0,1fr); gap: 3px; max-height: 168px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.time-options button { min-width: 0; min-height: 31px; border-radius: 5px; scroll-snap-align: center; font: 11px 'Archivo', var(--font-b); }
+.time-options button { min-width: 0; min-height: 44px; border-radius: 5px; scroll-snap-align: center; font: 11px 'Archivo', var(--font-b); }
 .time-options button.selected { background: var(--tea); color: var(--cream); }
 .time-foot { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 .now-button { color: var(--ink-60); font-size: 11px; }

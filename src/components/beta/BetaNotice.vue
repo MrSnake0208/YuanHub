@@ -20,5 +20,5 @@ onMounted(() => { void beta.loadPublic() })
 .beta-notice.tone-closed, .beta-notice.tone-pending, .beta-notice.tone-full { --tone: var(--ink-35); }
 .beta-notice strong { font-size: 14px; }
 .beta-notice p { margin: 6px 0; font-size: 13px; line-height: 1.75; color: var(--ink-60); }
-.beta-notice a { color: var(--tea); font-size: 13px; font-weight: 700; text-underline-offset: 4px; }
+.beta-notice a { display: inline-flex; min-height: 44px; align-items: center; color: var(--tea); font-size: 13px; font-weight: 700; text-underline-offset: 4px; }
 </style>

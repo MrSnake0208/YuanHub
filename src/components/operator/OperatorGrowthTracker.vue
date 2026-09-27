@@ -1493,7 +1493,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .growth-track i { display: block; height: 100%; border-radius: inherit; background: #c48b4d; transition: width .2s ease; }
 .growth-track.mint i { background: #88b296; }
 .growth-track.rose i { background: #b88ba2; }
-.growth-quick-action { display: inline-grid; width: 32px; min-width: 32px; height: 32px; min-height: 32px; flex: none; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); cursor: pointer; }
+.growth-quick-action { display: inline-grid; width: 44px; min-width: 44px; height: 44px; min-height: 44px; flex: none; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-60); cursor: pointer; }
 .growth-quick-action svg { display: block; }
 .growth-quick-action:hover:not(:disabled) { border-color: var(--accent); background: var(--yellow); color: var(--ink); }
 .growth-quick-action:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
@@ -1587,13 +1587,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .goal-days-field { min-width: 0; }
 .goal-days-input-wrap { position: relative; display: flex; min-width: 0; align-items: center; border: 1px solid var(--planner-line); border-radius: 9px; background: var(--cream); }
 .goal-days-input-wrap:focus-within { outline: 2px solid var(--tea); outline-offset: 2px; }
-.goal-days-input-wrap > input { flex: 1; width: 100%; height: 42px; min-height: 42px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: 13px 'Archivo', var(--font-b); appearance: textfield; }
+.goal-days-input-wrap > input { flex: 1; width: 100%; height: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: 13px 'Archivo', var(--font-b); appearance: textfield; }
 .goal-days-input-wrap > input::-webkit-outer-spin-button, .goal-days-input-wrap > input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.goal-date-trigger { display: inline-flex; width: 40px; min-width: 40px; height: 42px; min-height: 42px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; }
+.goal-date-trigger { display: inline-flex; width: 44px; min-width: 44px; height: 44px; min-height: 44px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; }
 .goal-date-trigger:hover:not(:disabled) { background: var(--paper); }
 .goal-date-trigger:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
 .goal-date-popover { position: absolute; z-index: var(--z-popover); top: calc(100% + 8px); left: -1px; width: calc(100% + 2px); min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 28px rgba(73, 59, 44, .14); }
-.goal-date-popover button { appearance: none; display: inline-flex; min-width: 36px; min-height: 36px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
+.goal-date-popover button { appearance: none; display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
 .goal-date-popover button:hover:not(:disabled) { background: var(--paper); }
 .goal-date-popover button:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
 .goal-date-popover button:disabled { opacity: .45; cursor: not-allowed; }
@@ -1752,7 +1752,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .day-plan { gap: 10px; }
 .flow-heading { margin-bottom: 12px; }
 @media (max-width: 640px) {
-  .growth-quick-action { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+  .growth-quick-action { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
 }
 
 /* Compact execution summary; labels and figures retain a stable reading order. */
@@ -1931,4 +1931,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .growth-progress-side-label { display: none; }
   .growth-progress-label .progress-values { gap: 6px; }
 }
+.strategy-switch button,.side-button,.back-button,.action-button,.goal-shortcuts button,
+.status-action,.workspace-link,.workspace-return,.toolbar-button,.tracker-remove,
+.tracker-dialog-button,.tracker-editable,.tracker-star-controls select,
+.tracker-popover-actions button,.add-button,.side-details summary { min-height:44px; }
+.tracker-dialog-close,.roster-remove { width:44px;height:44px; }
+.tracker-number-input { min-width:44px; }
 </style>

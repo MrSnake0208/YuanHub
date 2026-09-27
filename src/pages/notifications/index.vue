@@ -338,7 +338,7 @@ onBeforeUnmount(function () {
 .ntf-meta time { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); font-weight: 700 }
 .ntf-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); flex: none }
 
-.ntf-read-btn { flex: none; min-height: 36px; padding: 6px 14px; color: var(--accent-strong); background: rgba(239, 210, 142, .3); border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-family: var(--font-b); font-size: 12px; font-weight: 800; white-space: nowrap; transition: all .25s var(--ease); align-self: center }
+.ntf-read-btn { flex: none; min-height: 44px; padding: 6px 14px; color: var(--accent-strong); background: rgba(239, 210, 142, .3); border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-family: var(--font-b); font-size: 12px; font-weight: 800; white-space: nowrap; transition: all .25s var(--ease); align-self: center }
 .ntf-read-btn:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow-deep) }
 .ntf-read-btn:disabled { opacity: .45; cursor: not-allowed }
 
@@ -351,7 +351,7 @@ onBeforeUnmount(function () {
   .notification-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 14px }
   .ntf-icon { width: 40px; height: 40px; border-radius: 10px }
   .ntf-icon svg { width: 16px; height: 16px }
-  .ntf-read-btn { grid-column: 2; justify-self: start; min-height: 40px; padding: 5px 12px; font-size: 11px }
+  .ntf-read-btn { grid-column: 2; justify-self: start; min-height: 44px; padding: 5px 12px; font-size: 11px }
   .hero-action { padding: 12px 16px }
   .hero-action .act-btn { width: 100%; min-height: 44px }
 }

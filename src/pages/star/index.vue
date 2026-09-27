@@ -843,6 +843,7 @@ onBeforeUnmount(function () {
 }
 .star-tabs button {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border: none;

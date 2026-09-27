@@ -251,12 +251,12 @@ watch(() => props.item?.id, () => {
 .detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; color: var(--feedback-text-muted); font-size: 11px; text-align: center; }
 .detail-file-list { display: grid; gap: 7px; margin-top: 10px; }
-.detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 34px; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
+.detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 44px; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
 .detail-file-copy { min-width: 0; display: grid; gap: 2px; }
 .detail-file-copy strong { overflow: hidden; color: var(--feedback-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .detail-file-copy small { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 .detail-file-copy .detail-file-error { color: var(--feedback-danger); font-family: var(--font-b); }
-.detail-file-row button { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel-deep); color: var(--feedback-text); cursor: pointer; }
+.detail-file-row button { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel-deep); color: var(--feedback-text); cursor: pointer; }
 .detail-file-row button:disabled { opacity: .55; cursor: default; }
 .is-spinning { animation: detail-file-spin .8s linear infinite; }
 @keyframes detail-file-spin { to { transform: rotate(360deg); } }

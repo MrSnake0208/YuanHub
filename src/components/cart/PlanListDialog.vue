@@ -167,7 +167,7 @@ function commitRename(p) {
 .plan-main:hover b{color:var(--accent-strong)}
 .plan-main .meta{font-size:11px;color:var(--ink-60);font-family:var(--font-d)}
 .pbtn{
-  flex-shrink:0;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;
+  flex-shrink:0;width:44px;height:44px;border-radius:9px;display:grid;place-items:center;
   background:var(--paper);border:1px solid var(--line);color:var(--ink-60);
   cursor:pointer;transition:color .25s var(--ease),background-color .25s var(--ease),border-color .25s var(--ease);
 }

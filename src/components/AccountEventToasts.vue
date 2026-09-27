@@ -65,7 +65,7 @@ function agentIconSrc(operatorId) {
 .account-event-history ul { max-height: 34vh; overflow: auto; margin: 0; padding: 0 12px 12px 28px; }
 .account-event-history li { margin-top: 8px; }
 .account-event-history small { display: block; color: var(--ink-60); overflow-wrap: anywhere; }
-.account-event-toast { --toast-accent: var(--yellow-deep); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 28px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; border: 1.5px solid var(--toast-accent); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .9); font-size: 12.5px; line-height: 1.35; pointer-events: auto }
+.account-event-toast { --toast-accent: var(--yellow-deep); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 44px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; border: 1.5px solid var(--toast-accent); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .9); font-size: 12.5px; line-height: 1.35; pointer-events: auto }
 .account-event-toast::after { position: absolute; right: 17px; bottom: -8px; width: 14px; height: 14px; border-right: 1.5px solid var(--yellow-deep); border-bottom: 1.5px solid var(--yellow-deep); border-radius: 0 0 4px; background: var(--surface); content: ''; transform: skewY(34deg) rotate(20deg) }
 .account-event-toast.is-capsule::after { display: none }
 .toast-badge { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--toast-accent); border-radius: 50%; background: var(--yellow); color: var(--accent-strong); box-shadow: inset 0 0 0 3px var(--surface) }
@@ -75,7 +75,7 @@ function agentIconSrc(operatorId) {
 .toast-copy small { overflow: hidden; color: var(--ink-60); font-size: 11px; font-weight: 700; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap }
 .toast-kicker { overflow: hidden; color: var(--toast-accent); font-family: var(--font-d); font-size: 9px; font-style: normal; font-weight: 900; letter-spacing: .11em; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap }
 .toast-stars { color: var(--toast-accent); font-family: var(--font-d); font-size: 10px; letter-spacing: .03em; white-space: nowrap }
-.account-event-toast.is-capsule { grid-template-columns: 34px minmax(0, 1fr) auto 24px; width: fit-content; max-width: min(300px, calc(100vw - 32px)); min-height: 50px; padding: 6px 6px 6px 7px; gap: 7px; border-radius: 999px; border-color: color-mix(in srgb, var(--toast-accent) 72%, var(--line)); box-shadow: 0 10px 28px rgba(73, 59, 44, .2); }
+.account-event-toast.is-capsule { grid-template-columns: 34px minmax(0, 1fr) auto 44px; width: fit-content; max-width: min(300px, calc(100vw - 32px)); min-height: 50px; padding: 6px 6px 6px 7px; gap: 7px; border-radius: 999px; border-color: color-mix(in srgb, var(--toast-accent) 72%, var(--line)); box-shadow: 0 10px 28px rgba(73, 59, 44, .2); }
 .account-event-toast.is-capsule .toast-badge { width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--toast-accent) 15%, var(--surface)); }
 .account-event-toast.is-capsule .toast-copy { gap: 1px; }
 .account-event-toast.is-capsule .toast-copy { max-width: 154px; }
@@ -83,7 +83,7 @@ function agentIconSrc(operatorId) {
 .account-event-toast.is-capsule.rarity-r5 { --toast-accent: var(--accent); }
 .account-event-toast.is-capsule.rarity-r4 { --toast-accent: var(--brand-blue); }
 .account-event-toast.is-capsule.rarity-r3 { --toast-accent: var(--mist); }
-.account-event-toast.is-inventory { grid-template-columns: 48px minmax(0, 1fr) 28px; width: min(330px, calc(100vw - 40px)); min-height: 0; padding: 14px 38px 14px 14px; border: 1px solid var(--accent); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 22px rgba(86, 66, 38, .09) }
+.account-event-toast.is-inventory { grid-template-columns: 48px minmax(0, 1fr) 44px; width: min(330px, calc(100vw - 40px)); min-height: 0; padding: 14px; border: 1px solid var(--accent); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 22px rgba(86, 66, 38, .09) }
 .account-event-toast.is-inventory::after { display: none }
 .account-event-toast.is-inventory .toast-badge { width: 48px; height: 48px; border-color: var(--accent); background: var(--cream); box-shadow: none; color: var(--accent-strong) }
 .account-event-toast.is-inventory .toast-copy { gap: 4px }
@@ -100,7 +100,7 @@ function agentIconSrc(operatorId) {
 .account-event-toast.is-warning { --toast-accent: rgba(166, 81, 74, .55); border-color: var(--toast-accent) }
 .account-event-toast.is-warning::after { border-color: rgba(166, 81, 74, .55) }
 .account-event-toast.is-warning .toast-badge { border-color: var(--toast-accent); background: var(--surface); color: var(--rouge) }
-.account-event-toast button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-60); cursor: pointer }
+.account-event-toast button { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-60); cursor: pointer }
 .account-event-toast button:hover { background: rgba(73, 59, 44, .08); color: var(--ink) }
 .account-event-toast button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .account-toast-enter-active, .account-toast-leave-active { transition: opacity .2s ease, transform .2s var(--ease) }
@@ -111,9 +111,9 @@ function agentIconSrc(operatorId) {
 @keyframes capsule-icon-pop { 0% { transform: scale(.4) rotate(-12deg); filter: brightness(.7) } 65% { transform: scale(1.18) rotate(3deg); filter: brightness(1.35) } 100% { transform: scale(1); filter: none } }
 @keyframes inventory-refined-in { 0% { opacity: 0; transform: translateY(-10px) scale(.98) } 65% { opacity: 1; transform: translateY(1px) scale(1.005) } 100% { opacity: 1; transform: none } }
 @keyframes inventory-icon-ring { 0% { box-shadow: 0 0 0 0 rgba(215, 137, 53, .28) } 100% { box-shadow: 0 0 0 10px rgba(215, 137, 53, 0) } }
-.account-event-preview { position: fixed; z-index: var(--z-popover); right: 22px; bottom: 22px; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(73, 59, 44, .16) }
+.account-event-preview { position: fixed; z-index: var(--z-popover); right: 22px; bottom: 22px; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 5px; padding: 6px; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(73, 59, 44, .16) }
 .account-event-preview strong { padding: 0 7px; color: var(--ink-60); font-size: 10px; white-space: nowrap }
-.account-event-preview button { min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); font: 800 10.5px var(--font-b); cursor: pointer }
+.account-event-preview button { min-width: 44px; min-height: 44px; flex: none; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); font: 800 10.5px var(--font-b); cursor: pointer }
 .account-event-preview button:hover { border-color: var(--accent); color: var(--accent-strong) }
 .account-event-preview button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 @media (max-width: 767px) {
