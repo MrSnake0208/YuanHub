@@ -67,7 +67,7 @@
             :accounts="accounts"
             :error="accountError"
             :disabled="
-              !auth.isLoggedIn || accountsLoading || editingStock || rewardImportBusy
+              !auth.isLoggedIn || accountsLoading || editingStock || rewardImportBusy || Boolean(recordsBusyId)
             "
             :game-editable="false"
             :manage-enabled="false"
@@ -618,6 +618,11 @@
               >
             </div>
 
+            <div v-if="catalogLoading" class="inventory-inline-state" role="status">正在同步对象目录…</div>
+            <div v-else-if="catalogError" class="inventory-inline-state is-error" role="alert">
+              {{ catalogError }}，当前仍可查看本地目录。
+              <button type="button" class="link" @click="loadCatalog">重试同步</button>
+            </div>
             <div v-if="loading" class="state">正在加载追踪目录…</div>
             <div
               v-else-if="editingStock"
@@ -1625,17 +1630,26 @@
               </button>
             </div>
 
+            <div v-for="notice in deletedRecordNotices" :key="notice.recordId" class="inventory-inline-state" role="status">
+              已删除「{{ notice.summary }}」，库存已重建。
+              <button type="button" class="link" :disabled="Boolean(recordsBusyId)" @click="onRestoreRecord(notice)">撤销删除</button>
+            </div>
+            <div v-if="recordsActionError" class="inventory-inline-state is-error" role="alert">{{ recordsActionError }}</div>
+
             <div
               v-if="recordsLoading && recordsList.length === 0"
               class="state"
             >
               正在加载记录…
             </div>
-            <div v-else-if="recordsError" class="state err">
+            <div v-else-if="!accountId" class="state">请先创建并选择一个子账号，库存变更记录会归属到该账号。</div>
+            <div v-else-if="recordsError && recordsList.length === 0" class="state err" role="alert">
               {{ recordsError }}
+              <button type="button" class="link" @click="loadRecords(true)">重试加载</button>
             </div>
             <div v-else-if="recordsList.length === 0" class="state">
-              暂无导入记录
+              <strong>还没有库存变更记录</strong><br />
+              手动更新库存、添加奖励流水或导入本地报告后，记录会出现在这里。可以先使用上方的「添加奖励流水」或「导入本地报告」。
             </div>
             <template v-else>
               <ul class="record-list">
@@ -1652,7 +1666,9 @@
                         >{{
                           r.record_type === "reward_delta"
                             ? "实时奖励"
-                            : "库存更新"
+                            : r.record_type === "consumption_delta"
+                              ? "升级消耗"
+                              : "库存更新"
                         }}</span
                       >
                       <span
@@ -1688,13 +1704,17 @@
                       {{ r.record_id }}
                     </div>
                   </div>
-                  <button class="record-del" @click="onDeleteRecord(r)">
+                  <button v-if="r.record_type !== 'consumption_delta'" class="record-del" :disabled="Boolean(recordsBusyId) || recordsLoading" @click="onDeleteRecord(r)">
                     删除
                   </button>
                 </li>
               </ul>
+              <div v-if="recordsError" class="inventory-inline-state is-error" role="alert">
+                {{ recordsError }}，已加载的记录仍可查看。
+                <button type="button" class="link" :disabled="recordsLoading" @click="loadRecords(recordsRetryReset)">重试加载</button>
+              </div>
               <button
-                v-if="recordsNextCursor"
+                v-if="recordsNextCursor && !recordsError"
                 class="load-more"
                 :disabled="recordsLoading"
                 @click="loadRecords(false)"
@@ -1761,6 +1781,7 @@ import {
   importInventory,
   listRecords,
   deleteRecord,
+  restoreRecord,
   listAccounts,
   listAgentFavorites,
   addAgentFavorite,
@@ -1768,6 +1789,7 @@ import {
 } from "../../api/inventory.js";
 import { getOperatorCatalog } from "../../api/operator.js";
 import { auth } from "../../store/auth.js";
+import { dialog } from "../../utils/dialog.js";
 import {
   setInventoryToastFavoriteAgentIds,
   subscribeAccountEvents,
@@ -1904,6 +1926,8 @@ let accountEventRefreshTimer = null;
 let inventoryEventRefreshPending = false;
 let unsubscribeAccountEvents = null;
 const catalog = ref({ entities: [] });
+const catalogLoading = ref(false);
+const catalogError = ref("");
 const currentEntries = ref([]);
 const acquiredEntries = ref([]);
 const acquiredEntityType = ref("all");
@@ -2016,6 +2040,11 @@ const recordsNextCursor = ref(null);
 const recordsEntityType = ref("all");
 const recordsLoading = ref(false);
 const recordsError = ref("");
+const recordsRetryReset = ref(true);
+const recordsActionError = ref("");
+const recordsBusyId = ref("");
+const deletedRecordNotices = ref([]);
+let recordsLoadSeq = 0;
 const rewardImportBusy = ref(false);
 const latestInventoryRecordAt = computed(function () {
   const stockRecords = recordsList.value.filter(function (record) {
@@ -2221,6 +2250,10 @@ function onAccountChange() {
   recordsList.value = [];
   recordsNextCursor.value = null;
   recordsError.value = "";
+  recordsLoading.value = false;
+  recordsActionError.value = "";
+  deletedRecordNotices.value = [];
+  recordsLoadSeq++;
   error.value = "";
   reloadCurrent();
   if (entityType.value === "agent") loadAgentFavorites();
@@ -3658,50 +3691,94 @@ function setRecordsEntityType(type) {
 }
 
 async function loadRecords(reset) {
+  if (recordsLoading.value) return;
   if (!accountId.value) {
     recordsList.value = [];
     recordsError.value = "请先创建并选择一个子账号";
     recordsLoading.value = false;
     return;
   }
+  const requestSeq = ++recordsLoadSeq;
+  const targetAccount = accountId.value;
+  const targetType = recordsEntityType.value;
   recordsLoading.value = true;
-  if (reset) recordsError.value = "";
+  recordsError.value = "";
   try {
     const cursor = reset ? null : recordsNextCursor.value;
     const page = await listRecords({
-      accountId: accountId.value,
+      accountId: targetAccount,
       entityType:
-        recordsEntityType.value === "all" ? undefined : recordsEntityType.value,
+        targetType === "all" ? undefined : targetType,
       cursor: cursor,
       limit: 50,
     });
+    if (requestSeq !== recordsLoadSeq || targetAccount !== accountId.value || targetType !== recordsEntityType.value) return;
     const items = page && Array.isArray(page.items) ? page.items : [];
     recordsList.value = reset ? items : recordsList.value.concat(items);
     recordsNextCursor.value =
       page && page.next_cursor ? page.next_cursor : null;
   } catch (err) {
+    if (requestSeq !== recordsLoadSeq || targetAccount !== accountId.value || targetType !== recordsEntityType.value) return;
     recordsError.value = humanErr(err, "加载记录失败");
+    recordsRetryReset.value = reset;
   } finally {
-    recordsLoading.value = false;
+    if (requestSeq === recordsLoadSeq) recordsLoading.value = false;
   }
 }
 
 async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id;
-  if (!rid) return;
-  if (
-    !confirm(
-      "删除记录「" + rid + "」？删除后将重放剩余记录重建库存，此操作不可恢复。",
-    )
-  )
-    return;
+  if (!rid || recordsBusyId.value || recordsLoading.value) return;
+  const targetAccount = accountId.value;
+  const summary = (rec.entity_type === "agent" ? "心纸" : "道具") +
+    " · " + (rec.record_type === "reward_delta" ? "奖励" : "库存更新") +
+    " · " + fmtTime(rec.effective_at) + " · " + entrySummary(rec.entries, rec.record_type);
+  const confirmed = await dialog.confirm({
+    title: "删除库存记录？",
+    message: "账号「" + currentAccountName.value + "」的记录：" + summary + "。删除后会重建库存；可在本页撤销。",
+    type: "danger",
+    confirmText: "删除记录",
+  });
+  if (!confirmed || accountId.value !== targetAccount) return;
+  recordsBusyId.value = rid;
+  recordsActionError.value = "";
   try {
-    await deleteRecord(rid, accountId.value);
+    await deleteRecord(rid, targetAccount);
+    if (accountId.value !== targetAccount) return;
+    deletedRecordNotices.value = deletedRecordNotices.value.filter(function (notice) { return notice.recordId !== rid; });
+    deletedRecordNotices.value.push({ recordId: rid, accountId: targetAccount, summary });
+    recordsList.value = recordsList.value.filter(function (item) { return item.record_id !== rid; });
     await loadRecords(true);
     await reloadCurrent();
     resetAcquiredData();
   } catch (err) {
-    alert(humanErr(err, "删除失败"));
+    if (accountId.value === targetAccount) recordsActionError.value = humanErr(err, "删除失败");
+  } finally {
+    recordsBusyId.value = "";
+  }
+}
+
+async function onRestoreRecord(notice) {
+  if (!notice || recordsBusyId.value || accountId.value !== notice.accountId) return;
+  recordsBusyId.value = notice.recordId;
+  recordsActionError.value = "";
+  try {
+    await restoreRecord(notice.recordId, notice.accountId);
+    if (accountId.value !== notice.accountId) return;
+    deletedRecordNotices.value = deletedRecordNotices.value.filter(function (item) { return item.recordId !== notice.recordId; });
+    await loadRecords(true);
+    await reloadCurrent();
+    resetAcquiredData();
+  } catch (err) {
+    if (accountId.value === notice.accountId) {
+      recordsActionError.value = err?.code === "record_already_exists"
+        ? "同编号记录已重新导入，无法撤销；现有库存未更改"
+        : err?.code === "deleted_record_not_found"
+          ? "这条删除备份不存在或已恢复，无法撤销"
+          : humanErr(err, "恢复记录失败，请重试");
+    }
+  } finally {
+    recordsBusyId.value = "";
   }
 }
 
@@ -3721,7 +3798,7 @@ function fmtTime(iso) {
 
 function entrySummary(entries, recordType) {
   const list = entries || [];
-  const sign = recordType === "reward_delta" ? "+" : "=";
+  const sign = recordType === "reward_delta" ? "+" : recordType === "consumption_delta" ? "−" : "=";
   return list
     .map(function (e) {
       return (e.name || e.id) + sign + e.count;
@@ -3871,16 +3948,23 @@ async function loadAgentCatalog() {
   }
 }
 
+async function loadCatalog() {
+  catalogLoading.value = true;
+  catalogError.value = "";
+  try {
+    const data = await getCatalog();
+    if (!Array.isArray(data?.entities)) throw new Error("对象目录响应无效");
+    catalog.value = { entities: data.entities };
+  } catch (_error) {
+    catalogError.value = "对象目录同步失败";
+  } finally {
+    catalogLoading.value = false;
+  }
+}
+
 onMounted(async function () {
   await Promise.all([
-    (async function () {
-      try {
-        const data = await getCatalog();
-        if (data && data.entities) catalog.value = { entities: data.entities };
-      } catch (_error) {
-        catalog.value = { entities: [] };
-      }
-    })(),
+    loadCatalog(),
     loadAgentCatalog(),
   ]);
   await loadAccounts();
@@ -5149,15 +5233,34 @@ onBeforeUnmount(function () {
 .state.err {
   color: var(--ink-60);
 }
+.inventory-inline-state {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-60);
+  line-height: 1.6;
+}
+.inventory-inline-state.is-error {
+  border-color: var(--rouge);
+  color: var(--rouge);
+}
+.inventory-inline-state .link,
 .state .link {
-  margin-left: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-strong);
+  font: inherit;
   font-weight: 800;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.state .link {
+  margin-left: 12px;
 }
 .acquired-loading {
   display: flex;

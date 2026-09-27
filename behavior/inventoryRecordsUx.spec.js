@@ -1,0 +1,118 @@
+import { beforeEach, expect, it, vi } from 'vitest'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import InventoryPage from '../src/pages/inventory/index.vue'
+import * as inventoryApi from '../src/api/inventory.js'
+import { dialog } from '../src/utils/dialog.js'
+import { activeAccount } from '../src/store/activeAccount.js'
+
+vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: true } }))
+vi.mock('vue-router', () => ({ onBeforeRouteLeave: () => {}, onBeforeRouteUpdate: () => {} }))
+vi.mock('../src/api/inventory.js', () => ({
+  getCatalog: vi.fn(), getCurrent: vi.fn(), getAcquired: vi.fn(), exportInventory: vi.fn(),
+  importInventory: vi.fn(), listRecords: vi.fn(), deleteRecord: vi.fn(), restoreRecord: vi.fn(),
+  listAccounts: vi.fn(), listAgentFavorites: vi.fn(), addAgentFavorite: vi.fn(), removeAgentFavorite: vi.fn(),
+}))
+vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
+vi.mock('../src/store/accountEvents.js', () => ({
+  setInventoryToastFavoriteAgentIds: vi.fn(), subscribeAccountEvents: vi.fn(() => () => {}),
+}))
+vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
+
+const record = {
+  record_id: 'reward:1', record_type: 'reward_delta', entity_type: 'item',
+  effective_at: '2026-09-27T10:00:00Z', stock_effect: 'applied',
+  entries: [{ id: 'baijinbi', name: '白金币', count: 5 }],
+}
+
+function render() {
+  return mount(InventoryPage, { global: {
+    stubs: {
+      RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
+      AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
+      ResourceBalanceReport: true, AcquiredPeriodReport: true, RewardEntryWorkspace: true,
+    },
+    directives: { reveal: () => {} },
+  } })
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  window.matchMedia = vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  localStorage.setItem('inventory-tabs', 'records')
+  activeAccount.set('acc-1')
+  inventoryApi.getCatalog.mockResolvedValue({ entities: [] })
+  inventoryApi.getCurrent.mockResolvedValue([])
+  inventoryApi.listAccounts.mockResolvedValue([{ id: 'acc-1', name: '大号', game: '代号鸢' }])
+  inventoryApi.listAgentFavorites.mockResolvedValue([])
+  inventoryApi.listRecords.mockResolvedValue({ items: [record], next_cursor: 'next' })
+  inventoryApi.deleteRecord.mockResolvedValue(true)
+  inventoryApi.restoreRecord.mockResolvedValue(true)
+  dialog.confirm.mockResolvedValue(true)
+})
+
+it('增量加载失败保留记录和位置，并可重试', async () => {
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.findAll('.record')).toHaveLength(1)
+  const anchor = wrapper.get('.record').element
+  inventoryApi.listRecords.mockRejectedValueOnce(new Error('网络中断'))
+  await wrapper.get('.load-more').trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('.record')).toHaveLength(1)
+  expect(wrapper.get('.record').element).toBe(anchor)
+  expect(wrapper.get('.inventory-inline-state[role="alert"]').text()).toContain('已加载的记录仍可查看')
+  inventoryApi.listRecords.mockResolvedValueOnce({ items: [{ ...record, record_id: 'reward:2' }], next_cursor: null })
+  await wrapper.get('.inventory-inline-state[role="alert"] button').trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('.record')).toHaveLength(2)
+})
+
+it('删除确认可核对内容，失败留页内，成功后可撤销', async () => {
+  const wrapper = render()
+  await flushPromises()
+  inventoryApi.deleteRecord.mockRejectedValueOnce(new Error('删除失败'))
+  await wrapper.get('.record-del').trigger('click')
+  await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({
+    type: 'danger', message: expect.stringContaining('白金币+5'),
+  }))
+  expect(wrapper.get('.inventory-inline-state[role="alert"]').text()).toContain('删除失败')
+  expect(wrapper.findAll('.record')).toHaveLength(1)
+  inventoryApi.listRecords.mockResolvedValueOnce({ items: [], next_cursor: null })
+  await wrapper.get('.record-del').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('撤销删除')
+  inventoryApi.restoreRecord.mockRejectedValueOnce(new Error('恢复暂不可用'))
+  await wrapper.findAll('.inventory-inline-state button').find(button => button.text() === '撤销删除').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('撤销删除')
+  expect(wrapper.get('.inventory-inline-state[role="alert"]').text()).toContain('恢复暂不可用')
+  inventoryApi.listRecords.mockResolvedValueOnce({ items: [record], next_cursor: null })
+  await wrapper.findAll('.inventory-inline-state button').find(button => button.text() === '撤销删除').trigger('click')
+  await flushPromises()
+  expect(inventoryApi.restoreRecord).toHaveBeenCalledWith('reward:1', 'acc-1')
+  expect(wrapper.findAll('.record')).toHaveLength(1)
+  expect(wrapper.text()).not.toContain('撤销删除')
+})
+
+it('目录同步失败显示重试，历史真正为空时说明记录来源', async () => {
+  inventoryApi.getCatalog.mockRejectedValueOnce(new Error('offline'))
+  inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.get('.inventory-inline-state[role="alert"]').text()).toContain('目录同步失败')
+  expect(wrapper.text()).toContain('手动更新库存、添加奖励流水或导入本地报告')
+  await wrapper.get('.inventory-inline-state[role="alert"] button').trigger('click')
+  await flushPromises()
+  expect(inventoryApi.getCatalog).toHaveBeenCalledTimes(2)
+  expect(wrapper.find('.inventory-inline-state[role="alert"]').exists()).toBe(false)
+})
+
+it('升级消耗历史明确标记且不可单独删除', async () => {
+  inventoryApi.listRecords.mockResolvedValue({ items: [{ ...record, record_type: 'consumption_delta' }], next_cursor: null })
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.get('.record').text()).toContain('升级消耗')
+  expect(wrapper.get('.record').text()).toContain('白金币−5')
+  expect(wrapper.find('.record-del').exists()).toBe(false)
+})
