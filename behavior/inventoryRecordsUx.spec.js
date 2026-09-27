@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import InventoryPage from '../src/pages/inventory/index.vue'
 import * as inventoryApi from '../src/api/inventory.js'
+import { getOperatorCatalog } from '../src/api/operator.js'
 import { dialog } from '../src/utils/dialog.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 
@@ -41,6 +42,7 @@ beforeEach(() => {
   localStorage.setItem('inventory-tabs', 'records')
   activeAccount.set('acc-1')
   inventoryApi.getCatalog.mockResolvedValue({ entities: [] })
+  getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_001_test', name: '测试密探', rarity: 5, games: ['代号鸢'] }] })
   inventoryApi.getCurrent.mockResolvedValue([])
   inventoryApi.listAccounts.mockResolvedValue([{ id: 'acc-1', name: '大号', game: '代号鸢' }])
   inventoryApi.listAgentFavorites.mockResolvedValue([])
@@ -115,4 +117,14 @@ it('升级消耗历史明确标记且不可单独删除', async () => {
   expect(wrapper.get('.record').text()).toContain('升级消耗')
   expect(wrapper.get('.record').text()).toContain('白金币−5')
   expect(wrapper.find('.record-del').exists()).toBe(false)
+})
+
+it('库存图标操作在触屏前有可见说明', async () => {
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.get('.subsection-edit').text()).toBe('编辑')
+  await wrapper.get('.manifest-type-switch button[aria-label="切换到密探心纸"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.agent-favorite-help').text()).toContain('星标')
+  expect(wrapper.get('.agent-sort-direction').text()).toContain('降序')
 })

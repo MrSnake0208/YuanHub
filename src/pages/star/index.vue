@@ -38,7 +38,8 @@
             </div>
             <div class="is-authed">
               <div class="k">登录状态</div>
-              <div class="v">{{ auth.isLoggedIn ? "已登录" : "未登录" }}</div>
+              <div class="v" v-if="auth.isLoggedIn">已登录</div>
+              <div class="v" v-else>未登录<small>可先在本机使用，<router-link to="/login">登录后同步</router-link></small></div>
             </div>
           </div>
         </div>
@@ -127,7 +128,7 @@
             <span v-if="cloudSyncError || cloudSyncMessage">{{ cloudSyncError || cloudSyncMessage }}</span>
             <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudSyncMessage) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
             <button
-              v-if="cloudNeedsRetry || cloudRetryBusy"
+              v-if="cloudNeedsRetry || cloudRetryBusy || (cloudSyncError && productReady && accountId)"
               type="button"
               class="star-sync-retry"
               :disabled="cloudRetryBusy"
@@ -166,9 +167,11 @@
             </button>
           </div>
           <div id="product-root" ref="mountRoot"></div>
-          <p v-if="mountError" class="yuanstar-mount-error" role="alert">
-            YuanStar 产品页加载失败：{{ mountError }}
-          </p>
+          <p v-if="mountBusy && !productReady" class="yuanstar-mount-loading" role="status">正在加载星石工作区…</p>
+          <div v-if="mountError" class="yuanstar-mount-error" role="alert">
+            星石工作区加载失败：{{ mountError }}
+            <button type="button" :disabled="mountBusy" @click="mountProduct">重试加载</button>
+          </div>
         </div>
       </section>
       <SiteFooter>
@@ -217,6 +220,7 @@ const route = useRoute();
 const router = useRouter();
 const mountRoot = ref(null);
 const mountError = ref("");
+const mountBusy = ref(false);
 const accounts = ref([]);
 const accountsLoading = ref(false);
 const accountError = ref("");
@@ -342,12 +346,13 @@ function clearCloudSyncFeedback() {
   cloudSyncError.value = "";
 }
 async function retryStarCloud() {
-  if (!cloudNeedsRetry.value || cloudRetryBusy.value) return;
+  if ((!cloudNeedsRetry.value && !cloudSyncError.value) || cloudRetryBusy.value) return;
   cloudRetryBusy.value = true;
   try {
-    await starCloud.retry();
+    if (cloudNeedsRetry.value) await starCloud.retry();
+    else if (handle && selectedHostAccount()) await syncHostAccount();
   } catch (error) {
-    cloudSyncError.value = "星石云端保存失败，请重试。";
+    cloudSyncError.value = "星石云端同步失败，请重试。";
   } finally {
     cloudRetryBusy.value = false;
   }
@@ -556,6 +561,7 @@ function ensureEmbedStylesheet() {
     link.addEventListener(
       "error",
       function () {
+        link.remove();
         reject(new Error("YuanStar 样式资源加载失败。"));
       },
       { once: true },
@@ -639,9 +645,13 @@ async function confirmStarImport() {
   }
 }
 async function mountProduct() {
+  if (mountBusy.value || unmounted) return;
+  mountBusy.value = true;
+  mountError.value = "";
   productReady.value = false;
   try {
     await waitForYuanStarDisposal();
+    mountRoot.value?.replaceChildren();
     await ensureEmbedStylesheet();
     const product = await loadEmbedModule();
     if (unmounted || !mountRoot.value) return;
@@ -675,7 +685,14 @@ async function mountProduct() {
     if (pendingCapture) void importPendingCapture();
   } catch (error) {
     productReady.value = false;
+    if (handle) {
+      const failedHandle = handle;
+      handle = null;
+      try { await disposeYuanStarHandle(failedHandle); } catch (_error) {}
+    }
     if (!unmounted) mountError.value = message(error, "请稍后重试。");
+  } finally {
+    mountBusy.value = false;
   }
 }
 function setTab(tab) {
@@ -791,8 +808,13 @@ onBeforeUnmount(function () {
   color: var(--rouge);
 }
 .star-sync-retry {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
   margin-left: 8px;
-  padding: 0;
+  padding: 8px 12px;
   border: 0;
   background: transparent;
   color: var(--tea);
@@ -854,6 +876,23 @@ onBeforeUnmount(function () {
   font-weight: 700;
   line-height: 1.7;
 }
+.yuanstar-mount-loading { margin: 24px 0; color: var(--ink-60); }
+.yuanstar-mount-error button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-left: 8px;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.yuanstar-mount-error button:focus-visible,
+.hero-stats .is-authed a:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.hero-stats .is-authed a { display: inline-flex; min-height: 44px; align-items: center; }
 @media (max-width: 1080px) {
   .star-main > section {
     padding-bottom: 40px;
