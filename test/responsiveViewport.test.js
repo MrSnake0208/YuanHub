@@ -30,3 +30,10 @@ test('库存分区编辑提示在窄屏内居中，避免透明提示撑宽整�
   assert.match(mobileRule, /transform:\s*translateX\(-50%\)/)
   assert.match(mobileRule, /max-width:\s*min\(220px, calc\(100vw - 32px\)\)/)
 })
+
+test('账房底栏可见的整个平板区间都有底部留白', () => {
+  const main = read('src/styles/main.css')
+  assert.match(main, /@media \(min-width:1081px\)\{\.cart-mbar\{display:none\}\}/)
+  assert.match(main, /@media \(max-width:1080px\)\{\.cart-main\{padding-bottom:calc\(92px \+ env\(safe-area-inset-bottom\)\)\}\}/)
+  assert.doesNotMatch(main, /@media \(max-width:767px\)[\s\S]*?\.cart-main\{padding-bottom:/)
+})

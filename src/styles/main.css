@@ -453,6 +453,7 @@ section[id]{scroll-margin-top:84px}
 .milestone .box{font-size:10px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px 10px;line-height:1.8;margin-bottom:6px}
 .milestone .box b{color:var(--accent-strong);font-family:var(--font-d);margin-right:6px}
 .milestone .none{font-size:10px;color:var(--ink-35);font-style:italic;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.campaign-ended-note{font-size:11px;color:var(--ink-60);margin:4px 0 10px}
 
 /* ---- 操作按钮 ---- */
 .cart-actions{display:flex;gap:12px;margin-top:16px}
@@ -496,6 +497,7 @@ section[id]{scroll-margin-top:84px}
 
 /* ---- 账房页布局 ---- */
 @media (min-width:1081px){.cart-mbar{display:none}}
+@media (max-width:1080px){.cart-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}}
 @media (max-width:1180px){.cart-layout{grid-template-columns:1fr}.pkg-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.pkg-grid{grid-template-columns:1fr 1fr}.pkg-grid .pkg-card{min-height:0}}
 @media (max-width:420px){.pkg-grid{grid-template-columns:1fr}}
@@ -622,7 +624,6 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .footer .big{font-size:28px}
   .footer .fine{text-align:left}
 
-  .cart-main{padding-bottom:92px}
   .cart-switch{width:100%;display:grid;grid-template-columns:1fr 1fr}
   .cart-switch button{min-height:44px;padding:8px 12px}
   .rate-bar{width:100%!important;min-height:44px;padding:6px!important;flex-wrap:nowrap!important}

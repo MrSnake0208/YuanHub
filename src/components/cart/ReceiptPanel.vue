@@ -47,10 +47,11 @@
 
           <div style="margin-top:14px">
             <div class="head">
-              <span class="tt"><span class="nm">周年限时累充</span><span class="cd">剩余: {{ track1Cd }}</span></span>
-              <span v-if="next1 !== null" class="next">距下一档还差 <b>{{ next1 - totalPoints }}</b> 分</span>
-              <span v-else class="done">已全部解锁</span>
+              <span class="tt"><span class="nm">周年限时累充</span><span class="cd">{{ track1Campaign.active ? '剩余: ' : '' }}{{ track1Campaign.label }}</span></span>
+              <span v-if="track1Campaign.active && next1 !== null" class="next">距下一档还差 <b>{{ next1 - totalPoints }}</b> 分</span>
+              <span v-else-if="track1Campaign.active" class="done">已全部解锁</span>
             </div>
+            <p v-if="!track1Campaign.active" class="campaign-ended-note">档位仅供历史参考，不再表示可领取奖励。</p>
             <div v-if="unlocked1.length > 0">
               <div v-for="(m, i) in unlocked1" :key="i" class="box">
                 <b>{{ m.points }}积分</b>{{ m.rewards.map(r => r.name + ' ×' + r.count).join('、') }}
@@ -61,10 +62,11 @@
 
           <div style="margin-top:16px">
             <div class="head">
-              <span class="tt"><span class="nm">男主限时累充</span><span class="cd">剩余: {{ track2Cd }}</span></span>
-              <span v-if="next2 !== null" class="next">距下一档还差 <b>{{ next2 - totalPoints }}</b> 分</span>
-              <span v-else class="done">已全部解锁</span>
+              <span class="tt"><span class="nm">男主限时累充</span><span class="cd">{{ track2Campaign.active ? '剩余: ' : '' }}{{ track2Campaign.label }}</span></span>
+              <span v-if="track2Campaign.active && next2 !== null" class="next">距下一档还差 <b>{{ next2 - totalPoints }}</b> 分</span>
+              <span v-else-if="track2Campaign.active" class="done">已全部解锁</span>
             </div>
+            <p v-if="!track2Campaign.active" class="campaign-ended-note">档位仅供历史参考，不再表示可领取奖励。</p>
             <div v-if="unlocked2.length > 0">
               <div v-for="(m, i) in unlocked2" :key="i" class="box">
                 <b>{{ m.points }}积分</b>{{ m.rewards.map(r => r.name + ' ×' + r.count).join('、') }}
@@ -101,8 +103,8 @@ const props = defineProps({
   unlocked2: { type: Array, default: () => [] },
   next1: { type: Number, default: null },
   next2: { type: Number, default: null },
-  track1Cd: { type: String, default: '' },
-  track2Cd: { type: String, default: '' },
+  track1Campaign: { type: Object, default: () => ({ active: false, label: '活动时间待确认' }) },
+  track2Campaign: { type: Object, default: () => ({ active: false, label: '活动时间待确认' }) },
   version: { type: String, default: 'daihao' },
   exportBusy: { type: Boolean, default: false }
 })

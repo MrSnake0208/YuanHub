@@ -153,8 +153,8 @@
                   :unlocked2="unlocked2"
                   :next1="next1"
                   :next2="next2"
-                  :track1-cd="track1Cd"
-                  :track2-cd="track2Cd"
+                  :track1-campaign="track1Campaign"
+                  :track2-campaign="track2Campaign"
                   :version="version"
                   :export-busy="exportBusy"
                   @clear="clearCart"
@@ -263,7 +263,7 @@ import PlanSaveDialog from "../../components/cart/PlanSaveDialog.vue";
 import PlanListDialog from "../../components/cart/PlanListDialog.vue";
 import html2canvas from "html2canvas";
 import { packagesDaihao, packagesRu } from "../../data/packages.js";
-import { track1, track2 } from "../../data/rewards.js";
+import { track1, track2, campaignEnds } from "../../data/rewards.js";
 import {
   createPlan,
   updatePlan,
@@ -447,19 +447,18 @@ const next2 = computed(() => {
 });
 
 // ---- 倒计时 ----
-function formatCountdown(endStr) {
-  const end = new Date(endStr).getTime();
-  const diff = end - now.value;
-  if (diff <= 0) return "已结束";
+function campaignState(endStr) {
+  const diff = Date.parse(endStr) - now.value;
+  if (!Number.isFinite(diff)) return { active: false, label: "活动时间待确认" };
+  if (diff <= 0) return { active: false, label: "活动已结束" };
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
   const minutes = Math.floor((diff % 3600000) / 60000);
   const seconds = Math.floor((diff % 60000) / 1000);
-  if (days > 0) return days + "天 " + hours + "小时";
-  return hours + "小时 " + minutes + "分 " + seconds + "秒";
+  return { active: true, label: days > 0 ? days + "天 " + hours + "小时" : hours + "小时 " + minutes + "分 " + seconds + "秒" };
 }
-const track1Cd = computed(() => formatCountdown("2026-04-29T23:59:59+08:00"));
-const track2Cd = computed(() => formatCountdown("2026-05-13T23:59:59+08:00"));
+const track1Campaign = computed(() => campaignState(campaignEnds.track1));
+const track2Campaign = computed(() => campaignState(campaignEnds.track2));
 
 // ---- 操作 ----
 const drawFilters = [
