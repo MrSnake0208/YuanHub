@@ -553,6 +553,7 @@
                   @click="toggleAgentSortDirection"
                 >
                   <ArrowDown :size="16" aria-hidden="true" />
+                  <span class="agent-sort-direction-label">{{ agentSortDirection === 'asc' ? '升序' : '降序' }}</span>
                 </button>
                 <details
                   v-if="!editingStock"
@@ -818,6 +819,7 @@
                             @click="startSubsectionStockEdit(subcategory)"
                           >
                             <Pencil :size="14" aria-hidden="true" />
+                            <span class="subsection-edit-label">编辑</span>
                           </button>
                         </div>
                         <div
@@ -905,6 +907,7 @@
                 </section>
               </div>
               <div v-else class="agent-directory">
+                <p class="agent-favorite-help">点心纸卡片右上角的星标，可特别关注密探。</p>
                 <section
                   v-for="group in agentGroups"
                   :key="group.id"
@@ -4929,6 +4932,9 @@ onBeforeUnmount(function () {
 .agent-sort-direction svg {
   transition: transform 0.18s var(--ease);
 }
+.agent-sort-direction-label {
+  display: none;
+}
 .agent-sort-direction.asc svg {
   transform: rotate(180deg);
 }
@@ -5984,8 +5990,10 @@ onBeforeUnmount(function () {
 .subsection-edit {
   position: relative;
   flex: none;
-  width: 30px;
-  height: 30px;
+  min-width: 44px;
+  min-height: 44px;
+  gap: 4px;
+  padding: 0 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5994,6 +6002,12 @@ onBeforeUnmount(function () {
   color: var(--accent-strong);
   cursor: pointer;
   transition: color 0.18s var(--ease);
+}
+.subsection-head .subsection-edit-label {
+  font-family: var(--font-b);
+  font-size: 11px;
+  font-weight: 800;
+  color: currentColor;
 }
 .subsection-edit svg {
   transition: transform 0.18s var(--ease);
@@ -6513,6 +6527,12 @@ onBeforeUnmount(function () {
 }
 .manifest-agents .agent-directory {
   min-width: 0;
+}
+.agent-favorite-help {
+  margin: 0 0 8px;
+  color: var(--ink-60);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .manifest-agents .agent-group {
   position: relative;
@@ -7409,8 +7429,8 @@ onBeforeUnmount(function () {
     align-self: auto;
   }
   .subsection-edit {
-    width: 44px;
-    height: 44px;
+    width: auto;
+    min-height: 44px;
   }
   .subsection-shelves .item-subsection > .slot-grid {
     grid-template-columns: repeat(3, minmax(0, 92px));
@@ -7721,6 +7741,13 @@ onBeforeUnmount(function () {
   }
   .agent-sort-row .agent-sort-direction {
     width: 100%;
+    flex-direction: column;
+    gap: 0;
+  }
+  .agent-sort-direction-label {
+    display: block;
+    font-size: 10px;
+    line-height: 1;
   }
   .agent-controls.is-editing .agent-sort-row {
     grid-template-columns: minmax(0, 1fr) 44px;
@@ -8094,7 +8121,7 @@ onBeforeUnmount(function () {
 .report-book-fallback h2 { font-family: var(--font-s); font-size: 20px; color: var(--ink) }
 @media (max-width: 760px) {
   .report-book-switch.acquired-type-switch { width: fit-content; max-width: 100%; flex: 0 0 auto; flex-wrap: nowrap; gap: 2px; margin-left: auto; padding: 3px }
-  .report-book-switch.acquired-type-switch > button { min-height: 40px; padding: 6px 8px; font-size: 11px; line-height: 1.2 }
+  .report-book-switch.acquired-type-switch > button { min-height: 44px; padding: 6px 8px; font-size: 11px; line-height: 1.2 }
   .report-book-label-full { display: none }
   .report-book-label-compact { display: inline }
   .report-book-fallback { align-items: center; flex-wrap: nowrap; gap: 8px; padding: 14px }
@@ -8102,6 +8129,6 @@ onBeforeUnmount(function () {
   .report-book-fallback h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 }
 @media (max-width: 360px) {
-  .report-book-switch.acquired-type-switch > button { min-height: 38px; padding-inline: 6px; font-size: 10px }
+  .report-book-switch.acquired-type-switch > button { min-height: 44px; padding-inline: 6px; font-size: 10px }
 }
 </style>
