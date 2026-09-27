@@ -9,12 +9,14 @@ import FeedbackAttachmentPicker from '../src/components/feedback/FeedbackAttachm
 import * as api from '../src/api/feedback.js'
 import { markFeedbackNotificationsRead } from '../src/api/notifications.js'
 import { uploadMedia } from '../src/api/media.js'
+import { dialog } from '../src/utils/dialog.js'
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
   const route = reactive({ query: {} })
-  return { useRoute: () => route, useRouter: () => ({ replace: vi.fn() }) }
+  return { useRoute: () => route, useRouter: () => ({ replace: vi.fn() }), onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn() }
 })
+vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/api/feedback.js', () => ({
   getFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(),
   createFeedback: vi.fn(), appendMyFeedbackMessage: vi.fn(), appendManagedFeedbackMessage: vi.fn(),
@@ -104,6 +106,7 @@ beforeEach(() => {
   api.updateManagedFeedbackStatus.mockReset()
   uploadMedia.mockReset()
   markFeedbackNotificationsRead.mockClear()
+  dialog.confirm.mockResolvedValue(true)
 })
 
 describe.each([
@@ -246,6 +249,7 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
   await wrapper.get('.feedback-hero-action').trigger('click')
   const form = wrapper.get('.feedback-modal form')
   await form.findAll('select')[1].setValue('OPERATOR')
+  await form.get('input[maxlength="120"]').setValue('新问题')
   await form.get('textarea').setValue('new issue')
   await form.trigger('submit'); await form.trigger('submit'); await flushPromises()
   expect(api.createFeedback).toHaveBeenCalledTimes(1)
@@ -254,6 +258,55 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
   expect(api.listMyFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, q: undefined, type: undefined, category: undefined }))
   expect(wrapper.get('[role="dialog"]').text()).toContain('conversation rpt_new')
   expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+})
+
+it('完成反馈须确认，成功后切到已完成列表并告知去向', async () => {
+  const wrapper = render(MyFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.findAll('.feedback-detail-actions button').find(button => button.text().includes('标记完成')).trigger('click')
+  await flushPromises()
+  expect(api.updateMyFeedbackStatus).not.toHaveBeenCalled()
+  await wrapper.findAll('.feedback-detail-actions button').find(button => button.text().includes('标记完成')).trigger('click')
+  await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '标记反馈完成？' }))
+  expect(api.updateMyFeedbackStatus).toHaveBeenCalledWith('rpt_a', 'RESOLVED')
+  expect(wrapper.get('.feedback-public-notice').text()).toContain('已完成')
+  expect(wrapper.findAll('[role="tab"]').find(tab => tab.text() === '已完成').attributes('aria-selected')).toBe('true')
+})
+
+it('弹窗关闭、遮罩和 Esc 对文字与附件草稿使用同一放弃确认', async () => {
+  const wrapper = render(MyFeedback); await flushPromises()
+  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.feedback-modal input[maxlength="120"]').setValue('草稿标题')
+  await wrapper.get('.feedback-modal textarea').setValue('草稿正文')
+  await wrapper.findComponent(FeedbackAttachmentPicker).props('media').addFiles([new File(['log'], 'draft.log', { type: 'text/plain' })])
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.get('[aria-label="关闭提交反馈弹窗"]').trigger('click'); await flushPromises()
+  expect(wrapper.get('.feedback-modal input[maxlength="120"]').element.value).toBe('草稿标题')
+  expect(wrapper.get('.feedback-modal .feedback-attachment-item').exists()).toBe(true)
+  dialog.confirm.mockResolvedValueOnce(false)
+  await wrapper.get('.modal-mask').trigger('click'); await flushPromises()
+  expect(wrapper.get('.feedback-modal textarea').element.value).toBe('草稿正文')
+  await wrapper.get('.feedback-modal').trigger('keydown', { key: 'Escape' }); await flushPromises()
+  expect(wrapper.find('.feedback-modal').exists()).toBe(false)
+  await wrapper.get('.feedback-hero-action').trigger('click')
+  expect(wrapper.get('.feedback-modal input[maxlength="120"]').element.value).toBe('')
+  expect(wrapper.find('.feedback-modal .feedback-attachment-item').exists()).toBe(false)
+})
+
+it('空标题在附件上传与创建请求之前拦截', async () => {
+  const wrapper = render(MyFeedback); await flushPromises()
+  await wrapper.get('.feedback-hero-action').trigger('click')
+  const form = wrapper.get('.feedback-modal form')
+  await form.findAll('select')[1].setValue('OPERATOR')
+  await form.get('input[maxlength="120"]').setValue('   ')
+  await form.get('textarea').setValue('具体问题')
+  expect(wrapper.get('.feedback-modal textarea').element.value).toBe('具体问题')
+  await form.trigger('submit'); await flushPromises()
+  expect(wrapper.get('.feedback-modal .feedback-form-error').text()).toContain('请填写标题')
+  expect(uploadMedia).not.toHaveBeenCalled()
+  expect(api.createFeedback).not.toHaveBeenCalled()
 })
 
 it('personal quota exhaustion explains why supplementing is unavailable without removing the close action', async () => {

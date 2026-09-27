@@ -169,7 +169,8 @@
               </label>
               <label class="full">
                 <span>标题</span>
-                <input v-model="newFeedback.title" class="feedback-form-control" type="text" maxlength="120" placeholder="用一句话描述问题或建议" @input="scheduleSimilarSearch" />
+                <input v-model="newFeedback.title" class="feedback-form-control" type="text" maxlength="120" :aria-invalid="Boolean(formError && !newFeedback.title.trim())" placeholder="用一句话描述问题或建议" @input="formError = ''; scheduleSimilarSearch()" />
+                <small v-if="formError && !newFeedback.title.trim()" class="feedback-form-error" role="alert">请填写标题</small>
               </label>
               <SimilarFeedbackList
                 class="full"
@@ -233,6 +234,8 @@ import {
 } from '@/store/notificationUnread.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
+import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
+import { dialog } from '@/utils/dialog.js'
 import '@/styles/feedback-workspace.css'
 
 const PAGE_SIZE = 20
@@ -279,6 +282,10 @@ const updatingStatus = ref(false)
 const replyContent = ref('')
 const newFeedback = ref({ type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false })
 const newMedia = useFeedbackMedia()
+const newFeedbackDirty = computed(() => showNewForm.value && (
+  Boolean(newFeedback.value.title.trim() || newFeedback.value.content.trim() || newFeedback.value.category || newFeedback.value.clientInfoConsent || newFeedback.value.type !== 'BUG') || newMedia.items.length > 0
+))
+const confirmNewFeedbackDiscard = useUnsavedChanges(newFeedbackDirty, '反馈草稿')
 const similarItems = ref([])
 const similarLoading = ref(false)
 const publicNotice = ref('')
@@ -492,10 +499,18 @@ async function closeFeedback(id) {
   const requestId = detailRequestId
   const userId = currentUserId()
   updatingStatus.value = true
-  detailError.value = ''
   try {
+    const confirmed = await dialog.confirm({ title: '标记反馈完成？', message: '完成后这条反馈会移至「已完成」列表。', confirmText: '标记完成' })
+    if (!confirmed || !isCurrentDetail(requestId, id, userId)) return
+    detailError.value = ''
     await updateMyFeedbackStatus(id, 'RESOLVED')
-    if (isCurrentDetail(requestId, id, userId)) await reloadFromFirstPage()
+    if (isCurrentDetail(requestId, id, userId)) {
+      filterStatus.value = '已完成'
+      await reloadFromFirstPage()
+      publicNotice.value = '工单已完成，已切换到「已完成」列表。'
+      await nextTick()
+      document.querySelector('.feedback-public-notice')?.scrollIntoView?.({ block: 'nearest' })
+    }
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId)) detailError.value = e.message || '操作失败'
   } finally {
@@ -503,10 +518,12 @@ async function closeFeedback(id) {
   }
 }
 
-function closeNewFeedback() {
+async function closeNewFeedback() {
   if (submitting.value) return
+  if (!await confirmNewFeedbackDiscard()) return
   showNewForm.value = false
   formError.value = ''
+  newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
   newMedia.clear()
   resetSimilar()
 }
@@ -560,9 +577,11 @@ function handleSimilarView(item) {
 }
 
 async function submitFeedback() {
+  const title = newFeedback.value.title.trim()
+  if (!title) { formError.value = '请填写标题'; return }
   const content = newFeedback.value.content.trim()
   if (!content || !newFeedback.value.category || submitting.value) return
-  const payload = { ...newFeedback.value, content }
+  const payload = { ...newFeedback.value, title, content }
   const userId = currentUserId()
   submitting.value = true
   formError.value = ''
