@@ -1,6 +1,7 @@
 <template>
   <AuthLayout title="欢迎回来" sub="登录本站账号 · 内测资格另行领取">
     <p v-if="route.query.loggedOut === '1'" class="logout-result" role="status">已退出登录。再次访问个人数据需要登录。</p>
+    <p v-if="route.query.registered === '1'" class="logout-result" role="status">注册成功，请登录。</p>
     <form class="auth-form" @submit.prevent="onSubmit" novalidate>
           <div class="field">
             <label for="login-email">邮箱 <em>*</em></label>
@@ -22,18 +23,13 @@
 
           <div class="field">
             <label for="login-password">密码 <em>*</em></label>
-            <div class="input-wrap" :class="{ focus: focusField === 'password' }">
-              <input
+            <PasswordInput
                 id="login-password"
                 v-model="form.password"
                 name="password"
-                type="password"
                 placeholder="请输入密码"
                 autocomplete="current-password"
-                @focus="focusField = 'password'"
-                @blur="focusField = ''"
               />
-            </div>
             <p class="field-err" v-if="errors.password">{{ errors.password }}</p>
           </div>
 
@@ -56,6 +52,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'
+import PasswordInput from '../../components/PasswordInput.vue'
 import BetaNotice from '../../components/beta/BetaNotice.vue'
 import { safeBetaRedirect } from '../../utils/betaAccess.js'
 // store/auth.js 由 eng-api 按契约提供：{ login(email, password) } 返回 Promise

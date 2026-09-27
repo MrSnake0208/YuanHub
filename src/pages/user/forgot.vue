@@ -20,8 +20,8 @@
             <p class="field-err" v-if="errors.email">{{ errors.email }}</p>
             <p class="field-err grn" v-else-if="codeMsg">{{ codeMsg }}</p>
           </div>
-          <p class="form-err" v-if="serverMsg"><span class="dot"></span>{{ serverMsg }}</p>
-          <button class="btn-submit" type="submit" :disabled="sending || countdown > 0">
+          <p class="form-err" v-if="serverMsg" role="alert"><span class="dot"></span>{{ serverMsg }}</p>
+          <button class="btn-submit" type="submit" :disabled="sending || (countdown > 0 && sentEmail !== form.email)">
             下一步
           </button>
         </form>
@@ -35,21 +35,22 @@
             </div>
             <p class="field-err" v-if="errors.activeCode">{{ errors.activeCode }}</p>
           </div>
+          <div class="recovery-actions">
+            <button class="code-btn" type="button" :disabled="sending || countdown > 0" @click="onSend">{{ sending ? '发送中…' : countdown > 0 ? `重新发送（${countdown}s）` : '重新发送验证码' }}</button>
+            <button class="code-btn" type="button" @click="step = 1">返回上一步</button>
+          </div>
+          <p v-if="codeMsg" class="field-err grn" role="status">{{ codeMsg }}</p>
           <div class="field">
             <label for="forgot-password">新密码 <em>*</em></label>
-            <div class="input-wrap" :class="{ focus: focusField === 'password' }">
-              <input id="forgot-password" v-model="form.password" name="password" type="password" placeholder="8~32 位" autocomplete="new-password" @focus="focusField='password'" @blur="focusField=''" />
-            </div>
+            <PasswordInput id="forgot-password" v-model="form.password" name="password" placeholder="8~32 位" autocomplete="new-password" />
             <p class="field-err" v-if="errors.password">{{ errors.password }}</p>
           </div>
           <div class="field">
             <label for="forgot-confirm">确认新密码 <em>*</em></label>
-            <div class="input-wrap" :class="{ focus: focusField === 'confirm' }">
-              <input id="forgot-confirm" v-model="form.confirm" name="confirm-password" type="password" placeholder="再次输入密码" autocomplete="new-password" @focus="focusField='confirm'" @blur="focusField=''" />
-            </div>
+            <PasswordInput id="forgot-confirm" v-model="form.confirm" name="confirm-password" placeholder="再次输入密码" autocomplete="new-password" />
             <p class="field-err" v-if="errors.confirm">{{ errors.confirm }}</p>
           </div>
-          <p class="form-err" v-if="serverMsg"><span class="dot"></span>{{ serverMsg }}</p>
+          <p class="form-err" v-if="serverMsg" role="alert"><span class="dot"></span>{{ serverMsg }}</p>
           <button class="btn-submit" type="submit" :disabled="loading">
             {{ loading ? '提交中…' : '重置密码' }}
           </button>
@@ -70,6 +71,7 @@
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'
+import PasswordInput from '../../components/PasswordInput.vue'
 import BetaNotice from '../../components/beta/BetaNotice.vue'
 import { safeBetaRedirect } from '../../utils/betaAccess.js'
 // api/user.js 由 eng-api 按契约提供：sendResetVCode({email}) { resetPassword({email,activeCode,password}) }
@@ -85,6 +87,7 @@ const serverMsg = ref('')
 const codeMsg = ref('')
 const focusField = ref('')
 const countdown = ref(0)
+const sentEmail = ref('')
 let timer = null
 
 const form = reactive({ email: '', activeCode: '', password: '', confirm: '' })
@@ -94,6 +97,7 @@ const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const emailOk = computed(() => emailRe.test(form.email))
 
 function startCountdown() {
+  clearTimer()
   countdown.value = 60
   timer = setInterval(() => {
     countdown.value--
@@ -104,6 +108,9 @@ function clearTimer() { if (timer) { clearInterval(timer); timer = null } }
 onUnmounted(clearTimer)
 
 async function onSend() {
+  if (sending.value) return
+  if (sentEmail.value === form.email && countdown.value > 0 && step.value === 1) { step.value = 2; return }
+  if (countdown.value > 0) return
   codeMsg.value = ''
   serverMsg.value = ''
   errors.email = ''
@@ -112,6 +119,7 @@ async function onSend() {
   sending.value = true
   try {
     await sendResetVCode({ email: form.email })
+    sentEmail.value = form.email
     codeMsg.value = '验证码已发送，请注意查收'
     startCountdown()
     step.value = 2
@@ -171,6 +179,7 @@ async function onSubmit() {
 .input-wrap input::placeholder { color: var(--ink-35); }
 .split-row { display: flex; gap: 10px; align-items: center; }
 .split-row .input-wrap { flex: 1; }
+.recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .code-btn {
   flex: none; border: 1.5px solid var(--line); background: var(--surface);
   border-radius: 999px; padding: 0 16px; height: 44px;
