@@ -7,7 +7,7 @@
           <div class="hero-copy">
             <span class="today-kicker">YUANHUB · 今日一览</span>
             <h1>今天也来啦</h1>
-            <p>不用记住所有页面。先看看今天值得做什么，再从这里去到对应工具。</p>
+            <p>先确认账号与数据准备状态，再从下方入口进入已可用的工具。</p>
             <div class="hero-actions">
               <router-link class="primary-action" :to="heroPrimaryTo">
                 {{ heroPrimaryLabel }}
@@ -156,10 +156,15 @@
             data-tour="today-overview"
             aria-labelledby="today-coming-soon-title"
           >
-            <span class="coming-soon-emblem" aria-hidden="true"><Hammer :size="26" /></span>
-            <span class="coming-soon-kicker">WORK IN PROGRESS</span>
-            <h2 id="today-coming-soon-title">老鸢赶工中…</h2>
-            <p>「今天先做」「一眼看懂现在」和功能入口正在重做，很快就会回到这里。这段时间可以从左侧栏继续使用密探名册、库存追踪和星石背包。</p>
+            <span class="coming-soon-emblem" aria-hidden="true"><ArrowRight :size="26" /></span>
+            <span class="coming-soon-kicker">AVAILABLE NOW</span>
+            <h2 id="today-coming-soon-title">从现有工具继续</h2>
+            <p>今日建议与状态总览仍在重做。密探、库存和星石工具已可使用，可以直接进入：</p>
+            <nav class="today-tool-links" aria-label="今日一览的工具入口">
+              <router-link to="/operator">密探名册</router-link>
+              <router-link to="/inventory">库存追踪</router-link>
+              <router-link to="/star">星石背包</router-link>
+            </nav>
           </section>
         </div>
       </section>
@@ -170,7 +175,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { ArrowRight, Gem, Hammer, Link2, PackageOpen, Users } from '@lucide/vue'
+import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
@@ -199,7 +204,7 @@ const DATA_SETUP_CONFIG = Object.freeze([
     manualTo: '/operator?tab=current',
     manualLabel: '去密探名册录入',
     emptyDescription: '还没有密探养成数据。可以从密探名册手动录入，也可以让 MaaYuan 自动采集。',
-    readyDescription: '密探数据已经可用于今日一览和养成相关功能。',
+    readyDescription: '密探数据已录入，可在密探名册查看和继续维护。',
     autoSync: true
   },
   {
@@ -211,7 +216,7 @@ const DATA_SETUP_CONFIG = Object.freeze([
     manualTo: '/inventory',
     manualLabel: '去库存追踪录入',
     emptyDescription: '还没有库存数据。可以从库存追踪手动维护，也可以让 MaaYuan 自动识别背包。',
-    readyDescription: '库存数据已经可用于今日一览和材料相关功能。',
+    readyDescription: '库存数据已录入，可在库存追踪查看和继续维护。',
     autoSync: true
   },
   {
@@ -514,6 +519,9 @@ onMounted(loadDashboard)
 .coming-soon-kicker { position: relative; z-index: 1; color: var(--tea); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
 .today-coming-soon h2 { position: relative; z-index: 1; margin-top: 4px; font-family: var(--font-s); font-size: clamp(30px, 4vw, 44px); font-weight: 900; letter-spacing: -.02em; }
 .today-coming-soon p { position: relative; z-index: 1; max-width: 44ch; color: rgba(73, 59, 44, .78); font-size: 13px; line-height: 1.85; }
+.today-tool-links { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.today-tool-links a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 800; text-decoration: none; }
+.today-tool-links a:hover { border-color: var(--accent); color: var(--accent-strong); }
 @media (prefers-reduced-motion: no-preference) {
   .coming-soon-emblem { animation: coming-soon-bob 3.6s ease-in-out infinite; }
 }

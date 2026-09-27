@@ -19,8 +19,8 @@ test('uses 今日一览 as the default page', function () {
   assert.equal(route.meta.title, '今日一览 — 鸢鸢相抱 · YuanHub')
 
   const page = readFileSync(new URL('../src/pages/today/index.vue', import.meta.url), 'utf8')
-  // 01「今天先做」/ 02「一眼看懂现在」/ 03「你可以在这里」暂时下线，只保留施工占位。
-  assert.match(page, /老鸢赶工中/)
+  // 01「今天先做」/ 02「一眼看懂现在」暂时下线，保留可用工具入口。
+  assert.match(page, /密探、库存和星石工具已可使用/)
   assert.match(page, /today-coming-soon-title/)
   assert.match(page, /data-tour="today-overview"/)
   assert.doesNotMatch(page, /class="task-grid"/)
@@ -39,8 +39,8 @@ test('uses 今日一览 as the default page', function () {
   assert.match(page, /getTodayOnboardingStage/)
   assert.match(page, /getTodayDataReadiness/)
   assert.match(page, /data-readiness-grid/)
-  assert.match(page, /密探数据已经可用于今日一览/)
-  assert.match(page, /库存数据已经可用于今日一览/)
+  assert.match(page, /密探数据已录入，可在密探名册查看/)
+  assert.match(page, /库存数据已录入，可在库存追踪查看/)
   assert.match(page, /星石数据已经可用于背包整理/)
   assert.match(page, /不想手填，可以连接 MaaYuan/)
   assert.match(page, /推荐/)

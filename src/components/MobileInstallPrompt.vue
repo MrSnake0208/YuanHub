@@ -162,7 +162,7 @@ onBeforeUnmount(function () {
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 17px 48px 15px 17px;
+  padding: 17px 54px 15px 17px;
 }
 .pwa-install-main img {
   width: 52px;
@@ -190,11 +190,11 @@ onBeforeUnmount(function () {
 .pwa-install-close {
   position: absolute;
   z-index: 2;
-  top: 10px;
-  right: 10px;
+  top: 5px;
+  right: 5px;
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -272,7 +272,7 @@ onBeforeUnmount(function () {
 @media (max-width: 420px) {
   .pwa-install-prompt { right: 8px; left: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }
   .pwa-install-card { border-radius: 16px; }
-  .pwa-install-main { padding: 15px 42px 13px 14px; }
+  .pwa-install-main { padding: 15px 50px 13px 14px; }
   .pwa-install-main img { width: 48px; height: 48px; }
   .pwa-install-title { font-size: 15.5px; }
   .pwa-install-copy { font-size: 11.5px; }

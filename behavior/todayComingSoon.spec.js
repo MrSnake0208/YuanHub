@@ -43,13 +43,18 @@ beforeEach(() => {
   getCurrentStarState.mockResolvedValue({ inventory: [] })
 })
 
-it('访客看到重做占位，01/02/03 三个板块不再渲染', async () => {
+it('访客看到与现有内容一致的首页说明和可用工具入口', async () => {
   const wrapper = render()
   await flushPromises()
 
   expect(wrapper.find('.today-coming-soon').exists()).toBe(true)
-  expect(wrapper.text()).toContain('老鸢赶工中…')
-  expect(wrapper.text()).toContain('WORK IN PROGRESS')
+  expect(wrapper.text()).toContain('先确认账号与数据准备状态')
+  expect(wrapper.text()).toContain('密探、库存和星石工具已可使用')
+  expect(wrapper.text()).not.toContain('先看看今天值得做什么')
+  expect(wrapper.text()).not.toContain('左侧栏')
+  const toolLinks = wrapper.find('.today-tool-links').findAllComponents(RouterLinkStub)
+  expect(toolLinks.map(link => link.props('to'))).toEqual(['/operator', '/inventory', '/star'])
+  expect(toolLinks.map(link => link.text())).toEqual(['密探名册', '库存追踪', '星石背包'])
 
   expect(wrapper.find('.task-grid').exists()).toBe(false)
   expect(wrapper.find('.summary-grid').exists()).toBe(false)
@@ -89,6 +94,7 @@ it('登录且有子账号与数据时仍只渲染占位，账号上下文保持�
 it('占位不切断建档数据链路：缺数据时建档检查仍按真实读取结果显示尚未录入', async () => {
   signIn()
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { level: 1 } } })
 
   const wrapper = render()
   await flushPromises()
@@ -97,5 +103,6 @@ it('占位不切断建档数据链路：缺数据时建档检查仍按真实读�
   expect(getCurrentStarState).toHaveBeenCalled()
   expect(wrapper.find('.data-readiness-grid').exists()).toBe(true)
   expect(wrapper.text()).toContain('尚未录入')
+  expect(wrapper.text()).toContain('密探数据已录入，可在密探名册查看和继续维护')
   expect(wrapper.find('.today-coming-soon').exists()).toBe(true)
 })
