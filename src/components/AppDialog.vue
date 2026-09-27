@@ -2,10 +2,10 @@
   <Teleport to="body">
     <Transition name="dialog">
       <div v-if="state.visible" class="dialog-mask" @click.self="onBackdrop">
-        <div ref="dialogEl" class="dialog" role="dialog" aria-modal="true" @keydown.esc.prevent="onCancel">
+        <div ref="dialogEl" class="dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message" tabindex="-1">
           <div class="dialog-head">
-            <span class="dialog-title">
-              <span class="dialog-ic" :class="'ic-' + state.type">
+            <span id="app-dialog-title" class="dialog-title">
+              <span class="dialog-ic" :class="'ic-' + state.type" aria-hidden="true">
                 <component :is="icon" :size="20" :stroke-width="2.2" />
               </span>
               {{ state.title || defaultTitle }}
@@ -16,7 +16,7 @@
           </div>
 
           <div class="dialog-body">
-            <p class="dialog-msg">{{ state.message }}</p>
+            <p id="app-dialog-message" class="dialog-msg">{{ state.message }}</p>
             <div v-if="state.mode === 'choice'" class="dialog-choices">
               <button
                 v-for="(choice, index) in state.choices"
@@ -77,14 +77,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import { X, Info, AlertTriangle, CheckCircle2, ChevronRight } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
+import { useModalFocus } from '@/composables/useModalFocus.js'
 
 const state = dialog._state
 const inputEl = ref(null)
 const confirmEl = ref(null)
 const firstChoiceEl = ref(null)
+const dialogEl = ref(null)
 
 const ICONS = { info: Info, danger: AlertTriangle, success: CheckCircle2 }
 const icon = computed(function () {
@@ -121,23 +123,15 @@ function setFirstChoice(element) {
   firstChoiceEl.value = element
 }
 
-// 打开时聚焦：prompt 聚焦输入框并全选；其余聚焦确认按钮，便于回车/空格操作
-watch(
-  function () { return state.visible },
-  function (visible) {
-    if (!visible) return
-    nextTick(function () {
-      if (state.mode === 'choice' && firstChoiceEl.value) {
-        firstChoiceEl.value.focus()
-      } else if (state.mode === 'prompt' && inputEl.value) {
-        inputEl.value.focus()
-        inputEl.value.select()
-      } else if (confirmEl.value) {
-        confirmEl.value.focus()
-      }
-    })
-  }
-)
+useModalFocus(() => state.visible, dialogEl, {
+  initialFocus: () => state.mode === 'choice' ? firstChoiceEl.value
+    : state.mode === 'prompt' ? inputEl.value
+      : state.type === 'danger' ? dialogEl.value?.querySelector('.dlg-btn.ghost')
+        : confirmEl.value,
+  onEscape: onCancel,
+  blocking: true,
+  afterFocus: target => { if (state.mode === 'prompt' && target === inputEl.value) target.select() }
+})
 </script>
 
 <style scoped>
