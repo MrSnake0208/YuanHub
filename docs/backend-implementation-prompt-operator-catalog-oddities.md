@@ -56,7 +56,7 @@
 
 4. 奇闻上限由服务端根据 rarity 统一派生，管理员不能逐个填写：
    - 3 星：attack=300，hp=1560，special=9
-   - 4 星：attack=305，hp=1820，special=11
+   - 4 星：attack=350，hp=1820，special=11
    - 5 星：attack=500，hp=2600，special=15
 
 5. 用户导入、自动采集和普通用户接口都不能修改 specialOddityName、odditySchema 或任何目录上限。
@@ -88,7 +88,7 @@ B. 奇闻规则与响应 DTO
   "rarity": 4,
   "special_oddity_name": "免伤值",
   "oddity_schema": {
-    "attack": { "name": "攻击力", "max": 305 },
+    "attack": { "name": "攻击力", "max": 350 },
     "hp": { "name": "生命值", "max": 1820 },
     "special": { "name": "免伤值", "max": 11 }
   },
@@ -156,7 +156,7 @@ F. Swagger 与后端文档
 
 1. 3/4/5 星分别派生精确上限：
    - 300/1560/9
-   - 305/1820/11
+   - 350/1820/11
    - 500/2600/15
 2. 公共目录输出 attack/hp/special 稳定键、正确名称、special_oddity_name 和空 incomplete_fields；
 3. 缺名时返回 null、降级名称和 incomplete_fields=["special_oddity_name"]；

@@ -271,7 +271,7 @@ JSON Schema 只校验通用范围 `0..31`。生产者必须先根据 `operator_i
   "id": "char_012_yanliang",
   "special_oddity_name": "免伤值",
   "oddity_schema": {
-    "attack": { "name": "攻击力", "max": 305 },
+    "attack": { "name": "攻击力", "max": 350 },
     "hp": { "name": "生命值", "max": 1820 },
     "special": { "name": "免伤值", "max": 11 }
   }
@@ -285,10 +285,10 @@ JSON Schema 只校验通用范围 `0..31`。生产者必须先根据 `operator_i
 | 稀有度 | 攻击力 | 生命值 | 第三属性 |
 |---|---:|---:|---:|
 | 3 星 | 300 | 1560 | 9 |
-| 4 星 | 305 | 1820 | 11 |
+| 4 星 | 350 | 1820 | 11 |
 | 5 星 | 500 | 2600 | 15 |
 
-生产者可以携带 `max` 作为展示/诊断值，但不能覆盖服务端权威上限。4 星 `attack.max=350` 必须被后端判为语义异常。采集端识别到的原始第三项名称只能放在 `diagnostics.raw_oddity_labels.special`，它与公共图鉴不一致时产生 warning，不改写目录或快照键。
+生产者可以携带 `max` 作为展示/诊断值，但不能覆盖服务端权威上限；与服务端上限不一致时后端只记 `oddity_max_mismatch` warning，不改写入库值（例如 4 星 `attack.max=305`）。采集端识别到的原始第三项名称只能放在 `diagnostics.raw_oddity_labels.special`，它与公共图鉴不一致时产生 warning，不改写目录或快照键。
 
 扫描攻生必须和等级、修为、化极、奇闻、已装备星石共同形成 `combat_input_signature`。奇闻部分只签入稳定键及其数值，不签入 `special_oddity_name`、`oddity_schema.*.name` 或纯目录文案版本；因此改名不影响签名。任一数值输入变化后，旧观测保留但转为 `stale`；缺少历史签名时使用 `unverified`。
 
@@ -508,7 +508,7 @@ v3 导出统一写 snake_case `star_level`，不再写旧 camelCase `starLevel`�
 
 1. 有效样例同时通过采集端、前端和后端的同一 Schema；
 2. 非法样例被 Schema 拒绝；
-3. 语义 review 样例通过 Schema，但被后端识别为 4 星奇闻上限异常；
+3. 语义 review 样例通过 Schema，但被后端识别为 4 星奇闻上报上限与目录不一致并给出 `oddity_max_mismatch` warning；
 4. 只导入客观 scan record 不改变已有养成状态、favorite、目标和备注；
 5. 完整备份导出再导入可以恢复客观与主观数据；
 6. 同一 `record_id` 重试不会重复写入；

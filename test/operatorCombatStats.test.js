@@ -52,7 +52,7 @@ test('服务器显示偏好使用稳定枚举，并区分字段缺失', function
 
 test('旧奇闻名称会迁移到稳定键，上限只信任公共图鉴 schema', function () {
   const schema = {
-    attack: { name: '攻击力', max: 305 },
+    attack: { name: '攻击力', max: 350 },
     hp: { name: '生命值', max: 1820 },
     special: { name: '治疗加成', max: 11 }
   }
@@ -62,7 +62,7 @@ test('旧奇闻名称会迁移到稳定键，上限只信任公共图鉴 schema'
     '治疗加成': { current: 15, max: 99 },
     '不会保留的第四项': { current: 1, max: 1 }
   }, [], schema), {
-    attack: { current: 0, max: 305 },
+    attack: { current: 0, max: 350 },
     hp: { current: 0, max: 1820 },
     special: { current: 15, max: 11 }
   })
@@ -91,7 +91,7 @@ test('公共图鉴 schema 保留稳定键，不在前端按稀有度推导上限
 
   const backendSchemas = [
     [300, 1560, 9],
-    [305, 1820, 11],
+    [350, 1820, 11],
     [500, 2600, 15]
   ]
   backendSchemas.forEach(function (limits) {
