@@ -18,7 +18,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
   let subscribers = 0
   const state = reactive({
     campaign: null, mine: null, userId: '', publicLoading: false, personalLoading: false,
-    publicError: '', personalError: '', personalLoaded: false,
+    publicError: '', personalError: '', personalLoaded: false, personalCooldownUntil: 0,
     get canUseBetaFeatures() {
       // The backend owns the final access decision. This also lets administrators bypass
       // beta campaign state without the browser re-applying ordinary-user restrictions.
@@ -31,6 +31,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       meRequest = null
       meAt = 0
       meRateLimitedUntil = 0
+      state.personalCooldownUntil = 0
       state.userId = id
       state.mine = null
       state.personalError = ''
@@ -42,6 +43,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       meRequest = null
       meAt = 0
       meRateLimitedUntil = 0
+      state.personalCooldownUntil = 0
       state.mine = null
       state.personalLoaded = true
       state.personalLoading = false
@@ -77,6 +79,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
       const pending = client.getBetaMe().then(data => {
         if (owner === state.userId && revision === generation) {
           meRateLimitedUntil = 0
+          state.personalCooldownUntil = 0
           state.mine = data; state.personalError = ''; state.personalLoaded = true; meAt = now()
           publicRevision += 1
           state.campaign = data.campaign; state.publicError = ''; publicAt = now(); armDeadline()
@@ -86,10 +89,12 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         if (owner === state.userId && revision === generation) {
           if (error && error.status === 429) {
             meRateLimitedUntil = now() + PERSONAL_RATE_LIMIT_COOLDOWN_MS
+            state.personalCooldownUntil = meRateLimitedUntil
             state.personalLoaded = true
             if (!state.mine) state.personalError = '状态刷新过于频繁，已暂缓自动刷新，请稍后再试。'
           } else {
             meRateLimitedUntil = 0
+            state.personalCooldownUntil = 0
             state.mine = null; state.personalError = error.message || '本人资格读取失败'; state.personalLoaded = true
           }
         }
@@ -115,6 +120,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         if (owner !== state.userId || revision !== generation) return null
         // Invalidate reads started while this mutation was in flight.
         generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
+        state.personalCooldownUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
@@ -134,6 +140,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         const result = await client.withdrawBeta()
         if (owner !== state.userId || revision !== generation) return null
         generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
+        state.personalCooldownUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result
@@ -152,6 +159,7 @@ export function createBetaStore(client = api, now = () => Date.now()) {
         const result = await client.resetLocalTest()
         if (owner !== state.userId || revision !== generation) return null
         generation += 1; meRequest = null; state.personalLoading = false; meRateLimitedUntil = 0
+        state.personalCooldownUntil = 0
         state.mine = result; state.campaign = result.campaign; state.personalError = ''; state.publicError = ''
         state.personalLoaded = true; meAt = now(); publicAt = now(); publicRevision += 1; armDeadline()
         return result

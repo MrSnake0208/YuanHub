@@ -70,3 +70,26 @@ test('withdraw returns real result and access trusts the server decision', async
   beta.campaign = { ...campaign, accessMode: 'CLOSED' }; assert.equal(beta.canUseBetaFeatures, true)
   beta.setIdentity(''); assert.equal(beta.mine, null)
 })
+
+test('personal rate limit exposes a bounded cooldown and clears it after a successful retry', async () => {
+  let now = 1000, calls = 0
+  const beta = createBetaStore({ getBetaMe: async () => {
+    calls++
+    if (calls === 1 || calls === 3) throw Object.assign(new Error('too many'), { status: 429 })
+    return me('WAITING')
+  } }, () => now)
+  beta.setIdentity('A')
+  await beta.refresh({ force: true })
+  assert.equal(beta.personalCooldownUntil, 66000)
+  await beta.refresh({ force: true })
+  assert.equal(calls, 1)
+  now = 66000
+  await beta.refresh({ force: true })
+  assert.equal(calls, 2)
+  assert.equal(beta.personalCooldownUntil, 0)
+  now = 67000
+  await beta.refresh({ force: true })
+  assert.equal(beta.personalCooldownUntil, 132000)
+  beta.setIdentity('B')
+  assert.equal(beta.personalCooldownUntil, 0)
+})

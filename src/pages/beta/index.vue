@@ -84,6 +84,7 @@
                   <h2 id="beta-status-title">{{ copy.title }}</h2>
                   <p class="invite-description">{{ copy.description }}</p>
                   <p v-if="error" class="beta-error" role="alert">{{ error }}</p>
+                  <p v-if="refreshMessage || cooldownSeconds" class="beta-feedback" role="status">{{ cooldownSeconds ? `状态刷新暂缓，约 ${cooldownSeconds} 秒后可重试。` : refreshMessage }}</p>
 
                   <div class="invite-action">
                     <template v-if="!auth.isLoggedIn">
@@ -115,7 +116,7 @@
                     <template v-else-if="waiting">
                       <div class="waiting-note">
                         <Clock3 :size="18" aria-hidden="true" />
-                        <span>已经排上啦，有位置时会自动开通，不用反复刷新。</span>
+                        <span>已经排上啦，有位置时会自动开通；也可以点上方按钮确认当前状态。</span>
                       </div>
                       <button class="beta-text-button" type="button" :disabled="submitting" @click="withdraw">
                         {{ submitting ? '正在处理…' : '不想等了，取消候补' }}
@@ -124,11 +125,23 @@
                     </template>
 
                     <template v-else-if="canJoin">
-                      <button class="beta-button primary" type="button" :disabled="submitting" @click="join">
+                      <details class="rules-details">
+                        <summary>阅读本轮内测完整规则（{{ campaign.rulesVersion }}）</summary>
+                        <div v-if="rulesAvailable" class="rules-body">
+                          <p>这是测试版本，可能出现同步异常、数据错误或回滚；本轮不主动删档，但不能保证绝对不丢档。</p>
+                          <p>登录和注册不占名额。报名后有位置即开通，满额会自动候补；候补按服务器记录的报名顺序递补，不保证正式开放前一定获得资格。</p>
+                          <p>MaaYuan Share 老用户预留名额是共同名额池，按报名顺序领取，并非每人都有一个。预留只覆盖首批，开放后 72 小时未使用部分转为公开名额；扩容不会新增预留。</p>
+                          <p>公开名额按统一队列分配，已有候补优先。取消候补不会删除账号，再次报名会排到队尾；已开通资格不会因不活跃而自动收回。</p>
+                          <p>报名即同意满额时自动候补；获得资格后可以正常使用，也欢迎反馈使用体验。</p>
+                        </div>
+                        <p v-else class="beta-error" role="alert">当前规则版本尚未展示，请稍后刷新状态再报名。</p>
+                      </details>
+                      <label v-if="rulesAvailable" class="rules-consent"><input v-model="rulesAccepted" type="checkbox">我已阅读并同意本轮内测规则（{{ campaign.rulesVersion }}），满额时加入候补</label>
+                      <button class="beta-button primary" type="button" :disabled="submitting || !rulesAvailable || !rulesAccepted" @click="join">
                         {{ submitting ? '正在确认…' : joinButtonLabel }}
                         <ArrowRight v-if="!submitting" :size="17" aria-hidden="true" />
                       </button>
-                      <p class="action-note">点击即表示你已了解这是测试版本；如果当前批次满额，会自动加入候补。</p>
+                      <p class="action-note">确认规则后即可报名；满额时会自动加入候补。</p>
 
                       <details class="preference-details">
                         <summary>顺便告诉我们，你最想体验什么？<span>选填</span></summary>
@@ -332,7 +345,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowRight,
@@ -375,6 +388,10 @@ const submitFailed = ref(false)
 const resetting = ref(false)
 const resetMessage = ref('')
 const resetFailed = ref(false)
+const refreshMessage = ref('')
+const rulesAccepted = ref(false)
+const now = ref(Date.now())
+let clockTimer
 
 const campaign = computed(() => beta.campaign)
 const mine = computed(() => beta.mine)
@@ -406,7 +423,10 @@ const showBetaCommunityEntry = computed(() =>
 const showSteps = computed(() => !['granted', 'open'].includes(copy.value.tone))
 const canResetLocalTest = computed(() => mine.value?.canResetLocalTest === true)
 const inBeta = computed(() => campaign.value?.accessMode === 'BETA' && !!campaign.value?.snapshotAt)
-const showRefresh = computed(() => ['error', 'loading', 'waiting'].includes(copy.value.tone))
+const showRefresh = computed(() => ['error', 'loading', 'waiting'].includes(copy.value.tone) || (canJoin.value && !rulesAvailable.value))
+const cooldownSeconds = computed(() => Math.max(0, Math.ceil((beta.personalCooldownUntil - now.value) / 1000)))
+const rulesAvailable = computed(() => campaign.value?.rulesVersion === 'v1')
+watch(() => campaign.value?.rulesVersion, () => { rulesAccepted.value = false })
 function openBetaCommunity() {
   betaCommunity.open('manual')
 }
@@ -429,10 +449,20 @@ const joinButtonLabel = computed(() => {
 let unsubscribe
 function time(value) { return formatBetaDay(value, campaign.value?.announcementTimezone) }
 function authLink(path) { return { path, query: { redirect: route.fullPath } } }
-async function refresh() { await beta.refresh() }
+async function refresh() {
+  refreshMessage.value = ''
+  now.value = Date.now()
+  if (cooldownSeconds.value) return
+  const before = JSON.stringify([beta.mine, beta.campaign])
+  await beta.refresh({ force: true })
+  now.value = Date.now()
+  if (cooldownSeconds.value) return
+  refreshMessage.value = beta.publicError || beta.personalError || (before === JSON.stringify([beta.mine, beta.campaign]) ? '状态已是最新。' : '状态已更新。')
+}
 
 async function join() {
-  if (submitting.value || !canJoin.value) return
+  if (submitting.value || !canJoin.value || !rulesAvailable.value || !rulesAccepted.value) return
+  refreshMessage.value = ''
   submitting.value = true
   submitMessage.value = ''
   submitFailed.value = false
@@ -440,7 +470,7 @@ async function join() {
     const result = await beta.join({
       campaignId: campaign.value.campaignId,
       rulesVersion: campaign.value.rulesVersion,
-      acceptedTerms: true,
+      acceptedTerms: rulesAccepted.value,
       acceptWaitlist: true,
       intentTags: intentTags.value
     })
@@ -451,7 +481,7 @@ async function join() {
     }
   } catch (e) {
     submitFailed.value = true
-    submitMessage.value = e.message || '暂时无法确认报名结果，请重新确认状态后再试。'
+    submitMessage.value = e?.message?.trim() || '暂时无法确认报名结果，请重新确认状态后再试。'
   } finally {
     submitting.value = false
   }
@@ -459,6 +489,7 @@ async function join() {
 
 async function withdraw() {
   if (!window.confirm('确定取消候补吗？再次报名会重新排到队尾。')) return
+  refreshMessage.value = ''
   submitting.value = true
   submitMessage.value = ''
   submitFailed.value = false
@@ -467,7 +498,7 @@ async function withdraw() {
     submitMessage.value = '已取消候补，账号和公开功能仍可正常使用。'
   } catch (e) {
     submitFailed.value = true
-    submitMessage.value = e.message
+    submitMessage.value = e?.message?.trim() || '取消候补失败，请稍后重试。'
     await beta.refresh()
   } finally {
     submitting.value = false
@@ -495,8 +526,8 @@ async function resetLocalTest() {
   }
 }
 
-onMounted(() => { unsubscribe = beta.subscribe() })
-onBeforeUnmount(() => { unsubscribe?.() })
+onMounted(() => { unsubscribe = beta.subscribe(); clockTimer = setInterval(() => { now.value = Date.now() }, 1000) })
+onBeforeUnmount(() => { unsubscribe?.(); clearInterval(clockTimer) })
 </script>
 
 <style scoped>
@@ -556,6 +587,7 @@ onBeforeUnmount(() => { unsubscribe?.() })
 
 .beta-brand-link {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: 10px;
   color: var(--ink);
@@ -596,6 +628,9 @@ onBeforeUnmount(() => { unsubscribe?.() })
 }
 
 .beta-home-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: var(--tea);
   font-size: 12px;
   font-weight: 800;
@@ -838,8 +873,8 @@ onBeforeUnmount(() => { unsubscribe?.() })
 
 .icon-refresh {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 0;
   border-radius: 50%;
@@ -966,8 +1001,16 @@ onBeforeUnmount(() => { unsubscribe?.() })
 }
 
 .beta-text-button {
-  padding: 2px 0;
+  min-height: 44px;
+  padding: 10px 0;
 }
+
+.rules-details { width: 100%; color: var(--ink); font-size: 13px; }
+.rules-details summary { min-height: 44px; padding: 12px 0; font-weight: 800; cursor: pointer; }
+.rules-body { max-height: 260px; overflow-y: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); line-height: 1.7; }
+.rules-body p { margin: 0 0 8px; }
+.rules-consent { display: flex; min-height: 44px; align-items: center; gap: 10px; color: var(--ink); font-size: 12.5px; line-height: 1.5; cursor: pointer; }
+.rules-consent input { width: 18px; height: 18px; flex: none; accent-color: var(--tea); }
 
 .beta-text-button:disabled {
   opacity: .5;
@@ -1666,9 +1709,7 @@ onBeforeUnmount(() => { unsubscribe?.() })
     padding-inline: 7px;
   }
 
-  .beta-home-link {
-    display: none;
-  }
+  .beta-home-link { font-size: 11px; }
 
   .invite-action,
   .invite-action .beta-button.primary,
