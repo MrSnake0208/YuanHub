@@ -1,7 +1,7 @@
 <template>
   <div class="pkg-card" :class="{ sel: qty > 0 }">
-    <button v-if="isCustom" class="pkg-del" title="删除自定义礼包" aria-label="删除自定义礼包" @click="$emit('remove-custom', pkg.id)">
-      <Trash2 :size="12" />
+    <button v-if="isCustom" class="pkg-del" :title="`删除自定义礼包「${pkg.name}」`" :aria-label="`删除自定义礼包「${pkg.name}」`" @click="$emit('remove-custom', pkg.id)">
+      <Trash2 :size="16" />
     </button>
     <div class="pkg-top">
       <div class="flex-1 min-w-0 pr-2">

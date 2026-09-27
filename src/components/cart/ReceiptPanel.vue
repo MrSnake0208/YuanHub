@@ -1,5 +1,5 @@
 <template>
-  <div ref="el" class="receipt">
+  <div class="receipt">
     <div class="receipt-head">
       <h2><Receipt :size="18" />购物清单</h2>
       <div class="en">Purchase Receipt</div>
@@ -79,15 +79,13 @@
 
   <div class="cart-actions">
     <button class="btn ghost" :disabled="cartItems.length === 0" @click="$emit('clear')"><Trash2 :size="16" />清空</button>
-    <button class="btn primary" :disabled="cartItems.length === 0" @click="exportImage"><Download :size="16" />导出图片</button>
+    <button class="btn primary" :disabled="cartItems.length === 0 || exportBusy" :aria-busy="exportBusy" @click="$emit('export')"><Download :size="16" />{{ exportBusy ? '生成中…' : '导出图片' }}</button>
     <button class="btn primary" @click="$emit('save-plan')"><Save :size="16" />保存</button>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { ShoppingCart, Receipt, Gift, Trash2, Download, Save } from '@lucide/vue'
-import html2canvas from 'html2canvas'
 
 const props = defineProps({
   cartItems: { type: Array, default: () => [] },
@@ -105,30 +103,14 @@ const props = defineProps({
   next2: { type: Number, default: null },
   track1Cd: { type: String, default: '' },
   track2Cd: { type: String, default: '' },
-  version: { type: String, default: 'daihao' }
+  version: { type: String, default: 'daihao' },
+  exportBusy: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['clear', 'update-initial', 'save-plan'])
-
-const el = ref(null)
+const emit = defineEmits(['clear', 'update-initial', 'save-plan', 'export'])
 
 function onInitialInput(e) {
   const val = parseInt(e.target.value, 10)
   emit('update-initial', isNaN(val) || val < 0 ? 0 : val)
-}
-
-async function exportImage() {
-  if (!el.value) return
-  el.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  await new Promise(r => setTimeout(r, 500))
-  try {
-    const canvas = await html2canvas(el.value, { scale: 3, backgroundColor: '#FFFDF6', useCORS: true })
-    const link = document.createElement('a')
-    link.href = canvas.toDataURL('image/png')
-    link.download = 'shopping-receipt.png'
-    link.click()
-  } catch (err) {
-    console.error('Failed to export image', err)
-  }
 }
 </script>
