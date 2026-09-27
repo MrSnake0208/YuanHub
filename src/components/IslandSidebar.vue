@@ -1,11 +1,16 @@
 <template>
-  <MobileHeader>
+  <MobileHeader pinned @keydown.esc.prevent="closeMenu">
     <router-link class="mobile-brand" to="/" aria-label="返回首页">
       <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
       <span>YuanHub</span>
     </router-link>
-    <nav class="mobile-nav" aria-label="主要导航">
-      <router-link to="/beta" :class="{ active: $route.path === '/beta' }"><span>内测</span></router-link>
+    <button ref="menuToggle" class="mobile-menu-toggle" type="button" aria-controls="mobile-main-nav" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
+      <Menu :size="20" aria-hidden="true" />
+      <span class="mobile-current">当前：{{ $route.meta?.title?.split(' — ')[0] || 'YuanHub' }}</span>
+      <span class="mobile-menu-label">{{ menuOpen ? '收起' : '全部导航' }}</span>
+    </button>
+    <nav v-show="menuOpen" id="mobile-main-nav" class="mobile-nav" aria-label="主要导航">
+      <router-link to="/beta" :class="{ active: $route.path === '/beta' }"><Ticket :size="19" aria-hidden="true" /><span>内测</span></router-link>
       <router-link
         to="/"
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
@@ -102,6 +107,10 @@
       >
         <CircleHelp :size="19" aria-hidden="true" />
         <span>教程</span>
+      </button>
+      <button v-if="isLoggedIn" type="button" class="mobile-tour-trigger mobile-logout" @click="onLogout">
+        <LogOut :size="19" aria-hidden="true" />
+        <span>退出登录</span>
       </button>
     </nav>
   </MobileHeader>
@@ -229,7 +238,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import MobileHeader from "./MobileHeader.vue";
 import {
   Bell,
@@ -240,17 +249,21 @@ import {
   House,
   Lightbulb,
   LogIn,
+  LogOut,
+  Menu,
   MessageSquareText,
   PackageOpen,
   ScrollText,
   ShoppingCart,
+  Ticket,
   UsersRound,
   UserRound,
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
 import { beta } from "@/store/beta.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { dialog } from "@/utils/dialog.js";
 import { restartOnboardingTour } from "@/utils/onboardingTour.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
@@ -275,18 +288,30 @@ const userName = computed(() =>
 const buildInfoLine = computed(() => formatBuildInfo() + " · 查看更新日志");
 const unreadCount = computed(() => notificationUnreadState.count);
 const router = useRouter();
+const route = useRoute();
+const menuOpen = ref(false);
+const menuToggle = ref(null);
+watch(() => route.fullPath, () => { menuOpen.value = false; });
 let stopFeedbackUnread = null;
 
-function onLogout() {
-  // store/auth.js 的 logout() 会清空登录态并跳转 /login
-  doLogout();
+async function onLogout() {
+  const confirmed = await dialog.confirm({ title: '退出登录？', message: '退出后需要重新登录才能访问个人数据。', confirmText: '退出登录' });
+  if (confirmed) await doLogout('/login?loggedOut=1');
+}
+
+function closeMenu() {
+  if (!menuOpen.value) return;
+  menuOpen.value = false;
+  menuToggle.value?.focus();
 }
 
 function restartTutorial() {
+  menuOpen.value = false;
   void restartOnboardingTour(router);
 }
 
 function openBetaCommunity() {
+  menuOpen.value = false;
   betaCommunity.open("manual");
 }
 
@@ -415,6 +440,16 @@ onBeforeUnmount(function () {
 .mobile-nav a {
   position: relative;
 }
+.mobile-menu-toggle { min-width:0; min-height:44px; flex:1; display:flex; align-items:center; gap:6px; padding:5px 8px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--ink); font:800 12px var(--font-b); cursor:pointer; }
+.mobile-menu-toggle svg { flex:none; }
+.mobile-current { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.mobile-menu-label { flex:none; margin-left:auto; color:var(--tea); }
+.mobile-tour-trigger.mobile-logout { color:var(--rouge); }
+@media (max-width:1080px) {
+  .mobile-nav { position:absolute; top:100%; left:0; right:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; max-height:calc(100dvh - 72px); margin:0; padding:10px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left)); overflow-y:auto; background:var(--cream); border-bottom:1px solid var(--line); box-shadow:0 12px 24px -18px rgba(73,59,44,.45); }
+  .mobile-nav a,.mobile-nav .mobile-tour-trigger { width:100%; min-height:48px; flex:none; }
+}
+@media (max-width:480px) { .mobile-nav { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .mobile-tour-trigger {
   position: relative;
   flex: 0 0 68px;

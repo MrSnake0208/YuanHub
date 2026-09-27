@@ -4,11 +4,14 @@ import Sidebar from '../src/components/IslandSidebar.vue'
 import { auth } from '../src/store/auth.js'
 import { notificationUnreadState } from '../src/store/notificationUnread.js'
 import { subscribeFeedbackUnread } from '../src/store/feedbackUnread.js'
+import { logout } from '../src/store/auth.js'
+import { dialog } from '../src/utils/dialog.js'
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ accessToken: '', userInfo: null }), logout: vi.fn() }
 })
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }), useRoute: () => ({ fullPath: '/' }) }))
+vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/utils/onboardingTour.js', () => ({ restartOnboardingTour: vi.fn() }))
 vi.mock('../src/store/notificationUnread.js', async () => {
   const { reactive } = await import('vue')
@@ -21,8 +24,9 @@ beforeEach(() => {
   auth.accessToken = ''; auth.userInfo = null
   notificationUnreadState.count = 0
   unsubscribe = vi.fn(); subscribeFeedbackUnread.mockReturnValue(unsubscribe)
+  logout.mockReset(); dialog.confirm.mockReset()
 })
-const render = () => mount(Sidebar, { global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: true }, mocks: { $route: { path: '/' } } } })
+const render = () => mount(Sidebar, { global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: { path: '/', meta: { title: '今日一览 — YuanHub' } } } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
 it('访客没有通知/反馈私有入口，保留登录入口', async () => {
   const wrapper = render(); await flushPromises()
@@ -46,4 +50,31 @@ it('卸载只释放反馈订阅，不在 Sidebar 内维护通知轮询', async (
   wrapper.unmount()
   expect(unsubscribe).toHaveBeenCalledTimes(1)
   expect(vi.getTimerCount()).toBe(0)
+})
+it('手机导航明确标出当前页，展开后可发现首尾入口和内测图标', async () => {
+  const wrapper = render()
+  const toggle = wrapper.get('.mobile-menu-toggle')
+  expect(toggle.text()).toContain('当前：今日一览')
+  expect(toggle.text()).toContain('全部导航')
+  expect(toggle.attributes('aria-expanded')).toBe('false')
+  await toggle.trigger('click')
+  expect(toggle.attributes('aria-expanded')).toBe('true')
+  expect(wrapper.get('#mobile-main-nav').isVisible()).toBe(true)
+  expect(wrapper.get('#mobile-main-nav').text()).toContain('内测')
+  expect(wrapper.get('#mobile-main-nav').text()).toContain('教程')
+  const betaLink = wrapper.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/beta' && link.element.closest('#mobile-main-nav'))
+  expect(betaLink?.find('svg').exists()).toBe(true)
+})
+it('手机登出先确认，取消不清会话，确认后显示登录结果入口', async () => {
+  auth.accessToken = 'test-only'; auth.userInfo = { user_name: '测试殿下' }
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-toggle').trigger('click')
+  dialog.confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+  await wrapper.get('.mobile-logout').trigger('click')
+  await flushPromises()
+  expect(logout).not.toHaveBeenCalled()
+  await wrapper.get('.mobile-logout').trigger('click')
+  await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmText: '退出登录' }))
+  expect(logout).toHaveBeenCalledWith('/login?loggedOut=1')
 })
