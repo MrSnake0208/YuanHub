@@ -254,8 +254,7 @@
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
             <p id="operator-import-tip" class="tip">
-              v3 档案会先校验并展示逐项差异，确认后才写入当前账号；v2
-              档案继续按原流程导入。
+              v3 档案会先由服务器校验并展示逐项差异；v2 档案会先展示本地影响范围。两者都需确认后才写入当前账号。
             </p>
             <div class="import-target">
               <span>导入目标</span><strong>{{ currentAccountName }}</strong
@@ -317,11 +316,25 @@
                 class="btn primary"
                 type="button"
                 :disabled="importing || !importText.trim()"
-                @click="doImport"
+                @click="previewV2Import"
               >
-                {{ importing ? "导入中…" : "导入 v2 档案" }}
+                {{ importing ? "校验中…" : "校验并预览 v2" }}
               </button>
             </div>
+            <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="v2 导入预览">
+              <div class="import-preview-head">
+                <div>
+                  <strong>v2 导入预览 · {{ currentAccountName }}</strong>
+                  <span>{{ importV2Preview.recordCount }} 条记录 · 涉及 {{ importV2Preview.entries.length }} 位密探 · 当前已有 {{ importV2Preview.overlapCount }} 位</span>
+                </div>
+                <button class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入 v2' }}</button>
+              </div>
+              <p v-if="importV2Preview.fullCount" class="import-preview-warning" role="alert">
+                包含 {{ importV2Preview.fullCount }} 条全量快照；当前账号中有 {{ importV2Preview.possibleRemovedCount }} 位密探未列在档案中，可能被覆盖移除。请先导出备份。
+              </p>
+              <p class="tip">此处为本地影响范围预览；最终校验与实际写入结果以服务器为准。</p>
+              <details><summary>查看涉及密探</summary><ul><li v-for="entry in importV2Preview.entries" :key="entry.id">{{ entry.name }} · {{ entry.id }}</li></ul></details>
+            </section>
             <section
               v-if="importPreview"
               class="import-preview"
@@ -609,7 +622,7 @@
                 </span>
                 <span class="sp"></span>
                 <span v-if="error" class="bp-tip mf-warn"
-                  >云端养成同步失败：{{ error }}</span
+                  >云端养成同步失败：{{ error }} <button type="button" class="link" :disabled="loading" @click="reloadCurrent()">重试同步</button></span
                 >
                 <span v-else-if="favoriteError" class="bp-tip mf-warn">{{
                   favoriteError
@@ -1075,6 +1088,7 @@
               <button v-if="!auth.isLoggedIn" class="link" @click="goLogin">
                 请先登录后重试
               </button>
+              <button v-else class="link" type="button" :disabled="loading" @click="reloadCurrent()">重试加载</button>
             </div>
             <div v-else-if="ownedCurrentEntries.length === 0" class="state">
               <template v-if="!auth.isLoggedIn"
@@ -2441,7 +2455,7 @@
           @click="setTab('current')"
         >
           <ListChecks :size="19" aria-hidden="true" />
-          <span>当前养成</span>
+          <span>养成总览</span>
         </button>
         <button
           type="button"
@@ -3009,6 +3023,7 @@ import {
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
+import { buildOperatorV2BrowserPreview } from "../../utils/operatorV2ImportPreview.js";
 import {
   Archive,
   BookOpen,
@@ -3203,6 +3218,8 @@ const importing = ref(false);
 const importResult = ref(null);
 const importPreview = ref(null);
 const importPreviewKey = ref("");
+const importV2Preview = ref(null);
+const importV2PreviewKey = ref("");
 const importConfirmReview = ref(false);
 const favoriteAgentIds = ref(new Set());
 const favoriteBusyIds = ref(new Set());
@@ -8138,6 +8155,8 @@ function v3ImportRequest(document, confirmReview) {
 function resetImportPreview() {
   importPreview.value = null;
   importPreviewKey.value = "";
+  importV2Preview.value = null;
+  importV2PreviewKey.value = "";
 }
 
 function onImportTextInput() {
@@ -8258,42 +8277,63 @@ function importValueLabel(value) {
   return String(value);
 }
 
-async function doImport() {
+function v2PreviewKey(document) {
+  return JSON.stringify([document, accountId.value, currentMap.value]);
+}
+
+function previewV2Import() {
   if (!auth.isLoggedIn) {
     goLogin();
     return;
   }
   importError.value = "";
-  let doc = null;
+  importResult.value = null;
+  resetImportPreview();
   try {
-    doc = parseImportDocument();
+    if (loading.value || error.value || currentLoadedKey !== accountId.value + ':' + gameFilter.value)
+      throw new Error('请先成功加载当前账号的养成数据，再预览导入影响');
+    const doc = parseImportDocument();
+    importV2Preview.value = buildOperatorV2BrowserPreview(doc, accountId.value, currentMap.value, gameFilter.value);
+    importV2PreviewKey.value = v2PreviewKey(doc);
   } catch (err) {
     importError.value =
       err instanceof SyntaxError
         ? "JSON 解析失败，请检查格式"
         : humanErr(err, "导入档案校验失败");
+  }
+}
+
+async function commitV2Import() {
+  if (!importV2Preview.value || importing.value) return;
+  let doc;
+  try {
+    doc = parseImportDocument();
+    if (v2PreviewKey(doc) !== importV2PreviewKey.value)
+      throw new Error('档案、目标账号或当前养成已变化，请重新预览');
+  } catch (err) {
+    importError.value = humanErr(err, '无法提交导入');
+    resetImportPreview();
     return;
   }
-  if (isOperatorV3Document(doc)) {
-    await previewV3Import();
+  const summary = importV2Preview.value;
+  const confirmed = await dialog.confirm({
+    title: '确认导入 v2 档案？',
+    message: '将向「' + currentAccountName.value + '」写入 ' + summary.recordCount + ' 条记录，涉及 ' + summary.entries.length + ' 位密探。' + (summary.fullCount ? '其中 ' + summary.fullCount + ' 条为全量快照，可能移除未列出的旧养成。' : ''),
+    type: 'danger', confirmText: '确认写入', cancelText: '返回预览',
+  });
+  if (!confirmed) return;
+  if (v2PreviewKey(doc) !== importV2PreviewKey.value) {
+    importError.value = '档案或当前养成已变化，请重新预览';
+    resetImportPreview();
     return;
-  }
-  // 若用户粘贴的文档使用占位 account_id，替换为当前账号，便于直接导入
-  if (accountId.value && doc && Array.isArray(doc.accounts)) {
-    doc.accounts = doc.accounts.map(function (a) {
-      return Object.assign({}, a, { id: accountId.value });
-    });
-  }
-  if (accountId.value && doc && Array.isArray(doc.records)) {
-    doc.records = doc.records.map(function (r) {
-      return Object.assign({}, r, { account_id: accountId.value });
-    });
   }
   importing.value = true;
   importResult.value = null;
   try {
-    const res = await importOperator(doc);
+    const res = await importOperator(summary.document);
     importResult.value = Object.assign({ kind: "v2" }, res || {});
+    resetImportPreview();
+    await reloadCurrent(true);
   } catch (err) {
     importError.value = humanErr(err, "导入失败");
   } finally {
