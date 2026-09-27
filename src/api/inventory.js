@@ -139,6 +139,14 @@ export function deleteRecord(recordId, accountId) {
   })
 }
 
+export function restoreRecord(recordId, accountId) {
+  const params = new URLSearchParams({ account_id: accountId })
+  return request(PATH + '/records/' + encodeURIComponent(recordId) + '/restore?' + params, {
+    method: 'POST',
+    auth: true
+  })
+}
+
 // Positive rewards and distinct acquisition dates in [fromDate, toDate), in the selected timezone.
 export function getAcquiredSummary({ accountId, entityType, fromDate, toDate, timezone }) {
   const params = new URLSearchParams({ account_id: accountId, entity_type: entityType, from_date: fromDate, to_date: toDate, timezone })
