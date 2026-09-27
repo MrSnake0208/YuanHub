@@ -250,7 +250,7 @@
                   <button
                     type="button"
                     :disabled="savingStock"
-                    @click="cancelStockEdit"
+                    @click="requestCancelStockEdit"
                   >
                     <X :size="14" />取消
                   </button>
@@ -1721,6 +1721,7 @@
 <script setup>
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import {
   Archive,
   ArrowDown,
@@ -2036,13 +2037,9 @@ function onRewardImported(targetAccountId) {
   if (activeTab.value === "acquired") loadAcquired();
 }
 
-function setTab(t) {
+async function setTab(t) {
   if (editingStock.value && t !== "manifest") {
-    if (
-      stockChangedCount.value &&
-      !confirm("当前库存修改尚未保存，放弃修改并离开？")
-    )
-      return;
+    if (!(await confirmStockDiscard())) return;
     cancelStockEdit();
   }
   activeTab.value = t;
@@ -2695,6 +2692,11 @@ const stockChangedCount = computed(function () {
     );
   }).length;
 });
+const stockEditDirty = computed(function () {
+  return editingStock.value &&
+    (Boolean(stockDraftError.value) || stockChangedCount.value > 0);
+});
+const confirmStockDiscard = useUnsavedChanges(stockEditDirty, "库存草稿");
 const manifestTotal = computed(function () {
   return entityType.value === "agent"
     ? agentGameCatalogCount.value
@@ -3208,6 +3210,11 @@ function restoreAgentControlsAfterEdit() {
   if (agentControlsCollapsedBeforeEdit.value == null) return;
   agentControlsCollapsed.value = agentControlsCollapsedBeforeEdit.value;
   agentControlsCollapsedBeforeEdit.value = null;
+}
+
+async function requestCancelStockEdit() {
+  if (savingStock.value || !(await confirmStockDiscard())) return;
+  cancelStockEdit();
 }
 
 function cancelStockEdit() {
