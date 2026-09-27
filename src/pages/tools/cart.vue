@@ -51,13 +51,13 @@
                 :class="{ on: version === 'daihao' }"
                 @click="setVersion('daihao')"
               >
-                代号鸢
+                代号鸢（{{ daihaoCount }}件）
               </button>
               <button
                 :class="{ on: version === 'ru' }"
                 @click="setVersion('ru')"
               >
-                如鸢
+                如鸢（{{ ruCount }}件）
               </button>
             </div>
             <div class="sp"></div>
@@ -83,6 +83,9 @@
               <span class="hint">自动换算人民币</span>
             </div>
           </div>
+
+          <p class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
+          <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
           <div class="cart-filters" v-reveal>
             <div class="row">
@@ -153,7 +156,9 @@
                   :track1-cd="track1Cd"
                   :track2-cd="track2Cd"
                   :version="version"
+                  :export-busy="exportBusy"
                   @clear="clearCart"
+                  @export="exportReceipt"
                   @update-initial="setInitialPoints"
                   @save-plan="openPlanSave"
                 />
@@ -191,7 +196,8 @@
         </button>
         <button
           class="mbtn accent"
-          :disabled="cartItems.length === 0"
+          :disabled="cartItems.length === 0 || exportBusy"
+          :aria-busy="exportBusy"
           @click="exportReceipt"
         >
           <Download :size="15" /><span class="only-sm">导出</span>
@@ -237,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import {
   Plus,
   Trash2,
@@ -266,6 +272,7 @@ import {
   deletePlan,
 } from "../../api/ledger.js";
 import { auth } from "../../store/auth.js";
+import { dialog } from "../../utils/dialog.js";
 
 const version = ref("daihao");
 const exchangeRate = ref(7.2);
@@ -279,6 +286,9 @@ const showCustomForm = ref(false);
 const activeCategory = ref("全部");
 const drawFilter = ref("all");
 const now = ref(Date.now());
+const operationMessage = ref("");
+const operationError = ref(false);
+const exportBusy = ref(false);
 
 // ---- 方案管理状态（广陵账房云存储） ----
 const planName = ref(""); // 保存对话框里的方案名
@@ -307,6 +317,12 @@ onBeforeUnmount(() => {
 const currentCart = computed(() =>
   version.value === "daihao" ? cartDaihao.value : cartRu.value,
 );
+const daihaoCount = computed(() => Object.values(cartDaihao.value).reduce((sum, qty) => sum + qty, 0));
+const ruCount = computed(() => Object.values(cartRu.value).reduce((sum, qty) => sum + qty, 0));
+function showResult(message, error = false) {
+  operationMessage.value = message;
+  operationError.value = error;
+}
 const currentInitialPoints = computed(() =>
   version.value === "daihao"
     ? initialPointsDaihao.value
@@ -480,9 +496,14 @@ function removeFromCart(pkg) {
   }
 }
 
-function clearCart() {
-  if (version.value === "daihao") cartDaihao.value = {};
+async function clearCart() {
+  if (cartItems.value.length === 0) return;
+  const selectedVersion = version.value;
+  const name = selectedVersion === "daihao" ? "代号鸢" : "如鸢";
+  if (!await dialog.confirm({ title: "清空购物车", message: `确定清空「${name}」购物车中的 ${selectedVersion === "daihao" ? daihaoCount.value : ruCount.value} 件礼包吗？`, type: "danger", confirmText: "清空" })) return;
+  if (selectedVersion === "daihao") cartDaihao.value = {};
   else cartRu.value = {};
+  showResult(`已清空「${name}」购物车。`);
 }
 
 function setInitialPoints(v) {
@@ -511,8 +532,13 @@ function addCustomPackage(form) {
   showCustomForm.value = false;
 }
 
-function deleteCustom(id) {
-  if (version.value === "daihao") {
+async function deleteCustom(id) {
+  const selectedVersion = version.value;
+  const pkg = currentCustoms.value.find((item) => item.id === id);
+  if (!pkg) return;
+  const qty = currentCart.value[id] || 0;
+  if (!await dialog.confirm({ title: "删除自定义礼包", message: `确定删除「${pkg.name}」吗？${qty ? `购物车中的 ${qty} 件也会移除。` : ""}`, type: "danger", confirmText: "删除" })) return;
+  if (selectedVersion === "daihao") {
     customPackagesDaihao.value = customPackagesDaihao.value.filter(
       (p) => p.id !== id,
     );
@@ -525,6 +551,7 @@ function deleteCustom(id) {
     delete next[id];
     cartRu.value = next;
   }
+  showResult(`已删除自定义礼包「${pkg.name}」。`);
 }
 
 function scrollToCart() {
@@ -656,8 +683,13 @@ async function onConfirmSave(payload) {
 
   // 游客：本地暂存兜底（§5.3），不调接口
   if (!auth.isLoggedIn) {
-    upsertGuestPlan(body, overwrite);
-    showPlanSave.value = false;
+    try {
+      upsertGuestPlan(body, overwrite);
+      showPlanSave.value = false;
+      showResult(`方案「${planName.value}」已暂存在本机浏览器。`);
+    } catch (_err) {
+      showResult("本机浏览器保存失败，请检查存储空间后重试。", true);
+    }
     return;
   }
 
@@ -875,8 +907,8 @@ function readGuestPlans() {
   }
 }
 function writeGuestPlans(list) {
-  guestPlans.value = list;
   localStorage.setItem(GUEST_KEY, JSON.stringify(list));
+  guestPlans.value = list;
 }
 
 function upsertGuestPlan(payload, overwrite) {
@@ -925,29 +957,36 @@ function openPlanSave() {
   showPlanSave.value = true;
 }
 
-function exportReceipt() {
+async function exportReceipt() {
+  if (exportBusy.value) return;
   const rp = document.querySelector(".cart-layout .receipt");
-  if (!rp) return;
-  rp.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(async () => {
-    try {
-      const canvas = await html2canvas(rp, {
-        scale: 3,
-        backgroundColor: "#FFFDF6",
-        useCORS: true,
-      });
-      const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png");
-      link.download = "shopping-receipt.png";
-      link.click();
-    } catch (err) {
-      console.error("Failed to export image", err);
-    }
-  }, 500);
+  if (!rp) { showResult("找不到账单，无法导出图片。", true); return; }
+  exportBusy.value = true;
+  showResult("正在生成账单图片…");
+  try {
+    await nextTick();
+    await document.fonts?.ready;
+    rp.scrollIntoView?.({ behavior: "auto", block: "center" });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const canvas = await html2canvas(rp, { scale: 3, backgroundColor: "#FFFDF6", useCORS: true });
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = "shopping-receipt.png";
+    link.click();
+    showResult("账单图片已生成，浏览器将开始下载。");
+  } catch (_err) {
+    showResult("导出图片失败，请重试。", true);
+  } finally {
+    exportBusy.value = false;
+  }
 }
 </script>
 
 <style scoped>
+.cart-version-hint{margin:8px 0 14px;color:var(--ink-60);font-size:12px}
+.cart-operation-message{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:var(--z-toast);width:max-content;max-width:calc(100vw - 32px);margin:0;padding:10px 12px;border-radius:10px;background:var(--yellow);color:var(--ink);font-size:13px;box-shadow:0 8px 24px rgba(73,59,44,.2)}
+.cart-operation-message[role="alert"]{background:var(--surface);color:var(--rouge);border:1px solid var(--rouge)}
+@media (max-width:1080px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
 /* ---- 作者版权醒目标识（广陵账房 · binary） ---- */
 .author-badge {
   display: inline-flex;

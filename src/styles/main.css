@@ -382,9 +382,10 @@ section[id]{scroll-margin-top:84px}
 .pkg-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:border-color .4s var(--ease),box-shadow .4s var(--ease),transform .4s var(--ease);min-height:120px}
 .pkg-card:hover{box-shadow:0 18px 36px -20px rgba(73,59,44,.3)}
 .pkg-card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.pkg-del{position:absolute;top:-9px;right:-9px;background:rgba(166,81,74,.12);color:var(--rouge);border:none;border-radius:50%;width:26px;height:26px;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .3s;z-index:5}
-.pkg-card:hover .pkg-del{opacity:1}
+.pkg-del{position:absolute;top:8px;right:8px;background:rgba(166,81,74,.12);color:var(--rouge);border:none;border-radius:50%;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;z-index:5}
 .pkg-del:hover{background:rgba(166,81,74,.22)}
+.pkg-del:focus-visible{outline:2px solid var(--rouge);outline-offset:2px}
+.pkg-card:has(.pkg-del) .pkg-top{padding-right:42px}
 .pkg-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .pkg-name{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.45}
 .pkg-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
@@ -632,8 +633,7 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .cart-filters .row::after{content:'';flex:0 0 8px}
   .pkg-grid{grid-template-columns:1fr;gap:10px}
   .pkg-card{min-height:0;padding:16px;border-radius:16px}
-  .pkg-del{opacity:1;top:8px;right:8px;width:44px;height:44px;background:rgba(166,81,74,.1)}
-  .pkg-card:has(.pkg-del) .pkg-top{padding-right:42px}
+  .pkg-del{background:rgba(166,81,74,.1)}
   .stepper{gap:4px;padding:3px}
   .stepper button{width:44px;height:44px}
   .stepper .qty{width:42px;font-size:15px}
