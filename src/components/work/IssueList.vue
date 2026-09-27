@@ -6,11 +6,14 @@
         <span class="severity" :class="'severity-' + (issue && issue.severity)">{{ issue && issue.severity || 'unknown' }}</span>
         <strong>{{ issue && issue.message || '未提供问题说明' }}</strong>
       </div>
-      <dl>
-        <div><dt>feature</dt><dd>{{ issue && issue.feature || '未提供' }}</dd></div>
-        <div><dt>path</dt><dd>{{ issue && issue.path || '未提供' }}</dd></div>
-        <div><dt>code</dt><dd>{{ issue && issue.code || '未提供' }}</dd></div>
-      </dl>
+      <details class="issue-tech">
+        <summary>查看技术细节</summary>
+        <dl>
+          <div><dt>涉及功能</dt><dd>{{ issue && issue.feature || '未提供' }}</dd></div>
+          <div><dt>位置</dt><dd>{{ issue && issue.path || '未提供' }}</dd></div>
+          <div><dt>编号</dt><dd>{{ issue && issue.code || '未提供' }}</dd></div>
+        </dl>
+      </details>
     </li>
   </ul>
 </template>
@@ -32,6 +35,8 @@ defineProps({
 .severity-partial { color: var(--accent-strong); }
 .severity-unsupported { color: var(--rouge); }
 dl { margin-top: 10px; display: grid; gap: 6px; }
+.issue-tech { margin-top:8px; }
+.issue-tech summary { min-height:44px;display:flex;align-items:center;color:var(--ink-60);font-size:12px;cursor:pointer; }
 dl div { min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; font: 11px/1.6 var(--font-d); }
 dt { color: var(--ink-35); }
 dd { color: var(--ink-60); overflow-wrap: anywhere; }

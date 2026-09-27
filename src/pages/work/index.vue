@@ -9,13 +9,13 @@
             <span class="pill fill">作业</span>
             <span class="pill">公开数据</span>
           </div>
-          <h1>作业广场<span class="small">Work Protocol v1</span></h1>
-          <p class="hero-sub">浏览已公开的真实作业、Legacy 转换结果与目标平台兼容性。</p>
+          <h1>作业广场<span class="small">找到通关思路</span></h1>
+          <p class="hero-sub">浏览公开的通关作业，查看阵容、回合步骤和适用平台。</p>
           <div class="hero-stats" aria-label="作业列表统计">
             <div><div class="k">公开作业</div><div class="v">{{ total }}<small>份</small></div></div>
             <div><div class="k">当前页</div><div class="v">{{ page }}<small>/ {{ totalPages }}</small></div></div>
             <div><div class="k">每页</div><div class="v">{{ limit }}<small>份</small></div></div>
-            <div><div class="k">数据来源</div><div class="v source-value">API<small>实时读取</small></div></div>
+            <div><div class="k">数据状态</div><div class="v source-value">在线<small>实时更新</small></div></div>
           </div>
         </div>
       </header>
@@ -28,7 +28,7 @@
               <h2>公开作业</h2>
             </div>
             <div class="works-heading-actions">
-              <p>Legacy 与 YuanHub 原生公开作业统一展示。</p>
+              <p>不同来源的公开作业都在这里。</p>
               <router-link to="/work/new">创建作业</router-link>
             </div>
           </div>
@@ -37,7 +37,7 @@
             <div v-if="loading" class="works-state" aria-busy="true">
               <span class="loading-mark" aria-hidden="true"></span>
               <strong>正在加载作业</strong>
-              <span>请稍候，正在读取公开 Work API。</span>
+              <span>请稍候，正在读取最新公开作业。</span>
             </div>
 
             <div v-else-if="error" class="works-state error" role="alert">
@@ -48,7 +48,8 @@
 
             <div v-else-if="items.length === 0" class="works-state">
               <strong>暂时没有公开作业</strong>
-              <span>这里不会使用演示数据填充空列表。</span>
+              <span>你可以创建第一份作业，或稍后再来看看。</span>
+              <router-link to="/work/new">创建第一份作业</router-link>
             </div>
 
             <template v-else>
@@ -73,7 +74,7 @@
 
       <SiteFooter>
         <template #big>YuanHub<br><span>公开作业与兼容性</span></template>
-        <template #fine>新建作业以 Work Protocol v1 为唯一执行事实源，目标平台文档由 Adapter 生成。</template>
+        <template #fine>按回合记录打法，并预览目标平台是否支持。</template>
       </SiteFooter>
     </main>
   </div>
@@ -162,6 +163,7 @@ watch(function () { return route.query.page }, function (value) {
 .works-state span { max-width: 520px; font-size: 13px; line-height: 1.7; }
 .works-state.error { border-color: rgba(166, 81, 74, .45); }
 .works-state button, .works-pagination button { min-height: 44px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--tea); color: var(--cream); font: 800 13px var(--font-b); cursor: pointer; }
+.works-state a { min-height:44px;display:inline-flex;align-items:center;padding:10px 18px;border-radius:999px;background:var(--tea);color:var(--cream);font:800 13px var(--font-b);text-decoration:none; }
 .loading-mark { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: works-spin .8s linear infinite; }
 .works-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 30px; }
 .works-pagination span { color: var(--ink-60); font: 700 12px var(--font-d); }
