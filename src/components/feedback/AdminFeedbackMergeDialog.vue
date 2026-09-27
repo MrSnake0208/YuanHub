@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="modal-mask" role="presentation" @click.self="$emit('close')">
+    <div v-if="open" class="modal-mask is-raised" role="presentation" @click.self="$emit('close')">
       <div class="modal merge-dialog" role="dialog" aria-modal="true" aria-labelledby="merge-dialog-title" @keydown.esc.prevent="$emit('close')">
         <div class="modal-head">
           <h2 id="merge-dialog-title">合并反馈</h2>

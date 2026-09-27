@@ -170,8 +170,15 @@ function isUnread(item) {
   return item && props.unreadFeedbackIds.includes(String(item.id))
 }
 
+// 详情层之上可能还压着二级弹窗（如管理端的“合并反馈”，见 main.css 的浮层刻度）：
+// Escape 属于最上层弹窗，详情层必须让位，不能连带一起关闭。
+function hasOpenOverlayAbove() {
+  return typeof document !== 'undefined' && Boolean(document.querySelector('.modal-mask, .dialog-mask'))
+}
+
 function handleKeydown(event) {
-  if (event.key === 'Escape' && selectedItem.value) emit('close')
+  if (event.key !== 'Escape' || !selectedItem.value || hasOpenOverlayAbove()) return
+  emit('close')
 }
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))
@@ -236,7 +243,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   --feedback-danger: var(--rouge);
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: var(--z-overlay-panel, 90);
   display: grid;
   place-items: center;
   padding: 28px;
