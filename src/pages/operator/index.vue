@@ -15103,14 +15103,9 @@ onBeforeUnmount(function () {
 .current-upgrade-reminder button,.current-favorite-sort,.current-filter-reset,.current-batch-toggle,
 .batch-quick-filters button,.batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,
-.ledger-card-actions button,.ledger-submit-actions button,.editor-conflict-btn,.mf-filter button { min-height:44px; }
+.ledger-card-actions button,.ledger-submit-actions button,.editor-conflict-btn { min-height:44px; }
 .current-batch-toggle { min-width:44px; }
 .node-chip,.stone-lv-chip { min-width:44px;height:44px; }
-@media (max-width:640px) {
-  .catalog-prof-filter .mf-filter button { min-height:44px; }
-  .catalog-prof-filter .pf-prof-row .mf-filter { grid-template-columns:repeat(4,minmax(44px,1fr)); }
-  .catalog-prof-filter .pf-subprof-row .mf-filter { grid-template-columns:repeat(3,minmax(44px,1fr)); }
-}
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>
