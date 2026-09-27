@@ -74,7 +74,7 @@ operator_catalog
   "rarity": 4,
   "special_oddity_name": "免伤值",
   "oddity_schema": {
-    "attack": { "name": "攻击力", "max": 305 },
+    "attack": { "name": "攻击力", "max": 350 },
     "hp": { "name": "生命值", "max": 1820 },
     "special": { "name": "免伤值", "max": 11 }
   }
@@ -201,7 +201,7 @@ v3 JSON 直接使用 snake_case `star_level`，数值与站内 `starLevel` 完�
 
 - `oddities` 只接受 `attack / hp / special`，每项数值非负且 `current <= max`；名称不进入账号数据；
 - `section_status.oddities=ready` 时三个键必须齐全；`partial` 只合并出现的稳定键；`unavailable` 保留旧值；空对象不具有清空语义；
-- 奇闻上限由公共目录稀有度决定：3 星 `300/1560/9`、4 星 `305/1820/11`、5 星暂沿用 `500/2600/15`；请求中的 `max` 只作诊断，不能覆盖目录规则；
+- 奇闻上限由公共目录稀有度决定：3 星 `300/1560/9`、4 星 `350/1820/11`、5 星暂沿用 `500/2600/15`；请求中的 `max` 只作诊断，不能覆盖目录规则；
 - `manual_attack` / `manual_hp` 允许 `null`，表示恢复自动计算；
 - `display_mode.attack` / `display_mode.hp` 允许 `auto | manual | null`，只记忆用户上次保存时采用的显示结果；缺失保留，`null` 清除偏好，不改变任何攻生值或观测状态；
 - `source` 使用稳定枚举，如 `scan | manual | imported`；
@@ -810,7 +810,7 @@ transaction_id = upgrade_xxx
 - `operator_snapshot` 交换客观练度，`operator_annotation_snapshot` 可选交换养成状态、favorite、目标和备注；
 - 浏览器完整文件导入与 OpenAPI 自动上报复用同一 Schema、校验器和 import service；扫描权限只接受客观 scan 子集；
 - 奇闻值只使用 `attack / hp / special`；第三项名称由公共图鉴 `special_oddity_name` 提供，协议和用户投影不保存展示名称；
-- 3 星奇闻固定校验 `300/1560/9`，4 星固定校验 `305/1820/11`，当前旧报告中的 `attack.max=350` 必须产生错误或 review；
+- 3 星奇闻固定校验 `300/1560/9`，4 星固定校验 `350/1820/11`；`attack.current` 越界拒绝，采集端上报的 `attack.max` 与目录上限不一致时只产生 `oddity_max_mismatch` warning；
 - SP 继续以 `starLevel/star_level` 直接保存星级且无小节点；采集端编码、服务端按公共图鉴身份复核，普通密探公式不能用于 SP；
 - 已装备星石和观测攻生同批写入，并保存输入签名；分区不完整时不清空旧装备；
 - 详细交换结构与采集端行为见 [`operator-auto-scan-integration-plan.md`](./operator-auto-scan-integration-plan.md)。
@@ -951,7 +951,7 @@ transaction_id = upgrade_xxx
 - [ ] SP 化极在 v2、v3、current 与持久化中都直接使用 `starLevel/star_level` 星级，不生成小节点；
 - [ ] 管理员可在公共图鉴维护 `special_oddity_name`，公开目录返回稳定键、展示名称和派生上限；普通导入不能修改目录；
 - [ ] 第三项改名不迁移 `special.current`，也不因纯展示名变化把攻生观测标记为 stale；
-- [ ] 养成与交换数据只接受 `attack / hp / special`；3 星按 `300/1560/9`、4 星按 `305/1820/11` 校验，4 星 `attack.max=350` 不会静默入库；
+- [ ] 养成与交换数据只接受 `attack / hp / special`；3 星按 `300/1560/9`、4 星按 `350/1820/11` 校验，4 星 `attack.current=351` 不会静默入库；
 - [ ] 浏览器文件导入和 OpenAPI 对同一 `record_id`、同一内容产生一致客观结果并保持幂等；
 - [ ] v3 完整备份可以恢复 growth_state、favorite、目标和备注；没有 annotation record 时这些数据完全不变；
 - [ ] 身份不确定拒绝整条，分区不确定只保留该分区旧值，`listed` 不删除报告外密探；

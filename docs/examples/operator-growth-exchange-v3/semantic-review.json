@@ -37,7 +37,7 @@
             "source": "scan",
             "observed_status": "unverified",
             "oddities": {
-              "attack": { "current": 0, "max": 350 },
+              "attack": { "current": 0, "max": 305 },
               "hp": { "current": 1820, "max": 1820 },
               "special": { "current": 11, "max": 11 }
             }

@@ -67,7 +67,7 @@ B. 奇闻和攻生资料
 
 - 在 OperatorEntry/current DTO 中增加 combatStats；
 - combatStats.oddities 只接受 attack/hp/special；
-- 上限按公共目录 rarity 校验：3 星 300/1560/9、4 星 305/1820/11、5 星 500/2600/15；
+- 上限按公共目录 rarity 校验：3 星 300/1560/9、4 星 350/1820/11、5 星 500/2600/15；
 - 用户数据不保存第三奇闻展示名；请求 max 不能覆盖目录上限；
 - 保存 observedAttack/observedHp、manualAttack/manualHp、source、observedAt、observedStatus、combatInputSignature 及必要的观测输入；
 - 等级、修为、starLevel、奇闻当前值或 starStones 改变后，旧扫描观测保留但转为 stale；

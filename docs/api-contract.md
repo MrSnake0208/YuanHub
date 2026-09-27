@@ -478,7 +478,7 @@ Authorization: Bearer <open-api-token>
 - 公共图鉴不返回用户养成，也不返回目录 `star_stones` 模板。
 - `avatar` 是相对路径，前端需拼接 API base URL。
 - `special_oddity_name` 可在存量迁移期为 null；此时 `incomplete_fields` 含 `special_oddity_name`。
-- 奇闻稳定键始终为 `attack`、`hp`、`special`。上限：3 星 `300/1560/9`、4 星 `305/1820/11`、5 星 `500/2600/15`。
+- 奇闻稳定键始终为 `attack`、`hp`、`special`。上限：3 星 `300/1560/9`、4 星 `350/1820/11`、5 星 `500/2600/15`。
 
 ### 5.2 当前养成与记录
 
