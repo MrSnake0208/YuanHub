@@ -1,4 +1,10 @@
 // 积分奖励档位（迁移自 yuanpaid/src/rewards.ts，内容逐字保留）
+// 活动截止时间；后续活动更新时在此配置带时区的时间。
+export const campaignEnds = {
+  track1: '2026-04-29T23:59:59+08:00',
+  track2: '2026-05-13T23:59:59+08:00',
+}
+
 export const track1 = [
 
   { points: 100, rewards: [{ name: '符传', count: 1 }, { name: '五铢钱', count: 100000 }] },
