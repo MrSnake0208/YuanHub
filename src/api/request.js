@@ -1,4 +1,9 @@
 import { isBetaAccessError, requiresBetaApi } from '../utils/betaAccess.js'
+import {
+  createTimeoutSignal,
+  requestTimeoutError,
+  resolveRequestTimeoutMs
+} from '../utils/requestTimeout.js'
 
 // 统一的 fetch 请求封装
 // - 统一 baseURL（VITE_API_BASE，未配置时使用当前站点）
@@ -7,11 +12,17 @@ import { isBetaAccessError, requiresBetaApi } from '../utils/betaAccess.js'
 // - 解析后端统一响应 { status_code, message, data }
 //   - statusCode===200 → 返回 data
 //   - 否则 throw new Error(message || '请求失败')
+// - 统一请求超时（默认 12s；上传 120s / 下载 60s；可用 timeoutMs 覆盖或传 0 关闭）
 // - 兼容库存接口的两种差异：
 //   - raw=true：成功时返回「完整 JSON」（如 /v1/inventory/export 直接返回交换文档，无 ApiResult 包装）
 //   - 库存错误结构 { error: { code, message, record_id?, entry_id? } }（非 ApiResult），自动提取 error.message
-// - 401 且 auth=true：用 refreshToken 静默刷新一次并重放原请求（仅一次）；
-//   刷新失败（或无 refreshToken）则清登录态并跳转 /login
+// - 401 且 auth=true：刷新一次 token 并重放原请求（仅一次）；
+//   后端明确拒绝 refresh token 才清登录态并跳转 /login，
+//   超时 / 断网等临时失败只抛出错误，不能把用户直接踢下线。
+//
+// 超时为什么在 request 层：移动端 / PWA 冷启动会遇到网络切换与半连接，
+// fetch 可能长时间 pending；没有超时则首次路由永远不结束（只剩背景色）。
+// SSE 不经过本函数（见 api/accountEvents.js），因此不会被这里的超时截断。
 //
 // 为避免与 store/auth.js 产生模块循环依赖，这里通过「动态 import」在真正
 // 需要时才加载 store（仅读取 token / 调用 refresh() / logout()）。
@@ -32,9 +43,10 @@ export function avatarUrl(path) {
 
 export async function request(
   path,
-  { method = "GET", body, auth = false, raw = false, multipart = false, responseType = "json", headers: extraHeaders } = {},
+  { method = "GET", body, auth = false, raw = false, multipart = false, responseType = "json", headers: extraHeaders, timeoutMs } = {},
 ) {
   let refreshed = false;
+  const effectiveTimeoutMs = resolveRequestTimeoutMs({ timeoutMs, multipart, responseType, raw });
 
   function requestError(message, status, payload) {
     const detail = payload && payload.error
@@ -58,11 +70,15 @@ export async function request(
       : Object.assign({ "Content-Type": "application/json" }, extraHeaders);
 
     let store = null;
+    // 记录本次请求实际使用的 token：用于识别「token 已被并发请求换新」，
+    // 避免用已经被轮换掉的 refresh token 再刷一次。
+    let usedToken = "";
     if (auth) {
       const mod = await import("../store/auth.js");
       store = mod.auth;
       if (store && store.accessToken) {
         headers["Authorization"] = "Bearer " + store.accessToken;
+        usedToken = store.accessToken;
       }
     }
 
@@ -82,25 +98,44 @@ export async function request(
     }
 
     if (path.startsWith('/v1/beta') || path.startsWith('/v1/admin/beta')) opts.cache = 'no-store'
-    const res = await fetch(API_BASE + path, opts);
 
-    const disposition = res.headers && typeof res.headers.get === 'function'
-      ? res.headers.get('content-disposition')
-      : ''
-    const contentType = res.headers && typeof res.headers.get === 'function'
-      ? res.headers.get('content-type') || ''
-      : ''
-    if (responseType === 'blob' && res.ok && (disposition || !/application\/json/i.test(contentType))) {
-      return { blob: await res.blob(), headers: res.headers }
-    }
+    // 超时只包住「网络读写」这一段：响应读完即取消计时器，
+    // 这样 401 重放与状态处理不会互相延长对方的超时窗口。
+    const timeout = createTimeoutSignal(effectiveTimeoutMs)
+    if (timeout.signal) opts.signal = timeout.signal
 
-    // 反序列化响应体
-    let payload = null;
+    let res = null
+    let payload = null
+    let blobResult = null
     try {
-      payload = await res.json();
-    } catch (_e) {
-      payload = null;
+      res = await fetch(API_BASE + path, opts);
+
+      const disposition = res.headers && typeof res.headers.get === 'function'
+        ? res.headers.get('content-disposition')
+        : ''
+      const contentType = res.headers && typeof res.headers.get === 'function'
+        ? res.headers.get('content-type') || ''
+        : ''
+      if (responseType === 'blob' && res.ok && (disposition || !/application\/json/i.test(contentType))) {
+        blobResult = { blob: await res.blob(), headers: res.headers }
+      } else {
+        // 反序列化响应体
+        try {
+          payload = await res.json();
+        } catch (_e) {
+          payload = null;
+        }
+      }
+    } catch (error) {
+      if (error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+        throw requestTimeoutError(timeout.timeoutMs || effectiveTimeoutMs)
+      }
+      throw error
+    } finally {
+      timeout.cancel()
     }
+
+    if (blobResult) return blobResult
 
     // 统一提取业务状态码与错误信息：
     // 兼容 ApiResult{ status_code, message, data } 与 库存 { error: { code, message } }。
@@ -132,22 +167,48 @@ export async function request(
       }
     }
 
+    /**
+     * 401 恢复。返回：
+     * - 'replay'   可以立刻用新 token 重放原请求
+     * - 'expired'  登录态确实失效（已登出并跳转登录页）
+     * - 'transient' 临时失败（超时/断网），保留登录态，由调用方抛错重试
+     */
+    async function recoverFromUnauthorized() {
+      const mod = await import("../store/auth.js");
+      store = mod.auth;
+      // token 已被其他并发请求换新：直接重放，不再消耗 refresh token。
+      if (store && store.accessToken && usedToken && store.accessToken !== usedToken) {
+        return 'replay';
+      }
+      if (store && store.refreshToken) {
+        const ok = await store.refresh();
+        if (ok) return 'replay';
+        if (!store.refreshRejected) return 'transient';
+      }
+      // 刷新失败或明确无 refreshToken：清登录态并跳转登录页
+      await store.logout();
+      if (typeof location !== "undefined") {
+        location.href = "/login";
+      }
+      return 'expired';
+    }
+
+    async function handleUnauthorized() {
+      const outcome = await recoverFromUnauthorized();
+      if (outcome === 'replay') return doRequest(); // 用新 token 重放原请求（仅此一次）
+      if (outcome === 'transient') {
+        throw requestError(message || "登录态刷新失败，请检查网络后重试", statusCode, payload);
+      }
+      throw requestError(message || "未认证，请重新登录", statusCode, payload);
+    }
+
     // raw：返回完整 JSON（库存导出等无包装端点）
     if (raw) {
       if (res.ok && statusCode !== 401 && statusCode !== 403) return payload;
       // 401 且需认证：静默刷新并重放一次
       if (statusCode === 401 && auth && !refreshed) {
         refreshed = true;
-        const mod = await import("../store/auth.js");
-        store = mod.auth;
-        if (store && store.refreshToken) {
-          const ok = await store.refresh();
-          if (ok) return doRequest();
-        }
-        await store.logout();
-        if (typeof location !== "undefined") {
-          location.href = "/login";
-        }
+        return handleUnauthorized();
       }
       if (statusCode === 403) await refreshAccessAfterForbidden()
       throw requestError(message || "请求失败", statusCode, payload);
@@ -162,23 +223,10 @@ export async function request(
       return payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : undefined;
     }
 
-    // 401 且需要认证：用 refreshToken 静默刷新一次并重放
+    // 401 且需要认证：静默刷新一次并重放
     if (statusCode === 401 && auth && !refreshed) {
       refreshed = true;
-      const mod = await import("../store/auth.js");
-      store = mod.auth;
-      if (store && store.refreshToken) {
-        const ok = await store.refresh();
-        if (ok) {
-          return doRequest(); // 用新 token 重放原请求（仅此一次）
-        }
-      }
-      // 刷新失败或无 refreshToken：清登录态并跳转登录页
-      await store.logout();
-      if (typeof location !== "undefined") {
-        location.href = "/login";
-      }
-      throw requestError(message || "未认证，请重新登录", statusCode, payload);
+      return handleUnauthorized();
     }
 
     if (statusCode === 403) await refreshAccessAfterForbidden()
