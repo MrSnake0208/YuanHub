@@ -20,16 +20,12 @@
       </div>
       <div class="account-context">
         <div class="account-selector" :class="{ 'soft-account-selector': softDropdown }">
-          <label class="ac-label" :for="softDropdown ? undefined : selectId">{{ selectLabel }}</label>
+          <label class="ac-label" :for="selectId">{{ selectLabel }}</label>
           <div v-if="softDropdown" ref="softDropdownRoot" class="account-soft-dropdown" @keydown.escape.prevent="closeAccountDropdown">
-            <select ref="accountSelect" :id="selectId" class="account-native-select" :value="accountId" :disabled="disabled" :aria-invalid="!!error" aria-hidden="true" tabindex="-1" @change="onSelectChange">
-              <option v-if="!accounts.length" value="">（未创建）</option>
-              <option v-for="a in accounts" :key="a.id" :value="a.id">{{ accountOptionLabel(a) }}</option>
-            </select>
-            <button type="button" class="account-soft-trigger" :disabled="disabled" aria-haspopup="listbox" :aria-expanded="accountDropdownOpen" @click="toggleAccountDropdown">{{ selectedAccountLabel }}</button>
-            <div v-if="accountDropdownOpen" class="account-soft-listbox" role="listbox">
+            <button :id="selectId" ref="accountTrigger" type="button" class="account-soft-trigger" :disabled="disabled" :aria-invalid="!!error" aria-haspopup="listbox" :aria-expanded="accountDropdownOpen" :aria-controls="selectId + '-listbox'" @click="toggleAccountDropdown" @keydown.down.prevent="openAccountDropdown('first')" @keydown.up.prevent="openAccountDropdown('last')">{{ selectedAccountLabel }}</button>
+            <div v-if="accountDropdownOpen" :id="selectId + '-listbox'" class="account-soft-listbox" role="listbox" :aria-label="selectLabel" @keydown="onListboxKeydown">
               <button v-if="!accounts.length" type="button" class="account-soft-option" role="option" aria-selected="true" disabled>（未创建）</button>
-              <button v-for="a in accounts" :key="a.id" type="button" class="account-soft-option" role="option" :aria-selected="a.id === accountId" @click="selectAccountOption(a.id)">{{ accountOptionLabel(a) }}</button>
+              <button v-for="a in accounts" :key="a.id" type="button" class="account-soft-option" role="option" tabindex="-1" :aria-selected="a.id === accountId" @click="selectAccountOption(a.id)">{{ accountOptionLabel(a) }}</button>
             </div>
           </div>
           <select v-else :id="selectId" :value="accountId" :disabled="disabled" :aria-invalid="!!error" @change="onSelectChange">
@@ -99,7 +95,7 @@
           <span class="ac-dot"></span>
           <div class="ac-meta">
             <span class="ac-name"><span class="ac-name-text">{{ a.name }}</span><em v-if="a.id === accountId">当前</em></span>
-            <code class="ac-id">{{ a.id }}</code>
+            <AccountIdDetails :value="a.id" label="查看账号编号" />
           </div>
           <button type="button" class="ac-btn" :disabled="busy" @click="emit('rename', a)">改名</button>
           <button type="button" class="ac-btn danger" :disabled="busy" @click="emit('delete', a)">删除</button>
@@ -120,8 +116,9 @@
 // 统一子账号「数据归属」工作区 —— 库存页 / 密探页共用
 // 账号 CRUD 已统一到 /v1/accounts（src/api/accounts.js），
 // 这里只负责 UI：账号选择 + 管理（新建/改名/删除），创建/改名/删除动作向上冒泡由页面处理。
-import { ref, computed, onBeforeUnmount, onMounted, useSlots } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount, onMounted, useSlots } from 'vue'
 import { Users } from '@lucide/vue'
+import AccountIdDetails from './AccountIdDetails.vue'
 import { ACCOUNT_GAMES, normalizeAccountGame } from '../store/activeAccount.js'
 
 const props = defineProps({
@@ -167,7 +164,7 @@ const compact = defineModel('compact', { type: Boolean, default: true })
 const open = ref(false)
 const name = ref('')
 const accountDropdownOpen = ref(false)
-const accountSelect = ref(null)
+const accountTrigger = ref(null)
 const softDropdownRoot = ref(null)
 const slots = useSlots()
 const hasActions = computed(function () { return !!slots.actions })
@@ -193,15 +190,36 @@ function onSelectChange(e) {
   emit('change', val)
 }
 
-function closeAccountDropdown() { accountDropdownOpen.value = false }
+function closeAccountDropdown(returnFocus = true) {
+  if (!accountDropdownOpen.value) return
+  accountDropdownOpen.value = false
+  if (returnFocus) nextTick(() => accountTrigger.value?.focus())
+}
 function toggleAccountDropdown() { if (!props.disabled) accountDropdownOpen.value = !accountDropdownOpen.value }
+async function openAccountDropdown(edge) {
+  if (props.disabled) return
+  accountDropdownOpen.value = true
+  await nextTick()
+  const options = softDropdownRoot.value?.querySelectorAll('.account-soft-option:not(:disabled)') || []
+  options[edge === 'last' ? options.length - 1 : 0]?.focus()
+}
+function onListboxKeydown(event) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+  const options = [...softDropdownRoot.value.querySelectorAll('.account-soft-option:not(:disabled)')]
+  if (!options.length) return
+  event.preventDefault()
+  const current = options.indexOf(document.activeElement)
+  const target = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length
+  options[target].focus()
+}
 function selectAccountOption(value) {
-  if (props.disabled || !accountSelect.value) return
-  accountSelect.value.value = value
-  accountSelect.value.dispatchEvent(new Event('change', { bubbles: true }))
+  if (props.disabled) return
+  emit('update:accountId', value)
+  emit('change', value)
+  closeAccountDropdown()
 }
 function onDocumentPointerDown(event) {
-  if (accountDropdownOpen.value && !softDropdownRoot.value?.contains(event.target)) closeAccountDropdown()
+  if (accountDropdownOpen.value && !softDropdownRoot.value?.contains(event.target)) closeAccountDropdown(false)
 }
 onMounted(function () { document.addEventListener('pointerdown', onDocumentPointerDown, true) })
 onBeforeUnmount(function () { document.removeEventListener('pointerdown', onDocumentPointerDown, true) })
@@ -237,8 +255,7 @@ function submitCreate() {
 .account-selector select { width: 100%; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s, box-shadow .3s }
 .account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
 .account-soft-dropdown { position: relative; width: 100%; min-width: 0; font-family: var(--font-b); font-size: 14px }
-.account-native-select { position: absolute; width: 1px !important; height: 1px; margin: -1px; padding: 0 !important; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; pointer-events: none }
-.account-soft-trigger { position: relative; display: flex; width: 100%; min-width: 160px; min-height: 42px; align-items: center; padding: 10px 34px 10px 13px; overflow: hidden; border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
+.account-soft-trigger { position: relative; display: flex; width: 100%; min-width: 160px; min-height: 44px; align-items: center; padding: 10px 34px 10px 13px; overflow: hidden; border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
 .account-soft-trigger::after { position: absolute; top: 50%; right: 14px; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ''; opacity: .72; transform: translateY(-65%) rotate(45deg); transition: transform .2s var(--ease) }
 .account-soft-trigger[aria-expanded='true']::after { transform: translateY(-35%) rotate(225deg) }
 .account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13); outline: 0 }
@@ -282,7 +299,6 @@ function submitCreate() {
 .ac-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
 .ac-name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--ink) }
 .ac-name em { font-style: normal; background: var(--yellow); border-radius: 999px; padding: 2px 7px; font-size: 10px; letter-spacing: .03em }
-.ac-id { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 
 .ac-btn { flex: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .25s, background-color .25s, border-color .25s }
 .ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }

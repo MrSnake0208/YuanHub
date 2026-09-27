@@ -17,7 +17,7 @@ let streamAccountId = ''
 let streamUserId = ''
 
 export const accountEvents = reactive({
-  toasts: []
+  toasts: [], history: []
 })
 
 function eventIdOf(message) {
@@ -44,9 +44,13 @@ function showToast(toast) {
   const id = globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function'
     ? globalThis.crypto.randomUUID()
     : 'account-event-' + Date.now() + '-' + Math.random().toString(36).slice(2)
-  accountEvents.toasts = accountEvents.toasts.concat([Object.assign({ id: id, tone: 'success', kind: 'system', title: '', detail: '' }, toast)]).slice(-3)
-  const timer = setTimeout(function () { removeToast(id) }, 3800)
-  toastTimers.set(id, timer)
+  const entry = Object.assign({ id: id, tone: 'success', kind: 'system', title: '', detail: '' }, toast)
+  accountEvents.toasts = accountEvents.toasts.concat(entry).slice(-3)
+  accountEvents.history = [entry, ...accountEvents.history].slice(0, 20)
+  if (entry.tone !== 'warning') {
+    const timer = setTimeout(function () { removeToast(id) }, entry.detail || entry.entries?.length ? 10000 : 3800)
+    toastTimers.set(id, timer)
+  }
 }
 
 function formatInventoryEntry(entry, recordType) {
@@ -219,6 +223,10 @@ export function stopAccountEventStream() {
   stream = null
   streamAccountId = ''
   streamUserId = ''
+  for (const timer of toastTimers.values()) clearTimeout(timer)
+  toastTimers.clear()
+  accountEvents.toasts = []
+  accountEvents.history = []
 }
 
 export function dismissAccountEventToast(id) {

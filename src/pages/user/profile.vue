@@ -396,11 +396,15 @@
               v-if="notice"
               class="notice-line"
               :class="{ err: noticeError }"
-              role="status"
-              aria-live="polite"
+              :role="noticeError ? 'alert' : 'status'"
             >
-              {{ notice }}
+              <span>{{ notice }}</span>
+              <button type="button" aria-label="关闭提示" @click="dismissNotice">×</button>
             </div>
+            <details v-if="recentFailures.length" class="failure-history">
+              <summary>最近失败记录（{{ recentFailures.length }}）</summary>
+              <ul><li v-for="(failure, index) in recentFailures" :key="index">{{ failure }}</li></ul>
+            </details>
 
             <section
               class="connections-section"
@@ -672,6 +676,7 @@ import {
   updateOpenApiTokenScopes,
 } from "../../api/openApi.js";
 import { activeAccount } from "../../store/activeAccount.js";
+import { dialog } from "../../utils/dialog.js";
 import {
   FALLBACK_DESCRIPTIONS as FALLBACK_SCOPES,
   MAAYUAN_REQUIRED_SCOPES,
@@ -695,6 +700,7 @@ const creatingMode = ref("");
 const updatingTokenId = ref("");
 const notice = ref("");
 const noticeError = ref(false);
+const recentFailures = ref([]);
 let noticeTimer = null;
 let layoutFrame = null;
 
@@ -820,11 +826,11 @@ function toast(text, isError) {
   notice.value = text;
   noticeError.value = !!isError;
   if (noticeTimer) clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(function () {
-    notice.value = "";
-    noticeError.value = false;
-  }, 4200);
+  noticeTimer = null;
+  if (isError) recentFailures.value = [text, ...recentFailures.value].slice(0, 5);
+  else noticeTimer = setTimeout(dismissNotice, 4200);
 }
+function dismissNotice() { if (noticeTimer) clearTimeout(noticeTimer); noticeTimer = null; notice.value = ""; noticeError.value = false; }
 
 function humanErr(err, fallback) {
   if (!err) return fallback;
@@ -1024,16 +1030,17 @@ async function upgradeForMaaYuan(tokenItem) {
   if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   const id = tokenItem && tokenItem.token_id;
   if (!id || updatingTokenId.value) return;
+  const ownerId = auth.userInfo?.id;
   const nextScopes = mergeScopes(tokenItem.scopes, MAAYUAN_REQUIRED_SCOPES);
   const label = tokenLabel(tokenItem);
-  if (
-    !confirm(
-      "将为“" +
+  if (!(await dialog.confirm({
+      title: "补齐 MaaYuan 权限",
+      message: "将为“" +
         label +
-        "”补齐 MaaYuan 的库存上传、密探采集上传、密探读取和星石截图上传权限。连接码不会变化，原有权限也会保留。是否继续？",
-    )
-  )
-    return;
+        "”补齐 MaaYuan 的库存上传、密探采集上传、密探读取和星石截图上传权限。连接码不会变化，原有权限也会保留。",
+      type: "danger",
+      confirmText: "补齐权限",
+    })) || auth.userInfo?.id !== ownerId) return;
   updatingTokenId.value = id;
   try {
     await updateOpenApiTokenScopes(id, nextScopes);
@@ -1051,16 +1058,17 @@ async function removeToken(tokenItem) {
   if (!id) return;
   const label = tokenLabel(tokenItem);
   const account = tokenItem.account_name || tokenItem.account_id;
-  if (
-    !confirm(
-      "停止“" +
+  const ownerId = auth.userInfo?.id;
+  if (!(await dialog.confirm({
+      title: "停止连接",
+      message: "停止“" +
         label +
         "”访问“" +
         account +
-        "”吗？使用这条连接码的工具将立即无法继续上传或读取数据。",
-    )
-  )
-    return;
+        "”后，使用这条连接码的工具将立即无法继续上传或读取数据。",
+      type: "danger",
+      confirmText: "停止连接",
+    })) || auth.userInfo?.id !== ownerId) return;
   try {
     await deleteOpenApiToken(id);
     toast("连接已停止");
@@ -1093,10 +1101,10 @@ async function copyToken(token) {
   }
 }
 
-function finishNewToken() {
+async function finishNewToken() {
   if (
     !tokenCopied.value &&
-    !confirm("还没有通过页面复制连接码。关闭后将无法再次查看，仍要关闭吗？")
+    !(await dialog.confirm({ title: "关闭连接码？", message: "还没有通过页面复制连接码。关闭后将无法再次查看，仍要关闭吗？", type: "danger", confirmText: "仍要关闭" }))
   )
     return;
   newToken.value = null;
@@ -1107,6 +1115,7 @@ watch(() => beta.canUseBetaFeatures, () => {
   if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
   void loadAccounts();
 });
+watch(() => auth.userInfo?.id, () => { dismissNotice(); recentFailures.value = []; });
 watch(accounts, function () {
   applyDefaultAccounts();
 });
@@ -1817,7 +1826,14 @@ onBeforeUnmount(function () {
   text-underline-offset: 4px;
 }
 .notice-line {
-  margin-top: 18px;
+  position: fixed;
+  z-index: var(--z-toast);
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  max-width: min(360px, calc(100vw - 32px));
+  align-items: center;
+  gap: 12px;
   padding: 11px 15px;
   color: var(--ink);
   background: var(--yellow);
@@ -1826,6 +1842,11 @@ onBeforeUnmount(function () {
   font-weight: 700;
   line-height: 1.6;
 }
+.notice-line button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; }
+@media (max-width: 767px) { .notice-line { bottom: calc(78px + env(safe-area-inset-bottom)); } }
+.failure-history { margin-top: 12px; color: var(--ink-60); font-size: 12px; }
+.failure-history summary { min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; }
+.failure-history li { margin: 4px 0; }
 .notice-line.err {
   color: var(--rouge);
   background: rgba(166, 81, 74, 0.14);
