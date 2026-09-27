@@ -19,8 +19,9 @@
                 :disabled="loading || unreadCount === 0"
                 @click="markAllRead"
               >
-                {{ markingAll ? '正在标记…' : '全部已读' }}
+                {{ markingAll ? '正在标记…' : markAllError ? '重试全部已读' : '全部已读' }}
               </button>
+              <p v-if="markAllError" class="action-error" role="alert">{{ markAllError }}</p>
             </div>
           </div>
         </div>
@@ -77,6 +78,7 @@
                     <time>{{ formatTime(item.createdAt) }}</time>
                     <span v-if="!item.readAt" class="ntf-unread-dot" aria-label="未读"></span>
                   </div>
+                  <p v-if="markReadErrorId === item.id" class="action-error" role="alert">标记失败，请重试。</p>
                 </div>
                 <button
                   v-if="!item.readAt"
@@ -85,15 +87,16 @@
                   :disabled="markingId === item.id"
                   @click.stop="markRead(item)"
                 >
-                  {{ markingId === item.id ? '…' : '标为已读' }}
+                  {{ markingId === item.id ? '…' : markReadErrorId === item.id ? '重试标为已读' : '标为已读' }}
                 </button>
               </article>
 
               <!-- 加载更多 -->
               <div v-if="hasMore" class="more-row">
                 <button class="btn-more" :disabled="loadingMore" @click="loadMore">
-                  {{ loadingMore ? '正在加载…' : '加载更多' }}
+                  {{ loadingMore ? '正在加载…' : loadMoreError ? '重试加载更多' : '加载更多' }}
                 </button>
+                <p v-if="loadMoreError" class="action-error" role="alert">{{ loadMoreError }}</p>
               </div>
             </template>
           </div>
@@ -139,6 +142,9 @@ const loadingMore = ref(false)
 const error = ref('')
 const markingId = ref('')
 const markingAll = ref(false)
+const markAllError = ref('')
+const markReadErrorId = ref('')
+const loadMoreError = ref('')
 const page = ref(1)
 let notificationRequestId = 0
 
@@ -159,6 +165,8 @@ function setFilter(key) {
   filter.value = key
   page.value = 1
   notifications.value = []
+  markReadErrorId.value = ''
+  loadMoreError.value = ''
   loadNotifications()
 }
 
@@ -212,6 +220,7 @@ async function loadNotifications() {
 async function loadMore() {
   if (loadingMore.value || !hasMore.value) return
   loadingMore.value = true
+  loadMoreError.value = ''
   const requestId = notificationRequestId
   const nextPage = page.value + 1
   try {
@@ -229,7 +238,7 @@ async function loadMore() {
     total.value = data.total
     setNotificationUnreadCount(data.unreadCount)
   } catch (_) {
-    // 保持当前页，避免失败的加载更多改变分页状态。
+    loadMoreError.value = '加载更多失败，已加载的通知仍可查看。'
   } finally {
     loadingMore.value = false
   }
@@ -238,12 +247,13 @@ async function loadMore() {
 async function markRead(item) {
   if (!item || item.readAt || markingId.value) return
   markingId.value = item.id
+  markReadErrorId.value = ''
   try {
     const updated = await markNotificationRead(item.id)
     if (updated) Object.assign(item, updated)
     await loadNotifications()
   } catch (_) {
-    // 静默失败
+    markReadErrorId.value = item.id
   } finally {
     markingId.value = ''
   }
@@ -252,11 +262,12 @@ async function markRead(item) {
 async function markAllRead() {
   if (markingAll.value) return
   markingAll.value = true
+  markAllError.value = ''
   try {
     await markAllNotificationsRead()
     await loadNotifications()
   } catch (_) {
-    // 静默失败
+    markAllError.value = '全部已读失败，未读通知仍保留，请重试。'
   } finally {
     markingAll.value = false
   }
@@ -295,6 +306,8 @@ onBeforeUnmount(function () {
 .notifications-main { padding-bottom: 0 }
 .page-notifications .hero::after { content: '通知' }
 .hero-action { display: flex; align-items: center; justify-content: center; padding: 16px 24px }
+.hero-action:has(.action-error){flex-direction:column;gap:6px}
+.action-error{color:var(--rouge);font-size:12px;font-weight:700;line-height:1.5}
 .hero-action .act-btn { min-height: 44px; padding: 10px 24px; color: var(--cream); background: var(--tea); border: 1.5px solid transparent; border-radius: 999px; cursor: pointer; font-family: var(--font-b); font-size: 13px; font-weight: 800; white-space: nowrap; transition: all .3s var(--ease) }
 .hero-action .act-btn:hover:not(:disabled) { background: var(--accent) }
 .hero-action .act-btn:disabled { opacity: .45; cursor: not-allowed }
@@ -329,7 +342,7 @@ onBeforeUnmount(function () {
 .ntf-read-btn:hover:not(:disabled) { background: var(--yellow); border-color: var(--yellow-deep) }
 .ntf-read-btn:disabled { opacity: .45; cursor: not-allowed }
 
-.more-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 24px }
+.more-row { display: flex; flex-direction:column; align-items: center; justify-content: center; gap: 8px; margin-top: 24px }
 .btn-more { background: var(--tea); color: var(--cream); border: none; border-radius: 999px; padding: 14px 38px; font-size: 14px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .3s var(--ease) }
 .btn-more:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px) }
 .btn-more:disabled { opacity: .45; cursor: default }
