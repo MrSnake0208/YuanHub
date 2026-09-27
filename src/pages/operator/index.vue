@@ -3008,6 +3008,7 @@ import {
   defineAsyncComponent,
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import {
   Archive,
   BookOpen,
@@ -3321,6 +3322,12 @@ const editNoticeError = ref(false);
 const savingEdit = ref(false);
 const editOriginalStoneSignature = ref("");
 const editConflictDraft = ref(null);
+const editBaseline = ref("");
+const editorDirty = computed(function () {
+  return editing.value &&
+    JSON.stringify([editForm.value, combatDisplayMode.value]) !== editBaseline.value;
+});
+const confirmEditorDiscard = useUnsavedChanges(editorDirty, "密探编辑内容");
 // C2 source of truth: Current Inventory + Current Star Loadout only.
 const starLoadoutOpen = ref(false);
 const starLoadoutTarget = ref(null);
@@ -7272,6 +7279,7 @@ async function openEdit(id) {
     editingOp.value = null;
     return;
   }
+  editBaseline.value = JSON.stringify([editForm.value, combatDisplayMode.value]);
   editing.value = true;
 }
 
@@ -7352,8 +7360,8 @@ function discardConflictDraft() {
   editNoticeError.value = false;
 }
 
-function closeEditor() {
-  if (savingEdit.value) return;
+async function closeEditor() {
+  if (savingEdit.value || !(await confirmEditorDiscard())) return false;
   const trigger = editorTriggerEl;
   editorTriggerEl = null;
   editing.value = false;
@@ -7367,6 +7375,7 @@ function closeEditor() {
     if (trigger && document.contains(trigger))
       trigger.focus({ preventScroll: true });
   });
+  return true;
 }
 
 async function saveEdit() {
@@ -7521,6 +7530,7 @@ async function saveEdit() {
       equipped_star_stones_signature: currentCombatSignature,
     };
   }
+  const submittedSignature = JSON.stringify([editForm.value, combatDisplayMode.value]);
   savingEdit.value = true;
   editNotice.value = "";
   editNoticeError.value = false;
@@ -7564,10 +7574,10 @@ async function saveEdit() {
       return;
     }
     await nextTick();
+    editBaseline.value = submittedSignature;
     editNotice.value = "养成资料已保存";
-    setTimeout(function () {
-      closeEditor();
-      restoreCurrentLedgerCardPosition(op.id);
+    setTimeout(async function () {
+      if (await closeEditor()) restoreCurrentLedgerCardPosition(op.id);
     }, 800);
   } catch (err) {
     if (
