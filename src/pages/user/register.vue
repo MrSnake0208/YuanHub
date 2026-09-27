@@ -40,17 +40,13 @@
 
           <div class="field">
             <label for="register-password">密码 <em>*</em></label>
-            <div class="input-wrap" :class="{ focus: focusField === 'password' }">
-              <input id="register-password" v-model="form.password" name="password" type="password" placeholder="8~32 位" autocomplete="new-password" @focus="focusField='password'" @blur="focusField=''" />
-            </div>
+            <PasswordInput id="register-password" v-model="form.password" name="password" placeholder="8~32 位" autocomplete="new-password" />
             <p class="field-err" v-if="errors.password">{{ errors.password }}</p>
           </div>
 
           <div class="field">
             <label for="register-confirm">确认密码 <em>*</em></label>
-            <div class="input-wrap" :class="{ focus: focusField === 'confirm' }">
-              <input id="register-confirm" v-model="form.confirm" name="confirm-password" type="password" placeholder="再次输入密码" autocomplete="new-password" @focus="focusField='confirm'" @blur="focusField=''" />
-            </div>
+            <PasswordInput id="register-confirm" v-model="form.confirm" name="confirm-password" placeholder="再次输入密码" autocomplete="new-password" />
             <p class="field-err" v-if="errors.confirm">{{ errors.confirm }}</p>
           </div>
 
@@ -69,6 +65,7 @@
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthLayout from '../../components/AuthLayout.vue'
+import PasswordInput from '../../components/PasswordInput.vue'
 import BetaNotice from '../../components/beta/BetaNotice.vue'
 import { safeBetaRedirect } from '../../utils/betaAccess.js'
 // api/user.js 由 eng-api 按契约提供：sendRegistrationToken({email}) { register({email,userName,password,registrationToken}) }
@@ -145,7 +142,7 @@ async function onSubmit() {
       registrationToken: form.registrationToken
     })
     clearTimer()
-    router.push(authDestination('/login'))
+    router.push({ ...authDestination('/login'), query: { ...authDestination('/login').query, registered: '1' } })
   } catch (e) {
     serverMsg.value = (e && e.message) || '注册失败，请稍后再试'
   } finally {
