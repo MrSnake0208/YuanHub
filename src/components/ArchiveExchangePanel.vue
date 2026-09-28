@@ -72,7 +72,7 @@ defineEmits(['toggle-import', 'update:scope', 'export'])
 <style scoped>
 .act-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface); padding: 8px 16px; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; white-space: nowrap; transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease); }
 .act-btn:disabled { cursor: not-allowed; opacity: 0.45; }
-.archive-workspace { border-top: 1px dashed var(--line); background: var(--cream); padding: 16px 24px 18px; }
+.archive-workspace { margin-top: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--cream); padding: 16px 24px 18px; }
 .archive-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: 0.04em; }
 .archive-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7; }
@@ -94,7 +94,7 @@ defineEmits(['toggle-import', 'update:scope', 'export'])
 .export-submit { min-height: 52px; padding-inline: 18px; border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .export-submit:hover:not(:disabled) { border-color: var(--tea-deep); background: var(--tea-deep); color: var(--cream); }
 @media (max-width: 640px) {
-  .archive-workspace { margin-top: 0; padding: 14px 16px 16px; }
+  .archive-workspace { padding: 14px 16px 16px; }
   .archive-heading { flex-direction: column; gap: 8px; }
   .archive-actions { grid-template-columns: 1fr; gap: 12px; }
   .archive-import, .export-submit { width: 100%; min-height: 46px; }

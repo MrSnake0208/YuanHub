@@ -12,7 +12,7 @@
     </div>
     <div :id="selectId + '-panels'" v-show="!split || !compact" :class="{ 'workspace-panels': split }">
     <div class="workspace-account">
-    <div class="account-bar" :class="{ 'with-actions': usesStackedLayout }">
+    <div v-if="showAccountBar" class="account-bar" :class="{ 'with-actions': usesStackedLayout }">
       <div class="account-heading">
         <span class="section-kicker">数据归属</span>
         <h2>{{ headingTitle }}</h2>
@@ -123,6 +123,7 @@ import { ACCOUNT_GAMES, normalizeAccountGame } from '../store/activeAccount.js'
 
 const props = defineProps({
   split: { type: Boolean, default: false },
+  showAccountBar: { type: Boolean, default: true },
   tourTarget: { type: String, default: '' },
   summaryLabel: { type: String, default: '更改账号与分享状态' },
   // 当前选中账号 id（v-model:accountId）

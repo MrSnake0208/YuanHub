@@ -4,7 +4,7 @@
       <div>
         <span class="section-kicker">GAME ACCOUNTS · 游戏账号</span>
         <h2 id="game-account-manager-title">统一管理游戏账号</h2>
-        <p>账号名称与所属游戏只在这里维护；密探、库存、星石等页面只负责切换当前账号。</p>
+        <p>点击账号名称可设为当前账号；账号名称与所属游戏也在这里统一维护。</p>
       </div>
       <span class="account-count">{{ accounts.length }} 个账号</span>
     </header>
@@ -73,12 +73,14 @@
                   class="account-main"
                   :class="{ selected: account.id === accountId }"
                   :aria-pressed="account.id === accountId"
+                  :aria-label="account.id === accountId ? account.name + '，当前账号' : '设 ' + account.name + ' 为当前账号'"
                   :disabled="busyAccountId === account.id"
                   @click="selectAccount(account)"
                 >
                   <span class="account-name-line">
                     <b>{{ account.name }}</b>
                     <em v-if="account.id === accountId">当前账号</em>
+                    <em v-else class="select-hint">设为当前</em>
                   </span>
                 </button>
                 <AccountIdDetails :value="account.id" label="查看账号编号" />
@@ -594,6 +596,7 @@ async function remove(account) {
 .account-main {
   width: 100%;
   min-width: 0;
+  min-height: 44px;
   padding: 6px 8px;
   border: 0;
   border-radius: 9px;
@@ -630,6 +633,7 @@ async function remove(account) {
   font-style: normal;
   font-weight: 800;
 }
+.account-name-line .select-hint { border: 1px solid var(--line); background: transparent; color: var(--ink-60); }
 .account-controls {
   display: flex;
   align-items: flex-end;
