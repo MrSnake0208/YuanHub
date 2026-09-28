@@ -87,7 +87,9 @@ it('登录且有子账号与数据时仍只渲染占位，账号上下文保持�
   expect(wrapper.findAll('.summary-card')).toHaveLength(0)
   expect(wrapper.findAll('.tool-card')).toHaveLength(0)
 
-  expect(wrapper.find('.account-picker').exists()).toBe(true)
+  expect(wrapper.find('.data-account-context-bar').exists()).toBe(true)
+  expect(wrapper.find('.data-account-context-bar').text()).toContain('测试大号')
+  expect(wrapper.find('.data-account-context-bar').findComponent(RouterLinkStub).props('to')).toBe('/user/profile#game-accounts')
   expect(wrapper.text()).toContain('真实数据')
 })
 
