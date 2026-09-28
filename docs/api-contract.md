@@ -686,11 +686,15 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 | PATCH /v1/reports/{id}/status | JWT | {status,actor_mode?} | 更新后的工单 |
 | GET /v1/reports/access | JWT | 无 | 当前用户的接收/管理板块及超级管理员标识 |
 | GET /v1/admin/feedback-access | 超级管理员 | 无 | 授权列表 |
+| POST /v1/admin/feedback-categories | 超级管理员 | `{label}`，1–24 字符且不能与现有名称重复 | `{key,label}` |
+| PUT /v1/admin/feedback-categories/{key} | 超级管理员 | `{label}`，1–24 字符且不能与其他名称重复 | `{key,label}` |
 | GET /v1/admin/feedback-access/users | 超级管理员 | q,page,size，q 非空，size 1..10 | 已激活用户候选 {id,user_name,email,activated}[] |
 | PUT /v1/admin/feedback-access/{userId} | 超级管理员 | {receive_categories,manage_categories} | 授权结果 |
 | DELETE /v1/admin/feedback-access/{userId} | 超级管理员 | 无 | 无业务数据 |
 
 候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
+
+`GET /v1/reports/access` 的 `available_categories`、`available_areas` 和 `available_work_areas` 来自同一份后端板块目录，普通用户与管理员一致。超级管理员新增板块后，后端生成不可变的 `CUSTOM_...` 标识；改名只改变展示名称，工单和授权仍引用原标识。板块目录变更冲突返回 409，普通管理员写接口返回 403。板块不提供删除接口，以保留历史工单归属。
 
 旧授权字段 receive_areas/manage_areas 和旧反馈字段 area 继续兼容读取；新前端优先使用 receive_categories/manage_categories 与 category。
 

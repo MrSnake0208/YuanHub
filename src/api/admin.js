@@ -45,6 +45,7 @@ function normalizeAuditSnapshot(value) {
     roles: Array.isArray(value.roles) ? value.roles.slice() : [],
     receiveAreas: Array.isArray(receiveAreas) ? receiveAreas.slice() : [],
     manageAreas: Array.isArray(manageAreas) ? manageAreas.slice() : [],
+    feedbackCategoryLabel: value.feedbackCategoryLabel || value.feedback_category_label || null,
     ...(value.beta && typeof value.beta === 'object' && !Array.isArray(value.beta)
       ? { beta: Object.fromEntries(Object.entries(value.beta).filter(([key]) => ['access_mode', 'capacity', 'admissions_paused', 'config_version', 'reason'].includes(key))) }
       : {})
