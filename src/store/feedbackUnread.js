@@ -1,13 +1,7 @@
 import { computed, reactive, watch } from 'vue'
-import { listManagedFeedback } from '../api/feedback.js'
+import { listWorkflowFeedback, markManagedFeedbackRead } from '../api/feedback.js'
 import { auth } from './auth.js'
 import { canManageAnyFeedback } from '../utils/authPermissions.js'
-import {
-  countUnreadFeedback,
-  FEEDBACK_READ_STATE_EVENT,
-  getUnreadFeedbackIds,
-  markFeedbackListRead
-} from '../utils/feedbackReadState.js'
 
 const PAGE_SIZE = 100
 const MAX_PAGES = 100
@@ -36,7 +30,8 @@ const feedbackUnreadContext = computed(() => {
     canReadManagedFeedback.value,
     currentUserId(),
     Boolean(access && access.superAdmin),
-    access && Array.isArray(access.manageAreas) ? access.manageAreas.join(',') : ''
+    access && Array.isArray(access.operatorAreas) ? access.operatorAreas.join(',') : '',
+    access && Array.isArray(access.developerAreas) ? access.developerAreas.join(',') : ''
   ].join('|')
 })
 
@@ -80,7 +75,8 @@ async function fetchFeedbackUnread() {
     let total = null
 
     while (page <= MAX_PAGES) {
-      const data = await listManagedFeedback({
+      const data = await listWorkflowFeedback({
+        queue: 'ALL',
         page,
         pageSize,
         sortBy: 'updatedAt',
@@ -105,10 +101,9 @@ async function fetchFeedbackUnread() {
       requestContext !== feedbackUnreadContext.value ||
       !canReadManagedFeedback.value
     ) return
-    const userId = currentUserId()
     managedFeedbackSnapshot = reports
-    feedbackUnreadState.count = countUnreadFeedback(reports, userId)
-    feedbackUnreadState.ids = getUnreadFeedbackIds(reports, userId)
+    feedbackUnreadState.ids = reports.filter(report => report.teamUnread).map(report => String(report.id))
+    feedbackUnreadState.count = feedbackUnreadState.ids.length
     feedbackUnreadState.loaded = true
     loadedAt = Date.now()
   } catch (_) {
@@ -140,22 +135,14 @@ export async function markAllManagedFeedbackRead() {
   if (!feedbackUnreadState.loaded || feedbackUnreadState.loading) await refreshFeedbackUnread()
   if (!canReadManagedFeedback.value || !managedFeedbackSnapshot.length) return 0
 
-  const userId = currentUserId()
   const unreadIds = new Set(feedbackUnreadState.ids)
   const targets = managedFeedbackSnapshot.filter(report => {
     const reportId = report && (report.id ?? report.reportId ?? report.report_id)
-    return reportId != null && unreadIds.has(String(reportId))
+    return reportId != null && report.lastReporterMessageId && unreadIds.has(String(reportId))
   })
-  const marked = markFeedbackListRead(userId, targets)
-  feedbackUnreadState.count = countUnreadFeedback(managedFeedbackSnapshot, userId)
-  feedbackUnreadState.ids = getUnreadFeedbackIds(managedFeedbackSnapshot, userId)
-  loadedAt = Date.now()
-  return marked
-}
-
-function handleReadStateChange(event) {
-  if (!event || !event.detail || event.detail.userId !== currentUserId()) return
-  void refreshFeedbackUnread({ force: true })
+  await Promise.all(targets.map(report => markManagedFeedbackRead(report.id, report.lastReporterMessageId)))
+  await refreshFeedbackUnread({ force: true })
+  return targets.length
 }
 
 function refreshVisible() {
@@ -183,7 +170,6 @@ function startFeedbackUnread() {
     }
   }, { immediate: true })
   if (typeof window !== 'undefined') {
-    window.addEventListener(FEEDBACK_READ_STATE_EVENT, handleReadStateChange)
     pollTimer = setInterval(refreshVisible, POLL_INTERVAL)
   }
 }
@@ -199,7 +185,6 @@ function stopFeedbackUnread() {
     stopPermissionWatch()
     stopPermissionWatch = null
   }
-  if (typeof window !== 'undefined') window.removeEventListener(FEEDBACK_READ_STATE_EVENT, handleReadStateChange)
 }
 
 export function subscribeFeedbackUnread() {

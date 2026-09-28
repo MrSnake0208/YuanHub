@@ -143,6 +143,15 @@ export function normalizeFeedback(report) {
     supportCount: Number(report.supportCount ?? report.support_count ?? 0),
     mergedIntoId: report.mergedIntoId ?? report.merged_into_id ?? null,
     mergedCount: Number(report.mergedCount ?? report.merged_count ?? 0),
+    mergedSourceIds: report.mergedSourceIds ?? report.merged_source_ids ?? [],
+    workflowStage: String(report.workflowStage ?? report.workflow_stage ?? 'UNASSIGNED').toUpperCase(),
+    workArea: report.workArea ?? report.work_area ?? category,
+    operatorAssigneeUserId: report.operatorAssigneeUserId ?? report.operator_assignee_user_id ?? null,
+    operatorAssigneeName: report.operatorAssigneeName ?? report.operator_assignee_name ?? null,
+    teamUnread: Boolean(report.teamUnread ?? report.team_unread),
+    needsReply: Boolean(report.needsReply ?? report.needs_reply),
+    viewerCanTakeOver: Boolean(report.viewerCanTakeOver ?? report.viewer_can_take_over),
+    viewerCanDevelop: Boolean(report.viewerCanDevelop ?? report.viewer_can_develop),
     publishedAt: report.publishedAt ?? report.published_at ?? null,
     publicUpdatedAt: report.publicUpdatedAt ?? report.public_updated_at ?? null,
     completedAt: report.completedAt ?? report.completed_at ?? null,
@@ -186,8 +195,11 @@ export async function listFeedback(params = {}) {
   if (params.q) qs.set('q', params.q)
   if (params.sortBy) qs.set('sortBy', params.sortBy)
   if (params.sortOrder) qs.set('sortOrder', params.sortOrder)
+  if (params.workflowQueue) qs.set('queue', params.workflowQueue)
+  if (params.workArea) qs.set('workArea', params.workArea)
   const query = qs.toString()
-  const data = await request(`/v1/reports${query ? '?' + query : ''}`, { auth: true })
+  const base = params.workflowQueue ? '/v1/admin/feedback/queue' : '/v1/reports'
+  const data = await request(`${base}${query ? '?' + query : ''}`, { auth: true })
   const items = Array.isArray(data)
     ? data
     : Array.isArray(data && data.reports)
@@ -214,6 +226,10 @@ export function listManagedFeedback(params = {}) {
   return listFeedback({ ...params, mine: false })
 }
 
+export function listWorkflowFeedback(params = {}) {
+  return listFeedback({ ...params, workflowQueue: params.queue || 'UNASSIGNED' })
+}
+
 // 获取单个反馈详情
 export function getFeedbackAccess() {
   return request('/v1/reports/access', { auth: true })
@@ -229,7 +245,10 @@ export function updateFeedbackAccessGrant(userId, grant) {
     auth: true,
     body: {
       receive_categories: grant.receiveCategories || grant.receiveAreas || [],
-      manage_categories: grant.manageCategories || grant.manageAreas || []
+      manage_categories: grant.manageCategories || grant.manageAreas || [],
+      feedback_roles: grant.feedbackRoles || [],
+      operator_areas: grant.operatorAreas || [],
+      developer_areas: grant.developerAreas || []
     }
   })
 }
@@ -243,6 +262,11 @@ export function deleteFeedbackAccessGrant(userId) {
 
 export async function getFeedback(id) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}`, { auth: true })
+  return normalizeFeedback(data)
+}
+
+export async function getManagedFeedback(id) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}`, { auth: true })
   return normalizeFeedback(data)
 }
 
@@ -274,13 +298,14 @@ export function appendManagedFeedbackMessage(id, body) {
   return appendFeedbackMessage(id, body, 'ADMIN')
 }
 
-async function updateFeedbackStatus(id, status, actorMode) {
+async function updateFeedbackStatus(id, status, actorMode, reason) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}/status`, {
     method: 'PATCH',
     auth: true,
     body: {
       status: String(status).toUpperCase(),
-      actor_mode: actorMode
+      actor_mode: actorMode,
+      reason: reason || null
     }
   })
   return normalizeFeedback(data)
@@ -290,9 +315,24 @@ export function updateMyFeedbackStatus(id, status) {
   return updateFeedbackStatus(id, status, 'REPORTER')
 }
 
-export function updateManagedFeedbackStatus(id, status) {
-  return updateFeedbackStatus(id, status, 'ADMIN')
+export function updateManagedFeedbackStatus(id, status, reason) {
+  return updateFeedbackStatus(id, status, 'ADMIN', reason)
 }
+
+async function workflowAction(id, action, body) {
+  const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/${action}`, {
+    method: 'POST', auth: true, body
+  })
+  return normalizeFeedback(data)
+}
+
+export const claimFeedback = id => workflowAction(id, 'claim')
+export const assignFeedback = (id, targetUserId, reason) => workflowAction(id, 'assign', { target_user_id: targetUserId, reason })
+export const handoffFeedback = (id, workArea, note) => workflowAction(id, 'handoff', { work_area: workArea, note })
+export const changeFeedbackWorkArea = (id, workArea, note) => workflowAction(id, 'work-area', { work_area: workArea, note })
+export const returnFeedback = (id, note, mode = 'RETURN') => workflowAction(id, 'return', { note, mode })
+export const markManagedFeedbackRead = (id, messageId) => workflowAction(id, 'read', { message_id: messageId })
+export const listFeedbackWorkflowEvents = id => request(`/v1/admin/feedback/${encodeURIComponent(id)}/events`, { auth: true })
 
 // ===== 管理员公开管理（共创中心第一轮） =====
 
