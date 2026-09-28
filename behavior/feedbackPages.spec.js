@@ -229,6 +229,9 @@ it('转交候选人加载失败时可重试，且旧工单结果不会进入新�
 
 it('转程序沿用当前板块，调整板块走单独接口', async () => {
   const detail = { ...ticket('rpt_a'), workflowStage: 'PROCESSING', workArea: 'OPERATOR', operatorAssigneeUserId: 'tester' }
+  api.getFeedbackAccess.mockResolvedValue({ super_admin: true, available_categories: [
+    { key: 'OPERATOR', label: '密探养成' }, { key: 'INVENTORY', label: '仓库' }
+  ] })
   api.getManagedFeedback.mockResolvedValue(detail)
   api.handoffFeedback.mockResolvedValue({ ...detail, workflowStage: 'DEV_HANDOFF' })
   api.changeFeedbackWorkArea.mockResolvedValue({ ...detail, workArea: 'INVENTORY' })
@@ -459,12 +462,15 @@ describe.each([
     const pending = deferred()
     const update = mode === 'personal' ? api.updateMyFeedbackStatus : api.updateManagedFeedbackStatus
     update.mockReturnValue(pending.promise)
-    if (mode === 'managed') detailApi.mockImplementation(async id => ({ ...ticket(id), workflowStage: 'PROCESSING' }))
+    if (mode === 'managed') {
+      detailApi.mockImplementation(async id => ({ ...ticket(id), workflowStage: 'PROCESSING' }))
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+    }
     const wrapper = render(component); await flushPromises()
     await choose(wrapper, 'rpt_a')
     const done = wrapper.findAll('.feedback-detail-actions button').find(button => button.text().includes('标记完成'))
     await done.trigger('click'); await flushPromises()
-    expect(update).toHaveBeenCalledWith('rpt_a', 'RESOLVED')
+    expect(update).toHaveBeenCalledWith('rpt_a', 'RESOLVED', ...(mode === 'managed' ? [null] : []))
     await close(wrapper); await choose(wrapper, 'rpt_b'); await compose(wrapper, 'B remains open')
     pending.resolve({ ...ticket('rpt_a'), status: 'RESOLVED' }); await flushPromises()
     expect(wrapper.get('[role="dialog"]').text()).toContain('conversation rpt_b')
