@@ -1,6 +1,7 @@
 <template>
-  <section class="admin-public-panel" :class="{ open }" aria-label="反馈广场发布设置">
+  <section class="admin-public-panel" :class="{ open: open || dialog, dialog }" aria-label="反馈广场发布设置">
     <button
+      v-if="!dialog"
       class="admin-public-trigger"
       type="button"
       :aria-expanded="open"
@@ -19,7 +20,7 @@
       </span>
     </button>
 
-    <div v-show="open" :id="panelId" class="admin-public-body">
+    <div v-show="open || dialog" :id="panelId" class="admin-public-body">
       <p class="admin-public-hint">
         发布后只展示你填写的公开标题与摘要；用户原始正文、附件与账号信息不会公开。
       </p>
@@ -75,6 +76,7 @@ import { PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPubl
 
 const props = defineProps({
   item: { type: Object, required: true },
+  dialog: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
   message: { type: String, default: '' },
   error: { type: String, default: '' },
@@ -121,6 +123,8 @@ function save() {
 
 <style scoped>
 .admin-public-panel { overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.admin-public-panel.dialog { border: 0; border-radius: 0; background: transparent; }
+.admin-public-panel.dialog .admin-public-body { border-top: 0; padding: 0; }
 .admin-public-trigger { width: 100%; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 0; background: transparent; color: var(--feedback-text); text-align: left; cursor: pointer; }
 .admin-public-trigger:hover { background: var(--feedback-panel-hover); }
 .admin-public-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -152,5 +156,6 @@ function save() {
   .admin-public-summary-text { max-width: 150px; }
   .admin-public-grid { grid-template-columns: 1fr; }
   .admin-public-grid .full { grid-column: auto; }
+  .admin-public-panel.dialog input, .admin-public-panel.dialog select, .admin-public-panel.dialog textarea { font-size: 16px; }
 }
 </style>

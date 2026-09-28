@@ -92,7 +92,7 @@
       <slot name="management" :item="item" />
     </div>
 
-    <div v-if="!loading && item.status === 'OPEN'" class="detail-action-area">
+    <div v-if="!loading && (item.status === 'OPEN' || showClosedActions)" class="detail-action-area">
       <slot name="actions" :item="item" />
       <slot name="composer" :item="item" />
     </div>
@@ -110,6 +110,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
   showReporter: { type: Boolean, default: false },
+  showClosedActions: { type: Boolean, default: false },
   reporterLabel: { type: String, default: '我' },
   viewerUserId: { type: String, default: '' },
   viewerActorMode: {
