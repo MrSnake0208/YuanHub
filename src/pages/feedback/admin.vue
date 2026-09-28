@@ -40,20 +40,22 @@
           <div v-else class="access-table-wrap">
             <table class="access-table">
               <thead>
-                <tr><th>用户</th><th>接收通知</th><th>管理工单</th><th>最近更新</th><th class="ops">操作</th></tr>
+                <tr><th>用户</th><th>新岗位</th><th>运营板块</th><th>程序板块</th><th>旧接收/管理</th><th>最近更新</th><th class="ops">操作</th></tr>
               </thead>
               <tbody>
                 <tr v-for="grant in filteredGrants" :key="grant.userId">
                   <td><strong>{{ grant.userName }}</strong><code>{{ grant.userId }}</code></td>
-                  <td><span v-for="area in grant.receiveAreas" :key="'r-' + area" class="area-tag">{{ areaLabel(area) }}</span><span v-if="!grant.receiveAreas.length" class="muted">未配置</span></td>
-                  <td><span v-for="area in grant.manageAreas" :key="'m-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.manageAreas.length" class="muted">未配置</span></td>
+                  <td>{{ grant.feedbackRoles.join('、') || '未设置' }}</td>
+                  <td><span v-for="area in grant.operatorAreas" :key="'o-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.operatorAreas.length" class="muted">未配置</span></td>
+                  <td><span v-for="area in grant.developerAreas" :key="'d-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.developerAreas.length" class="muted">未配置</span></td>
+                  <td><small>接收：{{ grant.receiveAreas.map(areaLabel).join('、') || '无' }}</small><small>管理：{{ grant.manageAreas.map(areaLabel).join('、') || '无' }}</small></td>
                   <td><strong>{{ grant.updatedBy || '未知用户' }}</strong><small>{{ formatDate(grant.updatedAt) }}</small></td>
                   <td class="ops">
                     <button class="icon-command" type="button" title="编辑授权" :aria-label="'编辑 ' + grant.userName" @click="openEdit(grant)"><Pencil :size="16" /></button>
                     <button class="icon-command danger" type="button" title="删除授权" :aria-label="'删除 ' + grant.userName" @click="removeGrant(grant)"><Trash2 :size="16" /></button>
                   </td>
                 </tr>
-                <tr v-if="!filteredGrants.length"><td colspan="5" class="empty-row">暂无授权记录</td></tr>
+                <tr v-if="!filteredGrants.length"><td colspan="7" class="empty-row">暂无授权记录</td></tr>
               </tbody>
             </table>
           </div>
@@ -95,7 +97,39 @@
             </div>
 
             <fieldset class="permission-group" :disabled="saving">
-              <legend>接收新反馈通知</legend>
+              <legend>反馈岗位</legend>
+              <div class="area-grid">
+                <label v-for="role in ['OPERATOR', 'DEVELOPER']" :key="role" :class="{ on: form.feedbackRoles.includes(role) }">
+                  <input v-model="form.feedbackRoles" type="checkbox" :value="role" />
+                  <span>{{ role === 'OPERATOR' ? '运营岗' : '程序岗' }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="permission-group" :disabled="saving || !form.feedbackRoles.includes('OPERATOR')">
+              <legend>运营负责板块</legend>
+              <div class="area-grid">
+                <label v-for="area in workAreas" :key="'operator-' + area.key" :class="{ on: form.operatorAreas.includes(area.key) }">
+                  <input v-model="form.operatorAreas" type="checkbox" :value="area.key" />
+                  <span>{{ area.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="permission-group" :disabled="saving || !form.feedbackRoles.includes('DEVELOPER')">
+              <legend>程序负责板块</legend>
+              <div class="area-grid">
+                <label v-for="area in workAreas" :key="'developer-' + area.key" :class="{ on: form.developerAreas.includes(area.key) }">
+                  <input v-model="form.developerAreas" type="checkbox" :value="area.key" />
+                  <span>{{ area.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <p class="access-preview">保存后可查看：运营 {{ form.feedbackRoles.includes('OPERATOR') ? form.operatorAreas.map(areaLabel).join('、') || '无' : '无' }}；程序 {{ form.feedbackRoles.includes('DEVELOPER') ? form.developerAreas.map(areaLabel).join('、') || '无' : '无' }}。</p>
+
+            <fieldset class="permission-group" :disabled="saving">
+              <legend>旧授权 · 接收新反馈通知</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'receive-' + area.key" :class="{ on: form.receiveAreas.includes(area.key) }">
                   <input v-model="form.receiveAreas" type="checkbox" :value="area.key" />
@@ -105,7 +139,7 @@
             </fieldset>
 
             <fieldset class="permission-group" :disabled="saving">
-              <legend>查看、回复与处理工单</legend>
+              <legend>旧授权 · 管理工单</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'manage-' + area.key" :class="{ on: form.manageAreas.includes(area.key) }">
                   <input v-model="form.manageAreas" type="checkbox" :value="area.key" />
@@ -158,6 +192,7 @@ const DEFAULT_AREAS = [
 
 const grants = ref([])
 const areas = ref(DEFAULT_AREAS)
+const workAreas = ref(DEFAULT_AREAS)
 const loading = ref(true)
 const error = ref('')
 const filter = ref('')
@@ -172,7 +207,7 @@ let searchTimer = null
 let searchRequestId = 0
 let loadRequestId = 0
 let isMounted = false
-const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [] })
+const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [], feedbackRoles: [], operatorAreas: [], developerAreas: [] })
 const router = useRouter()
 
 const currentUserId = computed(() => {
@@ -193,13 +228,16 @@ function normalizeGrant(grant) {
     userName: grant.userName || grant.user_name || '未知用户',
     receiveAreas: grant.receiveCategories || grant.receive_categories || grant.receiveAreas || grant.receive_areas || [],
     manageAreas: grant.manageCategories || grant.manage_categories || grant.manageAreas || grant.manage_areas || [],
+    feedbackRoles: grant.feedbackRoles || grant.feedback_roles || [],
+    operatorAreas: grant.operatorAreas || grant.operator_areas || [],
+    developerAreas: grant.developerAreas || grant.developer_areas || [],
     updatedBy: grant.updatedBy || grant.updated_by || '',
     updatedAt: grant.updatedAt || grant.updated_at || null
   }
 }
 
 function areaLabel(key) {
-  return areas.value.find(area => area.key === key)?.label || key
+  return workAreas.value.find(area => area.key === key)?.label || areas.value.find(area => area.key === key)?.label || key
 }
 
 function formatDate(value) {
@@ -217,6 +255,8 @@ async function load() {
     grants.value = Array.isArray(grantData) ? grantData.map(normalizeGrant) : []
     const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
     if (rawAreas.length) areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
+    const rawWorkAreas = accessData.availableWorkAreas || accessData.available_work_areas || []
+    if (rawWorkAreas.length) workAreas.value = rawWorkAreas.map(area => ({ key: area.key, label: area.label }))
   } catch (e) {
     if (await handleForbidden(e)) return
     if (isMounted && requestId === loadRequestId) error.value = e.message || '权限配置加载失败'
@@ -231,6 +271,9 @@ function resetForm() {
   form.userName = ''
   form.receiveAreas = []
   form.manageAreas = []
+  form.feedbackRoles = []
+  form.operatorAreas = []
+  form.developerAreas = []
   userQuery.value = ''
   userResults.value = []
   selectedUser.value = null
@@ -246,6 +289,9 @@ function openEdit(grant) {
   selectedUser.value = { id: grant.userId, userName: grant.userName, email: '' }
   form.receiveAreas = [...grant.receiveAreas]
   form.manageAreas = [...grant.manageAreas]
+  form.feedbackRoles = [...grant.feedbackRoles]
+  form.operatorAreas = [...grant.operatorAreas]
+  form.developerAreas = [...grant.developerAreas]
   editing.value = true
 }
 function closeEditor() {
@@ -297,7 +343,13 @@ function selectUser(user) {
 async function saveGrant() {
   if (!form.userId || saving.value || !isMounted) return
   const actorId = currentUserId.value
-  const grant = { ...form, receiveAreas: [...form.receiveAreas], manageAreas: [...form.manageAreas] }
+  const grant = {
+    ...form,
+    receiveAreas: [...form.receiveAreas], manageAreas: [...form.manageAreas],
+    feedbackRoles: [...form.feedbackRoles],
+    operatorAreas: form.feedbackRoles.includes('OPERATOR') ? [...form.operatorAreas] : [],
+    developerAreas: form.feedbackRoles.includes('DEVELOPER') ? [...form.developerAreas] : []
+  }
   const email = selectedUser.value?.email || '未从授权记录返回'
   saving.value = true
   editorError.value = ''
@@ -311,7 +363,10 @@ async function saveGrant() {
         '用户 ID：' + grant.userId,
         '',
         '接收新反馈：' + (grant.receiveAreas.map(areaLabel).join('、') || '无'),
-        '可管理反馈：' + (grant.manageAreas.map(areaLabel).join('、') || '无')
+        '旧管理授权：' + (grant.manageAreas.map(areaLabel).join('、') || '无'),
+        '新岗位：' + (grant.feedbackRoles.join('、') || '无'),
+        '运营板块：' + (grant.operatorAreas.map(areaLabel).join('、') || '无'),
+        '程序板块：' + (grant.developerAreas.map(areaLabel).join('、') || '无')
       ].join('\n'),
       confirmText: '确认保存'
     })
@@ -377,7 +432,8 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .state { padding: 40px 0; text-align: center; color: var(--ink-60) }
 .state.error,.editor-error { color: var(--rouge) }
 .access-table-wrap { overflow-x: auto; margin-bottom: 48px; border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(73,59,44,.42); scrollbar-gutter: stable }
-.access-table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--feedback-panel) }
+.access-table { width: 100%; min-width: 980px; border-collapse: collapse; background: var(--feedback-panel) }
+.access-preview { margin-top: 16px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
 .access-table th,.access-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
 .access-table th { background: var(--tea); color: var(--cream); font-size: 11px }
 .access-table tbody tr:hover { background: var(--feedback-panel-hover) }
@@ -412,7 +468,7 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
   .access-toolbar { flex-wrap: wrap }
   .access-search { width: 100%; min-width: 0; flex: 1 1 100% }
   .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .access-table th:nth-child(4),.access-table td:nth-child(4) { display: none }
+  .access-table th:nth-child(5),.access-table td:nth-child(5),.access-table th:nth-child(6),.access-table td:nth-child(6) { display: none }
   .access-modal-body { padding: 16px }
 }
 </style>

@@ -21,6 +21,9 @@ test('normalizes the server admin access response without JWT authorities', func
     permissions: ['operator_catalog:write'],
     receiveAreas: ['INVENTORY'],
     manageAreas: ['OPERATOR'],
+    feedbackRoles: [],
+    operatorAreas: [],
+    developerAreas: [],
     superAdmin: true
   })
 })
@@ -28,7 +31,9 @@ test('normalizes the server admin access response without JWT authorities', func
 test('checks concrete permissions and feedback management areas', function () {
   const access = normalizeAdminAccess({
     permissions: [ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE],
-    manageAreas: ['OPERATOR']
+    manageAreas: ['OPERATOR'],
+    feedbackRoles: ['OPERATOR'],
+    operatorAreas: ['OPERATOR']
   })
   assert.equal(hasPermission(access, ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE), true)
   assert.equal(hasPermission(access, ADMIN_PERMISSIONS.ROLE_MANAGE), false)
@@ -46,7 +51,7 @@ test('normalizes category-named feedback permissions for the sidebar badge', fun
 
   assert.deepEqual(access.receiveAreas, ['OPERATOR'])
   assert.deepEqual(access.manageAreas, ['OPERATOR'])
-  assert.equal(canManageAnyFeedback(access), true)
+  assert.equal(canManageAnyFeedback(access), false)
 })
 
 test('falls back to legacy feedback permissions when category aliases are empty', function () {

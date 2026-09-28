@@ -290,7 +290,7 @@ function isMessageNotification(kind) {
 }
 
 function isManagementNotification(kind) {
-  return kind === 'FEEDBACK_ASSIGNED' || kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'
+  return ['FEEDBACK_ASSIGNED', 'FEEDBACK_MESSAGE_FROM_REPORTER', 'FEEDBACK_DEV_HANDOFF', 'FEEDBACK_DEV_RETURN'].includes(kind)
 }
 
 onMounted(function () {

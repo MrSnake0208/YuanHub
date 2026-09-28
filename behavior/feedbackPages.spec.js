@@ -18,7 +18,8 @@ vi.mock('vue-router', async () => {
 })
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('../src/api/feedback.js', () => ({
-  getFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(),
+  getFeedback: vi.fn(), getManagedFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(), listWorkflowFeedback: vi.fn(), listFeedbackWorkflowEvents: vi.fn(),
+  claimFeedback: vi.fn(), assignFeedback: vi.fn(), handoffFeedback: vi.fn(), returnFeedback: vi.fn(),
   createFeedback: vi.fn(), appendMyFeedbackMessage: vi.fn(), appendManagedFeedbackMessage: vi.fn(),
   updateMyFeedbackStatus: vi.fn(), updateManagedFeedbackStatus: vi.fn(), downloadFeedbackAttachment: vi.fn(),
   mergeFeedback: vi.fn(),
@@ -36,7 +37,7 @@ vi.mock('../src/api/changelog.js', () => ({
 }))
 vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'tester' }, adminAccess: { superAdmin: true, permissions: [] } } }))
 vi.mock('../src/store/feedbackUnread.js', () => ({
-  feedbackUnreadState: { ids: [], count: 0 }, subscribeFeedbackUnread: () => () => {}
+  feedbackUnreadState: { ids: [], count: 0 }, subscribeFeedbackUnread: () => () => {}, refreshFeedbackUnread: vi.fn()
 }))
 vi.mock('../src/store/notificationUnread.js', () => ({
   notificationUnreadState: { feedbackRefIds: [] },
@@ -96,9 +97,12 @@ beforeEach(() => {
   useRoute().query = {}
   api.getFeedbackAccess.mockReset().mockResolvedValue({ super_admin: true, available_areas: [] })
   api.getFeedback.mockReset().mockImplementation(async id => ticket(id))
+  api.getManagedFeedback.mockReset().mockImplementation(async id => ticket(id))
   const list = { items: [summary('rpt_a'), summary('rpt_b')], total: 40 }
   api.listMyFeedback.mockReset().mockResolvedValue(list)
   api.listManagedFeedback.mockReset().mockResolvedValue(list)
+  api.listWorkflowFeedback.mockReset().mockResolvedValue(list)
+  api.listFeedbackWorkflowEvents.mockReset().mockResolvedValue([])
   api.appendMyFeedbackMessage.mockReset()
   api.appendManagedFeedbackMessage.mockReset()
   api.createFeedback.mockReset()
@@ -109,15 +113,43 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
 })
 
-it('管理员工作台默认筛选处理中，并可切回全部', async () => {
+it('管理员工作台默认显示待接单，并可切回全部', async () => {
   const wrapper = render(ManagedFeedback)
   await flushPromises()
-  expect(api.listManagedFeedback).toHaveBeenCalledWith(expect.objectContaining({ status: 'OPEN' }))
-  expect(wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '处理中').attributes('aria-selected')).toBe('true')
+  expect(api.listWorkflowFeedback).toHaveBeenCalledWith(expect.objectContaining({ queue: 'UNASSIGNED' }))
+  expect(wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '待接单').attributes('aria-selected')).toBe('true')
 
   await wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '全部').trigger('click')
   await flushPromises()
-  expect(api.listManagedFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ status: undefined }))
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'ALL' }))
+  wrapper.unmount()
+})
+
+it('未接单工单可接单并更新详情中的运营负责人', async () => {
+  api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'UNASSIGNED', workArea: 'OPERATOR' })
+  api.claimFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'PROCESSING', operatorAssigneeName: '测试运营' })
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  await wrapper.findAll('button').find(button => button.text() === '接单').trigger('click')
+  await flushPromises()
+  expect(api.claimFeedback).toHaveBeenCalledWith('rpt_a')
+  expect(wrapper.get('[role="dialog"]').text()).toContain('测试运营')
+  wrapper.unmount()
+})
+
+it('程序岗只能填写内部结果并交回，不能回复用户', async () => {
+  api.getFeedbackAccess.mockResolvedValue({ developer_areas: ['STAR'], available_work_areas: [{ key: 'STAR', label: '星石' }] })
+  api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workArea: 'STAR', workflowStage: 'DEV_HANDOFF', viewerCanManage: false, viewerCanDevelop: true })
+  api.returnFeedback.mockResolvedValue({ ...ticket('rpt_a'), workArea: 'STAR', workflowStage: 'PROCESSING', viewerCanManage: false, viewerCanDevelop: false })
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  expect(wrapper.get('[role="dialog"]').text()).not.toContain('发送回复')
+  await wrapper.findAll('button').find(button => button.text() === '填写结果并交回').trigger('click')
+  await wrapper.get('.feedback-workflow-form textarea').setValue('已修复并验证')
+  await wrapper.get('.feedback-workflow-form').trigger('submit')
+  await flushPromises()
+  expect(api.returnFeedback).toHaveBeenCalledWith('rpt_a', '已修复并验证', 'RETURN')
   wrapper.unmount()
 })
 
@@ -125,17 +157,18 @@ describe.each([
   ['personal', MyFeedback, 'appendMyFeedbackMessage'],
   ['managed', ManagedFeedback, 'appendManagedFeedbackMessage']
 ])('%s feedback detail isolation', (mode, component, appendName) => {
+  const detailApi = mode === 'managed' ? api.getManagedFeedback : api.getFeedback
   it('opens a notification-linked ticket outside the current page without adding it to the list', async () => {
     useRoute().query = { id: 'rpt_off_page' }
     const wrapper = render(component); await flushPromises()
-    expect(api.getFeedback).toHaveBeenCalledWith('rpt_off_page')
+    expect(detailApi).toHaveBeenCalledWith('rpt_off_page')
     expect(wrapper.get('[role="dialog"]').text()).toContain('conversation rpt_off_page')
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
   })
 
   it('shows an off-page deep-link failure instead of silently doing nothing', async () => {
     useRoute().query = { id: 'rpt_missing' }
-    api.getFeedback.mockRejectedValue(new Error('工单不存在'))
+    detailApi.mockRejectedValue(new Error('工单不存在'))
     const wrapper = render(component); await flushPromises()
     expect(wrapper.get('[role="dialog"] [role="alert"]').text()).toContain('工单不存在')
     expect(markFeedbackNotificationsRead).not.toHaveBeenCalled()
@@ -143,7 +176,7 @@ describe.each([
 
   it('closing a loading detail prevents late completion from reopening it or marking it read', async () => {
     const pending = deferred()
-    api.getFeedback.mockReturnValue(pending.promise)
+    detailApi.mockReturnValue(pending.promise)
     const wrapper = render(component); await flushPromises()
     await choose(wrapper, 'rpt_a'); await close(wrapper)
     pending.resolve(ticket('rpt_a')); await flushPromises()
@@ -153,7 +186,7 @@ describe.each([
 
   it('a slower A detail cannot replace the selected B detail', async () => {
     const pending = deferred()
-    api.getFeedback.mockImplementation(id => id === 'rpt_a' ? pending.promise : Promise.resolve(ticket(id)))
+    detailApi.mockImplementation(id => id === 'rpt_a' ? pending.promise : Promise.resolve(ticket(id)))
     const wrapper = render(component); await flushPromises()
     await choose(wrapper, 'rpt_a'); await close(wrapper); await choose(wrapper, 'rpt_b')
     pending.resolve(ticket('rpt_a')); await flushPromises()
@@ -164,7 +197,7 @@ describe.each([
   it('reopens with fresh messages and follows notification query changes on the mounted page', async () => {
     const wrapper = render(component); await flushPromises()
     await choose(wrapper, 'rpt_a'); await close(wrapper); await choose(wrapper, 'rpt_a')
-    expect(api.getFeedback.mock.calls.filter(([id]) => id === 'rpt_a')).toHaveLength(2)
+    expect(detailApi.mock.calls.filter(([id]) => id === 'rpt_a')).toHaveLength(2)
     useRoute().query = { id: 'rpt_b' }; await flushPromises()
     expect(wrapper.get('[role="dialog"]').text()).toContain('conversation rpt_b')
   })
@@ -235,7 +268,7 @@ it('management unmount during permission loading cannot start a late poll or lis
   const wrapper = render(ManagedFeedback)
   wrapper.unmount()
   pending.resolve({ super_admin: true }); await flushPromises()
-  expect(api.listManagedFeedback).not.toHaveBeenCalled()
+  expect(api.listWorkflowFeedback).not.toHaveBeenCalled()
   expect(vi.getTimerCount()).toBe(0)
 })
 
@@ -243,10 +276,10 @@ it('management background refresh cannot supersede a foreground load and leave l
   vi.useFakeTimers()
   const wrapper = render(ManagedFeedback); await flushPromises()
   const pending = deferred()
-  api.listManagedFeedback.mockReturnValue(pending.promise)
+  api.listWorkflowFeedback.mockReturnValue(pending.promise)
   await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
   await vi.advanceTimersByTimeAsync(30000)
-  expect(api.listManagedFeedback).toHaveBeenCalledTimes(2)
+  expect(api.listWorkflowFeedback).toHaveBeenCalledTimes(2)
   pending.resolve({ items: [summary('rpt_b')], total: 1 }); await flushPromises()
   expect(wrapper.find('.ticket-state[role="status"]').exists()).toBe(false)
   expect(wrapper.findAll('tbody tr')).toHaveLength(1)

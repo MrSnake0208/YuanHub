@@ -37,12 +37,18 @@
             <td class="ticket-summary-cell" data-label="反馈内容">
               <strong>{{ truncate(item.content, 72) }}</strong>
               <code>{{ item.id }}</code>
-              <span v-if="isUnread(item)" class="ticket-unread-marker">有新更新</span>
+              <div v-if="workflow" class="ticket-workflow-tags">
+                <span class="ticket-status" :class="['status-' + item.status, 'stage-' + item.workflowStage]">{{ statusLabel(item.status, item.hasAdminReply, item) }}</span>
+                <span class="ticket-category">负责板块 · {{ categoryLabel(item.workArea) }}</span>
+                <span class="ticket-operator" :title="item.operatorAssigneeName || '待接单'">运营 · {{ item.operatorAssigneeName || '待接单' }}</span>
+              </div>
+              <span v-if="isUnread(item)" class="ticket-unread-marker">{{ workflow ? '新消息未读' : '有新更新' }}</span>
+              <span v-if="workflow && item.needsReply && item.status === 'OPEN'" class="ticket-reply-marker">需回复</span>
             </td>
             <td v-if="showReporter" data-label="提交人">{{ reporterName(item) }}</td>
             <td data-label="状态">
-              <span class="ticket-status" :class="'status-' + item.status">
-                {{ statusLabel(item.status, item.hasAdminReply) }}
+              <span class="ticket-status" :class="['status-' + item.status, 'stage-' + item.workflowStage]">
+                {{ statusLabel(item.status, item.hasAdminReply, item) }}
               </span>
             </td>
             <td data-label="提交时间"><time :datetime="item.createdAt">{{ formatDate(item.createdAt) }}</time></td>
@@ -90,8 +96,8 @@
           </header>
           <div class="ticket-detail-meta">
             <div class="ticket-detail-overview">
-              <span class="ticket-status ticket-detail-status" :class="'status-' + selectedItem.status">
-                {{ statusLabel(selectedItem.status, selectedItem.hasAdminReply) }}
+              <span class="ticket-status ticket-detail-status" :class="['status-' + selectedItem.status, 'stage-' + selectedItem.workflowStage]">
+                {{ statusLabel(selectedItem.status, selectedItem.hasAdminReply, selectedItem) }}
               </span>
               <span v-if="showReporter" class="ticket-detail-fact">
                 <span>提交人</span>
@@ -101,11 +107,12 @@
                 <span>提交于</span>
                 <time :datetime="selectedItem.createdAt">{{ formatDate(selectedItem.createdAt) }}</time>
               </span>
+              <span v-if="workflow" class="ticket-operator" :title="selectedItem.operatorAssigneeName || '待接单'">运营 · {{ selectedItem.operatorAssigneeName || '待接单' }}</span>
             </div>
             <div class="ticket-detail-context">
               <div class="ticket-badges ticket-badges-secondary">
                 <span class="ticket-type">类型 · {{ typeLabel(selectedItem.type) }}</span>
-                <span class="ticket-category">板块 · {{ categoryLabel(selectedItem.category) }}</span>
+                <span class="ticket-category">{{ workflow ? '负责板块' : '板块' }} · {{ categoryLabel(workflow ? selectedItem.workArea : selectedItem.category) }}</span>
               </div>
               <code><span>工单</span>{{ selectedItem.id }}</code>
             </div>
@@ -144,6 +151,7 @@ const props = defineProps({
   pageSize: { type: Number, default: 20 },
   totalPages: { type: Number, default: 1 },
   showReporter: { type: Boolean, default: false },
+  workflow: { type: Boolean, default: false },
   unreadFeedbackIds: { type: Array, default: () => [] },
   typeLabel: { type: Function, required: true },
   categoryLabel: { type: Function, required: true },
@@ -167,7 +175,7 @@ function reporterName(item) {
 }
 
 function isUnread(item) {
-  return item && props.unreadFeedbackIds.includes(String(item.id))
+  return item && (props.workflow ? item.teamUnread : props.unreadFeedbackIds.includes(String(item.id)))
 }
 
 // 详情层之上可能还压着二级弹窗（如管理端的“合并反馈”，见 main.css 的浮层刻度）：
@@ -206,6 +214,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-summary-cell strong { display: block; overflow: hidden; color: var(--feedback-text); font-size: 13px; font-weight: 700; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
 .ticket-summary-cell code { display: block; margin-top: 5px; overflow: hidden; color: var(--feedback-text-dim); font: 10px var(--font-d); text-overflow: ellipsis; white-space: nowrap; }
 .ticket-unread-marker { display: inline-flex; align-items: center; min-height: 22px; margin-top: 7px; padding: 2px 7px; border: 1px solid var(--rouge); border-radius: 5px; color: var(--rouge); font-size: 10px; font-weight: 800; line-height: 1.2; }
+.ticket-workflow-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.ticket-operator { display: inline-flex; max-width: 145px; overflow: hidden; align-items: center; padding: 2px 7px; border: 1px solid var(--feedback-line-strong); border-radius: 5px; color: var(--feedback-text-muted); font-size: 10.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-reply-marker { display: inline-flex; margin: 7px 0 0 5px; color: var(--feedback-warn); font-size: 10px; font-weight: 800; }
+.ticket-status.stage-PROCESSING { border-color: var(--brand-blue); color: var(--brand-blue); }
+.ticket-status.stage-DEV_HANDOFF { border-color: var(--tea); color: var(--tea); }
 .ticket-table time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
 .ticket-operation button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--feedback-text); font: 800 12px var(--font-b); cursor: pointer; white-space: nowrap; }
 .ticket-operation button:hover { color: var(--accent-strong); }

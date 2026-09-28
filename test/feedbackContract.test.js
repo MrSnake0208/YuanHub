@@ -7,9 +7,13 @@ import {
   deleteFeedbackAccessGrant,
   downloadFeedbackAttachment,
   getFeedback,
+  getManagedFeedback,
   getFeedbackAccess,
   listFeedbackVersionOptions,
   listManagedFeedback,
+  listWorkflowFeedback,
+  claimFeedback,
+  markManagedFeedbackRead,
   listMyFeedback,
   listFeedback,
   listFeedbackAccessGrants,
@@ -442,15 +446,42 @@ test('反馈授权接口区分接收模块和管理模块', async () => {
   }, async () => {
     await getFeedbackAccess()
     await listFeedbackAccessGrants()
-    await updateFeedbackAccessGrant('user/1', { receiveAreas: ['INVENTORY'], manageAreas: ['OPERATOR'] })
+    await updateFeedbackAccessGrant('user/1', { receiveAreas: ['INVENTORY'], manageAreas: ['OPERATOR'], feedbackRoles: ['DEVELOPER'], developerAreas: ['STAR'] })
   })
   assert.match(requests[0].url, /\/v1\/reports\/access$/)
   assert.match(requests[1].url, /\/v1\/admin\/feedback-access$/)
   assert.match(requests[2].url, /\/v1\/admin\/feedback-access\/user%2F1$/)
   assert.deepEqual(JSON.parse(requests[2].options.body), {
     receive_categories: ['INVENTORY'],
-    manage_categories: ['OPERATOR']
+    manage_categories: ['OPERATOR'],
+    feedback_roles: ['DEVELOPER'],
+    operator_areas: [],
+    developer_areas: ['STAR']
   })
+})
+
+test('后台队列、接单和团队已读使用独立管理接口', async () => {
+  const requests = []
+  await withFetch(async (url, options = {}) => {
+    requests.push({ url: String(url), options })
+    return apiResponse(requests.length === 1 ? { reports: [{ id: 'rpt_1', status: 'OPEN', workflow_stage: 'UNASSIGNED', work_area: 'STAR', team_unread: true }], total: 1 } : {})
+  }, async () => {
+    const list = await listWorkflowFeedback({ queue: 'UNASSIGNED', workArea: 'STAR' })
+    assert.equal(list.items[0].workArea, 'STAR')
+    assert.equal(list.items[0].teamUnread, true)
+    await claimFeedback('rpt_1')
+    await markManagedFeedbackRead('rpt_1', 'rpm_1')
+  })
+  assert.match(requests[0].url, /\/v1\/admin\/feedback\/queue\?/)
+  assert.match(requests[0].url, /workArea=STAR/)
+  assert.match(requests[1].url, /\/rpt_1\/claim$/)
+  assert.deepEqual(JSON.parse(requests[2].options.body), { message_id: 'rpm_1' })
+})
+
+test('管理员详情使用明确的后台身份路由', async () => {
+  let path = ''
+  await withFetch(async url => { path = String(url); return apiResponse({ id: 'rpt_1', status: 'OPEN' }) }, () => getManagedFeedback('rpt_1'))
+  assert.match(path, /\/v1\/admin\/feedback\/rpt_1$/)
 })
 
 test('删除反馈授权接受成功响应省略 data', async () => {

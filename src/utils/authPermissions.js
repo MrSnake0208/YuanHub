@@ -42,6 +42,9 @@ export function emptyAdminAccess() {
     permissions: [],
     receiveAreas: [],
     manageAreas: [],
+    feedbackRoles: [],
+    operatorAreas: [],
+    developerAreas: [],
     superAdmin: false
   }
 }
@@ -63,6 +66,9 @@ export function normalizeAdminAccess(value) {
       value.manageAreas,
       value.manage_areas
     )),
+    feedbackRoles: uniqueStrings(value.feedbackRoles ?? value.feedback_roles),
+    operatorAreas: uniqueStrings(value.operatorAreas ?? value.operator_areas),
+    developerAreas: uniqueStrings(value.developerAreas ?? value.developer_areas),
     superAdmin: value.superAdmin === true || value.super_admin === true
   }
 }
@@ -74,7 +80,7 @@ export function hasPermission(access, permission) {
 }
 
 export function canManageAnyFeedback(access) {
-  return !!(access && Array.isArray(access.manageAreas) && access.manageAreas.length > 0)
+  return !!(access && (access.superAdmin || access.operatorAreas?.length || access.developerAreas?.length))
 }
 
 export function canManageFeedbackArea(access, area) {
