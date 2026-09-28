@@ -820,12 +820,12 @@ onBeforeUnmount(function () {
 }
 .star-tabs button {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 32px;
   align-items: center;
   justify-content: center;
   border: none;
   border-radius: 10px;
-  padding: 10px 26px;
+  padding: 6px 26px;
   color: var(--ink-60);
   background: transparent;
   cursor: pointer;

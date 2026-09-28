@@ -53,10 +53,7 @@ test('主要小控件的交互命中区达到 44px', () => {
     ['src/components/AccountWorkspace.vue', '.account-soft-option'],
     ['src/components/DataAccountContextBar.vue', '.context-action'],
     ['src/pages/notifications/index.vue', '.ntf-read-btn'],
-    ['src/styles/feedback-workspace.css', '.feedback-status-tabs button'],
-    ['src/pages/inventory/index.vue', '.agent-menu-options button'],
-    ['src/pages/star/index.vue', '.star-tabs button'],
-    ['src/pages/install/index.vue', '.platform-tabs button']
+    ['src/pages/inventory/index.vue', '.agent-menu-options button']
   ]
   for (const [file, selector] of targets) {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

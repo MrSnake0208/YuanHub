@@ -402,7 +402,7 @@ function onImageError(event) {
 .lucky-day-timeline > li.is-empty p::before { top: .775em; background: var(--surface); box-shadow: 0 0 0 1px var(--line) }
 .ranking-heading { align-items: flex-start }
 .ranking-switch { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper) }
-.ranking-switch button { min-height: 44px; padding: 5px 9px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 10px; font-weight: 800; cursor: pointer; white-space: nowrap }
+.ranking-switch button { min-height: 32px; padding: 5px 9px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-60); font-family: var(--font-b); font-size: 10px; font-weight: 800; cursor: pointer; white-space: nowrap }
 .ranking-switch button.on { background: var(--tea); color: var(--cream) }
 .ranking-switch button:disabled { opacity: .42; cursor: not-allowed }
 .ranking-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
@@ -506,7 +506,7 @@ function onImageError(event) {
   .report-body > section + section { border-top: 1px solid var(--line); border-left: 0 }
   .lucky-day-timeline > li { min-height: 96px }
   .lucky-day-timeline time { font-size: 17px }
-  .ranking-switch button { min-height: 44px; padding-inline: 8px }
+  .ranking-switch button { min-height: 32px; padding-inline: 8px }
   .ranking-rarity-checkbox { min-height: 44px; padding-left: 8px }
   .podium { min-height: 248px; gap: 7px }
   .portrait { width: 52px }

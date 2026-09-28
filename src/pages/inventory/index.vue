@@ -4400,7 +4400,7 @@ onBeforeUnmount(function () {
   padding: 4px;
 }
 .mf-filter button {
-  min-height: 44px;
+  min-height: 32px;
   border: none;
   background: transparent;
   font-family: var(--font-b);
@@ -4704,7 +4704,7 @@ onBeforeUnmount(function () {
   background: var(--paper);
 }
 .agent-favorite-mode button {
-  min-height: 44px;
+  min-height: 32px;
   padding: 6px 11px;
   border: 0;
   border-radius: 5px;
@@ -5092,7 +5092,7 @@ onBeforeUnmount(function () {
   flex-wrap: wrap;
 }
 .quick-range button {
-  min-height: 44px;
+  min-height: 32px;
   padding: 6px 15px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -5364,7 +5364,7 @@ onBeforeUnmount(function () {
   background: var(--surface);
 }
 .acquired-views button {
-  min-height: 44px;
+  min-height: 32px;
   padding: 7px 15px;
   border: 0;
   border-radius: 8px;
@@ -7001,7 +7001,7 @@ onBeforeUnmount(function () {
   background: var(--paper);
 }
 .records-filter button {
-  min-height: 44px;
+  min-height: 32px;
   padding: 6px 12px;
   border: 0;
   border-radius: 7px;
@@ -7353,7 +7353,7 @@ onBeforeUnmount(function () {
   }
   .type-switch > button {
     flex: 1 1 calc(50% - 4px);
-    min-height: 44px;
+    min-height: 32px;
   }
   .manifest-type-switch {
     position: sticky;
@@ -7384,7 +7384,7 @@ onBeforeUnmount(function () {
   .manifest-type-switch > button {
     flex: 1 1 0;
     width: auto;
-    min-height: 44px;
+    min-height: 32px;
     padding: 8px 10px;
     border-radius: 12px;
     font-size: 12px;
@@ -7568,7 +7568,7 @@ onBeforeUnmount(function () {
     gap: 7px;
   }
   .quick-range button {
-    min-height: 44px;
+    min-height: 32px;
     padding-inline: 6px;
   }
   .acquired-bar {
@@ -7667,7 +7667,7 @@ onBeforeUnmount(function () {
     grid-template-columns: repeat(3, 1fr);
   }
   .mf-filter button {
-    min-height: 40px;
+    min-height: 32px;
   }
   .agent-controls {
     top: 72px;
@@ -7727,7 +7727,7 @@ onBeforeUnmount(function () {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .agent-favorite-mode button {
-    min-height: 40px;
+    min-height: 32px;
     padding-inline: 5px;
   }
   .agent-filter-panel {
@@ -7941,7 +7941,7 @@ onBeforeUnmount(function () {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .acquired-views button {
-    min-height: 44px;
+    min-height: 32px;
     padding-inline: 7px;
   }
   .acquired-filters {
@@ -8083,7 +8083,7 @@ onBeforeUnmount(function () {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .records-filter button {
-    min-height: 44px;
+    min-height: 32px;
   }
   .records-head > .act-btn {
     width: 100%;
@@ -8129,14 +8129,14 @@ onBeforeUnmount(function () {
 }
 
 .report-book-switch.acquired-type-switch { display: flex; flex-wrap: wrap; justify-content: flex-end; margin-top: 0; gap: 8px }
-.report-book-switch.acquired-type-switch > button { flex: 0 1 auto; min-height: 44px; height: auto; white-space: nowrap }
+.report-book-switch.acquired-type-switch > button { flex: 0 1 auto; min-height: 32px; height: auto; white-space: nowrap }
 .report-book-label-compact { display: none }
 .report-book-fallback { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 16px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
 .report-book-fallback > div > span { color: var(--accent-strong); font-size: 12px; font-weight: 800 }
 .report-book-fallback h2 { font-family: var(--font-s); font-size: 20px; color: var(--ink) }
 @media (max-width: 760px) {
   .report-book-switch.acquired-type-switch { width: fit-content; max-width: 100%; flex: 0 0 auto; flex-wrap: nowrap; gap: 2px; margin-left: auto; padding: 3px }
-  .report-book-switch.acquired-type-switch > button { min-height: 44px; padding: 6px 8px; font-size: 11px; line-height: 1.2 }
+  .report-book-switch.acquired-type-switch > button { min-height: 32px; padding: 6px 8px; font-size: 11px; line-height: 1.2 }
   .report-book-label-full { display: none }
   .report-book-label-compact { display: inline }
   .report-book-fallback { align-items: center; flex-wrap: nowrap; gap: 8px; padding: 14px }
@@ -8144,6 +8144,6 @@ onBeforeUnmount(function () {
   .report-book-fallback h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 }
 @media (max-width: 360px) {
-  .report-book-switch.acquired-type-switch > button { min-height: 44px; padding-inline: 6px; font-size: 10px }
+  .report-book-switch.acquired-type-switch > button { min-height: 32px; padding-inline: 6px; font-size: 10px }
 }
 </style>

@@ -206,7 +206,7 @@ h3 { font-size: 15px }
 button { color: var(--ink); font: inherit; cursor: pointer }
 button:disabled { opacity: .4; cursor: default }
 .view-switch { border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: var(--paper) }
-.view-switch button { min-height: 44px; padding: 8px 18px; border: 0; border-radius: 5px; background: transparent; font-size: 12px; font-weight: 800 }
+.view-switch button { min-height: 32px; padding: 8px 18px; border: 0; border-radius: 5px; background: transparent; font-size: 12px; font-weight: 800 }
 .view-switch button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
 button:focus-visible, circle:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px }
 button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
@@ -305,7 +305,7 @@ button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
   .view-heading { align-items: center; flex-wrap: nowrap; gap: 6px; padding: 14px 14px 0 }
   .range-title { min-width: 0; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap }
   .view-switch { flex: 0 0 auto }
-  .view-switch button { min-height: 40px; padding: 6px 10px; font-size: 11px }
+  .view-switch button { min-height: 32px; padding: 6px 10px; font-size: 11px }
   .legend { margin: 14px }
   .day { height: 78px; min-height: 78px; grid-template-rows: 17px repeat(3, 14px); gap: 2px; padding: 4px 1px }
   .day-date-line { min-height: 14px; padding-left: 4px }

@@ -144,7 +144,7 @@ onMounted(function () {
 .install-overview h2,.guide-head h2 { margin-top: 5px; font-family: var(--font-s); font-size: clamp(23px, 3vw, 31px); font-weight: 900; letter-spacing: .04em; }
 .install-overview p,.guide-intro { margin-top: 8px; color: var(--ink-60); font-size: 13.5px; line-height: 1.75; }
 .platform-tabs { display: flex; gap: 7px; width: fit-content; padding: 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--cream); }
-.platform-tabs button { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 17px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-60); font: 800 12.5px var(--font-b); cursor: pointer; }
+.platform-tabs button { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 17px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-60); font: 800 12.5px var(--font-b); cursor: pointer; }
 .platform-tabs button.on { background: var(--tea); color: var(--cream); }
 .guide-card { padding: clamp(22px, 4vw, 36px); border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 18px 38px -34px rgba(73,59,44,.45); }
 .guide-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; }

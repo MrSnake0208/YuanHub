@@ -15077,10 +15077,11 @@ onBeforeUnmount(function () {
 }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-account) { display: none; }
 .operator-account-workspace:not(.has-archive) :deep(.workspace-panels) { display: block; }
-.current-upgrade-reminder button,.current-favorite-sort,.current-filter-reset,.current-batch-toggle,
-.batch-quick-filters button,.batch-select-all,.batch-status-action,.batch-clear,
+.current-upgrade-reminder button,.current-batch-toggle,
+.batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,
 .ledger-card-actions button,.ledger-submit-actions button,.editor-conflict-btn { min-height:44px; }
+.current-favorite-sort,.current-filter-reset,.batch-quick-filters button { min-height:32px; }
 .current-batch-toggle { min-width:44px; }
 .node-chip,.stone-lv-chip { min-width:44px;height:44px; }
 </style>

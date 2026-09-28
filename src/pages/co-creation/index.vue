@@ -79,7 +79,7 @@ function goSubmit() {
 <style scoped>
 .co-creation-page .feedback-hero { --wm: '共创'; }
 .co-creation-tabs { display: inline-flex; align-items: center; margin-top: 18px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel-deep); overflow: hidden; }
-.co-creation-tabs button { min-height: 44px; padding: 0 18px; border: 0; border-right: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); font: 800 12px var(--font-b); cursor: pointer; }
+.co-creation-tabs button { min-height: 32px; padding: 0 18px; border: 0; border-right: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); font: 800 12px var(--font-b); cursor: pointer; }
 .co-creation-tabs button:last-child { border-right: 0; }
 .co-creation-tabs button:hover,
 .co-creation-tabs button.on { background: var(--yellow); color: var(--ink); }
