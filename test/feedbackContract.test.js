@@ -12,6 +12,8 @@ import {
   listFeedbackVersionOptions,
   listManagedFeedback,
   listWorkflowFeedback,
+  listFeedbackAssignees,
+  listFeedbackWorkflowEvents,
   claimFeedback,
   markManagedFeedbackRead,
   listMyFeedback,
@@ -482,6 +484,25 @@ test('管理员详情使用明确的后台身份路由', async () => {
   let path = ''
   await withFetch(async url => { path = String(url); return apiResponse({ id: 'rpt_1', status: 'OPEN' }) }, () => getManagedFeedback('rpt_1'))
   assert.match(path, /\/v1\/admin\/feedback\/rpt_1$/)
+})
+
+test('转交候选人使用当前工单的鉴权接口', async () => {
+  let path = ''
+  const users = await withFetch(async url => {
+    path = String(url)
+    return apiResponse([{ id: 'operator_2', user_name: '运营二号' }])
+  }, () => listFeedbackAssignees('rpt/1'))
+  assert.match(path, /\/v1\/admin\/feedback\/rpt%2F1\/assignees$/)
+  assert.equal(users[0].id, 'operator_2')
+  assert.equal(users[0].userName, '运营二号')
+})
+
+test('内部流转事件归一化操作者和时间字段', async () => {
+  const events = await withFetch(async () => apiResponse([
+    { id: 'evt_1', action: 'CLAIM', actor_user_id: 'operator_1', created_at: '2026-09-28T00:00:00Z', note: '接单' }
+  ]), () => listFeedbackWorkflowEvents('rpt_1'))
+  assert.equal(events[0].actorUserId, 'operator_1')
+  assert.equal(events[0].createdAt, '2026-09-28T00:00:00Z')
 })
 
 test('删除反馈授权接受成功响应省略 data', async () => {

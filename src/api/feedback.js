@@ -332,7 +332,14 @@ export const handoffFeedback = (id, workArea, note) => workflowAction(id, 'hando
 export const changeFeedbackWorkArea = (id, workArea, note) => workflowAction(id, 'work-area', { work_area: workArea, note })
 export const returnFeedback = (id, note, mode = 'RETURN') => workflowAction(id, 'return', { note, mode })
 export const markManagedFeedbackRead = (id, messageId) => workflowAction(id, 'read', { message_id: messageId })
-export const listFeedbackWorkflowEvents = id => request(`/v1/admin/feedback/${encodeURIComponent(id)}/events`, { auth: true })
+export const listFeedbackWorkflowEvents = async id => (await request(`/v1/admin/feedback/${encodeURIComponent(id)}/events`, { auth: true }))
+  .map(event => ({
+    ...event,
+    actorUserId: event.actorUserId ?? event.actor_user_id ?? '',
+    createdAt: event.createdAt ?? event.created_at ?? null
+  }))
+export const listFeedbackAssignees = async id => (await request(`/v1/admin/feedback/${encodeURIComponent(id)}/assignees`, { auth: true }))
+  .map(user => ({ id: user.id, userName: user.userName ?? user.user_name ?? user.id }))
 
 // ===== 管理员公开管理（共创中心第一轮） =====
 
