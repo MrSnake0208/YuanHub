@@ -38,7 +38,7 @@ test('服务端公共目录可直接生成包含新增密探的心纸清单', fu
       name: '新密探',
       rarity: 5,
       prof: ['阳'],
-      sub_prof: ['神纪'],
+      sub_prof: ['shenji'],
       games: ['如鸢']
     }
   ])
@@ -51,6 +51,9 @@ test('服务端公共目录可直接生成包含新增密探的心纸清单', fu
     subProf: '神纪',
     games: ['如鸢']
   }])
+  assert.deepEqual(filterAgentEntries(catalog, { rarities: ['5'], subProfs: ['神纪'] }).map(function (entry) { return entry.id }), ['char_126_new'])
+  assert.deepEqual(filterAgentEntries(catalog, { rarities: ['4'] }), [])
+  assert.equal(normalizeOperatorCatalog([{ id: 'legacy', sub_prof: ['神纪'] }])[0].subProf, '神纪')
 })
 
 test('最新排序按编号降序且非法 id 排末尾', function () {
