@@ -11,7 +11,7 @@ test('normal dev mode keeps LAN binding and proxies backend paths to the configu
   assert.ok(config.allowedHosts.includes('hubf.maayuan.fun'))
 
   for (const path of ['/v1', '/user', '/hub', '/open-api', '/avatar', '/ready', '/version']) {
-    assert.equal(config.proxy[path].target, 'https://api-hub.maayuan.com')
+    assert.equal(config.proxy[path].target, 'http://127.0.0.1:8080')
     assert.equal(config.proxy[path].changeOrigin, true)
     assert.equal(typeof config.proxy[path].configure, 'function')
   }
