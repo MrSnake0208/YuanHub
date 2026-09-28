@@ -14,7 +14,7 @@ export async function createFeedback(payload) {
   const legacyType = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory) ? rawCategory : rawType
   const category = rawType === 'FEEDBACK'
     ? (rawArea || (FEEDBACK_TYPES.has(rawCategory) ? '' : rawCategory) || 'OTHER')
-    : (rawCategory || rawArea || 'OTHER')
+    : (rawCategory === rawType && rawArea ? rawArea : rawCategory || rawArea || 'OTHER')
   const title = payload.title ? String(payload.title).trim() : ''
   const body = {
     type: legacyType,

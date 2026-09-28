@@ -18,7 +18,7 @@ function readSource(path) {
 test('maps every management tool to its existing permission boundary', function () {
   const access = normalizeAdminAccess({
     permissions: Object.values(ADMIN_PERMISSIONS),
-    manage_areas: ['OPERATOR']
+    operator_areas: ['OPERATOR']
   })
   assert.deepEqual(getVisibleAdminTools(access).map(function (tool) { return tool.to }), [
     '/admin/beta',
@@ -34,7 +34,7 @@ test('maps every management tool to its existing permission boundary', function 
 })
 
 test('filters management tools for a single feedback-area manager', function () {
-  const access = normalizeAdminAccess({ manage_areas: ['INVENTORY'] })
+  const access = normalizeAdminAccess({ operator_areas: ['INVENTORY'] })
   const tools = getVisibleAdminTools(access)
   assert.deepEqual(tools.map(function (tool) { return tool.key }), ['feedback-manage'])
   assert.deepEqual(getVisibleAdminToolGroups(access).map(function (group) { return group.key }), ['feedback'])
