@@ -1931,7 +1931,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   .growth-progress-side-label { display: none; }
   .growth-progress-label .progress-values { gap: 6px; }
 }
-.strategy-switch button,.side-button,.back-button,.action-button,.goal-shortcuts button,
+.strategy-switch button { min-height:32px; }
+.side-button,.back-button,.action-button,.goal-shortcuts button,
 .status-action,.workspace-link,.workspace-return,.toolbar-button,.tracker-remove,
 .tracker-dialog-button,.tracker-editable,.tracker-star-controls select,
 .tracker-popover-actions button,.add-button,.side-details summary { min-height:44px; }
