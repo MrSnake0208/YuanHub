@@ -4,10 +4,36 @@ import {
   calculateOperatorCombatStats,
   combatInputSignature,
   combatStatsSourceLabel,
+  fillOperatorDraftToMax,
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema
 } from '../src/utils/operatorCombatStats.js'
+
+test('一键拉满只把图鉴有上限的奇闻填到上限，保留其他养成字段', function () {
+  const draft = {
+    level: 20,
+    elite: 3,
+    starLevel: 8,
+    combatStats: { oddities: {
+      attack: { current: 10, max: 999 },
+      hp: { current: 20, max: 999 },
+      special: { current: 5, max: 999 }
+    } }
+  }
+  const missing = fillOperatorDraftToMax(draft, {
+    attack: { max: 350 }, hp: { max: 1820 }, special: { max: 11 }
+  })
+  assert.deepEqual(missing, [])
+  assert.deepEqual([draft.level, draft.elite, draft.starLevel], [100, 17, 8])
+  assert.deepEqual(['attack', 'hp', 'special'].map(key => draft.combatStats.oddities[key].current), [350, 1820, 11])
+
+  draft.combatStats.oddities.special.current = 7
+  assert.deepEqual(fillOperatorDraftToMax(draft, {
+    attack: { max: 500 }, hp: { max: 2600 }, special: { max: null }
+  }), ['special'])
+  assert.equal(draft.combatStats.oddities.special.current, 7)
+})
 
 test('兼容根级、stats 和 snake_case 扫描属性', function () {
   assert.deepEqual(normalizeOperatorCombatStats({ attack: 1200, hp: 3400 }), {

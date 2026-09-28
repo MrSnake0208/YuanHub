@@ -2669,6 +2669,13 @@
                     >最高修为：{{ maxEliteForLevel }}</span
                   >
                 </div>
+                <button
+                  type="button"
+                  class="btn ghost editor-fill-max"
+                  :disabled="savingEdit"
+                  title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
+                  @click="fillEditToMax"
+                >一键拉满等级/修为/漆园蝶</button>
                 <div
                   class="star-card"
                   :title="
@@ -3127,6 +3134,7 @@ import {
   calculateOperatorCombatStats,
   combatInputSignature,
   combatStatsSourceLabel,
+  fillOperatorDraftToMax,
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema,
@@ -4202,6 +4210,15 @@ function oddityInputLabel(key) {
 function oddityLimitTitle(key) {
   const max = oddityLimitLabel(key);
   return max === "—" ? "等待公共图鉴返回上限" : "公共图鉴上限 " + max;
+}
+
+function fillEditToMax() {
+  if (!editingOp.value) return;
+  const missing = fillOperatorDraftToMax(editForm.value, editingOp.value.odditySchema);
+  editNotice.value = missing.length
+    ? "已填入等级、修为和有上限的奇闻；" + missing.map(oddityFieldName).join("、") + "暂无图鉴上限，已保留原值，请确认后保存"
+    : "已填入等级、修为和全部奇闻上限，请确认后保存";
+  editNoticeError.value = false;
 }
 
 function boundedOddityValue(rawValue, maxValue) {
@@ -12976,6 +12993,9 @@ onBeforeUnmount(function () {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+.editor-fill-max {
+  min-height: 44px;
 }
 .num-fields .level-row > label {
   display: flex;
