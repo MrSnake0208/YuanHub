@@ -13,6 +13,10 @@
             如鸢 / 代号鸢 星石背包整理：本地导入截图并完成 OCR
             与人工核对，管理当前背包、养成计划与经验星曜，并在登录后同步当前账号数据。
           </p>
+          <div class="notice star-availability-note" role="note">
+            <span class="tag">当前可用</span>
+            <p><b>星石网页端已可使用。</b>你可以在这里导入截图、核对识别结果并整理背包。MaaYuan 星石自动采集仍在接入中，当前请先通过网页端导入截图。</p>
+          </div>
           <div class="author-badge" v-reveal>
             <span class="ab-mark">©</span
             ><span class="ab-txt"

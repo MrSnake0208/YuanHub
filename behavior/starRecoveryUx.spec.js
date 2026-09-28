@@ -66,6 +66,17 @@ beforeEach(() => {
     : nativeFunction(...args))
 })
 
+it('星石页入口明确网页端可用且自动采集仍在接入中', async () => {
+  const wrapper = render()
+  await flushPromises()
+  const note = wrapper.get('.star-availability-note[role="note"]')
+  expect(note.text()).toContain('星石网页端已可使用')
+  expect(note.text()).toContain('导入截图、核对识别结果并整理背包')
+  expect(note.text()).toContain('MaaYuan 星石自动采集仍在接入中')
+  wrapper.unmount()
+  document.getElementById('yuanstar-embed-styles')?.remove()
+})
+
 it('样式加载失败可重试，失败链接不会阻挡下一次加载', async () => {
   const wrapper = render()
   await flushPromises()

@@ -35,6 +35,18 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
+it('连接设置区分星石上传权限与尚未接入的自动采集任务', async () => {
+  generateOpenApiToken.mockResolvedValue({ token: 'synthetic-secret', account_name: '大号', token_id: 'tok-new' })
+  const wrapper = render()
+  await flushPromises()
+  await wrapper.get('.app-connect').trigger('click')
+  expect(wrapper.get('.grant-review').text()).toContain('上传星石背包临时采集结果（MaaYuan 采集任务接入中）')
+  await wrapper.get('#maayuan-connect-panel').trigger('submit')
+  await flushPromises()
+  expect(wrapper.get('.paste-steps').text()).toContain('星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中')
+  wrapper.unmount()
+})
+
 it('补权限与停止连接使用站内危险确认；取消或账号切换后不提交', async () => {
   const wrapper = render()
   await flushPromises()

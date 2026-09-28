@@ -269,7 +269,7 @@
                     <Check :size="17" aria-hidden="true" />读取当前密探数据与养成状态
                   </p>
                   <p>
-                    <Check :size="17" aria-hidden="true" />上传星石背包临时采集结果
+                    <Check :size="17" aria-hidden="true" />上传星石背包临时采集结果（MaaYuan 采集任务接入中）
                   </p>
                 </div>
                 <div class="grant-column deny">
@@ -350,7 +350,7 @@
                     <small>派遣 / 情报掉落 → 据点日常</small>
                     <small>密探练度 → 百宝箱 · 采集密探信息</small>
                     <small>道具 / 心纸数量 → 百宝箱 · 自动识别背包</small>
-                    <small>星石 → 百宝箱 · 采集星石（即将支持）</small>
+                    <small>星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中</small>
                   </div>
                 </li>
                 <li>
