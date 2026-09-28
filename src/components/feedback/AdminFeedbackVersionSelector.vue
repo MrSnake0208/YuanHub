@@ -1,6 +1,7 @@
 <template>
-  <section class="admin-version-panel" :class="{ open }" aria-label="关联版本设置">
+  <section class="admin-version-panel" :class="{ open: open || dialog, dialog }" aria-label="关联版本设置">
     <button
+      v-if="!dialog"
       class="admin-version-trigger"
       type="button"
       :aria-expanded="open"
@@ -18,7 +19,7 @@
       </span>
     </button>
 
-    <div v-show="open" :id="panelId" class="admin-version-body">
+    <div v-show="open || dialog" :id="panelId" class="admin-version-body">
       <p class="admin-version-hint">目标版本可以选择尚未发布的草稿；完成版本只允许关联已经发布的更新日志。</p>
 
       <div class="admin-version-grid">
@@ -61,6 +62,7 @@ import { listFeedbackVersionOptions } from '@/api/feedback.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
+  dialog: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
   message: { type: String, default: '' },
   error: { type: String, default: '' }
@@ -120,6 +122,8 @@ onMounted(loadVersions)
 
 <style scoped>
 .admin-version-panel { overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.admin-version-panel.dialog { border: 0; border-radius: 0; background: transparent; }
+.admin-version-panel.dialog .admin-version-body { border-top: 0; padding: 0; }
 .admin-version-trigger { width: 100%; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 0; background: transparent; color: var(--feedback-text); text-align: left; cursor: pointer; }
 .admin-version-trigger:hover { background: var(--feedback-panel-hover); }
 .admin-version-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -145,5 +149,6 @@ onMounted(loadVersions)
   .admin-version-summary { align-items: flex-end; flex-direction: column; gap: 5px; }
   .admin-version-summary-text { max-width: 180px; }
   .admin-version-grid { grid-template-columns: 1fr; }
+  .admin-version-panel.dialog select { font-size: 16px; }
 }
 </style>

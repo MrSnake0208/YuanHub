@@ -113,64 +113,31 @@
                   :viewer-user-id="currentUserId()"
                   viewer-actor-mode="ADMIN"
                   reporter-label="提交人"
+                  :show-closed-actions="item.viewerCanManage && !item.mergedIntoId"
                 >
                   <template #management>
-                    <button v-if="item.status !== 'OPEN' && !item.mergedIntoId && item.viewerCanManage" class="feedback-button" type="button" :disabled="updatingStatus" @click="updateStatus(item.id, 'OPEN')">重新打开</button>
                     <section v-if="item.mergedIntoId || item.mergedSourceIds?.length" class="feedback-admin-settings feedback-merge-relations" aria-label="反馈合并关系">
                       <div v-if="item.mergedIntoId"><strong>已合并至</strong><router-link :to="{ path: '/feedback/manage', query: { id: item.mergedIntoId } }">{{ item.mergedIntoId }}</router-link></div>
                       <div v-if="item.mergedSourceIds?.length"><strong>已归并 {{ item.mergedCount }} 条反馈</strong><ul><li v-for="sourceId in item.mergedSourceIds" :key="sourceId"><router-link :to="{ path: '/feedback/manage', query: { id: sourceId } }">{{ sourceId }}</router-link></li></ul></div>
                     </section>
-                    <section v-if="item.status === 'OPEN' && !item.mergedIntoId" class="feedback-admin-settings" aria-label="工单流转">
-                      <header class="feedback-admin-settings-head"><div><span>WORKFLOW</span><h3>工单流转</h3></div></header>
-                      <p class="feedback-workflow-stage">{{ item.workflowStage === 'UNASSIGNED' ? '待接单' : item.workflowStage === 'DEV_HANDOFF' ? '已转程序处理' : '处理中' }}<span v-if="item.operatorAssigneeName"> · 运营负责人 {{ item.operatorAssigneeName }}</span></p>
-                      <div v-if="workflowEvents.length" class="feedback-workflow-events"><strong>内部处理记录</strong><ol><li v-for="event in workflowEvents" :key="event.id"><div><b>{{ workflowActionLabel(event.action) }}</b><time v-if="event.createdAt" :datetime="event.createdAt">{{ formatDate(event.createdAt) }}</time></div><span v-if="event.actorUserId">操作人 {{ event.actorUserId }}</span><p v-if="event.note && event.note !== workflowActionLabel(event.action)">{{ event.note }}</p></li></ol></div>
-                    </section>
-                    <details v-if="item.viewerCanManage && item.workflowStage !== 'UNASSIGNED' && !item.mergedIntoId" :key="item.id" class="feedback-admin-settings-collapsible" aria-label="反馈管理设置">
-                      <summary class="feedback-settings-toggle"><span><small>ADMIN / SETTINGS</small><strong>管理设置</strong></span><ChevronDown :size="18" aria-hidden="true" /></summary>
-                      <div class="feedback-settings-body">
-                        <p class="feedback-admin-settings-lead">公开展示、版本归属和重复反馈属于后续管理操作，不影响日常查看与回复。</p>
-                        <div class="feedback-admin-settings-stack">
-                          <AdminFeedbackPublishPanel
-                            :item="item"
-                            :busy="publicBusy"
-                            :message="publicMessage"
-                            :error="publicError"
-                            :format-date="formatDate"
-                            @save="savePublicInfo"
-                            @unpublish="unpublishPublicInfo"
-                          />
-                          <AdminFeedbackVersionSelector
-                            :item="item"
-                            :busy="versionBusy"
-                            :message="versionMessage"
-                            :error="versionError"
-                            @save="saveVersions"
-                          />
-                        </div>
-                        <div class="feedback-admin-merge-row">
-                          <div>
-                            <strong>合并反馈</strong>
-                            <span>将重复工单合并到主反馈，统一后续跟踪。</span>
-                          </div>
-                          <button class="feedback-button" type="button" :disabled="mergeBusy" @click="openMergeDialog">
-                            {{ mergeBusy ? '处理中…' : '合并反馈' }}
-                          </button>
-                        </div>
-                      </div>
-                    </details>
+                    <div v-if="canManageSettings(item)" class="feedback-management-summary" aria-label="反馈管理状态">
+                      <span>反馈广场：{{ item.visibility === 'PUBLIC' ? '已发布' : '未发布' }}</span>
+                    </div>
                   </template>
                   <template #actions>
                     <div v-if="!item.mergedIntoId" class="feedback-ticket-actions">
                       <p v-if="workflowMessage" class="feedback-workflow-message" role="status">{{ workflowMessage }}</p>
                       <p v-if="detailError" class="feedback-workflow-error" aria-hidden="true">{{ detailError }}</p>
                       <div v-if="!workflowMode && replyTarget !== item.id" ref="workflowToolbar" class="feedback-detail-actions feedback-action-toolbar" role="group" aria-label="工单操作">
-                        <button v-if="item.workflowStage === 'UNASSIGNED' && item.viewerCanManage" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="runWorkflow('claim', item)">接单</button>
-                        <button v-if="item.viewerCanTakeOver" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="openWorkflow('takeover')">接手</button>
-                        <button v-if="item.viewerCanManage" :class="item.workflowStage === 'UNASSIGNED' ? 'feedback-button' : 'feedback-primary-action'" type="button" :disabled="actionBusy" @click="showReplyForm(item.id)"><MessageSquarePlus :size="16" aria-hidden="true" />回复</button>
-                        <button v-if="item.viewerCanManage && item.workflowStage === 'PROCESSING'" class="feedback-button" type="button" :disabled="actionBusy" @click="updateStatus(item.id, 'RESOLVED')"><CheckCircle2 :size="16" aria-hidden="true" />标记完成</button>
-                        <button v-if="item.viewerCanManage && ['PROCESSING', 'DEV_HANDOFF'].includes(item.workflowStage)" class="feedback-button" type="button" :disabled="actionBusy" :aria-expanded="workflowMenuOpen" :aria-controls="workflowMenuOpen ? 'feedback-workflow-options' : undefined" @click="toggleWorkflowMenu">工单流转<ChevronDown :size="16" aria-hidden="true" /></button>
-                        <button v-if="item.viewerCanDevelop" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="openWorkflow('return')">填写结果并交回</button>
-                        <button v-if="item.viewerCanManage && item.workflowStage !== 'DEV_HANDOFF'" class="feedback-button danger" type="button" :disabled="actionBusy" @click="updateStatus(item.id, 'DISMISSED')"><CircleX :size="16" aria-hidden="true" />驳回</button>
+                        <button v-if="item.status !== 'OPEN' && item.viewerCanManage" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="updateStatus(item.id, 'OPEN')">重新打开</button>
+                        <button v-if="item.status === 'OPEN' && item.workflowStage === 'UNASSIGNED' && item.viewerCanManage" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="runWorkflow('claim', item)">接单</button>
+                        <button v-if="item.status === 'OPEN' && item.viewerCanTakeOver" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="openWorkflow('takeover')">接手</button>
+                        <button v-if="item.status === 'OPEN' && item.viewerCanManage" :class="item.workflowStage === 'UNASSIGNED' ? 'feedback-button' : 'feedback-primary-action'" type="button" :disabled="actionBusy" @click="showReplyForm(item.id)"><MessageSquarePlus :size="16" aria-hidden="true" />回复</button>
+                        <button v-if="item.status === 'OPEN' && item.viewerCanManage && item.workflowStage === 'PROCESSING'" class="feedback-button" type="button" :disabled="actionBusy" @click="updateStatus(item.id, 'RESOLVED')"><CheckCircle2 :size="16" aria-hidden="true" />标记完成</button>
+                        <button v-if="item.status === 'OPEN' && ((item.viewerCanManage && ['PROCESSING', 'DEV_HANDOFF'].includes(item.workflowStage)) || item.viewerCanDevelop)" ref="workflowMenuButton" class="feedback-button" type="button" :disabled="actionBusy" :aria-expanded="workflowMenuOpen" :aria-controls="workflowMenuOpen ? 'feedback-workflow-options' : undefined" @click="toggleWorkflowMenu">工单流转<ChevronDown :size="16" aria-hidden="true" /></button>
+                        <button v-if="item.status === 'OPEN' && item.viewerCanDevelop" class="feedback-primary-action" type="button" :disabled="actionBusy" @click="openWorkflow('return')">填写结果并交回</button>
+                        <button v-if="canManageSettings(item)" ref="managementMenuButton" class="feedback-button" type="button" :disabled="actionBusy" :aria-expanded="managementMenuOpen" :aria-controls="managementMenuOpen ? 'feedback-management-options' : undefined" @click="toggleManagementMenu">管理操作<ChevronDown :size="16" aria-hidden="true" /></button>
+                        <button v-if="item.status === 'OPEN' && item.viewerCanManage && item.workflowStage !== 'DEV_HANDOFF'" class="feedback-button danger" type="button" :disabled="actionBusy" @click="updateStatus(item.id, 'DISMISSED')"><CircleX :size="16" aria-hidden="true" />驳回</button>
                       </div>
                       <div v-if="workflowMenuOpen && !workflowMode" id="feedback-workflow-options" class="feedback-workflow-options" role="group" aria-label="流转操作">
                         <template v-if="item.viewerCanManage && item.workflowStage === 'PROCESSING'">
@@ -179,6 +146,11 @@
                           <button class="feedback-button" type="button" @click="openWorkflow('area')">调整板块</button>
                         </template>
                         <button v-if="item.viewerCanManage && item.workflowStage === 'DEV_HANDOFF'" class="feedback-button" type="button" @click="openWorkflow('withdraw')">撤回交接</button>
+                        <button class="feedback-button" type="button" @click="openWorkflowHistory(item.id)">处理记录</button>
+                      </div>
+                      <div v-if="managementMenuOpen && !workflowMode" id="feedback-management-options" class="feedback-workflow-options" role="group" aria-label="管理操作选项">
+                        <button class="feedback-button" type="button" @click="openManagementPanel('public')">反馈广场</button>
+                        <button v-if="canMergeFeedback(item)" class="feedback-button" type="button" @click="openManagementPanel('merge')">合并反馈</button>
                       </div>
                       <form v-if="workflowMode" ref="workflowForm" class="feedback-workflow-form" tabindex="-1" :aria-label="workflowModeLabel(workflowMode)" @submit.prevent="runWorkflow(workflowMode, item)">
                         <strong>{{ workflowModeLabel(workflowMode) }}</strong>
@@ -220,18 +192,49 @@
       @close="mergeOpen = false"
       @confirm="confirmMerge"
     />
+    <Teleport to="body">
+      <div v-if="managementDialog === 'public' && selectedDetail && canManageSettings(selectedDetail)" class="modal-mask is-raised" role="presentation" @click.self="closeManagementDialog">
+        <section class="modal feedback-modal feedback-management-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-management-title" @keydown.esc.stop.prevent="closeManagementDialog">
+          <header class="modal-head"><h2 id="feedback-management-title">反馈广场</h2><button ref="managementDialogCloseButton" type="button" aria-label="关闭管理弹窗" title="关闭" @click="closeManagementDialog"><X :size="20" aria-hidden="true" /></button></header>
+          <div class="feedback-management-body">
+            <AdminFeedbackPublishPanel
+              :item="selectedDetail"
+              :busy="publicBusy"
+              :message="publicMessage"
+              :error="publicError"
+              :format-date="formatDate"
+              dialog
+              @save="savePublicInfo"
+              @unpublish="unpublishPublicInfo"
+            />
+          </div>
+        </section>
+      </div>
+    </Teleport>
+    <Teleport to="body">
+      <div v-if="workflowHistoryOpen" class="modal-mask is-raised" role="presentation" @click.self="closeWorkflowHistory">
+        <section class="modal feedback-modal feedback-history-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-history-title" @keydown.esc.stop.prevent="closeWorkflowHistory">
+          <header class="modal-head"><div><h2 id="feedback-history-title">处理记录</h2><small>工单 {{ selectedId }}</small></div><button ref="workflowHistoryCloseButton" type="button" aria-label="关闭处理记录" title="关闭" @click="closeWorkflowHistory"><X :size="20" aria-hidden="true" /></button></header>
+          <div class="feedback-history-body">
+            <p v-if="workflowEventsLoading" role="status">正在加载处理记录…</p>
+            <p v-else-if="workflowEventsError" class="feedback-workflow-error" role="alert">{{ workflowEventsError }} <button type="button" @click="loadWorkflowEvents(selectedId)">重试</button></p>
+            <ol v-else-if="workflowEvents.length" class="feedback-workflow-events"><li v-for="event in workflowEvents" :key="event.id"><div><b>{{ workflowActionLabel(event.action) }}</b><time v-if="event.createdAt" :datetime="event.createdAt">{{ formatDate(event.createdAt) }}</time></div><span v-if="event.actorUserId">操作人 {{ event.actorUserId }}</span><p v-if="event.note && event.note !== workflowActionLabel(event.action)">{{ event.note }}</p></li></ol>
+            <p v-else>暂无处理记录</p>
+          </div>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, CheckCheck, CheckCircle2, ChevronDown, CircleX, MessageSquarePlus, Search, Send, ShieldAlert } from '@lucide/vue'
+import { ArrowRight, CheckCheck, CheckCircle2, ChevronDown, CircleX, MessageSquarePlus, Search, Send, ShieldAlert, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import AdminFeedbackMergeDialog from '@/components/feedback/AdminFeedbackMergeDialog.vue'
 import AdminFeedbackPublishPanel from '@/components/feedback/AdminFeedbackPublishPanel.vue'
-import AdminFeedbackVersionSelector from '@/components/feedback/AdminFeedbackVersionSelector.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
 import FeedbackTicketDetail from '@/components/feedback/FeedbackTicketDetail.vue'
 import FeedbackTicketWorkspace from '@/components/feedback/FeedbackTicketWorkspace.vue'
@@ -252,7 +255,6 @@ import {
   publishFeedback,
   unpublishFeedback,
   updateFeedbackType,
-  updateFeedbackVersions,
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
@@ -314,21 +316,27 @@ const markingAllRead = ref(false)
 const publicBusy = ref(false)
 const publicMessage = ref('')
 const publicError = ref('')
-const versionBusy = ref(false)
-const versionMessage = ref('')
-const versionError = ref('')
 const mergeOpen = ref(false)
 const mergeBusy = ref(false)
+const managementMenuOpen = ref(false)
+const managementMenuButton = ref(null)
+const managementDialog = ref('')
+const managementDialogCloseButton = ref(null)
 const workflowMode = ref('')
 const workflowTarget = ref('')
 const workflowArea = ref('')
 const workflowNote = ref('')
 const workflowBusy = ref(false)
 const workflowMenuOpen = ref(false)
+const workflowMenuButton = ref(null)
 const workflowToolbar = ref(null)
 const workflowForm = ref(null)
 const workflowMessage = ref('')
+const workflowHistoryOpen = ref(false)
+const workflowHistoryCloseButton = ref(null)
 const workflowEvents = ref([])
+const workflowEventsLoading = ref(false)
+const workflowEventsError = ref('')
 const workflowAssignees = ref([])
 const assigneesLoading = ref(false)
 const assigneesError = ref('')
@@ -338,6 +346,7 @@ let isMounted = false
 let ready = false
 let loadRequestId = 0
 let detailRequestId = 0
+let workflowEventsRequestId = 0
 let assigneesRequestId = 0
 let feedbackRefreshTimer = null
 let stopFeedbackUnread = null
@@ -372,6 +381,14 @@ function statusLabel(status, hasAdminReply, item) {
   if (item?.mergedIntoId) return '已合并'
   if (status === 'OPEN') return { UNASSIGNED: '待接单', PROCESSING: '处理中', DEV_HANDOFF: '转程序' }[item?.workflowStage] || '待接单'
   return { RESOLVED: '已完成', DISMISSED: '已驳回' }[status] || status || '未知状态'
+}
+
+function canManageSettings(item) {
+  return Boolean(item?.viewerCanManage && item.workflowStage !== 'UNASSIGNED' && !item.mergedIntoId)
+}
+
+function canMergeFeedback(item) {
+  return canManageSettings(item) && item.status === 'OPEN' && !item.mergedCount
 }
 
 function formatDate(value) {
@@ -486,6 +503,7 @@ function isCurrentDetail(requestId, id, userId) {
 async function loadFeedbackDetail(id) {
   const requestId = ++detailRequestId
   const userId = currentUserId()
+  resetWorkflowHistory()
   detailLoading.value = true
   detailError.value = ''
   try {
@@ -496,8 +514,6 @@ async function loadFeedbackDetail(id) {
     if (!isCurrentDetail(requestId, id, userId)) return
     selectedId.value = id
     void feedbackUnreadStore.refreshFeedbackUnread({ force: true })
-    const events = await listFeedbackWorkflowEvents(id)
-    if (isCurrentDetail(requestId, id, userId)) workflowEvents.value = events
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '详情加载失败'
   } finally {
@@ -522,8 +538,9 @@ function closeDetail() {
   resetPublicPanel()
   workflowMode.value = ''
   workflowMenuOpen.value = false
+  managementMenuOpen.value = false
   workflowMessage.value = ''
-  workflowEvents.value = []
+  resetWorkflowHistory()
   workflowAssignees.value = []
   assigneesLoading.value = false
   assigneesError.value = ''
@@ -535,14 +552,13 @@ function resetPublicPanel() {
   publicError.value = ''
   mergeOpen.value = false
   mergeBusy.value = false
-  versionBusy.value = false
-  versionMessage.value = ''
-  versionError.value = ''
+  managementDialog.value = ''
 }
 
 function openWorkflow(mode) {
   assigneesRequestId += 1
   workflowMenuOpen.value = false
+  managementMenuOpen.value = false
   workflowMode.value = mode
   workflowTarget.value = ''
   workflowArea.value = selectedDetail.value?.workArea || ''
@@ -567,6 +583,34 @@ function toggleWorkflowMenu() {
   workflowMenuOpen.value = next
 }
 
+function toggleManagementMenu() {
+  managementMenuOpen.value = !managementMenuOpen.value
+  workflowMenuOpen.value = false
+}
+
+function openManagementPanel(panel) {
+  if (!canManageSettings(selectedDetail.value)) return
+  if (panel === 'merge') {
+    if (!canMergeFeedback(selectedDetail.value)) return
+    managementMenuButton.value?.focus()
+    managementMenuOpen.value = false
+    openMergeDialog()
+    return
+  }
+  if (panel !== 'public') return
+  managementMenuOpen.value = false
+  publicMessage.value = ''
+  publicError.value = ''
+  managementDialog.value = 'public'
+  nextTick(() => managementDialogCloseButton.value?.focus())
+}
+
+function closeManagementDialog() {
+  if (publicBusy.value) return
+  managementDialog.value = ''
+  nextTick(() => managementMenuButton.value?.focus())
+}
+
 function workflowModeLabel(mode) {
   return { takeover: '接手工单', assign: '转交运营', handoff: '转程序', area: '调整板块', withdraw: '撤回交接', return: '填写结果并交回' }[mode] || ''
 }
@@ -587,6 +631,47 @@ async function loadWorkflowAssignees(id) {
 
 function workflowActionLabel(action) {
   return { CLAIM: '接单', ASSIGN: '转交运营', HANDOFF: '转程序', CHANGE_AREA: '调整板块', RETURN: '交回运营', WITHDRAW: '撤回交接', REQUEUE: '重新待接单', DISMISS: '驳回工单' }[action] || action
+}
+
+function resetWorkflowHistory() {
+  workflowEventsRequestId += 1
+  workflowHistoryOpen.value = false
+  workflowEvents.value = []
+  workflowEventsLoading.value = false
+  workflowEventsError.value = ''
+}
+
+function openWorkflowHistory(id) {
+  workflowMenuOpen.value = false
+  workflowHistoryOpen.value = true
+  workflowEvents.value = []
+  void loadWorkflowEvents(id)
+  nextTick(() => workflowHistoryCloseButton.value?.focus())
+}
+
+function closeWorkflowHistory() {
+  workflowEventsRequestId += 1
+  workflowHistoryOpen.value = false
+  workflowEventsLoading.value = false
+  nextTick(() => workflowMenuButton.value?.focus())
+}
+
+async function loadWorkflowEvents(id) {
+  const requestId = ++workflowEventsRequestId
+  const detailId = detailRequestId
+  const userId = currentUserId()
+  workflowEventsLoading.value = true
+  workflowEventsError.value = ''
+  try {
+    const events = await listFeedbackWorkflowEvents(id)
+    if (requestId === workflowEventsRequestId && isCurrentDetail(detailId, id, userId) && workflowHistoryOpen.value) {
+      workflowEvents.value = events
+    }
+  } catch (e) {
+    if (requestId === workflowEventsRequestId && isCurrentDetail(detailId, id, userId) && workflowHistoryOpen.value && !await handleForbidden(e)) workflowEventsError.value = e.message || '处理记录加载失败'
+  } finally {
+    if (requestId === workflowEventsRequestId) workflowEventsLoading.value = false
+  }
 }
 
 async function runWorkflow(mode, item) {
@@ -610,9 +695,6 @@ async function runWorkflow(mode, item) {
             : await returnFeedback(item.id, note, mode === 'withdraw' ? 'WITHDRAW' : 'RETURN')
     if (!isCurrentDetail(requestId, item.id, userId)) return
     replaceTicket(detail)
-    const events = await listFeedbackWorkflowEvents(item.id)
-    if (!isCurrentDetail(requestId, item.id, userId)) return
-    workflowEvents.value = events
     workflowMode.value = ''
     workflowMenuOpen.value = false
     if (mode === 'claim' && filterStatus.value === 'UNASSIGNED') {
@@ -628,26 +710,6 @@ async function runWorkflow(mode, item) {
     }
   } finally {
     workflowBusy.value = false
-  }
-}
-
-async function saveVersions(payload) {
-  const id = selectedId.value
-  if (!id || versionBusy.value) return
-  const requestId = detailRequestId
-  const userId = currentUserId()
-  versionBusy.value = true
-  versionMessage.value = ''
-  versionError.value = ''
-  try {
-    const detail = await updateFeedbackVersions(id, payload)
-    if (!isCurrentDetail(requestId, id, userId)) return
-    replaceTicket(detail)
-    versionMessage.value = '版本关联已更新'
-  } catch (e) {
-    if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) versionError.value = e.message || '版本关联失败'
-  } finally {
-    versionBusy.value = false
   }
 }
 
@@ -723,6 +785,7 @@ async function confirmMerge(targetId) {
 
 function showReplyForm(id) {
   workflowMenuOpen.value = false
+  managementMenuOpen.value = false
   detailError.value = ''
   replyMedia.clear()
   replyTarget.value = id
@@ -835,28 +898,15 @@ onBeforeUnmount(() => {
 .feedback-merge-relations li { min-width: 0; max-width: 100%; }
 .feedback-merge-relations a { display: inline-block; max-width: 100%; padding: 8px 10px; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--surface); color: var(--feedback-text); font-size: 12px; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 2px; }
 .feedback-merge-relations a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.feedback-management-summary { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; color: var(--feedback-text-muted); font-size: 11px; line-height: 1.5; }
+.feedback-management-summary span { overflow-wrap: anywhere; }
 .feedback-ticket-actions { display: grid; gap: 10px; }
 .feedback-action-toolbar .danger { margin-left: auto; }
 .feedback-action-toolbar [aria-expanded="true"] svg { transform: rotate(180deg); }
 .feedback-workflow-options { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.feedback-admin-settings-collapsible { margin-top: 16px; }
-.feedback-settings-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text); cursor: pointer; list-style: none; }
-.feedback-settings-toggle::-webkit-details-marker { display: none; }
-.feedback-settings-toggle > span { display: grid; gap: 4px; }
-.feedback-settings-toggle small { color: var(--feedback-text-dim); font: 800 9.5px var(--font-d); letter-spacing: .14em; }
-.feedback-settings-toggle strong { font-family: var(--font-s); font-size: 14px; }
-.feedback-settings-toggle svg { flex: none; transition: transform .18s ease; }
-.feedback-admin-settings-collapsible[open] .feedback-settings-toggle svg { transform: rotate(180deg); }
-.feedback-settings-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.feedback-settings-body { display: grid; gap: 10px; padding-top: 10px; }
-.feedback-admin-settings-collapsible:not([open]) .feedback-settings-body { display: none; }
-.feedback-admin-settings-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 2px; }
-.feedback-admin-settings-head span { display: block; margin-bottom: 5px; color: var(--feedback-text-dim); font: 800 9.5px var(--font-d); letter-spacing: .14em; }
-.feedback-admin-settings-head h3 { color: var(--feedback-text); font-family: var(--font-s); font-size: 14px; font-weight: 900; }
-.feedback-admin-settings-head small { color: var(--feedback-text-dim); font-size: 10.5px; font-weight: 700; }
-.feedback-admin-settings-lead { margin: -2px 2px 2px; color: var(--feedback-text-muted); font-size: 11.5px; line-height: 1.65; }
-.feedback-admin-settings-stack { display: grid; gap: 8px; }
-.feedback-workflow-stage { margin: 0; padding: 9px 12px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); color: var(--feedback-text-muted); font-size: 12px; font-weight: 700; }
+.feedback-management-dialog { width: min(640px, calc(100vw - 28px)); max-width: 640px; max-height: min(760px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+.feedback-management-dialog .modal-head button { min-width: 44px; min-height: 44px; }
+.feedback-management-body { min-height: 0; overflow-y: auto; padding: 16px 20px 20px; }
 .feedback-workflow-form { display: grid; gap: 12px; max-height: min(60vh, 420px); max-height: min(60dvh, 420px); overflow-y: auto; padding: 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .feedback-workflow-form > strong { color: var(--feedback-text); font-family: var(--font-s); font-size: 14px; }
 .feedback-workflow-form label { min-width: 0; display: grid; gap: 6px; color: var(--feedback-text); font-size: 12px; font-weight: 800; }
@@ -867,28 +917,26 @@ onBeforeUnmount(() => {
 .feedback-workflow-error { color: var(--feedback-danger); }
 .feedback-workflow-error button { border: 0; background: none; color: inherit; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
 .feedback-workflow-message { margin: 0; padding: 10px 12px; border-left: 3px solid var(--feedback-success); border-radius: 5px; background: var(--feedback-panel); color: var(--feedback-text); font-size: 12px; font-weight: 800; }
-.feedback-workflow-events { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.feedback-workflow-events > strong { color: var(--feedback-text); font-family: var(--font-s); font-size: 14px; }
-.feedback-workflow-events ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.feedback-history-dialog { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+.feedback-history-dialog .modal-head small { display: block; margin-top: 4px; color: var(--feedback-text-dim); font: 11px var(--font-d); overflow-wrap: anywhere; }
+.feedback-history-dialog .modal-head button { min-width: 44px; min-height: 44px; }
+.feedback-history-body { min-height: 0; overflow-y: auto; padding: 16px 20px; }
+.feedback-history-body > p { color: var(--feedback-text-muted); font-size: 12px; line-height: 1.6; }
+.feedback-history-body > .feedback-workflow-error { color: var(--feedback-danger); }
+.feedback-workflow-events { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .feedback-workflow-events li { min-width: 0; display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); overflow-wrap: anywhere; }
 .feedback-workflow-events li > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 5px 12px; }
 .feedback-workflow-events b { color: var(--feedback-text); font-size: 12px; }
 .feedback-workflow-events time, .feedback-workflow-events span { color: var(--feedback-text-dim); font-size: 11px; }
 .feedback-workflow-events p { margin: 0; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.6; }
-.feedback-admin-merge-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.feedback-admin-merge-row > div { min-width: 0; display: grid; gap: 4px; }
-.feedback-admin-merge-row strong { color: var(--feedback-text); font-size: 12px; font-weight: 900; }
-.feedback-admin-merge-row span { color: var(--feedback-text-muted); font-size: 11px; line-height: 1.55; }
-.feedback-admin-merge-row .feedback-button { flex: none; }
-
 @media (max-width: 640px) {
+  .feedback-management-dialog { width: 100%; max-height: min(92dvh, 760px); }
+  .feedback-management-body { padding: 14px 16px 18px; }
+  .feedback-history-dialog { width: 100%; max-height: min(92dvh, 760px); }
   .feedback-action-toolbar > button { flex: 1 1 calc(50% - 4px); }
   .feedback-action-toolbar .danger { margin-left: 0; }
   .feedback-workflow-options > button { flex: 1 1 calc(50% - 4px); }
   .feedback-workflow-form select, .feedback-workflow-form textarea { font-size: 16px; }
   .feedback-workflow-form .feedback-form-actions { flex-wrap: wrap; }
-  .feedback-admin-settings-head { align-items: flex-start; }
-  .feedback-admin-merge-row { align-items: stretch; flex-direction: column; }
-  .feedback-admin-merge-row .feedback-button { width: 100%; justify-content: center; }
 }
 </style>
