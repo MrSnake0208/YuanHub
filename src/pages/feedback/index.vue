@@ -62,12 +62,13 @@
             </label>
             <label class="feedback-filter">
               <span>反馈板块</span>
-              <select v-model="filterCategory" @change="reloadFromFirstPage">
+              <select v-model="filterCategory" :disabled="!categoryOptions.length" @change="reloadFromFirstPage">
                 <option value="">全部板块</option>
                 <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
               </select>
             </label>
             <span class="feedback-result-meta">第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
+            <span v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</span>
           </div>
 
           <FeedbackTicketWorkspace
@@ -162,8 +163,8 @@
               </label>
               <label>
                 <span>反馈板块</span>
-                <select v-model="newFeedback.category" class="feedback-form-control" required>
-                  <option value="">请选择反馈板块</option>
+                <select v-model="newFeedback.category" class="feedback-form-control" required :disabled="!categoryOptions.length">
+                  <option value="">{{ accessError ? '反馈板块加载失败' : categoryOptions.length ? '请选择反馈板块' : '正在加载反馈板块' }}</option>
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
@@ -191,9 +192,10 @@
               </label>
             </div>
             <div v-if="formError" class="feedback-form-error" role="alert">{{ formError }}</div>
+            <div v-if="accessError" class="feedback-form-error" role="alert">{{ accessError }}</div>
             <div class="modal-foot">
               <button type="button" class="feedback-button" @click="closeNewFeedback">取消</button>
-              <button type="submit" class="feedback-primary-action" :disabled="submitting || newMedia.uploading || newMedia.optimizing">
+              <button type="submit" class="feedback-primary-action" :disabled="submitting || newMedia.uploading || newMedia.optimizing || !categoryOptions.length">
                 <Send :size="16" />{{ submitting ? '提交中…' : '提交反馈' }}
               </button>
             </div>
@@ -248,19 +250,10 @@ const feedbackTypeOptions = [
   { key: 'REPORT', label: '举报' },
   { key: 'OTHER', label: '其他' }
 ]
-const DEFAULT_AREAS = [
-  { key: 'INVENTORY', label: '库存管理' },
-  { key: 'OPERATOR', label: '密探养成' },
-  { key: 'LEDGER', label: '广陵账房' },
-  { key: 'PLAZA', label: '作业广场' },
-  { key: 'ACCOUNT', label: '账号与连接' },
-  { key: 'UI', label: '界面与交互' },
-  { key: 'OTHER', label: '其他模块' }
-]
-
 const route = useRoute()
 const feedbacks = ref([])
 const access = ref({ availableAreas: [] })
+const accessError = ref('')
 const loading = ref(false)
 const error = ref('')
 const page = ref(1)
@@ -301,7 +294,7 @@ let stopNotificationUnread = null
 let stopFeedbackUnread = null
 let isMounted = false
 
-const categoryOptions = computed(() => access.value.availableAreas.length ? access.value.availableAreas : DEFAULT_AREAS)
+const categoryOptions = computed(() => access.value.availableAreas)
 const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
@@ -329,12 +322,15 @@ function formatDate(value) {
 }
 
 async function loadAccess() {
+  accessError.value = ''
   try {
     const data = await getFeedbackAccess()
     const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
+    if (!rawAreas.length) throw new Error('反馈板块目录为空')
     access.value.availableAreas = rawAreas.map(option => ({ key: option.key, label: option.label }))
   } catch (_) {
     access.value.availableAreas = []
+    accessError.value = '反馈板块加载失败，请刷新页面重试。'
   }
 }
 
@@ -581,6 +577,10 @@ async function submitFeedback() {
   if (!title) { formError.value = '请填写标题'; return }
   const content = newFeedback.value.content.trim()
   if (!content || !newFeedback.value.category || submitting.value) return
+  if (!categoryOptions.value.some(option => option.key === newFeedback.value.category)) {
+    formError.value = '请选择有效的反馈板块'
+    return
+  }
   const payload = { ...newFeedback.value, title, content }
   const userId = currentUserId()
   submitting.value = true

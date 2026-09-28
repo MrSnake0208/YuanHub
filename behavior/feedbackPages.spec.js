@@ -95,7 +95,9 @@ it('keeps reporter messages on the left and admin messages on the right', () => 
 beforeEach(() => {
   vi.clearAllMocks()
   useRoute().query = {}
-  api.getFeedbackAccess.mockReset().mockResolvedValue({ super_admin: true, available_areas: [] })
+  api.getFeedbackAccess.mockReset().mockResolvedValue({ super_admin: true, available_categories: [
+    { key: 'OPERATOR', label: '密探养成' }, { key: 'STAR', label: '星石' }, { key: 'MAAYUAN', label: '麻圆' }
+  ] })
   api.getFeedback.mockReset().mockImplementation(async id => ticket(id))
   api.getManagedFeedback.mockReset().mockImplementation(async id => ticket(id))
   const list = { items: [summary('rpt_a'), summary('rpt_b')], total: 40 }
@@ -371,7 +373,7 @@ it('活动工单的合并入口复用原弹窗，已有子反馈时隐藏入口'
 })
 
 it('程序岗只能填写内部结果并交回，不能回复用户', async () => {
-  api.getFeedbackAccess.mockResolvedValue({ developer_areas: ['STAR'], available_work_areas: [{ key: 'STAR', label: '星石' }] })
+  api.getFeedbackAccess.mockResolvedValue({ developer_areas: ['STAR'], available_categories: [{ key: 'STAR', label: '星石' }] })
   api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workArea: 'STAR', workflowStage: 'DEV_HANDOFF', viewerCanManage: false, viewerCanDevelop: true })
   api.returnFeedback.mockResolvedValue({ ...ticket('rpt_a'), workArea: 'STAR', workflowStage: 'PROCESSING', viewerCanManage: false, viewerCanDevelop: false })
   vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -542,6 +544,33 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
   expect(api.listMyFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, q: undefined, type: undefined, category: undefined }))
   expect(wrapper.get('[role="dialog"]').text()).toContain('conversation rpt_new')
   expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+})
+
+it('用户和管理员从后端目录看到相同板块，用户可提交星石反馈', async () => {
+  const mine = render(MyFeedback); await flushPromises()
+  await mine.get('.feedback-hero-action').trigger('click')
+  const options = mine.findAll('.feedback-modal select')[1].findAll('option').map(option => option.text())
+  expect(options).toEqual(['请选择反馈板块', '密探养成', '星石', '麻圆'])
+  await mine.findAll('.feedback-modal select')[1].setValue('STAR')
+  await mine.get('input[maxlength="120"]').setValue('星石异常')
+  await mine.get('.feedback-modal textarea').setValue('星石无法保存')
+  api.createFeedback.mockResolvedValue(ticket('rpt_new'))
+  await mine.get('.feedback-modal form').trigger('submit'); await flushPromises()
+  expect(api.createFeedback).toHaveBeenCalledWith(expect.objectContaining({ category: 'STAR' }))
+
+  const managed = render(ManagedFeedback); await flushPromises()
+  expect(managed.findAll('.feedback-filter-row select')[1].findAll('option').map(option => option.text())).toEqual(['全部板块', '密探养成', '星石', '麻圆'])
+  mine.unmount(); managed.unmount()
+})
+
+it('板块目录加载失败时不给出过期选项也不能提交', async () => {
+  api.getFeedbackAccess.mockRejectedValue(new Error('offline'))
+  const wrapper = render(MyFeedback); await flushPromises()
+  await wrapper.get('.feedback-hero-action').trigger('click')
+  expect(wrapper.findAll('.feedback-modal select')[1].findAll('option').map(option => option.text())).toEqual(['反馈板块加载失败'])
+  expect(wrapper.get('.feedback-modal button[type="submit"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('.feedback-modal [role="alert"]').text()).toContain('反馈板块加载失败')
+  wrapper.unmount()
 })
 
 it('完成反馈须确认，成功后切到已完成列表并告知去向', async () => {

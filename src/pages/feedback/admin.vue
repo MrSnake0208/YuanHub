@@ -27,6 +27,29 @@
             :has-unread-feedback="canManageFeedback && feedbackUnreadState.count > 0"
             :can-configure="canConfigureFeedback"
           />
+          <section class="category-panel" aria-labelledby="category-panel-title">
+            <h2 id="category-panel-title">反馈板块</h2>
+            <p>用户和管理员使用同一份板块目录。改名不会改变已有反馈或授权的归属。</p>
+            <form class="category-create" @submit.prevent="addCategory">
+              <label for="new-feedback-category">新增板块</label>
+              <input id="new-feedback-category" v-model="newCategoryLabel" maxlength="24" required :disabled="categorySaving || loading || !!error" placeholder="板块名称" />
+              <button class="command primary" type="submit" :disabled="categorySaving || loading || !!error || !newCategoryLabel.trim()">新增</button>
+            </form>
+            <ul v-if="areas.length && !error" class="category-list">
+              <li v-for="area in areas" :key="area.key">
+                <template v-if="editingCategoryKey === area.key">
+                  <input v-model="editingCategoryLabel" :aria-label="'修改 ' + area.label + ' 名称'" maxlength="24" :disabled="categorySaving" @keydown.enter.prevent="saveCategory" @keydown.esc="cancelCategoryEdit" />
+                  <button type="button" :disabled="categorySaving || !editingCategoryLabel.trim()" @click="saveCategory">保存</button>
+                  <button type="button" :disabled="categorySaving" @click="cancelCategoryEdit">取消</button>
+                </template>
+                <template v-else>
+                  <span>{{ area.label }}</span>
+                  <button type="button" :aria-label="'重命名 ' + area.label" :disabled="categorySaving" @click="startCategoryEdit(area)">改名</button>
+                </template>
+              </li>
+            </ul>
+            <p v-if="categoryError" class="editor-error" role="alert">{{ categoryError }}</p>
+          </section>
           <div class="access-toolbar">
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
@@ -109,7 +132,7 @@
             <fieldset class="permission-group" :disabled="saving || !form.feedbackRoles.includes('OPERATOR')">
               <legend>运营负责板块</legend>
               <div class="area-grid">
-                <label v-for="area in workAreas" :key="'operator-' + area.key" :class="{ on: form.operatorAreas.includes(area.key) }">
+                <label v-for="area in areas" :key="'operator-' + area.key" :class="{ on: form.operatorAreas.includes(area.key) }">
                   <input v-model="form.operatorAreas" type="checkbox" :value="area.key" />
                   <span>{{ area.label }}</span>
                 </label>
@@ -119,7 +142,7 @@
             <fieldset class="permission-group" :disabled="saving || !form.feedbackRoles.includes('DEVELOPER')">
               <legend>程序负责板块</legend>
               <div class="area-grid">
-                <label v-for="area in workAreas" :key="'developer-' + area.key" :class="{ on: form.developerAreas.includes(area.key) }">
+                <label v-for="area in areas" :key="'developer-' + area.key" :class="{ on: form.developerAreas.includes(area.key) }">
                   <input v-model="form.developerAreas" type="checkbox" :value="area.key" />
                   <span>{{ area.label }}</span>
                 </label>
@@ -168,9 +191,11 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import {
+  createFeedbackCategory,
   deleteFeedbackAccessGrant,
   getFeedbackAccess,
   listFeedbackAccessGrants,
+  renameFeedbackCategory,
   updateFeedbackAccessGrant
 } from '@/api/feedback.js'
 import { searchFeedbackAccessUsers } from '@/api/user.js'
@@ -180,19 +205,13 @@ import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/
 import { feedbackUnreadState } from '@/store/feedbackUnread.js'
 import '@/styles/feedback-workspace.css'
 
-const DEFAULT_AREAS = [
-  { key: 'INVENTORY', label: '库存管理' },
-  { key: 'OPERATOR', label: '密探养成' },
-  { key: 'LEDGER', label: '广陵账房' },
-  { key: 'PLAZA', label: '作业广场' },
-  { key: 'ACCOUNT', label: '账号与连接' },
-  { key: 'UI', label: '界面与交互' },
-  { key: 'OTHER', label: '其他模块' }
-]
-
 const grants = ref([])
-const areas = ref(DEFAULT_AREAS)
-const workAreas = ref(DEFAULT_AREAS)
+const areas = ref([])
+const newCategoryLabel = ref('')
+const editingCategoryKey = ref('')
+const editingCategoryLabel = ref('')
+const categorySaving = ref(false)
+const categoryError = ref('')
 const loading = ref(true)
 const error = ref('')
 const filter = ref('')
@@ -237,11 +256,54 @@ function normalizeGrant(grant) {
 }
 
 function areaLabel(key) {
-  return workAreas.value.find(area => area.key === key)?.label || areas.value.find(area => area.key === key)?.label || key
+  return areas.value.find(area => area.key === key)?.label || key
 }
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('zh-CN') : ''
+}
+
+function startCategoryEdit(area) {
+  editingCategoryKey.value = area.key
+  editingCategoryLabel.value = area.label
+  categoryError.value = ''
+}
+
+function cancelCategoryEdit() {
+  editingCategoryKey.value = ''
+  editingCategoryLabel.value = ''
+}
+
+async function addCategory() {
+  const label = newCategoryLabel.value.trim()
+  if (!label || categorySaving.value) return
+  categorySaving.value = true
+  categoryError.value = ''
+  try {
+    await createFeedbackCategory(label)
+    newCategoryLabel.value = ''
+    await load()
+  } catch (e) {
+    if (!await handleForbidden(e)) categoryError.value = e.message || '新增板块失败'
+  } finally {
+    categorySaving.value = false
+  }
+}
+
+async function saveCategory() {
+  const label = editingCategoryLabel.value.trim()
+  if (!label || !editingCategoryKey.value || categorySaving.value) return
+  categorySaving.value = true
+  categoryError.value = ''
+  try {
+    await renameFeedbackCategory(editingCategoryKey.value, label)
+    cancelCategoryEdit()
+    await load()
+  } catch (e) {
+    if (!await handleForbidden(e)) categoryError.value = e.message || '修改板块失败'
+  } finally {
+    categorySaving.value = false
+  }
 }
 
 async function load() {
@@ -254,9 +316,8 @@ async function load() {
     if (!isMounted || requestId !== loadRequestId) return
     grants.value = Array.isArray(grantData) ? grantData.map(normalizeGrant) : []
     const rawAreas = accessData.availableCategories || accessData.available_categories || accessData.availableAreas || accessData.available_areas || []
-    if (rawAreas.length) areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
-    const rawWorkAreas = accessData.availableWorkAreas || accessData.available_work_areas || []
-    if (rawWorkAreas.length) workAreas.value = rawWorkAreas.map(area => ({ key: area.key, label: area.label }))
+    if (!rawAreas.length) throw new Error('反馈板块目录为空')
+    areas.value = rawAreas.map(area => ({ key: area.key, label: area.label }))
   } catch (e) {
     if (await handleForbidden(e)) return
     if (isMounted && requestId === loadRequestId) error.value = e.message || '权限配置加载失败'
@@ -420,6 +481,15 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 
 <style scoped>
 .page-feedback-access { min-height: 100vh; min-height: 100dvh }
+.category-panel { margin-top: 24px; padding: 20px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep) }
+.category-panel h2 { margin: 0 0 6px; font-size: 18px }
+.category-panel p { margin: 0 0 14px; color: var(--feedback-text-dim) }
+.category-create, .category-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 10px }
+.category-create input, .category-list input { min-height: 40px; padding: 0 10px; border: 1px solid var(--feedback-line-strong); background: var(--surface); color: var(--ink) }
+.category-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none }
+.category-list li { padding: 7px 10px; border: 1px solid var(--feedback-line-strong) }
+.category-list button { min-height: 32px; border: 0; background: transparent; color: var(--feedback-accent); cursor: pointer }
+.category-list button:disabled { opacity: .5; cursor: default }
 .access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-bottom: 14px }
 .access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
 .access-search:focus-within { border-color: var(--feedback-accent) }

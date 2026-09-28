@@ -4,6 +4,7 @@ import {
   appendManagedFeedbackMessage,
   appendMyFeedbackMessage,
   createFeedback,
+  createFeedbackCategory,
   deleteFeedbackAccessGrant,
   downloadFeedbackAttachment,
   getFeedback,
@@ -20,6 +21,7 @@ import {
   listFeedback,
   listFeedbackAccessGrants,
   normalizeFeedback,
+  renameFeedbackCategory,
   updateFeedbackAccessGrant,
   updateFeedbackType,
   updateManagedFeedbackStatus,
@@ -28,6 +30,7 @@ import {
 import { uploadMedia } from '../src/api/media.js'
 import { auth } from '../src/store/auth.js'
 import { searchFeedbackAccessUsers } from '../src/api/user.js'
+import { normalizeAdminAuditLog } from '../src/api/admin.js'
 
 function apiResponse(data) {
   return {
@@ -39,6 +42,33 @@ function apiResponse(data) {
     }
   }
 }
+
+test('超级管理员板块写接口发送名称并保留稳定标识', async () => {
+  const calls = []
+  await withFetch(async (url, options) => {
+    calls.push({ url: String(url), method: options.method, body: JSON.parse(options.body) })
+    return apiResponse({ key: 'CUSTOM_TEST', label: options.body.includes('新名称') ? '新名称' : '新板块' })
+  }, async () => {
+    await createFeedbackCategory('新板块')
+    await renameFeedbackCategory('CUSTOM_TEST', '新名称')
+  })
+  assert.match(calls[0].url, /\/v1\/admin\/feedback-categories$/)
+  assert.equal(calls[0].method, 'POST')
+  assert.deepEqual(calls[0].body, { label: '新板块' })
+  assert.match(calls[1].url, /\/v1\/admin\/feedback-categories\/CUSTOM_TEST$/)
+  assert.equal(calls[1].method, 'PUT')
+  assert.deepEqual(calls[1].body, { label: '新名称' })
+})
+
+test('反馈板块审计保留改名前后名称', () => {
+  const log = normalizeAdminAuditLog({
+    action: 'FEEDBACK_CATEGORY_RENAMED',
+    before: { feedback_category_label: '旧名称' },
+    after: { feedback_category_label: '新名称' }
+  })
+  assert.equal(log.before.feedbackCategoryLabel, '旧名称')
+  assert.equal(log.after.feedbackCategoryLabel, '新名称')
+})
 
 async function withFetch(handler, fn) {
   const previous = globalThis.fetch
@@ -116,6 +146,18 @@ test('创建反馈发送 type/category 字段', async () => {
     })
     assert.equal(result.status, 'OPEN')
   })
+})
+
+test('后端新增的反馈板块按原值提交和展示', async () => {
+  let sent
+  const created = await withFetch(async (_url, options) => {
+    sent = JSON.parse(options.body)
+    return apiResponse({ id: 'rpt_star', type: 'BUG', category: 'STAR', area: 'STAR', status: 'OPEN' })
+  }, () => createFeedback({ type: 'BUG', category: 'STAR', content: '星石问题' }))
+
+  assert.equal(sent.category, 'STAR')
+  assert.equal(created.category, 'STAR')
+  assert.equal(normalizeFeedback({ type: 'FEATURE', category: 'MAAYUAN', status: 'OPEN' }).category, 'MAAYUAN')
 })
 
 test('创建反馈兼容旧的 type/category/area 请求', async () => {
@@ -593,5 +635,8 @@ test('历史响应的板块解析优先有效 area，与后端详情授权一致
   assert.equal(report.type, 'ACCOUNT')
   assert.equal(report.category, 'OPERATOR')
   assert.equal(normalizeFeedback({ type: 'FEEDBACK', category: 'BUG', area: null }).category, 'OTHER')
+  const experience = normalizeFeedback({ type: 'FEEDBACK', category: 'EXPERIENCE' })
+  assert.equal(experience.type, 'EXPERIENCE')
+  assert.equal(experience.category, 'OTHER')
   assert.equal(normalizeFeedback({ type: 'BUG', category: 'OTHER', area: 'OPERATOR' }).category, 'OPERATOR')
 })

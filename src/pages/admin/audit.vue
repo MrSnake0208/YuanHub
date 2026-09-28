@@ -7,7 +7,7 @@
           <AdminBackLink />
           <div class="crumb"><span class="pill fill">管理</span><span class="pill">审计</span></div>
           <h1>管理员审计<span class="small">只读记录</span></h1>
-          <p class="hero-sub">按时间倒序查看角色、反馈授权与内测配置的变更记录。</p>
+          <p class="hero-sub">按时间倒序查看角色、反馈板块、反馈授权与内测配置的变更记录。</p>
           <div class="hero-stats">
             <div><div class="k">记录总数</div><div class="v">{{ total }}<small>条</small></div></div>
             <div><div class="k">当前页</div><div class="v">{{ page }}<small>页</small></div></div>
@@ -65,6 +65,7 @@ const ACTION_LABELS = {
   BETA_UPDATED: '内测配置变更',
   ROLE_GRANTED: '授予角色', ROLE_REVOKED: '回收角色', ROLE_REPLACED: '替换角色',
   FEEDBACK_ACCESS_UPDATED: '更新反馈授权', FEEDBACK_ACCESS_DELETED: '删除反馈授权',
+  FEEDBACK_CATEGORY_CREATED: '新增反馈板块', FEEDBACK_CATEGORY_RENAMED: '重命名反馈板块',
   CHANGELOG_PUBLISHED: '发布更新日志', CHANGELOG_REJECTED: '退回更新日志', CHANGELOG_WITHDRAWN: '撤回更新日志'
 }
 const router = useRouter()
@@ -113,6 +114,7 @@ function snapshotParts(snapshot) {
   if (snapshot.roles.length) parts.push('角色：' + snapshot.roles.map(roleLabel).join('、'))
   if (snapshot.receiveAreas.length) parts.push('接收：' + snapshot.receiveAreas.map(areaLabel).join('、'))
   if (snapshot.manageAreas.length) parts.push('管理：' + snapshot.manageAreas.map(areaLabel).join('、'))
+  if (snapshot.feedbackCategoryLabel) parts.push('板块名称：' + snapshot.feedbackCategoryLabel)
   return parts.length ? parts : ['无']
 }
 function formatTime(value) {

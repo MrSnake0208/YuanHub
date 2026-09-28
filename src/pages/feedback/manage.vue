@@ -159,7 +159,7 @@
                         <p v-else-if="workflowMode === 'assign' && assigneesError" class="feedback-workflow-error" role="alert">{{ assigneesError }} <button type="button" @click="loadWorkflowAssignees(item.id)">重试</button></p>
                         <p v-else-if="workflowMode === 'assign' && !workflowAssignees.length" class="feedback-workflow-hint">当前板块没有其他可转交的运营负责人。</p>
                         <p v-if="workflowMode === 'handoff'" class="feedback-workflow-hint">转交当前负责板块「{{ categoryLabel(item.workArea) }}」的程序岗处理。</p>
-                        <label v-if="workflowMode === 'area'">新的内部负责板块<select v-model="workflowArea" required><option value="">选择板块</option><option v-for="area in operatorCategoryOptions" :key="area.key" :value="area.key">{{ area.label }}</option></select></label>
+                        <label v-if="workflowMode === 'area'">新的反馈板块<select v-model="workflowArea" required><option value="">选择板块</option><option v-for="area in operatorCategoryOptions" :key="area.key" :value="area.key">{{ area.label }}</option></select></label>
                         <label>处理说明<textarea v-model.trim="workflowNote" rows="3" required maxlength="1000" /></label>
                         <div class="feedback-form-actions"><button class="feedback-button" type="button" @click="cancelWorkflow">取消</button><button class="feedback-primary-action" type="submit" :disabled="workflowBusy || (workflowMode === 'assign' && (assigneesLoading || !workflowTarget))">{{ workflowBusy ? '处理中…' : '确认' }}</button></div>
                       </form>
@@ -281,16 +281,6 @@ const feedbackTypeOptions = [
   { key: 'REPORT', label: '举报' },
   { key: 'OTHER', label: '其他' }
 ]
-const DEFAULT_AREAS = [
-  { key: 'INVENTORY', label: '库存管理' },
-  { key: 'OPERATOR', label: '密探养成' },
-  { key: 'LEDGER', label: '广陵账房' },
-  { key: 'PLAZA', label: '作业广场' },
-  { key: 'ACCOUNT', label: '账号与连接' },
-  { key: 'UI', label: '界面与交互' },
-  { key: 'OTHER', label: '其他模块' }
-]
-
 const route = useRoute()
 const router = useRouter()
 const feedbacks = ref([])
@@ -359,7 +349,7 @@ const statusTabs = computed(() => allStatusTabs.filter(tab => {
   return access.value.developerAreas.length > 0 || (tab.key === 'DEV' && access.value.operatorAreas.length > 0)
 }))
 const categoryOptions = computed(() => {
-  const all = access.value.availableWorkAreas.length ? access.value.availableWorkAreas : DEFAULT_AREAS
+  const all = access.value.availableWorkAreas
   return access.value.superAdmin ? all : all.filter(option => access.value.operatorAreas.includes(option.key) || access.value.developerAreas.includes(option.key))
 })
 const operatorCategoryOptions = computed(() => categoryOptions.value.filter(option => access.value.superAdmin || access.value.operatorAreas.includes(option.key)))
@@ -406,7 +396,8 @@ async function loadAccess() {
   try {
     const data = await getFeedbackAccess()
     if (!isMounted) return
-    const rawAreas = data.availableWorkAreas || data.available_work_areas || []
+    const rawAreas = data.availableCategories || data.available_categories || data.availableAreas || data.available_areas || []
+    if (!rawAreas.length) throw new Error('反馈板块目录为空')
     access.value = {
       superAdmin: Boolean(data.superAdmin ?? data.super_admin),
       operatorAreas: data.operatorAreas || data.operator_areas || [],
@@ -680,7 +671,7 @@ async function runWorkflow(mode, item) {
   const actionLabel = { claim: '接单', takeover: '接手', assign: '转交运营', handoff: '转程序', area: '调整板块', withdraw: '撤回交接', return: '交回运营' }[mode]
   if (mode !== 'claim' && !note) { detailError.value = '请填写处理说明'; return }
   if (mode === 'assign' && !workflowAssignees.value.some(user => user.id === workflowTarget.value)) { detailError.value = '请选择可转交的运营负责人'; return }
-  if (mode === 'area' && !workflowArea.value) { detailError.value = '请选择内部负责板块'; return }
+  if (mode === 'area' && !workflowArea.value) { detailError.value = '请选择反馈板块'; return }
   if (mode !== 'claim' && !window.confirm(`${actionLabel}工单 ${item.id}？${mode === 'assign' ? `新负责人：${workflowTarget.value}` : ''}`)) return
   const requestId = detailRequestId
   const userId = currentUserId()

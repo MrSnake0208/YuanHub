@@ -2,10 +2,9 @@
 import { request } from './request.js'
 import { feedbackDiagnostics } from '../config/buildInfo.js'
 
-const FEEDBACK_TYPES = new Set(['BUG', 'FEATURE', 'CONTENT', 'ACCOUNT', 'REPORT', 'OTHER'])
-const FEEDBACK_CATEGORIES = new Set(['INVENTORY', 'OPERATOR', 'LEDGER', 'PLAZA', 'ACCOUNT', 'UI', 'OTHER'])
+const FEEDBACK_TYPES = new Set(['BUG', 'EXPERIENCE', 'FEATURE', 'CONTENT', 'ACCOUNT', 'REPORT', 'OTHER'])
 
-// 创建反馈。新契约中 type 是反馈类型，category 是前端板块。
+// 创建反馈。type 是反馈类型，category 是后端提供的反馈板块。
 // diagnostics 始终取自本次构建实际运行的前端版本，与 clientInfoConsent 无关：
 // consent 只控制 IP / User-Agent 等浏览器信息，版本与 Build 属于应用诊断信息。
 export async function createFeedback(payload) {
@@ -14,8 +13,8 @@ export async function createFeedback(payload) {
   const rawArea = String(payload.area || '').trim().toUpperCase()
   const legacyType = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory) ? rawCategory : rawType
   const category = rawType === 'FEEDBACK'
-    ? (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : 'OTHER'))
-    : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : (FEEDBACK_CATEGORIES.has(rawArea) ? rawArea : (rawCategory || 'OTHER')))
+    ? (rawArea || (FEEDBACK_TYPES.has(rawCategory) ? '' : rawCategory) || 'OTHER')
+    : (rawCategory || rawArea || 'OTHER')
   const title = payload.title ? String(payload.title).trim() : ''
   const body = {
     type: legacyType,
@@ -85,10 +84,8 @@ export function normalizeFeedback(report) {
   const rawCategory = String(report.category || '').trim().toUpperCase()
   const rawArea = String(report.area || '').trim().toUpperCase()
   const legacyCategory = rawType === 'FEEDBACK' && FEEDBACK_TYPES.has(rawCategory)
-  // Legacy area has the same precedence used by backend scope authorization.
-  const category = FEEDBACK_CATEGORIES.has(rawArea)
-    ? rawArea
-    : (FEEDBACK_CATEGORIES.has(rawCategory) ? rawCategory : 'OTHER')
+  // 后端返回已归一的 area；旧响应仍优先使用 area。
+  const category = rawArea || (legacyCategory ? 'OTHER' : rawCategory) || 'OTHER'
   const type = legacyCategory ? rawCategory : rawType
   const rawQuota = report.quota && typeof report.quota === 'object' ? report.quota : null
   const reporter = normalizeUser(report.reporter)
@@ -237,6 +234,16 @@ export function getFeedbackAccess() {
 
 export function listFeedbackAccessGrants() {
   return request('/v1/admin/feedback-access', { auth: true })
+}
+
+export function createFeedbackCategory(label) {
+  return request('/v1/admin/feedback-categories', { method: 'POST', auth: true, body: { label } })
+}
+
+export function renameFeedbackCategory(key, label) {
+  return request('/v1/admin/feedback-categories/' + encodeURIComponent(key), {
+    method: 'PUT', auth: true, body: { label }
+  })
 }
 
 export function updateFeedbackAccessGrant(userId, grant) {
