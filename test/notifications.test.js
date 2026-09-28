@@ -115,7 +115,7 @@ test('通知页只消费规范字段，并保护接收权限用户不进入管�
   assert.match(source, /item\.refType/)
   assert.match(source, /item\.refId/)
   assert.match(source, /function isManagementNotification\(kind\)/)
-  assert.match(source, /kind === 'FEEDBACK_ASSIGNED' \|\| kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'/)
+  assert.match(source, /\['FEEDBACK_ASSIGNED', 'FEEDBACK_MESSAGE_FROM_REPORTER', 'FEEDBACK_DEV_HANDOFF', 'FEEDBACK_DEV_RETURN'\]\.includes\(kind\)/)
   assert.match(source, /function isMessageNotification\(kind\)/)
   assert.match(source, /kind === 'FEEDBACK_REPLY' \|\| kind === 'FEEDBACK_MESSAGE_FROM_REPORTER'/)
   assert.match(source, /target === '\/feedback\/manage' && !canManageFeedback\.value/)

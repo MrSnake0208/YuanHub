@@ -12,8 +12,8 @@ function metaFor(path) {
   return route.meta
 }
 
-function access({ permissions = [], manageAreas = [], roles = [] } = {}) {
-  return { roles, permissions, receiveAreas: [], manageAreas, superAdmin: false }
+function access({ permissions = [], operatorAreas = [], roles = [] } = {}) {
+  return { roles, permissions, receiveAreas: [], operatorAreas, developerAreas: [], superAdmin: false }
 }
 
 test('Case 3：普通页面不需要管理权限，因此首屏不会等待 /v1/admin/access/me', function () {
@@ -40,7 +40,7 @@ test('Case 4：所有带权限元数据的路由都必须先拿到权限结果',
 test('Case 4：权限满足时放行，权限不足时拒绝（逐条覆盖管理路由）', function () {
   const cases = [
     ['/admin/beta', access({ permissions: ['beta:manage'] })],
-    ['/feedback/manage', access({ manageAreas: ['INVENTORY'] })],
+    ['/feedback/manage', access({ operatorAreas: ['INVENTORY'] })],
     ['/feedback/admin', access({ permissions: ['admin:feedback_access:manage'] })],
     ['/admin/roles', access({ permissions: ['admin:role:manage'] })],
     ['/admin/audit', access({ permissions: ['admin:audit:read'] })],

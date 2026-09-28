@@ -573,7 +573,7 @@ test('个人和管理写操作固定发送各自 actor_mode 且调用参数不�
     await appendMyFeedbackMessage('rpt/1', { content: '个人补充', mediaIds: [], actorMode: 'ADMIN', actor_mode: 'ADMIN' })
     await appendManagedFeedbackMessage('rpt/1', { content: '管理回复', mediaIds: [], actorMode: 'REPORTER' })
     await updateMyFeedbackStatus('rpt/1', 'resolved', 'ADMIN')
-    await updateManagedFeedbackStatus('rpt/1', 'dismissed', 'REPORTER')
+    await updateManagedFeedbackStatus('rpt/1', 'dismissed', '已处理')
   })
   assert.match(requests[0].url, /\/v1\/reports\/rpt%2F1\/messages$/)
   assert.deepEqual(JSON.parse(requests[0].options.body), {
@@ -590,12 +590,14 @@ test('个人和管理写操作固定发送各自 actor_mode 且调用参数不�
   assert.match(requests[2].url, /\/v1\/reports\/rpt%2F1\/status$/)
   assert.deepEqual(JSON.parse(requests[2].options.body), {
     status: 'RESOLVED',
-    actor_mode: 'REPORTER'
+    actor_mode: 'REPORTER',
+    reason: null
   })
   assert.match(requests[3].url, /\/v1\/reports\/rpt%2F1\/status$/)
   assert.deepEqual(JSON.parse(requests[3].options.body), {
     status: 'DISMISSED',
-    actor_mode: 'ADMIN'
+    actor_mode: 'ADMIN',
+    reason: '已处理'
   })
 })
 
