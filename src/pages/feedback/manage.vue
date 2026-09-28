@@ -522,6 +522,8 @@ function closeDetail() {
   detailRequestId += 1
   assigneesRequestId += 1
   detailLoading.value = false
+  replying.value = false
+  updatingStatus.value = false
   selectedId.value = ''
   selectedDetail.value = null
   detailError.value = ''
@@ -810,7 +812,7 @@ async function submitReply(id) {
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '发送失败'
   } finally {
-    replying.value = false
+    if (isCurrentDetail(requestId, id, userId)) replying.value = false
   }
 }
 
@@ -830,7 +832,7 @@ async function updateStatus(id, status) {
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '操作失败'
   } finally {
-    updatingStatus.value = false
+    if (isCurrentDetail(requestId, id, userId)) updatingStatus.value = false
   }
 }
 

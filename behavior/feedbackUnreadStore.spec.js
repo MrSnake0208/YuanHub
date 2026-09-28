@@ -63,7 +63,7 @@ it('bulk read only sends the message boundary returned by the server', async () 
 
 it('board permission changes clear old markers and cannot reuse the previous request', async () => {
   listWorkflowFeedback.mockResolvedValueOnce({ items: [report('rpt_operator')], total: 1 })
-  unsubscribe = subscribeFeedbackUnread(); await flushPromises()
+  unsubscribe = subscribeFeedbackUnread(); await refreshFeedbackUnread({ force: true }); await flushPromises()
   expect(feedbackUnreadState.ids).toEqual(['rpt_operator'])
   const pending = deferred()
   listWorkflowFeedback.mockReturnValue(pending.promise)
@@ -77,7 +77,7 @@ it('board permission changes clear old markers and cannot reuse the previous req
 it('a revoked scope stops obsolete pagination and never restores its unread markers', async () => {
   const pending = deferred()
   listWorkflowFeedback.mockReturnValueOnce(pending.promise)
-  unsubscribe = subscribeFeedbackUnread(); await flushPromises()
+  unsubscribe = subscribeFeedbackUnread(); void refreshFeedbackUnread({ force: true }); await flushPromises()
   auth.adminAccess = { superAdmin: false, operatorAreas: [], developerAreas: [] }; await flushPromises()
   pending.resolve({ items: [report('rpt_a')], total: 200, pageSize: 1 }); await flushPromises()
   expect(listWorkflowFeedback).toHaveBeenCalledTimes(1)
