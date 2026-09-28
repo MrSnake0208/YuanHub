@@ -128,3 +128,26 @@ it('库存图标操作在触屏前有可见说明', async () => {
   expect(wrapper.get('.agent-favorite-help').text()).toContain('星标')
   expect(wrapper.get('.agent-sort-direction').text()).toContain('降序')
 })
+
+it('密探职业显示中文，金色快捷筛选只保留绝密', async () => {
+  localStorage.setItem('inventory-tabs', 'manifest')
+  getOperatorCatalog.mockResolvedValue({ operators: [
+    { id: 'char_001_gold', name: '金色密探', rarity: 5, prof: ['阳'], sub_prof: ['shenji'], games: ['代号鸢'] },
+    { id: 'char_002_purple', name: '紫色密探', rarity: 4, prof: ['阴'], sub_prof: ['guidao'], games: ['代号鸢'] },
+  ] })
+  const wrapper = render()
+  await flushPromises()
+  await wrapper.get('.manifest-type-switch button[aria-label="切换到密探心纸"]').trigger('click')
+  await flushPromises()
+
+  expect(wrapper.get('.agent-filter-panel').text()).toContain('神纪')
+  expect(wrapper.get('.agent-filter-panel').text()).not.toContain('shenji')
+  expect(wrapper.get('.agent-result').text()).toContain('2 / 2')
+
+  await wrapper.get('.agent-gold-filter input').setValue(true)
+  expect(wrapper.get('.agent-result').text()).toContain('1 / 2')
+  expect(wrapper.get('.agent-gold-filter input').element.checked).toBe(true)
+
+  await wrapper.get('.agent-gold-filter input').setValue(false)
+  expect(wrapper.get('.agent-result').text()).toContain('2 / 2')
+})

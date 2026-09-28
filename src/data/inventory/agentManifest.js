@@ -1,3 +1,5 @@
+import { canonicalSubProf } from '../../utils/operatorFilters.js'
+
 const PROF_ORDER = ['阳', '阴', '火', '风', '水', '地', '混沌']
 const SUB_PROF_ORDER = ['神纪', '诡道', '破军', '岐黄', '龙盾']
 
@@ -23,7 +25,7 @@ export function normalizeOperatorCatalog(entries) {
       name: entry.name,
       rarity: Number(entry.rarity),
       prof: profs[0] || '',
-      subProf: subProfs[0] || '',
+      subProf: canonicalSubProf(subProfs[0]),
       games: Array.isArray(entry.games) ? entry.games.slice() : []
     }
   })

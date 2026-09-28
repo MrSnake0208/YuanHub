@@ -414,6 +414,16 @@
                 <div class="agent-filter-menu">
                   <div class="agent-filter-menu-head">
                     <strong>筛选条件</strong>
+                    <label
+                      class="agent-gold-filter"
+                      :class="{ selected: agentRarityFilters.length === 1 && agentRarityFilters[0] === '5' }"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="agentRarityFilters.length === 1 && agentRarityFilters[0] === '5'"
+                        @change="agentRarityFilters = $event.target.checked ? ['5'] : []"
+                      />只选金色 / 绝密
+                    </label>
                     <button
                       v-if="agentFacetCount"
                       type="button"
@@ -422,62 +432,66 @@
                       清空
                     </button>
                   </div>
-                  <fieldset>
-                    <legend>库存</legend>
-                    <label
-                      v-for="option in AGENT_STATUS_OPTIONS"
-                      :key="option.id"
-                      :class="{
-                        selected: agentStatusFilters.includes(option.id),
-                      }"
-                      ><input
-                        v-model="agentStatusFilters"
-                        type="checkbox"
-                        :value="option.id"
-                      />{{ option.label }}</label
-                    >
-                  </fieldset>
-                  <fieldset>
-                    <legend>星级</legend>
-                    <label
-                      v-for="rarity in AGENT_RARITIES"
-                      :key="rarity"
-                      :class="{
-                        selected: agentRarityFilters.includes(String(rarity)),
-                      }"
-                      ><input
-                        v-model="agentRarityFilters"
-                        type="checkbox"
-                        :value="String(rarity)"
-                      />{{ rarity }} 星</label
-                    >
-                  </fieldset>
-                  <fieldset>
-                    <legend>属性</legend>
-                    <label
-                      v-for="prof in AGENT_PROFS"
-                      :key="prof"
-                      :class="{ selected: agentProfFilters.includes(prof) }"
-                      ><input
-                        v-model="agentProfFilters"
-                        type="checkbox"
-                        :value="prof"
-                      />{{ prof }}</label
-                    >
-                  </fieldset>
-                  <fieldset>
-                    <legend>职业</legend>
-                    <label
-                      v-for="prof in agentSubProfs"
-                      :key="prof"
-                      :class="{ selected: agentSubProfFilters.includes(prof) }"
-                      ><input
-                        v-model="agentSubProfFilters"
-                        type="checkbox"
-                        :value="prof"
-                      />{{ prof }}</label
-                    >
-                  </fieldset>
+                  <div class="agent-filter-group" role="group" aria-label="库存">
+                    <span class="agent-filter-group-title" aria-hidden="true">库存</span>
+                    <div class="agent-filter-options">
+                      <label
+                        v-for="option in AGENT_STATUS_OPTIONS"
+                        :key="option.id"
+                        :class="{ selected: agentStatusFilters.includes(option.id) }"
+                        ><input
+                          v-model="agentStatusFilters"
+                          type="checkbox"
+                          :value="option.id"
+                        />{{ option.label }}</label
+                      >
+                    </div>
+                  </div>
+                  <div class="agent-filter-group" role="group" aria-label="星级">
+                    <span class="agent-filter-group-title" aria-hidden="true">星级</span>
+                    <div class="agent-filter-options">
+                      <label
+                        v-for="rarity in AGENT_RARITIES"
+                        :key="rarity"
+                        :class="{ selected: agentRarityFilters.includes(String(rarity)) }"
+                        ><input
+                          v-model="agentRarityFilters"
+                          type="checkbox"
+                          :value="String(rarity)"
+                        />{{ rarity }} 星</label
+                      >
+                    </div>
+                  </div>
+                  <div class="agent-filter-group" role="group" aria-label="属性">
+                    <span class="agent-filter-group-title" aria-hidden="true">属性</span>
+                    <div class="agent-filter-options">
+                      <label
+                        v-for="prof in AGENT_PROFS"
+                        :key="prof"
+                        :class="{ selected: agentProfFilters.includes(prof) }"
+                        ><input
+                          v-model="agentProfFilters"
+                          type="checkbox"
+                          :value="prof"
+                        />{{ prof }}</label
+                      >
+                    </div>
+                  </div>
+                  <div class="agent-filter-group" role="group" aria-label="职业">
+                    <span class="agent-filter-group-title" aria-hidden="true">职业</span>
+                    <div class="agent-filter-options">
+                      <label
+                        v-for="prof in agentSubProfs"
+                        :key="prof"
+                        :class="{ selected: agentSubProfFilters.includes(prof) }"
+                        ><input
+                          v-model="agentSubProfFilters"
+                          type="checkbox"
+                          :value="prof"
+                        />{{ prof }}</label
+                      >
+                    </div>
+                  </div>
                 </div>
               </details>
               <div
@@ -4769,7 +4783,7 @@ onBeforeUnmount(function () {
   top: calc(100% + 7px);
   left: 0;
   z-index: var(--z-popover);
-  width: min(380px, calc(100vw - 32px));
+  width: min(420px, calc(100vw - 32px));
   max-height: min(560px, calc(100vh - 140px));
   max-height: min(560px, calc(100dvh - 140px));
   overflow-y: auto;
@@ -4782,21 +4796,23 @@ onBeforeUnmount(function () {
 }
 .agent-filter-menu-head {
   display: flex;
-  min-height: 28px;
+  min-height: 44px;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 0 2px 9px;
+  gap: 7px;
+  padding: 0 0 10px;
   border-bottom: 1px solid var(--line);
 }
 .agent-filter-menu-head strong {
+  flex: none;
   color: var(--ink);
   font-size: 12px;
   font-weight: 900;
 }
 .agent-filter-menu-head button {
   min-height: 44px;
-  padding: 3px 6px;
+  flex: none;
+  padding: 3px 4px;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -4809,61 +4825,97 @@ onBeforeUnmount(function () {
   background: var(--paper);
   color: var(--ink);
 }
-.agent-filter-menu fieldset {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
-  gap: 2px 6px;
-  min-width: 0;
+.agent-gold-filter {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.agent-gold-filter.selected {
+  border-color: var(--accent);
+  background: var(--yellow);
+}
+.agent-gold-filter:focus-within {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+.agent-gold-filter input {
+  width: 16px;
+  height: 16px;
   margin: 0;
-  padding: 10px 0;
-  border: 0;
-  border-bottom: 1px dashed var(--line);
+  accent-color: var(--tea);
 }
-.agent-filter-menu fieldset:first-of-type {
-  padding-top: 9px;
+.agent-filter-group {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
 }
-.agent-filter-menu legend {
-  grid-column: 1 / -1;
-  width: 100%;
-  margin-bottom: 3px;
+.agent-filter-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.agent-filter-group-title {
+  padding-top: 12px;
   color: var(--ink-60);
   font-family: var(--font-s);
   font-size: 11.5px;
   font-weight: 900;
-  letter-spacing: 0;
 }
-.agent-filter-menu label {
+.agent-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+.agent-filter-options label {
   display: inline-flex;
   min-height: 44px;
+  min-width: 56px;
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
   color: var(--ink-60);
   font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
   transition:
     color 0.18s var(--ease),
     background-color 0.18s var(--ease),
     border-color 0.18s var(--ease);
 }
-.agent-filter-menu label:hover {
-  background: var(--paper);
+.agent-filter-options label:hover {
+  border-color: var(--accent);
   color: var(--ink);
 }
-.agent-filter-menu label.selected {
+.agent-filter-options label.selected {
   border-color: var(--accent);
   background: var(--yellow);
   color: var(--ink);
 }
-.agent-filter-menu label:focus-within {
+.agent-filter-options label:focus-within {
   outline: 2px solid var(--brand-blue);
   outline-offset: 1px;
 }
-.agent-filter-menu input {
+.agent-filter-options input {
   width: 15px;
   height: 15px;
   margin: 0;
