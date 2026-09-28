@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const DEFAULT_TUNNEL_HOST = 'hubf.maayuan.fun'
-const DEFAULT_DEV_API_TARGET = 'https://api-hub.maayuan.com'
+const DEFAULT_DEV_API_TARGET = 'http://127.0.0.1:8080'
 const UNKNOWN_BUILD_VALUE = 'unknown'
 
 /**

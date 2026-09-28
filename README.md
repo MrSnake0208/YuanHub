@@ -12,10 +12,11 @@ npm run build # 产物输出到 dist/
 
 ### API 地址配置
 
-复制 `.env.example` 为 `.env`，按运行环境设置 `VITE_API_BASE`。Vite 会在启动和构建时读取该文件，构建完成后再修改 `.env` 不会改变已有产物。
+在工作区根目录运行 `./dev.sh` 时，前端默认将同源 API 请求代理到本机 `http://127.0.0.1:8080`，后端默认使用 `local` profile 连接本机 MongoDB 和 Redis。本地 `.env` 保持 `VITE_API_BASE=`；需要覆盖代理目标时设置 `YUANHUB_DEV_API_TARGET`。构建部署时可按环境设置 `VITE_API_BASE`。
 
 ```dotenv
-VITE_API_BASE=http://127.0.0.1:8080
+VITE_API_BASE=
+YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 ```
 
 `.env` 已加入 Git 忽略规则，真实地址不应写回源码或提交到仓库。
