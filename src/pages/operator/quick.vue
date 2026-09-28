@@ -53,38 +53,13 @@
             :game="gameFilter"
             :is-logged-in="auth.isLoggedIn"
             :loading="accountsLoading"
+            :error="accountError"
             description="当前快捷录入保存的数据均归属此账号；保存前请再次确认账号是否正确。"
-          />
-
-          <!-- 当前数据账号：这里只切换，不修改账号属性 -->
-          <div class="account-bar" v-reveal>
-            <div class="ac-sel">
-              <span class="ac-label">当前账号</span>
-              <select
-                id="quick-account"
-                :value="accountId"
-                :disabled="
-                  !auth.isLoggedIn || accountsLoading || importing
-                "
-                @change="onAccountChange($event)"
-              >
-                <option v-if="!accounts.length" value="">（未创建）</option>
-                <option v-for="a in accounts" :key="a.id" :value="a.id">
-                  {{ a.game || activeAccount.gameFor(a.id) }} · {{ a.name }}
-                </option>
-              </select>
-              <span v-if="accountError" class="ac-warn">{{
-                accountError
-              }}</span>
-            </div>
-            <span class="sp"></span>
-            <router-link class="act-btn ghost" to="/user/profile#game-accounts"
-              >管理游戏账号</router-link
-            >
-            <router-link class="act-btn ghost" to="/operator"
-              >返回密探页</router-link
-            >
-          </div>
+          >
+            <template #actions>
+              <router-link class="act-btn ghost" to="/operator">返回密探页</router-link>
+            </template>
+          </DataAccountContextBar>
 
           <!-- 未登录 / 未建账号 -->
           <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
@@ -556,7 +531,7 @@ starSteps.forEach(s => { draftBaselineByKey[s.key] = quickDraftSignature([], nul
 const quickDirty = computed(() => starSteps.some(s =>
   quickDraftSignature(checkedByKey[s.key], formByKey[s.key]) !== draftBaselineByKey[s.key]
 ));
-const confirmQuickDiscard = useUnsavedChanges(quickDirty, "快捷录入草稿");
+useUnsavedChanges(quickDirty, "快捷录入草稿");
 
 // —— 派生状态 ——
 const currentStep = computed(function () {
@@ -1166,30 +1141,6 @@ async function loadAccounts() {
   }
 }
 
-async function onAccountChange(event) {
-  const nextId = event.target.value;
-  if (nextId === accountId.value) return;
-  if (!(await confirmQuickDiscard())) {
-    event.target.value = accountId.value;
-    return;
-  }
-  starSteps.forEach(function (step) {
-    checkedByKey[step.key] = [];
-    formByKey[step.key] = { elite: 0, level: 0, node: 0 };
-    draftBaselineByKey[step.key] = quickDraftSignature([], null);
-    delete savedByKey[step.key];
-  });
-  sessionSavedCount.value = 0;
-  sessionSavedIds.clear();
-  stepIndex.value = 0;
-  maxUnlockedStep.value = 0;
-  completed.value = false;
-  pageSave.show = false;
-  accountId.value = nextId;
-  currentEntries.value = [];
-  reloadCurrent();
-}
-
 async function reloadCurrent() {
   const loadToken = ++currentLoadToken;
   if (!auth.isLoggedIn || !accountId.value) {
@@ -1343,55 +1294,6 @@ onMounted(async function () {
 }
 .page-quick .hero::after {
   content: "速录";
-}
-
-/* ---- 子账号 / 版本栏 ---- */
-.account-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 24px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 12px 16px;
-  flex-wrap: wrap;
-}
-.account-bar .sp {
-  flex: 1;
-}
-.ac-sel {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.ac-label {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--ink);
-  font-family: var(--font-b);
-}
-.ac-sel select {
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-family: var(--font-b);
-  color: var(--ink);
-  background: var(--paper);
-  outline: none;
-  min-width: 160px;
-  cursor: pointer;
-  transition: border-color 0.3s;
-}
-.ac-sel select:focus {
-  border-color: var(--accent);
-}
-.ac-warn {
-  font-size: 12px;
-  color: var(--rouge);
-  font-weight: 700;
 }
 
 .act-btn {
@@ -1996,7 +1898,7 @@ onMounted(async function () {
 }
 
 @media (max-width: 640px) {
-  .btn, .mini, .mf-filter button, .act-btn, .ac-sel select,
+  .btn, .mini, .mf-filter button, .act-btn,
   .op-search-input, .batch-fields input, .page-save .link, .state .link {
     min-height: 44px;
   }

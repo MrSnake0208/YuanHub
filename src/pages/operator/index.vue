@@ -53,8 +53,21 @@
             :game="gameFilter"
             :is-logged-in="auth.isLoggedIn"
             :loading="accountsLoading"
+            :error="accountError"
             description="当前密探养成、培养计划与导入数据均归属此账号。"
-          />
+          >
+            <template #actions>
+              <button
+                type="button"
+                class="act-btn archive-toggle"
+                :disabled="!auth.isLoggedIn"
+                :aria-expanded="showArchive"
+                @click="toggleArchive"
+              >
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起数据交换" : "数据交换" }}
+              </button>
+            </template>
+          </DataAccountContextBar>
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
           <div
@@ -110,49 +123,21 @@
               :aria-expanded="!accountWorkspaceCompact"
               aria-controls="operator-account-workspace"
               @click="accountWorkspaceCompact = !accountWorkspaceCompact"
-            >{{ accountWorkspaceCompact ? '更改账号与分享状态' : '收起账号与分享面板' }}</button>
+            >{{ accountWorkspaceCompact ? '展开分享与数据交换' : '收起分享与数据交换' }}</button>
           </div>
 
-          <!-- 统一子账号（库存 × 密探共用） -->
+          <!-- 分享与数据交换面板；账号选择统一在个人中心。 -->
           <AccountWorkspace
             id="operator-account-workspace"
             tour-target="operator-workspace"
             class="operator-account-workspace"
-            :class="{ 'is-compact': accountWorkspaceCompact }"
+            :class="{ 'is-compact': accountWorkspaceCompact, 'has-archive': showArchive }"
             v-model:compact="accountWorkspaceCompact"
-            summary-label="账号与分享"
+            summary-label="分享与数据交换"
             split
-            v-model:accountId="accountId"
-            v-model:game="gameFilter"
-            :accounts="accounts"
+            :show-account-bar="false"
             :error="accountError"
-            :disabled="
-              !auth.isLoggedIn ||
-              accountsLoading ||
-              editing ||
-              starLoadoutOpen ||
-              starLoadoutLoading ||
-              starLoadoutSaving
-            "
-            :game-editable="false"
-            :manage-enabled="false"
-            heading-title="当前数据账号"
-            heading-sub="这里只切换本次查看和录入的账号；账号名称与所属游戏统一在个人中心管理。"
-            @change="onAccountChange"
           >
-            <template #actions>
-              <button
-                class="act-btn archive-toggle"
-                :disabled="!auth.isLoggedIn"
-                :aria-expanded="showArchive"
-                @click="toggleArchive"
-              >
-                <Archive :size="15" aria-hidden="true" />{{
-                  showArchive ? "收起数据交换" : "数据交换"
-                }}
-              </button>
-            </template>
-
             <template #summary-actions>
               <router-link class="act-btn ghost workspace-mobile-link" to="/operator/share">查看他人 BOX</router-link>
               <router-link class="act-btn ghost workspace-mobile-link" :to="quickHref" @click="showImport = false">首次/快捷录入</router-link>
@@ -3503,6 +3488,7 @@ const canCommitV3Import = computed(function () {
 
 function toggleArchive() {
   showArchive.value = !showArchive.value;
+  if (showArchive.value) accountWorkspaceCompact.value = false;
   if (!showArchive.value) showImport.value = false;
 }
 
@@ -7697,17 +7683,6 @@ async function loadAccounts() {
   }
 }
 
-function onAccountChange() {
-  importConfirmReview.value = false;
-  importResult.value = null;
-  resetImportPreview();
-  currentEntries.value = [];
-  error.value = "";
-  clearAgentFavorites();
-  loadAgentFavorites();
-  reloadCurrent();
-}
-
 // —— 当前养成 ——
 async function reloadCurrent(quiet) {
   if (!auth.isLoggedIn) {
@@ -8547,7 +8522,7 @@ onBeforeUnmount(function () {
   content: "密探";
 }
 
-/* ---- 统一子账号：选择/管理已抽到共用组件 AccountWorkspace.vue ---- */
+/* ---- 密探工作区与分享面板 ---- */
 
 .operator-tabs {
   position: sticky;
@@ -15100,6 +15075,8 @@ onBeforeUnmount(function () {
   .operator-account-workspace :deep(.workspace-panels) { border-top: 0; }
   .operator-tabs .workspace-tabs-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
+.operator-account-workspace:not(.has-archive) :deep(.workspace-account) { display: none; }
+.operator-account-workspace:not(.has-archive) :deep(.workspace-panels) { display: block; }
 .current-upgrade-reminder button,.current-favorite-sort,.current-filter-reset,.current-batch-toggle,
 .batch-quick-filters button,.batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,

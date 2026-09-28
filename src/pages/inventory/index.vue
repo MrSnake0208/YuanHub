@@ -57,26 +57,12 @@
             :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn"
             :loading="accountsLoading"
-            description="当前库存、奖励流水与统计数据均归属此账号。"
-          />
-
-          <!-- 统一子账号（库存 × 密探共用） -->
-          <AccountWorkspace
-            v-model:accountId="accountId"
-            v-model:game="agentGameFilter"
-            :accounts="accounts"
             :error="accountError"
-            :disabled="
-              !auth.isLoggedIn || accountsLoading || editingStock || rewardImportBusy || Boolean(recordsBusyId)
-            "
-            :game-editable="false"
-            :manage-enabled="false"
-            heading-title="当前数据账号"
-            heading-sub="这里只切换本次查看和录入的账号；账号名称与所属游戏统一在个人中心管理。"
-            @change="onAccountChange"
+            description="当前库存、奖励流水与统计数据均归属此账号。"
           >
             <template #actions>
               <button
+                type="button"
                 class="act-btn archive-toggle"
                 :disabled="!auth.isLoggedIn || editingStock"
                 :aria-expanded="showArchive"
@@ -87,21 +73,21 @@
                 }}
               </button>
             </template>
+          </DataAccountContextBar>
 
-            <ArchiveExchangePanel
-              v-if="showArchive && !editingStock"
-              :description="'用于在不同平台之间迁移库存；导出前请确认账号范围。'"
-              :import-open="showImport"
-              :import-disabled="!auth.isLoggedIn || editingStock"
-              :export-disabled="!auth.isLoggedIn || !accountId"
-              :scope="exportAll ? 'all' : 'current'"
-              scope-name="inventory-export-scope"
-              :scope-options="inventoryExportScopeOptions"
-              @toggle-import="toggleInventoryImport"
-              @update:scope="exportAll = $event === 'all'"
-              @export="doExport"
-            />
-          </AccountWorkspace>
+          <ArchiveExchangePanel
+            v-if="showArchive && !editingStock"
+            :description="'用于在不同平台之间迁移库存；导出前请确认账号范围。'"
+            :import-open="showImport"
+            :import-disabled="!auth.isLoggedIn || editingStock"
+            :export-disabled="!auth.isLoggedIn || !accountId"
+            :scope="exportAll ? 'all' : 'current'"
+            scope-name="inventory-export-scope"
+            :scope-options="inventoryExportScopeOptions"
+            @toggle-import="toggleInventoryImport"
+            @update:scope="exportAll = $event === 'all'"
+            @export="doExport"
+          />
 
           <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
           <div
@@ -1767,7 +1753,6 @@ import {
   Star,
   X,
 } from "@lucide/vue";
-import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
@@ -2240,28 +2225,6 @@ async function loadAccounts() {
   } finally {
     accountsLoading.value = false;
   }
-}
-
-function onAccountChange() {
-  // 切换账号：清空旧账号数据并按需重载
-  cancelStockEdit();
-  clearAgentFavorites();
-  stockSaveNotice.value = "";
-  currentEntries.value = [];
-  currentFullBaselineAt.value = null;
-  resetAcquiredData();
-  recordsList.value = [];
-  recordsNextCursor.value = null;
-  recordsError.value = "";
-  recordsLoading.value = false;
-  recordsActionError.value = "";
-  deletedRecordNotices.value = [];
-  recordsLoadSeq++;
-  error.value = "";
-  reloadCurrent();
-  if (entityType.value === "agent") loadAgentFavorites();
-  if (activeTab.value === "acquired") loadAcquired();
-  if (activeTab.value === "records") loadRecords(true);
 }
 
 // 展示用日期（输入框仍使用 YYYY-MM-DD）；统计区间的实际边界由北京时间 05:00 生成。
@@ -3985,11 +3948,10 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
-/* ---- 数据交换（账号选择器/管理已抽到共用组件 AccountWorkspace.vue） ---- */
+/* ---- 数据交换 ---- */
 .archive-toggle {
   min-height: 44px;
   align-self: center;
-  transform: translateY(9px);
   background: transparent;
 }
 .load-more {

@@ -109,6 +109,18 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
 })
 
+it('管理员工作台默认筛选处理中，并可切回全部', async () => {
+  const wrapper = render(ManagedFeedback)
+  await flushPromises()
+  expect(api.listManagedFeedback).toHaveBeenCalledWith(expect.objectContaining({ status: 'OPEN' }))
+  expect(wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '处理中').attributes('aria-selected')).toBe('true')
+
+  await wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '全部').trigger('click')
+  await flushPromises()
+  expect(api.listManagedFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ status: undefined }))
+  wrapper.unmount()
+})
+
 describe.each([
   ['personal', MyFeedback, 'appendMyFeedbackMessage'],
   ['managed', ManagedFeedback, 'appendManagedFeedbackMessage']

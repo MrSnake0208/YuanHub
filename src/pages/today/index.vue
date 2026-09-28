@@ -21,14 +21,7 @@
               <span class="status-dot" aria-hidden="true"></span>
               {{ auth.isLoggedIn ? '真实数据' : '演示数据' }}
             </span>
-            <label v-if="auth.isLoggedIn && accounts.length" class="account-picker">
-              <span>切换当前账号</span>
-              <select v-model="accountId" :disabled="loading" aria-label="选择今日一览的数据账号">
-                <option v-for="account in accounts" :key="account.id" :value="account.id">
-                  {{ account.game || activeAccount.gameFor(account.id) }} · {{ account.name }}
-                </option>
-              </select>
-            </label>
+            <p v-if="auth.isLoggedIn && accounts.length">当前账号在个人中心统一选择。</p>
             <p v-else-if="auth.isLoggedIn && loading">正在读取你的账号状态…</p>
             <p v-else-if="auth.isLoggedIn">尚未建立游戏账号，请先前往个人中心创建。</p>
             <p v-else>这是示例状态。登录后会换成你的账号、密探和库存数据。</p>
@@ -39,6 +32,7 @@
       <section class="today-content">
         <div class="wrap today-wrap">
           <DataAccountContextBar
+            class="today-account-context"
             :accounts="accounts"
             :account-id="accountId"
             :game="accountGame"
@@ -240,10 +234,7 @@ const errorMessage = ref('')
 const accountLoadFailed = ref(false)
 let loadSequence = 0
 
-const accountId = computed({
-  get: function () { return activeAccount.id },
-  set: function (value) { activeAccount.set(value) }
-})
+const accountId = computed(function () { return activeAccount.id })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
 const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
@@ -422,9 +413,8 @@ onMounted(loadDashboard)
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #62805d; box-shadow: 0 0 0 4px rgba(98, 128, 93, .12); }
 .data-badge.is-demo { color: #9b6c30; }
 .data-badge.is-demo .status-dot { background: #d18935; box-shadow: 0 0 0 4px rgba(209, 137, 53, .14); }
-.account-picker { display: grid; gap: 7px; color: rgba(73, 59, 44, .62); font-size: 10px; font-weight: 900; letter-spacing: .08em; }
-.account-picker select { min-width: 0; min-height: 42px; padding: 0 34px 0 11px; border: 1px solid rgba(156, 122, 77, .35); border-radius: 8px; background: var(--surface); color: var(--ink); font: 700 13px var(--font-b); }
 .today-content { padding: 38px 0 72px; }
+.today-account-context { margin-bottom: 24px; }
 .today-alert { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding: 12px 14px; border: 1px solid rgba(166, 81, 74, .28); border-radius: 10px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 12px; }
 .today-alert button { padding: 7px 11px; border: 1px solid currentColor; border-radius: 7px; background: transparent; color: inherit; font-weight: 800; cursor: pointer; }
 .data-onboarding { margin-bottom: 46px; padding: 26px; border: 1px solid rgba(156, 122, 77, .3); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); box-shadow: 0 14px 36px rgba(73, 59, 44, .06); }

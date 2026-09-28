@@ -29,23 +29,27 @@
           <template v-else-if="hasAccount">{{ description }}</template>
           <template v-else>创建游戏账号后，密探、库存、星石与同步数据都会归属到对应账号。</template>
         </small>
+        <small v-if="error" class="context-error" role="alert">{{ error }}</small>
       </div>
     </div>
 
-    <router-link
-      v-if="isLoggedIn"
-      class="context-action"
-      :to="manageTo"
-    >
-      管理游戏账号
-    </router-link>
-    <router-link
-      v-else
-      class="context-action"
-      :to="{ path: '/login', query: { redirect: currentPath } }"
-    >
-      登录
-    </router-link>
+    <div class="context-actions">
+      <router-link
+        v-if="isLoggedIn"
+        class="context-action"
+        :to="manageTo"
+      >
+        管理游戏账号
+      </router-link>
+      <router-link
+        v-else
+        class="context-action"
+        :to="{ path: '/login', query: { redirect: currentPath } }"
+      >
+        登录
+      </router-link>
+      <slot name="actions" />
+    </div>
   </section>
 </template>
 
@@ -61,6 +65,7 @@ const props = defineProps({
   game: { type: String, default: '' },
   isLoggedIn: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
+  error: { type: String, default: '' },
   description: {
     type: String,
     default: '本页查看、录入与同步数据均归属此账号。',
@@ -194,6 +199,7 @@ const currentPath = computed(function () {
   font-weight: 650;
   line-height: 1.45;
 }
+.context-copy .context-error { color: var(--rouge); }
 .context-action {
   display: inline-flex;
   min-height: 44px;
@@ -210,6 +216,12 @@ const currentPath = computed(function () {
   text-decoration: none;
   transition: border-color .2s var(--ease), color .2s var(--ease), background-color .2s var(--ease);
 }
+.context-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
 .context-action:hover,
 .context-action:focus-visible {
   border-color: var(--accent);
@@ -224,6 +236,10 @@ const currentPath = computed(function () {
   opacity: .82;
 }
 
+@media (max-width: 900px) {
+  .data-account-context-bar { flex-wrap: wrap; }
+  .context-actions { width: 100%; flex-wrap: wrap; }
+}
 @media (max-width: 640px) {
   .data-account-context-bar {
     align-items: stretch;
@@ -250,5 +266,10 @@ const currentPath = computed(function () {
     width: 100%;
     min-height: 44px;
   }
+  .context-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+  :slotted(.act-btn) { width: 100%; min-width: 0; transform: none; }
 }
 </style>

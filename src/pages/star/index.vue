@@ -56,22 +56,8 @@
             :game="accountGame"
             :is-logged-in="auth.isLoggedIn"
             :loading="accountsLoading"
-            description="当前星石背包、养成计划与同步数据均归属此账号。"
-          />
-
-          <AccountWorkspace
-            v-model:accountId="accountId"
-            v-model:game="accountGame"
-            :accounts="accounts"
             :error="accountError"
-            :disabled="!auth.isLoggedIn || accountsLoading || starExchangeBusy"
-            :game-editable="false"
-            :manage-enabled="false"
-            stacked
-            soft-dropdown
-            heading-title="当前数据账号"
-            heading-sub="这里只切换本次查看和录入的账号；账号名称与所属游戏统一在个人中心管理。"
-            @change="onAccountChange"
+            description="当前星石背包、养成计划与同步数据均归属此账号。"
           >
             <template #actions>
               <button
@@ -89,39 +75,39 @@
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起数据交换" : "数据交换" }}
               </button>
             </template>
-            <ArchiveExchangePanel
-              v-if="showArchive"
-              :description="'用于替换当前账号的星石背包、养成计划和经验星曜。'"
-              :import-open="showStarImport"
-              :import-disabled="!productReady || starExchangeBusy"
-              :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
-              scope="current"
-              scope-name="star-export-scope"
-              :scope-options="starExportScopeOptions"
-              @toggle-import="toggleStarImport"
-              @export="exportStarArchive"
-            >
-              <template #import>
-                <section v-if="showStarImport" class="star-exchange-import">
-                  <p class="tip">选择 YuanStar 导出的 JSON 档案。确认后将替换当前账号的星石数据，不会恢复旧实例 ID、密探佩戴关系或 OCR 证据。</p>
-                  <label class="btn ghost file-label">
-                    选择 JSON 文件
-                    <input ref="starImportFile" type="file" accept=".json,application/json" @change="onStarImportFile" />
-                  </label>
-                  <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
-                  <div v-if="starImportPreview" class="star-exchange-preview">
-                    <dl>
-                      <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }} · {{ starImportPreview.preview.format.toUpperCase() }}</dd></div>
-                      <div><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
-                      <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
-                      <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '—' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '—' }} · 白 {{ starImportPreview.preview.experience.white ?? '—' }}</dd></div>
-                    </dl>
-                    <button type="button" class="btn primary" :disabled="starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换当前账号数据' }}</button>
-                  </div>
-                </section>
-              </template>
-            </ArchiveExchangePanel>
-          </AccountWorkspace>
+          </DataAccountContextBar>
+          <ArchiveExchangePanel
+            v-if="showArchive"
+            :description="'用于替换当前账号的星石背包、养成计划和经验星曜。'"
+            :import-open="showStarImport"
+            :import-disabled="!productReady || starExchangeBusy"
+            :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
+            scope="current"
+            scope-name="star-export-scope"
+            :scope-options="starExportScopeOptions"
+            @toggle-import="toggleStarImport"
+            @export="exportStarArchive"
+          >
+            <template #import>
+              <section v-if="showStarImport" class="star-exchange-import">
+                <p class="tip">选择 YuanStar 导出的 JSON 档案。确认后将替换当前账号的星石数据，不会恢复旧实例 ID、密探佩戴关系或 OCR 证据。</p>
+                <label class="btn ghost file-label">
+                  选择 JSON 文件
+                  <input ref="starImportFile" type="file" accept=".json,application/json" @change="onStarImportFile" />
+                </label>
+                <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
+                <div v-if="starImportPreview" class="star-exchange-preview">
+                  <dl>
+                    <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }} · {{ starImportPreview.preview.format.toUpperCase() }}</dd></div>
+                    <div><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
+                    <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
+                    <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '—' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '—' }} · 白 {{ starImportPreview.preview.experience.white ?? '—' }}</dd></div>
+                  </dl>
+                  <button type="button" class="btn primary" :disabled="starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换当前账号数据' }}</button>
+                </div>
+              </section>
+            </template>
+          </ArchiveExchangePanel>
           <p
             v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
             class="star-sync-state"
@@ -195,7 +181,6 @@ import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Archive } from "@lucide/vue";
-import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -543,17 +528,6 @@ async function syncHostAccount() {
     }
   });
 }
-async function onAccountChange() {
-  if (starExchangeBusy.value) {
-    if (mountedAccountId) accountId.value = mountedAccountId;
-    return;
-  }
-  resetStarImportState();
-  discardForeignPendingCapture();
-  try {
-    if (await syncHostAccount()) await recoverPendingCapture();
-  } catch (_error) {}
-}
 function ensureEmbedStylesheet() {
   if (document.getElementById(EMBED_STYLESHEET_ID)) return Promise.resolve();
   return new Promise(function (resolve, reject) {
@@ -781,7 +755,6 @@ onBeforeUnmount(function () {
   font-size: 12.5px;
   font-weight: 700;
   white-space: nowrap;
-  transform: translateY(9px);
   transition: all 0.3s var(--ease);
 }
 .archive-toggle:disabled {

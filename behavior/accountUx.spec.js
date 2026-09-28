@@ -3,6 +3,7 @@ import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import AccountWorkspace from '../src/components/AccountWorkspace.vue'
 import GameAccountManager from '../src/components/GameAccountManager.vue'
 import AccountIdDetails from '../src/components/AccountIdDetails.vue'
+import { activeAccount } from '../src/store/activeAccount.js'
 import { dialog } from '../src/utils/dialog.js'
 import { renameAccount, deleteAccount } from '../src/api/accounts.js'
 
@@ -70,5 +71,14 @@ it('改名与删除后给出明确成功状态，账号编号不再直接显示�
   await flushPromises()
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'danger', confirmText: '确认删除' }))
   expect(wrapper.get('[role="status"]').text()).toContain('已删除游戏账号“大号”')
+  wrapper.unmount()
+})
+
+it('个人中心选择账号会更新各数据页共用的当前账号', async () => {
+  const wrapper = mount(GameAccountManager, { props: { accounts, accountId: 'acc-a' }, global })
+  expect(wrapper.findAll('.account-main')[1].text()).toContain('设为当前')
+  await wrapper.findAll('.account-main')[1].trigger('click')
+  expect(activeAccount.set).toHaveBeenCalledWith('acc-b')
+  expect(wrapper.emitted('update:accountId').at(-1)).toEqual(['acc-b'])
   wrapper.unmount()
 })
