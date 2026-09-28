@@ -6,42 +6,39 @@
 
 ## 权威规范
 
-任何新增或修改页面、组件、样式、配色、视觉元素前，必须先读取并遵守：
+按**本次改动实际涉及的范围**读取规范，不要为了一个小改动把所有文档都加载一遍：
 
-1. 前端设计规范：`docs/standards/design-system.md`
-2. 响应式开发规范：`docs/standards/responsive-development.md`
-3. 页面开发流程：`docs/standards/page-development.md`
-4. 功能开关发布规则：`docs/standards/feature-flags.md`
+1. 涉及 UI/视觉/组件：读取前端设计规范 `docs/standards/design-system.md`。
+2. 涉及布局、响应式、移动端/桌面端呈现：读取 `docs/standards/responsive-development.md`。
+3. 只有新增页面、路由或页面级结构时，读取 `docs/standards/page-development.md`。
+4. 只有功能延后开放、灰度/开关控制时，读取 `docs/standards/feature-flags.md`。
 
-以上规范是详细规则的唯一权威来源。`AGENTS.md` 只保留必须首先看到的硬约束摘要；详细色板、字体、组件、页面流程与功能开关规则不要在这里重复维护。
+以上规范是对应领域的唯一权威来源。`AGENTS.md` 只保留必须首先看到的硬约束摘要；不要为无关任务加载无关规范。
 
-## 测试与 CI 完成门禁（硬约束）
+## 测试与验证：风险分级，不做无差别全量检查
 
-**前端功能代码 + 对应测试 + CI 对齐检查才算一次完整修改。** Agent 不得先改功能、把测试留到 CI 报错后再补。
+测试要求与**行为变化**绑定，不与“文件发生修改”绑定。先判断风险，再选择最小充分验证：
 
-### 修改前
+| 等级 | 前端典型改动 | 默认处理 |
+| --- | --- | --- |
+| **L0** | 文案、注释、纯 CSS/视觉、静态资源、不会改变交互的布局微调 | 检查 diff 和相关文件；不要求测试、build、全量静态检查 |
+| **L1** | 单组件展示/局部交互，不涉及共享状态/API | 只建议直接相关的静态或定向测试 |
+| **L2** | store/composable、API、数据转换、权限、缓存/轮询、业务分支 | 同步更新相关测试；建议用户运行受影响测试与必要静态检查 |
+| **L3** | 路由、登录、全局状态、跨页面共享逻辑、关键数据持久化 | 模块级/仓库级相关检查，可使用工作区 `./test smart` |
+| **L4** | Vite/依赖/CI/测试基础设施/发布流程 | 才执行完整 CI 等价检查或 `./test all` |
 
-- 先读取当前 `.github/workflows/ci.yml`，不得凭记忆假设 CI 会跑什么。
-- 查找与受影响页面、组件、store、API、工具函数或业务规则相关的现有测试，并在修改实现前确定测试怎么跟着变。
+### 测试代码
 
-### 必须同步补测试的修改
+- 新增或改变用户可观察行为、业务逻辑、状态管理、API 请求/响应、校验、权限、缓存/轮询、异步竞态或错误处理时，如果现有测试不能覆盖新行为，必须同步新增/更新测试。
+- Bug 修复原则上补能复现该 Bug 的回归测试。
+- 纯文案、纯 CSS/视觉、静态资源、格式化或确定不改变外部行为的重构，默认不新增行为测试。
+- 不得为了通过 CI 删除有效测试、弱化关键断言、增加无理由的 skip/disable，或恢复已经废弃的产品行为。
 
-- 新增功能或改变用户可观察行为。
-- 修改业务逻辑、状态管理、API 请求/响应、数据转换、校验、权限、条件判断、缓存、轮询、异步竞态或错误处理。
-- 修复 Bug：原则上必须增加能复现该 Bug 的回归测试；默认先看到失败，再修到通过。
-- 修改已有测试覆盖的行为：实现和测试必须在同一任务中同步更新。
+### 谁来执行验证
 
-纯文案、纯 CSS/视觉调整、静态资源替换、格式化或不改变外部行为的重构通常无需新增行为测试；但不得因此留下失效的已有测试。
+YuanHub-All 工作区默认由**用户/CI 执行回归与全量验证**。Agent 负责把需要的测试代码补齐，并在最终汇报中列出最小必要命令；除非当前任务明确要求 Agent 代跑，否则不要自动执行完整测试套件。
 
-### 禁止事项
-
-- 不得为了通过 CI 删除有效测试、弱化关键断言、添加无理由的 `skip` / `disable`、缩小测试发现范围。
-- 不得为了让旧测试变绿而恢复已经被新需求替代的产品行为。
-- 不得在已知本次修改会导致 CI 失败时宣称“完成”、提交发布或直接推送。
-
-### 前端 CI 等价本地门禁
-
-当前 GitHub CI 的仓库级检查顺序为：
+当前仓库的 CI 等价命令仍是：
 
 ```bash
 npm run test:static
@@ -50,17 +47,15 @@ npm run test:behavior
 npm run build
 ```
 
-在 YuanHub-All 工作区内还要遵守根目录 `TESTING.md` 与 Trellis 测试门禁；涉及任务上下文时按要求运行 `./test quick`、`./test smart --task ...`，共享测试基础设施或发布相关修改再运行 `./test all`。
-
-如果当前任务明确由用户执行回归测试，Agent 可以不运行回归套件，但仍必须把需要的测试代码补齐，并在最终汇报中明确写“代码与测试已补，验证待用户执行”，同时列出上面的准确命令；不得声称 CI 已验证通过。
+它们是 CI/发布对齐工具，不是每次前端修改都必须本地依次执行的固定流程。L0/L1 任务也无需为了确认这一点先通读完整 `.github/workflows/ci.yml`。
 
 ## UI/UX Skills 与用户视角审查（硬约束）
 
-前端界面相关任务必须按职责组合使用以下 Skills；不得只做静态视觉点评后就把 UX Review 视为完成。
+前端界面相关任务必须使用 `ui-ux-pro-max`；其它 UX Skills 按改动风险触发，避免小改动也启动完整审计流程。
 
 - **`ui-ux-pro-max`：所有 UI 工作的基础门禁。** 新增、修改、Review 页面/组件/样式/响应式布局/交互/可访问性前，必须先读取并应用该 Skill；实现阶段仍以本仓库 `docs/standards/` 下的设计与响应式规范为最高项目约束。
-- **`usability-audit`：普通用户视角的可用性审查。** 当任务涉及“Review / 优化 / 用户视角 / 易用性 / 手机端体验”，或改动导航、信息架构、表单、弹窗、账号上下文、加载/空/错误/成功状态、危险操作、多步骤流程时，必须额外执行该 Skill。默认以首次使用 YuanHub 的普通用户视角检查“是否知道当前在哪里、下一步做什么、操作对象是谁、操作后发生了什么、失败后如何恢复”。该 Skill 只产出发现，不直接修改业务代码；实现修复时切回 `ui-ux-pro-max` 与项目规范。
-- **`audit-cuj`：关键用户旅程验证。** 当改动会影响已存在于 `.ux/cujs/` 的核心流程，或明确要求验证关键用户旅程时，使用该 Skill 逐步回放并定位断点。若 `.ux/cujs/` 尚无对应旅程，不得把“没有 CUJ”记成通过，也不得凭空编造验证结果；只需明确说明尚未建立对应 CUJ。
+- **`usability-audit`：结构性 UX 改动才触发。** 当任务明确要求完整 UX Review，或改动导航/信息架构、多步骤流程、危险操作、跨页面账号上下文、关键表单/弹窗流程等 L2/L3 体验结构时使用。纯文案、颜色、间距、局部样式和已有交互的小修不需要额外跑完整 usability audit。
+- **`audit-cuj`：核心旅程变化才触发。** 当改动实际改变已存在于 `.ux/cujs/` 的核心流程，或用户明确要求回放关键旅程时使用；不因普通组件样式变化自动触发。
 - **证据优先。** 有已经运行且获准访问的开发页面时，UX 审查优先使用 live/hybrid 证据；否则可以 static，但所有运行时判断必须标记为未验证。不得为了审查擅自启动、重启或停止开发服务，仍遵守本仓库既有服务管理约束。
 - **审计产物隔离。** `usability-audit` / `audit-cuj` 的报告与截图只能写入 `.ux/audits/`；其中可能包含登录后页面截图，不得提交到 Git。
 
@@ -69,8 +64,8 @@ npm run build
 - 页面统一放在 `src/pages/<模块>/` 下，新页面必须在 `src/router/routes.js` 注册。
 - `src/router/index.js` 只负责创建路由实例并导入 `routes`，不要另建第二套路由注册体系。
 - 新增页面、组件或视觉样式前必须读取 `docs/standards/design-system.md` 与 `docs/standards/responsive-development.md`。
-- 任何 UI 改动都必须同时保证手机、平板与桌面可用；不得以桌面端正常作为完成标准，也不得采用“先完成 PC、再补移动端”的开发方式。
-- 开发过程中至少同时检查 390px 与 1440px；完成前按 320 / 390 / 430 / 768 / 1024 / 1440px 视口矩阵验收，具体规则以 `responsive-development.md` 为准。
+- 任何 UI 改动都必须考虑手机、平板与桌面的影响；不得新增明显的跨视口退化。
+- **完整 320 / 390 / 430 / 768 / 1024 / 1440px 矩阵只用于新页面、导航/页面结构、关键响应式行为等高风险 UI 改动。** 文案、颜色、间距等 L0 改动不要求完整矩阵；局部组件布局按 `responsive-development.md` 的风险分级检查受影响视口。
 - 禁止使用纯黑、黑底黄字、荧光黄大标题块，以及大面积 `brand-blue` 填充。
 - 标题体系使用设计规范指定的宋体方向；正文保持项目既有中文无衬线字体体系；数字按规范使用 Archivo。
 - 页面必须保留 MaaYuan 的暖色纸张背景体系和 `/maayuan/maayuan-pattern.webp` 吉祥物背景，不得在无明确设计变更要求时移除。
@@ -87,27 +82,33 @@ npm run build
 
 历史原型名称（如 `index.html`、`detail.html`）可能仍出现在 README、注释或数据说明中，它们只表示设计来源，不代表运行时依赖。
 
-## 改动前自查
+## 改动前按需自查
+
+以下条目是**触发式检查**，不是每次修改都要逐项执行的固定 checklist。只检查与本次风险和改动范围有关的项。
 
 - [ ] 已读取 `docs/standards/design-system.md`
 - [ ] 涉及任何 UI 改动时已读取 `docs/standards/responsive-development.md`
 - [ ] 涉及任何 UI 改动或 UI Review 时已读取并应用 `ui-ux-pro-max`
-- [ ] 涉及导航、表单、弹窗、账号上下文、状态反馈、多步骤流程或“用户视角”审查时，已执行 `usability-audit`
-- [ ] 若改动命中已有 `.ux/cujs/` 关键旅程，已执行 `audit-cuj`；若没有对应 CUJ，未将其误报为通过
-- [ ] UI 改动已同时考虑 390px 手机主基准与 1440px 桌面主基准，并计划按完整视口矩阵验收
+- [ ] 仅当改动属于结构性 UX / L2-L3 流程变化或明确要求完整 UX Review 时，才执行 `usability-audit`
+- [ ] 仅当实际改变已有 `.ux/cujs/` 核心旅程时，才执行 `audit-cuj`
+- [ ] 已按风险选择响应式检查范围；L0/L1 未被无理由升级为完整视口矩阵
 - [ ] 涉及页面新增或路由调整时已读取 `docs/standards/page-development.md`
 - [ ] 新页面位于 `src/pages/<模块>/` 并注册到 `src/router/routes.js`
 - [ ] 未引入第二套设计规范或重复路由体系
 - [ ] 未违反纯黑 / 黑底黄字 / 大面积蓝色等设计禁令
 - [ ] 背景与吉祥物资源仍来自本仓库 `public/`
 - [ ] 没有新增指向父目录、个人绝对路径或其他本地工作区的开发依赖
-- [ ] 所有行为变化都已同步新增/更新对应测试；若没有新增测试，已确认本次改动属于非行为修改
-- [ ] 已按当前 `.github/workflows/ci.yml` 核对需要运行的检查
-- [ ] 若用户接管验证，最终汇报中已列出待执行的 CI 等价命令且未声称验证通过
+- [ ] 行为变化已同步新增/更新必要测试；非行为修改没有为了过门禁创造无意义测试
+- [ ] 最终汇报列出了用户应执行的**最小必要验证**，未无差别复制完整 CI
+- [ ] 未声称用户尚未执行的验证已经通过
 
 
-## Local code-level test completion gate (2026-09-22)
+## Local risk-based verification gate (2026-09-28)
 
-Before implementing a feature or bug fix, read `TESTING.md` at the YuanHub-All root and both `.trellis/spec/*/quality-guidelines.md`. Keep the active task's `test-plan.json` mapping changed sources to changed tests and business invariants. Bug fixes require a regression test and, unless the current task explicitly delegates regression execution to the user, actual red→green logs; do not only check source strings. New Trellis tasks automatically receive these guidelines in implement/check contexts and a test-plan scaffold. The scaffold itself is not coverage.
+When this repository is edited inside YuanHub-All, follow root `TESTING.md` and only the frontend quality guideline. Trellis tasks should record `risk_level` and `verification_owner`.
 
-Run root `./test quick` after edits and `./test smart --task .trellis/tasks/<task>` before completion; shared test infrastructure/release changes also require `./test all`. Mongo transaction/Redis semantics tests must use owned disposable containers, never existing development or production services. No unexplained missing tests, failed/skipped suites or stale results may be declared done. Actual Trellis `finish`/`archive` commands enforce fresh evidence before changing task state. Do not bypass this gate by directly changing task status or manufacturing reports. Preserve unrelated dirty files; explain them by exact path rather than resetting or including them in a commit.
+- `verification_owner=user`: do not require a local `quick/smart/all` report before finish/archive; keep tests/exceptions honest and report pending commands to the user.
+- `verification_owner=agent`: execute the checks justified by the task risk; L3 normally uses `smart`, L4 may use `all`.
+- L0/L1 non-behavior edits may use an exact-file test-plan exception instead of adding artificial tests.
+
+Preserve unrelated dirty files; never reset, stash, clean, or include them merely to make a gate pass.
