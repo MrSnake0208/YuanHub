@@ -7,9 +7,23 @@ import {
   OPERATOR_PANEL_STONES,
   OPERATOR_PANEL_STONE_GROUPS
 } from '../data/operatorPanelCalculator.js'
+import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX } from './operatorGrowthRules.js'
 
 const MAX_CURIOS = 24
 export const OPERATOR_ODDITY_KEYS = ['attack', 'hp', 'special']
+
+export function fillOperatorDraftToMax(draft, odditySchema) {
+  const schema = normalizeOperatorOdditySchema(odditySchema)
+  draft.level = OPERATOR_LEVEL_MAX
+  draft.elite = OPERATOR_ELITE_MAX
+  return OPERATOR_ODDITY_KEYS.filter(function (key) {
+    const max = schema[key].max
+    if (max == null || max < 0) return true
+    draft.combatStats.oddities[key].current = max
+    return false
+  })
+}
+
 const ODDITY_FALLBACK_NAMES = {
   attack: '攻击力',
   hp: '生命值',
