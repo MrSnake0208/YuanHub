@@ -153,6 +153,36 @@ it('库存图标操作在触屏前有可见说明', async () => {
   expect(wrapper.get('.agent-sort-direction').text()).toContain('降序')
 })
 
+it('心纸编辑沿用清单的关注、排序与分组顺序', async () => {
+  localStorage.setItem('inventory-tabs', 'manifest')
+  window.scrollTo = vi.fn()
+  getOperatorCatalog.mockResolvedValue({ operators: [
+    { id: 'char_001_yin', name: '阴密探', rarity: 5, prof: ['阴'], games: ['代号鸢'] },
+    { id: 'char_002_yang', name: '阳密探', rarity: 5, prof: ['阳'], games: ['代号鸢'] },
+    { id: 'char_003_huo', name: '火密探', rarity: 5, prof: ['火'], games: ['代号鸢'] },
+  ] })
+  inventoryApi.listAgentFavorites.mockResolvedValue({ agent_ids: ['char_001_yin'] })
+  const wrapper = render()
+  await flushPromises()
+  await wrapper.get('.manifest-type-switch button[aria-label="切换到密探心纸"]').trigger('click')
+  await flushPromises()
+
+  const names = selector => wrapper.findAll(selector).map(node => node.get('.slot-name').text())
+  const defaultOrder = names('.agent-card')
+  expect(defaultOrder).toEqual(['阴密探', '火密探', '阳密探'])
+  await wrapper.get('.scope-edit-agent').trigger('click')
+  expect(names('.stock-edit-slot')).toEqual(defaultOrder)
+  expect(wrapper.get('.agent-sort-control summary').text()).toContain('实装顺序')
+  await wrapper.get('.manifest-edit-actions button').trigger('click')
+
+  await wrapper.findAll('.agent-group-control .agent-menu-options button')
+    .find(node => node.text().includes('按属性')).trigger('click')
+  const groupedOrder = names('.agent-card')
+  expect(groupedOrder).toEqual(['阳密探', '阴密探', '火密探'])
+  await wrapper.get('.scope-edit-agent').trigger('click')
+  expect(names('.stock-edit-slot')).toEqual(groupedOrder)
+})
+
 it('密探职业显示中文，金色快捷筛选只保留绝密', async () => {
   localStorage.setItem('inventory-tabs', 'manifest')
   getOperatorCatalog.mockResolvedValue({ operators: [
