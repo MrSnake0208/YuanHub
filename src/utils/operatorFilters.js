@@ -1,4 +1,6 @@
 // 密探 属性(prof) / 从属(subProf) 匹配与选项推导 —— operator 页 / quick 页共用
+import { OPERATOR_STAR_LEVEL_AWAKEN } from './operatorStarDisplay.js'
+
 // ------------------------------------------------------------
 // 数据形态兼容（目录归一化前后与本地兜底均覆盖）：
 //   prof：字符串（"阳"）或 "、" 拼接的多值（"阳、阴"）
@@ -87,6 +89,36 @@ export function isOperatorOwned(entry) {
   if (!entry) return false
   const starLevel = entry.starLevel != null ? entry.starLevel : entry.star_level
   return Number(starLevel) > 0
+}
+
+export function operatorStarNumber(entry) {
+  const level = Number(entry?.starLevel ?? entry?.star_level) || 0
+  if (level === OPERATOR_STAR_LEVEL_AWAKEN) return 5
+  if (entry?.spOf || entry?.sp_of) return level
+  return level > 0 ? Math.floor((level - 1) / 6) + 1 : 0
+}
+
+function withinRange(value, min, max) {
+  if (min === '' || min == null) min = null
+  if (max === '' || max == null) max = null
+  if (min == null && max == null) return true
+  const number = Number(value)
+  return Number.isFinite(number) &&
+    (min == null || number >= Number(min)) &&
+    (max == null || number <= Number(max))
+}
+
+export function matchesOperatorGrowthFilters(entry, filters = {}) {
+  if (!entry) return false
+  if (filters.levelEnabled && !withinRange(entry.level, filters.levelMin, filters.levelMax)) return false
+  if (filters.eliteEnabled && !withinRange(entry.elite, filters.eliteMin, filters.eliteMax)) return false
+  const awakened = !(entry.spOf || entry.sp_of) && Number(entry.starLevel ?? entry.star_level) === OPERATOR_STAR_LEVEL_AWAKEN
+  if (filters.onlyAwakened) return awakened
+  if (!filters.starEnabled) return true
+  const hasStarRange = (filters.starMin != null && filters.starMin !== '') ||
+    (filters.starMax != null && filters.starMax !== '')
+  if (awakened && hasStarRange) return false
+  return withinRange(operatorStarNumber(entry), filters.starMin, filters.starMax)
 }
 
 // 属性 + 从属 AND 匹配；prof/subProf 传 'all' 或空值 = 该维度不过滤
