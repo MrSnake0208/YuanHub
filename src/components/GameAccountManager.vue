@@ -710,15 +710,19 @@ async function remove(account) {
   }
   .account-controls {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: end;
   }
   .game-field {
-    grid-column: 1 / -1;
-    width: 100%;
+    min-width: 0;
+    width: auto;
   }
   .icon-action {
-    width: 100%;
+    width: auto;
+    padding: 0 10px;
+  }
+  .icon-action svg {
+    display: none;
   }
   .name-field input,
   .game-field select {
