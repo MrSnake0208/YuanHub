@@ -1877,9 +1877,6 @@ const agentCatalogError = ref("");
 const agentGroupBy = ref("none");
 const agentSort = ref("latest");
 const agentSortDirection = ref("desc");
-const agentSortBeforeEdit = ref(null);
-const agentSortDirectionBeforeEdit = ref(null);
-const agentFavoriteModeBeforeEdit = ref(null);
 const agentControlsCollapsedBeforeEdit = ref(null);
 const AGENT_SORT_OPTIONS = [
   { id: "latest", label: "实装顺序" },
@@ -2693,9 +2690,12 @@ const visibleStockEditorEntries = computed(function () {
     },
     favoriteAgentIds.value,
   );
-  return sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value, {
+  const sorted = sortAgentEntries(filtered, agentSort.value, favoriteAgentIds.value, {
     favoriteFirst: agentFavoriteMode.value === "priority",
     direction: agentSortDirection.value,
+  });
+  return buildAgentGroups(sorted, agentGroupBy.value).flatMap(function (group) {
+    return group.entries;
   });
 });
 const stockDraftError = computed(function () {
@@ -3204,31 +3204,11 @@ function startStockEdit(scopeEntries, scopeName) {
   stockSaveNotice.value = "";
   showImport.value = false;
   if (entityType.value === "agent") {
-    agentSortBeforeEdit.value = agentSort.value;
-    agentSortDirectionBeforeEdit.value = agentSortDirection.value;
-    agentFavoriteModeBeforeEdit.value = agentFavoriteMode.value;
     agentControlsCollapsedBeforeEdit.value = agentControlsCollapsed.value;
-    agentSort.value = "backpack";
-    agentSortDirection.value = "asc";
-    agentFavoriteMode.value = "all";
     agentControlsCollapsed.value = true;
   }
   editingStock.value = true;
   scrollToStockEditor();
-}
-
-function restoreAgentSortAfterEdit() {
-  if (agentSortBeforeEdit.value == null) return;
-  agentSort.value = agentSortBeforeEdit.value;
-  agentSortDirection.value = agentSortDirectionBeforeEdit.value || "desc";
-  agentSortBeforeEdit.value = null;
-  agentSortDirectionBeforeEdit.value = null;
-}
-
-function restoreAgentFavoriteModeAfterEdit() {
-  if (agentFavoriteModeBeforeEdit.value == null) return;
-  agentFavoriteMode.value = agentFavoriteModeBeforeEdit.value;
-  agentFavoriteModeBeforeEdit.value = null;
 }
 
 function restoreAgentControlsAfterEdit() {
@@ -3250,8 +3230,6 @@ function cancelStockEdit() {
   stockEditScopeIds.value = null;
   stockEditScopeName.value = "";
   stockEditError.value = "";
-  restoreAgentSortAfterEdit();
-  restoreAgentFavoriteModeAfterEdit();
   restoreAgentControlsAfterEdit();
   if (inventoryEventRefreshPending) scheduleInventoryEventRefresh();
 }
@@ -3309,8 +3287,6 @@ async function saveStockEdit() {
     if (result && result.superseded)
       throw new Error("快照时间早于现有库存，未能生效");
     editingStock.value = false;
-    restoreAgentSortAfterEdit();
-    restoreAgentFavoriteModeAfterEdit();
     restoreAgentControlsAfterEdit();
     stockSaveNotice.value =
       entityType.value === "agent" ? "密探心纸库存已更新" : "库存已更新";
