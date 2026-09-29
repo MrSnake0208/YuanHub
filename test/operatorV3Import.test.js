@@ -4,7 +4,9 @@ import {
   buildOperatorV3BrowserRequest,
   isOperatorV3Document,
   normalizeOperatorV3ImportResponse,
-  operatorV3CommittableCount
+  operatorV3CommittableCount,
+  operatorScanReviewDraft,
+  isOperatorScanReviewDraft
 } from '../src/utils/operatorV3Import.js'
 
 test('v3 浏览器导入使用 account_mapping，不改写来源文档', function () {
@@ -19,6 +21,22 @@ test('v3 浏览器导入使用 account_mapping，不改写来源文档', functio
   assert.equal(body.confirm_review, true)
   assert.equal(body.document, document)
   assert.equal(document.records[0].account_id, 'scan-local')
+})
+
+test('待复核修正稿只包含目标密探，使用新的幂等记录 ID', function () {
+  const document = {
+    format: 'myshare-operator-exchange', version: 3,
+    records: [{ record_id: 'scan:old', entries: [{ operator_id: 'op1', level: 90 }, { operator_id: 'op2', level: 1 }] }]
+  }
+  const draft = operatorScanReviewDraft(document, 'op1', 'review:new')
+  assert.equal(draft.records[0].record_id, 'review:new')
+  assert.deepEqual(draft.records[0].entries, [{ operator_id: 'op1', level: 90 }])
+  assert.equal(document.records[0].record_id, 'scan:old')
+  assert.equal(document.records[0].entries.length, 2)
+  assert.equal(isOperatorScanReviewDraft({ draftRecordId: 'review:new' }, draft), true)
+  assert.equal(isOperatorScanReviewDraft({ draftRecordId: 'scan:old' }, draft), false)
+  assert.equal(isOperatorScanReviewDraft({ draftRecordId: 'review:new' }, document), false)
+  assert.throws(() => operatorScanReviewDraft(document, 'missing', 'review:new'), /缺少对应密探/)
 })
 
 test('当前单账号面板拒绝把多个来源账号合并到一个目标', function () {

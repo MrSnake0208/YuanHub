@@ -69,6 +69,18 @@
             </template>
           </DataAccountContextBar>
 
+          <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
+            <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
+            <p>采集结果中有需要核对的内容；可靠分区可能已写入当前档案。</p>
+            <p v-if="scanReviewError" role="alert">{{ scanReviewError }}</p>
+            <ul>
+              <li v-for="review in scanReviews" :key="review.record_id + ':' + review.operator_id">
+                <span>{{ importOperatorName(review.operator_id) }} · {{ review.status === 'rejected' ? '采集未录入' : '需要复核' }}</span>
+                <button type="button" :disabled="importing" @click="openScanReview(review)">查看并修改</button>
+              </li>
+            </ul>
+          </section>
+
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
           <div
             class="operator-tabs"
@@ -238,6 +250,14 @@
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
+            <div v-if="selectedScanReview" class="scan-review-context">
+              <strong>正在复核：{{ importOperatorName(selectedScanReview.operator_id) }}</strong>
+              <p>请核对下方采集文档并修改错误字段，再校验预览、确认导入。修正稿会作为新记录写入。</p>
+              <ul>
+                <li v-for="(issue, index) in [...(selectedScanReview.blocking_errors || []), ...(selectedScanReview.warnings || [])]" :key="index">{{ issue.message || issue.code }}<small v-if="issue.field"> · {{ issue.field }}</small></li>
+              </ul>
+              <button type="button" class="btn ghost" @click="closeSelectedScanReview">已另行处理，关闭此提醒</button>
+            </div>
             <p id="operator-import-tip" class="tip">
               v3 档案会先由服务器校验并展示逐项差异；v2 档案会先展示本地影响范围。两者都需确认后才写入当前账号。
             </p>
@@ -3059,6 +3079,8 @@ import {
   executeOperatorUpgrade,
   importOperator,
   previewOperatorImport,
+  listOperatorScanReviews,
+  closeOperatorScanReview,
   exportOperator,
 } from "../../api/operator.js";
 import { avatarUrl } from "../../api/request.js";
@@ -3134,6 +3156,8 @@ import {
   isOperatorV3Document,
   normalizeOperatorV3ImportResponse,
   operatorV3CommittableCount,
+  operatorScanReviewDraft,
+  isOperatorScanReviewDraft,
 } from "../../utils/operatorV3Import.js";
 
 const ODDITY_KEYS = OPERATOR_ODDITY_KEYS;
@@ -3211,6 +3235,10 @@ const importPreviewKey = ref("");
 const importV2Preview = ref(null);
 const importV2PreviewKey = ref("");
 const importConfirmReview = ref(false);
+const scanReviews = ref([]);
+const scanReviewError = ref("");
+const selectedScanReview = ref(null);
+let scanReviewLoadSeq = 0;
 const favoriteAgentIds = ref(new Set());
 const favoriteBusyIds = ref(new Set());
 const favoriteLoading = ref(false);
@@ -3442,6 +3470,15 @@ const ledgerShareStatus = computed(() => {
   return operatorShare.value.status === "未开启" ? "未分享" : operatorShare.value.status;
 });
 watch(accountId, () => { clearTimeout(shareCopyTimer); shareCopySeq += 1; shareCopyFeedback.value = ""; });
+watch(accountId, () => {
+  if (selectedScanReview.value) {
+    importText.value = "";
+    importResult.value = null;
+    resetImportPreview();
+  }
+  selectedScanReview.value = null;
+  void loadScanReviews();
+});
 async function copyLedgerShare() {
   const targetAccount = accountId.value;
   const seq = ++shareCopySeq;
@@ -3480,10 +3517,12 @@ const canCommitV3Import = computed(function () {
   )
     return false;
   try {
+    const document = parseImportDocument();
+    if (selectedScanReview.value && !isOperatorScanReviewDraft(selectedScanReview.value, document)) return false;
     return (
       importPreviewKey.value ===
       JSON.stringify(
-        v3ImportRequest(parseImportDocument(), importConfirmReview.value),
+        v3ImportRequest(document, importConfirmReview.value),
       )
     );
   } catch (_) {
@@ -3495,6 +3534,65 @@ function toggleArchive() {
   showArchive.value = !showArchive.value;
   if (showArchive.value) accountWorkspaceCompact.value = false;
   if (!showArchive.value) showImport.value = false;
+}
+
+async function loadScanReviews() {
+  const targetAccount = accountId.value;
+  const seq = ++scanReviewLoadSeq;
+  scanReviewError.value = "";
+  if (!auth.isLoggedIn || !targetAccount) { scanReviews.value = []; return; }
+  try {
+    const reviews = await listOperatorScanReviews(targetAccount);
+    if (seq === scanReviewLoadSeq && targetAccount === accountId.value)
+      scanReviews.value = Array.isArray(reviews) ? reviews : [];
+  } catch (err) {
+    if (seq === scanReviewLoadSeq && targetAccount === accountId.value) {
+      scanReviews.value = [];
+      scanReviewError.value = humanErr(err, "待复核结果加载失败");
+    }
+  }
+}
+
+function openScanReview(review) {
+  if (!review || review.account_id !== accountId.value) return;
+  try {
+    const draftRecordId = "review:" + (globalThis.crypto?.randomUUID?.() || Date.now() + ":" + Math.random().toString(36).slice(2));
+    const draft = operatorScanReviewDraft(review.document, review.operator_id, draftRecordId);
+    selectedScanReview.value = { ...review, draftRecordId };
+    showArchive.value = true;
+    accountWorkspaceCompact.value = false;
+    showImport.value = true;
+    importText.value = JSON.stringify(draft, null, 2);
+    onImportTextInput();
+    void nextTick(() => document.querySelector(".scan-review-context")?.scrollIntoView({ block: "start" }));
+  } catch (err) {
+    scanReviewError.value = humanErr(err, "无法打开采集结果");
+  }
+}
+
+async function closeSelectedScanReview() {
+  const review = selectedScanReview.value;
+  if (!review || review.account_id !== accountId.value) return;
+  const confirmed = await dialog.confirm({
+    title: "关闭待复核提醒？",
+    message: "仅关闭这条提醒，不会写入尚未录入的采集字段。",
+    confirmText: "关闭提醒",
+  });
+  if (!confirmed || review.account_id !== accountId.value || selectedScanReview.value !== review) return;
+  try {
+    await closeOperatorScanReview({ accountId: review.account_id, recordId: review.record_id, operatorId: review.operator_id });
+    if (review.account_id !== accountId.value) return;
+    if (selectedScanReview.value === review) {
+      selectedScanReview.value = null;
+      importText.value = "";
+      importResult.value = null;
+      resetImportPreview();
+      showImport.value = false;
+    }
+    await loadScanReviews();
+  } catch (err) {
+    scanReviewError.value = humanErr(err, "关闭提醒失败");
+  }
 }
 
 // —— 目录归一化 ——
@@ -8051,9 +8149,22 @@ function routeQueryValue(value) {
 async function consumeOperatorNavigation() {
   const requestedTab = routeQueryValue(route.query.tab);
   const operatorId = routeQueryValue(route.query.focus);
+  const reviewRecordId = routeQueryValue(route.query.review_record);
+  const reviewOperatorId = routeQueryValue(route.query.review_operator);
+  const reviewAccountId = routeQueryValue(route.query.account_id);
   const effect = routeQueryValue(route.query.effect) === "new" ? "new" : "updated";
   const targetTab = requestedTab === "current" || requestedTab === "catalog" ? requestedTab : "";
-  if (!targetTab && !operatorId) return;
+  if (!targetTab && !operatorId && !reviewRecordId) return;
+  if (reviewRecordId) {
+    const accountOwned = !reviewAccountId || accounts.value.some(account => account.id === reviewAccountId);
+    if (accountOwned) {
+      if (reviewAccountId) accountId.value = reviewAccountId;
+      await loadScanReviews();
+      const review = scanReviews.value.find(item => item.record_id === reviewRecordId && item.operator_id === reviewOperatorId);
+      if (review) openScanReview(review);
+      else scanReviewError.value = "这条待复核结果已处理或不属于当前账号";
+    } else scanReviewError.value = "无法访问此账号的待复核结果";
+  }
   if (operatorId) await focusAndFlashScanOperator(operatorId, effect, targetTab || "catalog");
   else if (targetTab) await setTab(targetTab);
 
@@ -8061,11 +8172,14 @@ async function consumeOperatorNavigation() {
   delete cleanedQuery.tab;
   delete cleanedQuery.focus;
   delete cleanedQuery.effect;
+  delete cleanedQuery.account_id;
+  delete cleanedQuery.review_record;
+  delete cleanedQuery.review_operator;
   await router.replace({ query: cleanedQuery }).catch(function () { /* 页面离开时无需处理 */ });
 }
 
 watch(
-  function () { return [route.query.tab, route.query.focus, route.query.effect]; },
+  function () { return [route.query.tab, route.query.focus, route.query.effect, route.query.review_record, route.query.review_operator]; },
   function () {
     if (operatorNavigationReady) void consumeOperatorNavigation();
   },
@@ -8115,6 +8229,10 @@ function handleAccountEvent(message) {
     return;
   }
   const data = message.data || {};
+  if (message.event === "operator_scan_import" && (data.status === "review" || data.status === "rejected")) {
+    if (!data.preview) void loadScanReviews();
+    return;
+  }
   // operator_scan_import（以及兼容的目录更新事件）统一在工具函数中归一化。
   const update = operatorUpdateFromEvent(message);
   if (!update) return;
@@ -8235,13 +8353,32 @@ async function commitV3Import() {
     return;
   }
   importing.value = true;
+  const targetAccount = accountId.value;
+  const review = selectedScanReview.value;
+  const reviewingThisDocument = review && review.account_id === targetAccount &&
+    isOperatorScanReviewDraft(review, requestBody.document);
   try {
     const response = normalizeOperatorV3ImportResponse(
       await importOperator(requestBody),
     );
+    let resolvedReview = false;
+    if (reviewingThisDocument && operatorV3CommittableCount(response) > 0) {
+      try {
+        await closeOperatorScanReview({ accountId: targetAccount, recordId: review.record_id, operatorId: review.operator_id });
+        resolvedReview = true;
+      } catch (closeError) {
+        if (targetAccount === accountId.value) importError.value = "档案已导入，但关闭提醒失败：" + humanErr(closeError, "请稍后重试");
+      }
+    }
+    if (targetAccount !== accountId.value) return;
     importResult.value = Object.assign({ kind: "v3" }, response);
     resetImportPreview();
     await reloadCurrent(true);
+    if (reviewingThisDocument) {
+      if (resolvedReview) selectedScanReview.value = null;
+      else if (!importError.value) importError.value = "本次修正尚未录入，请检查结果并重新预览";
+      await loadScanReviews();
+    }
   } catch (err) {
     importError.value = humanErr(err, "v3 档案导入失败");
   } finally {
@@ -8359,6 +8496,7 @@ async function commitV2Import() {
 function onFilePick(ev) {
   const file = ev && ev.target && ev.target.files && ev.target.files[0];
   if (!file) return;
+  selectedScanReview.value = null;
   const reader = new FileReader();
   reader.onload = function () {
     importText.value = String(reader.result || "");
@@ -8368,6 +8506,7 @@ function onFilePick(ev) {
 }
 
 function fillExample() {
+  selectedScanReview.value = null;
   const op =
     catalogOperators.value.find(function (entry) {
       return matchesGame(entry, saveGame.value) && !entry.spOf;
@@ -8425,6 +8564,7 @@ function fillExample() {
 }
 
 function afterImport() {
+  selectedScanReview.value = null;
   importResult.value = null;
   importConfirmReview.value = false;
   resetImportPreview();
@@ -8506,6 +8646,7 @@ onMounted(async function () {
   window.addEventListener("resize", hideDiscTooltip);
   await Promise.all([loadCatalog(), loadAccounts(), loadStarLoadoutPresets()]);
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
+  await loadScanReviews();
   setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
   operatorNavigationReady = true;
@@ -8526,6 +8667,17 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.scan-review-panel, .scan-review-context { margin: 18px 0; padding: 16px; border: 1px solid var(--rouge); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.scan-review-panel h2 { margin: 0; font-size: 18px; }
+.scan-review-panel h2 span { color: var(--rouge); }
+.scan-review-panel p, .scan-review-context p { margin: 8px 0; font-size: 13px; line-height: 1.5; }
+.scan-review-panel ul, .scan-review-context ul { margin: 10px 0 0; padding-left: 20px; }
+.scan-review-panel li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.scan-review-panel button { min-height: 44px; padding: 0 12px; border: 1px solid var(--rouge); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.scan-review-panel button:focus-visible, .scan-review-context button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.scan-review-context { margin-top: 0; }
+.scan-review-context li { margin: 4px 0; font-size: 12px; }
+.scan-review-context button { margin-top: 12px; }
 .orphan-current { margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .orphan-current p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }
 .orphan-current ul { list-style: none; margin: 0; padding: 0; }

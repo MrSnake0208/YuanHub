@@ -2,6 +2,26 @@ export function isOperatorV3Document(value) {
   return !!value && value.format === 'myshare-operator-exchange' && Number(value.version) === 3
 }
 
+export function operatorScanReviewDraft(document, operatorId, reviewId) {
+  if (!isOperatorV3Document(document)) throw new Error('待复核采集文档无效')
+  const source = document.records?.find(record => record.entries?.some(entry => entry.operator_id === operatorId))
+  if (!source) throw new Error('待复核文档缺少对应密探')
+  return {
+    ...document,
+    records: [{
+      ...source,
+      record_id: reviewId,
+      entries: source.entries.filter(entry => entry.operator_id === operatorId)
+    }]
+  }
+}
+
+export function isOperatorScanReviewDraft(review, document) {
+  const records = document?.records
+  return !!review && Array.isArray(records) && records.length === 1 &&
+    records[0].record_id === review.draftRecordId && records[0].entries?.length === 1
+}
+
 export function buildOperatorV3BrowserRequest(document, targetAccountId, confirmReview) {
   if (!isOperatorV3Document(document)) throw new Error('这不是密探养成数据交换协议 v3 文档')
   if (!targetAccountId) throw new Error('请先选择导入目标账号')

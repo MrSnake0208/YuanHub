@@ -611,6 +611,8 @@ execute body 在 preview 请求基础上增加 `expected_inventory_revision`、`
 |---|---|---|
 | `POST /v1/operator/import` | v2 文档，或 v3 浏览器导入包装 | v2 或 v3 commit 结果 |
 | `POST /v1/operator/import/preview` | v3 浏览器导入包装 | v3 preview 结果，不写数据 |
+| `GET /v1/operator/scan-reviews?account_id=...` | 当前子账号 | 待复核采集项，含原始单密探 v3 文档与问题 |
+| `DELETE /v1/operator/scan-reviews?account_id=...&record_id=...&operator_id=...` | 当前子账号与待复核项 | 关闭提醒，不写养成；修正稿应先经 v3 preview/commit |
 | `GET /v1/operator/export` | `account_id` 或 `scope=all`；`version=2|3` | 原始交换文档 |
 
 v2 直接提交 `myshare-operator-exchange@2`；返回 `{accepted,duplicates,superseded,warnings}`。

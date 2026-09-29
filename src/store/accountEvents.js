@@ -174,7 +174,13 @@ function notifyForEvent(message) {
   } else if (message.event === 'operator_scan_import' && (data.status === 'review' || data.status === 'rejected')) {
     const operator = AGENT_CATALOG.find(function (entry) { return entry.id === data.operator_id })
     const name = (operator && operator.name) || entityNames.get(data.operator_id) || data.operator_id || '密探'
-    showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '采集结果尚未写入档案' })
+    const recordId = data.record_id || data.recordId || ''
+    const operatorId = data.operator_id || data.operatorId || ''
+    const accountId = data.account_id || data.accountId || activeAccount.id
+    const reviewHref = recordId && operatorId && accountId
+      ? '/operator?' + new URLSearchParams({ account_id: accountId, review_record: recordId, review_operator: operatorId })
+      : '/operator'
+    showToast({ kind: 'operator', tone: 'warning', title: name + '需要复核', detail: '请核对采集结果；可靠分区可能已写入', reviewHref })
   } else if (message.event === 'inventory_import') {
     void notifyInventoryImport(data)
   }
@@ -272,6 +278,7 @@ export function previewAccountEvent(kind) {
             ? 'char_085_shizimiaosp'
             : (kind === 'chendeng-sp-new' ? 'char_084_chendengsp' : 'char_121_menghuo')),
       status: status,
+      record_id: 'scan:preview',
       revision: kind === 'operator-new' || kind === 'fazheng-new' || kind === 'shizimiao-sp-new' || kind === 'chendeng-sp-new' ? 1 : 8
     })
   })

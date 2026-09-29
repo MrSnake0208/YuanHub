@@ -91,6 +91,16 @@ export function previewOperatorImport(body) {
   })
 }
 
+export function listOperatorScanReviews(accountId) {
+  return request(PATH + '/scan-reviews?' + new URLSearchParams({ account_id: accountId }), { auth: true })
+}
+
+export function closeOperatorScanReview({ accountId, recordId, operatorId }) {
+  return request(PATH + '/scan-reviews?' + new URLSearchParams({
+    account_id: accountId, record_id: recordId, operator_id: operatorId
+  }), { method: 'DELETE', auth: true })
+}
+
 // 当前养成（GET，需登录）——accountId 必填；game?：如鸢/代号鸢/不传=全部
 // 返回 [{ user_id, account_id, game, full_baseline_at,
 //   entries: { "<char_id>": { elite, star_level, level, disc_loadouts, discs,
