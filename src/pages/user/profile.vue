@@ -417,6 +417,13 @@
                 </div>
                 <span class="connection-count">{{ tokenCount }} 条</span>
               </div>
+              <div class="stable-token-note connection-reminder" role="note">
+                <KeyRound :size="19" aria-hidden="true" />
+                <div>
+                  <strong>连接码只显示一次</strong>
+                  <p>现有连接无法再次查看完整连接码。如未保存，请新建连接码并在使用它的工具中更新，确认可用后停止旧连接。</p>
+                </div>
+              </div>
 
               <div v-if="loading" class="state">正在加载连接…</div>
               <div v-else-if="error" class="state err">
@@ -1876,6 +1883,15 @@ onBeforeUnmount(function () {
   font-size: 12px;
   font-weight: 800;
 }
+.connection-reminder {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(215, 137, 53, 0.48);
+  border-left: 4px solid var(--accent);
+  background: var(--yellow);
+}
+.connection-reminder strong { display: block; font-size: 15px; }
+.connection-reminder p { margin-top: 2px; font-size: 13px; font-weight: 500; }
 .state {
   margin-top: 16px;
   padding: 44px 30px;
