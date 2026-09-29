@@ -110,6 +110,30 @@ it('目录同步失败显示重试，历史真正为空时说明记录来源', a
   expect(wrapper.find('.inventory-inline-state[role="alert"]').exists()).toBe(false)
 })
 
+it('密探目录失败时不显示无版本标记的本地心纸目录，重试后按如鸢筛选', async () => {
+  localStorage.setItem('inventory-tabs', 'manifest')
+  inventoryApi.listAccounts.mockResolvedValue([{ id: 'acc-1', name: '如鸢账号', game: '如鸢' }])
+  getOperatorCatalog.mockRejectedValue(new Error('offline'))
+  const wrapper = render()
+  await flushPromises()
+  await wrapper.get('.manifest-type-switch button[aria-label="切换到密探心纸"]').trigger('click')
+  await flushPromises()
+
+  expect(wrapper.text()).toContain('密探目录同步失败，暂不能查看或编辑心纸')
+  expect(wrapper.find('.manifest-agents').exists()).toBe(false)
+
+  getOperatorCatalog.mockResolvedValue({ operators: [
+    { id: 'char_shared', name: '共同密探', rarity: 5, games: ['如鸢', '代号鸢'] },
+    { id: 'char_daihao', name: '代号鸢密探', rarity: 5, games: ['代号鸢'] },
+  ] })
+  await wrapper.findAll('.inventory-inline-state button').find(node => node.text() === '重试同步').trigger('click')
+  await flushPromises()
+
+  expect(wrapper.get('.agent-result').text()).toContain('1 / 1')
+  expect(wrapper.text()).toContain('共同密探')
+  expect(wrapper.text()).not.toContain('代号鸢密探')
+})
+
 it('升级消耗历史明确标记且不可单独删除', async () => {
   inventoryApi.listRecords.mockResolvedValue({ items: [{ ...record, record_type: 'consumption_delta' }], next_cursor: null })
   const wrapper = render()

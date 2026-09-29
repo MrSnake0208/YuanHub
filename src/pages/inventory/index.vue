@@ -624,7 +624,12 @@
               {{ catalogError }}，当前仍可查看本地目录。
               <button type="button" class="link" @click="loadCatalog">重试同步</button>
             </div>
-            <div v-if="loading" class="state">正在加载追踪目录…</div>
+            <div v-if="entityType === 'agent' && agentCatalogError" class="inventory-inline-state is-error" role="alert">
+              {{ agentCatalogError }}，暂不能查看或编辑心纸。
+              <button type="button" class="link" @click="loadAgentCatalog">重试同步</button>
+            </div>
+            <div v-if="loading || (entityType === 'agent' && agentCatalogLoading)" class="state">正在加载追踪目录…</div>
+            <div v-else-if="entityType === 'agent' && agentCatalogError" class="state slim">密探目录不可用</div>
             <div
               v-else-if="editingStock"
               class="backpack stock-editor"
@@ -1579,6 +1584,7 @@
                 <RewardEntryWorkspace
                   :account-id="accountId"
                   :account-name="currentAccountName"
+                  :game="agentGameFilter"
                   :latest-inventory-at="latestInventoryRecordAt"
                   :disabled="!auth.isLoggedIn || !accountId || accountsLoading || editingStock"
                   @busy="rewardImportBusy = $event"
@@ -1862,7 +1868,9 @@ const agentStatusFilters = ref([]);
 const agentRarityFilters = ref([]);
 const agentProfFilters = ref([]);
 const agentSubProfFilters = ref([]);
-const operatorCatalog = ref(AGENT_CATALOG);
+const operatorCatalog = ref([]);
+const agentCatalogLoading = ref(false);
+const agentCatalogError = ref("");
 const agentGroupBy = ref("none");
 const agentSort = ref("latest");
 const agentSortDirection = ref("desc");
@@ -3166,6 +3174,7 @@ function scrollToStockEditor() {
 }
 
 function startStockEdit(scopeEntries, scopeName) {
+  if (entityType.value === "agent" && (agentCatalogLoading.value || agentCatalogError.value)) return;
   if (!auth.isLoggedIn) {
     goLogin();
     return;
@@ -3263,6 +3272,7 @@ function manualRecordId() {
 }
 
 async function saveStockEdit() {
+  if (entityType.value === "agent" && (agentCatalogLoading.value || agentCatalogError.value)) return;
   stockEditError.value = stockDraftError.value;
   if (stockEditError.value || !stockChangedCount.value || savingStock.value)
     return;
@@ -3918,13 +3928,17 @@ async function doExport() {
 }
 
 async function loadAgentCatalog() {
+  agentCatalogLoading.value = true;
+  agentCatalogError.value = "";
   try {
     const data = await getOperatorCatalog();
-    const operators =
-      data && Array.isArray(data.operators) ? data.operators : [];
-    operatorCatalog.value = normalizeOperatorCatalog(operators);
+    if (!Array.isArray(data?.operators)) throw new Error("密探目录响应无效");
+    operatorCatalog.value = normalizeOperatorCatalog(data.operators);
   } catch (_error) {
-    // 保留最近一次成功目录；首次加载失败时自然使用内置目录兜底。
+    operatorCatalog.value = [];
+    agentCatalogError.value = "密探目录同步失败";
+  } finally {
+    agentCatalogLoading.value = false;
   }
 }
 
