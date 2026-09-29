@@ -6,6 +6,7 @@ import {
   subProfList,
   canonicalSubProf,
   hasActiveManifestFilters,
+  hasActiveOperatorGrowthFilters,
   isOperatorOwned,
   matchesManifestFilters,
   tokens,
@@ -30,13 +31,13 @@ test('图鉴拥有状态只由 starLevel 决定', function () {
   assert.equal(isOperatorOwned(null), false)
 })
 
-test('当前养成范围筛选按显示星数比较并单独处理觉醒', function () {
+test('养成范围用第 6 档表示觉醒，星数上下限包含边界', function () {
   const ordinary = { level: 80, elite: 12, starLevel: 19 }
   const sp = { level: 80, elite: 12, star_level: 4, sp_of: 'char_base' }
   const awakened = { level: 80, elite: 12, starLevel: 31 }
   assert.equal(operatorStarNumber(ordinary), 4)
   assert.equal(operatorStarNumber(sp), 4)
-  assert.equal(operatorStarNumber(awakened), 5)
+  assert.equal(operatorStarNumber(awakened), 6)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '80', levelEnabled: true, eliteMax: '12', eliteEnabled: true, starMin: '4', starMax: '4', starEnabled: true }), true)
   assert.equal(matchesOperatorGrowthFilters(sp, { starMin: '4', starMax: '4', starEnabled: true }), true)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '81' }), true)
@@ -48,11 +49,13 @@ test('当前养成范围筛选按显示星数比较并单独处理觉醒', funct
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: false }), true)
   assert.equal(matchesOperatorGrowthFilters(awakened, {}), true)
   assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5' }), true)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5', starEnabled: true }), false)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { onlyAwakened: true }), true)
-  assert.equal(matchesOperatorGrowthFilters(ordinary, { onlyAwakened: true }), false)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { onlyAwakened: true, starMin: '2', starEnabled: true }), true)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { onlyAwakened: true, levelMin: '81', levelEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5', starEnabled: true }), true)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { starMax: '5', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '6', starMax: '6', starEnabled: true }), true)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { starMin: '6', starMax: '6', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '6', starMax: '6', starEnabled: true, levelMin: '81', levelEnabled: true }), false)
+  assert.equal(hasActiveOperatorGrowthFilters({ starMin: '6', starEnabled: false }), false)
+  assert.equal(hasActiveOperatorGrowthFilters({ starMin: '6', starEnabled: true }), true)
 })
 
 test('subProfList 兼容字符串 / 数组 / snake_case', function () {
@@ -161,13 +164,15 @@ test('密探图鉴在筛选激活时显示筛选后的密探数量', function ()
   // 数量必须来自与列表同一套筛选口径，页面不得再内联另一份过滤条件。
   assert.match(operatorPage, /matchesManifestFilters\(e, \{/)
   assert.match(operatorPage, /return hasActiveManifestFilters\(\{/)
+  assert.match(operatorPage, /<OperatorGrowthFilters v-model="manifestGrowthFilters"\s*\/>/)
+  assert.match(operatorPage, /growthFilters: manifestGrowthFilters\.value/g)
 })
 
 test('图鉴筛选口径与列表数量保持一致', function () {
   const entries = [
-    { id: 'a', name: '孙策', alias: '策', prof: '火', subProf: ['神纪'], rarity: 5, owned: true },
-    { id: 'b', name: '周瑜', alias: '', prof: '火', subProf: ['破军'], rarity: 4, owned: false },
-    { id: 'c', name: '鲁肃', alias: '', prof: '水', subProf: ['神纪'], rarity: 3, owned: true }
+    { id: 'a', name: '孙策', alias: '策', prof: '火', subProf: ['神纪'], rarity: 5, owned: true, level: 100, elite: 17, starLevel: 31 },
+    { id: 'b', name: '周瑜', alias: '', prof: '火', subProf: ['破军'], rarity: 4, owned: false, level: 100, elite: 17, starLevel: 31 },
+    { id: 'c', name: '鲁肃', alias: '', prof: '水', subProf: ['神纪'], rarity: 3, owned: true, level: 80, elite: 12, starLevel: 13 }
   ]
   const filtered = function (patch) {
     const filters = Object.assign({ rarityFilter: 'all', profFilter: 'all', subProfFilter: 'all', manifestFilter: 'all', search: '' }, patch)
@@ -181,6 +186,10 @@ test('图鉴筛选口径与列表数量保持一致', function () {
   assert.equal(filtered({ manifestFilter: 'owned' }).length, 2)
   assert.equal(filtered({ manifestFilter: 'missing' }).length, 1)
   assert.equal(filtered({ search: '策' }).length, 1)
+  assert.equal(filtered({ growthFilters: { levelMin: '100', levelEnabled: true } }).length, 1)
+  assert.equal(filtered({ growthFilters: { starMin: '6', starMax: '6', starEnabled: true } }).length, 1)
+  assert.equal(filtered({ manifestFilter: 'missing', growthFilters: { starMin: '6', starMax: '6', starEnabled: true } }).length, 0)
+  assert.equal(filtered({ growthFilters: { starMin: '6', starEnabled: false } }).length, 3)
   // 图鉴搜索沿用原有的名称/别名/id 直接匹配，不启用拼音（保持既有行为）。
   assert.equal(filtered({ search: 'zhou' }).length, 0)
 })
@@ -193,6 +202,8 @@ test('筛选激活判定与实际过滤条件同源', function () {
   assert.equal(hasActiveManifestFilters({ subProfFilter: '神纪' }), true)
   assert.equal(hasActiveManifestFilters({ manifestFilter: 'owned' }), true)
   assert.equal(hasActiveManifestFilters({ search: '策' }), true)
+  assert.equal(hasActiveManifestFilters({ growthFilters: { starMin: '6', starEnabled: false } }), false)
+  assert.equal(hasActiveManifestFilters({ growthFilters: { starMin: '6', starEnabled: true } }), true)
 })
 
 test('品质选项按品质从高到低排列且各页共用同一份', function () {
