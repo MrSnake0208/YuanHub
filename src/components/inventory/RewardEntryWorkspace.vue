@@ -133,9 +133,10 @@ import { importInventory } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { buildRewardDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
+import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
-const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
+const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
 const emit = defineEmits(['imported', 'busy'])
 const mode = ref('')
 const entities = ref([])
@@ -247,10 +248,11 @@ watch(mode, async (value, previous) => {
     if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true })
   }
 })
-watch(() => props.accountId, () => {
+watch(() => [props.accountId, props.game], () => {
   fileReadSeq++
   readingFile.value = false
   mode.value = ''
+  entities.value = []
   pendingDocument.value = null
   reportText.value = ''
   fileName.value = ''
@@ -272,7 +274,7 @@ async function loadCatalog() {
   try {
     const catalog = await getRewardCatalog()
     if (!catalog.length) throw new Error('奖励目录为空，请稍后重试')
-    entities.value = catalog
+    entities.value = catalog.filter(entity => entity.entity_type !== 'agent' || agentMatchesGame(entity, props.game))
   } catch (err) { await showError(err.message || '奖励目录加载失败') }
   finally { catalogLoading.value = false }
 }

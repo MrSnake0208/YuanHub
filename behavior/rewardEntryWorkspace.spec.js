@@ -69,6 +69,27 @@ beforeEach(() => {
 })
 
 describe('奖励补录工作台弹层', () => {
+  it('如鸢账号只提供所属游戏的密探心纸，切换游戏后重新筛选', async () => {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([
+      catalog[0],
+      { entity_type: 'agent', id: 'char_shared', name: '共同密探', rarity: 5, games: ['如鸢', '代号鸢'] },
+      { entity_type: 'agent', id: 'char_daihao', name: '代号鸢密探', rarity: 5, games: ['代号鸢'] },
+    ])
+    const wrapper = mountWorkspace({ game: '如鸢' })
+    await button(wrapper, '添加奖励流水').trigger('click')
+    await flushPromises()
+    await clickElement(bodyButton('据点情报'))
+
+    expect(document.body.querySelector('[aria-label^="添加共同密探"]')).not.toBeNull()
+    expect(document.body.querySelector('[aria-label^="添加代号鸢密探"]')).toBeNull()
+
+    await wrapper.setProps({ game: '代号鸢' })
+    await button(wrapper, '添加奖励流水').trigger('click')
+    await flushPromises()
+    await clickElement(bodyButton('据点情报'))
+    expect(document.body.querySelector('[aria-label^="添加代号鸢密探"]')).not.toBeNull()
+  })
+
   it.each([
     ['添加奖励流水', '添加奖励流水'],
     ['导入本地报告', '导入本地报告'],
