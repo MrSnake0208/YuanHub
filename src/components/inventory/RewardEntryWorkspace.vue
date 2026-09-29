@@ -61,6 +61,7 @@
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
                 <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="search" type="text" :aria-label="manual.entityType === 'agent' ? '搜索密探姓名' : '搜索奖励道具'" :placeholder="manual.entityType === 'agent' ? '搜索密探姓名…' : '搜索道具名称…'" /><button v-if="search" type="button" class="clear-search" aria-label="清空搜索" @click="search = ''"><X :size="14" aria-hidden="true" /></button></label>
                 <div v-if="manual.entityType === 'agent'" class="rarity-options" role="group" aria-label="密探品质筛选"><button v-for="quality in qualities" :key="quality.id" type="button" :class="{ selected: rarity === quality.id }" :aria-pressed="rarity === quality.id" @click="rarity = quality.id">{{ quality.label }}</button></div>
+                <label v-if="manual.entityType === 'agent'" class="prof-filter">属性<select v-model="agentProf" aria-label="密探属性筛选"><option value="">全部</option><option v-for="prof in AGENT_PROFS" :key="prof" :value="prof">{{ prof }}</option></select></label>
               </div>
               <div class="reward-grid" :class="{ 'agent-grid': manual.entityType === 'agent', 'luoyang-grid': manual.channel === '派遣-洛阳' }">
                 <div v-for="entity in visibleOptions" :key="entity.id" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
@@ -71,8 +72,8 @@
                   <button v-if="countOf(entity.id)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity.id)}`" @click="decreaseRewardFromTile(entity.id, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
                 </div>
               </div>
-              <p v-if="!visibleOptions.length" class="empty-search">没有匹配的奖励，试试其他名称或品质。</p>
-              <p class="picker-caption">{{ entryOptions.length }} {{ manual.entityType === 'agent' ? '位密探可选' : '种道具可选' }}<span v-if="search || rarity"> · 当前显示 {{ visibleOptions.length }} 项</span></p>
+              <p v-if="!visibleOptions.length" class="empty-search">{{ manual.entityType === 'agent' ? '没有匹配的密探，试试其他名称、品质或属性。' : '没有匹配的奖励，试试其他名称。' }}</p>
+              <p class="picker-caption">{{ entryOptions.length }} {{ manual.entityType === 'agent' ? '位密探可选' : '种道具可选' }}<span v-if="search || rarity || agentProf"> · 当前显示 {{ visibleOptions.length }} 项</span></p>
             </section>
 
             <aside class="reward-receipt" aria-label="本次入账清单">
@@ -137,6 +138,7 @@ import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { buildRewardDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
+import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
@@ -165,6 +167,7 @@ const previewed = ref(false)
 const pendingDocument = ref(null)
 const search = ref('')
 const rarity = ref(0)
+const agentProf = ref('')
 const failedImages = ref(new Set())
 const expandedRows = ref(new Set())
 const locked = computed(() => busy.value || !!pendingDocument.value)
@@ -184,7 +187,7 @@ function freshManual() {
 }
 const manual = ref(freshManual())
 const entryOptions = computed(() => rewardOptionsForChannel(manual.value.channel, entities.value, manual.value.entityType))
-const visibleOptions = computed(() => entryOptions.value.filter(entity => (!rarity.value || entity.rarity === rarity.value) && (!search.value.trim() || entity.name.includes(search.value.trim()) || entity.id.toLowerCase().includes(search.value.trim().toLowerCase()))))
+const visibleOptions = computed(() => entryOptions.value.filter(entity => (!rarity.value || entity.rarity === rarity.value) && (!agentProf.value || (Array.isArray(entity.prof) ? entity.prof.includes(agentProf.value) : entity.prof === agentProf.value)) && (!search.value.trim() || entity.name.includes(search.value.trim()) || entity.id.toLowerCase().includes(search.value.trim().toLowerCase()))))
 const requiresStamina = computed(() => manual.value.channel.includes('派遣') || (manual.value.channel === '手动补录' && manual.value.customChannel.trim().includes('派遣')))
 const manualBeforeLatestSnapshot = computed(() => {
   if (!props.latestInventoryAt || !manual.value.date || !manual.value.clock) return false
@@ -261,7 +264,7 @@ watch(() => [props.accountId, props.game], () => {
   fileName.value = ''
   showPaste.value = false
   manual.value = freshManual()
-  search.value = ''; rarity.value = 0
+  search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
 })
 async function showError(message) {
@@ -343,10 +346,10 @@ function changeChannel(channel) {
   const allowed = new Set(entryOptions.value.map(entry => entry.id))
   manual.value.entries = manual.value.entries.filter(entry => allowed.has(entry.id))
   manual.value.stamina = ''
-  search.value = ''; rarity.value = 0
+  search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
 }
-function changeType(type) { manual.value.entityType = type; manual.value.entries = []; search.value = ''; rarity.value = 0; clearPreview() }
+function changeType(type) { manual.value.entityType = type; manual.value.entries = []; search.value = ''; rarity.value = 0; agentProf.value = ''; clearPreview() }
 function addReward(entity) {
   const entry = manual.value.entries.find(entry => entry.id === entity.id)
   if (entry) adjustReward(entry, 1)
@@ -436,7 +439,7 @@ async function submit() {
     }
   } finally { busy.value = false }
 }
-function startNext() { clearPreview(); manual.value = freshManual(); reportText.value = ''; fileName.value = ''; search.value = ''; rarity.value = 0 }
+function startNext() { clearPreview(); manual.value = freshManual(); reportText.value = ''; fileName.value = ''; search.value = ''; rarity.value = 0; agentProf.value = '' }
 function warningText(warning) { return typeof warning === 'string' ? warning : warning?.message || JSON.stringify(warning) }
 function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
@@ -449,10 +452,10 @@ onBeforeUnmount(unlockBackgroundScroll)
 .reward-workspace *, .reward-workspace *::before, .reward-workspace *::after { box-sizing: border-box; }
 .reward-dialog-mask, .reward-dialog-mask *, .reward-dialog-mask *::before, .reward-dialog-mask *::after { box-sizing: border-box; }
 .workspace-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }
-button, input, textarea { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button { appearance: none; border: 0; cursor: pointer; background: transparent; padding: 0; transition: background .16s, border-color .16s, box-shadow .16s; }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, .error-message:focus, .dialog-lock-note:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .error-message:focus, .dialog-lock-note:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
 h3:focus { outline: none; }
 input, textarea { appearance: none; border-radius: 0; }
 input:disabled { cursor: not-allowed; }
@@ -515,6 +518,8 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .rarity-options, .type-options { display: flex; gap: 3px; padding: 3px; border-radius: 8px; background: var(--cream); border: 1px solid var(--line); }
 .rarity-options button, .type-options button { min-height: 30px; padding: 5px 10px; font-size: 11px; border-radius: 5px; }
 .rarity-options .selected, .type-options .selected { background: var(--surface); color: var(--tea); box-shadow: 0 1px 4px rgba(73,59,44,.1); font-weight: 800; }
+.prof-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; }
+.prof-filter select { min-height: 38px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .type-options { width: fit-content; margin-bottom: 14px; }
 .reward-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(78px,1fr)); gap: 14px 10px; max-height: 358px; overflow-y: auto; padding: 5px 5px 10px; scrollbar-width: thin; scrollbar-color: var(--reward-gold-soft) transparent; }
 .reward-grid.luoyang-grid { grid-template-columns: repeat(5,minmax(0,1fr)); overflow: visible; max-height: none; gap: 8px; }
@@ -677,6 +682,7 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 }
 @media (max-width: 900px), (pointer: coarse) {
   .clear-search, .rarity-options button, .type-options button, .quantity-control button, .remove-reward, .record-info, .paste-toggle, .text-button { min-width: 44px; min-height: 44px; }
+  .prof-filter select { min-height: 44px; }
   .quantity-control input { height: 44px; }
 }
 @media (max-width: 480px) {
