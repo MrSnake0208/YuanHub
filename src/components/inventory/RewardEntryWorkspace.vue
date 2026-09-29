@@ -56,17 +56,20 @@
           </div>
           <div class="manual-columns">
             <section class="reward-picker" aria-label="选择奖励">
-              <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>点击图标添加，重复点击累加</span></div>
+              <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>点击图标增加，选中后从左下角减少</span></div>
               <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
                 <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="search" type="text" :aria-label="manual.entityType === 'agent' ? '搜索密探姓名' : '搜索奖励道具'" :placeholder="manual.entityType === 'agent' ? '搜索密探姓名…' : '搜索道具名称…'" /><button v-if="search" type="button" class="clear-search" aria-label="清空搜索" @click="search = ''"><X :size="14" aria-hidden="true" /></button></label>
                 <div v-if="manual.entityType === 'agent'" class="rarity-options" role="group" aria-label="密探品质筛选"><button v-for="quality in qualities" :key="quality.id" type="button" :class="{ selected: rarity === quality.id }" :aria-pressed="rarity === quality.id" @click="rarity = quality.id">{{ quality.label }}</button></div>
               </div>
               <div class="reward-grid" :class="{ 'agent-grid': manual.entityType === 'agent', 'luoyang-grid': manual.channel === '派遣-洛阳' }">
-                <button v-for="entity in visibleOptions" :key="entity.id" type="button" class="reward-tile" :class="{ chosen: countOf(entity.id) > 0, 'is-agent': entity.entity_type === 'agent' }" :style="{ '--quality': qualityColor(entity.rarity) }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity.id)}`" @click="addReward(entity)">
-                  <span class="tile-image"><img v-if="!failedImages.has(entity.id)" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(entity.id)" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
-                  <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity.id)" class="tile-count">{{ countOf(entity.id) }}</span>
-                </button>
+                <div v-for="entity in visibleOptions" :key="entity.id" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
+                  <button type="button" class="reward-tile" :class="{ chosen: countOf(entity.id) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity.id)}`" @click="addReward(entity)">
+                    <span class="tile-image"><img v-if="!failedImages.has(entity.id)" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(entity.id)" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
+                    <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity.id)" class="tile-count">{{ countOf(entity.id) }}</span>
+                  </button>
+                  <button v-if="countOf(entity.id)" type="button" class="tile-minus" :aria-label="`减少${entity.name}，当前已选 ${countOf(entity.id)}`" @click="decreaseRewardFromTile(entity.id, $event)"><span><Minus :size="12" aria-hidden="true" /></span></button>
+                </div>
               </div>
               <p v-if="!visibleOptions.length" class="empty-search">没有匹配的奖励，试试其他名称或品质。</p>
               <p class="picker-caption">{{ entryOptions.length }} {{ manual.entityType === 'agent' ? '位密探可选' : '种道具可选' }}<span v-if="search || rarity"> · 当前显示 {{ visibleOptions.length }} 项</span></p>
@@ -356,6 +359,13 @@ function adjustReward(entry, delta) {
   if (next <= 0) removeReward(entry.id)
   else { entry.count = Math.min(2147483647, next); clearPreview() }
 }
+function decreaseRewardFromTile(id, event) {
+  const entry = manual.value.entries.find(entry => entry.id === id)
+  if (!entry) return
+  const addButton = event.currentTarget.previousElementSibling
+  adjustReward(entry, -1)
+  if (!manual.value.entries.some(entry => entry.id === id)) nextTick(() => addButton.focus())
+}
 function setCount(entry, value) { entry.count = value; clearPreview() }
 function removeReward(id) { manual.value.entries = manual.value.entries.filter(entry => entry.id !== id); clearPreview() }
 function clearBasket() { manual.value.entries = []; clearPreview() }
@@ -508,7 +518,8 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .type-options { width: fit-content; margin-bottom: 14px; }
 .reward-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(78px,1fr)); gap: 14px 10px; max-height: 358px; overflow-y: auto; padding: 5px 5px 10px; scrollbar-width: thin; scrollbar-color: var(--reward-gold-soft) transparent; }
 .reward-grid.luoyang-grid { grid-template-columns: repeat(5,minmax(0,1fr)); overflow: visible; max-height: none; gap: 8px; }
-.reward-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; padding: 8px 4px 10px; border: 1px solid transparent; border-radius: 12px; }
+.reward-tile-wrap { position: relative; min-width: 0; --tile-size: 62px; --tile-half: 31px; --tile-padding: 8px; }
+.reward-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; width: 100%; height: 100%; min-width: 0; padding: 8px 4px 10px; border: 1px solid transparent; border-radius: 12px; }
 .reward-tile:hover:not(:disabled) { background: var(--cream); border-color: var(--line); }
 .reward-tile.chosen { background: var(--cream); border-color: var(--reward-gold); }
 .tile-image { position: relative; display: grid; place-items: center; width: 62px; height: 62px; max-width: 100%; aspect-ratio: 1; border-radius: 11px; background: radial-gradient(ellipse at center, var(--paper), transparent 72%); }
@@ -517,6 +528,9 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .is-agent img { object-fit: contain; border-radius: 0; }
 .tile-plus { display: grid; place-items: center; position: absolute; bottom: -1px; right: -1px; width: 18px; height: 18px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink-60); }
 .chosen .tile-plus { color: var(--tea); border-color: var(--reward-gold); }
+.tile-minus { position: absolute; top: calc(var(--tile-padding) + var(--tile-size) - 29px); left: calc(50% - var(--tile-half) - 14px); display: grid; place-items: center; width: 44px; height: 44px; color: var(--tea); }
+.tile-minus span { display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--reward-gold); border-radius: 50%; background: var(--surface); }
+.tile-minus:hover:not(:disabled) span { background: var(--paper); }
 .tile-name { font-size: 11px; font-weight: 700; text-align: center; line-height: 1.4; overflow-wrap: anywhere; }
 .tile-count { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; background: var(--tea); color: var(--cream); border: 2px solid var(--surface); border-radius: 99px; font: 10px 'Archivo',var(--font-b); max-width: 100%; overflow: hidden; }
 .image-fallback { font: 900 26px var(--font-s); color: var(--reward-gold); }
@@ -679,6 +693,7 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
   .channel-option small { font-size: 9px; }
   .reward-grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px 5px; }
   .reward-grid.luoyang-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .reward-tile-wrap { --tile-size: 54px; --tile-half: 27px; --tile-padding: 6px; }
   .reward-tile { padding: 6px 3px 8px; }
   .tile-name { font-size: 10px; }
   .tile-image { width: 54px; height: 54px; }
