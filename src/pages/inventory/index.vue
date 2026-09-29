@@ -447,8 +447,8 @@
                       >
                     </div>
                   </div>
-                  <div class="agent-filter-group" role="group" aria-label="星级">
-                    <span class="agent-filter-group-title" aria-hidden="true">星级</span>
+                  <div class="agent-filter-group" role="group" aria-label="品质">
+                    <span class="agent-filter-group-title" aria-hidden="true">品质</span>
                     <div class="agent-filter-options">
                       <label
                         v-for="rarity in AGENT_RARITIES"
@@ -458,7 +458,7 @@
                           v-model="agentRarityFilters"
                           type="checkbox"
                           :value="String(rarity)"
-                        />{{ rarity }} 星</label
+                        />{{ OPERATOR_RARITY_LABELS[rarity] }}</label
                       >
                     </div>
                   </div>
@@ -1799,6 +1799,7 @@ import {
   removeAgentFavorite,
 } from "../../api/inventory.js";
 import { getOperatorCatalog } from "../../api/operator.js";
+import { OPERATOR_RARITY_LABELS } from "../../utils/operatorFilters.js";
 import { auth } from "../../store/auth.js";
 import { dialog } from "../../utils/dialog.js";
 import {
