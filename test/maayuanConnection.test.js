@@ -37,7 +37,7 @@ test('MaaYuan 新连接创建后给出从复制连接码到开始同步的完整
   const stepsEnd = profile.indexOf('</ol>', stepsStart)
   const steps = profile.slice(stepsStart, stepsEnd)
   assert.ok(stepsStart >= 0 && stepsEnd > stepsStart)
-  assert.match(steps, /只会完整显示这一次/)
+  assert.match(steps, /之后仍可在“现有连接”中复制/)
   assert.match(steps, /同步至YuanHub/)
   assert.match(steps, /YuanHub连接码/)
   assert.match(steps, /据点日常/)

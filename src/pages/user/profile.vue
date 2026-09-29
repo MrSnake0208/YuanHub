@@ -331,7 +331,7 @@
                     }}
                   </h3>
                   <p>
-                    连接码只显示这一次。关闭前，请把它填写到使用它的工具中。建议在你的电脑/手机上单独保存一份！
+                    连接码只会在页面完整显示这一次。以后可在“现有连接”中再次复制。
                   </p>
                 </div>
               </div>
@@ -340,7 +340,7 @@
                   <span>1</span>
                   <div class="paste-step-copy">
                     <strong>先复制下方连接码</strong>
-                    <small>连接码只会完整显示这一次。</small>
+                    <small>之后仍可在“现有连接”中复制。</small>
                   </div>
                 </li>
                 <li>
@@ -420,8 +420,8 @@
               <div class="stable-token-note connection-reminder" role="note">
                 <KeyRound :size="19" aria-hidden="true" />
                 <div>
-                  <strong>连接码只显示一次</strong>
-                  <p>现有连接无法再次查看完整连接码。如未保存，请新建连接码并在使用它的工具中更新，确认可用后停止旧连接。</p>
+                  <strong>已创建的连接码可直接复制</strong>
+                  <p>连接码不会在这里显示完整内容。需要重新填写时，点击对应连接的“复制连接码”。</p>
                 </div>
               </div>
 
@@ -492,6 +492,14 @@
                     </details>
                   </div>
                   <div class="connection-actions">
+                    <button
+                      class="t-btn copy"
+                      type="button"
+                      :disabled="busy"
+                      @click="copyExistingToken(tokenItem)"
+                    >
+                      <Copy :size="15" aria-hidden="true" />{{ copyingTokenId === tokenItem.token_id ? "正在复制…" : "复制连接码" }}
+                    </button>
                     <button
                       v-if="!supportsMaaYuan(tokenItem)"
                       class="t-btn update"
@@ -678,6 +686,7 @@ import { listAccounts } from "../../api/accounts.js";
 import {
   deleteOpenApiToken,
   generateOpenApiToken,
+  getOpenApiTokenSecret,
   getOpenApiPermissions,
   getOpenApiTokens,
   updateOpenApiTokenScopes,
@@ -705,6 +714,7 @@ const error = ref("");
 const permissionError = ref("");
 const creatingMode = ref("");
 const updatingTokenId = ref("");
+const copyingTokenId = ref("");
 const notice = ref("");
 const noticeError = ref(false);
 const recentFailures = ref([]);
@@ -749,7 +759,8 @@ const busy = computed(function () {
   return (
     loading.value ||
     !!creatingMode.value ||
-    !!updatingTokenId.value
+    !!updatingTokenId.value ||
+    !!copyingTokenId.value
   );
 });
 const adminToolGroups = computed(function () {
@@ -1085,35 +1096,47 @@ async function removeToken(tokenItem) {
   }
 }
 
-async function copyToken(token) {
+async function copyExistingToken(tokenItem) {
+  const id = tokenItem?.token_id;
+  if (!id || copyingTokenId.value) return;
+  const ownerId = auth.userInfo?.id;
+  copyingTokenId.value = id;
+  try {
+    const result = await getOpenApiTokenSecret(id);
+    if (auth.userInfo?.id !== ownerId) return;
+    if (typeof result?.token !== "string" || !result.token) throw new Error("连接码响应无效");
+    await copyToken(result.token, true);
+  } catch (err) {
+    if (auth.userInfo?.id === ownerId) toast(humanErr(err, "连接码复制失败"), true);
+  } finally {
+    copyingTokenId.value = "";
+  }
+}
+
+async function copyToken(token, existing = false) {
   try {
     await navigator.clipboard.writeText(token);
-    tokenCopied.value = true;
-    toast("连接码已复制，可以去 MaaYuan 中粘贴了");
   } catch (_err) {
+    const textarea = document.createElement("textarea");
     try {
-      const textarea = document.createElement("textarea");
       textarea.value = token;
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      tokenCopied.value = true;
-      toast("连接码已复制，可以去 MaaYuan 中粘贴了");
+      if (!document.execCommand("copy")) throw new Error("复制失败");
     } catch (_fallbackError) {
-      toast("复制失败，请手动选择连接码复制", true);
+      toast(existing ? "复制失败，请检查剪贴板权限" : "复制失败，请手动选择连接码复制", true);
+      return;
+    } finally {
+      textarea.remove();
     }
   }
+  if (!existing) tokenCopied.value = true;
+  toast(existing ? "连接码已复制" : "连接码已复制，可以去 MaaYuan 中粘贴了");
 }
 
-async function finishNewToken() {
-  if (
-    !tokenCopied.value &&
-    !(await dialog.confirm({ title: "关闭连接码？", message: "还没有通过页面复制连接码。关闭后将无法再次查看，仍要关闭吗？", type: "danger", confirmText: "仍要关闭" }))
-  )
-    return;
+function finishNewToken() {
   newToken.value = null;
   tokenCopied.value = false;
 }

@@ -5,7 +5,7 @@ import { auth } from '../src/store/auth.js'
 import { beta } from '../src/store/beta.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { dialog } from '../src/utils/dialog.js'
-import { getOpenApiTokens, getOpenApiPermissions, updateOpenApiTokenScopes, deleteOpenApiToken, generateOpenApiToken } from '../src/api/openApi.js'
+import { getOpenApiTokens, getOpenApiTokenSecret, getOpenApiPermissions, updateOpenApiTokenScopes, deleteOpenApiToken, generateOpenApiToken } from '../src/api/openApi.js'
 
 vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }) }))
 vi.mock('../src/store/auth.js', async () => { const { reactive } = await import('vue'); return { auth: reactive({ userInfo: { id: 'user-a', user_name: '测试用户' }, isLoggedIn: true, adminAccess: null }) } })
@@ -14,7 +14,7 @@ vi.mock('../src/store/activeAccount.js', () => ({ activeAccount: { id: 'acc-a', 
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn().mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }]) }))
 vi.mock('../src/api/openApi.js', () => ({
   deleteOpenApiToken: vi.fn(), generateOpenApiToken: vi.fn(), getOpenApiPermissions: vi.fn().mockResolvedValue([]),
-  getOpenApiTokens: vi.fn(), updateOpenApiTokenScopes: vi.fn()
+  getOpenApiTokens: vi.fn(), getOpenApiTokenSecret: vi.fn(), updateOpenApiTokenScopes: vi.fn()
 }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
@@ -28,10 +28,12 @@ beforeEach(() => {
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }])
   getOpenApiPermissions.mockResolvedValue([])
   getOpenApiTokens.mockResolvedValue([token])
+  getOpenApiTokenSecret.mockResolvedValue({ token: 'synthetic-secret' })
   updateOpenApiTokenScopes.mockResolvedValue({})
   deleteOpenApiToken.mockResolvedValue({})
   dialog.confirm.mockResolvedValue(true)
   Element.prototype.scrollIntoView = vi.fn()
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
 })
 afterEach(() => vi.useRealTimers())
 
@@ -93,22 +95,60 @@ it('失败提示不自动消失；关闭后仍可查看最近失败记录', asyn
   wrapper.unmount()
 })
 
-it('一次性连接码未复制时通过站内弹窗确认关闭', async () => {
+it('创建时完整显示一次，关闭后仍可在现有连接中复制', async () => {
   generateOpenApiToken.mockResolvedValue({ token: 'synthetic-secret', account_name: '大号', token_id: 'tok-new' })
+  getOpenApiTokens.mockResolvedValueOnce([]).mockResolvedValue([{ ...token, token_id: 'tok-new' }])
   const wrapper = render()
   await flushPromises()
   await wrapper.get('.app-connect').trigger('click')
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
   expect(wrapper.get('.new-token').exists()).toBe(true)
-  dialog.confirm.mockResolvedValueOnce(false)
   await wrapper.get('.nt-footer button').trigger('click')
-  await flushPromises()
-  expect(wrapper.get('.new-token').exists()).toBe(true)
-  dialog.confirm.mockResolvedValueOnce(true)
-  await wrapper.get('.nt-footer button').trigger('click')
-  await flushPromises()
-  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'danger', confirmText: '仍要关闭' }))
   expect(wrapper.find('.new-token').exists()).toBe(false)
+  expect(dialog.confirm).not.toHaveBeenCalled()
+  await wrapper.get('.connection-actions .t-btn.copy').trigger('click')
+  await flushPromises()
+  expect(getOpenApiTokenSecret).toHaveBeenCalledWith('tok-new')
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('synthetic-secret')
+  expect(wrapper.text()).not.toContain('synthetic-secret')
   wrapper.unmount()
+})
+
+it('现有连接取码失败或登录用户切换时不复制明文', async () => {
+  const wrapper = render()
+  await flushPromises()
+  getOpenApiTokenSecret.mockRejectedValueOnce(new Error('请求失败'))
+  await wrapper.get('.connection-actions .t-btn.copy').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.notice-line[role="alert"]').text()).toContain('请求失败')
+  expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+
+  let resolveSecret
+  getOpenApiTokenSecret.mockImplementationOnce(() => new Promise(resolve => { resolveSecret = resolve }))
+  await wrapper.get('.connection-actions .t-btn.copy').trigger('click')
+  auth.userInfo = { id: 'user-b', user_name: '另一个用户' }
+  resolveSecret({ token: 'other-secret' })
+  await flushPromises()
+  expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+  expect(wrapper.text()).not.toContain('other-secret')
+  wrapper.unmount()
+})
+
+it('剪贴板拒绝复制时不误报成功，也不在页面显示连接码', async () => {
+  navigator.clipboard.writeText.mockRejectedValueOnce(new Error('denied'))
+  const oldExecCommand = Object.getOwnPropertyDescriptor(document, 'execCommand')
+  Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn().mockReturnValue(false) })
+  try {
+    const wrapper = render()
+    await flushPromises()
+    await wrapper.get('.connection-actions .t-btn.copy').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.notice-line[role="alert"]').text()).toContain('复制失败，请检查剪贴板权限')
+    expect(wrapper.text()).not.toContain('synthetic-secret')
+    wrapper.unmount()
+  } finally {
+    if (oldExecCommand) Object.defineProperty(document, 'execCommand', oldExecCommand)
+    else delete document.execCommand
+  }
 })
