@@ -29,7 +29,7 @@ OpenAPI 数据接口不能用普通 JWT，浏览器接口也不能用 OpenAPI To
 
 ## 3. OpenAPI Token 与 scopes
 
-Token 由用户在 `/user/open-api/token` 创建并绑定一个子账号，明文只返回一次。交换相关 scope：
+Token 由用户在 `/user/open-api/token` 创建并绑定一个子账号，创建时可在页面完整查看；后续登录用户可通过 `GET /user/open-api/tokens/{tokenId}/secret` 按需复制本人连接码，响应禁止缓存。连接列表只返回元数据，不包含明文。交换相关 scope：
 
 | scope | 能力 |
 |---|---|
@@ -83,4 +83,3 @@ OpenAPI URL 不传 `account_id` query。v2 文档内仍需使用 Token 绑定账
 - 429：Token 等资源达到限额。
 
 只有连接中断、超时或可重试的 5xx 才应原样重试。重试必须保留同一文档和 `record_id`。
-
