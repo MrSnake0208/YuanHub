@@ -6,6 +6,7 @@
         <li v-for="entry in accountEvents.history" :key="entry.id">
           <b>{{ entry.title }}</b>
           <small v-if="entry.detail">{{ entry.detail }}</small>
+          <a v-if="entry.reviewHref" :href="entry.reviewHref">查看并复核</a>
           <small v-if="entry.entries?.length">{{ entry.entries.map(item => item.display).join(' · ') }}</small>
         </li>
       </ul>
@@ -22,6 +23,7 @@
           <em v-if="toast.kind === 'operator' && toast.action" class="toast-kicker">{{ toast.action === 'recruited' ? 'AGENT UNLOCKED' : 'AGENT UPDATED' }}</em>
           <b>{{ toast.title }}</b>
           <small v-if="toast.detail && !(toast.kind === 'operator' && toast.action)">{{ toast.detail }}</small>
+          <a v-if="toast.reviewHref" :href="toast.reviewHref">查看并复核</a>
           <span v-if="toast.kind === 'inventory' && toast.entries && toast.entries.length" class="inventory-entries">
             <span v-for="(entry, entryIndex) in toast.entries" :key="entry.id + '-' + entryIndex" class="inventory-entry" :class="entry.highlight">
               <span>{{ entry.name }}</span><b>{{ entry.display.replace(entry.name, '') }}</b>
@@ -100,6 +102,9 @@ function agentIconSrc(operatorId) {
 .account-event-toast.is-warning { --toast-accent: rgba(166, 81, 74, .55); border-color: var(--toast-accent) }
 .account-event-toast.is-warning::after { border-color: rgba(166, 81, 74, .55) }
 .account-event-toast.is-warning .toast-badge { border-color: var(--toast-accent); background: var(--surface); color: var(--rouge) }
+.account-event-toast.is-warning .toast-copy small { white-space: normal }
+.account-event-toast a, .account-event-history a { color: var(--brand-blue); font-weight: 800; text-decoration: underline }
+.account-event-toast a:focus-visible, .account-event-history a:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .account-event-toast button { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-60); cursor: pointer }
 .account-event-toast button:hover { background: rgba(73, 59, 44, .08); color: var(--ink) }
 .account-event-toast button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
