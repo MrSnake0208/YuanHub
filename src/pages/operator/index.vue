@@ -570,6 +570,7 @@
                   >{{ option.label }}</button>
                 </div>
               </div>
+              <OperatorGrowthFilters v-model="manifestGrowthFilters" />
             </div>
 
             <div v-if="catalogLoading" class="state">正在加载密探图鉴…</div>
@@ -949,8 +950,6 @@
               :prof-icon="profIcon"
               :has-filters="hasCurrentFilters"
               v-model:growth-filters="growthFilters"
-              :growth-filter-active="hasGrowthFilters"
-              :growth-filter-configured="hasGrowthDrafts"
               show-growth-filters
               description="筛选后按状态、品质、等级、化极、属性与实装顺序排列"
               @update:status-filter="setWorkbenchStatusFilter"
@@ -3032,6 +3031,7 @@ import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
+import OperatorGrowthFilters from "../../components/operator/OperatorGrowthFilters.vue";
 import OperatorShareManager from "../../components/operator/OperatorShareManager.vue";
 import OperatorAvatar from "../../components/operator/OperatorAvatar.vue";
 import StarLoadoutEditor from "../../components/operator/StarLoadoutEditor.vue";
@@ -3174,9 +3174,9 @@ const emptyGrowthFilters = () => ({
   levelMin: "", levelMax: "", levelEnabled: false,
   eliteMin: "", eliteMax: "", eliteEnabled: false,
   starMin: "", starMax: "", starEnabled: false,
-  onlyAwakened: false,
 });
 const growthFilters = ref(emptyGrowthFilters());
+const manifestGrowthFilters = ref(emptyGrowthFilters());
 const upgradeReadyFilter = ref("");
 const favoriteFirst = ref(false);
 const rarityOptions = OPERATOR_RARITY_OPTIONS;
@@ -4411,7 +4411,7 @@ const manifestPercent = computed(function () {
   );
 });
 
-// 图鉴展示列表：在全量基础上叠加品质 / 属性 / 职业 / 搜索 / 已拥有筛选
+// 图鉴展示列表：在全量基础上叠加品质 / 属性 / 职业 / 搜索 / 拥有状态 / 养成条件
 const manifestEntries = computed(function () {
   const state = currentMap.value;
   return catalogOperators.value
@@ -4433,6 +4433,7 @@ const manifestEntries = computed(function () {
         subProfFilter: subProfFilter.value,
         manifestFilter: manifestFilter.value,
         search: manifestSearch.value,
+        growthFilters: manifestGrowthFilters.value,
       });
     })
     .sort(function (a, b) {
@@ -4461,6 +4462,7 @@ const filterSuffix = computed(function () {
     parts.push("职业「" + subProfFilter.value + "」");
   if (manifestFilter.value === "owned") parts.push("「已拥有」");
   if (manifestFilter.value === "missing") parts.push("「未拥有」");
+  parts.push(...growthFilterParts(manifestGrowthFilters.value));
   return parts.length ? parts.join(" · ") : "";
 });
 
@@ -4471,6 +4473,7 @@ const hasManifestFilters = computed(function () {
     subProfFilter: subProfFilter.value,
     manifestFilter: manifestFilter.value,
     search: manifestSearch.value,
+    growthFilters: manifestGrowthFilters.value,
   });
 });
 
@@ -4659,6 +4662,18 @@ const quickFilterCounts = computed(function () {
   return counts;
 });
 
+function growthFilterParts(filters) {
+  const parts = [];
+  for (const [key, label] of [["level", "等级"], ["elite", "修为"], ["star", "星数"]]) {
+    const min = filters[key + "Min"];
+    const max = filters[key + "Max"];
+    if (!filters[key + "Enabled"] || (min === "" && max === "")) continue;
+    const display = value => value === "" ? "不限" : (key === "star" && value === "6" ? "觉醒" : value);
+    parts.push(label + "「" + (min === max ? display(min) : display(min) + "–" + display(max)) + "」");
+  }
+  return parts;
+}
+
 const currentFilterSuffix = computed(function () {
   const parts = [];
   parts.push("版本「" + gameFilter.value + "」");
@@ -4670,14 +4685,7 @@ const currentFilterSuffix = computed(function () {
     parts.push("职业「" + subProfFilter.value + "」");
   if (workbenchStatusFilter.value !== "all")
     parts.push("状态「" + statusLabel(workbenchStatusFilter.value) + "」");
-  for (const [key, label] of [["level", "等级"], ["elite", "修为"], ["star", "星数"]]) {
-    const min = growthFilters.value[key + "Min"];
-    const max = growthFilters.value[key + "Max"];
-    if (growthFilters.value[key + "Enabled"] && !(key === "star" && growthFilters.value.onlyAwakened) && (min !== "" || max !== "")) {
-      parts.push(label + "「" + (min === "" ? "不限" : min) + "–" + (max === "" ? "不限" : max) + "」");
-    }
-  }
-  if (growthFilters.value.onlyAwakened) parts.push("仅看觉醒");
+  parts.push(...growthFilterParts(growthFilters.value));
   if (upgradeReadyFilter.value === "growth") parts.push("「等级/修为可提升」");
   if (upgradeReadyFilter.value === "huaji") parts.push("「可提升化极」");
   const quickLabels = Array.from(activeQuickFilterKeys.value)
@@ -4690,14 +4698,6 @@ const currentFilterSuffix = computed(function () {
     .filter(Boolean);
   if (quickLabels.length) parts.push("快捷「" + quickLabels.join(" + ") + "」");
   return parts.length ? parts.join(" · ") : "当前条件";
-});
-
-const hasGrowthFilters = computed(function () {
-  if (growthFilters.value.onlyAwakened) return true;
-  return ["level", "elite", "star"].some(function (key) {
-    return growthFilters.value[key + "Enabled"] &&
-      (growthFilters.value[key + "Min"] !== "" || growthFilters.value[key + "Max"] !== "");
-  });
 });
 
 const hasGrowthDrafts = computed(function () {

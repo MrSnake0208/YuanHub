@@ -117,47 +117,7 @@
         </div>
       </div>
 
-      <div v-if="showGrowthFilters" class="growth-filter-presets" role="group" aria-label="养成快捷预设">
-        <span>快捷预设</span>
-        <button
-          v-for="preset in growthPresets"
-          :key="preset.label"
-          type="button"
-          :class="{ on: presetActive(preset) }"
-          :aria-pressed="presetActive(preset)"
-          @click="applyPreset(preset)"
-        >{{ preset.label }}</button>
-      </div>
-
-      <details v-if="showGrowthFilters" class="current-growth-filter">
-        <summary>自定义范围 <span v-if="growthFilterError">范围有误</span><span v-else-if="growthFilterActive">已启用</span><span v-else-if="growthFilterConfigured">已保存</span></summary>
-        <div class="growth-filter-fields">
-          <fieldset v-for="range in growthRanges" :key="range.key" class="growth-filter-range" :class="{ 'is-enabled': growthFilters[range.key + 'Enabled'], 'is-paused': range.key === 'star' && growthFilters.onlyAwakened }">
-            <legend>{{ range.label }}<small v-if="range.key === 'star'">（不含觉醒）</small></legend>
-            <label class="growth-filter-enable">
-              <input type="checkbox" :checked="growthFilters[range.key + 'Enabled']" :disabled="range.key === 'star' && growthFilters.onlyAwakened" :aria-label="`启用${range.label}筛选`" @change="toggleRange(range.key, $event)" />
-              启用
-            </label>
-            <div class="growth-filter-bounds">
-              <label>
-                <span>至少</span>
-                <input :value="growthFilters[range.key + 'Min']" type="number" inputmode="numeric" :min="range.min" :max="range.max" step="1" :disabled="range.key === 'star' && growthFilters.onlyAwakened" :aria-label="`${range.label}至少`" placeholder="不限" @input="updateBound(range.key + 'Min', range, $event)" />
-              </label>
-              <span aria-hidden="true">—</span>
-              <label>
-                <span>至多</span>
-                <input :value="growthFilters[range.key + 'Max']" type="number" inputmode="numeric" :min="range.min" :max="range.max" step="1" :disabled="range.key === 'star' && growthFilters.onlyAwakened" :aria-label="`${range.label}至多`" placeholder="不限" @input="updateBound(range.key + 'Max', range, $event)" />
-              </label>
-            </div>
-          </fieldset>
-          <label class="growth-awakened">
-            <input type="checkbox" :checked="growthFilters.onlyAwakened" @change="updateAwakened" />
-            仅看觉醒
-          </label>
-        </div>
-        <p v-if="growthFilters.onlyAwakened" class="growth-filter-note">觉醒筛选期间暂停星数范围，取消后恢复原条件。</p>
-        <p v-if="growthFilterError" class="growth-filter-error" role="alert">{{ growthFilterError }}</p>
-      </details>
+      <OperatorGrowthFilters v-if="showGrowthFilters" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
     </div>
 
     <slot name="footer" />
@@ -165,9 +125,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { RotateCcw, Search } from '@lucide/vue'
-import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX } from '../../utils/operatorGrowthRules.js'
+import OperatorGrowthFilters from './OperatorGrowthFilters.vue'
 
 const props = defineProps({
   title: { type: String, default: '筛选案卷' },
@@ -190,8 +149,6 @@ const props = defineProps({
   searchPlaceholder: { type: String, default: '搜索名称 / 别名 / ID' },
   hasFilters: Boolean,
   growthFilters: { type: Object, default: function () { return {} } },
-  growthFilterActive: Boolean,
-  growthFilterConfigured: Boolean,
   showGrowthFilters: Boolean,
 })
 
@@ -204,69 +161,6 @@ const emit = defineEmits([
   'update:growthFilters',
   'reset',
 ])
-
-const growthRanges = [
-  { key: 'level', label: '等级', min: 0, max: OPERATOR_LEVEL_MAX },
-  { key: 'elite', label: '修为', min: 0, max: OPERATOR_ELITE_MAX },
-  { key: 'star', label: '星数', min: 1, max: 5 },
-]
-const growthPresets = [
-  { key: 'level', label: '等级 100', min: '100', max: '100' },
-  { key: 'elite', label: '修为 17', min: '17', max: '17' },
-  { key: 'star', label: '二星以上', min: '2', max: '' },
-  { key: 'star', label: '四星以上', min: '4', max: '' },
-]
-
-const growthFilterError = computed(function () {
-  for (const range of growthRanges) {
-    if (!props.growthFilters[range.key + 'Enabled'] || (range.key === 'star' && props.growthFilters.onlyAwakened)) continue
-    const min = props.growthFilters[range.key + 'Min']
-    const max = props.growthFilters[range.key + 'Max']
-    if (min !== '' && min != null && max !== '' && max != null && Number(min) > Number(max)) {
-      return `${range.label}下限不能大于上限`
-    }
-  }
-  return ''
-})
-
-function updateBound(field, range, event) {
-  const raw = event.target.value
-  const number = Number(raw)
-  const value = raw === '' || !Number.isFinite(number)
-    ? ''
-    : String(Math.min(range.max, Math.max(range.min, Math.trunc(number))))
-  event.target.value = value
-  emit('update:growthFilters', { ...props.growthFilters, [field]: value })
-}
-
-function toggleRange(key, event) {
-  emit('update:growthFilters', { ...props.growthFilters, [key + 'Enabled']: event.target.checked })
-}
-
-function presetActive(preset) {
-  return Boolean(props.growthFilters[preset.key + 'Enabled']) &&
-    !(preset.key === 'star' && props.growthFilters.onlyAwakened) &&
-    props.growthFilters[preset.key + 'Min'] === preset.min &&
-    props.growthFilters[preset.key + 'Max'] === preset.max
-}
-
-function applyPreset(preset) {
-  if (presetActive(preset)) {
-    emit('update:growthFilters', { ...props.growthFilters, [preset.key + 'Enabled']: false })
-    return
-  }
-  emit('update:growthFilters', {
-    ...props.growthFilters,
-    [preset.key + 'Min']: preset.min,
-    [preset.key + 'Max']: preset.max,
-    [preset.key + 'Enabled']: true,
-    onlyAwakened: preset.key === 'star' ? false : props.growthFilters.onlyAwakened,
-  })
-}
-
-function updateAwakened(event) {
-  emit('update:growthFilters', { ...props.growthFilters, onlyAwakened: event.target.checked })
-}
 
 function statusCount(value) {
   return value === 'all' ? props.totalCount : (Number(props.statusCounts[value]) || 0)
@@ -458,32 +352,6 @@ function statusCount(value) {
 .current-status-filter button.status-growing.on { background: #bfdcc0; color: #315f38; }
 .current-status-filter button.status-graduated.on { background: var(--yellow); color: var(--ink); }
 .current-status-filter button.status-inactive.on { background: rgba(73, 59, 44, 0.13); color: var(--ink-60); }
-.growth-filter-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-top: 1px dashed var(--line); padding-top: 10px; }
-.growth-filter-presets > span { margin-right: 2px; color: var(--tea); font: 800 11px var(--font-b); }
-.growth-filter-presets button { min-height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; background: var(--surface); color: var(--tea); font: 800 11.5px var(--font-b); white-space: nowrap; cursor: pointer; }
-.growth-filter-presets button:hover:not(.on) { border-color: var(--accent); background: var(--cream); color: var(--accent-strong); }
-.growth-filter-presets button.on { border-color: var(--tea); background: var(--tea); color: var(--cream); }
-.growth-filter-presets button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-.current-growth-filter { padding-top: 4px; }
-.current-growth-filter summary { display: flex; width: fit-content; min-height: 36px; align-items: center; gap: 4px; color: var(--tea); font: 800 11px var(--font-b); cursor: pointer; }
-.current-growth-filter summary span { margin-left: 5px; color: var(--accent-strong); }
-.current-growth-filter summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
-.growth-filter-fields { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; padding-top: 10px; }
-.growth-filter-range { display: flex; flex: 1 1 200px; min-width: 0; flex-direction: column; margin: 0; border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px 10px; background: var(--surface); }
-.growth-filter-range.is-enabled { border-color: var(--accent); background: var(--cream); }
-.growth-filter-range.is-paused { border-color: var(--line); background: var(--surface); }
-.growth-filter-range legend { padding: 0 4px; color: var(--tea); font: 800 11px var(--font-b); }
-.growth-filter-range legend small { color: var(--ink-60); font-size: 10px; }
-.growth-filter-enable { display: inline-flex; width: fit-content; min-height: 30px; align-items: center; gap: 5px; color: var(--tea); font: 800 11px var(--font-b); cursor: pointer; }
-.growth-filter-enable input { width: 16px; height: 16px; accent-color: var(--accent); }
-.growth-filter-bounds { display: flex; align-items: center; gap: 5px; }
-.growth-filter-bounds label { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-60); font: 700 11px var(--font-b); }
-.growth-filter-bounds input { width: 63px; min-height: 34px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; background: var(--surface); color: var(--ink); font: 700 12px var(--font-d); }
-.growth-filter-range input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px; }
-.growth-awakened { display: inline-flex; min-height: 34px; align-items: center; gap: 5px; color: var(--tea); font: 800 11px var(--font-b); cursor: pointer; }
-.growth-awakened input { width: 16px; height: 16px; accent-color: var(--accent); }
-.growth-filter-note { margin: 5px 0 0; color: var(--ink-60); font: 700 10.5px var(--font-b); }
-.growth-filter-error { margin: 6px 0 0; color: var(--rouge); font: 700 11px var(--font-b); }
 .sr-only {
   position: absolute;
   width: 1px;
@@ -562,12 +430,5 @@ function statusCount(value) {
     touch-action: manipulation;
   }
   .pf-prof-row .mf-filter button img { display: none; }
-  .growth-filter-presets > span { flex-basis: 100%; }
-  .growth-filter-presets button { min-height: 44px; }
-  .growth-filter-fields { display: grid; grid-template-columns: 1fr; gap: 10px; }
-  .current-growth-filter summary { min-height: 44px; }
-  .growth-filter-enable { min-height: 44px; }
-  .growth-filter-bounds input { width: 58px; min-height: 44px; }
-  .growth-awakened { min-height: 44px; }
 }
 </style>

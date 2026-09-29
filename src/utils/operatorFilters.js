@@ -93,7 +93,8 @@ export function isOperatorOwned(entry) {
 
 export function operatorStarNumber(entry) {
   const level = Number(entry?.starLevel ?? entry?.star_level) || 0
-  if (level === OPERATOR_STAR_LEVEL_AWAKEN) return 5
+  // 筛选用第 6 档代表觉醒；卡片仍按游戏规则显示“觉醒”。
+  if (level === OPERATOR_STAR_LEVEL_AWAKEN) return 6
   if (entry?.spOf || entry?.sp_of) return level
   return level > 0 ? Math.floor((level - 1) / 6) + 1 : 0
 }
@@ -112,13 +113,13 @@ export function matchesOperatorGrowthFilters(entry, filters = {}) {
   if (!entry) return false
   if (filters.levelEnabled && !withinRange(entry.level, filters.levelMin, filters.levelMax)) return false
   if (filters.eliteEnabled && !withinRange(entry.elite, filters.eliteMin, filters.eliteMax)) return false
-  const awakened = !(entry.spOf || entry.sp_of) && Number(entry.starLevel ?? entry.star_level) === OPERATOR_STAR_LEVEL_AWAKEN
-  if (filters.onlyAwakened) return awakened
-  if (!filters.starEnabled) return true
-  const hasStarRange = (filters.starMin != null && filters.starMin !== '') ||
-    (filters.starMax != null && filters.starMax !== '')
-  if (awakened && hasStarRange) return false
-  return withinRange(operatorStarNumber(entry), filters.starMin, filters.starMax)
+  return !filters.starEnabled || withinRange(operatorStarNumber(entry), filters.starMin, filters.starMax)
+}
+
+export function hasActiveOperatorGrowthFilters(filters = {}) {
+  const f = filters || {}
+  return ['level', 'elite', 'star'].some(key => f[key + 'Enabled'] &&
+    [f[key + 'Min'], f[key + 'Max']].some(value => value !== '' && value != null))
 }
 
 // 属性 + 从属 AND 匹配；prof/subProf 传 'all' 或空值 = 该维度不过滤
@@ -166,6 +167,8 @@ export function matchesManifestFilters(entry, filters) {
   if (!matchesProfSubFilter(entry, f.profFilter, f.subProfFilter)) return false
   if (f.manifestFilter === 'owned' && !entry.owned) return false
   if (f.manifestFilter === 'missing' && entry.owned) return false
+  if (hasActiveOperatorGrowthFilters(f.growthFilters) &&
+    (!entry.owned || !matchesOperatorGrowthFilters(entry, f.growthFilters))) return false
   const query = String(f.search || '').trim().toLowerCase()
   if (query) {
     const hay = [entry.name, entry.alias, entry.id, entry.prof, entry.subProf].filter(Boolean).join(' ').toLowerCase()
@@ -181,6 +184,7 @@ export function hasActiveManifestFilters(filters) {
     (f.profFilter != null && f.profFilter !== 'all') ||
     (f.subProfFilter != null && f.subProfFilter !== 'all') ||
     (f.manifestFilter != null && f.manifestFilter !== 'all') ||
+    hasActiveOperatorGrowthFilters(f.growthFilters) ||
     String(f.search || '').trim()
   )
 }
