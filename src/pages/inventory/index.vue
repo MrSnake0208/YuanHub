@@ -663,11 +663,12 @@
                     </div>
                     <img
                       class="slot-img"
-                      :src="iconSrc(e)"
+                      v-batch-image="entityType === 'agent' ? iconSrc(e) : null"
+                      :src="entityType === 'agent' ? undefined : iconSrc(e)"
                       :alt="e.name || e.id"
                       width="96"
                       height="96"
-                      loading="lazy"
+                      :loading="entityType === 'agent' ? 'eager' : 'lazy'"
                       @load="onImgLoad"
                       @error="onImgError"
                     />
@@ -944,11 +945,11 @@
                           </div>
                           <img
                             class="slot-img"
-                            :src="iconSrc(e)"
+                            v-batch-image="iconSrc(e)"
                             :alt="e.name || e.id"
                             width="96"
                             height="96"
-                            loading="lazy"
+                            loading="eager"
                             @load="onImgLoad"
                             @error="onImgError"
                           />
@@ -1387,11 +1388,12 @@
                           </div>
                           <img
                             class="slot-img"
-                            :src="iconSrc(e)"
+                            v-batch-image="e.entity_type === 'agent' ? iconSrc(e) : null"
+                            :src="e.entity_type === 'agent' ? undefined : iconSrc(e)"
                             :alt="e.name || e.id"
                             width="96"
                             height="96"
-                            loading="lazy"
+                            :loading="e.entity_type === 'agent' ? 'eager' : 'lazy'"
                             @load="onImgLoad"
                             @error="onImgError"
                           />
@@ -1749,6 +1751,7 @@
 
 <script setup>
 import { usePersistedTab } from "../../utils/persistedTab.js";
+import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import {
