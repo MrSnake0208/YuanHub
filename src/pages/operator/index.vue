@@ -64,7 +64,7 @@
                 :aria-expanded="showArchive"
                 @click="toggleArchive"
               >
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起数据交换" : "数据交换" }}
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起导入/导出" : "导入/导出 JSON" }}
               </button>
             </template>
           </DataAccountContextBar>
@@ -162,10 +162,10 @@
                   <span class="section-kicker">数据交换</span>
                   <h2>导入或导出档案</h2>
                   <p>
-                    用于迁移或备份密探养成数据；导出包含客观档案、状态、备注、关注和养成目标。
+                    可导出当前或全部账号的密探 JSON 备份，包含客观档案、状态、备注、关注和养成目标。
                   </p>
                 </div>
-                <span class="archive-format">JSON · v2 / v3</span>
+                <span class="archive-format">JSON · v3 导出</span>
               </div>
               <div class="archive-actions">
                 <button
@@ -948,6 +948,10 @@
               :status-filter="workbenchStatusFilter"
               :prof-icon="profIcon"
               :has-filters="hasCurrentFilters"
+              v-model:growth-filters="growthFilters"
+              :growth-filter-active="hasGrowthFilters"
+              :growth-filter-configured="hasGrowthDrafts"
+              show-growth-filters
               description="筛选后按状态、品质、等级、化极、属性与实装顺序排列"
               @update:status-filter="setWorkbenchStatusFilter"
               @reset="resetCurrentFilters"
@@ -989,8 +993,8 @@
                   class="batch-status-bar"
                   aria-label="批量设置养成状态"
                 >
-                <div class="batch-quick-filters" aria-label="快捷筛选">
-                  <span class="batch-quick-title">快捷筛选</span>
+                <div class="batch-quick-filters" aria-label="批量快捷选中">
+                  <span class="batch-quick-title">批量快捷选中</span>
                   <button
                     v-for="filter in BATCH_QUICK_FILTERS"
                     :key="filter.key"
@@ -1097,23 +1101,7 @@
             </div>
             <div v-else class="current-ledger" v-reveal>
               <div class="current-ledger-meta">
-                <span
-                  >版本「{{ gameFilter }}」<template v-if="rarityFilter !== 'all'">
-                    · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
-                  ><template
-                    v-if="profFilter !== 'all'"
-                  >
-                    · 属性「{{ profFilter }}」</template
-                  ><template v-if="subProfFilter !== 'all'">
-                    · 职业「{{ subProfFilter }}」</template
-                  ><template v-if="workbenchStatusFilter !== 'all'">
-                    · 状态「{{ statusLabel(workbenchStatusFilter) }}」</template
-                  ><template v-if="upgradeReadyFilter === 'growth'">
-                    · 仅看「等级/修为可提升」</template
-                  ><template v-else-if="upgradeReadyFilter === 'huaji'">
-                    · 仅看「可提升化极」</template
-                  ></span
-                >
+                <span>{{ currentFilterSuffix }}</span>
                 <span>{{
                   ledgerCardIsV2
                     ? "快捷提升会真实扣除库存；卡片编辑与完整编辑不扣库存"
@@ -3096,7 +3084,9 @@ import {
   hasActiveManifestFilters,
   isOperatorOwned,
   matchesManifestFilters,
+  matchesOperatorGrowthFilters,
   matchesProfSubFilter,
+  operatorStarNumber,
   subProfList,
   subProfOptions as deriveSubProfOptions,
 } from "../../utils/operatorFilters.js";
@@ -3180,6 +3170,13 @@ const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
 const workbenchStatusFilter = ref("all");
+const emptyGrowthFilters = () => ({
+  levelMin: "", levelMax: "", levelEnabled: false,
+  eliteMin: "", eliteMax: "", eliteEnabled: false,
+  starMin: "", starMax: "", starEnabled: false,
+  onlyAwakened: false,
+});
+const growthFilters = ref(emptyGrowthFilters());
 const upgradeReadyFilter = ref("");
 const favoriteFirst = ref(false);
 const rarityOptions = OPERATOR_RARITY_OPTIONS;
@@ -4601,6 +4598,7 @@ function matchesCurrentFilters(entry) {
     matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
     (workbenchStatusFilter.value === "all" ||
       operatorStatus(entry) === workbenchStatusFilter.value) &&
+    matchesOperatorGrowthFilters(entry, growthFilters.value) &&
     (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(entry.id))
   );
 }
@@ -4672,6 +4670,14 @@ const currentFilterSuffix = computed(function () {
     parts.push("职业「" + subProfFilter.value + "」");
   if (workbenchStatusFilter.value !== "all")
     parts.push("状态「" + statusLabel(workbenchStatusFilter.value) + "」");
+  for (const [key, label] of [["level", "等级"], ["elite", "修为"], ["star", "星数"]]) {
+    const min = growthFilters.value[key + "Min"];
+    const max = growthFilters.value[key + "Max"];
+    if (growthFilters.value[key + "Enabled"] && !(key === "star" && growthFilters.value.onlyAwakened) && (min !== "" || max !== "")) {
+      parts.push(label + "「" + (min === "" ? "不限" : min) + "–" + (max === "" ? "不限" : max) + "」");
+    }
+  }
+  if (growthFilters.value.onlyAwakened) parts.push("仅看觉醒");
   if (upgradeReadyFilter.value === "growth") parts.push("「等级/修为可提升」");
   if (upgradeReadyFilter.value === "huaji") parts.push("「可提升化极」");
   const quickLabels = Array.from(activeQuickFilterKeys.value)
@@ -4686,12 +4692,25 @@ const currentFilterSuffix = computed(function () {
   return parts.length ? parts.join(" · ") : "当前条件";
 });
 
+const hasGrowthFilters = computed(function () {
+  if (growthFilters.value.onlyAwakened) return true;
+  return ["level", "elite", "star"].some(function (key) {
+    return growthFilters.value[key + "Enabled"] &&
+      (growthFilters.value[key + "Min"] !== "" || growthFilters.value[key + "Max"] !== "");
+  });
+});
+
+const hasGrowthDrafts = computed(function () {
+  return Object.values(growthFilters.value).some(Boolean);
+});
+
 const hasCurrentFilters = computed(function () {
   return (
     rarityFilter.value !== "all" ||
     profFilter.value !== "all" ||
     subProfFilter.value !== "all" ||
     workbenchStatusFilter.value !== "all" ||
+    hasGrowthDrafts.value ||
     Boolean(upgradeReadyFilter.value) ||
     activeQuickFilterKeys.value.size > 0
   );
@@ -4702,6 +4721,7 @@ function resetCurrentFilters() {
   profFilter.value = "all";
   subProfFilter.value = "all";
   workbenchStatusFilter.value = "all";
+  growthFilters.value = emptyGrowthFilters();
   upgradeReadyFilter.value = "";
   activeQuickFilterKeys.value = new Set();
   batchSelectionBase.value = new Set();
@@ -6200,13 +6220,6 @@ function setOperatorStatusAndClose(entry, value, event) {
       ? event.currentTarget.closest("details")
       : null;
   if (details) details.open = false;
-}
-
-function operatorStarNumber(entry) {
-  const n = Number(entry && entry.starLevel) || 0;
-  if (n === STAR_LEVEL_AWAKEN) return 5;
-  if (entry && entry.spOf) return n;
-  return Math.floor((n - 1) / 6) + 1;
 }
 
 function batchQuickSelect(key) {
@@ -10456,56 +10469,69 @@ onBeforeUnmount(function () {
   gap: 8px;
   padding: 10px 14px;
   border-top: 1px dashed var(--line);
-  background: rgba(255, 255, 255, 0.55);
+  background: color-mix(in srgb, var(--cream) 65%, var(--surface));
 }
 .batch-quick-filters {
   display: flex;
   min-width: 100%;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  padding-bottom: 2px;
+  gap: 8px;
+  padding-bottom: 4px;
 }
 .batch-quick-title {
-  flex: none;
-  color: var(--ink-35);
-  font-size: 9.5px;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding-right: 4px;
+  color: var(--tea);
+  font-size: 11px;
   font-weight: 800;
 }
 .batch-quick-filters button {
   display: inline-flex;
-  min-height: 30px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 4px 9px;
+  gap: 8px;
+  padding: 5px 8px 5px 13px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 999px;
   background: var(--surface);
-  color: var(--ink-60);
-  font: 800 10px var(--font-b);
+  color: var(--tea);
+  font: 800 11.5px var(--font-b);
   cursor: pointer;
+  white-space: nowrap;
   transition:
     border-color 0.2s var(--ease),
     background 0.2s var(--ease),
     color 0.2s var(--ease);
 }
 .batch-quick-filters button small {
-  color: var(--ink-35);
-  font: 800 9px var(--font-d);
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 22px;
+  box-sizing: border-box;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 5px;
+  background: var(--cream);
+  color: var(--ink-60);
+  font: 800 10px var(--font-d);
 }
 .batch-quick-filters button:hover:not(:disabled) {
   border-color: var(--accent);
+  background: var(--cream);
   color: var(--accent-strong);
 }
 .batch-quick-filters button.on {
-  border-color: rgb(246, 237, 208);
-  background: rgb(246, 237, 208);
-  color: var(--tea);
+  border-color: var(--tea);
+  background: var(--tea);
+  color: var(--cream);
 }
 .batch-quick-filters button.on small {
-  color: currentColor;
-  opacity: 0.72;
+  background: rgba(255, 248, 236, 0.18);
+  color: var(--cream);
 }
 .batch-quick-filters button:disabled {
   opacity: 0.5;
@@ -14114,12 +14140,15 @@ onBeforeUnmount(function () {
     padding: 8px 9px;
   }
   .batch-quick-filters {
-    gap: 4px;
+    gap: 8px;
+  }
+  .batch-quick-title {
+    min-height: auto;
+    flex-basis: 100%;
+    padding-right: 0;
   }
   .batch-quick-filters button {
-    flex: 1;
-    min-width: 0;
-    padding-inline: 4px;
+    min-height: 44px;
   }
   .batch-status-actions {
     margin-left: 0;
@@ -15101,7 +15130,7 @@ onBeforeUnmount(function () {
 .batch-select-all,.batch-status-action,.batch-clear,
 .ledger-status-button,.ledger-status-options button,.ledger-breakthrough-toggle,
 .ledger-card-actions button,.ledger-submit-actions button,.editor-conflict-btn { min-height:44px; }
-.current-favorite-sort,.current-filter-reset,.batch-quick-filters button { min-height:32px; }
+.current-favorite-sort,.current-filter-reset { min-height:32px; }
 .current-batch-toggle { min-width:44px; }
 .node-chip,.stone-lv-chip { min-width:44px;height:44px; }
 </style>

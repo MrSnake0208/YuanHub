@@ -12,7 +12,9 @@ import {
   matchesProfSubFilter,
   subProfOptions,
   operatorPinyinTokens,
-  matchesOperatorSearch
+  matchesOperatorSearch,
+  matchesOperatorGrowthFilters,
+  operatorStarNumber
 } from '../src/utils/operatorFilters.js'
 
 const operatorPage = readFileSync(
@@ -26,6 +28,31 @@ test('图鉴拥有状态只由 starLevel 决定', function () {
   assert.equal(isOperatorOwned({ level: 0, elite: 0, starLevel: 1 }), true)
   assert.equal(isOperatorOwned({ level: 100 }), false)
   assert.equal(isOperatorOwned(null), false)
+})
+
+test('当前养成范围筛选按显示星数比较并单独处理觉醒', function () {
+  const ordinary = { level: 80, elite: 12, starLevel: 19 }
+  const sp = { level: 80, elite: 12, star_level: 4, sp_of: 'char_base' }
+  const awakened = { level: 80, elite: 12, starLevel: 31 }
+  assert.equal(operatorStarNumber(ordinary), 4)
+  assert.equal(operatorStarNumber(sp), 4)
+  assert.equal(operatorStarNumber(awakened), 5)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '80', levelEnabled: true, eliteMax: '12', eliteEnabled: true, starMin: '4', starMax: '4', starEnabled: true }), true)
+  assert.equal(matchesOperatorGrowthFilters(sp, { starMin: '4', starMax: '4', starEnabled: true }), true)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '81' }), true)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '81', levelEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { eliteMax: '11', eliteEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { starMax: '3', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { starMin: '5', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: false }), true)
+  assert.equal(matchesOperatorGrowthFilters(awakened, {}), true)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5' }), true)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { onlyAwakened: true }), true)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { onlyAwakened: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { onlyAwakened: true, starMin: '2', starEnabled: true }), true)
+  assert.equal(matchesOperatorGrowthFilters(awakened, { onlyAwakened: true, levelMin: '81', levelEnabled: true }), false)
 })
 
 test('subProfList 兼容字符串 / 数组 / snake_case', function () {

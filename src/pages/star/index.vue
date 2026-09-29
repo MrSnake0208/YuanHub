@@ -72,13 +72,13 @@
                 :aria-expanded="showArchive"
                 @click="showArchive = !showArchive"
               >
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起数据交换" : "数据交换" }}
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起导入/导出" : "导入/导出 JSON" }}
               </button>
             </template>
           </DataAccountContextBar>
           <ArchiveExchangePanel
             v-if="showArchive"
-            :description="'用于替换当前账号的星石背包、养成计划和经验星曜。'"
+            description="可导出当前账号的星石背包、养成计划和经验星曜 JSON；导入会替换这些数据。备份不含密探佩戴关系和 OCR 证据。"
             :import-open="showStarImport"
             :import-disabled="!productReady || starExchangeBusy"
             :export-disabled="!productReady || !selectedHostAccount() || starExchangeBusy"
