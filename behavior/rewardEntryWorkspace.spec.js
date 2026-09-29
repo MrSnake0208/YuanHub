@@ -69,6 +69,37 @@ beforeEach(() => {
 })
 
 describe('奖励补录工作台弹层', () => {
+  it('已选图标可原位减少，普通道具步进 1、白金币步进 10，减至零后移除', async () => {
+    const wrapper = mountWorkspace()
+    await button(wrapper, '添加奖励流水').trigger('click')
+    await flushPromises()
+
+    const tile = name => document.body.querySelector(`.reward-tile[aria-label^="添加${name}，"]`)
+    const minus = name => document.body.querySelector(`.tile-minus[aria-label^="减少${name}，"]`)
+
+    await clickElement(tile('鸡汁'))
+    expect(tile('鸡汁').getAttribute('aria-label')).toContain('当前已选 1')
+    await clickElement(tile('鸡汁'))
+    expect(tile('鸡汁').getAttribute('aria-label')).toContain('当前已选 2')
+    await clickElement(minus('鸡汁'))
+    expect(tile('鸡汁').getAttribute('aria-label')).toContain('当前已选 1')
+    minus('鸡汁').focus()
+    await clickElement(minus('鸡汁'))
+    expect(minus('鸡汁')).toBeNull()
+    expect(tile('鸡汁').getAttribute('aria-label')).toContain('当前已选 0')
+    expect(document.activeElement).toBe(tile('鸡汁'))
+
+    await clickElement(tile('白金币'))
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
+    await clickElement(tile('白金币'))
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 20')
+    await clickElement(minus('白金币'))
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 10')
+    await clickElement(minus('白金币'))
+    expect(minus('白金币')).toBeNull()
+    expect(tile('白金币').getAttribute('aria-label')).toContain('当前已选 0')
+  })
+
   it('如鸢账号只提供所属游戏的密探心纸，切换游戏后重新筛选', async () => {
     rewardCatalogApi.getRewardCatalog.mockResolvedValue([
       catalog[0],
