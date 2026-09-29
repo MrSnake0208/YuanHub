@@ -94,6 +94,14 @@ export function visibleInventoryItems(entries) {
   return entries.filter(function (entry) { return !hiddenIds.has(entry.id) })
 }
 
+export function resourceEquivalents(counts) {
+  return {
+    fuchuanPity: (counts.fuchuan || 0) / 40,
+    tianjiPity: (counts.tianjifuchuan || 0) / 40,
+    zhuyuWhiteCoin: (counts.zhuyu || 0) * 50
+  }
+}
+
 export function sortStockEditItems(entries) {
   const leadingPosition = new Map(STOCK_EDIT_LEADING_IDS.map(function (id, index) { return [id, index] }))
   return sortItemsByGameOrder(entries).sort(function (a, b) {

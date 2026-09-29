@@ -1,7 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
-import { GAME_BAG_ITEM_IDS, buildItemCategorySections, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../src/data/inventory/itemSections.js'
+import { GAME_BAG_ITEM_IDS, buildItemCategorySections, resourceEquivalents, sortItemsByGameOrder, sortStockEditItems, visibleInventoryItems } from '../src/data/inventory/itemSections.js'
+
+test('抽卡保底分别按两种符传计算，茱萸换算白金币', function () {
+  assert.deepEqual(resourceEquivalents({ fuchuan: 40, tianjifuchuan: 39, zhuyu: 3 }), {
+    fuchuanPity: 1,
+    tianjiPity: 0.975,
+    zhuyuWhiteCoin: 150
+  })
+  assert.deepEqual(resourceEquivalents({}), { fuchuanPity: 0, tianjiPity: 0, zhuyuWhiteCoin: 0 })
+})
 
 const GAME_BAG_ORDER = [
   '装金玻璃', '六韬兵书', '兵书全卷', '兵书残卷', '府君海棠', '蟠龙鼓', '银纹刀', '玉龟盾', '犀角弓',
