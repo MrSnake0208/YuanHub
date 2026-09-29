@@ -827,6 +827,22 @@
                             <Pencil :size="14" aria-hidden="true" />
                             <span class="subsection-edit-label">编辑</span>
                           </button>
+                          <div v-if="subcategory.id === 'draw-resources'" class="resource-summary">
+                            <p class="resource-equivalent is-fuchuan">
+                              <span>符传</span>
+                              <strong>约<b>{{ fmtCount(resourceSummary.fuchuanPity) }}</b>个保底</strong>
+                            </p>
+                            <p class="resource-equivalent is-tianji">
+                              <span>天机符传</span>
+                              <strong>约<b>{{ fmtCount(resourceSummary.tianjiPity) }}</b>个保底</strong>
+                            </p>
+                          </div>
+                          <div v-else-if="subcategory.id === 'bird-food-pack'" class="resource-summary">
+                            <p class="resource-equivalent is-zhuyu">
+                              <span>茱萸折合</span>
+                              <strong><b>{{ fmtCount(resourceSummary.zhuyuWhiteCoin) }}</b>白金币</strong>
+                            </p>
+                          </div>
                         </div>
                         <div
                           v-if="subcategory.subgroups"
@@ -1833,6 +1849,7 @@ import {
 import {
   FRONTEND_HIDDEN_ITEM_IDS,
   buildItemCategorySections,
+  resourceEquivalents,
   sortItemsByGameOrder,
   sortStockEditItems,
   visibleInventoryItems,
@@ -2505,6 +2522,9 @@ const currentMap = computed(function () {
     m[e.id] = Number(e.count) || 0;
   });
   return m;
+});
+const resourceSummary = computed(function () {
+  return resourceEquivalents(currentMap.value);
 });
 const manifestBaseEntries = computed(function () {
   const stock = currentMap.value;
@@ -5975,7 +5995,7 @@ onBeforeUnmount(function () {
   content: "";
   position: absolute;
   left: 0;
-  top: 50%;
+  top: min(50%, 22px);
   width: 3px;
   height: 20px;
   border-radius: 2px;
@@ -5995,6 +6015,55 @@ onBeforeUnmount(function () {
   font-family: var(--font-d);
   font-size: 10.5px;
   font-weight: 800;
+}
+.subsection-head:has(.resource-summary) {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.subsection-head:has(.resource-summary) .subsection-edit {
+  gap: 2px;
+  padding-inline: 4px;
+}
+.resource-summary {
+  flex-basis: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.resource-equivalent {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 0;
+  padding: 2px 3px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--resource-color, var(--tea));
+  border-radius: 5px;
+  background: var(--cream);
+}
+.resource-equivalent.is-tianji,
+.resource-equivalent.is-zhuyu {
+  --resource-color: var(--accent-strong);
+}
+.resource-equivalent span {
+  color: var(--ink-60);
+  font-family: var(--font-b);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.resource-equivalent strong {
+  color: var(--ink);
+  font-family: var(--font-b);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.resource-equivalent b {
+  margin: 0 1px;
+  color: var(--resource-color, var(--tea));
+  font-family: var(--font-d);
+  font-size: 12px;
 }
 .subsection-edit {
   position: relative;
@@ -6794,7 +6863,7 @@ onBeforeUnmount(function () {
   font-size: 10px;
 }
 .manifest-items .subsection-shelves .item-subsection {
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 180px minmax(0, 1fr);
   column-gap: 12px;
 }
 .manifest-items .subsection-shelves .item-subsection > .slot-grid {
@@ -7528,6 +7597,13 @@ onBeforeUnmount(function () {
   .manifest-items .subsection-shelves .item-subsection {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 7px;
+  }
+  .manifest-items .subsection-head:has(.resource-summary) {
+    flex-wrap: nowrap;
+  }
+  .manifest-items .resource-summary {
+    flex: 0 1 124px;
+    margin-left: auto;
   }
   .manifest-items
     .item-subsection.is-divination-stone
