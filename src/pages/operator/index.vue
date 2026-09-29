@@ -3063,6 +3063,7 @@ import {
 } from "../../api/operator.js";
 import { avatarUrl } from "../../api/request.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
+import { reconcileOperatorAnnotations } from "../../utils/operatorAnnotations.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
@@ -4952,9 +4953,18 @@ async function loadOperatorAnnotations() {
       remarks[id] = item.note == null ? "" : String(item.note);
       revisions[id] = annotationRevision(item);
     });
-    workbenchStatuses.value = statuses;
-    workbenchRemarks.value = remarks;
-    annotationRevisions.value = revisions;
+    const merged = reconcileOperatorAnnotations(
+      { statuses, remarks, revisions },
+      {
+        statuses: workbenchStatuses.value,
+        remarks: workbenchRemarks.value,
+        revisions: annotationRevisions.value,
+      },
+      annotationBusyIds.value,
+    );
+    workbenchStatuses.value = merged.statuses;
+    workbenchRemarks.value = merged.remarks;
+    annotationRevisions.value = merged.revisions;
     await migrateLocalAnnotations(targetAccount, remoteIds);
     if (seq !== annotationLoadSeq || accountId.value !== targetAccount) return;
     persistWorkbenchMap("statuses", workbenchStatuses.value);
@@ -4971,6 +4981,7 @@ async function saveOperatorAnnotation(entry, fields) {
   const id = entry.id;
   annotationBusyIds.value = new Set(annotationBusyIds.value).add(id);
   annotationError.value = "";
+  let revisionConflict = false;
   try {
     const body = Object.assign({}, fields, {
       expected_revision: Number(annotationRevisions.value[id]) || 0,
@@ -4988,8 +4999,7 @@ async function saveOperatorAnnotation(entry, fields) {
   } catch (err) {
     if (accountId.value === targetAccount) {
       annotationError.value = humanErr(err, "养成标注保存失败");
-      if (err && err.code === "annotation_revision_conflict")
-        await loadOperatorAnnotations();
+      revisionConflict = err && err.code === "annotation_revision_conflict";
     }
     throw err;
   } finally {
@@ -4997,6 +5007,7 @@ async function saveOperatorAnnotation(entry, fields) {
       const next = new Set(annotationBusyIds.value);
       next.delete(id);
       annotationBusyIds.value = next;
+      if (revisionConflict) await loadOperatorAnnotations();
     }
   }
 }
