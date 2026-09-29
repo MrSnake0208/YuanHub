@@ -345,6 +345,16 @@
   :is(.agent-ledger-card--editable, .agent-ledger-card--share).agent-ledger-card--v3 .ledger-huaji-value svg { width: 10px; height: 10px; }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-node-label { display: none; }
   .agent-ledger-card--editable.agent-ledger-card--v3 :is(.ledger-step-actions, .ledger-step-actions button, .ledger-smart-action, .ledger-next-action) { width: 24px; min-width: 24px; height: 26px; min-height: 26px; }
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-next-action.is-ready {
+    border-color: #6f9f76;
+    background: #e8f4e9;
+    color: #315f38;
+  }
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-upgrade-label {
+    writing-mode: vertical-rl;
+    font-size: 11px;
+    line-height: 1;
+  }
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-action-ratio { font-size: 8px; letter-spacing: -.04em; }
   /* Include the growth panel's padding and border in the editor's full width. */
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-growth-row:nth-child(n) > .ledger-popover { left: -7px; right: auto; width: calc(200% + var(--ledger-stats-gap) + 28px); max-width: none; transform: none; }
@@ -841,6 +851,10 @@
 
   .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-step-actions {
     padding: 0;
+  }
+
+  .agent-ledger-card--editable.agent-ledger-card--v3 .ledger-upgrade-label {
+    writing-mode: horizontal-tb;
   }
 
   .agent-ledger-card--editable.agent-ledger-card--v3

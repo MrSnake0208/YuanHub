@@ -894,8 +894,9 @@
                   >
                   <strong v-else>当前没有密探可提升化极</strong>
                   <small v-if="huajiReadyCount > 0"
-                    ><template v-if="favoriteHuajiNames.length"
-                      ><b
+                    >点击卡片「化极」右侧的「提升」，确认后扣除库存；手动编辑不扣库存。<template
+                      v-if="favoriteHuajiNames.length"
+                      ><br /><b
                         >包括特别关注对象：{{
                           favoriteHuajiNames.join("、")
                         }}</b
@@ -1909,10 +1910,8 @@
                             class="ledger-action-ratio"
                             aria-hidden="true"
                             >{{ growthActionLabel(e, "star", 1, "下一节点") }}</span
-                          /><ChevronUp
-                            v-else
-                            :size="15"
-                            aria-hidden="true"
+                          /><span v-else class="ledger-upgrade-label" aria-hidden="true"
+                            >提升</span
                           /><span class="sr-only">{{
                             cardGrowthValue(e, "star") >= 31
                               ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
