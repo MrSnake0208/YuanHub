@@ -121,6 +121,51 @@ describe('奖励补录工作台弹层', () => {
     expect(document.body.querySelector('[aria-label^="添加代号鸢密探"]')).not.toBeNull()
   })
 
+  it('密探心纸可按属性、品质和姓名组合筛选，切换渠道后重置属性', async () => {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([
+      { entity_type: 'agent', id: 'char_fire_gold', name: '火系金卡', rarity: 5, prof: ['火'] },
+      { entity_type: 'agent', id: 'char_fire_purple', name: '火系紫卡', rarity: 4, prof: ['火'] },
+      { entity_type: 'agent', id: 'char_water_gold', name: '水系金卡', rarity: 5, prof: ['水'] },
+    ])
+    const wrapper = mountWorkspace()
+    await button(wrapper, '添加奖励流水').trigger('click')
+    await flushPromises()
+    await clickElement(bodyButton('据点情报'))
+
+    const prof = document.body.querySelector('.prof-filter select')
+    expect(prof?.value).toBe('')
+    prof.value = '火'
+    prof.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    expect(document.body.querySelectorAll('.reward-tile')).toHaveLength(2)
+
+    await clickElement(Array.from(document.body.querySelectorAll('.rarity-options button')).find(node => node.textContent === '金'))
+    expect(document.body.querySelectorAll('.reward-tile')).toHaveLength(1)
+    expect(document.body.querySelector('[aria-label^="添加火系金卡"]')).not.toBeNull()
+
+    const search = document.body.querySelector('input[aria-label="搜索密探姓名"]')
+    search.value = '水系'
+    search.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    expect(document.body.querySelectorAll('.reward-tile')).toHaveLength(0)
+    search.value = '火系'
+    search.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    expect(document.body.querySelectorAll('.reward-tile')).toHaveLength(1)
+
+    await clickElement(document.body.querySelector('[aria-label^="添加火系金卡"]'))
+    search.value = ''
+    search.dispatchEvent(new Event('input', { bubbles: true }))
+    prof.value = '水'
+    prof.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    expect(document.body.querySelector('[aria-label^="添加水系金卡"]')).not.toBeNull()
+    expect(document.body.querySelector('.basket-list')?.textContent).toContain('火系金卡')
+
+    await clickElement(bodyButton('其他奖励'))
+    expect(document.body.querySelector('.prof-filter select')?.value).toBe('')
+  })
+
   it.each([
     ['添加奖励流水', '添加奖励流水'],
     ['导入本地报告', '导入本地报告'],
