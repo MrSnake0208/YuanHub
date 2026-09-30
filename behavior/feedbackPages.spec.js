@@ -173,8 +173,8 @@ it('接单后保留待接单队列和已接详情，关闭后可继续选择下�
   wrapper.unmount()
 })
 
-it('连续接单保持搜索、类型、板块筛选与有效页码', async () => {
-  const unassigned = Array.from({ length: 44 }, (_, index) => summary(`rpt_${index}`))
+it.each([20, 30, 50])('每页 %i 条时连续接单保持筛选、数量与有效页码', async pageSize => {
+  const unassigned = Array.from({ length: pageSize * 2 + 4 }, (_, index) => summary(`rpt_${index}`))
   api.listWorkflowFeedback.mockImplementation(async ({ page, pageSize }) => ({
     items: unassigned.slice((page - 1) * pageSize, page * pageSize), total: unassigned.length
   }))
@@ -188,20 +188,52 @@ it('连续接单保持搜索、类型、板块筛选与有效页码', async () =
   await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
   await wrapper.findAll('.feedback-filter select')[0].setValue('BUG'); await flushPromises()
   await wrapper.findAll('.feedback-filter select')[1].setValue('STAR'); await flushPromises()
+  await wrapper.get('[aria-label="每页显示数量"]').setValue(String(pageSize)); await flushPromises()
   await wrapper.get('[aria-label="下一页"]').trigger('click'); await flushPromises()
-  for (const id of ['rpt_20', 'rpt_21']) {
+  const ids = [`rpt_${pageSize}`, `rpt_${pageSize + 1}`]
+  for (const id of ids) {
     await choose(wrapper, id)
     await wrapper.findAll('button').find(button => button.text() === '接单').trigger('click'); await flushPromises()
     expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({
-      queue: 'UNASSIGNED', page: 2, q: '待处理', type: 'BUG', workArea: 'STAR'
+      queue: 'UNASSIGNED', page: 2, pageSize, q: '待处理', type: 'BUG', workArea: 'STAR'
     }))
     expect(wrapper.get('.ticket-detail-meta').text()).toContain('处理中')
     expect(wrapper.get('.ticket-detail-meta').text()).toContain('测试运营')
     expect(wrapper.findAll('.feedback-action-toolbar button').some(button => button.text() === '接单')).toBe(false)
     await close(wrapper)
   }
-  expect(api.claimFeedback.mock.calls).toEqual([['rpt_20'], ['rpt_21']])
-  expect(wrapper.get('.feedback-result-meta').text()).toContain('当前筛选共 42 条')
+  expect(api.claimFeedback.mock.calls).toEqual(ids.map(id => [id]))
+  expect(wrapper.get('.feedback-result-meta').text()).toContain(`当前筛选共 ${pageSize * 2 + 2} 条`)
+  expect(wrapper.get('[aria-label="每页显示数量"]').element.value).toBe(String(pageSize))
+  wrapper.unmount()
+})
+
+it.each([30, 50])('切换到每页 %i 条重置页码，保留筛选并更新分页区间', async pageSize => {
+  const items = Array.from({ length: 105 }, (_, index) => summary(`rpt_${index}`))
+  api.listWorkflowFeedback.mockImplementation(async ({ page, pageSize }) => ({
+    items: items.slice((page - 1) * pageSize, page * pageSize), total: items.length
+  }))
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  const selector = wrapper.get('[aria-label="每页显示数量"]')
+  expect(selector.element.value).toBe('20')
+  expect(selector.findAll('option').map(option => option.element.value)).toEqual(['20', '30', '50'])
+  await wrapper.get('input[name="managed-feedback-search"]').setValue('待处理')
+  await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
+  await wrapper.findAll('.feedback-filter select')[0].setValue('BUG'); await flushPromises()
+  await wrapper.findAll('.feedback-filter select')[1].setValue('STAR'); await flushPromises()
+  await wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '我负责').trigger('click'); await flushPromises()
+  await wrapper.get('[aria-label="下一页"]').trigger('click'); await flushPromises()
+  await selector.setValue(String(pageSize)); await flushPromises()
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({
+    queue: 'MINE', page: 1, pageSize, q: '待处理', type: 'BUG', workArea: 'STAR'
+  }))
+  const pages = Math.ceil(105 / pageSize)
+  expect(wrapper.get('.feedback-result-meta').text()).toContain(`第 1 / ${pages} 页`)
+  expect(wrapper.get('.ticket-pagination').text()).toContain(`1-${pageSize} / 共 105 条`)
+  expect(wrapper.findAll('tbody tr')).toHaveLength(pageSize)
+  await wrapper.get('[aria-label="下一页"]').trigger('click'); await flushPromises()
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, pageSize }))
+  expect(wrapper.get('.ticket-pagination').text()).toContain(`${pageSize + 1}-${pageSize * 2} / 共 105 条`)
   wrapper.unmount()
 })
 
