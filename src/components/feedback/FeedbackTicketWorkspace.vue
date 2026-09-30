@@ -8,6 +8,7 @@
     <div v-else-if="!items.length" class="ticket-state empty">
       <Inbox :size="24" aria-hidden="true" />
       <strong>{{ emptyMessage }}</strong>
+      <slot name="empty" />
     </div>
     <div v-else class="ticket-table-wrap">
       <table class="ticket-table">
@@ -35,8 +36,9 @@
             <td data-label="类型"><span class="ticket-type">{{ typeLabel(item.type) }}</span></td>
             <td data-label="反馈板块"><span class="ticket-category">{{ categoryLabel(item.category) }}</span></td>
             <td class="ticket-summary-cell" data-label="反馈内容">
-              <strong>{{ truncate(item.content, 72) }}</strong>
-              <code>{{ item.id }}</code>
+              <strong>{{ item.title || truncate(item.content, 72) }}</strong>
+              <code v-if="workflow || showReporter">{{ item.id }}</code>
+              <details v-else @click.stop @keydown.stop><summary>工单编号</summary><code>{{ item.id }}</code></details>
               <div v-if="workflow" class="ticket-workflow-tags">
                 <span class="ticket-status" :class="['status-' + item.status, 'stage-' + item.workflowStage]">{{ statusLabel(item.status, item.hasAdminReply, item) }}</span>
                 <span class="ticket-category">负责板块 · {{ categoryLabel(item.workArea) }}</span>
@@ -213,6 +215,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-table tbody tr.selected { background: var(--feedback-panel-hover); box-shadow: inset 3px 0 var(--yellow-deep); }
 .ticket-summary-cell strong { display: block; overflow: hidden; color: var(--feedback-text); font-size: 13px; font-weight: 700; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
 .ticket-summary-cell code { display: block; margin-top: 5px; overflow: hidden; color: var(--feedback-text-dim); font: 10px var(--font-d); text-overflow: ellipsis; white-space: nowrap; }
+.ticket-summary-cell summary { width: fit-content; padding-block: 8px; color: var(--feedback-text-muted); font-size: 11px; cursor: pointer; }
 .ticket-unread-marker { display: inline-flex; align-items: center; min-height: 22px; margin-top: 7px; padding: 2px 7px; border: 1px solid var(--rouge); border-radius: 5px; color: var(--rouge); font-size: 10px; font-weight: 800; line-height: 1.2; }
 .ticket-workflow-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 .ticket-operator { display: inline-flex; max-width: 145px; overflow: hidden; align-items: center; padding: 2px 7px; border: 1px solid var(--feedback-line-strong); border-radius: 5px; color: var(--feedback-text-muted); font-size: 10.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
