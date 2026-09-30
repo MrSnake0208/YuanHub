@@ -36,12 +36,14 @@
         </label>
         <label>
           <span>反馈类型</span>
+          <small>同时更新内部工单类型与广场分类。</small>
           <select v-model="form.type" class="feedback-form-control" :disabled="!canPublish">
             <option v-for="option in typeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
           </select>
         </label>
         <label>
           <span>公开状态</span>
+          <small>独立于工单结案状态，不会自动同步。</small>
           <select v-model="form.publicStatus" class="feedback-form-control" :disabled="!canPublish">
             <option v-for="option in statusOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
           </select>

@@ -46,7 +46,7 @@
                 type="text"
                 :placeholder="state.placeholder"
                 :aria-label="state.inputLabel || state.placeholder || '请输入内容'"
-                maxlength="64"
+                :maxlength="state.maxLength"
                 autocomplete="off"
                 autocapitalize="off"
                 spellcheck="false"

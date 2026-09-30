@@ -1,7 +1,7 @@
 import { nextTick, onScopeDispose, watch } from 'vue'
 
 const stack = []
-const focusSelector = 'a[href], button, input, select, textarea, [tabindex]'
+const focusSelector = 'a[href], button, input, select, textarea, summary, [tabindex]'
 
 function isVisible(element) {
   if (!element?.isConnected || element.matches(':disabled, [hidden], [inert], [aria-hidden="true"], [aria-disabled="true"]')) return false
