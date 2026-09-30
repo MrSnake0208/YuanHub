@@ -195,6 +195,7 @@
         ><span class="no">04</span>广陵账房</router-link
       >
       <div class="nav-separator" aria-hidden="true"></div>
+      <div class="nav-lb">消息与社区</div>
       <template v-if="isLoggedIn">
         <router-link
           to="/notifications"
@@ -214,16 +215,6 @@
             feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
           }}</span>
         </router-link>
-        <button
-          v-if="showBetaCommunityEntry"
-          type="button"
-          class="nav-community"
-          @click="openBetaCommunity"
-        >
-          <span>内测交流群</span>
-          <UsersRound :size="16" aria-hidden="true" />
-        </button>
-        <div class="nav-separator" aria-hidden="true"></div>
       </template>
 
       <router-link
@@ -236,6 +227,10 @@
         :class="{ active: $route.path.startsWith('/co-creation') }"
         >大饼中心</router-link
       >
+      <button v-if="showBetaCommunityEntry" type="button" class="nav-community" @click="openBetaCommunity">
+        <span>内测交流群</span><UsersRound :size="16" aria-hidden="true" />
+      </button>
+      <div class="nav-lb">YuanHub</div>
       <router-link
         to="/user/profile"
         :class="{ active: $route.path === '/user/profile' }"
