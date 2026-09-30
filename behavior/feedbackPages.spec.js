@@ -440,14 +440,14 @@ it.each([
 it('插入当前版本遵守回复字数上限，选中替换后可恰好达到上限', async () => {
   const wrapper = render(ManagedFeedback); await flushPromises()
   await choose(wrapper, 'rpt_a'); await compose(wrapper, '字'.repeat(1000))
-  const input = wrapper.get('[aria-label="处理回复"]')
-  input.element.setSelectionRange(1000, 1000)
+  const input = () => wrapper.get('[aria-label="处理回复"]').element
+  input().setSelectionRange(1000, 1000)
   await wrapper.get('.feedback-reply-tools button').trigger('click')
-  expect(input.element.value).toBe('字'.repeat(1000))
+  expect(input().value).toBe('字'.repeat(1000))
   expect(wrapper.text()).toContain('插入版本后消息长度将超过 1000 字符')
-  input.element.setSelectionRange(1000 - productVersionLabel.length, 1000)
+  input().setSelectionRange(1000 - productVersionLabel.length, 1000)
   await wrapper.get('.feedback-reply-tools button').trigger('click')
-  expect(input.element.value).toBe('字'.repeat(1000 - productVersionLabel.length) + productVersionLabel)
+  expect(input().value).toBe('字'.repeat(1000 - productVersionLabel.length) + productVersionLabel)
   expect(wrapper.text()).not.toContain('插入版本后消息长度将超过 1000 字符')
 })
 
@@ -913,7 +913,7 @@ describe.each([
     await choose(wrapper, 'rpt_a')
     const done = wrapper.findAll('.feedback-detail-actions button').find(button => button.text().includes('标记完成'))
     await done.trigger('click'); await flushPromises()
-    expect(update).toHaveBeenCalledWith('rpt_a', 'RESOLVED', ...(mode === 'managed' ? [null] : []))
+    expect(update).toHaveBeenCalledWith('rpt_a', 'RESOLVED', ...(mode === 'managed' ? [null, true] : []))
     await close(wrapper); await choose(wrapper, 'rpt_b'); await compose(wrapper, 'B remains open')
     pending.resolve({ ...ticket('rpt_a'), status: 'RESOLVED' }); await flushPromises()
     expect(wrapper.get('[role="dialog"]').text()).toContain('conversation rpt_b')

@@ -63,6 +63,7 @@ it('勾选后直接保存使用1级1修为和当前星级，保留已有命盘�
 })
 
 it.each([[100, 17], [90, 15]])('练度预设 %i+%i 只填当前页草稿，保存时仅提交勾选密探', async (level, elite) => {
+  vi.useFakeTimers({ toFake: ['setTimeout'] })
   getOperatorCatalog.mockResolvedValue({ operators: ['op', 'op2', 'op3'].map(id => ({
     id, name: id, rarity: 3, games: ['如鸢'],
   })) })
@@ -83,6 +84,7 @@ it.each([[100, 17], [90, 15]])('练度预设 %i+%i 只填当前页草稿，保�
   expect(entries).toHaveLength(2)
   expect(entries.map(entry => entry.id)).toEqual(selectedIds)
   expect(entries).toEqual(selectedIds.map(id => expect.objectContaining({ id, level, elite, starLevel: 1 })))
+  await vi.advanceTimersByTimeAsync(600); await flushPromises()
   expect(wrapper.findAll('.batch-bar input[type="number"]').map(input => input.element.value)).toEqual(['1', '1'])
   wrapper.unmount()
 })
