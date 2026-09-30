@@ -16,6 +16,7 @@ import AdminFeedbackMergeDialog from '../src/components/feedback/AdminFeedbackMe
 import { feedbackUnreadState, markAllManagedFeedbackRead } from '../src/store/feedbackUnread.js'
 import { auth } from '../src/store/auth.js'
 import { findSimilarFeedback } from '../src/api/coCreation.js'
+import { productVersionLabel } from '../src/config/buildInfo.js'
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -92,7 +93,7 @@ it.each(['关闭按钮', '遮罩', 'Escape', '取消回复'])('管理员回复�
   if (method === '关闭按钮') await close(wrapper)
   else if (method === '遮罩') await wrapper.get('.ticket-detail-mask').trigger('click')
   else if (method === 'Escape') document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
-  else await wrapper.get('.feedback-reply-form .feedback-button').trigger('click')
+  else await wrapper.findAll('.feedback-reply-form .feedback-button').find(button => button.text() === '取消').trigger('click')
   await flushPromises()
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ cancelText: '继续编辑' }))
   expect(wrapper.get('.feedback-reply-form textarea').element.value).toBe('需要保留的回复')
@@ -381,6 +382,56 @@ beforeEach(() => {
   markFeedbackNotificationsRead.mockClear()
   dialog.confirm.mockResolvedValue(true)
   dialog.prompt.mockReset().mockResolvedValue('不属于本板块的反馈')
+})
+
+it.each([
+  ['', 0, 0, '', ''],
+  ['该功能已于实现', 5, 5, '该功能已于', '实现'],
+  ['该功能已于旧版本实现', 5, 8, '该功能已于', '实现'],
+  ['该功能已于', 5, 5, '该功能已于', '']
+])('管理员插入当前版本保留回复并恢复光标：%s', async (draft, start, end, prefix, suffix) => {
+  api.appendManagedFeedbackMessage.mockResolvedValue(ticket('rpt_a'))
+  const wrapper = render(ManagedFeedback, { attachTo: document.body }); await flushPromises()
+  await choose(wrapper, 'rpt_a'); await compose(wrapper, draft)
+  const input = wrapper.get('[aria-label="处理回复"]')
+  input.element.setSelectionRange(start, end)
+  await wrapper.get('.feedback-reply-tools button').trigger('click')
+  expect(input.element.value).toBe(prefix + productVersionLabel + suffix)
+  expect(input.element.selectionStart).toBe(prefix.length + productVersionLabel.length)
+  expect(input.element.selectionEnd).toBe(input.element.selectionStart)
+  expect(document.activeElement).toBe(input.element)
+  expect(api.appendManagedFeedbackMessage).not.toHaveBeenCalled()
+  await wrapper.get('.feedback-reply-form .feedback-primary-action').trigger('click'); await flushPromises()
+  expect(api.appendManagedFeedbackMessage).toHaveBeenCalledWith('rpt_a', {
+    content: prefix + productVersionLabel + suffix, mediaIds: []
+  })
+})
+
+it('插入当前版本遵守回复字数上限，选中替换后可恰好达到上限', async () => {
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a'); await compose(wrapper, '字'.repeat(1000))
+  const input = wrapper.get('[aria-label="处理回复"]')
+  input.element.setSelectionRange(1000, 1000)
+  await wrapper.get('.feedback-reply-tools button').trigger('click')
+  expect(input.element.value).toBe('字'.repeat(1000))
+  expect(wrapper.text()).toContain('插入版本后消息长度将超过 1000 字符')
+  input.element.setSelectionRange(1000 - productVersionLabel.length, 1000)
+  await wrapper.get('.feedback-reply-tools button').trigger('click')
+  expect(input.element.value).toBe('字'.repeat(1000 - productVersionLabel.length) + productVersionLabel)
+  expect(wrapper.text()).not.toContain('插入版本后消息长度将超过 1000 字符')
+})
+
+it('发送回复期间禁用插入当前版本', async () => {
+  const pending = deferred()
+  api.appendManagedFeedbackMessage.mockReturnValue(pending.promise)
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a'); await compose(wrapper, '正在发送')
+  await wrapper.get('.feedback-reply-form .feedback-primary-action').trigger('click'); await flushPromises()
+  const button = wrapper.get('.feedback-reply-tools button')
+  expect(button.element.disabled).toBe(true)
+  await button.trigger('click')
+  expect(wrapper.get('[aria-label="处理回复"]').element.value).toBe('正在发送')
+  pending.resolve(ticket('rpt_a')); await flushPromises()
 })
 
 it('提交链接直接打开私人表单并预选功能建议', async () => {
