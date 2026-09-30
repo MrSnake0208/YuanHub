@@ -3,7 +3,7 @@
 本仓库可独立 clone / build / release / deploy，不依赖任何外部仓库。
 
 - **CI**（`.github/workflows/ci.yml`）：`push main`、PR、手动触发。只做静态检查、单测、行为测试、`npm run build`，并校验 `VERSION` 真的进入了产物。**不做任何生产部署。**
-- **Release**（`.github/workflows/release.yml`）：仅由 `v*` tag 触发，使用 `environment: production`。GitHub 通过 SSH 驱动服务器 A 自动拉取指定 tag、在服务器本地构建并原子发布，不再上传整套 `dist`。
+- **Release**（`.github/workflows/release.yml`）：由 `v*` tag 或手动指定已有 tag 发布，另支持仅预构建的 `phase=prepare`，使用 `environment: production`。GitHub 通过 SSH 驱动服务器 A 自动拉取指定 tag、在服务器本地构建并原子发布，不再上传整套 `dist`。
 
 ## 1. 版本来源
 
@@ -132,7 +132,7 @@
 
 ## 4. 发布流程
 
-在 YuanHub-All 工作区内，推荐根目录统一入口，支持两仓 CI 并行等待，默认后端部署成功后再部署前端：
+在 YuanHub-All 工作区内，推荐根目录统一入口，支持两仓 CI 与服务器预构建并行，默认后端部署成功后再部署前端：
 
 ```bash
 ./release.sh --dry-run --frontend auto --backend 0.1.13
@@ -149,7 +149,9 @@
 # 或不传版本 / 传 auto，自动沿用未发布 VERSION 或递增 beta.N
 ```
 
-脚本支持 `--prepare-only` 供统一入口只准备 VERSION/main；`--expected-commit <完整 SHA>` 核对准备阶段提交。未通过 CI 不创建 tag；Release 失败通过重跑原 Release 恢复，不删除、移动或重打已有 tag。
+统一入口会 dispatch `release.yml` 的 `phase=prepare`，传入新 tag、完整 main SHA 与唯一 request。prepare 校验提交属于 main、tag 未存在且 VERSION 匹配，仅写构建产物，不切换 current 或创建 GitHub Release；两仓 CI 和 prepare 全部成功后才发 tag。准备和发布复用原 production environment / concurrency；配置了人工审批时两阶段均需批准。两仓 workflow 需先进入远端 main。
+
+独立前端脚本保持先 CI、后 tag/构建的顺序，不自动预构建。脚本支持 `--prepare-only` 供统一入口只准备 VERSION/main；`--expected-commit <完整 SHA>` 核对准备阶段提交。未通过 CI 不创建 tag；Release 失败通过重跑原 Release 恢复，不删除、移动或重打已有 tag。
 
 人工发布仍遵循：
 
@@ -165,9 +167,9 @@
 4. workflow 依次执行：
    - GitHub-hosted runner 校验 `VERSION == tag`，要求 `ci.yml` 中 **main push / 同 SHA** 已成功；复用完整 CI 的 static / repo / behavior / build，不重复安装依赖或跑部分测试
    - 通过 SSH 连接服务器 A；首次创建 `.source`，之后复用源码缓存
-   - `git fetch --tags`，checkout 精确 tag，并再次核对 commit 与 GitHub 本次发布 commit 完全一致
-   - 服务器 A 执行 `npm ci` 与 `VITE_API_BASE=... npm run build`
-   - 构建完成后写入 `$YUANHUB_FRONTEND_DEPLOY_DIR/releases/<version>/`，并生成 `deploy-meta.json`
+   - `git fetch --tags`，checkout 精确 commit，并再次核对 commit 与 GitHub 本次发布 commit 完全一致
+   - 优先复用同版本/commit 的产物；新的 metadata 还校验构建 API 地址。缺失或不匹配时执行 `npm ci` 与 `VITE_API_BASE=... npm run build`
+   - 构建完成后写入 `$YUANHUB_FRONTEND_DEPLOY_DIR/releases/<version>/`，并生成带 version/commit/API 地址的 `deploy-meta.json`；拒绝原地覆盖活动版本
    - 原子切换 `current` 符号链接（先建临时链接再 `mv -T`）
    - GitHub-hosted runner 通过公网读取 `deploy-meta.json`，核对线上 version + commit
    - 创建或更新 GitHub Release

@@ -1,6 +1,7 @@
 name: Release
+run-name: ${{ inputs.phase == 'prepare' && format('Prepare {0} @ {1} [{2}]', inputs.tag, inputs.commit, inputs.request) || format('Release {0}', inputs.tag || github.ref_name) }}
 
-# 生产发布：仅由 v* tag 触发，普通 push 不会部署。
+# 生产发布：由 v* tag 或指定已有 tag 的 dispatch 触发；prepare dispatch 仅预构建。
 # 发布前强制校验 VERSION 与 tag 完全一致，不一致立即停止。
 #
 # 普通 CI 继续使用 GitHub-hosted runner；Release 通过 SSH 驱动服务器 A：
@@ -26,8 +27,19 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "要发布的已存在 tag（例如 v0.0.1-beta.2）"
+        description: "目标 tag（prepare 使用新 tag；release 使用已有 tag）"
         required: true
+      phase:
+        description: "prepare 仅构建；release 在 CI 成功后激活"
+        type: choice
+        options: [release, prepare]
+        default: release
+      commit:
+        description: "prepare 必填：main 完整提交 SHA"
+        required: false
+      request:
+        description: "prepare 请求唯一标识"
+        required: false
 
 concurrency:
   group: yuanhub-frontend-production
@@ -47,13 +59,39 @@ jobs:
 
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      DEPLOY_PHASE: ${{ inputs.phase || 'release' }}
+      REQUESTED_COMMIT: ${{ inputs.commit }}
+      PREPARE_REQUEST: ${{ inputs.request }}
 
     steps:
+      - name: Validate release request
+        run: |
+          set -eu
+          case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "::error::Invalid phase"; exit 1 ;; esac
+          if [ "$DEPLOY_PHASE" = prepare ]; then
+            [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::prepare must run from main"; exit 1; }
+            [[ "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::prepare requires a full SHA"; exit 1; }
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] || { echo "::error::Invalid prepare tag"; exit 1; }
+            [[ "$PREPARE_REQUEST" =~ ^[A-Za-z0-9._-]{1,100}$ ]] || { echo "::error::Invalid prepare request"; exit 1; }
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ inputs.phase == 'prepare' && (inputs.commit || 'main') || (github.event_name == 'workflow_dispatch' && inputs.tag || github.ref) }}
           fetch-depth: 0
+
+      - name: Validate prepared commit
+        if: ${{ inputs.phase == 'prepare' }}
+        run: |
+          set -eu
+          [ "$(git rev-parse HEAD)" = "$REQUESTED_COMMIT" ]
+          git merge-base --is-ancestor "$REQUESTED_COMMIT" origin/main || {
+            echo "::error::prepare commit must belong to main"; exit 1;
+          }
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "::error::prepare cannot overwrite an existing tag"; exit 1;
+          fi
 
       # 关键闸门：VERSION 去掉前缀后必须与 tag 完全一致，否则不发布。
       - name: Verify VERSION matches tag
@@ -73,6 +111,7 @@ jobs:
 
       # 复用同一提交的完整 CI，包括 behavior tests/build；直接推 tag 也无法绕过。
       - name: Require successful CI for release commit
+        if: ${{ inputs.phase != 'prepare' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -148,12 +187,13 @@ jobs:
           API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
           KEEP_RELEASES: ${{ vars.YUANHUB_KEEP_RELEASES }}
           REPO_URL: https://github.com/${{ github.repository }}.git
+          DEPLOY_PHASE: ${{ env.DEPLOY_PHASE }}
         with:
           host: ${{ secrets.YUANHUB_PROMO_VPS_HOST }}
           username: ${{ secrets.YUANHUB_PROMO_VPS_USER }}
           key: ${{ secrets.YUANHUB_PROMO_VPS_SSH_KEY }}
           port: ${{ secrets.YUANHUB_PROMO_VPS_PORT }}
-          envs: FRONTEND_ROOT,RELEASE_VERSION,RELEASE_TAG,RELEASE_COMMIT,API_BASE,KEEP_RELEASES,REPO_URL
+          envs: FRONTEND_ROOT,RELEASE_VERSION,RELEASE_TAG,RELEASE_COMMIT,API_BASE,KEEP_RELEASES,REPO_URL,DEPLOY_PHASE
           command_timeout: 30m
           script: |
             set -eu
@@ -164,22 +204,31 @@ jobs:
             test -n "$RELEASE_COMMIT"
             test -n "$API_BASE"
             test -n "$REPO_URL"
+            case "$DEPLOY_PHASE" in prepare|release) ;; *) echo "Invalid phase"; exit 1 ;; esac
 
             release_dir="$FRONTEND_ROOT/releases/$RELEASE_VERSION"
             meta_file="$release_dir/deploy-meta.json"
             expected_link="releases/$RELEASE_VERSION"
             mkdir -p "$FRONTEND_ROOT/releases"
 
-            # 同一 tag/commit 已完整发布时直接复用，支持安全重跑。
+            # 同一版本/commit 的准备或已发布产物直接复用，支持安全重跑。
             reuse_release=0
             if [ -f "$meta_file" ] &&
+               [ -f "$release_dir/index.html" ] && [ -f "$release_dir/sw.js" ] &&
+               [ -d "$release_dir/assets" ] && [ -n "$(ls -A "$release_dir/assets")" ] &&
                grep -qF "\"version\":\"$RELEASE_VERSION\"" "$meta_file" &&
                grep -qF "\"commit\":\"$RELEASE_COMMIT\"" "$meta_file"; then
               reuse_release=1
-              echo "Reusing existing release: $release_dir"
+              # 新的准备产物绑定构建 API 地址；老的已发布 metadata 仍可安全重跑。
+              if grep -q '"apiBase":' "$meta_file" &&
+                 ! grep -qF "\"apiBase\":\"$API_BASE\"" "$meta_file"; then
+                reuse_release=0
+              fi
+              if [ "$reuse_release" -eq 1 ]; then echo "Reusing existing release: $release_dir"; fi
             fi
 
             if [ "$reuse_release" -ne 1 ]; then
+              build_started="$(date +%s)"
               for tool in git node npm; do
                 command -v "$tool" >/dev/null 2>&1 || {
                   echo "$tool is required on the deployment server"
@@ -202,8 +251,8 @@ jobs:
               cd "$source_dir"
               git remote set-url origin "$REPO_URL"
               git fetch --force --prune --tags origin
-              git checkout --detach "$RELEASE_TAG"
-              git reset --hard "$RELEASE_TAG"
+              git checkout --detach "$RELEASE_COMMIT"
+              git reset --hard "$RELEASE_COMMIT"
 
               actual_commit="$(git rev-parse HEAD)"
               if [ "$actual_commit" != "$RELEASE_COMMIT" ]; then
@@ -238,8 +287,8 @@ jobs:
                 exit 1
               }
               sw_sha256="$(sha256sum "$stage_dir/sw.js" | awk '{print $1}')"
-              printf '{"version":"%s","tag":"%s","commit":"%s","swSha256":"%s"}\n' \
-                "$RELEASE_VERSION" "$RELEASE_TAG" "$RELEASE_COMMIT" "$sw_sha256" \
+              printf '{"version":"%s","tag":"%s","commit":"%s","swSha256":"%s","apiBase":"%s"}\n' \
+                "$RELEASE_VERSION" "$RELEASE_TAG" "$RELEASE_COMMIT" "$sw_sha256" "$API_BASE" \
                 > "$stage_dir/deploy-meta.json"
 
               active_target="$(readlink "$FRONTEND_ROOT/current" 2>/dev/null || true)"
@@ -250,6 +299,12 @@ jobs:
 
               rm -rf "$release_dir"
               mv "$stage_dir" "$release_dir"
+              echo "Frontend build seconds: $(( $(date +%s) - build_started ))"
+            fi
+
+            if [ "$DEPLOY_PHASE" = prepare ]; then
+              echo "Prepared $RELEASE_VERSION ($RELEASE_COMMIT); current is unchanged."
+              exit 0
             fi
 
             # 临时链接 + rename，保证 current 始终指向完整 release。
@@ -272,6 +327,7 @@ jobs:
             fi
 
       - name: Health check
+        if: ${{ inputs.phase != 'prepare' }}
         env:
           SITE_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
           EXPECTED_VERSION: ${{ env.YUANHUB_VERSION }}
@@ -313,6 +369,7 @@ jobs:
           exit 1
 
       - name: Create or update GitHub Release
+        if: ${{ inputs.phase != 'prepare' }}
         env:
           GH_TOKEN: ${{ github.token }}
           FRONTEND_URL: ${{ vars.YUANHUB_FRONTEND_URL }}
