@@ -23,14 +23,14 @@ vi.mock('vue-router', async () => {
   const route = reactive({ query: {} })
   return { useRoute: () => route, useRouter: () => ({ replace: vi.fn() }), onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn() }
 })
-vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn(), prompt: vi.fn() } }))
+vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn(), prompt: vi.fn(), choose: vi.fn() } }))
 vi.mock('../src/api/feedback.js', () => ({
   getFeedback: vi.fn(), getManagedFeedback: vi.fn(), getFeedbackAccess: vi.fn(), listMyFeedback: vi.fn(), listManagedFeedback: vi.fn(), listWorkflowFeedback: vi.fn(), listFeedbackWorkflowEvents: vi.fn(),
   getFeedbackQueueCounts: vi.fn(),
   claimFeedback: vi.fn(), assignFeedback: vi.fn(), handoffFeedback: vi.fn(), changeFeedbackWorkArea: vi.fn(), returnFeedback: vi.fn(), listFeedbackAssignees: vi.fn(),
   createFeedback: vi.fn(), appendMyFeedbackMessage: vi.fn(), appendManagedFeedbackMessage: vi.fn(),
   updateMyFeedbackStatus: vi.fn(), updateManagedFeedbackStatus: vi.fn(), downloadFeedbackAttachment: vi.fn(),
-  mergeFeedback: vi.fn(), publishFeedback: vi.fn(), unpublishFeedback: vi.fn(), updateFeedbackType: vi.fn(), updateFeedbackVersions: vi.fn(),
+  mergeFeedback: vi.fn(), publishFeedback: vi.fn(), unpublishFeedback: vi.fn(), updateFeedbackPublicStatus: vi.fn(), updateFeedbackType: vi.fn(), updateFeedbackVersions: vi.fn(),
   listFeedbackVersionOptions: vi.fn(() => Promise.resolve([]))
 }))
 vi.mock('../src/api/notifications.js', () => ({
@@ -212,7 +212,7 @@ it.each(['RESOLVED', 'DISMISSED'])('%s 成功后保留第2页和筛选并显示�
   await wrapper.get('[aria-label="下一页"]').trigger('click'); await flushPromises()
   await choose(wrapper, 'rpt_20')
   await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === (status === 'RESOLVED' ? '标记完成' : '驳回')).trigger('click'); await flushPromises()
-  expect(api.updateManagedFeedbackStatus).toHaveBeenCalledWith('rpt_20', status, status === 'RESOLVED' ? null : '不属于本板块的反馈')
+  expect(api.updateManagedFeedbackStatus).toHaveBeenCalledWith('rpt_20', status, status === 'RESOLVED' ? null : '不属于本板块的反馈', true)
   expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, type: 'BUG' }))
   expect(wrapper.find('.ticket-detail-dialog').exists()).toBe(false)
   expect(wrapper.get('.feedback-page-message').text()).toContain(status === 'RESOLVED' ? '已完成' : '已驳回')
@@ -231,6 +231,34 @@ it('完成确认期间切换工单不能将结果写到旧工单', async () => {
   expect(api.updateManagedFeedbackStatus).not.toHaveBeenCalled()
   expect(wrapper.get('.ticket-detail-dialog').text()).toContain('conversation rpt_b')
   wrapper.unmount()
+})
+
+it.each([true, false])('管理员公开反馈结案允许选择同步广场：%s', async checked => {
+  api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), visibility: 'PUBLIC', publicStatus: 'CONFIRMED', workflowStage: 'PROCESSING' })
+  dialog.choose.mockResolvedValue({ value: 'complete', checked })
+  api.updateManagedFeedbackStatus.mockResolvedValue({})
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === '标记完成').trigger('click')
+  await flushPromises()
+  expect(dialog.choose).toHaveBeenCalledWith(expect.objectContaining({ checkboxChecked: true, checkboxLabel: '同时将反馈广场标记为已完成' }))
+  expect(api.updateManagedFeedbackStatus).toHaveBeenCalledWith('rpt_a', 'RESOLVED', null, checked)
+})
+
+it('公开结案确认取消或确认期间账号切换时不提交', async () => {
+  api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), visibility: 'PUBLIC', workflowStage: 'PROCESSING' })
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  dialog.choose.mockResolvedValue({ value: null, checked: true })
+  await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === '标记完成').trigger('click')
+  await flushPromises()
+  expect(api.updateManagedFeedbackStatus).not.toHaveBeenCalled()
+  const pending = deferred()
+  dialog.choose.mockReturnValue(pending.promise)
+  await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === '标记完成').trigger('click')
+  auth.userInfo = { id: 'another-admin' }
+  pending.resolve({ value: 'complete', checked: true }); await flushPromises()
+  expect(api.updateManagedFeedbackStatus).not.toHaveBeenCalled()
 })
 
 it('全部已读明确包含筛选之外工单，取消或切换身份都不写入', async () => {
@@ -380,6 +408,8 @@ beforeEach(() => {
   api.updateFeedbackVersions.mockReset()
   uploadMedia.mockReset()
   markFeedbackNotificationsRead.mockClear()
+  api.updateFeedbackPublicStatus.mockReset()
+  dialog.choose.mockReset().mockResolvedValue({ value: 'complete', checked: true })
   dialog.confirm.mockResolvedValue(true)
   dialog.prompt.mockReset().mockResolvedValue('不属于本板块的反馈')
 })
@@ -1081,18 +1111,22 @@ it('取消公开授权保留隐藏标题但不提交，并忽略迟到的相似�
   }
 })
 
-it('公开发布面板缺少明确用户授权时禁止保存但允许取消已有公开', async () => {
+it('旧公开反馈缺少明确授权时仅允许维护状态或取消公开，私人反馈仍禁止发布', async () => {
   for (const publicConsent of [undefined, false, 'true']) {
     const panel = mount(AdminFeedbackPublishPanel, {
       props: { item: { id: 'rpt_legacy', visibility: 'PUBLIC', publicTitle: '旧公开标题', publicConsent }, dialog: true, formatDate: value => value }
     })
     expect(panel.text()).toContain('用户未授权')
-    expect(panel.get('.feedback-primary-action').attributes('disabled')).toBeDefined()
+    expect(panel.get('input').attributes('disabled')).toBeDefined()
+    expect(panel.get('textarea').attributes('disabled')).toBeDefined()
+    expect(panel.findAll('select')[0].attributes('disabled')).toBeDefined()
+    await panel.findAll('select')[1].setValue('COMPLETED')
     await panel.get('.feedback-primary-action').trigger('click')
-    expect(panel.emitted('save')).toBeUndefined()
+    expect(panel.emitted('save')[0][0].publicStatus).toBe('COMPLETED')
     await panel.get('.feedback-button').trigger('click')
     expect(panel.emitted('unpublish')).toHaveLength(1)
-    await panel.setProps({ item: { id: 'rpt_legacy', visibility: 'PUBLIC', publicTitle: '旧公开标题', publicConsent: true } })
+    await panel.setProps({ item: { id: 'rpt_private', visibility: 'PRIVATE', publicConsent } })
+    expect(panel.get('.feedback-primary-action').attributes('disabled')).toBeDefined()
     await panel.get('.feedback-primary-action').trigger('click')
     expect(panel.emitted('save')).toHaveLength(1)
     panel.unmount()
