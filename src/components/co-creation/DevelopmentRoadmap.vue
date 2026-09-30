@@ -1,21 +1,25 @@
 <template>
   <div class="development-roadmap">
     <div class="goal-toolbar">
-      <label>开发阶段<select v-model="stage" class="feedback-form-control" @change="changeStage"><option value="">全部目标</option><option v-for="option in DEVELOPMENT_STAGES" :key="option.key" :value="option.key">{{ option.label }}</option></select></label>
+      <label>功能进展<select v-model="stage" class="feedback-form-control" @change="changeStage"><option value="">全部目标</option><option v-for="option in DEVELOPMENT_STAGES" :key="option.key" :value="option.key">{{ option.label }}</option></select></label>
       <span>{{ total }} 个目标</span>
     </div>
-    <p class="goal-notice">进度按验收清单计算，代表已确认通过的项目比例；目标版本和日期为计划，可能调整。</p>
+    <p class="goal-notice">进度表示下方完成标准中已有多少项通过确认，不能代表剩余开发时间。目标版本和日期为计划，可能调整。</p>
     <div v-if="loading" class="goal-state" role="status">正在加载开发目标…</div>
     <div v-else-if="error" class="goal-state" role="alert">{{ error }}<button class="feedback-button" type="button" @click="load">重新加载</button></div>
-    <div v-else-if="!items.length" class="goal-state">{{ stage ? '当前阶段还没有开发目标。' : '暂时还没有公布开发目标。' }}</div>
+    <div v-else-if="!items.length" class="goal-state">
+      <p>{{ stage ? '当前阶段还没有开发目标。' : '暂时还没有公布开发目标。' }}</p>
+      <button v-if="stage" class="feedback-button" type="button" @click="stage = ''; changeStage()">查看全部目标</button>
+      <router-link v-else-if="!managed" :to="{ path: '/feedback', query: { new: '1', type: 'FEATURE' } }">提交你的功能建议</router-link>
+    </div>
     <div v-else class="goal-grid">
       <article v-for="goal in items" :key="goal.id" class="goal-card">
         <header><span class="goal-stage">{{ stageLabel(goal.stage) }}</span><button v-if="managed" class="feedback-button" type="button" @click="$emit('edit', goal)">编辑目标</button></header>
         <h2>{{ goal.title }}</h2><p class="goal-description">{{ goal.description }}</p>
         <div v-if="goal.targetVersion || goal.targetDate" class="goal-target"><span v-if="goal.targetVersion">目标版本 {{ goal.targetVersion }}</span><span v-if="goal.targetDate">目标日期 <time :datetime="goal.targetDate">{{ goal.targetDate }}</time></span></div>
-        <div class="goal-progress"><span>验收进度</span><strong>{{ completedCount(goal) }} / {{ goal.criteria.length }}</strong><progress :value="completedCount(goal)" :max="goal.criteria.length || 1" :aria-label="goal.title + '验收进度'" /></div>
-        <details class="goal-details">
-          <summary>验收标准与关联反馈</summary>
+        <div class="goal-progress"><span>已确认的完成项</span><strong>{{ completedCount(goal) }} / {{ goal.criteria.length }}</strong><progress :value="completedCount(goal)" :max="goal.criteria.length || 1" :aria-label="goal.title + '完成标准进度'" /></div>
+        <details class="goal-details" :open="!managed">
+          <summary>完成标准与需求来源</summary>
           <ul class="goal-criteria"><li v-for="(criterion, index) in goal.criteria" :key="index"><CheckCircle2 v-if="criterion.completed" :size="17" aria-hidden="true" /><Circle v-else :size="17" aria-hidden="true" /><span>{{ criterion.title }}</span><small>{{ criterion.completed ? '已通过' : '待验收' }}</small></li></ul>
           <div class="goal-links"><h3>需求来源</h3><p v-if="!goal.linkedFeedback.length">该目标未关联公开反馈。</p><router-link v-for="feedback in goal.linkedFeedback" :key="feedback.id" :to="{ path: '/feedback/plaza', query: { feedback: feedback.id } }">{{ feedback.title }}</router-link></div>
         </details>

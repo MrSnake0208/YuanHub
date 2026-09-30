@@ -42,6 +42,8 @@ it('公开目标展示真实验收比例和需求来源，不从反馈生成目�
   expect(wrapper.get('progress').attributes('value')).toBe('1')
   expect(wrapper.get('progress').attributes('max')).toBe('2')
   expect(wrapper.text()).toContain('目标版本 0.2.0')
+  expect(wrapper.get('.goal-details').attributes()).toHaveProperty('open')
+  expect(wrapper.text()).toContain('已确认的完成项')
   expect(wrapper.text()).toContain('公开反馈标题')
   expect(goals.listDevelopmentGoals).toHaveBeenCalledWith({ page: 1, stage: '', admin: false })
   expect(listPublicFeedback).not.toHaveBeenCalled()
@@ -156,4 +158,23 @@ it('旧搜索响应不能污染新打开的目标表单', async () => {
   await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
   resolve({ items: [{ id: 'old', publicTitle: '旧查询结果' }] }); await flushPromises()
   expect(wrapper.text()).not.toContain('旧查询结果')
+})
+
+
+it('筛选为空提供恢复入口，恢复时清空阶段并回第一页', async () => {
+  goals.listDevelopmentGoals.mockResolvedValue({ items: [], total: 0, hasNext: false })
+  const wrapper = render(DevelopmentRoadmap); await flushPromises()
+  await wrapper.get('select').setValue('COMPLETED'); await flushPromises()
+  expect(wrapper.get('.goal-state').text()).toContain('查看全部目标')
+  await wrapper.get('.goal-state button').trigger('click'); await flushPromises()
+  expect(goals.listDevelopmentGoals).toHaveBeenLastCalledWith({ page: 1, stage: '', admin: false })
+  expect(wrapper.get('select').element.value).toBe('')
+})
+
+it('功能计划解释完成与发布的关系，不将完成项当作已上线', async () => {
+  const wrapper = render(CoCreation); await flushPromises()
+  expect(wrapper.text()).toContain('功能计划')
+  expect(wrapper.text()).toContain('实际发布请看')
+  expect(wrapper.findAll('router-link-stub').some(link => link.attributes('to') === '/changelog')).toBe(true)
+  expect(wrapper.text()).not.toContain('已上线')
 })
