@@ -33,6 +33,35 @@ const render = () => mount(QuickPage, { global: {
   directives: { reveal: () => {} },
 } })
 
+it('所有星级步骤默认1级1修为，未勾选不产生导入', async () => {
+  const wrapper = render()
+  await flushPromises()
+  for (let index = 0; index < 6; index++) {
+    const inputs = wrapper.findAll('.batch-bar input[type="number"]')
+    expect(inputs.map(input => input.element.value)).toEqual(['1', '1'])
+    await wrapper.get('.wiz-actions .primary').trigger('click')
+    await flushPromises()
+  }
+  expect(importOperator).not.toHaveBeenCalled()
+})
+
+it('勾选后直接保存使用1级1修为和当前星级，保留已有命盘星石', async () => {
+  getOperatorCurrent.mockResolvedValue([{ entries: {
+    op: { level: 0, elite: 0, starLevel: 0, discs: [{ otName: '测试命盘' }], starStones: [] },
+  } }])
+  const wrapper = render()
+  await flushPromises()
+  expect(importOperator).not.toHaveBeenCalled()
+  await wrapper.get('.op-check').setValue(true)
+  await flushPromises()
+  await wrapper.get('.wiz-actions .primary').trigger('click')
+  await flushPromises()
+  expect(importOperator).toHaveBeenCalledTimes(1)
+  expect(importOperator.mock.calls[0][0].records[0].entries).toEqual([
+    expect.objectContaining({ id: 'op', level: 1, elite: 1, starLevel: 1, discs: [{ otName: '测试命盘' }], starStones: [] }),
+  ])
+})
+
 it('锁定说明可见；清空选择可取消；完成后停在摘要直到用户返回', async () => {
   const wrapper = render()
   await flushPromises()

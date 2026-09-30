@@ -3342,9 +3342,9 @@ const editingId = ref("");
 const editingOp = ref(null);
 const editGame = ref("");
 const editForm = ref({
-  elite: 0,
+  elite: 1,
   starLevel: 0,
-  level: 0,
+  level: 1,
   discLoadouts: [],
   stones: {},
   combatStats: normalizeOperatorCombatStats({}),
@@ -4404,12 +4404,16 @@ function pickStarGroup(g) {
     editForm.value.starLevel = 0;
     return;
   }
+  const s = Number(g);
+  if (g !== "awaken" && !(s >= 1 && s <= 5)) return;
+  if (!isOperatorOwned(editForm.value)) {
+    if (editForm.value.level === 0) editForm.value.level = 1;
+    if (editForm.value.elite === 0) editForm.value.elite = 1;
+  }
   if (g === "awaken") {
     editForm.value.starLevel = STAR_LEVEL_AWAKEN;
     return;
   }
-  const s = Number(g);
-  if (!(s >= 1 && s <= 5)) return;
   if (editingOp.value && editingOp.value.spOf) {
     editForm.value.starLevel = s;
     return;
@@ -7448,9 +7452,9 @@ function applyEditorEntry(existing, op, id, allowCache) {
       : normalizeOperatorCombatStats({}, op.odditySchema);
   ensureOperatorOddities(combatStats, op);
   editForm.value = {
-    elite: existing.elite != null ? existing.elite : 0,
+    elite: existing.elite != null ? existing.elite : 1,
     starLevel: existing.starLevel != null ? existing.starLevel : 0,
-    level: existing.level != null ? existing.level : 0,
+    level: existing.level != null ? existing.level : 1,
     discLoadouts: discState.loadouts,
     stones: stones,
     combatStats: combatStats,

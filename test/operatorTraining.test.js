@@ -77,6 +77,9 @@ test('完成态依据实际养成目标，未拥有或仅备齐材料不算完�
   assert.equal(growthTargetReached({ level: 80, elite: 13, starLevel: 25 }, target), true)
   assert.equal(growthTargetReached({ level: 80, elite: 13, starLevel: 30 }, { ...target, starLevel: 31 }), false)
   assert.equal(growthTargetReached({}, { level: 0, elite: 0, starLevel: 0 }), false)
+  assert.equal(growthTargetReached({ level: 1, elite: 1, starLevel: 0 }, { level: 1, elite: 1, starLevel: 0 }), false)
+  assert.equal(growthTargetReached({ level: 100, elite: 17, starLevel: 0 }, { level: 80, elite: 13, starLevel: 0 }), false)
+  assert.equal(growthTargetReached({ level: 1, elite: 1, starLevel: 1 }, { level: 1, elite: 1, starLevel: 1 }), true)
 })
 
 function memoryStorage() {

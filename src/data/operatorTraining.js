@@ -1,3 +1,5 @@
+import { isOperatorOwned } from '../utils/operatorFilters.js'
+
 // 历练必得奖励：用户提供的十二层修为表与八档经验表。
 export const TRAINING_DAILY_LIMIT = 6
 const COUNTS = [[15], [25], [25, 15], [30, 20], [35, 25], [40, 30], [40, 30], [45, 35], [45, 35], [50, 40], [55, 40], [60, 45]]
@@ -100,7 +102,7 @@ export function trainingSchedule(gaps, levels = DEFAULT_TRAINING_LEVELS) {
 export function growthTargetReached(current, target) {
   // 未拥有不能因经验需求为零而被判定完成；五星旧节点 25..30 视作同阶段。
   const star = value => Number(value) >= 25 && Number(value) < 31 ? 25 : Number(value) || 0
-  return Boolean(current.level || current.elite || current.starLevel) &&
+  return isOperatorOwned(current) &&
     Number(current.level || 0) >= target.level && Number(current.elite || 0) >= target.elite && star(current.starLevel) >= star(target.starLevel)
 }
 
