@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import NotificationsPage from '../src/pages/notifications/index.vue'
 import { listNotifications, markNotificationRead, markAllNotificationsRead } from '../src/api/notifications.js'
 import { notificationUnreadState } from '../src/store/notificationUnread.js'
@@ -14,7 +14,7 @@ vi.mock('../src/store/notificationUnread.js', async () => {
 
 const first = { id: 'notice-1', title: '新回复', body: '详情', readAt: null, createdAt: '2026-09-27T00:00:00Z' }
 const second = { ...first, id: 'notice-2', title: '第二条' }
-const render = () => mount(NotificationsPage, { global: { stubs: { IslandSidebar: true, SiteFooter: true, AccountIdDetails: true } } })
+const render = () => mount(NotificationsPage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, AccountIdDetails: true } } })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -54,4 +54,17 @@ it('加载更多失败保留已加载通知和页码，再试可追加', async (
   await wrapper.get('.btn-more').trigger('click'); await flushPromises()
   expect(wrapper.findAll('.notification-item')).toHaveLength(2)
   expect(listNotifications).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 })
+})
+
+it('首次没有通知可进入我的反馈，未读为空可切回全部', async () => {
+  listNotifications.mockResolvedValue({ notifications: [], total: 0, unreadCount: 0 })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.empty-state').text()).toContain('还没有收到通知')
+  expect(wrapper.get('.empty-state').findComponent(RouterLinkStub).props('to')).toBe('/feedback')
+  await wrapper.findAll('.tabs button')[1].trigger('click'); await flushPromises()
+  expect(wrapper.get('.empty-state').text()).toContain('未读通知已看完')
+  expect(listNotifications).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, unreadOnly: true })
+  await wrapper.get('.empty-state button').trigger('click'); await flushPromises()
+  expect(listNotifications).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+  expect(markAllNotificationsRead).not.toHaveBeenCalled()
 })
