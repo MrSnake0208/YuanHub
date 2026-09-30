@@ -1,5 +1,5 @@
 <template>
-  <div class="feedback-page">
+  <div class="feedback-page feedback-center">
     <IslandSidebar />
     <main id="main-content">
       <header class="hero feedback-hero">

@@ -325,7 +325,7 @@ export const routes = [
         icon: 'flag',
         component: () => import('/src/pages/feedback/index.vue'),
         meta: {
-            title: '反馈中心 — 鸢鸢相抱 · YuanHub',
+            title: '反馈中心 · 我的反馈 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true
         }
     },
@@ -375,7 +375,7 @@ export const routes = [
         icon: 'inbox',
         component: () => import('/src/pages/feedback/manage.vue'),
         meta: {
-            title: '反馈工作台 — 鸢鸢相抱 · YuanHub',
+            title: '反馈中心 · 反馈工作台 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true,
             requiresFeedbackManage: true
         }
@@ -389,7 +389,7 @@ export const routes = [
         icon: 'shield',
         component: () => import('/src/pages/feedback/admin.vue'),
         meta: {
-            title: '反馈权限管理 — 鸢鸢相抱 · YuanHub',
+            title: '反馈中心 · 权限配置 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true,
             requiredPermission: 'admin:feedback_access:manage'
         }

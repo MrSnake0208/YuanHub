@@ -1,15 +1,14 @@
 <template>
-  <div class="feedback-page manage-feedback">
+  <div class="feedback-page feedback-center manage-feedback">
     <IslandSidebar />
 
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="feedback-hero-kicker">ADMIN / FEEDBACK CENTER</div>
+          <div class="feedback-hero-kicker">COMMUNITY / FEEDBACK</div>
           <div class="feedback-hero-layout">
             <div>
-              <h1>反馈工作台</h1>
+              <h1>反馈中心</h1>
               <p class="hero-sub">按负责板块接单、回复、转程序并跟进处理结果。</p>
             </div>
           </div>
@@ -18,7 +17,7 @@
 
       <section class="feedback-content">
         <div class="wrap">
-          <FeedbackWorkspaceNav active="manage" :can-manage="hasManagePermission" :show-management="false" :has-unread-feedback="hasManagePermission && feedbackUnreadState.count > 0" :can-configure="canConfigureFeedback" />
+          <FeedbackWorkspaceNav active="manage" :can-manage="hasManagePermission" :has-unread-feedback="hasManagePermission && feedbackUnreadState.count > 0" :can-configure="canConfigureFeedback" />
 
           <div v-if="loadingAccess" class="permission-state" role="status">正在检查反馈权限…</div>
           <div v-else-if="!hasManagePermission" class="permission-state" role="alert">
@@ -263,7 +262,6 @@ import { dialog } from '@/utils/dialog.js'
 import { PUBLIC_TYPE_OPTIONS, publicStatusLabel } from '@/utils/feedbackPublic.js'
 import { ArrowRight, CheckCheck, CheckCircle2, ChevronDown, CircleX, MessageSquarePlus, Search, Send, ShieldAlert, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
-import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import AdminFeedbackMergeDialog from '@/components/feedback/AdminFeedbackMergeDialog.vue'
 import AdminFeedbackPublishPanel from '@/components/feedback/AdminFeedbackPublishPanel.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'

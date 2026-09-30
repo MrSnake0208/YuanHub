@@ -39,16 +39,11 @@
 .feedback-page .feedback-hero h1 { display: block; min-width: 0; margin: 0; color: var(--ink); font-family: var(--font-s); font-size: 44px; font-weight: 900; line-height: 1.15; letter-spacing: .04em; overflow-wrap: anywhere; }
 .feedback-page .feedback-hero .hero-sub { width: min(100%, 72ch); max-width: 72ch; margin-top: 12px; color: var(--ink-60); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
 .feedback-hero-action { flex: none; min-width: 142px; min-height: 48px; }
-.manage-feedback .feedback-hero,
-.page-feedback-access .feedback-hero { min-height: 0; padding: 24px 0; border-radius: 0 0 20px 20px; }
-.manage-feedback .feedback-hero h1,
-.page-feedback-access .feedback-hero h1 { font-size: 30px; }
-.manage-feedback .feedback-hero-kicker,
-.page-feedback-access .feedback-hero-kicker { margin-bottom: 8px; font-size: 10px; }
-.manage-feedback .feedback-hero .hero-sub,
-.page-feedback-access .feedback-hero .hero-sub { margin-top: 8px; font-size: 13px; }
-.manage-feedback .feedback-hero::after,
-.page-feedback-access .feedback-hero::after { top: -60px; font-size: 210px; }
+.feedback-center .feedback-hero { min-height: 0; padding: 24px 0; border-radius: 0 0 20px 20px; }
+.feedback-center .feedback-hero h1 { font-size: 30px; }
+.feedback-center .feedback-hero-kicker { margin-bottom: 8px; font-size: 10px; }
+.feedback-center .feedback-hero .hero-sub { margin-top: 8px; font-size: 13px; }
+.feedback-center .feedback-hero::after { top: -60px; font-size: 210px; }
 .feedback-content { padding: 0 0 12px; }
 
 .feedback-command-bar {
@@ -195,10 +190,7 @@ textarea.feedback-form-control { min-height: 86px; resize: vertical; }
 }
 
 @media (max-width: 767px) {
-  .manage-feedback .feedback-hero,
-  .page-feedback-access .feedback-hero { padding: 22px 0; }
-  .manage-feedback .feedback-hero h1,
-  .page-feedback-access .feedback-hero h1 { font-size: 28px; }
-  .manage-feedback .feedback-hero-layout,
-  .page-feedback-access .feedback-hero-layout { gap: 14px; }
+  .feedback-center .feedback-hero { padding: 22px 0; }
+  .feedback-center .feedback-hero h1 { font-size: 28px; }
+  .feedback-center .feedback-hero-layout { gap: 14px; }
 }

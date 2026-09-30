@@ -1,27 +1,29 @@
 <template>
-  <nav class="feedback-workspace-nav" aria-label="反馈工作区">
-    <router-link to="/feedback/plaza" :class="{ active: active === 'plaza' }">
-      <MessageSquareText :size="17" aria-hidden="true" />
-      <span>反馈广场</span>
-    </router-link>
-    <router-link to="/feedback" :class="{ active: active === 'mine' }">
-      <MessageSquareText :size="17" aria-hidden="true" />
-      <span>我的反馈</span>
-    </router-link>
-    <router-link v-if="canManage" to="/feedback/manage" :class="{ active: active === 'manage' }">
-      <Inbox :size="17" aria-hidden="true" />
-      <span>反馈工作台</span>
-      <span v-if="hasUnreadFeedback" class="feedback-workspace-nav-unread" role="img" aria-label="有未读反馈"></span>
-    </router-link>
-    <router-link v-if="canConfigure" to="/feedback/admin" :class="{ active: active === 'admin' }">
-      <ShieldCheck :size="17" aria-hidden="true" />
-      <span>权限配置</span>
-    </router-link>
-    <router-link v-if="showManagement && canAccessManagement" to="/manage" :class="{ active: active === 'workbench' }">
+  <div class="feedback-workspace-header">
+    <nav class="feedback-workspace-nav" aria-label="反馈工作区">
+      <router-link to="/feedback/plaza" :class="{ active: active === 'plaza' }">
+        <MessageSquareText :size="17" aria-hidden="true" />
+        <span>反馈广场</span>
+      </router-link>
+      <router-link to="/feedback" :class="{ active: active === 'mine' }">
+        <MessageSquareText :size="17" aria-hidden="true" />
+        <span>我的反馈</span>
+      </router-link>
+      <router-link v-if="canManage" to="/feedback/manage" :class="{ active: active === 'manage' }">
+        <Inbox :size="17" aria-hidden="true" />
+        <span>反馈工作台</span>
+        <span v-if="hasUnreadFeedback" class="feedback-workspace-nav-unread" role="img" aria-label="有未读反馈"></span>
+      </router-link>
+      <router-link v-if="canConfigure" to="/feedback/admin" :class="{ active: active === 'admin' }">
+        <ShieldCheck :size="17" aria-hidden="true" />
+        <span>权限配置</span>
+      </router-link>
+    </nav>
+    <router-link v-if="canAccessManagement" class="feedback-workspace-management" to="/manage">
       <LayoutDashboard :size="17" aria-hidden="true" />
       <span>管理工作台</span>
     </router-link>
-  </nav>
+  </div>
 </template>
 
 <script setup>
@@ -34,8 +36,7 @@ defineProps({
   active: { type: String, required: true },
   canManage: { type: Boolean, default: false },
   hasUnreadFeedback: { type: Boolean, default: false },
-  canConfigure: { type: Boolean, default: false },
-  showManagement: { type: Boolean, default: true }
+  canConfigure: { type: Boolean, default: false }
 })
 
 const canAccessManagement = computed(function () {
@@ -44,19 +45,30 @@ const canAccessManagement = computed(function () {
 </script>
 
 <style scoped>
+.feedback-workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 18px;
+}
+
 .feedback-workspace-nav {
   display: inline-flex;
   align-items: center;
   gap: 0;
-  margin-top: 18px;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--feedback-line);
   border-radius: 8px;
   background: var(--feedback-panel-deep);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .feedback-workspace-nav a {
-  min-height: 42px;
+  flex: 0 0 auto;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -66,6 +78,7 @@ const canAccessManagement = computed(function () {
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .feedback-workspace-nav a:hover,
@@ -85,15 +98,36 @@ const canAccessManagement = computed(function () {
 
 .feedback-workspace-nav a:last-child { border-right: 0; }
 
+.feedback-workspace-management {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--feedback-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.feedback-workspace-management:hover { color: var(--accent-strong); }
+.feedback-workspace-header a:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
 @media (max-width: 767px) {
+  .feedback-workspace-header {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 12px;
+  }
+
   .feedback-workspace-nav {
     width: 100%;
-    margin-top: 12px;
     overflow-x: auto;
     scrollbar-width: none;
   }
 
   .feedback-workspace-nav::-webkit-scrollbar { display: none; }
   .feedback-workspace-nav a { flex: 1 0 auto; justify-content: center; min-height: 44px; }
+  .feedback-workspace-management { align-self: flex-end; }
 }
 </style>
