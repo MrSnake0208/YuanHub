@@ -185,6 +185,8 @@ it('广场保存刷新卡片，取消公开移除卡片并关闭详情', async (
   publicApi.listPublicFeedback.mockResolvedValue({ items: [publicItem({ publicStatus: 'COMPLETED' })], total: 1 })
   await button(wrapper, '保存修改').trigger('click'); await flushPromises()
   expect(wrapper.get('.public-card').text()).toContain('已完成')
+  managed.getManagedFeedback.mockResolvedValue(ticket({ publicStatus: 'COMPLETED' }))
+  await open(wrapper)
   publicApi.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
   await button(wrapper, '取消公开').trigger('click'); await flushPromises()
   expect(managed.unpublishFeedback).toHaveBeenCalledWith('rpt_1')
