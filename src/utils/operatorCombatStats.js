@@ -13,9 +13,13 @@ const MAX_CURIOS = 24
 export const OPERATOR_ODDITY_KEYS = ['attack', 'hp', 'special']
 
 export function fillOperatorDraftToMax(draft, odditySchema) {
-  const schema = normalizeOperatorOdditySchema(odditySchema)
   draft.level = OPERATOR_LEVEL_MAX
   draft.elite = OPERATOR_ELITE_MAX
+  return fillOperatorOdditiesToMax(draft, odditySchema)
+}
+
+export function fillOperatorOdditiesToMax(draft, odditySchema) {
+  const schema = normalizeOperatorOdditySchema(odditySchema)
   return OPERATOR_ODDITY_KEYS.filter(function (key) {
     const max = schema[key].max
     if (max == null || max < 0) return true

@@ -194,6 +194,12 @@
                     />
                     <i>/{{ OPERATOR_ELITE_MAX }}</i>
                   </label>
+                  <button class="mini" type="button" :disabled="importing" @click="applyPageGrowthPreset(100, 17)">
+                    100级 / 修为17
+                  </button>
+                  <button class="mini" type="button" :disabled="importing" @click="applyPageGrowthPreset(90, 15)">
+                    90级 / 修为15
+                  </button>
                 </div>
                 <span v-if="maxEliteHint" class="elite-hint"
                   >当前等级最高修为 {{ maxEliteHint }}</span
@@ -986,6 +992,11 @@ function normalizePageForm() {
   f.level = clampInt(f.level, OPERATOR_LEVEL_MAX);
   f.elite = clampInt(f.elite, getMaxEliteForLevel(f.level));
   f.node = clampInt(f.node, NODE_RANGE[NODE_RANGE.length - 1]);
+}
+
+function applyPageGrowthPreset(level, elite) {
+  Object.assign(pageForm.value, { level, elite });
+  normalizePageForm();
 }
 
 function starLabelForStep(s, node) {

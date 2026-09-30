@@ -5,6 +5,7 @@ import {
   combatInputSignature,
   combatStatsSourceLabel,
   fillOperatorDraftToMax,
+  fillOperatorOdditiesToMax,
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema
@@ -33,6 +34,32 @@ test('一键拉满只把图鉴有上限的奇闻填到上限，保留其他养�
     attack: { max: 500 }, hp: { max: 2600 }, special: { max: null }
   }), ['special'])
   assert.equal(draft.combatStats.oddities.special.current, 7)
+})
+
+test('仅拉满奇闻遵循各稀有度图鉴上限，保留练度、装备及缺失上限的原值', function () {
+  const draft = {
+    level: 90, elite: 15, starLevel: 8,
+    discLoadouts: [{ id: 'disc_1', discs: [{ ot_name: '测试命盘' }] }],
+    stones: { main1: { name: '测试星石', level: 10 } },
+    combatStats: { manualAttack: 123, oddities: {
+      attack: { current: 10, max: 999 },
+      hp: { current: 20, max: 999 },
+      special: { current: 7, max: 999 }
+    } }
+  }
+  const original = structuredClone(draft)
+  for (const limits of [[300, 1560, 9], [350, 1820, 11], [500, 2600, 15]]) {
+    const schema = Object.fromEntries(['attack', 'hp', 'special'].map((key, index) => [key, { max: limits[index] }]))
+    assert.deepEqual(fillOperatorOdditiesToMax(draft, schema), [])
+    assert.deepEqual(['attack', 'hp', 'special'].map(key => draft.combatStats.oddities[key].current), limits)
+    const expected = structuredClone(original)
+    for (const [index, key] of ['attack', 'hp', 'special'].entries()) expected.combatStats.oddities[key].current = limits[index]
+    assert.deepEqual(draft, expected)
+  }
+  assert.deepEqual(fillOperatorOdditiesToMax(draft, {
+    attack: { max: 0 }, hp: { max: null }, special: { max: -1 }
+  }), ['hp', 'special'])
+  assert.deepEqual(['attack', 'hp', 'special'].map(key => draft.combatStats.oddities[key].current), [0, 2600, 15])
 })
 
 test('兼容根级、stats 和 snake_case 扫描属性', function () {
