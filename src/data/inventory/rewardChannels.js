@@ -2,6 +2,31 @@ import { ITEM_CATALOG, AGENT_CATALOG } from './catalog.js'
 import { FRONTEND_HIDDEN_ITEM_IDS, sortItemsByGameOrder } from './itemSections.js'
 import { HIDDEN_AGENT_IDS } from './agentManifest.js'
 import { isDispatchReward, staminaCostOf } from './exchange.js'
+import { businessDate } from '../../utils/businessDay.js'
+
+export const WHITE_COIN_PRESETS = Object.freeze([
+  { id: 'agent-daily', channel: '密探日常', count: 50 },
+  { id: 'monthly-card', channel: '月卡奖励', count: 60 },
+])
+
+export function dailyWhiteCoinRecordId(presetId, effectiveAt) {
+  if (!WHITE_COIN_PRESETS.some(preset => preset.id === presetId) || !Number.isFinite(Date.parse(effectiveAt))) {
+    throw new TypeError('请选择有效的日常来源和发生时间')
+  }
+  return `yuanhub:daily-whitecoin:${presetId}:${businessDate(effectiveAt)}`
+}
+
+export function validateWhiteCoinAnnotation(current, effectiveAt) {
+  if (!Array.isArray(current)) throw new TypeError('白金币库存盘点加载失败，请重试')
+  const inventory = current.find(entry => entry.entity_type === 'item')
+  const baselines = [inventory?.full_baseline_at, inventory?.entries?.baijinbi?.listed_baseline_at]
+    .map(value => Date.parse(value)).filter(Number.isFinite)
+  if (!baselines.length) throw new TypeError('尚无白金币库存盘点，请先同步或盘点库存，再补标来源')
+  const time = Date.parse(effectiveAt)
+  if (!Number.isFinite(time) || time > Math.max(...baselines)) {
+    throw new TypeError('奖励发生时间晚于白金币库存盘点，请填写实际发生时间，或选择新增收入')
+  }
+}
 
 export const REWARD_CHANNELS = Object.freeze([
   { id: '派遣-洛阳', label: '派遣 · 洛阳', hint: '鸟食与白金币', entityType: 'item', icon: 'bird' },

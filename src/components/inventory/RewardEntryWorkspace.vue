@@ -40,21 +40,32 @@
       <form v-if="mode === 'manual' && entities.length" class="manual-form" novalidate @submit.prevent="previewManual">
         <fieldset :disabled="locked || !!result || disabled">
           <legend class="sr-only">填写奖励流水</legend>
+          <div class="whitecoin-shortcuts">
+            <div class="section-label">白金币日常快捷录入<span>可同时选择多个来源；每个来源每个游戏日仅记一笔</span></div>
+            <div class="shortcut-options" role="group" aria-label="白金币日常来源">
+              <button v-for="preset in WHITE_COIN_PRESETS" :key="preset.id" type="button" class="outline-button" :aria-pressed="manual.presets.some(entry => entry.id === preset.id)" @click="selectWhiteCoinPreset(preset)">{{ preset.channel }} {{ preset.count }}</button>
+              <button v-if="manual.presets.length" type="button" class="outline-button" @click="manual.presets = []; manual.whiteCoinPurpose = ''; clearPreview()">普通补录</button>
+            </div>
+            <ul v-if="manual.presets.length" class="daily-source-list"><li v-for="preset in manual.presets" :key="preset.id"><label>{{ preset.channel }}<input v-model="preset.count" type="text" inputmode="numeric" :aria-label="preset.channel + '白金币数量'" @input="clearPreview" /> 白金币</label></li></ul>
+            <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyCoinTotal }} 白金币，分别保存 {{ manual.presets.length }} 条来源流水。</p>
+            <label v-if="manual.presets.length" class="whitecoin-purpose">本次记录用途<select v-model="manual.whiteCoinPurpose" aria-label="白金币记录用途" @change="clearPreview"><option value="">请选择记录用途</option><option value="income">新增收入（计入库存）</option><option value="annotation">补标已盘点收入（仅补历史）</option></select></label>
+            <p v-if="manual.presets.length" class="shortcut-note">已被 MaaYuan 扫描或手动盘点包含的收入，请选择补标并填写实际发生时间；未经盘点的新收入才计入库存。游戏日按北京时间 05:00 划分。</p>
+          </div>
           <div class="channel-section">
-            <div class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
-              <div class="channel-options" role="group" aria-label="获取渠道">
+            <div v-if="!manual.presets.length" class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
+              <div v-if="!manual.presets.length" class="channel-options" role="group" aria-label="获取渠道">
                 <button v-for="channel in REWARD_CHANNELS" :key="channel.id" type="button" class="channel-option" :class="{ selected: manual.channel === channel.id }" :aria-pressed="manual.channel === channel.id" @click="changeChannel(channel.id)">
                 <component :is="channelIcons[channel.icon]" :size="20" aria-hidden="true" /><span><b>{{ channel.label }}</b><small>{{ channel.hint }}</small></span><span v-if="manual.channel === channel.id" class="channel-check"><Check :size="11" aria-hidden="true" /></span>
               </button>
             </div>
             <div class="reward-metadata">
-              <label v-if="manual.channel === '手动补录'" class="custom-channel-field"><span>自定义渠道名称 <small>例如：活动邮件、月卡奖励</small></span><input v-model.trim="manual.customChannel" type="text" maxlength="64" placeholder="填写这笔奖励的来源" @input="clearPreview" /></label>
+              <label v-if="manual.channel === '手动补录' && !manual.presets.length" class="custom-channel-field"><span>自定义渠道名称 <small>例如：活动邮件、月卡奖励</small></span><input v-model.trim="manual.customChannel" type="text" maxlength="64" placeholder="填写这笔奖励的来源" @input="clearPreview" /></label>
               <RewardDateTimePicker v-model:date="manual.date" v-model:clock="manual.clock" :disabled="locked || !!result || disabled" @update:date="clearPreview" @update:clock="clearPreview" />
               <label v-if="requiresStamina" class="stamina-field"><span>消耗体力<small>本次派遣</small></span><span class="stamina-input"><Flame :size="16" aria-hidden="true" /><input v-model="manual.stamina" type="text" inputmode="numeric" aria-label="消耗体力" placeholder="填写实际消耗" @input="clearPreview" /><span>点</span></span></label>
               <p v-if="manualBeforeLatestSnapshot" class="baseline-note"><History :size="14" aria-hidden="true" /><span>时间早于已知最新库存快照；服务端会保留这条历史，已被快照覆盖的数量不会再次增加当前库存。</span></p>
             </div>
           </div>
-          <div class="manual-columns">
+          <div v-if="!manual.presets.length" class="manual-columns">
             <section class="reward-picker" aria-label="选择奖励">
               <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>点击图标增加，选中后从左下角减少</span></div>
               <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
@@ -84,6 +95,7 @@
               <button type="submit" class="primary-button preview-button" :disabled="!manual.entries.length"><span>{{ previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
             </aside>
           </div>
+          <button v-if="manual.presets.length" type="submit" class="primary-button quick-preview">{{ previewed ? '更新预览' : '预览本次流水' }}<ArrowRight :size="16" aria-hidden="true" /></button>
         </fieldset>
       </form>
 
@@ -133,10 +145,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
-import { importInventory } from '../../api/inventory.js'
+import { getCurrent, importInventory } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
 import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
-import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
+import { REWARD_CHANNELS, WHITE_COIN_PRESETS, dailyWhiteCoinRecordId, validateWhiteCoinAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
@@ -147,6 +159,7 @@ const mode = ref('')
 const entities = ref([])
 const catalogLoading = ref(false)
 const busy = ref(false)
+const checkingBaseline = ref(false)
 const error = ref('')
 const result = ref(null)
 const errorBox = ref(null)
@@ -169,8 +182,9 @@ const rarity = ref(0)
 const agentProf = ref('')
 const failedImages = ref(new Set())
 const expandedRows = ref(new Set())
-const locked = computed(() => busy.value || !!pendingDocument.value)
+const locked = computed(() => busy.value || checkingBaseline.value || !!pendingDocument.value)
 const closeLockMessage = computed(() => {
+  if (checkingBaseline.value) return '正在核对白金币库存盘点，请等待完成。'
   if (busy.value) return '正在提交本次入账，请等待完成后再关闭工作台。'
   if (pendingDocument.value) return '上次提交结果未确认，请先原样重试；为避免重复入账，当前工作台暂不能关闭。'
   return ''
@@ -179,12 +193,17 @@ const selectedRecords = computed(() => rows.value.filter(row => row.selected && 
 const channelIcons = { bird: Bird, flower: Flower2, scroll: ScrollText, book: BookOpen, pencil: Pencil }
 const qualities = [{ id: 0, label: '全部' }, { id: 5, label: '金' }, { id: 4, label: '紫' }, { id: 3, label: '蓝' }]
 let fileReadSeq = 0
+let disposed = false
 function freshManual() {
   const date = new Date()
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
-  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: '派遣-洛阳', customChannel: '', entityType: 'item', stamina: '', entries: [] }
+  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: '派遣-洛阳', customChannel: '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '' }
 }
 const manual = ref(freshManual())
+const dailyCoinTotal = computed(() => {
+  const counts = manual.value.presets.map(preset => Number(preset.count))
+  return counts.every(Number.isFinite) ? counts.reduce((total, count) => total + count, 0) : '—'
+})
 const entryOptions = computed(() => rewardOptionsForChannel(manual.value.channel, entities.value, manual.value.entityType))
 const visibleOptions = computed(() => entryOptions.value.filter(entity => (!rarity.value || entity.rarity === rarity.value) && (!agentProf.value || (Array.isArray(entity.prof) ? entity.prof.includes(agentProf.value) : entity.prof === agentProf.value)) && (!search.value.trim() || entity.name.includes(search.value.trim()) || entity.id.toLowerCase().includes(search.value.trim().toLowerCase()))))
 const requiresStamina = computed(() => manual.value.channel.includes('派遣') || (manual.value.channel === '手动补录' && manual.value.customChannel.trim().includes('派遣')))
@@ -346,11 +365,25 @@ function clearPreview() { rows.value = []; previewed.value = false; result.value
 function clearReportPreview() { fileReadSeq++; readingFile.value = false; fileName.value = ''; clearPreview() }
 function changeChannel(channel) {
   if (channel === manual.value.channel || locked.value) return
+  manual.value.presets = []; manual.value.whiteCoinPurpose = ''
   manual.value.channel = channel
   manual.value.entityType = REWARD_CHANNELS.find(item => item.id === channel).entityType || manual.value.entityType
   const allowed = new Set(entryOptions.value.map(entry => entry.id))
   manual.value.entries = manual.value.entries.filter(entry => allowed.has(entry.id))
   manual.value.stamina = ''
+  search.value = ''; rarity.value = 0; agentProf.value = ''
+  clearPreview()
+}
+function selectWhiteCoinPreset(preset) {
+  if (manual.value.presets.some(entry => entry.id === preset.id)) {
+    manual.value.presets = manual.value.presets.filter(entry => entry.id !== preset.id)
+  } else {
+    changeChannel('手动补录')
+    manual.value.presets.push({ ...preset })
+  }
+  manual.value.entityType = 'item'
+  manual.value.entries = []
+  manual.value.customChannel = ''
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
 }
@@ -380,23 +413,34 @@ function clearBasket() { manual.value.entries = []; clearPreview() }
 async function previewManual() {
   if (locked.value || props.disabled) return
   clearPreview()
+  const targetAccount = props.accountId
+  const draft = manual.value
   try {
-    const draft = manual.value
-    const acquisitionChannel = manualAcquisitionChannel(draft.channel, draft.customChannel)
-    const record = {
-      record_id: `yuanhub:reward:${crypto.randomUUID()}`, record_type: 'reward_delta',
-      entity_type: draft.entityType, acquisition_channel: acquisitionChannel,
-      effective_at: manualRewardTimestamp(draft.date, draft.clock),
-      entries: draft.entries.map(entry => ({ id: entry.id, name: entry.name, count: /^\d+$/.test(String(entry.count)) ? Number(entry.count) : NaN })),
-      ...(requiresStamina.value ? { stamina_cost: /^\d+$/.test(draft.stamina) ? Number(draft.stamina) : undefined } : {}),
+    if (draft.presets.length && !['income', 'annotation'].includes(draft.whiteCoinPurpose)) throw new Error('请选择新增收入或补标已盘点收入')
+    const effectiveAt = manualRewardTimestamp(draft.date, draft.clock)
+    const base = { record_type: 'reward_delta', entity_type: draft.entityType, effective_at: effectiveAt,
+      ...(requiresStamina.value ? { stamina_cost: /^\d+$/.test(draft.stamina) ? Number(draft.stamina) : undefined } : {}) }
+    const count = value => /^\d+$/.test(String(value)) ? Number(value) : NaN
+    const records = draft.presets.length ? draft.presets.map(preset => ({
+      ...base, record_id: dailyWhiteCoinRecordId(preset.id, effectiveAt), acquisition_channel: preset.channel,
+      entries: [{ id: 'baijinbi', name: '白金币', count: count(preset.count) }],
+    })) : [{ ...base, record_id: `yuanhub:reward:${crypto.randomUUID()}`,
+      acquisition_channel: manualAcquisitionChannel(draft.channel, draft.customChannel),
+      entries: draft.entries.map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }]
+    records.forEach(record => validateManualRewardChannel(record, entities.value, draft.channel))
+    if (draft.presets.length && draft.whiteCoinPurpose === 'annotation') {
+      checkingBaseline.value = true
+      const current = await getCurrent({ accountId: targetAccount, entityType: 'item' })
+      if (disposed || props.accountId !== targetAccount || manual.value !== draft || mode.value !== 'manual') return
+      validateWhiteCoinAnnotation(current, effectiveAt)
     }
-    validateManualRewardChannel(record, entities.value, draft.channel)
-    const doc = buildRewardDocument([record], props.accountId, entities.value)
-    rows.value = [{ key: record.record_id, block: 1, record: doc.records[0], status: '手动添加', selected: true, error: '' }]
+    const doc = buildRewardDocument(records, targetAccount, entities.value)
+    rows.value = doc.records.map(record => ({ key: record.record_id, block: 1, record, status: draft.whiteCoinPurpose === 'annotation' ? '补标已盘点收入' : '手动添加', selected: true, error: '' }))
     previewed.value = true
     await nextTick()
     heading.value?.closest('.reward-panel')?.querySelector('.preview-section')?.scrollIntoView({ block: 'nearest' })
-  } catch (err) { showError(err.message) }
+  } catch (err) { if (!disposed && props.accountId === targetAccount && manual.value === draft) showError(err.message) }
+  finally { checkingBaseline.value = false }
 }
 function pickFile(event) { const file = event.target.files?.[0]; event.target.value = ''; readReportFile(file) }
 function dropFile(event) { dragActive.value = false; if (event.dataTransfer.files.length !== 1) { showError('请每次选择一份报告'); return }; readReportFile(event.dataTransfer.files[0]) }
@@ -429,20 +473,26 @@ async function submit() {
   if (busy.value || props.disabled || result.value) return
   error.value = ''
   const targetAccount = props.accountId
+  const targetDraft = manual.value
   try {
+    busy.value = true
+    if (!pendingDocument.value && mode.value === 'manual' && manual.value.presets.length && manual.value.whiteCoinPurpose === 'annotation') {
+      const current = await getCurrent({ accountId: targetAccount, entityType: 'item' })
+      if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
+      validateWhiteCoinAnnotation(current, selectedRecords.value[0]?.effective_at)
+    }
     if (!pendingDocument.value) pendingDocument.value = mode.value === 'report'
       ? buildReportDocument(selectedRecords.value, targetAccount, entities.value, props.game)
       : buildRewardDocument(selectedRecords.value, targetAccount, entities.value)
-    busy.value = true
     const response = await importInventory(pendingDocument.value)
-    if (props.accountId !== targetAccount) return
+    if (disposed || props.accountId !== targetAccount || manual.value !== targetDraft) return
     if (!response || !['accepted', 'duplicates', 'history_only', 'superseded'].every(key => Number.isInteger(response[key]) && response[key] >= 0)) throw new Error('未收到有效的补录结果，请原样重试确认状态')
     result.value = response; pendingDocument.value = null
     emit('imported', targetAccount)
   } catch (err) {
-    if (props.accountId === targetAccount) {
+    if (!disposed && props.accountId === targetAccount && manual.value === targetDraft) {
       if ([400, 401, 403, 404, 409, 422].includes(err.status)) pendingDocument.value = null
-      await showError(err.message || '补录失败，请重试')
+      await showError(err.status === 409 && manual.value.presets.length ? '所选日常来源已有记录，未重复入账。请在操作历史核对原记录，取消已记录的来源后补录其他来源；修正时先删除原记录。' : err.message || '补录失败，请重试')
     }
   } finally { busy.value = false }
 }
@@ -450,8 +500,8 @@ function startNext() { clearPreview(); manual.value = freshManual(); reportText.
 function warningText(warning) { return typeof warning === 'string' ? warning : warning?.message || JSON.stringify(warning) }
 function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
-function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : value === '手动添加' ? '手动添加' : '待核对' }
-onBeforeUnmount(unlockBackgroundScroll)
+function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : ['手动添加', '补标已盘点收入'].includes(value) ? value : '待核对' }
+onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll() })
 </script>
 
 <style scoped>
@@ -459,6 +509,16 @@ onBeforeUnmount(unlockBackgroundScroll)
 .reward-workspace *, .reward-workspace *::before, .reward-workspace *::after { box-sizing: border-box; }
 .reward-dialog-mask, .reward-dialog-mask *, .reward-dialog-mask *::before, .reward-dialog-mask *::after { box-sizing: border-box; }
 .workspace-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }
+.whitecoin-shortcuts { padding: 18px; border-bottom: 1px solid var(--line); }
+.shortcut-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.daily-source-list { display: grid; gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
+.daily-source-list label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
+.daily-source-list input { width: 84px; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.quick-preview { margin: 0 18px 18px; }
+.shortcut-options [aria-pressed="true"] { background: var(--cream); border-color: var(--reward-gold); }
+.whitecoin-purpose { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.whitecoin-purpose select { min-height: 44px; max-width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.shortcut-note { margin: 10px 0 0; font-size: 12px; line-height: 1.7; color: var(--ink-60); }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { appearance: none; border: 0; cursor: pointer; background: transparent; padding: 0; transition: background .16s, border-color .16s, box-shadow .16s; }
 button:disabled { opacity: .45; cursor: not-allowed; }

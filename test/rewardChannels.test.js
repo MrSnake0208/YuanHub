@@ -1,12 +1,30 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ITEM_CATALOG, AGENT_CATALOG } from '../src/data/inventory/catalog.js'
-import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../src/data/inventory/rewardChannels.js'
+import { REWARD_CHANNELS, dailyWhiteCoinRecordId, validateWhiteCoinAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../src/data/inventory/rewardChannels.js'
 
 const entities = [
   ...ITEM_CATALOG.map(({ id, name }) => ({ entity_type: 'item', id, name })),
   ...AGENT_CATALOG.map(({ id, name }) => ({ entity_type: 'agent', id, name })),
 ]
+test('快捷日常 ID 按来源和北京时间 05:00 游戏日稳定，跨日或来源不同才变化', () => {
+  const first = dailyWhiteCoinRecordId('monthly-card', '2026-09-30T04:59:59+08:00')
+  assert.equal(first, dailyWhiteCoinRecordId('monthly-card', '2026-09-29T12:00:00+08:00'))
+  assert.notEqual(first, dailyWhiteCoinRecordId('monthly-card', '2026-09-30T05:00:00+08:00'))
+  assert.notEqual(first, dailyWhiteCoinRecordId('agent-daily', '2026-09-30T04:59:59+08:00'))
+  assert.throws(() => dailyWhiteCoinRecordId('unknown', '2026-09-30T05:00:00+08:00'))
+  assert.throws(() => dailyWhiteCoinRecordId('monthly-card', undefined))
+})
+test('补标必须由白金币自身的完整或列出条目基线覆盖，不能用心纸或茱萸盘点代替', () => {
+  const at = '2026-09-30T10:00:00+08:00'
+  assert.throws(() => validateWhiteCoinAnnotation([], at), /尚无白金币/)
+  assert.throws(() => validateWhiteCoinAnnotation([{ entity_type: 'agent', full_baseline_at: at }], at), /尚无白金币/)
+  assert.throws(() => validateWhiteCoinAnnotation([{ entity_type: 'item', entries: { zhuyu: { listed_baseline_at: at } } }], at), /尚无白金币/)
+  const current = [{ entity_type: 'item', full_baseline_at: '2026-09-30T09:00:00+08:00', entries: { baijinbi: { listed_baseline_at: at } } }]
+  assert.doesNotThrow(() => validateWhiteCoinAnnotation(current, at))
+  assert.throws(() => validateWhiteCoinAnnotation(current, '2026-09-30T10:00:01+08:00'), /晚于/)
+  assert.doesNotThrow(() => validateWhiteCoinAnnotation([{ entity_type: 'item', full_baseline_at: at }], at))
+})
 test('洛阳只提供四种鸟食及白金币，不能通过类型选择带入心纸', () => {
   assert.deepEqual(rewardOptionsForChannel('派遣-洛阳', entities, 'agent').map(entry => entry.id), ['jizhi', 'mazi', 'sherou', 'zhuyu', 'baijinbi'])
 })

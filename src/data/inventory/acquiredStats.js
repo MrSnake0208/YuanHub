@@ -294,6 +294,8 @@ export function buildRewardInsights({
   const favoriteDayAgents = new Map()
   const luckyCoframes = []
   let yuanbaoWhiteCoin = 0
+  let luoyangWhiteCoin = 0
+  let luoyangZhuyu = 0
 
   items.concat(agents).forEach(function (record) {
     const day = localDayKey(record.effective_at)
@@ -314,11 +316,13 @@ export function buildRewardInsights({
         const count = positiveCount(entry.count)
         if (row) row.direct += count
         if (isYuanbao) yuanbaoWhiteCoin += count
+        if (isLuoyang) luoyangWhiteCoin += count
         if (day && isLuoyang && count) coinStreakDays.add(day)
       }
       if (entry.id === 'zhuyu') {
         const count = positiveCount(entry.count)
         if (row) row.zhuyu += count
+        if (isLuoyang) luoyangZhuyu += count
         if (day && count) coinStreakDays.add(day)
       }
     })
@@ -438,7 +442,7 @@ export function buildRewardInsights({
   const direct = positiveCount(resolvedItemTotals.baijinbi)
   const zhuyu = positiveCount(resolvedItemTotals.zhuyu)
   const yuanbao = Math.min(direct, yuanbaoWhiteCoin)
-  const luoyang = Math.max(0, direct - yuanbao)
+  const luoyang = Math.min(Math.max(0, direct - yuanbao), luoyangWhiteCoin)
   return {
     rewardRecordCount: items.length + agents.length,
     activeDayCount: activeDays.size,
@@ -446,7 +450,9 @@ export function buildRewardInsights({
       direct: direct,
       luoyang: luoyang,
       yuanbao: yuanbao,
+      other: Math.max(0, direct - yuanbao - luoyang),
       zhuyu: zhuyu,
+      luoyangZhuyu: Math.min(zhuyu, luoyangZhuyu),
       equivalent: direct + zhuyu * 50,
       bestDay: bestDay(coinDayRows),
       longestStreak: longestDayStreak(Array.from(coinStreakDays))

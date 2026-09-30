@@ -7,13 +7,14 @@ export const DRAW_RESOURCES = [
 ]
 
 // Reconstruct only after an observed snapshot. Reward totals alone are not stock.
-export function buildResourceBalance(records, from, to) {
+export function buildResourceBalance(records, from, to, includeZhuyu = false) {
   const ordered = [...records].filter(r => r.entity_type === 'item' && localDayKey(r.effective_at))
     .sort((a, b) => Date.parse(a.effective_at) - Date.parse(b.effective_at)
       || Number(a.record_type === 'stock_snapshot') - Number(b.record_type === 'stock_snapshot')
       || String(a.received_at || '').localeCompare(String(b.received_at || ''))
       || String(a.record_id || '').localeCompare(String(b.record_id || '')))
-  return DRAW_RESOURCES.map(resource => {
+  const resources = includeZhuyu ? [...DRAW_RESOURCES, { id: 'zhuyu' }] : DRAW_RESOURCES
+  const balances = resources.map(resource => {
     let stock = null
     const days = new Map()
     const seen = new Set()
@@ -41,6 +42,24 @@ export function buildResourceBalance(records, from, to) {
     return { ...resource, points, latest: points.at(-1) || null,
       net: points.length > 1 ? points.at(-1).stock - points[0].stock : null }
   })
+  if (!includeZhuyu) return balances
+  const coin = balances[0]
+  const zhuyu = balances.pop()
+  const days = [...new Set([...coin.points, ...zhuyu.points].map(point => point.day))].sort()
+  let missingDays = 0
+  const points = days.flatMap(day => {
+    const coinStock = resourceCalendarValue(coin.points, day).stock
+    const zhuyuStock = resourceCalendarValue(zhuyu.points, day).stock
+    if (coinStock === null || zhuyuStock === null) { missingDays++; return [] }
+    return [{ day, stock: coinStock + zhuyuStock * 50, state: '基于最近记录折算', components: { baijinbi: coinStock, zhuyu: zhuyuStock } }]
+  }).map((point, index, all) => ({ ...point,
+    delta: index ? point.stock - all[index - 1].stock : null,
+    previousDay: index ? all[index - 1].day : null
+  }))
+  balances[0] = { ...coin, name: '白金币等价值（含茱萸）', points, missingDays,
+    latest: points.at(-1) || null,
+    net: points.length > 1 ? points.at(-1).stock - points[0].stock : null }
+  return balances
 }
 
 // UTC date-only arithmetic keeps calendar spacing stable across DST and month/year boundaries.
