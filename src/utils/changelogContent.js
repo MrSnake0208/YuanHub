@@ -44,6 +44,19 @@ export function emptyChangelogBody() {
   return { type: 'doc', content: [{ type: 'paragraph' }] }
 }
 
+export function changelogHighlights(body) {
+  const lines = []
+  function visit(node) {
+    if (!node || lines.length >= 3) return
+    if (node.type === 'paragraph') {
+      const text = (node.content || []).map(child => child.type === 'hardBreak' ? ' ' : child.text || '').join('').trim()
+      if (text) lines.push(text)
+    } else if (Array.isArray(node.content)) node.content.forEach(visit)
+  }
+  visit(body)
+  return lines
+}
+
 export function isChangelogBodyEmpty(body) {
   if (!body || body.type !== 'doc' || !Array.isArray(body.content)) return true
   function hasContent(node) {

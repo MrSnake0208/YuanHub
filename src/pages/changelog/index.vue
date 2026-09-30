@@ -7,9 +7,13 @@
         <p v-if="loading && !entries.length" class="state">正在加载更新日志…</p>
         <p v-else-if="error && !entries.length" class="state error" role="alert">{{ error }} <button type="button" @click="load(1)">重试</button></p>
         <p v-else-if="!entries.length" class="state">还没有已发布的更新日志。</p>
-        <article v-for="entry in entries" :key="entry.id + '-' + entry.revision" class="changelog-card">
+        <article v-for="(entry, index) in entries" :id="'version-' + entry.id" :key="entry.id + '-' + entry.revision" class="changelog-card">
           <header><span class="version">{{ entry.versionLabel }}</span><time :datetime="entry.publishedAt">{{ formatDate(entry.publishedAt) }}</time><h2>{{ entry.title }}</h2></header>
-          <ChangelogContent :body="entry.body" />
+          <ul v-if="changelogHighlights(entry.body).length" class="changelog-highlights" aria-label="更新摘要"><li v-for="(text, line) in changelogHighlights(entry.body)" :key="line"><span>{{ text }}</span></li></ul>
+          <details class="changelog-full" :open="index === 0">
+            <summary>阅读完整更新</summary>
+            <ChangelogContent :body="entry.body" />
+          </details>
           <ChangelogRelatedFeedback :version-id="entry.id" />
         </article>
         <p v-if="error && entries.length" class="inline-error" role="alert">{{ error }}</p>
@@ -21,9 +25,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { listChangelog } from '../../api/changelog.js'
 import { productVersionLabel } from '../../config/buildInfo.js'
+import { changelogHighlights } from '../../utils/changelogContent.js'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import ChangelogContent from '../../components/changelog/ChangelogContent.vue'
@@ -43,6 +48,10 @@ async function load(nextPage) {
     entries.value = nextPage === 1 ? result.data : entries.value.concat(result.data)
     page.value = result.page
     hasNext.value = result.hasNext
+    if (nextPage === 1 && window.location.hash.startsWith('#version-')) {
+      await nextTick()
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: 'start' })
+    }
   } catch (err) {
     error.value = err && err.message ? err.message : '更新日志加载失败'
   } finally { loading.value = false }
@@ -59,6 +68,14 @@ onMounted(function () { load(1) })
 <style scoped>
 .page-changelog { min-height: 100vh; min-height: 100dvh; }
 .page-changelog .hero { --wm: '新'; }
+.page-changelog .hero { padding: 38px 0 28px; }
+.page-changelog .hero h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.2; }
+.page-changelog .hero h1 .small { font-size: 18px; }
+.changelog-card { scroll-margin-top: 84px; }
+.changelog-highlights { margin-top: 18px; padding-left: 20px; color: var(--ink-60); font-size: 14px; line-height: 1.8; }
+.changelog-highlights li { margin-block: 6px; overflow-wrap: anywhere; }
+.changelog-highlights li span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.changelog-full summary { min-height: 44px; padding-top: 14px; color: var(--tea); font-size: 13px; font-weight: 800; cursor: pointer; }
 .page-changelog .crumb .pill { white-space: nowrap; }
 .changelog-feed { display: grid; gap: 22px; padding-bottom: 12px; }
 .changelog-card { padding: clamp(22px, 4vw, 42px); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(73,59,44,.45); }
