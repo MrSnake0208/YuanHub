@@ -1,11 +1,11 @@
 <template>
-  <div class="feedback-page page-feedback">
+  <div class="feedback-page feedback-center page-feedback">
     <IslandSidebar />
 
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
-          <div class="feedback-hero-kicker">ME / FEEDBACK CENTER</div>
+          <div class="feedback-hero-kicker">COMMUNITY / FEEDBACK</div>
           <div class="feedback-hero-layout">
             <div>
               <h1>反馈中心</h1>

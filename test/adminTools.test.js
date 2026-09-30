@@ -62,8 +62,6 @@ test('adds a single accessible workbench back link to management detail pages', 
   const detailPages = [
     '../src/pages/admin/roles.vue',
     '../src/pages/admin/audit.vue',
-    '../src/pages/feedback/admin.vue',
-    '../src/pages/feedback/manage.vue',
     '../src/pages/operator/admin.vue',
     '../src/pages/changelog/admin.vue'
   ].map(readSource)
@@ -77,8 +75,22 @@ test('adds a single accessible workbench back link to management detail pages', 
     assert.equal((source.match(/<AdminBackLink\s*\/>/g) || []).length, 1)
     assert.match(source, /<header class="hero(?: [^"]+)?">\s*<div class="wrap">\s*<AdminBackLink\s*\/>/s)
   })
-  assert.match(detailPages[3], /<FeedbackWorkspaceNav[^>]+:show-management="false"/)
   assert.doesNotMatch(workbench, /AdminBackLink/)
+})
+
+test('feedback pages share their own navigation and retain their protected routes', function () {
+  const feedbackRoutes = routes.filter(route => route.path.startsWith('/feedback'))
+  assert.equal(feedbackRoutes.length, 4)
+  for (const route of feedbackRoutes) {
+    assert.ok(route.meta.title.startsWith('反馈中心 · '))
+  }
+  assert.equal(feedbackRoutes.find(route => route.path === '/feedback/manage').meta.requiresFeedbackManage, true)
+  assert.equal(feedbackRoutes.find(route => route.path === '/feedback/admin').meta.requiredPermission, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE)
+  for (const page of ['index', 'plaza', 'manage', 'admin']) {
+    const source = readSource(`../src/pages/feedback/${page}.vue`)
+    assert.match(source, /<FeedbackWorkspaceNav\b/)
+    assert.doesNotMatch(source, /AdminBackLink|show-management/)
+  }
 })
 
 // Replaced by mounted behavior tests; see docs/testing.md (no pixel/source-shape gate).

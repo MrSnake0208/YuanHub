@@ -1,14 +1,13 @@
 <template>
-  <div class="feedback-page page-feedback-access">
+  <div class="feedback-page feedback-center page-feedback-access">
     <IslandSidebar />
     <main id="main-content">
       <header class="hero feedback-hero">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="feedback-hero-kicker">ADMIN / ACCESS CONTROL</div>
+          <div class="feedback-hero-kicker">COMMUNITY / FEEDBACK</div>
           <div class="feedback-hero-layout">
             <div>
-              <h1>反馈权限</h1>
+              <h1>反馈中心</h1>
               <p class="hero-sub">配置运营与程序的负责板块；新反馈通知和兼容授权可分别设置。</p>
             </div>
             <button class="feedback-primary-action feedback-hero-action" type="button" @click="openCreate">
@@ -196,7 +195,6 @@ import { useModalFocus } from '@/composables/useModalFocus.js'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
-import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import FeedbackWorkspaceNav from '@/components/feedback/FeedbackWorkspaceNav.vue'
 import {
   createFeedbackCategory,
