@@ -105,7 +105,7 @@ describe('公共 Dialog 键盘行为', () => {
 
     const panel = document.body.querySelector('.community-dialog')
     expect(document.getElementById(panel.getAttribute('aria-labelledby')).textContent).toContain('YuanHub 内测交流群')
-    expect(document.activeElement.textContent).toContain('知道了')
+    expect(document.activeElement.textContent).toContain('复制群号')
     const hidden = document.createElement('button')
     hidden.style.display = 'none'
     panel.append(hidden)
@@ -133,16 +133,17 @@ describe('公共 Dialog 键盘行为', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })
     document.execCommand = vi.fn(() => true)
     try {
-      const copy = document.body.querySelector('.copy-button')
+      const copy = document.body.querySelector('.community-primary')
       copy.click()
       await flushPromises()
       expect(document.execCommand).toHaveBeenCalledWith('copy')
       expect(copy.textContent).toContain('已复制')
       expect(document.activeElement).toBe(copy)
-      document.execCommand.mockImplementation(() => { throw new Error('copy unavailable') })
+      document.execCommand.mockReturnValue(false)
       copy.click()
       await flushPromises()
       expect(copy.textContent).toContain('请手动复制')
+      expect(document.body.querySelector('[role="status"]').textContent).toContain('复制失败')
       expect(document.body.querySelector('textarea')).toBeNull()
       expect(document.activeElement).toBe(copy)
     } finally {

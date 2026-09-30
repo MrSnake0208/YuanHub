@@ -48,14 +48,12 @@
             <div class="community-main">
               <div class="community-details">
                 <div>
-                  <span class="detail-label">内测交流群号</span>
+                  <span class="detail-label">QQ 内测交流群号</span>
                   <div class="group-number-row">
                     <strong class="group-number">{{ BETA_COMMUNITY.groupNumber }}</strong>
-                    <button type="button" class="copy-button" @click="copyGroupNumber">
-                      <Copy :size="15" aria-hidden="true" />
-                      {{ copyState }}
-                    </button>
                   </div>
+                  <p class="join-steps">复制群号 → 在 QQ 中搜索群 → 申请加入</p>
+                  <p v-if="copyState !== '复制群号'" class="join-result" role="status">{{ copyState === '已复制' ? '群号已复制，接下来打开 QQ 搜索群。' : '复制失败，请选中上面的群号手动复制。' }}</p>
                 </div>
 
                 <div class="community-note">
@@ -71,8 +69,9 @@
           </div>
 
           <footer class="community-foot">
-            <button ref="primaryButton" type="button" class="community-primary" @click="close">
-              知道了
+            <button type="button" class="copy-button" @click="close">稍后加入</button>
+            <button ref="primaryButton" type="button" class="community-primary" @click="copyGroupNumber">
+              <Copy :size="16" aria-hidden="true" />{{ copyState }}
             </button>
           </footer>
         </section>
@@ -111,10 +110,10 @@ async function copyGroupNumber() {
       dialogEl.value.appendChild(input)
       try {
         input.select()
-        document.execCommand('copy')
+        if (!document.execCommand('copy')) throw new Error('复制失败')
       } finally {
         input.remove()
-        dialogEl.value.querySelector('.copy-button')?.focus()
+        primaryButton.value?.focus()
       }
     }
     copyState.value = '已复制'
@@ -330,17 +329,24 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 
 .community-foot {
   display: flex;
+  gap: 10px;
   justify-content: flex-end;
   padding: 14px 24px 22px;
 }
 
 .community-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-width: 112px;
   padding: 0 18px;
   border-color: var(--tea);
   background: var(--tea);
   color: var(--cream);
 }
+.join-steps, .join-result { margin-top: 12px; color: var(--ink-60); font: 650 12px/1.8 var(--font-b); }
+.join-result { color: var(--tea); }
 
 .copy-button:active,
 .community-primary:active {
