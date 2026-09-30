@@ -1,6 +1,7 @@
 export const FEATURE_KEYS = Object.freeze({
   OPERATOR_GROWTH_TRACKING: 'operatorGrowthTracking',
-  WORK_SYSTEM: 'workSystem'
+  WORK_SYSTEM: 'workSystem',
+  RECRUITMENT_ARCHIVE: 'recruitmentArchive'
 })
 
 const isViteDev = import.meta.env?.DEV === true
@@ -9,7 +10,8 @@ const isViteDev = import.meta.env?.DEV === true
 // Future flags must use explicit boolean values instead of inheriting this dev-only value.
 export const FEATURE_FLAGS = Object.freeze({
   [FEATURE_KEYS.OPERATOR_GROWTH_TRACKING]: isViteDev,
-  [FEATURE_KEYS.WORK_SYSTEM]: false
+  [FEATURE_KEYS.WORK_SYSTEM]: false,
+  [FEATURE_KEYS.RECRUITMENT_ARCHIVE]: true
 })
 
 export function isFeatureEnabled(key) {

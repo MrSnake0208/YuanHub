@@ -56,3 +56,5 @@ The flag only controls frontend visibility and interaction. It is not an
 authentication, authorization, or data-protection boundary; backend APIs and
 backup compatibility must be changed separately if a feature later needs to be
 strictly unavailable.
+
+`recruitmentArchive` controls the `/recruitment` route and both navigation entries. The delivered local MVP uses the explicit boolean `true` so users can review it directly; development and production builds both follow this value. It does not imply deployment. Before publishing, complete the pending user verification and decide whether to keep it open or set only `[FEATURE_KEYS.RECRUITMENT_ARCHIVE]` to `false` in `src/config/features.js`. The page also requires login and beta access; the backend independently protects private recruitment endpoints.

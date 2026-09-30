@@ -4,10 +4,10 @@ import { requiresBetaApi, safeBetaRedirect, betaEntryTarget, betaStatusCopy, bet
 
 const base = { accessMode: 'BETA', publicState: 'OPEN_REGISTRATION', reservedRemaining: 25, admissionsPaused: false }
 test('beta gate protects cloud roots and token writes, never public escape routes', () => {
-  for (const path of ['/v1/accounts', '/v1/accounts/a/events', '/v1/inventory/current', '/v1/operator/training-workspace', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/v1/star/captures/abc', '/hub/ledger/plan']) {
+  for (const path of ['/v1/accounts', '/v1/accounts/a/events', '/v1/inventory/current', '/v1/operator/training-workspace', '/v1/recruitment/archive', '/v1/recruitment/import/preview', '/v1/star-state', '/v1/star-loadout', '/v1/star-loadout-presets', '/v1/star/captures/abc', '/hub/ledger/plan']) {
     assert.equal(requiresBetaApi('GET', path), true, path)
   }
-  for (const path of ['/v1/inventory/catalog', '/v1/operator/catalog', '/v1/operator/share/view/token', '/v1/works', '/v1/reports', '/v1/notifications', '/v1/beta/me', '/v1/admin/beta', '/user/open-api/tokens', '/user/register']) {
+  for (const path of ['/v1/inventory/catalog', '/v1/operator/catalog', '/v1/recruitment/catalog?game=代号鸢', '/v1/operator/share/view/token', '/v1/works', '/v1/reports', '/v1/notifications', '/v1/beta/me', '/v1/admin/beta', '/user/open-api/tokens', '/user/register']) {
     assert.equal(requiresBetaApi('GET', path), false, path)
   }
   assert.equal(requiresBetaApi('POST', '/user/open-api/token'), true)
@@ -15,6 +15,9 @@ test('beta gate protects cloud roots and token writes, never public escape route
   assert.equal(requiresBetaApi('DELETE', '/user/open-api/tokens/t'), false)
   assert.equal(requiresBetaApi('POST', '/v1/operator/catalog'), true)
   assert.equal(requiresBetaApi('GET', '/v1/accounts-lookalike'), false)
+  assert.equal(requiresBetaApi('POST', '/v1/recruitment/catalog'), true)
+  assert.equal(requiresBetaApi('OPTIONS', '/v1/recruitment/commands'), false)
+  assert.equal(requiresBetaApi('GET', '/v1/recruitment-lookalike'), false)
 })
 test('redirect only keeps safe internal destinations without authentication loops', () => {
   assert.equal(safeBetaRedirect('/inventory?tab=rewards#today'), '/inventory?tab=rewards#today')
@@ -60,7 +63,7 @@ test('every status copy carries a visual tone the beta page can style', () => {
 
 test('actual routes protect only the intended workspaces, never the landing page itself', async () => {
   const { routes } = await import('../src/router/routes.js')
-  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star'].sort())
+  assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/recruitment', '/star'].sort())
   const landing = routes.find(route => route.path === '/beta')
   assert.notEqual(landing.meta.requiresBeta, true)
   assert.notEqual(landing.meta.requiresAuth, true)
