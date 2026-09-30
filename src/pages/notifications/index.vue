@@ -8,15 +8,15 @@
           <div class="crumb">
             <span class="pill fill">通知中心</span>
           </div>
-          <h1>通知中心<span class="small">站内消息</span></h1>
-          <p class="hero-sub">反馈有新消息或状态更新时，通知会出现在这里。</p>
-          <div class="hero-stats">
-            <div><div class="k">全部通知</div><div class="v">{{ total }}<small>条</small></div></div>
-            <div><div class="k">未读</div><div class="v">{{ unreadCount }}<small>条</small></div></div>
+          <div class="notification-heading">
+            <div>
+              <h1>通知中心</h1>
+              <p class="hero-sub">查看反馈回复与状态更新。需要跟进问题？前往 <router-link to="/feedback">我的反馈</router-link>。</p>
+            </div>
             <div class="hero-action">
               <button
                 class="act-btn primary"
-                :disabled="loading || unreadCount === 0"
+                :disabled="loading || markingAll || unreadCount === 0"
                 @click="markAllRead"
               >
                 {{ markingAll ? '正在标记…' : markAllError ? '重试全部已读' : '全部已读' }}
@@ -36,6 +36,8 @@
                 v-for="t in filterTabs"
                 :key="t.key"
                 :class="{ on: filter === t.key }"
+                :aria-pressed="filter === t.key"
+                type="button"
                 @click="setFilter(t.key)"
               >
                 {{ t.label }}<span v-if="t.key === 'unread' && unreadCount > 0" class="unread-badge">{{ unreadCount }}</span>
@@ -44,6 +46,7 @@
             <div class="sp"></div>
             <span class="sort-lb">共 {{ total }} 条</span>
           </div>
+          <p class="retention-note">站内通知保留最近 90 天；完整沟通记录可在「我的反馈」查看。</p>
 
           <!-- 列表 -->
           <div class="notification-list">
@@ -55,8 +58,10 @@
             <template v-else-if="notifications.length === 0">
               <div class="empty-state">
                 <Bell :size="32" />
-                <strong>暂无通知</strong>
-                <span>当反馈有新消息或状态更新时，通知会出现在这里。</span>
+                <strong>{{ filter === 'unread' ? '未读通知已看完' : '还没有收到通知' }}</strong>
+                <span>{{ filter === 'unread' ? '可以查看全部通知，或回到反馈继续跟进。' : '提交反馈后，管理员回复和处理进展会通知你。' }}</span>
+                <button v-if="filter === 'unread'" class="empty-action" type="button" @click="setFilter('all')">查看全部通知</button>
+                <router-link class="empty-action" to="/feedback">查看我的反馈</router-link>
               </div>
             </template>
             <template v-else>
@@ -73,6 +78,7 @@
                 <div class="ntf-body">
                   <div class="ntf-title">{{ item.title }}</div>
                   <p class="ntf-text">{{ item.body }}</p>
+                  <a v-if="notificationTarget(item)" class="ntf-open-link" :href="notificationTarget(item)" @click.stop="openNotification(item, $event)">{{ item.refType === 'BETA' ? '查看内测资格' : '查看反馈' }} →</a>
                   <AccountIdDetails v-if="item.refType === 'FEEDBACK' && item.refId" :value="item.refId" label="查看关联反馈编号" />
                   <div class="ntf-meta">
                     <time>{{ formatTime(item.createdAt) }}</time>
@@ -273,16 +279,22 @@ async function markAllRead() {
   }
 }
 
-function openNotification(item) {
+function notificationTarget(item) {
+  if (item.refType === 'BETA') return '/beta'
+  if (item.refType !== 'FEEDBACK' || !item.refId) return ''
+  const target = isManagementNotification(item.kind) ? '/feedback/manage' : '/feedback'
+  if (target === '/feedback/manage' && !canManageFeedback.value) return ''
+  return target + '?id=' + encodeURIComponent(item.refId)
+}
+
+function openNotification(item, event) {
+  if (event && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return
+  event?.preventDefault()
   // 标记已读
   if (!item.readAt) markRead(item)
   // 分配和用户追加通知来自管理队列，回复和状态通知仍属于个人工单。
-  if (item.refType === 'BETA') { router.push('/beta'); return }
-  if (item.refType === 'FEEDBACK' && item.refId) {
-    const target = isManagementNotification(item.kind) ? '/feedback/manage' : '/feedback'
-    if (target === '/feedback/manage' && !canManageFeedback.value) return
-    router.push(target + '?id=' + encodeURIComponent(item.refId))
-  }
+  const target = notificationTarget(item)
+  if (target) router.push(target)
 }
 
 function isMessageNotification(kind) {
@@ -304,6 +316,14 @@ onBeforeUnmount(function () {
 
 <style scoped>
 .notifications-main { padding-bottom: 0 }
+.page-notifications .hero { padding: 36px 0 28px; border-radius: 0 0 28px 28px }
+.page-notifications .hero h1 { margin-top: 12px; font-size: clamp(32px, 4vw, 48px); line-height: 1.2 }
+.page-notifications .hero-sub { margin-top: 10px; font-size: 14px }
+.hero-sub a { color: var(--accent-strong); font-weight: 800 }
+.notification-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px }
+.retention-note { margin-top: 12px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
+.ntf-open-link, .empty-action { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-strong); font: 800 13px var(--font-b); text-underline-offset: 3px }
+.empty-action { padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); cursor: pointer }
 .page-notifications .hero::after { content: '通知' }
 .hero-action { display: flex; align-items: center; justify-content: center; padding: 16px 24px }
 .hero-action:has(.action-error){flex-direction:column;gap:6px}
@@ -348,6 +368,8 @@ onBeforeUnmount(function () {
 .btn-more:disabled { opacity: .45; cursor: default }
 
 @media (max-width: 767px) {
+  .notification-heading { flex-direction: column; align-items: stretch; gap: 12px }
+  .hero-action { justify-content: flex-start; padding: 0 }
   .notification-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 14px }
   .ntf-icon { width: 40px; height: 40px; border-radius: 10px }
   .ntf-icon svg { width: 16px; height: 16px }
