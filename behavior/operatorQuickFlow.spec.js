@@ -62,6 +62,31 @@ it('勾选后直接保存使用1级1修为和当前星级，保留已有命盘�
   ])
 })
 
+it.each([[100, 17], [90, 15]])('练度预设 %i+%i 只填当前页草稿，保存时仅提交勾选密探', async (level, elite) => {
+  getOperatorCatalog.mockResolvedValue({ operators: ['op', 'op2', 'op3'].map(id => ({
+    id, name: id, rarity: 3, games: ['如鸢'],
+  })) })
+  const wrapper = render()
+  await flushPromises()
+  const checks = wrapper.findAll('.op-check')
+  await checks[0].setValue(true)
+  await checks[1].setValue(true)
+  const selectedIds = wrapper.findAll('.op-card.on .op-name').map(name => name.text())
+  await wrapper.findAll('.batch-fields button').find(button => button.text() === `${level}级 / 修为${elite}`).trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('.batch-bar input[type="number"]').map(input => input.element.value)).toEqual([String(level), String(elite)])
+  expect(checks.map(input => input.element.checked)).toEqual([true, true, false])
+  expect(importOperator).not.toHaveBeenCalled()
+  await wrapper.get('.wiz-actions .primary').trigger('click')
+  await flushPromises()
+  const entries = importOperator.mock.calls[0][0].records[0].entries
+  expect(entries).toHaveLength(2)
+  expect(entries.map(entry => entry.id)).toEqual(selectedIds)
+  expect(entries).toEqual(selectedIds.map(id => expect.objectContaining({ id, level, elite, starLevel: 1 })))
+  expect(wrapper.findAll('.batch-bar input[type="number"]').map(input => input.element.value)).toEqual(['1', '1'])
+  wrapper.unmount()
+})
+
 it('锁定说明可见；清空选择可取消；完成后停在摘要直到用户返回', async () => {
   const wrapper = render()
   await flushPromises()

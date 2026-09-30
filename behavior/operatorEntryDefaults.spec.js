@@ -103,3 +103,48 @@ it.each([
   expect(existing).toEqual(original)
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
+
+it.each([
+  ['奇闻全部拉满', [90, 15]],
+  ['一键拉满等级/修为/漆园蝶', [100, 17]],
+])('%s 按图鉴填充奇闻，保存前不写入，保留化极', async (label, expectedGrowth) => {
+  const schema = { attack: { max: 350 }, hp: { max: 1820 }, special: { name: '增伤值', max: 11 } }
+  const wrapper = await openEditor({
+    level: 90, elite: 15, starLevel: 8,
+    combat_stats: { oddities: { attack: { current: 10 }, hp: { current: 20 }, special: { current: 7 } } },
+  }, { ...operator, rarity: 4, oddity_schema: schema })
+  await wrapper.findAll('.editor-fill-max').find(button => button.text() === label).trigger('click')
+  await flushPromises()
+  expect(growthValues(wrapper)).toEqual(expectedGrowth.map(String))
+  expect(wrapper.findAll('.oddity-field input').map(input => input.element.value)).toEqual(['350', '1820', '11'])
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(putCurrentStarLoadout).not.toHaveBeenCalled()
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({
+    accountId: 'acc', operatorId: 'op', patch: expect.objectContaining({
+      level: expectedGrowth[0], elite: expectedGrowth[1], star_level: 8,
+      combat_stats: expect.objectContaining({ oddities: {
+        attack: { current: 350 }, hp: { current: 1820 }, special: { current: 11 },
+      } }),
+    }),
+  }))
+  wrapper.unmount()
+})
+
+it('奇闻独立拉满保留图鉴缺少上限的原值，并提示确认后保存', async () => {
+  const wrapper = await openEditor({
+    level: 90, elite: 15, starLevel: 8,
+    combat_stats: { oddities: { special: { current: 7 } } },
+  }, { ...operator, oddity_schema: {
+    attack: { max: 300 }, hp: { max: 1560 }, special: { name: '增伤值', max: null },
+  } })
+  await wrapper.get('.oddity-fill-max').trigger('click')
+  expect(growthValues(wrapper)).toEqual(['90', '15'])
+  expect(wrapper.findAll('.oddity-field input').map(input => input.element.value)).toEqual(['300', '1560', '7'])
+  expect(wrapper.get('.editor-action-status').text()).toContain('增伤值暂无图鉴上限，已保留原值，请确认后保存')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  wrapper.unmount()
+})

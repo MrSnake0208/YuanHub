@@ -2680,7 +2680,7 @@
                   class="btn ghost editor-fill-max"
                   :disabled="savingEdit"
                   title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
-                  @click="fillEditToMax"
+                  @click="fillEditToMax()"
                 >一键拉满等级/修为/漆园蝶</button>
                 <div
                   class="star-card"
@@ -2778,6 +2778,13 @@
                       >
                     </span>
                   </label>
+                  <button
+                    type="button"
+                    class="btn ghost editor-fill-max oddity-fill-max"
+                    :disabled="savingEdit"
+                    title="仅将三项奇闻属性设为图鉴上限，保留等级、修为和化极；点击保存后生效"
+                    @click="fillEditToMax(true)"
+                  >奇闻全部拉满</button>
                 </div>
               </div>
             </div>
@@ -3147,6 +3154,7 @@ import {
   combatInputSignature,
   combatStatsSourceLabel,
   fillOperatorDraftToMax,
+  fillOperatorOdditiesToMax,
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema,
@@ -4307,12 +4315,14 @@ function oddityLimitTitle(key) {
   return max === "—" ? "等待公共图鉴返回上限" : "公共图鉴上限 " + max;
 }
 
-function fillEditToMax() {
+function fillEditToMax(odditiesOnly = false) {
   if (!editingOp.value) return;
-  const missing = fillOperatorDraftToMax(editForm.value, editingOp.value.odditySchema);
+  const fill = odditiesOnly ? fillOperatorOdditiesToMax : fillOperatorDraftToMax;
+  const missing = fill(editForm.value, editingOp.value.odditySchema);
+  const scope = odditiesOnly ? "" : "等级、修为和";
   editNotice.value = missing.length
-    ? "已填入等级、修为和有上限的奇闻；" + missing.map(oddityFieldName).join("、") + "暂无图鉴上限，已保留原值，请确认后保存"
-    : "已填入等级、修为和全部奇闻上限，请确认后保存";
+    ? "已填入" + scope + "有上限的奇闻；" + missing.map(oddityFieldName).join("、") + "暂无图鉴上限，已保留原值，请确认后保存"
+    : "已填入" + scope + "全部奇闻上限，请确认后保存";
   editNoticeError.value = false;
 }
 
@@ -13347,6 +13357,10 @@ onBeforeUnmount(function () {
   color: var(--rouge);
   font-size: 9px;
   font-weight: 800;
+}
+.oddity-fill-max {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 .oddity-field {
   display: grid;
