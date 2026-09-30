@@ -1,158 +1,89 @@
 <template>
-  <div class="roadmap">
-    <p class="roadmap-notice" role="note">开发进度依据公开状态自动生成，实际排期可能调整。</p>
-
-    <div v-if="loading" class="roadmap-columns" aria-busy="true" aria-live="polite">
-      <div v-for="n in 3" :key="n" class="roadmap-skeleton"><span></span><span></span><span></span></div>
+  <div class="development-roadmap">
+    <div class="goal-toolbar">
+      <label>开发阶段<select v-model="stage" class="feedback-form-control" @change="changeStage"><option value="">全部目标</option><option v-for="option in DEVELOPMENT_STAGES" :key="option.key" :value="option.key">{{ option.label }}</option></select></label>
+      <span>{{ total }} 个目标</span>
     </div>
-    <div v-else-if="error" class="roadmap-state error" role="alert">
-      <span>{{ error }}</span>
-      <button class="feedback-button" type="button" @click="load"><RefreshCw :size="15" />重新加载</button>
+    <p class="goal-notice">进度按验收清单计算，代表已确认通过的项目比例；目标版本和日期为计划，可能调整。</p>
+    <div v-if="loading" class="goal-state" role="status">正在加载开发目标…</div>
+    <div v-else-if="error" class="goal-state" role="alert">{{ error }}<button class="feedback-button" type="button" @click="load">重新加载</button></div>
+    <div v-else-if="!items.length" class="goal-state">{{ stage ? '当前阶段还没有开发目标。' : '暂时还没有公布开发目标。' }}</div>
+    <div v-else class="goal-grid">
+      <article v-for="goal in items" :key="goal.id" class="goal-card">
+        <header><span class="goal-stage">{{ stageLabel(goal.stage) }}</span><button v-if="managed" class="feedback-button" type="button" @click="$emit('edit', goal)">编辑目标</button></header>
+        <h2>{{ goal.title }}</h2><p class="goal-description">{{ goal.description }}</p>
+        <div v-if="goal.targetVersion || goal.targetDate" class="goal-target"><span v-if="goal.targetVersion">目标版本 {{ goal.targetVersion }}</span><span v-if="goal.targetDate">目标日期 <time :datetime="goal.targetDate">{{ goal.targetDate }}</time></span></div>
+        <div class="goal-progress"><span>验收进度</span><strong>{{ completedCount(goal) }} / {{ goal.criteria.length }}</strong><progress :value="completedCount(goal)" :max="goal.criteria.length || 1" :aria-label="goal.title + '验收进度'" /></div>
+        <details class="goal-details">
+          <summary>验收标准与关联反馈</summary>
+          <ul class="goal-criteria"><li v-for="(criterion, index) in goal.criteria" :key="index"><CheckCircle2 v-if="criterion.completed" :size="17" aria-hidden="true" /><Circle v-else :size="17" aria-hidden="true" /><span>{{ criterion.title }}</span><small>{{ criterion.completed ? '已通过' : '待验收' }}</small></li></ul>
+          <div class="goal-links"><h3>需求来源</h3><p v-if="!goal.linkedFeedback.length">该目标未关联公开反馈。</p><router-link v-for="feedback in goal.linkedFeedback" :key="feedback.id" :to="{ path: '/feedback/plaza', query: { feedback: feedback.id } }">{{ feedback.title }}</router-link></div>
+        </details>
+        <footer>更新于 {{ formatDate(goal.updatedAt) }}</footer>
+      </article>
     </div>
-    <div v-else class="roadmap-columns">
-      <section v-for="column in columns" :key="column.status" class="roadmap-column" :aria-label="column.label">
-        <header class="roadmap-column-head">
-          <h3>{{ column.label }}</h3>
-          <span>{{ column.items.length }}</span>
-        </header>
-        <p v-if="!column.items.length" class="roadmap-empty">暂时没有内容</p>
-        <template v-else>
-          <PublicFeedbackCard
-            v-for="item in column.items"
-            :key="item.id"
-            :item="item"
-            :format-date="formatDate"
-            show-version
-            @open="openDetail"
-          />
-        </template>
-      </section>
-    </div>
-
-    <PublicFeedbackDetailModal
-      :open="detailOpen"
-      :item="detail"
-      :loading="detailLoading"
-      :error="detailError"
-      :format-date="formatDate"
-      @close="closeDetail"
-      @updated="onUpdated"
-    />
+    <nav v-if="!loading && !error && (page > 1 || hasNext)" class="goal-pagination" aria-label="开发目标分页"><button class="feedback-button" type="button" :disabled="page === 1" @click="changePage(page - 1)">上一页</button><span>第 {{ page }} 页</span><button class="feedback-button" type="button" :disabled="!hasNext" @click="changePage(page + 1)">下一页</button></nav>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { RefreshCw } from '@lucide/vue'
-import PublicFeedbackCard from '@/components/co-creation/PublicFeedbackCard.vue'
-import PublicFeedbackDetailModal from '@/components/co-creation/PublicFeedbackDetailModal.vue'
-import { getPublicFeedback, listPublicFeedback } from '@/api/coCreation.js'
-
-const columns = ref([
-  { status: 'PLANNED', label: '计划中', items: [] },
-  { status: 'IN_PROGRESS', label: '开发中', items: [] },
-  { status: 'COMPLETED', label: '最近完成', items: [] }
-])
-
-const loading = ref(false)
-const error = ref('')
-const detailOpen = ref(false)
-const detail = ref(null)
-const detailLoading = ref(false)
-const detailError = ref('')
-
-let loadRequestId = 0
-let detailRequestId = 0
-let isMounted = false
-
-function formatDate(value) {
-  if (!value) return ''
-  return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-}
-
+import { Circle, CheckCircle2 } from '@lucide/vue'
+import { DEVELOPMENT_STAGES, listDevelopmentGoals } from '@/api/developmentGoals.js'
+const props = defineProps({ managed: { type: Boolean, default: false } })
+defineEmits(['edit'])
+const items = ref([]), loading = ref(false), error = ref(''), total = ref(0), stage = ref(''), page = ref(1), hasNext = ref(false)
+let requestId = 0, mounted = false
+const stageLabel = value => DEVELOPMENT_STAGES.find(option => option.key === value)?.label || value
+const completedCount = goal => goal.criteria.filter(item => item.completed).length
+const formatDate = value => value ? new Date(value).toLocaleDateString('zh-CN') : '—'
 async function load() {
-  const requestId = ++loadRequestId
-  loading.value = true
-  error.value = ''
+  const current = ++requestId
+  loading.value = true; error.value = ''
   try {
-    const pages = await Promise.all(columns.value.map(column => listPublicFeedback({
-      page: 1,
-      pageSize: 12,
-      status: column.status,
-      sort: column.status === 'COMPLETED' ? 'updated' : 'hot'
-    })))
-    if (!isMounted || requestId !== loadRequestId) return
-    columns.value = columns.value.map((column, index) => ({ ...column, items: pages[index]?.items || [] }))
-  } catch (_) {
-    if (isMounted && requestId === loadRequestId) error.value = '反馈加载失败，请稍后重试。'
-  } finally {
-    if (isMounted && requestId === loadRequestId) loading.value = false
-  }
+    const result = await listDevelopmentGoals({ page: page.value, stage: stage.value, admin: props.managed })
+    if (!mounted || current !== requestId) return
+    items.value = result.items; total.value = result.total; hasNext.value = result.hasNext
+  } catch (e) { if (mounted && current === requestId) error.value = e.message || '开发目标加载失败' }
+  finally { if (mounted && current === requestId) loading.value = false }
 }
-
-async function openDetail(item) {
-  detailOpen.value = true
-  const requestId = ++detailRequestId
-  detailLoading.value = true
-  detailError.value = ''
-  detail.value = null
-  try {
-    const data = await getPublicFeedback(item.id)
-    if (!isMounted || requestId !== detailRequestId) return
-    detail.value = data
-  } catch (_) {
-    if (isMounted && requestId === detailRequestId) detailError.value = '反馈加载失败，请稍后重试。'
-  } finally {
-    if (isMounted && requestId === detailRequestId) detailLoading.value = false
-  }
-}
-
-function closeDetail() {
-  detailRequestId += 1
-  detailOpen.value = false
-  detail.value = null
-  detailError.value = ''
-  detailLoading.value = false
-}
-
-function onUpdated(updated) {
-  if (!updated) return
-  if (detail.value && detail.value.id === updated.id) detail.value = updated
-  for (const column of columns.value) {
-    const index = column.items.findIndex(item => item.id === updated.id)
-    if (index >= 0) column.items.splice(index, 1, { ...column.items[index], ...updated })
-  }
-}
-
-onMounted(() => {
-  isMounted = true
-  load()
-})
-
-onBeforeUnmount(() => {
-  isMounted = false
-  loadRequestId += 1
-  detailRequestId += 1
-})
+function changeStage() { page.value = 1; load() }
+function changePage(value) { if (loading.value) return; page.value = value; load() }
+onMounted(() => { mounted = true; load() })
+onBeforeUnmount(() => { mounted = false; requestId += 1 })
+defineExpose({ reload: load })
 </script>
 
 <style scoped>
-.roadmap { padding-bottom: 56px; }
-.roadmap-notice { margin-top: 18px; padding: 11px 14px; border: 1px dashed var(--feedback-line-strong); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
-.roadmap-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; align-items: start; }
-.roadmap-column { min-width: 0; display: grid; gap: 10px; }
-.roadmap-column-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel-deep); }
-.roadmap-column-head h3 { color: var(--feedback-text); font-family: var(--font-s); font-size: 15px; font-weight: 900; }
-.roadmap-column-head span { color: var(--feedback-text-dim); font: 11px var(--font-d); }
-.roadmap-empty { padding: 18px 12px; border: 1px dashed var(--feedback-line); border-radius: 8px; color: var(--feedback-text-dim); font-size: 12px; text-align: center; }
-.roadmap-skeleton { min-height: 220px; display: grid; gap: 12px; padding: 16px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.roadmap-skeleton span { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(156, 122, 77, .12), rgba(156, 122, 77, .22), rgba(156, 122, 77, .12)); background-size: 200% 100%; animation: roadmap-shimmer 1.3s ease-in-out infinite; }
-.roadmap-skeleton span:first-child { width: 40%; }
-.roadmap-skeleton span:nth-child(2) { width: 78%; height: 16px; }
-.roadmap-skeleton span:last-child { width: 56%; }
-@keyframes roadmap-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-.roadmap-state { min-height: 240px; display: grid; place-content: center; justify-items: center; gap: 10px; margin-top: 18px; padding: 28px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-danger); font-size: 13px; text-align: center; }
-@media (max-width: 900px) {
-  .roadmap-columns { grid-template-columns: 1fr; }
-}
+.development-roadmap { padding-bottom: 40px; }
+.goal-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-top: 20px; color: var(--feedback-text-muted); font-size: 13px; }
+.goal-toolbar label { display: grid; gap: 6px; min-width: 0; }
+.goal-toolbar select { min-width: 160px; }
+.goal-notice { margin-top: 16px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
+.goal-state { display: grid; justify-items: center; gap: 12px; padding: 48px 16px; color: var(--feedback-text-muted); }
+.goal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; align-items: start; }
+.goal-card { min-width: 0; padding: 22px; border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); overflow-wrap: anywhere; }
+.goal-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.goal-stage { padding: 5px 10px; border: 1px solid var(--feedback-line-strong); border-radius: 6px; color: var(--feedback-accent); font-size: 12px; font-weight: 800; }
+.goal-card h2 { margin-top: 16px; color: var(--feedback-text); font: 900 21px/1.5 var(--font-s); }
+.goal-description { margin-top: 10px; color: var(--feedback-text-muted); font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+.goal-target { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; color: var(--feedback-text-muted); font-size: 12px; }
+.goal-progress { display: grid; grid-template-columns: 1fr auto; gap: 9px; margin-top: 20px; color: var(--feedback-text); font-size: 12px; }
+.goal-progress strong { font-family: var(--font-d); }
+.goal-progress progress { grid-column: 1 / -1; width: 100%; height: 10px; accent-color: var(--accent); }
+.goal-details { margin-top: 16px; border-top: 1px solid var(--feedback-line); }
+.goal-details summary { min-height: 44px; padding-top: 14px; color: var(--feedback-text); font-size: 13px; font-weight: 800; cursor: pointer; }
+.goal-criteria { display: grid; gap: 10px; list-style: none; padding: 8px 0; }
+.goal-criteria li { display: flex; align-items: start; gap: 8px; color: var(--feedback-text-muted); font-size: 13px; line-height: 1.6; }
+.goal-criteria svg { flex: none; margin-top: 2px; }
+.goal-criteria span { flex: 1; min-width: 0; }
+.goal-criteria small { flex: none; }
+.goal-links { display: grid; gap: 8px; margin-top: 12px; font-size: 13px; }
+.goal-links h3 { color: var(--feedback-text); font-size: 13px; }
+.goal-links p { color: var(--feedback-text-muted); }
+.goal-links a { color: var(--accent-strong); text-decoration: underline; line-height: 1.7; }
+.goal-card footer { margin-top: 18px; color: var(--feedback-text-dim); font-size: 11px; }
+.goal-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 24px; color: var(--feedback-text-muted); font-size: 13px; }
+@media (max-width: 1023px) { .goal-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .goal-card { padding: 16px; } .goal-toolbar { flex-wrap: wrap; } }
 </style>

@@ -94,12 +94,11 @@
               }}</span>
             </router-link>
             <router-link
-              v-if="isLoggedIn"
-              to="/feedback"
+              :to="isLoggedIn ? '/feedback' : '/feedback/plaza'"
               :class="{ active: $route.path.startsWith('/feedback') }"
             >
               <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
-              <span v-if="feedbackUnreadState.count > 0" class="mobile-drawer-badge">{{
+              <span v-if="isLoggedIn && feedbackUnreadState.count > 0" class="mobile-drawer-badge">{{
                 feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
               }}</span>
             </router-link>
@@ -227,6 +226,11 @@
         <div class="nav-separator" aria-hidden="true"></div>
       </template>
 
+      <router-link
+        v-if="!isLoggedIn"
+        to="/feedback/plaza"
+        :class="{ active: $route.path.startsWith('/feedback') }"
+      >反馈中心</router-link>
       <router-link
         to="/co-creation"
         :class="{ active: $route.path.startsWith('/co-creation') }"

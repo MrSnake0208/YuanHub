@@ -154,6 +154,7 @@
             <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback"><X :size="20" /></button>
           </div>
           <form @submit.prevent="submitFeedback">
+            <p class="feedback-submission-note">反馈先由你和管理员沟通。适合共同跟进的问题会整理到反馈广场，原始正文、附件与账号信息不会直接公开。</p>
             <div class="feedback-form-grid">
               <label>
                 <span>反馈类型</span>
@@ -569,7 +570,7 @@ function handleSimilarSupport(detail) {
 function handleSimilarView(item) {
   showNewForm.value = false
   resetSimilar()
-  router.push({ path: '/co-creation', query: { feedback: item.id } })
+  router.push({ path: '/feedback/plaza', query: { feedback: item.id } })
 }
 
 async function submitFeedback() {
@@ -624,6 +625,13 @@ onMounted(async () => {
   if (reportId) await selectTicket(reportId)
 })
 
+watch(() => route.query.new, value => {
+  if (value !== '1') return
+  const type = route.query.type
+  if (feedbackTypeOptions.some(option => option.key === type)) newFeedback.value.type = type
+  showNewForm.value = true
+}, { immediate: true })
+
 watch(() => route.query.id, id => {
   if (!isMounted || !ready) return
   if (id) selectTicket(String(id))
@@ -649,6 +657,7 @@ onBeforeUnmount(() => {
 .feedback-modal .modal-head h2 { color: var(--feedback-text); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }
 .feedback-modal .modal-head button { color: var(--feedback-text-muted); }
 .feedback-modal form { background: var(--feedback-panel-deep); }
+.feedback-submission-note { margin: 0 0 16px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
 .feedback-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .feedback-form-grid label { min-width: 0; margin: 0; }
 .feedback-form-grid label > span { display: block; margin-bottom: 6px; color: var(--feedback-text-muted); font-size: 12px; font-weight: 800; }

@@ -97,7 +97,8 @@ import { getPublicFeedback, listPublicFeedback } from '@/api/coCreation.js'
 import { PUBLIC_SORT_OPTIONS, PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
-  focusId: { type: String, default: '' }
+  focusId: { type: String, default: '' },
+  initialType: { type: String, default: '' }
 })
 
 const PAGE_SIZE = 12
@@ -181,7 +182,7 @@ function scheduleSearch() {
 }
 
 function goSubmit() {
-  router.push('/feedback')
+  router.push({ path: '/feedback', query: { new: '1', ...(type.value ? { type: type.value } : {}) } })
 }
 
 function openDetail(item) {
@@ -222,6 +223,11 @@ function onDetailUpdated(updated) {
 
 watch(() => props.focusId, id => {
   if (id) openDetailById(id)
+}, { immediate: true })
+
+watch(() => props.initialType, value => {
+  type.value = value
+  if (isMounted) reloadFromFirstPage()
 }, { immediate: true })
 
 onMounted(() => {

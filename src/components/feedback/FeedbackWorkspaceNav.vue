@@ -1,5 +1,9 @@
 <template>
   <nav class="feedback-workspace-nav" aria-label="反馈工作区">
+    <router-link to="/feedback/plaza" :class="{ active: active === 'plaza' }">
+      <MessageSquareText :size="17" aria-hidden="true" />
+      <span>反馈广场</span>
+    </router-link>
     <router-link to="/feedback" :class="{ active: active === 'mine' }">
       <MessageSquareText :size="17" aria-hidden="true" />
       <span>我的反馈</span>

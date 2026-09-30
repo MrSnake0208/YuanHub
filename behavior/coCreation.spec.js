@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import FeedbackPlaza from '../src/components/co-creation/FeedbackPlaza.vue'
 import FeedbackSupportButton from '../src/components/co-creation/FeedbackSupportButton.vue'
 import SimilarFeedbackList from '../src/components/co-creation/SimilarFeedbackList.vue'
-import FeatureWishPool from '../src/components/co-creation/FeatureWishPool.vue'
-import DevelopmentRoadmap from '../src/components/co-creation/DevelopmentRoadmap.vue'
+import FeedbackPlazaPage from '../src/pages/feedback/plaza.vue'
+import PublicFeedbackDetail from '../src/components/co-creation/PublicFeedbackDetail.vue'
+import ChangelogRelatedFeedback from '../src/components/changelog/ChangelogRelatedFeedback.vue'
 import * as api from '../src/api/coCreation.js'
 
+const routing = vi.hoisted(() => ({ route: { query: {}, fullPath: '/feedback/plaza' }, push: vi.fn() }))
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {}, fullPath: '/co-creation' }),
-  useRouter: () => ({ push: vi.fn() })
+  useRoute: () => routing.route,
+  useRouter: () => ({ push: routing.push })
 }))
 vi.mock('../src/api/coCreation.js', () => ({
   listPublicFeedback: vi.fn(),
@@ -39,11 +41,12 @@ const publicItem = (overrides = {}) => ({
 const formatDate = value => (value ? String(value).slice(0, 10) : '')
 const render = (component, options = {}) => mount(component, {
   ...options,
-  global: { ...(options.global || {}), stubs: { teleport: true } }
+  global: { ...(options.global || {}), stubs: { teleport: true, IslandSidebar: true, FeedbackWorkspaceNav: true, RouterLink: RouterLinkStub } }
 })
 
 beforeEach(() => {
   vi.clearAllMocks()
+  routing.route.query = {}
 })
 
 describe('FeedbackPlaza', () => {
@@ -131,48 +134,38 @@ describe('SimilarFeedbackList', () => {
   })
 })
 
-describe('FeatureWishPool', () => {
-  it('requests only FEATURE feedback and renders support buttons', async () => {
-    api.listPublicFeedback.mockResolvedValue({
-      items: [publicItem({ id: 'rpt_wish', type: 'FEATURE', publicTitle: '暗色模式', supportCount: 126 })],
-      total: 1,
-      page: 1,
-      pageSize: 12
-    })
-    const wrapper = render(FeatureWishPool)
+describe('反馈中心公开广场', () => {
+  it('合并主反馈和更新日志引用都进入新的公开广场', async () => {
+    const detail = render(PublicFeedbackDetail, { props: { item: publicItem({ mergedInto: { id: 'main_1', publicTitle: '主反馈' } }), formatDate } })
+    expect(detail.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/feedback/plaza', query: { feedback: 'main_1' } })
+    api.listPublicFeedback.mockResolvedValue({ items: [publicItem()] })
+    const changelog = render(ChangelogRelatedFeedback, { props: { versionId: 'version_1' } })
     await flushPromises()
-
-    expect(api.listPublicFeedback).toHaveBeenCalledWith(expect.objectContaining({ type: 'FEATURE', sort: 'hot' }))
-    expect(wrapper.text()).toContain('暗色模式')
-    expect(wrapper.text()).toContain('不代表最终开发优先级')
-    expect(wrapper.find('.support-button').exists()).toBe(true)
+    expect(changelog.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/feedback/plaza', query: { feedback: 'rpt_1' } })
   })
-
-  it('shows the wish-pool empty state', async () => {
-    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 12 })
-    const wrapper = render(FeatureWishPool)
+  it('访客页面仅读取公开反馈，并保留直接提交入口', async () => {
+    api.listPublicFeedback.mockResolvedValue({ items: [publicItem()], total: 1 })
+    const wrapper = render(FeedbackPlazaPage)
     await flushPromises()
-    expect(wrapper.get('.wish-state.empty').text()).toContain('暂时还没有公开的功能建议')
+    expect(wrapper.get('h1').text()).toBe('反馈中心')
+    expect(wrapper.text()).toContain('我的反馈用于')
+    expect(api.listPublicFeedback).toHaveBeenCalled()
   })
-})
-
-describe('DevelopmentRoadmap', () => {
-  it('groups public feedback by publicStatus into three columns', async () => {
-    api.listPublicFeedback.mockImplementation(({ status }) => Promise.resolve({
-      items: [publicItem({ id: 'rpt_' + status, publicTitle: '标题 ' + status, publicStatus: status })],
-      total: 1,
-      page: 1,
-      pageSize: 12
-    }))
-    const wrapper = render(DevelopmentRoadmap)
+  it('旧许愿入口的类型筛选和公开详情意图传递给广场', async () => {
+    routing.route.query = { type: 'FEATURE', feedback: 'rpt_1' }
+    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
+    api.getPublicFeedback.mockResolvedValue(publicItem({ type: 'FEATURE' }))
+    const wrapper = render(FeedbackPlazaPage)
     await flushPromises()
-
-    expect(api.listPublicFeedback).toHaveBeenCalledTimes(3)
-    expect(wrapper.text()).toContain('计划中')
-    expect(wrapper.text()).toContain('开发中')
-    expect(wrapper.text()).toContain('最近完成')
-    expect(wrapper.text()).toContain('标题 PLANNED')
-    expect(wrapper.text()).toContain('标题 IN_PROGRESS')
-    expect(wrapper.text()).toContain('标题 COMPLETED')
+    expect(api.listPublicFeedback).toHaveBeenCalledWith(expect.objectContaining({ type: 'FEATURE' }))
+    expect(api.getPublicFeedback).toHaveBeenCalledWith('rpt_1')
+    expect(wrapper.get('[role="dialog"]').text()).toContain('公开说明')
+  })
+  it('搜索无结果时提交直接打开反馈表单并携带类型', async () => {
+    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
+    const wrapper = render(FeedbackPlaza, { props: { initialType: 'FEATURE' } })
+    await flushPromises()
+    await wrapper.get('.plaza-state.empty button').trigger('click')
+    expect(routing.push).toHaveBeenCalledWith({ path: '/feedback', query: { new: '1', type: 'FEATURE' } })
   })
 })
