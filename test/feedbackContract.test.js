@@ -142,6 +142,7 @@ test('创建反馈发送 type/category 字段', async () => {
       category: 'INVENTORY',
       content: '坏了',
       media_ids: ['med_1'],
+      public_consent: false,
       client_info_consent: true
     })
     assert.equal(result.status, 'OPEN')
@@ -176,8 +177,31 @@ test('创建反馈兼容旧的 type/category/area 请求', async () => {
     category: 'INVENTORY',
     content: '坏了',
     media_ids: [],
+    public_consent: false,
     client_info_consent: false
   })
+})
+
+test('公开授权发送 snake_case 且只接受明确 true，不隐式授予旧记录', async () => {
+  const bodies = []
+  await withFetch(async (_url, options) => {
+    bodies.push(JSON.parse(options.body))
+    return apiResponse({ id: 'rpt_consent', public_consent: true })
+  }, async () => {
+    const result = await createFeedback({ type: 'BUG', category: 'OTHER', content: '正文', title: ' 标题 ', publicConsent: true })
+    assert.equal(result.publicConsent, true)
+    await createFeedback({ content: '私下正文', publicConsent: 'true', clientInfoConsent: true })
+  })
+  assert.equal(bodies[0].public_consent, true)
+  assert.equal(bodies[0].title, '标题')
+  assert.equal(bodies[0].client_info_consent, false)
+  assert.equal(bodies[1].public_consent, false)
+  assert.equal(bodies[1].client_info_consent, true)
+  assert.equal('title' in bodies[1], false)
+  assert.equal(normalizeFeedback({}).publicConsent, false)
+  assert.equal(normalizeFeedback({ public_consent: false, visibility: 'PUBLIC' }).publicConsent, false)
+  assert.equal(normalizeFeedback({ public_consent: 'true' }).publicConsent, false)
+  assert.equal(normalizeFeedback({ publicConsent: true }).publicConsent, true)
 })
 
 test('未勾选 clientInfoConsent 时仍然上报版本与构建诊断', async () => {

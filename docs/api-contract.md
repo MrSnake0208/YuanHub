@@ -681,7 +681,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 | 方法与路径 | 认证 | 请求 | 成功 data |
 |---|---|---|---|
 | POST /v1/media/upload | JWT | multipart field `file` | `{id,kind,name,url,mime,size,created_at}` |
-| POST /v1/reports | JWT | {type,category,content,media_ids?,client_info_consent?} | 新工单 |
+| POST /v1/reports | JWT | {type,category,content,title?,public_consent?,media_ids?,client_info_consent?} | 新工单 |
 | GET /v1/reports | JWT | page,pageSize,status,type,category,mine,q,sortBy,sortOrder | {reports,total,page,page_size,mine,...} |
 | GET /v1/reports/{id} | JWT | 无 | 工单详情，含 viewer_is_reporter/viewer_can_manage |
 | POST /v1/reports/{id}/messages | JWT | {content,media_ids?,actor_mode?} | 更新后的工单 |
@@ -694,6 +694,8 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 | GET /v1/admin/feedback-access/users | 超级管理员 | q,page,size，q 非空，size 1..10 | 已激活用户候选 {id,user_name,email,activated}[] |
 | PUT /v1/admin/feedback-access/{userId} | 超级管理员 | {receive_categories,manage_categories} | 授权结果 |
 | DELETE /v1/admin/feedback-access/{userId} | 超级管理员 | 无 | 无业务数据 |
+
+`public_consent` 默认 false，与 `client_info_consent` 独立，私有详情会返回授权状态。未授权无需标题；授权后 `title` 必填（最多 120 字符），空标题返回业务 400。授权不自动发布。`PATCH /v1/admin/feedback/{id}/publish` 在既有管理权限之外要求明确授权，否则返回业务 403 且不写入。管理员不能代替用户授予授权。缺少字段的旧记录按未授权处理，历史公开内容不自动撤下，仍允许取消公开。新前端协议需要同时加载本次后端改动。
 
 候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
 

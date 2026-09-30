@@ -22,27 +22,27 @@
 
     <div v-show="open || dialog" :id="panelId" class="admin-public-body">
       <p class="admin-public-hint">
-        发布后只展示你填写的公开标题与摘要；用户原始正文、附件与账号信息不会公开。
+        {{ canPublish ? '用户已允许整理到反馈广场。发布后只展示公开标题与摘要；原始正文、附件与账号信息不会公开。' : '用户未授权发布到反馈广场，不能发布或修改公开内容；已公开的内容仍可取消公开。' }}
       </p>
 
       <div class="admin-public-grid">
         <label class="full">
           <span>公开标题</span>
-          <input v-model="form.publicTitle" class="feedback-form-control" maxlength="120" placeholder="整理后的公开标题" />
+          <input v-model="form.publicTitle" class="feedback-form-control" :disabled="!canPublish" maxlength="120" placeholder="整理后的公开标题" />
         </label>
         <label class="full">
           <span>公开摘要</span>
-          <textarea v-model="form.publicSummary" class="feedback-form-control" rows="3" maxlength="1000" placeholder="适合公开展示的描述，不要包含用户隐私"></textarea>
+          <textarea v-model="form.publicSummary" class="feedback-form-control" :disabled="!canPublish" rows="3" maxlength="1000" placeholder="适合公开展示的描述，不要包含用户隐私"></textarea>
         </label>
         <label>
           <span>反馈类型</span>
-          <select v-model="form.type" class="feedback-form-control">
+          <select v-model="form.type" class="feedback-form-control" :disabled="!canPublish">
             <option v-for="option in typeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
           </select>
         </label>
         <label>
           <span>公开状态</span>
-          <select v-model="form.publicStatus" class="feedback-form-control">
+          <select v-model="form.publicStatus" class="feedback-form-control" :disabled="!canPublish">
             <option v-for="option in statusOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
           </select>
         </label>
@@ -58,7 +58,7 @@
       <p v-if="error" class="admin-public-error" role="alert">{{ error }}</p>
 
       <div class="admin-public-actions">
-        <button class="feedback-primary-action" type="button" :disabled="busy || !form.publicTitle.trim()" @click="save">
+        <button class="feedback-primary-action" type="button" :disabled="busy || !canPublish || !form.publicTitle.trim()" @click="save">
           {{ busy ? '处理中…' : (isPublic ? '保存修改' : '发布到反馈广场') }}
         </button>
         <button v-if="isPublic" class="feedback-button" type="button" :disabled="busy" @click="$emit('unpublish')">
@@ -88,6 +88,7 @@ const emit = defineEmits(['save', 'unpublish'])
 const statusOptions = PUBLIC_STATUS_OPTIONS
 const typeOptions = PUBLIC_TYPE_OPTIONS
 const isPublic = computed(() => String(props.item?.visibility || '').toUpperCase() === 'PUBLIC')
+const canPublish = computed(() => props.item?.publicConsent === true)
 const open = ref(false)
 const panelId = computed(() => `admin-feedback-public-${String(props.item?.id || 'current').replace(/[^a-zA-Z0-9_-]/g, '-')}`)
 const summaryText = computed(() => {
@@ -111,7 +112,7 @@ watch(() => props.item?.id, () => { open.value = false })
 
 function save() {
   const publicTitle = form.publicTitle.trim()
-  if (!publicTitle || props.busy) return
+  if (!canPublish.value || !publicTitle || props.busy) return
   emit('save', {
     publicTitle,
     publicSummary: form.publicSummary.trim() || null,
