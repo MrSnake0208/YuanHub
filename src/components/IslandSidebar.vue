@@ -103,7 +103,7 @@
               }}</span>
             </router-link>
             <router-link to="/co-creation" :class="{ active: $route.path.startsWith('/co-creation') }">
-              <Lightbulb :size="20" aria-hidden="true" /><span>共创中心</span>
+              <Lightbulb :size="20" aria-hidden="true" /><span>大饼中心</span>
             </router-link>
             <button
               v-if="showBetaCommunityEntry"
@@ -234,7 +234,7 @@
       <router-link
         to="/co-creation"
         :class="{ active: $route.path.startsWith('/co-creation') }"
-        >共创中心</router-link
+        >大饼中心</router-link
       >
       <router-link
         to="/user/profile"

@@ -1178,7 +1178,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `src/api/ledger.js` | 广陵账房方案 CRUD |
 | `src/api/feedback.js` | 个人反馈、反馈工作台、反馈权限管理与工单操作 |
 | `src/api/coCreation.js` | 反馈广场公开列表、详情、相似查询与支持 |
-| `src/api/developmentGoals.js` | 共创中心独立开发目标、验收进度与管理员维护 |
+| `src/api/developmentGoals.js` | 大饼中心独立开发目标、验收进度与管理员维护 |
 | `src/store/auth.js` | 登录态、持久化、刷新和退出 |
 | `src/store/accountEvents.js` | SSE 订阅、事件去重、通知与页面刷新 |
 | `src/pages/level/admin.vue` | `/level/admin` 关卡管理工作台；入口和路由要求 `level_catalog:write` |
@@ -1208,7 +1208,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 
 ## 16. 独立开发目标（当前工作区）
 
-反馈中心的公开广场为 `/feedback/plaza`，私人反馈仍在 `/feedback`。共创中心 `/co-creation` 展示独立开发目标，许愿池已移除；旧 `tab=plaza/wish` 和 `feedback` 详情入口转到公开广场，旧 `tab=roadmap` 展示开发目标。
+反馈中心的公开广场为 `/feedback/plaza`，私人反馈仍在 `/feedback`。大饼中心 `/co-creation` 展示独立开发目标，许愿池已移除；旧 `tab=plaza/wish` 和 `feedback` 详情入口转到公开广场，旧 `tab=roadmap` 展示开发目标。
 
 | 方法与路径 | 认证与权限 | 用途 |
 |---|---|---|
