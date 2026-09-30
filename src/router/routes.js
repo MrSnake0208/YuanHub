@@ -330,6 +330,24 @@ export const routes = [
         }
     },
     {
+        path: '/feedback/plaza',
+        text: '反馈广场',
+        name: 'feedback-plaza',
+        display: false,
+        module: 'user',
+        component: () => import('/src/pages/feedback/plaza.vue'),
+        meta: { title: '反馈中心 · 反馈广场 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
+        path: '/co-creation/admin',
+        text: '开发目标管理',
+        name: 'development-goal-admin',
+        display: false,
+        module: 'admin',
+        component: () => import('/src/pages/co-creation/admin.vue'),
+        meta: { title: '开发目标管理 — 鸢鸢相抱 · YuanHub', requiresAuth: true, requiredPermission: 'development_goal:manage' }
+    },
+    {
         path: '/co-creation',
         text: '共创中心',
         name: 'co-creation',
@@ -337,6 +355,13 @@ export const routes = [
         module: 'user',
         icon: 'users-round',
         component: () => import('/src/pages/co-creation/index.vue'),
+        beforeEnter: to => {
+            if (to.query.feedback || ['plaza', 'wish'].includes(to.query.tab)) {
+                const { tab, ...query } = to.query
+                if (tab === 'wish') query.type = 'FEATURE'
+                return { path: '/feedback/plaza', query, replace: true }
+            }
+        },
         meta: {
             title: '共创中心 — 鸢鸢相抱 · YuanHub'
         }

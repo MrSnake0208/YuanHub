@@ -1177,6 +1177,8 @@ error_count / conflict_count / conflicts / errors / catalog_version
 | `src/api/openApi.js` | OpenAPI Token 管理 |
 | `src/api/ledger.js` | 广陵账房方案 CRUD |
 | `src/api/feedback.js` | 个人反馈、反馈工作台、反馈权限管理与工单操作 |
+| `src/api/coCreation.js` | 反馈广场公开列表、详情、相似查询与支持 |
+| `src/api/developmentGoals.js` | 共创中心独立开发目标、验收进度与管理员维护 |
 | `src/store/auth.js` | 登录态、持久化、刷新和退出 |
 | `src/store/accountEvents.js` | SSE 订阅、事件去重、通知与页面刷新 |
 | `src/pages/level/admin.vue` | `/level/admin` 关卡管理工作台；入口和路由要求 `level_catalog:write` |
@@ -1203,3 +1205,21 @@ error_count / conflict_count / conflicts / errors / catalog_version
 - [ ] 对照 `AccountEventService.publish` 调用点，更新 SSE 事件名和 payload
 - [ ] 同步 `src/api/*` 封装、页面调用和相关测试
 - [ ] v3 变更同步协议文档、JSON Schema 与 examples
+
+## 16. 独立开发目标（当前工作区）
+
+反馈中心的公开广场为 `/feedback/plaza`，私人反馈仍在 `/feedback`。共创中心 `/co-creation` 展示独立开发目标，许愿池已移除；旧 `tab=plaza/wish` 和 `feedback` 详情入口转到公开广场，旧 `tab=roadmap` 展示开发目标。
+
+| 方法与路径 | 认证与权限 | 用途 |
+|---|---|---|
+| `GET /v1/development-goals` | 公开 | 分页查询目标；`page` 默认 1，`size` 默认 12、范围 1–50，`stage` 可选 |
+| `GET /v1/admin/development-goals` | JWT + `development_goal:manage` | 同样分页，附带完整关联 ID |
+| `GET /v1/admin/development-goals/{id}` | 同上 | 加载最新目标以处理保存冲突 |
+| `POST /v1/admin/development-goals` | 同上 | 独立创建并立即公开目标 |
+| `PUT /v1/admin/development-goals/{id}` | 同上 | 更新目标；必须携带 `expected_version` |
+
+写入字段：`title`（1–120 字）、`description`（1–3000 字）、`stage`（`PLANNED/IN_PROGRESS/COMPLETED/PAUSED`）、`criteria`（1–20 项 `{title,completed}`，标题 1–200 字）、`feedback_ids`（最多 20 条公开反馈）、可选 `target_version`（最多 80 字）、`target_date`（`YYYY-MM-DD`）。仅全部验收通过后可以标记 `COMPLETED`。目标可以不关联反馈；保存不会改变反馈工单状态。
+
+响应按 ApiResult 包装。分页数据为 `{has_next,page,total,data}`；目标包含上述字段、`id`、`linked_feedback: [{id,title}]`、`updated_at` 和 `version`。公开响应不返回 `feedback_ids`，并实时过滤已经取消公开的关联。管理响应保留关联 ID 供管理员解绑，但同样隐藏非公开反馈标题。
+
+未登录返回 HTTP 401，权限不足 403，校验失败 400，目标不存在 404，并发版本冲突 409。冲突时前端保留编辑内容，重新加载前确认是否放弃未保存修改。现有 PLATFORM_ADMIN/SUPER_ADMIN 角色获得管理能力；管理入口为 `/co-creation/admin`。

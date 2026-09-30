@@ -126,6 +126,16 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
 })
 
+it('提交链接直接打开私人表单并预选功能建议', async () => {
+  useRoute().query = { new: '1', type: 'FEATURE' }
+  const wrapper = render(MyFeedback)
+  await flushPromises()
+  const form = wrapper.get('.feedback-modal form')
+  expect(form.findAll('select')[0].element.value).toBe('FEATURE')
+  expect(form.text()).toContain('原始正文、附件与账号信息不会直接公开')
+  expect(api.createFeedback).not.toHaveBeenCalled()
+})
+
 it('管理员工作台默认显示待接单，并可切回全部', async () => {
   const wrapper = render(ManagedFeedback)
   await flushPromises()

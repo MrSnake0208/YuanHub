@@ -42,6 +42,10 @@ YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 | `/work/no-pangtong` | 作业详情：密探阵容 / 打法要点 / 星石练度 / 作业信息 + scrollspy 侧边栏 | `detail.html` |
 | `/cart` | 广陵账房（礼包购物车）：版本切换 / 汇率换算 / 分类筛选 / 购物车合计 / 累充奖励档位 / 自定义礼包 / 导出图片 | `yuanpaid/src/App.tsx` |
 | `/changelog` | 更新日志：公开查看已审核发布的富文本与图片内容 | — |
+| `/feedback` | 反馈中心 · 我的反馈：登录后提交、补充和跟进私人工单；`?new=1` 直接打开提交表单 | — |
+| `/feedback/plaza` | 反馈中心 · 反馈广场：公开浏览、筛选和支持问题与功能建议 | — |
+| `/co-creation` | 共创中心：独立开发目标、推进阶段、验收清单、目标版本/日期与关联公开反馈；原许愿池已移除 | — |
+| `/co-creation/admin` | 开发目标管理：新增、编辑、维护验收进度并关联公开反馈；需要 `development_goal:manage` | — |
 | `/manage` | 管理工作台：按权限进入反馈工作区、公共密探图鉴、关卡管理、更新日志、角色管理、反馈授权和审计记录；各管理详情页提供返回工作台入口 | — |
 | `/level/admin` | 公共关卡管理：真实 API 列表/筛选、新建编辑、归档恢复、目录树、revision 冲突提示、批量导入预览/提交与 JSON 导出；需要 `level_catalog:write` | — |
 | `/admin/changelog` | 更新日志管理：所见即所得编辑、图片上传、提交审核、发布/退回/撤回；需要 `changelog:write` 或 `changelog:review` | — |

@@ -30,7 +30,7 @@
       <section v-if="item.mergedInto" class="public-detail-merged" role="status">
         <strong>该反馈已经合并至主反馈</strong>
         <p>此问题将统一在主反馈中跟踪。</p>
-        <a :href="'/co-creation?feedback=' + encodeURIComponent(item.mergedInto.id)">查看主反馈：{{ item.mergedInto.publicTitle }}</a>
+        <router-link :to="{ path: '/feedback/plaza', query: { feedback: item.mergedInto.id } }">查看主反馈：{{ item.mergedInto.publicTitle }}</router-link>
       </section>
 
       <section v-if="item.publicStatus === 'COMPLETED' && (item.completedVersionLabel || item.completedAt)" class="public-detail-done" role="status">

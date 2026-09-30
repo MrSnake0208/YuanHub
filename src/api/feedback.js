@@ -389,7 +389,7 @@ export async function mergeFeedback(id, targetFeedbackId) {
   return normalizeFeedback(data)
 }
 
-// 修改反馈类型;影响反馈广场展示与许愿池(PUBLIC + FEATURE)归属。
+// 修改反馈类型；影响反馈广场的类型筛选。
 export async function updateFeedbackType(id, type) {
   const data = await request(`/v1/admin/feedback/${encodeURIComponent(id)}/type`, {
     method: 'PATCH',

@@ -33,6 +33,7 @@ it('访客没有通知/反馈私有入口，保留登录入口', async () => {
   expect(routes(wrapper)).toContain('/login')
   expect(routes(wrapper)).not.toContain('/notifications')
   expect(routes(wrapper)).not.toContain('/feedback')
+  expect(routes(wrapper)).toContain('/feedback/plaza')
   expect(routes(wrapper)).not.toContain('/manage')
 })
 it('登录用户获得实用导航与共享未读状态，不锁死入口顺序或桌面/手机 DOM 结构', async () => {

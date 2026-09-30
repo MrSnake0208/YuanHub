@@ -255,7 +255,7 @@ function roleLabel(role) {
 function roleDescription(role) {
   return {
     SUPER_ADMIN: '继承全部平台能力，并管理角色、反馈授权与审计',
-    PLATFORM_ADMIN: '维护公共密探图鉴与关卡目录',
+    PLATFORM_ADMIN: '维护公共密探图鉴、关卡目录与开发目标',
     CHANGELOG_EDITOR: '编写更新日志并提交审核',
     CHANGELOG_REVIEWER: '审核、发布和撤回更新日志'
   }[role] || ''

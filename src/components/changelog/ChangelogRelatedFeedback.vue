@@ -3,7 +3,7 @@
     <h3>本版本完成</h3>
     <ul>
       <li v-for="item in items" :key="item.id">
-        <router-link :to="{ path: '/co-creation', query: { feedback: item.id } }">{{ item.publicTitle || '未命名反馈' }}</router-link>
+        <router-link :to="{ path: '/feedback/plaza', query: { feedback: item.id } }">{{ item.publicTitle || '未命名反馈' }}</router-link>
         <span>{{ typeLabel(item.type) }} · {{ item.supportCount }} 人支持</span>
       </li>
     </ul>
