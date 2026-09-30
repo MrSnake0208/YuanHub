@@ -11,15 +11,17 @@
       <slot name="empty" />
     </div>
     <div v-else class="ticket-table-wrap">
-      <table class="ticket-table">
+      <table class="ticket-table" :class="{ 'is-workflow': workflow }">
         <thead>
           <tr>
-            <th>类型</th>
-            <th>反馈板块</th>
-            <th>反馈内容</th>
-            <th v-if="showReporter">提交人</th>
-            <th>状态</th>
-            <th>提交时间</th>
+            <th v-if="!workflow">类型</th>
+            <th v-if="!workflow">反馈板块</th>
+            <th class="ticket-content-heading">反馈内容</th>
+            <th v-if="workflow" class="ticket-state-heading">待办 / 状态</th>
+            <th v-if="workflow" class="ticket-owner-heading">负责人</th>
+            <th v-if="showReporter && !workflow">提交人</th>
+            <th v-if="!workflow">状态</th>
+            <th v-if="!workflow">提交时间</th>
             <th>更新时间</th>
             <th class="ticket-operation">操作</th>
           </tr>
@@ -33,27 +35,28 @@
             @click="$emit('select', item.id)"
             @keydown.enter="$emit('select', item.id)"
           >
-            <td data-label="类型"><span class="ticket-type">{{ typeLabel(item.type) }}</span></td>
-            <td data-label="反馈板块"><span class="ticket-category">{{ categoryLabel(item.category) }}</span></td>
+            <td v-if="!workflow" data-label="类型"><span class="ticket-type">{{ typeLabel(item.type) }}</span></td>
+            <td v-if="!workflow" data-label="反馈板块"><span class="ticket-category">{{ categoryLabel(item.category) }}</span></td>
             <td class="ticket-summary-cell" data-label="反馈内容">
               <strong>{{ item.title || truncate(item.content, 72) }}</strong>
-              <code v-if="workflow || showReporter">{{ item.id }}</code>
-              <details v-else @click.stop @keydown.stop><summary>工单编号</summary><code>{{ item.id }}</code></details>
+              <details @click.stop @keydown.stop><summary>工单编号</summary><code>{{ item.id }}</code><button class="ticket-copy" type="button" @click="copyId(item.id)">复制编号</button></details>
               <div v-if="workflow" class="ticket-workflow-tags">
-                <span class="ticket-status" :class="['status-' + item.status, 'stage-' + item.workflowStage]">{{ statusLabel(item.status, item.hasAdminReply, item) }}</span>
-                <span class="ticket-category">负责板块 · {{ categoryLabel(item.workArea) }}</span>
-                <span class="ticket-operator" :title="item.operatorAssigneeName || '待接单'">运营 · {{ item.operatorAssigneeName || '待接单' }}</span>
+                <span class="ticket-type">{{ typeLabel(item.type) }}</span>
+                <span class="ticket-category">{{ categoryLabel(item.workArea) }}</span>
+                <span v-if="item.category !== item.workArea" class="ticket-origin">来源 · {{ categoryLabel(item.category) }}</span>
+                <span v-if="showReporter" class="ticket-origin">提交人 · {{ reporterName(item) }}</span>
               </div>
               <span v-if="isUnread(item)" class="ticket-unread-marker">{{ workflow ? '新消息未读' : '有新更新' }}</span>
-              <span v-if="workflow && item.needsReply && item.status === 'OPEN'" class="ticket-reply-marker">需回复</span>
             </td>
-            <td v-if="showReporter" data-label="提交人">{{ reporterName(item) }}</td>
-            <td data-label="状态">
+            <td v-if="showReporter && !workflow" data-label="提交人">{{ reporterName(item) }}</td>
+            <td :data-label="workflow ? '待办 / 状态' : '状态'">
               <span class="ticket-status" :class="['status-' + item.status, 'stage-' + item.workflowStage]">
                 {{ statusLabel(item.status, item.hasAdminReply, item) }}
               </span>
+              <span v-if="workflow && item.needsReply && item.status === 'OPEN'" class="ticket-reply-marker">需回复</span>
             </td>
-            <td data-label="提交时间"><time :datetime="item.createdAt">{{ formatDate(item.createdAt) }}</time></td>
+            <td v-if="workflow" data-label="负责人"><span class="ticket-operator" :title="item.operatorAssigneeName || '待接单'">{{ item.operatorAssigneeName || '待接单' }}</span></td>
+            <td v-if="!workflow" data-label="提交时间"><time :datetime="item.createdAt">{{ formatDate(item.createdAt) }}</time></td>
             <td data-label="更新时间"><time :datetime="item.updatedAt || item.createdAt">{{ formatDate(item.updatedAt || item.createdAt) }}</time></td>
             <td class="ticket-operation" data-label="操作">
               <button type="button" @click.stop="$emit('select', item.id)">
@@ -64,6 +67,7 @@
         </tbody>
       </table>
     </div>
+    <p v-if="copyMessage" class="ticket-copy-message" role="status">{{ copyMessage }}</p>
 
     <footer v-if="items.length" class="ticket-pagination" aria-label="工单分页">
       <span>{{ resultStart }}-{{ resultEnd }} / 共 {{ total }} 条</span>
@@ -86,13 +90,13 @@
 
     <Teleport to="body">
       <div v-if="selectedItem" class="ticket-detail-mask" role="presentation" @click.self="$emit('close')">
-        <section class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title">
+        <section ref="detailPanel" class="ticket-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title" tabindex="-1">
           <header class="ticket-detail-head">
             <div>
               <span class="ticket-detail-kicker">FEEDBACK / TICKET</span>
               <h2 id="ticket-detail-title">反馈工单详情</h2>
             </div>
-            <button type="button" aria-label="关闭工单详情" title="关闭" @click="$emit('close')">
+            <button ref="detailCloseButton" type="button" aria-label="关闭工单详情" title="关闭" @click="$emit('close')">
               <X :size="22" />
             </button>
           </header>
@@ -129,7 +133,8 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, ref } from 'vue'
+import { useModalFocus } from '@/composables/useModalFocus.js'
 import {
   ChevronLeft,
   ChevronRight,
@@ -162,8 +167,15 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select', 'close', 'retry', 'page'])
+const detailPanel = ref(null)
+const detailCloseButton = ref(null)
+const copyMessage = ref('')
 
 const selectedItem = computed(() => props.selectedItem || props.items.find(item => item.id === props.selectedId) || (props.selectedId ? { id: props.selectedId } : null))
+useModalFocus(() => Boolean(selectedItem.value), detailPanel, {
+  initialFocus: () => detailCloseButton.value,
+  onEscape: () => { if (!hasOpenOverlayAbove()) emit('close') }
+})
 const resultStart = computed(() => props.total ? (props.page - 1) * props.pageSize + 1 : 0)
 const resultEnd = computed(() => Math.min(props.total, resultStart.value + props.items.length - 1))
 
@@ -186,13 +198,14 @@ function hasOpenOverlayAbove() {
   return typeof document !== 'undefined' && Boolean(document.querySelector('.modal-mask, .dialog-mask'))
 }
 
-function handleKeydown(event) {
-  if (event.key !== 'Escape' || !selectedItem.value || hasOpenOverlayAbove()) return
-  emit('close')
+async function copyId(id) {
+  try {
+    await navigator.clipboard.writeText(String(id))
+    copyMessage.value = '工单编号已复制。'
+  } catch {
+    copyMessage.value = '复制失败，请选中编号手动复制。'
+  }
 }
-
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style scoped>
@@ -214,6 +227,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 .ticket-table tbody tr:focus-visible,
 .ticket-table tbody tr.selected { background: var(--feedback-panel-hover); box-shadow: inset 3px 0 var(--yellow-deep); }
 .ticket-summary-cell strong { display: block; overflow: hidden; color: var(--feedback-text); font-size: 13px; font-weight: 700; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-table.is-workflow { min-width: 680px; }
+.ticket-table.is-workflow th.ticket-content-heading { width: auto; }
+.ticket-table.is-workflow th.ticket-state-heading { width: 114px; }
+.ticket-table.is-workflow th.ticket-owner-heading { width: 120px; }
+.ticket-table.is-workflow .ticket-summary-cell strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere; }
+.ticket-origin { color: var(--feedback-text-muted); font-size: 11px; }
+.ticket-copy { min-height: 44px; border: 0; background: transparent; color: var(--feedback-text); font: inherit; cursor: pointer; }
+.ticket-copy-message { margin-top: 8px; color: var(--feedback-text); font-size: 12px; }
 .ticket-summary-cell code { display: block; margin-top: 5px; overflow: hidden; color: var(--feedback-text-dim); font: 10px var(--font-d); text-overflow: ellipsis; white-space: nowrap; }
 .ticket-summary-cell summary { width: fit-content; padding-block: 8px; color: var(--feedback-text-muted); font-size: 11px; cursor: pointer; }
 .ticket-unread-marker { display: inline-flex; align-items: center; min-height: 22px; margin-top: 7px; padding: 2px 7px; border: 1px solid var(--rouge); border-radius: 5px; color: var(--rouge); font-size: 10px; font-weight: 800; line-height: 1.2; }
@@ -290,7 +311,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 @media (max-width: 767px) {
   .ticket-workspace { margin-top: 12px; padding-bottom: 32px; }
   .ticket-table-wrap { overflow: visible; border: 0; background: transparent; }
-  .ticket-table { min-width: 0; }
+  .ticket-table, .ticket-table.is-workflow { min-width: 0; }
   .ticket-table thead { display: none; }
   .ticket-table tbody { display: grid; gap: 10px; }
   .ticket-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }

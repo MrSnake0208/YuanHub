@@ -229,6 +229,14 @@ export function listWorkflowFeedback(params = {}) {
   return listFeedback({ ...params, workflowQueue: params.queue || 'UNASSIGNED' })
 }
 
+// Counts share the queue's authorization and filters; never infer them from one page.
+export async function getFeedbackQueueCounts(queues, params = {}) {
+  const entries = await Promise.all(queues.map(async queue => [
+    queue, (await listWorkflowFeedback({ ...params, queue, page: 1, pageSize: 1 })).total
+  ]))
+  return Object.fromEntries(entries)
+}
+
 // 获取单个反馈详情
 export function getFeedbackAccess() {
   return request('/v1/reports/access', { auth: true })

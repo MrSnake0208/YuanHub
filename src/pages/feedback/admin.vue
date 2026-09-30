@@ -9,7 +9,7 @@
           <div class="feedback-hero-layout">
             <div>
               <h1>反馈权限</h1>
-              <p class="hero-sub">配置各板块的新反馈通知接收人，以及可以查看、回复和处理工单的管理员。</p>
+              <p class="hero-sub">配置运营与程序的负责板块；新反馈通知和兼容授权可分别设置。</p>
             </div>
             <button class="feedback-primary-action feedback-hero-action" type="button" @click="openCreate">
               <Plus :size="18" aria-hidden="true" />
@@ -63,12 +63,12 @@
           <div v-else class="access-table-wrap">
             <table class="access-table">
               <thead>
-                <tr><th>用户</th><th>新岗位</th><th>运营板块</th><th>程序板块</th><th>旧接收/管理</th><th>最近更新</th><th class="ops">操作</th></tr>
+                <tr><th>用户</th><th>反馈岗位</th><th>运营板块</th><th>程序板块</th><th>通知 / 兼容授权</th><th>最近更新</th><th class="ops">操作</th></tr>
               </thead>
               <tbody>
                 <tr v-for="grant in filteredGrants" :key="grant.userId">
                   <td><strong>{{ grant.userName }}</strong><code>{{ grant.userId }}</code></td>
-                  <td>{{ grant.feedbackRoles.join('、') || '未设置' }}</td>
+                  <td>{{ grant.feedbackRoles.map(roleLabel).join('、') || '未设置' }}</td>
                   <td><span v-for="area in grant.operatorAreas" :key="'o-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.operatorAreas.length" class="muted">未配置</span></td>
                   <td><span v-for="area in grant.developerAreas" :key="'d-' + area" class="area-tag manage">{{ areaLabel(area) }}</span><span v-if="!grant.developerAreas.length" class="muted">未配置</span></td>
                   <td><small>接收：{{ grant.receiveAreas.map(areaLabel).join('、') || '无' }}</small><small>管理：{{ grant.manageAreas.map(areaLabel).join('、') || '无' }}</small></td>
@@ -88,7 +88,7 @@
 
     <Teleport to="body">
       <div v-if="editing" class="modal-mask" @click.self="closeEditor">
-        <div class="modal access-modal" role="dialog" aria-modal="true" aria-labelledby="access-editor-title" @keydown.esc.prevent="closeEditor">
+        <div ref="editorPanel" class="modal access-modal" role="dialog" aria-modal="true" aria-labelledby="access-editor-title" tabindex="-1">
           <div class="modal-head">
             <h2 id="access-editor-title">{{ form.userName || '新增反馈授权' }}</h2>
             <button type="button" aria-label="关闭" title="关闭" @click="closeEditor"><X :size="20" /></button>
@@ -149,10 +149,16 @@
               </div>
             </fieldset>
 
-            <p class="access-preview">保存后可查看：运营 {{ form.feedbackRoles.includes('OPERATOR') ? form.operatorAreas.map(areaLabel).join('、') || '无' : '无' }}；程序 {{ form.feedbackRoles.includes('DEVELOPER') ? form.developerAreas.map(areaLabel).join('、') || '无' : '无' }}。</p>
+            <div class="access-preview" aria-label="授权范围预览">
+              <p>工作台运营板块：{{ form.feedbackRoles.includes('OPERATOR') ? form.operatorAreas.map(areaLabel).join('、') || '无' : '无' }}；程序板块：{{ form.feedbackRoles.includes('DEVELOPER') ? form.developerAreas.map(areaLabel).join('、') || '无' : '无' }}。</p>
+              <p>新反馈通知：{{ form.receiveAreas.map(areaLabel).join('、') || '无' }}；兼容管理授权：{{ form.manageAreas.map(areaLabel).join('、') || '无' }}。</p>
+              <p>工作台按岗位和负责板块授权；程序岗可查看转程序及已交回的工单。通知接收与兼容管理分别生效，不会自动授予工作台岗位，也不会覆盖岗位板块。</p>
+            </div>
 
+            <details class="legacy-permissions">
+              <summary>通知与兼容授权</summary>
             <fieldset class="permission-group" :disabled="saving">
-              <legend>旧授权 · 接收新反馈通知</legend>
+              <legend>接收新反馈通知</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'receive-' + area.key" :class="{ on: form.receiveAreas.includes(area.key) }">
                   <input v-model="form.receiveAreas" type="checkbox" :value="area.key" />
@@ -162,7 +168,7 @@
             </fieldset>
 
             <fieldset class="permission-group" :disabled="saving">
-              <legend>旧授权 · 管理工单</legend>
+              <legend>兼容管理授权（旧接口）</legend>
               <div class="area-grid">
                 <label v-for="area in areas" :key="'manage-' + area.key" :class="{ on: form.manageAreas.includes(area.key) }">
                   <input v-model="form.manageAreas" type="checkbox" :value="area.key" />
@@ -170,6 +176,7 @@
                 </label>
               </div>
             </fieldset>
+            </details>
 
             <div v-if="editorError" class="editor-error" role="alert">{{ editorError }}</div>
           </div>
@@ -185,6 +192,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useModalFocus } from '@/composables/useModalFocus.js'
 import { Pencil, Plus, Save, Search, Trash2, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -216,6 +224,7 @@ const loading = ref(true)
 const error = ref('')
 const filter = ref('')
 const editing = ref(false)
+const editorPanel = ref(null)
 const saving = ref(false)
 const editorError = ref('')
 const userQuery = ref('')
@@ -228,6 +237,14 @@ let loadRequestId = 0
 let isMounted = false
 const form = reactive({ userId: '', userName: '', receiveAreas: [], manageAreas: [], feedbackRoles: [], operatorAreas: [], developerAreas: [] })
 const router = useRouter()
+useModalFocus(() => editing.value, editorPanel, {
+  initialFocus: () => editorPanel.value?.querySelector('input:not(:disabled), button'),
+  onEscape: closeEditor
+})
+
+function roleLabel(role) {
+  return { OPERATOR: '运营岗', DEVELOPER: '程序岗' }[role] || role
+}
 
 const currentUserId = computed(() => {
   const user = auth.userInfo || {}
@@ -425,7 +442,7 @@ async function saveGrant() {
         '',
         '接收新反馈：' + (grant.receiveAreas.map(areaLabel).join('、') || '无'),
         '旧管理授权：' + (grant.manageAreas.map(areaLabel).join('、') || '无'),
-        '新岗位：' + (grant.feedbackRoles.join('、') || '无'),
+        '反馈岗位：' + (grant.feedbackRoles.map(roleLabel).join('、') || '无'),
         '运营板块：' + (grant.operatorAreas.map(areaLabel).join('、') || '无'),
         '程序板块：' + (grant.developerAreas.map(areaLabel).join('、') || '无')
       ].join('\n'),
@@ -504,6 +521,9 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .access-table-wrap { overflow-x: auto; margin-bottom: 48px; border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(73,59,44,.42); scrollbar-gutter: stable }
 .access-table { width: 100%; min-width: 980px; border-collapse: collapse; background: var(--feedback-panel) }
 .access-preview { margin-top: 16px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
+.access-preview p + p { margin-top: 8px }
+.legacy-permissions { margin-top: 14px }
+.legacy-permissions summary { display: list-item; min-height: 44px; padding-block: 12px; color: var(--ink); font-weight: 700; cursor: pointer }
 .access-table th,.access-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
 .access-table th { background: var(--tea); color: var(--cream); font-size: 11px }
 .access-table tbody tr:hover { background: var(--feedback-panel-hover) }

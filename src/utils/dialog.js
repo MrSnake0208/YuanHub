@@ -17,7 +17,7 @@
 //
 // 可选参数：
 //   title / message / type('info'|'danger'|'success') /
-//   confirmText / cancelText / placeholder / value / inputLabel / requiredValue（后四项仅 prompt）
+//   confirmText / cancelText / placeholder / value / inputLabel / requiredValue / maxLength（prompt 默认 64，null 表示不限）
 import { reactive } from 'vue'
 
 const state = reactive({
@@ -31,6 +31,7 @@ const state = reactive({
   placeholder: '',
   inputLabel: '',
   requiredValue: '',
+  maxLength: 64,
   choices: [],
   checkboxLabel: '',
   checkboxChecked: false,
@@ -56,6 +57,7 @@ function open(opts) {
     placeholder: opts.placeholder || '',
     inputLabel: opts.inputLabel || '',
     requiredValue: opts.requiredValue != null ? String(opts.requiredValue) : '',
+    maxLength: opts.maxLength === undefined ? 64 : opts.maxLength,
     choices: Array.isArray(opts.choices) ? opts.choices : [],
     checkboxLabel: opts.checkboxLabel || '',
     checkboxChecked: Boolean(opts.checkboxChecked),

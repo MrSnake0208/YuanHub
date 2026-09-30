@@ -31,6 +31,22 @@ afterEach(async () => {
 })
 
 describe('公共 Dialog 键盘行为', () => {
+  it('驳回原因可不限长度，下一次普通 prompt 恢复默认 64 字符', async () => {
+    const wrapper = render(AppDialog)
+    const reason = dialog.prompt({ title: '驳回反馈', maxLength: null })
+    await flushPromises()
+    const input = wrapper.get('.dialog-field input')
+    expect(input.attributes('maxlength')).toBeUndefined()
+    await input.setValue('详细原因'.repeat(30))
+    await wrapper.get('.dlg-btn.primary').trigger('click')
+    expect(await reason).toBe('详细原因'.repeat(30))
+    const next = dialog.prompt({ title: '重命名' })
+    await flushPromises()
+    expect(wrapper.get('.dialog-field input').attributes('maxlength')).toBe('64')
+    dialog._cancel()
+    await next
+  })
+
   it('AppDialog 使用可见标题命名，危险确认先聚焦取消，Tab 被限制在弹窗内', async () => {
     const opener = document.createElement('button')
     document.body.append(opener)

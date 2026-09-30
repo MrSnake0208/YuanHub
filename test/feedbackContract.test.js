@@ -10,6 +10,7 @@ import {
   getFeedback,
   getManagedFeedback,
   getFeedbackAccess,
+  getFeedbackQueueCounts,
   listFeedbackVersionOptions,
   listManagedFeedback,
   listWorkflowFeedback,
@@ -550,6 +551,27 @@ test('管理员详情使用明确的后台身份路由', async () => {
   let path = ''
   await withFetch(async url => { path = String(url); return apiResponse({ id: 'rpt_1', status: 'OPEN' }) }, () => getManagedFeedback('rpt_1'))
   assert.match(path, /\/v1\/admin\/feedback\/rpt_1$/)
+})
+
+test('队列排序参数和计数使用完整服务端筛选，不从当前页估算', async () => {
+  const requests = []
+  await withFetch(async url => {
+    const parsed = new URL(String(url), 'https://example.test')
+    requests.push(parsed)
+    return apiResponse({ reports: [], total: parsed.searchParams.get('queue') === 'NEEDS_REPLY' ? 27 : 9 })
+  }, async () => {
+    await listWorkflowFeedback({ queue: 'NEEDS_REPLY', sortBy: 'createdAt', sortOrder: 'asc' })
+    const counts = await getFeedbackQueueCounts(['NEEDS_REPLY', 'RETURNED'], { type: 'EXPERIENCE', workArea: 'STAR', q: '保存' })
+    assert.deepEqual(counts, { NEEDS_REPLY: 27, RETURNED: 9 })
+  })
+  assert.equal(requests[0].searchParams.get('sortBy'), 'createdAt')
+  assert.equal(requests[0].searchParams.get('sortOrder'), 'asc')
+  for (const url of requests.slice(1)) {
+    assert.equal(url.searchParams.get('pageSize'), '1')
+    assert.equal(url.searchParams.get('type'), 'EXPERIENCE')
+    assert.equal(url.searchParams.get('workArea'), 'STAR')
+    assert.equal(url.searchParams.get('q'), '保存')
+  }
 })
 
 test('转交候选人使用当前工单的鉴权接口', async () => {

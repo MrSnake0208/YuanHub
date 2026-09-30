@@ -16,7 +16,7 @@ vi.mock('../src/api/feedback.js', () => ({
 }))
 vi.mock('../src/api/user.js', () => ({ searchFeedbackAccessUsers: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
-const render = () => mount(FeedbackAccess, { global: { stubs: {
+const render = (options = {}) => mount(FeedbackAccess, { ...options, global: { stubs: {
   IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true
 } } })
 const user = id => ({ id, userName: `测试用户 ${id}`, email: `${id}@example.test` })
@@ -80,6 +80,43 @@ it('岗位和旧授权均展示后端提供的同一板块目录', async () => {
   const groups = wrapper.findAll('.permission-group')
   expect(groups).toHaveLength(5)
   expect(groups.slice(1).every(group => group.text().includes('星石') && group.text().includes('麻圆'))).toBe(true)
+  wrapper.unmount()
+})
+
+it('岗位与兼容权限分开预览，折叠后保存不丢旧授权', async () => {
+  listFeedbackAccessGrants.mockResolvedValue([{
+    userId: 'manager', userName: '测试管理员', feedbackRoles: ['OPERATOR'], operatorAreas: ['OPERATOR'],
+    developerAreas: [], receiveAreas: ['OPERATOR'], manageAreas: ['OPERATOR']
+  }])
+  dialog.confirm.mockResolvedValue(true)
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('[aria-label="编辑 测试管理员"]').trigger('click')
+  expect(wrapper.get('.legacy-permissions').attributes('open')).toBeUndefined()
+  expect(wrapper.get('.access-preview').text()).toContain('工作台运营板块：密探养成')
+  expect(wrapper.get('.access-preview').text()).toContain('不会自动授予工作台岗位')
+  await wrapper.get('.modal-foot .primary').trigger('click'); await flushPromises()
+  expect(updateFeedbackAccessGrant).toHaveBeenCalledWith('manager', expect.objectContaining({
+    feedbackRoles: ['OPERATOR'], operatorAreas: ['OPERATOR'], receiveAreas: ['OPERATOR'], manageAreas: ['OPERATOR']
+  }))
+  wrapper.unmount()
+})
+
+it('权限弹窗的原生折叠入口参与焦点顺序，Esc 归还焦点', async () => {
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  const opener = wrapper.get('.feedback-hero-action').element
+  opener.focus()
+  await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
+  const panel = wrapper.get('.access-modal').element
+  expect(panel.contains(document.activeElement)).toBe(true)
+  const summary = wrapper.get('.legacy-permissions summary').element
+  summary.focus()
+  const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+  summary.dispatchEvent(tab)
+  expect(tab.defaultPrevented).toBe(false)
+  summary.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+  expect(wrapper.find('.access-modal').exists()).toBe(false)
+  expect(document.activeElement).toBe(opener)
   wrapper.unmount()
 })
 

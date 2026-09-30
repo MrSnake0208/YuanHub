@@ -29,6 +29,7 @@
           </div>
 
           <template v-else>
+            <p v-if="pageMessage" class="feedback-workflow-message feedback-page-message" role="status">{{ pageMessage }}</p>
             <div class="feedback-command-bar">
               <form class="feedback-search" role="search" @submit.prevent="searchFeedback">
                 <Search :size="18" aria-hidden="true" />
@@ -44,33 +45,46 @@
                   :aria-selected="filterStatus === status.key"
                   :class="{ on: filterStatus === status.key }"
                   @click="setFilter(status)"
-                >{{ status.label }}</button>
+                >{{ status.label }} <span class="feedback-queue-count">{{ queueCounts[status.key] ?? '—' }}</span></button>
               </div>
             </div>
 
             <div class="feedback-filter-row">
               <label class="feedback-filter">
                 <span>反馈类型</span>
-                <select v-model="filterType" @change="reloadFromFirstPage">
+                <select :value="filterType" @change="changeListOption('type', $event)">
                   <option value="">全部类型</option>
                   <option v-for="option in feedbackTypeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
               <label class="feedback-filter">
                 <span>负责板块</span>
-                <select v-model="filterCategory" @change="reloadFromFirstPage">
+                <select :value="filterCategory" @change="changeListOption('category', $event)">
                   <option value="">全部板块</option>
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
               <label class="feedback-filter">
+                <span>排序</span>
+                <select :value="sort" aria-label="反馈排序" @change="changeListOption('sort', $event)">
+                  <option value="oldest">最早提交</option>
+                  <option value="updated">最近更新</option>
+                  <option value="latest">最新提交</option>
+                </select>
+              </label>
+              <label class="feedback-filter">
                 <span>每页显示</span>
-                <select v-model.number="pageSize" aria-label="每页显示数量" @change="reloadFromFirstPage">
+                <select :value="pageSize" aria-label="每页显示数量" @change="changeListOption('pageSize', $event)">
                   <option v-for="size in [20, 30, 50]" :key="size" :value="size">{{ size }} 条</option>
                 </select>
               </label>
               <div class="feedback-result-tools">
                 <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
+              </div>
+            </div>
+            <p v-if="queueCountError" class="feedback-form-error" role="status">{{ queueCountError }} <button type="button" @click="loadQueueCounts">重试</button></p>
+            <div class="feedback-read-tools">
+              <span>以下操作作用于全部管理范围，与当前筛选无关。</span>
                 <button
                   class="feedback-button feedback-mark-read-button"
                   type="button"
@@ -80,12 +94,11 @@
                   @click="markAllUnreadFeedback"
                 >
                   <CheckCheck :size="15" aria-hidden="true" />
-                  <span>{{ markingAllRead ? '标记中…' : '一键已读' }}</span>
+                  <span>{{ markingAllRead ? '标记中…' : '全部管理范围已读' }}</span>
                   <span v-if="feedbackUnreadState.count > 0" class="feedback-mark-read-count" aria-hidden="true">
                     {{ feedbackUnreadState.count > 99 ? '99+' : feedbackUnreadState.count }}
                   </span>
                 </button>
-              </div>
             </div>
 
             <FeedbackTicketWorkspace
@@ -128,7 +141,9 @@
                       <div v-if="item.mergedSourceIds?.length"><strong>已归并 {{ item.mergedCount }} 条反馈</strong><ul><li v-for="sourceId in item.mergedSourceIds" :key="sourceId"><router-link :to="{ path: '/feedback/manage', query: { id: sourceId } }">{{ sourceId }}</router-link></li></ul></div>
                     </section>
                     <div v-if="canManageSettings(item)" class="feedback-management-summary" aria-label="反馈管理状态">
-                      <span>反馈广场：{{ item.visibility === 'PUBLIC' ? '已发布' : '未发布' }}</span>
+                      <span>工单处理：{{ statusLabel(item.status, item.hasAdminReply, item) }}</span>
+                      <span>广场进度：{{ item.visibility === 'PUBLIC' ? (publicStatusLabel(item.publicStatus) || '已发布') : '未发布' }}</span>
+                      <small>工单结案与广场进度独立更新。</small>
                     </div>
                   </template>
                   <template #actions>
@@ -174,10 +189,10 @@
                   </template>
                   <template #composer>
                     <div v-if="replyTarget === item.id && !item.mergedIntoId" class="feedback-reply-form">
-                      <textarea v-model="replyContent" class="feedback-form-control" rows="3" maxlength="1000" placeholder="输入处理回复" @paste="handleReplyMediaPaste"></textarea>
+                      <textarea ref="replyInput" v-model="replyContent" class="feedback-form-control" rows="3" maxlength="1000" aria-label="处理回复" placeholder="输入处理回复" @paste="handleReplyMediaPaste"></textarea>
                       <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
-                        <button class="feedback-button" type="button" :disabled="replying" @click="cancelReply">取消</button>
+                        <button class="feedback-button" type="button" :disabled="replying" @click="discardReply">取消</button>
                         <button class="feedback-primary-action" type="button" :disabled="replying || replyMedia.uploading || replyMedia.optimizing" @click="submitReply(item.id)">
                           <Send :size="16" />{{ replying ? '发送中…' : '发送回复' }}
                         </button>
@@ -195,13 +210,14 @@
     <AdminFeedbackMergeDialog
       :open="mergeOpen"
       :source-id="selectedId"
+      :source-title="selectedDetail?.title || selectedDetail?.content || selectedId"
       :busy="mergeBusy"
       @close="mergeOpen = false"
       @confirm="confirmMerge"
     />
     <Teleport to="body">
       <div v-if="managementDialog === 'public' && selectedDetail && canManageSettings(selectedDetail)" class="modal-mask is-raised" role="presentation" @click.self="closeManagementDialog">
-        <section class="modal feedback-modal feedback-management-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-management-title" @keydown.esc.stop.prevent="closeManagementDialog">
+        <section ref="managementPanel" class="modal feedback-modal feedback-management-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-management-title" tabindex="-1">
           <header class="modal-head"><h2 id="feedback-management-title">反馈广场</h2><button ref="managementDialogCloseButton" type="button" aria-label="关闭管理弹窗" title="关闭" @click="closeManagementDialog"><X :size="20" aria-hidden="true" /></button></header>
           <div class="feedback-management-body">
             <AdminFeedbackPublishPanel
@@ -220,7 +236,7 @@
     </Teleport>
     <Teleport to="body">
       <div v-if="workflowHistoryOpen" class="modal-mask is-raised" role="presentation" @click.self="closeWorkflowHistory">
-        <section class="modal feedback-modal feedback-history-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-history-title" @keydown.esc.stop.prevent="closeWorkflowHistory">
+        <section ref="historyPanel" class="modal feedback-modal feedback-history-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-history-title" tabindex="-1">
           <header class="modal-head"><div><h2 id="feedback-history-title">处理记录</h2><small>工单 {{ selectedId }}</small></div><button ref="workflowHistoryCloseButton" type="button" aria-label="关闭处理记录" title="关闭" @click="closeWorkflowHistory"><X :size="20" aria-hidden="true" /></button></header>
           <div class="feedback-history-body">
             <p v-if="workflowEventsLoading" role="status">正在加载处理记录…</p>
@@ -237,6 +253,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useModalFocus } from '@/composables/useModalFocus.js'
+import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
+import { dialog } from '@/utils/dialog.js'
+import { PUBLIC_TYPE_OPTIONS, publicStatusLabel } from '@/utils/feedbackPublic.js'
 import { ArrowRight, CheckCheck, CheckCircle2, ChevronDown, CircleX, MessageSquarePlus, Search, Send, ShieldAlert, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
@@ -257,6 +277,7 @@ import {
   listFeedbackAssignees,
   getManagedFeedback,
   getFeedbackAccess,
+  getFeedbackQueueCounts,
   listWorkflowFeedback,
   mergeFeedback,
   publishFeedback,
@@ -274,19 +295,13 @@ const { feedbackUnreadState, subscribeFeedbackUnread } = feedbackUnreadStore
 const allStatusTabs = [
   { key: 'UNASSIGNED', label: '待接单' },
   { key: 'MINE', label: '我负责' },
+  { key: 'NEEDS_REPLY', label: '需我回复' },
   { key: 'DEV', label: '待程序' },
   { key: 'RETURNED', label: '已交回运营' },
   { key: 'CLOSED', label: '已结束' },
   { key: 'ALL', label: '全部' }
 ]
-const feedbackTypeOptions = [
-  { key: 'BUG', label: '问题报告' },
-  { key: 'FEATURE', label: '功能建议' },
-  { key: 'CONTENT', label: '内容问题' },
-  { key: 'ACCOUNT', label: '账号问题' },
-  { key: 'REPORT', label: '举报' },
-  { key: 'OTHER', label: '其他' }
-]
+const feedbackTypeOptions = PUBLIC_TYPE_OPTIONS
 const route = useRoute()
 const router = useRouter()
 const feedbacks = ref([])
@@ -298,6 +313,10 @@ const page = ref(1)
 const pageSize = ref(20)
 const totalCount = ref(0)
 const q = ref('')
+const sort = ref('oldest')
+const queueCounts = ref({})
+const queueCountError = ref('')
+const pageMessage = ref('')
 const filterStatus = ref('UNASSIGNED')
 const filterType = ref('')
 const filterCategory = ref('')
@@ -307,6 +326,7 @@ const detailLoading = ref(false)
 const detailError = ref('')
 const replyTarget = ref('')
 const replyContent = ref('')
+const replyInput = ref(null)
 const replying = ref(false)
 const updatingStatus = ref(false)
 const markingAllRead = ref(false)
@@ -319,6 +339,7 @@ const managementMenuOpen = ref(false)
 const managementMenuButton = ref(null)
 const managementDialog = ref('')
 const managementDialogCloseButton = ref(null)
+const managementPanel = ref(null)
 const workflowMode = ref('')
 const workflowTarget = ref('')
 const workflowArea = ref('')
@@ -331,6 +352,7 @@ const workflowForm = ref(null)
 const workflowMessage = ref('')
 const workflowHistoryOpen = ref(false)
 const workflowHistoryCloseButton = ref(null)
+const historyPanel = ref(null)
 const workflowEvents = ref([])
 const workflowEventsLoading = ref(false)
 const workflowEventsError = ref('')
@@ -338,6 +360,19 @@ const workflowAssignees = ref([])
 const assigneesLoading = ref(false)
 const assigneesError = ref('')
 const replyMedia = useFeedbackMedia()
+const draftDirty = computed(() => Boolean(
+  (replyTarget.value && (replyContent.value.trim() || replyMedia.items.length)) ||
+  (workflowMode.value && workflowNote.value.trim())
+))
+const confirmDraftDiscard = useUnsavedChanges(draftDirty, '回复或流转草稿')
+useModalFocus(() => managementDialog.value === 'public', managementPanel, {
+  initialFocus: () => managementDialogCloseButton.value,
+  onEscape: closeManagementDialog
+})
+useModalFocus(() => workflowHistoryOpen.value, historyPanel, {
+  initialFocus: () => workflowHistoryCloseButton.value,
+  onEscape: closeWorkflowHistory
+})
 const actionBusy = computed(() => workflowBusy.value || updatingStatus.value || replying.value || detailLoading.value)
 let isMounted = false
 let ready = false
@@ -345,6 +380,7 @@ let loadRequestId = 0
 let detailRequestId = 0
 let workflowEventsRequestId = 0
 let assigneesRequestId = 0
+let queueCountRequestId = 0
 let feedbackRefreshTimer = null
 let stopFeedbackUnread = null
 
@@ -352,7 +388,8 @@ const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMI
 const hasManagePermission = computed(() => access.value.superAdmin || access.value.operatorAreas.length > 0 || access.value.developerAreas.length > 0)
 const statusTabs = computed(() => allStatusTabs.filter(tab => {
   if (access.value.superAdmin) return true
-  if (['UNASSIGNED', 'MINE', 'CLOSED', 'ALL'].includes(tab.key)) return access.value.operatorAreas.length > 0
+  if (['UNASSIGNED', 'MINE', 'NEEDS_REPLY', 'CLOSED', 'ALL'].includes(tab.key)) return access.value.operatorAreas.length > 0
+  if (tab.key === 'RETURNED') return access.value.operatorAreas.length > 0 || access.value.developerAreas.length > 0
   return access.value.developerAreas.length > 0 || (tab.key === 'DEV' && access.value.operatorAreas.length > 0)
 }))
 const categoryOptions = computed(() => {
@@ -398,6 +435,24 @@ function currentUserId() {
   return user && (user.id || user.userId || user.user_id) ? String(user.id || user.userId || user.user_id) : ''
 }
 
+async function loadQueueCounts() {
+  const requestId = ++queueCountRequestId
+  const userId = currentUserId()
+  queueCountError.value = ''
+  try {
+    const counts = await getFeedbackQueueCounts(statusTabs.value.map(tab => tab.key), {
+      type: filterType.value || undefined,
+      workArea: filterCategory.value || undefined,
+      q: q.value.trim() || undefined
+    })
+    if (isMounted && requestId === queueCountRequestId && userId === currentUserId()) queueCounts.value = counts
+  } catch (e) {
+    if (!isMounted || requestId !== queueCountRequestId || userId !== currentUserId()) return
+    queueCounts.value = {}
+    if (!await handleForbidden(e)) queueCountError.value = '队列数量暂不可用'
+  }
+}
+
 async function loadAccess() {
   loadingAccess.value = true
   try {
@@ -425,7 +480,9 @@ async function loadFeedback({ background = false } = {}) {
   if (!background) {
     loading.value = true
     error.value = ''
+    queueCounts.value = {}
   }
+  void loadQueueCounts()
   try {
     const data = await listWorkflowFeedback({
       page: page.value,
@@ -434,8 +491,8 @@ async function loadFeedback({ background = false } = {}) {
       type: filterType.value || undefined,
       workArea: filterCategory.value || undefined,
       q: q.value.trim() || undefined,
-      sortBy: 'createdAt',
-      sortOrder: 'desc'
+      sortBy: sort.value === 'updated' ? 'updatedAt' : 'createdAt',
+      sortOrder: sort.value === 'oldest' ? 'asc' : 'desc'
     })
     if (requestId !== loadRequestId) return
     totalCount.value = Number(data.total ?? data.items?.length ?? 0)
@@ -453,15 +510,28 @@ async function loadFeedback({ background = false } = {}) {
 }
 
 async function reloadFromFirstPage() {
+  if (!await closeDetail()) return
   page.value = 1
-  closeDetail()
   await loadFeedback()
 }
 
-function setFilter(status) {
+async function changeListOption(key, event) {
+  const model = { type: filterType, category: filterCategory, sort, pageSize }[key]
+  const input = event.target
+  const next = input.value
+  input.value = String(model.value)
+  if (!await closeDetail()) return
+  model.value = key === 'pageSize' ? Number(next) : next
+  page.value = 1
+  await loadFeedback()
+}
+
+async function setFilter(status) {
   if (filterStatus.value === status.key) return
+  if (!await closeDetail()) return
   filterStatus.value = status.key
-  reloadFromFirstPage()
+  page.value = 1
+  await loadFeedback()
 }
 
 function searchFeedback() {
@@ -472,9 +542,20 @@ async function markAllUnreadFeedback() {
   if (markingAllRead.value || feedbackUnreadState.loading || feedbackUnreadState.count === 0) return
   const markAllRead = feedbackUnreadStore.markAllManagedFeedbackRead
   if (typeof markAllRead !== 'function') return
+  const userId = currentUserId()
+  const count = feedbackUnreadState.count
   markingAllRead.value = true
   try {
+    const confirmed = await dialog.confirm({
+      title: '全部管理范围标为已读？',
+      message: `将全部管理范围内 ${count} 条未读反馈标为已读，包含当前筛选之外的工单。此操作不会完成或结案工单。`,
+      confirmText: '全部标为已读', cancelText: '取消'
+    })
+    if (!confirmed || !isMounted || userId !== currentUserId()) return
     await markAllRead()
+    if (isMounted && userId === currentUserId()) pageMessage.value = '全部管理范围已标为已读，工单处理状态未改变。'
+  } catch (e) {
+    if (isMounted && userId === currentUserId()) pageMessage.value = e.message || '标为已读失败，请重试。'
   } finally {
     markingAllRead.value = false
   }
@@ -482,13 +563,13 @@ async function markAllUnreadFeedback() {
 
 async function changePage(nextPage) {
   if (nextPage < 1 || nextPage > totalPages.value || loading.value) return
+  if (!await closeDetail()) return
   page.value = nextPage
-  closeDetail()
   await loadFeedback()
 }
 
 async function selectTicket(id) {
-  closeDetail()
+  if (!await closeDetail()) return
   selectedId.value = String(id)
   selectedDetail.value = { id: String(id) }
   await loadFeedbackDetail(String(id))
@@ -530,7 +611,15 @@ function replaceTicket(detail) {
   if (index >= 0) feedbacks.value.splice(index, 1, detail)
 }
 
-function closeDetail() {
+async function closeDetail() {
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  if (draftDirty.value && (!await confirmDraftDiscard() || !isMounted || requestId !== detailRequestId || userId !== currentUserId())) return false
+  resetDetail()
+  return true
+}
+
+function resetDetail() {
   detailRequestId += 1
   assigneesRequestId += 1
   detailLoading.value = false
@@ -577,7 +666,10 @@ function openWorkflow(mode) {
   if (mode) nextTick(() => workflowForm.value?.focus())
 }
 
-function cancelWorkflow() {
+async function cancelWorkflow() {
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  if (!await confirmDraftDiscard() || !isMounted || requestId !== detailRequestId || userId !== currentUserId()) return
   openWorkflow('')
   nextTick(() => workflowToolbar.value?.querySelector('button')?.focus())
 }
@@ -795,12 +887,21 @@ function showReplyForm(id) {
   replyMedia.clear()
   replyTarget.value = id
   replyContent.value = ''
+  nextTick(() => replyInput.value?.focus())
 }
 
 function cancelReply() {
   replyMedia.clear()
   replyTarget.value = ''
   replyContent.value = ''
+}
+
+async function discardReply() {
+  const requestId = detailRequestId
+  const userId = currentUserId()
+  if (!await confirmDraftDiscard() || !isMounted || requestId !== detailRequestId || userId !== currentUserId()) return
+  cancelReply()
+  nextTick(() => workflowToolbar.value?.querySelector('button')?.focus())
 }
 
 async function submitReply(id) {
@@ -830,17 +931,30 @@ async function submitReply(id) {
 
 async function updateStatus(id, status) {
   if (updatingStatus.value || replying.value || detailLoading.value) return
-  const reason = status === 'DISMISSED' ? window.prompt(`驳回工单 ${id} 的原因`) : null
-  if (status === 'DISMISSED' && !reason?.trim()) return
-  if (status === 'RESOLVED' && !window.confirm(`确认完成工单 ${id}？`)) return
-  if (status === 'OPEN' && !window.confirm(`重新打开工单 ${id}？`)) return
   const requestId = detailRequestId
   const userId = currentUserId()
   updatingStatus.value = true
   detailError.value = ''
   try {
+    const reason = status === 'DISMISSED' ? await dialog.prompt({
+      title: '驳回反馈', inputLabel: '驳回原因', placeholder: '请填写具体原因', maxLength: null,
+      message: '驳回后用户将无法继续补充，管理员仍可重新打开。', confirmText: '确认驳回', type: 'danger'
+    }) : null
+    if (!isCurrentDetail(requestId, id, userId)) return
+    if (status === 'DISMISSED' && !reason?.trim()) return
+    if (status !== 'DISMISSED') {
+      const confirmed = await dialog.confirm({
+        title: status === 'RESOLVED' ? '确认问题已解决？' : '重新打开反馈？',
+        message: status === 'RESOLVED' ? '结案后用户将无法继续补充，管理员仍可重新打开。请先确认问题已解决。' : '重新打开后，用户可以继续补充说明与附件。',
+        confirmText: status === 'RESOLVED' ? '标记完成' : '重新打开'
+      })
+      if (!confirmed || !isCurrentDetail(requestId, id, userId)) return
+    }
     await updateManagedFeedbackStatus(id, status, reason)
-    if (isCurrentDetail(requestId, id, userId)) await reloadFromFirstPage()
+    if (!isCurrentDetail(requestId, id, userId)) return
+    resetDetail()
+    pageMessage.value = { RESOLVED: '反馈已完成并结案。', DISMISSED: '反馈已驳回，原因已记录。', OPEN: '反馈已重新打开。' }[status]
+    await loadFeedback()
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) detailError.value = e.message || '操作失败'
   } finally {
@@ -852,7 +966,8 @@ async function handleForbidden(value) {
   if (!isMounted || !value || value.status !== 403) return false
   loadRequestId += 1
   feedbacks.value = []
-  closeDetail()
+  queueCountRequestId += 1
+  resetDetail()
   await router.replace({ path: '/forbidden', query: { from: '/feedback/manage' } })
   return true
 }
@@ -874,8 +989,9 @@ onMounted(async () => {
 
 watch(() => route.query.id, id => {
   if (!isMounted || !ready || !hasManagePermission.value) return
+  // The route guard already confirmed discarding the draft before this update.
+  resetDetail()
   if (id) selectTicket(String(id))
-  else closeDetail()
 })
 
 onBeforeUnmount(() => {
@@ -883,6 +999,7 @@ onBeforeUnmount(() => {
   ready = false
   loadRequestId += 1
   detailRequestId += 1
+  queueCountRequestId += 1
   if (feedbackRefreshTimer) {
     clearInterval(feedbackRefreshTimer)
     feedbackRefreshTimer = null
@@ -905,6 +1022,10 @@ onBeforeUnmount(() => {
 .feedback-merge-relations a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .feedback-management-summary { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; color: var(--feedback-text-muted); font-size: 11px; line-height: 1.5; }
 .feedback-management-summary span { overflow-wrap: anywhere; }
+.feedback-management-summary small { flex-basis: 100%; }
+.feedback-page-message { margin-top: 14px; }
+.feedback-read-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; color: var(--feedback-text-muted); font-size: 11px; }
+.feedback-queue-count { margin-left: 4px; font-family: var(--font-d); }
 .feedback-ticket-actions { display: grid; gap: 10px; }
 .feedback-action-toolbar .danger { margin-left: auto; }
 .feedback-action-toolbar [aria-expanded="true"] svg { transform: rotate(180deg); }
