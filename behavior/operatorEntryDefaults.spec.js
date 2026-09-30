@@ -148,3 +148,25 @@ it('奇闻独立拉满保留图鉴缺少上限的原值，并提示确认后保�
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+it.each([[100, 17], [90, 15]])('单个密探练度预设 %i+%i 可切换，只填草稿且保留奇闻与化极', async (level, elite) => {
+  const oddities = { attack: { current: 10 }, hp: { current: 20 }, special: { current: 7 } }
+  const wrapper = await openEditor({ level: 80, elite: 12, starLevel: 8, combat_stats: { oddities } })
+  const preset = targetLevel => wrapper.findAll('.editor-growth-preset').find(button => button.text().startsWith(`${targetLevel}级`))
+  await preset(level === 100 ? 90 : 100).trigger('click')
+  await preset(level).trigger('click')
+  await flushPromises()
+  expect(growthValues(wrapper)).toEqual([String(level), String(elite)])
+  expect(wrapper.findAll('.oddity-field input').map(input => input.element.value)).toEqual(['10', '20', '7'])
+  expect(wrapper.get('.editor-action-status').text()).toContain('请确认后保存')
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(putCurrentStarLoadout).not.toHaveBeenCalled()
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({
+    patch: expect.objectContaining({ level, elite, star_level: 8, combat_stats: expect.objectContaining({ oddities }) }),
+  }))
+  wrapper.unmount()
+})

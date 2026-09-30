@@ -2677,6 +2677,20 @@
                 </div>
                 <button
                   type="button"
+                  class="btn ghost editor-growth-preset"
+                  :disabled="savingEdit"
+                  title="仅填入等级和修为；点击保存后生效"
+                  @click="applyEditGrowthPreset(100, 17)"
+                >100级 / 修为17</button>
+                <button
+                  type="button"
+                  class="btn ghost editor-growth-preset"
+                  :disabled="savingEdit"
+                  title="仅填入等级和修为；点击保存后生效"
+                  @click="applyEditGrowthPreset(90, 15)"
+                >90级 / 修为15</button>
+                <button
+                  type="button"
                   class="btn ghost editor-fill-max"
                   :disabled="savingEdit"
                   title="将等级设为 100、修为设为 17、奇闻属性设为图鉴上限；点击保存后生效"
@@ -4313,6 +4327,12 @@ function oddityInputLabel(key) {
 function oddityLimitTitle(key) {
   const max = oddityLimitLabel(key);
   return max === "—" ? "等待公共图鉴返回上限" : "公共图鉴上限 " + max;
+}
+
+function applyEditGrowthPreset(level, elite) {
+  Object.assign(editForm.value, { level, elite });
+  editNotice.value = "已填入 " + level + "级 / 修为" + elite + "，请确认后保存";
+  editNoticeError.value = false;
 }
 
 function fillEditToMax(odditiesOnly = false) {
@@ -13196,7 +13216,8 @@ onBeforeUnmount(function () {
   gap: 12px;
   flex-wrap: wrap;
 }
-.editor-fill-max {
+.editor-fill-max,
+.editor-growth-preset {
   min-height: 44px;
 }
 .num-fields .level-row > label {
