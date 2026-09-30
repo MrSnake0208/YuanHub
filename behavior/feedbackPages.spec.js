@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import MyFeedback from '../src/pages/feedback/index.vue'
 import ManagedFeedback from '../src/pages/feedback/manage.vue'
@@ -69,7 +69,7 @@ const render = (component, options = {}) => mount(component, {
   ...options,
   global: {
     ...(options.global || {}),
-    stubs: { IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true, RouterLink: true }
+    stubs: { IslandSidebar: true, AdminBackLink: true, FeedbackWorkspaceNav: true, teleport: true, RouterLink: true, ...(options.global?.stubs || {}) }
   }
 })
 const choose = async (wrapper, id) => {
@@ -180,6 +180,8 @@ it('运营能发现交回与需回复队列，排序请求由服务端处理', a
   await wrapper.findAll('[role="tab"]').find(tab => tab.text().startsWith('需我回复')).trigger('click'); await flushPromises()
   await wrapper.get('[aria-label="反馈排序"]').setValue('updated'); await flushPromises()
   expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'NEEDS_REPLY', sortBy: 'updatedAt', sortOrder: 'desc' }))
+  await wrapper.get('[aria-label="反馈排序"]').setValue('latest'); await flushPromises()
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'NEEDS_REPLY', sortBy: 'createdAt', sortOrder: 'desc' }))
   expect(wrapper.findAll('.feedback-filter select')[0].findAll('option').some(option => option.element.value === 'EXPERIENCE')).toBe(true)
   wrapper.unmount()
 })
@@ -267,6 +269,7 @@ it('合并弹窗初始打开可检索，切换来源会清除旧目标', async (
   expect(wrapper.get('.modal-foot .feedback-primary-action').attributes('disabled')).toBeDefined()
   await wrapper.setProps({ open: false })
   pending.resolve({ items: [summary('late')] }); await flushPromises()
+  api.listManagedFeedback.mockResolvedValueOnce({ items: [] })
   await wrapper.setProps({ open: true }); await flushPromises()
   expect(wrapper.find('.merge-selected').exists()).toBe(false)
   expect(wrapper.find('.merge-list').exists()).toBe(false)
@@ -300,23 +303,25 @@ it('合并搜索变化立即清除旧目标，过期搜索不能恢复旧结果'
 
 it('详情限制Tab，二级发布弹窗关闭后返回详情且Escape不穿透', async () => {
   api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'PROCESSING', publicConsent: true })
-  const wrapper = render(ManagedFeedback, { attachTo: document.body }); await flushPromises()
+  const wrapper = render(ManagedFeedback, { attachTo: document.body, global: { stubs: { teleport: false } } }); await flushPromises()
+  const portal = selector => new DOMWrapper(document.querySelector(selector))
+  const detail = () => portal('.ticket-detail-dialog')
   const opener = wrapper.findAll('tbody tr')[0].element; opener.focus()
   await choose(wrapper, 'rpt_a')
-  const panel = wrapper.get('.ticket-detail-dialog').element
+  const panel = detail().element
   expect(panel.contains(document.activeElement)).toBe(true)
-  const closeButton = wrapper.get('[aria-label="关闭工单详情"]').element
+  const closeButton = detail().get('[aria-label="关闭工单详情"]').element
   closeButton.focus(); closeButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }))
   expect(panel.contains(document.activeElement)).toBe(true)
   expect(document.activeElement).not.toBe(closeButton)
-  await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === '管理操作').trigger('click')
-  const publishOpener = wrapper.get('[aria-label="管理操作选项"] button').element; publishOpener.focus(); publishOpener.click(); await flushPromises()
-  expect(wrapper.get('.feedback-management-dialog').element.contains(document.activeElement)).toBe(true)
+  await detail().findAll('.feedback-action-toolbar button').find(button => button.text() === '管理操作').trigger('click')
+  const publishOpener = detail().get('[aria-label="管理操作选项"] button').element; publishOpener.focus(); publishOpener.click(); await flushPromises()
+  expect(portal('.feedback-management-dialog').element.contains(document.activeElement)).toBe(true)
   document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await flushPromises()
-  expect(wrapper.find('.feedback-management-dialog').exists()).toBe(false)
-  expect(wrapper.find('.ticket-detail-dialog').exists()).toBe(true)
+  expect(document.querySelector('.feedback-management-dialog')).toBeNull()
+  expect(document.querySelector('.ticket-detail-dialog')).toBe(panel)
   expect(panel.contains(document.activeElement)).toBe(true)
-  await close(wrapper)
+  await detail().get('[aria-label="关闭工单详情"]').trigger('click'); await flushPromises()
   expect(document.activeElement).toBe(opener)
   wrapper.unmount()
 })
@@ -896,12 +901,12 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
   await wrapper.get('input[name="feedback-search"]').setValue('old filter')
   await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
   await wrapper.get('.feedback-hero-action').trigger('click')
-  const form = wrapper.get('.feedback-modal form')
-  await form.findAll('select')[1].setValue('OPERATOR')
-  await form.get('[name="public-consent"]').setValue(true)
-  await form.get('input[maxlength="120"]').setValue('新问题')
-  await form.get('textarea').setValue('new issue')
-  await form.trigger('submit'); await form.trigger('submit'); await flushPromises()
+  const form = () => wrapper.get('.feedback-modal form')
+  await form().findAll('select')[1].setValue('OPERATOR')
+  await form().get('[name="public-consent"]').setValue(true)
+  await form().get('input[maxlength="120"]').setValue('新问题')
+  await form().get('textarea').setValue('new issue')
+  await form().trigger('submit'); await form().trigger('submit'); await flushPromises()
   expect(api.createFeedback).toHaveBeenCalledTimes(1)
   expect(api.createFeedback).toHaveBeenCalledWith(expect.objectContaining({ content: 'new issue', category: 'OPERATOR' }))
   pending.resolve(ticket('rpt_new')); await flushPromises()
@@ -996,28 +1001,28 @@ it('默认私下提交不需要标题，公开授权与客户端信息同意独�
 it('取消公开授权保留隐藏标题但不提交，并忽略迟到的相似检索', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
   await wrapper.get('.feedback-hero-action').trigger('click')
-  const form = wrapper.get('.feedback-modal form')
+  const form = () => wrapper.get('.feedback-modal form')
   const pending = deferred()
   findSimilarFeedback.mockReturnValueOnce(pending.promise)
   vi.useFakeTimers()
   try {
-    await form.findAll('select')[1].setValue('OPERATOR')
-    await form.get('[name="public-consent"]').setValue(true)
-    await form.get('input[maxlength="120"]').setValue('草稿标题')
+    await form().findAll('select')[1].setValue('OPERATOR')
+    await form().get('[name="public-consent"]').setValue(true)
+    await form().get('input[maxlength="120"]').setValue('草稿标题')
     await vi.advanceTimersByTimeAsync(350)
     expect(findSimilarFeedback).toHaveBeenCalledTimes(1)
-    await form.get('[name="public-consent"]').setValue(false)
+    await form().get('[name="public-consent"]').setValue(false)
     pending.resolve([{ id: 'late', publicTitle: '迟到结果' }]); await flushPromises()
     await vi.advanceTimersByTimeAsync(350)
     expect(findSimilarFeedback).toHaveBeenCalledTimes(1)
     expect(wrapper.findComponent(SimilarFeedbackList).exists()).toBe(false)
-    await form.get('[name="public-consent"]').setValue(true)
-    expect(form.get('input[maxlength="120"]').element.value).toBe('草稿标题')
+    await form().get('[name="public-consent"]').setValue(true)
+    expect(form().get('input[maxlength="120"]').element.value).toBe('草稿标题')
     expect(wrapper.findComponent(SimilarFeedbackList).props('items')).toEqual([])
-    await form.get('[name="public-consent"]').setValue(false)
-    await form.get('textarea').setValue('保持私下')
+    await form().get('[name="public-consent"]').setValue(false)
+    await form().get('textarea').setValue('保持私下')
     api.createFeedback.mockResolvedValue(ticket('rpt_new'))
-    await form.trigger('submit'); await flushPromises()
+    await form().trigger('submit'); await flushPromises()
     expect(api.createFeedback).toHaveBeenCalledWith(expect.objectContaining({ title: '', publicConsent: false, content: '保持私下' }))
   } finally {
     wrapper.unmount()
@@ -1060,13 +1065,13 @@ it('管理员页面拒绝未授权发布事件且不修改反馈类型', async (
 it('允许公开时空标题在附件上传与创建请求之前拦截', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
   await wrapper.get('.feedback-hero-action').trigger('click')
-  const form = wrapper.get('.feedback-modal form')
-  await form.findAll('select')[1].setValue('OPERATOR')
-  await form.get('[name="public-consent"]').setValue(true)
-  await form.get('input[maxlength="120"]').setValue('   ')
-  await form.get('textarea').setValue('具体问题')
+  const form = () => wrapper.get('.feedback-modal form')
+  await form().findAll('select')[1].setValue('OPERATOR')
+  await form().get('[name="public-consent"]').setValue(true)
+  await form().get('input[maxlength="120"]').setValue('   ')
+  await form().get('textarea').setValue('具体问题')
   expect(wrapper.get('.feedback-modal textarea').element.value).toBe('具体问题')
-  await form.trigger('submit'); await flushPromises()
+  await form().trigger('submit'); await flushPromises()
   expect(wrapper.get('.feedback-modal .feedback-form-error').text()).toContain('请填写标题')
   expect(uploadMedia).not.toHaveBeenCalled()
   expect(api.createFeedback).not.toHaveBeenCalled()

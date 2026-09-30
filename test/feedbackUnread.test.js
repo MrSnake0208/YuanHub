@@ -308,8 +308,7 @@ test('反馈未读状态已接入导航角标和管理详情', () => {
   assert.match(accessPage, /<FeedbackWorkspaceNav[\s\S]*active="admin"/)
   assert.match(accessPage, /:has-unread-feedback="canManageFeedback && feedbackUnreadState\.count > 0"/)
   assert.match(managePage, /feedbackUnreadStore\.refreshFeedbackUnread\(\{ force: true \}\)/)
-  assert.match(managePage, /sortBy: 'createdAt'/)
-  assert.match(managePage, /sortOrder: 'desc'/)
+  // 排序请求由 behavior/feedbackPages.spec.js 的 mounted tests 验证。
   assert.match(managePage, /setInterval\([\s\S]*loadFeedback\(\{ background: true \}\)/)
   assert.match(managePage, /:selected-item="selectedDetail"/)
   assert.match(managePage, /:unread-feedback-ids="unreadFeedbackIds"/)
