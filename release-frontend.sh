@@ -40,7 +40,7 @@ usage() {
 YuanHub 前端发布
 
 用法：
-  ./release-frontend.sh [--yes] [版本号]
+  ./release-frontend.sh [--yes] [--dry-run | --prepare-only] [版本号]
 
 示例：
   ./release-frontend.sh
@@ -49,21 +49,39 @@ YuanHub 前端发布
   ./release-frontend.sh --yes 0.0.1-beta.4
 
 规则：
-  - 不传版本号：
+  - 不传版本号或传 auto：
       * 当前 VERSION 尚未发布时，继续发布当前 VERSION
       * 当前 VERSION 已有 tag 且形如 x.y.z-beta.N 时，自动递增到 beta.N+1
   - 只有 CI 成功后才会创建并推送发布 tag
   - Release 失败时不会改写或复用已有 tag
+  - --dry-run：仅预览本地计划，不同步远端、不修改版本、不提交或推送
+  - --prepare-only：更新版本并推送 main，交由统一入口等待 CI 和发布
+  - --expected-commit SHA：发布前核对准备阶段冻结的提交
 EOF
 }
 
 YES=0
+DRY_RUN=0
+PREPARE_ONLY=0
+EXPECTED_COMMIT=""
 TARGET_VERSION=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -y|--yes)
       YES=1
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    --prepare-only)
+      PREPARE_ONLY=1
+      ;;
+    --expected-commit)
+      [ "$#" -ge 2 ] || die "--expected-commit 缺少 SHA"
+      EXPECTED_COMMIT="$2"
+      [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || die "expected-commit 必须是完整 SHA"
+      shift
       ;;
     -h|--help)
       usage
@@ -79,6 +97,7 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+[ "$TARGET_VERSION" != auto ] || TARGET_VERSION=""
 
 for command_name in git gh; do
   command -v "$command_name" >/dev/null 2>&1 || die "缺少命令：$command_name"
@@ -95,20 +114,33 @@ if [ -n "$(git status --porcelain)" ]; then
   die "发布脚本不会自动提交业务代码，请先提交或处理这些修改"
 fi
 
-gh auth status >/dev/null 2>&1 || die "GitHub CLI 尚未登录，请先执行 gh auth login"
+ORIGIN_URL="$(git remote get-url origin)"
+GH_REPO="${ORIGIN_URL#https://github.com/}"
+GH_REPO="${GH_REPO#git@github.com:}"
+GH_REPO="${GH_REPO#ssh://git@github.com/}"
+GH_REPO="${GH_REPO%.git}"
+[[ "$GH_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "origin 必须是 GitHub 仓库"
 
-info "同步远端 main 与 tags"
-git fetch --prune origin main --tags
+if [ "$DRY_RUN" -ne 1 ]; then
+  gh auth status >/dev/null 2>&1 || die "GitHub CLI 尚未登录，请先执行 gh auth login"
 
-read -r BEHIND AHEAD < <(git rev-list --left-right --count origin/main...HEAD)
+  info "同步远端 main 与 tags"
+  git fetch --prune origin main --tags
 
-if [ "$BEHIND" -gt 0 ] && [ "$AHEAD" -gt 0 ]; then
-  die "本地 main 与 origin/main 已分叉，请先手动处理后再发布"
+  read -r BEHIND AHEAD < <(git rev-list --left-right --count origin/main...HEAD)
+
+  if [ "$BEHIND" -gt 0 ] && [ "$AHEAD" -gt 0 ]; then
+    die "本地 main 与 origin/main 已分叉，请先手动处理后再发布"
+  fi
+
+  if [ "$BEHIND" -gt 0 ]; then
+    info "本地 main 落后远端，执行 fast-forward"
+    git merge --ff-only origin/main
+  fi
 fi
 
-if [ "$BEHIND" -gt 0 ]; then
-  info "本地 main 落后远端，执行 fast-forward"
-  git merge --ff-only origin/main
+if [ -n "$EXPECTED_COMMIT" ] && [ "$(git rev-parse HEAD)" != "$EXPECTED_COMMIT" ]; then
+  die "提交已变化，拒绝发布；准备阶段 SHA：$EXPECTED_COMMIT"
 fi
 
 CURRENT_VERSION="$(tr -d '[:space:]' < VERSION)"
@@ -138,11 +170,20 @@ if tag_exists "$TAG"; then
   die "$TAG 已存在。已发布 tag 不应删除、移动或复用，请换一个新版本号"
 fi
 
+if [ -n "$EXPECTED_COMMIT" ] && [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+  die "准备阶段版本已变化，拒绝创建新的版本提交"
+fi
+
 info "发布计划"
 printf '当前 VERSION : %s\n' "$CURRENT_VERSION"
 printf '目标 VERSION : %s\n' "$TARGET_VERSION"
 printf '发布 tag      : %s\n' "$TAG"
 printf '当前提交      : %s\n' "$(git rev-parse --short HEAD)"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  ok "仅预览本地计划；正式执行时会重新同步并校验远端"
+  exit 0
+fi
 
 if [ "$YES" -ne 1 ]; then
   printf '\n确认开始发布？[y/N] '
@@ -161,7 +202,7 @@ if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
   info "更新 VERSION"
   printf '%s\n' "$TARGET_VERSION" > VERSION
   git add VERSION
-  git commit -m "chore: bump version to $TARGET_VERSION"
+  git commit -m "chore(release): 更新前端版本至 $TARGET_VERSION"
 else
   ok "VERSION 已是 ${TARGET_VERSION}，无需额外版本提交"
 fi
@@ -172,6 +213,11 @@ info "推送 main"
 git push origin main
 ok "main 已推送：$(git rev-parse --short HEAD)"
 
+if [ "$PREPARE_ONLY" -eq 1 ]; then
+  ok "准备完成，尚未创建发布 tag：$RELEASE_COMMIT"
+  exit 0
+fi
+
 find_workflow_run() {
   local workflow="$1"
   local ref="$2"
@@ -181,8 +227,10 @@ find_workflow_run() {
 
   while [ "$attempt" -le 30 ]; do
     run_id="$(
-      gh run list         --workflow "$workflow"         --branch "$ref"         --commit "$commit"         --limit 1         --json databaseId         --jq '.[0].databaseId // empty' 2>/dev/null || true
-    )"
+      gh run list --repo "$GH_REPO" --workflow "$workflow" --branch "$ref" \
+        --commit "$commit" --event push --limit 1 --json databaseId \
+        --jq '.[0].databaseId // empty'
+    )" || return 1
 
     if [ -n "$run_id" ]; then
       printf '%s\n' "$run_id"
@@ -197,29 +245,32 @@ find_workflow_run() {
 }
 
 info "等待 main CI"
-CI_RUN_ID="$(find_workflow_run "CI" "main" "$RELEASE_COMMIT")" ||   die "没有找到提交 $RELEASE_COMMIT 对应的 CI，请到 GitHub Actions 查看"
+CI_RUN_ID="$(find_workflow_run "ci.yml" "main" "$RELEASE_COMMIT")" || die "没有找到提交 $RELEASE_COMMIT 对应的 CI，请到 GitHub Actions 查看"
 
 printf 'CI run: %s\n' "$CI_RUN_ID"
-if ! gh run watch "$CI_RUN_ID" --exit-status; then
+if ! gh run watch "$CI_RUN_ID" --repo "$GH_REPO" --exit-status; then
   die "CI 未通过，因此没有创建 ${TAG}。修复并推送后，可用同一版本号重新执行本脚本"
 fi
 ok "CI 已通过"
 
 info "创建并推送 $TAG"
-git tag -a "$TAG" -m "YuanHub $TAG"
+[ "$(git branch --show-current)" = "main" ] &&
+  [ "$(git rev-parse HEAD)" = "$RELEASE_COMMIT" ] &&
+  [ -z "$(git status --porcelain)" ] || die "等待 CI 期间工作区或提交已变化，拒绝打 tag"
+git tag -a "$TAG" "$RELEASE_COMMIT" -m "YuanHub $TAG"
 git push origin "$TAG"
 ok "$TAG 已推送"
 
 info "等待生产 Release"
-RELEASE_RUN_ID="$(find_workflow_run "Release" "$TAG" "$RELEASE_COMMIT")" ||   die "tag 已推送，但暂未找到 Release workflow；请到 GitHub Actions 查看 $TAG"
+RELEASE_RUN_ID="$(find_workflow_run "release.yml" "$TAG" "$RELEASE_COMMIT")" || die "tag 已推送，但暂未找到 Release workflow；请到 GitHub Actions 查看 $TAG"
 
 printf 'Release run: %s\n' "$RELEASE_RUN_ID"
-if ! gh run watch "$RELEASE_RUN_ID" --exit-status; then
+if ! gh run watch "$RELEASE_RUN_ID" --repo "$GH_REPO" --exit-status; then
   die "Release 部署失败。$TAG 已存在，请不要删除或重打 tag；修复部署问题后重跑该 Release"
 fi
 ok "Release 已通过"
 
-SITE_URL="$(gh variable get YUANHUB_FRONTEND_URL 2>/dev/null || true)"
+SITE_URL="$(gh variable get YUANHUB_FRONTEND_URL --repo "$GH_REPO" 2>/dev/null || true)"
 if [ -n "$SITE_URL" ] && command -v curl >/dev/null 2>&1; then
   info "核对线上 deploy-meta"
   DEPLOY_META="$(

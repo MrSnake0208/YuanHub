@@ -132,6 +132,27 @@
 
 ## 4. 发布流程
 
+在 YuanHub-All 工作区内，推荐根目录统一入口，支持两仓 CI 并行等待，默认后端部署成功后再部署前端：
+
+```bash
+./release.sh --dry-run --frontend auto --backend 0.1.13
+./release.sh --frontend auto --backend 0.1.13
+```
+
+版本号是示例，必须选择尚未发布的版本；详细失败恢复见工作区 `docs/release-workflow.md`。只发前端时可使用 `./release.sh --frontend auto`。
+
+独立 clone 本仓库时继续使用前端脚本（先提交业务改动）：
+
+```bash
+./release-frontend.sh --dry-run 0.0.1-beta.20
+./release-frontend.sh 0.0.1-beta.20
+# 或不传版本 / 传 auto，自动沿用未发布 VERSION 或递增 beta.N
+```
+
+脚本支持 `--prepare-only` 供统一入口只准备 VERSION/main；`--expected-commit <完整 SHA>` 核对准备阶段提交。未通过 CI 不创建 tag；Release 失败通过重跑原 Release 恢复，不删除、移动或重打已有 tag。
+
+人工发布仍遵循：
+
 1. 确认 `VERSION` 已经是目标版本，例如 `0.0.1-beta.2`。
 2. 提交并推送到 `main`，等 CI 绿。
 3. 打 tag 并推送（tag 必须与 `VERSION` 去掉 `v` 后完全一致）：
@@ -142,7 +163,7 @@
    ```
 
 4. workflow 依次执行：
-   - GitHub-hosted runner 校验 `VERSION == tag`，并运行 `test:static` / `test:repo`
+   - GitHub-hosted runner 校验 `VERSION == tag`，要求 `ci.yml` 中 **main push / 同 SHA** 已成功；复用完整 CI 的 static / repo / behavior / build，不重复安装依赖或跑部分测试
    - 通过 SSH 连接服务器 A；首次创建 `.source`，之后复用源码缓存
    - `git fetch --tags`，checkout 精确 tag，并再次核对 commit 与 GitHub 本次发布 commit 完全一致
    - 服务器 A 执行 `npm ci` 与 `VITE_API_BASE=... npm run build`
@@ -154,7 +175,7 @@
 
 首次发布仍需要服务器 A 从 GitHub 拉取完整仓库；后续发布使用同一 `.source`，只 fetch Git 增量，不再传输整套 `dist`。
 
-> 只 push `main` 不会部署；只有 tag 会。
+> 只 push `main` 不会部署；tag 或手动指定已有 tag 的 Release 才会。直接提前推 tag 不会等待 CI，而是门禁失败；等对应 main CI 成功后重跑该 Release。
 
 ## 5. 正式开放时切换
 

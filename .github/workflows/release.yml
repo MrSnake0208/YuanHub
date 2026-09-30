@@ -35,6 +35,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
@@ -70,22 +71,21 @@ jobs:
           echo "YUANHUB_VERSION=$version" >> "$GITHUB_ENV"
           echo "YUANHUB_RELEASE_COMMIT=$release_commit" >> "$GITHUB_ENV"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Static source check
-        run: npm run test:static
-
-      # Release 与独立 CI 保持同一仓库边界：不读取相邻后端仓库。
-      - name: Repository tests
-        run: npm run test:repo
-
+      # 复用同一提交的完整 CI，包括 behavior tests/build；直接推 tag 也无法绕过。
+      - name: Require successful CI for release commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          ci_run_id="$(gh run list --repo "$GITHUB_REPOSITORY" \
+            --workflow ci.yml --branch main --event push \
+            --commit "$YUANHUB_RELEASE_COMMIT" --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          test -n "$ci_run_id" || {
+            echo "::error::No successful main push CI run exists for release commit $YUANHUB_RELEASE_COMMIT"
+            exit 1
+          }
+          echo "Using successful CI run $ci_run_id for $YUANHUB_RELEASE_COMMIT"
 
       - name: Validate deployment configuration
         env:
@@ -329,12 +329,12 @@ jobs:
             echo "更新日志见 ${FRONTEND_URL%/}/changelog"
           } > "$notes"
 
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" \
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --title "YuanHub $RELEASE_TAG" \
               --notes-file "$notes"
           else
-            gh release create "$RELEASE_TAG" \
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --title "YuanHub $RELEASE_TAG" \
               --notes-file "$notes" \
               --verify-tag
