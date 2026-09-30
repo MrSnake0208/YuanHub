@@ -189,6 +189,10 @@
                   </template>
                   <template #composer>
                     <div v-if="replyTarget === item.id && !item.mergedIntoId" class="feedback-reply-form">
+                      <div class="feedback-reply-tools">
+                        <button class="feedback-button" type="button" :disabled="replying" @click="insertCurrentVersion">插入当前版本</button>
+                        <code>{{ productVersionLabel }}</code>
+                      </div>
                       <textarea ref="replyInput" v-model="replyContent" class="feedback-form-control" rows="3" maxlength="1000" aria-label="处理回复" placeholder="输入处理回复" @paste="handleReplyMediaPaste"></textarea>
                       <FeedbackAttachmentPicker :media="replyMedia" :busy="replying" />
                       <div class="feedback-form-actions">
@@ -289,6 +293,7 @@ import { auth } from '@/store/auth.js'
 import * as feedbackUnreadStore from '@/store/feedbackUnread.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
+import { productVersionLabel } from '@/config/buildInfo.js'
 import '@/styles/feedback-workspace.css'
 
 const { feedbackUnreadState, subscribeFeedbackUnread } = feedbackUnreadStore
@@ -896,6 +901,19 @@ function cancelReply() {
   replyContent.value = ''
 }
 
+function insertCurrentVersion() {
+  const input = replyInput.value
+  if (!input || replying.value) return
+  if (input.value.length - (input.selectionEnd - input.selectionStart) + productVersionLabel.length > input.maxLength) {
+    detailError.value = '插入版本后消息长度将超过 1000 字符，请先缩短回复或选中文字替换'
+    return
+  }
+  input.setRangeText(productVersionLabel, input.selectionStart, input.selectionEnd, 'end')
+  replyContent.value = input.value
+  detailError.value = ''
+  input.focus()
+}
+
 async function discardReply() {
   const requestId = detailRequestId
   const userId = currentUserId()
@@ -1027,6 +1045,9 @@ onBeforeUnmount(() => {
 .feedback-read-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; color: var(--feedback-text-muted); font-size: 11px; }
 .feedback-queue-count { margin-left: 4px; font-family: var(--font-d); }
 .feedback-ticket-actions { display: grid; gap: 10px; }
+.feedback-reply-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.feedback-reply-tools code { min-width: 0; color: var(--feedback-text-muted); font: 12px var(--font-d); overflow-wrap: anywhere; }
+.feedback-reply-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .feedback-action-toolbar .danger { margin-left: auto; }
 .feedback-action-toolbar [aria-expanded="true"] svg { transform: rotate(180deg); }
 .feedback-workflow-options { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
