@@ -351,9 +351,9 @@ onBeforeUnmount(function () {
 .ntf-icon.status { background: rgba(91, 106, 140, .12); color: var(--brand-blue) }
 
 .ntf-body { min-width: 0 }
-.ntf-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.4 }
+.ntf-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.4; overflow-wrap: anywhere }
 .notification-item.unread .ntf-title { font-weight: 900 }
-.ntf-text { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--ink-60); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.ntf-text { margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--ink-60); white-space: pre-line; overflow-wrap: anywhere }
 .ntf-meta { margin-top: 8px; display: flex; align-items: center; gap: 8px }
 .ntf-meta time { font-family: var(--font-d); font-size: 11px; color: var(--ink-35); font-weight: 700 }
 .ntf-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rouge); flex: none }
