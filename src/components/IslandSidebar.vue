@@ -70,6 +70,9 @@
             >
               <BookUser :size="20" aria-hidden="true" /><span>密探名册</span>
             </router-link>
+            <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }">
+              <ScrollText :size="20" aria-hidden="true" /><span>招募档案</span>
+            </router-link>
             <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
               <PackageOpen :size="20" aria-hidden="true" /><span>库存追踪</span>
             </router-link>
@@ -183,16 +186,18 @@
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
         ><span class="no">01</span>密探名册</router-link
       >
+      <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }"
+        ><span class="no">02</span>招募档案</router-link>
       <router-link
         to="/inventory"
         :class="{ active: $route.path === '/inventory' }"
-        ><span class="no">02</span>库存追踪</router-link
+        ><span class="no">{{ showRecruitment ? '03' : '02' }}</span>库存追踪</router-link
       >
       <router-link to="/star" :class="{ active: $route.path === '/star' }"
-        ><span class="no">03</span>星石背包</router-link
+        ><span class="no">{{ showRecruitment ? '04' : '03' }}</span>星石背包</router-link
       >
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"
-        ><span class="no">04</span>广陵账房</router-link
+        ><span class="no">{{ showRecruitment ? '05' : '04' }}</span>广陵账房</router-link
       >
       <div class="nav-separator" aria-hidden="true"></div>
       <div class="nav-lb">消息与社区</div>
@@ -308,6 +313,7 @@ import {
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
 import { beta } from "@/store/beta.js";
+import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute, useRouter } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
@@ -321,6 +327,7 @@ import {
 
 // 已登录状态（reactive，随 auth 变化）
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
+const showRecruitment = computed(() => isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE) && !!isLoggedIn.value && beta.canUseBetaFeatures);
 const showBetaCommunityEntry = computed(
   () =>
     !!isLoggedIn.value &&

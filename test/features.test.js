@@ -30,6 +30,18 @@ test('work system is explicitly disabled until it is ready to reopen', function 
   assert.equal(isFeatureEnabled(key), false)
 })
 
+test('recruitment archive is explicitly open for local delivery with a beta/auth gated lazy route', async function () {
+  assert.equal(FEATURE_KEYS.RECRUITMENT_ARCHIVE, 'recruitmentArchive')
+  assert.equal(FEATURE_FLAGS[FEATURE_KEYS.RECRUITMENT_ARCHIVE], true)
+  assert.equal(isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE), true)
+  const { routes } = await import('../src/router/routes.js')
+  const route = routes.find(item => item.path === '/recruitment')
+  assert.equal(route.meta.feature, FEATURE_KEYS.RECRUITMENT_ARCHIVE)
+  assert.equal(route.meta.requiresAuth, true)
+  assert.equal(route.meta.requiresBeta, true)
+  assert.equal(typeof route.component, 'function')
+})
+
 test('operator tracking stays visible as a preview while the real panel remains feature-guarded', function () {
   assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 2)
   assert.match(operatorPage, /message: "将在 v0\.0\.2 上线"/)

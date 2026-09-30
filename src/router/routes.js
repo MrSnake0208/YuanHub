@@ -137,6 +137,22 @@ export const routes = [
         }
     },
     {
+        path: '/recruitment',
+        text: '招募档案',
+        name: 'recruitment',
+        display: true,
+        module: 'tools',
+        icon: 'scroll-text',
+        component: () => import('/src/pages/recruitment/index.vue'),
+        meta: {
+            requiresBeta: true,
+            requiresAuth: true,
+            feature: FEATURE_KEYS.RECRUITMENT_ARCHIVE,
+            featureFallback: '/',
+            title: '招募档案 — 鸢鸢相抱 · YuanHub'
+        }
+    },
+    {
         path: '/operator/share/:token?',
         text: '密探 BOX 分享',
         name: 'operator-share',
