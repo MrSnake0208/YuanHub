@@ -523,7 +523,7 @@ const checkedByKey = reactive({
 });
 const formByKey = reactive({});
 starSteps.forEach(function (s) {
-  formByKey[s.key] = { elite: 0, level: 0, node: 0 };
+  formByKey[s.key] = { elite: 1, level: 1, node: 0 };
   if (!checkedByKey[s.key]) checkedByKey[s.key] = [];
 });
 const draftBaselineByKey = reactive({});
@@ -547,7 +547,7 @@ const checkedOfCurrent = computed(function () {
   return checkedByKey[currentKey.value] || [];
 });
 const pageForm = computed(function () {
-  return formByKey[currentKey.value] || { elite: 0, level: 0, node: 0 };
+  return formByKey[currentKey.value] || { elite: 1, level: 1, node: 0 };
 });
 
 // —— 目录归一化（与密探页一致） ——
@@ -996,7 +996,7 @@ function starLabelForStep(s, node) {
 // —— 组装某页待导入条目（保留已有命盘 / 星石） ——
 function buildPageEntries(key) {
   const ids = checkedByKey[key] || [];
-  const f = formByKey[key] || { elite: 0, level: 0, node: 0 };
+  const f = formByKey[key] || { elite: 1, level: 1, node: 0 };
   return ids
     .map(function (id) {
       const op = catalogMap.value[id];
