@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
+import RewardDateTimePicker from '../src/components/inventory/RewardDateTimePicker.vue'
 import * as inventoryApi from '../src/api/inventory.js'
 import * as rewardCatalogApi from '../src/api/rewardCatalog.js'
 import { deferred } from '../test-support/factories.js'
 
 vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(),
+  getCurrent: vi.fn(),
 }))
 vi.mock('../src/api/rewardCatalog.js', () => ({
   getRewardCatalog: vi.fn(),
@@ -83,6 +85,21 @@ async function clickElement(element) {
   await flushPromises()
 }
 
+async function openQuickCoin(wrapper, purpose = '') {
+  await button(wrapper, '添加奖励流水').trigger('click')
+  await flushPromises()
+  await clickElement(bodyButton('月卡奖励 60'))
+  const datetime = wrapper.findComponent(RewardDateTimePicker)
+  datetime.vm.$emit('update:date', '2026-09-30')
+  datetime.vm.$emit('update:clock', '10:00:00')
+  await flushPromises()
+  const select = document.body.querySelector('select[aria-label="白金币记录用途"]')
+  select.value = purpose
+  select.dispatchEvent(new Event('change', { bubbles: true }))
+  await flushPromises()
+}
+const coveredCoin = () => [{ entity_type: 'item', entries: { baijinbi: { count: 100, listed_baseline_at: new Date(2026, 8, 30, 11).toISOString() } } }]
+
 async function openManualWithPreview(wrapper) {
   await button(wrapper, '添加奖励流水').trigger('click')
   await flushPromises()
@@ -100,6 +117,7 @@ async function openManualWithPreview(wrapper) {
 
 beforeEach(() => {
   inventoryApi.importInventory.mockReset()
+  inventoryApi.getCurrent.mockReset().mockResolvedValue([])
   rewardCatalogApi.getRewardCatalog.mockReset()
   rewardCatalogApi.getRewardCatalog.mockResolvedValue(catalog)
   document.documentElement.style.overflow = ''
@@ -108,6 +126,148 @@ beforeEach(() => {
 })
 
 describe('奖励补录工作台弹层', () => {
+  it('快捷预填来源数量，但没有选择记录用途时不能预览或提交', async () => {
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper)
+    expect(document.body.querySelector('input[aria-label="月卡奖励白金币数量"]').value).toBe('60')
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.body.querySelector('.error-message').textContent).toContain('请选择新增收入或补标')
+    expect(document.body.querySelector('.preview-section')).toBeNull()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it('同一天可以同时勾选密探50和月卡60，一次提交合计110且分别保存来源及ID', async () => {
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 2, duplicates: 0, history_only: 0, superseded: 0 })
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'income')
+    await clickElement(bodyButton('密探日常 50'))
+    expect(document.body.querySelector('.whitecoin-shortcuts').textContent).toContain('合计 110 白金币')
+    expect(document.body.querySelectorAll('.shortcut-options [aria-pressed="true"]')).toHaveLength(2)
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.body.querySelectorAll('.preview-record')).toHaveLength(2)
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    await clickElement(bodyButton('确认补录 2 条'))
+    const records = inventoryApi.importInventory.mock.calls[0][0].records
+    expect(records.map(record => [record.acquisition_channel, record.entries[0].count])).toEqual([['月卡奖励', 60], ['密探日常', 50]])
+    expect(new Set(records.map(record => record.record_id)).size).toBe(2)
+    expect(records.every(record => record.account_id === 'acc-1')).toBe(true)
+  })
+
+  it('快捷来源数量可分别调整，取消月卡不会移除或改写密探数量', async () => {
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'income')
+    await clickElement(bodyButton('密探日常 50'))
+    const amount = document.body.querySelector('input[aria-label="密探日常白金币数量"]')
+    amount.value = '70'; amount.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    expect(document.body.querySelector('.whitecoin-shortcuts').textContent).toContain('合计 130 白金币')
+    await clickElement(bodyButton('月卡奖励 60'))
+    expect(document.body.querySelector('.whitecoin-shortcuts').textContent).toContain('合计 70 白金币')
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.body.querySelectorAll('.preview-record')).toHaveLength(1)
+    expect(document.body.querySelector('.preview-record').textContent).toContain('密探日常')
+    expect(document.body.querySelector('.preview-record').textContent).toContain('+ 70')
+  })
+
+  it('新增日常收入复用同一来源/游戏日 ID，重复提交冲突不换 ID 绕过去重', async () => {
+    inventoryApi.importInventory.mockResolvedValueOnce({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0 })
+      .mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'income')
+    await clickElement(bodyButton('预览本次流水'))
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    await clickElement(bodyButton('确认补录'))
+    const original = inventoryApi.importInventory.mock.calls[0][0].records[0]
+    expect(original.record_id).toBe('yuanhub:daily-whitecoin:monthly-card:2026-09-30')
+    expect(original.acquisition_channel).toBe('月卡奖励')
+    expect(original.entries).toEqual([{ id: 'baijinbi', name: '白金币', count: 60 }])
+    expect(inventoryApi.getCurrent).not.toHaveBeenCalled()
+    await clickElement(bodyButton('再添加一条'))
+    await clickElement(bodyButton('月卡奖励 60'))
+    const datetime = wrapper.findComponent(RewardDateTimePicker)
+    datetime.vm.$emit('update:date', '2026-09-30')
+    datetime.vm.$emit('update:clock', '10:00:01')
+    await flushPromises()
+    const select = document.body.querySelector('select[aria-label="白金币记录用途"]')
+    select.value = 'income'; select.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录'))
+    expect(inventoryApi.importInventory.mock.calls[1][0].records[0].record_id).toBe(original.record_id)
+    expect(document.body.querySelector('.error-message').textContent).toContain('未重复入账')
+  })
+
+  it.each([
+    [[], '尚无白金币'],
+    [[{ entity_type: 'item', full_baseline_at: new Date(2026, 8, 30, 9).toISOString() }], '晚于白金币'],
+    [[{ entity_type: 'agent', full_baseline_at: new Date(2026, 8, 30, 11).toISOString() }], '尚无白金币'],
+  ])('补标拒绝无效或未覆盖白金币的基线 %#', async (current, message) => {
+    inventoryApi.getCurrent.mockResolvedValue(current)
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'annotation')
+    await clickElement(bodyButton('预览本次流水'))
+    expect(document.body.querySelector('.error-message').textContent).toContain(message)
+    expect(document.body.querySelector('.preview-section')).toBeNull()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it('补标发送真实发生时间，网络失败后原样重试，覆盖基线前奖励由服务端仅记历史', async () => {
+    inventoryApi.getCurrent.mockResolvedValue(coveredCoin())
+    inventoryApi.importInventory.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce({ accepted: 1, duplicates: 0, history_only: 1, superseded: 0 })
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'annotation')
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录'))
+    const payload = inventoryApi.importInventory.mock.calls[0][0]
+    expect(payload.records[0].effective_at).toBe(new Date(2026, 8, 30, 10).toISOString())
+    expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)
+    expect(inventoryApi.getCurrent).toHaveBeenCalledWith({ accountId: 'acc-1', entityType: 'item' })
+    await clickElement(bodyButton('原样重试补录'))
+    expect(inventoryApi.importInventory.mock.calls[1][0]).toBe(payload)
+    expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(2)
+    expect(document.body.querySelector('.result').textContent).toContain('仅历史 1')
+  })
+
+  it('预览后白金币基线失效时阻止补标提交', async () => {
+    inventoryApi.getCurrent.mockResolvedValueOnce(coveredCoin()).mockResolvedValueOnce([])
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'annotation')
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录'))
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    expect(document.body.querySelector('.error-message').textContent).toContain('尚无白金币')
+    expect(document.body.querySelector('#reward-dialog-lock-status')).toBeNull()
+  })
+
+  it('核对基线期间切换账号，晚到响应不会生成新账号预览或写请求', async () => {
+    const pending = deferred()
+    inventoryApi.getCurrent.mockReturnValueOnce(pending.promise)
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'annotation')
+    await clickElement(bodyButton('预览本次流水'))
+    await wrapper.setProps({ accountId: 'acc-2' })
+    pending.resolve(coveredCoin())
+    await flushPromises()
+    expect(document.body.querySelector('#reward-entry-panel')).toBeNull()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it.each(['roundtrip', 'unmount'])('首次提交核对基线期间 %s，旧确认不会再发入账请求', async change => {
+    const pending = deferred()
+    inventoryApi.getCurrent.mockResolvedValueOnce(coveredCoin()).mockReturnValueOnce(pending.promise)
+    const wrapper = mountWorkspace()
+    await openQuickCoin(wrapper, 'annotation')
+    await clickElement(bodyButton('预览本次流水'))
+    await clickElement(bodyButton('确认补录'))
+    if (change === 'unmount') wrapper.unmount()
+    else { await wrapper.setProps({ accountId: 'acc-2' }); await wrapper.setProps({ accountId: 'acc-1' }) }
+    pending.resolve(coveredCoin())
+    await flushPromises()
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+    expect(wrapper.emitted('imported')).toBeUndefined()
+  })
+
   it('拖入三段快照只预览，默认选失败心纸，跨游戏零值原样补传', async () => {
     rewardCatalogApi.getRewardCatalog.mockResolvedValue([...catalog, { entity_type: 'agent', id: 'char_100_zhouzhong', name: '周忠', games: ['代号鸢'] }])
     inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: ['已忽略如鸢不支持的零值密探：周忠'] })

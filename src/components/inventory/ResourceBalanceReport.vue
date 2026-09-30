@@ -8,6 +8,9 @@
     </header>
     <p v-if="error" class="report-state" role="alert">{{ error }}</p>
     <p v-else-if="truncated" class="report-state" role="status">流水超过 5,000 条，以下仅展示已加载记录；库存与净变化可能不完整。</p>
+    <div class="coin-basis" role="group" aria-label="白金币统计口径"><button type="button" :aria-pressed="!includeZhuyu" @click="includeZhuyu = false">实际白金币</button><button type="button" :aria-pressed="includeZhuyu" @click="includeZhuyu = true">含茱萸等价值</button></div>
+    <p v-if="includeZhuyu" class="explanation">按最近已知白金币库存 + 茱萸库存 × 50 折算，不代表已兑换；月历、净变化和趋势使用同一口径。</p>
+    <p v-if="includeZhuyu && resources[0].missingDays" class="report-state" role="status">部分日期缺少白金币或茱萸库存基准，暂不计算这些日期的等价值；缺测不按零处理。</p>
     <div class="resource-summary">
       <article v-for="resource in resources" :key="resource.id">
         <div class="resource-name"><img :src="icon(resource.id)" alt="" width="24" height="24" /><h3>{{ resource.name }}</h3></div>
@@ -49,6 +52,7 @@
       <div v-if="activePoint" ref="tooltipElement" class="point-tooltip" role="status" :style="{ ...tooltipPosition, '--point-color': activePoint.color }">
         <div class="point-tooltip-heading"><b>{{ activePoint.name }}</b><time>{{ activePoint.day }}</time></div>
         <div class="point-stock"><span>库存</span><strong>{{ number(activePoint.stock) }}</strong></div>
+        <p v-if="activePoint.components" class="point-note">白金币 {{ number(activePoint.components.baijinbi) }} + 茱萸 {{ number(activePoint.components.zhuyu) }} × 50</p>
         <dl>
           <div v-if="activePoint.delta !== null"><dt>较 {{ activePoint.previousDay }}</dt><dd :class="changeClass(activePoint.delta)">{{ signed(activePoint.delta) }}</dd></div>
           <div v-if="activePoint.delta !== null && activePoint.percent !== null"><dt>较周期起始</dt><dd :class="changeClass(activePoint.percent)">{{ signed(activePoint.percent) }}%</dd></div>
@@ -65,7 +69,8 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { buildResourceBalance, resourceRangeDates, resourceDayNumber, resourceCalendarValue } from '../../data/inventory/resourceBalance.js'
 const props = defineProps({ records: { type: Array, default: () => [] }, from: { type: String, required: true }, to: { type: String, required: true }, error: { type: String, default: '' }, truncated: Boolean })
-const resources = computed(() => buildResourceBalance(props.error ? [] : props.records, props.from, props.to))
+const includeZhuyu = ref(false)
+const resources = computed(() => buildResourceBalance(props.error ? [] : props.records, props.from, props.to, includeZhuyu.value))
 const views = [{ id: 'calendar', label: '月历' }, { id: 'trend', label: '趋势' }]
 const view = ref('calendar')
 const compactChart = ref(false)
@@ -120,7 +125,7 @@ watch([plotElement, tooltipElement], () => {
 watch([activePoint, chartWidth], positionTooltip, { flush: 'post' })
 onBeforeUnmount(() => tooltipObserver?.disconnect())
 watch(() => [props.from, props.to, props.records], () => { selected.value = ''; hoverPoint.value = null; pinnedPoint.value = null })
-watch(view, () => { hoverPoint.value = null; pinnedPoint.value = null })
+watch([view, includeZhuyu], () => { hoverPoint.value = null; pinnedPoint.value = null })
 const dates = computed(() => resourceRangeDates(props.from, props.to))
 const offset = computed(() => dates.value.length ? new Date(props.from + 'T00:00:00Z').getUTCDay() : 0)
 const trailingDays = computed(() => (7 - (offset.value + dates.value.length) % 7) % 7)
@@ -183,6 +188,9 @@ function pointInfo(r, p) {
 .report-heading-copy > span { display: block; color: var(--accent-strong); font-size: 10px; font-weight: 900 }
 h2, h3 { font-family: var(--font-s); font-weight: 900; margin: 0 }
 .report-heading-copy h2 { margin-top: 2px; color: var(--ink); font-size: 20px; letter-spacing: 0 }
+.coin-basis { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+.coin-basis button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 12px; }
+.coin-basis button[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
 h3 { font-size: 15px }
 .report-heading p, .explanation, .resource-summary small { color: var(--ink-60); font-size: 12px; line-height: 1.7 }
 .resource-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; overflow: hidden; border-bottom: 1px solid var(--line); background: var(--cream) }

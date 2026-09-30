@@ -133,15 +133,29 @@ test('周期洞察会合并白金币和茱萸等价值并找出幸运日与连�
 
   assert.deepEqual(insights.whiteCoin, {
     direct: 120,
-    luoyang: 100,
+    luoyang: 50,
     yuanbao: 20,
+    other: 50,
     zhuyu: 3,
+    luoyangZhuyu: 0,
     equivalent: 270,
     bestDay: { date: '2026-08-16', direct: 0, zhuyu: 2, count: 100, tieCount: 1 },
     longestStreak: 3
   })
   assert.equal(insights.rewardRecordCount, 4)
   assert.equal(insights.activeDayCount, 3)
+})
+
+test('月卡、密探及未知来源不归洛阳，派遣小时收益只计洛阳自己的白金币和茱萸', () => {
+  const record = (channel, coin, zhuyu = 0) => ({ record_type: 'reward_delta', acquisition_channel: channel,
+    effective_at: '2026-09-30T10:00:00+08:00', entries: [{ id: 'baijinbi', count: coin }, { id: 'zhuyu', count: zhuyu }] })
+  const insights = buildRewardInsights({ itemRecords: [record('派遣-洛阳', 20, 1), record('月卡奖励', 60, 2), record('密探日常', 50), record(undefined, 10), record('鸢报', 30)] })
+  assert.equal(insights.whiteCoin.direct, 170)
+  assert.equal(insights.whiteCoin.luoyang, 20)
+  assert.equal(insights.whiteCoin.yuanbao, 30)
+  assert.equal(insights.whiteCoin.other, 120)
+  assert.equal(insights.whiteCoin.luoyangZhuyu, 1)
+  assert.equal(insights.whiteCoin.equivalent, 320)
 })
 
 test('没有鸢报流水时白金币公式不产生鸢报分项', function () {

@@ -14,7 +14,7 @@
         <span>白金币总价值</span>
         <strong>{{ itemTotalsAvailable ? formatNumber(insights.whiteCoin.equivalent) : '—' }}</strong>
         <small v-if="itemTotalsAvailable" class="coin-formula">
-          洛阳派遣 {{ formatNumber(insights.whiteCoin.luoyang) }}<template v-if="insights.whiteCoin.yuanbao"> + 鸢报 {{ formatNumber(insights.whiteCoin.yuanbao) }}</template> + 茱萸 {{ formatNumber(insights.whiteCoin.zhuyu) }} x 50
+          洛阳派遣 {{ formatNumber(insights.whiteCoin.luoyang) }}<template v-if="insights.whiteCoin.yuanbao"> + 鸢报 {{ formatNumber(insights.whiteCoin.yuanbao) }}</template><template v-if="insights.whiteCoin.other"> + 其他／未分类 {{ formatNumber(insights.whiteCoin.other) }}</template> + 茱萸 {{ formatNumber(insights.whiteCoin.zhuyu) }} x 50
         </small>
         <small v-if="itemTotalsAvailable" class="coin-average">平均每小时收获 <b>{{ averageWhiteCoinPerHour === null ? '—' : formatAverage(averageWhiteCoinPerHour) }}</b></small>
         <small v-else>背包奖励汇总未能加载</small>
@@ -216,7 +216,7 @@ const averageWhiteCoinPerHour = computed(function () {
   if (!props.recordsAvailable || !props.itemTotalsAvailable) return null
   const hours = Number(props.dispatchDuration.luoyangHours) || 0
   if (!hours) return null
-  const whiteCoinEquivalent = (Number(props.insights.whiteCoin.luoyang) || 0) + (Number(props.insights.whiteCoin.zhuyu) || 0) * 50
+  const whiteCoinEquivalent = (Number(props.insights.whiteCoin.luoyang) || 0) + (Number(props.insights.whiteCoin.luoyangZhuyu) || 0) * 50
   return whiteCoinEquivalent / hours
 })
 const effectiveRankingMode = computed(function () {

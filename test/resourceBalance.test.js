@@ -4,6 +4,27 @@ import { buildResourceBalance, resourceRangeDates, resourceDayNumber, resourceCa
 const record = (id, day, type, entries, scope) => ({ record_id: id, entity_type: 'item', effective_at: `2026-08-${day}T12:00:00+08:00`, record_type: type, snapshot_scope: scope, entries })
 const coin = count => ({ id: 'baijinbi', count })
 const build = records => buildResourceBalance(records, '2026-08-01', '2026-08-31')
+test('含茱萸按两个独立库存基线折算，兑换茱萸不会凭空增加等价值', () => {
+  const rows = [record('a', '01', 'stock_snapshot', [coin(100), { id: 'zhuyu', count: 2 }], 'listed'),
+    record('b', '02', 'reward_delta', [{ id: 'zhuyu', count: 1 }]),
+    record('c', '03', 'stock_snapshot', [coin(150), { id: 'zhuyu', count: 2 }], 'listed')]
+  const equivalent = buildResourceBalance(rows, '2026-08-01', '2026-08-31', true)[0]
+  assert.deepEqual(equivalent.points.map(p => [p.stock, p.delta]), [[200, null], [250, 50], [250, 0]])
+  assert.deepEqual(equivalent.latest.components, { baijinbi: 150, zhuyu: 2 })
+  assert.equal(equivalent.net, 50)
+  assert.equal(build(rows)[0].latest.stock, 150)
+})
+test('茱萸仅有奖励不能当库存零值，必须等盘点；完整快照缺项才是观测为零', () => {
+  const rows = [record('a', '01', 'stock_snapshot', [coin(100)], 'listed'),
+    record('b', '02', 'reward_delta', [{ id: 'zhuyu', count: 2 }]),
+    record('c', '03', 'stock_snapshot', [{ id: 'zhuyu', count: 0 }], 'listed')]
+  const first = buildResourceBalance(rows.slice(0, 2), '2026-08-01', '2026-08-31', true)[0]
+  assert.equal(first.latest, null)
+  assert.equal(first.missingDays, 1)
+  const complete = buildResourceBalance(rows, '2026-08-01', '2026-08-31', true)[0]
+  assert.deepEqual(complete.points.map(p => [p.day, p.stock]), [['2026-08-03', 100]])
+  assert.equal(buildResourceBalance([record('d', '01', 'stock_snapshot', [coin(100)], 'full')], '2026-08-01', '2026-08-31', true)[0].latest.stock, 100)
+})
 test('draw resource colors keep the report legend mapping stable', () => {
   assert.deepEqual(DRAW_RESOURCES.map(resource => [resource.id, resource.color]), [
     ['baijinbi', '#719eaf'],
