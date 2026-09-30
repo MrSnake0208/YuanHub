@@ -31,3 +31,15 @@ test('tunnel mode binds loopback, allowlists configured host and proxies backend
     assert.equal(config.proxy[path].changeOrigin, true)
   }
 })
+
+test('account HTML navigation reaches the SPA while legacy API requests stay proxied in both modes', () => {
+  for (const mode of ['development', 'tunnel']) {
+    const { bypass } = buildDevServerConfig(mode).proxy['/user']
+    const navigation = { method: 'GET', url: '/user/profile?connect=maayuan', headers: { accept: 'text/html,application/xhtml+xml' } }
+    assert.equal(bypass(navigation), navigation.url)
+    assert.equal(bypass({ ...navigation, headers: { accept: 'application/json' } }), undefined)
+    assert.equal(bypass({ ...navigation, method: 'POST' }), undefined)
+    assert.equal(bypass({ ...navigation, url: '/user/open-api/tokens' }), undefined)
+    assert.equal(bypass({ ...navigation, headers: {} }), undefined)
+  }
+})

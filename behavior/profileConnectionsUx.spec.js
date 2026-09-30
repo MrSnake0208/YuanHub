@@ -7,7 +7,8 @@ import { listAccounts } from '../src/api/accounts.js'
 import { dialog } from '../src/utils/dialog.js'
 import { getOpenApiTokens, getOpenApiTokenSecret, getOpenApiPermissions, updateOpenApiTokenScopes, deleteOpenApiToken, generateOpenApiToken } from '../src/api/openApi.js'
 
-vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }) }))
+const routeState = vi.hoisted(() => ({ query: {} }))
+vi.mock('vue-router', () => ({ useRoute: () => routeState }))
 vi.mock('../src/store/auth.js', async () => { const { reactive } = await import('vue'); return { auth: reactive({ userInfo: { id: 'user-a', user_name: '测试用户' }, isLoggedIn: true, adminAccess: null }) } })
 vi.mock('../src/store/beta.js', () => ({ beta: { canUseBetaFeatures: true, loadMe: vi.fn().mockResolvedValue(null) } }))
 vi.mock('../src/store/activeAccount.js', () => ({ activeAccount: { id: 'acc-a', syncAccounts: vi.fn(), set: vi.fn() } }))
@@ -19,10 +20,11 @@ vi.mock('../src/api/openApi.js', () => ({
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
 const token = { token_id: 'tok-a', account_id: 'acc-a', account_name: '大号', remark: '旧连接', scopes: [] }
-const render = () => mount(ProfilePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, BetaNotice: true, GameAccountManager: true }, directives: { reveal: () => {} } } })
+const render = (options = {}) => mount(ProfilePage, { ...options, global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, BetaNotice: true, GameAccountManager: true }, directives: { reveal: () => {} } } })
 
 beforeEach(() => {
   vi.clearAllMocks()
+  routeState.query = {}
   auth.userInfo = { id: 'user-a', user_name: '测试用户' }
   beta.loadMe.mockResolvedValue(null)
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }])
@@ -46,6 +48,8 @@ it('连接设置区分星石上传权限与尚未接入的自动采集任务', a
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
   expect(wrapper.get('.paste-steps').text()).toContain('星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中')
+  expect(wrapper.get('.paste-steps').text()).toContain('仅创建连接码不表示同步成功')
+  expect(wrapper.get('.nt-footer button').text()).toBe('收起填写说明')
   wrapper.unmount()
 })
 
@@ -151,4 +155,46 @@ it('剪贴板拒绝复制时不误报成功，也不在页面显示连接码', a
     if (oldExecCommand) Object.defineProperty(document, 'execCommand', oldExecCommand)
     else delete document.execCommand
   }
+})
+
+
+it('首屏提供连接入口，打开既有账号绑定流程且不提前创建连接', async () => {
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('h1').text()).toBe('账号与连接码')
+  expect(wrapper.get('.app-copy').text()).toContain('星石自动采集仍在接入中')
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  expect(wrapper.get('#maayuan-account').element.value).toBe('acc-a')
+  expect(wrapper.get('#maayuan-connect-panel').element.scrollIntoView).toHaveBeenCalled()
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(true)
+  wrapper.unmount()
+})
+
+it('首屏连接入口在没有游戏账号时引导创建，在无资格时保持关闭', async () => {
+  listAccounts.mockResolvedValue([])
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  expect(wrapper.get('.quick-account-manage-link').attributes('href')).toBe('#game-accounts')
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
+  wrapper.unmount()
+  beta.canUseBetaFeatures = false
+  try {
+    const locked = render(); await flushPromises()
+    expect(locked.get('.hero-connect').attributes()).toHaveProperty('disabled')
+    expect(locked.text()).toContain('先确认内测资格')
+    expect(locked.find('#maayuan-connect-panel').exists()).toBe(false)
+    locked.unmount()
+  } finally { beta.canUseBetaFeatures = true }
+})
+
+
+it('今日一览的连接深链接自动展开、聚焦绑定表单且不创建凭证', async () => {
+  routeState.query = { connect: 'maayuan' }
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(true)
+  expect(document.activeElement).toBe(wrapper.get('#maayuan-account').element)
+  expect(wrapper.get('#maayuan-connect-panel').element.scrollIntoView).toHaveBeenCalled()
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
+  wrapper.unmount()
 })

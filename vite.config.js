@@ -74,7 +74,13 @@ export function buildDevServerConfig(mode, env = {}) {
   }
   config.proxy = {
     '/v1': proxyTarget,
-    '/user': proxyTarget,
+    '/user': {
+      ...proxyTarget,
+      bypass(req) {
+        // 账号页与 legacy API 共用前缀，页面导航须交给 SPA 回退。
+        if (req.method === 'GET' && req.url?.split('?')[0] === '/user/profile' && req.headers.accept?.includes('text/html')) return req.url
+      }
+    },
     '/hub': proxyTarget,
     '/open-api': proxyTarget,
     '/avatar': proxyTarget,
