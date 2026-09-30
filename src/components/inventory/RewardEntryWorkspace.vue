@@ -46,14 +46,12 @@
               <button v-for="preset in WHITE_COIN_PRESETS" :key="preset.id" type="button" class="outline-button" :aria-pressed="manual.presets.some(entry => entry.id === preset.id)" @click="selectWhiteCoinPreset(preset)">{{ preset.channel }} {{ preset.count }}</button>
               <button v-if="manual.presets.length" type="button" class="outline-button" @click="manual.presets = []; manual.whiteCoinPurpose = ''; clearPreview()">普通补录</button>
             </div>
-            <ul v-if="manual.presets.length" class="daily-source-list"><li v-for="preset in manual.presets" :key="preset.id"><label>{{ preset.channel }}<input v-model="preset.count" type="text" inputmode="numeric" :aria-label="preset.channel + '白金币数量'" @input="clearPreview" /> 白金币</label></li></ul>
-            <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyCoinTotal }} 白金币，分别保存 {{ manual.presets.length }} 条来源流水。</p>
             <label v-if="manual.presets.length" class="whitecoin-purpose">本次记录用途<select v-model="manual.whiteCoinPurpose" aria-label="白金币记录用途" @change="clearPreview"><option value="">请选择记录用途</option><option value="income">新增收入（计入库存）</option><option value="annotation">补标已盘点收入（仅补历史）</option></select></label>
             <p v-if="manual.presets.length" class="shortcut-note">已被 MaaYuan 扫描或手动盘点包含的收入，请选择补标并填写实际发生时间；未经盘点的新收入才计入库存。游戏日按北京时间 05:00 划分。</p>
           </div>
           <div class="channel-section">
-            <div v-if="!manual.presets.length" class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
-              <div v-if="!manual.presets.length" class="channel-options" role="group" aria-label="获取渠道">
+            <div class="section-label">获取渠道<span>选择本次奖励的来源</span></div>
+              <div class="channel-options" role="group" aria-label="获取渠道">
                 <button v-for="channel in REWARD_CHANNELS" :key="channel.id" type="button" class="channel-option" :class="{ selected: manual.channel === channel.id }" :aria-pressed="manual.channel === channel.id" @click="changeChannel(channel.id)">
                 <component :is="channelIcons[channel.icon]" :size="20" aria-hidden="true" /><span><b>{{ channel.label }}</b><small>{{ channel.hint }}</small></span><span v-if="manual.channel === channel.id" class="channel-check"><Check :size="11" aria-hidden="true" /></span>
               </button>
@@ -65,10 +63,10 @@
               <p v-if="manualBeforeLatestSnapshot" class="baseline-note"><History :size="14" aria-hidden="true" /><span>时间早于已知最新库存快照；服务端会保留这条历史，已被快照覆盖的数量不会再次增加当前库存。</span></p>
             </div>
           </div>
-          <div v-if="!manual.presets.length" class="manual-columns">
+          <div class="manual-columns">
             <section class="reward-picker" aria-label="选择奖励">
-              <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>点击图标增加，选中后从左下角减少</span></div>
-              <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
+              <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
+              <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :disabled="!!manual.presets.length" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
                 <label class="search-field"><Search :size="16" aria-hidden="true" /><input v-model="search" type="text" :aria-label="manual.entityType === 'agent' ? '搜索密探姓名' : '搜索奖励道具'" :placeholder="manual.entityType === 'agent' ? '搜索密探姓名…' : '搜索道具名称…'" /><button v-if="search" type="button" class="clear-search" aria-label="清空搜索" @click="search = ''"><X :size="14" aria-hidden="true" /></button></label>
                 <div v-if="manual.entityType === 'agent'" class="rarity-options" role="group" aria-label="密探品质筛选"><button v-for="quality in qualities" :key="quality.id" type="button" :class="{ selected: rarity === quality.id }" :aria-pressed="rarity === quality.id" @click="rarity = quality.id">{{ quality.label }}</button></div>
@@ -76,7 +74,7 @@
               </div>
               <div class="reward-grid" :class="{ 'agent-grid': manual.entityType === 'agent', 'luoyang-grid': manual.channel === '派遣-洛阳' }">
                 <div v-for="entity in visibleOptions" :key="entity.id" class="reward-tile-wrap" :style="{ '--quality': qualityColor(entity.rarity) }">
-                  <button type="button" class="reward-tile" :class="{ chosen: countOf(entity.id) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity.id)}`" @click="addReward(entity)">
+                  <button type="button" class="reward-tile" :disabled="!!manual.presets.length" :class="{ chosen: countOf(entity.id) > 0, 'is-agent': entity.entity_type === 'agent' }" :aria-label="`添加${entity.name}，当前已选 ${countOf(entity.id)}`" @click="addReward(entity)">
                     <span class="tile-image"><img v-if="!failedImages.has(entity.id)" :src="iconSrc(entity)" alt="" loading="lazy" @error="failedImages.add(entity.id)" /><span v-else class="image-fallback">{{ entity.name.slice(0, 1) }}</span><span class="tile-plus" aria-hidden="true"><Plus :size="12" /></span></span>
                     <span class="tile-name">{{ entity.name }}</span><span v-if="countOf(entity.id)" class="tile-count">{{ countOf(entity.id) }}</span>
                   </button>
@@ -89,13 +87,13 @@
 
             <aside class="reward-receipt" aria-label="本次入账清单">
               <div class="receipt-heading"><span class="eyebrow">本次入账</span><span class="receipt-mark" aria-hidden="true"><ScrollText :size="20" /></span><h4>奖励清单</h4></div>
-              <div class="basket-heading"><span>已选 <b>{{ manual.entries.length }}</b> 项</span><button v-if="manual.entries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
-              <div v-if="!manual.entries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>从左侧选取本次奖励</span><small>选中后可在这里调整数量</small></div>
-              <ul v-else class="basket-list"><li v-for="entry in manual.entries" :key="entry.id"><span class="basket-name">{{ entry.name }}</span><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="`${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></li></ul>
-              <button type="submit" class="primary-button preview-button" :disabled="!manual.entries.length"><span>{{ previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
+              <div class="basket-heading"><span>已选 <b>{{ manual.presets.length || manual.entries.length }}</b> 项</span><button v-if="manual.presets.length || manual.entries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
+              <div v-if="!manual.presets.length && !manual.entries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>从左侧选取本次奖励</span><small>选中后可在这里调整数量</small></div>
+              <ul v-else class="basket-list"><li v-for="entry in manual.presets.length ? manual.presets : manual.entries" :key="entry.id"><span class="basket-name">{{ entry.name }}</span><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + '白金币数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></li></ul>
+              <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyCoinTotal }} 白金币，分别保存 {{ manual.presets.length }} 条来源流水。</p>
+              <button type="submit" class="primary-button preview-button" :disabled="!manual.presets.length && !manual.entries.length"><span>{{ previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
             </aside>
           </div>
-          <button v-if="manual.presets.length" type="submit" class="primary-button quick-preview">{{ previewed ? '更新预览' : '预览本次流水' }}<ArrowRight :size="16" aria-hidden="true" /></button>
         </fieldset>
       </form>
 
@@ -376,10 +374,10 @@ function changeChannel(channel) {
 }
 function selectWhiteCoinPreset(preset) {
   if (manual.value.presets.some(entry => entry.id === preset.id)) {
-    manual.value.presets = manual.value.presets.filter(entry => entry.id !== preset.id)
+    removeReward(preset.id)
   } else {
     changeChannel('手动补录')
-    manual.value.presets.push({ ...preset })
+    manual.value.presets.push({ ...preset, name: `白金币 · ${preset.channel}` })
   }
   manual.value.entityType = 'item'
   manual.value.entries = []
@@ -395,7 +393,7 @@ function addReward(entity) {
 }
 function adjustReward(entry, delta) {
   const value = Number(entry.count)
-  const step = entry.id === 'baijinbi' ? 10 : 1
+  const step = entry.id === 'baijinbi' || entry.channel ? 10 : 1
   const next = (Number.isInteger(value) ? value : 0) + (delta * step)
   if (next <= 0) removeReward(entry.id)
   else { entry.count = Math.min(2147483647, next); clearPreview() }
@@ -408,8 +406,13 @@ function decreaseRewardFromTile(id, event) {
   if (!manual.value.entries.some(entry => entry.id === id)) nextTick(() => addButton.focus())
 }
 function setCount(entry, value) { entry.count = value; clearPreview() }
-function removeReward(id) { manual.value.entries = manual.value.entries.filter(entry => entry.id !== id); clearPreview() }
-function clearBasket() { manual.value.entries = []; clearPreview() }
+function removeReward(id) {
+  manual.value.entries = manual.value.entries.filter(entry => entry.id !== id)
+  manual.value.presets = manual.value.presets.filter(entry => entry.id !== id)
+  if (!manual.value.presets.length) manual.value.whiteCoinPurpose = ''
+  clearPreview()
+}
+function clearBasket() { manual.value.entries = []; manual.value.presets = []; manual.value.whiteCoinPurpose = ''; clearPreview() }
 async function previewManual() {
   if (locked.value || props.disabled) return
   clearPreview()
@@ -511,10 +514,6 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll() })
 .workspace-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; }
 .whitecoin-shortcuts { padding: 18px; border-bottom: 1px solid var(--line); }
 .shortcut-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.daily-source-list { display: grid; gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
-.daily-source-list label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
-.daily-source-list input { width: 84px; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-.quick-preview { margin: 0 18px 18px; }
 .shortcut-options [aria-pressed="true"] { background: var(--cream); border-color: var(--reward-gold); }
 .whitecoin-purpose { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
 .whitecoin-purpose select { min-height: 44px; max-width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
