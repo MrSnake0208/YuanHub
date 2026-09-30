@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import DevelopmentRoadmap from '../src/components/co-creation/DevelopmentRoadmap.vue'
 import GoalAdmin from '../src/pages/co-creation/admin.vue'
 import CoCreation from '../src/pages/co-creation/index.vue'
@@ -24,7 +24,7 @@ const goal = (overrides = {}) => ({
   linkedFeedback: [{ id: 'public_1', title: '公开反馈标题' }], feedbackIds: ['public_1'],
   targetVersion: '0.2.0', targetDate: '2026-10-20', updatedAt: '2026-09-30T00:00:00Z', version: 2, ...overrides
 })
-const render = component => mount(component, { global: { stubs: { IslandSidebar: true, AdminBackLink: true, RouterLink: true } } })
+const render = component => mount(component, { global: { stubs: { IslandSidebar: true, AdminBackLink: true, RouterLink: RouterLinkStub } } })
 beforeEach(() => {
   vi.clearAllMocks()
   auth.adminAccess.permissions = []
@@ -45,6 +45,7 @@ it('公开目标展示真实验收比例和需求来源，不从反馈生成目�
   expect(wrapper.get('.goal-details').attributes()).toHaveProperty('open')
   expect(wrapper.text()).toContain('已确认的完成项')
   expect(wrapper.text()).toContain('公开反馈标题')
+  expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ path: '/feedback/plaza', query: { feedback: 'public_1' } })
   expect(goals.listDevelopmentGoals).toHaveBeenCalledWith({ page: 1, stage: '', admin: false })
   expect(listPublicFeedback).not.toHaveBeenCalled()
   expect(wrapper.find('button').exists()).toBe(false)
@@ -175,6 +176,6 @@ it('功能计划解释完成与发布的关系，不将完成项当作已上线'
   const wrapper = render(CoCreation); await flushPromises()
   expect(wrapper.text()).toContain('功能计划')
   expect(wrapper.text()).toContain('实际发布请看')
-  expect(wrapper.findAll('router-link-stub').some(link => link.attributes('to') === '/changelog')).toBe(true)
+  expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/changelog')).toBe(true)
   expect(wrapper.text()).not.toContain('已上线')
 })

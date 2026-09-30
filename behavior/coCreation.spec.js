@@ -119,13 +119,15 @@ describe('FeedbackSupportButton', () => {
 })
 
 describe('SimilarFeedbackList', () => {
-  it('renders candidates and emits view', async () => {
+  it('renders candidates and opens details in a new tab', () => {
     const wrapper = render(SimilarFeedbackList, { props: { items: [publicItem()] } })
     expect(wrapper.text()).toContain('可能已经有人反馈')
 
-    const viewButton = wrapper.findAll('button').find(button => button.text() === '查看详情')
-    await viewButton.trigger('click')
-    expect(wrapper.emitted('view')[0][0].id).toBe('rpt_1')
+    const detailLink = wrapper.get('.similar-actions a')
+    expect(detailLink.text()).toBe('查看详情（新标签页）')
+    expect(detailLink.attributes('href')).toBe('/feedback/plaza?feedback=rpt_1')
+    expect(detailLink.attributes('target')).toBe('_blank')
+    expect(detailLink.attributes('rel')).toBe('noopener noreferrer')
   })
 
   it('renders nothing when there are no candidates and not loading', () => {
