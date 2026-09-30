@@ -85,12 +85,25 @@
             :status-label="statusLabel"
             :format-date="formatDate"
             :unread-feedback-ids="unreadFeedbackIds"
-            empty-message="暂无符合条件的反馈工单"
+            :empty-message="hasFilters ? '没有找到符合条件的反馈' : '还没有提交过反馈'"
             @select="selectTicket"
             @close="closeDetail"
             @retry="loadFeedback"
             @page="changePage"
           >
+            <template #empty>
+              <template v-if="hasFilters">
+                <p>试试其他关键词，或清除筛选查看全部反馈。</p>
+                <button class="feedback-button" type="button" @click="clearFilters">清除筛选</button>
+              </template>
+              <template v-else>
+                <p>遇到问题或有新想法？提交后可在这里查看回复。</p>
+                <div class="feedback-empty-actions">
+                  <button class="feedback-primary-action" type="button" @click="showNewForm = true"><Plus :size="16" aria-hidden="true" />提交第一条反馈</button>
+                  <RouterLink class="feedback-button" to="/feedback/plaza">先看看反馈广场</RouterLink>
+                </div>
+              </template>
+            </template>
             <template #detail="{ item }">
               <FeedbackTicketDetail
                 :item="item"
@@ -120,7 +133,7 @@
                       :disabled="updatingStatus || replying || detailLoading"
                       @click="closeFeedback(item.id)"
                     >
-                      <CheckCircle2 :size="16" />标记完成
+                      <CheckCircle2 :size="16" />问题已解决 · 标记完成
                     </button>
                   </div>
                 </template>
@@ -145,7 +158,7 @@
 
     <Teleport to="body">
       <div v-if="showNewForm" class="modal-mask" role="presentation" @click.self="closeNewFeedback">
-        <div class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" @keydown.esc.prevent="closeNewFeedback">
+        <div ref="newFormPanel" class="modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title" tabindex="-1" @keydown.esc.prevent="closeNewFeedback">
           <div class="modal-head">
             <div>
               <span class="feedback-modal-kicker">NEW / FEEDBACK</span>
@@ -155,6 +168,7 @@
           </div>
           <form @submit.prevent="submitFeedback">
             <p class="feedback-submission-note">反馈先由你和管理员沟通。适合共同跟进的问题会整理到反馈广场，原始正文、附件与账号信息不会直接公开。</p>
+            <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
             <div class="feedback-form-grid">
               <label>
                 <span>反馈类型</span>
@@ -179,7 +193,6 @@
                 :items="similarItems"
                 :loading="similarLoading"
                 @support="handleSimilarSupport"
-                @view="handleSimilarView"
               />
               <label class="full">
                 <span>详细描述</span>
@@ -209,7 +222,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { ArrowRight, CheckCircle2, MessageSquarePlus, Plus, Search, Send, X } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import FeedbackAttachmentPicker from '@/components/feedback/FeedbackAttachmentPicker.vue'
@@ -238,6 +251,7 @@ import {
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
+import { useModalFocus } from '@/composables/useModalFocus.js'
 import { dialog } from '@/utils/dialog.js'
 import '@/styles/feedback-workspace.css'
 
@@ -268,6 +282,11 @@ const selectedDetail = ref(null)
 const detailLoading = ref(false)
 const detailError = ref('')
 const showNewForm = ref(false)
+const newFormPanel = ref(null)
+useModalFocus(() => showNewForm.value, newFormPanel, {
+  initialFocus: () => newFormPanel.value?.querySelector('select'),
+  onEscape: closeNewFeedback
+})
 const submitting = ref(false)
 const formError = ref('')
 const replyTarget = ref('')
@@ -283,7 +302,6 @@ const confirmNewFeedbackDiscard = useUnsavedChanges(newFeedbackDirty, '反馈草
 const similarItems = ref([])
 const similarLoading = ref(false)
 const publicNotice = ref('')
-const router = useRouter()
 let similarTimer = null
 let similarRequestId = 0
 const replyMedia = useFeedbackMedia()
@@ -299,6 +317,15 @@ const categoryOptions = computed(() => access.value.availableAreas)
 const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+const hasFilters = computed(() => Boolean(q.value.trim() || filterType.value || filterCategory.value || filterStatus.value !== '全部'))
+
+function clearFilters() {
+  q.value = ''
+  filterType.value = ''
+  filterCategory.value = ''
+  filterStatus.value = '全部'
+  reloadFromFirstPage()
+}
 
 function statusParam() {
   return { '处理中': 'OPEN', '已完成': 'RESOLVED', '已驳回': 'DISMISSED' }[filterStatus.value]
@@ -497,7 +524,7 @@ async function closeFeedback(id) {
   const userId = currentUserId()
   updatingStatus.value = true
   try {
-    const confirmed = await dialog.confirm({ title: '标记反馈完成？', message: '完成后这条反馈会移至「已完成」列表。', confirmText: '标记完成' })
+    const confirmed = await dialog.confirm({ title: '确认问题已解决？', message: '结案后将移至「已完成」，不能再追加消息。若仍有问题，请先补充说明。', confirmText: '标记完成' })
     if (!confirmed || !isCurrentDetail(requestId, id, userId)) return
     detailError.value = ''
     await updateMyFeedbackStatus(id, 'RESOLVED')
@@ -559,18 +586,8 @@ async function runSimilarSearch(requestId, title) {
 
 function handleSimilarSupport(detail) {
   if (!detail) return
-  resetSimilar()
-  publicNotice.value = '已记录你的支持，这个问题将统一在主反馈中跟踪。'
-  showNewForm.value = false
-  formError.value = ''
-  newMedia.clear()
-  newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
-}
-
-function handleSimilarView(item) {
-  showNewForm.value = false
-  resetSimilar()
-  router.push({ path: '/feedback/plaza', query: { feedback: item.id } })
+  similarItems.value = similarItems.value.map(item => item.id === detail.id ? { ...item, ...detail } : item)
+  publicNotice.value = '已记录你的支持。草稿已保留，有不同的细节仍可继续提交。'
 }
 
 async function submitFeedback() {
@@ -595,6 +612,7 @@ async function submitFeedback() {
     resetSimilar()
     newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
     showNewForm.value = false
+    publicNotice.value = '反馈已提交。管理员回复后会收到站内通知，你也可以在这里继续补充。'
     filterStatus.value = '全部'
     filterType.value = ''
     filterCategory.value = ''
@@ -643,6 +661,7 @@ onBeforeUnmount(() => {
   ready = false
   detailRequestId += 1
   loadRequestId += 1
+  resetSimilar()
   if (stopNotificationUnread) stopNotificationUnread()
   if (stopFeedbackUnread) stopFeedbackUnread()
   window.removeEventListener('keydown', handleWindowKeydown)
@@ -653,6 +672,7 @@ onBeforeUnmount(() => {
 .feedback-public-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 10px 14px; border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); font-size: 12.5px; font-weight: 700; }
 .feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .feedback-modal { max-width: 620px; }
+.feedback-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; margin-top: 6px; }
 .feedback-modal-kicker { display: block; margin-bottom: 5px; color: var(--feedback-accent); font: 800 10px var(--font-d); letter-spacing: .16em; }
 .feedback-modal .modal-head h2 { color: var(--feedback-text); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }
 .feedback-modal .modal-head button { color: var(--feedback-text-muted); }

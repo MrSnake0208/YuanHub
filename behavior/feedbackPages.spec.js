@@ -10,6 +10,7 @@ import * as api from '../src/api/feedback.js'
 import { markFeedbackNotificationsRead } from '../src/api/notifications.js'
 import { uploadMedia } from '../src/api/media.js'
 import { dialog } from '../src/utils/dialog.js'
+import SimilarFeedbackList from '../src/components/co-creation/SimilarFeedbackList.vue'
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -738,7 +739,7 @@ it('personal quota exhaustion explains why supplementing is unavailable without 
   const wrapper = render(MyFeedback); await flushPromises()
   await choose(wrapper, 'rpt_a')
   expect(wrapper.get('[role="dialog"]').text()).toContain('请等待管理员回复后继续补充')
-  expect(wrapper.findAll('.feedback-detail-actions button').map(button => button.text())).toEqual(['标记完成'])
+  expect(wrapper.findAll('.feedback-detail-actions button').map(button => button.text())).toEqual(['问题已解决 · 标记完成'])
 })
 
 it('escape inside the nested merge dialog closes only the merge dialog', async () => {
@@ -757,4 +758,58 @@ it('escape inside the nested merge dialog closes only the merge dialog', async (
   // 合并反馈是压在工单详情之上的二级弹窗，Escape 只能关闭最上层。
   expect(wrapper.find('.merge-dialog').exists()).toBe(false)
   expect(wrapper.find('.ticket-detail-dialog').exists()).toBe(true)
+})
+
+
+it('首次无反馈提供提交入口，筛选无结果可以恢复全部', async () => {
+  api.listMyFeedback.mockResolvedValue({ items: [], total: 0 })
+  const wrapper = render(MyFeedback); await flushPromises()
+  expect(wrapper.get('.ticket-state.empty').text()).toContain('还没有提交过反馈')
+  await wrapper.get('.ticket-state.empty button').trigger('click')
+  expect(wrapper.find('.feedback-modal').exists()).toBe(true)
+  await wrapper.get('[aria-label="关闭提交反馈弹窗"]').trigger('click'); await flushPromises()
+  await wrapper.get('input[name="feedback-search"]').setValue('没有匹配')
+  await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
+  expect(wrapper.get('.ticket-state.empty').text()).toContain('没有找到符合条件')
+  await wrapper.get('.ticket-state.empty button').trigger('click'); await flushPromises()
+  expect(api.listMyFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ q: undefined, status: undefined, page: 1 }))
+  wrapper.unmount()
+})
+
+it('支持相似反馈保留已填写草稿，详情使用安全的新标签页链接', async () => {
+  const wrapper = render(MyFeedback); await flushPromises()
+  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.feedback-modal textarea').setValue('我遇到的不同细节')
+  const similar = wrapper.findComponent(SimilarFeedbackList)
+  similar.vm.$emit('support', { id: 'public-example', supportCount: 2 })
+  await flushPromises()
+  expect(wrapper.get('.feedback-modal textarea').element.value).toBe('我遇到的不同细节')
+  expect(wrapper.get('.feedback-modal').text()).toContain('草稿已保留')
+  expect(api.createFeedback).not.toHaveBeenCalled()
+  wrapper.unmount()
+  const list = mount(SimilarFeedbackList, {
+    props: { items: [{ id: 'example/one', publicTitle: '公开问题', type: 'BUG' }] },
+    global: { stubs: { FeedbackSupportButton: true } }
+  })
+  expect(list.get('a').attributes()).toMatchObject({ href: '/feedback/plaza?feedback=example%2Fone', target: '_blank', rel: 'noopener noreferrer' })
+  list.unmount()
+})
+
+it('新建反馈限制键盘焦点并在关闭后返回入口', async () => {
+  const wrapper = render(MyFeedback, { attachTo: document.body }); await flushPromises()
+  const opener = wrapper.get('.feedback-hero-action').element
+  opener.focus()
+  await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
+  const panel = wrapper.get('.feedback-modal').element
+  expect(panel.contains(document.activeElement)).toBe(true)
+  const last = panel.querySelector('button[type="submit"]')
+  last.focus()
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+  expect(panel.contains(document.activeElement)).toBe(true)
+  expect(document.activeElement).not.toBe(last)
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+  expect(wrapper.find('.feedback-modal').exists()).toBe(false)
+  expect(document.activeElement).toBe(opener)
+  wrapper.unmount()
 })

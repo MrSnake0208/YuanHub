@@ -21,7 +21,7 @@
             @updated="$emit('support', $event)"
             @error="$emit('error', $event)"
           />
-          <button class="feedback-button" type="button" @click="$emit('view', item)">查看详情</button>
+          <a class="feedback-button" :href="'/feedback/plaza?feedback=' + encodeURIComponent(item.id)" target="_blank" rel="noopener noreferrer">查看详情（新标签页）</a>
         </div>
       </li>
     </ul>
@@ -37,7 +37,7 @@ defineProps({
   loading: { type: Boolean, default: false }
 })
 
-defineEmits(['support', 'view', 'error'])
+defineEmits(['support', 'error'])
 </script>
 
 <style scoped>
