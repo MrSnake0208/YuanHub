@@ -291,14 +291,14 @@ export const routes = [
     },
     {
         path: '/user/profile',
-        text: '个人中心',
+        text: '账号与连接码',
         name: 'profile',
         display: false,
         module: 'user',
         icon: 'user',
         component: () => import('/src/pages/user/profile.vue'),
         meta: {
-            title: '个人中心 — 鸢鸢相抱 · YuanHub',
+            title: '账号与连接码 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true
         }
     },

@@ -5,36 +5,14 @@
     <main id="main-content" class="profile-main">
       <header class="hero">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">个人中心</span>
-            <span class="pill">应用连接</span>
-            <span class="pill">安全</span>
+          <h1>账号与连接码</h1>
+          <p class="hero-sub">本站账号用于登录；游戏账号是你在 YuanHub 创建的数据存档。连接码绑定一个游戏账号，供 MaaYuan 上传采集数据。</p>
+          <div class="profile-hero-actions">
+            <button class="act-btn primary hero-connect" type="button" :disabled="busy || !beta.canUseBetaFeatures" @click="revealMaaYuanConnect"><Link2 :size="17" aria-hidden="true" />连接 MaaYuan</button>
+            <a class="act-btn ghost" href="#game-accounts">管理游戏账号</a>
+            <router-link v-if="!beta.canUseBetaFeatures" to="/beta">先确认内测资格</router-link>
           </div>
-          <h1>我的账户<span class="small">账号 · 应用 · 数据连接</span></h1>
-          <p class="hero-sub">
-            在这里管理子账号、连接 MaaYuan
-            或管理其他第三方工具。每条连接只访问你选中的游戏账号，也可以随时停止。
-          </p>
-          <div class="hero-stats">
-            <div>
-              <div class="k">当前身份</div>
-              <div class="v">
-                <span class="uname">{{ userName }}</span>
-              </div>
-            </div>
-            <div>
-              <div class="k">可供 MaaYuan 使用</div>
-              <div class="v">{{ maaYuanReadyCount }}<small>条</small></div>
-            </div>
-            <div>
-              <div class="k">有效连接</div>
-              <div class="v">{{ tokenCount }}<small>条</small></div>
-            </div>
-            <div class="is-authed">
-              <div class="k">登录状态</div>
-              <div class="v">已登录<small>连接可管理</small></div>
-            </div>
-          </div>
+          <p class="profile-connection-summary">{{ tokenCount }} 条已创建连接 · {{ maaYuanReadyCount }} 条已授权 MaaYuan。授权不代表已经收到采集数据。</p>
         </div>
       </header>
 
@@ -111,7 +89,6 @@
             </div>
 
             <article
-              ref="maaYuanAppCard"
               class="app-pass"
               aria-labelledby="maayuan-app-title"
             >
@@ -120,7 +97,7 @@
               </div>
               <div class="app-copy">
                 <div class="app-title-row">
-                  <h3 id="maayuan-app-title" ref="maaYuanAppTitle" tabindex="-1">
+                  <h3 id="maayuan-app-title" tabindex="-1">
                     MaaYuan
                   </h3>
                   <span class="brand-outline">联合共建</span>
@@ -155,6 +132,7 @@
                     />读取密探养成状态</span
                   >
                 </div>
+                <p class="capability-note">星石自动采集仍在接入中，请先在星石背包导入截图。</p>
               </div>
               <button
                 class="act-btn primary app-connect"
@@ -173,6 +151,8 @@
 
             <form
               v-if="showMaaYuanConnect"
+              ref="maaYuanConnectPanel"
+              tabindex="-1"
               id="maayuan-connect-panel"
               class="connect-panel"
               aria-labelledby="connect-panel-title"
@@ -182,7 +162,7 @@
                 <span class="step-mark">1</span>
                 <div>
                   <h3 id="connect-panel-title">选择数据保存到哪个账号</h3>
-                  <p>连接码只会绑定一个子账号，不能访问你的其他账号。</p>
+                  <p>连接码只会绑定一个游戏账号，不能访问你的其他账号。</p>
                 </div>
               </div>
               <p v-if="cameFromToday" class="today-connect-note" role="note">
@@ -280,7 +260,7 @@
                   <p>
                     <X :size="17" aria-hidden="true" />导出完整密探备份
                   </p>
-                  <p><X :size="17" aria-hidden="true" />访问其他子账号</p>
+                  <p><X :size="17" aria-hidden="true" />访问其他游戏账号</p>
                 </div>
               </div>
 
@@ -364,8 +344,12 @@
                   <span>4</span>
                   <div class="paste-step-copy">
                     <strong>粘贴连接码并照常使用</strong>
-                    <small>在“YuanHub连接码”粘贴刚复制的内容；完成对应任务后，采集结果会同步到上方绑定的 YuanHub 子账号。</small>
+                    <small>在“YuanHub连接码”粘贴刚复制的内容；完成对应任务后，采集结果会同步到上方绑定的 YuanHub 游戏账号。</small>
                   </div>
+                </li>
+                <li>
+                  <span>5</span>
+                  <div class="paste-step-copy"><strong>运行采集任务，再确认数据</strong><small>任务完成后，在 YuanHub 切换到上方绑定的游戏账号，前往 <router-link to="/inventory">库存追踪</router-link> 或 <router-link to="/operator">密探名册</router-link> 检查对应数据。仅创建连接码不表示同步成功。</small></div>
                 </li>
               </ol>
               <div class="nt-row">
@@ -387,7 +371,7 @@
                   }}</b>
                 </p>
                 <button class="text-btn" type="button" @click="finishNewToken">
-                  {{ newTokenKind === "maayuan" ? "我已填写完成" : "我已保存" }}
+                  {{ newTokenKind === "maayuan" ? "收起填写说明" : "我已保存" }}
                 </button>
               </div>
             </section>
@@ -470,7 +454,7 @@
                       <span
                         v-if="supportsMaaYuan(tokenItem)"
                         class="status-tag ready"
-                        >可供 MaaYuan 使用</span
+                        >已授权 MaaYuan</span
                       >
                       <span v-else class="status-tag">自定义权限</span>
                     </div>
@@ -648,7 +632,7 @@
 
       <SiteFooter>
         <template #big
-          >个人中心<br /><span>应用 · 账号 · 安全连接</span></template
+          >账号与连接码<br /><span>应用 · 账号 · 安全连接</span></template
         >
         <template #fine
           ><b>YuanHub</b> · 应用与数据连接<br />MAA × 鸢BWiki × 辟雍学府 ×
@@ -731,8 +715,7 @@ const newTokenPanel = ref(null);
 const newTokenKind = ref("maayuan");
 const tokenCopied = ref(false);
 const maaAccountSelect = ref(null);
-const maaYuanAppCard = ref(null);
-const maaYuanAppTitle = ref(null);
+const maaYuanConnectPanel = ref(null);
 const route = useRoute();
 
 const managedAccountId = computed({
@@ -744,11 +727,6 @@ const managedAccountId = computed({
   },
 });
 
-const userName = computed(function () {
-  return auth.userInfo && auth.userInfo.user_name
-    ? auth.userInfo.user_name
-    : "用户";
-});
 const tokenCount = computed(function () {
   return tokens.value.length;
 });
@@ -936,26 +914,21 @@ function openMaaYuanConnect() {
   if (showMaaYuanConnect.value) applyDefaultAccounts();
 }
 
-async function openMaaYuanFromRoute() {
-  if (route.query.connect !== "maayuan" || !beta.canUseBetaFeatures) return;
+async function revealMaaYuanConnect() {
+  if (!beta.canUseBetaFeatures) return;
   showMaaYuanConnect.value = true;
   applyDefaultAccounts();
   await nextTick();
 
-  const appCard = maaYuanAppCard.value;
-  if (appCard) {
-    const reduceMotion =
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    appCard.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
-      block: "start",
-    });
-  }
+  const panel = maaYuanConnectPanel.value;
+  if (!panel) return;
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  (maaAccountSelect.value || panel).focus({ preventScroll: true });
+}
 
-  if (maaYuanAppTitle.value) {
-    maaYuanAppTitle.value.focus({ preventScroll: true });
-  }
+async function openMaaYuanFromRoute() {
+  if (route.query.connect === "maayuan") await revealMaaYuanConnect();
 }
 
 function showCreatedToken(created, kind) {
@@ -1174,20 +1147,15 @@ onBeforeUnmount(function () {
 .profile-main {
   padding-bottom: 0;
 }
+.page-profile .hero { padding: 38px 0 28px; }
+.page-profile .hero h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.2; letter-spacing: .02em; }
+.profile-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 20px; }
+.profile-hero-actions a { color: var(--tea); }
+.profile-connection-summary { margin-top: 16px; color: var(--ink-60); font-size: 12px; line-height: 1.8; }
+.capability-note { color: var(--rouge); font-size: 12px; }
+#game-accounts, #maayuan-connect-panel { scroll-margin-top: 84px; }
 .page-profile .hero::after {
   content: "连接";
-}
-.hero-stats .uname {
-  font-family: var(--font-s);
-  font-weight: 900;
-  font-size: 26px;
-  letter-spacing: 0.02em;
-}
-.hero-stats .v small {
-  vertical-align: baseline;
-}
-.hero-stats div.is-authed .v {
-  font-size: 26px;
 }
 .admin-tools {
   margin-top: 40px;
