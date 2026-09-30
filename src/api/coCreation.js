@@ -1,5 +1,5 @@
 // 共创中心公开反馈接口封装。
-// 公开列表/详情/相似无需登录；支持与取消支持需要登录。
+// 公开列表/详情/相似无需登录；有登录态时携带凭证恢复本人支持状态。支持与取消支持需要登录。
 import { request } from './request.js'
 
 function normalizeMerged(raw) {
@@ -39,7 +39,7 @@ export async function listPublicFeedback(params = {}) {
   if (params.completedVersionId) qs.set('completedVersionId', params.completedVersionId)
   if (params.sort) qs.set('sort', params.sort)
   const query = qs.toString()
-  const data = await request('/v1/reports/public' + (query ? '?' + query : ''), {})
+  const data = await request('/v1/reports/public' + (query ? '?' + query : ''), { auth: true })
   const items = Array.isArray(data?.items) ? data.items : []
   return {
     items: items.map(normalizePublicFeedback).filter(Boolean),
@@ -50,14 +50,14 @@ export async function listPublicFeedback(params = {}) {
 }
 
 export async function getPublicFeedback(id) {
-  return normalizePublicFeedback(await request('/v1/reports/public/' + encodeURIComponent(id), {}))
+  return normalizePublicFeedback(await request('/v1/reports/public/' + encodeURIComponent(id), { auth: true }))
 }
 
 export async function findSimilarFeedback(title, type) {
   const qs = new URLSearchParams()
   qs.set('title', title)
   if (type) qs.set('type', type)
-  const data = await request('/v1/reports/public/similar?' + qs.toString(), {})
+  const data = await request('/v1/reports/public/similar?' + qs.toString(), { auth: true })
   const items = Array.isArray(data) ? data : []
   return items.map(normalizePublicFeedback).filter(Boolean)
 }

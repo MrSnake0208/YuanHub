@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { findSimilarFeedback, listPublicFeedback, normalizePublicFeedback } from '../src/api/coCreation.js'
+import { findSimilarFeedback, getPublicFeedback, listPublicFeedback, normalizePublicFeedback } from '../src/api/coCreation.js'
+import { auth } from '../src/store/auth.js'
 import {
   PUBLIC_SORT_OPTIONS,
   PUBLIC_STATUS_OPTIONS,
@@ -26,6 +27,36 @@ async function withFetch(handler, fn) {
   } finally {
     globalThis.fetch = previous
   }
+}
+
+for (const [name, read, envelope, firstItem] of [
+  ['list', () => listPublicFeedback(), item => ({ items: [item], total: 1 }), page => page.items[0]],
+  ['detail', () => getPublicFeedback('rpt_1'), item => item, item => item],
+  ['similar', () => findSimilarFeedback('账号显示错误', 'BUG'), item => [item], items => items[0]]
+]) {
+  test(`public feedback ${name} restores support on reread using the current identity and permits guests`, async () => {
+    const previousToken = auth.accessToken
+    try {
+      // A has a saved support record; B and guests do not. Counts are shared.
+      for (const token of ['token-a', 'token-b', '', 'token-a']) {
+        auth.accessToken = token
+        const result = await withFetch(async (_url, opts) => {
+          assert.equal(opts.method, 'GET')
+          assert.equal(opts.headers.Authorization, token ? `Bearer ${token}` : undefined)
+          return apiResponse(envelope({
+            id: 'rpt_1',
+            support_count: 3,
+            supported_by_current_user: opts.headers.Authorization === 'Bearer token-a'
+          }))
+        }, read)
+        const item = firstItem(result)
+        assert.equal(item.supportCount, 3)
+        assert.equal(item.supportedByCurrentUser, token === 'token-a')
+      }
+    } finally {
+      auth.accessToken = previousToken
+    }
+  })
 }
 
 test('normalizePublicFeedback accepts snake_case and camelCase payloads', () => {
