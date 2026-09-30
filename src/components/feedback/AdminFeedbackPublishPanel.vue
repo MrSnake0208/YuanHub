@@ -22,7 +22,7 @@
 
     <div v-show="open || dialog" :id="panelId" class="admin-public-body">
       <p class="admin-public-hint">
-        {{ canPublish ? '用户已允许整理到反馈广场。发布后只展示公开标题与摘要；原始正文、附件与账号信息不会公开。' : '用户未授权发布到反馈广场，不能发布或修改公开内容；已公开的内容仍可取消公开。' }}
+        {{ canPublish ? '用户已允许整理到反馈广场。发布后只展示公开标题与摘要；原始正文、附件与账号信息不会公开。' : '用户未授权发布到反馈广场，不能发布或修改公开正文；已公开的内容仍可更新状态或取消公开。' }}
       </p>
 
       <div class="admin-public-grid">
@@ -43,8 +43,8 @@
         </label>
         <label>
           <span>公开状态</span>
-          <small>独立于工单结案状态，不会自动同步。</small>
-          <select v-model="form.publicStatus" class="feedback-form-control" :disabled="!canPublish">
+          <small>管理员结案时可同步完成；其余进度在这里维护。</small>
+          <select v-model="form.publicStatus" class="feedback-form-control" :disabled="!canPublish && !isPublic">
             <option v-for="option in statusOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
           </select>
         </label>
@@ -60,7 +60,7 @@
       <p v-if="error" class="admin-public-error" role="alert">{{ error }}</p>
 
       <div class="admin-public-actions">
-        <button class="feedback-primary-action" type="button" :disabled="busy || !canPublish || !form.publicTitle.trim()" @click="save">
+        <button class="feedback-primary-action" type="button" :disabled="busy || (!canPublish && !isPublic) || (canPublish && !form.publicTitle.trim())" @click="save">
           {{ busy ? '处理中…' : (isPublic ? '保存修改' : '发布到反馈广场') }}
         </button>
         <button v-if="isPublic" class="feedback-button" type="button" :disabled="busy" @click="$emit('unpublish')">
@@ -101,6 +101,12 @@ const summaryText = computed(() => {
 })
 
 const form = reactive({ publicTitle: '', publicSummary: '', publicStatus: 'COLLECTING', type: 'BUG' })
+const hasDraft = computed(() => form.publicStatus !== (props.item?.publicStatus || 'COLLECTING') || (canPublish.value && (
+  form.publicTitle.trim() !== (props.item?.publicTitle || props.item?.title || '').trim() ||
+  form.publicSummary.trim() !== (props.item?.publicSummary || '').trim() ||
+  form.type !== (props.item?.type || 'BUG')
+)))
+defineExpose({ hasDraft })
 
 function sync() {
   form.publicTitle = props.item?.publicTitle || props.item?.title || ''
@@ -114,7 +120,7 @@ watch(() => props.item?.id, () => { open.value = false })
 
 function save() {
   const publicTitle = form.publicTitle.trim()
-  if (!canPublish.value || !publicTitle || props.busy) return
+  if ((!canPublish.value && !isPublic.value) || (canPublish.value && !publicTitle) || props.busy) return
   emit('save', {
     publicTitle,
     publicSummary: form.publicSummary.trim() || null,

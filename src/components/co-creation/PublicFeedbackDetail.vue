@@ -50,6 +50,7 @@
       <footer class="public-detail-foot">
         <span>最近更新 {{ formatDate(item.publicUpdatedAt || item.publishedAt) }}</span>
       </footer>
+      <PublicFeedbackManagement ref="management" :id="item.id" :format-date="formatDate" @updated="$emit('updated', $event)" @unpublished="$emit('unpublished', $event)" />
     </template>
   </div>
 </template>
@@ -59,6 +60,11 @@ import { CheckCircle2 } from '@lucide/vue'
 import FeedbackStatusBadge from '@/components/feedback/FeedbackStatusBadge.vue'
 import FeedbackTypeBadge from '@/components/feedback/FeedbackTypeBadge.vue'
 import FeedbackSupportButton from '@/components/co-creation/FeedbackSupportButton.vue'
+import PublicFeedbackManagement from '@/components/co-creation/PublicFeedbackManagement.vue'
+import { ref } from 'vue'
+
+const management = ref(null)
+defineExpose({ confirmClose: () => management.value?.confirmClose() ?? true })
 
 defineProps({
   item: { type: Object, default: null },
@@ -67,7 +73,7 @@ defineProps({
   formatDate: { type: Function, required: true }
 })
 
-defineEmits(['updated'])
+defineEmits(['updated', 'unpublished'])
 </script>
 
 <style scoped>

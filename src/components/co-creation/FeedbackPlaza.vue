@@ -76,13 +76,15 @@
     </footer>
 
     <PublicFeedbackDetailModal
+      ref="detailModal"
       :open="detailOpen"
       :item="detail"
       :loading="detailLoading"
       :error="detailError"
       :format-date="formatDate"
-      @close="closeDetail"
+      @close="resetDetail"
       @updated="onDetailUpdated"
+      @unpublished="onUnpublished"
     />
   </div>
 </template>
@@ -120,6 +122,7 @@ const detailOpen = ref(false)
 const detail = ref(null)
 const detailLoading = ref(false)
 const detailError = ref('')
+const detailModal = ref(null)
 
 const router = useRouter()
 let loadRequestId = 0
@@ -148,8 +151,12 @@ async function load() {
       sort: sort.value
     })
     if (!isMounted || requestId !== loadRequestId) return
+    total.value = Number(data.total ?? data.items?.length ?? 0)
+    if (page.value > totalPages.value) {
+      page.value = totalPages.value
+      return load()
+    }
     items.value = data.items || []
-    total.value = Number(data.total ?? items.value.length)
   } catch (_) {
     if (isMounted && requestId === loadRequestId) error.value = '反馈加载失败，请稍后重试。'
   } finally {
@@ -157,16 +164,16 @@ async function load() {
   }
 }
 
-function reloadFromFirstPage() {
+async function reloadFromFirstPage() {
+  if (!await closeDetail()) return
   page.value = 1
-  closeDetail()
   load()
 }
 
-function changePage(nextPage) {
+async function changePage(nextPage) {
   if (nextPage < 1 || nextPage > totalPages.value || loading.value) return
+  if (!await closeDetail()) return
   page.value = nextPage
-  closeDetail()
   load()
 }
 
@@ -206,7 +213,13 @@ async function openDetailById(id) {
   }
 }
 
-function closeDetail() {
+async function closeDetail() {
+  if (!await (detailModal.value?.confirmClose() ?? true)) return false
+  resetDetail()
+  return true
+}
+
+function resetDetail() {
   detailRequestId += 1
   detailOpen.value = false
   detail.value = null
@@ -219,6 +232,13 @@ function onDetailUpdated(updated) {
   detail.value = updated
   const index = items.value.findIndex(item => item.id === updated.id)
   if (index >= 0) items.value.splice(index, 1, { ...items.value[index], ...updated })
+  load()
+}
+
+function onUnpublished() {
+  resetDetail()
+  page.value = 1
+  load()
 }
 
 watch(() => props.focusId, id => {

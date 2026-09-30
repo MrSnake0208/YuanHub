@@ -643,8 +643,24 @@ test('个人和管理写操作固定发送各自 actor_mode 且调用参数不�
   assert.deepEqual(JSON.parse(requests[3].options.body), {
     status: 'DISMISSED',
     actor_mode: 'ADMIN',
-    reason: '已处理'
+    reason: '已处理',
+    complete_public_feedback: true
   })
+})
+
+test('管理员结案默认同步广场且可显式保留公开进度，用户结案不发送同步参数', async () => {
+  const bodies = []
+  await withFetch(async (_url, options) => {
+    bodies.push(JSON.parse(options.body))
+    return apiResponse({ id: 'rpt_1', status: 'RESOLVED' })
+  }, async () => {
+    await updateManagedFeedbackStatus('rpt_1', 'RESOLVED')
+    await updateManagedFeedbackStatus('rpt_1', 'RESOLVED', null, false)
+    await updateMyFeedbackStatus('rpt_1', 'RESOLVED')
+  })
+  assert.equal(bodies[0].complete_public_feedback, true)
+  assert.equal(bodies[1].complete_public_feedback, false)
+  assert.equal('complete_public_feedback' in bodies[2], false)
 })
 
 test('媒体上传使用 file multipart 字段并解包返回的媒体对象', async () => {

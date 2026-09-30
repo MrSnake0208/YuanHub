@@ -10,6 +10,7 @@ import * as api from '../src/api/coCreation.js'
 
 const routing = vi.hoisted(() => ({ route: { query: {}, fullPath: '/feedback/plaza' }, push: vi.fn() }))
 vi.mock('vue-router', () => ({
+  onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn(),
   useRoute: () => routing.route,
   useRouter: () => ({ push: routing.push })
 }))

@@ -315,14 +315,15 @@ export function appendManagedFeedbackMessage(id, body) {
   return appendFeedbackMessage(id, body, 'ADMIN')
 }
 
-async function updateFeedbackStatus(id, status, actorMode, reason) {
+async function updateFeedbackStatus(id, status, actorMode, reason, completePublicFeedback = true) {
   const data = await request(`/v1/reports/${encodeURIComponent(id)}/status`, {
     method: 'PATCH',
     auth: true,
     body: {
       status: String(status).toUpperCase(),
       actor_mode: actorMode,
-      reason: reason || null
+      reason: reason || null,
+      ...(actorMode === 'ADMIN' ? { complete_public_feedback: completePublicFeedback } : {})
     }
   })
   return normalizeFeedback(data)
@@ -332,8 +333,8 @@ export function updateMyFeedbackStatus(id, status) {
   return updateFeedbackStatus(id, status, 'REPORTER')
 }
 
-export function updateManagedFeedbackStatus(id, status, reason) {
-  return updateFeedbackStatus(id, status, 'ADMIN', reason)
+export function updateManagedFeedbackStatus(id, status, reason, completePublicFeedback = true) {
+  return updateFeedbackStatus(id, status, 'ADMIN', reason, completePublicFeedback)
 }
 
 async function workflowAction(id, action, body) {

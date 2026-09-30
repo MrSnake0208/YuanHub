@@ -285,6 +285,7 @@ import {
   publishFeedback,
   unpublishFeedback,
   updateFeedbackType,
+  updateFeedbackPublicStatus,
   updateManagedFeedbackStatus
 } from '@/api/feedback.js'
 import { auth } from '@/store/auth.js'
@@ -812,7 +813,7 @@ async function runWorkflow(mode, item) {
 async function savePublicInfo(payload) {
   const id = selectedId.value
   if (!id || publicBusy.value) return
-  if (selectedDetail.value?.publicConsent !== true) {
+  if (selectedDetail.value?.publicConsent !== true && selectedDetail.value?.visibility !== 'PUBLIC') {
     publicError.value = '用户未授权发布到反馈广场'
     return
   }
@@ -822,14 +823,16 @@ async function savePublicInfo(payload) {
   publicMessage.value = ''
   publicError.value = ''
   try {
-    if (payload.type && payload.type !== selectedDetail.value?.type) {
+    if (selectedDetail.value?.publicConsent === true && payload.type && payload.type !== selectedDetail.value?.type) {
       await updateFeedbackType(id, payload.type)
       if (!isCurrentDetail(requestId, id, userId)) return
     }
-    const detail = await publishFeedback(id, payload)
+    const detail = selectedDetail.value?.publicConsent === true
+      ? await publishFeedback(id, payload)
+      : await updateFeedbackPublicStatus(id, payload.publicStatus)
     if (!isCurrentDetail(requestId, id, userId)) return
     replaceTicket(detail)
-    publicMessage.value = detail.visibility === 'PUBLIC' ? '已发布到反馈广场' : '已更新公开信息'
+    publicMessage.value = '公开反馈已保存。'
   } catch (e) {
     if (isCurrentDetail(requestId, id, userId) && !await handleForbidden(e)) publicError.value = e.message || '操作失败'
   } finally {
@@ -951,6 +954,7 @@ async function updateStatus(id, status) {
   const userId = currentUserId()
   updatingStatus.value = true
   detailError.value = ''
+  let completePublicFeedback = true
   try {
     const reason = status === 'DISMISSED' ? await dialog.prompt({
       title: '驳回反馈', inputLabel: '驳回原因', placeholder: '请填写具体原因', maxLength: null,
@@ -958,7 +962,17 @@ async function updateStatus(id, status) {
     }) : null
     if (!isCurrentDetail(requestId, id, userId)) return
     if (status === 'DISMISSED' && !reason?.trim()) return
-    if (status !== 'DISMISSED') {
+    if (status === 'RESOLVED' && selectedDetail.value?.visibility === 'PUBLIC') {
+      const choice = await dialog.choose({
+        title: '确认问题已解决？',
+        message: '结案后用户将无法继续补充。若只解决了该用户的个人问题，可以取消勾选并保留广场进度。',
+        choices: [{ value: 'complete', label: '标记完成', tone: 'primary' }],
+        checkboxLabel: '同时将反馈广场标记为已完成',
+        checkboxChecked: true
+      })
+      if (!choice?.value || !isCurrentDetail(requestId, id, userId)) return
+      completePublicFeedback = choice.checked === true
+    } else if (status !== 'DISMISSED') {
       const confirmed = await dialog.confirm({
         title: status === 'RESOLVED' ? '确认问题已解决？' : '重新打开反馈？',
         message: status === 'RESOLVED' ? '结案后用户将无法继续补充，管理员仍可重新打开。请先确认问题已解决。' : '重新打开后，用户可以继续补充说明与附件。',
@@ -966,7 +980,7 @@ async function updateStatus(id, status) {
       })
       if (!confirmed || !isCurrentDetail(requestId, id, userId)) return
     }
-    await updateManagedFeedbackStatus(id, status, reason)
+    await updateManagedFeedbackStatus(id, status, reason, completePublicFeedback)
     if (!isCurrentDetail(requestId, id, userId)) return
     resetDetail()
     pageMessage.value = { RESOLVED: '反馈已完成并结案。', DISMISSED: '反馈已驳回，原因已记录。', OPEN: '反馈已重新打开。' }[status]
