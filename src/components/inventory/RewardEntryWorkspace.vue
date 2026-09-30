@@ -1,7 +1,7 @@
 <template>
   <div class="reward-workspace">
-    <div class="workspace-actions" aria-label="新增或导入奖励记录">
-      <span v-if="disabled" class="muted">登录并选择子账号后可补录奖励</span>
+    <div class="workspace-actions" aria-label="新增奖励或导入库存记录">
+      <span v-if="disabled" class="muted">登录并选择子账号后可补录记录</span>
       <button ref="manualButton" type="button" class="entry-button" :class="{ active: mode === 'manual' }" :disabled="disabled || locked" :aria-expanded="mode === 'manual'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('manual')"><Plus :size="15" aria-hidden="true" />添加奖励流水</button>
       <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入本地报告</button>
     </div>
@@ -24,7 +24,7 @@
           >
             <header class="panel-heading">
               <span class="heading-emblem" aria-hidden="true"><BookOpen v-if="mode === 'manual'" :size="25" /><ScrollText v-else :size="25" /></span>
-              <div class="heading-copy"><span class="eyebrow">广陵库房 · 奖励入簿</span><h3 id="reward-entry-title" ref="heading" tabindex="-1">{{ mode === 'manual' ? '添加奖励流水' : '导入本地报告' }}</h3></div>
+              <div class="heading-copy"><span class="eyebrow">广陵库房 · {{ mode === 'manual' ? '奖励入簿' : '报告补传' }}</span><h3 id="reward-entry-title" ref="heading" tabindex="-1">{{ mode === 'manual' ? '添加奖励流水' : '导入本地报告' }}</h3></div>
               <div class="dialog-header-meta">
                 <span class="account-badge"><span class="account-dot" />{{ accountName }}</span>
                 <span v-if="locked" id="reward-dialog-lock-status" ref="lockNotice" class="dialog-lock-note" role="status" tabindex="-1">{{ closeLockMessage }}</span>
@@ -95,10 +95,10 @@
               <input ref="fileInput" class="sr-only" type="file" tabindex="-1" aria-label="选择上报报告文件" accept=".txt,.json,text/plain,application/json" @change="pickFile" />
               <button type="button" class="file-drop" :class="{ dragging: dragActive, loaded: fileName }" :disabled="readingFile" @click="fileInput?.click()" @dragover.prevent="dragActive = true" @dragleave.prevent="dragActive = false" @drop.prevent="dropFile">
                 <span class="file-emblem"><FileCheck2 v-if="fileName" :size="27" aria-hidden="true" /><Upload v-else :size="27" aria-hidden="true" /></span>
-                <span class="file-description"><b>{{ readingFile ? '正在读取报告…' : fileName || '点击选择，或拖入本地报告' }}</b><small>{{ fileName ? '已读取 · 点击更换文件' : 'DailyRewards TXT / 库存交换 JSON · 最大 5 MB' }}</small></span><ArrowUpRight :size="20" aria-hidden="true" />
+                <span class="file-description"><b>{{ readingFile ? '正在读取报告…' : fileName || '点击选择，或拖入本地报告' }}</b><small>{{ fileName ? '已读取 · 点击更换文件' : 'DailyRewards / StockReport TXT / 库存交换 JSON · 最大 5 MB' }}</small></span><ArrowUpRight :size="20" aria-hidden="true" />
               </button>
             </div>
-            <div class="import-notes"><span><Check :size="14" aria-hidden="true" />默认选中上报失败的奖励</span><span><Check :size="14" aria-hidden="true" />重复记录自动去重</span><span><Check :size="14" aria-hidden="true" />未注明账号时归入「{{ accountName }}」</span></div>
+            <div class="import-notes"><span><Check :size="14" aria-hidden="true" />支持奖励流水与库存快照，默认选中上报失败项</span><span><Check :size="14" aria-hidden="true" />重复记录自动去重</span><span><Check :size="14" aria-hidden="true" />未注明账号时归入「{{ accountName }}」</span></div>
           </div>
           <button type="button" class="paste-toggle" :aria-expanded="showPaste" aria-controls="reward-report-text" @click="showPaste = !showPaste"><ClipboardPaste :size="15" aria-hidden="true" />{{ showPaste ? '收起文本输入' : '也可以粘贴报告内容' }}<ChevronDown :size="14" :class="{ rotated: showPaste }" aria-hidden="true" /></button>
           <div v-if="showPaste" id="reward-report-text" class="paste-area"><label><span class="sr-only">上报报告内容</span><textarea v-model="reportText" rows="5" placeholder="粘贴 MaaYuan 库存记录或库存交换 v2 JSON…" @input="clearReportPreview" /></label><button type="button" class="outline-button" :disabled="!reportText.trim() || readingFile" @click="previewReport">解析并预览<ArrowRight :size="14" aria-hidden="true" /></button></div>
@@ -106,22 +106,22 @@
       </div>
 
       <div v-if="previewed" class="preview-section">
-        <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的奖励' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条<span v-if="skipped"> · 跳过 {{ skipped }} 个库存快照</span></span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
-        <p v-if="!rows.length" class="empty-search">报告中没有可补录的奖励流水。</p>
+        <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条</span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
+        <p v-if="!rows.length" class="empty-search">报告中没有可补传的库存记录。</p>
         <ul v-else class="preview-list"><li v-for="row in rows" :key="row.key" :class="{ invalid: row.error, selected: row.selected }">
           <div v-if="row.record" class="preview-record">
-            <label v-if="mode === 'report'" class="record-checkbox"><input v-model="row.selected" type="checkbox" :disabled="!!row.error || locked || !!result" :aria-label="`选择 ${row.record.acquisition_channel || '奖励'} ${row.record.effective_at}`" /><span class="checkbox-art"><Check :size="13" aria-hidden="true" /></span></label>
+            <label v-if="mode === 'report'" class="record-checkbox"><input v-model="row.selected" type="checkbox" :disabled="!!row.error || locked || !!result" :aria-label="`选择 ${row.record.acquisition_channel || '库存记录'} ${row.record.effective_at}`" /><span class="checkbox-art"><Check :size="13" aria-hidden="true" /></span></label>
             <div class="record-date"><small>{{ new Date(row.record.effective_at).getFullYear() }}</small><b>{{ displayDay(row.record.effective_at) }}</b><time :datetime="row.record.effective_at" :title="row.record.effective_at">{{ displayClock(row.record.effective_at) }}</time></div>
-            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id">{{ entry.name || entry.id }}<b>× {{ entry.count }}</b></span></div></div>
-            <button type="button" class="record-info" :aria-label="`查看${row.record.acquisition_channel || '奖励'}记录详情`" :aria-expanded="expandedRows.has(row.key)" @click="toggleDetails(row.key)"><ChevronDown :size="16" :class="{ rotated: expandedRows.has(row.key) }" aria-hidden="true" /></button>
+            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id">{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
+            <button type="button" class="record-info" :aria-label="`查看${row.record.acquisition_channel || '库存记录'}记录详情`" :aria-expanded="expandedRows.has(row.key)" @click="toggleDetails(row.key)"><ChevronDown :size="16" :class="{ rotated: expandedRows.has(row.key) }" aria-hidden="true" /></button>
           </div>
           <div v-if="row.record && expandedRows.has(row.key)" class="record-details"><span>{{ row.record.effective_at }}</span><span>{{ row.status }}</span><span>{{ row.record.record_id }}</span></div>
           <p v-if="row.error" class="row-error">第 {{ row.block }} 个记录块：{{ row.error }}</p>
         </li></ul>
-        <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认补录结果。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在补录…' : pendingDocument ? '原样重试补录' : `确认补录 ${selectedRecords.length} 条` }}</button></div>
+        <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
-      <div v-if="result" class="result" role="status"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : '奖励已入簿' }}</h4><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
-              <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。</footer>
+      <div v-if="result" class="result" role="status"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
+              <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励补齐获得量，快照保留库存总量；服务端按原时间与记录 ID 处理历史和去重。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
         </div>
@@ -135,7 +135,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { Plus, Minus, Upload, X, Check, BookOpen, ScrollText, Bird, Flower2, Pencil, Search, Flame, PackageOpen, ArrowRight, ArrowUpRight, FileCheck2, ClipboardPaste, ChevronDown, CircleAlert, CircleCheck, ShieldCheck, Info, History } from '@lucide/vue'
 import { importInventory } from '../../api/inventory.js'
 import { getRewardCatalog } from '../../api/rewardCatalog.js'
-import { buildRewardDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
+import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../../data/inventory/rewardImport.js'
 import { REWARD_CHANNELS, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
@@ -162,7 +162,6 @@ const readingFile = ref(false)
 const showPaste = ref(false)
 const dragActive = ref(false)
 const rows = ref([])
-const skipped = ref(0)
 const previewed = ref(false)
 const pendingDocument = ref(null)
 const search = ref('')
@@ -274,14 +273,20 @@ async function showError(message) {
 }
 async function loadCatalog() {
   if (catalogLoading.value) return
+  const targetAccount = props.accountId
+  const targetGame = props.game
+  const targetMode = mode.value
   catalogLoading.value = true
   clearPreview()
   entities.value = []
   try {
     const catalog = await getRewardCatalog()
+    if (props.accountId !== targetAccount || props.game !== targetGame || mode.value !== targetMode) return
     if (!catalog.length) throw new Error('奖励目录为空，请稍后重试')
-    entities.value = catalog.filter(entity => entity.entity_type !== 'agent' || agentMatchesGame(entity, props.game))
-  } catch (err) { await showError(err.message || '奖励目录加载失败') }
+    entities.value = mode.value === 'report' ? catalog : catalog.filter(entity => entity.entity_type !== 'agent' || agentMatchesGame(entity, props.game))
+  } catch (err) {
+    if (props.accountId === targetAccount && props.game === targetGame && mode.value === targetMode) await showError(err.message || '奖励目录加载失败')
+  }
   finally { catalogLoading.value = false }
 }
 async function open(nextMode) {
@@ -337,7 +342,7 @@ function onDialogKeydown(event) {
     first.focus()
   }
 }
-function clearPreview() { rows.value = []; skipped.value = 0; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear() }
+function clearPreview() { rows.value = []; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear() }
 function clearReportPreview() { fileReadSeq++; readingFile.value = false; fileName.value = ''; clearPreview() }
 function changeChannel(channel) {
   if (channel === manual.value.channel || locked.value) return
@@ -414,8 +419,8 @@ function previewReport() {
   clearPreview()
   try {
     if (new Blob([reportText.value]).size > 5 * 1024 * 1024) throw new Error('报告超过 5 MB，请按日期拆分后导入')
-    const preview = parseRewardReport(reportText.value, props.accountId, entities.value)
-    rows.value = preview.rows; skipped.value = preview.skipped; previewed.value = true
+    const preview = parseRewardReport(reportText.value, props.accountId, entities.value, props.game)
+    rows.value = preview.rows; previewed.value = true
   } catch (err) { showError(err.message) }
 }
 function selectFailed() { rows.value.forEach(row => { row.selected = !row.error && !!row.status?.includes('上报失败') }) }
@@ -425,7 +430,9 @@ async function submit() {
   error.value = ''
   const targetAccount = props.accountId
   try {
-    if (!pendingDocument.value) pendingDocument.value = buildRewardDocument(selectedRecords.value, targetAccount, entities.value)
+    if (!pendingDocument.value) pendingDocument.value = mode.value === 'report'
+      ? buildReportDocument(selectedRecords.value, targetAccount, entities.value, props.game)
+      : buildRewardDocument(selectedRecords.value, targetAccount, entities.value)
     busy.value = true
     const response = await importInventory(pendingDocument.value)
     if (props.accountId !== targetAccount) return

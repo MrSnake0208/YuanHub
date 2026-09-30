@@ -4,7 +4,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { getRewardCatalog } from '../src/api/rewardCatalog.js'
 import { buildRewardCatalog } from '../src/data/inventory/rewardCatalog.js'
-import { buildRewardDocument, parseRewardReport } from '../src/data/inventory/rewardImport.js'
+import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../src/data/inventory/rewardImport.js'
 import { removeOrphanOperatorCurrent } from '../src/api/operator.js'
 
 const inventory = { entities: [
@@ -51,6 +51,19 @@ test('公共图鉴里的真实同名仍报歧义；JSON 携带旧 ID 不会按�
   assert.match(parseRewardReport(report, 'acc_alt', ambiguous).rows[0].error, /多个匹配/)
   const record = parseRewardReport(report, 'acc_alt', catalog).rows[0].record
   assert.throws(() => buildRewardDocument([{ ...record, entries: [{ id: 'char_130_zhoutai', name: '周泰', count: 2 }] }], 'acc_alt', catalog), /无法识别奖励/)
+})
+
+test('库存快照也使用当前公共图鉴身份，历史同名条目不造成错配或重复匹配', () => {
+  const source = report.replace('类型：奖励增量', '类型：库存快照').replace('周泰 × 2', '周泰 × 0').replace('{"r":["myshare:original-1"]}', '{"r":["myshare:original-1"],"s":"listed"}')
+  const catalog = buildRewardCatalog(inventory, operators)
+  const preview = parseRewardReport(source, 'acc_alt', catalog, '代号鸢')
+  assert.equal(preview.rows[0].error, '')
+  const document = buildReportDocument([preview.rows[0].record], 'acc_alt', catalog, '代号鸢')
+  assert.equal(document.records[0].record_type, 'stock_snapshot')
+  assert.deepEqual(document.records[0].entries, [
+    { id: 'char_129_zhoutai', name: '周泰', count: 0 },
+    { id: 'char_130_chenlin', name: '陈琳', count: 1 },
+  ])
 })
 
 test('公共图鉴空数组是有效结果；响应缺失或重复 ID 时不退回旧目录', () => {

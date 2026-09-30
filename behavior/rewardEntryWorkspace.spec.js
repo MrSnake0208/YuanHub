@@ -18,6 +18,45 @@ const catalog = [
   { entity_type: 'agent', id: 'agent_test', name: '测试密探', rarity: 5 },
 ]
 
+const snapshotReport = `\uFEFF========== MaaYuan 库存记录 ==========
+时间：2026-09-30T12:33:47.127+08:00
+渠道：背包-物品
+类型：库存快照
+子账号ID：acc-1
+上报状态：自动上报成功（HTTP 200，accepted=1，duplicates=0）
+道具：
+白金币 × 20
+#@MaaYInventoryRefV2 {"r":["myshare:bag-items"],"a":"acc-1","s":"listed"}
+========== 记录结束 ==========
+========== MaaYuan 库存记录 ==========
+时间：2026-09-30T12:33:57.895+08:00
+渠道：背包-道具
+类型：库存快照
+子账号ID：acc-1
+上报状态：自动上报成功（HTTP 200，accepted=1，duplicates=0）
+道具：
+鸡汁 × 0
+#@MaaYInventoryRefV2 {"r":["myshare:bag-tools"],"a":"acc-1","s":"listed"}
+========== 记录结束 ==========
+========== MaaYuan 库存记录 ==========
+时间：2026-09-30T12:34:04.680+08:00
+渠道：背包-心纸
+类型：库存快照
+子账号ID：acc-1
+上报状态：自动上报失败（HTTP 422（agent_game_mismatch））
+密探：
+测试密探 × 4
+周忠 × 0
+#@MaaYInventoryRefV2 {"r":["myshare:bag-agents"],"a":"acc-1","s":"listed"}
+========== 记录结束 ==========`
+
+async function dropReport(report = snapshotReport, read = () => Promise.resolve(report)) {
+  const event = new Event('drop', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'dataTransfer', { value: { files: [{ name: 'DailyRewards-测试账号-acc-1.txt', size: report.length, text: read }] } })
+  document.body.querySelector('.file-drop').dispatchEvent(event)
+  await flushPromises()
+}
+
 function mountWorkspace(props = {}) {
   return mount(RewardEntryWorkspace, {
     attachTo: document.body,
@@ -69,6 +108,120 @@ beforeEach(() => {
 })
 
 describe('奖励补录工作台弹层', () => {
+  it('拖入三段快照只预览，默认选失败心纸，跨游戏零值原样补传', async () => {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([...catalog, { entity_type: 'agent', id: 'char_100_zhouzhong', name: '周忠', games: ['代号鸢'] }])
+    inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: ['已忽略如鸢不支持的零值密探：周忠'] })
+    const wrapper = mountWorkspace({ game: '如鸢' })
+    await button(wrapper, '导入本地报告').trigger('click')
+    await flushPromises()
+    await dropReport()
+
+    const rows = Array.from(document.body.querySelectorAll('.preview-record'))
+    expect(rows).toHaveLength(3)
+    expect(rows.map(row => row.querySelector('input[type="checkbox"]').checked)).toEqual([false, false, true])
+    expect(rows.every(row => row.textContent.includes('库存快照 · 列出条目'))).toBe(true)
+    expect(rows[2].textContent).toContain('周忠= 0')
+    expect(document.body.querySelector('.confirm-bar').textContent).toContain('库存总量')
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+
+    await clickElement(bodyButton('确认补传 1 条'))
+    expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+    const payload = inventoryApi.importInventory.mock.calls[0][0]
+    expect(payload.records).toEqual([{
+      record_id: 'myshare:bag-agents', account_id: 'acc-1', record_type: 'stock_snapshot', entity_type: 'agent', snapshot_scope: 'listed',
+      acquisition_channel: '背包-心纸', effective_at: '2026-09-30T12:34:04.680+08:00',
+      entries: [{ id: 'agent_test', name: '测试密探', count: 4 }, { id: 'char_100_zhouzhong', name: '周忠', count: 0 }],
+    }])
+    expect(wrapper.emitted('imported')).toEqual([['acc-1']])
+    expect(window.document.body.querySelector('.result').textContent).toContain('报告已补传')
+    expect(window.document.body.querySelector('.result').textContent).toContain('已忽略如鸢不支持的零值密探：周忠')
+  })
+
+  it('JSON 完整空快照可明确选择，确认前说明未列出条目归零', async () => {
+    const wrapper = mountWorkspace()
+    await button(wrapper, '导入本地报告').trigger('click')
+    await flushPromises()
+    await dropReport(JSON.stringify({ format: 'myshare-inventory-exchange', version: 2, records: [{ record_id: 'myshare:clear', record_type: 'stock_snapshot', snapshot_scope: 'full', entity_type: 'item', effective_at: '2026-09-30T12:00:00+08:00', entries: [] }] }))
+    expect(document.body.querySelector('.preview-record').textContent).toContain('完整库存')
+    expect(document.body.querySelector('.submit-button').disabled).toBe(true)
+    await clickElement(document.body.querySelector('.record-checkbox input'))
+    expect(document.body.querySelector('.confirm-bar').textContent).toContain('未列出的条目归零')
+    expect(document.body.querySelector('.submit-button').disabled).toBe(false)
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it('报告可还原跨游戏零值，但手动奖励选择仍只显示当前游戏的密探', async () => {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([...catalog,
+      { entity_type: 'agent', id: 'char_100_zhouzhong', name: '周忠', games: ['代号鸢'] },
+      { entity_type: 'agent', id: 'current_agent', name: '当前游戏密探', games: ['如鸢'] },
+    ])
+    const wrapper = mountWorkspace({ game: '如鸢' })
+    await button(wrapper, '添加奖励流水').trigger('click')
+    await flushPromises()
+    await clickElement(bodyButton('寿春'))
+    expect(document.body.querySelector('[aria-label^="添加周忠"]')).toBeNull()
+    expect(document.body.querySelector('[aria-label^="添加当前游戏密探"]')).not.toBeNull()
+  })
+
+  it('快照补传网络失败后保持原 ID、时间、零值和请求正文原样重试', async () => {
+    rewardCatalogApi.getRewardCatalog.mockResolvedValue([...catalog, { entity_type: 'agent', id: 'char_100_zhouzhong', name: '周忠', games: ['代号鸢'] }])
+    inventoryApi.importInventory.mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValueOnce({ accepted: 0, duplicates: 1, history_only: 0, superseded: 0, warnings: [] })
+    const wrapper = mountWorkspace({ game: '如鸢' })
+    await button(wrapper, '导入本地报告').trigger('click')
+    await flushPromises()
+    await dropReport()
+    await clickElement(bodyButton('确认补传'))
+    const firstDocument = inventoryApi.importInventory.mock.calls[0][0]
+    expect(document.body.querySelector('#reward-dialog-lock-status').textContent).toContain('原样重试')
+    expect(document.body.querySelector('.record-checkbox input').disabled).toBe(true)
+    await clickElement(bodyButton('原样重试补录'))
+    expect(inventoryApi.importInventory.mock.calls[1][0]).toBe(firstDocument)
+    expect(document.body.querySelector('.result').textContent).toContain('记录已存在')
+  })
+
+  it('读取快照报告期间切换账号，晚到的文件内容不进入新账号预览', async () => {
+    const pending = deferred()
+    const wrapper = mountWorkspace()
+    await button(wrapper, '导入本地报告').trigger('click')
+    await flushPromises()
+    await dropReport(snapshotReport, () => pending.promise)
+    await wrapper.setProps({ accountId: 'acc-2', accountName: '另一个账号' })
+    pending.resolve(snapshotReport)
+    await flushPromises()
+    await button(wrapper, '导入本地报告').trigger('click')
+    await flushPromises()
+    expect(document.body.querySelector('.preview-section')).toBeNull()
+    await dropReport()
+    expect(document.body.querySelector('.row-error').textContent).toContain('记录属于账号 acc-1')
+    expect(document.body.querySelector('.submit-button').disabled).toBe(true)
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  })
+
+  it('账号切换后不接受旧目录响应，也不把旧账号补传结果归到新账号', async () => {
+    const catalogPending = deferred()
+    rewardCatalogApi.getRewardCatalog.mockReturnValueOnce(catalogPending.promise)
+    const wrapper = mountWorkspace()
+    await button(wrapper, '导入本地报告').trigger('click')
+    await wrapper.setProps({ accountId: 'acc-2' })
+    catalogPending.resolve(catalog)
+    await flushPromises()
+    expect(document.body.querySelector('#reward-entry-panel')).toBeNull()
+
+    await wrapper.setProps({ accountId: 'acc-1' })
+    await button(wrapper, '导入本地报告').trigger('click')
+    await flushPromises()
+    const pending = deferred()
+    inventoryApi.importInventory.mockReturnValueOnce(pending.promise)
+    await dropReport(snapshotReport.replace('测试密探 × 4\n周忠 × 0', '测试密探 × 4'))
+    await clickElement(bodyButton('确认补传'))
+    await wrapper.setProps({ accountId: 'acc-2' })
+    pending.resolve({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0, warnings: [] })
+    await flushPromises()
+    expect(wrapper.emitted('imported')).toBeUndefined()
+    expect(document.body.querySelector('.result')).toBeNull()
+    expect(inventoryApi.importInventory.mock.calls[0][0].records[0].account_id).toBe('acc-1')
+  })
+
   it('已选图标可原位减少，普通道具步进 1、白金币步进 10，减至零后移除', async () => {
     const wrapper = mountWorkspace()
     await button(wrapper, '添加奖励流水').trigger('click')
