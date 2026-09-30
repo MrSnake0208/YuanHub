@@ -167,7 +167,7 @@
             <button type="button" aria-label="关闭提交反馈弹窗" @click="closeNewFeedback"><X :size="20" /></button>
           </div>
           <form @submit.prevent="submitFeedback">
-            <p class="feedback-submission-note">反馈先由你和管理员沟通。适合共同跟进的问题会整理到反馈广场，原始正文、附件与账号信息不会直接公开。</p>
+            <p class="feedback-submission-note">默认仅与你和管理员私下沟通。只有你允许，管理员才可整理到反馈广场；原始正文、附件与账号信息不会直接公开。</p>
             <p v-if="publicNotice" class="feedback-submission-note" role="status">{{ publicNotice }}</p>
             <div class="feedback-form-grid">
               <label>
@@ -183,12 +183,17 @@
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
-              <label class="full">
-                <span>标题</span>
+              <label class="feedback-consent full">
+                <input v-model="newFeedback.publicConsent" name="public-consent" type="checkbox" @change="formError = ''; scheduleSimilarSearch()" />
+                <span>允许管理员整理到反馈广场（可选）<small>勾选后需填写标题，管理员审核后再决定是否发布公开标题与摘要。</small></span>
+              </label>
+              <label v-if="newFeedback.publicConsent" class="full">
+                <span>标题（必填）</span>
                 <input v-model="newFeedback.title" class="feedback-form-control" type="text" maxlength="120" :aria-invalid="Boolean(formError && !newFeedback.title.trim())" placeholder="用一句话描述问题或建议" @input="formError = ''; scheduleSimilarSearch()" />
                 <small v-if="formError && !newFeedback.title.trim()" class="feedback-form-error" role="alert">请填写标题</small>
               </label>
               <SimilarFeedbackList
+                v-if="newFeedback.publicConsent"
                 class="full"
                 :items="similarItems"
                 :loading="similarLoading"
@@ -293,10 +298,10 @@ const replyTarget = ref('')
 const replying = ref(false)
 const updatingStatus = ref(false)
 const replyContent = ref('')
-const newFeedback = ref({ type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false })
+const newFeedback = ref({ type: 'BUG', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false })
 const newMedia = useFeedbackMedia()
 const newFeedbackDirty = computed(() => showNewForm.value && (
-  Boolean(newFeedback.value.title.trim() || newFeedback.value.content.trim() || newFeedback.value.category || newFeedback.value.clientInfoConsent || newFeedback.value.type !== 'BUG') || newMedia.items.length > 0
+  Boolean(newFeedback.value.title.trim() || newFeedback.value.content.trim() || newFeedback.value.category || newFeedback.value.publicConsent || newFeedback.value.clientInfoConsent || newFeedback.value.type !== 'BUG') || newMedia.items.length > 0
 ))
 const confirmNewFeedbackDiscard = useUnsavedChanges(newFeedbackDirty, '反馈草稿')
 const similarItems = ref([])
@@ -547,7 +552,7 @@ async function closeNewFeedback() {
   if (!await confirmNewFeedbackDiscard()) return
   showNewForm.value = false
   formError.value = ''
-  newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
+  newFeedback.value = { type: 'BUG', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
   newMedia.clear()
   resetSimilar()
 }
@@ -563,7 +568,7 @@ function resetSimilar() {
 function scheduleSimilarSearch() {
   if (similarTimer) clearTimeout(similarTimer)
   const title = newFeedback.value.title.trim()
-  if (title.length < 2) {
+  if (!newFeedback.value.publicConsent || title.length < 2) {
     resetSimilar()
     return
   }
@@ -591,8 +596,8 @@ function handleSimilarSupport(detail) {
 }
 
 async function submitFeedback() {
-  const title = newFeedback.value.title.trim()
-  if (!title) { formError.value = '请填写标题'; return }
+  const title = newFeedback.value.publicConsent ? newFeedback.value.title.trim() : ''
+  if (newFeedback.value.publicConsent && !title) { formError.value = '请填写标题'; return }
   const content = newFeedback.value.content.trim()
   if (!content || !newFeedback.value.category || submitting.value) return
   if (!categoryOptions.value.some(option => option.key === newFeedback.value.category)) {
@@ -610,7 +615,7 @@ async function submitFeedback() {
     if (!isMounted || currentUserId() !== userId) return
     newMedia.clear()
     resetSimilar()
-    newFeedback.value = { type: 'BUG', category: '', title: '', content: '', clientInfoConsent: false }
+    newFeedback.value = { type: 'BUG', category: '', title: '', content: '', publicConsent: false, clientInfoConsent: false }
     showNewForm.value = false
     publicNotice.value = '反馈已提交。管理员回复后会收到站内通知，你也可以在这里继续补充。'
     filterStatus.value = '全部'
@@ -686,6 +691,7 @@ onBeforeUnmount(() => {
 .feedback-form-grid .feedback-consent { display: flex; align-items: flex-start; gap: 8px; }
 .feedback-form-grid .feedback-consent input { width: auto; flex: none; margin-top: 3px; }
 .feedback-form-grid .feedback-consent span { margin: 0; line-height: 1.6; }
+.feedback-form-grid .feedback-consent small { text-align: left; font-weight: 400; }
 .feedback-form-grid select option { background: var(--feedback-panel-deep); color: var(--feedback-text); }
 
 @media (max-width: 767px) {

@@ -717,6 +717,10 @@ async function runWorkflow(mode, item) {
 async function savePublicInfo(payload) {
   const id = selectedId.value
   if (!id || publicBusy.value) return
+  if (selectedDetail.value?.publicConsent !== true) {
+    publicError.value = '用户未授权发布到反馈广场'
+    return
+  }
   const requestId = detailRequestId
   const userId = currentUserId()
   publicBusy.value = true

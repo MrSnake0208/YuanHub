@@ -6,7 +6,7 @@ const FEEDBACK_TYPES = new Set(['BUG', 'EXPERIENCE', 'FEATURE', 'CONTENT', 'ACCO
 
 // 创建反馈。type 是反馈类型，category 是后端提供的反馈板块。
 // diagnostics 始终取自本次构建实际运行的前端版本，与 clientInfoConsent 无关：
-// consent 只控制 IP / User-Agent 等浏览器信息，版本与 Build 属于应用诊断信息。
+// clientInfoConsent 只控制 IP / User-Agent；publicConsent 单独控制管理员公开授权。
 export async function createFeedback(payload) {
   const rawType = String(payload.type || 'FEEDBACK').trim().toUpperCase()
   const rawCategory = String(payload.category || '').trim().toUpperCase()
@@ -21,10 +21,11 @@ export async function createFeedback(payload) {
     category,
     content: payload.content,
     media_ids: payload.mediaIds || [],
+    public_consent: payload.publicConsent === true,
     client_info_consent: Boolean(payload.clientInfoConsent),
     diagnostics: feedbackDiagnostics()
   }
-  // 旧客户端不带标题时保持请求体不变，避免破坏既有契约。
+  // 标题仍兼容旧请求；私人表单不发送标题。
   if (title) body.title = title
   const data = await request('/v1/reports', { method: 'POST', auth: true, body })
   return normalizeFeedback(data)
@@ -133,6 +134,7 @@ export function normalizeFeedback(report) {
       : Number(lastReporterMessageIndex),
     // 公开共创字段：后端全局 SNAKE_CASE，这里同时兼容 camelCase。
     title: report.title ?? null,
+    publicConsent: (report.publicConsent ?? report.public_consent) === true,
     visibility: String(report.visibility || 'PRIVATE').toUpperCase(),
     publicTitle: report.publicTitle ?? report.public_title ?? null,
     publicSummary: report.publicSummary ?? report.public_summary ?? null,
