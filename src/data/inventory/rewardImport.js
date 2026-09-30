@@ -1,4 +1,5 @@
 import { validateInventoryRecord } from './exchange.js'
+import { agentMatchesGame } from './agentManifest.js'
 
 const MAX_COUNT = 2147483647
 const START = '========== MaaYuan 库存记录 =========='
@@ -21,31 +22,50 @@ export function validateRewardTime(value) {
 }
 
 export function validateRewardRecord(record, accountId, entities) {
+  if (record?.record_type !== 'reward_delta') throw new TypeError('手动补录仅支持奖励流水')
+  return validateReportRecord(record, accountId, entities)
+}
+
+function validateReportRecord(record, accountId, entities, game = '') {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) throw new TypeError('库存记录无效')
   if (!accountId || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(accountId)) throw new TypeError('请先选择有效的子账号')
   if (record.account_id && record.account_id !== accountId) throw new TypeError(`记录属于账号 ${record.account_id}，请切换到对应子账号`)
   requireText(record.record_id, '原始记录 ID')
-  if (record.record_type !== 'reward_delta') throw new TypeError('此入口仅补录奖励流水，库存快照请使用数据交换')
+  const snapshot = record.record_type === 'stock_snapshot'
+  if (!snapshot && record.record_type !== 'reward_delta') throw new TypeError('仅支持奖励流水或库存快照')
   if (!['item', 'agent'].includes(record.entity_type)) throw new TypeError('奖励类型必须为道具或心纸')
-  if ('snapshot_scope' in record) throw new TypeError('奖励流水不能包含库存快照范围')
+  if (snapshot) {
+    if (!['full', 'listed'].includes(record.snapshot_scope)) throw new TypeError('库存快照范围必须为 full 或 listed')
+  } else if ('snapshot_scope' in record) throw new TypeError('奖励流水不能包含库存快照范围')
   validateRewardTime(record.effective_at)
   if (record.acquisition_channel !== undefined) requireText(record.acquisition_channel, '获取渠道', 64)
-  if (!Array.isArray(record.entries) || !record.entries.length) throw new TypeError('请至少添加一项奖励')
+  if (!Array.isArray(record.entries) || (!record.entries.length && !(snapshot && record.snapshot_scope === 'full'))) throw new TypeError('请至少添加一项奖励或库存')
   const seen = new Set()
   for (const entry of record.entries) {
-    if (!entry || !entities.some(entity => entity.entity_type === record.entity_type && entity.id === entry.id)) {
+    const entity = entry && entities.find(entity => entity.entity_type === record.entity_type && entity.id === entry.id)
+    if (!entity) {
       throw new TypeError(`无法识别奖励：${entry?.name || entry?.id || '未选择'}`)
     }
     if (seen.has(entry.id)) throw new TypeError(`奖励重复：${entry.name || entry.id}，请合并数量`)
     seen.add(entry.id)
-    if (!Number.isInteger(entry.count) || entry.count < 1 || entry.count > MAX_COUNT) throw new TypeError(`${entry.name || entry.id}：数量必须为 1 至 ${MAX_COUNT} 的整数`)
+    const minimum = snapshot ? 0 : 1
+    if (!Number.isInteger(entry.count) || entry.count < minimum || entry.count > MAX_COUNT) throw new TypeError(`${entry.name || entry.id}：数量必须为 ${minimum} 至 ${MAX_COUNT} 的整数`)
+    if (record.entity_type === 'agent' && !agentMatchesGame(entity, game) && !(snapshot && entry.count === 0)) {
+      throw new TypeError(`密探「${entity.name}」不适用于${game}，请核对账号游戏版本`)
+    }
   }
   validateInventoryRecord(record)
   return { ...record, account_id: accountId }
 }
 
 export function buildRewardDocument(records, accountId, entities, exportedAt = new Date().toISOString()) {
-  if (!Array.isArray(records) || records.length < 1 || records.length > 1000) throw new TypeError('每次请选择 1 至 1000 条奖励流水')
-  const validated = records.map(record => validateRewardRecord(record, accountId, entities))
+  if (Array.isArray(records) && records.some(record => record?.record_type !== 'reward_delta')) throw new TypeError('手动补录仅支持奖励流水')
+  return buildReportDocument(records, accountId, entities, '', exportedAt)
+}
+
+export function buildReportDocument(records, accountId, entities, game = '', exportedAt = new Date().toISOString()) {
+  if (!Array.isArray(records) || records.length < 1 || records.length > 1000) throw new TypeError('每次请选择 1 至 1000 条库存记录')
+  const validated = records.map(record => validateReportRecord(record, accountId, entities, game))
   const seen = new Set()
   for (const record of validated) {
     if (seen.has(record.record_id)) throw new TypeError(`同批记录 ID 重复：${record.record_id}，请只选择一条`)
@@ -66,8 +86,8 @@ function parseBlock(block, entities) {
   }
   if (!lines.includes(END) || lines.at(-1) !== END) throw new TypeError('记录不完整或结束标记之后包含无法识别的内容')
   const kind = field('类型')
-  if (kind === '库存快照') return { skipped: true }
-  if (kind !== '奖励增量') throw new TypeError('无法识别记录类型')
+  const snapshot = kind === '库存快照'
+  if (!snapshot && kind !== '奖励增量') throw new TypeError('无法识别记录类型')
   const references = lines.filter(line => line.startsWith(MARKER))
   if (references.length !== 1) throw new TypeError('缺少或重复的原始记录 ID 标记，无法安全去重')
   let reference
@@ -79,7 +99,7 @@ function parseBlock(block, entities) {
   if (staminaText !== undefined && !/^\d+$/.test(staminaText)) throw new TypeError('消耗体力必须为非负整数')
   const stamina = staminaText === undefined ? reference.c : Number(staminaText)
   if (staminaText !== undefined && reference.c !== undefined && stamina !== reference.c) throw new TypeError('报告的消耗体力与原始标记不一致')
-  if (reference.s !== undefined) throw new TypeError('奖励流水不能包含库存快照范围')
+  if (!snapshot && reference.s !== undefined) throw new TypeError('奖励流水不能包含库存快照范围')
   const groups = []
   let group = null
   for (const line of lines) {
@@ -103,16 +123,17 @@ function parseBlock(block, entities) {
   return {
     status: field('上报状态') || '未注明上报状态',
     records: groups.map((item, index) => ({
-      ...item, record_id: reference.r[index], record_type: 'reward_delta',
+      ...item, record_id: reference.r[index], record_type: snapshot ? 'stock_snapshot' : 'reward_delta',
       effective_at: field('时间'), acquisition_channel: field('渠道'),
       ...(account || reference.a ? { account_id: account || reference.a } : {}),
       ...(stamina !== undefined ? { stamina_cost: stamina } : {}),
+      ...(snapshot ? { snapshot_scope: reference.s } : {}),
     })),
   }
 }
 
 /** Parse without writing: invalid blocks stay visible and cannot be selected. */
-export function parseRewardReport(text, accountId, entities) {
+export function parseRewardReport(text, accountId, entities, game = '') {
   const source = String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim()
   if (!source) throw new TypeError('请选择报告文件或粘贴报告内容')
   let candidates
@@ -121,22 +142,19 @@ export function parseRewardReport(text, accountId, entities) {
     try { document = JSON.parse(source) } catch { throw new TypeError('JSON 解析失败，请检查报告格式') }
     if (document.format !== 'myshare-inventory-exchange' || document.version !== 2 || !Array.isArray(document.records)) throw new TypeError('仅支持库存交换 v2 JSON 或 MaaYuan TXT 报告')
     if ('user_id' in document) throw new TypeError('交换档案不能携带 user_id')
-    candidates = document.records.map(record => () => record?.record_type === 'stock_snapshot'
-      ? { skipped: true } : { records: [record], status: 'JSON 未注明上报状态' })
+    candidates = document.records.map(record => () => ({ records: [record], status: 'JSON 未注明上报状态' }))
   } else {
     const blocks = source.split(START)
     if (blocks.shift().trim() || !blocks.length) throw new TypeError('未识别到 MaaYuan 库存记录，请选择 DailyRewards TXT 或库存交换 v2 JSON')
     candidates = blocks.map(block => () => parseBlock(block.trim(), entities))
   }
   const rows = []
-  let skipped = 0
   const seen = new Set()
   candidates.forEach((read, index) => {
     try {
       const parsed = read()
-      if (parsed.skipped) { skipped++; return }
       // A mixed block is validated atomically: never silently import only half a report.
-      const records = parsed.records.map(record => validateRewardRecord(record, accountId, entities))
+      const records = parsed.records.map(record => validateReportRecord(record, accountId, entities, game))
       const localIds = new Set()
       for (const record of records) {
         if (localIds.has(record.record_id)) throw new TypeError('同一记录块内出现重复的原始记录 ID')
@@ -155,5 +173,5 @@ export function parseRewardReport(text, accountId, entities) {
       rows.push({ key: `error:${index}`, block: index + 1, selected: false, error: error.message })
     }
   })
-  return { rows, skipped }
+  return { rows }
 }
