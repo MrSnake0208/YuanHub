@@ -64,7 +64,7 @@
                 </select>
               </label>
               <div class="feedback-result-tools">
-                <span class="feedback-result-meta">第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
+                <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
                 <button
                   class="feedback-button feedback-mark-read-button"
                   type="button"
@@ -431,8 +431,13 @@ async function loadFeedback({ background = false } = {}) {
       sortOrder: 'desc'
     })
     if (requestId !== loadRequestId) return
+    totalCount.value = Number(data.total ?? data.items?.length ?? 0)
+    if (page.value > totalPages.value) {
+      page.value = totalPages.value
+      await loadFeedback({ background })
+      return
+    }
     feedbacks.value = data.items || []
-    totalCount.value = Number(data.total ?? feedbacks.value.length)
   } catch (e) {
     if (requestId === loadRequestId && !await handleForbidden(e) && !background) error.value = e.message || '反馈加载失败'
   } finally {
@@ -690,10 +695,6 @@ async function runWorkflow(mode, item) {
     replaceTicket(detail)
     workflowMode.value = ''
     workflowMenuOpen.value = false
-    if (mode === 'claim' && filterStatus.value === 'UNASSIGNED') {
-      filterStatus.value = 'MINE'
-      page.value = 1
-    }
     workflowMessage.value = mode === 'claim' ? '接单成功，工单已移至「我负责」' : `${actionLabel}成功`
     void loadFeedback({ background: true })
   } catch (e) {

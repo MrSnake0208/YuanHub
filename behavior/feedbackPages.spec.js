@@ -131,6 +131,7 @@ it('管理员工作台默认显示待接单，并可切回全部', async () => {
   await flushPromises()
   expect(api.listWorkflowFeedback).toHaveBeenCalledWith(expect.objectContaining({ queue: 'UNASSIGNED' }))
   expect(wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '待接单').attributes('aria-selected')).toBe('true')
+  expect(wrapper.get('.feedback-result-meta').text()).toContain('当前筛选共 40 条')
 
   await wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '全部').trigger('click')
   await flushPromises()
@@ -138,11 +139,11 @@ it('管理员工作台默认显示待接单，并可切回全部', async () => {
   wrapper.unmount()
 })
 
-it('未接单工单可接单并更新详情中的运营负责人', async () => {
+it('接单后保留待接单队列和已接详情，关闭后可继续选择下一单', async () => {
   let detail = { ...ticket('rpt_a'), workflowStage: 'UNASSIGNED', workArea: 'OPERATOR' }
   api.listWorkflowFeedback.mockImplementation(async ({ queue }) => ({
-    items: queue === 'UNASSIGNED' ? [summary('rpt_a'), summary('rpt_b')] : [summary('rpt_a')],
-    total: queue === 'UNASSIGNED' ? 2 : 1
+    items: queue === 'UNASSIGNED' ? (detail.workflowStage === 'UNASSIGNED' ? [summary('rpt_a'), summary('rpt_b')] : [summary('rpt_b')]) : [summary('rpt_a')],
+    total: queue === 'UNASSIGNED' && detail.workflowStage === 'UNASSIGNED' ? 2 : 1
   }))
   api.getManagedFeedback.mockImplementation(async () => detail)
   api.claimFeedback.mockImplementation(async () => (detail = { ...detail, workflowStage: 'PROCESSING', operatorAssigneeName: '测试运营' }))
@@ -155,14 +156,76 @@ it('未接单工单可接单并更新详情中的运营负责人', async () => {
   expect(api.claimFeedback).toHaveBeenCalledWith('rpt_a')
   expect(api.listFeedbackWorkflowEvents).not.toHaveBeenCalled()
   expect(wrapper.get('[role="dialog"]').text()).toContain('测试运营')
-  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'MINE' }))
-  expect(wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '我负责').attributes('aria-selected')).toBe('true')
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'UNASSIGNED' }))
+  expect(wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '待接单').attributes('aria-selected')).toBe('true')
+  expect(wrapper.get('.ticket-detail-meta').text()).toContain('处理中')
+  expect(wrapper.get('.feedback-result-meta').text()).toContain('当前筛选共 1 条')
+  expect(wrapper.findAll('tbody tr').some(row => row.text().includes('rpt_a'))).toBe(false)
   await close(wrapper)
+  expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+  await wrapper.findAll('.feedback-status-tabs button').find(button => button.text() === '我负责').trigger('click')
+  await flushPromises()
   await choose(wrapper, 'rpt_a')
   expect(wrapper.get('.ticket-detail-meta').text()).toContain('处理中')
   expect(wrapper.get('.ticket-detail-meta').text()).toContain('测试运营')
   expect(wrapper.find('[aria-label="工单流转"]').exists()).toBe(false)
   expect(wrapper.findAll('.feedback-action-toolbar button').some(button => button.text() === '接单')).toBe(false)
+  wrapper.unmount()
+})
+
+it('连续接单保持搜索、类型、板块筛选与有效页码', async () => {
+  const unassigned = Array.from({ length: 44 }, (_, index) => summary(`rpt_${index}`))
+  api.listWorkflowFeedback.mockImplementation(async ({ page, pageSize }) => ({
+    items: unassigned.slice((page - 1) * pageSize, page * pageSize), total: unassigned.length
+  }))
+  api.getManagedFeedback.mockImplementation(async id => ({ ...ticket(id), workflowStage: 'UNASSIGNED', workArea: 'STAR' }))
+  api.claimFeedback.mockImplementation(async id => {
+    unassigned.splice(unassigned.findIndex(item => item.id === id), 1)
+    return { ...ticket(id), workflowStage: 'PROCESSING', workArea: 'STAR', operatorAssigneeName: '测试运营' }
+  })
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await wrapper.get('input[name="managed-feedback-search"]').setValue('待处理')
+  await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
+  await wrapper.findAll('.feedback-filter select')[0].setValue('BUG'); await flushPromises()
+  await wrapper.findAll('.feedback-filter select')[1].setValue('STAR'); await flushPromises()
+  await wrapper.get('[aria-label="下一页"]').trigger('click'); await flushPromises()
+  for (const id of ['rpt_20', 'rpt_21']) {
+    await choose(wrapper, id)
+    await wrapper.findAll('button').find(button => button.text() === '接单').trigger('click'); await flushPromises()
+    expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({
+      queue: 'UNASSIGNED', page: 2, q: '待处理', type: 'BUG', workArea: 'STAR'
+    }))
+    expect(wrapper.get('.ticket-detail-meta').text()).toContain('处理中')
+    expect(wrapper.get('.ticket-detail-meta').text()).toContain('测试运营')
+    expect(wrapper.findAll('.feedback-action-toolbar button').some(button => button.text() === '接单')).toBe(false)
+    await close(wrapper)
+  }
+  expect(api.claimFeedback.mock.calls).toEqual([['rpt_20'], ['rpt_21']])
+  expect(wrapper.get('.feedback-result-meta').text()).toContain('当前筛选共 42 条')
+  wrapper.unmount()
+})
+
+it.each([20, 0])('末页接单后剩余 %i 条时回退有效页码并保留详情', async remaining => {
+  const unassigned = [...Array.from({ length: 20 }, (_, index) => summary(`rpt_${index}`)), summary('rpt_a')]
+  api.listWorkflowFeedback.mockImplementation(async ({ page, pageSize }) => ({
+    items: unassigned.slice((page - 1) * pageSize, page * pageSize), total: unassigned.length
+  }))
+  api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'UNASSIGNED' })
+  api.claimFeedback.mockImplementation(async () => {
+    unassigned.length = remaining
+    return { ...ticket('rpt_a'), workflowStage: 'PROCESSING', operatorAssigneeName: '测试运营' }
+  })
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  await wrapper.get('[aria-label="下一页"]').trigger('click'); await flushPromises()
+  await choose(wrapper, 'rpt_a')
+  await wrapper.findAll('button').find(button => button.text() === '接单').trigger('click'); await flushPromises()
+  expect(api.listWorkflowFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ queue: 'UNASSIGNED', page: 1 }))
+  expect(wrapper.get('.feedback-result-meta').text()).toContain(`当前筛选共 ${remaining} 条`)
+  expect(wrapper.get('.feedback-result-meta').text()).toContain('第 1 / 1 页')
+  expect(wrapper.get('.ticket-detail-meta').text()).toContain('测试运营')
+  await close(wrapper)
+  if (remaining) expect(wrapper.findAll('tbody tr')).toHaveLength(remaining)
+  else expect(wrapper.get('.ticket-state.empty').text()).toContain('暂无符合条件的授权工单')
   wrapper.unmount()
 })
 
