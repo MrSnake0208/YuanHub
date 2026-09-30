@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import AppDialog from '../src/components/AppDialog.vue'
 import BetaCommunityDialog from '../src/components/beta/BetaCommunityDialog.vue'
 import { dialog } from '../src/utils/dialog.js'
@@ -32,17 +32,17 @@ afterEach(async () => {
 
 describe('公共 Dialog 键盘行为', () => {
   it('驳回原因可不限长度，下一次普通 prompt 恢复默认 64 字符', async () => {
-    const wrapper = render(AppDialog)
+    render(AppDialog)
     const reason = dialog.prompt({ title: '驳回反馈', maxLength: null })
     await flushPromises()
-    const input = wrapper.get('.dialog-field input')
+    const input = new DOMWrapper(document.body.querySelector('.dialog-field input'))
     expect(input.attributes('maxlength')).toBeUndefined()
     await input.setValue('详细原因'.repeat(30))
-    await wrapper.get('.dlg-btn.primary').trigger('click')
+    await new DOMWrapper(document.body.querySelector('.dlg-btn.primary')).trigger('click')
     expect(await reason).toBe('详细原因'.repeat(30))
     const next = dialog.prompt({ title: '重命名' })
     await flushPromises()
-    expect(wrapper.get('.dialog-field input').attributes('maxlength')).toBe('64')
+    expect(document.body.querySelector('.dialog-field input').getAttribute('maxlength')).toBe('64')
     dialog._cancel()
     await next
   })

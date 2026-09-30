@@ -84,11 +84,12 @@ test('adds a single accessible workbench back link to management detail pages', 
 // Replaced by mounted behavior tests; see docs/testing.md (no pixel/source-shape gate).
 
 
-test('keeps the guest sidebar separator while grouping login-only entries', function () {
+test('groups private sidebar entries while keeping guest access to public feedback', function () {
   const sidebar = readSource('../src/components/IslandSidebar.vue')
   const desktopNav = sidebar.match(/<nav class="nav">([\s\S]*?)<\/nav>/)[1]
 
-  assert.equal((desktopNav.match(/class="nav-separator"/g) || []).length, 2)
-  assert.match(desktopNav, /<div class="nav-separator" aria-hidden="true"><\/div>\s*<template v-if="isLoggedIn">/)
-  assert.match(desktopNav, /<template v-if="isLoggedIn">[\s\S]*to="\/notifications"[\s\S]*to="\/feedback"[\s\S]*<div class="nav-separator" aria-hidden="true"><\/div>\s*<\/template>/)
+  const privateEntries = desktopNav.match(/<template v-if="isLoggedIn">([\s\S]*?)<\/template>/)[1]
+  assert.match(privateEntries, /to="\/notifications"/)
+  assert.match(privateEntries, /to="\/feedback"/)
+  assert.match(desktopNav, /<router-link\s+v-if="!isLoggedIn"\s+to="\/feedback\/plaza"/)
 })
