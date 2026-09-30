@@ -63,8 +63,14 @@
                   <option v-for="option in categoryOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
                 </select>
               </label>
+              <label class="feedback-filter">
+                <span>每页显示</span>
+                <select v-model.number="pageSize" aria-label="每页显示数量" @change="reloadFromFirstPage">
+                  <option v-for="size in [20, 30, 50]" :key="size" :value="size">{{ size }} 条</option>
+                </select>
+              </label>
               <div class="feedback-result-tools">
-                <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页，每页 {{ PAGE_SIZE }} 条</span>
+                <span class="feedback-result-meta">当前筛选共 {{ totalCount }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
                 <button
                   class="feedback-button feedback-mark-read-button"
                   type="button"
@@ -90,6 +96,7 @@
               :error="error"
               :total="totalCount"
               :page="page"
+              :page-size="pageSize"
               :total-pages="totalPages"
               :type-label="typeLabel"
               :category-label="categoryLabel"
@@ -264,7 +271,6 @@ import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import '@/styles/feedback-workspace.css'
 
 const { feedbackUnreadState, subscribeFeedbackUnread } = feedbackUnreadStore
-const PAGE_SIZE = 20
 const allStatusTabs = [
   { key: 'UNASSIGNED', label: '待接单' },
   { key: 'MINE', label: '我负责' },
@@ -289,6 +295,7 @@ const loadingAccess = ref(true)
 const loading = ref(false)
 const error = ref('')
 const page = ref(1)
+const pageSize = ref(20)
 const totalCount = ref(0)
 const q = ref('')
 const filterStatus = ref('UNASSIGNED')
@@ -353,7 +360,7 @@ const categoryOptions = computed(() => {
   return access.value.superAdmin ? all : all.filter(option => access.value.operatorAreas.includes(option.key) || access.value.developerAreas.includes(option.key))
 })
 const operatorCategoryOptions = computed(() => categoryOptions.value.filter(option => access.value.superAdmin || access.value.operatorAreas.includes(option.key)))
-const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
 const unreadFeedbackIds = computed(() => feedbackUnreadState.ids)
 const markAllReadHint = computed(() => feedbackUnreadState.count > 0
   ? `将当前管理范围内 ${feedbackUnreadState.count} 条未读反馈全部标记为已读`
@@ -422,7 +429,7 @@ async function loadFeedback({ background = false } = {}) {
   try {
     const data = await listWorkflowFeedback({
       page: page.value,
-      pageSize: PAGE_SIZE,
+      pageSize: pageSize.value,
       queue: filterStatus.value,
       type: filterType.value || undefined,
       workArea: filterCategory.value || undefined,
