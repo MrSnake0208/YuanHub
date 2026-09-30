@@ -11,6 +11,8 @@ Object.defineProperties(HTMLDialogElement.prototype, {
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  // jsdom has no ResizeObserver; geometry remains a browser-level check.
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('Unexpected network request: mock the API boundary in behavior tests'))))
 })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); document.body.innerHTML = '' })
