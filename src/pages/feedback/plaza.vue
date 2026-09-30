@@ -13,7 +13,7 @@
       </header>
       <section class="feedback-content"><div class="wrap">
         <FeedbackWorkspaceNav active="plaza" :can-manage="canManageFeedback" :can-configure="canConfigureFeedback" />
-        <p class="plaza-context">这里只展示管理员整理后的公开内容。开发目标与验收进度可在 <router-link to="/co-creation">共创中心</router-link> 查看。</p>
+        <p class="plaza-context">这里只展示管理员整理后的公开内容。开发目标与验收进度可在 <router-link to="/co-creation">大饼中心</router-link> 查看。</p>
         <FeedbackPlaza :focus-id="focusId" :initial-type="initialType" />
       </div></section>
     </main>

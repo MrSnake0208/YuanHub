@@ -349,7 +349,7 @@ export const routes = [
     },
     {
         path: '/co-creation',
-        text: '共创中心',
+        text: '大饼中心',
         name: 'co-creation',
         display: true,
         module: 'user',
@@ -363,7 +363,7 @@ export const routes = [
             }
         },
         meta: {
-            title: '共创中心 — 鸢鸢相抱 · YuanHub'
+            title: '大饼中心 — 鸢鸢相抱 · YuanHub'
         }
     },
     {

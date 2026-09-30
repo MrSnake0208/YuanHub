@@ -3,9 +3,9 @@
     <IslandSidebar />
     <main id="main-content">
       <header class="hero feedback-hero"><div class="wrap">
-        <div class="feedback-hero-kicker">CO-CREATION / DEVELOPMENT GOALS</div>
+        <div class="feedback-hero-kicker">DEVELOPMENT GOALS</div>
         <div class="feedback-hero-layout">
-          <div><h1>共创中心</h1><p class="hero-sub">我们准备实现什么、推进到哪一步，以及如何确认目标已经完成。</p></div>
+          <div><h1>大饼中心</h1><p class="hero-sub">我们准备实现什么、推进到哪一步，以及如何确认目标已经完成。</p></div>
           <router-link v-if="canManage" class="feedback-primary-action feedback-hero-action" to="/co-creation/admin">管理开发目标</router-link>
         </div>
       </div></header>
@@ -28,7 +28,7 @@ const canManage = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIO
 </script>
 
 <style scoped>
-.co-creation-page .feedback-hero { --wm: '共创'; }
+.co-creation-page .feedback-hero { --wm: '大饼'; }
 .creation-context { margin-top: 18px; color: var(--feedback-text-muted); font-size: 13px; line-height: 1.7; }
 .creation-context a { color: var(--accent-strong); font-weight: 800; }
 </style>
