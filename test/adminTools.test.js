@@ -26,6 +26,7 @@ test('maps every management tool to its existing permission boundary', function 
     '/feedback/manage',
     '/feedback/admin',
     '/operator/admin',
+    '/recruitment/admin',
     '/level/admin',
     '/admin/changelog',
     '/admin/roles',
@@ -55,6 +56,14 @@ test('registers the protected management workbench route', function () {
   assert.equal(route.meta.requiresAuth, true)
   assert.equal(route.meta.requiresManagement, true)
   assert.equal(route.meta.title.startsWith('管理工作台'), true)
+})
+
+test('招募管理路由与工作台只向具有专属目录权限的管理员开放', () => {
+  const route = routes.find(item => item.path === '/recruitment/admin')
+  assert.equal(route.meta.requiresAuth, true)
+  assert.equal(route.meta.requiredPermission, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE)
+  assert.deepEqual(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE] })).map(tool => tool.to), ['/recruitment/admin'])
+  assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE] })).some(tool => tool.to === '/recruitment/admin'), false)
 })
 
 test('adds a single accessible workbench back link to management detail pages', function () {

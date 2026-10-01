@@ -2,6 +2,10 @@ import { request } from './request.js'
 import { DOWNLOAD_REQUEST_TIMEOUT_MS, UPLOAD_REQUEST_TIMEOUT_MS } from '../utils/requestTimeout.js'
 
 const PATH = '/v1/recruitment'
+const ADMIN_PATH = '/v1/admin/recruitment-catalog'
+export function listAdminRecruitmentCatalog() { return request(ADMIN_PATH, { auth: true }) }
+export function createAdminRecruitmentPool(pool) { return request(ADMIN_PATH, { auth: true, method: 'POST', body: pool }) }
+export function updateAdminRecruitmentPool(poolId, pool) { return request(ADMIN_PATH + '/' + encodeURIComponent(poolId), { auth: true, method: 'PUT', body: pool }) }
 function query(values) {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(values)) if (value != null && value !== '') params.set(key, value)
