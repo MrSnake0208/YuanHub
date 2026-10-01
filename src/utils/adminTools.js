@@ -55,6 +55,11 @@ const ADMIN_TOOLS = Object.freeze([
     }
   },
   {
+    key: 'recruitment-catalog', to: '/recruitment/admin', label: '招募卡池管理',
+    description: '维护公共卡池、UP 名单和占位密探对应关系', group: 'content', icon: ScanLine,
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE)
+  },
+  {
     key: 'level-catalog',
     to: '/level/admin',
     label: '关卡管理',

@@ -9,7 +9,7 @@ import { auth } from '../src/store/auth.js'
 import { beta } from '../src/store/beta.js'
 import { dialog } from '../src/utils/dialog.js'
 import { subscribeAccountEvents } from '../src/store/accountEvents.js'
-import { deferred, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
+import { deferred, recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
 import { isFeatureEnabled } from '../src/config/features.js'
 
 vi.mock('../src/config/features.js', () => ({ FEATURE_KEYS: { RECRUITMENT_ARCHIVE: 'recruitmentArchive' }, isFeatureEnabled: vi.fn(() => true) }))
@@ -32,7 +32,7 @@ beforeEach(() => {
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '代号鸢' }])
   api.getRecruitmentArchive.mockImplementation(accountId => Promise.resolve(structuredClone(archives[accountId])))
   api.listRecruitmentEvents.mockImplementation(({ accountId }) => Promise.resolve({ items: structuredClone(events[accountId]), next_cursor: null, archive_revision: archives[accountId].archive_revision }))
-  api.listRecruitmentBatches.mockImplementation(({ accountId }) => Promise.resolve({ items: [], next_cursor: null, archive_revision: archives[accountId].archive_revision })); api.getRecruitmentCatalog.mockResolvedValue({ pools: [] }); getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char-a', name: '测试绝密', rarity: 5, games: ['代号鸢'] }] }); dialog.confirm.mockResolvedValue(true)
+  api.listRecruitmentBatches.mockImplementation(({ accountId }) => Promise.resolve({ items: [], next_cursor: null, archive_revision: archives[accountId].archive_revision })); api.getRecruitmentCatalog.mockResolvedValue(recruitmentCatalog()); getOperatorCatalog.mockResolvedValue({ format: 'myshare-operator-catalog', version: 1, catalog_version: 'test-v1', operators: [{ id: 'char-a', name: '测试绝密', rarity: 5, games: ['代号鸢'] }] }); dialog.confirm.mockResolvedValue(true)
   api.recruitmentCommand.mockResolvedValue({ archive_revision: 4 })
 })
 
@@ -114,9 +114,9 @@ it('游戏快照不一致仅可读；失去用户身份清除个人记录', asyn
   const wrapper = render(); await flushPromises(); expect(wrapper.text()).toContain('暂不能修改或导入'); expect(button(wrapper, '记录绝密').attributes('disabled')).toBeDefined()
   auth.accessToken = ''; auth.userInfo = null; await flushPromises(); expect(wrapper.find('.event-row').exists()).toBe(false); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
-it('目录失败不阻断临时项；连续revision不一致有界退出可刷新', async () => {
+it('目录失败保留历史但禁新增；连续revision不一致有界退出可刷新', async () => {
   api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable'))
-  const wrapper = render(); await flushPromises(); expect(wrapper.find('.summary').exists()).toBe(true); expect(wrapper.text()).toContain('临时项仍可使用')
+  const wrapper = render(); await flushPromises(); expect(wrapper.find('.summary').exists()).toBe(true); expect(wrapper.text()).toContain('新增需等待目录恢复'); expect(button(wrapper, '记录绝密').attributes('disabled')).toBeDefined()
   api.listRecruitmentEvents.mockResolvedValue({ items: [], next_cursor: null, archive_revision: 88 })
   const before = api.getRecruitmentArchive.mock.calls.length; await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
   expect(api.getRecruitmentArchive.mock.calls.length - before).toBe(2); expect(wrapper.text()).toContain('请稍后刷新')
@@ -154,12 +154,15 @@ it('断线期间换游戏后重连，先读取真实账号游戏再读取目录�
 })
 
 it('创建卡池明确提交未知/0/已知初始进度，不把未填事实当0', async () => {
+  api.getRecruitmentCatalog.mockResolvedValue({ pools: ['catalog-a', 'catalog-b', 'catalog-c', 'catalog-d'].map(pool_id => ({ ...recruitmentCatalog().pools[0], pool_id })) })
   const wrapper = render(); await flushPromises()
   const form = wrapper.get('.maintenance section form')
-  await form.get('input[type=text], input:not([type])').setValue('临时池')
+  expect(form.find('input[type=text], input:not([type])').exists()).toBe(false); expect(form.get('select').findAll('option').map(option => option.attributes('value'))).not.toContain('catalog-a')
+  await form.get('select').setValue('catalog-b')
   await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toMatchObject({ operation: 'pool_create', data: { progress: null } })
-  await form.get('input[type=text], input:not([type])').setValue('第二池'); await form.findAll('select')[1].setValue('zero'); await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.progress).toBe(0)
-  await form.get('input[type=text], input:not([type])').setValue('第三池'); await form.findAll('select')[1].setValue('known'); await form.get('input[type=number]').setValue('21'); await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.progress).toBe(21)
+  expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ catalog_pool_id: 'catalog-b' }); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).not.toHaveProperty('name')
+  await form.get('select').setValue('catalog-c'); await form.findAll('select')[1].setValue('zero'); await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.progress).toBe(0)
+  await form.get('select').setValue('catalog-d'); await form.findAll('select')[1].setValue('known'); await form.get('input[type=number]').setValue('21'); await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.progress).toBe(21)
 })
 
 it('从早到晚排序作用于完整分页，重排提交全池最早到最新ID而不改变跨度', async () => {
@@ -183,4 +186,45 @@ it('三个读版本不一致不混合批次；后台清账号404会重新读取�
   const wrapper = render(); await flushPromises(); api.listRecruitmentBatches.mockResolvedValue({ items: [{ batch_id: 'different-version', total_pull_count: 120 }], next_cursor: null, archive_revision: 99 })
   await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); expect(wrapper.text()).toContain('请稍后刷新'); expect(wrapper.find('.batch-row').exists()).toBe(false)
   api.getRecruitmentArchive.mockRejectedValue(Object.assign(new Error('账号已删除'), { status: 404 })); listAccounts.mockResolvedValue([]); await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); expect(activeAccount.id).toBe(''); expect(wrapper.find('.summary').exists()).toBe(false); expect(wrapper.text()).toContain('先创建游戏账号')
+})
+
+it('按真实图鉴 envelope 读取名字头像和职业，只展示当前游戏绝密', async () => {
+  getOperatorCatalog.mockResolvedValue({ format: 'myshare-operator-catalog', version: 1, catalog_version: 'test-v2', operators: [
+    { id: 'char-a', name: '图鉴新名字', avatar: '/test-avatar.png', rarity: 5, prof: '龙盾', games: ['代号鸢'] },
+    { id: 'char-other-game', name: '另一游戏', rarity: 5, games: ['如鸢'] },
+    { id: 'char-r4', name: '机密', rarity: 4, games: ['代号鸢'] }
+  ] })
+  events['acc-a'][0].agent_snapshot = { agent_id: 'char-a', name: '旧快照名字' }
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.event-row strong').text()).toBe('图鉴新名字'); expect(wrapper.find('.event-row img').attributes('src')).toContain('/test-avatar.png')
+  await button(wrapper, '记录绝密').trigger('click'); const editor = wrapper.findComponent({ name: 'EntryEditor' })
+  expect(editor.get('fieldset select').text()).toContain('图鉴新名字'); expect(editor.get('fieldset select').text()).not.toContain('另一游戏'); expect(editor.get('fieldset select').text()).not.toContain('机密')
+  await editor.get('fieldset select').setValue('char-a'); expect(editor.get('.agent-preview').text()).toContain('龙盾')
+})
+
+it('异常图鉴响应明确报错并保留历史，不导致空密探列表抛错', async () => {
+  getOperatorCatalog.mockResolvedValue([{ id: 'char-a', name: '错形状' }])
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.summary').exists()).toBe(true); expect(wrapper.text()).toContain('公共密探图鉴响应无效'); expect(button(wrapper, '记录绝密').attributes('disabled')).toBeDefined()
+})
+
+it('占位对应正式密探后同一历史结果继承名字头像，span及revision不变', async () => {
+  const catalog = recruitmentCatalog(); const slotId = 'catalog-a:up:stable'
+  catalog.pools[0].up_agents = [{ id: slotId, name: 'UP 占位 1', operator_id: null, active: true }]; api.getRecruitmentCatalog.mockResolvedValue(catalog)
+  events['acc-a'] = [{ ...recruitmentEvent('placeholder-result', 17), agent_snapshot: { agent_id: slotId, name: 'UP 占位 1' }, up_status: 'up' }]
+  const wrapper = render(); await flushPromises(); expect(wrapper.find('.event-row strong').text()).toBe('UP 占位 1')
+  catalog.pools[0].up_agents[0].operator_id = 'char-a'; getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char-a', name: '正式绝密', avatar: '/formal.png', rarity: 5, games: ['代号鸢'] }] })
+  await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
+  expect(wrapper.find('.event-row strong').text()).toBe('正式绝密'); expect(wrapper.find('.event-row img').attributes('src')).toContain('/formal.png'); expect(wrapper.find('.span-number').text()).toBe('17 抽出货'); expect(api.recruitmentCommand).not.toHaveBeenCalled(); expect(archives['acc-a'].archive_revision).toBe(3)
+  await button(wrapper, '记录绝密').trigger('click'); const editor = wrapper.findComponent({ name: 'EntryEditor' }); expect(editor.get('fieldset select').findAll('option').map(option => option.attributes('value')).filter(value => value === 'char-a')).toHaveLength(0)
+  await editor.get('fieldset select').setValue(slotId); await editor.get('fieldset input[type=number]').setValue('18'); await editor.get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toMatchObject({ operation: 'event_create', data: { entries: [{ agent_id: slotId, up_status: 'up', pull_span: 18 }] } })
+})
+
+it('旧临时池保留删除修改入口，但不能新增自定义池或密探', async () => {
+  archives['acc-a'].pools[0].snapshot.catalog_pool_id = null
+  archives['acc-a'].pools[0].mapped_snapshot = { catalog_pool_id: 'catalog-a', name: '已对应公共卡池' }
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.text()).toContain('保留历史与进度维护'); expect(button(wrapper, '记录绝密').attributes('disabled')).toBeDefined(); expect(wrapper.text()).not.toContain('临时卡池名称'); expect(wrapper.text()).not.toContain('添加临时密探'); expect(wrapper.text()).not.toContain('保存对应'); expect(wrapper.get('.maintenance select').text()).toContain('测试卡池')
+  await wrapper.find('.event-row button').trigger('click'); expect(wrapper.find('[role=dialog]').exists()).toBe(true); expect(wrapper.find('[role=dialog] button[type=submit]').attributes('disabled')).toBeUndefined()
 })

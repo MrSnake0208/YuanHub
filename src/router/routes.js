@@ -207,6 +207,20 @@ export const routes = [
         }
     },
     {
+        path: '/recruitment/admin',
+        text: '招募卡池管理',
+        name: 'recruitment-admin',
+        display: false,
+        module: 'tools',
+        icon: 'shield',
+        component: () => import('/src/pages/recruitment/admin.vue'),
+        meta: {
+            title: '招募卡池管理 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiredPermission: 'recruitment_catalog:write'
+        }
+    },
+    {
         path: '/level/admin',
         text: '关卡管理',
         name: 'level-admin',

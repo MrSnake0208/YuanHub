@@ -6,6 +6,7 @@ import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
+import { operatorCatalogEntries } from './rules.js'
 
 export function useRecruitment() {
   const state = reactive({ accounts: [], archive: null, events: [], batches: [], catalog: [], operators: [], loading: false, accountsLoading: false, busy: false, error: '', catalogError: '', notice: '', nextCursor: null, batchCursor: null, poolFilter: '', dateFrom: '', dateTo: '', order: 'desc', undo: null, contextVersion: 0, requestVersion: 0 })
@@ -14,7 +15,7 @@ export function useRecruitment() {
   const game = computed(() => activeAccount.gameFor(accountId.value))
   const available = computed(() => !!identity.value && beta.canUseBetaFeatures && state.accounts.some(account => account.id === accountId.value))
   const writable = computed(() => available.value && !!state.archive && !state.archive.game_mismatch && !state.loading && !state.busy)
-  const agents = computed(() => state.operators.filter(agent => agent.rarity === 5 && agent.games?.includes(game.value)).map(agent => ({ ...agent, temporary: false })).concat((state.archive?.temporary_agents || []).map(agent => ({ id: agent.agent_id, mapped_agent_id: agent.mapped_agent_id, name: agent.name + (agent.mapped_name ? ' → ' + agent.mapped_name : '（临时）'), temporary: true }))))
+  const agents = computed(() => state.operators.filter(agent => agent.rarity === 5 && agent.games?.includes(game.value)))
   let generation = 0, readGeneration = 0, accountsGeneration = 0, alive = true, pendingCommand = null
   const capture = () => ({ generation, identity: identity.value, accountId: accountId.value })
   const matches = token => alive && token.generation === generation && token.identity === identity.value && token.accountId === accountId.value && available.value
@@ -29,7 +30,7 @@ export function useRecruitment() {
     state.loading = true; state.error = ''
     try {
       const [archive, page, batches, catalog, operators] = await Promise.all([
-        api.getRecruitmentArchive(token.accountId), api.listRecruitmentEvents({ accountId: token.accountId, poolId: state.poolFilter, dateFrom: state.dateFrom, dateTo: state.dateTo, order: state.order }), api.listRecruitmentBatches({ accountId: token.accountId, poolId: state.poolFilter }), api.getRecruitmentCatalog(game.value).catch(() => ({ pools: [], failed: true })), getOperatorCatalog().catch(() => ({ operators: [], failed: true }))
+        api.getRecruitmentArchive(token.accountId), api.listRecruitmentEvents({ accountId: token.accountId, poolId: state.poolFilter, dateFrom: state.dateFrom, dateTo: state.dateTo, order: state.order }), api.listRecruitmentBatches({ accountId: token.accountId, poolId: state.poolFilter }), api.getRecruitmentCatalog(game.value).then(data => { if (!Array.isArray(data?.pools)) throw new Error('公共卡池目录响应无效'); return data }).catch(error => ({ pools: [], error: error.message })), getOperatorCatalog().then(data => ({ operators: operatorCatalogEntries(data) })).catch(error => ({ operators: [], error: error.message }))
       ])
       if (!matches(token) || read !== readGeneration) return
       if (page.archive_revision !== archive.archive_revision || batches.archive_revision !== archive.archive_revision) {
@@ -38,7 +39,8 @@ export function useRecruitment() {
       }
       if (state.archive && state.archive.archive_revision !== archive.archive_revision) { state.undo = null; state.requestVersion++ }
       Object.assign(state, { archive, events: page.items, nextCursor: page.next_cursor, batches: batches.items, batchCursor: batches.next_cursor, catalog: catalog.pools, operators: operators.operators })
-      state.catalogError = catalog.failed || operators.failed ? '公共目录暂时无法读取，已有记录与临时项仍可使用。刷新可重试。' : ''
+      state.catalogError = [catalog.error, operators.error].filter(Boolean).join('；')
+      if (state.catalogError) state.catalogError += '。已有档案仍可查看和维护，新增需等待目录恢复。'
     } catch (error) {
       if (matches(token) && read === readGeneration) {
         state.error = error.message || '读取失败，请重试'

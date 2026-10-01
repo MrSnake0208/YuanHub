@@ -41,11 +41,20 @@ it('仅已核对fixed UP配置自动判断；选择/部分/未知保持unknown�
   await select(wrapper, 'UP 状态').setValue('unknown'); await wrapper.setProps({ pools: [{ pool_id: 'pool-a', snapshot: { name: '池', up_status: 'verified', up_agent_ids: [] }, progress: 0 }] }); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('unknown')
 })
 
-it('verified池未对应的临时密探保持unknown，对应之后才自动判断', async () => {
-  const wrapper = render({ agents: [{ id: 'tmp_a', name: '临时绝密', temporary: true }], pools: [{ pool_id: 'pool-a', snapshot: { name: '池', up_status: 'verified', up_agent_ids: ['agent-a'] }, progress: 0 }] })
-  await wrapper.get('fieldset select').setValue('tmp_a'); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('unknown')
-  await wrapper.setProps({ agents: [{ id: 'tmp_a', name: '临时绝密', temporary: true, mapped_agent_id: 'agent-a' }], pools: [{ pool_id: 'pool-a', snapshot: { name: '池', up_status: 'verified', up_agent_ids: ['agent-a'] }, progress: 0 }] }); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('up')
-  for (const up_status of ['partial', 'selection', 'unknown']) { await wrapper.setProps({ pools: [{ pool_id: 'pool-a', snapshot: { name: '池', up_status, up_agent_ids: ['agent-a'] }, progress: 0 }] }); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('unknown') }
+it('本池占位在未完整映射时仍明确UP，其他池和退役槽不可选择', async () => {
+  const catalog = [{ pool_id: 'public-a', enabled: true, up_status: 'partial', up_agents: [{ id: 'public-a:up:stable', name: 'UP 占位1', operator_id: null, active: true }, { id: 'public-a:up:old', name: '退役', operator_id: null, active: false }] }, { pool_id: 'public-b', up_agents: [{ id: 'public-b:up:other', name: '另一池占位', operator_id: null, active: true }] }]
+  const wrapper = render({ catalog, pools: [{ pool_id: 'pool-a', snapshot: { catalog_pool_id: 'public-a', name: '池' }, progress: 0 }] })
+  const agentSelect = wrapper.get('fieldset select')
+  expect(agentSelect.text()).toContain('UP 占位1（占位）'); expect(agentSelect.text()).not.toContain('另一池占位'); expect(agentSelect.text()).not.toContain('退役')
+  await agentSelect.setValue('public-a:up:stable'); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('up')
+  await input(wrapper, '这次出货抽数').setValue('17'); await wrapper.get('form').trigger('submit'); expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ agent_id: 'public-a:up:stable', up_status: 'up' })
+})
+
+it('切换卡池清除另一池占位选择，映射后继续提交固定槽ID', async () => {
+  const catalog = [{ pool_id: 'public-a', up_agents: [{ id: 'public-a:up:stable', name: '占位1', operator_id: null, active: true }] }, { pool_id: 'public-b', up_agents: [{ id: 'public-b:up:stable', name: '绝密甲', operator_id: 'agent-a', active: true }] }]
+  const pools = ['a', 'b'].map(suffix => ({ pool_id: 'pool-' + suffix, snapshot: { name: suffix, catalog_pool_id: 'public-' + suffix }, progress: 0 }))
+  const wrapper = render({ catalog, pools }); await wrapper.get('fieldset select').setValue('public-a:up:stable'); await select(wrapper, '卡池').setValue('pool-b'); await flushPromises(); expect(wrapper.get('fieldset select').element.value).toBe('')
+  await wrapper.get('fieldset select').setValue('public-b:up:stable'); await input(wrapper, '这次出货抽数').setValue('31'); await wrapper.get('form').trigger('submit'); expect(wrapper.emitted('save')[0][0].data.entries[0].agent_id).toBe('public-b:up:stable')
 })
 
 it('current默认客户端本日可清空；切历史只清自动日期，手填历史日期不被改成今日', async () => {
