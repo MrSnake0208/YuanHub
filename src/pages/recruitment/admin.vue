@@ -19,7 +19,7 @@
                 <label class="check"><input v-model="form.enabled" type="checkbox" :disabled="saving">启用，允许用户添加档案与新增记录</label>
                 <p class="hint">停用仍保留已有历史。减少 UP 数量只退役末尾名额；新增加的名额使用新身份。修改真实映射会同步改变该槽历史的展示，抽数、进度与顺序保持。</p>
                 <div class="count-control"><label>UP 数量 N<input v-model="desiredCount" type="number" inputmode="numeric" min="0" max="120" required :disabled="saving"></label><button type="button" :disabled="saving" @click="applyCount">调整 UP 数量</button></div>
-                <fieldset v-for="(slot, index) in form.up_agents" :key="slot.id"><legend>UP 名额 {{ index + 1 }}{{ slot.active ? '' : '（已退役）' }}</legend><label>显示名称<input v-model.trim="slot.name" maxlength="128" required :disabled="saving"></label><label>对应图鉴绝密<select v-model="slot.operator_id" :disabled="saving || !!operatorError" @change="selectOperator(slot)"><option value="">占位，尚未进入图鉴</option><option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option><option v-if="slot.operator_id && !eligibleOperators.some(operator => operator.id === slot.operator_id)" :value="slot.operator_id">{{ slot.name }}（当前图鉴不可用）</option></select></label><div class="slot-preview"><OperatorAvatar :avatar="operatorById(slot.operator_id)?.avatar || ''" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="5" /><small>{{ slot.operator_id ? '已对应图鉴，沿用已有记录身份' : '占位密探，可先记录再对应图鉴' }}</small></div></fieldset>
+                <fieldset v-for="(slot, index) in form.up_agents" :key="slot.id"><legend>UP 名额 {{ index + 1 }}{{ slot.active ? '' : '（已退役）' }}</legend><label>显示名称<input v-model.trim="slot.name" maxlength="128" required :disabled="saving"></label><label>对应图鉴绝密<select v-model="slot.operator_id" :disabled="saving || !!operatorError" @change="selectOperator(slot)"><option value="">占位，尚未进入图鉴</option><option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option><option v-if="slot.operator_id && !eligibleOperators.some(operator => operator.id === slot.operator_id)" :value="slot.operator_id">{{ slot.name }}（当前图鉴不可用）</option></select></label><div class="slot-preview"><OperatorAvatar :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="5" /><small>{{ slot.operator_id ? '已对应图鉴，沿用已有记录身份' : '占位密探，可先记录再对应图鉴' }}</small></div></fieldset>
                 <p v-if="operatorError" class="error">{{ operatorError }}。可保存占位密探，刷新后再对应图鉴。</p>
                 <div class="actions"><button type="button" :disabled="saving" @click="form = null">取消编辑</button><button class="primary" type="submit" :disabled="saving || loading">{{ saving ? '保存中…' : '保存卡池' }}</button></div>
               </form>
@@ -39,6 +39,7 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import AdminBackLink from '../../components/admin/AdminBackLink.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
+import operatorPortraits from '../../data/operatorPortraits.json'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { getOperatorCatalog } from '../../api/operator.js'
@@ -51,6 +52,7 @@ const permitted = computed(() => !!identity.value && hasPermission(auth.adminAcc
 const filteredPools = computed(() => pools.value.filter(pool => (!filterGame.value || pool.game === filterGame.value) && [pool.name, pool.pool_id].some(value => value.toLowerCase().includes(search.value.toLowerCase()))))
 const eligibleOperators = computed(() => operators.value.filter(operator => operator.rarity === 5 && operator.games?.includes(form.value?.game)))
 const operatorById = id => operators.value.find(operator => operator.id === id)
+const operatorAvatar = operator => operator?.avatar || operator?.avatar_url || operatorPortraits[operator?.id] || ''
 let generation = 0, alive = true
 const current = token => alive && permitted.value && token.generation === generation && token.identity === identity.value
 const capture = () => ({ generation, identity: identity.value })

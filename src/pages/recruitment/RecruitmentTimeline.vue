@@ -74,7 +74,12 @@ function status(pool) {
   return data.start_date && data.end_date ? '进行中' : '已启用'
 }
 function coverAgents(pool) {
-  return (details(pool).up_agents || []).filter(slot => slot.active !== false).slice(0, 2).map(slot => props.agents.find(agent => agent.id === slot.operator_id) || { id: slot.id, name: slot.name })
+  return (details(pool).up_agents || []).filter(slot => slot.active !== false).slice(0, 2).map(slot => {
+    const agent = props.agents.find(item => item.id === slot.operator_id)
+    return agent
+      ? { ...agent, avatar: agent.avatar || agent.avatar_url || operatorPortraits[agent.id] || '' }
+      : { id: slot.id, name: slot.name, avatar: operatorPortraits[slot.operator_id] || '' }
+  })
 }
 const portrait = pool => (details(pool).up_agents || []).filter(slot => slot.active !== false).map(slot => operatorPortraits[slot.operator_id]).find(src => src && !failedPortraits.value.has(src)) || ''
 const cards = new Map()
