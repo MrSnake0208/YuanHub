@@ -11,6 +11,7 @@ import { beta } from '../src/store/beta.js'
 import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 import { deferred, recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
 import { isFeatureEnabled } from '../src/config/features.js'
+import { entryInput } from '../src/pages/recruitment/rules.js'
 
 vi.mock('../src/config/features.js', () => ({ FEATURE_KEYS: { RECRUITMENT_ARCHIVE: 'recruitmentArchive' }, isFeatureEnabled: vi.fn(() => true) }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'user-a' } }) }))
@@ -72,14 +73,25 @@ const composer = wrapper => editor(wrapper).get('.entry-composer')
 const feed = wrapper => editor(wrapper).findAll('.gacha-record')
 async function editRow(wrapper, index = 0) { await feed(wrapper).at(-1 - index).get('.record-detail').trigger('click') }
 async function addRecord(wrapper, agent = 'char-a', span = '12') {
-  await button(editor(wrapper), '＋ 登记出货').trigger('click'); await composer(wrapper).get('select').setValue(agent); await composer(wrapper).get('input').setValue(span); await button(composer(wrapper), '加入抽卡记录').trigger('click')
+  await button(editor(wrapper), '登记出货').trigger('click'); await composer(wrapper).get('select').setValue(agent); await composer(wrapper).get('input').setValue(span); await button(composer(wrapper), '加入抽卡记录').trigger('click')
 }
-it('首页仅时间线，点击读取本池抽卡记录条，头像名字和出货抽数回显；取消不写入且恢复焦点', async () => {
+it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽数回显；密探名仅保留在无障碍标签；取消不写入且恢复焦点', async () => {
   const wrapper = render(); await flushPromises(); expect(wrapper.find('.history-card').exists()).toBe(false); expect(wrapper.find('.maintenance').exists()).toBe(false)
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled(); expect(api.listRecruitmentBatches).not.toHaveBeenCalled(); await selectPool(wrapper)
   expect(wrapper.get('.pool-timeline').isVisible()).toBe(true); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0]).toMatchObject({ poolId: 'pool-a', accountId: 'acc-a', order: 'asc' })
-  expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).toContain('测试绝密'); expect(editor(wrapper).find('fieldset').exists()).toBe(false)
+  expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).not.toContain('测试绝密'); expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('测试绝密'); expect(editor(wrapper).find('fieldset').exists()).toBe(false)
   await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.pool-card').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+it('单次出货抽数限制为1–40，输入超限会收敛到40且共享规则拒绝绕过UI的超限值', async () => {
+  expect(() => entryInput({ agent_id: 'char-a', pull_span: '41' })).toThrow('出货抽数须为 1–40')
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), '登记出货').trigger('click')
+  const entry = composer(wrapper), pullInput = entry.get('input')
+  expect(pullInput.attributes('max')).toBe('40'); expect(pullInput.attributes('step')).toBe('1')
+  await entry.get('select').setValue('char-a'); await pullInput.setValue('9999')
+  expect(pullInput.element.value).toBe('40')
+  await button(entry, '加入抽卡记录').trigger('click')
+  expect(feed(wrapper)).toHaveLength(3); expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('40'); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
 it('单条选择密探和17抽后生成记录条，再点记录编辑；一次保存保底，重开回显且不重复新增', async () => {
   api.recruitmentCommand.mockImplementation(async command => {
@@ -99,7 +111,7 @@ it('单条选择密探和17抽后生成记录条，再点记录编辑；一次�
   await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries).toEqual([])
 })
 it('移除只提交明确旧ID；取消单条编辑不改变记录，整个弹窗取消不写入', async () => {
-  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '取消录入').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '取消编辑').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
   await feed(wrapper).at(-1).get('.delete-record').trigger('click'); await addRecord(wrapper); await feed(wrapper)[0].get('.delete-record').trigger('click'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ entries: [], deleted_event_ids: ['A'] })
   await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(2)
 })

@@ -98,7 +98,7 @@
                   </label>
                   <label>
                     <span>多少抽出货</span>
-                    <input v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_PULLS" placeholder="不知道可留空">
+                    <input v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" @input="limitPullSpan">
                   </label>
                 </div>
                 <p v-if="activeRow.batch_id" class="composer-note">此记录属于已知总量批次；编辑或移除本条不会改变批次总抽数。</p>
@@ -189,7 +189,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { CircleHelp, Plus, Trash2, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
-import { entryInput, MAX_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
+import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
@@ -220,6 +220,16 @@ const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).len
 function focusEntry() { nextTick(() => agentSelect.value?.focus()) }
 function add() { error.value = ''; activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null }; focusEntry() }
 function edit(row) { error.value = ''; activeRow.value = { ...row }; focusEntry() }
+function limitPullSpan(event) {
+  if (!activeRow.value) return
+  const raw = event.target.value
+  if (raw === '') return
+  const number = Number(raw)
+  if (!Number.isFinite(number) || (number >= 1 && number <= MAX_EVENT_PULLS)) return
+  const limited = number > MAX_EVENT_PULLS ? MAX_EVENT_PULLS : 1
+  event.target.value = String(limited)
+  activeRow.value.pull_span = String(limited)
+}
 function cancelEntry() { activeRow.value = null; nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false

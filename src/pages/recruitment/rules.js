@@ -1,4 +1,5 @@
 export const MAX_PULLS = 1_000_000_000
+export const MAX_EVENT_PULLS = 40
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024
 
 export function operatorCatalogEntries(data) {
@@ -45,7 +46,9 @@ export function progressFromRemaining(value) {
 export function blankEntry() { return { agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: '', note: '' } }
 export function entryInput(entry) {
   if (!entry.agent_id) throw new Error('请选择绝密密探')
-  return { ...(entry.event_id ? { event_id: entry.event_id } : {}), agent_id: entry.agent_id, pull_span: integer(entry.pull_span, '出货抽数', { positive: true, nullable: true }), up_status: entry.up_status || 'unknown', acquired_date: entry.acquired_date || null, note: entry.note || null }
+  const pullSpan = integer(entry.pull_span, '出货抽数', { positive: true, nullable: true })
+  if (pullSpan != null && pullSpan > MAX_EVENT_PULLS) throw new Error('出货抽数须为 1–40')
+  return { ...(entry.event_id ? { event_id: entry.event_id } : {}), agent_id: entry.agent_id, pull_span: pullSpan, up_status: entry.up_status || 'unknown', acquired_date: entry.acquired_date || null, note: entry.note || null }
 }
 // Positions are visible within the window; its first result has no known preceding absolute.
 export function fromWindowPositions(entries, windowLength, previousKnown, precedingPulls) {
