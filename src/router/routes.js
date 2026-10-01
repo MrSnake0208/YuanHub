@@ -145,8 +145,8 @@ export const routes = [
         icon: 'scroll-text',
         component: () => import('/src/pages/recruitment/index.vue'),
         meta: {
-            requiresBeta: true,
             requiresAuth: true,
+            requiresRecruitmentAccess: true,
             feature: FEATURE_KEYS.RECRUITMENT_ARCHIVE,
             featureFallback: '/',
             title: '招募档案 — 鸢鸢相抱 · YuanHub'
@@ -218,6 +218,20 @@ export const routes = [
             title: '招募卡池管理 — 鸢鸢相抱 · YuanHub',
             requiresAuth: true,
             requiredPermission: 'recruitment_catalog:write'
+        }
+    },
+    {
+        path: '/admin/recruitment-access',
+        text: '招募档案访问',
+        name: 'recruitment-access-admin',
+        display: false,
+        module: 'admin',
+        icon: 'shield',
+        component: () => import('/src/pages/admin/recruitmentAccess.vue'),
+        meta: {
+            title: '招募档案访问 — 鸢鸢相抱 · YuanHub',
+            requiresAuth: true,
+            requiredPermission: 'recruitment_access:manage'
         }
     },
     {

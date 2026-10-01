@@ -66,6 +66,14 @@ test('招募管理路由与工作台只向具有专属目录权限的管理员�
   assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE] })).some(tool => tool.to === '/recruitment/admin'), false)
 })
 
+test('招募档案访问配置使用独立平台权限和管理入口', () => {
+  const route = routes.find(item => item.path === '/admin/recruitment-access')
+  assert.equal(route.meta.requiresAuth, true)
+  assert.equal(route.meta.requiredPermission, ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE)
+  assert.deepEqual(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE] })).map(tool => tool.to), ['/admin/recruitment-access'])
+  assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE] })).some(tool => tool.to === '/admin/recruitment-access'), false)
+})
+
 test('adds a single accessible workbench back link to management detail pages', function () {
   const backLink = readSource('../src/components/admin/AdminBackLink.vue')
   const detailPages = [

@@ -163,6 +163,10 @@
                   </div>
                 </div>
                 <div v-if="activeRow.agent_id" class="compact-entry-row">
+                  <div class="selected-agent-summary" aria-live="polite">
+                    <OperatorAvatar class="selected-agent-avatar" :avatar="agentAvatar(selectedAgent(activeRow))" :name="selectedAgent(activeRow)?.name || activeRow.agent_id" :rarity="5" aria-hidden="true" />
+                    <span class="selected-agent-copy"><small>已选择密探</small><strong>{{ selectedAgent(activeRow)?.name || activeRow.agent_id }}</strong></span>
+                  </div>
                   <label class="pull-count-field">
                     <span>招募次数</span>
                     <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="1–40" :disabled="busy || readOnly || recordsLoading" @input="limitPullSpan">
@@ -872,6 +876,45 @@ button:not(:disabled):hover {
   gap: 10px 12px;
 }
 
+.selected-agent-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.selected-agent-avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+
+.selected-agent-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.selected-agent-copy small {
+  color: var(--ink-60);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.selected-agent-copy strong {
+  max-width: 150px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pull-count-field {
   display: grid;
   grid-template-columns: max-content 96px;
@@ -1249,6 +1292,14 @@ summary:focus-visible,
 
   .compact-entry-row {
     gap: 8px 10px;
+  }
+
+  .selected-agent-summary {
+    width: 100%;
+  }
+
+  .selected-agent-copy strong {
+    max-width: none;
   }
 
   .agent-filter-options {

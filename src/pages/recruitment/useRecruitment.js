@@ -4,7 +4,6 @@ import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCatalog } from '../../api/operator.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
-import { beta } from '../../store/beta.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
 import { operatorCatalogEntries } from './rules.js'
 
@@ -13,7 +12,7 @@ export function useRecruitment() {
   const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
   const accountId = computed(() => activeAccount.id)
   const game = computed(() => activeAccount.gameFor(accountId.value))
-  const available = computed(() => !!identity.value && beta.canUseBetaFeatures && state.accounts.some(account => account.id === accountId.value))
+  const available = computed(() => !!identity.value && state.accounts.some(account => account.id === accountId.value))
   const writable = computed(() => available.value && !!state.archive && !state.archive.game_mismatch && !state.loading && !state.busy)
   const agents = computed(() => state.operators.filter(agent => agent.rarity === 5 && agent.games?.includes(game.value)))
   let generation = 0, readGeneration = 0, accountsGeneration = 0, alive = true, pendingCommand = null, recordsGeneration = 0
@@ -84,7 +83,7 @@ export function useRecruitment() {
   }
   async function loadAccounts(reload = true) {
     const owner = identity.value, version = generation, read = ++accountsGeneration
-    if (!owner || !beta.canUseBetaFeatures) return
+    if (!owner) return
     state.accountsLoading = true
     try {
       const accounts = await listAccounts()
@@ -95,7 +94,7 @@ export function useRecruitment() {
     } catch (error) { if (owner === identity.value && version === generation && read === accountsGeneration) state.error = error.message }
     finally { if (owner === identity.value && read === accountsGeneration) state.accountsLoading = false }
   }
-  watch([identity, () => beta.canUseBetaFeatures], () => { reset(); state.accounts = []; loadAccounts() }, { immediate: true, flush: 'sync' })
+  watch(identity, () => { reset(); state.accounts = []; loadAccounts() }, { immediate: true, flush: 'sync' })
   watch([accountId, game], () => { reset(); refresh() }, { flush: 'sync' })
   const unsubscribe = subscribeAccountEvents(message => {
     if (!available.value || message.data?.account_id !== accountId.value) return

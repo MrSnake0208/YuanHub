@@ -36,6 +36,7 @@ test('checks concrete permissions and feedback management areas', function () {
     operatorAreas: ['OPERATOR']
   })
   assert.equal(hasPermission(access, ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE), true)
+  assert.equal(hasPermission(access, ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE), false)
   assert.equal(hasPermission(access, ADMIN_PERMISSIONS.ROLE_MANAGE), false)
   assert.equal(canManageAnyFeedback(access), true)
   assert.equal(canManageFeedbackArea(access, 'OPERATOR'), true)

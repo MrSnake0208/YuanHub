@@ -66,6 +66,7 @@ const ACTION_LABELS = {
   ROLE_GRANTED: '授予角色', ROLE_REVOKED: '回收角色', ROLE_REPLACED: '替换角色',
   FEEDBACK_ACCESS_UPDATED: '更新反馈授权', FEEDBACK_ACCESS_DELETED: '删除反馈授权',
   FEEDBACK_CATEGORY_CREATED: '新增反馈板块', FEEDBACK_CATEGORY_RENAMED: '重命名反馈板块',
+  RECRUITMENT_ACCESS_MODE_UPDATED: '切换招募档案开放模式', RECRUITMENT_ACCESS_GRANTED: '开通招募档案访问', RECRUITMENT_ACCESS_REVOKED: '移除招募档案访问',
   CHANGELOG_PUBLISHED: '发布更新日志', CHANGELOG_REJECTED: '退回更新日志', CHANGELOG_WITHDRAWN: '撤回更新日志'
 }
 const router = useRouter()
@@ -115,6 +116,8 @@ function snapshotParts(snapshot) {
   if (snapshot.receiveAreas.length) parts.push('接收：' + snapshot.receiveAreas.map(areaLabel).join('、'))
   if (snapshot.manageAreas.length) parts.push('管理：' + snapshot.manageAreas.map(areaLabel).join('、'))
   if (snapshot.feedbackCategoryLabel) parts.push('板块名称：' + snapshot.feedbackCategoryLabel)
+  if (snapshot.recruitmentAccess?.access_mode) parts.push('招募档案：' + (snapshot.recruitmentAccess.access_mode === 'PUBLIC' ? '公开访问' : '有限访问'))
+  if (snapshot.recruitmentAccess?.granted != null) parts.push('招募权限：' + (snapshot.recruitmentAccess.granted === 'true' ? '已授权' : '已移除'))
   return parts.length ? parts : ['无']
 }
 function formatTime(value) {
