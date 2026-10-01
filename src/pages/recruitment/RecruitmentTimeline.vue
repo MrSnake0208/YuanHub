@@ -9,7 +9,7 @@
       <button v-for="item in years" :key="item" type="button" :aria-pressed="year === item" @click="year = item">{{ item }}</button>
       <button v-if="hasUndated" type="button" :aria-pressed="year === 'unknown'" @click="year = 'unknown'">日期未知</button>
     </div>
-    <p v-if="!pools.length" class="timeline-empty">当前游戏暂无公共卡池，请联系管理员配置。仍可填写历史总抽数或导入已有备份。</p>
+    <p v-if="!pools.length" class="timeline-empty">当前游戏暂无公共卡池，请联系管理员配置。可导入已有备份，或等待公共目录配置。</p>
     <p v-else-if="!visiblePools.length" class="timeline-empty">此年份暂无卡池。</p>
     <ol class="timeline-list">
       <li v-for="(pool, index) in visiblePools" :key="pool.pool_id" class="timeline-row">
@@ -29,7 +29,7 @@
             <span class="pool-metrics">
               <span><BookOpen :size="15" aria-hidden="true" />已知抽数 <b>{{ poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知' }}</b><small>抽</small></span>
               <span><Gem :size="15" aria-hidden="true" />绝密记录 <b>{{ poolSummaries[pool.pool_id]?.event_count ?? '未知' }}</b><small>条</small></span>
-              <span><CircleGauge :size="15" aria-hidden="true" />当前进度 <b>{{ pool.progress ?? '未知' }}</b><small v-if="pool.progress != null">抽</small></span>
+              <span><CircleGauge :size="15" aria-hidden="true" />距保底 <b>{{ remainingPulls(pool) }}</b><small>抽</small></span>
             </span>
             <span v-if="poolSummaries[pool.pool_id]?.has_unknown" class="pool-dates">部分出货间隔或进度未知</span>
           </span>
@@ -64,6 +64,7 @@ const visiblePools = computed(() => props.pools.filter(pool => !year.value || (y
   if (!first || !second) return Number(!first) - Number(!second)
   return descending.value ? second.localeCompare(first) : first.localeCompare(second)
 }))
+const remainingPulls = pool => Number.isInteger(pool.progress) && pool.progress >= 0 && pool.progress < 40 ? 40 - pool.progress : '未知'
 function status(pool) {
   const data = details(pool), today = dateInZone('Asia/Shanghai')
   if (data.enabled === false) return '已停用'
