@@ -110,9 +110,43 @@
                 :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
                 <div v-if="choosingAgent" class="agent-picker">
+                  <div class="agent-filter-head">
+                    <span><b>{{ filteredPickerAgents.length }}</b> / {{ options.length }} 位</span>
+                    <button v-if="hasAgentFilters" type="button" class="agent-filter-reset" @click="resetAgentFilters">重置</button>
+                  </div>
+                  <div class="agent-filter-row">
+                    <span class="agent-filter-label">属性</span>
+                    <div class="agent-filter-options is-prof" role="group" aria-label="按属性筛选密探">
+                      <button type="button" :class="{ on: agentProfFilter === 'all' }" :aria-pressed="agentProfFilter === 'all'" @click="agentProfFilter = 'all'">全部</button>
+                      <button
+                        v-for="prof in agentProfOptions"
+                        :key="prof"
+                        type="button"
+                        :class="{ on: agentProfFilter === prof }"
+                        :aria-pressed="agentProfFilter === prof"
+                        @click="agentProfFilter = prof"
+                      >
+                        <img v-if="profIcon(prof)" :src="profIcon(prof)" alt="" aria-hidden="true" />{{ prof }}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="agent-filter-row">
+                    <span class="agent-filter-label">职业</span>
+                    <div class="agent-filter-options is-subprof" role="group" aria-label="按职业筛选密探">
+                      <button type="button" :class="{ on: agentSubProfFilter === 'all' }" :aria-pressed="agentSubProfFilter === 'all'" @click="agentSubProfFilter = 'all'">全部</button>
+                      <button
+                        v-for="subProf in agentSubProfOptions"
+                        :key="subProf"
+                        type="button"
+                        :class="{ on: agentSubProfFilter === subProf }"
+                        :aria-pressed="agentSubProfFilter === subProf"
+                        @click="agentSubProfFilter = subProf"
+                      >{{ subProf }}</button>
+                    </div>
+                  </div>
                   <div class="agent-picker-results" role="group" aria-label="选择密探">
                     <button
-                      v-for="agent in options"
+                      v-for="agent in filteredPickerAgents"
                       :key="agent.id"
                       type="button"
                       class="agent-choice"
@@ -124,7 +158,7 @@
                       <OperatorAvatar class="agent-choice-avatar" :avatar="agent.avatar || ''" :name="agent.name" :rarity="5" aria-hidden="true" />
                       <span>{{ agent.name }}</span>
                     </button>
-                    <p v-if="!options.length" class="agent-picker-empty">暂无可选密探</p>
+                    <p v-if="!filteredPickerAgents.length" class="agent-picker-empty">没有符合筛选条件的密探</p>
                   </div>
                 </div>
                 <div v-if="activeRow.agent_id" class="compact-entry-row">
@@ -218,12 +252,14 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { CircleHelp, Plus, Trash2, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
+import { AGENT_PROFS } from '../../data/inventory/catalog.js'
+import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
+const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
 const originals = reactive(new Map())
 let requestId = ''
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
@@ -234,6 +270,22 @@ const options = computed(() => {
 })
 const selectedAgent = row => options.value.find(agent => agent.id === row.agent_id)
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
+const agentProfOptions = computed(() => {
+  const present = new Set(options.value.flatMap(agent => tokens(agent.prof)))
+  return AGENT_PROFS.filter(prof => present.has(prof)).concat([...present].filter(prof => !AGENT_PROFS.includes(prof)))
+})
+const agentSubProfOptions = computed(() => deriveSubProfOptions(options.value))
+const filteredPickerAgents = computed(() => options.value
+  .filter(agent => matchesProfSubFilter(agent, agentProfFilter.value, agentSubProfFilter.value))
+  .slice()
+  .reverse())
+const hasAgentFilters = computed(() => agentProfFilter.value !== 'all' || agentSubProfFilter.value !== 'all')
+const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
+function profIcon(prof) {
+  const file = PROF_ICON_FILES[String(prof || '').split('、')[0]]
+  return file ? (import.meta.env.BASE_URL || '/') + 'assets/prof-icons/' + file : ''
+}
+function resetAgentFilters() { agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
 function close() { if (!props.busy) emit('close') }
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse())
@@ -298,7 +350,7 @@ function confirmRecord() {
 function remove(row) { if (activeRow.value?.event_id === row.event_id) activeRow.value = null; if (originals.has(row.event_id)) deletedIds.value.push(row.event_id); rows.value = rows.value.filter(item => item !== row); nextTick(() => (panel.value?.querySelector('.gacha-record .record-detail') || panel.value?.querySelector('.add-record'))?.focus()) }
 watch(() => props.open, open => {
   if (!open) return
-  rows.value = []; activeRow.value = null; choosingAgent.value = false; deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
+  rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
@@ -664,11 +716,90 @@ button:not(:disabled):hover {
   margin-bottom: 10px;
 }
 
+.agent-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 28px;
+  margin-bottom: 5px;
+  color: var(--ink-60);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.agent-filter-head b {
+  color: var(--accent-strong);
+  font: 900 12px var(--font-d);
+}
+
+.agent-filter-reset {
+  min-width: 0;
+  min-height: 28px;
+  margin-left: 8px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  color: var(--ink-60);
+  font-size: 10px;
+}
+
+.agent-filter-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.agent-filter-label {
+  color: var(--tea);
+  font-size: 10.5px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.agent-filter-options {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--tea) 7%, transparent);
+}
+
+.agent-filter-options button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-60);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.agent-filter-options button.on {
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--tea) 18%, transparent);
+}
+
+.agent-filter-options button img {
+  width: 13px;
+  height: 13px;
+  margin-right: 3px;
+  vertical-align: -2px;
+  object-fit: contain;
+}
+
 .agent-picker-results {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
   max-height: min(42dvh, 340px);
+  margin-top: 7px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 2px 3px 4px 2px;
@@ -677,19 +808,19 @@ button:not(:disabled):hover {
 .agent-choice {
   display: flex;
   min-width: 0;
-  min-height: 84px;
+  min-height: 70px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 7px 5px;
+  gap: 3px;
+  padding: 4px 3px;
   overflow: hidden;
   text-align: center;
 }
 
 .agent-choice-avatar {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
 }
 
 .agent-choice > span {
@@ -697,7 +828,7 @@ button:not(:disabled):hover {
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1100,8 +1231,29 @@ summary:focus-visible,
     gap: 8px 10px;
   }
 
+  .agent-filter-options {
+    display: grid;
+  }
+
+  .agent-filter-options.is-prof {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .agent-filter-options.is-subprof {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .agent-filter-options button {
+    width: 100%;
+    padding-inline: 2px;
+  }
+
+  .agent-filter-options button img {
+    display: none;
+  }
+
   .agent-picker-results {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     max-height: 44dvh;
   }
 
@@ -1174,6 +1326,10 @@ summary:focus-visible,
 }
 
 @media (max-width: 360px) {
+  .agent-picker-results {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .progress-card {
     grid-template-columns: minmax(0, 1fr);
   }

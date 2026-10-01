@@ -85,10 +85,14 @@ it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽�
   expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).not.toContain('测试绝密'); expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('测试绝密'); expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
   await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.pool-card').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
-it('配置的本池UP可直接点头像登记；其他密探直接展示全部头像+名字供选择', async () => {
+it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径的属性/职业筛选', async () => {
   const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot-up', name: '测试UP', operator_id: 'char-a', active: true }]
   api.getRecruitmentCatalog.mockResolvedValue(catalog)
-  getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char-a', name: '测试绝密', rarity: 5, games: ['代号鸢'] }, { id: 'char-b', name: '测试歪卡', avatar: '/other.png', rarity: 5, games: ['代号鸢'] }] })
+  getOperatorCatalog.mockResolvedValue({ operators: [
+    { id: 'char-a', name: '测试绝密', rarity: 5, prof: '火', sub_prof: 'shenji', games: ['代号鸢'] },
+    { id: 'char-b', name: '测试歪卡', avatar: '/other.png', rarity: 5, prof: '地', sub_prof: 'pojun', games: ['代号鸢'] },
+    { id: 'char-c', name: '测试岐黄', rarity: 5, prof: '水', sub_prof: 'qihuang', games: ['代号鸢'] }
+  ] })
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   const quick = editor(wrapper).get('.quick-up-button')
   expect(quick.attributes('aria-label')).toContain('测试绝密'); expect(button(editor(wrapper), '其他密探')).toBeTruthy()
@@ -96,9 +100,23 @@ it('配置的本池UP可直接点头像登记；其他密探直接展示全部�
   expect(composer(wrapper).find('.agent-picker').exists()).toBe(false); expect(quick.attributes('aria-pressed')).toBe('true'); expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
   await composer(wrapper).get('.pull-count-field input').setValue('12'); await composer(wrapper).get('.composer-actions .primary').trigger('click')
   expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12')
+
   await button(editor(wrapper), '其他密探').trigger('click'); await flushPromises()
-  const entry = composer(wrapper), choices = entry.findAll('.agent-choice')
-  expect(choices).toHaveLength(2); expect(document.activeElement).toBe(choices[0].element); expect(entry.find('.pull-count-field').exists()).toBe(false)
+  const entry = composer(wrapper)
+  expect(entry.findAll('.agent-choice').map(item => item.attributes('data-agent-id'))).toEqual(['char-c', 'char-b', 'slot-up'])
+  expect(document.activeElement).toBe(entry.findAll('.agent-choice')[0].element); expect(entry.find('.pull-count-field').exists()).toBe(false)
+
+  const profButtons = entry.findAll('.agent-filter-options.is-prof button')
+  await profButtons.find(item => item.text().includes('地')).trigger('click')
+  expect(entry.findAll('.agent-choice').map(item => item.attributes('data-agent-id'))).toEqual(['char-b'])
+
+  await profButtons.find(item => item.text() === '全部').trigger('click')
+  const subProfButtons = entry.findAll('.agent-filter-options.is-subprof button')
+  await subProfButtons.find(item => item.text() === '岐黄').trigger('click')
+  expect(entry.findAll('.agent-choice').map(item => item.attributes('data-agent-id'))).toEqual(['char-c'])
+  await entry.get('.agent-filter-reset').trigger('click')
+  expect(entry.findAll('.agent-choice')).toHaveLength(3)
+
   const choice = entry.get('.agent-choice[data-agent-id="char-b"]')
   expect(choice.text()).toContain('测试歪卡'); expect(choice.get('img').attributes('src')).toContain('/other.png')
   await choice.trigger('click'); await flushPromises()
