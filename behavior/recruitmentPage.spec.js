@@ -90,14 +90,14 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
   api.getRecruitmentCatalog.mockResolvedValue(catalog)
   getOperatorCatalog.mockResolvedValue({ operators: [
     { id: 'char-a', name: '测试绝密', rarity: 5, prof: '火', sub_prof: 'shenji', games: ['代号鸢'] },
-    { id: 'char-b', name: '测试歪卡', avatar: '/other.png', rarity: 5, prof: '地', sub_prof: 'pojun', games: ['代号鸢'] },
+    { id: 'char-b', name: '测试歪卡', avatar_url: '/other.png', rarity: 5, prof: '地', sub_prof: 'pojun', games: ['代号鸢'] },
     { id: 'char-c', name: '测试岐黄', rarity: 5, prof: '水', sub_prof: 'qihuang', games: ['代号鸢'] }
   ] })
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   const quick = editor(wrapper).get('.quick-up-button')
   expect(quick.attributes('aria-label')).toContain('测试绝密'); expect(button(editor(wrapper), '其他密探')).toBeTruthy()
   await quick.trigger('click'); await flushPromises()
-  expect(composer(wrapper).find('.agent-picker').exists()).toBe(false); expect(quick.attributes('aria-pressed')).toBe('true'); expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
+  expect(composer(wrapper).find('.agent-picker').exists()).toBe(false); expect(quick.attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('footer').classes()).toContain('is-entry-active'); expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
   await composer(wrapper).get('.pull-count-field input').setValue('12'); await composer(wrapper).get('.composer-actions .primary').trigger('click')
   expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12')
 

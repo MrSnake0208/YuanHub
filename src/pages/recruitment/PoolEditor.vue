@@ -86,7 +86,7 @@
                     :disabled="busy || readOnly || recordsLoading || !initialized || (!canRecord && (!activeRow || originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add(agent.id)"
                   >
-                    <OperatorAvatar class="quick-up-avatar" :avatar="agent.avatar || ''" :name="agent.name" :rarity="5" aria-hidden="true" />
+                    <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="5" aria-hidden="true" />
                     <span class="quick-up-mark" aria-hidden="true">UP</span>
                   </button>
                   <button
@@ -105,6 +105,7 @@
 
               <div
                 v-if="activeRow"
+                ref="entryComposer"
                 class="entry-composer"
                 role="group"
                 :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
@@ -155,7 +156,7 @@
                       :disabled="busy || readOnly || recordsLoading"
                       @click="chooseOtherAgent(agent.id)"
                     >
-                      <OperatorAvatar class="agent-choice-avatar" :avatar="agent.avatar || ''" :name="agent.name" :rarity="5" aria-hidden="true" />
+                      <OperatorAvatar class="agent-choice-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="5" aria-hidden="true" />
                       <span>{{ agent.name }}</span>
                     </button>
                     <p v-if="!filteredPickerAgents.length" class="agent-picker-empty">没有符合筛选条件的密探</p>
@@ -178,7 +179,7 @@
                 <li v-for="row in displayRows" :key="row.event_id" class="gacha-record">
                   <OperatorAvatar
                     class="record-avatar"
-                    :avatar="selectedAgent(row)?.avatar || ''"
+                    :avatar="agentAvatar(selectedAgent(row))"
                     :name="selectedAgent(row)?.name || row.agent_id"
                     :rarity="5"
                     aria-hidden="true"
@@ -229,7 +230,7 @@
             <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
           </div>
 
-          <footer>
+          <footer :class="{ 'is-entry-active': !!activeRow }">
             <p class="footer-state" aria-live="polite">
               <template v-if="activeRow">{{ originals.has(activeRow.event_id) ? '正在编辑一条记录' : '正在登记一条记录' }}</template>
               <template v-else-if="pendingCount">{{ pendingCount }} 项修改尚未保存</template>
@@ -252,6 +253,7 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { CircleHelp, Plus, Trash2, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
+import operatorPortraits from '../../data/operatorPortraits.json'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
@@ -259,7 +261,7 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
+const panel = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
 const originals = reactive(new Map())
 let requestId = ''
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
@@ -270,6 +272,18 @@ const options = computed(() => {
 })
 const selectedAgent = row => options.value.find(agent => agent.id === row.agent_id)
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
+function localPortraitUrl(operatorId) {
+  const path = operatorPortraits[operatorId]
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  if (typeof window !== 'undefined' && window.location?.origin) return new URL(path, window.location.origin).href
+  return path
+}
+function agentAvatar(agent) {
+  if (!agent) return ''
+  const operatorId = agent.operator_id || agent.id
+  return agent.avatar || agent.avatar_url || localPortraitUrl(operatorId)
+}
 const agentProfOptions = computed(() => {
   const present = new Set(options.value.flatMap(agent => tokens(agent.prof)))
   return AGENT_PROFS.filter(prof => present.has(prof)).concat([...present].filter(prof => !AGENT_PROFS.includes(prof)))
@@ -300,7 +314,13 @@ function recordLabel(row) {
   return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
 }
 const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (remaining.value !== initialRemaining.value ? 1 : 0))
-function focusEntry(preferPulls = false) { nextTick(() => (preferPulls ? pullSpanInput.value : panel.value?.querySelector('.agent-choice'))?.focus()) }
+function focusEntry(preferPulls = false) {
+  nextTick(() => {
+    const target = preferPulls ? pullSpanInput.value : panel.value?.querySelector('.agent-choice')
+    target?.focus()
+    entryComposer.value?.scrollIntoView?.({ block: 'nearest' })
+  })
+}
 function add(agentId = '') {
   error.value = ''
   if (!activeRow.value) activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null }
@@ -1294,6 +1314,14 @@ summary:focus-visible,
   .footer-actions {
     display: grid;
     grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr);
+  }
+
+  footer.is-entry-active {
+    display: none;
+  }
+
+  .entry-composer {
+    scroll-margin-block: 16px;
   }
 }
 
