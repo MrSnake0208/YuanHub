@@ -7,7 +7,6 @@ import { listAccounts } from '../src/api/accounts.js'
 import { getOperatorCatalog } from '../src/api/operator.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { auth } from '../src/store/auth.js'
-import { beta } from '../src/store/beta.js'
 import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 import { deferred, recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
 import { isFeatureEnabled } from '../src/config/features.js'
@@ -15,7 +14,6 @@ import { entryInput } from '../src/pages/recruitment/rules.js'
 
 vi.mock('../src/config/features.js', () => ({ FEATURE_KEYS: { RECRUITMENT_ARCHIVE: 'recruitmentArchive' }, isFeatureEnabled: vi.fn(() => true) }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'user-a' } }) }))
-vi.mock('../src/store/beta.js', async () => ({ beta: (await import('vue')).reactive({ canUseBetaFeatures: true }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
 vi.mock('../src/api/recruitment.js', () => ({ getRecruitmentArchive: vi.fn(), listRecruitmentEvents: vi.fn(), listRecruitmentBatches: vi.fn(), getRecruitmentCatalog: vi.fn(), recruitmentCommand: vi.fn(), exportRecruitment: vi.fn(), previewRecruitmentImport: vi.fn(), commitRecruitmentImport: vi.fn() }))
@@ -26,7 +24,7 @@ function render(stubs = {}) { return mount(RecruitmentPage, { attachTo: document
 async function selectPool(wrapper, index = 0) { await wrapper.findAll('.pool-card')[index].trigger('click'); await flushPromises() }
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text() === text)
 beforeEach(() => {
-  vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(true); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }; beta.canUseBetaFeatures = true
+  vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(true); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }
   activeAccount.set('acc-a'); activeAccount.setGame('代号鸢', 'acc-a'); activeAccount.setGame('代号鸢', 'acc-b')
   archives = { 'acc-a': recruitmentFixture(), 'acc-b': { ...recruitmentFixture('acc-b'), summary: { ...recruitmentFixture().summary, known_total_pulls: 999 } } }
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '代号鸢' }])
@@ -121,6 +119,7 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
   expect(choice.text()).toContain('测试歪卡'); expect(choice.get('img').attributes('src')).toContain('/other.png')
   await choice.trigger('click'); await flushPromises()
   expect(entry.find('.agent-picker').exists()).toBe(false); expect(document.activeElement).toBe(entry.get('.pull-count-field input').element)
+  expect(entry.get('.selected-agent-summary').text()).toContain('已选择密探'); expect(entry.get('.selected-agent-summary').text()).toContain('测试歪卡'); expect(entry.get('.selected-agent-summary img').attributes('src')).toContain('/other.png')
 })
 it('单次出货抽数限制为1–40，输入超限会收敛到40且共享规则拒绝绕过UI的超限值', async () => {
   expect(() => entryInput({ agent_id: 'char-a', pull_span: '41' })).toThrow('出货抽数须为 1–40')
@@ -184,9 +183,9 @@ it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏�
   await editor(wrapper).get('footer button').trigger('click'); api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable')); await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); await selectPool(wrapper)
   expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); await composer(wrapper).get('input').setValue('20'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
 })
-it('游戏错配只读；身份/内测失效清弹窗，disabled不读写', async () => {
+it('游戏错配只读；身份失效清弹窗，功能开关关闭时不读写', async () => {
   archives['acc-a'].game_mismatch = true; const wrapper = render(); await flushPromises(); await selectPool(wrapper); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); auth.accessToken = ''; auth.userInfo = null; await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(wrapper.find('.summary').exists()).toBe(false); expect(api.recruitmentCommand).not.toHaveBeenCalled(); wrapper.unmount()
-  vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(false); const closed = render(); await flushPromises(); expect(closed.text()).toContain('暂未开放'); expect(listAccounts).not.toHaveBeenCalled(); closed.unmount(); isFeatureEnabled.mockReturnValue(true); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }; beta.canUseBetaFeatures = false; const denied = render(); await flushPromises(); expect(denied.text()).toContain('需要内测资格'); expect(listAccounts).not.toHaveBeenCalled()
+  vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(false); const closed = render(); await flushPromises(); expect(closed.text()).toContain('暂未开放'); expect(listAccounts).not.toHaveBeenCalled(); closed.unmount()
 })
 it('空目录仍可导入并聚焦文件，SSE/游戏/账号删除和卸载继续保持隔离', async () => {
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await addRecord(wrapper); archives['acc-a'].archive_revision++; subscribeAccountEvents.mock.calls.at(-1)[0]({ event: 'recruitment_changed', data: { account_id: 'acc-a' } }); await flushPromises(); expect(editor(wrapper).text()).toContain('待保存')

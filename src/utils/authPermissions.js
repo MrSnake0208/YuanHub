@@ -2,6 +2,7 @@ export const ADMIN_PERMISSIONS = Object.freeze({
   BETA_MANAGE: 'beta:manage',
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
   RECRUITMENT_CATALOG_WRITE: 'recruitment_catalog:write',
+  RECRUITMENT_ACCESS_MANAGE: 'recruitment_access:manage',
   LEVEL_CATALOG_WRITE: 'level_catalog:write',
   DEVELOPMENT_GOAL_MANAGE: 'development_goal:manage',
   CHANGELOG_WRITE: 'changelog:write',

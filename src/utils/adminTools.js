@@ -24,6 +24,11 @@ const ADMIN_TOOLS = Object.freeze([
     isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.BETA_MANAGE)
   },
   {
+    key: 'recruitment-access', to: '/admin/recruitment-access', label: '招募档案访问',
+    description: '切换有限/公开访问并维护内部测试名单', group: 'platform', icon: ShieldCheck,
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE)
+  },
+  {
     key: 'feedback-manage',
     to: '/feedback/manage',
     label: '待处理反馈',

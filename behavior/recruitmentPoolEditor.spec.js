@@ -43,6 +43,8 @@ it('公共目录无头像时按真实密探ID回退本地密探图，进入录�
   expect(choice.get('img').attributes('src')).toContain('/assets/operator-portraits/char_001_yangxiu.webp')
   await choice.trigger('click')
   expect(wrapper.get('footer').classes()).toContain('is-entry-active')
+  expect(wrapper.get('.selected-agent-summary').text()).toContain('杨修')
+  expect(wrapper.get('.selected-agent-summary img').attributes('src')).toContain('/assets/operator-portraits/char_001_yangxiu.webp')
   expect(document.activeElement).toBe(wrapper.get('.pull-count-field input').element)
 })
 
