@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { routeLocationKey } from 'vue-router'
 import RecruitmentPage from '../src/pages/recruitment/index.vue'
 import * as api from '../src/api/recruitment.js'
 import { listAccounts } from '../src/api/accounts.js'
@@ -22,7 +23,7 @@ vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: vi.fn(
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
 let archives, events
-function render(stubs = {}) { return mount(RecruitmentPage, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RecruitmentExchange: true, Teleport: true, RouterLink: RouterLinkStub, ...stubs } } }) }
+function render(stubs = {}) { return mount(RecruitmentPage, { attachTo: document.body, global: { provide: { [routeLocationKey]: { fullPath: '/recruitment' } }, stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RecruitmentExchange: true, Teleport: true, RouterLink: RouterLinkStub, ...stubs } } }) }
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text() === text)
 beforeEach(() => {
   vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(true); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }; beta.canUseBetaFeatures = true
@@ -38,21 +39,46 @@ beforeEach(() => {
 
 it('只读初始化，不会写入空档案；无账号给出创建入口', async () => {
   listAccounts.mockResolvedValue([])
-  const wrapper = render(); await flushPromises()
+  const wrapper = render({ DataAccountContextBar: false }); await flushPromises()
   expect(wrapper.text()).toContain('先创建游戏账号'); expect(api.getRecruitmentArchive).not.toHaveBeenCalled(); expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  expect(wrapper.find('.archive-toggle').exists()).toBe(false)
+})
+it('备份入口位于账号栏，面板就近展开；收起保留输入，换账号关闭并清空', async () => {
+  const wrapper = render({ DataAccountContextBar: false, RecruitmentExchange: false }); await flushPromises()
+  const context = wrapper.get('.data-account-context-bar'), toggle = context.get('.context-actions .archive-toggle'), exchange = wrapper.get('.exchange-card')
+  expect(context.get('.context-action').text()).toBe('管理游戏账号'); expect(context.find('select').exists()).toBe(false)
+  expect(toggle.text()).toBe('备份与恢复'); expect(toggle.attributes('aria-expanded')).toBe('false')
+  expect(toggle.attributes('aria-controls')).toBe(exchange.attributes('id')); expect(context.element.nextElementSibling).toBe(exchange.element); expect(exchange.isVisible()).toBe(false)
+  await toggle.trigger('click')
+  expect(toggle.text()).toBe('收起备份与恢复'); expect(toggle.attributes('aria-expanded')).toBe('true'); expect(exchange.isVisible()).toBe(true)
+  const input = exchange.get('input[type=file]')
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [{ name: 'backup.json', size: 100, text: async () => JSON.stringify({ schema: 'yuanhub.recruitment.v1', game: '代号鸢', source_account: { account_id: 'acc-a' }, events: [], batches: [], pools: [], temporary_agents: [] }) }] })
+  await input.trigger('change'); await flushPromises(); await exchange.get('select').setValue('use_backup')
+  await toggle.trigger('click'); expect(exchange.isVisible()).toBe(false)
+  await toggle.trigger('click'); expect(exchange.text()).toContain('backup.json'); expect(exchange.get('select').element.value).toBe('use_backup')
+  expect(api.exportRecruitment).not.toHaveBeenCalled(); expect(api.previewRecruitmentImport).not.toHaveBeenCalled(); expect(api.commitRecruitmentImport).not.toHaveBeenCalled(); expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  activeAccount.set('acc-b'); await flushPromises()
+  expect(wrapper.get('.context-actions .archive-toggle').attributes('aria-expanded')).toBe('false'); expect(wrapper.get('.exchange-card').isVisible()).toBe(false); expect(wrapper.get('.exchange-card').text()).not.toContain('backup.json')
+})
+it('游戏快照不一致时仍能从账号栏展开备份，允许导出但禁止导入', async () => {
+  archives['acc-a'].game_mismatch = true
+  const wrapper = render({ DataAccountContextBar: false, RecruitmentExchange: false }); await flushPromises()
+  await wrapper.get('.context-actions .archive-toggle').trigger('click')
+  const exchange = wrapper.get('.exchange-card')
+  expect(exchange.isVisible()).toBe(true); expect(button(exchange, '导出完整 JSON').attributes('disabled')).toBeUndefined(); expect(exchange.get('input[type=file]').attributes('disabled')).toBeDefined()
 })
 it('首次无池直接提供三条开始路径，展开并聚焦现有表单，不发起隐式读写', async () => {
   archives['acc-a'].pools = []; archives['acc-a'].current_pool_id = null; events['acc-a'] = []
   const wrapper = render({ RecruitmentExchange: false }); await flushPromises()
   const maintenance = wrapper.get('.maintenance'), exchange = wrapper.get('.exchange-card')
-  expect(maintenance.element.open).toBe(false); expect(exchange.element.open).toBe(false)
+  expect(maintenance.element.open).toBe(false); expect(exchange.isVisible()).toBe(false)
   await button(wrapper, '添加卡池并开始记录').trigger('click'); await flushPromises()
   expect(maintenance.element.open).toBe(true); expect(document.activeElement).toBe(maintenance.get('select').element)
   maintenance.element.open = false
   await button(wrapper, '补历史总抽数').trigger('click'); await flushPromises()
   expect(maintenance.element.open).toBe(true); expect(document.activeElement).toBe(maintenance.findAll('section')[1].get('input').element)
   await button(wrapper, '导入备份').trigger('click'); await flushPromises()
-  expect(exchange.element.open).toBe(true); expect(document.activeElement).toBe(exchange.get('input[type=file]').element)
+  expect(exchange.isVisible()).toBe(true); expect(document.activeElement).toBe(exchange.get('input[type=file]').element)
   expect(api.recruitmentCommand).not.toHaveBeenCalled(); expect(api.exportRecruitment).not.toHaveBeenCalled(); expect(api.previewRecruitmentImport).not.toHaveBeenCalled(); expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
 })
 it('已知批次总量保留累计，未知单条间隔不虚称累计缺失', async () => {

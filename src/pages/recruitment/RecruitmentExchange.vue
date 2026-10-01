@@ -1,6 +1,6 @@
 <template>
-  <details ref="exchangePanel" class="exchange-card">
-    <summary>备份与恢复</summary>
+  <section v-show="open" class="exchange-card" aria-labelledby="recruitment-exchange-title">
+    <h2 id="recruitment-exchange-title">备份与恢复</h2>
     <p class="hint">JSON 保存完整档案与删除记录，可用于恢复。CSV 用于阅读和分析，不能导入恢复。导出从云端获取同一版本的完整快照。</p>
     <div class="actions"><button type="button" :disabled="!canExport || exporting" @click="exportFile('json')">{{ exporting ? '导出中…' : '导出完整 JSON' }}</button><button type="button" :disabled="!canExport || exporting" @click="exportFile('csv')">导出 CSV</button></div>
     <p v-if="readOnly" class="hint">游戏快照不一致，仍可导出，暂不能导入。</p>
@@ -28,24 +28,23 @@
       <button class="primary" type="button" :disabled="!canImport || !preview.can_commit || expired || committing" @click="commit">{{ committing ? '正在导入…' : expired ? '预览已过期，请重新生成' : '确认按预览导入' }}</button>
     </section>
     <p v-if="error" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p><p v-if="notice" role="status">{{ notice }}</p>
-  </details>
+  </section>
 </template>
 
 <script setup>
 import { computed, nextTick, onScopeDispose, reactive, ref, watch } from 'vue'
 import { commitRecruitmentImport, exportRecruitment, previewRecruitmentImport } from '../../api/recruitment.js'
 import { downloadFile, MAX_IMPORT_BYTES, recruitmentCsv } from './rules.js'
-const props = defineProps({ accountId: String, accountName: String, identity: String, revision: Number, game: String, readOnly: Boolean, busy: Boolean, contextVersion: Number, requestVersion: Number })
-const emit = defineEmits(['committed', 'busy'])
+const props = defineProps({ open: Boolean, accountId: String, accountName: String, identity: String, revision: Number, game: String, readOnly: Boolean, busy: Boolean, contextVersion: Number, requestVersion: Number })
+const emit = defineEmits(['committed', 'busy', 'update:open'])
 const documentData = ref(null), filename = ref(''), preview = ref(null), previewPage = ref(0), loading = ref(false), exporting = ref(false), committing = ref(false), error = ref(''), notice = ref(''), fileInput = ref(null), errorPanel = ref(null), expired = ref(false)
 const submittedIntent = ref(null)
-const exchangePanel = ref(null)
 const options = reactive({ state_strategy: 'keep_current', confirm_count_change: false })
 const canExport = computed(() => !!props.identity && !!props.accountId && !props.busy)
 const canImport = computed(() => canExport.value && !props.readOnly)
 async function openImport() {
-  if (!canImport.value || !exchangePanel.value) return
-  exchangePanel.value.open = true
+  if (!canImport.value) return
+  emit('update:open', true)
   await nextTick()
   fileInput.value?.focus()
 }
@@ -151,5 +150,5 @@ onScopeDispose(() => { alive = false; generation++; clearTimeout(expiryTimer) })
 </script>
 
 <style scoped>
-.exchange-card{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:16px 0;min-width:0}.exchange-card summary{min-height:44px;padding:10px 0;font-weight:800;cursor:pointer}.hint{font-size:13px;line-height:1.8;color:var(--ink-60);margin:12px 0}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0}button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px 14px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button.primary{margin-top:16px;background:var(--tea);color:var(--cream)}label{display:flex;flex-direction:column;gap:8px;min-width:0;overflow-wrap:anywhere;font-weight:700;font-size:14px;margin:16px 0}input:not([type=checkbox]),select{min-height:44px;width:100%;min-width:0;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);font:inherit}input[type=file]{max-width:100%}.check{flex-direction:row;align-items:flex-start;font-weight:500}.check input{margin-top:3px;flex:none}.preview{border-top:1px solid var(--line);margin-top:20px;padding-top:20px}.preview h3{font-family:var(--font-s);font-size:20px}.preview p{line-height:1.8;margin:8px 0;overflow-wrap:anywhere}.preview-items{list-style:none;padding:0;margin:16px 0}.preview-items li{border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0;overflow-wrap:anywhere}.preview-items span{display:block;color:var(--accent-strong);font-size:13px;margin-top:4px}.preview-items p{font-size:13px;margin-bottom:0}.error{color:var(--rouge);line-height:1.8;overflow-wrap:anywhere}.risks{padding-left:22px;color:var(--rouge);line-height:1.8}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(min-width:768px){.exchange-card{padding:22px}.preview-items span{display:inline;margin-left:14px}}
+.exchange-card{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:16px 0;min-width:0}.exchange-card h2{font-family:var(--font-s);font-size:22px;font-weight:800;margin:0 0 12px}.hint{font-size:13px;line-height:1.8;color:var(--ink-60);margin:12px 0}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0}button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px 14px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button.primary{margin-top:16px;background:var(--tea);color:var(--cream)}label{display:flex;flex-direction:column;gap:8px;min-width:0;overflow-wrap:anywhere;font-weight:700;font-size:14px;margin:16px 0}input:not([type=checkbox]),select{min-height:44px;width:100%;min-width:0;padding:9px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);font:inherit}input[type=file]{max-width:100%}.check{flex-direction:row;align-items:flex-start;font-weight:500}.check input{margin-top:3px;flex:none}.preview{border-top:1px solid var(--line);margin-top:20px;padding-top:20px}.preview h3{font-family:var(--font-s);font-size:20px}.preview p{line-height:1.8;margin:8px 0;overflow-wrap:anywhere}.preview-items{list-style:none;padding:0;margin:16px 0}.preview-items li{border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0;overflow-wrap:anywhere}.preview-items span{display:block;color:var(--accent-strong);font-size:13px;margin-top:4px}.preview-items p{font-size:13px;margin-bottom:0}.error{color:var(--rouge);line-height:1.8;overflow-wrap:anywhere}.risks{padding-left:22px;color:var(--rouge);line-height:1.8}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(min-width:768px){.exchange-card{padding:22px}.preview-items span{display:inline;margin-left:14px}}
 </style>

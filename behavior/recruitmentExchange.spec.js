@@ -12,7 +12,7 @@ vi.mock('../src/api/request.js', () => ({ request: vi.fn() }))
 let capturedBlob
 const documentFixture = () => ({ schema: 'yuanhub.recruitment.v1', exported_at: '2026-10-01T00:00:00Z', source_account: { account_id: 'acc-a' }, game: '代号鸢', archive_revision: 3, baseline: 100, current_pool_id: 'pool-a', pools: [{ pool_id: 'pool-a', snapshot: { name: '测试池' }, progress: null }], temporary_agents: [], events: [recruitmentEvent('stable', 17)], batches: [] })
 function previewFixture() { return { preview_token: 'bound-preview', document_hash: 'bound-hash', target_revision: 3, expires_at: new Date(Date.now() + 60000).toISOString(), items: [{ entity_type: 'event', id: 'stable', status: 'count_overlap', reason: '可能已包含在基准中，默认跳过' }], stats: { added: 0, duplicates: 0, conflicts: 0, skipped: 1 }, risks: ['请核对基准与记录重叠'], current_known_total: 100, backup_known_total: 117, candidate_known_total: 100, can_commit: true } }
-function render(props = {}) { return mount(RecruitmentExchange, { attachTo: document.body, props: { accountId: 'acc-a', accountName: '大号', identity: 'user-a', revision: 3, game: '代号鸢', contextVersion: 0, requestVersion: 0, ...props } }) }
+function render(props = {}) { return mount(RecruitmentExchange, { attachTo: document.body, props: { open: true, accountId: 'acc-a', accountName: '大号', identity: 'user-a', revision: 3, game: '代号鸢', contextVersion: 0, requestVersion: 0, ...props } }) }
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text() === text)
 async function file(wrapper, document = documentFixture(), custom = {}) {
   const input = wrapper.get('input[type=file]')
