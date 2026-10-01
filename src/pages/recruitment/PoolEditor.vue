@@ -78,9 +78,12 @@
                     :key="agent.id"
                     type="button"
                     class="quick-up-button"
+                    :data-agent-id="agent.id"
                     :aria-label="'快速登记 ' + agent.name + ' 的出货'"
                     :title="'快速登记 ' + agent.name"
-                    :disabled="busy || readOnly || recordsLoading || !initialized || !canRecord || newCount >= 120 || !!activeRow"
+                    :aria-pressed="activeRow?.agent_id === agent.id"
+                    :class="{ 'is-selected': activeRow?.agent_id === agent.id }"
+                    :disabled="busy || readOnly || recordsLoading || !initialized || (!canRecord && (!activeRow || originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add(agent.id)"
                   >
                     <OperatorAvatar class="quick-up-avatar" :avatar="agent.avatar || ''" :name="agent.name" :rarity="5" aria-hidden="true" />
@@ -89,7 +92,9 @@
                   <button
                     type="button"
                     class="add-record"
-                    :disabled="busy || readOnly || recordsLoading || !initialized || !canRecord || newCount >= 120 || !!activeRow"
+                    :aria-pressed="choosingAgent"
+                    :class="{ 'is-selected': choosingAgent }"
+                    :disabled="busy || readOnly || recordsLoading || !initialized || (!canRecord && (!activeRow || originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add()"
                   >
                     <Plus :size="17" aria-hidden="true" />
@@ -98,32 +103,42 @@
                 </div>
               </div>
 
-              <fieldset v-if="activeRow" class="entry-composer" :disabled="busy || readOnly || recordsLoading">
-                <legend>{{ originals.has(activeRow.event_id) ? '修改这次出货' : '登记一次出货' }}</legend>
-                <p class="composer-note">完成本条编辑后，仍需点击底部“保存修改”才会写入档案。</p>
-                <div class="record-fields">
-                  <label>
-                    <span>抽中的密探</span>
-                    <select ref="agentSelect" v-model="activeRow.agent_id" required :disabled="!canRecord && originals.has(activeRow.event_id)">
-                      <option value="" disabled>选择密探</option>
-                      <option v-for="agent in options" :key="agent.id" :value="agent.id">
-                        {{ agent.name }}{{ agent.poolSlot ? ' · 本池 UP' : '' }}{{ agent.placeholder ? '（占位）' : '' }}
-                      </option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>多少抽出货</span>
-                    <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" @input="limitPullSpan">
-                  </label>
+              <div
+                v-if="activeRow"
+                class="entry-composer"
+                role="group"
+                :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
+              >
+                <div v-if="choosingAgent" class="agent-picker">
+                  <div class="agent-picker-results" role="group" aria-label="选择密探">
+                    <button
+                      v-for="agent in options"
+                      :key="agent.id"
+                      type="button"
+                      class="agent-choice"
+                      :data-agent-id="agent.id"
+                      :aria-label="'选择 ' + agent.name"
+                      :disabled="busy || readOnly || recordsLoading"
+                      @click="chooseOtherAgent(agent.id)"
+                    >
+                      <OperatorAvatar class="agent-choice-avatar" :avatar="agent.avatar || ''" :name="agent.name" :rarity="5" aria-hidden="true" />
+                      <span>{{ agent.name }}</span>
+                    </button>
+                    <p v-if="!options.length" class="agent-picker-empty">暂无可选密探</p>
+                  </div>
                 </div>
-                <p v-if="activeRow.batch_id" class="composer-note">此记录属于已知总量批次；编辑或移除本条不会改变批次总抽数。</p>
-                <div class="composer-actions">
-                  <button type="button" @click="cancelEntry">取消编辑</button>
-                  <button type="button" class="primary" @click="confirmRecord">
-                    {{ originals.has(activeRow.event_id) ? '更新记录' : '加入抽卡记录' }}
-                  </button>
+                <div v-if="activeRow.agent_id" class="compact-entry-row">
+                  <label class="pull-count-field">
+                    <span>招募次数</span>
+                    <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="1–40" :disabled="busy || readOnly || recordsLoading" @input="limitPullSpan">
+                  </label>
+                  <div class="composer-actions">
+                    <button type="button" :disabled="busy" @click="cancelEntry">取消</button>
+                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '确认修改' : '确认添加'" :disabled="busy || readOnly || recordsLoading" @click="confirmRecord">确认</button>
+                  </div>
                 </div>
-              </fieldset>
+                <p v-if="activeRow.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
+              </div>
 
               <ol v-if="displayRows.length" class="record-feed">
                 <li v-for="row in displayRows" :key="row.event_id" class="gacha-record">
@@ -208,7 +223,7 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), agentSelect = ref(null), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
+const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
 const originals = reactive(new Map())
 let requestId = ''
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
@@ -233,9 +248,27 @@ function recordLabel(row) {
   return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
 }
 const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (remaining.value !== initialRemaining.value ? 1 : 0))
-function focusEntry(preferPulls = false) { nextTick(() => (preferPulls ? pullSpanInput.value : agentSelect.value)?.focus()) }
-function add(agentId = '') { error.value = ''; activeRow.value = { event_id: crypto.randomUUID(), agent_id: agentId, pull_span: '', up_status: 'unknown', acquired_date: null, note: null }; focusEntry(!!agentId) }
-function edit(row) { error.value = ''; activeRow.value = { ...row }; focusEntry() }
+function focusEntry(preferPulls = false) { nextTick(() => (preferPulls ? pullSpanInput.value : panel.value?.querySelector('.agent-choice'))?.focus()) }
+function add(agentId = '') {
+  error.value = ''
+  if (!activeRow.value) activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null }
+  if (agentId) {
+    activeRow.value.agent_id = agentId
+    choosingAgent.value = false
+    focusEntry(true)
+    return
+  }
+  activeRow.value.agent_id = ''
+  choosingAgent.value = true
+  focusEntry(false)
+}
+function chooseOtherAgent(agentId) {
+  if (!activeRow.value) return
+  activeRow.value.agent_id = agentId
+  choosingAgent.value = false
+  focusEntry(true)
+}
+function edit(row) { error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
   const raw = event.target.value
@@ -246,7 +279,7 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { activeRow.value = null; nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
+function cancelEntry() { activeRow.value = null; choosingAgent.value = false; nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''
@@ -257,6 +290,7 @@ function confirmRecord() {
     if (index < 0) rows.value.push({ ...activeRow.value })
     else rows.value.splice(index, 1, { ...activeRow.value })
     activeRow.value = null
+    choosingAgent.value = false
     nextTick(() => (panel.value?.querySelector('.gacha-record .record-detail') || panel.value?.querySelector('.add-record'))?.focus())
     return true
   } catch (err) { error.value = err.message; nextTick(() => errorSummary.value?.focus()); return false }
@@ -264,7 +298,7 @@ function confirmRecord() {
 function remove(row) { if (activeRow.value?.event_id === row.event_id) activeRow.value = null; if (originals.has(row.event_id)) deletedIds.value.push(row.event_id); rows.value = rows.value.filter(item => item !== row); nextTick(() => (panel.value?.querySelector('.gacha-record .record-detail') || panel.value?.querySelector('.add-record'))?.focus()) }
 watch(() => props.open, open => {
   if (!open) return
-  rows.value = []; activeRow.value = null; deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
+  rows.value = []; activeRow.value = null; choosingAgent.value = false; deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
@@ -587,6 +621,13 @@ button:not(:disabled):hover {
   background: var(--cream);
 }
 
+.quick-up-button.is-selected,
+.add-record.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--yellow) 35%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .quick-up-avatar {
   width: 38px;
   height: 38px;
@@ -611,30 +652,101 @@ button:not(:disabled):hover {
 
 .entry-composer {
   min-width: 0;
-  margin: 0 0 14px;
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
-  border-radius: 14px;
-  background: var(--cream);
-  scroll-margin: 20px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cream) 70%, var(--surface));
+  scroll-margin: 16px;
 }
 
-.entry-composer legend {
-  padding: 0 6px;
-  font: 800 15px/1.5 var(--font-s);
+.agent-picker {
+  margin-bottom: 10px;
+}
+
+.agent-picker-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+  max-height: min(42dvh, 340px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 3px 4px 2px;
+}
+
+.agent-choice {
+  display: flex;
+  min-width: 0;
+  min-height: 84px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 5px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.agent-choice-avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.agent-choice > span {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-picker-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 4px;
+  color: var(--ink-60);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.compact-entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.pull-count-field {
+  display: grid;
+  grid-template-columns: max-content 96px;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+
+.pull-count-field input {
+  width: 96px;
+  margin-top: 0;
+  padding-inline: 8px;
+  font-family: var(--font-d);
+  font-size: 18px;
+  text-align: center;
+}
+
+.pull-count-field > span {
+  white-space: nowrap;
 }
 
 .composer-note {
-  margin-bottom: 12px;
+  margin-top: 8px;
   color: var(--ink-60);
   font-size: 11px;
-  line-height: 1.7;
-}
-
-.record-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(150px, .8fr);
-  gap: 12px;
+  line-height: 1.6;
 }
 
 label {
@@ -662,7 +774,24 @@ select {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 14px;
+  margin: 0;
+}
+
+.composer-actions button {
+  min-width: 64px;
+  padding-inline: 14px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .record-feed {
@@ -967,8 +1096,13 @@ summary:focus-visible,
     padding: 15px;
   }
 
-  .record-fields {
-    grid-template-columns: minmax(0, 1fr);
+  .compact-entry-row {
+    gap: 8px 10px;
+  }
+
+  .agent-picker-results {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: 44dvh;
   }
 
   .records-heading {
