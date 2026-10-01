@@ -5,6 +5,7 @@ const PATH = '/v1/recruitment'
 const ADMIN_PATH = '/v1/admin/recruitment-catalog'
 export function listAdminRecruitmentCatalog() { return request(ADMIN_PATH, { auth: true }) }
 export function createAdminRecruitmentPool(pool) { return request(ADMIN_PATH, { auth: true, method: 'POST', body: pool }) }
+export function importAdminRecruitmentCatalog(document) { return request(ADMIN_PATH + '/import', { auth: true, method: 'POST', timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS, body: document }) }
 export function updateAdminRecruitmentPool(poolId, pool) { return request(ADMIN_PATH + '/' + encodeURIComponent(poolId), { auth: true, method: 'PUT', body: pool }) }
 function query(values) {
   const params = new URLSearchParams()
