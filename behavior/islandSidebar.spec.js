@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import Sidebar from '../src/components/IslandSidebar.vue'
 import { auth } from '../src/store/auth.js'
+import { recruitmentAccess } from '../src/store/recruitmentAccess.js'
 import { notificationUnreadState } from '../src/store/notificationUnread.js'
 import { subscribeFeedbackUnread } from '../src/store/feedbackUnread.js'
 import { logout } from '../src/store/auth.js'
@@ -9,6 +10,10 @@ import { dialog } from '../src/utils/dialog.js'
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ accessToken: '', userInfo: null }), logout: vi.fn() }
+})
+vi.mock('../src/store/recruitmentAccess.js', async () => {
+  const { reactive } = await import('vue')
+  return { recruitmentAccess: reactive({ canAccess: false, setIdentity: vi.fn(), refresh: vi.fn().mockResolvedValue(null) }) }
 })
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }), useRoute: () => ({ fullPath: '/', meta: { title: '今日一览 — YuanHub' } }) }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
@@ -22,6 +27,7 @@ let unsubscribe
 beforeEach(() => {
   vi.useFakeTimers()
   auth.accessToken = ''; auth.userInfo = null
+  recruitmentAccess.canAccess = false; recruitmentAccess.setIdentity.mockClear(); recruitmentAccess.refresh.mockClear()
   notificationUnreadState.count = 0
   unsubscribe = vi.fn(); subscribeFeedbackUnread.mockReturnValue(unsubscribe)
   logout.mockReset(); dialog.confirm.mockReset()
@@ -44,6 +50,18 @@ it('登录用户获得实用导航与共享未读状态，不锁死入口顺序�
   expect(routes(wrapper)).not.toContain('/manage')
   expect(wrapper.text()).toContain('测试殿下')
   expect(wrapper.text()).toContain('2')
+})
+it('招募档案导航只对拥有独立招募访问权限的登录用户显示', async () => {
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'user-a', user_name: '测试殿下' }
+  let wrapper = render(); await flushPromises()
+  expect(routes(wrapper)).not.toContain('/recruitment')
+  expect(recruitmentAccess.setIdentity).toHaveBeenCalledWith('user-a')
+  expect(recruitmentAccess.refresh).toHaveBeenCalled()
+  wrapper.unmount()
+
+  recruitmentAccess.canAccess = true
+  wrapper = render(); await flushPromises()
+  expect(routes(wrapper)).toContain('/recruitment')
 })
 it('卸载只释放反馈订阅，不在 Sidebar 内维护通知轮询', async () => {
   auth.accessToken = 'test-only'; auth.userInfo = { user_name: '测试殿下' }
