@@ -36,6 +36,16 @@ it('默认展示头像和彩色抽数条，单条录入后生成记录条；重�
   expect(wrapper.emitted('save')[1][0]).toEqual(first)
 })
 
+it('公共目录无头像时按真实密探ID回退本地密探图，进入录入态会标记底部区域', async () => {
+  const wrapper = render({ records: [], agents: [{ id: 'char_001_yangxiu', name: '杨修', rarity: 5, games: ['代号鸢'] }] })
+  await wrapper.get('.add-record').trigger('click')
+  const choice = wrapper.get('.agent-choice[data-agent-id="char_001_yangxiu"]')
+  expect(choice.get('img').attributes('src')).toContain('/assets/operator-portraits/char_001_yangxiu.webp')
+  await choice.trigger('click')
+  expect(wrapper.get('footer').classes()).toContain('is-entry-active')
+  expect(document.activeElement).toBe(wrapper.get('.pull-count-field input').element)
+})
+
 it('点击记录只展开紧凑抽数编辑，取消不改变记录；保存可以确认正在录入的那一条', async () => {
   const wrapper = render()
   await wrapper.get('.gacha-record .record-detail').trigger('click')

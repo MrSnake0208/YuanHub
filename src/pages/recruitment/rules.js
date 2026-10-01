@@ -4,7 +4,10 @@ export const MAX_IMPORT_BYTES = 5 * 1024 * 1024
 
 export function operatorCatalogEntries(data) {
   if (!Array.isArray(data?.operators)) throw new Error('公共密探图鉴响应无效，请刷新重试')
-  return data.operators
+  return data.operators.map(operator => ({
+    ...operator,
+    avatar: operator.avatar || operator.avatar_url || ''
+  }))
 }
 export function recruitmentPoolCatalog(pool, catalog) {
   const snapshot = pool?.mapped_snapshot || pool?.snapshot
@@ -25,7 +28,7 @@ export function resolveRecruitmentAgent(event, pool, catalog, operators) {
   const directory = recruitmentPoolCatalog(pool, catalog)
   const slot = (directory?.up_agents || pool?.snapshot?.up_agents || []).find(item => item.id === snapshot.agent_id)
   const operator = operators.find(item => item.id === (slot?.operator_id || snapshot.operator_id || snapshot.agent_id))
-  return { ...snapshot, ...operator, id: snapshot.agent_id, name: operator?.name || slot?.name || snapshot.name, placeholder: !!slot && !slot.operator_id }
+  return { ...snapshot, ...operator, id: snapshot.agent_id, operator_id: slot?.operator_id || snapshot.operator_id || operator?.id || null, name: operator?.name || slot?.name || snapshot.name, placeholder: !!slot && !slot.operator_id }
 }
 
 export function integer(value, label, { positive = false, nullable = false } = {}) {
