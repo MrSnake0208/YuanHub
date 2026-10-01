@@ -9,7 +9,8 @@
           <p v-if="error" ref="errorSummary" class="card error" role="alert" tabindex="-1">{{ error }}</p>
           <p v-if="notice" role="status">{{ notice }}</p>
           <p v-if="loading" role="status">正在读取公共卡池和密探图鉴…</p>
-          <div class="toolbar"><label>游戏<select v-model="filterGame"><option value="">全部</option><option>代号鸢</option><option>如鸢</option></select></label><label>搜索卡池<input v-model.trim="search" type="search" placeholder="名称或 ID"></label><button type="button" :disabled="loading || saving" @click="load">刷新目录</button><button class="primary" type="button" :disabled="loading || saving" @click="openNew">新建卡池</button></div>
+          <div class="toolbar"><label>游戏<select v-model="filterGame"><option value="">全部</option><option>代号鸢</option><option>如鸢</option></select></label><label>搜索卡池<input v-model.trim="search" type="search" placeholder="名称或 ID"></label><button type="button" :disabled="loading || saving || importing" @click="load">刷新目录</button><button type="button" :disabled="loading || saving || importing" aria-describedby="catalog-import-hint" @click="openImport">{{ importing ? '导入中…' : '批量导入 JSON' }}</button><button class="primary" type="button" :disabled="loading || saving || importing" @click="openNew">新建卡池</button><input ref="importInput" class="file-input" type="file" accept="application/json,.json" @change="importFile"></div>
+          <p id="catalog-import-hint" class="hint">批量导入只新增数据库中不存在的 pool_id，不覆盖已有卡池；兼容旧卡池目录 JSON 与带 up_agents 的目录 JSON。</p>
           <div class="catalog-layout">
             <section aria-labelledby="catalog-list-title"><h2 id="catalog-list-title">公共卡池（{{ filteredPools.length }}）</h2><p v-if="!loading && !filteredPools.length" class="card">没有符合条件的卡池。</p><article v-for="pool in filteredPools" :key="pool.pool_id" class="card pool-row"><div><h3>{{ pool.name }}</h3><p>{{ pool.game }} · {{ pool.enabled ? '已启用' : '已停用' }} · UP {{ pool.up_agents.filter(slot => slot.active).length }} 名</p><small>{{ pool.start_date || '开始日期未知' }} — {{ pool.end_date || '结束日期未知' }}</small></div><button type="button" :disabled="saving" @click="openEdit(pool)">编辑卡池</button></article></section>
             <section v-if="form" ref="editor" class="card editor" aria-labelledby="catalog-editor-title" tabindex="-1">
@@ -43,10 +44,10 @@ import operatorPortraits from '../../data/operatorPortraits.json'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { getOperatorCatalog } from '../../api/operator.js'
-import { createAdminRecruitmentPool, listAdminRecruitmentCatalog, updateAdminRecruitmentPool } from '../../api/recruitment.js'
+import { createAdminRecruitmentPool, importAdminRecruitmentCatalog, listAdminRecruitmentCatalog, updateAdminRecruitmentPool } from '../../api/recruitment.js'
 import { operatorCatalogEntries } from './rules.js'
 
-const router = useRouter(), pools = ref([]), operators = ref([]), loading = ref(false), saving = ref(false), error = ref(''), operatorError = ref(''), notice = ref(''), filterGame = ref(''), search = ref(''), form = ref(null), isNew = ref(false), desiredCount = ref(0), editor = ref(null), errorSummary = ref(null)
+const router = useRouter(), pools = ref([]), operators = ref([]), loading = ref(false), saving = ref(false), importing = ref(false), error = ref(''), operatorError = ref(''), notice = ref(''), filterGame = ref(''), search = ref(''), form = ref(null), isNew = ref(false), desiredCount = ref(0), editor = ref(null), errorSummary = ref(null), importInput = ref(null)
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
 const permitted = computed(() => !!identity.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE))
 const filteredPools = computed(() => pools.value.filter(pool => (!filterGame.value || pool.game === filterGame.value) && [pool.name, pool.pool_id].some(value => value.toLowerCase().includes(search.value.toLowerCase()))))
@@ -56,6 +57,25 @@ const operatorAvatar = operator => operator?.avatar || operator?.avatar_url || o
 let generation = 0, alive = true
 const current = token => alive && permitted.value && token.generation === generation && token.identity === identity.value
 const capture = () => ({ generation, identity: identity.value })
+
+function openImport() { if (permitted.value && !loading.value && !saving.value && !importing.value) importInput.value?.click() }
+async function importFile(event) {
+  const file = event.target.files?.[0]; event.target.value = ''
+  if (!file || !permitted.value || importing.value) return
+  const token = capture(); importing.value = true; error.value = ''; notice.value = ''
+  try {
+    const document = JSON.parse(await file.text())
+    const result = await importAdminRecruitmentCatalog(document)
+    if (!current(token)) return
+    importing.value = false
+    notice.value = `导入完成：新增 ${result.created_count ?? 0} 个，跳过已存在 ${result.skipped_count ?? 0} 个。`
+    await load()
+  } catch (err) {
+    if (!current(token)) return
+    importing.value = false
+    await showError(err instanceof SyntaxError ? 'JSON 文件格式不正确，请检查后重新选择文件。' : err.message || '卡池导入失败，请检查文件后重试')
+  } finally { if (current(token)) importing.value = false }
+}
 
 async function showError(message) { error.value = message; await nextTick(); errorSummary.value?.focus() }
 async function load() {
@@ -112,10 +132,10 @@ async function save() {
     await showError(err.status === 409 ? '目录已被其他管理员更新。草稿保留，请刷新目录并重新编辑后保存。' : err.message || '保存失败，草稿已保留')
   } finally { if (current(token)) saving.value = false }
 }
-watch([identity, permitted], () => { generation++; pools.value = []; operators.value = []; form.value = null; loading.value = false; saving.value = false; error.value = ''; notice.value = ''; if (permitted.value) load() }, { immediate: true, flush: 'sync' })
+watch([identity, permitted], () => { generation++; pools.value = []; operators.value = []; form.value = null; loading.value = false; saving.value = false; importing.value = false; error.value = ''; notice.value = ''; if (permitted.value) load() }, { immediate: true, flush: 'sync' })
 onScopeDispose(() => { alive = false; generation++ })
 </script>
 
 <style scoped>
-main{min-width:0}.hero{background:var(--cream);padding:36px 0;border-bottom:1px solid var(--line)}.hero::after{content:none}.hero h1{font-size:clamp(32px,5vw,56px);margin-top:14px}.catalog-content{padding-top:20px;padding-bottom:30px}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0;min-width:0;overflow-wrap:anywhere}h2,h3{font-family:var(--font-s);margin:0 0 12px}h2{font-size:24px}h3{font-size:20px}.toolbar,.fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.toolbar{align-items:end;margin:16px 0 24px}.catalog-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}.catalog-layout>section{min-width:0}.pool-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}.pool-row p{font-size:14px;line-height:1.7}.pool-row small{display:block;font-size:12px;line-height:1.8;color:var(--ink-60)}.pool-id{overflow-wrap:anywhere}label{min-width:0;display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;margin-bottom:10px}input:not([type=checkbox]),select{width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px;color:var(--ink);background:var(--cream);font:inherit}button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px 14px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}.primary{background:var(--tea);color:var(--cream)}button:disabled{opacity:.5;cursor:not-allowed}.error{color:var(--rouge)}.hint,label small{font-size:13px;font-weight:400;line-height:1.7;color:var(--ink-60)}.check{flex-direction:row;align-items:center;min-height:44px}.count-control{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:20px 0}.count-control label{flex:1;min-width:100px;margin:0}.count-control button{flex:1}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}fieldset{border:1px solid var(--line);border-radius:12px;padding:12px;margin:14px 0;min-width:0}legend{font-weight:700}.slot-preview{display:flex;align-items:center;gap:12px}.slot-preview small{min-width:0;overflow-wrap:anywhere;color:var(--ink-60)}button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(min-width:768px){.toolbar{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto auto}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:1024px){.catalog-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}.editor{margin-top:0}}
+main{min-width:0}.hero{background:var(--cream);padding:36px 0;border-bottom:1px solid var(--line)}.hero::after{content:none}.hero h1{font-size:clamp(32px,5vw,56px);margin-top:14px}.catalog-content{padding-top:20px;padding-bottom:30px}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0;min-width:0;overflow-wrap:anywhere}h2,h3{font-family:var(--font-s);margin:0 0 12px}h2{font-size:24px}h3{font-size:20px}.toolbar,.fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.toolbar{align-items:end;margin:16px 0 24px}.catalog-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}.catalog-layout>section{min-width:0}.pool-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}.pool-row p{font-size:14px;line-height:1.7}.pool-row small{display:block;font-size:12px;line-height:1.8;color:var(--ink-60)}.pool-id{overflow-wrap:anywhere}label{min-width:0;display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:700;margin-bottom:10px}input:not([type=checkbox]),select{width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px;color:var(--ink);background:var(--cream);font:inherit}button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px 14px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}.primary{background:var(--tea);color:var(--cream)}button:disabled{opacity:.5;cursor:not-allowed}.error{color:var(--rouge)}.hint,label small{font-size:13px;font-weight:400;line-height:1.7;color:var(--ink-60)}.check{flex-direction:row;align-items:center;min-height:44px}.count-control{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:20px 0}.count-control label{flex:1;min-width:100px;margin:0}.count-control button{flex:1}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}fieldset{border:1px solid var(--line);border-radius:12px;padding:12px;margin:14px 0;min-width:0}legend{font-weight:700}.slot-preview{display:flex;align-items:center;gap:12px}.slot-preview small{min-width:0;overflow-wrap:anywhere;color:var(--ink-60)}.file-input{display:none}button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(min-width:768px){.toolbar{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto auto auto}.fields{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:1024px){.catalog-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}.editor{margin-top:0}}
 </style>

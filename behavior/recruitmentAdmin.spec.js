@@ -10,7 +10,7 @@ const router = vi.hoisted(() => ({ replace: vi.fn() }))
 vi.mock('vue-router', () => ({ useRouter: () => router }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'admin-a' }, adminAccess: { permissions: ['recruitment_catalog:write'] } }) }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
-vi.mock('../src/api/recruitment.js', () => ({ listAdminRecruitmentCatalog: vi.fn(), createAdminRecruitmentPool: vi.fn(), updateAdminRecruitmentPool: vi.fn() }))
+vi.mock('../src/api/recruitment.js', () => ({ listAdminRecruitmentCatalog: vi.fn(), createAdminRecruitmentPool: vi.fn(), importAdminRecruitmentCatalog: vi.fn(), updateAdminRecruitmentPool: vi.fn() }))
 
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text() === text)
 const input = (wrapper, label) => wrapper.findAll('label').find(item => item.text().startsWith(label)).get('input')
@@ -19,12 +19,22 @@ function pool() { return { pool_id: 'pool-public', game: '代号鸢', name: '新
 beforeEach(() => {
   vi.clearAllMocks(); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'admin-a' }; auth.adminAccess = { permissions: ['recruitment_catalog:write'] }
   api.listAdminRecruitmentCatalog.mockResolvedValue({ pools: [pool()] }); getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'formal-a', name: '正式绝密', rarity: 5, games: ['代号鸢'], avatar: '/formal.png' }, { id: 'ru-a', name: '如鸢绝密', rarity: 5, games: ['如鸢'] }, { id: 'r4-a', name: '机密', rarity: 4, games: ['代号鸢'] }] })
-  api.createAdminRecruitmentPool.mockImplementation(async body => ({ ...body, revision: 1 })); api.updateAdminRecruitmentPool.mockImplementation(async (_, body) => ({ ...body, revision: body.expected_revision + 1 }))
+  api.createAdminRecruitmentPool.mockImplementation(async body => ({ ...body, revision: 1 })); api.importAdminRecruitmentCatalog.mockResolvedValue({ created_count: 2, skipped_count: 1, created_pool_ids: ['legacy-a', 'legacy-b'], skipped_pool_ids: ['pool-public'] }); api.updateAdminRecruitmentPool.mockImplementation(async (_, body) => ({ ...body, revision: body.expected_revision + 1 }))
 })
 
 it('普通用户直接挂载管理页也不读取或写入管理员接口', async () => {
   auth.adminAccess = { permissions: [] }; const wrapper = render(); await flushPromises()
   expect(wrapper.text()).toContain('需要招募卡池管理权限'); expect(api.listAdminRecruitmentCatalog).not.toHaveBeenCalled(); expect(api.createAdminRecruitmentPool).not.toHaveBeenCalled(); expect(api.updateAdminRecruitmentPool).not.toHaveBeenCalled()
+})
+it('批量导入旧目录JSON只把文件交给导入接口并显示新增与跳过数量', async () => {
+  const wrapper = render(); await flushPromises()
+  const document = { catalog_revision: 'legacy', pools: [{ pool_id: 'legacy-a', game: '代号鸢', name: '旧池', up_agent_ids: [], up_agent_names: [] }] }
+  const picker = wrapper.get('input[type="file"]')
+  Object.defineProperty(picker.element, 'files', { configurable: true, value: [{ text: vi.fn().mockResolvedValue(JSON.stringify(document)) }] })
+  await picker.trigger('change'); await flushPromises()
+  expect(api.importAdminRecruitmentCatalog).toHaveBeenCalledWith(document)
+  expect(wrapper.text()).toContain('导入完成：新增 2 个，跳过已存在 1 个')
+  expect(api.listAdminRecruitmentCatalog).toHaveBeenCalledTimes(2)
 })
 it('创建N个占位，槽ID包含池身份、只提交指定snake_case契约', async () => {
   const wrapper = render(); await flushPromises(); await button(wrapper, '新建卡池').trigger('click'); await input(wrapper, '卡池名称').setValue('管理员新池'); await input(wrapper, 'UP 数量 N').setValue('2'); await button(wrapper, '调整 UP 数量').trigger('click')
