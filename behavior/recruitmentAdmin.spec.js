@@ -45,6 +45,7 @@ it('创建N个占位，槽ID包含池身份、只提交指定snake_case契约', 
 it('占位对应图鉴密探保留槽身份与revision，筛选同游戏绝密', async () => {
   const wrapper = render(); await flushPromises(); await button(wrapper, '编辑卡池').trigger('click')
   const select = wrapper.get('fieldset select'); expect(select.element.disabled).toBe(false); expect(select.text()).toContain('正式绝密'); expect(select.text()).not.toContain('如鸢绝密'); expect(select.text()).not.toContain('机密'); await select.setValue('formal-a'); await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(wrapper.get('.slot-preview-avatar').classes()).toContain('slot-preview-avatar'); expect(wrapper.get('.slot-preview-avatar img').attributes('src')).toContain('/formal.png')
   expect(api.updateAdminRecruitmentPool.mock.calls[0]).toEqual(['pool-public', expect.objectContaining({ expected_revision: 2, up_agents: [{ id: 'pool-public:up:stable', name: '正式绝密', operator_id: 'formal-a', active: true }] })])
 })
 it('图鉴失败禁用选择并保留已有绑定，刷新成功后恢复选择', async () => {
