@@ -76,6 +76,25 @@ async function addRecord(wrapper, agent = 'char-a', span = '12') {
   await entry.get('.agent-choice[data-agent-id="' + agent + '"]').trigger('click')
   await entry.get('.pull-count-field input').setValue(span); await entry.get('.composer-actions .primary').trigger('click')
 }
+it('卡池封面按UP数量组合最多三张立绘，更多UP显示数量提示', async () => {
+  const catalog = recruitmentCatalog()
+  catalog.pools[0].up_agents = [
+    { id: 'slot-1', name: '杨修', operator_id: 'char_001_yangxiu', active: true },
+    { id: 'slot-2', name: '贾诩', operator_id: 'char_002_jiaxu', active: true },
+    { id: 'slot-3', name: '孙尚香', operator_id: 'char_003_sunshangxiang', active: true },
+    { id: 'slot-4', name: '郭嘉', operator_id: 'char_004_guojia', active: true }
+  ]
+  api.getRecruitmentCatalog.mockResolvedValue(catalog)
+  const wrapper = render(); await flushPromises()
+  const cover = wrapper.get('.pool-cover')
+  expect(cover.findAll('.cover-portrait')).toHaveLength(3)
+  expect(cover.findAll('.cover-portrait').map(item => item.attributes('src'))).toEqual([
+    '/assets/operator-portraits/char_001_yangxiu.webp',
+    '/assets/operator-portraits/char_002_jiaxu.webp',
+    '/assets/operator-portraits/char_003_sunshangxiang.webp'
+  ])
+  expect(cover.get('.cover-more').text()).toBe('+1')
+})
 it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽数回显；密探名仅保留在无障碍标签；取消不写入且恢复焦点', async () => {
   const wrapper = render(); await flushPromises(); expect(wrapper.find('.history-card').exists()).toBe(false); expect(wrapper.find('.maintenance').exists()).toBe(false)
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled(); expect(api.listRecruitmentBatches).not.toHaveBeenCalled(); await selectPool(wrapper)
