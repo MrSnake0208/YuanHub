@@ -67,16 +67,15 @@ it('游戏快照不一致时仍能从账号栏展开备份，允许导出但禁�
   const exchange = wrapper.get('.exchange-card')
   expect(exchange.isVisible()).toBe(true); expect(button(exchange, '导出完整 JSON').attributes('disabled')).toBeUndefined(); expect(exchange.get('input[type=file]').attributes('disabled')).toBeDefined()
 })
-it('首次无池直接提供三条开始路径，展开并聚焦现有表单，不发起隐式读写', async () => {
+it('当前游戏无公共目录时提示管理员，基准和导入仍可展开聚焦，不发起隐式写入', async () => {
   archives['acc-a'].pools = []; archives['acc-a'].current_pool_id = null; events['acc-a'] = []
+  api.getRecruitmentCatalog.mockResolvedValue({ pools: [] })
   const wrapper = render({ RecruitmentExchange: false }); await flushPromises()
   const maintenance = wrapper.get('.maintenance'), exchange = wrapper.get('.exchange-card')
+  expect(wrapper.text()).toContain('当前游戏暂无公共卡池'); expect(wrapper.text()).not.toContain('添加卡池')
   expect(maintenance.element.open).toBe(false); expect(exchange.isVisible()).toBe(false)
-  await button(wrapper, '添加卡池并开始记录').trigger('click'); await flushPromises()
-  expect(maintenance.element.open).toBe(true); expect(document.activeElement).toBe(maintenance.get('select').element)
-  maintenance.element.open = false
   await button(wrapper, '补历史总抽数').trigger('click'); await flushPromises()
-  expect(maintenance.element.open).toBe(true); expect(document.activeElement).toBe(maintenance.findAll('section')[1].get('input').element)
+  expect(maintenance.element.open).toBe(true); expect(document.activeElement).toBe(maintenance.get('input').element)
   await button(wrapper, '导入备份').trigger('click'); await flushPromises()
   expect(exchange.isVisible()).toBe(true); expect(document.activeElement).toBe(exchange.get('input[type=file]').element)
   expect(api.recruitmentCommand).not.toHaveBeenCalled(); expect(api.exportRecruitment).not.toHaveBeenCalled(); expect(api.previewRecruitmentImport).not.toHaveBeenCalled(); expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
@@ -179,16 +178,42 @@ it('断线期间换游戏后重连，先读取真实账号游戏再读取目录�
   expect(activeAccount.gameFor('acc-a')).toBe('如鸢'); expect(api.getRecruitmentCatalog.mock.calls.at(-1)[0]).toBe('如鸢'); expect(wrapper.find('[role=dialog]').exists()).toBe(false)
 })
 
-it('创建卡池明确提交未知/0/已知初始进度，不把未填事实当0', async () => {
-  api.getRecruitmentCatalog.mockResolvedValue({ pools: ['catalog-a', 'catalog-b', 'catalog-c', 'catalog-d'].map(pool_id => ({ ...recruitmentCatalog().pools[0], pool_id })) })
+it('首次直接显示全部游戏卡池并可筛选补录，未知进度不伪造为0或自动创建档案', async () => {
+  const catalog = ['disabled', 'catalog-a', 'catalog-b'].map(pool_id => ({ ...recruitmentCatalog().pools[0], pool_id, name: pool_id, enabled: pool_id !== 'disabled' }))
+  const pools = catalog.map(pool => ({ pool_id: 'catalog:' + pool.pool_id, snapshot: { ...pool, catalog_pool_id: pool.pool_id }, progress: null }))
+  archives['acc-a'] = { ...recruitmentFixture(), archive_revision: 0, current_pool_id: null, pools, summary: { ...recruitmentFixture().summary, known_total_pulls: 0, event_count: 0 } }
+  events['acc-a'] = []; api.getRecruitmentCatalog.mockResolvedValue({ pools: catalog })
   const wrapper = render(); await flushPromises()
-  const form = wrapper.get('.maintenance section form')
-  expect(form.find('input[type=text], input:not([type])').exists()).toBe(false); expect(form.get('select').findAll('option').map(option => option.attributes('value'))).not.toContain('catalog-a')
-  await form.get('select').setValue('catalog-b')
-  await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toMatchObject({ operation: 'pool_create', data: { progress: null } })
-  expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ catalog_pool_id: 'catalog-b' }); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).not.toHaveProperty('name')
-  await form.get('select').setValue('catalog-c'); await form.findAll('select')[1].setValue('zero'); await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.progress).toBe(0)
-  await form.get('select').setValue('catalog-d'); await form.findAll('select')[1].setValue('known'); await form.get('input[type=number]').setValue('21'); await form.trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.progress).toBe(21)
+  const options = wrapper.get('.current-card > label select').findAll('option').filter(option => option.attributes('value'))
+  expect(options.map(option => option.attributes('value'))).toEqual(pools.map(pool => pool.pool_id))
+  expect(wrapper.get('.current-card > label select').element.value).toBe('catalog:catalog-a')
+  expect(wrapper.get('.current-progress strong').text()).toBe('未知'); expect(wrapper.text()).not.toContain('添加公共卡池档案'); expect(wrapper.get('.maintenance summary').text()).toBe('历史总抽数')
+  await button(wrapper, '卡池档案').trigger('click'); expect(wrapper.findAll('.pool-card')).toHaveLength(3)
+  await wrapper.findAll('.pool-card')[2].findAll('button')[0].trigger('click'); await flushPromises()
+  expect(api.listRecruitmentEvents.mock.calls.at(-1)[0].poolId).toBe('catalog:catalog-b'); expect(wrapper.find('.event-row').exists()).toBe(false)
+  await wrapper.findAll('.pool-card')[2].findAll('button')[1].trigger('click'); await flushPromises()
+  const editor = wrapper.findComponent({ name: 'EntryEditor' })
+  expect(editor.findAll('select')[0].element.value).toBe('historical'); expect(editor.findAll('select')[1].element.value).toBe('catalog:catalog-b')
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+
+it('自动展示卡池的进度可以明确校正为未知、0或已知次数，无需手动添加', async () => {
+  archives['acc-a'].pools[0].progress = null; archives['acc-a'].current_pool_id = null
+  api.recruitmentCommand.mockImplementation(async command => {
+    if (command.operation === 'progress_set') archives['acc-a'].pools[0].progress = command.data.progress
+    archives['acc-a'].archive_revision++
+    return { archive_revision: archives['acc-a'].archive_revision }
+  })
+  const wrapper = render(); await flushPromises()
+  const form = wrapper.get('.current-card details form')
+  expect(wrapper.get('.current-progress strong').text()).toBe('未知')
+  await form.get('select').setValue('unknown'); await form.trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toMatchObject({ operation: 'progress_set', data: { pool_id: 'pool-a', progress: null } })
+  await form.get('select').setValue('direct'); await form.get('input').setValue('0'); await form.trigger('submit'); await flushPromises()
+  expect(wrapper.get('.current-progress strong').text()).toBe('0')
+  await form.get('input').setValue('21'); await form.trigger('submit'); await flushPromises()
+  expect(wrapper.get('.current-progress strong').text()).toBe('21')
+  expect(api.recruitmentCommand.mock.calls.every(([command]) => command.operation === 'progress_set')).toBe(true)
 })
 
 it('从早到晚排序作用于完整分页，重排提交全池最早到最新ID而不改变跨度', async () => {
@@ -251,6 +276,6 @@ it('旧临时池保留删除修改入口，但不能新增自定义池或密探'
   archives['acc-a'].pools[0].snapshot.catalog_pool_id = null
   archives['acc-a'].pools[0].mapped_snapshot = { catalog_pool_id: 'catalog-a', name: '已对应公共卡池' }
   const wrapper = render(); await flushPromises()
-  expect(wrapper.text()).toContain('保留历史与进度维护'); expect(button(wrapper, '记录绝密').attributes('disabled')).toBeDefined(); expect(wrapper.text()).not.toContain('临时卡池名称'); expect(wrapper.text()).not.toContain('添加临时密探'); expect(wrapper.text()).not.toContain('保存对应'); expect(wrapper.get('.maintenance select').text()).toContain('测试卡池')
+  expect(wrapper.text()).toContain('保留历史与进度维护'); expect(button(wrapper, '记录绝密').attributes('disabled')).toBeDefined(); expect(wrapper.text()).not.toContain('临时卡池名称'); expect(wrapper.text()).not.toContain('添加临时密探'); expect(wrapper.text()).not.toContain('保存对应'); expect(wrapper.get('.current-card > label select').text()).toContain('测试卡池'); expect(wrapper.get('.maintenance').text()).toContain('历史基准')
   await wrapper.find('.event-row button').trigger('click'); expect(wrapper.find('[role=dialog]').exists()).toBe(true); expect(wrapper.find('[role=dialog] button[type=submit]').attributes('disabled')).toBeUndefined()
 })
