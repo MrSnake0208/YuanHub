@@ -72,15 +72,30 @@
                   <h3 id="records-title">本池抽卡记录</h3>
                   <p>{{ rows.length }} 条{{ hasMore ? ' · 还有更早记录' : '' }}</p>
                 </div>
-                <button
-                  type="button"
-                  class="add-record"
-                  :disabled="busy || readOnly || recordsLoading || !initialized || !canRecord || newCount >= 120 || !!activeRow"
-                  @click="add"
-                >
-                  <Plus :size="17" aria-hidden="true" />
-                  登记出货
-                </button>
+                <div class="entry-shortcuts" role="group" aria-label="快速登记出货">
+                  <button
+                    v-for="agent in quickUpAgents"
+                    :key="agent.id"
+                    type="button"
+                    class="quick-up-button"
+                    :aria-label="'快速登记 ' + agent.name + ' 的出货'"
+                    :title="'快速登记 ' + agent.name"
+                    :disabled="busy || readOnly || recordsLoading || !initialized || !canRecord || newCount >= 120 || !!activeRow"
+                    @click="add(agent.id)"
+                  >
+                    <OperatorAvatar class="quick-up-avatar" :avatar="agent.avatar || ''" :name="agent.name" :rarity="5" aria-hidden="true" />
+                    <span class="quick-up-mark" aria-hidden="true">UP</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="add-record"
+                    :disabled="busy || readOnly || recordsLoading || !initialized || !canRecord || newCount >= 120 || !!activeRow"
+                    @click="add()"
+                  >
+                    <Plus :size="17" aria-hidden="true" />
+                    {{ quickUpAgents.length ? '其他密探' : '登记出货' }}
+                  </button>
+                </div>
               </div>
 
               <fieldset v-if="activeRow" class="entry-composer" :disabled="busy || readOnly || recordsLoading">
@@ -98,7 +113,7 @@
                   </label>
                   <label>
                     <span>多少抽出货</span>
-                    <input v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" @input="limitPullSpan">
+                    <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" @input="limitPullSpan">
                   </label>
                 </div>
                 <p v-if="activeRow.batch_id" class="composer-note">此记录属于已知总量批次；编辑或移除本条不会改变批次总抽数。</p>
@@ -152,7 +167,7 @@
 
               <div v-else-if="initialized && !recordsLoading" class="records-empty">
                 <strong>还没有抽卡记录</strong>
-                <p>点击“登记出货”，选择密探并填写这次绝密前的抽数即可。</p>
+                <p>{{ quickUpAgents.length ? '点击上方 UP 头像快速登记；歪卡或其他密探使用“其他密探”。' : '点击“登记出货”，选择密探并填写这次绝密前的抽数即可。' }}</p>
               </div>
 
               <div class="records-tail">
@@ -193,7 +208,7 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), agentSelect = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
+const panel = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), agentSelect = ref(null), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
 const originals = reactive(new Map())
 let requestId = ''
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
@@ -203,6 +218,7 @@ const options = computed(() => {
   return values
 })
 const selectedAgent = row => options.value.find(agent => agent.id === row.agent_id)
+const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
 function close() { if (!props.busy) emit('close') }
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse())
@@ -217,8 +233,8 @@ function recordLabel(row) {
   return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
 }
 const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (remaining.value !== initialRemaining.value ? 1 : 0))
-function focusEntry() { nextTick(() => agentSelect.value?.focus()) }
-function add() { error.value = ''; activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null }; focusEntry() }
+function focusEntry(preferPulls = false) { nextTick(() => (preferPulls ? pullSpanInput.value : agentSelect.value)?.focus()) }
+function add(agentId = '') { error.value = ''; activeRow.value = { event_id: crypto.randomUUID(), agent_id: agentId, pull_span: '', up_status: 'unknown', acquired_date: null, note: null }; focusEntry(!!agentId) }
 function edit(row) { error.value = ''; activeRow.value = { ...row }; focusEntry() }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -547,6 +563,50 @@ button:not(:disabled):hover {
   border-color: color-mix(in srgb, var(--tea) 32%, var(--line));
   font-size: 13px;
   font-weight: 800;
+}
+
+.entry-shortcuts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.quick-up-button {
+  position: relative;
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding: 1px;
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.quick-up-avatar {
+  width: 38px;
+  height: 38px;
+}
+
+.quick-up-mark {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  min-width: 20px;
+  height: 16px;
+  place-items: center;
+  padding-inline: 4px;
+  border: 1px solid var(--surface);
+  border-radius: 999px;
+  background: var(--tea);
+  color: var(--cream);
+  font: 800 8px/1 var(--font-d);
+  pointer-events: none;
 }
 
 .entry-composer {
@@ -993,8 +1053,14 @@ summary:focus-visible,
     flex-direction: column;
   }
 
-  .add-record {
+  .entry-shortcuts {
     width: 100%;
+    justify-content: flex-start;
+  }
+
+  .entry-shortcuts .add-record {
+    flex: 1 1 120px;
+    width: auto;
   }
 
   .gacha-record {

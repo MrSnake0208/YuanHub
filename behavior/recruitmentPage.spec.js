@@ -82,6 +82,19 @@ it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽�
   expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).not.toContain('测试绝密'); expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('测试绝密'); expect(editor(wrapper).find('fieldset').exists()).toBe(false)
   await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.pool-card').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
+it('配置的本池UP可直接点头像开始登记并聚焦抽数；其他密探仍走手动选择', async () => {
+  const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot-up', name: '测试UP', operator_id: 'char-a', active: true }]
+  api.getRecruitmentCatalog.mockResolvedValue(catalog)
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  const quick = editor(wrapper).get('.quick-up-button')
+  expect(quick.attributes('aria-label')).toContain('测试绝密'); expect(button(editor(wrapper), '其他密探')).toBeTruthy()
+  await quick.trigger('click'); await flushPromises()
+  expect(composer(wrapper).get('select').element.value).toBe('slot-up'); expect(document.activeElement).toBe(composer(wrapper).get('input').element)
+  await composer(wrapper).get('input').setValue('12'); await button(composer(wrapper), '加入抽卡记录').trigger('click')
+  expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12')
+  await button(editor(wrapper), '其他密探').trigger('click'); await flushPromises()
+  expect(composer(wrapper).get('select').element.value).toBe(''); expect(document.activeElement).toBe(composer(wrapper).get('select').element)
+})
 it('单次出货抽数限制为1–40，输入超限会收敛到40且共享规则拒绝绕过UI的超限值', async () => {
   expect(() => entryInput({ agent_id: 'char-a', pull_span: '41' })).toThrow('出货抽数须为 1–40')
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
@@ -140,7 +153,7 @@ it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏�
   const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot', name: '占位', operator_id: 'char-a', active: true }]; api.getRecruitmentCatalog.mockResolvedValue(catalog); records['acc-a'][0].agent_snapshot = { agent_id: 'slot', name: '旧名字' }
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); expect(composer(wrapper).get('select').element.value).toBe('slot'); expect(composer(wrapper).text()).toContain('正式密探'); expect(composer(wrapper).text()).not.toContain('另一游戏'); expect(composer(wrapper).text()).not.toContain('机密'); expect(editor(wrapper).get('img').attributes('src')).toContain('/formal.png')
   await button(editor(wrapper), '取消').trigger('click'); api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable')); await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); await selectPool(wrapper)
-  expect(button(editor(wrapper), '＋ 登记出货').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).get('select').attributes('disabled')).toBeDefined(); await composer(wrapper).get('input').setValue('20'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
+  expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).get('select').attributes('disabled')).toBeDefined(); await composer(wrapper).get('input').setValue('20'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
 })
 it('游戏错配只读；身份/内测失效清弹窗，disabled不读写', async () => {
   archives['acc-a'].game_mismatch = true; const wrapper = render(); await flushPromises(); await selectPool(wrapper); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); auth.accessToken = ''; auth.userInfo = null; await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(wrapper.find('.summary').exists()).toBe(false); expect(api.recruitmentCommand).not.toHaveBeenCalled(); wrapper.unmount()
