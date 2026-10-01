@@ -123,31 +123,19 @@
                     type="button"
                     class="record-detail"
                     :disabled="busy || readOnly || recordsLoading || !!activeRow"
-                    :aria-label="'编辑' + (selectedAgent(row)?.name || row.agent_id) + '，' + (row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货')"
+                    :aria-label="recordLabel(row)"
                     @click="edit(row)"
                   >
-                    <span class="record-primary">
-                      <span class="record-identity">
-                        <strong>{{ selectedAgent(row)?.name || row.agent_id }}</strong>
-                        <span class="record-meta">
-                          <small v-if="row.up_status === 'non_up'" class="status-pill is-non-up">歪</small>
-                          <small v-else-if="selectedAgent(row)?.poolSlot || row.up_status === 'up'" class="status-pill">UP</small>
-                          <small v-if="row.batch_id" class="status-pill is-neutral">批次记录</small>
-                          <small v-if="row.acquired_date">{{ row.acquired_date }}</small>
-                          <small v-if="isChanged(row)" class="pending-mark">待保存</small>
+                    <span class="record-track">
+                      <span class="record-bar" :class="barClass(row)" :style="{ width: spanWidth(row) }">
+                        <span class="pull-result">
+                          <b>{{ row.pull_span === '' ? '未知' : row.pull_span }}</b>
+                          <small>{{ row.pull_span === '' ? '抽数' : '抽' }}</small>
                         </span>
                       </span>
-                      <span class="pull-result">
-                        <b>{{ row.pull_span === '' ? '—' : row.pull_span }}</b>
-                        <small>{{ row.pull_span === '' ? '抽数未知' : '抽' }}</small>
-                      </span>
-                    </span>
-
-                    <span class="record-visual" aria-hidden="true">
-                      <span class="record-track">
-                        <span class="record-bar" :class="barClass(row)" :style="{ width: spanWidth(row) }"></span>
-                      </span>
-                      <Pencil :size="14" />
+                      <span v-if="row.up_status === 'non_up'" class="non-up-stamp" aria-hidden="true">歪</span>
+                      <span v-if="row.batch_id" class="status-pill is-neutral" aria-hidden="true">批次</span>
+                      <span v-if="isChanged(row)" class="pending-mark" aria-hidden="true">待保存</span>
                     </span>
                   </button>
                   <button
@@ -168,7 +156,7 @@
               </div>
 
               <div class="records-tail">
-                <p v-if="rows.length" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数始终以右侧数字为准。</p>
+                <p v-if="rows.length" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数始终以色条内数字为准。</p>
                 <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">加载更早记录</button>
               </div>
             </section>
@@ -198,7 +186,7 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { CircleHelp, Pencil, Plus, Trash2, X } from '@lucide/vue'
+import { CircleHelp, Plus, Trash2, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { entryInput, MAX_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
@@ -222,6 +210,12 @@ const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) &&
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
 const spanWidth = row => row.pull_span === '' ? '100%' : Math.min(Number(row.pull_span) / 40, 1) * 100 + '%'
 const isChanged = row => JSON.stringify(entryInput(row)) !== originals.get(row.event_id)
+function recordLabel(row) {
+  const agent = selectedAgent(row)
+  const pulls = row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
+  const status = row.up_status === 'non_up' ? '，非UP' : (agent?.poolSlot || row.up_status === 'up') ? '，UP' : ''
+  return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
+}
 const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (remaining.value !== initialRemaining.value ? 1 : 0))
 function focusEntry() { nextTick(() => agentSelect.value?.focus()) }
 function add() { error.value = ''; activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null }; focusEntry() }
@@ -603,46 +597,42 @@ select {
 
 .record-feed {
   display: grid;
-  gap: 8px;
+  gap: 0;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--line);
   list-style: none;
 }
 
 .gacha-record {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
-  padding: 11px 10px 11px 12px;
-  border: 1px solid transparent;
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--cream) 60%, transparent);
-  transition: border-color 180ms ease, background-color 180ms ease;
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 180ms ease;
 }
 
 .gacha-record:hover {
-  border-color: var(--line);
-  background: var(--cream);
+  background: color-mix(in srgb, var(--cream) 58%, transparent);
 }
 
 .record-avatar {
-  flex: none;
+  width: 40px;
+  height: 40px;
 }
 
 .record-detail {
   display: flex;
   min-width: 0;
-  min-height: 62px;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: 9px;
+  min-height: 44px;
+  align-items: center;
   overflow: hidden;
-  padding: 2px 0;
+  padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   text-align: left;
 }
@@ -652,109 +642,29 @@ select {
   background: transparent;
 }
 
-.record-primary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-width: 0;
-}
-
-.record-identity {
-  min-width: 0;
-}
-
-.record-identity > strong {
-  display: block;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.record-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 4px;
-  color: var(--ink-60);
-  font-size: 10px;
-}
-
-.record-meta small {
-  font-size: 10px;
-}
-
-.status-pill,
-.pending-mark {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  line-height: 1.4;
-}
-
-.status-pill {
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
-  color: var(--accent-strong);
-}
-
-.status-pill.is-non-up {
-  border-color: color-mix(in srgb, var(--rouge) 55%, var(--line));
-  color: var(--rouge);
-}
-
-.status-pill.is-neutral {
-  border-color: var(--line);
-  color: var(--ink-60);
-}
-
-.pending-mark {
-  background: var(--yellow);
-  color: var(--tea);
-  font-weight: 700;
-}
-
-.pull-result {
-  display: flex;
-  flex: none;
-  align-items: baseline;
-  gap: 5px;
-  min-width: 66px;
-  justify-content: flex-end;
-}
-
-.pull-result b {
-  font: 700 25px/1 var(--font-d);
-}
-
-.pull-result small {
-  color: var(--ink-60);
-  font-size: 11px;
-}
-
-.record-visual {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink-60);
-}
-
 .record-track {
-  height: 6px;
-  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  overflow: hidden;
 }
 
 .record-bar {
   --bar-color: var(--accent-strong);
-  display: block;
-  min-width: 14px;
-  max-width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--bar-color);
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-width: 72px;
+  max-width: calc(100% - 48px);
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--surface);
+  background-color: var(--bar-color);
+  background-image: repeating-linear-gradient(115deg, transparent 0 14px, rgba(255, 255, 255, .12) 14px 27px);
 }
 
 .record-bar.bar-low {
@@ -771,14 +681,76 @@ select {
 
 .record-bar.bar-unknown {
   --bar-color: var(--slate-deep);
-  opacity: .45;
+}
+
+.pull-result {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.pull-result b {
+  font: 700 20px/1 var(--font-d);
+}
+
+.pull-result small {
+  color: color-mix(in srgb, var(--surface) 88%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-pill,
+.pending-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.status-pill {
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  color: var(--accent-strong);
+}
+
+.status-pill.is-neutral {
+  border-color: var(--line);
+  color: var(--ink-60);
+}
+
+.non-up-stamp {
+  display: grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 2px solid var(--rouge);
+  border-radius: 50%;
+  color: var(--rouge);
+  font: 800 17px/1 var(--font-s);
+  transform: rotate(-12deg);
+}
+
+.pending-mark {
+  background: var(--yellow);
+  color: var(--tea);
 }
 
 .delete-record {
   display: grid;
-  flex: none;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   place-items: center;
-  padding: 9px;
+  padding: 0;
   border-color: transparent;
   background: transparent;
   color: var(--rouge);
@@ -938,20 +910,17 @@ summary:focus-visible,
   }
 
   .gacha-record {
-    gap: 9px;
-    padding-inline: 9px 7px;
-  }
-
-  .record-primary {
     gap: 8px;
   }
 
-  .pull-result {
-    min-width: 55px;
+  .record-bar {
+    min-width: 68px;
+    max-width: calc(100% - 42px);
+    padding-inline: 9px;
   }
 
   .pull-result b {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .records-tail {
@@ -995,13 +964,8 @@ summary:focus-visible,
     font-size: 27px;
   }
 
-  .record-meta {
-    gap: 4px;
-  }
-
-  .delete-record {
-
-    padding-inline: 7px;
+  .record-track {
+    gap: 6px;
   }
 }
 
@@ -1024,14 +988,22 @@ summary:focus-visible,
   }
 
   .gacha-record {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr) 44px;
+    gap: 7px;
   }
 
-  .delete-record {
-    grid-column: 2;
-    justify-self: end;
+  .record-avatar {
+    width: 40px;
+    height: 40px;
+  }
 
-    margin-top: -4px;
+  .record-bar {
+    min-width: 64px;
+    padding-inline: 8px;
+  }
+
+  .status-pill.is-neutral {
+    display: none;
   }
 }
 
