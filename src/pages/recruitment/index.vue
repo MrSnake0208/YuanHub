@@ -19,8 +19,8 @@
           <p v-if="state.archive.game_mismatch" class="card error" role="alert">档案所属游戏为 {{ state.archive.game_snapshot }}，与账号当前游戏不一致。可以查看和导出，请核对账号；暂不能修改或导入。</p>
           <section class="card current-card" aria-labelledby="current-title">
             <div class="section-heading"><h2 id="current-title">正在抽的卡池</h2><button type="button" :disabled="state.loading || state.busy" @click="refresh">刷新档案</button></div>
-            <label>当前卡池<select :value="state.archive.current_pool_id || ''" :disabled="!writable" @change="perform('set_current_pool', { pool_id: $event.target.value })"><option value="" disabled>先添加一个卡池</option><option v-for="pool in state.archive.pools" :key="pool.pool_id" :value="pool.pool_id">{{ poolName(pool) }}</option></select></label>
-            <div v-if="!state.archive.pools.length" class="empty"><p>还没有卡池档案，选择一种方式开始。</p><div class="actions"><button class="primary" type="button" :disabled="!writable" @click="openMaintenance('pool')">添加卡池并开始记录</button><button type="button" :disabled="!writable" @click="openMaintenance('baseline')">补历史总抽数</button><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div></div>
+            <label>当前卡池<select :value="currentPool?.pool_id || ''" :disabled="!writable || !state.archive.pools.length" @change="perform('set_current_pool', { pool_id: $event.target.value })"><option value="" disabled>暂无公共卡池</option><option v-for="pool in state.archive.pools" :key="pool.pool_id" :value="pool.pool_id">{{ poolName(pool) }}</option></select></label>
+            <div v-if="!state.archive.pools.length" class="empty"><p>当前游戏暂无公共卡池，请联系管理员配置。仍可填写历史总抽数或导入已有备份。</p><div class="actions"><button type="button" :disabled="!writable" @click="openMaintenance()">补历史总抽数</button><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div></div>
             <template v-if="currentPool"><p v-if="!canRecordPool(currentPool)" class="hint">此卡池已停用或不在管理员目录中，保留历史与进度维护；新增记录请选择已启用的公共卡池。</p><p v-if="currentSummary" class="hint">本池已知累计 {{ currentSummary.known_total_pulls }} 抽 · 绝密 {{ currentSummary.event_count }} 条{{ currentSummary.has_unknown ? ' · 仍有未知间隔或进度' : '' }}（不含账号历史基准）</p><p class="current-progress">最后一次绝密后已抽 <strong>{{ currentPool.progress == null ? '未知' : currentPool.progress }}</strong><span v-if="currentPool.progress != null"> 次</span></p><p v-if="currentPool.progress != null && currentPool.progress < 40" class="hint">按 40 抽口径换算，距离下一次为 {{ 40 - currentPool.progress }} 次。此为记录参考，不代表所有卡池已核实相同规则。</p><div class="actions"><button class="primary" type="button" :disabled="!writable || !canRecordPool(currentPool)" @click="openEditor()">记录绝密</button><button type="button" :disabled="!writable || !recordablePools.length" @click="openEditor(true)">补录历史</button></div></template>
             <details><summary>校正当前进度 / 手填剩余次数</summary><form class="compact-form" @submit.prevent="saveProgress"><label>填写方式<select v-model="progressMode"><option value="direct">最后一次绝密后已抽次数</option><option value="remaining">距离下一次 40 抽还需 N 次</option><option value="unknown">进度未知</option></select></label><label v-if="progressMode !== 'unknown'">{{ progressMode === 'remaining' ? 'N（手填，1–40）' : '已抽次数' }}<input v-model="progressValue" type="number" inputmode="numeric" :min="progressMode === 'remaining' ? 1 : 0" :max="progressMode === 'remaining' ? 40 : 1000000000" required></label><p class="hint">会替换此卡池的当前进度。N 由你填写，换算为 40 − N，不会新增一条绝密记录。</p><button type="submit" :disabled="!writable || !currentPool">保存进度</button></form></details>
           </section>
@@ -35,15 +35,14 @@
             <div v-if="state.undo" class="undo" role="status"><span>已删除，可在下一次修改前撤销。</span><button type="button" :disabled="!writable" @click="undoDelete">撤销删除</button></div>
             <details v-if="state.batches.length"><summary>已知总量批次（已加载 {{ state.batches.length }}）</summary><div v-for="batch in state.batches" :key="batch.batch_id" class="batch-row"><span>{{ poolById(batch.pool_id)?.snapshot.name || '卡池' }} · {{ batch.total_pull_count }} 抽</span><button class="danger" type="button" :disabled="!writable" @click="deleteBatch(batch)">删除整批</button></div><button v-if="state.batchCursor" type="button" :disabled="state.loading" @click="loadMoreBatches">加载更多批次</button><p class="hint">批次按卡池筛选，不按节点日期筛选。删除单个绝密不会猜测其抽数；删除整批才移除该批总量。</p></details>
           </section>
-          <details ref="maintenancePanel" class="card maintenance"><summary>卡池与历史基准</summary>
-            <section><h2>添加公共卡池档案</h2><p class="hint">卡池与 UP 名单由管理员维护，未找到卡池或密探时请联系管理员。新 UP 未进入图鉴时，可选择管理员配置的占位密探。</p><form class="compact-form" @submit.prevent="createPool"><label>公共卡池<select ref="poolInput" v-model="newCatalogPool" required><option value="" disabled>选择管理员已启用的卡池</option><option v-for="pool in addablePools" :key="pool.pool_id" :value="pool.pool_id">{{ pool.name }}{{ pool.start_date ? ' · ' + pool.start_date : '' }}</option></select></label><p v-if="!addablePools.length" class="hint">当前没有可添加的公共卡池；已添加的卡池可在上方选择。</p><label>初始进度<select v-model="newPoolProgressMode"><option value="unknown">未知</option><option value="zero">确认从 0 抽开始</option><option value="known">知道最后一次绝密后已抽次数</option></select></label><label v-if="newPoolProgressMode === 'known'">已抽次数<input v-model="newPoolProgress" type="number" inputmode="numeric" min="0" required></label><button type="submit" :disabled="!writable || !newCatalogPool">添加卡池</button></form></section>
+          <details ref="maintenancePanel" class="card maintenance"><summary>历史总抽数</summary>
             <section><h2>历史基准</h2><p class="hint">尚未拆成记录的已知历史抽数。仅账号一份；补录已有抽数时选择“从基准拆出”，避免重复计算。</p><form class="compact-form" @submit.prevent="saveBaseline"><label>当前基准 {{ state.archive.baseline }} 抽；调整为<input ref="baselineInput" v-model="baselineValue" type="number" inputmode="numeric" min="0" required></label><button type="submit" :disabled="!writable">更新历史基准</button></form></section>
           </details>
         </template>
       </div>
       <SiteFooter />
     </main>
-    <EntryEditor :open="editorOpen" :pools="editingEvent ? state.archive?.pools || [] : recordablePools" :agents="agents" :catalog="state.catalog || []" :current-pool-id="editorPoolId || state.archive?.current_pool_id" :event="editingEvent" :busy="state.busy" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :initial-mode="editorHistorical ? 'historical' : 'current'" @close="editorOpen = false" @save="saveEntry" />
+    <EntryEditor :open="editorOpen" :pools="editingEvent ? state.archive?.pools || [] : recordablePools" :agents="agents" :catalog="state.catalog || []" :current-pool-id="editorPoolId || currentPool?.pool_id" :event="editingEvent" :busy="state.busy" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :initial-mode="editorHistorical ? 'historical' : 'current'" @close="editorOpen = false" @save="saveEntry" />
   </div>
 </template>
 
@@ -67,32 +66,27 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 // Disabled routes do not initialize personal reads even if mounted directly.
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, loadMore, loadMoreBatches, command } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {}, loadMore() {}, loadMoreBatches() {} }
-const editorOpen = ref(false), editorHistorical = ref(false), editingEvent = ref(null), progressMode = ref('direct'), progressValue = ref(''), newCatalogPool = ref(''), baselineValue = ref('')
+const editorOpen = ref(false), editorHistorical = ref(false), editingEvent = ref(null), progressMode = ref('direct'), progressValue = ref(''), baselineValue = ref('')
 const historyView = ref('recent'), editorPoolId = ref('')
 const showArchive = ref(false)
-const newPoolProgressMode = ref('unknown'), newPoolProgress = ref('')
-const maintenancePanel = ref(null), poolInput = ref(null), baselineInput = ref(null), exchangePanel = ref(null)
-let newPoolId = ''
-watch([newCatalogPool, newPoolProgressMode, newPoolProgress], () => { newPoolId = '' }, { flush: 'sync' })
+const maintenancePanel = ref(null), baselineInput = ref(null), exchangePanel = ref(null)
 const poolById = id => state.archive?.pools.find(pool => pool.pool_id === id)
-const currentPool = computed(() => poolById(state.archive?.current_pool_id))
-watch(() => currentPool.value?.pool_id, () => { progressValue.value = ''; progressMode.value = 'direct' })
-const currentSummary = computed(() => state.archive?.pool_summaries?.[state.archive.current_pool_id])
 const canRecordPool = pool => !!pool?.snapshot.catalog_pool_id && !!recruitmentPoolCatalog(pool, state.catalog)?.enabled && !state.catalogError
 const recordablePools = computed(() => (state.archive?.pools || []).filter(canRecordPool))
-const addablePools = computed(() => (state.catalog || []).filter(pool => pool.enabled && !state.archive?.pools.some(personal => personal.snapshot.catalog_pool_id === pool.pool_id)))
+const currentPool = computed(() => poolById(state.archive?.current_pool_id) || recordablePools.value[0] || state.archive?.pools[0])
+watch(() => currentPool.value?.pool_id, () => { progressValue.value = ''; progressMode.value = 'direct' })
+const currentSummary = computed(() => state.archive?.pool_summaries?.[currentPool.value?.pool_id])
 const poolName = pool => recruitmentPoolCatalog(pool, state.catalog)?.name || pool.mapped_snapshot?.name || pool.snapshot.name
 const eventAgent = event => resolveRecruitmentAgent(event, poolById(event.pool_id), state.catalog, agents.value || [])
 const agentName = event => eventAgent(event).name
 const upLabel = status => ({ up: 'UP', non_up: '非 UP', unknown: 'UP 未知' })[status] || 'UP 未知'
-watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; editingEvent.value = null; editorPoolId.value = ''; historyView.value = 'recent'; newCatalogPool.value = ''; newPoolProgressMode.value = 'unknown'; newPoolProgress.value = ''; baselineValue.value = ''; progressValue.value = '' })
-function openEditor(historical = false, poolId = '') { const target = poolById(poolId || state.archive?.current_pool_id); if (!recordablePools.value.length) return; editingEvent.value = null; editorHistorical.value = historical; editorPoolId.value = canRecordPool(target) ? target.pool_id : recordablePools.value[0].pool_id; editorOpen.value = true }
-async function openMaintenance(field) {
+watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; editingEvent.value = null; editorPoolId.value = ''; historyView.value = 'recent'; baselineValue.value = ''; progressValue.value = '' })
+function openEditor(historical = false, poolId = '') { const target = poolById(poolId || currentPool.value?.pool_id); if (!recordablePools.value.length) return; editingEvent.value = null; editorHistorical.value = historical; editorPoolId.value = canRecordPool(target) ? target.pool_id : recordablePools.value[0].pool_id; editorOpen.value = true }
+async function openMaintenance() {
   if (!writable.value || !maintenancePanel.value) return
   maintenancePanel.value.open = true
   await nextTick()
-  const input = field === 'pool' ? poolInput.value : baselineInput.value
-  input?.focus()
+  baselineInput.value?.focus()
 }
 function viewPool(poolId) { state.poolFilter = poolId; refresh() }
 function openEdit(event) { editingEvent.value = event; editorOpen.value = true }
@@ -101,15 +95,6 @@ async function saveEntry(payload) { if (await perform(payload.operation, payload
 async function validate(action) { try { await action() } catch (error) { state.error = error.message } }
 function saveProgress() { return validate(() => perform('progress_set', { pool_id: currentPool.value.pool_id, progress: progressMode.value === 'unknown' ? null : progressMode.value === 'remaining' ? progressFromRemaining(progressValue.value) : integer(progressValue.value, '当前进度') })) }
 function saveBaseline() { return validate(() => perform('baseline_set', { baseline: integer(baselineValue.value, '历史基准') })) }
-async function createPool() {
-  return validate(async () => {
-    if (!addablePools.value.some(pool => pool.pool_id === newCatalogPool.value)) throw new Error('请选择尚未添加的已启用公共卡池')
-    if (!newPoolId) newPoolId = 'pool_' + crypto.randomUUID()
-    const progress = newPoolProgressMode.value === 'unknown' ? null : newPoolProgressMode.value === 'zero' ? 0 : integer(newPoolProgress.value, '初始进度')
-    const result = await perform('pool_create', { pool_id: newPoolId, catalog_pool_id: newCatalogPool.value, progress })
-    if (result) { newCatalogPool.value = ''; newPoolProgressMode.value = 'unknown'; newPoolProgress.value = ''; if (!state.archive.current_pool_id) await perform('set_current_pool', { pool_id: result.pool_id }) }
-  })
-}
 async function deleteEvent(event) {
   const token = capture(), revision = state.archive.archive_revision
   const message = event.batch_id ? '只移除这位绝密结果，批次总抽数不变。' : event.pull_span == null ? '移除此结果（抽数未知），已知累计不变。' : '将减少这条记录计入的 ' + event.pull_span + ' 抽。'
