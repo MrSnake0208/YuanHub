@@ -66,11 +66,10 @@
             </details>
 
             <section class="records-section" aria-labelledby="records-title">
-              <div class="records-heading">
-                <div>
-                  <span class="section-kicker">抽卡档案</span>
-                  <h3 id="records-title">本池抽卡进度</h3>
-                  <p>{{ rows.length }} 条{{ hasMore ? ' · 还有更早记录' : '' }}</p>
+              <div class="records-toolbar">
+                <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
+                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条视图</button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
                 </div>
                 <div class="entry-shortcuts" role="group" aria-label="快速登记出货">
                   <button
@@ -98,14 +97,15 @@
                     @click="add()"
                   >
                     <Plus :size="17" aria-hidden="true" />
-                    {{ quickUpAgents.length ? '其他密探' : '登记出货' }}
+                    {{ quickUpAgents.length ? '其他密探' : '新增记录' }}
                   </button>
                 </div>
               </div>
 
-              <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
-                <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条视图</button>
-                <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
+              <div class="records-heading">
+                <span class="section-kicker">抽卡档案</span>
+                <h3 id="records-title">本池抽卡进度</h3>
+                <p>{{ rows.length }} 条{{ hasMore ? ' · 还有更早记录' : '' }}</p>
               </div>
 
               <div
@@ -116,9 +116,23 @@
                 :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
                 <div v-if="choosingAgent" class="agent-picker">
+                  <label class="agent-search">
+                    <span class="sr-only">搜索密探名字</span>
+                    <input
+                      ref="agentSearchInput"
+                      v-model="agentSearch"
+                      type="search"
+                      autocomplete="off"
+                      placeholder="搜索密探名字"
+                      :disabled="busy || readOnly || recordsLoading"
+                    >
+                  </label>
                   <div class="agent-filter-head">
                     <span><b>{{ filteredPickerAgents.length }}</b> / {{ options.length }} 位</span>
-                    <button v-if="hasAgentFilters" type="button" class="agent-filter-reset" @click="resetAgentFilters">重置</button>
+                    <div class="agent-filter-actions">
+                      <button v-if="hasAgentFilters" type="button" class="agent-filter-reset" @click="resetAgentFilters">重置</button>
+                      <button type="button" class="agent-picker-cancel" :disabled="busy" @click="cancelEntry">取消</button>
+                    </div>
                   </div>
                   <div class="agent-filter-row">
                     <span class="agent-filter-label">属性</span>
@@ -173,12 +187,13 @@
                     <span class="selected-agent-copy"><small>已选择密探</small><strong>{{ selectedAgent(activeRow)?.name || activeRow.agent_id }}</strong></span>
                   </div>
                   <label class="pull-count-field">
-                    <span>招募次数</span>
+                    <span>本次出货抽数</span>
                     <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="1–40" :disabled="busy || readOnly || recordsLoading" @input="limitPullSpan">
                   </label>
                   <div class="composer-actions">
+                    <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)">删除记录</button>
                     <button type="button" :disabled="busy" @click="cancelEntry">取消</button>
-                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '确认修改' : '确认添加'" :disabled="busy || readOnly || recordsLoading" @click="confirmRecord">确认</button>
+                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading" @click="confirmRecord">{{ originals.has(activeRow.event_id) ? '完成' : '加入' }}</button>
                   </div>
                 </div>
                 <p v-if="activeRow.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
@@ -250,21 +265,12 @@
                       <span v-if="isChanged(row)" class="agent-record-flag is-pending">待保存</span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    class="delete-record agent-record-delete"
-                    :aria-label="'移除' + (selectedAgent(row)?.name || row.agent_id) + '这条出货'"
-                    :disabled="busy || readOnly || recordsLoading"
-                    @click="remove(row)"
-                  >
-                    <Trash2 :size="16" aria-hidden="true" />
-                  </button>
                 </li>
               </ol>
 
               <div v-else-if="initialized && !recordsLoading" class="records-empty">
                 <strong>还没有抽卡记录</strong>
-                <p>{{ quickUpAgents.length ? '点击上方 UP 头像快速登记；歪卡或其他密探使用“其他密探”。' : '点击“登记出货”，选择密探并填写这次绝密前的抽数即可。' }}</p>
+                <p>点击“新增记录”开始登记；本池 UP 可在记录工作区内快速选择。</p>
               </div>
 
               <div class="records-tail">
@@ -286,8 +292,8 @@
             </p>
             <div class="footer-actions">
               <button type="button" :disabled="busy" @click="close">取消</button>
-              <button class="primary" type="submit" :disabled="busy || readOnly || recordsLoading || !!recordsError || !initialized">
-                {{ busy ? '保存中…' : '保存修改' }}
+              <button class="primary" type="submit" :disabled="busy || readOnly || recordsLoading || !!recordsError || !initialized || !!activeRow">
+                {{ busy ? '保存中…' : pendingCount ? `保存 ${pendingCount} 项修改` : '保存修改' }}
               </button>
             </div>
           </footer>
@@ -309,7 +315,7 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
+const panel = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
 let requestId = ''
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
@@ -337,17 +343,21 @@ const agentProfOptions = computed(() => {
   return AGENT_PROFS.filter(prof => present.has(prof)).concat([...present].filter(prof => !AGENT_PROFS.includes(prof)))
 })
 const agentSubProfOptions = computed(() => deriveSubProfOptions(options.value))
-const filteredPickerAgents = computed(() => options.value
-  .filter(agent => matchesProfSubFilter(agent, agentProfFilter.value, agentSubProfFilter.value))
-  .slice()
-  .reverse())
-const hasAgentFilters = computed(() => agentProfFilter.value !== 'all' || agentSubProfFilter.value !== 'all')
+const filteredPickerAgents = computed(() => {
+  const query = agentSearch.value.trim().toLowerCase()
+  return options.value
+    .filter(agent => matchesProfSubFilter(agent, agentProfFilter.value, agentSubProfFilter.value))
+    .filter(agent => !query || String(agent.name || '').toLowerCase().includes(query))
+    .slice()
+    .reverse()
+})
+const hasAgentFilters = computed(() => !!agentSearch.value.trim() || agentProfFilter.value !== 'all' || agentSubProfFilter.value !== 'all')
 const PROF_ICON_FILES = Object.freeze({ 阳: 'yang.png', 阴: 'yin.png', 火: 'fire.png', 风: 'wind.png', 水: 'water.png', 地: 'earth.png', 混沌: 'chaos.png' })
 function profIcon(prof) {
   const file = PROF_ICON_FILES[String(prof || '').split('、')[0]]
   return file ? (import.meta.env.BASE_URL || '/') + 'assets/prof-icons/' + file : ''
 }
-function resetAgentFilters() { agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
+function resetAgentFilters() { agentSearch.value = ''; agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
 function close() { if (!props.busy) emit('close') }
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse())
@@ -364,7 +374,7 @@ function recordLabel(row) {
 const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (remaining.value !== initialRemaining.value ? 1 : 0))
 function focusEntry(preferPulls = false) {
   nextTick(() => {
-    const target = preferPulls ? pullSpanInput.value : panel.value?.querySelector('.agent-choice')
+    const target = preferPulls ? pullSpanInput.value : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
     target?.focus()
     entryComposer.value?.scrollIntoView?.({ block: 'nearest' })
   })
@@ -379,6 +389,7 @@ function add(agentId = '') {
     return
   }
   activeRow.value.agent_id = ''
+  resetAgentFilters()
   choosingAgent.value = true
   focusEntry(false)
 }
@@ -386,9 +397,11 @@ function chooseOtherAgent(agentId) {
   if (!activeRow.value) return
   activeRow.value.agent_id = agentId
   choosingAgent.value = false
+  resetAgentFilters()
   focusEntry(true)
 }
 function edit(row) { error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
   const raw = event.target.value
@@ -399,7 +412,7 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { activeRow.value = null; choosingAgent.value = false; nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
+function cancelEntry() { activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''
@@ -415,7 +428,16 @@ function confirmRecord() {
     return true
   } catch (err) { error.value = err.message; nextTick(() => errorSummary.value?.focus()); return false }
 }
-function remove(row) { if (activeRow.value?.event_id === row.event_id) activeRow.value = null; if (originals.has(row.event_id)) deletedIds.value.push(row.event_id); rows.value = rows.value.filter(item => item !== row); nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus()) }
+function remove(row) {
+  if (activeRow.value?.event_id === row.event_id) {
+    activeRow.value = null
+    choosingAgent.value = false
+    resetAgentFilters()
+  }
+  if (originals.has(row.event_id) && !deletedIds.value.includes(row.event_id)) deletedIds.value.push(row.event_id)
+  rows.value = rows.value.filter(item => item.event_id !== row.event_id)
+  nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
+}
 watch(() => props.open, open => {
   if (!open) return
   rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
@@ -436,11 +458,10 @@ watch([() => props.records, () => props.recordsRevision, () => props.open, () =>
 watch([rows, activeRow, deletedIds, remaining, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
 useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('select:not(:disabled), input:not(:disabled)'), onEscape: close })
 async function submit() {
-  if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool) return
+  if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || activeRow.value) return
   error.value = ''
   try {
     progressFromRemaining(remaining.value)
-    if (activeRow.value && !confirmRecord()) return
     const entries = rows.value.map(row => {
       const input = entryInput(row)
       if (!options.value.some(agent => agent.id === input.agent_id)) throw new Error('请选择本池 UP 或本游戏绝密密探')
@@ -668,11 +689,17 @@ h2 {
   min-width: 0;
 }
 
-.records-heading {
+.records-toolbar {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.records-heading {
   margin-bottom: 12px;
 }
 
@@ -687,7 +714,7 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
   width: fit-content;
-  margin: 0 0 12px auto;
+  margin: 0;
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -819,11 +846,23 @@ button:not(:disabled):hover {
   margin-bottom: 10px;
 }
 
+.agent-search {
+  margin-bottom: 7px;
+}
+
+.agent-search input {
+  min-height: 42px;
+  margin-top: 0;
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
 .agent-filter-head {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  min-height: 28px;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
   margin-bottom: 5px;
   color: var(--ink-60);
   font-size: 10px;
@@ -837,12 +876,26 @@ button:not(:disabled):hover {
 
 .agent-filter-reset {
   min-width: 0;
-  min-height: 28px;
-  margin-left: 8px;
-  padding: 3px 7px;
+  min-height: 36px;
+  padding: 5px 8px;
   border-radius: 7px;
   color: var(--ink-60);
   font-size: 10px;
+}
+
+.agent-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.agent-picker-cancel {
+  min-width: 52px;
+  min-height: 36px;
+  padding: 5px 10px;
+  border-color: color-mix(in srgb, var(--tea) 24%, var(--line));
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .agent-filter-row {
@@ -1053,6 +1106,18 @@ select {
 .composer-actions button {
   min-width: 64px;
   padding-inline: 14px;
+}
+
+.composer-actions .entry-delete {
+  margin-right: auto;
+  border-color: color-mix(in srgb, var(--rouge) 28%, var(--line));
+  color: var(--rouge);
+  background: color-mix(in srgb, var(--rouge) 4%, var(--surface));
+}
+
+.composer-actions .entry-delete:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--rouge) 46%, var(--line));
+  background: color-mix(in srgb, var(--rouge) 8%, var(--surface));
 }
 
 .sr-only {
@@ -1359,30 +1424,6 @@ select {
   color: var(--tea);
 }
 
-.agent-record-delete {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  z-index: 3;
-  border-color: transparent;
-  background: transparent;
-}
-
-.agent-record-delete::before {
-  position: absolute;
-  width: 27px;
-  height: 27px;
-  border: 1px solid color-mix(in srgb, var(--rouge) 24%, var(--line));
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  content: '';
-}
-
-.agent-record-delete svg {
-  position: relative;
-  z-index: 1;
-}
-
 .records-empty {
   padding: 22px 18px;
   border: 1px dashed var(--line);
@@ -1558,7 +1599,7 @@ summary:focus-visible,
   }
 
   .records-heading {
-    align-items: center;
+    margin-bottom: 10px;
   }
 
   .add-record {
@@ -1647,13 +1688,16 @@ summary:focus-visible,
   }
 
   .records-heading {
+    margin-bottom: 10px;
+  }
+
+  .records-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
   .record-view-switch {
     width: 100%;
-    margin-left: 0;
   }
 
   .record-view-switch button {
