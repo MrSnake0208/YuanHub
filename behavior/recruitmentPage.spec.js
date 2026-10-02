@@ -194,7 +194,10 @@ it('单条选择密探和17抽后生成记录条，再点记录编辑；一次�
 })
 it('移除只提交明确旧ID；取消单条编辑不改变记录，整个弹窗取消不写入', async () => {
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '取消').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
-  await feed(wrapper).at(-1).get('.delete-record').trigger('click'); await addRecord(wrapper); await feed(wrapper)[0].get('.delete-record').trigger('click'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ entries: [], deleted_event_ids: ['A'] })
+  expect(editor(wrapper).find('.record-feed .delete-record').exists()).toBe(false)
+  await editRow(wrapper); await button(composer(wrapper), '删除记录').trigger('click')
+  await addRecord(wrapper); await feed(wrapper)[0].get('.record-detail').trigger('click'); await button(composer(wrapper), '删除记录').trigger('click')
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ entries: [], deleted_event_ids: ['A'] })
   await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(2)
 })
 it('409重读且保留记录草稿，网络重试requestId和新事件ID不变', async () => {

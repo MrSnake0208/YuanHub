@@ -55,6 +55,7 @@ it('密探视图按头像排列并在左下角显示单条抽数，切换视图�
   await button(wrapper, '取消').trigger('click')
   await button(wrapper, '进度条视图').trigger('click')
   expect(wrapper.findAll('.gacha-record')).toHaveLength(2)
+  expect(wrapper.find('.record-feed .delete-record').exists()).toBe(false)
 })
 
 it('公共目录无头像时按真实密探ID回退本地密探图，进入录入态会标记底部区域', async () => {
@@ -70,7 +71,7 @@ it('公共目录无头像时按真实密探ID回退本地密探图，进入录�
   expect(document.activeElement).toBe(wrapper.get('.pull-count-field input').element)
 })
 
-it('点击记录只展开紧凑抽数编辑，取消不改变记录；保存可以确认正在录入的那一条', async () => {
+it('点击记录只展开紧凑抽数编辑，取消不改变记录；完成编辑后再统一保存', async () => {
   const wrapper = render()
   await wrapper.get('.gacha-record .record-detail').trigger('click')
   expect(wrapper.find('.agent-picker').exists()).toBe(false)
@@ -80,6 +81,7 @@ it('点击记录只展开紧凑抽数编辑，取消不改变记录；保存可�
   expect(wrapper.get('.gacha-record .pull-result b').text()).toBe('17')
   await wrapper.get('.gacha-record .record-detail').trigger('click')
   await wrapper.get('.pull-count-field input').setValue('31')
+  await wrapper.get('.composer-actions .primary').trigger('click')
   await wrapper.get('form').trigger('submit')
   expect(wrapper.get('.gacha-record .record-bar').classes()).toContain('bar-high')
   expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ event_id: 'old', pull_span: 31 })
@@ -102,6 +104,7 @@ it('严格出货正整数与保底1–40，未知进度留空；忙碌不关闭/
   expect(wrapper.find('.entry-composer').exists()).toBe(true)
   expect(wrapper.emitted('save')).toBeUndefined()
   await wrapper.get('.pull-count-field input').setValue('20')
+  await wrapper.get('.composer-actions .primary').trigger('click')
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('save')).toHaveLength(1)
   await wrapper.setProps({ busy: true })
@@ -117,7 +120,8 @@ it('Escape取消不写入，重开恢复服务端记录和保底；已确认非U
   await flushPromises()
   expect(wrapper.get('.non-up-stamp').text()).toBe('歪')
   expect(wrapper.get('.progress-number strong').text()).toBe('21')
-  await wrapper.get('.delete-record').trigger('click')
+  await wrapper.get('.gacha-record .record-detail').trigger('click')
+  await button(wrapper, '删除记录').trigger('click')
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   expect(wrapper.emitted('close')).toHaveLength(1)
   expect(wrapper.emitted('save')).toBeUndefined()
