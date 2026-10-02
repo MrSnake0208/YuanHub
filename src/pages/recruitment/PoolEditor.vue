@@ -309,7 +309,7 @@ import { CircleHelp, Plus, Trash2, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
-import { matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
+import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
@@ -344,10 +344,9 @@ const agentProfOptions = computed(() => {
 })
 const agentSubProfOptions = computed(() => deriveSubProfOptions(options.value))
 const filteredPickerAgents = computed(() => {
-  const query = agentSearch.value.trim().toLowerCase()
   return options.value
     .filter(agent => matchesProfSubFilter(agent, agentProfFilter.value, agentSubProfFilter.value))
-    .filter(agent => !query || String(agent.name || '').toLowerCase().includes(query))
+    .filter(agent => matchesOperatorSearch(agent, agentSearch.value))
     .slice()
     .reverse()
 })
