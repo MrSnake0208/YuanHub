@@ -114,6 +114,20 @@
        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
      }
 
+     # YuanStar embed 入口文件名固定（/yuanstar-embed/yuanstar-embed.js），
+     # 而它引用的 worker 带内容 hash、每次同步都会改文件名。
+     # 若浏览器继续使用缓存的旧入口，就会去请求已被删除的旧 worker → 404，
+     # 表现为“星石”页视觉识别不可用。因此这里的 HTML/JS/CSS 必须每次重新验证；
+     # 目录下体积较大的模型与 wasm 仍可按需长缓存。
+     location /yuanstar-embed/ {
+       expires -1;
+       add_header Cache-Control "no-cache, must-revalidate" always;
+     }
+     location ~* ^/yuanstar-embed/(models|ort|reference)/ {
+       expires 30d;
+       add_header Cache-Control "public";
+     }
+
      location / {
        try_files $uri $uri/ /index.html;
      }
@@ -126,7 +140,9 @@
    - Cache Eligibility：**Bypass Cache / 绕过缓存**
    - 不要把 `/assets/*` 放进这条规则；带 hash 的构建资源继续长期缓存
 
-   固定文件名的 Service Worker 必须由源站响应头或 ESA URL 规则明确禁止边缘缓存；仅依赖浏览器请求里的 `Cache-Control: no-cache` 不够。
+   同样地，`/yuanstar-embed/*.js` 与 `/yuanstar-embed/*.css` 也必须绕过边缘缓存：入口文件名固定，却引用带内容 hash、每次同步都改名的 worker；边缘缓存旧入口会让浏览器请求到已被删除的旧 worker 并 404。
+
+固定文件名的 Service Worker 必须由源站响应头或 ESA URL 规则明确禁止边缘缓存；仅依赖浏览器请求里的 `Cache-Control: no-cache` 不够。
 
 5. 服务器 A 需为 Linux（workflow 使用 GNU coreutils 的 `mv -T` 做原子符号链接切换）。
 
