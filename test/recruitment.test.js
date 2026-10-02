@@ -37,8 +37,22 @@ test('完整CSV保留baseline/进度/批次/结果组成，批次内span及删�
 
 test('真实图鉴 contract 拒绝数组或缺失 operators，不修改共享 operator API', () => {
   const operators = [{ id: 'official', name: '正式绝密', rarity: 5, games: ['代号鸢'] }]
-  assert.equal(operatorCatalogEntries({ format: 'myshare-operator-catalog', catalog_version: 'v1', operators }), operators)
+  assert.deepEqual(operatorCatalogEntries({ format: 'myshare-operator-catalog', catalog_version: 'v1', operators }), [{ ...operators[0], avatar: '' }])
+  assert.equal(Object.hasOwn(operators[0], 'avatar'), false)
   for (const data of [operators, {}, null, { operators: null }]) assert.throws(() => operatorCatalogEntries(data), /公共密探图鉴响应无效/)
+})
+
+test('图鉴头像归一化保留现有 avatar 并兼容 avatar_url，不修改原始条目', () => {
+  const operators = [
+    { id: 'existing', avatar: '/existing.png', avatar_url: '/fallback.png' },
+    { id: 'fallback', avatar_url: '/fallback.png' }
+  ]
+  const before = structuredClone(operators)
+  assert.deepEqual(operatorCatalogEntries({ operators }), [
+    { ...operators[0], avatar: '/existing.png' },
+    { ...operators[1], avatar: '/fallback.png' }
+  ])
+  assert.deepEqual(operators, before)
 })
 
 test('CSV用同池稳定UP身份解释最新绑定，保留原始快照、计数和公式转义', () => {

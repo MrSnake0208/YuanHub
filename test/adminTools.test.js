@@ -23,6 +23,7 @@ test('maps every management tool to its existing permission boundary', function 
   assert.deepEqual(getVisibleAdminTools(access).map(function (tool) { return tool.to }), [
     '/co-creation/admin',
     '/admin/beta',
+    '/admin/recruitment-access',
     '/feedback/manage',
     '/feedback/admin',
     '/operator/admin',
