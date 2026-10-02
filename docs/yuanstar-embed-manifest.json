@@ -1,0 +1,15 @@
+{
+  "_comment": "public/yuanstar-embed/ 全部镜像产物的 SHA-256。更新 embed 时必须同步重建本文件；test/yuanstarEmbedProvenance.test.js 会逐个比对。",
+  "assets/browser-vision-worker-Bt0Z67D1.js": "b653c986d6470bcb39a8334f9ec5af10088a89eef93f8bfc631e6fdefbcbab14",
+  "models/PP-OCRv6_det_small.onnx": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
+  "models/PP-OCRv6_rec_small.onnx": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
+  "models/README.md": "8f0c6f452be16aecd33d08eba45808c96c8d551538096b2c8fa67b76a8b7c85f",
+  "models/ch_ppocr_mobile_v2.0_cls_mobile.onnx": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+  "models/ppocrv6_chars.txt": "769e7fa79bb297b5f18d8dbd149e364a45bc61f2b3f574e5ea836f0b261c23a6",
+  "ort/.gitkeep": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+  "ort/ort-wasm-simd-threaded.mjs": "0a1e718d99c41b22c21f2520ff4f9e883a6b5533856e398d21816ee8eb8185d3",
+  "ort/ort-wasm-simd-threaded.wasm": "d1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6",
+  "reference/YuanStar_Phase0_6A_经验星曜规则与逐级数据.xlsx": "eafe7af04996e788d02556b22f3a57854012acb6301c02bc9621957b34149859",
+  "yuanstar-embed.css": "24deb13819d1b215f28bb7abbbd62d22ef3cc0c51fb9d59002ceed0851ce2f91",
+  "yuanstar-embed.js": "5580862f64c43aec696d75fbdbc9a247202beb46d730b39884f42fd80739bb53"
+}
