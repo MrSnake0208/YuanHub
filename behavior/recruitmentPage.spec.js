@@ -71,9 +71,12 @@ const composer = wrapper => editor(wrapper).get('.entry-composer')
 const feed = wrapper => editor(wrapper).findAll('.gacha-record')
 async function editRow(wrapper, index = 0) { await feed(wrapper).at(-1 - index).get('.record-detail').trigger('click') }
 async function addRecord(wrapper, agent = 'char-a', span = '12') {
-  await button(editor(wrapper), '登记出货').trigger('click')
-  const entry = composer(wrapper)
-  await entry.get('.agent-choice[data-agent-id="' + agent + '"]').trigger('click')
+  const quick = editor(wrapper).find('.quick-up-button[data-agent-id="' + agent + '"]')
+  if (quick.exists()) await quick.trigger('click')
+  else {
+    await button(editor(wrapper), editor(wrapper).findAll('.quick-up-button').length ? '其他密探' : '新增记录').trigger('click')
+    await composer(wrapper).get('.agent-choice[data-agent-id="' + agent + '"]').trigger('click')
+  }
   await flushPromises()
   await composer(wrapper).get('.pull-count-field input').setValue(span); await composer(wrapper).get('.composer-actions .primary').trigger('click')
 }
@@ -100,6 +103,7 @@ it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽�
   const wrapper = render(); await flushPromises(); expect(wrapper.find('.history-card').exists()).toBe(false); expect(wrapper.find('.maintenance').exists()).toBe(false)
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled(); expect(api.listRecruitmentBatches).not.toHaveBeenCalled(); await selectPool(wrapper)
   expect(wrapper.get('.pool-timeline').isVisible()).toBe(true); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0]).toMatchObject({ poolId: 'pool-a', accountId: 'acc-a', order: 'asc' })
+  expect([...editor(wrapper).get('.records-section').element.children].slice(0, 2).map(item => item.className)).toEqual(['records-toolbar', 'records-heading'])
   expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).not.toContain('测试绝密'); expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('测试绝密'); expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
   await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.pool-card').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
@@ -115,14 +119,21 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
   const quick = editor(wrapper).get('.quick-up-button')
   expect(quick.attributes('aria-label')).toContain('测试绝密'); expect(button(editor(wrapper), '其他密探')).toBeTruthy()
   await quick.trigger('click'); await flushPromises()
-  expect(composer(wrapper).find('.agent-picker').exists()).toBe(false); expect(editor(wrapper).get('.quick-up-button').attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('footer').classes()).toContain('is-entry-active'); expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
+  expect(composer(wrapper).find('.agent-picker').exists()).toBe(false); expect(editor(wrapper).get('.quick-up-button').attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
   await composer(wrapper).get('.pull-count-field input').setValue('12'); await composer(wrapper).get('.composer-actions .primary').trigger('click')
-  expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12')
+  expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12'); expect(button(editor(wrapper), '保存 1 项修改')).toBeTruthy()
 
   await button(editor(wrapper), '其他密探').trigger('click'); await flushPromises()
   const entry = () => composer(wrapper)
+  expect(document.activeElement).toBe(entry().get('.agent-search input').element)
+  await entry().get('.agent-search input').setValue('岐黄')
+  expect(entry().findAll('.agent-choice').map(item => item.attributes('data-agent-id'))).toEqual(['char-c'])
+  await button(entry(), '取消').trigger('click'); await flushPromises()
+  expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
+
+  await button(editor(wrapper), '其他密探').trigger('click'); await flushPromises()
   expect(entry().findAll('.agent-choice').map(item => item.attributes('data-agent-id'))).toEqual(['char-a', 'char-c', 'char-b', 'slot-up'])
-  expect(document.activeElement).toBe(entry().findAll('.agent-choice')[0].element); expect(entry().find('.pull-count-field').exists()).toBe(false)
+  expect(document.activeElement).toBe(entry().get('.agent-search input').element); expect(entry().find('.pull-count-field').exists()).toBe(false)
 
   const profButtons = entry().findAll('.agent-filter-options.is-prof button')
   await profButtons.find(item => item.text().includes('地')).trigger('click')
@@ -141,10 +152,19 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
   expect(entry().find('.agent-picker').exists()).toBe(false); expect(document.activeElement).toBe(entry().get('.pull-count-field input').element)
   expect(entry().get('.selected-agent-summary').text()).toContain('已选择密探'); expect(entry().get('.selected-agent-summary').text()).toContain('测试歪卡'); expect(entry().get('.selected-agent-summary img').attributes('src')).toContain('/other.png')
 })
+it('密探视图不常驻删除按钮，进入记录编辑后再提供删除入口', async () => {
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), '密探视图').trigger('click')
+  expect(editor(wrapper).findAll('.agent-record-card')).toHaveLength(2)
+  expect(editor(wrapper).find('.agent-record-delete').exists()).toBe(false)
+  expect(editor(wrapper).find('.agent-record-grid .delete-record').exists()).toBe(false)
+  await editor(wrapper).findAll('.agent-record-detail')[0].trigger('click'); await flushPromises()
+  expect(button(composer(wrapper), '删除记录')).toBeTruthy()
+})
 it('单次出货抽数限制为1–40，输入超限会收敛到40且共享规则拒绝绕过UI的超限值', async () => {
   expect(() => entryInput({ agent_id: 'char-a', pull_span: '41' })).toThrow('出货抽数须为 1–40')
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
-  await button(editor(wrapper), '登记出货').trigger('click')
+  await button(editor(wrapper), '新增记录').trigger('click')
   const entry = composer(wrapper)
   await entry.get('.agent-choice[data-agent-id="char-a"]').trigger('click')
   await flushPromises()
@@ -202,7 +222,7 @@ it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏�
   const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot', name: '占位', operator_id: 'char-a', active: true }]; api.getRecruitmentCatalog.mockResolvedValue(catalog); records['acc-a'][0].agent_snapshot = { agent_id: 'slot', name: '旧名字' }
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.quick-up-button').attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('.quick-up-button').attributes('aria-label')).toContain('正式密探'); expect(editor(wrapper).get('img').attributes('src')).toContain('/formal.png')
   await editor(wrapper).get('footer button').trigger('click'); api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable')); await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); await selectPool(wrapper)
-  expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); await composer(wrapper).get('input').setValue('20'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
+  expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '完成').trigger('click'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
 })
 it('游戏错配只读；身份失效清弹窗，功能开关关闭时不读写', async () => {
   archives['acc-a'].game_mismatch = true; const wrapper = render(); await flushPromises(); await selectPool(wrapper); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); auth.accessToken = ''; auth.userInfo = null; await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(wrapper.find('.summary').exists()).toBe(false); expect(api.recruitmentCommand).not.toHaveBeenCalled(); wrapper.unmount()
