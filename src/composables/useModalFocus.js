@@ -106,7 +106,9 @@ export function useModalFocus(visible, panel, { initialFocus, onEscape, afterFoc
   }, { immediate: true, flush: 'sync' })
   // 同步保存打开前的焦点；等弹窗 DOM 与模板 ref 更新后再聚焦。
   watch([visible, panel], ([open]) => {
-    if (open) nextTick(() => { if (entry && top() === entry) focusInside(entry, initialFocus()) })
+    if (open) nextTick(() => {
+      if (entry && top() === entry && !panel.value?.contains(document.activeElement)) focusInside(entry, initialFocus())
+    })
   }, { flush: 'post' })
   onScopeDispose(close)
 }

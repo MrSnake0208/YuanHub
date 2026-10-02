@@ -38,6 +38,7 @@ it('默认展示头像和彩色抽数条，单条录入后生成记录条；重�
 
 it('公共目录无头像时按真实密探ID回退本地密探图，进入录入态会标记底部区域', async () => {
   const wrapper = render({ records: [], agents: [{ id: 'char_001_yangxiu', name: '杨修', rarity: 5, games: ['代号鸢'] }] })
+  await flushPromises()
   await wrapper.get('.add-record').trigger('click')
   const choice = wrapper.get('.agent-choice[data-agent-id="char_001_yangxiu"]')
   expect(choice.get('img').attributes('src')).toContain('/assets/operator-portraits/char_001_yangxiu.webp')
