@@ -13,7 +13,7 @@
         </header>
 
         <form @submit.prevent="submit">
-          <div class="editor-body">
+          <div ref="editorBody" class="editor-body">
             <p v-if="readOnly" class="state-note">当前档案只可查看，暂不能修改。</p>
             <p v-else-if="!canRecord" class="state-note">此卡池已停用或目录暂不可用。可以修改已有记录与保底，暂不能新增出货。</p>
 
@@ -295,7 +295,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { CircleHelp, Plus, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
@@ -306,9 +306,14 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
+const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
 let requestId = ''
+let viewportFrame = 0
+let viewportSettleTimer = 0
+const KEYBOARD_INSET_THRESHOLD = 80
+const ENTRY_VISIBLE_TOP_GAP = 16
+const ENTRY_VISIBLE_BOTTOM_GAP = 24
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
 const options = computed(() => {
   const values = poolAgentOptions(props.pool, props.catalog, props.agents)
@@ -362,11 +367,62 @@ function recordLabel(row) {
   return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
 }
 const pendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (remaining.value !== initialRemaining.value ? 1 : 0))
+function updateKeyboardInset() {
+  if (typeof window === 'undefined') return 0
+  const viewport = window.visualViewport
+  const layoutHeight = window.innerHeight || document.documentElement?.clientHeight || 0
+  let inset = 0
+  if (viewport && (viewport.scale == null || Math.abs(viewport.scale - 1) < 0.01)) {
+    const rawInset = layoutHeight - (viewport.offsetTop + viewport.height)
+    if (rawInset > KEYBOARD_INSET_THRESHOLD) inset = Math.round(rawInset)
+  }
+  panel.value?.style.setProperty('--keyboard-inset', inset + 'px')
+  return inset
+}
+function ensureEntryVisible() {
+  if (typeof window === 'undefined') return
+  updateKeyboardInset()
+  if (!props.open || !activeRow.value || !entryComposer.value || !editorBody.value) return
+  const viewport = window.visualViewport
+  const visibleTop = (viewport?.offsetTop || 0) + ENTRY_VISIBLE_TOP_GAP
+  const visibleBottom = (viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
+  const rect = entryComposer.value.getBoundingClientRect()
+  const availableHeight = Math.max(0, visibleBottom - visibleTop)
+  let delta = 0
+  if (rect.height > availableHeight) delta = rect.top - visibleTop
+  else if (rect.bottom > visibleBottom) delta = rect.bottom - visibleBottom
+  else if (rect.top < visibleTop) delta = rect.top - visibleTop
+  if (Math.abs(delta) > 1) editorBody.value.scrollBy?.({ top: delta, behavior: 'auto' })
+}
+function scheduleEntryVisibility() {
+  if (typeof window === 'undefined') return
+  if (viewportFrame) window.cancelAnimationFrame(viewportFrame)
+  viewportFrame = window.requestAnimationFrame(() => {
+    viewportFrame = 0
+    ensureEntryVisible()
+  })
+  if (viewportSettleTimer) window.clearTimeout(viewportSettleTimer)
+  viewportSettleTimer = window.setTimeout(() => {
+    viewportSettleTimer = 0
+    ensureEntryVisible()
+  }, 180)
+}
+function resetKeyboardAvoidance() {
+  panel.value?.style.setProperty('--keyboard-inset', '0px')
+  if (typeof window === 'undefined') return
+  if (viewportFrame) window.cancelAnimationFrame(viewportFrame)
+  if (viewportSettleTimer) window.clearTimeout(viewportSettleTimer)
+  viewportFrame = 0
+  viewportSettleTimer = 0
+}
+function onViewportChange() {
+  if (props.open) scheduleEntryVisibility()
+}
 function focusEntry(preferPulls = false) {
   nextTick(() => {
     const target = preferPulls ? pullSpanInput.value : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
     target?.focus()
-    entryComposer.value?.scrollIntoView?.({ block: 'nearest' })
+    scheduleEntryVisibility()
   })
 }
 function add(agentId = '') {
@@ -429,11 +485,15 @@ function remove(row) {
   nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
 }
 watch(() => props.open, open => {
-  if (!open) return
+  if (!open) {
+    resetKeyboardAvoidance()
+    return
+  }
   rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
+  nextTick(scheduleEntryVisibility)
 }, { immediate: true })
 watch([() => props.records, () => props.recordsRevision, () => props.open, () => props.recordsLoading], () => {
   if (!props.open || props.recordsLoading || props.recordsRevision == null) return
@@ -446,6 +506,20 @@ watch([() => props.records, () => props.recordsRevision, () => props.open, () =>
   initialized.value = true
 }, { immediate: true })
 watch([rows, activeRow, deletedIds, remaining, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
+onMounted(() => {
+  const viewport = window.visualViewport
+  viewport?.addEventListener('resize', onViewportChange)
+  viewport?.addEventListener('scroll', onViewportChange)
+  window.addEventListener('resize', onViewportChange)
+  if (props.open) scheduleEntryVisibility()
+})
+onBeforeUnmount(() => {
+  const viewport = window.visualViewport
+  viewport?.removeEventListener('resize', onViewportChange)
+  viewport?.removeEventListener('scroll', onViewportChange)
+  window.removeEventListener('resize', onViewportChange)
+  resetKeyboardAvoidance()
+})
 useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('select:not(:disabled), input:not(:disabled)'), onEscape: close })
 async function submit() {
   if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || activeRow.value) return
@@ -476,6 +550,9 @@ async function submit() {
 }
 
 .pool-editor {
+  --editor-body-bottom-space: 24px;
+  --keyboard-inset: 0px;
+
   display: flex;
   flex-direction: column;
   width: min(780px, 100%);
@@ -535,7 +612,8 @@ h2 {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 20px 22px 24px;
+  padding: 20px 22px calc(var(--editor-body-bottom-space) + var(--keyboard-inset));
+  scroll-padding: 16px 0 calc(var(--editor-body-bottom-space) + var(--keyboard-inset));
 }
 
 .state-note,
@@ -829,7 +907,7 @@ button:not(:disabled):hover {
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
   border-radius: 12px;
   background: color-mix(in srgb, var(--cream) 70%, var(--surface));
-  scroll-margin: 16px;
+  scroll-margin-block: 16px 24px;
 }
 
 .agent-picker {
@@ -1532,12 +1610,16 @@ summary:focus-visible,
 }
 
 @media (max-width: 520px) {
+  .pool-editor {
+    --editor-body-bottom-space: 22px;
+  }
+
   .editor-header {
     padding: 18px 16px;
   }
 
   .editor-body {
-    padding: 17px 16px 22px;
+    padding: 17px 16px calc(var(--editor-body-bottom-space) + var(--keyboard-inset));
   }
 
   h2 {
@@ -1649,9 +1731,7 @@ summary:focus-visible,
     display: none;
   }
 
-  .entry-composer {
-    scroll-margin-block: 16px;
-  }
+  .entry-composer { scroll-margin-block: 16px 24px; }
 }
 
 @media (max-width: 430px) {
