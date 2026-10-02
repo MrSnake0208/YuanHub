@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { reactive } from 'vue'
 import StarPage from '../src/pages/star/index.vue'
@@ -32,6 +32,7 @@ const emptyRemote = {
 }
 const nativeFunction = Function
 let embedMount
+afterEach(() => document.getElementById('yuanstar-embed-styles')?.remove())
 
 function render() {
   return mount(StarPage, { global: {
@@ -70,7 +71,7 @@ it('星石页入口明确网页端可用且自动采集仍在接入中', async (
   const wrapper = render()
   await flushPromises()
   const note = wrapper.get('.star-availability-note[role="note"]')
-  expect(note.text()).toContain('星石网页端已可使用')
+  expect(note.text()).toContain('手机和电脑网页端均可使用')
   expect(note.text()).toContain('导入截图、核对识别结果并整理背包')
   expect(note.text()).toContain('MaaYuan 星石自动采集仍在接入中')
   wrapper.unmount()

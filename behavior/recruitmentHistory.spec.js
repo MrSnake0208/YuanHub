@@ -24,7 +24,7 @@ it('120窗口首条间隔未知，后续31/17；按已知120总量计一次，�
   await wrapper.get('form').trigger('submit'); expect(wrapper.emitted('save').at(-1)[0]).toEqual(first)
 })
 it('120批次不能把窗口外抽数塞进窗口总量，错误聚焦且不提交', async () => {
-  const wrapper = render({ initialMode: 'historical' }); await select(wrapper, '抽数资料').setValue('window'); await wrapper.get('fieldset select').setValue('agent-a'); await input(wrapper, '窗口内位置').setValue('17')
+  const wrapper = render({ initialMode: 'historical' }); await flushPromises(); await select(wrapper, '抽数资料').setValue('window'); await wrapper.get('fieldset select').setValue('agent-a'); await input(wrapper, '窗口内位置').setValue('17')
   await wrapper.findAll('.check input')[1].setValue(true); await input(wrapper, '窗口前已抽次数').setValue('9'); await wrapper.findAll('.check input').at(-1).setValue(true); await wrapper.get('form').trigger('submit'); await flushPromises()
   expect(wrapper.emitted('save')).toBeUndefined(); expect(wrapper.get('[role=alert]').text()).toContain('含有窗口外抽数'); expect(document.activeElement).toBe(wrapper.get('[role=alert]').element)
 })
