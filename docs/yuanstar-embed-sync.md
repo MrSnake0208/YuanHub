@@ -26,10 +26,14 @@
 
 宿主 `src/pages/star/index.vue` 依赖以下行为，缺少任一项会退化成错误状态：
 
-- `importCaptureBatch(batch)`：必须等 Draft 真正持久化后才 resolve；
-  **若批次被其他操作顶掉、没有写入 Draft，必须返回 `false` 或 reject**，
-  不能静默 resolve。宿主据此抛出 `star_capture_import_superseded` 并保留
-  pendingCapture（旧版 embed 返回 `undefined`，宿主按“已受理”兼容处理）。
+- `importCaptureBatch(batch)`：必须等 Draft 真正持久化后才 resolve。
+  契约要求：**若批次被其他操作顶掉、没有写入 Draft，必须返回 `false` 或 reject**，
+  不能静默 resolve；宿主据此抛出 `star_capture_import_superseded` 并保留 pendingCapture。
+  **当前状态（2026-10-02 同步的产物仍未满足）**：批次被顶掉的分支是裸 `return`，
+  即 resolve `undefined`，`src/pages/star/captureTransport.js` 的 `accepted === false`
+  判断不会命中，该次自动采集会被静默丢弃；宿主保留 `undefined` 兼容分支只是为了
+  不让旧产物把导入误判为失败。这是**已知未闭合的宿主 ↔ embed 契约缺口**，
+  需上游把失败分支改为 `return false`（或 reject）后重新同步产物。
 - `onCaptureCommitted({ source: 'maayuan', accountId, captureId, jobId })`：
   在 OCR 结果提交且 Import Draft 退休之后触发；宿主收到后才 consume 后端临时截图。
 - `getActiveTab()` / `setActiveTab(tab)`、`setHostAccount(accountId)`：
@@ -67,16 +71,30 @@
 1. `CaptureBatch.gameVersion` 仅作为合法值受检的兼容 metadata 原样传递，
    不再因与 workspace 不同阻止原始截图导入；当前 workspace/account 的游戏版本
    继续决定 OCR context 和持久化。
+   已知风险：跨版本批次被**静默放行**，宿主侧没有任何版本不一致提示，用户在提交后
+   才可能发现识别结果偏差；建议上游在放行的同时返回非阻断告警。
 2. MaaYuan 自动 CaptureBatch 带明确的 `maayuan_capture` provenance，
    进入内部 `layoutHint: maayuan_mumu`；不通过尺寸、filename 或 sourceImageId 猜来源。
-3. 仅在 provenance、720×1280、full viewport、`phone_9_16_v1` 条件全部满足时
-   使用 MuMu fast path；canonical top 为 `272 / 1280`，bottom 为 `1044 / 1280`。
-4. 自动滚动产生的上下边缘残片在 worker 内为 `excluded_partial`，进入宿主后映射为
-   `fragment`（review tier 2，`inventoryAction: exclude_fragment`），不进入普通 Tier1 review。
-5. manual upload 保持 generic 保守路径，CaptureBatch 与 manual path provenance 不泄漏。
-6. 已删除此前慢版 footer OCR 路径，不引入额外 footer OCR；源码侧真实批次回归显示
-   structured OCR 总耗时接近 baseline，没有此前慢版回归。
-7. 不自动触发 OCR，仍由用户手动点击识别；import / commit / consume 宿主契约不变。
+3. 仅在 provenance、720×1280、full viewport、`phone_9_16_v1` 条件全部满足，
+   且能检出用于抬高上界的 tab 矩形时，才使用 MuMu fast path
+   （检不出 tab 矩形时退回 profile 边界，只会多一些上边缘残片，不会丢数据）；
+   canonical top 为 `272 / 1280`，bottom 为 `1044 / 1280`。
+4. 边缘残片的分层命名：worker 对 `completeness !== "complete"` 的卡片产出
+   `status: excluded_partial`；入口把**所有**非 complete 的卡片收进
+   `excludedOrdinaryOccurrences`（`reasonCode: incomplete_card`，不只是上下边缘，
+   也含其它不完整原因），再映射为 `kind: "fragment"`、review tier 2、
+   `inventoryAction: exclude_fragment`，因此不进入普通 Tier1 review。
+   `excluded_partial` 这串只存在于 worker 内，在 `yuanstar-embed.js` 里 grep 不到。
+5. provenance 只写入 CaptureBatch 路径（手动上传构造的对象从不带 `origin`），
+   因此只有自动采集会进入 MuMu `272 / 1044` 裁剪。
+   注意：worker 中「按视觉选中的 tab 下沿抬高上界」的分支对所有被分析图片生效、
+   不受 provenance 约束（手动上传也可能触发；通常是 no-op，但 tab bar 偏高时会把
+   首行卡片判为残片）。「manual 保持保守路径」只对 provenance 与 fast path 成立。
+6. footer OCR：**本次 vendoring 的 diff 无法证实**「已删除此前慢版 footer OCR 路径」——
+   新旧 worker 中 `footer` 字样均为 0 次，`tabOcrMs` / `profileContentBoundsMs`
+   计数一致。该结论仅来自源码侧声明，本仓库不重复断言其成立。
+7. 不自动触发 OCR，仍由用户手动点击识别；import / commit / consume 的接口与语义与上一版
+   一致（包含上面已标注的、仍未闭合的 `importCaptureBatch` 返回值缺口）。
 
 ### 已有源码侧回归证据（源码侧证据，本仓库无法复核）
 
@@ -96,3 +114,8 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
   YuanStar 构建后发布到本仓库，从而让 embed 差异可被 review。
 - `browser-vision-worker-<hash>.js` 每次重建都会改文件名，等于每次同步都往 git 历史
   再压一个约 36 MB 的对象；建议改为不带内容 hash 的固定文件名 + 外部存储。
+- 上游把 `importCaptureBatch` 被顶掉的分支从裸 `return` 改为 `return false`（或 reject），
+  以闭合上面的宿主 ↔ embed 契约缺口；同步后在本仓库补返回值断言。
+- 上游为跨版本 CaptureBatch 增加非阻断告警（保留 `capture_game_invalid` 合法性校验），
+  避免静默放行导致的识别偏差无提示。
+- 明确「仅看待养成」开关是否进入视图快照/恢复（当前视图快照不含该开关状态）。
