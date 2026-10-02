@@ -69,7 +69,7 @@
               <div class="records-heading">
                 <div>
                   <span class="section-kicker">抽卡档案</span>
-                  <h3 id="records-title">本池抽卡记录</h3>
+                  <h3 id="records-title">本池抽卡进度</h3>
                   <p>{{ rows.length }} 条{{ hasMore ? ' · 还有更早记录' : '' }}</p>
                 </div>
                 <div class="entry-shortcuts" role="group" aria-label="快速登记出货">
@@ -101,6 +101,11 @@
                     {{ quickUpAgents.length ? '其他密探' : '登记出货' }}
                   </button>
                 </div>
+              </div>
+
+              <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
+                <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条视图</button>
+                <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
               </div>
 
               <div
@@ -179,7 +184,7 @@
                 <p v-if="activeRow.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
               </div>
 
-              <ol v-if="displayRows.length" class="record-feed">
+              <ol v-if="displayRows.length && recordView === 'progress'" class="record-feed">
                 <li v-for="row in displayRows" :key="row.event_id" class="gacha-record">
                   <OperatorAvatar
                     class="record-avatar"
@@ -219,13 +224,52 @@
                 </li>
               </ol>
 
+              <ol v-else-if="displayRows.length" class="agent-record-grid" aria-label="密探视图">
+                <li v-for="row in displayRows" :key="row.event_id" class="agent-record-card">
+                  <button
+                    type="button"
+                    class="agent-record-detail"
+                    :disabled="busy || readOnly || recordsLoading || !!activeRow"
+                    :aria-label="recordLabel(row)"
+                    @click="edit(row)"
+                  >
+                    <span class="agent-record-portrait">
+                      <OperatorAvatar
+                        class="agent-record-avatar"
+                        :avatar="agentAvatar(selectedAgent(row))"
+                        :name="selectedAgent(row)?.name || row.agent_id"
+                        :rarity="5"
+                        aria-hidden="true"
+                      />
+                      <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
+                      <span v-if="row.up_status === 'non_up'" class="agent-non-up" aria-hidden="true">歪</span>
+                    </span>
+                    <span class="agent-record-name">{{ selectedAgent(row)?.name || row.agent_id }}</span>
+                    <span class="agent-record-flags" aria-hidden="true">
+                      <span v-if="row.batch_id" class="agent-record-flag">批次</span>
+                      <span v-if="isChanged(row)" class="agent-record-flag is-pending">待保存</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="delete-record agent-record-delete"
+                    :aria-label="'移除' + (selectedAgent(row)?.name || row.agent_id) + '这条出货'"
+                    :disabled="busy || readOnly || recordsLoading"
+                    @click="remove(row)"
+                  >
+                    <Trash2 :size="16" aria-hidden="true" />
+                  </button>
+                </li>
+              </ol>
+
               <div v-else-if="initialized && !recordsLoading" class="records-empty">
                 <strong>还没有抽卡记录</strong>
                 <p>{{ quickUpAgents.length ? '点击上方 UP 头像快速登记；歪卡或其他密探使用“其他密探”。' : '点击“登记出货”，选择密探并填写这次绝密前的抽数即可。' }}</p>
               </div>
 
               <div class="records-tail">
-                <p v-if="rows.length" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数始终以色条内数字为准。</p>
+                <p v-if="rows.length && recordView === 'progress'" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数始终以色条内数字为准。</p>
+                <p v-else-if="rows.length" class="bar-legend">头像左下角显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
                 <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">加载更早记录</button>
               </div>
             </section>
@@ -265,7 +309,7 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
-const panel = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([])
+const panel = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
 let requestId = ''
 const poolName = computed(() => recruitmentPoolCatalog(props.pool, props.catalog)?.name || props.pool?.mapped_snapshot?.name || props.pool?.snapshot.name)
@@ -367,11 +411,11 @@ function confirmRecord() {
     else rows.value.splice(index, 1, { ...activeRow.value })
     activeRow.value = null
     choosingAgent.value = false
-    nextTick(() => (panel.value?.querySelector('.gacha-record .record-detail') || panel.value?.querySelector('.add-record'))?.focus())
+    nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
     return true
   } catch (err) { error.value = err.message; nextTick(() => errorSummary.value?.focus()); return false }
 }
-function remove(row) { if (activeRow.value?.event_id === row.event_id) activeRow.value = null; if (originals.has(row.event_id)) deletedIds.value.push(row.event_id); rows.value = rows.value.filter(item => item !== row); nextTick(() => (panel.value?.querySelector('.gacha-record .record-detail') || panel.value?.querySelector('.add-record'))?.focus()) }
+function remove(row) { if (activeRow.value?.event_id === row.event_id) activeRow.value = null; if (originals.has(row.event_id)) deletedIds.value.push(row.event_id); rows.value = rows.value.filter(item => item !== row); nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus()) }
 watch(() => props.open, open => {
   if (!open) return
   rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''
@@ -636,6 +680,41 @@ h2 {
   margin-top: 3px;
   color: var(--ink-60);
   font-size: 11px;
+}
+
+.record-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  width: fit-content;
+  margin: 0 0 12px auto;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cream) 72%, var(--surface));
+}
+
+.record-view-switch button {
+  min-width: 104px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-color: transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.record-view-switch button.is-selected {
+  border-color: var(--tea);
+  background: var(--tea);
+  color: var(--cream);
+}
+
+.record-view-switch button.is-selected:not(:disabled):hover {
+  border-color: var(--tea);
+  background: color-mix(in srgb, var(--tea) 92%, var(--surface));
 }
 
 button {
@@ -1154,6 +1233,156 @@ select {
   background: color-mix(in srgb, var(--rouge) 7%, transparent);
 }
 
+.agent-record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px 8px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.agent-record-card {
+  position: relative;
+  min-width: 0;
+}
+
+.agent-record-detail {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  justify-items: center;
+  gap: 5px;
+  padding: 6px 3px 7px;
+  border-color: transparent;
+  background: transparent;
+  text-align: center;
+}
+
+.agent-record-detail:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
+  background: color-mix(in srgb, var(--cream) 60%, transparent);
+}
+
+.agent-record-portrait {
+  position: relative;
+  display: block;
+  width: min(100%, 78px);
+  aspect-ratio: 1;
+}
+
+.agent-record-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.agent-pull-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--surface) 80%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(73, 59, 44, .16);
+  color: var(--surface);
+  background: var(--accent-strong);
+  font: 800 11px/1 var(--font-d);
+  white-space: nowrap;
+}
+
+.agent-pull-badge.bar-low { background: #367447; }
+.agent-pull-badge.bar-mid { background: var(--accent-strong); }
+.agent-pull-badge.bar-high { background: var(--rouge); }
+.agent-pull-badge.bar-unknown { background: var(--slate-deep); }
+
+.agent-non-up {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 1.5px solid var(--rouge);
+  border-radius: 50%;
+  color: var(--rouge);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  font: 800 13px/1 var(--font-s);
+  transform: rotate(-10deg);
+}
+
+.agent-record-name {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-record-flags {
+  display: flex;
+  min-height: 17px;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.agent-record-flag {
+  display: inline-flex;
+  min-height: 17px;
+  align-items: center;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-60);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.agent-record-flag.is-pending {
+  border-color: transparent;
+  background: var(--yellow);
+  color: var(--tea);
+}
+
+.agent-record-delete {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 3;
+  border-color: transparent;
+  background: transparent;
+}
+
+.agent-record-delete::before {
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  border: 1px solid color-mix(in srgb, var(--rouge) 24%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  content: '';
+}
+
+.agent-record-delete svg {
+  position: relative;
+  z-index: 1;
+}
+
 .records-empty {
   padding: 22px 18px;
   border: 1px dashed var(--line);
@@ -1420,6 +1649,15 @@ summary:focus-visible,
   .records-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .record-view-switch {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .record-view-switch button {
+    min-width: 0;
   }
 
   .entry-shortcuts {
