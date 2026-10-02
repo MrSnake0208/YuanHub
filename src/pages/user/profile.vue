@@ -1075,10 +1075,35 @@ async function copyExistingToken(tokenItem) {
   const ownerId = auth.userInfo?.id;
   copyingTokenId.value = id;
   try {
-    const result = await getOpenApiTokenSecret(id);
+    const tokenPromise = getOpenApiTokenSecret(id).then(function (result) {
+      if (auth.userInfo?.id !== ownerId) throw new Error("登录用户已切换");
+      if (typeof result?.token !== "string" || !result.token) throw new Error("连接码响应无效");
+      return result.token;
+    });
+    if (
+      navigator.clipboard &&
+      typeof navigator.clipboard.write === "function" &&
+      typeof ClipboardItem === "function"
+    ) {
+      try {
+        // WebKit 会在 await 后失去剪贴板所需的用户手势；先启动写入，再异步提供连接码。
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": tokenPromise.then(
+              token => new Blob([token], { type: "text/plain" }),
+            ),
+          }),
+        ]);
+        await tokenPromise;
+        toast("连接码已复制");
+        return;
+      } catch (_clipboardError) {
+        if (auth.userInfo?.id !== ownerId) return;
+      }
+    }
+    const token = await tokenPromise;
     if (auth.userInfo?.id !== ownerId) return;
-    if (typeof result?.token !== "string" || !result.token) throw new Error("连接码响应无效");
-    await copyToken(result.token, true);
+    await copyToken(token, true);
   } catch (err) {
     if (auth.userInfo?.id === ownerId) toast(humanErr(err, "连接码复制失败"), true);
   } finally {
