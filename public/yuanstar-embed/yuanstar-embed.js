@@ -3712,7 +3712,7 @@ function ir() {
 	if (typeof Worker > "u") throw Error("worker_runtime_unavailable: Dedicated Worker is not supported");
 	return new Worker(new URL(
 		/* @vite-ignore */
-		"" + new URL("assets/browser-vision-worker-Ci-YovYF.js", import.meta.url).href,
+		"" + new URL("assets/browser-vision-worker-Bt0Z67D1.js", import.meta.url).href,
 		"" + import.meta.url
 	), {
 		type: "module",
@@ -4060,7 +4060,8 @@ var dr = class {
 					sourceOrder: e.sourceOrder,
 					input: {
 						imageId: e.sourceImageId,
-						file: e.file
+						file: e.file,
+						...e.layoutHint ? { layoutHint: e.layoutHint } : {}
 					},
 					confirmedPool: e.confirmedPool
 				})),
@@ -4567,6 +4568,7 @@ function Rr(e, t = {}) {
 	if (r.sort((e, t) => e.image.sourceOrder - t.image.sourceOrder || e.image.sourceImageId.localeCompare(t.image.sourceImageId)), r.some(({ image: e }, t) => e.sourceOrder !== t + 1)) throw new jr("capture_image_order_invalid", "CaptureBatch sourceOrder 必须从 1 开始并在整个 batch 内严格递增。");
 	let s = r.map(({ section: e, image: t }) => ({
 		sourceImageId: t.sourceImageId,
+		origin: "maayuan_capture",
 		filename: t.file.name || `${e}-${t.sourceOrder}.png`,
 		size: t.file.size,
 		file: t.file,
@@ -4709,7 +4711,8 @@ function Yr(e) {
 			confirmedPool: {
 				imageId: e.sourceImageId,
 				pageType: Mr[e.pool]
-			}
+			},
+			...e.origin === "maayuan_capture" ? { layoutHint: "maayuan_mumu" } : {}
 		})),
 		confirmedOverlapPairs: n
 	};
@@ -21936,7 +21939,8 @@ function Pb(e) {
 			classificationReviewRequired: e.classificationReviewRequired,
 			poolSource: e.poolSource,
 			width: e.width,
-			height: e.height
+			height: e.height,
+			...e.origin === "maayuan_capture" ? { origin: e.origin } : {}
 		})),
 		overlapPairs: e.overlapPairs.map((e) => ({
 			pairId: e.pairId,
@@ -22065,7 +22069,8 @@ function Ub(e) {
 		classificationReviewRequired: e.classificationReviewRequired,
 		poolSource: e.poolSource,
 		width: e.width,
-		height: e.height
+		height: e.height,
+		...e.origin === "maayuan_capture" ? { origin: e.origin } : {}
 	}));
 }
 function Wb(e, t, n) {
@@ -23811,7 +23816,6 @@ function wT(e) {
 async function TT(e, t = {}) {
 	if (X()) throw new jr("capture_import_locked", "识别正在运行，不能载入新的 CaptureBatch。");
 	if (!G || eS !== G.account.accountId) throw new jr("capture_workspace_unavailable", "当前工作区尚未加载，不能载入 CaptureBatch。");
-	if (e.gameVersion !== G.account.gameVersion) throw new jr("capture_game_mismatch", "CaptureBatch 游戏版本与当前 YuanStar 工作区不一致。");
 	let n = [], r;
 	try {
 		r = Rr(e, {
