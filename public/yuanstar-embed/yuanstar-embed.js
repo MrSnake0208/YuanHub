@@ -3722,6 +3722,7 @@ function ir() {
 function ar(e) {
 	return Error(e);
 }
+var OCR_ENGINE_INITIALIZATION_TIMEOUT_MS = 180000;
 var or = class {
 	workerFactory;
 	worker;
@@ -3796,12 +3797,16 @@ var or = class {
 		if ((this.stateValue === "disposed" || this.stateValue === "failed") && (this.stateValue = "idle"), this.stateValue !== "idle") throw ar("worker_runtime_unavailable: initialize is not allowed in the current state");
 		this.stateValue = "initializing";
 		try {
-			return this.createWorker(), this.initializePromise = this.request({
+			this.createWorker();
+			let t = setTimeout(() => {
+				this.stateValue === "initializing" && this.fail("worker_initialization_timeout");
+			}, OCR_ENGINE_INITIALIZATION_TIMEOUT_MS);
+			return this.initializePromise = this.request({
 				operation: "initialize",
 				config: e
 			}).then((e) => (this.manifest = e, this.stateValue = "ready", this.manifest)).catch((e) => {
 				throw this.fail(e.message), e;
-			}), await this.initializePromise;
+			}).finally(() => clearTimeout(t)), await this.initializePromise;
 		} catch (e) {
 			throw this.fail(e instanceof Error ? e.message : String(e)), e;
 		}
@@ -3863,6 +3868,7 @@ function cr(e, t, n) {
 		message: {
 			invalid_input: "Browser OCR input is invalid.",
 			engine_initialization_failed: "The local OCR worker could not initialize.",
+			engine_initialization_timeout: "The local OCR worker initialization timed out.",
 			image_analysis_failed: "One or more images could not be analyzed.",
 			batch_runtime_failed: "The local OCR batch did not complete.",
 			worker_crash: "The local OCR worker stopped unexpectedly.",
@@ -4040,7 +4046,7 @@ var dr = class {
 					jobId: e.jobId,
 					status: "failed",
 					result: null,
-					error: cr(String(a).includes("worker_fatal") ? "worker_crash" : "engine_initialization_failed", "initialize")
+					error: cr(String(a).includes("worker_initialization_timeout") ? "engine_initialization_timeout" : String(a).includes("worker_fatal") ? "worker_crash" : "engine_initialization_failed", "initialize")
 				};
 			}
 			if (i.signal.aborted || !this.isCurrent(o) || this.disposeRequested || !this.engine) return this.stateValue = "cancelling", s("cancelling"), s("cancelled"), {
@@ -24082,7 +24088,7 @@ async function FT() {
 		completed: 0,
 		total: n.images.length,
 		sourceImageId: null,
-		message: "正在初始化识别引擎。",
+		message: "正在加载本机识别引擎；首次使用需要加载较大的识别资源，请保持页面前台并使用稳定网络。",
 		error: ""
 	}, Z(), requestAnimationFrame(() => W.querySelector("#import-progress-panel")?.scrollIntoView({
 		behavior: "smooth",
@@ -24096,7 +24102,8 @@ async function FT() {
 			return;
 		}
 		if (t.status === "failed" || !t.result) {
-			J.status = "failed", J.sourceImageId = null, mC(`识别失败，当前工作区未修改，可直接重试。${t.error?.message ? ` ${t.error.message}` : ""}`, !0), Z();
+			let s = t.error?.code === "engine_initialization_timeout" ? "识别引擎加载超时。手机端也支持识别，请保持页面前台并使用稳定网络后直接重试；若仍失败，可暂时改用电脑浏览器。" : t.error?.code === "engine_initialization_failed" ? "识别引擎启动失败。请刷新页面后重试；手机端请保持页面前台并使用稳定网络。若仍失败，可暂时改用电脑浏览器。" : `识别失败，当前工作区未修改，可直接重试。${t.error?.message ? ` ${t.error.message}` : ""}`;
+			J.status = "failed", J.sourceImageId = null, mC(s, !0), Z();
 			return;
 		}
 		if (t.status === "partial" || t.result.job.status === "partial") {
@@ -24330,7 +24337,7 @@ function YT(e, t = {}) {
 	try {
 		W = e, ax = t.assetBaseUrl ?? "/", ox = t.embedded === !0, sx = t.onSummaryChange, cx = t.onReplacementImport, lx = t.onOcrRebuild, ux = t.onCaptureCommitted, dx = t.onListRecoveryPoints, fx = t.onRestoreRecoveryPoint, px = t.onRestoreLocalPoint, ix = me(W, { onChange: () => Z() }), K = new un(), Zx = new Xb({ resumeClassifying: (e) => {
 			CT(e);
-		} }), K.setBusinessCommitListener(t.onBusinessStateCommitted), nS = new Zr({ assetConfig: { modelRoot: Ob("models/", ax) } }), KT(), ox && (_x = "import"), UT(), ix.start(), Z(), Qr(nS), wS(), ox && t.hostAccount ? vw(t.hostAccount).catch((e) => {
+		} }), K.setBusinessCommitListener(t.onBusinessStateCommitted), nS = new Zr({ assetConfig: { modelRoot: Ob("models/", ax) } }), KT(), ox && (_x = "import"), UT(), ix.start(), Z(), ox || Qr(nS), wS(), ox && t.hostAccount ? vw(t.hostAccount).catch((e) => {
 			mx.renderingAllowed && sw(e, "恢复");
 		}) : gw();
 	} catch (t) {

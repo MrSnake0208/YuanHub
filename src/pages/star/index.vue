@@ -15,7 +15,7 @@
           </p>
           <div class="notice star-availability-note" role="note">
             <span class="tag">当前可用</span>
-            <p><b>星石网页端已可使用。</b>你可以在这里导入截图、核对识别结果并整理背包。MaaYuan 星石自动采集仍在接入中，当前请先通过网页端导入截图。</p>
+            <p><b>手机和电脑网页端均可使用。</b>你可以在这里导入截图、核对识别结果并整理背包。首次 OCR 会在本机加载识别资源，手机端请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
           </div>
           <div class="author-badge" v-reveal>
             <span class="ab-mark">©</span

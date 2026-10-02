@@ -50,11 +50,11 @@
 - 父 commit：`f8382de4508f1f3b3ffdcd318eb0c3b27d67e459`。
 - 构建入口：`web/src/yuanstar-embed.ts`。
 - 生成命令：在 `web/` 下执行 embed 构建（Windows 为 `npm.cmd run build:embed`）。
-- 完整镜像 `web/dist/embed/` 到 `public/yuanstar-embed/`，共 12 个文件。
-- **完整性状态**：12 个文件的 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`，
-  并与工作树逐文件比对通过（`test/yuanstarEmbedProvenance.test.js`）。
-  源码仓目前不可公开访问，"由同一次上游构建产出、未经手改"这一点在本仓库
-  **无法独立验证**，只能依赖同步者声明与上述产物哈希。
+- 同步基线完整镜像 `web/dist/embed/` 到 `public/yuanstar-embed/`，共 12 个文件。
+- **完整性状态**：12 个文件当前在 YuanHub 中的 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`，
+  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。同步基线来自上述 source commit；
+  `yuanstar-embed.js` 随后叠加了下文记录的 YuanHub 本地移动端 OCR 初始化防卡死补丁，
+  因此当前入口文件不再与该 source commit 的原始构建字节完全一致。
 - 新 worker：`browser-vision-worker-Bt0Z67D1.js`（数字 `0`），
   已删除旧 `browser-vision-worker-Ci-YovYF.js`，没有旧 hashed worker 残留。
 - 所有 embed 产物通过 `.gitattributes` 的 `-text` 原样保存构建字节，
@@ -106,6 +106,19 @@ fragment 从 135 到 140（top 59 到 64，bottom 76 不变）；Tier1 从 5 到
 剩余一条是独立的 `hierarchical_level_order_conflict`，不属于 fragment，仍待后续处理。
 其它 1,520 accepted 结果的 name / level / quality / status 不变，manual generic path 无变化，
 provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，前轮约 277.4s。
+
+## 2026-10-02：移动端 OCR 初始化防卡死热修
+
+- 现象：手机浏览器 / PWA 在开始识别后可能长期停留在“正在初始化识别引擎”，图片进度保持 `0 / N`。
+- 根因：浏览器视觉 worker 的 `initialize` 请求原先没有超时边界；同时 embed 挂载时会提前预热 OCR。
+  YuanHub 的 PWA 明确不预缓存 `yuanstar-embed/**`，首次使用需要在线加载较大的 worker、WASM 与模型资源；
+  当移动浏览器挂起 worker、网络请求迟迟不结束或初始化无法返回时，Promise 会永久 pending，UI 也就无法进入失败态。
+- 本次仅对 YuanHub vendored `yuanstar-embed.js` 叠加热修，尚未回写 YuanStar source commit：
+  1. embedded 模式不再在页面挂载时后台预热 OCR，改为用户确认开始识别后再初始化；
+  2. worker 初始化增加 180 秒硬超时，超时会终止 worker 并返回可重试错误，不再无限等待；
+  3. 初始化阶段明确提示首次需要加载较大的本机识别资源，并为超时 / 初始化失败提供手机端恢复指引。
+- `docs/yuanstar-embed-manifest.json` 记录的是热修后的当前产物 hash。后续同步新的 YuanStar embed 前，
+  应先把这项初始化超时与 embedded 延迟预热策略移植回 YuanStar 源码，再重新构建，避免热修被覆盖。
 
 ## 待办
 
