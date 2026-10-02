@@ -119,6 +119,45 @@ it('创建时完整显示一次，关闭后仍可在现有连接中复制', asyn
   wrapper.unmount()
 })
 
+it('iOS/WebKit 异步取码会在点击手势内先启动 clipboard.write', async () => {
+  let resolveSecret
+  getOpenApiTokenSecret.mockImplementationOnce(() => new Promise(resolve => { resolveSecret = resolve }))
+
+  const originalClipboardItem = Object.getOwnPropertyDescriptor(globalThis, 'ClipboardItem')
+  class ClipboardItemMock {
+    constructor(data) { this.data = data }
+  }
+  const writeText = vi.fn()
+  const write = vi.fn(items => items[0].data['text/plain'].then(() => undefined))
+  Object.defineProperty(globalThis, 'ClipboardItem', { configurable: true, value: ClipboardItemMock })
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, writeText } })
+
+  let wrapper
+  try {
+    wrapper = render()
+    await flushPromises()
+    await wrapper.get('.connection-actions .t-btn.copy').trigger('click')
+
+    expect(getOpenApiTokenSecret).toHaveBeenCalledWith('tok-a')
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(writeText).not.toHaveBeenCalled()
+
+    const clipboardItem = write.mock.calls[0][0][0]
+    resolveSecret({ token: 'synthetic-secret' })
+    await flushPromises()
+
+    const blob = await clipboardItem.data['text/plain']
+    expect(blob.type).toBe('text/plain')
+    expect(blob.size).toBe('synthetic-secret'.length)
+    expect(wrapper.get('.notice-line').text()).toContain('连接码已复制')
+    expect(wrapper.text()).not.toContain('synthetic-secret')
+  } finally {
+    wrapper?.unmount()
+    if (originalClipboardItem) Object.defineProperty(globalThis, 'ClipboardItem', originalClipboardItem)
+    else delete globalThis.ClipboardItem
+  }
+})
+
 it('现有连接取码失败或登录用户切换时不复制明文', async () => {
   const wrapper = render()
   await flushPromises()
