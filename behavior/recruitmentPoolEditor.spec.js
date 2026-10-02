@@ -20,6 +20,8 @@ async function register(wrapper, agent, span) {
 it('默认展示头像和彩色抽数条，单条录入后生成记录条；重复密探、未知间隔和稳定ID', async () => {
   const wrapper = render()
   expect(wrapper.find('.entry-composer').exists()).toBe(false)
+  expect(button(wrapper, '进度条视图').attributes('aria-pressed')).toBe('true')
+  expect(button(wrapper, '密探视图').attributes('aria-pressed')).toBe('false')
   expect(wrapper.get('.gacha-record .pull-result b').text()).toBe('17')
   expect(wrapper.get('.gacha-record .record-bar').classes()).toContain('bar-low')
   expect(wrapper.get('.gacha-record .record-bar').attributes('style')).toContain('42.5%')
@@ -34,6 +36,25 @@ it('默认展示头像和彩色抽数条，单条录入后生成记录条；重�
   expect(first.data.entries[0].event_id).not.toBe('old')
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('save')[1][0]).toEqual(first)
+})
+
+it('密探视图按头像排列并在左下角显示单条抽数，切换视图不改变记录且头像仍可进入编辑', async () => {
+  const wrapper = render({ records: [
+    { ...recruitmentEvent('known', 17), agent_snapshot: { agent_id: 'a', name: '甲' } },
+    { ...recruitmentEvent('unknown', null), agent_snapshot: { agent_id: 'b', name: '乙' } }
+  ] })
+  await button(wrapper, '密探视图').trigger('click')
+  expect(button(wrapper, '密探视图').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.find('.record-feed').exists()).toBe(false)
+  expect(wrapper.findAll('.agent-record-card')).toHaveLength(2)
+  expect(wrapper.findAll('.agent-pull-badge').map(item => item.text()).sort()).toEqual(['17抽', '未知'])
+  expect(wrapper.findAll('.agent-record-name').map(item => item.text()).sort()).toEqual(['乙', '甲'])
+  const known = wrapper.findAll('.agent-record-card').find(item => item.text().includes('17抽'))
+  await known.get('.agent-record-detail').trigger('click')
+  expect(wrapper.get('.pull-count-field input').element.value).toBe('17')
+  await button(wrapper, '取消').trigger('click')
+  await button(wrapper, '进度条视图').trigger('click')
+  expect(wrapper.findAll('.gacha-record')).toHaveLength(2)
 })
 
 it('公共目录无头像时按真实密探ID回退本地密探图，进入录入态会标记底部区域', async () => {
