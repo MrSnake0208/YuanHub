@@ -1601,6 +1601,24 @@ summary:focus-visible,
     margin-bottom: 10px;
   }
 
+  .records-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .record-view-switch {
+    width: 100%;
+  }
+
+  .record-view-switch button {
+    min-width: 0;
+  }
+
+  .entry-shortcuts {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .add-record {
     padding-inline: 12px;
   }
@@ -1688,24 +1706,6 @@ summary:focus-visible,
 
   .records-heading {
     margin-bottom: 10px;
-  }
-
-  .records-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .record-view-switch {
-    width: 100%;
-  }
-
-  .record-view-switch button {
-    min-width: 0;
-  }
-
-  .entry-shortcuts {
-    width: 100%;
-    justify-content: flex-start;
   }
 
   .entry-shortcuts .add-record {
