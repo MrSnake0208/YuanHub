@@ -227,15 +227,6 @@
                       <span v-if="isChanged(row)" class="pending-mark" aria-hidden="true">待保存</span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    class="delete-record"
-                    :aria-label="'移除' + (selectedAgent(row)?.name || row.agent_id) + '这条出货'"
-                    :disabled="busy || readOnly || recordsLoading"
-                    @click="remove(row)"
-                  >
-                    <Trash2 :size="17" aria-hidden="true" />
-                  </button>
                 </li>
               </ol>
 
@@ -305,7 +296,7 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { CircleHelp, Plus, Trash2, X } from '@lucide/vue'
+import { CircleHelp, Plus, X } from '@lucide/vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
@@ -1142,7 +1133,7 @@ select {
 
 .gacha-record {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 44px;
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1714,7 +1705,7 @@ summary:focus-visible,
   }
 
   .gacha-record {
-    grid-template-columns: 40px minmax(0, 1fr) 44px;
+    grid-template-columns: 40px minmax(0, 1fr);
     gap: 7px;
   }
 
