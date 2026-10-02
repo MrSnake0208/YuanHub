@@ -113,7 +113,7 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
   getOperatorCatalog.mockResolvedValue({ operators: [
     { id: 'char-a', name: '测试绝密', rarity: 5, prof: '火', sub_prof: 'shenji', games: ['代号鸢'] },
     { id: 'char-b', name: '测试歪卡', avatar_url: '/other.png', rarity: 5, prof: '地', sub_prof: 'pojun', games: ['代号鸢'] },
-    { id: 'char-c', name: '测试岐黄', rarity: 5, prof: '水', sub_prof: 'qihuang', games: ['代号鸢'] }
+    { id: 'char-c', name: '测试岐黄', name_pinyin: 'ceshi qihuang', rarity: 5, prof: '水', sub_prof: 'qihuang', games: ['代号鸢'] }
   ] })
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   const quick = editor(wrapper).get('.quick-up-button')
@@ -126,7 +126,7 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
   await button(editor(wrapper), '其他密探').trigger('click'); await flushPromises()
   const entry = () => composer(wrapper)
   expect(document.activeElement).toBe(entry().get('.agent-search input').element)
-  await entry().get('.agent-search input').setValue('岐黄')
+  await entry().get('.agent-search input').setValue('csqh')
   expect(entry().findAll('.agent-choice').map(item => item.attributes('data-agent-id'))).toEqual(['char-c'])
   await button(entry(), '取消').trigger('click'); await flushPromises()
   expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
