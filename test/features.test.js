@@ -30,7 +30,7 @@ test('work system is explicitly disabled until it is ready to reopen', function 
   assert.equal(isFeatureEnabled(key), false)
 })
 
-test('recruitment archive is explicitly open for local delivery with a beta/auth gated lazy route', async function () {
+test('recruitment archive is open with authentication and independent recruitment access', async function () {
   assert.equal(FEATURE_KEYS.RECRUITMENT_ARCHIVE, 'recruitmentArchive')
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.RECRUITMENT_ARCHIVE], true)
   assert.equal(isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE), true)
@@ -38,7 +38,8 @@ test('recruitment archive is explicitly open for local delivery with a beta/auth
   const route = routes.find(item => item.path === '/recruitment')
   assert.equal(route.meta.feature, FEATURE_KEYS.RECRUITMENT_ARCHIVE)
   assert.equal(route.meta.requiresAuth, true)
-  assert.equal(route.meta.requiresBeta, true)
+  assert.equal(route.meta.requiresRecruitmentAccess, true)
+  assert.equal(route.meta.requiresBeta, undefined)
   assert.equal(typeof route.component, 'function')
 })
 

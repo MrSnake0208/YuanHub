@@ -1,6 +1,6 @@
 # 招募档案
 
-`/recruitment` 记录属于当前游戏账号，需登录、内测资格及 `VITE_FEATURE_RECRUITMENT_ARCHIVE=true`。首页展示账号栏、备份入口、摘要与卡池时间线，移除了卡池下方“最近记录”和“历史总抽数”维护区。
+`/recruitment` 记录属于当前游戏账号，需登录、独立招募档案访问资格及 `src/config/features.js` 中的 `recruitmentArchive=true`。访问资格由 `/admin/recruitment-access` 管理（需 `recruitment_access:manage`）：有限模式仅允许授权用户，公开模式允许已激活用户，不依赖全站内测资格。首页展示账号栏、备份入口、摘要与卡池时间线，移除了卡池下方“最近记录”和“历史总抽数”维护区。
 
 ## 卡池与编辑
 
