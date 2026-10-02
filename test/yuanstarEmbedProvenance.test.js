@@ -31,7 +31,21 @@ test('generated embed keeps the capture error codes and drops the cross-version 
   assert.ok(code.includes('"如鸢"') && code.includes('"代号鸢"'))
 })
 
-test('vendored release matches the documented source and complete build artifacts', () => {
+test('vendored embed bounds OCR initialization and documents mobile recovery', () => {
+  const code = readFileSync(new URL('public/yuanstar-embed/yuanstar-embed.js', root), 'utf8')
+  for (const retained of [
+    'OCR_ENGINE_INITIALIZATION_TIMEOUT_MS = 180000',
+    'worker_initialization_timeout',
+    'engine_initialization_timeout',
+    '手机端也支持识别',
+    'ox || Qr(nS)',
+  ]) assert.ok(code.includes(retained), retained)
+
+  const host = readFileSync(new URL('src/pages/star/index.vue', root), 'utf8')
+  assert.ok(host.includes('手机和电脑网页端均可使用'))
+})
+
+test('vendored release matches documented provenance and the current artifact manifest', () => {
   const doc = readFileSync(new URL('docs/yuanstar-embed-sync.md', root), 'utf8')
   for (const source of [
     'fix/import-draft-lifecycle',
