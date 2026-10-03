@@ -236,3 +236,9 @@ npm run build
 ```bash
 npm run test:contract
 ```
+
+## 8. OCR 资源传输压缩
+
+`npm run build` 在最终 dist 中为指定 OCR 首载资源生成并验证 gzip level 6 的 `.gz` 部署衍生文件；原文件完整保留作为 identity fallback，原 vendored 资源和 provenance manifest 保持原样。Release 沿用同一构建命令并复制完整 dist，不重复压缩。
+
+当前状态为 gzip-only repo-side precompression ready，production gzip_static serving pending confirmation。下一步仅需服务器 A 运维执行 `nginx -V 2>&1`，确认 `--with-http_gzip_static_module`。能力确认后的 `gzip_static on;`、原 MIME 与 gzip / identity fallback 说明见 [OCR 传输压缩说明](ocr-transport-compression.md)；现有缓存策略不变，本轮没有服务器或 ESA 配置变更。
