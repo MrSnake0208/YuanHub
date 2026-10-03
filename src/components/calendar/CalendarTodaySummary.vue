@@ -2,18 +2,16 @@
   <section class="calendar-today" aria-labelledby="today-summary-title">
     <div class="calendar-summary-heading">
       <Sun :size="20" aria-hidden="true" />
-      <h2 id="today-summary-title">今天 <time :datetime="today">{{ calendarDateLabel(today) }}</time></h2>
+      <h2 id="today-summary-title">今天 · <time :datetime="today">{{ calendarDateLabel(today, { month: 'long', day: 'numeric' }) }} {{ calendarDateLabel(today, { weekday: 'short' }) }}</time></h2>
     </div>
     <p v-if="loading" class="calendar-hint" role="status">正在读取今日摘要…</p>
     <p v-else-if="error" class="calendar-hint">今日摘要暂时无法读取</p>
-    <template v-else>
-      <div class="calendar-counts">
-        <p><strong>{{ counts.starts }}</strong> 今日开始</p>
-        <p><strong>{{ counts.ends }}</strong> 今日结束</p>
-        <p><strong>{{ counts.ongoing }}</strong> 今日进行中</p>
-      </div>
-      <p v-if="!counts.total" class="calendar-hint">当前筛选下，今天暂无活动。可以看看接下来的日程。</p>
-    </template>
+    <p v-else-if="!counts.total" class="calendar-hint">当前筛选暂无活动</p>
+    <div v-else class="calendar-counts">
+      <p>今日开始 <strong>{{ counts.starts }}</strong></p>
+      <p>今日结束 <strong>{{ counts.ends }}</strong></p>
+      <p>进行中 <strong>{{ counts.ongoing }}</strong></p>
+    </div>
   </section>
 </template>
 

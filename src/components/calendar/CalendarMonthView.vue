@@ -1,7 +1,7 @@
 <template>
   <section class="calendar-month" aria-label="活动月历">
     <div class="calendar-window-heading">
-      <div><p class="calendar-eyebrow">按日期翻阅</p><h2>{{ monthLabel }}</h2></div>
+      <h2>{{ monthLabel }}</h2>
       <div class="calendar-window-nav" role="group" aria-label="月份导航">
         <button type="button" aria-label="上个月" @click="$emit('select-date', shiftCalendarMonth(anchorDate, -1))"><ChevronLeft :size="20" aria-hidden="true" /></button>
         <button type="button" aria-label="下个月" @click="$emit('select-date', shiftCalendarMonth(anchorDate, 1))"><ChevronRight :size="20" aria-hidden="true" /></button>
@@ -18,9 +18,8 @@
       </div>
     </div>
     <section v-if="!loading && !error" class="calendar-day-detail" aria-labelledby="calendar-day-detail-title" aria-live="polite">
-      <div class="calendar-detail-heading"><h3 id="calendar-day-detail-title">{{ calendarDateLabel(anchorDate) }}</h3><span>{{ selectedItems.length }} 项活动</span></div>
-      <p v-if="!selectedItems.length" class="calendar-empty" role="status">{{ calendarDateLabel(anchorDate, { month: 'long', day: 'numeric' }) }}暂无活动</p>
-      <div v-else class="calendar-event-list"><CalendarEventCard v-for="item in selectedItems" :key="item.id" :item="item" :today="today" /></div>
+      <div class="calendar-detail-heading"><h3 id="calendar-day-detail-title">{{ calendarDateLabel(anchorDate) }}</h3><span>{{ selectedItems.length ? `${selectedItems.length} 项活动` : '暂无活动' }}</span></div>
+      <div v-if="selectedItems.length" class="calendar-event-list"><CalendarEventCard v-for="item in selectedItems" :key="item.id" :item="item" :today="today" /></div>
     </section>
   </section>
 </template>
