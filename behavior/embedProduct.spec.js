@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 // 本文件直接执行 vendored embed 产物（public/yuanstar-embed/yuanstar-embed.js），
 // 而不是断言它的字符串。之前的 provenance 测试只做子串匹配：即使 capture_game_mismatch
@@ -59,11 +60,11 @@ const businessSnapshot = {
   bag: { currentCount: 100, capacity: 200 },
 }
 
-async function mountEmbed() {
+async function mountEmbed(options = {}) {
   const root = document.createElement('div')
   root.id = 'product-root'
   document.body.appendChild(root)
-  const handle = mountYuanStar(root, { assetBaseUrl: '/yuanstar-embed/', embedded: true, hostAccount: ACCOUNT })
+  const handle = mountYuanStar(root, { assetBaseUrl: '/yuanstar-embed/', embedded: true, hostAccount: ACCOUNT, ...options })
   await new Promise((resolve) => setTimeout(resolve, 250))
   return { root, handle }
 }
@@ -77,6 +78,26 @@ function planRows(root) {
 }
 
 describe('vendored YuanStar embed behavior', () => {
+  it('does not initialize OCR on embedded mount and reports shared tab changes', async () => {
+    const worker = vi.fn(function () { throw new Error('unexpected background OCR initialization') })
+    vi.stubGlobal('Worker', worker)
+    let handle
+    const tabs = []
+    try {
+      ;({ handle } = await mountEmbed({ onActiveTabChange: (tab) => tabs.push(tab) }))
+      expect(worker).not.toHaveBeenCalled()
+      handle.setActiveTab('review')
+      expect(handle.getActiveTab()).toBe('review')
+      expect(tabs.at(-1)).toBe('review')
+      handle.setActiveTab('import')
+      expect(handle.getActiveTab()).toBe('import')
+      expect(tabs.at(-1)).toBe('import')
+    } finally {
+      await handle?.dispose()
+      vi.unstubAllGlobals()
+    }
+  }, 60000)
+
   it('accepts a cross-version CaptureBatch but still rejects an illegal gameVersion', async () => {
     const { handle } = await mountEmbed()
     // 批次 gameVersion 与工作区（如鸢）不同：合法值必须放行，不能再抛 capture_game_mismatch。
@@ -94,9 +115,9 @@ describe('vendored YuanStar embed behavior', () => {
 
     // 养成目标列使用「当前等级 → 目标等级」，仅 targetLevel > level 的行才显示箭头。
     expect(planRows(root)).toEqual([
-      ['主星', '天府', '30 → 60', '橙', '本组共 1 颗'],
-      ['主星', '武曲', '20', '紫', '本组共 1 颗'],
-      ['辅星', '文昌', '10', '蓝', '本组共 1 颗'],
+      ['主星', '天府', '30 → 60', '橙', '共1颗'],
+      ['主星', '武曲', '20', '紫', '共1颗'],
+      ['辅星', '文昌', '10', '蓝', '共1颗'],
     ])
 
     // 每次状态变化都会重渲染面板，因此每次都重新取当前复选框节点。
@@ -115,5 +136,151 @@ describe('vendored YuanStar embed behavior', () => {
     expect(pendingToggle().checked).toBe(false)
     expect(planRows(root)).toHaveLength(3)
     await handle.dispose()
+  }, 60000)
+})
+
+describe('vendored OCR prewarming', () => {
+  let sequence = 0
+
+  async function clockedEmbed({ stalled = false, account: restoredAccount } = {}) {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    // fake-indexeddb uses Node structuredClone, which cannot clone jsdom Blob internals.
+    vi.stubGlobal('Blob', CloneableBlob)
+    vi.stubGlobal('File', CloneableFile)
+    const workers = []
+    vi.stubGlobal('Worker', vi.fn(function () {
+      const worker = {
+        requests: [], terminated: false,
+        postMessage(request) {
+          this.requests.push(request)
+          if (stalled && request.operation === 'initialize') return
+          queueMicrotask(() => this.onmessage?.({ data: {
+            version: 1, requestId: request.requestId, operation: request.operation, ok: true,
+            result: request.operation === 'initialize' ? { schemaVersion: '1.0', models: [] } : null,
+            diagnostics: { executionBackend: 'dedicated_worker', state: request.operation === 'dispose' ? 'disposed' : 'ready', lastRequest: null, network: { requestCount: 0, externalRequestCount: 0, containsUserDataCount: 0 } },
+          } }))
+        },
+        terminate() { this.terminated = true },
+      }
+      workers.push(worker)
+      return worker
+    }))
+    const account = restoredAccount ?? { ...ACCOUNT, accountId: 'acc-prewarm-' + (++sequence), displayName: 'Prewarm ' + sequence }
+    const root = document.createElement('div')
+    root.id = 'product-root'
+    document.body.appendChild(root)
+    const handle = mountYuanStar(root, { assetBaseUrl: '/yuanstar-embed/', embedded: true, hostAccount: account })
+    try { await handle.setHostAccount(account) }
+    catch (error) { await cleanup({ handle, root }); throw error }
+    return { root, handle, workers, account }
+  }
+
+  async function cleanup(embed) {
+    try { await embed?.handle.dispose() }
+    finally {
+      embed?.root.remove()
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  }
+
+  function importManual(root, entrance) {
+    const files = [pngFile('first-screenshot.png')]
+    if (entrance === 'select') {
+      const input = root.querySelector('#image-file-input')
+      Object.defineProperty(input, 'files', { value: files })
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    } else {
+      const event = new Event(entrance, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, entrance === 'drop' ? 'dataTransfer' : 'clipboardData', { value: { files, items: files.map((file) => ({ kind: 'file', type: file.type, getAsFile: () => file })) } })
+      ;(entrance === 'drop' ? root.querySelector('#file-drop-zone') : document).dispatchEvent(event)
+    }
+  }
+
+  it('waits ten seconds after initial render, then gives initialize its full 300 seconds', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed({ stalled: true })
+      expect(embed.root.querySelector('#page-content')).toBeTruthy()
+      expect(embed.workers).toHaveLength(0)
+      await vi.advanceTimersByTimeAsync(9999)
+      expect(embed.workers).toHaveLength(0)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.workers[0].requests.map((request) => request.operation)).toEqual(['initialize'])
+      await vi.advanceTimersByTimeAsync(299999)
+      expect(embed.workers[0].terminated).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(embed.workers[0].terminated).toBe(true)
+      expect(embed.workers).toHaveLength(1)
+      // The second automatic trigger must not retry a prewarm that already timed out.
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      expect(embed.workers).toHaveLength(1)
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it.each(['select', 'drop', 'paste', 'capture'])('prewarms on first %s images before the deadline without duplication', async (entrance) => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      await vi.advanceTimersByTimeAsync(3000)
+      if (entrance === 'capture') await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      else importManual(embed.root, entrance)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.workers[0].requests.filter((request) => request.operation === 'initialize')).toHaveLength(1)
+      await vi.advanceTimersByTimeAsync(7000)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.workers[0].requests.filter((request) => request.operation === 'initialize')).toHaveLength(1)
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('does not initialize twice when images arrive after delayed prewarm', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      await vi.advanceTimersByTimeAsync(10000)
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      importManual(embed.root, 'select')
+      await vi.advanceTimersByTimeAsync(0)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.workers[0].requests.filter((request) => request.operation === 'initialize')).toHaveLength(1)
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('counts the full timeout from first images at three seconds', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed({ stalled: true })
+      await vi.advanceTimersByTimeAsync(3000)
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      await vi.advanceTimersByTimeAsync(299999)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.workers[0].terminated).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(embed.workers[0].terminated).toBe(true)
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('prewarms restored pending images and cancels the timer on unmount', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      const account = embed.account
+      await cleanup(embed)
+      embed = await clockedEmbed({ account })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(embed.workers).toHaveLength(1)
+      await vi.advanceTimersByTimeAsync(10000)
+      expect(embed.workers).toHaveLength(1)
+    } finally { await cleanup(embed) }
+
+    try {
+      embed = await clockedEmbed()
+      await embed.handle.dispose()
+      await vi.advanceTimersByTimeAsync(10000)
+      expect(embed.workers).toHaveLength(0)
+    } finally { await cleanup(embed) }
   }, 60000)
 })
