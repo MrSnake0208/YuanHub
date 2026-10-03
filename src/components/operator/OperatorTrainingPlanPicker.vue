@@ -101,6 +101,7 @@ import { Check, ChevronDown, PenLine, Plus, Search, SlidersHorizontal, Star, Tra
 import OperatorAvatar from './OperatorAvatar.vue'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { OPERATOR_RARITY_OPTIONS, subProfList, subProfOptions as deriveSubProfOptions, matchesOperatorSearch, matchesProfSubFilter, tokens } from '../../utils/operatorFilters.js'
+import { operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { compareOperatorIdDesc } from '../../utils/operatorAdmin.js'
 const props = defineProps({ plans: { type: Array, default: () => [] }, activePlan: { type: Object, default: null }, memberIds: { type: Object, default: () => new Set() }, favoriteIds: { type: Object, default: () => new Set() }, catalogEntries: { type: Array, default: () => [] }, growthStates: { type: Object, default: () => ({}) }, accountId: String, disabled: Boolean, error: String })
 const emit = defineEmits(['select', 'save', 'remove'])
@@ -188,13 +189,10 @@ function candidateNameLength(entry) {
 function growthStatus(entry) {
   const growth = entry?.growth && typeof entry.growth === 'object' ? entry.growth : {}
   const raw = props.growthStates?.[entry?.id] || growth.growth_state || growth.growthState || entry?.growth_state || entry?.growthState || 'growing'
-  if (raw === 'graduated') return 'graduated'
-  if (raw === 'inactive' || raw === 'skip') return 'inactive'
-  return 'growing'
+  return operatorAnnotationStatus(raw)
 }
 function growthStatusLabel(entry) {
-  const status = growthStatus(entry)
-  return status === 'graduated' ? '已毕业' : status === 'inactive' ? '养老中' : '养成中'
+  return operatorAnnotationStatusLabel(growthStatus(entry))
 }
 const filteredEntries = computed(() => {
   return props.catalogEntries.filter(entry => {

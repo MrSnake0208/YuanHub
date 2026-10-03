@@ -369,7 +369,7 @@ JSON Schema 只校验通用范围 `0..31`。生产者必须先根据 `operator_i
 
 | 字段 | 值 | 说明 |
 |---|---|---|
-| `growth_state` | `active | graduated | skip` | 养成中、已毕业、不养成 |
+| `growth_state` | `active | graduated | skip | discarded` | 养成中、已毕业、养老中、已弃置 |
 | `favorite` | boolean | 特别关注；与 `growth_state` 正交 |
 | `note` | string 或 `null` | 用户备注；`null` 表示明确清除 |
 | `targets` | object 或 `null` | 养成目标；`null` 表示明确清除全部目标 |
@@ -513,3 +513,11 @@ v3 导出统一写 snake_case `star_level`，不再写旧 camelCase `starLevel`�
 5. 完整备份导出再导入可以恢复客观与主观数据；
 6. 同一 `record_id` 重试不会重复写入；
 7. 修改公共图鉴第三项名称后，既有 `special.current` 不迁移，攻生签名不因纯展示名变化而失效。
+
+## 2026-10-03 v3 养成状态枚举扩展
+
+`discarded` 表示已弃置，保留资料且可恢复；仅用于主观 annotation，不允许 scan 写回。三种旧值保留，skip 不迁移；缺失状态才使用既有默认值，未知非空值拒绝。listed 按字段合并，full 必须提供完整主观字段且文档外恢复默认；预览明确显示状态差异。
+
+本扩展保持 version=3，两份 schema 同步；旧 v3 校验器会拒绝含 discarded 的备份，不能声称完全向后兼容。示例 `discarded-listed.valid.json` 展示局部主观备份。
+
+发布顺序：先部署官方读取界面及 MaaYuan 读取兼容，再部署接受新值的后端，最后开放写入入口。沿用 VersionUpdateBanner 要求旧标签页刷新（不能保证长期标签页全部升级）。已有 discarded 数据后，回滚仍须保留后端读写兼容，不能批量转换为 skip/active。MaaYuan 原白名单会拒绝新值；本次本地兼容修改后仍仅精确匹配 active 扫描，不写回主观状态。最小兼容 PR 已提交至 syoius/MaaYuan #529（目标 v5，三文件），合并及发布由 MaaYuan 维护者执行。

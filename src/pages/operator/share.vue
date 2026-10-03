@@ -288,6 +288,7 @@ import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
+import { OPERATOR_STATUS_OPTIONS, operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { normalizeDiscNames } from '../../utils/operatorDiscLoadouts.js'
 import { subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 import { starCardFallback, starCardHasIcon, starCardNode, starCardNumber } from '../../utils/operatorStarDisplay.js'
@@ -330,17 +331,13 @@ const STONE_SLOT_TYPES = ['main1', 'main2', 'main3', 'assist1', 'assist2', 'assi
 const availableSubProfOptions = computed(function () {
   return deriveSubProfOptions(entries.value)
 })
-const shareStatusOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'growing', label: '养成中' },
-  { value: 'graduated', label: '已毕业' },
-  { value: 'inactive', label: '养老中' }
-]
+const shareStatusOptions = [{ value: 'all', label: '全部' }, ...OPERATOR_STATUS_OPTIONS]
 const shareStatusCounts = computed(function () {
   return entries.value.reduce(function (counts, entry) {
-    counts[shareStatusClass(entry)] += 1
+    const status = shareStatusClass(entry)
+    if (Object.hasOwn(counts, status)) counts[status] += 1
     return counts
-  }, { growing: 0, graduated: 0, inactive: 0 })
+  }, { growing: 0, graduated: 0, inactive: 0, discarded: 0 })
 })
 const filteredEntries = computed(function () {
   return filterOperatorShareEntries(entries.value, searchQuery.value, profFilter.value, subProfFilter.value, statusFilter.value)
@@ -426,12 +423,12 @@ function subProfText(entry) {
 
 function shareStatusClass(entry) {
   const state = operatorShareGrowthState(entry)
-  return state === 'graduated' ? 'graduated' : state === 'skip' ? 'inactive' : 'growing'
+  return operatorAnnotationStatus(state)
 }
 
 function shareStatusLabel(entry) {
   const state = operatorShareGrowthState(entry)
-  return state === 'graduated' ? '已毕业' : state === 'skip' ? '养老中' : '养成中'
+  return operatorAnnotationStatusLabel(state)
 }
 
 function formattedNumber(value) {
@@ -1163,4 +1160,6 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
     border-style: dashed;
   }
 }
+.agent-ledger-card.status-discarded { border-left: 3px dashed var(--tea); }
+.share-ledger-status.status-discarded { border-style: dashed; color: var(--tea); background: var(--cream); }
 </style>

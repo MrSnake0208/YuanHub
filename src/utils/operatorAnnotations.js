@@ -1,3 +1,36 @@
+// UI/API aliases share one source; preserve unknown reads so they cannot look active.
+export const OPERATOR_STATUS_OPTIONS = [
+  { value: 'growing', label: '养成中' },
+  { value: 'graduated', label: '已毕业' },
+  { value: 'inactive', label: '养老中' },
+  { value: 'discarded', label: '已弃置' },
+]
+const STATE_TO_API = { growing: 'active', graduated: 'graduated', inactive: 'skip', discarded: 'discarded' }
+const STATE_FROM_API = { active: 'growing', graduated: 'graduated', skip: 'inactive', discarded: 'discarded' }
+
+export function operatorAnnotationStatus(value) {
+  const state = value == null ? '' : String(value).trim()
+  return Object.hasOwn(STATE_FROM_API, state) ? STATE_FROM_API[state] : state || 'growing'
+}
+
+export function operatorAnnotationApiState(value) {
+  const state = operatorAnnotationStatus(value)
+  if (!Object.hasOwn(STATE_TO_API, state)) throw new Error('不支持的养成状态：' + state)
+  return STATE_TO_API[state]
+}
+
+export function operatorAnnotationStatusLabel(value) {
+  const state = operatorAnnotationStatus(value)
+  return OPERATOR_STATUS_OPTIONS.find(option => option.value === state)?.label || '不支持的养成状态：' + state
+}
+
+export function matchesOperatorStatus(value, filter) {
+  const state = operatorAnnotationStatus(value)
+  if (filter === 'all') return true
+  if (filter === 'registered') return ['growing', 'graduated', 'inactive'].includes(state)
+  return state === filter
+}
+
 export function reconcileOperatorAnnotations(remote, local, busyIds) {
   const result = {
     statuses: { ...remote.statuses },
