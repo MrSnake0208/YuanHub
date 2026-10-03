@@ -85,3 +85,22 @@ npm run test:behavior -- behavior/activityCalendarFilters.spec.js behavior/activ
 ```
 
 工作区实施与验收记录：`.trellis/tasks/10-03-activity-calendar-mobile-filter/`；真实手机Safari、触控与Home Indicator安全区仍需设备验收。
+
+用户活动资料建议（2026-10-03）：公共日历标题区提供“建议补充活动”和“我的建议”，无活动时也显示补充提示。访客点击后沿用登录回跳。`/calendar/suggestions/new` 与 `/calendar/suggestions` 只要求有效登录，共用 `ACTIVITY_CALENDAR` 开关，不要求子账号、内测资格或维护权限；本次不改变该开关默认值，部署与开放由现有发布流程控制。
+
+提交页只预填合法 `game`，日期由用户填写，不继承浏览历史月份。支持五种手工类别，来源 http/https 链接必填；招募线索仍走反馈或卡池维护。公开说明与“给审核员的补充说明”分别填写，后者只对提交人与审核员可见。建议提交后只读，不能修改或撤回。不采纳后可按原因补全资料重新提交。
+
+提交失败保留草稿；字段错误使用内联提示与可聚焦摘要。网络错误或未知结果会锁定本次资料与 `client_request_id`，“重试相同资料”复用它们；开始新的提交需要确认并使用新标识，建议先查个人列表，避免重复。个人列表支持状态筛选和每页 20 条分页，详情显示原始资料、审核时间、说明、采纳时公开快照以及当前活动状态。活动停用后仍显示历史“已采纳”，同时明确“当前已停用”，不提供会误导的公共活动跳转。
+
+`/calendar/admin` 新增“活动目录 / 用户建议”切换，原活动目录行为保留。用户建议默认待审核，支持游戏、状态与分页。审核区先显示只读原始资料，再显示预填的正式活动编辑器；宽屏可并排对照，窄屏顺序阅读。私人说明不自动复制到公开说明或管理备注。审核员可主动按游戏与日期重叠检查已有活动；采纳和不采纳均需确认，不采纳原因必填。采纳创建启用的 MANUAL 活动，不采纳是终态。已处理详情只读。
+
+审核 409 保留全部草稿并禁用旧版本提交。“保留草稿并刷新状态”只读取最新状态；“放弃草稿，打开最新结果”确认后才替换编辑器。成功处理后刷新队列并保留筛选，最后一页为空时回到最后有效页。有改动时返回列表、切换工作区或离开页面使用未保存确认。身份退出/切换与审核权限丢失清空私有数据及草稿，旧响应不得覆盖新身份或选中项；所有私有 API 绑定 `expectedUserId`，阻止 401 刷新后向另一个身份重放。
+
+本轮风险 L3（新增登录路由、私有 API 与跨页面身份隔离）。新增 pure/API/页面与审核行为测试；回归由用户/CI执行，Agent仅执行定向 Vue/JavaScript 语法编译检查。最小前端回归（cwd YuanHub）：
+
+```bash
+node --test test/activityCalendarSuggestions.test.js test/activityCalendar.test.js
+npm run test:behavior -- behavior/activityCalendarSuggestions.spec.js behavior/activityCalendarSuggestionsApi.spec.js behavior/activityCalendarRoutes.spec.js behavior/activityCalendarIdentity.spec.js behavior/activityCalendarSession.spec.js behavior/activityCalendarAdmin.spec.js behavior/activityCalendar.spec.js
+```
+
+页面还需用户在 320/390/430/768/1024/1440px 与手机横屏完成提交、个人查看、采纳/不采纳、409刷新、未保存确认和键盘错误焦点验收，确认无页面横滚、主要触控目标与软键盘可达性。定向 SFC 编译与 jsdom 行为测试不证明真实布局、Safari 或触控体验。没有为本轮启动、重启或停止开发服务。

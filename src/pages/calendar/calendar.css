@@ -56,3 +56,13 @@
 }
 
 .calendar-page [role=alert], .calendar-page input, .calendar-page select, .calendar-page textarea { scroll-margin-top: calc(var(--mobile-shell-follow-top, 0px) + 16px); }
+
+.calendar-page .calendar-review-columns { display: grid; gap: 18px; min-width: 0; align-items: start; }
+.calendar-page .calendar-review-columns > * { min-width: 0; }
+.calendar-page .calendar-pagination { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--font-d); }
+.calendar-page .calendar-overlap-list { padding-left: 20px; display: grid; gap: 12px; overflow-wrap: anywhere; }
+.calendar-page .calendar-actions [aria-pressed=true] { background: var(--yellow); border-color: var(--tea); }
+.calendar-page .calendar-fields a, .calendar-page .calendar-hint a { display: inline-flex; align-items: center; min-height: 44px; }
+@media (min-width: 1024px) {
+  .calendar-page .calendar-review-columns { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+}

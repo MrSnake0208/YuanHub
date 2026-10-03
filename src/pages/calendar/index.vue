@@ -5,6 +5,7 @@
       <header class="calendar-header wrap">
         <div class="calendar-header-copy">
           <h1>活动日历</h1>
+          <nav v-if="enabled" class="calendar-actions" aria-label="活动资料补充"><router-link class="calendar-source-link" :to="{ path: '/calendar/suggestions/new', query: filters.game ? { game: filters.game } : {} }">建议补充活动</router-link><router-link class="calendar-source-link" to="/calendar/suggestions">我的建议</router-link></nav>
         </div>
         <div v-if="enabled" class="calendar-view-tools">
           <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
@@ -33,6 +34,7 @@
           <CalendarTimelineView v-else-if="currentView === 'timeline'" :items="items" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="loading" :error="!!error" @select-date="setDate" />
           <CalendarMonthView v-else :items="items" :today="today" :anchor-date="anchorDate" :loading="loading" :error="!!error" @select-date="setDate" />
         </div>
+        <p v-if="!loading && !error && !items.length" class="calendar-panel calendar-hint">发现漏掉的游戏活动？<router-link class="calendar-source-link" :to="{ path: '/calendar/suggestions/new', query: filters.game ? { game: filters.game } : {} }">提交资料，审核通过后会加入日历。</router-link></p>
       </div>
       <SiteFooter />
     </main>

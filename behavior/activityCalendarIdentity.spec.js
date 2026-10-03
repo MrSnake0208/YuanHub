@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { auth } from '../src/store/auth.js'
-import { createActivityCalendar, listAdminActivityCalendar, updateActivityCalendar } from '../src/api/activityCalendar.js'
+import { acceptActivityCalendarSuggestion, createActivityCalendar, listAdminActivityCalendar, rejectActivityCalendarSuggestion, submitActivityCalendarSuggestion, updateActivityCalendar } from '../src/api/activityCalendar.js'
 
 vi.mock('../src/store/auth.js', () => ({ auth: { accessToken: 'token-a', refreshToken: 'refresh-a', userInfo: { id: 'admin-a' }, refresh: vi.fn(), logout: vi.fn(), refreshAdminAccess: vi.fn() } }))
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
@@ -65,4 +65,21 @@ it('退出后的旧请求不触发logout，迟到403不刷新新身份权限', a
   forbidden.resolve(response(403))
   expect(await nextOutcome).toMatchObject({ code: 'request_identity_changed' })
   expect(auth.refreshAdminAccess).not.toHaveBeenCalled()
+})
+
+it.each(['submit', 'accept', 'reject'])('迟到401不能用B token重放建议%s，也不能刷新B身份', async action => {
+  const late = deferred(); fetch.mockReturnValueOnce(late.promise)
+  const operations = {
+    submit: () => submitActivityCalendarSuggestion({ title: 'A资料', client_request_id: 'synthetic-id' }),
+    accept: () => acceptActivityCalendarSuggestion('suggestion-a', { expected_version: 0, event: { title: 'A修正' } }),
+    reject: () => rejectActivityCalendarSuggestion('suggestion-a', { expected_version: 0, review_note: 'A原因' })
+  }
+  const outcome = operations[action]().catch(error => error)
+  await flushPromises()
+  auth.userInfo = { id: 'user-b' }; auth.accessToken = 'token-b'
+  late.resolve(response(401))
+  expect(await outcome).toMatchObject({ code: 'request_identity_changed' })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(auth.refresh).not.toHaveBeenCalled()
+  expect(auth.logout).not.toHaveBeenCalled()
 })

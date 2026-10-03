@@ -118,3 +118,23 @@ it('后台翌日恢复时重新读日程，同一天恢复不重复请求', asyn
   expect(listActivityCalendar).toHaveBeenCalledTimes(2)
   delete document.visibilityState
 })
+
+it('公共入口只携带合法游戏，不继承历史日期；空状态补充提示与统一开关一起显示', async () => {
+  listActivityCalendar.mockResolvedValue({ items: [] })
+  const { wrapper, router } = await render('/calendar?game=如鸢&date=2020-01-01&view=month')
+  await flushPromises()
+  const newLink = wrapper.findAll('a').find(link => link.text() === '建议补充活动')
+  const url = new URL(newLink.attributes('href'), 'http://example.test')
+  expect(url.pathname).toBe('/calendar/suggestions/new')
+  expect(Object.fromEntries(url.searchParams)).toEqual({ game: '如鸢' })
+  expect(wrapper.text()).toContain('发现漏掉的游戏活动')
+  expect(wrapper.findAll('a').some(link => link.text() === '我的建议')).toBe(true)
+  await router.replace('/calendar?game=invalid'); await flushPromises()
+  const allLink = wrapper.findAll('a').find(link => link.text() === '建议补充活动')
+  expect(allLink.attributes('href')).toBe('/calendar/suggestions/new')
+  wrapper.unmount()
+  isFeatureEnabled.mockReturnValue(false)
+  const disabled = await render(); await flushPromises()
+  expect(disabled.wrapper.text()).not.toContain('建议补充活动')
+  expect(disabled.wrapper.text()).not.toContain('我的建议')
+})

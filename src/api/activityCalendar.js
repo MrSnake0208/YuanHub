@@ -18,3 +18,18 @@ const adminOptions = () => ({ auth: true, expectedUserId: auth.userInfo?.id || '
 export function listAdminActivityCalendar(filters) { return request(ADMIN_PATH + query(filters), adminOptions()) }
 export function createActivityCalendar(body) { return request(ADMIN_PATH, { ...adminOptions(), method: 'POST', body }) }
 export function updateActivityCalendar(id, body) { return request(ADMIN_PATH + '/' + encodeURIComponent(id), { ...adminOptions(), method: 'PUT', body }) }
+
+const suggestionQuery = filters => {
+  const params = new URLSearchParams()
+  for (const key of ['game', 'status', 'page', 'page_size']) {
+    const value = filters?.[key]
+    if (value != null && value !== '') params.set(key, String(value))
+  }
+  return params.size ? '?' + params.toString() : ''
+}
+export function submitActivityCalendarSuggestion(body) { return request(PUBLIC_PATH + '/suggestions', { ...adminOptions(), method: 'POST', body }) }
+export function listMyActivityCalendarSuggestions(filters) { return request(PUBLIC_PATH + '/suggestions/mine' + suggestionQuery(filters), adminOptions()) }
+export function getActivityCalendarSuggestion(id) { return request(PUBLIC_PATH + '/suggestions/' + encodeURIComponent(id), adminOptions()) }
+export function listAdminActivityCalendarSuggestions(filters) { return request(ADMIN_PATH + '/suggestions' + suggestionQuery(filters), adminOptions()) }
+export function acceptActivityCalendarSuggestion(id, body) { return request(ADMIN_PATH + '/suggestions/' + encodeURIComponent(id) + '/accept', { ...adminOptions(), method: 'POST', body }) }
+export function rejectActivityCalendarSuggestion(id, body) { return request(ADMIN_PATH + '/suggestions/' + encodeURIComponent(id) + '/reject', { ...adminOptions(), method: 'POST', body }) }
