@@ -30,6 +30,12 @@ test('work system is explicitly disabled until it is ready to reopen', function 
   assert.equal(isFeatureEnabled(key), false)
 })
 
+test('discarded status stays disabled until the paired software supports it', function () {
+  assert.equal(FEATURE_KEYS.OPERATOR_DISCARDED, 'operatorDiscarded')
+  assert.equal(FEATURE_FLAGS[FEATURE_KEYS.OPERATOR_DISCARDED], false)
+  assert.equal(isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED), false)
+})
+
 test('recruitment archive is open with authentication and independent recruitment access', async function () {
   assert.equal(FEATURE_KEYS.RECRUITMENT_ARCHIVE, 'recruitmentArchive')
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.RECRUITMENT_ARCHIVE], true)

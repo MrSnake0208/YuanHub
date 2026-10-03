@@ -1,3 +1,5 @@
+import { FEATURE_KEYS, isFeatureEnabled } from '../config/features.js'
+
 // UI/API aliases share one source; preserve unknown reads so they cannot look active.
 export const OPERATOR_STATUS_OPTIONS = [
   { value: 'growing', label: '养成中' },
@@ -5,6 +7,15 @@ export const OPERATOR_STATUS_OPTIONS = [
   { value: 'inactive', label: '养老中' },
   { value: 'discarded', label: '已弃置' },
 ]
+export function operatorEditableStatusOptions() {
+  return OPERATOR_STATUS_OPTIONS.filter(option => option.value !== 'discarded' || isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED))
+}
+
+export function assertOperatorStateWriteEnabled(value) {
+  if (operatorAnnotationStatus(value) === 'discarded' && !isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED))
+    throw new Error('已弃置暂未开放，请等待配套软件兼容后再使用')
+}
+
 const STATE_TO_API = { growing: 'active', graduated: 'graduated', inactive: 'skip', discarded: 'discarded' }
 const STATE_FROM_API = { active: 'growing', graduated: 'graduated', skip: 'inactive', discarded: 'discarded' }
 

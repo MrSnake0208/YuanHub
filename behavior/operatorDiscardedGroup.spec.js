@@ -9,7 +9,11 @@ import { getCurrentStarLoadout } from '../src/api/starLoadout.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { deferred } from '../test-support/factories.js'
 
-const events = vi.hoisted(() => ({ handler: null }))
+const events = vi.hoisted(() => ({ handler: null, discardedEnabled: true }))
+vi.mock('../src/config/features.js', async original => {
+  const actual = await original()
+  return { ...actual, isFeatureEnabled: key => key === actual.FEATURE_KEYS.OPERATOR_DISCARDED ? events.discardedEnabled : actual.isFeatureEnabled(key) }
+})
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn().mockResolvedValue(), push: vi.fn() }),
   useRoute: () => ({ query: { tab: 'current' }, path: '/operator' }),
@@ -38,6 +42,7 @@ const annotations = () => ({ items: [
 ] })
 const entries = Object.fromEntries(catalog.map(({ id }) => [id, { level: 100, elite: 17, star_level: id === 'missing' ? 0 : 30, revision: 1 }]))
 beforeEach(() => {
+  events.discardedEnabled = true
   vi.clearAllMocks(); activeAccount.id = 'accA'
   api.getOperatorCatalog.mockResolvedValue({ operators: catalog })
   api.listOperatorAccounts.mockResolvedValue(['accA', 'accB'].map(id => ({ id, name: id, game: '如鸢' })))
@@ -76,6 +81,54 @@ const noObjectiveWrites = () => {
   expect(api.patchOperatorCurrent).not.toHaveBeenCalled(); expect(api.importOperator).not.toHaveBeenCalled()
   expect(inventory.addAgentFavorite).not.toHaveBeenCalled(); expect(inventory.removeAgentFavorite).not.toHaveBeenCalled()
 }
+
+it('关闭弃置时默认全部，单条及批量只提供旧三态，仍能读取并恢复已有弃置', async () => {
+  events.discardedEnabled = false
+  const wrapper = await render()
+  expect(cards(wrapper)).toHaveLength(4)
+  expect(wrapper.get('.current-status-filter .status-all').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.current-status-filter .status-all').text()).toBe('全部4')
+  expect(wrapper.find('.current-status-filter .status-discarded').exists()).toBe(false)
+  expect(wrapper.find('.current-status-filter .status-registered').exists()).toBe(false)
+  expect(wrapper.find('.current-status-index .status-discarded').exists()).toBe(false)
+  expect(wrapper.find('.ledger-status-help').exists()).toBe(false)
+  expect(card(wrapper, 'a').findAll('[role="option"]').map(option => option.text())).toEqual(['养成中', '已毕业', '养老中'])
+  expect(card(wrapper, 'd').get('summary').text()).toContain('已弃置')
+  expect(api.putOperatorAnnotation).not.toHaveBeenCalled()
+  await wrapper.get('.current-batch-toggle').trigger('click')
+  expect(wrapper.findAll('.batch-status-action').map(option => option.text())).toEqual(['设为养成中', '设为已毕业', '设为养老中'])
+  await wrapper.get('.batch-select-all input').setValue(true)
+  await wrapper.get('.batch-status-action.graduated').trigger('click'); await flushPromises()
+  expect(api.putOperatorAnnotation).toHaveBeenCalledTimes(4)
+  expect(api.putOperatorAnnotation.mock.calls.every(([input]) => input.annotation.growth_state === 'graduated')).toBe(true)
+  await group(wrapper, 'growing')
+  await wrapper.findAll('button').find(node => node.text() === '清除筛选').trigger('click'); await flushPromises()
+  expect(cards(wrapper)).toHaveLength(4)
+  expect(wrapper.get('.current-status-filter .status-all').attributes('aria-pressed')).toBe('true')
+  await status(wrapper, 'a', '养老中')
+  expect(api.putOperatorAnnotation).toHaveBeenLastCalledWith(expect.objectContaining({ operatorId: 'a', annotation: expect.objectContaining({ growth_state: 'skip' }) }))
+  noObjectiveWrites()
+})
+
+it('关闭弃置时延后迁移本地弃置且保留缓存，旧状态照常迁移，重新开放后可继续迁移', async () => {
+  events.discardedEnabled = false
+  const key = 'yuanhub:operator-workbench:statuses:accA:如鸢'
+  localStorage.setItem(key, JSON.stringify({ d: 'discarded', b: 'graduated' }))
+  api.getOperatorAnnotations.mockResolvedValue({ items: [] })
+  const wrapper = await render()
+  expect(card(wrapper, 'd').get('summary').text()).toContain('已弃置')
+  expect(JSON.parse(localStorage.getItem(key)).d).toBe('discarded')
+  expect(localStorage.getItem('yuanhub:operator-annotations-migrated:v1:accA')).not.toBe('done')
+  expect(api.putOperatorAnnotation.mock.calls.map(([input]) => input.operatorId)).toEqual(['b'])
+  wrapper.unmount()
+  api.putOperatorAnnotation.mockClear()
+  api.getOperatorAnnotations.mockResolvedValue({ items: [{ operator_id: 'b', growth_state: 'graduated', revision: 1 }] })
+  events.discardedEnabled = true
+  const reopened = await render()
+  expect(api.putOperatorAnnotation).toHaveBeenCalledWith(expect.objectContaining({ operatorId: 'd', annotation: expect.objectContaining({ growth_state: 'discarded' }) }))
+  await group(reopened, 'discarded')
+  expect(card(reopened, 'd')).toBeTruthy()
+})
 
 it('默认在册、独立弃置、显式全部及品质交集，计数不受额外筛选影响，重置回在册', async () => {
   const wrapper = await render()
