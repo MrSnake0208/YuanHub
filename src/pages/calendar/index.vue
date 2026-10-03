@@ -4,10 +4,7 @@
     <main id="main-content">
       <header class="calendar-header wrap">
         <div class="calendar-header-copy">
-          <p class="calendar-kicker"><CalendarDays :size="20" aria-hidden="true" /> 两个世界，一份日程</p>
           <h1>活动日历</h1>
-          <p>看看今天正在进行、即将开始和快结束的活动。</p>
-          <p class="calendar-hint">按游戏服务器日期（Asia/Shanghai）</p>
         </div>
         <div v-if="enabled" class="calendar-view-tools">
           <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
@@ -45,7 +42,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CalendarDays, ChevronRight, LocateFixed, SlidersHorizontal } from '@lucide/vue'
+import { ChevronRight, LocateFixed, SlidersHorizontal } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CalendarViewSwitcher from '@/components/calendar/CalendarViewSwitcher.vue'

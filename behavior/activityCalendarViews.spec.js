@@ -278,6 +278,46 @@ it('Timeline跨年窗口标题同时说明两端年份', () => {
   expect(wrapper.get('.calendar-window-heading h2').text()).toBe('2026年12月25日 — 2027年1月28日')
 })
 
+it('Timeline首次操作提示可关闭并记住，移走按钮后焦点进入时间轴，再打开不重复提示', async () => {
+  const wrapper = mount(Timeline, { attachTo: document.body, props: viewProps() })
+  expect(wrapper.text()).not.toContain('活动起止，一眼可见')
+  expect(wrapper.get('#calendar-timeline-help').text()).toContain('左右滑动查看日期')
+  const viewport = wrapper.get('.calendar-timeline-scroll')
+  expect(viewport.attributes('aria-describedby')).toBe('calendar-timeline-help')
+  await button(wrapper, '知道了').trigger('click')
+  expect(wrapper.find('#calendar-timeline-help').exists()).toBe(false)
+  expect(viewport.attributes('aria-describedby')).toBeUndefined()
+  expect(document.activeElement).toBe(viewport.element)
+  expect(localStorage.getItem('yuanhub.activity-calendar.timeline-help-dismissed.v1')).toBe('1')
+  wrapper.unmount()
+  const reopened = mount(Timeline, { props: viewProps() })
+  expect(reopened.find('.calendar-timeline-help').exists()).toBe(false)
+  expect(button(reopened, '知道了')).toBeUndefined()
+})
+
+it('Timeline已确认提示不显示，导航与活动条仍正常操作', async () => {
+  localStorage.setItem('yuanhub.activity-calendar.timeline-help-dismissed.v1', '1')
+  const wrapper = mount(Timeline, { props: viewProps() })
+  expect(wrapper.find('#calendar-timeline-help').exists()).toBe(false)
+  expect(wrapper.get('.calendar-timeline-scroll').attributes('aria-describedby')).toBeUndefined()
+  await wrapper.get('button[aria-label="后五周"]').trigger('click')
+  expect(wrapper.emitted('select-date').at(-1)).toEqual(['2026-11-07'])
+  await wrapper.get('.calendar-timeline-bar').trigger('click')
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(true)
+})
+
+it('Timeline存储读写失败仍可关闭提示并查看活动', async () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('storage unavailable') })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+  const wrapper = mount(Timeline, { props: viewProps() })
+  expect(wrapper.find('#calendar-timeline-help').exists()).toBe(true)
+  await button(wrapper, '知道了').trigger('click')
+  expect(wrapper.find('#calendar-timeline-help').exists()).toBe(false)
+  expect(wrapper.get('.calendar-timeline-scroll').attributes('aria-describedby')).toBeUndefined()
+  await wrapper.get('.calendar-timeline-bar').trigger('click')
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(true)
+})
+
 it('Agenda不重复跨日活动，按锚点定位；卡片即将结束提示优先且保留来源安全语义', async () => {
   const wrapper = mount(Agenda, { props: viewProps({ items: [event({ source_url: 'https://example.com/notice' }), event({ id: 'future', title: '未来活动', start_date: '2026-10-07', end_date: '2026-10-09' })] }) })
   expect(wrapper.findAllComponents(EventCard)).toHaveLength(2)

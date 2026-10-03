@@ -1,14 +1,17 @@
 <template>
   <section class="calendar-timeline" aria-label="活动时间轴">
     <div class="calendar-window-heading">
-      <div><p class="calendar-eyebrow">活动起止，一眼可见</p><h2>{{ rangeLabel }}</h2></div>
+      <div><h2>{{ rangeLabel }}</h2></div>
       <div class="calendar-window-nav" role="group" aria-label="时间轴导航">
         <button type="button" aria-label="前五周" @click="$emit('select-date', addCalendarDays(anchorDate, -35))"><ChevronLeft :size="20" aria-hidden="true" /></button>
         <button type="button" aria-label="后五周" @click="$emit('select-date', addCalendarDays(anchorDate, 35))"><ChevronRight :size="20" aria-hidden="true" /></button>
       </div>
     </div>
-    <p id="calendar-timeline-help" class="calendar-hint">左右滑动查看日期 · 点击活动条查看完整信息 · 虚线标记今天</p>
-    <div ref="viewport" class="calendar-timeline-scroll" role="region" aria-label="可横向滚动的五周活动时间轴" aria-describedby="calendar-timeline-help" tabindex="0">
+    <div v-if="showHelp" class="calendar-timeline-help">
+      <p id="calendar-timeline-help" class="calendar-hint">左右滑动查看日期 · 点击活动条查看完整信息 · 虚线标记今天</p>
+      <button type="button" @click="dismissHelp">知道了</button>
+    </div>
+    <div ref="viewport" class="calendar-timeline-scroll" role="region" aria-label="可横向滚动的五周活动时间轴" :aria-describedby="showHelp ? 'calendar-timeline-help' : undefined" tabindex="0">
       <div class="calendar-timeline-canvas" :style="{ '--calendar-days': days.length }">
         <div class="calendar-timeline-axis">
           <div v-for="day in days" :key="day.date" class="calendar-axis-day" :class="{ 'is-today': day.date === today, 'is-weekend': day.weekend, 'is-anchor': day.date === anchorDate }" :aria-current="day.date === today ? 'date' : undefined">
@@ -44,6 +47,14 @@ import { addCalendarDays, CALENDAR_CATEGORIES, calendarDateLabel, calendarDates,
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean })
 defineEmits(['select-date'])
 const viewport = ref(null), detail = ref(null), selectedId = ref('')
+const helpStorageKey = 'yuanhub.activity-calendar.timeline-help-dismissed.v1'
+const showHelp = ref(true)
+try { showHelp.value = localStorage.getItem(helpStorageKey) !== '1' } catch { /* Storage may be unavailable; keep the hint dismissible. */ }
+function dismissHelp() {
+  showHelp.value = false
+  try { localStorage.setItem(helpStorageKey, '1') } catch { /* Dismissal still applies to this mounted view. */ }
+  viewport.value?.focus({ preventScroll: true })
+}
 const range = computed(() => timelineRange(props.anchorDate))
 const rangeLabel = computed(() => {
   const options = { month: 'long', day: 'numeric' }
