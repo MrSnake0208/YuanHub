@@ -78,6 +78,26 @@ it('星石页入口明确网页端可用且自动采集仍在接入中', async (
   document.getElementById('yuanstar-embed-styles')?.remove()
 })
 
+it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 embed', async () => {
+  const wrapper = render()
+  await flushPromises()
+  await loadStylesheet()
+  const options = embedMount.mock.calls[0][1]
+  options.onActiveTabChange('review')
+  await flushPromises()
+  const tabs = wrapper.findAll('.star-tabs [role="tab"]')
+  expect(tabs[0].attributes('aria-selected')).toBe('false')
+  expect(tabs[1].attributes('aria-selected')).toBe('true')
+  expect(tabs[1].classes()).toContain('on')
+  expect(localStorage.getItem('star-tabs')).toBe('review')
+  const handle = embedMount.mock.results[0].value
+  handle.setActiveTab.mockClear()
+  await tabs[0].trigger('click')
+  expect(handle.setActiveTab).toHaveBeenCalledWith('import')
+  expect(tabs[0].attributes('aria-selected')).toBe('true')
+  wrapper.unmount()
+})
+
 it('样式加载失败可重试，失败链接不会阻挡下一次加载', async () => {
   const wrapper = render()
   await flushPromises()

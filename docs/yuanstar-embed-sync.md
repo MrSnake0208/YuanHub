@@ -22,6 +22,17 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
+## 当前正式构建来源（2026-10-03）
+
+- 源码仓：私有 YuanStar 源码仓；分支为 `fix/import-draft-lifecycle`。
+- source commit：`e044691d07f8c97deff7ddcd46214d51b1009ab2`。
+- 当前 vendored embed 从这个已提交 source HEAD 的干净工作树正式重建；构建前后工作树均干净，没有额外修改 source。
+- 构建入口为 `web/src/yuanstar-embed.ts`，在 `web/` 下执行 `npm.cmd run build:embed`。
+- 完整同步 `web/dist/embed/` 到 `public/yuanstar-embed/`；全部 12 个文件与同步前产物字节完全一致，
+  包括 JS、CSS、worker、模型、ORT 和经验规则资源，没有产物漂移，也没有手改生成 JS。
+- `docs/yuanstar-embed-manifest.json` 同时记录 source commit 和全部资源 SHA-256；provenance 测试逐文件校验。
+- 下文保留本阶段宿主与源码修复的说明；当前行为采用 10 秒 / 首批有效图片双触发预热、300 秒初始化 timeout 和手机恢复提示。
+
 ## 宿主 ↔ embed 契约（宿主依赖，改动需同批同步）
 
 宿主 `src/pages/star/index.vue` 依赖以下行为，缺少任一项会退化成错误状态：
@@ -36,25 +47,22 @@
   需上游把失败分支改为 `return false`（或 reject）后重新同步产物。
 - `onCaptureCommitted({ source: 'maayuan', accountId, captureId, jobId })`：
   在 OCR 结果提交且 Import Draft 退休之后触发；宿主收到后才 consume 后端临时截图。
-- `getActiveTab()` / `setActiveTab(tab)`、`setHostAccount(accountId)`：
-  宿主切换账号与标签页时使用。
+- `getActiveTab()` / `setActiveTab(tab)`、`onActiveTabChange(tab)`、`setHostAccount(accountId)`：
+  宿主切换账号与标签页时使用；程序自动切换阶段通过同一个 callback 同步宿主高亮。
 
-## 2026-10-02：正式源码 CaptureBatch provenance 与边缘残片同步
+## 2026-10-02：CaptureBatch provenance 与边缘残片同步记录
 
 ### 源码与构建来源
 
 - 源码仓：私有 YuanStar 源码仓（公开访问返回 404，故不在本仓库记录链接）。
 - 集成工作树：同步者本机工作树（绝对路径属本机信息，不入库）。
 - branch：`fix/import-draft-lifecycle`。
-- source commit：`fd1cf7c89919a495203d0b8e2596572fa920633b`。
-- 父 commit：`f8382de4508f1f3b3ffdcd318eb0c3b27d67e459`。
+- 历史同步 commit：`fd1cf7c89919a495203d0b8e2596572fa920633b`；当前正式来源以上节的已提交 source HEAD 为准。
 - 构建入口：`web/src/yuanstar-embed.ts`。
 - 生成命令：在 `web/` 下执行 embed 构建（Windows 为 `npm.cmd run build:embed`）。
 - 同步基线完整镜像 `web/dist/embed/` 到 `public/yuanstar-embed/`，共 12 个文件。
 - **完整性状态**：12 个文件当前在 YuanHub 中的 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`，
-  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。同步基线来自上述 source commit；
-  `yuanstar-embed.js` 随后叠加了下文记录的 YuanHub 本地移动端 OCR 初始化防卡死补丁，
-  因此当前入口文件不再与该 source commit 的原始构建字节完全一致。
+  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。当前产物已从上节记录的已提交 source HEAD 完整重建。
 - 新 worker：`browser-vision-worker-Bt0Z67D1.js`（数字 `0`），
   已删除旧 `browser-vision-worker-Ci-YovYF.js`，没有旧 hashed worker 残留。
 - 所有 embed 产物通过 `.gitattributes` 的 `-text` 原样保存构建字节，
@@ -107,18 +115,54 @@ fragment 从 135 到 140（top 59 到 64，bottom 76 不变）；Tier1 从 5 到
 其它 1,520 accepted 结果的 name / level / quality / status 不变，manual generic path 无变化，
 provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，前轮约 277.4s。
 
-## 2026-10-02：移动端 OCR 初始化防卡死热修
+## 移动端 OCR 初始化与恢复
 
 - 现象：手机浏览器 / PWA 在开始识别后可能长期停留在“正在初始化识别引擎”，图片进度保持 `0 / N`。
-- 根因：浏览器视觉 worker 的 `initialize` 请求原先没有超时边界；同时 embed 挂载时会提前预热 OCR。
+- 根因：浏览器视觉 worker 的 `initialize` 请求原先没有超时边界。
   YuanHub 的 PWA 明确不预缓存 `yuanstar-embed/**`，首次使用需要在线加载较大的 worker、WASM 与模型资源；
   当移动浏览器挂起 worker、网络请求迟迟不结束或初始化无法返回时，Promise 会永久 pending，UI 也就无法进入失败态。
-- 本次仅对 YuanHub vendored `yuanstar-embed.js` 叠加热修，尚未回写 YuanStar source commit：
-  1. embedded 模式不再在页面挂载时后台预热 OCR，改为用户确认开始识别后再初始化；
-  2. worker 初始化增加 180 秒硬超时，超时会终止 worker 并返回可重试错误，不再无限等待；
-  3. 初始化阶段明确提示首次需要加载较大的本机识别资源，并为超时 / 初始化失败提供手机端恢复指引。
-- `docs/yuanstar-embed-manifest.json` 记录的是热修后的当前产物 hash。后续同步新的 YuanStar embed 前，
-  应先把这项初始化超时与 embedded 延迟预热策略移植回 YuanStar 源码，再重新构建，避免热修被覆盖。
+- 当前已提交源码使用下文的双触发后台预热和 300 秒 worker 初始化硬超时；超时会终止 worker 并返回可重试错误。
+- 初始化阶段提示首次需要加载较大的本机识别资源；手机端超时提示保持页面前台并使用稳定网络，
+  初始化失败提示刷新页面后重试。预热仅准备引擎，识别仍由用户主动开始。
+- 本次仅同步正式 source build，没有在 vendored JS 上叠加补丁。
+
+## 2026-10-03：星石 UI 与移动端交互定向修复
+
+- UI 与移动端交互修复已包含在 `fix/import-draft-lifecycle` 的
+  `e044691d07f8c97deff7ddcd46214d51b1009ab2`；当前产物从该已提交 source HEAD 构建。
+- 生成命令：`web/` 下 `npm.cmd run build:embed`；入口仍为 `web/src/yuanstar-embed.ts`。
+- 初始化超时、双触发预热与手机恢复指引均已进入源码；
+  本轮没有新加 OCR 性能优化、模型、识别规则或算法修改。
+- 同步内容为构建生成的 `yuanstar-embed.js` 与 `yuanstar-embed.css`；全部 12 个资源与
+  `web/dist/embed/` 逐文件 SHA-256 一致。worker、模型、ORT 与经验规则资源字节不变。
+- 宿主以 `onActiveTabChange(tab)` 接收 OCR 完成等程序阶段切换，桌面与手机共用现有 activeTab。
+- 原图预览使用单列可收缩 Grid 与 contain，卡片触摸长按激活后跨池移动，激活前滑动保留滚动；
+  候选修改态隐藏自己的操作行，取消在左、确认在右。数量与计划按钮只调整文案和宽度。
+- 仅执行定向回归及 embed 构建；手机真机拖拽、浏览器安全区和真实 OCR 链路仍需人工验证。
+
+## 2026-10-03：OCR 双触发预热与初始化 timeout
+
+- 双触发预热与 timeout 修复已包含在上节的已提交源码 commit；
+  使用 `web/` 下 `npm.cmd run build:embed` 从干净 source HEAD 重新生成产物，没有手改 bundle。
+- embedded 与 standalone 共用两个预热触发器：首次有效图片进入立即 prepare；
+  否则在 `mountYuanStar` 首次 `renderPage()` 返回后设置 10 秒 timer。
+  timer 在账号恢复、工作区加载、经验规则请求之前创建，不等待这些异步任务结束。
+- 第一批图片覆盖手动选择、拖入、粘贴、有效 CaptureBatch 接收和待识别 Draft 恢复。
+  两个触发器复用 `startProductOcrPreparation`；每个 mount 的 coordinator 只自动尝试一次，
+  runtime 同时复用 preparing Promise / ready engine。卸载或挂载失败会清理延迟 timer。
+- worker 初始化 timeout 为 300000 ms；timer 仅在 worker client 的 `initialize()` 内、
+  创建 worker 后、发送 initialize 请求前创建。10 秒预热延迟不计入 300 秒窗口。
+- 当前 run 若加入进行中的 prepare，而 prepare 以 `worker_initialization_timeout` 或
+  `engine_initialization_timeout` 失败，直接返回 failed，不自动再 initialize。
+  旧 prepare 已失败后才开始的 run、或 timeout 后用户再次主动开始的 run，仍可重新 initialize。
+  非 timeout 的 joined prepare 失败保持既有一次恢复尝试；错误分类按明确 code 匹配。
+- 保留失败 worker 清理、手机 timeout / initialization failed 恢复提示和现有浏览器缓存行为。
+  不改模型、OCR 算法、识别规则、PWA precache、UI 样式或上一轮宿主修改。
+- 此前双触发预热修复阶段仅变更 `yuanstar-embed.js`；当时 CSS、worker、模型、ORT、经验规则资源均不变。
+  完整 12 文件与构建目录 SHA-256 一致，当前哈希以 manifest 为准。
+- 此前修复阶段的定向验证包含源码 TypeScript、runtime / worker / import 测试和执行真实 vendored embed 的
+  fake timer 回归，覆盖 10 秒延迟、双 trigger、310 秒 / 303 秒超时边界及卸载清理。
+  真实手机网络、后台挂起与 OCR E2E 未在本轮验证；本阶段最终收口只重建、同步与提交 YuanHub，不 push。
 
 ## 待办
 
@@ -132,3 +176,20 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 - 上游为跨版本 CaptureBatch 增加非阻断告警（保留 `capture_game_invalid` 合法性校验），
   避免静默放行导致的识别偏差无提示。
 - 明确「仅看待养成」开关是否进入视图快照/恢复（当前视图快照不含该开关状态）。
+
+## 2026-10-03：计划编辑按钮布局小修
+
+- 本次仅调整 `web/src/product.css` 的计划按钮规则：两端对齐、均匀分布，宽度充足时同宽，
+  空间不足时自然缩至内容宽度；360px 以下收紧按钮内边距和间距，始终保留单行文字和 44px 高度。
+- 此前按钮小修阶段由源码执行 `npm.cmd run build:embed`，当时产物差异只有 `yuanstar-embed.css`。
+  当时 JS、worker、模型、ORT 与经验规则资源字节均未改变，完整 12 文件与构建目录 SHA-256 一致。
+- 已在运行中的 `/star` 真页检查 320 / 351 / 390 / 430 / 1440px；按钮同行，窄屏无水平溢出。
+  没有修改按钮 handler 或其它 UI；该修复已进入当前正式 source commit，最终收口不继续调整 UI。
+
+## 2026-10-03：最终收口验证
+
+- 从当前正式 source HEAD 执行 `npm.cmd run build:embed` 通过，构建前后源码工作树干净。
+- 完整同步后，全部 12 个 vendored 文件与构建目录及 manifest SHA-256 一致；相对同步前产物没有任何字节变化。
+- `node node_modules/vitest/vitest.mjs run behavior/embedProduct.spec.js behavior/starRecoveryUx.spec.js`：16 / 16 通过。
+- `node --test test/yuanstarEmbedProvenance.test.js test/starCloudStatus.test.js test/starCaptureHostWiring.test.js`：8 / 8 通过，含 provenance 校验。
+- 两仓 `git diff --check` 通过；只提交 YuanHub 当前阶段的 8 个文件，不 push。

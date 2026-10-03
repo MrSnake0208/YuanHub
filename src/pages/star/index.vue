@@ -651,6 +651,9 @@ async function mountProduct() {
       onSummaryChange: function (nextSummary) {
         summary.value = nextSummary;
       },
+      onActiveTabChange: function (tab) {
+        activeTab.value = tab;
+      },
     });
     if (unmounted) {
       await mountedHandle.dispose();
@@ -872,11 +875,19 @@ onBeforeUnmount(function () {
 .hero-stats .is-authed a:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .hero-stats .is-authed a { display: inline-flex; min-height: 44px; align-items: center; }
 @media (max-width: 1080px) {
+  .page-star {
+    --star-tab-button-height: 48px;
+    --star-tab-padding: 7px;
+    --star-bottom-bar-height: calc(var(--star-tab-button-height) + 2 * var(--star-tab-padding) + 1px + env(safe-area-inset-bottom));
+  }
+  .page-star #product-root :deep(.review-workspace-tools) {
+    bottom: calc(var(--star-bottom-bar-height) + 12px);
+  }
   .star-main > section {
     padding-bottom: 40px;
   }
   .page-star :deep(.footer) {
-    padding-bottom: calc(32px + 64px + env(safe-area-inset-bottom));
+    padding-bottom: calc(32px + var(--star-bottom-bar-height));
   }
   .archive-toggle {
     width: 100%;
@@ -885,7 +896,7 @@ onBeforeUnmount(function () {
   .star-exchange-preview { align-items: stretch; flex-direction: column; }
   .star-exchange-preview .btn { width: 100%; }
   .star-sync-state {
-    margin: 10px 0 -18px;
+    margin: 10px 0 0;
   }
   .star-tabs {
     position: fixed;
@@ -898,8 +909,8 @@ onBeforeUnmount(function () {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
     margin: 0;
-    padding: 7px max(12px, env(safe-area-inset-right))
-      calc(7px + env(safe-area-inset-bottom))
+    padding: var(--star-tab-padding) max(12px, env(safe-area-inset-right))
+      calc(var(--star-tab-padding) + env(safe-area-inset-bottom))
       max(12px, env(safe-area-inset-left));
     border: 0;
     border-top: 1px solid var(--line);
@@ -908,7 +919,7 @@ onBeforeUnmount(function () {
     box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, 0.48);
   }
   .star-tabs button {
-    min-height: 48px;
+    min-height: var(--star-tab-button-height);
     padding: 6px 8px;
     border-radius: 11px;
     font-size: 11.5px;
