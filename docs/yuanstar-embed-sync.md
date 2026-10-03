@@ -22,12 +22,24 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
-## 当前正式构建来源（2026-10-03，external-WASM 修复）
+## 当前局部 UI 修复来源（2026-10-03）
+
+- 源码分支仍为 `fix/import-draft-lifecycle`，已提交 source commit 为 `91ce034f4aae2a68a4b3c387e44149fe6302a922`，
+  commit message 为 `fix(ui): refine star plan action layout`。
+- 此 commit 仅修改 `web/src/product.css`：三个计划按钮与左侧当前背包按钮统一为 32px 高；恢复与快捷靠左相邻，重置靠右。
+  规则同时适用于宽屏和窄屏，保留既有同宽、自然收缩和单行文字设置，没有改动其它 UI 或 handler。
+- 当前 vendored embed 由该已提交 source commit 的干净工作树正式 build 产生；在 `web/` 下执行 `npm.cmd run build:embed`，
+  构建前后 source 均 clean。manifest 的 `_sourceCommit` 指向上述 commit，`_sourceWorkingTree.status` 为 `clean`，不含 `changedFiles`。
+- 全部 12 个资源与构建目录 SHA-256 一致；仅 `yuanstar-embed.css` 变化，JS、worker、模型、ORT 与经验规则资源字节均不变。
+- 320 / 351 / 390 / 430 / 768 / 1024 / 1440px 真页复核通过：按钮 32px 等高，三个计划按钮同行且文字单行，恢复 / 快捷左邻，重置靠右，无横向溢出。
+- 下节 external-WASM 构建来源为此前正式基线；当前产物来源以本节记录为准。
+
+## 此前正式构建来源（2026-10-03，external-WASM 修复）
 
 - 源码仓：私有 YuanStar 源码仓；分支为 `fix/import-draft-lifecycle`。
 - 已提交 source commit：`6446e4c6f46d0477130f7d9a37ab7827549badef`，
   commit message 为 `perf(ocr): externalize browser runtime wasm`。
-- 当前 vendored embed 由此已提交 source commit 的干净工作树正式 build 产生；构建前后 source 均 clean。
+- 此前 vendored embed 由此已提交 source commit 的干净工作树正式 build 产生；当时构建前后 source 均 clean。
   本轮 source commit 仅包含 `web/vite.config.mjs`、`web/vite.embed.config.mjs`、`web/package.json`、
   `web/scripts/verify-ocr-build.mjs`、`web/tests/asset-pipeline.test.mjs`；manifest 的 `_sourceWorkingTree.status` 为 `clean`。
 - 两个 Vite 配置都保留默认 client conditions，并加入 ORT 1.27.0 官方
@@ -97,7 +109,7 @@
 - 生成命令：在 `web/` 下执行 embed 构建（Windows 为 `npm.cmd run build:embed`）。
 - 同步基线完整镜像 `web/dist/embed/` 到 `public/yuanstar-embed/`，共 12 个文件。
 - **完整性状态**：12 个文件当前在 YuanHub 中的 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`，
-  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。当前产物来源以上节的 external-WASM 修复记录为准。
+  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。当前产物来源以「当前局部 UI 修复来源」记录为准。
 - 当时新 worker：`browser-vision-worker-Bt0Z67D1.js`（数字 `0`），删除了 `browser-vision-worker-Ci-YovYF.js`；
   本轮又以 `browser-vision-worker-BuVcSjOG.js` 替换，当前仅保留上节的新 worker。
 - 所有 embed 产物通过 `.gitattributes` 的 `-text` 原样保存构建字节，
