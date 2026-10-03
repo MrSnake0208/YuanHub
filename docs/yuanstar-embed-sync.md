@@ -7,7 +7,7 @@
 | --- | --- |
 | `public/yuanstar-embed/yuanstar-embed.js` | YuanStar 嵌入构建的 ESM 入口（`export { mountYuanStar }`） |
 | `public/yuanstar-embed/yuanstar-embed.css` | 同一次构建的样式产物 |
-| `public/yuanstar-embed/assets/browser-vision-worker-<hash>.js` | 同一次构建的浏览器视觉 worker（约 36 MB） |
+| `public/yuanstar-embed/assets/browser-vision-worker-<hash>.js` | 同一次构建的浏览器视觉 worker（本轮 120,560 bytes，约 0.115 MiB） |
 | `public/yuanstar-embed/models/`、`ort/`、`reference/` | 运行时模型与 ONNX Runtime 资源 |
 
 本仓库内没有构建这些产物的脚本，公开的 YuanStar 仓库也不包含嵌入构建入口，
@@ -22,16 +22,51 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
-## 当前正式构建来源（2026-10-03）
+## 当前正式构建来源（2026-10-03，external-WASM 修复）
 
 - 源码仓：私有 YuanStar 源码仓；分支为 `fix/import-draft-lifecycle`。
-- source commit：`e044691d07f8c97deff7ddcd46214d51b1009ab2`。
-- 当前 vendored embed 从这个已提交 source HEAD 的干净工作树正式重建；构建前后工作树均干净，没有额外修改 source。
-- 构建入口为 `web/src/yuanstar-embed.ts`，在 `web/` 下执行 `npm.cmd run build:embed`。
-- 完整同步 `web/dist/embed/` 到 `public/yuanstar-embed/`；全部 12 个文件与同步前产物字节完全一致，
-  包括 JS、CSS、worker、模型、ORT 和经验规则资源，没有产物漂移，也没有手改生成 JS。
-- `docs/yuanstar-embed-manifest.json` 同时记录 source commit 和全部资源 SHA-256；provenance 测试逐文件校验。
-- 下文保留本阶段宿主与源码修复的说明；当前行为采用 10 秒 / 首批有效图片双触发预热、300 秒初始化 timeout 和手机恢复提示。
+- 已提交 source commit：`6446e4c6f46d0477130f7d9a37ab7827549badef`，
+  commit message 为 `perf(ocr): externalize browser runtime wasm`。
+- 当前 vendored embed 由此已提交 source commit 的干净工作树正式 build 产生；构建前后 source 均 clean。
+  本轮 source commit 仅包含 `web/vite.config.mjs`、`web/vite.embed.config.mjs`、`web/package.json`、
+  `web/scripts/verify-ocr-build.mjs`、`web/tests/asset-pipeline.test.mjs`；manifest 的 `_sourceWorkingTree.status` 为 `clean`。
+- 两个 Vite 配置都保留默认 client conditions，并加入 ORT 1.27.0 官方
+  `onnxruntime-web-use-extern-wasm`；Vite 8.2.0 worker 继承 resolver，实际命中 `ort.wasm.min.mjs`。
+  没有引入不受支持的 `worker.resolve`，没有修改 `web/src/ocr.ts`。
+- 在 `web/` 执行正式 `npm.cmd run build` 和 `npm.cmd run build:embed`；入口仍为 `web/src/yuanstar-embed.ts`。
+  两个 build 都附带最小护栏：动态查找唯一 worker、体积小于 1 MiB、没有 WASM data URI、外部 MJS/WASM 非空。
+- 完整镜像 `web/dist/embed/` 到 `public/yuanstar-embed/`，全部 12 文件 SHA-256 一致。
+  相对基线只更新 worker 与 `yuanstar-embed.js`；CSS、模型、dictionary、ORT 和经验规则资源字节不变。
+- 删除 `browser-vision-worker-Bt0Z67D1.js`，新增 `browser-vision-worker-BuVcSjOG.js`；无旧 worker 残留。
+  worker 从 36,089,650 bytes（34.418 MiB）降至 120,560 bytes（0.115 MiB），节省 35,969,090 bytes（34.303 MiB，99.67%）。
+  两份闲置 embedded WASM 已移除，完整外部 WASM 的 base64 编码及 `data:application/wasm;base64` 均不存在。
+- 外部 runtime 保持同一 variant，与 package、public、standalone、embed 和基线资源逐字节一致：
+  MJS SHA-256 为 `0a1e718d99c41b22c21f2520ff4f9e883a6b5533856e398d21816ee8eb8185d3`；
+  WASM SHA-256 为 `d1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6`。
+- external-WASM 修复验证阶段运行正式 worker 与旧 baseline worker 的 40 张真实图片，完整结构化业务结果 40/40 一致。
+  ignored 插桩入口继承本轮正式 resolver 与原模型，用于内部 tensor/crop 观测；两侧结果逐项匹配正式 worker。
+  15 组 Web/WASM tensor bit-identical，40 次 detection boxes 和 1,665 组 crop pixel hashes 一致。
+  BrowserOcrRuntime → reconcile → automatic resolution → finalize 回放 40/40 一致，总 inventory 743 项。
+  回放使用实际浏览器输出注入引擎，不包含真实账号持久化或后端提交验证。
+- Chrome 中正式 worker 初始化实际请求 worker JS、原 ORT MJS/WASM、det/cls/rec 和 dictionary，共 7 项；WASM 仅请求 1 次。
+  手机验证见下节用户补充的 HTTP smoke；本轮没有重新验证手机后台挂起、弱网、HTTP cache 或 Brotli。
+- `docs/yuanstar-embed-manifest.json` 记录已提交 source commit、干净源码状态与全部资源 SHA-256；provenance 测试逐文件校验。
+- 模型、OCR preprocessing/postprocess、阈值、runtime 参数、10 秒 / 首批有效图片双触发预热、300 秒初始化 timeout 和 UI 均不变。
+  本轮未做 HTTP 压缩、缓存策略、CDN、Service Worker 或模型量化；这些后续事项尚未完成。
+
+## 2026-10-03：external-WASM commit 收口与手机 HTTP smoke
+
+- 从上述新 source commit 的干净工作树重新执行正式 `npm.cmd run build` 和 `npm.cmd run build:embed`，
+  构建前后 source 均 clean，standalone 与 embed 产物相对修复验证阶段没有字节漂移。
+- 完整核对并同步重新构建的 12 个 embed 文件；仅保留 `browser-vision-worker-BuVcSjOG.js`，
+  worker 仍为 120,560 bytes，两项 build 的 <1 MiB guard 均通过，embedded WASM 不存在。
+  外部 MJS/WASM、三个模型和 dictionary 的 SHA-256 与 baseline 完全一致。
+- 用户补充的 Android 局域网普通 HTTP `/star` smoke：OCR runtime 已成功运行 2/2 图片，
+  worker、external WASM 和 models 均正常；最终应用结果到 workspace 时，因 HTTP 非 secure context 下
+  `crypto.randomUUID()` 不可用，按现有安全 UUID 语义拒绝，提示“当前环境无法生成安全的 starInstanceId”。
+  该结果归类为 HTTP 环境限制，不作为 external-WASM regression；此记录来自用户手机实测，Agent 未重复该手机测试。
+- 不修改 starInstanceId 生成策略，不加入 `Math.random` fallback；正式 HTTPS 环境保持现有安全 UUID 语义。
+- 两仓仅提交本阶段 source 修复与 embed/provenance 同步，不 push，不启动后续压缩、缓存或模型阶段。
 
 ## 宿主 ↔ embed 契约（宿主依赖，改动需同批同步）
 
@@ -57,14 +92,14 @@
 - 源码仓：私有 YuanStar 源码仓（公开访问返回 404，故不在本仓库记录链接）。
 - 集成工作树：同步者本机工作树（绝对路径属本机信息，不入库）。
 - branch：`fix/import-draft-lifecycle`。
-- 历史同步 commit：`fd1cf7c89919a495203d0b8e2596572fa920633b`；当前正式来源以上节的已提交 source HEAD 为准。
+- 历史同步 commit：`fd1cf7c89919a495203d0b8e2596572fa920633b`；当前正式来源以上节记录的新已提交 source commit 为准。
 - 构建入口：`web/src/yuanstar-embed.ts`。
 - 生成命令：在 `web/` 下执行 embed 构建（Windows 为 `npm.cmd run build:embed`）。
 - 同步基线完整镜像 `web/dist/embed/` 到 `public/yuanstar-embed/`，共 12 个文件。
 - **完整性状态**：12 个文件当前在 YuanHub 中的 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`，
-  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。当前产物已从上节记录的已提交 source HEAD 完整重建。
-- 新 worker：`browser-vision-worker-Bt0Z67D1.js`（数字 `0`），
-  已删除旧 `browser-vision-worker-Ci-YovYF.js`，没有旧 hashed worker 残留。
+  并由 `test/yuanstarEmbedProvenance.test.js` 逐文件比对。当前产物来源以上节的 external-WASM 修复记录为准。
+- 当时新 worker：`browser-vision-worker-Bt0Z67D1.js`（数字 `0`），删除了 `browser-vision-worker-Ci-YovYF.js`；
+  本轮又以 `browser-vision-worker-BuVcSjOG.js` 替换，当前仅保留上节的新 worker。
 - 所有 embed 产物通过 `.gitattributes` 的 `-text` 原样保存构建字节，
   避免 Windows checkout 换行转换改变 hash；保留构建中资源原有的 LF 或 CRLF。
   `models/ppocrv6_chars.txt`、`models/README.md`、`ort/.gitkeep` 相对旧 Git blob
@@ -129,7 +164,7 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 ## 2026-10-03：星石 UI 与移动端交互定向修复
 
 - UI 与移动端交互修复已包含在 `fix/import-draft-lifecycle` 的
-  `e044691d07f8c97deff7ddcd46214d51b1009ab2`；当前产物从该已提交 source HEAD 构建。
+  `e044691d07f8c97deff7ddcd46214d51b1009ab2`；该阶段产物从此已提交 source HEAD 构建，当前产物来源以上节为准。
 - 生成命令：`web/` 下 `npm.cmd run build:embed`；入口仍为 `web/src/yuanstar-embed.ts`。
 - 初始化超时、双触发预热与手机恢复指引均已进入源码；
   本轮没有新加 OCR 性能优化、模型、识别规则或算法修改。
@@ -169,8 +204,8 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 - 公开的 YuanStar 仓库目前没有嵌入构建入口（`mountYuanStar`、`src/product-import-draft.ts`
   等只存在于构建产物中）。建议把嵌入构建入口与其 CI 一起公开，或改为由 CI 从
   YuanStar 构建后发布到本仓库，从而让 embed 差异可被 review。
-- `browser-vision-worker-<hash>.js` 每次重建都会改文件名，等于每次同步都往 git 历史
-  再压一个约 36 MB 的对象；建议改为不带内容 hash 的固定文件名 + 外部存储。
+- worker 的两份闲置 embedded WASM 已由本轮官方 export condition 移除，当前 worker 约 0.115 MiB；
+  不再按每次同步增加约 36 MB 估算。内容 hash 命名与资源存储方式保持现状。
 - 上游把 `importCaptureBatch` 被顶掉的分支从裸 `return` 改为 `return false`（或 reject），
   以闭合上面的宿主 ↔ embed 契约缺口；同步后在本仓库补返回值断言。
 - 上游为跨版本 CaptureBatch 增加非阻断告警（保留 `capture_game_invalid` 合法性校验），
@@ -186,9 +221,9 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 - 已在运行中的 `/star` 真页检查 320 / 351 / 390 / 430 / 1440px；按钮同行，窄屏无水平溢出。
   没有修改按钮 handler 或其它 UI；该修复已进入当前正式 source commit，最终收口不继续调整 UI。
 
-## 2026-10-03：最终收口验证
+## 2026-10-03：上一阶段最终收口验证（external-WASM 修复前）
 
-- 从当前正式 source HEAD 执行 `npm.cmd run build:embed` 通过，构建前后源码工作树干净。
+- 当时从已提交 source HEAD 执行 `npm.cmd run build:embed` 通过，构建前后源码工作树干净。
 - 完整同步后，全部 12 个 vendored 文件与构建目录及 manifest SHA-256 一致；相对同步前产物没有任何字节变化。
 - `node node_modules/vitest/vitest.mjs run behavior/embedProduct.spec.js behavior/starRecoveryUx.spec.js`：16 / 16 通过。
 - `node --test test/yuanstarEmbedProvenance.test.js test/starCloudStatus.test.js test/starCaptureHostWiring.test.js`：8 / 8 通过，含 provenance 校验。

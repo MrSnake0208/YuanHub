@@ -3715,7 +3715,7 @@ function ir() {
 	if (typeof Worker > "u") throw Error("worker_runtime_unavailable: Dedicated Worker is not supported");
 	return new Worker(new URL(
 		/* @vite-ignore */
-		"" + new URL("assets/browser-vision-worker-Bt0Z67D1.js", import.meta.url).href,
+		"" + new URL("assets/browser-vision-worker-BuVcSjOG.js", import.meta.url).href,
 		"" + import.meta.url
 	), {
 		type: "module",
