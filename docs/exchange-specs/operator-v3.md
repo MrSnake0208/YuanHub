@@ -76,6 +76,12 @@ Preview 顶层格式是 `myshare-operator-import-preview@1`，统计：`accepted
 
 具体端点见 [传输与鉴权](./transport.md)。
 
+## 第三项奇闻精度
+
+`combat_stats.oddities.special.current` 支持非负数、最多一位有效小数，如 `0.5`、`3.2`；尾随零不增加精度。所有第三项名称共用稳定键规则，沿用数值单位，不新增百分号或换算。攻击/生命奇闻继续要求整数 JSON 数字；目录上限与诊断整数 `max` 不变。超精度拒绝，不静默四舍五入。
+
+`ready` 三键齐全，`partial` 只合并出现的键；v3 export → import 保留第三项小数和攻击/生命整数。v2 没有 `combat_stats`，不能无损交换第三项奇闻。部署先更新后端；小数落库后不得直接回退到旧整数模型，也不会自动改善旧采集器 OCR。
+
 
 ## 2026-10-03：已弃置枚举扩展
 

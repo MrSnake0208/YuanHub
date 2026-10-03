@@ -275,6 +275,7 @@
 </template>
 
 <script setup>
+import { formatOperatorOddityCurrent } from '../../utils/operatorCombatStats.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Heart, Star, Swords } from '@lucide/vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -449,7 +450,7 @@ function oddities(entry) {
     return {
       key: key,
       name: schema.name || (key === 'attack' ? '攻击力' : key === 'hp' ? '生命值' : '特殊属性'),
-      current: formattedNumber(value.current),
+      current: formatOperatorOddityCurrent(key, value.current),
       max: formattedNumber(schema.max != null ? schema.max : value.max)
     }
   })

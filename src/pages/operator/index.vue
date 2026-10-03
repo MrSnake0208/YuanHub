@@ -1436,7 +1436,8 @@
                       <label class="ledger-oddity"
                         ><ButterflyIcon class="ledger-oddity-icon" /><input
                           type="number"
-                          inputmode="decimal"
+                          inputmode="numeric"
+                          step="1"
                           min="0"
                           :max="
                             cardOddityMax(e, kind) === ''
@@ -2770,11 +2771,15 @@
                           editForm.combatStats.oddities[key].current
                         "
                         type="number"
-                        inputmode="decimal"
+                        :inputmode="key === 'special' ? 'decimal' : 'numeric'"
+                        :step="key === 'special' ? '0.1' : '1'"
                         min="0"
                         :max="editForm.combatStats.oddities[key].max"
                         :aria-label="oddityInputLabel(key)"
-                        @input="normalizeEditOddityValue(key, $event)"
+                        :data-oddity-key="key"
+                        :aria-invalid="editOddityErrorKey === key ? 'true' : undefined"
+                        :aria-describedby="editOddityErrorKey === key ? 'operator-oddity-error' : key === 'special' ? 'operator-oddity-precision' : undefined"
+                        @input="editOddityErrorKey = ''"
                       />
                       <span
                         class="oddity-limit"
@@ -2784,6 +2789,8 @@
                       >
                     </span>
                   </label>
+                  <small id="operator-oddity-precision" class="oddity-hint">{{ oddityFieldName('special') }}最多一位小数</small>
+                  <small v-if="editOddityErrorKey" id="operator-oddity-error" class="oddity-hint oddity-error" role="alert">{{ editNotice }}</small>
                   <button
                     type="button"
                     class="btn ghost editor-fill-max oddity-fill-max"
@@ -3172,6 +3179,7 @@ import {
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema,
   operatorOddityCompletion,
+  operatorOddityCurrentError,
 } from "../../utils/operatorCombatStats.js";
 import {
   buildOperatorV3BrowserRequest,
@@ -3384,6 +3392,7 @@ let combatDisplaySignature = "";
 const selectedDiscLoadoutIndex = ref(0);
 const editNotice = ref("");
 const editNoticeError = ref(false);
+const editOddityErrorKey = ref("");
 const savingEdit = ref(false);
 const editOriginalStoneSignature = ref("");
 const editConflictDraft = ref(null);
@@ -4413,27 +4422,13 @@ function boundedOddityValue(rawValue, maxValue) {
   };
 }
 
-function normalizeEditOddityValue(key, event) {
-  const oddity =
-    editForm.value.combatStats &&
-    editForm.value.combatStats.oddities &&
-    editForm.value.combatStats.oddities[key];
-  if (!oddity) return;
-  const raw = event && event.target ? event.target.value : oddity.current;
-  if (raw === "") return;
-  const normalized = boundedOddityValue(raw, oddity.max);
-  if (!Number.isFinite(Number(normalized.value))) return;
-  oddity.current = normalized.value;
-  if (!normalized.adjusted) return;
-  if (event && event.target) event.target.value = String(normalized.value);
-  editNotice.value =
-    normalized.reason === "max"
-      ? oddityFieldName(key) +
-        "不能超过上限 " +
-        normalized.max +
-        "，已自动调整"
-      : oddityFieldName(key) + "不能小于 0，已自动调整";
-  editNoticeError.value = false;
+function showEditOddityError(key, message) {
+  editOddityErrorKey.value = key;
+  editNotice.value = oddityFieldName(key) + message;
+  editNoticeError.value = true;
+  nextTick(function () {
+    editorPanelEl.value?.querySelector('[data-oddity-key="' + key + '"]')?.focus();
+  });
 }
 
 // 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
@@ -7140,6 +7135,11 @@ function setCardOddityValue(entry, kind, event) {
 function cardPatch(entry) {
   const growth = ensureCardDraft(entry);
   const combat = cardCombatDraft(entry);
+  for (const key of ["attack", "hp"]) {
+    const value = combat[key === "attack" ? "oddityAttack" : "oddityHp"];
+    const error = operatorOddityCurrentError(key, value, cardOddityMax(entry, key));
+    if (error) throw new Error((key === "attack" ? "攻击力奇闻" : "生命值奇闻") + error);
+  }
   const input = Object.assign({}, cardCombatInput(entry), {
     level: growth.level,
     elite: growth.elite,
@@ -7479,6 +7479,7 @@ async function openEdit(id) {
   editConflictDraft.value = null;
   editNotice.value = "";
   editNoticeError.value = false;
+  editOddityErrorKey.value = "";
   if (!(await prepareStarLoadout(op, "main1"))) {
     editingId.value = "";
     editingOp.value = null;
@@ -7585,6 +7586,7 @@ async function closeEditor() {
 
 async function saveEdit() {
   if (!editingOp.value || !accountId.value) return;
+  editOddityErrorKey.value = "";
   const targetAccount = accountId.value;
   const targetGame = saveGame.value;
   const contextSeq = currentContextSeq;
@@ -7647,23 +7649,17 @@ async function saveEdit() {
       (Number.isFinite(Number(value)) && Number(value) >= 0)
     );
   };
-  const invalidOddity = ODDITY_KEYS.find(function (key) {
+  for (const key of ODDITY_KEYS) {
     const oddity = (combatStats.oddities && combatStats.oddities[key]) || {};
-    if (
-      !optionalNonNegativeNumber(oddity.current) ||
-      !optionalNonNegativeNumber(oddity.max)
-    )
-      return true;
-    return (
-      oddity.max !== "" &&
-      oddity.max != null &&
-      Number(oddity.current || 0) > Number(oddity.max)
-    );
-  });
+    const error = operatorOddityCurrentError(key, oddity.current, oddity.max);
+    if (error) {
+      showEditOddityError(key, error);
+      return;
+    }
+  }
   if (
     !optionalNonNegativeNumber(combatStats.manualAttack) ||
-    !optionalNonNegativeNumber(combatStats.manualHp) ||
-    invalidOddity
+    !optionalNonNegativeNumber(combatStats.manualHp)
   ) {
     editNotice.value =
       "攻击力、生命力和奇闻属性需为非负数，且不能超过公共图鉴给出的上限";
@@ -7812,6 +7808,10 @@ async function saveEdit() {
       editNotice.value = "";
     } else {
       editNotice.value = humanErr(err, "保存失败");
+      const detail = err && err.payload && (err.payload.error || err.payload.data?.error || err.payload.data || err.payload);
+      const field = detail && (detail.field_path || detail.fieldPath);
+      const key = ODDITY_KEYS.find(function (key) { return field === "combat_stats.oddities." + key + ".current"; });
+      if (key) showEditOddityError(key, "：" + editNotice.value);
     }
     editNoticeError.value = true;
   } finally {
@@ -13471,6 +13471,17 @@ onBeforeUnmount(function () {
   align-items: center;
   padding-top: 10px;
   border-top: 1px dashed var(--line);
+}
+.oddity-hint {
+  grid-column: 1 / -1;
+  color: var(--ink-60);
+  overflow-wrap: anywhere;
+}
+.oddity-error {
+  color: var(--rouge);
+}
+.oddity-control input[aria-invalid="true"] {
+  border-color: var(--rouge);
 }
 .num-fields .oddity-editor {
   width: 100%;

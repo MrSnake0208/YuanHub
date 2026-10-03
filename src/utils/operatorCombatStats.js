@@ -12,6 +12,23 @@ import { OPERATOR_LEVEL_MAX, OPERATOR_ELITE_MAX } from './operatorGrowthRules.js
 const MAX_CURIOS = 24
 export const OPERATOR_ODDITY_KEYS = ['attack', 'hp', 'special']
 
+export function operatorOddityCurrentError(key, raw, max) {
+  const value = Number(raw)
+  if (raw === '' || raw == null || !Number.isFinite(value)) return '请填写有效数值'
+  if (value < 0) return '需为非负数'
+  if (key === 'special' ? value !== Number(value.toFixed(1)) : !Number.isInteger(value)) {
+    return key === 'special' ? '最多一位小数' : '必须填写整数'
+  }
+  if (max !== '' && max != null && value > Number(max)) return '不能超过公共图鉴上限 ' + max
+  return ''
+}
+
+export function formatOperatorOddityCurrent(key, raw) {
+  if (raw === '' || raw == null || !Number.isFinite(Number(raw))) return '—'
+  const value = Number(raw)
+  return (key === 'special' ? value : Math.round(value)).toLocaleString('zh-CN', { maximumFractionDigits: key === 'special' ? 1 : 0 })
+}
+
 export function fillOperatorDraftToMax(draft, odditySchema) {
   draft.level = OPERATOR_LEVEL_MAX
   draft.elite = OPERATOR_ELITE_MAX

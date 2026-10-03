@@ -252,7 +252,7 @@
       "properties": {
         "attack": { "$ref": "#/$defs/oddityValue" },
         "hp": { "$ref": "#/$defs/oddityValue" },
-        "special": { "$ref": "#/$defs/oddityValue" }
+        "special": { "$ref": "#/$defs/specialOddityValue" }
       }
     },
     "oddityValue": {
@@ -260,13 +260,17 @@
       "additionalProperties": false,
       "required": ["current"],
       "properties": {
-        "current": { "type": "number", "minimum": 0, "maximum": 1000000 },
-        "max": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1000000,
-          "description": "Optional producer diagnostic; it never overrides the catalog-derived authoritative limit."
-        }
+        "current": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "max": { "type": "integer", "minimum": 0, "maximum": 1000000, "description": "Optional producer diagnostic; it never overrides the catalog-derived authoritative limit." }
+      }
+    },
+    "specialOddityValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current"],
+      "properties": {
+        "current": { "type": "number", "minimum": 0, "maximum": 1000000, "multipleOf": 0.1 },
+        "max": { "type": "integer", "minimum": 0, "maximum": 1000000, "description": "Optional producer diagnostic; it never overrides the catalog-derived authoritative limit." }
       }
     },
     "sectionStatusValue": {
