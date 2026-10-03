@@ -33,7 +33,7 @@
             </header>
 
             <div class="reward-dialog-scroll">
-              <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}</span></div>
+              <div v-if="error" ref="errorBox" class="error-message" role="alert" tabindex="-1"><CircleAlert :size="17" aria-hidden="true" /><span>{{ error }}<a v-if="trainingByRuns && ['group', 'level', 'runs'].includes(trainingCalculation.field)" :href="`#${trainingErrorTarget}`" @click.prevent="focusTrainingError">返回历练字段</a></span></div>
               <div v-if="catalogLoading" class="loading-state" role="status">正在准备奖励目录…</div>
               <button v-else-if="!entities.length" type="button" class="outline-button retry-catalog" :disabled="busy" @click="loadCatalog">重新加载奖励目录</button>
 
@@ -63,8 +63,45 @@
               <p v-if="manualBeforeLatestSnapshot" class="baseline-note"><History :size="14" aria-hidden="true" /><span>时间早于已知最新库存快照；服务端会保留这条历史，已被快照覆盖的数量不会再次增加当前库存。</span></p>
             </div>
           </div>
+          <div v-if="manual.channel === '历练'" class="training-mode-section">
+            <div class="shortcut-options" role="group" aria-label="历练填写方式">
+              <button type="button" class="outline-button" :aria-pressed="trainingByRuns" :disabled="!!trainingUnavailable" @click="changeTrainingMode('runs')">按次数填写</button>
+              <button type="button" class="outline-button" :aria-pressed="!trainingByRuns" @click="changeTrainingMode('materials')">按材料填写</button>
+            </div>
+            <p v-if="trainingUnavailable" class="shortcut-note">{{ trainingUnavailable }}</p>
+            <div v-if="manual.training.replacePrompt" class="training-replace" role="group" aria-label="确认替换材料草稿">
+              <p>切回按次数填写将替换当前材料草稿，手工修改及额外奖励不会保留。</p>
+              <button type="button" class="outline-button" @click="changeTrainingMode('runs', true)">替换并按次数填写</button>
+              <button type="button" class="outline-button" @click="manual.training.replacePrompt = false">保留按材料填写</button>
+            </div>
+          </div>
           <div class="manual-columns">
-            <section class="reward-picker" aria-label="选择奖励">
+            <section v-if="trainingByRuns" class="reward-picker training-picker" aria-label="按完成次数计算历练奖励">
+              <div class="picker-heading"><h4>历练完成次数</h4><span>填写实际成功完成的次数，失败战斗不计</span></div>
+              <details class="training-level-settings">
+                <summary>设置常用关卡<span>已启用 {{ commonTrainingLevels.length }} 关</span></summary>
+                <p id="training-level-help" class="shortcut-note">勾选常刷的关卡，至少保留一关。三种历练共用此设置，按子账号和游戏保存在当前浏览器；取消常用不会改变已填写的关卡。</p>
+                <div class="training-level-options" role="group" aria-label="常用关卡" aria-describedby="training-level-help">
+                  <label v-for="level in TRAINING_REWARD_LEVELS" :key="level" :class="{ selected: commonTrainingLevels.includes(level) }"><input type="checkbox" :value="level" :checked="commonTrainingLevels.includes(level)" :disabled="commonTrainingLevels.length === 1 && commonTrainingLevels.includes(level)" @change="changeCommonTrainingLevel(level, $event.target.checked)" />第 {{ level }} 关</label>
+                </div>
+              </details>
+              <label class="training-show-all"><input v-model="showAllTrainingLevels" type="checkbox" />显示全部 1–12 关</label>
+              <p v-if="trainingLevelNotice" class="shortcut-note" role="status">{{ trainingLevelNotice }}</p>
+              <div v-for="(selection, index) in manual.training.selections" :key="selection.key" class="training-selection" role="group" :aria-label="`第 ${index + 1} 组历练`">
+                <div class="training-selection-heading"><b>第 {{ index + 1 }} 组历练</b><button v-if="manual.training.selections.length > 1" type="button" class="text-button" :aria-label="`移除第 ${index + 1} 组历练`" @click="removeTrainingSelection(index)">移除</button></div>
+                <div class="training-fields">
+                  <label :for="trainingFieldId('group', index)">历练类型<select :id="trainingFieldId('group', index)" v-model="selection.groupId" :aria-invalid="trainingRowResults[index].field === 'group'" :aria-describedby="trainingRowResults[index].field === 'group' ? trainingFieldId('error', index) : undefined" @change="clearPreview"><option value="">请选择类型</option><option v-for="group in TRAINING_REWARD_GROUPS" :key="group.id" :value="group.id">{{ group.name }}</option></select><span v-if="trainingRowResults[index].field === 'group'" :id="trainingFieldId('error', index)" class="row-error">{{ trainingRowResults[index].error }}</span></label>
+                  <label :for="trainingFieldId('level', index)">历练关卡<select :id="trainingFieldId('level', index)" v-model="selection.level" :aria-invalid="trainingRowResults[index].field === 'level'" :aria-describedby="trainingRowResults[index].field === 'level' ? trainingFieldId('error', index) : undefined" @change="clearPreview"><option value="">请选择关卡</option><option v-for="level in trainingLevelOptions(selection.level)" :key="level" :value="level" :disabled="manual.training.selections.some((other, otherIndex) => otherIndex !== index && other.groupId === selection.groupId && other.level === level)">第 {{ level }} 关{{ !showAllTrainingLevels && !commonTrainingLevels.includes(level) ? '（当前选择）' : '' }}</option></select><span v-if="trainingRowResults[index].field === 'level'" :id="trainingFieldId('error', index)" class="row-error">{{ trainingRowResults[index].error }}</span></label>
+                  <label :for="trainingFieldId('runs', index)">成功完成次数<input :id="trainingFieldId('runs', index)" v-model="selection.runs" type="text" inputmode="numeric" :aria-invalid="trainingRowResults[index].field === 'runs'" :aria-describedby="trainingRowResults[index].field === 'runs' ? trainingFieldId('error', index) + ' training-note' : 'training-note'" @input="clearPreview" /><span v-if="trainingRowResults[index].field === 'runs'" :id="trainingFieldId('error', index)" class="row-error">{{ trainingRowResults[index].error }}</span></label>
+                </div>
+                <p v-if="trainingRowResults[index].field === 'catalog' || trainingRowResults[index].field === 'game'" class="row-error">{{ trainingRowResults[index].error }}</p>
+                <ul v-if="trainingRowResults[index].entries.length" class="training-formulas" :aria-label="`第 ${index + 1} 组历练必得奖励计算`"><li v-for="entry in trainingRowResults[index].entries" :key="entry.id"><b class="training-material"><span class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span>{{ entry.name }}</b><span>单次 {{ entry.perRunCount }} × {{ trainingRowResults[index].runs }} 次 = <strong>+{{ entry.count }}</strong></span></li></ul>
+              </div>
+              <button v-if="trainingCalculation.field === 'catalog'" type="button" class="outline-button" @click="loadCatalog">重新加载奖励目录</button>
+              <button type="button" class="outline-button add-training" :disabled="manual.training.selections.length >= MAX_TRAINING_SELECTIONS" @click="addTrainingSelection"><Plus :size="14" aria-hidden="true" />添加一组历练</button>
+              <p id="training-note" class="shortcut-note">可填写同类型的多个关卡或不同类型，每组独立选择关卡和次数，共用上方发生时间，相同材料自动合计。同一类型同一关卡只填一组。只计算关卡必得修为材料，第 1、2 关各一种，其余各两种；额外掉落请按实际结果补录。次数可以超过 6；不同发生时间请分别录入。</p>
+            </section>
+            <section v-else class="reward-picker" aria-label="选择奖励">
               <div class="picker-heading"><h4>{{ manual.entityType === 'agent' ? '选择密探心纸' : '选择奖励道具' }}</h4><span>{{ manual.presets.length ? '日常来源在本次入账中调整；其他奖励请选择普通补录' : '点击图标增加，选中后从左下角减少' }}</span></div>
               <div v-if="manual.channel === '手动补录'" class="type-options" role="group" aria-label="奖励类型"><button v-for="type in [{ id: 'item', label: '背包道具' }, { id: 'agent', label: '密探心纸' }]" :key="type.id" type="button" :disabled="!!manual.presets.length" :class="{ selected: manual.entityType === type.id }" :aria-pressed="manual.entityType === type.id" @click="changeType(type.id)">{{ type.label }}</button></div>
               <div v-if="manual.channel !== '派遣-洛阳'" class="picker-tools">
@@ -87,11 +124,11 @@
 
             <aside class="reward-receipt" aria-label="本次入账清单">
               <div class="receipt-heading"><span class="eyebrow">本次入账</span><span class="receipt-mark" aria-hidden="true"><ScrollText :size="20" /></span><h4>奖励清单</h4></div>
-              <div class="basket-heading"><span>已选 <b>{{ manual.presets.length || manual.entries.length }}</b> 项</span><button v-if="manual.presets.length || manual.entries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
-              <div v-if="!manual.presets.length && !manual.entries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>从左侧选取本次奖励</span><small>选中后可在这里调整数量</small></div>
-              <ul v-else class="basket-list"><li v-for="entry in manual.presets.length ? manual.presets : manual.entries" :key="entry.id"><span class="basket-name">{{ entry.name }}</span><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + '白金币数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></li></ul>
+              <div class="basket-heading"><span>已选 <b>{{ basketEntries.length }}</b> 项</span><button v-if="trainingByRuns || basketEntries.length" type="button" class="text-button" @click="clearBasket">清空</button></div>
+              <div v-if="!basketEntries.length" class="basket-empty"><PackageOpen :size="32" aria-hidden="true" /><span>{{ trainingByRuns ? '请选择历练类型、关卡和次数' : '从左侧选取本次奖励' }}</span><small>{{ trainingByRuns ? '必得材料将自动计算' : '选中后可在这里调整数量' }}</small></div>
+              <ul v-else class="basket-list"><li v-for="entry in basketEntries" :key="entry.id"><span class="basket-name" :class="{ 'training-material': manual.channel === '历练' }"><span v-if="manual.channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ entry.name.slice(0, 1) }}</span></span>{{ entry.name }}</span><strong v-if="trainingByRuns" class="training-count">+{{ entry.count }}</strong><template v-else><div class="quantity-control"><button type="button" :aria-label="`减少${entry.name}`" @click="adjustReward(entry, -1)"><Minus :size="12" aria-hidden="true" /></button><input :value="entry.count" type="text" inputmode="numeric" :aria-label="entry.channel ? entry.channel + '白金币数量' : `${entry.name}数量`" @input="setCount(entry, $event.target.value)" /><button type="button" :aria-label="`增加${entry.name}`" @click="adjustReward(entry, 1)"><Plus :size="12" aria-hidden="true" /></button></div><button type="button" class="remove-reward" :aria-label="`移除${entry.name}`" @click="removeReward(entry.id)"><X :size="13" aria-hidden="true" /></button></template></li></ul>
               <p v-if="manual.presets.length" class="shortcut-note">合计 {{ dailyCoinTotal }} 白金币，分别保存 {{ manual.presets.length }} 条来源流水。</p>
-              <button type="submit" class="primary-button preview-button" :disabled="!manual.presets.length && !manual.entries.length"><span>{{ previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
+              <button type="submit" class="primary-button preview-button" :disabled="!trainingByRuns && !basketEntries.length"><span>{{ previewed ? '更新预览' : '预览本次流水' }}</span><ArrowRight :size="16" aria-hidden="true" /></button>
             </aside>
           </div>
         </fieldset>
@@ -116,13 +153,14 @@
       </div>
 
       <div v-if="previewed" class="preview-section">
+        <p v-if="mode === 'manual' && manual.channel === '历练'" class="shortcut-note">子账号：{{ accountName }} · 游戏：{{ game || '未指定' }}。已自动上报或已在历史记录中的同批奖励请勿再次补录；不同来源的记录 ID 不会自动合并。</p>
         <div class="preview-heading"><h4>{{ mode === 'manual' ? '确认本次流水' : '报告中的库存记录' }}</h4><span class="preview-count" role="status" aria-live="polite">已选 <b>{{ selectedRecords.length }}</b> 条</span><div v-if="mode === 'report' && rows.length" class="preview-tools"><button type="button" class="text-button" :disabled="locked || !!result" @click="selectFailed">仅选失败</button><span>·</span><button type="button" class="text-button" :disabled="locked || !!result" @click="rows.forEach(row => row.selected = false)">清空选择</button></div></div>
         <p v-if="!rows.length" class="empty-search">报告中没有可补传的库存记录。</p>
         <ul v-else class="preview-list"><li v-for="row in rows" :key="row.key" :class="{ invalid: row.error, selected: row.selected }">
           <div v-if="row.record" class="preview-record">
             <label v-if="mode === 'report'" class="record-checkbox"><input v-model="row.selected" type="checkbox" :disabled="!!row.error || locked || !!result" :aria-label="`选择 ${row.record.acquisition_channel || '库存记录'} ${row.record.effective_at}`" /><span class="checkbox-art"><Check :size="13" aria-hidden="true" /></span></label>
             <div class="record-date"><small>{{ new Date(row.record.effective_at).getFullYear() }}</small><b>{{ displayDay(row.record.effective_at) }}</b><time :datetime="row.record.effective_at" :title="row.record.effective_at">{{ displayClock(row.record.effective_at) }}</time></div>
-            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id">{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
+            <div class="record-body"><div class="record-title"><b>{{ row.record.acquisition_channel || '未注明渠道' }}</b><span class="record-status">{{ row.record.record_type === 'stock_snapshot' ? `库存快照 · ${row.record.snapshot_scope === 'full' ? '完整库存' : '列出条目'}` : '奖励增量' }}</span><span class="record-status" :class="{ failed: row.status?.includes('失败') }">{{ statusLabel(row.status) }}</span><span v-if="row.record.stamina_cost !== undefined" class="record-stamina"><Flame :size="12" aria-hidden="true" />{{ row.record.stamina_cost }}</span></div><div class="record-rewards"><span v-for="entry in row.record.entries" :key="entry.id"><span v-if="mode === 'manual' && row.record.acquisition_channel === '历练'" class="reward-item-icon" aria-hidden="true"><img v-if="!failedImages.has(entry.id)" :src="iconSrc(entry)" alt="" width="32" height="32" loading="lazy" @error="failedImages.add(entry.id)" /><span v-else>{{ (entry.name || entry.id).slice(0, 1) }}</span></span>{{ entry.name || entry.id }}<b>{{ row.record.record_type === 'stock_snapshot' ? '=' : '+' }} {{ entry.count }}</b></span></div></div>
             <button type="button" class="record-info" :aria-label="`查看${row.record.acquisition_channel || '库存记录'}记录详情`" :aria-expanded="expandedRows.has(row.key)" @click="toggleDetails(row.key)"><ChevronDown :size="16" :class="{ rotated: expandedRows.has(row.key) }" aria-hidden="true" /></button>
           </div>
           <div v-if="row.record && expandedRows.has(row.key)" class="record-details"><span>{{ row.record.effective_at }}</span><span>{{ row.status }}</span><span>{{ row.record.record_id }}</span></div>
@@ -149,6 +187,7 @@ import { buildRewardDocument, buildReportDocument, parseRewardReport } from '../
 import { REWARD_CHANNELS, WHITE_COIN_PRESETS, dailyWhiteCoinRecordId, validateWhiteCoinAnnotation, rewardOptionsForChannel, validateManualRewardChannel, manualAcquisitionChannel, manualRewardTimestamp } from '../../data/inventory/rewardChannels.js'
 import { agentMatchesGame } from '../../data/inventory/agentManifest.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
+import { TRAINING_REWARD_GROUPS, TRAINING_REWARD_LEVELS, DEFAULT_TRAINING_REWARD_LEVELS, MAX_TRAINING_SELECTIONS, calculateTrainingRewards, calculateTrainingRewardBatch, trainingRewardUnavailableReason } from '../../data/inventory/trainingRewards.js'
 import RewardDateTimePicker from './RewardDateTimePicker.vue'
 
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
@@ -192,12 +231,59 @@ const channelIcons = { bird: Bird, flower: Flower2, scroll: ScrollText, book: Bo
 const qualities = [{ id: 0, label: '全部' }, { id: 5, label: '金' }, { id: 4, label: '紫' }, { id: 3, label: '蓝' }]
 let fileReadSeq = 0
 let disposed = false
+let trainingSelectionKey = 0
 function freshManual() {
   const date = new Date()
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()
-  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: '派遣-洛阳', customChannel: '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '' }
+  return { date: local.slice(0, 10), clock: local.slice(11, 19), channel: '派遣-洛阳', customChannel: '', entityType: 'item', stamina: '', entries: [], presets: [], whiteCoinPurpose: '', training: freshTraining() }
 }
+function freshTrainingSelection() { return { key: ++trainingSelectionKey, groupId: '', level: '', runs: '1' } }
+function freshTraining() { return { mode: 'materials', selections: [freshTrainingSelection()], replacePrompt: false } }
 const manual = ref(freshManual())
+const trainingUnavailable = computed(() => trainingRewardUnavailableReason(props.game))
+const commonTrainingLevels = ref([...DEFAULT_TRAINING_REWARD_LEVELS])
+const showAllTrainingLevels = ref(false)
+const trainingLevelNotice = ref('')
+function trainingLevelStorageKey() { return `yuanhub:inventory:training-levels:${encodeURIComponent(props.accountId)}:${encodeURIComponent(props.game)}` }
+function loadTrainingLevelPreference() {
+  commonTrainingLevels.value = [...DEFAULT_TRAINING_REWARD_LEVELS]
+  showAllTrainingLevels.value = false
+  trainingLevelNotice.value = ''
+  if (!props.accountId || trainingUnavailable.value) return
+  try {
+    const raw = localStorage.getItem(trainingLevelStorageKey())
+    if (raw === null) return
+    const saved = JSON.parse(raw)
+    if (!Array.isArray(saved) || !saved.length || !saved.every(level => TRAINING_REWARD_LEVELS.includes(level))) throw new TypeError('Invalid training levels')
+    commonTrainingLevels.value = [...new Set(saved)].sort((a, b) => a - b)
+  } catch (_) { trainingLevelNotice.value = '无法读取常用关卡设置，已恢复默认；本次仍可调整。' }
+}
+function changeCommonTrainingLevel(level, selected) {
+  if (locked.value || result.value || props.disabled || !props.accountId) return
+  if (!selected && commonTrainingLevels.value.length === 1) return
+  commonTrainingLevels.value = TRAINING_REWARD_LEVELS.filter(item => item === level ? selected : commonTrainingLevels.value.includes(item))
+  try {
+    localStorage.setItem(trainingLevelStorageKey(), JSON.stringify(commonTrainingLevels.value))
+    trainingLevelNotice.value = ''
+  } catch (_) { trainingLevelNotice.value = '无法保存到当前浏览器，常用关卡仅在本次页面内生效。' }
+}
+function trainingLevelOptions(selectedLevel) { return TRAINING_REWARD_LEVELS.filter(level => showAllTrainingLevels.value || commonTrainingLevels.value.includes(level) || selectedLevel === level) }
+loadTrainingLevelPreference()
+const trainingByRuns = computed(() => manual.value.channel === '历练' && manual.value.training.mode === 'runs')
+const trainingCalculation = computed(() => {
+  if (!trainingByRuns.value) return { entries: [] }
+  try {
+    return calculateTrainingRewardBatch({ game: props.game, selections: manual.value.training.selections, entities: entities.value })
+  } catch (err) { return { entries: [], error: err.message, field: err.field, selectionIndex: err.selectionIndex } }
+})
+const trainingRowResults = computed(() => trainingByRuns.value ? manual.value.training.selections.map((selection, index) => {
+  if (trainingCalculation.value.error && trainingCalculation.value.selectionIndex === index) return { ...trainingCalculation.value, entries: [] }
+  try { return calculateTrainingRewards({ game: props.game, ...selection, entities: entities.value }) }
+  catch (err) { return { entries: [], error: err.message, field: err.field } }
+}) : [])
+function trainingFieldId(field, index = 0) { return `training-${field}${index ? '-' + index : ''}` }
+const trainingErrorTarget = computed(() => trainingFieldId(trainingCalculation.value.field, trainingCalculation.value.selectionIndex))
+const basketEntries = computed(() => trainingByRuns.value ? trainingCalculation.value.entries : manual.value.presets.length ? manual.value.presets : manual.value.entries)
 const dailyCoinTotal = computed(() => {
   const counts = manual.value.presets.map(preset => Number(preset.count))
   return counts.every(Number.isFinite) ? counts.reduce((total, count) => total + count, 0) : '—'
@@ -215,7 +301,7 @@ const counts = computed(() => new Map(manual.value.entries.map(entry => [entry.i
 const countOf = id => counts.value.get(id) || 0
 const qualityColor = rarity => ({ 5: 'var(--accent)', 4: 'var(--brand-blue)', 3: 'var(--line)' })[rarity] || 'var(--line)'
 const iconSrc = entity => `${import.meta.env.BASE_URL}inventory-icons/${entity.entity_type === 'agent' ? 'agents' : 'items'}/${encodeURIComponent(entity.id)}.png`
-const focusableSelector = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+const focusableSelector = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'
 let restoreFocusEl = null
 let bodyOverflowBefore = ''
 let rootOverflowBefore = ''
@@ -271,6 +357,7 @@ watch(mode, async (value, previous) => {
   }
 })
 watch(() => [props.accountId, props.game], () => {
+  loadTrainingLevelPreference()
   fileReadSeq++
   readingFile.value = false
   mode.value = ''
@@ -361,8 +448,42 @@ function onDialogKeydown(event) {
 }
 function clearPreview() { rows.value = []; previewed.value = false; result.value = null; error.value = ''; expandedRows.value.clear() }
 function clearReportPreview() { fileReadSeq++; readingFile.value = false; fileName.value = ''; clearPreview() }
+function changeTrainingMode(nextMode, confirmed = false) {
+  if (locked.value || result.value || props.disabled || nextMode === manual.value.training.mode) return
+  if (nextMode === 'runs') {
+    if (trainingUnavailable.value) return
+    if (manual.value.entries.length && !confirmed) {
+      manual.value.training.replacePrompt = true
+      clearPreview()
+      return
+    }
+    manual.value.entries = []
+  } else {
+    manual.value.entries = trainingCalculation.value.entries.map(({ id, name, count }) => ({ id, name, count }))
+  }
+  manual.value.training.mode = nextMode
+  manual.value.training.replacePrompt = false
+  clearPreview()
+}
+function focusTrainingError() { document.getElementById(trainingErrorTarget.value)?.focus() }
+async function addTrainingSelection() {
+  if (locked.value || result.value || props.disabled || manual.value.training.selections.length >= MAX_TRAINING_SELECTIONS) return
+  manual.value.training.selections.push(freshTrainingSelection())
+  clearPreview()
+  await nextTick()
+  document.getElementById(trainingFieldId('group', manual.value.training.selections.length - 1))?.focus()
+}
+async function removeTrainingSelection(index) {
+  if (locked.value || result.value || props.disabled || manual.value.training.selections.length <= 1) return
+  manual.value.training.selections.splice(index, 1)
+  clearPreview()
+  await nextTick()
+  document.getElementById(trainingFieldId('group', Math.min(index, manual.value.training.selections.length - 1)))?.focus()
+}
 function changeChannel(channel) {
   if (channel === manual.value.channel || locked.value) return
+  if (manual.value.channel === '历练') manual.value.entries = []
+  manual.value.training = freshTraining()
   manual.value.presets = []; manual.value.whiteCoinPurpose = ''
   manual.value.channel = channel
   manual.value.entityType = REWARD_CHANNELS.find(item => item.id === channel).entityType || manual.value.entityType
@@ -412,13 +533,18 @@ function removeReward(id) {
   if (!manual.value.presets.length) manual.value.whiteCoinPurpose = ''
   clearPreview()
 }
-function clearBasket() { manual.value.entries = []; manual.value.presets = []; manual.value.whiteCoinPurpose = ''; clearPreview() }
+function clearBasket() {
+  const trainingMode = manual.value.training.mode
+  manual.value.training = { ...freshTraining(), mode: trainingMode }
+  manual.value.entries = []; manual.value.presets = []; manual.value.whiteCoinPurpose = ''; clearPreview()
+}
 async function previewManual() {
   if (locked.value || props.disabled) return
   clearPreview()
   const targetAccount = props.accountId
   const draft = manual.value
   try {
+    if (trainingByRuns.value && trainingCalculation.value.error) throw new TypeError(trainingCalculation.value.error)
     if (draft.presets.length && !['income', 'annotation'].includes(draft.whiteCoinPurpose)) throw new Error('请选择新增收入或补标已盘点收入')
     const effectiveAt = manualRewardTimestamp(draft.date, draft.clock)
     const base = { record_type: 'reward_delta', entity_type: draft.entityType, effective_at: effectiveAt,
@@ -429,7 +555,7 @@ async function previewManual() {
       entries: [{ id: 'baijinbi', name: '白金币', count: count(preset.count) }],
     })) : [{ ...base, record_id: `yuanhub:reward:${crypto.randomUUID()}`,
       acquisition_channel: manualAcquisitionChannel(draft.channel, draft.customChannel),
-      entries: draft.entries.map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }]
+      entries: (trainingByRuns.value ? trainingCalculation.value.entries : draft.entries).map(entry => ({ id: entry.id, name: entry.name, count: count(entry.count) })) }]
     records.forEach(record => validateManualRewardChannel(record, entities.value, draft.channel))
     if (draft.presets.length && draft.whiteCoinPurpose === 'annotation') {
       checkingBaseline.value = true
@@ -518,6 +644,35 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll() })
 .whitecoin-purpose { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
 .whitecoin-purpose select { min-height: 44px; max-width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .shortcut-note { margin: 10px 0 0; font-size: 12px; line-height: 1.7; color: var(--ink-60); }
+.training-mode-section { padding: 0 20px 18px; border-bottom: 1px solid var(--line); }
+.training-replace { margin-top: 12px; padding: 12px; border: 1px solid var(--reward-gold); border-radius: 9px; background: var(--cream); }
+.training-replace p { margin: 0 0 10px; font-size: 12px; line-height: 1.7; }
+.training-replace button { margin: 0 8px 8px 0; }
+.training-fields { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; margin-top: 18px; }
+.training-fields label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
+.training-fields input, .training-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.training-fields .row-error { margin: 0; }
+.training-level-settings { margin-top: 18px; padding: 0 12px 12px; border: 1px solid var(--line); border-radius: 9px; }
+.training-level-settings summary { min-height: 44px; padding: 12px 0; font-size: 12px; cursor: pointer; }
+.training-level-settings summary span { margin-left: 12px; color: var(--ink-60); }
+.training-level-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap: 8px; margin-top: 12px; }
+.training-level-options label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; cursor: pointer; }
+.training-level-options label.selected { border-color: var(--reward-gold); background: var(--cream); }
+.training-level-options input, .training-show-all input { appearance: auto; flex: 0 0 16px; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.training-show-all { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 8px; font-size: 12px; cursor: pointer; }
+.training-selection { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.training-selection-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; }
+.training-selection-heading .text-button { min-width: 44px; min-height: 44px; }
+.add-training { margin-top: 16px; }
+.training-formulas { list-style: none; padding: 14px; margin: 18px 0 0; border: 1px solid var(--reward-gold-soft); border-radius: 10px; background: var(--cream); }
+.training-formulas li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 7px 14px; padding: 7px 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.training-formulas strong, .training-count { font-family: var(--font-d); }
+.training-count { margin-left: auto; overflow-wrap: anywhere; }
+.training-material { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.reward-item-icon { display: inline-grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 6px; background: var(--cream); color: var(--ink-60); font-size: 12px; }
+.reward-item-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.error-message a { display: block; margin-top: 5px; text-decoration: underline; }
+@media (min-width: 768px) { .training-fields { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { appearance: none; border: 0; cursor: pointer; background: transparent; padding: 0; transition: background .16s, border-color .16s, box-shadow .16s; }
 button:disabled { opacity: .45; cursor: not-allowed; }
@@ -685,7 +840,7 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .record-status.failed { color: var(--rouge); border-color: rgba(166,81,74,.2); }
 .record-stamina { display: flex; align-items: center; gap: 3px; color: var(--ink-60); font: 10px 'Archivo',var(--font-b); }
 .record-rewards { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 9px; font-size: 11px; line-height: 1.6; }
-.record-rewards > span { display: inline-flex; gap: 6px; }
+.record-rewards > span { display: inline-flex; align-items: center; gap: 6px; }
 .record-rewards b { font-family: 'Archivo',var(--font-b); font-weight: 500; }
 .record-info { display: grid; place-items: center; width: 32px; min-height: 36px; flex-shrink: 0; color: var(--ink-60); border-radius: 6px; }
 .record-info:hover { background: var(--cream); }
