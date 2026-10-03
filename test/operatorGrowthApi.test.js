@@ -7,6 +7,8 @@ import {
   exportOperator,
   getOperatorAnnotations,
   getOperatorGrowthTargets,
+  importOperator,
+  previewOperatorImport,
   previewOperatorUpgrade,
   putOperatorAnnotation,
   putOperatorGrowthTarget
@@ -61,4 +63,40 @@ test('密探主观数据与快捷提升 API 使用后端约定的路径、字段
     skip_breakthrough_materials: true
   })
   assert.match(calls[6].url, /\/v1\/operator\/export\?account_id=acc\+one&version=3$/)
+})
+
+test('暂缓弃置时阻止标注和原始/映射备份写入及预览，旧三态和仅备注仍可保存', async function () {
+  const originalFetch = globalThis.fetch
+  const calls = []
+  globalThis.fetch = async function (url, options) {
+    calls.push({ url: String(url), options })
+    return success({ items: [{ operator_id: 'd', growth_state: 'discarded' }] })
+  }
+  const document = {
+    format: 'myshare-operator-exchange', version: 3,
+    records: [{ record_type: 'operator_annotation_snapshot', entries: [{ operator_id: 'd', growth_state: ' discarded ' }] }]
+  }
+  try {
+    assert.throws(() => putOperatorAnnotation({ accountId: 'a', operatorId: 'd', annotation: { growth_state: 'discarded' } }), /已弃置暂未开放/)
+    assert.throws(() => importOperator(document), /已弃置暂未开放/)
+    assert.throws(() => importOperator({ document, account_mapping: { local: 'a' } }), /已弃置暂未开放/)
+    assert.throws(() => previewOperatorImport({ document }), /已弃置暂未开放/)
+    assert.equal(calls.length, 0)
+    assert.equal(document.records[0].entries[0].growth_state, ' discarded ')
+    const read = await getOperatorAnnotations('a')
+    assert.equal(read.items[0].growth_state, 'discarded')
+    for (const state of ['active', 'graduated', 'skip']) {
+      await putOperatorAnnotation({ accountId: 'a', operatorId: 'd', annotation: { growth_state: state, expected_revision: 1 } })
+    }
+    await putOperatorAnnotation({ accountId: 'a', operatorId: 'd', annotation: { note: '保留状态', expected_revision: 2 } })
+    assert.deepEqual(calls.slice(1, 4).map(call => JSON.parse(call.options.body).growth_state), ['active', 'graduated', 'skip'])
+    assert.deepEqual(JSON.parse(calls[4].options.body), { note: '保留状态', expected_revision: 2 })
+    const oldDocument = { ...document, records: [{ entries: [{ operator_id: 'd', growth_state: 'skip' }] }] }
+    await previewOperatorImport({ document: oldDocument })
+    await importOperator({ document: oldDocument })
+    await importOperator({ format: 'myshare-operator-exchange', version: 2, records: [{ entries: [{ id: 'd', level: 90 }] }] })
+    assert.equal(calls.length, 8)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })

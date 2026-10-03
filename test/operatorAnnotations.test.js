@@ -1,6 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { reconcileOperatorAnnotations, operatorAnnotationStatus, operatorAnnotationApiState, operatorAnnotationStatusLabel, matchesOperatorStatus } from '../src/utils/operatorAnnotations.js'
+import { reconcileOperatorAnnotations, operatorAnnotationStatus, operatorAnnotationApiState, operatorAnnotationStatusLabel, matchesOperatorStatus, operatorEditableStatusOptions, assertOperatorStateWriteEnabled } from '../src/utils/operatorAnnotations.js'
+
+test('暂缓弃置只限制编辑和写入，仍能读取四态', () => {
+  assert.deepEqual(operatorEditableStatusOptions().map(option => option.value), ['growing', 'graduated', 'inactive'])
+  assert.throws(() => assertOperatorStateWriteEnabled('discarded'), /暂未开放/)
+  for (const state of ['active', 'graduated', 'skip', undefined]) assert.doesNotThrow(() => assertOperatorStateWriteEnabled(state))
+  assert.equal(operatorAnnotationStatusLabel('discarded'), '已弃置')
+  assert.equal(operatorAnnotationApiState('discarded'), 'discarded')
+})
 
 test('标注刷新不会让保存中的密探回到旧状态，也不会覆盖已保存的新修订', () => {
   const remote = {

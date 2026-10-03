@@ -289,7 +289,7 @@ import { getOperatorCatalog, viewOperatorShare } from '../../api/operator.js'
 import { avatarUrl } from '../../api/request.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
-import { OPERATOR_STATUS_OPTIONS, operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
+import { operatorEditableStatusOptions, operatorAnnotationStatus, operatorAnnotationStatusLabel } from '../../utils/operatorAnnotations.js'
 import { normalizeDiscNames } from '../../utils/operatorDiscLoadouts.js'
 import { subProfList, subProfOptions as deriveSubProfOptions } from '../../utils/operatorFilters.js'
 import { starCardFallback, starCardHasIcon, starCardNode, starCardNumber } from '../../utils/operatorStarDisplay.js'
@@ -332,7 +332,7 @@ const STONE_SLOT_TYPES = ['main1', 'main2', 'main3', 'assist1', 'assist2', 'assi
 const availableSubProfOptions = computed(function () {
   return deriveSubProfOptions(entries.value)
 })
-const shareStatusOptions = [{ value: 'all', label: '全部' }, ...OPERATOR_STATUS_OPTIONS]
+const shareStatusOptions = [{ value: 'all', label: '全部' }, ...operatorEditableStatusOptions()]
 const shareStatusCounts = computed(function () {
   return entries.value.reduce(function (counts, entry) {
     const status = shareStatusClass(entry)

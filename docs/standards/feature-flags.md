@@ -26,6 +26,32 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
+`operatorDiscarded` is explicitly `false` in both development and production
+until the paired MaaYuan version can read `discarded`. While disabled, single
+and batch menus offer only 养成中/已毕业/养老中, filters default/reset to 全部,
+and the discarded group, overview count and help are hidden. The public share
+filter also offers only the original statuses. Existing discarded/unknown
+values remain readable, including in shares and exports, and can be restored
+to an original status without deleting growth data or favorites.
+
+The frontend API wrapper rejects discarded annotation writes and backups
+containing discarded before preview/import requests. Local discarded cache
+migration is deferred with the cached value preserved and no completed marker,
+so migration can resume after reopening. Old-state and note-only writes remain
+available. Backend APIs and the four-value v3 schema remain compatible; this
+switch does not sanitize existing cloud values, block direct API clients, or
+change already-loaded old frontend builds.
+
+After MaaYuan compatibility is released, set only
+`[FEATURE_KEYS.OPERATOR_DISCARDED]` to `true`, update the default-off registry
+assertions, verify the affected tests and rebuild/deploy the frontend. Focused
+checks for the current default-off release:
+
+```bash
+node --test test/features.test.js test/operatorAnnotations.test.js test/operatorGrowthApi.test.js
+npm run test:behavior -- behavior/operatorDiscardedGroup.spec.js behavior/operatorSharePage.spec.js
+```
+
 - A standalone feature route declares `meta.feature` and may declare
   `meta.featureFallback`; the router redirects disabled routes to the fallback
   or `/cart`.

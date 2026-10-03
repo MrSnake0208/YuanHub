@@ -7,6 +7,7 @@
 // 约定同 src/api/inventory.js：函数入参一律 camelCase，内部转 snake_case；
 // 导出接口与库存一致直接返回完整交换文档（无 ApiResult 包装），故用 raw。
 import { request } from './request.js'
+import { assertOperatorStateWriteEnabled } from '../utils/operatorAnnotations.js'
 
 const PATH = '/v1/operator'
 
@@ -74,6 +75,7 @@ export function viewOperatorShare(shareCode) {
 // 导入（POST，需登录）——body 为完整交换文档 v2（snake_case 原样透传）
 // 响应 { accepted, duplicates, superseded, warnings: [] }
 export function importOperator(doc) {
+  assertImportStatesEnabled(doc)
   return request(PATH + '/import', {
     method: 'POST',
     auth: true,
@@ -84,11 +86,23 @@ export function importOperator(doc) {
 // v3 导入预览（只校验和计算差异，不写 current / 库存）。
 // body 为 { document, account_mapping, confirm_review }。
 export function previewOperatorImport(body) {
+  assertImportStatesEnabled(body)
   return request(PATH + '/import/preview', {
     method: 'POST',
     auth: true,
     body: body
   })
+}
+
+function assertImportStatesEnabled(body) {
+  const document = body?.document || body
+  const records = Array.isArray(document?.records) ? document.records : []
+  for (const record of records) {
+    const entries = Array.isArray(record?.entries) ? record.entries : []
+    for (const entry of entries) {
+      assertOperatorStateWriteEnabled(entry?.growth_state)
+    }
+  }
 }
 
 export function listOperatorScanReviews(accountId) {
@@ -140,6 +154,7 @@ export function getOperatorAnnotations(accountId) {
 }
 
 export function putOperatorAnnotation({ accountId, operatorId, annotation } = {}) {
+  assertOperatorStateWriteEnabled(annotation?.growth_state)
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   const qs = params.toString()

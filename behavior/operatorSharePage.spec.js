@@ -92,6 +92,8 @@ it('公开分享显示已弃置及未知状态，保留全部成员', async () =
     future: { ...operator.growth, growth_state: 'future' },
   } })
   const wrapper = render(); await flushPromises()
+  const options = wrapper.getComponent({ name: 'OperatorFilterDossier' }).props('statusOptions')
+  expect(options.map(option => option.value)).toEqual(['all', 'growing', 'graduated', 'inactive'])
   expect(wrapper.findAll('article[role="listitem"]')).toHaveLength(2)
   expect(wrapper.text()).toContain('已弃置')
   expect(wrapper.text()).toContain('不支持的养成状态：future')

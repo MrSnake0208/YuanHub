@@ -844,7 +844,7 @@
                   <b>{{ ownedCurrentEntries.length }}</b
                   ><span>已招募</span>
                 </div>
-                <dl class="current-status-index">
+                <dl class="current-status-index" :style="{ '--current-status-columns': discardedEnabled ? 4 : 3 }">
                   <div class="status-growing">
                     <dt>养成中</dt>
                     <dd>{{ currentStatusCounts.growing }}</dd>
@@ -857,7 +857,7 @@
                     <dt>养老中</dt>
                     <dd>{{ currentStatusCounts.inactive }}</dd>
                   </div>
-                  <div class="status-discarded">
+                  <div v-if="discardedEnabled" class="status-discarded">
                     <dt>已弃置</dt>
                     <dd>{{ currentStatusCounts.discarded }}</dd>
                   </div>
@@ -1067,7 +1067,7 @@
                 >
                 <div class="batch-status-actions">
                   <button
-                    v-for="option in OPERATOR_STATUS_OPTIONS"
+                    v-for="option in editableStatusOptions"
                     :key="option.value"
                     type="button"
                     :class="['batch-status-action', option.value]"
@@ -1091,7 +1091,7 @@
             </OperatorFilterDossier>
 
             <div v-if="annotationUnsupportedStates.length" class="state err slim" role="alert">
-              存在不支持的养成状态（{{ annotationUnsupportedStates.join('、') }}），请刷新到最新版本；可在“全部（含已弃置）”查看。
+              存在不支持的养成状态（{{ annotationUnsupportedStates.join('、') }}），请刷新到最新版本；可在“{{ discardedEnabled ? '全部（含已弃置）' : '全部' }}”查看。
             </div>
             <div v-if="annotationNotice" class="state slim" role="status" aria-live="polite">
               {{ annotationNotice }}
@@ -1139,7 +1139,7 @@
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">
                 没有匹配{{ currentFilterSuffix }}的已招募密探
-                <button type="button" class="link" @click="resetCurrentFilters">清除筛选，返回在册</button>
+                <button type="button" class="link" @click="resetCurrentFilters">{{ discardedEnabled ? '清除筛选，返回在册' : '清除筛选' }}</button>
               </div>
               <div v-else class="agent-ledger-grid" role="list">
                 <article
@@ -1285,7 +1285,7 @@
                             :aria-label="e.name + '养成状态选项'"
                           >
                             <button
-                              v-for="option in OPERATOR_STATUS_OPTIONS"
+                              v-for="option in editableStatusOptions"
                               :key="option.value"
                               type="button"
                               role="option"
@@ -1293,7 +1293,7 @@
                               :disabled="annotationBusyIds.has(e.id)"
                               @click="setOperatorStatusAndClose(e, option.value, $event)"
                             >{{ option.label }}</button>
-                            <small class="ledger-status-help">已弃置：移出日常养成，练度保留，可随时恢复</small>
+                            <small v-if="discardedEnabled" class="ledger-status-help">已弃置：移出日常养成，练度保留，可随时恢复</small>
                           </div>
                         </details>
                       </div>
@@ -3107,6 +3107,7 @@ import { avatarUrl } from "../../api/request.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
 import {
   OPERATOR_STATUS_OPTIONS,
+  operatorEditableStatusOptions,
   operatorAnnotationStatus,
   operatorAnnotationApiState,
   operatorAnnotationStatusLabel,
@@ -3224,7 +3225,10 @@ const manifestFilter = ref("all");
 const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
-const workbenchStatusFilter = ref("registered");
+const discardedEnabled = isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED);
+const editableStatusOptions = operatorEditableStatusOptions();
+const defaultStatusFilter = discardedEnabled ? "registered" : "all";
+const workbenchStatusFilter = ref(defaultStatusFilter);
 const emptyGrowthFilters = () => ({
   levelMin: "", levelMax: "", levelEnabled: false,
   eliteMin: "", eliteMax: "", eliteEnabled: false,
@@ -3240,11 +3244,11 @@ const profOptions = AGENT_PROFS;
 const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
 });
-const workbenchStatusOptions = [
+const workbenchStatusOptions = discardedEnabled ? [
   { value: "registered", label: "在册" },
   ...OPERATOR_STATUS_OPTIONS.map(option => ({ ...option, separateGroup: option.value === "discarded" })),
   { value: "all", label: "全部（含已弃置）" },
-];
+] : [{ value: "all", label: "全部" }, ...editableStatusOptions];
 const loading = ref(false);
 const catalogLoading = ref(false);
 const error = ref("");
@@ -3492,7 +3496,7 @@ watch(
     annotationNotice.value = "";
     annotationNoticeTarget.value = "";
     batchStatusBusy.value = false;
-    workbenchStatusFilter.value = "registered";
+    workbenchStatusFilter.value = defaultStatusFilter;
     workbenchStatuses.value = readWorkbenchMap("statuses");
     workbenchRemarks.value = readWorkbenchMap("remarks");
     annotationRevisions.value = {};
@@ -4897,7 +4901,7 @@ const hasCurrentFilters = computed(function () {
     rarityFilter.value !== "all" ||
     profFilter.value !== "all" ||
     subProfFilter.value !== "all" ||
-    workbenchStatusFilter.value !== "registered" ||
+    workbenchStatusFilter.value !== defaultStatusFilter ||
     hasGrowthDrafts.value ||
     Boolean(upgradeReadyFilter.value) ||
     activeQuickFilterKeys.value.size > 0
@@ -4908,7 +4912,7 @@ function resetCurrentFilters() {
   rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
-  workbenchStatusFilter.value = "registered";
+  workbenchStatusFilter.value = defaultStatusFilter;
   growthFilters.value = emptyGrowthFilters();
   upgradeReadyFilter.value = "";
   activeQuickFilterKeys.value = new Set();
@@ -4925,6 +4929,7 @@ function toggleUpgradeReadyFilter(filter) {
 }
 
 function setWorkbenchStatusFilter(value) {
+  if (!workbenchStatusOptions.some(option => option.value === value)) return;
   workbenchStatusFilter.value = value;
   upgradeReadyFilter.value = "";
 }
@@ -5083,6 +5088,7 @@ async function migrateLocalAnnotations(targetAccount, remoteIds) {
       localRemarks[id] == null ? "" : String(localRemarks[id]).trim();
     return state !== "growing" || !!note;
   });
+  let deferred = false;
   for (const id of candidates) {
     if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return;
     const state = localStatuses[id] || "growing";
@@ -5090,6 +5096,13 @@ async function migrateLocalAnnotations(targetAccount, remoteIds) {
       localRemarks[id] == null || String(localRemarks[id]).trim() === ""
         ? null
         : String(localRemarks[id]);
+    if (!discardedEnabled && operatorAnnotationStatus(state) === "discarded") {
+      // Keep the cache for migration after the paired software supports this state.
+      deferred = true;
+      workbenchStatuses.value = { ...workbenchStatuses.value, [id]: state };
+      workbenchRemarks.value = { ...workbenchRemarks.value, [id]: note || "" };
+      continue;
+    }
     const item = await putOperatorAnnotation({
       accountId: targetAccount,
       operatorId: id,
@@ -5102,7 +5115,7 @@ async function migrateLocalAnnotations(targetAccount, remoteIds) {
     if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return;
     applyAnnotationItem(item);
   }
-  localStorage.setItem(annotationMigrationKey(targetAccount), "done");
+  if (!deferred) localStorage.setItem(annotationMigrationKey(targetAccount), "done");
 }
 
 async function loadOperatorAnnotations() {
@@ -6364,6 +6377,7 @@ function showQuickNotice(id, message, duration) {
 }
 
 async function setOperatorStatus(entry, value, { batch = false } = {}) {
+  if (!editableStatusOptions.some(option => option.value === value)) return false;
   if (!entry || !entry.id || !isOperatorOwned(entry) || annotationBusyIds.value.has(entry.id))
     return false;
   const targetAccount = accountId.value;
@@ -10470,7 +10484,7 @@ onBeforeUnmount(function () {
 }
 .current-status-index {
   display: grid;
-  grid-template-columns: repeat(4, minmax(52px, 1fr));
+  grid-template-columns: repeat(var(--current-status-columns, 4), minmax(52px, 1fr));
   gap: 9px;
   margin: 0;
 }
@@ -14307,7 +14321,7 @@ onBeforeUnmount(function () {
   }
   .current-status-index {
     flex: 1;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--current-status-columns, 4), minmax(0, 1fr));
     gap: 6px;
   }
   .current-status-index > div {
@@ -15419,7 +15433,7 @@ onBeforeUnmount(function () {
 }
 @media (max-width: 640px) {
   .current-workbench-index { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: 0; }
-  .current-status-index { display: grid; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .current-status-index { display: grid; width: 100%; grid-template-columns: repeat(var(--current-status-columns, 4), minmax(0, 1fr)); gap: 0; }
   .current-status-index > div { align-items: center; text-align: center; padding: 0 4px; }
   .current-status-index > div::before { left: 5px; }
   .current-index-total { min-width: 0; padding-right: 0; }
@@ -15438,7 +15452,7 @@ onBeforeUnmount(function () {
   .current-workbench-title { grid-column: 1; grid-row: 2; margin-top: 0; }
   .current-workbench-copy > p { grid-column: 1; margin-top: 2px; }
   .current-workbench-head .current-workbench-index { grid-column: 2; grid-row: 2 / span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); width: 100%; box-sizing: border-box; gap: 10px; padding: 10px 12px; align-self: start; }
-  .current-workbench-index .current-status-index { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .current-workbench-index .current-status-index { grid-template-columns: repeat(var(--current-status-columns, 4), minmax(0, 1fr)); gap: 10px; }
   .ledger-share-control .ledger-share-badge { min-height: 32px; padding: 4px 8px; }
 }
 
