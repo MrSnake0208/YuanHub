@@ -110,17 +110,22 @@ const currentTab = wrapper => wrapper.findAll('[role="tab"]').find(tab => tab.te
 const slot = (wrapper, name = '测试密探') => wrapper.findAll('.slot').find(card => card.get('.slot-name').text() === name)
 const ledger = (wrapper, name = '测试密探') => wrapper.findAll('.agent-ledger-card').find(card => card.text().includes(name))
 function expectStatus(wrapper, status, name = '测试密探') {
-  expect(slot(wrapper, name).get('.oddity-completion-badge').text()).toBe('蝶' + status)
-  expect(ledger(wrapper, name).get('.oddity-completion-badge').text()).toBe('漆园蝶' + status)
+  const id = name === '测试密探' ? 'op' : name
+  // Badges are hidden for this release; retain saved-state and account-isolation coverage.
+  expect(wrapper.vm.oddityCompletions[id]).toMatchObject({ compactLabel: '蝶' + status, label: '漆园蝶' + status })
+  expect(wrapper.findAll('.oddity-completion-badge')).toHaveLength(0)
 }
-const expectNoStatus = wrapper => expect(wrapper.findAll('.oddity-completion-badge')).toHaveLength(0)
+const expectNoStatus = wrapper => {
+  expect(wrapper.vm.oddityCompletions).toEqual({})
+  expect(wrapper.findAll('.oddity-completion-badge')).toHaveLength(0)
+}
 const expectNoWrites = () => {
   expect(api.patchOperatorCurrent).not.toHaveBeenCalled()
   expect(api.importOperator).not.toHaveBeenCalled()
   expect(starApi.putCurrentStarLoadout).not.toHaveBeenCalled()
 }
 
-it.each(['v1', 'v2', 'v3'])('%s 两处共享三态，稀有度、等级/修为/标注与观测过期互不混淆', async version => {
+it.each(['v1', 'v2', 'v3'])('%s 隐藏完成标签但保留三态计算，稀有度、等级/修为/标注与观测过期互不混淆', async version => {
   skin.version = version
   api.getOperatorCatalog.mockResolvedValue({ operators: [operator(), operator('未满', 4, [350, 1820, 11]), operator('缺项', 5, [500, 2600, 15]), operator('未拥有')] })
   const partial = entry([500, 2600, 15])
@@ -137,11 +142,10 @@ it.each(['v1', 'v2', 'v3'])('%s 两处共享三态，稀有度、等级/修为/�
   expectStatus(wrapper, '未满', '未满')
   expectStatus(wrapper, '待确认', '缺项')
   expect(ledger(wrapper).classes()).toContain(`agent-ledger-card--${version}`)
-  expect(ledger(wrapper, '缺项').get('.oddity-completion-reason').text()).toBe('第三项尚未记录')
-  expect(slot(wrapper, '缺项').get('.oddity-completion-reason').text()).toBe('第三项尚未记录')
+  expect(wrapper.vm.oddityCompletions['缺项'].reason).toBe('第三项尚未记录')
+  expect(wrapper.vm.oddityCompletions['未拥有']).toBeUndefined()
+  expect(wrapper.findAll('.oddity-completion-reason')).toHaveLength(0)
   expect(slot(wrapper, '未拥有').find('.oddity-completion-badge').exists()).toBe(false)
-  expect(ledger(wrapper).get('.oddity-completion-badge svg').attributes('aria-hidden')).toBe('true')
-  expect(ledger(wrapper).get('.oddity-completion-badge').attributes('aria-live')).toBeUndefined()
   expectNoWrites()
   expect(storage.mock.calls.some(([key, value]) => /combat-stats|oddity/.test(key) || /oddityRecordedValues|oddityCompletionSchema/.test(value))).toBe(false)
 })
