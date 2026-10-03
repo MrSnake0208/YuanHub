@@ -20,16 +20,16 @@
           <img src="/pwa/icon-192.png" alt="" width="52" height="52" />
           <div>
             <p class="promo-install-kicker">SAVE YUANHUB</p>
-            <p class="promo-install-title">{{ installed ? 'YuanHub 已从桌面打开' : '先把 YuanHub 保存到桌面' }}</p>
+            <p class="promo-install-title">{{ standalone ? 'YuanHub 已从桌面打开' : '先把 YuanHub 保存到桌面' }}</p>
             <p class="promo-install-copy">
-              {{ installed
+              {{ standalone
                 ? '当前已经以独立窗口运行，无需再次添加。'
                 : '现在保存好，之后可以直接从桌面进入；正式主站上线到同一域名后，这个入口仍会继续打开 YuanHub。' }}
             </p>
           </div>
         </div>
 
-        <div v-if="showQuickGuide && !installed" class="promo-install-guide" aria-live="polite">
+        <div v-if="showQuickGuide && !standalone" class="promo-install-guide" aria-live="polite">
           <template v-if="pwaInstallState.ios">
             <ol>
               <li><b>01</b><span>打开当前浏览器的“分享”菜单</span></li>
@@ -51,7 +51,7 @@
         </div>
 
         <div class="promo-install-actions">
-          <template v-if="!installed">
+          <template v-if="!standalone">
             <button
               v-if="pwaInstallState.installable && !pwaInstallState.ios"
               class="promo-install-primary"
@@ -84,7 +84,8 @@ import {
   dismissPwaInstallPrompt,
   pwaInstallState,
   requestPwaInstall,
-  shouldShowPwaInstallPrompt
+  shouldShowPwaInstallPrompt,
+  shouldShowPwaInstallRecovery
 } from './pwaInstall.js'
 
 const props = defineProps({
@@ -95,10 +96,12 @@ const emit = defineEmits(['update:open'])
 const autoReady = ref(false)
 const showQuickGuide = ref(false)
 const installing = ref(false)
+const recoveryOpen = ref(false)
 let revealTimer = null
 
-const installed = computed(() => pwaInstallState.installed || pwaInstallState.standalone)
-const visible = computed(() => props.open || (autoReady.value && shouldShowPwaInstallPrompt()))
+const standalone = computed(() => pwaInstallState.standalone)
+const visible = computed(() => props.open || (autoReady.value
+  && (shouldShowPwaInstallPrompt() || (recoveryOpen.value && shouldShowPwaInstallRecovery()))))
 
 watch(() => props.open, (open) => {
   if (open && pwaInstallState.ios) showQuickGuide.value = true
@@ -108,12 +111,14 @@ function closePrompt() {
   dismissPwaInstallPrompt()
   autoReady.value = false
   showQuickGuide.value = false
+  recoveryOpen.value = false
   emit('update:open', false)
 }
 
 function closeWithoutCooldown() {
   autoReady.value = false
   showQuickGuide.value = false
+  recoveryOpen.value = false
   emit('update:open', false)
 }
 
@@ -123,7 +128,10 @@ async function installNow() {
   try {
     const result = await requestPwaInstall()
     if (result.outcome === 'accepted') closeWithoutCooldown()
-    else if (result.outcome === 'unavailable' || result.outcome === 'failed') showQuickGuide.value = true
+    else if (result.outcome === 'unavailable' || result.outcome === 'failed') {
+      recoveryOpen.value = true
+      showQuickGuide.value = true
+    }
   } finally {
     installing.value = false
   }

@@ -86,7 +86,8 @@ import {
   dismissPwaInstallPrompt,
   pwaInstallState,
   requestPwaInstall,
-  shouldShowPwaInstallPrompt
+  shouldShowPwaInstallPrompt,
+  shouldShowPwaInstallRecovery
 } from '@/utils/pwaInstall.js'
 
 const route = useRoute()
@@ -94,10 +95,12 @@ const onboarding = useOnboardingStore()
 const ready = ref(false)
 const showQuickGuide = ref(false)
 const installing = ref(false)
+const recoveryOpen = ref(false)
 let revealTimer = null
 
 const visible = computed(function () {
-  return route.path !== '/install' && ready.value && !dialog._state.visible && !onboarding.active && shouldShowPwaInstallPrompt()
+  return route.path !== '/install' && ready.value && !dialog._state.visible && !onboarding.active
+    && (shouldShowPwaInstallPrompt() || (recoveryOpen.value && shouldShowPwaInstallRecovery()))
 })
 
 function closePrompt() {
@@ -111,7 +114,10 @@ async function installNow() {
   try {
     const result = await requestPwaInstall()
     if (result.outcome === 'accepted') ready.value = false
-    else if (result.outcome === 'unavailable' || result.outcome === 'failed') showQuickGuide.value = true
+    else if (result.outcome === 'unavailable' || result.outcome === 'failed') {
+      recoveryOpen.value = true
+      showQuickGuide.value = true
+    }
   } finally {
     installing.value = false
   }
