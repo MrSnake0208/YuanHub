@@ -249,6 +249,7 @@ function roleLabel(role) {
     SUPER_ADMIN: '超级管理员',
     PLATFORM_ADMIN: '平台管理员',
     CHANGELOG_EDITOR: '更新日志编辑员',
+    ACTIVITY_CALENDAR_EDITOR: '活动日历编辑员',
     CHANGELOG_REVIEWER: '更新日志审核员'
   }[role] || role
 }
@@ -257,6 +258,7 @@ function roleDescription(role) {
     SUPER_ADMIN: '继承全部平台能力，并管理角色、反馈授权与审计',
     PLATFORM_ADMIN: '维护公共密探图鉴、关卡目录与开发目标',
     CHANGELOG_EDITOR: '编写更新日志并提交审核',
+    ACTIVITY_CALENDAR_EDITOR: '仅维护手工活动日历；招募卡池由目录派生',
     CHANGELOG_REVIEWER: '审核、发布和撤回更新日志'
   }[role] || ''
 }

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   ADMIN_PERMISSIONS,
+  ADMIN_ROLES,
   canManageAnyFeedback,
   canManageFeedbackArea,
   hasAnyAdminCapability,
@@ -71,4 +72,20 @@ test('treats missing access as having no management capability', function () {
   assert.equal(hasPermission(undefined, ADMIN_PERMISSIONS.AUDIT_READ), false)
   assert.equal(canManageAnyFeedback(undefined), false)
   assert.equal(hasAnyAdminCapability(normalizeAdminAccess(null)), false)
+})
+
+test('calendar editor uses only the explicit calendar permission from the backend', function () {
+  assert.ok(ADMIN_ROLES.includes('ACTIVITY_CALENDAR_EDITOR'))
+  assert.equal(ADMIN_PERMISSIONS.ACTIVITY_CALENDAR_WRITE, 'activity_calendar:write')
+  const access = normalizeAdminAccess({
+    roles: ['ACTIVITY_CALENDAR_EDITOR'],
+    permissions: ['activity_calendar:write']
+  })
+  assert.equal(hasAnyAdminCapability(access), true)
+  for (const permission of Object.values(ADMIN_PERMISSIONS)) {
+    assert.equal(hasPermission(access, permission), permission === 'activity_calendar:write')
+  }
+  assert.equal(canManageAnyFeedback(access), false)
+  const roleOnly = normalizeAdminAccess({ roles: ['ACTIVITY_CALENDAR_EDITOR'] })
+  assert.equal(hasPermission(roleOnly, ADMIN_PERMISSIONS.ACTIVITY_CALENDAR_WRITE), false)
 })

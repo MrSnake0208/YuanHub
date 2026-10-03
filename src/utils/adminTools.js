@@ -1,4 +1,5 @@
-import { BookOpen, FilePenLine, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
+import { FEATURE_KEYS, isFeatureEnabled } from '../config/features.js'
+import { CalendarDays, BookOpen, FilePenLine, KeyRound, Link2, PackageOpen, ScanLine, ShieldCheck } from '@lucide/vue'
 import {
   ADMIN_PERMISSIONS,
   canManageAnyFeedback,
@@ -58,6 +59,11 @@ const ADMIN_TOOLS = Object.freeze([
     isVisible: function (access) {
       return hasPermission(access, ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE)
     }
+  },
+  {
+    key: 'activity-calendar', to: '/calendar/admin', label: '活动日历管理',
+    description: '维护公共活动日程、日期与启用状态', group: 'content', icon: CalendarDays,
+    isVisible: access => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && hasPermission(access, ADMIN_PERMISSIONS.ACTIVITY_CALENDAR_WRITE)
   },
   {
     key: 'recruitment-catalog', to: '/recruitment/admin', label: '招募卡池管理',

@@ -8,6 +8,7 @@ import {
 // 统一的 fetch 请求封装
 // - 统一 baseURL（VITE_API_BASE，未配置时使用当前站点）
 // - 自动 JSON 序列化 / 反序列化
+// - expectedUserId 可选：身份变化时阻止请求及 401 重放（日历管理使用）
 // - auth=true 时自动附带 'Authorization: Bearer <accessToken>' 头
 // - 解析后端统一响应 { status_code, message, data }
 //   - statusCode===200 → 返回 data
@@ -43,10 +44,18 @@ export function avatarUrl(path) {
 
 export async function request(
   path,
-  { method = "GET", body, auth = false, raw = false, multipart = false, responseType = "json", headers: extraHeaders, timeoutMs } = {},
+  { method = "GET", body, auth = false, expectedUserId, raw = false, multipart = false, responseType = "json", headers: extraHeaders, timeoutMs } = {},
 ) {
   let refreshed = false;
   const effectiveTimeoutMs = resolveRequestTimeoutMs({ timeoutMs, multipart, responseType, raw });
+
+  // Opt-in identity binding: a late 401 must not replay one user's command as another user.
+  function assertIdentity(store) {
+    if (expectedUserId === undefined) return
+    if (!store?.accessToken || !expectedUserId || String(store.userInfo?.id || '') !== String(expectedUserId)) {
+      throw requestError('登录身份已变化，请刷新后重试。', 401, { error: { code: 'request_identity_changed' } })
+    }
+  }
 
   function requestError(message, status, payload) {
     const detail = payload && payload.error
@@ -76,6 +85,7 @@ export async function request(
     if (auth) {
       const mod = await import("../store/auth.js");
       store = mod.auth;
+      assertIdentity(store);
       if (store && store.accessToken) {
         headers["Authorization"] = "Bearer " + store.accessToken;
         usedToken = store.accessToken;
@@ -89,6 +99,7 @@ export async function request(
       beta.setIdentity(currentAuth.userInfo?.id || '')
       await beta.requireAccess()
     }
+    if (auth) assertIdentity(store)
     const opts = { method, headers };
     if (multipart) {
       // body 是调用方构造的 FormData，原样透传
@@ -162,6 +173,7 @@ export async function request(
     async function refreshAccessAfterForbidden() {
       if (!auth || path === '/v1/admin/access/me') return
       const mod = await import('../store/auth.js')
+      assertIdentity(mod.auth)
       if (mod.auth && mod.auth.refreshAdminAccess) {
         await mod.auth.refreshAdminAccess({ suppressErrors: true })
       }
@@ -176,12 +188,14 @@ export async function request(
     async function recoverFromUnauthorized() {
       const mod = await import("../store/auth.js");
       store = mod.auth;
+      assertIdentity(store);
       // token 已被其他并发请求换新：直接重放，不再消耗 refresh token。
       if (store && store.accessToken && usedToken && store.accessToken !== usedToken) {
         return 'replay';
       }
       if (store && store.refreshToken) {
         const ok = await store.refresh();
+        assertIdentity(store);
         if (ok) return 'replay';
         if (!store.refreshRejected) return 'transient';
       }

@@ -6,7 +6,12 @@ import { recruitmentAccess } from '../src/store/recruitmentAccess.js'
 import { notificationUnreadState } from '../src/store/notificationUnread.js'
 import { subscribeFeedbackUnread } from '../src/store/feedbackUnread.js'
 import { logout } from '../src/store/auth.js'
+import { isFeatureEnabled, FEATURE_KEYS } from '../src/config/features.js'
 import { dialog } from '../src/utils/dialog.js'
+vi.mock('../src/config/features.js', async importOriginal => {
+  const original = await importOriginal()
+  return { ...original, isFeatureEnabled: vi.fn(original.isFeatureEnabled) }
+})
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ accessToken: '', userInfo: null }), logout: vi.fn() }
@@ -26,6 +31,7 @@ vi.mock('../src/store/feedbackUnread.js', () => ({ feedbackUnreadState: { count:
 let unsubscribe
 beforeEach(() => {
   vi.useFakeTimers()
+  isFeatureEnabled.mockImplementation(key => [FEATURE_KEYS.ACTIVITY_CALENDAR, FEATURE_KEYS.RECRUITMENT_ARCHIVE].includes(key))
   auth.accessToken = ''; auth.userInfo = null
   recruitmentAccess.canAccess = false; recruitmentAccess.setIdentity.mockClear(); recruitmentAccess.refresh.mockClear()
   notificationUnreadState.count = 0
@@ -98,4 +104,22 @@ it('手机登出先确认，取消不清会话，确认后显示登录结果入�
   await flushPromises()
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmText: '退出登录' }))
   expect(logout).toHaveBeenCalledWith('/login?loggedOut=1')
+})
+
+
+it('活动日历公开且桌面/手机入口紧跟今日一览，原导航编号保留', async () => {
+  const wrapper = render()
+  const desktopLinks = wrapper.findAll('.island .nav a')
+  expect(desktopLinks[1].text()).toBe('活动日历')
+  expect(desktopLinks[2].text()).toBe('01密探名册')
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  const links = wrapper.findAll('#mobile-main-nav .mobile-drawer-section')[0].findAll('a')
+  expect(links[1].text()).toBe('活动日历')
+  expect(links[1].find('svg').exists()).toBe(true)
+})
+it('关闭活动flag时两处导航都没有入口', async () => {
+  isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.ACTIVITY_CALENDAR)
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(routes(wrapper)).not.toContain('/calendar')
 })

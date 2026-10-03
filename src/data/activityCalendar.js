@@ -1,0 +1,125 @@
+export const CALENDAR_GAMES = Object.freeze(['代号鸢', '如鸢'])
+export const CALENDAR_CATEGORIES = Object.freeze({ ACTIVITY: '活动', RECRUITMENT: '招募', LOGIN: '登录 / 签到', SHOP: '商店 / 兑换', MAINTENANCE: '维护', OTHER: '其它' })
+export const MANUAL_CATEGORIES = Object.freeze(Object.fromEntries(Object.entries(CALENDAR_CATEGORIES).filter(([key]) => key !== 'RECRUITMENT')))
+export const SERVER_TIME_ZONE = 'Asia/Shanghai'
+
+export function serverToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: SERVER_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+  const part = type => parts.find(item => item.type === type).value
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+export function isCalendarDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000')) return false
+  const date = new Date(value + 'T00:00:00Z')
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
+export function addCalendarDays(date, days) {
+  const value = new Date(date + 'T00:00:00Z')
+  value.setUTCDate(value.getUTCDate() + days)
+  return value.toISOString().slice(0, 10)
+}
+
+export function millisecondsUntilServerMidnight(now = new Date()) {
+  // Asia/Shanghai uses UTC+08:00; calendar dates never use the browser's local zone.
+  return Date.parse(addCalendarDays(serverToday(now), 1) + 'T00:00:00+08:00') - now.getTime()
+}
+
+export function safeCalendarUrl(value) {
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.href : ''
+  } catch { return '' }
+}
+
+export function normalizeCalendarItem(value) {
+  if (!value || typeof value.id !== 'string' || !value.id || !CALENDAR_GAMES.includes(value.game) || !Object.hasOwn(CALENDAR_CATEGORIES, value.category) || typeof value.title !== 'string' || !value.title.trim()) return null
+  if (!isCalendarDate(value.start_date) || !isCalendarDate(value.end_date) || value.end_date < value.start_date) return null
+  const paired = /^([01]\d|2[0-3]):[0-5]\d$/.test(value.start_time) && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.end_time)
+  return {
+    id: value.id, source_type: value.source_type === 'RECRUITMENT_POOL' ? 'RECRUITMENT_POOL' : 'MANUAL', source_ref: value.source_ref ?? null,
+    game: value.game, title: value.title.trim(), category: value.category,
+    start_date: value.start_date, end_date: value.end_date, start_time: paired ? value.start_time : null, end_time: paired ? value.end_time : null,
+    time_zone: value.time_zone || SERVER_TIME_ZONE, description: typeof value.description === 'string' ? value.description : '', source_url: safeCalendarUrl(value.source_url),
+  }
+}
+
+export function normalizeCalendarItems(items) { return (Array.isArray(items) ? items : []).map(normalizeCalendarItem).filter(Boolean) }
+
+export function calendarStatuses(item, today) {
+  if (item.end_date < today) return ['已结束']
+  if (item.start_date > today) return ['即将开始']
+  const labels = []
+  if (item.end_date === today) labels.push('今日结束')
+  if (item.start_date === today) labels.push('今日开始')
+  return labels.length ? labels : ['进行中']
+}
+
+export function groupCalendarItems(items, today) {
+  const weekEnd = addCalendarDays(today, 7)
+  const sections = [{ key: 'today', title: '今天', groups: [] }, { key: 'week', title: '接下来 7 天', groups: [] }, { key: 'later', title: '更晚', groups: [] }]
+  const sorted = items.filter(item => item.end_date >= today).slice().sort((a, b) => {
+    const rank = item => item.end_date === today ? 0 : item.start_date === today ? 1 : item.start_date < today ? 2 : 3
+    return rank(a) - rank(b) || a.start_date.localeCompare(b.start_date) || (a.start_time || '').localeCompare(b.start_time || '') || a.id.localeCompare(b.id)
+  })
+  for (const item of sorted) {
+    const date = item.start_date <= today ? today : item.start_date
+    const section = sections[date === today ? 0 : date <= weekEnd ? 1 : 2]
+    let group = section.groups.find(group => group.date === date)
+    if (!group) { group = { date, items: [] }; section.groups.push(group) }
+    group.items.push(item)
+  }
+  return sections
+}
+
+export function calendarFilters(query = {}) {
+  const first = value => Array.isArray(value) ? value[0] : value
+  const game = first(query.game), category = first(query.category)
+  return { game: CALENDAR_GAMES.includes(game) ? game : '', category: Object.hasOwn(CALENDAR_CATEGORIES, category) ? category : '' }
+}
+
+export function calendarFilterQuery(query, patch) {
+  const filters = calendarFilters({ ...calendarFilters(query), ...patch })
+  const result = { ...query }
+  for (const key of ['game', 'category']) {
+    if (filters[key]) result[key] = filters[key]
+    else delete result[key]
+  }
+  return result
+}
+
+export function calendarRangeLabel(item) {
+  const start = item.start_date + (item.start_time ? ' ' + item.start_time : '')
+  const end = item.end_date + (item.end_time ? ' ' + item.end_time : '')
+  return `${start} — ${end}`
+}
+
+export function calendarForm(entry = null) {
+  const item = entry?.item || {}
+  return { id: item.id || '', version: entry?.version ?? null, game: item.game || CALENDAR_GAMES[0], title: item.title || '', category: item.category || 'ACTIVITY', start_date: item.start_date || '', end_date: item.end_date || '', precise: !!(item.start_time || item.end_time), start_time: item.start_time || '', end_time: item.end_time || '', time_zone: item.time_zone || SERVER_TIME_ZONE, description: item.description || '', source_url: item.source_url || '', source_note: entry?.source_note || '', enabled: entry?.enabled !== false }
+}
+
+export function validateCalendarForm(form) {
+  const errors = {}
+  if (!CALENDAR_GAMES.includes(form.game)) errors.game = '请选择游戏。'
+  if (!form.title.trim() || form.title.trim().length > 120) errors.title = '请填写 1–120 字的标题。'
+  if (!Object.hasOwn(MANUAL_CATEGORIES, form.category)) errors.category = '请选择手工活动类型；招募在卡池管理维护。'
+  for (const key of ['start_date', 'end_date']) if (!isCalendarDate(form[key])) errors[key] = '请填写有效日期。'
+  if (!errors.start_date && !errors.end_date && form.end_date < form.start_date) errors.end_date = '结束日期不能早于开始日期。'
+  if (form.precise) {
+    for (const key of ['start_time', 'end_time']) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form[key])) errors[key] = '请成对填写开始和结束时间。'
+    if (!errors.start_time && !errors.end_time && form.start_date === form.end_date && form.end_time < form.start_time) errors.end_time = '同日结束时间不能早于开始时间。'
+  }
+  for (const key of ['description', 'source_note']) if (form[key].length > 1000) errors[key] = '最多填写 1000 字。'
+  const sourceUrl = safeCalendarUrl(form.source_url)
+  if (form.source_url && (form.source_url.length > 2048 || !sourceUrl || sourceUrl.length > 2048)) errors.source_url = '请填写完整的 http/https 来源链接，最多 2048 字。'
+  if (form.id && (!Number.isInteger(form.version) || form.version < 0)) errors.version = '版本信息缺失，请返回列表刷新后重试。'
+  return errors
+}
+
+export function calendarPayload(form) {
+  const body = { game: form.game, title: form.title.trim(), category: form.category, start_date: form.start_date, end_date: form.end_date, start_time: form.precise ? form.start_time : null, end_time: form.precise ? form.end_time : null, time_zone: form.time_zone, description: form.description.trim() || null, source_url: safeCalendarUrl(form.source_url) || null, source_note: form.source_note.trim() || null, enabled: form.enabled }
+  if (form.id) body.expected_version = form.version
+  return body
+}
