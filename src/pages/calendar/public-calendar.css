@@ -4,6 +4,11 @@
 .calendar-public .calendar-header-copy { min-width: 0; }
 .calendar-public .calendar-header h1 { letter-spacing: .06em; margin: 8px 0; }
 .calendar-public .calendar-filters { background: transparent; border: 0; border-radius: 0; padding: 0; gap: 12px; }
+.calendar-public .calendar-filter-inline { display: none; }
+.calendar-public button.calendar-filter-mobile-trigger { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; text-align: left; background: var(--cream); font-size: 14px; }
+.calendar-public .calendar-filter-mobile-trigger > :is(svg, span:not(.calendar-filter-summary)) { flex: none; }
+.calendar-public .calendar-filter-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.calendar-public .calendar-filter-count { display: grid; place-items: center; min-width: 22px; height: 22px; border-radius: 999px; background: var(--yellow); font-family: var(--font-d); }
 .calendar-public .calendar-chips { gap: 8px; }
 .calendar-public .calendar-chips button { font-size: 14px; color: var(--tea); background: transparent; transition: background-color .15s ease, border-color .15s ease; }
 .calendar-public .calendar-chips button[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 25%, transparent); border-color: color-mix(in srgb, var(--tea) 55%, var(--line)); text-decoration: underline; text-underline-offset: 4px; }
@@ -126,6 +131,8 @@
   .calendar-public .calendar-month > .calendar-window-heading, .calendar-public .calendar-month > .calendar-day-detail { margin-inline: 12px; }
 }
 @media (min-width: 768px) {
+  .calendar-public .calendar-filter-inline { display: block; }
+  .calendar-public button.calendar-filter-mobile-trigger { display: none; }
   .calendar-public .calendar-filters fieldset > legend { float: left; width: 40px; margin: 0 12px 0 0; padding-top: 10px; font-size: 14px; }
   .calendar-public .calendar-view-tools { justify-content: flex-end; }
   .calendar-public .calendar-view-switcher { flex: 0 1 auto; min-width: 260px; }
