@@ -782,12 +782,14 @@
                     </button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
+                  <!-- 暂时隐藏漆园蝶完成状态
                   <div v-if="oddityCompletions[e.id]" class="slot-oddity-completion">
                     <span class="oddity-completion-badge" :class="'is-' + oddityCompletions[e.id].status">
                       <ButterflyIcon aria-hidden="true" />{{ oddityCompletions[e.id].compactLabel }}
                     </span>
                     <small v-if="oddityCompletions[e.id].reason" class="oddity-completion-reason">{{ oddityCompletions[e.id].reason }}</small>
                   </div>
+                  -->
                 </li>
               </ul>
             </div>
@@ -1339,12 +1341,14 @@
                     </div>
                   </header>
 
+                  <!-- 暂时隐藏漆园蝶完成状态
                   <div v-if="oddityCompletions[e.id]" class="ledger-oddity-completion">
                     <span class="oddity-completion-badge" :class="'is-' + oddityCompletions[e.id].status">
                       <ButterflyIcon aria-hidden="true" />{{ oddityCompletions[e.id].label }}
                     </span>
                     <small v-if="oddityCompletions[e.id].reason" class="oddity-completion-reason">{{ oddityCompletions[e.id].reason }}</small>
                   </div>
+                  -->
 
                   <ShareCardStats
                     :enabled="ledgerCardIsV3 && compactStats"
