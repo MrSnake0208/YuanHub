@@ -111,6 +111,34 @@ export function normalizeOperatorOdditySchema(value) {
   return result
 }
 
+// 完成状态只接受明确记录的稳定键与当前公共上限，不使用归一化补零或旧 max。
+export function operatorOddityCompletion(oddities, schema) {
+  const validNumber = function (value) {
+    return (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) &&
+      Number.isFinite(Number(value)) && Number(value) >= 0
+  }
+  let full = true
+  for (const key of OPERATOR_ODDITY_KEYS) {
+    const label = key === 'special' ? '第三项' : (key === 'attack' ? '攻击奇闻' : '生命奇闻')
+    const entry = oddities && oddities[key]
+    if (!entry || !Object.prototype.hasOwnProperty.call(entry, 'current')) {
+      return { status: 'unknown', reason: label + '尚未记录' }
+    }
+    if (!validNumber(entry.current)) {
+      return { status: 'unknown', reason: label + '当前值无效' }
+    }
+    const max = schema && schema[key] && schema[key].max
+    if (!validNumber(max)) {
+      return { status: 'unknown', reason: label + '图鉴上限缺失或无效' }
+    }
+    if (Number(entry.current) > Number(max)) {
+      return { status: 'unknown', reason: label + '当前值超过图鉴上限' }
+    }
+    if (Number(entry.current) < Number(max)) full = false
+  }
+  return { status: full ? 'full' : 'incomplete', reason: '' }
+}
+
 export function normalizeOperatorOddities(value, legacyCurios, odditySchema) {
   const parsed = {}
   const assign = function (rawName, rawValue) {
