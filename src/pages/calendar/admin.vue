@@ -10,7 +10,7 @@
       <div class="wrap calendar-content">
         <p v-if="!permitted" class="calendar-panel" role="alert">需要活动日历维护权限。</p>
         <template v-else>
-          <nav class="calendar-actions" aria-label="活动管理工作区"><button type="button" :aria-pressed="workspace === 'directory'" @click="switchWorkspace('directory')">活动目录</button><button type="button" :aria-pressed="workspace === 'suggestions'" @click="switchWorkspace('suggestions')">用户建议</button></nav>
+          <nav class="calendar-actions calendar-workspace-nav" aria-label="活动管理工作区"><button type="button" :aria-pressed="workspace === 'directory'" @click="switchWorkspace('directory')">活动目录</button><button type="button" :aria-pressed="workspace === 'suggestions'" @click="switchWorkspace('suggestions')">用户建议</button></nav>
           <CalendarSuggestionsReview v-if="workspace === 'suggestions'" ref="suggestionsReview" />
           <template v-else>
           <div v-if="error" ref="errorSummary" class="calendar-panel calendar-error" role="alert" tabindex="-1">

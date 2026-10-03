@@ -1,6 +1,11 @@
 <template>
-  <div class="calendar-page"><IslandSidebar /><main id="main-content">
-    <header class="calendar-header wrap"><router-link class="calendar-source-link" to="/calendar">返回活动日历</router-link><h1>建议补充活动</h1><p>发现漏掉的游戏活动？提交资料，审核通过后会加入日历。</p><router-link class="calendar-source-link" to="/calendar/suggestions">我的建议</router-link></header>
+  <div class="calendar-page calendar-community"><IslandSidebar /><main id="main-content">
+    <header class="calendar-header wrap">
+      <router-link class="calendar-source-link" to="/calendar">返回活动日历</router-link>
+      <h1>建议补充活动</h1>
+      <p>发现漏掉的游戏活动？提交资料，审核通过后会加入日历。</p>
+      <nav class="calendar-submission-nav" aria-label="活动建议"><router-link to="/calendar/suggestions">我的建议</router-link></nav>
+    </header>
     <div class="wrap calendar-content">
       <p v-if="!permitted" class="calendar-panel" role="alert">请登录后提交活动资料。</p>
       <section v-else-if="result" ref="successRegion" class="calendar-panel calendar-section" tabindex="-1" aria-labelledby="suggestion-success"><h2 id="suggestion-success">{{ SUGGESTION_STATUSES[result.status] }}：资料已提交</h2><p>建议编号：{{ result.id }}。提交后不能修改或撤回。</p><router-link class="calendar-source-link" :to="{ path: '/calendar/suggestions', query: { id: result.id } }">查看我的建议与审核结果</router-link><button type="button" @click="startAnother">再补充一条活动</button></section>
