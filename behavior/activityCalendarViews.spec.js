@@ -135,6 +135,9 @@ it('快速视图切换旧成功/失败响应不覆盖新视图，卸载响应不
   expect(wrapper.find('[role=alert]').exists()).toBe(false)
   listActivityCalendar.mockReturnValue(last.promise)
   await button(wrapper, '日程').trigger('click'); await flushPromises()
+  // jsdom dispatches storage events via zero-delay timers after view preference writes.
+  await vi.advanceTimersByTimeAsync(0)
+  expect(vi.getTimerCount()).toBe(1)
   wrapper.unmount()
   last.resolve({ items: [event()] }); await flushPromises()
   expect(vi.getTimerCount()).toBe(0)
