@@ -63,6 +63,66 @@
 .calendar-page .calendar-overlap-list { padding-left: 20px; display: grid; gap: 12px; overflow-wrap: anywhere; }
 .calendar-page .calendar-actions [aria-pressed=true] { background: var(--yellow); border-color: var(--tea); }
 .calendar-page .calendar-fields a, .calendar-page .calendar-hint a { display: inline-flex; align-items: center; min-height: 44px; }
-@media (min-width: 1024px) {
+@media (min-width: 1440px) {
   .calendar-page .calendar-review-columns { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+}
+
+/* 社区补充：沿用日历色彩，单独约束表单、队列及审核面板。 */
+.calendar-page .calendar-submission-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.calendar-page .calendar-submission-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); font-size: 14px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.calendar-page .calendar-submission-nav a:hover { border-color: var(--tea); background: var(--cream); }
+.calendar-page .calendar-submission-nav .calendar-primary-link { background: var(--tea); border-color: var(--tea); color: var(--cream); }
+.calendar-page .calendar-submission-nav .calendar-primary-link:hover { background: var(--tea-deep); }
+.calendar-page .calendar-workspace-nav { width: fit-content; max-width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
+.calendar-page .calendar-workspace-nav button { flex: 1; border-color: transparent; background: transparent; }
+.calendar-page .calendar-workspace-nav button[aria-pressed=true] { background: var(--surface); border-color: var(--tea); }
+.calendar-community > main > .wrap { max-width: 1080px; }
+.calendar-community .calendar-header { display: grid; gap: 12px; }
+.calendar-community .calendar-header h1, .calendar-community .calendar-header p { margin: 0; }
+.calendar-community .calendar-header > .calendar-source-link { justify-self: start; }
+.calendar-community .calendar-header p { color: var(--ink-60); }
+.calendar-community .calendar-panel { display: grid; gap: 16px; }
+.calendar-community .calendar-panel :is(h2, h3, h4, p) { margin: 0; }
+.calendar-community h2 { font-size: 24px; }
+.calendar-community h3 { font-size: 20px; }
+.calendar-community h4 { font-size: 18px; }
+.calendar-community .calendar-form { gap: 24px; container-type: inline-size; }
+.calendar-community .calendar-form fieldset { display: grid; gap: 16px; margin: 0; padding: 0; container-type: inline-size; }
+.calendar-community .calendar-form legend { padding: 0 0 12px; margin: 0; font-family: var(--font-s); font-size: 20px; }
+.calendar-community .calendar-fields { grid-template-columns: minmax(0, 1fr); }
+.calendar-community .calendar-fields label { font-size: 14px; line-height: 1.6; }
+.calendar-community .calendar-fields :is(input, select, textarea) { font-size: 16px; font-weight: 400; background: var(--cream); }
+.calendar-community textarea { resize: vertical; line-height: 1.7; }
+.calendar-community .calendar-checkbox { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); font-size: 14px; line-height: 1.6; }
+.calendar-community .calendar-checkbox input { flex: 0 0 20px; }
+.calendar-community .calendar-hint a { color: var(--brand-blue); text-underline-offset: 3px; }
+.calendar-community .calendar-form > .calendar-actions { align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+.calendar-community .calendar-panel > button, .calendar-community .calendar-panel > .calendar-source-link, .calendar-community .calendar-section > button { justify-self: start; }
+.calendar-community .calendar-suggestion-duplicates { gap: 12px; border-radius: 14px; background: var(--cream); }
+.calendar-community .calendar-suggestion-duplicates h3 { font-size: 18px; }
+.calendar-community .calendar-suggestion-duplicates [role=alert] { color: var(--rouge); }
+.calendar-community .calendar-overlap-list { margin: 0; }
+.calendar-community .calendar-overlap-list li + li { padding-top: 12px; border-top: 1px solid var(--line); }
+.calendar-community .calendar-private-note { display: grid; gap: 10px; padding: 16px; border-left: 3px solid var(--line); border-radius: 0 12px 12px 0; background: var(--cream); }
+.calendar-community .calendar-suggestion-result { border-top: 3px solid var(--tea); }
+.calendar-community .calendar-suggestion-result[data-status=PENDING] { border-top-color: var(--accent-strong); }
+.calendar-community .calendar-suggestion-result[data-status=REJECTED] { border-top-color: var(--ink-35); }
+.calendar-community .calendar-state[data-status=PENDING] { background: var(--yellow); border-color: var(--yellow-deep); }
+.calendar-community .calendar-state[data-status=ACCEPTED] { background: var(--tea); border-color: var(--tea); color: var(--cream); }
+.calendar-community .calendar-state[data-status=REJECTED] { background: var(--cream); color: var(--ink-60); }
+.calendar-community .calendar-suggestion-card { gap: 10px; }
+.calendar-community .calendar-list .calendar-suggestion-card > h3 { margin: 2px 0; }
+.calendar-community .calendar-suggestion-card > button { margin-top: 6px; }
+.calendar-community .calendar-suggestion-pagination { align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.calendar-community .calendar-pagination { color: var(--ink-60); font-size: 14px; }
+.calendar-community .calendar-error { padding: 16px; border: 1px solid var(--rouge); border-radius: 14px; background: var(--cream); }
+.calendar-community .calendar-error ul { margin: 8px 0 0; }
+.calendar-community .calendar-workspace-head { margin-top: 0; }
+@container (min-width: 520px) {
+  .calendar-community .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-community .calendar-fields .calendar-wide { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) {
+  .calendar-community .calendar-suggestion-filters { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 18px; }
+  .calendar-community .calendar-suggestion-filters > button { justify-self: end; }
 }

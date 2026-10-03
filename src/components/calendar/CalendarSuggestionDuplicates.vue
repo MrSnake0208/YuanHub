@@ -1,5 +1,5 @@
 <template>
-  <section class="calendar-panel calendar-section" aria-label="检查已有活动">
+  <section class="calendar-panel calendar-section calendar-suggestion-duplicates" aria-label="检查已有活动">
     <h3>检查已有活动</h3><p class="calendar-hint">按游戏和日期重叠查找，可能包含同名活动。提示不阻止提交，请核对是否重复。</p>
     <button type="button" :disabled="disabled || loading" @click="check">{{ loading ? '检查中…' : '检查已有活动' }}</button>
     <p v-if="error" role="alert">{{ error }}</p><p v-else-if="checked" role="status">{{ entries.length ? `找到 ${entries.length} 条日期重叠的活动，请核对。` : '没有找到日期重叠的活动。' }}</p>

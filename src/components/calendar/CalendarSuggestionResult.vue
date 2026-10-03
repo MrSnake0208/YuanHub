@@ -1,5 +1,5 @@
 <template>
-  <section class="calendar-panel calendar-section" aria-label="审核结果">
+  <section class="calendar-panel calendar-section calendar-suggestion-result" :data-status="suggestion.status" aria-label="审核结果">
     <h3>审核结果：{{ SUGGESTION_STATUSES[suggestion.status] }}</h3>
     <p v-if="suggestion.status === 'PENDING'">资料已提交，等待审核。提交后不能修改或撤回。</p>
     <template v-else>

@@ -1,6 +1,11 @@
 <template>
-  <div class="calendar-page"><IslandSidebar /><main id="main-content">
-    <header class="calendar-header wrap"><router-link class="calendar-source-link" to="/calendar">返回活动日历</router-link><h1>我的活动建议</h1><p>查看你提交的活动资料与审核结果。</p><router-link class="calendar-source-link" to="/calendar/suggestions/new">建议补充活动</router-link></header>
+  <div class="calendar-page calendar-community"><IslandSidebar /><main id="main-content">
+    <header class="calendar-header wrap">
+      <router-link class="calendar-source-link" to="/calendar">返回活动日历</router-link>
+      <h1>我的活动建议</h1>
+      <p>查看你提交的活动资料与审核结果。</p>
+      <nav class="calendar-submission-nav" aria-label="活动建议"><router-link class="calendar-primary-link" to="/calendar/suggestions/new">建议补充活动</router-link></nav>
+    </header>
     <div class="wrap calendar-content">
       <p v-if="!permitted" class="calendar-panel" role="alert">请登录后查看自己的建议。</p>
       <template v-else>
@@ -8,10 +13,10 @@
         <section v-if="selectedId" ref="detailRegion" class="calendar-section" tabindex="-1" aria-labelledby="suggestion-detail-title"><button type="button" @click="closeDetail">返回我的建议列表</button><h2 id="suggestion-detail-title">建议详情</h2><p v-if="detailLoading" role="status">正在读取建议详情…</p><template v-if="detail"><CalendarSuggestionOriginal :suggestion="detail" /><CalendarSuggestionResult :suggestion="detail" /></template></section>
         <section v-else ref="listRegion" class="calendar-list" tabindex="-1" aria-labelledby="my-suggestions-title">
           <h2 id="my-suggestions-title">我的建议列表</h2>
-          <form class="calendar-panel calendar-form" @submit.prevent="page = 1; load()"><div class="calendar-fields"><label>状态<select v-model="status"><option value="">全部状态</option><option v-for="(label, key) in SUGGESTION_STATUSES" :key="key" :value="key">{{ label }}</option></select></label></div><button type="submit" :disabled="loading">{{ loading ? '读取中…' : '筛选 / 刷新' }}</button></form>
+          <form class="calendar-panel calendar-form calendar-suggestion-filters" @submit.prevent="page = 1; load()"><div class="calendar-fields"><label>状态<select v-model="status"><option value="">全部状态</option><option v-for="(label, key) in SUGGESTION_STATUSES" :key="key" :value="key">{{ label }}</option></select></label></div><button type="submit" :disabled="loading">{{ loading ? '读取中…' : '筛选 / 刷新' }}</button></form>
           <p v-if="loading" role="status">正在读取我的建议…</p><p v-else-if="!entries.length && !error" class="calendar-panel">还没有符合条件的建议。发现漏掉的活动时可以提交资料。</p>
-          <article v-for="entry in entries" :key="entry.id" class="calendar-panel"><div class="calendar-badges"><span class="calendar-game">{{ entry.original.game }}</span><span class="calendar-state">{{ SUGGESTION_STATUSES[entry.status] }}</span></div><h3>{{ entry.original.title }}</h3><p class="calendar-range">{{ calendarRangeLabel(entry.original) }}</p><p class="calendar-hint">提交时间：{{ suggestionTimestamp(entry.created_at) }}</p><button type="button" @click="openDetail(entry.id)">查看资料与审核结果</button></article>
-          <nav class="calendar-actions" aria-label="建议分页"><button type="button" :disabled="loading || page <= 1" @click="changePage(-1)">上一页</button><span class="calendar-pagination" role="status">第 {{ page }} 页 · 共 {{ total }} 条</span><button type="button" :disabled="loading || page * pageSize >= total" @click="changePage(1)">下一页</button></nav>
+          <article v-for="entry in entries" :key="entry.id" class="calendar-panel calendar-suggestion-card"><div class="calendar-badges"><span class="calendar-game">{{ entry.original.game }}</span><span class="calendar-state" :data-status="entry.status">{{ SUGGESTION_STATUSES[entry.status] }}</span></div><h3>{{ entry.original.title }}</h3><p class="calendar-range">{{ calendarRangeLabel(entry.original) }}</p><p class="calendar-hint">提交时间：{{ suggestionTimestamp(entry.created_at) }}</p><button type="button" @click="openDetail(entry.id)">查看资料与审核结果</button></article>
+          <nav class="calendar-actions calendar-suggestion-pagination" aria-label="建议分页"><button type="button" :disabled="loading || page <= 1" @click="changePage(-1)">上一页</button><span class="calendar-pagination" role="status">第 {{ page }} 页 · 共 {{ total }} 条</span><button type="button" :disabled="loading || page * pageSize >= total" @click="changePage(1)">下一页</button></nav>
         </section>
       </template>
     </div><SiteFooter />
