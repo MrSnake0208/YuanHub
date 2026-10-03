@@ -4,12 +4,13 @@ import { createActivityCalendar, listActivityCalendar, listAdminActivityCalendar
 vi.mock('../src/api/request.js', () => ({ request: vi.fn().mockResolvedValue({ items: [] }) }))
 vi.mock('../src/store/auth.js', () => ({ auth: { accessToken: 'synthetic', userInfo: { id: 'admin-a' } } }))
 
-it('公共API不带认证，管理筛选保留false，PUT编码id并传完整body，无DELETE', async () => {
+it('日历读取API带认证并绑定当前身份，管理筛选保留false，PUT编码id并传完整body，无DELETE', async () => {
   await listActivityCalendar({ game: '如鸢', from: '2026-10-03', to: '2027-01-01', category: 'SHOP' })
   let [path, options] = request.mock.lastCall
   expect(path.split('?')[0]).toBe('/v1/activity-calendar')
   expect(Object.fromEntries(new URLSearchParams(path.split('?')[1]))).toEqual({ game: '如鸢', from: '2026-10-03', to: '2027-01-01', category: 'SHOP' })
-  expect(options.auth).toBe(false)
+  expect(options.auth).toBe(true)
+  expect(options.expectedUserId).toBe('admin-a')
   await listAdminActivityCalendar({ enabled: false, search: '活动 & 招募' })
   ;[path, options] = request.mock.lastCall
   expect(Object.fromEntries(new URLSearchParams(path.split('?')[1]))).toEqual({ enabled: 'false', search: '活动 & 招募' })

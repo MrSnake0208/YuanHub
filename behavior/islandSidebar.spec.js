@@ -32,7 +32,7 @@ let unsubscribe
 beforeEach(() => {
   vi.useFakeTimers()
   isFeatureEnabled.mockImplementation(key => [FEATURE_KEYS.ACTIVITY_CALENDAR, FEATURE_KEYS.RECRUITMENT_ARCHIVE].includes(key))
-  auth.accessToken = ''; auth.userInfo = null
+  auth.accessToken = ''; auth.userInfo = null; auth.isAdmin = false
   recruitmentAccess.canAccess = false; recruitmentAccess.setIdentity.mockClear(); recruitmentAccess.refresh.mockClear()
   notificationUnreadState.count = 0
   unsubscribe = vi.fn(); subscribeFeedbackUnread.mockReturnValue(unsubscribe)
@@ -107,8 +107,10 @@ it('手机登出先确认，取消不清会话，确认后显示登录结果入�
 })
 
 
-it('活动日历公开且桌面/手机入口紧跟今日一览，原导航编号保留', async () => {
+it('管理员活动日历桌面/手机入口紧跟今日一览，原导航编号保留', async () => {
   const wrapper = render()
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'admin-a' }; auth.isAdmin = true
+  await flushPromises()
   const desktopLinks = wrapper.findAll('.island .nav a')
   expect(desktopLinks[1].text()).toBe('活动日历')
   expect(desktopLinks[2].text()).toBe('01密探名册')
@@ -119,7 +121,24 @@ it('活动日历公开且桌面/手机入口紧跟今日一览，原导航编号
 })
 it('关闭活动flag时两处导航都没有入口', async () => {
   isFeatureEnabled.mockImplementation(key => key !== FEATURE_KEYS.ACTIVITY_CALENDAR)
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'admin-a' }; auth.isAdmin = true
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(routes(wrapper)).not.toContain('/calendar')
+})
+
+
+it('访客、普通用户和权限未加载时两处导航不显示日历；权限撤销立即隐藏', async () => {
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(routes(wrapper)).not.toContain('/calendar')
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'user-a' }
+  await flushPromises()
+  expect(routes(wrapper)).not.toContain('/calendar')
+  auth.isAdmin = true
+  await flushPromises()
+  expect(routes(wrapper).filter(path => path === '/calendar')).toHaveLength(2)
+  auth.isAdmin = false
+  await flushPromises()
   expect(routes(wrapper)).not.toContain('/calendar')
 })

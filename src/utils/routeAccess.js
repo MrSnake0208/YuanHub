@@ -18,6 +18,7 @@ export function needsAdminAccess(meta) {
   if (typeof meta.requiredPermission === 'string' && meta.requiredPermission) return true
   if (Array.isArray(meta.requiredAnyPermission) && meta.requiredAnyPermission.length > 0) return true
   if (meta.requiresFeedbackManage === true) return true
+  if (meta.requiresAdmin === true) return true
   if (meta.requiresManagement === true) return true
   return false
 }
@@ -41,6 +42,7 @@ export function isRouteAccessAllowed(meta, adminAccess, adminAccessError = '') {
     if (!matched) return false
   }
   if (meta.requiresFeedbackManage === true && !canManageAnyFeedback(adminAccess)) return false
+  if (meta.requiresAdmin === true && !hasAnyAdminCapability(adminAccess)) return false
   if (meta.requiresManagement === true) {
     // 权限读取失败时仍然放行，页面自行展示失败态（保持既有产品语义）。
     if (!hasAnyAdminCapability(adminAccess) && !adminAccessError) return false

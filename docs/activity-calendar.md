@@ -1,6 +1,6 @@
 # 活动日历（Batch 03 + 04 + 05）
 
-`/calendar` 公开，无需登录、内测资格或子账号。默认全部游戏；`game`（代号鸢 / 如鸢）和 `category`（ACTIVITY / RECRUITMENT / LOGIN / SHOP / MAINTENANCE / OTHER）保存在 URL query，可分享。未知筛选值按全部处理。`view=agenda|timeline|month` 与 `date=YYYY-MM-DD` 分别表示视图和锚点日期；重复参数只读取第一项，无效值忽略。
+`/calendar` 目前处于管理员测试阶段，需要登录及现有管理能力（与管理工具入口的 `auth.isAdmin` 一致，包含内容维护与反馈管理成员），无需内测资格或子账号。访客跳转登录并保留回跳；普通用户和权限读取失败均拒绝进入。默认全部游戏；`game`（代号鸢 / 如鸢）和 `category`（ACTIVITY / RECRUITMENT / LOGIN / SHOP / MAINTENANCE / OTHER）保存在 URL query，可分享。未知筛选值按全部处理。`view=agenda|timeline|month` 与 `date=YYYY-MM-DD` 分别表示视图和锚点日期；重复参数只读取第一项，无效值忽略。
 
 页面通过 `Intl.DateTimeFormat.formatToParts` 计算 Asia/Shanghai 的服务器日期。日程请求今天至未来 90 天；时间轴请求锚点前 7 天至后 27 天（闭区间五周），前后导航按 35 天推进；月历请求当前月及周一至周日的补位日期，至少 35 格、最多 42 格。月份导航保留日号并钳制月末；同月份日期选择不重复请求。服务器午夜、翌日可见性恢复与 pageshow 更新日程，同一天恢复不重复读取。默认锚点随今天移动，URL 显式日期保持。日期不按用户所在时区换算；没有时间的活动不补具体时刻。
 
@@ -14,11 +14,11 @@
 
 公共日历与 Today 复用 `summarizeCalendarDay(items, today)`。今日摘要的“进行中”仅统计 `start_date < today && end_date > today` 的活动，不重复计入今日开始或结束的活动。同日开始并结束的活动分别计入开始、结束，进行中为零；`total` 是闭区间覆盖当天、按活动 id 去重后的总数，不是三个计数相加。
 
-`/today`（首页）在“从现有工具继续”之前显示轻量“今日活动”卡，不改变现有建档、dashboard 与工具入口。登录且当前 accountId 属于已读取的子账号列表时，按 accountGame 读取；访客、无子账号或无有效当前选择时显示全部游戏的公开摘要，不使用默认代号鸢冒充账号归属。仅请求 `from=today&to=today`，最多预览3个标题，超出显示“另有N项”；有效账号的查看活动日历链接携带 `game` query。
+`/today`（首页）在“从现有工具继续”之前显示轻量“今日活动”卡，不改变现有建档、dashboard 与工具入口。登录且当前 accountId 属于已读取的子账号列表时，按 accountGame 读取；管理员无子账号或无有效当前选择时显示全部游戏摘要，不使用默认代号鸢冒充账号归属。仅请求 `from=today&to=today`，最多预览3个标题，超出显示“另有N项”；有效账号的查看活动日历链接携带 `game` query。
 
-Today 卡片请求/加载/错误独立，失败在卡内显示“活动日程暂时无法读取”及重试，完整日历入口保持可用，不改变 dashboard 的 errorMessage。game 改变重读、同游戏换账号不重复读取，旧响应与卸载后的响应失效。复用服务器日期与午夜函数，只设置午夜单次 timeout，并监听可见性恢复/pageshow；同日恢复不重读，跨日恢复重读一次，卸载清理。没有新增全局轮询。活动是公共数据，卡片不因未登录隐藏。
+Today 卡片请求/加载/错误独立，失败在卡内显示“活动日程暂时无法读取”及重试，完整日历入口保持可用，不改变 dashboard 的 errorMessage。game 改变重读、同游戏换账号不重复读取，旧响应与卸载后的响应失效。复用服务器日期与午夜函数，只设置午夜单次 timeout，并监听可见性恢复/pageshow；同日恢复不重读，跨日恢复重读一次，卸载清理。没有新增全局轮询。测试阶段卡片仅对已登录管理员显示。访客、普通用户或管理权限未加载时不挂载卡片，不请求日历，也不创建刷新计时器/监听；权限加载后自动显示，撤销或登出后卸载并清理。
 
-公开 GET `/v1/activity-calendar` 返回统一响应的 `data.items`；API request 封装已解包 `data`，页面读取 `result.items`。游戏、日期和类别使用后端 snake_case 契约。公共请求不携带认证。
+GET `/v1/activity-calendar` 仅允许已登录管理员，返回统一响应的 `data.items`；API request 封装已解包 `data`，页面读取 `result.items`。游戏、日期和类别使用后端 snake_case 契约。日历读取请求携带认证并绑定 `expectedUserId`，避免跨身份重放。后端独立使用 `hasAnyAdminCapability` 校验，未登录返回 401，非管理员返回 403 `admin_testing_only`。
 
 `/calendar/admin` 需要登录和 `activity_calendar:write`，入口位于管理工具的“内容维护”。列表筛选游戏、类型、启用状态、日期重叠区间和标题；点击“筛选 / 刷新”发送 GET `/v1/admin/activity-calendar`，编辑时列表隐藏，返回与保存保留筛选。
 
@@ -88,7 +88,7 @@ npm run test:behavior -- behavior/activityCalendarFilters.spec.js behavior/activ
 
 工作区实施与验收记录：`.trellis/tasks/10-03-activity-calendar-mobile-filter/`；真实手机Safari、触控与Home Indicator安全区仍需设备验收。
 
-用户活动资料建议（2026-10-03）：公共日历在活动内容下方、站点页脚之前提供社区补充区域：“建议补充活动”为描边按钮，“我的建议”为次级文字入口。有活动与空状态复用同一区域，顶部专注日期、视图与筛选。访客点击后沿用登录回跳。`/calendar/suggestions/new` 与 `/calendar/suggestions` 只要求有效登录，共用 `ACTIVITY_CALENDAR` 开关，不要求子账号、内测资格或维护权限；本次不改变该开关默认值，部署与开放由现有发布流程控制。
+用户活动资料建议（2026-10-03）：公共日历在活动内容下方、站点页脚之前提供社区补充区域：“建议补充活动”为描边按钮，“我的建议”为次级文字入口。有活动与空状态复用同一区域，顶部专注日期、视图与筛选。访客直接访问日历或建议 URL 时沿用登录回跳。`/calendar/suggestions/new` 与 `/calendar/suggestions` 要求有效登录及管理能力，共用 `ACTIVITY_CALENDAR` 开关，不要求子账号、内测资格或日历写权限；后端提交/本人列表/详情同样要求管理员；本次不改变该开关默认值，部署与开放由现有发布流程控制。
 
 提交页只预填合法 `game`，日期由用户填写，不继承浏览历史月份。支持五种手工类别，来源 http/https 链接必填；招募线索仍走反馈或卡池维护。公开说明与“给审核员的补充说明”分别填写，后者只对提交人与审核员可见。建议提交后只读，不能修改或撤回。不采纳后可按原因补全资料重新提交。
 
@@ -108,3 +108,17 @@ npm run test:behavior -- behavior/activityCalendarSuggestions.spec.js behavior/a
 页面还需用户在 320/390/430/768/1024/1440px 与手机横屏完成提交、个人查看、采纳/不采纳、409刷新、未保存确认和键盘错误焦点验收，确认无页面横滚、主要触控目标与软键盘可达性。定向 SFC 编译与 jsdom 行为测试不证明真实布局、Safari 或触控体验。没有为本轮启动、重启或停止开发服务。
 
 样式补齐（2026-10-03）：社区建议页继续使用 `calendar.css`，以 `calendar-community` 限定表单、队列与审核区的展示规则。入口使用描边按钮；表单按实际容器宽度切换单双列；审核对照在 1440px 起并排，较窄视口顺序展示。私人说明独立分区，审核状态保留文字并配合标签颜色。此轮仅展示修改（L0），不新增行为测试。Playwright CLI 使用独立会话及模拟数据检查了提交页/审核区六档宽度、个人列表三档宽度和手机详情，未写入真实资料；真实账号流程、Safari 与软键盘仍需人工验收。
+
+
+管理员测试阶段权限（2026-10-04）：导航、Today 摘要、日历与建议路由及后端读取/建议接口统一仅向管理员开放；`requiresAdmin` 是严格路由条件，不采用管理工作台在权限读取失败时的放行语义。管理目录与审核仍独立要求 `activity_calendar:write`。功能开关仍为 true，控制功能整体显隐，不代替鉴权。
+
+本轮风险 L3（路由及前后端鉴权）；已更新权限、真实路由守卫、双端导航、Today 摘要生命周期、API 身份与后端安全链/契约测试。回归由用户/CI执行（cwd YuanHub）：
+
+```bash
+node --test test/routeAccess.test.js test/activityCalendar.test.js
+npm run test:behavior -- behavior/activityCalendarRoutes.spec.js behavior/activityCalendarApi.spec.js behavior/islandSidebar.spec.js behavior/todayActivitySummary.spec.js
+```
+
+后端命令见 `BackEndV3-Share/docs/activity-calendar.md` 的管理员测试阶段验证说明。
+
+本轮已执行：11 个改动 JavaScript/Vue 文件的定向解析与 SFC 编译、前后端 `git diff --check`，均通过。未执行行为回归或浏览器验收，未启动/重启开发服务。

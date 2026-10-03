@@ -41,6 +41,7 @@ function deferred() {
 }
 function signIn(values = accounts) {
   auth.isLoggedIn = true
+  auth.isAdmin = true
   auth.accessToken = 'test-only'
   auth.userInfo = { user_name: '测试殿下' }
   listAccounts.mockResolvedValue(values)
@@ -54,6 +55,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-10-03T04:00:00Z'))
   auth.isLoggedIn = false
+  auth.isAdmin = false
   auth.accessToken = ''
   auth.userInfo = null
   activeAccount.clear()
@@ -69,11 +71,11 @@ beforeEach(() => {
 })
 afterEach(() => { delete document.visibilityState })
 
-it.each(['guest', 'no-accounts'])('%s读全部游戏公开当日摘要，不假装属于默认游戏，保留工具与建档', async mode => {
+it('无子账号管理员读全部游戏当日摘要，保留工具与建档', async () => {
   // Even a persisted selection is not a valid current account for these users.
   activeAccount.set('acc-a')
   activeAccount.setGame('代号鸢', 'acc-a')
-  if (mode === 'no-accounts') signIn([])
+  signIn([])
   const wrapper = render()
   await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
@@ -84,7 +86,7 @@ it.each(['guest', 'no-accounts'])('%s读全部游戏公开当日摘要，不假�
   expect(wrapper.find('.today-alert').exists()).toBe(false)
   expect(wrapper.get('.today-coming-soon').text()).toContain('从现有工具继续')
   expect(wrapper.get('[data-tour="today-overview"]').exists()).toBe(true)
-  expect(wrapper.get('.data-onboarding').text()).toContain(mode === 'guest' ? '先登录' : '先建立你的游戏子账号')
+  expect(wrapper.get('.data-onboarding').text()).toContain('先建立你的游戏子账号')
   const sections = wrapper.findAll('.today-content section')
   expect(sections.findIndex(node => node.classes().includes('today-activity-summary'))).toBeLessThan(sections.findIndex(node => node.classes().includes('today-coming-soon')))
 })
@@ -126,7 +128,7 @@ it.each(['success', 'failure'])('账号/game切换立即重读，旧响应%s不�
   expect(link(wrapper).props('to').query).toEqual({ game: '如鸢' })
 })
 
-it('当前账号game变化重读；失效账号、清空选择和登出退回全部游戏', async () => {
+it('当前账号game变化重读；失效账号、清空选择退回全部游戏，登出隐藏摘要', async () => {
   signIn()
   const wrapper = render()
   await flushPromises()
@@ -144,11 +146,11 @@ it('当前账号game变化重读；失效账号、清空选择和登出退回全
   expect(listActivityCalendar.mock.lastCall[0].game).toBe('')
   activeAccount.set('acc-b')
   await flushPromises()
+  const calls = listActivityCalendar.mock.calls.length
   auth.isLoggedIn = false
   await flushPromises()
-  expect(listActivityCalendar.mock.lastCall[0].game).toBe('')
-  expect(card(wrapper).text()).toContain('全部游戏')
-  expect(link(wrapper).props('to').query).toEqual({})
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
+  expect(listActivityCalendar).toHaveBeenCalledTimes(calls)
 })
 
 it('日历局部失败/重试不改变dashboard错误，也不重新请求dashboard', async () => {
@@ -205,6 +207,7 @@ it('flag=false不显示卡片、不请求API、不注册刷新，Today既有数�
 })
 
 it.each([true, false])('计数遵循同日开始+结束、严格ongoing和去重total，预览最多3项（仅同日=%s）', async sameDayOnly => {
+  signIn([])
   const sameDay = item({ id: 'same', title: '同日活动' })
   listActivityCalendar.mockResolvedValue({ items: sameDayOnly ? [sameDay, { ...sameDay }] : [
     sameDay, item({ id: 'ongoing', start_date: '2026-10-02', end_date: '2026-10-04' }),
@@ -228,6 +231,7 @@ it.each([true, false])('计数遵循同日开始+结束、严格ongoing和去重
 })
 
 it('服务器午夜只刷新当日摘要，卸载清理定时器与恢复事件', async () => {
+  signIn([])
   vi.setSystemTime(new Date('2026-10-02T15:59:59Z'))
   listActivityCalendar.mockResolvedValueOnce({ items: [item({ title: '昨日活动', start_date: '2026-10-02', end_date: '2026-10-02' })] })
   const wrapper = render()
@@ -250,6 +254,7 @@ it('服务器午夜只刷新当日摘要，卸载清理定时器与恢复事件'
 })
 
 it('visibility/pageshow同日不重读，翌日恢复只重读一次且不新增重复计时器', async () => {
+  signIn([])
   const wrapper = render()
   await flushPromises()
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
@@ -271,6 +276,7 @@ it('visibility/pageshow同日不重读，翌日恢复只重读一次且不新增
 })
 
 it('卸载时尚未返回的请求不再处理，不遗留计时器', async () => {
+  signIn([])
   const late = deferred()
   listActivityCalendar.mockReturnValue(late.promise)
   const wrapper = render()
@@ -280,5 +286,39 @@ it('卸载时尚未返回的请求不再处理，不遗留计时器', async () =
   late.resolve({ items: [item()] })
   await flushPromises()
   expect(vi.getTimerCount()).toBe(0)
+  expect(listActivityCalendar).toHaveBeenCalledTimes(1)
+})
+
+
+it.each(['guest', 'ordinary', 'permissions-pending'])('%s不显示今日活动、不请求日历，保留首页工具', async mode => {
+  if (mode !== 'guest') { signIn([]); auth.isAdmin = mode === 'permissions-pending' ? undefined : false }
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
+  expect(listActivityCalendar).not.toHaveBeenCalled()
+  expect(wrapper.get('.today-coming-soon').text()).toContain('从现有工具继续')
+  window.dispatchEvent(new Event('pageshow'))
+  await flushPromises()
+  expect(listActivityCalendar).not.toHaveBeenCalled()
+})
+
+it('权限加载后显示摘要，撤销时清理计时器并丢弃迟到响应', async () => {
+  signIn([]); auth.isAdmin = false
+  const late = deferred()
+  listActivityCalendar.mockReturnValue(late.promise)
+  const wrapper = render()
+  await flushPromises()
+  expect(listActivityCalendar).not.toHaveBeenCalled()
+  auth.isAdmin = true
+  await flushPromises()
+  expect(card(wrapper).text()).toContain('正在读取')
+  auth.isAdmin = false
+  await flushPromises()
+  late.resolve({ items: [item()] })
+  await flushPromises()
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(vi.getTimerCount()).toBe(0)
+  window.dispatchEvent(new Event('pageshow'))
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
 })

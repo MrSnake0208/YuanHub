@@ -39,17 +39,17 @@ export const routes = [
     {
         path: '/calendar', name: 'calendar', text: '活动日历', display: true, module: 'tools', icon: 'calendar-days',
         component: () => import('/src/pages/calendar/index.vue'),
-        meta: { feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '活动日历 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '活动日历 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar/suggestions/new', name: 'calendar-suggestion-new', text: '建议补充活动', display: false, module: 'tools', icon: 'calendar-plus',
         component: () => import('/src/pages/calendar/suggestion-new.vue'),
-        meta: { requiresAuth: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '建议补充活动 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '建议补充活动 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar/suggestions', name: 'calendar-suggestions', text: '我的活动建议', display: false, module: 'tools', icon: 'calendar-days',
         component: () => import('/src/pages/calendar/suggestions.vue'),
-        meta: { requiresAuth: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '我的活动建议 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '我的活动建议 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar/admin', name: 'calendar-admin', text: '活动日历管理', display: false, module: 'admin', icon: 'calendar-days',
