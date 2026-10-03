@@ -145,6 +145,8 @@
             </div>
           </section>
 
+          <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+
           <section
             class="today-section today-coming-soon"
             data-tour="today-overview"
@@ -173,6 +175,8 @@ import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
+import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
+import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent, listAgentFavorites } from '../../api/inventory.js'
@@ -237,6 +241,11 @@ let loadSequence = 0
 const accountId = computed(function () { return activeAccount.id })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
+const calendarEnabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
+const calendarGame = computed(function () {
+  return auth.isLoggedIn && accounts.value.some(account => account.id === accountId.value)
+    ? accountGame.value : ''
+})
 const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
 const onboardingStage = computed(function () {
   return getTodayOnboardingStage({

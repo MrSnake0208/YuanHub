@@ -74,7 +74,7 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
-import { addCalendarDays, CALENDAR_CATEGORIES, CALENDAR_GAMES, calendarFilterQuery, calendarFilters, calendarRangeLabel, calendarStatuses, groupCalendarItems, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday } from '@/data/activityCalendar.js'
+import { addCalendarDays, CALENDAR_CATEGORIES, CALENDAR_GAMES, calendarFilterQuery, calendarFilters, calendarRangeLabel, calendarStatuses, groupCalendarItems, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
 import './calendar.css'
 
 const route = useRoute(), router = useRouter()
@@ -85,7 +85,7 @@ const filterKey = computed(() => JSON.stringify(filters.value))
 const items = ref([]), loading = ref(false), error = ref('')
 const sections = computed(() => groupCalendarItems(items.value, today.value))
 const todayItems = computed(() => sections.value[0].groups.flatMap(group => group.items))
-const todayCounts = computed(() => ({ starts: todayItems.value.filter(item => item.start_date === today.value).length, ends: todayItems.value.filter(item => item.end_date === today.value).length, ongoing: todayItems.value.filter(item => item.start_date < today.value && item.end_date > today.value).length }))
+const todayCounts = computed(() => summarizeCalendarDay(items.value, today.value))
 let generation = 0
 let dayTimer = null
 function checkServerDate() {
