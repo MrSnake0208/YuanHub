@@ -47,6 +47,21 @@ export function normalizeCalendarItem(value) {
 
 export function normalizeCalendarItems(items) { return (Array.isArray(items) ? items : []).map(normalizeCalendarItem).filter(Boolean) }
 
+// Normalized public items have stable ids. Starts and ends may overlap; total does not.
+export function summarizeCalendarDay(items, today) {
+  const counts = { starts: 0, ends: 0, ongoing: 0, total: 0 }
+  const seen = new Set()
+  for (const item of items) {
+    if (seen.has(item.id) || item.start_date > today || item.end_date < today) continue
+    seen.add(item.id)
+    counts.total++
+    if (item.start_date === today) counts.starts++
+    if (item.end_date === today) counts.ends++
+    if (item.start_date < today && item.end_date > today) counts.ongoing++
+  }
+  return counts
+}
+
 export function calendarStatuses(item, today) {
   if (item.end_date < today) return ['已结束']
   if (item.start_date > today) return ['即将开始']

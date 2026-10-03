@@ -20,6 +20,7 @@ vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), listAgentFavorites: vi.fn() }))
 vi.mock('../src/api/notifications.js', () => ({ getUnreadNotificationCount: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
+vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
 
 const render = () => mount(TodayPage, { global: { stubs: { RouterLink: RouterLinkStub } } })
 
