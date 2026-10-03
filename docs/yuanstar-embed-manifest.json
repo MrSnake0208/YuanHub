@@ -1,5 +1,6 @@
 {
-  "_comment": "public/yuanstar-embed/ 当前 vendored 文件的 SHA-256。同步或热修 embed 时必须同步重建本文件；test/yuanstarEmbedProvenance.test.js 会逐个比对。",
+  "_comment": "public/yuanstar-embed/ 当前 vendored 文件的 SHA-256，来自已提交 source HEAD 的干净工作树正式构建。同步 embed 时必须更新本文件；test/yuanstarEmbedProvenance.test.js 会逐个比对。",
+  "_sourceCommit": "e044691d07f8c97deff7ddcd46214d51b1009ab2",
   "assets/browser-vision-worker-Bt0Z67D1.js": "b653c986d6470bcb39a8334f9ec5af10088a89eef93f8bfc631e6fdefbcbab14",
   "models/PP-OCRv6_det_small.onnx": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
   "models/PP-OCRv6_rec_small.onnx": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
@@ -10,6 +11,6 @@
   "ort/ort-wasm-simd-threaded.mjs": "0a1e718d99c41b22c21f2520ff4f9e883a6b5533856e398d21816ee8eb8185d3",
   "ort/ort-wasm-simd-threaded.wasm": "d1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6",
   "reference/YuanStar_Phase0_6A_经验星曜规则与逐级数据.xlsx": "eafe7af04996e788d02556b22f3a57854012acb6301c02bc9621957b34149859",
-  "yuanstar-embed.css": "24deb13819d1b215f28bb7abbbd62d22ef3cc0c51fb9d59002ceed0851ce2f91",
-  "yuanstar-embed.js": "e574f67027754e69b8d511f5f2323e09bd576c335465abfb3f10dda09182bb30"
+  "yuanstar-embed.css": "ca63f3bb754f943c4d266b26dd8ee5d0ed5e9e83001ef2ce1011778f4a2a9632",
+  "yuanstar-embed.js": "71bdb9af0e7008d6eb0697900db1cdcb3534deeab8b06953dc839c66d04c3512"
 }
