@@ -3,10 +3,16 @@
     <IslandSidebar />
     <main id="main-content">
       <header class="calendar-header wrap">
-        <p class="calendar-kicker"><CalendarDays :size="20" aria-hidden="true" /> 两个世界，一份日程</p>
-        <h1>活动日历</h1>
-        <p>看看今天正在进行、即将开始和快结束的活动。</p>
-        <p class="calendar-hint">今天 {{ today }} · 按游戏服务器日期（Asia/Shanghai）</p>
+        <div class="calendar-header-copy">
+          <p class="calendar-kicker"><CalendarDays :size="20" aria-hidden="true" /> 两个世界，一份日程</p>
+          <h1>活动日历</h1>
+          <p>看看今天正在进行、即将开始和快结束的活动。</p>
+          <p class="calendar-hint">按游戏服务器日期（Asia/Shanghai）</p>
+        </div>
+        <div v-if="enabled" class="calendar-view-tools">
+          <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
+          <CalendarViewSwitcher :model-value="currentView" @update:model-value="setView" />
+        </div>
       </header>
       <div v-if="enabled" class="wrap calendar-content">
         <section class="calendar-panel calendar-filters" aria-label="活动筛选">
@@ -24,13 +30,7 @@
             </div>
           </fieldset>
         </section>
-        <div class="calendar-shared-tools">
-          <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
-          <div class="calendar-view-tools">
-            <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
-            <CalendarViewSwitcher :model-value="currentView" @update:model-value="setView" />
-          </div>
-        </div>
+        <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <div class="calendar-view-content" :aria-busy="loading">
           <p v-if="loading" class="calendar-panel" role="status">正在读取活动日程…</p>
           <div v-else-if="error" class="calendar-panel calendar-error" role="alert">

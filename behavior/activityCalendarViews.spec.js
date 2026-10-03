@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Calendar from '../src/pages/calendar/index.vue'
+import Summary from '../src/components/calendar/CalendarTodaySummary.vue'
 import Month from '../src/components/calendar/CalendarMonthView.vue'
 import Timeline from '../src/components/calendar/CalendarTimelineView.vue'
 import Agenda from '../src/components/calendar/CalendarAgendaView.vue'
@@ -116,7 +117,7 @@ it('历史月份仍有正确今日摘要；历史项保留在月历且不污染�
     : [event({ title: '历史活动', start_date: '2026-08-01', end_date: '2026-08-31' })] }))
   const { wrapper } = await render('/calendar?view=month&date=2026-08-03')
   expect(listActivityCalendar).toHaveBeenCalledTimes(2)
-  expect(wrapper.findAll('.calendar-counts p').map(node => node.text())).toEqual(['1 今日开始', '1 今日结束', '0 今日进行中'])
+  expect(wrapper.findAll('.calendar-counts p').map(node => node.text())).toEqual(['今日开始 1', '今日结束 1', '进行中 0'])
   expect(wrapper.get('.calendar-day-detail').text()).toContain('历史活动')
   expect(wrapper.get('.calendar-day-detail').text()).toContain('已结束')
 })
@@ -148,7 +149,7 @@ it('切换到月份过程中今日补查晚到不污染当前筛选', async () =
   const { wrapper, router } = await render('/calendar?view=month&date=2026-08-03&game=如鸢')
   await router.replace('/calendar?view=month&date=2026-08-03&game=代号鸢'); await flushPromises()
   summary.resolve({ items: [] }); await flushPromises()
-  expect(wrapper.findAll('.calendar-counts p').map(node => node.text())).toEqual(['1 今日开始', '1 今日结束', '0 今日进行中'])
+  expect(wrapper.findAll('.calendar-counts p').map(node => node.text())).toEqual(['今日开始 1', '今日结束 1', '进行中 0'])
 })
 
 it.each(['agenda', 'timeline', 'month'])('%s加载/错误/重试/空状态仍可操作视图控件', async view => {
@@ -198,11 +199,14 @@ it('Month每天计数跨月活动，按钮完整命名，选中日详情复用�
   const selected = wrapper.get('.calendar-month-day[aria-pressed=true]')
   expect(selected.attributes('aria-current')).toBe('date')
   expect(selected.attributes('aria-label')).toBe('2026年10月3日，2项活动，今天，已选中')
+  expect(wrapper.get('.calendar-detail-heading > span').text()).toBe('2 项活动')
   expect(wrapper.findAllComponents(EventCard)).toHaveLength(2)
   await wrapper.get('.calendar-month-day[aria-label^="2026年10月5日"]').trigger('click')
   expect(wrapper.emitted('select-date').at(-1)).toEqual(['2026-10-05'])
   await wrapper.setProps({ anchorDate: '2026-10-05' })
-  expect(wrapper.get('.calendar-day-detail').text()).toContain('10月5日暂无活动')
+  expect(wrapper.get('.calendar-detail-heading h3').text()).toContain('10月5日')
+  expect(wrapper.get('.calendar-day-detail').text()).toContain('暂无活动')
+  expect(wrapper.get('.calendar-day-detail').text()).not.toContain('0 项活动')
   await wrapper.setProps({ anchorDate: '2026-08-01' })
   expect(wrapper.findAll('.calendar-month-day')).toHaveLength(42)
 })
@@ -283,4 +287,32 @@ it('Agenda不重复跨日活动，按锚点定位；卡片即将结束提示优�
   target.scrollIntoView = vi.fn()
   await wrapper.setProps({ anchorDate: '2026-10-07' })
   expect(target.scrollIntoView).toHaveBeenCalled()
+})
+
+it('今日信息带空态隐藏零计数，有活动保留三类统计并能恢复空态', async () => {
+  const wrapper = mount(Summary, { props: { today, counts: { total: 0, starts: 0, ends: 0, ongoing: 0 } } })
+  expect(wrapper.get('time').attributes('datetime')).toBe(today)
+  expect(wrapper.get('time').text()).toBe('10月3日 周六')
+  expect(wrapper.text()).toContain('当前筛选暂无活动')
+  expect(wrapper.find('.calendar-counts').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('可以看看接下来的日程')
+  await wrapper.setProps({ counts: { total: 9, starts: 2, ends: 1, ongoing: 6 } })
+  expect(wrapper.findAll('.calendar-counts p').map(node => node.text())).toEqual(['今日开始 2', '今日结束 1', '进行中 6'])
+  expect(wrapper.text()).not.toContain('暂无活动')
+  await wrapper.setProps({ counts: { total: 0, starts: 0, ends: 0, ongoing: 0 } })
+  expect(wrapper.find('.calendar-counts').exists()).toBe(false)
+  expect(wrapper.text()).toContain('当前筛选暂无活动')
+})
+
+it('今日信息带加载和失败不误报空态或残留活动统计', async () => {
+  const wrapper = mount(Summary, { props: { today, counts: { total: 1, starts: 1, ends: 0, ongoing: 0 }, loading: true } })
+  expect(wrapper.get('[role=status]').text()).toContain('正在读取今日摘要')
+  expect(wrapper.find('.calendar-counts').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('暂无活动')
+  await wrapper.setProps({ loading: false, error: '读取失败' })
+  expect(wrapper.text()).toContain('今日摘要暂时无法读取')
+  expect(wrapper.find('.calendar-counts').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('暂无活动')
+  await wrapper.setProps({ error: '' })
+  expect(wrapper.get('.calendar-counts').text()).toContain('今日开始 1')
 })

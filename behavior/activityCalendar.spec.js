@@ -61,8 +61,8 @@ it.each([false, true])('今日摘要仅统计严格跨越今天的进行中活�
   const { wrapper } = await render()
   await flushPromises()
   expect(wrapper.findAll('.calendar-counts p').map(node => node.text())).toEqual(sameDayOnly
-    ? ['1 今日开始', '1 今日结束', '0 今日进行中']
-    : ['2 今日开始', '2 今日结束', '1 今日进行中'])
+    ? ['今日开始 1', '今日结束 1', '进行中 0']
+    : ['今日开始 2', '今日结束 2', '进行中 1'])
   wrapper.unmount()
 })
 it('快速筛选时旧响应不能覆盖新结果；卸载后不再处理返回', async () => {
