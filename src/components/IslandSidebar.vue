@@ -336,7 +336,9 @@ import {
 // 已登录状态（reactive，随 auth 变化）
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : "");
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
-const showCalendar = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR);
+const showCalendar = computed(() =>
+  isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && !!isLoggedIn.value && auth.isAdmin,
+);
 const showRecruitment = computed(() =>
   isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE) &&
   !!isLoggedIn.value &&

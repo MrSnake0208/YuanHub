@@ -241,7 +241,7 @@ let loadSequence = 0
 const accountId = computed(function () { return activeAccount.id })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
-const calendarEnabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
+const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && auth.isAdmin)
 const calendarGame = computed(function () {
   return auth.isLoggedIn && accounts.value.some(account => account.id === accountId.value)
     ? accountGame.value : ''

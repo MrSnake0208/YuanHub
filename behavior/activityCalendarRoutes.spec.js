@@ -17,17 +17,14 @@ function guardRouter() {
   router.beforeEach(authGuard)
   return { router, publicLoader, adminLoader }
 }
-beforeEach(() => { vi.clearAllMocks(); auth.accessToken = ''; auth.userInfo = null; auth.adminAccess = null; isFeatureEnabled.mockReturnValue(true) })
+beforeEach(() => { vi.clearAllMocks(); auth.accessToken = ''; auth.userInfo = null; auth.adminAccess = null; auth.adminAccessError = ''; isFeatureEnabled.mockReturnValue(true) })
 
-it('真实路由守卫允许访客进入日历，管理页跳登录且不初始化管理页', async () => {
+it.each(['/calendar', '/calendar/admin', '/calendar/suggestions', '/calendar/suggestions/new?game=%E5%A6%82%E9%B8%A2'])('访客访问%s跳登录并保留回跳，不加载日历组件', async path => {
   const { router, publicLoader, adminLoader } = guardRouter()
-  await router.push('/calendar')
-  expect(router.currentRoute.value.path).toBe('/calendar')
-  expect(publicLoader).toHaveBeenCalledTimes(1)
-  expect(auth.refreshAdminAccess).not.toHaveBeenCalled()
-  await router.push('/calendar/admin')
+  await router.push(path)
   expect(router.currentRoute.value.path).toBe('/login')
-  expect(router.currentRoute.value.query.redirect).toBe('/calendar/admin')
+  expect(router.currentRoute.value.query.redirect).toBe(path)
+  expect(publicLoader).not.toHaveBeenCalled()
   expect(adminLoader).not.toHaveBeenCalled()
 })
 it.each(['/calendar', '/calendar/admin', '/calendar/suggestions', '/calendar/suggestions/new'])('flag关闭阻断%s的lazy初始化', async path => {
@@ -51,14 +48,24 @@ it('只有calendar写权限放行管理页，recruitment权限不能替代', asy
   expect(adminLoader).toHaveBeenCalledTimes(1)
 })
 
-it.each(['/calendar/suggestions', '/calendar/suggestions/new?game=%E5%A6%82%E9%B8%A2'])('访客建议入口%s保留登录回跳，普通登录用户无需维护权限或beta', async path => {
-  const { router, adminLoader } = guardRouter()
-  await router.push(path)
-  expect(router.currentRoute.value.path).toBe('/login')
-  expect(router.currentRoute.value.query.redirect).toBe(path)
-  expect(adminLoader).not.toHaveBeenCalled()
+it.each(['/calendar', '/calendar/suggestions', '/calendar/suggestions/new?game=%E5%A6%82%E9%B8%A2'])('普通登录用户不能访问%s，管理员无需日历写权限即可测试', async path => {
   auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }; auth.adminAccess = { permissions: [] }
+  const { router, publicLoader, adminLoader } = guardRouter()
+  await router.push(path)
+  expect(router.currentRoute.value.path).toBe('/forbidden')
+  expect(publicLoader).not.toHaveBeenCalled()
+  expect(adminLoader).not.toHaveBeenCalled()
+  auth.adminAccess = { permissions: ['beta:manage'] }
   await router.push(path)
   expect(router.currentRoute.value.path).toBe(path.split('?')[0])
-  expect(adminLoader).toHaveBeenCalledTimes(1)
+  expect(publicLoader.mock.calls.length + adminLoader.mock.calls.length).toBe(1)
+})
+
+it('管理权限请求失败不能通过测试阶段日历的鉴权', async () => {
+  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }
+  auth.refreshAdminAccess.mockImplementationOnce(() => { auth.adminAccessError = '读取失败' })
+  const { router, publicLoader } = guardRouter()
+  await router.push('/calendar')
+  expect(router.currentRoute.value.path).toBe('/forbidden')
+  expect(publicLoader).not.toHaveBeenCalled()
 })

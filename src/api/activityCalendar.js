@@ -13,7 +13,7 @@ function query(filters = {}) {
   return params.size ? '?' + params.toString() : ''
 }
 
-export function listActivityCalendar(filters) { return request(PUBLIC_PATH + query(filters), { auth: false }) }
+export function listActivityCalendar(filters) { return request(PUBLIC_PATH + query(filters), adminOptions()) }
 const adminOptions = () => ({ auth: true, expectedUserId: auth.userInfo?.id || '' })
 export function listAdminActivityCalendar(filters) { return request(ADMIN_PATH + query(filters), adminOptions()) }
 export function createActivityCalendar(body) { return request(ADMIN_PATH, { ...adminOptions(), method: 'POST', body }) }

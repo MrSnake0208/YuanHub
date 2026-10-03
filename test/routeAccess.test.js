@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { routes } from '../src/router/routes.js'
 import { isRouteAccessAllowed, needsAdminAccess } from '../src/utils/routeAccess.js'
 
-const ADMIN_META_KEYS = ['requiredPermission', 'requiredAnyPermission', 'requiresFeedbackManage', 'requiresManagement']
+const ADMIN_META_KEYS = ['requiredPermission', 'requiredAnyPermission', 'requiresFeedbackManage', 'requiresManagement', 'requiresAdmin']
 
 function metaFor(path) {
   const route = routes.find(function (item) { return item.path === path })
@@ -65,4 +65,17 @@ test('/manage 在权限读取失败时保留进入页面展示失败态（不误
 
 test('permission 判定只认显式权限，不接受角色名冒充权限', function () {
   assert.equal(isRouteAccessAllowed(metaFor('/admin/roles'), access({ roles: ['SUPER_ADMIN'] }), ''), false)
+})
+
+
+test('日历测试路由严格要求管理员；权限读取失败不能放行，反馈管理成员也可测试', () => {
+  for (const path of ['/calendar', '/calendar/suggestions', '/calendar/suggestions/new']) {
+    const meta = metaFor(path)
+    assert.equal(meta.requiresAuth, true)
+    assert.equal(needsAdminAccess(meta), true)
+    assert.equal(isRouteAccessAllowed(meta, access()), false)
+    assert.equal(isRouteAccessAllowed(meta, null, '管理权限读取失败'), false)
+    assert.equal(isRouteAccessAllowed(meta, access({ permissions: ['beta:manage'] })), true)
+    assert.equal(isRouteAccessAllowed(meta, access({ operatorAreas: ['INVENTORY'] })), true)
+  }
 })
