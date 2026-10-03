@@ -200,6 +200,9 @@ v3 JSON 直接使用 snake_case `star_level`，数值与站内 `starLevel` 完�
 校验：
 
 - `oddities` 只接受 `attack / hp / special`，每项数值非负且 `current <= max`；名称不进入账号数据；
+- `attack.current / hp.current` 只接受整数 JSON 数字；`special.current` 支持最多一位有效小数，例如 `0.5 / 3.2`，`0.50` 等价于 `0.5`。所有第三项展示名称使用同一规则，单位不变，不乘除 100 或添加 `%`；超精度拒绝而非四舍五入，错误字段明确定位，保存失败保留编辑草稿；
+- PATCH 和 v3 使用同一按键精度与边界校验；`current` 共享模型使用 Double，诊断 `max` 仍为整数。current、分享和 v3 导出中的整数继续编码为整数 JSON；规范签名中的 `1 / 1.0` 编码均为 `1`，旧整数签名字节不变，`0.5 → 0.6` 仍使观测 stale；原始导入内容的幂等比较与摘要规则不变；
+- 校正审计和删除 v2 流水后的重放保留第三项小数；v3 导出再导入保留精度，v2 原生格式不扩展 `combat_stats`，不承诺无损降级。旧 BSON int/long 与新小数用 disposable Mongo 映射测试覆盖，不批量迁移；小数入库后先保留兼容读取的后端，不能直接回退至 Int 模型；
 - `section_status.oddities=ready` 时三个键必须齐全；`partial` 只合并出现的稳定键；`unavailable` 保留旧值；空对象不具有清空语义；
 - 奇闻上限由公共目录稀有度决定：3 星 `300/1560/9`、4 星 `350/1820/11`、5 星暂沿用 `500/2600/15`；请求中的 `max` 只作诊断，不能覆盖目录规则；
 - `manual_attack` / `manual_hp` 允许 `null`，表示恢复自动计算；

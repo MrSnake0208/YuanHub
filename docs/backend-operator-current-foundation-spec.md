@@ -165,7 +165,9 @@ data class OperatorEntry(
 - 用户数据不保存第三奇闻名称；名称和上限始终读取公共图鉴；
 - 上限由服务端按目录 rarity 校验：3 星 `300/1560/9`、4 星 `350/1820/11`、5 星 `500/2600/15`；
 - 请求即使携带 `max` 也只能用于诊断，不能覆盖服务端目录定义；
-- 当前值必须为非负数且不超过目录上限；
+- `attack.current / hp.current` 必须为非负整数 JSON 数字；`special.current` 为非负数、最多一位有效小数（`0.50` 等价于 `0.5`），均不得超过目录上限；精度按稳定键决定，与第三项展示名称无关；
+- 第三项单位不变：`0.5` 保存为 `0.5`，不换算百分比；超精度/非数值拒绝，`invalid_combat_stats` 定位到 `combat_stats.oddities.<key>.current`，不写 current/校正审计、不推进 revision；缺省保留，显式 0 清零；
+- 共享奇闻模型 `current` 使用 Double，当前值/分享/导出局部序列化保持整数 JSON 数字和小数原值；旧 BSON int/long 通过真实 Mongo 映射回归验证，不批量改写数据；校正审计及 v2 删除重放沿用相同数值语义；
 - `manual_attack / manual_hp=null` 表示清除手动校正；
 - `display_mode.attack / display_mode.hp` 仅允许 `auto | manual | null`，记录用户上次保存时的显示选择，不改变手动校正值、扫描值或 stale 语义；字段缺失保留原值，`null` 清除对应偏好；
 - `source` 至少接受 `scan | manual | imported`；

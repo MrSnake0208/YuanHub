@@ -50,7 +50,7 @@ async function openEditor(existing, catalog = operator) {
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [catalog] })
   operatorApi.getOperatorCurrent.mockResolvedValue(existing ? [{ entries: { op: existing } }] : [])
   const wrapper = mount(OperatorPage, { global: {
-    stubs: { IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
+    stubs: { RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true },
     directives: { reveal: () => {} },
   } })
@@ -62,6 +62,107 @@ async function openEditor(existing, catalog = operator) {
 }
 const growthValues = wrapper => wrapper.findAll('.level-row input').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
+
+const decimalCatalog = { ...operator, oddity_schema: {
+  attack: { name: '攻击力', max: 300 }, hp: { name: '生命值', max: 1560 }, special: { name: '增伤值', max: 9 },
+} }
+const decimalEntry = { level: 90, elite: 15, starLevel: 8, revision: 3,
+  combat_stats: { oddities: { attack: { current: 10 }, hp: { current: 20 }, special: { current: 3.2 } } },
+}
+
+it.each(['攻击力', '生命值'])('卡片%s奇闻快捷入口仍拒绝小数并保留草稿', async label => {
+  const wrapper = await openEditor(decimalEntry, decimalCatalog)
+  await wrapper.get('.editor-cancel').trigger('click')
+  await flushPromises()
+  await wrapper.findAll('[role="tab"]').find(tab => tab.text() === '养成总览').trigger('click')
+  await flushPromises()
+  const input = wrapper.get('[aria-label="测试密探奇闻属性' + label + '"]')
+  await input.setValue('0.5')
+  await wrapper.get('.agent-ledger-card .ledger-card-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(input.element.value).toBe('0.5')
+  expect(wrapper.get('.agent-ledger-card').text()).toContain('必须填写整数')
+  wrapper.unmount()
+})
+
+it('后端字段错误保留第三项草稿并关联错误提示', async () => {
+  const wrapper = await openEditor(decimalEntry, decimalCatalog)
+  const input = wrapper.findAll('.oddity-field input')[2]
+  await input.setValue('0.5')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(Object.assign(new Error('超过图鉴上限'), {
+    payload: { error: { code: 'invalid_combat_stats', field_path: 'combat_stats.oddities.special.current' } },
+  }))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(input.element.value).toBe('0.5')
+  expect(input.attributes('aria-invalid')).toBe('true')
+  expect(wrapper.get('#operator-oddity-error').text()).toContain('超过图鉴上限')
+  wrapper.unmount()
+})
+
+it('第三项小数回显、逐步输入与粘贴提交，接口拒绝保留草稿', async () => {
+  const wrapper = await openEditor(decimalEntry, decimalCatalog)
+  const input = wrapper.findAll('.oddity-field input')[2]
+  expect(input.element.value).toBe('3.2')
+  await input.setValue('0')
+  await input.setValue('0.')
+  await input.setValue('0.5')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('最多一位小数'))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({ patch: expect.objectContaining({
+    expected_revision: 3, combat_stats: expect.objectContaining({ oddities: {
+      attack: { current: 10 }, hp: { current: 20 }, special: { current: 0.5 },
+    } }),
+  }) }))
+  expect(input.element.value).toBe('0.5')
+  expect(wrapper.get('.editor-action-status').text()).toContain('最多一位小数')
+  await input.setValue('0.50')
+  expect(Number(input.element.value)).toBe(0.5)
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent.mock.lastCall[0].patch.combat_stats.oddities.special.current).toBe(0.5)
+  wrapper.unmount()
+})
+
+it('保存后关闭重开和重新读取仍保留第三项小数', async () => {
+  const saved = { ...decimalEntry, revision: 4, combat_stats: { oddities: {
+    attack: { current: 10 }, hp: { current: 20 }, special: { current: 0.5 },
+  } } }
+  const wrapper = await openEditor(decimalEntry, decimalCatalog)
+  await wrapper.findAll('.oddity-field input')[2].setValue('0.5')
+  operatorApi.patchOperatorCurrent.mockResolvedValueOnce(saved)
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.editor-action-status').text()).toContain('养成资料已保存')
+  await wrapper.get('.editor-cancel').trigger('click')
+  await flushPromises()
+  await wrapper.get('[aria-label="编辑测试密探"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('.oddity-field input')[2].element.value).toBe('0.5')
+  wrapper.unmount()
+  const reopened = await openEditor(saved, decimalCatalog)
+  expect(reopened.findAll('.oddity-field input')[2].element.value).toBe('0.5')
+  reopened.unmount()
+})
+
+it.each([
+  [2, '0.55', '最多一位小数'], [2, '-0.5', '非负'], [2, '9.1', '上限'],
+  [0, '0.5', '整数'], [1, '0.5', '整数'],
+])('非法奇闻输入保留草稿并定位字段 %#', async (index, value, message) => {
+  const wrapper = await openEditor(decimalEntry, decimalCatalog)
+  const input = wrapper.findAll('.oddity-field input')[index]
+  await input.setValue(value)
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  expect(input.element.value).toBe(value)
+  expect(input.attributes('aria-invalid')).toBe('true')
+  expect(wrapper.get('.editor-action-status').text()).toContain(message)
+  wrapper.unmount()
+})
 
 it('新草稿默认1级1修为且未拥有，打开不写云端，保存才提交默认值', async () => {
   const wrapper = await openEditor()

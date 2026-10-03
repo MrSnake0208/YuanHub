@@ -9,8 +9,25 @@ import {
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema,
-  operatorOddityCompletion
+  operatorOddityCompletion,
+  operatorOddityCurrentError,
+  formatOperatorOddityCurrent
 } from '../src/utils/operatorCombatStats.js'
+
+test('第三项一位有效小数、整数奇闻和目录边界校验不改写数值', () => {
+  for (const value of [0, 0.1, 0.5, 3.2, 9, '0.50']) assert.equal(operatorOddityCurrentError('special', value, 9), '')
+  for (const value of [0.55, -0.5, 9.1, '', null, Infinity]) assert.ok(operatorOddityCurrentError('special', value, 9))
+  for (const key of ['attack', 'hp']) {
+    assert.match(operatorOddityCurrentError(key, 0.5, 500), /整数/)
+    assert.equal(operatorOddityCurrentError(key, 10, 500), '')
+  }
+  assert.equal(formatOperatorOddityCurrent('special', 0.5), '0.5')
+  assert.equal(formatOperatorOddityCurrent('special', 3.2), '3.2')
+  assert.equal(formatOperatorOddityCurrent('special', 1), '1')
+  assert.equal(formatOperatorOddityCurrent('attack', 1234), '1,234')
+  const normalized = normalizeOperatorCombatStats({ oddities: { special: { current: 0.5 } } })
+  assert.equal(normalized.oddities.special.current, 0.5)
+})
 
 const completionKeys = ['attack', 'hp', 'special']
 const completionSchema = limits => Object.fromEntries(completionKeys.map((key, index) => [key, { max: limits[index] }]))

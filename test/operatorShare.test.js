@@ -2,6 +2,7 @@ import { installBetaAccessFixture } from '../test-support/betaContractFixture.js
 installBetaAccessFixture()
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { formatOperatorOddityCurrent } from '../src/utils/operatorCombatStats.js'
 import { readFileSync } from 'node:fs'
 import {
   createOperatorShare,
@@ -37,6 +38,16 @@ const ledgerV2Styles = read('src/styles/operator-ledger-card.v2.css')
 const ledgerVersionConfig = read('src/config/operatorLedgerCard.js')
 const manager = read('src/components/operator/OperatorShareManager.vue')
 const sidebar = read('src/components/IslandSidebar.vue')
+
+test('分享第三项适配保留小数和单位，攻击生命显示保持整数', () => {
+  const entry = mergeOperatorShareEntries({ entries: { op: { level: 90, star_level: 3,
+    combat_stats: { oddities: { attack: { current: 10 }, hp: { current: 20 }, special: { current: 0.5 } } },
+  } } }, [{ id: 'op', name: '测试密探' }])[0]
+  assert.equal(entry.growth.combat_stats.oddities.special.current, 0.5)
+  assert.equal(formatOperatorOddityCurrent('special', entry.growth.combat_stats.oddities.special.current), '0.5')
+  assert.equal(formatOperatorOddityCurrent('attack', entry.growth.combat_stats.oddities.attack.current), '10')
+  assert.equal(formatOperatorOddityCurrent('hp', entry.growth.combat_stats.oddities.hp.current), '20')
+})
 
 test('神秘代码输入同时支持原始代码和完整链接', () => {
   const token = '550e8400-e29b-41d4-a716-446655440000'
