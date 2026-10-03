@@ -782,6 +782,12 @@
                     </button>
                   </div>
                   <span class="slot-name">{{ e.name || e.id }}</span>
+                  <div v-if="oddityCompletions[e.id]" class="slot-oddity-completion">
+                    <span class="oddity-completion-badge" :class="'is-' + oddityCompletions[e.id].status">
+                      <ButterflyIcon aria-hidden="true" />{{ oddityCompletions[e.id].compactLabel }}
+                    </span>
+                    <small v-if="oddityCompletions[e.id].reason" class="oddity-completion-reason">{{ oddityCompletions[e.id].reason }}</small>
+                  </div>
                 </li>
               </ul>
             </div>
@@ -1332,6 +1338,13 @@
                       >
                     </div>
                   </header>
+
+                  <div v-if="oddityCompletions[e.id]" class="ledger-oddity-completion">
+                    <span class="oddity-completion-badge" :class="'is-' + oddityCompletions[e.id].status">
+                      <ButterflyIcon aria-hidden="true" />{{ oddityCompletions[e.id].label }}
+                    </span>
+                    <small v-if="oddityCompletions[e.id].reason" class="oddity-completion-reason">{{ oddityCompletions[e.id].reason }}</small>
+                  </div>
 
                   <ShareCardStats
                     :enabled="ledgerCardIsV3 && compactStats"
@@ -3172,6 +3185,7 @@ import {
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
   normalizeOperatorOdditySchema,
+  operatorOddityCompletion,
 } from "../../utils/operatorCombatStats.js";
 import {
   buildOperatorV3BrowserRequest,
@@ -3210,6 +3224,7 @@ const activeTab = usePersistedTab(
 const visitedTabs = ref(new Set(["catalog", activeTab.value]));
 watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
+let operatorPageDisposed = false;
 const manifestSearch = ref("");
 const manifestFilter = ref("all");
 const rarityFilter = ref("all");
@@ -3267,8 +3282,10 @@ const favoriteLoading = ref(false);
 const favoriteError = ref("");
 const scanEffectById = ref({});
 let favoriteLoadSeq = 0;
+let catalogLoadSeq = 0;
 let currentLoadSeq = 0;
-let currentLoadedKey = "";
+const currentLoadedKey = ref("");
+let currentContextSeq = 0;
 let favoriteLoadedAccount = "";
 let accountEventRefreshTimer = null;
 let subjectiveEventRefreshTimer = null;
@@ -3437,6 +3454,20 @@ const gameFilter = computed({
     activeAccount.setGame(v, accountId.value);
   },
 });
+
+watch(
+  () => [accountId.value, gameFilter.value, auth.isLoggedIn],
+  () => {
+    currentContextSeq += 1;
+    currentLoadSeq += 1;
+    currentLoadedKey.value = "";
+    savingEdit.value = false;
+    cardSubmitStates.value = {};
+    cardSubmitTimers.forEach(clearTimeout);
+    cardSubmitTimers.clear();
+  },
+  { flush: "sync" },
+);
 
 watch(
   function () {
@@ -3640,6 +3671,7 @@ function normalizeOperator(op) {
         ? op.specialOddityName
         : op.special_oddity_name,
     odditySchema: odditySchema,
+    oddityCompletionSchema: op.odditySchema || op.oddity_schema,
     incompleteFields: op.incompleteFields || op.incomplete_fields || [],
     avatar: op.avatar || "",
   };
@@ -4108,6 +4140,18 @@ const catalogCount = computed(function () {
 
 function normalizeEntry(e, odditySchema) {
   e = e || {};
+  const rawStats = e.combatStats || e.combat_stats || e.stats || e;
+  const rawOddities = rawStats.oddities || rawStats.oddity || e.oddities || {};
+  const oddityRecordedValues = {};
+  ODDITY_KEYS.forEach(function (key) {
+    const value = rawOddities[key];
+    if (
+      Object.prototype.hasOwnProperty.call(rawOddities, key) && value &&
+      Object.prototype.hasOwnProperty.call(value, "current")
+    ) {
+      oddityRecordedValues[key] = { current: value.current };
+    }
+  });
   const hasCombatStats =
     Object.prototype.hasOwnProperty.call(e, "combat_stats") ||
     Object.prototype.hasOwnProperty.call(e, "combatStats") ||
@@ -4129,6 +4173,7 @@ function normalizeEntry(e, odditySchema) {
     revision: e.revision != null ? Number(e.revision) || 0 : 0,
     updatedAt: e.updatedAt || e.updated_at || null,
     combatStatsPresent: hasCombatStats,
+    oddityRecordedValues: oddityRecordedValues,
     combatStats: normalizeOperatorCombatStats(
       e.combatStats || e.combat_stats || e.stats || e,
       odditySchema,
@@ -4478,6 +4523,24 @@ const currentMap = computed(function () {
     m[e.id] = e;
   });
   return m;
+});
+
+const oddityCompletions = computed(function () {
+  const result = {};
+  if (!auth.isLoggedIn || !accountId.value || accountsLoading.value || accountError.value ||
+      loading.value || error.value || catalogLoading.value ||
+      currentLoadedKey.value !== accountId.value + ":" + gameFilter.value) return result;
+  const labels = { full: "已满", incomplete: "未满", unknown: "待确认" };
+  Object.values(currentMap.value).forEach(function (entry) {
+    const op = catalogMap.value[entry.id];
+    if (!op || !isOperatorOwned(entry)) return;
+    const completion = operatorOddityCompletion(entry.oddityRecordedValues, op.oddityCompletionSchema);
+    result[entry.id] = Object.assign({}, completion, {
+      label: "漆园蝶" + labels[completion.status],
+      compactLabel: "蝶" + labels[completion.status],
+    });
+  });
+  return result;
 });
 
 const orphanCurrentEntries = computed(function () {
@@ -7213,6 +7276,9 @@ async function saveCardDraft(entry) {
     annotationBusyIds.value.has(entry.id)
   )
     return;
+  const targetAccount = accountId.value;
+  const targetGame = saveGame.value;
+  const contextSeq = currentContextSeq;
   cardPopoverKey.value = "";
   cardSubmitStates.value = Object.assign({}, cardSubmitStates.value, {
     [entry.id]: "submitting",
@@ -7221,11 +7287,12 @@ async function saveCardDraft(entry) {
     const changes = cardDraftChanges(entry);
     if (changes.objective) {
       const response = await patchOperatorCurrent({
-        accountId: accountId.value,
+        accountId: targetAccount,
         operatorId: entry.id,
-        game: saveGame.value,
+        game: targetGame,
         patch: cardPatch(entry),
       });
+      if (contextSeq !== currentContextSeq) return;
       mergePatchedCurrentEntry(entry, response);
       // 客观字段已经成功时先推进其 baseline；若随后备注保存失败，重试只提交备注。
       const objectiveBaseline = parsedCardDraftSnapshot(entry);
@@ -7241,6 +7308,7 @@ async function saveCardDraft(entry) {
         String(draft.remark || "").trim() === "" ? null : String(draft.remark);
       await saveOperatorAnnotation(entry, { note: note });
     }
+    if (contextSeq !== currentContextSeq) return;
     persistWorkbenchMap("combat-modes", cardCombatModes.value);
     cardDraftBaselines.value = Object.assign({}, cardDraftBaselines.value, {
       [entry.id]: cardDraftSnapshot(entry),
@@ -7257,6 +7325,7 @@ async function saveCardDraft(entry) {
       }, 1100),
     );
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return;
     quickNotices.value = Object.assign({}, quickNotices.value, {
       [entry.id]: humanErr(err, "保存失败"),
     });
@@ -7555,6 +7624,9 @@ async function closeEditor() {
 
 async function saveEdit() {
   if (!editingOp.value || !accountId.value) return;
+  const targetAccount = accountId.value;
+  const targetGame = saveGame.value;
+  const contextSeq = currentContextSeq;
   editForm.value.discLoadouts.forEach(function (_, index) {
     ensureDiscLoadoutName(index);
   });
@@ -7713,9 +7785,9 @@ async function saveEdit() {
     let response;
     try {
       response = await patchOperatorCurrent({
-        accountId: accountId.value,
+        accountId: targetAccount,
         operatorId: op.id,
-        game: saveGame.value,
+        game: targetGame,
         patch: patch,
       });
     } catch (firstErr) {
@@ -7724,18 +7796,20 @@ async function saveEdit() {
         firstErr &&
         (firstErr.code === "unsupported_field" ||
           /unsupported field.*display[_ ]?mode/i.test(firstErr.message || ""));
+      if (contextSeq !== currentContextSeq) return;
       if (!unsupportedDisplayMode) throw firstErr;
       const legacyPatch = JSON.parse(JSON.stringify(patch));
       if (legacyPatch.combat_stats)
         delete legacyPatch.combat_stats.display_mode;
       response = await patchOperatorCurrent({
-        accountId: accountId.value,
+        accountId: targetAccount,
         operatorId: op.id,
-        game: saveGame.value,
+        game: targetGame,
         patch: legacyPatch,
       });
       editNotice.value = "已保存；当前后端暂不支持跨设备记忆显示偏好";
     }
+    if (contextSeq !== currentContextSeq) return;
     persistCombatDisplayMode(op.id);
     if (!applyPatchedCurrentEntry(op.id, response)) {
       // 完整编辑从当前卡片打开；只有卡片在保存期间被外部刷新移除时，
@@ -7743,18 +7817,23 @@ async function saveEdit() {
       resetCardDraftState(op.id);
       await reloadCurrent(true);
     }
-    if (!(await persistStarLoadout())) {
+    if (contextSeq !== currentContextSeq) return;
+    const starLoadoutSaved = await persistStarLoadout();
+    if (contextSeq !== currentContextSeq) return;
+    if (!starLoadoutSaved) {
       editNotice.value = starLoadoutError.value || "星石装配保存失败，已保留本次修改";
       editNoticeError.value = true;
       return;
     }
     await nextTick();
+    if (contextSeq !== currentContextSeq) return;
     editBaseline.value = submittedSignature;
     editNotice.value = "养成资料已保存";
     setTimeout(async function () {
-      if (await closeEditor()) restoreCurrentLedgerCardPosition(op.id);
+      if (contextSeq === currentContextSeq && await closeEditor()) restoreCurrentLedgerCardPosition(op.id);
     }, 800);
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return;
     if (
       err &&
       (err.status === 409 || err.code === "operator_revision_conflict")
@@ -7766,6 +7845,7 @@ async function saveEdit() {
         displayMode: JSON.parse(JSON.stringify(combatDisplayMode.value)),
       };
       await reloadCurrent(true);
+      if (contextSeq !== currentContextSeq) return;
       applyEditorEntry(currentMap.value[op.id] || {}, op, op.id, false);
       editConflictDraft.value = localDraft;
       editNotice.value = "";
@@ -7774,7 +7854,7 @@ async function saveEdit() {
     }
     editNoticeError.value = true;
   } finally {
-    savingEdit.value = false;
+    if (contextSeq === currentContextSeq) savingEdit.value = false;
   }
 }
 
@@ -7796,7 +7876,7 @@ function setTab(t) {
   activeTab.value = t;
   const currentKey = accountId.value + ":" + gameFilter.value;
   let currentLoad = Promise.resolve();
-  if ((t === "current" || t === "tracking") && currentLoadedKey !== currentKey)
+  if ((t === "current" || t === "tracking") && currentLoadedKey.value !== currentKey)
     currentLoad = reloadCurrent();
   if ((t === "current" || t === "tracking") && cardMaterialLoadedAccount.value !== accountId.value)
     loadCardMaterialStock();
@@ -7813,19 +7893,22 @@ async function openPlannerGrowthAction(row, field, step) {
 
 // —— 公开目录 ——
 async function loadCatalog() {
+  const seq = ++catalogLoadSeq;
   catalogLoading.value = true;
   catalogError.value = "";
   try {
     const data = await getOperatorCatalog();
+    if (seq !== catalogLoadSeq) return;
     if (!Array.isArray(data?.operators)) throw new Error("公共图鉴响应无效");
     backendCatalog.value =
       data && Array.isArray(data.operators) ? data.operators : [];
     catalogVersion.value = (data && data.catalog_version) || "";
   } catch (err) {
+    if (seq !== catalogLoadSeq) return;
     backendCatalog.value = null;
     catalogError.value = humanErr(err, "图鉴加载失败，当前显示本地兜底目录");
   } finally {
-    catalogLoading.value = false;
+    if (seq === catalogLoadSeq) catalogLoading.value = false;
   }
 }
 
@@ -7859,7 +7942,7 @@ async function loadAccounts() {
 async function reloadCurrent(quiet) {
   if (!auth.isLoggedIn) {
     currentLoadSeq += 1;
-    currentLoadedKey = "";
+    currentLoadedKey.value = "";
     currentEntries.value = [];
     error.value = "";
     loading.value = false;
@@ -7867,7 +7950,7 @@ async function reloadCurrent(quiet) {
   }
   if (!accountId.value) {
     currentLoadSeq += 1;
-    currentLoadedKey = "";
+    currentLoadedKey.value = "";
     currentEntries.value = [];
     error.value = "";
     loading.value = false;
@@ -7913,7 +7996,7 @@ async function reloadCurrent(quiet) {
           operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id)
         );
       });
-    currentLoadedKey = targetKey;
+    currentLoadedKey.value = targetKey;
     await loadStarLoadoutSnapshot(targetAccount);
   } catch (err) {
     if (
@@ -7922,6 +8005,7 @@ async function reloadCurrent(quiet) {
       gameFilter.value !== targetGame
     )
       return;
+    currentLoadedKey.value = "";
     if (!quiet) error.value = humanErr(err, "加载失败，请稍后重试");
   } finally {
     if (
@@ -8223,6 +8307,9 @@ function handleAccountEvent(message) {
   if (!message) return;
   const eventAccount = message.data?.account_id || message.data?.accountId;
   if (eventAccount && eventAccount !== accountId.value) return;
+  if (message.event === "operator_catalog_update" || message.event === "operator_catalog_updated") {
+    void loadCatalog();
+  }
   if (message.event === "operator_annotation") { scheduleSubjectiveRefresh(message.event); return; }
   if (message.event === "operator_favorites") { scheduleSubjectiveRefresh(message.event); return; }
 
@@ -8476,7 +8563,7 @@ function previewV2Import() {
   importResult.value = null;
   resetImportPreview();
   try {
-    if (loading.value || error.value || currentLoadedKey !== accountId.value + ':' + gameFilter.value)
+    if (loading.value || error.value || currentLoadedKey.value !== accountId.value + ':' + gameFilter.value)
       throw new Error('请先成功加载当前账号的养成数据，再预览导入影响');
     const doc = parseImportDocument();
     importV2Preview.value = buildOperatorV2BrowserPreview(doc, accountId.value, currentMap.value, gameFilter.value);
@@ -8679,8 +8766,11 @@ onMounted(async function () {
   window.addEventListener("scroll", hideDiscTooltip, true);
   window.addEventListener("resize", hideDiscTooltip);
   await Promise.all([loadCatalog(), loadAccounts(), loadStarLoadoutPresets()]);
+  if (operatorPageDisposed) return;
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
+  if (operatorPageDisposed) return;
   await loadScanReviews();
+  if (operatorPageDisposed) return;
   setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
   operatorNavigationReady = true;
@@ -8688,6 +8778,12 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  operatorPageDisposed = true;
+  currentContextSeq += 1;
+  catalogLoadSeq += 1;
+  currentLoadSeq += 1;
+  cardSubmitTimers.forEach(clearTimeout);
+  cardSubmitTimers.clear();
   compactStatsQuery?.removeEventListener("change", syncCompactStats);
   clearTimeout(shareCopyTimer);
   shareCopySeq += 1;
@@ -8701,6 +8797,54 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.slot-oddity-completion,
+.ledger-oddity-completion {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  grid-column: 1 / -1;
+}
+.slot-oddity-completion {
+  justify-content: center;
+  text-align: center;
+}
+.oddity-completion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.oddity-completion-badge.is-full {
+  background: var(--yellow);
+  color: var(--tea);
+}
+.oddity-completion-badge.is-unknown {
+  border-style: dashed;
+}
+.oddity-completion-badge svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.oddity-completion-reason {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .scan-review-panel, .scan-review-context { margin: 18px 0; padding: 16px; border: 1px solid var(--rouge); border-radius: 12px; background: var(--surface); color: var(--ink); }
 .scan-review-panel h2 { margin: 0; font-size: 18px; }
 .scan-review-panel h2 span { color: var(--rouge); }

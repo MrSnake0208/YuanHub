@@ -8,8 +8,68 @@ import {
   fillOperatorOdditiesToMax,
   normalizeOperatorCombatStats,
   normalizeOperatorOddities,
-  normalizeOperatorOdditySchema
+  normalizeOperatorOdditySchema,
+  operatorOddityCompletion
 } from '../src/utils/operatorCombatStats.js'
+
+const completionKeys = ['attack', 'hp', 'special']
+const completionSchema = limits => Object.fromEntries(completionKeys.map((key, index) => [key, { max: limits[index] }]))
+const completionValues = values => Object.fromEntries(completionKeys.map((key, index) => [key, { current: values[index], max: 9999 }]))
+
+test('漆园蝶三项按当前公共 schema 判断，不依赖等级、名称或旧 max，保留小数', () => {
+  for (const limits of [[300, 1560, 9], [350, 1820, 11], [500, 2600, 15]]) {
+    const schema = completionSchema(limits)
+    const values = completionValues(limits)
+    const original = structuredClone({ values, schema })
+    assert.deepEqual(operatorOddityCompletion(values, schema), { status: 'full', reason: '' })
+    for (const key of completionKeys) {
+      const partial = structuredClone(values)
+      partial[key].current -= 0.1
+      assert.equal(operatorOddityCompletion(partial, schema).status, 'incomplete')
+    }
+    assert.deepEqual({ values, schema }, original)
+    assert.equal(operatorOddityCompletion(completionValues(limits.map(String)), schema).status, 'full')
+    schema.special.max += 1
+    assert.equal(operatorOddityCompletion(values, schema).status, 'incomplete')
+    schema.special.max = limits[2] - 1
+    assert.equal(operatorOddityCompletion(values, schema).status, 'unknown')
+  }
+  assert.equal(operatorOddityCompletion(completionValues([500, 2600, 14.9]), completionSchema([500, 2600, 15])).status, 'incomplete')
+})
+
+test('明确零值与缺失补零不同；三项完整前不判未满', () => {
+  const schema = completionSchema([300, 1560, 9])
+  assert.equal(operatorOddityCompletion(completionValues([0, 0, 0]), schema).status, 'incomplete')
+  assert.equal(operatorOddityCompletion(completionValues([0, 0, 0]), completionSchema([0, 0, 0])).status, 'full')
+  const partial = completionValues([0, 0, 0])
+  delete partial.special
+  assert.deepEqual(operatorOddityCompletion(partial, schema), { status: 'unknown', reason: '第三项尚未记录' })
+  partial.special = { max: 9 }
+  assert.equal(operatorOddityCompletion(partial, schema).status, 'unknown')
+  assert.equal(operatorOddityCompletion({}, schema).status, 'unknown')
+})
+
+test('各项非法值、超限或公共上限无效时待确认，不使用记录附带的 max', () => {
+  const limits = [300, 1560, 9]
+  const invalid = [null, undefined, '', ' ', 'bad', NaN, Infinity, -1, false, true, [], {}]
+  for (const key of completionKeys) {
+    for (const value of invalid) {
+      const values = completionValues(limits)
+      values[key].current = value
+      assert.equal(operatorOddityCompletion(values, completionSchema(limits)).status, 'unknown', `${key} current ${String(value)}`)
+      const schema = completionSchema(limits)
+      schema[key].max = value
+      assert.equal(operatorOddityCompletion(completionValues(limits), schema).status, 'unknown', `${key} max ${String(value)}`)
+    }
+    const schema = completionSchema(limits)
+    delete schema[key]
+    assert.equal(operatorOddityCompletion(completionValues(limits), schema).status, 'unknown')
+    const values = completionValues(limits)
+    values[key].current += 1
+    assert.equal(operatorOddityCompletion(values, completionSchema(limits)).status, 'unknown')
+  }
+  assert.equal(operatorOddityCompletion(completionValues(limits), null).status, 'unknown')
+})
 
 test('一键拉满只把图鉴有上限的奇闻填到上限，保留其他养成字段', function () {
   const draft = {
