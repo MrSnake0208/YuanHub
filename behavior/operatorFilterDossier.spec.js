@@ -77,3 +77,21 @@ it('图鉴复用的养成筛选同时提供预设与可独立启用的自定义�
   expect(wrapper.emitted('update:modelValue').at(-1)[0]).toMatchObject({ eliteMin: '12', eliteEnabled: true })
   wrapper.unmount()
 })
+
+it('同一筛选组件呈现在册、独立弃置和显式全部的计数与选中语义', async () => {
+  const wrapper = mount(OperatorFilterDossier, { props: {
+    totalCount: 4, statusFilter: 'registered', statusCounts: { registered: 3, growing: 1, graduated: 1, inactive: 1, discarded: 1 },
+    statusOptions: [
+      { value: 'registered', label: '在册' }, { value: 'growing', label: '养成中' },
+      { value: 'graduated', label: '已毕业' }, { value: 'inactive', label: '养老中' },
+      { value: 'discarded', label: '已弃置', separateGroup: true }, { value: 'all', label: '全部（含已弃置）' },
+    ],
+  } })
+  expect(wrapper.get('.status-registered').text()).toBe('在册3')
+  expect(wrapper.get('.status-registered').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.status-discarded').text()).toBe('已弃置1')
+  expect(wrapper.get('.status-all').text()).toBe('全部（含已弃置）4')
+  await wrapper.get('.status-discarded').trigger('click')
+  expect(wrapper.emitted('update:statusFilter')).toEqual([['discarded']])
+  wrapper.unmount()
+})

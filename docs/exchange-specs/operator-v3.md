@@ -76,3 +76,9 @@ Preview 顶层格式是 `myshare-operator-import-preview@1`，统计：`accepted
 
 具体端点见 [传输与鉴权](./transport.md)。
 
+
+## 2026-10-03：已弃置枚举扩展
+
+主观 `growth_state` 为 `active | graduated | skip | discarded`，对应养成中/已毕业/养老中/已弃置。discarded 保留所有资料，支持 listed/full 备份恢复，普通客观导入和 scan 不覆盖它。API 分享/OpenAPI 读取原样透传。未知非空值拒绝，缺失沿用默认。
+
+仍为 v3 明确扩展，旧 schema 会拒绝新值文件。发布前先升级读取界面和 MaaYuan，再开放新值写入；旧标签页使用现有更新横幅刷新；后端回滚需保留四值兼容。详情见完整 v3 协议的“2026-10-03 v3 养成状态枚举扩展”。

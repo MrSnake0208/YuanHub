@@ -62,3 +62,15 @@ it('搜索只筛选可见候选，不丢失已选成员', async () => {
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('save')[0][0].operatorIds).toEqual([a.id])
 })
+
+it('已弃置及未知状态可读，保留清单成员和特别关注', async () => {
+  const members = new Set([a.id]), favorites = new Set([a.id])
+  const wrapper = render({ memberIds: members, favoriteIds: favorites, growthStates: { [a.id]: 'discarded', [b.id]: 'future' } })
+  await open(wrapper)
+  expect(wrapper.find('[aria-label="养成状态：已弃置，特别关注"]').exists()).toBe(true)
+  expect(wrapper.text()).toContain('不支持的养成状态：future')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].operatorIds).toEqual([a.id])
+  expect(members).toEqual(new Set([a.id])); expect(favorites).toEqual(new Set([a.id]))
+  wrapper.unmount()
+})

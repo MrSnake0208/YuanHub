@@ -104,16 +104,17 @@
       <div class="pf-row pf-status-row">
         <span class="pf-label">状态</span>
         <div class="mf-filter current-status-filter" role="group" :aria-label="`按养成状态筛选${contextLabel}`">
-          <button
-            v-for="option in statusOptions"
-            :key="option.value"
-            type="button"
-            :aria-pressed="statusFilter === option.value"
-            :class="['status-' + option.value, { on: statusFilter === option.value }]"
-            @click="$emit('update:statusFilter', option.value)"
-          >
-            {{ option.label }}<small>{{ statusCount(option.value) }}</small>
-          </button>
+          <template v-for="option in statusOptions" :key="option.value">
+            <span v-if="option.separateGroup" class="status-group-break" aria-hidden="true"></span>
+            <button
+              type="button"
+              :aria-pressed="statusFilter === option.value"
+              :class="['status-' + option.value, { on: statusFilter === option.value }]"
+              @click="$emit('update:statusFilter', option.value)"
+            >
+              {{ option.label }}<small>{{ statusCount(option.value) }}</small>
+            </button>
+          </template>
         </div>
       </div>
 
@@ -343,6 +344,9 @@ function statusCount(value) {
   flex: none;
   object-fit: contain;
 }
+.status-group-break { flex-basis: 100%; border-top: 1px dashed var(--line); margin: 2px 0; }
+.current-status-filter button { min-height: 44px; max-width: 100%; white-space: normal; }
+.current-status-filter button.status-discarded.on { background: var(--cream); color: var(--tea); box-shadow: inset 0 0 0 1px var(--tea); }
 .current-status-filter button small {
   margin-left: 2px;
   color: var(--ink-35);
@@ -416,7 +420,7 @@ function statusCount(value) {
   .pf-rarity-row .mf-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pf-prof-row .mf-filter { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .pf-subprof-row .mf-filter { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .pf-status-row .mf-filter { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pf-status-row .mf-filter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mf-filter button {
     width: 100%;
     min-width: 0;
@@ -429,6 +433,8 @@ function statusCount(value) {
     white-space: nowrap;
     touch-action: manipulation;
   }
+  .current-status-filter .status-group-break { grid-column: 1 / -1; }
+  .current-status-filter button { min-height: 44px; line-height: 1.3; white-space: normal; }
   .pf-prof-row .mf-filter button img { display: none; }
 }
 </style>

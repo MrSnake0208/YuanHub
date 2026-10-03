@@ -404,8 +404,8 @@
                     <div v-for="(change, field) in item.changes" :key="field">
                       <dt>{{ importFieldLabel(field) }}</dt>
                       <dd>
-                        {{ importValueLabel(change.before) }} →
-                        {{ importValueLabel(change.after) }}
+                        {{ importValueLabel(change.before, field) }} →
+                        {{ importValueLabel(change.after, field) }}
                       </dd>
                     </div>
                   </dl>
@@ -857,6 +857,10 @@
                     <dt>养老中</dt>
                     <dd>{{ currentStatusCounts.inactive }}</dd>
                   </div>
+                  <div class="status-discarded">
+                    <dt>已弃置</dt>
+                    <dd>{{ currentStatusCounts.discarded }}</dd>
+                  </div>
                 </dl>
               </div>
             </div>
@@ -1063,24 +1067,14 @@
                 >
                 <div class="batch-status-actions">
                   <button
+                    v-for="option in OPERATOR_STATUS_OPTIONS"
+                    :key="option.value"
                     type="button"
-                    class="batch-status-action graduated"
-                    :disabled="
-                      !batchSelectedCount || annotationBusyIds.size > 0
-                    "
-                    @click="batchSetStatus('graduated')"
+                    :class="['batch-status-action', option.value]"
+                    :disabled="!batchSelectedCount || annotationBusyIds.size > 0 || batchStatusBusy"
+                    @click="batchSetStatus(option.value)"
                   >
-                    设为已毕业
-                  </button>
-                  <button
-                    type="button"
-                    class="batch-status-action inactive"
-                    :disabled="
-                      !batchSelectedCount || annotationBusyIds.size > 0
-                    "
-                    @click="batchSetStatus('inactive')"
-                  >
-                    设为养老中
+                    {{ workbenchStatusFilter === 'discarded' && option.value !== 'discarded' ? '恢复为' : '设为' }}{{ option.label }}
                   </button>
                   <button
                     v-if="batchSelectedCount"
@@ -1096,6 +1090,13 @@
               </template>
             </OperatorFilterDossier>
 
+            <div v-if="annotationUnsupportedStates.length" class="state err slim" role="alert">
+              存在不支持的养成状态（{{ annotationUnsupportedStates.join('、') }}），请刷新到最新版本；可在“全部（含已弃置）”查看。
+            </div>
+            <div v-if="annotationNotice" class="state slim" role="status" aria-live="polite">
+              {{ annotationNotice }}
+              <button v-if="annotationNoticeTarget" type="button" class="link" @click="viewAnnotationNoticeGroup">查看{{ statusLabel(annotationNoticeTarget) }}</button>
+            </div>
             <div v-if="annotationError" class="state err slim" role="alert">
               {{ annotationError }}
             </div>
@@ -1138,6 +1139,7 @@
               </div>
               <div v-if="filteredCurrent.length === 0" class="state slim">
                 没有匹配{{ currentFilterSuffix }}的已招募密探
+                <button type="button" class="link" @click="resetCurrentFilters">清除筛选，返回在册</button>
               </div>
               <div v-else class="agent-ledger-grid" role="list">
                 <article
@@ -1159,7 +1161,7 @@
                     'status-' + operatorStatus(e),
                     ledgerCardVersionClass,
                   ]"
-                  :aria-busy="cardSubmitStates[e.id] === 'submitting'"
+                  :aria-busy="cardSubmitStates[e.id] === 'submitting' || annotationBusyIds.has(e.id)"
                   role="listitem"
                 >
                   <picture
@@ -1274,7 +1276,7 @@
                               statusLabel(operatorStatus(e))
                             "
                           >
-                            <span>{{ statusLabel(operatorStatus(e)) }}</span>
+                            <span>{{ annotationBusyIds.has(e.id) ? "保存中…" : statusLabel(operatorStatus(e)) }}</span>
                             <ChevronDown v-if="ledgerCardIsV2" class="ledger-status-chevron" :size="14" aria-hidden="true" />
                           </summary>
                           <div
@@ -1283,42 +1285,15 @@
                             :aria-label="e.name + '养成状态选项'"
                           >
                             <button
+                              v-for="option in OPERATOR_STATUS_OPTIONS"
+                              :key="option.value"
                               type="button"
                               role="option"
-                              :aria-selected="operatorStatus(e) === 'growing'"
+                              :aria-selected="operatorStatus(e) === option.value"
                               :disabled="annotationBusyIds.has(e.id)"
-                              @click="
-                                setOperatorStatusAndClose(e, 'growing', $event)
-                              "
-                            >
-                              养成中
-                            </button>
-                            <button
-                              type="button"
-                              role="option"
-                              :aria-selected="operatorStatus(e) === 'graduated'"
-                              :disabled="annotationBusyIds.has(e.id)"
-                              @click="
-                                setOperatorStatusAndClose(
-                                  e,
-                                  'graduated',
-                                  $event,
-                                )
-                              "
-                            >
-                              已毕业
-                            </button>
-                            <button
-                              type="button"
-                              role="option"
-                              :aria-selected="operatorStatus(e) === 'inactive'"
-                              :disabled="annotationBusyIds.has(e.id)"
-                              @click="
-                                setOperatorStatusAndClose(e, 'inactive', $event)
-                              "
-                            >
-                              养老中
-                            </button>
+                              @click="setOperatorStatusAndClose(e, option.value, $event)"
+                            >{{ option.label }}</button>
+                            <small class="ledger-status-help">已弃置：移出日常养成，练度保留，可随时恢复</small>
                           </div>
                         </details>
                       </div>
@@ -3123,7 +3098,14 @@ import {
 } from "../../api/operator.js";
 import { avatarUrl } from "../../api/request.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
-import { reconcileOperatorAnnotations } from "../../utils/operatorAnnotations.js";
+import {
+  OPERATOR_STATUS_OPTIONS,
+  operatorAnnotationStatus,
+  operatorAnnotationApiState,
+  operatorAnnotationStatusLabel,
+  matchesOperatorStatus,
+  reconcileOperatorAnnotations,
+} from "../../utils/operatorAnnotations.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
@@ -3234,7 +3216,7 @@ const manifestFilter = ref("all");
 const rarityFilter = ref("all");
 const profFilter = ref("all");
 const subProfFilter = ref("all");
-const workbenchStatusFilter = ref("all");
+const workbenchStatusFilter = ref("registered");
 const emptyGrowthFilters = () => ({
   levelMin: "", levelMax: "", levelEnabled: false,
   eliteMin: "", eliteMax: "", eliteEnabled: false,
@@ -3251,10 +3233,9 @@ const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
 });
 const workbenchStatusOptions = [
-  { value: "all", label: "全部" },
-  { value: "growing", label: "养成中" },
-  { value: "graduated", label: "已毕业" },
-  { value: "inactive", label: "养老中" },
+  { value: "registered", label: "在册" },
+  ...OPERATOR_STATUS_OPTIONS.map(option => ({ ...option, separateGroup: option.value === "discarded" })),
+  { value: "all", label: "全部（含已弃置）" },
 ];
 const loading = ref(false);
 const catalogLoading = ref(false);
@@ -3314,6 +3295,11 @@ const workbenchRemarkSaving = ref(new Set());
 const annotationRevisions = ref({});
 const annotationBusyIds = ref(new Set());
 const annotationError = ref("");
+const annotationUnsupportedStates = computed(() => [...new Set(Object.values(workbenchStatuses.value)
+  .filter(state => !OPERATOR_STATUS_OPTIONS.some(option => option.value === operatorAnnotationStatus(state))))]);
+const annotationNotice = ref("");
+const annotationNoticeTarget = ref("");
+const batchStatusBusy = ref(false);
 const subjectiveRefreshKey = ref(0);
 const batchSelectMode = ref(false);
 const batchSelectionBase = ref(new Set());
@@ -3349,6 +3335,7 @@ const BATCH_QUICK_FILTERS = [
   },
 ];
 let annotationLoadSeq = 0;
+let annotationScopeSeq = 0;
 const cardCombatDrafts = ref({});
 const cardCombatModes = ref({});
 const cardCombatEditedKeys = ref(new Set());
@@ -3492,6 +3479,11 @@ watch(
     starLoadoutDrafts.value = {};
     starLoadoutRevision.value = 0;
     starStateGeneration.value = 0;
+    annotationScopeSeq += 1;
+    annotationNotice.value = "";
+    annotationNoticeTarget.value = "";
+    batchStatusBusy.value = false;
+    workbenchStatusFilter.value = "registered";
     workbenchStatuses.value = readWorkbenchMap("statuses");
     workbenchRemarks.value = readWorkbenchMap("remarks");
     annotationRevisions.value = {};
@@ -4682,18 +4674,20 @@ const ownedCurrentEntries = computed(function () {
 });
 
 const currentStatusCounts = computed(function () {
-  return ownedCurrentEntries.value.reduce(
+  const counts = ownedCurrentEntries.value.reduce(
     function (counts, entry) {
       const status = operatorStatus(entry);
       if (Object.prototype.hasOwnProperty.call(counts, status))
         counts[status] += 1;
       return counts;
     },
-    { growing: 0, graduated: 0, inactive: 0 },
+    { growing: 0, graduated: 0, inactive: 0, discarded: 0 },
   );
+  counts.registered = counts.growing + counts.graduated + counts.inactive;
+  return counts;
 });
 
-const CURRENT_STATUS_ORDER = { growing: 0, graduated: 1, inactive: 2 };
+const CURRENT_STATUS_ORDER = { growing: 0, graduated: 1, inactive: 2, discarded: 3 };
 const CURRENT_PROF_ORDER = {
   地: 0,
   水: 1,
@@ -4710,7 +4704,7 @@ function compareCurrentEntries(a, b) {
     (CURRENT_STATUS_ORDER[operatorStatus(b)] ?? 99);
   if (difference) return difference;
 
-  // 特别关注只在同一养成状态内提前，不打破“养成中 → 已毕业 → 不养成”的主分组。
+  // 特别关注只在同一养成状态内提前，不打破“养成中 → 已毕业 → 养老中 → 已弃置”的主分组。
   if (favoriteFirst.value) {
     difference =
       Number(favoriteAgentIds.value.has(b.id)) -
@@ -4744,6 +4738,7 @@ const upgradeReadyGroups = computed(function () {
   if (cardMaterialLoadedAccount.value !== accountId.value) return groups;
   ownedCurrentEntries.value.forEach(function (entry) {
     const status = operatorStatus(entry);
+    if (status === "discarded") return;
     if (status === "growing") {
       const levelReady = quickGrowthActionAvailable(entry, "level", 5);
       const eliteReady = quickGrowthActionAvailable(entry, "elite", 1);
@@ -4798,8 +4793,7 @@ function matchesCurrentFilters(entry) {
   return (
     (rarityFilter.value === "all" || Number(entry.rarity) === Number(rarityFilter.value)) &&
     matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
-    (workbenchStatusFilter.value === "all" ||
-      operatorStatus(entry) === workbenchStatusFilter.value) &&
+    matchesOperatorStatus(operatorStatus(entry), workbenchStatusFilter.value) &&
     matchesOperatorGrowthFilters(entry, growthFilters.value) &&
     (!upgradeReadyFilter.value || activeUpgradeReadyIds.value.has(entry.id))
   );
@@ -4882,8 +4876,8 @@ const currentFilterSuffix = computed(function () {
     parts.push("属性「" + profFilter.value + "」");
   if (subProfFilter.value !== "all")
     parts.push("职业「" + subProfFilter.value + "」");
-  if (workbenchStatusFilter.value !== "all")
-    parts.push("状态「" + statusLabel(workbenchStatusFilter.value) + "」");
+  const group = workbenchStatusOptions.find(option => option.value === workbenchStatusFilter.value);
+  parts.push("分组「" + (group ? group.label : workbenchStatusFilter.value) + "」");
   parts.push(...growthFilterParts(growthFilters.value));
   if (upgradeReadyFilter.value === "growth") parts.push("「等级/修为可提升」");
   if (upgradeReadyFilter.value === "huaji") parts.push("「可提升化极」");
@@ -4908,7 +4902,7 @@ const hasCurrentFilters = computed(function () {
     rarityFilter.value !== "all" ||
     profFilter.value !== "all" ||
     subProfFilter.value !== "all" ||
-    workbenchStatusFilter.value !== "all" ||
+    workbenchStatusFilter.value !== "registered" ||
     hasGrowthDrafts.value ||
     Boolean(upgradeReadyFilter.value) ||
     activeQuickFilterKeys.value.size > 0
@@ -4919,7 +4913,7 @@ function resetCurrentFilters() {
   rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
-  workbenchStatusFilter.value = "all";
+  workbenchStatusFilter.value = "registered";
   growthFilters.value = emptyGrowthFilters();
   upgradeReadyFilter.value = "";
   activeQuickFilterKeys.value = new Set();
@@ -5051,17 +5045,6 @@ function persistWorkbenchMap(kind, value) {
   localStorage.setItem(workbenchStorageKey(kind), JSON.stringify(value));
 }
 
-const ANNOTATION_STATE_TO_API = {
-  growing: "active",
-  graduated: "graduated",
-  inactive: "skip",
-};
-const ANNOTATION_STATE_FROM_API = {
-  active: "growing",
-  graduated: "graduated",
-  skip: "inactive",
-};
-
 function annotationMigrationKey(account) {
   return "yuanhub:operator-annotations-migrated:v1:" + account;
 }
@@ -5076,7 +5059,7 @@ function applyAnnotationItem(item) {
   const apiState = item.growth_state || item.growthState || "active";
   const note = item.note == null ? "" : String(item.note);
   workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, {
-    [id]: ANNOTATION_STATE_FROM_API[apiState] || "growing",
+    [id]: operatorAnnotationStatus(apiState),
   });
   workbenchRemarks.value = Object.assign({}, workbenchRemarks.value, {
     [id]: note,
@@ -5092,6 +5075,7 @@ async function migrateLocalAnnotations(targetAccount, remoteIds) {
     localStorage.getItem(annotationMigrationKey(targetAccount)) === "done"
   )
     return;
+  const scopeSeq = annotationScopeSeq;
   const localStatuses = readWorkbenchMap("statuses");
   const localRemarks = readWorkbenchMap("remarks");
   const ids = new Set(
@@ -5105,6 +5089,7 @@ async function migrateLocalAnnotations(targetAccount, remoteIds) {
     return state !== "growing" || !!note;
   });
   for (const id of candidates) {
+    if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return;
     const state = localStatuses[id] || "growing";
     const note =
       localRemarks[id] == null || String(localRemarks[id]).trim() === ""
@@ -5114,12 +5099,12 @@ async function migrateLocalAnnotations(targetAccount, remoteIds) {
       accountId: targetAccount,
       operatorId: id,
       annotation: {
-        growth_state: ANNOTATION_STATE_TO_API[state] || "active",
+        growth_state: operatorAnnotationApiState(state),
         note: note,
         expected_revision: 0,
       },
     });
-    if (accountId.value !== targetAccount) return;
+    if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return;
     applyAnnotationItem(item);
   }
   localStorage.setItem(annotationMigrationKey(targetAccount), "done");
@@ -5147,8 +5132,7 @@ async function loadOperatorAnnotations() {
       if (!id) return;
       remoteIds.add(id);
       statuses[id] =
-        ANNOTATION_STATE_FROM_API[item.growth_state || item.growthState] ||
-        "growing";
+        operatorAnnotationStatus(item.growth_state ?? item.growthState);
       remarks[id] = item.note == null ? "" : String(item.note);
       revisions[id] = annotationRevision(item);
     });
@@ -5177,6 +5161,7 @@ async function loadOperatorAnnotations() {
 async function saveOperatorAnnotation(entry, fields) {
   if (!entry || !entry.id || !auth.isLoggedIn || !accountId.value) return null;
   const targetAccount = accountId.value;
+  const scopeSeq = annotationScopeSeq;
   const id = entry.id;
   annotationBusyIds.value = new Set(annotationBusyIds.value).add(id);
   annotationError.value = "";
@@ -5190,23 +5175,27 @@ async function saveOperatorAnnotation(entry, fields) {
       operatorId: id,
       annotation: body,
     });
-    if (accountId.value !== targetAccount) return null;
+    if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return null;
     applyAnnotationItem(item);
     persistWorkbenchMap("statuses", workbenchStatuses.value);
     persistWorkbenchMap("remarks", workbenchRemarks.value);
     return item;
   } catch (err) {
-    if (accountId.value === targetAccount) {
+    if (accountId.value === targetAccount && annotationScopeSeq === scopeSeq) {
       annotationError.value = humanErr(err, "养成标注保存失败");
       revisionConflict = err && err.code === "annotation_revision_conflict";
     }
     throw err;
   } finally {
-    if (accountId.value === targetAccount) {
+    if (accountId.value === targetAccount && annotationScopeSeq === scopeSeq) {
       const next = new Set(annotationBusyIds.value);
       next.delete(id);
       annotationBusyIds.value = next;
-      if (revisionConflict) await loadOperatorAnnotations();
+      if (revisionConflict) {
+        await loadOperatorAnnotations();
+        if (accountId.value === targetAccount && annotationScopeSeq === scopeSeq && !annotationError.value)
+          annotationError.value = "养成状态或备注已在其他页面更新，已重新同步，请确认最新状态后重试";
+      }
     }
   }
 }
@@ -5234,17 +5223,11 @@ function setFavoriteFirst(value) {
 }
 
 function operatorStatus(entry) {
-  if (workbenchStatuses.value[entry.id])
-    return workbenchStatuses.value[entry.id];
-  return "growing";
+  return operatorAnnotationStatus(workbenchStatuses.value[entry.id]);
 }
 
 function statusLabel(status) {
-  return status === "graduated"
-    ? "已毕业"
-    : status === "inactive"
-      ? "养老中"
-      : "养成中";
+  return operatorAnnotationStatusLabel(status);
 }
 
 function flattenInventoryCurrent(data) {
@@ -6385,42 +6368,33 @@ function showQuickNotice(id, message, duration) {
   }, duration);
 }
 
-async function setOperatorStatus(entry, value) {
-  if (!entry || !entry.id || annotationBusyIds.value.has(entry.id))
+async function setOperatorStatus(entry, value, { batch = false } = {}) {
+  if (!entry || !entry.id || !isOperatorOwned(entry) || annotationBusyIds.value.has(entry.id))
     return false;
   const targetAccount = accountId.value;
-  const targetGame = saveGame.value;
+  const scopeSeq = annotationScopeSeq;
   const previous = operatorStatus(entry);
-  workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, {
-    [entry.id]: value,
-  });
-  persistWorkbenchMap("statuses", workbenchStatuses.value);
   try {
     const saved = await saveOperatorAnnotation(entry, {
-      growth_state: ANNOTATION_STATE_TO_API[value] || "active",
+      growth_state: operatorAnnotationApiState(value),
     });
-    if (
-      accountId.value !== targetAccount ||
-      saveGame.value !== targetGame ||
-      saved == null
-    )
+    if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq || saved == null)
       return false;
-    showQuickNotice(entry.id, "养成状态已同步", 1800);
+    const message = value === "discarded"
+      ? "已移至已弃置，练度保留，可随时恢复"
+      : previous === "discarded" ? "已恢复为" + statusLabel(value) : "已设为" + statusLabel(value);
+    if (!batch) {
+      annotationNotice.value = (entry.name || entry.id) + "：" + message;
+      annotationNoticeTarget.value = value === "discarded" ? "discarded" : value;
+    }
+    showQuickNotice(entry.id, message, 1800);
     return true;
   } catch (err) {
-    if (accountId.value !== targetAccount || saveGame.value !== targetGame)
-      return false;
-    if (!(err && err.code === "annotation_revision_conflict")) {
-      workbenchStatuses.value = Object.assign({}, workbenchStatuses.value, {
-        [entry.id]: previous,
-      });
-    }
+    if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return false;
     showQuickNotice(entry.id, humanErr(err, "养成状态保存失败"));
     return false;
   }
 }
-
-
 
 function setOperatorStatusAndClose(entry, value, event) {
   setOperatorStatus(entry, value);
@@ -6485,47 +6459,30 @@ function clearBatchSelected() {
 }
 
 async function batchSetStatus(value) {
-  const entries = filteredCurrent.value.filter(function (entry) {
-    return batchSelectedIds.value.has(entry.id);
-  });
+  if (batchStatusBusy.value || annotationBusyIds.value.size > 0) return;
+  // Freeze the selected entries before successful saves move cards out of this group.
+  const entries = filteredCurrent.value.filter(entry => batchSelectedIds.value.has(entry.id));
   const targetAccount = accountId.value;
-  const targetGame = saveGame.value;
+  const scopeSeq = annotationScopeSeq;
   if (!entries.length || !auth.isLoggedIn || !targetAccount) return;
-  const label = statusLabel(value);
-  const results = await Promise.all(
-    entries.map(function (entry) {
-      return setOperatorStatus(entry, value);
-    }),
-  );
-  if (accountId.value !== targetAccount || saveGame.value !== targetGame)
-    return;
-  const succeededIds = entries
-    .filter(function (entry, index) {
-      return results[index] === true;
-    })
-    .map(function (entry) {
-      return entry.id;
-    });
-  const failedIds = entries
-    .filter(function (entry, index) {
-      return results[index] === false;
-    })
-    .map(function (entry) {
-      return entry.id;
-    });
+  batchStatusBusy.value = true;
+  annotationNotice.value = "";
+  const results = await Promise.all(entries.map(entry => setOperatorStatus(entry, value, { batch: true })));
+  if (accountId.value !== targetAccount || annotationScopeSeq !== scopeSeq) return;
+  batchStatusBusy.value = false;
+  const failedIds = entries.filter((entry, index) => !results[index]).map(entry => entry.id);
+  const succeededCount = entries.length - failedIds.length;
   batchSelectionBase.value = new Set(failedIds);
   activeQuickFilterKeys.value = new Set();
-  if (failedIds.length > 0) {
-    annotationError.value = failedIds.length + " 位养成状态保存失败，请重试";
-    return;
-  }
-  batchSelectionBase.value = new Set();
-  if (succeededIds.length > 1)
-    showQuickNotice(
-      succeededIds[0],
-      "已批量设为" + label + "（" + succeededIds.length + " 位）",
-      2200,
-    );
+  annotationNotice.value = "成功 " + succeededCount + " 位，失败 " + failedIds.length + " 位；" +
+    (value === "discarded" ? "成功项已移至已弃置，练度保留" : "成功项已设为" + statusLabel(value));
+  annotationNoticeTarget.value = succeededCount ? value : "";
+  if (failedIds.length) annotationError.value = failedIds.length + " 位养成状态保存失败，请重试（冲突项已同步最新状态）";
+}
+
+function viewAnnotationNoticeGroup() {
+  resetCurrentFilters();
+  setWorkbenchStatusFilter(annotationNoticeTarget.value);
 }
 
 function ensureQuickDraft(entry) {
@@ -8543,11 +8500,16 @@ function importFieldLabel(field) {
       star_stones: "已装备星石",
       equipped_star_stones: "已装备星石",
       combat_stats: "奇闻与攻生",
+      growth_state: "养成状态",
+      favorite: "特别关注",
+      note: "备注",
+      targets: "养成目标",
     }[field] || field
   );
 }
 
-function importValueLabel(value) {
+function importValueLabel(value, field) {
+  if (field === "growth_state") return statusLabel(value);
   if (value == null) return "无";
   if (Array.isArray(value)) return value.length ? JSON.stringify(value) : "空";
   if (typeof value === "object") return JSON.stringify(value);
@@ -8782,6 +8744,8 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  annotationScopeSeq += 1;
+  annotationLoadSeq += 1;
   operatorPageDisposed = true;
   currentContextSeq += 1;
   catalogLoadSeq += 1;
@@ -10506,7 +10470,7 @@ onBeforeUnmount(function () {
 }
 .current-status-index {
   display: grid;
-  grid-template-columns: repeat(3, minmax(52px, 1fr));
+  grid-template-columns: repeat(4, minmax(52px, 1fr));
   gap: 9px;
   margin: 0;
 }
@@ -14332,7 +14296,7 @@ onBeforeUnmount(function () {
   }
   .current-status-index {
     flex: 1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }
   .current-status-index > div {
@@ -15444,7 +15408,7 @@ onBeforeUnmount(function () {
 }
 @media (max-width: 640px) {
   .current-workbench-index { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: 0; }
-  .current-status-index { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+  .current-status-index { display: grid; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
   .current-status-index > div { align-items: center; text-align: center; padding: 0 4px; }
   .current-status-index > div::before { left: 5px; }
   .current-index-total { min-width: 0; padding-right: 0; }
@@ -15463,7 +15427,7 @@ onBeforeUnmount(function () {
   .current-workbench-title { grid-column: 1; grid-row: 2; margin-top: 0; }
   .current-workbench-copy > p { grid-column: 1; margin-top: 2px; }
   .current-workbench-head .current-workbench-index { grid-column: 2; grid-row: 2 / span 3; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); width: 100%; box-sizing: border-box; gap: 10px; padding: 10px 12px; align-self: start; }
-  .current-workbench-index .current-status-index { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .current-workbench-index .current-status-index { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .ledger-share-control .ledger-share-badge { min-height: 32px; padding: 4px 8px; }
 }
 
@@ -15482,6 +15446,11 @@ onBeforeUnmount(function () {
 .current-favorite-sort,.current-filter-reset { min-height:32px; }
 .current-batch-toggle { min-width:44px; }
 .node-chip,.stone-lv-chip { min-width:44px;height:44px; }
+.ledger-status-help { display: block; max-width: 220px; padding: 8px 10px; color: var(--ink-60); white-space: normal; }
+.agent-ledger-card.status-discarded { border-left: 3px dashed var(--tea); }
+.ledger-status-menu.status-discarded .ledger-status-button { background: var(--cream); color: var(--tea); border: 1px dashed var(--tea); }
+.batch-status-action.discarded { border: 1px dashed var(--tea); background: var(--cream); color: var(--tea); }
+.current-status-index > .status-discarded::before { background: var(--tea); }
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>

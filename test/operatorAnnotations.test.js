@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { reconcileOperatorAnnotations } from '../src/utils/operatorAnnotations.js'
+import { reconcileOperatorAnnotations, operatorAnnotationStatus, operatorAnnotationApiState, operatorAnnotationStatusLabel, matchesOperatorStatus } from '../src/utils/operatorAnnotations.js'
 
 test('标注刷新不会让保存中的密探回到旧状态，也不会覆盖已保存的新修订', () => {
   const remote = {
@@ -28,4 +28,35 @@ test('标注刷新不会让保存中的密探回到旧状态，也不会覆盖�
     new Set(['first']),
   )
   assert.equal(beforeFirstSave.statuses.first, 'graduated')
+})
+
+
+test('四值双向映射，缺失默认，未知值保留并拒绝写入', () => {
+  for (const [ui, api, label] of [
+    ['growing', 'active', '养成中'], ['graduated', 'graduated', '已毕业'],
+    ['inactive', 'skip', '养老中'], ['discarded', 'discarded', '已弃置'],
+  ]) {
+    assert.equal(operatorAnnotationStatus(api), ui)
+    assert.equal(operatorAnnotationApiState(ui), api)
+    assert.equal(operatorAnnotationStatusLabel(api), label)
+  }
+  for (const missing of [undefined, null, '']) assert.equal(operatorAnnotationStatus(missing), 'growing')
+  for (const unknown of ['future', '__proto__', 'constructor']) {
+    assert.equal(operatorAnnotationStatus(unknown), unknown)
+    assert.match(operatorAnnotationStatusLabel(unknown), /不支持/)
+    assert.throws(() => operatorAnnotationApiState(unknown), /不支持/)
+    assert.equal(matchesOperatorStatus(unknown, 'registered'), false)
+  }
+  assert.equal(matchesOperatorStatus('discarded', 'registered'), false)
+  assert.equal(matchesOperatorStatus('discarded', 'all'), true)
+  assert.equal(matchesOperatorStatus('skip', 'registered'), true)
+})
+
+test('弃置缓存参与保存中及较新revision保护', () => {
+  const remote = { statuses: { op: 'growing' }, remarks: { op: '备注' }, revisions: { op: 1 } }
+  const local = { statuses: { op: 'discarded' }, remarks: { op: '备注' }, revisions: { op: 2 } }
+  assert.equal(reconcileOperatorAnnotations(remote, local, new Set()).statuses.op, 'discarded')
+  assert.equal(reconcileOperatorAnnotations(remote, local, new Set(['op'])).statuses.op, 'discarded')
+  remote.statuses.op = 'inactive'; remote.revisions.op = 3
+  assert.equal(reconcileOperatorAnnotations(remote, local, new Set()).statuses.op, 'inactive')
 })

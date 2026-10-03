@@ -14,6 +14,7 @@ import {
   compareOperatorShareEntries,
   filterOperatorShareEntries,
   mergeOperatorShareEntries,
+  operatorShareGrowthState,
   operatorShareCombatSource,
   operatorShareCombatValue,
   operatorShareEliteComplete,
@@ -217,3 +218,24 @@ test('匿名页仅读：只请求匿名数据和公共图鉴，不引入写操�
 
 // Replaced by mounted behavior tests; see docs/testing.md (no pixel/source-shape gate).
 
+
+
+test('分享保留弃置和未知状态，不隐藏成员或改变练度排序', () => {
+  const entries = mergeOperatorShareEntries({ entries: {
+    a: { growth_state: 'discarded', level: 100, star_level: 31 },
+    b: { growth_state: 'future', level: 1, star_level: 1 },
+    c: { level: 90, star_level: 1 },
+  } }, { operators: ['a', 'b', 'c'].map(id => ({ id, name: id, rarity: 5 })) })
+  assert.deepEqual(entries.map(entry => entry.id), ['a', 'c', 'b'])
+  assert.equal(operatorShareGrowthState(entries[0]), 'discarded')
+  assert.equal(operatorShareGrowthState(entries[2]), 'future')
+  assert.equal(operatorShareGrowthState(entries[1]), 'active')
+  assert.deepEqual(filterOperatorShareEntries(entries, '', 'all', 'all', 'growing').map(e => e.id), ['c'])
+  assert.deepEqual(filterOperatorShareEntries(entries, '', 'all', 'all', 'discarded').map(e => e.id), ['a'])
+  assert.equal(filterOperatorShareEntries(entries, '', 'all', 'all').length, 3)
+})
+
+test('v3 schema 明确包含四种养成状态', () => {
+  const schema = JSON.parse(read('docs/schemas/operator-growth-exchange-v3.schema.json'))
+  assert.deepEqual(schema.$defs.growthState.enum, ['active', 'graduated', 'skip', 'discarded'])
+})

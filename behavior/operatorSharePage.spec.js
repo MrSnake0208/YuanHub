@@ -84,3 +84,17 @@ it('viewport 变化通过 MediaQuery 事件更新卡片紧凑模式，无需刷�
   media.matches = false; media.dispatchEvent(new Event('change')); await flushPromises()
   expect(stats().props('enabled')).toBe(false)
 })
+
+it('公开分享显示已弃置及未知状态，保留全部成员', async () => {
+  getOperatorCatalog.mockResolvedValue({ operators: [operator, { ...operator, id: 'future', name: '未知状态密探' }] })
+  viewOperatorShare.mockResolvedValue({ ...share, entries: {
+    [operator.id]: { ...operator.growth, growth_state: 'discarded' },
+    future: { ...operator.growth, growth_state: 'future' },
+  } })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.findAll('article[role="listitem"]')).toHaveLength(2)
+  expect(wrapper.text()).toContain('已弃置')
+  expect(wrapper.text()).toContain('不支持的养成状态：future')
+  expect(fetch).not.toHaveBeenCalled()
+  wrapper.unmount()
+})

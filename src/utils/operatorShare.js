@@ -1,3 +1,4 @@
+import { operatorAnnotationStatus, operatorAnnotationApiState } from './operatorAnnotations.js'
 import { matchesProfSubFilter } from './operatorFilters.js'
 import { calculateOperatorCombatStats, normalizeOperatorCombatStats } from './operatorCombatStats.js'
 import { OPERATOR_LEVEL_MAX, getMaxEliteForLevel } from './operatorGrowthRules.js'
@@ -34,13 +35,13 @@ function operatorId(operator) {
   return text(operator && (operator.operator_id || operator.operatorId || operator.id))
 }
 
-const SHARE_GROWTH_STATES = new Set(['active', 'graduated', 'skip'])
 const SHARE_PROF_ORDER = { 地: 0, 水: 1, 火: 2, 风: 3, 阳: 4, 阴: 5, 混沌: 6 }
 
 export function operatorShareGrowthState(entry) {
   const growth = entry && entry.growth && typeof entry.growth === 'object' ? entry.growth : {}
   const state = text(growth.growth_state || growth.growthState || entry && (entry.growth_state || entry.growthState))
-  return SHARE_GROWTH_STATES.has(state) ? state : 'active'
+  const status = operatorAnnotationStatus(state)
+  try { return operatorAnnotationApiState(status) } catch (_) { return status }
 }
 
 function operatorReleaseOrder(id) {
@@ -106,7 +107,7 @@ export function filterOperatorShareEntries(entries, search, prof, subProf, statu
   return (Array.isArray(entries) ? entries : []).filter(function (entry) {
     if (!matchesProfSubFilter(entry, prof, subProf)) return false
     const growthState = operatorShareGrowthState(entry)
-    const displayStatus = growthState === 'graduated' ? 'graduated' : growthState === 'skip' ? 'inactive' : 'growing'
+    const displayStatus = operatorAnnotationStatus(growthState)
     if (status !== 'all' && displayStatus !== status) return false
     if (!query) return true
     return [entry.name, entry.alias, entry.id].some(function (value) {

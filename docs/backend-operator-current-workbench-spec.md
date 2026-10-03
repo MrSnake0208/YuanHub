@@ -12,7 +12,7 @@
 
 本规格支持六类能力：
 
-1. 按子账号保存密探养成状态：养成中、已毕业、不养成；
+1. 按子账号保存密探养成状态：养成中、已毕业、养老中、已弃置；
 2. 将当前仅保存在浏览器的双命盘、奇闻及攻生命校正数据同步到云端；
 3. 由浏览器文件导入和自动采集 OpenAPI 接受同一份版本化扫描报告；
 4. 同步并展示当前已装备星石，提供不丢失资产的快捷卸除和撤销；
@@ -297,14 +297,15 @@ unique(user_id, account_id, operator_id)
 `growth_state` 枚举：
 
 ```text
-active | graduated | skip
+active | graduated | skip | discarded
 ```
 
 语义：
 
 - `active`：养成中，也是没有特殊置后安排时的默认值；
 - `graduated`：用户主观标记为已毕业；
-- `skip`：不养成。
+- `skip`：养老中，历史数据保留原值。
+- `discarded`：已弃置，移出日常养成，练度保留，可恢复。
 
 普通密探快照导入、删除或重放不得覆盖此表。删除整个子账号时需要级联删除。
 
@@ -673,7 +674,7 @@ GET /v1/operator/upgrade-opportunities?account_id=acc_xxx&game=如鸢
 
 规则：
 
-- `active / graduated / skip` 均可返回建议；养成状态只参与排序、筛选和展示层级，不改变可执行能力；
+- `active / graduated / skip / discarded` 均可返回建议；养成状态只参与排序、筛选和展示层级，不改变可执行能力；
 - `graduated` 尤其不能屏蔽 favorite 密探的心纸和化极追踪；
 - favorite 可以作为建议排序信号，但不改变可支付计算结果；
 - 建议按当前库存分别计算，不承诺所有建议可以同时执行；
@@ -833,7 +834,7 @@ transaction_id = upgrade_xxx
 ### 8.1 养成状态初始化
 
 1. 现有已拥有密探默认读取为 `growth_state=active`；
-2. 只有用户主动标记后才写入 `graduated` 或 `skip`；
+2. 只有用户主动标记后才写入 `graduated`、`skip` 或 `discarded`；
 3. 现有 favorites 数据不迁移、不改写；
 4. 初始化和后续状态切换均不得影响特别关注集合。
 
@@ -968,3 +969,7 @@ transaction_id = upgrade_xxx
 - [ ] 并发升级共享材料时至多一个请求按旧余额成功；
 - [ ] consumption 流水可正确 current、records、export 和 replay；
 - [ ] 删除子账号能级联清理标注、升级事务和相关投影。
+
+## 已弃置契约扩展（2026-10-03）
+
+复用 annotation 字符串字段、revision 和用户/子账号隔离；无数据库结构迁移。状态变更不改变 favorites、目标、清单成员、备注和客观资料。缺失默认 active，未知非空输入继续返回 invalid_growth_state；读取不得静默转换为 active。客观普通导入/scan 不触及主观状态；显式主观 full 仍按完整备份语义恢复默认和列出的状态。分享/OpenAPI 原样透传 discarded，主动提升权限不变；前端日常提醒排除弃置。
