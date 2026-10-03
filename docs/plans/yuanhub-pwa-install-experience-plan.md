@@ -6,6 +6,22 @@
 
 ---
 
+## 现行安装提示决策（2026-10-03）
+
+本轮修复了主站与宣传站“接受添加后重开浏览器再次提示”的问题。以下规则覆盖下文 2026-09-09 历史规划中的自动邀请假设；历史调研与原始 P0/P1 范围仍保留。
+
+- 自动邀请保留 1.8 秒延迟、现有移动响应式范围及弹窗/引导抑制，但必须持有有效 `beforeinstallprompt`；不再仅因 Android / iOS 身份弹出教程。
+- iOS 和无安装事件的浏览器通过主站 `/install`、现有导航入口或宣传站“先保存 YuanHub 到桌面”按钮手动查看教程；没有假的一键安装。
+- `accepted`、`appinstalled`、真实 standalone 写入 `yuanhub:pwa-install-auto-suppressed:v1 = '1'`。此键是本 origin 的停止推广偏好，没有周期到期，不是设备安装状态。手动入口及后续有效安装事件始终可用。
+- `standalone` 只反映当前真实运行模式；本页 `installed` 信号不能显示成“当前已从桌面打开”。正常浏览器接受后仅反馈“等待系统完成”。
+- 七天关闭冷却、取消的 sessionStorage 抑制保留；`clearPwaInstallDismissal()` 不清理停止推广偏好。相关 localStorage 更新在同 origin 标签页同步。
+- 已发起操作的 `failed` / `unavailable` 使用独立恢复展示条件，保留权限指南；不会写入接受偏好，也不会在下次加载时自动邀请。
+- 存储对象访问、读取、写入失败均防御处理；当前页面内存继续生效，不承诺跨刷新或跨 origin/浏览器共享。
+
+定向测试已补齐：主站 Node 28 项、宣传站 Node 23 项、真实组件 Vitest 15 项。系统安装与桌面图标仍需 Android / iPhone 真机验收。
+
+---
+
 ## 0. 实施进度（2026-09-09）
 
 已完成：
@@ -253,8 +269,10 @@ AppDialog
 ```text
 是手机 / 平板环境
 AND 未以 standalone 模式运行
+AND 持有可调用的 beforeinstallprompt
+AND 没有停止自动提醒偏好、当前安装信号或本次取消
 AND 当前不在 7 天关闭冷却期
-AND 当前环境存在可解释的安装路径
+AND 当前页面 / 弹窗 / 新手引导允许展示
 ```
 
 不要仅根据 viewport 宽度判断设备。
@@ -522,6 +540,8 @@ z-index: 全局浮层层级但低于 AppDialog；
 
 ## 8.4 iPhone / iPad 按钮
 
+2026-10-03 起仅在手动入口展示本节教程，不再按 iOS 身份自动弹出浮层。
+
 iOS 不支持通过 `beforeinstallprompt` 由网页直接调起 PWA 安装，因此不要显示假的「立即添加」。
 
 推荐：
@@ -538,11 +558,7 @@ iOS 不支持通过 `beforeinstallprompt` 由网页直接调起 PWA 安装，因
 3. 点击右上角「添加」
 ```
 
-如果当前不是 Safari：
-
-```text
-建议使用 Safari 打开 YuanHub 后，再选择「添加到主屏幕」。
-```
+教程使用当前浏览器的分享菜单说明；较旧系统可以优先使用 Safari，不把所有非 Safari 环境一律判为不支持。
 
 不要假装能够从 Chrome iOS 页面直接弹出系统安装确认框。
 
@@ -557,7 +573,7 @@ iOS 不支持通过 `beforeinstallprompt` 由网页直接调起 PWA 安装，因
 但属于 Android 移动端
 ```
 
-显示：
+2026-10-03 起不自动弹出；用户进入现有手动入口时显示：
 
 ```text
 [ 查看添加方法 ] [ 详细教程 ]
@@ -569,7 +585,7 @@ iOS 不支持通过 `beforeinstallprompt` 由网页直接调起 PWA 安装，因
 打开浏览器菜单，寻找「安装应用」或「添加到主屏幕」。
 ```
 
-不要因没有事件就完全隐藏 PWA 教育入口。
+没有事件是未知状态，不推断设备未安装；保留常驻教程入口。
 
 ---
 
@@ -607,11 +623,12 @@ Unix timestamp / ISO timestamp
 appinstalled
 ```
 
-成功后：
+收到事件后：
 
 - 立即关闭安装浮层。
 - 清空 deferred prompt。
-- 可记录 `yuanhub:pwa-installed:v1` 作为辅助状态，但最终仍以运行时 display mode 为准。
+- 保存 `yuanhub:pwa-install-auto-suppressed:v1 = '1'`，网页安装流程返回 accepted 或真实 standalone 也保存同一偏好。
+- 偏好不冒充已安装事实；不把当前浏览器窗口设为 standalone。accepted 不保证系统已创建图标。
 
 ---
 
@@ -629,7 +646,7 @@ window.matchMedia('(display-mode: standalone)').matches
 window.navigator.standalone === true
 ```
 
-已安装环境下：
+真实 standalone 环境下：
 
 - 不再展示安装浮层。
 - `/install` 页面仍允许访问，但顶部显示：
@@ -1181,7 +1198,7 @@ Application → Service Workers：
 
 ### 场景 A：首次访问
 
-- 出现底部安装浮层。
+- 浏览器提供有效安装事件且无推广偏好/冷却时，延迟出现底部安装浮层；没有事件则不自动弹出。
 - 主按钮为「立即添加」。
 
 ### 场景 B：点击立即添加
@@ -1208,7 +1225,7 @@ Application → Service Workers：
 
 Safari：
 
-- 显示「查看添加方法」，而不是假的「立即添加」。
+- 不自动弹出；从手动入口进入教程，显示「查看添加方法」，而不是假的「立即添加」。
 - 分享 → 添加到主屏幕步骤与教程一致。
 - 添加后桌面图标正确。
 - 从桌面启动后不再显示安装提示。
@@ -1390,13 +1407,15 @@ YuanHub
 7. **安装事件统一由 `src/utils/pwaInstall.js` 管理。**
 8. **手机浮层统一挂在 `App.vue`。**
 9. **Android Chromium 有事件时显示真正的「立即添加」。**
-10. **iOS 不伪造一键安装，改为 Safari 添加到主屏幕教程。**
+10. **iOS 不伪造一键安装，从手动入口展示当前浏览器分享菜单教程。**
 11. **关闭提示后 7 天不再主动显示。**
 12. **已 standalone 运行时不显示安装提示。**
 13. **新增 `/install` 独立教程页，路由 `display: false`。**
 14. **正式 Logo 已于 2026-09-16 接入，主站与宣传页共用固定品牌/PWA 资源路径。**
 15. **必须 Android + iPhone 真机验收，桌面模拟不作为最终验收。**
 16. **PWA 更新机制不得自动刷新并打断用户正在编辑的业务数据。**
+17. **自动邀请必须有可调用安装事件；手机身份与失败恢复不能替代首次安装信号。**
+18. **接受添加后永久保存本 origin 停止推广偏好，保留手动重新添加；偏好与当前窗口模式分离。**
 
 ---
 

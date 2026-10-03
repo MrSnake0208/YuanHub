@@ -52,7 +52,6 @@ test('keeps install failures recoverable so the permission guide can stay visibl
   assert.match(install, /installHelpNeeded/)
   assert.match(install, /return \{ outcome: 'failed', error \}/)
   assert.match(install, /pwaInstallState\.installHelpNeeded = true/)
-  assert.match(install, /pwaInstallState\.installable \|\| pwaInstallState\.ios \|\| pwaInstallState\.android \|\| pwaInstallState\.installHelpNeeded/)
 })
 
 test('uses a stable manifest identity for the installed YuanHub app', function () {

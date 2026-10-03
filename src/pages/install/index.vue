@@ -7,7 +7,7 @@
           <div class="crumb"><span class="pill fill">YuanHub</span><span class="pill">添加到桌面</span></div>
           <h1>添加到桌面<span class="small">Install YuanHub</span></h1>
           <p class="hero-sub">把 YuanHub 固定到手机桌面，下次无需再从浏览器里寻找。安装后可使用独立窗口打开，原有账号与登录方式不变。</p>
-          <div v-if="pwaInstallState.standalone || pwaInstallState.installed" class="installed-banner" role="status">
+          <div v-if="pwaInstallState.standalone" class="installed-banner" role="status">
             <CircleCheck :size="20" aria-hidden="true" />
             <span>YuanHub 当前已从桌面独立运行，无需再次添加。</span>
           </div>
@@ -36,7 +36,7 @@
         <article v-if="activeTab === 'android'" class="guide-card" role="tabpanel">
           <header class="guide-head">
             <div><span class="eyebrow">ANDROID GUIDE</span><h2>Android 添加步骤</h2></div>
-            <button v-if="pwaInstallState.installable && !pwaInstallState.ios && !pwaInstallState.installed" class="install-now" type="button" :disabled="installing" @click="installNow">
+            <button v-if="pwaInstallState.installable && !pwaInstallState.ios && !pwaInstallState.standalone" class="install-now" type="button" :disabled="installing" @click="installNow">
               <Download :size="17" aria-hidden="true" /> {{ installing ? '正在打开…' : '立即添加到桌面' }}
             </button>
           </header>
@@ -117,7 +117,9 @@ async function installNow() {
   installFeedback.value = ''
   try {
     const result = await requestPwaInstall()
-    if (result.outcome === 'dismissed') {
+    if (result.outcome === 'accepted') {
+      installFeedback.value = '已接受本次添加；请等待系统完成，再从桌面图标打开 YuanHub。'
+    } else if (result.outcome === 'dismissed') {
       installFeedback.value = '本次添加没有完成；如果你并未主动取消、也没有看到系统确认，请检查下方的桌面快捷方式权限。'
     } else if (result.outcome === 'failed' || result.outcome === 'unavailable') {
       installFeedback.value = '浏览器没有完成这次添加。请先按下方说明检查“添加 / 创建桌面快捷方式”权限，再重新尝试。'

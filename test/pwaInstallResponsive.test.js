@@ -97,7 +97,7 @@ test('updates the main install prompt state when viewport crosses the mobile bre
     assert.equal(browser.mobileMedia.listeners.size, 1, 'breakpoint listener should only be registered once')
     assert.equal(install.pwaInstallState.mobile, false)
 
-    browser.fireWindow('beforeinstallprompt', { preventDefault() {} })
+    browser.fireWindow('beforeinstallprompt', { preventDefault() {}, async prompt() {}, userChoice: Promise.resolve({ outcome: 'accepted' }) })
     assert.equal(install.pwaInstallState.installable, true)
     assert.equal(install.shouldShowPwaInstallPrompt(), false, 'desktop viewport should still suppress the mobile prompt')
 
@@ -137,7 +137,8 @@ test('keeps the main permission fallback visible when the native install prompt 
     assert.match(result.error.message, /permission denied/)
     assert.equal(install.pwaInstallState.installHelpNeeded, true)
     assert.equal(install.pwaInstallState.nativeCancelledThisSession, false)
-    assert.equal(install.shouldShowPwaInstallPrompt(), true, 'failed installs should stay visible long enough to show recovery guidance')
+    assert.equal(install.shouldShowPwaInstallPrompt(), false, 'recovery is not a new automatic invitation')
+    assert.equal(install.shouldShowPwaInstallRecovery(), true, 'failed installs should retain recovery guidance')
   } finally {
     browser.restore()
   }

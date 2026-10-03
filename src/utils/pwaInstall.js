@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 
 export const PWA_DISMISSED_KEY = 'yuanhub:pwa-install-prompt-dismissed-until:v1'
 export const PWA_SESSION_CANCELLED_KEY = 'yuanhub:pwa-install-native-cancelled:v1'
+export const PWA_AUTO_SUPPRESSED_KEY = 'yuanhub:pwa-install-auto-suppressed:v1'
 export const PWA_DISMISS_MS = 7 * 24 * 60 * 60 * 1000
 // 与 src/styles/main.css 中 .mobile-shell 的响应式切换保持一致。
 export const PWA_MOBILE_VIEWPORT_QUERY = '(max-width: 1080px)'
@@ -14,6 +15,8 @@ export const pwaInstallState = reactive({
   installable: false,
   installed: false,
   standalone: false,
+  // 本浏览器上下文的推广偏好，不代表设备当前安装状态。
+  autoSuppressed: false,
   viewportMobile: false,
   mobile: false,
   ios: false,
@@ -61,23 +64,34 @@ export function detectStandalone(windowLike = typeof window !== 'undefined' ? wi
   return displayStandalone || windowLike.navigator?.standalone === true
 }
 
-function readDismissedUntil(storage = typeof localStorage !== 'undefined' ? localStorage : null) {
-  if (!storage) return 0
+function readDismissedUntil() {
   try {
-    const value = Number(storage.getItem(PWA_DISMISSED_KEY) || 0)
+    const value = Number(localStorage.getItem(PWA_DISMISSED_KEY) || 0)
     return Number.isFinite(value) ? value : 0
   } catch (_) {
     return 0
   }
 }
 
-function readSessionCancelled(storage = typeof sessionStorage !== 'undefined' ? sessionStorage : null) {
-  if (!storage) return false
+function readSessionCancelled() {
   try {
-    return storage.getItem(PWA_SESSION_CANCELLED_KEY) === '1'
+    return sessionStorage.getItem(PWA_SESSION_CANCELLED_KEY) === '1'
   } catch (_) {
     return false
   }
+}
+
+function readAutoSuppressed() {
+  try {
+    return localStorage.getItem(PWA_AUTO_SUPPRESSED_KEY) === '1'
+  } catch (_) {
+    return false
+  }
+}
+
+function suppressAutoPrompt() {
+  pwaInstallState.autoSuppressed = true
+  try { localStorage.setItem(PWA_AUTO_SUPPRESSED_KEY, '1') } catch (_) { /* unavailable */ }
 }
 
 function syncMobileEnvironment(viewportMobile = detectMobileViewport()) {
@@ -93,12 +107,15 @@ function syncEnvironment() {
   syncMobileEnvironment()
   pwaInstallState.standalone = detectStandalone()
   pwaInstallState.installed = pwaInstallState.installed || pwaInstallState.standalone
+  pwaInstallState.autoSuppressed = readAutoSuppressed()
+  if (pwaInstallState.standalone) suppressAutoPrompt()
   pwaInstallState.dismissedUntil = readDismissedUntil()
   pwaInstallState.nativeCancelledThisSession = readSessionCancelled()
 }
 
 function onBeforeInstallPrompt(event) {
   if (typeof event.preventDefault === 'function') event.preventDefault()
+  if (typeof event.prompt !== 'function') return
   deferredInstallPrompt = event
   pwaInstallState.installable = true
   pwaInstallState.installHelpNeeded = false
@@ -109,7 +126,8 @@ function onAppInstalled() {
   deferredInstallPrompt = null
   pwaInstallState.installable = false
   pwaInstallState.installed = true
-  pwaInstallState.standalone = true
+  pwaInstallState.standalone = detectStandalone()
+  suppressAutoPrompt()
   pwaInstallState.installHelpNeeded = false
   pwaInstallState.nativeCancelledThisSession = false
   try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
@@ -118,7 +136,19 @@ function onAppInstalled() {
 function onDisplayModeChanged() {
   const standalone = detectStandalone()
   pwaInstallState.standalone = standalone
-  if (standalone) pwaInstallState.installed = true
+  if (standalone) {
+    pwaInstallState.installed = true
+    suppressAutoPrompt()
+  }
+}
+
+function onStorageChanged(event) {
+  if (event.key !== PWA_AUTO_SUPPRESSED_KEY && event.key !== PWA_DISMISSED_KEY) return
+  try {
+    if (event.storageArea && event.storageArea !== localStorage) return
+  } catch (_) { return /* unavailable */ }
+  if (event.key === PWA_AUTO_SUPPRESSED_KEY) pwaInstallState.autoSuppressed = readAutoSuppressed()
+  else pwaInstallState.dismissedUntil = readDismissedUntil()
 }
 
 function onMobileViewportChanged(event) {
@@ -131,6 +161,7 @@ export function initPwaInstall() {
   syncEnvironment()
   window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
   window.addEventListener('appinstalled', onAppInstalled)
+  window.addEventListener('storage', onStorageChanged)
   if (typeof window.matchMedia === 'function') {
     const displayModeMedia = window.matchMedia('(display-mode: standalone)')
     if (typeof displayModeMedia.addEventListener === 'function') {
@@ -145,12 +176,21 @@ export function initPwaInstall() {
   return pwaInstallState
 }
 
-export function shouldShowPwaInstallPrompt(now = Date.now()) {
+function canShowPwaInstallPromotion(now) {
   if (!pwaInstallState.initialized || !pwaInstallState.mobile) return false
-  if (pwaInstallState.installed || pwaInstallState.standalone) return false
+  if (pwaInstallState.installed || pwaInstallState.standalone || pwaInstallState.autoSuppressed) return false
   if (pwaInstallState.dismissedUntil > now) return false
   if (pwaInstallState.nativeCancelledThisSession) return false
-  return pwaInstallState.installable || pwaInstallState.ios || pwaInstallState.android || pwaInstallState.installHelpNeeded
+  return true
+}
+
+export function shouldShowPwaInstallPrompt(now = Date.now()) {
+  return canShowPwaInstallPromotion(now) && pwaInstallState.installable && !!deferredInstallPrompt
+}
+
+// 只供当前组件已发起的失败操作继续展示指南，不作为首次自动邀请。
+export function shouldShowPwaInstallRecovery(now = Date.now()) {
+  return canShowPwaInstallPromotion(now) && pwaInstallState.installHelpNeeded
 }
 
 export function dismissPwaInstallPrompt(now = Date.now()) {
@@ -183,8 +223,10 @@ export async function requestPwaInstall() {
     const outcome = choice?.outcome || 'dismissed'
     if (outcome === 'accepted') {
       pwaInstallState.installed = true
+      suppressAutoPrompt()
       pwaInstallState.installHelpNeeded = false
       pwaInstallState.nativeCancelledThisSession = false
+      try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
     } else {
       pwaInstallState.installHelpNeeded = false
       pwaInstallState.nativeCancelledThisSession = true

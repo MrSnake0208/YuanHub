@@ -86,7 +86,7 @@ test('updates the promo install prompt when viewport crosses its mobile breakpoi
     assert.equal(browser.mobileMedia.listeners.size, 1, 'breakpoint listener should only be registered once')
     assert.equal(install.pwaInstallState.mobile, false)
 
-    browser.fireWindow('beforeinstallprompt', { preventDefault() {} })
+    browser.fireWindow('beforeinstallprompt', { preventDefault() {}, async prompt() {}, userChoice: Promise.resolve({ outcome: 'accepted' }) })
     assert.equal(install.shouldShowPwaInstallPrompt(), false)
 
     browser.mobileMedia.setMatches(true)
@@ -125,7 +125,8 @@ test('keeps the promo permission fallback visible when the native install prompt
     assert.match(result.error.message, /permission denied/)
     assert.equal(install.pwaInstallState.installHelpNeeded, true)
     assert.equal(install.pwaInstallState.nativeCancelledThisSession, false)
-    assert.equal(install.shouldShowPwaInstallPrompt(), true)
+    assert.equal(install.shouldShowPwaInstallPrompt(), false)
+    assert.equal(install.shouldShowPwaInstallRecovery(), true)
   } finally {
     browser.restore()
   }
