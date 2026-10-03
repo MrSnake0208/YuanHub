@@ -10,6 +10,9 @@
       <div class="wrap calendar-content">
         <p v-if="!permitted" class="calendar-panel" role="alert">需要活动日历维护权限。</p>
         <template v-else>
+          <nav class="calendar-actions" aria-label="活动管理工作区"><button type="button" :aria-pressed="workspace === 'directory'" @click="switchWorkspace('directory')">活动目录</button><button type="button" :aria-pressed="workspace === 'suggestions'" @click="switchWorkspace('suggestions')">用户建议</button></nav>
+          <CalendarSuggestionsReview v-if="workspace === 'suggestions'" ref="suggestionsReview" />
+          <template v-else>
           <div v-if="error" ref="errorSummary" class="calendar-panel calendar-error" role="alert" tabindex="-1">
             <p>{{ error }}</p>
             <ul v-if="form && Object.keys(fieldErrors).length">
@@ -81,6 +84,7 @@
               <div class="calendar-actions"><button type="submit" class="calendar-primary" :disabled="saving || conflict">{{ saving ? '保存中…' : '保存活动' }}</button><button v-if="conflict" type="button" @click="refreshAfterConflict">返回目录并刷新</button><button type="button" :disabled="saving" @click="requestClose">取消编辑</button></div>
             </form>
           </section>
+          </template>
         </template>
       </div>
       <SiteFooter />
@@ -94,6 +98,7 @@ import { ExternalLink } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import AdminBackLink from '@/components/admin/AdminBackLink.vue'
+import CalendarSuggestionsReview from '@/components/calendar/CalendarSuggestionsReview.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
@@ -108,6 +113,7 @@ const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(a
 const permitted = computed(() => enabled && !!identity.value && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.ACTIVITY_CALENDAR_WRITE))
 const canManageRecruitment = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE))
 const filters = reactive({ game: '', category: '', enabled: '', from: '', to: '', search: '' })
+const workspace = ref('directory'), suggestionsReview = ref(null)
 const entries = ref([]), form = ref(null), baseline = ref(''), originalEnabled = ref(true)
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
 const errorSummary = ref(null), editor = ref(null), listRegion = ref(null)
@@ -135,6 +141,15 @@ async function requestClose() {
   if (await confirmDiscard() && current(token)) { await closeEditor(); return true }
   return false
 }
+async function switchWorkspace(value) {
+  if (value === workspace.value || saving.value) return
+  const token = capture()
+  if (workspace.value === 'directory' && form.value && !await requestClose()) return
+  if (workspace.value === 'suggestions' && !await suggestionsReview.value?.requestClose()) return
+  if (!current(token)) return
+  workspace.value = value
+  if (value === 'directory') await load()
+}
 async function refreshAfterConflict() { if (await requestClose()) await load() }
 async function open(entry = null) {
   if (!permitted.value || saving.value || loading.value || entry?.read_only || entry?.item?.source_type === 'RECRUITMENT_POOL') return
@@ -148,7 +163,7 @@ const openNew = () => open()
 const openEdit = entry => open(entry)
 async function clearFilters() { Object.keys(filters).forEach(key => { filters[key] = '' }); await load() }
 async function load() {
-  if (!permitted.value || form.value) return
+  if (!permitted.value || form.value || workspace.value !== 'directory') return
   const token = capture(), read = ++readGeneration
   error.value = ''; entries.value = []
   if ((filters.from && !isCalendarDate(filters.from)) || (filters.to && !isCalendarDate(filters.to)) || (filters.from && filters.to && filters.to < filters.from)) {

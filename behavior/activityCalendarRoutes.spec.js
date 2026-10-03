@@ -30,7 +30,7 @@ it('真实路由守卫允许访客进入日历，管理页跳登录且不初始�
   expect(router.currentRoute.value.query.redirect).toBe('/calendar/admin')
   expect(adminLoader).not.toHaveBeenCalled()
 })
-it.each(['/calendar', '/calendar/admin'])('flag关闭阻断%s的lazy初始化', async path => {
+it.each(['/calendar', '/calendar/admin', '/calendar/suggestions', '/calendar/suggestions/new'])('flag关闭阻断%s的lazy初始化', async path => {
   isFeatureEnabled.mockReturnValue(false)
   const { router, publicLoader, adminLoader } = guardRouter()
   await router.push(path)
@@ -48,5 +48,17 @@ it('只有calendar写权限放行管理页，recruitment权限不能替代', asy
   auth.adminAccess = { permissions: ['activity_calendar:write'] }
   await router.push('/calendar/admin')
   expect(router.currentRoute.value.path).toBe('/calendar/admin')
+  expect(adminLoader).toHaveBeenCalledTimes(1)
+})
+
+it.each(['/calendar/suggestions', '/calendar/suggestions/new?game=%E5%A6%82%E9%B8%A2'])('访客建议入口%s保留登录回跳，普通登录用户无需维护权限或beta', async path => {
+  const { router, adminLoader } = guardRouter()
+  await router.push(path)
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(router.currentRoute.value.query.redirect).toBe(path)
+  expect(adminLoader).not.toHaveBeenCalled()
+  auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }; auth.adminAccess = { permissions: [] }
+  await router.push(path)
+  expect(router.currentRoute.value.path).toBe(path.split('?')[0])
   expect(adminLoader).toHaveBeenCalledTimes(1)
 })
