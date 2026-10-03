@@ -15,21 +15,17 @@
         </div>
       </header>
       <div v-if="enabled" class="wrap calendar-content">
-        <section class="calendar-panel calendar-filters" aria-label="活动筛选">
-          <fieldset>
-            <legend>游戏</legend>
-            <div class="calendar-chips">
-              <button v-for="game in ['', ...CALENDAR_GAMES]" :key="game" type="button" :aria-pressed="filters.game === game" @click="setFilter({ game })">{{ game || '全部游戏' }}</button>
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>类型</legend>
-            <div class="calendar-chips">
-              <button type="button" :aria-pressed="!filters.category" @click="setFilter({ category: '' })">全部类型</button>
-              <button v-for="(label, category) in CALENDAR_CATEGORIES" :key="category" type="button" :aria-pressed="filters.category === category" @click="setFilter({ category })">{{ label }}</button>
-            </div>
-          </fieldset>
+        <section class="calendar-filter-inline" aria-label="活动筛选">
+          <CalendarFilterControls :filters="filters" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" />
         </section>
+        <button class="calendar-filter-mobile-trigger" type="button" aria-haspopup="dialog" :aria-expanded="filterOpen" aria-controls="calendar-filter-sheet" :aria-label="`筛选活动，当前：${filterSummary}，已启用 ${activeFilterCount} 个筛选条件`" @click="openFilters">
+          <SlidersHorizontal :size="17" aria-hidden="true" />
+          <span>筛选</span>
+          <span class="calendar-filter-summary">{{ filterSummary }}</span>
+          <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
+          <ChevronRight :size="17" aria-hidden="true" />
+        </button>
+        <CalendarFilterSheet :open="filterOpen" :filters="filters" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="setFilter({ game: '', category: '' })" @close="filterOpen = false" />
         <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <div class="calendar-view-content" :aria-busy="loading">
           <p v-if="loading" class="calendar-panel" role="status">正在读取活动日程…</p>
@@ -49,7 +45,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CalendarDays, LocateFixed } from '@lucide/vue'
+import { CalendarDays, ChevronRight, LocateFixed, SlidersHorizontal } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CalendarViewSwitcher from '@/components/calendar/CalendarViewSwitcher.vue'
@@ -57,6 +53,8 @@ import CalendarTodaySummary from '@/components/calendar/CalendarTodaySummary.vue
 import CalendarAgendaView from '@/components/calendar/CalendarAgendaView.vue'
 import CalendarTimelineView from '@/components/calendar/CalendarTimelineView.vue'
 import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue'
+import CalendarFilterControls from '@/components/calendar/CalendarFilterControls.vue'
+import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
 import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_VIEW_STORAGE_KEY, calendarAnchorDate, calendarFilterQuery, calendarFilters, calendarRequestRange, calendarView, calendarViewQuery, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
@@ -72,6 +70,13 @@ let savedView = ''
 try { if (enabled) savedView = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) || '' } catch { /* Storage can be unavailable in private browsers. */ }
 const preferredView = ref(calendarView({}, savedView, wide))
 const filters = computed(() => calendarFilters(route.query))
+const filterOpen = ref(false)
+const filterSummary = computed(() => `${filters.value.game || '全部游戏'} · ${CALENDAR_CATEGORIES[filters.value.category] || '全部类型'}`)
+const activeFilterCount = computed(() => Number(!!filters.value.game) + Number(!!filters.value.category))
+function openFilters(event) {
+  event.currentTarget.focus()
+  filterOpen.value = true
+}
 const currentView = computed(() => calendarView(route.query, preferredView.value, wide))
 const anchorDate = computed(() => calendarAnchorDate(route.query, today.value))
 const requestRange = computed(() => calendarRequestRange(currentView.value, anchorDate.value, today.value))
