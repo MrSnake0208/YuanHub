@@ -104,6 +104,105 @@ export function calendarFilterQuery(query, patch) {
   return result
 }
 
+export const CALENDAR_VIEWS = Object.freeze({ agenda: '日程', timeline: '时间轴', month: '月历' })
+export const CALENDAR_VIEW_STORAGE_KEY = 'yuanhub.activity-calendar.view.v1'
+const firstQueryValue = value => Array.isArray(value) ? value[0] : value
+
+export function calendarView(query = {}, preference = '', wide = false) {
+  const value = firstQueryValue(query.view)
+  if (Object.hasOwn(CALENDAR_VIEWS, value)) return value
+  return Object.hasOwn(CALENDAR_VIEWS, preference) ? preference : wide ? 'timeline' : 'agenda'
+}
+
+export function calendarAnchorDate(query, today) {
+  const value = firstQueryValue(query.date)
+  return isCalendarDate(value) ? value : today
+}
+
+export function calendarViewQuery(query, patch, today) {
+  const result = { ...query }
+  if (Object.hasOwn(patch, 'view')) {
+    if (Object.hasOwn(CALENDAR_VIEWS, patch.view)) result.view = patch.view
+    else delete result.view
+  }
+  if (Object.hasOwn(patch, 'date')) {
+    if (isCalendarDate(patch.date) && patch.date !== today) result.date = patch.date
+    else delete result.date
+  }
+  return result
+}
+
+export function calendarDayDistance(from, to) {
+  return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000)
+}
+
+export function calendarDates(range) {
+  return Array.from({ length: calendarDayDistance(range.from, range.to) + 1 }, (_, index) => addCalendarDays(range.from, index))
+}
+
+export function shiftCalendarMonth(date, offset) {
+  const value = new Date(date + 'T00:00:00Z')
+  const day = value.getUTCDate()
+  value.setUTCDate(1)
+  value.setUTCMonth(value.getUTCMonth() + offset)
+  const last = new Date(value)
+  last.setUTCMonth(last.getUTCMonth() + 1, 0)
+  value.setUTCDate(Math.min(day, last.getUTCDate()))
+  return value.toISOString().slice(0, 10)
+}
+
+export function monthGridRange(date) {
+  const first = date.slice(0, 7) + '-01'
+  const from = addCalendarDays(first, -((new Date(first + 'T00:00:00Z').getUTCDay() + 6) % 7))
+  const last = addCalendarDays(shiftCalendarMonth(first, 1), -1)
+  const count = Math.max(35, Math.ceil((calendarDayDistance(from, last) + 1) / 7) * 7)
+  return { from, to: addCalendarDays(from, count - 1) }
+}
+
+export function timelineRange(date) { return { from: addCalendarDays(date, -7), to: addCalendarDays(date, 27) } }
+
+export function calendarRequestRange(view, date, today) {
+  if (view === 'month') return monthGridRange(date)
+  if (view === 'timeline') return timelineRange(date)
+  return { from: today, to: addCalendarDays(today, 90) }
+}
+
+export function timelineItemPosition(item, range) {
+  if (item.end_date < range.from || item.start_date > range.to) return null
+  const start = item.start_date < range.from ? range.from : item.start_date
+  const end = item.end_date > range.to ? range.to : item.end_date
+  return {
+    column: calendarDayDistance(range.from, start) + 1,
+    span: calendarDayDistance(start, end) + 1,
+    clippedStart: item.start_date < range.from,
+    clippedEnd: item.end_date > range.to,
+  }
+}
+
+export function calendarItemsOnDay(items, date) {
+  const seen = new Set()
+  return items.filter(item => {
+    if (seen.has(item.id) || item.start_date > date || item.end_date < date) return false
+    seen.add(item.id)
+    return true
+  }).sort((a, b) => Number(b.end_date === date) - Number(a.end_date === date) || a.start_date.localeCompare(b.start_date) || a.id.localeCompare(b.id))
+}
+
+export function monthCalendarDays(items, date) {
+  return calendarDates(monthGridRange(date)).map(day => ({ date: day, inMonth: day.slice(0, 7) === date.slice(0, 7), items: calendarItemsOnDay(items, day) }))
+}
+
+export function calendarDateLabel(date, options = { month: 'long', day: 'numeric', weekday: 'short' }) {
+  return new Intl.DateTimeFormat('zh-CN', { ...options, timeZone: 'UTC' }).format(new Date(date + 'T00:00:00Z'))
+}
+
+export function calendarDeadline(item, today) {
+  if (item.start_date > today) return `${calendarDayDistance(today, item.start_date)} 天后开始`
+  if (item.end_date < today) return ''
+  const days = calendarDayDistance(today, item.end_date)
+  return days === 0 ? '今天结束' : days === 1 ? '明天结束' : `还有 ${days} 天`
+}
+
 export function calendarRangeLabel(item) {
   const start = item.start_date + (item.start_time ? ' ' + item.start_time : '')
   const end = item.end_date + (item.end_time ? ' ' + item.end_time : '')

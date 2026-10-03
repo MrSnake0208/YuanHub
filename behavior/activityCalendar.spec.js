@@ -18,7 +18,7 @@ async function render(path = '/calendar') {
   const wrapper = mount(Calendar, { global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
   return { wrapper, router }
 }
-beforeEach(() => { vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(true); listActivityCalendar.mockResolvedValue({ items: [item()] }) })
+beforeEach(() => { vi.clearAllMocks(); vi.stubGlobal('innerWidth', 390); isFeatureEnabled.mockReturnValue(true); listActivityCalendar.mockResolvedValue({ items: [item()] }) })
 
 it('访客默认读取全部游戏和服务器90天范围；双来源统一展示且历史排除', async () => {
   listActivityCalendar.mockResolvedValue({ items: [item(), item({ id: 'pool', title: '招募项', game: '代号鸢', category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL' }), item({ id: 'past', title: '已结束项', start_date: '2020-01-01', end_date: '2020-01-02' })] })

@@ -1,12 +1,12 @@
 <template>
-  <div class="calendar-page">
+  <div class="calendar-page calendar-public">
     <IslandSidebar />
     <main id="main-content">
       <header class="calendar-header wrap">
         <p class="calendar-kicker"><CalendarDays :size="20" aria-hidden="true" /> 两个世界，一份日程</p>
         <h1>活动日历</h1>
-        <p>看看今天开始、结束和正在进行的活动，再安排接下来的日程。</p>
-        <p class="calendar-hint">今天 {{ today }} · 按游戏服务器日期（Asia/Shanghai） · 展示未来约 90 天</p>
+        <p>看看今天正在进行、即将开始和快结束的活动。</p>
+        <p class="calendar-hint">今天 {{ today }} · 按游戏服务器日期（Asia/Shanghai）</p>
       </header>
       <div v-if="enabled" class="wrap calendar-content">
         <section class="calendar-panel calendar-filters" aria-label="活动筛选">
@@ -24,42 +24,22 @@
             </div>
           </fieldset>
         </section>
-
-        <p v-if="loading" class="calendar-panel" role="status">正在读取活动日程…</p>
-        <div v-else-if="error" class="calendar-panel calendar-error" role="alert">
-          <p>{{ error }}</p><button type="button" @click="load">重试</button>
+        <div class="calendar-shared-tools">
+          <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
+          <div class="calendar-view-tools">
+            <button class="calendar-today-action" type="button" @click="goToday"><LocateFixed :size="17" aria-hidden="true" /> 今天</button>
+            <CalendarViewSwitcher :model-value="currentView" @update:model-value="setView" />
+          </div>
         </div>
-        <template v-else>
-          <section class="calendar-panel calendar-today" aria-labelledby="today-summary-title">
-            <h2 id="today-summary-title">今天 · {{ today }}</h2>
-            <div class="calendar-counts">
-              <p><strong>{{ todayCounts.starts }}</strong> 今日开始</p>
-              <p><strong>{{ todayCounts.ends }}</strong> 今日结束</p>
-              <p><strong>{{ todayCounts.ongoing }}</strong> 今日进行中</p>
-            </div>
-            <p v-if="!todayItems.length" class="calendar-hint">当前筛选下，今天暂无活动。可以看看接下来的日程。</p>
-          </section>
-          <p v-if="!items.length" class="calendar-panel" role="status">当前筛选下暂无近期活动，试试其它游戏或类型。</p>
-          <section v-for="section in sections.filter(section => section.groups.length)" :key="section.key" class="calendar-section" :aria-labelledby="'section-' + section.key">
-            <h2 :id="'section-' + section.key">{{ section.title }}</h2>
-            <div v-for="group in section.groups" :key="group.date" class="calendar-date-group">
-              <h3><time :datetime="group.date">{{ group.date }}</time></h3>
-              <div class="calendar-event-list">
-                <article v-for="item in group.items" :key="item.id" class="calendar-panel calendar-event">
-                  <div class="calendar-badges"><span class="calendar-game">{{ item.game }}</span><span class="calendar-category">{{ CALENDAR_CATEGORIES[item.category] }}</span></div>
-                  <h4>{{ item.title }}</h4>
-                  <div class="calendar-badges"><span v-for="status in calendarStatuses(item, today)" :key="status" class="calendar-state">{{ status }}</span></div>
-                  <p class="calendar-range">{{ calendarRangeLabel(item) }}<span v-if="item.start_time"> · {{ item.time_zone }}</span></p>
-                  <p v-if="item.description" class="calendar-description">{{ item.description }}</p>
-                  <div class="calendar-event-foot">
-                    <span class="calendar-hint">{{ item.source_type === 'RECRUITMENT_POOL' ? '来自招募卡池' : '手工整理' }}</span>
-                    <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer">查看来源 <ExternalLink :size="16" aria-hidden="true" /></a>
-                  </div>
-                </article>
-              </div>
-            </div>
-          </section>
-        </template>
+        <div class="calendar-view-content" :aria-busy="loading">
+          <p v-if="loading" class="calendar-panel" role="status">正在读取活动日程…</p>
+          <div v-else-if="error" class="calendar-panel calendar-error" role="alert">
+            <p>{{ error }}</p><button type="button" @click="load">重试</button>
+          </div>
+          <CalendarAgendaView v-if="currentView === 'agenda'" :items="items" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="loading" :error="!!error" />
+          <CalendarTimelineView v-else-if="currentView === 'timeline'" :items="items" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="loading" :error="!!error" @select-date="setDate" />
+          <CalendarMonthView v-else :items="items" :today="today" :anchor-date="anchorDate" :loading="loading" :error="!!error" @select-date="setDate" />
+        </div>
       </div>
       <SiteFooter />
     </main>
@@ -69,27 +49,39 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CalendarDays, ExternalLink } from '@lucide/vue'
+import { CalendarDays, LocateFixed } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
+import CalendarViewSwitcher from '@/components/calendar/CalendarViewSwitcher.vue'
+import CalendarTodaySummary from '@/components/calendar/CalendarTodaySummary.vue'
+import CalendarAgendaView from '@/components/calendar/CalendarAgendaView.vue'
+import CalendarTimelineView from '@/components/calendar/CalendarTimelineView.vue'
+import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
-import { addCalendarDays, CALENDAR_CATEGORIES, CALENDAR_GAMES, calendarFilterQuery, calendarFilters, calendarRangeLabel, calendarStatuses, groupCalendarItems, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
+import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_VIEW_STORAGE_KEY, calendarAnchorDate, calendarFilterQuery, calendarFilters, calendarRequestRange, calendarView, calendarViewQuery, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
 import './calendar.css'
+import './public-calendar.css'
 
 const route = useRoute(), router = useRouter()
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const today = ref(serverToday())
+// Width chooses only the initial fallback. User navigation never listens to resize.
+const wide = typeof window !== 'undefined' && window.innerWidth >= 1024
+let savedView = ''
+try { if (enabled) savedView = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) || '' } catch { /* Storage can be unavailable in private browsers. */ }
+const preferredView = ref(calendarView({}, savedView, wide))
 const filters = computed(() => calendarFilters(route.query))
-const filterKey = computed(() => JSON.stringify(filters.value))
-const items = ref([]), loading = ref(false), error = ref('')
-const sections = computed(() => groupCalendarItems(items.value, today.value))
-const todayItems = computed(() => sections.value[0].groups.flatMap(group => group.items))
-const todayCounts = computed(() => summarizeCalendarDay(items.value, today.value))
+const currentView = computed(() => calendarView(route.query, preferredView.value, wide))
+const anchorDate = computed(() => calendarAnchorDate(route.query, today.value))
+const requestRange = computed(() => calendarRequestRange(currentView.value, anchorDate.value, today.value))
+const requestKey = computed(() => JSON.stringify({ ...filters.value, ...requestRange.value, today: today.value }))
+const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
+const todayCounts = computed(() => summarizeCalendarDay(summaryItems.value, today.value))
 let generation = 0
 let dayTimer = null
 function checkServerDate() {
-  if (serverToday() !== today.value) void load()
+  today.value = serverToday()
   clearTimeout(dayTimer)
   dayTimer = setTimeout(checkServerDate, millisecondsUntilServerMidnight() + 100)
 }
@@ -98,29 +90,51 @@ onMounted(() => {
   if (!enabled) return
   checkServerDate()
   document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('pageshow', checkServerDate)
 })
 onBeforeUnmount(() => {
   generation++
   clearTimeout(dayTimer)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('pageshow', checkServerDate)
 })
 function setFilter(patch) { return router.replace({ query: calendarFilterQuery(route.query, patch) }) }
+function setView(view) {
+  // The page keeps the preference in memory even when storage writes fail.
+  preferredView.value = view
+  try { localStorage.setItem(CALENDAR_VIEW_STORAGE_KEY, view) } catch { /* In-memory preference still works. */ }
+  return router.replace({ query: calendarViewQuery(route.query, { view }, today.value) })
+}
+function setDate(date) {
+  return router.replace({ query: calendarViewQuery(route.query, { view: currentView.value, date }, today.value) })
+}
+async function goToday() {
+  await setDate(today.value)
+  locateRequest.value++
+}
 async function load() {
   if (!enabled) return
   const token = ++generation
-  today.value = serverToday()
+  const selectedFilters = { ...filters.value }, range = { ...requestRange.value }, date = today.value
   loading.value = true
   error.value = ''
   items.value = []
+  summaryItems.value = []
+  const needsSummary = date < range.from || date > range.to
+  const normalize = values => normalizeCalendarItems(values).filter(item => (!selectedFilters.game || item.game === selectedFilters.game) && (!selectedFilters.category || item.category === selectedFilters.category))
   try {
-    const result = await listActivityCalendar({ ...filters.value, from: today.value, to: addCalendarDays(today.value, 90) })
+    const [result, summary] = await Promise.all([
+      listActivityCalendar({ ...selectedFilters, ...range }),
+      needsSummary ? listActivityCalendar({ ...selectedFilters, from: date, to: date }) : Promise.resolve(null),
+    ])
     if (token !== generation) return
-    items.value = normalizeCalendarItems(result?.items).filter(item => item.end_date >= today.value && (!filters.value.game || item.game === filters.value.game) && (!filters.value.category || item.category === filters.value.category))
+    items.value = normalize(result?.items).filter(item => item.end_date >= range.from && item.start_date <= range.to)
+    summaryItems.value = needsSummary ? normalize(summary?.items) : items.value
   } catch (err) {
-    if (token === generation) error.value = err.message || '活动日程读取失败，请重试。'
+    if (token === generation) error.value = err?.message || '活动日程读取失败，请重试。'
   } finally {
     if (token === generation) loading.value = false
   }
 }
-watch(filterKey, load, { immediate: true })
+watch(requestKey, load, { immediate: true, flush: 'sync' })
 </script>
