@@ -64,6 +64,9 @@
             <router-link to="/" :class="{ active: $route.path === '/' || $route.path === '/today' }">
               <House :size="20" aria-hidden="true" /><span>今日一览</span>
             </router-link>
+            <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: $route.path.startsWith('/calendar') }">
+              <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
+            </router-link>
             <router-link
               to="/operator"
               :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
@@ -181,6 +184,9 @@
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
         ><span class="no">00</span>今日一览</router-link
       >
+      <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: $route.path.startsWith('/calendar') }">
+        <CalendarDays :size="18" aria-hidden="true" />活动日历
+      </router-link>
       <router-link
         to="/operator"
         :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
@@ -294,6 +300,7 @@ import MobileHeader from "./MobileHeader.vue";
 import {
   Bell,
   BookUser,
+  CalendarDays,
   CircleHelp,
   Download,
   Gem,
@@ -329,6 +336,7 @@ import {
 // 已登录状态（reactive，随 auth 变化）
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : "");
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
+const showCalendar = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR);
 const showRecruitment = computed(() =>
   isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE) &&
   !!isLoggedIn.value &&
@@ -428,6 +436,7 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.nav .calendar-nav-link { align-items: center; }
 .beta-entry { display: block; margin: 4px 10px 12px; font-size: 12px; color: var(--tea); text-underline-offset: 4px; }
 .foot-user {
   color: var(--ink);

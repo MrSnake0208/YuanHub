@@ -27,6 +27,7 @@ test('maps every management tool to its existing permission boundary', function 
     '/feedback/manage',
     '/feedback/admin',
     '/operator/admin',
+    '/calendar/admin',
     '/recruitment/admin',
     '/level/admin',
     '/admin/changelog',
@@ -122,4 +123,12 @@ test('groups private sidebar entries while keeping guest access to public feedba
   assert.match(privateEntries, /to="\/notifications"/)
   assert.match(privateEntries, /to="\/feedback"/)
   assert.match(desktopNav, /<router-link\s+v-if="!isLoggedIn"\s+to="\/feedback\/plaza"/)
+})
+
+
+test('活动编辑员只能看到内容维护中的活动日历管理', () => {
+  const access = normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.ACTIVITY_CALENDAR_WRITE] })
+  assert.deepEqual(getVisibleAdminTools(access).map(tool => tool.to), ['/calendar/admin'])
+  assert.deepEqual(getVisibleAdminToolGroups(access).map(group => group.key), ['content'])
+  assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE] })).some(tool => tool.to === '/calendar/admin'), false)
 })

@@ -42,6 +42,8 @@ let adminAccessRequest = null
 let initRequest = null
 // token 刷新单飞：多个请求同时 401 时复用同一次刷新，避免并发消耗 refresh token。
 let refreshRequest = null
+let sessionGeneration = 0
+const userId = () => String(auth.userInfo?.id || '')
 
 function persist() {
   try {
@@ -78,6 +80,8 @@ export const auth = reactive({
   // 登录：调接口成功后保存 token 与用户信息
   async login(email, password) {
     const data = await userApi.login({ email, password })
+    sessionGeneration++
+    clearAdminAccess()
     setTokens(data)
     auth.refreshRejected = false
     // 登录是「刚建立会话」的确定时刻，此时显式同步管理权限，不存在并发刷新。
@@ -92,25 +96,30 @@ export const auth = reactive({
       auth.refreshRejected = true
       return false
     }
-    if (refreshRequest) return refreshRequest
+    const token = auth.refreshToken, identity = userId(), generation = sessionGeneration
+    if (refreshRequest?.token === token && refreshRequest.identity === identity && refreshRequest.generation === generation) return refreshRequest.promise
+    const current = () => generation === sessionGeneration && identity === userId() && token === auth.refreshToken
 
     const pending = (async function () {
       try {
-        const data = await userApi.refreshToken(auth.refreshToken)
+        const data = await userApi.refreshToken(token)
+        if (!current()) return false
         setTokens(data)
         auth.refreshRejected = false
         return true
       } catch (error) {
+        if (!current()) return false
         // 只有后端明确拒绝才算登录态失效；超时 / 断网不能把用户直接踢下线。
         auth.refreshRejected = !!(error && (error.status === 401 || error.status === 403))
         return false
       }
     })()
-    refreshRequest = pending
+    const record = { token, identity, generation, promise: pending }
+    refreshRequest = record
     try {
       return await pending
     } finally {
-      if (refreshRequest === pending) refreshRequest = null
+      if (refreshRequest === record) refreshRequest = null
     }
   },
 
@@ -119,31 +128,39 @@ export const auth = reactive({
       clearAdminAccess()
       return null
     }
-    if (adminAccessRequest) return adminAccessRequest
+    const identity = userId(), generation = sessionGeneration
+    if (adminAccessRequest?.identity === identity && adminAccessRequest.generation === generation) return adminAccessRequest.promise
+    const current = () => !!auth.accessToken && generation === sessionGeneration && identity === userId()
 
     auth.adminAccessLoading = true
     auth.adminAccessError = ''
-    adminAccessRequest = getCurrentAdminAccess()
+    const pending = getCurrentAdminAccess()
       .then(function (access) {
+        if (!current()) return null
         auth.adminAccess = access
         return access
       })
       .catch(function (error) {
+        if (!current()) return null
         auth.adminAccess = null
         auth.adminAccessError = error && error.message ? error.message : '管理权限读取失败'
         if (!suppressErrors) throw error
         return null
       })
       .finally(function () {
+        if (adminAccessRequest !== record) return
         auth.adminAccessLoading = false
         auth.adminAccessLoaded = true
         adminAccessRequest = null
       })
-    return adminAccessRequest
+    const record = { identity, generation, promise: pending }
+    adminAccessRequest = record
+    return pending
   },
 
   // 登出：清空状态并跳转登录页
   async logout(destination = '/login') {
+    sessionGeneration++
     auth.accessToken = ''
     auth.refreshToken = ''
     auth.userInfo = null
@@ -175,6 +192,10 @@ export function setTokens(payload) {
     throw new Error('登录响应异常：缺少 token 数据')
   }
   const { token, refresh_token, user_info } = payload
+  if (user_info && String(user_info.id || '') !== userId()) {
+    sessionGeneration++
+    clearAdminAccess()
+  }
   auth.accessToken = token || ''
   auth.refreshToken = refresh_token || ''
   auth.userInfo = user_info || auth.userInfo || null
