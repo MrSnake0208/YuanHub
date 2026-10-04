@@ -1,0 +1,137 @@
+import { beforeEach, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import RecognitionTutorial from '../src/pages/star/RecognitionTutorial.vue'
+import { recognitionTutorialSteps } from '../src/pages/star/recognitionTutorial.js'
+
+let root
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.stubGlobal('scrollTo', vi.fn())
+  vi.stubGlobal('matchMedia', () => ({ matches: false }))
+  root = document.createElement('div')
+  root.innerHTML = '<article class="file-picker-panel"><button id="upload">上传</button></article><section class="import-pools"><button data-confirm-pool="主星">确认本池</button><button data-confirm-pool="辅星">确认本池</button><button data-confirm-pool="经验星曜">确认本池</button></section><section class="overlap-grid"></section><button data-confirm-all-pools>一键确认全部分类</button><button data-start-ocr>开始识别</button><article id="import-progress-panel"></article>'
+  document.body.append(root)
+  for (const element of root.querySelectorAll('*')) element.getBoundingClientRect = () => ({ left: 20, top: 80, right: 220, bottom: 124, width: 200, height: 44 })
+})
+async function settle() { await flushPromises(); await vi.advanceTimersByTimeAsync(1800); await flushPromises() }
+const card = () => document.querySelector('.recognition-tour-card')
+async function click(label) {
+  const button = Array.from(card().querySelectorAll('button')).find(button => button.textContent === label)
+  expect(button).toBeTruthy()
+  button.click()
+  await settle()
+}
+it('manual navigation has boundaries, never advances on real actions, and survives replaced targets', async () => {
+  const uploaded = vi.fn()
+  root.querySelector('#upload').addEventListener('click', uploaded)
+  const wrapper = mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body })
+  await settle()
+  expect(card().textContent).toContain('1 / 6')
+  expect(Array.from(card().querySelectorAll('button')).find(b => b.textContent === '上一步').disabled).toBe(true)
+  root.querySelector('#upload').click()
+  expect(uploaded).toHaveBeenCalledOnce()
+  expect(card().textContent).toContain('1 / 6')
+  for (let index = 1; index < 6; index++) {
+    await click('下一步')
+    expect(card().textContent).toContain(`${index + 1} / 6`)
+    expect(card().textContent).toContain(recognitionTutorialSteps[index].title)
+    if (index === 2) expect(root.querySelectorAll('.recognition-tutorial-related')).toHaveLength(4)
+    if (index === 4) {
+      root.querySelector('[data-start-ocr]').remove()
+      await settle()
+      expect(card().textContent).toContain('5 / 6')
+    }
+  }
+  await click('上一步')
+  expect(card().textContent).toContain('5 / 6')
+  await click('下一步')
+  await click('完成')
+  expect(wrapper.emitted('close')).toHaveLength(1)
+  await wrapper.setProps({ open: false })
+  expect(root.querySelectorAll('.recognition-tutorial-related')).toHaveLength(0)
+})
+it('screenshot viewer has all three originals, handles missing images and keeps the current step on close', async () => {
+  mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body })
+  await settle()
+  await click('查看截图示例')
+  const modal = () => document.querySelector('[aria-labelledby="recognition-example-title"]')
+  expect(modal().textContent).toContain('主星截图示例')
+  expect(modal().textContent).toContain('1 / 3')
+  modal().querySelector('img').dispatchEvent(new Event('error'))
+  await flushPromises()
+  expect(modal().querySelector('img')).toBeNull()
+  expect(modal().textContent).toContain('示例图待补充')
+  Array.from(modal().querySelectorAll('button')).find(b => b.textContent === '下一张').click()
+  await flushPromises()
+  expect(modal().textContent).toContain('辅星截图示例')
+  expect(modal().querySelector('img').src).toContain('recognition-support-example.jpg')
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  expect(modal()).toBeNull()
+  expect(card().textContent).toContain('1 / 6')
+  await click('下一步'); await click('下一步'); await click('下一步')
+  await click('查看重叠示例')
+  expect(modal().textContent).toContain('紫色框部分')
+  expect(modal().textContent).not.toContain('下一张')
+})
+it('compact mobile sheet only offers handle dragging, keeps navigation visible and replay starts at step one', async () => {
+  vi.stubGlobal('innerWidth', 390)
+  vi.stubGlobal('innerHeight', 844)
+  const wrapper = mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body })
+  await settle()
+  expect(card().textContent).toContain('可拖动，不挡住操作即可')
+  for (const removed of ['收起', '展开', '上移', '下移']) expect(card().textContent).not.toContain(removed)
+  const handle = card().querySelector('.recognition-tour-handle')
+  for (const [type, y] of [['pointerdown', 300], ['pointermove', 0], ['pointerup', 0]]) {
+    const event = new Event(type, { bubbles: true, cancelable: true })
+    Object.defineProperties(event, { button: { value: 0 }, pointerId: { value: 1 }, clientY: { value: y } })
+    handle.dispatchEvent(event)
+  }
+  await flushPromises()
+  expect(card().style.bottom).toContain('152px')
+  expect(card().querySelector('footer').textContent).toBe('上一步下一步')
+  await click('下一步')
+  expect(card().textContent).not.toContain('可拖动，不挡住操作即可')
+  await wrapper.setProps({ replayId: 1 })
+  await settle()
+  expect(card().textContent).toContain('1 / 6')
+  expect(card().textContent).not.toContain('可拖动，不挡住操作即可')
+})
+
+it('mobile drag accounts for safe areas and an offset short visual viewport', async () => {
+  vi.stubGlobal('innerWidth', 390)
+  vi.stubGlobal('innerHeight', 844)
+  const view = Object.assign(new EventTarget(), { offsetLeft: 0, offsetTop: 48, width: 390, height: 420 })
+  vi.stubGlobal('visualViewport', view)
+  mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body })
+  await settle()
+  card().style.setProperty('--recognition-tour-safe-top', '20px')
+  card().style.setProperty('--recognition-tour-safe-bottom', '34px')
+  let cardHeight = 330
+  card().getBoundingClientRect = () => ({ width: 366, height: cardHeight })
+  window.dispatchEvent(new Event('resize'))
+  await settle()
+  const handle = card().querySelector('.recognition-tour-handle')
+  const initialScrollCalls = window.scrollTo.mock.calls.length
+  for (const [type, y] of [['pointerdown', 300], ['pointermove', -1000], ['pointerup', -1000]]) {
+    const event = new Event(type, { bubbles: true, cancelable: true })
+    Object.defineProperties(event, { button: { value: 0 }, pointerId: { value: 1 }, clientY: { value: y } })
+    handle.dispatchEvent(event)
+  }
+  await flushPromises()
+  const top = window.innerHeight - parseFloat(card().style.bottom) - cardHeight
+  expect(top).toBe(view.offsetTop + 12 + 20)
+  expect(window.scrollTo.mock.calls.length).toBe(initialScrollCalls)
+  view.height = 300
+  cardHeight = 222
+  view.dispatchEvent(new Event('resize'))
+  await settle()
+  expect(card().style.maxHeight).toContain('222px')
+  expect(window.innerHeight - parseFloat(card().style.bottom) - cardHeight).toBe(view.offsetTop + 32)
+  await click('下一步'); await click('下一步'); await click('下一步'); await click('下一步')
+  expect(card().textContent).toContain('开始识别')
+  expect(card().querySelector('footer').textContent).toBe('上一步下一步')
+  await click('下一步')
+  expect(card().textContent).toContain('查看识别进度')
+  expect(card().querySelector('footer').textContent).toBe('上一步完成')
+})

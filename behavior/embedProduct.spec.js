@@ -78,6 +78,26 @@ function planRows(root) {
 }
 
 describe('vendored YuanStar embed behavior', () => {
+  it('tutorial status reads loaded history without changing data and exposes the renamed UI', async () => {
+    const { root, handle } = await mountEmbed()
+    try {
+      handle.setActiveTab('import')
+      expect(handle.getRecognitionTutorialStatus()).toEqual({ ready: true, hasHistory: false })
+      expect(root.textContent).toContain('主星池重复行标记')
+      expect(root.textContent).toContain('辅星池重复行标记')
+      expect(root.textContent).not.toContain('重叠校验')
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {} })
+      const before = await handle.getCloudBusinessSnapshot()
+      expect(handle.getRecognitionTutorialStatus()).toEqual({ ready: true, hasHistory: true })
+      expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+      handle.setActiveTab('review')
+      expect(root.querySelector('.review-page').getAttribute('aria-label')).toBe('背包整理')
+      expect(root.querySelector('#ocr-review-title').textContent).toBe('识别结果核对')
+    } finally {
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {}, experience: { orange: null, purple: null, white: null }, bag: { currentCount: null, capacity: null } })
+      await handle.dispose()
+    }
+  }, 60000)
   it('does not initialize OCR on embedded mount and reports shared tab changes', async () => {
     const worker = vi.fn(function () { throw new Error('unexpected background OCR initialization') })
     vi.stubGlobal('Worker', worker)
@@ -113,9 +133,9 @@ describe('vendored YuanStar embed behavior', () => {
     handle.setActiveTab('review')
     await new Promise((resolve) => setTimeout(resolve, 200))
 
-    // 养成目标列使用「当前等级 → 目标等级」，仅 targetLevel > level 的行才显示箭头。
+    // 养成目标列使用「当前等级→目标等级」，仅 targetLevel > level 的行才显示箭头。
     expect(planRows(root)).toEqual([
-      ['主星', '天府', '30 → 60', '橙', '共1颗'],
+      ['主星', '天府', '30→60', '橙', '共1颗'],
       ['主星', '武曲', '20', '紫', '共1颗'],
       ['辅星', '文昌', '10', '蓝', '共1颗'],
     ])
@@ -129,7 +149,7 @@ describe('vendored YuanStar embed behavior', () => {
     await new Promise((resolve) => setTimeout(resolve, 200))
     expect(pendingToggle().checked).toBe(true)
     // targetLevel === level 的武曲与辅星文昌被过滤掉，只剩天府。
-    expect(planRows(root)).toEqual([['主星', '天府', '30 → 60', '橙', '待养 1 / 共 1']])
+    expect(planRows(root)).toEqual([['主星', '天府', '30→60', '橙', '待养 1 / 共 1']])
 
     pendingToggle().click()
     await new Promise((resolve) => setTimeout(resolve, 200))

@@ -11,7 +11,7 @@
           <h1>星石养成<span class="small">背包 · 整理 · 计划</span></h1>
           <p class="hero-sub">
             如鸢 / 代号鸢 星石背包整理：本地导入截图并完成 OCR
-            与人工核对，管理当前背包、养成计划与经验星曜，并在登录后同步当前账号数据。
+            与识别结果核对，管理当前背包、养成计划与经验星曜，并在登录后同步当前账号数据。
           </p>
           <div class="notice star-availability-note" role="note">
             <span class="tag">当前可用</span>
@@ -108,8 +108,8 @@
               </section>
             </template>
           </ArchiveExchangePanel>
-          <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
+          <div
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry || (productReady && activeTab === 'import')"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
@@ -138,7 +138,10 @@
               :disabled="captureImportBusy"
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
-          </p>
+            <button v-if="productReady && activeTab === 'import'" type="button" class="star-tutorial-replay" @click="replayRecognitionTutorial">
+              <CircleHelp :size="16" aria-hidden="true" />重新查看识别教程
+            </button>
+          </div>
           <div class="star-tabs" role="tablist" aria-label="星石工作区">
             <button
               role="tab"
@@ -153,10 +156,11 @@
               :class="{ on: activeTab === 'review' }"
               @click="setTab('review')"
             >
-              人工核对
+              背包整理
             </button>
           </div>
           <div id="product-root" ref="mountRoot"></div>
+          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" @close="dismissRecognitionTutorial" />
           <p v-if="mountBusy && !productReady" class="yuanstar-mount-loading" role="status">正在加载星石工作区…</p>
           <div v-if="mountError" class="yuanstar-mount-error" role="alert">
             星石工作区加载失败：{{ mountError }}
@@ -180,7 +184,9 @@
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Archive } from "@lucide/vue";
+import { Archive, CircleHelp } from "@lucide/vue";
+import RecognitionTutorial from "./RecognitionTutorial.vue";
+import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial } from "./recognitionTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -224,6 +230,41 @@ const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
 const cloudRetryBusy = ref(false);
 const productReady = ref(false);
+const recognitionTutorialOpen = ref(false);
+const recognitionTutorialReplayId = ref(0);
+const tutorialCloudReady = ref(false);
+const tutorialCloudHistory = ref(false);
+const tutorialAccountReady = ref(false);
+const recognitionTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null));
+let tutorialCheckSequence = 0;
+let recognitionTutorialOwnerKey = "";
+let tutorialStatusObserver = null;
+let tutorialStatusFrame = 0;
+
+function replayRecognitionTutorial() {
+  setTab("import");
+  recognitionTutorialOwnerKey = recognitionTutorialKey.value;
+  recognitionTutorialReplayId.value++;
+  // A new component opening always starts at step 1.
+  recognitionTutorialOpen.value = true;
+}
+function dismissRecognitionTutorial() {
+  markTutorialSeen(recognitionTutorialOwnerKey || recognitionTutorialKey.value);
+  recognitionTutorialOpen.value = false;
+}
+async function checkRecognitionTutorial() {
+  const sequence = ++tutorialCheckSequence;
+  if (!productReady.value || !tutorialAccountReady.value || accountsLoading.value || accountError.value ||
+      (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))) return;
+  const currentHandle = handle, key = recognitionTutorialKey.value;
+  const status = await currentHandle?.getRecognitionTutorialStatus?.();
+  if (sequence !== tutorialCheckSequence || currentHandle !== handle || key !== recognitionTutorialKey.value || unmounted) return;
+  if (!status?.ready) return;
+  const hasHistory = status.hasHistory || tutorialCloudHistory.value;
+  // Remember experienced users even if they later switch to an empty game account.
+  if (hasHistory) { markTutorialSeen(key); return; }
+  if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value) replayRecognitionTutorial();
+}
 const showArchive = ref(false);
 const showStarImport = ref(false);
 const starImportPreview = ref(null);
@@ -323,6 +364,8 @@ const starExportScopeOptions = computed(function () {
 const starCloud = createStarCloudCoordinator({
   selectedHostAccount,
   onState: function (state) {
+    tutorialCloudReady.value = Boolean(state.ready);
+    tutorialCloudHistory.value = Boolean(state.writer?.revision > 0 || state.writer?.generation > 0);
     const feedback = starCloudFeedback(state);
     cloudSyncMessage.value = feedback.message;
     cloudSyncError.value = feedback.error;
@@ -504,6 +547,7 @@ async function loadAccounts() {
 }
 async function syncHostAccount() {
   if (!handle) return false;
+  tutorialAccountReady.value = false;
   const host = selectedHostAccount();
   return queueAccountSync(async function (isLatest) {
     const currentHandle = handle;
@@ -519,6 +563,7 @@ async function syncHostAccount() {
       const entered = await starCloud.enter(currentHandle);
       if (!isLatest() || currentHandle !== handle) return false;
       if (host && !entered) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+      tutorialAccountReady.value = !host || entered;
       return true;
     } catch (error) {
       if (!isLatest() || currentHandle !== handle) return false;
@@ -681,14 +726,28 @@ function setTab(tab) {
   handle?.setActiveTab(tab);
 }
 watch(accountId, discardForeignPendingCapture);
+watch([productReady, tutorialAccountReady, tutorialCloudReady, tutorialCloudHistory, activeTab, recognitionTutorialKey, summary], () => { void checkRecognitionTutorial(); }, { flush: "post" });
+watch(recognitionTutorialKey, () => { recognitionTutorialOpen.value = false; });
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
+  // Draft restoration may finish after the first summary. Recheck on the
+  // embed's actual render, without polling or changing its business lifecycle.
+  tutorialStatusObserver = new MutationObserver(() => {
+    if (tutorialStatusFrame) return;
+    tutorialStatusFrame = requestAnimationFrame(() => {
+      tutorialStatusFrame = 0;
+      void checkRecognitionTutorial();
+    });
+  });
+  if (mountRoot.value) tutorialStatusObserver.observe(mountRoot.value, { childList: true, subtree: true });
   await loadAccounts();
   stopCaptureEvents = subscribeAccountEvents(onStarCaptureEvent);
   void mountProduct();
   void recoverPendingCapture();
 });
 onBeforeUnmount(function () {
+  tutorialStatusObserver?.disconnect();
+  cancelAnimationFrame(tutorialStatusFrame);
   unmounted = true;
   if (stopCaptureEvents) stopCaptureEvents();
   productReady.value = false;
@@ -701,6 +760,20 @@ onBeforeUnmount(function () {
 <style scoped>
 .page-star {
   --wm: "星石";
+}
+.star-tutorial-replay {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
 }
 .star-main {
   min-height: 100vh; min-height: 100dvh;
@@ -778,6 +851,10 @@ onBeforeUnmount(function () {
 .star-exchange-preview dt { color: var(--ink-60); font-size: 11px; font-weight: 800; }
 .star-exchange-preview dd { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
 .star-sync-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin: 10px 2px -18px;
   color: var(--ink-60);
   font-size: 12px;
