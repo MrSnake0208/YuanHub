@@ -78,3 +78,8 @@ star_stones -> starStones
 
 成功返回 `{accepted,duplicates,superseded,warnings}`。相同账号与 `record_id` 的同正文重试计入 `duplicates`；不同正文返回 409 冲突。
 
+
+## SP 共享成长约束（2026-10-05）
+
+协议身份和字段不变；服务端根据目录 spOf 同步本体及全部 SP 的等级/修为。各形态星级独立，缺失形态仅补零星占位；full 裁剪后也保留关系占位。关联成长变化推进 revision，并将旧观测标记 stale。历史存量不会由本次发布自动迁移。
+同一 v2 record 同时提供关联形态时，level/elite 必须相同；冲突返回 422 `shared_growth_conflict`，不接受最后一项覆盖。

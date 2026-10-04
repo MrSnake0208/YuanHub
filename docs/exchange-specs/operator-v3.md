@@ -88,3 +88,8 @@ Preview 顶层格式是 `myshare-operator-import-preview@1`，统计：`accepted
 主观 `growth_state` 为 `active | graduated | skip | discarded`，对应养成中/已毕业/养老中/已弃置。discarded 保留所有资料，支持 listed/full 备份恢复，普通客观导入和 scan 不覆盖它。API 分享/OpenAPI 读取原样透传。未知非空值拒绝，缺失沿用默认。
 
 仍为 v3 明确扩展，旧 schema 会拒绝新值文件。发布前先升级读取界面和 MaaYuan，再开放新值写入；旧标签页使用现有更新横幅刷新；后端回滚需保留四值兼容。详情见完整 v3 协议的“2026-10-03 v3 养成状态枚举扩展”。
+
+## SP 共享成长约束（2026-10-05）
+
+协议身份和字段不变；服务端根据目录 spOf 同步本体及全部 SP 的等级/修为。各形态星级独立，缺失形态仅补零星占位；full 裁剪后也保留关系占位。关联成长变化推进 revision，并将旧观测标记 stale。历史存量不会由本次发布自动迁移。
+同一 v3 record 的有效共享 patch 值冲突时，该关联组全部 rejected（`shared_growth_conflict`）；无关组仍按原有部分接收语义处理。合法同值双形态提交在同一事务中准备并应用，允许本批同步引起的 revision 变化，保留外部并发冲突保护；响应与审计使用最终 revision。review 未确认字段仍按原规则排除。SP annotation 星级目标同样限 0..5。

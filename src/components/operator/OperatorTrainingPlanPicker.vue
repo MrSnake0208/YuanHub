@@ -96,6 +96,7 @@
 </template>
 
 <script setup>
+import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronDown, PenLine, Plus, Search, SlidersHorizontal, Star, Trash2, Users, X } from '@lucide/vue'
 import OperatorAvatar from './OperatorAvatar.vue'
@@ -197,7 +198,7 @@ function growthStatusLabel(entry) {
 const filteredEntries = computed(() => {
   return props.catalogEntries.filter(entry => {
     if (!matchesOperatorSearch(entry, search.value)) return false
-    if (rarityFilter.value !== 'all' && Number(entry.rarity) !== Number(rarityFilter.value)) return false
+    if (!matchesOperatorQuality(entry, rarityFilter.value)) return false
     if (!matchesProfSubFilter(entry, profFilter.value, subProfFilter.value)) return false
     if (selectionFilter.value === 'selected' && !selected.value.has(entry.id)) return false
     if (selectionFilter.value === 'unselected' && selected.value.has(entry.id)) return false

@@ -3045,6 +3045,7 @@
 </template>
 
 <script setup>
+import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import {
   ref,
@@ -4127,6 +4128,7 @@ const catalogOperators = computed(function () {
       name: e.name,
       alias: "",
       rarity: e.rarity || 3,
+      spOf: e.spOf || e.sp_of || "",
       prof: e.prof || "未知",
       subProf: e.subProf || "",
       games: ["如鸢", "代号鸢"],
@@ -4846,7 +4848,7 @@ const activeUpgradeReadyIds = computed(function () {
 
 function matchesCurrentFilters(entry) {
   return (
-    (rarityFilter.value === "all" || Number(entry.rarity) === Number(rarityFilter.value)) &&
+    matchesOperatorQuality(entry, rarityFilter.value) &&
     matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
     matchesOperatorStatus(operatorStatus(entry), workbenchStatusFilter.value) &&
     matchesOperatorGrowthFilters(entry, growthFilters.value) &&
@@ -5652,19 +5654,23 @@ function growthPreviewRequirements(entry, field) {
     : [];
 }
 
+function sharedGrowthCatalog(entry) {
+  return catalogMap.value[entry.spOf || entry.id] || entry;
+}
+
 function levelBreakthroughMaterialIds(entry) {
   const draft = ensureCardDraft(entry);
   if (!draft) return new Set();
   const withBreakthrough = calculateLevelRequirements(
     draft.level,
     growthTarget(entry, "level"),
-    firstSubProf(entry),
+    firstSubProf(sharedGrowthCatalog(entry)),
     false,
   );
   const withoutBreakthrough = calculateLevelRequirements(
     draft.level,
     growthTarget(entry, "level"),
-    firstSubProf(entry),
+    firstSubProf(sharedGrowthCatalog(entry)),
     true,
   );
   return new Set(
@@ -6086,7 +6092,7 @@ function quickGrowthRequirementReady(entry, field, step) {
     requirement = calculateLevelRequirements(
       level,
       Math.min(100, level + step),
-      firstSubProf(entry),
+      firstSubProf(sharedGrowthCatalog(entry)),
       cardLevelBreakthrough(entry),
     );
   } else if (field === "elite") {
@@ -6095,7 +6101,7 @@ function quickGrowthRequirementReady(entry, field, step) {
     requirement = calculateXiuweiRequirements(
       elite,
       Math.min(maxElite, elite + step),
-      xiuweiJob(entry.prof),
+      xiuweiJob(sharedGrowthCatalog(entry).prof),
     );
   } else {
     if (entry.spOf || star >= 31) return false;
@@ -6256,6 +6262,7 @@ function levelBookDeductions(required, stock) {
 
 
 function growthMaterials(entry, field, step) {
+  if (field === "star" && entry.spOf) return [];
   const draft = ensureCardDraft(entry);
   if (!draft) return [];
   const stock = cardMaterialStock.value || {};
@@ -6264,14 +6271,14 @@ function growthMaterials(entry, field, step) {
     requirement = calculateLevelRequirements(
       draft.level,
       growthTarget(entry, "level", step),
-      firstSubProf(entry),
+      firstSubProf(sharedGrowthCatalog(entry)),
       cardLevelBreakthrough(entry),
     );
   else if (field === "elite")
     requirement = calculateXiuweiRequirements(
       draft.elite,
       growthTarget(entry, "elite", step),
-      xiuweiJob(entry.prof),
+      xiuweiJob(sharedGrowthCatalog(entry).prof),
     );
   else
     requirement = calculateStarRequirements(

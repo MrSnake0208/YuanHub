@@ -423,6 +423,7 @@
 </template>
 
 <script setup>
+import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -693,7 +694,7 @@ const pageOperators = computed(function () {
       return !isAwaken.value || !isSpOperator(op);
     })
     .filter(function (op) {
-      return rarityFilter.value === "all" || Number(op.rarity) === Number(rarityFilter.value);
+      return matchesOperatorQuality(op, rarityFilter.value);
     })
     .filter(function (op) {
       return matchesProfSubFilter(op, profFilter.value, subProfFilter.value);

@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { canonicalSubProf } from '../src/utils/operatorFilters.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '..')
@@ -29,8 +30,9 @@ function sq(s) {
 
 const itemsDoc = readJson(itemsPath)
 const operatorsDoc = readJson(operatorsPath)
+const operatorEntries = Array.isArray(operatorsDoc) ? operatorsDoc : operatorsDoc.OPERATORS
 
-if (!Array.isArray(itemsDoc.items) || !Array.isArray(operatorsDoc.OPERATORS)) {
+if (!Array.isArray(itemsDoc.items) || !Array.isArray(operatorEntries)) {
   throw new Error('数据源结构不符：需要 items.json 的 items[] 与 operators.json 的 OPERATORS[]')
 }
 
@@ -52,12 +54,13 @@ for (const i of items) {
   if (!categories.includes(i.category)) categories.push(i.category)
 }
 
-const agents = operatorsDoc.OPERATORS.map((o) => ({
+const agents = operatorEntries.map((o) => ({
   id: o.id,
   name: o.name,
   rarity: o.rarity,
-  prof: o.prof,
-  subProf: (o.subProf && subProfName[o.subProf]) || o.subProf || ''
+  prof: Array.isArray(o.prof) ? o.prof.join('、') : o.prof,
+  subProf: canonicalSubProf(Array.isArray(o.subProf) ? o.subProf[0] : (subProfName[o.subProf] || o.subProf || '')),
+  spOf: o.spOf || o.sp_of || null
 }))
 
 const sourceAgentProfs = []
@@ -98,7 +101,7 @@ L.push(']')
 L.push('')
 L.push('export const AGENT_CATALOG = [')
 for (const a of agents) {
-  L.push(`  { id: '${sq(a.id)}', name: '${sq(a.name)}', rarity: ${a.rarity}, prof: '${sq(a.prof)}', subProf: '${sq(a.subProf)}' },`)
+  L.push(`  { id: '${sq(a.id)}', name: '${sq(a.name)}', rarity: ${a.rarity}, prof: '${sq(a.prof)}', subProf: '${sq(a.subProf)}'${a.spOf ? `, spOf: '${sq(a.spOf)}'` : ''} },`)
 }
 L.push(']')
 L.push('')
