@@ -5,7 +5,7 @@
     <main id="main-content" class="inventory-main">
       <!-- HERO -->
       <header class="hero">
-        <div class="wrap">
+        <div class="wrap inventory-hero-container">
           <div class="crumb">
             <span class="pill fill">库存</span>
             <span class="pill">追踪</span>
@@ -16,7 +16,7 @@
             代号鸢 / 如鸢
             库存与奖励台账：支持多子账号分别清点，同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案（v2）。
           </p>
-          <div class="hero-stats">
+          <div class="hero-stats inventory-hero-stats">
             <div>
               <div class="k">追踪目录更新日期</div>
               <div class="v catalog-date">
@@ -36,8 +36,8 @@
               </div>
             </div>
             <div v-if="auth.isLoggedIn" class="is-authed">
-              <div class="k">已同步</div>
-              <div class="v">云端<small>可导入导出</small></div>
+              <div class="k">已登录</div>
+              <div class="v">云端存储<small>可导入导出</small></div>
             </div>
             <div v-else class="is-authed">
               <div class="k">未登录</div>
@@ -219,20 +219,36 @@
                   <b>{{ stockChangedCount }}</b> 项
                 </p>
                 <p v-else-if="entityType === 'item'" class="scope-guidance">
-                  库存数量有误？点击标题旁的
-                  <Pencil :size="13" aria-hidden="true" /> 进入编辑模式
+                  点击分类旁的「编辑」调整局部数量，或盘点全部道具建立库存基准。
                 </p>
                 <p v-else>心纸数量不对？立即手动修改</p>
+                <button
+                  v-if="!editingStock && entityType === 'item'"
+                  type="button"
+                  class="scope-edit-agent scope-edit-stock"
+                  :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext"
+                  @click="startStockEdit()"
+                >
+                  <Pencil :size="14" aria-hidden="true" />盘点全部道具
+                </button>
                 <button
                   v-if="!editingStock && entityType === 'agent'"
                   type="button"
                   class="scope-edit-agent"
-                  :disabled="loading || !!error"
+                  :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext"
                   @click="startStockEdit()"
                 >
                   <Pencil :size="14" aria-hidden="true" />编辑心纸库存
                 </button>
                 <div v-if="editingStock" class="manifest-edit-actions">
+                  <label v-if="needsFullStockConfirmation" class="stock-baseline-confirmation">
+                    <input
+                      v-model="stockBaselineConfirmed"
+                      type="checkbox"
+                      :disabled="stockInputsLocked"
+                    />
+                    <span>我已核对全部{{ entityType === 'agent' ? '心纸' : '道具' }}库存，未填写项按 0 计；确认建立完整盘点基准</span>
+                  </label>
                   <button
                     type="button"
                     :disabled="savingStock"
@@ -243,13 +259,11 @@
                   <button
                     type="button"
                     class="primary"
-                    :disabled="
-                      savingStock || !!stockDraftError || !stockChangedCount
-                    "
+                    :disabled="!canSaveStock"
                     @click="saveStockEdit"
                   >
                     <Save :size="14" />{{
-                      savingStock ? "保存中…" : "保存库存"
+                      savingStock ? "保存中…" : pendingStockDocument ? "原样重试盘点" : stockChangedCount ? "保存库存" : "确认盘点"
                     }}
                   </button>
                 </div>
@@ -687,6 +701,7 @@
                     <button
                       type="button"
                       :disabled="
+                        stockInputsLocked ||
                         !isValidStockCount(stockDraft[e.id]) ||
                         Number(stockDraft[e.id]) <= 0
                       "
@@ -703,12 +718,14 @@
                       min="0"
                       max="2147483647"
                       step="1"
+                      :disabled="stockInputsLocked"
                       :aria-label="(e.name || e.id) + '当前库存'"
                       @focus="$event.target.select()"
                     />
                     <button
                       type="button"
                       :disabled="
+                        stockInputsLocked ||
                         !isValidStockCount(stockDraft[e.id]) ||
                         Number(stockDraft[e.id]) >= 2147483647
                       "
@@ -817,7 +834,7 @@
                           <button
                             type="button"
                             class="subsection-edit"
-                            :disabled="loading || !!error"
+                            :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext"
                             :aria-label="'编辑' + subcategory.name + '的库存'"
                             :data-tooltip="
                               '编辑「' + subcategory.name + '」的库存'
@@ -1120,6 +1137,24 @@
               :error="acquiredError || acquiredRecordsError"
               :truncated="acquiredRecordsTruncated"
             >
+              <template #error-actions>
+                <button type="button" class="act-btn" @click="loadAcquired">重试读取</button>
+              </template>
+              <template #empty-actions>
+                <button type="button" class="act-btn" @click="focusResourceRange">调整日期范围</button>
+                <button
+                  type="button"
+                  class="act-btn"
+                  :disabled="!inventoryAccountReady || loading || !!error"
+                  @click="openResourceStockEditor"
+                >盘点道具库存</button>
+                <button
+                  type="button"
+                  class="act-btn"
+                  :disabled="!inventoryAccountReady"
+                  @click="openResourceReportImport"
+                >导入库存报告</button>
+              </template>
               <template #actions>
                 <div class="type-switch acquired-type-switch report-book-switch" role="group" aria-label="周期获得账簿">
               <button type="button" aria-label="抽卡资源账簿" :aria-pressed="reportBook === 'resources'" :class="{ on: reportBook === 'resources' }" @click="reportBook = 'resources'"><span class="report-book-label-full">抽卡资源收支</span><span class="report-book-label-compact" aria-hidden="true">抽卡资源</span></button>
@@ -1600,11 +1635,12 @@
                   <small>条记录</small>
                 </div>
                 <RewardEntryWorkspace
+                  ref="rewardEntryWorkspace"
                   :account-id="accountId"
                   :account-name="currentAccountName"
                   :game="agentGameFilter"
                   :latest-inventory-at="latestInventoryRecordAt"
-                  :disabled="!auth.isLoggedIn || !accountId || accountsLoading || editingStock"
+                  :disabled="!inventoryAccountReady || editingStock"
                   @busy="rewardImportBusy = $event"
                   @imported="onRewardImported"
                 />
@@ -1768,7 +1804,7 @@
 <script setup>
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
 import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import {
   Archive,
@@ -2006,6 +2042,18 @@ const stockDraft = ref({});
 const stockOriginal = ref({});
 const stockEditError = ref("");
 const stockSaveNotice = ref("");
+const rewardEntryWorkspace = ref(null);
+const stockBaselineConfirmed = ref(false);
+const pendingStockDocument = ref(null);
+const stockInputsLocked = computed(() => savingStock.value || !!pendingStockDocument.value);
+const stockEditContext = ref("");
+const currentLoadedContext = ref("");
+let stockEditSeq = 0;
+let currentLoadSeq = 0;
+let accountsLoadSeq = 0;
+let inventoryContextSeq = 0;
+let inventoryPageReady = false;
+let inventoryDisposed = false;
 
 function toggleInventoryArchive() {
   showArchive.value = !showArchive.value;
@@ -2043,6 +2091,11 @@ const agentGameFilter = computed({
 });
 const accountsLoading = ref(false);
 const accountError = ref("");
+const inventoryAccountReady = computed(() => auth.isLoggedIn && !!accountId.value &&
+  !accountsLoading.value && !accountError.value && accounts.value.some(account => account.id === accountId.value));
+const stockContext = computed(function () {
+  return JSON.stringify([auth.isLoggedIn, auth.userInfo?.id || "", accountId.value, entityType.value, agentGameFilter.value]);
+});
 const exportAll = ref(false);
 const inventoryExportScopeOptions = computed(function () {
   return [
@@ -2094,13 +2147,43 @@ function onRewardImported(targetAccountId) {
   if (activeTab.value === "acquired") loadAcquired();
 }
 
+function focusResourceRange() {
+  document.getElementById("acquired-range-from")?.focus();
+}
+
+async function openResourceStockEditor() {
+  const seq = inventoryContextSeq;
+  const isCurrent = () => !inventoryDisposed && auth.isLoggedIn && seq === inventoryContextSeq && activeTab.value === "manifest";
+  await setTab("manifest");
+  if (!isCurrent()) return;
+  if (entityType.value !== "item") {
+    entityType.value = "item";
+    await reloadCurrent();
+  } else if (currentLoadedContext.value !== stockContext.value) {
+    await reloadCurrent();
+  }
+  if (isCurrent()) startStockEdit();
+}
+
+async function openResourceReportImport() {
+  const seq = inventoryContextSeq;
+  await setTab("records");
+  await nextTick();
+  if (!inventoryDisposed && seq === inventoryContextSeq && activeTab.value === "records") rewardEntryWorkspace.value?.openReport();
+}
+
 async function setTab(t) {
+  const seq = inventoryContextSeq;
+  const editSeq = stockEditSeq;
   if (editingStock.value && t !== "manifest") {
     if (!(await confirmStockDiscard())) return;
+    if (inventoryDisposed || seq !== inventoryContextSeq || editSeq !== stockEditSeq) return;
     cancelStockEdit();
   }
+  if (inventoryDisposed || seq !== inventoryContextSeq) return;
   activeTab.value = t;
-  if (t === "manifest" && currentEntries.value.length === 0) reloadCurrent();
+  if (t === "manifest" && currentEntries.value.length === 0) await reloadCurrent();
+  if (inventoryDisposed || seq !== inventoryContextSeq || activeTab.value !== t) return;
   if (t === "manifest" && entityType.value === "agent") {
     loadAgentCatalog();
     loadAgentFavorites();
@@ -2242,8 +2325,11 @@ function resetAcquiredData() {
 
 // —— 统一子账号（库存 × 密探共用） ——
 async function loadAccounts() {
+  const seq = ++accountsLoadSeq;
+  const identity = auth.userInfo?.id;
   if (!auth.isLoggedIn) {
     accounts.value = [];
+    accountsLoading.value = false;
     clearAgentFavorites();
     return;
   }
@@ -2251,6 +2337,7 @@ async function loadAccounts() {
   accountError.value = "";
   try {
     const list = await listAccounts();
+    if (seq !== accountsLoadSeq || !auth.isLoggedIn || identity !== auth.userInfo?.id || inventoryDisposed) return;
     accounts.value = Array.isArray(list) ? list : [];
     activeAccount.syncAccounts(accounts.value);
     if (accounts.value.length < 2) exportAll.value = false;
@@ -2261,9 +2348,10 @@ async function loadAccounts() {
     if (!still)
       accountId.value = accounts.value.length ? accounts.value[0].id : "";
   } catch (err) {
-    accountError.value = humanErr(err, "子账号加载失败");
+    if (seq === accountsLoadSeq && identity === auth.userInfo?.id && !inventoryDisposed)
+      accountError.value = humanErr(err, "子账号加载失败");
   } finally {
-    accountsLoading.value = false;
+    if (seq === accountsLoadSeq && !inventoryDisposed) accountsLoading.value = false;
   }
 }
 
@@ -2737,9 +2825,20 @@ const stockChangedCount = computed(function () {
     );
   }).length;
 });
+const needsFullStockConfirmation = computed(function () {
+  return editingStock.value && !stockEditScopeIds.value &&
+    !Number.isFinite(Date.parse(currentFullBaselineAt.value || ""));
+});
+const canSaveStock = computed(function () {
+  return editingStock.value && inventoryAccountReady.value &&
+    stockEditContext.value === stockContext.value &&
+    currentLoadedContext.value === stockContext.value &&
+    !loading.value && !error.value && !savingStock.value && !stockDraftError.value &&
+    (stockChangedCount.value > 0 || (needsFullStockConfirmation.value && stockBaselineConfirmed.value));
+});
 const stockEditDirty = computed(function () {
   return editingStock.value &&
-    (Boolean(stockDraftError.value) || stockChangedCount.value > 0);
+    (Boolean(stockDraftError.value) || stockChangedCount.value > 0 || stockBaselineConfirmed.value);
 });
 const confirmStockDiscard = useUnsavedChanges(stockEditDirty, "库存草稿");
 const manifestTotal = computed(function () {
@@ -3198,6 +3297,7 @@ function scrollToStockEditor() {
 }
 
 function startStockEdit(scopeEntries, scopeName) {
+  if (!inventoryAccountReady.value || loading.value || error.value || savingStock.value || currentLoadedContext.value !== stockContext.value) return;
   if (entityType.value === "agent" && (agentCatalogLoading.value || agentCatalogError.value)) return;
   if (!auth.isLoggedIn) {
     goLogin();
@@ -3207,6 +3307,10 @@ function startStockEdit(scopeEntries, scopeName) {
     alert("请先创建并选择一个子账号");
     return;
   }
+  stockEditSeq += 1;
+  stockEditContext.value = stockContext.value;
+  stockBaselineConfirmed.value = false;
+  pendingStockDocument.value = null;
   const draft = {};
   stockEditEntries.value.forEach(function (item) {
     draft[item.id] = Number(currentMap.value[item.id]) || 0;
@@ -3239,11 +3343,18 @@ function restoreAgentControlsAfterEdit() {
 }
 
 async function requestCancelStockEdit() {
+  const seq = stockEditSeq;
   if (savingStock.value || !(await confirmStockDiscard())) return;
+  if (seq !== stockEditSeq) return;
   cancelStockEdit();
 }
 
 function cancelStockEdit() {
+  const refreshUnconfirmedStock = !!pendingStockDocument.value && stockEditContext.value === stockContext.value;
+  stockEditSeq += 1;
+  stockEditContext.value = "";
+  stockBaselineConfirmed.value = false;
+  pendingStockDocument.value = null;
   editingStock.value = false;
   savingStock.value = false;
   stockDraft.value = {};
@@ -3252,6 +3363,7 @@ function cancelStockEdit() {
   stockEditScopeName.value = "";
   stockEditError.value = "";
   restoreAgentControlsAfterEdit();
+  if (refreshUnconfirmedStock) reloadCurrent();
   if (inventoryEventRefreshPending) scheduleInventoryEventRefresh();
 }
 
@@ -3276,41 +3388,44 @@ function manualRecordId() {
 async function saveStockEdit() {
   if (entityType.value === "agent" && (agentCatalogLoading.value || agentCatalogError.value)) return;
   stockEditError.value = stockDraftError.value;
-  if (stockEditError.value || !stockChangedCount.value || savingStock.value)
-    return;
+  if (!canSaveStock.value) return;
+  const seq = stockEditSeq;
+  const context = stockContext.value;
+  const targetAccount = accountId.value;
+  const targetType = entityType.value;
+  const isCurrent = () => seq === stockEditSeq && context === stockContext.value;
   savingStock.value = true;
-  const effectiveAt = manualSnapshotTime();
-  const visibleDraftEntries = stockEditEntries.value.map(function (item) {
-    return {
-      id: item.id,
-      name: item.name || item.id,
-      count: Number(stockDraft.value[item.id]),
-    };
-  });
-  const draftEntries =
-    entityType.value === "item"
-      ? preserveHiddenStockEntries(
-          visibleDraftEntries,
-          currentEntries.value,
-          FRONTEND_HIDDEN_ITEM_IDS,
-        )
-      : visibleDraftEntries;
-  const doc = buildManualStockSnapshot({
-    accountId: accountId.value,
-    entityType: entityType.value,
-    catalogVersion: CATALOG_VERSION,
-    effectiveAt: effectiveAt,
-    recordId: manualRecordId(),
-    entries: draftEntries,
-  });
   try {
-    const result = await importInventory(doc);
-    if (result && result.superseded)
+    if (!pendingStockDocument.value) {
+      const visibleDraftEntries = stockEditEntries.value.map(function (item) {
+        return { id: item.id, name: item.name || item.id, count: Number(stockDraft.value[item.id]) };
+      });
+      const draftEntries = targetType === "item"
+        ? preserveHiddenStockEntries(visibleDraftEntries, currentEntries.value, FRONTEND_HIDDEN_ITEM_IDS)
+        : visibleDraftEntries;
+      pendingStockDocument.value = buildManualStockSnapshot({
+        accountId: targetAccount,
+        entityType: targetType,
+        catalogVersion: CATALOG_VERSION,
+        effectiveAt: manualSnapshotTime(),
+        recordId: manualRecordId(),
+        entries: draftEntries,
+      });
+    }
+    const result = await importInventory(pendingStockDocument.value);
+    if (!isCurrent()) return;
+    if (result && result.superseded) {
+      pendingStockDocument.value = null;
       throw new Error("快照时间早于现有库存，未能生效");
+    }
+    if (!result || !(result.accepted > 0 || result.duplicates > 0))
+      throw new Error("保存结果无法确认，请原样重试盘点");
+    pendingStockDocument.value = null;
     editingStock.value = false;
     restoreAgentControlsAfterEdit();
     stockSaveNotice.value =
-      entityType.value === "agent" ? "密探心纸库存已更新" : "库存已更新";
+      targetType === "agent" ? "密探心纸库存已更新" : "库存已更新";
+    stockBaselineConfirmed.value = false;
     stockDraft.value = {};
     stockOriginal.value = {};
     stockEditScopeIds.value = null;
@@ -3318,25 +3433,20 @@ async function saveStockEdit() {
     inventoryEventRefreshPending = false;
     await reloadCurrent();
   } catch (err) {
-    stockEditError.value = humanErr(err, "库存保存失败");
+    if (isCurrent()) {
+      if ([400, 401, 403, 404, 409, 422].includes(err?.status)) pendingStockDocument.value = null;
+      stockEditError.value = humanErr(err, "库存保存失败") +
+        (pendingStockDocument.value ? "；结果未确认，草稿已锁定，请原样重试。取消编辑不会撤销服务器可能已接受的盘点。" : "");
+    }
   } finally {
-    savingStock.value = false;
-  }
-}
-
-async function safeLoad(fn, quiet, preserveContent) {
-  if (!preserveContent) loading.value = true;
-  if (!quiet) error.value = "";
-  try {
-    await fn();
-  } catch (err) {
-    if (!quiet) error.value = humanErr(err, "加载失败，请稍后重试");
-  } finally {
-    if (!preserveContent) loading.value = false;
+    if (isCurrent()) savingStock.value = false;
   }
 }
 
 async function reloadCurrent(quiet, preserveContent) {
+  const seq = ++currentLoadSeq;
+  const context = stockContext.value;
+  currentLoadedContext.value = "";
   // 未登录时不请求云端库存（避免 401 触发自动跳转登录页），数量保持初始 0
   if (!auth.isLoggedIn) {
     currentEntries.value = [];
@@ -3346,21 +3456,34 @@ async function reloadCurrent(quiet, preserveContent) {
     return;
   }
   // 未选择账号时不请求（后端 /current 需要 account_id）
-  if (!accountId.value) {
+  if (!accountId.value || accountsLoading.value || accountError.value || !accounts.value.some(account => account.id === accountId.value)) {
     currentEntries.value = [];
     currentFullBaselineAt.value = null;
     error.value = "";
     if (!preserveContent) loading.value = false;
     return;
   }
-  await safeLoad(async function () {
+  if (!preserveContent) loading.value = true;
+  if (!quiet) error.value = "";
+  try {
     const data = await getCurrent({
       accountId: accountId.value,
       entityType: entityType.value,
     });
+    if (seq !== currentLoadSeq || context !== stockContext.value) return;
+    if (!Array.isArray(data) && (!data || typeof data !== "object"))
+      throw new Error("库存响应无效，请重试读取");
     const list = Array.isArray(data) ? data : data ? [data] : [];
     const doc = list[0];
+    if (list.length > 1 || (list.length && (!doc || typeof doc !== "object")))
+      throw new Error("库存响应无效，请重试读取");
+    if (doc && (!doc.entries || typeof doc.entries !== "object" || Array.isArray(doc.entries) ||
+      (doc.account_id && doc.account_id !== accountId.value) ||
+      (doc.entity_type && doc.entity_type !== entityType.value)))
+      throw new Error("库存响应与当前账号或类型不符，请重试读取");
     const entriesObj = doc && doc.entries ? doc.entries : {};
+    if (Object.values(entriesObj).some(entry => typeof entry?.count !== "number" || !Number.isSafeInteger(entry.count) || entry.count < 0))
+      throw new Error("库存数量无效，请重试读取");
     currentFullBaselineAt.value = doc ? doc.full_baseline_at : null;
     currentEntries.value = Object.keys(entriesObj)
       .map(function (id) {
@@ -3377,7 +3500,14 @@ async function reloadCurrent(quiet, preserveContent) {
       .sort(function (a, b) {
         return b.count - a.count;
       });
-  }, quiet, preserveContent);
+    currentLoadedContext.value = context;
+  } catch (err) {
+    if (seq === currentLoadSeq && context === stockContext.value && !quiet)
+      error.value = humanErr(err, "加载失败，请稍后重试");
+  } finally {
+    if (seq === currentLoadSeq && context === stockContext.value)
+      loading.value = false;
+  }
 }
 
 function scheduleInventoryEventRefresh() {
@@ -3961,7 +4091,10 @@ onMounted(async function () {
     loadCatalog(),
     loadAgentCatalog(),
   ]);
+  if (inventoryDisposed) return;
   await loadAccounts();
+  if (inventoryDisposed) return;
+  inventoryPageReady = true;
   reloadCurrent();
   if (activeTab.value !== "manifest") setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(
@@ -3969,7 +4102,53 @@ onMounted(async function () {
   );
 });
 
+watch([accountId, () => auth.isLoggedIn, () => auth.userInfo?.id, agentGameFilter], function (values, previous) {
+  inventoryContextSeq += 1;
+  currentLoadSeq += 1;
+  recordsLoadSeq += 1;
+  currentLoadedContext.value = "";
+  currentFullBaselineAt.value = null;
+  currentEntries.value = [];
+  stockSaveNotice.value = "";
+  inventoryEventRefreshPending = false;
+  cancelStockEdit();
+  clearAgentFavorites();
+  resetAcquiredData();
+  recordsList.value = [];
+  recordsNextCursor.value = null;
+  recordsLoading.value = false;
+  acquiredLoading.value = false;
+  const authChanged = values[1] !== previous[1] || values[2] !== previous[2];
+  if (authChanged) {
+    accountsLoadSeq += 1;
+    accounts.value = [];
+    accountsLoading.value = false;
+    accountError.value = "";
+  }
+  if (!inventoryPageReady) return;
+  const refresh = () => {
+    if (!inventoryPageReady || inventoryDisposed) return;
+    reloadCurrent();
+    if (activeTab.value === "acquired") loadAcquired();
+    if (activeTab.value === "records") loadRecords(true);
+  };
+  if (authChanged && auth.isLoggedIn) {
+    const identity = auth.userInfo?.id;
+    loadAccounts().then(function () {
+      if (auth.isLoggedIn && identity === auth.userInfo?.id) refresh();
+    });
+  } else refresh();
+}, { flush: "sync" });
+
 onBeforeUnmount(function () {
+  inventoryDisposed = true;
+  inventoryContextSeq += 1;
+  inventoryPageReady = false;
+  currentLoadSeq += 1;
+  accountsLoadSeq += 1;
+  stockEditSeq += 1;
+  acquiredSeq += 1;
+  recordsLoadSeq += 1;
   if (unsubscribeAccountEvents) unsubscribeAccountEvents();
   if (accountEventRefreshTimer != null) clearTimeout(accountEventRefreshTimer);
 });
@@ -4296,9 +4475,11 @@ onBeforeUnmount(function () {
 }
 .manifest-scope .manifest-edit-actions {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 6px;
-  flex: none;
+  flex: 1 1 320px;
 }
 .manifest-scope .manifest-edit-actions .primary {
   background: var(--tea);
@@ -7218,9 +7399,70 @@ onBeforeUnmount(function () {
 }
 
 /* Hero 目录日期与深色块文字 */
+.inventory-hero-container {
+  container: inventory-hero / inline-size;
+}
+.hero-stats.inventory-hero-stats {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.inventory-hero-stats > div {
+  min-width: 0;
+  padding: 16px 12px 20px;
+  border-right: none;
+  border-bottom: 1px solid var(--line);
+}
+.inventory-hero-stats > div:last-child {
+  border-bottom: none;
+}
+.inventory-hero-stats .v small {
+  display: block;
+  margin: 6px 0 0;
+}
+.inventory-hero-stats .v .stat-unit {
+  display: inline;
+  margin-left: 4px;
+}
+@container inventory-hero (min-width: 340px) {
+  .hero-stats.inventory-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .inventory-hero-stats > div:nth-child(odd) {
+    border-right: 1px solid var(--line);
+  }
+  .inventory-hero-stats > div:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+}
+@container inventory-hero (min-width: 820px) {
+  .hero-stats.inventory-hero-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .inventory-hero-stats > div:nth-child(n) {
+    border-bottom: none;
+    border-right: 1px solid var(--line);
+  }
+  .inventory-hero-stats > div:last-child {
+    border-right: none;
+  }
+}
+.stock-baseline-confirmation {
+  display: flex;
+  grid-column: 1 / -1;
+  flex: 1 1 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.stock-baseline-confirmation input {
+  flex: none;
+  accent-color: var(--tea);
+}
 .hero-stats .catalog-date {
-  font-size: 34px;
-  line-height: normal;
+  font-size: 20px;
+  line-height: 1.4;
   letter-spacing: 0;
 }
 .hero-stats .catalog-date time {
