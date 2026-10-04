@@ -1032,12 +1032,12 @@ function openPlanSave() {
 .cart-filter-empty p{margin-bottom:12px}
 .cart-export-view{position:fixed;left:-10000px;top:0;width:420px;pointer-events:none}
 @media(min-width:1181px){.cart-mbar{display:none}}
-@media(max-width:1180px){.cart-layout{grid-template-columns:minmax(0,1fr)}.cart-mbar{display:flex}.cart-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
+@media(max-width:1180px){.cart-layout{grid-template-columns:minmax(0,1fr)}.cart-mbar{display:flex}.cart-main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}}
 @media(max-width:767px){.pkg-grid{grid-template-columns:minmax(0,1fr)}.cart-search,.cart-sort{width:100%}.cart-sort select{flex:1;min-width:0}.rate-bar{flex-wrap:wrap!important}.cart-rate-hint{flex-basis:100%}.cart-mbar{flex-wrap:wrap}.cart-export-view{width:390px}}
 .cart-version-hint{margin:8px 0 14px;color:var(--ink-60);font-size:12px}
 .cart-operation-message{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:var(--z-toast);width:max-content;max-width:calc(100vw - 32px);margin:0;padding:10px 12px;border-radius:10px;background:var(--yellow);color:var(--ink);font-size:13px;box-shadow:0 8px 24px rgba(73,59,44,.2)}
 .cart-operation-message[role="alert"]{background:var(--surface);color:var(--rouge);border:1px solid var(--rouge)}
-@media (max-width:1080px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
+@media (max-width:1180px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
 /* ---- 作者版权醒目标识（广陵账房 · binary） ---- */
 .author-badge {
   display: inline-flex;
