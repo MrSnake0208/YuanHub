@@ -7,6 +7,7 @@ import { routes } from './routes.js'
 import { isFeatureEnabled } from '@/config/features.js'
 import { auth, init as authInit } from '@/store/auth.js'
 import { isRouteAccessAllowed, needsAdminAccess } from '@/utils/routeAccess.js'
+import { isNavigationCancelled } from '@/utils/navigationCancellation.js'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -67,6 +68,7 @@ export async function authGuard(to, from, next) {
     await authInit()
     authReady = true
   }
+  if (isNavigationCancelled(to)) return next(false)
   const authed = !!(auth.accessToken && auth.userInfo)
   const requiresAuth = to.meta && to.meta.requiresAuth
   const feature = to.meta && to.meta.feature
@@ -79,6 +81,7 @@ export async function authGuard(to, from, next) {
   recruitmentAccess.setIdentity(authed ? auth.userInfo.id : '')
   if (to.meta?.requiresBeta) {
     await beta.refresh()
+    if (isNavigationCancelled(to)) return next(false)
     if (authed) {
       if (!beta.canUseBetaFeatures) return next(betaLandingFor(to.fullPath))
     } else if (beta.campaign?.accessMode !== 'OPEN' || beta.publicError) {
@@ -92,6 +95,7 @@ export async function authGuard(to, from, next) {
 
   if (to.meta?.requiresRecruitmentAccess && authed) {
     await recruitmentAccess.refresh({ force: true })
+    if (isNavigationCancelled(to)) return next(false)
     if (!recruitmentAccess.canAccess) {
       return next({ path: '/forbidden', query: { from: to.fullPath } })
     }
@@ -103,6 +107,7 @@ export async function authGuard(to, from, next) {
     if (!isRouteAccessAllowed(to.meta, auth.adminAccess, auth.adminAccessError)) {
       // refreshAdminAccess 内部单飞：init() 已发起时这里只会复用同一个请求。
       await auth.refreshAdminAccess({ suppressErrors: true })
+      if (isNavigationCancelled(to)) return next(false)
     }
     if (!isRouteAccessAllowed(to.meta, auth.adminAccess, auth.adminAccessError)) {
       return next({ path: '/forbidden', query: { from: to.fullPath } })

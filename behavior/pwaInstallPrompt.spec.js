@@ -16,6 +16,7 @@ afterEach(() => {
   for (const [type, listener] of addListener.mock.calls) {
     if (['beforeinstallprompt', 'appinstalled', 'storage'].includes(type)) window.removeEventListener(type, listener)
   }
+  document.body.classList.remove('mobile-nav-open')
 })
 
 async function browser({ ios = false, mobile = true, standalone = false, suppressed = false, promo = false } = {}) {
@@ -47,10 +48,11 @@ async function browser({ ios = false, mobile = true, standalone = false, suppres
   return { install, offer, media }
 }
 
-async function main(context) {
+async function main(context, path = '/') {
   const { default: component } = await import('../src/components/MobileInstallPrompt.vue')
-  const router = createRouter({ history: createMemoryHistory(), routes: ['/', '/install'].map(path => ({ path, component: { template: '<p />' } })) })
-  await router.push('/')
+  const pages = [['/', 'today'], ['/install', 'install'], ['/changelog', 'changelog'], ['/feedback/plaza', 'feedback-plaza'], ['/login', 'login'], ['/register', 'register'], ['/forgot', 'forgot'], ['/forbidden', 'forbidden'], ['/beta', 'beta'], ['/user/profile', 'profile'], ['/star', 'star'], ['/inventory', 'inventory'], ['/manage', 'manage'], ['/unknown', 'not-found']]
+  const router = createRouter({ history: createMemoryHistory(), routes: pages.map(([path, name]) => ({ path, name, component: { template: '<p />' } })) })
+  await router.push(path)
   await router.isReady()
   const pinia = createPinia()
   const host = mount(component, { global: { plugins: [router, pinia] } })
@@ -88,6 +90,115 @@ it('主站无事件时不邀请；延迟后到达有效事件才显示', async (
   offer()
   await nextTick()
   expect(host.find('aside').exists()).toBe(true)
+})
+
+it.each(['/login', '/register', '/forgot', '/forbidden', '/beta', '/user/profile', '/star', '/inventory', '/manage', '/unknown'])('主站 %s 默认禁止自动邀请，换到允许页才重新计时', async path => {
+  const context = await main(await browser(), path)
+  context.offer()
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(false)
+  await context.router.push('/changelog')
+  await vi.advanceTimersByTimeAsync(1799)
+  expect(context.host.find('aside').exists()).toBe(false)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(context.host.find('aside').exists()).toBe(true)
+})
+
+it('主站换到另一允许页也重新等待；反馈广场可邀请', async () => {
+  const context = await main(await browser())
+  context.offer()
+  await reveal()
+  await context.router.push('/feedback/plaza')
+  expect(context.host.find('aside').exists()).toBe(false)
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(true)
+})
+
+it.each(['routeLoading', 'accessPending'])('主站 %s 期间不邀请，恢复后重新等待完整延迟', async prop => {
+  const context = await main(await browser())
+  context.offer()
+  await reveal()
+  await context.host.setProps({ [prop]: true })
+  await vi.advanceTimersByTimeAsync(3000)
+  expect(context.host.find('aside').exists()).toBe(false)
+  await context.host.setProps({ [prop]: false })
+  await vi.advanceTimersByTimeAsync(1799)
+  expect(context.host.find('aside').exists()).toBe(false)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(context.host.find('aside').exists()).toBe(true)
+})
+
+it('导航抽屉与内测群模态均抑制邀请，关闭后重新等待', async () => {
+  const context = await main(await browser())
+  const { betaCommunity } = await import('../src/store/betaCommunity.js')
+  context.offer()
+  await reveal()
+  document.body.classList.add('mobile-nav-open')
+  await nextTick()
+  expect(context.host.find('aside').exists()).toBe(false)
+  await vi.advanceTimersByTimeAsync(2000)
+  expect(context.host.find('aside').exists()).toBe(false)
+  document.body.classList.remove('mobile-nav-open')
+  await nextTick()
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(true)
+  betaCommunity.open()
+  await nextTick()
+  expect(context.host.find('aside').exists()).toBe(false)
+  betaCommunity.close()
+  await nextTick()
+  expect(context.host.find('aside').exists()).toBe(false)
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(true)
+})
+
+it('共享焦点栈的嵌套模态必须全部关闭后才能邀请', async () => {
+  const context = await main(await browser())
+  const { defineComponent, h, ref } = await import('vue')
+  const { useModalFocus, modalFocusState } = await import('../src/composables/useModalFocus.js')
+  const Modal = defineComponent({ setup() {
+    const panel = ref(null)
+    useModalFocus(() => true, panel, { initialFocus: () => panel.value, onEscape() {} })
+    return () => h('section', { ref: panel, tabindex: '-1' }, [h('button', '返回')])
+  } })
+  context.offer()
+  await reveal()
+  const parent = mount(Modal, { attachTo: document.body })
+  const child = mount(Modal, { attachTo: document.body })
+  await nextTick()
+  expect(modalFocusState.active).toBe(true)
+  expect(context.host.find('aside').exists()).toBe(false)
+  child.unmount()
+  await reveal()
+  expect(modalFocusState.active).toBe(true)
+  expect(context.host.find('aside').exists()).toBe(false)
+  parent.unmount()
+  await nextTick()
+  expect(modalFocusState.active).toBe(false)
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(true)
+})
+
+it('安装失败恢复也不能覆盖禁止页或资格恢复；卸载清理导航观察器', async () => {
+  const context = await main(await browser())
+  const disconnect = vi.spyOn(MutationObserver.prototype, 'disconnect')
+  context.offer('dismissed', vi.fn(async () => { throw new Error('denied') }))
+  await reveal()
+  await context.host.get('.pwa-install-primary').trigger('click')
+  await flushPromises()
+  expect(context.host.find('.pwa-install-guide').exists()).toBe(true)
+  await context.router.push('/forbidden')
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(false)
+  await context.router.push('/')
+  await context.host.setProps({ accessPending: true })
+  await reveal()
+  expect(context.host.find('aside').exists()).toBe(false)
+  await context.host.setProps({ accessPending: false })
+  await reveal()
+  expect(context.host.find('.pwa-install-guide').exists()).toBe(true)
+  context.host.unmount()
+  expect(disconnect).toHaveBeenCalled()
 })
 
 it.each(['failed', 'unavailable'])('主站 %s 后权限指南仍可见且可以收起、打开教程、关闭', async outcome => {
@@ -134,6 +245,8 @@ it('主站 /install、全局弹窗及新手引导暂时隐藏正常邀请与恢�
     await context.router.push('/install')
     expect(context.host.find('aside').exists()).toBe(false)
     await context.router.push('/')
+    expect(context.host.find('aside').exists()).toBe(false)
+    await reveal()
     expect(context.host.find('aside').exists()).toBe(true)
     context.dialog._state.visible = true
     await nextTick()
@@ -144,6 +257,8 @@ it('主站 /install、全局弹窗及新手引导暂时隐藏正常邀请与恢�
     expect(context.host.find('aside').exists()).toBe(false)
     context.onboarding.skip()
     await nextTick()
+    expect(context.host.find('aside').exists()).toBe(false)
+    await reveal()
     expect(context.host.find('aside').exists()).toBe(true)
   }
 })

@@ -3,6 +3,8 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { routes } from '@/router/routes.js'
 import { authGuard } from '@/router/index.js'
 import { auth } from '@/store/auth.js'
+import { beta } from '@/store/beta.js'
+import { NAVIGATION_SIGNAL } from '@/utils/navigationCancellation.js'
 
 // Case 2 / Case 3 / Case 4 的路由层回归：使用真实守卫 + 真实路由表 meta，
 // 只把懒加载页面组件替换为桩组件（本测试不关心页面渲染）。
@@ -170,5 +172,50 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
     expect(route.path).toBe('/login')
     expect(route.query.redirect).toBe('/admin/audit')
     expect(backend.count(ACCESS_ME)).toBe(0)
+  })
+
+  it('教程取消后，晚到资格结果不会重定向或打断仍在等待的新导航', async function () {
+    installFetch([])
+    const router = createGuardRouter()
+    await router.push('/login')
+    let releaseBeta
+    let enteredBeta
+    const betaEntered = new Promise(resolve => { enteredBeta = resolve })
+    const betaRefresh = vi.spyOn(beta, 'refresh').mockImplementation(() => {
+      enteredBeta()
+      return new Promise(resolve => { releaseBeta = resolve })
+    })
+    let releaseNew
+    let enteredNew
+    const newEntered = new Promise(resolve => { enteredNew = resolve })
+    router.beforeEach(to => {
+      if (to.path === '/changelog') {
+        enteredNew()
+        return new Promise(resolve => { releaseNew = resolve })
+      }
+    })
+    const controller = new AbortController()
+    const record = router.resolve('/operator').matched.at(-1)
+    record.meta[NAVIGATION_SIGNAL] = controller.signal
+    try {
+      const oldNavigation = router.push('/operator')
+      await betaEntered
+      controller.abort()
+      delete record.meta[NAVIGATION_SIGNAL]
+      const newNavigation = router.push('/changelog')
+      await newEntered
+      releaseBeta()
+      const oldFailure = await oldNavigation
+      expect(oldFailure).toBeTruthy()
+      expect(router.currentRoute.value.path).toBe('/login')
+      releaseNew(true)
+      expect(await newNavigation).toBeUndefined()
+      expect(router.currentRoute.value.path).toBe('/changelog')
+    } finally {
+      releaseBeta?.()
+      releaseNew?.(false)
+      delete record.meta[NAVIGATION_SIGNAL]
+      betaRefresh.mockRestore()
+    }
   })
 })

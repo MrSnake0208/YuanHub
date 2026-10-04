@@ -17,14 +17,17 @@
     </Transition>
   </RouterView>
   <AccountEventToasts />
-  <MobileInstallPrompt />
+  <MobileInstallPrompt
+    :route-loading="routeLoadingState.active"
+    :access-pending="betaAccessPending"
+  />
   <BetaCommunityDialog />
   <!-- 全站自定义弹窗（alert / confirm / choice / prompt），Teleport 到 body -->
   <AppDialog />
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
 import VersionUpdateBanner from '@/components/VersionUpdateBanner.vue'
@@ -43,7 +46,7 @@ import { starCaptureRouteForEvent } from '@/pages/star/captureTransport.js'
 import { routeLoadingState } from '@/router/index.js'
 import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
 import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
-import { initializeOnboardingTour } from '@/utils/onboardingTour.js'
+import { destroyOnboardingTour, initializeOnboardingTour } from '@/utils/onboardingTour.js'
 
 let stopWatch = null
 let stopEventPrompt = null
@@ -58,6 +61,13 @@ let monitorPromptPending = false
 const MONITOR_DISMISSED_KEY = 'yuanhub:operator-monitor-prompt-dismissed:v1'
 const router = useRouter()
 const route = useRoute()
+const betaAccessPending = computed(() => {
+  if (route.meta?.requiresBeta !== true) return false
+  if (beta.publicLoading || beta.personalLoading || beta.publicError) return true
+  if (auth.accessToken || auth.userInfo) return !beta.canUseBetaFeatures
+  // 与路由守卫一致：OPEN活动下游客可查看今日一览。
+  return beta.campaign?.accessMode !== 'OPEN'
+})
 
 function resetMonitorPromptForFreshNavigation() {
   try {
@@ -130,7 +140,8 @@ function routeStarCapture(message) {
 onMounted(function () {
   resetMonitorPromptForFreshNavigation()
   stopNotificationUnread = subscribeNotificationUnread()
-  stopIdentityWatch = watch(() => auth.userInfo?.id || '', userId => {
+  stopIdentityWatch = watch(() => auth.userInfo?.id || '', (userId, previousId) => {
+    if (previousId !== undefined && userId !== previousId) destroyOnboardingTour()
     beta.setIdentity(userId)
     if (stopBetaSubscription) stopBetaSubscription()
     stopBetaSubscription = userId ? beta.subscribe() : null
@@ -167,7 +178,9 @@ onMounted(function () {
     ],
     () => {
       const workspace = route.meta?.requiresBeta === true
-      if (beta.canUseBetaFeatures && workspace && !betaCommunity.visible) {
+      // 教程第二/六步进入个人中心，不能因该页没有requiresBeta而取消内部导航。
+      const tutorialPage = workspace || route.name === 'profile'
+      if (beta.canUseBetaFeatures && tutorialPage && !betaCommunity.visible) {
         if (!stopOnboarding) stopOnboarding = initializeOnboardingTour(router)
       } else {
         if (stopOnboarding) stopOnboarding()

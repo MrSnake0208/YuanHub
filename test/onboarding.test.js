@@ -9,7 +9,6 @@ import {
 } from '../src/stores/onboarding.js'
 import {
   ONBOARDING_STEPS,
-  runOnboardingCompletionAction,
   waitForElement
 } from '../src/utils/onboardingTour.js'
 
@@ -143,40 +142,36 @@ test('uses seven stable step ids and data-tour anchors including account creatio
   const syncStep = ONBOARDING_STEPS.find(step => step.id === 'maayuan-sync')
   assert.equal(syncStep.route, '/user/profile')
   assert.equal(syncStep.target, 'maayuan-sync')
-  assert.equal(syncStep.doneBtnText, '打开连接设置')
-  assert.equal(syncStep.completionAction, 'click-target')
-  assert.match(syncStep.description, /创建 MaaYuan 连接码/)
+  assert.equal(syncStep.doneBtnText, undefined)
+  assert.equal(syncStep.completionAction, undefined)
+  assert.match(syncStep.description, /点击“连接 MaaYuan”/)
   assert.match(syncStep.description, /确认账号与权限/)
   assert.match(syncStep.description, /星石网页端已可导入截图识别与整理/)
   assert.match(syncStep.description, /MaaYuan 星石自动采集仍在接入中/)
   assert.doesNotMatch(syncStep.description, /自动同步[^。]*星石/)
-  assert.match(syncStep.description, /左侧“账号与连接码”/)
-  assert.match(syncStep.description, /连接面板里也可以补建/)
+  assert.match(syncStep.description, /导航中的“账号与连接码”/)
+  assert.match(syncStep.description, /统一管理游戏账号/)
+  assert.match(syncStep.description, /主动提交后才会生成连接码/)
+  assert.doesNotMatch(syncStep.description, /打开连接设置|连接面板里也可以补建/)
+  const replayStep = ONBOARDING_STEPS.find(step => step.id === 'replay-entry')
+  assert.equal(replayStep.mobileTarget, 'replay-menu')
+  assert.match(files, /data-tour="replay-menu"/)
+  assert.match(ONBOARDING_STEPS.find(step => step.id === 'today-overview').description, /仍在重做/)
+  assert.match(ONBOARDING_STEPS.find(step => step.id === 'operator-workspace').description, /分享与数据交换/)
 })
 
-test('MaaYuan final onboarding action opens the existing connect entry once', function () {
+test('waitForElement aborts a pending target wait without returning a late element', async function () {
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
-  let clicks = 0
-  const element = {
-    click() { clicks += 1 },
-    getAttribute(name) { return name === 'aria-expanded' ? 'false' : null }
-  }
   Object.defineProperty(globalThis, 'document', {
     configurable: true,
-    value: {
-      querySelectorAll(selector) {
-        return selector === '[data-tour="maayuan-sync"]' ? [element] : []
-      }
-    }
+    value: { querySelectorAll() { return [] } }
   })
   try {
-    const syncStep = ONBOARDING_STEPS.find(step => step.id === 'maayuan-sync')
-    assert.equal(runOnboardingCompletionAction(syncStep), true)
-    assert.equal(clicks, 1)
-
-    element.getAttribute = name => name === 'aria-expanded' ? 'true' : null
-    assert.equal(runOnboardingCompletionAction(syncStep), true)
-    assert.equal(clicks, 1)
+    const controller = new AbortController()
+    const waiting = waitForElement('maayuan-sync', 5000, controller.signal)
+    controller.abort()
+    assert.equal(await waiting, null)
+    assert.equal(await waitForElement('maayuan-sync', 5000, controller.signal), null)
   } finally {
     if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument)
     else delete globalThis.document

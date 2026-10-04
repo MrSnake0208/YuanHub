@@ -19,12 +19,11 @@ test('registers the public install guide route without primary desktop navigatio
 test('mounts a global mobile install prompt with install and tutorial paths', function () {
   const app = readSource('../src/App.vue')
   const prompt = readSource('../src/components/MobileInstallPrompt.vue')
-  assert.match(app, /<MobileInstallPrompt\s*\/>/)
+  assert.match(app, /<MobileInstallPrompt\b/)
   assert.match(prompt, /立即添加/)
   assert.match(prompt, /pwaInstallState\.installable && !pwaInstallState\.ios/)
   assert.match(prompt, /查看添加方法/)
   assert.match(prompt, /to="\/install"/)
-  assert.match(prompt, /route\.path !== '\/install'/)
   assert.match(prompt, /打开浏览器的“分享”菜单/)
   assert.match(prompt, /添加桌面快捷方式/)
   assert.match(prompt, /创建桌面快捷方式/)

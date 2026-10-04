@@ -40,6 +40,13 @@ beforeEach(() => {
 })
 const render = () => mount(Sidebar, { global: { stubs: { RouterLink: RouterLinkStub, MobileHeader: { template: '<header><slot /></header>' } }, mocks: { $route: { path: '/', meta: { title: '今日一览 — YuanHub' } } } } })
 const routes = wrapper => wrapper.findAllComponents(RouterLinkStub).map(node => node.props('to'))
+it('移动导航关闭时仍提供教程末步的可达菜单目标', () => {
+  const wrapper = render()
+  expect(wrapper.find('.mobile-drawer-layer').exists()).toBe(false)
+  const target = wrapper.get('[data-tour="replay-menu"]')
+  expect(target.attributes('aria-label')).toBe('打开导航')
+  expect(target.attributes('aria-expanded')).toBe('false')
+})
 it('访客没有通知/反馈私有入口，保留登录入口', async () => {
   const wrapper = render(); await flushPromises()
   expect(routes(wrapper)).toContain('/login')
