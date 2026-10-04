@@ -1,18 +1,9 @@
 {
-  "_comment": "public/yuanstar-embed/ 的 SHA-256；本轮从所列 source 基线加工作树修改构建，未提交。",
-  "_sourceCommit": "91ce034f4aae2a68a4b3c387e44149fe6302a922",
+  "_comment": "public/yuanstar-embed/ 的 SHA-256；从已提交 source HEAD 的干净工作树正式 build。",
+  "_sourceCommit": "23a64c8a23ce45310902bd4967397bbaff6e1e7b",
+  "_sourceBranch": "feature/yuanhub-embed",
   "_sourceWorkingTree": {
-    "status": "modified",
-    "changedFiles": [
-      "web/src/product.css",
-      "web/src/product.ts",
-      "web/tests/product-mobile-ui.test.mjs"
-    ],
-    "sourceFileHashes": {
-      "web/src/product.css": "36a73e8f27a4dc46ba74933e211f17fe7a732834744a4660aab33c13b9f9f7f2",
-      "web/src/product.ts": "c44aa88f13a28adf45b3462872e99a52947f36c62b18afce46b21cadbd5efae6",
-      "web/tests/product-mobile-ui.test.mjs": "c5676c217f9a6eb2ccfb4c07d2eeb9867162c5e174223da7287c93baa4ea697f"
-    }
+    "status": "clean"
   },
   "assets/browser-vision-worker-BuVcSjOG.js": "4370eab3303cd5d41f82fa78f456505e3ea489b937f059db95ca6a282a81e0e3",
   "models/PP-OCRv6_det_small.onnx": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
@@ -24,7 +15,6 @@
   "ort/ort-wasm-simd-threaded.mjs": "0a1e718d99c41b22c21f2520ff4f9e883a6b5533856e398d21816ee8eb8185d3",
   "ort/ort-wasm-simd-threaded.wasm": "d1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6",
   "reference/YuanStar_Phase0_6A_经验星曜规则与逐级数据.xlsx": "eafe7af04996e788d02556b22f3a57854012acb6301c02bc9621957b34149859",
-  "yuanstar-embed.css": "4daa389fa2fd6024a19df11051a4edca7184e0fcb53f3f1b5e46bd584dad78a1",
-  "yuanstar-embed.js": "e32648111b0115ab1d4246b8dee94c1613415cf2e50c0adf502aa1421dd0e6aa",
-  "_sourceBranch": "feature/yuanhub-embed"
+  "yuanstar-embed.css": "14e68190afb8b4b518ee266f9a11c3fd35471db501abffb6bf05a2430d472df1",
+  "yuanstar-embed.js": "3cf271758d0e817293d3b72bdff4a98b4c4cafe634694264454cb338e77b3b28"
 }

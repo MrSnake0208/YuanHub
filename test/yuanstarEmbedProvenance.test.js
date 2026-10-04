@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
 const root = new URL('../', import.meta.url)
-const sourceCommit = '91ce034f4aae2a68a4b3c387e44149fe6302a922'
+const sourceCommit = '23a64c8a23ce45310902bd4967397bbaff6e1e7b'
 
 test('vendored YuanStar embed keeps provenance and is marked as generated output', () => {
   const doc = readFileSync(new URL('docs/yuanstar-embed-sync.md', root), 'utf8')
@@ -62,7 +62,7 @@ test('vendored release matches documented provenance and the current artifact ma
     'build:embed',
     'docs/yuanstar-embed-manifest.json',
   ]) assert.ok(doc.includes(source), source)
-  assert.ok(doc.includes('当前识别教程 V1 开发构建'))
+  assert.ok(doc.includes('当前星石新手引导正式构建'))
   assert.equal(doc.includes('改为用户确认开始识别后再初始化'), false)
   // 同步者本机绝对路径不得入库；一旦有人写回，这里直接失败。
   assert.equal(/[A-Za-z]:\\\\Users/.test(doc), false, '文档不应包含本机 Windows 绝对路径')
@@ -77,15 +77,10 @@ test('vendored release matches documented provenance and the current artifact ma
   // 哈希清单是唯一来源：文档与测试不再各存一份，更新 embed 时只需重建 manifest.json。
   const manifest = JSON.parse(readFileSync(new URL('docs/yuanstar-embed-manifest.json', root), 'utf8'))
   assert.equal(manifest._sourceCommit, sourceCommit)
-  assert.equal(manifest._sourceWorkingTree.status, 'modified')
+  assert.equal(manifest._sourceWorkingTree.status, 'clean')
   assert.equal(manifest._sourceBranch, 'feature/yuanhub-embed')
-  assert.deepEqual(manifest._sourceWorkingTree.changedFiles, ['web/src/product.css', 'web/src/product.ts', 'web/tests/product-mobile-ui.test.mjs'])
-  assert.deepEqual(Object.keys(manifest._sourceWorkingTree.sourceFileHashes), ['web/src/product.css', 'web/src/product.ts', 'web/tests/product-mobile-ui.test.mjs'])
-  assert.match(manifest._sourceWorkingTree.sourceFileHashes['web/src/product.css'], /^[0-9a-f]{64}$/)
-  assert.match(manifest._sourceWorkingTree.sourceFileHashes['web/tests/product-mobile-ui.test.mjs'], /^[0-9a-f]{64}$/)
-  assert.match(manifest._sourceWorkingTree.sourceFileHashes['web/src/product.ts'], /^[0-9a-f]{64}$/)
-  assert.ok(doc.includes('未提交工作树修改'))
-  assert.ok(doc.includes('不得将此开发构建描述为干净 source release'))
+  assert.equal(manifest._sourceWorkingTree.changedFiles, undefined)
+  assert.equal(manifest._sourceWorkingTree.sourceFileHashes, undefined)
   for (const path of ['web/vite.config.mjs', 'web/vite.embed.config.mjs', 'web/scripts/verify-ocr-build.mjs']) {
     assert.ok(doc.includes(path), path + ' documented source change')
   }

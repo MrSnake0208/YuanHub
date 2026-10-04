@@ -22,19 +22,27 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
-## 当前识别教程 V1 开发构建（2026-10-04）
+## 当前星石新手引导正式构建（2026-10-05）
 
-- 本轮为 YuanHub 识别教程 V1 checkpoint；embed 源码修改尚未 commit / push。source 基线仍为 `91ce034f4aae2a68a4b3c387e44149fe6302a922`，源码分支为 `feature/yuanhub-embed`。
-- 从该基线加 `web/src/product.ts`、`web/src/product.css` 的未提交工作树修改执行 `web/` 下 `npm.cmd run build:embed`。
-  manifest 的 `_sourceWorkingTree.status` 为 `modified`，记录 `changedFiles` 和源码 SHA-256；不得将此开发构建描述为干净 source release。
-- 源码只调整用户可见名称（背包整理、识别结果核对、重复行标记），并提供只读 `getRecognitionTutorialStatus()`。
-  该状态检查工作区就绪、正式背包、经验/数量与已有识别证据，不写入业务数据。
-- 教程、浮层定位、移动端 sheet 与 seen persistence 均在 YuanHub Vue 宿主实现。
-- 后续按用户要求删除 sheet 的收起/展开与上移/下移控件，仅保留横杠拖动；两种教程形态统一正文 13px、步骤标题 16px、步骤计数 12px，压缩卡片留白与重播按钮高度。
-- `product.css` 统一手机、平板与桌面嵌入背包表格六列比例 `0.75:1:1:1.25:1:1`；手机缩减横向 padding，保持内容居中。当前背包与计划背包列标题均由“标准名称”改为“名称”，含空背包状态。
-- 养成目标移除模板中的普通空格及目标数字的额外最小宽度占位；按用户最新要求，箭头使用深灰正文色，两侧各以 `0.125em` 提供约半格空格的视觉间距。`web/tests/product-mobile-ui.test.mjs` 同步补充不含额外文本空格的回归。
-- 完整核对生成目录与 vendored 目录全部 12 个文件的 SHA-256；本轮基线相比仅 `yuanstar-embed.js`、`yuanstar-embed.css` 改变。
-  worker、模型、ORT 与规则表字节不变；没有手工修改 bundle。
+- source repo：`drifty13/YuanStar-dev`；source branch：`feature/yuanhub-embed`。
+- source commit：`23a64c8a23ce45310902bd4967397bbaff6e1e7b`；commit message：`fix(ui): 完善重复行图片名称省略`，已 push 到对应 origin 分支。
+- 从已提交 source HEAD 的干净工作树，在 `web/` 下执行 `npm.cmd run build:embed`；构建前后 worktree 均 clean。
+- 完整同步 12 个文件 `web/dist/embed/` → `public/yuanstar-embed/`，逐字节一致；没有手改 bundle。正式产物与上一开发构建完全一致。
+- manifest 的 `_sourceCommit` 指向上述 commit，`_sourceWorkingTree.status` 为 `clean`，不再保留 `changedFiles` / `sourceFileHashes`。全部产物 SHA-256 由 provenance test 校验。
+- 包含重复行图片名称省略、操作与箭头空间约束、图片查看桌面宽度收窄和同实例排序视角跟随；删除允许无选中。worker、模型、ORT 与规则表字节不变。
+- 宿主包含 6 步识别教程与 7 步使用教程，共用 overlay / spotlight / 移动端可拖动卡片；教程状态不写入星石业务数据。
+
+## 此前 UI 修复正式构建（2026-10-05）
+
+- 源码分支为 `feature/yuanhub-embed`，source commit 为 `e65664c8f4407e59f932573e39fa130e363380fb`。
+- commit message：`fix(ui): 修正星石背包视图跟随与图片布局`；已 push 到 `origin/feature/yuanhub-embed`。
+- 从已提交 source commit 的干净工作树正式 build；在 `web/` 下执行 `npm.cmd run build:embed`。
+  当次 manifest 的 `_sourceWorkingTree.status` 为 `clean`，不再使用上一轮未提交 checkpoint 的 provenance。
+- 本轮修正重复行标记长文件名约束、图片预览 560px 宽度上限、新增与排序变化后的同实例视角跟随；删除允许清空选中。
+- 完整同步 `web/dist/embed/` 的 12 个文件至 `public/yuanstar-embed/`，逐文件 SHA-256 一致。
+  worker、模型、ORT 与规则表字节不变；未手改 bundle。
+- 继续保留已提交的识别教程 V1 UI 名称与只读 `getRecognitionTutorialStatus()`；教程仍在 Vue 宿主中共用 overlay。
+- 当次 YuanHub 的使用教程开发、embed/provenance 同步保留为未提交改动，随后已由用户人工查看确认。
 
 ## 此前局部 UI 修复来源（2026-10-03）
 

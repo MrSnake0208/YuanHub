@@ -5,7 +5,7 @@ import StarPage from '../src/pages/star/index.vue'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
-import { getCurrentStarState } from '../src/api/starState.js'
+import { getCurrentStarState, rebuildStarState } from '../src/api/starState.js'
 
 vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }), useRouter: () => ({ replace: vi.fn() }) }))
 vi.mock('../src/store/auth.js', () => ({ auth: reactive({ isLoggedIn: false }) }))
@@ -190,6 +190,51 @@ it('draft readiness arriving after the first summary is rechecked on embed rende
   await vi.advanceTimersByTimeAsync(100)
   await flushPromises()
   expect(document.querySelector('.recognition-tour-card')).not.toBeNull()
+})
+
+it('first OCR waits for persisted review, auto starts bag, dismissal stays seen and both replay entries work', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('bag-first-ocr-host')
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  const options = embedMount.mock.calls[0][1], handle = embedMount.mock.results[0].value
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  await options.onOcrRebuild(emptySnapshot, null)
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: true, hasHistory: true })
+  options.onActiveTabChange('review')
+  await flushPromises()
+  expect(document.querySelector('[aria-label="使用教程"]')).toBeNull()
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="first-ocr"></section></section>'
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('[aria-label="使用教程"]').textContent).toContain('1 / 7')
+  expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看使用教程')
+  document.querySelector('[aria-label="关闭使用教程"]').click(); await flushPromises()
+  expect(localStorage.getItem('yuanhub:star-bag:v1:bag-first-ocr-host')).toBe('seen')
+  wrapper.get('#product-root').element.append(document.createElement('span'))
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
+  document.querySelector('[aria-label="关闭使用教程"]').click(); await flushPromises()
+  await wrapper.get('[role="tab"]').trigger('click'); await flushPromises()
+  expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看识别教程')
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it('historical bag owner never auto starts even after another OCR, but manual bag replay ignores seen', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('bag-historical-host', true)
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const options = embedMount.mock.calls[0][1]
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  await options.onOcrRebuild(emptySnapshot, null)
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="old-ocr"></section></section>'
+  options.onActiveTabChange('review')
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
 })
 
 it('样式加载失败可重试，失败链接不会阻挡下一次加载', async () => {

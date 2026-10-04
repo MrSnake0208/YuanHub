@@ -79,7 +79,7 @@ it('compact mobile sheet only offers handle dragging, keeps navigation visible a
   vi.stubGlobal('innerHeight', 844)
   const wrapper = mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body })
   await settle()
-  expect(card().textContent).toContain('可拖动，不挡住操作即可')
+  expect(card().textContent).toContain('本教程卡片可拖动，不挡住操作即可')
   for (const removed of ['收起', '展开', '上移', '下移']) expect(card().textContent).not.toContain(removed)
   const handle = card().querySelector('.recognition-tour-handle')
   for (const [type, y] of [['pointerdown', 300], ['pointermove', 0], ['pointerup', 0]]) {
@@ -91,11 +91,11 @@ it('compact mobile sheet only offers handle dragging, keeps navigation visible a
   expect(card().style.bottom).toContain('152px')
   expect(card().querySelector('footer').textContent).toBe('上一步下一步')
   await click('下一步')
-  expect(card().textContent).not.toContain('可拖动，不挡住操作即可')
+  expect(card().textContent).not.toContain('本教程卡片可拖动，不挡住操作即可')
   await wrapper.setProps({ replayId: 1 })
   await settle()
   expect(card().textContent).toContain('1 / 6')
-  expect(card().textContent).not.toContain('可拖动，不挡住操作即可')
+  expect(card().textContent).not.toContain('本教程卡片可拖动，不挡住操作即可')
 })
 
 it('mobile drag accounts for safe areas and an offset short visual viewport', async () => {

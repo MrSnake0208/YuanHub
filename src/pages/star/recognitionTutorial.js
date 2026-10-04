@@ -16,13 +16,13 @@ export const recognitionTutorialExamples = {
   overlap: [{ title: '重叠示例', src: '/tutorial/star/recognition-overlap-example.jpg', caption: '紫色框部分是两张截图中重复出现的同一整行。选择前一张和后一张后，添加关系即可。' }],
 }
 
-export function tutorialStepIndex(index, delta) {
-  return Math.max(0, Math.min(recognitionTutorialSteps.length - 1, index + delta))
+export function tutorialStepIndex(index, delta, length = recognitionTutorialSteps.length) {
+  return Math.max(0, Math.min(length - 1, index + delta))
 }
 
 const sessionSeen = new Set()
-export function tutorialStorageKey(userId) {
-  return 'yuanhub:star-recognition:v1:' + (userId == null || userId === '' ? 'guest' : encodeURIComponent(String(userId)))
+export function tutorialStorageKey(userId, mode = 'recognition') {
+  return `yuanhub:star-${mode}:v1:` + (userId == null || userId === '' ? 'guest' : encodeURIComponent(String(userId)))
 }
 export function tutorialSeen(key, storage = globalThis.localStorage) {
   try { return sessionSeen.has(key) || storage?.getItem(key) === 'seen' } catch (_) { return sessionSeen.has(key) }
@@ -45,11 +45,32 @@ export function resolveTutorialTargets(root, step, viewportHeight) {
   return { primary, related: step.relatedTargets ? Array.from(root?.querySelectorAll(step.relatedTargets) || []) : [] }
 }
 
+export function shouldRevealTutorialTarget(step, rect, viewport) {
+  if (!rect || step.scroll === 'preserve') return false
+  return true
+}
+
+export function tutorialSheetBounds(viewport, windowHeight, safeArea, avoidRect = null) {
+  const inset = Math.max(12 + (safeArea.bottom || 0), avoidRect ? viewport.top + viewport.height - avoidRect.top + 12 : 0)
+  return { bottom: windowHeight - viewport.top - viewport.height + inset,
+    maxHeight: Math.max(0, viewport.height - inset - 12 - (safeArea.top || 0)) }
+}
+
 export function clipTutorialRect(rect, viewport, padding = 8) {
   if (!rect || rect.width <= 0 || rect.height <= 0 || rect.right <= viewport.left || rect.left >= viewport.left + viewport.width || rect.bottom <= viewport.top || rect.top >= viewport.top + viewport.height) return null
   const left = Math.max(viewport.left, rect.left - padding), top = Math.max(viewport.top, rect.top - padding)
   const right = Math.min(viewport.left + viewport.width, rect.right + padding), bottom = Math.min(viewport.top + viewport.height, rect.bottom + padding)
   return { left, top, width: right - left, height: bottom - top, right, bottom }
+}
+
+export function tutorialElementRect(element, viewport) {
+  const rect = clipTutorialRect(element?.getBoundingClientRect(), viewport)
+  const container = element?.closest?.('.table-scroll')
+  if (!rect || !container) return rect
+  const bounds = container.getBoundingClientRect()
+  const top = Math.max(rect.top, bounds.top), bottom = Math.min(rect.bottom, bounds.bottom)
+  const left = Math.max(rect.left, bounds.left), right = Math.min(rect.right, bounds.right)
+  return bottom > top && right > left ? { left, top, right, bottom, width: right - left, height: bottom - top } : null
 }
 
 export function tutorialCardPosition(target, size, viewport, relatedRects = []) {
