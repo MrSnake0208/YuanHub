@@ -4,6 +4,7 @@
       ref="menuToggle"
       class="mobile-menu-button"
       type="button"
+      data-tour="replay-menu"
       aria-controls="mobile-main-nav"
       :aria-expanded="menuOpen"
       :aria-label="menuOpen ? '关闭导航' : '打开导航'"

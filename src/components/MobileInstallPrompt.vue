@@ -77,11 +77,13 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Check, Download, MoreVertical, Settings2, Share2, SquarePlus, X } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
 import { useOnboardingStore } from '@/stores/onboarding.js'
+import { modalFocusState } from '@/composables/useModalFocus.js'
+import { betaCommunity } from '@/store/betaCommunity.js'
 import {
   dismissPwaInstallPrompt,
   pwaInstallState,
@@ -90,6 +92,10 @@ import {
   shouldShowPwaInstallRecovery
 } from '@/utils/pwaInstall.js'
 
+const props = defineProps({
+  routeLoading: { type: Boolean, default: false },
+  accessPending: { type: Boolean, default: false }
+})
 const route = useRoute()
 const onboarding = useOnboardingStore()
 const ready = ref(false)
@@ -97,11 +103,31 @@ const showQuickGuide = ref(false)
 const installing = ref(false)
 const recoveryOpen = ref(false)
 let revealTimer = null
+let navigationObserver = null
+const navigationOpen = ref(false)
+// 只读入口允许邀请；业务底栏、编辑、错误及恢复页面默认不邀请。
+const allowedRoutes = new Set(['today', 'changelog', 'feedback-plaza'])
+const eligible = computed(() => allowedRoutes.has(route.name)
+  && !props.routeLoading && !props.accessPending && !navigationOpen.value
+  && !modalFocusState.active && !betaCommunity.visible
+  && !dialog._state.visible && !onboarding.active)
 
 const visible = computed(function () {
-  return route.path !== '/install' && ready.value && !dialog._state.visible && !onboarding.active
+  return eligible.value && ready.value
     && (shouldShowPwaInstallPrompt() || (recoveryOpen.value && shouldShowPwaInstallRecovery()))
 })
+
+watch(() => [route.fullPath, eligible.value], () => {
+  window.clearTimeout(revealTimer)
+  revealTimer = null
+  ready.value = false
+  if (eligible.value) {
+    revealTimer = window.setTimeout(() => {
+      revealTimer = null
+      ready.value = true
+    }, 1800)
+  }
+}, { immediate: true, flush: 'sync' })
 
 function closePrompt() {
   dismissPwaInstallPrompt()
@@ -124,13 +150,17 @@ async function installNow() {
 }
 
 onMounted(function () {
-  revealTimer = window.setTimeout(function () {
-    ready.value = true
-  }, 1800)
+  const syncNavigation = () => {
+    navigationOpen.value = document.body.classList.contains('mobile-nav-open')
+  }
+  syncNavigation()
+  navigationObserver = new MutationObserver(syncNavigation)
+  navigationObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] })
 })
 
 onBeforeUnmount(function () {
   if (revealTimer) window.clearTimeout(revealTimer)
+  navigationObserver?.disconnect()
 })
 </script>
 
@@ -274,6 +304,7 @@ onBeforeUnmount(function () {
 .pwa-install-leave-active { transition: opacity .25s var(--ease), transform .25s var(--ease); }
 .pwa-install-enter-from,
 .pwa-install-leave-to { opacity: 0; transform: translateY(14px); }
+.pwa-install-leave-active .pwa-install-card { pointer-events: none; }
 
 @media (max-width: 420px) {
   .pwa-install-prompt { right: 8px; left: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }

@@ -1,8 +1,10 @@
 import { driver } from 'driver.js'
 import { useOnboardingStore } from '../stores/onboarding.js'
+import { NAVIGATION_SIGNAL } from './navigationCancellation.js'
 
 const FIRST_STEP_ID = 'welcome'
 const TARGET_TIMEOUT = 5000
+const LAYOUT_TIMEOUT = 1500
 
 export const ONBOARDING_STEPS = [
   {
@@ -26,7 +28,7 @@ export const ONBOARDING_STEPS = [
     route: '/',
     target: 'today-overview',
     title: '先看「今日一览」',
-    description: '不知道从哪里开始时就来这里。它会汇总今天值得关注的事项，并把常用功能集中成入口。',
+    description: '不知道从哪里开始时就来这里。今日建议与状态总览仍在重做，目前可以从这里进入密探、库存和星石工具；没有数据时，也能找到创建子账号与录入数据的入口。',
     side: 'bottom',
     align: 'start'
   },
@@ -35,7 +37,7 @@ export const ONBOARDING_STEPS = [
     route: '/operator',
     target: 'operator-workspace',
     title: '管理密探档案',
-    description: '这里先确认当前子账号与游戏版本；展开“账号与分享”后，可以继续维护密探养成进度、数据交换和 BOX 分享。',
+    description: '这里先确认当前子账号与游戏版本，再维护密探养成进度。展开“分享与数据交换”后，可以导入、导出数据或分享 BOX；子账号统一从“账号与连接码”管理。',
     side: 'bottom',
     align: 'start'
   },
@@ -53,17 +55,17 @@ export const ONBOARDING_STEPS = [
     route: '/user/profile',
     target: 'maayuan-sync',
     title: '推荐：连接 MaaYuan 自动同步',
-    description: '创建 MaaYuan 连接码前先确认账号与权限，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息和背包道具。星石网页端已可导入截图识别与整理，MaaYuan 星石自动采集仍在接入中。点击“打开连接设置”后，页面会继续给出具体任务与开关位置。<br><br>以后也可以从左侧“账号与连接码”回来管理；如果还没有子账号，连接面板里也可以补建。（可选步骤，也可以手动录入数据）',
+    description: '完成或退出教程后，点击“连接 MaaYuan”查看账号选择与权限说明。确认账号与权限并主动提交后才会生成连接码，再把连接码粘贴到 MaaYuan；之后可按任务自动同步派遣 / 情报奖励、密探信息和背包道具。星石网页端已可导入截图识别与整理，MaaYuan 星石自动采集仍在接入中。<br><br>以后也可以从导航中的“账号与连接码”回来管理；如果还没有子账号，请先到本页的“统一管理游戏账号”创建。（可选步骤，也可以手动录入数据）',
     side: 'top',
-    align: 'start',
-    doneBtnText: '打开连接设置',
-    completionAction: 'click-target'
+    align: 'start'
   },
   {
     id: 'replay-entry',
     target: 'replay-entry',
+    mobileTarget: 'replay-menu',
     title: '忘了也没关系',
     description: '以后需要复习时，从这个入口就能重新启动教程，不用记住每个页面的位置。',
+    mobileDescription: '以后需要复习时，先点击顶部的“打开导航”按钮，再选择“新手教程”，就能重新查看，不用记住每个页面的位置。',
     side: 'right',
     align: 'center'
   }
@@ -71,11 +73,18 @@ export const ONBOARDING_STEPS = [
 
 let driverInstance = null
 let operation = null
+let operationController = null
 let preserveStateOnDestroy = false
 let removeRouteHook = null
+let targetResizeObserver = null
+let removeTargetMediaListener = null
+let returnFocus = null
+let activeNavigation = null
 
 function isVisible(element) {
   if (!element) return false
+  if (element.matches?.('[hidden], [inert], [aria-hidden="true"]')) return false
+  if (typeof Element !== 'undefined' && element instanceof Element && ['hidden', 'collapse'].includes(getComputedStyle(element).visibility)) return false
   if (element.offsetWidth > 0 || element.offsetHeight > 0) return true
   if (typeof element.getClientRects === 'function') return element.getClientRects().length > 0
   return true
@@ -87,28 +96,34 @@ function findTarget(target) {
   return elements.find(isVisible) || null
 }
 
-export function runOnboardingCompletionAction(step) {
-  if (!step || step.completionAction !== 'click-target' || !step.target) return false
-  const element = findTarget(step.target)
-  if (!element || typeof element.click !== 'function') return false
-  if (element.getAttribute?.('aria-expanded') === 'true') return true
-  element.click()
-  return true
+function isMobileTour() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1080px)').matches === true
 }
 
-export function waitForElement(target, timeout = TARGET_TIMEOUT) {
+function targetForStep(step) {
+  return isMobileTour() && step.mobileTarget ? step.mobileTarget : step.target
+}
+
+export function waitForElement(target, timeout = TARGET_TIMEOUT, signal) {
+  if (signal?.aborted) return Promise.resolve(null)
   const existing = findTarget(target)
   if (existing) return Promise.resolve(existing)
   if (typeof document === 'undefined') return Promise.resolve(null)
 
   return new Promise(resolve => {
     let observer = null
+    let settled = false
     const finish = element => {
+      if (settled) return
+      settled = true
       if (observer) observer.disconnect()
       globalThis.clearTimeout(timer)
+      signal?.removeEventListener('abort', abort)
       resolve(element || null)
     }
+    const abort = () => finish(null)
     const timer = globalThis.setTimeout(() => finish(findTarget(target)), timeout)
+    signal?.addEventListener('abort', abort, { once: true })
 
     if (typeof MutationObserver === 'undefined') return
     observer = new MutationObserver(() => {
@@ -124,14 +139,91 @@ function revealTourTarget(element) {
   if (revealElement) revealElement.classList.add('in')
 }
 
-function waitForLayoutFrames(count = 1) {
+function waitForLayoutFrames(count = 1, signal) {
   if (count <= 0 || typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
     return Promise.resolve()
   }
   return new Promise(resolve => {
-    window.requestAnimationFrame(() => {
-      void waitForLayoutFrames(count - 1).then(resolve)
-    })
+    let frame = null
+    const finish = () => {
+      window.cancelAnimationFrame(frame)
+      signal?.removeEventListener('abort', finish)
+      resolve()
+    }
+    const next = () => {
+      if (signal?.aborted || --count <= 0) finish()
+      else frame = window.requestAnimationFrame(next)
+    }
+    if (signal?.aborted) return finish()
+    signal?.addEventListener('abort', finish, { once: true })
+    frame = window.requestAnimationFrame(next)
+  })
+}
+
+function waitForStableTarget(element, signal) {
+  return new Promise(resolve => {
+    let frame = null
+    let previous = null
+    let stableFrames = 0
+    let settled = false
+    const finish = stable => {
+      if (settled) return
+      settled = true
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+      signal.removeEventListener('abort', abort)
+      resolve(stable)
+    }
+    const abort = () => finish(false)
+    const timer = window.setTimeout(() => finish(false), LAYOUT_TIMEOUT)
+    const sample = () => {
+      if (signal.aborted || !element.isConnected) return finish(false)
+      const rect = element.getBoundingClientRect()
+      const current = [rect.x, rect.y, rect.width, rect.height]
+      const unchanged = previous && current.every((value, index) => Math.abs(value - previous[index]) <= 0.1)
+      stableFrames = rect.width > 0 && rect.height > 0 && unchanged ? stableFrames + 1 : 0
+      previous = current
+      if (stableFrames >= 3) return finish(true)
+      frame = window.requestAnimationFrame(sample)
+    }
+    if (signal.aborted) return finish(false)
+    signal.addEventListener('abort', abort, { once: true })
+    frame = window.requestAnimationFrame(sample)
+  })
+}
+
+function stopTargetObserver() {
+  targetResizeObserver?.disconnect()
+  targetResizeObserver = null
+  removeTargetMediaListener?.()
+  removeTargetMediaListener = null
+}
+
+function cancelOperation() {
+  const controller = operationController
+  operationController?.abort()
+  if (activeNavigation && activeNavigation.signal === controller?.signal) {
+    const { router, record, signal } = activeNavigation
+    if (record.meta[NAVIGATION_SIGNAL] === signal) delete record.meta[NAVIGATION_SIGNAL]
+    activeNavigation = null
+    // 对当前地址的重复导航会使Vue Router废弃尚未完成的旧push，不改用户页面。
+    void router.replace(router.currentRoute.value.fullPath).catch(() => {})
+  }
+  operationController = null
+  operation = null
+}
+
+function restoreTourFocus() {
+  const opener = returnFocus
+  returnFocus = null
+  if (typeof document === 'undefined') return
+  // Driver.js 自身的销毁焦点恢复完成后再选择仍可达的入口。
+  queueMicrotask(() => {
+    if (currentStore().active) return
+    const target = opener?.isConnected && opener !== document.body && isVisible(opener) && !opener.disabled
+      ? opener : document.querySelector('main') || document.body
+    if (target.tabIndex < 0) target.setAttribute('tabindex', '-1')
+    target.focus({ preventScroll: true })
   })
 }
 
@@ -164,17 +256,23 @@ function currentStore() {
 }
 
 function destroyDriver(preserveState = false) {
+  stopTargetObserver()
   if (!driverInstance) return
   preserveStateOnDestroy = preserveState
   const current = driverInstance
   driverInstance = null
-  current.destroy()
+  try {
+    current.destroy()
+  } finally {
+    preserveStateOnDestroy = false
+  }
 }
 
 function createDriver(router) {
   const store = currentStore()
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   const instance = driver({
-    animate: typeof window === 'undefined' || !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    animate: !reduceMotion,
     allowClose: true,
     allowScroll: true,
     disableActiveInteraction: true,
@@ -186,19 +284,10 @@ function createDriver(router) {
     prevBtnText: '上一步',
     doneBtnText: '完成',
     showProgress: true,
-    smoothScroll: true,
+    smoothScroll: !reduceMotion,
     stagePadding: 10,
     stageRadius: 14,
-    steps: ONBOARDING_STEPS.map(step => ({
-      element: step.target ? () => findTarget(step.target) : undefined,
-      popover: {
-        title: step.title,
-        description: step.description,
-        side: step.side || 'bottom',
-        align: step.align || 'start',
-        doneBtnText: step.doneBtnText
-      }
-    })),
+    steps: tourSteps(),
     onNextClick: (_element, _step, options) => {
       void moveToIndex(router, (options.index ?? 0) + 1)
     },
@@ -206,14 +295,12 @@ function createDriver(router) {
       void moveToIndex(router, (options.index ?? 0) - 1)
     },
     onDoneClick: () => {
-      const activeStep = ONBOARDING_STEPS[instance.getActiveIndex() ?? -1]
+      if (operation) return
       store.complete()
-      destroyDriver()
-      runOnboardingCompletionAction(activeStep)
+      destroyOnboardingTour()
     },
     onCloseClick: () => {
-      store.skip()
-      destroyDriver()
+      destroyOnboardingTour()
     },
     onPopoverRender: popover => {
       popover.closeButton.setAttribute('aria-label', '跳过新手教程')
@@ -223,79 +310,162 @@ function createDriver(router) {
       const preserve = preserveStateOnDestroy
       preserveStateOnDestroy = false
       if (driverInstance === instance) driverInstance = null
-      if (!preserve && store.active) store.skip()
+      stopTargetObserver()
+      if (!preserve) {
+        cancelOperation()
+        if (store.active) store.skip()
+        restoreTourFocus()
+      }
     }
   })
   driverInstance = instance
   return instance
 }
 
-async function showStep(router, index) {
+function tourSteps(unavailableStepId = null, waiting = false) {
+  return ONBOARDING_STEPS.map(step => ({
+    element: step.target && step.id !== unavailableStepId ? () => findTarget(targetForStep(step)) : undefined,
+    popover: {
+      title: step.title,
+      description: waiting && step.id === unavailableStepId
+        ? '正在准备这个入口…你可以随时关闭教程，之后从导航中重新查看。'
+        : (isMobileTour() && step.mobileDescription ? step.mobileDescription : step.description)
+          + (step.id === unavailableStepId ? '<br><br>暂时无法定位这个入口，可能仍在加载或当前页面没有此功能。你可以继续下一步、返回上一步，或关闭教程后再重看。' : ''),
+      side: step.side || 'bottom',
+      align: step.align || 'start',
+      ...(waiting && step.id === unavailableStepId ? { disableButtons: ['next', 'previous'] } : {})
+    }
+  }))
+}
+
+async function showStep(router, index, signal) {
   const store = currentStore()
+  if (signal.aborted || !store.active) return false
+  stopTargetObserver()
   const step = ONBOARDING_STEPS[index]
   if (!step) {
     store.complete()
-    destroyDriver()
+    destroyOnboardingTour()
     return false
   }
 
   store.updateStep(step.id)
-  if (step.route && router.currentRoute.value.path !== step.route) {
-    destroyDriver(true)
-    await router.push(step.route)
-    await waitForLayoutFrames(1)
-  }
-
-  let targetElement = step.target ? await waitForElement(step.target) : null
-  if (step.target && !targetElement) {
-    store.skip()
-    destroyDriver()
-    return false
-  }
-
-  revealTourTarget(targetElement)
-  bringTargetIntoView(targetElement)
-  await waitForLayoutFrames(2)
-
-  if (step.target) {
-    targetElement = findTarget(step.target) || targetElement
+  // 延迟仅用于避免准备提示闪烁；是否高亮仍由真实几何稳定决定。
+  const waitingTimer = window.setTimeout(() => {
+    if (signal.aborted || !store.active) return
+    const instance = driverInstance?.isActive() ? driverInstance : createDriver(router)
+    instance.setConfig({ ...instance.getConfig(), steps: tourSteps(step.id, true) })
+    instance.drive(index)
+  }, 200)
+  const clearWaiting = () => window.clearTimeout(waitingTimer)
+  signal.addEventListener('abort', clearWaiting, { once: true })
+  let targetElement = null
+  try {
+    if (step.route && router.currentRoute.value.path !== step.route) {
+      destroyDriver(true)
+      const destination = router.resolve(step.route)
+      const record = destination.matched.at(-1)
+      if (!record) throw new Error('Tutorial route is unavailable')
+      // resolve会复制meta到本次to；晚到redirectedFrom因此保留自己的signal。
+      record.meta[NAVIGATION_SIGNAL] = signal
+      const removeCancelledRedirectGuard = router.beforeEach(to => {
+        if (to.redirectedFrom?.meta?.[NAVIGATION_SIGNAL]?.aborted) return false
+      })
+      const navigation = { router, signal, record, target: destination.fullPath }
+      activeNavigation = navigation
+      try {
+        await router.push(step.route)
+      } finally {
+        removeCancelledRedirectGuard()
+        if (record.meta[NAVIGATION_SIGNAL] === signal) delete record.meta[NAVIGATION_SIGNAL]
+        if (activeNavigation === navigation) activeNavigation = null
+      }
+      if (signal.aborted || !store.active) return false
+      // 权限守卫可能把目标路由重定向到登录或资格恢复页。
+      if (router.currentRoute.value.path !== step.route) {
+        destroyOnboardingTour()
+        return false
+      }
+      await waitForLayoutFrames(1, signal)
+    }
+    if (signal.aborted || !store.active) return false
+    targetElement = step.target ? await waitForElement(targetForStep(step), TARGET_TIMEOUT, signal) : null
+    if (signal.aborted || !store.active) return false
     revealTourTarget(targetElement)
+    bringTargetIntoView(targetElement)
+    if (targetElement) {
+      const stable = await waitForStableTarget(targetElement, signal)
+      if (!stable) targetElement = null
+    }
+  } finally {
+    clearWaiting()
+    signal.removeEventListener('abort', clearWaiting)
   }
+  if (signal.aborted || !store.active) return false
 
   const instance = driverInstance?.isActive() ? driverInstance : createDriver(router)
+  instance.setConfig({ ...instance.getConfig(), steps: tourSteps(step.target && !targetElement ? step.id : null) })
   instance.drive(index)
-  await waitForLayoutFrames(2)
+  if (step.mobileTarget) {
+    const media = window.matchMedia?.('(max-width: 1080px)')
+    const retarget = () => {
+      void (operation || Promise.resolve()).then(() => {
+        if (driverInstance === instance && store.activeStepId === step.id && store.active) void moveToIndex(router, index)
+      })
+    }
+    if (media?.addEventListener) {
+      media.addEventListener('change', retarget)
+      removeTargetMediaListener = () => media.removeEventListener('change', retarget)
+    }
+  }
+  if (targetElement && typeof ResizeObserver !== 'undefined') {
+    targetResizeObserver = new ResizeObserver(() => {
+      if (driverInstance === instance && instance.isActive()) instance.refresh?.()
+    })
+    targetResizeObserver.observe(targetElement)
+  }
+  await waitForLayoutFrames(2, signal)
+  if (signal.aborted || !store.active) return false
   instance.refresh?.()
   return true
 }
 
 function run(operationCallback) {
   if (operation) return operation
-  operation = Promise.resolve()
-    .then(operationCallback)
+  const controller = new AbortController()
+  operationController = controller
+  const pending = Promise.resolve()
+    .then(() => operationCallback(controller.signal))
     .catch(() => {
+      if (controller.signal.aborted) return false
       const store = currentStore()
       if (store.active) store.skip()
       destroyDriver()
       return false
     })
-    .finally(() => { operation = null })
-  return operation
+    .finally(() => {
+      if (operation === pending) operation = null
+      if (operationController === controller) operationController = null
+    })
+  operation = pending
+  return pending
 }
 
 function moveToIndex(router, index) {
   if (index < 0) return Promise.resolve(false)
-  return run(() => showStep(router, index))
+  return run(signal => showStep(router, index, signal))
 }
 
 export function startOnboardingTour(router) {
-  return run(async () => {
+  return run(async signal => {
+    if (signal.aborted) return false
     const store = currentStore()
     if (driverInstance?.isActive()) return false
     if (!store.active && !store.start(FIRST_STEP_ID)) return false
+    returnFocus = typeof document !== 'undefined' ? document.activeElement : null
     const index = Math.max(0, stepIndex(store.activeStepId))
     if (index === 0 && store.activeStepId !== FIRST_STEP_ID) store.updateStep(FIRST_STEP_ID)
-    return showStep(router, index)
+    return showStep(router, index, signal)
   })
 }
 
@@ -307,29 +477,38 @@ export function resumeOnboardingTour(router) {
     store.skip()
     return Promise.resolve(false)
   }
-  return run(() => showStep(router, index))
+  return run(signal => showStep(router, index, signal))
 }
 
 export function restartOnboardingTour(router) {
+  cancelOperation()
   destroyDriver(true)
   const store = currentStore()
   store.restart(FIRST_STEP_ID)
-  return run(() => showStep(router, 0))
+  returnFocus = typeof document !== 'undefined' ? document.activeElement : null
+  return run(signal => showStep(router, 0, signal))
 }
 
 export function destroyOnboardingTour({ preserveState = false } = {}) {
+  cancelOperation()
+  const hadDriver = !!driverInstance
   destroyDriver(preserveState)
   if (!preserveState) {
     const store = currentStore()
     if (store.active) store.skip()
+    if (!hadDriver) restoreTourFocus()
   }
 }
 
 export function initializeOnboardingTour(router) {
   const store = currentStore()
   if (removeRouteHook) removeRouteHook()
-  removeRouteHook = router.afterEach(() => {
-    if (store.active) void resumeOnboardingTour(router)
+  removeRouteHook = router.afterEach((to, from, failure) => {
+    // 内部跨页由showStep负责；用户主动离开不应被旧步骤拉回。
+    if (failure || !store.active) return
+    const internal = activeNavigation?.signal === operationController?.signal
+      && !activeNavigation?.signal.aborted && activeNavigation?.target === to.fullPath
+    if (!internal && to.fullPath !== from.fullPath) destroyOnboardingTour()
   })
 
   if (store.active) void resumeOnboardingTour(router)
