@@ -1,6 +1,10 @@
 {
-  "_comment": "public/yuanstar-embed/ 当前 vendored 文件的 SHA-256。同步或热修 embed 时必须同步重建本文件；test/yuanstarEmbedProvenance.test.js 会逐个比对。",
-  "assets/browser-vision-worker-Bt0Z67D1.js": "b653c986d6470bcb39a8334f9ec5af10088a89eef93f8bfc631e6fdefbcbab14",
+  "_comment": "public/yuanstar-embed/ 当前 vendored 文件的 SHA-256；已提交 source commit 及干净构建状态见下列元数据。同步 embed 时必须更新本文件；provenance 测试逐文件比对。",
+  "_sourceCommit": "91ce034f4aae2a68a4b3c387e44149fe6302a922",
+  "_sourceWorkingTree": {
+    "status": "clean"
+  },
+  "assets/browser-vision-worker-BuVcSjOG.js": "4370eab3303cd5d41f82fa78f456505e3ea489b937f059db95ca6a282a81e0e3",
   "models/PP-OCRv6_det_small.onnx": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
   "models/PP-OCRv6_rec_small.onnx": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
   "models/README.md": "8f0c6f452be16aecd33d08eba45808c96c8d551538096b2c8fa67b76a8b7c85f",
@@ -10,6 +14,6 @@
   "ort/ort-wasm-simd-threaded.mjs": "0a1e718d99c41b22c21f2520ff4f9e883a6b5533856e398d21816ee8eb8185d3",
   "ort/ort-wasm-simd-threaded.wasm": "d1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6",
   "reference/YuanStar_Phase0_6A_经验星曜规则与逐级数据.xlsx": "eafe7af04996e788d02556b22f3a57854012acb6301c02bc9621957b34149859",
-  "yuanstar-embed.css": "24deb13819d1b215f28bb7abbbd62d22ef3cc0c51fb9d59002ceed0851ce2f91",
-  "yuanstar-embed.js": "e574f67027754e69b8d511f5f2323e09bd576c335465abfb3f10dda09182bb30"
+  "yuanstar-embed.css": "a831b7da07f088e756b636de0416872c72199bf1c3440cbca3784bcb3e09d6c7",
+  "yuanstar-embed.js": "b1d238d36a7f200f0121440658afef835fc1eb350b8497d7701c79dc7ddfbef1"
 }
