@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "dev:tunnel": "VITE_API_BASE= vite --mode tunnel",
-    "build": "vite build",
+    "build": "vite build && node scripts/precompress-ocr.mjs",
+    "verify:ocr-compression": "node scripts/precompress-ocr.mjs --verify",
     "preview": "vite preview",
     "test": "node --test",
     "test:repo": "node scripts/run-node-tests.mjs --exclude test/contract.test.js",
