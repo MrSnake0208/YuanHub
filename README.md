@@ -51,6 +51,8 @@ YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 | `/admin/changelog` | 更新日志管理：所见即所得编辑、图片上传、提交审核、发布/退回/撤回；需要 `changelog:write` 或 `changelog:review` | — |
 | `/demo` | 养成规划演示：示例存档、养成目标、资源缺口、收集速度和密探档案；支持 `?view=overview|targets|materials|operator` 直接打开截图视图 | — |
 
+BOX、演示、宣传、主动安装与权限失败页的使用边界、恢复行为和定向验收见 [公开入口与访问恢复说明](docs/public-entry-experience.md)。
+
 ## 目录结构
 
 ```

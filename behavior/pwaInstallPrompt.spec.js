@@ -50,7 +50,7 @@ async function browser({ ios = false, mobile = true, standalone = false, suppres
 
 async function main(context, path = '/') {
   const { default: component } = await import('../src/components/MobileInstallPrompt.vue')
-  const pages = [['/', 'today'], ['/install', 'install'], ['/changelog', 'changelog'], ['/feedback/plaza', 'feedback-plaza'], ['/login', 'login'], ['/register', 'register'], ['/forgot', 'forgot'], ['/forbidden', 'forbidden'], ['/beta', 'beta'], ['/user/profile', 'profile'], ['/star', 'star'], ['/inventory', 'inventory'], ['/manage', 'manage'], ['/unknown', 'not-found']]
+  const pages = [['/', 'today'], ['/install', 'install'], ['/operator/share/:token?', 'operator-share'], ['/demo', 'demo-growth-planner'], ['/promo', 'promo'], ['/changelog', 'changelog'], ['/feedback/plaza', 'feedback-plaza'], ['/login', 'login'], ['/register', 'register'], ['/forgot', 'forgot'], ['/forbidden', 'forbidden'], ['/beta', 'beta'], ['/user/profile', 'profile'], ['/star', 'star'], ['/inventory', 'inventory'], ['/manage', 'manage'], ['/unknown', 'not-found']]
   const router = createRouter({ history: createMemoryHistory(), routes: pages.map(([path, name]) => ({ path, name, component: { template: '<p />' } })) })
   await router.push(path)
   await router.isReady()
@@ -92,7 +92,7 @@ it('主站无事件时不邀请；延迟后到达有效事件才显示', async (
   expect(host.find('aside').exists()).toBe(true)
 })
 
-it.each(['/login', '/register', '/forgot', '/forbidden', '/beta', '/user/profile', '/star', '/inventory', '/manage', '/unknown'])('主站 %s 默认禁止自动邀请，换到允许页才重新计时', async path => {
+it.each(['/login', '/register', '/forgot', '/forbidden', '/install', '/operator/share', '/operator/share/code', '/demo', '/promo', '/beta', '/user/profile', '/star', '/inventory', '/manage', '/unknown'])('主站 %s 默认禁止自动邀请，换到允许页才重新计时', async path => {
   const context = await main(await browser(), path)
   context.offer()
   await reveal()
