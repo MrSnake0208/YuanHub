@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
 import * as operatorApi from '../src/api/operator.js'
@@ -6,6 +6,7 @@ import { getCurrentStarState } from '../src/api/starState.js'
 import { getCurrentStarLoadout, putCurrentStarLoadout } from '../src/api/starLoadout.js'
 import { listAgentFavorites } from '../src/api/inventory.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
+import { auth } from '../src/store/auth.js'
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
@@ -32,6 +33,7 @@ vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn().mockResolv
 const operator = { id: 'op', name: '测试密探', rarity: 3, games: ['如鸢'] }
 beforeEach(() => {
   vi.clearAllMocks()
+  auth.isLoggedIn = true
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator] })
   operatorApi.listOperatorAccounts.mockResolvedValue([{ id: 'acc', name: '测试账号', game: '如鸢' }])
   operatorApi.getOperatorCurrent.mockResolvedValue([])
@@ -46,14 +48,21 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
 
-async function openEditor(existing, catalog = operator) {
-  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [catalog] })
-  operatorApi.getOperatorCurrent.mockResolvedValue(existing ? [{ entries: { op: existing } }] : [])
-  const wrapper = mount(OperatorPage, { global: {
+const wrappers = new Set()
+afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear() })
+function renderPage(options = {}) {
+  const wrapper = mount(OperatorPage, { ...options, global: {
     stubs: { RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true },
     directives: { reveal: () => {} },
   } })
+  wrappers.add(wrapper)
+  return wrapper
+}
+async function openEditor(existing, catalog = operator) {
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [catalog] })
+  operatorApi.getOperatorCurrent.mockResolvedValue(existing ? [{ entries: { op: existing } }] : [])
+  const wrapper = renderPage()
   await flushPromises()
   await wrapper.get('[aria-label="编辑测试密探"]').trigger('click')
   await flushPromises()
@@ -62,6 +71,73 @@ async function openEditor(existing, catalog = operator) {
 }
 const growthValues = wrapper => wrapper.findAll('.level-row input').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
+
+it('空档案引导出现在默认图鉴筛选前，养成筛选不占用首屏', async () => {
+  const wrapper = renderPage()
+  await flushPromises()
+  const guide = wrapper.get('.operator-entry-guide')
+  expect(guide.text()).toContain('还没有密探档案')
+  expect(guide.text()).toContain('补录一位密探')
+  expect(guide.element.compareDocumentPosition(wrapper.get('.mf-search').element) & 4).toBe(4)
+  expect(wrapper.findComponent({ name: 'OperatorFilterDossier' }).exists()).toBe(false)
+})
+
+it.each([
+  ['logged-out', '登录后可维护'],
+  ['no-account', '创建并选择'],
+  ['unowned', '暂无可展示的已招募'],
+  ['error', '读取失败'],
+])('录入引导区分%s', async (state, text) => {
+  if (state === 'logged-out') auth.isLoggedIn = false
+  if (state === 'no-account') operatorApi.listOperatorAccounts.mockResolvedValue([])
+  if (state === 'unowned') operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 0 } } }])
+  if (state === 'error') operatorApi.getOperatorCurrent.mockRejectedValue(new Error('synthetic read error'))
+  const wrapper = renderPage()
+  await flushPromises()
+  expect(wrapper.get('.operator-entry-guide').text()).toContain(text)
+  if (state === 'error') {
+    expect(wrapper.get('.operator-entry-guide').text()).not.toContain('首次建档')
+    operatorApi.getOperatorCurrent.mockResolvedValue([])
+    await wrapper.get('.operator-entry-guide button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.operator-entry-guide').text()).toContain('还没有密探档案')
+  }
+})
+
+it('未完成读取时显示加载，不显示空档案录入动作', async () => {
+  let resolve
+  operatorApi.getOperatorCurrent.mockImplementation(() => new Promise(done => { resolve = done }))
+  const wrapper = renderPage()
+  await flushPromises()
+  expect(wrapper.get('.operator-entry-guide').text()).toContain('正在读取')
+  expect(wrapper.get('.operator-entry-guide').text()).not.toContain('首次建档')
+  resolve([])
+  await flushPromises()
+})
+
+it('已有密探时隐藏首次引导，筛选无结果不会误报空档案', async () => {
+  operatorApi.getOperatorCurrent.mockResolvedValue([{ entries: { op: { level: 90, elite: 15, star_level: 7 } } }])
+  const wrapper = renderPage()
+  await flushPromises()
+  expect(wrapper.find('.operator-entry-guide').exists()).toBe(false)
+  expect(wrapper.findComponent({ name: 'OperatorFilterDossier' }).exists()).toBe(true)
+  expect(wrapper.findAll('.operator-tabs .admin-link').some(link => link.attributes('to')?.includes('mode=supplement'))).toBe(true)
+  await wrapper.get('.mf-search').setValue('不存在的角色')
+  expect(wrapper.find('.operator-entry-guide').exists()).toBe(false)
+})
+
+it('单角色入口复用图鉴并聚焦搜索，目录版本保持完整可复制原值', async () => {
+  const version = 'catalog-release-opaque-not-a-date-20261005-sha123456789'
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
+  const wrapper = renderPage({ attachTo: document.body })
+  await flushPromises()
+  await wrapper.get('.operator-entry-guide button').trigger('click')
+  await flushPromises()
+  expect(document.activeElement).toBe(wrapper.get('.mf-search').element)
+  expect(wrapper.get('[aria-label="目录版本，可选中复制"]').element.value).toBe(version)
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
 
 const decimalCatalog = { ...operator, oddity_schema: {
   attack: { name: '攻击力', max: 300 }, hp: { name: '生命值', max: 1560 }, special: { name: '增伤值', max: 9 },
