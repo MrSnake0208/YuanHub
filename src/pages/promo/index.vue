@@ -21,8 +21,8 @@
             <div class="eyebrow"><span>01</span> COMMUNITY DATA LAYER</div>
             <h1 id="promo-hero-title">让游戏数据<br><em>自由流动</em></h1>
             <p class="hero-lede">
-              用户自行录入的每一份游戏数据，都可以成为社区继续建设的起点。
-              YuanHub 把分散的贡献整理成可被复用的公共数据，资料站、社区 App、自动化工具等外部项目可以按需通过 API 调用 YuanHub 整理后的数据。
+              YuanHub 帮你管理个人游戏存档，也为社区共建资料提供整理入口。
+              私人存档、主动分享与公共资料有各自的数据边界；保存个人数据不等于向社区公开。
             </p>
             <div class="demo-notice">
               <span class="notice-mark">◎</span>
@@ -63,7 +63,7 @@
             </div>
           </section>
 
-          <div class="hero-flow" aria-label="用户录入自己的游戏数据，经过 YuanHub 整理，并由外部项目按需通过 API 调用的示意图">
+          <div class="hero-flow" aria-label="私人存档、主动 BOX 分享和公共资料使用不同访问方式的示意图">
             <div class="flow-caption">
               <span>CONTRIBUTION FLOW</span>
               <span class="caption-line"></span>
@@ -72,13 +72,13 @@
             <div class="flow-lane">
               <article class="flow-node source-node">
                 <div class="node-topline"><span class="node-icon">+</span><span class="node-type">PLAYER INPUT</span></div>
-                <h2>用户录入</h2>
-                <p>密探资料 · 背包数据<br>社区共建 · 修订信息</p>
+                <h2>保存与共建</h2>
+                <p>私人存档 · 主动分享<br>公共资料 · 社区修订</p>
                 <span class="demo-label">DEMO DATA</span>
               </article>
 
               <div class="flow-connector" aria-hidden="true">
-                <span>整理进入</span>
+                <span>按用途整理</span>
                 <i></i>
               </div>
 
@@ -88,12 +88,12 @@
                 <img class="hub-core" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
                 <div class="node-type">SHARED DATA LAYER</div>
                 <h2>YuanHub</h2>
-                <p>统一整理<br>保留贡献脉络</p>
+                <p>区分访问权限<br>保留贡献脉络</p>
                 <span class="demo-label">DEMO DATA</span>
               </article>
 
               <div class="flow-connector" aria-hidden="true">
-                <span>API 调用</span>
+                <span>按权限访问</span>
                 <i></i>
               </div>
 
@@ -109,6 +109,11 @@
               </div>
             </div>
           </div>
+          <aside class="data-boundaries" aria-label="数据访问说明">
+            <p><strong>私人存档：</strong>个人背包与养成记录不会因为保存就成为公共资料；个人 API 访问需要相应授权。</p>
+            <p><strong>主动分享：</strong>开启 BOX 分享后，持有分享码或链接的人可免登录查看该 BOX 的公开养成字段；撤销或重新生成后，原分享码失效。</p>
+            <p><strong>公共资料：</strong>公共图鉴与经确认公开的社区资料按各自接口范围提供。示意图不表示所有资料都已开放 API，也不表示外部项目已接入。</p>
+          </aside>
         </div>
       </section>
 
@@ -145,7 +150,7 @@
             </div>
             <div class="board-foot">
               <span class="foot-dash"></span>
-              <span>用户录入　→　YuanHub 整理　→　外部项目通过 API 调用</span>
+              <span>社区投稿　→　确认公开范围　→　YuanHub 整理与复用</span>
             </div>
           </div>
         </div>
@@ -156,14 +161,14 @@
           <div class="reuse-heading">
             <div class="eyebrow"><span>03</span> ONE CONTRIBUTION, MANY USES</div>
             <h2 id="reuse-title">一次投稿，<em>多处使用</em></h2>
-            <p>同一份社区知识经过统一整理后，资料站、社区 App、自动化工具等外部项目可以按需通过 API 调用 YuanHub 数据，再以不同方式回到玩家身边。</p>
+            <p>社区知识在确认公开范围后，可通过已开放的接口被复用。资料站、社区 App 和自动化工具的使用方式以实际接口与接入情况为准。</p>
           </div>
 
           <div class="reuse-stage" aria-label="一次投稿经过 YuanHub 统一整理后，由不同社区项目按需通过 API 调用的示意图">
             <div class="stage-note note-left">
               <span class="note-index">A</span>
-              <strong>用户录入</strong>
-              <small>用户自行录入属于自己的游戏内数据</small>
+              <strong>社区投稿</strong>
+              <small>明确提交用于共建的公共资料</small>
               <span class="demo-label">示意</span>
             </div>
             <div class="stage-connector connector-left" aria-hidden="true"><i></i><span>提交</span></div>
@@ -172,7 +177,7 @@
               <div>
                 <span class="node-type">ORGANIZE / PRESERVE</span>
                 <strong>YuanHub</strong>
-                <small>把贡献整理成可按需调用的公共基础</small>
+                <small>按公开范围整理共建资料</small>
               </div>
               <span class="demo-label">DEMO DATA</span>
             </div>
@@ -192,7 +197,7 @@
 
           <div class="reuse-footnote">
             <span class="footnote-mark">✦</span>
-            <p><strong>YuanHub 是中间层。</strong> 它不替社区发声，也不把贡献锁在一个页面里；外部项目可按需通过 API 调用整理后的数据，让资料有迹可循，让不同项目拥有共同的起点。</p>
+            <p><strong>YuanHub 是中间层。</strong> 私人存档与公共贡献分别管理；外部项目读取个人数据需要相应授权，公共资料以实际开放的接口范围为准。开启 BOX 分享是独立的主动操作。</p>
           </div>
         </div>
       </section>
@@ -227,7 +232,7 @@ const destinations = [
 
 const contributions = [
   { title: '密探资料', detail: '把已确认的内容整理成可查阅记录', tag: '补充', mark: '录', tone: 'yellow' },
-  { title: '背包数据', detail: '让零散的经验有清晰的来处', tag: '归档', mark: '集', tone: 'orange' },
+  { title: '材料资料', detail: '共建材料名称与公开获取说明', tag: '归档', mark: '集', tone: 'orange' },
   { title: '社区共建', detail: '标记变化，让资料可以继续校对', tag: '追踪', mark: '时', tone: 'blue' },
   { title: '社区反馈', detail: '用户与管理员双向接收并回应信息', tag: '双向', mark: '问', tone: 'red' }
 ]
@@ -287,6 +292,9 @@ h1 em, h2 em { color: var(--accent); font-style: normal; }
 .ecosystem-card-uri { display: block; margin-top: 4px; color: var(--promo-muted); font: 700 8px/1.35 var(--font-b); overflow-wrap: anywhere; }
 
 .hero-flow { margin-top: 80px; padding: 24px 26px 30px; border: 1px solid var(--promo-line); border-radius: 18px; background: rgba(255, 253, 246, .42); box-shadow: 0 24px 46px -36px rgba(73, 59, 44, .48); }
+.data-boundaries { display: grid; gap: 12px; margin-top: 20px; padding: 20px 24px; border: 1px solid var(--promo-line); border-radius: 12px; background: var(--surface); }
+.data-boundaries p { color: var(--promo-muted); font-size: 13px; line-height: 1.8; }
+.data-boundaries strong { color: var(--tea); }
 .flow-caption { display: flex; align-items: center; gap: 11px; color: var(--promo-muted); font: 800 10px/1 var(--font-d); letter-spacing: .14em; }
 .caption-line { width: 42px; border-top: 1px solid var(--accent); }
 .flow-caption span:last-child { color: var(--accent-strong); }

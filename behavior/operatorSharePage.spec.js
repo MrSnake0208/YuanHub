@@ -51,7 +51,7 @@ it('快速切换分享代码时，旧请求结果不得污染新代码页面', a
   expect(wrapper.text()).not.toContain('如鸢')
 })
 it.each([
-  [Object.assign(new Error('gone'), { status: 404 }), '神秘代码已失效'],
+  [Object.assign(new Error('gone'), { status: 404 }), '分享码不存在或已失效'],
   [new TypeError('Failed to fetch'), '暂时无法加载']
 ])('错误状态区分失效链接和网络失败，不尝试创建分享', async (error, text) => {
   viewOperatorShare.mockRejectedValue(error)
@@ -64,6 +64,58 @@ it('空分享是有效空状态，不伪装成网络错误', async () => {
   const wrapper = render(); await flushPromises()
   expect(wrapper.text()).toContain('这个密探 BOX 还是空的')
   expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+})
+
+it.each([Object.assign(new Error('catalog missing'), { status: 404 }), new TypeError('Failed to fetch')])('图鉴故障不归因于分享码失效，重试后可恢复展示', async error => {
+  getOperatorCatalog.mockRejectedValueOnce(error)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('密探图鉴暂时无法加载')
+  expect(wrapper.text()).not.toContain('分享码不存在或已失效')
+  const retry = wrapper.findAll('button').find(button => button.text() === '重试')
+  await retry.trigger('click'); await flushPromises()
+  expect(wrapper.findAll('article[role="listitem"]')).toHaveLength(1)
+  expect(viewOperatorShare).toHaveBeenCalledTimes(2)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each([
+  [Object.assign(new Error('upstream stack trace'), { status: 503 }), '分享服务暂时不可用'],
+  [Object.assign(new Error('transport details'), { code: 'REQUEST_TIMEOUT' }), '读取分享数据超时']
+])('服务故障与超时使用可恢复文案，不展示底层错误', async (error, text) => {
+  viewOperatorShare.mockRejectedValueOnce(error)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain(text)
+  expect(wrapper.text()).not.toContain(error.message)
+  await wrapper.findAll('button').find(button => button.text() === '重试').trigger('click')
+  await flushPromises()
+  expect(wrapper.findAll('article[role="listitem"]')).toHaveLength(1)
+})
+
+it('完整链接输入后返回输入框保留原值，可修改分享码', async () => {
+  useRoute().params.token = ''
+  const wrapper = render(); await flushPromises()
+  const link = 'https://yuan.example/operator/share/' + tokenA
+  await wrapper.get('input').setValue(link)
+  await wrapper.get('form').trigger('submit')
+  expect(useRouter().push).toHaveBeenLastCalledWith({ name: 'operator-share', params: { token: tokenA } })
+  useRoute().params.token = tokenA; await flushPromises()
+  await wrapper.findAll('button').find(button => button.text() === '重新输入').trigger('click')
+  useRoute().params.token = ''; await flushPromises()
+  expect(wrapper.get('input').element.value).toBe(link)
+  await wrapper.get('input').setValue(tokenB)
+  await wrapper.get('form').trigger('submit')
+  expect(useRouter().push).toHaveBeenLastCalledWith({ name: 'operator-share', params: { token: tokenB } })
+})
+
+it('外部路由换码后返回输入框保留当前代码，迟到的图鉴错误不污染新页面', async () => {
+  const firstCatalog = deferred()
+  getOperatorCatalog.mockReturnValueOnce(firstCatalog.promise)
+  const wrapper = render()
+  useRoute().params.token = tokenB; await flushPromises()
+  firstCatalog.reject(Object.assign(new Error('old 404'), { status: 404 })); await flushPromises()
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  useRoute().params.token = ''; await flushPromises()
+  expect(wrapper.get('input').element.value).toBe(tokenB)
 })
 it('非法代码由实际表单反馈，无 API 请求或路由跳转', async () => {
   useRoute().params.token = ''

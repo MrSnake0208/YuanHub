@@ -8,7 +8,7 @@
             <span class="pill fill">密探</span>
             <span class="pill">只读分享</span>
           </div>
-          <h1>密探 BOX<span class="small">神秘代码查看</span></h1>
+          <h1>密探 BOX<span class="small">分享码查看</span></h1>
           <p class="hero-sub">无需登录，仅展示分享者公开的客观养成信息。</p>
           <div v-if="share" class="hero-stats">
             <div><div class="k">游戏版本</div><div class="v compact">{{ share.game || '—' }}</div></div>
@@ -23,9 +23,9 @@
         <div class="wrap">
           <form v-if="status === 'input'" class="share-entry" @submit.prevent="submitToken">
             <span class="section-kicker">公开查看</span>
-            <h2>输入神秘代码</h2>
+            <h2>输入 BOX 分享码</h2>
             <p>可粘贴代码，也可粘贴完整分享链接。</p>
-            <label for="operator-share-token">神秘代码或分享链接</label>
+            <label for="operator-share-token">BOX 分享码或分享链接</label>
             <div class="share-entry-row">
               <input
                 id="operator-share-token"
@@ -49,8 +49,8 @@
 
           <div v-else-if="status === 'not-found'" class="share-state is-error" role="alert">
             <span class="state-mark" aria-hidden="true">×</span>
-            <h2>神秘代码已失效</h2>
-            <p>代码可能已被撤销、重新生成或输入有误。</p>
+            <h2>分享码不存在或已失效</h2>
+            <p>分享可能已被撤销、重新生成，或分享码输入有误。可返回输入框检查代码。</p>
             <button type="button" @click="resetInput">重新输入</button>
           </div>
 
@@ -268,7 +268,7 @@
 
       <SiteFooter>
         <template #big>密探 BOX<br /><span>只读分享</span></template>
-        <template #fine><b>YuanHub</b> · 神秘代码查看<br />数据仅供参考，请以游戏内实际养成为准</template>
+        <template #fine><b>YuanHub</b> · 分享码查看<br />数据仅供参考，请以游戏内实际养成为准</template>
       </SiteFooter>
     </main>
   </div>
@@ -351,7 +351,7 @@ let loadSeq = 0
 function submitToken() {
   const token = parseOperatorShareToken(inputValue.value)
   if (!token) {
-    inputError.value = inputValue.value.trim() ? '未识别到有效的神秘代码或分享链接' : '请输入神秘代码或分享链接'
+    inputError.value = inputValue.value.trim() ? '未识别到有效的 BOX 分享码或分享链接' : '请输入 BOX 分享码或分享链接'
     return
   }
   inputError.value = ''
@@ -383,7 +383,12 @@ async function loadShare() {
   try {
     const [shareData, catalog] = await Promise.all([
       viewOperatorShare(token),
-      getOperatorCatalog()
+      getOperatorCatalog().catch(() => {
+        // 图鉴故障不能被误判为分享码失效，保留并行读取与旧响应隔离。
+        const error = new Error('密探图鉴暂时无法加载，请稍后重试。')
+        error.code = 'catalog_unavailable'
+        throw error
+      })
     ])
     if (seq !== loadSeq) return
     share.value = shareData || { entries: {} }
@@ -397,8 +402,10 @@ async function loadShare() {
 }
 
 function humanErr(err) {
-  if (err && err.message && !/Failed to fetch|NetworkError|fetch/i.test(err.message)) return err.message
-  return '网络异常，请稍后重试。'
+  if (err?.code === 'catalog_unavailable') return '密探图鉴暂时无法加载，请稍后重试。'
+  if (err?.code === 'REQUEST_TIMEOUT') return '读取分享数据超时，请检查网络后重试。'
+  if (err?.status >= 500) return '分享服务暂时不可用，请稍后重试。'
+  return '暂时无法读取分享数据，请检查网络后重试。'
 }
 
 function formatDate(value) {
@@ -577,7 +584,9 @@ onBeforeUnmount(function () {
   window.removeEventListener('resize', hideDiscTooltip)
 })
 
-watch(function () { return route.params.token }, function () {
+watch(function () { return route.params.token }, function (token) {
+  if (token && parseOperatorShareToken(inputValue.value) !== parseOperatorShareToken(token)) inputValue.value = String(token)
+  inputError.value = ''
   clearFilters()
   loadShare()
 }, { immediate: true })

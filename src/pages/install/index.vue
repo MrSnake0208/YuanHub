@@ -11,6 +11,10 @@
             <CircleCheck :size="20" aria-hidden="true" />
             <span>YuanHub 当前已从桌面独立运行，无需再次添加。</span>
           </div>
+          <div v-else-if="pwaInstallState.installed" class="installed-banner" role="status">
+            <CircleCheck :size="20" aria-hidden="true" />
+            <span>当前浏览器已记录安装操作；请等待系统完成后，从桌面图标打开 YuanHub。</span>
+          </div>
         </div>
       </header>
 
@@ -24,23 +28,24 @@
           </div>
         </div>
 
-        <div class="platform-tabs" role="tablist" aria-label="选择手机平台">
-          <button type="button" role="tab" :aria-selected="activeTab === 'android'" :class="{ on: activeTab === 'android' }" @click="activeTab = 'android'">
+        <div class="platform-tabs" role="tablist" aria-label="选择手机平台" @keydown="switchPlatform">
+          <button id="install-tab-android" ref="androidTab" type="button" role="tab" aria-controls="install-panel-android" :tabindex="activeTab === 'android' ? 0 : -1" :aria-selected="activeTab === 'android'" :class="{ on: activeTab === 'android' }" @click="activeTab = 'android'">
             <Smartphone :size="17" aria-hidden="true" /> Android
           </button>
-          <button type="button" role="tab" :aria-selected="activeTab === 'ios'" :class="{ on: activeTab === 'ios' }" @click="activeTab = 'ios'">
+          <button id="install-tab-ios" ref="iosTab" type="button" role="tab" aria-controls="install-panel-ios" :tabindex="activeTab === 'ios' ? 0 : -1" :aria-selected="activeTab === 'ios'" :class="{ on: activeTab === 'ios' }" @click="activeTab = 'ios'">
             <Apple :size="17" aria-hidden="true" /> iPhone / iPad
           </button>
         </div>
 
-        <article v-if="activeTab === 'android'" class="guide-card" role="tabpanel">
+        <article v-show="activeTab === 'android'" id="install-panel-android" class="guide-card" role="tabpanel" aria-labelledby="install-tab-android" tabindex="0">
           <header class="guide-head">
             <div><span class="eyebrow">ANDROID GUIDE</span><h2>Android 添加步骤</h2></div>
-            <button v-if="pwaInstallState.installable && !pwaInstallState.ios && !pwaInstallState.standalone" class="install-now" type="button" :disabled="installing" @click="installNow">
+            <button v-if="pwaInstallState.installable && !pwaInstallState.ios && !pwaInstallState.standalone && !pwaInstallState.installed" class="install-now" type="button" :disabled="installing" @click="installNow">
               <Download :size="17" aria-hidden="true" /> {{ installing ? '正在打开…' : '立即添加到桌面' }}
             </button>
           </header>
           <p class="guide-intro">推荐使用 Chrome、Edge 或支持 PWA 安装的 Android 浏览器。如果上方出现“立即添加到桌面”，可以直接使用，无需再打开浏览器菜单。</p>
+          <p v-if="!pwaInstallState.installable && !pwaInstallState.installed && !pwaInstallState.standalone" class="guide-intro">当前浏览器暂未提供一键安装入口，可能不支持或尚未满足安装条件。可先按下方手动步骤操作；没有安装菜单时，请换用支持安装的浏览器。</p>
           <p v-if="installFeedback" class="install-feedback" role="status">{{ installFeedback }}</p>
           <ol class="steps">
             <li><span class="step-no">01</span><div><h3>打开 YuanHub</h3><p>使用 Chrome、Edge 或其他支持安装 Web App 的浏览器访问本站。</p></div><Globe2 :size="22" aria-hidden="true" /></li>
@@ -61,7 +66,7 @@
           </div>
         </article>
 
-        <article v-else class="guide-card" role="tabpanel">
+        <article v-show="activeTab === 'ios'" id="install-panel-ios" class="guide-card" role="tabpanel" aria-labelledby="install-tab-ios" tabindex="0">
           <header class="guide-head"><div><span class="eyebrow">IPHONE / IPAD GUIDE</span><h2>iPhone / iPad 添加步骤</h2></div></header>
           <p class="guide-intro">iPhone / iPad 不提供网页内的一键安装按钮，需要通过浏览器的系统分享菜单添加到主屏幕。</p>
           <ol class="steps">
@@ -110,6 +115,18 @@ import { pwaInstallState, requestPwaInstall } from '@/utils/pwaInstall.js'
 const activeTab = ref('android')
 const installing = ref(false)
 const installFeedback = ref('')
+const androidTab = ref(null)
+const iosTab = ref(null)
+
+function switchPlatform(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  if (event.key === 'Home') activeTab.value = 'android'
+  else if (event.key === 'End') activeTab.value = 'ios'
+  else activeTab.value = activeTab.value === 'android' ? 'ios' : 'android'
+  const tab = activeTab.value === 'android' ? androidTab.value : iosTab.value
+  tab?.focus()
+}
 
 async function installNow() {
   if (installing.value) return
@@ -120,10 +137,14 @@ async function installNow() {
     if (result.outcome === 'accepted') {
       installFeedback.value = '已接受本次添加；请等待系统完成，再从桌面图标打开 YuanHub。'
     } else if (result.outcome === 'dismissed') {
-      installFeedback.value = '本次添加没有完成；如果你并未主动取消、也没有看到系统确认，请检查下方的桌面快捷方式权限。'
-    } else if (result.outcome === 'failed' || result.outcome === 'unavailable') {
-      installFeedback.value = '浏览器没有完成这次添加。请先按下方说明检查“添加 / 创建桌面快捷方式”权限，再重新尝试。'
+      installFeedback.value = '本次安装已取消，站内功能仍可继续使用。需要安装时，可通过浏览器菜单再次尝试。'
+    } else if (result.outcome === 'unavailable') {
+      installFeedback.value = '当前一键安装入口暂不可用，请按下方手动步骤操作；没有安装菜单时，请换用支持安装的浏览器。'
+    } else {
+      installFeedback.value = '系统安装调用未完成，请先尝试浏览器菜单；如果添加桌面快捷方式仍无反应，再检查下方的系统权限说明。'
     }
+  } catch (_) {
+    installFeedback.value = '安装请求未完成，请稍后重试，或按下方手动步骤操作。'
   } finally {
     installing.value = false
   }
@@ -146,7 +167,8 @@ onMounted(function () {
 .install-overview h2,.guide-head h2 { margin-top: 5px; font-family: var(--font-s); font-size: clamp(23px, 3vw, 31px); font-weight: 900; letter-spacing: .04em; }
 .install-overview p,.guide-intro { margin-top: 8px; color: var(--ink-60); font-size: 13.5px; line-height: 1.75; }
 .platform-tabs { display: flex; gap: 7px; width: fit-content; padding: 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--cream); }
-.platform-tabs button { min-height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 17px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-60); font: 800 12.5px var(--font-b); cursor: pointer; }
+.platform-tabs button { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 17px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-60); font: 800 12.5px var(--font-b); cursor: pointer; }
+.platform-tabs button:focus-visible,.guide-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .platform-tabs button.on { background: var(--tea); color: var(--cream); }
 .guide-card { padding: clamp(22px, 4vw, 36px); border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 18px 38px -34px rgba(73,59,44,.45); }
 .guide-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
