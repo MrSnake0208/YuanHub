@@ -76,3 +76,12 @@ test('自定义日期时间严格校验格式、日期存在性和时刻边界�
     assert.throws(() => manualRewardTimestamp(date, clock))
   }
 })
+
+test('电影心纸按目录关系排除，普通 ID 的 sp 后缀不影响奖励资格', () => {
+  const catalog = [
+    { entity_type: 'agent', id: 'future_movie', name: '电影', sp_of: 'base' },
+    { entity_type: 'agent', id: 'normalsp', name: '普通', sp_of: null },
+    { entity_type: 'agent', id: 'empty', name: '普通空字段', spOf: '' },
+  ]
+  assert.deepEqual(rewardOptionsForChannel('派遣-寿春', catalog).map(entry => entry.id).sort(), ['empty', 'normalsp'])
+})

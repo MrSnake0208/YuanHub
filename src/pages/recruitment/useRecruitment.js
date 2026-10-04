@@ -1,3 +1,4 @@
+import { isStandardRecruitmentOperator } from '../../utils/operatorForms.js'
 import { computed, onScopeDispose, reactive, watch } from 'vue'
 import * as api from '../../api/recruitment.js'
 import { listAccounts } from '../../api/accounts.js'
@@ -14,7 +15,7 @@ export function useRecruitment() {
   const game = computed(() => activeAccount.gameFor(accountId.value))
   const available = computed(() => !!identity.value && state.accounts.some(account => account.id === accountId.value))
   const writable = computed(() => available.value && !!state.archive && !state.archive.game_mismatch && !state.loading && !state.busy)
-  const agents = computed(() => state.operators.filter(agent => agent.rarity === 5 && agent.games?.includes(game.value)))
+  const agents = computed(() => state.operators.filter(agent => isStandardRecruitmentOperator(agent, game.value)))
   let generation = 0, readGeneration = 0, accountsGeneration = 0, alive = true, pendingCommand = null, recordsGeneration = 0
   const capture = () => ({ generation, identity: identity.value, accountId: accountId.value })
   const matches = token => alive && token.generation === generation && token.identity === identity.value && token.accountId === accountId.value && available.value

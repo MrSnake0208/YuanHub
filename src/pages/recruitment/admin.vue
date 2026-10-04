@@ -257,6 +257,8 @@
 </template>
 
 <script setup>
+import { isStandardRecruitmentOperator } from '../../utils/operatorForms.js'
+
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -305,7 +307,7 @@ const filteredPools = computed(() => pools.value.filter(pool => {
   const query = search.value.toLowerCase()
   return !query || [pool.name, pool.pool_id].some(value => String(value || '').toLowerCase().includes(query))
 }))
-const eligibleOperators = computed(() => operators.value.filter(operator => operator.rarity === 5 && operator.games?.includes(form.value?.game)))
+const eligibleOperators = computed(() => operators.value.filter(operator => isStandardRecruitmentOperator(operator, form.value?.game)))
 const activeSlots = computed(() => form.value?.up_agents.filter(slot => slot.active) || [])
 const retiredSlots = computed(() => form.value?.up_agents.filter(slot => !slot.active) || [])
 const dirty = computed(() => {

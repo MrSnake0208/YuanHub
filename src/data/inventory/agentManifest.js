@@ -1,18 +1,19 @@
+import { isMovieOperator } from '../../utils/operatorForms.js'
+import { AGENT_CATALOG } from './catalog.js'
 import { canonicalSubProf } from '../../utils/operatorFilters.js'
 
 const PROF_ORDER = ['阳', '阴', '火', '风', '水', '地', '混沌']
 const SUB_PROF_ORDER = ['神纪', '诡道', '破军', '岐黄', '龙盾']
 
-// 暂不在心纸清单和库存编辑中展示的限定变体。
-export const HIDDEN_AGENT_IDS = new Set([
-  'char_084_chendengsp',
-  'char_085_shizimiaosp'
-])
+// 兼容仅带 ID 的库存记录；集合由目录关系派生。
+export const HIDDEN_AGENT_IDS = new Set(AGENT_CATALOG.filter(isMovieOperator).map(entry => entry.id))
+
+export function isHiddenAgent(entry) {
+  return isMovieOperator(entry) || HIDDEN_AGENT_IDS.has(entry?.id)
+}
 
 export function visibleAgentEntries(entries) {
-  return (Array.isArray(entries) ? entries : []).filter(function (entry) {
-    return !HIDDEN_AGENT_IDS.has(entry && entry.id)
-  })
+  return (Array.isArray(entries) ? entries : []).filter(entry => !isHiddenAgent(entry))
 }
 
 export function normalizeOperatorCatalog(entries) {
@@ -24,6 +25,7 @@ export function normalizeOperatorCatalog(entries) {
       id: entry.id,
       name: entry.name,
       rarity: Number(entry.rarity),
+      spOf: entry.spOf || entry.sp_of || null,
       prof: profs[0] || '',
       subProf: canonicalSubProf(subProfs[0]),
       games: Array.isArray(entry.games) ? entry.games.slice() : []

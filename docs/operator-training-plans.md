@@ -79,7 +79,7 @@ plan 字段映射：`id,name,source,operator_ids,excluded_operator_ids,targets`�
 
 读取不存在的 workspace 返回默认结构与 `revision:0`，不会创建业务数据。首次写入仅允许 `expected_revision:0`。每次成功写入修订号递增；更新/导入在同一事务中完成。revision 冲突返回 HTTP 409 `training_workspace_revision_conflict`，不得静默覆盖。
 
-工作区可包含零张清单；此时 `active_plan_id` 为 `null`。`id=favorites` 在存在时必须唯一且 source 为 favorites，其 `targets` 必须为空；删除后可由空工作区的首张清单建议重建。自建计划 source 必须为 custom、ID 唯一且稳定。名称去除首尾空白后 1..40 字；拒绝重复成员 ID、非法 source、未知 ID、非法 schema、与清单不匹配的 active_plan_id。历练 fh/ds/yy 范围 1..12，experience 范围 1..8。目标 level 0..100、elite 0..17、star_level 0..31，均为整数，修为目标还应符合等级上限 `min(17,max(0,floor(level/5)-3))`；客户端以当前档案进度为显示下限。
+工作区可包含零张清单；此时 `active_plan_id` 为 `null`。`id=favorites` 在存在时必须唯一且 source 为 favorites，其 `targets` 必须为空；删除后可由空工作区的首张清单建议重建。自建计划 source 必须为 custom、ID 唯一且稳定。名称去除首尾空白后 1..40 字；拒绝重复成员 ID、非法 source、未知 ID、非法 schema、与清单不匹配的 active_plan_id。历练 fh/ds/yy 范围 1..12，experience 范围 1..8。目标 level 0..100、elite 0..17、star_level 普通 0..31、SP 0..5，均为整数，修为目标还应符合等级上限 `min(17,max(0,floor(level/5)-3))`；客户端以当前档案进度为显示下限。
 
 错误建议：400 `invalid_training_workspace` / `unsupported_training_workspace_version`，401 未登录，403 子账号不可访问，409 修订冲突，409 `training_workspace_migration_conflict`。上限/配额若后端需要新增，须先在契约说明数值并补齐前端反馈，不得默默截断计划或成员。
 
@@ -105,3 +105,19 @@ plan 字段映射：`id,name,source,operator_ids,excluded_operator_ids,targets`�
 - 清单中存在未知密探时，编辑器给出清理提示，重新保存后所有已失效 ID 不再出现于成员、排除项或目标中。
 - 刷新恢复、子账号隔离、跨页修订冲突、存储失败、未知版本不覆盖均有验证。
 - 后端阶段额外验证账号授权、并发 PUT、导入幂等、迁移失败可重试、不覆盖已有云端数据、已有 v2/v3 与默认目标接口兼容。
+
+## 7. SP / 电影培养口径（2026-10-05）
+
+- 以公共目录 `spOf/sp_of` 识别电影形态，筛选「电影」与数字绝密档独立。fallback 目录保留同一关系；不依赖 ID 后缀。
+- 同一清单内，本体和全部 SP 的等级/修为分别取最大目标，共享需求只计一次。优先展示在所选本体卡；未选本体则展示在一个所选 SP 卡，并标注归属。只选 SP 时也读取本体当前进度和本体材料路径。缺失本体目录时显示不可估算，不虚构材料。
+- 完成态按共享最大目标判断，避免本体较低目标已完成时把组内未完成的共享需求移出总账；星级仍按各自目标判断。
+- SP 星级范围为 0..5，默认目标为当前星级，使用直接星级输入/选择；没有普通化极节点、觉醒选项或快捷化极按钮。专属星级材料未知时标明不可估算，不计入普通心纸、金钱和耗时，不能宣称全部材料已备齐。历史 SP 心纸库存也不进入心纸总账。
+- 历史错误星级目标只在显示时限制；用户显式保存 workspace 时裁至 0..5，读取不会静默改写存储。本次不批量迁移旧计划。
+
+库存 fallback 生成脚本支持旧 `OPERATORS[]` 和后端目录数组，必须保留 `spOf`：
+
+```sh
+node scripts/build-inventory-catalog.mjs <items.json> ../BackEndV3-Share/src/main/resources/operator/operators.json
+```
+
+这是维护时生成命令，不是前端运行时跨仓依赖。生成会更新目录文件，应核对来源与 diff 后再提交；不要用缺失关系的旧源覆盖 SP 关系。

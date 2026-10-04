@@ -1,6 +1,6 @@
 import { ITEM_CATALOG, AGENT_CATALOG } from './catalog.js'
 import { FRONTEND_HIDDEN_ITEM_IDS, sortItemsByGameOrder } from './itemSections.js'
-import { HIDDEN_AGENT_IDS } from './agentManifest.js'
+import { isHiddenAgent } from './agentManifest.js'
 import { isDispatchReward, staminaCostOf } from './exchange.js'
 import { businessDate } from '../../utils/businessDay.js'
 
@@ -52,10 +52,7 @@ export function manualAcquisitionChannel(channel, customChannel) {
 }
 
 function isSpAgent(entity) {
-  return entity?.entity_type === 'agent' && (
-    HIDDEN_AGENT_IDS.has(entity.id) ||
-    entity.sp_of != null || entity.spOf != null || /sp$/i.test(entity.id)
-  )
+  return entity?.entity_type === 'agent' && isHiddenAgent(entity)
 }
 
 export function rewardOptionsForChannel(channel, entities, fallbackType = 'item') {

@@ -47,6 +47,7 @@ test('服务端公共目录可直接生成包含新增密探的心纸清单', fu
     id: 'char_126_new',
     name: '新密探',
     rarity: 5,
+    spOf: null,
     prof: '阳',
     subProf: '神纪',
     games: ['如鸢']

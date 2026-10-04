@@ -209,6 +209,7 @@ test('筛选激活判定与实际过滤条件同源', function () {
 test('品质选项按品质从高到低排列且各页共用同一份', function () {
   assert.deepEqual(OPERATOR_RARITY_OPTIONS, [
     { value: 'all', label: '全部' },
+    { value: 'movie', label: '电影' },
     { value: 5, label: '绝密' },
     { value: 4, label: '机密' },
     { value: 3, label: '隐密' }

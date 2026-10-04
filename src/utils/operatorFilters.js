@@ -1,3 +1,4 @@
+import { matchesOperatorQuality } from './operatorForms.js'
 // 密探 属性(prof) / 从属(subProf) 匹配与选项推导 —— operator 页 / quick 页共用
 import { OPERATOR_STAR_LEVEL_AWAKEN } from './operatorStarDisplay.js'
 
@@ -151,19 +152,20 @@ export function subProfOptions(ops) {
 // 图鉴 / 当前养成 / 快捷录入 / 养成规划共用这一份，避免各页顺序与文案分叉。
 export const OPERATOR_RARITY_OPTIONS = [
   { value: 'all', label: '全部' },
+  { value: 'movie', label: '电影' },
   { value: 5, label: '绝密' },
   { value: 4, label: '机密' },
   { value: 3, label: '隐密' }
 ]
 
-export const OPERATOR_RARITY_LABELS = { 3: '隐密', 4: '机密', 5: '绝密' }
+export const OPERATOR_RARITY_LABELS = { 3: '隐密', 4: '机密', 5: '绝密', movie: '电影' }
 
 // 图鉴列表的筛选口径：必须与图鉴实际展示的列表保持同一套条件，
 // 否则“筛选出 N 位密探”会与列表数量不一致。
 export function matchesManifestFilters(entry, filters) {
   if (!entry) return false
   const f = filters || {}
-  if (f.rarityFilter != null && f.rarityFilter !== 'all' && Number(entry.rarity) !== Number(f.rarityFilter)) return false
+  if (!matchesOperatorQuality(entry, f.rarityFilter)) return false
   if (!matchesProfSubFilter(entry, f.profFilter, f.subProfFilter)) return false
   if (f.manifestFilter === 'owned' && !entry.owned) return false
   if (f.manifestFilter === 'missing' && entry.owned) return false

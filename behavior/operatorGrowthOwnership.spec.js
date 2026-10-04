@@ -50,3 +50,32 @@ it('等级修为非零但星级未拥有时，规划不标完成、不显示快�
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
 })
+
+
+it('电影目标使用直接星级，不显示普通心纸和节点，并保留共享规划说明', async () => {
+  plannerApi.getTrainingWorkspace.mockResolvedValue({
+    schema_version: 1, account_id: 'acc', revision: 1, active_plan_id: 'plan',
+    plans: [{ id: 'plan', name: '电影清单', source: 'custom', operator_ids: ['movie'], excluded_operator_ids: [],
+      targets: { movie: { level: 100, elite: 17, star_level: 31 } } }],
+  })
+  const wrapper = mount(Tracker, {
+    props: { accountId: 'acc', isLoggedIn: true, quickUpgrade: vi.fn(),
+      catalogEntries: [{ id: 'base', name: '本体', prof: '风', subProf: '神纪', rarity: 4 },
+        { id: 'movie', name: '电影形态', spOf: 'base', prof: '阳', subProf: '神纪', rarity: 5 }],
+      currentEntries: [{ id: 'base', level: 90, elite: 16, starLevel: 31 }, { id: 'movie', level: 90, elite: 16, starLevel: 2 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  const card = wrapper.get('.growth-card')
+  expect(card.text()).toContain('2 星')
+  expect(card.text()).toContain('按本体路径计入')
+  expect(card.text()).toContain('电影星级材料暂不支持估算')
+  expect(card.text()).not.toContain('心纸')
+  expect(card.find('.tracker-star-trigger').exists()).toBe(false)
+  const input = card.get('[aria-label="电影形态的目标星级"]')
+  expect(input.attributes('max')).toBe('5')
+  expect(input.element.value).toBe('5')
+  expect(card.find('[aria-label*="快捷提升化极"]').exists()).toBe(false)
+  expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+  wrapper.unmount()
+})

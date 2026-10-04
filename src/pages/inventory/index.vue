@@ -1877,7 +1877,7 @@ import {
   agentMatchesGame,
   buildAgentGroups,
   filterAgentEntries,
-  HIDDEN_AGENT_IDS,
+  isHiddenAgent,
   normalizeOperatorCatalog,
   sortAgentEntries,
   visibleAgentEntries,
@@ -2765,7 +2765,7 @@ const stockEditEntries = computed(function () {
   visibleCurrentEntries.value.forEach(function (item) {
     if (
       !ids.has(item.id) &&
-      !(entityType.value === "agent" && HIDDEN_AGENT_IDS.has(item.id))
+      !(entityType.value === "agent" && isHiddenAgent(operatorCatalog.value.find(entry => entry.id === item.id) || item))
     )
       entries.push(item);
   });
