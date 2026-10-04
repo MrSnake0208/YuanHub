@@ -74,6 +74,47 @@ describe('FeedbackPlaza', () => {
 
     expect(wrapper.get('.plaza-state.empty').text()).toContain('暂时还没有公开的反馈')
   })
+
+  it.each([['type', 0, 'BUG'], ['status', 1, 'COMPLETED']])('%s无结果使用筛选空态，清除后保留排序并回第一页', async (_, index, value) => {
+    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
+    const wrapper = render(FeedbackPlaza); await flushPromises()
+    await wrapper.findAll('.feedback-status-tabs button')[0].trigger('click'); await flushPromises()
+    const previousSort = api.listPublicFeedback.mock.lastCall[0].sort
+    await wrapper.findAll('.feedback-filter select')[index].setValue(value); await flushPromises()
+    expect(wrapper.get('.plaza-state.empty').text()).toContain('当前筛选没有找到')
+    expect(wrapper.get('.plaza-state.empty').text()).not.toContain('暂时还没有公开')
+    await wrapper.get('.plaza-state.empty .feedback-button').trigger('click'); await flushPromises()
+    expect(api.listPublicFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, type: undefined, status: undefined, keyword: undefined, sort: previousSort }))
+    expect(wrapper.findAll('.feedback-filter select').every(select => select.element.value === '')).toBe(true)
+    expect(wrapper.get('.plaza-state.empty').text()).toContain('暂时还没有公开')
+  })
+
+  it('清除关键词同时取消待执行搜索，纯空格不算筛选', async () => {
+    vi.useFakeTimers()
+    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
+    const wrapper = render(FeedbackPlaza); await flushPromises()
+    await wrapper.get('input[type="search"]').setValue('   ')
+    expect(wrapper.get('.plaza-state.empty').text()).toContain('暂时还没有公开')
+    await wrapper.get('input[type="search"]').setValue('不存在的反馈')
+    await wrapper.get('.plaza-state.empty .feedback-button').trigger('click'); await flushPromises()
+    const count = api.listPublicFeedback.mock.calls.length
+    await vi.advanceTimersByTimeAsync(400); await flushPromises()
+    expect(api.listPublicFeedback).toHaveBeenCalledTimes(count)
+    expect(wrapper.get('input[type="search"]').element.value).toBe('')
+    expect(api.listPublicFeedback).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, keyword: undefined }))
+  })
+
+  it('筛选请求失败保留条件与重试，重试成功后才显示筛选空态', async () => {
+    api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
+    const wrapper = render(FeedbackPlaza); await flushPromises()
+    api.listPublicFeedback.mockRejectedValueOnce(new Error('offline'))
+    await wrapper.findAll('.feedback-filter select')[0].setValue('BUG'); await flushPromises()
+    expect(wrapper.find('.plaza-state.empty').exists()).toBe(false)
+    expect(wrapper.get('.plaza-state.error').text()).toContain('反馈加载失败')
+    expect(wrapper.findAll('.feedback-filter select')[0].element.value).toBe('BUG')
+    await wrapper.get('.plaza-state.error button').trigger('click'); await flushPromises()
+    expect(wrapper.get('.plaza-state.empty').text()).toContain('当前筛选没有找到')
+  })
 })
 
 describe('FeedbackSupportButton', () => {
@@ -168,7 +209,7 @@ describe('反馈中心公开广场', () => {
     api.listPublicFeedback.mockResolvedValue({ items: [], total: 0 })
     const wrapper = render(FeedbackPlaza, { props: { initialType: 'FEATURE' } })
     await flushPromises()
-    await wrapper.get('.plaza-state.empty button').trigger('click')
+    await wrapper.get('.plaza-state.empty .feedback-primary-action').trigger('click')
     expect(routing.push).toHaveBeenCalledWith({ path: '/feedback', query: { new: '1', type: 'FEATURE' } })
   })
 })

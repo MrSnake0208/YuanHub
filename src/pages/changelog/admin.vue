@@ -15,16 +15,17 @@
         <aside class="entry-list" aria-label="更新日志条目">
           <div class="list-head">
             <strong>日志条目</strong>
-            <button v-if="canWrite" type="button" class="button primary compact" :disabled="loading" @click="startNew">新建</button>
+            <button v-if="canWrite" type="button" class="button primary compact" :disabled="operationLocked" @click="startNew">新建</button>
           </div>
           <p v-if="loading" class="list-state">正在加载…</p>
-          <p v-else-if="loadError" class="list-state error" role="alert">{{ loadError }}<button type="button" @click="load(page)">重试</button></p>
+          <p v-else-if="loadError" class="list-state error" role="alert">{{ loadError }}<button type="button" :disabled="operationLocked" @click="reloadSelected">重试</button></p>
           <p v-else-if="!entries.length" class="list-state">暂无条目</p>
           <button
             v-for="entry in entries"
             :key="entry.id"
             type="button"
             class="entry-button"
+            :disabled="operationLocked"
             :class="{ active: selected && selected.id === entry.id }"
             @click="selectEntry(entry)"
           >
@@ -32,9 +33,9 @@
             <span><i :class="statusClass(entry)">{{ statusLabel(entry) }}</i>{{ formatTime(entry.updatedAt) }}</span>
           </button>
           <footer v-if="entries.length" class="pager">
-            <button type="button" :disabled="loading || page <= 1" @click="changePage(page - 1)">上一页</button>
+            <button type="button" :disabled="operationLocked || page <= 1" @click="changePage(page - 1)">上一页</button>
             <span>第 {{ page }} 页</span>
-            <button type="button" :disabled="loading || !hasNext" @click="changePage(page + 1)">下一页</button>
+            <button type="button" :disabled="operationLocked || !hasNext" @click="changePage(page + 1)">下一页</button>
           </footer>
         </aside>
 
@@ -47,7 +48,7 @@
                 <small v-if="selected.id">文档版本 {{ selected.version }}</small>
                 <small v-else>尚未保存</small>
               </div>
-              <button v-if="conflict" type="button" class="button secondary" @click="reloadSelected">重新加载</button>
+              <button v-if="conflict" type="button" class="button secondary" :disabled="operationLocked" @click="reloadSelected">重新加载</button>
             </header>
 
             <p v-if="conflict" class="notice error" role="alert">内容已被其他人修改。本地内容仍保留，请复制需要的内容后重新加载。</p>
@@ -76,6 +77,7 @@
               <input ref="imageInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" @change="uploadImage">
             </div>
             <EditorContent v-if="editor" class="editor-surface" :editor="editor" aria-label="更新日志正文编辑器" />
+            <p v-if="busy || uploading" class="notice" role="status">{{ busy ? '正在保存操作结果，请稍候…' : '正在处理图片，请稍候…' }}</p>
             <p v-if="actionError" class="notice error" role="alert">{{ actionError }}</p>
 
             <section v-if="preview" class="preview" aria-label="发布效果预览">
@@ -85,15 +87,15 @@
 
             <footer class="actions">
               <button type="button" class="button secondary" @click="preview = !preview">{{ preview ? '收起预览' : '预览' }}</button>
-              <template v-if="editable">
-                <button type="button" class="button secondary" :disabled="busy || conflict" @click="saveDraft">{{ busy ? '处理中…' : '保存草稿' }}</button>
-                <button v-if="working && working.state === 'DRAFT' && !dirty" type="button" class="button primary" :disabled="busy || conflict" @click="submit">提交审核</button>
+              <template v-if="canEditDraft">
+                <button type="button" class="button secondary" :disabled="operationLocked" @click="saveDraft">{{ busy ? '处理中…' : '保存草稿' }}</button>
+                <button v-if="working && working.state === 'DRAFT' && !dirty" type="button" class="button primary" :disabled="operationLocked" @click="submit">提交审核</button>
               </template>
               <template v-if="reviewable">
-                <button type="button" class="button danger" :disabled="busy || conflict" @click="reject">退回</button>
-                <button type="button" class="button primary" :disabled="busy || conflict" @click="approve">审核通过并发布</button>
+                <button type="button" class="button danger" :disabled="operationLocked || conflict" @click="reject">退回</button>
+                <button type="button" class="button primary" :disabled="operationLocked || conflict" @click="approve">审核通过并发布</button>
               </template>
-              <button v-if="canWithdraw" type="button" class="button danger ghost" :disabled="busy || conflict" @click="withdraw">撤回公开版本</button>
+              <button v-if="canWithdraw" type="button" class="button danger ghost" :disabled="operationLocked || conflict" @click="withdraw">撤回公开版本</button>
             </footer>
           </template>
         </div>
@@ -103,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import AdminBackLink from '../../components/admin/AdminBackLink.vue'
@@ -123,12 +125,14 @@ import { IMAGE_UPLOAD_PROFILES, prepareImageUpload } from '../../utils/imageUplo
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { changelogExtensions, emptyChangelogBody, isChangelogBodyEmpty } from '../../utils/changelogContent.js'
+import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 
 const entries = ref([])
 const selected = ref(null)
 const loading = ref(true)
 const busy = ref(false)
 const uploading = ref(false)
+const switching = ref(false)
 const imageUploadStage = ref('')
 const dirty = ref(false)
 const conflict = ref(false)
@@ -140,17 +144,25 @@ const hasNext = ref(false)
 const imageInput = ref(null)
 const form = reactive({ title: '', versionLabel: '' })
 let applyingContent = false
+let mounted = false
+let loadRequestId = 0
+let operationId = 0
+let contentRevision = 0
 
 const currentUserId = computed(function () {
   const user = auth.userInfo || {}
   return String(user.id || user.userId || user.user_id || '')
 })
+const identity = computed(() => auth.accessToken ? currentUserId.value : '')
+const operationLocked = computed(() => loading.value || busy.value || uploading.value || switching.value)
+const confirmDiscard = useUnsavedChanges(computed(() => dirty.value || busy.value || uploading.value), '更新日志草稿')
 const canWrite = computed(function () { return hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.CHANGELOG_WRITE) })
 const canReview = computed(function () { return hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.CHANGELOG_REVIEW) })
 const working = computed(function () { return selected.value && selected.value.workingRevision })
-const editable = computed(function () {
+const canEditDraft = computed(function () {
   return canWrite.value && !conflict.value && (!working.value || working.value.state === 'DRAFT')
 })
+const editable = computed(() => canEditDraft.value && !operationLocked.value)
 const reviewable = computed(function () {
   return canReview.value && working.value && working.value.state === 'IN_REVIEW' && working.value.authoredBy !== currentUserId.value
 })
@@ -167,7 +179,7 @@ const editor = useEditor({
 
 watch([editable, editor], function ([value, instance], oldValues) {
   if (!instance) return
-  instance.setEditable(value)
+  instance.setEditable(value, false)
   if (!oldValues || !oldValues[1]) {
     applyingContent = true
     instance.commands.setContent(displayedRevision(selected.value)?.body || emptyChangelogBody())
@@ -192,25 +204,40 @@ function formatTime(value) {
 function markDirty() { dirty.value = true }
 
 async function load(nextPage, preferredId) {
+  const requestId = ++loadRequestId
+  const userId = identity.value
   loading.value = true
   loadError.value = ''
   try {
     const result = await listAdminChangelog({ page: nextPage })
+    if (!mounted || requestId !== loadRequestId || userId !== identity.value) return
     entries.value = result.data
     page.value = result.page
     hasNext.value = result.hasNext
     const next = result.data.find(function (item) { return item.id === preferredId }) || result.data[0] || null
     if (next) applyEntry(next)
-    else if (!selected.value || selected.value.id) selected.value = null
+    else applyEntry(null)
   } catch (error) {
+    if (!mounted || requestId !== loadRequestId || userId !== identity.value) return
     loadError.value = error?.message || '更新日志加载失败'
-  } finally { loading.value = false }
+  } finally {
+    if (mounted && requestId === loadRequestId && userId === identity.value) loading.value = false
+  }
 }
 
-function confirmDiscard() { return !dirty.value || window.confirm('当前有未保存修改，确定放弃吗？') }
-function selectEntry(entry) { if (confirmDiscard()) applyEntry(entry) }
-function changePage(nextPage) { if (confirmDiscard()) load(nextPage) }
+async function switchEditor(action) {
+  if (operationLocked.value) return
+  const userId = identity.value
+  const revision = contentRevision
+  switching.value = true
+  try {
+    if (await confirmDiscard() && mounted && userId === identity.value && revision === contentRevision) await action()
+  } finally { if (mounted && userId === identity.value) switching.value = false }
+}
+function selectEntry(entry) { if (entry !== selected.value) return switchEditor(() => applyEntry(entry)) }
+function changePage(nextPage) { return switchEditor(() => load(nextPage)) }
 function applyEntry(entry) {
+  const contentVersion = ++contentRevision
   selected.value = entry
   const revision = displayedRevision(entry)
   form.title = revision?.title || ''
@@ -220,14 +247,16 @@ function applyEntry(entry) {
   preview.value = false
   applyingContent = true
   if (editor.value) editor.value.commands.setContent(revision?.body || emptyChangelogBody())
-  nextTick(function () { applyingContent = false; dirty.value = false })
+  dirty.value = false
+  nextTick(function () { if (contentVersion === contentRevision) applyingContent = false })
 }
 function startNew() {
-  if (!confirmDiscard()) return
-  applyEntry({ id: '', version: 0, workingRevision: null, publishedRevision: null, updatedAt: null })
-  // 新建日志默认填入当前产品版本，仍允许手动改成历史版本标签。
-  form.versionLabel = productVersionLabel
-  nextTick(function () { dirty.value = true })
+  return switchEditor(function () {
+    applyEntry({ id: '', version: 0, workingRevision: null, publishedRevision: null, updatedAt: null })
+    // 新建日志默认填入当前产品版本，仍允许手动改成历史版本标签。
+    form.versionLabel = productVersionLabel
+    dirty.value = true
+  })
 }
 
 function validateForm() {
@@ -244,71 +273,119 @@ function replaceEntry(entry) {
   applyEntry(entry)
 }
 async function mutate(action) {
+  if (operationLocked.value || !selected.value) return
+  const requestId = ++operationId
+  const entry = selected.value
+  const userId = identity.value
+  const ownsResult = () => mounted && requestId === operationId && userId === identity.value && entry === selected.value
   busy.value = true
   actionError.value = ''
-  try { replaceEntry(await action()) }
+  try {
+    const result = await action()
+    if (ownsResult()) replaceEntry(result)
+  }
   catch (error) {
+    if (!ownsResult()) return
     actionError.value = error?.message || '操作失败'
     if (error?.status === 409 || error?.code === 'version_conflict') conflict.value = true
-  } finally { busy.value = false }
+  } finally { if (mounted && requestId === operationId && userId === identity.value) busy.value = false }
 }
 async function saveDraft() {
+  if (!editable.value || !selected.value) return
   const error = validateForm()
   if (error) { actionError.value = error; return }
   await mutate(function () {
     return selected.value.id ? saveChangelogDraft(selected.value.id, localPayload()) : createChangelogDraft(localPayload())
   })
 }
-function submit() { mutate(function () { return submitChangelog(selected.value.id, selected.value.version) }) }
+function submit() { if (canEditDraft.value && working.value?.state === 'DRAFT' && !dirty.value) mutate(function () { return submitChangelog(selected.value.id, selected.value.version) }) }
 function approve() {
+  if (operationLocked.value || conflict.value || !reviewable.value) return
   if (window.confirm('审核通过后将立即公开此版本，确定发布吗？')) mutate(function () { return approveChangelog(selected.value.id, selected.value.version) })
 }
 function reject() {
+  if (operationLocked.value || conflict.value || !reviewable.value) return
   const reason = window.prompt('请填写退回原因')
   if (reason?.trim()) mutate(function () { return rejectChangelog(selected.value.id, selected.value.version, reason.trim()) })
 }
-function withdraw() {
-  if (window.confirm('撤回后公开页面将不再显示此条目，确定继续吗？')) mutate(function () { return withdrawChangelog(selected.value.id, selected.value.version) })
+async function withdraw() {
+  if (operationLocked.value || !canWithdraw.value) return
+  const entry = selected.value
+  const userId = identity.value
+  switching.value = true
+  try {
+    if (!await confirmDiscard() || !mounted || entry !== selected.value || userId !== identity.value) return
+    if (!window.confirm('撤回后公开页面将不再显示此条目，确定继续吗？')) return
+    switching.value = false
+    await mutate(function () { return withdrawChangelog(entry.id, entry.version) })
+  } finally { if (mounted && userId === identity.value) switching.value = false }
 }
-function reloadSelected() { load(page.value, selected.value.id) }
+function reloadSelected() { return switchEditor(() => load(page.value, selected.value?.id)) }
 
 function setLink() {
+  if (!editable.value) return
   const current = editor.value.getAttributes('link').href || ''
   const href = window.prompt('请输入链接地址（http/https 或站内 / 路径）', current)
   if (href === null) return
   if (!href.trim()) editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
   else editor.value.chain().focus().extendMarkRange('link').setLink({ href: href.trim() }).run()
 }
-function chooseImage() { imageInput.value?.click() }
+function chooseImage() { if (editable.value) imageInput.value?.click() }
 async function uploadImage(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
-  if (!file) return
+  if (!file || !editable.value || !selected.value) return
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { actionError.value = '仅支持 JPG、PNG、WebP 图片'; return }
   const alt = window.prompt('请填写图片说明，便于无法查看图片的用户理解内容', '')
   if (alt === null) return
+  const requestId = ++operationId
+  const entry = selected.value
+  const userId = identity.value
+  const ownsResult = () => mounted && requestId === operationId && userId === identity.value && entry === selected.value
   uploading.value = true
   imageUploadStage.value = 'optimizing'
   actionError.value = ''
   try {
     const optimized = await prepareImageUpload(file, IMAGE_UPLOAD_PROFILES.CHANGELOG)
+    if (!ownsResult()) return
     imageUploadStage.value = 'uploading'
     const media = await uploadMedia(optimized.file)
+    if (!ownsResult()) return
     if (!media?.id || !media?.url) throw new Error('图片上传响应无效')
     editor.value.chain().focus().setImage({ src: media.url, alt: alt.trim(), title: null, media_id: media.id }).run()
   } catch (error) {
+    if (!ownsResult()) return
     actionError.value = error?.message || '图片上传失败'
   } finally {
-    imageUploadStage.value = ''
-    uploading.value = false
+    if (ownsResult()) {
+      imageUploadStage.value = ''
+      uploading.value = false
+    }
   }
 }
 function editImageAlt() {
+  if (!editable.value) return
   const alt = window.prompt('图片说明', editor.value.getAttributes('image').alt || '')
   if (alt !== null) editor.value.chain().focus().updateAttributes('image', { alt: alt.trim() }).run()
 }
 
-onMounted(function () { load(1) })
+watch(identity, function () {
+  loadRequestId += 1
+  operationId += 1
+  entries.value = []
+  hasNext.value = false
+  page.value = 1
+  busy.value = false
+  uploading.value = false
+  switching.value = false
+  imageUploadStage.value = ''
+  loadError.value = ''
+  loading.value = false
+  applyEntry(null)
+  if (mounted && identity.value) load(1)
+}, { flush: 'sync' })
+onMounted(function () { mounted = true; load(1) })
+onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId += 1 })
 </script>
 
 <style scoped>
@@ -320,7 +397,8 @@ onMounted(function () { load(1) })
 .list-head,.panel-head,.actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line) }
 .list-head strong { font-family: var(--font-s); font-size: 18px }
 .entry-button { width: 100%; display: grid; gap: 7px; padding: 14px 18px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; cursor: pointer }
-.entry-button:hover,.entry-button.active { background: var(--paper) }
+.entry-button:hover:not(:disabled),.entry-button.active { background: var(--paper) }
+.entry-button:disabled { cursor: default }
 .entry-button.active { box-shadow: inset 3px 0 var(--accent) }
 .entry-title { font-weight: 800; overflow-wrap: anywhere }
 .entry-button span:last-child { display: flex; align-items: center; gap: 8px; color: var(--ink-60); font-size: 11px }
