@@ -95,3 +95,24 @@ it('同一筛选组件呈现在册、独立弃置和显式全部的计数与选�
   expect(wrapper.emitted('update:statusFilter')).toEqual([['discarded']])
   wrapper.unmount()
 })
+
+
+it('紧凑模式常驻搜索和状态，更多筛选展开后可使用原有属性条件', async () => {
+  const wrapper = mount(OperatorFilterDossier, { props: {
+    compact: true, searchable: true, profOptions: ['阳'], statusOptions: [{ value: 'all', label: '全部' }],
+  } })
+  expect(wrapper.get('.current-filter-search input').isVisible()).toBe(true)
+  expect(wrapper.get('.pf-status-row').isVisible()).toBe(true)
+  expect(wrapper.get('.pf-prof-row').isVisible()).toBe(false)
+  await wrapper.get('.current-filter-search input').setValue('杨修')
+  expect(wrapper.emitted('update:searchQuery')).toEqual([['杨修']])
+  await wrapper.get('.dossier-more').trigger('click')
+  expect(wrapper.get('.pf-prof-row').isVisible()).toBe(true)
+  await wrapper.findAll('.pf-prof-row button')[1].trigger('click')
+  expect(wrapper.emitted('update:profFilter')).toEqual([['阳']])
+  await wrapper.setProps({ profFilter: '阳', hasFilters: true })
+  await wrapper.get('.dossier-more').trigger('click')
+  expect(wrapper.get('.dossier-more').text()).toContain('已启用')
+  expect(wrapper.get('.pf-prof-row').isVisible()).toBe(false)
+  expect(wrapper.props('profFilter')).toBe('阳')
+})

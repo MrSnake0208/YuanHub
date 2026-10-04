@@ -3,77 +3,36 @@
     <IslandSidebar />
 
     <main id="main-content" class="inventory-main">
-      <!-- HERO -->
-      <header class="hero">
-        <div class="wrap inventory-hero-container">
-          <div class="crumb">
-            <span class="pill fill">库存</span>
-            <span class="pill">追踪</span>
-            <span class="pill">统计</span>
-          </div>
-          <h1>广陵库房<span class="small">清点 · 归档 · 溯源</span></h1>
-          <p class="hero-sub">
-            代号鸢 / 如鸢
-            库存与奖励台账：支持多子账号分别清点，同步当前背包数量，按月按周统计各类物品与角色碎片获得量，支持导入导出完整交换档案（v2）。
-          </p>
-          <div class="hero-stats inventory-hero-stats">
-            <div>
-              <div class="k">追踪目录更新日期</div>
-              <div class="v catalog-date">
-                <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time>
-              </div>
+      <CompactToolHeader title="背包库存">
+        <template #account>
+          <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
+            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
+        </template>
+        <template #actions>
+          <button type="button" class="btn primary inventory-entry" :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext || editingStock"
+            @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />录入库存</button>
+          <details class="tool-more">
+            <summary>更多</summary>
+            <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
+              <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" @click="toggleInventoryArchive">
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
+              </button>
             </div>
-            <div>
-              <div class="k">背包道具</div>
-              <div class="v">
-                {{ itemCatalogCount }}<small class="stat-unit">种</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">密探心纸</div>
-              <div class="v">
-                {{ agentGameCatalogCount }}<small class="stat-unit">种</small>
-              </div>
-            </div>
-            <div v-if="auth.isLoggedIn" class="is-authed">
-              <div class="k">已登录</div>
-              <div class="v">云端存储<small>可导入导出</small></div>
-            </div>
-            <div v-else class="is-authed">
-              <div class="k">未登录</div>
-              <div class="v">
-                只读<small><router-link to="/login">去登录</router-link></small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+          </details>
+        </template>
+        <template #help>
+          <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
+        </template>
+      </CompactToolHeader>
 
       <section>
         <div class="wrap">
-          <DataAccountContextBar
-            :accounts="accounts"
-            :account-id="accountId"
-            :game="agentGameFilter"
-            :is-logged-in="auth.isLoggedIn"
-            :loading="accountsLoading"
-            :error="accountError"
-            description="当前库存、奖励流水与统计数据均归属此账号。"
-          >
-            <template #actions>
-              <button
-                type="button"
-                class="act-btn archive-toggle"
-                :disabled="!auth.isLoggedIn || editingStock"
-                :aria-expanded="showArchive"
-                @click="toggleInventoryArchive"
-              >
-                <Archive :size="15" aria-hidden="true" />{{
-                  showArchive ? "收起数据交换" : "数据交换"
-                }}
-              </button>
-            </template>
-          </DataAccountContextBar>
+          <div class="tool-summary" aria-label="库存概览">
+            <span>最近完整盘点 <time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><template v-else-if="!auth.isLoggedIn">登录后查看</template><template v-else-if="!accountId">请选择账号</template><template v-else>{{ loading ? '读取中…' : error ? '读取失败' : '暂无记录' }}</template></span>
+            <span>道具 <b>{{ itemCatalogCount }}</b> 种</span>
+            <span>心纸 <b>{{ agentGameCatalogCount }}</b> 种</span>
+            <span>目录更新 <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></span>
+          </div>
 
           <ArchiveExchangePanel
             v-if="showArchive && !editingStock"
@@ -197,6 +156,7 @@
             class="panel"
           >
             <div
+              v-if="editingStock || stockSaveNotice"
               class="manifest-intro"
               :class="{ 'is-editing': editingStock }"
               v-reveal
@@ -218,28 +178,6 @@
                   （默认按游戏背包内顺序，可通过筛选按钮自行更改） · 已修改
                   <b>{{ stockChangedCount }}</b> 项
                 </p>
-                <p v-else-if="entityType === 'item'" class="scope-guidance">
-                  点击分类旁的「编辑」调整局部数量，或盘点全部道具建立库存基准。
-                </p>
-                <p v-else>心纸数量不对？立即手动修改</p>
-                <button
-                  v-if="!editingStock && entityType === 'item'"
-                  type="button"
-                  class="scope-edit-agent scope-edit-stock"
-                  :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext"
-                  @click="startStockEdit()"
-                >
-                  <Pencil :size="14" aria-hidden="true" />盘点全部道具
-                </button>
-                <button
-                  v-if="!editingStock && entityType === 'agent'"
-                  type="button"
-                  class="scope-edit-agent"
-                  :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext"
-                  @click="startStockEdit()"
-                >
-                  <Pencil :size="14" aria-hidden="true" />编辑心纸库存
-                </button>
                 <div v-if="editingStock" class="manifest-edit-actions">
                   <label v-if="needsFullStockConfirmation" class="stock-baseline-confirmation">
                     <input
@@ -1828,6 +1766,7 @@ import {
   Star,
   X,
 } from "@lucide/vue";
+import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
@@ -3296,6 +3235,13 @@ function scrollToStockEditor() {
   });
 }
 
+async function openStockEntry() {
+  if (activeTab.value === "manifest") return startStockEdit();
+  const seq = inventoryContextSeq;
+  await setTab("manifest");
+  if (!inventoryDisposed && seq === inventoryContextSeq && activeTab.value === "manifest") startStockEdit();
+}
+
 function startStockEdit(scopeEntries, scopeName) {
   if (!inventoryAccountReady.value || loading.value || error.value || savingStock.value || currentLoadedContext.value !== stockContext.value) return;
   if (entityType.value === "agent" && (agentCatalogLoading.value || agentCatalogError.value)) return;
@@ -4187,11 +4133,6 @@ onBeforeUnmount(function () {
   cursor: not-allowed;
 }
 
-/* —— 复用全局 CSS 变量（不新增色值），对齐广陵账房（cart.vue）版式 —— */
-.page-inventory .hero::after {
-  content: "库存";
-}
-
 .inventory-tabs {
   position: sticky;
   top: 24px;
@@ -4203,7 +4144,7 @@ onBeforeUnmount(function () {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 5px;
-  margin-top: 32px;
+  margin-top: 12px;
   box-shadow: 0 12px 28px -22px rgba(73, 59, 44, 0.5);
 }
 .inventory-tabs button {
@@ -7398,53 +7339,6 @@ onBeforeUnmount(function () {
   background: rgba(166, 81, 74, 0.16);
 }
 
-/* Hero 目录日期与深色块文字 */
-.inventory-hero-container {
-  container: inventory-hero / inline-size;
-}
-.hero-stats.inventory-hero-stats {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-.inventory-hero-stats > div {
-  min-width: 0;
-  padding: 16px 12px 20px;
-  border-right: none;
-  border-bottom: 1px solid var(--line);
-}
-.inventory-hero-stats > div:last-child {
-  border-bottom: none;
-}
-.inventory-hero-stats .v small {
-  display: block;
-  margin: 6px 0 0;
-}
-.inventory-hero-stats .v .stat-unit {
-  display: inline;
-  margin-left: 4px;
-}
-@container inventory-hero (min-width: 340px) {
-  .hero-stats.inventory-hero-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-  .inventory-hero-stats > div:nth-child(odd) {
-    border-right: 1px solid var(--line);
-  }
-  .inventory-hero-stats > div:nth-last-child(-n + 2) {
-    border-bottom: none;
-  }
-}
-@container inventory-hero (min-width: 820px) {
-  .hero-stats.inventory-hero-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
-  .inventory-hero-stats > div:nth-child(n) {
-    border-bottom: none;
-    border-right: 1px solid var(--line);
-  }
-  .inventory-hero-stats > div:last-child {
-    border-right: none;
-  }
-}
 .stock-baseline-confirmation {
   display: flex;
   grid-column: 1 / -1;
@@ -7460,23 +7354,6 @@ onBeforeUnmount(function () {
   flex: none;
   accent-color: var(--tea);
 }
-.hero-stats .catalog-date {
-  font-size: 20px;
-  line-height: 1.4;
-  letter-spacing: 0;
-}
-.hero-stats .catalog-date time {
-  font-family: var(--font-d);
-  font-weight: 900;
-  white-space: nowrap;
-}
-.hero-stats div.is-authed .v small a {
-  color: var(--cream);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* 移动端二级导航：对齐顶部主导航的图标 + 文字 + 选中块 */
 @media (max-width: 1080px) {
   .inventory-main {
     padding-bottom: 0;
@@ -7568,18 +7445,6 @@ onBeforeUnmount(function () {
 @media (max-width: 640px) {
   .inventory-main > section {
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  }
-  .hero-stats .catalog-date {
-    font-size: 19px;
-    line-height: 1.3;
-  }
-  .hero-stats .catalog-date time {
-    white-space: nowrap;
-  }
-  .hero-stats .v .stat-unit {
-    display: inline;
-    margin: 0 0 0 4px;
-    vertical-align: baseline;
   }
   .archive-toggle {
     width: 100%;
@@ -8457,5 +8322,16 @@ onBeforeUnmount(function () {
 }
 @media (max-width: 360px) {
   .report-book-switch.acquired-type-switch > button { min-height: 32px; padding-inline: 6px; font-size: 10px }
+}
+
+.inventory-main > section { padding-top: 0; }
+.manifest-toolbar { margin-top: 12px; }
+.manifest-bar-summary .mf-stats { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px 14px; }
+.manifest-bar-summary .mf-stat { display: inline-flex; flex-direction: row; align-items: baseline; gap: 4px; }
+.manifest-bar-summary .mf-num { font-size: 14px; }
+.manifest-bar-summary .mf-progress { display: none; }
+@media (max-width: 640px) {
+  .manifest-bar { padding: 10px 12px; }
+  .manifest-bar-summary { gap: 0; }
 }
 </style>

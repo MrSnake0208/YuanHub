@@ -3,70 +3,33 @@
     <IslandSidebar />
 
     <main id="main-content" class="cart-main">
-      <!-- HERO -->
-      <header class="hero">
-        <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">礼包</span>
-            <span class="pill">计算器</span>
-            <span class="pill">购物车</span>
+      <CompactToolHeader title="礼包预算">
+        <template #account>
+          <div class="cart-header-context">
+            <div class="cart-switch" role="group" aria-label="游戏版本">
+              <button :class="{ on: version === 'daihao' }" :aria-pressed="version === 'daihao'" @click="setVersion('daihao')">代号鸢（{{ daihaoCount }}件）</button>
+              <button :class="{ on: version === 'ru' }" :aria-pressed="version === 'ru'" @click="setVersion('ru')">如鸢（{{ ruCount }}件）</button>
+            </div>
+            <span class="cart-currency">结算 CNY</span>
           </div>
-          <h1>广陵账房<span class="small">精打细算 · 运筹帷幄</span></h1>
-          <p class="hero-sub">
-            代号鸢 / 如鸢
-            礼包比价与购物清单：自动换算汇率、累计积分抽数、解锁累充奖励档位，一键导出账单图片。
-          </p>
-          <div class="author-badge" v-reveal>
-            <span class="ab-mark">©</span>
-            <span class="ab-txt"
-              >独立创作 · 著作权归作者 <b>binary</b> 所有</span
-            >
-          </div>
-          <div class="hero-stats">
-            <div>
-              <div class="k">收录礼包</div>
-              <div class="v">142<small>份</small></div>
-            </div>
-            <div>
-              <div class="k">覆盖版本</div>
-              <div class="v">2<small>代号鸢 / 如鸢</small></div>
-            </div>
-            <div>
-              <div class="k">奖励档位</div>
-              <div class="v">28<small>档</small></div>
-            </div>
-            <div>
-              <div class="k">当前合计</div>
-              <div class="v">¥{{ totalCny.toFixed(2) }}<small>CNY</small></div>
-            </div>
-          </div>
-        </div>
-      </header>
+        </template>
+        <template #actions>
+          <button type="button" class="btn primary cart-plan-list" @click="openPlanList"><FolderOpen :size="16" aria-hidden="true" />我的方案</button>
+          <details class="tool-more">
+            <summary>更多</summary>
+            <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()"><button type="button" class="btn ghost cart-plan-save" @click="openPlanSave"><Save :size="16" aria-hidden="true" />保存方案</button></div>
+          </details>
+        </template>
+        <template #help>
+          <p>搜索并选择礼包，按汇率换算人民币预算，累计积分抽数和累充奖励，保存方案或导出账单图片。两个版本的购物清单独立保留，切换版本不会清空。</p>
+          <p>独立创作 · 著作权归作者 binary 所有；数据以游戏内商店为准。</p>
+        </template>
+      </CompactToolHeader>
 
       <section>
         <div class="wrap">
-          <div class="toolbar" v-reveal>
-            <div class="cart-switch">
-              <button
-                :class="{ on: version === 'daihao' }"
-                @click="setVersion('daihao')"
-              >
-                代号鸢（{{ daihaoCount }}件）
-              </button>
-              <button
-                :class="{ on: version === 'ru' }"
-                @click="setVersion('ru')"
-              >
-                如鸢（{{ ruCount }}件）
-              </button>
-            </div>
-            <div class="sp"></div>
-            <button class="btn ghost" style="flex: none" @click="openPlanSave">
-              <Save :size="16" />保存方案
-            </button>
-            <button class="btn ghost" style="flex: none" @click="openPlanList">
-              <FolderOpen :size="16" />我的方案
-            </button>
+          <details v-if="version === 'daihao'" class="cart-rate-settings">
+            <summary>汇率设置 · 1 USD = {{ exchangeRate }} CNY</summary>
             <div
               v-if="version === 'daihao'"
               class="rate-bar"
@@ -86,7 +49,7 @@
               />
               <span class="cart-rate-hint">参考汇率，可修改</span>
             </div>
-          </div>
+          </details>
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
@@ -96,21 +59,12 @@
           <div class="cart-filters" v-reveal>
             <div class="cart-search-row">
               <label class="cart-search">搜索礼包<input v-model="query" type="search" placeholder="输入礼包名称" /></label>
+              <label class="cart-category">分类<select :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
               <label class="cart-sort">排序<select v-model="sortMode"><option value="default">默认顺序</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
               <label class="cart-selected"><input v-model="selectedOnly" type="checkbox" />仅看已选</label>
             </div>
-            <div class="row">
-              <Filter :size="15" class="f-ic" />
-              <button
-                v-for="cat in categories"
-                :key="cat"
-                class="chip"
-                :class="{ on: activeCategory === cat }"
-                @click="setCategory(cat)"
-              >
-                {{ cat }}
-              </button>
-            </div>
+            <details class="cart-more-filters">
+              <summary>更多筛选<span v-if="drawFilter !== 'all'"> · 已启用</span></summary>
             <div class="row">
               <span class="f-dot"></span>
               <button
@@ -123,6 +77,7 @@
                 {{ f.label }}
               </button>
             </div>
+            </details>
           </div>
 
           <div class="cart-layout">
@@ -252,12 +207,12 @@ import {
   Plus,
   Trash2,
   Receipt,
-  Filter,
   Calculator,
   Download,
   Save,
   FolderOpen,
 } from "@lucide/vue";
+import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import PackageCard from "../../components/cart/PackageCard.vue";
@@ -1038,36 +993,25 @@ function openPlanSave() {
 .cart-operation-message{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:var(--z-toast);width:max-content;max-width:calc(100vw - 32px);margin:0;padding:10px 12px;border-radius:10px;background:var(--yellow);color:var(--ink);font-size:13px;box-shadow:0 8px 24px rgba(73,59,44,.2)}
 .cart-operation-message[role="alert"]{background:var(--surface);color:var(--rouge);border:1px solid var(--rouge)}
 @media (max-width:1180px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
-/* ---- 作者版权醒目标识（广陵账房 · binary） ---- */
-.author-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  background: var(--tea);
-  color: var(--cream);
-  border-radius: 999px;
-  padding: 9px 18px 9px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  box-shadow: 0 12px 26px -14px rgba(73, 59, 44, 0.5);
-}
-.ab-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  flex: none;
-  background: var(--yellow);
-  color: var(--ink);
-  display: grid;
-  place-items: center;
-  font-family: var(--font-d);
-  font-weight: 900;
-  font-size: 15px;
-}
-.author-badge b {
-  color: var(--yellow);
-  font-weight: 900;
+.cart-main > section { padding-top: 0; }
+.cart-header-context { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.cart-header-context .cart-switch { flex: 0 1 auto; width: auto; flex-wrap: wrap; }
+.cart-header-context .cart-switch button { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
+.cart-currency { color: var(--ink-60); font-size: 13px; white-space: nowrap; }
+.cart-rate-settings { margin-top: 8px; color: var(--ink-60); font-size: 13px; }
+.cart-rate-settings > summary, .cart-more-filters > summary { display: flex; align-items: center; min-height: 44px; width: fit-content; gap: 4px; cursor: pointer; font-size: 13px; }
+.cart-rate-settings > summary::after, .cart-more-filters > summary::after { content: '⌄'; }
+.cart-rate-settings .rate-bar { flex-wrap: wrap; margin-block: 4px 10px; gap: 8px; }
+.cart-version-hint { margin: 0 0 8px; }
+.cart-filters { margin-top: 8px; }
+.cart-search-row { gap: 8px 12px; }
+.cart-category { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.cart-category select { min-height: 44px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
+.cart-sort, .cart-category { flex: 0 1 auto; min-width: 0; }
+.cart-sort select, .cart-category select { min-width: 0; }
+.cart-more-filters .row { padding-bottom: 8px; }
+@media(max-width:767px) {
+  .cart-sort, .cart-category { width: auto; flex: 1 1 140px; }
+  .cart-category select { flex: 1; }
 }
 </style>

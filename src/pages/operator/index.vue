@@ -3,72 +3,37 @@
     <IslandSidebar />
 
     <main class="operator-main">
-      <!-- HERO -->
-      <header class="hero">
-        <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">密探</span>
-            <span class="pill">养成</span>
-            <span class="pill">图鉴</span>
-            <span class="pill">归档</span>
-          </div>
-          <h1>密探养成<span class="small">图鉴 · 快照 · 归档</span></h1>
-          <p class="hero-sub">
-            如鸢 / 代号鸢
-            密探养成档案：多个子账号分别维护，记录修为、星级、等级、命盘与星石，支持
-            v2 / v3 交换档案。
-          </p>
-          <div class="hero-stats">
-            <div>
-              <div class="k">密探目录</div>
-              <div class="v">{{ catalogCount }}<small>位</small></div>
+      <CompactToolHeader title="密探名册">
+        <template #account>
+          <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"
+            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
+        </template>
+        <template #actions>
+          <router-link class="btn primary" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="showImport = false">录入密探</router-link>
+          <details class="tool-more">
+            <summary>更多</summary>
+            <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
+              <router-link class="act-btn ghost" to="/operator/share">查看他人 BOX</router-link>
+              <button type="button" class="act-btn ghost workspace-tabs-toggle" :aria-expanded="!accountWorkspaceCompact" aria-controls="operator-account-workspace"
+                @click="accountWorkspaceCompact = !accountWorkspaceCompact">{{ accountWorkspaceCompact ? '分享与数据交换' : '收起分享与数据交换' }}</button>
+              <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn" :aria-expanded="showArchive" @click="toggleArchive">
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
+              </button>
             </div>
-            <div>
-              <div class="k">已招募</div>
-              <div class="v">{{ manifestOwned }}<small>位</small></div>
-            </div>
-            <div>
-              <div class="k">所属游戏</div>
-              <div class="v">{{ gameFilter }}</div>
-            </div>
-            <div v-if="auth.isLoggedIn" class="is-authed">
-              <div class="k">已同步</div>
-              <div class="v">云端<small>可导入导出</small></div>
-            </div>
-            <div v-else class="is-authed">
-              <div class="k">未登录</div>
-              <div class="v">
-                只读<small><router-link to="/login">去登录</router-link></small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+          </details>
+        </template>
+        <template #help>
+          <p>按游戏账号记录等级、修为、星级、命盘与星石。首次建档或快速补录可从「录入密探」进入，分享与 v2 / v3 档案交换在「更多」中。</p>
+          <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</p>
+        </template>
+      </CompactToolHeader>
 
       <section>
         <div class="wrap">
-          <DataAccountContextBar
-            :accounts="accounts"
-            :account-id="accountId"
-            :game="gameFilter"
-            :is-logged-in="auth.isLoggedIn"
-            :loading="accountsLoading"
-            :error="accountError"
-            description="当前密探养成、培养计划与导入数据均归属此账号。"
-          >
-            <template #actions>
-              <button
-                type="button"
-                class="act-btn archive-toggle"
-                :disabled="!auth.isLoggedIn"
-                :aria-expanded="showArchive"
-                @click="toggleArchive"
-              >
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起导入/导出" : "导入/导出 JSON" }}
-              </button>
-            </template>
-          </DataAccountContextBar>
-
+          <div class="tool-summary" aria-label="密探概览">
+            <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位 · {{ manifestPercent }}</span>
+            <span>目录更新 {{ catalogVersion || '本地兜底' }}</span>
+          </div>
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
             <p>采集结果中有需要核对的内容；可靠分区可能已写入当前档案。</p>
@@ -131,27 +96,11 @@
             >
               养成规划{{ growthTrackingEnabled ? '' : ' · 即将上线' }}
             </button>
-            <span class="sp"></span>
-            <router-link class="act-btn ghost admin-link" to="/operator/share"
-              >查看他人 BOX</router-link
-            >
-            <router-link
-              class="act-btn ghost admin-link"
-              :to="operatorEntryState ? quickHref : quickSupplementHref"
-              @click="showImport = false"
-              >{{ operatorEntryState ? '首次 / 快捷录入' : '快速补录' }}</router-link
-            >
-            <button
-              type="button"
-              class="act-btn ghost admin-link workspace-tabs-toggle"
-              :aria-expanded="!accountWorkspaceCompact"
-              aria-controls="operator-account-workspace"
-              @click="accountWorkspaceCompact = !accountWorkspaceCompact"
-            >{{ accountWorkspaceCompact ? '展开分享与数据交换' : '收起分享与数据交换' }}</button>
           </div>
 
           <!-- 分享与数据交换面板；账号选择统一在个人中心。 -->
           <AccountWorkspace
+            v-show="!accountWorkspaceCompact"
             id="operator-account-workspace"
             tour-target="operator-workspace"
             class="operator-account-workspace"
@@ -480,24 +429,6 @@
             :class="{ 'is-active': activeTab === 'catalog' }"
           >
             <div class="manifest-bar" v-reveal>
-              <div class="mf-stats">
-                <div class="mf-stat">
-                  <b class="mf-num">{{ catalogCount }}</b
-                  ><span class="mf-k">目录</span>
-                </div>
-                <div class="mf-stat">
-                  <b class="mf-num">{{ manifestOwned }}</b
-                  ><span class="mf-k">已招募</span>
-                </div>
-                <div class="mf-stat">
-                  <b class="mf-num">{{ manifestPercent }}</b
-                  ><span class="mf-k">招募率</span>
-                </div>
-              </div>
-              <div class="mf-progress" title="拥有进度">
-                <i :style="{ width: manifestPercent }"></i>
-              </div>
-              <span class="sp"></span>
               <input
                 ref="catalogSearchInput"
                 v-model.trim="manifestSearch"
@@ -530,7 +461,9 @@
             </div>
 
             <!-- 属性 / 职业 / 品质 筛选 -->
-            <div class="prof-filter catalog-prof-filter" v-reveal>
+            <details class="catalog-more-filters">
+              <summary>更多筛选<span v-if="profFilter !== 'all' || subProfFilter !== 'all' || rarityFilter !== 'all' || manifestGrowthFilters.levelEnabled || manifestGrowthFilters.eliteEnabled || manifestGrowthFilters.starEnabled"> · 已启用</span></summary>
+            <div class="prof-filter catalog-prof-filter">
               <div class="pf-row pf-prof-row">
                 <span class="pf-label">属性</span>
                 <div
@@ -605,6 +538,7 @@
               </div>
               <OperatorGrowthFilters v-model="manifestGrowthFilters" />
             </div>
+            </details>
 
             <div v-if="catalogLoading" class="state">正在加载密探图鉴…</div>
             <div
@@ -817,66 +751,18 @@
             class="panel"
             :class="{ 'is-active': activeTab === 'current' }"
           >
-            <div class="current-workbench-head" v-reveal>
-              <div class="current-workbench-copy">
-                <div class="current-ledger-heading">
-                  <span class="section-kicker">当前账号 · 养成台账</span>
+            <div v-if="ownedCurrentEntries.length" class="current-workbench-summary">
                   <div class="ledger-share-control">
                   <button v-if="isOperatorSharing" type="button" class="ledger-share-badge is-sharing" aria-label="分享中，点击复制分享链接" title="点击复制分享链接" @click="copyLedgerShare">分享中</button>
                   <span v-else class="ledger-share-badge">{{ ledgerShareStatus }}</span>
                   <span v-if="shareCopyFeedback" class="ledger-share-feedback" role="status">{{ shareCopyFeedback }}</span>
                   </div>
-                </div>
-                <div class="current-workbench-title">
-                  <h2>{{ currentAccountName }}</h2>
-                  <span class="current-game-tag">{{ gameFilter }}</span>
-                </div>
-                <p v-if="ledgerCardIsV2">
-                  点按虚线数值可直接修改；快捷提升会核对并扣除库存
-                </p>
-                <template v-else>
-                  <p>
-                    点按虚线数值可直接修改数据。快捷提升按钮会真实扣除库存；手动校正与完整编辑不扣库存
-                  </p>
-                  <p>
-                    密探面板自动计算机制源自
-                    <a
-                      class="current-credit-link"
-                      href="https://wiki.biligame.com/yuan/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      >bwiki编辑部<span aria-hidden="true">↗</span></a
-                    >
-                    及技术外援，因为计算精度问题，数据会存在个位数误差，仅供殿下们参考
-                  </p>
-                </template>
-              </div>
-              <div
-                class="current-workbench-index"
-                aria-label="当前养成状态概览"
-              >
-                <div class="current-index-total">
-                  <b>{{ ownedCurrentEntries.length }}</b
-                  ><span>已招募</span>
-                </div>
-                <dl class="current-status-index" :style="{ '--current-status-columns': discardedEnabled ? 4 : 3 }">
-                  <div class="status-growing">
-                    <dt>养成中</dt>
-                    <dd>{{ currentStatusCounts.growing }}</dd>
-                  </div>
-                  <div class="status-graduated">
-                    <dt>已毕业</dt>
-                    <dd>{{ currentStatusCounts.graduated }}</dd>
-                  </div>
-                  <div class="status-inactive">
-                    <dt>养老中</dt>
-                    <dd>{{ currentStatusCounts.inactive }}</dd>
-                  </div>
-                  <div v-if="discardedEnabled" class="status-discarded">
-                    <dt>已弃置</dt>
-                    <dd>{{ currentStatusCounts.discarded }}</dd>
-                  </div>
-                </dl>
+
+              <div class="tool-summary current-status-summary" aria-label="当前养成状态概览">
+                <span>养成中 <b>{{ currentStatusCounts.growing }}</b></span>
+                <span>已毕业 <b>{{ currentStatusCounts.graduated }}</b></span>
+                <span>养老中 <b>{{ currentStatusCounts.inactive }}</b></span>
+                <span v-if="discardedEnabled" class="status-discarded">已弃置 <b>{{ currentStatusCounts.discarded }}</b></span>
               </div>
             </div>
 
@@ -983,6 +869,9 @@
 
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
+              compact
+              searchable
+              v-model:search-query="currentSearch"
               v-if="ownedCurrentEntries.length > 0 && currentLoadedKey === accountId + ':' + gameFilter"
               v-reveal
               :result-count="filteredCurrent.length"
@@ -3084,6 +2973,7 @@ import {
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
@@ -3152,6 +3042,7 @@ import {
   isOperatorOwned,
   matchesManifestFilters,
   matchesOperatorGrowthFilters,
+  matchesOperatorSearch,
   matchesProfSubFilter,
   operatorStarNumber,
   subProfList,
@@ -3238,6 +3129,7 @@ watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
 let operatorPageDisposed = false;
 const manifestSearch = ref("");
+const currentSearch = ref("");
 const catalogSearchInput = ref(null);
 const manifestFilter = ref("all");
 const rarityFilter = ref("all");
@@ -4848,6 +4740,7 @@ const activeUpgradeReadyIds = computed(function () {
 
 function matchesCurrentFilters(entry) {
   return (
+    matchesOperatorSearch(entry, currentSearch.value) &&
     matchesOperatorQuality(entry, rarityFilter.value) &&
     matchesProfSubFilter(entry, profFilter.value, subProfFilter.value) &&
     matchesOperatorStatus(operatorStatus(entry), workbenchStatusFilter.value) &&
@@ -4956,6 +4849,7 @@ const hasGrowthDrafts = computed(function () {
 
 const hasCurrentFilters = computed(function () {
   return (
+    Boolean(currentSearch.value.trim()) ||
     rarityFilter.value !== "all" ||
     profFilter.value !== "all" ||
     subProfFilter.value !== "all" ||
@@ -4967,6 +4861,7 @@ const hasCurrentFilters = computed(function () {
 });
 
 function resetCurrentFilters() {
+  currentSearch.value = "";
   rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
@@ -15544,6 +15439,20 @@ onBeforeUnmount(function () {
 .ledger-status-menu.status-discarded .ledger-status-button { background: var(--cream); color: var(--tea); border: 1px dashed var(--tea); }
 .batch-status-action.discarded { border: 1px dashed var(--tea); background: var(--cream); color: var(--tea); }
 .current-status-index > .status-discarded::before { background: var(--tea); }
+
+/* Compact tool workspace: leave all filtering and account state with the page. */
+.operator-main > section { padding-top: 0; }
+.operator-tabs { margin-top: 12px; flex-wrap: wrap; }
+.operator-tabs button { white-space: nowrap; }
+.operator-entry-guide { margin-block: 10px; padding: 10px 12px; }
+.catalog-more-filters { margin-top: 8px; }
+.catalog-more-filters > summary { width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 13px; }
+.catalog-more-filters > summary::before { content: '+'; margin-right: 4px; }
+.catalog-more-filters[open] > summary::before { content: '−'; }
+.manifest-bar { margin-top: 12px; padding: 10px 12px; }
+.manifest-bar .mf-search { flex: 1 1 220px; width: auto; }
+.current-workbench-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.current-status-summary { margin: 0; }
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>

@@ -1,6 +1,7 @@
 <template>
   <div
     class="prof-filter current-prof-filter operator-filter-dossier"
+    :class="{ 'is-compact': compact }"
     role="search"
     :aria-label="`筛选${contextLabel}`"
   >
@@ -10,11 +11,15 @@
         <span>{{ description }}</span>
       </div>
       <div class="current-filter-tools">
+        <label v-if="compact && searchable" class="current-filter-search">
+          <Search :size="13" aria-hidden="true" /><span class="sr-only">搜索{{ contextLabel }}</span>
+          <input :value="searchQuery" type="search" autocomplete="off" :placeholder="searchPlaceholder" @input="$emit('update:searchQuery', $event.target.value)" />
+        </label>
         <span class="current-filter-result" aria-live="polite">
           <b>{{ resultCount }}</b> / {{ totalCount }} 位
         </span>
         <slot name="primary-tool">
-          <label v-if="searchable" class="current-filter-search">
+          <label v-if="searchable && !compact" class="current-filter-search">
             <Search :size="13" aria-hidden="true" />
             <span class="sr-only">搜索{{ contextLabel }}</span>
             <input
@@ -35,70 +40,75 @@
           <RotateCcw :size="13" aria-hidden="true" />重置
         </button>
         <slot name="secondary-tool" />
+        <button v-if="compact" type="button" class="dossier-more" :aria-expanded="filtersOpen" :aria-controls="filtersId" @click="filtersOpen = !filtersOpen">更多筛选{{ hasFilters ? ' · 已启用' : '' }}</button>
       </div>
     </div>
 
     <div class="current-filter-rows">
-      <div class="pf-row pf-prof-row">
-        <span class="pf-label">属性</span>
-        <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
-          <button
-            type="button"
-            :aria-pressed="profFilter === 'all'"
-            :class="{ on: profFilter === 'all' }"
-            @click="$emit('update:profFilter', 'all')"
-          >
-            全部
-          </button>
-          <button
-            v-for="prof in profOptions"
-            :key="prof"
-            type="button"
-            :aria-pressed="profFilter === prof"
-            :class="{ on: profFilter === prof }"
-            @click="$emit('update:profFilter', prof)"
-          >
-            <img v-if="profIcon(prof)" :src="profIcon(prof)" alt="" aria-hidden="true" />{{ prof }}
-          </button>
+      <div v-show="!compact || filtersOpen" :id="filtersId" class="dossier-extra">
+        <div class="pf-row pf-prof-row">
+          <span class="pf-label">属性</span>
+          <div class="mf-filter" role="group" :aria-label="`按属性筛选${contextLabel}`">
+            <button
+              type="button"
+              :aria-pressed="profFilter === 'all'"
+              :class="{ on: profFilter === 'all' }"
+              @click="$emit('update:profFilter', 'all')"
+            >
+              全部
+            </button>
+            <button
+              v-for="prof in profOptions"
+              :key="prof"
+              type="button"
+              :aria-pressed="profFilter === prof"
+              :class="{ on: profFilter === prof }"
+              @click="$emit('update:profFilter', prof)"
+            >
+              <img v-if="profIcon(prof)" :src="profIcon(prof)" alt="" aria-hidden="true" />{{ prof }}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="pf-row pf-subprof-row">
-        <span class="pf-label">职业</span>
-        <div class="mf-filter" role="group" :aria-label="`按职业筛选${contextLabel}`">
-          <button
-            type="button"
-            :aria-pressed="subProfFilter === 'all'"
-            :class="{ on: subProfFilter === 'all' }"
-            @click="$emit('update:subProfFilter', 'all')"
-          >
-            全部
-          </button>
-          <button
-            v-for="subProf in subProfOptions"
-            :key="subProf"
-            type="button"
-            :aria-pressed="subProfFilter === subProf"
-            :class="{ on: subProfFilter === subProf }"
-            @click="$emit('update:subProfFilter', subProf)"
-          >
-            {{ subProf }}
-          </button>
+        <div class="pf-row pf-subprof-row">
+          <span class="pf-label">职业</span>
+          <div class="mf-filter" role="group" :aria-label="`按职业筛选${contextLabel}`">
+            <button
+              type="button"
+              :aria-pressed="subProfFilter === 'all'"
+              :class="{ on: subProfFilter === 'all' }"
+              @click="$emit('update:subProfFilter', 'all')"
+            >
+              全部
+            </button>
+            <button
+              v-for="subProf in subProfOptions"
+              :key="subProf"
+              type="button"
+              :aria-pressed="subProfFilter === subProf"
+              :class="{ on: subProfFilter === subProf }"
+              @click="$emit('update:subProfFilter', subProf)"
+            >
+              {{ subProf }}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
-        <span class="pf-label">品质</span>
-        <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
-          <button
-            v-for="option in rarityOptions"
-            :key="option.value"
-            type="button"
-            :aria-pressed="rarityFilter === option.value"
-            :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
-            @click="$emit('update:rarityFilter', option.value)"
-          >{{ option.label }}</button>
+        <div v-if="rarityOptions.length" class="pf-row pf-rarity-row">
+          <span class="pf-label">品质</span>
+          <div class="mf-filter rarity-filter" role="group" :aria-label="`按品质筛选${contextLabel}`">
+            <button
+              v-for="option in rarityOptions"
+              :key="option.value"
+              type="button"
+              :aria-pressed="rarityFilter === option.value"
+              :class="[option.value === 'all' ? '' : 'rarity-r' + option.value, { on: rarityFilter === option.value }]"
+              @click="$emit('update:rarityFilter', option.value)"
+            >{{ option.label }}</button>
+          </div>
         </div>
+
+        <OperatorGrowthFilters v-if="showGrowthFilters && compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
       </div>
 
       <div class="pf-row pf-status-row">
@@ -118,7 +128,7 @@
         </div>
       </div>
 
-      <OperatorGrowthFilters v-if="showGrowthFilters" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
+      <OperatorGrowthFilters v-if="showGrowthFilters && !compact" :model-value="growthFilters" @update:model-value="$emit('update:growthFilters', $event)" />
     </div>
 
     <slot name="footer" />
@@ -126,10 +136,14 @@
 </template>
 
 <script setup>
+import { ref, useId } from 'vue'
 import { RotateCcw, Search } from '@lucide/vue'
 import OperatorGrowthFilters from './OperatorGrowthFilters.vue'
 
+const filtersOpen = ref(false)
+const filtersId = useId()
 const props = defineProps({
+  compact: Boolean,
   title: { type: String, default: '筛选案卷' },
   description: { type: String, default: '' },
   contextLabel: { type: String, default: '当前养成' },
@@ -169,6 +183,7 @@ function statusCount(value) {
 </script>
 
 <style scoped>
+.dossier-extra { display: contents; }
 .operator-filter-dossier {
   display: flex;
   flex-direction: column;
@@ -437,4 +452,8 @@ function statusCount(value) {
   .current-status-filter button { min-height: 44px; line-height: 1.3; white-space: normal; }
   .pf-prof-row .mf-filter button img { display: none; }
 }
+.dossier-more { align-self: flex-start; min-height: 44px; margin: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.is-compact .current-filter-title { display: none; }
+.is-compact .current-filter-tools { flex: 1; width: 100%; justify-content: flex-start; }
+.is-compact .current-filter-search { flex: 1 1 180px; }
 </style>
