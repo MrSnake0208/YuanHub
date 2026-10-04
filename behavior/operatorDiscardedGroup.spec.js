@@ -90,7 +90,7 @@ it('关闭弃置时默认全部，单条及批量只提供旧三态，仍能读�
   expect(wrapper.get('.current-status-filter .status-all').text()).toBe('全部4')
   expect(wrapper.find('.current-status-filter .status-discarded').exists()).toBe(false)
   expect(wrapper.find('.current-status-filter .status-registered').exists()).toBe(false)
-  expect(wrapper.find('.current-status-index .status-discarded').exists()).toBe(false)
+  expect(wrapper.find('.current-status-summary .status-discarded').exists()).toBe(false)
   expect(wrapper.find('.ledger-status-help').exists()).toBe(false)
   expect(card(wrapper, 'a').findAll('[role="option"]').map(option => option.text())).toEqual(['养成中', '已毕业', '养老中'])
   expect(card(wrapper, 'd').get('summary').text()).toContain('已弃置')
@@ -271,4 +271,17 @@ it('保存中刷新不提前移动卡片；页面卸载后忽略保存结果', a
   pending.resolve({ operator_id: 'a', growth_state: 'discarded', revision: 2 }); await flushPromises()
   const cached = JSON.parse(localStorage.getItem('yuanhub:operator-workbench:statuses:accA:如鸢'))
   expect(cached.a).toBe('growing')
+})
+
+
+it('养成总览的紧凑搜索与状态筛选组合，重置恢复列表且不写数据', async () => {
+  const wrapper = await render()
+  await wrapper.get('.current-filter-search input').setValue('b')
+  expect(cards(wrapper).map(node => node.get('h3').text())).toEqual(['b'])
+  await group(wrapper, 'growing')
+  expect(cards(wrapper)).toHaveLength(0)
+  await wrapper.get('.current-filter-reset').trigger('click')
+  expect(wrapper.get('.current-filter-search input').element.value).toBe('')
+  expect(cards(wrapper)).toHaveLength(3)
+  noObjectiveWrites()
 })

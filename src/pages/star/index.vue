@@ -2,80 +2,34 @@
   <div class="page-star">
     <IslandSidebar />
     <main id="main-content" class="star-main">
-      <header class="hero">
-        <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">星石</span><span class="pill">识别</span
-            ><span class="pill">养成</span><span class="pill">经验</span>
-          </div>
-          <h1>星石养成<span class="small">背包 · 整理 · 计划</span></h1>
-          <p class="hero-sub">
-            如鸢 / 代号鸢 星石背包整理：本地导入截图并完成 OCR
-            与人工核对，管理当前背包、养成计划与经验星曜，并在登录后同步当前账号数据。
-          </p>
-          <div class="notice star-availability-note" role="note">
-            <span class="tag">当前可用</span>
-            <p><b>手机和电脑网页端均可使用。</b>你可以在这里导入截图、核对识别结果并整理背包。首次 OCR 会在本机加载识别资源，手机端请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
-          </div>
-          <div class="author-badge" v-reveal>
-            <span class="ab-mark">©</span
-            ><span class="ab-txt"
-              >独立创作 · 著作权归作者 <b>Drifty Yan</b> 所有</span
-            >
-          </div>
-          <div class="hero-stats">
-            <div>
-              <div class="k">当前背包</div>
-              <div class="v">
-                {{ summary.currentCount }}<small class="stat-unit">颗</small>
-              </div>
+      <CompactToolHeader title="星石背包">
+        <template #account>
+          <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
+            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
+        </template>
+        <template #actions>
+          <button type="button" class="btn primary" @click="setTab('import')">导入截图</button>
+          <details class="tool-more">
+            <summary>更多</summary>
+            <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
+              <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
+                :aria-expanded="showArchive" @click="showArchive = !showArchive">
+                <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起导入/导出' : '导入/导出 JSON' }}
+              </button>
             </div>
-            <div>
-              <div class="k">养成计划</div>
-              <div class="v">
-                {{ summary.planCount }}<small class="stat-unit">颗</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">所属游戏</div>
-              <div class="v game-stat">{{ summary.gameVersion }}</div>
-            </div>
-            <div class="is-authed">
-              <div class="k">登录状态</div>
-              <div class="v" v-if="auth.isLoggedIn">已登录</div>
-              <div class="v" v-else>未登录<small>可先在本机使用，<router-link to="/login">登录后同步</router-link></small></div>
-            </div>
-          </div>
-        </div>
-      </header>
+          </details>
+        </template>
+        <template #help>
+          <p>导入截图并核对识别结果后，管理当前背包、养成计划与经验星曜。未登录时可先在本机使用，登录后同步当前账号数据。</p>
+          <p>独立创作 · 著作权归作者 Drifty Yan 所有。</p>
+        </template>
+      </CompactToolHeader>
       <section>
         <div class="wrap">
-          <DataAccountContextBar
-            :accounts="accounts"
-            :account-id="accountId"
-            :game="accountGame"
-            :is-logged-in="auth.isLoggedIn"
-            :loading="accountsLoading"
-            :error="accountError"
-            description="当前星石背包、养成计划与同步数据均归属此账号。"
-          >
-            <template #actions>
-              <button
-                type="button"
-                class="act-btn archive-toggle"
-                :disabled="
-                  !productReady ||
-                  accountsLoading ||
-                  starExchangeBusy ||
-                  !selectedHostAccount()
-                "
-                :aria-expanded="showArchive"
-                @click="showArchive = !showArchive"
-              >
-                <Archive :size="15" aria-hidden="true" />{{ showArchive ? "收起导入/导出" : "导入/导出 JSON" }}
-              </button>
-            </template>
-          </DataAccountContextBar>
+          <div class="tool-summary" aria-label="星石概览">
+            <span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span>
+            <span class="star-privacy-note">截图在本机识别与保存；登录后同步背包数据。</span>
+          </div>
           <ArchiveExchangePanel
             v-if="showArchive"
             description="可导出当前账号的星石背包、养成计划和经验星曜 JSON；导入会替换这些数据。备份不含密探佩戴关系和 OCR 证据。"
@@ -154,8 +108,11 @@
               :class="{ on: activeTab === 'review' }"
               @click="setTab('review')"
             >
-              人工核对
+              背包与核对
             </button>
+          </div>
+          <div v-if="activeTab === 'import'" class="star-availability-note" role="note">
+            <p><b>手机和电脑网页端均可使用。</b>导入截图、核对识别结果并整理背包。首次 OCR 需在本机加载识别资源，请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
           </div>
           <div id="product-root" ref="mountRoot"></div>
           <p v-if="mountBusy && !productReady" class="yuanstar-mount-loading" role="status">正在加载星石工作区…</p>
@@ -182,6 +139,7 @@ import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Archive } from "@lucide/vue";
+import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -217,7 +175,7 @@ const accountsLoading = ref(false);
 const accountError = ref("");
 const activeTab = usePersistedTab(
   "star-tabs",
-  "import",
+  "review",
   ["import", "review"],
 );
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
@@ -740,42 +698,6 @@ onBeforeUnmount(function () {
 .star-main {
   min-height: 100vh; min-height: 100dvh;
 }
-.game-stat {
-  font-size: 21px;
-  line-height: 1.4;
-}
-.author-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  padding: 8px 15px 8px 9px;
-  border: 1px solid rgba(255, 248, 236, 0.38);
-  border-radius: 999px;
-  color: var(--cream);
-  background: var(--tea);
-  box-shadow: 0 12px 26px -14px rgba(73, 59, 44, 0.5);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-.ab-mark {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: none;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--tea);
-  background: var(--yellow);
-  font-family: var(--font-d);
-  font-size: 15px;
-  font-weight: 900;
-}
-.author-badge b {
-  color: var(--yellow);
-  font-weight: 900;
-}
 .archive-toggle {
   display: inline-flex;
   min-height: 44px;
@@ -813,7 +735,7 @@ onBeforeUnmount(function () {
 .star-exchange-preview dt { color: var(--ink-60); font-size: 11px; font-weight: 800; }
 .star-exchange-preview dd { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
 .star-sync-state {
-  margin: 10px 2px -18px;
+  margin: 10px 2px 0;
   color: var(--ink-60);
   font-size: 12px;
   font-weight: 700;
@@ -906,9 +828,7 @@ onBeforeUnmount(function () {
   font: inherit;
   cursor: pointer;
 }
-.yuanstar-mount-error button:focus-visible,
-.hero-stats .is-authed a:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-.hero-stats .is-authed a { display: inline-flex; min-height: 44px; align-items: center; }
+.yuanstar-mount-error button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 @media (max-width: 1080px) {
   .page-star #product-root :deep(.product-toast) {
     top: calc(env(safe-area-inset-top) + 12px);
@@ -970,4 +890,10 @@ onBeforeUnmount(function () {
   }
 }
 
+
+.star-main > section { padding-top: 0; }
+.star-tabs { margin-top: 12px; }
+.star-tabs button { white-space: nowrap; }
+.star-availability-note { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink-60); background: var(--surface); font-size: 13px; line-height: 1.6; }
+.star-availability-note p { margin: 0; }
 </style>

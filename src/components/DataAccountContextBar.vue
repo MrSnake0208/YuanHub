@@ -1,7 +1,7 @@
 <template>
   <section
     class="data-account-context-bar"
-    :class="{ 'is-empty': !hasAccount, 'is-loading': loading }"
+    :class="{ 'is-empty': !hasAccount, 'is-loading': loading, 'is-compact': compact }"
     role="region"
     aria-label="当前数据账号"
   >
@@ -23,7 +23,7 @@
           <strong class="account-name" :title="selectedAccount.name">{{ selectedAccount.name }}</strong>
         </div>
         <strong v-else>未选择游戏账号</strong>
-        <small>
+        <small v-if="!compact">
           <template v-if="loading">账号加载完成后会在这里显示数据归属。</template>
           <template v-else-if="!isLoggedIn">登录后会显示你的真实游戏账号与数据归属。</template>
           <template v-else-if="hasAccount">{{ description }}</template>
@@ -39,7 +39,7 @@
         class="context-action"
         :to="manageTo"
       >
-        管理游戏账号
+        {{ compact ? '切换账号' : '管理游戏账号' }}
       </router-link>
       <router-link
         v-else
@@ -60,6 +60,7 @@ import { Users } from '@lucide/vue'
 import { normalizeAccountGame } from '../store/activeAccount.js'
 
 const props = defineProps({
+  compact: { type: Boolean, default: false },
   accounts: { type: Array, default: function () { return [] } },
   accountId: { type: String, default: '' },
   game: { type: String, default: '' },
@@ -272,4 +273,12 @@ const currentPath = computed(function () {
   }
   :slotted(.act-btn) { width: 100%; min-width: 0; transform: none; }
 }
+.data-account-context-bar.is-compact { min-height: 44px; margin: 0; padding: 0; flex-direction: row; flex-wrap: wrap; gap: 4px 10px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.is-compact .context-leading { flex: 1 1 150px; align-items: center; }
+.is-compact .context-icon, .is-compact .context-kicker { display: none; }
+.is-compact .context-copy { width: 100%; }
+.is-compact .context-identity { align-items: center; }
+.is-compact .account-name, .is-compact .context-copy > strong { font-family: var(--font-b); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.is-compact .context-actions { display: flex; width: auto; flex: 0 0 auto; flex-wrap: wrap; }
+.is-compact .context-action { width: auto; padding-inline: 10px; white-space: nowrap; }
 </style>

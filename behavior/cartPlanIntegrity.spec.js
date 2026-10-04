@@ -30,12 +30,12 @@ function plan(version = 'daihao', { missing = false, localId = `${version}-local
   }
 }
 async function loadLocal(wrapper, fixture) {
-  await wrapper.findAll('.toolbar .btn.ghost')[1].trigger('click')
+  await wrapper.get('.cart-plan-list').trigger('click')
   wrapper.getComponent(PlanListDialog).vm.$emit('load-guest', fixture)
   await flushPromises()
 }
 async function save(wrapper, name, overwrite = false) {
-  await wrapper.get('.toolbar .btn.ghost').trigger('click')
+  await wrapper.get('.cart-plan-save').trigger('click')
   wrapper.getComponent(PlanSaveDialog).vm.$emit('save', { name, overwrite })
   await flushPromises()
 }
@@ -92,7 +92,7 @@ it('switching to a game without an active plan creates a new plan instead of ove
   await loadLocal(wrapper, daihao)
   await switchGame(wrapper, 1)
   await wrapper.get('.pkg-card .stepper button:last-child').trigger('click')
-  await wrapper.get('.toolbar .btn.ghost').trigger('click')
+  await wrapper.get('.cart-plan-save').trigger('click')
   expect(wrapper.getComponent(PlanSaveDialog).props('existing')).toBe(false)
   wrapper.getComponent(PlanSaveDialog).vm.$emit('save', { name: '如鸢新方案', overwrite: true })
   await flushPromises()
@@ -108,7 +108,7 @@ it('incomplete and negative FX retain the effective amount and block persistence
   await input.setValue('')
   expect(total(wrapper)).toBe('¥42.00')
   expect(input.attributes('aria-invalid')).toBe('true')
-  await wrapper.get('.toolbar .btn.ghost').trigger('click')
+  await wrapper.get('.cart-plan-save').trigger('click')
   expect(wrapper.findComponent(PlanSaveDialog).exists()).toBe(false)
   await wrapper.get('.cart-mbar .mbtn.accent').trigger('click')
   expect(html2canvas).not.toHaveBeenCalled()
@@ -169,7 +169,7 @@ it('cloud overwrite targets only the active game', async () => {
   const wrapper = render()
   const fixture = plan()
   ledger.getPlan.mockResolvedValue(fixture)
-  await wrapper.findAll('.toolbar .btn.ghost')[1].trigger('click')
+  await wrapper.get('.cart-plan-list').trigger('click')
   await flushPromises()
   wrapper.getComponent(PlanListDialog).vm.$emit('load', fixture)
   await flushPromises()
@@ -276,7 +276,7 @@ it('latest detail request wins; a detail from the previous game does not switch 
   const first = deferred(), second = deferred()
   ledger.getPlan.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
   const wrapper = render()
-  await wrapper.findAll('.toolbar .btn.ghost')[1].trigger('click')
+  await wrapper.get('.cart-plan-list').trigger('click')
   await flushPromises()
   const list = wrapper.getComponent(PlanListDialog)
   list.vm.$emit('load', { id: 'first' })
@@ -286,7 +286,7 @@ it('latest detail request wins; a detail from the previous game does not switch 
   first.resolve(plan('ru'))
   await flushPromises()
   expect(total(wrapper)).toBe('¥42.00')
-  await wrapper.findAll('.toolbar .btn.ghost')[1].trigger('click')
+  await wrapper.get('.cart-plan-list').trigger('click')
   const late = deferred()
   ledger.getPlan.mockReturnValueOnce(late.promise)
   wrapper.getComponent(PlanListDialog).vm.$emit('load', { id: 'late' })

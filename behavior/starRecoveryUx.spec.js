@@ -90,9 +90,14 @@ function deferred() {
   return { promise, resolve }
 }
 
-it('星石页入口明确网页端可用且自动采集仍在接入中', async () => {
+it('默认直接进入背包，导入入口旁保留隐私提示，识别说明仅在导入流程出现', async () => {
   const wrapper = render()
   await flushPromises()
+  expect(wrapper.get('.star-tabs [role="tab"]:last-child').attributes('aria-selected')).toBe('true')
+  expect(wrapper.find('.star-availability-note').exists()).toBe(false)
+  expect(wrapper.get('.star-privacy-note').text()).toContain('截图在本机识别与保存')
+  await wrapper.get('.compact-tool-actions .primary').trigger('click')
+  expect(wrapper.get('.star-tabs [role="tab"]').attributes('aria-selected')).toBe('true')
   const note = wrapper.get('.star-availability-note[role="note"]')
   expect(note.text()).toContain('手机和电脑网页端均可使用')
   expect(note.text()).toContain('导入截图、核对识别结果并整理背包')

@@ -170,7 +170,7 @@ it('心纸编辑沿用清单的关注、排序与分组顺序', async () => {
   const names = selector => wrapper.findAll(selector).map(node => node.get('.slot-name').text())
   const defaultOrder = names('.agent-card')
   expect(defaultOrder).toEqual(['阴密探', '火密探', '阳密探'])
-  await wrapper.get('.scope-edit-agent').trigger('click')
+  await wrapper.get('.inventory-entry').trigger('click')
   expect(names('.stock-edit-slot')).toEqual(defaultOrder)
   expect(wrapper.get('.agent-sort-control summary').text()).toContain('实装顺序')
   await wrapper.get('.manifest-edit-actions button').trigger('click')
@@ -179,7 +179,7 @@ it('心纸编辑沿用清单的关注、排序与分组顺序', async () => {
     .find(node => node.text().includes('按属性')).trigger('click')
   const groupedOrder = names('.agent-card')
   expect(groupedOrder).toEqual(['阳密探', '阴密探', '火密探'])
-  await wrapper.get('.scope-edit-agent').trigger('click')
+  await wrapper.get('.inventory-entry').trigger('click')
   expect(names('.stock-edit-slot')).toEqual(groupedOrder)
 })
 
