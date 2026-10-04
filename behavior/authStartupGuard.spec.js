@@ -4,7 +4,9 @@ import { routes } from '@/router/routes.js'
 import { authGuard } from '@/router/index.js'
 import { auth } from '@/store/auth.js'
 import { beta } from '@/store/beta.js'
+import { recruitmentAccess } from '@/store/recruitmentAccess.js'
 import { NAVIGATION_SIGNAL } from '@/utils/navigationCancellation.js'
+import { deferred } from '../test-support/factories.js'
 
 // Case 2 / Case 3 / Case 4 的路由层回归：使用真实守卫 + 真实路由表 meta，
 // 只把懒加载页面组件替换为桩组件（本测试不关心页面渲染）。
@@ -83,6 +85,7 @@ async function settle(router) {
 describe('路由守卫的登录态 / 管理权限分层', function () {
   beforeEach(function () {
     resetAuth()
+    recruitmentAccess.setIdentity('')
   })
 
   it('Case 3：首次导航（普通/公开页面）不请求也不等待管理权限接口', async function () {
@@ -112,6 +115,7 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
 
     expect(route.path).toBe('/forbidden')
     expect(route.query.from).toBe('/admin/roles')
+    expect(route.query.reason).toBe('admin-required')
     expect(backend.count(ACCESS_ME)).toBe(1)
   })
 
@@ -129,6 +133,112 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
 
     expect(route.path).toBe('/admin/roles')
     expect(backend.count(ACCESS_ME)).toBe(0)
+  })
+
+  it('管理权限读取失败时标明无法确认；恢复导航重新查权限后进入原页', async () => {
+    auth.accessToken = 'valid-token'
+    auth.userInfo = { id: 'u1' }
+    let unavailable = true
+    const backend = installFetch([
+      { path: ACCESS_ME, method: 'GET', respond: () => unavailable
+        ? jsonResponse({ status_code: 503, message: 'unavailable' }, 503)
+        : jsonResponse(ADMIN_ACCESS) }
+    ])
+    const router = createGuardRouter()
+    await router.push('/admin/roles?tab=roles')
+    expect(router.currentRoute.value.path).toBe('/forbidden')
+    expect(router.currentRoute.value.query.reason).toBe('admin-unavailable')
+    unavailable = false
+    await router.push(router.currentRoute.value.query.from)
+    expect(router.currentRoute.value.fullPath).toBe('/admin/roles?tab=roles')
+    expect(backend.count(ACCESS_ME)).toBe(2)
+  })
+
+  it.each([
+    [200, { access_mode: 'LIMITED', granted: false, can_access: false }, 'recruitment-required'],
+    [503, null, 'recruitment-unavailable']
+  ])('招募查询状态 %s 对应有限原因，重试仍需真实资格', async (status, data, reason) => {
+    auth.accessToken = 'valid-token'
+    auth.userInfo = { id: 'u1' }
+    let granted = false
+    const backend = installFetch([
+      { path: '/v1/recruitment/access/me', method: 'GET', respond: () => granted
+        ? jsonResponse({ status_code: 200, data: { access_mode: 'LIMITED', granted: true, can_access: true } })
+        : jsonResponse({ status_code: status, message: 'unavailable', data }, status) }
+    ])
+    const router = createGuardRouter()
+    await router.push('/recruitment?game=如鸢')
+    expect(router.currentRoute.value.path).toBe('/forbidden')
+    expect(router.currentRoute.value.query.reason).toBe(reason)
+    const target = router.currentRoute.value.query.from
+    await router.push(target)
+    expect(router.currentRoute.value.path).toBe('/forbidden')
+    expect(recruitmentAccess.canAccess).toBe(false)
+    granted = true
+    await router.push(target)
+    expect(router.currentRoute.value.path).toBe('/recruitment')
+    expect(backend.count('/v1/recruitment/access/me')).toBe(3)
+    expect(backend.count(ACCESS_ME)).toBe(0)
+  })
+
+  it('招募失败页换账号后重新查询，旧账号的资格不能放行新账号', async () => {
+    auth.accessToken = 'account-a'
+    auth.userInfo = { id: 'a' }
+    const backend = installFetch([
+      { path: '/v1/recruitment/access/me', method: 'GET', respond: ({ token }) =>
+        jsonResponse({ status_code: 200, data: { access_mode: 'LIMITED', can_access: token === 'account-b' } }) }
+    ])
+    const router = createGuardRouter()
+    await router.push('/recruitment')
+    expect(router.currentRoute.value.query.reason).toBe('recruitment-required')
+    auth.accessToken = 'account-b'
+    auth.userInfo = { id: 'b' }
+    await router.push('/recruitment')
+    expect(router.currentRoute.value.path).toBe('/recruitment')
+    expect(recruitmentAccess.userId).toBe('b')
+    auth.accessToken = 'account-a'
+    auth.userInfo = { id: 'a' }
+    await router.push('/login')
+    await router.push('/recruitment')
+    expect(router.currentRoute.value.path).toBe('/forbidden')
+    expect(backend.tokensFor('/v1/recruitment/access/me')).toEqual(['account-a', 'account-b', 'account-a'])
+  })
+
+  it.each(['identity-change', 'cancelled'])('招募资格读取期间 %s，迟到结果不得恢复旧导航', async scenario => {
+    auth.accessToken = 'account-a'
+    auth.userInfo = { id: 'a' }
+    const pending = deferred(), entered = deferred()
+    installFetch([
+      { path: '/v1/recruitment/access/me', method: 'GET', respond: () => { entered.resolve(); return pending.promise } }
+    ])
+    const controller = new AbortController()
+    const next = vi.fn()
+    const navigation = authGuard({ fullPath: '/recruitment', meta: { requiresAuth: true, requiresRecruitmentAccess: true, [NAVIGATION_SIGNAL]: controller.signal } }, {}, next)
+    await entered.promise
+    if (scenario === 'identity-change') {
+      auth.accessToken = 'account-b'
+      auth.userInfo = { id: 'b' }
+      recruitmentAccess.setIdentity('b')
+    } else controller.abort()
+    pending.resolve(jsonResponse({ status_code: 200, data: { can_access: true } }))
+    await navigation
+    expect(next).toHaveBeenCalledExactlyOnceWith(false)
+  })
+
+  it('管理权限读取期间切换账号，迟到结果不能带新账号进入旧管理页', async () => {
+    auth.accessToken = 'account-a'
+    auth.userInfo = { id: 'a' }
+    const pending = deferred(), entered = deferred()
+    installFetch([{ path: ACCESS_ME, method: 'GET', respond: () => { entered.resolve(); return pending.promise } }])
+    const next = vi.fn()
+    const navigation = authGuard({ fullPath: '/admin/roles', meta: { requiresAuth: true, requiredPermission: 'admin:role:manage' } }, {}, next)
+    await entered.promise
+    auth.accessToken = 'account-b'
+    auth.userInfo = { id: 'b' }
+    pending.resolve(jsonResponse(ADMIN_ACCESS))
+    await navigation
+    expect(next).toHaveBeenCalledExactlyOnceWith(false)
+    expect(auth.adminAccess).toBeNull()
   })
 
   it('Case 2：access token 隔夜过期时，受保护路由仍能完成刷新、重放并正常进入', async function () {
