@@ -33,7 +33,7 @@
 
           <div v-if="view === 'overview'" class="demo-view" aria-labelledby="overview-title">
             <div class="demo-section-heading">
-              <div><span class="demo-kicker">01 · OVERVIEW</span><h2 id="overview-title">今天，先把杨修练完</h2><p>根据你的目标、库存和最近收集速度，当前最值得优先投入的是这一位。</p></div>
+              <div><span class="demo-kicker">01 · OVERVIEW</span><h2 id="overview-title">今天优先推进杨修</h2><p>以下使用示例目标、库存和收集记录展示规划方式，不代表真实账号的养成建议。</p></div>
               <button type="button" class="demo-primary" @click="setView('targets')">查看养成目标<ArrowRight :size="16" aria-hidden="true" /></button>
             </div>
 
@@ -41,7 +41,7 @@
               <div class="demo-stat"><span>特别关注</span><strong>{{ summary.favoriteCount }}<small>位</small></strong><em>本期关注名单</em></div>
               <div class="demo-stat demo-stat-accent"><span>总体缺口</span><strong>{{ overallGap }}<small>份</small></strong><em>{{ summary.materialCount + 1 }} 种资源正在规划</em></div>
               <div class="demo-stat"><span>本期心纸</span><strong>+{{ summary.acquiredHeartPaper }}<small>张</small></strong><em>近 {{ summary.periodDays }} 日收集</em></div>
-              <div class="demo-stat"><span>最慢材料</span><strong>{{ slowestMaterial ? formatEta(slowestMaterial.etaDays) : '—' }}</strong><em>{{ slowestMaterial ? slowestMaterial.name : '暂无数据' }}</em></div>
+              <div class="demo-stat"><span>材料耗时</span><strong>{{ slowestMaterial ? (slowestMaterial.etaDays == null ? '待补记录' : formatEta(slowestMaterial.etaDays)) : '已备齐' }}</strong><em>{{ slowestMaterial ? slowestMaterial.name : '暂无材料缺口' }}</em></div>
             </div>
 
             <div class="demo-overview-grid">
@@ -51,7 +51,8 @@
                   <div class="demo-large-avatar"><img :src="priorityOperator.avatar" :alt="priorityOperator.name"></div>
                   <div class="demo-priority-copy"><h4>{{ priorityOperator.name }} <span>{{ priorityOperator.prof }} · {{ priorityOperator.subProf }}</span></h4><p>从 Lv{{ priorityOperator.level }} 到 Lv{{ priorityOperator.targetLevel }}，同时推进修为与化极。</p><div class="demo-progress-line"><i :style="{ width: progressOf(priorityOperator) + '%' }"></i></div><div class="demo-progress-meta"><b>{{ progressOf(priorityOperator) }}%</b><span>当前养成完成度</span><button type="button" @click="openOperator(priorityOperator.id)">查看档案 <ChevronRight :size="14" aria-hidden="true" /></button></div></div>
                 </div>
-                <div class="demo-priority-foot"><span><PackageOpen :size="15" aria-hidden="true" />还缺 {{ priorityMissingCount }} 项资源</span><span><Clock3 :size="15" aria-hidden="true" />最慢约 {{ priorityEta }}</span></div>
+                <div class="demo-priority-foot"><span><PackageOpen :size="15" aria-hidden="true" />{{ priorityEstimate.missingCount ? '还缺 ' + priorityEstimate.missingCount + ' 项资源' : '所需资源已备齐' }}</span><span><Clock3 :size="15" aria-hidden="true" />{{ priorityEta }}</span></div>
+                <p class="demo-estimate-note">{{ priorityEstimate.unknownMaterials.length ? priorityEstimate.unknownMaterials.join('、') + '缺少收集记录，暂无法估算完整耗时。' : '按示例近 30 日速度估算；心纸按密探分别核算，实际耗时会随收集方式变化。' }}</p>
               </article>
 
               <article class="demo-mini-plan">
@@ -67,7 +68,7 @@
               <article v-for="operator in operators" :key="operator.id" class="demo-target-row" :class="{ featured: operator.id === priorityOperator.id }">
                 <div class="demo-target-identity"><div class="demo-avatar"><img :src="operator.avatar" :alt="operator.name"></div><div><div class="demo-name-line"><h3>{{ operator.name }}</h3><span class="demo-prof"><img :src="profIcon(operator.prof)" alt="">{{ operator.prof }}</span></div><p>{{ operator.subProf }} · {{ operator.priority }}</p></div></div>
                 <div class="demo-target-progress"><div class="demo-target-progress-head"><b>{{ progressOf(operator) }}%</b><span>养成完成度</span></div><div class="demo-progress-line"><i :style="{ width: progressOf(operator) + '%' }"></i></div><div class="demo-target-values"><span>Lv{{ operator.level }} <small>/ Lv{{ operator.targetLevel }}</small></span><span>修为 {{ operator.elite }} <small>/ {{ operator.targetElite }}</small></span><span>化极 {{ starLabel(operator.starLevel) }} <small>/ {{ starLabel(operator.targetStarLevel) }}</small></span></div></div>
-                <div class="demo-target-edit"><label>目标等级<input type="number" :min="operator.level" max="100" :value="operator.targetLevel" @change="changeTarget(operator.id, 'level', $event)"></label><label>目标修为<input type="number" :min="operator.elite" max="17" :value="operator.targetElite" @change="changeTarget(operator.id, 'elite', $event)"></label><label>目标化极<input type="number" :min="operator.starLevel" max="31" :value="operator.targetStarLevel" @change="changeTarget(operator.id, 'starLevel', $event)"></label></div>
+                <div class="demo-target-edit"><label>目标等级<input type="number" :min="operator.level" max="100" :value="operator.targetLevel" @change="changeTarget(operator.id, 'level', $event)"></label><label>目标修为<input type="number" :min="operator.elite" max="17" :value="operator.targetElite" @change="changeTarget(operator.id, 'elite', $event)"></label><label>目标化极<select :value="operator.targetStarLevel" @change="changeTarget(operator.id, 'starLevel', $event)"><option v-for="level in 31" :key="level" :value="level" :disabled="level < operator.starLevel">{{ starLabel(level) }}</option></select></label></div>
                 <button type="button" class="demo-icon-button" :aria-label="'查看' + operator.name + '档案'" title="查看密探档案" @click="openOperator(operator.id)"><ChevronRight :size="18" aria-hidden="true" /></button>
               </article>
             </div>
@@ -103,7 +104,8 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, BookOpen, ChevronRight, CircleCheck, Clock3, Heart as HeartIcon, Info, PackageOpen, RotateCcw, Sparkles, Target, TrendingUp, UserRound, Zap } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import { DEMO_SCENARIO, calculateDemoSummary, calculateEtaDays, calculateMaterialPlans, calculateOperatorProgress, createDemoState, normalizeDemoView, updateDemoTarget } from '../../data/demoScenario.js'
+import { DEMO_SCENARIO, calculateDemoPriorityEstimate, calculateDemoSummary, calculateEtaDays, calculateMaterialPlans, calculateOperatorProgress, createDemoState, normalizeDemoView, updateDemoTarget } from '../../data/demoScenario.js'
+import { operatorShareStarLabel } from '../../utils/operatorShare.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -122,25 +124,23 @@ const operators = computed(() => state.value.operators)
 const summary = computed(() => calculateDemoSummary(state.value))
 const materialPlans = computed(() => calculateMaterialPlans(state.value))
 const previewMaterials = computed(() => materialPlans.value.filter(item => item.gap).slice(0, 3))
-const slowestMaterial = computed(() => materialPlans.value.filter(item => item.etaDays != null).sort((a, b) => b.etaDays - a.etaDays)[0])
+const slowestMaterial = computed(() => materialPlans.value.find(item => item.gap && item.etaDays == null) || materialPlans.value.filter(item => item.etaDays != null).sort((a, b) => b.etaDays - a.etaDays)[0])
 const priorityOperator = computed(() => operators.value.find(item => item.priority === '本周优先') || operators.value[0])
 const selectedOperator = computed(() => operators.value.find(item => item.id === selectedId.value) || operators.value[0])
 const totalHeartOwned = computed(() => operators.value.reduce((total, item) => total + item.heartOwned, 0))
 const totalHeartRequired = computed(() => operators.value.reduce((total, item) => total + item.heartRequired, 0))
-const totalHeartGap = computed(() => Math.max(totalHeartRequired.value - totalHeartOwned.value, 0))
+const totalHeartGap = computed(() => operators.value.reduce((total, item) => total + Math.max(item.heartRequired - item.heartOwned, 0), 0))
 const overallGap = computed(() => summary.value.totalGap + totalHeartGap.value)
 const heartEta = computed(() => {
-  const periodDays = Number(summary.value.periodDays)
-  const acquired = Number(summary.value.acquiredHeartPaper)
-  const acquired30d = periodDays > 0 ? acquired * 30 / periodDays : 0
-  return calculateEtaDays(totalHeartGap.value, acquired30d)
+  const estimates = operators.value.filter(item => item.heartRequired > item.heartOwned)
+    .map(item => calculateEtaDays(item.heartRequired - item.heartOwned, item.heartAcquired30d))
+  return estimates.includes(null) ? null : Math.max(0, ...estimates)
 })
-const priorityMissingCount = computed(() => Object.keys(calculateOperatorProgress(priorityOperator.value).requirements.items).length)
+const priorityEstimate = computed(() => calculateDemoPriorityEstimate(state.value, priorityOperator.value))
 const priorityEta = computed(() => {
-  const requirements = calculateOperatorProgress(priorityOperator.value).requirements.items
-  const plans = materialPlans.value.filter(item => requirements[item.id])
-  const days = plans.map(item => item.etaDays).filter(value => value != null)
-  return formatEta(days.length ? Math.max(...days) : null)
+  const estimate = priorityEstimate.value
+  if (!estimate.missingCount) return '无需等待材料'
+  return estimate.etaDays == null ? '完整耗时暂无法估算' : '预计约 ' + formatEta(estimate.etaDays)
 })
 const selectedRequirements = computed(() => {
   const requirements = calculateOperatorProgress(selectedOperator.value).requirements.items
@@ -176,8 +176,8 @@ function percentage(current, target) {
 }
 
 function progressOf(operator) { return calculateOperatorProgress(operator).percent }
-function starLabel(value) { return Number(value) >= 25 ? (Number(value) >= 31 ? '觉醒' : '五星') : `${Math.max(Number(value) - 1, 0)}阶段` }
-function formatEta(days) { return days == null ? '暂无 ETA' : days <= 30 ? `${days} 天` : `${Math.ceil(days / 30)} 个月` }
+function starLabel(value) { return operatorShareStarLabel(value, false) }
+function formatEta(days) { return days == null ? '暂无收集记录，无法估算' : days <= 30 ? `${days} 天` : `${Math.ceil(days / 30)} 个月` }
 function formatRate(rate) { return Number(rate).toFixed(1) }
 function materialName(id) { return materialPlans.value.find(item => item.id === id)?.name || (id === 'heart-paper' ? '心纸' : id) }
 function itemIcon(id) { return id === 'heart-paper' ? '' : `/inventory-icons/items/${id}.png` }
@@ -270,6 +270,7 @@ function hideBrokenImage(event) { event.target.style.display = 'none' }
 .demo-progress-meta button:hover{text-decoration:underline;text-underline-offset:3px}
 .demo-priority-foot{justify-content:space-between;gap:12px;margin-top:21px;padding-top:15px;border-top:1px dashed var(--demo-line);color:var(--demo-muted);font-size:11px}
 .demo-priority-foot span{display:flex;align-items:center;gap:6px}
+.demo-estimate-note{margin-top:12px;color:var(--demo-muted);font-size:11px;line-height:1.7;overflow-wrap:anywhere}
 .demo-mini-plan .demo-panel-head{margin-bottom:10px}
 .demo-material-preview{display:flex;flex-direction:column}
 .demo-material-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 0;border-bottom:1px dashed var(--demo-line)}
@@ -299,12 +300,13 @@ function hideBrokenImage(event) { event.target.style.display = 'none' }
 .demo-target-progress-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
 .demo-target-progress-head b{color:var(--accent-strong);font:900 18px var(--font-d)}
 .demo-target-progress-head span{color:var(--demo-muted);font-size:10px}
-.demo-target-values{display:flex;gap:10px;margin-top:9px;color:var(--ink);font:800 10px var(--font-d);white-space:nowrap}
+.demo-target-values{display:flex;flex-wrap:wrap;gap:10px;margin-top:9px;color:var(--ink);font:800 10px var(--font-d)}
 .demo-target-values small{color:var(--demo-muted);font:600 10px var(--font-d)}
-.demo-target-edit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;min-width:0}
+.demo-target-edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;min-width:0}
 .demo-target-edit label{display:flex;flex-direction:column;gap:5px;color:var(--demo-muted);font-size:9px;font-weight:700}
-.demo-target-edit input{width:100%;min-width:0;min-height:44px;padding:5px 7px;border:1px solid var(--demo-line);border-radius:7px;background:var(--paper);color:var(--ink);font:800 12px var(--font-d);outline:none}
-.demo-target-edit input:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px rgba(215,137,53,.13)}
+.demo-target-edit label:last-child{grid-column:1 / -1}
+.demo-target-edit input,.demo-target-edit select{width:100%;min-width:0;min-height:44px;padding:5px 7px;border:1px solid var(--demo-line);border-radius:7px;background:var(--paper);color:var(--ink);font:800 12px var(--font-d);outline:none}
+.demo-target-edit input:focus,.demo-target-edit select:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px rgba(215,137,53,.13)}
 .demo-icon-button{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--demo-line);border-radius:9px;background:transparent;color:var(--ink);cursor:pointer}
 .demo-icon-button:hover{border-color:var(--accent);background:var(--yellow)}
 .demo-callout{display:flex;align-items:flex-start;gap:9px;margin-top:16px;padding:13px 15px;border:1px dashed rgba(215,137,53,.55);border-radius:10px;background:rgba(239,210,142,.17);color:var(--demo-muted);font-size:11px;line-height:1.65}
@@ -425,7 +427,7 @@ function hideBrokenImage(event) { event.target.style.display = 'none' }
   .demo-target-progress{grid-column:1/-1;grid-row:auto}
   .demo-target-edit{grid-column:1/-1;grid-row:auto}
   .demo-icon-button{grid-column:2;grid-row:1;order:2;justify-self:end}
-  .demo-target-edit input{min-height:44px;font-size:16px}
+  .demo-target-edit input,.demo-target-edit select{min-height:44px;font-size:16px}
   .demo-target-values{gap:6px;flex-wrap:wrap}
   .demo-ledger-head{display:none}
   .demo-ledger-row{grid-template-columns:1fr 1fr;gap:9px;padding:14px}

@@ -70,6 +70,7 @@ export async function authGuard(to, from, next) {
   }
   if (isNavigationCancelled(to)) return next(false)
   const authed = !!(auth.accessToken && auth.userInfo)
+  const navigationUserId = authed ? auth.userInfo.id : null
   const requiresAuth = to.meta && to.meta.requiresAuth
   const feature = to.meta && to.meta.feature
 
@@ -95,9 +96,12 @@ export async function authGuard(to, from, next) {
 
   if (to.meta?.requiresRecruitmentAccess && authed) {
     await recruitmentAccess.refresh({ force: true })
-    if (isNavigationCancelled(to)) return next(false)
+    if (isNavigationCancelled(to) || !auth.accessToken || auth.userInfo?.id !== navigationUserId) return next(false)
     if (!recruitmentAccess.canAccess) {
-      return next({ path: '/forbidden', query: { from: to.fullPath } })
+      return next({ path: '/forbidden', query: {
+        from: to.fullPath,
+        reason: recruitmentAccess.error ? 'recruitment-unavailable' : 'recruitment-required'
+      } })
     }
   }
 
@@ -107,10 +111,13 @@ export async function authGuard(to, from, next) {
     if (!isRouteAccessAllowed(to.meta, auth.adminAccess, auth.adminAccessError)) {
       // refreshAdminAccess 内部单飞：init() 已发起时这里只会复用同一个请求。
       await auth.refreshAdminAccess({ suppressErrors: true })
-      if (isNavigationCancelled(to)) return next(false)
+      if (isNavigationCancelled(to) || !auth.accessToken || auth.userInfo?.id !== navigationUserId) return next(false)
     }
     if (!isRouteAccessAllowed(to.meta, auth.adminAccess, auth.adminAccessError)) {
-      return next({ path: '/forbidden', query: { from: to.fullPath } })
+      return next({ path: '/forbidden', query: {
+        from: to.fullPath,
+        reason: auth.adminAccessError ? 'admin-unavailable' : 'admin-required'
+      } })
     }
   }
 

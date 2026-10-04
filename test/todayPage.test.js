@@ -66,6 +66,6 @@ test('keeps guest demo state inside the hub and the full demo route isolated', f
   const route = routes.find(function (item) { return item.path === '/demo' })
   assert.match(String(route.component), /pages\/demo\/index\.vue/)
   const demo = readFileSync(new URL('../src/pages/demo/index.vue', import.meta.url), 'utf8')
-  assert.match(demo, /今天，先把杨修练完/)
+  assert.match(demo, /今天优先推进杨修/)
   assert.doesNotMatch(demo, /getOperatorCurrent|listAccounts|listAgentFavorites/)
 })

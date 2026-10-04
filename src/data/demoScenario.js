@@ -35,6 +35,7 @@ export const DEMO_SCENARIO = {
       targetStarLevel: 29,
       heartOwned: 14,
       heartRequired: 20,
+      heartAcquired30d: 12,
       priority: '本周优先',
       loadout: '命盘 4 · 星石 2',
       combat: { attack: 4820, hp: 18640 },
@@ -58,6 +59,7 @@ export const DEMO_SCENARIO = {
       targetStarLevel: 27,
       heartOwned: 11,
       heartRequired: 20,
+      heartAcquired30d: 9,
       priority: '随后安排',
       loadout: '命盘 3 · 星石 1',
       combat: { attack: 4510, hp: 17220 },
@@ -81,6 +83,7 @@ export const DEMO_SCENARIO = {
       targetStarLevel: 28,
       heartOwned: 10,
       heartRequired: 18,
+      heartAcquired30d: 7,
       priority: '资源充足后',
       loadout: '命盘 5 · 星石 2',
       combat: { attack: 4630, hp: 16580 },
@@ -186,6 +189,22 @@ export function calculateMaterialPlans(state) {
   }).map(function (material) {
     return calculateMaterialPlan({ ...material, required: requiredById[material.id] || 0 })
   })
+}
+
+// 演示专用：优先密探先使用现有库存，心纸只用该密探自己的速度样本。
+export function calculateDemoPriorityEstimate(state, operator) {
+  const materials = new Map((state.materials || []).map(item => [item.id, item]))
+  const missing = Object.entries(calculateOperatorRequirements(operator).items).map(([id, required]) => {
+    if (id === 'heart-paper') return { name: '心纸', gap: required, acquired30d: operator.heartAcquired30d }
+    const material = materials.get(id)
+    return { name: material?.name || id, gap: calculateGap(required, material?.owned), acquired30d: material?.acquired30d }
+  }).filter(item => item.gap > 0)
+  const unknownMaterials = missing.filter(item => calculateEtaDays(item.gap, item.acquired30d) == null).map(item => item.name)
+  return {
+    missingCount: missing.length,
+    unknownMaterials,
+    etaDays: unknownMaterials.length ? null : Math.max(0, ...missing.map(item => calculateEtaDays(item.gap, item.acquired30d)))
+  }
 }
 
 export function calculateDemoSummary(state) {
