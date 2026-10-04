@@ -38,7 +38,7 @@ beforeEach(() => {
   activeAccount.clear()
   listAccounts.mockResolvedValue([])
   getOperatorCurrent.mockResolvedValue({ entries: {} })
-  getCurrent.mockResolvedValue({ entries: {} })
+  getCurrent.mockResolvedValue([])
   listAgentFavorites.mockResolvedValue({ agent_ids: [] })
   getUnreadNotificationCount.mockResolvedValue({ count: 0 })
   getCurrentStarState.mockResolvedValue({ inventory: [] })
@@ -108,4 +108,40 @@ it('占位不切断建档数据链路：缺数据时建档检查仍按真实读�
   expect(wrapper.text()).toContain('尚未录入')
   expect(wrapper.text()).toContain('密探数据已录入，可在密探名册查看和继续维护')
   expect(wrapper.find('.today-coming-soon').exists()).toBe(true)
+})
+
+it('完整零库存基准不被引导重新录入，部分零录入不宣称完整盘点', async () => {
+  signIn()
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
+  for (const [inventory, label] of [
+    [[{ full_baseline_at: '2026-10-04T08:00:00Z', entries: {} }], '已盘点，当前库存为零'],
+    [[{ entries: { coin: { count: 0, listed_baseline_at: '2026-10-04T08:00:00Z' } } }], '已有录入，当前库存为零']
+  ]) {
+    getCurrent.mockResolvedValue(inventory)
+    const wrapper = render(); await flushPromises()
+    const card = wrapper.findAll('.data-readiness-card').find(card => card.get('h3').text() === '库存')
+    expect(card.text()).toContain(label)
+    expect(card.find('.readiness-action').exists()).toBe(false)
+    if (label.startsWith('已有')) expect(card.text()).not.toContain('完整库存基准')
+    wrapper.unmount()
+  }
+})
+
+it('库存元信息不足与读取失败使用不同说明，均不要求重录', async () => {
+  signIn()
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
+  getCurrent.mockResolvedValue({ entries: {} })
+  let wrapper = render(); await flushPromises()
+  let card = wrapper.findAll('.data-readiness-card').find(card => card.get('h3').text() === '库存')
+  expect(card.text()).toContain('录入状态待确认')
+  expect(card.text()).not.toContain('读取失败')
+  expect(card.find('.readiness-action').exists()).toBe(false)
+  wrapper.unmount()
+  getCurrent.mockRejectedValue(new Error('synthetic failure'))
+  wrapper = render(); await flushPromises()
+  card = wrapper.findAll('.data-readiness-card').find(card => card.get('h3').text() === '库存')
+  expect(card.text()).toContain('暂时无法读取')
+  expect(card.text()).toContain('不会要求你重新录入')
+  expect(card.find('.readiness-action').exists()).toBe(false)
+  wrapper.unmount()
 })

@@ -4,6 +4,25 @@ function mergedEntries(documents) {
   }, {})
 }
 
+function inventoryRecordingEvidence(inventory) {
+  const documents = Array.isArray(inventory) ? inventory : inventory && typeof inventory === 'object' ? [inventory] : null
+  if (!documents) return { inventoryRecorded: null, inventoryHasFullBaseline: null }
+  if (!documents.length) return { inventoryRecorded: false, inventoryHasFullBaseline: false }
+  const inventoryHasFullBaseline = documents.some(function (document) {
+    return typeof document?.full_baseline_at === 'string' && Number.isFinite(Date.parse(document.full_baseline_at))
+  })
+  const hasEntries = documents.some(function (document) {
+    if (!document?.entries || typeof document.entries !== 'object' || Array.isArray(document.entries)) return false
+    return Object.values(document.entries).some(function (entry) {
+      return entry?.count != null && entry.count !== '' && Number.isFinite(Number(entry.count)) && Number(entry.count) >= 0
+    })
+  })
+  return {
+    inventoryRecorded: inventoryHasFullBaseline || hasEntries ? true : null,
+    inventoryHasFullBaseline
+  }
+}
+
 export function summarizeTodayData({ current, inventory, starState, favorites, notifications } = {}) {
   const favoriteIds = Array.isArray(favorites && favorites.agent_ids) ? favorites.agent_ids : []
   const unread = Number(notifications && notifications.count)
@@ -13,6 +32,7 @@ export function summarizeTodayData({ current, inventory, starState, favorites, n
     inventoryKindCount: Object.values(mergedEntries(inventory)).filter(function (entry) {
       return Number(entry && entry.count) > 0
     }).length,
+    ...inventoryRecordingEvidence(inventory),
     starCount: summarizeTodayStarState(starState),
     unreadCount: Number.isFinite(unread) && unread > 0 ? Math.floor(unread) : 0
   }
@@ -30,7 +50,7 @@ function countReadiness(value) {
 export function getTodayDataReadiness(summary = {}) {
   return {
     operator: countReadiness(summary.operatorCount),
-    inventory: countReadiness(summary.inventoryKindCount),
+    inventory: summary.inventoryRecorded === true ? 'ready' : summary.inventoryRecorded === false ? 'empty' : 'unknown',
     star: countReadiness(summary.starCount)
   }
 }

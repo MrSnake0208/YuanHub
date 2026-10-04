@@ -191,7 +191,7 @@ import {
   summarizeTodayData
 } from '../../data/todayData.js'
 
-const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, starCount: 0, unreadCount: 0 })
+const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, inventoryRecorded: false, inventoryHasFullBaseline: false, starCount: 0, unreadCount: 0 })
 const DATA_SETUP_CONFIG = Object.freeze([
   {
     key: 'operator',
@@ -266,18 +266,24 @@ const dataSetupItems = computed(function () {
   return DATA_SETUP_CONFIG.map(function (item) {
     const status = dataReadiness.value[item.key]
     const count = realSummary.value[item.countKey]
+    const zeroInventory = item.key === 'inventory' && status === 'ready' && count === 0
+    const hasFullBaseline = realSummary.value.inventoryHasFullBaseline === true
     return {
       ...item,
       status,
       statusLabel: status === 'ready'
-        ? '已录入 ' + count + ' ' + item.unit
+        ? zeroInventory
+          ? (hasFullBaseline ? '已盘点' : '已有录入') + '，当前库存为零'
+          : '已录入 ' + count + ' ' + item.unit
         : status === 'unknown'
-          ? '暂时无法读取'
+          ? count == null ? '暂时无法读取' : '录入状态待确认'
           : '尚未录入',
       description: status === 'ready'
-        ? item.readyDescription
+        ? zeroInventory && hasFullBaseline ? '已建立完整库存基准，不需要重复录入。可在库存追踪查看和继续维护。' : item.readyDescription
         : status === 'unknown'
-          ? '这项数据暂时读取失败，不会要求你重新录入。'
+          ? count == null
+            ? '这项数据暂时读取失败，不会要求你重新录入。'
+            : '暂时无法确认这项数据的录入状态，不会要求你重新录入。'
           : item.emptyDescription
     }
   })

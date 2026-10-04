@@ -329,6 +329,7 @@ async function remove(account) {
 
 <style scoped>
 .game-account-manager {
+  container: game-account-manager / inline-size;
   margin-top: 32px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -408,7 +409,7 @@ async function remove(account) {
 }
 .create-card {
   display: grid;
-  grid-template-columns: minmax(180px, .85fr) minmax(220px, .9fr) minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: 14px;
   margin: 20px 24px 0;
@@ -418,8 +419,10 @@ async function remove(account) {
   background: var(--cream);
 }
 .create-copy {
+  grid-column: 1 / -1;
   align-self: center;
 }
+.name-field { min-width: 0; }
 .create-copy h3,
 .empty-state h3 {
   font-family: var(--font-s);
@@ -522,7 +525,10 @@ async function remove(account) {
   font-family: var(--font-b);
   font-size: 12.5px;
   font-weight: 800;
+  white-space: nowrap;
 }
+.primary-action svg,
+.icon-action svg { flex: none; }
 .primary-action {
   padding: 0 16px;
   border-color: var(--yellow-deep);
@@ -669,21 +675,22 @@ async function remove(account) {
 }
 
 @media (max-width: 880px) {
-  .create-card {
-    grid-template-columns: 1fr 1fr;
-  }
-  .create-copy {
-    grid-column: 1 / -1;
-  }
-  .primary-action {
-    width: 100%;
-  }
   .account-card {
     grid-template-columns: 1fr;
   }
   .account-controls {
     justify-content: flex-start;
   }
+}
+
+@container game-account-manager (min-width: 520px) {
+  .create-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .create-card .primary-action { grid-column: 1 / -1; }
+}
+
+@container game-account-manager (min-width: 720px) {
+  .create-card { grid-template-columns: minmax(0, .9fr) minmax(0, 1fr) auto; }
+  .create-card .primary-action { grid-column: auto; }
 }
 
 @media (max-width: 640px) {
@@ -698,12 +705,8 @@ async function remove(account) {
     font-size: 18px;
   }
   .create-card {
-    grid-template-columns: 1fr;
     margin: 16px;
     padding: 14px;
-  }
-  .create-copy {
-    grid-column: auto;
   }
   .account-groups {
     padding: 18px 16px 20px;

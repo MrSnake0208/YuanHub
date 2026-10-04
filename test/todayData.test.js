@@ -26,6 +26,8 @@ test('summarizes real Today data without counting duplicates or empty inventory'
     operatorCount: 3,
     favoriteCount: 2,
     inventoryKindCount: 2,
+    inventoryRecorded: true,
+    inventoryHasFullBaseline: false,
     starCount: 2,
     unreadCount: 2
   })
@@ -47,24 +49,25 @@ test('derives three onboarding stages and checks operator inventory and star ind
   assert.equal(getTodayOnboardingStage({
     isLoggedIn: true,
     hasAccounts: true,
-    summary: { operatorCount: 2, inventoryKindCount: 0, starCount: 3 }
+    summary: { operatorCount: 2, inventoryKindCount: 0, inventoryRecorded: false, starCount: 3 }
   }), 'data')
 
   assert.equal(getTodayOnboardingStage({
     isLoggedIn: true,
     hasAccounts: true,
-    summary: { operatorCount: 2, inventoryKindCount: 4, starCount: 0 }
+    summary: { operatorCount: 2, inventoryKindCount: 4, inventoryRecorded: true, starCount: 0 }
   }), 'data')
 
   assert.equal(getTodayOnboardingStage({
     isLoggedIn: true,
     hasAccounts: true,
-    summary: { operatorCount: 2, inventoryKindCount: 4, starCount: 3 }
+    summary: { operatorCount: 2, inventoryKindCount: 4, inventoryRecorded: true, starCount: 3 }
   }), 'ready')
 
   assert.deepEqual(getTodayDataReadiness({
     operatorCount: 1,
     inventoryKindCount: 0,
+    inventoryRecorded: false,
     starCount: null
   }), {
     operator: 'ready',
@@ -77,12 +80,41 @@ test('does not turn read failures into fake empty data', function () {
   assert.equal(getTodayOnboardingStage({
     isLoggedIn: true,
     hasAccounts: true,
-    summary: { operatorCount: null, inventoryKindCount: 1, starCount: 2 }
+    summary: { operatorCount: null, inventoryKindCount: 1, inventoryRecorded: true, starCount: 2 }
   }), 'ready')
 
   assert.equal(shouldShowTodayDataOnboarding({
     isLoggedIn: true,
     hasAccounts: true,
-    summary: { operatorCount: 1, inventoryKindCount: 0, starCount: null }
+    summary: { operatorCount: 1, inventoryKindCount: 0, inventoryRecorded: false, starCount: null }
   }), true)
+})
+
+test('full zero baseline is recorded independently from positive inventory count', function () {
+  const summary = summarizeTodayData({ inventory: [{ full_baseline_at: '2026-10-04T08:00:00Z', entries: {} }] })
+  assert.equal(summary.inventoryKindCount, 0)
+  assert.equal(summary.inventoryRecorded, true)
+  assert.equal(summary.inventoryHasFullBaseline, true)
+  assert.equal(getTodayDataReadiness(summary).inventory, 'ready')
+  assert.equal(getTodayOnboardingStage({ isLoggedIn: true, hasAccounts: true, summary: { ...summary, operatorCount: 1, starCount: 1 } }), 'ready')
+})
+
+test('listed zero and existing stock are recorded without claiming a full baseline', function () {
+  for (const count of [0, 3]) {
+    const summary = summarizeTodayData({ inventory: [{ full_baseline_at: null, entries: { coin: { count, listed_baseline_at: '2026-10-04T08:00:00Z' } } }] })
+    assert.equal(summary.inventoryKindCount, count > 0 ? 1 : 0)
+    assert.equal(summary.inventoryRecorded, true)
+    assert.equal(summary.inventoryHasFullBaseline, false)
+    assert.equal(getTodayDataReadiness(summary).inventory, 'ready')
+  }
+})
+
+test('no records, missing evidence and failures remain distinct', function () {
+  assert.equal(getTodayDataReadiness(summarizeTodayData({ inventory: [] })).inventory, 'empty')
+  for (const inventory of [null, undefined, {}, [{ entries: {} }], [{ full_baseline_at: 'invalid', entries: {} }], [{ entries: { coin: { count: -1 } } }]]) {
+    const summary = summarizeTodayData({ inventory })
+    assert.equal(summary.inventoryRecorded, null)
+    assert.equal(getTodayDataReadiness(summary).inventory, 'unknown')
+  }
+  assert.equal(getTodayDataReadiness({ inventoryKindCount: 0 }).inventory, 'unknown')
 })
