@@ -53,8 +53,9 @@
     </div>
     <div v-else-if="!items.length" class="plaza-state empty">
       <Inbox :size="24" aria-hidden="true" />
-      <strong>{{ keyword ? '没有找到相关反馈。' : '暂时还没有公开的反馈。' }}</strong>
-      <span>{{ keyword ? '如果这是一个新的问题，可以提交反馈。' : '有问题或想法？欢迎提交反馈告诉我们。' }}</span>
+      <strong>{{ hasFilters ? '当前筛选没有找到相关反馈。' : '暂时还没有公开的反馈。' }}</strong>
+      <span>{{ hasFilters ? '可以清除筛选查看全部反馈，或提交新的问题。' : '有问题或想法？欢迎提交反馈告诉我们。' }}</span>
+      <button v-if="hasFilters" class="feedback-button" type="button" @click="clearFilters">清除筛选</button>
       <button class="feedback-primary-action" type="button" @click="goSubmit">提交反馈</button>
     </div>
     <div v-else class="plaza-grid">
@@ -131,6 +132,7 @@ let searchTimer = null
 let isMounted = false
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
+const hasFilters = computed(() => Boolean(keyword.value.trim() || type.value || status.value))
 
 function formatDate(value) {
   if (!value) return ''
@@ -166,6 +168,17 @@ async function load() {
 
 async function reloadFromFirstPage() {
   if (!await closeDetail()) return
+  page.value = 1
+  load()
+}
+
+async function clearFilters() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = null
+  if (!await closeDetail() || !isMounted) return
+  keyword.value = ''
+  type.value = ''
+  status.value = ''
   page.value = 1
   load()
 }

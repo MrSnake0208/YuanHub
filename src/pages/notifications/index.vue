@@ -16,7 +16,7 @@
             <div class="hero-action">
               <button
                 class="act-btn primary"
-                :disabled="loading || markingAll || unreadCount === 0"
+                :disabled="loading || markingAll || Boolean(markingId) || unreadCount === 0"
                 @click="markAllRead"
               >
                 {{ markingAll ? '正在标记…' : markAllError ? '重试全部已读' : '全部已读' }}
@@ -38,6 +38,7 @@
                 :class="{ on: filter === t.key }"
                 :aria-pressed="filter === t.key"
                 type="button"
+                :disabled="markingAll || Boolean(markingId)"
                 @click="setFilter(t.key)"
               >
                 {{ t.label }}<span v-if="t.key === 'unread' && unreadCount > 0" class="unread-badge">{{ unreadCount }}</span>
@@ -50,8 +51,9 @@
 
           <!-- 列表 -->
           <div class="notification-list">
-            <div v-if="loading" class="state">正在加载通知…</div>
-            <div v-else-if="error" class="state err">
+            <p v-if="error && notifications.length" class="action-error" role="alert">{{ error }} <button class="link" type="button" @click="loadNotifications">重试刷新</button></p>
+            <div v-if="loading && !notifications.length" class="state">正在加载通知…</div>
+            <div v-else-if="error && !notifications.length" class="state err">
               {{ error }}
               <button class="link" type="button" @click="loadNotifications">重试</button>
             </div>
@@ -90,7 +92,7 @@
                   v-if="!item.readAt"
                   class="ntf-read-btn"
                   type="button"
-                  :disabled="markingId === item.id"
+                  :disabled="loading || markingAll || Boolean(markingId)"
                   @click.stop="markRead(item)"
                 >
                   {{ markingId === item.id ? '…' : markReadErrorId === item.id ? '重试标为已读' : '标为已读' }}
@@ -99,7 +101,7 @@
 
               <!-- 加载更多 -->
               <div v-if="hasMore" class="more-row">
-                <button class="btn-more" :disabled="loadingMore" @click="loadMore">
+                <button class="btn-more" :disabled="loading || loadingMore || markingAll || Boolean(markingId) || Boolean(error)" @click="loadMore">
                   {{ loadingMore ? '正在加载…' : loadMoreError ? '重试加载更多' : '加载更多' }}
                 </button>
                 <p v-if="loadMoreError" class="action-error" role="alert">{{ loadMoreError }}</p>
@@ -118,7 +120,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, MessageSquare, RefreshCw } from '@lucide/vue'
 import { auth } from '../../store/auth.js'
@@ -133,7 +135,8 @@ import {
 } from '../../api/notifications.js'
 import {
   notificationUnreadState,
-  setNotificationUnreadCount
+  setNotificationUnreadCount,
+  refreshNotificationState
 } from '../../store/notificationUnread.js'
 
 const router = useRouter()
@@ -153,6 +156,13 @@ const markReadErrorId = ref('')
 const loadMoreError = ref('')
 const page = ref(1)
 let notificationRequestId = 0
+let mutationRequestId = 0
+let mounted = false
+const identity = computed(() => auth.accessToken ? String(auth.userInfo?.id || auth.userInfo?.userId || auth.userInfo?.user_id || '') : '')
+
+function ownsRequest(requestId, userId) {
+  return mounted && requestId === notificationRequestId && userId === identity.value
+}
 
 const filterTabs = [
   { key: 'all', label: '全部' },
@@ -168,6 +178,7 @@ const hasMore = computed(function () {
 })
 
 function setFilter(key) {
+  if (markingAll.value || markingId.value) return
   filter.value = key
   page.value = 1
   notifications.value = []
@@ -199,35 +210,39 @@ function formatTime(iso) {
   return y + '-' + m + '-' + day + ' ' + h + ':' + min
 }
 
-async function loadNotifications() {
+async function loadNotifications({ afterRead = false } = {}) {
   const requestId = ++notificationRequestId
+  const userId = identity.value
+  loadingMore.value = false
+  loadMoreError.value = ''
   loading.value = true
   error.value = ''
   try {
     const params = {
-      page: page.value,
+      page: 1,
       pageSize: PAGE_SIZE
     }
     if (filter.value === 'unread') params.unreadOnly = true
     const data = await listNotifications(params)
-    if (requestId !== notificationRequestId) return
+    if (!ownsRequest(requestId, userId)) return
     notifications.value = Array.isArray(data.notifications) ? data.notifications : []
+    page.value = 1
     total.value = data.total
     setNotificationUnreadCount(data.unreadCount)
   } catch (err) {
-    if (requestId !== notificationRequestId) return
-    error.value = err.message || '通知加载失败'
-    notifications.value = []
+    if (!ownsRequest(requestId, userId)) return
+    error.value = afterRead ? '已标记成功，但通知刷新失败，请重试刷新。' : err.message || '通知加载失败'
   } finally {
-    if (requestId === notificationRequestId) loading.value = false
+    if (ownsRequest(requestId, userId)) loading.value = false
   }
 }
 
 async function loadMore() {
-  if (loadingMore.value || !hasMore.value) return
+  if (loading.value || loadingMore.value || markingAll.value || markingId.value || error.value || !hasMore.value) return
   loadingMore.value = true
   loadMoreError.value = ''
   const requestId = notificationRequestId
+  const userId = identity.value
   const nextPage = page.value + 1
   try {
     const params = {
@@ -236,7 +251,7 @@ async function loadMore() {
     }
     if (filter.value === 'unread') params.unreadOnly = true
     const data = await listNotifications(params)
-    if (requestId !== notificationRequestId) return
+    if (!ownsRequest(requestId, userId)) return
     page.value = nextPage
     if (Array.isArray(data.notifications)) {
       notifications.value = notifications.value.concat(data.notifications)
@@ -244,38 +259,68 @@ async function loadMore() {
     total.value = data.total
     setNotificationUnreadCount(data.unreadCount)
   } catch (_) {
+    if (!ownsRequest(requestId, userId)) return
     loadMoreError.value = '加载更多失败，已加载的通知仍可查看。'
   } finally {
-    loadingMore.value = false
+    if (ownsRequest(requestId, userId)) loadingMore.value = false
+  }
+}
+
+function beginMutation() {
+  notificationRequestId += 1
+  loadingMore.value = false
+  loadMoreError.value = ''
+  error.value = ''
+  return { requestId: ++mutationRequestId, userId: identity.value }
+}
+
+function ownsMutation(context) {
+  return mounted && context.requestId === mutationRequestId && context.userId === identity.value
+}
+
+async function refreshAfterRead() {
+  // 已读 API 已发出状态事件；复用共享单飞刷新，避免独立递减角标。
+  void refreshNotificationState({ force: true })
+  if (filter.value === 'unread') {
+    notifications.value = notifications.value.filter(item => !item.readAt)
+    await loadNotifications({ afterRead: true })
   }
 }
 
 async function markRead(item) {
-  if (!item || item.readAt || markingId.value) return
+  if (!item || item.readAt || loading.value || markingId.value || markingAll.value) return
+  const context = beginMutation()
   markingId.value = item.id
   markReadErrorId.value = ''
   try {
     const updated = await markNotificationRead(item.id)
+    if (!ownsMutation(context)) return
     if (updated) Object.assign(item, updated)
-    await loadNotifications()
+    await refreshAfterRead()
   } catch (_) {
+    if (!ownsMutation(context)) return
     markReadErrorId.value = item.id
   } finally {
-    markingId.value = ''
+    if (ownsMutation(context)) markingId.value = ''
   }
 }
 
 async function markAllRead() {
-  if (markingAll.value) return
+  if (loading.value || markingAll.value || markingId.value) return
+  const context = beginMutation()
   markingAll.value = true
   markAllError.value = ''
   try {
     await markAllNotificationsRead()
-    await loadNotifications()
+    if (!ownsMutation(context)) return
+    const readAt = new Date().toISOString()
+    notifications.value.forEach(item => { if (!item.readAt) item.readAt = readAt })
+    await refreshAfterRead()
   } catch (_) {
+    if (!ownsMutation(context)) return
     markAllError.value = '全部已读失败，未读通知仍保留，请重试。'
   } finally {
-    markingAll.value = false
+    if (ownsMutation(context)) markingAll.value = false
   }
 }
 
@@ -306,10 +351,30 @@ function isManagementNotification(kind) {
 }
 
 onMounted(function () {
+  mounted = true
   loadNotifications()
 })
 
+watch(identity, function () {
+  mutationRequestId += 1
+  notificationRequestId += 1
+  notifications.value = []
+  total.value = 0
+  page.value = 1
+  markingId.value = ''
+  markingAll.value = false
+  markReadErrorId.value = ''
+  markAllError.value = ''
+  error.value = ''
+  loading.value = false
+  loadingMore.value = false
+  loadMoreError.value = ''
+  if (mounted && identity.value) loadNotifications()
+}, { flush: 'sync' })
+
 onBeforeUnmount(function () {
+  mounted = false
+  mutationRequestId += 1
   notificationRequestId += 1
 })
 </script>
@@ -337,7 +402,7 @@ onBeforeUnmount(function () {
 .notification-list { margin-top: 28px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px }
 .state { margin-top: 16px; padding: 44px 30px; color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px; text-align: center; font-size: 13px; font-weight: 700 }
 .state.err { color: var(--ink-60) }
-.state .link { min-height: 44px; margin-left: 10px; color: var(--accent-strong); background: transparent; border: 0; cursor: pointer; font-weight: 800; text-decoration: underline; text-underline-offset: 3px }
+.notification-list .link { min-height: 44px; margin-left: 10px; color: var(--accent-strong); background: transparent; border: 0; cursor: pointer; font-weight: 800; text-decoration: underline; text-underline-offset: 3px }
 .empty-state { margin-top: 16px; padding: 60px 30px; color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px }
 .empty-state strong { color: var(--ink); font-family: var(--font-s); font-size: 17px }
 .empty-state span { max-width: 460px; line-height: 1.65; font-size: 13px }
