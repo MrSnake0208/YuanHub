@@ -86,6 +86,7 @@ it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 
   options.onActiveTabChange('review')
   await flushPromises()
   const tabs = wrapper.findAll('.star-tabs [role="tab"]')
+  expect(tabs[1].text()).toBe('背包整理')
   expect(tabs[0].attributes('aria-selected')).toBe('false')
   expect(tabs[1].attributes('aria-selected')).toBe('true')
   expect(tabs[1].classes()).toContain('on')
@@ -96,6 +97,99 @@ it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 
   expect(handle.setActiveTab).toHaveBeenCalledWith('import')
   expect(tabs[0].attributes('aria-selected')).toBe('true')
   wrapper.unmount()
+})
+
+function enableTutorialStatus(identity, hasHistory = false) {
+  auth.isLoggedIn = true
+  auth.userInfo = { id: identity }
+  activeAccount.set('acc-1')
+  embedMount.mockImplementation(() => ({
+    setHostAccount: vi.fn().mockResolvedValue(undefined), setActiveTab: vi.fn(),
+    getCloudBusinessSnapshot: vi.fn().mockResolvedValue(emptySnapshot),
+    applyCloudBusinessSnapshot: vi.fn().mockResolvedValue(undefined),
+    getRecognitionTutorialStatus: vi.fn(() => ({ ready: true, hasHistory })),
+    dispose: vi.fn().mockResolvedValue(undefined),
+  }))
+}
+
+it('empty user auto starts only after hydration, dismissal persists, replay ignores seen and restarts at step 1', async () => {
+  function tourText(stage) {
+    const element = document.querySelector('.recognition-tour-card')
+    expect(element, stage).not.toBeNull()
+    return element.textContent
+  }
+  enableTutorialStatus('recognition-new-user')
+  const wrapper = render()
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await loadStylesheet()
+  await flushPromises()
+  expect(tourText('initial automatic display')).toContain('1 / 6')
+  document.querySelector('.recognition-tour-next').click()
+  await flushPromises()
+  expect(tourText('manual next')).toContain('2 / 6')
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card'), 'replay after close mounts the tutorial').not.toBeNull()
+  expect(tourText('replay while open')).toContain('1 / 6')
+  document.querySelector('[aria-label="关闭识别教程"]').click()
+  await flushPromises()
+  expect(localStorage.getItem('yuanhub:star-recognition:v1:recognition-new-user')).toBe('seen')
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(tourText('replay after dismissal')).toContain('1 / 6')
+  wrapper.unmount()
+  document.getElementById('yuanstar-embed-styles')?.remove()
+  const remount = render()
+  await flushPromises(); await loadStylesheet()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  expect(remount.find('.star-tutorial-replay').exists()).toBe(true)
+})
+
+it.each([['local-history', true, 0], ['remote-history', false, 2]])('experienced %s user stays quiet but can manually replay', async (name, hasHistory, revision) => {
+  enableTutorialStatus('recognition-' + name, hasHistory)
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, revision })
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it('cloud failure does not auto introduce a potentially experienced user', async () => {
+  enableTutorialStatus('recognition-cloud-failure')
+  getCurrentStarState.mockRejectedValue(new Error('offline'))
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it('draft readiness arriving after the first summary is rechecked on embed rendering', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('recognition-delayed-draft')
+  const wrapper = render()
+  await flushPromises()
+  const link = document.getElementById('yuanstar-embed-styles')
+  link.dispatchEvent(new Event('load'))
+  await flushPromises()
+  const handle = embedMount.mock.results[0].value
+  // Close the initial test mount; delayed readiness must work for an unseen identity.
+  document.querySelector('[aria-label="关闭识别教程"]')?.click()
+  await flushPromises()
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: false, hasHistory: false })
+  auth.userInfo = { id: 'recognition-delayed-draft-fresh' }
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: true, hasHistory: false })
+  wrapper.get('#product-root').element.append(document.createElement('div'))
+  await vi.advanceTimersByTimeAsync(100)
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).not.toBeNull()
 })
 
 it('样式加载失败可重试，失败链接不会阻挡下一次加载', async () => {

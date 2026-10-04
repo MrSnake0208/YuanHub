@@ -22,7 +22,21 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
-## 当前局部 UI 修复来源（2026-10-03）
+## 当前识别教程 V1 开发构建（2026-10-04）
+
+- 本轮为 YuanHub 识别教程 V1 checkpoint；embed 源码修改尚未 commit / push。source 基线仍为 `91ce034f4aae2a68a4b3c387e44149fe6302a922`，源码分支为 `feature/yuanhub-embed`。
+- 从该基线加 `web/src/product.ts`、`web/src/product.css` 的未提交工作树修改执行 `web/` 下 `npm.cmd run build:embed`。
+  manifest 的 `_sourceWorkingTree.status` 为 `modified`，记录 `changedFiles` 和源码 SHA-256；不得将此开发构建描述为干净 source release。
+- 源码只调整用户可见名称（背包整理、识别结果核对、重复行标记），并提供只读 `getRecognitionTutorialStatus()`。
+  该状态检查工作区就绪、正式背包、经验/数量与已有识别证据，不写入业务数据。
+- 教程、浮层定位、移动端 sheet 与 seen persistence 均在 YuanHub Vue 宿主实现。
+- 后续按用户要求删除 sheet 的收起/展开与上移/下移控件，仅保留横杠拖动；两种教程形态统一正文 13px、步骤标题 16px、步骤计数 12px，压缩卡片留白与重播按钮高度。
+- `product.css` 统一手机、平板与桌面嵌入背包表格六列比例 `0.75:1:1:1.25:1:1`；手机缩减横向 padding，保持内容居中。当前背包与计划背包列标题均由“标准名称”改为“名称”，含空背包状态。
+- 养成目标移除模板中的普通空格及目标数字的额外最小宽度占位；按用户最新要求，箭头使用深灰正文色，两侧各以 `0.125em` 提供约半格空格的视觉间距。`web/tests/product-mobile-ui.test.mjs` 同步补充不含额外文本空格的回归。
+- 完整核对生成目录与 vendored 目录全部 12 个文件的 SHA-256；本轮基线相比仅 `yuanstar-embed.js`、`yuanstar-embed.css` 改变。
+  worker、模型、ORT 与规则表字节不变；没有手工修改 bundle。
+
+## 此前局部 UI 修复来源（2026-10-03）
 
 - 源码分支仍为 `fix/import-draft-lifecycle`，已提交 source commit 为 `91ce034f4aae2a68a4b3c387e44149fe6302a922`，
   commit message 为 `fix(ui): refine star plan action layout`。
