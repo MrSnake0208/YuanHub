@@ -109,7 +109,7 @@
             </template>
           </ArchiveExchangePanel>
           <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
@@ -117,6 +117,7 @@
           >
             <span v-if="cloudSyncError || cloudSyncMessage">{{ cloudSyncError || cloudSyncMessage }}</span>
             <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudSyncMessage) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
+            <span v-if="captureVersionWarning"> · {{ captureVersionWarning }}</span>
             <button
               v-if="cloudNeedsRetry || cloudRetryBusy || (cloudSyncError && productReady && accountId)"
               type="button"
@@ -199,8 +200,9 @@ import { migrateLegacyYuanStarHostAccount } from "./legacyHostAccountMigration.j
 import { bindStarExchangePreview, isStarExchangePreviewCurrent } from "./starExchangePreviewScope.js";
 import { consumeStarCapture, getPendingStarCapture, getStarCaptureImage, getStarCaptureManifest } from "../../api/starCaptures.js";
 import { subscribeAccountEvents } from "../../store/accountEvents.js";
-import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isRetryableCaptureImportError, isStarCaptureReadyEvent, loadAndImportStarCapture } from "./captureTransport.js";
+import { captureIdFromRouteQuery, clearStarCaptureRouteQuery, isCurrentStarCapture, isRetryableCaptureImportError, isStarCaptureReadyEvent, loadAndImportStarCapture, starCaptureGameVersionWarning } from "./captureTransport.js";
 import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecycle, importAndMarkStarCapture } from "./starCaptureLifecycle.js";
+import { isStarCaptureDraftPersisted } from "./captureDraftReceipt.js";
 
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
 const EMBED_STYLESHEET_URL = "/yuanstar-embed/yuanstar-embed.css";
@@ -236,6 +238,8 @@ const captureNeedsRetry = ref(false);
 const captureRetryBusy = ref(false);
 const captureImportNeedsRetry = ref(false);
 const captureImportBusy = ref(false);
+const captureGameVersion = ref("");
+const captureVersionWarning = computed(() => starCaptureGameVersionWarning(captureGameVersion.value, summary.value.gameVersion));
 const captureLifecycle = createStarCaptureLifecycle();
 const captureInbox = createStarCaptureInbox(captureLifecycle);
 const captureHost = createStarCaptureHost({
@@ -365,7 +369,8 @@ function createCaptureFile(blob, name) {
   return new File([blob], name, { type: "image/png" });
 }
 function currentCaptureStillActive(current) {
-  return pendingCapture === current && isCurrentStarCapture(current, accountId.value) && mountedAccountId === current.accountId;
+  return !unmounted && productReady.value && Boolean(handle) && pendingCapture === current
+    && isCurrentStarCapture(current, accountId.value) && mountedAccountId === current.accountId;
 }
 function discardForeignPendingCapture() {
   if (pendingCapture && !isCurrentStarCapture(pendingCapture, accountId.value)) pendingCapture = null;
@@ -374,6 +379,7 @@ function discardForeignPendingCapture() {
   captureNeedsRetry.value = captureLifecycle.get(accountId.value)?.state === 'consume_pending';
   captureTransportError.value = '';
   captureTransportMessage.value = '';
+  captureGameVersion.value = '';
 }
 function clearCaptureRoute(account, capture) {
   if (captureIdFromRouteQuery(route.query) !== capture) return;
@@ -389,18 +395,30 @@ async function importPendingCapture() {
   if (!pendingCapture || !handle || !productReady.value || unmounted || captureImportBusy.value) return;
   const current = pendingCapture;
   if (!currentCaptureStillActive(current)) return;
+  const currentHandle = handle;
+  const isCurrent = () => currentHandle === handle && currentCaptureStillActive(current);
   captureImportBusy.value = true;
   let markFailed = false;
+  let restored = false;
+  let handoffStale = false;
   try {
     const completed = await importAndMarkStarCapture({
       lifecycle: captureLifecycle,
       accountId: current.accountId,
       captureId: current.captureId,
-      importCapture: function () { return loadAndImportStarCapture(captureApi(), current, handle, createCaptureFile, function () { return currentCaptureStillActive(current); }); },
-      isCurrent: function () { return currentCaptureStillActive(current); },
+      importCapture: async function () {
+        if (captureLifecycle.captureAction(current.accountId, current.captureId) === 'imported') {
+          const persisted = await isStarCaptureDraftPersisted(current.accountId, { captureId: current.captureId });
+          if (!isCurrent()) return false;
+          if (persisted) { restored = true; return true; }
+        }
+        return loadAndImportStarCapture(captureApi(), current, currentHandle, createCaptureFile, isCurrent);
+      },
+      isCurrent,
       onMarkFailure: function () { markFailed = true; },
     });
-    if (!completed || !currentCaptureStillActive(current)) return;
+    if (!completed || !isCurrent()) { handoffStale = true; return; }
+    captureGameVersion.value = current.batch?.gameVersion || "";
     pendingCapture = null;
     captureImportNeedsRetry.value = false;
     captureNeedsRetry.value = false;
@@ -408,15 +426,15 @@ async function importPendingCapture() {
     captureTransportError.value = "";
     captureTransportMessage.value = markFailed
       ? "三段截图已导入；本地清理状态保存失败，请检查浏览器存储后继续识别。"
-      : "三段截图已导入，等待你点击“开始识别”。";
+      : restored ? "已恢复本地待识别截图，等待你继续识别。" : "三段截图已导入，等待你点击“开始识别”。";
     clearCaptureRoute(current.accountId, current.captureId);
   } catch (error) {
-    if (pendingCapture !== current) return;
+    if (!isCurrent()) { handoffStale = true; return; }
     captureTransportError.value = message(error, "星石截图导入失败。");
     captureImportNeedsRetry.value = isRetryableCaptureImportError(error);
   } finally {
     captureImportBusy.value = false;
-    if (pendingCapture && pendingCapture !== current && currentCaptureStillActive(pendingCapture)) void importPendingCapture();
+    if (pendingCapture && (handoffStale || pendingCapture !== current || currentHandle !== handle) && currentCaptureStillActive(pendingCapture)) void importPendingCapture();
   }
 }
 function retryCaptureImport() {
@@ -430,14 +448,9 @@ function queueCapture(captureId) {
   const currentAccountId = String(accountId.value || "").trim();
   if (!normalizedCaptureId || !currentAccountId) return;
   const action = captureInbox.captureAction(currentAccountId, normalizedCaptureId);
-  if (action !== 'import') {
+  if (action !== 'import' && action !== 'imported') {
     if (pendingCapture?.accountId === currentAccountId && pendingCapture.captureId === normalizedCaptureId) pendingCapture = null;
-    if (action === 'imported') {
-      captureImportNeedsRetry.value = false;
-      captureTransportError.value = '';
-      captureTransportMessage.value = '已恢复本地待识别截图，等待你继续识别。';
-      clearCaptureRoute(currentAccountId, normalizedCaptureId);
-    } else if (action === 'consume_pending') {
+    if (action === 'consume_pending') {
       void captureHost.retry(currentAccountId, normalizedCaptureId);
     } else {
       clearCaptureRoute(currentAccountId, normalizedCaptureId);
@@ -450,6 +463,7 @@ function queueCapture(captureId) {
     captureImportNeedsRetry.value = false;
     captureTransportMessage.value = "";
     captureTransportError.value = "";
+    captureGameVersion.value = "";
   }
   void importPendingCapture();
 }
@@ -488,6 +502,7 @@ async function loadAccounts() {
   accountError.value = "";
   try {
     const list = await listAccounts();
+    if (unmounted) return;
     accounts.value = Array.isArray(list) ? list : [];
     activeAccount.syncAccounts(accounts.value);
     if (
@@ -504,24 +519,32 @@ async function loadAccounts() {
 }
 async function syncHostAccount() {
   if (!handle) return false;
+  productReady.value = false;
   const host = selectedHostAccount();
   return queueAccountSync(async function (isLatest) {
     const currentHandle = handle;
+    const isCurrent = () => isLatest() && !unmounted && currentHandle === handle;
     const previousAccountId = mountedAccountId;
     try {
+      if (!isCurrent()) return false;
       if (host) await migrateLegacyYuanStarHostAccount(host);
+      if (!isCurrent()) return false;
       await currentHandle.setHostAccount(host);
-      if (!isLatest() || currentHandle !== handle) return false;
+      if (!isCurrent()) return false;
       mountedAccountId = host?.accountId || "";
       if (previousAccountId && previousAccountId !== mountedAccountId)
         resetStarImportState();
       clearCloudSyncFeedback();
       const entered = await starCloud.enter(currentHandle);
-      if (!isLatest() || currentHandle !== handle) return false;
+      if (!isCurrent()) return false;
       if (host && !entered) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+      if (host) accountError.value = "";
+      productReady.value = true;
+      currentHandle.setActiveTab(activeTab.value);
+      if (pendingCapture) void importPendingCapture();
       return true;
     } catch (error) {
-      if (!isLatest() || currentHandle !== handle) return false;
+      if (!isCurrent()) return false;
       if (mountedAccountId) accountId.value = mountedAccountId;
       accountError.value = message(error, "星石账号切换失败");
       throw error;
@@ -660,10 +683,7 @@ async function mountProduct() {
       return;
     }
     handle = mountedHandle;
-    handle.setActiveTab(activeTab.value);
     await syncHostAccount();
-    productReady.value = true;
-    if (pendingCapture) void importPendingCapture();
   } catch (error) {
     productReady.value = false;
     if (handle) {
@@ -678,12 +698,16 @@ async function mountProduct() {
 }
 function setTab(tab) {
   activeTab.value = tab;
-  handle?.setActiveTab(tab);
+  if (productReady.value) handle?.setActiveTab(tab);
 }
-watch(accountId, discardForeignPendingCapture);
+watch([accountId, accountGame], () => {
+  discardForeignPendingCapture();
+  if (handle && !unmounted) void syncHostAccount().catch(() => {});
+});
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
   await loadAccounts();
+  if (unmounted) return;
   stopCaptureEvents = subscribeAccountEvents(onStarCaptureEvent);
   void mountProduct();
   void recoverPendingCapture();
@@ -701,6 +725,17 @@ onBeforeUnmount(function () {
 <style scoped>
 .page-star {
   --wm: "星石";
+}
+.page-star #product-root :deep(.product-toast) {
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .page-star #product-root :deep(.plan-actions > .button),
+  .page-star #product-root :deep(.current-editor .editor-actions > .button) {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 .star-main {
   min-height: 100vh; min-height: 100dvh;
@@ -875,6 +910,10 @@ onBeforeUnmount(function () {
 .hero-stats .is-authed a:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .hero-stats .is-authed a { display: inline-flex; min-height: 44px; align-items: center; }
 @media (max-width: 1080px) {
+  .page-star #product-root :deep(.product-toast) {
+    top: calc(env(safe-area-inset-top) + 12px);
+    bottom: auto;
+  }
   .page-star {
     --star-tab-button-height: 48px;
     --star-tab-padding: 7px;
