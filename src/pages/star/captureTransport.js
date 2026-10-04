@@ -1,3 +1,5 @@
+import { isStarCaptureDraftPersisted } from './captureDraftReceipt.js'
+
 function remoteField(value, snake, camel) {
   return value && (value[snake] ?? value[camel])
 }
@@ -103,6 +105,7 @@ export async function loadStarCaptureBatch(api, accountId, captureId, createFile
 }
 
 export const STAR_CAPTURE_IMPORT_SUPERSEDED_CODE = 'star_capture_import_superseded'
+export const STAR_CAPTURE_IMPORT_UNVERIFIED_CODE = 'star_capture_import_unverified'
 
 const retryableImportCodes = new Set(['capture_import_locked', 'capture_workspace_unavailable', STAR_CAPTURE_IMPORT_SUPERSEDED_CODE])
 
@@ -116,16 +119,28 @@ export function isRetryableCaptureImportError(error) {
   return true
 }
 
-export async function importLoadedStarCapture(handle, batch, isCurrent = function () { return true }) {
+export async function importLoadedStarCapture(handle, batch, isCurrent = function () { return true }, verifyPersisted) {
   if (!isCurrent()) return false
-  // 宿主与 embed 的契约：批次被其他操作顶掉而没有真正写入 Draft 时，
-  // importCaptureBatch 必须返回 false（或抛错）。旧版 embed 返回 undefined，
-  // 这里按“已受理”处理以保持兼容。
   const accepted = await handle.importCaptureBatch(batch)
+  if (!isCurrent()) return false
   if (accepted === false) {
     const error = new Error('待识别图片已被其他操作替换，本次导入未生效。')
     error.code = STAR_CAPTURE_IMPORT_SUPERSEDED_CODE
     throw error
+  }
+  if (accepted !== true) {
+    if (accepted !== undefined || !verifyPersisted) {
+      const error = new Error('无法确认待识别图片已保存，本次导入保留待处理，请重试。')
+      error.code = STAR_CAPTURE_IMPORT_UNVERIFIED_CODE
+      throw error
+    }
+    const persisted = await verifyPersisted(batch)
+    if (!isCurrent()) return false
+    if (persisted !== true) {
+      const error = new Error('待识别图片未保存或已被其他操作替换，请重试导入。')
+      error.code = STAR_CAPTURE_IMPORT_SUPERSEDED_CODE
+      throw error
+    }
   }
   if (!isCurrent()) return false
   return true
@@ -135,5 +150,10 @@ export async function loadAndImportStarCapture(api, current, handle, createFile,
   if (!isCurrent()) return false
   if (!current.batch) current.batch = await loadStarCaptureBatch(api, current.accountId, current.captureId, createFile)
   if (!isCurrent()) return false
-  return importLoadedStarCapture(handle, current.batch, isCurrent)
+  return importLoadedStarCapture(handle, current.batch, isCurrent, batch => isStarCaptureDraftPersisted(current.accountId, batch))
+}
+
+export function starCaptureGameVersionWarning(captureVersion, workspaceVersion) {
+  if (!captureVersion || !workspaceVersion || captureVersion === workspaceVersion) return ''
+  return `截图版本为“${captureVersion}”，当前工作区为“${workspaceVersion}”；识别将按当前工作区版本进行，请核对识别结果。`
 }
