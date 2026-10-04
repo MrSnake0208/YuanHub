@@ -4,7 +4,7 @@
       <div class="beta-page">
         <div class="beta-topbar-wrap">
           <nav class="beta-topbar wrap" aria-label="内测页导航">
-            <router-link class="beta-brand-link" to="/" aria-label="返回 YuanHub 首页">
+            <router-link class="beta-brand-link" to="/promo" aria-label="了解 YuanHub">
               <img class="beta-brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true">
               <span class="beta-brand-name">YuanHub</span>
             </router-link>
@@ -25,7 +25,7 @@
                   {{ resetting ? '重置中…' : '重置' }}
                 </button>
               </div>
-              <router-link class="beta-home-link" to="/">返回首页</router-link>
+              <router-link class="beta-home-link" to="/promo">了解 YuanHub</router-link>
             </div>
           </nav>
         </div>
@@ -362,7 +362,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import { auth } from '../../store/auth.js'
 import { beta } from '../../store/beta.js'
 import { betaCommunity } from '../../store/betaCommunity.js'
-import { BETA_INTENTS, betaEntryTarget, betaStatusCopy, formatBetaDay } from '../../utils/betaAccess.js'
+import { BETA_INTENTS, betaEntryTarget, betaStatusCopy, formatBetaDay, safeBetaRedirect } from '../../utils/betaAccess.js'
 
 const STATUS_LABELS = {
   error: '暂时读不到状态',
@@ -407,8 +407,10 @@ const copy = computed(() => adminBypass.value
 const refreshing = computed(() => beta.publicLoading || beta.personalLoading)
 const entryTarget = computed(() => betaEntryTarget(route.query.redirect))
 const requestedPage = computed(() => {
-  if (typeof route.query.redirect !== 'string' || !route.query.redirect.startsWith('/')) return ''
-  return router.resolve(entryTarget.value).meta.title?.split(' — ')[0] || 'YuanHub'
+  if (safeBetaRedirect(route.query.redirect, '') !== entryTarget.value) return ''
+  const target = router.resolve(entryTarget.value)
+  if (!target.meta.requiresBeta || target.name === 'today') return ''
+  return target.meta.title?.split(' — ')[0] || 'YuanHub'
 })
 const entryButtonLabel = computed(() => requestedPage.value ? `返回${requestedPage.value}` : '进入 YuanHub')
 const statusLabel = computed(() => adminBypass.value ? '管理员直通' : STATUS_LABELS[copy.value.tone] || '邀请测试')

@@ -5,7 +5,7 @@ import GameAccountManager from '../src/components/GameAccountManager.vue'
 import AccountIdDetails from '../src/components/AccountIdDetails.vue'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { dialog } from '../src/utils/dialog.js'
-import { renameAccount, deleteAccount } from '../src/api/accounts.js'
+import { createAccount, renameAccount, deleteAccount } from '../src/api/accounts.js'
 
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { prompt: vi.fn(), confirm: vi.fn() } }))
 vi.mock('../src/api/accounts.js', () => ({ createAccount: vi.fn(), renameAccount: vi.fn(), deleteAccount: vi.fn(), updateAccountGame: vi.fn() }))
@@ -80,5 +80,27 @@ it('个人中心选择账号会更新各数据页共用的当前账号', async (
   await wrapper.findAll('.account-main')[1].trigger('click')
   expect(activeAccount.set).toHaveBeenCalledWith('acc-b')
   expect(wrapper.emitted('update:accountId').at(-1)).toEqual(['acc-b'])
+  wrapper.unmount()
+})
+
+it('创建失败保留游戏和名称，重试时禁止重复创建', async () => {
+  createAccount.mockRejectedValueOnce(new Error('synthetic create failure'))
+  const wrapper = mount(GameAccountManager, { props: { accounts, accountId: 'acc-a' }, global })
+  await wrapper.get('input[value="如鸢"]').setValue()
+  await wrapper.get('#new-game-account-name').setValue('创建测试账号')
+  await wrapper.get('.create-card').trigger('submit'); await flushPromises()
+  expect(wrapper.get('#new-game-account-name').element.value).toBe('创建测试账号')
+  expect(wrapper.get('input[value="如鸢"]').element.checked).toBe(true)
+  expect(wrapper.get('[role="alert"]').text()).toContain('synthetic create failure')
+  let finish
+  createAccount.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  await wrapper.get('.create-card').trigger('submit')
+  await wrapper.get('.create-card').trigger('submit')
+  expect(createAccount).toHaveBeenCalledTimes(2)
+  expect(createAccount).toHaveBeenLastCalledWith('创建测试账号', '如鸢')
+  expect(wrapper.get('.create-card button').attributes()).toHaveProperty('disabled')
+  finish({ id: 'acc-new', name: '创建测试账号', game: '如鸢' }); await flushPromises()
+  expect(wrapper.emitted('update:accountId').at(-1)).toEqual(['acc-new'])
+  expect(wrapper.get('#new-game-account-name').element.value).toBe('')
   wrapper.unmount()
 })

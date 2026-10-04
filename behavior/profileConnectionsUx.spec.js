@@ -3,6 +3,7 @@ import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import ProfilePage from '../src/pages/user/profile.vue'
 import { auth } from '../src/store/auth.js'
 import { beta } from '../src/store/beta.js'
+import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { dialog } from '../src/utils/dialog.js'
 import { getOpenApiTokens, getOpenApiTokenSecret, getOpenApiPermissions, updateOpenApiTokenScopes, deleteOpenApiToken, generateOpenApiToken } from '../src/api/openApi.js'
@@ -11,7 +12,10 @@ const routeState = vi.hoisted(() => ({ query: {} }))
 vi.mock('vue-router', () => ({ useRoute: () => routeState }))
 vi.mock('../src/store/auth.js', async () => { const { reactive } = await import('vue'); return { auth: reactive({ userInfo: { id: 'user-a', user_name: '测试用户' }, isLoggedIn: true, adminAccess: null }) } })
 vi.mock('../src/store/beta.js', () => ({ beta: { canUseBetaFeatures: true, loadMe: vi.fn().mockResolvedValue(null) } }))
-vi.mock('../src/store/activeAccount.js', () => ({ activeAccount: { id: 'acc-a', syncAccounts: vi.fn(), set: vi.fn() } }))
+vi.mock('../src/store/activeAccount.js', async () => {
+  const { reactive } = await import('vue')
+  return { normalizeAccountGame: game => game === '如鸢' ? '如鸢' : '代号鸢', activeAccount: reactive({ id: 'acc-a', syncAccounts: vi.fn(), set: vi.fn() }) }
+})
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn().mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }]) }))
 vi.mock('../src/api/openApi.js', () => ({
   deleteOpenApiToken: vi.fn(), generateOpenApiToken: vi.fn(), getOpenApiPermissions: vi.fn().mockResolvedValue([]),
@@ -26,6 +30,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   routeState.query = {}
   auth.userInfo = { id: 'user-a', user_name: '测试用户' }
+  activeAccount.id = 'acc-a'
+  activeAccount.set.mockImplementation(id => { activeAccount.id = id || '' })
   beta.loadMe.mockResolvedValue(null)
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }])
   getOpenApiPermissions.mockResolvedValue([])
@@ -235,5 +241,137 @@ it('今日一览的连接深链接自动展开、聚焦绑定表单且不创建�
   expect(document.activeElement).toBe(wrapper.get('#maayuan-account').element)
   expect(wrapper.get('#maayuan-connect-panel').element.scrollIntoView).toHaveBeenCalled()
   expect(generateOpenApiToken).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('连接默认当前账号且区分同名账号；用户主动改选后保留目标', async () => {
+  const accounts = [{ id: 'acc-a', name: '同名', game: '代号鸢' }, { id: 'acc-b', name: '同名', game: '如鸢' }]
+  listAccounts.mockResolvedValue(accounts)
+  activeAccount.id = 'acc-b'
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  const select = wrapper.get('#maayuan-account')
+  expect(select.element.value).toBe('acc-b')
+  expect(select.findAll('option').map(option => option.text())).toEqual(['代号鸢 · 同名', '如鸢 · 同名'])
+  expect(wrapper.get('#maayuan-account-help').text()).toContain('本次连接将绑定：如鸢 · 同名')
+  expect(wrapper.get('#advanced-account').element.value).toBe('acc-b')
+  activeAccount.id = 'acc-a'; await flushPromises()
+  expect(select.element.value).toBe('acc-a')
+  await select.setValue('acc-b')
+  activeAccount.id = 'acc-b'; await flushPromises()
+  activeAccount.id = 'acc-a'; await flushPromises()
+  expect(select.element.value).toBe('acc-b')
+  wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', accounts.slice())
+  await flushPromises()
+  expect(select.element.value).toBe('acc-b')
+  wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', [accounts[0]])
+  await flushPromises()
+  expect(select.element.value).toBe('acc-a')
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('无账号时创建目标后继续连接，取消说明不创建连接码', async () => {
+  listAccounts.mockResolvedValue([])
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  expect(wrapper.get('.quick-account-manage-link').attributes('href')).toBe('#game-accounts')
+  activeAccount.id = 'acc-new'
+  wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', [{ id: 'acc-new', name: '新账号', game: '如鸢' }])
+  await flushPromises()
+  expect(wrapper.get('#maayuan-account').element.value).toBe('acc-new')
+  await wrapper.get('.panel-actions .ghost').trigger('click')
+  expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(false)
+  expect(generateOpenApiToken).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('创建失败保留选定账号，重试和重复提交只生成一次在途请求', async () => {
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
+  generateOpenApiToken.mockRejectedValueOnce(new Error('synthetic failure'))
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('#maayuan-account').setValue('acc-b')
+  await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
+  expect(wrapper.get('#maayuan-account').element.value).toBe('acc-b')
+  expect(wrapper.get('[role="alert"]').text()).toContain('synthetic failure')
+  let finish
+  generateOpenApiToken.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  await wrapper.get('#maayuan-connect-panel').trigger('submit')
+  await wrapper.get('#maayuan-connect-panel').trigger('submit')
+  expect(generateOpenApiToken).toHaveBeenCalledTimes(2)
+  expect(generateOpenApiToken).toHaveBeenLastCalledWith(expect.objectContaining({ accountId: 'acc-b' }))
+  expect(wrapper.get('#maayuan-account').attributes()).toHaveProperty('disabled')
+  activeAccount.id = 'acc-a'; await flushPromises()
+  expect(wrapper.get('#maayuan-account').element.value).toBe('acc-b')
+  finish({ token: 'synthetic-secret', account_id: 'acc-b', account_name: '小号', token_id: 'tok-new' })
+  await flushPromises()
+  expect(wrapper.find('.new-token').exists()).toBe(true)
+  wrapper.unmount()
+})
+
+it('生成连接码期间切换登录用户，不展示旧用户的晚到凭证', async () => {
+  let finish
+  generateOpenApiToken.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('#maayuan-connect-panel').trigger('submit')
+  auth.userInfo = { id: 'user-b', user_name: '另一测试用户' }
+  finish({ token: 'previous-user-secret', token_id: 'tok-old' })
+  await flushPromises()
+  expect(wrapper.find('.new-token').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('previous-user-secret')
+  expect(getOpenApiTokens).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+})
+
+it.each(['maayuan', 'advanced'])('%s 默认目标在在途切换当前账号并失败后仍保留', async mode => {
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
+  getOpenApiPermissions.mockResolvedValue([{ scope: 'inventory:write', description: '上传库存' }])
+  activeAccount.id = 'acc-b'
+  let fail
+  generateOpenApiToken.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject }))
+  const wrapper = render(); await flushPromises()
+  if (mode === 'maayuan') { await wrapper.get('.hero-connect').trigger('click'); await flushPromises() }
+  else await wrapper.get('.advanced-form input[type="checkbox"]').setValue(true)
+  const form = wrapper.get(mode === 'maayuan' ? '#maayuan-connect-panel' : '.advanced-form')
+  const select = wrapper.get(mode === 'maayuan' ? '#maayuan-account' : '#advanced-account')
+  expect(select.element.value).toBe('acc-b')
+  await form.trigger('submit')
+  activeAccount.id = 'acc-a'; await flushPromises()
+  fail(new Error('合成创建失败')); await flushPromises()
+  expect(select.element.value).toBe('acc-b')
+  generateOpenApiToken.mockResolvedValueOnce({ token: 'synthetic-secret', account_id: 'acc-b', token_id: 'tok-new' })
+  await form.trigger('submit'); await flushPromises()
+  expect(generateOpenApiToken).toHaveBeenLastCalledWith(expect.objectContaining({ accountId: 'acc-b' }))
+  wrapper.unmount()
+})
+
+it('生成结果展示与焦点处理期间切换身份，移除明文且不继续旧请求刷新', async () => {
+  generateOpenApiToken.mockResolvedValueOnce({ token: 'previous-user-secret', token_id: 'tok-old' })
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  Element.prototype.scrollIntoView = vi.fn(() => { auth.userInfo = { id: 'user-b', user_name: '另一测试用户' } })
+  await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
+  expect(wrapper.find('.new-token').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('previous-user-secret')
+  expect(getOpenApiTokens).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+})
+
+it('已生成凭证在切换身份后清除，旧身份的连接列表晚到也不展示', async () => {
+  generateOpenApiToken.mockResolvedValueOnce({ token: 'previous-user-secret', token_id: 'tok-old' })
+  getOpenApiTokens.mockResolvedValueOnce([])
+  let finishList
+  getOpenApiTokens.mockImplementationOnce(() => new Promise(resolve => { finishList = resolve }))
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
+  expect(wrapper.find('.new-token').exists()).toBe(true)
+  auth.userInfo = { id: 'user-b', user_name: '另一测试用户' }; await flushPromises()
+  expect(wrapper.find('.new-token').exists()).toBe(false)
+  finishList([{ ...token, remark: '旧身份连接列表' }]); await flushPromises()
+  expect(wrapper.text()).not.toContain('旧身份连接列表')
+  expect(wrapper.text()).not.toContain('previous-user-secret')
   wrapper.unmount()
 })

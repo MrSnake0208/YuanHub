@@ -195,6 +195,7 @@
                   id="maayuan-account"
                   ref="maaAccountSelect"
                   v-model="maaAccountId"
+                  @change="maaAccountChosen = true"
                   class="form-control"
                   :disabled="creatingMode === 'maayuan'"
                   aria-describedby="maayuan-account-help"
@@ -204,11 +205,11 @@
                     :key="account.id"
                     :value="account.id"
                   >
-                    {{ account.name }}
+                    {{ connectionAccountLabel(account) }}
                   </option>
                 </select>
                 <p id="maayuan-account-help" class="field-help">
-                  同时管理你的库存与密探信息。
+                  本次连接将绑定：{{ connectionAccountLabel(maaSelectedAccount) }}。采集数据仅保存到此账号。
                 </p>
               </template>
               <section
@@ -538,6 +539,7 @@
                 <select
                   id="advanced-account"
                   v-model="customAccountId"
+                  @change="customAccountChosen = true"
                   class="form-control"
                   :disabled="!accounts.length || creatingMode === 'advanced'"
                 >
@@ -547,7 +549,7 @@
                     :key="account.id"
                     :value="account.id"
                   >
-                    {{ account.name }}
+                    {{ connectionAccountLabel(account) }}
                   </option>
                 </select>
 
@@ -675,7 +677,7 @@ import {
   getOpenApiTokens,
   updateOpenApiTokenScopes,
 } from "../../api/openApi.js";
-import { activeAccount } from "../../store/activeAccount.js";
+import { activeAccount, normalizeAccountGame } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
 import {
   FALLBACK_DESCRIPTIONS as FALLBACK_SCOPES,
@@ -708,6 +710,9 @@ let layoutFrame = null;
 const showMaaYuanConnect = ref(false);
 const maaAccountId = ref("");
 const customAccountId = ref("");
+const maaAccountChosen = ref(false);
+const customAccountChosen = ref(false);
+const maaSelectedAccount = computed(() => accounts.value.find(account => account.id === maaAccountId.value));
 const customScopes = ref([]);
 const customRemark = ref("");
 const newToken = ref(null);
@@ -840,29 +845,31 @@ function humanErr(err, fallback) {
 }
 
 function applyDefaultAccounts() {
-  const firstId = accounts.value.length ? accounts.value[0].id : "";
-  if (
-    !accounts.value.some(function (account) {
-      return account.id === maaAccountId.value;
-    })
-  )
-    maaAccountId.value = firstId;
-  if (
-    !accounts.value.some(function (account) {
-      return account.id === customAccountId.value;
-    })
-  )
-    customAccountId.value = firstId;
+  const defaultId = accounts.value.find(account => account.id === activeAccount.id)?.id || accounts.value[0]?.id || "";
+  if (creatingMode.value !== "maayuan") {
+    if (!accounts.value.some(account => account.id === maaAccountId.value)) maaAccountChosen.value = false;
+    if (!maaAccountChosen.value) maaAccountId.value = defaultId;
+  }
+  if (creatingMode.value !== "advanced") {
+    if (!accounts.value.some(account => account.id === customAccountId.value)) customAccountChosen.value = false;
+    if (!customAccountChosen.value) customAccountId.value = defaultId;
+  }
+}
+
+function connectionAccountLabel(account) {
+  return account ? normalizeAccountGame(account.game) + " · " + account.name : "未选择游戏账号";
 }
 
 async function loadTokens() {
+  const userId = auth.userInfo?.id;
   loading.value = true;
   error.value = "";
   try {
     const data = await getOpenApiTokens();
+    if (userId !== auth.userInfo?.id) return;
     tokens.value = Array.isArray(data) ? data : [];
   } catch (err) {
-    error.value = humanErr(err, "连接列表加载失败，请稍后重试");
+    if (userId === auth.userInfo?.id) error.value = humanErr(err, "连接列表加载失败，请稍后重试");
   } finally {
     loading.value = false;
   }
@@ -968,21 +975,30 @@ async function createMaaYuanConnection() {
     return;
   }
   creatingMode.value = "maayuan";
+  const userId = auth.userInfo?.id;
+  const targetAccountId = maaAccountId.value;
   try {
     const created = await generateOpenApiToken({
       accountId: maaAccountId.value,
       scopes: MAAYUAN_REQUIRED_SCOPES.slice(),
       remark: "MaaYuan",
     });
+    if (userId !== auth.userInfo?.id) return;
     showCreatedToken(created, "maayuan");
     showMaaYuanConnect.value = false;
     await focusCreatedToken();
+    if (userId !== auth.userInfo?.id) return;
     toast("MaaYuan 连接码已创建");
     await loadTokens();
   } catch (err) {
-    toast(humanErr(err, "MaaYuan 连接码创建失败"), true);
+    if (userId === auth.userInfo?.id) {
+      maaAccountId.value = targetAccountId;
+      maaAccountChosen.value = true;
+      toast(humanErr(err, "MaaYuan 连接码创建失败"), true);
+    }
   } finally {
     creatingMode.value = "";
+    applyDefaultAccounts();
   }
 }
 
@@ -998,22 +1014,31 @@ async function createAdvancedToken() {
     return;
   }
   creatingMode.value = "advanced";
+  const userId = auth.userInfo?.id;
+  const targetAccountId = customAccountId.value;
   try {
     const created = await generateOpenApiToken({
       accountId: customAccountId.value,
       scopes: customScopes.value.slice(),
       remark: customRemark.value || null,
     });
+    if (userId !== auth.userInfo?.id) return;
     showCreatedToken(created, "advanced");
     await focusCreatedToken();
+    if (userId !== auth.userInfo?.id) return;
     customScopes.value = [];
     customRemark.value = "";
     toast("API 访问凭证已创建");
     await loadTokens();
   } catch (err) {
-    toast(humanErr(err, "API 访问凭证创建失败"), true);
+    if (userId === auth.userInfo?.id) {
+      customAccountId.value = targetAccountId;
+      customAccountChosen.value = true;
+      toast(humanErr(err, "API 访问凭证创建失败"), true);
+    }
   } finally {
     creatingMode.value = "";
+    applyDefaultAccounts();
   }
 }
 
@@ -1143,8 +1168,8 @@ watch(() => beta.canUseBetaFeatures, () => {
   if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
   void loadAccounts();
 });
-watch(() => auth.userInfo?.id, () => { dismissNotice(); recentFailures.value = []; });
-watch(accounts, function () {
+watch(() => auth.userInfo?.id, () => { dismissNotice(); recentFailures.value = []; newToken.value = null; });
+watch([accounts, () => activeAccount.id], function () {
   applyDefaultAccounts();
 });
 watch(
