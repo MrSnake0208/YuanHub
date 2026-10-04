@@ -1,16 +1,16 @@
 <template>
   <Teleport to="body">
-    <div class="modal-mask" @click.self="$emit('close')">
-      <div class="modal">
+    <div class="modal-mask is-raised" @click.self="$emit('close')">
+      <div ref="panel" class="modal" role="dialog" aria-modal="true" aria-labelledby="cart-save-title" tabindex="-1">
         <div class="modal-head">
-          <h3>保存方案</h3>
+          <h3 id="cart-save-title">保存方案</h3>
           <button type="button" aria-label="关闭保存方案弹窗" @click="$emit('close')"><X :size="20" /></button>
         </div>
         <form @submit.prevent="submitSave(existing)">
           <div class="fgrid">
             <div class="full">
               <label>方案名称 <em>*</em></label>
-              <input v-model="draftName" type="text" maxlength="50" required placeholder="如：周年庆-代号鸢" />
+              <input ref="nameInput" v-model="draftName" aria-label="方案名称" type="text" maxlength="50" required placeholder="如：周年庆-代号鸢" />
             </div>
           </div>
 
@@ -45,6 +45,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { X, Cloud, HardDrive } from '@lucide/vue'
+import { useModalFocus } from '../../composables/useModalFocus.js'
 
 const props = defineProps({
   name: { type: String, default: '' },
@@ -54,12 +55,16 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'save'])
+const panel = ref(null)
+const nameInput = ref(null)
+useModalFocus(ref(true), panel, { initialFocus: () => nameInput.value, onEscape: () => emit('close') })
 
 const draftName = ref(props.name)
 watch(() => props.name, (v) => { draftName.value = v })
 
 // overwrite：true=覆盖当前方案（PUT）；false=另存为新方案（POST）
 function submitSave(overwrite) {
+  if (props.saving) return
   if (!draftName.value || !draftName.value.trim()) return
   emit('save', { name: draftName.value, overwrite })
 }
