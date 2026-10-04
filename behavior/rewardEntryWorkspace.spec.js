@@ -167,6 +167,25 @@ beforeEach(() => {
   document.body.style.paddingRight = ''
 })
 
+it('报告外部入口复用原工作台，只读取目录而不写入库存', async () => {
+  const wrapper = mountWorkspace()
+  await wrapper.vm.openReport()
+  await flushPromises()
+  expect(document.body.querySelector('[role="dialog"] h3').textContent).toBe('导入本地报告')
+  expect(document.body.querySelector('.report-workbench')).not.toBeNull()
+  expect(rewardCatalogApi.getRewardCatalog).toHaveBeenCalledTimes(1)
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it('报告外部入口在账号不可写时同样禁用', async () => {
+  const wrapper = mountWorkspace({ disabled: true })
+  await wrapper.vm.openReport()
+  await flushPromises()
+  expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+  expect(rewardCatalogApi.getRewardCatalog).not.toHaveBeenCalled()
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
 describe('历练按次数补录', () => {
   beforeEach(() => rewardCatalogApi.getRewardCatalog.mockResolvedValue(trainingCatalog))
 

@@ -72,3 +72,11 @@ test('手动保存时静默保留前端隐藏道具的库存', function () {
     { id: 'zhuangjinboli', name: '装金玻璃', count: 15 }
   ])
 })
+
+test('完整全零盘点保留有效快照，entries为空不代表没有录入', function () {
+  const doc = buildManualStockSnapshot({ accountId: 'acc_zero', entityType: 'item', catalogVersion: '2026-10-04', effectiveAt: '2026-10-05T08:00:00Z', recordId: 'yuanhub:manual:zero', entries: [{ id: 'baijinbi', count: 0 }] })
+  assert.equal(doc.records.length, 1)
+  assert.equal(doc.records[0].record_type, 'stock_snapshot')
+  assert.equal(doc.records[0].snapshot_scope, 'full')
+  assert.deepEqual(doc.records[0].entries, [])
+})

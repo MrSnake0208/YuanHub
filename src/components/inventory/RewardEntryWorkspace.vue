@@ -404,6 +404,7 @@ async function open(nextMode) {
   // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
   await loadCatalog()
 }
+defineExpose({ openReport: () => open('report') })
 function close() {
   if (locked.value) return
   if (mode.value === 'manual' && result.value) manual.value = freshManual()

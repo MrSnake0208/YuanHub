@@ -71,3 +71,15 @@ test('calendar preserves last known stock without inventing daily changes or fut
   assert.deepEqual(resourceCalendarValue(points, '2026-08-05'), { stock: 20, delta: 20, recordedDay: '2026-08-05' })
   assert.deepEqual(resourceCalendarValue(points, '2026-08-06'), { stock: 20, delta: null, recordedDay: '2026-08-05' })
 })
+
+test('identical zero snapshots provide a known baseline and a later zero change, not missing data', () => {
+  const result = build([
+    record('zero-first', '02', 'stock_snapshot', [], 'full'),
+    record('zero-again', '05', 'stock_snapshot', [], 'full'),
+  ])
+  for (const resource of result) {
+    assert.deepEqual(resource.points.map(point => [point.stock, point.delta, point.previousDay]), [[0, null, null], [0, 0, '2026-08-02']])
+    assert.equal(resource.net, 0)
+    assert.equal(resourceCalendarValue(resource.points, '2026-08-04').delta, null)
+  }
+})
