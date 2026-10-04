@@ -82,6 +82,18 @@
           </section>
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
+          <section v-if="operatorEntryState" class="operator-entry-guide" aria-label="密探录入引导"
+            :role="operatorEntryState.endsWith('error') ? 'alert' : 'status'">
+            <p>{{ operatorEntryMessage }}</p>
+            <router-link v-if="operatorEntryState === 'logged-out'" class="act-btn" :to="{ path: '/login', query: { redirect: '/operator' } }">登录后录入</router-link>
+            <router-link v-else-if="operatorEntryState === 'no-account'" class="act-btn" to="/user/profile#game-accounts">创建或选择游戏账号</router-link>
+            <template v-else-if="operatorEntryState === 'empty' || operatorEntryState === 'unowned'">
+              <router-link class="act-btn" :to="quickHref">首次建档</router-link>
+              <router-link class="act-btn ghost" :to="quickSupplementHref">快速补录</router-link>
+              <button class="act-btn ghost" type="button" @click="focusCatalogEntry">补录一位密探</button>
+            </template>
+            <button v-else-if="operatorEntryState.endsWith('error')" class="act-btn ghost" type="button" :disabled="accountsLoading || loading" @click="retryEntryData">重试加载</button>
+          </section>
           <div
             class="operator-tabs"
             role="tablist"
@@ -117,7 +129,7 @@
               :class="{ on: activeTab === 'tracking' }"
               @click="openGrowthPlanningPreview"
             >
-              养成规划
+              养成规划{{ growthTrackingEnabled ? '' : ' · 即将上线' }}
             </button>
             <span class="sp"></span>
             <router-link class="act-btn ghost admin-link" to="/operator/share"
@@ -125,9 +137,9 @@
             >
             <router-link
               class="act-btn ghost admin-link"
-              :to="quickHref"
+              :to="operatorEntryState ? quickHref : quickSupplementHref"
               @click="showImport = false"
-              >首次 / 快捷录入</router-link
+              >{{ operatorEntryState ? '首次 / 快捷录入' : '快速补录' }}</router-link
             >
             <button
               type="button"
@@ -152,7 +164,7 @@
           >
             <template #summary-actions>
               <router-link class="act-btn ghost workspace-mobile-link" to="/operator/share">查看他人 BOX</router-link>
-              <router-link class="act-btn ghost workspace-mobile-link" :to="quickHref" @click="showImport = false">首次/快捷录入</router-link>
+              <router-link class="act-btn ghost workspace-mobile-link" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="showImport = false">{{ operatorEntryState ? '首次/快捷录入' : '快速补录' }}</router-link>
             </template>
             <template #side>
               <OperatorShareManager
@@ -487,6 +499,7 @@
               </div>
               <span class="sp"></span>
               <input
+                ref="catalogSearchInput"
                 v-model.trim="manifestSearch"
                 class="mf-search"
                 type="search"
@@ -607,7 +620,9 @@
                   共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已招募
                   <b class="bp-num">{{ manifestOwned }}</b> 位 · 未招募
                   <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录
-                  <b class="bp-num">{{ catalogVersion || "本地兜底" }}</b> ·
+                  <input class="catalog-version-value" type="text" readonly
+                    :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
+                    aria-label="目录版本，可选中复制" @focus="$event.target.select()" /> ·
                   所属游戏「{{ gameFilter }}」
                   <template v-if="rarityFilter !== 'all'">
                     · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
@@ -968,6 +983,7 @@
 
             <!-- 当前养成案卷筛选 -->
             <OperatorFilterDossier
+              v-if="ownedCurrentEntries.length > 0 && currentLoadedKey === accountId + ':' + gameFilter"
               v-reveal
               :result-count="filteredCurrent.length"
               :total-count="ownedCurrentEntries.length"
@@ -2449,7 +2465,7 @@
           @click="openGrowthPlanningPreview"
         >
           <Target :size="19" aria-hidden="true" />
-          <span>养成规划</span>
+          <span>{{ growthTrackingEnabled ? '养成规划' : '规划 · 即将上线' }}</span>
         </button>
       </nav>
 
@@ -3221,6 +3237,7 @@ watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
 let operatorPageDisposed = false;
 const manifestSearch = ref("");
+const catalogSearchInput = ref(null);
 const manifestFilter = ref("all");
 const rarityFilter = ref("all");
 const profFilter = ref("all");
@@ -3438,6 +3455,7 @@ const quickHref = computed(function () {
     ? "/operator/quick?account=" + encodeURIComponent(accountId.value)
     : "/operator/quick";
 });
+const quickSupplementHref = computed(() => quickHref.value + (accountId.value ? '&' : '?') + 'mode=supplement');
 
 // —— 统一子账号（库存 × 密探共用） ——
 const accounts = ref([]);
@@ -4671,6 +4689,44 @@ const hasManifestFilters = computed(function () {
 const ownedCurrentEntries = computed(function () {
   return currentEntries.value.filter(entry => catalogMap.value[entry.id] && isOperatorOwned(entry));
 });
+
+const operatorEntryState = computed(() => {
+  if (!auth.isLoggedIn) return 'logged-out';
+  if (accountsLoading.value) return 'accounts-loading';
+  if (accountError.value) return 'accounts-error';
+  if (!accounts.value.some(account => account.id === accountId.value)) return 'no-account';
+  if (loading.value) return 'loading';
+  if (error.value) return 'data-error';
+  if (currentLoadedKey.value !== accountId.value + ':' + gameFilter.value) return 'loading';
+  if (!currentEntries.value.length) return 'empty';
+  if (!ownedCurrentEntries.value.length) return 'unowned';
+  return '';
+});
+const operatorEntryMessage = computed(() => ({
+  'logged-out': '登录后可维护自己的密探档案；现在仍可浏览图鉴。',
+  'accounts-loading': '正在读取游戏账号…',
+  'accounts-error': accountError.value,
+  'no-account': '请先创建并选择游戏账号，再录入密探。',
+  loading: '正在读取当前账号的养成档案…',
+  'data-error': '养成档案读取失败：' + error.value,
+  empty: '当前账号还没有密探档案，可以首次建档，也可以只补录一位密探。',
+  unowned: '当前档案暂无可展示的已招募密探，可从图鉴选择密探并设置星阶。',
+})[operatorEntryState.value] || '');
+
+async function focusCatalogEntry() {
+  await setTab('catalog');
+  manifestSearch.value = "";
+  manifestFilter.value = "all";
+  rarityFilter.value = profFilter.value = subProfFilter.value = "all";
+  manifestGrowthFilters.value = emptyGrowthFilters();
+  await nextTick();
+  catalogSearchInput.value?.focus();
+}
+
+async function retryEntryData() {
+  if (accountError.value) await loadAccounts();
+  if (!accountError.value) await reloadCurrent();
+}
 
 const currentStatusCounts = computed(function () {
   const counts = ownedCurrentEntries.value.reduce(
@@ -7837,7 +7893,7 @@ async function openGrowthPlanningPreview() {
   if (!growthTrackingEnabled) {
     await dialog.alert({
       title: "养成规划",
-      message: "将在 v0.0.2 上线",
+      message: "功能准备中，开放时间以站内公告为准。",
     });
     return;
   }
@@ -8779,6 +8835,11 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.operator-entry-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.operator-entry-guide p { flex: 1 1 100%; margin: 0; overflow-wrap: anywhere; }
+.operator-entry-guide .act-btn { min-height: 44px; white-space: normal; }
+.catalog-version-value { width: 14ch; max-width: 100%; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; text-overflow: ellipsis; }
+.catalog-version-value:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .slot-oddity-completion,
 .ledger-oddity-completion {
   display: flex;
