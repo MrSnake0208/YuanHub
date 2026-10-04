@@ -11,11 +11,9 @@
             <span class="pill">养成</span>
             <span class="pill">首次 / 快捷录入</span>
           </div>
-          <h1>快捷录入<span class="small">首次建档 · 星阶批量</span></h1>
+          <h1>快捷录入<span class="small">首次建档 · 快速补录</span></h1>
           <p class="hero-sub">
-            按星阶逐页勾选密探档案：1 星 → 2 星 → … → 觉醒，每一页批量设置「等级
-            /
-            修为」，点「保存本页并下一步」即把本页立即写入该子账号，逐页即存，适合账号首次建档或快速补录。
+            首次建档按星阶逐页录入；快速补录可直接选择星阶并搜索密探。每页保存前确认修改内容，已保存的页面立即写入当前账号，取消后续录入不会撤销之前的保存。
           </p>
           <div class="hero-stats">
             <div>
@@ -73,9 +71,17 @@
           >
             正在加载快捷录入数据…
           </div>
+          <div v-else-if="accountError" class="state err" role="alert">
+            {{ accountError }}
+            <button class="link" type="button" @click="loadAccounts().then(reloadCurrent)">重试读取账号</button>
+          </div>
           <div v-else-if="!accounts.length" class="state err" v-reveal>
             尚未创建游戏账号，请先前往个人中心统一创建
             <router-link class="link" to="/user/profile#game-accounts">去创建</router-link>
+          </div>
+          <div v-else-if="!accountId" class="state err" role="alert">
+            请先选择游戏账号
+            <button class="link" type="button" @click="loadAccounts().then(reloadCurrent)">重试读取账号</button>
           </div>
           <div
             v-else-if="catalogError && !catalogOperators.length"
@@ -85,8 +91,18 @@
             {{ catalogError
             }}<button class="link" @click="loadCatalog">重试</button>
           </div>
+          <div v-else-if="currentLoading" class="state" role="status">正在读取已有养成，以保留命盘和星石…</div>
+          <div v-else-if="currentError || !currentReady" class="state err" role="alert">
+            <p v-if="pageSave.show && pageSave.ok">{{ pageSave.message }}</p>
+            {{ currentError || "尚未读取当前账号的已有养成，暂不能保存" }}
+            <button class="link" type="button" @click="reloadCurrent">重试读取养成</button>
+          </div>
 
           <template v-else>
+            <div class="entry-mode" role="group" aria-label="录入模式">
+              <button class="btn" type="button" :aria-pressed="!supplementMode" :disabled="busy" @click="setMode('first')">首次建档</button>
+              <button class="btn" type="button" :aria-pressed="supplementMode" :disabled="busy" @click="setMode('supplement')">快速补录</button>
+            </div>
             <!-- 步骤条 -->
             <div class="stepper" v-reveal>
               <button
@@ -99,7 +115,7 @@
                   done: isStepDone(s.key),
                   locked: !isStepUnlocked(s.key),
                 }"
-                :disabled="completed || importing || !isStepUnlocked(s.key)"
+                :disabled="completed || busy || !isStepUnlocked(s.key)"
                 :title="
                   isStepUnlocked(s.key)
                     ? s.title
@@ -112,13 +128,41 @@
                   >{{ s.nav
                   }}<small v-if="isStepDone(s.key)"
                     >{{ countOf(s.key) }} 位</small
-                  ><small v-if="savedByKey[s.key]" class="saved"
+                  ><small v-if="isStepDirty(s.key)" class="draft">未保存</small
+                  ><small v-else-if="savedByKey[s.key]" class="saved"
                     >已存</small
                   ></span
                 >
               </button>
             </div>
-            <p v-if="!completed" class="step-help">后续星阶需在当前页点击「保存本页并下一步」解锁；本页未勾选密探时也可继续。</p>
+            <p v-if="!completed" class="step-help">{{ supplementMode ? '可直接选择任意星阶并搜索密探；切阶保留未保存选择，每阶单独保存。' : '后续星阶需在当前页点击「保存本页并下一步」解锁；本页未勾选密探时也可继续。' }}</p>
+
+            <!-- 本页保存状态 -->
+            <div
+              v-if="pageSave.show"
+              :role="pageSave.ok ? 'status' : 'alert'"
+              class="page-save"
+              :class="{ err: !pageSave.ok }"
+            >
+              <template v-if="pageSave.ok">✓ {{ pageSave.message }}</template>
+              <template v-else
+                >{{ pageSave.message
+                }}<button
+                  class="link"
+                  type="button"
+                  :disabled="busy"
+                  @click="saveCurrentPage"
+                >
+                  重试
+                </button></template
+              >
+            </div>
+            <div
+              v-else-if="savedByKey[currentKey]"
+              class="page-save ok-static"
+            >
+              {{ isStepDirty(currentKey) ? '本页有未保存修改，请核对预览后保存' : '✓ 本页已保存' }}
+            </div>
 
             <!-- 单页：勾选某星阶密探 + 批量修为/等级，逐页即存 -->
             <div v-if="completed" class="wiz-card quick-complete" role="status" v-reveal>
@@ -132,37 +176,15 @@
                 <h2>{{ currentStep.title }}</h2>
                 <p class="wiz-sub">
                   {{ currentStep.sub }}；本页的「等级 /
-                  修为」会批量应用到已勾选的密探上，点「保存本页并下一步」即写入该子账号。
+                  修为」{{ supplementMode && !overwriteGrowth ? '仅用于新密探；已有等级、修为保留。' : '会批量应用到已勾选的密探上。' }}保存前可核对修改预览。
                 </p>
               </div>
 
-              <!-- 本页保存状态 -->
-              <div
-                v-if="pageSave.show"
-                class="page-save"
-                :class="{ err: !pageSave.ok }"
-              >
-                <template v-if="pageSave.ok">✓ {{ pageSave.message }}</template>
-                <template v-else
-                  >{{ pageSave.message
-                  }}<button
-                    class="link"
-                    type="button"
-                    :disabled="importing"
-                    @click="saveCurrentPage"
-                  >
-                    重试
-                  </button></template
-                >
-              </div>
-              <div
-                v-else-if="savedByKey[currentKey]"
-                class="page-save ok-static"
-              >
-                ✓ 本页已保存 · 修改后可重新点「保存本页并下一步」覆盖保存
-              </div>
-
               <!-- 批量设置条 -->
+              <label v-if="supplementMode" class="supplement-option">
+                <input v-model="overwriteGrowth" type="checkbox" :disabled="busy" />
+                同时覆盖已有密探的等级、修为
+              </label>
               <div class="batch-bar">
                 <span class="batch-count"
                   >已勾选 <b>{{ checkedOfCurrent.length }}</b> 位</span
@@ -176,7 +198,7 @@
                       v-model.number="pageForm.level"
                       min="0"
                       max="100"
-                      :disabled="importing"
+                      :disabled="busy"
                       @change="normalizePageForm"
                     />
                     <i>/100</i>
@@ -189,15 +211,15 @@
                       v-model.number="pageForm.elite"
                       min="0"
                       :max="maxEliteHint"
-                      :disabled="importing"
+                      :disabled="busy"
                       @change="normalizePageForm"
                     />
                     <i>/{{ OPERATOR_ELITE_MAX }}</i>
                   </label>
-                  <button class="mini" type="button" :disabled="importing" @click="applyPageGrowthPreset(100, 17)">
+                  <button class="mini" type="button" :disabled="busy" @click="applyPageGrowthPreset(100, 17)">
                     100级 / 修为17
                   </button>
-                  <button class="mini" type="button" :disabled="importing" @click="applyPageGrowthPreset(90, 15)">
+                  <button class="mini" type="button" :disabled="busy" @click="applyPageGrowthPreset(90, 15)">
                     90级 / 修为15
                   </button>
                 </div>
@@ -208,7 +230,7 @@
                 <button
                   class="mini"
                   type="button"
-                  :disabled="importing || !blueCardCount"
+                  :disabled="busy || !blueCardCount"
                   @click="selectRarityPage(3)"
                 >
                   蓝卡全选
@@ -216,7 +238,7 @@
                 <button
                   class="mini"
                   type="button"
-                  :disabled="importing || !purpleCardCount"
+                  :disabled="busy || !purpleCardCount"
                   @click="selectRarityPage(4)"
                 >
                   紫卡全选
@@ -224,7 +246,7 @@
                 <button
                   class="mini"
                   type="button"
-                  :disabled="importing"
+                  :disabled="busy"
                   @click="selectAllPage"
                 >
                   全选本页
@@ -232,7 +254,7 @@
                 <button
                   class="mini"
                   type="button"
-                  :disabled="importing"
+                  :disabled="busy"
                   @click="clearPage"
                 >
                   清空本页
@@ -240,11 +262,19 @@
               </div>
 
               <!-- 搜索 -->
+              <details v-if="previewEntries.length" class="quick-preview" open>
+                <summary>本阶待保存 {{ previewEntries.length }} 位 · {{ gameFilter }} · {{ accountName }}</summary>
+                <p>按下列结果保存；已有命盘一、命盘二与已装备星石保留。</p>
+                <p v-if="linkedOperatorNames.length">同时涉及 {{ linkedOperatorNames.join('、') }}：SP 与本体沿用等级、修为联动。</p>
+                <ul tabindex="0" aria-label="密探修改前后预览"><li v-for="entry in previewEntries" :key="entry.id">{{ entryChangeText(entry) }}</li></ul>
+              </details>
               <div class="op-search">
                 <input
                   v-model.trim="search"
                   class="op-search-input"
                   type="search"
+                  aria-label="搜索快捷录入密探名称、别名或 ID"
+                  :disabled="busy"
                   placeholder="搜索名称 / 别名 / id"
                 />
                 <span class="op-search-count"
@@ -322,7 +352,7 @@
                           type="checkbox"
                           class="op-check"
                           :checked="isChecked(op.id)"
-                          :disabled="importing"
+                          :disabled="busy"
                           @change="toggleOperator(op.id, $event)"
                         />
                         <img
@@ -352,7 +382,8 @@
                 <button
                   class="btn ghost"
                   type="button"
-                  :disabled="importing || stepIndex === 0"
+                  v-if="!supplementMode"
+                  :disabled="busy || stepIndex === 0"
                   @click="goStep(steps[stepIndex - 1].key)"
                 >
                   上一步
@@ -360,13 +391,15 @@
                 <button
                   class="btn primary"
                   type="button"
-                  :disabled="importing"
+                  :disabled="busy || !currentReady || (supplementMode && !checkedOfCurrent.length)"
                   @click="nextStep"
                 >
                   {{
-                    importing
+                    busy
                       ? "保存中…"
-                      : isAwaken
+                      : supplementMode
+                        ? "预览并保存本阶"
+                        : isAwaken
                         ? "保存并完成"
                         : "保存本页并下一步"
                   }}
@@ -390,7 +423,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
@@ -471,6 +504,9 @@ const starSteps = [
 const steps = starSteps;
 
 // —— 页面状态 ——
+const mode = ref(route.query.mode === "supplement" ? "supplement" : "first");
+const supplementMode = computed(() => mode.value === "supplement");
+const overwriteGrowth = ref(false);
 const stepIndex = ref(0);
 const maxUnlockedStep = ref(0);
 const search = ref("");
@@ -508,7 +544,13 @@ const catalogError = ref("");
 const catalogVersion = ref("");
 const backendCatalog = ref([]);
 const currentEntries = ref([]);
+const currentLoading = ref(false);
+const currentError = ref("");
+const currentLoadedContext = ref("");
 const importing = ref(false);
+const advancing = ref(false);
+const selectionPending = ref(false);
+const busy = computed(() => importing.value || advancing.value || selectionPending.value);
 const sessionSavedCount = ref(0);
 const sessionSavedIds = new Set();
 const completed = ref(false);
@@ -517,6 +559,20 @@ const savedByKey = reactive({});
 // 本页最近一次保存结果（成功 / 失败提示）
 const pageSave = reactive({ show: false, ok: false, message: "" });
 let currentLoadToken = 0;
+let accountLoadToken = 0;
+let contextSequence = 0;
+let disposed = false;
+let initialized = false;
+let pendingSubmission = null;
+const contextDrafts = new Map();
+const inactiveDraftDirty = ref(false);
+const contextKey = computed(() => auth.isLoggedIn && accountId.value
+  ? JSON.stringify([auth.userInfo?.id || "", accountId.value, gameFilter.value]) : "");
+const currentReady = computed(() => !!contextKey.value &&
+  currentLoadedContext.value === contextKey.value && !currentLoading.value && !currentError.value);
+function isCurrentContext(sequence) {
+  return !disposed && sequence === contextSequence;
+}
 
 // 每页：勾选集合 + 批量表单（等级 / 修为；节点不显示，默认 0）
 const checkedByKey = reactive({
@@ -534,10 +590,16 @@ starSteps.forEach(function (s) {
 });
 const draftBaselineByKey = reactive({});
 starSteps.forEach(s => { draftBaselineByKey[s.key] = quickDraftSignature([], null); });
-const quickDirty = computed(() => starSteps.some(s =>
-  quickDraftSignature(checkedByKey[s.key], formByKey[s.key]) !== draftBaselineByKey[s.key]
-));
+const quickDirty = computed(() => inactiveDraftDirty.value || starSteps.some(s => isStepDirty(s.key)));
 useUnsavedChanges(quickDirty, "快捷录入草稿");
+function draftSignature(key) {
+  const signature = quickDraftSignature(checkedByKey[key], formByKey[key]);
+  return checkedByKey[key]?.length && supplementMode.value
+    ? JSON.stringify([signature, overwriteGrowth.value]) : signature;
+}
+function isStepDirty(key) {
+  return draftSignature(key) !== draftBaselineByKey[key];
+}
 
 // —— 派生状态 ——
 const currentStep = computed(function () {
@@ -722,11 +784,12 @@ const currentMap = computed(function () {
   return m;
 });
 
-function starLabelOf(v) {
+function starLabelOf(v, op) {
   const n = Number(v) || 0;
   if (n <= 0) return "";
+  if (isSpOperator(op)) return n + "星";
   if (n === STAR_LEVEL_AWAKEN) return "觉醒";
-  if (n >= 1 && n <= 30) return Math.floor((n - 1) / 6) + 1 + "星";
+  if (n >= 1 && n <= 30) return (Math.floor((n - 1) / 6) + 1) + "星 · " + ((n - 1) % 6) + "节点";
   return "";
 }
 
@@ -743,7 +806,7 @@ function isStepUnlocked(key) {
   const idx = steps.findIndex(function (s) {
     return s.key === key;
   });
-  return idx !== -1 && idx <= maxUnlockedStep.value;
+  return idx !== -1 && (supplementMode.value || idx <= maxUnlockedStep.value);
 }
 
 function countOf(key) {
@@ -793,32 +856,6 @@ function hasExistingData(id) {
   );
 }
 
-async function confirmExistingData(id, key) {
-  if (!hasExistingData(id)) return true;
-  const op = catalogMap.value[id];
-  const entry = currentMap.value[id];
-  const name = op ? op.name || id : id;
-  const detail = entry
-    ? "（已有 Lv" +
-      (entry.level || 0) +
-      " · 修为 " +
-      (entry.elite || 0) +
-      " · " +
-      (starLabelOf(entry.starLevel) || "已有养成数据") +
-      "）"
-    : "";
-  return await dialog.confirm({
-    title: "覆盖养成数据",
-    message:
-      name +
-      detail +
-      "，是否覆盖为" +
-      stepLabel(key) +
-      "的设置？\n已有的命盘和星石会继续保留。",
-    confirmText: "覆盖",
-  });
-}
-
 function removeFromOtherSteps(ids, keepKey) {
   const idSet = new Set(ids);
   starSteps.forEach(function (s) {
@@ -831,93 +868,45 @@ function removeFromOtherSteps(ids, keepKey) {
 
 async function toggleOperator(id, event) {
   const checkbox = event && event.target;
-  const checked = !!(checkbox && checkbox.checked);
-  const key = currentKey.value;
-  const cur = checkedByKey[key] || [];
-  if (checked) {
-    if (cur.indexOf(id) !== -1) return;
-    const fromKey = previousStepFor(id, key);
-    const name = catalogMap.value[id] ? catalogMap.value[id].name || id : id;
-    if (fromKey && !(await confirmOverwrite([name], fromKey, key))) {
-      // 原生 checkbox 会先切换状态再触发 change；取消覆盖时需立即恢复视觉状态。
-      checkbox.checked = false;
-      return;
-    }
-    if (!(await confirmExistingData(id, key))) {
-      checkbox.checked = false;
-      return;
-    }
-    removeFromOtherSteps([id], key);
-    checkedByKey[key] = cur.concat(id);
-  } else {
-    checkedByKey[key] = cur.filter(function (item) {
-      return item !== id;
-    });
+  if (busy.value || !currentReady.value) {
+    if (checkbox) checkbox.checked = isChecked(id);
+    return;
   }
+  const sequence = contextSequence;
+  const key = currentKey.value;
+  if (checkbox?.checked) await selectPageIds([id]);
+  else checkedByKey[key] = checkedByKey[key].filter(item => item !== id);
+  if (isCurrentContext(sequence) && checkbox) checkbox.checked = isChecked(id);
 }
 
-async function selectPageIds(ids, actionLabel) {
+async function selectPageIds(ids) {
+  if (busy.value || !currentReady.value) return;
+  const sequence = contextSequence;
   const key = currentKey.value;
   const cur = checkedByKey[key] || [];
   const toAdd = [];
-  // 对「跨页冲突 / 已有数据」的密探逐个确认：点“否/跳过”只跳过那一个，其余照常勾选。
-  for (const id of ids) {
-    const name = catalogMap.value[id] ? catalogMap.value[id].name || id : id;
-    const fromKey = previousStepFor(id, key);
-    if (fromKey) {
-      const ok = await dialog.confirm({
-        title: "调整勾选",
-        message:
-          "「" +
-          name +
-          "」已在" +
-          stepLabel(fromKey) +
-          "选择，" +
-          actionLabel +
-          "时是否覆盖到" +
-          stepLabel(key) +
-          "？",
-        confirmText: "覆盖并勾选",
-        cancelText: "跳过",
-      });
-      if (!ok) continue;
-    } else if (hasExistingData(id)) {
-      const entry = currentMap.value[id];
-      const detail = entry
-        ? "（已有 Lv" +
-          (entry.level || 0) +
-          " · 修为 " +
-          (entry.elite || 0) +
-          " · " +
-          (starLabelOf(entry.starLevel) || "已有养成数据") +
-          "）"
-        : "";
-      const ok = await dialog.confirm({
-        title: "覆盖养成数据",
-        message:
-          "「" +
-          name +
-          "」" +
-          detail +
-          "，" +
-          actionLabel +
-          "时是否覆盖为" +
-          stepLabel(key) +
-          "的设置？\n已有的命盘和星石会继续保留。",
-        confirmText: "覆盖并勾选",
-        cancelText: "跳过",
-      });
-      if (!ok) continue;
+  selectionPending.value = true;
+  try {
+    for (const id of ids) {
+      if (cur.includes(id)) continue;
+      const fromKey = previousStepFor(id, key);
+      if (fromKey) {
+        const name = catalogMap.value[id]?.name || id;
+        const ok = await confirmOverwrite([name], fromKey, key);
+        if (!isCurrentContext(sequence)) return;
+        if (!ok) continue;
+      }
+      toAdd.push(id);
     }
-    toAdd.push(id);
+    if (!isCurrentContext(sequence) || !toAdd.length) return;
+    removeFromOtherSteps(toAdd, key);
+    checkedByKey[key] = Array.from(new Set(cur.concat(toAdd)));
+  } finally {
+    if (isCurrentContext(sequence)) selectionPending.value = false;
   }
-  if (!toAdd.length) return;
-  removeFromOtherSteps(toAdd, key);
-  checkedByKey[key] = Array.from(new Set(cur.concat(toAdd)));
 }
 
 async function selectRarityPage(rarity) {
-  const label = Number(rarity) === 3 ? "蓝卡全选" : "紫卡全选";
   const ids = pageOperators.value
     .filter(function (op) {
       return Number(op.rarity) === Number(rarity);
@@ -925,31 +914,34 @@ async function selectRarityPage(rarity) {
     .map(function (op) {
       return op.id;
     });
-  await selectPageIds(ids, label);
+  await selectPageIds(ids);
 }
 
 async function selectAllPage() {
   const ids = pageOperators.value.map(function (op) {
     return op.id;
   });
-  await selectPageIds(ids, "全选本页");
+  await selectPageIds(ids);
 }
 
 async function clearPage() {
-  const ids = pageOperators.value.map(function (op) {
-    return op.id;
-  });
-  const selectedCount = (checkedByKey[currentKey.value] || []).filter(id => ids.includes(id)).length;
-  if (!selectedCount || !(await dialog.confirm({
-    title: '清空本页选择？',
-    message: '将取消当前筛选下 ' + selectedCount + ' 位密探的勾选。',
-    type: 'danger', confirmText: '确认清空', cancelText: '保留选择',
-  }))) return;
-  checkedByKey[currentKey.value] = (
-    checkedByKey[currentKey.value] || []
-  ).filter(function (id) {
-    return ids.indexOf(id) === -1;
-  });
+  if (busy.value || !currentReady.value) return;
+  const sequence = contextSequence;
+  const key = currentKey.value;
+  const ids = pageOperators.value.map(op => op.id);
+  const selectedCount = checkedByKey[key].filter(id => ids.includes(id)).length;
+  if (!selectedCount) return;
+  selectionPending.value = true;
+  try {
+    const confirmed = await dialog.confirm({
+      title: '清空本页选择？',
+      message: '将取消当前筛选下 ' + selectedCount + ' 位密探的勾选。',
+      type: 'danger', confirmText: '确认清空', cancelText: '保留选择',
+    });
+    if (confirmed && isCurrentContext(sequence)) checkedByKey[key] = checkedByKey[key].filter(id => !ids.includes(id));
+  } finally {
+    if (isCurrentContext(sequence)) selectionPending.value = false;
+  }
 }
 
 // 修为不能超过当前等级上限（每页各自跟随：等级变更下修、修为手工上调时封顶）
@@ -1013,8 +1005,9 @@ function buildPageEntries(key) {
       const op = catalogMap.value[id];
       if (!op) return null;
       const existing = currentMap.value[id] || {};
-      const level = clampInt(f.level, OPERATOR_LEVEL_MAX);
-      const elite = Math.min(
+      const keepGrowth = supplementMode.value && !overwriteGrowth.value && !!currentMap.value[id];
+      const level = keepGrowth ? existing.level : clampInt(f.level, OPERATOR_LEVEL_MAX);
+      const elite = keepGrowth ? existing.elite : Math.min(
         clampInt(f.elite, OPERATOR_ELITE_MAX),
         getMaxEliteForLevel(level),
       );
@@ -1027,7 +1020,7 @@ function buildPageEntries(key) {
           : 6 * (Number(key) - 1) + (f.node == null ? 0 : f.node) + 1;
       return {
         starKey: key,
-        starLabel: starLabelForStep({ key: key }, f.node),
+        starLabel: isSp ? key + "星" : starLabelForStep({ key: key }, f.node),
         id: id,
         name: op.name || id,
         elite: elite,
@@ -1051,9 +1044,6 @@ function buildPageEntries(key) {
 const saveGame = computed(function () {
   return gameFilter.value;
 });
-const saveGameLabel = computed(function () {
-  return "· 版本「" + saveGame.value + "」";
-});
 
 const accountName = computed(function () {
   const hit = accounts.value.find(function (a) {
@@ -1061,45 +1051,73 @@ const accountName = computed(function () {
   });
   return (hit && hit.name) || "";
 });
+const previewEntries = computed(() => currentReady.value ? buildPageEntries(currentKey.value) : []);
+const linkedOperatorNames = computed(() => {
+  const selected = new Set(previewEntries.value.map(entry => entry.id));
+  const linked = new Set();
+  for (const entry of previewEntries.value) {
+    const baseId = catalogMap.value[entry.id]?.spOf;
+    if (baseId && !selected.has(baseId)) linked.add(baseId);
+    for (const op of catalogOperators.value) {
+      if (op.spOf === entry.id && !selected.has(op.id)) linked.add(op.id);
+    }
+  }
+  return [...linked].map(id => catalogMap.value[id]?.name || id);
+});
+function entryChangeText(entry) {
+  const old = currentMap.value[entry.id];
+  const before = old
+    ? "Lv" + old.level + " / 修为" + old.elite + " / " + (starLabelOf(old.starLevel, catalogMap.value[entry.id]) || "未拥有")
+    : "未建档";
+  return entry.name + "：" + before + " → Lv" + entry.level + " / 修为" + entry.elite + " / " + entry.starLabel;
+}
 
 // —— 导航 ——
 function goStep(key) {
   const idx = steps.findIndex(function (s) {
     return s.key === key;
   });
-  if (idx === -1 || idx > maxUnlockedStep.value) return;
+  if (busy.value || idx === -1 || (!supplementMode.value && idx > maxUnlockedStep.value)) return;
   stepIndex.value = idx;
+  if (!supplementMode.value) resetFilters();
+  pageSave.show = false;
+}
+
+function resetFilters() {
   search.value = "";
   rarityFilter.value = "all";
   profFilter.value = "all";
   subProfFilter.value = "all";
+}
+
+function setMode(value) {
+  if (busy.value) return;
+  mode.value = value;
+  completed.value = false;
+  if (value === "first") stepIndex.value = Math.min(stepIndex.value, maxUnlockedStep.value);
+  pendingSubmission = null;
   pageSave.show = false;
 }
 
 // 「保存本页并下一步」：先保存当前页，成功后再翻页；觉醒页由用户确认结果后离开。
 async function nextStep() {
-  if (importing.value) return;
-  const hasEntries = buildPageEntries(currentKey.value).length > 0;
-  const ok = await saveCurrentPage();
-  if (!ok) return;
-  if (stepIndex.value >= steps.length - 1) {
-    completed.value = true;
-    return;
+  if (busy.value) return;
+  const sequence = contextSequence;
+  const index = stepIndex.value;
+  advancing.value = true;
+  try {
+    const ok = await saveCurrentPage();
+    if (!ok || !isCurrentContext(sequence) || supplementMode.value) return;
+    if (index >= steps.length - 1) {
+      completed.value = true;
+      return;
+    }
+    maxUnlockedStep.value = Math.max(maxUnlockedStep.value, index + 1);
+    stepIndex.value = index + 1;
+    resetFilters();
+  } finally {
+    if (isCurrentContext(sequence)) advancing.value = false;
   }
-  if (hasEntries) {
-    // 稍作停留展示「已保存」结果，再翻页
-    await new Promise(function (r) {
-      setTimeout(r, 600);
-    });
-  }
-  pageSave.show = false;
-  const nextIndex = stepIndex.value + 1;
-  maxUnlockedStep.value = Math.max(maxUnlockedStep.value, nextIndex);
-  stepIndex.value = nextIndex;
-  search.value = "";
-  rarityFilter.value = "all";
-  profFilter.value = "all";
-  subProfFilter.value = "all";
 }
 
 // —— 数据加载 ——
@@ -1108,18 +1126,24 @@ async function loadCatalog() {
   catalogError.value = "";
   try {
     const data = await getOperatorCatalog();
+    if (disposed) return;
     backendCatalog.value =
       data && Array.isArray(data.operators) ? data.operators : [];
     catalogVersion.value = (data && data.catalog_version) || "";
   } catch (err) {
+    if (disposed) return;
     backendCatalog.value = [];
     catalogError.value = humanErr(err, "图鉴加载失败，当前显示本地兜底目录");
   } finally {
-    catalogLoading.value = false;
+    if (!disposed) catalogLoading.value = false;
   }
 }
 
 async function loadAccounts() {
+  const token = ++accountLoadToken;
+  const userId = auth.userInfo?.id;
+  const requestedAccountId = accountId.value;
+  const valid = () => !disposed && token === accountLoadToken && auth.isLoggedIn && auth.userInfo?.id === userId;
   if (!auth.isLoggedIn) {
     accounts.value = [];
     return;
@@ -1128,10 +1152,11 @@ async function loadAccounts() {
   accountError.value = "";
   try {
     const list = await listOperatorAccounts();
+    if (!valid()) return;
     accounts.value = Array.isArray(list) ? list : [];
     activeAccount.syncAccounts(accounts.value);
     // 优先级：入口携带的 ?account= > activeAccount 记住的账号 > 第一个
-    const queryId = route.query.account;
+    const queryId = !initialized && accountId.value === requestedAccountId ? route.query.account : null;
     const rememberedId = accounts.value.some(function (a) {
       return a.id === activeAccount.id;
     })
@@ -1146,26 +1171,32 @@ async function loadAccounts() {
         : rememberedId || (accounts.value.length ? accounts.value[0].id : "");
     if (accountId.value !== candidate) accountId.value = candidate;
   } catch (err) {
+    if (!valid()) return;
     accountError.value = humanErr(err, "子账号加载失败");
   } finally {
-    accountsLoading.value = false;
+    if (valid()) accountsLoading.value = false;
   }
 }
 
 async function reloadCurrent() {
   const loadToken = ++currentLoadToken;
-  if (!auth.isLoggedIn || !accountId.value) {
-    currentEntries.value = [];
-    return;
-  }
+  const sequence = contextSequence;
+  const requestedContext = contextKey.value;
+  const valid = () => isCurrentContext(sequence) && loadToken === currentLoadToken && contextKey.value === requestedContext;
+  currentLoadedContext.value = "";
+  currentError.value = "";
+  currentEntries.value = [];
+  currentLoading.value = false;
+  if (!requestedContext) return false;
   const requestedAccountId = accountId.value;
   const requestedGame = gameFilter.value;
+  currentLoading.value = true;
   try {
     const data = await getOperatorCurrent({
       accountId: requestedAccountId,
       game: requestedGame,
     });
-    if (loadToken !== currentLoadToken) return;
+    if (!valid()) return false;
     const list = Array.isArray(data) ? data : data ? [data] : [];
     const combined = {};
     list.forEach(function (doc) {
@@ -1177,35 +1208,19 @@ async function reloadCurrent() {
     currentEntries.value = Object.keys(combined).map(function (id) {
       return Object.assign({ id: id }, combined[id]);
     });
-  } catch (_err) {
-    // 养成加载失败不阻塞快捷导入，仅“已有”标记缺失；过期请求不得覆盖新选择。
-    if (loadToken === currentLoadToken) currentEntries.value = [];
+    currentLoadedContext.value = requestedContext;
+    return true;
+  } catch (err) {
+    if (valid()) currentError.value = humanErr(err, "已有养成加载失败，暂不能保存；请重试以保护命盘和星石");
+    return false;
+  } finally {
+    if (valid()) currentLoading.value = false;
   }
 }
 
-// —— 逐页保存：一页一导入（一页即存，不再攒到最后一次导入） ——
-async function saveCurrentPage() {
-  if (!auth.isLoggedIn) {
-    router.push("/login");
-    return false;
-  }
-  if (!accountId.value) {
-    pageSave.show = true;
-    pageSave.ok = false;
-    pageSave.message = "请先创建并选择一个子账号（可在密探或库存页新建）";
-    return false;
-  }
-  const key = currentKey.value;
-  const entries = buildPageEntries(key);
-  if (!entries.length) {
-    // 本页未勾选：不导入，直接放行（不计入已保存）
-    return true;
-  }
-  const account = accounts.value.find(function (a) {
-    return a.id === accountId.value;
-  }) || { id: accountId.value, name: accountId.value };
+function buildSubmissionDocument(entries, account, game) {
   const now = new Date().toISOString();
-  const doc = {
+  return {
     format: "myshare-operator-exchange",
     version: 2,
     exported_at: now,
@@ -1221,7 +1236,7 @@ async function saveCurrentPage() {
           ":" +
           Math.random().toString(16).slice(2, 8),
         record_type: "operator_snapshot",
-        game: saveGame.value,
+        game: game,
         effective_at: now,
         snapshot_scope: "listed",
         entries: entries.map(function (e) {
@@ -1243,33 +1258,98 @@ async function saveCurrentPage() {
       },
     ],
   };
+}
+
+// —— 逐页保存：一页一导入（一页即存，不再攒到最后一次导入） ——
+async function saveCurrentPage() {
+  if (importing.value || selectionPending.value || !currentReady.value) return false;
+  if (!auth.isLoggedIn) {
+    router.push("/login");
+    return false;
+  }
+  if (!accountId.value) {
+    pageSave.show = true;
+    pageSave.ok = false;
+    pageSave.message = "请先创建并选择一个子账号（可在密探或库存页新建）";
+    return false;
+  }
+  const key = currentKey.value;
+  let entries = buildPageEntries(key);
+  if (!entries.length) {
+    // 本页未勾选：不导入，直接放行（不计入已保存）
+    return true;
+  }
+  const account = accounts.value.find(function (a) {
+    return a.id === accountId.value;
+  });
+  if (!account || accountError.value || accountsLoading.value) return false;
+  const sequence = contextSequence;
+  const game = saveGame.value;
+  const signature = draftSignature(key);
+  const fingerprint = JSON.stringify([contextKey.value, key, mode.value, signature]);
+  let doc;
   importing.value = true;
   try {
-    await importOperator(doc);
-    draftBaselineByKey[key] = quickDraftSignature(checkedByKey[key], formByKey[key]);
+    if (pendingSubmission?.fingerprint === fingerprint) {
+      // 网络结果不确定时重放已确认的完整请求，不生成新的幂等 ID。
+      doc = pendingSubmission.doc;
+      entries = pendingSubmission.entries;
+    } else {
+      if (!(await reloadCurrent()) || !isCurrentContext(sequence)) return false;
+      entries = buildPageEntries(key);
+      if (!entries.length) return false;
+      doc = buildSubmissionDocument(entries, account, game);
+      const confirmed = await dialog.confirm({
+        title: "确认保存本页",
+        message: "目标账号：" + game + " · " + account.name + "\n" +
+          (entries.length === 1 ? entryChangeText(entries[0]) : "将保存 " + entries.length + " 位密探；完整变化见本页预览。") +
+          "\n保留已有命盘一、命盘二和已装备星石。" +
+          (linkedOperatorNames.value.length ? "\n同时涉及 " + linkedOperatorNames.value.slice(0, 3).join('、') +
+            (linkedOperatorNames.value.length > 3 ? "等 " + linkedOperatorNames.value.length + " 位" : "") + "：SP 与本体联动等级、修为。" : "") +
+          (supplementMode.value && !overwriteGrowth.value ? "\n已有等级、修为保留；新密探使用本页设置。" : "\n等级、修为和星阶将按上述结果覆盖。"),
+        confirmText: "确认保存", cancelText: "返回修改",
+      });
+      if (!confirmed || !isCurrentContext(sequence) || !currentReady.value || signature !== draftSignature(key)) return false;
+      pendingSubmission = { fingerprint, doc, entries };
+    }
+    const result = await importOperator(doc);
+    if (!isCurrentContext(sequence)) return false;
+    if (Number(result?.superseded) > 0 ||
+        Number(result?.accepted || 0) + Number(result?.duplicates || 0) !== doc.records.length) {
+      pendingSubmission = null;
+      pageSave.show = true;
+      pageSave.ok = false;
+      pageSave.message = "本次记录未应用到当前档案，草稿已保留；请核对最新数据后重新保存。";
+      await reloadCurrent();
+      return false;
+    }
+    pendingSubmission = null;
+    draftBaselineByKey[key] = signature;
     entries.forEach(entry => sessionSavedIds.add(entry.id));
     sessionSavedCount.value = sessionSavedIds.size;
     savedByKey[key] = true;
     pageSave.show = true;
     pageSave.ok = true;
     pageSave.message =
-      "本页已保存 " +
+      "「" + stepLabel(key) + "」本页已保存 " +
       entries.length +
       " 位到「" +
       account.name +
       "」" +
-      saveGameLabel.value;
+      " · 版本「" + game + "」" +
+      (result.warnings?.length ? "；提示：" + result.warnings.join("；") : "");
     // 重新拉取当前养成数据，让「已有数据」分组与“已有”标记即时更新
     await reloadCurrent();
     return true;
   } catch (err) {
+    if (!isCurrentContext(sequence)) return false;
     pageSave.show = true;
     pageSave.ok = false;
     pageSave.message =
       "「" + stepLabel(key) + "」保存失败：" + humanErr(err, "导入失败");
     return false;
   } finally {
-    importing.value = false;
+    if (isCurrentContext(sequence)) importing.value = false;
   }
 }
 
@@ -1287,14 +1367,104 @@ function humanErr(err, fallback) {
   const msg = err.message;
   if (!msg) return fallback;
   if (/Failed to fetch|NetworkError|fetch/i.test(msg))
-    return "网络异常，请检查后端服务是否已启动";
+    return "网络异常，请稍后重试";
   return msg;
 }
 
+function captureDraft() {
+  return {
+    checked: JSON.parse(JSON.stringify(checkedByKey)),
+    forms: JSON.parse(JSON.stringify(formByKey)),
+    baselines: { ...draftBaselineByKey }, saved: { ...savedByKey },
+    index: stepIndex.value, unlocked: maxUnlockedStep.value, completed: completed.value,
+    ids: [...sessionSavedIds], mode: mode.value, overwrite: overwriteGrowth.value,
+    search: search.value, rarity: rarityFilter.value, prof: profFilter.value, subProf: subProfFilter.value,
+    submission: pendingSubmission,
+  };
+}
+
+function restoreDraft(draft) {
+  for (const step of steps) {
+    checkedByKey[step.key] = draft?.checked[step.key] || [];
+    formByKey[step.key] = draft?.forms[step.key] || { elite: 1, level: 1, node: 0 };
+    draftBaselineByKey[step.key] = draft?.baselines[step.key] || quickDraftSignature([], null);
+    savedByKey[step.key] = draft?.saved[step.key] || false;
+  }
+  stepIndex.value = draft?.index || 0;
+  maxUnlockedStep.value = draft?.unlocked || 0;
+  completed.value = draft?.completed || false;
+  sessionSavedIds.clear();
+  draft?.ids.forEach(id => sessionSavedIds.add(id));
+  sessionSavedCount.value = sessionSavedIds.size;
+  mode.value = draft?.mode || (route.query.mode === "supplement" ? "supplement" : "first");
+  overwriteGrowth.value = draft?.overwrite || false;
+  search.value = draft?.search || "";
+  rarityFilter.value = draft?.rarity || "all";
+  profFilter.value = draft?.prof || "all";
+  subProfFilter.value = draft?.subProf || "all";
+  pendingSubmission = draft?.submission || null;
+}
+
+function storedDraftIsDirty(draft) {
+  return steps.some(step => {
+    const raw = quickDraftSignature(draft.checked[step.key], draft.forms[step.key]);
+    const signature = draft.mode === 'supplement' && draft.checked[step.key]?.length
+      ? JSON.stringify([raw, draft.overwrite]) : raw;
+    return signature !== draft.baselines[step.key];
+  });
+}
+
+watch(
+  () => [auth.isLoggedIn, auth.userInfo?.id, accountId.value, gameFilter.value],
+  (next, previous) => {
+    const previousKey = previous[0] && previous[2] ? JSON.stringify([previous[1] || "", previous[2], previous[3]]) : "";
+    const userChanged = next[0] !== previous[0] || next[1] !== previous[1];
+    if (userChanged) contextDrafts.clear();
+    else if (previousKey) contextDrafts.set(previousKey, captureDraft());
+    contextSequence += 1;
+    currentLoadToken += 1;
+    currentLoadedContext.value = "";
+    currentEntries.value = [];
+    currentError.value = "";
+    currentLoading.value = false;
+    importing.value = advancing.value = selectionPending.value = false;
+    pageSave.show = false;
+    const draft = contextDrafts.get(contextKey.value);
+    contextDrafts.delete(contextKey.value);
+    inactiveDraftDirty.value = [...contextDrafts.values()].some(storedDraftIsDirty);
+    restoreDraft(draft);
+    if (userChanged) {
+      accountLoadToken += 1;
+      accounts.value = [];
+      accountsLoading.value = false;
+      accountError.value = "";
+      if (initialized && next[0]) {
+        const token = accountLoadToken + 1;
+        void loadAccounts().then(() => {
+          if (!disposed && token === accountLoadToken && auth.isLoggedIn && auth.userInfo?.id === next[1]) void reloadCurrent();
+        });
+      }
+    } else if (initialized && !accountsLoading.value) void reloadCurrent();
+  },
+  { flush: "sync" },
+);
+
 onMounted(async function () {
-  await loadCatalog();
-  await loadAccounts();
-  reloadCurrent();
+  const token = accountLoadToken + 1;
+  await Promise.all([loadCatalog(), loadAccounts()]);
+  if (disposed) return;
+  initialized = true;
+  if (auth.isLoggedIn && token !== accountLoadToken) await loadAccounts();
+  if (disposed) return;
+  await reloadCurrent();
+});
+onBeforeUnmount(() => {
+  disposed = true;
+  contextSequence += 1;
+  currentLoadToken += 1;
+  accountLoadToken += 1;
+  contextDrafts.clear();
+  pendingSubmission = null;
 });
 </script>
 
@@ -1303,6 +1473,15 @@ onMounted(async function () {
 .quick-main {
   padding-bottom: 0;
 }
+.entry-mode { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.entry-mode .btn { min-height: 44px; }
+.entry-mode .btn[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
+.supplement-option { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 12px; color: var(--ink); }
+.page-save { white-space: pre-wrap; overflow-wrap: anywhere; }
+.quick-preview { margin: 14px 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.quick-preview summary { min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
+.quick-preview p { font-size: 13px; color: var(--ink-60); }
+.quick-preview ul { max-height: 18rem; overflow: auto; padding-left: 20px; overflow-wrap: anywhere; }
 .page-quick .hero::after {
   content: "速录";
 }
