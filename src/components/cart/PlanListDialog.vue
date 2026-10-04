@@ -1,10 +1,10 @@
 <template>
   <Teleport to="body">
-    <div class="modal-mask" @click.self="$emit('close')">
-      <div class="modal plan-modal">
+    <div class="modal-mask is-raised" @click.self="$emit('close')">
+      <div ref="panel" class="modal plan-modal" role="dialog" aria-modal="true" aria-labelledby="cart-plans-title" tabindex="-1">
         <div class="modal-head">
-          <h3>我的方案</h3>
-          <button type="button" aria-label="关闭方案列表弹窗" @click="$emit('close')"><X :size="20" /></button>
+          <h3 id="cart-plans-title">我的方案</h3>
+          <button ref="closeButton" type="button" aria-label="关闭方案列表弹窗" @click="$emit('close')"><X :size="20" /></button>
         </div>
 
         <div class="plan-body">
@@ -81,6 +81,7 @@
 <script setup>
 import { ref } from 'vue'
 import { X, Cloud, HardDrive, LogIn, Loader2, Pencil, Trash2, Check } from '@lucide/vue'
+import { useModalFocus } from '../../composables/useModalFocus.js'
 
 defineProps({
   plans: { type: Array, default: () => [] },
@@ -90,6 +91,12 @@ defineProps({
 })
 
 const emit = defineEmits(['close', 'load', 'load-guest', 'rename', 'remove', 'remove-guest', 'login'])
+const panel = ref(null)
+const closeButton = ref(null)
+useModalFocus(ref(true), panel, { initialFocus: () => closeButton.value, onEscape: () => {
+  if (renamingId.value !== null) cancelRename()
+  else emit('close')
+} })
 
 // ---- 行内重命名 ----
 const renamingId = ref(null)

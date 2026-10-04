@@ -10,6 +10,8 @@
           <span class="pkg-tag pts">{{ pkg.points }} 积分</span>
           <span v-if="pkg.draws > 0" class="pkg-tag line">{{ pkg.draws }} 抽</span>
           <span v-if="pkg.draws > 0" class="pkg-tag gold">¥{{ (pkg.calculatedPriceCny / pkg.draws).toFixed(2) }}/抽</span>
+          <span v-else class="pkg-tag line">每抽成本不适用</span>
+          <span v-if="pkg._fromSnapshot" class="pkg-tag line">方案快照</span>
           <span v-if="pkg.extra" class="pkg-tag line">{{ pkg.extra }}</span>
         </div>
       </div>
@@ -44,3 +46,14 @@ defineProps({
 
 defineEmits(['add', 'remove', 'remove-custom'])
 </script>
+
+<style scoped>
+.pkg-card{min-width:0}
+.pkg-top{flex-wrap:wrap}
+.pkg-top>div:first-child{flex:1 1 140px;min-width:0}
+.pkg-name,.pkg-tag{overflow-wrap:anywhere}
+.pkg-tag{white-space:normal}
+.pkg-price{max-width:100%;overflow-wrap:anywhere}
+.pkg-foot{flex-wrap:wrap;gap:10px}
+.stepper{flex-shrink:0}
+</style>

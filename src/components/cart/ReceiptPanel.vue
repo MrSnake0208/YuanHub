@@ -1,5 +1,5 @@
 <template>
-  <div class="receipt">
+  <div ref="receiptElement" class="receipt">
     <div class="receipt-head">
       <h2><Receipt :size="18" />购物清单</h2>
       <div class="en">Purchase Receipt</div>
@@ -7,7 +7,8 @@
     <div class="receipt-body">
       <div class="initial-row">
         <span class="lb"><Gift :size="14" class="ic" />已有初始积分</span>
-        <input type="number" min="0" aria-label="已有初始积分" :value="initialPoints || ''" @input="onInitialInput" placeholder="0" />
+        <input v-if="!exportOnly" type="number" min="0" aria-label="已有初始积分" :value="initialPoints || ''" @input="onInitialInput" placeholder="0" />
+        <span v-else>{{ initialPoints }} 分</span>
       </div>
 
       <div v-if="cartItems.length === 0" class="receipt-empty">
@@ -29,7 +30,8 @@
         <div class="divider-dashed"></div>
         <div>
           <div class="tot-row"><span class="lb">总抽数</span><span class="v badge">{{ totalDraws.toFixed(1) }} 抽</span></div>
-          <div class="tot-row"><span class="lb">平均每抽</span><span class="v gold">{{ totalDraws > 0 ? '¥' + (priceForDraws / totalDraws).toFixed(2) : '-' }}</span></div>
+          <div class="tot-row"><span class="lb">平均每抽</span><span class="v gold">{{ totalDraws > 0 ? '¥' + (priceForDraws / totalDraws).toFixed(2) : '不适用' }}</span></div>
+          <p class="receipt-price-note">平均每抽仅计含抽数礼包的支出。</p>
           <div class="tot-row"><span class="lb">购物车积分</span><span class="v">{{ cartPoints }} 分</span></div>
           <div class="tot-row"><span class="lb strong">总积分 (含初始)</span><span class="v gold">{{ totalPoints }} 分</span></div>
           <div v-if="version === 'daihao'" class="tot-row"><span class="lb">总价 (USD)</span><span class="v">${{ totalUsd.toFixed(2) }}</span></div>
@@ -38,6 +40,7 @@
           <span class="lb">总计 (CNY)</span>
           <span class="v">¥{{ totalCny.toFixed(2) }}</span>
         </div>
+        <p v-if="version === 'daihao'" class="receipt-price-note">参考汇率：1 USD = {{ exchangeRate }} CNY，可修改；金额以游戏内商店为准。</p>
       </template>
 
       <template v-if="totalPoints > 0">
@@ -79,7 +82,7 @@
     </div>
   </div>
 
-  <div class="cart-actions">
+  <div v-if="!exportOnly" class="cart-actions">
     <button class="btn ghost" :disabled="cartItems.length === 0" @click="$emit('clear')"><Trash2 :size="16" />清空</button>
     <button class="btn primary" :disabled="cartItems.length === 0 || exportBusy" :aria-busy="exportBusy" @click="$emit('export')"><Download :size="16" />{{ exportBusy ? '生成中…' : '导出图片' }}</button>
     <button class="btn primary" @click="$emit('save-plan')"><Save :size="16" />保存</button>
@@ -88,6 +91,10 @@
 
 <script setup>
 import { ShoppingCart, Receipt, Gift, Trash2, Download, Save } from '@lucide/vue'
+import { ref } from 'vue'
+
+const receiptElement = ref(null)
+defineExpose({ receiptElement })
 
 const props = defineProps({
   cartItems: { type: Array, default: () => [] },
@@ -106,7 +113,9 @@ const props = defineProps({
   track1Campaign: { type: Object, default: () => ({ active: false, label: '活动时间待确认' }) },
   track2Campaign: { type: Object, default: () => ({ active: false, label: '活动时间待确认' }) },
   version: { type: String, default: 'daihao' },
-  exportBusy: { type: Boolean, default: false }
+  exportBusy: { type: Boolean, default: false },
+  exchangeRate: { type: Number, default: 7.2 },
+  exportOnly: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['clear', 'update-initial', 'save-plan', 'export'])
@@ -116,3 +125,9 @@ function onInitialInput(e) {
   emit('update-initial', isNaN(val) || val < 0 ? 0 : val)
 }
 </script>
+
+<style scoped>
+.receipt-price-note{font-size:11px;line-height:1.6;color:var(--ink-60);margin:8px 0;overflow-wrap:anywhere}
+.cart-line{gap:12px;flex-wrap:wrap}
+.cart-line .nm{min-width:0;overflow-wrap:anywhere}
+</style>
