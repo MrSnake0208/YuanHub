@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto'
 import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { loadAndImportStarCapture, STAR_CAPTURE_IMPORT_SUPERSEDED_CODE } from '../src/pages/star/captureTransport.js'
+import { createStarCaptureLifecycle, importAndMarkStarCapture } from '../src/pages/star/starCaptureLifecycle.js'
 
 // 本文件直接执行 vendored embed 产物（public/yuanstar-embed/yuanstar-embed.js），
 // 而不是断言它的字符串。之前的 provenance 测试只做子串匹配：即使 capture_game_mismatch
@@ -142,7 +144,7 @@ describe('vendored YuanStar embed behavior', () => {
 describe('vendored OCR prewarming', () => {
   let sequence = 0
 
-  async function clockedEmbed({ stalled = false, account: restoredAccount } = {}) {
+  async function clockedEmbed({ stalled = false, recoverOnRetry = false, account: restoredAccount } = {}) {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     // fake-indexeddb uses Node structuredClone, which cannot clone jsdom Blob internals.
     vi.stubGlobal('Blob', CloneableBlob)
@@ -153,7 +155,7 @@ describe('vendored OCR prewarming', () => {
         requests: [], terminated: false,
         postMessage(request) {
           this.requests.push(request)
-          if (stalled && request.operation === 'initialize') return
+          if (stalled && request.operation === 'initialize' && (!recoverOnRetry || workers.length === 1)) return
           queueMicrotask(() => this.onmessage?.({ data: {
             version: 1, requestId: request.requestId, operation: request.operation, ok: true,
             result: request.operation === 'initialize' ? { schemaVersion: '1.0', models: [] } : null,
@@ -281,6 +283,77 @@ describe('vendored OCR prewarming', () => {
       await embed.handle.dispose()
       await vi.advanceTimersByTimeAsync(10000)
       expect(embed.workers).toHaveLength(0)
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('accepts the actual legacy embed only after its complete Draft is persisted', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      const current = { accountId: embed.account.accountId, captureId: 'capture-embed-probe', batch: captureBatch('如鸢') }
+      const lifecycle = createStarCaptureLifecycle(localStorage)
+      expect(await importAndMarkStarCapture({
+        lifecycle, accountId: current.accountId, captureId: current.captureId, isCurrent: () => true,
+        importCapture: () => loadAndImportStarCapture({}, current, embed.handle, () => {}, () => true),
+      })).toBe(true)
+      expect(lifecycle.get(current.accountId)).toMatchObject({ captureId: current.captureId, state: 'imported' })
+      expect(embed.root.querySelector('#file-summary').textContent).toContain('3 张')
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('a same-account concurrent replacement cannot turn an undefined verdict into imported', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      const current = { accountId: embed.account.accountId, captureId: 'capture-embed-probe', batch: captureBatch('如鸢') }
+      const lifecycle = createStarCaptureLifecycle(localStorage)
+      const first = importAndMarkStarCapture({
+        lifecycle, accountId: current.accountId, captureId: current.captureId, isCurrent: () => true,
+        importCapture: () => loadAndImportStarCapture({}, current, embed.handle, () => {}, () => true),
+      }).catch(error => error)
+      await embed.handle.importCaptureBatch({ ...captureBatch('如鸢'), captureId: 'capture-replacement' })
+      expect(await first).toMatchObject({ code: STAR_CAPTURE_IMPORT_SUPERSEDED_CODE })
+      expect(lifecycle.get(current.accountId)).toBeNull()
+      expect(lifecycle.captureAction(current.accountId, current.captureId)).toBe('import')
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('a manual retry after initialization timeout creates one fresh worker and reaches analysis', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed({ stalled: true, recoverOnRetry: true })
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      await vi.advanceTimersByTimeAsync(300000)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.workers[0].terminated).toBe(true)
+      // Use the product's real validation and explicit OCR confirmation flow.
+      embed.root.querySelector('[data-start-ocr]').click()
+      await vi.advanceTimersByTimeAsync(0)
+      const confirm = embed.root.querySelector('[data-confirm-start-ocr]')
+      expect(confirm).not.toBeNull()
+      confirm.click()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(embed.workers).toHaveLength(2)
+      expect(embed.workers[1].requests.filter(request => request.operation === 'initialize')).toHaveLength(1)
+      expect(embed.workers[1].requests.some(request => request.operation === 'analyzeImage')).toBe(true)
+      // The mock has no OCR detections: this proves retry/initialization, not OCR correctness.
+    } finally { await cleanup(embed) }
+  }, 60000)
+
+  it('unmount during stalled initialization terminates the worker and ignores late replies', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed({ stalled: true })
+      await vi.advanceTimersByTimeAsync(10000)
+      const worker = embed.workers[0]
+      const initialize = worker.requests.find(request => request.operation === 'initialize')
+      await embed.handle.dispose()
+      expect(worker.terminated).toBe(true)
+      expect(embed.root.childElementCount).toBe(0)
+      worker.onmessage?.({ data: { ...initialize, ok: true, result: { schemaVersion: '1.0', models: [] } } })
+      await vi.advanceTimersByTimeAsync(300000)
+      expect(embed.workers).toHaveLength(1)
+      expect(embed.root.childElementCount).toBe(0)
     } finally { await cleanup(embed) }
   }, 60000)
 })

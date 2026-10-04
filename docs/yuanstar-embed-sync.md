@@ -22,6 +22,40 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
+## 2026-10-05：宿主导入确认与移动端衔接
+
+- 当前 embed/sourceCommit 保持下节的 `91ce034f4aae2a68a4b3c387e44149fe6302a922`。
+  本机没有 YuanStar 源码；本轮只改宿主、测试与说明，没有手改生成产物或重建 embed。
+- 宿主不再无条件把 `importCaptureBatch` 的 `undefined` 当成功：只有当前账号的
+  schemaVersion=1 Draft，transport.source/captureId、全局图片顺序、图片 metadata 与持久化 Blob
+  均匹配该批次，才受理旧产物的空返回。确认在一个 readonly transaction 内完成，复用现有
+  无创建/无升级的 IndexedDB 打开方式；存储异常保留原错误，未知返回值拒绝。
+  显式 `true` 按公开成功契约受理，`false` 仍报 superseded。未来上游升级返回值后可移除该兼容读取。
+- `imported` 生命周期标记只作为恢复线索：即使已有标记，也要确认同账号/同批次 Draft 的完整
+  metadata 和 Blob 才显示“已恢复”；缺失或被替换时重新下载导入。失败保留 pending、路由及重试入口。
+  导入/确认阶段不 consume，提交成功并退休 Draft 后的清理顺序不变。
+- 首次账号同步结束后才应用最新持久页签。加载时切页只更新偏好；账号变化复用既有 latest queue，
+  过期/卸载的准备结果不触发切页、云读取或导入。这是宿主入口的收敛，不声称已统一 embed 内部
+  mount/review/无账号初始化的全部加载链；完整修复仍需上游源码。
+- 合法跨版本 CaptureBatch 保持放行；宿主在导入成功状态中持续显示截图版本、当前工作区版本和
+  实际识别版本提示。提示随账号/批次变化清理，不修改 OCR context 或 CaptureBatch metadata。
+- 移动 toast 放到顶部安全区，避开底部恢复工具和页签，并引用现有 toast 层级；toast 无操作按钮，
+  不拦截点击。重要导入错误仍由宿主持续状态与重试按钮呈现。coarse pointer 下计划按钮及当前编辑
+  按钮至少 44×44 CSS px；桌面保持当前 32px 紧凑视觉。
+- `/star` 的 PWA 安装邀请排除已进入宿主基线，本轮不重复修改全局 PWA 组件。
+- 已新增/更新只读 Draft、真实 vendored 导入/并发替换、页面加载/换账号/恢复、OCR timeout 后主动
+  重试及初始化中卸载测试。**本轮未运行回归套件，也未做浏览器/真机 OCR 或生产 gzip 验收。**
+
+用户最小验证（仓库根目录）：
+
+```sh
+node --test test/starCaptureTransport.test.js test/starCaptureDraftReceipt.test.js test/starCaptureLifecycle.test.js test/legacyHostAccountMigration.indexeddb.test.js test/yuanstarEmbedProvenance.test.js
+npm run test:behavior -- behavior/embedProduct.spec.js behavior/starRecoveryUx.spec.js
+```
+
+布局另验收 390/768/1440、1080±1、388×608 短高度、横屏、安全区与 coarse pointer；必要时补 320px。
+Worker mock 只能证明生命周期与重试路径，不能证明真实识别结果或手机网络表现。
+
 ## 当前局部 UI 修复来源（2026-10-03）
 
 - 源码分支仍为 `fix/import-draft-lifecycle`，已提交 source commit 为 `91ce034f4aae2a68a4b3c387e44149fe6302a922`，
@@ -87,11 +121,11 @@
 - `importCaptureBatch(batch)`：必须等 Draft 真正持久化后才 resolve。
   契约要求：**若批次被其他操作顶掉、没有写入 Draft，必须返回 `false` 或 reject**，
   不能静默 resolve；宿主据此抛出 `star_capture_import_superseded` 并保留 pendingCapture。
-  **当前状态（2026-10-02 同步的产物仍未满足）**：批次被顶掉的分支是裸 `return`，
-  即 resolve `undefined`，`src/pages/star/captureTransport.js` 的 `accepted === false`
-  判断不会命中，该次自动采集会被静默丢弃；宿主保留 `undefined` 兼容分支只是为了
-  不让旧产物把导入误判为失败。这是**已知未闭合的宿主 ↔ embed 契约缺口**，
-  需上游把失败分支改为 `return false`（或 reject）后重新同步产物。
+  **当前产物仍未满足显式返回值契约**：成功及部分被替换分支均 resolve `undefined`。
+  2026-10-05 起宿主使用上节的只读 Draft 证据确认兼容成功，缺失/不匹配拒绝，不能仅靠空返回报成功。
+  无 verifier 或未知返回值报 `star_capture_import_unverified`，同样保留待处理。
+  上游仍应成功显式 `return true`、被替换 `return false`（或 reject）后重新同步产物，
+  才能去掉宿主对内部持久化 schema 的兼容依赖。
 - `onCaptureCommitted({ source: 'maayuan', accountId, captureId, jobId })`：
   在 OCR 结果提交且 Import Draft 退休之后触发；宿主收到后才 consume 后端临时截图。
 - `getActiveTab()` / `setActiveTab(tab)`、`onActiveTabChange(tab)`、`setHostAccount(accountId)`：
@@ -126,8 +160,8 @@
 1. `CaptureBatch.gameVersion` 仅作为合法值受检的兼容 metadata 原样传递，
    不再因与 workspace 不同阻止原始截图导入；当前 workspace/account 的游戏版本
    继续决定 OCR context 和持久化。
-   已知风险：跨版本批次被**静默放行**，宿主侧没有任何版本不一致提示，用户在提交后
-   才可能发现识别结果偏差；建议上游在放行的同时返回非阻断告警。
+   历史风险为跨版本批次静默放行；2026-10-05 宿主已增加导入后的非阻断告警，
+   standalone/upstream 的批次入口仍建议同步提示。
 2. MaaYuan 自动 CaptureBatch 带明确的 `maayuan_capture` provenance，
    进入内部 `layoutHint: maayuan_mumu`；不通过尺寸、filename 或 sourceImageId 猜来源。
 3. 仅在 provenance、720×1280、full viewport、`phone_9_16_v1` 条件全部满足，
@@ -220,8 +254,8 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
   不再按每次同步增加约 36 MB 估算。内容 hash 命名与资源存储方式保持现状。
 - 上游把 `importCaptureBatch` 被顶掉的分支从裸 `return` 改为 `return false`（或 reject），
   以闭合上面的宿主 ↔ embed 契约缺口；同步后在本仓库补返回值断言。
-- 上游为跨版本 CaptureBatch 增加非阻断告警（保留 `capture_game_invalid` 合法性校验），
-  避免静默放行导致的识别偏差无提示。
+- 宿主已为跨版本 CaptureBatch 增加非阻断告警；上游 standalone 入口可同步提示，
+  保留 `capture_game_invalid` 合法性校验。
 - 明确「仅看待养成」开关是否进入视图快照/恢复（当前视图快照不含该开关状态）。
 
 ## 2026-10-03：计划编辑按钮布局小修

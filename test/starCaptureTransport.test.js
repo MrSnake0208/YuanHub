@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   STAR_CAPTURE_CONTRACT_CODE,
   STAR_CAPTURE_IMPORT_SUPERSEDED_CODE,
+  STAR_CAPTURE_IMPORT_UNVERIFIED_CODE,
   captureIdFromRouteQuery,
   clearStarCaptureRouteQuery,
   importLoadedStarCapture,
@@ -11,6 +12,7 @@ import {
   loadAndImportStarCapture,
   loadStarCaptureBatch,
   starCaptureRouteForEvent,
+  starCaptureGameVersionWarning,
 } from '../src/pages/star/captureTransport.js'
 
 const event = { event: 'star_capture_ready', data: { account_id: 'account-1', capture_id: 'capture-1', section: 'full', image_count: 4 } }
@@ -40,7 +42,7 @@ test('full three-section manifest is reconstructed in global order without impor
   assert.equal(batch.sections.main.adjacentRelations[0].currentSourceImageId, 'main-2')
   let consumed = 0
   let options = 'not-called'
-  await importLoadedStarCapture({ importCaptureBatch(_batch, nextOptions) { options = nextOptions } }, batch)
+  await importLoadedStarCapture({ importCaptureBatch(_batch, nextOptions) { options = nextOptions; return true } }, batch)
   assert.equal(consumed, 0)
   assert.equal(options, undefined)
 })
@@ -77,7 +79,7 @@ test('async import must resolve before the handoff completes and never consumes'
   }, { captureId: 'M1' }).then(value => { settled = true; return value })
   await Promise.resolve()
   assert.equal(settled, false)
-  finishImport()
+  finishImport(true)
   assert.equal(await handoff, true)
   assert.equal(consumed, 0)
 })
@@ -101,8 +103,40 @@ test('embed reporting a superseded batch fails the handoff instead of reporting 
   assert.equal(calls, 1)
 })
 
-test('embed without a verdict keeps the legacy accepted behaviour', async () => {
-  assert.equal(await importLoadedStarCapture({ importCaptureBatch() { return undefined } }, {}), true)
+test('embed without a verdict cannot succeed without a persisted Draft receipt', async () => {
+  await assert.rejects(importLoadedStarCapture({ importCaptureBatch() {} }, {}), { code: STAR_CAPTURE_IMPORT_UNVERIFIED_CODE })
+  await assert.rejects(importLoadedStarCapture({ importCaptureBatch() {} }, {}, () => true, async () => false), { code: STAR_CAPTURE_IMPORT_SUPERSEDED_CODE })
+  assert.equal(await importLoadedStarCapture({ importCaptureBatch() {} }, {}, () => true, async () => true), true)
+})
+
+test('legacy receipt is awaited, and an account switch during verification prevents success', async () => {
+  let finishVerification
+  let current = true
+  let settled = false
+  const verification = new Promise(resolve => { finishVerification = resolve })
+  const importPromise = importLoadedStarCapture({ importCaptureBatch() {} }, {}, () => current, () => verification)
+    .then(value => { settled = true; return value })
+  await Promise.resolve()
+  assert.equal(settled, false)
+  current = false
+  finishVerification(true)
+  assert.equal(await importPromise, false)
+})
+
+test('Draft verification errors retain their cause and an unknown verdict is rejected', async () => {
+  const storageError = new Error('storage unavailable')
+  await assert.rejects(importLoadedStarCapture({ importCaptureBatch() {} }, {}, () => true, async () => { throw storageError }), error => error === storageError)
+  await assert.rejects(importLoadedStarCapture({ importCaptureBatch() { return 'accepted' } }, {}, () => true, async () => true), { code: STAR_CAPTURE_IMPORT_UNVERIFIED_CODE })
+})
+
+test('cross-version warning states both versions without blocking or inventing a mismatch', () => {
+  assert.equal(starCaptureGameVersionWarning('如鸢', '如鸢'), '')
+  assert.equal(starCaptureGameVersionWarning('', '如鸢'), '')
+  assert.equal(starCaptureGameVersionWarning('代号鸢', ''), '')
+  const warning = starCaptureGameVersionWarning('代号鸢', '如鸢')
+  assert.ok(warning.includes('截图版本为“代号鸢”'))
+  assert.ok(warning.includes('当前工作区为“如鸢”'))
+  assert.ok(warning.includes('识别将按当前工作区版本进行'))
 })
 
 test('capture contract violations are tagged as non-retryable', async () => {
