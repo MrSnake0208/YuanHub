@@ -6,37 +6,58 @@
         <slot name="actions" />
       </div>
     </header>
-    <p v-if="error" class="report-state" role="alert">{{ error }}</p>
+    <div v-if="error" class="report-state" role="alert"><p>{{ error }}</p><p>暂时无法读取库存记录，请重试；读取失败不代表没有盘点。</p><slot name="error-actions" /></div>
     <p v-else-if="truncated" class="report-state" role="status">流水超过 5,000 条，以下仅展示已加载记录；库存与净变化可能不完整。</p>
     <div class="coin-basis" role="group" aria-label="白金币统计口径"><button type="button" :aria-pressed="!includeZhuyu" @click="includeZhuyu = false">实际白金币</button><button type="button" :aria-pressed="includeZhuyu" @click="includeZhuyu = true">含茱萸等价值</button></div>
     <p v-if="includeZhuyu" class="explanation">按最近已知白金币库存 + 茱萸库存 × 50 折算，不代表已兑换；月历、净变化和趋势使用同一口径。</p>
     <p v-if="includeZhuyu && resources[0].missingDays" class="report-state" role="status">部分日期缺少白金币或茱萸库存基准，暂不计算这些日期的等价值；缺测不按零处理。</p>
-    <div class="resource-summary">
+    <div v-if="!error" class="resource-summary">
       <article v-for="resource in resources" :key="resource.id">
         <div class="resource-name"><img :src="icon(resource.id)" alt="" width="24" height="24" /><h3>{{ resource.name }}</h3></div>
         <div class="summary-values">
           <strong>{{ number(resource.latest?.stock) }}</strong>
           <div class="summary-foot"><span>本期净变化</span><b :class="changeClass(resource.net)">{{ signed(resource.net) }}</b></div>
         </div>
-        <small class="summary-meta">{{ resource.latest ? '最近记录 ' + resource.latest.day : '本期需要至少一次库存盘点' }}</small>
+        <small class="summary-meta"><template v-if="resource.latest">{{ resource.latest.state }} · 最近记录 <time :datetime="resource.latest.day">{{ resource.latest.day }}</time></template><template v-else>{{ truncated ? '已加载记录中暂无基准' : '本期无库存基准' }}</template></small>
       </article>
     </div>
+    <p class="explanation">奖励获得量只统计奖励流水，库存快照不计入；获得量不等于库存净变化。本期净变化为本期首末有效库存记录之差，不能单独据此判断支出或转化量。</p>
     <div class="view-heading">
       <h3 class="range-title">{{ from }} 至 {{ to }}</h3>
       <div class="view-switch" role="group" aria-label="资源展示方式"><button v-for="option in views" :key="option.id" type="button" :aria-pressed="view === option.id" @click="view = option.id">{{ option.label }}</button></div>
     </div>
-    <template v-if="view === 'calendar'">
+    <div v-if="noBaseline" class="report-state report-empty" role="status">
+      <strong>本期暂无可计算的库存基准</strong>
+      <p>这不代表从未盘点。可以调整日期范围查找已有盘点，或核对当前背包后录入库存，也可以导入 MaaYuan 库存报告。只有奖励流水时仍不能确定实际库存。</p>
+      <div class="report-empty-actions"><slot name="empty-actions" /></div>
+    </div>
+    <template v-else-if="view === 'calendar' && !error">
       <div class="calendar-scroll"><div class="calendar-content">
         <div class="weekdays"><span v-for="day in ['日', '一', '二', '三', '四', '五', '六']" :key="day">{{ day }}</span></div>
-        <div class="calendar"><div v-for="n in offset" :key="'blank' + n" class="day blank"></div><button v-for="day in dates" :key="day" type="button" class="day" :class="{ 'is-month-start': isMonthStart(day), 'is-range-start': day === from }" :data-month-label="monthMarkerLabel(day)" :aria-pressed="selected === day" :aria-label="day + ' 库存变化'" @click="selected = day"><div class="day-date-line"><span v-if="monthMarkerLabel(day)" class="month-marker" aria-hidden="true">{{ monthMarkerLabel(day) }}</span><time :datetime="day">{{ calendarDateLabel(day) }}</time></div><template v-for="r in resources" :key="r.id"><span v-if="showCalendarResource(r, day)" class="resource-row" :style="{ gridRow: resourceSlot(r.id), '--resource-color': r.color }" :aria-label="r.name + ' ' + signed(calendarValue(r, day).delta)"><img :src="icon(r.id)" :alt="r.name" width="18" height="18" /><b :class="changeClass(calendarValue(r, day).delta)" :title="calendarValueTitle(r, day)">{{ calendarText(r, day) }}</b><small v-if="calendarValue(r, day).stock !== null">{{ number(calendarValue(r, day).stock) }}</small></span></template></button><div v-for="n in trailingDays" :key="'trailing' + n" class="day blank" aria-hidden="true"></div></div>
+        <div class="calendar">
+          <div v-for="n in offset" :key="'blank' + n" class="day blank" aria-hidden="true"></div>
+          <button v-for="day in dates" :key="day" type="button" class="day" :class="{ 'is-month-start': isMonthStart(day), 'is-range-start': day === from }" :data-month-label="monthMarkerLabel(day)" :aria-pressed="selected === day" :aria-label="calendarDayLabel(day)" @click="selected = day">
+            <div class="day-date-line"><span v-if="monthMarkerLabel(day)" class="month-marker" aria-hidden="true">{{ monthMarkerLabel(day) }}</span><time :datetime="day">{{ calendarDateLabel(day) }}</time></div>
+            <span v-if="calendarDayHint(day)" class="calendar-day-state">{{ calendarDayHint(day) }}</span>
+            <template v-for="r in resources" :key="r.id">
+              <span v-if="showCalendarResource(r, day)" class="resource-row" :style="{ gridRow: resourceSlot(r.id), '--resource-color': r.color }" :aria-label="calendarResourceLabel(r, day)">
+                <img :src="icon(r.id)" alt="" width="18" height="18" />
+                <b :class="changeClass(calendarValue(r, day).delta)" :title="calendarValueTitle(r, day)">{{ calendarText(r, day) }}</b>
+                <small>{{ number(calendarValue(r, day).stock) }}</small>
+              </span>
+            </template>
+          </button>
+          <div v-for="n in trailingDays" :key="'trailing' + n" class="day blank" aria-hidden="true"></div>
+        </div>
       </div></div>
-      <div v-if="selected" class="day-detail" aria-live="polite"><h3>{{ selected }} · 记录详情</h3><p v-for="r in resources" :key="r.id"><b>{{ r.name }}</b><span v-if="pointFor(r, selected)">库存 {{ number(pointFor(r, selected).stock) }} · {{ pointFor(r, selected).state }} · {{ changeFor(r, selected) }}<template v-if="pointFor(r, selected).previousDay">（较 {{ pointFor(r, selected).previousDay }}）</template></span><span v-else-if="calendarValue(r, selected).stock !== null">最近已知库存 {{ number(calendarValue(r, selected).stock) }}（记录于 {{ calendarValue(r, selected).recordedDay }}，当日未更新）</span><span v-else>无记录</span></p></div>
-      <p class="explanation"><template v-if="compactChart">蓝色标签-白金币、紫棕色标签-符传、金色标签-天机符传；大额变化以万取近似值，点击日期查看精确数值。</template><template v-else>月历只列出本日有变化的资源；变化行右侧为当前库存。空格子表示当日库存无变化。</template></p>
+      <div v-if="selected" class="day-detail" aria-live="polite"><h3>{{ selected }} · 记录详情</h3><p v-for="r in resources" :key="r.id"><b>{{ r.name }}</b><span v-if="pointFor(r, selected)">库存 {{ number(pointFor(r, selected).stock) }} · {{ pointFor(r, selected).state }} · {{ changeFor(r, selected) }}<template v-if="pointFor(r, selected).previousDay">（较 {{ pointFor(r, selected).previousDay }}）</template></span><span v-else-if="calendarValue(r, selected).stock !== null">最近已知库存 {{ number(calendarValue(r, selected).stock) }}（{{ calendarPointFor(r, selected).state }}，记录于 {{ calendarValue(r, selected).recordedDay }}，当日未更新）</span><span v-else>本期截至当日无库存基准，无法计算</span></p></div>
+      <div class="calendar-state-legend" aria-label="库存记录状态说明"><span>基准：首次已知库存，变化暂不可比较</span><span>0：与上次记录相比零变化</span><span>未更新：沿用旧记录，不代表零变化</span><span>无基准 / —：无法计算</span></div>
+      <p class="explanation">月历展示记录日相对上次记录的库存变化，可能跨越多日；行内库存是该记录日的已知值。空白不代表零变化，点击日期查看基准、来源和精确数值。<template v-if="compactChart">白金币、符传、天机符传依次使用蓝、紫棕、金色标签；大额变化以万或亿取近似值。</template></p>
     </template>
-    <section v-else class="trend" aria-labelledby="resource-trend-title">
+    <section v-else-if="!error" class="trend" aria-labelledby="resource-trend-title">
       <h3 id="resource-trend-title">库存趋势</h3><p class="explanation">各资源以周期内的起始库存为基准，比较相对涨跌；纵向位置不代表相同数量。起始库存为零时以 1 为基准。选择数据点可查看实际库存。</p>
-    <div class="legend"><span v-for="r in resources" :key="r.id"><i :style="{ background: r.color }"></i>{{ r.name }}</span><span><i class="dashed"></i>预测值</span></div>
-      <p v-if="!chart.series.some(r => r.points.length)" class="report-state">本期暂无可展示的库存记录</p>
+    <div class="legend"><span v-for="r in resources" :key="r.id"><i :style="{ background: r.color }"></i>{{ r.name }}</span><span><i class="dashed"></i>跨未记录日期连线</span></div>
+      <p v-if="!chart.series.some(r => r.points.length)" class="report-state">已加载记录中暂无可展示的库存基准</p>
       <div v-else ref="plotElement" class="trend-plot" @keydown.esc="hoverPoint = null; pinnedPoint = null">
       <svg :viewBox="`0 0 ${chartWidth} 320`" role="group" aria-label="三种抽卡资源的相对库存趋势，虚线表示跨缺测日期">
         <line v-for="y in [30, 90, 150, 210, 270]" :key="y" x1="35" :x2="chartWidth - 35" :y1="y" :y2="y" class="grid-line" />
@@ -53,6 +74,7 @@
         <div class="point-tooltip-heading"><b>{{ activePoint.name }}</b><time>{{ activePoint.day }}</time></div>
         <div class="point-stock"><span>库存</span><strong>{{ number(activePoint.stock) }}</strong></div>
         <p v-if="activePoint.components" class="point-note">白金币 {{ number(activePoint.components.baijinbi) }} + 茱萸 {{ number(activePoint.components.zhuyu) }} × 50</p>
+        <p class="point-note">{{ activePoint.state }}</p>
         <dl>
           <div v-if="activePoint.delta !== null"><dt>较 {{ activePoint.previousDay }}</dt><dd :class="changeClass(activePoint.delta)">{{ signed(activePoint.delta) }}</dd></div>
           <div v-if="activePoint.delta !== null && activePoint.percent !== null"><dt>较周期起始</dt><dd :class="changeClass(activePoint.percent)">{{ signed(activePoint.percent) }}%</dd></div>
@@ -71,6 +93,7 @@ import { buildResourceBalance, resourceRangeDates, resourceDayNumber, resourceCa
 const props = defineProps({ records: { type: Array, default: () => [] }, from: { type: String, required: true }, to: { type: String, required: true }, error: { type: String, default: '' }, truncated: Boolean })
 const includeZhuyu = ref(false)
 const resources = computed(() => buildResourceBalance(props.error ? [] : props.records, props.from, props.to, includeZhuyu.value))
+const noBaseline = computed(() => !props.error && !props.truncated && resources.value.every(resource => !resource.latest))
 const views = [{ id: 'calendar', label: '月历' }, { id: 'trend', label: '趋势' }]
 const view = ref('calendar')
 const compactChart = ref(false)
@@ -124,7 +147,7 @@ watch([plotElement, tooltipElement], () => {
 }, { flush: 'post' })
 watch([activePoint, chartWidth], positionTooltip, { flush: 'post' })
 onBeforeUnmount(() => tooltipObserver?.disconnect())
-watch(() => [props.from, props.to, props.records], () => { selected.value = ''; hoverPoint.value = null; pinnedPoint.value = null })
+watch(() => [props.from, props.to, props.records, props.error, props.truncated], () => { selected.value = ''; hoverPoint.value = null; pinnedPoint.value = null })
 watch([view, includeZhuyu], () => { hoverPoint.value = null; pinnedPoint.value = null })
 const dates = computed(() => resourceRangeDates(props.from, props.to))
 const offset = computed(() => dates.value.length ? new Date(props.from + 'T00:00:00Z').getUTCDay() : 0)
@@ -154,24 +177,38 @@ function isMonthStart(day) { return day.endsWith('-01') }
 function monthMarkerLabel(day) { return isMonthStart(day) || day === props.from ? Number(day.slice(5, 7)) + '月' : '' }
 function axisDateLabel(day) { return props.from.slice(0, 4) !== props.to.slice(0, 4) ? day : Number(day.slice(5, 7)) + '/' + Number(day.slice(-2)) }
 function calendarValue(r, day) { return calendarValues.value[r.id][day] }
-function showCalendarResource(r, day) { return calendarValue(r, day).delta !== null }
+function showCalendarResource(r, day) { return calendarValue(r, day).recordedDay === day }
+function calendarDayHint(day) {
+  if (resources.value.some(r => showCalendarResource(r, day))) return ''
+  return resources.value.some(r => calendarValue(r, day).stock !== null) ? '未更新' : '无基准'
+}
 function resourceSlot(id) { return resources.value.findIndex(resource => resource.id === id) + 2 }
 function calendarText(r, day) {
   const { delta } = calendarValue(r, day)
-  if (!compactChart.value || delta === null || Math.abs(delta) < 10000) return signed(delta)
+  if (delta === null) return '基准'
+  if (!compactChart.value || Math.abs(delta) < 10000) return signed(delta)
   const unit = Math.abs(delta) >= 1e8 ? 1e8 : 10000
   return (delta > 0 ? '+' : '−') + Number((Math.abs(delta) / unit).toFixed(1)) + (unit === 1e8 ? '亿' : '万')
 }
 function changeClass(delta) { return delta > 0 ? 'is-increase' : delta < 0 ? 'is-decrease' : 'is-stock' }
 function calendarValueTitle(r, day) {
   const value = calendarValue(r, day)
-  return value.stock === null ? '暂无库存基准' : `${r.name} · 库存 ${number(value.stock)} · 记录于 ${value.recordedDay}${value.recordedDay !== day ? '（当日未更新）' : ''}`
+  return value.stock === null ? '暂无库存基准' : `${r.name} · 库存 ${number(value.stock)} · ${calendarPointFor(r, day).state} · 记录于 ${value.recordedDay}${value.recordedDay !== day ? '（当日未更新）' : ''}`
+}
+function calendarResourceLabel(r, day) {
+  const point = pointFor(r, day)
+  return calendarValueTitle(r, day) + (point?.previousDay ? ` · 较 ${point.previousDay} 变化 ${signed(point.delta)}` : ' · 起始基准，变化不可比较')
+}
+function calendarDayLabel(day) {
+  const recorded = resources.value.filter(r => showCalendarResource(r, day))
+  return day + ' · ' + (recorded.length ? recorded.map(r => calendarResourceLabel(r, day)).join('；') : calendarDayHint(day))
 }
 function icon(id) { return import.meta.env.BASE_URL + 'inventory-icons/items/' + id + '.png' }
 function number(value) { return value == null ? '—' : value.toLocaleString('zh-CN') }
 function signed(value) { return value == null ? '—' : (value > 0 ? '+' : '') + number(value) }
 function pointFor(r, day) { return r.points.find(p => p.day === day) }
-function changeFor(r, day) { const p = pointFor(r, day); return !p ? '—' : p.delta === null ? '起始' : signed(p.delta) }
+function calendarPointFor(r, day) { return pointFor(r, calendarValue(r, day).recordedDay) }
+function changeFor(r, day) { const p = pointFor(r, day); return !p ? '—' : p.delta === null ? '起始基准，变化不可比较' : signed(p.delta) }
 function pointLabel(r, p) {
   return `${r.name}，${p.day}，库存 ${number(p.stock)}，${p.delta === null ? '周期起始库存' : '较 ' + p.previousDay + ' 变化 ' + signed(p.delta)}`
 }
@@ -208,7 +245,7 @@ h3 { font-size: 15px }
 .summary-foot b { color: var(--accent-strong); font: 900 12px var(--font-d) }
 .summary-foot b.is-increase { color: #527658 }
 .summary-foot b.is-decrease { color: var(--rouge) }
-.summary-meta { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.summary-meta { display: block; margin-top: 4px; overflow-wrap: anywhere; white-space: normal }
 .view-heading, .view-switch { display: flex; align-items: center; gap: 8px }
 .view-heading { justify-content: space-between; flex-wrap: wrap; padding: 17px 20px 0 }
 button { color: var(--ink); font: inherit; cursor: pointer }
@@ -225,6 +262,11 @@ button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
 .weekdays, .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) }
 .weekdays span { text-align: center; padding: 10px; font-size: 12px; color: var(--ink-60) }
 .calendar { border-top: 1px solid var(--line); border-left: 1px solid var(--line) }
+.calendar-day-state { grid-row: 2; color: var(--ink-60); font-size: 10px; line-height: 1.5 }
+.calendar-state-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 20px 0; color: var(--ink-60); font-size: 11px; line-height: 1.6 }
+.report-empty strong { display: block; font-size: 14px }
+.report-empty p { margin-top: 8px }
+.report-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
 .calendar-scroll { margin-inline: 20px }
 .day { display: grid; min-width: 0; min-height: 118px; grid-template-rows: 16px repeat(3, 18px); align-content: start; gap: 5px; padding: 9px; text-align: left; border: 0; border-top: 2px solid transparent; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface) }
 .day.blank { background: var(--cream) }
@@ -304,7 +346,7 @@ button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
   .resource-name { justify-content: flex-start; gap: 3px; flex-wrap: nowrap }
   .resource-name img { width: 20px; height: 20px }
   .resource-name h3 { font-size: 10px; text-align: center }
-  .summary-meta { display: none }
+  .resource-summary .summary-meta { display: block; font-size: 11px; line-height: 1.5 }
   .summary-values { gap: 3px; margin-top: 5px }
   .summary-values > strong { max-width: 100%; font-size: 15px; line-height: 1.1 }
   .summary-foot { gap: 2px; font-size: 8px }
@@ -325,7 +367,7 @@ button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
   .resource-row small { display: none }
   .calendar-scroll { margin-inline: 0 }
   .calendar-content { min-width: 0 }
-  .day-detail, .explanation, .trend, .report-state, .point-detail { margin-left: 14px; margin-right: 14px }
+  .day-detail, .explanation, .trend, .report-state, .point-detail, .calendar-state-legend { margin-left: 14px; margin-right: 14px }
   .trend > .explanation, .trend > .report-state, .trend > .point-detail { margin-left: 0; margin-right: 0 }
 }
 </style>

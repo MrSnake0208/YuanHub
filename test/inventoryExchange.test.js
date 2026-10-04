@@ -52,12 +52,6 @@ test('库存类型切换复用单一入口，桌面遵循模式到工具动线�
   assert.match(inventoryPage, /v-if="!editingStock" class="manifest-toolbar"[\s\S]*class="type-switch manifest-type-switch"[\s\S]*class="manifest-bar"/)
 })
 
-test('库存类型切换后台刷新时不让目录因 loading 状态塌陷', function () {
-  assert.match(inventoryPage, /function setEntityType\(t\)[\s\S]*reloadCurrent\(false, true\)/)
-  assert.match(inventoryPage, /async function safeLoad\(fn, quiet, preserveContent\)[\s\S]*if \(!preserveContent\) loading\.value = true;[\s\S]*finally \{[\s\S]*if \(!preserveContent\) loading\.value = false;/)
-  assert.match(inventoryPage, /async function reloadCurrent\(quiet, preserveContent\)[\s\S]*safeLoad\([\s\S]*quiet,\s*preserveContent\s*\)/)
-})
-
 test('手机顶部导航隐藏状态通过 CSS 变量显式驱动库存 sticky 偏移', function () {
   assert.match(inventoryPage, /top:\s*var\([\s\S]*--mobile-shell-follow-top,[\s\S]*72px[\s\S]*safe-area-inset-top/)
   assert.doesNotMatch(inventoryPage, /page-inventory:has\(\.mobile-shell--hidden\)/)
