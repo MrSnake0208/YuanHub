@@ -78,6 +78,50 @@ function planRows(root) {
 }
 
 describe('vendored YuanStar embed behavior', () => {
+  it('new sorted instance follows in both panes, editing follows same ID, unchanged order keeps scroll and deleting clears selection', async () => {
+    const { root, handle } = await mountEmbed()
+    const inventory = Array.from({ length: 25 }, (_, index) => ({ starInstanceId: 'follow-' + index, kind: '主星', name: '天府', level: 60 - index * 2, quality: '橙' }))
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function () {
+      return this.matches('tr[data-star-id]') ? 30 + [...this.parentElement.children].indexOf(this) * 32 : 0
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200)
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000)
+    vi.spyOn(HTMLTableSectionElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 30 })
+    const settle = () => new Promise(resolve => setTimeout(resolve, 200))
+    const selected = pane => root.querySelector(`#${pane}-rows .is-selected, #${pane}-rows .is-counterpart`)
+    const level = () => root.querySelector('[data-current-field="level"]')
+    try {
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory, planTargets: {} })
+      handle.setActiveTab('review'); await settle()
+      root.querySelector('[data-star-id="follow-0"][data-pane="plan"]').click(); await settle()
+      expect(selected('current').dataset.starId).toBe('follow-0')
+      level().value = '48'; level().dispatchEvent(new Event('input', { bubbles: true }))
+      root.querySelector('#add-current-row').click(); await settle()
+      const id = selected('current').dataset.starId
+      expect(id).not.toBe('follow-0')
+      expect(selected('plan').dataset.starId).toBe(id)
+      expect((await handle.getCloudBusinessSnapshot()).inventory).toHaveLength(26)
+      const index = [...root.querySelectorAll('#current-rows tr')].indexOf(selected('current'))
+      expect(root.querySelector('#current-scroll').scrollTop).toBe((index - 4) * 32)
+      expect(root.querySelector('#plan-scroll').scrollTop).toBe((index - 4) * 32)
+      level().value = '57'; level().dispatchEvent(new Event('input', { bubbles: true }))
+      level().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle()
+      expect(selected('current').dataset.starId).toBe(id)
+      expect(root.querySelector('#current-scroll').scrollTop).toBe(0)
+      for (const pane of ['current', 'plan']) root.querySelector(`#${pane}-scroll`).scrollTop = 99
+      const quality = root.querySelector('[data-current-field="quality"]')
+      quality.value = '紫'; quality.dispatchEvent(new Event('change', { bubbles: true }))
+      quality.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle()
+      expect(root.querySelector('#current-scroll').scrollTop).toBe(99)
+      root.querySelector('#delete-current-row').click(); await settle()
+      expect(selected('current')).toBeNull(); expect(selected('plan')).toBeNull()
+      expect(root.querySelector('.current-editor')).toBeNull()
+      expect((await handle.getCloudBusinessSnapshot()).inventory.some(star => star.starInstanceId === id)).toBe(false)
+    } finally {
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {}, experience: { orange: null, purple: null, white: null }, bag: { currentCount: null, capacity: null } })
+      await handle.dispose(); vi.restoreAllMocks()
+    }
+  }, 60000)
   it('tutorial status reads loaded history without changing data and exposes the renamed UI', async () => {
     const { root, handle } = await mountEmbed()
     try {

@@ -9,38 +9,41 @@
         <rect width="100%" height="100%" fill="rgb(73 59 44 / 48%)" mask="url(#recognition-tour-mask)" />
       </svg>
       <div v-for="(rect, index) in rects" :key="index" class="recognition-tour-ring" :style="rectStyle(rect)" />
-      <section ref="card" class="recognition-tour-card" :style="cardStyle" role="region" aria-label="识别教程" tabindex="-1" :data-placement="placement">
+      <section ref="card" class="recognition-tour-card" :style="cardStyle" role="region" :aria-label="tutorialLabel" tabindex="-1" :data-placement="placement">
         <div v-if="mobile" class="recognition-tour-handle-row">
-          <button class="recognition-tour-handle" type="button" aria-label="拖动识别教程，上下方向键也可移动" @pointerdown="beginDrag" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag" @keydown.up.prevent="moveSheet(32)" @keydown.down.prevent="moveSheet(-32)"><span /></button>
+          <button class="recognition-tour-handle" type="button" :aria-label="`拖动${tutorialLabel}，上下方向键也可移动`" @pointerdown="beginDrag" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag" @keydown.up.prevent="moveSheet(32)" @keydown.down.prevent="moveSheet(-32)"><span /></button>
         </div>
         <header>
           <div aria-live="polite"><span class="recognition-tour-count">{{ stepIndex + 1 }} / {{ steps.length }}</span><h2>{{ step.title }}</h2></div>
-          <button type="button" class="recognition-tour-close" aria-label="关闭识别教程" @click="close">×</button>
+          <button type="button" class="recognition-tour-close" :aria-label="`关闭${tutorialLabel}`" @click="close">×</button>
         </header>
         <div class="recognition-tour-details">
-          <p class="recognition-tour-body">{{ step.body }}</p>
+          <p v-for="(paragraph, index) in step.paragraphs || [step.body]" :key="index" class="recognition-tour-body">{{ paragraph }}</p>
           <button v-if="step.exampleAction" type="button" class="recognition-tour-example" @click="exampleKind = step.exampleAction">{{ step.exampleLabel }}</button>
-          <p v-if="mobile && showMobileHint" class="recognition-tour-hint">可拖动，不挡住操作即可</p>
+          <p v-if="mobile && showMobileHint" class="recognition-tour-hint">本教程卡片可拖动，不挡住操作即可</p>
           <footer><button type="button" :disabled="stepIndex === 0" @click="navigate(-1)">上一步</button><button type="button" class="recognition-tour-next" @click="stepIndex === steps.length - 1 ? close() : navigate(1)">{{ stepIndex === steps.length - 1 ? '完成' : '下一步' }}</button></footer>
         </div>
       </section>
     </div>
   </Teleport>
-  <RecognitionExampleModal :items="exampleItems" @close="exampleKind = null" />
+  <RecognitionExampleModal :items="exampleItems" :info="exampleKind === 'review-info' ? bagReviewInfo : null" @close="exampleKind = null" />
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
-import { recognitionTutorialSteps as steps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift } from './recognitionTutorial.js'
+import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect } from './recognitionTutorial.js'
+import { bagTutorialSteps, bagReviewInfo } from './bagTutorial.js'
 
-const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null } })
+const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' } })
 const emit = defineEmits(['close'])
 const stepIndex = ref(0), mobile = ref(false), lift = ref(0), card = ref(null)
 const rects = ref([]), position = ref({ left: 12, top: 12 }), placement = ref('fallback'), ready = ref(false)
 const sheetBounds = ref(null)
 const exampleKind = ref(null), showMobileHint = ref(false)
-const step = computed(() => steps[stepIndex.value])
+const steps = computed(() => props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
+const tutorialLabel = computed(() => props.mode === 'bag' ? '使用教程' : '识别教程')
+const step = computed(() => steps.value[stepIndex.value])
 const exampleItems = computed(() => recognitionTutorialExamples[exampleKind.value] || [])
 const cardStyle = computed(() => ({ visibility: ready.value ? 'visible' : 'hidden', ...(mobile.value ? { bottom: `${(sheetBounds.value?.bottom ?? 12) + lift.value}px`, ...(sheetBounds.value ? { maxHeight: `min(62dvh, calc(100dvh - 96px), ${sheetBounds.value.maxHeight}px)` } : {}) } : { left: `${position.value.left}px`, top: `${position.value.top}px` }) }))
 const rectStyle = rect => ({ left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` })
@@ -64,24 +67,26 @@ function update() {
   const view = viewport()
   mobile.value = window.innerWidth < 768
   const safeArea = sheetSafeArea()
-  if (mobile.value) sheetBounds.value = { bottom: window.innerHeight - view.top - view.height + 12 + safeArea.bottom, maxHeight: Math.max(0, view.height - 24 - safeArea.top - safeArea.bottom) }
   if (mobile.value && !hintShown) { hintShown = true; showMobileHint.value = true }
   const { primary, related } = resolveTutorialTargets(props.root, step.value, view.height)
-  const elements = Array.from(new Set([primary, ...related].filter(Boolean)))
+  const visibleRelated = related.filter(element => tutorialElementRect(element, view))
+  if (mobile.value) sheetBounds.value = tutorialSheetBounds(view, window.innerHeight, safeArea,
+    step.value.mobileAvoidTarget ? clipTutorialRect(primary?.getBoundingClientRect(), view, 0) : null)
+  const elements = Array.from(new Set([primary, ...visibleRelated].filter(Boolean)))
   clearHighlights()
-  highlighted = related
+  highlighted = visibleRelated
   highlighted.forEach(element => element.classList.add('recognition-tutorial-related'))
   if (resizeObserver && (elements.length !== observed.length || elements.some((element, index) => element !== observed[index]))) {
     observed.forEach(element => resizeObserver.unobserve?.(element))
     elements.forEach(element => resizeObserver.observe(element))
     observed = elements
   }
-  rects.value = elements.map(element => clipTutorialRect(element.getBoundingClientRect(), view)).filter(Boolean)
+  rects.value = elements.map(element => tutorialElementRect(element, view)).filter(Boolean)
   const size = card.value?.getBoundingClientRect() || { width: 340, height: 270 }
   const nextPosition = tutorialCardPosition(clipTutorialRect(primary?.getBoundingClientRect(), view), size, view, step.value.relatedTargets ? rects.value : [])
   position.value = nextPosition
   placement.value = nextPosition.placement
-  lift.value = clampTutorialLift(lift.value, view.height, size.height, safeArea)
+  lift.value = boundedSheetLift(lift.value)
 }
 function scheduleUpdate() {
   if (frame || !props.open) return
@@ -121,8 +126,8 @@ async function revealStep(resetHint = true) {
   await nextTick()
   const view = viewport()
   const { primary } = resolveTutorialTargets(props.root, step.value, view.height)
-  if (primary) {
-    const rect = primary.getBoundingClientRect()
+  const rect = primary?.getBoundingClientRect()
+  if (shouldRevealTutorialTarget(step.value, rect, view)) {
     const top = Math.max(0, window.scrollY + rect.top - view.top - Math.max(64, view.height * (mobile.value ? 0.16 : 0.1)))
     window.scrollTo({ top, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
     await waitForScroll(token)
@@ -139,11 +144,12 @@ function onResize() {
     if (!props.open || exampleKind.value) return
     const view = viewport(), { primary } = resolveTutorialTargets(props.root, step.value, view.height)
     const rect = primary?.getBoundingClientRect(), sheetTop = mobile.value ? card.value?.getBoundingClientRect().top : view.top + view.height
-    if (rect && (rect.top < view.top + 64 || rect.top >= sheetTop - 16)) void revealStep(false)
+    if (rect && step.value.scroll !== 'preserve' && (rect.top < view.top + 64 || rect.top >= sheetTop - 16)) void revealStep(false)
   }, 160)
 }
 function navigate(delta) {
-  stepIndex.value = tutorialStepIndex(stepIndex.value, delta)
+  stepIndex.value = tutorialStepIndex(stepIndex.value, delta, steps.value.length)
+  lift.value = 0
   exampleKind.value = null
   void revealStep()
 }
@@ -152,7 +158,11 @@ function onKeydown(event) {
   // Product dialogs and the example viewer own Escape while they are open.
   if (event.key === 'Escape' && !exampleKind.value && !document.querySelector('[role="dialog"], dialog[open]')) close()
 }
-function boundedSheetLift(value) { return clampTutorialLift(value, viewport().height, card.value?.getBoundingClientRect().height || 0, sheetSafeArea()) }
+function boundedSheetLift(value) {
+  const view = viewport(), safeArea = sheetSafeArea()
+  const extraBottom = mobile.value ? Math.max(0, (sheetBounds.value?.bottom || 0) - (window.innerHeight - view.top - view.height + 12 + safeArea.bottom)) : 0
+  return clampTutorialLift(value, view.height, card.value?.getBoundingClientRect().height || 0, { ...safeArea, bottom: safeArea.bottom + extraBottom })
+}
 function moveSheet(delta) { lift.value = boundedSheetLift(lift.value + delta) }
 function beginDrag(event) {
   if (event.button !== 0) return
@@ -184,7 +194,7 @@ function stop() {
   window.visualViewport?.removeEventListener('scroll', scheduleUpdate)
   document.removeEventListener('keydown', onKeydown)
 }
-watch([() => props.open, () => props.replayId], async ([open]) => {
+watch([() => props.open, () => props.replayId, () => props.mode], async ([open]) => {
   stop()
   if (!open) { exampleKind.value = null; return }
   stepIndex.value = 0; lift.value = 0
@@ -225,7 +235,8 @@ onBeforeUnmount(stop)
 header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 h2 { margin: 2px 0 0; font-family: var(--font-s); font-weight: 900; font-size: 16px; line-height: 1.4; }
 .recognition-tour-count { font-family: var(--font-d); font-size: 12px; }
-.recognition-tour-body { white-space: pre-line; font-size: 13px; line-height: 1.6; margin: 8px 0 4px; }
+.recognition-tour-body { white-space: pre-line; font-size: 13px; line-height: 1.6; margin: 8px 0 0; }
+.recognition-tour-body + .recognition-tour-body { margin-top: 0; }
 button { min-height: 32px; min-width: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 button:disabled { opacity: .45; cursor: default; }

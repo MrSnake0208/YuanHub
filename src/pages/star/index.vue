@@ -109,7 +109,7 @@
             </template>
           </ArchiveExchangePanel>
           <div
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry || (productReady && activeTab === 'import')"
+            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry || productReady"
             class="star-sync-state"
             :class="{ 'is-error': cloudSyncError || captureTransportError }"
             role="status"
@@ -138,8 +138,8 @@
               :disabled="captureImportBusy"
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
-            <button v-if="productReady && activeTab === 'import'" type="button" class="star-tutorial-replay" @click="replayRecognitionTutorial">
-              <CircleHelp :size="16" aria-hidden="true" />重新查看识别教程
+            <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'import' ? replayRecognitionTutorial() : replayBagTutorial()">
+              <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'import' ? '重新查看识别教程' : '重新查看使用教程' }}
             </button>
           </div>
           <div class="star-tabs" role="tablist" aria-label="星石工作区">
@@ -160,7 +160,7 @@
             </button>
           </div>
           <div id="product-root" ref="mountRoot"></div>
-          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" @close="dismissRecognitionTutorial" />
+          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" @close="dismissRecognitionTutorial" />
           <p v-if="mountBusy && !productReady" class="yuanstar-mount-loading" role="status">正在加载星石工作区…</p>
           <div v-if="mountError" class="yuanstar-mount-error" role="alert">
             星石工作区加载失败：{{ mountError }}
@@ -187,6 +187,7 @@ import { useRoute, useRouter } from "vue-router";
 import { Archive, CircleHelp } from "@lucide/vue";
 import RecognitionTutorial from "./RecognitionTutorial.vue";
 import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial } from "./recognitionTutorial.js";
+import { createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -232,18 +233,31 @@ const cloudRetryBusy = ref(false);
 const productReady = ref(false);
 const recognitionTutorialOpen = ref(false);
 const recognitionTutorialReplayId = ref(0);
+const tutorialMode = ref("recognition");
 const tutorialCloudReady = ref(false);
 const tutorialCloudHistory = ref(false);
 const tutorialAccountReady = ref(false);
 const recognitionTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null));
+const bagTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, "bag"));
+const bagTutorialGate = createBagTutorialGate();
+const bagTutorialOwner = () => bagTutorialKey.value + ":" + (accountId.value || "guest");
 let tutorialCheckSequence = 0;
 let recognitionTutorialOwnerKey = "";
 let tutorialStatusObserver = null;
 let tutorialStatusFrame = 0;
 
 function replayRecognitionTutorial() {
-  setTab("import");
-  recognitionTutorialOwnerKey = recognitionTutorialKey.value;
+  openTutorial("recognition");
+}
+function replayBagTutorial() {
+  openTutorial("bag");
+}
+function openTutorial(mode) {
+  if (recognitionTutorialOpen.value) dismissRecognitionTutorial();
+  tutorialMode.value = mode;
+  const tab = mode === "bag" ? "review" : "import";
+  if (activeTab.value !== tab) setTab(tab);
+  recognitionTutorialOwnerKey = mode === "bag" ? bagTutorialKey.value : recognitionTutorialKey.value;
   recognitionTutorialReplayId.value++;
   // A new component opening always starts at step 1.
   recognitionTutorialOpen.value = true;
@@ -261,6 +275,12 @@ async function checkRecognitionTutorial() {
   if (sequence !== tutorialCheckSequence || currentHandle !== handle || key !== recognitionTutorialKey.value || unmounted) return;
   if (!status?.ready) return;
   const hasHistory = status.hasHistory || tutorialCloudHistory.value;
+  const bagEligible = bagTutorialGate.loaded(bagTutorialOwner(), hasHistory);
+  if (!bagEligible) markTutorialSeen(bagTutorialKey.value);
+  if (bagTutorialGate.shouldStart(bagTutorialOwner(), {
+    reviewing: activeTab.value === "review", ready: status.ready, seen: tutorialSeen(bagTutorialKey.value),
+    hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')),
+  }) && !(recognitionTutorialOpen.value && tutorialMode.value === "bag")) replayBagTutorial();
   // Remember experienced users even if they later switch to an empty game account.
   if (hasHistory) { markTutorialSeen(key); return; }
   if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value) replayRecognitionTutorial();
@@ -688,7 +708,13 @@ async function mountProduct() {
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
-      onOcrRebuild: function (snapshot, recoveryPointId) { return starCloud.rebuildOcr(snapshot, recoveryPointId); },
+      onOcrRebuild: async function (snapshot, recoveryPointId) {
+        const owner = bagTutorialOwner();
+        const result = await starCloud.rebuildOcr(snapshot, recoveryPointId);
+        // Observe the existing successful OCR handoff. The tour also waits for the persisted review DOM.
+        if (!unmounted && owner === bagTutorialOwner()) bagTutorialGate.ocrCompleted(owner);
+        return result;
+      },
       onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
       onListRecoveryPoints: function () { return starCloud.listRecoveryPoints(); },
       onRestoreRecoveryPoint: function (pointId) { return starCloud.restorePoint(pointId); },
@@ -727,7 +753,10 @@ function setTab(tab) {
 }
 watch(accountId, discardForeignPendingCapture);
 watch([productReady, tutorialAccountReady, tutorialCloudReady, tutorialCloudHistory, activeTab, recognitionTutorialKey, summary], () => { void checkRecognitionTutorial(); }, { flush: "post" });
-watch(recognitionTutorialKey, () => { recognitionTutorialOpen.value = false; });
+watch(recognitionTutorialKey, () => { recognitionTutorialOpen.value = false; bagTutorialGate.reset(); });
+watch(activeTab, (tab) => {
+  if (recognitionTutorialOpen.value && tab !== (tutorialMode.value === "bag" ? "review" : "import")) dismissRecognitionTutorial();
+});
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
   // Draft restoration may finish after the first summary. Recheck on the
