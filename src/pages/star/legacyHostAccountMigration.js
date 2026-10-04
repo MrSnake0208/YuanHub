@@ -40,7 +40,7 @@ function hasRequiredStores(database) {
   });
 }
 
-async function openExistingDatabase(indexedDb) {
+export async function openExistingYuanStarDatabase(indexedDb) {
   if (!indexedDb || typeof indexedDb.open !== "function") return null;
 
   if (typeof indexedDb.databases === "function") {
@@ -127,7 +127,7 @@ export async function migrateLegacyYuanStarHostAccount(
   const gameVersion = String(hostAccount?.gameVersion || "").trim();
   if (!hostId || !displayName || !gameVersion) return false;
 
-  const database = await openExistingDatabase(indexedDb);
+  const database = await openExistingYuanStarDatabase(indexedDb);
   if (!database) return false;
 
   try {
