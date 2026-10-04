@@ -155,7 +155,7 @@ const props = defineProps({
   emptyText: { type: String, default: '还没有子账号，先创建一个再开始记录。' },
   mgrDesc: {
     type: String,
-    default: '给不同存档分别记账（库存 / 密探共用同一批账号）；删除账号会连同库存、密探、特别关注和所有 Token 一并清除。'
+    default: '给不同存档分别记账（库存 / 密探共用同一批账号）；删除账号会连同库存、密探、特别关注、活动订阅及个人关卡进度和所有 Token 一并清除。'
   }
 })
 

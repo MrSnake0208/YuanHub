@@ -41,6 +41,7 @@ export function normalizeCalendarItem(value) {
     id: value.id, source_type: value.source_type === 'RECRUITMENT_POOL' ? 'RECRUITMENT_POOL' : 'MANUAL', source_ref: value.source_ref ?? null,
     game: value.game, title: value.title.trim(), category: value.category,
     start_date: value.start_date, end_date: value.end_date, start_time: paired ? value.start_time : null, end_time: paired ? value.end_time : null,
+    start_at: validCalendarInstant(value.start_at), end_at: validCalendarInstant(value.end_at),
     time_zone: value.time_zone || SERVER_TIME_ZONE, description: typeof value.description === 'string' ? value.description : '', source_url: safeCalendarUrl(value.source_url),
   }
 }
@@ -62,9 +63,11 @@ export function summarizeCalendarDay(items, today) {
   return counts
 }
 
-export function calendarStatuses(item, today) {
-  if (item.end_date < today) return ['已结束']
-  if (item.start_date > today) return ['即将开始']
+export function calendarStatuses(item, today, now = Date.now()) {
+  if (item.end_at && Date.parse(item.end_at) <= now) return ['已结束']
+  if (item.start_at && Date.parse(item.start_at) > now) return ['即将开始']
+  if (!item.end_at && item.end_date < today) return ['已结束']
+  if (!item.start_at && item.start_date > today) return ['即将开始']
   const labels = []
   if (item.end_date === today) labels.push('今日结束')
   if (item.start_date === today) labels.push('今日开始')
@@ -196,7 +199,23 @@ export function calendarDateLabel(date, options = { month: 'long', day: 'numeric
   return new Intl.DateTimeFormat('zh-CN', { ...options, timeZone: 'UTC' }).format(new Date(date + 'T00:00:00Z'))
 }
 
-export function calendarDeadline(item, today) {
+function validCalendarInstant(value) {
+  return typeof value === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value)) ? value : null
+}
+export function calendarEnded(item, today, now = Date.now()) {
+  return item.end_at ? Date.parse(item.end_at) <= now : item.end_date < today
+}
+export function calendarDeadline(item, today, now = Date.now()) {
+  if (item.end_at && Date.parse(item.end_at) <= now) return '已截止'
+  if (item.start_at && Date.parse(item.start_at) > now) {
+    const startDay = serverToday(new Date(item.start_at))
+    return startDay === today ? '今天稍后开始' : `${calendarDayDistance(today, startDay)} 天后开始`
+  }
+  if (item.end_at && (item.start_at || item.start_date <= today)) {
+    const minutes = Math.ceil((Date.parse(item.end_at) - now) / 60000)
+    if (minutes < 1440) return minutes < 60 ? `还有 ${minutes} 分钟` : `还有 ${Math.ceil(minutes / 60)} 小时`
+    return `还有 ${Math.ceil(minutes / 1440)} 天`
+  }
   if (item.start_date > today) return `${calendarDayDistance(today, item.start_date)} 天后开始`
   if (item.end_date < today) return ''
   const days = calendarDayDistance(today, item.end_date)

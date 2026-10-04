@@ -7,6 +7,7 @@
       </div>
       <router-link class="activity-link" :to="calendarTo">查看活动日历 <ArrowRight :size="16" aria-hidden="true" /></router-link>
     </header>
+    <TodaySubscriptionSummary :account-id="accountId" :game="game" />
     <p v-if="loading" class="activity-message" role="status">正在读取今日活动…</p>
     <div v-else-if="error" class="activity-error" role="alert">
       <p>活动日程暂时无法读取，可以重试或查看完整日历。</p>
@@ -31,13 +32,14 @@
 </template>
 
 <script setup>
+import TodaySubscriptionSummary from './TodaySubscriptionSummary.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowRight, CalendarDays } from '@lucide/vue'
 import { listActivityCalendar } from '../../api/activityCalendar.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { calendarStatuses, groupCalendarItems, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '../../data/activityCalendar.js'
 
-const props = defineProps({ game: { type: String, default: '' } })
+const props = defineProps({ game: { type: String, default: '' }, accountId: { type: String, default: '' } })
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const today = ref(serverToday())
 const items = ref([]), loading = ref(false), error = ref(false)

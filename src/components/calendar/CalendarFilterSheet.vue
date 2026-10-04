@@ -7,7 +7,7 @@
           <button type="button" @click="emit('close')">完成</button>
         </header>
         <div class="calendar-filter-sheet-body">
-          <CalendarFilterControls :filters="filters" :games="games" :categories="categories" @change="emit('change', $event)" />
+          <CalendarFilterControls :filters="filters" :lock-game="lockGame" :games="games" :categories="categories" @change="emit('change', $event)" />
         </div>
         <footer class="calendar-filter-sheet-footer">
           <button type="button" @click="emit('reset')">重置筛选</button>
@@ -25,6 +25,7 @@ import { useModalFocus } from '@/composables/useModalFocus.js'
 const props = defineProps({
   open: { type: Boolean, default: false },
   filters: { type: Object, required: true },
+  lockGame: Boolean,
   games: { type: Array, required: true },
   categories: { type: Object, required: true },
 })

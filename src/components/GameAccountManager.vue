@@ -296,7 +296,7 @@ async function remove(account) {
     message:
       '删除“' +
       account.name +
-      '”后，该账号的库存、密探、特别关注、星石数据和所有 API Token 都会一并清除，且不可恢复。',
+      '”后，该账号的库存、密探、特别关注、星石数据、活动订阅及个人关卡进度和所有 API Token 都会一并清除，且不可恢复。',
     type: 'danger',
     confirmText: '确认删除',
   })

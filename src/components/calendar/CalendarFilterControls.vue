@@ -1,6 +1,6 @@
 <template>
   <div class="calendar-filters">
-    <fieldset>
+    <fieldset v-if="!lockGame">
       <legend>游戏</legend>
       <div class="calendar-chips">
         <button v-for="game in ['', ...games]" :key="game" type="button" :aria-pressed="filters.game === game" @click="emit('change', { game })">{{ game || '全部游戏' }}</button>
@@ -19,6 +19,7 @@
 <script setup>
 defineProps({
   filters: { type: Object, required: true },
+  lockGame: Boolean,
   games: { type: Array, required: true },
   categories: { type: Object, required: true },
 })

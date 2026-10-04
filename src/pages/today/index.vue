@@ -145,7 +145,7 @@
             </div>
           </section>
 
-          <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+          <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" :account-id="accounts.some(account => account.id === accountId) ? accountId : ''" />
 
           <section
             class="today-section today-coming-soon"

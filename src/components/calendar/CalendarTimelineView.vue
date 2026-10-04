@@ -34,15 +34,17 @@
       </div>
     </div>
     <div v-if="selectedItem" id="calendar-timeline-detail" ref="detail" class="calendar-timeline-detail" tabindex="-1" aria-label="选中活动详情">
-      <CalendarEventCard :item="selectedItem" :today="today" />
+      <CalendarEventCard :key="selectedItem.id" :item="selectedItem" :today="today" />
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
+import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
+const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 import { addCalendarDays, CALENDAR_CATEGORIES, calendarDateLabel, calendarDates, calendarDayDistance, calendarRangeLabel, calendarStatuses, timelineItemPosition, timelineRange } from '@/data/activityCalendar.js'
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean })
 defineEmits(['select-date'])
@@ -69,7 +71,7 @@ const todayColumn = computed(() => props.today >= range.value.from && props.toda
 const groups = computed(() => Object.entries(CALENDAR_CATEGORIES).map(([category, label]) => {
   const items = props.items.filter(item => item.category === category).map(item => {
     const position = timelineItemPosition(item, range.value)
-    const status = calendarStatuses(item, props.today).join(' · ')
+    const status = calendarStatuses(item, props.today, subscriptions?.now.value).join(' · ')
     return {
       item, position, status,
       ending: item.start_date <= props.today && item.end_date >= props.today && item.end_date <= addCalendarDays(props.today, 2),
@@ -80,6 +82,8 @@ const groups = computed(() => Object.entries(CALENDAR_CATEGORIES).map(([category
 }).filter(group => group.items.length))
 const selectedItem = computed(() => props.items.find(item => item.id === selectedId.value))
 async function selectEvent(id) {
+  const context = subscriptions?.key.value
+  if (subscriptions && (!await subscriptions.confirmDiscard() || context !== subscriptions.key.value)) return
   selectedId.value = selectedId.value === id ? '' : id
   await nextTick()
   detail.value?.focus({ preventScroll: true })
@@ -91,5 +95,5 @@ function locate() {
 }
 onMounted(locate)
 watch(() => [props.anchorDate, props.locateRequest], locate, { flush: 'post' })
-watch(() => props.items, () => { selectedId.value = '' })
+watch(() => props.items, () => { if (!props.items.some(item => item.id === selectedId.value)) selectedId.value = '' })
 </script>

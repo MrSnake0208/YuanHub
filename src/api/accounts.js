@@ -16,8 +16,8 @@ const PATH = '/v1/accounts'
 
 // 账号列表（需登录）——按创建时间升序
 // 返回 [{ id, name, game, created_at, updated_at }]
-export function listAccounts() {
-  return request(PATH, { auth: true })
+export function listAccounts(expectedUserId) {
+  return request(PATH, { auth: true, ...(expectedUserId ? { expectedUserId } : {}) })
 }
 
 // 创建账号（POST，需登录）——body { name, game }
