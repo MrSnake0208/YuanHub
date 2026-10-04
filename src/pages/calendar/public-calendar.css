@@ -175,3 +175,21 @@
 @media (prefers-reduced-motion: reduce) {
   .calendar-public *, .calendar-public *::before, .calendar-public *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Personal subscriptions reuse the calendar's surface and controls. */
+.calendar-subscription-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
+.calendar-subscription-toolbar > p { flex-basis: 100%; }
+.calendar-account-select { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.calendar-account-select select { min-height: 44px; max-width: 100%; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.calendar-subscription { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); min-width: 0; }
+.calendar-subscription-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.calendar-checklist { margin-top: 12px; }
+.calendar-checklist fieldset { border: 0; padding: 0; min-width: 0; }
+.calendar-checklist legend { margin-bottom: 8px; font-weight: 700; }
+.calendar-check-row { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 6px 0; }
+.calendar-check-row input[type="checkbox"] { flex: none; width: 24px; height: 24px; margin: 10px; accent-color: var(--tea); }
+.calendar-check-target { display: grid; place-items: center; flex: none; width: 44px; min-height: 44px; cursor: pointer; }
+.calendar-check-target input[type="checkbox"] { margin: 0; }
+.calendar-check-row input[type="text"] { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+.calendar-subscription button, .calendar-subscription-toolbar button { min-height: 44px; }
+.calendar-subscription .calendar-error { margin-top: 10px; }

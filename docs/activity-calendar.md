@@ -122,3 +122,25 @@ npm run test:behavior -- behavior/activityCalendarRoutes.spec.js behavior/activi
 后端命令见 `BackEndV3-Share/docs/activity-calendar.md` 的管理员测试阶段验证说明。
 
 本轮已执行：11 个改动 JavaScript/Vue 文件的定向解析与 SFC 编译、前后端 `git diff --check`，均通过。未执行行为回归或浏览器验收，未启动/重启开发服务。
+
+
+## 本期订阅与个人关卡（2026-10-05）
+
+复用 `/calendar` 的“全部活动 / 我的订阅”和三种视图，不新增活动资料或独立待办页面。选择本人游戏账号后可订阅本期；“我的订阅”使用当前账号的游戏，可按类型、日期及“仅未完成”筛选。URL只保存视图/日期/筛选，不保存账号标识。
+
+活动卡支持订阅、取消、恢复及“记录进度”。取消保留进度，同期恢复继续使用；未来新一期不自动订阅。没有关卡清单时可直接标记整期完成；有清单时按全部勾选计算。每期最多50个私人关卡，名称1–80字，新增默认未勾选、可在首次保存前主动勾选；删除需确认，删除最后一项保留删除前草稿的整体完成状态。活动资料仍跟随公开来源。
+
+409或网络结果不明时保留草稿、停止旧版本保存；“读取最新状态”先读取，再确认是否替换草稿。切换日期/视图/账号、离开与收起使用现有未保存确认；后台读取和跨日刷新不会替换编辑中的草稿。用户/账号/范围变化后忽略旧请求。来源停用、消失或改游戏后停止提醒，保留只读进度并允许取消；已截止的有效活动可修正已有进度，但不能新订阅或恢复。
+
+首页仍在原活动摘要卡内显示当前账号未来7天内、已开始且未完成的订阅，最多3项，先计算全部符合条件的活动数再截取。公共活动统计与私人活动数分开。精确时间按带时区的start_at/end_at判断，到截止瞬间即结束；仅日期的活动按上海服务器日历日处理，明确“具体时间未提供”。截止定时器、跨日及页面恢复刷新负责更新，不新增定时网络轮询。
+
+保留现有 `ACTIVITY_CALENDAR` 开关及管理员测试门禁。具有任何订阅历史（含已取消）的账号禁止更换游戏；改名不受影响。删除游戏账号同时删除其订阅及个人进度，确认文案已同步。
+
+风险L3：新增私有API、身份隔离及持久化。新增纯函数、API、页面草稿、异步身份隔离、首页摘要测试；测试未执行。Agent仅完成源码编译/定向格式检查和静态审查；真实三视图、六档宽度及手机横屏/焦点/软键盘待用户验收。完整命令与证据见工作区 `.trellis/tasks/10-05-activity-calendar-subscriptions/verification.md`。
+
+最小前端回归（cwd YuanHub，由用户/CI执行）：
+
+```bash
+node --test test/activityCalendar.test.js test/activityCalendarViews.test.js test/activityCalendarSubscriptions.test.js
+npm run test:behavior -- behavior/activityCalendarSubscriptions.spec.js behavior/activityCalendarSubscriptionApi.spec.js behavior/activityCalendarSubscriptionIdentity.spec.js behavior/todayCalendarSubscriptions.spec.js behavior/activityCalendar.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarRoutes.spec.js behavior/todayActivitySummary.spec.js
+```
