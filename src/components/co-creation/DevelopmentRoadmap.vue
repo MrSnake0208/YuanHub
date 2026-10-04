@@ -1,10 +1,10 @@
 <template>
   <div class="development-roadmap">
-    <div class="goal-toolbar">
+    <div v-if="!emptyPublic" class="goal-toolbar">
       <label>功能进展<select v-model="stage" class="feedback-form-control" @change="changeStage"><option value="">全部目标</option><option v-for="option in DEVELOPMENT_STAGES" :key="option.key" :value="option.key">{{ option.label }}</option></select></label>
       <span>{{ total }} 个目标</span>
     </div>
-    <p class="goal-notice">进度表示下方完成标准中已有多少项通过确认，不能代表剩余开发时间。目标版本和日期为计划，可能调整。</p>
+    <p v-if="!emptyPublic" class="goal-notice">进度表示下方完成标准中已有多少项通过确认，不能代表剩余开发时间。目标版本和日期为计划，可能调整。</p>
     <div v-if="loading" class="goal-state" role="status">正在加载开发目标…</div>
     <div v-else-if="error" class="goal-state" role="alert">{{ error }}<button class="feedback-button" type="button" @click="load">重新加载</button></div>
     <div v-else-if="!items.length" class="goal-state">
@@ -31,12 +31,14 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Circle, CheckCircle2 } from '@lucide/vue'
 import { DEVELOPMENT_STAGES, listDevelopmentGoals } from '@/api/developmentGoals.js'
 const props = defineProps({ managed: { type: Boolean, default: false } })
 defineEmits(['edit'])
 const items = ref([]), loading = ref(false), error = ref(''), total = ref(0), stage = ref(''), page = ref(1), hasNext = ref(false)
+const loaded = ref(false)
+const emptyPublic = computed(() => loaded.value && !props.managed && !loading.value && !error.value && !stage.value && page.value === 1 && total.value === 0 && !items.value.length)
 let requestId = 0, mounted = false
 const stageLabel = value => DEVELOPMENT_STAGES.find(option => option.key === value)?.label || value
 const completedCount = goal => goal.criteria.filter(item => item.completed).length
@@ -48,6 +50,7 @@ async function load() {
     const result = await listDevelopmentGoals({ page: page.value, stage: stage.value, admin: props.managed })
     if (!mounted || current !== requestId) return
     items.value = result.items; total.value = result.total; hasNext.value = result.hasNext
+    loaded.value = true
   } catch (e) { if (mounted && current === requestId) error.value = e.message || '开发目标加载失败' }
   finally { if (mounted && current === requestId) loading.value = false }
 }

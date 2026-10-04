@@ -163,13 +163,35 @@ it('旧搜索响应不能污染新打开的目标表单', async () => {
 
 
 it('筛选为空提供恢复入口，恢复时清空阶段并回第一页', async () => {
-  goals.listDevelopmentGoals.mockResolvedValue({ items: [], total: 0, hasNext: false })
   const wrapper = render(DevelopmentRoadmap); await flushPromises()
+  goals.listDevelopmentGoals.mockResolvedValue({ items: [], total: 0, hasNext: false })
   await wrapper.get('select').setValue('COMPLETED'); await flushPromises()
   expect(wrapper.get('.goal-state').text()).toContain('查看全部目标')
   await wrapper.get('.goal-state button').trigger('click'); await flushPromises()
   expect(goals.listDevelopmentGoals).toHaveBeenLastCalledWith({ page: 1, stage: '', admin: false })
-  expect(wrapper.get('select').element.value).toBe('')
+  expect(wrapper.find('select').exists()).toBe(false)
+  expect(wrapper.text()).toContain('暂时还没有公布开发目标')
+})
+
+it('首次公开零目标简化工具栏和进度说明，管理态仍保留筛选', async () => {
+  goals.listDevelopmentGoals.mockResolvedValue({ items: [], total: 0, hasNext: false })
+  const publicView = render(DevelopmentRoadmap); await flushPromises()
+  expect(publicView.find('.goal-toolbar').exists()).toBe(false)
+  expect(publicView.find('.goal-notice').exists()).toBe(false)
+  expect(publicView.text()).toContain('提交你的功能建议')
+  const adminView = mount(DevelopmentRoadmap, { props: { managed: true } }); await flushPromises()
+  expect(adminView.find('select').exists()).toBe(true)
+  expect(adminView.find('.goal-notice').exists()).toBe(true)
+})
+
+it('加载错误保留筛选与说明，成功有目标后不隐藏控件', async () => {
+  goals.listDevelopmentGoals.mockRejectedValueOnce(new Error('offline'))
+  const wrapper = render(DevelopmentRoadmap); await flushPromises()
+  expect(wrapper.find('select').exists()).toBe(true)
+  expect(wrapper.find('.goal-notice').exists()).toBe(true)
+  await wrapper.get('[role="alert"] button').trigger('click'); await flushPromises()
+  expect(wrapper.find('select').exists()).toBe(true)
+  expect(wrapper.find('.goal-card').exists()).toBe(true)
 })
 
 it('功能计划解释完成与发布的关系，不将完成项当作已上线', async () => {
