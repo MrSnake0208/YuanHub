@@ -1,13 +1,13 @@
 <template>
   <section class="today-subscriptions" aria-labelledby="today-subscriptions-title" :aria-busy="loading">
-    <h3 id="today-subscriptions-title">我的订阅 · 即将截止</h3>
+    <h2 id="today-subscriptions-title">我的订阅 · 即将截止</h2>
     <p v-if="!accountId">选择游戏账号后，在活动日历订阅你关注的本期活动。</p>
     <p v-else-if="loading" role="status">正在读取个人订阅…</p>
     <div v-else-if="error" role="alert"><p>{{ error }}</p><button type="button" @click="load">重试订阅</button></div>
     <template v-else>
       <ul v-if="items.length">
         <li v-for="record in items" :key="record.event_id">
-          <router-link :to="{ path: '/calendar', query: { scope: 'mine', view: 'month', date: record.item.end_date } }">{{ record.item.title }}</router-link>
+          <router-link :to="{ path: '/calendar', query: { ...mineQuery, view: 'month', date: record.item.end_date } }">{{ record.item.title }}</router-link>
           <span>截止 {{ record.item.end_date }}{{ record.item.end_time ? ' ' + record.item.end_time + ' · ' + record.item.time_zone : ' · 具体时间未提供' }} · {{ calendarDeadline(record.item, today, now) }}</span>
           <span>{{ record.checklist.length ? `已完成 ${record.checklist.filter(entry => entry.completed).length}/${record.checklist.length}` : '本期未完成' }}</span>
         </li>
@@ -15,7 +15,7 @@
       <p v-else>{{ count ? '近期没有尚未完成的临期活动。' : '还没有订阅活动，去日历中订阅本期吧。' }}</p>
       <p v-if="total > items.length">另有 {{ total - items.length }} 项即将截止</p>
     </template>
-    <router-link :to="{ path: '/calendar', query: { scope: 'mine' } }">查看我的订阅</router-link>
+    <router-link :to="{ path: '/calendar', query: mineQuery }">查看我的订阅</router-link>
   </section>
 </template>
 <script setup>
@@ -26,6 +26,7 @@ import { calendarDeadline, millisecondsUntilServerMidnight, serverToday } from '
 const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' } })
 const identity = computed(() => auth.isLoggedIn && auth.isAdmin ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
+const mineQuery = computed(() => ({ scope: 'mine', ...(props.game ? { game: props.game } : {}) }))
 const items = ref([]), count = ref(0), total = ref(0), loading = ref(false), error = ref(''), now = ref(Date.now())
 const today = computed(() => serverToday(new Date(now.value)))
 let generation = 0, alive = true, timer = null, minute = null, lastVisible = 0
@@ -67,8 +68,8 @@ onMounted(() => {
 onBeforeUnmount(() => { alive = false; generation++; clearTimeout(timer); clearInterval(minute); document.removeEventListener('visibilitychange', visible); window.removeEventListener('pageshow', visible) })
 </script>
 <style scoped>
-.today-subscriptions { border-bottom: 1px solid var(--line); margin: 16px 0; padding-bottom: 16px; min-width: 0; }
-h3 { font: 800 18px/1.5 var(--font-s); margin-bottom: 8px; }
+.today-subscriptions { padding: 16px; min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); margin-bottom: 8px; }
 p, span { color: var(--tea); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 ul { display: grid; gap: 12px; list-style: none; margin: 8px 0; padding: 0; }
 span { display: block; }

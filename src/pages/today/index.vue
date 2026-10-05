@@ -4,56 +4,61 @@
     <main id="main-content" class="today-main">
       <header class="today-hero">
         <div class="wrap today-wrap">
-          <div class="hero-copy">
-            <span class="today-kicker">YUANHUB · 今日一览</span>
-            <h1>今天也来啦</h1>
-            <p>先确认账号与数据准备状态，再从下方入口进入已可用的工具。</p>
-            <div class="hero-actions">
-              <router-link class="primary-action" :to="heroPrimaryTo">
-                {{ heroPrimaryLabel }}
-                <ArrowRight :size="16" aria-hidden="true" />
-              </router-link>
-            </div>
-          </div>
-
-          <div class="account-context">
-            <span class="data-badge" :class="{ 'is-demo': !auth.isLoggedIn }">
-              <span class="status-dot" aria-hidden="true"></span>
-              {{ auth.isLoggedIn ? '真实数据' : '演示数据' }}
-            </span>
-            <p v-if="auth.isLoggedIn && accounts.length">当前账号在个人中心统一选择。</p>
-            <p v-else-if="auth.isLoggedIn && loading">正在读取你的账号状态…</p>
-            <p v-else-if="auth.isLoggedIn">尚未建立游戏账号，请先前往个人中心创建。</p>
-            <p v-else>这是示例状态。登录后会换成你的账号、密探和库存数据。</p>
-          </div>
+          <h1>今日一览</h1>
+          <DataAccountContextBar
+            v-if="auth.isLoggedIn && (accounts.length || accountLoading)"
+            compact
+            :accounts="accounts"
+            :account-id="accountId"
+            :game="accountGame"
+            :is-logged-in="auth.isLoggedIn"
+            :loading="accountLoading"
+            :switch-disabled="accountLoadFailed"
+          />
         </div>
       </header>
 
       <section class="today-content">
         <div class="wrap today-wrap">
-          <DataAccountContextBar
-            class="today-account-context"
-            :accounts="accounts"
-            :account-id="accountId"
-            :game="accountGame"
-            :is-logged-in="auth.isLoggedIn"
-            :loading="loading && !accounts.length && auth.isLoggedIn"
-            description="今日一览中的密探、库存、星石状态均读取自此账号。"
-          />
-
           <div v-if="errorMessage" class="today-alert" role="alert">
             <span>{{ errorMessage }}</span>
-            <button type="button" @click="loadDashboard">重试</button>
+            <button type="button" :disabled="summaryLoading" @click="accountLoadFailed ? loadDashboard() : retrySummary()">重试</button>
           </div>
 
-          <section
+          <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
+
+          <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-calendar': calendarEnabled }" data-tour="today-overview">
+            <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
+            <div v-if="showAccountOverview" class="today-account-overview">
+              <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" />
+              <section class="account-data-summary" aria-labelledby="account-data-title" :aria-busy="summaryLoading">
+                <h2 id="account-data-title">当前账号状态</h2>
+                <p v-if="summaryLoading" class="today-loading" role="status">正在读取当前账号的数据…</p>
+                <p v-else-if="!validAccountId">请选择游戏账号，查看对应的数据状态。</p>
+                <template v-else>
+                  <ul class="account-data-list">
+                    <li v-for="item in dataSetupItems" :key="item.key" :class="{ 'is-unknown': item.status === 'unknown' }">
+                      <span>{{ item.title }}</span><strong>{{ item.statusLabel }}</strong>
+                    </li>
+                  </ul>
+                  <p v-if="unknownDataItems.length">{{ unknownDataLabel }}状态未确认，不会要求重新录入。</p>
+                  <p v-else-if="!missingDataItems.length">已录入的数据可继续在对应工作区维护。</p>
+                </template>
+              </section>
+            </div>
+          </div>
+
+          <component
+            :is="isReturningUser ? 'details' : 'section'"
             v-if="showDataOnboarding"
             class="data-onboarding"
+            :class="{ 'is-optional': isReturningUser }"
             aria-labelledby="data-onboarding-title"
           >
+            <summary v-if="isReturningUser">还有 {{ missingDataItems.length }} 项数据可补齐（可选）</summary>
             <div class="onboarding-heading">
               <div>
-                <span class="onboarding-kicker">FIRST DATA · 第一次建档</span>
+                <span v-if="!isReturningUser" class="onboarding-kicker">第一次建档</span>
                 <h2 id="data-onboarding-title">{{ onboardingTitle }}</h2>
                 <p>{{ onboardingDescription }}</p>
               </div>
@@ -143,19 +148,14 @@
                 </router-link>
               </article>
             </div>
-          </section>
-
-          <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" :account-id="accounts.some(account => account.id === accountId) ? accountId : ''" />
+          </component>
 
           <section
-            class="today-section today-coming-soon"
-            data-tour="today-overview"
-            aria-labelledby="today-coming-soon-title"
+            class="today-tools"
+            :data-tour="calendarEnabled || showAccountOverview ? undefined : 'today-overview'"
+            aria-labelledby="today-tools-title"
           >
-            <span class="coming-soon-emblem" aria-hidden="true"><ArrowRight :size="26" /></span>
-            <span class="coming-soon-kicker">AVAILABLE NOW</span>
-            <h2 id="today-coming-soon-title">从现有工具继续</h2>
-            <p>今日建议与状态总览仍在重做。密探、库存和星石工具已可使用，可以直接进入：</p>
+            <h2 id="today-tools-title">常用工具</h2>
             <nav class="today-tool-links" aria-label="今日一览的工具入口">
               <router-link to="/operator">密探名册</router-link>
               <router-link to="/inventory">库存追踪</router-link>
@@ -170,28 +170,29 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
+import TodaySubscriptionSummary from '../../components/today/TodaySubscriptionSummary.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
-import { getCurrent, listAgentFavorites } from '../../api/inventory.js'
-import { refreshNotificationUnread } from '../../store/notificationUnread.js'
+import { getCurrent } from '../../api/inventory.js'
 import { getCurrentStarState } from '../../api/starState.js'
 import { auth } from '../../store/auth.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import {
   getTodayDataReadiness,
   getTodayOnboardingStage,
+  hasTodayAccountData,
   shouldShowTodayDataOnboarding,
   summarizeTodayData
 } from '../../data/todayData.js'
 
-const EMPTY_SUMMARY = Object.freeze({ operatorCount: 0, favoriteCount: 0, inventoryKindCount: 0, inventoryRecorded: false, inventoryHasFullBaseline: false, starCount: 0, unreadCount: 0 })
+const EMPTY_SUMMARY = Object.freeze({ operatorCount: null, inventoryKindCount: null, inventoryRecorded: null, inventoryHasFullBaseline: null, starCount: null })
 const DATA_SETUP_CONFIG = Object.freeze([
   {
     key: 'operator',
@@ -233,20 +234,25 @@ const DATA_SETUP_CONFIG = Object.freeze([
 
 const accounts = ref([])
 const realSummary = ref({ ...EMPTY_SUMMARY })
-const loading = ref(false)
+const accountLoading = ref(false)
+const summaryLoading = ref(false)
 const errorMessage = ref('')
 const accountLoadFailed = ref(false)
 let loadSequence = 0
+let summarySequence = 0
 
 const accountId = computed(function () { return activeAccount.id })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
-const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && auth.isAdmin)
+const validAccountId = computed(() => accounts.value.some(account => account.id === accountId.value) ? accountId.value : '')
+const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && auth.isAdmin && !accountLoading.value)
 const calendarGame = computed(function () {
   return auth.isLoggedIn && accounts.value.some(account => account.id === accountId.value)
     ? accountGame.value : ''
 })
 const dataReadiness = computed(function () { return getTodayDataReadiness(realSummary.value) })
+const isReturningUser = computed(() => !!validAccountId.value && hasTodayAccountData(realSummary.value))
+const showAccountOverview = computed(() => auth.isLoggedIn && !accountLoading.value && !accountLoadFailed.value && accounts.value.length > 0 && (summaryLoading.value || !showDataOnboarding.value || isReturningUser.value))
 const onboardingStage = computed(function () {
   return getTodayOnboardingStage({
     isLoggedIn: auth.isLoggedIn,
@@ -255,7 +261,7 @@ const onboardingStage = computed(function () {
   })
 })
 const showDataOnboarding = computed(function () {
-  if (auth.isLoggedIn && (accountLoadFailed.value || loading.value)) return false
+  if (auth.isLoggedIn && (accountLoadFailed.value || accountLoading.value || summaryLoading.value || (accounts.value.length && !validAccountId.value))) return false
   return shouldShowTodayDataOnboarding({
     isLoggedIn: auth.isLoggedIn,
     hasAccounts: accounts.value.length > 0,
@@ -291,6 +297,8 @@ const dataSetupItems = computed(function () {
 const missingDataItems = computed(function () {
   return dataSetupItems.value.filter(function (item) { return item.status === 'empty' })
 })
+const unknownDataItems = computed(() => dataSetupItems.value.filter(item => item.status === 'unknown'))
+const unknownDataLabel = computed(() => unknownDataItems.value.map(item => item.title).join('、'))
 const autoSyncMissingItems = computed(function () {
   return missingDataItems.value.filter(function (item) { return item.autoSync })
 })
@@ -301,7 +309,7 @@ const onboardingTitle = computed(function () {
   if (onboardingStage.value === 'auth') return '先登录，再开始建立今日一览'
   if (onboardingStage.value === 'account') return '先建立你的游戏子账号'
   const names = missingDataItems.value.map(function (item) { return item.title })
-  return names.length === 1 ? '还差 ' + names[0] + ' 数据' : '还有 ' + names.length + ' 项数据可以补齐'
+  return isReturningUser.value ? '按需补齐数据' : names.length === 1 ? '还差 ' + names[0] + ' 数据' : '还有 ' + names.length + ' 项数据可以补齐'
 })
 const onboardingDescription = computed(function () {
   if (onboardingStage.value === 'auth') {
@@ -324,151 +332,120 @@ const maaYuanConnectTo = computed(function () {
     hash: '#maayuan-app-title'
   }
 })
-const heroPrimaryTo = computed(function () {
-  if (onboardingStage.value === 'auth') return { path: '/login', query: { redirect: '/' } }
-  if (onboardingStage.value === 'account') return { path: '/user/profile', hash: '#game-accounts' }
-  if (showDataOnboarding.value) return '/#data-onboarding-title'
-  return '/operator/quick'
-})
-const heroPrimaryLabel = computed(function () {
-  if (onboardingStage.value === 'auth') return '登录并开始'
-  if (onboardingStage.value === 'account') return '去创建游戏账号'
-  if (onboardingStage.value === 'data') return '继续补齐 ' + missingDataItems.value.length + ' 项数据'
-  return '快速更新数据'
-})
 function readableError(error, fallback) {
   if (!error || !error.message) return fallback
   return /Failed to fetch|NetworkError|fetch/i.test(error.message) ? '网络异常，请稍后重试' : error.message
 }
 
 async function loadDashboard() {
-  if (!auth.isLoggedIn) return
   const sequence = ++loadSequence
-  loading.value = true
+  accounts.value = []
+  realSummary.value = { ...EMPTY_SUMMARY }
   errorMessage.value = ''
   accountLoadFailed.value = false
+  accountLoading.value = auth.isLoggedIn
+  if (!auth.isLoggedIn) return
   try {
-    const data = await listAccounts()
+    const data = await listAccounts(auth.userInfo?.id)
     if (sequence !== loadSequence) return
     accounts.value = Array.isArray(data) ? data : []
     activeAccount.syncAccounts(accounts.value)
-    if (!accounts.value.some(function (account) { return account.id === accountId.value })) {
-      activeAccount.set(accounts.value[0] && accounts.value[0].id)
-    }
-    await loadSummary(sequence)
+    if (!validAccountId.value) activeAccount.set(accounts.value[0]?.id)
   } catch (error) {
     if (sequence === loadSequence) {
       accountLoadFailed.value = true
-      errorMessage.value = readableError(error, '今日一览数据读取失败')
+      errorMessage.value = readableError(error, '游戏账号读取失败，请重试')
     }
   } finally {
-    if (sequence === loadSequence) loading.value = false
+    if (sequence === loadSequence) accountLoading.value = false
   }
 }
 
-async function loadSummary(sequence) {
-  const targetAccount = accountId.value
-  const requests = [refreshNotificationUnread()]
-  if (targetAccount) {
-    requests.push(
-      getOperatorCurrent({ accountId: targetAccount, game: accountGame.value }),
-      getCurrent({ accountId: targetAccount, entityType: 'item' }),
-      listAgentFavorites(targetAccount),
-      getCurrentStarState(targetAccount)
-    )
-  }
-  const results = await Promise.allSettled(requests)
-  if (sequence !== loadSequence || targetAccount !== accountId.value) return
-
-  const failures = results.filter(function (result) { return result.status === 'rejected' })
-  realSummary.value = summarizeTodayData({
-    notifications: results[0].status === 'fulfilled' ? results[0].value : null,
-    current: results[1] && results[1].status === 'fulfilled' ? results[1].value : null,
-    inventory: results[2] && results[2].status === 'fulfilled' ? results[2].value : null,
-    favorites: results[3] && results[3].status === 'fulfilled' ? results[3].value : null,
-    starState: results[4] && results[4].status === 'fulfilled' ? results[4].value : null
-  })
-  if (results[0].status === 'rejected') realSummary.value.unreadCount = null
-  if (targetAccount && results[1].status === 'rejected') realSummary.value.operatorCount = null
-  if (targetAccount && results[2].status === 'rejected') realSummary.value.inventoryKindCount = null
-  if (targetAccount && results[3].status === 'rejected') realSummary.value.favoriteCount = null
-  if (targetAccount && results[4].status === 'rejected') realSummary.value.starCount = null
-  errorMessage.value = failures.length ? '部分状态暂时读取失败，页面没有使用演示数据补齐。' : ''
+async function loadSummary(sequence, targetAccount, game) {
+  const results = await Promise.allSettled([
+    getOperatorCurrent({ accountId: targetAccount, game }),
+    getCurrent({ accountId: targetAccount, entityType: 'item' }),
+    getCurrentStarState(targetAccount)
+  ])
+  if (sequence !== summarySequence) return
+  const value = index => results[index].status === 'fulfilled' ? results[index].value : null
+  realSummary.value = summarizeTodayData({ current: value(0), inventory: value(1), starState: value(2) })
+  if (results[0].status === 'rejected') realSummary.value.operatorCount = null
+  if (results[1].status === 'rejected') realSummary.value.inventoryKindCount = null
+  if (results[2].status === 'rejected') realSummary.value.starCount = null
+  errorMessage.value = results.some(result => result.status === 'rejected')
+    ? '部分状态暂时读取失败；已读取的数据仍可查看，可重试读取状态。' : ''
+  summaryLoading.value = false
 }
 
-watch([accountId, accountGame], function () {
-  realSummary.value = { ...EMPTY_SUMMARY }
-  if (!auth.isLoggedIn || !accounts.value.length) return
-  const sequence = ++loadSequence
-  loading.value = true
+function retrySummary() {
+  if (!validAccountId.value || summaryLoading.value) return
+  summaryLoading.value = true
   errorMessage.value = ''
-  loadSummary(sequence).finally(function () {
-    if (sequence === loadSequence) loading.value = false
-  })
-}, { flush: 'sync' })
+  void loadSummary(++summarySequence, validAccountId.value, accountGame.value)
+}
 
-onMounted(loadDashboard)
+// Account initialization finishes before summary requests; switches invalidate old data immediately.
+watch([validAccountId, accountGame, accountLoading], () => {
+  const sequence = ++summarySequence
+  realSummary.value = { ...EMPTY_SUMMARY }
+  summaryLoading.value = false
+  if (!auth.isLoggedIn || accountLoading.value || accountLoadFailed.value) return
+  errorMessage.value = ''
+  if (!validAccountId.value) return
+  summaryLoading.value = true
+  void loadSummary(sequence, validAccountId.value, accountGame.value)
+}, { flush: 'sync' })
+watch(() => [auth.isLoggedIn, auth.accessToken, auth.userInfo?.id], loadDashboard, { immediate: true, flush: 'sync' })
+onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 </script>
 
 <style scoped>
-.today-page { min-height: 100vh; min-height: 100dvh; color: var(--ink); }
-.today-main { min-height: 100vh; min-height: 100dvh; margin-left: 228px; }
+.today-page { min-height: 100dvh; color: var(--ink); }
+.today-main { min-height: 100dvh; }
 .today-wrap { max-width: 1180px; }
-.today-hero { position: relative; overflow: hidden; padding: 64px 0 48px; border-bottom: 1px solid rgba(156, 122, 77, .26); background: linear-gradient(135deg, rgba(255, 253, 246, .9), rgba(239, 210, 142, .2)); }
-.today-hero::after { position: absolute; top: -160px; right: -100px; width: 420px; height: 420px; border: 1px solid rgba(156, 122, 77, .18); border-radius: 50%; box-shadow: 0 0 0 46px rgba(156, 122, 77, .04), 0 0 0 92px rgba(156, 122, 77, .035); content: ''; pointer-events: none; }
-.today-hero .today-wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: end; gap: 72px; }
-.today-kicker { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
-.today-hero h1 { margin-top: 12px; font-family: var(--font-s); font-size: clamp(42px, 5vw, 68px); font-weight: 900; letter-spacing: -.04em; }
-.hero-copy > p { max-width: 610px; margin-top: 12px; color: rgba(73, 59, 44, .7); font-size: 15px; line-height: 1.8; }
-.hero-actions { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
-.hero-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 800; text-decoration: none; }
-.primary-action { gap: 8px; background: var(--tea); color: var(--cream); box-shadow: 0 8px 20px rgba(73, 59, 44, .15); }
-.account-context { display: grid; gap: 14px; padding: 20px; border: 1px solid rgba(156, 122, 77, .28); border-radius: 14px; background: rgba(255, 253, 246, .72); backdrop-filter: blur(10px); }
-.account-context > p { color: rgba(73, 59, 44, .68); font-size: 12px; line-height: 1.6; }
-.data-badge { display: inline-flex; align-items: center; gap: 7px; width: max-content; color: var(--tea); font-size: 11px; font-weight: 900; }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #62805d; box-shadow: 0 0 0 4px rgba(98, 128, 93, .12); }
-.data-badge.is-demo { color: #9b6c30; }
-.data-badge.is-demo .status-dot { background: #d18935; box-shadow: 0 0 0 4px rgba(209, 137, 53, .14); }
-.today-content { padding: 38px 0 72px; }
-.today-account-context { margin-bottom: 24px; }
-.today-alert { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding: 12px 14px; border: 1px solid rgba(166, 81, 74, .28); border-radius: 10px; background: rgba(166, 81, 74, .07); color: var(--rouge); font-size: 12px; }
-.today-alert button { padding: 7px 11px; border: 1px solid currentColor; border-radius: 7px; background: transparent; color: inherit; font-weight: 800; cursor: pointer; }
-.data-onboarding { margin-bottom: 46px; padding: 26px; border: 1px solid rgba(156, 122, 77, .3); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); box-shadow: 0 14px 36px rgba(73, 59, 44, .06); }
-.onboarding-heading { display: flex; align-items: end; justify-content: space-between; gap: 32px; }
+.today-hero { padding: 20px 0 12px; border-bottom: 1px solid var(--line); }
+.today-hero .today-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
+.today-hero h1 { margin: 0; color: var(--tea); font: 900 30px/1.4 var(--font-s); }
+.today-content { padding: 16px 0 48px; }
+.today-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--rouge); border-radius: 10px; color: var(--rouge); font-size: 13px; line-height: 1.7; }
+.today-alert button { min-height: 44px; padding: 8px 12px; border: 1px solid currentColor; border-radius: 7px; background: var(--surface); color: inherit; cursor: pointer; }
+.today-loading { color: var(--tea); font-size: 13px; line-height: 1.7; }
+.today-overview, .today-account-overview { display: grid; align-items: start; gap: 16px; min-width: 0; margin-bottom: 20px; }
+.today-account-overview { margin-bottom: 0; }
+.account-data-summary { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.account-data-summary h2, .today-tools h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
+.account-data-summary > p { margin-top: 8px; color: var(--tea); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.account-data-list { display: grid; gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
+.account-data-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; line-height: 1.7; }
+.account-data-list strong { font-weight: 650; }
+.account-data-list .is-unknown { color: var(--rouge); }
+.today-tools { padding-top: 16px; border-top: 1px solid var(--line); }
+.today-tool-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
+.today-tool-links a { display: inline-flex; min-height: 44px; align-items: center; color: var(--tea); font-size: 13px; font-weight: 700; text-decoration: none; }
+.today-tool-links a:hover { color: var(--accent-strong); }
+.today-page a:focus-visible, .today-page button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.data-onboarding { margin-bottom: 20px; padding: 20px 16px; border: 1px solid rgba(156, 122, 77, .3); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); }
+.onboarding-heading { display: flex; flex-direction: column; align-items: start; justify-content: space-between; gap: 8px; }
 .onboarding-heading > div { max-width: 760px; }
 .onboarding-kicker { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
-.onboarding-heading h2 { margin-top: 9px; font-family: var(--font-s); font-size: 27px; font-weight: 900; }
+.onboarding-heading h2 { margin-top: 9px; font-family: var(--font-s); font-size: 23px; font-weight: 900; }
 .onboarding-heading p { margin-top: 9px; color: rgba(73, 59, 44, .68); font-size: 13px; line-height: 1.75; }
-.onboarding-note { flex: 0 0 auto; max-width: 180px; color: rgba(73, 59, 44, .52); font-size: 11px; line-height: 1.6; text-align: right; }
-.auth-onboarding-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px 18px; margin-top: 22px; padding: 22px; border: 1px solid rgba(156, 122, 77, .24); border-radius: 14px; background: rgba(255, 253, 246, .9); }
+.onboarding-note { flex: 0 0 auto; max-width: 180px; color: var(--ink-60); font-size: 11px; line-height: 1.6; text-align: left; }
+.auth-onboarding-card { display: grid; grid-template-columns: 1fr; align-items: center; gap: 14px 18px; margin-top: 22px; padding: 16px; border: 1px solid rgba(156, 122, 77, .24); border-radius: 14px; background: rgba(255, 253, 246, .9); }
 .auth-onboarding-copy h3 { font-family: var(--font-s); font-size: 19px; font-weight: 900; }
 .auth-onboarding-copy p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
-.auth-onboarding-actions { display: flex; align-items: center; gap: 9px; }
-.inline-account-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(260px, .8fr); gap: 18px 24px; margin-top: 22px; padding: 22px; border: 1px solid rgba(215, 137, 53, .36); border-radius: 14px; background: rgba(255, 253, 246, .9); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .32); }
+.auth-onboarding-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.inline-account-card { display: grid; grid-template-columns: 1fr; gap: 18px 24px; margin-top: 22px; padding: 16px; border: 1px solid rgba(215, 137, 53, .36); border-radius: 14px; background: rgba(255, 253, 246, .9); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .32); }
 .inline-account-intro { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 13px; grid-column: 1 / -1; }
 .inline-account-intro h3 { font-family: var(--font-s); font-size: 19px; font-weight: 900; }
 .inline-account-intro p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
-.account-management-card { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.account-management-card { align-items: center; }
 .account-management-card .inline-account-intro { grid-column: auto; }
-.account-management-action { white-space: nowrap; }
-.account-game-choice { margin: 0; padding: 0; border: 0; }
-.account-game-choice legend, .account-name-field > span { display: block; margin-bottom: 8px; color: rgba(73, 59, 44, .66); font-size: 11px; font-weight: 900; letter-spacing: .05em; }
-.account-game-options { display: flex; flex-wrap: wrap; gap: 8px; }
-.account-game-options label { position: relative; display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid rgba(156, 122, 77, .28); border-radius: 9px; background: var(--surface); color: rgba(73, 59, 44, .72); font-size: 12px; font-weight: 800; cursor: pointer; }
-.account-game-options label.selected { border-color: rgba(215, 137, 53, .58); background: rgba(239, 210, 142, .2); color: var(--ink); }
-.account-game-options input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
-.account-game-options label:focus-within { outline: 2px solid rgba(215, 137, 53, .42); outline-offset: 2px; }
-.account-name-field { display: block; }
-.account-name-field input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid rgba(156, 122, 77, .34); border-radius: 9px; background: var(--surface); color: var(--ink); font: 700 13px var(--font-b); }
-.account-name-field input:focus { border-color: rgba(215, 137, 53, .7); outline: 2px solid rgba(215, 137, 53, .16); outline-offset: 1px; }
-.inline-account-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding-top: 2px; }
-.account-create-error { margin-right: auto; color: var(--rouge); font-size: 11px; font-weight: 700; line-height: 1.5; }
-.entry-primary-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); font: 900 12px var(--font-b); cursor: pointer; }
-.entry-primary-button:disabled { opacity: .5; cursor: not-allowed; }
+.account-management-action { white-space: normal; }
 .entry-choice-wrap { margin-top: 18px; }
-.account-created-note { margin-bottom: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(98, 128, 93, .1); color: #4f684b; font-size: 11.5px; font-weight: 800; line-height: 1.55; }
-.data-readiness-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.data-readiness-card { display: flex; min-height: 188px; flex-direction: column; padding: 18px; border: 1px solid rgba(215, 137, 53, .34); border-radius: 13px; background: rgba(255, 253, 246, .9); }
+.data-readiness-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.data-readiness-card { display: flex; flex-direction: column; padding: 18px; border: 1px solid rgba(215, 137, 53, .34); border-radius: 13px; background: rgba(255, 253, 246, .9); }
 .data-readiness-card.is-ready { border-color: rgba(98, 128, 93, .28); background: rgba(98, 128, 93, .07); }
 .data-readiness-card.is-unknown { border-style: dashed; border-color: rgba(91, 106, 140, .28); }
 .readiness-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 11px; }
@@ -479,93 +456,35 @@ onMounted(loadDashboard)
 .is-ready .readiness-status { color: #587253; }
 .is-unknown .readiness-status { color: var(--brand-blue); }
 .data-readiness-card > p { margin-top: 13px; color: rgba(73, 59, 44, .6); font-size: 11.5px; line-height: 1.65; }
-.readiness-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; margin-top: auto; padding: 0 11px; border-radius: 8px; background: rgba(156, 122, 77, .08); color: var(--ink); font-size: 11.5px; font-weight: 900; text-decoration: none; }
+.readiness-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; margin-top: 12px; padding: 0 11px; border-radius: 8px; background: rgba(156, 122, 77, .08); color: var(--ink); font-size: 11.5px; font-weight: 900; text-decoration: none; }
 .readiness-action:hover { background: rgba(239, 210, 142, .22); }
-.sync-recommendation { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 14px; padding: 18px 20px; border: 1px solid rgba(215, 137, 53, .36); border-radius: 13px; background: rgba(239, 210, 142, .11); }
+.sync-recommendation { display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 16px; margin-top: 14px; padding: 16px; border: 1px solid rgba(215, 137, 53, .36); border-radius: 13px; background: rgba(239, 210, 142, .11); }
 .sync-recommendation-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
 .sync-recommendation h3 { margin-top: 5px; font-family: var(--font-s); font-size: 17px; font-weight: 900; }
 .sync-recommendation p { margin-top: 5px; color: rgba(73, 59, 44, .62); font-size: 11.5px; line-height: 1.65; }
 .sync-recommendation small { display: block; margin-top: 6px; color: rgba(73, 59, 44, .52); font-size: 10.5px; line-height: 1.55; }
-.data-entry-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .85fr); gap: 14px; }
-.entry-card { padding: 22px; border: 1px solid rgba(156, 122, 77, .24); border-radius: 14px; background: rgba(255, 253, 246, .88); }
-.recommended-entry { border-color: rgba(215, 137, 53, .42); box-shadow: inset 0 3px 0 rgba(215, 137, 53, .42); }
-.entry-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 13px; align-items: start; }
 .entry-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: rgba(215, 137, 53, .1); color: var(--accent); }
-.entry-card-head h3 { margin-top: 5px; font-family: var(--font-s); font-size: 19px; font-weight: 900; }
-.entry-card-head p { margin-top: 6px; color: rgba(73, 59, 44, .61); font-size: 12px; line-height: 1.65; }
-.recommend-badge, .manual-badge { display: inline-flex; align-items: center; width: max-content; min-height: 23px; padding: 0 8px; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .04em; }
 .recommend-badge { background: rgba(239, 210, 142, .48); color: var(--tea); }
-.manual-badge { border: 1px solid rgba(91, 106, 140, .32); color: var(--brand-blue); }
-.sync-steps { display: grid; gap: 0; margin: 20px 0; padding: 0; list-style: none; }
-.sync-steps.compact { margin-bottom: 18px; }
-.sync-steps li { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 9px 0; }
-.sync-steps li:not(:last-child)::after { position: absolute; top: 36px; bottom: -1px; left: 13px; width: 1px; background: rgba(156, 122, 77, .2); content: ''; }
-.step-number { position: relative; z-index: 1; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(215, 137, 53, .38); border-radius: 50%; background: var(--surface); color: var(--accent); font: 900 11px/1 var(--font-d); }
-.sync-steps strong, .manual-copy strong { font-size: 12px; font-weight: 900; }
-.sync-steps p, .manual-copy p { margin-top: 4px; color: rgba(73, 59, 44, .58); font-size: 11px; line-height: 1.65; }
-.sync-task-map { display: grid; gap: 6px; margin-top: 10px; }
-.sync-task-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, auto); align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; background: rgba(156, 122, 77, .07); }
-.sync-task-row > span:first-child { color: rgba(73, 59, 44, .68); font-size: 11px; font-weight: 800; }
-.sync-task-target { display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: var(--ink); font-size: 11px; font-weight: 900; text-align: right; }
-.sync-task-target::before { color: rgba(215, 137, 53, .82); content: '→'; }
-.sync-task-coming { padding: 2px 5px; border-radius: 999px; background: rgba(91, 106, 140, .1); color: var(--brand-blue); font-size: 9px; font-style: normal; font-weight: 900; white-space: nowrap; }
 .entry-primary-action, .entry-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 15px; border-radius: 9px; font-size: 12px; font-weight: 900; text-decoration: none; }
 .entry-primary-action { background: var(--tea); color: var(--cream); box-shadow: 0 8px 18px rgba(73, 59, 44, .12); }
 .entry-secondary-action { border: 1px solid rgba(73, 59, 44, .22); color: var(--ink); }
-.manual-entry { display: flex; flex-direction: column; }
-.manual-copy { margin-top: 20px; padding: 16px 0; border-top: 1px solid rgba(156, 122, 77, .18); border-bottom: 1px solid rgba(156, 122, 77, .18); }
-.manual-page-links { display: grid; gap: 7px; margin-top: 12px; }
-.manual-page-links a { display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 11px; border-radius: 8px; background: rgba(156, 122, 77, .07); color: var(--ink); font-size: 11.5px; font-weight: 850; text-decoration: none; }
-.manual-page-links a:hover { background: rgba(239, 210, 142, .18); }
-.manual-actions { display: grid; align-items: start; gap: 12px; margin-top: auto; padding-top: 22px; }
-.today-section + .today-section { margin-top: 52px; }
-.today-coming-soon { position: relative; display: grid; align-content: center; justify-items: center; gap: 12px; min-height: 340px; padding: 56px 32px; overflow: hidden; border: 1px dashed rgba(156, 122, 77, .45); border-radius: 16px; background: linear-gradient(150deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .16)); text-align: center; }
-.today-coming-soon::after { position: absolute; top: -120px; left: 50%; width: 320px; height: 320px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle, rgba(239, 210, 142, .3), rgba(239, 210, 142, 0) 70%); content: ''; pointer-events: none; }
-.coming-soon-emblem { position: relative; z-index: 1; display: grid; width: 64px; height: 64px; place-items: center; border: 1px solid rgba(156, 122, 77, .24); border-radius: 50%; background: rgba(239, 210, 142, .28); color: var(--tea); }
-.coming-soon-kicker { position: relative; z-index: 1; color: var(--tea); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
-.today-coming-soon h2 { position: relative; z-index: 1; margin-top: 4px; font-family: var(--font-s); font-size: clamp(30px, 4vw, 44px); font-weight: 900; letter-spacing: -.02em; }
-.today-coming-soon p { position: relative; z-index: 1; max-width: 44ch; color: rgba(73, 59, 44, .78); font-size: 13px; line-height: 1.85; }
-.today-tool-links { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
-.today-tool-links a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 800; text-decoration: none; }
-.today-tool-links a:hover { border-color: var(--accent); color: var(--accent-strong); }
-@media (prefers-reduced-motion: no-preference) {
-  .coming-soon-emblem { animation: coming-soon-bob 3.6s ease-in-out infinite; }
+.data-onboarding.is-optional { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.is-optional > summary { min-height: 44px; padding: 10px 0; color: var(--tea); font-size: 13px; font-weight: 700; cursor: pointer; }
+.is-optional .onboarding-heading { margin-top: 12px; }
+.auth-onboarding-card > .entry-icon { display: none; }
+@media (min-width: 768px) {
+  .today-hero { padding-top: 24px; }
+  .today-hero h1 { font-size: 32px; }
+  .data-readiness-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .onboarding-heading { flex-direction: row; align-items: end; }
+  .auth-onboarding-card { grid-template-columns: auto minmax(0, 1fr); }
+  .auth-onboarding-card > .entry-icon { display: grid; }
+  .auth-onboarding-actions { grid-column: 1 / -1; }
 }
-@keyframes coming-soon-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@media (max-width: 980px) {
-  .today-main { margin-left: 0; }
-  .today-hero .today-wrap { gap: 36px; }
-}
-@media (max-width: 760px) {
-  .today-hero { padding: 34px 0 28px; }
-  .today-hero .today-wrap { grid-template-columns: 1fr; gap: 26px; }
-  .today-hero h1 { font-size: 42px; }
-  .hero-actions { align-items: stretch; flex-direction: column; }
-  .today-content { padding: 26px 0 54px; }
-  .data-onboarding { margin-bottom: 36px; padding: 20px 16px; }
-  .onboarding-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
-  .onboarding-heading h2 { font-size: 23px; }
-  .onboarding-note { max-width: none; text-align: left; }
-  .auth-onboarding-card { grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 18px 16px; }
-  .auth-onboarding-actions { grid-column: 1 / -1; align-items: stretch; flex-direction: column; }
-  .inline-account-card { grid-template-columns: 1fr; padding: 18px 16px; }
-  .inline-account-intro, .inline-account-actions { grid-column: auto; }
-  .account-game-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .account-game-options label { width: 100%; }
-  .inline-account-actions { align-items: stretch; flex-direction: column; }
-  .account-create-error { margin-right: 0; }
-  .entry-primary-button { width: 100%; }
-  .data-readiness-grid { grid-template-columns: 1fr; }
-  .data-readiness-card { min-height: 0; }
-  .sync-recommendation { align-items: stretch; flex-direction: column; }
-  .data-entry-grid { grid-template-columns: 1fr; }
-  .entry-card { padding: 18px 16px; }
-  .sync-task-row { grid-template-columns: 1fr; gap: 3px; }
-  .sync-task-target { justify-content: flex-start; text-align: left; }
-  .entry-primary-action, .entry-secondary-action { width: 100%; }
-  .today-coming-soon { min-height: 280px; padding: 40px 20px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .coming-soon-emblem { animation: none; }
+@media (min-width: 981px) {
+  .today-main { margin-left: 228px; }
+  .has-calendar { grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); }
+  .account-management-card { grid-template-columns: minmax(0, 1fr) auto; }
+  .sync-recommendation { flex-direction: row; align-items: center; }
 }
 </style>

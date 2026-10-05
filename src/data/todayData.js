@@ -65,3 +65,8 @@ export function getTodayOnboardingStage({ isLoggedIn, hasAccounts, summary } = {
 export function shouldShowTodayDataOnboarding(options = {}) {
   return getTodayOnboardingStage(options) !== 'ready'
 }
+
+// Readiness is per feature: using one tool does not require filling every tool.
+export function hasTodayAccountData(summary = {}) {
+  return Object.values(getTodayDataReadiness(summary)).includes('ready')
+}
