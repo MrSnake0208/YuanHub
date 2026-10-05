@@ -49,6 +49,16 @@ npm run build
 
 它们是 CI/发布对齐工具，不是每次前端修改都必须本地依次执行的固定流程。L0/L1 任务也无需为了确认这一点先通读完整 `.github/workflows/ci.yml`。
 
+## YuanHub-All 临时 Rapid Mode
+
+当本仓库位于 YuanHub-All 工作区内，且父工作区 `.trellis/config.yaml` 配置为 `codex.dispatch_mode: inline` 时，启用临时快速清 backlog 规则：
+
+- L0/L1 默认由主 Agent 直接实现并做 diff/相关文件自检，不为小改动自动运行完整测试、build、全量静态检查，也不创建无意义测试。
+- 范围明确且局部的 L2 只做 targeted check；回归/全量验证继续默认交给用户/CI。
+- 不为 L0/L1 自动启动额外的完整 UX 审计、`trellis-check`、全视口矩阵或逐任务 commit；已有 UI 硬约束 `ui-ux-pro-max` 仍必须遵守。
+- L3/L4、登录/权限、跨页面共享状态、持久化、关键 API/路由、Vite/依赖/CI/发布不适用减负，继续走现有高风险验证规则。
+- 独立 clone 本仓库、或父工作区恢复 `codex.dispatch_mode: auto` 时，本节不生效。
+
 ## UI/UX Skills 与用户视角审查（硬约束）
 
 前端界面相关任务必须使用 `ui-ux-pro-max`；其它 UX Skills 按改动风险触发，避免小改动也启动完整审计流程。
