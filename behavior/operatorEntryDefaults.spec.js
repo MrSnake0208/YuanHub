@@ -82,6 +82,26 @@ it('空档案引导出现在默认图鉴筛选前，养成筛选不占用首屏'
   expect(wrapper.findComponent({ name: 'OperatorFilterDossier' }).exists()).toBe(false)
 })
 
+it('更多筛选仅统计高级条件，关闭面板仍保留条件与结果', async () => {
+  const wrapper = renderPage()
+  await flushPromises()
+  const panel = wrapper.get('.catalog-more-filters')
+  expect(panel.get('summary').text()).toBe('更多筛选')
+  await wrapper.get('.catalog-tools .mf-search').setValue('不存在')
+  expect(panel.get('summary').text()).toBe('更多筛选')
+  panel.element.open = true
+  await panel.get('.rarity-filter button:last-child').trigger('click')
+  await panel.get('[aria-label="启用等级筛选"]').setValue(true)
+  expect(panel.get('summary').text()).toBe('更多筛选 · 2')
+  const before = wrapper.get('.catalog-tools').element.nextElementSibling.textContent
+  panel.element.open = false
+  await panel.trigger('toggle')
+  expect(panel.get('summary').text()).toBe('更多筛选 · 2')
+  expect(panel.get('[aria-label="启用等级筛选"]').element.checked).toBe(true)
+  expect(wrapper.get('.catalog-tools').element.nextElementSibling.textContent).toBe(before)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
 it.each([
   ['logged-out', '登录后可维护'],
   ['no-account', '创建并选择'],

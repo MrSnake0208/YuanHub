@@ -30,7 +30,7 @@ const helpId = useId()
 </script>
 
 <style scoped>
-.compact-tool-header { padding-block: 14px 8px; color: var(--ink); }
+.compact-tool-header { padding-block: 16px 8px; color: var(--ink); }
 .compact-tool-header:has(.tool-more[open]) { position: relative; z-index: var(--z-popover); }
 .compact-tool-header > .wrap { container-type: inline-size; }
 .compact-tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading primary' 'account actions'; align-items: center; gap: 4px 12px; }
@@ -39,16 +39,16 @@ const helpId = useId()
 .compact-tool-description { margin: 2px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink-60); }
 .compact-tool-account { grid-area: account; min-width: 0; }
 .compact-tool-primary { grid-area: primary; justify-self: end; }
-.compact-tool-primary :deep(.btn) { min-height: 44px; padding-inline: 16px; border-radius: 10px; text-decoration: none; white-space: nowrap; }
-.compact-tool-actions { grid-area: actions; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.compact-tool-primary :deep(.btn) { min-height: 44px; padding-inline: 16px; border-radius: 10px; font-size: 13px; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 4px color-mix(in srgb, var(--tea) 12%, transparent); }
+.compact-tool-actions { grid-area: actions; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .compact-tool-help { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
 .compact-tool-help:hover { color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, transparent); }
 .compact-tool-help:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .compact-tool-help-content { margin-top: 12px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
 .compact-tool-help-content :deep(p) { margin: 0; }
-@container (min-width: 700px) {
+@container (min-width: 760px) {
   .compact-tool-row { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: 'heading account primary actions'; gap: 16px; }
-  .compact-tool-heading h1 { font-size: 30px; }
+  .compact-tool-heading h1 { font-size: 28px; }
   .compact-tool-account { padding-left: 4px; }
 }
 @container (max-width: 340px) {
@@ -72,4 +72,7 @@ const helpId = useId()
 .tool-summary > span + span::before { content: '·'; margin-inline: 8px; color: var(--ink-35); }
 .tool-summary time { white-space: nowrap; font: inherit; font-variant-numeric: tabular-nums; }
 .tool-summary b { font-family: var(--font-d); color: inherit; font-weight: 500; }
+@media (max-width: 640px) {
+  .tool-summary .tool-updated { display: none; }
+}
 </style>

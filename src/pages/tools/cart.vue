@@ -6,11 +6,11 @@
       <CompactToolHeader title="礼包预算">
         <template #account>
           <div class="cart-header-context">
-            <div class="cart-switch" role="group" aria-label="游戏版本">
-              <button :class="{ on: version === 'daihao' }" :aria-pressed="version === 'daihao'" @click="setVersion('daihao')">代号鸢</button>
-              <button :class="{ on: version === 'ru' }" :aria-pressed="version === 'ru'" @click="setVersion('ru')">如鸢</button>
-            </div>
-            <span class="cart-currency">结算 CNY</span>
+            <select class="cart-version-selector" :value="version" aria-label="游戏版本" @change="setVersion($event.target.value)">
+              <option value="daihao">代号鸢{{ daihaoCount ? ' · ' + daihaoCount + ' 件' : '' }}</option>
+              <option value="ru">如鸢{{ ruCount ? ' · ' + ruCount + ' 件' : '' }}</option>
+            </select>
+            <span class="cart-currency">· CNY</span>
           </div>
         </template>
         <template #primary>
@@ -31,7 +31,7 @@
       <section>
         <div class="wrap">
           <details v-if="version === 'daihao'" class="cart-rate-settings">
-            <summary>汇率设置 · 1 USD = {{ exchangeRate }} CNY</summary>
+            <summary>1 USD = {{ exchangeRate }} CNY<span class="cart-rate-modify">修改</span></summary>
             <div
               v-if="version === 'daihao'"
               class="rate-bar"
@@ -55,31 +55,33 @@
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
-          <p class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
+          <p v-if="daihaoCount || ruCount" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
           <div class="cart-filters" v-reveal>
             <div class="cart-search-row">
-              <label class="cart-search">搜索礼包<input v-model="query" type="search" placeholder="输入礼包名称" /></label>
+              <label class="cart-search"><input v-model="query" type="search" aria-label="搜索礼包" placeholder="搜索礼包名称" /></label>
               <label class="cart-category">分类<select :value="activeCategory" @change="setCategory($event.target.value)"><option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option></select></label>
               <label class="cart-sort">排序<select v-model="sortMode"><option value="default">默认顺序</option><option value="drawCost">每抽成本从低到高</option><option value="price">价格从低到高</option></select></label>
-              <label class="cart-selected"><input v-model="selectedOnly" type="checkbox" />仅看已选</label>
+              <details class="cart-more-filters">
+                <summary>更多筛选<span v-if="drawFilter !== 'all' || selectedOnly"> · 已启用</span></summary>
+                <div class="cart-advanced-content">
+                  <label class="cart-selected"><input v-model="selectedOnly" type="checkbox" />仅看已选</label>
+                  <div class="row" role="group" aria-label="礼包抽数筛选">
+                    <span class="f-dot"></span>
+                    <button
+                      v-for="f in drawFilters"
+                      :key="f.id"
+                      class="chip"
+                      :class="{ on: drawFilter === f.id }"
+                      @click="drawFilter = f.id"
+                    >
+                      {{ f.label }}
+                    </button>
+                  </div>
+                </div>
+              </details>
             </div>
-            <details class="cart-more-filters">
-              <summary>更多筛选<span v-if="drawFilter !== 'all'"> · 已启用</span></summary>
-            <div class="row">
-              <span class="f-dot"></span>
-              <button
-                v-for="f in drawFilters"
-                :key="f.id"
-                class="chip"
-                :class="{ on: drawFilter === f.id }"
-                @click="drawFilter = f.id"
-              >
-                {{ f.label }}
-              </button>
-            </div>
-            </details>
           </div>
 
           <div class="cart-layout">
@@ -997,24 +999,34 @@ function openPlanSave() {
 @media (max-width:1180px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
 .cart-main > section { padding-top: 0; }
 .cart-header-context { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: center; }
-.cart-header-context .cart-switch { display: inline-flex; flex: 0 1 auto; width: auto; padding: 0; gap: 8px; border-radius: 0; background: transparent; }
-.cart-header-context .cart-switch button { flex: 0 0 auto; min-height: 44px; padding: 0; border-radius: 0; font-size: 13px; font-weight: 500; white-space: nowrap; }
-.cart-header-context .cart-switch button.on { background: transparent; color: var(--tea); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
-.cart-header-context .cart-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.cart-header-context .cart-switch button + button::before { content: '/'; margin-right: 8px; color: var(--ink-35); text-decoration: none; }
+.cart-version-selector { min-height: 44px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--cream) 65%, transparent); color: var(--ink-60); font: 500 13px/1.5 var(--font-b); cursor: pointer; }
+.cart-version-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cart-currency { color: var(--ink-60); font-size: 12px; white-space: nowrap; }
-.cart-rate-settings { margin-top: 8px; color: var(--ink-60); font-size: 13px; }
+.cart-rate-settings { margin-top: 0; color: var(--ink-60); font-size: 13px; }
 .cart-rate-settings > summary, .cart-more-filters > summary { display: flex; align-items: center; min-height: 44px; width: fit-content; gap: 4px; cursor: pointer; font-size: 13px; }
-.cart-rate-settings > summary::after, .cart-more-filters > summary::after { content: '⌄'; }
+.cart-rate-modify { margin-left: 6px; text-decoration: underline; text-underline-offset: 3px; }
+.cart-more-filters > summary::after { content: '⌄'; }
+.cart-rate-settings > summary:focus-visible, .cart-more-filters > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cart-rate-settings .rate-bar { flex-wrap: wrap; margin-block: 4px 10px; gap: 8px; }
 .cart-version-hint { margin: 0 0 8px; }
 .cart-filters { margin-top: 8px; }
-.cart-search-row { gap: 8px 12px; }
+.cart-search-row { position: relative; gap: 8px 12px; }
 .cart-category { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .cart-category select { min-height: 44px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
 .cart-sort, .cart-category { flex: 0 1 auto; min-width: 0; }
 .cart-sort select, .cart-category select { min-width: 0; }
-.cart-more-filters .row { padding-bottom: 8px; }
+.cart-more-filters { position: static; }
+.cart-advanced-content { position: absolute; inset: calc(100% + 6px) 0 auto auto; z-index: var(--z-popover); width: max-content; max-width: min(360px, calc(100vw - 32px)); padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--tea) 12%, transparent); }
+.cart-more-filters .row { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
+.cart-search-row:has(.cart-more-filters[open]) { z-index: var(--z-popover); }
+.cart-layout { gap: 24px; }
+.cart-layout :deep(.receipt) { border-radius: 14px; box-shadow: none; }
+.cart-layout :deep(.receipt-head) { padding: 16px 18px; border-bottom: 1px solid var(--line); background: var(--cream); color: var(--tea); }
+.cart-layout :deep(.receipt-head .en) { color: var(--ink-60); }
+.cart-layout :deep(.receipt-body) { padding: 16px; }
+.cart-layout :deep(.cart-actions) { gap: 8px; }
+.cart-layout :deep(.cart-actions .btn) { flex: 1; min-width: 0; min-height: 44px; padding: 8px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--tea); font-size: 13px; white-space: nowrap; }
+.cart-layout :deep(.cart-actions .btn:hover:not(:disabled)) { border-color: var(--accent); background: var(--surface); }
 @media(max-width:767px) {
   .cart-sort, .cart-category { width: auto; flex: 1 1 140px; }
   .cart-category select { flex: 1; }
