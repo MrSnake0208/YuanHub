@@ -5,6 +5,20 @@
     role="region"
     aria-label="当前数据账号"
   >
+    <template v-if="compact">
+      <router-link class="context-selector"
+        :to="isLoggedIn ? manageTo : { path: '/login', query: { redirect: currentPath } }"
+        :aria-label="hasAccount ? '当前数据账号：' + resolvedGame + ' · ' + selectedAccount.name + '，切换或管理账号' : '当前数据账号：' + (loading ? '正在读取' : isLoggedIn ? '未选择游戏账号，选择或管理账号' : '未登录，前往登录')"
+        :title="hasAccount ? resolvedGame + ' · ' + selectedAccount.name : undefined">
+        <template v-if="loading"><span class="account-name">正在读取账号…</span></template>
+        <template v-else-if="hasAccount"><span class="selector-game">{{ resolvedGame }}</span><span aria-hidden="true">·</span><span class="account-name">{{ selectedAccount.name }}</span></template>
+        <span v-else class="account-name">{{ isLoggedIn ? '选择游戏账号' : '未登录' }}</span>
+        <ChevronDown :size="14" aria-hidden="true" />
+      </router-link>
+      <small v-if="error" class="context-error" role="alert">{{ error }}</small>
+      <slot name="actions" />
+    </template>
+    <template v-else>
     <div class="context-leading">
       <span class="context-icon" aria-hidden="true"><Users :size="17" /></span>
       <div class="context-copy">
@@ -39,7 +53,7 @@
         class="context-action"
         :to="manageTo"
       >
-        {{ compact ? '切换账号' : '管理游戏账号' }}
+        管理游戏账号
       </router-link>
       <router-link
         v-else
@@ -50,13 +64,14 @@
       </router-link>
       <slot name="actions" />
     </div>
+    </template>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Users } from '@lucide/vue'
+import { ChevronDown, Users } from '@lucide/vue'
 import { normalizeAccountGame } from '../store/activeAccount.js'
 
 const props = defineProps({
@@ -273,12 +288,11 @@ const currentPath = computed(function () {
   }
   :slotted(.act-btn) { width: 100%; min-width: 0; transform: none; }
 }
-.data-account-context-bar.is-compact { min-height: 44px; margin: 0; padding: 0; flex-direction: row; flex-wrap: wrap; gap: 4px 10px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.is-compact .context-leading { flex: 1 1 150px; align-items: center; }
-.is-compact .context-icon, .is-compact .context-kicker { display: none; }
-.is-compact .context-copy { width: 100%; }
-.is-compact .context-identity { align-items: center; }
-.is-compact .account-name, .is-compact .context-copy > strong { font-family: var(--font-b); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.is-compact .context-actions { display: flex; width: auto; flex: 0 0 auto; flex-wrap: wrap; }
-.is-compact .context-action { width: auto; padding-inline: 10px; white-space: nowrap; }
+.data-account-context-bar.is-compact { display: flex; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 0 8px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.context-selector { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 0; border-radius: 8px; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); text-decoration: none; }
+.context-selector:hover { color: var(--tea); }
+.context-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.context-selector .selector-game, .context-selector svg { flex: none; white-space: nowrap; }
+.context-selector .account-name { max-width: 14em; font: inherit; color: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.is-compact .context-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; overflow-wrap: anywhere; }
 </style>

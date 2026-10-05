@@ -7,10 +7,12 @@
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
         </template>
-        <template #actions>
+        <template #primary>
           <button type="button" class="btn primary" @click="setTab('import')">导入截图</button>
+        </template>
+        <template #actions>
           <details class="tool-more">
-            <summary>更多</summary>
+            <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
               <button type="button" class="act-btn archive-toggle" :disabled="!productReady || accountsLoading || starExchangeBusy || !selectedHostAccount()"
                 :aria-expanded="showArchive" @click="showArchive = !showArchive">
@@ -28,7 +30,9 @@
         <div class="wrap">
           <div class="tool-summary" aria-label="星石概览">
             <span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span>
-            <span class="star-privacy-note">截图在本机识别与保存；登录后同步背包数据。</span>
+            <span class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
+            <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
+              :title="cloudSyncMessage">{{ cloudSyncMessage === '星石云端状态已保存' ? '✓ 已同步' : cloudSyncMessage }}</span>
           </div>
           <ArchiveExchangePanel
             v-if="showArchive"
@@ -63,14 +67,14 @@
             </template>
           </ArchiveExchangePanel>
           <p
-            v-if="cloudSyncMessage || cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
+            v-if="cloudSyncError || captureTransportMessage || captureTransportError || captureVersionWarning || cloudNeedsRetry || cloudRetryBusy || captureNeedsRetry || captureRetryBusy || captureImportNeedsRetry"
             class="star-sync-state"
-            :class="{ 'is-error': cloudSyncError || captureTransportError }"
+            :class="{ 'is-error': cloudSyncError || captureTransportError, 'is-warning': captureVersionWarning || cloudNeedsRetry || captureNeedsRetry || captureImportNeedsRetry }"
             role="status"
             aria-live="polite"
           >
-            <span v-if="cloudSyncError || cloudSyncMessage">{{ cloudSyncError || cloudSyncMessage }}</span>
-            <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudSyncMessage) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
+            <span v-if="cloudSyncError || cloudNeedsRetry || cloudRetryBusy">{{ cloudSyncError || cloudSyncMessage }}</span>
+            <span v-if="captureTransportError || captureTransportMessage">{{ (cloudSyncError || cloudNeedsRetry || cloudRetryBusy) ? ' · ' : '' }}{{ captureTransportError || captureTransportMessage }}</span>
             <span v-if="captureVersionWarning"> · {{ captureVersionWarning }}</span>
             <button
               v-if="cloudNeedsRetry || cloudRetryBusy || (cloudSyncError && productReady && accountId)"
@@ -94,14 +98,14 @@
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
-          <div class="star-tabs" role="tablist" aria-label="星石工作区">
+          <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
             <button
               role="tab"
               :aria-selected="activeTab === 'import'"
               :class="{ on: activeTab === 'import' }"
               @click="setTab('import')"
             >
-              导入识别</button
+              截图识别</button
             ><button
               role="tab"
               :aria-selected="activeTab === 'review'"
@@ -892,8 +896,14 @@ onBeforeUnmount(function () {
 
 
 .star-main > section { padding-top: 0; }
-.star-tabs { margin-top: 12px; }
-.star-tabs button { white-space: nowrap; }
-.star-availability-note { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink-60); background: var(--surface); font-size: 13px; line-height: 1.6; }
+.star-tabs.tool-workspace-tabs { position: static; }
+.star-sync-meta { font-size: 12px; }
+.star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
+.star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
+.star-availability-note { margin: 8px 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
 .star-availability-note p { margin: 0; }
+@media (max-width: 1080px) {
+  .page-star { --star-bottom-bar-height: 0px; }
+}
+
 </style>

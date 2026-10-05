@@ -7,16 +7,18 @@
         <template #account>
           <div class="cart-header-context">
             <div class="cart-switch" role="group" aria-label="游戏版本">
-              <button :class="{ on: version === 'daihao' }" :aria-pressed="version === 'daihao'" @click="setVersion('daihao')">代号鸢（{{ daihaoCount }}件）</button>
-              <button :class="{ on: version === 'ru' }" :aria-pressed="version === 'ru'" @click="setVersion('ru')">如鸢（{{ ruCount }}件）</button>
+              <button :class="{ on: version === 'daihao' }" :aria-pressed="version === 'daihao'" @click="setVersion('daihao')">代号鸢</button>
+              <button :class="{ on: version === 'ru' }" :aria-pressed="version === 'ru'" @click="setVersion('ru')">如鸢</button>
             </div>
             <span class="cart-currency">结算 CNY</span>
           </div>
         </template>
-        <template #actions>
+        <template #primary>
           <button type="button" class="btn primary cart-plan-list" @click="openPlanList"><FolderOpen :size="16" aria-hidden="true" />我的方案</button>
+        </template>
+        <template #actions>
           <details class="tool-more">
-            <summary>更多</summary>
+            <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()"><button type="button" class="btn ghost cart-plan-save" @click="openPlanSave"><Save :size="16" aria-hidden="true" />保存方案</button></div>
           </details>
         </template>
@@ -994,10 +996,13 @@ function openPlanSave() {
 .cart-operation-message[role="alert"]{background:var(--surface);color:var(--rouge);border:1px solid var(--rouge)}
 @media (max-width:1180px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
 .cart-main > section { padding-top: 0; }
-.cart-header-context { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-.cart-header-context .cart-switch { flex: 0 1 auto; width: auto; flex-wrap: wrap; }
-.cart-header-context .cart-switch button { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
-.cart-currency { color: var(--ink-60); font-size: 13px; white-space: nowrap; }
+.cart-header-context { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: center; }
+.cart-header-context .cart-switch { display: inline-flex; flex: 0 1 auto; width: auto; padding: 0; gap: 8px; border-radius: 0; background: transparent; }
+.cart-header-context .cart-switch button { flex: 0 0 auto; min-height: 44px; padding: 0; border-radius: 0; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.cart-header-context .cart-switch button.on { background: transparent; color: var(--tea); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.cart-header-context .cart-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cart-header-context .cart-switch button + button::before { content: '/'; margin-right: 8px; color: var(--ink-35); text-decoration: none; }
+.cart-currency { color: var(--ink-60); font-size: 12px; white-space: nowrap; }
 .cart-rate-settings { margin-top: 8px; color: var(--ink-60); font-size: 13px; }
 .cart-rate-settings > summary, .cart-more-filters > summary { display: flex; align-items: center; min-height: 44px; width: fit-content; gap: 4px; cursor: pointer; font-size: 13px; }
 .cart-rate-settings > summary::after, .cart-more-filters > summary::after { content: '⌄'; }
