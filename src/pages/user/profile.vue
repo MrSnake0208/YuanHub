@@ -6,13 +6,6 @@
       <header class="hero">
         <div class="wrap">
           <h1>账号与连接码</h1>
-          <p class="hero-sub">本站账号用于登录；游戏账号是你在 YuanHub 创建的数据存档。连接码绑定一个游戏账号，供 MaaYuan 上传采集数据。</p>
-          <div class="profile-hero-actions">
-            <button class="act-btn primary hero-connect" type="button" :disabled="busy || !beta.canUseBetaFeatures" @click="revealMaaYuanConnect"><Link2 :size="17" aria-hidden="true" />连接 MaaYuan</button>
-            <a class="act-btn ghost" href="#game-accounts">管理游戏账号</a>
-            <router-link v-if="!beta.canUseBetaFeatures" to="/beta">先确认内测资格</router-link>
-          </div>
-          <p class="profile-connection-summary">{{ tokenCount }} 条已创建连接 · {{ maaYuanReadyCount }} 条已授权 MaaYuan。授权不代表已经收到采集数据。</p>
         </div>
       </header>
 
@@ -735,9 +728,6 @@ const managedAccountId = computed({
 const tokenCount = computed(function () {
   return tokens.value.length;
 });
-const maaYuanReadyCount = computed(function () {
-  return tokens.value.filter(supportsMaaYuan).length;
-});
 const busy = computed(function () {
   return (
     loading.value ||
@@ -1199,9 +1189,6 @@ onBeforeUnmount(function () {
 }
 .page-profile .hero { padding: 38px 0 28px; }
 .page-profile .hero h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.2; letter-spacing: .02em; }
-.profile-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 20px; }
-.profile-hero-actions a { color: var(--tea); }
-.profile-connection-summary { margin-top: 16px; color: var(--ink-60); font-size: 12px; line-height: 1.8; }
 .capability-note { color: var(--rouge); font-size: 12px; }
 #game-accounts, #maayuan-connect-panel { scroll-margin-top: 84px; }
 .page-profile .hero::after {

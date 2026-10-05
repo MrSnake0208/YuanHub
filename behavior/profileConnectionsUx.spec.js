@@ -203,31 +203,34 @@ it('剪贴板拒绝复制时不误报成功，也不在页面显示连接码', a
 })
 
 
-it('首屏提供连接入口，打开既有账号绑定流程且不提前创建连接', async () => {
+it('顶部只保留标题，连接区打开或收起既有表单且不提前创建连接', async () => {
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('h1').text()).toBe('账号与连接码')
+  expect(wrapper.get('.hero').text()).toBe('账号与连接码')
+  expect(wrapper.get('.hero').findAll('button, a')).toHaveLength(0)
   expect(wrapper.get('.app-copy').text()).toContain('星石自动采集仍在接入中')
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-a')
-  expect(wrapper.get('#maayuan-connect-panel').element.scrollIntoView).toHaveBeenCalled()
+  expect(wrapper.get('.app-connect').attributes('aria-expanded')).toBe('true')
   expect(generateOpenApiToken).not.toHaveBeenCalled()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
-  expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(true)
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
+  expect(wrapper.find('#maayuan-connect-panel').exists()).toBe(false)
+  expect(wrapper.get('.app-connect').attributes('aria-expanded')).toBe('false')
   wrapper.unmount()
 })
 
-it('首屏连接入口在没有游戏账号时引导创建，在无资格时保持关闭', async () => {
+it('连接区入口在没有游戏账号时引导创建，在无资格时保持关闭', async () => {
   listAccounts.mockResolvedValue([])
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.get('.quick-account-manage-link').attributes('href')).toBe('#game-accounts')
   expect(generateOpenApiToken).not.toHaveBeenCalled()
   wrapper.unmount()
   beta.canUseBetaFeatures = false
   try {
     const locked = render(); await flushPromises()
-    expect(locked.get('.hero-connect').attributes()).toHaveProperty('disabled')
-    expect(locked.text()).toContain('先确认内测资格')
+    await locked.get('.app-connect').trigger('click'); await flushPromises()
+    expect(locked.get('[role="alert"]').text()).toContain('请先前往内测页面确认体验资格')
+    expect(generateOpenApiToken).not.toHaveBeenCalled()
     expect(locked.find('#maayuan-connect-panel').exists()).toBe(false)
     locked.unmount()
   } finally { beta.canUseBetaFeatures = true }
@@ -249,7 +252,7 @@ it('连接默认当前账号且区分同名账号；用户主动改选后保留�
   listAccounts.mockResolvedValue(accounts)
   activeAccount.id = 'acc-b'
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   const select = wrapper.get('#maayuan-account')
   expect(select.element.value).toBe('acc-b')
   expect(select.findAll('option').map(option => option.text())).toEqual(['代号鸢 · 同名', '如鸢 · 同名'])
@@ -274,7 +277,7 @@ it('连接默认当前账号且区分同名账号；用户主动改选后保留�
 it('无账号时创建目标后继续连接，取消说明不创建连接码', async () => {
   listAccounts.mockResolvedValue([])
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.get('.quick-account-manage-link').attributes('href')).toBe('#game-accounts')
   activeAccount.id = 'acc-new'
   wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', [{ id: 'acc-new', name: '新账号', game: '如鸢' }])
@@ -290,7 +293,7 @@ it('创建失败保留选定账号，重试和重复提交只生成一次在途�
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
   generateOpenApiToken.mockRejectedValueOnce(new Error('synthetic failure'))
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   await wrapper.get('#maayuan-account').setValue('acc-b')
   await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-b')
@@ -314,7 +317,7 @@ it('生成连接码期间切换登录用户，不展示旧用户的晚到凭证'
   let finish
   generateOpenApiToken.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   auth.userInfo = { id: 'user-b', user_name: '另一测试用户' }
   finish({ token: 'previous-user-secret', token_id: 'tok-old' })
@@ -332,7 +335,7 @@ it.each(['maayuan', 'advanced'])('%s 默认目标在在途切换当前账号并�
   let fail
   generateOpenApiToken.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject }))
   const wrapper = render(); await flushPromises()
-  if (mode === 'maayuan') { await wrapper.get('.hero-connect').trigger('click'); await flushPromises() }
+  if (mode === 'maayuan') { await wrapper.get('.app-connect').trigger('click'); await flushPromises() }
   else await wrapper.get('.advanced-form input[type="checkbox"]').setValue(true)
   const form = wrapper.get(mode === 'maayuan' ? '#maayuan-connect-panel' : '.advanced-form')
   const select = wrapper.get(mode === 'maayuan' ? '#maayuan-account' : '#advanced-account')
@@ -350,7 +353,7 @@ it.each(['maayuan', 'advanced'])('%s 默认目标在在途切换当前账号并�
 it('生成结果展示与焦点处理期间切换身份，移除明文且不继续旧请求刷新', async () => {
   generateOpenApiToken.mockResolvedValueOnce({ token: 'previous-user-secret', token_id: 'tok-old' })
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   Element.prototype.scrollIntoView = vi.fn(() => { auth.userInfo = { id: 'user-b', user_name: '另一测试用户' } })
   await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
   expect(wrapper.find('.new-token').exists()).toBe(false)
@@ -365,7 +368,7 @@ it('已生成凭证在切换身份后清除，旧身份的连接列表晚到也�
   let finishList
   getOpenApiTokens.mockImplementationOnce(() => new Promise(resolve => { finishList = resolve }))
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.hero-connect').trigger('click'); await flushPromises()
+  await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   await wrapper.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
   expect(wrapper.find('.new-token').exists()).toBe(true)
   auth.userInfo = { id: 'user-b', user_name: '另一测试用户' }; await flushPromises()
