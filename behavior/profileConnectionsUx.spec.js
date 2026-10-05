@@ -30,6 +30,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   routeState.query = {}
   auth.userInfo = { id: 'user-a', user_name: '测试用户' }
+  auth.adminAccess = null; auth.adminAccessLoaded = false
   activeAccount.id = 'acc-a'
   activeAccount.set.mockImplementation(id => { activeAccount.id = id || '' })
   beta.loadMe.mockResolvedValue(null)
@@ -44,6 +45,25 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } })
 })
 afterEach(() => vi.useRealTimers())
+
+it.each([
+  ['普通用户', { permissions: [] }],
+  ['管理员', { permissions: ['operator_catalog:write'] }],
+  ['超级管理员', { superAdmin: true, permissions: ['admin:role:manage', 'admin:audit:read'] }],
+])('%s 的个人工作区从游戏账号进入应用连接，不重复展示管理入口', async (_, access) => {
+  auth.adminAccess = access; auth.adminAccessLoaded = true
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.get('h1').text()).toBe('账号与连接码')
+  const accounts = wrapper.get('#game-accounts').element
+  const connections = wrapper.get('.connection-card').element
+  expect(accounts.compareDocumentPosition(connections) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(wrapper.get('.connection-card h2').text()).toBe('应用与数据连接')
+  expect(wrapper.find('.admin-tools').exists()).toBe(false)
+  expect(wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))).not.toContain('/manage')
+  expect(wrapper.text()).not.toContain('当前可用的管理内容')
+  wrapper.unmount()
+})
 
 it('连接设置区分星石上传权限与尚未接入的自动采集任务', async () => {
   generateOpenApiToken.mockResolvedValue({ token: 'synthetic-secret', account_name: '大号', token_id: 'tok-new' })

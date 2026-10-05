@@ -122,6 +122,13 @@
             </button>
           </section>
 
+          <section v-if="showManagement" class="mobile-drawer-section">
+            <p class="mobile-drawer-label">管理</p>
+            <router-link to="/manage" :class="{ active: $route.path === '/manage' }">
+              <LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span>
+            </router-link>
+          </section>
+
           <section class="mobile-drawer-section">
             <p class="mobile-drawer-label">YuanHub</p>
             <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
@@ -242,6 +249,10 @@
       <button v-if="showBetaCommunityEntry" type="button" class="nav-community" @click="openBetaCommunity">
         <span>内测交流群</span><UsersRound :size="16" aria-hidden="true" />
       </button>
+      <template v-if="showManagement">
+        <div class="nav-lb">管理</div>
+        <router-link to="/manage" :class="{ active: $route.path === '/manage' }">管理工作台</router-link>
+      </template>
       <div class="nav-lb">YuanHub</div>
       <router-link
         to="/user/profile"
@@ -306,6 +317,7 @@ import {
   Download,
   Gem,
   House,
+  LayoutDashboard,
   Lightbulb,
   LogIn,
   LogOut,
@@ -320,6 +332,7 @@ import {
   X,
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
+import { hasManagementCapability } from "@/utils/adminTools.js";
 import { beta } from "@/store/beta.js";
 import { recruitmentAccess } from "@/store/recruitmentAccess.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
@@ -337,6 +350,13 @@ import {
 // 已登录状态（reactive，随 auth 变化）
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : "");
 const isLoggedIn = computed(() => (auth.accessToken && auth.userInfo) || false);
+const showManagement = computed(() =>
+  !!isLoggedIn.value &&
+  auth.adminAccessLoaded &&
+  !auth.adminAccessLoading &&
+  !auth.adminAccessError &&
+  hasManagementCapability(auth.adminAccess),
+);
 const showCalendar = computed(() =>
   isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && !!isLoggedIn.value && auth.isAdmin,
 );

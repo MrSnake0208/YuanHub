@@ -33,6 +33,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   isFeatureEnabled.mockImplementation(key => [FEATURE_KEYS.ACTIVITY_CALENDAR, FEATURE_KEYS.RECRUITMENT_ARCHIVE].includes(key))
   auth.accessToken = ''; auth.userInfo = null; auth.isAdmin = false
+  auth.adminAccess = null; auth.adminAccessLoaded = false; auth.adminAccessLoading = false; auth.adminAccessError = ''
   recruitmentAccess.canAccess = false; recruitmentAccess.setIdentity.mockClear(); recruitmentAccess.refresh.mockClear()
   notificationUnreadState.count = 0
   unsubscribe = vi.fn(); subscribeFeedbackUnread.mockReturnValue(unsubscribe)
@@ -148,4 +149,69 @@ it('访客、普通用户和权限未加载时两处导航不显示日历；权�
   auth.isAdmin = false
   await flushPromises()
   expect(routes(wrapper)).not.toContain('/calendar')
+})
+
+it.each([
+  ['单项目录权限', { permissions: ['recruitment_catalog:write'] }],
+  ['仅反馈操作员', { operatorAreas: ['INVENTORY'] }],
+  ['仅反馈开发人员', { developerAreas: ['UI'] }],
+  ['超级管理员', { superAdmin: true }],
+])('%s 在双端管理组中只有工作台入口，撤权后整组消失', async (_, access) => {
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'admin-a' }
+  auth.adminAccess = access; auth.adminAccessLoaded = true
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  const desktopLink = wrapper.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/manage' && link.element.closest('.island'))
+  expect(desktopLink.text()).toBe('管理工作台')
+  const group = wrapper.findAll('.mobile-drawer-section').find(section => section.get('.mobile-drawer-label').text() === '管理')
+  expect(group.findAllComponents(RouterLinkStub).map(link => link.props('to'))).toEqual(['/manage'])
+  expect(wrapper.findAll('.nav-lb').map(label => label.text())).toContain('管理')
+  expect(routes(wrapper).filter(path => path === '/manage')).toHaveLength(2)
+  for (const path of ['/recruitment/admin', '/feedback/manage', '/admin/roles', '/admin/audit']) expect(routes(wrapper)).not.toContain(path)
+
+  auth.adminAccess = { permissions: [] }
+  await flushPromises()
+  expect(routes(wrapper)).not.toContain('/manage')
+  expect(wrapper.findAll('.nav-lb,.mobile-drawer-label').map(label => label.text())).not.toContain('管理')
+  wrapper.unmount()
+})
+
+it.each([
+  ['未登录，即便留有授权', { accessToken: '', adminAccessLoaded: true }],
+  ['权限尚未加载', { adminAccessLoaded: false }],
+  ['重新加载期间留有旧授权', { adminAccessLoading: true }],
+  ['读取失败，即便留有旧授权', { adminAccessError: '读取失败' }],
+  ['普通用户', { adminAccess: { permissions: [] } }],
+  ['只有管理员角色标签', { adminAccess: { roles: ['PLATFORM_ADMIN'] } }],
+  ['仅接收反馈通知', { adminAccess: { receiveAreas: ['UI'] } }],
+])('%s 不显示双端管理分组或占位', async (_, state) => {
+  Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a' }, adminAccess: { permissions: ['admin:audit:read'] }, adminAccessLoaded: true }, state)
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(routes(wrapper)).not.toContain('/manage')
+  expect(wrapper.findAll('.nav-lb,.mobile-drawer-label').map(label => label.text())).not.toContain('管理')
+  wrapper.unmount()
+})
+
+it('授权异步成功后双端同步显示，刷新与失败时立即隐藏并可恢复', async () => {
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'admin-a' }
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  expect(routes(wrapper)).not.toContain('/manage')
+  Object.assign(auth, { adminAccess: { permissions: ['changelog:review'] }, adminAccessLoaded: true })
+  await flushPromises()
+  expect(routes(wrapper).filter(path => path === '/manage')).toHaveLength(2)
+  auth.adminAccessLoading = true
+  await flushPromises()
+  expect(routes(wrapper)).not.toContain('/manage')
+  Object.assign(auth, { adminAccessLoading: false, adminAccessError: '读取失败' })
+  await flushPromises()
+  expect(routes(wrapper)).not.toContain('/manage')
+  auth.adminAccessError = ''
+  await flushPromises()
+  expect(routes(wrapper).filter(path => path === '/manage')).toHaveLength(2)
+  auth.accessToken = ''
+  await flushPromises()
+  expect(routes(wrapper)).not.toContain('/manage')
+  wrapper.unmount()
 })
