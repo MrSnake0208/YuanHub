@@ -30,7 +30,7 @@
         <div class="wrap">
           <div class="tool-summary" aria-label="星石概览">
             <span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span>
-            <span class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
+            <span v-if="activeTab === 'import'" class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage">{{ cloudSyncMessage === '星石云端状态已保存' ? '✓ 已同步' : cloudSyncMessage }}</span>
           </div>
@@ -99,14 +99,8 @@
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
           <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
+            <span v-if="activeTab === 'import'" class="star-import-stage" role="status">截图识别</span>
             <button
-              role="tab"
-              :aria-selected="activeTab === 'import'"
-              :class="{ on: activeTab === 'import' }"
-              @click="setTab('import')"
-            >
-              截图识别</button
-            ><button
               role="tab"
               :aria-selected="activeTab === 'review'"
               :class="{ on: activeTab === 'review' }"
@@ -807,6 +801,14 @@ onBeforeUnmount(function () {
 #product-root {
   min-width: 0;
   background: transparent;
+  --bg-surface: var(--surface);
+  --bg-subtle: var(--cream);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-60);
+  --text-muted: var(--ink-35);
+  --border-soft: var(--line);
+  --border-row: var(--line);
+  font-family: var(--font-b);
 }
 .yuanstar-mount-error {
   margin: 24px 0;
@@ -897,6 +899,12 @@ onBeforeUnmount(function () {
 
 .star-main > section { padding-top: 0; }
 .star-tabs.tool-workspace-tabs { position: static; }
+.star-import-stage { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; color: var(--tea); font-size: 13px; font-weight: 600; }
+.page-star #product-root :deep(.yuanstar-embedded-shell) { padding-top: 16px; }
+.page-star #product-root :deep(.review-workspace-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.page-star #product-root :deep(.inventory-panel > header h2) { font-family: var(--font-s); color: var(--tea); }
+.page-star #product-root :deep(.review-overview:has(> .review-overview-count:only-child)) { display: none; }
+.page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
 .star-sync-meta { font-size: 12px; }
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
 .star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }

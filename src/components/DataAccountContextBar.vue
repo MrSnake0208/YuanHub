@@ -11,7 +11,7 @@
         :aria-label="hasAccount ? '当前数据账号：' + resolvedGame + ' · ' + selectedAccount.name + '，切换或管理账号' : '当前数据账号：' + (loading ? '正在读取' : isLoggedIn ? '未选择游戏账号，选择或管理账号' : '未登录，前往登录')"
         :title="hasAccount ? resolvedGame + ' · ' + selectedAccount.name : undefined">
         <template v-if="loading"><span class="account-name">正在读取账号…</span></template>
-        <template v-else-if="hasAccount"><span class="selector-game">{{ resolvedGame }}</span><span aria-hidden="true">·</span><span class="account-name">{{ selectedAccount.name }}</span></template>
+        <template v-else-if="hasAccount"><span class="selector-game" :class="resolvedGame === '如鸢' ? 'is-ruyuan' : 'is-daihao'">{{ resolvedGame }}</span><span aria-hidden="true">·</span><span class="account-name">{{ selectedAccount.name }}</span></template>
         <span v-else class="account-name">{{ isLoggedIn ? '选择游戏账号' : '未登录' }}</span>
         <ChevronDown :size="14" aria-hidden="true" />
       </router-link>
@@ -289,10 +289,13 @@ const currentPath = computed(function () {
   :slotted(.act-btn) { width: 100%; min-width: 0; transform: none; }
 }
 .data-account-context-bar.is-compact { display: flex; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 0 8px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.context-selector { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 0; border-radius: 8px; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); text-decoration: none; }
+.context-selector { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 0 10px; border-radius: 8px; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); text-decoration: none; }
+.context-selector::before { content: ''; position: absolute; inset: 3px 0; z-index: -1; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--cream) 65%, transparent); }
 .context-selector:hover { color: var(--tea); }
+.context-selector:hover::before { border-color: var(--accent); background: var(--cream); }
+.selector-game.is-ruyuan { color: var(--brand-blue); }
 .context-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .context-selector .selector-game, .context-selector svg { flex: none; white-space: nowrap; }
-.context-selector .account-name { max-width: 14em; font: inherit; color: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.context-selector .account-name { max-width: 10em; font: inherit; color: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .is-compact .context-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; overflow-wrap: anywhere; }
 </style>

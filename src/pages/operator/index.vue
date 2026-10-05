@@ -34,7 +34,7 @@
         <div class="wrap">
           <div class="tool-summary" aria-label="密探概览">
             <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位 · {{ manifestPercent }}</span>
-            <span :title="catalogVersion || '本地兜底'">目录更新 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
+            <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
           </div>
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
@@ -468,7 +468,7 @@
 
             <!-- 属性 / 职业 / 品质 筛选 -->
             <details class="catalog-more-filters">
-              <summary>更多筛选<span v-if="profFilter !== 'all' || subProfFilter !== 'all' || rarityFilter !== 'all' || manifestGrowthFilters.levelEnabled || manifestGrowthFilters.eliteEnabled || manifestGrowthFilters.starEnabled"> · 已启用</span></summary>
+              <summary>更多筛选<span v-if="manifestAdvancedFilterCount"> · {{ manifestAdvancedFilterCount }}</span></summary>
               <label class="catalog-version-copy">目录版本 <input class="catalog-version-value" type="text" readonly
                 :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
                 aria-label="目录版本，可选中复制" @focus="$event.target.select()" /></label>
@@ -4570,6 +4570,11 @@ const filterSuffix = computed(function () {
   parts.push(...growthFilterParts(manifestGrowthFilters.value));
   return parts.length ? parts.join(" · ") : "";
 });
+
+const manifestAdvancedFilterCount = computed(() => [
+  profFilter.value !== 'all', subProfFilter.value !== 'all', rarityFilter.value !== 'all',
+  manifestGrowthFilters.value.levelEnabled, manifestGrowthFilters.value.eliteEnabled, manifestGrowthFilters.value.starEnabled,
+].filter(Boolean).length);
 
 const hasManifestFilters = computed(function () {
   return hasActiveManifestFilters({
@@ -15449,12 +15454,13 @@ onBeforeUnmount(function () {
 .operator-tabs.tool-workspace-tabs .operator-tab-button { display: inline-flex; }
 .operator-mobile-tabs { display: none; }
 .operator-entry-guide { margin-block: 8px; padding: 8px 0; border: 0; background: transparent; }
-.catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: start; margin-top: 12px; }
+.panel:has(> .catalog-tools) { margin-top: 12px; }
+.catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: start; margin-top: 0; }
 .catalog-tools .manifest-bar { display: contents; }
 .catalog-tools .mf-search { grid-column: 1 / -1; width: 100%; min-width: 0; min-height: 44px; background: var(--surface); }
 .catalog-tools .mf-filter { min-height: 44px; align-items: center; width: fit-content; max-width: 100%; padding: 0; background: transparent; }
 .catalog-tools .mf-filter button { min-height: 44px; min-width: 44px; padding-inline: 12px; border-radius: 8px; }
-.catalog-tools .mf-filter button.on { background: var(--tea); color: var(--cream); }
+.catalog-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 40%, var(--cream)); color: var(--tea); box-shadow: none; }
 .catalog-more-filters { min-width: 0; margin: 0; }
 .catalog-more-filters > summary { width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border: 0; color: var(--ink-60); cursor: pointer; font-size: 13px; list-style: none; white-space: nowrap; }
 .catalog-more-filters > summary::-webkit-details-marker { display: none; }
@@ -15465,12 +15471,17 @@ onBeforeUnmount(function () {
 .catalog-more-filters .prof-filter { margin-top: 4px; padding: 8px 0; border: 0; background: transparent; }
 .current-workbench-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .current-status-summary { margin: 0; }
-.catalog-tools + .backpack { margin-top: 12px; }
+.panel > .catalog-tools ~ .backpack { margin-top: 16px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.panel > .catalog-tools ~ .backpack .slot-grid { margin-top: 0; gap: 16px 12px; }
+.panel > .catalog-tools ~ .backpack .bp-head { margin-bottom: 12px; padding-bottom: 8px; }
 .catalog-version-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink-60); font-size: 12px; }
 .catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .catalog-tools { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 12px; }
   .catalog-tools .mf-search { grid-column: auto; }
+}
+@media (max-width: 640px) {
+  .panel > .catalog-tools ~ .backpack .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; }
 }
 
 </style>

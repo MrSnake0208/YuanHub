@@ -40,7 +40,7 @@ async function save(wrapper, name, overwrite = false) {
   await flushPromises()
 }
 const total = wrapper => wrapper.get('.receipt .grand-total .v').text()
-const switchGame = (wrapper, index) => wrapper.findAll('.cart-switch button')[index].trigger('click')
+const switchGame = (wrapper, index) => wrapper.get('.cart-version-selector').setValue(index ? 'ru' : 'daihao')
 function deferred() {
   let resolve, reject
   const promise = new Promise((ok, fail) => { resolve = ok; reject = fail })
@@ -241,7 +241,7 @@ it('duplicate cloud save is single flight and late responses retain edits or a s
   pending.resolve(plan())
   await flushPromises()
   expect(ledger.createPlan).toHaveBeenCalledTimes(1)
-  expect(wrapper.findAll('.cart-switch button')[1].classes()).toContain('on')
+  expect(wrapper.get('.cart-version-selector').element.value).toBe('ru')
   expect(total(wrapper)).toBe(ruTotal)
   expect(wrapper.get('[role="status"]').text()).toContain('当前编辑内容已保留')
 })
@@ -293,5 +293,5 @@ it('latest detail request wins; a detail from the previous game does not switch 
   await switchGame(wrapper, 1)
   late.resolve(plan())
   await flushPromises()
-  expect(wrapper.findAll('.cart-switch button')[1].classes()).toContain('on')
+  expect(wrapper.get('.cart-version-selector').element.value).toBe('ru')
 })

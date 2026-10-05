@@ -90,15 +90,18 @@ function deferred() {
   return { promise, resolve }
 }
 
-it('默认直接进入背包，导入入口旁保留隐私提示，识别说明仅在导入流程出现', async () => {
+it('默认直接进入背包，截图识别阶段与隐私说明仅在导入流程出现', async () => {
   const wrapper = render()
   await flushPromises()
   expect(wrapper.get('.star-tabs [role="tab"]:last-child').attributes('aria-selected')).toBe('true')
   expect(wrapper.find('.star-availability-note').exists()).toBe(false)
+  expect(wrapper.find('.star-privacy-note').exists()).toBe(false)
+  expect(wrapper.find('.star-import-stage').exists()).toBe(false)
+  await wrapper.get('.compact-tool-primary .primary').trigger('click')
+  expect(wrapper.get('.star-import-stage').text()).toBe('截图识别')
+  expect(wrapper.findAll('.star-tabs [role="tab"]')).toHaveLength(1)
   expect(wrapper.get('.star-privacy-note').text()).toContain('本机识别与保存')
   expect(wrapper.get('.star-privacy-note').attributes('title')).toBe('截图在本机识别与保存；登录后同步背包数据。')
-  await wrapper.get('.compact-tool-primary .primary').trigger('click')
-  expect(wrapper.get('.star-tabs [role="tab"]').attributes('aria-selected')).toBe('true')
   const note = wrapper.get('.star-availability-note[role="note"]')
   expect(note.text()).toContain('手机和电脑网页端均可使用')
   expect(note.text()).toContain('导入截图、核对识别结果并整理背包')
@@ -111,19 +114,21 @@ it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 
   const wrapper = render()
   await flushPromises()
   await loadStylesheet()
+  await wrapper.get('.compact-tool-primary .primary').trigger('click')
   const options = embedMount.mock.calls[0][1]
   options.onActiveTabChange('review')
   await flushPromises()
-  const tabs = wrapper.findAll('.star-tabs [role="tab"]')
-  expect(tabs[0].attributes('aria-selected')).toBe('false')
-  expect(tabs[1].attributes('aria-selected')).toBe('true')
-  expect(tabs[1].classes()).toContain('on')
+  const backpack = wrapper.get('.star-tabs [role="tab"]')
+  expect(backpack.attributes('aria-selected')).toBe('true')
+  expect(backpack.classes()).toContain('on')
+  expect(wrapper.find('.star-import-stage').exists()).toBe(false)
   expect(localStorage.getItem('star-tabs')).toBe('review')
   const handle = embedMount.mock.results[0].value
   handle.setActiveTab.mockClear()
-  await tabs[0].trigger('click')
+  await wrapper.get('.compact-tool-primary .primary').trigger('click')
   expect(handle.setActiveTab).toHaveBeenCalledWith('import')
-  expect(tabs[0].attributes('aria-selected')).toBe('true')
+  expect(wrapper.get('.star-import-stage').text()).toBe('截图识别')
+  expect(backpack.attributes('aria-selected')).toBe('false')
   wrapper.unmount()
 })
 
@@ -131,7 +136,6 @@ it('样式加载失败可重试，失败链接不会阻挡下一次加载', asyn
   const wrapper = render()
   await flushPromises()
   expect(wrapper.text()).toContain('未登录')
-  expect(wrapper.get('.star-privacy-note').attributes('title')).toContain('登录后同步')
   document.getElementById('yuanstar-embed-styles').dispatchEvent(new Event('error'))
   await flushPromises()
   expect(document.getElementById('yuanstar-embed-styles')).toBeNull()

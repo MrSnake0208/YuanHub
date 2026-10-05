@@ -30,10 +30,10 @@
       <section>
         <div class="wrap">
           <div class="tool-summary" aria-label="库存概览">
-            <span>最近完整盘点 <time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><template v-else-if="!auth.isLoggedIn">登录后查看</template><template v-else-if="!accountId">请选择账号</template><template v-else>{{ loading ? '读取中…' : error ? '读取失败' : '暂无记录' }}</template></span>
+            <span>最近完整盘点 <time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt" :title="fmtTime(currentFullBaselineAt)">{{ fmtTime(currentFullBaselineAt).split(' ')[0] }}</time><template v-else-if="!auth.isLoggedIn">登录后查看</template><template v-else-if="!accountId">请选择账号</template><template v-else>{{ loading ? '读取中…' : error ? '读取失败' : '暂无记录' }}</template></span>
             <span>道具 <b>{{ itemCatalogCount }}</b> 种</span>
             <span>心纸 <b>{{ agentGameCatalogCount }}</b> 种</span>
-            <span>目录更新 <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></span>
+            <span class="tool-updated">目录更新 <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></span>
           </div>
 
           <ArchiveExchangePanel
@@ -8327,10 +8327,14 @@ onBeforeUnmount(function () {
 }
 
 .inventory-main > section { padding-top: 0; }
+.panel { margin-top: 12px; }
 .inventory-tabs.tool-workspace-tabs { position: static; flex-direction: row; }
 .inventory-tabs.tool-workspace-tabs button { flex-direction: row; }
 .inventory-tabs.tool-workspace-tabs button svg { display: none; }
-.manifest-toolbar { display: flex; margin-top: 12px; padding: 0; gap: 8px 16px; border: 0; border-radius: 0; background: transparent; }
+.manifest-toolbar { position: static; display: flex; margin-top: 0; padding: 0; gap: 8px 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+.manifest-toolbar .manifest-type-switch { position: static; width: fit-content; margin: 0; padding: 0; gap: 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+.manifest-type-switch > button { flex: none; min-height: 44px; padding: 8px 12px; font-size: 13px; border-radius: 8px; }
+.manifest-type-switch > button.on { background: color-mix(in srgb, var(--yellow) 40%, var(--cream)); color: var(--tea); }
 .manifest-toolbar .manifest-bar { display: flex; flex: 1 1 360px; flex-wrap: wrap; flex-direction: row; align-items: center; gap: 8px 16px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .manifest-toolbar .manifest-bar-summary { width: auto; flex-direction: row; gap: 0; }
 .manifest-bar-summary .mf-stats { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px 14px; }
@@ -8341,6 +8345,7 @@ onBeforeUnmount(function () {
 .manifest-item-tools .mf-search { flex: 1 1 160px; min-width: 0; min-height: 44px; width: auto; background: var(--surface); }
 .manifest-item-tools .mf-filter { flex: none; background: transparent; padding: 0; }
 .manifest-item-tools .mf-filter button { min-height: 44px; padding-inline: 12px; }
+.manifest-item-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 40%, var(--cream)); color: var(--tea); box-shadow: none; }
 @media (max-width: 640px) {
   .manifest-toolbar .manifest-bar-summary { flex-basis: 100%; }
 }
