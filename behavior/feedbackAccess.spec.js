@@ -60,11 +60,21 @@ it('超级管理员新增和改名板块后重新读取目录', async () => {
   wrapper.unmount()
 })
 
+it('权限任务身份明确，新增授权位于用户授权工作区', async () => {
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('main h1').text()).toBe('反馈权限')
+  expect(wrapper.find('main > header button').exists()).toBe(false)
+  expect(wrapper.get('.access-heading').text()).toContain('用户授权')
+  expect(wrapper.get('.access-heading .access-create').text()).toBe('新增授权')
+  expect(wrapper.findAll('.access-create')).toHaveLength(1)
+  wrapper.unmount()
+})
+
 it('a slower old user search cannot replace the latest candidates', async () => {
   const old = deferred()
   searchFeedbackAccessUsers.mockImplementation(({ q }) => q === 'first' ? old.promise : Promise.resolve([user('second')]))
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.access-create').trigger('click')
   await search(wrapper, 'first'); await search(wrapper, 'second')
   old.resolve([user('first')]); await flushPromises()
   expect(wrapper.get('.user-result').text()).toContain('second')
@@ -76,7 +86,7 @@ it('岗位和旧授权均展示后端提供的同一板块目录', async () => {
     { key: 'STAR', label: '星石' }, { key: 'MAAYUAN', label: '麻圆' }
   ] })
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.access-create').trigger('click')
   const groups = wrapper.findAll('.permission-group')
   expect(groups).toHaveLength(5)
   expect(groups.slice(1).every(group => group.text().includes('星石') && group.text().includes('麻圆'))).toBe(true)
@@ -103,9 +113,9 @@ it('岗位与兼容权限分开预览，折叠后保存不丢旧授权', async (
 
 it('权限弹窗的原生折叠入口参与焦点顺序，Esc 归还焦点', async () => {
   const wrapper = render({ attachTo: document.body }); await flushPromises()
-  const opener = wrapper.get('.feedback-hero-action').element
+  const opener = wrapper.get('.access-create').element
   opener.focus()
-  await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
+  await wrapper.get('.access-create').trigger('click'); await flushPromises()
   const panel = wrapper.get('.access-modal').element
   expect(panel.contains(document.activeElement)).toBe(true)
   const summary = wrapper.get('.legacy-permissions summary').element
@@ -124,10 +134,10 @@ it('closing and reopening the editor invalidates a previous in-flight candidate 
   const pending = deferred()
   searchFeedbackAccessUsers.mockReturnValue(pending.promise)
   const wrapper = render(); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.access-create').trigger('click')
   await search(wrapper, 'first')
   await wrapper.get('[aria-label="关闭"]').trigger('click')
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.access-create').trigger('click')
   pending.resolve([user('first')]); await flushPromises()
   expect(wrapper.find('.user-result').exists()).toBe(false)
 })

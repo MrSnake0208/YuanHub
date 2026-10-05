@@ -1,0 +1,20 @@
+/* Shared design language; each page owns its structure and behavior. */
+.page-header { padding: 20px 0 12px; color: var(--ink); }
+.page-header > .wrap { container-type: inline-size; }
+.page-header-row { display: grid; gap: 12px; }
+.page-header-identity { min-width: 0; }
+.page-header-title { margin: 0; color: var(--tea); font: 900 30px/1.3 var(--font-s); letter-spacing: .035em; overflow-wrap: anywhere; }
+.page-header-description { margin: 4px 0 0; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
+.page-header-context { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; color: var(--ink-60); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.page-header-actions { display: flex; flex-wrap: wrap; align-items: start; gap: 8px; }
+.page-header-back { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 4px; color: var(--ink-60); font-size: 13px; font-weight: 700; text-decoration: none; }
+.page-header-action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--cream); font: 800 13px/1.5 var(--font-b); text-decoration: none; }
+.page-header-back:hover { color: var(--tea); text-decoration: underline; }
+.page-header-action:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.page-header-back:focus-visible, .page-header-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@container (min-width: 600px) {
+  .page-header-row { grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+}
+@container (min-width: 860px) {
+  .page-header-title { font-size: 32px; }
+}

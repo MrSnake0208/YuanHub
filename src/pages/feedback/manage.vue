@@ -3,15 +3,10 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="hero feedback-hero">
+      <header class="page-header">
         <div class="wrap">
-          <div class="feedback-hero-kicker">COMMUNITY / FEEDBACK</div>
-          <div class="feedback-hero-layout">
-            <div>
-              <h1>反馈中心</h1>
-              <p class="hero-sub">按负责板块接单、回复、转程序并跟进处理结果。</p>
-            </div>
-          </div>
+          <h1 class="page-header-title">反馈工作台</h1>
+          <p class="page-header-description">处理、分派、回复和公开当前授权范围内的反馈。</p>
         </div>
       </header>
 
@@ -294,6 +289,7 @@ import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { productVersionLabel } from '@/config/buildInfo.js'
 import '@/styles/feedback-workspace.css'
+import '@/styles/page-header.css'
 
 const { feedbackUnreadState, subscribeFeedbackUnread } = feedbackUnreadStore
 const allStatusTabs = [
@@ -1039,6 +1035,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+@media (min-width: 768px) and (max-width: 1199px) {
+  .feedback-command-bar { grid-template-columns: minmax(0, 1fr); }
+  .feedback-status-tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; }
+  .feedback-status-tabs button { flex: none; }
+}
 .permission-state { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 16px 0 48px; padding: 28px; border: 1px solid var(--feedback-line); background: var(--feedback-panel); color: var(--feedback-text-muted); text-align: center; }
 .permission-state strong { color: var(--feedback-text); font-size: 18px; }
 .permission-state .feedback-primary-action { margin-top: 8px; text-decoration: none; }

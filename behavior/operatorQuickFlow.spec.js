@@ -72,6 +72,20 @@ it('所有星级步骤默认1级1修为，未勾选不产生导入', async () =>
   expect(importOperator).not.toHaveBeenCalled()
 })
 
+it('快捷录入页头展示账号与实际模式，模式切换保留工作区操作', async () => {
+  route.query = { mode: 'supplement' }
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('main h1').text()).toBe('快捷录入')
+  expect(wrapper.get('.quick-mode-context').text()).toContain('快速补录')
+  const account = wrapper.getComponent({ name: 'DataAccountContextBar' })
+  expect(account.props()).toMatchObject({ compact: true, accountId: 'acc', game: '如鸢' })
+  expect(wrapper.find('main > header button').exists()).toBe(false)
+  await wrapper.findAll('.entry-mode button')[0].trigger('click')
+  expect(wrapper.get('.quick-mode-context').text()).toContain('首次建档')
+  expect(wrapper.get('.quick-save-guidance').text()).toContain('不会撤销之前的保存')
+  expect(importOperator).not.toHaveBeenCalled()
+})
+
 it('勾选后直接保存使用1级1修为和当前星级，保留已有命盘星石', async () => {
   getOperatorCurrent.mockResolvedValue([{ entries: {
     op: { level: 0, elite: 0, starLevel: 0, discs: [{ otName: '测试命盘' }], starStones: [] },
@@ -344,7 +358,7 @@ it('A的保存回调不能推进B或更新B的保存统计', async () => {
   await flushPromises()
   expect(wrapper.get('.step.on').text()).toContain('1星')
   expect(wrapper.find('.page-save').exists()).toBe(false)
-  expect(wrapper.findAll('.hero-stats .v')[2].text()).toBe('0位')
+  expect(wrapper.get('.quick-session-summary').text()).toBe('本次已保存 0 位')
   expect(importOperator.mock.calls[0][0].records[0].account_id).toBe('acc')
 })
 
