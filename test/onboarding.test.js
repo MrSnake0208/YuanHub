@@ -156,7 +156,7 @@ test('uses seven stable step ids and data-tour anchors including account creatio
   const replayStep = ONBOARDING_STEPS.find(step => step.id === 'replay-entry')
   assert.equal(replayStep.mobileTarget, 'replay-menu')
   assert.match(files, /data-tour="replay-menu"/)
-  assert.match(ONBOARDING_STEPS.find(step => step.id === 'today-overview').description, /仍在重做/)
+  assert.match(ONBOARDING_STEPS.find(step => step.id === 'today-overview').description, /当前游戏账号/)
   assert.match(ONBOARDING_STEPS.find(step => step.id === 'operator-workspace').description, /分享与数据交换/)
 })
 

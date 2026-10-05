@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   getTodayDataReadiness,
   getTodayOnboardingStage,
+  hasTodayAccountData,
   shouldShowTodayDataOnboarding,
   summarizeTodayData
 } from '../src/data/todayData.js'
@@ -31,6 +32,13 @@ test('summarizes real Today data without counting duplicates or empty inventory'
     starCount: 2,
     unreadCount: 2
   })
+})
+
+test('partial ready data enters daily overview without requiring all features', () => {
+  assert.equal(hasTodayAccountData({ operatorCount: 2, inventoryRecorded: false, starCount: 0 }), true)
+  assert.equal(hasTodayAccountData({ operatorCount: 0, inventoryRecorded: true, inventoryKindCount: 0, starCount: null }), true)
+  assert.equal(hasTodayAccountData({ operatorCount: null, inventoryRecorded: null, starCount: null }), false)
+  assert.equal(hasTodayAccountData({ operatorCount: 0, inventoryRecorded: false, starCount: 0 }), false)
 })
 
 test('derives three onboarding stages and checks operator inventory and star independently', function () {

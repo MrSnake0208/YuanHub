@@ -23,6 +23,7 @@ it('summary shows exact date plus remaining time with activity count and mine li
   expect(wrapper.text()).toContain('另有 2 项即将截止')
   expect(wrapper.text()).toContain('2026-10-05')
   expect(wrapper.findAllComponents(RouterLinkStub).every(link => link.props('to').query.scope === 'mine')).toBe(true)
+  expect(wrapper.findAllComponents(RouterLinkStub).every(link => link.props('to').query.game === '如鸢')).toBe(true)
 })
 it('same-game A to B ignores late A summary and failure is not an empty-state success', async () => {
   let resolveA; calendarSubscriptionSummary.mockImplementation(id => id === 'a' ? new Promise(resolve => { resolveA = resolve }) : Promise.resolve({ items: [record('B')], subscribed_count: 1, total_pending: 1 }))

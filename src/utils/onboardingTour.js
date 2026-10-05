@@ -28,7 +28,7 @@ export const ONBOARDING_STEPS = [
     route: '/',
     target: 'today-overview',
     title: '先看「今日一览」',
-    description: '不知道从哪里开始时就来这里。今日建议与状态总览仍在重做，目前可以从这里进入密探、库存和星石工具；没有数据时，也能找到创建子账号与录入数据的入口。',
+    description: '先确认顶部的当前游戏账号，可以直接切换。这里会显示已开放的活动日程、个人订阅和当前账号的数据状态；尚未建档时会引导登录、创建账号和补齐数据，已有数据不需要重复录入。常用工具在页面后部。',
     side: 'bottom',
     align: 'start'
   },
