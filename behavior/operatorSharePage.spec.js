@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import SharePage from '../src/pages/operator/share.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperatorCatalog, viewOperatorShare } from '../src/api/operator.js'
@@ -26,7 +26,7 @@ beforeEach(() => {
   media = new EventTarget(); media.matches = false
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
-const render = () => mount(SharePage, { global: { stubs: { IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true, ShareCardStats: true } } })
+const render = () => mount(SharePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true, ShareCardStats: true } } })
 it('公开页加载真实卡片语义，点击卡片不打开编辑器或触发写请求', async () => {
   const wrapper = render(); await flushPromises()
   expect(viewOperatorShare).toHaveBeenCalledExactlyOnceWith(tokenA)

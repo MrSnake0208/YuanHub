@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import RecruitmentAdmin from '../src/pages/recruitment/admin.vue'
 import * as api from '../src/api/recruitment.js'
 import { getOperatorCatalog } from '../src/api/operator.js'
@@ -16,7 +16,7 @@ vi.mock('../src/api/recruitment.js', () => ({ listAdminRecruitmentCatalog: vi.fn
 
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text().includes(text))
 const input = (wrapper, label) => wrapper.findAll('label').find(item => item.text().startsWith(label)).get('input')
-function render() { return mount(RecruitmentAdmin, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, AdminBackLink: true } } }) }
+function render() { return mount(RecruitmentAdmin, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } }) }
 function pool() { return { pool_id: 'pool-public', game: '代号鸢', name: '新卡池', pool_type: '限时', enabled: true, revision: 2, up_agents: [{ id: 'pool-public:up:stable', name: 'UP 占位1', operator_id: null, active: true }] } }
 
 beforeEach(() => {

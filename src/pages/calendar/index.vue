@@ -220,3 +220,15 @@ function scheduleBoundary() {
 }
 watch(() => [...items.value, ...subscriptions.records.value.map(record => record.item)].filter(Boolean).map(item => item.end_at).join(','), scheduleBoundary)
 </script>
+
+<style scoped>
+.calendar-public .calendar-content { grid-template-columns: minmax(0, 1fr); }
+.calendar-public .calendar-account-select { max-width: 100%; }
+.calendar-public .calendar-account-select select { min-width: 0; width: min(100%, 280px); }
+.calendar-public .calendar-header { padding-top: 20px; padding-bottom: 12px; gap: 12px; }
+.calendar-public .calendar-header h1 { margin: 0; color: var(--tea); font: 900 30px/1.3 var(--font-s); letter-spacing: .035em; overflow-wrap: anywhere; }
+@media (min-width: 768px) {
+  .calendar-public .calendar-header { grid-template-columns: minmax(0, 1fr) auto; }
+  .calendar-public .calendar-view-tools { grid-column: 2; grid-row: 1; }
+}
+</style>

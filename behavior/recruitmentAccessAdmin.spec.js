@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import RecruitmentAccessAdmin from '../src/pages/admin/recruitmentAccess.vue'
 import * as api from '../src/api/recruitmentAccess.js'
 import { dialog } from '../src/utils/dialog.js'
@@ -15,7 +15,7 @@ vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
 const render = () => mount(RecruitmentAccessAdmin, {
   attachTo: document.body,
-  global: { stubs: { IslandSidebar: true, AdminBackLink: true } }
+  global: { stubs: { IslandSidebar: true, RouterLink: RouterLinkStub } }
 })
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text().includes(text))
 
