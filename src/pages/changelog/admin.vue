@@ -2,12 +2,11 @@
   <div class="page-changelog-admin">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="crumb"><span class="pill fill">管理</span><span class="pill">更新日志</span></div>
-          <h1>更新日志管理<span class="small">编辑与审核</span></h1>
-          <p class="hero-sub">编辑员撰写并提交，审核员确认后发布；已发布内容在新修订获批前保持不变。</p>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <h1 class="page-header-title">更新日志管理</h1>
+          <p class="page-header-description">编写、审核并发布 YuanHub 更新日志。</p>
         </div>
       </header>
 
@@ -43,13 +42,28 @@
           <p v-if="!selected" class="empty-panel">选择一条日志，或新建日志开始编辑。</p>
           <template v-else>
             <header class="panel-head">
-              <div>
-                <span class="status" :class="statusClass(selected)">{{ statusLabel(selected) }}</span>
-                <small v-if="selected.id">文档版本 {{ selected.version }}</small>
-                <small v-else>尚未保存</small>
+              <div class="editor-identity">
+                <h2 class="editor-title">{{ form.title || (selected.id ? '未命名日志' : '新建日志') }}</h2>
+                <div class="editor-context">
+                  <span class="status" :class="statusClass(selected)">{{ statusLabel(selected) }}</span>
+                  <small v-if="selected.id">文档版本 {{ selected.version }}</small>
+                  <small v-else>尚未保存</small>
+                </div>
               </div>
               <button v-if="conflict" type="button" class="button secondary" :disabled="operationLocked" @click="reloadSelected">重新加载</button>
             </header>
+
+            <div v-if="canEditDraft || reviewable || canWithdraw" class="actions" role="group" aria-label="当前日志操作">
+              <template v-if="canEditDraft">
+                <button type="button" class="button secondary" :disabled="operationLocked" @click="saveDraft">{{ busy ? '处理中…' : '保存草稿' }}</button>
+                <button v-if="working && working.state === 'DRAFT' && !dirty" type="button" class="button primary" :disabled="operationLocked" @click="submit">提交审核</button>
+              </template>
+              <template v-if="reviewable">
+                <button type="button" class="button danger" :disabled="operationLocked || conflict" @click="reject">退回</button>
+                <button type="button" class="button primary" :disabled="operationLocked || conflict" @click="approve">审核通过并发布</button>
+              </template>
+              <button v-if="canWithdraw" type="button" class="button danger ghost" :disabled="operationLocked || conflict" @click="withdraw">撤回公开版本</button>
+            </div>
 
             <p v-if="conflict" class="notice error" role="alert">内容已被其他人修改。本地内容仍保留，请复制需要的内容后重新加载。</p>
             <p v-if="working && working.rejectionReason" class="notice rejected" role="status">退回原因：{{ working.rejectionReason }}</p>
@@ -59,7 +73,7 @@
               <label>版本标签<input v-model="form.versionLabel" :disabled="!editable" maxlength="40" required placeholder="例如 v1.6.0" @input="markDirty"></label>
             </div>
 
-            <div class="editor-label"><span>正文</span><span>{{ editable ? '所见即所得编辑' : '只读预览' }}</span></div>
+            <div class="editor-label"><div><span>正文</span><small>{{ editable ? '所见即所得编辑' : '只读预览' }}</small></div><button type="button" class="preview-toggle" :aria-pressed="preview" @click="preview = !preview">{{ preview ? '收起预览' : '预览' }}</button></div>
             <div v-if="editable && editor" class="toolbar" role="toolbar" aria-label="正文格式工具栏">
               <button type="button" :aria-pressed="editor.isActive('paragraph')" aria-label="正文段落" @click="editor.chain().focus().setParagraph().run()">正文</button>
               <button type="button" :aria-pressed="editor.isActive('heading', { level: 2 })" aria-label="二级标题" @click="editor.chain().focus().toggleHeading({ level: 2 }).run()">H2</button>
@@ -84,19 +98,6 @@
               <header><span>{{ form.versionLabel || '版本标签' }}</span><h2>{{ form.title || '标题' }}</h2></header>
               <ChangelogContent :body="editor ? editor.getJSON() : emptyChangelogBody()" />
             </section>
-
-            <footer class="actions">
-              <button type="button" class="button secondary" @click="preview = !preview">{{ preview ? '收起预览' : '预览' }}</button>
-              <template v-if="canEditDraft">
-                <button type="button" class="button secondary" :disabled="operationLocked" @click="saveDraft">{{ busy ? '处理中…' : '保存草稿' }}</button>
-                <button v-if="working && working.state === 'DRAFT' && !dirty" type="button" class="button primary" :disabled="operationLocked" @click="submit">提交审核</button>
-              </template>
-              <template v-if="reviewable">
-                <button type="button" class="button danger" :disabled="operationLocked || conflict" @click="reject">退回</button>
-                <button type="button" class="button primary" :disabled="operationLocked || conflict" @click="approve">审核通过并发布</button>
-              </template>
-              <button v-if="canWithdraw" type="button" class="button danger ghost" :disabled="operationLocked || conflict" @click="withdraw">撤回公开版本</button>
-            </footer>
           </template>
         </div>
       </section>
@@ -108,7 +109,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import AdminBackLink from '../../components/admin/AdminBackLink.vue'
+import '../../styles/page-header.css'
 import ChangelogContent from '../../components/changelog/ChangelogContent.vue'
 import {
   approveChangelog,
@@ -390,10 +391,9 @@ onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId +
 
 <style scoped>
 .page-changelog-admin { min-height: 100vh; min-height: 100dvh }
-.page-changelog-admin .hero { --wm: '更' }
-.workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; padding-block: 32px 60px }
+.workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; padding-block: 12px 60px }
 .entry-list,.editor-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px }
-.entry-list { align-self: start; overflow: hidden }
+.entry-list { min-width: 0; align-self: start; overflow: hidden }
 .list-head,.panel-head,.actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line) }
 .list-head strong { font-family: var(--font-s); font-size: 18px }
 .entry-button { width: 100%; display: grid; gap: 7px; padding: 14px 18px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; cursor: pointer }
@@ -401,7 +401,7 @@ onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId +
 .entry-button:disabled { cursor: default }
 .entry-button.active { box-shadow: inset 3px 0 var(--accent) }
 .entry-title { font-weight: 800; overflow-wrap: anywhere }
-.entry-button span:last-child { display: flex; align-items: center; gap: 8px; color: var(--ink-60); font-size: 11px }
+.entry-button span:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink-60); font-size: 11px }
 .entry-button i,.status { padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-style: normal; font-size: 11px; font-weight: 800 }
 .status-待审核 { border-color: var(--accent) !important; color: var(--accent) !important }
 .status-已发布 { background: var(--yellow); border-color: transparent !important }
@@ -413,19 +413,26 @@ onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId +
 .pager button:disabled { opacity: .4; cursor: default }
 .editor-panel { min-width: 0; align-self: start; overflow: hidden }
 .panel-head { border-bottom: 1px solid var(--line) }
-.panel-head>div { display: flex; align-items: center; gap: 10px }
+.editor-identity { min-width: 0 }
+.editor-title { margin: 0 0 6px; font: 900 20px/1.4 var(--font-s); color: var(--tea); overflow-wrap: anywhere }
+.editor-context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px }
+.panel-head > .button { flex: none }
 .panel-head small { color: var(--ink-60) }
 .fields { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; padding: 20px 20px 0 }
 .fields label { display: grid; gap: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .fields input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); font: inherit; outline: none }
 .fields input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215,137,53,.16) }
-.editor-label { display: flex; justify-content: space-between; padding: 20px 20px 8px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
-.toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; border-block: 1px solid var(--line); background: var(--paper) }
+.editor-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px 8px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
+.editor-label > div { display: grid; gap: 3px }
+.editor-label small { font-size: 11px; font-weight: 400 }
+.preview-toggle { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font: 700 12px var(--font-b); white-space: nowrap; cursor: pointer }
+.preview-toggle[aria-pressed=true] { background: var(--paper); border-color: var(--accent) }
+.toolbar { margin: 0; border-radius: 0; box-shadow: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px; border-block: 1px solid var(--line); background: var(--paper) }
 .toolbar button { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
 .toolbar button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
 .toolbar button:disabled { opacity: .45; cursor: default }
 .editor-surface { margin: 0 20px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
-.editor-surface :deep(.tiptap) { min-height: 360px; padding: 18px; color: var(--ink); line-height: 1.8; outline: none }
+.editor-surface :deep(.tiptap) { overflow-wrap: anywhere; min-height: 360px; padding: 18px; color: var(--ink); line-height: 1.8; outline: none }
 .editor-surface :deep(.tiptap:focus) { box-shadow: 0 0 0 3px rgba(215,137,53,.18) }
 .editor-surface :deep(h2),.editor-surface :deep(h3) { margin: 1.2em 0 .5em; font-family: var(--font-s) }
 .editor-surface :deep(ul),.editor-surface :deep(ol) { padding-left: 1.6em }
@@ -438,15 +445,17 @@ onBeforeUnmount(function () { mounted = false; loadRequestId += 1; operationId +
 .preview header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line) }
 .preview header span { display: inline-block; margin-bottom: 8px; padding: 3px 9px; border-radius: 999px; background: var(--yellow); font-size: 11px; font-weight: 800 }
 .preview h2 { font-family: var(--font-s) }
-.actions { justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--line); border-bottom: 0 }
-.button { min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
+.actions { justify-content: flex-end; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: var(--paper) }
+.button { white-space: nowrap; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
 .button.compact { min-height: 44px; padding-inline: 12px }
 .button.primary { border-color: var(--tea); background: var(--tea); color: var(--cream) }
 .button.secondary { background: var(--surface); color: var(--ink) }
 .button.danger { border-color: var(--rouge); background: var(--rouge); color: var(--cream) }
 .button.danger.ghost { background: transparent; color: var(--rouge) }
 .button:disabled { opacity: .5; cursor: default }
+.entry-button:focus-visible,.button:focus-visible,.pager button:focus-visible,.preview-toggle:focus-visible,.toolbar button:focus-visible,.list-state button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px }
+.pager button,.list-state button { min-height: 44px }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; clip: rect(0,0,0,0); overflow: hidden; white-space: nowrap; border: 0 }
 @media (max-width: 900px) { .workspace { grid-template-columns: 1fr } .entry-list { max-height: 330px; overflow-y: auto } }
-@media (max-width: 640px) { .workspace { padding-block: 18px 36px } .fields { grid-template-columns: 1fr } .actions .button { flex: 1 1 44% } }
+@media (max-width: 640px) { .workspace { padding-block: 12px 36px; gap: 14px } .fields { grid-template-columns: 1fr } .actions .button { flex: 1 1 44% } }
 </style>

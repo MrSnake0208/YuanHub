@@ -7,9 +7,12 @@ import { createEmptyWorkDocument } from '../src/utils/workEditor.js'
 import * as work from '../src/api/work.js'
 import { listLevelCatalog } from '../src/api/level.js'
 import { dialog } from '../src/utils/dialog.js'
+import { auth } from '../src/store/auth.js'
+
+const routeQuery = vi.hoisted(() => ({}))
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {} }),
+  useRoute: () => ({ query: routeQuery }),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn()
 }))
@@ -41,6 +44,9 @@ const formButton = (wrapper, label) => wrapper.findAll('.form-actions button').f
 beforeEach(() => {
   document.body.innerHTML = ''
   vi.clearAllMocks()
+  for (const key of Object.keys(routeQuery)) delete routeQuery[key]
+  auth.isLoggedIn = false
+  auth.userInfo = null
   listLevelCatalog.mockResolvedValue({ levels: [] })
   work.getOwnedWork.mockResolvedValue(record())
   dialog.confirm.mockResolvedValue(true)
@@ -132,5 +138,56 @@ it('offers creation from the empty work plaza', async () => {
   work.listWorks.mockResolvedValue({ items: [], total: 0, hasNext: false })
   const wrapper = render(WorkIndex); await flushPromises()
   expect(wrapper.get('.works-state router-link-stub').attributes('to')).toBe('/work/new')
+  expect(wrapper.find('.page-header-actions').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('keeps list counts with content and offers creation without a false live-data claim', async () => {
+  work.listWorks.mockResolvedValue({ items: [{ id: '1' }], total: 41, page: 2, limit: 20, has_next: true })
+  const wrapper = render(WorkIndex); await flushPromises()
+  expect(wrapper.get('h1').text()).toBe('作业广场')
+  expect(wrapper.get('.works-summary').text()).toBe('41 份公开作业 · 第 2 / 3 页')
+  expect(wrapper.get('.page-header-actions router-link-stub').attributes('to')).toBe('/work/new')
+  expect(wrapper.get('header').text()).not.toMatch(/41|在线|实时更新/)
+  expect(wrapper.get('.works-pagination').text()).toContain('第 2 页，共 3 页')
+  wrapper.unmount()
+})
+
+it('identifies the native object and preserves owner editing and return-page context', async () => {
+  auth.isLoggedIn = true
+  auth.userInfo = { id: 'owner' }
+  routeQuery.page = '3'
+  work.getWork.mockResolvedValue({ metadata: { id: '1', title: '兰台通关作业', status: 'PUBLIC', owner_id: 'owner' },
+    source: { type: 'native' }, work: { ...createEmptyWorkDocument(), doc: { details: '正文中的长打法说明' } } })
+  const wrapper = render(WorkDetail, { props: { id: '1' } }); await flushPromises()
+  expect(wrapper.get('h1').text()).toBe('兰台通关作业')
+  expect(wrapper.get('header').text()).toContain('已发布')
+  expect(wrapper.get('header').text()).toContain('原生作业')
+  expect(wrapper.get('.page-header-action').attributes('to')).toBe('/work/1/edit')
+  expect(wrapper.getComponent('.page-header-back').vm.$attrs.to).toEqual({ path: '/works', query: { page: 3 } })
+  expect(wrapper.get('header').text()).not.toContain('正文中的长打法说明')
+  expect(wrapper.get('.work-details').text()).toBe('正文中的长打法说明')
+  wrapper.unmount()
+})
+
+it('does not offer editing to a non-owner and does not invent an unspecified publication state', async () => {
+  auth.isLoggedIn = true
+  auth.userInfo = { id: 'other' }
+  work.getWork.mockResolvedValue({ metadata: { id: '1', title: '测试作业', owner_id: 'owner' },
+    source: { type: 'native' }, work: createEmptyWorkDocument() })
+  const wrapper = render(WorkDetail, { props: { id: '1' } }); await flushPromises()
+  expect(wrapper.find('.page-header-action').exists()).toBe(false)
+  expect(wrapper.get('header').text()).not.toMatch(/已发布|草稿/)
+  wrapper.unmount()
+})
+
+it('distinguishes legacy conversion status and keeps a failed conversion warning visible', async () => {
+  work.getWork.mockResolvedValue({ metadata: { id: '1', title: '旧版作业' }, source: { type: 'share' },
+    conversion: { status: 'unsupported', issues: [] }, work: null })
+  const wrapper = render(WorkDetail, { props: { id: '1' } }); await flushPromises()
+  expect(wrapper.get('header').text()).toContain('旧版转换：不兼容')
+  expect(wrapper.get('header [role="status"]').text()).toContain('元数据、问题报告与原始来源')
+  expect(wrapper.find('.page-header-action').exists()).toBe(false)
+  expect(wrapper.get('#legacy-title').text()).toBe('旧版作业转换')
   wrapper.unmount()
 })

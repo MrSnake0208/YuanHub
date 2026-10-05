@@ -2,31 +2,19 @@
   <div class="page-operator page-admin-op">
     <IslandSidebar />
 
-    <main class="operator-main">
-      <!-- HERO -->
-      <header class="hero">
+    <main id="main-content" class="operator-main">
+      <header class="page-header">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="crumb">
-            <span class="pill fill">密探</span>
-            <span class="pill">公共图鉴</span>
-            <span class="pill">管理</span>
-          </div>
-          <h1>密探公共图鉴<span class="small">管理端</span></h1>
-          <p class="hero-sub">管理「密探公共 API」背后的全局字典：增删改查有哪些密探、长什么样。改动即时反映到公共图鉴与导入校验；<b>不涉及</b>任何个人子账号的养成档案。</p>
-          <div class="hero-stats">
-            <div><div class="k">目录条目</div><div class="v">{{ rows.length }}<small>位</small></div></div>
-            <div><div class="k">SP 形态</div><div class="v">{{ spCount }}<small>位</small></div></div>
-            <div><div class="k">奇闻待维护</div><div class="v" :class="{ warn: missingOddityCount }">{{ missingOddityCount }}<small>位</small></div></div>
-            <div v-if="auth.isLoggedIn" class="is-authed"><div class="k">当前能力</div><div class="v">图鉴管理<small>已授权</small></div></div>
-          </div>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <h1 class="page-header-title">公共密探图鉴</h1>
+          <p class="page-header-description">维护全站公共密探目录与导入校验数据。</p>
         </div>
       </header>
 
-      <section>
+      <section class="catalog-content">
         <div class="wrap">
           <!-- 非管理员 / 未授权提示 -->
-          <div v-if="forbidden" class="state err banner" v-reveal>
+          <div v-if="forbidden" class="state err banner" role="alert" v-reveal>
             <b>仅管理员可访问</b>：{{ forbidden }} · 请用管理员账号登录后再试
           </div>
 
@@ -36,13 +24,15 @@
               <Search :size="18" aria-hidden="true" />
               <input v-model.trim="search" class="adm-search" type="search" aria-label="搜索密探图鉴" placeholder="搜索名称、别名、ID 或属性" />
             </label>
-            <span class="result-count" aria-live="polite">{{ filteredRows.length }} 位密探</span>
+            <span v-if="!loading && !error" class="result-count" aria-live="polite">{{ filteredRows.length }} 位密探</span>
             <span class="sp"></span>
             <button class="btn primary" type="button" @click="openNew">
               <Plus :size="17" aria-hidden="true" />
               新增密探
             </button>
           </div>
+
+          <p v-if="!loading && !error && !forbidden" class="catalog-summary">共 {{ rows.length }} 位 · SP 形态 {{ spCount }} 位 · <span :class="{ warn: missingOddityCount }">奇闻待维护 {{ missingOddityCount }} 位</span></p>
 
           <!-- 列表 -->
           <div v-if="loading" class="state" role="status" aria-live="polite">正在加载密探公共图鉴…</div>
@@ -52,7 +42,7 @@
           <template v-else>
             <div v-if="filteredRows.length === 0" class="state">没有匹配「{{ search }}」的密探</div>
             <div v-else class="catalog-views">
-              <div class="catalog-table-wrap">
+              <div class="catalog-table-wrap" role="region" aria-label="公共密探目录列表" tabindex="0">
                 <table class="catalog-table">
                   <thead>
                     <tr>
@@ -100,7 +90,7 @@
                         <small>/ {{ r.odditySchema.special.max == null ? '—' : r.odditySchema.special.max }}</small>
                       </td>
                       <td><span v-if="r.spOf" class="tag-sp" :title="'本体：' + r.spOf">SP</span><span v-else class="muted">—</span></td>
-                      <td class="cell-ver"><code>{{ r.catalogVersion }}</code><small>{{ fmtTime(r.createdAt) }}</small></td>
+                      <td class="cell-ver"><code :title="r.catalogVersion">{{ r.catalogVersion }}</code><small>{{ fmtTime(r.createdAt) }}</small></td>
                       <td class="ops-col">
                         <button class="ops-btn" type="button" @click="openEdit(r)">编辑</button>
                         <button class="ops-btn danger" type="button" @click="onDelete(r)">删除</button>
@@ -302,7 +292,7 @@
               </div>
             </div>
 
-            <div v-if="notice" class="editor-notice" :class="{ err: noticeError }">{{ notice }}</div>
+            <div v-if="notice" class="editor-notice" :class="{ err: noticeError }" :role="noticeError ? 'alert' : 'status'">{{ notice }}</div>
           </div>
 
           <div class="editor-actions">
@@ -332,7 +322,7 @@ import { useRouter } from 'vue-router'
 import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import AdminBackLink from '../../components/admin/AdminBackLink.vue'
+import '../../styles/page-header.css'
 import {
   listAdminOperatorCatalog,
   createAdminOperatorCatalog,
@@ -820,19 +810,23 @@ load()
 <style scoped>
 /* —— 复用全局 CSS 变量，对齐密探页（operator/index.vue）版式与配色规范 —— */
 .operator-main { padding-bottom: 0 }
-.page-admin-op .hero::after { content: '管' }
+.catalog-content { padding-top: 12px }
+.catalog-summary { margin: 10px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere }
+.catalog-summary .warn { color: var(--rouge) }
+.catalog-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 
 .banner { margin-top: 24px; background: rgba(166, 81, 74, .08) }
 
-.admin-bar { display: flex; align-items: center; gap: 14px; margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; flex-wrap: wrap }
+.admin-bar { display: flex; align-items: center; gap: 14px; border-block: 1px solid var(--line); padding: 12px 0; flex-wrap: wrap }
 .admin-bar .sp { flex: 1 }
+.admin-bar .btn { flex: none }
 .adm-search-wrap { width: 280px; min-height: 44px; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; color: var(--ink-35); background: var(--paper); transition: border-color .25s, box-shadow .25s }
 .adm-search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .14) }
 .adm-search { min-width: 0; flex: 1; border: 0; padding: 9px 0; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: transparent; outline: none }
 .adm-search::placeholder { color: var(--ink-35) }
 .result-count { font-family: var(--font-d); font-size: 12px; font-weight: 700; color: var(--ink-60); white-space: nowrap }
 
-.catalog-table-wrap { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; overflow-x: auto; scrollbar-gutter: stable }
+.catalog-table-wrap { margin-top: 12px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; overflow-x: auto; scrollbar-gutter: stable }
 .catalog-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 980px }
 .catalog-table th { text-align: left; font-family: var(--font-b); font-weight: 800; font-size: 12px; color: var(--ink-60); padding: 10px 8px; border-bottom: 1px dashed var(--line); white-space: nowrap }
 .catalog-table td { padding: 10px 8px; border-bottom: 1px solid rgba(156, 122, 77, .12); vertical-align: middle }
@@ -855,7 +849,7 @@ load()
 .avatar-placeholder { width: 72px; height: 72px; border-radius: 14px; display: grid; place-items: center; background: var(--paper); border: 1.5px dashed var(--line); color: var(--ink-35); font-size: 12px; text-align: center }
 .avatar-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
 .avatar-file { display: none }
-.op-name { display: flex; flex-direction: column; gap: 1px; line-height: 1.3 }
+.op-name { min-width: 0; max-width: 260px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 1px; line-height: 1.3 }
 .op-name small { font-family: var(--font-d); font-size: 10.5px; color: var(--ink-35) }
 .op-name em { font-style: normal; font-size: 11px; color: var(--ink-60) }
 
@@ -863,7 +857,6 @@ load()
 .rarity.s3 { color: var(--yellow-deep) }
 .rarity.s4 { color: var(--accent) }
 .rarity.s5 { color: var(--tea) }
-.hero-stats .v.warn { color: var(--rouge) }
 .cell-prof { min-width: 132px }
 .cell-tag-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px }
 .tag-prof { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--element-color, var(--yellow-deep)); border-radius: 6px; padding: 1px 7px 1px 10px; background: var(--surface); color: var(--ink); box-shadow: inset 3px 0 var(--element-color, var(--yellow-deep)); font-size: 11px; line-height: 1.2; font-weight: 800 }
@@ -882,7 +875,7 @@ load()
 .ops-col { position: sticky; right: 0; z-index: 2; min-width: 116px; text-align: right !important; white-space: nowrap; background: var(--surface); box-shadow: -10px 0 16px -16px rgba(73, 59, 44, .72) }
 .catalog-table thead .ops-col { z-index: 3 }
 .catalog-table tbody tr:hover .ops-col { background: color-mix(in srgb, var(--surface) 95%, var(--tea)) }
-.ops-btn { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 5px 8px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s; margin-left: 4px }
+.ops-btn { min-height: 44px; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 5px 8px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: all .25s; margin-left: 4px }
 .ops-btn:hover { border-color: var(--ink); color: var(--ink) }
 .ops-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
 .ops-btn.danger:hover { background: rgba(166, 81, 74, .1) }
@@ -891,6 +884,7 @@ load()
 .editor-mask { position: fixed; inset: 0; background: rgba(73, 59, 44, .34); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: var(--z-overlay-panel); padding: 24px }
 .editor-panel { width: min(720px, 100%); max-height: 86vh; max-height: 86dvh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px 26px; box-shadow: 0 32px 80px -24px rgba(73, 59, 44, .4) }
 .editor-head { display: flex; align-items: flex-start; gap: 12px; border-bottom: 1px dashed var(--line); padding-bottom: 14px }
+.editor-head > div { min-width: 0; overflow-wrap: anywhere }
 .editor-head h3 { font-family: var(--font-s); font-weight: 900; font-size: 22px; letter-spacing: .02em; color: var(--ink) }
 .editor-sub { font-size: 12px; color: var(--ink-60); margin-top: 4px }
 .editor-close { flex: none; width: 44px; height: 44px; margin: -8px -8px 0 auto; display: grid; place-items: center; background: transparent; border: none; border-radius: 10px; cursor: pointer; color: var(--ink-35) }
@@ -956,7 +950,7 @@ load()
 .editor-notice.err { background: rgba(166, 81, 74, .1); color: var(--rouge) }
 .editor-actions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px dashed var(--line); padding-top: 16px; margin-top: 8px }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .35s var(--ease); border: none }
+.btn { min-height: 44px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 800; font-family: var(--font-b); cursor: pointer; transition: all .35s var(--ease); border: none }
 .btn:disabled { opacity: .45; cursor: not-allowed }
 .btn.ghost { background: var(--paper); border: 1.5px solid var(--line); color: var(--ink) }
 .btn.ghost:hover:not(:disabled) { background: var(--cream); color: var(--ink) }
@@ -974,10 +968,6 @@ load()
 .editor-panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 
 @media (max-width: 767px) {
-  .page-admin-op .hero-sub { display: none }
-  .page-admin-op .hero h1 { font-size: 34px }
-  .page-admin-op .hero-stats { margin-top: 18px }
-
   .admin-bar {
     position: sticky;
     top: 64px;
@@ -985,9 +975,9 @@ load()
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px 12px;
-    margin: 16px 0 0;
-    padding: 12px;
-    border-radius: 14px;
+    margin: 0;
+    padding: 12px 0;
+    background: var(--paper);
     box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58);
   }
   .admin-bar .sp { display: none }

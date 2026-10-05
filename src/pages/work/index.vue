@@ -3,35 +3,23 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header discovery-page-header">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">作业</span>
-            <span class="pill">公开数据</span>
-          </div>
-          <h1>作业广场<span class="small">找到通关思路</span></h1>
-          <p class="hero-sub">浏览公开的通关作业，查看阵容、回合步骤和适用平台。</p>
-          <div class="hero-stats" aria-label="作业列表统计">
-            <div><div class="k">公开作业</div><div class="v">{{ total }}<small>份</small></div></div>
-            <div><div class="k">当前页</div><div class="v">{{ page }}<small>/ {{ totalPages }}</small></div></div>
-            <div><div class="k">每页</div><div class="v">{{ limit }}<small>份</small></div></div>
-            <div><div class="k">数据状态</div><div class="v source-value">在线<small>实时更新</small></div></div>
+          <div class="page-header-row">
+            <div class="page-header-identity">
+              <h1 class="page-header-title">作业广场</h1>
+              <p class="page-header-description">浏览公开作业，查看阵容、回合步骤和适用平台。</p>
+            </div>
+            <div v-if="loading || error || items.length" class="page-header-actions">
+              <router-link class="page-header-action" to="/work/new">创建作业</router-link>
+            </div>
           </div>
         </div>
       </header>
 
       <section class="works-content">
         <div class="wrap">
-          <div class="works-heading">
-            <div>
-              <span class="eyebrow">PUBLIC WORKS</span>
-              <h2>公开作业</h2>
-            </div>
-            <div class="works-heading-actions">
-              <p>不同来源的公开作业都在这里。</p>
-              <router-link to="/work/new">创建作业</router-link>
-            </div>
-          </div>
+          <p v-if="!loading && !error && items.length" class="works-summary">{{ total }} 份公开作业 · 第 {{ page }} / {{ totalPages }} 页</p>
 
           <div class="works-live" aria-live="polite" aria-atomic="true">
             <div v-if="loading" class="works-state" aria-busy="true">
@@ -82,6 +70,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import '../../styles/page-header.css'
 import { useRoute, useRouter } from 'vue-router'
 import { listWorks } from '@/api/work.js'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -147,15 +136,8 @@ watch(function () { return route.query.page }, function (value) {
 </script>
 
 <style scoped>
-.works-content { padding: 48px 0 8px; }
-.works-page .hero { --wm: '作业'; }
-.works-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 2px solid var(--ink); }
-.works-heading h2 { margin-top: 5px; font: 900 clamp(28px, 3vw, 40px) var(--font-s); letter-spacing: .06em; }
-.works-heading p { color: var(--ink-60); font-size: 13px; }
-.works-heading-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
-.works-heading-actions a { min-height: 44px; display: inline-flex; align-items: center; padding: 9px 17px; border-radius: 999px; background: var(--tea); color: var(--cream); font-size: 13px; font-weight: 800; text-decoration: none; }
-.eyebrow { color: var(--accent-strong); font: 800 11px var(--font-d); letter-spacing: .18em; }
-.source-value { font-size: 28px !important; }
+.works-content { padding: 12px 0 8px; }
+.works-summary { margin: 0 0 12px; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
 .works-live { min-height: 300px; }
 .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .works-state { min-height: 300px; margin-top: 28px; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 48px 24px; border: 1.5px dashed var(--line); border-radius: 22px; background: var(--surface); color: var(--ink-60); text-align: center; }
@@ -170,9 +152,8 @@ watch(function () { return route.query.page }, function (value) {
 .works-pagination button:disabled { opacity: .45; cursor: default; }
 @keyframes works-spin { to { transform: rotate(360deg); } }
 @media (max-width: 767px) {
-  .works-content { padding-top: 28px; }
-  .works-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
-  .works-heading-actions { width: 100%; justify-content: space-between; }
+  .discovery-page-header .page-header-action { width: 100%; }
+  .discovery-page-header .page-header-actions { display: grid; }
   .list { grid-template-columns: 1fr; gap: 12px; }
   .works-state { min-height: 240px; margin-top: 16px; border-radius: 16px; }
   .works-pagination { justify-content: space-between; gap: 8px; }

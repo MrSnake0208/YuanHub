@@ -24,7 +24,7 @@ const goal = (overrides = {}) => ({
   linkedFeedback: [{ id: 'public_1', title: '公开反馈标题' }], feedbackIds: ['public_1'],
   targetVersion: '0.2.0', targetDate: '2026-10-20', updatedAt: '2026-09-30T00:00:00Z', version: 2, ...overrides
 })
-const render = component => mount(component, { global: { stubs: { IslandSidebar: true, AdminBackLink: true, RouterLink: RouterLinkStub } } })
+const render = component => mount(component, { global: { stubs: { IslandSidebar: true, RouterLink: RouterLinkStub } } })
 beforeEach(() => {
   vi.clearAllMocks()
   auth.adminAccess.permissions = []
@@ -85,7 +85,7 @@ it('共创页面移除广场和许愿池，只按权限提供目标管理入口'
 it('管理员独立创建目标并明确保存后公开', async () => {
   const wrapper = render(GoalAdmin)
   await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
+  await wrapper.get('.goal-create-action').trigger('click'); await flushPromises()
   const form = wrapper.get('.goal-editor')
   const fields = form.findAll('input[type="text"], input:not([type])')
   await fields[0].setValue('独立目标')
@@ -156,7 +156,7 @@ it('旧搜索响应不能污染新打开的目标表单', async () => {
   await wrapper.get('.goal-card button').trigger('click'); await flushPromises()
   await wrapper.get('[aria-label="搜索可关联的公开反馈"]').setValue('旧查询')
   await wrapper.get('.goal-search button').trigger('click')
-  await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
+  await wrapper.get('.goal-create-action').trigger('click'); await flushPromises()
   resolve({ items: [{ id: 'old', publicTitle: '旧查询结果' }] }); await flushPromises()
   expect(wrapper.text()).not.toContain('旧查询结果')
 })
@@ -179,7 +179,7 @@ it('首次公开零目标简化工具栏和进度说明，管理态仍保留筛�
   expect(publicView.find('.goal-toolbar').exists()).toBe(false)
   expect(publicView.find('.goal-notice').exists()).toBe(false)
   expect(publicView.text()).toContain('提交你的功能建议')
-  const adminView = mount(DevelopmentRoadmap, { props: { managed: true } }); await flushPromises()
+  const adminView = mount(DevelopmentRoadmap, { props: { managed: true }, global: { stubs: { RouterLink: RouterLinkStub } } }); await flushPromises()
   expect(adminView.find('select').exists()).toBe(true)
   expect(adminView.find('.goal-notice').exists()).toBe(true)
 })
@@ -200,4 +200,22 @@ it('功能计划解释完成与发布的关系，不将完成项当作已上线'
   expect(wrapper.text()).toContain('实际发布请看')
   expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/changelog')).toBe(true)
   expect(wrapper.text()).not.toContain('已上线')
+})
+
+
+it('管理身份与返回上下文明确，新增靠近目录，公开警告靠近编辑对象', async () => {
+  const wrapper = render(GoalAdmin); await flushPromises()
+  const header = wrapper.get('main > header')
+  expect(header.get('h1').text()).toBe('开发目标管理')
+  expect(header.find('button').exists()).toBe(false)
+  expect(header.getComponent(RouterLinkStub).props('to')).toBe('/manage')
+  expect(header.getComponent(RouterLinkStub).attributes('aria-label')).toBe('返回管理工作台')
+  expect(wrapper.get('.goal-workspace-toolbar').text()).toContain('新增目标')
+  expect(wrapper.get('.development-roadmap').text()).toContain('1 个目标')
+  expect(wrapper.get('.goal-card').text()).toContain('开发中')
+  await wrapper.get('.goal-create-action').trigger('click'); await flushPromises()
+  expect(wrapper.get('.goal-editor .goal-admin-context').text()).toContain('保存后立即展示给所有用户')
+  expect(wrapper.get('.goal-editor-actions [type="submit"]').text()).toBe('保存并公开')
+  expect(goals.saveDevelopmentGoal).not.toHaveBeenCalled()
+  expect(listPublicFeedback).not.toHaveBeenCalled()
 })

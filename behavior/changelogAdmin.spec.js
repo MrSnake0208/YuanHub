@@ -33,7 +33,8 @@ const deferred = () => {
 async function render() {
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/admin/changelog', component: ChangelogAdmin },
-    { path: '/away', component: { template: '<p>离开后的页面</p>' } }
+    { path: '/away', component: { template: '<p>离开后的页面</p>' } },
+    { path: '/manage', component: { template: '<p>管理工作台</p>' } }
   ] })
   await router.push('/admin/changelog'); await router.isReady()
   const wrapper = mount({ template: '<router-view />' }, { global: {
@@ -225,4 +226,26 @@ it('无写入权限不允许编辑，有审核权限仍不能自审', async () =
   expect(button(wrapper, '保存草稿')).toBeUndefined()
   expect(button(wrapper, '审核通过并发布')).toBeUndefined()
   expect(api.approveChangelog).not.toHaveBeenCalled()
+})
+
+it('管理身份、对象修订和预览View与审核发布操作保持分层', async () => {
+  auth.adminAccess = { permissions: ['changelog:write', 'changelog:review'] }
+  const review = entry()
+  review.workingRevision.state = 'IN_REVIEW'
+  review.workingRevision.authoredBy = 'another-editor'
+  review.publishedRevision = { ...review.workingRevision, state: 'PUBLISHED' }
+  api.listAdminChangelog.mockResolvedValue({ data: [review], page: 1, hasNext: false })
+  const { wrapper } = await render()
+  expect(wrapper.get('h1').text()).toBe('更新日志管理')
+  expect(wrapper.get('.page-header-back').attributes('href')).toBe('/manage')
+  expect(wrapper.get('.editor-title').text()).toBe('日志A')
+  expect(wrapper.get('.editor-context').text()).toContain('待审核')
+  expect(wrapper.get('.actions').text()).toContain('审核通过并发布')
+  expect(wrapper.get('.actions').text()).toContain('撤回公开版本')
+  expect(wrapper.get('.actions').text()).not.toContain('预览')
+  await wrapper.get('.preview-toggle').trigger('click')
+  expect(wrapper.get('.preview-toggle').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.preview').text()).toContain('日志A')
+  expect(api.approveChangelog).not.toHaveBeenCalled()
+  expect(api.withdrawChangelog).not.toHaveBeenCalled()
 })

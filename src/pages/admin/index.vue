@@ -3,14 +3,12 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header admin-page-header">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">管理</span>
-            <span class="pill">工作台</span>
-          </div>
-          <h1>管理工作台<span class="small">平台工具</span></h1>
-          <p class="hero-sub">从这里进入当前账号已获授权的反馈处理、公共内容维护和平台治理工具。</p>
+          <router-link class="page-header-back" to="/user/profile">← 个人中心</router-link>
+          <h1 class="page-header-title">管理工作台</h1>
+          <p class="page-header-description">反馈处理、公共内容维护与平台治理。</p>
+          <p class="page-header-context">仅显示当前账号已获授权的管理工具。</p>
         </div>
       </header>
 
@@ -73,6 +71,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import '../../styles/page-header.css'
 import { ArrowUpRight, LoaderCircle, ShieldAlert } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
@@ -95,12 +94,8 @@ const toolGroups = computed(function () {
   min-height: 100vh; min-height: 100dvh;
 }
 
-.page-admin-workbench .hero {
-  --wm: '管';
-}
-
 .workbench-content {
-  padding-bottom: 16px;
+  padding: 12px 0 16px;
 }
 
 .workbench-state {
