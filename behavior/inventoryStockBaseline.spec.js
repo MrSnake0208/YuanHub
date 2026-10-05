@@ -472,3 +472,45 @@ it('历史页的页头录入入口返回清单，开启编辑但不提交库存'
   expect(wrapper.find('.stock-editor').exists()).toBe(true)
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })
+
+it('账号入口复用盘点草稿保护；取消仍编辑A，保存期间禁用切换', async () => {
+  const wrapper = render()
+  await enterStockEditor(wrapper)
+  await confirmation(wrapper).setValue(true)
+  dialog.confirm.mockResolvedValueOnce(false)
+  const context = wrapper.findComponent({ name: 'DataAccountContextBar' })
+  expect(await context.props('beforeSwitch')('acc-b')).toBe(false)
+  expect(activeAccount.id).toBe('acc-a'); expect(wrapper.find('.stock-editor').exists()).toBe(true)
+  const write = pending(); inventoryApi.importInventory.mockReturnValueOnce(write.promise)
+  await save(wrapper).trigger('click')
+  expect(context.props('switchDisabled')).toBe(true)
+  wrapper.unmount(); write.resolve({ accepted: 1 }); await flushPromises()
+})
+
+it('账号A选择文件后的迟到读取不能把报告填入B', async () => {
+  const readers = []
+  vi.stubGlobal('FileReader', class { constructor() { readers.push(this) } readAsText() {} })
+  const wrapper = render(); await flushPromises()
+  wrapper.vm.onFilePick({ target: { files: [new File(['A报告'], 'a.json')] } })
+  activeAccount.set('acc-b'); await flushPromises()
+  readers[0].result = 'A报告'; readers[0].onload()
+  expect(wrapper.vm.importText).toBe('')
+  expect(wrapper.vm.importError).toBe('')
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it.each(['success', 'failure'])('库存导出 %s 晚到不会在新账号下载或弹出旧错误', async outcome => {
+  const wrapper = render(); await flushPromises()
+  const oldExport = pending()
+  const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  inventoryApi.exportInventory.mockReturnValueOnce(oldExport.promise)
+  const operation = wrapper.vm.doExport()
+  expect(inventoryApi.exportInventory).toHaveBeenCalledTimes(1)
+  activeAccount.set('acc-b'); await flushPromises()
+  if (outcome === 'success') oldExport.resolve({ account_id: 'acc-a' })
+  else oldExport.reject(new Error('旧账号导出失败'))
+  await operation
+  expect(click).not.toHaveBeenCalled(); expect(alert).not.toHaveBeenCalled()
+  click.mockRestore(); alert.mockRestore()
+})

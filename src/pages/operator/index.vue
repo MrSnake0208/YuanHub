@@ -6,7 +6,8 @@
       <CompactToolHeader title="密探名册" description="管理当前账号的密探档案">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"
-            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
+            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch" :switch-disabled="accountSwitchBusy"
+            switch-disabled-reason="正在保存或导入，请等待完成后再切换账号。" />
         </template>
         <template #actions>
           <details class="tool-more">
@@ -3131,6 +3132,7 @@ const activeTab = usePersistedTab(
 const visitedTabs = ref(new Set(["catalog", activeTab.value]));
 watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
+let operatorAccountDataReady = false;
 let operatorPageDisposed = false;
 const manifestSearch = ref("");
 const currentSearch = ref("");
@@ -3380,6 +3382,28 @@ watch(
     currentContextSeq += 1;
     currentLoadSeq += 1;
     currentLoadedKey.value = "";
+    currentEntries.value = [];
+    quickEditorKey.value = "";
+    quickConfirmKey.value = "";
+    quickDrafts.value = {};
+    quickNotices.value = {};
+    cardPopoverKey.value = "";
+    cardGrowthDrafts.value = {};
+    cardCombatDrafts.value = {};
+    cardDraftBaselines.value = {};
+    growthPreviews.value = {};
+    growthPreviewRequestSequences.clear();
+    editing.value = false;
+    editingId.value = "";
+    editingOp.value = null;
+    editConflictDraft.value = null;
+    resetImportPreview();
+    importText.value = "";
+    importResult.value = null;
+    importError.value = "";
+    importing.value = false;
+    showImport.value = false;
+    showArchive.value = false;
     savingEdit.value = false;
     cardSubmitStates.value = {};
     cardSubmitTimers.forEach(clearTimeout);
@@ -3400,7 +3424,6 @@ watch(
     starLoadoutSaving.value = false;
     closeStarLoadout();
     starLoadoutTarget.value = null;
-    if (editing.value) closeEditor();
     starLoadoutError.value = "";
     starInventoryEntries.value = [];
     starLoadoutCurrent.value = {};
@@ -7892,6 +7915,26 @@ async function loadAccounts() {
   }
 }
 
+const accountSwitchBusy = computed(() => savingEdit.value || importing.value || starLoadoutSaving.value ||
+  batchStatusBusy.value || quickSavingIds.value.size > 0 || cardCombatSavingIds.value.size > 0 ||
+  growthExecuteBusyKeys.value.size > 0 || annotationBusyIds.value.size > 0 || favoriteBusyIds.value.size > 0);
+async function beforeAccountSwitch() {
+  if (accountSwitchBusy.value) return false;
+  const contextSeq = currentContextSeq;
+  if (editorDirty.value && !(await confirmEditorDiscard())) return false;
+  if (contextSeq !== currentContextSeq || accountSwitchBusy.value) return false;
+  const dirtyCards = currentEntries.value.some(entry => cardDraftBaselines.value[entry.id] && cardDraftBaselines.value[entry.id] !== cardDraftSnapshot(entry));
+  if (dirtyCards || starLoadoutIsDirty() || (importText.value.trim() && !importResult.value)) {
+    return dialog.confirm({ title: '放弃当前账号的未保存内容？', message: '切换账号会关闭当前草稿与导入预览。已保存的数据不受影响。', type: 'danger', confirmText: '放弃并切换', cancelText: '继续处理' });
+  }
+  return true;
+}
+watch([accountId, gameFilter], () => {
+  if (!operatorAccountDataReady || operatorPageDisposed) return;
+  void reloadCurrent();
+  void loadAgentFavorites();
+});
+
 // —— 当前养成 ——
 async function reloadCurrent(quiet) {
   if (!auth.isLoggedIn) {
@@ -8395,16 +8438,19 @@ async function previewV3Import() {
     resetImportPreview();
     return;
   }
+  const contextSeq = currentContextSeq;
   importing.value = true;
   resetImportPreview();
   try {
     const response = await previewOperatorImport(requestBody);
+    if (contextSeq !== currentContextSeq) return;
     importPreview.value = normalizeOperatorV3ImportResponse(response);
     importPreviewKey.value = JSON.stringify(requestBody);
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return;
     importError.value = humanErr(err, "v3 档案预览失败");
   } finally {
-    importing.value = false;
+    if (contextSeq === currentContextSeq) importing.value = false;
   }
 }
 
@@ -8427,6 +8473,7 @@ async function commitV3Import() {
     resetImportPreview();
     return;
   }
+  const contextSeq = currentContextSeq;
   importing.value = true;
   const targetAccount = accountId.value;
   const review = selectedScanReview.value;
@@ -8442,22 +8489,24 @@ async function commitV3Import() {
         await closeOperatorScanReview({ accountId: targetAccount, recordId: review.record_id, operatorId: review.operator_id });
         resolvedReview = true;
       } catch (closeError) {
-        if (targetAccount === accountId.value) importError.value = "档案已导入，但关闭提醒失败：" + humanErr(closeError, "请稍后重试");
+        if (contextSeq === currentContextSeq && targetAccount === accountId.value) importError.value = "档案已导入，但关闭提醒失败：" + humanErr(closeError, "请稍后重试");
       }
     }
-    if (targetAccount !== accountId.value) return;
+    if (contextSeq !== currentContextSeq || targetAccount !== accountId.value) return;
     importResult.value = Object.assign({ kind: "v3" }, response);
     resetImportPreview();
     await reloadCurrent(true);
+    if (contextSeq !== currentContextSeq) return;
     if (reviewingThisDocument) {
       if (resolvedReview) selectedScanReview.value = null;
       else if (!importError.value) importError.value = "本次修正尚未录入，请检查结果并重新预览";
       await loadScanReviews();
     }
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return;
     importError.value = humanErr(err, "v3 档案导入失败");
   } finally {
-    importing.value = false;
+    if (contextSeq === currentContextSeq) importing.value = false;
   }
 }
 
@@ -8559,17 +8608,20 @@ async function commitV2Import() {
     resetImportPreview();
     return;
   }
+  const contextSeq = currentContextSeq;
   importing.value = true;
   importResult.value = null;
   try {
     const res = await importOperator(summary.document);
+    if (contextSeq !== currentContextSeq) return;
     importResult.value = Object.assign({ kind: "v2" }, res || {});
     resetImportPreview();
     await reloadCurrent(true);
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return;
     importError.value = humanErr(err, "导入失败");
   } finally {
-    importing.value = false;
+    if (contextSeq === currentContextSeq) importing.value = false;
   }
 }
 
@@ -8577,8 +8629,10 @@ function onFilePick(ev) {
   const file = ev && ev.target && ev.target.files && ev.target.files[0];
   if (!file) return;
   selectedScanReview.value = null;
+  const contextSeq = currentContextSeq;
   const reader = new FileReader();
   reader.onload = function () {
+    if (contextSeq !== currentContextSeq) return;
     importText.value = String(reader.result || "");
     onImportTextInput();
   };
@@ -8668,6 +8722,7 @@ async function doExport() {
     await dialog.alert({ message: "请先创建并选择一个子账号" });
     return;
   }
+  const contextSeq = currentContextSeq;
   try {
     const opts = { version: 3 };
     if (exportAll.value && accounts.value.length > 1) {
@@ -8676,6 +8731,7 @@ async function doExport() {
       opts.accountId = accountId.value;
     }
     const data = await exportOperator(opts);
+    if (contextSeq !== currentContextSeq) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
@@ -8685,6 +8741,7 @@ async function doExport() {
     link.click();
     URL.revokeObjectURL(link.href);
   } catch (err) {
+    if (contextSeq !== currentContextSeq) return;
     await dialog.alert({
       title: "导出失败",
       message: humanErr(err, "导出失败"),
@@ -8726,6 +8783,7 @@ onMounted(async function () {
   window.addEventListener("resize", hideDiscTooltip);
   await Promise.all([loadCatalog(), loadAccounts(), loadStarLoadoutPresets()]);
   if (operatorPageDisposed) return;
+  operatorAccountDataReady = true;
   await Promise.all([reloadCurrent(), loadAgentFavorites()]);
   if (operatorPageDisposed) return;
   await loadScanReviews();

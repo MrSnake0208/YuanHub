@@ -6,15 +6,9 @@
     aria-label="当前数据账号"
   >
     <template v-if="compact">
-      <router-link class="context-selector"
-        :to="isLoggedIn ? manageTo : { path: '/login', query: { redirect: currentPath } }"
-        :aria-label="hasAccount ? '当前数据账号：' + resolvedGame + ' · ' + selectedAccount.name + '，切换或管理账号' : '当前数据账号：' + (loading ? '正在读取' : isLoggedIn ? '未选择游戏账号，选择或管理账号' : '未登录，前往登录')"
-        :title="hasAccount ? resolvedGame + ' · ' + selectedAccount.name : undefined">
-        <template v-if="loading"><span class="account-name">正在读取账号…</span></template>
-        <template v-else-if="hasAccount"><span class="selector-game" :class="resolvedGame === '如鸢' ? 'is-ruyuan' : 'is-daihao'">{{ resolvedGame }}</span><span aria-hidden="true">·</span><span class="account-name">{{ selectedAccount.name }}</span></template>
-        <span v-else class="account-name">{{ isLoggedIn ? '选择游戏账号' : '未登录' }}</span>
-        <ChevronDown :size="14" aria-hidden="true" />
-      </router-link>
+      <AccountSwitcher v-if="isLoggedIn" :accounts="accounts" :account-id="accountId" :game="game" :loading="loading"
+        :disabled="switchDisabled" :disabled-reason="switchDisabledReason" :before-switch="beforeSwitch" :manage-to="manageTo" />
+      <router-link v-else class="context-selector" :to="{ path: '/login', query: { redirect: currentPath } }">未登录</router-link>
       <small v-if="error" class="context-error" role="alert">{{ error }}</small>
       <slot name="actions" />
     </template>
@@ -25,18 +19,8 @@
         <span class="context-kicker">当前数据账号</span>
         <strong v-if="loading">正在读取游戏账号…</strong>
         <strong v-else-if="!isLoggedIn">未登录</strong>
-        <div
-          v-else-if="hasAccount"
-          class="context-identity"
-          :aria-label="'当前数据账号：' + resolvedGame + '，' + selectedAccount.name"
-        >
-          <span
-            class="game-tag"
-            :class="resolvedGame === '如鸢' ? 'is-ruyuan' : 'is-daihao'"
-          >{{ resolvedGame }}</span>
-          <strong class="account-name" :title="selectedAccount.name">{{ selectedAccount.name }}</strong>
-        </div>
-        <strong v-else>未选择游戏账号</strong>
+        <AccountSwitcher v-else :accounts="accounts" :account-id="accountId" :game="game" :loading="loading"
+          :disabled="switchDisabled" :disabled-reason="switchDisabledReason" :before-switch="beforeSwitch" :manage-to="manageTo" />
         <small v-if="!compact">
           <template v-if="loading">账号加载完成后会在这里显示数据归属。</template>
           <template v-else-if="!isLoggedIn">登录后会显示你的真实游戏账号与数据归属。</template>
@@ -71,10 +55,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronDown, Users } from '@lucide/vue'
-import { normalizeAccountGame } from '../store/activeAccount.js'
+import { Users } from '@lucide/vue'
+import AccountSwitcher from './AccountSwitcher.vue'
 
 const props = defineProps({
+  switchDisabled: Boolean,
+  switchDisabledReason: { type: String, default: '' },
+  beforeSwitch: Function,
   compact: { type: Boolean, default: false },
   accounts: { type: Array, default: function () { return [] } },
   accountId: { type: String, default: '' },
@@ -99,11 +86,6 @@ const selectedAccount = computed(function () {
 
 const hasAccount = computed(function () {
   return !!(props.isLoggedIn && selectedAccount.value)
-})
-
-const resolvedGame = computed(function () {
-  if (!selectedAccount.value) return normalizeAccountGame(props.game)
-  return normalizeAccountGame(selectedAccount.value.game || props.game)
 })
 
 const currentPath = computed(function () {
@@ -156,48 +138,6 @@ const currentPath = computed(function () {
 }
 .context-copy > strong {
   display: block;
-  overflow: hidden;
-  color: var(--ink);
-  font-family: var(--font-s);
-  font-size: 17px;
-  font-weight: 900;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.context-identity {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 9px;
-}
-.game-tag {
-  display: inline-flex;
-  min-height: 23px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 850;
-  line-height: 1;
-  letter-spacing: .035em;
-  white-space: nowrap;
-}
-.game-tag.is-daihao {
-  border-color: rgba(215, 137, 53, .28);
-  background: rgba(239, 210, 142, .24);
-  color: var(--accent-strong);
-}
-.game-tag.is-ruyuan {
-  border-color: rgba(91, 106, 140, .24);
-  background: rgba(91, 106, 140, .09);
-  color: var(--brand-blue);
-}
-.account-name {
-  min-width: 0;
   overflow: hidden;
   color: var(--ink);
   font-family: var(--font-s);
@@ -270,14 +210,6 @@ const currentPath = computed(function () {
   .context-copy > strong {
     white-space: normal;
   }
-  .context-identity {
-    align-items: flex-start;
-  }
-  .account-name {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-  }
   .context-action {
     width: 100%;
     min-height: 44px;
@@ -293,9 +225,6 @@ const currentPath = computed(function () {
 .context-selector::before { content: ''; position: absolute; inset: 7px 0; z-index: -1; border-radius: 6px; background: color-mix(in srgb, var(--cream) 75%, transparent); }
 .context-selector:hover { color: var(--tea); }
 .context-selector:hover::before { background: var(--cream); }
-.selector-game.is-ruyuan { color: var(--brand-blue); }
 .context-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.context-selector .selector-game, .context-selector svg { flex: none; white-space: nowrap; }
-.context-selector .account-name { max-width: 10em; font: inherit; color: inherit; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .is-compact .context-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; overflow-wrap: anywhere; }
 </style>

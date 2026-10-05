@@ -45,7 +45,7 @@ it('只读初始化，不会写入空档案；无账号给出创建入口', asyn
 it('备份入口位于账号栏，面板就近展开；收起保留输入，换账号关闭并清空', async () => {
   const wrapper = render({ DataAccountContextBar: false, RecruitmentExchange: false }); await flushPromises()
   const context = wrapper.get('.data-account-context-bar'), toggle = context.get('.archive-toggle'), exchange = wrapper.get('.exchange-card')
-  expect(context.get('.context-selector').attributes('aria-label')).toContain('切换或管理账号'); expect(context.find('select').exists()).toBe(false)
+  expect(context.get('.context-selector').attributes('aria-label')).toContain('打开账号切换器'); expect(context.find('select').exists()).toBe(false)
   expect(toggle.text()).toBe('备份与恢复'); expect(toggle.attributes('aria-expanded')).toBe('false')
   expect(toggle.attributes('aria-controls')).toBe(exchange.attributes('id')); expect(context.element.nextElementSibling).toBe(exchange.element); expect(exchange.isVisible()).toBe(false)
   await toggle.trigger('click')
@@ -236,4 +236,18 @@ it('空目录仍可导入并聚焦文件，SSE/游戏/账号删除和卸载继�
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '账号', game: '如鸢' }]); subscribeAccountEvents.mock.calls.at(-1)[0]({ event: 'account_stream_open', data: { account_id: 'acc-a' } }); await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(api.getRecruitmentCatalog.mock.calls.at(-1)[0]).toBe('如鸢')
   listAccounts.mockResolvedValue([{ id: 'acc-b', name: '小号', game: '代号鸢' }]); subscribeAccountEvents.mock.calls.at(-1)[0]({ event: 'account_deleted', data: { account_id: 'acc-a' } }); await flushPromises(); expect(activeAccount.id).toBe('acc-b'); const dispose = subscribeAccountEvents.mock.results.at(-1).value; wrapper.unmount(); expect(dispose).toHaveBeenCalledOnce()
   archives['acc-b'].pools = []; api.getRecruitmentCatalog.mockResolvedValue({ pools: [] }); const empty = render({ RecruitmentExchange: false }); await flushPromises(); expect(empty.text()).toContain('当前游戏暂无公共卡池'); await button(empty, '导入备份').trigger('click'); await flushPromises(); expect(document.activeElement).toBe(empty.get('input[type=file]').element)
+})
+
+it('切账号先检查具体卡池草稿，取消保留记录；提交期间禁用切换', async () => {
+  const { dialog } = await import('../src/utils/dialog.js')
+  const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValue(false)
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await editor(wrapper).get('.remaining-field input').setValue('12')
+  const context = wrapper.findComponent({ name: 'DataAccountContextBar' })
+  expect(await context.props('beforeSwitch')('acc-b')).toBe(false)
+  expect(confirm).toHaveBeenCalledTimes(1); expect(activeAccount.id).toBe('acc-a'); expect(editor(wrapper).exists()).toBe(true)
+  const write = deferred(); api.recruitmentCommand.mockReturnValueOnce(write.promise)
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(context.props('switchDisabled')).toBe(true)
+  wrapper.unmount(); write.resolve({ archive_revision: 4 }); await flushPromises()
 })

@@ -6,7 +6,8 @@
       <CompactToolHeader title="背包库存" description="查看材料与心纸，掌握库存余量">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
-            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
+            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" :before-switch="beforeAccountSwitch"
+            :switch-disabled="savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
           <details class="tool-more">
@@ -3898,6 +3899,16 @@ function entrySummary(entries, recordType) {
 }
 
 // ---- 导入档案 ----
+async function beforeAccountSwitch() {
+  if (savingStock.value || pendingStockDocument.value || importing.value || rewardImportBusy.value || recordsBusyId.value) return false;
+  const contextSeq = inventoryContextSeq;
+  if (!(await confirmStockDiscard()) || contextSeq !== inventoryContextSeq) return false;
+  if (rewardEntryWorkspace.value?.hasDraft?.() || (importText.value.trim() && !importResult.value)) {
+    return dialog.confirm({ title: '放弃当前账号的录入草稿？', message: '切换账号会关闭录入工作台与导入预览。已保存的数据不受影响。', type: 'danger', confirmText: '放弃并切换', cancelText: '继续处理' });
+  }
+  return true;
+}
+
 async function doImport() {
   if (!auth.isLoggedIn) {
     goLogin();
@@ -3919,23 +3930,28 @@ async function doImport() {
         : humanErr(err, "导入档案校验失败");
     return;
   }
+  const contextSeq = inventoryContextSeq;
   importing.value = true;
   importResult.value = null;
   try {
     const res = await importInventory(doc);
+    if (contextSeq !== inventoryContextSeq) return;
     importResult.value = res || {};
   } catch (err) {
+    if (contextSeq !== inventoryContextSeq) return;
     importError.value = humanErr(err, "导入失败");
   } finally {
-    importing.value = false;
+    if (contextSeq === inventoryContextSeq) importing.value = false;
   }
 }
 
 function onFilePick(ev) {
   const file = ev && ev.target && ev.target.files && ev.target.files[0];
   if (!file) return;
+  const contextSeq = inventoryContextSeq;
   const reader = new FileReader();
   reader.onload = function () {
+    if (contextSeq !== inventoryContextSeq) return;
     importText.value = String(reader.result || "");
     importError.value = "";
   };
@@ -4003,6 +4019,7 @@ async function doExport() {
     alert("请先创建并选择一个子账号");
     return;
   }
+  const contextSeq = inventoryContextSeq;
   try {
     const opts = {
       include: "current,rewards",
@@ -4015,6 +4032,7 @@ async function doExport() {
       opts.accountId = accountId.value;
     }
     const data = await exportInventory(opts);
+    if (contextSeq !== inventoryContextSeq) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
@@ -4024,6 +4042,7 @@ async function doExport() {
     link.click();
     URL.revokeObjectURL(link.href);
   } catch (err) {
+    if (contextSeq !== inventoryContextSeq) return;
     alert(humanErr(err, "导出失败"));
   }
 }
@@ -4081,6 +4100,11 @@ watch([accountId, () => auth.isLoggedIn, () => auth.userInfo?.id, agentGameFilte
   currentFullBaselineAt.value = null;
   currentEntries.value = [];
   stockSaveNotice.value = "";
+  importText.value = "";
+  importResult.value = null;
+  importError.value = "";
+  importing.value = false;
+  showArchive.value = false;
   inventoryEventRefreshPending = false;
   cancelStockEdit();
   clearAgentFavorites();

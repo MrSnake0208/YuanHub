@@ -355,6 +355,7 @@ function profIcon(prof) {
 function resetAgentFilters() { agentSearch.value = ''; agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
 function close() { if (!props.busy) emit('close') }
+defineExpose({ hasDraft: () => props.open && (remaining.value !== initialRemaining.value || !!activeRow.value || deletedIds.value.length > 0 || rows.value.some(row => !originals.has(row.event_id) || isChanged(row))) })
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse())
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'

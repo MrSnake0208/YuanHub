@@ -5,7 +5,7 @@
       <header class="page-header"><div class="wrap"><h1 class="page-header-title">招募档案</h1><p class="page-header-description">查看与维护当前账号的招募记录与进度。</p></div></header>
       <div v-if="!enabled" class="wrap"><p class="card">招募档案暂未开放。</p></div>
       <div v-else class="wrap recruitment-content">
-        <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" description="本页记录、进度与备份均归属此账号。">
+        <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。">
           <template #actions>
             <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起备份与恢复' : '备份与恢复' }}</button>
           </template>
@@ -27,7 +27,7 @@
       </div>
       <SiteFooter />
     </main>
-    <PoolEditor :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="loadPoolRecords(selectedPoolId)" />
+    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="loadPoolRecords(selectedPoolId)" />
   </div>
 </template>
 
@@ -43,6 +43,7 @@ import RecruitmentExchange from './RecruitmentExchange.vue'
 import RecruitmentTimeline from './RecruitmentTimeline.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { recruitmentPoolCatalog } from './rules.js'
+import { dialog } from '../../utils/dialog.js'
 import { useRecruitment } from './useRecruitment.js'
 
 const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
@@ -50,10 +51,17 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {} }
 const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false)
-const timeline = ref(null), exchangePanel = ref(null)
+const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const canRecordPool = pool => !!pool?.snapshot.catalog_pool_id && !!recruitmentPoolCatalog(pool, state.catalog || [])?.enabled && !state.catalogError
 watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = '' })
+async function beforeAccountSwitch() {
+  if (state.busy || exchangePanel.value?.isBusy?.()) return false;
+  if (poolEditor.value?.hasDraft?.() || exchangePanel.value?.hasDraft?.()) {
+    return dialog.confirm({ title: '放弃当前账号的招募草稿？', message: '切换账号会关闭卡池编辑与备份预览。已保存的记录不受影响。', type: 'danger', confirmText: '放弃并切换', cancelText: '继续处理' });
+  }
+  return true;
+}
 function openPool(poolId) {
   if (state.loading || state.busy || !state.archive?.pools.some(pool => pool.pool_id === poolId)) return
   timeline.value?.focusPool(poolId)

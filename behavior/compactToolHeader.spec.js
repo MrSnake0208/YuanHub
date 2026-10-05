@@ -1,7 +1,9 @@
-import { expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import CompactToolHeader from '../src/components/CompactToolHeader.vue'
 import DataAccountContextBar from '../src/components/DataAccountContextBar.vue'
+
+beforeEach(() => { window.matchMedia = vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) })
 
 vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/inventory' }) }))
 
@@ -34,15 +36,16 @@ it('紧凑账号区保留归属、错误和账号管理入口，默认账号条�
   }, global: { stubs: { RouterLink: RouterLinkStub } } })
   expect(wrapper.get('.account-name').text()).toBe('长账号名称')
   expect(wrapper.get('.context-selector').attributes('title')).toBe('代号鸢 · 长账号名称')
-  expect(wrapper.get('.context-selector').attributes('aria-label')).toContain('切换或管理账号')
+  expect(wrapper.get('.context-selector').attributes('aria-label')).toContain('打开账号切换器')
   expect(wrapper.text()).not.toContain('切换账号')
   expect(wrapper.find('.context-actions').exists()).toBe(false)
   expect(wrapper.get('[role="alert"]').text()).toBe('读取失败')
   expect(wrapper.text()).not.toContain('当前数据归属此账号')
-  expect(wrapper.getComponent(RouterLinkStub).props('to')).toBe('/user/profile#game-accounts')
+  await wrapper.get('.context-selector').trigger('click')
+  expect(wrapper.findAllComponents(RouterLinkStub).at(-1).props('to')).toBe('/user/profile#game-accounts')
   await wrapper.setProps({ compact: false })
   expect(wrapper.text()).toContain('当前数据归属此账号')
-  expect(wrapper.find('.context-selector').exists()).toBe(false)
+  expect(wrapper.find('.context-selector').exists()).toBe(true)
   expect(wrapper.get('.context-action').text()).toBe('管理游戏账号')
   await wrapper.setProps({ compact: true, isLoggedIn: false })
   expect(wrapper.text()).toContain('未登录')
@@ -52,7 +55,8 @@ it('紧凑账号区保留归属、错误和账号管理入口，默认账号条�
 it('compact 账号为空或读取中仍保留原管理目标与可读状态', async () => {
   const wrapper = mount(DataAccountContextBar, { props: { compact: true, isLoggedIn: true }, global: { stubs: { RouterLink: RouterLinkStub } } })
   expect(wrapper.get('.context-selector').text()).toBe('选择游戏账号')
-  expect(wrapper.getComponent(RouterLinkStub).props('to')).toBe('/user/profile#game-accounts')
+  await wrapper.get('.context-selector').trigger('click')
+  expect(wrapper.findAllComponents(RouterLinkStub).at(-1).props('to')).toBe('/user/profile#game-accounts')
   await wrapper.setProps({ loading: true })
   expect(wrapper.get('.context-selector').text()).toBe('正在读取账号…')
 })
