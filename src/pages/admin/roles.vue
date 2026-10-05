@@ -2,21 +2,16 @@
   <div class="page-admin-roles">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="crumb"><span class="pill fill">管理</span><span class="pill">角色</span></div>
-          <h1>管理员角色<span class="small">完整替换</span></h1>
-          <p class="hero-sub">管理平台管理员与超级管理员的实际角色绑定。</p>
-          <div class="hero-stats">
-            <div><div class="k">角色绑定</div><div class="v">{{ users.length }}<small>人</small></div></div>
-            <div><div class="k">超级管理员</div><div class="v">{{ superAdminCount }}<small>人</small></div></div>
-            <div><div class="k">未激活绑定</div><div class="v">{{ inactiveCount }}<small>人</small></div></div>
-          </div>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <h1 class="page-header-title">角色管理</h1>
+          <p class="page-header-description">管理平台管理员与超级管理员角色绑定。</p>
         </div>
       </header>
 
       <section class="wrap role-content">
+        <p v-if="!loading && !error" class="role-summary">当前绑定 {{ users.length }} 人 · 超级管理员 {{ superAdminCount }} 人 · 未激活 {{ inactiveCount }} 人</p>
         <div class="role-toolbar">
           <label class="search-box">
             <Search :size="17" aria-hidden="true" />
@@ -31,9 +26,9 @@
           </button>
         </div>
 
-        <div v-if="loading" class="state">正在加载角色绑定…</div>
-        <div v-else-if="error" class="state error" role="alert">{{ error }} <button type="button" @click="load">重试</button></div>
-        <div v-else class="role-table-wrap">
+        <div v-if="loading" class="state" role="status">正在加载角色绑定…</div>
+        <div v-else-if="error" class="state error" role="alert">{{ error }} <button class="command secondary" type="button" @click="load">重试</button></div>
+        <div v-else class="role-table-wrap" role="region" aria-label="角色绑定列表" tabindex="0">
           <table class="role-table">
             <thead><tr><th>用户</th><th>当前角色</th><th>状态</th><th>首次授予</th><th>最近修改</th><th><span class="sr-only">操作</span></th></tr></thead>
             <tbody>
@@ -74,6 +69,7 @@
                 <span><strong>{{ editor.userName || '未知用户' }}</strong><small>{{ editor.activated ? '已激活' : '未激活，只能清空现有角色' }}</small></span>
                 <code>{{ editor.userId }}</code>
               </div>
+              <p class="role-replace-note">保存会完整替换所选用户的角色；取消勾选将撤销对应角色，全部取消将清空全部平台角色。</p>
               <fieldset class="role-options">
                 <legend>实际存储的角色</legend>
                 <label v-for="role in ADMIN_ROLES" :key="role" :class="{ selected: editor.roles.includes(role) }">
@@ -99,7 +95,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Pencil, Plus, RefreshCw, Save, Search, X } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import AdminBackLink from '../../components/admin/AdminBackLink.vue'
+import '../../styles/page-header.css'
 import { listAdminRoleUsers, replaceAdminRoles } from '../../api/admin.js'
 import { searchFeedbackAccessUsers } from '../../api/user.js'
 import { auth } from '../../store/auth.js'
@@ -275,26 +271,32 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 
 <style scoped>
 .page-admin-roles { min-height: 100vh; min-height: 100dvh }
-.page-admin-roles .hero { --wm: '角' }
-.role-content { padding-bottom: 56px }
+.role-content { padding-top: 12px; padding-bottom: 56px }
+.role-summary { margin: 0 0 8px; color: var(--ink-60); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere }
+.role-replace-note { margin-top: 16px; color: var(--ink-60); font-size: 13px; line-height: 1.7 }
 .role-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-block: 1px solid var(--line) }
-.search-box { min-width: 260px; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60) }
+.search-box { min-width: 260px; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60) }
 .search-box input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit }
 .search-box.wide { width: 100%; margin-top: 6px }
 .count { margin-left: auto; color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
-.command,.icon-command { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
-.command { padding: 0 16px }
-.icon-command { width: 40px; padding: 0; background: var(--surface); color: var(--ink) }
+.command,.icon-command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
+.command { padding: 0 16px; white-space: nowrap }
+.command:focus-visible,.icon-command:focus-visible,.candidate:focus-visible,.role-options input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.search-box:focus-within { outline: 2px solid var(--accent); outline-offset: 3px }
+.icon-command { width: 44px; flex: none; padding: 0; background: var(--surface); color: var(--ink) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command:disabled,.icon-command:disabled { opacity: .5; cursor: default }
 .state { padding: 52px 0; color: var(--ink-60); text-align: center }
 .state.error,.editor-error { color: var(--rouge) }
-.role-table-wrap { overflow-x: auto }
+.role-table-wrap { position: relative; overflow-x: auto }
+.role-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.role-table .ops { position: sticky; right: 0; background: var(--surface) }
+.role-table th:last-child { position: sticky; right: 0; background: var(--tea) }
 .role-table { width: 100%; min-width: 920px; border-collapse: collapse; background: var(--surface) }
 .role-table th,.role-table td { padding: 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
 .role-table th { background: var(--tea); color: var(--cream); font-size: 12px }
-.role-table td strong,.role-table td code,.role-table td time { display: block }
+.role-table td strong,.role-table td code,.role-table td time { display: block; max-width: 240px; overflow-wrap: anywhere }
 .role-table td code,.role-table td time { margin-top: 4px; color: var(--ink-60); font-family: var(--font-d); font-size: 11px }
 .role-table .ops { width: 58px; text-align: right }
 .role-tag,.status-tag { display: inline-flex; margin: 0 5px 5px 0; padding: 3px 8px; border-radius: 6px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800 }

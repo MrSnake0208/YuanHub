@@ -2,28 +2,23 @@
   <div class="page-admin-audit">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="crumb"><span class="pill fill">管理</span><span class="pill">审计</span></div>
-          <h1>管理员审计<span class="small">只读记录</span></h1>
-          <p class="hero-sub">按时间倒序查看角色、反馈板块、反馈授权与内测配置的变更记录。</p>
-          <div class="hero-stats">
-            <div><div class="k">记录总数</div><div class="v">{{ total }}<small>条</small></div></div>
-            <div><div class="k">当前页</div><div class="v">{{ page }}<small>页</small></div></div>
-          </div>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <h1 class="page-header-title">审计记录</h1>
+          <p class="page-header-description">查看管理员角色、授权和管理操作的变更记录。</p>
         </div>
       </header>
 
       <section class="wrap audit-content">
         <div class="audit-toolbar">
-          <span>第 {{ page }} 页</span>
+          <span v-if="!loading && !error" class="audit-summary">第 {{ page }} / {{ totalPages }} 页 · 共 {{ total }} 条</span>
           <button class="icon-command" type="button" title="刷新审计记录" :disabled="loading" @click="load(page)"><RefreshCw :size="17" aria-hidden="true" /></button>
         </div>
 
-        <div v-if="loading" class="state">正在加载审计记录…</div>
-        <div v-else-if="error" class="state error" role="alert">{{ error }} <button type="button" @click="load(page)">重试</button></div>
-        <div v-else class="audit-table-wrap">
+        <div v-if="loading" class="state" role="status">正在加载审计记录…</div>
+        <div v-else-if="error" class="state error" role="alert">{{ error }} <button class="command secondary" type="button" @click="load(page)">重试</button></div>
+        <div v-else class="audit-table-wrap" role="region" aria-label="审计记录列表" tabindex="0">
           <table class="audit-table">
             <thead><tr><th>发生时间</th><th>动作</th><th>操作者</th><th>目标</th><th>变更前</th><th>变更后</th></tr></thead>
             <tbody>
@@ -56,7 +51,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronLeft, ChevronRight, RefreshCw } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import AdminBackLink from '../../components/admin/AdminBackLink.vue'
+import '../../styles/page-header.css'
 import { listAdminAuditLogs } from '../../api/admin.js'
 
 const PAGE_SIZE = 20
@@ -131,24 +126,27 @@ onMounted(function () { load(1) })
 
 <style scoped>
 .page-admin-audit { min-height: 100vh; min-height: 100dvh }
-.page-admin-audit .hero { --wm: '审' }
-.audit-content { padding-bottom: 56px }
-.audit-toolbar { min-height: 48px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-block: 1px solid var(--line); color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
-.icon-command { width: 38px; height: 38px; display: inline-grid; place-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer }
+.audit-content { padding-top: 12px; padding-bottom: 56px }
+.audit-toolbar { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-block: 1px solid var(--line); color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
+.icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer }
+.icon-command { flex: none; margin-left: auto }
+.command:focus-visible,.icon-command:focus-visible,.state button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.state button { min-height: 44px }
 .state { padding: 52px 0; color: var(--ink-60); text-align: center }
 .state.error { color: var(--rouge) }
 .audit-table-wrap { overflow-x: auto }
+.audit-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 .audit-table { width: 100%; min-width: 1050px; border-collapse: collapse; background: var(--surface) }
 .audit-table th,.audit-table td { padding: 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
 .audit-table th { background: var(--tea); color: var(--cream); font-size: 12px }
 .audit-table code,.audit-table time { display: block; max-width: 210px; color: var(--ink-60); font-family: var(--font-d); font-size: 11px; overflow-wrap: anywhere }
 .audit-table time { color: var(--ink); font-size: 12px }
 .action-tag { display: inline-flex; padding: 3px 8px; background: var(--yellow); border-radius: 6px; font-size: 11px; font-weight: 800 }
-.snapshot-line { display: block; max-width: 250px; margin-bottom: 4px; color: var(--ink-60); font-size: 12px; line-height: 1.5 }
+.snapshot-line { display: block; max-width: 250px; margin-bottom: 4px; color: var(--ink-60); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere }
 .empty-row { color: var(--ink-60); text-align: center !important }
 .pager { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 20px }
 .pager span { color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
-.command { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
+.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command:disabled,.icon-command:disabled { opacity: .5; cursor: default }
 </style>
