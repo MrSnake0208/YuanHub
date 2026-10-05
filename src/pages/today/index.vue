@@ -397,6 +397,7 @@ async function loadSummary(sequence) {
 }
 
 watch([accountId, accountGame], function () {
+  realSummary.value = { ...EMPTY_SUMMARY }
   if (!auth.isLoggedIn || !accounts.value.length) return
   const sequence = ++loadSequence
   loading.value = true
@@ -404,7 +405,7 @@ watch([accountId, accountGame], function () {
   loadSummary(sequence).finally(function () {
     if (sequence === loadSequence) loading.value = false
   })
-})
+}, { flush: 'sync' })
 
 onMounted(loadDashboard)
 </script>

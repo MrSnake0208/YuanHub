@@ -479,3 +479,13 @@ it('跨星阶选择确认迟到不修改新账号的勾选', async () => {
   await wrapper.findAll('.step')[0].trigger('click')
   expect(wrapper.get('.op-check').element.checked).toBe(true)
 })
+
+it('账号切换入口复用快捷录入草稿确认，取消不切账号', async () => {
+  const wrapper = render(); await flushPromises()
+  await wrapper.get('.op-check').setValue(true)
+  dialog.confirm.mockResolvedValueOnce(false)
+  const context = wrapper.findComponent({ name: 'DataAccountContextBar' })
+  expect(await context.props('beforeSwitch')('acc-b')).toBe(false)
+  expect(activeAccount.id).toBe('acc')
+  expect(importOperator).not.toHaveBeenCalled()
+})

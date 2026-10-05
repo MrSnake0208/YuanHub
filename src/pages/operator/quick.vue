@@ -16,6 +16,7 @@
               :is-logged-in="auth.isLoggedIn"
               :loading="accountsLoading"
               :error="accountError"
+              :before-switch="confirmQuickDiscard" :switch-disabled="busy" switch-disabled-reason="正在保存，请等待完成后再切换账号。"
             />
             <span class="quick-mode-context">当前模式：{{ supplementMode ? '快速补录' : '首次建档' }}</span>
           </div>
@@ -561,7 +562,7 @@ starSteps.forEach(function (s) {
 const draftBaselineByKey = reactive({});
 starSteps.forEach(s => { draftBaselineByKey[s.key] = quickDraftSignature([], null); });
 const quickDirty = computed(() => inactiveDraftDirty.value || starSteps.some(s => isStepDirty(s.key)));
-useUnsavedChanges(quickDirty, "快捷录入草稿");
+const confirmQuickDiscard = useUnsavedChanges(quickDirty, "快捷录入草稿");
 function draftSignature(key) {
   const signature = quickDraftSignature(checkedByKey[key], formByKey[key]);
   return checkedByKey[key]?.length && supplementMode.value

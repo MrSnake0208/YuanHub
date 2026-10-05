@@ -5,7 +5,8 @@
       <CompactToolHeader title="星石背包" description="整理星石，核对背包与养成计划">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
-            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
+            :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError"
+            :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy" switch-disabled-reason="星石工作区正在准备或保存，请等待完成后再切换账号。" />
         </template>
         <template #actions>
           <details class="tool-more">
@@ -26,7 +27,8 @@
       <section>
         <div class="wrap">
           <div class="tool-summary" aria-label="星石概览">
-            <span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span>
+            <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
+            <span v-else role="status">正在准备当前账号的星石数据…</span>
             <span v-if="activeTab === 'import'" class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
               :title="cloudSyncMessage">{{ cloudSyncMessage === '星石云端状态已保存' ? '✓ 已同步' : cloudSyncMessage }}</span>
@@ -122,8 +124,11 @@
             <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
           </div>
           </div>
-          <div id="product-root" ref="mountRoot" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
-          <p v-if="mountBusy && !productReady" class="yuanstar-mount-loading" role="status">正在加载星石工作区…</p>
+          <div id="product-root" ref="mountRoot" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
+            {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
+            <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
+          </p>
           <div v-if="mountError" class="yuanstar-mount-error" role="alert">
             星石工作区加载失败：{{ mountError }}
             <button type="button" :disabled="mountBusy" @click="mountProduct">重试加载</button>
@@ -197,6 +202,7 @@ const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
 const cloudRetryBusy = ref(false);
 const productReady = ref(false);
+const cloudWriteBusy = ref(false);
 const showArchive = ref(false);
 const showStarImport = ref(false);
 const starImportPreview = ref(null);
@@ -249,6 +255,7 @@ const captureHost = createStarCaptureHost({
 let handle = null;
 let unmounted = false;
 let mountedAccountId = "";
+let rejectedSwitchMessage = "";
 let pendingCapture = null;
 let captureQueueVersion = 0;
 let stopCaptureEvents = null;
@@ -298,6 +305,8 @@ const starExportScopeOptions = computed(function () {
 const starCloud = createStarCloudCoordinator({
   selectedHostAccount,
   onState: function (state) {
+    if (state.accountId && state.accountId !== accountId.value) return;
+    cloudWriteBusy.value = !!(state.replacing || state.writer?.saving || state.writer?.pending);
     const feedback = starCloudFeedback(state);
     cloudSyncMessage.value = feedback.message;
     cloudSyncError.value = feedback.error;
@@ -494,7 +503,7 @@ async function syncHostAccount() {
   const host = selectedHostAccount();
   return queueAccountSync(async function (isLatest) {
     const currentHandle = handle;
-    const isCurrent = () => isLatest() && !unmounted && currentHandle === handle;
+    const isCurrent = () => isLatest() && !unmounted && currentHandle === handle && (host?.accountId || "") === (selectedHostAccount()?.accountId || "");
     const previousAccountId = mountedAccountId;
     try {
       if (!isCurrent()) return false;
@@ -509,15 +518,16 @@ async function syncHostAccount() {
       const entered = await starCloud.enter(currentHandle);
       if (!isCurrent()) return false;
       if (host && !entered) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
-      if (host) accountError.value = "";
+      if (host) { accountError.value = rejectedSwitchMessage; rejectedSwitchMessage = ""; }
       productReady.value = true;
       currentHandle.setActiveTab(activeTab.value);
       if (pendingCapture) void importPendingCapture();
       return true;
     } catch (error) {
       if (!isCurrent()) return false;
+      rejectedSwitchMessage = message(error, "星石账号切换失败");
       if (mountedAccountId) accountId.value = mountedAccountId;
-      accountError.value = message(error, "星石账号切换失败");
+      accountError.value = rejectedSwitchMessage;
       throw error;
     }
   });
@@ -672,9 +682,12 @@ function setTab(tab) {
   if (productReady.value) handle?.setActiveTab(tab);
 }
 watch([accountId, accountGame], () => {
+  productReady.value = false;
+  resetStarImportState();
+  showArchive.value = false;
   discardForeignPendingCapture();
   if (handle && !unmounted) void syncHostAccount().catch(() => {});
-});
+}, { flush: "sync" });
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
   await loadAccounts();

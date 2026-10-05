@@ -193,6 +193,7 @@ import RewardDateTimePicker from './RewardDateTimePicker.vue'
 const props = defineProps({ accountId: { type: String, default: '' }, accountName: { type: String, default: '当前账号' }, game: { type: String, default: '' }, latestInventoryAt: { type: String, default: '' }, disabled: Boolean })
 const emit = defineEmits(['imported', 'busy'])
 const mode = ref('')
+let switchDraftBaseline = ''
 const entities = ref([])
 const catalogLoading = ref(false)
 const busy = ref(false)
@@ -240,6 +241,8 @@ function freshManual() {
 function freshTrainingSelection() { return { key: ++trainingSelectionKey, groupId: '', level: '', runs: '1' } }
 function freshTraining() { return { mode: 'materials', selections: [freshTrainingSelection()], replacePrompt: false } }
 const manual = ref(freshManual())
+switchDraftBaseline = JSON.stringify(manual.value)
+function resetManual() { manual.value = freshManual(); switchDraftBaseline = JSON.stringify(manual.value) }
 const trainingUnavailable = computed(() => trainingRewardUnavailableReason(props.game))
 const commonTrainingLevels = ref([...DEFAULT_TRAINING_REWARD_LEVELS])
 const showAllTrainingLevels = ref(false)
@@ -366,7 +369,7 @@ watch(() => [props.accountId, props.game], () => {
   reportText.value = ''
   fileName.value = ''
   showPaste.value = false
-  manual.value = freshManual()
+  resetManual()
   search.value = ''; rarity.value = 0; agentProf.value = ''
   clearPreview()
 })
@@ -397,17 +400,17 @@ async function open(nextMode) {
   if (props.disabled || locked.value) return
   if (!mode.value) restoreFocusEl = nextMode === 'manual' ? manualButton.value : reportButton.value
   if (mode.value !== nextMode) {
-    if (mode.value === 'manual' && result.value) manual.value = freshManual()
+    if (mode.value === 'manual' && result.value) resetManual()
     fileReadSeq++; readingFile.value = false; clearPreview()
   }
   mode.value = nextMode
   // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
   await loadCatalog()
 }
-defineExpose({ openReport: () => open('report') })
+defineExpose({ openReport: () => open('report'), hasDraft: () => !result.value && (JSON.stringify(manual.value) !== switchDraftBaseline || !!reportText.value.trim() || readingFile.value) })
 function close() {
   if (locked.value) return
-  if (mode.value === 'manual' && result.value) manual.value = freshManual()
+  if (mode.value === 'manual' && result.value) resetManual()
   fileReadSeq++; readingFile.value = false
   mode.value = ''
 }
@@ -626,7 +629,7 @@ async function submit() {
     }
   } finally { busy.value = false }
 }
-function startNext() { clearPreview(); manual.value = freshManual(); reportText.value = ''; fileName.value = ''; search.value = ''; rarity.value = 0; agentProf.value = '' }
+function startNext() { clearPreview(); resetManual(); reportText.value = ''; fileName.value = ''; search.value = ''; rarity.value = 0; agentProf.value = '' }
 function warningText(warning) { return typeof warning === 'string' ? warning : warning?.message || JSON.stringify(warning) }
 function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }

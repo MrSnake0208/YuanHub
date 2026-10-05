@@ -322,3 +322,16 @@ it('权限加载后显示摘要，撤销时清理计时器并丢弃迟到响应'
   window.dispatchEvent(new Event('pageshow'))
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
 })
+
+it('今日原地换账号同步清空摘要，不让A数量冒充B', async () => {
+  signIn(); activeAccount.set('acc-a')
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.vm.realSummary.operatorCount).toBe(1)
+  const readB = deferred(); getOperatorCurrent.mockReturnValueOnce(readB.promise)
+  activeAccount.set('acc-b')
+  expect(wrapper.vm.realSummary.operatorCount).toBe(0)
+  expect(wrapper.vm.loading).toBe(true)
+  readB.resolve({ entries: {} }); await flushPromises()
+  expect(wrapper.vm.realSummary.operatorCount).toBe(0)
+  expect(wrapper.get('.data-account-context-bar').text()).toContain('小号')
+})

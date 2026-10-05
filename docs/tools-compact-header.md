@@ -8,7 +8,7 @@
 
 标题为 28–32px 宋体、茶棕、高字重，不使用 Hero。内容容器不足 860px 时，标题和 Utility 同行，账号独立下一行；宽容器为标题、账号和 Utility 同行。768px 保持稳定两层，不逐个控件换行。
 
-`DataAccountContextBar` 的 compact 模式使用轻奶油底色与截断名称。账号入口仍复用原账号管理路由、登录 redirect、错误和归属逻辑，完整名称保留在 title / aria-label；非 compact 模式不变。账号、帮助、更多保留 44px 命中区域，视觉不必形成 44px 高的实体按钮。
+`DataAccountContextBar` 的 compact 模式使用轻奶油底色与截断名称。登录后账号入口展开共享 `AccountSwitcher`，直接切换现有 `activeAccount` 并留在当前路由；非 compact 账号条也复用相同选择逻辑。未登录仍使用原登录 redirect，错误与数据归属保持可见，完整名称保留在 title / aria-label。账号、帮助、更多保留 44px 命中区域，视觉不必形成 44px 高的实体按钮。
 
 帮助默认收起；更多用于数据交换、低频设置与方案保存。更多操作选中后收起，并先把焦点还给触发入口，供原弹窗恢复焦点。
 
@@ -42,3 +42,21 @@ npm run test:behavior -- behavior/compactToolHeader.spec.js behavior/operatorEnt
 ```
 
 真实账号另在 390 / 768 / 1440px 补验账号管理、录入、星石导入和同步；账房在 1180 / 1440px 补验清单与方案。无需默认运行完整 CI 或无关后端检查。
+
+## 游戏账号切换（2026-10-05）
+
+`DataAccountContextBar` 展示上下文并接入 `AccountSwitcher`；`GameAccountManager` 继续只在个人中心负责账号 CRUD、所属游戏与 ID。Switcher 按游戏分组，整行选择；当前项显示勾选和“当前”。超过 8 个账号才出现搜索，不建立最近使用存储。底部的新建和管理都进入 `/user/profile#game-accounts`；不暴露删除/改名，也不新增来源返回协议。
+
+768px 及以上使用入口旁的轻浮层；更窄时使用底部 Sheet，列表独立滚动、44px 行命中区域、Safe Area 和 VisualViewport 软键盘避让。复用 `useModalFocus` 处理焦点、Tab、Escape 和关闭后的恢复；打开期间的断点变化关闭浮层并清理监听与滚动锁。
+
+选择前，页面通过 `beforeSwitch` 检查真实草稿，使用已有草稿确认或针对当前草稿的放弃提示。重要保存、盘点未确认结果、奖励入账锁定、招募写入期间禁用选择，显示原因。确认返回后再核对上下文代次/用户/目标账号，过期确认不改变全局状态；不提示“切换成功”。
+
+密探同步清空主数据、编辑器/卡片/导入预览，并自动读取新账号；读请求及导入/导出结果以账号代次失效，文件读取也绑定上下文；切换后不下载旧导出或弹出旧错误。库存沿用同步清空与读请求保护，复用盘点草稿检查及奖励工作台锁；招募沿用 composable 的同步 reset/请求失效，关闭编辑器/备份并保护其草稿。快捷录入复用现有草稿确认；今日一览同步清空账号摘要再读取。星石沿用最新串行同步与本地草稿 flush，准备期间隐藏旧嵌入数据及数量；OCR 进行中仍由嵌入层拒绝切换、保留原账号与解释。不修改生成的嵌入产物、账号模型、持久化或权限。
+
+本次风险为 L3（共享账号上下文与异步隔离）。Agent 仅执行受影响 SFC 的编译与 diff 自检，行为回归和真实浏览器几何由用户/CI 执行：
+
+```sh
+npm run test:behavior -- behavior/accountSwitcher.spec.js behavior/activeAccount.spec.js behavior/compactToolHeader.spec.js behavior/operatorOddityCompletion.spec.js behavior/inventoryStockBaseline.spec.js behavior/rewardEntryWorkspace.spec.js behavior/starRecoveryUx.spec.js behavior/recruitmentPage.spec.js behavior/recruitmentExchange.spec.js behavior/operatorQuickFlow.spec.js behavior/todayActivitySummary.spec.js
+```
+
+浏览器补验 320 / 390 / 430 / 768 / 1024 / 1440px 与 767/768px 临界；手机横屏、Safe Area、搜索键盘、长名称、焦点/Escape/恢复、真实账号 A→B→A、OCR 拒绝及数据写入期间切换。静态编译或 jsdom 不证明这些浏览器结果。

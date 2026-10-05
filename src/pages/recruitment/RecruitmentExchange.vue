@@ -48,7 +48,7 @@ async function openImport() {
   await nextTick()
   fileInput.value?.focus()
 }
-defineExpose({ openImport })
+defineExpose({ openImport, hasDraft: () => !!documentData.value || !!submittedIntent.value, isBusy: () => committing.value || loading.value })
 const visibleItems = computed(() => preview.value?.items.slice(previewPage.value * 50, (previewPage.value + 1) * 50) || [])
 const itemNames = computed(() => {
   const names = new Map(), document = documentData.value
