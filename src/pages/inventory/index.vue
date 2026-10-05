@@ -3,14 +3,10 @@
     <IslandSidebar />
 
     <main id="main-content" class="inventory-main">
-      <CompactToolHeader title="背包库存">
+      <CompactToolHeader title="背包库存" description="查看材料与心纸，掌握库存余量">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
-        </template>
-        <template #primary>
-          <button type="button" class="btn primary inventory-entry" :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext || editingStock"
-            @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />录入库存</button>
         </template>
         <template #actions>
           <details class="tool-more">
@@ -19,6 +15,10 @@
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" @click="toggleInventoryArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
               </button>
+              <div class="tool-summary" aria-label="库存目录信息">
+                <span>道具 <b>{{ itemCatalogCount }}</b> 种</span><span>心纸 <b>{{ agentGameCatalogCount }}</b> 种</span>
+                <span>目录更新 <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></span>
+              </div>
             </div>
           </details>
         </template>
@@ -29,12 +29,20 @@
 
       <section>
         <div class="wrap">
-          <div class="tool-summary" aria-label="库存概览">
-            <span>最近完整盘点 <time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt" :title="fmtTime(currentFullBaselineAt)">{{ fmtTime(currentFullBaselineAt).split(' ')[0] }}</time><template v-else-if="!auth.isLoggedIn">登录后查看</template><template v-else-if="!accountId">请选择账号</template><template v-else>{{ loading ? '读取中…' : error ? '读取失败' : '暂无记录' }}</template></span>
-            <span>道具 <b>{{ itemCatalogCount }}</b> 种</span>
-            <span>心纸 <b>{{ agentGameCatalogCount }}</b> 种</span>
-            <span class="tool-updated">目录更新 <time :datetime="CATALOG_VERSION">{{ CATALOG_VERSION }}</time></span>
+          <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
+            <div><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
+            <button v-if="inventoryAccountReady" type="button" class="btn primary inventory-entry" :disabled="loading || !!error || currentLoadedContext !== stockContext || editingStock"
+              @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
           </div>
+          <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)">
+            <router-link v-if="!auth.isLoggedIn" class="btn primary" :to="{ path: '/login', query: { redirect: '/inventory' } }">登录</router-link>
+            <button v-else-if="accountError || error" class="btn primary" type="button" @click="accountError ? loadAccounts() : reloadCurrent()">重试</button>
+            <router-link v-else-if="!inventoryAccountReady && !accountsLoading" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>
+            <template v-else-if="inventorySetupNeeded">
+              <button class="btn primary inventory-entry" type="button" @click="openStockEntry">开始首次盘点</button>
+              <button class="link" type="button" @click="inventoryBrowseCatalog = true; setTab('manifest')">先查看道具与心纸目录</button>
+            </template>
+          </ToolTaskPrompt>
 
           <ArchiveExchangePanel
             v-if="showArchive && !editingStock"
@@ -52,6 +60,7 @@
 
           <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
           <div
+            v-show="!inventoryPromptTitle || inventoryBrowseCatalog || editingStock"
             class="inventory-tabs tool-workspace-tabs"
             data-tour="inventory-workspace"
             role="tablist"
@@ -153,7 +162,7 @@
 
           <!-- 追踪目录（YuanHub 当前支持的追踪范围，登录后叠加云端库存） -->
           <div
-            v-show="activeTab === 'manifest'"
+            v-show="activeTab === 'manifest' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)"
             ref="manifestPanel"
             class="panel"
           >
@@ -980,7 +989,7 @@
 
           <!-- 时段获得量 -->
           <div
-            v-show="activeTab === 'acquired'"
+            v-show="activeTab === 'acquired' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)"
             class="panel acquired-panel"
             :aria-busy="acquiredLoading"
           >
@@ -1559,7 +1568,7 @@
           </div>
 
           <!-- 导入记录 -->
-          <div v-show="activeTab === 'records'" class="panel">
+          <div v-show="activeTab === 'records' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)" class="panel">
             <section class="records-overview" aria-labelledby="records-overview-title">
               <div class="records-overview-copy">
                 <span class="records-kicker">库存追踪 · 操作历史</span>
@@ -1769,6 +1778,7 @@ import {
   X,
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
+import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
@@ -2034,6 +2044,19 @@ const accountsLoading = ref(false);
 const accountError = ref("");
 const inventoryAccountReady = computed(() => auth.isLoggedIn && !!accountId.value &&
   !accountsLoading.value && !accountError.value && accounts.value.some(account => account.id === accountId.value));
+const inventoryBrowseCatalog = ref(false);
+const inventorySetupNeeded = computed(() => inventoryAccountReady.value && !loading.value && !error.value &&
+  currentLoadedContext.value === stockContext.value && !currentFullBaselineAt.value && !currentEntries.value.length);
+const inventoryPromptTitle = computed(() => {
+  if (!auth.isLoggedIn) return '登录后管理库存';
+  if (accountsLoading.value) return '正在读取游戏账号';
+  if (accountError.value || error.value) return '库存数据读取失败';
+  if (!inventoryAccountReady.value) return '请选择游戏账号';
+  if (inventorySetupNeeded.value) return entityType.value === 'agent' ? '尚未建立心纸库存' : '尚未建立库存';
+  return '';
+});
+const inventoryPromptDescription = computed(() => accountError.value || error.value ||
+  (inventorySetupNeeded.value ? '完成第一次盘点后，即可查看材料余额、养成消耗和库存变化。' : '当前账号的材料与心纸库存会保存在对应游戏账号下。'));
 const stockContext = computed(function () {
   return JSON.stringify([auth.isLoggedIn, auth.userInfo?.id || "", accountId.value, entityType.value, agentGameFilter.value]);
 });
@@ -8331,6 +8354,12 @@ onBeforeUnmount(function () {
 .inventory-tabs.tool-workspace-tabs { position: static; flex-direction: row; }
 .inventory-tabs.tool-workspace-tabs button { flex-direction: row; }
 .inventory-tabs.tool-workspace-tabs button svg { display: none; }
+.inventory-freshness { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.inventory-freshness > div { display: grid; gap: 4px; color: var(--tea); font: 500 13px/1.5 var(--font-b); min-width: 0; }
+.freshness-label { color: var(--ink-60); font-size: 12px; }
+.inventory-freshness time { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
+.inventory-entry { min-height: 44px; flex: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.inventory-setup { margin-top: 8px; }
 .manifest-toolbar { position: static; display: flex; margin-top: 0; padding: 0; gap: 8px 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .manifest-toolbar .manifest-type-switch { position: static; width: fit-content; margin: 0; padding: 0; gap: 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .manifest-type-switch > button { flex: none; min-height: 44px; padding: 8px 12px; font-size: 13px; border-radius: 8px; }

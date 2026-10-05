@@ -3,13 +3,10 @@
     <IslandSidebar />
 
     <main class="operator-main">
-      <CompactToolHeader title="密探名册">
+      <CompactToolHeader title="密探名册" description="管理当前账号的密探档案">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
-        </template>
-        <template #primary>
-          <router-link class="btn primary" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="showImport = false">录入密探</router-link>
         </template>
         <template #actions>
           <details class="tool-more">
@@ -49,19 +46,20 @@
           </section>
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
-          <section v-if="operatorEntryState" class="operator-entry-guide" aria-label="密探录入引导"
-            :role="operatorEntryState.endsWith('error') ? 'alert' : 'status'">
-            <p>{{ operatorEntryMessage }}</p>
-            <router-link v-if="operatorEntryState === 'logged-out'" class="act-btn" :to="{ path: '/login', query: { redirect: '/operator' } }">登录后录入</router-link>
-            <router-link v-else-if="operatorEntryState === 'no-account'" class="act-btn" to="/user/profile#game-accounts">创建或选择游戏账号</router-link>
+          <ToolTaskPrompt v-if="operatorEntryState" class="operator-entry-guide" :title="operatorEntryTitle"
+            :description="operatorEntryMessage" :error="operatorEntryState.endsWith('error')">
+            <router-link v-if="operatorEntryState === 'logged-out'" class="btn primary" :to="{ path: '/login', query: { redirect: '/operator' } }">登录</router-link>
+            <router-link v-else-if="operatorEntryState === 'no-account'" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>
             <template v-else-if="operatorEntryState === 'empty' || operatorEntryState === 'unowned'">
-              <router-link class="act-btn" :to="quickHref">首次建档</router-link>
-              <router-link class="act-btn ghost" :to="quickSupplementHref">快速补录</router-link>
-              <button class="act-btn ghost" type="button" @click="focusCatalogEntry">补录一位密探</button>
+              <router-link class="btn primary" :to="quickHref">开始录入密探</router-link>
+              <router-link class="link" :to="quickSupplementHref">快速补录</router-link>
+              <button class="link" type="button" @click="focusCatalogEntry">从图鉴补录一位密探</button>
             </template>
-            <button v-else-if="operatorEntryState.endsWith('error')" class="act-btn ghost" type="button" :disabled="accountsLoading || loading" @click="retryEntryData">重试加载</button>
-          </section>
+            <button v-else-if="operatorEntryState.endsWith('error')" class="btn primary" type="button" :disabled="accountsLoading || loading" @click="retryEntryData">重试</button>
+            <button v-if="['logged-out', 'no-account'].includes(operatorEntryState)" class="link" type="button" @click="focusCatalogEntry">先浏览密探图鉴</button>
+          </ToolTaskPrompt>
           <div
+            v-show="!operatorEntryState || catalogEntryExpanded"
             class="operator-tabs tool-workspace-tabs"
             role="tablist"
             aria-label="密探工作区"
@@ -426,7 +424,7 @@
 
           <!-- 图鉴（全量目录：默认全部显示，登录后叠加云端养成） -->
           <div
-            v-show="activeTab === 'catalog'"
+            v-show="activeTab === 'catalog' && (!operatorEntryState || catalogEntryExpanded)"
             class="panel"
             :class="{ 'is-active': activeTab === 'catalog' }"
           >
@@ -441,6 +439,7 @@
                 aria-label="搜索密探名称、别名或 ID"
                 placeholder="搜索名称 / 别名 / ID"
               />
+              <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="showImport = false">＋ 录入密探</router-link>
               <div class="mf-filter" role="group" aria-label="招募状态">
                 <button
                   :aria-pressed="manifestFilter === 'all'"
@@ -586,9 +585,9 @@
                   favoriteError
                 }}</span>
               </div>
-              <div v-if="manifestEntries.length === 0" class="state slim">
-                没有匹配{{ filterSuffix }}的密探
-              </div>
+              <ToolTaskPrompt v-if="manifestEntries.length === 0" title="没有符合条件的密探" :description="'没有匹配' + filterSuffix + '的密探，试试其他名称或清除筛选。'">
+                <button type="button" class="btn ghost" @click="focusCatalogEntry">清除筛选</button>
+              </ToolTaskPrompt>
               <ul v-else class="slot-grid">
                 <li
                   v-for="e in manifestEntries"
@@ -750,7 +749,7 @@
           <!-- 当前养成 -->
           <div
             v-if="visitedTabs.has('current')"
-            v-show="activeTab === 'current'"
+            v-show="activeTab === 'current' && (!operatorEntryState || catalogEntryExpanded)"
             class="panel"
             :class="{ 'is-active': activeTab === 'current' }"
           >
@@ -897,6 +896,7 @@
               @reset="resetCurrentFilters"
             >
               <template #primary-tool>
+                <router-link class="btn primary" :to="quickSupplementHref" @click="showImport = false">＋ 录入密探</router-link>
                 <button
                   class="current-favorite-sort"
                   :class="{ on: favoriteFirst }"
@@ -2263,7 +2263,7 @@
 
           <div
             v-if="growthTrackingEnabled && visitedTabs.has('tracking')"
-            v-show="activeTab === 'tracking'"
+            v-show="activeTab === 'tracking' && (!operatorEntryState || catalogEntryExpanded)"
             class="panel"
             :class="{ 'is-active': activeTab === 'tracking' }"
           >
@@ -2977,6 +2977,7 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
+import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";
 import OperatorFilterDossier from "../../components/operator/OperatorFilterDossier.vue";
@@ -4604,6 +4605,17 @@ const operatorEntryState = computed(() => {
   if (!ownedCurrentEntries.value.length) return 'unowned';
   return '';
 });
+const catalogEntryExpanded = ref(false);
+const operatorEntryTitle = computed(() => ({
+  'logged-out': '登录后管理密探',
+  'accounts-loading': '正在读取游戏账号',
+  'accounts-error': '账号读取失败',
+  'no-account': '请选择游戏账号',
+  loading: '正在读取密探档案',
+  'data-error': '密探数据读取失败',
+  empty: '还没有密探档案',
+  unowned: '还没有已招募的密探',
+})[operatorEntryState.value] || '密探档案');
 const operatorEntryMessage = computed(() => ({
   'logged-out': '登录后可维护自己的密探档案；现在仍可浏览图鉴。',
   'accounts-loading': '正在读取游戏账号…',
@@ -4611,11 +4623,12 @@ const operatorEntryMessage = computed(() => ({
   'no-account': '请先创建并选择游戏账号，再录入密探。',
   loading: '正在读取当前账号的养成档案…',
   'data-error': '养成档案读取失败：' + error.value,
-  empty: '当前账号还没有密探档案，可以首次建档，也可以只补录一位密探。',
+  empty: '录入自己已经拥有的密探，即可管理养成、命盘、星石与资源规划。',
   unowned: '当前档案暂无可展示的已招募密探，可从图鉴选择密探并设置星阶。',
 })[operatorEntryState.value] || '');
 
 async function focusCatalogEntry() {
+  catalogEntryExpanded.value = true;
   await setTab('catalog');
   manifestSearch.value = "";
   manifestFilter.value = "all";
@@ -8745,9 +8758,6 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
-.operator-entry-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.operator-entry-guide p { flex: 1 1 100%; margin: 0; overflow-wrap: anywhere; }
-.operator-entry-guide .act-btn { min-height: 44px; white-space: normal; }
 .catalog-version-value { width: 14ch; max-width: 100%; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; text-overflow: ellipsis; }
 .catalog-version-value:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .slot-oddity-completion,
@@ -15453,20 +15463,21 @@ onBeforeUnmount(function () {
 .page-operator .operator-tabs.tool-workspace-tabs { display: flex; }
 .operator-tabs.tool-workspace-tabs .operator-tab-button { display: inline-flex; }
 .operator-mobile-tabs { display: none; }
-.operator-entry-guide { margin-block: 8px; padding: 8px 0; border: 0; background: transparent; }
 .panel:has(> .catalog-tools) { margin-top: 12px; }
-.catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: start; margin-top: 0; }
+.catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search search' 'entry more' 'filter filter'; gap: 4px 8px; align-items: center; margin-top: 0; }
 .catalog-tools .manifest-bar { display: contents; }
-.catalog-tools .mf-search { grid-column: 1 / -1; width: 100%; min-width: 0; min-height: 44px; background: var(--surface); }
+.catalog-tools .mf-search { grid-area: search; width: 100%; min-width: 0; min-height: 44px; background: var(--surface); }
+.catalog-entry { grid-area: entry; justify-self: start; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; text-decoration: none; }
+.catalog-tools .manifest-bar > .mf-filter { grid-area: filter; }
 .catalog-tools .mf-filter { min-height: 44px; align-items: center; width: fit-content; max-width: 100%; padding: 0; background: transparent; }
 .catalog-tools .mf-filter button { min-height: 44px; min-width: 44px; padding-inline: 12px; border-radius: 8px; }
 .catalog-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 40%, var(--cream)); color: var(--tea); box-shadow: none; }
-.catalog-more-filters { min-width: 0; margin: 0; }
-.catalog-more-filters > summary { width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border: 0; color: var(--ink-60); cursor: pointer; font-size: 13px; list-style: none; white-space: nowrap; }
+.catalog-more-filters { display: contents; }
+.catalog-more-filters > summary { grid-area: more; justify-self: end; width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border: 0; color: var(--ink-60); cursor: pointer; font-size: 13px; list-style: none; white-space: nowrap; }
 .catalog-more-filters > summary::-webkit-details-marker { display: none; }
 .catalog-more-filters > summary::after { content: '+'; margin-left: 4px; }
 .catalog-more-filters[open] > summary::after { content: '−'; }
-.catalog-more-filters[open] { grid-column: 1 / -1; }
+.catalog-more-filters > :not(summary) { grid-column: 1 / -1; }
 .catalog-more-filters > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .catalog-more-filters .prof-filter { margin-top: 4px; padding: 8px 0; border: 0; background: transparent; }
 .current-workbench-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
@@ -15477,8 +15488,8 @@ onBeforeUnmount(function () {
 .catalog-version-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink-60); font-size: 12px; }
 .catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
 @media (min-width: 768px) {
-  .catalog-tools { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 12px; }
-  .catalog-tools .mf-search { grid-column: auto; }
+  .catalog-tools { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search entry' 'filter more'; gap: 4px 16px; }
+  .catalog-tools:not(:has(.catalog-entry)) { grid-template-areas: 'search search' 'filter more'; }
 }
 @media (max-width: 640px) {
   .panel > .catalog-tools ~ .backpack .slot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; }

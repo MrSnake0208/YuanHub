@@ -5,9 +5,9 @@ import DataAccountContextBar from '../src/components/DataAccountContextBar.vue'
 
 vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/inventory' }) }))
 
-it('帮助默认收起，可往返展开且不影响账号和主要操作；重新进入默认收起', async () => {
+it('页头只承载身份、账号和 Utility，帮助可往返展开；不要求主操作', async () => {
   const options = { props: { title: '背包库存', description: '清点当前账号库存' }, slots: {
-    account: '<span>账号 A</span>', primary: '<button>录入库存</button>', actions: '<details><summary>更多</summary></details>', help: '<p>库存使用说明</p>',
+    account: '<span>账号 A</span>', actions: '<details><summary>更多</summary></details>', help: '<p>库存使用说明</p>',
   } }
   const wrapper = mount(CompactToolHeader, options)
   expect(wrapper.get('h1').text()).toBe('背包库存')
@@ -20,7 +20,7 @@ it('帮助默认收起，可往返展开且不影响账号和主要操作；重�
   await trigger.trigger('click')
   expect(trigger.attributes('aria-expanded')).toBe('false')
   expect(wrapper.get('.compact-tool-account').text()).toBe('账号 A')
-  expect(wrapper.get('.compact-tool-primary').text()).toBe('录入库存')
+  expect(wrapper.find('.compact-tool-primary').exists()).toBe(false)
   expect(wrapper.get('.compact-tool-actions').text()).toContain('帮助')
   expect(wrapper.get('.compact-tool-actions').text()).toContain('更多')
   wrapper.unmount()

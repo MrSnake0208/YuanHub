@@ -2,13 +2,10 @@
   <div class="page-star">
     <IslandSidebar />
     <main id="main-content" class="star-main">
-      <CompactToolHeader title="星石背包">
+      <CompactToolHeader title="星石背包" description="整理星石，核对背包与养成计划">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
-        </template>
-        <template #primary>
-          <button type="button" class="btn primary" @click="setTab('import')">导入截图</button>
         </template>
         <template #actions>
           <details class="tool-more">
@@ -98,21 +95,34 @@
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
+          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
+            <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
+            <button type="button" class="link" @click="setTab('import'); starImportHelpOpen = true">查看支持的截图格式与说明</button>
+            <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
+          </ToolTaskPrompt>
+          <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
           <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
-            <span v-if="activeTab === 'import'" class="star-import-stage" role="status">截图识别</span>
             <button
               role="tab"
-              :aria-selected="activeTab === 'review'"
-              :class="{ on: activeTab === 'review' }"
-              @click="setTab('review')"
+              :aria-selected="activeTab === 'review' && starReviewView === 'bag'"
+              :class="{ on: activeTab === 'review' && starReviewView === 'bag' }"
+              @click="starReviewView = 'bag'; setTab('review')"
             >
               背包与核对
             </button>
+            <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <div v-if="activeTab === 'import'" class="star-availability-note" role="note">
+          <div v-if="activeTab === 'review'" class="star-workbench-actions">
+            <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
+            <button type="button" class="star-filter-toggle" :aria-expanded="starFiltersOpen" aria-controls="product-root" @click="starFiltersOpen = !starFiltersOpen">{{ starFiltersOpen ? '收起筛选与设置' : '更多筛选与设置' }}</button>
+          </div>
+          <div v-else class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
+          <div v-if="activeTab === 'import' && starImportHelpOpen" class="star-availability-note" role="note">
             <p><b>手机和电脑网页端均可使用。</b>导入截图、核对识别结果并整理背包。首次 OCR 需在本机加载识别资源，请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
+            <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
           </div>
-          <div id="product-root" ref="mountRoot"></div>
+          </div>
+          <div id="product-root" ref="mountRoot" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <p v-if="mountBusy && !productReady" class="yuanstar-mount-loading" role="status">正在加载星石工作区…</p>
           <div v-if="mountError" class="yuanstar-mount-error" role="alert">
             星石工作区加载失败：{{ mountError }}
@@ -138,6 +148,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Archive } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
+import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -177,6 +188,10 @@ const activeTab = usePersistedTab(
   ["import", "review"],
 );
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
+const starReviewView = ref('bag');
+const starBrowseEmpty = ref(false);
+const starFiltersOpen = ref(false);
+const starImportHelpOpen = ref(false);
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
@@ -899,11 +914,45 @@ onBeforeUnmount(function () {
 
 .star-main > section { padding-top: 0; }
 .star-tabs.tool-workspace-tabs { position: static; }
+.star-workbench { margin-top: 8px; }
+.star-workbench-actions, .star-import-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.star-import-action { flex: none; width: auto; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.star-filter-toggle { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); cursor: pointer; }
+.star-filter-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.page-star #product-root :deep(.review-toolbar) { border: 0; border-radius: 0; background: transparent; padding: 0; margin-bottom: 16px; }
+.page-star #product-root :deep(.filter-strip) { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px; border: 0; padding: 0; }
+.page-star #product-root :deep(.filter-strip .filter-search) { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; font-size: 12px; }
+.page-star #product-root :deep(.filter-strip #name-filter) { min-height: 44px; height: 44px; font-size: 14px; background: var(--surface); }
+.page-star #product-root :deep(.filter-strip > button) { min-height: 44px; height: 44px; padding: 8px; font-size: 12px; }
+.page-star #product-root :deep(.filter-strip #apply-filter) { grid-column: 2; grid-row: 1; }
+.page-star #product-root :deep(.filter-strip #clear-filter) { grid-column: 3; grid-row: 1; border: 0; background: transparent; color: var(--tea); }
+.page-star #product-root:not(.filters-open) :deep(.filter-strip > label:not(.filter-search)) { display: none; }
+.page-star #product-root:not(.filters-open) :deep(.inventory-facts > div:not(:has(.save-state))) { display: none; }
+.page-star #product-root:not(.filters-open) :deep(.inventory-facts) { display: block; padding: 4px 0 0; border: 0; background: transparent; }
+.page-star #product-root:not(.filters-open) :deep(.inventory-facts dt) { display: none; }
+.page-star #product-root:not(.filters-open) :deep(.inventory-facts dd) { height: auto; min-height: 0; font-size: 12px; }
+.page-star #product-root :deep(.inventory-facts > div:has(.save-state)) { display: block; grid-column: 1 / -1; }
+.page-star #product-root.is-plan-view :deep(.inventory-grid > .inventory-panel:first-child),
+.page-star #product-root.is-plan-view :deep(.edit-section > .current-editor) { display: none; }
+.page-star #product-root.is-plan-view :deep(.inventory-grid),
+.page-star #product-root.is-plan-view :deep(.edit-section) { grid-template-columns: minmax(0, 1fr); }
+.page-star #product-root.filters-open :deep(.filter-strip > label:not(.filter-search)) { grid-row: 2; }
+.page-star #product-root.filters-open :deep(.filter-strip > label:first-child) { grid-column: 1; }
+.page-star #product-root.filters-open :deep(.filter-strip > label:nth-child(2)) { grid-column: 2 / -1; }
+.page-star #product-root.filters-open :deep(.inventory-facts > div) { grid-template-rows: 16px 44px; }
+.page-star #product-root.filters-open :deep(.inventory-facts dd) { height: 44px; min-height: 44px; overflow: visible; }
+.page-star #product-root :deep(.inventory-facts input),
+.page-star #product-root :deep(.filter-strip .soft-dropdown-trigger),
+.page-star #product-root :deep(.inventory-facts .soft-dropdown-trigger),
+.page-star #product-root :deep(.inventory-facts .review-view-toggle) { min-height: 44px; height: 44px; }
 .star-import-stage { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; color: var(--tea); font-size: 13px; font-weight: 600; }
 .page-star #product-root :deep(.yuanstar-embedded-shell) { padding-top: 16px; }
 .page-star #product-root :deep(.review-workspace-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .page-star #product-root :deep(.inventory-panel > header h2) { font-family: var(--font-s); color: var(--tea); }
 .page-star #product-root :deep(.review-overview:has(> .review-overview-count:only-child)) { display: none; }
+.page-star #product-root.is-empty-view :deep(.inventory-grid),
+.page-star #product-root.is-empty-view :deep(.review-workspace-tools),
+.page-star #product-root.is-empty-view :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
 .page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
 .star-sync-meta { font-size: 12px; }
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }

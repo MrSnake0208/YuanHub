@@ -13,10 +13,8 @@
             <span class="cart-currency">· CNY</span>
           </div>
         </template>
-        <template #primary>
-          <button type="button" class="btn primary cart-plan-list" @click="openPlanList"><FolderOpen :size="16" aria-hidden="true" />我的方案</button>
-        </template>
         <template #actions>
+          <button type="button" class="cart-plan-list tool-utility" aria-label="我的方案" @click="openPlanList"><FolderOpen :size="15" aria-hidden="true" /><span class="tool-utility-label">我的方案</span></button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()"><button type="button" class="btn ghost cart-plan-save" @click="openPlanSave"><Save :size="16" aria-hidden="true" />保存方案</button></div>
@@ -31,7 +29,7 @@
       <section>
         <div class="wrap">
           <details v-if="version === 'daihao'" class="cart-rate-settings">
-            <summary>1 USD = {{ exchangeRate }} CNY<span class="cart-rate-modify">修改</span></summary>
+            <summary>1 USD = {{ exchangeRate }} CNY<span class="cart-rate-modify">修改汇率</span></summary>
             <div
               v-if="version === 'daihao'"
               class="rate-bar"
@@ -999,6 +997,10 @@ function openPlanSave() {
 @media (max-width:1180px){.cart-operation-message{bottom:calc(88px + env(safe-area-inset-bottom))}}
 .cart-main > section { padding-top: 0; }
 .cart-header-context { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: center; }
+.tool-utility { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--ink-60); font: 500 12px/1.5 var(--font-b); white-space: nowrap; cursor: pointer; }
+.tool-utility:hover { color: var(--tea); }
+.tool-utility:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 380px) { .tool-utility-label { display: none; } .tool-utility { min-width: 44px; } }
 .cart-version-selector { min-height: 44px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--cream) 65%, transparent); color: var(--ink-60); font: 500 13px/1.5 var(--font-b); cursor: pointer; }
 .cart-version-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cart-currency { color: var(--ink-60); font-size: 12px; white-space: nowrap; }

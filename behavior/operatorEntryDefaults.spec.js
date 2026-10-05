@@ -73,13 +73,20 @@ const growthValues = wrapper => wrapper.findAll('.level-row input').map(input =>
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
 
 it('空档案引导出现在默认图鉴筛选前，养成筛选不占用首屏', async () => {
-  const wrapper = renderPage()
+  const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
   const guide = wrapper.get('.operator-entry-guide')
   expect(guide.text()).toContain('还没有密探档案')
   expect(guide.text()).toContain('补录一位密探')
   expect(guide.element.compareDocumentPosition(wrapper.get('.mf-search').element) & 4).toBe(4)
   expect(wrapper.findComponent({ name: 'OperatorFilterDossier' }).exists()).toBe(false)
+  expect(wrapper.get('.operator-tabs').isVisible()).toBe(false)
+  expect(wrapper.get('.mf-search').isVisible()).toBe(false)
+  await guide.get('button').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.operator-tabs').isVisible()).toBe(true)
+  expect(wrapper.get('.mf-search').isVisible()).toBe(true)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
 it('更多筛选仅统计高级条件，关闭面板仍保留条件与结果', async () => {
@@ -140,10 +147,19 @@ it('已有密探时隐藏首次引导，筛选无结果不会误报空档案', a
   const wrapper = renderPage()
   await flushPromises()
   expect(wrapper.find('.operator-entry-guide').exists()).toBe(false)
+  await wrapper.get('.operator-tabs button:nth-child(2)').trigger('click')
+  await flushPromises()
   expect(wrapper.findComponent({ name: 'OperatorFilterDossier' }).exists()).toBe(true)
-  expect(wrapper.findAll('.operator-tabs .admin-link').some(link => link.attributes('to')?.includes('mode=supplement'))).toBe(true)
+  await wrapper.get('.operator-tabs button:first-child').trigger('click')
+  expect(wrapper.get('.catalog-tools .catalog-entry').attributes('to')).toContain('mode=supplement')
   await wrapper.get('.mf-search').setValue('不存在的角色')
   expect(wrapper.find('.operator-entry-guide').exists()).toBe(false)
+  expect(wrapper.text()).toContain('没有符合条件的密探')
+  await wrapper.findAll('button').find(button => button.text() === '清除筛选').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.mf-search').element.value).toBe('')
+  expect(wrapper.findAll('.slot')).toHaveLength(1)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 
 it('单角色入口复用图鉴并聚焦搜索，目录版本保持完整可复制原值', async () => {
