@@ -2,19 +2,10 @@
   <div class="feedback-page feedback-center page-feedback-access">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero feedback-hero">
+      <header class="page-header">
         <div class="wrap">
-          <div class="feedback-hero-kicker">COMMUNITY / FEEDBACK</div>
-          <div class="feedback-hero-layout">
-            <div>
-              <h1>反馈中心</h1>
-              <p class="hero-sub">配置运营与程序的负责板块；新反馈通知和兼容授权可分别设置。</p>
-            </div>
-            <button class="feedback-primary-action feedback-hero-action" type="button" @click="openCreate">
-              <Plus :size="18" aria-hidden="true" />
-              新增授权
-            </button>
-          </div>
+          <h1 class="page-header-title">反馈权限</h1>
+          <p class="page-header-description">配置反馈处理范围、通知接收人与授权板块。</p>
         </div>
       </header>
 
@@ -49,7 +40,13 @@
             </ul>
             <p v-if="categoryError" class="editor-error" role="alert">{{ categoryError }}</p>
           </section>
-          <div class="access-toolbar">
+          <div class="access-heading">
+            <h2 id="access-grants-title">用户授权</h2>
+            <button class="feedback-primary-action access-create" type="button" @click="openCreate">
+              <Plus :size="18" aria-hidden="true" />新增授权
+            </button>
+          </div>
+          <div class="access-toolbar" role="group" aria-labelledby="access-grants-title">
             <label class="access-search">
               <Search :size="18" aria-hidden="true" />
               <input v-model.trim="filter" name="feedback-access-filter" type="search" placeholder="搜索用户名或用户 ID..." aria-label="搜索反馈授权用户" />
@@ -210,6 +207,7 @@ import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { feedbackUnreadState } from '@/store/feedbackUnread.js'
 import '@/styles/feedback-workspace.css'
+import '@/styles/page-header.css'
 
 const grants = ref([])
 const areas = ref([])
@@ -505,7 +503,10 @@ onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch(
 .category-list li { padding: 7px 10px; border: 1px solid var(--feedback-line-strong) }
 .category-list button { min-height: 32px; border: 0; background: transparent; color: var(--feedback-accent); cursor: pointer }
 .category-list button:disabled { opacity: .5; cursor: default }
-.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-bottom: 14px }
+.access-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px }
+.access-heading h2 { margin: 0; color: var(--tea); font: 900 22px/1.4 var(--font-s) }
+.access-create { flex: none; min-height: 44px; white-space: nowrap }
+.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-bottom: 14px }
 .access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
 .access-search:focus-within { border-color: var(--feedback-accent) }
 .access-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink) }

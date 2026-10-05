@@ -2,14 +2,20 @@
   <div class="page-work-editor">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <router-link class="back-link" :to="savedId ? '/work/' + savedId : '/works'">← {{ savedId ? '返回作业详情' : '返回作业广场' }}</router-link>
-          <div class="crumb"><span class="pill fill">作业创作</span><span class="pill">{{ savedId ? '编辑' : '新建' }}</span></div>
-          <h1>{{ savedId ? '编辑基础作业' : '新建基础作业' }}<span class="small">逐回合编写</span></h1>
-          <p class="hero-sub">按顺序编辑回合动作，保存后可预览不同平台的适用情况。</p>
-          <div class="editor-meta" aria-live="polite">
-            <span>{{ savedId ? '已有草稿' : '尚未保存' }}</span><span>{{ status === 'PUBLIC' ? '已发布' : '草稿' }}</span><span>版本 {{ revision }}</span><span>{{ dirty ? '有未保存修改' : '已保存' }}</span>
+          <router-link class="page-header-back" :to="savedId ? '/work/' + savedId : '/works'">← {{ savedId ? '返回作业详情' : '返回作业广场' }}</router-link>
+          <h1 class="page-header-title">{{ savedId ? (loading || loadError ? '编辑作业' : document.doc.title || '未命名作业') : '新建作业' }}</h1>
+          <p v-if="savedId && !loading && !loadError" class="page-header-description">编辑作业</p>
+          <div v-if="!loading && !loadError" class="page-header-context" aria-label="作业编辑上下文">
+            <span>{{ document.game }}</span>
+            <span v-if="document.stage_name">{{ document.stage_name }}</span>
+            <template v-if="savedId">
+              <span>{{ status === 'PUBLIC' ? '已发布' : '草稿' }}</span>
+              <span class="editor-reference">ID {{ savedId }}</span>
+              <span class="editor-reference">版本 {{ revision }}</span>
+            </template>
+            <span aria-live="polite">{{ busy ? '处理中…' : dirty ? '有未保存修改' : savedId ? '已保存' : '尚未保存' }}</span>
           </div>
         </div>
       </header>
@@ -154,6 +160,7 @@ import { listLevelCatalog } from '@/api/level.js'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import WorkCompatibilityResult from '@/components/work/WorkCompatibilityResult.vue'
+import '@/styles/page-header.css'
 import { dialog } from '@/utils/dialog.js'
 import {
   WORK_ACTION_TYPES, WORK_CONDITION_TYPES, buildWorkDocument, createEmptyWorkDocument,
@@ -370,11 +377,8 @@ onBeforeUnmount(function () { window.removeEventListener('beforeunload', beforeU
 </script>
 
 <style scoped>
-.page-work-editor .hero { --wm: '创作'; }
-.back-link { display: inline-flex; min-height: 44px; align-items: center; margin-bottom: 18px; color: var(--ink); font-weight: 800; text-decoration: none; }
-.editor-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
-.editor-meta span { padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-60); font: 800 11px var(--font-d); }
-.editor-content { padding-block: 48px 72px; }
+.editor-reference { font-family: var(--font-d); }
+.editor-content { padding-block: 12px 72px; }
 .editor-state { min-height: 320px; display: grid; place-content: center; justify-items: center; gap: 12px; border: 1px dashed var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-60); }
 .editor-state button, .form-actions button, .command, .add-action { min-height: 44px; padding: 9px 16px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font-weight: 800; cursor: pointer; }
 .notice { margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink-60); }
@@ -434,7 +438,7 @@ button:disabled { opacity: .45; cursor: default; }
 .target-body { padding: 0 20px 20px; }
 @media (max-width: 900px) { .operator-fields, .delay-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .target-grid { grid-template-columns: 1fr; } }
 @media (max-width: 767px) {
-  .editor-content { padding-block: 28px 42px; }
+  .editor-content { padding-block: 12px 42px; }
   .editor-section, .preview-section { padding: 18px 14px; border-radius: 16px; }
   .field-grid, .operator-fields, .delay-grid { grid-template-columns: 1fr; }
   .section-head.with-command { grid-template-columns: auto minmax(0, 1fr); }

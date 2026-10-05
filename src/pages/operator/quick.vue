@@ -2,62 +2,28 @@
   <div class="page-quick">
     <IslandSidebar />
 
-    <main class="quick-main">
-      <!-- HERO -->
-      <header class="hero">
+    <main id="main-content" class="quick-main">
+      <header class="page-header">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">密探</span>
-            <span class="pill">养成</span>
-            <span class="pill">首次 / 快捷录入</span>
-          </div>
-          <h1>快捷录入<span class="small">首次建档 · 快速补录</span></h1>
-          <p class="hero-sub">
-            首次建档按星阶逐页录入；快速补录可直接选择星阶并搜索密探。每页保存前确认修改内容，已保存的页面立即写入当前账号，取消后续录入不会撤销之前的保存。
-          </p>
-          <div class="hero-stats">
-            <div>
-              <div class="k">密探目录</div>
-              <div class="v">{{ catalogCount }}<small>位</small></div>
-            </div>
-            <div>
-              <div class="k">本页已勾选</div>
-              <div class="v">
-                {{ checkedOfCurrent.length }}<small>位</small>
-              </div>
-            </div>
-            <div>
-              <div class="k">本次已保存</div>
-              <div class="v">{{ sessionSavedCount }}<small>位</small></div>
-            </div>
-            <div class="is-authed">
-              <div class="k">{{ auth.isLoggedIn ? "保存到" : "登录状态" }}</div>
-              <div class="v">
-                {{ auth.isLoggedIn ? (accountName ? gameFilter + " · " + accountName : "—") : "未登录"
-                }}<small>{{
-                  auth.isLoggedIn ? "当前数据账号" : "需登录后使用"
-                }}</small>
-              </div>
-            </div>
+          <router-link class="page-header-back" to="/operator">← 返回密探名册</router-link>
+          <h1 class="page-header-title">快捷录入</h1>
+          <div class="quick-header-context">
+            <DataAccountContextBar
+              compact
+              :accounts="accounts"
+              :account-id="accountId"
+              :game="gameFilter"
+              :is-logged-in="auth.isLoggedIn"
+              :loading="accountsLoading"
+              :error="accountError"
+            />
+            <span class="quick-mode-context">当前模式：{{ supplementMode ? '快速补录' : '首次建档' }}</span>
           </div>
         </div>
       </header>
 
-      <section>
+      <section class="quick-content">
         <div class="wrap">
-          <DataAccountContextBar
-            :accounts="accounts"
-            :account-id="accountId"
-            :game="gameFilter"
-            :is-logged-in="auth.isLoggedIn"
-            :loading="accountsLoading"
-            :error="accountError"
-            description="当前快捷录入保存的数据均归属此账号；保存前请再次确认账号是否正确。"
-          >
-            <template #actions>
-              <router-link class="act-btn ghost" to="/operator">返回密探页</router-link>
-            </template>
-          </DataAccountContextBar>
 
           <!-- 未登录 / 未建账号 -->
           <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
@@ -99,6 +65,7 @@
           </div>
 
           <template v-else>
+            <p class="quick-save-guidance">每页保存前确认修改内容；已保存的页面立即写入当前账号，取消后续录入不会撤销之前的保存。</p>
             <div class="entry-mode" role="group" aria-label="录入模式">
               <button class="btn" type="button" :aria-pressed="!supplementMode" :disabled="busy" @click="setMode('first')">首次建档</button>
               <button class="btn" type="button" :aria-pressed="supplementMode" :disabled="busy" @click="setMode('supplement')">快速补录</button>
@@ -136,6 +103,7 @@
               </button>
             </div>
             <p v-if="!completed" class="step-help">{{ supplementMode ? '可直接选择任意星阶并搜索密探；切阶保留未保存选择，每阶单独保存。' : '后续星阶需在当前页点击「保存本页并下一步」解锁；本页未勾选密探时也可继续。' }}</p>
+            <p class="quick-session-summary">本次已保存 <b>{{ sessionSavedCount }}</b> 位</p>
 
             <!-- 本页保存状态 -->
             <div
@@ -429,6 +397,7 @@ import { useRouter, useRoute } from "vue-router";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
+import "../../styles/page-header.css";
 import {
   getOperatorCatalog,
   listOperatorAccounts,
@@ -1474,8 +1443,18 @@ onBeforeUnmount(() => {
 .quick-main {
   padding-bottom: 0;
 }
-.entry-mode { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
-.entry-mode .btn { min-height: 44px; }
+.quick-header-context { display: grid; gap: 0 16px; margin-top: 8px; }
+.quick-mode-context { align-self: center; color: var(--ink-60); font-size: 13px; line-height: 1.7; }
+.quick-content { padding-block: 12px 24px; }
+.quick-save-guidance { color: var(--ink-60); font-size: 13px; line-height: 1.7; }
+.quick-main button:focus-visible, .quick-main input:focus-visible, .quick-main summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.quick-session-summary { margin-top: 8px; color: var(--ink-60); font-size: 12px; }
+.quick-session-summary b { font-family: var(--font-d); }
+@container (min-width: 600px) {
+  .quick-header-context { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+}
+.entry-mode { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.entry-mode .btn { min-height: 44px; border: 1px solid var(--line); background: var(--surface); color: var(--tea); }
 .entry-mode .btn[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
 .supplement-option { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 12px; color: var(--ink); }
 .page-save { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1483,41 +1462,16 @@ onBeforeUnmount(() => {
 .quick-preview summary { min-height: 44px; cursor: pointer; overflow-wrap: anywhere; }
 .quick-preview p { font-size: 13px; color: var(--ink-60); }
 .quick-preview ul { max-height: 18rem; overflow: auto; padding-left: 20px; overflow-wrap: anywhere; }
-.page-quick .hero::after {
-  content: "速录";
-}
-
-.act-btn {
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--ink-60);
-  cursor: pointer;
-  font-family: var(--font-b);
-  transition: all 0.3s var(--ease);
-  white-space: nowrap;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-}
-.act-btn:hover:not(:disabled) {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-.act-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 
 /* ---- 步骤条 ---- */
 .stepper {
   display: grid;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 40px;
+  margin-top: 12px;
   overflow-x: auto;
   padding: 2px 2px 8px;
   scrollbar-width: thin;
@@ -1625,10 +1579,10 @@ onBeforeUnmount(() => {
   padding-bottom: 14px;
   border-bottom: 1.5px dashed var(--line);
 }
-.wiz-head h2 {
+.wiz-head h2, .quick-complete h2 {
   font-family: var(--font-s);
   font-weight: 900;
-  font-size: 26px;
+  font-size: 24px;
   letter-spacing: 0.04em;
   color: var(--ink);
 }
@@ -2065,19 +2019,6 @@ onBeforeUnmount(() => {
   border-radius: 14px;
 }
 
-/* 深色块上的文字 */
-.hero-stats div.is-authed .k {
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  font-weight: 700;
-  color: rgba(73, 59, 44, 0.65);
-}
-.hero-stats div.is-authed .v small {
-  font-family: var(--font-b);
-  font-size: 14px;
-  font-weight: 700;
-}
-
 @media (max-width: 900px) {
   .stepper {
     grid-template-columns: repeat(6, minmax(104px, 1fr));
@@ -2089,7 +2030,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .btn, .mini, .mf-filter button, .act-btn,
+  .btn, .mini, .mf-filter button,
   .op-search-input, .batch-fields input, .page-save .link, .state .link {
     min-height: 44px;
   }

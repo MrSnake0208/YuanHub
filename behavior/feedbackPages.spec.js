@@ -1242,3 +1242,16 @@ it('新建反馈限制键盘焦点并在关闭后返回入口', async () => {
   expect(document.activeElement).toBe(opener)
   wrapper.unmount()
 })
+
+
+it.each(['normal', 'empty', 'error', 'denied'])('反馈工作台在 %s 状态保持独立页面身份', async state => {
+  if (state === 'empty') api.listWorkflowFeedback.mockResolvedValue({ items: [], total: 0 })
+  if (state === 'error') api.listWorkflowFeedback.mockRejectedValue(new Error('工单读取失败'))
+  if (state === 'denied') api.getFeedbackAccess.mockResolvedValue({ operatorAreas: [], developerAreas: [], availableCategories: [{ key: 'OPERATOR', label: '密探养成' }] })
+  const wrapper = render(ManagedFeedback); await flushPromises()
+  expect(wrapper.get('main h1').text()).toBe('反馈工作台')
+  expect(wrapper.find('main > header button').exists()).toBe(false)
+  if (state === 'denied') expect(wrapper.get('.permission-state').text()).toContain('暂无板块管理权限')
+  if (state === 'error') expect(wrapper.get('.ticket-state[role="alert"]').text()).toContain('工单读取失败')
+  wrapper.unmount()
+})
