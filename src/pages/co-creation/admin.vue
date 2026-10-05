@@ -2,15 +2,21 @@
   <div class="feedback-page">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero feedback-hero"><div class="wrap">
-        <AdminBackLink />
-        <div class="feedback-hero-layout"><div><h1>开发目标管理</h1><p class="hero-sub">制定目标、维护验收标准与推进阶段，并关联公开反馈。</p></div><button class="feedback-primary-action feedback-hero-action" type="button" :disabled="busy" @click="openEditor()"><Plus :size="18" aria-hidden="true" />新增目标</button></div>
+      <header class="page-header"><div class="wrap">
+        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+        <h1 class="page-header-title">开发目标管理</h1>
+        <p class="page-header-description">规划开发目标、维护验收进度并关联公开反馈。</p>
       </div></header>
       <section class="feedback-content"><div class="wrap">
-        <p class="goal-admin-context"><router-link to="/co-creation">查看公开开发目标</router-link> · 保存后立即展示给所有用户，请只填写适合公开的内容。</p>
+        <div class="goal-workspace-toolbar">
+          <h2>开发目标</h2>
+          <router-link class="goal-public-view" to="/co-creation">查看公开开发目标</router-link>
+          <button class="feedback-primary-action goal-create-action" type="button" :disabled="busy" @click="openEditor()"><Plus :size="18" aria-hidden="true" />新增目标</button>
+        </div>
         <p v-if="notice" role="status" class="goal-save-notice">{{ notice }}</p>
         <form v-if="form" class="goal-editor" aria-label="开发目标编辑" @submit.prevent="save">
           <h2>{{ editingId ? '编辑开发目标' : '新增开发目标' }}</h2>
+          <p class="goal-admin-context">保存后立即展示给所有用户，请只填写适合公开的内容。</p>
           <fieldset :disabled="busy">
             <label class="full">目标标题<input ref="titleInput" v-model="form.title" class="feedback-form-control" required maxlength="120" /></label>
             <label class="full">目标说明<textarea v-model="form.description" class="feedback-form-control" required rows="4" maxlength="3000" placeholder="说明要解决什么问题，以及预期交付什么" /></label>
@@ -47,13 +53,13 @@
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
-import AdminBackLink from '@/components/admin/AdminBackLink.vue'
 import DevelopmentRoadmap from '@/components/co-creation/DevelopmentRoadmap.vue'
 import { DEVELOPMENT_STAGES, getAdminDevelopmentGoal, saveDevelopmentGoal } from '@/api/developmentGoals.js'
 import { listPublicFeedback } from '@/api/coCreation.js'
 import { auth } from '@/store/auth.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import '@/styles/feedback-workspace.css'
+import '@/styles/page-header.css'
 
 const form = ref(null), editingId = ref(''), original = ref(''), busy = ref(false), error = ref(''), conflict = ref(false), notice = ref('')
 const keyword = ref(''), candidates = ref([]), searching = ref(false), searched = ref(false), searchError = ref(''), feedbackTitles = ref({})
@@ -126,11 +132,14 @@ onBeforeUnmount(() => { mounted = false; session += 1; searchId += 1 })
 </script>
 
 <style scoped>
-.goal-admin-context { margin-top: 18px; color: var(--feedback-text-muted); font-size: 13px; line-height: 1.8; }
-.goal-admin-context a { color: var(--accent-strong); }
+.goal-workspace-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; padding: 8px 0 12px; border-bottom: 1px solid var(--feedback-line); }
+.goal-workspace-toolbar h2 { margin: 0; color: var(--tea); font: 900 20px/1.4 var(--font-s); }
+.goal-public-view { grid-column: 1; grid-row: 2; display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: var(--accent-strong); font-size: 13px; text-decoration: underline; }
+.goal-create-action { grid-column: 2; grid-row: 1 / 3; }
+.goal-admin-context { margin: 0 0 16px; color: var(--feedback-warn); font-size: 13px; line-height: 1.7; }
 .goal-save-notice { margin-top: 16px; color: var(--feedback-success); }
-.goal-editor { margin-top: 20px; padding: 24px; border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); }
-.goal-editor h2 { margin-bottom: 18px; color: var(--feedback-text); font: 900 22px var(--font-s); }
+.goal-editor { margin-top: 16px; padding: 24px; border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); overflow-wrap: anywhere; }
+.goal-editor h2 { margin-bottom: 8px; color: var(--feedback-text); font: 900 22px var(--font-s); }
 .goal-editor fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .goal-editor label { display: grid; gap: 7px; min-width: 0; color: var(--feedback-text); font-size: 13px; }
 .goal-editor .full { grid-column: 1 / -1; }
@@ -145,5 +154,13 @@ onBeforeUnmount(() => { mounted = false; session += 1; searchId += 1 })
 .goal-search { display: flex; gap: 8px; margin-top: 14px; }
 .goal-search input { min-width: 0; flex: 1; }
 .goal-editor-actions { display: flex; justify-content: end; gap: 12px; margin-top: 20px; }
+.feedback-form-error { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 16px; font-size: 13px; line-height: 1.7; }
+.goal-search button,.criterion-row button,.goal-editor-actions button,.feedback-form-error button { flex-shrink: 0; white-space: nowrap; }
+.feedback-content :deep(.goal-toolbar) { margin-top: 16px; }
+.feedback-content :deep(.goal-notice) { margin-top: 8px; }
+.feedback-content :deep(.goal-grid) { margin-top: 12px; }
+.feedback-content :deep(.goal-card header button) { flex-shrink: 0; white-space: nowrap; }
+.feedback-content :is(button,a,summary):focus-visible,.feedback-content :deep(:is(button,a,summary):focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (min-width: 600px) { .goal-workspace-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; } .goal-public-view { grid-column: 2; grid-row: 1; } .goal-create-action { grid-column: 3; grid-row: 1; } }
 @media (max-width: 767px) { .goal-editor { padding: 16px; } .goal-editor fieldset { grid-template-columns: minmax(0, 1fr); } .criterion-row { flex-wrap: wrap; } .criterion-row > input { width: calc(100% - 60px); } .goal-editor-actions button { flex: 1; } }
 </style>

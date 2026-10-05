@@ -30,6 +30,7 @@ YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 
 - [`docs/standards/design-system.md`](docs/standards/design-system.md)：视觉与品牌规范。
 - [`docs/standards/responsive-development.md`](docs/standards/responsive-development.md)：手机 / 平板 / 桌面同步开发规范与固定验收视口矩阵。
+- [`docs/standards/page-header-system.md`](docs/standards/page-header-system.md)：六种 Page Header Pattern、全站迁移表与样板页边界。
 - [`docs/standards/page-development.md`](docs/standards/page-development.md)：页面目录、路由与页面交付流程。
 
 任何 UI 功能都不得只以桌面端正常作为完成标准；响应式适配属于功能本身的一部分。

@@ -3,22 +3,11 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="crumb">
-            <span class="pill fill">内容维护</span>
-            <span class="pill">公共关卡库</span>
-            <span class="pill">管理</span>
-          </div>
-          <h1>公共关卡库<span class="small">管理端</span></h1>
-          <p class="hero-sub">维护全站共享的关卡、分类和开放状态。归档只隐藏目录条目，不会让已有作业引用失效。</p>
-          <div class="hero-stats">
-            <div><div class="k">当前条目</div><div class="v">{{ rows.length }}<small>条</small></div></div>
-            <div><div class="k">筛选结果</div><div class="v">{{ filteredRows.length }}<small>条</small></div></div>
-            <div><div class="k">目录版本</div><div class="v compact">{{ catalogVersion || '—' }}</div></div>
-            <div><div class="k">分类节点</div><div class="v">{{ categoryNodeCount }}<small>个</small></div></div>
-          </div>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <h1 class="page-header-title">关卡管理</h1>
+          <p class="page-header-description">维护公共关卡目录、分类与开放状态。</p>
         </div>
       </header>
 
@@ -58,16 +47,17 @@
                 <Search :size="17" aria-hidden="true" />
                 <input v-model.trim="filters.q" type="search" placeholder="搜索名称、Stage ID、Level ID" aria-label="搜索关卡名称或 ID" />
               </label>
-              <span class="toolbar-spacer"></span>
-              <button class="command secondary" type="button" :disabled="loading" title="刷新关卡目录" @click="load">
-                <RefreshCw :size="16" aria-hidden="true" />刷新
-              </button>
-              <button class="command secondary" type="button" :disabled="exporting" @click="downloadExport">
-                <Download :size="16" aria-hidden="true" />{{ exporting ? '导出中…' : '导出 JSON' }}
-              </button>
-              <button class="command primary" type="button" @click="openNew">
-                <Plus :size="17" aria-hidden="true" />新建关卡
-              </button>
+              <div class="level-tools">
+                <button class="command secondary" type="button" :disabled="loading" title="刷新关卡目录" @click="load">
+                  <RefreshCw :size="16" aria-hidden="true" />刷新
+                </button>
+                <button class="command secondary" type="button" :disabled="exporting" @click="downloadExport">
+                  <Download :size="16" aria-hidden="true" />{{ exporting ? '导出中…' : '导出 JSON' }}
+                </button>
+                <button class="command primary" type="button" @click="openNew">
+                  <Plus :size="17" aria-hidden="true" />新建关卡
+                </button>
+              </div>
             </div>
 
             <div v-if="loading" class="state" role="status" aria-live="polite">
@@ -77,10 +67,12 @@
             <template v-else>
               <div class="list-summary" aria-live="polite">
                 <span>显示 {{ filteredRows.length }} / {{ rows.length }} 条</span>
+                <span class="catalog-version">目录版本 {{ catalogVersion || '—' }}</span>
                 <span v-if="notice" class="notice-text" role="status">{{ notice }}</span>
               </div>
 
-              <div class="level-table-wrap">
+              <p class="archive-note">归档只隐藏目录条目，不会让已有作业引用失效。</p>
+              <div class="level-table-wrap" role="region" aria-label="公共关卡目录列表" tabindex="0">
                 <table class="level-table">
                   <caption class="sr-only">公共关卡库管理列表</caption>
                   <thead>
@@ -139,7 +131,7 @@
               <div class="level-lower-grid">
                 <section class="tree-panel" aria-labelledby="level-tree-title">
                   <header class="panel-head">
-                    <div><span class="eyebrow">READ ONLY</span><h2 id="level-tree-title">分类树预览</h2></div>
+                    <div><h2 id="level-tree-title">分类树预览</h2></div>
                     <span>{{ categoryNodeCount }} 个节点</span>
                   </header>
                   <p class="panel-hint">分类树由当前目录列表派生，仅用于检查层级，不支持拖拽编辑。</p>
@@ -168,7 +160,7 @@
 
                 <section class="import-panel" aria-labelledby="level-import-title">
                   <header class="panel-head">
-                    <div><span class="eyebrow">SAFE IMPORT</span><h2 id="level-import-title">批量导入</h2></div>
+                    <div><h2 id="level-import-title">批量导入</h2></div>
                     <span>先预览，再确认</span>
                   </header>
                   <p class="panel-hint">粘贴导出 JSON 或 <code>{ levels: [...] }</code> 文档。预览不会写入数据库。</p>
@@ -235,7 +227,7 @@ import { Download, LoaderCircle, Pencil, Plus, RefreshCw, Search, Upload, X } fr
 import { useRouter } from 'vue-router'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
-import AdminBackLink from '../../components/admin/AdminBackLink.vue'
+import '../../styles/page-header.css'
 import {
   archiveAdminLevel,
   commitAdminLevelImport,
@@ -537,22 +529,25 @@ load()
 
 <style scoped>
 .page-level-admin { min-height: 100vh; min-height: 100dvh }
-.page-level-admin .hero::after { content: '关' }
-.level-content { padding-bottom: 20px }
-.hero-stats .compact { font-size: clamp(16px, 2vw, 24px); line-height: 1.35; overflow-wrap: anywhere }
-.level-toolbar {
-  display: flex; align-items: end; gap: 10px; flex-wrap: wrap; margin-top: 24px;
-  padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0 }
+.level-content { padding-top: 12px; padding-bottom: 20px }
+.level-toolbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 10px; padding: 12px 0; border-block: 1px solid var(--line) }
+.level-toolbar label { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--ink-60); font-size: 11px; font-weight: 800 }
+.level-toolbar select, .level-search input { width: 100%; min-width: 0; min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--ink); background: var(--paper); font: 13px var(--font-b) }
+.level-toolbar select:focus, .level-search:focus-within { outline: 2px solid var(--accent); outline-offset: 3px }
+.level-search { position: relative; grid-column: 1 / -1; flex-direction: row !important; align-items: center; min-height: 44px; padding: 0 11px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink-35) !important; background: var(--paper) }
+.level-search input { border: 0; padding-left: 0; background: transparent; outline: none }
+.level-tools { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px }
+.level-tools .command { flex: 1; padding-inline: 8px; white-space: nowrap }
+@media (min-width: 700px) {
+  .level-toolbar { grid-template-columns: repeat(3, minmax(112px, 1fr)) minmax(200px, 1.5fr) }
+  .level-search { position: relative; grid-column: auto }
+  .level-tools .command { flex: none; padding-inline: 14px }
 }
-.level-toolbar label { display: flex; flex-direction: column; gap: 5px; min-width: 128px; color: var(--ink-60); font-size: 11px; font-weight: 800 }
-.level-toolbar select, .level-search input {
-  min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px;
-  color: var(--ink); background: var(--paper); font: 13px var(--font-b); outline: none;
+@media (min-width: 1280px) {
+  .level-toolbar { grid-template-columns: repeat(3, minmax(108px, .8fr)) minmax(180px, 1.5fr) auto }
+  .level-tools { grid-column: auto }
 }
-.level-toolbar select:focus, .level-search:focus-within, .level-search input:focus { border-color: var(--accent); outline: none }
-.level-search { min-width: min(280px, 100%); flex: 1; flex-direction: row !important; align-items: center; min-height: 44px; padding: 0 11px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink-35) !important; background: var(--paper) }
-.level-search input { width: 100%; min-width: 0; border: 0; padding-left: 0; background: transparent }
-.toolbar-spacer { flex: 1 }
 .command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; padding: 9px 14px; font: 800 13px var(--font-b); cursor: pointer; text-decoration: none; transition: background-color .25s, transform .25s, opacity .25s }
 .command:hover:not(:disabled) { transform: translateY(-1px) }
 .command:disabled { opacity: .45; cursor: not-allowed }
@@ -563,9 +558,12 @@ load()
 .state { min-height: 160px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; padding: 28px; color: var(--ink-60); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; text-align: center }
 .state.error { color: var(--rouge); flex-wrap: wrap }
 .state-retry { min-height: 44px; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer }
-.list-summary { display: flex; align-items: center; gap: 16px; min-height: 40px; margin-top: 14px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
+.list-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; min-height: 30px; margin-top: 10px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
+.catalog-version { font-family: var(--font-d); overflow-wrap: anywhere }
+.archive-note { margin: 2px 0 8px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
+.level-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 .notice-text { color: var(--accent-strong) }
-.level-table-wrap { margin-top: 2px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; scrollbar-gutter: stable }
+.level-table-wrap { position: relative; margin-top: 2px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px 10px; scrollbar-gutter: stable }
 .level-table { width: 100%; min-width: 1320px; border-collapse: separate; border-spacing: 0; font-size: 12.5px }
 .level-table th { padding: 10px 8px; color: var(--ink-60); border-bottom: 1px dashed var(--line); font-size: 11px; font-weight: 800; text-align: left; white-space: nowrap }
 .level-table td { padding: 11px 8px; border-bottom: 1px solid rgba(156, 122, 77, .13); vertical-align: middle; white-space: nowrap }
@@ -621,7 +619,7 @@ load()
 .icon-command { flex: none; width: 44px; height: 44px; display: grid; place-items: center; margin: -8px -8px 0 auto; border: 0; border-radius: 10px; color: var(--ink-60); background: transparent; cursor: pointer }
 .icon-command:hover { color: var(--ink); background: var(--paper) }
 .editor-error { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: rgba(166, 81, 74, .1) }
-.editor-error button { min-height: 44px; padding: 5px 9px; border: 1px solid rgba(166, 81, 74, .35); border-radius: 8px; color: var(--rouge); background: transparent; font: 800 11px var(--font-b); cursor: pointer }
+.editor-error button { flex: none; white-space: nowrap; min-height: 44px; padding: 5px 9px; border: 1px solid rgba(166, 81, 74, .35); border-radius: 8px; color: var(--rouge); background: transparent; font: 800 11px var(--font-b); cursor: pointer }
 .editor-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 14px; padding-top: 18px }
 .editor-fields label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .editor-fields label.wide { grid-column: 1 / -1 }
@@ -632,18 +630,7 @@ load()
 .table-action:focus-visible, .command:focus-visible, .icon-command:focus-visible, .editor-error button:focus-visible, .level-toolbar select:focus-visible, .editor-fields input:focus-visible, .editor-fields select:focus-visible, .import-panel textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 
 @media (max-width: 767px) {
-  .page-level-admin .hero-sub { display: none }
-  .page-level-admin .hero h1 { font-size: 34px }
-  .page-level-admin .hero-stats { grid-template-columns: repeat(2, 1fr); margin-top: 18px }
-  .page-level-admin .hero-stats > div { padding: 13px 14px 16px }
-  .page-level-admin .hero-stats .v { font-size: 22px }
-  .level-toolbar { position: sticky; top: 64px; z-index: var(--z-sticky-low); display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 9px; margin-top: 16px; padding: 11px; box-shadow: 0 12px 28px -24px rgba(73, 59, 44, .58) }
-  .level-toolbar label { min-width: 0 }
-  .level-search { grid-column: 1 / -1; min-width: 0; min-height: 44px }
-  .level-search input { min-height: 44px; font-size: 16px }
-  .toolbar-spacer { display: none }
-  .level-toolbar .command { min-height: 44px; padding: 8px 9px; font-size: 12px }
-  .level-toolbar .command.primary { grid-column: 1 / -1 }
+  .level-search input { font-size: 16px }
   .level-table-wrap { display: none }
   .level-mobile-list { display: flex; flex-direction: column; gap: 10px; margin-top: 3px }
   .level-mobile-card { overflow: hidden; padding: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px }

@@ -2,7 +2,7 @@
   <div class="page-operator">
     <IslandSidebar />
 
-    <main class="operator-main">
+    <main id="main-content" class="operator-main">
       <CompactToolHeader title="密探名册" description="管理当前账号的密探档案">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"

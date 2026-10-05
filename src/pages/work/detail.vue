@@ -39,23 +39,29 @@
       </div>
 
       <template v-else-if="detail">
-        <header class="hero" :style="{ '--wm': JSON.stringify(String(metadata.id || '作业')) }">
+        <header class="page-header work-detail-header">
           <div class="wrap">
-            <router-link class="back-link" :to="backTarget">← 返回作业广场</router-link>
-            <router-link v-if="canEdit" class="edit-link" :to="'/work/' + metadata.id + '/edit'">编辑此作业</router-link>
-            <div class="crumb">
-              <span class="pill fill">{{ gameName }}</span>
-              <span class="pill">{{ stageName }}</span>
-              <span class="plain">#{{ metadata.id }}</span>
+            <router-link class="page-header-back" :to="backTarget">← 返回作业广场</router-link>
+            <div class="page-header-row">
+              <div class="page-header-identity">
+                <h1 class="page-header-title">{{ metadata.title || '未命名作业' }}</h1>
+                <div class="page-header-context">
+                  <span>{{ gameName }} · {{ stageName }}</span>
+                  <span v-if="metadata.status === 'PUBLIC'">已发布</span>
+                  <span v-else-if="metadata.status === 'DRAFT'">草稿</span>
+                  <span v-if="isNative">原生作业</span>
+                  <span v-else>旧版转换：{{ legacyStatus.label }}</span>
+                </div>
+              </div>
+              <div v-if="canEdit" class="page-header-actions">
+                <router-link class="page-header-action" :to="'/work/' + metadata.id + '/edit'">编辑此作业</router-link>
+              </div>
             </div>
-            <h1>{{ metadata.title || '未命名作业' }}<span class="small">通关步骤</span></h1>
-            <p class="hero-sub">{{ work ? (work.doc && work.doc.details) || '未提供打法说明' : '原作业暂时无法转换，以下仍保留元数据、问题报告与原始来源。' }}</p>
-            <div class="hero-stats" aria-label="作业元数据">
-              <div><div class="k">浏览量</div><div class="v">{{ metadata.views }}<small>次</small></div></div>
-              <div><div class="k">点赞</div><div class="v">{{ metadata.like_count }}<small>次</small></div></div>
-              <div><div class="k">热度</div><div class="v">{{ formatMetric(metadata.hot_score) }}<small>分</small></div></div>
-              <div><div class="k">上传时间</div><div class="v date-value">{{ formatDate(metadata.upload_time) }}</div></div>
+            <div class="page-header-context work-object-meta">
+              <span>#{{ metadata.id }}</span>
+              <span>上传于 {{ formatDate(metadata.upload_time) }}</span>
             </div>
+            <p v-if="!work" class="page-header-description conversion-notice" role="status">原作业暂时无法转换，以下仍保留元数据、问题报告与原始来源。</p>
           </div>
         </header>
 
@@ -70,6 +76,11 @@
               <div><div class="k">游戏</div><div class="v">{{ gameName }}</div></div>
               <div><div class="k">关卡</div><div class="v">{{ stageName }}</div></div>
             </div>
+            <dl class="work-metrics" aria-label="作业统计">
+              <div><dt>浏览量</dt><dd>{{ metadata.views }} 次</dd></div>
+              <div><dt>点赞</dt><dd>{{ metadata.like_count }} 次</dd></div>
+              <div><dt>热度</dt><dd>{{ formatMetric(metadata.hot_score) }} 分</dd></div>
+            </dl>
             <div class="level-card" :class="{ unmatched: !detail.level }">
               <strong>关卡关联</strong>
               <template v-if="detail.level">
@@ -190,6 +201,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import '../../styles/page-header.css'
 import { useRoute } from 'vue-router'
 import { getWork, getWorkCompatibility } from '@/api/work.js'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -314,10 +326,13 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 .detail-state a, .detail-state button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font: 800 13px var(--font-b); text-decoration: none; cursor: pointer; }
 .state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .loading-mark { width: 38px; height: 38px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: detail-spin .8s linear infinite; }
-.back-link { display: inline-flex; min-height: 44px; align-items: center; margin-bottom: 22px; color: var(--ink); font-weight: 800; text-decoration: none; }
-.edit-link { min-height: 44px; display: inline-flex; align-items: center; margin: 0 0 22px 12px; padding: 8px 15px; border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); font-size: 13px; font-weight: 800; text-decoration: none; }
-.date-value { max-width: 240px; font: 800 17px/1.5 var(--font-b) !important; letter-spacing: 0 !important; }
-.detail-content { padding-top: 56px; }
+.work-object-meta { font-size: 12px; }
+.conversion-notice { margin-top: 12px; color: var(--rouge); }
+.work-metrics { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; color: var(--ink-60); font-size: 13px; }
+.work-metrics > div { display: flex; gap: 6px; }
+.work-metrics dd { margin: 0; color: var(--ink); }
+.detail-content { padding-top: 16px; }
+.detail-content .sec-head h2 { font-size: 24px; line-height: 1.4; letter-spacing: .035em; }
 .detail-content section + section { margin-top: 64px; }
 .detail-meta-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .level-card { margin-top: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding: 18px 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
@@ -396,7 +411,6 @@ watch(function () { return props.id }, function () { void loadDetail() }, { imme
 @media (max-width: 767px) {
   .detail-state-wrap { padding: 40px 16px; }
   .detail-state { min-height: 260px; padding: 28px 18px; border-radius: 18px; }
-  .detail-content { padding-top: 36px; }
   .detail-content section + section { margin-top: 44px; }
   .detail-meta-grid { grid-template-columns: 1fr; }
   .level-card code { width: 100%; margin-left: 0; }
