@@ -289,10 +289,10 @@ const currentPath = computed(function () {
   :slotted(.act-btn) { width: 100%; min-width: 0; transform: none; }
 }
 .data-account-context-bar.is-compact { display: flex; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 0 8px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.context-selector { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 0 10px; border-radius: 8px; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); text-decoration: none; }
-.context-selector::before { content: ''; position: absolute; inset: 3px 0; z-index: -1; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--cream) 65%, transparent); }
+.context-selector { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 0 8px; border-radius: 6px; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); text-decoration: none; }
+.context-selector::before { content: ''; position: absolute; inset: 7px 0; z-index: -1; border-radius: 6px; background: color-mix(in srgb, var(--cream) 75%, transparent); }
 .context-selector:hover { color: var(--tea); }
-.context-selector:hover::before { border-color: var(--accent); background: var(--cream); }
+.context-selector:hover::before { background: var(--cream); }
 .selector-game.is-ruyuan { color: var(--brand-blue); }
 .context-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .context-selector .selector-game, .context-selector svg { flex: none; white-space: nowrap; }

@@ -39,8 +39,8 @@ const rewardStub = defineComponent({
     return () => h('div', { class: 'reward-workspace-stub' })
   },
 })
-function render() {
-  return mount(InventoryPage, { global: {
+function render(options = {}) {
+  return mount(InventoryPage, { ...options, global: {
     stubs: {
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
@@ -81,12 +81,31 @@ beforeEach(() => {
 })
 
 it('只读初始化不写库存，不用登录状态宣称已同步', async () => {
-  const wrapper = render()
+  const wrapper = render({ attachTo: document.body })
   await flushPromises()
   expect(wrapper.findComponent({ name: 'DataAccountContextBar' }).props('isLoggedIn')).toBe(true)
   expect(wrapper.get('.tool-summary').text()).not.toContain('已同步')
   expect(wrapper.get('.tool-summary time').attributes('datetime')).toBeTruthy()
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  expect(wrapper.get('.inventory-setup').text()).toContain('尚未建立库存')
+  expect(wrapper.get('.inventory-setup .inventory-entry').text()).toBe('开始首次盘点')
+  expect(wrapper.get('.inventory-tabs').isVisible()).toBe(false)
+  await wrapper.get('.inventory-setup .link').trigger('click')
+  expect(wrapper.get('.inventory-tabs').isVisible()).toBe(true)
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('已建立全零基准属于有效库存，更新时间附近保留更新入口', async () => {
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.find('.inventory-setup').exists()).toBe(false)
+  expect(wrapper.get('.inventory-freshness time').attributes('datetime')).toBe(fullBaseline)
+  expect(wrapper.get('.inventory-freshness .inventory-entry').text()).toBe('更新库存')
+  expect(wrapper.get('.inventory-freshness .inventory-entry').element.disabled).toBe(false)
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  wrapper.unmount()
 })
 
 it('首次全零库存必须明确确认，提交完整零快照且建立基准后不允许无变化重复保存', async () => {
@@ -205,7 +224,10 @@ it.each(['失败', '错账号', '无效数量', '空文档'])('库存读取%s时
   else inventoryApi.getCurrent.mockResolvedValue([null])
   const wrapper = render()
   await flushPromises()
-  expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
+  expect(wrapper.find('.inventory-entry').exists()).toBe(false)
+  expect(wrapper.get('.inventory-setup[role="alert"]').text()).toContain('读取失败')
+  await wrapper.get('.inventory-setup button').trigger('click')
+  await flushPromises()
   expect(wrapper.find('.stock-editor').exists()).toBe(false)
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })
@@ -214,13 +236,15 @@ it('没有账号与未登录时禁止盘点，未登录不读取私有库存', a
   inventoryApi.listAccounts.mockResolvedValue([])
   const wrapper = render()
   await flushPromises()
-  expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
+  expect(wrapper.find('.inventory-entry').exists()).toBe(false)
+  expect(wrapper.get('.inventory-setup').text()).toContain('创建或选择账号')
   expect(inventoryApi.getCurrent).not.toHaveBeenCalled()
   wrapper.unmount()
   auth.isLoggedIn = false
   const guest = render()
   await flushPromises()
-  expect(guest.get('.inventory-entry').element.disabled).toBe(true)
+  expect(guest.find('.inventory-entry').exists()).toBe(false)
+  expect(guest.get('.inventory-setup').text()).toContain('登录后管理库存')
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
   expect(inventoryApi.getCurrent).not.toHaveBeenCalled()
 })
@@ -341,7 +365,10 @@ it('类型后台刷新保留目录主体，迟到类型数据不覆盖当前库�
 
 it('报告无基准入口聚焦日期、进入道具盘点或复用原报告导入工作台，不自动写数据', async () => {
   localStorage.setItem('inventory-tabs', 'acquired')
-  const wrapper = render()
+  const wrapper = render({ attachTo: document.body })
+  await flushPromises()
+  await wrapper.get('.inventory-setup .link').trigger('click')
+  await wrapper.findAll('.inventory-tabs button').find(button => button.text() === '统计报告').trigger('click')
   await flushPromises()
   const focus = vi.spyOn(wrapper.get('#acquired-range-from').element, 'focus')
   await wrapper.findAll('.report-empty-actions button').find(node => node.text() === '调整日期范围').trigger('click')
@@ -355,6 +382,7 @@ it('报告无基准入口聚焦日期、进入道具盘点或复用原报告导�
   await flushPromises()
   expect(confirmation(wrapper).element.checked).toBe(false)
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  wrapper.unmount()
 })
 
 it('明确校验拒绝保留草稿并允许修改，结果不明则锁定原样重试', async () => {
@@ -410,7 +438,8 @@ it('清空账号或切换游戏会清掉旧草稿，未选账号不再读取或�
   activeAccount.clear()
   await flushPromises()
   expect(wrapper.find('.stock-editor').exists()).toBe(false)
-  expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
+  expect(wrapper.find('.inventory-entry').exists()).toBe(false)
+  expect(wrapper.get('.inventory-setup').text()).toContain('请选择游戏账号')
   expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(reads)
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })

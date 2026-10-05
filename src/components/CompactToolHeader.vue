@@ -7,7 +7,6 @@
           <p v-if="description" class="compact-tool-description">{{ description }}</p>
         </div>
         <div v-if="$slots.account" class="compact-tool-account"><slot name="account" /></div>
-        <div v-if="$slots.primary" class="compact-tool-primary"><slot name="primary" /></div>
         <div v-if="$slots.help || $slots.actions" class="compact-tool-actions">
           <button v-if="$slots.help" type="button" class="compact-tool-help" :aria-expanded="helpOpen" :aria-controls="helpId" @click="helpOpen = !helpOpen">
             <CircleHelp :size="15" aria-hidden="true" />帮助
@@ -30,30 +29,27 @@ const helpId = useId()
 </script>
 
 <style scoped>
-.compact-tool-header { padding-block: 16px 8px; color: var(--ink); }
+.compact-tool-header { padding-block: 20px 12px; color: var(--ink); }
 .compact-tool-header:has(.tool-more[open]) { position: relative; z-index: var(--z-popover); }
 .compact-tool-header > .wrap { container-type: inline-size; }
-.compact-tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading primary' 'account actions'; align-items: center; gap: 4px 12px; }
+.compact-tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'account account'; align-items: center; gap: 4px 12px; }
 .compact-tool-heading { grid-area: heading; min-width: 0; }
-.compact-tool-heading h1 { margin: 0; color: var(--tea); font-family: var(--font-s); font-size: 26px; font-weight: 900; line-height: 1.4; letter-spacing: .025em; white-space: nowrap; }
+.compact-tool-heading h1 { margin: 0; color: var(--tea); font-family: var(--font-s); font-size: 30px; font-weight: 900; line-height: 1.3; letter-spacing: .035em; white-space: nowrap; }
 .compact-tool-description { margin: 2px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink-60); }
 .compact-tool-account { grid-area: account; min-width: 0; }
-.compact-tool-primary { grid-area: primary; justify-self: end; }
-.compact-tool-primary :deep(.btn) { min-height: 44px; padding-inline: 16px; border-radius: 10px; font-size: 13px; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 4px color-mix(in srgb, var(--tea) 12%, transparent); }
 .compact-tool-actions { grid-area: actions; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .compact-tool-help { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
 .compact-tool-help:hover { color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, transparent); }
 .compact-tool-help:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .compact-tool-help-content { margin-top: 12px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
 .compact-tool-help-content :deep(p) { margin: 0; }
-@container (min-width: 760px) {
-  .compact-tool-row { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: 'heading account primary actions'; gap: 16px; }
-  .compact-tool-heading h1 { font-size: 28px; }
-  .compact-tool-account { padding-left: 4px; }
+@container (min-width: 860px) {
+  .compact-tool-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading account actions'; gap: 24px; }
+  .compact-tool-heading h1 { font-size: 32px; }
 }
 @container (max-width: 340px) {
-  .compact-tool-heading h1 { font-size: 24px; }
-  .compact-tool-primary :deep(.btn) { padding-inline: 12px; }
+  .compact-tool-heading h1 { font-size: 28px; }
+  .compact-tool-description { max-width: 16em; }
   .compact-tool-row { column-gap: 8px; }
 }
 </style>
