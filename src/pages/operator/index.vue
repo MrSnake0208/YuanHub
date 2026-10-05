@@ -8,10 +8,12 @@
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="gameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
         </template>
-        <template #actions>
+        <template #primary>
           <router-link class="btn primary" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="showImport = false">录入密探</router-link>
+        </template>
+        <template #actions>
           <details class="tool-more">
-            <summary>更多</summary>
+            <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
               <router-link class="act-btn ghost" to="/operator/share">查看他人 BOX</router-link>
               <button type="button" class="act-btn ghost workspace-tabs-toggle" :aria-expanded="!accountWorkspaceCompact" aria-controls="operator-account-workspace"
@@ -32,7 +34,7 @@
         <div class="wrap">
           <div class="tool-summary" aria-label="密探概览">
             <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位 · {{ manifestPercent }}</span>
-            <span>目录更新 {{ catalogVersion || '本地兜底' }}</span>
+            <span :title="catalogVersion || '本地兜底'">目录更新 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
           </div>
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
@@ -60,7 +62,7 @@
             <button v-else-if="operatorEntryState.endsWith('error')" class="act-btn ghost" type="button" :disabled="accountsLoading || loading" @click="retryEntryData">重试加载</button>
           </section>
           <div
-            class="operator-tabs"
+            class="operator-tabs tool-workspace-tabs"
             role="tablist"
             aria-label="密探工作区"
             data-tour="operator-workspace"
@@ -428,6 +430,7 @@
             class="panel"
             :class="{ 'is-active': activeTab === 'catalog' }"
           >
+            <div class="catalog-tools">
             <div class="manifest-bar" v-reveal>
               <input
                 ref="catalogSearchInput"
@@ -436,22 +439,25 @@
                 type="search"
                 name="operator-search"
                 aria-label="搜索密探名称、别名或 ID"
-                placeholder="搜索名称 / 别名 / id"
+                placeholder="搜索名称 / 别名 / ID"
               />
-              <div class="mf-filter">
+              <div class="mf-filter" role="group" aria-label="招募状态">
                 <button
+                  :aria-pressed="manifestFilter === 'all'"
                   :class="{ on: manifestFilter === 'all' }"
                   @click="manifestFilter = 'all'"
                 >
                   全部
                 </button>
                 <button
+                  :aria-pressed="manifestFilter === 'owned'"
                   :class="{ on: manifestFilter === 'owned' }"
                   @click="manifestFilter = 'owned'"
                 >
                   已招募
                 </button>
                 <button
+                  :aria-pressed="manifestFilter === 'missing'"
                   :class="{ on: manifestFilter === 'missing' }"
                   @click="manifestFilter = 'missing'"
                 >
@@ -463,6 +469,9 @@
             <!-- 属性 / 职业 / 品质 筛选 -->
             <details class="catalog-more-filters">
               <summary>更多筛选<span v-if="profFilter !== 'all' || subProfFilter !== 'all' || rarityFilter !== 'all' || manifestGrowthFilters.levelEnabled || manifestGrowthFilters.eliteEnabled || manifestGrowthFilters.starEnabled"> · 已启用</span></summary>
+              <label class="catalog-version-copy">目录版本 <input class="catalog-version-value" type="text" readonly
+                :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
+                aria-label="目录版本，可选中复制" @focus="$event.target.select()" /></label>
             <div class="prof-filter catalog-prof-filter">
               <div class="pf-row pf-prof-row">
                 <span class="pf-label">属性</span>
@@ -539,6 +548,7 @@
               <OperatorGrowthFilters v-model="manifestGrowthFilters" />
             </div>
             </details>
+            </div>
 
             <div v-if="catalogLoading" class="state">正在加载密探图鉴…</div>
             <div
@@ -549,15 +559,8 @@
               }}<button class="link" @click="loadCatalog">重试</button>
             </div>
             <div v-else class="backpack" v-reveal>
-              <div class="bp-head">
+              <div v-if="hasManifestFilters || !auth.isLoggedIn || error || favoriteError" class="bp-head">
                 <span class="bp-tip">
-                  共 <b class="bp-num">{{ catalogCount }}</b> 位密探 · 已招募
-                  <b class="bp-num">{{ manifestOwned }}</b> 位 · 未招募
-                  <b class="bp-num">{{ manifestMissing }}</b> 位 · 目录
-                  <input class="catalog-version-value" type="text" readonly
-                    :value="catalogVersion || '本地兜底'" :title="catalogVersion || '本地兜底'"
-                    aria-label="目录版本，可选中复制" @focus="$event.target.select()" /> ·
-                  所属游戏「{{ gameFilter }}」
                   <template v-if="rarityFilter !== 'all'">
                     · 品质「{{ rarityLabelMap[rarityFilter] || rarityFilter }}」</template
                   >
@@ -15440,19 +15443,36 @@ onBeforeUnmount(function () {
 .batch-status-action.discarded { border: 1px dashed var(--tea); background: var(--cream); color: var(--tea); }
 .current-status-index > .status-discarded::before { background: var(--tea); }
 
-/* Compact tool workspace: leave all filtering and account state with the page. */
+/* Page owns metadata and filters; cards retain their existing presentation. */
 .operator-main > section { padding-top: 0; }
-.operator-tabs { margin-top: 12px; flex-wrap: wrap; }
-.operator-tabs button { white-space: nowrap; }
-.operator-entry-guide { margin-block: 10px; padding: 10px 12px; }
-.catalog-more-filters { margin-top: 8px; }
-.catalog-more-filters > summary { width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 13px; }
-.catalog-more-filters > summary::before { content: '+'; margin-right: 4px; }
-.catalog-more-filters[open] > summary::before { content: '−'; }
-.manifest-bar { margin-top: 12px; padding: 10px 12px; }
-.manifest-bar .mf-search { flex: 1 1 220px; width: auto; }
+.page-operator .operator-tabs.tool-workspace-tabs { display: flex; }
+.operator-tabs.tool-workspace-tabs .operator-tab-button { display: inline-flex; }
+.operator-mobile-tabs { display: none; }
+.operator-entry-guide { margin-block: 8px; padding: 8px 0; border: 0; background: transparent; }
+.catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: start; margin-top: 12px; }
+.catalog-tools .manifest-bar { display: contents; }
+.catalog-tools .mf-search { grid-column: 1 / -1; width: 100%; min-width: 0; min-height: 44px; background: var(--surface); }
+.catalog-tools .mf-filter { min-height: 44px; align-items: center; width: fit-content; max-width: 100%; padding: 0; background: transparent; }
+.catalog-tools .mf-filter button { min-height: 44px; min-width: 44px; padding-inline: 12px; border-radius: 8px; }
+.catalog-tools .mf-filter button.on { background: var(--tea); color: var(--cream); }
+.catalog-more-filters { min-width: 0; margin: 0; }
+.catalog-more-filters > summary { width: fit-content; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 4px; border: 0; color: var(--ink-60); cursor: pointer; font-size: 13px; list-style: none; white-space: nowrap; }
+.catalog-more-filters > summary::-webkit-details-marker { display: none; }
+.catalog-more-filters > summary::after { content: '+'; margin-left: 4px; }
+.catalog-more-filters[open] > summary::after { content: '−'; }
+.catalog-more-filters[open] { grid-column: 1 / -1; }
+.catalog-more-filters > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.catalog-more-filters .prof-filter { margin-top: 4px; padding: 8px 0; border: 0; background: transparent; }
 .current-workbench-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .current-status-summary { margin: 0; }
+.catalog-tools + .backpack { margin-top: 12px; }
+.catalog-version-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink-60); font-size: 12px; }
+.catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
+@media (min-width: 900px) {
+  .catalog-tools { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 12px; }
+  .catalog-tools .mf-search { grid-column: auto; }
+}
+
 </style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>

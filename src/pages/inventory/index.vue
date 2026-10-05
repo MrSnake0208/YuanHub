@@ -8,11 +8,13 @@
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError" />
         </template>
-        <template #actions>
+        <template #primary>
           <button type="button" class="btn primary inventory-entry" :disabled="!inventoryAccountReady || loading || !!error || currentLoadedContext !== stockContext || editingStock"
             @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />录入库存</button>
+        </template>
+        <template #actions>
           <details class="tool-more">
-            <summary>更多</summary>
+            <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
               <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || editingStock" :aria-expanded="showArchive" @click="toggleInventoryArchive">
                 <Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起数据交换' : '数据交换' }}
@@ -50,7 +52,7 @@
 
           <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
           <div
-            class="inventory-tabs"
+            class="inventory-tabs tool-workspace-tabs"
             data-tour="inventory-workspace"
             role="tablist"
             aria-label="库存工作区"
@@ -8325,13 +8327,22 @@ onBeforeUnmount(function () {
 }
 
 .inventory-main > section { padding-top: 0; }
-.manifest-toolbar { margin-top: 12px; }
+.inventory-tabs.tool-workspace-tabs { position: static; flex-direction: row; }
+.inventory-tabs.tool-workspace-tabs button { flex-direction: row; }
+.inventory-tabs.tool-workspace-tabs button svg { display: none; }
+.manifest-toolbar { display: flex; margin-top: 12px; padding: 0; gap: 8px 16px; border: 0; border-radius: 0; background: transparent; }
+.manifest-toolbar .manifest-bar { display: flex; flex: 1 1 360px; flex-wrap: wrap; flex-direction: row; align-items: center; gap: 8px 16px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.manifest-toolbar .manifest-bar-summary { width: auto; flex-direction: row; gap: 0; }
 .manifest-bar-summary .mf-stats { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px 14px; }
 .manifest-bar-summary .mf-stat { display: inline-flex; flex-direction: row; align-items: baseline; gap: 4px; }
-.manifest-bar-summary .mf-num { font-size: 14px; }
-.manifest-bar-summary .mf-progress { display: none; }
+.manifest-bar-summary .mf-num { font-size: 13px; color: var(--ink-60); }
+.manifest-bar-summary .mf-progress, .manifest-bar-divider, .manifest-bar-spacer { display: none; }
+.manifest-toolbar .manifest-item-tools { flex: 1 1 360px; width: auto; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.manifest-item-tools .mf-search { flex: 1 1 160px; min-width: 0; min-height: 44px; width: auto; background: var(--surface); }
+.manifest-item-tools .mf-filter { flex: none; background: transparent; padding: 0; }
+.manifest-item-tools .mf-filter button { min-height: 44px; padding-inline: 12px; }
 @media (max-width: 640px) {
-  .manifest-bar { padding: 10px 12px; }
-  .manifest-bar-summary { gap: 0; }
+  .manifest-toolbar .manifest-bar-summary { flex-basis: 100%; }
 }
+
 </style>
