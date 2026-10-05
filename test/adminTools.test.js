@@ -79,8 +79,6 @@ test('招募档案访问配置使用独立平台权限和管理入口', () => {
 test('adds a single accessible workbench back link to management detail pages', function () {
   const backLink = readSource('../src/components/admin/AdminBackLink.vue')
   const detailPages = [
-    '../src/pages/admin/roles.vue',
-    '../src/pages/admin/audit.vue',
     '../src/pages/operator/admin.vue',
     '../src/pages/changelog/admin.vue'
   ].map(readSource)
@@ -94,6 +92,12 @@ test('adds a single accessible workbench back link to management detail pages', 
     assert.equal((source.match(/<AdminBackLink\s*\/>/g) || []).length, 1)
     assert.match(source, /<header class="hero(?: [^"]+)?">\s*<div class="wrap">\s*<AdminBackLink\s*\/>/s)
   })
+  for (const page of ['roles', 'audit', 'beta']) {
+    const source = readSource(`../src/pages/admin/${page}.vue`)
+    assert.equal((source.match(/to="\/manage"/g) || []).length, 1)
+    assert.match(source, /<header class="page-header">[\s\S]*?<router-link[^>]+class="page-header-back"[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/)
+    assert.doesNotMatch(source, /class="hero"|class="hero-stats"/)
+  }
   assert.doesNotMatch(workbench, /AdminBackLink/)
 })
 

@@ -142,3 +142,34 @@ it('declining the confirmation or omitting the reason never calls the backend', 
   expect(updateBetaAdmin).not.toHaveBeenCalled()
   expect(wrapper.get('.admin-message.error').text()).toContain('变更原因')
 })
+
+
+it('管理身份和容量、候补数据归属真实运营操作区', async () => {
+  getBetaAdmin.mockResolvedValue(adminPayload({ waitingCount: 12, campaign: { ...adminPayload().campaign, localTestMode: true } }))
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('main h1').text()).toBe('内测管理')
+  expect(wrapper.get('.page-header-back').attributes('to')).toBe('/manage')
+  expect(wrapper.find('main > header button').exists()).toBe(false)
+  expect(wrapper.get('.capacity-summary').text()).toContain('有效预留25')
+  expect(wrapper.get('.admissions-panel').text()).toContain('候补 12 人')
+  expect(wrapper.get('.local-mode').text()).toContain('本地内测模式')
+  expect(wrapper.get('.access-mode-panel .local-reset').text()).toBe('重置本地内测')
+  const headings = wrapper.findAll('.admin-card h2').map(h => h.text())
+  expect(headings.indexOf('运营操作')).toBeLessThan(headings.indexOf('本地模拟快照'))
+  expect(updateBetaAdmin).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('读取中和权限失败仍有明确页头与恢复入口，不渲染虚构运营数据', async () => {
+  let reject
+  getBetaAdmin.mockReturnValue(new Promise((_, fail) => { reject = fail }))
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('main h1').text()).toBe('内测管理')
+  expect(wrapper.find('.capacity-panel').exists()).toBe(false)
+  expect(wrapper.get('.beta-state-toolbar button').text()).toContain('正在读取')
+  reject(Object.assign(new Error('没有内测管理权限'), { status: 403 })); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('没有内测管理权限')
+  expect(wrapper.get('.beta-state-toolbar button').text()).toBe('刷新管理状态')
+  expect(wrapper.find('.capacity-panel').exists()).toBe(false)
+  wrapper.unmount()
+})
