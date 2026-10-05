@@ -1,12 +1,12 @@
 <template>
-  <div class="calendar-page">
+  <div class="calendar-page calendar-admin">
     <IslandSidebar />
     <main id="main-content">
-      <header class="calendar-header wrap">
-        <AdminBackLink />
-        <h1>活动日历管理</h1>
-        <p>维护公共活动日程。招募活动自动来自招募卡池，停用手工活动会保留历史记录。</p>
-      </header>
+      <header class="page-header"><div class="wrap">
+        <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+        <h1 class="page-header-title">活动日历管理</h1>
+        <p class="page-header-description">维护公共活动日程，处理用户补充建议。</p>
+      </div></header>
       <div class="wrap calendar-content">
         <p v-if="!permitted" class="calendar-panel" role="alert">需要活动日历维护权限。</p>
         <template v-else>
@@ -57,7 +57,7 @@
               <button type="button" :disabled="saving" @click="requestClose">返回活动目录</button>
               <span class="calendar-hint">{{ dirty ? '有未保存修改' : '尚未修改' }}</span>
             </div>
-            <h2 id="calendar-editor-title">{{ form.id ? '编辑活动' : '新建活动' }}</h2>
+            <div class="calendar-editor-identity"><p v-if="form.id" class="page-header-context">编辑活动</p><h2 id="calendar-editor-title">{{ form.id ? (form.title || '未命名活动') : '新建活动' }}</h2></div>
             <form class="calendar-panel calendar-form" novalidate @submit.prevent="save">
               <fieldset :disabled="saving">
                 <legend>活动信息</legend>
@@ -97,7 +97,7 @@ import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { ExternalLink } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
-import AdminBackLink from '@/components/admin/AdminBackLink.vue'
+import '@/styles/page-header.css'
 import CalendarSuggestionsReview from '@/components/calendar/CalendarSuggestionsReview.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
@@ -213,3 +213,18 @@ watch([identity, permitted], () => {
 }, { immediate: true })
 onBeforeUnmount(() => { alive = false; generation++; readGeneration++ })
 </script>
+
+<style scoped>
+.calendar-content { padding-top: 12px; gap: 16px; }
+.calendar-workspace-head { margin-top: 0; }
+@media (min-width: 360px) {
+  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+@media (min-width: 700px) {
+  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.calendar-editor-identity h2 { margin: 4px 0 0; color: var(--tea); font: 900 26px/1.4 var(--font-s); overflow-wrap: anywhere; }
+.calendar-editor-identity .page-header-context { margin: 0; }
+.calendar-admin :is(button,a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.calendar-admin button { white-space: nowrap; }
+</style>

@@ -203,10 +203,10 @@ it('剪贴板拒绝复制时不误报成功，也不在页面显示连接码', a
 })
 
 
-it('顶部只保留标题，连接区打开或收起既有表单且不提前创建连接', async () => {
+it('顶部保留页面身份，连接区打开或收起既有表单且不提前创建连接', async () => {
   const wrapper = render(); await flushPromises()
-  expect(wrapper.get('.hero').text()).toBe('账号与连接码')
-  expect(wrapper.get('.hero').findAll('button, a')).toHaveLength(0)
+  expect(wrapper.get('.page-header h1').text()).toBe('账号与连接码')
+  expect(wrapper.get('.page-header').findAll('button, a')).toHaveLength(0)
   expect(wrapper.get('.app-copy').text()).toContain('星石自动采集仍在接入中')
   await wrapper.get('.app-connect').trigger('click'); await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-a')

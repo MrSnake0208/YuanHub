@@ -981,7 +981,7 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
   const wrapper = render(MyFeedback); await flushPromises()
   await wrapper.get('input[name="feedback-search"]').setValue('old filter')
   await wrapper.get('form[role="search"]').trigger('submit'); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   const form = () => wrapper.get('.feedback-modal form')
   await form().findAll('select')[1].setValue('OPERATOR')
   await form().get('[name="public-consent"]').setValue(true)
@@ -998,7 +998,7 @@ it('creating feedback prevents duplicate submit, clears stale filters and opens 
 
 it('用户和管理员从后端目录看到相同板块，用户可提交星石反馈', async () => {
   const mine = render(MyFeedback); await flushPromises()
-  await mine.get('.feedback-hero-action').trigger('click')
+  await mine.get('.page-header-action').trigger('click')
   const options = mine.findAll('.feedback-modal select')[1].findAll('option').map(option => option.text())
   expect(options).toEqual(['请选择反馈板块', '密探养成', '星石', '麻圆'])
   await mine.findAll('.feedback-modal select')[1].setValue('STAR')
@@ -1017,7 +1017,7 @@ it('用户和管理员从后端目录看到相同板块，用户可提交星石�
 it('板块目录加载失败时不给出过期选项也不能提交', async () => {
   api.getFeedbackAccess.mockRejectedValue(new Error('offline'))
   const wrapper = render(MyFeedback); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   expect(wrapper.findAll('.feedback-modal select')[1].findAll('option').map(option => option.text())).toEqual(['反馈板块加载失败'])
   expect(wrapper.get('.feedback-modal button[type="submit"]').attributes('disabled')).toBeDefined()
   expect(wrapper.get('.feedback-modal [role="alert"]').text()).toContain('反馈板块加载失败')
@@ -1041,7 +1041,7 @@ it('完成反馈须确认，成功后切到已完成列表并告知去向', asyn
 
 it('弹窗关闭、遮罩和 Esc 对文字与附件草稿使用同一放弃确认', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   await wrapper.get('[name="public-consent"]').setValue(true)
   await wrapper.get('.feedback-modal input[maxlength="120"]').setValue('草稿标题')
   await wrapper.get('.feedback-modal textarea').setValue('草稿正文')
@@ -1055,7 +1055,7 @@ it('弹窗关闭、遮罩和 Esc 对文字与附件草稿使用同一放弃确�
   expect(wrapper.get('.feedback-modal textarea').element.value).toBe('草稿正文')
   await wrapper.get('.feedback-modal').trigger('keydown', { key: 'Escape' }); await flushPromises()
   expect(wrapper.find('.feedback-modal').exists()).toBe(false)
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   expect(wrapper.find('.feedback-modal input[maxlength="120"]').exists()).toBe(false)
   await wrapper.get('[name="public-consent"]').setValue(true)
   expect(wrapper.get('.feedback-modal input[maxlength="120"]').element.value).toBe('')
@@ -1065,7 +1065,7 @@ it('弹窗关闭、遮罩和 Esc 对文字与附件草稿使用同一放弃确�
 it('默认私下提交不需要标题，公开授权与客户端信息同意独立', async () => {
   api.createFeedback.mockResolvedValue(ticket('rpt_new'))
   const wrapper = render(MyFeedback); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   const form = wrapper.get('.feedback-modal form')
   expect(form.get('[name="public-consent"]').element.checked).toBe(false)
   expect(form.find('input[maxlength="120"]').exists()).toBe(false)
@@ -1081,7 +1081,7 @@ it('默认私下提交不需要标题，公开授权与客户端信息同意独�
 
 it('取消公开授权保留隐藏标题但不提交，并忽略迟到的相似检索', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   const form = () => wrapper.get('.feedback-modal form')
   const pending = deferred()
   findSimilarFeedback.mockReturnValueOnce(pending.promise)
@@ -1149,7 +1149,7 @@ it('管理员页面拒绝未授权发布事件且不修改反馈类型', async (
 
 it('允许公开时空标题在附件上传与创建请求之前拦截', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   const form = () => wrapper.get('.feedback-modal form')
   await form().findAll('select')[1].setValue('OPERATOR')
   await form().get('[name="public-consent"]').setValue(true)
@@ -1206,7 +1206,7 @@ it('首次无反馈提供提交入口，筛选无结果可以恢复全部', asyn
 
 it('支持相似反馈保留已填写草稿，详情使用安全的新标签页链接', async () => {
   const wrapper = render(MyFeedback); await flushPromises()
-  await wrapper.get('.feedback-hero-action').trigger('click')
+  await wrapper.get('.page-header-action').trigger('click')
   await wrapper.get('.feedback-modal textarea').setValue('我遇到的不同细节')
   await wrapper.get('[name="public-consent"]').setValue(true)
   const similar = wrapper.findComponent(SimilarFeedbackList)
@@ -1226,9 +1226,9 @@ it('支持相似反馈保留已填写草稿，详情使用安全的新标签页�
 
 it('新建反馈限制键盘焦点并在关闭后返回入口', async () => {
   const wrapper = render(MyFeedback, { attachTo: document.body }); await flushPromises()
-  const opener = wrapper.get('.feedback-hero-action').element
+  const opener = wrapper.get('.page-header-action').element
   opener.focus()
-  await wrapper.get('.feedback-hero-action').trigger('click'); await flushPromises()
+  await wrapper.get('.page-header-action').trigger('click'); await flushPromises()
   const panel = wrapper.get('.feedback-modal').element
   expect(panel.contains(document.activeElement)).toBe(true)
   const last = panel.querySelector('button[type="submit"]')

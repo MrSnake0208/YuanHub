@@ -3,34 +3,15 @@
     <IslandSidebar />
 
     <main id="main-content" class="notifications-main">
-      <header class="hero">
-        <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">通知中心</span>
-          </div>
-          <div class="notification-heading">
-            <div>
-              <h1>通知中心</h1>
-              <p class="hero-sub">查看反馈回复与状态更新。需要跟进问题？前往 <router-link to="/feedback">我的反馈</router-link>。</p>
-            </div>
-            <div class="hero-action">
-              <button
-                class="act-btn primary"
-                :disabled="loading || markingAll || Boolean(markingId) || unreadCount === 0"
-                @click="markAllRead"
-              >
-                {{ markingAll ? '正在标记…' : markAllError ? '重试全部已读' : '全部已读' }}
-              </button>
-              <p v-if="markAllError" class="action-error" role="alert">{{ markAllError }}</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <header class="page-header"><div class="wrap">
+        <h1 class="page-header-title">通知中心</h1>
+        <p class="page-header-description">查看反馈回复与状态更新。需要跟进问题？前往 <router-link to="/feedback">我的反馈</router-link>。</p>
+      </div></header>
 
-      <section>
+      <section class="notifications-workspace">
         <div class="wrap">
           <!-- 筛选 -->
-          <div class="toolbar">
+          <div class="toolbar notification-toolbar">
             <div class="tabs">
               <button
                 v-for="t in filterTabs"
@@ -44,8 +25,17 @@
                 {{ t.label }}<span v-if="t.key === 'unread' && unreadCount > 0" class="unread-badge">{{ unreadCount }}</span>
               </button>
             </div>
-            <div class="sp"></div>
+            <div class="notification-actions">
+              <button
+                class="page-header-action"
+                :disabled="loading || markingAll || Boolean(markingId) || unreadCount === 0"
+                @click="markAllRead"
+              >
+                {{ markingAll ? '正在标记…' : markAllError ? '重试全部已读' : '全部已读' }}
+              </button>
+            </div>
             <span class="sort-lb">共 {{ total }} 条</span>
+            <p v-if="markAllError" class="action-error" role="alert">{{ markAllError }}</p>
           </div>
           <p class="retention-note">站内通知保留最近 90 天；完整沟通记录可在「我的反馈」查看。</p>
 
@@ -120,6 +110,7 @@
 </template>
 
 <script setup>
+import '@/styles/page-header.css'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, MessageSquare, RefreshCw } from '@lucide/vue'
@@ -381,25 +372,28 @@ onBeforeUnmount(function () {
 
 <style scoped>
 .notifications-main { padding-bottom: 0 }
-.page-notifications .hero { padding: 36px 0 28px; border-radius: 0 0 28px 28px }
-.page-notifications .hero h1 { margin-top: 12px; font-size: clamp(32px, 4vw, 48px); line-height: 1.2 }
-.page-notifications .hero-sub { margin-top: 10px; font-size: 14px }
-.hero-sub a { color: var(--accent-strong); font-weight: 800 }
-.notification-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px }
+.notifications-workspace { padding-top: 0; }
+.page-header-description a { color: var(--accent-strong); font-weight: 800; }
+.notification-toolbar { position: static; margin-top: 0; backdrop-filter: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 0; border: 0; background: none; box-shadow: none; }
+.notification-actions { display: grid; gap: 6px; justify-items: end; }
+.notification-actions button { cursor: pointer; color: var(--tea); background: var(--surface); border-color: var(--line); white-space: nowrap; }
+.notification-actions button:hover:not(:disabled) { background: var(--cream); border-color: var(--tea); }
+.notification-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.notification-toolbar .sort-lb, .notification-toolbar .action-error { grid-column: 1 / -1; }
+.notification-toolbar .tabs { display: flex; width: fit-content; }
+.notification-toolbar .tabs button { min-height: 44px; white-space: nowrap; }
+@media (min-width: 700px) {
+  .notification-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .notification-toolbar .sort-lb { grid-column: auto; }
+}
 .retention-note { margin-top: 12px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
 .ntf-open-link, .empty-action { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-strong); font: 800 13px var(--font-b); text-underline-offset: 3px }
 .empty-action { padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); cursor: pointer }
-.page-notifications .hero::after { content: '通知' }
-.hero-action { display: flex; align-items: center; justify-content: center; padding: 16px 24px }
-.hero-action:has(.action-error){flex-direction:column;gap:6px}
 .action-error{color:var(--rouge);font-size:12px;font-weight:700;line-height:1.5}
-.hero-action .act-btn { min-height: 44px; padding: 10px 24px; color: var(--cream); background: var(--tea); border: 1.5px solid transparent; border-radius: 999px; cursor: pointer; font-family: var(--font-b); font-size: 13px; font-weight: 800; white-space: nowrap; transition: all .3s var(--ease) }
-.hero-action .act-btn:hover:not(:disabled) { background: var(--accent) }
-.hero-action .act-btn:disabled { opacity: .45; cursor: not-allowed }
 
 .unread-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; background: var(--rouge); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 800; line-height: 1 }
 
-.notification-list { margin-top: 28px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px }
+.notification-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px }
 .state { margin-top: 16px; padding: 44px 30px; color: var(--ink-60); background: var(--surface); border: 1.5px dashed var(--line); border-radius: 18px; text-align: center; font-size: 13px; font-weight: 700 }
 .state.err { color: var(--ink-60) }
 .notification-list .link { min-height: 44px; margin-left: 10px; color: var(--accent-strong); background: transparent; border: 0; cursor: pointer; font-weight: 800; text-decoration: underline; text-underline-offset: 3px }
@@ -433,13 +427,9 @@ onBeforeUnmount(function () {
 .btn-more:disabled { opacity: .45; cursor: default }
 
 @media (max-width: 767px) {
-  .notification-heading { flex-direction: column; align-items: stretch; gap: 12px }
-  .hero-action { justify-content: flex-start; padding: 0 }
   .notification-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 14px }
   .ntf-icon { width: 40px; height: 40px; border-radius: 10px }
   .ntf-icon svg { width: 16px; height: 16px }
   .ntf-read-btn { grid-column: 2; justify-self: start; min-height: 44px; padding: 5px 12px; font-size: 11px }
-  .hero-action { padding: 12px 16px }
-  .hero-action .act-btn { width: 100%; min-height: 44px }
 }
 </style>

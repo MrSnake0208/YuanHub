@@ -2,20 +2,12 @@
   <div class="page-operator-share">
     <IslandSidebar />
     <main id="main-content" class="share-main">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <div class="crumb">
-            <span class="pill fill">密探</span>
-            <span class="pill">只读分享</span>
-          </div>
-          <h1>密探 BOX<span class="small">分享码查看</span></h1>
-          <p class="hero-sub">无需登录，仅展示分享者公开的客观养成信息。</p>
-          <div v-if="share" class="hero-stats">
-            <div><div class="k">游戏版本</div><div class="v compact">{{ share.game || '—' }}</div></div>
-            <div><div class="k">密探数量</div><div class="v">{{ entries.length }}<small>位</small></div></div>
-            <div><div class="k">图鉴版本</div><div class="v compact">{{ share.catalog_version || '—' }}</div></div>
-            <div><div class="k">数据更新</div><div class="v compact"><time :datetime="share.updated_at || undefined">{{ formatDate(share.updated_at) }}</time></div></div>
-          </div>
+          <router-link class="page-header-back" to="/operator">← 密探名册</router-link>
+          <h1 class="page-header-title">密探 BOX</h1>
+          <p class="page-header-description">通过分享码查看公开养成信息，无需登录。</p>
+          <p v-if="share" class="page-header-context">{{ share.game || '游戏版本未知' }} · 只读分享</p>
         </div>
       </header>
 
@@ -66,7 +58,7 @@
 
           <template v-else>
             <div class="share-toolbar" aria-label="分享页操作">
-              <p>此页面只读，刷新可获取分享者的最新数据。</p>
+              <p>此页面只读 · 图鉴 {{ share.catalog_version || '—' }}<br>数据更新于 <time :datetime="share.updated_at || undefined">{{ formatDate(share.updated_at) }}</time></p>
               <button type="button" @click="loadShare">刷新数据</button>
               <button type="button" class="ghost" @click="resetInput">重新输入</button>
             </div>
@@ -275,6 +267,7 @@
 </template>
 
 <script setup>
+import '@/styles/page-header.css'
 import { formatOperatorOddityCurrent } from '../../utils/operatorCombatStats.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Heart, Star, Swords } from '@lucide/vue'
@@ -594,23 +587,21 @@ watch(function () { return route.params.token }, function (token) {
 
 <style scoped>
 .share-main { padding-bottom: 0 }
-.page-operator-share .hero { --wm: '享' }
-.hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)) }
-.hero-stats .v.compact { font-size: clamp(18px, 2vw, 26px) }
-.share-content { padding-top: 34px }
-.share-entry,.share-state,.share-toolbar { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 22px 44px -34px rgba(73, 59, 44, .42) }
+.share-content { padding-top: 12px }
+.share-entry,.share-state { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 22px 44px -34px rgba(73, 59, 44, .42) }
 .share-entry { max-width: 780px; margin: 0 auto; padding: 34px }
 .section-kicker { display: block; margin-bottom: 8px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
-.share-entry h2,.share-state h2 { font-family: var(--font-s); font-size: clamp(24px, 3vw, 34px); font-weight: 900 }
+.share-entry h2,.share-state h2 { font-family: var(--font-s); font-size: 24px; font-weight: 900 }
 .share-entry > p,.share-state p { margin-top: 8px; color: var(--ink-60); font-size: 13px; line-height: 1.8 }
 .share-entry label { display: block; margin-top: 24px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
 .share-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 8px }
 .share-entry input { min-width: 0; min-height: 46px; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 13px; color: var(--ink); background: var(--paper); font: 13px var(--font-d); outline: none }
 .share-entry input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
 .share-entry button,.share-state button,.share-toolbar button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 9px 18px; color: var(--cream); background: var(--tea); cursor: pointer; font: 800 13px var(--font-b) }
-.share-entry button:hover,.share-state button:hover,.share-toolbar button:hover,.share-entry button:focus-visible,.share-state button:focus-visible,.share-toolbar button:focus-visible { border-color: var(--accent); background: var(--accent); outline: 2px solid transparent }
+.share-entry button:focus-visible,.share-state button:focus-visible,.share-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+.share-entry button:hover,.share-state button:hover,.share-toolbar button:hover,.share-entry button:focus-visible,.share-state button:focus-visible,.share-toolbar button:focus-visible { border-color: var(--accent); background: var(--accent) }
 .entry-error { color: var(--rouge) !important }
-.share-state { padding: 54px 30px; text-align: center }
+.share-state { padding: 28px 20px; text-align: center }
 .state-mark { display: grid; width: 54px; height: 54px; margin: 0 auto 16px; place-items: center; border-radius: 50%; color: var(--tea); background: var(--yellow); font: 900 24px var(--font-d) }
 .share-state.is-error .state-mark { color: var(--cream); background: var(--rouge) }
 .state-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px }
@@ -618,9 +609,9 @@ watch(function () { return route.params.token }, function (token) {
 .state-actions button { margin-top: 0 }
 button.ghost { border-color: var(--line); color: var(--ink-60); background: transparent }
 button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: var(--cream) }
-.share-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 14px 18px }
-.share-toolbar p { flex: 1; color: var(--ink-60); font-size: 12.5px }
-.share-toolbar button { min-height: 38px; padding: 7px 14px; font-size: 12px }
+.share-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin-bottom: 16px; padding: 0 0 12px; border-bottom: 1px solid var(--line) }
+.share-toolbar p { min-width: 0; overflow-wrap: anywhere; color: var(--ink-60); font-size: 12.5px }
+.share-toolbar button { min-height: 44px; padding: 7px 14px; font-size: 12px }
 .share-filter-dossier { margin-bottom: 20px }
 .share-ledger { margin-top: 16px; padding: 16px; border: 1px solid rgba(255, 248, 236, .22); border-radius: 20px; background: linear-gradient(145deg, var(--tea), var(--tea-deep)); box-shadow: 0 20px 40px -24px rgba(73, 59, 44, .55) }
 .current-ledger-meta { display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 14px; color: rgba(255, 248, 236, .76); font-size: 11px; font-weight: 700; line-height: 1.6 }
@@ -697,14 +688,12 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   .operator-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) }
   .current-ledger-meta { flex-direction: column; gap: 4px }
 }
-@media (max-width: 920px) {
-  .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-}
 @media (max-width: 640px) {
-  .share-content { padding-top: 22px }
+  .share-content { padding-top: 12px }
   .share-entry { padding: 24px 18px }
   .share-entry-row { grid-template-columns: 1fr }
-  .share-toolbar { align-items: stretch; flex-direction: column }
+  .share-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .share-toolbar p { grid-column: 1 / -1; overflow-wrap: anywhere }
   .share-toolbar button { width: 100% }
   .share-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px }
   .current-ledger-meta { flex-direction: column; gap: 4px; padding-bottom: 12px; font-size: 12px; line-height: 1.5 }
@@ -1172,4 +1161,5 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 }
 .agent-ledger-card.status-discarded { border-left: 3px dashed var(--tea); }
 .share-ledger-status.status-discarded { border-style: dashed; color: var(--tea); background: var(--cream); }
+.agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name { max-width: 52px; overflow: hidden; }
 </style>

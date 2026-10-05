@@ -44,8 +44,8 @@ it('只读初始化，不会写入空档案；无账号给出创建入口', asyn
 })
 it('备份入口位于账号栏，面板就近展开；收起保留输入，换账号关闭并清空', async () => {
   const wrapper = render({ DataAccountContextBar: false, RecruitmentExchange: false }); await flushPromises()
-  const context = wrapper.get('.data-account-context-bar'), toggle = context.get('.context-actions .archive-toggle'), exchange = wrapper.get('.exchange-card')
-  expect(context.get('.context-action').text()).toBe('管理游戏账号'); expect(context.find('select').exists()).toBe(false)
+  const context = wrapper.get('.data-account-context-bar'), toggle = context.get('.archive-toggle'), exchange = wrapper.get('.exchange-card')
+  expect(context.get('.context-selector').attributes('aria-label')).toContain('切换或管理账号'); expect(context.find('select').exists()).toBe(false)
   expect(toggle.text()).toBe('备份与恢复'); expect(toggle.attributes('aria-expanded')).toBe('false')
   expect(toggle.attributes('aria-controls')).toBe(exchange.attributes('id')); expect(context.element.nextElementSibling).toBe(exchange.element); expect(exchange.isVisible()).toBe(false)
   await toggle.trigger('click')
@@ -57,12 +57,12 @@ it('备份入口位于账号栏，面板就近展开；收起保留输入，换�
   await toggle.trigger('click'); expect(exchange.text()).toContain('backup.json'); expect(exchange.get('select').element.value).toBe('use_backup')
   expect(api.exportRecruitment).not.toHaveBeenCalled(); expect(api.previewRecruitmentImport).not.toHaveBeenCalled(); expect(api.commitRecruitmentImport).not.toHaveBeenCalled(); expect(api.recruitmentCommand).not.toHaveBeenCalled()
   activeAccount.set('acc-b'); await flushPromises()
-  expect(wrapper.get('.context-actions .archive-toggle').attributes('aria-expanded')).toBe('false'); expect(wrapper.get('.exchange-card').isVisible()).toBe(false); expect(wrapper.get('.exchange-card').text()).not.toContain('backup.json')
+  expect(wrapper.get('.archive-toggle').attributes('aria-expanded')).toBe('false'); expect(wrapper.get('.exchange-card').isVisible()).toBe(false); expect(wrapper.get('.exchange-card').text()).not.toContain('backup.json')
 })
 it('游戏快照不一致时仍能从账号栏展开备份，允许导出但禁止导入', async () => {
   archives['acc-a'].game_mismatch = true
   const wrapper = render({ DataAccountContextBar: false, RecruitmentExchange: false }); await flushPromises()
-  await wrapper.get('.context-actions .archive-toggle').trigger('click')
+  await wrapper.get('.archive-toggle').trigger('click')
   const exchange = wrapper.get('.exchange-card')
   expect(exchange.isVisible()).toBe(true); expect(button(exchange, '导出完整 JSON').attributes('disabled')).toBeUndefined(); expect(exchange.get('input[type=file]').attributes('disabled')).toBeDefined()
 })

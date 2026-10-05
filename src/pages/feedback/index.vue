@@ -3,21 +3,12 @@
     <IslandSidebar />
 
     <main id="main-content">
-      <header class="hero feedback-hero">
-        <div class="wrap">
-          <div class="feedback-hero-kicker">COMMUNITY / FEEDBACK</div>
-          <div class="feedback-hero-layout">
-            <div>
-              <h1>反馈中心</h1>
-              <p class="hero-sub">提交并跟进你的反馈。管理员回复后会收到站内通知，工单处理期间可补充说明与附件。</p>
-            </div>
-            <button class="feedback-primary-action feedback-hero-action" type="button" @click="showNewForm = true">
-              <Plus :size="18" aria-hidden="true" />
-              新建反馈
-            </button>
-          </div>
+      <header class="page-header"><div class="wrap"><div class="page-header-row">
+        <div class="page-header-identity"><h1 class="page-header-title">我的反馈</h1><p class="page-header-description">提交并跟进工单，查看管理员回复。</p></div>
+        <div v-if="loading || error || feedbacks.length || hasFilters" class="page-header-actions">
+          <button class="page-header-action" type="button" @click="showNewForm = true"><Plus :size="18" aria-hidden="true" />新建反馈</button>
         </div>
-      </header>
+      </div></div></header>
 
       <section class="feedback-content">
         <div class="wrap">
@@ -259,6 +250,7 @@ import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { dialog } from '@/utils/dialog.js'
 import '@/styles/feedback-workspace.css'
+import '@/styles/page-header.css'
 
 const PAGE_SIZE = 20
 const statusTabs = ['全部', '处理中', '已完成', '已驳回']
@@ -674,6 +666,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.page-header-action { gap: 8px; cursor: pointer; }
+
 .feedback-public-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 10px 14px; border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); font-size: 12.5px; font-weight: 700; }
 .feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .feedback-modal { max-width: 620px; }

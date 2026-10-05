@@ -2,12 +2,11 @@
   <div class="page-recruitment-access">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <AdminBackLink />
-          <div class="crumb"><span class="pill fill">平台设置</span><span class="pill">招募档案</span></div>
-          <h1>招募档案访问</h1>
-          <p class="hero-sub">控制招募档案处于内部测试还是正式公开，并维护有限访问名单。</p>
+          <router-link class="page-header-back" to="/manage" aria-label="返回管理工作台">← 返回管理工作台</router-link>
+          <h1 class="page-header-title">招募档案访问</h1>
+          <p class="page-header-description">管理开放模式与有限访问名单。</p>
         </div>
       </header>
 
@@ -19,7 +18,7 @@
         <template v-else>
           <section class="mode-card" aria-labelledby="access-mode-title">
             <div class="section-heading">
-              <div><span class="section-kicker">ACCESS MODE</span><h2 id="access-mode-title">开放模式</h2></div>
+              <div><h2 id="access-mode-title">开放模式</h2></div>
               <span class="mode-badge" :class="{ public: config.accessMode === 'PUBLIC' }">{{ config.accessMode === 'PUBLIC' ? '公开访问' : '有限访问' }}</span>
             </div>
             <div class="mode-options" role="radiogroup" aria-label="招募档案开放模式">
@@ -37,7 +36,7 @@
 
           <section class="grant-card" aria-labelledby="grant-title">
             <div class="section-heading">
-              <div><span class="section-kicker">LIMITED ACCESS</span><h2 id="grant-title">有限访问名单</h2></div>
+              <div><h2 id="grant-title">有限访问名单</h2></div>
               <span class="count">{{ config.grants.length }} 人</span>
             </div>
             <p v-if="config.accessMode === 'PUBLIC'" class="public-note">当前为公开访问，名单暂不参与访问判定，但会保留。</p>
@@ -73,7 +72,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Globe2, LockKeyhole, Search, Trash2, UserRoundCheck } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
-import AdminBackLink from '../../components/admin/AdminBackLink.vue'
+import '@/styles/page-header.css'
 import { getAdminRecruitmentAccess, grantRecruitmentAccess, revokeRecruitmentAccess, searchRecruitmentAccessUsers, updateRecruitmentAccessMode } from '../../api/recruitmentAccess.js'
 import { recruitmentAccess } from '../../store/recruitmentAccess.js'
 import { dialog } from '../../utils/dialog.js'
@@ -205,5 +204,5 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); searchSequence++ })
 </script>
 
 <style scoped>
-main{min-width:0}.hero{background:var(--cream);padding:36px 0;border-bottom:1px solid var(--line)}.hero::after{content:none}.hero h1{font-size:clamp(32px,5vw,56px);margin-top:14px}.access-content{padding-top:18px;padding-bottom:36px}.state,.mode-card,.grant-card{margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.state.error{color:var(--rouge)}.state.success{color:var(--tea)}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading h2{margin:2px 0 0;font-family:var(--font-s);font-size:23px}.section-kicker{color:var(--accent-strong);font-size:11px;font-weight:800;letter-spacing:.12em}.mode-badge,.count{flex:none;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:var(--cream);font-size:12px;font-weight:800}.mode-badge.public{border-color:var(--accent);color:var(--accent-strong)}.mode-options{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.mode-option{display:flex;min-height:76px;align-items:center;gap:12px;padding:13px;text-align:left}.mode-option>svg{flex:none;color:var(--ink-60)}.mode-option span{display:grid;min-width:0;gap:4px}.mode-option strong{font-size:15px}.mode-option small,.mode-note,.public-note,.grant-user small,.empty-state small{color:var(--ink-60);font-size:12px;line-height:1.6}.mode-option.selected{border-color:var(--accent);background:var(--cream);box-shadow:inset 0 0 0 1px var(--accent)}.mode-option.selected>svg{color:var(--accent-strong)}.mode-note{margin:11px 0 0}.public-note{margin:-2px 0 14px;padding:9px 11px;border-radius:10px;background:var(--cream)}.user-search{display:grid;gap:7px;margin:14px 0 8px;font-size:13px;font-weight:800}.search-field{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 11px;border:1px solid var(--line);border-radius:10px;background:var(--cream)}.search-field svg{flex:none;color:var(--ink-60)}.search-field input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:inherit}.picker-state{margin:8px 0;color:var(--ink-60);font-size:12px}.candidate-list{display:grid;gap:7px;margin:8px 0 18px}.candidate{display:flex;min-height:52px;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;text-align:left}.candidate span,.grant-user{display:grid;min-width:0;gap:2px}.candidate small{color:var(--ink-60);font-size:11px;overflow-wrap:anywhere}.candidate em{flex:none;color:var(--accent-strong);font-size:11px;font-style:normal;font-weight:800}.grant-list{display:grid;gap:9px}.grant-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}.grant-user code{font-size:10px;overflow-wrap:anywhere;color:var(--ink-60)}.danger{display:inline-flex;align-items:center;gap:6px;flex:none;color:var(--rouge)}.empty-state{display:flex;align-items:center;gap:12px;padding:16px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-60)}.empty-state span{display:grid;gap:3px}.empty-state strong{color:var(--ink)}button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(min-width:768px){.mode-card,.grant-card{padding:20px}.mode-options{grid-template-columns:repeat(2,minmax(0,1fr))}.candidate-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.grant-row{align-items:stretch;flex-direction:column}.grant-row .danger{width:100%;justify-content:center}.section-heading{align-items:flex-start}.mode-badge,.count{margin-top:2px}}
+main{min-width:0}.access-content{padding-top:0;padding-bottom:36px}.state,.mode-card,.grant-card{margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.state.error{color:var(--rouge)}.state.success{color:var(--tea)}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.section-heading h2{margin:2px 0 0;font-family:var(--font-s);font-size:23px}.section-kicker{color:var(--accent-strong);font-size:11px;font-weight:800;letter-spacing:.12em}.mode-badge,.count{flex:none;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:var(--cream);font-size:12px;font-weight:800}.mode-badge.public{border-color:var(--accent);color:var(--accent-strong)}.mode-options{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.mode-option{display:flex;min-height:76px;align-items:center;gap:12px;padding:13px;text-align:left}.mode-option>svg{flex:none;color:var(--ink-60)}.mode-option span{display:grid;min-width:0;gap:4px}.mode-option strong{font-size:15px}.mode-option small,.mode-note,.public-note,.grant-user small,.empty-state small{color:var(--ink-60);font-size:12px;line-height:1.6}.mode-option.selected{border-color:var(--accent);background:var(--cream);box-shadow:inset 0 0 0 1px var(--accent)}.mode-option.selected>svg{color:var(--accent-strong)}.mode-note{margin:11px 0 0}.public-note{margin:-2px 0 14px;padding:9px 11px;border-radius:10px;background:var(--cream)}.user-search{display:grid;gap:7px;margin:14px 0 8px;font-size:13px;font-weight:800}.search-field{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 11px;border:1px solid var(--line);border-radius:10px;background:var(--cream)}.search-field svg{flex:none;color:var(--ink-60)}.search-field input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:inherit}.picker-state{margin:8px 0;color:var(--ink-60);font-size:12px}.candidate-list{display:grid;gap:7px;margin:8px 0 18px}.candidate{display:flex;min-height:52px;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;text-align:left}.candidate span,.grant-user{display:grid;min-width:0;gap:2px}.candidate small{color:var(--ink-60);font-size:11px;overflow-wrap:anywhere}.candidate em{flex:none;color:var(--accent-strong);font-size:11px;font-style:normal;font-weight:800}.grant-list{display:grid;gap:9px}.grant-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}.grant-user strong,.candidate strong{overflow-wrap:anywhere}.grant-user code{font-size:10px;overflow-wrap:anywhere;color:var(--ink-60)}.danger{display:inline-flex;align-items:center;gap:6px;flex:none;color:var(--rouge)}.empty-state{display:flex;align-items:center;gap:12px;padding:16px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-60)}.empty-state span{display:grid;gap:3px}.empty-state strong{color:var(--ink)}button{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(min-width:768px){.mode-card,.grant-card{padding:20px}.mode-options{grid-template-columns:repeat(2,minmax(0,1fr))}.candidate-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.grant-row{align-items:stretch;flex-direction:column}.grant-row .danger{width:100%;justify-content:center}.section-heading{align-items:flex-start}.mode-badge,.count{margin-top:2px}}
 </style>

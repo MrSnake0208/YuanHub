@@ -1,7 +1,7 @@
 <template>
   <div class="calendar-page calendar-community"><IslandSidebar /><main id="main-content">
     <header class="calendar-header wrap">
-      <router-link class="calendar-source-link" to="/calendar">返回活动日历</router-link>
+      <router-link class="calendar-source-link" to="/calendar">← 返回活动日历</router-link>
       <h1>我的活动建议</h1>
       <p>查看你提交的活动资料与审核结果。</p>
       <nav class="calendar-submission-nav" aria-label="活动建议"><router-link class="calendar-primary-link" to="/calendar/suggestions/new">建议补充活动</router-link></nav>
@@ -72,3 +72,16 @@ watch(identity, () => {
 watch(() => route.query.id, id => { if (typeof id === 'string' && id) void openDetail(id); else if (selectedId.value) void closeDetail() })
 onBeforeUnmount(() => { alive = false; generation++; readGeneration++; detailGeneration++ })
 </script>
+
+<style scoped>
+.calendar-community .calendar-header { padding-top: 20px; padding-bottom: 12px; gap: 8px; }
+.calendar-community .calendar-header h1 { margin: 0; color: var(--tea); font: 900 30px/1.3 var(--font-s); letter-spacing: .035em; overflow-wrap: anywhere; }
+.calendar-community .calendar-header > p { color: var(--ink-60); font-size: 13px; line-height: 1.7; }
+.calendar-community .calendar-header > .calendar-source-link { color: var(--ink-60); font-size: 13px; font-weight: 700; }
+@media (min-width: 700px) {
+  .calendar-community .calendar-header { grid-template-columns: minmax(0, 1fr) auto; }
+  .calendar-community .calendar-header > .calendar-source-link { grid-column: 1 / -1; }
+  .calendar-community .calendar-header h1, .calendar-community .calendar-header > p { grid-column: 1; }
+  .calendar-community .calendar-header > nav { grid-column: 2; grid-row: 2 / 4; align-self: start; }
+}
+</style>

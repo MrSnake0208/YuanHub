@@ -3,9 +3,10 @@
     <IslandSidebar />
 
     <main id="main-content" class="profile-main">
-      <header class="hero">
+      <header class="page-header">
         <div class="wrap">
-          <h1>账号与连接码</h1>
+          <h1 class="page-header-title">账号与连接码</h1>
+          <p class="page-header-description">管理游戏账号与应用连接，核对数据归属和访问范围。</p>
         </div>
       </header>
 
@@ -639,6 +640,7 @@
 </template>
 
 <script setup>
+import '@/styles/page-header.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
@@ -1187,15 +1189,10 @@ onBeforeUnmount(function () {
 .profile-main {
   padding-bottom: 0;
 }
-.page-profile .hero { padding: 38px 0 28px; }
-.page-profile .hero h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.2; letter-spacing: .02em; }
 .capability-note { color: var(--rouge); font-size: 12px; }
 #game-accounts, #maayuan-connect-panel { scroll-margin-top: 84px; }
-.page-profile .hero::after {
-  content: "连接";
-}
 .admin-tools {
-  margin-top: 40px;
+  margin-top: 12px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-left: 4px solid var(--accent);

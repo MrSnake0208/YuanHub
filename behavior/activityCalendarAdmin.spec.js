@@ -14,7 +14,7 @@ vi.mock('../src/config/features.js', async importOriginal => ({ ...(await import
 vi.mock('../src/api/activityCalendar.js', () => ({ listAdminActivityCalendar: vi.fn(), createActivityCalendar: vi.fn(), updateActivityCalendar: vi.fn() }))
 const item = (patch = {}) => ({ id: 'evt-a', title: '手工活动', game: '如鸢', category: 'ACTIVITY', start_date: '2026-10-03', end_date: '2026-10-10', source_type: 'MANUAL', ...patch })
 const entry = (patch = {}) => ({ item: item(), version: 0, enabled: true, read_only: false, source_note: '整理备注', updated_at: '2026-10-03T10:00:00Z', ...patch })
-const render = () => mount(Admin, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, AdminBackLink: true, RouterLink: RouterLinkStub } } })
+const render = () => mount(Admin, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } })
 const button = (wrapper, text) => wrapper.findAll('button').find(node => node.text() === text)
 const filter = (wrapper, label) => wrapper.findAll('label').find(node => node.text().startsWith(label)).find('input, select')
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
@@ -65,9 +65,9 @@ it('只读招募永不显示编辑按钮；仅双权限提供管理跳转', asyn
   const wrapper = render(); await flushPromises()
   expect(wrapper.text()).toContain('来自招募卡池 · 只读')
   expect(button(wrapper, '编辑活动')).toBeUndefined()
-  expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+  expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/recruitment/admin')).toBe(false)
   auth.adminAccess = { permissions: ['activity_calendar:write', 'recruitment_catalog:write'] }; await flushPromises()
-  expect(wrapper.getComponent(RouterLinkStub).props('to')).toBe('/recruitment/admin')
+  expect(wrapper.findAllComponents(RouterLinkStub).some(link => link.props('to') === '/recruitment/admin')).toBe(true)
   expect(api.updateActivityCalendar).not.toHaveBeenCalled()
 })
 it('字段错误内联并聚焦摘要，新建payload不含expected_version', async () => {

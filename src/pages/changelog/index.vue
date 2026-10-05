@@ -2,7 +2,11 @@
   <div class="page-changelog">
     <IslandSidebar />
     <main id="main-content">
-      <header class="hero"><div class="wrap"><div class="crumb"><span class="pill fill">YuanHub</span><span class="pill">更新日志</span><span class="pill">站点版本 {{ productVersionLabel }}</span></div><h1>更新日志<span class="small">Changelog</span></h1><p class="hero-sub">了解 YuanHub 最近新增与改进的内容。站点版本来自当前构建，下方日志为审核通过的公开记录。</p></div></header>
+      <header class="page-header"><div class="wrap">
+        <h1 class="page-header-title">更新日志</h1>
+        <p class="page-header-description">查看 YuanHub 已发布的功能与改进。</p>
+        <p class="page-header-context">当前站点版本 {{ productVersionLabel }} · 下方为审核通过的公开日志</p>
+      </div></header>
       <section class="wrap changelog-feed" aria-live="polite">
         <p v-if="loading && !entries.length" class="state">正在加载更新日志…</p>
         <p v-else-if="error && !entries.length" class="state error" role="alert">{{ error }} <button type="button" @click="load(1)">重试</button></p>
@@ -27,6 +31,7 @@
 </template>
 
 <script setup>
+import '@/styles/page-header.css'
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { listChangelog } from '../../api/changelog.js'
 import { productVersionLabel } from '../../config/buildInfo.js'
@@ -96,22 +101,17 @@ onBeforeUnmount(function () { mounted = false; requestId += 1 })
 
 <style scoped>
 .page-changelog { min-height: 100vh; min-height: 100dvh; }
-.page-changelog .hero { --wm: '新'; }
-.page-changelog .hero { padding: 38px 0 28px; }
-.page-changelog .hero h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.2; }
-.page-changelog .hero h1 .small { font-size: 18px; }
 .changelog-card { scroll-margin-top: 84px; }
 .changelog-highlights { margin-top: 18px; padding-left: 20px; color: var(--ink-60); font-size: 14px; line-height: 1.8; }
 .changelog-highlights li { margin-block: 6px; overflow-wrap: anywhere; }
 .changelog-highlights li span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .changelog-full summary { min-height: 44px; padding-top: 14px; color: var(--tea); font-size: 13px; font-weight: 800; cursor: pointer; }
-.page-changelog .crumb .pill { white-space: nowrap; }
 .changelog-feed { display: grid; gap: 22px; padding-bottom: 12px; }
 .changelog-card { padding: clamp(22px, 4vw, 42px); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 18px 38px -30px rgba(73,59,44,.45); }
-.changelog-card header { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 9px 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.changelog-card h2 { grid-column: 1 / -1; font-family: var(--font-s); font-size: clamp(25px, 4vw, 36px); font-weight: 900; }
-.version { width: max-content; padding: 4px 11px; background: var(--yellow); border-radius: 999px; font-family: var(--font-d); font-size: 12px; font-weight: 800; }
-.changelog-card time { color: var(--ink-60); font-family: var(--font-d); font-size: 12px; }
+.changelog-card header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 9px 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.changelog-card h2 { grid-column: 1 / -1; font-family: var(--font-s); font-size: 24px; line-height: 1.4; overflow-wrap: anywhere; font-weight: 900; }
+.version { width: fit-content; max-width: 100%; overflow-wrap: anywhere; padding: 4px 11px; background: var(--yellow); border-radius: 999px; font-family: var(--font-d); font-size: 12px; font-weight: 800; }
+.changelog-card time { white-space: nowrap; color: var(--ink-60); font-family: var(--font-d); font-size: 12px; }
 .state { min-height: 220px; display: grid; place-content: center; text-align: center; color: var(--ink-60); background: rgba(255,253,246,.7); border: 1px dashed var(--line); border-radius: 18px; }
 .state button, .load-more { min-height: 44px; margin: 12px auto 0; padding: 10px 22px; border: 0; border-radius: 999px; color: var(--cream); background: var(--tea); font-weight: 800; cursor: pointer; }
 .inline-error { color: var(--rouge); text-align: center; }
