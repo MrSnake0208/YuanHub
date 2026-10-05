@@ -5,7 +5,6 @@
     <main id="main-content">
       <header class="page-header admin-page-header">
         <div class="wrap">
-          <router-link class="page-header-back" to="/user/profile">← 个人中心</router-link>
           <h1 class="page-header-title">管理工作台</h1>
           <p class="page-header-description">反馈处理、公共内容维护与平台治理。</p>
           <p class="page-header-context">仅显示当前账号已获授权的管理工具。</p>

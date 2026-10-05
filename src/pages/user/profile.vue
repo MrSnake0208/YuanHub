@@ -12,54 +12,6 @@
 
       <section>
         <div class="wrap">
-          <div
-            v-if="auth.adminAccessLoaded && adminToolGroups.length"
-            class="admin-tools"
-            v-reveal
-          >
-            <div class="admin-tools-head">
-              <span class="admin-kicker">管理入口</span>
-              <h2>当前可用的管理内容</h2>
-              <p>按当前授权显示。日常处理请进入管理工作台。</p>
-            </div>
-            <div class="admin-tools-body">
-              <router-link class="admin-workbench-link" to="/manage">
-                <LayoutDashboard :size="17" aria-hidden="true" />
-                <span
-                  ><b>打开管理工作台</b
-                  ><small>从一个入口进入所有已授权的管理工具</small></span
-                >
-              </router-link>
-              <div class="admin-entry-groups">
-                <section
-                  v-for="group in adminToolGroups"
-                  :key="group.key"
-                  class="admin-entry-group"
-                >
-                  <h3>{{ group.label }}</h3>
-                  <nav :aria-label="group.label">
-                    <router-link
-                      v-for="tool in group.tools"
-                      :key="tool.to"
-                      class="admin-entry"
-                      :to="tool.to"
-                    >
-                      <component
-                        :is="tool.icon"
-                        :size="17"
-                        aria-hidden="true"
-                      />
-                      <span
-                        ><b>{{ tool.label }}</b
-                        ><small>{{ tool.description }}</small></span
-                      >
-                    </router-link>
-                  </nav>
-                </section>
-              </div>
-            </div>
-          </div>
-
           <BetaNotice />
 
           <GameAccountManager
@@ -648,7 +600,6 @@ import {
   ChevronDown,
   Copy,
   KeyRound,
-  LayoutDashboard,
   Link2,
   PackageOpen,
   ScanLine,
@@ -662,7 +613,6 @@ import { auth } from "../../store/auth.js";
 import { beta } from "../../store/beta.js";
 import BetaNotice from "../../components/beta/BetaNotice.vue";
 import GameAccountManager from "../../components/GameAccountManager.vue";
-import { getVisibleAdminToolGroups } from "../../utils/adminTools.js";
 import { listAccounts } from "../../api/accounts.js";
 import {
   deleteOpenApiToken,
@@ -737,9 +687,6 @@ const busy = computed(function () {
     !!updatingTokenId.value ||
     !!copyingTokenId.value
   );
-});
-const adminToolGroups = computed(function () {
-  return getVisibleAdminToolGroups(auth.adminAccess);
 });
 const cameFromToday = computed(function () {
   return route.query.connect === "maayuan" && route.query.from === "today";
@@ -1191,108 +1138,12 @@ onBeforeUnmount(function () {
 }
 .capability-note { color: var(--rouge); font-size: 12px; }
 #game-accounts, #maayuan-connect-panel { scroll-margin-top: 84px; }
-.admin-tools {
-  margin-top: 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
-  border-radius: 8px;
-  padding: 20px 24px;
-  display: grid;
-  grid-template-columns: minmax(180px, 0.75fr) minmax(0, 1.5fr);
-  align-items: start;
-  gap: 24px;
-}
-.admin-kicker,
 .section-kicker {
   color: var(--accent-strong);
   font-family: var(--font-d);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
-}
-.admin-tools h2 {
-  margin-top: 4px;
-  color: var(--ink);
-  font-family: var(--font-s);
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-}
-.admin-tools-head p {
-  margin-top: 7px;
-  color: var(--ink-60);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.admin-tools-body {
-  min-width: 0;
-}
-.admin-workbench-link {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 48px;
-  padding: 8px 12px;
-  color: var(--cream);
-  background: var(--tea);
-  border-radius: 8px;
-  text-decoration: none;
-}
-.admin-workbench-link:hover {
-  background: var(--accent);
-}
-.admin-workbench-link span,
-.admin-entry span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-}
-.admin-workbench-link small,
-.admin-entry small {
-  color: inherit;
-  opacity: 0.72;
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-.admin-entry-groups {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
-}
-.admin-entry-group h3 {
-  margin-bottom: 7px;
-  color: var(--ink-60);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-.admin-entry-group nav {
-  display: grid;
-  gap: 7px;
-}
-.admin-entry {
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  color: var(--ink);
-  background: var(--cream);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-decoration: none;
-}
-.admin-entry:hover {
-  color: var(--accent-strong);
-  border-color: var(--accent);
 }
 .connection-card {
   margin-top: 40px;
@@ -2277,12 +2128,6 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 820px) {
-  .admin-tools {
-    grid-template-columns: 1fr;
-  }
-  .admin-entry-groups {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .app-pass {
     grid-template-columns: 76px minmax(0, 1fr);
   }
@@ -2312,13 +2157,6 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
-  .admin-tools {
-    padding: 18px 16px;
-  }
-  .admin-entry-groups {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
   .connection-card {
     padding: 20px 16px;
     border-radius: 20px;
