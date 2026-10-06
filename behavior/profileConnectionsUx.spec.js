@@ -4,6 +4,7 @@ import ProfilePage from '../src/pages/user/profile.vue'
 import { auth } from '../src/store/auth.js'
 import { beta } from '../src/store/beta.js'
 import { activeAccount } from '../src/store/activeAccount.js'
+import { publishAccountList } from '../src/store/accountList.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { dialog } from '../src/utils/dialog.js'
 import { getOpenApiTokens, getOpenApiTokenSecret, getOpenApiPermissions, updateOpenApiTokenScopes, deleteOpenApiToken, generateOpenApiToken } from '../src/api/openApi.js'
@@ -29,6 +30,7 @@ const render = (options = {}) => mount(ProfilePage, { ...options, global: { stub
 beforeEach(() => {
   vi.clearAllMocks()
   routeState.query = {}
+  routeState.hash = ''
   auth.userInfo = { id: 'user-a', user_name: '测试用户' }
   auth.adminAccess = null; auth.adminAccessLoaded = false
   activeAccount.id = 'acc-a'
@@ -46,6 +48,70 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
+it('摘要仅展示真实当前账号与总数，管理按需打开共享 Dialog，关闭后不残留 CRUD', async () => {
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
+  const wrapper = render(); await flushPromises()
+  const summary = wrapper.get('.game-account-summary')
+  expect(summary.text()).toContain('当前账号：代号鸢 · 大号')
+  expect(summary.text()).toContain('共 2 个游戏账号')
+  expect(summary.text()).not.toContain('小号')
+  expect(summary.findAll('ul, input, select, .more-trigger')).toHaveLength(0)
+  expect(wrapper.findComponent({ name: 'GameAccountManager' }).exists()).toBe(false)
+  activeAccount.id = 'acc-b'; await flushPromises()
+  expect(summary.text()).toContain('当前账号：如鸢 · 小号')
+  publishAccountList([{ id: 'acc-b', name: '已改名', game: '代号鸢' }]); await flushPromises()
+  expect(summary.text()).toContain('当前账号：代号鸢 · 已改名')
+  expect(summary.text()).toContain('共 1 个游戏账号')
+  expect(summary.text()).not.toContain('小号')
+  await summary.get('[data-tour="account-create"]').trigger('click')
+  const manager = wrapper.findComponent({ name: 'GameAccountManager' })
+  expect(manager.props()).toMatchObject({ presentation: 'dialog', initialView: 'list', accounts: expect.any(Array) })
+  expect(summary.get('button').attributes('aria-expanded')).toBe('true')
+  manager.vm.$emit('close'); await flushPromises()
+  expect(wrapper.findComponent({ name: 'GameAccountManager' }).exists()).toBe(false)
+  expect(summary.get('button').attributes('aria-expanded')).toBe('false')
+  activeAccount.id = 'deleted'; await flushPromises()
+  expect(summary.text()).toContain('尚未选择当前账号')
+  expect(summary.text()).not.toContain('已改名')
+  publishAccountList([]); activeAccount.id = ''; await flushPromises()
+  expect(summary.text()).toContain('尚未创建游戏账号')
+  expect(summary.text()).not.toContain('已改名')
+  wrapper.unmount()
+})
+
+it('loading 不显示零账号；错误不伪装空态，重试后沿用现有当前账号回退', async () => {
+  let fail
+  listAccounts.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject }))
+  const wrapper = render(); await flushPromises()
+  const summary = wrapper.get('.game-account-summary')
+  expect(summary.get('[role="status"]').text()).toContain('正在读取游戏账号')
+  expect(summary.text()).not.toContain('0 个')
+  expect(summary.text()).not.toContain('尚未创建')
+  expect(summary.get('[data-tour="account-create"]').attributes()).toHaveProperty('disabled')
+  fail(new Error('游戏账号读取失败')); await flushPromises()
+  expect(summary.get('[role="alert"]').text()).toContain('游戏账号读取失败')
+  expect(summary.text()).not.toContain('尚未创建')
+  activeAccount.id = 'deleted'
+  listAccounts.mockResolvedValueOnce([{ id: 'acc-b', name: '备用', game: '如鸢' }])
+  await summary.get('.account-summary-error button').trigger('click'); await flushPromises()
+  expect(activeAccount.id).toBe('acc-b')
+  expect(summary.text()).toContain('当前账号：如鸢 · 备用')
+  expect(summary.text()).toContain('共 1 个游戏账号')
+  wrapper.unmount()
+})
+
+it('旧 hash 保留摘要目标但不自动打开 Dialog，空态入口直接打开 create', async () => {
+  routeState.hash = '#game-accounts'
+  listAccounts.mockResolvedValue([])
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.game-account-summary').text()).toContain('尚未创建游戏账号')
+  expect(wrapper.get('#game-accounts').exists()).toBe(true)
+  expect(wrapper.findComponent({ name: 'GameAccountManager' }).exists()).toBe(false)
+  await wrapper.get('.game-account-summary button').trigger('click')
+  expect(wrapper.findComponent({ name: 'GameAccountManager' }).props()).toMatchObject({ presentation: 'dialog', initialView: 'create' })
+  wrapper.unmount()
+})
+
 it.each([
   ['普通用户', { permissions: [] }],
   ['管理员', { permissions: ['operator_catalog:write'] }],
@@ -55,7 +121,7 @@ it.each([
   const wrapper = render()
   await flushPromises()
   expect(wrapper.get('h1').text()).toBe('账号与连接码')
-  const accounts = wrapper.get('#game-accounts').element
+  const accounts = wrapper.get('.game-account-summary').element
   const connections = wrapper.get('.connection-card').element
   expect(accounts.compareDocumentPosition(connections) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(wrapper.get('.connection-card h2').text()).toBe('应用与数据连接')
@@ -242,14 +308,15 @@ it('连接区入口在没有游戏账号时引导创建，在无资格时保持�
   listAccounts.mockResolvedValue([])
   const wrapper = render(); await flushPromises()
   await wrapper.get('.app-connect').trigger('click'); await flushPromises()
-  expect(wrapper.get('.quick-account-manage-link').attributes('href')).toBe('#game-accounts')
+  await wrapper.get('.quick-account-manage-link').trigger('click')
+  expect(wrapper.findComponent({ name: 'GameAccountManager' }).props()).toMatchObject({ presentation: 'dialog', initialView: 'create' })
   expect(generateOpenApiToken).not.toHaveBeenCalled()
   wrapper.unmount()
   beta.canUseBetaFeatures = false
   try {
     const locked = render(); await flushPromises()
     await locked.get('.app-connect').trigger('click'); await flushPromises()
-    expect(locked.get('[role="alert"]').text()).toContain('请先前往内测页面确认体验资格')
+    expect(locked.get('.notice-line[role="alert"]').text()).toContain('请先前往内测页面确认体验资格')
     expect(generateOpenApiToken).not.toHaveBeenCalled()
     expect(locked.find('#maayuan-connect-panel').exists()).toBe(false)
     locked.unmount()
@@ -284,10 +351,10 @@ it('连接默认当前账号且区分同名账号；用户主动改选后保留�
   activeAccount.id = 'acc-b'; await flushPromises()
   activeAccount.id = 'acc-a'; await flushPromises()
   expect(select.element.value).toBe('acc-b')
-  wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', accounts.slice())
+  publishAccountList(accounts.slice())
   await flushPromises()
   expect(select.element.value).toBe('acc-b')
-  wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', [accounts[0]])
+  publishAccountList([accounts[0]])
   await flushPromises()
   expect(select.element.value).toBe('acc-a')
   expect(generateOpenApiToken).not.toHaveBeenCalled()
@@ -298,9 +365,10 @@ it('无账号时创建目标后继续连接，取消说明不创建连接码', a
   listAccounts.mockResolvedValue([])
   const wrapper = render(); await flushPromises()
   await wrapper.get('.app-connect').trigger('click'); await flushPromises()
-  expect(wrapper.get('.quick-account-manage-link').attributes('href')).toBe('#game-accounts')
+  await wrapper.get('.quick-account-manage-link').trigger('click')
+  expect(wrapper.findComponent({ name: 'GameAccountManager' }).props('initialView')).toBe('create')
   activeAccount.id = 'acc-new'
-  wrapper.findComponent({ name: 'GameAccountManager' }).vm.$emit('update:accounts', [{ id: 'acc-new', name: '新账号', game: '如鸢' }])
+  publishAccountList([{ id: 'acc-new', name: '新账号', game: '如鸢' }])
   await flushPromises()
   expect(wrapper.get('#maayuan-account').element.value).toBe('acc-new')
   await wrapper.get('.panel-actions .ghost').trigger('click')
@@ -404,26 +472,27 @@ it('账号列表只接纳最新请求，旧请求不能覆盖更新结果或结�
   listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveFirst = resolve }))
   const wrapper = render(); await flushPromises()
   listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveSecond = resolve }))
-  const manager = wrapper.findComponent({ name: 'GameAccountManager' })
-  manager.vm.$emit('reload'); await flushPromises()
+  void wrapper.vm.loadAccounts(); await flushPromises()
   resolveFirst([{ id: 'old', name: '旧账号', game: '代号鸢' }]); await flushPromises()
-  expect(manager.props('loading')).toBe(true)
-  expect(manager.props('accounts')).toEqual([])
+  expect(wrapper.get('.game-account-summary').attributes('aria-busy')).toBe('true')
+  expect(wrapper.get('.game-account-summary').text()).not.toContain('旧账号')
   resolveSecond([{ id: 'new', name: '新账号', game: '如鸢' }]); await flushPromises()
-  expect(manager.props('accounts')[0].id).toBe('new')
+  expect(wrapper.get('.game-account-summary').text()).toContain('如鸢 · 新账号')
   expect(activeAccount.id).toBe('new')
+  wrapper.unmount()
 })
 
 it('CRUD 发布的列表不被在途旧加载覆盖', async () => {
   let resolveList
   listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveList = resolve }))
   const wrapper = render(); await flushPromises()
-  const manager = wrapper.findComponent({ name: 'GameAccountManager' })
   const latest = [{ id: 'created', name: '新创建', game: '如鸢' }]
-  manager.vm.$emit('update:accounts', latest); manager.vm.$emit('changed', latest); await flushPromises()
+  publishAccountList(latest); activeAccount.id = 'created'; await flushPromises()
   resolveList([{ id: 'old', name: '旧账号', game: '代号鸢' }]); await flushPromises()
-  expect(manager.props('accounts')).toEqual(latest)
-  expect(manager.props('loading')).toBe(false)
+  expect(wrapper.get('.game-account-summary').text()).toContain('如鸢 · 新创建')
+  expect(wrapper.get('.game-account-summary').text()).not.toContain('旧账号')
+  expect(wrapper.get('.game-account-summary').attributes('aria-busy')).toBe('false')
+  wrapper.unmount()
 })
 
 it.each(['identity', 'roundtrip', 'unmount'])('列表请求期间 %s 变化，旧响应不修改当前账号', async change => {
