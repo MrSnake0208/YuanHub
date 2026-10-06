@@ -14,14 +14,40 @@
         <div class="wrap">
           <BetaNotice />
 
+          <section class="game-account-summary" aria-labelledby="game-account-summary-title" :aria-busy="accountsLoading">
+            <!-- 路由 hash 滚动固定 top: 0，锚点上移以避开移动导航。 -->
+            <span id="game-accounts" class="account-summary-anchor" aria-hidden="true" />
+            <div class="account-summary-copy">
+              <h2 id="game-account-summary-title">游戏账号</h2>
+              <p v-if="accountsLoading" role="status">正在读取游戏账号…</p>
+              <div v-else-if="accountLoadError" class="account-summary-error" role="alert">
+                <p>{{ accountLoadError }}</p>
+                <button class="text-btn" type="button" @click="loadAccounts">重试</button>
+              </div>
+              <template v-else-if="accounts.length">
+                <p class="account-summary-current" :title="connectionAccountLabel(currentAccount)">
+                  {{ currentAccount ? '当前账号：' + connectionAccountLabel(currentAccount) : '尚未选择当前账号' }}
+                </p>
+                <p class="account-summary-count">共 {{ accounts.length }} 个游戏账号</p>
+              </template>
+              <p v-else>尚未创建游戏账号</p>
+            </div>
+            <button class="act-btn ghost account-summary-manage" type="button" data-tour="account-create"
+              aria-haspopup="dialog" :aria-expanded="!!accountManagerView" :disabled="accountsLoading || !!accountLoadError"
+              @click="openAccountManager(accounts.length ? 'list' : 'create', $event)">
+              {{ accountsLoading || accountLoadError || accounts.length ? '管理游戏账号' : '创建游戏账号' }}
+            </button>
+          </section>
+
           <GameAccountManager
-            id="game-accounts"
-            v-model:accounts="accounts"
-            v-model:accountId="managedAccountId"
+            v-if="accountManagerView"
+            presentation="dialog"
+            :initial-view="accountManagerView"
+            :accounts="accounts"
             :loading="accountsLoading"
             :load-error="accountLoadError"
             @reload="loadAccounts"
-            @changed="invalidateAccountLoad"
+            @close="accountManagerView = ''"
           />
 
           <div class="connection-card" v-reveal>
@@ -166,11 +192,10 @@
               >
                 <div class="quick-account-heading">
                   <h4 id="quick-account-title">还没有游戏账号</h4>
-                  <p>请先在本页上方「游戏账号」区域统一创建；创建完成后这里会自动出现可绑定账号。</p>
+                  <p>先创建游戏账号；创建完成后这里会自动出现可绑定账号。</p>
                 </div>
-                <a class="act-btn primary quick-account-manage-link" href="#game-accounts">
-                  去创建游戏账号
-                </a>
+                <button class="act-btn primary quick-account-manage-link" type="button" aria-haspopup="dialog"
+                  @click="openAccountManager('create', $event)">创建游戏账号</button>
               </section>
 
               <div class="panel-title grant-title">
@@ -639,7 +664,10 @@ import {
 const tokens = ref([]);
 const permissions = ref([]);
 const accounts = ref([]);
-useAccountListUpdates(next => { accounts.value = next })
+useAccountListUpdates(next => {
+  invalidateAccountLoad();
+  accounts.value = next;
+});
 const accountsLoading = ref(true);
 const accountLoadError = ref("");
 const loading = ref(false);
@@ -673,14 +701,14 @@ const maaAccountSelect = ref(null);
 const maaYuanConnectPanel = ref(null);
 const route = useRoute();
 
-const managedAccountId = computed({
-  get: function () {
-    return activeAccount.id;
-  },
-  set: function (value) {
-    activeAccount.set(value);
-  },
-});
+const accountManagerView = ref("");
+const currentAccount = computed(() => accounts.value.find(account => account.id === activeAccount.id));
+
+function openAccountManager(view, event) {
+  if (accountsLoading.value || accountLoadError.value || !beta.canUseBetaFeatures || accountManagerView.value) return;
+  event.currentTarget.focus();
+  accountManagerView.value = view;
+}
 
 const tokenCount = computed(function () {
   return tokens.value.length;
@@ -1122,12 +1150,13 @@ function finishNewToken() {
 }
 
 watch(() => beta.canUseBetaFeatures, () => {
-  if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
+  if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; accountManagerView.value = ""; }
   void loadAccounts();
 });
 watch(() => auth.userInfo?.id, () => {
   accountLoadVersion++;
   accounts.value = [];
+  accountManagerView.value = "";
   dismissNotice(); recentFailures.value = []; newToken.value = null;
   void loadAccounts();
 }, { flush: "sync" });
@@ -1162,7 +1191,20 @@ onBeforeUnmount(function () {
   padding-bottom: 0;
 }
 .capability-note { color: var(--rouge); font-size: 12px; }
-#game-accounts, #maayuan-connect-panel { scroll-margin-top: 84px; }
+#maayuan-connect-panel { scroll-margin-top: 84px; }
+.game-account-summary { position: relative; display: grid; gap: 10px; margin-top: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.account-summary-anchor { position: absolute; top: -84px; width: 1px; height: 1px; }
+.account-summary-copy { min-width: 0; }
+.account-summary-copy h2 { color: var(--tea); font: 900 20px/1.4 var(--font-s); }
+.account-summary-copy p { margin-top: 6px; color: var(--ink-60); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.account-summary-copy .account-summary-current { color: var(--ink); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-summary-copy .account-summary-count { margin-top: 2px; font-size: 12px; }
+.account-summary-error { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; }
+.account-summary-error p { color: var(--rouge); }
+.account-summary-manage:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (min-width: 768px) {
+  .game-account-summary { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
+}
 .section-kicker {
   color: var(--accent-strong);
   font-family: var(--font-d);
@@ -1171,7 +1213,7 @@ onBeforeUnmount(function () {
   letter-spacing: 0.12em;
 }
 .connection-card {
-  margin-top: 40px;
+  margin-top: 24px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 24px;
