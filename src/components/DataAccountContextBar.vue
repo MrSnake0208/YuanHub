@@ -6,7 +6,7 @@
     aria-label="当前数据账号"
   >
     <template v-if="compact">
-      <AccountSwitcher v-if="isLoggedIn" :accounts="accounts" :account-id="accountId" :game="game" :loading="loading"
+      <AccountSwitcher v-if="isLoggedIn" ref="switcher" :accounts="accounts" :account-id="accountId" :game="game" :loading="loading" :load-error="error"
         :disabled="switchDisabled" :disabled-reason="switchDisabledReason" :before-switch="beforeSwitch" :manage-to="manageTo" />
       <router-link v-else class="context-selector" :to="{ path: '/login', query: { redirect: currentPath } }">未登录</router-link>
       <small v-if="error" class="context-error" role="alert">{{ error }}</small>
@@ -19,7 +19,7 @@
         <span class="context-kicker">当前数据账号</span>
         <strong v-if="loading">正在读取游戏账号…</strong>
         <strong v-else-if="!isLoggedIn">未登录</strong>
-        <AccountSwitcher v-else :accounts="accounts" :account-id="accountId" :game="game" :loading="loading"
+        <AccountSwitcher v-else ref="switcher" :accounts="accounts" :account-id="accountId" :game="game" :loading="loading" :load-error="error"
           :disabled="switchDisabled" :disabled-reason="switchDisabledReason" :before-switch="beforeSwitch" :manage-to="manageTo" />
         <small v-if="!compact">
           <template v-if="loading">账号加载完成后会在这里显示数据归属。</template>
@@ -32,13 +32,15 @@
     </div>
 
     <div class="context-actions">
-      <router-link
+      <button
         v-if="isLoggedIn"
         class="context-action"
-        :to="manageTo"
+        type="button"
+        :disabled="loading || switchDisabled"
+        @click="switcher?.openManager('list', $event.currentTarget)"
       >
         管理游戏账号
-      </router-link>
+      </button>
       <router-link
         v-else
         class="context-action"
@@ -53,7 +55,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Users } from '@lucide/vue'
 import AccountSwitcher from './AccountSwitcher.vue'
@@ -77,6 +79,8 @@ const props = defineProps({
 })
 
 const route = useRoute()
+const switcher = ref(null)
+defineExpose({ openManager: (view, opener) => switcher.value?.openManager(view, opener) })
 
 const selectedAccount = computed(function () {
   return props.accounts.find(function (account) {

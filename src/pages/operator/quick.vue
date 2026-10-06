@@ -392,6 +392,7 @@
 </template>
 
 <script setup>
+import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -491,6 +492,7 @@ const subProfOptions = computed(function () {
   return deriveSubProfOptions(catalogOperators.value);
 });
 const accounts = ref([]);
+useAccountListUpdates(next => { accounts.value = next })
 // 当前选中账号由 activeAccount store 记忆并持久化（跨页面导航 / 刷新不丢）
 const accountId = computed({
   get: function () {

@@ -120,9 +120,8 @@ it.each(['empty', 'error'])('account %s retains its existing recovery entry with
   if (state === 'empty') listAccounts.mockResolvedValue([])
   else listAccounts.mockRejectedValueOnce(new Error('游戏账号读取失败'))
   await render('&scope=mine')
-  expect(wrapper.findComponent(AccountSwitcher).exists()).toBe(false)
   expect(listCalendarSubscriptions).not.toHaveBeenCalled()
-  if (state === 'empty') expect(wrapper.get('a[href="/user/profile#game-accounts"]').text()).toBe('选择或创建游戏账号')
+  if (state === 'empty') expect(wrapper.getComponent(AccountSwitcher).props('accounts')).toEqual([])
   else {
     expect(wrapper.text()).toContain('游戏账号读取失败')
     await button('重试').trigger('click'); await flushPromises()

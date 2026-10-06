@@ -17,11 +17,10 @@
             <button type="button" :aria-pressed="!mine" @click="setScope(false)">全部活动</button>
             <button type="button" :aria-pressed="mine" @click="setScope(true)">我的订阅</button>
           </div>
-          <AccountSwitcher v-if="subscriptions.accounts.value.length" :accounts="subscriptions.accounts.value"
+          <AccountSwitcher v-if="!subscriptions.accountLoading.value && !subscriptions.accountError.value" :accounts="subscriptions.accounts.value"
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.confirmDiscard" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
-          <router-link v-else to="/user/profile#game-accounts">选择或创建游戏账号</router-link>
           <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked)">仅未完成</label>
           <p v-if="mine && subscriptions.account.value" class="calendar-hint">订阅与关卡进度仅当前账号可见。</p>
         </section>

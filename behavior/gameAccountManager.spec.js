@@ -12,14 +12,15 @@ vi.mock('../src/api/accounts.js', () => ({ createAccount: vi.fn(), updateAccount
 vi.mock('../src/store/auth.js', async () => { const { reactive } = await import('vue'); return { auth: reactive({ userInfo: { id: 'owner-a' }, accessToken: 'synthetic-token' }) } })
 const rows = [{ id: 'a', name: '大号', game: '代号鸢' }, { id: 'b', name: '小号', game: '如鸢' }]
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }
-function render(accounts = rows) {
+function render(accounts = rows, props = {}) {
+  const config = ref({ ...props })
   const list = ref(accounts.map(item => ({ ...item })))
   const wrapper = mount(defineComponent({ setup() {
     const accountId = computed(() => activeAccount.id)
-    return () => h(GameAccountManager, { accounts: list.value, accountId: accountId.value,
+    return () => h(GameAccountManager, { ...config.value, accounts: list.value, accountId: accountId.value,
       'onUpdate:accounts': value => { list.value = value }, 'onUpdate:accountId': value => activeAccount.set(value) })
   } }), { attachTo: document.body })
-  return { wrapper, list, manager: wrapper.findComponent(GameAccountManager) }
+  return { wrapper, list, config, manager: wrapper.findComponent(GameAccountManager) }
 }
 const panel = () => document.querySelector('.account-panel')
 async function more(wrapper, index = 0) { await wrapper.findAll('.more-trigger')[index].trigger('click'); await flushPromises() }
@@ -203,4 +204,93 @@ it('同用户正常刷新 token 不丢弃成功的 CRUD 响应', async () => {
   auth.accessToken = 'synthetic-refreshed-token'
   pending.resolve({ id: 'c', name: '新账号', game: '代号鸢' }); await flushPromises()
   expect(list.value.at(-1).id).toBe('c'); expect(activeAccount.id).toBe('c')
+})
+
+
+it('Dialog 内列表/更多/编辑/编号切换始终只有一个 CRUD Dialog', async () => {
+  const { wrapper } = render(rows, { presentation: 'dialog' }); await flushPromises()
+  const originalPanel = panel()
+  expect(document.body.style.overflow).toBe('hidden')
+  expect(panel().querySelectorAll('.account-row')).toHaveLength(2)
+  panel().querySelector('.more-trigger').click(); await flushPromises()
+  expect(panel()).toBe(originalPanel); await action(0)
+  expect(panel()).toBe(originalPanel); expect(panel().querySelector('input').value).toBe('大号')
+  panel().querySelector('[aria-label="返回账号列表"]').click(); await flushPromises()
+  panel().querySelector('.more-trigger').click(); await flushPromises(); await action(1)
+  expect(panel().querySelector('code').textContent).toBe('a')
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect(panel()).toBe(originalPanel)
+  await escape(); expect(panel()).toBeNull(); expect(wrapper.findComponent(GameAccountManager).emitted('close')).toHaveLength(1)
+})
+
+it('真实 dirty 才确认放弃；取消放弃保留字段，未改列表可直接关闭', async () => {
+  const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+  const { wrapper } = render(rows, { presentation: 'dialog', initialView: 'create' }); await flushPromises()
+  await inputName('未保存'); await escape()
+  expect(confirm).toHaveBeenCalledTimes(1); expect(panel().querySelector('input').value).toBe('未保存')
+  panel().querySelector('[aria-label="返回账号列表"]').click(); await flushPromises()
+  expect(panel().textContent).toContain('管理你的游戏账号'); await escape()
+  expect(confirm).toHaveBeenCalledTimes(2); expect(panel()).toBeNull()
+})
+
+it.each(['create', 'game', 'delete'])('%s 遵守 Workspace 草稿取消，不写 API 或 Context', async operation => {
+  const beforeSwitch = vi.fn().mockResolvedValue(false)
+  render(rows, { presentation: 'dialog', initialView: operation === 'create' ? 'create' : 'list', beforeSwitch }); await flushPromises()
+  if (operation === 'create') { await inputName('新账号'); await submit() }
+  else {
+    panel().querySelector('.more-trigger').click(); await flushPromises()
+    if (operation === 'delete') await action(2)
+    else { await action(0); const radio = panel().querySelector('input[value="如鸢"]'); radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })); await submit() }
+  }
+  expect(beforeSwitch).toHaveBeenCalledTimes(1)
+  expect(createAccount).not.toHaveBeenCalled(); expect(updateAccount).not.toHaveBeenCalled(); expect(deleteAccount).not.toHaveBeenCalled()
+  expect(activeAccount.id).toBe('a'); expect(activeAccount.gameFor()).toBe('代号鸢')
+})
+
+it.each(['switch', 'roundtrip', 'locked'])('创建草稿确认中 %s 后不 POST', async change => {
+  const gate = deferred()
+  const { config } = render(rows, { presentation: 'dialog', initialView: 'create', beforeSwitch: () => gate.promise }); await flushPromises()
+  await inputName('新账号'); await submit()
+  if (change === 'locked') {
+    config.value.contextDisabled = true; await nextTick()
+  } else { activeAccount.set('b'); if (change === 'roundtrip') activeAccount.set('a') }
+  gate.resolve(true); await flushPromises(); expect(createAccount).not.toHaveBeenCalled()
+})
+
+it('创建请求期间另选账号，列表接收结果但不抢占后来的 Context', async () => {
+  const pending = deferred(); createAccount.mockReturnValue(pending.promise)
+  const { list } = render(rows, { presentation: 'dialog', initialView: 'create' }); await flushPromises()
+  await inputName('新账号'); await submit(); activeAccount.set('b')
+  pending.resolve({ id: 'c', name: '新账号', game: '代号鸢' }); await flushPromises()
+  expect(list.value.map(row => row.id)).toEqual(['a', 'b', 'c']); expect(activeAccount.id).toBe('b')
+})
+
+it('POST 返回前列表已读到新账号时，只保留一行创建结果', async () => {
+  const pending = deferred(); createAccount.mockReturnValue(pending.promise)
+  const { list } = render(rows, { presentation: 'dialog', initialView: 'create' }); await flushPromises()
+  await inputName('新账号'); await submit()
+  list.value = [...rows, { id: 'c', name: '新账号', game: '代号鸢' }]
+  pending.resolve({ id: 'c', name: '新账号', game: '代号鸢' }); await flushPromises()
+  expect(list.value.map(row => row.id)).toEqual(['a', 'b', 'c']); expect(activeAccount.id).toBe('c')
+})
+
+it('删除确认期间账号 A→B→A，不发 DELETE', async () => {
+  const gate = deferred(); vi.spyOn(dialog, 'confirm').mockReturnValue(gate.promise)
+  const { wrapper } = render(); await more(wrapper); await action(2)
+  activeAccount.set('b'); activeAccount.set('a'); gate.resolve(true); await flushPromises()
+  expect(deleteAccount).not.toHaveBeenCalled()
+})
+
+it('Dialog 结束创建/保存/删除回列表，空账号仍可创建', async () => {
+  createAccount.mockResolvedValue({ id: 'c', name: '新账号', game: '如鸢' })
+  updateAccount.mockResolvedValue({ id: 'c', name: '改名', game: '如鸢' }); deleteAccount.mockResolvedValue()
+  vi.spyOn(dialog, 'confirm').mockResolvedValue(true)
+  const { list } = render([], { presentation: 'dialog', initialView: 'create' }); await flushPromises()
+  await inputName('新账号'); await submit()
+  expect(list.value).toHaveLength(1); expect(panel().textContent).toContain('当前账号')
+  panel().querySelector('.more-trigger').click(); await flushPromises(); await action(0); await inputName('改名'); await submit()
+  expect(panel().querySelector('.account-name').textContent).toBe('改名')
+  panel().querySelector('.more-trigger').click(); await flushPromises(); await action(2)
+  expect(list.value).toEqual([]); expect(activeAccount.id).toBe(''); expect(panel().textContent).toContain('还没有游戏账号')
+  expect(panel().querySelector('.primary-action').disabled).toBe(false)
 })

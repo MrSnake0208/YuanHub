@@ -46,7 +46,7 @@ npm run test:behavior -- behavior/compactToolHeader.spec.js behavior/operatorEnt
 
 ## 游戏账号切换（2026-10-05）
 
-`DataAccountContextBar` 展示上下文并接入 `AccountSwitcher`；`GameAccountManager` 继续只在个人中心负责账号 CRUD、所属游戏与 ID。Switcher 按游戏分组，整行选择；当前项显示勾选和“当前”。超过 8 个账号才出现搜索，不建立最近使用存储。底部的新建和管理都进入 `/user/profile#game-accounts`；不暴露删除/改名，也不新增来源返回协议。
+`DataAccountContextBar` 展示上下文并接入 `AccountSwitcher`；`GameAccountManager` 共用一组 CRUD，在个人中心以 page 呈现，在工作区以 dialog 呈现。Switcher 按游戏分组，整行选择；当前项显示勾选和“当前”。超过 8 个账号才出现搜索，不建立最近使用存储。底部的新建和管理原地打开 Manager，不导航、不重置 View/Tab/筛选。Switcher 本身不暴露删除/改名；Manager 内部切换列表、新建、编辑、编号和更多视图，只有危险删除与真实 dirty 放弃使用统一确认。底部「账号与连接码 →」才进入 `/user/profile#game-accounts`。
 
 768px 及以上使用入口旁的轻浮层；更窄时使用底部 Sheet，列表独立滚动、44px 行命中区域、Safe Area 和 VisualViewport 软键盘避让。复用 `useModalFocus` 处理焦点、Tab、Escape 和关闭后的恢复；打开期间的断点变化关闭浮层并清理监听与滚动锁。
 
@@ -61,3 +61,16 @@ npm run test:behavior -- behavior/accountSwitcher.spec.js behavior/activeAccount
 ```
 
 浏览器补验 320 / 390 / 430 / 768 / 1024 / 1440px 与 767/768px 临界；手机横屏、Safe Area、搜索键盘、长名称、焦点/Escape/恢复、真实账号 A→B→A、OCR 拒绝及数据写入期间切换。静态编译或 jsdom 不证明这些浏览器结果。
+
+
+### 原地账号管理（2026-10-06）
+
+创建沿用自动设为当前账号的规则，但先经过当前 Workspace 的 `beforeSwitch` 与保存锁；当前账号所属游戏变更和当前账号删除同样检查草稿。确认期间 Context/身份变化时不发送写请求；创建请求期间 Context 变化时接收同用户结果，不抢占后来选择。修改游戏仍是原子 PATCH，后端订阅历史/实质招募档案限制保持。
+
+CRUD 使用身份绑定的 `accountList` 通知同步当前 Workspace 列表，发布列表先于切换当前账号。`listAccounts` 对 CRUD 前的在途 GET 返回最新快照，防止被删账号复活或丢掉新账号；通知不替代加载器，也不长期缓存 GET。删除使用返回时的有效当前选择，否则首个剩余账号或空。列表没有 dirty 退出提示；新建/编辑真实 dirty 时才确认。
+
+原地 Manager 在 Desktop/Tablet 为 520px 上限居中 Dialog，Mobile 为动态视口 Bottom Sheet；内部视图不堆叠 CRUD 弹窗，复用焦点栈、滚动锁、safe-area、16px 输入及 44px 操作。Profile 继续承担 MaaYuan、连接码、应用授权和数据访问范围。
+
+最小新增回归：`npm run test:behavior -- behavior/accountSwitcher.spec.js behavior/gameAccountManager.spec.js behavior/accountListUpdates.spec.js behavior/compactToolHeader.spec.js behavior/activityCalendarSubscriptions.spec.js behavior/todayComingSoon.spec.js behavior/profileConnectionsUx.spec.js behavior/starRecoveryUx.spec.js`。真实账号 CRUD、手机软键盘与各 Workspace 数据刷新由用户/CI 补验；无需全量 CI。
+
+账号 API 契约与星石导出副本：`node --test test/contract.test.js test/starArchiveExport.test.js`。本轮已用隔离合成组件预览验证六个宽度、原地 CRUD、焦点/草稿和模拟 VisualViewport 缩小；该预览阻止真实业务 API，不能替代真实账号与手机验收。

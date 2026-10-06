@@ -108,7 +108,7 @@ test('统一子账号 CRUD 路径前后端一致（/v1/accounts，库存 × 密�
   assert.match(backendAccountCtrl, /@DeleteMapping\("\/\{accountId\}"/)
   // 前端：src/api/accounts.js 统一账号模块
   assert.match(frontendAccounts, /const PATH = '\/v1\/accounts'/)
-  assert.match(frontendAccounts, /request\(PATH, \{ auth: true \}\)/)
+  assert.match(frontendAccounts, /request\(PATH, \{ auth: true, expectedUserId \}\)/)
   assert.match(frontendAccounts, /PATH \+ '\/' \+ encodeURIComponent\(accountId\)/)
   // 库存 / 密探 / Token 页均复用这一套账号函数，不再各自调用被删的旧地址
   assert.match(frontendInventory, /from '\.\/accounts\.js'/)
@@ -117,7 +117,7 @@ test('统一子账号 CRUD 路径前后端一致（/v1/accounts，库存 × 密�
   // 账号创建 UI 已收敛到统一的 GameAccountManager；创建调用必须继续走统一账号模块。
   assert.match(frontendProfile, /<GameAccountManager\b/)
   assert.match(frontendGameAccountManager, /from ["']\.\.\/api\/accounts\.js["']/)
-  assert.match(frontendGameAccountManager, /await createAccount\(name, newGame\.value\)/)
+  assert.match(frontendGameAccountManager, /await createAccount\(name, game\)/)
   assert.doesNotMatch(frontendProfile, /请先去.*库存页.*创建/)
   // 旧地址的调用方式（PATH + '/accounts'）不得再出现于库存/密探 API 模块
   assert.doesNotMatch(frontendInventory, /PATH \+ '\/accounts'/)

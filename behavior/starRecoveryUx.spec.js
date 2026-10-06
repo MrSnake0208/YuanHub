@@ -61,6 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   navigation.route = reactive({ path: '/star', query: {}, hash: '' })
   auth.isLoggedIn = false
+  auth.userInfo = null
   activeAccount.set('')
   listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }])
   getCurrentStarState.mockResolvedValue(emptyRemote)
@@ -455,4 +456,41 @@ it('切换准备期间不显示旧背包或摘要；OCR拒绝切换会保留原�
   activeAccount.set('acc-1'); await flushPromises()
   expect(activeAccount.id).toBe('acc-2')
   expect(wrapper.findComponent({ name: 'DataAccountContextBar' }).props('error')).toContain('识别进行中')
+})
+
+it('原地改名只更新导出元数据，不重入 Host 或丢失本地草稿', async () => {
+  const { publishAccountList } = await import('../src/store/accountList.js')
+  auth.isLoggedIn = true; auth.userInfo = { id: 'export-owner' }
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const handle = embedMount.mock.results[0].value
+  const payload = { schemaVersion: 1, accountDisplayName: '测试账号', gameVersion: '如鸢', inventory: [{ name: '星石' }] }
+  handle.exportDataExchange = vi.fn(() => ({ blob: { text: async () => JSON.stringify(payload) }, filename: 'YuanStar_测试账号_2026-10-06.json' }))
+  const create = vi.fn(() => 'blob:synthetic-export')
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = create; static revokeObjectURL = vi.fn() })
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  const hostCalls = handle.setHostAccount.mock.calls.length
+  publishAccountList([{ id: 'acc-1', name: '原地改名', game: '如鸢' }]); await flushPromises()
+  wrapper.findComponent({ name: 'ArchiveExchangePanel' }).vm.$emit('export'); await flushPromises()
+  expect(handle.setHostAccount).toHaveBeenCalledTimes(hostCalls)
+  expect(click).toHaveBeenCalledTimes(1)
+  expect(click.mock.instances[0].download).toBe('YuanStar_原地改名_2026-10-06.json')
+  // jsdom Blob is not a native browser Blob; inspect serialization with FileReader.
+  const blob = create.mock.calls[0][0]
+  const text = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(blob) })
+  expect(JSON.parse(text)).toEqual({ ...payload, accountDisplayName: '原地改名' })
+})
+
+it.each(['switch', 'roundtrip', 'identity', 'unmount'])('导出 Blob 等待期间 %s 不下载旧账号档案', async change => {
+  auth.isLoggedIn = true; auth.userInfo = { id: 'export-owner' }
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }, { id: 'acc-2', name: '另一个', game: '如鸢' }])
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const handle = embedMount.mock.results[0].value, gate = deferred()
+  handle.exportDataExchange = vi.fn(() => ({ blob: { text: () => gate.promise }, filename: 'YuanStar_测试账号_2026-10-06.json' }))
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  wrapper.findComponent({ name: 'ArchiveExchangePanel' }).vm.$emit('export'); await flushPromises()
+  if (change === 'unmount') wrapper.unmount()
+  else if (change === 'identity') { auth.userInfo = { id: 'other-owner' }; auth.userInfo = { id: 'export-owner' } }
+  else { activeAccount.set('acc-2'); if (change === 'roundtrip') activeAccount.set('acc-1') }
+  gate.resolve(JSON.stringify({ schemaVersion: 1, accountDisplayName: '旧名', inventory: [] })); await flushPromises()
+  expect(click).not.toHaveBeenCalled()
 })
