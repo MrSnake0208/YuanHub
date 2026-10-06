@@ -51,7 +51,7 @@ npx vitest run behavior/recruitmentPage.spec.js behavior/recruitmentPoolEditor.s
 
 ## 时间线 UP 出货摘要（2026-10-06）
 
-立绘继续表达 UP 阵容；每个当前有效 UP 小头像下沿叠加单行 `×N` chip，包括 `×0`，不额外增加名字或混入非 UP。所有有效槽都展示，头像与 chip 作为一个整体在窄屏自然换行；沿用奶油底/暖棕字与 Archivo 数字。整卡按钮保持键盘入口，ARIA 名称包含密探名字及本池获得次数；未知统计明确读作“统计未知”。
+立绘继续表达 UP 阵容；每个当前有效 UP 使用 42px 小头像与右下角压边的单行 `×N` badge，次数不独占一行。头像使用 `--line` 的 1px 弱边界，不保留稀有度强调描边；正数为茶棕底/奶油字，`×0` 与未知 `—` 为暖白底/次要暖棕字、较轻字重。所有有效槽都展示，以 8px 间距紧凑横排；头像与 badge 共用一个网格单元，较大次数按内容占宽，只在完整单元之间换行。封面内保留底部留白，不新增头像 hover 或独立控件。整卡按钮保持键盘入口，ARIA 名称明确读作“密探名，获得 N 次”；未知统计读作“统计未知”，摘要本身不增加焦点或 live region。
 
 数据直接取 `archive.pool_summaries[pool_id].up_agent_counts[upSlot.id]`，字段/键缺失或无效值显示 `—`。槽 id 在占位绑定图鉴后不变；图鉴失败回退槽名/头像占位，目录缺失回退池快照。只读首页不会请求 events；进入池后仍按需分页。账号切换沿用 useRecruitment 的同步清空与 generation 拦截；保存或SSE后权威 archive 刷新也更新 chip。
 
