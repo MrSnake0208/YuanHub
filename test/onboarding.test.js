@@ -154,6 +154,8 @@ test('uses seven stable step ids and data-tour anchors including account creatio
   assert.match(syncStep.description, /主动提交后才会生成连接码/)
   assert.doesNotMatch(syncStep.description, /打开连接设置|连接面板里也可以补建/)
   const replayStep = ONBOARDING_STEPS.find(step => step.id === 'replay-entry')
+  assert.match(replayStep.description, /更多.*新手教程/)
+  assert.match(replayStep.mobileDescription, /打开导航.*更多.*新手教程/)
   assert.equal(replayStep.mobileTarget, 'replay-menu')
   assert.match(files, /data-tour="replay-menu"/)
   assert.match(ONBOARDING_STEPS.find(step => step.id === 'today-overview').description, /当前游戏账号/)

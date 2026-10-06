@@ -64,8 +64,8 @@ export const ONBOARDING_STEPS = [
     target: 'replay-entry',
     mobileTarget: 'replay-menu',
     title: '忘了也没关系',
-    description: '以后需要复习时，从这个入口就能重新启动教程，不用记住每个页面的位置。',
-    mobileDescription: '以后需要复习时，先点击顶部的“打开导航”按钮，再选择“新手教程”，就能重新查看，不用记住每个页面的位置。',
+    description: '以后需要复习时，打开导航底部的“更多”，再选择“新手教程”，就能重新启动教程，不用记住每个页面的位置。',
+    mobileDescription: '以后需要复习时，先点击顶部的“打开导航”按钮，再打开“更多”，选择“新手教程”，就能重新查看，不用记住每个页面的位置。',
     side: 'right',
     align: 'center'
   }
