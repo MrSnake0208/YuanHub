@@ -182,6 +182,22 @@ export function timelineItemPosition(item, range) {
   }
 }
 
+// Pack only visible date intervals; inclusive end dates cannot share a start day.
+export function timelineLanes(items, range) {
+  const entries = items.map(item => ({ item, position: timelineItemPosition(item, range) }))
+    .filter(entry => entry.position)
+    .sort((a, b) => a.position.column - b.position.column || b.position.span - a.position.span || a.item.id.localeCompare(b.item.id))
+  const lanes = [], ends = []
+  for (const entry of entries) {
+    // ponytail: scan concurrent lanes; use a heap if real event volume warrants it.
+    let lane = ends.findIndex(end => end < entry.position.column)
+    if (lane < 0) { lane = lanes.length; lanes.push([]) }
+    lanes[lane].push(entry)
+    ends[lane] = entry.position.column + entry.position.span - 1
+  }
+  return lanes
+}
+
 export function calendarItemsOnDay(items, date) {
   const seen = new Set()
   return items.filter(item => {

@@ -80,7 +80,7 @@ import { useCalendarSubscriptions } from '@/composables/useCalendarSubscriptions
 import { subscriptionScope, subscriptionPending, subscriptionScopeQuery } from '@/data/activityCalendarSubscriptions.js'
 import CalendarSubscriptionControls from '@/components/calendar/CalendarSubscriptionControls.vue'
 import AccountSwitcher from '@/components/AccountSwitcher.vue'
-import { useRoute, useRouter } from 'vue-router'
+import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
 import { ChevronRight, LocateFixed, SlidersHorizontal } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
@@ -181,7 +181,7 @@ function setDate(date) {
 }
 async function goToday() {
   const failure = await setDate(today.value)
-  if (!failure) locateRequest.value++
+  if (!failure || isNavigationFailure(failure, NavigationFailureType.duplicated)) locateRequest.value++
 }
 async function load() {
   if (!enabled) return
