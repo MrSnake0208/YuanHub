@@ -42,12 +42,13 @@ it('只读初始化，不会写入空档案；无账号给出创建入口', asyn
   expect(wrapper.text()).toContain('先创建游戏账号'); expect(api.getRecruitmentArchive).not.toHaveBeenCalled(); expect(api.recruitmentCommand).not.toHaveBeenCalled()
   expect(wrapper.find('.archive-toggle').exists()).toBe(false)
 })
-it('备份入口位于账号栏，面板就近展开；收起保留输入，换账号关闭并清空', async () => {
+it('标题与账号共用工具页头，备份面板在正文顶部展开；收起保留输入，换账号关闭并清空', async () => {
   const wrapper = render({ DataAccountContextBar: false, RecruitmentExchange: false }); await flushPromises()
-  const context = wrapper.get('.data-account-context-bar'), toggle = context.get('.archive-toggle'), exchange = wrapper.get('.exchange-card')
+  const header = wrapper.get('.compact-tool-header'), context = header.get('.data-account-context-bar'), toggle = header.get('.archive-toggle'), exchange = wrapper.get('.exchange-card')
+  expect(header.get('h1').text()).toBe('招募档案'); expect(header.get('.compact-tool-account').element.contains(context.element)).toBe(true)
   expect(context.get('.context-selector').attributes('aria-label')).toContain('打开账号切换器'); expect(context.find('select').exists()).toBe(false)
   expect(toggle.text()).toBe('备份与恢复'); expect(toggle.attributes('aria-expanded')).toBe('false')
-  expect(toggle.attributes('aria-controls')).toBe(exchange.attributes('id')); expect(context.element.nextElementSibling).toBe(exchange.element); expect(exchange.isVisible()).toBe(false)
+  expect(toggle.attributes('aria-controls')).toBe(exchange.attributes('id')); expect(header.element.nextElementSibling.firstElementChild).toBe(exchange.element); expect(exchange.isVisible()).toBe(false)
   await toggle.trigger('click')
   expect(toggle.text()).toBe('收起备份与恢复'); expect(toggle.attributes('aria-expanded')).toBe('true'); expect(exchange.isVisible()).toBe(true)
   const input = exchange.get('input[type=file]')

@@ -2,14 +2,16 @@
   <div class="page-recruitment">
     <IslandSidebar />
     <main id="main-content" class="recruitment-main">
-      <header class="page-header"><div class="wrap"><h1 class="page-header-title">招募档案</h1><p class="page-header-description">查看与维护当前账号的招募记录与进度。</p></div></header>
+      <CompactToolHeader title="招募档案" description="查看与维护当前账号的招募记录与进度。">
+        <template v-if="enabled" #account>
+          <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
+        </template>
+        <template v-if="enabled" #actions>
+          <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起备份与恢复' : '备份与恢复' }}</button>
+        </template>
+      </CompactToolHeader>
       <div v-if="!enabled" class="wrap"><p class="card">招募档案暂未开放。</p></div>
       <div v-else class="wrap recruitment-content">
-        <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。">
-          <template #actions>
-            <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起备份与恢复' : '备份与恢复' }}</button>
-          </template>
-        </DataAccountContextBar>
         <RecruitmentExchange v-if="state.archive" id="recruitment-exchange" ref="exchangePanel" v-model:open="showArchive" :account-id="accountId" :account-name="state.accounts.find(account => account.id === accountId)?.name" :identity="identity" :revision="state.archive.archive_revision" :game="state.archive.game_snapshot" :read-only="state.archive.game_mismatch" :busy="state.busy" :context-version="state.contextVersion" :request-version="state.requestVersion" @busy="state.busy = $event" @committed="refresh" />
         <p v-if="!identity" class="card">请先登录再使用招募档案。</p>
         <p v-else-if="!state.accountsLoading && !state.accounts.length" class="card">还没有游戏账号。<router-link to="/user/profile#game-accounts">先创建游戏账号</router-link></p>
@@ -33,10 +35,10 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import '@/styles/page-header.css'
 import { Archive, BookOpen, Gem, RotateCw } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
+import CompactToolHeader from '../../components/CompactToolHeader.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import PoolEditor from './PoolEditor.vue'
 import RecruitmentExchange from './RecruitmentExchange.vue'
@@ -80,7 +82,7 @@ async function savePool(payload) {
 </script>
 
 <style scoped>
-.recruitment-content :deep(.data-account-context-bar.is-compact){display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.recruitment-content .archive-toggle{width:auto;min-width:0}.recruitment-content :deep(.timeline-heading h2){font-size:24px}
+.archive-toggle{width:auto;min-width:0}.recruitment-content :deep(.timeline-heading h2){font-size:24px}
 
 .archive-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px;background:transparent;color:var(--ink-60);font-size:12.5px;font-weight:700;white-space:nowrap;transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.archive-toggle svg{flex:none}
 .recruitment-main{min-width:0}.recruitment-content{padding-top:8px;padding-bottom:32px}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin:16px 0;min-width:0;overflow-wrap:anywhere}.summary{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-item{display:flex;align-items:start;gap:8px;min-width:0}.summary-item>div{min-width:0}.summary-icon{flex:none;color:var(--accent-strong);padding-top:4px}.summary-item>div>span,.summary-item small{display:block;font-size:12px;color:var(--ink-60);line-height:1.7}.summary-number{display:flex;align-items:baseline;gap:6px}.summary strong{font:800 20px/1.4 var(--font-d);color:var(--tea)}.summary-item .number-unit{font-size:12px}.archive-toggle{border:0;border-radius:6px;padding:8px;background:transparent}.archive-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:20px}.archive-tools>span{font-size:12px;color:var(--ink-60)}.archive-tools button{display:inline-flex;align-items:center;gap:8px}
