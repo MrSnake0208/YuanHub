@@ -2,22 +2,19 @@
   <div class="today-page">
     <IslandSidebar />
     <main id="main-content" class="today-main">
-      <header class="today-hero">
-        <div class="wrap today-wrap">
-          <h1>今日一览</h1>
-          <DataAccountContextBar
-            v-if="auth.isLoggedIn"
-            ref="accountContext"
-            compact
-            :accounts="accounts"
-            :account-id="accountId"
-            :game="accountGame"
-            :is-logged-in="auth.isLoggedIn"
-            :loading="accountLoading"
-            :switch-disabled="accountLoadFailed"
-          />
-        </div>
-      </header>
+      <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
+        <DataAccountContextBar
+          v-if="auth.isLoggedIn"
+          ref="accountContext"
+          compact
+          :accounts="accounts"
+          :account-id="accountId"
+          :game="accountGame"
+          :is-logged-in="auth.isLoggedIn"
+          :loading="accountLoading"
+          :switch-disabled="accountLoadFailed"
+        />
+      </TodayLobby>
 
       <section class="today-content">
         <div class="wrap today-wrap">
@@ -180,6 +177,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
 import TodaySubscriptionSummary from '../../components/today/TodaySubscriptionSummary.vue'
+import TodayLobby from '../../components/today/TodayLobby.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
@@ -330,6 +328,18 @@ const onboardingNote = computed(function () {
   if (onboardingStage.value === 'account') return '第 2 步 · 子账号'
   return '第 3 步 · 按功能补数据'
 })
+const lobbyStatus = computed(() => {
+  if (!auth.isLoggedIn) return '登录后，一起看看你的今日事项。'
+  if (accountLoading.value || summaryLoading.value) return '正在为你整理当前账号状态…'
+  if (accountLoadFailed.value) return '账号暂时无法读取，请稍后重试。'
+  if (!accounts.value.length) return '先建一个游戏账号，从这里开始。'
+  if (!validAccountId.value) return '选一个游戏账号，看看今天的状态。'
+  if (unknownDataItems.value.length) return `${unknownDataLabel.value}状态待确认，无需重复录入。`
+  if (!isReturningUser.value) return '密探、库存与星石，随时可以开始建档。'
+  return missingDataItems.value.length
+    ? `已整理当前账号状态，还有 ${missingDataItems.value.length} 项数据可按需补齐。`
+    : '当前账号的三项数据已录入，今日事项在下方。'
+})
 const maaYuanConnectTo = computed(function () {
   return {
     path: '/user/profile',
@@ -409,9 +419,6 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 .today-page { min-height: 100dvh; color: var(--ink); }
 .today-main { min-height: 100dvh; }
 .today-wrap { max-width: 1180px; }
-.today-hero { padding: 20px 0 12px; border-bottom: 1px solid var(--line); }
-.today-hero .today-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; }
-.today-hero h1 { margin: 0; color: var(--tea); font: 900 30px/1.4 var(--font-s); }
 .today-content { padding: 16px 0 48px; }
 .today-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; padding: 12px 14px; border: 1px solid var(--rouge); border-radius: 10px; color: var(--rouge); font-size: 13px; line-height: 1.7; }
 .today-alert button { min-height: 44px; padding: 8px 12px; border: 1px solid currentColor; border-radius: 7px; background: var(--surface); color: inherit; cursor: pointer; }
@@ -478,8 +485,6 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 .is-optional .onboarding-heading { margin-top: 12px; }
 .auth-onboarding-card > .entry-icon { display: none; }
 @media (min-width: 768px) {
-  .today-hero { padding-top: 24px; }
-  .today-hero h1 { font-size: 32px; }
   .data-readiness-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .onboarding-heading { flex-direction: row; align-items: end; }
   .auth-onboarding-card { grid-template-columns: auto minmax(0, 1fr); }
