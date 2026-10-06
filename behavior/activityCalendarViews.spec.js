@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Calendar from '../src/pages/calendar/index.vue'
@@ -10,6 +11,7 @@ import EventCard from '../src/components/calendar/CalendarEventCard.vue'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { isFeatureEnabled } from '../src/config/features.js'
 import { CALENDAR_VIEW_STORAGE_KEY, monthGridRange, timelineRange } from '../src/data/activityCalendar.js'
+import { CALENDAR_SUBSCRIPTIONS } from '../src/data/activityCalendarSubscriptions.js'
 
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/config/features.js', async importOriginal => ({ ...(await importOriginal()), isFeatureEnabled: vi.fn(() => true) }))
@@ -272,9 +274,81 @@ it('Timeline今天重复定位恢复内部scrollLeft而不移动页面；window�
   vi.spyOn(wrapper.get('.calendar-axis-day').element, 'getBoundingClientRect').mockReturnValue({ width: 44 })
   viewport.scrollLeft = 999
   await wrapper.setProps({ locateRequest: 1 })
-  expect(viewport.scrollLeft).toBe(224)
+  expect(viewport.scrollLeft).toBe(246)
   await wrapper.get('button[aria-label="后五周"]').trigger('click')
   expect(wrapper.emitted('select-date').at(-1)).toEqual(['2026-11-07'])
+})
+
+it('页面日期已经是今天，重复今天导航仍定位时间轴且不重发请求', async () => {
+  const { wrapper, router } = await render('/calendar?view=timeline&game=如鸢&ref=share')
+  const viewport = wrapper.get('.calendar-timeline-scroll').element
+  Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 252 })
+  vi.spyOn(wrapper.get('.calendar-axis-day').element, 'getBoundingClientRect').mockReturnValue({ width: 48 })
+  for (let i = 0; i < 2; i++) {
+    viewport.scrollLeft = 999
+    await wrapper.get('.calendar-today-action').trigger('click'); await flushPromises()
+    expect(viewport.scrollLeft).toBe(276)
+  }
+  expect(router.currentRoute.value.query).toEqual({ view: 'timeline', game: '如鸢', ref: 'share' })
+  expect(listActivityCalendar).toHaveBeenCalledTimes(1)
+})
+
+it('Timeline按真实类别分组，重叠分轨而相邻活动复用轨道，名称只显示一次', () => {
+  const wrapper = mount(Timeline, { props: viewProps({ items: [
+    event({ id: 'a', title: '首个活动', start_date: today, end_date: '2026-10-05' }),
+    event({ id: 'b', title: '重叠活动', start_date: '2026-10-04', end_date: '2026-10-06' }),
+    event({ id: 'c', title: '后续活动', start_date: '2026-10-06', end_date: '2026-10-08' }),
+    event({ id: 'm', title: '维护', category: 'MAINTENANCE', start_date: today, end_date: today }),
+  ] }) })
+  const activity = wrapper.get('.calendar-timeline-group[aria-label="活动"]')
+  expect(activity.findAll('.calendar-timeline-track')).toHaveLength(2)
+  expect(activity.findAll('.calendar-timeline-track')[0].findAll('.calendar-timeline-bar-title').map(node => node.text())).toEqual(['首个活动', '后续活动'])
+  expect(activity.text().match(/首个活动/g)).toHaveLength(1)
+  expect(wrapper.get('.calendar-timeline-group[aria-label="维护"] .is-single-day').attributes('aria-label')).toContain('维护')
+  expect(wrapper.get('.is-single-day .calendar-timeline-point').attributes('aria-hidden')).toBe('true')
+})
+
+it('Timeline选择保持稳定，关闭详情清除选中并将焦点还给活动条，过滤移除详情', async () => {
+  const wrapper = mount(Timeline, { attachTo: document.body, props: viewProps() })
+  const bar = wrapper.get('.calendar-timeline-bar')
+  await bar.trigger('click'); await flushPromises()
+  expect(bar.attributes('aria-pressed')).toBe('true')
+  await bar.trigger('click'); await flushPromises()
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(true)
+  await button(wrapper, '关闭详情').trigger('click'); await flushPromises()
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(false)
+  expect(document.activeElement).toBe(bar.element)
+  expect(bar.attributes('aria-pressed')).toBe('false')
+  await bar.trigger('click'); await flushPromises()
+  await wrapper.setProps({ items: [] })
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(false)
+})
+
+it('Timeline仅对进行中的临近结束活动显示剩余时间，精确已截止或未开始不高亮', () => {
+  const wrapper = mount(Timeline, { props: viewProps({ items: [
+    event({ id: 'ending', title: '即将截止', start_at: '2026-10-01T00:00:00+08:00', end_at: '2026-10-03T14:00:00+08:00' }),
+    event({ id: 'ended', title: '已经截止', start_at: '2026-10-01T00:00:00+08:00', end_at: '2026-10-03T10:00:00+08:00' }),
+    event({ id: 'future', title: '稍后开始', start_date: today, start_at: '2026-10-03T13:00:00+08:00', end_at: '2026-10-04T12:00:00+08:00' }),
+  ] }) })
+  expect(wrapper.findAll('.calendar-timeline-bar.is-ending')).toHaveLength(1)
+  expect(wrapper.get('.calendar-timeline-bar.is-ending').text()).toContain('还有 2 小时')
+  expect(wrapper.get('.calendar-timeline-bar[aria-label^="已经截止"]').attributes('aria-label')).toContain('已结束')
+})
+
+it('Timeline关闭详情继续保护草稿，取消或确认期间账号变化不关闭新上下文详情', async () => {
+  const context = { key: ref('account-a'), now: ref(Date.now()), confirmDiscard: vi.fn().mockResolvedValue(true) }
+  const wrapper = mount(Timeline, { props: viewProps(), global: { provide: { [CALENDAR_SUBSCRIPTIONS]: context }, stubs: { CalendarEventCard: true } } })
+  await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises()
+  context.confirmDiscard.mockResolvedValueOnce(false)
+  await button(wrapper, '关闭详情').trigger('click'); await flushPromises()
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(true)
+  const pending = deferred()
+  context.confirmDiscard.mockReturnValueOnce(pending.promise)
+  await button(wrapper, '关闭详情').trigger('click')
+  context.key.value = 'account-b'
+  pending.resolve(true); await flushPromises()
+  expect(wrapper.find('#calendar-timeline-detail').exists()).toBe(true)
+  expect(wrapper.get('.calendar-timeline-bar').attributes('aria-pressed')).toBe('true')
 })
 
 it('Timeline跨年窗口标题同时说明两端年份', () => {

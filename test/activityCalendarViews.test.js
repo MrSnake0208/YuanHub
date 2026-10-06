@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calendarAnchorDate, calendarDates, calendarDeadline, calendarRequestRange, calendarView, calendarViewQuery, monthCalendarDays, monthGridRange, shiftCalendarMonth, timelineItemPosition, timelineRange } from '../src/data/activityCalendar.js'
+import { calendarAnchorDate, calendarDates, calendarDeadline, calendarRequestRange, calendarView, calendarViewQuery, monthCalendarDays, monthGridRange, shiftCalendarMonth, timelineItemPosition, timelineLanes, timelineRange } from '../src/data/activityCalendar.js'
 
 const today = '2026-10-03'
 const item = (patch = {}) => ({ id: 'a', start_date: '2026-09-30', end_date: '2026-10-04', ...patch })
@@ -67,6 +67,38 @@ test('月格按闭区间统计跨月活动，边界与去重，空日期不伪�
   assert.equal(days.find(day => day.date === '2026-10-04').items.length, 1)
   assert.equal(days.find(day => day.date === '2026-10-05').items.length, 0)
   assert.equal(monthCalendarDays([], '2026-08-01').length, 42)
+})
+
+test('时间轴重叠分轨，同日边界不合并，相邻活动复用轨道且保留所有可见项', () => {
+  const range = { from: '2026-10-01', to: '2026-10-07' }
+  const values = [
+    item({ id: 'later', start_date: '2026-10-05', end_date: '2026-10-07' }),
+    item({ id: 'first', start_date: '2026-10-01', end_date: '2026-10-03' }),
+    item({ id: 'boundary', start_date: '2026-10-03', end_date: '2026-10-04' }),
+    item({ id: 'point', start_date: '2026-10-03', end_date: '2026-10-03' }),
+    item({ id: 'outside', start_date: '2026-11-01', end_date: '2026-11-02' }),
+  ]
+  const lanes = timelineLanes(values, range)
+  assert.equal(lanes.length, 3)
+  assert.deepEqual(lanes[0].map(entry => entry.item.id), ['first', 'later'])
+  assert.deepEqual(lanes.flat().map(entry => entry.item.id).sort(), ['boundary', 'first', 'later', 'point'])
+  for (const lane of lanes) for (let i = 1; i < lane.length; i++) {
+    assert.ok(lane[i - 1].position.column + lane[i - 1].position.span <= lane[i].position.column)
+  }
+  assert.deepEqual(timelineLanes(values.slice().reverse(), range), lanes)
+  assert.deepEqual(timelineLanes([], range), [])
+  assert.equal(values[0].id, 'later')
+})
+
+test('跨窗长活动与单日活动分轨，裁切后仍不覆盖或丢失', () => {
+  const range = { from: '2026-10-01', to: '2026-10-07' }
+  const lanes = timelineLanes([
+    item({ id: 'long', start_date: '2026-09-01', end_date: '2026-11-30' }),
+    item({ id: 'single', start_date: '2026-10-01', end_date: '2026-10-01' }),
+    item({ id: 'next', start_date: '2026-10-02', end_date: '2026-10-02' }),
+  ], range)
+  assert.deepEqual(lanes.map(lane => lane.map(entry => entry.item.id)), [['long'], ['single', 'next']])
+  assert.equal(lanes[0][0].position.span, 7)
 })
 
 test('截止提示以服务器日期计算今天/明天/剩余天数与未来开始', () => {

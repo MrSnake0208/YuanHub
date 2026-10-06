@@ -156,3 +156,22 @@ npm run test:behavior -- behavior/activityCalendarSubscriptions.spec.js behavior
 node --test test/activityCalendar.test.js test/activityCalendarViews.test.js test/activityCalendarSubscriptions.test.js
 npm run test:behavior -- behavior/activityCalendarSubscriptions.spec.js behavior/activityCalendarSubscriptionApi.spec.js behavior/activityCalendarSubscriptionIdentity.spec.js behavior/todayCalendarSubscriptions.spec.js behavior/activityCalendar.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarRoutes.spec.js behavior/todayActivitySummary.spec.js
 ```
+
+## Timeline 时间关系优化（2026-10-06）
+
+沿用 35 天请求窗口（锚点前 7 天、后 27 天）及 48px/日的闭区间布局：横向位置表示开始日，长度表示持续天数。按现有 `CALENDAR_CATEGORIES` 分组，同类重叠事件自动分轨，相邻且不重叠的事件复用轨道；不隐藏活动，面板高度上限为 `min(620px, 70dvh)`，内部纵横滚动，日期头局部 sticky。
+
+活动名称只在 Bar 中出现一次；长条名称通过 CSS sticky 保留在可见区域，游戏标记与临近结束的剩余时间构成第二行。单日活动采用菱形标记及短名称，目标至少 44×48px，完整名称、起止日期和状态保留在可访问名称及共用详情卡中。跨窗口端点继续用虚线边界表达裁切。
+
+Today 使用“今天”文字、日期下划线和竖线；打开窗口时锚点位于视口约三分之一处，点击页面“今天”只调整 Timeline 内部横向位置。已在今天的重复导航也触发定位，无需重新请求；定位直接设置 `scrollLeft`，支持 reduced-motion。显式历史日期仍优先，不强行改回今天。
+
+点击活动保持选中，详情继续复用 `CalendarEventCard` 和订阅控件；新增关闭详情入口，仍检查未保存确认及账号上下文，关闭后焦点返回活动条。手机首次默认 Agenda，主动进入 Timeline 后保留局部横向滚动；平板和桌面使用同一布局，仅可视日期数量不同。未新增 Zoom、独立 Detail 系统、API、状态源或依赖；Agenda、Month、筛选、账号及视图偏好沿用现有实现。
+
+风险 L2：局部时间数据分轨、选择交互及重复 Today 定位修复。新增分轨边界/裁切/确定性、页面重复 Today、稳定选择/关闭/焦点、临近结束精确状态及草稿保护回归。最小验证（cwd YuanHub，由用户/CI执行）：
+
+```bash
+node --test test/activityCalendarViews.test.js
+npm run test:behavior -- behavior/activityCalendarViews.spec.js
+```
+
+Agent 已执行定向 SFC/JS/CSS 编译和 diff 检查，以及 Playwright CLI 的 390/768/1440px 真实 SFC 合成预览检查：无整页横滚、条长度/分轨/44px 目标、Today 重复定位、sticky 日期轴、键盘滚动/选择、详情焦点返回和三视图切换。证据位于工作区 `.playwright-cli/calendar-timeline/`；鉴权/API 为合成数据，未写后端。Node/Vitest 回归及生产 build 未执行；真实登录账号、Safari、手机触控与读屏器仍待用户验收。
