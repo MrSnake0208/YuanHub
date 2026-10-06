@@ -24,6 +24,17 @@ YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 完整前后端接口契约见 [`docs/api-contract.md`](docs/api-contract.md)。公共关卡读取使用 `/v1/level/catalog`，
 关卡管理页使用 `/v1/admin/level-catalog/**`，后者需要登录 JWT 与 `level_catalog:write`。
 
+## 一键发布
+
+独立 clone 本仓库即可发布，不需要后端仓库或 YuanHub-All。先提交业务改动并切换到干净的 `main`，安装 Git / GitHub CLI 并执行 `gh auth login`（账号需具备仓库推送与 Actions 访问权限）：
+
+```bash
+./release-frontend.sh --dry-run auto
+./release-frontend.sh auto
+```
+
+`auto` 沿用未发布的 `VERSION`，或递增已发布的 beta 版本；也可显式指定新版本。脚本等待 CI 成功后推送 tag 并等待部署完成，生产凭据沿用 GitHub 配置。配置、审批与失败恢复见 [部署说明](docs/deployment.md#4-发布流程)。
+
 ## 开发规范
 
 涉及页面、组件或样式修改时，先阅读：
