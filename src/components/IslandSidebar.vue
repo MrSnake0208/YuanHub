@@ -61,16 +61,12 @@
 
         <nav class="mobile-drawer-nav" aria-label="全部导航">
           <section class="mobile-drawer-section">
-            <p class="mobile-drawer-label">主要功能</p>
             <router-link to="/" :class="{ active: $route.path === '/' || $route.path === '/today' }">
               <House :size="20" aria-hidden="true" /><span>今日一览</span>
             </router-link>
-            <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: $route.path.startsWith('/calendar') }">
-              <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
-            </router-link>
             <router-link
               to="/operator"
-              :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
+              :class="{ active: !managementActive && $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
             >
               <BookUser :size="20" aria-hidden="true" /><span>密探名册</span>
             </router-link>
@@ -86,68 +82,49 @@
             <router-link to="/cart" :class="{ active: $route.path === '/cart' }">
               <ShoppingCart :size="20" aria-hidden="true" /><span>广陵账房</span>
             </router-link>
+            <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
+              <CalendarDays :size="20" aria-hidden="true" /><span>活动日历</span>
+            </router-link>
           </section>
 
-          <section class="mobile-drawer-section">
-            <p class="mobile-drawer-label">消息与社区</p>
-            <router-link
-              v-if="isLoggedIn"
-              to="/notifications"
-              :class="{ active: $route.path === '/notifications' }"
-            >
-              <Bell :size="20" aria-hidden="true" /><span>通知中心</span>
-              <span v-if="unreadCount > 0" class="mobile-drawer-badge">{{
-                unreadCount > 99 ? "99+" : unreadCount
-              }}</span>
-            </router-link>
-            <router-link
-              :to="isLoggedIn ? '/feedback' : '/feedback/plaza'"
-              :class="{ active: $route.path.startsWith('/feedback') }"
-            >
-              <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
-              <span v-if="isLoggedIn && feedbackUnreadState.count > 0" class="mobile-drawer-badge">{{
-                feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
-              }}</span>
-            </router-link>
-            <router-link to="/co-creation" :class="{ active: $route.path.startsWith('/co-creation') }">
-              <Lightbulb :size="20" aria-hidden="true" /><span>大饼中心</span>
-            </router-link>
-            <button
-              v-if="showBetaCommunityEntry"
-              type="button"
-              class="mobile-drawer-link"
-              @click="openBetaCommunity"
-            >
-              <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
-            </button>
-          </section>
-
-          <section v-if="showManagement" class="mobile-drawer-section">
-            <p class="mobile-drawer-label">管理</p>
-            <router-link to="/manage" :class="{ active: $route.path === '/manage' }">
+          <details class="mobile-more">
+            <summary class="mobile-drawer-link" :class="{ active: moreActive }" aria-controls="mobile-service-nav" :aria-label="moreLabel">
+              <MoreHorizontal :size="20" aria-hidden="true" /><span>更多</span>
+              <span v-if="isLoggedIn && feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
+              <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
+            </summary>
+            <div id="mobile-service-nav" class="mobile-drawer-section" aria-label="YuanHub 服务">
+              <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+                <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
+                <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
+              </router-link>
+              <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+                <MessageSquareText :size="20" aria-hidden="true" /><span>反馈中心</span>
+              </router-link>
+              <router-link to="/co-creation" :class="{ active: !managementActive && $route.path.startsWith('/co-creation') }">
+                <Lightbulb :size="20" aria-hidden="true" /><span>大饼中心</span>
+              </router-link>
+              <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
+                <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
+              </router-link>
+              <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
+                <Ticket :size="20" aria-hidden="true" /><span>参与内测</span>
+              </router-link>
+              <router-link to="/install" :class="{ active: $route.path === '/install' }">
+                <Download :size="20" aria-hidden="true" /><span>安装到桌面</span>
+              </router-link>
+              <button v-if="showBetaCommunityEntry" type="button" class="mobile-drawer-link" @click="openBetaCommunity">
+                <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
+              </button>
+              <button type="button" class="mobile-drawer-link" @click="restartTutorial">
+                <CircleHelp :size="20" aria-hidden="true" /><span>新手教程</span>
+              </button>
+            </div>
+          </details>
+          <section v-if="showManagement" class="mobile-drawer-section mobile-management">
+            <router-link to="/manage" :class="{ active: managementActive }" :aria-current="managementActive ? 'page' : undefined">
               <LayoutDashboard :size="20" aria-hidden="true" /><span>管理工作台</span>
             </router-link>
-          </section>
-
-          <section class="mobile-drawer-section">
-            <p class="mobile-drawer-label">YuanHub</p>
-            <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
-              <Ticket :size="20" aria-hidden="true" /><span>参与内测</span>
-            </router-link>
-            <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
-              <ScrollText :size="20" aria-hidden="true" /><span>更新日志</span>
-            </router-link>
-            <router-link to="/install" :class="{ active: $route.path === '/install' }">
-              <Download :size="20" aria-hidden="true" /><span>安装到桌面</span>
-            </router-link>
-            <button
-              type="button"
-              class="mobile-drawer-link"
-              data-tour="replay-entry"
-              @click="restartTutorial"
-            >
-              <CircleHelp :size="20" aria-hidden="true" /><span>新手教程</span>
-            </button>
           </section>
         </nav>
 
@@ -176,7 +153,6 @@
   </Transition>
 
   <aside class="island" aria-label="主要导航">
-    <router-link class="beta-entry" to="/beta">参与内测 / 查看资格 →</router-link>
     <router-link class="brand" to="/" aria-label="返回首页">
       <img class="brand-mark" src="/brand/yuanhub-logo.png" alt="" aria-hidden="true" />
       <div class="brand-txt">
@@ -192,12 +168,9 @@
         :class="{ active: $route.path === '/' || $route.path === '/today' }"
         ><span class="no">00</span>今日一览</router-link
       >
-      <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: $route.path.startsWith('/calendar') }">
-        <CalendarDays :size="18" aria-hidden="true" />活动日历
-      </router-link>
       <router-link
         to="/operator"
-        :class="{ active: $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
+        :class="{ active: !managementActive && $route.path.startsWith('/operator') && !$route.path.startsWith('/operator/share') }"
         ><span class="no">01</span>密探名册</router-link
       >
       <router-link v-if="showRecruitment" to="/recruitment" :class="{ active: $route.path === '/recruitment' }"
@@ -213,88 +186,57 @@
       <router-link to="/cart" :class="{ active: $route.path === '/cart' }"
         ><span class="no">{{ showRecruitment ? '05' : '04' }}</span>广陵账房</router-link
       >
-      <div class="nav-separator" aria-hidden="true"></div>
-      <div class="nav-lb">消息与社区</div>
-      <template v-if="isLoggedIn">
-        <router-link
-          to="/notifications"
-          :class="{ active: $route.path === '/notifications' }"
-        >
-          通知中心
-          <span v-if="unreadCount > 0" class="sidebar-badge">{{
-            unreadCount > 99 ? "99+" : unreadCount
-          }}</span>
-        </router-link>
-        <router-link
-          to="/feedback"
-          :class="{ active: $route.path.startsWith('/feedback') }"
-        >
-          反馈中心
-          <span v-if="feedbackUnreadState.count > 0" class="sidebar-badge">{{
-            feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count
-          }}</span>
-        </router-link>
-      </template>
-
-      <router-link
-        v-if="!isLoggedIn"
-        to="/feedback/plaza"
-        :class="{ active: $route.path.startsWith('/feedback') }"
-      >反馈中心</router-link>
-      <router-link
-        to="/co-creation"
-        :class="{ active: $route.path.startsWith('/co-creation') }"
-        >大饼中心</router-link
-      >
-      <button v-if="showBetaCommunityEntry" type="button" class="nav-community" @click="openBetaCommunity">
-        <span>内测交流群</span><UsersRound :size="16" aria-hidden="true" />
-      </button>
-      <template v-if="showManagement">
-        <div class="nav-lb">管理</div>
-        <router-link to="/manage" :class="{ active: $route.path === '/manage' }">管理工作台</router-link>
-      </template>
-      <div class="nav-lb">YuanHub</div>
-      <router-link
-        to="/user/profile"
-        :class="{ active: $route.path === '/user/profile' }"
-        >账号与连接码</router-link
-      >
-      <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }"
-        >YuanHub 更新日志</router-link
-      >
-      <!-- 协作看板（暂时隐藏）：
-      <div class="nav-lb">协作看板 · 快捷跳转</div>
-      <a class="ext" href="#" style="--cc:var(--tea)"><span class="dot"></span>出战阵容编辑器<span class="who">BWiki</span></a>
-      <a class="ext" href="#" style="--cc:var(--accent)"><span class="dot"></span>操作记录仪<span class="who">辟雍学府</span></a>
-      <a class="ext" href="#" style="--cc:var(--rouge)"><span class="dot"></span>打关跟打<span class="who">YuanAssist</span></a>
-      <a class="ext" href="#" style="--cc:var(--yellow-deep)"><span class="dot"></span>Box · 羁绊<span class="who">MAA</span></a>
-      -->
-      <!-- 站点（暂时隐藏）：
-      <div class="nav-lb">站点</div>
-      <a href="#"><span class="no">03</span>关于</a>
-      -->
+      <router-link v-if="showCalendar" class="calendar-nav-link" to="/calendar" :class="{ active: !managementActive && $route.path.startsWith('/calendar') }">
+        <CalendarDays :size="18" aria-hidden="true" />活动日历
+      </router-link>
+      <router-link v-if="showManagement" class="management-nav-link" to="/manage" :class="{ active: managementActive }" :aria-current="managementActive ? 'page' : undefined">管理工作台</router-link>
     </nav>
     <div class="island-foot">
-      <button
-        type="button"
-        class="foot-tour"
-        data-tour="replay-entry"
-        @click="restartTutorial"
-      >
-        <CircleHelp :size="14" aria-hidden="true" />重新查看新手教程
-      </button>
-      <template v-if="isLoggedIn">
-        <router-link to="/user/profile" class="foot-user">{{
-          userName
-        }}</router-link>
-        <button class="foot-logout" type="button" @click="onLogout">
-          退出
-        </button>
-      </template>
-      <router-link v-else to="/login" class="foot-link">登录 / 注册</router-link
-      ><!-- · 简体中文<br>
-      <a href="#">创建新作业</a><br>
-      <div class="grp">作业制作者交流群<br>1055262891</div> -->
+      <details ref="desktopMore" class="sidebar-more" @keydown.esc.stop.prevent="closeDesktopMore(true)" @focusout="onDesktopMoreFocusOut">
+        <summary class="sidebar-more-trigger" :class="{ active: moreActive }" data-tour="replay-entry" aria-controls="desktop-service-nav" :aria-label="moreLabel">
+          <MoreHorizontal :size="18" aria-hidden="true" /><span>更多</span>
+          <span v-if="isLoggedIn && feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
+          <ChevronDown :size="16" class="more-chevron" aria-hidden="true" />
+        </summary>
+        <nav id="desktop-service-nav" class="sidebar-more-panel" aria-label="YuanHub 服务">
+          <router-link v-if="isLoggedIn" to="/feedback" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+            <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
+            <span v-if="feedbackUnreadState.count > 0" class="more-feedback-badge">{{ feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count }}</span>
+          </router-link>
+          <router-link v-else to="/feedback/plaza" :class="{ active: !managementActive && $route.path.startsWith('/feedback') }">
+            <MessageSquareText :size="18" aria-hidden="true" /><span>反馈中心</span>
+          </router-link>
+          <router-link to="/co-creation" :class="{ active: !managementActive && $route.path.startsWith('/co-creation') }">
+            <Lightbulb :size="18" aria-hidden="true" /><span>大饼中心</span>
+          </router-link>
+          <router-link to="/changelog" :class="{ active: $route.path === '/changelog' }">
+            <ScrollText :size="18" aria-hidden="true" /><span>更新日志</span>
+          </router-link>
+          <router-link to="/beta" :class="{ active: $route.path === '/beta' }">
+            <Ticket :size="18" aria-hidden="true" /><span>参与内测</span>
+          </router-link>
+          <router-link to="/install" :class="{ active: $route.path === '/install' }">
+            <Download :size="18" aria-hidden="true" /><span>安装到桌面</span>
+          </router-link>
+          <button v-if="showBetaCommunityEntry" type="button" @click="openBetaCommunity">
+            <UsersRound :size="18" aria-hidden="true" /><span>内测交流群</span>
+          </button>
+          <button type="button" @click="restartTutorial">
+            <CircleHelp :size="18" aria-hidden="true" /><span>新手教程</span>
+          </button>
+        </nav>
+      </details>
+      <div class="sidebar-utilities">
+        <router-link class="sidebar-account" :to="isLoggedIn ? '/user/profile' : '/login'">
+          <strong>{{ isLoggedIn ? userName : "登录 / 注册" }}</strong>
+          <small>{{ isLoggedIn ? "账号与连接码" : "同步你的游戏数据" }}</small>
+        </router-link>
+        <router-link v-if="isLoggedIn" class="sidebar-notifications" to="/notifications" :class="{ active: $route.path === '/notifications' }" :aria-label="unreadCount > 0 ? `通知，${unreadCount > 99 ? '99+' : unreadCount} 条未读` : '通知'">
+          <Bell :size="20" aria-hidden="true" />
+          <span v-if="unreadCount > 0" class="sidebar-badge">{{ unreadCount > 99 ? "99+" : unreadCount }}</span>
+        </router-link>
+        <button v-if="isLoggedIn" class="foot-logout" type="button" @click="onLogout" aria-label="退出登录"><LogOut :size="18" aria-hidden="true" /></button>
+      </div>
       <router-link
         to="/changelog"
         class="foot-version"
@@ -313,6 +255,7 @@ import {
   Bell,
   BookUser,
   CalendarDays,
+  ChevronDown,
   CircleHelp,
   Download,
   Gem,
@@ -323,6 +266,7 @@ import {
   LogOut,
   Menu,
   MessageSquareText,
+  MoreHorizontal,
   PackageOpen,
   ScrollText,
   ShoppingCart,
@@ -332,7 +276,7 @@ import {
   X,
 } from "@lucide/vue";
 import { auth, logout as doLogout } from "@/store/auth.js";
-import { hasManagementCapability } from "@/utils/adminTools.js";
+import { hasManagementCapability, isManagementRoute } from "@/utils/adminTools.js";
 import { beta } from "@/store/beta.js";
 import { recruitmentAccess } from "@/store/recruitmentAccess.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
@@ -384,6 +328,14 @@ const buildInfoLine = computed(() => formatBuildInfo() + " · 查看更新日志
 const unreadCount = computed(() => notificationUnreadState.count);
 const router = useRouter();
 const route = useRoute();
+const managementActive = computed(() => isManagementRoute(route.path));
+const moreActive = computed(() => !managementActive.value && (
+  route.path.startsWith("/feedback") || route.path.startsWith("/co-creation") ||
+  ["/beta", "/changelog", "/install"].includes(route.path)
+));
+const moreLabel = computed(() => isLoggedIn.value && feedbackUnreadState.count > 0
+  ? `更多，${feedbackUnreadState.count > 99 ? "99+" : feedbackUnreadState.count} 条反馈未读` : "更多");
+const desktopMore = ref(null);
 const menuOpen = ref(false);
 const menuToggle = ref(null);
 const menuPanel = ref(null);
@@ -391,6 +343,7 @@ const mobileTitle = computed(() => route.meta?.title?.split(" — ")[0] || "Yuan
 
 watch(() => route.fullPath, () => {
   menuOpen.value = false;
+  closeDesktopMore();
 });
 watch(menuOpen, (open) => {
   if (typeof document === "undefined") return;
@@ -438,44 +391,158 @@ function trapDrawerFocus(event) {
   }
 }
 
+function closeDesktopMore(restoreFocus = false) {
+  const details = desktopMore.value;
+  if (!details?.open) return;
+  details.open = false;
+  if (restoreFocus) details.querySelector("summary")?.focus();
+}
+
+function onOutsideClick(event) {
+  if (!desktopMore.value?.contains(event.target)) closeDesktopMore();
+}
+
+function onDesktopMoreFocusOut(event) {
+  if (event.relatedTarget && !desktopMore.value?.contains(event.relatedTarget)) closeDesktopMore();
+}
+
 function restartTutorial() {
+  closeDesktopMore();
   menuOpen.value = false;
   void restartOnboardingTour(router);
 }
 
 function openBetaCommunity() {
+  closeDesktopMore();
   menuOpen.value = false;
   betaCommunity.open("manual");
 }
 
 onMounted(function () {
   stopFeedbackUnread = subscribeFeedbackUnread();
+  document.addEventListener("click", onOutsideClick);
 });
 
 onBeforeUnmount(function () {
   if (stopFeedbackUnread) stopFeedbackUnread();
+  document.removeEventListener("click", onOutsideClick);
   document.body.classList.remove("mobile-nav-open");
 });
 </script>
 
 <style scoped>
 .nav .calendar-nav-link { align-items: center; }
-.beta-entry { display: block; margin: 4px 10px 12px; font-size: 12px; color: var(--tea); text-underline-offset: 4px; }
-.foot-user {
-  color: var(--ink);
-  font-weight: 800;
-  margin-right: 6px;
-  text-decoration: none;
-  border-bottom: 0;
+.nav > a { flex-shrink: 0; min-height: 44px; }
+.management-nav-link { margin-top: 12px; }
+.island-foot { position: relative; }
+.sidebar-more-trigger {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: var(--ink-60);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: color 0.25s;
+  list-style: none;
 }
-.foot-user:hover {
-  color: var(--accent);
+summary::-webkit-details-marker { display: none; }
+.more-chevron { margin-left: auto; flex: none; }
+details[open] > summary .more-chevron { transform: rotate(180deg); }
+.sidebar-more-trigger:hover,
+.sidebar-more-trigger.active { background: var(--yellow); color: var(--ink); }
+.sidebar-more-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: -12px;
+  right: -12px;
+  display: grid;
+  max-height: min(420px, calc(100dvh - 180px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px -12px rgba(73, 59, 44, .3);
+}
+.sidebar-more-panel > a,
+.sidebar-more-panel > button {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-60);
+  font: 700 13px/1.3 var(--font-b);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sidebar-more-panel svg { flex: none; }
+.sidebar-more-panel > a:hover,
+.sidebar-more-panel > a.active,
+.sidebar-more-panel > button:hover { background: var(--yellow); color: var(--ink); }
+.more-feedback-badge {
+  display: inline-flex;
+  min-width: 21px;
+  height: 21px;
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--rouge);
+  color: #fff;
+  font: 900 10px/1 var(--font-b);
+}
+.sidebar-utilities { display: flex; align-items: center; gap: 4px; }
+.sidebar-utilities .sidebar-account {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  border: 0;
+  line-height: 1.35;
+}
+.sidebar-account strong,
+.sidebar-account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-account strong { font-size: 12px; }
+.sidebar-account small { color: var(--ink-60); font-size: 10px; }
+.sidebar-utilities .sidebar-notifications {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+}
+.sidebar-notifications.active,
+.sidebar-notifications:hover { background: var(--yellow); }
+.sidebar-notifications .sidebar-badge { position: absolute; top: 0; right: 0; margin: 0; }
+:where(.sidebar-more-trigger, .sidebar-more-panel > a, .sidebar-more-panel > button, .sidebar-account, .sidebar-notifications, .foot-logout, .mobile-more > summary):focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
 }
 .foot-logout {
   background: none;
   border: none;
+  display: inline-flex;
+  width: 44px;
+  min-height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   margin-left: 2px;
   font-family: var(--font-b, inherit);
@@ -504,56 +571,6 @@ onBeforeUnmount(function () {
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
-}
-.nav-separator {
-  height: 1px;
-  margin: 12px 12px;
-  background: var(--line);
-}
-.nav-community {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--ink-60);
-  font-family: var(--font-b);
-  font-size: 14px;
-  font-weight: 650;
-  text-align: left;
-  cursor: pointer;
-  transition: color .35s var(--ease), background-color .35s var(--ease);
-}
-.nav-community svg {
-  margin-left: auto;
-  color: var(--tea);
-}
-.nav-community::before {
-  content: "";
-  position: absolute;
-  left: -14px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--yellow-deep);
-  transform: translateY(-50%) scale(0);
-  transition: transform .4s var(--ease);
-}
-.nav-community:hover {
-  color: var(--ink);
-  background: rgba(232, 193, 91, .22);
-}
-.nav-community:hover::before {
-  transform: translateY(-50%) scale(1);
-}
-.nav-community:focus-visible {
-  outline: 2px solid var(--brand-blue);
-  outline-offset: 2px;
 }
 .mobile-menu-button,
 .mobile-header-action,
@@ -721,19 +738,12 @@ onBeforeUnmount(function () {
     gap: 3px;
     padding: 8px 0;
   }
-  .mobile-drawer-section + .mobile-drawer-section {
+  .mobile-drawer-section + .mobile-drawer-section,
+  .mobile-more,
+  .mobile-management {
     border-top: 1px solid var(--line);
   }
-  .mobile-drawer-label {
-    margin: 0;
-    padding: 7px 10px 5px;
-    color: var(--ink-35);
-    font-family: var(--font-d);
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: .14em;
-    line-height: 1.2;
-  }
+  .mobile-more { padding: 8px 0; }
   .mobile-drawer-section > a,
   .mobile-drawer-link {
     position: relative;
@@ -763,24 +773,10 @@ onBeforeUnmount(function () {
   .mobile-drawer-section > a:hover,
   .mobile-drawer-section > a.active,
   .mobile-drawer-section > a.router-link-active,
+  .mobile-drawer-link.active,
   .mobile-drawer-link:hover {
     background: var(--yellow);
     color: var(--ink);
-  }
-  .mobile-drawer-badge {
-    display: inline-flex;
-    min-width: 21px;
-    height: 21px;
-    margin-left: auto;
-    align-items: center;
-    justify-content: center;
-    padding: 0 6px;
-    border-radius: 999px;
-    background: var(--rouge);
-    color: #fff;
-    font-size: 9px;
-    font-weight: 900;
-    line-height: 1;
   }
   .mobile-drawer-foot {
     display: grid;
@@ -869,25 +865,6 @@ onBeforeUnmount(function () {
   .mobile-drawer-leave-active .mobile-drawer {
     transition: none;
   }
-}
-.foot-tour {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 9px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-60);
-  font-family: var(--font-b);
-  font-size: 11px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-.foot-tour:hover {
-  color: var(--accent);
 }
 /* 次级区域版本入口：低干扰、单行、可聚焦；移动端侧栏本身不渲染。 */
 .foot-version {

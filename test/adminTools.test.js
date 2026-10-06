@@ -6,7 +6,8 @@ import {
   ADMIN_TOOL_GROUPS,
   getVisibleAdminToolGroups,
   getVisibleAdminTools,
-  hasManagementCapability
+  hasManagementCapability,
+  isManagementRoute
 } from '../src/utils/adminTools.js'
 import { ADMIN_PERMISSIONS, normalizeAdminAccess } from '../src/utils/authPermissions.js'
 import { routes } from '../src/router/routes.js'
@@ -111,14 +112,23 @@ test('feedback pages share their own navigation and retain their protected route
 // Replaced by mounted behavior tests; see docs/testing.md (no pixel/source-shape gate).
 
 
-test('groups private sidebar entries while keeping guest access to public feedback', function () {
+test('keeps notification private and provides a guest feedback entry in more', function () {
   const sidebar = readSource('../src/components/IslandSidebar.vue')
-  const desktopNav = sidebar.match(/<nav class="nav">([\s\S]*?)<\/nav>/)[1]
+  assert.match(sidebar, /<router-link v-if="isLoggedIn" class="sidebar-notifications" to="\/notifications"/)
+  assert.match(sidebar, /<router-link v-if="isLoggedIn" to="\/feedback"/)
+  assert.match(sidebar, /<router-link v-else to="\/feedback\/plaza"/)
+})
 
-  const privateEntries = desktopNav.match(/<template v-if="isLoggedIn">([\s\S]*?)<\/template>/)[1]
-  assert.match(privateEntries, /to="\/notifications"/)
-  assert.match(privateEntries, /to="\/feedback"/)
-  assert.match(desktopNav, /<router-link\s+v-if="!isLoggedIn"\s+to="\/feedback\/plaza"/)
+test('all registered administrative routes belong to management without absorbing player routes', () => {
+  const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || route.meta?.requiredPermission || route.meta?.requiredAnyPermission).map(route => route.path)
+  assert.equal(managementPaths.length, 13)
+  for (const path of managementPaths) {
+    assert.equal(isManagementRoute(path), true, path)
+    assert.equal(isManagementRoute(path + '/'), true, path + '/')
+  }
+  for (const path of ['/', '/today', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new', '/operator', '/operator/quick', '/operator/share/box', '/recruitment', '/feedback', '/feedback/plaza', '/co-creation', '/changelog', undefined]) {
+    assert.equal(isManagementRoute(path), false, path)
+  }
 })
 
 
