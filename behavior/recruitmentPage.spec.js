@@ -252,3 +252,36 @@ it('切账号先检查具体卡池草稿，取消保留记录；提交期间禁�
   expect(context.props('switchDisabled')).toBe(true)
   wrapper.unmount(); write.resolve({ archive_revision: 4 }); await flushPromises()
 })
+
+
+it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存后刷新次数', async () => {
+  const directory = recruitmentCatalog()
+  directory.pools[0].up_agents = [{ id: 'slot-a', operator_id: 'char-a', name: '测试绝密' }]
+  api.getRecruitmentCatalog.mockResolvedValue(directory)
+  archives['acc-a'].pool_summaries = { 'pool-a': { up_agent_counts: { 'slot-a': 2 } } }
+  archives['acc-b'].pool_summaries = { 'pool-a': { up_agent_counts: { 'slot-a': 0 } } }
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.up-count').text()).toBe('×2')
+  expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
+  const late = deferred(), pendingB = deferred()
+  api.getRecruitmentArchive.mockReturnValueOnce(late.promise).mockReturnValueOnce(pendingB.promise)
+  await button(wrapper, '刷新档案').trigger('click'); await flushPromises()
+  activeAccount.set('acc-b'); await flushPromises()
+  expect(wrapper.find('.up-count').exists()).toBe(false)
+  pendingB.resolve(structuredClone(archives['acc-b'])); await flushPromises()
+  expect(wrapper.get('.up-count').text()).toBe('×0')
+  late.resolve(structuredClone(archives['acc-a'])); await flushPromises()
+  expect(wrapper.get('.up-count').text()).toBe('×0')
+  expect(api.listRecruitmentEvents).not.toHaveBeenCalled()
+  api.recruitmentCommand.mockImplementation(async () => {
+    archives['acc-b'].pool_summaries['pool-a'].up_agent_counts['slot-a'] = 1
+    archives['acc-b'].archive_revision++
+    return { archive_revision: archives['acc-b'].archive_revision }
+  })
+  await selectPool(wrapper); await addRecord(wrapper, 'slot-a', '17')
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(wrapper.get('.up-count').text()).toBe('×1')
+  expect(api.listRecruitmentEvents).toHaveBeenCalledTimes(1)
+  expect(api.listRecruitmentEvents.mock.calls[0][0].accountId).toBe('acc-b')
+  wrapper.unmount()
+})

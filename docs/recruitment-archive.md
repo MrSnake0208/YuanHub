@@ -48,3 +48,21 @@ npx vitest run behavior/recruitmentPage.spec.js behavior/recruitmentPoolEditor.s
 ```
 
 浏览器检查320/390/430/768/1024/1440px及手机横屏：密探及逐条出货抽数回显、取消、保存、账号切换、错误重试、Tab/Escape、弹窗滚动和软键盘下保存按钮可达。尚未进行运行中页面或实机验证。
+
+## 时间线 UP 出货摘要（2026-10-06）
+
+立绘继续表达 UP 阵容；每个当前有效 UP 小头像下沿叠加单行 `×N` chip，包括 `×0`，不额外增加名字或混入非 UP。所有有效槽都展示，头像与 chip 作为一个整体在窄屏自然换行；沿用奶油底/暖棕字与 Archivo 数字。整卡按钮保持键盘入口，ARIA 名称包含密探名字及本池获得次数；未知统计明确读作“统计未知”。
+
+数据直接取 `archive.pool_summaries[pool_id].up_agent_counts[upSlot.id]`，字段/键缺失或无效值显示 `—`。槽 id 在占位绑定图鉴后不变；图鉴失败回退槽名/头像占位，目录缺失回退池快照。只读首页不会请求 events；进入池后仍按需分页。账号切换沿用 useRecruitment 的同步清空与 generation 拦截；保存或SSE后权威 archive 刷新也更新 chip。
+
+本改动为 L3（新增读 API 字段）。最小回归命令：
+
+```sh
+cd YuanHub
+npx vitest run behavior/recruitmentTimeline.spec.js behavior/recruitmentPage.spec.js
+cd ../BackEndV3-Share
+./gradlew test --tests '*RecruitmentServiceTest' --tests '*RecruitmentControllerContractTest'
+./gradlew integrationTest --tests '*RecruitmentMongoTest'
+```
+
+容器回归只使用已有 TestMongo 隔离数据库，禁止接入开发数据库。浏览器重点检查390px/1440px，320px下多UP/较大次数不溢出；未知、0、账号切换、保存后刷新和整卡Tab/Enter保持正确。
