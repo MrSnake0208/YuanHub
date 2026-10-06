@@ -21,6 +21,7 @@
             :loading="accountsLoading"
             :load-error="accountLoadError"
             @reload="loadAccounts"
+            @changed="invalidateAccountLoad"
           />
 
           <div class="connection-card" v-reveal>
@@ -651,6 +652,8 @@ const noticeError = ref(false);
 const recentFailures = ref([]);
 let noticeTimer = null;
 let layoutFrame = null;
+let accountLoadVersion = 0;
+let profileAlive = true;
 
 const showMaaYuanConnect = ref(false);
 const maaAccountId = ref("");
@@ -814,7 +817,16 @@ async function loadTokens() {
   }
 }
 
+function invalidateAccountLoad() {
+  accountLoadVersion++;
+  accountsLoading.value = false;
+  accountLoadError.value = "";
+}
+
 async function loadAccounts() {
+  const version = ++accountLoadVersion;
+  const ownerId = auth.userInfo?.id;
+  const isCurrent = () => profileAlive && version === accountLoadVersion && ownerId === auth.userInfo?.id;
   if (!beta.canUseBetaFeatures) {
     accounts.value = []; accountsLoading.value = false;
     accountLoadError.value = "云端游戏账号需先取得内测资格；现有连接仍可查看和撤销。";
@@ -823,18 +835,22 @@ async function loadAccounts() {
   accountsLoading.value = true;
   accountLoadError.value = "";
   try {
-    const data = await listAccounts();
+    const data = await listAccounts(ownerId);
+    if (!isCurrent()) return;
     accounts.value = Array.isArray(data) ? data : [];
     activeAccount.syncAccounts(accounts.value);
     if (!accounts.value.some(function (account) { return account.id === activeAccount.id; })) {
       activeAccount.set(accounts.value[0] && accounts.value[0].id);
     }
   } catch (err) {
+    if (!isCurrent()) return;
     accounts.value = [];
     accountLoadError.value = humanErr(err, "游戏账号加载失败，请重新加载");
   } finally {
-    accountsLoading.value = false;
-    applyDefaultAccounts();
+    if (isCurrent()) {
+      accountsLoading.value = false;
+      applyDefaultAccounts();
+    }
   }
 }
 
@@ -1107,7 +1123,12 @@ watch(() => beta.canUseBetaFeatures, () => {
   if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; }
   void loadAccounts();
 });
-watch(() => auth.userInfo?.id, () => { dismissNotice(); recentFailures.value = []; newToken.value = null; });
+watch(() => auth.userInfo?.id, () => {
+  accountLoadVersion++;
+  accounts.value = [];
+  dismissNotice(); recentFailures.value = []; newToken.value = null;
+  void loadAccounts();
+}, { flush: "sync" });
 watch([accounts, () => activeAccount.id], function () {
   applyDefaultAccounts();
 });
@@ -1126,6 +1147,8 @@ onMounted(function () {
   });
 });
 onBeforeUnmount(function () {
+  profileAlive = false;
+  accountLoadVersion++;
   window.removeEventListener("resize", keepFocusedTokenVisible);
   if (layoutFrame) cancelAnimationFrame(layoutFrame);
   if (noticeTimer) clearTimeout(noticeTimer);

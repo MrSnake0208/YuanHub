@@ -398,3 +398,48 @@ it('已生成凭证在切换身份后清除，旧身份的连接列表晚到也�
   expect(wrapper.text()).not.toContain('previous-user-secret')
   wrapper.unmount()
 })
+
+it('账号列表只接纳最新请求，旧请求不能覆盖更新结果或结束新请求的 loading', async () => {
+  let resolveFirst, resolveSecond
+  listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveFirst = resolve }))
+  const wrapper = render(); await flushPromises()
+  listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveSecond = resolve }))
+  const manager = wrapper.findComponent({ name: 'GameAccountManager' })
+  manager.vm.$emit('reload'); await flushPromises()
+  resolveFirst([{ id: 'old', name: '旧账号', game: '代号鸢' }]); await flushPromises()
+  expect(manager.props('loading')).toBe(true)
+  expect(manager.props('accounts')).toEqual([])
+  resolveSecond([{ id: 'new', name: '新账号', game: '如鸢' }]); await flushPromises()
+  expect(manager.props('accounts')[0].id).toBe('new')
+  expect(activeAccount.id).toBe('new')
+})
+
+it('CRUD 发布的列表不被在途旧加载覆盖', async () => {
+  let resolveList
+  listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveList = resolve }))
+  const wrapper = render(); await flushPromises()
+  const manager = wrapper.findComponent({ name: 'GameAccountManager' })
+  const latest = [{ id: 'created', name: '新创建', game: '如鸢' }]
+  manager.vm.$emit('update:accounts', latest); manager.vm.$emit('changed', latest); await flushPromises()
+  resolveList([{ id: 'old', name: '旧账号', game: '代号鸢' }]); await flushPromises()
+  expect(manager.props('accounts')).toEqual(latest)
+  expect(manager.props('loading')).toBe(false)
+})
+
+it.each(['identity', 'roundtrip', 'unmount'])('列表请求期间 %s 变化，旧响应不修改当前账号', async change => {
+  let resolveList
+  listAccounts.mockImplementationOnce(() => new Promise(resolve => { resolveList = resolve }))
+  const wrapper = render(); await flushPromises()
+  if (change === 'unmount') wrapper.unmount()
+  else {
+    listAccounts.mockResolvedValue([])
+    auth.userInfo = { id: 'user-b' }
+    if (change === 'roundtrip') auth.userInfo = { id: 'user-a' }
+    await flushPromises()
+  }
+  activeAccount.set('current-context'); activeAccount.set.mockClear(); activeAccount.syncAccounts.mockClear()
+  resolveList([{ id: 'stale', name: '旧账号', game: '代号鸢' }]); await flushPromises()
+  expect(activeAccount.set).not.toHaveBeenCalled()
+  expect(activeAccount.syncAccounts).not.toHaveBeenCalled()
+  expect(activeAccount.id).toBe('current-context')
+})
