@@ -23,6 +23,14 @@ async function choose(name) {
 }
 afterEach(() => vi.restoreAllMocks())
 
+it('账号上下文与标题同属页头，问候场景不再承载账号入口', () => {
+  const wrapper = mount(TodayLobby, { props: { status }, slots: { default: '<button>切换游戏账号</button>' } })
+  expect(wrapper.get('.lobby-header h1').text()).toBe('今日一览')
+  expect(wrapper.get('.lobby-header time').exists()).toBe(true)
+  expect(wrapper.get('.lobby-header button').text()).toBe('切换游戏账号')
+  expect(wrapper.get('.lobby-scene').text()).not.toContain('切换游戏账号')
+})
+
 it('搜索复用中文/拼音/首字母，选择后刷新保留且恢复入口焦点', async () => {
   const wrapper = render({ ownerId: 'user-a' })
   expect(wrapper.get('.lobby-duty').text()).toContain('阿蝉')
