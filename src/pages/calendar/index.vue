@@ -17,14 +17,13 @@
             <button type="button" :aria-pressed="!mine" @click="setScope(false)">全部活动</button>
             <button type="button" :aria-pressed="mine" @click="setScope(true)">我的订阅</button>
           </div>
-          <label v-if="subscriptions.accounts.value.length" class="calendar-account-select">游戏账号
-            <select :value="subscriptions.account.value?.id || ''" @change="subscriptions.selectAccount"><option value="">请选择账号</option><option v-for="account in subscriptions.accounts.value" :key="account.id" :value="account.id">{{ account.name }} · {{ account.game }}</option></select>
-          </label>
+          <AccountSwitcher v-if="subscriptions.accounts.value.length" :accounts="subscriptions.accounts.value"
+            :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.confirmDiscard" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
           <router-link v-else to="/user/profile#game-accounts">选择或创建游戏账号</router-link>
           <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked)">仅未完成</label>
-          <p v-if="mine && subscriptions.account.value" class="calendar-hint">{{ subscriptions.account.value.name }}的订阅 · {{ subscriptions.account.value.game }} · 仅当前账号可见</p>
+          <p v-if="mine && subscriptions.account.value" class="calendar-hint">订阅与关卡进度仅当前账号可见。</p>
         </section>
         <section class="calendar-filter-inline" aria-label="活动筛选">
           <CalendarFilterControls :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" />
@@ -80,6 +79,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCalendarSubscriptions } from '@/composables/useCalendarSubscriptions.js'
 import { subscriptionScope, subscriptionPending, subscriptionScopeQuery } from '@/data/activityCalendarSubscriptions.js'
 import CalendarSubscriptionControls from '@/components/calendar/CalendarSubscriptionControls.vue'
+import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronRight, LocateFixed, SlidersHorizontal } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
@@ -223,8 +223,6 @@ watch(() => [...items.value, ...subscriptions.records.value.map(record => record
 
 <style scoped>
 .calendar-public .calendar-content { grid-template-columns: minmax(0, 1fr); }
-.calendar-public .calendar-account-select { max-width: 100%; }
-.calendar-public .calendar-account-select select { min-width: 0; width: min(100%, 280px); }
 .calendar-public .calendar-header { padding-top: 20px; padding-bottom: 12px; gap: 12px; }
 .calendar-public .calendar-header h1 { margin: 0; color: var(--tea); font: 900 30px/1.3 var(--font-s); letter-spacing: .035em; overflow-wrap: anywhere; }
 @media (min-width: 768px) {

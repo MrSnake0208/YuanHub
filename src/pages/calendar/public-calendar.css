@@ -179,8 +179,6 @@
 /* Personal subscriptions reuse the calendar's surface and controls. */
 .calendar-subscription-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
 .calendar-subscription-toolbar > p { flex-basis: 100%; }
-.calendar-account-select { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
-.calendar-account-select select { min-height: 44px; max-width: 100%; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
 .calendar-subscription { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); min-width: 0; }
 .calendar-subscription-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .calendar-checklist { margin-top: 12px; }

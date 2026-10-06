@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Calendar from '../src/pages/calendar/index.vue'
+import AccountSwitcher from '../src/components/AccountSwitcher.vue'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
@@ -19,11 +20,13 @@ const button = (text) => wrapper.findAll('button').find(node => node.text() === 
 async function render(query = '') {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/user/profile', component: { template: '<div />' } }] })
   await router.push('/calendar?view=agenda' + query); await router.isReady()
-  wrapper = mount(Calendar, { global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
+  wrapper = mount(Calendar, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
   await flushPromises(); return router
 }
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z'))
+  const media = new EventTarget(); media.matches = false
+  vi.stubGlobal('matchMedia', vi.fn(() => media))
   auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'user' }; activeAccount.set('a')
   server = null
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
@@ -35,6 +38,97 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
 })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
+async function switchAccount(id) {
+  await wrapper.getComponent(AccountSwitcher).get('.context-selector').trigger('click')
+  await flushPromises()
+  document.querySelector(`[data-account-id="${id}"]`).click()
+  await flushPromises()
+}
+const twoAccounts = game => [{ id: 'a', name: '大号', game: '如鸢' }, { id: 'b', name: '小号', game }]
+
+it.each(['如鸢', '代号鸢'])('mine switches in place to %s and locks filters to the selected account', async game => {
+  listAccounts.mockResolvedValue(twoAccounts(game))
+  const nextEvent = { ...event, id: 'b-event', game, title: '小号活动' }
+  listActivityCalendar.mockResolvedValue({ items: [event, nextEvent] })
+  listCalendarSubscriptions.mockImplementation(async ({ account_id }) => ({ items: [{ event_id: account_id === 'a' ? event.id : nextEvent.id, version: 0, subscribed: true, completed: false, checklist: [], item: account_id === 'a' ? event : nextEvent }], subscribed_count: 1 }))
+  const router = await render('&scope=mine&pending=1&game=如鸢&date=2026-10-05&ref=keep')
+  const path = router.currentRoute.value.fullPath
+  await switchAccount('b')
+  expect(activeAccount.id).toBe('b')
+  expect(router.currentRoute.value.fullPath).toBe(path)
+  expect(wrapper.get('.context-selector').text()).toContain('小号')
+  expect(wrapper.text()).toContain('小号活动')
+  expect(wrapper.text()).not.toContain('地下遗迹')
+  expect(listCalendarSubscriptions.mock.lastCall[0]).toMatchObject({ account_id: 'b' })
+  expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game })
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe(`${game} · 全部类型`)
+  expect(wrapper.findAll('.calendar-filter-inline legend').map(node => node.text())).toEqual(['类型'])
+  await button('全部活动').trigger('click'); await flushPromises()
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe('如鸢 · 全部类型')
+  expect(router.currentRoute.value.query).toMatchObject({ view: 'agenda', date: '2026-10-05', game: '如鸢', ref: 'keep' })
+})
+it('public browsing keeps its game filter while switching the subscription account', async () => {
+  listAccounts.mockResolvedValue(twoAccounts('代号鸢'))
+  const router = await render('&game=如鸢&category=ACTIVITY&ref=public')
+  const path = router.currentRoute.value.fullPath
+  await switchAccount('b')
+  expect(router.currentRoute.value.fullPath).toBe(path)
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe('如鸢 · 活动')
+  expect(wrapper.text()).toContain('地下遗迹')
+  expect(wrapper.text()).toContain('请切换到如鸢账号后订阅')
+  expect(listCalendarSubscriptions.mock.lastCall[0]).toMatchObject({ account_id: 'b', category: 'ACTIVITY' })
+  expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game: '如鸢', category: 'ACTIVITY' })
+  expect(setCalendarSubscription).not.toHaveBeenCalled()
+})
+it('canceling the shared switcher preserves unsaved progress; confirming discards only after switching', async () => {
+  listAccounts.mockResolvedValue(twoAccounts('如鸢'))
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
+  const router = await render('&scope=mine')
+  await button('记录进度').trigger('click'); await button('添加关卡').trigger('click')
+  await wrapper.get('input[type=text]').setValue('未保存关卡')
+  dialog.confirm.mockResolvedValue(false)
+  await switchAccount('b')
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '放弃未保存修改？', message: expect.stringContaining('活动关卡进度') }))
+  expect(activeAccount.id).toBe('a')
+  expect(wrapper.get('input[type=text]').element.value).toBe('未保存关卡')
+  expect(document.activeElement).toBe(wrapper.get('.context-selector').element)
+  expect(listCalendarSubscriptions.mock.calls.every(([params]) => params.account_id === 'a')).toBe(true)
+  dialog.confirm.mockResolvedValue(true)
+  await switchAccount('b')
+  expect(activeAccount.id).toBe('b')
+  expect(wrapper.find('input[type=text]').exists()).toBe(false)
+  expect(router.currentRoute.value.query.scope).toBe('mine')
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+})
+it.each(['response', 'error'])('late A subscription %s cannot replace B after switching through the shared entry', async result => {
+  listAccounts.mockResolvedValue(twoAccounts('如鸢'))
+  let resolve, reject
+  const late = new Promise((done, fail) => { resolve = done; reject = fail })
+  const nextEvent = { ...event, id: 'b-event', title: '小号活动' }
+  listCalendarSubscriptions.mockImplementation(({ account_id }) => account_id === 'a' ? late : Promise.resolve({ items: [{ event_id: nextEvent.id, subscribed: true, version: 0, completed: false, checklist: [], item: nextEvent }], subscribed_count: 1 }))
+  await render('&scope=mine')
+  await switchAccount('b')
+  if (result === 'response') resolve({ items: [{ event_id: event.id, subscribed: true, version: 0, completed: false, checklist: [], item: event }], subscribed_count: 1 })
+  else reject(new Error('旧账号读取失败'))
+  await flushPromises()
+  expect(wrapper.text()).toContain('小号活动')
+  expect(wrapper.text()).not.toContain('地下遗迹')
+  expect(wrapper.text()).not.toContain('旧账号读取失败')
+  expect(wrapper.get('.calendar-view-content').attributes('aria-busy')).toBe('false')
+})
+it.each(['empty', 'error'])('account %s retains its existing recovery entry without private requests', async state => {
+  if (state === 'empty') listAccounts.mockResolvedValue([])
+  else listAccounts.mockRejectedValueOnce(new Error('游戏账号读取失败'))
+  await render('&scope=mine')
+  expect(wrapper.findComponent(AccountSwitcher).exists()).toBe(false)
+  expect(listCalendarSubscriptions).not.toHaveBeenCalled()
+  if (state === 'empty') expect(wrapper.get('a[href="/user/profile#game-accounts"]').text()).toBe('选择或创建游戏账号')
+  else {
+    expect(wrapper.text()).toContain('游戏账号读取失败')
+    await button('重试').trigger('click'); await flushPromises()
+    expect(wrapper.getComponent(AccountSwitcher).props('accountId')).toBe('a')
+  }
+})
 it.each([false, true])('removing the last entry keeps its edited completion (initial %s)', async initial => {
   server = { event_id: 'evt', version: 0, subscribed: true, completed: initial, checklist: [{ id: 'one', title: '第一关', completed: initial }], item: event }
   await render()
@@ -87,7 +181,8 @@ it('mine retains view and date while ignoring foreign game query and filters com
   server = { event_id: 'evt', version: 0, subscribed: true, completed: true, checklist: [], item: event }
   const router = await render('&scope=mine&pending=1&game=代号鸢&ref=test')
   expect(wrapper.text()).not.toContain('地下遗迹')
-  expect(wrapper.text()).toContain('大号的订阅')
+  expect(wrapper.getComponent(AccountSwitcher).props('accountId')).toBe('a')
+  expect(wrapper.text()).toContain('订阅与关卡进度仅当前账号可见')
   await button('全部活动').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', game: '代号鸢', ref: 'test' })
 })
