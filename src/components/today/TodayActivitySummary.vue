@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
 .today-activity-summary { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); }
 .activity-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
 .activity-heading > div { min-width: 0; }
-.activity-heading h2 { display: flex; align-items: center; gap: 8px; font: 900 22px/1.5 var(--font-s); overflow-wrap: anywhere; }
+.activity-heading h2 { display: flex; align-items: center; gap: 8px; font: 900 20px/1.5 var(--font-s); overflow-wrap: anywhere; }
 .activity-heading h2 svg { flex: 0 0 auto; color: var(--tea); }
 .activity-heading p, .activity-message, .activity-detail { color: var(--tea); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .activity-link, .activity-error button { display: inline-flex; min-height: 44px; min-width: 44px; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--cream); color: var(--tea); font: 800 12px/1.5 var(--font-b); text-decoration: none; cursor: pointer; }
@@ -135,6 +135,7 @@ onBeforeUnmount(() => {
 .activity-upcoming { margin-top: 20px; }
 .activity-upcoming h3 { color: var(--tea); font: 900 18px/1.5 var(--font-s); }
 .activity-detail { display: block; }
+.activity-heading time, .activity-detail { font-variant-numeric: tabular-nums; font-family: var(--font-d); }
 .activity-message { margin-top: 12px; }
 .activity-error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
 .activity-error p { flex: 1 1 200px; color: var(--tea); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }

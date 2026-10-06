@@ -16,7 +16,7 @@
         />
       </TodayLobby>
 
-      <section class="today-content">
+      <section class="today-content" :data-tour="calendarEnabled || showAccountOverview ? undefined : 'today-overview'">
         <div class="wrap today-wrap">
           <div v-if="errorMessage" class="today-alert" role="alert">
             <span>{{ errorMessage }}</span>
@@ -25,7 +25,7 @@
 
           <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
 
-          <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-calendar': calendarEnabled }" data-tour="today-overview">
+          <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-sidebar': calendarEnabled && showAccountOverview }" data-tour="today-overview">
             <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
             <div v-if="showAccountOverview" class="today-account-overview">
               <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" />
@@ -52,6 +52,7 @@
             class="data-onboarding"
             :class="{ 'is-optional': isReturningUser }"
             aria-labelledby="data-onboarding-title"
+            @toggle="$event.currentTarget.open && $event.currentTarget.scrollIntoView({ block: 'start' })"
           >
             <summary v-if="isReturningUser">还有 {{ missingDataItems.length }} 项数据可补齐（可选）</summary>
             <div class="onboarding-heading">
@@ -149,18 +150,6 @@
             </div>
           </component>
 
-          <section
-            class="today-tools"
-            :data-tour="calendarEnabled || showAccountOverview ? undefined : 'today-overview'"
-            aria-labelledby="today-tools-title"
-          >
-            <h2 id="today-tools-title">常用工具</h2>
-            <nav class="today-tool-links" aria-label="今日一览的工具入口">
-              <router-link to="/operator">密探名册</router-link>
-              <router-link to="/inventory">库存追踪</router-link>
-              <router-link to="/star">星石背包</router-link>
-            </nav>
-          </section>
         </div>
       </section>
       <SiteFooter />
@@ -335,10 +324,10 @@ const lobbyStatus = computed(() => {
   if (!accounts.value.length) return '先建一个游戏账号，从这里开始。'
   if (!validAccountId.value) return '选一个游戏账号，看看今天的状态。'
   if (unknownDataItems.value.length) return `${unknownDataLabel.value}状态待确认，无需重复录入。`
-  if (!isReturningUser.value) return '密探、库存与星石，随时可以开始建档。'
+  if (!isReturningUser.value) return '当前账号尚未建档，先从第一份资料开始吧。'
   return missingDataItems.value.length
-    ? `已整理当前账号状态，还有 ${missingDataItems.value.length} 项数据可按需补齐。`
-    : '当前账号的三项数据已录入，今日事项在下方。'
+    ? `还有 ${missingDataItems.value.length} 项资料尚未建档，随时可以继续。`
+    : '当前账号资料已就绪，今天也辛苦了。'
 })
 const maaYuanConnectTo = computed(function () {
   return {
@@ -426,18 +415,14 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 .today-overview, .today-account-overview { display: grid; align-items: start; gap: 16px; min-width: 0; margin-bottom: 20px; }
 .today-account-overview { margin-bottom: 0; }
 .account-data-summary { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.account-data-summary h2, .today-tools h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
+.account-data-summary h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
 .account-data-summary > p { margin-top: 8px; color: var(--tea); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .account-data-list { display: grid; gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
 .account-data-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; line-height: 1.7; }
 .account-data-list strong { font-weight: 650; }
 .account-data-list .is-unknown { color: var(--rouge); }
-.today-tools { padding-top: 16px; border-top: 1px solid var(--line); }
-.today-tool-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
-.today-tool-links a { display: inline-flex; min-height: 44px; align-items: center; color: var(--tea); font-size: 13px; font-weight: 700; text-decoration: none; }
-.today-tool-links a:hover { color: var(--accent-strong); }
 .today-page a:focus-visible, .today-page button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.data-onboarding { margin-bottom: 20px; padding: 20px 16px; border: 1px solid rgba(156, 122, 77, .3); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); }
+.data-onboarding { scroll-margin-top: calc(84px + env(safe-area-inset-top)); margin-bottom: 20px; padding: 20px 16px; border: 1px solid rgba(156, 122, 77, .3); border-radius: 18px; background: linear-gradient(145deg, rgba(255, 253, 246, .94), rgba(239, 210, 142, .12)); }
 .onboarding-heading { display: flex; flex-direction: column; align-items: start; justify-content: space-between; gap: 8px; }
 .onboarding-heading > div { max-width: 760px; }
 .onboarding-kicker { color: var(--accent); font: 800 11px/1 var(--font-d); letter-spacing: .14em; }
@@ -493,7 +478,7 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 }
 @media (min-width: 981px) {
   .today-main { margin-left: 228px; }
-  .has-calendar { grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); }
+  .has-sidebar { grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); }
   .account-management-card { grid-template-columns: minmax(0, 1fr) auto; }
   .sync-recommendation { flex-direction: row; align-items: center; }
 }

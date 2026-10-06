@@ -20,6 +20,7 @@ vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
+vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(async () => ({ items: [], subscribed_count: 0, total_pending: 0 })) }))
 
 const render = () => mount(TodayPage, { global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { RouterLink: RouterLinkStub } } })
 
@@ -33,6 +34,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   auth.accessToken = ''
   auth.isLoggedIn = false
+  auth.isAdmin = false
   auth.userInfo = null
   activeAccount.clear()
   listAccounts.mockResolvedValue([])
@@ -68,7 +70,7 @@ it('全部为空保留首次建档，读取全失败保留unknown而不宣称已
   listAccounts.mockResolvedValue([{ id: 'a', name: '账号', game: '如鸢' }])
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('section.data-onboarding').text()).toContain('第一次建档')
-  expect(wrapper.get('.lobby-status').text()).toContain('随时可以开始建档')
+  expect(wrapper.get('.lobby-status').text()).toBe('当前账号尚未建档，先从第一份资料开始吧。')
   expect(wrapper.findAll('.readiness-action')).toHaveLength(3)
   expect(wrapper.find('.account-data-summary').exists()).toBe(false)
   getOperatorCurrent.mockRejectedValue(new Error('失败'))
@@ -91,7 +93,7 @@ it('A→B立即清空旧摘要，迟到A不能覆盖B；清空与失效id不发�
   expect(wrapper.get('.account-data-summary').text()).toContain('正在读取当前账号')
   b.resolve({ entries: { one: {}, two: {} } }); await flushPromises()
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 2 位')
-  expect(wrapper.get('.lobby-status').text()).toContain('还有 2 项数据可按需补齐')
+  expect(wrapper.get('.lobby-status').text()).toBe('还有 2 项资料尚未建档，随时可以继续。')
   a.resolve({ entries: { old: {} } }); await flushPromises()
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 2 位')
   const calls = getOperatorCurrent.mock.calls.length
@@ -154,14 +156,14 @@ it('访客只在建档区登录，不使用假演示标签或欢迎Hero', async 
   expect(wrapper.text()).not.toContain('今天也来啦')
   expect(wrapper.find('.hero-actions').exists()).toBe(false)
   expect(wrapper.find('.data-account-context-bar').exists()).toBe(false)
-  const toolLinks = wrapper.get('.today-tool-links').findAllComponents(RouterLinkStub)
-  expect(toolLinks.map(link => link.props('to'))).toEqual(['/operator', '/inventory', '/star'])
+  expect(wrapper.find('.today-tools').exists()).toBe(false)
+  expect(wrapper.find('nav[aria-label="今日一览的工具入口"]').exists()).toBe(false)
   expect(wrapper.find('[data-tour="today-overview"]').exists()).toBe(true)
   expect(listAccounts).not.toHaveBeenCalled()
   expect(getOperatorCurrent).not.toHaveBeenCalled()
 })
 
-it('已有数据时展示账号状态，工具位于后部且初始化只请求一次摘要', async () => {
+it('已有数据时展示账号状态，不显示常用工具且初始化只请求一次摘要', async () => {
   signIn()
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
   getOperatorCurrent.mockResolvedValue({ entries: { '1001': { level: 1 } } })
@@ -170,6 +172,10 @@ it('已有数据时展示账号状态，工具位于后部且初始化只请求�
   const wrapper = render()
   await flushPromises()
   expect(wrapper.get('.data-account-context-bar').text()).toContain('测试大号')
+  expect(wrapper.get('.lobby-header .account-switcher').text()).toContain('测试大号')
+  expect(wrapper.findAll('.account-switcher')).toHaveLength(1)
+  expect(wrapper.get('.lobby-scene').find('.account-switcher').exists()).toBe(false)
+  expect(wrapper.get('.lobby-status').text()).toBe('当前账号资料已就绪，今天也辛苦了。')
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 颗')
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
@@ -180,8 +186,21 @@ it('已有数据时展示账号状态，工具位于后部且初始化只请求�
   expect(getOperatorCurrent).toHaveBeenCalledWith({ accountId: 'acc-a', game: '代号鸢' })
   expect(getCurrent).toHaveBeenCalledWith({ accountId: 'acc-a', entityType: 'item' })
   expect(getCurrentStarState).toHaveBeenCalledWith('acc-a')
-  const sections = wrapper.findAll('section')
-  expect(sections.findIndex(node => node.classes().includes('account-data-summary'))).toBeLessThan(sections.findIndex(node => node.classes().includes('today-tools')))
+  expect(wrapper.find('.today-tools').exists()).toBe(false)
+  expect(wrapper.find('nav[aria-label="今日一览的工具入口"]').exists()).toBe(false)
+})
+
+it('活动单栏使用全部宽度，仅在真实账号辅助内容存在时声明双栏', async () => {
+  signIn(); auth.isAdmin = true
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.today-activity-summary').exists()).toBe(true)
+  expect(wrapper.find('.today-account-overview').exists()).toBe(false)
+  expect(wrapper.get('.today-overview').classes()).not.toContain('has-sidebar')
+  listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { one: {} } })
+  auth.userInfo = { id: 'owner-b' }; await flushPromises()
+  expect(wrapper.find('.today-account-overview').exists()).toBe(true)
+  expect(wrapper.get('.today-overview').classes()).toContain('has-sidebar')
 })
 
 it('部分已有数据时补齐为可选折叠区，已有项目没有重复录入入口', async () => {
@@ -200,6 +219,25 @@ it('部分已有数据时补齐为可选折叠区，已有项目没有重复录�
   expect(wrapper.get('details.data-onboarding').attributes('open')).toBeUndefined()
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
   expect(wrapper.findAllComponents(RouterLinkStub).filter(link => link.classes().includes('readiness-action')).map(link => link.props('to'))).toEqual(['/inventory', '/star'])
+})
+
+it('展开可选补齐区滚动到内容，收起时不改变滚动位置', async () => {
+  signIn()
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { one: {} } })
+  getCurrent.mockResolvedValue({ entries: { coin: { count: 3 } } })
+  const wrapper = render(); await flushPromises()
+  const details = wrapper.get('details.data-onboarding')
+  expect(details.get('summary').text()).toBe('还有 1 项数据可补齐（可选）')
+  const scroll = vi.fn()
+  details.element.scrollIntoView = scroll
+  details.element.open = true
+  await details.trigger('toggle')
+  expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+  scroll.mockClear()
+  details.element.open = false
+  await details.trigger('toggle')
+  expect(scroll).not.toHaveBeenCalled()
 })
 
 it('完整零库存基准不被引导重新录入，部分零录入不宣称完整盘点', async () => {
