@@ -593,6 +593,7 @@
 </template>
 
 <script setup>
+import { useAccountListUpdates } from '../../store/accountList.js'
 import '@/styles/page-header.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -638,6 +639,7 @@ import {
 const tokens = ref([]);
 const permissions = ref([]);
 const accounts = ref([]);
+useAccountListUpdates(next => { accounts.value = next })
 const accountsLoading = ref(true);
 const accountLoadError = ref("");
 const loading = ref(false);

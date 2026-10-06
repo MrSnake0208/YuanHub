@@ -25,12 +25,15 @@
                 <Check :size="16" aria-hidden="true" :class="{ 'is-hidden': account.id !== accountId }" /><span>{{ account.name }}</span><small v-if="account.id === accountId">当前</small>
               </button>
             </section>
-            <p v-if="!groups.length">{{ accounts.length ? '没有匹配的游戏账号' : '还没有游戏账号，可前往个人中心创建。' }}</p>
+            <p v-if="!groups.length">{{ accounts.length ? '没有匹配的游戏账号' : '还没有游戏账号，可以在这里新建。' }}</p>
           </div>
-          <footer><router-link :to="manageTo" @click="close"><Plus :size="16" aria-hidden="true" />新建游戏账号</router-link><router-link :to="manageTo" @click="close"><Settings :size="16" aria-hidden="true" />管理游戏账号</router-link></footer>
+          <footer><button type="button" @click="openManager('create')"><Plus :size="16" aria-hidden="true" />新建游戏账号</button><button type="button" @click="openManager('list')"><Settings :size="16" aria-hidden="true" />管理游戏账号</button></footer>
         </section>
       </div>
     </Teleport>
+    <GameAccountManager v-if="managerOpen" presentation="dialog" :initial-view="managerView" :accounts="accounts"
+      :loading="loading" :load-error="loadError" :before-switch="beforeSwitch" :context-disabled="disabled"
+      :settings-to="manageTo" @changed="managerRows = $event" @close="managerOpen = false" />
   </span>
 </template>
 
@@ -40,21 +43,26 @@ import { Check, ChevronDown, Plus, Settings, X } from '@lucide/vue'
 import { activeAccount, normalizeAccountGame } from '../store/activeAccount.js'
 import { auth } from '../store/auth.js'
 import { useModalFocus } from '../composables/useModalFocus.js'
+import GameAccountManager from './GameAccountManager.vue'
 
 const props = defineProps({
   accounts: { type: Array, default: () => [] }, accountId: { type: String, default: '' }, game: { type: String, default: '' },
   loading: Boolean, disabled: Boolean, disabledReason: { type: String, default: '' }, beforeSwitch: Function,
+  loadError: { type: String, default: '' },
   manageTo: { type: [String, Object], default: '/user/profile#game-accounts' },
 })
 const panelId = 'account-switch-' + useId()
 const open = ref(false), panel = ref(null), trigger = ref(null), searchInput = ref(null), query = ref(''), pending = ref(false), failure = ref('')
 const desktop = ref(false), position = ref({}), sheetViewport = ref({}), sheetSize = ref({})
-const selected = computed(() => props.accounts.find(account => account.id === props.accountId))
+const managerOpen = ref(false), managerView = ref('list'), managerRows = ref(null)
+const accounts = computed(() => managerRows.value || props.accounts)
+watch(() => props.accounts, () => { managerRows.value = null })
+const selected = computed(() => accounts.value.find(account => account.id === props.accountId))
 const gameFor = account => normalizeAccountGame(account.game || activeAccount.gameFor(account.id))
 const label = computed(() => selected.value ? '当前游戏账号：' + gameFor(selected.value) + ' · ' + selected.value.name + '，打开账号切换器' : '选择游戏账号')
 const groups = computed(() => {
   const result = new Map(), search = query.value.trim().toLocaleLowerCase()
-  for (const account of props.accounts) {
+  for (const account of accounts.value) {
     const game = gameFor(account)
     if (search && !(game + ' ' + account.name).toLocaleLowerCase().includes(search)) continue
     if (!result.has(game)) result.set(game, [])
@@ -68,6 +76,16 @@ useModalFocus(open, panel, {
 })
 let cleanup = null, alive = true, contextVersion = 0
 function close() { open.value = false }
+async function openManager(view = 'list', opener) {
+  if (props.disabled || props.loading || pending.value || managerOpen.value) return
+  const version = contextVersion
+  close()
+  await nextTick()
+  if (!alive || version !== contextVersion || props.disabled || props.loading) return
+  ;(opener || trigger.value)?.focus()
+  managerView.value = props.loadError ? 'list' : view; managerOpen.value = true
+}
+defineExpose({ openManager })
 function place() {
   const rect = trigger.value?.getBoundingClientRect()
   if (!rect) return
@@ -112,7 +130,7 @@ watch(open, value => {
 watch(() => [props.accountId, props.disabled, props.loading], close)
 watch(() => [activeAccount.id, activeAccount.gameFor(), auth.accessToken, auth.userInfo?.id], () => { contextVersion++; close() }, { flush: 'sync' })
 async function select(id) {
-  if (pending.value || props.disabled || props.loading || !props.accounts.some(account => account.id === id)) return
+  if (pending.value || props.disabled || props.loading || !accounts.value.some(account => account.id === id)) return
   close()
   if (id === props.accountId) return
   const version = contextVersion, source = activeAccount.id, game = activeAccount.gameFor(source), identity = auth.accessToken, owner = auth.userInfo?.id
@@ -122,7 +140,7 @@ async function select(id) {
     await nextTick()
     if (!alive || version !== contextVersion || source !== activeAccount.id) return
     if (props.beforeSwitch && !(await props.beforeSwitch(id))) return
-    if (!alive || version !== contextVersion || props.disabled || props.loading || source !== activeAccount.id || game !== activeAccount.gameFor(source) || identity !== auth.accessToken || owner !== auth.userInfo?.id || !props.accounts.some(account => account.id === id)) return
+    if (!alive || version !== contextVersion || props.disabled || props.loading || source !== activeAccount.id || game !== activeAccount.gameFor(source) || identity !== auth.accessToken || owner !== auth.userInfo?.id || !accounts.value.some(account => account.id === id)) return
     activeAccount.set(id)
   } catch (error) { if (alive && version === contextVersion && source === activeAccount.id) failure.value = error.message || '暂时无法切换账号，请重试。' }
   finally { pending.value = false }
@@ -157,10 +175,10 @@ h3 { margin: 8px 8px 4px; color: var(--ink-60); font: 600 12px/1.6 var(--font-b)
 .switch-option > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .switch-option small { flex: none; color: var(--tea); font-size: 12px; }
 .switch-option[aria-pressed="true"] { background: color-mix(in srgb, var(--yellow) 28%, var(--surface)); font-weight: 700; }
-.switch-option:hover, footer a:hover { background: var(--cream); }
+.switch-option:hover, footer button:hover { background: var(--cream); }
 .is-hidden { visibility: hidden; }
 footer { flex: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-footer a { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 6px; text-decoration: none; color: var(--tea); }
+footer button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: var(--tea); font: inherit; cursor: pointer; }
 .switch-search { display: grid; gap: 4px; flex: none; padding: 4px; color: var(--ink-60); font-size: 12px; }
 .switch-search input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: var(--cream); color: var(--ink); font: 16px/1.5 var(--font-b); }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

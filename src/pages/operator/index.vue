@@ -2938,6 +2938,7 @@
 </template>
 
 <script setup>
+import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import {
@@ -3358,6 +3359,7 @@ const quickSupplementHref = computed(() => quickHref.value + (accountId.value ? 
 
 // —— 统一子账号（库存 × 密探共用） ——
 const accounts = ref([]);
+useAccountListUpdates(next => { accounts.value = next })
 // 当前选中账号由 activeAccount store 记忆并持久化（跨页面导航 / 刷新不丢）
 const accountId = computed({
   get: function () {

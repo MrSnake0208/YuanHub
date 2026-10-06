@@ -3,6 +3,7 @@ import { computed, onScopeDispose, reactive, watch } from 'vue'
 import * as api from '../../api/recruitment.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCatalog } from '../../api/operator.js'
+import { useAccountListUpdates } from '../../store/accountList.js'
 import { activeAccount } from '../../store/activeAccount.js'
 import { auth } from '../../store/auth.js'
 import { subscribeAccountEvents } from '../../store/accountEvents.js'
@@ -10,6 +11,7 @@ import { operatorCatalogEntries } from './rules.js'
 
 export function useRecruitment() {
   const state = reactive({ accounts: [], archive: null, catalog: [], operators: [], loading: false, accountsLoading: false, busy: false, error: '', catalogError: '', notice: '', contextVersion: 0, requestVersion: 0, records: [], recordsLoading: false, recordsError: '', recordsRevision: null, recordsCursor: null })
+  useAccountListUpdates(next => { state.accounts = next })
   const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
   const accountId = computed(() => activeAccount.id)
   const game = computed(() => activeAccount.gameFor(accountId.value))

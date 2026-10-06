@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, provide, ref, watch } from 'vue'
+import { useAccountListUpdates } from '../store/accountList.js'
 import { auth } from '../store/auth.js'
 import { activeAccount } from '../store/activeAccount.js'
 import { listAccounts } from '../api/accounts.js'
@@ -11,6 +12,7 @@ export function useCalendarSubscriptions(enabled, range, category) {
   const permitted = computed(() => enabled && auth.isLoggedIn && auth.isAdmin && !!auth.userInfo?.id)
   const identity = computed(() => permitted.value ? String(auth.userInfo.id) : '')
   const accounts = ref([]), accountError = ref(''), accountLoading = ref(false)
+  useAccountListUpdates(next => { if (identity.value) accounts.value = next })
   const account = computed(() => accounts.value.find(value => value.id === activeAccount.id) || null)
   const key = computed(() => JSON.stringify([identity.value, account.value?.id, account.value?.game, range.value, category.value]))
   const records = ref([]), unavailable = ref([]), count = ref(0), loading = ref(false), error = ref('')

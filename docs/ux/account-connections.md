@@ -16,8 +16,19 @@ Profile 是个人 Workspace，主体依次为游戏账号、应用与数据连�
 
 编辑以现有 `updateAccount` 的一次 PATCH 提交变更的名称与游戏，避免分步保存导致部分成功；后端活动订阅历史和招募档案的游戏锁定规则保持，失败时保留输入并展示原错误。创建后仍采用新账号作为当前账号；删除保持原危险确认与级联说明，删除普通账号保留当前账号，删除当前账号回退到首个剩余账号，删空则清除当前账号。异步确认和返回结果受登录身份及组件生命周期保护，删除回退使用返回时的当前 Context；列表旧请求不能覆盖 CRUD 结果或更新后的列表。
 
-本次是局部 L2 改动，实施顺序为：核对管理与切换调用及后端限制 → 收敛列表与弹层 → 补齐 CRUD / 列表请求边界 → 定向组件检查与手机、平板、桌面布局验证。最小行为检查为 `npx vitest run behavior/accountUx.spec.js behavior/gameAccountManager.spec.js behavior/profileConnectionsUx.spec.js`，引导文案检查为 `node --test test/onboarding.test.js`，不要求全量 CI。真实移动设备软键盘与服务端级联删除仍由用户/CI 验证。
+前次列表收敛是局部 L2 改动，实施顺序为：核对管理与切换调用及后端限制 → 收敛列表与弹层 → 补齐 CRUD / 列表请求边界 → 定向组件检查与手机、平板、桌面布局验证。最小行为检查为 `npx vitest run behavior/accountUx.spec.js behavior/gameAccountManager.spec.js behavior/profileConnectionsUx.spec.js`，引导文案检查为 `node --test test/onboarding.test.js`，不要求全量 CI。真实移动设备软键盘与服务端级联删除仍由用户/CI 验证。
 
 「已授权 MaaYuan」只表示权限符合要求，不表示收到采集数据。创建后按说明填写并运行任务，再切换至绑定游戏账号的库存或密探页确认数据。页面不显示未经验证的同步成功时间。星石自动采集接入中的限制在能力介绍中提前说明。
 
 开发环境 `/user/profile` 的 HTML 页面导航交给 SPA，JSON API、其他 `/user` 接口继续由 Vite 代理到后端；代理的目标地址和 Origin 处理保持原有配置。
+
+
+## Workspace 原地管理（2026-10-06）
+
+AccountSwitcher 的新建/管理和非紧凑 Context Bar 的管理按钮直接打开共享 GameAccountManager 的 dialog 呈现。Manager 只承载游戏账号列表/创建/编辑/编号/删除，内部切换视图；不包含 MaaYuan 或连接码表单。Profile 仍以同一 Manager 的 page 呈现保留完整账号管理，并承担所有应用与数据连接设置。
+
+创建沿用自动设为当前，但原地创建、修改当前账号所属游戏、删除当前账号都复用 Workspace 草稿确认与写入锁。仅账号表单真实 dirty 才提示放弃，列表和编号直接关闭。创建成功回列表，当前 Context 同步刷新，原路由、View/Tab/筛选不因管理导航丢失。数据请求继续采用现有账号代次隔离；CRUD 列表通知先于 activeAccount 切换，旧 GET 不能覆盖新列表。
+
+星石账号改名只同步当前名称；导出时更新 JSON 副本的账号名称与文件名，不重新进入嵌入工作区，以保留本地草稿与撤销历史。Blob 读取期间切换账号/游戏、登录身份变化或离开页面后，不下载旧账号档案。
+
+本次风险 L3（跨页面共享账号列表与异步隔离）；新增定向行为测试，完整回归与真实设备/后端验证归用户。最小命令见 [工具页账号管理](../tools-compact-header.md#原地账号管理2026-10-06)。

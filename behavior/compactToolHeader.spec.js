@@ -5,7 +5,7 @@ import DataAccountContextBar from '../src/components/DataAccountContextBar.vue'
 
 beforeEach(() => { window.matchMedia = vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) })
 
-vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/inventory' }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/inventory' }), onBeforeRouteLeave: vi.fn(), onBeforeRouteUpdate: vi.fn() }))
 
 it('页头只承载身份、账号和 Utility，帮助可往返展开；不要求主操作', async () => {
   const options = { props: { title: '背包库存', description: '清点当前账号库存' }, slots: {
@@ -42,7 +42,7 @@ it('紧凑账号区保留归属、错误和账号管理入口，默认账号条�
   expect(wrapper.get('[role="alert"]').text()).toBe('读取失败')
   expect(wrapper.text()).not.toContain('当前数据归属此账号')
   await wrapper.get('.context-selector').trigger('click')
-  expect(wrapper.findAllComponents(RouterLinkStub).at(-1).props('to')).toBe('/user/profile#game-accounts')
+  expect([...document.querySelectorAll('.account-switch-panel footer button')].map(button => button.textContent)).toEqual(['新建游戏账号', '管理游戏账号'])
   await wrapper.setProps({ compact: false })
   expect(wrapper.text()).toContain('当前数据归属此账号')
   expect(wrapper.find('.context-selector').exists()).toBe(true)
@@ -56,7 +56,7 @@ it('compact 账号为空或读取中仍保留原管理目标与可读状态', as
   const wrapper = mount(DataAccountContextBar, { props: { compact: true, isLoggedIn: true }, global: { stubs: { RouterLink: RouterLinkStub } } })
   expect(wrapper.get('.context-selector').text()).toBe('选择游戏账号')
   await wrapper.get('.context-selector').trigger('click')
-  expect(wrapper.findAllComponents(RouterLinkStub).at(-1).props('to')).toBe('/user/profile#game-accounts')
+  expect([...document.querySelectorAll('.account-switch-panel footer button')].map(button => button.textContent)).toEqual(['新建游戏账号', '管理游戏账号'])
   await wrapper.setProps({ loading: true })
   expect(wrapper.get('.context-selector').text()).toBe('正在读取账号…')
 })

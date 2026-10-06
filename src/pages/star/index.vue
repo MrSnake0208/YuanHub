@@ -148,6 +148,8 @@
 </template>
 
 <script setup>
+import { accountIdentityVersion, useAccountListUpdates } from '../../store/accountList.js'
+import { relabelStarArchive } from './starArchiveExport.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -185,6 +187,7 @@ const mountRoot = ref(null);
 const mountError = ref("");
 const mountBusy = ref(false);
 const accounts = ref([]);
+useAccountListUpdates(next => { accounts.value = next })
 const accountsLoading = ref(false);
 const accountError = ref("");
 const activeTab = usePersistedTab(
@@ -259,6 +262,7 @@ let rejectedSwitchMessage = "";
 let pendingCapture = null;
 let captureQueueVersion = 0;
 let stopCaptureEvents = null;
+let starContextVersion = 0;
 const queueAccountSync = createLatestAccountSync();
 
 const accountId = computed({
@@ -526,7 +530,7 @@ async function syncHostAccount() {
     } catch (error) {
       if (!isCurrent()) return false;
       rejectedSwitchMessage = message(error, "星石账号切换失败");
-      if (mountedAccountId) accountId.value = mountedAccountId;
+      if (mountedAccountId && accounts.value.some(account => account.id === mountedAccountId)) accountId.value = mountedAccountId;
       accountError.value = rejectedSwitchMessage;
       throw error;
     }
@@ -570,16 +574,21 @@ function downloadStarArchive(data) {
   link.click();
   window.setTimeout(function () { URL.revokeObjectURL(link.href); }, 0);
 }
-function exportStarArchive() {
+async function exportStarArchive() {
   clearCloudSyncFeedback();
   if (!handle || !productReady.value) {
     cloudSyncError.value = "星石工作区尚未加载完成。";
     return;
   }
+  const source = handle, context = starContextVersion, identity = accountIdentityVersion;
+  const current = () => !unmounted && source === handle && context === starContextVersion && identity === accountIdentityVersion && productReady.value;
   try {
-    downloadStarArchive(handle.exportDataExchange());
+    const exported = source.exportDataExchange();
+    const name = selectedHostAccount()?.displayName;
+    const data = name ? await relabelStarArchive(exported, name) : exported;
+    if (current()) downloadStarArchive(data);
   } catch (error) {
-    starExchangeError.value = message(error, "导出档案失败。");
+    if (current()) starExchangeError.value = message(error, "导出档案失败。");
   }
 }
 async function onStarImportFile(event) {
@@ -682,6 +691,7 @@ function setTab(tab) {
   if (productReady.value) handle?.setActiveTab(tab);
 }
 watch([accountId, accountGame], () => {
+  starContextVersion++;
   productReady.value = false;
   resetStarImportState();
   showArchive.value = false;

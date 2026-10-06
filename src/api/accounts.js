@@ -11,13 +11,21 @@
 // 前端兼容尚未返回 game 的旧后端，直到账号版本迁移完成。
 // id 就是 account_id，业务接口继续用该值传 account_id，无需任何迁移。
 import { request } from './request.js'
+import { auth } from '../store/auth.js'
+import { accountIdentityVersion, accountListChange } from '../store/accountList.js'
 
 const PATH = '/v1/accounts'
 
 // 账号列表（需登录）——按创建时间升序
 // 返回 [{ id, name, game, created_at, updated_at }]
-export function listAccounts(expectedUserId) {
-  return request(PATH, { auth: true, ...(expectedUserId ? { expectedUserId } : {}) })
+export async function listAccounts(expectedUserId = auth.userInfo?.id) {
+  const change = accountListChange.value
+  const identityVersion = accountIdentityVersion
+  const result = await request(PATH, { auth: true, expectedUserId })
+  if (identityVersion !== accountIdentityVersion || expectedUserId !== auth.userInfo?.id) throw new Error('登录身份已变化，请重新加载账号。')
+  // A GET started before CRUD must not resurrect a deleted account or lose a new one.
+  const latest = accountListChange.value
+  return latest && latest !== change && latest.ownerId === expectedUserId ? latest.accounts : result
 }
 
 // 创建账号（POST，需登录）——body { name, game }
@@ -27,6 +35,7 @@ export function createAccount(name, game) {
   return request(PATH, {
     method: 'POST',
     auth: true,
+    expectedUserId: auth.userInfo?.id,
     body: body
   })
 }
@@ -36,6 +45,7 @@ export function updateAccount(accountId, patch) {
   return request(PATH + '/' + encodeURIComponent(accountId), {
     method: 'PATCH',
     auth: true,
+    expectedUserId: auth.userInfo?.id,
     body: patch
   })
 }
@@ -53,6 +63,7 @@ export function updateAccountGame(accountId, game) {
 export function deleteAccount(accountId) {
   return request(PATH + '/' + encodeURIComponent(accountId), {
     method: 'DELETE',
-    auth: true
+    auth: true,
+    expectedUserId: auth.userInfo?.id,
   })
 }

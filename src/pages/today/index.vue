@@ -6,7 +6,8 @@
         <div class="wrap today-wrap">
           <h1>今日一览</h1>
           <DataAccountContextBar
-            v-if="auth.isLoggedIn && (accounts.length || accountLoading)"
+            v-if="auth.isLoggedIn"
+            ref="accountContext"
             compact
             :accounts="accounts"
             :account-id="accountId"
@@ -90,16 +91,17 @@
                 <span class="entry-icon" aria-hidden="true"><Users :size="20" /></span>
                 <div>
                   <h3 id="inline-account-title">先建立你的游戏账号</h3>
-                  <p>账号名称和所属游戏统一在个人中心维护。创建完成后，今日一览会自动继续检查这个账号的数据。</p>
+                  <p>在这里创建游戏账号，今日一览会自动继续检查这个账号的数据。</p>
                 </div>
               </div>
-              <router-link
+              <button
                 class="entry-primary-action account-management-action"
-                :to="{ path: '/user/profile', hash: '#game-accounts' }"
+                type="button"
+                @click="accountContext?.openManager('create', $event.currentTarget)"
               >
-                去个人中心创建账号
+                创建游戏账号
                 <ArrowRight :size="16" aria-hidden="true" />
-              </router-link>
+              </button>
             </div>
 
             <div v-else-if="onboardingStage === 'data'" class="entry-choice-wrap" data-tour="today-entry-choice">
@@ -170,6 +172,7 @@
 </template>
 
 <script setup>
+import { useAccountListUpdates } from '../../store/accountList.js'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -233,6 +236,8 @@ const DATA_SETUP_CONFIG = Object.freeze([
 ])
 
 const accounts = ref([])
+const accountContext = ref(null)
+useAccountListUpdates(next => { accounts.value = next })
 const realSummary = ref({ ...EMPTY_SUMMARY })
 const accountLoading = ref(false)
 const summaryLoading = ref(false)

@@ -56,7 +56,7 @@ it('账号加载不显示建账号或缺数据提示；无账号时只显示创�
   expect(wrapper.find('.data-onboarding').exists()).toBe(false)
   expect(getOperatorCurrent).not.toHaveBeenCalled()
   pending.resolve([]); await flushPromises()
-  expect(wrapper.get('.data-onboarding').text()).toContain('去个人中心创建账号')
+  expect(wrapper.get('.data-onboarding').text()).toContain('创建游戏账号')
   expect(wrapper.find('.data-readiness-grid').exists()).toBe(false)
   expect(getOperatorCurrent).not.toHaveBeenCalled()
 })
