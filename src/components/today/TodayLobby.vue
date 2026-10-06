@@ -119,11 +119,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .today-lobby { isolation: isolate; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--ink); }
-.lobby-wrap { max-width: 1180px; }
-.lobby-header { position: relative; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; min-height: 52px; padding-top: 4px; }
+.lobby-wrap { max-width: 1180px; container-type: inline-size; }
+.lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 4px 12px; min-height: 52px; padding-top: 4px; }
 .lobby-scene { position: relative; min-height: 164px; display: flex; align-items: center; }
 .lobby-copy { position: relative; z-index: 2; width: 58%; min-width: 0; padding: 12px 8px 12px 0; }
-.lobby-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.lobby-heading { display: grid; gap: 2px; min-width: 0; }
 .lobby-heading h1 { color: var(--tea); font: 900 14px/1.5 var(--font-s); letter-spacing: .08em; }
 .lobby-heading time { color: var(--ink-60); font-size: 11px; line-height: 1.5; }
 .lobby-greeting { color: var(--tea); font: 900 clamp(21px, 5.5vw, 26px)/1.5 var(--font-s); }
@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
 .lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 42%; height: 164px; overflow: hidden; pointer-events: none; }
 .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: translateY(12px); }
 .lobby-art-error { padding: 50px 8px; color: var(--ink-60); font-size: 12px; line-height: 1.8; text-align: center; }
-.lobby-context { min-width: 0; max-width: 100%; margin-left: auto; }
+.lobby-context { min-width: 0; max-width: 100%; }
 .duty-picker { display: flex; flex-direction: column; width: min(100%, 560px); max-height: min(640px, 85dvh); padding: 20px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--ink); }
 .duty-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .duty-picker-heading h2 { font: 900 22px/1.5 var(--font-s); }
@@ -153,6 +153,9 @@ onBeforeUnmount(() => {
 .duty-candidates button:hover, .duty-candidates button[aria-pressed="true"] { background: var(--cream); border-color: var(--tea); }
 .duty-candidates > p { grid-column: 1 / -1; padding: 20px 0; font-size: 13px; line-height: 1.7; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }
+@container (min-width: 860px) {
+  .lobby-header { grid-template-columns: auto minmax(0, 1fr); column-gap: 24px; }
+}
 @media (min-width: 768px) {
   .lobby-header { min-height: 56px; padding-top: 8px; }
   .lobby-scene { min-height: 260px; }
