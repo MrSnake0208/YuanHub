@@ -93,12 +93,7 @@ export function useCalendarSubscriptions(enabled, range, category) {
     apply(result)
     return result
   }
-  async function selectAccount(event) {
-    const context = key.value, selected = event.target.value
-    if (await confirmDiscard() && context === key.value) activeAccount.set(selected)
-    event.target.value = account.value?.id || ''
-  }
-  const state = { permitted, identity, account, accounts, accountError, accountLoading, loadAccounts, key, records, unavailable, count, byId, loading, error, now, dirty, confirmDiscard, load, selectAccount, refreshOne, subscribe, progress, accept: apply, setDirty: (id, value) => { drafts.value = { ...drafts.value, [id]: value } } }
+  const state = { permitted, identity, account, accounts, accountError, accountLoading, loadAccounts, key, records, unavailable, count, byId, loading, error, now, dirty, confirmDiscard, load, refreshOne, subscribe, progress, accept: apply, setDirty: (id, value) => { drafts.value = { ...drafts.value, [id]: value } } }
   provide(CALENDAR_SUBSCRIPTIONS, state)
   onBeforeUnmount(() => { alive = false; generation++; accountGeneration++ })
   return state
