@@ -19,6 +19,8 @@ vi.mock('../src/store/auth.js', async () => {
 })
 vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { template: '<nav />' } }))
 vi.mock('../src/components/SiteFooter.vue', () => ({ default: { template: '<footer />' } }))
+// This suite owns calendar refresh timers; Lobby clock behavior has its own suite.
+vi.mock('../src/components/today/TodayLobby.vue', () => ({ default: { template: '<header><h1>今日一览</h1><slot /></header>' } }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
@@ -215,7 +217,10 @@ it('dashboard已有错误在日历失败和重试后保持原样', async () => {
 it.each(['public', 'private'])('%s失败不吞掉另一类活动内容；数据摘要重试不重读日历', async failed => {
   signIn(); auth.userInfo = { id: 'synthetic-owner' }
   if (failed === 'public') listActivityCalendar.mockRejectedValue(new Error('公开日程失败'))
-  else calendarSubscriptionSummary.mockRejectedValue(new Error('个人订阅失败'))
+  else {
+    calendarSubscriptionSummary.mockRejectedValue(new Error('个人订阅失败'))
+    listActivityCalendar.mockResolvedValue({ items: [item({ game: accounts[0].game })] })
+  }
   if (failed === 'public') calendarSubscriptionSummary.mockResolvedValue({
     items: [{ event_id: 'mine', item: item({ title: '个人临期事项' }), checklist: [] }], subscribed_count: 1, total_pending: 1
   })
