@@ -93,7 +93,7 @@ a.brand{color:inherit;text-decoration:none;cursor:pointer}
   scrollbar-width:thin;
 }
 .nav a{
-  position:relative;display:flex;align-items:baseline;gap:12px;
+  position:relative;display:flex;align-items:center;gap:12px;
   padding:11px 12px;border-radius:12px;text-decoration:none;color:var(--ink-60);
   font-size:14px;font-weight:600;transition:color .35s var(--ease),background-color .35s var(--ease);
 }
