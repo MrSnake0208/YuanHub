@@ -51,6 +51,18 @@ node --test test/recognitionTutorial.test.js test/bagTutorial.test.js test/starC
 npm run test:behavior -- behavior/recognitionTutorial.spec.js behavior/bagTutorial.spec.js behavior/starRecoveryUx.spec.js behavior/embedProduct.spec.js
 ```
 
+### 空背包使用教程：独立只读演示
+
+当前背包为 0 颗时，手动重看使用教程会展示 Vue 宿主的示例背包：天府、武曲和文昌各一颗，供七步教程定位筛选、编辑、养成目标、经验需求及历史入口。演示卡片持续标注“只读演示，不会保存到你的背包”；经验数值仅用于说明展示方式，不作为实际养成计算结果。
+
+演示与真实工作区一样分为两个页签：第 1～4 步显示“背包与核对”，第 5～7 步显示“养成计划”，前进或返回时自动切换到步骤所属页签，不同时显示两页内容。演示中的页签只用于标示当前页面；切换由教程控制，独立于真实工作区状态。有星石的真实教程也按同一规则切换页签。
+
+示例视图不挂载第二个 embed，不导入示例快照，不连接账号、保存、同步、导出或真实历史接口。真实 embed 保持挂载，仅在演示期间隐藏；关闭/完成后返回原来的空背包界面，概览仍为 0 颗。演示不改变真实筛选、背包/计划展示和手动空态浏览状态。进入时确定演示模式，后台数据更新不在教程中途切换目标；换账号或离开使用页签会关闭旧演示。已有星石的用户仍在真实工作区查看教程。
+
+示例历史入口在普通文档流中，第七步主动滚动到它；真实工作区的浮动历史入口仍保持原来的不滚动行为。定向回归：`npm run test:behavior -- behavior/starRecoveryUx.spec.js behavior/bagTutorial.spec.js behavior/recognitionTutorial.spec.js`。浏览器另检查七步主目标均可见、320/390/768/1440 与手机横屏、示例与真实背包隔离及退出后的导入入口。
+
+可视区域高度不足 500px 时，教程使用可拖动的底部卡片，避免手机横屏因宽度达到桌面断点而遮住目标标题。
+
 ## 此前 UI 修复正式构建（2026-10-05）
 
 - 源码分支为 `feature/yuanhub-embed`，source commit 为 `e65664c8f4407e59f932573e39fa130e363380fb`。

@@ -14,7 +14,7 @@
           <button class="recognition-tour-handle" type="button" :aria-label="`拖动${tutorialLabel}，上下方向键也可移动`" @pointerdown="beginDrag" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag" @keydown.up.prevent="moveSheet(32)" @keydown.down.prevent="moveSheet(-32)"><span /></button>
         </div>
         <header>
-          <div aria-live="polite"><span class="recognition-tour-count">{{ stepIndex + 1 }} / {{ steps.length }}</span><h2>{{ step.title }}</h2></div>
+          <div aria-live="polite"><span class="recognition-tour-count">{{ stepIndex + 1 }} / {{ steps.length }}</span><h2>{{ step.title }}</h2><p v-if="demo" class="recognition-tour-demo">只读演示，不会保存到你的背包。<br />导入截图后可实际操作。</p></div>
           <button type="button" class="recognition-tour-close" :aria-label="`关闭${tutorialLabel}`" @click="close">×</button>
         </header>
         <div class="recognition-tour-details">
@@ -35,7 +35,7 @@ import RecognitionExampleModal from './RecognitionExampleModal.vue'
 import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect } from './recognitionTutorial.js'
 import { bagTutorialSteps, bagReviewInfo } from './bagTutorial.js'
 
-const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' } })
+const props = defineProps({ open: Boolean, demo: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' } })
 const emit = defineEmits(['close', 'step-change'])
 const stepIndex = ref(0), mobile = ref(false), lift = ref(0), card = ref(null)
 const rects = ref([]), position = ref({ left: 12, top: 12 }), placement = ref('fallback'), ready = ref(false)
@@ -43,7 +43,11 @@ const sheetBounds = ref(null)
 const exampleKind = ref(null), showMobileHint = ref(false)
 const steps = computed(() => props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
 const tutorialLabel = computed(() => props.mode === 'bag' ? '使用教程' : '识别教程')
-const step = computed(() => steps.value[stepIndex.value])
+const step = computed(() => {
+  const current = steps.value[stepIndex.value]
+  // Demo history is an ordinary section, unlike the real workspace's floating tools.
+  return props.demo && current.scroll === 'preserve' ? { ...current, scroll: undefined, mobileAvoidTarget: false } : current
+})
 const exampleItems = computed(() => recognitionTutorialExamples[exampleKind.value] || [])
 const cardStyle = computed(() => ({ visibility: ready.value ? 'visible' : 'hidden', ...(mobile.value ? { bottom: `${(sheetBounds.value?.bottom ?? 12) + lift.value}px`, ...(sheetBounds.value ? { maxHeight: `min(62dvh, calc(100dvh - 96px), ${sheetBounds.value.maxHeight}px)` } : {}) } : { left: `${position.value.left}px`, top: `${position.value.top}px` }) }))
 const rectStyle = rect => ({ left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` })
@@ -66,7 +70,7 @@ function clearHighlights() {
 function update() {
   if (!props.open) return
   const view = viewport()
-  mobile.value = window.innerWidth < 768
+  mobile.value = window.innerWidth < 768 || view.height < 500
   const safeArea = sheetSafeArea()
   if (mobile.value && !hintShown) { hintShown = true; showMobileHint.value = true }
   const { primary, related } = resolveTutorialTargets(props.root, step.value, view.height)
@@ -246,6 +250,7 @@ onBeforeUnmount(() => { restoreFocus(); stop() })
 header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 h2 { margin: 2px 0 0; font-family: var(--font-s); font-weight: 900; font-size: 16px; line-height: 1.4; }
 .recognition-tour-count { font-family: var(--font-d); font-size: 12px; }
+.recognition-tour-demo { margin: 6px 0 0; color: var(--tea); font-size: 12px; line-height: 1.6; }
 .recognition-tour-body { white-space: pre-line; font-size: 13px; line-height: 1.6; margin: 8px 0 0; }
 .recognition-tour-body + .recognition-tour-body { margin-top: 0; }
 button { min-height: 32px; min-width: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }

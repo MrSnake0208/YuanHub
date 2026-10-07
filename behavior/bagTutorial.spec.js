@@ -88,3 +88,15 @@ it('mobile Step 7 raises the draggable sheet above floating tools without scroll
   expect(parseFloat(card().style.bottom)).toBe(98)
   expect(window.scrollTo.mock.calls.length).toBe(scrollCount)
 })
+
+it('只读演示持续说明数据隔离，第七步滚动到演示历史区域', async () => {
+  const wrapper = mount(RecognitionTutorial, { props: { open: true, mode: 'bag', demo: true, root }, attachTo: document.body })
+  await settle()
+  for (let step = 0; step < 7; step++) {
+    expect(card().textContent).toContain('只读演示，不会保存到你的背包')
+    if (step < 6) await click('下一步')
+  }
+  expect(window.scrollTo).toHaveBeenCalledTimes(7)
+  await wrapper.setProps({ demo: false, replayId: 1 }); await settle()
+  expect(card().textContent).not.toContain('只读演示')
+})
