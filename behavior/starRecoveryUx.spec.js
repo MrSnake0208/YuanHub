@@ -5,7 +5,7 @@ import StarPage from '../src/pages/star/index.vue'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
-import { getCurrentStarState } from '../src/api/starState.js'
+import { getCurrentStarState, rebuildStarState } from '../src/api/starState.js'
 import { consumeStarCapture, getStarCaptureImage, getStarCaptureManifest } from '../src/api/starCaptures.js'
 import { isStarCaptureDraftPersisted } from '../src/pages/star/captureDraftReceipt.js'
 import { STAR_CAPTURE_LIFECYCLE_KEY } from '../src/pages/star/starCaptureLifecycle.js'
@@ -154,6 +154,178 @@ it('OCR 自动切换通知更新共享 tab 高亮，用户手动切换仍调用 
   expect(wrapper.get('.star-import-stage').text()).toBe('截图识别')
   expect(backpack.attributes('aria-selected')).toBe('false')
   wrapper.unmount()
+})
+
+function enableTutorialStatus(identity, hasHistory = false) {
+  localStorage.setItem("star-tabs", "import")
+  auth.isLoggedIn = true
+  auth.userInfo = { id: identity }
+  activeAccount.set('acc-1')
+  embedMount.mockImplementation(() => ({
+    setHostAccount: vi.fn().mockResolvedValue(undefined), setActiveTab: vi.fn(),
+    getCloudBusinessSnapshot: vi.fn().mockResolvedValue(emptySnapshot),
+    applyCloudBusinessSnapshot: vi.fn().mockResolvedValue(undefined),
+    getRecognitionTutorialStatus: vi.fn(() => ({ ready: true, hasHistory })),
+    dispose: vi.fn().mockResolvedValue(undefined),
+  }))
+}
+
+it('empty user auto starts only after hydration, dismissal persists, replay ignores seen and restarts at step 1', async () => {
+  function tourText(stage) {
+    const element = document.querySelector('.recognition-tour-card')
+    expect(element, stage).not.toBeNull()
+    return element.textContent
+  }
+  enableTutorialStatus('recognition-new-user')
+  const wrapper = render()
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await loadStylesheet()
+  await flushPromises()
+  expect(tourText('initial automatic display')).toContain('1 / 6')
+  document.querySelector('.recognition-tour-next').click()
+  await flushPromises()
+  expect(tourText('manual next')).toContain('2 / 6')
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card'), 'replay after close mounts the tutorial').not.toBeNull()
+  expect(tourText('replay while open')).toContain('1 / 6')
+  document.querySelector('[aria-label="关闭识别教程"]').click()
+  await flushPromises()
+  expect(localStorage.getItem('yuanhub:star-recognition:v1:recognition-new-user')).toBe('seen')
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(tourText('replay after dismissal')).toContain('1 / 6')
+  wrapper.unmount()
+  document.getElementById('yuanstar-embed-styles')?.remove()
+  const remount = render()
+  await flushPromises(); await loadStylesheet()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  expect(remount.find('.star-tutorial-replay').exists()).toBe(true)
+})
+
+it.each([['local-history', true, 0], ['remote-history', false, 2]])('experienced %s user stays quiet but can manually replay', async (name, hasHistory, revision) => {
+  enableTutorialStatus('recognition-' + name, hasHistory)
+  getCurrentStarState.mockResolvedValue({ ...emptyRemote, revision })
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it('cloud failure does not auto introduce a potentially experienced user', async () => {
+  enableTutorialStatus('recognition-cloud-failure')
+  getCurrentStarState.mockRejectedValue(new Error('offline'))
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it('draft readiness arriving after the first summary is rechecked on embed rendering', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('recognition-delayed-draft')
+  const wrapper = render()
+  await flushPromises()
+  const link = document.getElementById('yuanstar-embed-styles')
+  link.dispatchEvent(new Event('load'))
+  await flushPromises()
+  const handle = embedMount.mock.results[0].value
+  // Close the initial test mount; delayed readiness must work for an unseen identity.
+  document.querySelector('[aria-label="关闭识别教程"]')?.click()
+  await flushPromises()
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: false, hasHistory: false })
+  auth.userInfo = { id: 'recognition-delayed-draft-fresh' }
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: true, hasHistory: false })
+  wrapper.get('#product-root').element.append(document.createElement('div'))
+  await vi.advanceTimersByTimeAsync(100)
+  await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).not.toBeNull()
+})
+
+it('first OCR waits for persisted review, auto starts bag, dismissal stays seen and both replay entries work', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('bag-first-ocr-host')
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  const options = embedMount.mock.calls[0][1], handle = embedMount.mock.results[0].value
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  await options.onOcrRebuild(emptySnapshot, null)
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: true, hasHistory: true })
+  options.onActiveTabChange('review')
+  await flushPromises()
+  expect(document.querySelector('[aria-label="使用教程"]')).toBeNull()
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="first-ocr"></section></section>'
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('[aria-label="使用教程"]').textContent).toContain('1 / 7')
+  expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看使用教程')
+  document.querySelector('[aria-label="关闭使用教程"]').click(); await flushPromises()
+  expect(localStorage.getItem('yuanhub:star-bag:v1:bag-first-ocr-host')).toBe('seen')
+  wrapper.get('#product-root').element.append(document.createElement('span'))
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
+  document.querySelector('[aria-label="关闭使用教程"]').click(); await flushPromises()
+  await wrapper.get('.star-import-action').trigger('click'); await flushPromises()
+  expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看识别教程')
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it('historical bag owner never auto starts even after another OCR, but manual bag replay ignores seen', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('bag-historical-host', true)
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const options = embedMount.mock.calls[0][1]
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  await options.onOcrRebuild(emptySnapshot, null)
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="old-ocr"></section></section>'
+  options.onActiveTabChange('review')
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
+})
+
+it('bag replay reveals the current workspace and filters, and account changes close the old tour', async () => {
+  enableTutorialStatus('bag-current-workspace', true)
+  localStorage.setItem('star-tabs', 'review')
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }, { id: 'acc-2', name: '另一个', game: '如鸢' }])
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  await wrapper.findAll('[role="tab"]')[1].trigger('click')
+  expect(wrapper.get('#product-root').classes()).toContain('is-plan-view')
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(wrapper.get('#product-root').classes()).not.toContain('is-plan-view')
+  expect(wrapper.get('#product-root').classes()).not.toContain('is-empty-view')
+  for (let index = 0; index < 2; index++) {
+    document.querySelector('.recognition-tour-next').click(); await flushPromises()
+  }
+  expect(wrapper.get('#product-root').classes()).toContain('filters-open')
+  activeAccount.set('acc-2'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  expect(localStorage.getItem('yuanhub:star-bag:v1:bag-current-workspace')).toBe('seen')
+})
+
+it('a tutorial status resolved after an account switch cannot open the old account tour', async () => {
+  enableTutorialStatus('recognition-stale-account')
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }, { id: 'acc-2', name: '另一个', game: '如鸢' }])
+  const pending = deferred(), status = vi.fn(() => pending.promise)
+  const createHandle = embedMount.getMockImplementation()
+  embedMount.mockImplementation(() => ({ ...createHandle(), getRecognitionTutorialStatus: status }))
+  const wrapper = render(); await flushPromises()
+  await loadStylesheet()
+  status.mockReturnValue({ ready: false, hasHistory: false })
+  activeAccount.set('acc-2'); await flushPromises()
+  pending.resolve({ ready: true, hasHistory: false }); await flushPromises()
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
 })
 
 it('样式加载失败可重试，失败链接不会阻挡下一次加载', async () => {
@@ -470,6 +642,7 @@ it('原地改名只更新导出元数据，不重入 Host 或丢失本地草稿'
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   const hostCalls = handle.setHostAccount.mock.calls.length
   publishAccountList([{ id: 'acc-1', name: '原地改名', game: '如鸢' }]); await flushPromises()
+  await wrapper.get('.archive-toggle').trigger('click')
   wrapper.findComponent({ name: 'ArchiveExchangePanel' }).vm.$emit('export'); await flushPromises()
   expect(handle.setHostAccount).toHaveBeenCalledTimes(hostCalls)
   expect(click).toHaveBeenCalledTimes(1)
@@ -478,6 +651,8 @@ it('原地改名只更新导出元数据，不重入 Host 或丢失本地草稿'
   const blob = create.mock.calls[0][0]
   const text = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(blob) })
   expect(JSON.parse(text)).toEqual({ ...payload, accountDisplayName: '原地改名' })
+  // Let URL cleanup finish before the per-test globals are restored.
+  await new Promise(resolve => window.setTimeout(resolve, 0))
 })
 
 it.each(['switch', 'roundtrip', 'identity', 'unmount'])('导出 Blob 等待期间 %s 不下载旧账号档案', async change => {
@@ -487,6 +662,7 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('导出 Blob 等待期�
   const handle = embedMount.mock.results[0].value, gate = deferred()
   handle.exportDataExchange = vi.fn(() => ({ blob: { text: () => gate.promise }, filename: 'YuanStar_测试账号_2026-10-06.json' }))
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  await wrapper.get('.archive-toggle').trigger('click')
   wrapper.findComponent({ name: 'ArchiveExchangePanel' }).vm.$emit('export'); await flushPromises()
   if (change === 'unmount') wrapper.unmount()
   else if (change === 'identity') { auth.userInfo = { id: 'other-owner' }; auth.userInfo = { id: 'export-owner' } }
