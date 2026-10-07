@@ -80,6 +80,70 @@ function planRows(root) {
 }
 
 describe('vendored YuanStar embed behavior', () => {
+  it('new sorted instance follows in both panes, editing follows same ID, unchanged order keeps scroll and deleting clears selection', async () => {
+    const { root, handle } = await mountEmbed()
+    const inventory = Array.from({ length: 25 }, (_, index) => ({ starInstanceId: 'follow-' + index, kind: '主星', name: '天府', level: 60 - index * 2, quality: '橙' }))
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function () {
+      return this.matches('tr[data-star-id]') ? 30 + [...this.parentElement.children].indexOf(this) * 32 : 0
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(200)
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000)
+    vi.spyOn(HTMLTableSectionElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 30 })
+    const settle = () => new Promise(resolve => setTimeout(resolve, 200))
+    const selected = pane => root.querySelector(`#${pane}-rows .is-selected, #${pane}-rows .is-counterpart`)
+    const level = () => root.querySelector('[data-current-field="level"]')
+    try {
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory, planTargets: {} })
+      handle.setActiveTab('review'); await settle()
+      root.querySelector('[data-star-id="follow-0"][data-pane="plan"]').click(); await settle()
+      expect(selected('current').dataset.starId).toBe('follow-0')
+      level().value = '48'; level().dispatchEvent(new Event('input', { bubbles: true }))
+      root.querySelector('#add-current-row').click(); await settle()
+      const id = selected('current').dataset.starId
+      expect(id).not.toBe('follow-0')
+      expect(selected('plan').dataset.starId).toBe(id)
+      expect((await handle.getCloudBusinessSnapshot()).inventory).toHaveLength(26)
+      const index = [...root.querySelectorAll('#current-rows tr')].indexOf(selected('current'))
+      expect(root.querySelector('#current-scroll').scrollTop).toBe((index - 4) * 32)
+      expect(root.querySelector('#plan-scroll').scrollTop).toBe((index - 4) * 32)
+      level().value = '57'; level().dispatchEvent(new Event('input', { bubbles: true }))
+      level().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle()
+      expect(selected('current').dataset.starId).toBe(id)
+      expect(root.querySelector('#current-scroll').scrollTop).toBe(0)
+      for (const pane of ['current', 'plan']) root.querySelector(`#${pane}-scroll`).scrollTop = 99
+      const quality = root.querySelector('[data-current-field="quality"]')
+      quality.value = '紫'; quality.dispatchEvent(new Event('change', { bubbles: true }))
+      quality.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle()
+      expect(root.querySelector('#current-scroll').scrollTop).toBe(99)
+      root.querySelector('#delete-current-row').click(); await settle()
+      expect(selected('current')).toBeNull(); expect(selected('plan')).toBeNull()
+      expect(root.querySelector('.current-editor')).toBeNull()
+      expect((await handle.getCloudBusinessSnapshot()).inventory.some(star => star.starInstanceId === id)).toBe(false)
+    } finally {
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {}, experience: { orange: null, purple: null, white: null }, bag: { currentCount: null, capacity: null } })
+      await handle.dispose(); vi.restoreAllMocks()
+    }
+  }, 60000)
+  it('tutorial status reads loaded history without changing data and exposes the renamed UI', async () => {
+    const { root, handle } = await mountEmbed()
+    try {
+      handle.setActiveTab('import')
+      expect(handle.getRecognitionTutorialStatus()).toEqual({ ready: true, hasHistory: false })
+      expect(root.textContent).toContain('主星池重复行标记')
+      expect(root.textContent).toContain('辅星池重复行标记')
+      expect(root.textContent).not.toContain('重叠校验')
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {} })
+      const before = await handle.getCloudBusinessSnapshot()
+      expect(handle.getRecognitionTutorialStatus()).toEqual({ ready: true, hasHistory: true })
+      expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+      handle.setActiveTab('review')
+      expect(root.querySelector('.review-page').getAttribute('aria-label')).toBe('背包整理')
+      expect(root.querySelector('#ocr-review-title').textContent).toBe('识别结果核对')
+    } finally {
+      await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {}, experience: { orange: null, purple: null, white: null }, bag: { currentCount: null, capacity: null } })
+      await handle.dispose()
+    }
+  }, 60000)
   it('does not initialize OCR on embedded mount and reports shared tab changes', async () => {
     const worker = vi.fn(function () { throw new Error('unexpected background OCR initialization') })
     vi.stubGlobal('Worker', worker)
@@ -115,9 +179,9 @@ describe('vendored YuanStar embed behavior', () => {
     handle.setActiveTab('review')
     await new Promise((resolve) => setTimeout(resolve, 200))
 
-    // 养成目标列使用「当前等级 → 目标等级」，仅 targetLevel > level 的行才显示箭头。
+    // 养成目标列使用「当前等级→目标等级」，仅 targetLevel > level 的行才显示箭头。
     expect(planRows(root)).toEqual([
-      ['主星', '天府', '30 → 60', '橙', '共1颗'],
+      ['主星', '天府', '30→60', '橙', '共1颗'],
       ['主星', '武曲', '20', '紫', '共1颗'],
       ['辅星', '文昌', '10', '蓝', '共1颗'],
     ])
@@ -131,7 +195,7 @@ describe('vendored YuanStar embed behavior', () => {
     await new Promise((resolve) => setTimeout(resolve, 200))
     expect(pendingToggle().checked).toBe(true)
     // targetLevel === level 的武曲与辅星文昌被过滤掉，只剩天府。
-    expect(planRows(root)).toEqual([['主星', '天府', '30 → 60', '橙', '待养 1 / 共 1']])
+    expect(planRows(root)).toEqual([['主星', '天府', '30→60', '橙', '待养 1 / 共 1']])
 
     pendingToggle().click()
     await new Promise((resolve) => setTimeout(resolve, 200))
@@ -319,6 +383,8 @@ describe('vendored OCR prewarming', () => {
   }, 60000)
 
   it('a manual retry after initialization timeout creates one fresh worker and reaches analysis', async () => {
+    // jsdom has no layout scrolling; the browser implementation is exercised separately.
+    HTMLElement.prototype.scrollIntoView = vi.fn()
     let embed
     try {
       embed = await clockedEmbed({ stalled: true, recoverOnRetry: true })

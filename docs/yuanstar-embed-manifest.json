@@ -1,6 +1,7 @@
 {
-  "_comment": "public/yuanstar-embed/ 当前 vendored 文件的 SHA-256；已提交 source commit 及干净构建状态见下列元数据。同步 embed 时必须更新本文件；provenance 测试逐文件比对。",
-  "_sourceCommit": "91ce034f4aae2a68a4b3c387e44149fe6302a922",
+  "_comment": "public/yuanstar-embed/ 的 SHA-256；从已提交 source HEAD 的干净工作树正式 build。",
+  "_sourceCommit": "23a64c8a23ce45310902bd4967397bbaff6e1e7b",
+  "_sourceBranch": "feature/yuanhub-embed",
   "_sourceWorkingTree": {
     "status": "clean"
   },
@@ -14,6 +15,6 @@
   "ort/ort-wasm-simd-threaded.mjs": "0a1e718d99c41b22c21f2520ff4f9e883a6b5533856e398d21816ee8eb8185d3",
   "ort/ort-wasm-simd-threaded.wasm": "d1ab1b94b16a65b29d710d0b587b29e7bed336827577623913479b8afe8113e6",
   "reference/YuanStar_Phase0_6A_经验星曜规则与逐级数据.xlsx": "eafe7af04996e788d02556b22f3a57854012acb6301c02bc9621957b34149859",
-  "yuanstar-embed.css": "a831b7da07f088e756b636de0416872c72199bf1c3440cbca3784bcb3e09d6c7",
-  "yuanstar-embed.js": "b1d238d36a7f200f0121440658afef835fc1eb350b8497d7701c79dc7ddfbef1"
+  "yuanstar-embed.css": "14e68190afb8b4b518ee266f9a11c3fd35471db501abffb6bf05a2430d472df1",
+  "yuanstar-embed.js": "3cf271758d0e817293d3b72bdff4a98b4c4cafe634694264454cb338e77b3b28"
 }

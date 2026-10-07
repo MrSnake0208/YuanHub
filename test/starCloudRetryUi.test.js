@@ -16,5 +16,6 @@ test('star page exposes retry only as an inline recovery action', function () {
   assert.match(page, /cloudSyncError\.value = "星石云端同步失败，请重试。"/)
   assert.match(page, /\.star-sync-retry \{[\s\S]*?background: transparent/)
   assert.match(page, /\.star-sync-retry:focus-visible/)
-  assert.doesNotMatch(page, /同步背包/)
+  // Privacy/help copy may mention automatic synchronization; forbid a manual action.
+  assert.doesNotMatch(page, /<button\b[^>]*>(?:(?!<\/button>)[\s\S])*同步背包/)
 })

@@ -97,6 +97,9 @@
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
+          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'import' ? replayRecognitionTutorial() : replayBagTutorial()">
+            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'import' ? '重新查看识别教程' : '重新查看使用教程' }}
+          </button>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
             <button type="button" class="link" @click="setTab('import'); starImportHelpOpen = true">查看支持的截图格式与说明</button>
@@ -124,7 +127,8 @@
             <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
           </div>
           </div>
-          <div id="product-root" ref="mountRoot" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
@@ -153,9 +157,12 @@ import { relabelStarArchive } from './starArchiveExport.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Archive } from "@lucide/vue";
+import { Archive, CircleHelp } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
+import RecognitionTutorial from "./RecognitionTutorial.vue";
+import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial } from "./recognitionTutorial.js";
+import { createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -206,6 +213,66 @@ const cloudNeedsRetry = ref(false);
 const cloudRetryBusy = ref(false);
 const productReady = ref(false);
 const cloudWriteBusy = ref(false);
+const recognitionTutorialOpen = ref(false);
+const recognitionTutorialReplayId = ref(0);
+const tutorialMode = ref("recognition");
+const tutorialCloudReady = ref(false);
+const tutorialCloudHistory = ref(false);
+const tutorialAccountReady = ref(false);
+const recognitionTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null));
+const bagTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, "bag"));
+const bagTutorialGate = createBagTutorialGate();
+const bagTutorialOwner = () => bagTutorialKey.value + ":" + (accountId.value || "guest");
+let tutorialCheckSequence = 0;
+let recognitionTutorialOwnerKey = "";
+let tutorialStatusObserver = null;
+let tutorialStatusFrame = 0;
+
+function replayRecognitionTutorial() {
+  openTutorial("recognition");
+}
+function replayBagTutorial() {
+  openTutorial("bag");
+}
+function openTutorial(mode) {
+  if (recognitionTutorialOpen.value) dismissRecognitionTutorial();
+  tutorialMode.value = mode;
+  const tab = mode === "bag" ? "review" : "import";
+  if (activeTab.value !== tab) setTab(tab);
+  recognitionTutorialOwnerKey = mode === "bag" ? bagTutorialKey.value : recognitionTutorialKey.value;
+  recognitionTutorialReplayId.value++;
+  // A new component opening always starts at step 1.
+  recognitionTutorialOpen.value = true;
+}
+function revealTutorialStep(step) {
+  if (tutorialMode.value !== "bag") return;
+  starBrowseEmpty.value = true;
+  starReviewView.value = "bag";
+  if (step.id === "find") starFiltersOpen.value = true;
+}
+function dismissRecognitionTutorial() {
+  markTutorialSeen(recognitionTutorialOwnerKey || recognitionTutorialKey.value);
+  recognitionTutorialOpen.value = false;
+}
+async function checkRecognitionTutorial() {
+  const sequence = ++tutorialCheckSequence;
+  if (!productReady.value || !tutorialAccountReady.value || accountsLoading.value || accountError.value ||
+      (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))) return;
+  const currentHandle = handle, key = recognitionTutorialKey.value, context = starContextVersion;
+  const status = await currentHandle?.getRecognitionTutorialStatus?.();
+  if (context !== starContextVersion || sequence !== tutorialCheckSequence || currentHandle !== handle || key !== recognitionTutorialKey.value || unmounted) return;
+  if (!status?.ready) return;
+  const hasHistory = status.hasHistory || tutorialCloudHistory.value;
+  const bagEligible = bagTutorialGate.loaded(bagTutorialOwner(), hasHistory);
+  if (!bagEligible) markTutorialSeen(bagTutorialKey.value);
+  if (bagTutorialGate.shouldStart(bagTutorialOwner(), {
+    reviewing: activeTab.value === "review", ready: status.ready, seen: tutorialSeen(bagTutorialKey.value),
+    hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')),
+  }) && !(recognitionTutorialOpen.value && tutorialMode.value === "bag")) replayBagTutorial();
+  // Remember experienced users even if they later switch to an empty game account.
+  if (hasHistory) { markTutorialSeen(key); return; }
+  if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value) replayRecognitionTutorial();
+}
 const showArchive = ref(false);
 const showStarImport = ref(false);
 const starImportPreview = ref(null);
@@ -311,6 +378,8 @@ const starCloud = createStarCloudCoordinator({
   onState: function (state) {
     if (state.accountId && state.accountId !== accountId.value) return;
     cloudWriteBusy.value = !!(state.replacing || state.writer?.saving || state.writer?.pending);
+    tutorialCloudReady.value = Boolean(state.ready);
+    tutorialCloudHistory.value = Boolean(state.writer?.revision > 0 || state.writer?.generation > 0);
     const feedback = starCloudFeedback(state);
     cloudSyncMessage.value = feedback.message;
     cloudSyncError.value = feedback.error;
@@ -504,6 +573,7 @@ async function loadAccounts() {
 async function syncHostAccount() {
   if (!handle) return false;
   productReady.value = false;
+  tutorialAccountReady.value = false;
   const host = selectedHostAccount();
   return queueAccountSync(async function (isLatest) {
     const currentHandle = handle;
@@ -522,6 +592,7 @@ async function syncHostAccount() {
       const entered = await starCloud.enter(currentHandle);
       if (!isCurrent()) return false;
       if (host && !entered) cloudSyncError.value = "星石云端状态加载失败；本地数据未被覆盖。";
+      tutorialAccountReady.value = !host || entered;
       if (host) { accountError.value = rejectedSwitchMessage; rejectedSwitchMessage = ""; }
       productReady.value = true;
       currentHandle.setActiveTab(activeTab.value);
@@ -656,7 +727,13 @@ async function mountProduct() {
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
-      onOcrRebuild: function (snapshot, recoveryPointId) { return starCloud.rebuildOcr(snapshot, recoveryPointId); },
+      onOcrRebuild: async function (snapshot, recoveryPointId) {
+        const owner = bagTutorialOwner(), context = starContextVersion;
+        const result = await starCloud.rebuildOcr(snapshot, recoveryPointId);
+        // Observe the existing successful OCR handoff. The tour also waits for the persisted review DOM.
+        if (!unmounted && context === starContextVersion && owner === bagTutorialOwner()) bagTutorialGate.ocrCompleted(owner);
+        return result;
+      },
       onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
       onListRecoveryPoints: function () { return starCloud.listRecoveryPoints(); },
       onRestoreRecoveryPoint: function (pointId) { return starCloud.restorePoint(pointId); },
@@ -692,14 +769,33 @@ function setTab(tab) {
 }
 watch([accountId, accountGame], () => {
   starContextVersion++;
+  ++tutorialCheckSequence;
+  recognitionTutorialOpen.value = false;
+  tutorialAccountReady.value = false;
+  bagTutorialGate.reset();
   productReady.value = false;
   resetStarImportState();
   showArchive.value = false;
   discardForeignPendingCapture();
   if (handle && !unmounted) void syncHostAccount().catch(() => {});
 }, { flush: "sync" });
+watch([productReady, tutorialAccountReady, tutorialCloudReady, tutorialCloudHistory, activeTab, recognitionTutorialKey, summary], () => { void checkRecognitionTutorial(); }, { flush: "post" });
+watch(recognitionTutorialKey, () => { ++tutorialCheckSequence; recognitionTutorialOpen.value = false; bagTutorialGate.reset(); }, { flush: "sync" });
+watch(activeTab, (tab) => {
+  if (recognitionTutorialOpen.value && tab !== (tutorialMode.value === "bag" ? "review" : "import")) dismissRecognitionTutorial();
+});
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
+  // Draft restoration may finish after the first summary. Recheck on the
+  // embed's actual render, without polling or changing its business lifecycle.
+  tutorialStatusObserver = new MutationObserver(() => {
+    if (tutorialStatusFrame) return;
+    tutorialStatusFrame = requestAnimationFrame(() => {
+      tutorialStatusFrame = 0;
+      void checkRecognitionTutorial();
+    });
+  });
+  if (mountRoot.value) tutorialStatusObserver.observe(mountRoot.value, { childList: true, subtree: true });
   await loadAccounts();
   if (unmounted) return;
   stopCaptureEvents = subscribeAccountEvents(onStarCaptureEvent);
@@ -707,6 +803,8 @@ onMounted(async function () {
   void recoverPendingCapture();
 });
 onBeforeUnmount(function () {
+  tutorialStatusObserver?.disconnect();
+  cancelAnimationFrame(tutorialStatusFrame);
   unmounted = true;
   if (stopCaptureEvents) stopCaptureEvents();
   productReady.value = false;
@@ -730,6 +828,20 @@ onBeforeUnmount(function () {
     min-height: 44px;
     min-width: 44px;
   }
+}
+.star-tutorial-replay {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
 }
 .star-main {
   min-height: 100vh; min-height: 100dvh;

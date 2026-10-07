@@ -22,9 +22,50 @@
 2. 生成命令（YuanStar web 构建命令）；
 3. 本次同步涉及的宿主可见行为变化。
 
+## 当前星石新手引导正式构建（2026-10-05）
+
+以下源码构建信息由 #20 同步者提供。本次维护者集成能校验提交的产物与 manifest 哈希，
+并执行真实产物行为测试；当前无法访问该源码 commit，未独立重建 YuanStar embed。
+
+- source repo：`drifty13/YuanStar-dev`；source branch：`feature/yuanhub-embed`。
+- source commit：`23a64c8a23ce45310902bd4967397bbaff6e1e7b`；commit message：`fix(ui): 完善重复行图片名称省略`，已 push 到对应 origin 分支。
+- 从已提交 source HEAD 的干净工作树，在 `web/` 下执行 `npm.cmd run build:embed`；构建前后 worktree 均 clean。
+- 完整同步 12 个文件 `web/dist/embed/` → `public/yuanstar-embed/`，逐字节一致；没有手改 bundle。正式产物与上一开发构建完全一致。
+- manifest 的 `_sourceCommit` 指向上述 commit，`_sourceWorkingTree.status` 为 `clean`，不再保留 `changedFiles` / `sourceFileHashes`。全部产物 SHA-256 由 provenance test 校验。
+- 包含重复行图片名称省略、操作与箭头空间约束、图片查看桌面宽度收窄和同实例排序视角跟随；删除允许无选中。worker、模型、ORT 与规则表字节不变。
+- 宿主包含 6 步识别教程与 7 步使用教程，共用 overlay / spotlight / 移动端可拖动卡片；教程状态不写入星石业务数据。
+
+### 2026-10-07：主线集成与教程可达性
+
+- 保留主线默认“背包与核对”、独立“养成计划”展示及“导入截图”入口；教程重看入口随当前阶段切换。
+- 使用教程进入每一步时显示背包工作区，“找到想看的星石”步骤展开筛选，避免被计划视图或空态隐藏。
+- 教程关闭/完成后将焦点交还入口；入口被移除时回退到工作区。在底层产品操作时关闭教程不会抢走焦点。
+- 移动教程的拖动、关闭、示例与导航按钮至少 44×44 CSS px；示例弹窗继续复用既有焦点管理。
+- 游戏账号切换关闭旧教程并废弃未完成的状态检查，不把切换当作用户读完教程；站点用户的已读记录仍按原教程 key 隔离。
+- 保留主线的账号同步队列、CaptureBatch 持久化确认、恢复与导出保护；本次没有手改 embed bundle。
+
+定向验证：
+
+```sh
+node --test test/recognitionTutorial.test.js test/bagTutorial.test.js test/starCaptureTransport.test.js test/starCaptureDraftReceipt.test.js test/starCaptureLifecycle.test.js test/legacyHostAccountMigration.indexeddb.test.js test/yuanstarEmbedProvenance.test.js
+npm run test:behavior -- behavior/recognitionTutorial.spec.js behavior/bagTutorial.spec.js behavior/starRecoveryUx.spec.js behavior/embedProduct.spec.js
+```
+
+## 此前 UI 修复正式构建（2026-10-05）
+
+- 源码分支为 `feature/yuanhub-embed`，source commit 为 `e65664c8f4407e59f932573e39fa130e363380fb`。
+- commit message：`fix(ui): 修正星石背包视图跟随与图片布局`；已 push 到 `origin/feature/yuanhub-embed`。
+- 从已提交 source commit 的干净工作树正式 build；在 `web/` 下执行 `npm.cmd run build:embed`。
+  当次 manifest 的 `_sourceWorkingTree.status` 为 `clean`，不再使用上一轮未提交 checkpoint 的 provenance。
+- 本轮修正重复行标记长文件名约束、图片预览 560px 宽度上限、新增与排序变化后的同实例视角跟随；删除允许清空选中。
+- 完整同步 `web/dist/embed/` 的 12 个文件至 `public/yuanstar-embed/`，逐文件 SHA-256 一致。
+  worker、模型、ORT 与规则表字节不变；未手改 bundle。
+- 继续保留已提交的识别教程 V1 UI 名称与只读 `getRecognitionTutorialStatus()`；教程仍在 Vue 宿主中共用 overlay。
+- 当次 YuanHub 的使用教程开发、embed/provenance 同步保留为未提交改动，随后已由用户人工查看确认。
+
 ## 2026-10-05：宿主导入确认与移动端衔接
 
-- 当前 embed/sourceCommit 保持下节的 `91ce034f4aae2a68a4b3c387e44149fe6302a922`。
+- 当时 embed/sourceCommit 保持 `91ce034f4aae2a68a4b3c387e44149fe6302a922`。
   本机没有 YuanStar 源码；本轮只改宿主、测试与说明，没有手改生成产物或重建 embed。
 - 宿主不再无条件把 `importCaptureBatch` 的 `undefined` 当成功：只有当前账号的
   schemaVersion=1 Draft，transport.source/captureId、全局图片顺序、图片 metadata 与持久化 Blob
@@ -56,7 +97,7 @@ npm run test:behavior -- behavior/embedProduct.spec.js behavior/starRecoveryUx.s
 布局另验收 390/768/1440、1080±1、388×608 短高度、横屏、安全区与 coarse pointer；必要时补 320px。
 Worker mock 只能证明生命周期与重试路径，不能证明真实识别结果或手机网络表现。
 
-## 当前局部 UI 修复来源（2026-10-03）
+## 此前局部 UI 修复来源（2026-10-03）
 
 - 源码分支仍为 `fix/import-draft-lifecycle`，已提交 source commit 为 `91ce034f4aae2a68a4b3c387e44149fe6302a922`，
   commit message 为 `fix(ui): refine star plan action layout`。
