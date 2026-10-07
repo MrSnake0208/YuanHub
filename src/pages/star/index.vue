@@ -9,6 +9,7 @@
             :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy" switch-disabled-reason="星石工作区正在准备或保存，请等待完成后再切换账号。" />
         </template>
         <template #actions>
+          <button type="button" class="star-help-trigger" @click="openStarHelp(activeTab === 'import' ? 'screenshots' : 'review')"><CircleHelp :size="16" aria-hidden="true" />帮助</button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -18,10 +19,6 @@
               </button>
             </div>
           </details>
-        </template>
-        <template #help>
-          <p>导入截图并核对识别结果后，管理当前背包、养成计划与经验星曜。未登录时可先在本机使用，登录后同步当前账号数据。</p>
-          <p>独立创作 · 著作权归作者 Drifty Yan 所有。</p>
         </template>
       </CompactToolHeader>
       <section>
@@ -97,40 +94,32 @@
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
-          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'import' ? replayRecognitionTutorial() : replayBagTutorial()">
-            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'import' ? '重新查看识别教程' : '重新查看使用教程' }}
-          </button>
-          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError && !showBagTutorialDemo" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
+          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
-            <button type="button" class="link" @click="setTab('import'); starImportHelpOpen = true">查看支持的截图格式与说明</button>
+            <button type="button" class="link" @click="openStarHelp('screenshots')">查看截图帮助</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
-          <div v-show="showBagTutorialDemo || summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
+          <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
           <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
             <button
               role="tab"
-              :aria-selected="activeTab === 'review' && tutorialWorkspaceView === 'bag'"
-              :class="{ on: activeTab === 'review' && tutorialWorkspaceView === 'bag' }"
-              :disabled="showBagTutorialDemo"
+              :aria-selected="activeTab === 'review' && starReviewView === 'bag'"
+              :class="{ on: activeTab === 'review' && starReviewView === 'bag' }"
               @click="starReviewView = 'bag'; setTab('review')"
             >
               背包与核对
             </button>
-            <button role="tab" :aria-selected="activeTab === 'review' && tutorialWorkspaceView === 'plan'" :class="{ on: activeTab === 'review' && tutorialWorkspaceView === 'plan' }" :disabled="showBagTutorialDemo" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
+            <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <div v-if="activeTab === 'review' && !showBagTutorialDemo" class="star-workbench-actions">
+          <div v-if="activeTab === 'review'" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
             <button type="button" class="star-filter-toggle" :aria-expanded="starFiltersOpen" aria-controls="product-root" @click="starFiltersOpen = !starFiltersOpen">{{ starFiltersOpen ? '收起筛选与设置' : '更多筛选与设置' }}</button>
           </div>
-          <div v-else-if="activeTab === 'import'" class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
-          <div v-if="activeTab === 'import' && starImportHelpOpen" class="star-availability-note" role="note">
-            <p><b>手机和电脑网页端均可使用。</b>导入截图、核对识别结果并整理背包。首次 OCR 需在本机加载识别资源，请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
-            <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
+          <div v-else class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong></div>
           </div>
-          </div>
-          <div v-if="showBagTutorialDemo" ref="bagTutorialDemoRoot" tabindex="-1"><BagTutorialDemo :view="tutorialDemoView" /></div>
-          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady && !showBagTutorialDemo" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
-          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="showBagTutorialDemo ? bagTutorialDemoRoot : mountRoot" :mode="tutorialMode" :demo="showBagTutorialDemo" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
+          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <RecognitionTutorial :open="recognitionTutorialOpen && Boolean(tutorialStep)" :step="tutorialStep" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :paused="starHelpOpen" :focus-on-open="tutorialManualReplay" @help="openStarHelp" @skip="skipTutorialStep" @close="dismissRecognitionTutorial" />
+          <StarHelpModal :open="starHelpOpen" :topic="starHelpTopic" :auto-disabled="tutorialAutoDisabled" :empty-bag="!summary.currentCount" @close="starHelpOpen = false" @replay="replayCurrentTutorial" @opt-out="dismissRecognitionTutorial('opt-out')" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
@@ -157,15 +146,15 @@
 import { accountIdentityVersion, useAccountListUpdates } from '../../store/accountList.js'
 import { relabelStarArchive } from './starArchiveExport.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Archive, CircleHelp } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import RecognitionTutorial from "./RecognitionTutorial.vue";
-import BagTutorialDemo from "./BagTutorialDemo.vue";
-import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial } from "./recognitionTutorial.js";
-import { createBagTutorialGate } from "./bagTutorial.js";
+import StarHelpModal from "./StarHelpModal.vue";
+import { tutorialStorageKey, tutorialSeen, finishTutorial, shouldAutoStartTutorial, currentRecognitionGuidance } from "./recognitionTutorial.js";
+import { bagGuidance, createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -209,7 +198,8 @@ const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
 const starReviewView = ref('bag');
 const starBrowseEmpty = ref(false);
 const starFiltersOpen = ref(false);
-const starImportHelpOpen = ref(false);
+const starHelpOpen = ref(false);
+const starHelpTopic = ref('screenshots');
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
@@ -218,72 +208,86 @@ const productReady = ref(false);
 const cloudWriteBusy = ref(false);
 const recognitionTutorialOpen = ref(false);
 const recognitionTutorialReplayId = ref(0);
-const tutorialMode = ref("recognition");
-const tutorialUsesDemo = ref(false);
-const tutorialDemoView = ref('bag');
-const bagTutorialDemoRoot = ref(null);
-const showBagTutorialDemo = computed(() => recognitionTutorialOpen.value && tutorialMode.value === 'bag' && tutorialUsesDemo.value);
-const tutorialWorkspaceView = computed(() => showBagTutorialDemo.value ? tutorialDemoView.value : starReviewView.value);
+const tutorialStep = ref(null);
+const tutorialManualReplay = ref(false);
+const tutorialAutoDisabled = ref(false);
 const tutorialCloudReady = ref(false);
 const tutorialCloudHistory = ref(false);
 const tutorialAccountReady = ref(false);
 const recognitionTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null));
-const bagTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, "bag"));
 const bagTutorialGate = createBagTutorialGate();
-const bagTutorialOwner = () => bagTutorialKey.value + ":" + (accountId.value || "guest");
+const bagTutorialOwner = () => recognitionTutorialKey.value + ":" + (accountId.value || "guest");
+const pausedTutorialOwners = new Set();
+let skippedTutorialSteps = new Set();
 let tutorialCheckSequence = 0;
 let recognitionTutorialOwnerKey = "";
 let tutorialStatusObserver = null;
 let tutorialStatusFrame = 0;
 
-function replayRecognitionTutorial() {
-  openTutorial("recognition");
+function openStarHelp(topic = 'screenshots') {
+  starHelpTopic.value = topic;
+  starHelpOpen.value = true;
+  tutorialAutoDisabled.value = tutorialSeen(recognitionTutorialKey.value);
 }
-function replayBagTutorial() {
-  openTutorial("bag");
-}
-function openTutorial(mode) {
-  if (recognitionTutorialOpen.value) dismissRecognitionTutorial();
-  tutorialMode.value = mode;
-  // Freeze the display choice for this run; never seed the real embed with examples.
-  tutorialUsesDemo.value = mode === 'bag' && summary.value.currentCount === 0;
-  tutorialDemoView.value = 'bag';
-  const tab = mode === "bag" ? "review" : "import";
-  if (activeTab.value !== tab) setTab(tab);
-  recognitionTutorialOwnerKey = mode === "bag" ? bagTutorialKey.value : recognitionTutorialKey.value;
+async function replayCurrentTutorial() {
+  starHelpOpen.value = false;
+  await nextTick(); // Let the modal return focus before capturing the replay opener.
+  if (activeTab.value === 'review' && !summary.value.currentCount && !mountRoot.value?.querySelector('.ocr-review [data-review-image]')) setTab('import');
+  pausedTutorialOwners.delete(bagTutorialOwner());
+  skippedTutorialSteps = new Set();
+  tutorialManualReplay.value = true;
+  recognitionTutorialOwnerKey = recognitionTutorialKey.value;
   recognitionTutorialReplayId.value++;
-  // A new component opening always starts at step 1.
   recognitionTutorialOpen.value = true;
+  if (activeTab.value === 'review') {
+    starBrowseEmpty.value = true;
+    starReviewView.value = 'bag';
+    tutorialStep.value = bagGuidance;
+  } else tutorialStep.value = currentRecognitionGuidance(mountRoot.value);
 }
-function revealTutorialStep(step) {
-  if (tutorialMode.value !== "bag") return;
-  if (tutorialUsesDemo.value) { tutorialDemoView.value = step.view || 'bag'; return; }
-  starBrowseEmpty.value = true;
-  starReviewView.value = step.view || 'bag';
-  if (step.id === "find") starFiltersOpen.value = true;
-}
-function dismissRecognitionTutorial() {
-  markTutorialSeen(recognitionTutorialOwnerKey || recognitionTutorialKey.value);
+function dismissRecognitionTutorial(reason = 'later') {
+  finishTutorial(recognitionTutorialOwnerKey || recognitionTutorialKey.value, reason);
+  tutorialAutoDisabled.value = tutorialSeen(recognitionTutorialKey.value);
+  pausedTutorialOwners.add(bagTutorialOwner());
   recognitionTutorialOpen.value = false;
+  tutorialManualReplay.value = false;
+  tutorialStep.value = null;
+}
+function skipTutorialStep(id) {
+  skippedTutorialSteps.add(id);
+  tutorialStep.value = null;
+}
+function scheduleTutorialCheck() {
+  if (tutorialStatusFrame) return;
+  tutorialStatusFrame = requestAnimationFrame(() => {
+    tutorialStatusFrame = 0;
+    void checkRecognitionTutorial();
+  });
 }
 async function checkRecognitionTutorial() {
   const sequence = ++tutorialCheckSequence;
-  if (!productReady.value || !tutorialAccountReady.value || accountsLoading.value || accountError.value ||
-      (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))) return;
+  if (!productReady.value || (!tutorialManualReplay.value && (!tutorialAccountReady.value || accountsLoading.value || accountError.value ||
+      (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))))) return;
   const currentHandle = handle, key = recognitionTutorialKey.value, context = starContextVersion;
-  const status = await currentHandle?.getRecognitionTutorialStatus?.();
+  let status;
+  try { status = await currentHandle?.getRecognitionTutorialStatus?.(); } catch (_) { return; }
   if (context !== starContextVersion || sequence !== tutorialCheckSequence || currentHandle !== handle || key !== recognitionTutorialKey.value || unmounted) return;
   if (!status?.ready) return;
   const hasHistory = status.hasHistory || tutorialCloudHistory.value;
-  const bagEligible = bagTutorialGate.loaded(bagTutorialOwner(), hasHistory);
-  if (!bagEligible) markTutorialSeen(bagTutorialKey.value);
-  if (bagTutorialGate.shouldStart(bagTutorialOwner(), {
-    reviewing: activeTab.value === "review", ready: status.ready, seen: tutorialSeen(bagTutorialKey.value),
+  bagTutorialGate.loaded(bagTutorialOwner(), hasHistory);
+  if (pausedTutorialOwners.has(bagTutorialOwner())) return;
+  if (!recognitionTutorialOpen.value && shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory })) {
+    recognitionTutorialOwnerKey = key;
+    recognitionTutorialOpen.value = true;
+  }
+  const reviewReady = bagTutorialGate.shouldStart(bagTutorialOwner(), {
+    reviewing: activeTab.value === 'review', ready: status.ready, seen: tutorialSeen(key),
     hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')),
-  }) && !(recognitionTutorialOpen.value && tutorialMode.value === "bag")) replayBagTutorial();
-  // Remember experienced users even if they later switch to an empty game account.
-  if (hasHistory) { markTutorialSeen(key); return; }
-  if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value) replayRecognitionTutorial();
+  });
+  if (reviewReady) { recognitionTutorialOwnerKey = key; recognitionTutorialOpen.value = true; }
+  const step = activeTab.value === 'import' ? currentRecognitionGuidance(mountRoot.value)
+    : (reviewReady || tutorialManualReplay.value) ? bagGuidance : null;
+  tutorialStep.value = recognitionTutorialOpen.value && !skippedTutorialSteps.has(step?.id) ? step : null;
 }
 const showArchive = ref(false);
 const showStarImport = ref(false);
@@ -776,6 +780,7 @@ async function mountProduct() {
   }
 }
 function setTab(tab) {
+  if (activeTab.value !== tab && recognitionTutorialOpen.value) dismissRecognitionTutorial('later');
   activeTab.value = tab;
   if (productReady.value) handle?.setActiveTab(tab);
 }
@@ -783,6 +788,11 @@ watch([accountId, accountGame], () => {
   starContextVersion++;
   ++tutorialCheckSequence;
   recognitionTutorialOpen.value = false;
+  tutorialStep.value = null;
+  tutorialManualReplay.value = false;
+  recognitionTutorialOwnerKey = "";
+  skippedTutorialSteps = new Set();
+  starHelpOpen.value = false;
   tutorialAccountReady.value = false;
   bagTutorialGate.reset();
   productReady.value = false;
@@ -792,22 +802,30 @@ watch([accountId, accountGame], () => {
   if (handle && !unmounted) void syncHostAccount().catch(() => {});
 }, { flush: "sync" });
 watch([productReady, tutorialAccountReady, tutorialCloudReady, tutorialCloudHistory, activeTab, recognitionTutorialKey, summary], () => { void checkRecognitionTutorial(); }, { flush: "post" });
-watch(recognitionTutorialKey, () => { ++tutorialCheckSequence; recognitionTutorialOpen.value = false; bagTutorialGate.reset(); }, { flush: "sync" });
-watch(activeTab, (tab) => {
-  if (recognitionTutorialOpen.value && tab !== (tutorialMode.value === "bag" ? "review" : "import")) dismissRecognitionTutorial();
+watch(recognitionTutorialKey, () => {
+  ++tutorialCheckSequence;
+  recognitionTutorialOpen.value = false;
+  tutorialStep.value = null;
+  tutorialManualReplay.value = false;
+  recognitionTutorialOwnerKey = "";
+  skippedTutorialSteps = new Set();
+  starHelpOpen.value = false;
+  bagTutorialGate.reset();
+}, { flush: "sync" });
+watch(activeTab, () => {
+  // OCR's import → review handoff retains eligibility. A manual tab switch
+  // hides this visit's hint without pretending the user completed the task.
+  tutorialStep.value = null;
 });
+watch(starReviewView, view => { if (view === 'plan' && recognitionTutorialOpen.value) dismissRecognitionTutorial('later'); });
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
   // Draft restoration may finish after the first summary. Recheck on the
   // embed's actual render, without polling or changing its business lifecycle.
-  tutorialStatusObserver = new MutationObserver(() => {
-    if (tutorialStatusFrame) return;
-    tutorialStatusFrame = requestAnimationFrame(() => {
-      tutorialStatusFrame = 0;
-      void checkRecognitionTutorial();
-    });
-  });
-  if (mountRoot.value) tutorialStatusObserver.observe(mountRoot.value, { childList: true, subtree: true });
+  tutorialStatusObserver = new MutationObserver(scheduleTutorialCheck);
+  if (mountRoot.value) tutorialStatusObserver.observe(mountRoot.value, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'disabled'] });
+  mountRoot.value?.addEventListener('focusin', scheduleTutorialCheck);
+  mountRoot.value?.addEventListener('click', scheduleTutorialCheck);
   await loadAccounts();
   if (unmounted) return;
   stopCaptureEvents = subscribeAccountEvents(onStarCaptureEvent);
@@ -816,6 +834,8 @@ onMounted(async function () {
 });
 onBeforeUnmount(function () {
   tutorialStatusObserver?.disconnect();
+  mountRoot.value?.removeEventListener('focusin', scheduleTutorialCheck);
+  mountRoot.value?.removeEventListener('click', scheduleTutorialCheck);
   cancelAnimationFrame(tutorialStatusFrame);
   unmounted = true;
   if (stopCaptureEvents) stopCaptureEvents();
@@ -841,7 +861,7 @@ onBeforeUnmount(function () {
     min-width: 44px;
   }
 }
-.star-tutorial-replay {
+.star-help-trigger {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -1104,8 +1124,6 @@ onBeforeUnmount(function () {
 .star-sync-meta { font-size: 12px; }
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
 .star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
-.star-availability-note { margin: 8px 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
-.star-availability-note p { margin: 0; }
 @media (max-width: 1080px) {
   .page-star { --star-bottom-bar-height: 0px; }
 }
