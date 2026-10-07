@@ -78,7 +78,7 @@ const stones = [
 </script>
 
 <style scoped>
-.bag-tutorial-demo { display: grid; gap: 16px; min-width: 0; padding: 16px 0 max(320px, 50dvh); color: var(--ink); }
+.bag-tutorial-demo { display: grid; gap: 16px; min-width: 0; padding: 16px 0; color: var(--ink); }
 .demo-heading h2 { font: 900 20px/1.5 var(--font-s); color: var(--tea); }
 .demo-heading p, .demo-note { font-size: 13px; line-height: 1.7; }
 .demo-panel { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }

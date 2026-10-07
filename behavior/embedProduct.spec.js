@@ -3,6 +3,8 @@ import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { loadAndImportStarCapture, STAR_CAPTURE_IMPORT_SUPERSEDED_CODE } from '../src/pages/star/captureTransport.js'
 import { createStarCaptureLifecycle, importAndMarkStarCapture } from '../src/pages/star/starCaptureLifecycle.js'
+import { currentRecognitionGuidance } from '../src/pages/star/recognitionTutorial.js'
+import { bagGuidance } from '../src/pages/star/bagTutorial.js'
 
 // 本文件直接执行 vendored embed 产物（public/yuanstar-embed/yuanstar-embed.js），
 // 而不是断言它的字符串。之前的 provenance 测试只做子串匹配：即使 capture_game_mismatch
@@ -262,6 +264,29 @@ describe('vendored OCR prewarming', () => {
       ;(entrance === 'drop' ? root.querySelector('#file-drop-zone') : document).dispatchEvent(event)
     }
   }
+
+  it('onboarding reads actual vendored upload/confirmed-draft/overlap states without modifying the embed', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      embed.handle.setActiveTab('import')
+      expect((await embed.handle.getRecognitionTutorialStatus()).ready).toBe(true)
+      expect(currentRecognitionGuidance(embed.root)?.id).toBe('upload')
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      await vi.advanceTimersByTimeAsync(200)
+      expect(embed.root.querySelectorAll('.thumbnail-card.is-confirmed')).toHaveLength(3)
+      expect(currentRecognitionGuidance(embed.root)?.id).toBe('start')
+      // Actual product confirmation modal takes priority over guidance.
+      embed.root.querySelector('[data-start-ocr]').click()
+      expect(embed.root.querySelector('[role="dialog"]')).toBeTruthy()
+      expect(currentRecognitionGuidance(embed.root)).toBeNull()
+      embed.root.querySelector('[data-cancel-ocr-confirm]').click()
+      expect(currentRecognitionGuidance(embed.root)?.id).toBe('start')
+      embed.handle.setActiveTab('review')
+      expect(currentRecognitionGuidance(embed.root)).toBeNull()
+      expect(embed.root.querySelector(bagGuidance.target)?.textContent).toContain('识别结果核对')
+    } finally { await cleanup(embed) }
+  }, 60000)
 
   it('waits ten seconds after initial render, then gives initialize its full 300 seconds', async () => {
     let embed

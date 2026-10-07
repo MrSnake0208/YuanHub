@@ -33,9 +33,28 @@
 - 完整同步 12 个文件 `web/dist/embed/` → `public/yuanstar-embed/`，逐字节一致；没有手改 bundle。正式产物与上一开发构建完全一致。
 - manifest 的 `_sourceCommit` 指向上述 commit，`_sourceWorkingTree.status` 为 `clean`，不再保留 `changedFiles` / `sourceFileHashes`。全部产物 SHA-256 由 provenance test 校验。
 - 包含重复行图片名称省略、操作与箭头空间约束、图片查看桌面宽度收窄和同实例排序视角跟随；删除允许无选中。worker、模型、ORT 与规则表字节不变。
-- 宿主包含 6 步识别教程与 7 步使用教程，共用 overlay / spotlight / 移动端可拖动卡片；教程状态不写入星石业务数据。
+- 当时宿主包含 6 步识别教程与 7 步使用教程；2026-10-07 的任务引导改造见下节。教程状态不写入星石业务数据。
 
-### 2026-10-07：主线集成与教程可达性
+### 2026-10-07：宿主任务驱动 Onboarding
+
+- 删除 6 页识别 + 7 页背包的手动导航。当前提示只读投影 embed 已有 DOM：上传区 → 分类处理中 / 未确认图片 → 确认分类 → 可开始识别。只有实际聚焦重叠控件时才解释重复整行；无重叠可直接 OCR。识别确认弹窗和 OCR 进度期间教程让位。
+- 首次成功 OCR、有真实核对证据且没有历史的账号，仅出现一条「先检查识别异常」提示；正常结果不用逐条确认。编辑、名称汇总、养成、经验、撤回和存档收进统一「星石帮助」，按需展开。
+- 「稍后再看」/ ESC / 切 Tab 只暂停本次页面访问的该账号引导；「跳过此提示」只隐藏本次当前阶段。仅「完成引导」或「不再自动提示」持久化 `yuanhub:star-onboarding:v2:<站点用户>`，同一用户跨游戏账号共享已读偏好。旧 v1 关闭即已读的记录不迁移；有历史的账号继续保持安静，仍可从帮助重看。
+- coachmark 自动避让目标、关联动作、焦点控件与固定导航；空间不足时收起，提供单击展开 / 上下换位。已可见目标不滚动；只在阶段进入且目标完全离开可用视口时定位，保留 reduced-motion、安全区、44px 触控和焦点恢复。没有教程拖动或遮罩阻断产品操作。
+- Header、教程示例、截图要求和核对说明合并到同一个帮助结构。MaaYuan 自动采集文案明确仍在接入中；本地原图默认展示带框和短 caption 的局部放大，完整截图为次级动作。二级示例弹窗继续使用既有 Escape / Tab 层级。
+
+没有修改 embed 生成产物、OCR、业务持久化或云同步契约。宿主依赖 `.thumbnail-card[data-import-image]` / `.is-classifying` / `.is-unconfirmed`、`[data-confirm-pool]`、`[data-start-ocr]`、`.overlap-controls`、`#toggle-ocr-review` 与 `.ocr-review [data-review-image]`；后续同步 embed 时必须运行实际产物的投影测试，避免 DOM 语义漂移。
+
+本次最小验证：
+
+```sh
+node --test test/recognitionTutorial.test.js test/bagTutorial.test.js
+npm run test:behavior -- behavior/recognitionTutorial.spec.js behavior/bagTutorial.spec.js behavior/starRecoveryUx.spec.js behavior/embedProduct.spec.js
+```
+
+浏览器验证使用既有开发服务上的隔离宿主预览：真实 embed 与本机 OCR，账号 / 云 API 为 fixture；不作为真实登录和后端同步验收。真机 Safari、安全区、弱网与真实账号的跨访问提示偏好仍需人工确认。
+
+### 2026-10-07：此前主线集成与教程可达性
 
 - 保留主线默认“背包与核对”、独立“养成计划”展示及“导入截图”入口；教程重看入口随当前阶段切换。
 - 使用教程进入每一步时显示背包工作区，“找到想看的星石”步骤展开筛选，避免被计划视图或空态隐藏。
@@ -51,17 +70,11 @@ node --test test/recognitionTutorial.test.js test/bagTutorial.test.js test/starC
 npm run test:behavior -- behavior/recognitionTutorial.spec.js behavior/bagTutorial.spec.js behavior/starRecoveryUx.spec.js behavior/embedProduct.spec.js
 ```
 
-### 空背包使用教程：独立只读演示
+### 合并主线空背包修复：按需只读示例
 
-当前背包为 0 颗时，手动重看使用教程会展示 Vue 宿主的示例背包：天府、武曲和文昌各一颗，供七步教程定位筛选、编辑、养成目标、经验需求及历史入口。演示卡片持续标注“只读演示，不会保存到你的背包”；经验数值仅用于说明展示方式，不作为实际养成计算结果。
+保留主线 `58e83d1` 的独立 `BagTutorialDemo`：空背包用户可在「星石帮助 → 编辑、养成与进阶技巧 → 查看只读示例背包」主动展开天府、武曲和文昌各一颗的示例，切换背包 / 养成示例。示例控件只读、经验数值仅用于说明；不挂载第二个 embed，不连接账号、保存、导入、同步、导出或真实历史接口。关闭帮助后回到原真实页面与视图，重开示例从背包示例开始；切账号关闭旧帮助。
 
-演示与真实工作区一样分为两个页签：第 1～4 步显示“背包与核对”，第 5～7 步显示“养成计划”，前进或返回时自动切换到步骤所属页签，不同时显示两页内容。演示中的页签只用于标示当前页面；切换由教程控制，独立于真实工作区状态。有星石的真实教程也按同一规则切换页签。
-
-示例视图不挂载第二个 embed，不导入示例快照，不连接账号、保存、同步、导出或真实历史接口。真实 embed 保持挂载，仅在演示期间隐藏；关闭/完成后返回原来的空背包界面，概览仍为 0 颗。演示不改变真实筛选、背包/计划展示和手动空态浏览状态。进入时确定演示模式，后台数据更新不在教程中途切换目标；换账号或离开使用页签会关闭旧演示。已有星石的用户仍在真实工作区查看教程。
-
-示例历史入口在普通文档流中，第七步主动滚动到它；真实工作区的浮动历史入口仍保持原来的不滚动行为。定向回归：`npm run test:behavior -- behavior/starRecoveryUx.spec.js behavior/bagTutorial.spec.js behavior/recognitionTutorial.spec.js`。浏览器另检查七步主目标均可见、320/390/768/1440 与手机横屏、示例与真实背包隔离及退出后的导入入口。
-
-可视区域高度不足 500px 时，教程使用可拖动的底部卡片，避免手机横屏因宽度达到桌面断点而遮住目标标题。
+空背包且没有 OCR 核对证据时，「重新查看当前引导」进入真实上传流程；即使识别后背包仍为 0 颗，只要有核对证据就仍提示检查异常。真实工作区保持挂载，不被示例替换或隐藏，概览不会被三颗示例污染。原七页演示、教程控制业务页签和横屏拖动已由任务提示、按需帮助及自动避让替代。
 
 ## 此前 UI 修复正式构建（2026-10-05）
 
