@@ -11,7 +11,6 @@ test('根页面不掩盖横向溢出，关键页面与弹窗为动态视口提�
   for (const file of [
     'src/styles/main.css',
     'src/styles/feedback-workspace.css',
-    'src/pages/today/index.vue',
     'src/pages/star/index.vue',
     'src/pages/inventory/index.vue',
     'src/components/beta/BetaCommunityDialog.vue',
@@ -21,6 +20,10 @@ test('根页面不掩盖横向溢出，关键页面与弹窗为动态视口提�
     assert.match(source, /100vh/, `${file} 应保留旧浏览器回退`)
     assert.match(source, /100dvh/, `${file} 应使用动态视口高度`)
   }
+  // Today inherits the global main fallback; its scoped rule overrides only dvh.
+  assert.match(main, /main\s*\{[^}]*min-height:\s*100vh;\s*min-height:\s*100dvh/)
+  assert.match(read('src/pages/today/index.vue'), /<main[^>]*class="today-main"/)
+  assert.match(read('src/pages/today/index.vue'), /\.today-main\s*\{[^}]*min-height:\s*100dvh/)
 })
 
 test('库存分区编辑提示在窄屏内居中，避免透明提示撑宽整页', () => {

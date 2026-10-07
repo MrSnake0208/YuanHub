@@ -263,4 +263,7 @@ footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 8
 .is-mobile button { min-height: 44px; min-width: 44px; }
 .is-mobile .recognition-tour-handle { min-height: 44px; padding: 0; }
 .is-mobile .recognition-tour-close { position: absolute; top: 8px; right: 10px; min-height: 44px; min-width: 44px; padding: 0; font-size: 18px; }
+@media (pointer: coarse) {
+  .recognition-tour-card button { min-height: 44px; min-width: 44px; }
+}
 </style>

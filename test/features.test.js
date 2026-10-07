@@ -51,7 +51,7 @@ test('recruitment archive is open with authentication and independent recruitmen
 
 test('operator tracking stays visible as a preview while the real panel remains feature-guarded', function () {
   assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 2)
-  assert.match(operatorPage, /message: "将在 v0\.0\.2 上线"/)
+  assert.match(operatorPage, /message: "功能准备中，开放时间以站内公告为准。"/)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
   assert.match(operatorPage, /function setTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)
   assert.match(operatorPage, /return import\("\.\.\/\.\.\/components\/operator\/OperatorGrowthTracker\.vue"\)/)
