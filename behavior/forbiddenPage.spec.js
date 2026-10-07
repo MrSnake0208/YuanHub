@@ -47,7 +47,7 @@ it('重试保留站内路径与参数，重复点击只发起一次导航', asyn
   await wrapper.get('button').trigger('click')
   expect(wrapper.get('button').attributes('disabled')).toBeDefined()
   await wrapper.get('button').trigger('click')
-  expect(push).toHaveBeenCalledExactlyOnceWith('/recruitment?game=如鸢#history')
+  expect(push).toHaveBeenCalledExactlyOnceWith('/recruitment?game=%E5%A6%82%E9%B8%A2#history')
   pending.resolve(undefined)
   await flushPromises()
   expect(wrapper.get('button').attributes('disabled')).toBeUndefined()

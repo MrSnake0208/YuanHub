@@ -1327,5 +1327,5 @@ it('空录入没有草稿；收起和重新打开后仍能检查未保存奖励�
   expect(wrapper.vm.hasDraft()).toBe(true)
   await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
   expect(wrapper.vm.hasDraft()).toBe(false)
-  expect(importInventory).not.toHaveBeenCalled()
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })

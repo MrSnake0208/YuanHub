@@ -85,7 +85,7 @@ it('超过8个账号才搜索；完整名称保留在可访问标签，空结果
   expect(document.querySelector('.switch-list').textContent).toContain('没有匹配')
   expect(document.querySelectorAll('.account-switch-panel footer button')).toHaveLength(2)
 })
-it.each([[], [rows[0]]])('空账号或单账号仍能打开，当前项不触发确认或写入', async accounts => {
+it.each([{ accounts: [] }, { accounts: [rows[0]] }])('空账号或单账号仍能打开，当前项不触发确认或写入', async ({ accounts }) => {
   const beforeSwitch = vi.fn()
   const { wrapper } = await render({ accounts, beforeSwitch }); await open(wrapper)
   expect(document.querySelector('.account-switch-panel h2').textContent).toBe('游戏账号')
@@ -120,7 +120,7 @@ it('默认账号条也提供同一切换器；管理操作原地打开并恢复�
   expect(wrapper.get('.context-selector').text().replace(/\s/g, '')).toContain('代号鸢·主号')
   await wrapper.get('.context-action').trigger('click'); await flushPromises()
   expect(document.querySelector('.account-panel').textContent).toContain('管理你的游戏账号')
-  document.querySelector('.account-panel .panel-close').click(); await flushPromises()
+  document.querySelector('.account-panel [aria-label="关闭账号面板"]').click(); await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('.context-action').element)
 })
 
@@ -139,7 +139,7 @@ it.each(['create', 'list'])('Switcher 的 %s 原地打开唯一 Manager，关闭
   expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
   expect(document.querySelector('.account-panel h3').textContent).toBe(view === 'create' ? '新建游戏账号' : '游戏账号')
   expect(router.currentRoute.value.fullPath).toBe('/operator?tab=current#ledger')
-  document.querySelector('.account-panel .panel-close').click(); await flushPromises()
+  document.querySelector('.account-panel [aria-label="关闭账号面板"]').click(); await flushPromises()
   expect(document.querySelector('[role="dialog"]')).toBeNull()
   expect(document.activeElement).toBe(wrapper.get('.context-selector').element)
 })

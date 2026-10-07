@@ -20,7 +20,7 @@ const button = (text) => wrapper.findAll('button').find(node => node.text() === 
 async function render(query = '') {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/user/profile', component: { template: '<div />' } }] })
   await router.push('/calendar?view=agenda' + query); await router.isReady()
-  wrapper = mount(Calendar, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
+  wrapper = mount({ template: '<router-view />' }, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
   await flushPromises(); return router
 }
 beforeEach(() => {
@@ -202,6 +202,7 @@ it('canceling view change preserves unsaved editor when view comes from preferen
   await wrapper.get('input[type=text]').setValue('尚未保存')
   dialog.confirm.mockResolvedValue(false)
   await button('月历').trigger('click'); await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '放弃未保存修改？' }))
   expect(wrapper.get('input[type=text]').element.value).toBe('尚未保存')
   expect(router.currentRoute.value.query.view).toBeUndefined()
 })

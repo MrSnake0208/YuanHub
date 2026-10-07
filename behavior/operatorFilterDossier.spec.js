@@ -98,7 +98,7 @@ it('同一筛选组件呈现在册、独立弃置和显式全部的计数与选�
 
 
 it('紧凑模式常驻搜索和状态，更多筛选展开后可使用原有属性条件', async () => {
-  const wrapper = mount(OperatorFilterDossier, { props: {
+  const wrapper = mount(OperatorFilterDossier, { attachTo: document.body, props: {
     compact: true, searchable: true, profOptions: ['阳'], statusOptions: [{ value: 'all', label: '全部' }],
   } })
   expect(wrapper.get('.current-filter-search input').isVisible()).toBe(true)

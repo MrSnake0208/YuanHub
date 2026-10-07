@@ -6,7 +6,7 @@ import { useRoute } from 'vue-router'
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
   const route = reactive({ query: {} })
-  return { useRoute: () => route, useRouter: () => ({ replace: vi.fn() }) }
+  return { useRoute: () => route, useRouter: () => ({ replace: vi.fn(async location => { route.query = location.query }) }) }
 })
 
 beforeEach(() => { useRoute().query = {}; vi.clearAllMocks() })
