@@ -100,35 +100,37 @@
           <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'import' ? replayRecognitionTutorial() : replayBagTutorial()">
             <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'import' ? '重新查看识别教程' : '重新查看使用教程' }}
           </button>
-          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
+          <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError && !showBagTutorialDemo" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
             <button type="button" class="link" @click="setTab('import'); starImportHelpOpen = true">查看支持的截图格式与说明</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
-          <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
+          <div v-show="showBagTutorialDemo || summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
           <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
             <button
               role="tab"
-              :aria-selected="activeTab === 'review' && starReviewView === 'bag'"
-              :class="{ on: activeTab === 'review' && starReviewView === 'bag' }"
+              :aria-selected="activeTab === 'review' && tutorialWorkspaceView === 'bag'"
+              :class="{ on: activeTab === 'review' && tutorialWorkspaceView === 'bag' }"
+              :disabled="showBagTutorialDemo"
               @click="starReviewView = 'bag'; setTab('review')"
             >
               背包与核对
             </button>
-            <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
+            <button role="tab" :aria-selected="activeTab === 'review' && tutorialWorkspaceView === 'plan'" :class="{ on: activeTab === 'review' && tutorialWorkspaceView === 'plan' }" :disabled="showBagTutorialDemo" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <div v-if="activeTab === 'review'" class="star-workbench-actions">
+          <div v-if="activeTab === 'review' && !showBagTutorialDemo" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
             <button type="button" class="star-filter-toggle" :aria-expanded="starFiltersOpen" aria-controls="product-root" @click="starFiltersOpen = !starFiltersOpen">{{ starFiltersOpen ? '收起筛选与设置' : '更多筛选与设置' }}</button>
           </div>
-          <div v-else class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
+          <div v-else-if="activeTab === 'import'" class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
           <div v-if="activeTab === 'import' && starImportHelpOpen" class="star-availability-note" role="note">
             <p><b>手机和电脑网页端均可使用。</b>导入截图、核对识别结果并整理背包。首次 OCR 需在本机加载识别资源，请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
             <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
           </div>
           </div>
-          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
-          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
+          <div v-if="showBagTutorialDemo" ref="bagTutorialDemoRoot" tabindex="-1"><BagTutorialDemo :view="tutorialDemoView" /></div>
+          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady && !showBagTutorialDemo" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="showBagTutorialDemo ? bagTutorialDemoRoot : mountRoot" :mode="tutorialMode" :demo="showBagTutorialDemo" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
@@ -161,6 +163,7 @@ import { Archive, CircleHelp } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import RecognitionTutorial from "./RecognitionTutorial.vue";
+import BagTutorialDemo from "./BagTutorialDemo.vue";
 import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial } from "./recognitionTutorial.js";
 import { createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
@@ -216,6 +219,11 @@ const cloudWriteBusy = ref(false);
 const recognitionTutorialOpen = ref(false);
 const recognitionTutorialReplayId = ref(0);
 const tutorialMode = ref("recognition");
+const tutorialUsesDemo = ref(false);
+const tutorialDemoView = ref('bag');
+const bagTutorialDemoRoot = ref(null);
+const showBagTutorialDemo = computed(() => recognitionTutorialOpen.value && tutorialMode.value === 'bag' && tutorialUsesDemo.value);
+const tutorialWorkspaceView = computed(() => showBagTutorialDemo.value ? tutorialDemoView.value : starReviewView.value);
 const tutorialCloudReady = ref(false);
 const tutorialCloudHistory = ref(false);
 const tutorialAccountReady = ref(false);
@@ -237,6 +245,9 @@ function replayBagTutorial() {
 function openTutorial(mode) {
   if (recognitionTutorialOpen.value) dismissRecognitionTutorial();
   tutorialMode.value = mode;
+  // Freeze the display choice for this run; never seed the real embed with examples.
+  tutorialUsesDemo.value = mode === 'bag' && summary.value.currentCount === 0;
+  tutorialDemoView.value = 'bag';
   const tab = mode === "bag" ? "review" : "import";
   if (activeTab.value !== tab) setTab(tab);
   recognitionTutorialOwnerKey = mode === "bag" ? bagTutorialKey.value : recognitionTutorialKey.value;
@@ -246,8 +257,9 @@ function openTutorial(mode) {
 }
 function revealTutorialStep(step) {
   if (tutorialMode.value !== "bag") return;
+  if (tutorialUsesDemo.value) { tutorialDemoView.value = step.view || 'bag'; return; }
   starBrowseEmpty.value = true;
-  starReviewView.value = "bag";
+  starReviewView.value = step.view || 'bag';
   if (step.id === "find") starFiltersOpen.value = true;
 }
 function dismissRecognitionTutorial() {

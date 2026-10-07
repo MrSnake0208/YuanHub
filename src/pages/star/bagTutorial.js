@@ -1,11 +1,11 @@
 export const bagTutorialSteps = [
   { id: 'review', title: '检查识别结果', body: '识别完成后，可以在这里回看识别结果。\n发现名称、等级或其他内容不对时，可以查看原图并修正。', target: '.ocr-review', exampleAction: 'review-info', exampleLabel: '查看核对说明' },
-  { id: 'bags', title: '认识两个背包', body: '左边是现在拥有的星石，右边是对应的养成计划。\n点击任意一侧，都会选中同一颗星石。', target: '.inventory-grid' },
+  { id: 'bags', title: '认识两个工作区', body: '「背包与核对」查看现在拥有的星石，「养成计划」查看对应的目标。\n两页对应同一颗星石。', target: '.inventory-grid' },
   { id: 'find', title: '找到想看的星石', body: '可以按大类、品质和名称筛选，也可以切换逐颗明细 / 名称汇总和排序方式。\n在视图「名称汇总」里，双击某组星石的名称，可以展开查看这一组的详情。', target: '.review-toolbar' },
-  { id: 'edit', title: '编辑或新增星石', paragraphs: ['选中一行后，下方会载入它。\n直接修改名称、等级或品质，会编辑当前这颗星石。', '要新增时，先在编辑区填好内容，再点「新增当前行」，原来的星石会保留。\n如果不改内容直接新增，相当于复制当前行。\n删除则使用「删除当前行」。'], target: '.current-editor', relatedTargets: '#current-rows .is-selected, #current-rows .is-counterpart' },
-  { id: 'plan', title: '设置养成目标', body: '选中一颗星石后，可以在这里设置计划等级。\n开启「仅看待养成」，可以只看还没有达到计划等级的星石。', target: '.plan-editor', relatedTargets: '.pending-only-toggle' },
-  { id: 'experience', title: '看看还需要多少经验星曜', body: '左边记录现有经验星曜。\n右边会显示当前选中星石、当前视图内所有待养成星石的需求，以及扣除现有库存后还缺多少。', target: '.experience-section' },
-  { id: 'history', title: '撤回、重做和近期存档', body: '左右箭头可以撤回 / 重做最近操作，电脑端也可以使用 Ctrl + Z / Ctrl + Y。\n时钟里可以查看近期 3 个存档。', target: '.review-workspace-tools', scroll: 'preserve', mobileAvoidTarget: true },
+  { id: 'edit', title: '编辑或新增星石', paragraphs: ['选中一行后，下方会载入它。\n直接修改名称、等级或品质，会编辑当前这颗星石。', '要新增时，先在编辑区填好内容，再点「新增当前行」，原来的星石会保留。\n如果不改内容直接新增，相当于复制当前行。\n删除则使用「删除当前行」。'], target: '.current-editor', relatedTargets: '#current-rows .is-selected, #current-rows .is-counterpart, [data-tutorial-selected-row]' },
+  { id: 'plan', view: 'plan', title: '设置养成目标', body: '切到「养成计划」后，可以在这里设置选中星石的计划等级。\n开启「仅看待养成」，可以只看还没有达到计划等级的星石。', target: '.plan-editor', relatedTargets: '.pending-only-toggle' },
+  { id: 'experience', view: 'plan', title: '看看还需要多少经验星曜', body: '左边记录现有经验星曜。\n右边会显示当前选中星石、当前视图内所有待养成星石的需求，以及扣除现有库存后还缺多少。', target: '.experience-section' },
+  { id: 'history', view: 'plan', title: '撤回、重做和近期存档', body: '左右箭头可以撤回 / 重做最近操作，电脑端也可以使用 Ctrl + Z / Ctrl + Y。\n时钟里可以查看近期 3 个存档。', target: '.review-workspace-tools', scroll: 'preserve', mobileAvoidTarget: true },
 ]
 
 export const bagReviewInfo = {

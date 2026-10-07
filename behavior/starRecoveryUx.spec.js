@@ -113,6 +113,50 @@ it('空背包直接引导导入，养成计划只改变展示，不新增持久�
   wrapper.unmount()
 })
 
+it.each(['close', 'finish'])('空背包七步演示只读且隔离，%s 后恢复真实空态', async action => {
+  localStorage.setItem('star-tabs', 'review')
+  const wrapper = render()
+  await flushPromises(); await loadStylesheet()
+  const product = wrapper.get('#product-root').element
+  const handle = embedMount.mock.results[0].value
+  const reads = handle.getCloudBusinessSnapshot.mock.calls.length
+  const api = await import('../src/api/starState.js')
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  const demo = wrapper.get('.bag-tutorial-demo')
+  expect(wrapper.get('.tool-summary').text()).toContain('当前背包 0 颗')
+  expect(wrapper.get('#product-root').element).toBe(product)
+  expect(wrapper.get('#product-root').isVisible()).toBe(false)
+  expect(wrapper.find('.star-empty').exists()).toBe(false)
+  expect(demo.findAll('tbody').every(body => body.findAll('tr').length === 3)).toBe(true)
+  expect(demo.findAll('input, select, button').every(control => control.element.matches(':disabled') || control.element.readOnly)).toBe(true)
+  const { bagTutorialSteps } = await import('../src/pages/star/bagTutorial.js')
+  const tutorial = wrapper.findComponent({ name: 'RecognitionTutorial' })
+  expect(tutorial.props('root')).toBe(demo.element.parentElement)
+  const card = () => document.querySelector('.recognition-tour-card')
+  expect(card().textContent).toContain('只读演示')
+  for (const [index, step] of bagTutorialSteps.entries()) {
+    expect(demo.find(step.target).exists(), step.id).toBe(true)
+    expect(wrapper.get('.star-tabs [aria-selected="true"]').text()).toBe(step.view === 'plan' ? '养成计划' : '背包与核对')
+    expect(demo.find('.current-editor').exists()).toBe(step.view !== 'plan')
+    expect(demo.find('.plan-editor').exists()).toBe(step.view === 'plan')
+    expect(demo.findAll('tbody')).toHaveLength(1)
+    if (action === 'close' && index === 4) { card().querySelector('.recognition-tour-close').click(); break }
+    card().querySelector('.recognition-tour-next').click(); await flushPromises()
+  }
+  await flushPromises()
+  expect(wrapper.find('.bag-tutorial-demo').exists()).toBe(false)
+  expect(wrapper.get('.star-empty').text()).toContain('建立你的星石背包')
+  expect(wrapper.get('#product-root').isVisible()).toBe(true)
+  expect(wrapper.get('.tool-summary').text()).toContain('当前背包 0 颗')
+  expect(handle.getCloudBusinessSnapshot).toHaveBeenCalledTimes(reads)
+  expect(handle.importCaptureBatch).not.toHaveBeenCalled()
+  expect(api.patchCurrentStarState).not.toHaveBeenCalled()
+  expect(api.rebuildStarState).not.toHaveBeenCalled()
+  expect(api.restoreStarRecoveryPoint).not.toHaveBeenCalled()
+  expect(localStorage.getItem('star-tabs')).toBe('review')
+  wrapper.unmount()
+})
+
 it('默认直接进入背包，截图识别阶段与隐私说明仅在导入流程出现', async () => {
   const wrapper = render()
   await flushPromises()
@@ -295,23 +339,50 @@ it('historical bag owner never auto starts even after another OCR, but manual ba
   expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
 })
 
-it('bag replay reveals the current workspace and filters, and account changes close the old tour', async () => {
+it('nonempty bag replay uses the real workspace and filters, and account changes close the old tour', async () => {
   enableTutorialStatus('bag-current-workspace', true)
   localStorage.setItem('star-tabs', 'review')
   listAccounts.mockResolvedValue([{ id: 'acc-1', name: '测试账号', game: '如鸢' }, { id: 'acc-2', name: '另一个', game: '如鸢' }])
   const wrapper = render(); await flushPromises(); await loadStylesheet()
+  embedMount.mock.calls[0][1].onSummaryChange({ currentCount: 3, planCount: 1, gameVersion: '如鸢' }); await flushPromises()
   await wrapper.findAll('[role="tab"]')[1].trigger('click')
   expect(wrapper.get('#product-root').classes()).toContain('is-plan-view')
   await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(wrapper.find('.bag-tutorial-demo').exists()).toBe(false)
+  expect(wrapper.findComponent({ name: 'RecognitionTutorial' }).props('root')).toBe(wrapper.get('#product-root').element)
   expect(wrapper.get('#product-root').classes()).not.toContain('is-plan-view')
   expect(wrapper.get('#product-root').classes()).not.toContain('is-empty-view')
   for (let index = 0; index < 2; index++) {
     document.querySelector('.recognition-tour-next').click(); await flushPromises()
   }
   expect(wrapper.get('#product-root').classes()).toContain('filters-open')
+  for (let index = 0; index < 2; index++) {
+    document.querySelector('.recognition-tour-next').click(); await flushPromises()
+  }
+  expect(wrapper.get('#product-root').classes()).toContain('is-plan-view')
+  expect(wrapper.get('.star-tabs [aria-selected="true"]').text()).toBe('养成计划')
+  document.querySelector('.recognition-tour-card footer button').click(); await flushPromises()
+  expect(wrapper.get('#product-root').classes()).not.toContain('is-plan-view')
   activeAccount.set('acc-2'); await flushPromises()
   expect(document.querySelector('.recognition-tour-card')).toBeNull()
   expect(localStorage.getItem('yuanhub:star-bag:v1:bag-current-workspace')).toBe('seen')
+})
+
+it('换账号立即移除旧空背包演示，下一次重看从第一步重新开始', async () => {
+  enableTutorialStatus('bag-demo-account-switch', true)
+  localStorage.setItem('star-tabs', 'review')
+  listAccounts.mockResolvedValue([{ id: 'acc-1', game: '如鸢' }, { id: 'acc-2', game: '如鸢' }])
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(wrapper.find('.bag-tutorial-demo').exists()).toBe(true)
+  document.querySelector('.recognition-tour-next').click(); await flushPromises()
+  activeAccount.set('acc-2'); await flushPromises()
+  expect(wrapper.find('.bag-tutorial-demo').exists()).toBe(false)
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
+  expect(document.querySelector('.recognition-tour-count').textContent).toBe('1 / 7')
+  expect(wrapper.find('.bag-tutorial-demo').exists()).toBe(true)
+  wrapper.unmount()
 })
 
 it('a tutorial status resolved after an account switch cannot open the old account tour', async () => {

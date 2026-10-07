@@ -114,9 +114,9 @@ it('screenshot viewer has all three originals, handles missing images and keeps 
   expect(modal().textContent).toContain('紫色框部分')
   expect(modal().textContent).not.toContain('下一张')
 })
-it('compact mobile sheet only offers handle dragging, keeps navigation visible and replay starts at step one', async () => {
-  vi.stubGlobal('innerWidth', 390)
-  vi.stubGlobal('innerHeight', 844)
+it.each([[390, 844], [844, 390]])('compact %ix%i sheet only offers handle dragging, keeps navigation visible and replay starts at step one', async (width, height) => {
+  vi.stubGlobal('innerWidth', width)
+  vi.stubGlobal('innerHeight', height)
   const wrapper = mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body })
   await settle()
   expect(card().textContent).toContain('本教程卡片可拖动，不挡住操作即可')
