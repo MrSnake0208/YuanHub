@@ -1,70 +1,84 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { recognitionTutorialSteps, tutorialStepIndex, tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial, tutorialCardPosition, clipTutorialRect, clampTutorialLift } from '../src/pages/star/recognitionTutorial.js'
+import { recognitionGuidance, recognitionTutorialExamples, tutorialStorageKey, tutorialSeen, finishTutorial, shouldAutoStartTutorial, tutorialCardPosition, clipTutorialRect, shouldRevealTutorialTarget } from '../src/pages/star/recognitionTutorial.js'
 
-test('six manual steps clamp at both ends and progress text remains exact', () => {
-  assert.equal(recognitionTutorialSteps.length, 6)
-  assert.equal(tutorialStepIndex(0, -1), 0)
-  assert.equal(tutorialStepIndex(5, 1), 5)
-  assert.equal(tutorialStepIndex(2, -1), 1)
-  assert.equal(tutorialStepIndex(2, 1), 3)
-  assert.equal(recognitionTutorialSteps[5].body, '识别进度会显示在这里。第一次模型下载会比较缓慢。\n完成后会进入背包整理，再核对识别结果。')
-})
-test('automatic tutorial requires a loaded empty import workspace and unseen user', () => {
+test('automatic guidance requires a hydrated empty workspace and an unseen user', () => {
   const newUser = { ready: true, importing: true, seen: false, hasHistory: false }
   assert.equal(shouldAutoStartTutorial(newUser), true)
-  for (const override of [{ ready: false }, { importing: false }, { seen: true }, { hasHistory: true }, { hasHistory: undefined }]) {
-    assert.equal(shouldAutoStartTutorial({ ...newUser, ...override }), false)
-  }
+  for (const override of [{ ready: false }, { importing: false }, { seen: true }, { hasHistory: true }, { hasHistory: undefined }]) assert.equal(shouldAutoStartTutorial({ ...newUser, ...override }), false)
 })
-test('dismissal persists per site user, including a storage failure fallback', () => {
-  const key = tutorialStorageKey('focused-unit-user')
-  const data = new Map(), storage = { getItem: key => data.get(key), setItem: (key, value) => data.set(key, value) }
+test('only completion or explicit opt-out persists; v1 dismissal does not disable v2 guidance', () => {
+  const key = tutorialStorageKey('unit-user'), data = new Map([['yuanhub:star-recognition:v1:unit-user', 'seen']])
+  const storage = { getItem: key => data.get(key), setItem: (key, value) => data.set(key, value) }
   assert.equal(tutorialSeen(key, storage), false)
-  markTutorialSeen(key, storage)
+  for (const reason of ['later', 'skip', 'escape', 'tab', 'account', undefined]) {
+    finishTutorial(key, reason, storage)
+    assert.equal(tutorialSeen(key, storage), false)
+  }
+  finishTutorial(key, 'complete', storage)
   assert.equal(data.get(key), 'seen')
-  assert.equal(tutorialSeen(key, storage), true)
-  assert.notEqual(tutorialStorageKey('other-user'), key)
+  const optOut = tutorialStorageKey('opt-out-unit-user')
+  finishTutorial(optOut, 'opt-out', storage)
+  assert.equal(tutorialSeen(optOut, storage), true)
+  assert.notEqual(tutorialStorageKey('another-user'), key)
   const broken = { getItem() { throw Error('blocked') }, setItem() { throw Error('blocked') } }
-  const brokenKey = tutorialStorageKey('blocked-storage-user')
-  markTutorialSeen(brokenKey, broken)
-  assert.equal(tutorialSeen(brokenKey, broken), true)
-})
-test('desktop placement prefers right, then left, below, above and keeps collision fallback on screen', () => {
-  const view = { left: 0, top: 0, width: 1440, height: 900 }, size = { width: 340, height: 250 }
-  assert.equal(tutorialCardPosition({ left: 300, right: 800, top: 200, bottom: 400 }, size, view).placement, 'right')
-  assert.equal(tutorialCardPosition({ left: 800, right: 1400, top: 200, bottom: 400 }, size, view).placement, 'left')
-  assert.equal(tutorialCardPosition({ left: 100, right: 1300, top: 200, bottom: 400 }, size, view).placement, 'bottom')
-  assert.equal(tutorialCardPosition({ left: 100, right: 1300, top: 500, bottom: 850 }, size, view).placement, 'top')
-  for (const width of [320, 390, 430, 767, 768, 1024, 1440]) {
-    const result = tutorialCardPosition(null, size, { ...view, width })
-    assert.ok(result.left >= 12)
-    assert.ok(result.left + Math.min(size.width, width - 24) <= width - 12)
-    assert.ok(result.top >= 12 && result.top + size.height <= 888)
+  const fallback = tutorialStorageKey('fallback-unit-user')
+  finishTutorial(fallback, 'later', broken)
+  assert.equal(tutorialSeen(fallback, broken), false)
+  finishTutorial(fallback, 'complete', broken)
+  assert.equal(tutorialSeen(fallback, broken), true)
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  try {
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw Error('storage access denied') } })
+    const inaccessible = tutorialStorageKey('inaccessible-unit-user')
+    finishTutorial(inaccessible, 'later')
+    assert.equal(tutorialSeen(inaccessible), false)
+    finishTutorial(inaccessible, 'opt-out')
+    assert.equal(tutorialSeen(inaccessible), true)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor)
+    else delete globalThis.localStorage
   }
 })
-test('spotlight clips offscreen targets and mobile drag remains bounded', () => {
-  const view = { left: 0, top: 0, width: 390, height: 844 }
+test('targets already visible, including partially visible large targets, never request a scroll', () => {
+  const viewport = { top: 64, height: 700 }
+  for (const rect of [{ top: 100, bottom: 200 }, { top: 40, bottom: 90 }, { top: 700, bottom: 1200 }, { top: 0, bottom: 1000 }]) assert.equal(shouldRevealTutorialTarget(recognitionGuidance.upload, rect, viewport), false)
+  for (const rect of [{ top: 0, bottom: 60 }, { top: 900, bottom: 1000 }]) assert.equal(shouldRevealTutorialTarget(recognitionGuidance.upload, rect, viewport), true)
+  assert.equal(shouldRevealTutorialTarget(recognitionGuidance.overlap, { top: 900, bottom: 1000 }, viewport), false)
+  assert.equal(shouldRevealTutorialTarget(recognitionGuidance.upload, null, viewport), false)
+})
+test('placement avoids target and related controls on phone, landscape, tablet and desktop', () => {
+  for (const [width, height] of [[320, 844], [390, 844], [430, 844], [767, 900], [768, 900], [844, 390], [1024, 900], [1440, 900]]) {
+    const view = { left: 0, top: 64, width, height: height - 64 }
+    const target = { left: 20, right: width - 20, top: 100, bottom: 200 }
+    const size = { width: width < 768 ? width - 24 : 340, height: 180 }
+    let result = tutorialCardPosition(target, size, view, [{ left: 20, right: 80, top: 216, bottom: 260 }])
+    if (height === 390) {
+      assert.equal(result.overlaps, true, 'landscape must request compact fallback')
+      size.height = 60
+      result = tutorialCardPosition(target, size, view, [{ left: 20, right: 80, top: 216, bottom: 260 }])
+    }
+    assert.equal(result.overlaps, false, `${width}×${height}`)
+    assert.ok(result.left >= 12 && result.left + size.width <= width - 12)
+    assert.ok(result.top >= 76 && result.top + size.height <= height - 12)
+  }
+})
+test('oversized geometry signals collapse; compact placement can use another edge', () => {
+  const view = { left: 0, top: 64, width: 390, height: 326 }, target = { left: 12, right: 378, top: 76, bottom: 230 }
+  assert.equal(tutorialCardPosition(target, { width: 366, height: 200 }, view).overlaps, true)
+  assert.equal(tutorialCardPosition(target, { width: 366, height: 60 }, view).overlaps, false)
+  const empty = tutorialCardPosition(null, { width: 366, height: 60 }, view, [], 'top')
+  assert.equal(empty.placement, 'top')
   assert.equal(clipTutorialRect({ left: 0, right: 200, top: 900, bottom: 1100, width: 200, height: 200 }, view), null)
-  assert.deepEqual(clipTutorialRect({ left: -20, right: 400, top: 40, bottom: 900, width: 420, height: 860 }, view), { left: 0, top: 32, right: 390, bottom: 844, width: 390, height: 812 })
-  assert.equal(clampTutorialLift(1000, 844, 300), 140)
-  assert.equal(clampTutorialLift(-30, 844, 300), 0)
-  assert.equal(clampTutorialLift(140, 360, 300), 36)
 })
-
-test('confirmation card avoids covering related confirm buttons when there is room below', () => {
-  const target = { left: 600, right: 700, top: 90, bottom: 134 }
-  const related = { left: 950, right: 1050, top: 90, bottom: 134 }
-  const card = tutorialCardPosition(target, { width: 340, height: 200 }, { left: 0, top: 0, width: 1440, height: 900 }, [target, related])
-  assert.equal(card.placement, 'right')
-  assert.equal(card.top, 150)
-})
-
-test('maximum mobile lift leaves both safe areas and the top margin in a short viewport', () => {
-  const height = 420, cardHeight = 330, safeArea = { top: 20, bottom: 34 }
-  const lift = clampTutorialLift(1000, height, cardHeight, safeArea)
-  assert.equal(lift, 12)
-  assert.equal(height - (12 + safeArea.bottom + lift) - cardHeight, 12 + safeArea.top)
-  assert.equal(clampTutorialLift(1000, 360, 300, { bottom: 34 }), 2)
-  assert.equal(clampTutorialLift(1000, 360, 300, safeArea), 0)
+test('all local examples have explicit crops and captions; no unavailable collection promise', () => {
+  for (const item of Object.values(recognitionTutorialExamples).flat()) {
+    assert.match(item.src, /^\/tutorial\/star\//)
+    assert.ok(item.caption && item.crops.length)
+    for (const crop of item.crops) {
+      assert.ok(crop.x >= 0 && crop.y >= 0 && crop.x + crop.width <= 100 && crop.y + crop.height <= 100)
+      assert.ok(crop.aspect > 0 && crop.label)
+    }
+  }
+  for (const step of Object.values(recognitionGuidance)) assert.doesNotMatch(step.body, /MaaYuan.*自动采集/)
 })
