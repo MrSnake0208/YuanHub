@@ -273,7 +273,8 @@ it('账号A→B立即隐藏旧状态，失败继续隐藏，重试B后清空或�
   await currentTab(wrapper); await flushPromises()
   expectStatus(wrapper, '已满')
   const pending = deferred()
-  api.getOperatorCurrent.mockReturnValueOnce(pending.promise)
+  // Account switching and opening the overview can both read B; keep both pending.
+  api.getOperatorCurrent.mockReturnValue(pending.promise)
   activeAccount.set('accB'); await nextTick()
   expectNoStatus(wrapper)
   await currentTab(wrapper)
@@ -306,7 +307,8 @@ it('延迟A读取不覆盖B；版本切换成功加载前隐藏旧状态', async
   pendingA.resolve(response({ op: entry() })); await flushPromises()
   expectStatus(wrapper, '未满')
   const pendingGame = deferred()
-  api.getOperatorCurrent.mockReturnValueOnce(pendingGame.promise)
+  // Both automatic refresh and the overview read must use the new game's response.
+  api.getOperatorCurrent.mockReturnValue(pendingGame.promise)
   activeAccount.setGame('代号鸢'); await nextTick()
   expectNoStatus(wrapper)
   await currentTab(wrapper)
@@ -411,6 +413,7 @@ it('账号切换无需换页签：立即清除旧密探，自动读取B；A→B�
 })
 it('切换入口复用密探编辑的放弃确认，取消保留草稿；保存中禁用切换', async () => {
   const { dialog } = await import('../src/utils/dialog.js')
+  api.getOperatorCurrent.mockResolvedValue(response({ op: entry([1, 2, 3]) }))
   const wrapper = await render()
   await wrapper.get('[aria-label="编辑测试密探"]').trigger('click'); await flushPromises()
   await wrapper.get('.oddity-fill-max').trigger('click')

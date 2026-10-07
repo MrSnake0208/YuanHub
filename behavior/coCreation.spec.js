@@ -191,8 +191,10 @@ describe('反馈中心公开广场', () => {
     api.listPublicFeedback.mockResolvedValue({ items: [publicItem()], total: 1 })
     const wrapper = render(FeedbackPlazaPage)
     await flushPromises()
-    expect(wrapper.get('h1').text()).toBe('反馈中心')
-    expect(wrapper.text()).toContain('我的反馈用于')
+    expect(wrapper.get('h1').text()).toBe('反馈广场')
+    expect(wrapper.get('.plaza-context').text()).toContain('这里只展示管理员整理后的公开内容')
+    expect(wrapper.get('.plaza-submit').text()).toBe('提交反馈')
+    expect(wrapper.get('.plaza-submit').getComponent(RouterLinkStub).props('to')).toBe('/feedback?new=1')
     expect(api.listPublicFeedback).toHaveBeenCalled()
   })
   it('旧许愿入口的类型筛选和公开详情意图传递给广场', async () => {

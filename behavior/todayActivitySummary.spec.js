@@ -17,7 +17,7 @@ vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ isLoggedIn: false, accessToken: '', userInfo: null }) }
 })
-vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { template: '<nav />' } }))
+vi.mock('../src/components/IslandSidebar.vue', () => ({ default: { name: 'IslandSidebar', template: '<nav />' } }))
 vi.mock('../src/components/SiteFooter.vue', () => ({ default: { template: '<footer />' } }))
 // This suite owns calendar refresh timers; Lobby clock behavior has its own suite.
 vi.mock('../src/components/today/TodayLobby.vue', () => ({ default: { template: '<header><h1>今日一览</h1><slot /></header>' } }))
@@ -72,7 +72,7 @@ beforeEach(() => {
 })
 afterEach(() => { delete document.visibilityState })
 
-it('无子账号管理员读全部游戏当日摘要，保留工具与建档', async () => {
+it('无子账号管理员读全部游戏当日摘要，保留导航与建档', async () => {
   // Even a persisted selection is not a valid current account for these users.
   activeAccount.set('acc-a')
   activeAccount.setGame('代号鸢', 'acc-a')
@@ -85,11 +85,13 @@ it('无子账号管理员读全部游戏当日摘要，保留工具与建档', a
   expect(card(wrapper).text()).toContain('今日公开活动')
   expect(link(wrapper).props('to')).toEqual({ path: '/calendar', query: {} })
   expect(wrapper.find('.today-alert').exists()).toBe(false)
-  expect(wrapper.get('.today-tools').text()).toContain('常用工具')
+  // The lobby redesign leaves tool navigation in IslandSidebar, outside this calendar suite.
+  expect(wrapper.findComponent({ name: 'IslandSidebar' }).exists()).toBe(true)
+  expect(wrapper.get('header h1').text()).toBe('今日一览')
   expect(wrapper.get('[data-tour="today-overview"]').exists()).toBe(true)
   expect(wrapper.get('.data-onboarding').text()).toContain('先建立你的游戏子账号')
   const sections = wrapper.findAll('.today-content section')
-  expect(sections.findIndex(node => node.classes().includes('today-activity-summary'))).toBeLessThan(sections.findIndex(node => node.classes().includes('today-tools')))
+  expect(sections.findIndex(node => node.classes().includes('today-activity-summary'))).toBeLessThan(sections.findIndex(node => node.classes().includes('data-onboarding')))
 })
 
 it('有效当前账号按game筛选并传给日历链接，换到同游戏账号不重复读取', async () => {
@@ -235,7 +237,7 @@ it.each(['public', 'private'])('%s失败不吞掉另一类活动内容；数据�
   expect(listActivityCalendar).toHaveBeenCalledTimes(calls)
 })
 
-it('flag=false不显示卡片、不请求API、不注册刷新，Today既有数据和工具继续可用', async () => {
+it('flag=false不显示卡片、不请求API、不注册刷新，Today既有数据和导航继续可用', async () => {
   isFeatureEnabled.mockReturnValue(false)
   signIn()
   const wrapper = render()
@@ -243,7 +245,9 @@ it('flag=false不显示卡片、不请求API、不注册刷新，Today既有数�
   expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
   expect(listActivityCalendar).not.toHaveBeenCalled()
   expect(getOperatorCurrent).toHaveBeenCalled()
-  expect(wrapper.get('.today-tool-links').findAllComponents(RouterLinkStub)).toHaveLength(3)
+  expect(wrapper.findComponent({ name: 'IslandSidebar' }).exists()).toBe(true)
+  expect(wrapper.get('.account-data-summary').text()).toContain('已录入 1 位')
+  expect(wrapper.get('.data-account-context-bar').text()).toContain('大号')
   // Drain jsdom's zero-delay storage events from the existing account persistence.
   await vi.advanceTimersByTimeAsync(0)
   expect(vi.getTimerCount()).toBe(0)
@@ -339,13 +343,14 @@ it('卸载时尚未返回的请求不再处理，不遗留计时器', async () =
 })
 
 
-it.each(['guest', 'ordinary', 'permissions-pending'])('%s不显示今日活动、不请求日历，保留首页工具', async mode => {
+it.each(['guest', 'ordinary', 'permissions-pending'])('%s不显示今日活动、不请求日历，保留首页导航与建档', async mode => {
   if (mode !== 'guest') { signIn([]); auth.isAdmin = mode === 'permissions-pending' ? undefined : false }
   const wrapper = render()
   await flushPromises()
   expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
   expect(listActivityCalendar).not.toHaveBeenCalled()
-  expect(wrapper.get('.today-tools').text()).toContain('常用工具')
+  expect(wrapper.findComponent({ name: 'IslandSidebar' }).exists()).toBe(true)
+  expect(wrapper.get('.data-onboarding').text()).toContain(mode === 'guest' ? '先登录' : '先建立你的游戏子账号')
   window.dispatchEvent(new Event('pageshow'))
   await flushPromises()
   expect(listActivityCalendar).not.toHaveBeenCalled()
