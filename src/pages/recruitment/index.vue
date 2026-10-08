@@ -29,7 +29,7 @@
       </div>
       <SiteFooter />
     </main>
-    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="loadPoolRecords(selectedPoolId)" />
+    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guide-owner="identity" :guide-account="accountId" :archive-event-count="state.archive?.summary.event_count" :saved-guide-event-id="savedGuideEventId" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="loadPoolRecords(selectedPoolId)" />
   </div>
 </template>
 
@@ -53,10 +53,11 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {} }
 const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false)
+const savedGuideEventId = ref('')
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const canRecordPool = pool => !!pool?.snapshot.catalog_pool_id && !!recruitmentPoolCatalog(pool, state.catalog || [])?.enabled && !state.catalogError
-watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = '' })
+watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; savedGuideEventId.value = '' })
 async function beforeAccountSwitch() {
   if (state.busy || exchangePanel.value?.isBusy?.()) return false;
   if (poolEditor.value?.hasDraft?.() || exchangePanel.value?.hasDraft?.()) {
@@ -67,14 +68,19 @@ async function beforeAccountSwitch() {
 function openPool(poolId) {
   if (state.loading || state.busy || !state.archive?.pools.some(pool => pool.pool_id === poolId)) return
   timeline.value?.focusPool(poolId)
-  selectedPoolId.value = poolId; state.error = ''; editorOpen.value = true; loadPoolRecords(poolId)
+  selectedPoolId.value = poolId; savedGuideEventId.value = ''; state.error = ''; editorOpen.value = true; loadPoolRecords(poolId)
 }
 async function savePool(payload) {
   if (!writable.value || payload.data.pool_id !== selectedPoolId.value) return
   const token = capture()
   try {
     const result = await command(payload.operation, payload.data, { requestId: payload.requestId, expectedRevision: payload.revision })
-    if (result && matches(token)) editorOpen.value = false
+    if (result && matches(token)) {
+      if (payload.verifyEventId) {
+        savedGuideEventId.value = payload.verifyEventId
+        await loadPoolRecords(payload.data.pool_id)
+      } else editorOpen.value = false
+    }
   } catch (error) {
     if (error.status === 409 && matches(token)) await loadPoolRecords(selectedPoolId.value)
   }
