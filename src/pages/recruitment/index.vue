@@ -2,7 +2,7 @@
   <div class="page-recruitment">
     <IslandSidebar />
     <main id="main-content" class="recruitment-main" @keydown.esc="onPageEscape">
-      <CompactToolHeader title="招募档案" description="查看与维护当前账号的招募记录与进度。">
+      <CompactToolHeader title="招募档案" description="抽完卡，选对卡池，顺手记一笔。">
         <template v-if="enabled" #account>
           <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
         </template>
@@ -39,7 +39,7 @@
       </div>
       <SiteFooter />
     </main>
-    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guide-owner="identity" :guide-account="accountId" :archive-event-count="state.archive?.summary.event_count" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="retryPoolReadback" @guide-dismiss="guideTopic = ''" />
+    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :pool-summary="state.archive?.pool_summaries?.[selectedPoolId]" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guide-owner="identity" :guide-account="accountId" :archive-event-count="state.archive?.summary.event_count" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="retryPoolReadback" @guide-dismiss="guideTopic = ''" />
   </div>
 </template>
 
@@ -115,7 +115,7 @@ async function retryPoolReadback(refreshArchive = true) {
   if (!matches(token) || poolId !== selectedPoolId.value) return
   let loaded = await loadPoolRecords(poolId)
   const cursors = new Set()
-  while (loaded && matches(token) && poolId === selectedPoolId.value && receipt?.entries.some(entry => !state.records.some(event => event.event_id === entry.event_id)) && state.recordsCursor && !cursors.has(state.recordsCursor)) {
+  while (loaded && matches(token) && poolId === selectedPoolId.value && (receipt?.deleted_event_ids.length || receipt?.entries.some(entry => !state.records.some(event => event.event_id === entry.event_id))) && state.recordsCursor && !cursors.has(state.recordsCursor)) {
     cursors.add(state.recordsCursor)
     loaded = await loadPoolRecords(poolId, state.recordsCursor)
   }
@@ -126,9 +126,9 @@ async function savePool(payload) {
   try {
     const result = await command(payload.operation, payload.data, { requestId: payload.requestId, expectedRevision: payload.revision })
     if (result && matches(token)) {
+      state.notice = ''
       saveReceipt.value = { ...payload.data, entries: payload.data.entries.map(entry => ({ ...entry })), revision: result.archive_revision, guide: payload.guide }
       await retryPoolReadback(false)
-      if (matches(token) && !payload.guide && !state.recordsError && !state.error) editorOpen.value = false
     }
   } catch (error) {
     if (error.status === 409 && matches(token)) await loadPoolRecords(selectedPoolId.value)

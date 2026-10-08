@@ -75,8 +75,8 @@ async function beginGuide(wrapper, topic = 'record') {
 async function saveGuidedRecord(wrapper) {
   const calls = api.recruitmentCommand.mock.calls.length
   await composer(wrapper).get('.composer-actions .primary').trigger('click')
-  expect(api.recruitmentCommand).toHaveBeenCalledTimes(calls)
-  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(calls + 1)
+  await flushPromises()
 }
 function persistSubmittedRecord() {
   api.recruitmentCommand.mockImplementation(async ({ accountId, data }) => {
@@ -89,6 +89,10 @@ function persistSubmittedRecord() {
     records[accountId] = records[accountId].filter(event => !data.deleted_event_ids.includes(event.event_id))
     archives[accountId].pools.find(pool => pool.pool_id === data.pool_id).progress = 40 - data.remaining_pulls
     archives[accountId].summary.event_count = records[accountId].length
+    const poolEvents = records[accountId].filter(event => event.pool_id === data.pool_id)
+    const poolSummary = { known_total_pulls: poolEvents.filter(event => !event.batch_id).reduce((sum, event) => sum + (event.pull_span ?? 0), 0) + 40 - data.remaining_pulls, event_count: poolEvents.length, up_agent_counts: {} }
+    for (const event of poolEvents) if (event.up_status === 'up') poolSummary.up_agent_counts[event.agent_snapshot.agent_id] = (poolSummary.up_agent_counts[event.agent_snapshot.agent_id] || 0) + 1
+    archives[accountId].pool_summaries = { ...archives[accountId].pool_summaries, [data.pool_id]: poolSummary }
     archives[accountId].archive_revision++
     return { archive_revision: archives[accountId].archive_revision }
   })
@@ -230,9 +234,8 @@ it('档案回读失败不完成；重试开始清掉错误也不能提前当成�
   firstRecordAccount(); persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
   await editor(wrapper).get('.quick-up-button').trigger('click')
-  await composer(wrapper).get('.composer-actions .primary').trigger('click')
   api.getRecruitmentArchive.mockRejectedValueOnce(new Error('档案回读失败'))
-  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  await composer(wrapper).get('.composer-actions .primary').trigger('click'); await flushPromises()
   expect(preference().tutorialCompleted).toBe(false)
   const refreshing = deferred(); api.getRecruitmentArchive.mockReturnValueOnce(refreshing.promise)
   await button(editor(wrapper), '重新核对保存结果').trigger('click'); await flushPromises()
@@ -377,20 +380,19 @@ it('未知保底与未知间隔分开解释，加入草稿不猜保底；关闭�
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('')
 })
 
-it('回访用户出货主题允许同一密探再新增，普通加入按钮不写API；同ID字段不一致不完成', async () => {
+it('回访用户出货主题允许同一密探再新增，保存这笔与普通相同；同ID字段不一致不完成', async () => {
   persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await startEditorGuide(wrapper)
   await button(editor(wrapper), '新增记录').trigger('click')
   await composer(wrapper).get('.agent-choice').trigger('click')
-  expect(composer(wrapper).get('.composer-actions .primary').text()).toBe('加入')
+  expect(composer(wrapper).get('.composer-actions .primary').text()).toBe('保存这笔')
   await composer(wrapper).get('.pull-count-field input').setValue('20')
-  await composer(wrapper).get('.composer-actions .primary').trigger('click')
   expect(api.recruitmentCommand).not.toHaveBeenCalled()
   api.listRecruitmentEvents.mockImplementationOnce(async () => {
     const data = structuredClone(records['acc-a']); data.at(-1).pull_span = 19
     return { items: data, next_cursor: null, archive_revision: archives['acc-a'].archive_revision }
   })
-  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  await composer(wrapper).get('.composer-actions .primary').trigger('click'); await flushPromises()
   expect(records['acc-a']).toHaveLength(3)
   expect(preference().tutorialCompleted).toBe(false)
   expect(editor(wrapper).text()).toContain('结果尚未确认')
@@ -455,22 +457,23 @@ it('新增记录在回读第二页才出现时继续分页核验，不丢草稿�
   expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
 })
 
-it('新增ID已回读但字段不同，核对后重存同一ID仍可完成本次出货教程，不再新增', async () => {
+it('新增ID已回读但字段不同，重新核对同一ID，不再次提交或新增', async () => {
   firstRecordAccount(); persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
   await editor(wrapper).get('.quick-up-button').trigger('click')
   await composer(wrapper).get('.pull-count-field input').setValue('20')
-  await composer(wrapper).get('.composer-actions .primary').trigger('click')
   api.listRecruitmentEvents.mockImplementationOnce(async () => {
     const data = structuredClone(records['acc-a']); data[0].pull_span = 19
     return { items: data, next_cursor: null, archive_revision: 4 }
   })
-  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  await saveGuidedRecord(wrapper)
   expect(preference().tutorialCompleted).toBe(false)
   const id = api.recruitmentCommand.mock.calls[0][0].data.entries[0].event_id
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
-  expect(api.recruitmentCommand.mock.calls[1][0].data.entries[0].event_id).toBe(id)
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  await button(editor(wrapper), '重新核对本笔').trigger('click'); await flushPromises()
   expect(records['acc-a']).toHaveLength(1)
+  expect(records['acc-a'][0].event_id).toBe(id)
   expect(preference().tutorialCompleted).toBe(true)
 })
 
@@ -629,7 +632,8 @@ it('首页仅时间线，点击读取本池抽卡记录条，头像和出货抽�
   const wrapper = render(); await flushPromises(); expect(wrapper.find('.history-card').exists()).toBe(false); expect(wrapper.find('.maintenance').exists()).toBe(false)
   expect(api.listRecruitmentEvents).not.toHaveBeenCalled(); expect(api.listRecruitmentBatches).not.toHaveBeenCalled(); await selectPool(wrapper)
   expect(wrapper.get('.pool-timeline').isVisible()).toBe(true); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0]).toMatchObject({ poolId: 'pool-a', accountId: 'acc-a', order: 'asc' })
-  expect([...editor(wrapper).get('.records-section').element.children].slice(0, 2).map(item => item.className)).toEqual(['records-toolbar', 'records-heading'])
+  expect(editor(wrapper).get('.record-view-switch').exists()).toBe(true)
+  expect(editor(wrapper).get('#records-title').text()).toBe('本池抽卡进度')
   expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['31', '17']); expect(feed(wrapper)[0].text()).not.toContain('测试绝密'); expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('测试绝密'); expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
   await button(editor(wrapper), '取消').trigger('click'); await flushPromises(); expect(wrapper.find('[role=dialog]').exists()).toBe(false); expect(document.activeElement).toBe(wrapper.get('.pool-card').element); expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
@@ -641,13 +645,14 @@ it('本池UP可快捷登记；其他密探默认逆序并支持名册同口径�
     { id: 'char-b', name: '测试歪卡', avatar_url: '/other.png', rarity: 5, prof: '地', sub_prof: 'pojun', games: ['代号鸢'] },
     { id: 'char-c', name: '测试岐黄', name_pinyin: 'ceshi qihuang', rarity: 5, prof: '水', sub_prof: 'qihuang', games: ['代号鸢'] }
   ] })
+  persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   const quick = editor(wrapper).get('.quick-up-button')
   expect(quick.attributes('aria-label')).toContain('测试绝密'); expect(button(editor(wrapper), '其他密探')).toBeTruthy()
   await quick.trigger('click'); await flushPromises()
   expect(composer(wrapper).find('.agent-picker').exists()).toBe(false); expect(editor(wrapper).get('.quick-up-button').attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
-  await composer(wrapper).get('.pull-count-field input').setValue('12'); await composer(wrapper).get('.composer-actions .primary').trigger('click')
-  expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12'); expect(button(editor(wrapper), '保存 1 项修改')).toBeTruthy()
+  await composer(wrapper).get('.pull-count-field input').setValue('12'); await composer(wrapper).get('.composer-actions .primary').trigger('click'); await flushPromises()
+  expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('12'); expect(editor(wrapper).get('.save-result').text()).toContain('已保存：测试绝密')
 
   await button(editor(wrapper), '其他密探').trigger('click'); await flushPromises()
   const entry = () => composer(wrapper)
@@ -699,51 +704,76 @@ it('单次出货抽数限制为1–40，输入超限会收敛到40且共享规�
   await pullInput.setValue('9999')
   expect(pullInput.element.value).toBe('40')
   await composer(wrapper).get('.composer-actions .primary').trigger('click')
-  expect(feed(wrapper)).toHaveLength(3); expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('40'); expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  expect(feed(wrapper)).toHaveLength(3); expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('40'); expect(api.recruitmentCommand.mock.calls[0][0].data.entries[0].pull_span).toBe(40)
 })
-it('单条选择密探和17抽后生成记录条，再点记录编辑；一次保存保底，重开回显且不重复新增', async () => {
-  api.recruitmentCommand.mockImplementation(async command => {
-    for (const entry of command.data.entries) {
-      const old = records[command.accountId].find(record => record.event_id === entry.event_id)
-      if (old) Object.assign(old, entry)
-      else records[command.accountId].push({ ...recruitmentEvent(entry.event_id, entry.pull_span), ...entry, agent_snapshot: { agent_id: entry.agent_id, name: '测试绝密' } })
-    }
-    archives[command.accountId].pools[0].progress = 40 - command.data.remaining_pulls
-    return { archive_revision: ++archives[command.accountId].archive_revision }
-  })
-  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await addRecord(wrapper, 'char-a', '17')
-  expect(editor(wrapper).find('.entry-composer').exists()).toBe(false); expect(feed(wrapper)).toHaveLength(3); expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('17'); expect(feed(wrapper)[0].text()).toContain('待保存'); expect(api.recruitmentCommand).not.toHaveBeenCalled()
-  await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await composer(wrapper).get('.composer-actions .primary').trigger('click'); await editor(wrapper).get('.remaining-field input').setValue('19'); await editor(wrapper).get('form').trigger('submit'); await flushPromises()
-  const command = api.recruitmentCommand.mock.calls.at(-1)[0]; expect(command).toMatchObject({ accountId: 'acc-a', expectedRevision: 3, operation: 'pool_records_save', data: { pool_id: 'pool-a', remaining_pulls: 19 } }); expect(command.data.entries.map(entry => entry.pull_span)).toEqual([20, 17]); expect(command.data.entries[0].event_id).toBe('A'); expect(command.data.entries.some(entry => entry.event_id === 'B')).toBe(false)
-  await selectPool(wrapper); expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['17', '31', '20']); expect(editor(wrapper).get('.remaining-field input').element.value).toBe('19'); expect(archives['acc-a'].current_pool_id).toBe('pool-a')
-  await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries).toEqual([])
+it('普通新增保存后留在本池，继续编辑原ID并改保底，重开回显且不重复新增', async () => {
+  persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await addRecord(wrapper, 'char-a', '17'); await flushPromises()
+  expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
+  expect(feed(wrapper)).toHaveLength(3)
+  expect(feed(wrapper)[0].text()).toContain('本笔已保存')
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  await editRow(wrapper); await composer(wrapper).get('input').setValue('20')
+  await composer(wrapper).get('.composer-actions .primary').trigger('click')
+  await editor(wrapper).get('.remaining-field input').setValue('19')
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toMatchObject({ expectedRevision: 4, data: { remaining_pulls: 19, entries: [expect.objectContaining({ event_id: 'A', pull_span: 20 })] } })
+  await editor(wrapper).get('.close-button').trigger('click'); await selectPool(wrapper)
+  expect(feed(wrapper).map(item => item.get('.pull-result b').text())).toEqual(['17', '31', '20'])
+  expect(editor(wrapper).get('.remaining-field input').element.value).toBe('19')
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(2)
+  expect(records['acc-a']).toHaveLength(3)
 })
+
 it('移除只提交明确旧ID；取消单条编辑不改变记录，整个弹窗取消不写入', async () => {
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '取消').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
   expect(editor(wrapper).find('.record-feed .delete-record').exists()).toBe(false)
   await editRow(wrapper); await button(composer(wrapper), '删除记录').trigger('click')
-  await addRecord(wrapper); await feed(wrapper)[0].get('.record-detail').trigger('click'); await button(composer(wrapper), '删除记录').trigger('click')
+  await button(editor(wrapper), '新增记录').trigger('click')
+  await composer(wrapper).get('.agent-choice').trigger('click')
+  await composer(wrapper).get('.pull-count-field input').setValue('12')
+  await button(composer(wrapper), '取消').trigger('click')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ entries: [], deleted_event_ids: ['A'] })
-  await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(2)
+  await editor(wrapper).get('.close-button').trigger('click'); await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(2)
 })
-it('409重读且保留记录草稿，网络重试requestId和新事件ID不变', async () => {
-  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('19'); await composer(wrapper).get('.composer-actions .primary').trigger('click'); archives['acc-a'].archive_revision = 4
-  api.recruitmentCommand.mockRejectedValueOnce(Object.assign(new Error('revision changed'), { status: 409 })); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('19'); expect(editor(wrapper).text()).toContain('草稿已保留')
-  const first = api.recruitmentCommand.mock.calls.at(-1)[0].requestId; await addRecord(wrapper)
-  api.recruitmentCommand.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({ archive_revision: 5 }); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); const retry = api.recruitmentCommand.mock.calls.at(-1)[0]; expect(retry.requestId).not.toBe(first); expect(retry.expectedRevision).toBe(4)
-  await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toEqual(retry)
+it('409重读保留草稿，核对后追加真记录；网络重试保留请求ID与事件ID', async () => {
+  persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper)
+  await composer(wrapper).get('input').setValue('19')
+  await composer(wrapper).get('.composer-actions .primary').trigger('click')
+  archives['acc-a'].archive_revision = 4
+  api.recruitmentCommand.mockRejectedValueOnce(Object.assign(new Error('revision changed'), { status: 409 }))
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('19')
+  expect(editor(wrapper).text()).toContain('草稿已保留')
+  const first = api.recruitmentCommand.mock.calls.at(-1)[0].requestId
+  api.recruitmentCommand.mockRejectedValueOnce(new Error('network'))
+  await addRecord(wrapper); await flushPromises()
+  const retry = structuredClone(api.recruitmentCommand.mock.calls.at(-1)[0])
+  expect(retry.requestId).not.toBe(first)
+  expect(retry.expectedRevision).toBe(4)
+  expect(retry.data.entries).toHaveLength(2)
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(3)
+  expect(api.recruitmentCommand.mock.calls.at(-1)[0]).toEqual(retry)
+  expect(records['acc-a']).toHaveLength(3)
+  expect(records['acc-a'].find(event => event.event_id === 'A').pull_span).toBe(19)
 })
+
 it('A迟到读写不覆盖B记录或关闭B新弹窗，切账号清旧草稿', async () => {
   const read = deferred(); api.listRecruitmentEvents.mockImplementation(({ accountId }) => accountId === 'acc-a' ? read.promise : Promise.resolve({ items: [], next_cursor: null, archive_revision: 3 }))
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper); read.resolve({ items: records['acc-a'], next_cursor: null, archive_revision: 3 }); await flushPromises(); expect(feed(wrapper)).toHaveLength(0)
-  api.listRecruitmentEvents.mockImplementation(({ accountId }) => Promise.resolve({ items: records[accountId], next_cursor: null, archive_revision: archives[accountId].archive_revision })); activeAccount.set('acc-a'); await flushPromises(); await selectPool(wrapper); await addRecord(wrapper)
-  const write = deferred(); api.recruitmentCommand.mockReturnValue(write.promise); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper); write.resolve({ archive_revision: 4 }); await flushPromises()
+  api.listRecruitmentEvents.mockImplementation(({ accountId }) => Promise.resolve({ items: records[accountId], next_cursor: null, archive_revision: archives[accountId].archive_revision })); activeAccount.set('acc-a'); await flushPromises(); await selectPool(wrapper)
+  const write = deferred(); api.recruitmentCommand.mockReturnValue(write.promise); await addRecord(wrapper); await flushPromises();
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  expect(api.recruitmentCommand.mock.calls[0][0].accountId).toBe('acc-a'); activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper); write.resolve({ archive_revision: 4 }); await flushPromises()
   expect(wrapper.find('[role=dialog]').exists()).toBe(true); expect(wrapper.text()).not.toContain('已保存'); expect(wrapper.get('.summary strong').text()).toBe('999'); expect(feed(wrapper)).toHaveLength(0)
 })
 it('记录读取失败禁止保存可重试；分页不丢草稿且不混合不同版本', async () => {
   api.listRecruitmentEvents.mockRejectedValueOnce(new Error('records unavailable')); const wrapper = render(); await flushPromises(); await selectPool(wrapper); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); await button(editor(wrapper), '重新读取').trigger('click'); await flushPromises(); expect(feed(wrapper)).toHaveLength(2)
-  await button(editor(wrapper), '取消').trigger('click'); api.listRecruitmentEvents.mockResolvedValueOnce({ items: records['acc-a'], next_cursor: 'next', archive_revision: 3 }); await selectPool(wrapper); await addRecord(wrapper)
-  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [{ ...recruitmentEvent('C', 7), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }], next_cursor: 'last', archive_revision: 3 }); await button(editor(wrapper), '加载更早记录').trigger('click'); await flushPromises(); expect(feed(wrapper)).toHaveLength(4); expect(editor(wrapper).text()).toContain('待保存'); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0].cursor).toBe('next')
+  await button(editor(wrapper), '取消').trigger('click'); api.listRecruitmentEvents.mockResolvedValueOnce({ items: records['acc-a'], next_cursor: 'next', archive_revision: 3 }); await selectPool(wrapper); await button(editor(wrapper), '新增记录').trigger('click'); await composer(wrapper).get('.agent-choice').trigger('click'); await composer(wrapper).get('.pull-count-field input').setValue('12')
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [{ ...recruitmentEvent('C', 7), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }], next_cursor: 'last', archive_revision: 3 }); await button(editor(wrapper), '加载更早记录').trigger('click'); await flushPromises(); expect(feed(wrapper)).toHaveLength(3); expect(composer(wrapper).get('.pull-count-field input').element.value).toBe('12'); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0].cursor).toBe('next')
   api.listRecruitmentEvents.mockResolvedValueOnce({ items: [], next_cursor: null, archive_revision: 4 }); await button(editor(wrapper), '加载更早记录').trigger('click'); await flushPromises(); expect(editor(wrapper).text()).toContain('档案已变化'); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined()
 })
 it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏绝密，UP固定身份回显新图鉴', async () => {
@@ -809,4 +839,124 @@ it('时间线只读摘要，账号切换清统计并忽略A迟到响应；保存
   expect(api.listRecruitmentEvents).toHaveBeenCalledTimes(2)
   expect(api.listRecruitmentEvents.mock.calls[0][0].accountId).toBe('acc-b')
   wrapper.unmount()
+})
+
+it('普通新账号不看教程，按玩家问题选非UP，未知间隔真实保存并回读；重复点不重复计数', async () => {
+  firstRecordAccount(); persistSubmittedRecord()
+  const catalog = recruitmentCatalog()
+  catalog.pools[0] = { ...catalog.pools[0], up_status: 'verified', up_agent_ids: ['slot-up'], up_agents: [{ id: 'slot-up', operator_id: 'char-a', name: '测试绝密', active: true }] }
+  api.getRecruitmentCatalog.mockResolvedValue(catalog)
+  getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char-a', name: '测试绝密', rarity: 5, games: ['代号鸢'] }, { id: 'char-b', name: '非UP密探', rarity: 5, games: ['代号鸢'] }] })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.entry-label').text()).toBe('记一笔')
+  await selectPool(wrapper)
+  expect(editor(wrapper).get('.daily-entry').text()).toContain('这次有没有出绝密')
+  expect(editor(wrapper).get('.progress-card').isVisible()).toBe(false)
+  await button(editor(wrapper), '直接使用 / 暂时关闭').trigger('click')
+  await button(editor(wrapper), '抽到了绝密').trigger('click')
+  await button(editor(wrapper), '其他密探').trigger('click')
+  await composer(wrapper).get('.agent-search input').setValue('非UP')
+  await composer(wrapper).get('.agent-choice').trigger('click')
+  await editor(wrapper).get('.remaining-field input').setValue('33')
+  expect(composer(wrapper).get('.pull-count-field input').element.value).toBe('')
+  await button(composer(wrapper), '保存这笔').trigger('click'); await flushPromises()
+  const request = api.recruitmentCommand.mock.calls[0][0]
+  expect(request.data.entries).toEqual([expect.objectContaining({ agent_id: 'char-b', pull_span: null, up_status: 'non_up' })])
+  expect(editor(wrapper).get('.save-result').text()).toContain('已保存：非UP密探')
+  expect(editor(wrapper).get('.save-result').text()).toContain('本池已知 7 抽 · 绝密 1 条')
+  expect(editor(wrapper).get('.gacha-record').text()).toContain('本笔已保存')
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  await button(editor(wrapper), '密探视图').trigger('click')
+  expect(editor(wrapper).get('.agent-pull-badge').text()).toBe('未知')
+  expect(editor(wrapper).get('.agent-record-card').text()).toContain('本笔已保存')
+  expect(archives['acc-a'].pool_summaries['pool-a']).toMatchObject({ known_total_pulls: 7, event_count: 1, up_agent_counts: {} })
+  expect(preference().tutorialCompleted).toBe(false)
+})
+
+it('普通未出绝密仅保存游戏距保底，读回数字突出且不生成事件', async () => {
+  firstRecordAccount(); persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), '还没出绝密').trigger('click')
+  expect(editor(wrapper).get('.entry-shortcuts').isVisible()).toBe(false)
+  expect(editor(wrapper).find('.entry-composer').exists()).toBe(false)
+  expect(editor(wrapper).text()).toContain('不是「这次又抽了几次」')
+  await editor(wrapper).get('.remaining-field input').setValue('31')
+  await button(editor(wrapper), '保存保底进度').trigger('click'); await flushPromises()
+  expect(api.recruitmentCommand.mock.calls[0][0].data).toEqual({ pool_id: 'pool-a', entries: [], deleted_event_ids: [], remaining_pulls: 31 })
+  expect(records['acc-a']).toEqual([])
+  expect(editor(wrapper).get('.save-result').text()).toContain('当前保底已保存')
+  expect(editor(wrapper).get('.save-result').text()).toContain('距保底 31 抽')
+  expect(editor(wrapper).get('.progress-card').classes()).toContain('is-saved')
+  await editor(wrapper).get('.remaining-field input').setValue('29')
+  expect(editor(wrapper).get('.progress-card').classes()).not.toContain('is-saved')
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+})
+
+it('普通请求成功但回读不一致时禁重复保存，重新核对后才高亮；不会显示泛泛成功', async () => {
+  firstRecordAccount(); persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), '抽到了绝密').trigger('click')
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [], archive_revision: 4, next_cursor: null })
+  await button(composer(wrapper), '保存这笔').trigger('click'); await flushPromises()
+  expect(editor(wrapper).get('.save-result').text()).toContain('结果尚未确认')
+  expect(editor(wrapper).find('.saved-mark').exists()).toBe(false)
+  expect(wrapper.get('.feedback').text()).not.toContain('已保存')
+  expect(editor(wrapper).get('.quick-up-button').attributes('disabled')).toBeDefined()
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  await button(editor(wrapper), '重新核对本笔').trigger('click'); await flushPromises()
+  expect(editor(wrapper).get('.save-result').text()).toContain('服务端已读回核对')
+  expect(editor(wrapper).findAll('.saved-mark')).toHaveLength(1)
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+})
+
+it('已有记录可按密探名查找；两种视图筛选同一记录，清除筛选不重复计数', async () => {
+  records['acc-a'][1].agent_snapshot = { agent_id: 'char-b', name: '另一位密探' }
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await editor(wrapper).get('.record-search input').setValue('另一位')
+  expect(feed(wrapper)).toHaveLength(1)
+  expect(feed(wrapper)[0].get('.record-detail').attributes('aria-label')).toContain('另一位密探')
+  await button(editor(wrapper), '密探视图').trigger('click')
+  expect(editor(wrapper).findAll('.agent-record-card')).toHaveLength(1)
+  await editor(wrapper).get('.record-search input').setValue('不存在')
+  expect(editor(wrapper).text()).toContain('没有找到这位密探的记录')
+  await editor(wrapper).get('.record-search input').setValue('')
+  expect(editor(wrapper).findAll('.agent-record-card')).toHaveLength(2)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+
+it('普通新增网络失败保留稳定ID和草稿，同内容重试沿用请求ID，读回后再继续', async () => {
+  firstRecordAccount(); persistSubmittedRecord()
+  api.recruitmentCommand.mockRejectedValueOnce(new Error('网络中断，保存未确认'))
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), '抽到了绝密').trigger('click')
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  await composer(wrapper).get('.pull-count-field input').setValue('20')
+  await button(composer(wrapper), '保存这笔').trigger('click'); await flushPromises()
+  const first = structuredClone(api.recruitmentCommand.mock.calls[0][0])
+  expect(editor(wrapper).text()).toContain('网络中断')
+  expect(editor(wrapper).find('.save-result').exists()).toBe(false)
+  expect(editor(wrapper).findAll('.pending-mark')).toHaveLength(1)
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(api.recruitmentCommand.mock.calls[1][0]).toEqual(first)
+  expect(records['acc-a']).toHaveLength(1)
+  expect(editor(wrapper).get('.save-result').text()).toContain('服务端已读回核对')
+})
+
+it('删除保存必须读取剩余分页，第一页缺少ID不提前确认；读完才显示真实删除', async () => {
+  persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper)
+  await button(composer(wrapper), '删除记录').trigger('click')
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [], next_cursor: 'deletion-check', archive_revision: 4 })
+  const second = deferred(); api.listRecruitmentEvents.mockReturnValueOnce(second.promise)
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(editor(wrapper).get('.save-result').text()).toContain('结果尚未确认')
+  expect(api.listRecruitmentEvents.mock.calls.at(-1)[0].cursor).toBe('deletion-check')
+  second.resolve({ items: structuredClone(records['acc-a']), next_cursor: null, archive_revision: 4 }); await flushPromises()
+  expect(editor(wrapper).get('.save-result').text()).toContain('已移除 1 条记录')
+  expect(records['acc-a'].map(event => event.event_id)).toEqual(['B'])
+  expect(feed(wrapper)).toHaveLength(1)
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
 })

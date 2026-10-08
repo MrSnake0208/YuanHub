@@ -87,7 +87,7 @@ it('点击记录只展开紧凑抽数编辑，取消不改变记录；完成编�
   expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ event_id: 'old', pull_span: 31 })
 })
 
-it.each(['record', 'maintain'])('%s教程和普通模式使用同一加入/完成及最终保存机制', async topic => {
+it.each(['record', 'maintain'])('%s教程和普通模式使用同一新增直存/历史草稿保存机制', async topic => {
   const normal = render(), guided = render()
   guided.vm.startGuide(topic, false)
   await flushPromises()
@@ -96,12 +96,14 @@ it.each(['record', 'maintain'])('%s教程和普通模式使用同一加入/完�
       await wrapper.get('.add-record').trigger('click')
       await wrapper.get('.agent-choice[data-agent-id="a"]').trigger('click')
     } else await wrapper.get('.record-detail').trigger('click')
-    expect(wrapper.get('.composer-actions .primary').text()).toBe(topic === 'record' ? '加入' : '完成')
+    expect(wrapper.get('.composer-actions .primary').text()).toBe(topic === 'record' ? '保存这笔' : '完成')
     await wrapper.get('.pull-count-field input').setValue('20')
     await wrapper.get('.composer-actions .primary').trigger('click')
-    expect(wrapper.emitted('save')).toBeUndefined()
-    expect(wrapper.text()).toContain('待保存')
-    await wrapper.get('form').trigger('submit')
+    if (topic === 'maintain') {
+      expect(wrapper.emitted('save')).toBeUndefined()
+      expect(wrapper.text()).toContain('待保存')
+      await wrapper.get('form').trigger('submit')
+    } else expect(wrapper.emitted('save')).toHaveLength(1)
   }
   const ordinary = normal.emitted('save')[0][0], tutorial = guided.emitted('save')[0][0]
   expect(tutorial.operation).toBe(ordinary.operation)
@@ -144,14 +146,16 @@ it('只编辑保底时视口因键盘缩短，滚动真实输入到可见范围�
   vi.stubGlobal('innerHeight', 844)
   const wrapper = render()
   await wrapper.vm.$nextTick()
+  await button(wrapper, '还没出绝密').trigger('click')
   const input = wrapper.get('.remaining-field input')
-  vi.spyOn(input.element, 'getBoundingClientRect').mockReturnValue({ top: 453, bottom: 500, height: 47 })
+  vi.spyOn(input.element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 453, 96, 47))
+  vi.spyOn(wrapper.get('.progress-actions').element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 510, 200, 34))
   vi.spyOn(wrapper.get('.editor-header').element, 'getBoundingClientRect').mockReturnValue({ bottom: 100 })
   const scroll = vi.fn(); wrapper.get('.editor-body').element.scrollBy = scroll
   input.element.focus()
   viewport.height = 400; viewport.dispatchEvent(new Event('resize'))
   await vi.advanceTimersByTimeAsync(200)
-  expect(scroll).toHaveBeenCalledWith({ top: 124, behavior: 'auto' })
+  expect(scroll).toHaveBeenCalledWith({ top: 168, behavior: 'auto' })
   expect(document.activeElement).toBe(input.element)
   expect(input.element.value).toBe('40')
   expect(wrapper.emitted('save')).toBeUndefined()
@@ -174,7 +178,7 @@ it('Escape取消不写入，重开恢复服务端记录和保底；已确认非U
   expect(wrapper.get('.gacha-record .pull-result b').text()).toBe('31')
   expect(wrapper.get('.remaining-field input').element.value).toBe('19')
   await wrapper.get('form').trigger('submit')
-  expect(wrapper.emitted('save')[0][0].data).toMatchObject({ entries: [], deleted_event_ids: [] })
+  expect(wrapper.emitted('save')).toBeUndefined()
 })
 
 it('旧批次日期/备注/UP状态保持，新UP仍提交固定槽身份', async () => {
@@ -195,10 +199,9 @@ it('旧批次日期/备注/UP状态保持，新UP仍提交固定槽身份', asyn
 it('冲突重读看到已登记的新ID时合并同一记录，不生成重复记录条', async () => {
   const wrapper = render()
   await register(wrapper, 'a', '12')
-  await wrapper.get('form').trigger('submit')
   const entry = wrapper.emitted('save')[0][0].data.entries[0]
   await wrapper.setProps({ recordsRevision: 4, records: [{ ...recruitmentEvent('old', 17), agent_snapshot: { agent_id: 'a', name: '甲' } }, { ...recruitmentEvent(entry.event_id, 12), agent_snapshot: { agent_id: 'a', name: '甲' } }] })
   expect(wrapper.findAll('.gacha-record')).toHaveLength(2)
   await wrapper.get('form').trigger('submit')
-  expect(wrapper.emitted('save')[1][0].data.entries).toEqual([])
+  expect(wrapper.emitted('save')).toHaveLength(1)
 })

@@ -27,6 +27,8 @@ it('只展示真实统计、抽卡进度和目录状态，不猜日期或收集�
   pools[0].progress = 0
   const wrapper = render({ pools, currentPoolId: '当日池', poolSummaries: { '当日池': { known_total_pulls: 1234, event_count: 9, has_unknown: true } } })
   const cards = wrapper.findAll('.pool-card'), find = name => cards.find(card => card.get('.pool-name').text() === name)
+  expect(find('当日池').get('.entry-label').text()).toBe('记一笔')
+  expect(find('停用池').get('.entry-label').text()).toBe('查看记录')
   expect(find('当日池').get('.pool-status').text()).toBe('进行中'); expect(find('当日池').text()).toContain('当前卡池')
   expect(find('当日池').findAll('.pool-metrics b').map(item => item.text())).toEqual(['1,234', '9', '40'])
   expect(find('当日池').text()).toContain('部分出货间隔或进度未知')
