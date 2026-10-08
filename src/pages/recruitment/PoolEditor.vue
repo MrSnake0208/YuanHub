@@ -7,7 +7,7 @@
             <span class="editor-eyebrow">招募档案</span>
             <h2 id="pool-editor-title">{{ poolName }}</h2>
           </div>
-          <button v-if="!guideVisible" type="button" class="guide-entry" @click="startGuide">登记教程</button>
+          <button v-if="!guideVisible" type="button" class="guide-entry" @click="openGuideTopics">本池帮助</button>
           <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">关闭教程</button>
           <button type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
             <X :size="20" aria-hidden="true" />
@@ -53,7 +53,7 @@
                     inputmode="numeric"
                     min="1"
                     max="40"
-                    required
+                    aria-describedby="remaining-help"
                     placeholder="1–40"
                     :disabled="busy || readOnly || recordsLoading"
                   >
@@ -62,26 +62,39 @@
               </label>
             </section>
 
+            <p id="remaining-help" class="composer-note">已垫 = 40 − 距保底。例如真实已垫 7 抽，距保底填 33；这是当前进度，不是本次出货间隔。</p>
+            <p v-if="tailProgress == null && !readOnly" class="state-note" role="status">当前保底进度未知。此页面保存记录需同时填写真实的距保底抽数（1–40），暂不支持保底留空提交；不要猜 40 或 0。可以继续整理草稿、关闭教程；草稿只保留在当前编辑窗口，关闭窗口或切换账号会丢弃，确认游戏进度后再保存。</p>
+            <section v-if="guideVisible && (guideTopic === 'progress' || ['topics', 'invitation'].includes(guideMode))" class="first-record-guide" aria-label="招募档案使用教程">
+              <p role="status">{{ guideMessage }}</p>
+              <RecruitmentGuideTopics v-if="guideMode === 'topics'" @select="startGuide" />
+              <div v-if="guideMode === 'invitation'" class="guide-actions">
+                <button type="button" @click="openGuideTopics">选择教程主题</button>
+                <button type="button" @click="dismissGuide">直接使用 / 暂时关闭</button>
+                <button type="button" @click="dismissGuide(true)">以后不自动提示</button>
+              </div>
+              <button v-if="guideMode === 'active' && saveReceipt?.guide?.session === guideSession" type="button" class="guide-entry" :disabled="recordsLoading || busy" @click="$emit('retry')">重新核对保存结果</button>
+              <button v-if="guideTopic" type="button" class="guide-entry" @click="openGuideTopics">选择其他主题</button>
+            </section>
+
             <details class="entry-guide">
               <summary><CircleHelp :size="16" aria-hidden="true" />抽数怎么填写？</summary>
               <p>{{ pullSpanHelp }}</p>
+              <p>出货后请按游戏中当下的真实状态核对距保底；本页不会自动重置进度，也不会从其他卡池继承。没有出绝密时只改当前保底，不新增出货。</p>
+              <p>已知累计 = 历史基准 + 普通记录的已知间隔 + 批次总量 + 当前进度。未知资料不贡献确定抽数，也不代表实际抽了 0 次。批次内记录不重复累加；基准若已含这段历史，继续新增可能重复计数，请先核对备份。本页未提供历史基准、总量批次或 120 抽窗口的旧补录入口。</p>
+              <p>进度条与密探视图展示同一组记录，头像左下角数字是这次出货的间隔，不是获得次数。新加入的记录标为待保存；点已有记录可修改，完成后仍须底部保存。</p>
+              <p>取消单条编辑保留原记录；关闭整个窗口丢弃未提交草稿。删除仅在保存后生效：独立记录减去本条已知抽数，相邻间隔和批次总量不变。教程不会替你删除或导入数据。</p>
             </details>
 
             <section class="records-section" aria-labelledby="records-title">
-              <section v-if="guideVisible && !activeRow" class="first-record-guide" aria-label="首次登记实操教程">
+              <section v-if="guideVisible && guideTopic && guideTopic !== 'progress' && (!activeRow || guideTopic === 'explore') && !['topics', 'invitation'].includes(guideMode)" class="first-record-guide" aria-label="招募档案使用教程">
                 <p role="status">{{ guideMessage }}</p>
-                <div v-if="guideMode === 'invitation'" class="guide-actions">
-                  <button type="button" @click="startGuide">跟着做一次</button>
-                  <button type="button" @click="dismissGuide">直接使用 / 暂时关闭</button>
-                  <button type="button" @click="dismissGuide(true)">以后不自动提示</button>
-                </div>
-                <button v-else-if="guideMode === 'active'" type="button" class="guide-entry" @click="dismissGuide(true)">以后不自动提示</button>
-                <button v-if="guideMode === 'active' && savedGuideEventId && !recordsLoading" type="button" class="guide-entry" @click="$emit('retry')">重新核对记录</button>
+                <button type="button" class="guide-entry" @click="openGuideTopics">选择其他主题</button>
+                <button v-if="guideMode === 'active' && saveReceipt?.guide?.session === guideSession" type="button" class="guide-entry" :disabled="recordsLoading || busy" @click="$emit('retry')">重新核对保存结果</button>
               </section>
               <div class="records-toolbar">
                 <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
-                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条视图</button>
-                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探视图</button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')">进度条视图</button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')">密探视图</button>
                 </div>
                 <div class="entry-shortcuts" role="group" aria-label="快速登记出货">
                   <button
@@ -127,7 +140,7 @@
                 role="group"
                 :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
-                <p v-if="['active', 'existing'].includes(guideMode)" class="guide-field-hint" role="status">{{ guideMode === 'existing' ? '核对这条已有记录的密探与真实抽数，按实际变化修改；确认编辑后点击底部保存。无需创建重复出货。' : guideMessage }}</p>
+                <p v-if="guideMode === 'active' && ['record', 'maintain'].includes(guideTopic)" class="guide-field-hint" role="status">{{ guideMessage }}</p>
                 <div v-if="choosingAgent" class="agent-picker">
                   <label class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
@@ -206,7 +219,7 @@
                   <div class="composer-actions">
                     <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)">删除记录</button>
                     <button type="button" :disabled="busy" @click="cancelEntry">取消</button>
-                    <button type="button" class="primary" :aria-label="guideMode === 'active' ? '保存这条记录' : originals.has(activeRow.event_id) ? '完成编辑当前记录' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading" @click="guideMode === 'active' ? saveGuidedRecord() : confirmRecord()">{{ guideMode === 'active' ? '保存这条记录' : originals.has(activeRow.event_id) ? '完成' : '加入' }}</button>
+                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading" @click="confirmRecord">{{ originals.has(activeRow.event_id) ? '完成' : '加入' }}</button>
                   </div>
                 </div>
                 <p v-if="activeRow.agent_id" id="pull-span-help" class="composer-note">{{ pullSpanHelp }}</p>
@@ -311,6 +324,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { CircleHelp, Plus, X } from '@lucide/vue'
+import RecruitmentGuideTopics from './RecruitmentGuideTopics.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
@@ -318,29 +332,49 @@ import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSu
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
-const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number, guideOwner: String, guideAccount: String, archiveEventCount: Number, savedGuideEventId: String })
-const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
+const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number, guideOwner: String, guideAccount: String, archiveEventCount: Number, saveReceipt: Object })
+const emit = defineEmits(['close', 'save', 'load-more', 'retry', 'guide-dismiss'])
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
 const pullSpanHelp = '不是卡池累计抽数。例如上次绝密后，第 20 抽又出绝密，就填 20。首条也只填你确知的出货间隔，不知道就留空，系统保留未知。同一密探再次出货可继续新增记录。'
-const guideMode = ref('hidden')
-const guidePreference = ref({ tutorialCompleted: false, tutorialStarted: false, dismissedForNow: null, disableAutoGuide: false })
+const guideMode = ref('hidden'), guideTopic = ref(''), guideSession = ref(''), viewedRecordViews = ref([])
+const emptyGuidePreference = () => ({ tutorialCompleted: false, tutorialStarted: false, dismissedForNow: null, disableAutoGuide: false, completedTopics: {}, viewedTopics: {} })
+const guidePreference = ref(emptyGuidePreference())
 const guideVisible = computed(() => guideMode.value !== 'hidden')
 const guideStorageKey = computed(() => props.guideOwner && props.guideAccount ? `yuanhub:recruitment-first-record:${encodeURIComponent(props.guideOwner)}:${encodeURIComponent(props.guideAccount)}` : '')
 const recordsReady = computed(() => initialized.value && !props.recordsLoading && !props.recordsError)
 const guideMessage = computed(() => {
-  if (guideMode.value === 'invitation') return '先登记你在这个池里最近一次绝密出货。'
-  if (guideMode.value === 'completed') return '第一条出货记录已登记。'
+  if (guideMode.value === 'invitation') return '第一次使用？可按你现在的情况选择教程，或直接使用。不需要为学习创建记录。'
+  if (guideMode.value === 'topics') return '选择你现在想了解的主题；没有真实抽卡动作时，可以只查看帮助或随时关闭。'
+  if (guideMode.value === 'completed') {
+    if (guideTopic.value === 'explore') return '查看引导完成：两种视图展示的是同一组真实记录，没有新增或保存数据。以后从时间线找池，点记录维护。'
+    if (guideTopic.value === 'progress') return '当前保底进度已保存并读回确认。以后抽了没出绝密，只需在实际卡池更新当前进度。'
+    if (guideTopic.value === 'maintain') return '这条已有记录的修改已保存并读回确认。可以继续切换视图核对，或关闭窗口返回时间线。'
+    return '这条出货记录已保存并读回确认。下方两种视图均可查看；同一密探再次真实出货可另加一条。'
+  }
   if (!recordsReady.value) return '正在确认本池真实记录；读取失败时可重新读取，也可随时关闭教程。'
-  if (guideMode.value === 'existing') return '当前卡池已有真实出货记录，无需重复登记。复习时点开已有记录，核对密探与真实抽数，按实际变化编辑并保存；也可登记下一次真实出货。'
-  if (props.savedGuideEventId) return '保存已成功，正在核对本池记录。结果尚未确认时不必重复登记。'
-  if (props.busy) return '正在保存真实记录；可随时关闭教程。'
-  if (props.readOnly || !props.canRecord) return '当前卡池暂不能新增出货，可随时关闭教程。'
-  if (props.serverError || error.value) return '保存未成功，真实草稿已保留。可修改后重试，也可关闭教程。'
+  if (props.busy) return '正在保存真实修改；可随时关闭教程，请勿重复提交。'
+  if (props.serverError || error.value) return '保存未成功或回读尚未确认，真实草稿已保留。请核对错误后重试，也可关闭教程。'
+  if (props.saveReceipt?.guide?.session === guideSession.value) return '保存请求已成功，结果尚未确认时不必重复登记。请重新核对保存结果；只有服务端回读一致才算完成。'
+  if (guideTopic.value === 'explore') return '已打开你选择的卡池。已知抽数是可确认资料的合计，距保底是当前进度；请亲自切换「进度条视图」和「密探视图」。头像左下角数字是出货间隔，卡片 UP ×N 才是获得次数。'
+  if (props.readOnly) return '当前档案只读，可以切换视图和查看帮助，暂不能保存实操；请核对页头账号和游戏。'
+  if (guideTopic.value === 'progress' && activeRow.value) return '当前还有正在编辑的记录。请先「加入/完成」或取消本条，再核对真实当前进度，底部保存才可使用。'
+  if (guideTopic.value === 'progress') return remaining.value === initialRemaining.value
+    ? '依据游戏里的真实进度修改上方「距离下次保底」，再点击底部保存。例如已垫 7 抽就填 33；没有出绝密无需新增记录，不能凭教程猜抽数。'
+    : '当前进度已修改，尚未保存。核对「已垫」与游戏一致后，点击底部保存；服务器读回一致才完成。'
+  if (guideTopic.value === 'maintain') {
+    if (activeRow.value && !originals.has(activeRow.value.event_id)) return '当前正在整理新增草稿，请先加入或取消本条，再点需要修改的已有记录；切换教程不会清空草稿。'
+    if (activeRow.value && originals.has(activeRow.value.event_id)) return '按真实资料修改这条记录的出货间隔；不知道可留空。点「完成」只更新草稿，之后还须底部保存；批次记录修改不改变批次总量。'
+    if (rows.value.some(row => originals.has(row.event_id) && isChanged(row))) return '已有记录的修改仍待保存，请核对当前保底，然后点击底部保存。'
+    if (!originals.size) return props.hasMore ? '请加载更多真实历史记录，再点需要修改的一条；仅浏览帮助不会标记保存成功。' : '本池没有可修改记录。可以关闭窗口，回时间线按年份找到历史池；本页没有批次总量或 120 抽窗口的补录入口。无需新建记录来完成学习。'
+    return '点下方需要修改的真实记录。仅浏览帮助不算写入成功；不知道间隔可保留未知，修改后「完成 → 底部保存」。本页不提供历史基准、总量批次或 120 抽窗口补录入口。'
+  }
+  if (!props.canRecord) return '此池已停用、属于历史快照或目录尚不可用，暂不能新增出货。可切换维护主题查看已有记录，或关闭窗口重新选实际卡池。'
+  if (activeRow.value && originals.has(activeRow.value.event_id)) return '当前正在修改已有记录，请完成或取消这次编辑；若要学习维护，可选择「补录或修改以前的记录」。新增出货须是下一次真实抽卡结果。'
   if (choosingAgent.value) return '在下方真实搜索框中找到并选择这次出货的密探。'
-  if (activeRow.value?.agent_id) return '填写这次真实出货抽数，不知道可留空，然后点击“保存这条记录”。'
-  if (newCount.value) return '真实记录仍待保存，请点击底部的保存按钮。'
-  return '点击这次出货的 UP 密探快捷按钮，或“其他密探”选择实际密探。'
+  if (activeRow.value?.agent_id) return '填写真实出货间隔，不知道可留空。点击「加入」放入草稿，再核对当前保底，点击底部保存。'
+  if (newCount.value) return '已加入真实草稿，尚未保存。核对当前保底后点击底部保存；出现「待保存」不代表服务器已有记录。'
+  return '点击这次出货的 UP 密探快捷按钮，或「其他密探」选择实际密探。同一密探再次出货可新增，已有记录不妨碍学习。'
 })
 function persistGuidePreference() {
   if (!guideStorageKey.value) return
@@ -353,41 +387,79 @@ function dismissGuide(disableAutoGuide = false) {
   guidePreference.value.dismissedForNow = Date.now()
   if (disableAutoGuide === true) guidePreference.value.disableAutoGuide = true
   persistGuidePreference()
-  // Keep focus on the real field after rendering; a removed guide button returns to help.
+  emit('guide-dismiss')
   nextTick(() => {
     if (fieldRef?.value || focusedField?.isConnected) (fieldRef?.value || focusedField).focus({ preventScroll: true })
-    else if (!panel.value?.contains(document.activeElement)) panel.value?.querySelector('summary')?.focus()
+    else if (!panel.value?.contains(document.activeElement)) panel.value?.querySelector('.editor-header .guide-entry')?.focus({ preventScroll: true })
   })
 }
-function startGuide() {
-  guideMode.value = 'checking'
+function openGuideTopics() {
+  guideMode.value = 'topics'; guideTopic.value = ''
+  nextTick(() => panel.value?.querySelector('[data-guide-topic]')?.focus({ preventScroll: true }))
+}
+function startGuide(topic = 'record', retry = true) {
+  if (!['explore', 'progress', 'record', 'maintain'].includes(topic)) return
+  guideTopic.value = topic; guideMode.value = 'active'; guideSession.value = crypto.randomUUID(); viewedRecordViews.value = []
   guidePreference.value.tutorialStarted = true
   persistGuidePreference()
-  emit('retry')
-  nextTick(() => panel.value?.querySelector('.first-record-guide, .entry-composer')?.scrollIntoView?.({ block: 'nearest' }))
+  if (retry) emit('retry')
+  nextTick(() => {
+    if (!panel.value?.contains(document.activeElement)) panel.value?.querySelector('.record-view-switch button')?.focus({ preventScroll: true })
+  })
 }
-async function saveGuidedRecord() { if (confirmRecord()) await submit() }
+function switchRecordView(view) {
+  recordView.value = view
+  if (guideMode.value === 'active' && guideTopic.value === 'explore' && recordsReady.value) {
+    viewedRecordViews.value = [...new Set([...viewedRecordViews.value, view])]
+    if (viewedRecordViews.value.length === 2) {
+      guideMode.value = 'completed'
+      guidePreference.value.viewedTopics.explore = true
+      persistGuidePreference()
+    }
+  }
+}
+function entryMatches(event, entry) {
+  return event && !event.deleted_at && event.pool_id === props.pool?.pool_id && event.event_id === entry.event_id && event.agent_snapshot.agent_id === entry.agent_id && event.pull_span === entry.pull_span && event.up_status === entry.up_status && (event.acquired_date || null) === entry.acquired_date && (event.note || null) === entry.note
+}
+const receiptVerified = computed(() => {
+  const receipt = props.saveReceipt
+  return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && props.pool.progress === 40 - receipt.remaining_pulls && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry)))
+})
 watch(guideStorageKey, () => {
-  guideMode.value = 'hidden'
-  guidePreference.value = { tutorialCompleted: false, tutorialStarted: false, dismissedForNow: null, disableAutoGuide: false }
+  guideMode.value = 'hidden'; guideTopic.value = ''
+  guidePreference.value = emptyGuidePreference()
   try {
     const saved = JSON.parse(localStorage.getItem(guideStorageKey.value) || 'null')
-    if (saved) guidePreference.value = { tutorialCompleted: saved.tutorialCompleted === true, tutorialStarted: saved.tutorialStarted === true, dismissedForNow: typeof saved.dismissedForNow === 'number' ? saved.dismissedForNow : null, disableAutoGuide: saved.disableAutoGuide === true }
+    if (saved) guidePreference.value = { tutorialCompleted: saved.tutorialCompleted === true, tutorialStarted: saved.tutorialStarted === true, dismissedForNow: typeof saved.dismissedForNow === 'number' ? saved.dismissedForNow : null, disableAutoGuide: saved.disableAutoGuide === true, completedTopics: saved.completedTopics?.constructor === Object ? saved.completedTopics : {}, viewedTopics: saved.viewedTopics?.constructor === Object ? saved.viewedTopics : {} }
   } catch { /* Unavailable or malformed storage keeps the editor usable. */ }
 }, { immediate: true, flush: 'sync' })
-watch([recordsReady, () => props.records, () => props.archiveEventCount, () => props.savedGuideEventId, () => props.canRecord, () => props.readOnly], () => {
+watch([recordsReady, receiptVerified, () => props.archiveEventCount], () => {
   if (!props.open || !recordsReady.value) return
-  if (guideMode.value === 'checking') {
-    guideMode.value = props.records.length ? 'existing' : 'active'
-  } else if (guideMode.value === 'active' && props.savedGuideEventId && props.records.some(event => event.event_id === props.savedGuideEventId && event.pool_id === props.pool?.pool_id && !event.deleted_at)) {
+  const receipt = props.saveReceipt
+  if (guideMode.value === 'active' && receiptVerified.value && receipt.guide?.session === guideSession.value && receipt.guide?.target) {
     guideMode.value = 'completed'
-    guidePreference.value.tutorialCompleted = true
+    guidePreference.value.completedTopics[guideTopic.value] = true
+    if (guideTopic.value === 'record') guidePreference.value.tutorialCompleted = true
     persistGuidePreference()
-  } else if (guideMode.value === 'active' && props.records.length && !props.savedGuideEventId) {
-    guideMode.value = 'existing'
   } else if (guideMode.value === 'hidden' && guideStorageKey.value && props.canRecord && !props.readOnly && props.archiveEventCount === 0 && !props.records.length && !props.hasMore && !guidePreference.value.tutorialCompleted && !guidePreference.value.tutorialStarted && !guidePreference.value.dismissedForNow && !guidePreference.value.disableAutoGuide) {
     guideMode.value = 'invitation'
   }
+})
+let rebasedReceipt = null
+watch(receiptVerified, verified => {
+  if (!verified || props.saveReceipt === rebasedReceipt) return
+  rebasedReceipt = props.saveReceipt
+  for (const entry of props.saveReceipt.entries) {
+    const event = props.records.find(event => entryMatches(event, entry))
+    const row = { ...entry, pull_span: entry.pull_span ?? '', batch_id: event.batch_id }
+    originals.set(entry.event_id, JSON.stringify(entryInput(row)))
+    const index = rows.value.findIndex(item => item.event_id === entry.event_id)
+    // 新记录的 UP 状态由提交推导；后续用户修改的其它字段仍须保留。
+    if (index >= 0 && JSON.stringify({ ...entryInput(rows.value[index]), up_status: entry.up_status }) === JSON.stringify(entry)) rows.value.splice(index, 1, row)
+  }
+  for (const id of props.saveReceipt.deleted_event_ids) originals.delete(id)
+  deletedIds.value = deletedIds.value.filter(id => !props.saveReceipt.deleted_event_ids.includes(id))
+  initialRemaining.value = typeof remaining.value === 'number' ? props.saveReceipt.remaining_pulls : String(props.saveReceipt.remaining_pulls)
 })
 let requestId = ''
 let viewportFrame = 0
@@ -436,7 +508,7 @@ function profIcon(prof) {
 function resetAgentFilters() { agentSearch.value = ''; agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
 function close() { if (!props.busy) emit('close') }
-defineExpose({ startGuide, hasDraft: () => props.open && (remaining.value !== initialRemaining.value || !!activeRow.value || deletedIds.value.length > 0 || rows.value.some(row => !originals.has(row.event_id) || isChanged(row))) })
+defineExpose({ startGuide, openGuideTopics, hasDraft: () => props.open && (remaining.value !== initialRemaining.value || !!activeRow.value || deletedIds.value.length > 0 || rows.value.some(row => !originals.has(row.event_id) || isChanged(row))) })
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse())
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
@@ -464,11 +536,11 @@ function updateKeyboardInset() {
 function ensureEntryVisible() {
   if (typeof window === 'undefined') return
   updateKeyboardInset()
-  if (!props.open || !activeRow.value || !entryComposer.value || !editorBody.value) return
+  if (!props.open || !editorBody.value || (!activeRow.value && document.activeElement !== remainingInput.value)) return
   const viewport = window.visualViewport
   const visibleTop = Math.max(viewport?.offsetTop || 0, panel.value?.querySelector('.editor-header')?.getBoundingClientRect().bottom || 0) + ENTRY_VISIBLE_TOP_GAP
   const visibleBottom = (viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
-  const focusedField = entryComposer.value.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement : null
+  const focusedField = panel.value?.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement : null
   const rect = (focusedField || entryComposer.value).getBoundingClientRect()
   const availableHeight = Math.max(0, visibleBottom - visibleTop)
   let delta = 0
@@ -609,6 +681,7 @@ async function submit() {
   if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || activeRow.value) return
   error.value = ''
   try {
+    if (remaining.value === '') throw new Error('保底进度未知，暂不能保存。请核对游戏里的真实距保底抽数；可以关闭教程保留当前窗口草稿，不要猜值。')
     progressFromRemaining(remaining.value)
     const entries = rows.value.map(row => {
       const input = entryInput(row)
@@ -622,8 +695,15 @@ async function submit() {
     }).filter(entry => JSON.stringify(entry) !== originals.get(entry.event_id))
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     if (!requestId) requestId = crypto.randomUUID()
-    const verifyEventId = guideMode.value === 'active' ? entries.find(entry => !originals.has(entry.event_id))?.event_id : undefined
-    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', ...(verifyEventId ? { verifyEventId } : {}), data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: Number(remaining.value) } })
+    let target = null
+    if (guideTopic.value === 'progress' && remaining.value !== initialRemaining.value) target = 'progress'
+    if (guideTopic.value === 'record') {
+      const prior = props.saveReceipt?.guide
+      target = entries.find(entry => !originals.has(entry.event_id) || (prior?.session === guideSession.value && entry.event_id === prior.target))?.event_id
+    }
+    if (guideTopic.value === 'maintain') target = entries.find(entry => originals.has(entry.event_id))?.event_id
+    const guide = guideMode.value === 'active' ? { topic: guideTopic.value, session: guideSession.value, target } : null
+    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', guide, data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: Number(remaining.value) } })
   } catch (err) { error.value = err.message; await nextTick(); errorSummary.value?.focus() }
 }
 </script>

@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'
 import { recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
@@ -87,6 +87,29 @@ it('点击记录只展开紧凑抽数编辑，取消不改变记录；完成编�
   expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ event_id: 'old', pull_span: 31 })
 })
 
+it.each(['record', 'maintain'])('%s教程和普通模式使用同一加入/完成及最终保存机制', async topic => {
+  const normal = render(), guided = render()
+  guided.vm.startGuide(topic, false)
+  await flushPromises()
+  for (const wrapper of [normal, guided]) {
+    if (topic === 'record') {
+      await wrapper.get('.add-record').trigger('click')
+      await wrapper.get('.agent-choice[data-agent-id="a"]').trigger('click')
+    } else await wrapper.get('.record-detail').trigger('click')
+    expect(wrapper.get('.composer-actions .primary').text()).toBe(topic === 'record' ? '加入' : '完成')
+    await wrapper.get('.pull-count-field input').setValue('20')
+    await wrapper.get('.composer-actions .primary').trigger('click')
+    expect(wrapper.emitted('save')).toBeUndefined()
+    expect(wrapper.text()).toContain('待保存')
+    await wrapper.get('form').trigger('submit')
+  }
+  const ordinary = normal.emitted('save')[0][0], tutorial = guided.emitted('save')[0][0]
+  expect(tutorial.operation).toBe(ordinary.operation)
+  expect(tutorial.revision).toBe(ordinary.revision)
+  expect(tutorial.data).toEqual({ ...ordinary.data, entries: ordinary.data.entries.map(entry => ({ ...entry, event_id: tutorial.data.entries[0].event_id })) })
+  expect(tutorial.guide).toMatchObject({ topic, target: tutorial.data.entries[0].event_id })
+})
+
 it('严格出货正整数与保底1–40，未知进度留空；忙碌不关闭/提交', async () => {
   const wrapper = render({ pool: { ...recruitmentFixture().pools[0], progress: null } })
   expect(wrapper.get('.remaining-field input').element.value).toBe('')
@@ -112,6 +135,27 @@ it('严格出货正整数与保底1–40，未知进度留空；忙碌不关闭/
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('close')).toBeUndefined()
   expect(wrapper.emitted('save')).toHaveLength(1)
+})
+
+it('只编辑保底时视口因键盘缩短，滚动真实输入到可见范围并保留焦点，不改业务进度', async () => {
+  vi.useFakeTimers()
+  const viewport = Object.assign(new EventTarget(), { height: 844, offsetTop: 0, scale: 1 })
+  vi.stubGlobal('visualViewport', viewport)
+  vi.stubGlobal('innerHeight', 844)
+  const wrapper = render()
+  await wrapper.vm.$nextTick()
+  const input = wrapper.get('.remaining-field input')
+  vi.spyOn(input.element, 'getBoundingClientRect').mockReturnValue({ top: 453, bottom: 500, height: 47 })
+  vi.spyOn(wrapper.get('.editor-header').element, 'getBoundingClientRect').mockReturnValue({ bottom: 100 })
+  const scroll = vi.fn(); wrapper.get('.editor-body').element.scrollBy = scroll
+  input.element.focus()
+  viewport.height = 400; viewport.dispatchEvent(new Event('resize'))
+  await vi.advanceTimersByTimeAsync(200)
+  expect(scroll).toHaveBeenCalledWith({ top: 124, behavior: 'auto' })
+  expect(document.activeElement).toBe(input.element)
+  expect(input.element.value).toBe('40')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  wrapper.unmount()
 })
 
 it('Escape取消不写入，重开恢复服务端记录和保底；已确认非UP才显示歪章', async () => {
