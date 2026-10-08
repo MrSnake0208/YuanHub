@@ -94,6 +94,9 @@
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
+          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="replayCurrentTutorial">
+            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'import' ? '重新查看识别教程' : '重新查看使用教程' }}
+          </button>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
             <button type="button" class="link" @click="openStarHelp('screenshots')">查看截图帮助</button>
@@ -861,7 +864,8 @@ onBeforeUnmount(function () {
     min-width: 44px;
   }
 }
-.star-help-trigger {
+.star-help-trigger,
+.star-tutorial-replay {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -875,6 +879,8 @@ onBeforeUnmount(function () {
   font: inherit;
   cursor: pointer;
 }
+.star-tutorial-replay { margin: 0 0 12px; }
+.star-tutorial-replay:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .star-main {
   min-height: 100vh; min-height: 100dvh;
 }
