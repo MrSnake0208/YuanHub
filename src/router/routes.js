@@ -165,8 +165,6 @@ export const routes = [
         icon: 'scroll-text',
         component: () => import('/src/pages/recruitment/index.vue'),
         meta: {
-            requiresAuth: true,
-            requiresRecruitmentAccess: true,
             feature: FEATURE_KEYS.RECRUITMENT_ARCHIVE,
             featureFallback: '/',
             title: '招募档案 — 鸢鸢相抱 · YuanHub'

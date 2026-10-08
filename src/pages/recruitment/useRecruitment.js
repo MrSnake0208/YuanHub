@@ -107,5 +107,5 @@ export function useRecruitment() {
   const onVisibility = () => { if (document.visibilityState === 'visible') loadAccounts() }
   document.addEventListener('visibilitychange', onVisibility)
   onScopeDispose(() => { alive = false; generation++; unsubscribe(); document.removeEventListener('visibilitychange', onVisibility) })
-  return { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords }
+  return { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords, loadAccounts }
 }

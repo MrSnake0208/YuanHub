@@ -65,7 +65,7 @@ test('actual routes protect only the intended workspaces, never the landing page
   const { routes } = await import('../src/router/routes.js')
   assert.deepEqual(routes.filter(route => route.meta?.requiresBeta).map(route => route.path).sort(), ['/', '/inventory', '/operator', '/operator/quick', '/star'].sort())
   const recruitment = routes.find(route => route.path === '/recruitment')
-  assert.equal(recruitment.meta.requiresRecruitmentAccess, true)
+  assert.equal(recruitment.meta.requiresRecruitmentAccess, undefined)
   assert.notEqual(recruitment.meta.requiresBeta, true)
   const landing = routes.find(route => route.path === '/beta')
   assert.notEqual(landing.meta.requiresBeta, true)
