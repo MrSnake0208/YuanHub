@@ -343,3 +343,30 @@ it('冲突重读看到已登记的新ID时合并同一记录，不生成重复�
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('save')).toHaveLength(1)
 })
+
+
+it('隐藏池可编辑删除已有出货和校正真实保底，不开放新增', async () => {
+  const wrapper = render({ canRecord: false, pool: { ...recruitmentFixture().pools[0], catalog_state: 'hidden' } })
+  expect(wrapper.text()).toContain('此卡池已隐藏')
+  expect(wrapper.get('.add-record').element.disabled).toBe(true)
+  await wrapper.get('.gacha-record .record-detail').trigger('click')
+  expect(wrapper.get('.add-record').element.disabled).toBe(false)
+  await wrapper.get('.add-record').trigger('click')
+  await wrapper.get('.agent-choice[data-agent-id="b"]').trigger('click')
+  await wrapper.get('.pull-count-field input').setValue('20')
+  await wrapper.get('.composer-actions .primary').trigger('click')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].data.entries).toMatchObject([{ event_id: 'old', agent_id: 'b', pull_span: 20 }])
+  wrapper.unmount()
+})
+
+it('隐藏池删除原出货与校正进度提交同一原子请求', async () => {
+  const wrapper = render({ canRecord: false, pool: { ...recruitmentFixture().pools[0], catalog_state: 'hidden' } })
+  await wrapper.get('.gacha-record .record-detail').trigger('click')
+  await button(wrapper, '删除记录').trigger('click')
+  await button(wrapper, '已抽').trigger('click')
+  await wrapper.get('.remaining-field input').setValue('33')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].data).toMatchObject({ entries: [], deleted_event_ids: ['old'], remaining_pulls: 33 })
+  wrapper.unmount()
+})

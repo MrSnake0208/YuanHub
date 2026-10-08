@@ -35,6 +35,7 @@ export function useRecruitment() {
       ])
       if (!matches(token) || read !== readGeneration) return
       if (state.archive && state.archive.archive_revision !== archive.archive_revision) state.requestVersion++
+      archive.pools = archive.pools.map(pool => ({ ...pool, catalog_state: archive.pool_states?.[pool.pool_id] }))
       Object.assign(state, { archive, catalog: catalog.pools, operators: operators.operators })
       state.catalogError = [catalog.error, operators.error].filter(Boolean).join('；')
       if (state.catalogError) state.catalogError += '。已有档案仍可查看和维护，新增需等待目录恢复。'

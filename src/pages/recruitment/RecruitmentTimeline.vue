@@ -87,6 +87,7 @@ const visiblePools = computed(() => props.pools.filter(pool => !year.value || (y
 const remainingPulls = pool => Number.isInteger(pool.progress) && pool.progress >= 0 && pool.progress < 40 ? 40 - pool.progress : '未知'
 function status(pool) {
   const data = details(pool), today = dateInZone('Asia/Shanghai')
+  if (data.hidden) return '已隐藏 · 历史保留'
   if (data.enabled === false) return '已停用'
   if (data.enabled == null) return pool.snapshot?.catalog_pool_id ? '目录未确认' : '历史卡池'
   if (data.start_date && data.start_date > today) return '未开始'

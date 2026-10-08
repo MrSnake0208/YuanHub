@@ -19,6 +19,7 @@
         <form @submit.prevent="submit" @focusin="scheduleEntryVisibility" @pointerdown.capture="holdGuideHint">
           <div ref="editorBody" class="editor-body">
             <p v-if="readOnly && !practiceResult" data-guide-target="read-only" class="state-note">当前档案只可查看，暂不能修改。</p>
+            <p v-else-if="pool?.catalog_state === 'hidden'" data-guide-target="read-only" class="state-note">此卡池已隐藏。已有记录、统计与保底保留，可维护和导出；不能新增出货。</p>
             <p v-else-if="!canRecord" data-guide-target="read-only" class="state-note">此卡池已停用或目录暂不可用。可以修改已有记录与保底，暂不能新增出货。</p>
 
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'read-state'" target="read-state" :message="guideMessage"><button type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
@@ -140,7 +141,7 @@
                     :title="'快速登记 ' + agent.name"
                     :aria-pressed="activeRow?.agent_id === agent.id"
                     :class="{ 'is-selected': activeRow?.agent_id === agent.id }"
-                    :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
+                    :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add(agent.id)"
                   >
                     <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="5" aria-hidden="true" />
@@ -151,7 +152,7 @@
                     class="add-record"
                     :aria-pressed="choosingAgent"
                     :class="{ 'is-selected': choosingAgent }"
-                    :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
+                    :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add()"
                   >
                     <Plus :size="17" aria-hidden="true" />
@@ -637,7 +638,7 @@ function focusEntry(preferPulls = false) {
   })
 }
 function add(agentId = '') {
-  if (props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || !props.canRecord) return
+  if (props.busy || props.readOnly || !recordsReady.value || unverifiedSave.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id)))) return
   dailyMode.value = 'record'
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   recordSearch.value = ''

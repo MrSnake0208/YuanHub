@@ -647,7 +647,7 @@ it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏�
   const catalog = recruitmentCatalog(); catalog.pools[0].up_agents = [{ id: 'slot', name: '占位', operator_id: 'char-a', active: true }]; api.getRecruitmentCatalog.mockResolvedValue(catalog); records['acc-a'][0].agent_snapshot = { agent_id: 'slot', name: '旧名字' }
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.quick-up-button').attributes('aria-pressed')).toBe('true'); expect(editor(wrapper).get('.quick-up-button').attributes('aria-label')).toContain('正式密探'); expect(editor(wrapper).get('img').attributes('src')).toContain('/formal.png')
   await editor(wrapper).get('footer button').trigger('click'); api.getRecruitmentCatalog.mockRejectedValue(new Error('catalog unavailable')); await button(wrapper, '刷新档案').trigger('click'); await flushPromises(); await selectPool(wrapper)
-  expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '完成').trigger('click'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
+  expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeDefined(); await editRow(wrapper); expect(composer(wrapper).find('select').exists()).toBe(false); expect(editor(wrapper).get('.add-record').attributes('disabled')).toBeUndefined(); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '完成').trigger('click'); await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data.entries[0]).toMatchObject({ event_id: 'A', pull_span: 20 })
 })
 it('游戏错配只读；身份失效清弹窗，功能开关关闭时不读写', async () => {
   archives['acc-a'].game_mismatch = true; const wrapper = render(); await flushPromises(); await selectPool(wrapper); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); auth.accessToken = ''; auth.userInfo = null; await flushPromises(); expect(new DOMWrapper(document.body).find('.pool-editor[role=dialog]').exists()).toBe(false); expect(wrapper.find('.summary').exists()).toBe(false); expect(api.recruitmentCommand).not.toHaveBeenCalled(); wrapper.unmount()
@@ -876,4 +876,20 @@ it('删除保存必须读取剩余分页，第一页缺少ID不提前确认；�
   expect(records['acc-a'].map(event => event.event_id)).toEqual(['B'])
   expect(feed(wrapper)).toHaveLength(1)
   expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+})
+
+
+it('隐藏目录刷新后历史入口保留，切换无历史账号不留下旧卡片', async () => {
+  archives['acc-a'].pool_states = { 'pool-a': 'hidden' }
+  api.getRecruitmentCatalog.mockResolvedValue({ pools: [], catalog_revision: 'hidden' })
+  archives['acc-b'].pools = []; archives['acc-b'].pool_states = {}
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('.pool-status').text()).toContain('已隐藏')
+  await selectPool(wrapper)
+  expect(editor(wrapper).text()).toContain('此卡池已隐藏')
+  expect(editor(wrapper).get('.add-record').element.disabled).toBe(true)
+  await editor(wrapper).get('.close-button').trigger('click'); await flushPromises()
+  activeAccount.set('acc-b'); await flushPromises()
+  expect(wrapper.findAll('.pool-card')).toHaveLength(0)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })

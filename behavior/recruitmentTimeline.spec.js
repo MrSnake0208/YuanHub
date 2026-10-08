@@ -181,3 +181,14 @@ it('目录按当前有效槽位解释摘要；绑定和图鉴缺失不丢固定�
   expect(wrapper.get('.pool-card').attributes('aria-label')).toContain('图鉴名称，获得 3 次')
   expect(wrapper.get('.cover-agents img').attributes('src')).toContain('/formal.png')
 })
+
+
+it('隐藏池保留个人卡片摘要与进度，状态优先于缓存公开目录', async () => {
+  const history = { ...pool('hidden', '2026-10-01', '2026-10-31'), catalog_state: 'hidden', progress: 7 }
+  const wrapper = render({ pools: [history], catalog: [{ ...history.snapshot, pool_id: 'hidden', enabled: true }], poolSummaries: { hidden: { event_count: 2, known_total_pulls: 41 } } })
+  expect(wrapper.get('.pool-status').text()).toBe('已隐藏 · 历史保留')
+  expect(wrapper.get('.entry-label').text()).toContain('查看记录')
+  expect(wrapper.get('.pool-metrics').text()).toContain('33')
+  await wrapper.get('.pool-card').trigger('click')
+  expect(wrapper.emitted('select')).toEqual([['hidden']])
+})
