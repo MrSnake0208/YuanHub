@@ -1,5 +1,16 @@
 # YuanStar embed 同步说明
 
+## 当前 P2-C 本地提交来源（2026-10-09）
+
+源码commit：`2af9d51a40ea6b083a7f597b28c9d28963f27de5`，分支保持`feat/growth-plan-workspace-p1`。从已提交的干净工作树正式build:embed，完整12文件与构建目录/manifest SHA-256一致，保留此前用户UI。未确认库存显示未知，可靠冲突显示实际数量，目标仅出现在反馈中；writer幂等状态机不变。本地提交，不push或PR。下文dirty来源为此前开发历史。
+
+
+## 当前 P2-C 库存冲突恢复（2026-10-08，未提交）
+
+沿用源码 HEAD `847b408f278368016305721fe64f21e6eb8e3890` 和 `feat/growth-plan-workspace-p1`，从 dirty source 正式执行 `build:embed`。完整同步12个文件；没有手改生成 JS/CSS。manifest 保留 dirty 标记及全部源码改动文件的 SHA-256，不把用户后续 UI 调整归属到干净 commit。
+
+仅新增瓶子冲突恢复接线 `onAcceptBreakthroughInventory` 和结构化 pending 反馈：已确认只 GET，可靠基线下用户可接受当前库存，未确认沿用原记录重试。保留当前缺口行与空选择摘要微调；CSS、worker、模型、ORT、规则表相对本轮开始字节不变。详细状态机、验证和人工验收边界见 [P2-C 审查包](./growth-plan-p2c-review.md)。下文其它版本说明为此前历史，不代表当前工作树已提交。
+
 `public/yuanstar-embed/` 下的文件**不是**本仓库的源码，而是 YuanStar 浏览器产品（嵌入构建）
 的构建产物，由维护者在同步时手工复制进来：
 
@@ -14,7 +25,13 @@
 **因此本仓库无法复现或审计这两份 JS 的源码差异**。这也正是它们被标记为
 `linguist-generated` / `-diff`（见 `.gitattributes`）的原因。
 
-## 当前 P2-A / P2-B 审查收口（2026-10-08，本地提交、未发布）
+## 当前缺口行与空选择摘要微调（2026-10-08，未提交）
+
+从下述 P2-A/B source commit 上的未提交工作树正式 build:embed，完整同步12个资源。缺口小字与紫星曜标签垂直居中，位置提示改为同行最右侧；卡片标签和按钮高度不变。未选择时摘要也展示经验、紫星曜和三种瓶子，以0占位并保持标签/粗体。
+
+manifest 保留 source commit，`_sourceWorkingTree.status` 为 `dirty`，列出本次4个源码/专项测试/审查文档变更及 SHA-256，未伪称干净提交。12个资源的文件集、字节和哈希一致。1440/390px 单项/多项缺口定向检查通过，未执行无关全量测试或真实账号写入；本次不 commit。
+
+## 此前 P2-A / P2-B 审查收口（2026-10-08，本地提交、未发布）
 
 - source commit `847b408f278368016305721fe64f21e6eb8e3890`，分支 `feat/growth-plan-workspace-p1`。已提交 source commit 的干净工作树正式 build；通过 `build:embed` 完整同步12个资源，未手工编辑 JS/CSS。
 - manifest 的 `_sourceWorkingTree.status` 为 `clean`，不保留旧 dirty 哈希记录。12个产物与 `web/dist/embed/` 文件集、字节及 SHA-256 完全一致。

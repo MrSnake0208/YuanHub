@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeAll, expect, it, vi } from 'vitest'
+import { createGrowthPlanInventoryWriter } from '../src/pages/star/growthPlanInventory.js'
 import { mountYuanStar } from '../public/yuanstar-embed/yuanstar-embed.js'
 const workbook=readFileSync('public/yuanstar-embed/reference/YuanStar_Phase0_6A_经验星曜与突破材料规则_更新.xlsx')
 let root, handle, serial=0
@@ -183,14 +184,12 @@ it('all-account route IDs and default order ignore left search, kind, view, sort
   root.querySelector('[data-summary-group-key="主星|贪狼"]').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));expect(routeIds()).toEqual(initial)
 })
 
-it('bottle conflict keeps the submitted target and displays retry feedback',async()=>{
+it('unconfirmed bottle save displays unknown stock and retains the original retry target',async()=>{
   const save=vi.fn().mockRejectedValueOnce(new Error('解谪瓶库存可能已发生变化，保存结果与目标不一致。')).mockResolvedValue({jiezhuping:5,jiezheping:24,jieyangping:20})
   await setup({onReadBreakthroughInventory:async()=>({jiezhuping:5,jiezheping:10,jieyangping:20}),onSaveBreakthroughInventory:save})
   change('[data-growth-bottle="jiezheping"]','24');await settle()
   expect(root.querySelector('.growth-error').textContent).toContain('不一致')
-  expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('24')
-  expect(root.querySelector('[data-growth-bottle="jiezhuping"]').value).toBe('5')
-  expect(root.querySelector('[data-growth-bottle="jieyangping"]').value).toBe('20')
+  expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.value === '')).toBe(true)
   root.querySelector('#growth-retry-inventory').click();await settle()
   expect(save).toHaveBeenCalledTimes(2);expect(save.mock.calls[1].slice(1)).toEqual(['jiezheping',24])
   expect(root.querySelector('#growth-retry-inventory')).toBeNull()
@@ -208,6 +207,10 @@ it('select-all uses the full pending account route and clears all without a busi
   selectRoute('a');expect(root.querySelector('#growth-select-all').indeterminate).toBe(true)
   root.querySelector('#growth-select-all').click();expect(selectedRouteIds().sort()).toEqual(['a','b'])
   root.querySelector('#growth-select-all').click();expect(selectedRouteIds()).toEqual([])
+  const empty=root.querySelector('.growth-selection-lines')
+  expect(empty.textContent).toContain('经验需求 0');expect(empty.textContent).toContain('紫折合 0')
+  expect(['解注瓶 ×0','解谪瓶 ×0','解殃瓶 ×0'].every(label=>empty.textContent.includes(label))).toBe(true)
+  expect(empty.querySelectorAll('b')).toHaveLength(4);expect(empty.textContent).not.toContain('—')
   expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
   expect(root.querySelector('.growth-selection button').disabled).toBe(true)
 })
@@ -312,4 +315,98 @@ it('held drag scrolls route edges and cancellation never changes saved order',as
   list.dispatchEvent(new MouseEvent('dragover',{bubbles:true,cancelable:true,clientY:199}))
   await vi.advanceTimersByTimeAsync(100);expect(list.scrollTop).toBeGreaterThan(0)
   list.dispatchEvent(new Event('dragend',{bubbles:true}));vi.useRealTimers();await settle();expect(routeIds()).toEqual(initial)
+})
+
+async function inventoryRecoveryFixture() {
+  let count = 10, baseline = null, error = null
+  const documents = [], reads = vi.fn(async ({ accountId }) => {
+    if (error) throw error
+    return [{ account_id: accountId, entity_type: 'item', entries: {
+      jiezhuping: { count: 5 }, jiezheping: { count, listed_baseline_at: baseline }, jieyangping: { count: 20 }, baijinbi: { count: 999 },
+    } }]
+  })
+  const post = vi.fn(async doc => { documents.push(JSON.stringify(doc)); baseline = doc.records[0].effective_at; return { accepted: 1 } })
+  const writer = createGrowthPlanInventoryWriter({ getCurrent: reads, importInventory: post, isCurrent: () => true, createId: () => 'embed-' + documents.length })
+  const accept = vi.fn((...args) => writer.acceptCurrent(...args))
+  await setup({ onReadBreakthroughInventory: owner => writer.read(owner), onSaveBreakthroughInventory: (...args) => writer.save(...args), onAcceptBreakthroughInventory: accept })
+  return { writer, documents, reads, post, accept, setCount: value => { count = value }, setBaseline: value => { baseline = value }, setError: value => { error = value } }
+}
+it('real writer conflict exposes GET-only recovery; acceptance unlocks fields and preserves experience/route', async () => {
+  const f = await inventoryRecoveryFixture(), before = await handle.getCloudBusinessSnapshot(), route = routeIds()
+  change('[data-growth-bottle="jiezheping"]', '24'); await settle()
+  expect(root.querySelector('.growth-error').textContent).toContain('尝试保存：24，当前读取：10')
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('10')
+  expect(root.querySelector('.growth-route-estimate').textContent).toContain('无法估算')
+  expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.disabled)).toBe(true)
+  expect(root.querySelector('#growth-retry-inventory').textContent).toBe('重新读取')
+  expect(root.querySelector('#growth-accept-inventory').disabled).toBe(false)
+  root.querySelector('#growth-retry-inventory').focus(); root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(document.activeElement.id).toBe('growth-retry-inventory')
+  expect(f.post).toHaveBeenCalledTimes(1); expect(root.querySelector('.growth-error').textContent).toContain('不一致')
+  f.setCount(8); root.querySelector('#growth-accept-inventory').focus(); root.querySelector('#growth-accept-inventory').click(); await settle()
+  expect(document.activeElement.id).toBe('growth-bottle-jiezheping')
+  expect(f.accept).toHaveBeenCalledTimes(1); expect(f.post).toHaveBeenCalledTimes(1)
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('8')
+  expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => !field.disabled)).toBe(true)
+  expect(root.querySelector('.growth-error')).toBeNull(); expect(root.querySelector('#growth-retry-inventory')).toBeNull()
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before); expect(routeIds()).toEqual(route)
+  f.setCount(0); change('[data-growth-bottle="jiezheping"]', '0'); await settle()
+  expect(f.post).toHaveBeenCalledTimes(2)
+  const first = JSON.parse(f.documents[0]).records[0], next = JSON.parse(f.documents[1]).records[0]
+  expect(next.record_id).not.toBe(first.record_id); expect(next.entries).toEqual([{ id: 'jiezheping', name: '解谪瓶', count: 0 }])
+  expect(root.querySelector('[data-growth-bottle="jiezhuping"]').value).toBe('5'); expect(root.querySelector('[data-growth-bottle="jieyangping"]').value).toBe('20')
+})
+it('matching conflict reread ends pending without import or acceptance', async () => {
+  const f = await inventoryRecoveryFixture()
+  change('[data-growth-bottle="jiezheping"]', '24'); await settle()
+  f.setCount(24); root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(f.writer.hasPending()).toBe(false); expect(f.post).toHaveBeenCalledTimes(1)
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(false)
+  expect(root.querySelector('#growth-accept-inventory')).toBeNull()
+})
+it('lagging baselines and failed GETs cannot offer acceptance or unlock the inputs', async () => {
+  const f = await inventoryRecoveryFixture()
+  change('[data-growth-bottle="jiezheping"]', '24'); await settle()
+  const baseline = JSON.parse(f.documents[0]).records[0].effective_at
+  f.setBaseline(null); root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(root.querySelector('#growth-accept-inventory').disabled).toBe(true)
+  expect(root.querySelector('.growth-error').textContent).toContain('尚未证实')
+  expect([...root.querySelectorAll('[data-growth-bottle]')].every(field => field.value === '')).toBe(true)
+  f.setBaseline(baseline); root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(root.querySelector('#growth-accept-inventory').disabled).toBe(false)
+  f.setError(Object.assign(new Error('读取失败，请重新读取'), { status: 403 }))
+  root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(root.querySelector('#growth-accept-inventory')).toBeNull()
+  expect(root.querySelector('#growth-retry-inventory').textContent).toBe('重新读取')
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(true)
+  expect(f.writer.hasPending()).toBe(true); expect(f.post).toHaveBeenCalledTimes(1)
+  f.setError(null); f.setCount(24); root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(false)
+})
+it('unknown import retry sends identical bytes and offers no acceptance', async () => {
+  const f = await inventoryRecoveryFixture()
+  f.post.mockRejectedValueOnce(new TypeError('连接中断，写入结果未确认'))
+  change('[data-growth-bottle="jiezheping"]', '24'); await settle()
+  expect(root.querySelector('#growth-retry-inventory').textContent).toBe('重试')
+  expect(root.querySelector('#growth-accept-inventory')).toBeNull()
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(true)
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('')
+  f.setCount(24); root.querySelector('#growth-retry-inventory').click(); await settle()
+  expect(f.post).toHaveBeenCalledTimes(2)
+  expect(JSON.stringify(f.post.mock.calls[0][0])).toBe(JSON.stringify(f.post.mock.calls[1][0]))
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(false)
+})
+it('obsolete acceptance cannot overwrite a newly entered account', async () => {
+  let resolve
+  const accept = vi.fn(() => new Promise(done => { resolve = done }))
+  const read = vi.fn(async () => ({ jiezhuping: 1, jiezheping: 2, jieyangping: 3 }))
+  const save = vi.fn(async (owner, id, count) => { throw Object.assign(new Error('库存与保存目标不一致'), { inventoryPending: { accountId: owner, id, count, phase: 'conflict', currentCount: 2, canAccept: true } }) })
+  await setup({ onReadBreakthroughInventory: read, onSaveBreakthroughInventory: save, onAcceptBreakthroughInventory: accept })
+  change('[data-growth-bottle="jiezheping"]', '24'); await settle()
+  root.querySelector('#growth-accept-inventory').click()
+  await handle.setHostAccount({ accountId: 'growth-accept-new-' + ++serial, displayName: '新账号', gameVersion: '如鸢' })
+  resolve({ jiezhuping: 999, jiezheping: 999, jieyangping: 999 }); await settle()
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').value).toBe('2')
+  expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(false)
+  expect(root.querySelector('#growth-accept-inventory')).toBeNull()
 })

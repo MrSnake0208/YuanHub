@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
 const root = new URL('../', import.meta.url)
-const sourceCommit = '847b408f278368016305721fe64f21e6eb8e3890'
+const sourceCommit = '2af9d51a40ea6b083a7f597b28c9d28963f27de5'
 
 test('vendored YuanStar embed keeps provenance and is marked as generated output', () => {
   const doc = readFileSync(new URL('docs/yuanstar-embed-sync.md', root), 'utf8')
@@ -77,7 +77,16 @@ test('vendored release matches documented provenance and the current artifact ma
   // 哈希清单是唯一来源：文档与测试不再各存一份，更新 embed 时只需重建 manifest.json。
   const manifest = JSON.parse(readFileSync(new URL('docs/yuanstar-embed-manifest.json', root), 'utf8'))
   assert.equal(manifest._sourceCommit, sourceCommit)
-  assert.deepEqual(manifest._sourceWorkingTree, { status: 'clean' })
+  if (manifest._sourceWorkingTree.status === 'clean') {
+    assert.deepEqual(manifest._sourceWorkingTree, { status: 'clean' })
+  } else {
+    assert.equal(manifest._sourceWorkingTree.status, 'dirty')
+    const expectedSourceChanges = ['web/docs/growth-plan-p2-review.md', 'web/src/growth-plan-view.ts', 'web/src/product.css', 'web/src/product.ts', 'web/tests/growth-plan.test.ts']
+    assert.deepEqual(manifest._sourceWorkingTree.changedFiles, expectedSourceChanges)
+    assert.deepEqual(Object.keys(manifest._sourceWorkingTree.sourceFileHashes).sort(), expectedSourceChanges)
+    for (const hash of Object.values(manifest._sourceWorkingTree.sourceFileHashes)) assert.match(hash, /^[0-9a-f]{64}$/)
+    assert.ok(doc.includes('当前缺口行与空选择摘要微调'))
+  }
   assert.equal(manifest._sourceBranch, 'feat/growth-plan-workspace-p1')
   for (const path of ['web/vite.config.mjs', 'web/vite.embed.config.mjs', 'web/scripts/verify-ocr-build.mjs']) {
     assert.ok(doc.includes(path), path + ' documented source change')

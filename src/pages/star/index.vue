@@ -172,7 +172,7 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { listAccounts } from "../../api/accounts.js";
 import { getCurrent as getCurrentInventory, importInventory } from "../../api/inventory.js";
-import { readGrowthPlanInventory, createGrowthPlanInventoryWriter } from "./growthPlanInventory.js";
+import { createGrowthPlanInventoryWriter, growthPlanInventorySession } from "./growthPlanInventory.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
@@ -210,10 +210,27 @@ const activeTab = usePersistedTab(
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
 const starReviewView = ref('bag');
 const growthBottlePending = ref(false);
-const growthBottleWriter = createGrowthPlanInventoryWriter({
-  getCurrent: getCurrentInventory, importInventory,
-  isCurrent: owner => !unmounted && auth.isLoggedIn && owner === selectedHostAccount()?.accountId,
-});
+function growthBottleWriter(owner) {
+  const userId = String(auth.userInfo?.id || '');
+  const context = starContextVersion, identity = accountIdentityVersion;
+  return createGrowthPlanInventoryWriter({
+    state: growthPlanInventorySession(userId, owner),
+    getCurrent: args => getCurrentInventory(args, { expectedUserId: userId, fresh: true }),
+    importInventory: doc => importInventory(doc, { expectedUserId: userId }),
+    isCurrent: account => !unmounted && context === starContextVersion && identity === accountIdentityVersion && auth.isLoggedIn &&
+      userId === String(auth.userInfo?.id || '') && account === selectedHostAccount()?.accountId,
+  });
+}
+async function runGrowthBottleOperation(owner, operation) {
+  const writer = growthBottleWriter(owner);
+  const context = starContextVersion, identity = accountIdentityVersion;
+  growthBottlePending.value = true;
+  try { return await operation(writer); }
+  finally {
+    if (!unmounted && context === starContextVersion && identity === accountIdentityVersion && owner === selectedHostAccount()?.accountId)
+      growthBottlePending.value = writer.hasPending();
+  }
+}
 watch(starReviewView, view => { handle?.setReviewView?.(view); });
 const starBrowseEmpty = ref(false);
 const starFiltersOpen = ref(false);
@@ -602,6 +619,7 @@ async function syncHostAccount() {
       await currentHandle.setHostAccount(host);
       if (!isCurrent()) return false;
       mountedAccountId = host?.accountId || "";
+      growthBottlePending.value = host ? growthBottleWriter(host.accountId).hasPending() : false;
       if (previousAccountId && previousAccountId !== mountedAccountId)
         resetStarImportState();
       clearCloudSyncFeedback();
@@ -742,15 +760,9 @@ async function mountProduct() {
       assetBaseUrl: "/yuanstar-embed/",
       embedded: true,
       reviewView: starReviewView.value,
-      onReadBreakthroughInventory: function (owner) {
-        const context = starContextVersion;
-        return readGrowthPlanInventory(owner, getCurrentInventory, () => !unmounted && context === starContextVersion && auth.isLoggedIn && owner === selectedHostAccount()?.accountId);
-      },
-      onSaveBreakthroughInventory: async function (owner,id,count) {
-        growthBottlePending.value = true;
-        try { return await growthBottleWriter.save(owner,id,count); }
-        finally { growthBottlePending.value = growthBottleWriter.hasPending(); }
-      },
+      onReadBreakthroughInventory: owner => runGrowthBottleOperation(owner, writer => writer.read(owner)),
+      onSaveBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.save(owner,id,count)),
+      onAcceptBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.acceptCurrent(owner,id,count)),
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },

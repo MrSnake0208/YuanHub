@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { reactive } from 'vue'
 import StarPage from '../src/pages/star/index.vue'
+import { getCurrent as getCurrentInventory, importInventory } from '../src/api/inventory.js'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
@@ -14,6 +15,7 @@ import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 const navigation = vi.hoisted(() => ({ route: null, replace: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => navigation.route, useRouter: () => ({ replace: navigation.replace }) }))
 vi.mock('../src/store/auth.js', () => ({ auth: reactive({ isLoggedIn: false }) }))
+vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn(), importInventory: vi.fn() }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({
   getCurrentStarState: vi.fn(), patchCurrentStarState: vi.fn(), rebuildStarState: vi.fn(),
@@ -704,4 +706,87 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('导出 Blob 等待期�
   else { activeAccount.set('acc-2'); if (change === 'roundtrip') activeAccount.set('acc-1') }
   gate.resolve(JSON.stringify({ schemaVersion: 1, accountDisplayName: '旧名', inventory: [] })); await flushPromises()
   expect(click).not.toHaveBeenCalled()
+})
+
+async function growthHostFixture(userId) {
+  auth.isLoggedIn = true; auth.userInfo = { id: userId }
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: 'A', game: '如鸢' }, { id: 'acc-2', name: 'B', game: '如鸢' }])
+  let count = 3, baseline = null
+  getCurrentInventory.mockImplementation(async ({ accountId }) => [{ account_id: accountId, entity_type: 'item', entries: { jiezheping: { count, listed_baseline_at: baseline }, baijinbi: { count: 999 } } }])
+  importInventory.mockImplementation(async doc => { baseline = doc.records[0].effective_at; return { accepted: 1 } })
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  return { wrapper, callbacks: embedMount.mock.calls.at(-1)[1], setCount: value => { count = value } }
+}
+it('瓶子冲突宿主锁定切号，接受后恢复并用新记录保存明确0', async () => {
+  const f = await growthHostFixture('growth-host-accept')
+  await expect(f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10)).rejects.toMatchObject({ inventoryPending: { phase: 'conflict', canAccept: true } })
+  await flushPromises()
+  const bar = () => f.wrapper.findComponent({ name: 'DataAccountContextBar' })
+  expect(bar().props('switchDisabled')).toBe(true)
+  await expect(f.callbacks.onReadBreakthroughInventory('acc-1')).rejects.toThrow('不一致')
+  expect(importInventory).toHaveBeenCalledTimes(1)
+  f.setCount(8)
+  expect((await f.callbacks.onAcceptBreakthroughInventory('acc-1', 'jiezheping', 10)).jiezheping).toBe(8)
+  await flushPromises(); expect(bar().props('switchDisabled')).toBe(false)
+  f.setCount(0); await f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 0)
+  expect(importInventory).toHaveBeenCalledTimes(2)
+  const records = importInventory.mock.calls.map(([doc]) => doc.records[0])
+  expect(records[0].record_id).not.toBe(records[1].record_id)
+  expect(records[1].entries).toEqual([{ id: 'jiezheping', name: '解谪瓶', count: 0 }])
+  expect(getCurrentInventory.mock.calls.at(-1)[1]).toEqual({ expectedUserId: 'growth-host-accept', fresh: true })
+  f.wrapper.unmount()
+})
+it('未确认瓶子保存卸载重挂后保留原记录', async () => {
+  const f = await growthHostFixture('growth-host-remount')
+  importInventory.mockRejectedValueOnce(new TypeError('POST lost'))
+  await expect(f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10)).rejects.toThrow('POST lost')
+  const original = JSON.stringify(importInventory.mock.calls[0][0])
+  f.wrapper.unmount(); await flushPromises(); document.getElementById('yuanstar-embed-styles')?.remove()
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const callbacks = embedMount.mock.calls.at(-1)[1]
+  await expect(callbacks.onReadBreakthroughInventory('acc-1')).rejects.toMatchObject({ inventoryPending: { phase: 'unconfirmed' } })
+  f.setCount(10)
+  importInventory.mockResolvedValue({ duplicates: 1 })
+  await callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10)
+  expect(JSON.stringify(importInventory.mock.calls.at(-1)[0])).toBe(original)
+  wrapper.unmount()
+})
+it.each(['account', 'roundtrip', 'identity', 'unmount'])('瓶子读回期间 %s 废弃过期响应且保留已确认记录', async action => {
+  const f = await growthHostFixture('growth-host-stale-' + action)
+  listAccounts.mockResolvedValue([{ id: 'acc-1', name: 'A', game: '如鸢' }, { id: 'acc-2', name: 'B', game: '如鸢' }])
+  const gate = deferred(); let reads = 0
+  getCurrentInventory.mockImplementation(async () => ++reads === 1 ? [{ account_id: 'acc-1', entity_type: 'item', entries: {} }] : gate.promise)
+  const outcome = f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10).catch(error => error)
+  await flushPromises()
+  if (action === 'unmount') f.wrapper.unmount()
+  else if (action === 'identity') { auth.userInfo = { id: 'other' }; auth.userInfo = { id: 'growth-host-stale-' + action } }
+  else { activeAccount.set('acc-2'); if (action === 'roundtrip') activeAccount.set('acc-1') }
+  gate.resolve([{ account_id: 'acc-1', entity_type: 'item', entries: { jiezheping: { count: 10 } } }])
+  expect(await outcome).toMatchObject({ inventoryPending: { phase: 'acknowledged' } })
+  expect(importInventory).toHaveBeenCalledTimes(1)
+  f.wrapper.unmount()
+})
+
+it('外部切到有效B账号不应用A的pending，返回A只核对原已确认记录', async () => {
+  const f = await growthHostFixture('growth-host-account-isolation')
+  const stock = { 'acc-1': { count: 3, baseline: null }, 'acc-2': { count: 7, baseline: null } }
+  getCurrentInventory.mockImplementation(async ({ accountId }) => [{ account_id: accountId, entity_type: 'item', entries: { jiezheping: { count: stock[accountId].count, listed_baseline_at: stock[accountId].baseline }, baijinbi: { count: accountId === 'acc-1' ? 111 : 222 } } }])
+  importInventory.mockImplementation(async doc => {
+    const record = doc.records[0]; stock[record.account_id].baseline = record.effective_at
+    if (record.account_id === 'acc-2') stock['acc-2'].count = record.entries[0].count
+    return { accepted: 1 }
+  })
+  await expect(f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10)).rejects.toMatchObject({ inventoryPending: { accountId: 'acc-1', phase: 'conflict' } })
+  activeAccount.set('acc-2'); await flushPromises()
+  expect(f.wrapper.findComponent({ name: 'DataAccountContextBar' }).props('switchDisabled')).toBe(false)
+  expect((await f.callbacks.onReadBreakthroughInventory('acc-2')).jiezheping).toBe(7)
+  await expect(f.callbacks.onAcceptBreakthroughInventory('acc-1', 'jiezheping', 10)).rejects.toThrow('账号已切换')
+  expect((await f.callbacks.onSaveBreakthroughInventory('acc-2', 'jiezheping', 0)).jiezheping).toBe(0)
+  expect(importInventory.mock.calls.map(([doc]) => doc.records[0].account_id)).toEqual(['acc-1', 'acc-2'])
+  activeAccount.set('acc-1'); await flushPromises()
+  await expect(f.callbacks.onReadBreakthroughInventory('acc-1')).rejects.toMatchObject({ inventoryPending: { accountId: 'acc-1', count: 10, currentCount: 3 } })
+  await f.callbacks.onAcceptBreakthroughInventory('acc-1', 'jiezheping', 10)
+  await flushPromises(); expect(f.wrapper.findComponent({ name: 'DataAccountContextBar' }).props('switchDisabled')).toBe(false)
+  expect(importInventory).toHaveBeenCalledTimes(2); expect(stock['acc-2'].count).toBe(0)
+  f.wrapper.unmount()
 })
