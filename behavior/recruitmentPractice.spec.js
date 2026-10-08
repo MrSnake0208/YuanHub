@@ -24,6 +24,8 @@ it.each(['record', 'progress'])('隔离%s练习走同一实际控件，只显示
   expect(target()).toBe('progress')
   await body().get('.remaining-field input').setValue('33'); await body().get('.remaining-field input').trigger('blur')
   expect(target()).toBe(branch === 'record' ? 'save-record' : 'save-progress')
+  await button('已垫').trigger('click')
+  expect(body().get('.remaining-field input').element.value).toBe('7')
   await button('查看练习结果').trigger('click'); await flushPromises()
   expect(body().get('.save-result').text()).toContain('练习结果 · 仅示例')
   expect(body().findAll('.gacha-record')).toHaveLength(branch === 'record' ? 1 : 0)

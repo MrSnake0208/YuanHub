@@ -8,6 +8,7 @@ import { recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../tes
 
 const render = props => mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: recruitmentFixture().pools[0], recordsRevision: 3, records: [{ ...recruitmentEvent('old', 17), agent_snapshot: { agent_id: 'a', name: '甲' } }], canRecord: true, catalog: recruitmentCatalog().pools, agents: [{ id: 'a', name: '甲' }, { id: 'b', name: '乙' }], ...props }, global: { stubs: { Teleport: true } } })
 const button = (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text)
+const progressModeKey = 'yh_recruitment_progress_input_mode'
 
 async function register(wrapper, agent, span) {
   const quick = wrapper.find('.quick-up-button[data-agent-id="' + agent + '"]')
@@ -112,6 +113,80 @@ it.each(['record', 'maintain'])('%s教程和普通模式使用同一先加入草
   expect(tutorial.revision).toBe(ordinary.revision)
   expect(tutorial.data).toEqual({ ...ordinary.data, entries: ordinary.data.entries.map(entry => ({ ...entry, event_id: tutorial.data.entries[0].event_id })) })
   expect(tutorial.guide).toBeUndefined()
+})
+
+it('跨卡池沿用填写偏好，只加载新池进度，不携带上个池的未保存抽数', async () => {
+  const pool = recruitmentFixture().pools[0]
+  const wrapper = render({ pool: { ...pool, progress: 7 }, records: [] })
+  await button(wrapper, '已垫').trigger('click')
+  expect(localStorage.getItem(progressModeKey)).toBe('已垫')
+  expect(wrapper.vm.hasDraft()).toBe(false)
+  await wrapper.get('.remaining-field input').setValue('9')
+  await wrapper.setProps({ open: false })
+  await wrapper.setProps({ open: true, pool: { ...pool, pool_id: 'other-pool', progress: 12 } })
+  expect(button(wrapper, '已垫').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.remaining-field input').element.value).toBe('12')
+  expect(wrapper.vm.hasDraft()).toBe(false)
+  await wrapper.setProps({ open: false })
+  await wrapper.setProps({ open: true, pool: { ...pool, pool_id: 'unknown-pool', progress: null } })
+  expect(button(wrapper, '已垫').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.remaining-field input').element.value).toBe('')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  wrapper.unmount()
+})
+
+it('重新挂载及更换账号所属卡池恢复本地填写方式，抽数仍取当前池', async () => {
+  let wrapper = render()
+  await button(wrapper, '已垫').trigger('click')
+  wrapper.unmount()
+  wrapper = render({ pool: { ...recruitmentFixture().pools[0], pool_id: 'account-b-pool', progress: 12 } })
+  expect(button(wrapper, '已垫').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.remaining-field input').element.value).toBe('12')
+  expect(wrapper.vm.hasDraft()).toBe(false)
+  await button(wrapper, '已抽').trigger('click')
+  expect(localStorage.getItem(progressModeKey)).toBe('已抽')
+  wrapper.unmount()
+  wrapper = render()
+  expect(button(wrapper, '已抽').attributes('aria-pressed')).toBe('true')
+  wrapper.unmount()
+})
+
+it('无效本地填写偏好回退已抽，不影响进度与保存', () => {
+  localStorage.setItem(progressModeKey, 'invalid')
+  const wrapper = render({ pool: { ...recruitmentFixture().pools[0], progress: 7 } })
+  expect(button(wrapper, '已抽').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.remaining-field input').element.value).toBe('33')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  wrapper.unmount()
+})
+
+it('本地存储读写失败时仍可切换并在重开弹窗后沿用当前选择', async () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('storage unavailable') })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('storage unavailable') })
+  const wrapper = render({ pool: { ...recruitmentFixture().pools[0], progress: 7 } })
+  expect(button(wrapper, '已抽').attributes('aria-pressed')).toBe('true')
+  await button(wrapper, '已垫').trigger('click')
+  await wrapper.setProps({ open: false })
+  await wrapper.setProps({ open: true })
+  expect(button(wrapper, '已垫').attributes('aria-pressed')).toBe('true')
+  expect(wrapper.get('.remaining-field input').element.value).toBe('7')
+  expect(wrapper.vm.hasDraft()).toBe(false)
+  wrapper.unmount()
+})
+
+it('练习不读取或覆盖正式填写偏好', async () => {
+  localStorage.setItem(progressModeKey, '已垫')
+  const read = vi.spyOn(Storage.prototype, 'getItem')
+  const write = vi.spyOn(Storage.prototype, 'setItem')
+  const wrapper = render({ practice: true })
+  await button(wrapper, '还没出绝密').trigger('click')
+  expect(button(wrapper, '已抽').attributes('aria-pressed')).toBe('true')
+  await button(wrapper, '已垫').trigger('click')
+  await button(wrapper, '已抽').trigger('click')
+  expect(read).not.toHaveBeenCalled()
+  expect(write).not.toHaveBeenCalled()
+  expect(localStorage[progressModeKey]).toBe('已垫')
+  wrapper.unmount()
 })
 
 it.each([0, 7, 39])('切换填写方式自动换算已有进度 %i，不产生草稿；修改已垫按距保底提交', async progress => {
