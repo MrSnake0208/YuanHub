@@ -271,7 +271,7 @@ it('first OCR waits for persisted review, auto starts bag, dismissal stays seen 
   wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="first-ocr"></section></section>'
   await vi.advanceTimersByTimeAsync(100); await flushPromises()
   expect(document.querySelector('[aria-label="使用教程"]').textContent).toContain('1 / 7')
-  expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看识别教程')
+  expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看使用教程')
   await wrapper.get('.compact-tool-help').trigger('click');await flushPromises()
   expect(wrapper.get('.star-help-tutorial').text()).toContain('重新查看使用教程')
   document.querySelector('[aria-label="关闭使用教程"]').click(); await flushPromises()
@@ -324,18 +324,18 @@ it('bag replay reveals the current workspace and filters, and account changes cl
   expect(localStorage.getItem('yuanhub:star-bag:v1:bag-current-workspace')).toBe('seen')
 })
 
-it('tab row replay uses recognition for bag and a growth tour that stays in plan; switching views closes it',async()=>{
+it('tab row replay uses overall usage for bag and a growth tour that stays in plan; switching views closes it',async()=>{
   enableTutorialStatus('growth-replay-host',true)
   localStorage.setItem('star-tabs','review')
   const wrapper=render();await flushPromises();await loadStylesheet()
   const options=embedMount.mock.calls[0][1]
   options.onSummaryChange({currentCount:3,planCount:2,gameVersion:'如鸢'});await flushPromises()
   expect(wrapper.get('.star-workbench-header .star-tabs').exists()).toBe(true)
-  expect(wrapper.get('.star-workbench-header .star-tutorial-replay').text()).toBe('重新查看识别教程')
+  expect(wrapper.get('.star-workbench-header .star-tutorial-replay').text()).toBe('重新查看使用教程')
   await wrapper.get('.star-tutorial-replay').trigger('click');await flushPromises()
-  expect(document.querySelector('[aria-label="识别教程"]')).not.toBeNull()
-  expect(embedMount.mock.results[0].value.setActiveTab).toHaveBeenLastCalledWith('import')
-  document.querySelector('[aria-label="关闭识别教程"]').click();await flushPromises()
+  expect(document.querySelector('[aria-label="使用教程"]')).not.toBeNull()
+  expect(embedMount.mock.results[0].value.setActiveTab).toHaveBeenLastCalledWith('review')
+  document.querySelector('[aria-label="关闭使用教程"]').click();await flushPromises()
   await wrapper.findAll('.star-tabs [role="tab"]')[1].trigger('click');await flushPromises()
   expect(wrapper.get('.star-tutorial-replay').text()).toBe('重新查看养成教程')
   await wrapper.get('.star-tutorial-replay').trigger('click');await flushPromises()

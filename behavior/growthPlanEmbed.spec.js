@@ -28,12 +28,12 @@ async function setup(options={}) {
   handle.setActiveTab('review');handle.setReviewView('plan');await settle()
   expect(root.textContent).not.toContain('规则加载失败')
 }
-it('isolates plan rows, short resources and inert route cards from bag review',async()=>{
+it('isolates plan rows, short resources and interactive route cards from bag review',async()=>{
   const read=vi.fn(async()=>({jiezhuping:5,jiezheping:10,jieyangping:20}))
   await setup({onReadBreakthroughInventory:read})
   expect(root.querySelectorAll('#plan-rows input[type=checkbox]')).toHaveLength(0)
   expect(root.querySelectorAll('.growth-route-card')).toHaveLength(2)
-  expect(root.querySelectorAll('.growth-route-card input:disabled')).toHaveLength(2)
+  expect(root.querySelectorAll('.growth-route-card input[type=checkbox]:disabled')).toHaveLength(0)
   expect(root.querySelector('.growth-selection button').disabled).toBe(true)
   expect(root.querySelector('[data-growth-bottle="jiezhuping"]').value).toBe('5')
   expect(root.querySelector('.growth-resources').textContent).not.toMatch(/橙星曜|紫星曜|白星曜/)
@@ -101,14 +101,21 @@ it('edits real experience quantities and saves only the requested bottle through
   expect(root.querySelector('#clear-filter')).toBeNull()
   expect(root.querySelector('#apply-filter').textContent).toBe('应用筛选')
 })
-it('route indices remain read-only and ignore edits without changing business state',async()=>{
-  await setup()
-  const before=await handle.getCloudBusinessSnapshot(), position=root.querySelector('[data-growth-route-id="b"]')
-  const beforeOrder=[...root.querySelectorAll('[data-growth-route-id]')].map(e=>e.dataset.growthRouteId)
-  expect(position.readOnly).toBe(true)
-  position.value=position.value==='1' ? '2' : '1';position.dispatchEvent(new Event('change',{bubbles:true}))
-  expect([...root.querySelectorAll('[data-growth-route-id]')].map(e=>e.dataset.growthRouteId)).toEqual(beforeOrder)
-  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+it('direct route indices save once on Enter plus blur and reject invalid input; Escape cancels',async()=>{
+  const commit=vi.fn(); await setup({onBusinessCommit:commit}); commit.mockClear()
+  const ids=routeIds(), last=ids.at(-1), owner='growth-probe-'+serial, previousRevision=(await storedWorkspace(owner)).revision
+  const field=root.querySelector(`[data-growth-route-id="${last}"]`);field.focus();field.value='1'
+  field.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));field.dispatchEvent(new Event('blur'))
+  await settle();expect(routeIds()).toEqual([last,ids[0]])
+  expect([...root.querySelectorAll('[data-growth-route-id]')].map(e=>e.value)).toEqual(['1','2'])
+  // Local order emits no cloud business/inventory write.
+  expect(commit).not.toHaveBeenCalled()
+  expect((await storedWorkspace(owner)).revision).toBe(previousRevision+1)
+  for(const invalid of ['0','3','1.5','x','']) {
+    const f=root.querySelector(`[data-growth-route-id="${last}"]`);f.focus();f.value=invalid;f.blur();expect(f.value).toBe('1')
+  }
+  const f=root.querySelector(`[data-growth-route-id="${last}"]`);f.focus();f.value='2';f.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle()
+  expect(routeIds()).toEqual([last,ids[0]])
 })
 
 it('kind and search filters drop hidden selection and drafts without pending-only',async()=>{
@@ -187,4 +194,122 @@ it('bottle conflict keeps the submitted target and displays retry feedback',asyn
   root.querySelector('#growth-retry-inventory').click();await settle()
   expect(save).toHaveBeenCalledTimes(2);expect(save.mock.calls[1].slice(1)).toEqual(['jiezheping',24])
   expect(root.querySelector('#growth-retry-inventory')).toBeNull()
+})
+
+const selectRoute=id=>{const f=root.querySelector(`[data-growth-select-id="${id}"]`);f.checked=!f.checked;f.dispatchEvent(new Event('change',{bubbles:true}))}
+const selectedRouteIds=()=>[...root.querySelectorAll('[data-growth-select-id]:checked')].map(e=>e.dataset.growthSelectId)
+
+it('select-all uses the full pending account route and clears all without a business write',async()=>{
+  await setup();const before=await handle.getCloudBusinessSnapshot()
+  change('#name-filter','文昌');root.querySelector('#apply-filter').click()
+  expect(root.querySelector('#growth-select-all').checked).toBe(false)
+  root.querySelector('#growth-select-all').click();expect(selectedRouteIds().sort()).toEqual(['a','b'])
+  expect(root.querySelector('#growth-select-all').checked).toBe(true)
+  selectRoute('a');expect(root.querySelector('#growth-select-all').indeterminate).toBe(true)
+  root.querySelector('#growth-select-all').click();expect(selectedRouteIds().sort()).toEqual(['a','b'])
+  root.querySelector('#growth-select-all').click();expect(selectedRouteIds()).toEqual([])
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+  expect(root.querySelector('.growth-selection button').disabled).toBe(true)
+})
+
+it('achieved goals prune only completed selections, renumber remaining route and preserve resources',async()=>{
+  const write=vi.fn();await setup({onSaveBreakthroughInventory:write});selectRoute('a');selectRoute('b');await editOrder('b',1)
+  const before=await handle.getCloudBusinessSnapshot()
+  root.querySelector('[data-star-id="a"]').click();change('#growth-current-level','60','input')
+  root.querySelector('#growth-save').click();await settle()
+  const after=await handle.getCloudBusinessSnapshot()
+  expect(after.planTargets).toEqual({b:52});expect(after.inventory.find(s=>s.starInstanceId==='a').level).toBe(60)
+  expect(routeIds()).toEqual(['b']);expect(root.querySelector('[data-growth-route-id="b"]').value).toBe('1')
+  expect(selectedRouteIds()).toEqual(['b']);expect(root.querySelector('.growth-selection').textContent).toContain('本次选中 1颗')
+  expect(after.experience).toEqual(before.experience);expect(after.bag).toEqual(before.bag);expect(write).not.toHaveBeenCalled()
+})
+
+it('uses purple resource labels in deficits and summary with bold quantities and plain editor experience',async()=>{
+  await setup({onReadBreakthroughInventory:async()=>({jiezhuping:1000,jiezheping:1000,jieyangping:1000})})
+  const before=await handle.getCloudBusinessSnapshot();await handle.applyCloudBusinessSnapshot({...before,experience:{orange:0,purple:0,white:0}});await settle()
+  const gap=root.querySelector('.growth-route-gap');expect(gap.querySelector('.experience-紫')).not.toBeNull();expect(gap.querySelector('.growth-route-purple b').textContent).toMatch(/颗$/)
+  expect(root.querySelector('.growth-route-card .growth-route-purple b')).not.toBeNull()
+  selectRoute('a');expect(root.querySelector('.growth-selection .experience-紫')).not.toBeNull()
+  expect(root.querySelectorAll('.growth-selection-lines b')).toHaveLength(4)
+  root.querySelector('[data-star-id="a"]').click();expect(root.querySelector('.growth-edit-experience > b:not(.growth-purple-equivalent)')).toBeNull()
+  expect(root.querySelector('.growth-edit-experience .growth-purple-equivalent').tagName).toBe('B')
+})
+async function editOrder(id,position){const f=root.querySelector(`[data-growth-route-id="${id}"]`);f.focus();f.value=String(position);f.dispatchEvent(new Event('blur'));await settle()}
+async function storedWorkspace(owner){return new Promise((resolve,reject)=>{const request=indexedDB.open('yuanstar-static');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result;const tx=db.transaction('workspaces','readonly');const r=tx.objectStore('workspaces').get(owner);r.onsuccess=()=>resolve(r.result);tx.oncomplete=()=>db.close()}})}
+it('multi-select is independent of left rows, retains identity across reorder and clears across accounts',async()=>{
+  await setup({onReadBreakthroughInventory:async()=>({jiezhuping:100,jiezheping:100,jieyangping:100})})
+  const boundary=root.querySelector('.growth-route-boundary')?.textContent
+  root.querySelector('[data-growth-select-id="a"]').focus();selectRoute('a');expect(selectedRouteIds()).toEqual(['a']);expect(document.activeElement.id).toBe('growth-select-a');selectRoute('b');expect(selectedRouteIds().sort()).toEqual(['a','b'])
+  expect(root.querySelector('.growth-selection').textContent).toContain('本次选中 2颗')
+  expect(root.querySelector('.growth-selection button').disabled).toBe(true)
+  expect(root.querySelector('.growth-route-boundary')?.textContent).toBe(boundary)
+  root.querySelector('[data-star-id="b"]').click();expect(selectedRouteIds().sort()).toEqual(['a','b'])
+  await editOrder('b',1);expect(selectedRouteIds().sort()).toEqual(['a','b'])
+  selectRoute('a');expect(selectedRouteIds()).toEqual(['b'])
+  await handle.setHostAccount({accountId:'p2-other-'+ ++serial,displayName:'隔离账号',gameVersion:'代号鸢'});await settle()
+  expect(selectedRouteIds()).toEqual([]);expect(root.querySelector('.growth-selection').textContent).toContain('本次选中 0颗')
+})
+it('route order persists in account IDB, survives remount and legacy cloud hydration, selection stays ephemeral',async()=>{
+  await setup();const before=await handle.getCloudBusinessSnapshot();selectRoute('b');await editOrder('b',1)
+  const owner='growth-probe-'+serial
+  expect((await storedWorkspace(owner)).snapshot.growthRouteOrder).toEqual(['b','a'])
+  await handle.dispose();handle=mountYuanStar(root,{embedded:true,assetBaseUrl:'/yuanstar-embed/',hostAccount:{accountId:owner,displayName:'重挂载',gameVersion:'如鸢'}})
+  await handle.setHostAccount({accountId:owner,displayName:'重挂载',gameVersion:'如鸢'});handle.setActiveTab('review');handle.setReviewView('plan');await settle()
+  expect(routeIds()).toEqual(['b','a']);expect(selectedRouteIds()).toEqual([])
+  await handle.applyCloudBusinessSnapshot(before);await settle();expect(routeIds()).toEqual(['b','a'])
+  await handle.setHostAccount({accountId:'p2-route-other-'+serial,displayName:'不同排序账号',gameVersion:'代号鸢'});await handle.applyCloudBusinessSnapshot(before);await settle();expect(routeIds()).toEqual(['a','b'])
+  await handle.setHostAccount({accountId:owner,displayName:'原排序账号',gameVersion:'如鸢'});await settle();expect(routeIds()).toEqual(['b','a'])
+  const next={...before,inventory:[...before.inventory,{starInstanceId:'d',kind:'主星',name:'贪狼',quality:'橙',level:10}],planTargets:{...before.planTargets,d:60}}
+  await handle.applyCloudBusinessSnapshot(next);await settle();expect(routeIds()).toEqual(['b','a','d'])
+  await handle.applyCloudBusinessSnapshot({...next,inventory:next.inventory.map(s=>s.starInstanceId==='b'?{...s,level:52}:s)});await settle();expect(routeIds()).toEqual(['a','d'])
+  const record=await storedWorkspace(owner);expect(record.snapshot.inventory).toHaveLength(4)
+})
+it('native card drag uses the same persisted order and preserves multi-select',async()=>{
+  await setup();selectRoute('b')
+  const cards=[...root.querySelectorAll('[data-growth-card-id]')]
+  cards.forEach((c,i)=>c.getBoundingClientRect=()=>({top:i*100,bottom:i*100+90,height:90}))
+  const moving=cards.at(-1);moving.dispatchEvent(new MouseEvent('dragstart',{bubbles:true,clientY:120}))
+  root.querySelector('.growth-route-list').dispatchEvent(new MouseEvent('drop',{bubbles:true,cancelable:true,clientY:0}));await settle()
+  expect(routeIds()[0]).toBe(moving.dataset.growthCardId);expect(selectedRouteIds()).toEqual(['b'])
+})
+function touchEvent(type,x,y){const e=new Event(type,{bubbles:true,cancelable:true});Object.defineProperty(e,'touches',{value:type==='touchend'?[]:[{clientX:x,clientY:y}]});return e}
+it('touch scrolling cancels long press; held drag reorders and cancelled drag never saves',async()=>{
+  await setup();const initial=routeIds();vi.useFakeTimers()
+  let card=root.querySelector('[data-growth-card-id]'),list=root.querySelector('.growth-route-list')
+  card.dispatchEvent(touchEvent('touchstart',30,120));const scroll=touchEvent('touchmove',30,160);list.dispatchEvent(scroll)
+  await vi.advanceTimersByTimeAsync(400);expect(scroll.defaultPrevented).toBe(false);expect(root.querySelector('.is-route-dragging')).toBeNull();expect(routeIds()).toEqual(initial)
+  card=root.querySelector('[data-growth-card-id="'+initial.at(-1)+'"]')
+  card.dispatchEvent(touchEvent('touchstart',30,120));await vi.advanceTimersByTimeAsync(360)
+  expect(root.querySelector('.is-route-dragging')).toBe(card)
+  list.dispatchEvent(touchEvent('touchcancel',30,120));expect(routeIds()).toEqual(initial)
+  const cards=[...root.querySelectorAll('[data-growth-card-id]')];cards.forEach((c,i)=>c.getBoundingClientRect=()=>({top:i*100,bottom:i*100+90,height:90}))
+  card.dispatchEvent(touchEvent('touchstart',30,120));await vi.advanceTimersByTimeAsync(360)
+  const drag=touchEvent('touchmove',30,0);list.dispatchEvent(drag);expect(drag.defaultPrevented).toBe(true)
+  list.dispatchEvent(touchEvent('touchend',30,0));vi.useRealTimers();await settle();expect(routeIds()[0]).toBe(initial.at(-1))
+})
+it('resource divider follows full order, exact gaps are cumulative and selected summary stays independent',async()=>{
+  await setup({onReadBreakthroughInventory:async()=>({jiezhuping:100,jiezheping:55,jieyangping:100})})
+  const before=await handle.getCloudBusinessSnapshot()
+  await handle.applyCloudBusinessSnapshot({...before,experience:{orange:1000,purple:0,white:0}});await settle()
+  expect(root.querySelector('.growth-route-boundary').textContent).toContain('预计可养至此')
+  expect(root.querySelector('.growth-route-gap').textContent).toContain('缺解谪瓶 ×55')
+  const boundary=root.querySelector('.growth-route-boundary').textContent
+  selectRoute('b');expect(root.querySelector('.growth-route-boundary').textContent).toBe(boundary)
+  expect(root.querySelector('.growth-selection').textContent).toContain('解谪瓶 ×60')
+  await editOrder('b',1);expect(root.querySelector('.growth-route-boundary').textContent).toContain('首项资源不足')
+  expect(root.querySelector('.growth-route-gap').textContent).toContain('缺解谪瓶 ×5')
+})
+it('unknown inventory is never treated as zero or sufficient',async()=>{
+  await setup();expect(root.querySelector('.growth-route-estimate').textContent).toContain('无法估算')
+  expect(root.querySelector('.growth-route-boundary')).toBeNull()
+})
+
+it('held drag scrolls route edges and cancellation never changes saved order',async()=>{
+  await setup();const initial=routeIds(),list=root.querySelector('.growth-route-list')
+  list.getBoundingClientRect=()=>({top:0,bottom:200,height:200})
+  const card=root.querySelector('[data-growth-card-id]')
+  vi.useFakeTimers();card.dispatchEvent(new MouseEvent('dragstart',{bubbles:true,clientY:190}))
+  list.dispatchEvent(new MouseEvent('dragover',{bubbles:true,cancelable:true,clientY:199}))
+  await vi.advanceTimersByTimeAsync(100);expect(list.scrollTop).toBeGreaterThan(0)
+  list.dispatchEvent(new Event('dragend',{bubbles:true}));vi.useRealTimers();await settle();expect(routeIds()).toEqual(initial)
 })

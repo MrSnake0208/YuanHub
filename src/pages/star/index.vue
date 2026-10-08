@@ -116,8 +116,8 @@
             </button>
             <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'review' && starReviewView === 'plan' ? openTutorial('plan') : replayRecognitionTutorial()">
-            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'review' && starReviewView === 'plan' ? '重新查看养成教程' : '重新查看识别教程' }}
+          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'review' ? openTutorial(starReviewView === 'plan' ? 'plan' : 'bag') : replayRecognitionTutorial()">
+            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'review' ? (starReviewView === 'plan' ? '重新查看养成教程' : '重新查看使用教程') : '重新查看识别教程' }}
           </button>
           </div>
           <div v-if="activeTab === 'review' && starReviewView === 'bag'" class="star-workbench-actions">

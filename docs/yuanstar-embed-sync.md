@@ -14,7 +14,15 @@
 **因此本仓库无法复现或审计这两份 JS 的源码差异**。这也正是它们被标记为
 `linguist-generated` / `-diff`（见 `.gitattributes`）的原因。
 
-## 当前 P1 本地提交集成（2026-10-08，未发布）
+## 当前 P2-A / P2-B 审查收口（2026-10-08，本地提交、未发布）
+
+- source commit `847b408f278368016305721fe64f21e6eb8e3890`，分支 `feat/growth-plan-workspace-p1`。已提交 source commit 的干净工作树正式 build；通过 `build:embed` 完整同步12个资源，未手工编辑 JS/CSS。
+- manifest 的 `_sourceWorkingTree.status` 为 `clean`，不保留旧 dirty 哈希记录。12个产物与 `web/dist/embed/` 文件集、字节及 SHA-256 完全一致。
+- 源码 `web/src/business/growth-route.ts` 统一清理已达成/失效目标，`web/src/growth-route-controls.ts` 管理数字与拖动交互；保留路线多选、账号本机顺序、累计资源估算和约4.5卡内部滚动。云投影不携带顺序，不代表跨设备同步。
+- 新增全选、紫星曜缺口折算与摘要标签、数字粗体和序号虚线；既有按钮高度保留。三种教程入口维持对应场景。完成养成仍 disabled，瓶子 writer 和 Backend 均未改。
+- 专项验证、文件清单及边界见[审查收口报告](./growth-plan-p2-closeout.md)。只进行两仓本地提交，未 push、merge、rebase 或创建 PR。
+
+## 此前 P1 本地提交集成（2026-10-08，未发布）
 
 - authoritative source仓为`drifty13/YuanStar-dev`，分支`feat/growth-plan-workspace-p1`；source commit：`d0d1760edf2442edea45eaf983fd1f533789e742`。
 - 本次为已提交 source commit 的干净工作树正式 build：在`web/`执行`npm.cmd run build:embed`，完整同步12个文件到`public/yuanstar-embed/`。构建前后源码工作树均clean，未手改JS/CSS。
