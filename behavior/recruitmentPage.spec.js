@@ -36,6 +36,220 @@ beforeEach(() => {
   api.recruitmentCommand.mockResolvedValue({ archive_revision: 4 })
 })
 
+const guideKey = account => `yuanhub:recruitment-first-record:user-a:${account}`
+const preference = (account = 'acc-a') => JSON.parse(localStorage.getItem(guideKey(account)) || 'null')
+function firstRecordAccount() {
+  records['acc-a'] = []
+  archives['acc-a'].summary.event_count = 0
+  const catalog = recruitmentCatalog()
+  catalog.pools[0].up_agents = [{ id: 'slot-up', operator_id: 'char-a', name: '测试绝密', active: true }]
+  api.getRecruitmentCatalog.mockResolvedValue(catalog)
+}
+async function beginGuide(wrapper) {
+  await button(editor(wrapper), '跟着做一次').trigger('click')
+  await flushPromises()
+}
+function persistSubmittedRecord() {
+  api.recruitmentCommand.mockImplementation(async ({ accountId, data }) => {
+    records[accountId] = data.entries.map(entry => ({ ...recruitmentEvent(entry.event_id, entry.pull_span, data.pool_id), agent_snapshot: { agent_id: entry.agent_id, name: '测试绝密' } }))
+    archives[accountId].summary.event_count = records[accountId].length
+    archives[accountId].archive_revision++
+    return { archive_revision: archives[accountId].archive_revision }
+  })
+}
+
+it('首次教程自愿进入，真实选择UP、留空抽数、保存API成功并读回同一ID才完成，两种视图可见', async () => {
+  firstRecordAccount(); persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  expect(editor(wrapper).text()).toContain('先登记你在这个池里最近一次绝密出货。')
+  expect(button(editor(wrapper), '直接使用 / 暂时关闭')).toBeDefined()
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  await beginGuide(wrapper)
+  expect(preference()).toMatchObject({ tutorialStarted: true, tutorialCompleted: false, dismissedForNow: null, disableAutoGuide: false })
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  expect(editor(wrapper).get('.pull-count-field input').element.value).toBe('')
+  expect(preference().tutorialCompleted).toBe(false)
+  const readback = deferred()
+  api.listRecruitmentEvents.mockReturnValueOnce(readback.promise)
+  await button(editor(wrapper), '保存这条记录').trigger('click'); await flushPromises()
+  const request = api.recruitmentCommand.mock.calls[0][0]
+  expect(request.data.entries[0]).toMatchObject({ agent_id: 'slot-up', pull_span: null })
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(button(editor(wrapper), '关闭教程').attributes('disabled')).toBeUndefined()
+  readback.resolve({ items: structuredClone(records['acc-a']), archive_revision: 4, next_cursor: null }); await flushPromises()
+  expect(editor(wrapper).text()).toContain('第一条出货记录已登记。')
+  expect(preference().tutorialCompleted).toBe(true)
+  expect(editor(wrapper).findAll('.gacha-record')).toHaveLength(1)
+  expect(editor(wrapper).find('.pending-mark').exists()).toBe(false)
+  await button(editor(wrapper), '密探视图').trigger('click')
+  expect(editor(wrapper).get('.agent-pull-badge').text()).toBe('未知')
+})
+
+it('其他密探通过真实搜索选择；保存失败保留草稿和阶段，重试成功再完成', async () => {
+  firstRecordAccount()
+  api.recruitmentCommand.mockRejectedValueOnce(new Error('保存失败'))
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  await button(editor(wrapper), '其他密探').trigger('click')
+  await composer(wrapper).get('.agent-search input').setValue('测试绝密')
+  await composer(wrapper).get('.agent-choice').trigger('click')
+  await composer(wrapper).get('.pull-count-field input').setValue('20')
+  await button(editor(wrapper), '保存这条记录').trigger('click'); await flushPromises()
+  expect(editor(wrapper).text()).toContain('保存未成功，真实草稿已保留')
+  expect(editor(wrapper).get('.pull-result b').text()).toBe('20')
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(editor(wrapper).find('.guide-exit').exists()).toBe(true)
+  persistSubmittedRecord()
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(editor(wrapper).text()).toContain('第一条出货记录已登记。')
+})
+
+it('仅加入草稿、只保存保底、API成功但未读到同一真实记录，均不完成教程', async () => {
+  firstRecordAccount()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  await editor(wrapper).get('form').trigger('submit'); await flushPromises()
+  expect(preference().tutorialCompleted).toBe(false)
+  await selectPool(wrapper)
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  await composer(wrapper).get('.pull-count-field input').setValue('12')
+  await button(editor(wrapper), '保存这条记录').trigger('click'); await flushPromises()
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(editor(wrapper).text()).toContain('结果尚未确认时不必重复登记')
+  expect(editor(wrapper).text()).not.toContain('第一条出货记录已登记。')
+})
+
+it('Esc只退出教学，正在填写的密探与抽数、编辑器和焦点均保留，不写业务或完成状态', async () => {
+  firstRecordAccount()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  const input = composer(wrapper).get('.pull-count-field input')
+  await input.setValue('20'); composer(wrapper).get('.pull-count-field input').element.focus()
+  expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
+  expect(editor(wrapper).find('.guide-exit').exists()).toBe(false)
+  expect(composer(wrapper).get('.selected-agent-summary').text()).toContain('测试绝密')
+  expect(composer(wrapper).get('.pull-count-field input').element.value).toBe('20')
+  expect(document.activeElement).toBe(composer(wrapper).get('.pull-count-field input').element)
+  expect(preference()).toMatchObject({ tutorialCompleted: false, disableAutoGuide: false })
+  expect(preference().dismissedForNow).toEqual(expect.any(Number))
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+
+it('保存过程中立即关闭教程，真实请求继续；保存与读回成功也不把退出算成完成', async () => {
+  firstRecordAccount()
+  const saving = deferred()
+  api.recruitmentCommand.mockReturnValueOnce(saving.promise)
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  await button(editor(wrapper), '保存这条记录').trigger('click'); await flushPromises()
+  expect(button(editor(wrapper), '关闭教程').attributes('disabled')).toBeUndefined()
+  await button(editor(wrapper), '关闭教程').trigger('click')
+  const request = api.recruitmentCommand.mock.calls[0][0]
+  records['acc-a'] = [{ ...recruitmentEvent(request.data.entries[0].event_id, null), agent_snapshot: { agent_id: 'slot-up', name: '测试绝密' } }]
+  saving.resolve({ archive_revision: 4 }); await flushPromises()
+  expect(editor(wrapper).findAll('.gacha-record')).toHaveLength(1)
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+})
+
+it.each(['直接使用 / 暂时关闭', '以后不自动提示'])('%s不新增记录，不反复自动推荐，帮助入口仍可重新进入', async choice => {
+  firstRecordAccount()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), choice).trigger('click')
+  expect(preference()).toMatchObject({ tutorialCompleted: false, disableAutoGuide: choice === '以后不自动提示' })
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  await editor(wrapper).get('.close-button').trigger('click'); await selectPool(wrapper)
+  expect(button(editor(wrapper), '跟着做一次')).toBeUndefined()
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  expect(editor(wrapper).text()).toContain('点击这次出货的 UP 密探快捷按钮')
+})
+
+it('已有记录账号在空池也不自动推荐；手动进入重读真实记录并复用成果，不要求再登记', async () => {
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  expect(button(editor(wrapper), '跟着做一次')).toBeUndefined()
+  const calls = api.listRecruitmentEvents.mock.calls.length
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  expect(api.listRecruitmentEvents).toHaveBeenCalledTimes(calls + 1)
+  expect(editor(wrapper).text()).toContain('无需重复登记')
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper)
+  expect(button(editor(wrapper), '跟着做一次')).toBeUndefined()
+})
+
+it('读回失败不完成且允许退出；重新读取成功后才显示完成', async () => {
+  firstRecordAccount(); persistSubmittedRecord()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  api.listRecruitmentEvents.mockRejectedValueOnce(new Error('读回失败'))
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  await button(editor(wrapper), '保存这条记录').trigger('click'); await flushPromises()
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(editor(wrapper).text()).toContain('读回失败')
+  expect(button(editor(wrapper), '关闭教程').attributes('disabled')).toBeUndefined()
+  await button(editor(wrapper), '重新读取').trigger('click'); await flushPromises()
+  expect(preference().tutorialCompleted).toBe(true)
+})
+
+it('搜索密探时关闭教学保留真实搜索输入；加载时关闭也无需等待读取结果', async () => {
+  firstRecordAccount()
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  await button(editor(wrapper), '其他密探').trigger('click')
+  await composer(wrapper).get('.agent-search input').setValue('测试')
+  await button(editor(wrapper), '关闭教程').trigger('click')
+  expect(composer(wrapper).get('.agent-search input').element.value).toBe('测试')
+  const reading = deferred()
+  api.listRecruitmentEvents.mockReturnValueOnce(reading.promise)
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  await button(editor(wrapper), '关闭教程').trigger('click')
+  expect(editor(wrapper).find('.guide-exit').exists()).toBe(false)
+  expect(composer(wrapper).get('.agent-search input').element.value).toBe('测试')
+  reading.resolve({ items: [], archive_revision: 3, next_cursor: null }); await flushPromises()
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+
+it('暂时关闭在重新挂载后仍不自动打扰；账号切换隔离偏好和迟到保存证据', async () => {
+  firstRecordAccount()
+  let wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await button(editor(wrapper), '直接使用 / 暂时关闭').trigger('click'); wrapper.unmount()
+  wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  expect(button(editor(wrapper), '跟着做一次')).toBeUndefined()
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  const saving = deferred()
+  api.recruitmentCommand.mockReturnValueOnce(saving.promise)
+  await editor(wrapper).get('.quick-up-button').trigger('click')
+  await button(editor(wrapper), '保存这条记录').trigger('click'); await flushPromises()
+  activeAccount.set('acc-b'); await flushPromises(); await selectPool(wrapper)
+  saving.resolve({ archive_revision: 4 }); await flushPromises()
+  expect(editor(wrapper).find('.guide-exit').exists()).toBe(false)
+  expect(preference('acc-a').tutorialCompleted).toBe(false)
+  expect(preference('acc-b')).toBe(null)
+})
+
+it('已主动参与刷新不再自动邀请，开始、关闭与完成保持独立语义', async () => {
+  firstRecordAccount()
+  let wrapper = render(); await flushPromises(); await selectPool(wrapper); await beginGuide(wrapper)
+  expect(preference()).toMatchObject({ tutorialStarted: true, dismissedForNow: null, tutorialCompleted: false })
+  wrapper.unmount()
+  wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  expect(button(editor(wrapper), '跟着做一次')).toBeUndefined()
+  expect(preference()).toMatchObject({ dismissedForNow: null, tutorialCompleted: false })
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  expect(editor(wrapper).text()).toContain('点击这次出货的 UP 密探快捷按钮')
+})
+
+it('真实记录读取失败不当空池自动推荐，手动教程仍可立即退出且不提交业务', async () => {
+  firstRecordAccount()
+  api.listRecruitmentEvents.mockRejectedValue(new Error('记录读取失败'))
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  expect(button(editor(wrapper), '跟着做一次')).toBeUndefined()
+  await button(editor(wrapper), '重新进入 / 继续实操教程').trigger('click'); await flushPromises()
+  expect(editor(wrapper).text()).toContain('读取失败时可重新读取')
+  await button(editor(wrapper), '关闭教程').trigger('click')
+  expect(preference().tutorialCompleted).toBe(false)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+
 it('只读初始化，不会写入空档案；无账号给出创建入口', async () => {
   listAccounts.mockResolvedValue([])
   const wrapper = render({ DataAccountContextBar: false }); await flushPromises()

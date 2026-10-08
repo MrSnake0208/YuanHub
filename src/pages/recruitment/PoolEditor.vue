@@ -7,6 +7,7 @@
             <span class="editor-eyebrow">招募档案</span>
             <h2 id="pool-editor-title">{{ poolName }}</h2>
           </div>
+          <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">关闭教程</button>
           <button type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
             <X :size="20" aria-hidden="true" />
           </button>
@@ -62,10 +63,21 @@
 
             <details class="entry-guide">
               <summary><CircleHelp :size="16" aria-hidden="true" />抽数怎么填写？</summary>
-              <p>每条记录代表一次绝密出货；“出货抽数”指从上一次绝密到这一次绝密之间又抽了多少次，不是卡池累计抽数。同一密探可以重复记录，不知道抽数时可以留空。</p>
+              <p>{{ pullSpanHelp }}</p>
+              <button type="button" class="guide-entry" @click="startGuide">重新进入 / 继续实操教程</button>
             </details>
 
             <section class="records-section" aria-labelledby="records-title">
+              <section v-if="guideVisible && !activeRow" class="first-record-guide" aria-label="首次登记实操教程">
+                <p role="status">{{ guideMessage }}</p>
+                <div v-if="guideMode === 'invitation'" class="guide-actions">
+                  <button type="button" @click="startGuide">跟着做一次</button>
+                  <button type="button" @click="dismissGuide">直接使用 / 暂时关闭</button>
+                  <button type="button" @click="dismissGuide(true)">以后不自动提示</button>
+                </div>
+                <button v-else-if="guideMode === 'active'" type="button" class="guide-entry" @click="dismissGuide(true)">以后不自动提示</button>
+                <button v-if="guideMode === 'active' && savedGuideEventId && !recordsLoading" type="button" class="guide-entry" @click="$emit('retry')">重新核对记录</button>
+              </section>
               <div class="records-toolbar">
                 <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
                   <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="recordView = 'progress'">进度条视图</button>
@@ -115,6 +127,7 @@
                 role="group"
                 :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
+                <p v-if="guideMode === 'active'" class="guide-field-hint" role="status">{{ guideMessage }}</p>
                 <div v-if="choosingAgent" class="agent-picker">
                   <label class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
@@ -188,14 +201,15 @@
                   </div>
                   <label class="pull-count-field">
                     <span>本次出货抽数</span>
-                    <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="1–40" :disabled="busy || readOnly || recordsLoading" @input="limitPullSpan">
+                    <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" aria-describedby="pull-span-help" :disabled="busy || readOnly || recordsLoading" @input="limitPullSpan">
                   </label>
                   <div class="composer-actions">
                     <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)">删除记录</button>
                     <button type="button" :disabled="busy" @click="cancelEntry">取消</button>
-                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading" @click="confirmRecord">{{ originals.has(activeRow.event_id) ? '完成' : '加入' }}</button>
+                    <button type="button" class="primary" :aria-label="guideMode === 'active' ? '保存这条记录' : originals.has(activeRow.event_id) ? '完成编辑当前记录' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading" @click="guideMode === 'active' ? saveGuidedRecord() : confirmRecord()">{{ guideMode === 'active' ? '保存这条记录' : originals.has(activeRow.event_id) ? '完成' : '加入' }}</button>
                   </div>
                 </div>
+                <p v-if="activeRow.agent_id" id="pull-span-help" class="composer-note">{{ pullSpanHelp }}</p>
                 <p v-if="activeRow.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
               </div>
 
@@ -304,10 +318,77 @@ import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSu
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
-const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number })
+const props = defineProps({ open: Boolean, pool: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number, guideOwner: String, guideAccount: String, archiveEventCount: Number, savedGuideEventId: String })
 const emit = defineEmits(['close', 'save', 'load-more', 'retry'])
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
+const pullSpanHelp = '不是卡池累计抽数。例如上次绝密后，第 20 抽又出绝密，就填 20。首条也只填你确知的出货间隔，不知道就留空，系统保留未知。同一密探再次出货可继续新增记录。'
+const guideMode = ref('hidden')
+const guidePreference = ref({ tutorialCompleted: false, tutorialStarted: false, dismissedForNow: null, disableAutoGuide: false })
+const guideVisible = computed(() => guideMode.value !== 'hidden')
+const guideStorageKey = computed(() => props.guideOwner && props.guideAccount ? `yuanhub:recruitment-first-record:${encodeURIComponent(props.guideOwner)}:${encodeURIComponent(props.guideAccount)}` : '')
+const recordsReady = computed(() => initialized.value && !props.recordsLoading && !props.recordsError)
+const guideMessage = computed(() => {
+  if (guideMode.value === 'invitation') return '先登记你在这个池里最近一次绝密出货。'
+  if (guideMode.value === 'completed') return '第一条出货记录已登记。'
+  if (!recordsReady.value) return '正在确认本池真实记录；读取失败时可重新读取，也可随时关闭教程。'
+  if (guideMode.value === 'existing') return '当前卡池已有真实出货记录，可直接使用，无需重复登记。'
+  if (props.savedGuideEventId) return '保存已成功，正在核对本池记录。结果尚未确认时不必重复登记。'
+  if (props.busy) return '正在保存真实记录；可随时关闭教程。'
+  if (props.readOnly || !props.canRecord) return '当前卡池暂不能新增出货，可随时关闭教程。'
+  if (props.serverError || error.value) return '保存未成功，真实草稿已保留。可修改后重试，也可关闭教程。'
+  if (choosingAgent.value) return '在下方真实搜索框中找到并选择这次出货的密探。'
+  if (activeRow.value?.agent_id) return '填写这次真实出货抽数，不知道可留空，然后点击“保存这条记录”。'
+  if (newCount.value) return '真实记录仍待保存，请点击底部的保存按钮。'
+  return '点击这次出货的 UP 密探快捷按钮，或“其他密探”选择实际密探。'
+})
+function persistGuidePreference() {
+  if (!guideStorageKey.value) return
+  try { localStorage.setItem(guideStorageKey.value, JSON.stringify(guidePreference.value)) } catch { /* Storage is optional for this session. */ }
+}
+function dismissGuide(disableAutoGuide = false) {
+  const focusedField = panel.value?.contains(document.activeElement) && document.activeElement.matches('input, select, textarea') ? document.activeElement : null
+  const fieldRef = focusedField === pullSpanInput.value ? pullSpanInput : focusedField === agentSearchInput.value ? agentSearchInput : focusedField === remainingInput.value ? remainingInput : null
+  guideMode.value = 'hidden'
+  guidePreference.value.dismissedForNow = Date.now()
+  if (disableAutoGuide === true) guidePreference.value.disableAutoGuide = true
+  persistGuidePreference()
+  // Keep focus on the real field after rendering; a removed guide button returns to help.
+  nextTick(() => {
+    if (fieldRef?.value || focusedField?.isConnected) (fieldRef?.value || focusedField).focus({ preventScroll: true })
+    else if (!panel.value?.contains(document.activeElement)) panel.value?.querySelector('summary')?.focus()
+  })
+}
+function startGuide() {
+  guideMode.value = 'checking'
+  guidePreference.value.tutorialStarted = true
+  persistGuidePreference()
+  emit('retry')
+  nextTick(() => panel.value?.querySelector('.first-record-guide, .entry-composer')?.scrollIntoView?.({ block: 'nearest' }))
+}
+async function saveGuidedRecord() { if (confirmRecord()) await submit() }
+watch(guideStorageKey, () => {
+  guideMode.value = 'hidden'
+  guidePreference.value = { tutorialCompleted: false, tutorialStarted: false, dismissedForNow: null, disableAutoGuide: false }
+  try {
+    const saved = JSON.parse(localStorage.getItem(guideStorageKey.value) || 'null')
+    if (saved) guidePreference.value = { tutorialCompleted: saved.tutorialCompleted === true, tutorialStarted: saved.tutorialStarted === true, dismissedForNow: typeof saved.dismissedForNow === 'number' ? saved.dismissedForNow : null, disableAutoGuide: saved.disableAutoGuide === true }
+  } catch { /* Unavailable or malformed storage keeps the editor usable. */ }
+}, { immediate: true, flush: 'sync' })
+watch([recordsReady, () => props.records, () => props.archiveEventCount, () => props.savedGuideEventId, () => props.canRecord, () => props.readOnly], () => {
+  if (!props.open || !recordsReady.value) return
+  if (guideMode.value === 'checking') {
+    guideMode.value = props.records.length ? 'existing' : 'active'
+  } else if (guideMode.value === 'active' && props.savedGuideEventId && props.records.some(event => event.event_id === props.savedGuideEventId && event.pool_id === props.pool?.pool_id && !event.deleted_at)) {
+    guideMode.value = 'completed'
+    guidePreference.value.tutorialCompleted = true
+    persistGuidePreference()
+  } else if (guideMode.value === 'active' && props.records.length && !props.savedGuideEventId) {
+    guideMode.value = 'existing'
+  } else if (guideMode.value === 'hidden' && guideStorageKey.value && props.canRecord && !props.readOnly && props.archiveEventCount === 0 && !props.records.length && !props.hasMore && !guidePreference.value.tutorialCompleted && !guidePreference.value.tutorialStarted && !guidePreference.value.dismissedForNow && !guidePreference.value.disableAutoGuide) {
+    guideMode.value = 'invitation'
+  }
+})
 let requestId = ''
 let viewportFrame = 0
 let viewportSettleTimer = 0
@@ -385,9 +466,10 @@ function ensureEntryVisible() {
   updateKeyboardInset()
   if (!props.open || !activeRow.value || !entryComposer.value || !editorBody.value) return
   const viewport = window.visualViewport
-  const visibleTop = (viewport?.offsetTop || 0) + ENTRY_VISIBLE_TOP_GAP
+  const visibleTop = Math.max(viewport?.offsetTop || 0, panel.value?.querySelector('.editor-header')?.getBoundingClientRect().bottom || 0) + ENTRY_VISIBLE_TOP_GAP
   const visibleBottom = (viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
-  const rect = entryComposer.value.getBoundingClientRect()
+  const focusedField = entryComposer.value.contains(document.activeElement) && document.activeElement.matches('input') ? document.activeElement : null
+  const rect = (focusedField || entryComposer.value).getBoundingClientRect()
   const availableHeight = Math.max(0, visibleBottom - visibleTop)
   let delta = 0
   if (rect.height > availableHeight) delta = rect.top - visibleTop
@@ -487,6 +569,7 @@ function remove(row) {
 }
 watch(() => props.open, open => {
   if (!open) {
+    if (guideVisible.value) dismissGuide()
     resetKeyboardAvoidance()
     return
   }
@@ -521,7 +604,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onViewportChange)
   resetKeyboardAvoidance()
 })
-useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('select:not(:disabled), input:not(:disabled)'), onEscape: close })
+useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('select:not(:disabled), input:not(:disabled)'), onEscape: () => guideVisible.value ? dismissGuide() : close() })
 async function submit() {
   if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || activeRow.value) return
   error.value = ''
@@ -539,7 +622,8 @@ async function submit() {
     }).filter(entry => JSON.stringify(entry) !== originals.get(entry.event_id))
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     if (!requestId) requestId = crypto.randomUUID()
-    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: Number(remaining.value) } })
+    const verifyEventId = guideMode.value === 'active' ? entries.find(entry => !originals.has(entry.event_id))?.event_id : undefined
+    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', ...(verifyEventId ? { verifyEventId } : {}), data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: Number(remaining.value) } })
   } catch (err) { error.value = err.message; await nextTick(); errorSummary.value?.focus() }
 }
 </script>
@@ -578,8 +662,17 @@ async function submit() {
 
 .editor-title {
   min-width: 0;
+  flex: 1;
   overflow-wrap: anywhere;
 }
+
+.guide-exit { flex: none; min-height: 44px; }
+.first-record-guide { margin-bottom: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); }
+.first-record-guide p, .guide-field-hint { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.guide-field-hint { margin-bottom: 10px; }
+.guide-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.guide-actions button, .guide-entry { min-height: 44px; }
+.guide-entry { margin-top: 6px; }
 
 .editor-eyebrow,
 .section-kicker {
