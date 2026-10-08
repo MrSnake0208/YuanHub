@@ -13,6 +13,7 @@ import { initializeOnboardingTour, startOnboardingTask, refreshTutorialBusiness 
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import * as accountsApi from '../src/api/accounts.js'
+import * as connectionApi from '../src/api/openApi.js'
 import * as operatorApi from '../src/api/operator.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { operatorCurrentRead, publishOperatorCurrentRead } from '../src/utils/operatorEvents.js'
@@ -28,7 +29,7 @@ vi.mock('../src/api/inventory.js', async importOriginal => ({ ...(await importOr
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn().mockResolvedValue({ generation: 0, entries: [] }) }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn().mockResolvedValue({ generation: 0, revision: 0, loadouts: {} }), putCurrentStarLoadout: vi.fn() }))
 vi.mock('../src/api/openApi.js', () => ({
-  getOpenApiPermissions: vi.fn().mockResolvedValue([]), getOpenApiTokens: vi.fn().mockResolvedValue([]),
+  getConnectionFirstSync: vi.fn(), getOpenApiPermissions: vi.fn().mockResolvedValue([]), getOpenApiTokens: vi.fn().mockResolvedValue([]),
   generateOpenApiToken: vi.fn(), getOpenApiTokenSecret: vi.fn(), updateOpenApiTokenScopes: vi.fn(), deleteOpenApiToken: vi.fn()
 }))
 vi.mock('../src/api/request.js', () => ({ avatarUrl: value => value || '' }))
@@ -38,7 +39,8 @@ vi.mock('../src/store/auth.js', async () => {
   return { auth }
 })
 vi.mock('../src/store/beta.js', () => ({ beta: { canUseBetaFeatures: true, loadMe: () => Promise.resolve(), campaign: { accessMode: 'OPEN' } } }))
-vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
+const eventCallbacks = vi.hoisted(() => new Set())
+vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: listener => { eventCallbacks.add(listener); return () => eventCallbacks.delete(listener) } }))
 
 let accounts, current, host
 const account = { id: 'acc', name: '真实组件测试账号', game: '如鸢' }
@@ -49,6 +51,10 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes, 
 beforeEach(() => {
   if (dialog._state.visible) dialog._cancel()
   vi.clearAllMocks()
+  connectionApi.getOpenApiTokens.mockResolvedValue([])
+  connectionApi.getConnectionFirstSync.mockImplementation(async id => ({ connection_id: id, account_id: 'acc', synced: false, data_type: 'inventory' }))
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue() } })
+  Element.prototype.scrollIntoView = vi.fn()
   auth.accessToken = 'synthetic-token'; auth.userInfo = { id: 'owner' }
   accounts = [{ ...account }]; current = []
   activeAccount.set('acc'); activeAccount.games = {}; activeAccount.syncAccounts(accounts)
@@ -75,6 +81,7 @@ async function render(path = '/', pinia = createPinia()) {
     { path: '/operator', component: OperatorPage }, { path: '/operator/quick', component: QuickPage },
     { path: '/user/profile', component: ProfilePage },
     { path: '/login', component: { template: '<main>真实登录入口</main>' } },
+    { path: '/inventory', component: { template: '<main>库存追踪</main>' } },
     { path: '/changelog', component: { template: '<main>帮助页</main>' } },
     { path: '/operator/share', component: { template: '<main />' } }
   ] })
@@ -306,4 +313,229 @@ it('永久不自动提示也可手动重进；已有账号任务只按真实账�
   expect(store.tutorialCompleted).toBe(true)
   expect(store.completedTasks['account-create'].accountId).toBe('acc')
   expect(accountsApi.createAccount).not.toHaveBeenCalled()
+})
+
+const connection = (extra = {}) => ({ token_id: 'connection', account_id: 'acc', account_name: '主账号', scopes: ['inventory:write'], ...extra })
+const syncReceipt = (extra = {}) => ({ connection_id: 'connection', account_id: 'acc', synced: true, data_type: 'inventory', record_id: 'inventory:1', received_at: '2026-10-08T00:00:00Z', ...extra })
+async function beginMaa(router) {
+  await startOnboardingTask(router, 'maayuan-first-sync'); await flushPromises()
+}
+async function createConnection(router) {
+  await beginMaa(router)
+  await host.get('.app-connect').trigger('click'); await flushPromises()
+  expect(host.get('#maayuan-account').element.value).toBe('')
+  await host.get('#maayuan-account').setValue('acc'); await flushPromises()
+  expect(guide().textContent).toContain('核对所选账号与权限')
+  connectionApi.generateOpenApiToken.mockImplementationOnce(async () => {
+    connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
+    return { ...connection(), token: crypto.randomUUID() }
+  })
+  await host.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
+}
+
+it('MaaYuan真实选择→API创建→真实复制→等待；收到服务端库存证据才完成', async () => {
+  const { router, store } = await render('/user/profile')
+  await createConnection(router)
+  expect(store.maaYuan.phase).toBe('token-created')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(guide().textContent).toContain('还没确认同步')
+  expect(connectionApi.generateOpenApiToken).toHaveBeenCalledWith(expect.objectContaining({ accountId: 'acc', scopes: ['inventory:write', 'operator:scan:write', 'operator:read', 'star:capture:write'] }))
+  expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+  await host.get('.nt-row button').trigger('click'); await flushPromises()
+  expect(store.maaYuan.phase).toBe('waiting-sync')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(guide().textContent).toContain('自动识别背包')
+  expect(guide().textContent).not.toContain('下一步')
+  await clickText('我已返回，检查真实同步')
+  expect(store.tutorialCompleted).toBe(false)
+  connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
+  eventCallbacks.forEach(listener => listener({ event: 'inventory_import', data: { account_id: 'acc' } }))
+  await flushPromises()
+  expect(store.tutorialCompleted).toBe(true)
+  expect(store.maaYuan.phase).toBe('synced')
+  expect(guide().textContent).toContain('第一次 MaaYuan 同步已完成')
+  expect(guide().textContent).toContain(account.name)
+  expect(localStorage.getItem(onboardingStorageKey('owner'))).not.toContain(host.get('.nt-code').text())
+  expect(guide().textContent).not.toContain(host.get('.nt-code').text())
+})
+
+it('MaaYuan创建失败保持真实表单和当前阶段，立即退出且不撤销连接', async () => {
+  const { router, store } = await render('/user/profile'); await beginMaa(router)
+  await host.get('.app-connect').trigger('click'); await host.get('#maayuan-account').setValue('acc'); await flushPromises()
+  connectionApi.generateOpenApiToken.mockRejectedValueOnce(new Error('创建请求失败'))
+  await host.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
+  expect(store.maaYuan.phase).toBe('choose-account')
+  expect(store.waitingFor).toBe('maa_create')
+  expect(host.get('#maayuan-account').element.value).toBe('acc')
+  await clickText('退出引导')
+  expect(host.find('#maayuan-connect-panel').exists()).toBe(true)
+  expect(host.get('#maayuan-account').element.value).toBe('acc')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(connectionApi.deleteOpenApiToken).not.toHaveBeenCalled()
+})
+
+it.each(['token-created', 'waiting-sync'])('MaaYuan %s退出仅移除教学，重入复用原连接与真实成果', async phase => {
+  const { router, store } = await render('/user/profile'); await createConnection(router)
+  if (phase === 'waiting-sync') { await host.get('.nt-row button').trigger('click'); await flushPromises() }
+  await clickText('退出引导')
+  expect(host.find('.new-token').exists()).toBe(true)
+  expect(store.maaYuan.phase).toBe(phase)
+  expect(store.tutorialCompleted).toBe(false)
+  await refreshTutorialBusiness()
+  expect(store.tutorialCompleted).toBe(false)
+  connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
+  await host.get('.maayuan-tutorial-entry button').trigger('click'); await flushPromises()
+  expect(store.tutorialCompleted).toBe(true)
+  expect(connectionApi.generateOpenApiToken).toHaveBeenCalledTimes(1)
+  expect(connectionApi.deleteOpenApiToken).not.toHaveBeenCalled()
+})
+
+it('MaaYuan复制拒绝不能推进，失败仍可Esc退出', async () => {
+  const { router, store } = await render('/user/profile'); await createConnection(router)
+  navigator.clipboard.writeText.mockRejectedValueOnce(new Error('denied'))
+  const old = document.execCommand
+  document.execCommand = vi.fn(() => false)
+  try {
+    await host.get('.nt-row button').trigger('click'); await flushPromises()
+    expect(store.maaYuan.phase).toBe('token-created')
+    expect(store.waitingFor).toBe('maa_copy')
+    expect(host.get('.notice-line').text()).toContain('复制失败')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises()
+    expect(guide()).toBeNull()
+    expect(host.find('.new-token').exists()).toBe(true)
+    expect(store.tutorialCompleted).toBe(false)
+  } finally { document.execCommand = old }
+})
+
+it('已有MaaYuan连接只真实复制不重新创建；复制失败仍停留，成功后等待', async () => {
+  connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
+  connectionApi.getOpenApiTokenSecret.mockResolvedValue({ token: crypto.randomUUID() })
+  const { router, store } = await render('/user/profile'); await beginMaa(router)
+  expect(store.waitingFor).toBe('maa_copy')
+  expect(connectionApi.getOpenApiTokenSecret).not.toHaveBeenCalled()
+  await host.get('.connection-actions .copy').trigger('click'); await flushPromises()
+  expect(store.maaYuan.phase).toBe('waiting-sync')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(connectionApi.generateOpenApiToken).not.toHaveBeenCalled()
+})
+
+it('MaaYuan等待可刷新与跨页继续；当前页面换账号仍验证绑定账号', async () => {
+  const { router, store } = await render('/user/profile'); await createConnection(router)
+  await host.get('.nt-row button').trigger('click'); await flushPromises()
+  host.unmount()
+  const restored = await render('/changelog')
+  expect(restored.store.waitingFor).toBe('maa_sync')
+  expect(restored.store.maaYuan).toMatchObject({ connectionId: 'connection', accountId: 'acc', phase: 'waiting-sync' })
+  accounts.push({ id: 'other', name: '另一账号', game: '如鸢' }); activeAccount.set('other'); await flushPromises()
+  connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
+  window.dispatchEvent(new Event('focus')); await flushPromises()
+  expect(restored.store.tutorialCompleted).toBe(true)
+  expect(restored.router.currentRoute.value.path).toBe('/changelog')
+  expect(connectionApi.generateOpenApiToken).toHaveBeenCalledTimes(1)
+})
+
+it('MaaYuan预览事件、错账号或错连接证据不能完成；查询失败允许退出', async () => {
+  connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
+  const { router, store } = await render('/user/profile'); await beginMaa(router)
+  connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
+  const reads = connectionApi.getConnectionFirstSync.mock.calls.length
+  eventCallbacks.forEach(listener => listener({ event: 'inventory_import', data: { account_id: 'acc', preview: true } }))
+  await flushPromises()
+  expect(connectionApi.getConnectionFirstSync).toHaveBeenCalledTimes(reads)
+  expect(store.tutorialCompleted).toBe(false)
+  for (const invalid of [syncReceipt({ account_id: 'other' }), syncReceipt({ connection_id: 'other' }), syncReceipt({ data_type: 'star' })]) {
+    connectionApi.getConnectionFirstSync.mockResolvedValueOnce(invalid)
+    await refreshTutorialBusiness()
+    expect(store.tutorialCompleted).toBe(false)
+  }
+  connectionApi.getConnectionFirstSync.mockRejectedValueOnce(new Error('不可观察'))
+  await refreshTutorialBusiness(); expect(store.waitingFor).toBe('read_error')
+  await clickText('退出引导'); expect(guide()).toBeNull()
+})
+
+it('MaaYuan在途创建/复制/同步查询退出后，迟到成功不完成且不取消业务', async () => {
+  const { router, store } = await render('/user/profile'); await beginMaa(router)
+  await host.get('.app-connect').trigger('click'); await host.get('#maayuan-account').setValue('acc'); await flushPromises()
+  const pending = deferred(); connectionApi.generateOpenApiToken.mockReturnValueOnce(pending.promise)
+  await host.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
+  await clickText('退出引导')
+  expect(host.get('#maayuan-account').element.value).toBe('acc')
+  pending.resolve({ ...connection(), token: crypto.randomUUID() }); connectionApi.getOpenApiTokens.mockResolvedValue([connection()]); await flushPromises()
+  expect(host.find('.new-token').exists()).toBe(true)
+  expect(store.status).toBe('paused')
+  await host.get('.maayuan-tutorial-entry button').trigger('click'); await flushPromises()
+  const copied = deferred(); navigator.clipboard.writeText.mockReturnValueOnce(copied.promise)
+  await host.get('.nt-row button').trigger('click'); await flushPromises()
+  await clickText('退出引导'); copied.resolve(); await flushPromises()
+  expect(store.maaYuan.phase).toBe('token-created')
+  await host.get('.maayuan-tutorial-entry button').trigger('click'); await flushPromises()
+  const receiptRead = deferred(); connectionApi.getConnectionFirstSync.mockReturnValueOnce(receiptRead.promise)
+  const read = refreshTutorialBusiness(); await flushPromises()
+  await clickText('退出引导'); receiptRead.resolve(syncReceipt()); await read
+  expect(store.tutorialCompleted).toBe(false)
+  expect(connectionApi.deleteOpenApiToken).not.toHaveBeenCalled()
+})
+
+it('MaaYuan等待定时检查只读，暂停和卸载后不再查询', async () => {
+  connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
+  vi.useFakeTimers()
+  try {
+    const { router, store } = await render('/user/profile'); await beginMaa(router)
+    const initialReads = connectionApi.getConnectionFirstSync.mock.calls.length
+    await vi.advanceTimersByTimeAsync(15000); await flushPromises()
+    expect(connectionApi.getConnectionFirstSync.mock.calls.length).toBeGreaterThan(initialReads)
+    await clickText('退出引导')
+    const reads = connectionApi.getConnectionFirstSync.mock.calls.length
+    window.dispatchEvent(new Event('focus')); await vi.advanceTimersByTimeAsync(15000)
+    expect(connectionApi.getConnectionFirstSync).toHaveBeenCalledTimes(reads)
+    expect(store.tutorialCompleted).toBe(false)
+    host.unmount(); window.dispatchEvent(new Event('focus')); await flushPromises()
+    expect(connectionApi.getConnectionFirstSync).toHaveBeenCalledTimes(reads)
+  } finally { vi.useRealTimers() }
+})
+
+it('MaaYuan已有连接复制失败不推进，重试WebKit真实复制成功才等待', async () => {
+  connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
+  connectionApi.getOpenApiTokenSecret.mockResolvedValue({ token: crypto.randomUUID() })
+  const { router, store } = await render('/user/profile'); await beginMaa(router)
+  navigator.clipboard.writeText.mockRejectedValueOnce(new Error('denied'))
+  const originalCopy = document.execCommand
+  document.execCommand = vi.fn(() => false)
+  try {
+    await host.get('.connection-actions .copy').trigger('click'); await flushPromises()
+    expect(store.maaYuan.phase).toBe('token-created')
+    expect(store.waitingFor).toBe('maa_copy')
+  } finally { document.execCommand = originalCopy }
+  const pending = deferred(); connectionApi.getOpenApiTokenSecret.mockReturnValueOnce(pending.promise)
+  vi.stubGlobal('ClipboardItem', class { constructor(data) { this.data = data } })
+  const write = vi.fn(items => items[0].data['text/plain'].then(() => undefined))
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write } })
+  await host.get('.connection-actions .copy').trigger('click')
+  expect(write).toHaveBeenCalledTimes(1)
+  expect(store.maaYuan.phase).toBe('token-created')
+  pending.resolve({ token: crypto.randomUUID() }); await flushPromises()
+  expect(store.maaYuan.phase).toBe('waiting-sync')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(connectionApi.generateOpenApiToken).not.toHaveBeenCalled()
+})
+
+it('MaaYuan迟到证据不交给另一身份；已撤销连接和旧完成标记不算成果', async () => {
+  connectionApi.getOpenApiTokens.mockResolvedValue([connection()])
+  const { router, store } = await render('/user/profile'); await beginMaa(router)
+  const pending = deferred(); connectionApi.getConnectionFirstSync.mockReturnValueOnce(pending.promise)
+  const read = refreshTutorialBusiness(); await flushPromises()
+  auth.userInfo = { id: 'another-owner' }; await flushPromises()
+  pending.resolve(syncReceipt()); await read
+  expect(store.ownerId).toBe('another-owner')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(store.active).toBe(false)
+  auth.userInfo = { id: 'owner' }; await flushPromises()
+  connectionApi.getOpenApiTokens.mockResolvedValue([])
+  await beginMaa(router)
+  expect(store.status).toBe('in_progress')
+  expect(store.waitingFor).toBe('maa_connect')
+  expect(store.maaYuan.connectionId).toBe('')
+  expect(store.tutorialCompleted).toBe(false)
+  expect(store.waitingFor).toBe('maa_connect')
+  expect(connectionApi.generateOpenApiToken).not.toHaveBeenCalled()
 })

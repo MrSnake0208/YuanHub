@@ -51,3 +51,8 @@ export function deleteOpenApiToken(tokenId) {
     auth: true
   })
 }
+
+// 本人只读证据：服务端认证的连接实际写入库存，无连接码明文。
+export function getConnectionFirstSync(tokenId) {
+  return request('/user/open-api/tokens/' + encodeURIComponent(tokenId) + '/first-sync', { auth: true })
+}

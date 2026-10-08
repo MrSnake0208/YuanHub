@@ -1,8 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { watch } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useOnboardingStore, onboardingStorageKey, ONBOARDING_VERSION } from '../src/stores/onboarding.js'
-import { resolveTaskProgress, ownedOperatorId } from '../src/utils/onboardingTasks.js'
+import { resolveTaskProgress, ownedOperatorId, maaYuanCheckpoint, verifiedConnectionSync } from '../src/utils/onboardingTasks.js'
 
 function setup(initial = {}) {
   const values = new Map(Object.entries(initial))
@@ -115,4 +116,69 @@ test('损坏/不可用存储不困住用户', () => {
   store.dismiss()
   assert.equal(store.visible, false)
   delete globalThis.localStorage
+})
+
+const receipt = (extra = {}) => ({ connection_id: 'connection', account_id: 'acc', data_type: 'inventory', synced: true, record_id: 'inventory:1', received_at: '2026-10-08T00:00:00Z', ...extra })
+
+test('MaaYuan完成只接纳绑定连接与账号的真实库存凭据', () => {
+  const { store } = setup()
+  store.start('maayuan-first-sync')
+  for (const invalid of [null, receipt({ synced: false }), receipt({ connection_id: 'other' }), receipt({ account_id: 'other' }), receipt({ data_type: 'star' }), receipt({ record_id: '' }), receipt({ received_at: 'bad' })]) {
+    assert.equal(verifiedConnectionSync(invalid, 'connection', 'acc'), false)
+    assert.equal(store.applyProgress({ waitingFor: 'verified', evidence: { ownerId: 'owner', task: 'maayuan-first-sync', accountId: 'acc', connectionId: 'connection', receipt: invalid } }), false)
+  }
+  assert.equal(store.tutorialCompleted, false)
+  assert.equal(store.applyProgress({ waitingFor: 'verified', evidence: { ownerId: 'owner', task: 'maayuan-first-sync', accountId: 'acc', connectionId: 'connection', receipt: receipt() } }), true)
+  assert.equal(store.tutorialCompleted, true)
+})
+
+test('MaaYuan每阶段退出保留任务元数据，但不写完成或永久禁用', () => {
+  for (const phase of ['choose-account', 'token-created', 'token-copied', 'waiting-sync']) {
+    const { store, values } = setup()
+    store.start('maayuan-first-sync')
+    store.setMaaYuanCheckpoint({ connectionId: 'connection', accountId: 'acc', phase, token: crypto.randomUUID(), stepIndex: 3 })
+    store.dismiss()
+    assert.equal(store.tutorialCompleted, false)
+    assert.equal(store.disableAutoGuide, false)
+    const saved = JSON.parse(values.get(onboardingStorageKey('owner')))
+    assert.deepEqual(saved.maaYuan, { task: 'maayuan-first-sync', connectionId: 'connection', accountId: 'acc', phase })
+    assert.equal(JSON.stringify(saved).includes('stepIndex'), false)
+    assert.equal(Object.hasOwn(saved.maaYuan, 'token'), false)
+    setActivePinia(createPinia())
+    const restored = useOnboardingStore().initialize('owner')
+    assert.equal(restored.visible, false)
+    assert.equal(restored.maaYuan.phase, phase)
+    restored.start('maayuan-first-sync')
+    assert.equal(restored.waitingFor, 'business_state')
+  }
+})
+
+test('MaaYuan本地完成标记必须重新验证，不能刷新就显示成功', () => {
+  const { store, values } = setup()
+  store.start('maayuan-first-sync')
+  store.setMaaYuanCheckpoint({ connectionId: 'connection', accountId: 'acc', phase: 'synced' })
+  store.applyProgress({ waitingFor: 'verified', evidence: { ownerId: 'owner', task: 'maayuan-first-sync', accountId: 'acc', connectionId: 'connection', receipt: receipt() } })
+  setActivePinia(createPinia())
+  const restored = useOnboardingStore().initialize('owner')
+  assert.equal(restored.tutorialCompleted, false)
+  assert.equal(restored.status, 'paused')
+  assert.equal(restored.visible, false)
+  assert.equal(maaYuanCheckpoint({ phase: 'page-5' }).phase, 'choose-account')
+  assert.ok(values.size)
+})
+
+test('MaaYuan身份同步watch重入时，原身份正确暂停且返回后可重新验证', () => {
+  const { store, values } = setup()
+  store.start('maayuan-first-sync')
+  let owner = 'other'
+  const stop = watch(() => [store.active, store.ownerId], () => store.initialize(owner), { flush: 'sync' })
+  store.initialize(owner)
+  assert.equal(store.ownerId, 'other')
+  assert.equal(JSON.parse(values.get(onboardingStorageKey('owner'))).status, 'paused')
+  owner = 'owner'
+  store.initialize(owner)
+  stop()
+  assert.equal(store.status, 'paused')
+  store.start('maayuan-first-sync')
+  assert.equal(store.waitingFor, 'business_state')
 })
