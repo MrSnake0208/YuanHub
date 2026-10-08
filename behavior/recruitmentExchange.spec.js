@@ -34,7 +34,7 @@ it('默认预览绑定原文件/账号/hash/revision/options，再确认单次�
   expect(wrapper.text()).toContain('可能重复计数'); expect(wrapper.text()).toContain('当前已知累计 100 抽 → 提交后 100 抽')
   await wrapper.get('input[type=checkbox]').setValue(true); expect(wrapper.find('.preview').exists()).toBe(false); expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
   await wrapper.get('form').trigger('submit'); await flushPromises(); await button(wrapper, '确认按预览导入').trigger('click'); await flushPromises()
-  expect(api.commitRecruitmentImport.mock.calls[0][0]).toMatchObject({ accountId: 'acc-a', previewToken: 'bound-preview', documentHash: 'bound-hash', expectedRevision: 3, options: { confirm_count_change: true } })
+  expect(api.commitRecruitmentImport.mock.calls[0][0]).toMatchObject({ accountId: 'acc-a', document: documentFixture(), previewToken: 'bound-preview', documentHash: 'bound-hash', expectedRevision: 3, options: { confirm_count_change: true } })
   expect(wrapper.emitted('committed')).toHaveLength(1); expect(wrapper.text()).toContain('导入已完成'); expect(wrapper.find('.preview').exists()).toBe(false)
 })
 it('A预览迟到不能应用到B；切换用户/账号清空文件与确认入口', async () => {

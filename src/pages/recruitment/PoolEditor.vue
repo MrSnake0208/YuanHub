@@ -50,7 +50,54 @@
               </template>
             </section>
 
-            <section class="daily-entry" :aria-labelledby="editorId + '-result'">
+            <section v-show="showProgress" class="progress-card" :class="{ 'is-saved': receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
+              <div class="progress-copy">
+                <span class="section-kicker">当前进度</span>
+                <h3 :id="editorId + '-progress'">保底进度</h3>
+                <p>按游戏当下显示核对；本页用 40 抽换算，不自动猜测出货后的进度。</p>
+              </div>
+
+              <div class="progress-overview">
+                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'saved-progress'" target="saved-progress" :message="guideMessage" />
+                <div data-guide-target="saved-progress" class="progress-number" aria-live="polite">
+                  <span>已垫</span>
+                  <div><strong>{{ tailProgress == null ? '—' : tailProgress }}</strong><small>/ 40 抽</small></div>
+                </div>
+                <div class="progress-rail" aria-hidden="true">
+                  <span :style="{ width: tailProgress == null ? '0%' : Math.min(tailProgress / 40, 1) * 100 + '%' }"></span>
+                </div>
+              </div>
+
+              <div class="remaining-guide">
+                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'progress'" target="progress" :message="guideMessage"><button v-if="tailProgress == null && !practice" type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
+              <label data-guide-target="progress" class="remaining-field">
+                <span>距离下次保底</span>
+                <span class="remaining-input">
+                  <input
+                    ref="remainingInput"
+                    @input="progressReviewed = false" @blur="reviewProgress"
+                    v-model="remaining"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="40"
+                    :aria-describedby="guideVisible ? undefined : editorId + '-progress-help'"
+                    placeholder="1–40"
+                    :disabled="busy || readOnly || recordsLoading"
+                  >
+                  <span>抽</span>
+                </span>
+              </label>
+              </div>
+            </section>
+
+            <p v-show="showProgress && !guideVisible" :id="editorId + '-progress-help'" class="composer-note">已垫 = 40 − 距保底。例如真实已垫 7 抽，距保底填 33；这是当前进度，不是本次出货间隔。{{ dailyMode === 'record' ? '出货后请核对这一数字，再点击底部保存修改。' : '' }}</p>
+            <p v-if="showProgress && tailProgress == null && !readOnly && !practice && !guideVisible" class="state-note" role="status">当前保底进度未知。保存需填写真实的距保底抽数（1–40），暂不支持保底留空提交；出货间隔仍可以未知。不要猜 40 或 0。确认游戏进度后再保存；草稿只保留在当前窗口，关闭窗口或切换账号会丢弃。</p>
+            <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-progress'" target="save-progress" :message="guideMessage" />
+            <div v-if="dailyMode === 'progress' && !activeRow" data-guide-target="save-progress" class="progress-actions">
+              <button class="primary" type="button" :disabled="busy || readOnly || !recordsReady || !!unverifiedSave || !pendingCount" @click="submit">{{ busy ? '保存中…' : practice ? '查看练习结果' : '保存保底进度' }}</button>
+            </div>
+            <section v-if="guideVisible || practice" class="daily-entry" :aria-labelledby="editorId + '-result'">
               <h3 :id="editorId + '-result'">{{ readOnly ? '本池记录' : '这次有没有出绝密？' }}</h3>
               <RecruitmentGuideHint v-if="guideVisible && guideStep === 'result'" target="result" :message="guideMessage" />
               <div v-if="!readOnly" data-guide-target="result" class="daily-choices" role="group" aria-label="这次抽卡结果">
@@ -67,13 +114,22 @@
               <p>{{ pullSpanHelp }}</p>
               <p>出货后请按游戏中当下的真实状态核对距保底；本页不会自动重置进度，也不会从其他卡池继承。没有出绝密时只改当前保底，不新增出货。</p>
               <p>已知累计 = 历史基准 + 普通记录的已知间隔 + 批次总量 + 当前进度。未知资料不贡献确定抽数，也不代表实际抽了 0 次。批次内记录不重复累加；基准若已含这段历史，继续新增可能重复计数，请先核对备份。本页未提供历史基准、总量批次或 120 抽窗口的旧补录入口。</p>
-              <p>进度条与密探视图展示同一组记录，头像左下角数字是这次出货的间隔，不是获得次数。新增用「保存这笔」直接提交；已有记录修改后点完成，再统一保存。未读回核对前不算确认保存。</p>
+              <p>进度条与密探视图展示同一组记录，头像左下角数字是这次出货的间隔，不是获得次数。新增点「加入」进入待保存记录，之后用底部「保存修改」统一提交；已有记录修改后点完成，同样需要底部保存。未读回核对前不算确认保存。</p>
               <p>取消单条编辑保留原记录；关闭整个窗口丢弃未提交草稿。删除仅在保存后生效：独立记录减去本条已知抽数，相邻间隔和批次总量不变。教程不会替你删除或导入数据。</p>
             </details>
 
             <section class="records-section" :aria-labelledby="editorId + '-records'">
+              <RecruitmentGuideHint v-if="guideVisible && guideStep === 'views'" target="views" :message="guideMessage" />
+              <div data-guide-target="views" class="records-toolbar">
+                <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
+                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')">进度条视图</button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')">密探视图</button>
+                </div>
+
+              </div>
+
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'agents'" target="agents" :message="guideMessage" />
-                <div v-show="dailyMode === 'record'" data-guide-target="agents" class="entry-shortcuts" role="group" aria-label="快速登记出货">
+                <div v-show="dailyMode === 'record' || (!guideVisible && !practice)" data-guide-target="agents" class="entry-shortcuts" role="group" aria-label="快速登记出货">
                   <button
                     v-for="agent in quickUpAgents"
                     :key="agent.id"
@@ -104,7 +160,7 @@
                 </div>
 
               <div
-                v-if="activeRow || showProgress"
+                v-if="activeRow"
                 ref="entryComposer"
                 class="entry-composer"
                 role="group"
@@ -194,68 +250,12 @@
                 <p v-if="activeRow?.agent_id && !guideVisible" :id="editorId + '-pulls-help'" class="composer-note">{{ pullSpanHelp }}</p>
                 <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
                 <p v-if="activeRow && originals.has(activeRow.event_id)" class="composer-note">完成编辑只更新草稿，核对后点击底部保存修改。</p>
-            <section v-show="showProgress" class="progress-card" :class="{ 'is-saved': receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
-              <div class="progress-copy">
-                <span class="section-kicker">当前进度</span>
-                <h3 :id="editorId + '-progress'">保底进度</h3>
-                <p>按游戏当下显示核对；本页用 40 抽换算，不自动猜测出货后的进度。</p>
-              </div>
-
-              <div class="progress-overview">
-                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'saved-progress'" target="saved-progress" :message="guideMessage" />
-                <div data-guide-target="saved-progress" class="progress-number" aria-live="polite">
-                  <span>已垫</span>
-                  <div><strong>{{ tailProgress == null ? '—' : tailProgress }}</strong><small>/ 40 抽</small></div>
-                </div>
-                <div class="progress-rail" aria-hidden="true">
-                  <span :style="{ width: tailProgress == null ? '0%' : Math.min(tailProgress / 40, 1) * 100 + '%' }"></span>
-                </div>
-              </div>
-
-              <div class="remaining-guide">
-                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'progress'" target="progress" :message="guideMessage"><button v-if="tailProgress == null && !practice" type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
-              <label data-guide-target="progress" class="remaining-field">
-                <span>距离下次保底</span>
-                <span class="remaining-input">
-                  <input
-                    ref="remainingInput"
-                    @input="progressReviewed = false" @blur="reviewProgress"
-                    v-model="remaining"
-                    type="number"
-                    inputmode="numeric"
-                    min="1"
-                    max="40"
-                    :aria-describedby="guideVisible ? undefined : editorId + '-progress-help'"
-                    placeholder="1–40"
-                    :disabled="busy || readOnly || recordsLoading"
-                  >
-                  <span>抽</span>
-                </span>
-              </label>
-              </div>
-            </section>
-
-            <p v-show="showProgress && !guideVisible" :id="editorId + '-progress-help'" class="composer-note">已垫 = 40 − 距保底。例如真实已垫 7 抽，距保底填 33；这是当前进度，不是本次出货间隔。{{ dailyMode === 'record' ? '出货后请核对这一数字，再保存这笔。' : '' }}</p>
-            <p v-if="showProgress && tailProgress == null && !readOnly && !practice && !guideVisible" class="state-note" role="status">当前保底进度未知。保存需填写真实的距保底抽数（1–40），暂不支持保底留空提交；出货间隔仍可以未知。不要猜 40 或 0。确认游戏进度后再保存；草稿只保留在当前窗口，关闭窗口或切换账号会丢弃。</p>
-            <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-progress'" target="save-progress" :message="guideMessage" />
-            <div v-if="dailyMode === 'progress' && !activeRow" data-guide-target="save-progress" class="progress-actions">
-              <button class="primary" type="button" :disabled="busy || readOnly || !recordsReady || !!unverifiedSave || !pendingCount" @click="submit">{{ busy ? '保存中…' : practice ? '查看练习结果' : '保存保底进度' }}</button>
-            </div>
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-record'" target="save-record" :message="guideMessage" />
                   <div v-if="activeRow?.agent_id" data-guide-target="save-record" class="composer-actions">
                     <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)">删除记录</button>
                     <button type="button" :disabled="busy" @click="cancelEntry">取消</button>
-                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : practice ? '查看练习结果' : '保存这笔'" :disabled="busy || readOnly || recordsLoading || ((!!recordsError || !!unverifiedSave) && !originals.has(activeRow.event_id))" @click="originals.has(activeRow.event_id) ? confirmRecord() : submit()">{{ busy ? '保存中…' : originals.has(activeRow.event_id) ? '完成' : practice ? '查看练习结果' : '保存这笔' }}</button>
+                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : practice ? '查看练习结果' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading || ((!!recordsError || !!unverifiedSave) && !originals.has(activeRow.event_id))" @click="practice && !originals.has(activeRow.event_id) ? submit() : confirmRecord()">{{ busy ? '保存中…' : originals.has(activeRow.event_id) ? '完成' : practice ? '查看练习结果' : '加入' }}</button>
                   </div>
-              </div>
-
-              <RecruitmentGuideHint v-if="guideVisible && guideStep === 'views'" target="views" :message="guideMessage" />
-              <div data-guide-target="views" class="records-toolbar">
-                <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
-                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')">进度条视图</button>
-                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')">密探视图</button>
-                </div>
-
               </div>
 
               <div class="records-heading">
@@ -332,7 +332,7 @@
               <div v-else-if="initialized && !recordsLoading && !recordsError" data-guide-target="empty-records" class="records-empty">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'empty-records'" target="empty-records" :message="guideMessage" />
                 <strong>{{ recordSearch ? '没有找到这位密探的记录' : '还没有抽卡记录' }}</strong>
-                <p>{{ recordSearch ? '换个名字，或加载更早记录；不需要重复登记。' : '从上方选择「抽到了绝密」开始记；没出绝密只更新保底。' }}</p>
+                <p>{{ recordSearch ? '换个名字，或加载更早记录；不需要重复登记。' : '点击上方 UP 密探头像或「其他密探」登记出货；仅更新保底可以直接修改上方进度并保存。' }}</p>
               </div>
 
               <div class="records-tail">
@@ -347,7 +347,7 @@
           </div>
 
           <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-changes'" target="save-changes" :message="guideMessage" />
-          <footer data-guide-target="save-changes" v-show="(!dailyMode || pendingCount || readOnly) && (dailyMode !== 'progress' || recordPendingCount > 0) && (!guideVisible || !['views', 'guide-record', 'empty-records'].includes(guideStep) || pendingCount || activeRow)" :class="{ 'is-entry-active': !!activeRow }">
+          <footer data-guide-target="save-changes" v-show="(!guideVisible && !practice) || ((!dailyMode || pendingCount || readOnly) && (dailyMode !== 'progress' || recordPendingCount > 0) && (!guideVisible || !['views', 'guide-record', 'empty-records'].includes(guideStep) || pendingCount || activeRow))" :class="{ 'is-entry-active': !!activeRow }">
             <p class="footer-state" aria-live="polite">
               <template v-if="activeRow">{{ originals.has(activeRow.event_id) ? '正在编辑一条记录' : '正在登记一条记录' }}</template>
               <template v-else-if="pendingCount">{{ pendingCount }} 项修改尚未保存</template>
@@ -384,7 +384,7 @@ const editorId = 'recruitment-editor-' + useId()
 const emit = defineEmits(['close', 'save', 'load-more', 'retry', 'guide-dismiss', 'guide-start', 'practice'])
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
-const dailyMode = ref(''), recordSearch = ref('')
+const dailyMode = ref('record'), recordSearch = ref('')
 const showProgress = computed(() => !!dailyMode.value || !!activeRow.value || pendingCount.value > 0 || receiptVerified.value)
 const pullSpanHelp = '不是卡池累计抽数。例如上次绝密后，第 20 抽又出绝密，就填 20。首条也只填你确知的出货间隔，不知道就留空，系统保留未知。同一密探再次出货可继续新增记录。'
 const guideVisible = ref(false), guidePicker = ref(false), pullsReviewed = ref(false), progressReviewed = ref(false), viewedRecords = ref(false)
@@ -417,7 +417,7 @@ const guideMessage = computed(() => {
     case 'agent-results': return '点搜索结果中实际抽到的那位密探。'
     case 'pulls': return props.practice ? '练习：示例这次是上次绝密之后第20抽出货，请自己填20；也可以选择记不清。' : '填两次绝密之间的抽数，例如上次出货后20抽又出就填20。首条只填能确认的间隔，记不清就保留未知。'
     case 'progress': return tailProgress.value == null && !props.practice ? '当前进度未知，暂不支持保底留空提交；先核对游戏的距保底数字，不要猜0或40。退出教程会保留窗口草稿。' : props.practice ? '练习：示例游戏现在还差33抽保底，请自己填33；不是这次抽了多少。' : '按游戏现在显示填还差几抽保底，不是这次抽了多少。例如已垫7抽，这里填33；已有数字也要亲自核对。'
-    case 'save-record': return activeRow.value && originals.has(activeRow.value.event_id) ? '点「完成」只更新这条草稿，之后仍要保存修改。' : props.practice ? '点「查看练习结果」，只展示临时示例。' : '资料核对好后点「保存这笔」，等服务端读回确认。'
+    case 'save-record': return activeRow.value && originals.has(activeRow.value.event_id) ? '点「完成」只更新这条草稿，之后仍要保存修改。' : props.practice ? '点「查看练习结果」，只展示临时示例。' : '点「加入」把这次出货加入待保存记录，再点底部「保存修改」才会写入档案。'
     case 'save-progress': return props.practice ? '点「查看练习结果」，不会写入账号。' : '点「保存保底进度」，不会新增绝密记录。'
     case 'save-changes': return '核对后点底部保存修改；完成单条编辑还没有保存到服务器。'
     case 'saved-progress': return '新的保底进度在这里。以后抽了没出绝密，就回来这个池更新。'
@@ -438,7 +438,15 @@ function dismissGuide() {
   nextTick(() => { if (props.open && taskFocus?.isConnected) taskFocus.focus({ preventScroll: true }) })
 }
 function openGuide() { if (!TUTORIALS_ENABLED) return; guidePicker.value = !guidePicker.value }
-function startGuide() { if (!TUTORIALS_ENABLED) return; guidePicker.value = false; guideVisible.value = true; emit('guide-start') }
+function startGuide() {
+  if (!TUTORIALS_ENABLED) return
+  guidePicker.value = false
+  guideVisible.value = true
+  // The ordinary editor opens directly in record mode; an explicitly started
+  // walkthrough still begins by asking about this real draw unless a draft exists.
+  if (!props.practice && !activeRow.value && !pendingCount.value) dailyMode.value = ''
+  emit('guide-start')
+}
 function openPractice() { if (TUTORIALS_ENABLED && !props.busy) { dismissGuide(); emit('practice') } }
 function chooseDailyMode(mode) { dailyMode.value = mode; viewedRecords.value = false; progressReviewed.value = false }
 function switchRecordView(view) { recordView.value = view; if (guideVisible.value && !activeRow.value && !pendingCount.value) viewedRecords.value = true }
@@ -448,7 +456,12 @@ function reviewPulls() {
 }
 function onPullInput(event) { pullsReviewed.value = false; limitPullSpan(event) }
 function markPullsUnknown() { if (activeRow.value && !props.busy && !props.readOnly) { activeRow.value.pull_span = ''; pullsReviewed.value = true } }
-function reviewProgress() { try { progressFromRemaining(remaining.value); progressReviewed.value = true } catch { progressReviewed.value = false } }
+function reviewProgress() {
+  // When an already-focused progress field loses focus before the player has
+  // finished selecting an agent, that incidental blur is not tutorial review.
+  if (guideVisible.value && dailyMode.value === 'record' && !pullsReviewed.value) return
+  try { progressFromRemaining(remaining.value); progressReviewed.value = true } catch { progressReviewed.value = false }
+}
 function isGuideRow(row) { return receiptVerified.value ? row.event_id === props.saveReceipt.entries[0]?.event_id : row.event_id === displayRows.value[0]?.event_id }
 if (TUTORIALS_ENABLED) watch(() => props.guided, active => { guideVisible.value = active }, { immediate: true })
 function entryMatches(event, entry) {
@@ -688,7 +701,7 @@ watch(() => props.open, open => {
   }
   guideVisible.value = TUTORIALS_ENABLED && props.guided
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
-  rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''; dailyMode.value = ''; recordSearch.value = ''
+  rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
@@ -726,10 +739,12 @@ onBeforeUnmount(() => {
   window.clearTimeout(pointerReleaseTimer)
   resetKeyboardAvoidance()
 })
-useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('.daily-choices button:not(:disabled), .record-view-switch button'), onEscape: () => guideVisible.value || guidePicker.value ? dismissGuide() : close() })
+useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => guideVisible.value || guidePicker.value ? dismissGuide() : close() })
 async function submit() {
   if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
-  if (activeRow.value && !confirmRecord()) return
+  if (activeRow.value) {
+    if (!props.practice || !confirmRecord()) return
+  }
   if (!pendingCount.value) return
   error.value = ''
   try {

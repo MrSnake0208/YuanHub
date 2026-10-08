@@ -29,7 +29,7 @@ it('只展示真实统计、抽卡进度和目录状态，不猜日期或收集�
   const cards = wrapper.findAll('.pool-card'), find = name => cards.find(card => card.get('.pool-name').text() === name)
   expect(find('当日池').get('.entry-label').text()).toBe('记一笔')
   expect(find('停用池').get('.entry-label').text()).toBe('查看记录')
-  expect(find('当日池').get('.pool-status').text()).toBe('进行中'); expect(find('当日池').text()).toContain('当前卡池')
+  expect(find('当日池').get('.pool-status').text()).toBe('进行中'); expect(wrapper.text()).not.toContain('当前卡池')
   expect(find('当日池').findAll('.pool-metrics b').map(item => item.text())).toEqual(['1,234', '9', '40'])
   expect(find('当日池').text()).toContain('部分出货间隔或进度未知')
   expect(find('已结束池').get('.pool-status').text()).toBe('已结束'); expect(find('未开始池').get('.pool-status').text()).toBe('未开始')
@@ -37,6 +37,23 @@ it('只展示真实统计、抽卡进度和目录状态，不猜日期或收集�
   expect(find('不完整日期').get('.pool-status').text()).toBe('已启用')
   expect(find('不完整日期').findAll('.pool-metrics b').map(item => item.text())).toEqual(['未知', '未知', '未知'])
   expect(wrapper.text()).not.toContain('收集进度')
+})
+
+it.each([
+  { currentPoolId: '旧池' }, { currentPoolId: '不存在的池' },
+  { current_pool_id: '旧池' }, { current_pool_id: '不存在的池' }
+])('旧指针 %j 不产生徽标、高亮或排序优先级，历史池仍可选择', async legacyPointer => {
+  const pools = [pool('旧池', '2025-01-01', '2025-12-31'), pool('开放池', '2026-09-01', '2026-10-31')]
+  const original = structuredClone(pools), wrapper = render({ pools, ...legacyPointer })
+  expect(names(wrapper)).toEqual(['开放池', '旧池'])
+  expect(wrapper.text()).not.toContain('当前卡池')
+  expect(wrapper.find('.current-badge, .is-current').exists()).toBe(false)
+  expect(wrapper.findAll('.pool-card').map(card => card.get('.pool-status').text())).toEqual(['进行中', '已结束'])
+  const endedCard = wrapper.findAll('.pool-card')[1]
+  expect(endedCard.attributes('aria-label')).toContain('旧池')
+  await endedCard.trigger('click')
+  expect(wrapper.emitted('select')).toEqual([['旧池']])
+  expect(pools).toEqual(original)
 })
 
 it('目录优先更新日期名字及头像，退役UP不展示；账号上下文改变重置年份排序', async () => {
