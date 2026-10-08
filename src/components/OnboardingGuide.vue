@@ -20,7 +20,7 @@
             <button v-if="store.tutorialTask && !store.tutorialCompleted" type="button" @click="start(store.tutorialTask)">继续实操教程：{{ ONBOARDING_TASKS[store.tutorialTask]?.title }}</button>
             <button v-for="(task, id) in ONBOARDING_TASKS" :key="id" type="button" @click="start(id)">{{ task.title }}</button>
           </div>
-          <p class="tutorial-note">库存盘点与星石识别，可从对应页面使用。</p>
+          <p class="tutorial-note">选择真实任务，保存结果验证后才算完成。</p>
           <label class="tutorial-preference"><input v-model="disableAuto" type="checkbox" @change="savePreference" />以后不自动提示</label>
         </template>
         <template v-else-if="store.panel === 'result'">
@@ -29,12 +29,16 @@
             <router-link v-if="store.tutorialTask === 'operator-first-entry'" to="/operator?tab=current" @click="close">看看养成总览</router-link>
             <button v-if="store.tutorialTask === 'operator-first-entry'" type="button" @click="close">继续录入</button>
             <router-link v-else-if="store.tutorialTask === 'maayuan-first-sync'" to="/inventory" @click="close">查看库存（选择上方同步账号）</router-link>
+            <button v-else-if="['today-first-data', 'inventory-first-baseline'].includes(store.tutorialTask)" type="button" @click="close">继续使用</button>
             <router-link v-else to="/operator" @click="close">去录入密探</router-link>
           </div>
         </template>
         <template v-else>
           <p aria-live="polite" aria-atomic="true">{{ instruction }}</p>
           <p v-if="store.waitingFor === 'read_error'" class="tutorial-error" role="alert">{{ tutorialBusiness.error }}</p>
+          <div v-if="store.waitingFor === 'first_task'" class="tutorial-actions">
+            <button v-for="(task, id) in FIRST_DATA_TASKS" :key="id" type="button" @click="chooseFirstData(id)">{{ task.title }}</button>
+          </div>
           <div v-if="destination || store.waitingFor === 'read_error'" class="tutorial-actions">
             <router-link v-if="destination" :to="destination.to">{{ destination.label }}</router-link>
             <button v-if="store.waitingFor === 'read_error'" type="button" @click="refreshTutorialBusiness">重新读取真实状态</button>
@@ -55,7 +59,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch 
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '@/stores/onboarding.js'
 import { modalFocusState } from '@/composables/useModalFocus.js'
-import { ONBOARDING_TASKS } from '@/utils/onboardingTasks.js'
+import { ONBOARDING_TASKS, FIRST_DATA_TASKS } from '@/utils/onboardingTasks.js'
 import { destroyOnboardingTour, refreshTutorialBusiness, startOnboardingTask, tutorialBusiness } from '@/utils/onboardingTour.js'
 
 const props = defineProps({ recommendationAllowed: { type: Boolean, default: true } })
@@ -71,6 +75,10 @@ const instruction = computed(() => ({
   read_error: '读取失败，暂不能确认成果。请处理真实错误或稍后继续。',
   account_created: '点击真实「创建游戏账号」，填写名称、选择游戏并创建。',
   account_selected: '你已有游戏账号，请在页面账号选择器中选择要录入的账号。',
+  first_task: '账号已就绪。选择一项你现在需要的真实任务，建立第一份数据即可。',
+  inventory_saved: '点击真实「开始首次盘点」或「更新库存」，核对全部道具的真实数量，确认完整盘点并保存。未保存或只有局部录入都不算完成。',
+  star_saved: '在星石背包导入你的真实游戏截图，识别后核对并保存到当前账号；返回 Today 后验证云端保存结果。',
+  today_return: '真实数据已读取。返回 Today 重新确认当前账号状态，即可完成首次建档。',
   maa_connect: '点击页面真实「连接 MaaYuan」按钮。',
   maa_account: '在高亮的游戏账号选择器中，选择要保存库存的真实账号。',
   maa_create: '核对所选账号与权限，再点击真实「创建 MaaYuan 连接码」。',
@@ -82,9 +90,16 @@ const instruction = computed(() => ({
 }[store.waitingFor] || '请选择要完成的真实任务。'))
 const destination = computed(() => {
   if (store.waitingFor === 'login') return { to: { path: '/login', query: { redirect: ONBOARDING_TASKS[store.tutorialTask].route } }, label: '去登录' }
+  if (store.waitingFor === 'today_return') return { to: '/', label: '返回 Today 验证第一份数据' }
   if (store.tutorialTask === 'maayuan-first-sync' && route.path !== '/user/profile' && store.waitingFor !== 'login') return { to: '/user/profile#maayuan-app-title', label: '返回 MaaYuan 连接' }
   if (store.waitingFor === 'account_created' && route.path !== '/user/profile') return { to: '/user/profile#game-accounts', label: '去创建游戏账号' }
-  if (['account_selected', 'operator_saved'].includes(store.waitingFor) && !['/operator', '/operator/quick'].includes(route.path)) return { to: '/operator', label: '返回密探名册' }
+  if (store.waitingFor === 'account_selected') {
+    const target = store.tutorialTask === 'today-first-data' ? FIRST_DATA_TASKS[store.firstDataTask]?.route || '/' : ONBOARDING_TASKS[store.tutorialTask].route.split('#')[0]
+    if (route.path !== target) return { to: target, label: '返回任务页面选择游戏账号' }
+  }
+  if (store.waitingFor === 'operator_saved' && !['/operator', '/operator/quick'].includes(route.path)) return { to: '/operator', label: '返回密探名册' }
+  if (store.waitingFor === 'inventory_saved' && route.path !== '/inventory') return { to: '/inventory', label: '去库存完成盘点' }
+  if (store.waitingFor === 'star_saved' && route.path !== '/star') return { to: '/star', label: '去识别真实截图' }
   return null
 })
 
@@ -105,7 +120,7 @@ function moveOutlet(panel) {
 }
 watch(() => [modalFocusState.panel, visible.value], ([panel]) => moveOutlet(panel), { flush: 'post' })
 watch(() => store.panel, async panel => {
-  if (panel === 'tasks') {
+  if (panel === 'tasks' || panel === 'task') {
     opener = document.activeElement
     await nextTick()
     region.value?.querySelector('h2')?.focus({ preventScroll: true })
@@ -137,6 +152,9 @@ function onEscape(event) {
   close()
 }
 function start(taskId) { void startOnboardingTask(router, taskId) }
+function chooseFirstData(taskId) {
+  if (store.chooseFirstData(taskId)) void router.push(FIRST_DATA_TASKS[taskId].route)
+}
 
 onMounted(() => {
   window.addEventListener('keydown', onEscape, true)

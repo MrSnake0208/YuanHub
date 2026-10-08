@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { watch } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useOnboardingStore, onboardingStorageKey, ONBOARDING_VERSION } from '../src/stores/onboarding.js'
-import { resolveTaskProgress, ownedOperatorId, maaYuanCheckpoint, verifiedConnectionSync } from '../src/utils/onboardingTasks.js'
+import { resolveTaskProgress, ownedOperatorId, inventoryBaselineAt, maaYuanCheckpoint, verifiedConnectionSync } from '../src/utils/onboardingTasks.js'
 
 function setup(initial = {}) {
   const values = new Map(Object.entries(initial))
@@ -15,6 +15,31 @@ function setup(initial = {}) {
 }
 const ready = { ownerId: 'owner', loggedIn: true, accounts: [{ id: 'acc', game: '如鸢' }], accountId: 'acc', currentLoaded: true, operatorId: '' }
 const progress = state => resolveTaskProgress('operator-first-entry', { ...ready, ...state })
+
+test('库存只认当前账号道具完整基准，局部记录不毕业，畸形响应失败', () => {
+  assert.equal(inventoryBaselineAt([], 'acc'), '')
+  assert.equal(inventoryBaselineAt([{ entries: { coin: { count: 0 } } }], 'acc'), '')
+  for (const current of [null, [null], [{ account_id: 'other', entries: {} }], [{ entity_type: 'agent', entries: {} }], [{ entries: { coin: { count: -1 } } }]]) assert.throws(() => inventoryBaselineAt(current, 'acc'))
+  const baselineAt = '2026-10-08T00:00:00Z'
+  assert.equal(inventoryBaselineAt([{ account_id: 'acc', entries: {}, full_baseline_at: baselineAt }], 'acc'), baselineAt)
+  assert.equal(resolveTaskProgress('inventory-first-baseline', ready).waitingFor, 'inventory_saved')
+  const { store } = setup(); store.start('inventory-first-baseline')
+  assert.equal(store.applyProgress({ waitingFor: 'verified', evidence: { ownerId: 'owner', task: 'inventory-first-baseline', accountId: 'acc' } }), false)
+  store.applyProgress(resolveTaskProgress('inventory-first-baseline', { ...ready, baselineAt }))
+  assert.equal(store.tutorialCompleted, true)
+})
+
+test('Today主动选择真实任务且返回Today核验；关闭不毕业，所选任务可恢复', () => {
+  assert.equal(resolveTaskProgress('today-first-data', ready).waitingFor, 'first_task')
+  assert.equal(resolveTaskProgress('today-first-data', { ...ready, firstDataTask: 'operator', operatorId: 'op' }).waitingFor, 'today_return')
+  assert.equal(resolveTaskProgress('today-first-data', { ...ready, firstDataTask: 'operator', operatorId: 'op', onToday: true }).waitingFor, 'verified')
+  const { store } = setup(); store.start('today-first-data'); store.chooseFirstData('inventory'); store.dismiss()
+  assert.equal(store.tutorialCompleted, false)
+  setActivePinia(createPinia())
+  const restored = useOnboardingStore().initialize('owner')
+  assert.equal(restored.firstDataTask, 'inventory'); assert.equal(restored.active, false)
+  assert.equal(restored.chooseFirstData('star'), false)
+})
 
 test('登录、账号、数据未知、失败与缺少密探是不同的真实等待条件', () => {
   assert.equal(progress({ loggedIn: false }).waitingFor, 'login')

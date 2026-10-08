@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ONBOARDING_TASKS, maaYuanCheckpoint, verifiedConnectionSync } from '../utils/onboardingTasks.js'
+import { ONBOARDING_TASKS, FIRST_DATA_TASKS, maaYuanCheckpoint, verifiedConnectionSync } from '../utils/onboardingTasks.js'
 
 // Synchronous identity watchers can re-enter initialize while it pauses an old owner.
 const initializingStores = new WeakSet()
@@ -11,13 +11,17 @@ export const onboardingStorageKey = ownerId => `${ONBOARDING_STORAGE_KEY}:${enco
 const defaults = () => ({
   ownerId: 'guest', status: 'idle', tutorialTask: null, waitingFor: null,
   tutorialCompleted: false, completedTasks: {}, dismissedForNow: null, disableAutoGuide: false,
-  maaYuan: maaYuanCheckpoint(), panel: 'hidden', initialized: false
+  firstDataTask: null, maaYuan: maaYuanCheckpoint(), panel: 'hidden', initialized: false
 })
 
 function verifiedReceipt(evidence, task, ownerId) {
   return Object.hasOwn(ONBOARDING_TASKS, task) && evidence?.ownerId === ownerId && evidence?.task === task &&
     typeof evidence.accountId === 'string' && !!evidence.accountId &&
     (task !== 'operator-first-entry' || (typeof evidence.operatorId === 'string' && !!evidence.operatorId)) &&
+    (task !== 'inventory-first-baseline' || (typeof evidence.baselineAt === 'string' && Number.isFinite(Date.parse(evidence.baselineAt)))) &&
+    (task !== 'today-first-data' || (Object.hasOwn(FIRST_DATA_TASKS, evidence.firstDataTask) &&
+      (evidence.firstDataTask === 'operator' ? typeof evidence.operatorId === 'string' && !!evidence.operatorId :
+        evidence.firstDataTask === 'inventory' ? typeof evidence.baselineAt === 'string' && Number.isFinite(Date.parse(evidence.baselineAt)) : typeof evidence.starId === 'string' && !!evidence.starId))) &&
     (task !== 'maayuan-first-sync' || verifiedConnectionSync(evidence.receipt, evidence.connectionId, evidence.accountId))
 }
 
@@ -46,6 +50,7 @@ export const useOnboardingStore = defineStore('onboarding', {
         try {
           const saved = JSON.parse(localStorage.getItem(onboardingStorageKey(ownerId)) || 'null')
           if (saved?.version === ONBOARDING_VERSION) {
+            this.firstDataTask = Object.hasOwn(FIRST_DATA_TASKS, saved.firstDataTask) ? saved.firstDataTask : null
             this.dismissedForNow = typeof saved.dismissedForNow === 'number' ? saved.dismissedForNow : null
             this.disableAutoGuide = saved.disableAutoGuide === true
             this.maaYuan = maaYuanCheckpoint(saved.maaYuan)
@@ -55,8 +60,8 @@ export const useOnboardingStore = defineStore('onboarding', {
               this.tutorialTask = saved.tutorialTask
               this.status = saved.status
               this.tutorialCompleted = saved.status === 'completed' && !!this.completedTasks[saved.tutorialTask]
-              if (saved.tutorialTask === 'maayuan-first-sync') {
-                // A stored receipt is a hint; verify the live connection and record again.
+              if (saved.status === 'completed' || saved.tutorialTask === 'maayuan-first-sync') {
+                // A historical receipt never replaces a fresh read on manual reentry.
                 this.tutorialCompleted = false
                 this.status = saved.status === 'completed' ? 'paused' : saved.status
               }
@@ -98,6 +103,13 @@ export const useOnboardingStore = defineStore('onboarding', {
       this.persist()
       return true
     },
+    chooseFirstData(taskId) {
+      if (!this.active || this.tutorialTask !== 'today-first-data' || !Object.hasOwn(FIRST_DATA_TASKS, taskId)) return false
+      this.firstDataTask = taskId
+      this.waitingFor = 'business_state'
+      this.persist()
+      return true
+    },
     setMaaYuanCheckpoint(value) {
       this.maaYuan = maaYuanCheckpoint(value)
       this.persist()
@@ -126,6 +138,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       try {
         localStorage.setItem(onboardingStorageKey(this.ownerId), JSON.stringify({
           version: ONBOARDING_VERSION, status: this.status, tutorialTask: this.tutorialTask,
+          firstDataTask: this.firstDataTask,
           waitingFor: this.waitingFor, tutorialCompleted: this.tutorialCompleted,
           maaYuan: maaYuanCheckpoint(this.maaYuan), completedTasks: this.completedTasks, dismissedForNow: this.dismissedForNow, disableAutoGuide: this.disableAutoGuide
         }))

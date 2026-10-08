@@ -1,3 +1,4 @@
+import { createPinia } from 'pinia'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
@@ -51,7 +52,7 @@ beforeEach(() => {
 const wrappers = new Set()
 afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear() })
 function renderPage(options = {}) {
-  const wrapper = mount(OperatorPage, { ...options, global: {
+  const wrapper = mount(OperatorPage, { ...options, global: { plugins: [createPinia()],
     stubs: { RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true },
     directives: { reveal: () => {} },
@@ -82,7 +83,7 @@ it('空档案引导出现在默认图鉴筛选前，养成筛选不占用首屏'
   expect(wrapper.findComponent({ name: 'OperatorFilterDossier' }).exists()).toBe(false)
   expect(wrapper.get('.operator-tabs').isVisible()).toBe(false)
   expect(wrapper.get('.mf-search').isVisible()).toBe(false)
-  await guide.get('button').trigger('click')
+  await guide.findAll('button').find(button => button.text() === '从图鉴补录一位密探').trigger('click')
   await flushPromises()
   expect(wrapper.get('.operator-tabs').isVisible()).toBe(true)
   expect(wrapper.get('.mf-search').isVisible()).toBe(true)
@@ -125,7 +126,7 @@ it.each([
   if (state === 'error') {
     expect(wrapper.get('.operator-entry-guide').text()).not.toContain('首次建档')
     operatorApi.getOperatorCurrent.mockResolvedValue([])
-    await wrapper.get('.operator-entry-guide button').trigger('click')
+    await wrapper.findAll('.operator-entry-guide button').find(button => button.text() === '重试').trigger('click')
     await flushPromises()
     expect(wrapper.get('.operator-entry-guide').text()).toContain('还没有密探档案')
   }
@@ -167,7 +168,7 @@ it('单角色入口复用图鉴并聚焦搜索，目录版本保持完整可复�
   operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [operator], catalog_version: version })
   const wrapper = renderPage({ attachTo: document.body })
   await flushPromises()
-  await wrapper.get('.operator-entry-guide button').trigger('click')
+  await wrapper.findAll('.operator-entry-guide button').find(button => button.text() === '从图鉴补录一位密探').trigger('click')
   await flushPromises()
   expect(document.activeElement).toBe(wrapper.get('.mf-search').element)
   expect(wrapper.get('[aria-label="目录版本，可选中复制"]').element.value).toBe(version)

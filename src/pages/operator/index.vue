@@ -48,6 +48,7 @@
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
           <ToolTaskPrompt v-if="operatorEntryState" class="operator-entry-guide" :title="operatorEntryTitle"
+            :guide-task="['empty', 'unowned', 'logged-out', 'no-account'].includes(operatorEntryState) ? 'operator-first-entry' : ''"
             :description="operatorEntryMessage" :error="operatorEntryState.endsWith('error')">
             <router-link v-if="operatorEntryState === 'logged-out'" class="btn primary" :to="{ path: '/login', query: { redirect: '/operator' } }">登录</router-link>
             <router-link v-else-if="operatorEntryState === 'no-account'" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>

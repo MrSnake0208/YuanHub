@@ -1,3 +1,4 @@
+import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import OperatorPage from '../src/pages/operator/index.vue'
@@ -62,7 +63,7 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
 const render = async () => {
-  const wrapper = mount(OperatorPage, { global: {
+  const wrapper = mount(OperatorPage, { global: { plugins: [createPinia()],
     stubs: { IslandSidebar: true, SiteFooter: true, AccountWorkspace: { template: '<div><slot /><slot name="side" /></div>' },
       DataAccountContextBar: { template: '<div><slot name="actions" /></div>' },
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, RouterLink: true },

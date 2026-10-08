@@ -24,6 +24,7 @@
           </div>
 
           <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
+          <ToolTaskPrompt v-if="showDataOnboarding && !isReturningUser" guide-task="today-first-data" title="建立第一份真实数据" description="可以跟着完成一项你需要的真实任务，也可以直接使用下方业务入口。已有成果会复用，保存并验证成功后才算建档。" />
 
           <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-sidebar': calendarEnabled && showAccountOverview }" data-tour="today-overview">
             <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
@@ -159,6 +160,7 @@
 
 <script setup>
 import { useAccountListUpdates } from '../../store/accountList.js'
+import ToolTaskPrompt from '../../components/ToolTaskPrompt.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -313,9 +315,7 @@ const onboardingDescription = computed(function () {
   return 'YuanHub 已分别检查当前子账号的密探、库存和星石。缺哪一项就只补哪一项，已有数据不会重复要求录入。'
 })
 const onboardingNote = computed(function () {
-  if (onboardingStage.value === 'auth') return '第 1 步 · 登录'
-  if (onboardingStage.value === 'account') return '第 2 步 · 子账号'
-  return '第 3 步 · 按功能补数据'
+  return '任选所需业务 · 无需全部录入'
 })
 const lobbyStatus = computed(() => {
   if (!auth.isLoggedIn) return '登录后，一起看看你的今日事项。'
@@ -352,7 +352,8 @@ async function loadDashboard() {
   try {
     const data = await listAccounts(auth.userInfo?.id)
     if (sequence !== loadSequence) return
-    accounts.value = Array.isArray(data) ? data : []
+    if (!Array.isArray(data)) throw new Error('游戏账号响应无效，请重试读取')
+    accounts.value = data
     activeAccount.syncAccounts(accounts.value)
     if (!validAccountId.value) activeAccount.set(accounts.value[0]?.id)
   } catch (error) {
@@ -377,7 +378,7 @@ async function loadSummary(sequence, targetAccount, game) {
   if (results[0].status === 'rejected') realSummary.value.operatorCount = null
   if (results[1].status === 'rejected') realSummary.value.inventoryKindCount = null
   if (results[2].status === 'rejected') realSummary.value.starCount = null
-  errorMessage.value = results.some(result => result.status === 'rejected')
+  errorMessage.value = results.some(result => result.status === 'rejected') || realSummary.value.operatorCount == null || realSummary.value.starCount == null
     ? '部分状态暂时读取失败；已读取的数据仍可查看，可重试读取状态。' : ''
   summaryLoading.value = false
 }
