@@ -28,7 +28,7 @@ vi.mock('../src/store/notificationUnread.js', () => ({ subscribeNotificationUnre
 vi.mock('../src/components/VersionUpdateBanner.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/AccountEventToasts.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/beta/BetaCommunityDialog.vue', () => ({ default: { template: '<div />' } }))
-vi.mock('../src/components/OnboardingGuide.vue', () => ({ default: { template: '<aside />' } }))
+vi.mock('../src/components/OnboardingGuide.vue', () => ({ default: { name: 'OnboardingGuide', template: '<aside />' } }))
 vi.mock('../src/components/AppDialog.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/MobileInstallPrompt.vue', () => ({ default: { name: 'MobileInstallPrompt', props: ['routeLoading', 'accessPending'], template: '<aside />' } }))
 
@@ -57,9 +57,10 @@ async function render() {
   return { router, host }
 }
 
-it('教程控制器跨业务页、帮助页和登录交接持续存在，仅在 App 卸载时清理', async () => {
+it('App不挂载全局教程UI；控制器跨业务页、帮助页和登录交接持续存在', async () => {
   const { router, host } = await render()
   expect(initializeOnboardingTour).toHaveBeenCalledTimes(1)
+  expect(host.findComponent({ name: 'OnboardingGuide' }).exists()).toBe(false)
   await router.push('/user/profile'); await nextTick()
   await router.push('/changelog'); await nextTick()
   expect(hooks.stop).not.toHaveBeenCalled()

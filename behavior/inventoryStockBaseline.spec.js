@@ -43,6 +43,7 @@ const rewardStub = defineComponent({
 function render(options = {}) {
   return mount(InventoryPage, { ...options, global: { plugins: [createPinia()],
     stubs: {
+      OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
       AcquiredPeriodReport: true, RewardEntryWorkspace: rewardStub,

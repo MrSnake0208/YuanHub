@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { watch } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useOnboardingStore, onboardingStorageKey, ONBOARDING_VERSION } from '../src/stores/onboarding.js'
-import { resolveTaskProgress, ownedOperatorId, inventoryBaselineAt, maaYuanCheckpoint, verifiedConnectionSync } from '../src/utils/onboardingTasks.js'
+import { resolveTaskProgress, ownedOperatorId, inventoryBaselineAt, maaYuanCheckpoint, verifiedConnectionSync, isTutorialTaskRoute } from '../src/utils/onboardingTasks.js'
 
 function setup(initial = {}) {
   const values = new Map(Object.entries(initial))
@@ -15,6 +15,18 @@ function setup(initial = {}) {
 }
 const ready = { ownerId: 'owner', loggedIn: true, accounts: [{ id: 'acc', game: '如鸢' }], accountId: 'acc', currentLoaded: true, operatorId: '' }
 const progress = state => resolveTaskProgress('operator-first-entry', { ...ready, ...state })
+
+test('任务路由限定当前工作区和账号前置，不把今日子任务或MaaYuan带到无关页面', () => {
+  assert.equal(isTutorialTaskRoute('today-first-data', 'inventory', '/today'), true)
+  assert.equal(isTutorialTaskRoute('today-first-data', 'inventory', '/inventory'), true)
+  assert.equal(isTutorialTaskRoute('today-first-data', 'inventory', '/operator'), false)
+  assert.equal(isTutorialTaskRoute('operator-first-entry', null, '/operator/quick'), true)
+  assert.equal(isTutorialTaskRoute('operator-first-entry', null, '/user/profile'), true)
+  assert.equal(isTutorialTaskRoute('operator-first-entry', null, '/changelog'), false)
+  assert.equal(isTutorialTaskRoute('maayuan-first-sync', null, '/user/profile'), true)
+  assert.equal(isTutorialTaskRoute('maayuan-first-sync', null, '/inventory'), false)
+  assert.equal(isTutorialTaskRoute('unknown', null, '/'), false)
+})
 
 test('库存只认当前账号道具完整基准，局部记录不毕业，畸形响应失败', () => {
   assert.equal(inventoryBaselineAt([], 'acc'), '')
@@ -81,11 +93,12 @@ test('关闭仅暂停本次，不等于完成或永久禁用；可手动继续',
   assert.ok(store.dismissedForNow)
   assert.equal(store.tutorialCompleted, false)
   assert.equal(store.disableAutoGuide, false)
-  assert.equal(store.recommend(), false)
-  store.openTasks(); store.start('operator-first-entry')
+  assert.equal(store.visible, false)
+  store.start('operator-first-entry')
   assert.equal(store.active, true)
-  store.dismiss({ disableAutoGuide: true }); store.openTasks()
-  assert.equal(store.panel, 'tasks')
+  store.dismiss({ disableAutoGuide: true }); store.start('operator-first-entry')
+  assert.equal(store.panel, 'task')
+  assert.equal(store.disableAutoGuide, true)
 })
 
 test('刷新保存任务目标但重新等待业务证据，不恢复历史页码或完成假象', () => {
@@ -115,11 +128,11 @@ test('身份隔离；只有主动选择的游客任务跟随登录，不把旧�
 test('游客直接使用后登录不会再次自动推荐，旧 Tour 完成也不是实操成果', () => {
   const { store } = setup()
   store.initialize('guest'); store.dismiss(); store.initialize('signed-in')
-  assert.equal(store.recommend(), false)
+  assert.equal(store.visible, false)
   setActivePinia(createPinia())
-  assert.equal(useOnboardingStore().initialize('signed-in').recommend(), false)
+  assert.equal(useOnboardingStore().initialize('signed-in').visible, false)
   const migrated = setup({ 'yuanhub:onboarding:v1': JSON.stringify({ status: 'completed', version: 1 }) }).store
-  assert.equal(migrated.recommend(), false)
+  assert.equal(migrated.visible, false)
   assert.equal(migrated.tutorialCompleted, false)
   assert.deepEqual(migrated.completedTasks, {})
 })
@@ -135,7 +148,7 @@ test('损坏的完成凭据不能恢复为实操完成', () => {
 
 test('损坏/不可用存储不困住用户', () => {
   const { store } = setup({ [onboardingStorageKey('owner')]: '{bad json' })
-  assert.equal(store.recommend(), true)
+  assert.equal(store.visible, false)
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new Error('blocked') } })
   assert.equal(store.start('account-create'), true)
   store.dismiss()

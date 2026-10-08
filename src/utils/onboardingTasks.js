@@ -1,8 +1,8 @@
-// Only tasks with an observable, server-backed completion contract are selectable.
+// Task contracts and validators; entries belong to their own pages.
 export const ONBOARDING_TASKS = {
   'today-first-data': { title: '建立第一份真实数据', route: '/', result: '第一份数据已建立' },
   'inventory-first-baseline': { title: '完成首次库存盘点', route: '/inventory', result: '首次库存盘点已完成，完整库存基准已验证。' },
-  'operator-first-entry': { title: '录入第一位密探', route: '/operator', result: '第一位密探已录入，当前账号录入结果已验证。' },
+  'operator-first-entry': { title: '录入第一位密探', route: '/operator', result: '当前账号的密探录入结果已验证。' },
   'maayuan-first-sync': { title: '第一次连接 MaaYuan', route: '/user/profile', result: '第一次 MaaYuan 同步已完成' },
   'account-create': { title: '建立第一个游戏账号', route: '/user/profile#game-accounts', result: '真实游戏账号已就绪，可以开始记录数据。' }
 }
@@ -11,6 +11,15 @@ export const FIRST_DATA_TASKS = {
   operator: { title: '录入第一位密探', route: '/operator' },
   inventory: { title: '完成首次库存盘点', route: '/inventory' },
   star: { title: '完成一次星石截图识别', route: '/star' }
+}
+
+export function isTutorialTaskRoute(task, firstDataTask, path) {
+  if (!Object.hasOwn(ONBOARDING_TASKS, task)) return false
+  if (task === 'maayuan-first-sync' || task === 'account-create') return path === '/user/profile'
+  if (path === '/user/profile') return true // Account prerequisites keep the original task.
+  if (task === 'today-first-data' && ['/', '/today'].includes(path)) return true
+  const kind = task === 'today-first-data' ? firstDataTask : task === 'inventory-first-baseline' ? 'inventory' : 'operator'
+  return kind === 'operator' ? ['/operator', '/operator/quick'].includes(path) : path === FIRST_DATA_TASKS[kind]?.route
 }
 
 export function inventoryBaselineAt(current, accountId) {

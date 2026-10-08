@@ -1,28 +1,13 @@
 <template>
-  <section v-if="guideTask !== 'today-first-data' || !guide?.active" class="tool-task-prompt" :class="{ 'is-error': error, 'is-guide-entry': compactGuideEntry }" :role="error ? 'alert' : 'status'" :aria-label="title">
-    <h2 v-if="!compactGuideEntry">{{ title }}</h2>
-    <p v-if="description && !compactGuideEntry">{{ description }}</p>
-    <div v-if="guideTask && !guide?.active" class="tool-task-actions">
-      <button type="button" class="btn" @click="startGuide">{{ guide?.dismissedForNow || guide?.disableAutoGuide ? '重新进入 / 继续实操教程' : '跟着做一次' }}</button>
-      <button v-if="!guide?.dismissedForNow && !guide?.disableAutoGuide" type="button" class="btn" @click="guide.dismiss()">直接使用 / 暂时关闭</button>
-      <label v-if="!guide?.dismissedForNow" class="guide-preference"><input type="checkbox" :checked="guide?.disableAutoGuide" @change="disableAutoGuide($event.target.checked)" />以后不自动提示</label>
-    </div>
+  <section class="tool-task-prompt" :class="{ 'is-error': error }" :role="error ? 'alert' : 'status'" :aria-label="title">
+    <h2>{{ title }}</h2>
+    <p v-if="description">{{ description }}</p>
     <div v-if="$slots.default" class="tool-task-actions"><slot /></div>
   </section>
 </template>
 
 <script setup>
-import { computed, shallowRef, watch } from 'vue'
-import { useOnboardingStore } from '../stores/onboarding.js'
-import { auth } from '../store/auth.js'
-const props = defineProps({ title: { type: String, required: true }, description: { type: String, default: '' }, error: Boolean, guideTask: { type: String, default: '' } })
-const guide = shallowRef(null)
-const compactGuideEntry = computed(() => props.guideTask === 'today-first-data' && !!(guide.value?.dismissedForNow || guide.value?.disableAutoGuide))
-watch(() => [props.guideTask, auth.isLoggedIn ? auth.userInfo?.id : 'guest'], ([task, owner]) => {
-  if (task) guide.value = useOnboardingStore().initialize(owner || 'guest')
-}, { immediate: true })
-function startGuide() { guide.value.start(props.guideTask) }
-function disableAutoGuide(value) { guide.value.disableAutoGuide = value; guide.value.persist() }
+defineProps({ title: { type: String, required: true }, description: { type: String, default: '' }, error: Boolean })
 </script>
 
 <style scoped>
@@ -35,9 +20,5 @@ function disableAutoGuide(value) { guide.value.disableAutoGuide = value; guide.v
 .tool-task-actions :deep(.link) { padding: 8px; background: transparent; border: 0; color: var(--tea); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 .tool-task-actions :deep(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
 .tool-task-prompt.is-error { border-color: var(--rouge); }
-.guide-preference { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--ink-60); }
-.guide-preference input { width: 20px; height: 20px; }
-.tool-task-prompt.is-guide-entry { padding: 0; border: 0; background: transparent; }
-.is-guide-entry .tool-task-actions { margin-top: 0; }
 @media (min-width: 768px) { .tool-task-prompt { padding-block: 40px; border-radius: 20px; } .tool-task-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; } }
 </style>

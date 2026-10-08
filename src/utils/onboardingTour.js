@@ -8,7 +8,7 @@ import { getOperatorCurrent } from '../api/operator.js'
 import { getCurrent } from '../api/inventory.js'
 import { getCurrentStarState } from '../api/starState.js'
 import { inventoryCurrentRead } from './inventoryEvents.js'
-import { ONBOARDING_TASKS, ownedOperatorId, inventoryBaselineAt, resolveTaskProgress, verifiedConnectionSync } from './onboardingTasks.js'
+import { ONBOARDING_TASKS, isTutorialTaskRoute, ownedOperatorId, inventoryBaselineAt, resolveTaskProgress, verifiedConnectionSync } from './onboardingTasks.js'
 import { getOpenApiTokens, getConnectionFirstSync } from '../api/openApi.js'
 import { subscribeAccountEvents } from '../store/accountEvents.js'
 import { operatorCurrentRead } from './operatorEvents.js'
@@ -16,9 +16,11 @@ import { operatorCurrentRead } from './operatorEvents.js'
 export const tutorialBusiness = reactive({ accounts: null, accountId: '', game: '', currentLoaded: false, operatorId: '', baselineAt: '', starId: '', onToday: false, error: '', maaFormOpen: false, accountName: '' })
 let generation = 0
 let stopController = null
+let taskRouter = null
 
 const identity = () => auth.isLoggedIn && auth.userInfo?.id ? String(auth.userInfo.id) : 'guest'
 const storeForIdentity = () => useOnboardingStore().initialize(identity())
+const onTaskPage = store => !taskRouter || isTutorialTaskRoute(store.tutorialTask, store.firstDataTask, taskRouter.currentRoute.value.path)
 
 function applyBusiness() {
   const store = storeForIdentity()
@@ -27,9 +29,9 @@ function applyBusiness() {
 
 export async function refreshTutorialBusiness() {
   const store = storeForIdentity(), token = ++generation, ownerId = store.ownerId, task = store.tutorialTask
-  const valid = () => token === generation && store.active && store.ownerId === ownerId && identity() === ownerId && store.tutorialTask === task
+  const valid = () => token === generation && store.active && onTaskPage(store) && store.ownerId === ownerId && identity() === ownerId && store.tutorialTask === task
   Object.assign(tutorialBusiness, { accounts: null, accountId: activeAccount.id, game: '', currentLoaded: false, operatorId: '', baselineAt: '', starId: '', error: '' })
-  if (!store.active) return
+  if (!store.active || !onTaskPage(store)) return
   if (ownerId === 'guest') { applyBusiness(); return }
   if (task !== 'maayuan-first-sync' || !['maa_copy', 'maa_sync'].includes(store.waitingFor)) store.applyProgress({ waitingFor: 'business_state' })
   try {
@@ -139,12 +141,6 @@ export async function startOnboardingTask(router, taskId) {
   return true
 }
 
-// Stable navigation entry: choose/continue a real task instead of replaying pages.
-export function restartOnboardingTour() {
-  generation++
-  storeForIdentity().openTasks()
-}
-
 export function destroyOnboardingTour({ preserveState = false } = {}) {
   generation++
   if (!preserveState) storeForIdentity().dismiss()
@@ -152,6 +148,7 @@ export function destroyOnboardingTour({ preserveState = false } = {}) {
 
 export function initializeOnboardingTour(router) {
   stopController?.()
+  taskRouter = router
   const store = storeForIdentity()
   const stopIdentity = watch(identity, ownerId => { generation++; store.initialize(ownerId) }, { flush: 'sync' })
   const stopBusiness = watch(() => [store.active, store.tutorialTask, store.firstDataTask, store.ownerId, activeAccount.id,
@@ -160,7 +157,7 @@ export function initializeOnboardingTour(router) {
     void refreshTutorialBusiness()
   }, { immediate: true, flush: 'sync' })
   const stopRead = watch(operatorCurrentRead, read => {
-    if (!(store.tutorialTask === 'operator-first-entry' || (store.tutorialTask === 'today-first-data' && store.firstDataTask === 'operator')) || !store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id ||
+    if (!(store.tutorialTask === 'operator-first-entry' || (store.tutorialTask === 'today-first-data' && store.firstDataTask === 'operator')) || !store.active || !onTaskPage(store) || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id ||
         read.accountId !== tutorialBusiness.accountId || read.game !== tutorialBusiness.game || !tutorialBusiness.accounts) return
     try {
       const operatorId = ownedOperatorId(read.data, read.accountId, read.game)
@@ -177,7 +174,7 @@ export function initializeOnboardingTour(router) {
   }, { flush: 'sync' })
   const stopInventoryRead = watch(inventoryCurrentRead, read => {
     if (!(store.tutorialTask === 'inventory-first-baseline' || (store.tutorialTask === 'today-first-data' && store.firstDataTask === 'inventory')) ||
-      !store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id || read.accountId !== tutorialBusiness.accountId || !tutorialBusiness.accounts) return
+      !store.active || !onTaskPage(store) || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id || read.accountId !== tutorialBusiness.accountId || !tutorialBusiness.accounts) return
     try {
       tutorialBusiness.baselineAt = inventoryBaselineAt(read.data, read.accountId)
       generation++
@@ -187,7 +184,7 @@ export function initializeOnboardingTour(router) {
     } catch (error) { tutorialBusiness.error = error.message; applyBusiness() }
   }, { flush: 'sync' })
   const checkMaaYuan = () => {
-    if (store.active && store.tutorialTask === 'maayuan-first-sync' && store.maaYuan.connectionId && document.visibilityState !== 'hidden') void refreshTutorialBusiness()
+    if (store.active && onTaskPage(store) && store.tutorialTask === 'maayuan-first-sync' && store.maaYuan.connectionId && document.visibilityState !== 'hidden') void refreshTutorialBusiness()
   }
   // SSE is only a wake-up; neither previews nor account-wide changes are receipts.
   const stopEvents = subscribeAccountEvents(message => {
@@ -202,7 +199,7 @@ export function initializeOnboardingTour(router) {
     clearInterval(poll)
     window.removeEventListener('focus', checkMaaYuan)
     document.removeEventListener('visibilitychange', checkMaaYuan)
-    if (stopController === cleanup) stopController = null
+    if (stopController === cleanup) { stopController = null; taskRouter = null }
   }
   stopController = cleanup
   return cleanup

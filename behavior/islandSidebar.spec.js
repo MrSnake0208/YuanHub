@@ -10,7 +10,6 @@ import { isFeatureEnabled, FEATURE_KEYS } from '../src/config/features.js'
 import { dialog } from '../src/utils/dialog.js'
 import { useRoute } from 'vue-router'
 import { feedbackUnreadState } from '../src/store/feedbackUnread.js'
-import { restartOnboardingTour } from '../src/utils/onboardingTour.js'
 import { beta } from '../src/store/beta.js'
 import { betaCommunity } from '../src/store/betaCommunity.js'
 vi.mock('../src/config/features.js', async importOriginal => {
@@ -36,7 +35,6 @@ vi.mock('../src/store/beta.js', async () => {
 })
 vi.mock('../src/store/betaCommunity.js', () => ({ betaCommunity: { open: vi.fn() } }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
-vi.mock('../src/utils/onboardingTour.js', () => ({ restartOnboardingTour: vi.fn() }))
 vi.mock('../src/store/notificationUnread.js', async () => {
   const { reactive } = await import('vue')
   return { notificationUnreadState: reactive({ count: 0 }) }
@@ -56,7 +54,7 @@ beforeEach(() => {
   notificationUnreadState.count = 0; feedbackUnreadState.count = 0
   Object.assign(currentRoute, { path: '/', fullPath: '/', meta: { title: '今日一览 — YuanHub' } })
   beta.mine.canUseBetaFeatures = false; beta.mine.enrollmentStatus = ''
-  betaCommunity.open.mockClear(); restartOnboardingTour.mockClear()
+  betaCommunity.open.mockClear()
   unsubscribe = vi.fn(); subscribeFeedbackUnread.mockReturnValue(unsubscribe)
   logout.mockReset(); dialog.confirm.mockReset()
 })
@@ -117,7 +115,7 @@ it('手机导航明确标出当前页，展开后可发现首尾入口和内测�
   expect(toggle.attributes('aria-label')).toBe('关闭导航')
   expect(wrapper.get('#mobile-main-nav').isVisible()).toBe(true)
   expect(wrapper.get('#mobile-main-nav').text()).toContain('内测')
-  expect(wrapper.get('#mobile-main-nav').text()).toContain('教程')
+  expect(wrapper.get('#mobile-main-nav').text()).not.toContain('实操教程')
   await wrapper.get('.mobile-more > summary').trigger('click')
   expect(wrapper.get('.mobile-more').attributes('open')).toBeDefined()
   const betaLink = wrapper.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/beta' && link.element.closest('#mobile-main-nav'))
@@ -298,16 +296,14 @@ it('桌面更多可用 Escape 关闭并恢复焦点，点击外部和路由变�
   expect(detail.element.open).toBe(false)
 })
 
-it('更多中的教程和内测群沿用原动作，执行时关闭菜单', async () => {
+it('更多不再打开全局教程选择器；内测群保持原动作', async () => {
   Object.assign(auth, { accessToken: 'test-only', userInfo: { id: 'user-a' } })
   Object.assign(beta.mine, { canUseBetaFeatures: true, enrollmentStatus: 'ACTIVE' })
   const wrapper = render()
   const desktop = wrapper.get('.sidebar-more')
   expect(wrapper.get('.sidebar-more > summary').attributes('data-tour')).toBe('replay-entry')
   await desktop.get('summary').trigger('click')
-  await desktop.findAll('button').find(button => button.text() === '实操教程').trigger('click')
-  expect(restartOnboardingTour).toHaveBeenCalledTimes(1)
-  expect(desktop.element.open).toBe(false)
+  expect(desktop.text()).not.toContain('实操教程')
   await wrapper.get('.mobile-menu-button').trigger('click')
   await wrapper.get('.mobile-more > summary').trigger('click')
   await wrapper.get('.mobile-more').findAll('button').find(button => button.text() === '内测交流群').trigger('click')

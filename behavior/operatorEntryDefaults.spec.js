@@ -53,7 +53,7 @@ const wrappers = new Set()
 afterEach(() => { wrappers.forEach(wrapper => wrapper.unmount()); wrappers.clear() })
 function renderPage(options = {}) {
   const wrapper = mount(OperatorPage, { ...options, global: { plugins: [createPinia()],
-    stubs: { RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
+    stubs: { OnboardingGuide: true, RouterLink: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true },
     directives: { reveal: () => {} },
   } })

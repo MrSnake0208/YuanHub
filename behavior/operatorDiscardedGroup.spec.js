@@ -64,7 +64,7 @@ beforeEach(() => {
 })
 const render = async () => {
   const wrapper = mount(OperatorPage, { global: { plugins: [createPinia()],
-    stubs: { IslandSidebar: true, SiteFooter: true, AccountWorkspace: { template: '<div><slot /><slot name="side" /></div>' },
+    stubs: { OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: { template: '<div><slot /><slot name="side" /></div>' },
       DataAccountContextBar: { template: '<div><slot name="actions" /></div>' },
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, RouterLink: true },
     directives: { reveal: () => {} },

@@ -7,6 +7,7 @@
           <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
         </template>
         <template v-if="enabled" #actions>
+          <button type="button" class="recruitment-tutorial-entry" :disabled="!state.archive || state.loading || state.busy" @click="beginRecordGuide"><CircleHelp :size="15" aria-hidden="true" />登记教程</button>
           <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起备份与恢复' : '备份与恢复' }}</button>
         </template>
       </CompactToolHeader>
@@ -34,8 +35,8 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { Archive, BookOpen, Gem, RotateCw } from '@lucide/vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { Archive, BookOpen, CircleHelp, Gem, RotateCw } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
 import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
@@ -57,6 +58,16 @@ const savedGuideEventId = ref('')
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const canRecordPool = pool => !!pool?.snapshot.catalog_pool_id && !!recruitmentPoolCatalog(pool, state.catalog || [])?.enabled && !state.catalogError
+async function beginRecordGuide() {
+  const poolId = editorOpen.value ? selectedPoolId.value : state.archive?.current_pool_id
+  if (!poolId || !state.archive?.pools.some(pool => pool.pool_id === poolId)) {
+    state.notice = '请先点开要登记的真实卡池，再从卡池标题的「登记教程」开始。'
+    return
+  }
+  if (!editorOpen.value) openPool(poolId)
+  await nextTick()
+  poolEditor.value?.startGuide()
+}
 watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; savedGuideEventId.value = '' })
 async function beforeAccountSwitch() {
   if (state.busy || exchangePanel.value?.isBusy?.()) return false;
@@ -89,6 +100,7 @@ async function savePool(payload) {
 
 <style scoped>
 .archive-toggle{width:auto;min-width:0}.recruitment-content :deep(.timeline-heading h2){font-size:24px}
+.recruitment-tutorial-entry{display:inline-flex;align-items:center;gap:5px;padding:0 4px;border:0;border-radius:8px;background:transparent;color:var(--ink-60);font:12px/1.5 var(--font-b);white-space:nowrap}
 
 .archive-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1.5px solid var(--line);border-radius:999px;padding:8px 16px;background:transparent;color:var(--ink-60);font-size:12.5px;font-weight:700;white-space:nowrap;transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease)}.archive-toggle:hover{border-color:var(--accent);color:var(--ink);background:var(--cream)}.archive-toggle svg{flex:none}
 .recruitment-main{min-width:0}.recruitment-content{padding-top:8px;padding-bottom:32px}.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin:16px 0;min-width:0;overflow-wrap:anywhere}.summary{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.summary-item{display:flex;align-items:start;gap:8px;min-width:0}.summary-item>div{min-width:0}.summary-icon{flex:none;color:var(--accent-strong);padding-top:4px}.summary-item>div>span,.summary-item small{display:block;font-size:12px;color:var(--ink-60);line-height:1.7}.summary-number{display:flex;align-items:baseline;gap:6px}.summary strong{font:800 20px/1.4 var(--font-d);color:var(--tea)}.summary-item .number-unit{font-size:12px}.archive-toggle{border:0;border-radius:6px;padding:8px;background:transparent}.archive-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:20px}.archive-tools>span{font-size:12px;color:var(--ink-60)}.archive-tools button{display:inline-flex;align-items:center;gap:8px}

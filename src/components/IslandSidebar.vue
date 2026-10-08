@@ -115,9 +115,6 @@
               <button v-if="showBetaCommunityEntry" type="button" class="mobile-drawer-link" @click="openBetaCommunity">
                 <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
               </button>
-              <button type="button" class="mobile-drawer-link" @click="restartTutorial">
-                <CircleHelp :size="20" aria-hidden="true" /><span>实操教程</span>
-              </button>
             </div>
           </details>
           <section v-if="showManagement" class="mobile-drawer-section mobile-management">
@@ -220,9 +217,6 @@
           <button v-if="showBetaCommunityEntry" type="button" @click="openBetaCommunity">
             <UsersRound :size="18" aria-hidden="true" /><span>内测交流群</span>
           </button>
-          <button type="button" @click="restartTutorial">
-            <CircleHelp :size="18" aria-hidden="true" /><span>实操教程</span>
-          </button>
         </nav>
       </details>
       <div class="sidebar-utilities">
@@ -255,7 +249,6 @@ import {
   BookUser,
   CalendarDays,
   ChevronDown,
-  CircleHelp,
   Download,
   Gem,
   House,
@@ -282,7 +275,6 @@ import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute, useRouter } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
-import { restartOnboardingTour } from "@/utils/onboardingTour.js";
 import { useModalFocus } from "@/composables/useModalFocus.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
@@ -385,12 +377,6 @@ function onOutsideClick(event) {
 
 function onDesktopMoreFocusOut(event) {
   if (event.relatedTarget && !desktopMore.value?.contains(event.relatedTarget)) closeDesktopMore();
-}
-
-function restartTutorial() {
-  closeDesktopMore();
-  menuOpen.value = false;
-  void restartOnboardingTour(router);
 }
 
 function openBetaCommunity() {

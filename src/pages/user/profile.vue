@@ -13,12 +13,13 @@
       <section>
         <div class="wrap">
           <BetaNotice />
+          <OnboardingGuide :tasks="['today-first-data', 'operator-first-entry', 'inventory-first-baseline', 'account-create', 'maayuan-first-sync']" :target="maaTutorialTarget" />
 
           <section class="game-account-summary" aria-labelledby="game-account-summary-title" :aria-busy="accountsLoading">
             <!-- 路由 hash 滚动固定 top: 0，锚点上移以避开移动导航。 -->
             <span id="game-accounts" class="account-summary-anchor" aria-hidden="true" />
             <div class="account-summary-copy">
-              <h2 id="game-account-summary-title">游戏账号</h2>
+              <div class="account-summary-heading"><h2 id="game-account-summary-title">游戏账号</h2><TutorialEntry task="account-create" label="账号教程" /></div>
               <p v-if="accountsLoading" role="status">正在读取游戏账号…</p>
               <div v-else-if="accountLoadError" class="account-summary-error" role="alert">
                 <p>{{ accountLoadError }}</p>
@@ -74,6 +75,7 @@
                     MaaYuan
                   </h3>
                   <span class="brand-outline">联合共建</span>
+                  <button class="act-btn ghost maayuan-tutorial-entry" type="button" @click="beginMaaYuanTutorial()">连接教程</button>
                 </div>
                 <p>
                   把游戏内采集到的库存与密探信息安全上传到
@@ -106,6 +108,7 @@
                   >
                 </div>
                 <p class="capability-note">星石自动采集仍在接入中，请先在星石背包导入截图。</p>
+                <div id="maayuan-tutorial-start" />
               </div>
               <button
                 class="act-btn primary app-connect"
@@ -123,11 +126,6 @@
               </button>
             </article>
 
-            <div class="maayuan-tutorial-entry">
-              <button class="act-btn ghost" type="button" @click="beginMaaYuanTutorial()">{{ onboarding.maaYuan.connectionId ? '继续实操教程 / 测试第一次同步' : '跟着做一次：第一次连接 MaaYuan' }}</button>
-              <p>可随时退出；不会清空表单或停止已创建的连接。</p>
-            </div>
-
             <details class="maayuan-other-tasks">
               <summary>以后还可以同步什么</summary>
               <p>密探练度：百宝箱 · 采集密探信息。派遣 / 情报掉落：据点日常，开启「记录奖励内容及数量」与「同步至 YuanHub」。</p>
@@ -143,6 +141,7 @@
               aria-labelledby="connect-panel-title"
               @submit.prevent="createMaaYuanConnection"
             >
+              <div id="maayuan-tutorial-form" />
               <div class="panel-title">
                 <span class="step-mark">1</span>
                 <div>
@@ -286,6 +285,7 @@
               aria-labelledby="new-token-title"
               tabindex="-1"
             >
+              <div v-if="newTokenKind === 'maayuan'" id="maayuan-tutorial-copy" />
               <div class="success-heading">
                 <span class="success-icon"
                   ><Check :size="20" aria-hidden="true"
@@ -367,6 +367,7 @@
                 </div>
               </div>
 
+              <div id="maayuan-tutorial-connection" />
               <div v-if="loading" class="state">正在加载连接…</div>
               <div v-else-if="error" class="state err">
                 {{ error
@@ -443,7 +444,6 @@
                     >
                       <Copy :size="15" aria-hidden="true" />{{ copyingTokenId === tokenItem.token_id ? "正在复制…" : "复制连接码" }}
                     </button>
-                    <button v-if="tokenItem.scopes?.includes('inventory:write')" class="t-btn" type="button" @click="beginMaaYuanTutorial(tokenItem)">测试 / 完成第一次同步</button>
                     <button
                       v-if="!supportsMaaYuan(tokenItem)"
                       class="t-btn update"
@@ -624,6 +624,8 @@ import {
   X,
 } from "@lucide/vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
+import OnboardingGuide from "../../components/OnboardingGuide.vue";
+import TutorialEntry from "../../components/TutorialEntry.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { auth } from "../../store/auth.js";
 import { beta } from "../../store/beta.js";
@@ -653,6 +655,15 @@ import {
 const onboarding = useOnboardingStore();
 onboarding.initialize(String(auth.userInfo?.id || 'guest'));
 const maaGuideActive = computed(() => onboarding.active && onboarding.tutorialTask === 'maayuan-first-sync' && onboarding.ownerId === String(auth.userInfo?.id || 'guest'));
+const maaTutorialTarget = computed(() => {
+  if (onboarding.tutorialTask !== 'maayuan-first-sync') return '';
+  if (showMaaYuanConnect.value && ['maa_account', 'maa_create'].includes(onboarding.waitingFor)) return '#maayuan-tutorial-form';
+  if (['maa_copy', 'maa_sync', 'verified'].includes(onboarding.waitingFor)) {
+    if (newToken.value?.token_id === onboarding.maaYuan.connectionId) return '#maayuan-tutorial-copy';
+    if (tokens.value.some(token => token.token_id === onboarding.maaYuan.connectionId)) return '#maayuan-tutorial-connection';
+  }
+  return '#maayuan-tutorial-start';
+});
 const tokens = ref([]);
 const permissions = ref([]);
 const accounts = ref([]);
@@ -1224,12 +1235,11 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
-.maayuan-tutorial-entry { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
-.maayuan-tutorial-entry p { margin: 0; font-size: 13px; color: var(--ink-60); }
+.account-summary-heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.maayuan-tutorial-entry { min-height: 44px; margin-left: auto; padding: 0 8px; }
 .tutorial-target { outline: 2px solid var(--tea); outline-offset: 3px; }
 .paste-steps p, .maayuan-other-tasks p { overflow-wrap: anywhere; }
 .maayuan-other-tasks summary, details.paste-steps summary { min-height: 44px; padding-block: 10px; cursor: pointer; }
-.maayuan-tutorial-entry button { min-height: 44px; }
 
 .profile-main {
   padding-bottom: 0;

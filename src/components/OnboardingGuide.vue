@@ -1,29 +1,11 @@
 <template>
-  <div ref="globalHost" class="tutorial-global">
     <Teleport :to="outlet || 'body'" :disabled="!outlet">
-      <aside v-if="visible" ref="region" class="tutorial-guide" aria-label="实操教程">
+      <aside v-if="visible" ref="region" class="tutorial-guide" :aria-labelledby="titleId">
         <div class="tutorial-heading">
-          <h2 id="tutorial-title" tabindex="-1">{{ title }}</h2>
-          <button type="button" class="tutorial-exit" @click="close">{{ store.active ? '退出引导' : '关闭教程' }}</button>
+          <h2 :id="titleId" tabindex="-1">{{ title }}</h2>
+          <button type="button" class="tutorial-exit" @click="close">关闭教程</button>
         </div>
-        <template v-if="store.panel === 'invitation'">
-          <p>想先学会哪件事？可以跟着完成一次真实操作，也可以直接使用。</p>
-          <div class="tutorial-actions">
-            <button type="button" @click="store.openTasks()">跟着做一次</button>
-            <button type="button" @click="close">直接使用 / 暂时关闭</button>
-          </div>
-          <label class="tutorial-preference"><input v-model="disableAuto" type="checkbox" @change="savePreference" />以后不自动提示</label>
-        </template>
-        <template v-else-if="store.panel === 'tasks'">
-          <p>选择现在要做的事；已有账号和密探无需重复录入。</p>
-          <div class="tutorial-actions">
-            <button v-if="store.tutorialTask && !store.tutorialCompleted" type="button" @click="start(store.tutorialTask)">继续实操教程：{{ ONBOARDING_TASKS[store.tutorialTask]?.title }}</button>
-            <button v-for="(task, id) in ONBOARDING_TASKS" :key="id" type="button" @click="start(id)">{{ task.title }}</button>
-          </div>
-          <p class="tutorial-note">选择真实任务，保存结果验证后才算完成。</p>
-          <label class="tutorial-preference"><input v-model="disableAuto" type="checkbox" @change="savePreference" />以后不自动提示</label>
-        </template>
-        <template v-else-if="store.panel === 'result'">
+        <template v-if="store.panel === 'result'">
           <p role="status">{{ ONBOARDING_TASKS[store.tutorialTask]?.result }}<template v-if="store.tutorialTask === 'maayuan-first-sync'">，库存已同步到「{{ tutorialBusiness.accountName || store.maaYuan.accountId }}」。</template></p>
           <div class="tutorial-actions">
             <router-link v-if="store.tutorialTask === 'operator-first-entry'" to="/operator?tab=current" @click="close">看看养成总览</router-link>
@@ -32,6 +14,10 @@
             <button v-else-if="['today-first-data', 'inventory-first-baseline'].includes(store.tutorialTask)" type="button" @click="close">继续使用</button>
             <router-link v-else to="/operator" @click="close">去录入密探</router-link>
           </div>
+          <p v-if="store.tutorialTask === 'operator-first-entry'" class="tutorial-note">已有档案会直接复用。复习时在养成总览选择已有密探，核对并按实际变化编辑；无需再录入同一位。</p>
+          <p v-else-if="store.tutorialTask === 'inventory-first-baseline'" class="tutorial-note">已有完整基准会直接复用。复习时点击「更新库存」，按现在的真实数量盘点并保存；无需创建重复记录。</p>
+          <p v-else-if="store.tutorialTask === 'maayuan-first-sync'" class="tutorial-note">已有连接与同步成果会直接复用。以后继续用此连接同步有变化的真实库存，无需再创建连接码。</p>
+          <p v-else-if="store.tutorialTask === 'account-create'" class="tutorial-note">已有账号会直接复用。复习时点击「管理游戏账号」，核对名称与游戏；无需再创建同一个账号。</p>
         </template>
         <template v-else>
           <p aria-live="polite" aria-atomic="true">{{ instruction }}</p>
@@ -47,28 +33,28 @@
             <p class="tutorial-note">无法直接观察 MaaYuan 设置；等待这条连接的真实库存记录，返回、刷新或跨页后会重新检查。</p>
             <button type="button" @click="refreshTutorialBusiness">我已返回，检查真实同步</button>
           </template>
-          <button type="button" class="tutorial-back" @click="store.openTasks()">返回任务选择</button>
         </template>
       </aside>
     </Teleport>
-  </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '@/stores/onboarding.js'
 import { modalFocusState } from '@/composables/useModalFocus.js'
-import { ONBOARDING_TASKS, FIRST_DATA_TASKS } from '@/utils/onboardingTasks.js'
-import { destroyOnboardingTour, refreshTutorialBusiness, startOnboardingTask, tutorialBusiness } from '@/utils/onboardingTour.js'
+import { ONBOARDING_TASKS, FIRST_DATA_TASKS, isTutorialTaskRoute } from '@/utils/onboardingTasks.js'
+import { destroyOnboardingTour, refreshTutorialBusiness, tutorialBusiness } from '@/utils/onboardingTour.js'
 
-const props = defineProps({ recommendationAllowed: { type: Boolean, default: true } })
+const props = defineProps({ tasks: { type: Array, required: true }, target: { type: [String, Object], default: null } })
 const store = useOnboardingStore(), route = useRoute(), router = useRouter()
-const globalHost = ref(null), region = ref(null), outlet = shallowRef(null), disableAuto = ref(false)
-let opener = null, resizeObserver = null
-const visible = computed(() => store.visible && (store.panel !== 'invitation' ||
-  (props.recommendationAllowed && route.name === 'today' && !modalFocusState.active)))
-const title = computed(() => ['invitation', 'tasks'].includes(store.panel) ? '开始使用 / 实操教程' : ONBOARDING_TASKS[store.tutorialTask]?.title)
+const region = ref(null), outlet = shallowRef(null), titleId = useId()
+let opener = null, modalOutlet = null
+const relatedModal = computed(() => modalFocusState.panel?.matches('.account-panel, .dialog'))
+const visible = computed(() => props.tasks.includes(store.tutorialTask) && ['task', 'result'].includes(store.panel) &&
+  isTutorialTaskRoute(store.tutorialTask, store.firstDataTask, route.path) &&
+  (!modalFocusState.active || relatedModal.value))
+const title = computed(() => ONBOARDING_TASKS[store.tutorialTask]?.title)
 const instruction = computed(() => ({
   login: '先登录真实账号，返回后继续实操。',
   business_state: '正在读取真实业务状态；随时可以退出。',
@@ -103,36 +89,29 @@ const destination = computed(() => {
   return null
 })
 
-function updateHeight() {
-  const height = visible.value && !outlet.value ? globalHost.value?.getBoundingClientRect().height || 0 : 0
-  document.documentElement.style.setProperty('--tutorial-height', `${height}px`)
-}
-function moveOutlet(panel) {
-  const previous = outlet.value
-  outlet.value = null
-  if (panel && visible.value) {
-    const target = document.createElement('div')
-    target.className = 'tutorial-modal-outlet'
-    panel.prepend(target)
-    outlet.value = target
+function moveOutlet() {
+  const panel = visible.value && relatedModal.value ? modalFocusState.panel : null
+  const previous = modalOutlet
+  if (panel && previous?.parentElement === panel) return
+  modalOutlet = null
+  if (panel) {
+    modalOutlet = document.createElement('div')
+    modalOutlet.className = 'tutorial-modal-outlet'
+    panel.prepend(modalOutlet)
   }
-  void nextTick(() => { previous?.remove(); updateHeight() })
+  let target = null
+  if (visible.value && props.target) target = typeof props.target === 'string' ? document.querySelector(props.target) : props.target
+  outlet.value = modalOutlet || target
+  void nextTick(() => previous?.remove())
 }
-watch(() => [modalFocusState.panel, visible.value], ([panel]) => moveOutlet(panel), { flush: 'post' })
+watch(() => [modalFocusState.panel, visible.value, props.target], moveOutlet, { flush: 'post' })
 watch(() => store.panel, async panel => {
-  if (panel === 'tasks' || panel === 'task') {
+  if (panel === 'task' && visible.value) {
     opener = document.activeElement
     await nextTick()
     region.value?.querySelector('h2')?.focus({ preventScroll: true })
   }
 })
-watch(visible, () => { void nextTick(updateHeight) })
-watch(() => [store.ownerId, visible.value], () => { disableAuto.value = store.disableAutoGuide }, { immediate: true })
-
-function savePreference() {
-  store.disableAutoGuide = disableAuto.value
-  store.persist()
-}
 
 function close() {
   const restore = region.value?.contains(document.activeElement)
@@ -151,43 +130,30 @@ function onEscape(event) {
   event.stopImmediatePropagation()
   close()
 }
-function start(taskId) { void startOnboardingTask(router, taskId) }
 function chooseFirstData(taskId) {
   if (store.chooseFirstData(taskId)) void router.push(FIRST_DATA_TASKS[taskId].route)
 }
 
 onMounted(() => {
   window.addEventListener('keydown', onEscape, true)
-  if (typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(updateHeight)
-    resizeObserver.observe(globalHost.value)
-  }
-  moveOutlet(modalFocusState.panel)
-  updateHeight()
+  moveOutlet()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEscape, true)
-  resizeObserver?.disconnect()
-  outlet.value?.remove()
-  document.documentElement.style.removeProperty('--tutorial-height')
+  modalOutlet?.remove()
 })
 </script>
 
 <style scoped>
-.tutorial-global { position: sticky; top: 0; z-index: var(--z-banner); }
-.tutorial-guide { padding: 8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 14px/1.5 var(--font-b); overflow-wrap: anywhere; }
+.tutorial-guide { min-width: 0; margin-block: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 14px/1.5 var(--font-b); overflow-wrap: anywhere; }
 .tutorial-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tutorial-heading h2 { margin: 0; min-width: 0; font-size: 16px; }
 .tutorial-guide p { margin: 4px 0; }
 .tutorial-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .tutorial-guide button, .tutorial-actions a { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--tea); font: inherit; cursor: pointer; text-decoration: none; }
 .tutorial-exit { flex-shrink: 0; }
-.tutorial-preference { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
-.tutorial-preference input { width: 20px; height: 20px; }
-.tutorial-guide .tutorial-back { min-height: 44px; padding: 4px 8px; border: 0; background: transparent; font-size: 12px; }
 .tutorial-note { color: var(--ink-60); font-size: 12px; }
 .tutorial-error { color: var(--rouge); }
 .tutorial-guide :focus-visible { outline: 2px solid var(--tea); outline-offset: -2px; }
-@media (min-width: 1081px) { .tutorial-global > .tutorial-guide { padding-inline: max(24px, calc((100vw - 960px) / 2)); } }
 @media (max-height: 450px) { .tutorial-guide { font-size: 12px; } .tutorial-guide p { margin-block: 2px; } }
 </style>

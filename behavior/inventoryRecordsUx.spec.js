@@ -28,7 +28,7 @@ const record = {
 
 function render() {
   return mount(InventoryPage, { global: { plugins: [createPinia()],
-    stubs: {
+    stubs: { OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
       ResourceBalanceReport: true, AcquiredPeriodReport: true, RewardEntryWorkspace: true,
