@@ -1,96 +1,46 @@
 <template>
   <Transition name="pwa-install">
-    <aside
-      v-if="visible"
-      class="pwa-install-prompt"
-      role="region"
-      aria-label="添加 YuanHub 到桌面"
-    >
+    <aside v-if="visible" ref="panel" class="pwa-install-prompt" role="region" aria-label="添加 YuanHub 到桌面">
       <div class="pwa-install-card">
-        <button
-          class="pwa-install-close"
-          type="button"
-          aria-label="关闭添加到桌面提示，七天内不再显示"
-          @click="closePrompt"
-        >
-          <X :size="18" aria-hidden="true" />
-        </button>
-
+        <div class="pwa-install-exit"><button ref="exitButton" class="pwa-install-secondary pwa-install-close" type="button" @click="closePrompt">{{ pwaInstallState.guideActive ? '关闭教程 / 退出引导' : '直接使用 / 暂时关闭' }}</button></div>
         <div class="pwa-install-main">
           <img src="/pwa/icon-192.png" alt="" width="52" height="52" />
           <div>
             <p class="pwa-install-title">把 YuanHub 放到桌面</p>
-            <p class="pwa-install-copy">添加后可从桌面直接打开 YuanHub，并以独立窗口使用。</p>
+            <p class="pwa-install-copy">可以跟着完成真实安装，也可以继续使用网页版。</p>
           </div>
         </div>
-
-        <div v-if="showQuickGuide" class="pwa-install-guide" aria-live="polite">
-          <template v-if="pwaInstallState.ios">
-            <ol>
-              <li><Share2 :size="15" aria-hidden="true" /><span>打开浏览器的“分享”菜单</span></li>
-              <li><SquarePlus :size="15" aria-hidden="true" /><span>选择“添加到主屏幕”</span></li>
-              <li><Check :size="15" aria-hidden="true" /><span>如显示“作为 Web App 打开”，保持开启后点击“添加”</span></li>
-            </ol>
-          </template>
-          <template v-else>
-            <ol>
-              <li><MoreVertical :size="15" aria-hidden="true" /><span>打开浏览器菜单</span></li>
-              <li><Download :size="15" aria-hidden="true" /><span>选择“安装应用”或“添加到主屏幕”</span></li>
-            </ol>
-            <div class="pwa-install-permission">
-              <Settings2 :size="16" aria-hidden="true" />
-              <div>
-                <strong>点了“添加”却没反应？</strong>
-                <p>部分 Android 系统会单独限制浏览器的“添加桌面快捷方式”权限。打开 <b>系统设置 → 应用/应用管理 → 当前浏览器 → 权限/其他权限</b>，允许“添加桌面快捷方式”或“创建桌面快捷方式”，再回来重试。</p>
-                <span>不同品牌入口名称可能不同，也可以直接在系统设置里搜索“桌面快捷方式”。</span>
-              </div>
-            </div>
-          </template>
+        <div v-if="pwaInstallState.guideActive" class="pwa-install-guide" aria-live="polite">
+          <p v-if="pwaInstallState.requesting">正在打开系统安装提示。你仍可关闭教程。</p>
+          <p v-else-if="pwaInstallState.phase === 'waiting-for-install'">正在等待系统完成安装。请从桌面图标打开 YuanHub；系统同意安装还不代表安装完成。</p>
+          <p v-else-if="pwaInstallState.phase === 'dismissed'">本次系统安装提示已取消。可以重试，也可以关闭教程。</p>
+          <p v-else-if="pwaInstallState.phase === 'failed'">系统安装调用失败。可打开安装任务页排查并重试。</p>
+          <p v-else-if="pwaInstallState.installable">点击“立即添加到桌面”，在真实系统提示中选择是否安装。</p>
+          <p v-else>{{ getPwaInstallGuidance() }}</p>
         </div>
-
         <div class="pwa-install-actions">
-          <button
-            v-if="pwaInstallState.installable && !pwaInstallState.ios"
-            class="pwa-install-primary"
-            type="button"
-            :disabled="installing"
-            @click="installNow"
-          >
-            <Download :size="16" aria-hidden="true" />
-            {{ installing ? '正在打开…' : '立即添加' }}
+          <button v-if="!pwaInstallState.guideActive" class="pwa-install-primary" type="button" @click="beginGuide">跟着做一次</button>
+          <button v-else-if="pwaInstallState.installable || pwaInstallState.requesting" ref="installButton" class="pwa-install-primary" type="button" :disabled="pwaInstallState.requesting" @click="requestPwaInstall">
+            <Download :size="16" aria-hidden="true" />{{ pwaInstallState.requesting ? '正在打开…' : '立即添加到桌面' }}
           </button>
-          <button
-            v-else
-            class="pwa-install-primary"
-            type="button"
-            @click="showQuickGuide = !showQuickGuide"
-          >
-            <Share2 v-if="pwaInstallState.ios" :size="16" aria-hidden="true" />
-            <Download v-else :size="16" aria-hidden="true" />
-            {{ showQuickGuide ? '收起方法' : '查看添加方法' }}
-          </button>
-          <router-link class="pwa-install-secondary" to="/install">查看详细教程</router-link>
+          <router-link v-else class="pwa-install-primary" to="/install">继续实操教程</router-link>
+          <button class="pwa-install-secondary" type="button" @click="closePrompt(true)">以后不自动提示</button>
         </div>
+        <router-link v-if="pwaInstallState.guideActive && pwaInstallState.installable" class="pwa-install-task-link" to="/install">打开安装任务页</router-link>
       </div>
     </aside>
   </Transition>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Check, Download, MoreVertical, Settings2, Share2, SquarePlus, X } from '@lucide/vue'
+import { Download } from '@lucide/vue'
 import { dialog } from '@/utils/dialog.js'
 import { useOnboardingStore } from '@/stores/onboarding.js'
 import { modalFocusState } from '@/composables/useModalFocus.js'
 import { betaCommunity } from '@/store/betaCommunity.js'
-import {
-  dismissPwaInstallPrompt,
-  pwaInstallState,
-  requestPwaInstall,
-  shouldShowPwaInstallPrompt,
-  shouldShowPwaInstallRecovery
-} from '@/utils/pwaInstall.js'
+import { closePwaInstallGuide, getPwaInstallGuidance, pwaInstallState, requestPwaInstall, shouldShowPwaInstallPrompt, startPwaInstallGuide } from '@/utils/pwaInstall.js'
 
 const props = defineProps({
   routeLoading: { type: Boolean, default: false },
@@ -99,68 +49,68 @@ const props = defineProps({
 const route = useRoute()
 const onboarding = useOnboardingStore()
 const ready = ref(false)
-const showQuickGuide = ref(false)
-const installing = ref(false)
-const recoveryOpen = ref(false)
+const panel = ref(null)
+const installButton = ref(null)
+const exitButton = ref(null)
+let previousFocus = null
 let revealTimer = null
 let navigationObserver = null
 const navigationOpen = ref(false)
-// 只读入口允许邀请；业务底栏、编辑、错误及恢复页面默认不邀请。
 const allowedRoutes = new Set(['today', 'changelog', 'feedback-plaza'])
 const eligible = computed(() => allowedRoutes.has(route.name)
-  && !props.routeLoading && !props.accessPending && !navigationOpen.value
+  && (pwaInstallState.guideActive || (!props.routeLoading && !props.accessPending)) && !navigationOpen.value
   && !modalFocusState.active && !betaCommunity.visible
   && !dialog._state.visible && !onboarding.visible)
-
-const visible = computed(function () {
-  return eligible.value && ready.value
-    && (shouldShowPwaInstallPrompt() || (recoveryOpen.value && shouldShowPwaInstallRecovery()))
-})
+const visible = computed(() => eligible.value && ready.value
+  && (pwaInstallState.guideActive || shouldShowPwaInstallPrompt()))
 
 watch(() => [route.fullPath, eligible.value], () => {
   window.clearTimeout(revealTimer)
-  revealTimer = null
   ready.value = false
-  if (eligible.value) {
-    revealTimer = window.setTimeout(() => {
-      revealTimer = null
-      ready.value = true
-    }, 1800)
-  }
+  if (eligible.value) revealTimer = window.setTimeout(() => { revealTimer = null; ready.value = true }, 1800)
 }, { immediate: true, flush: 'sync' })
+watch(() => route.fullPath, (path, previous) => {
+  if (previous && path !== previous && path !== '/install' && pwaInstallState.guideActive) closePrompt()
+})
+watch(() => navigationOpen.value || modalFocusState.active || betaCommunity.visible || dialog._state.visible || onboarding.visible, blocked => {
+  if (blocked && pwaInstallState.guideActive) closePrompt()
+})
+watch(visible, value => {
+  if (value) previousFocus = document.activeElement
+  else if (panel.value?.contains(document.activeElement) && previousFocus?.isConnected) previousFocus.focus()
+})
 
-function closePrompt() {
-  dismissPwaInstallPrompt()
+watch(() => pwaInstallState.requesting, async requesting => {
+  const moveFocus = !requesting && document.activeElement === installButton.value && pwaInstallState.guideActive
+  if (!moveFocus) return
+  await nextTick()
+  exitButton.value?.focus()
+})
+async function beginGuide() {
+  startPwaInstallGuide()
+  await nextTick()
+  installButton.value?.focus()
+}
+function closePrompt(disableAutoGuide = false) {
+  const restoreFocus = panel.value?.contains(document.activeElement)
+  closePwaInstallGuide({ disableAutoGuide: disableAutoGuide === true })
   ready.value = false
+  if (restoreFocus && previousFocus?.isConnected) previousFocus.focus()
 }
-
-async function installNow() {
-  if (installing.value) return
-  installing.value = true
-  try {
-    const result = await requestPwaInstall()
-    if (result.outcome === 'accepted') ready.value = false
-    else if (result.outcome === 'unavailable' || result.outcome === 'failed') {
-      recoveryOpen.value = true
-      showQuickGuide.value = true
-    }
-  } finally {
-    installing.value = false
-  }
+function onEscape(event) {
+  if (event.key === 'Escape' && visible.value && !modalFocusState.active) closePrompt()
 }
-
-onMounted(function () {
-  const syncNavigation = () => {
-    navigationOpen.value = document.body.classList.contains('mobile-nav-open')
-  }
+onMounted(() => {
+  const syncNavigation = () => { navigationOpen.value = document.body.classList.contains('mobile-nav-open') }
   syncNavigation()
   navigationObserver = new MutationObserver(syncNavigation)
   navigationObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+  window.addEventListener('keydown', onEscape)
 })
-
-onBeforeUnmount(function () {
-  if (revealTimer) window.clearTimeout(revealTimer)
+onBeforeUnmount(() => {
+  window.clearTimeout(revealTimer)
   navigationObserver?.disconnect()
+  window.removeEventListener('keydown', onEscape)
 })
 </script>
 
@@ -177,7 +127,8 @@ onBeforeUnmount(function () {
   position: relative;
   width: min(520px, 100%);
   margin: 0 auto;
-  overflow: hidden;
+  max-height: calc(60dvh - env(safe-area-inset-bottom));
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: rgba(255, 253, 246, .98);
@@ -198,7 +149,7 @@ onBeforeUnmount(function () {
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 17px 54px 15px 17px;
+  padding: 17px;
 }
 .pwa-install-main img {
   width: 52px;
@@ -223,23 +174,8 @@ onBeforeUnmount(function () {
   font-weight: 600;
   line-height: 1.6;
 }
-.pwa-install-close {
-  position: absolute;
-  z-index: 2;
-  top: 5px;
-  right: 5px;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--ink-60);
-  cursor: pointer;
-}
-.pwa-install-close:hover { background: var(--cream); color: var(--ink); }
+.pwa-install-exit { position: sticky; top: 0; z-index: 2; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.pwa-install-close { width: 100%; }
 .pwa-install-guide {
   margin: 0 16px 12px;
   padding: 11px 13px;
@@ -247,34 +183,21 @@ onBeforeUnmount(function () {
   border-radius: 12px;
   background: var(--paper);
 }
-.pwa-install-guide ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
-.pwa-install-guide li { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 11.5px; font-weight: 700; line-height: 1.45; }
-.pwa-install-guide li svg { flex: none; color: var(--accent-strong); }
-.pwa-install-permission {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(90, 70, 51, .22);
-  color: var(--ink);
-}
-.pwa-install-permission > svg { flex: none; margin-top: 1px; color: var(--accent-strong); }
-.pwa-install-permission strong { display: block; font-family: var(--font-s); font-size: 11.5px; font-weight: 900; }
-.pwa-install-permission p { margin: 3px 0 0; color: var(--ink-60); font-size: 10.8px; font-weight: 600; line-height: 1.55; }
-.pwa-install-permission p b { color: var(--ink); font-weight: 800; }
-.pwa-install-permission span { display: block; margin-top: 4px; color: var(--ink-60); font-size: 10px; line-height: 1.5; }
+.pwa-install-guide p { margin: 0; color: var(--ink); font-size: 13px; line-height: 1.65; }
+.pwa-install-task-link { display: block; padding: 12px 16px; min-height: 48px; color: var(--ink); }
+.pwa-install-card :focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .pwa-install-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   padding: 11px 16px 14px;
   border-top: 1px solid var(--line);
   background: rgba(246, 237, 208, .35);
 }
 .pwa-install-primary,
 .pwa-install-secondary {
-  min-height: 38px;
+  min-height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -309,12 +232,16 @@ onBeforeUnmount(function () {
 @media (max-width: 420px) {
   .pwa-install-prompt { right: 8px; left: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }
   .pwa-install-card { border-radius: 16px; }
-  .pwa-install-main { padding: 15px 50px 13px 14px; }
+  .pwa-install-main { padding: 15px 14px; }
   .pwa-install-main img { width: 48px; height: 48px; }
   .pwa-install-title { font-size: 15.5px; }
   .pwa-install-copy { font-size: 11.5px; }
   .pwa-install-actions { padding: 10px 13px 12px; }
-  .pwa-install-primary,.pwa-install-secondary { min-height: 36px; padding-inline: 12px; font-size: 11.5px; }
+  .pwa-install-primary,.pwa-install-secondary { min-height: 48px; padding-inline: 12px; font-size: 11.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install-enter-active,.pwa-install-leave-active { transition: none; }
 }
 
 @media (orientation: landscape) and (max-height: 520px) {

@@ -3,12 +3,14 @@ import { reactive } from 'vue'
 export const PWA_DISMISSED_KEY = 'yuanhub:pwa-install-prompt-dismissed-until:v1'
 export const PWA_SESSION_CANCELLED_KEY = 'yuanhub:pwa-install-native-cancelled:v1'
 export const PWA_AUTO_SUPPRESSED_KEY = 'yuanhub:pwa-install-auto-suppressed:v1'
+export const PWA_GUIDE_KEY = 'yuanhub:pwa-install-guide:v1'
 export const PWA_DISMISS_MS = 7 * 24 * 60 * 60 * 1000
 // 与 src/styles/main.css 中 .mobile-shell 的响应式切换保持一致。
 export const PWA_MOBILE_VIEWPORT_QUERY = '(max-width: 1080px)'
 
 let deferredInstallPrompt = null
 let initialized = false
+let installRequest = null
 
 export const pwaInstallState = reactive({
   initialized: false,
@@ -24,7 +26,14 @@ export const pwaInstallState = reactive({
   safari: false,
   installHelpNeeded: false,
   dismissedUntil: 0,
-  nativeCancelledThisSession: false
+  nativeCancelledThisSession: false,
+  tutorialStarted: false,
+  guideActive: false,
+  tutorialCompleted: false,
+  dismissedForNow: false,
+  disableAutoGuide: false,
+  phase: 'ready',
+  requesting: false
 })
 
 export function detectIos(navigatorLike = typeof navigator !== 'undefined' ? navigator : null) {
@@ -94,6 +103,82 @@ function suppressAutoPrompt() {
   try { localStorage.setItem(PWA_AUTO_SUPPRESSED_KEY, '1') } catch (_) { /* unavailable */ }
 }
 
+function saveGuide() {
+  const { tutorialStarted, guideActive, tutorialCompleted, dismissedForNow, disableAutoGuide, phase } = pwaInstallState
+  try {
+    localStorage.setItem(PWA_GUIDE_KEY, JSON.stringify({ tutorialStarted, guideActive, tutorialCompleted, dismissedForNow, disableAutoGuide, phase }))
+  } catch (_) { /* unavailable */ }
+}
+
+function restoreGuide() {
+  try {
+    const record = JSON.parse(localStorage.getItem(PWA_GUIDE_KEY) || 'null')
+    if (!record || typeof record !== 'object') return
+    for (const key of ['tutorialStarted', 'guideActive', 'tutorialCompleted', 'dismissedForNow', 'disableAutoGuide']) {
+      pwaInstallState[key] = record[key] === true
+    }
+    if (['ready', 'waiting-for-install', 'dismissed', 'failed', 'manual'].includes(record.phase)) pwaInstallState.phase = record.phase
+    else if (record.phase === 'prompting') pwaInstallState.phase = 'waiting-for-install'
+    pwaInstallState.guideActive = pwaInstallState.guideActive && pwaInstallState.tutorialStarted && !pwaInstallState.tutorialCompleted
+  } catch (_) { /* unavailable */ }
+}
+
+function completeGuideFromEvidence() {
+  if (!pwaInstallState.guideActive || !pwaInstallState.tutorialStarted) return
+  if (!pwaInstallState.installed && !pwaInstallState.standalone) return
+  pwaInstallState.tutorialCompleted = true
+  pwaInstallState.guideActive = false
+  pwaInstallState.dismissedForNow = false
+  saveGuide()
+}
+
+export function refreshPwaInstallStatus() {
+  onDisplayModeChanged()
+  completeGuideFromEvidence()
+}
+
+export function startPwaInstallGuide() {
+  initPwaInstall()
+  refreshPwaInstallStatus()
+  pwaInstallState.tutorialStarted = true
+  pwaInstallState.guideActive = true
+  pwaInstallState.dismissedForNow = false
+  // 历史完成记录不是设备当前仍已安装的证据。
+  pwaInstallState.tutorialCompleted = false
+  if (!pwaInstallState.requesting && !['waiting-for-install', 'failed', 'dismissed'].includes(pwaInstallState.phase)) {
+    pwaInstallState.phase = pwaInstallState.installable ? 'ready' : 'manual'
+  }
+  completeGuideFromEvidence()
+  saveGuide()
+}
+
+export function closePwaInstallGuide({ disableAutoGuide = false } = {}) {
+  pwaInstallState.guideActive = false
+  pwaInstallState.dismissedForNow = true
+  if (disableAutoGuide) pwaInstallState.disableAutoGuide = true
+  dismissPwaInstallPrompt()
+  saveGuide()
+}
+
+export function waitForPwaInstall() {
+  refreshPwaInstallStatus()
+  if (!pwaInstallState.installed) pwaInstallState.phase = 'waiting-for-install'
+  saveGuide()
+}
+
+export function getPwaInstallGuidance(navigatorLike = typeof navigator !== 'undefined' ? navigator : null) {
+  if (detectIos(navigatorLike)) {
+    return detectSafari(navigatorLike)
+      ? '打开 Safari 的“分享”菜单，选择“添加到主屏幕”；如显示“作为 Web App 打开”，保持开启后点击“添加”。'
+      : '请在 Safari 中打开当前 YuanHub 地址，再打开“分享”菜单，选择“添加到主屏幕”。'
+  }
+  const ua = navigatorLike?.userAgent || ''
+  if (/SamsungBrowser|EdgA|OPR|UCBrowser|MiuiBrowser/i.test(ua)) return '当前浏览器没有可确认的一键安装入口或菜单路径。请在 Chrome 中打开当前 YuanHub 地址后继续；更换浏览器不会被记为安装完成。'
+  if (/Firefox/i.test(ua) && detectAndroid(navigatorLike)) return '打开 Firefox 菜单 → 安装；如只提供快捷方式，需从桌面打开后再检查运行状态。'
+  if (/Chrome/i.test(ua) && detectAndroid(navigatorLike)) return '打开 Chrome 的 ⋮ 菜单 → 安装并创建快捷方式（旧版本为“添加到主屏幕”）→ 安装；如只显示创建快捷方式，请从桌面打开后再检查。'
+  return '尚未识别到可确认的安装菜单。请在支持安装的浏览器中打开当前地址；Android 可使用 Chrome，iPhone / iPad 可使用 Safari。'
+}
+
 function syncMobileEnvironment(viewportMobile = detectMobileViewport()) {
   pwaInstallState.ios = detectIos()
   pwaInstallState.android = detectAndroid()
@@ -120,17 +205,21 @@ function onBeforeInstallPrompt(event) {
   pwaInstallState.installable = true
   pwaInstallState.installHelpNeeded = false
   syncMobileEnvironment()
+  if (pwaInstallState.phase !== 'waiting-for-install' && !pwaInstallState.requesting) pwaInstallState.phase = 'ready'
+  saveGuide()
 }
 
 function onAppInstalled() {
   deferredInstallPrompt = null
   pwaInstallState.installable = false
   pwaInstallState.installed = true
+  pwaInstallState.phase = 'installed'
   pwaInstallState.standalone = detectStandalone()
   suppressAutoPrompt()
   pwaInstallState.installHelpNeeded = false
   pwaInstallState.nativeCancelledThisSession = false
   try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
+  completeGuideFromEvidence()
 }
 
 function onDisplayModeChanged() {
@@ -138,7 +227,9 @@ function onDisplayModeChanged() {
   pwaInstallState.standalone = standalone
   if (standalone) {
     pwaInstallState.installed = true
+    pwaInstallState.phase = 'installed'
     suppressAutoPrompt()
+    completeGuideFromEvidence()
   }
 }
 
@@ -158,10 +249,15 @@ function onMobileViewportChanged(event) {
 export function initPwaInstall() {
   if (initialized || typeof window === 'undefined') return pwaInstallState
   initialized = true
+  restoreGuide()
   syncEnvironment()
+  completeGuideFromEvidence()
   window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
   window.addEventListener('appinstalled', onAppInstalled)
   window.addEventListener('storage', onStorageChanged)
+  window.addEventListener('focus', refreshPwaInstallStatus)
+  window.addEventListener('pageshow', refreshPwaInstallStatus)
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', refreshPwaInstallStatus)
   if (typeof window.matchMedia === 'function') {
     const displayModeMedia = window.matchMedia('(display-mode: standalone)')
     if (typeof displayModeMedia.addEventListener === 'function') {
@@ -178,7 +274,8 @@ export function initPwaInstall() {
 
 function canShowPwaInstallPromotion(now) {
   if (!pwaInstallState.initialized || !pwaInstallState.mobile) return false
-  if (pwaInstallState.installed || pwaInstallState.standalone || pwaInstallState.autoSuppressed) return false
+  if (pwaInstallState.installed || pwaInstallState.standalone || pwaInstallState.autoSuppressed || pwaInstallState.disableAutoGuide) return false
+  if (pwaInstallState.guideActive || pwaInstallState.phase === 'waiting-for-install' || pwaInstallState.requesting) return false
   if (pwaInstallState.dismissedUntil > now) return false
   if (pwaInstallState.nativeCancelledThisSession) return false
   return true
@@ -196,7 +293,6 @@ export function shouldShowPwaInstallRecovery(now = Date.now()) {
 export function dismissPwaInstallPrompt(now = Date.now()) {
   const until = now + PWA_DISMISS_MS
   pwaInstallState.dismissedUntil = until
-  pwaInstallState.installHelpNeeded = false
   try { localStorage.setItem(PWA_DISMISSED_KEY, String(until)) } catch (_) { /* unavailable */ }
   return until
 }
@@ -209,36 +305,47 @@ export function clearPwaInstallDismissal() {
   try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
 }
 
-export async function requestPwaInstall() {
+export function requestPwaInstall() {
+  if (installRequest) return installRequest
   if (!deferredInstallPrompt || !pwaInstallState.installable) {
-    pwaInstallState.installHelpNeeded = true
-    return { outcome: 'unavailable' }
+    pwaInstallState.installHelpNeeded = false
+    pwaInstallState.phase = 'manual'
+    saveGuide()
+    return Promise.resolve({ outcome: 'unavailable' })
   }
   const promptEvent = deferredInstallPrompt
   deferredInstallPrompt = null
   pwaInstallState.installable = false
-  try {
-    await promptEvent.prompt()
-    const choice = await promptEvent.userChoice
-    const outcome = choice?.outcome || 'dismissed'
-    if (outcome === 'accepted') {
-      pwaInstallState.installed = true
-      suppressAutoPrompt()
+  pwaInstallState.requesting = true
+  pwaInstallState.phase = 'prompting'
+  saveGuide()
+  installRequest = (async () => {
+    try {
+      await promptEvent.prompt()
+      const choice = await promptEvent.userChoice
+      const outcome = choice?.outcome || 'dismissed'
+      if (!pwaInstallState.installed) pwaInstallState.phase = outcome === 'accepted' ? 'waiting-for-install' : 'dismissed'
       pwaInstallState.installHelpNeeded = false
+      pwaInstallState.nativeCancelledThisSession = outcome !== 'accepted' && !pwaInstallState.installed
+      try {
+        if (pwaInstallState.nativeCancelledThisSession) sessionStorage.setItem(PWA_SESSION_CANCELLED_KEY, '1')
+        else sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY)
+      } catch (_) { /* unavailable */ }
+      saveGuide()
+      return { outcome }
+    } catch (error) {
+      // 系统/OEM 权限不可由网页读取；只有真实调用失败才进入排障。
+      pwaInstallState.installHelpNeeded = !pwaInstallState.installed
+      if (!pwaInstallState.installed) pwaInstallState.phase = 'failed'
       pwaInstallState.nativeCancelledThisSession = false
       try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
-    } else {
-      pwaInstallState.installHelpNeeded = false
-      pwaInstallState.nativeCancelledThisSession = true
-      try { sessionStorage.setItem(PWA_SESSION_CANCELLED_KEY, '1') } catch (_) { /* unavailable */ }
+      saveGuide()
+      return { outcome: 'failed', error }
     }
-    return { outcome }
-  } catch (error) {
-    // 部分 Android 浏览器会因为系统/OEM 的“添加桌面快捷方式”权限被拒绝而失败。
-    // 网页无法直接读取或开启这项 App 级权限，因此把失败交给 UI 展示设置引导，而不是静默抛错。
-    pwaInstallState.installHelpNeeded = true
-    pwaInstallState.nativeCancelledThisSession = false
-    try { sessionStorage.removeItem(PWA_SESSION_CANCELLED_KEY) } catch (_) { /* unavailable */ }
-    return { outcome: 'failed', error }
-  }
+  })().finally(() => {
+    pwaInstallState.requesting = false
+    installRequest = null
+    completeGuideFromEvidence()
+  })
+  return installRequest
 }

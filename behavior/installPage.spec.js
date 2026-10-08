@@ -1,84 +1,154 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import InstallPage from '../src/pages/install/index.vue'
-import { pwaInstallState, requestPwaInstall } from '../src/utils/pwaInstall.js'
 import { deferred } from '../test-support/factories.js'
 
-vi.mock('../src/utils/pwaInstall.js', async () => {
-  const { reactive } = await import('vue')
-  return { pwaInstallState: reactive({ installable: true, installed: false, standalone: false, ios: false }), requestPwaInstall: vi.fn() }
-})
+let listeners, documentListeners
 beforeEach(() => {
-  Object.assign(pwaInstallState, { installable: true, installed: false, standalone: false, ios: false })
-  requestPwaInstall.mockReset().mockResolvedValue({ outcome: 'accepted' })
+  vi.resetModules()
+  listeners = vi.spyOn(window, 'addEventListener')
+  documentListeners = vi.spyOn(document, 'addEventListener')
 })
-const render = () => mount(InstallPage, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true } } })
+afterEach(() => {
+  for (const [type, listener] of listeners.mock.calls) window.removeEventListener(type, listener)
+  for (const [type, listener] of documentListeners.mock.calls) document.removeEventListener(type, listener)
+})
+async function render({ ios = false, standalone = false } = {}) {
+  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(ios ? 'iPhone Safari' : 'Android Chrome Mobile')
+  const display = { matches: standalone, addEventListener: vi.fn() }
+  vi.stubGlobal('matchMedia', query => query === '(display-mode: standalone)' ? display : { matches: true, addEventListener: vi.fn() })
+  const install = await import('../src/utils/pwaInstall.js')
+  const { default: component } = await import('../src/pages/install/index.vue')
+  const wrapper = mount(component, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
+  function offer(outcome = 'accepted', prompt = vi.fn(async () => {})) {
+    const event = Object.assign(new Event('beforeinstallprompt'), { prompt, userChoice: Promise.resolve({ outcome }) })
+    window.dispatchEvent(event)
+    return event
+  }
+  async function begin() { await wrapper.get('.install-now').trigger('click'); await flushPromises() }
+  return { wrapper, install, offer, display, begin }
+}
 
-it.each([
-  ['accepted', '等待系统完成'],
-  ['dismissed', '本次安装已取消'],
-  ['unavailable', '一键安装入口暂不可用'],
-  ['failed', '系统安装调用未完成']
-])('安装结果 %s 提供对应恢复方式', async (outcome, text) => {
-  requestPwaInstall.mockResolvedValue({ outcome })
-  const wrapper = render()
-  await wrapper.get('.install-now').trigger('click'); await flushPromises()
-  expect(wrapper.get('.install-feedback').text()).toContain(text)
-  if (outcome === 'dismissed' || outcome === 'unavailable') expect(wrapper.get('.install-feedback').text()).not.toContain('权限')
+it('阅读与直接使用不开始教程、不调用系统、不标记完成', async () => {
+  const { wrapper, install, offer } = await render()
+  const event = offer()
+  await flushPromises()
+  expect(wrapper.text()).toContain('跟着做一次')
+  expect(wrapper.text()).toContain('直接使用网页版')
+  expect(install.pwaInstallState.guideActive).toBe(false)
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+  await wrapper.get('a').trigger('click')
+  expect(install.pwaInstallState.dismissedForNow).toBe(true)
+  expect(install.pwaInstallState.installed).toBe(false)
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+  expect(event.prompt).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('原生入口不存在时展示手动指南，独立运行和已记录安装时不再邀请', async () => {
-  pwaInstallState.installable = false
-  const wrapper = render()
-  expect(wrapper.find('.install-now').exists()).toBe(false)
-  expect(wrapper.text()).toContain('可能不支持或尚未满足安装条件')
-  pwaInstallState.installed = true; await flushPromises()
-  expect(wrapper.get('.installed-banner').text()).toContain('已记录安装操作')
-  pwaInstallState.standalone = true; await flushPromises()
-  expect(wrapper.get('.installed-banner').text()).toContain('当前已从桌面独立运行')
-  expect(requestPwaInstall).not.toHaveBeenCalled()
+it.each(['accepted', 'dismissed', 'failed', 'unavailable'])('%s 使用真实结果而不伪造安装', async outcome => {
+  const { wrapper, install, offer, begin } = await render()
+  if (outcome !== 'unavailable') offer(outcome, vi.fn(async () => { if (outcome === 'failed') throw new Error('native failed') }))
+  await begin()
+  if (outcome !== 'unavailable') await wrapper.get('.install-now').trigger('click')
+  else await install.requestPwaInstall()
+  await flushPromises()
+  expect(install.pwaInstallState.installed).toBe(false)
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+  expect(wrapper.find('.installed-banner').exists()).toBe(false)
+  expect(wrapper.find('.shortcut-permission-help').exists()).toBe(outcome === 'failed')
+  if (outcome === 'accepted') expect(wrapper.get('.install-feedback').text()).toContain('正在等待系统完成安装')
+  if (outcome === 'dismissed') {
+    expect(wrapper.get('.install-feedback').text()).toContain('本次安装已取消')
+    offer()
+    await flushPromises()
+    expect(wrapper.find('.install-now').exists()).toBe(true)
+  }
+  await wrapper.get('.exit-guide').trigger('click')
+  expect(install.pwaInstallState.guideActive).toBe(false)
+  expect(wrapper.text()).toContain('继续实操教程')
+  expect(document.activeElement).toBe(wrapper.get('.install-now').element)
 })
 
-it('重复点击安装只调用一次；意外异常后反馈可恢复', async () => {
+it('accepted 后 appinstalled 才完成，普通窗口不宣称从桌面运行', async () => {
+  const { wrapper, install, offer, begin, display } = await render()
+  offer()
+  await begin()
+  await wrapper.get('.install-now').trigger('click'); await flushPromises()
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+  window.dispatchEvent(new Event('appinstalled')); await flushPromises()
+  expect(install.pwaInstallState.tutorialCompleted).toBe(true)
+  expect(wrapper.get('.installed-banner').text()).toContain('系统已确认 YuanHub 安装完成')
+  expect(wrapper.text()).not.toContain('你现在正从桌面版 YuanHub 运行')
+  display.matches = true
+  window.dispatchEvent(new Event('pageshow')); await flushPromises()
+  expect(wrapper.get('.installed-banner').text()).toContain('你现在正从桌面版 YuanHub 运行')
+})
+
+it('原生提示未结束也可以 Esc 退出；迟到结果只更新真实任务', async () => {
+  const { wrapper, install, offer, begin } = await render()
   const pending = deferred()
-  requestPwaInstall.mockReturnValueOnce(pending.promise)
-  const wrapper = render()
+  const event = offer('accepted', vi.fn(() => pending.promise))
+  await begin()
   await wrapper.get('.install-now').trigger('click')
   expect(wrapper.get('.install-now').attributes('disabled')).toBeDefined()
   await wrapper.get('.install-now').trigger('click')
-  expect(requestPwaInstall).toHaveBeenCalledTimes(1)
-  pending.reject(new Error('native failed')); await flushPromises()
-  expect(wrapper.get('.install-feedback').text()).toContain('安装请求未完成')
-  expect(wrapper.get('.install-now').attributes('disabled')).toBeUndefined()
+  expect(event.prompt).toHaveBeenCalledTimes(1)
+  expect(wrapper.get('.exit-guide').attributes('disabled')).toBeUndefined()
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises()
+  expect(wrapper.text()).toContain('教程已暂停')
+  pending.resolve(); await flushPromises()
+  expect(install.pwaInstallState.phase).toBe('waiting-for-install')
+  expect(install.pwaInstallState.guideActive).toBe(false)
+  expect(event.prompt).toHaveBeenCalledTimes(1)
+  await wrapper.get('.install-now').trigger('click'); await flushPromises()
+  expect(wrapper.get('.install-feedback').text()).toContain('正在等待系统完成安装')
 })
 
-it('平台标签提供关联、单一 Tab 焦点及方向键/Home/End 操作', async () => {
-  const wrapper = render()
-  const android = wrapper.get('#install-tab-android'), ios = wrapper.get('#install-tab-ios')
-  android.element.focus()
-  await android.trigger('keydown', { key: 'ArrowRight' })
-  expect(ios.attributes('aria-selected')).toBe('true')
-  expect(ios.attributes('tabindex')).toBe('0')
-  expect(android.attributes('tabindex')).toBe('-1')
-  expect(document.activeElement).toBe(ios.element)
-  expect(wrapper.get('#install-panel-ios').attributes('aria-labelledby')).toBe(ios.attributes('id'))
-  expect(ios.attributes('aria-controls')).toBe('install-panel-ios')
-  expect(wrapper.get('#install-panel-ios').isVisible()).toBe(true)
-  expect(wrapper.get('#install-panel-android').isVisible()).toBe(false)
-  await ios.trigger('keydown', { key: 'Home' })
-  expect(android.attributes('aria-selected')).toBe('true')
-  await android.trigger('keydown', { key: 'End' })
-  expect(ios.attributes('aria-selected')).toBe('true')
-  await ios.trigger('keydown', { key: 'ArrowLeft' })
-  expect(android.attributes('aria-selected')).toBe('true')
+it('iOS 当前环境直接给分享动作，等待与浏览器返回均不确认安装', async () => {
+  const { wrapper, install, begin, display } = await render({ ios: true })
+  await begin()
+  expect(wrapper.get('.install-feedback').text()).toContain('打开 Safari 的“分享”菜单')
+  expect(wrapper.text()).not.toContain('立即添加到桌面')
+  await wrapper.get('.install-now').trigger('click')
+  window.dispatchEvent(new Event('focus')); await flushPromises()
+  expect(install.pwaInstallState.phase).toBe('waiting-for-install')
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+  expect(wrapper.find('.installed-banner').exists()).toBe(false)
+  display.matches = true
+  document.dispatchEvent(new Event('visibilitychange')); await flushPromises()
+  expect(install.pwaInstallState.tutorialCompleted).toBe(true)
+  expect(wrapper.get('.installed-banner').text()).toContain('你现在正从桌面版 YuanHub 运行')
 })
 
-it('iOS 默认选中手动安装指南，保留系统步骤而不展示一键按钮', async () => {
-  pwaInstallState.ios = true
-  const wrapper = render()
-  await flushPromises()
-  expect(wrapper.get('#install-tab-ios').attributes('aria-selected')).toBe('true')
+it('有 standalone 成果直接显示真实状态，不强迫重做或把未参加者算完成', async () => {
+  const { wrapper, install } = await render({ ios: true, standalone: true })
+  expect(wrapper.get('.installed-banner').text()).toContain('你现在正从桌面版 YuanHub 运行')
   expect(wrapper.find('.install-now').exists()).toBe(false)
-  expect(wrapper.get('#install-panel-ios').text()).toContain('作为 Web App 打开')
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+})
+
+it('禁用自动教程仍可手动参加；卸载即暂停而不完成', async () => {
+  const { wrapper, install, offer } = await render()
+  await wrapper.get('.guide-preference button').trigger('click')
+  expect(install.pwaInstallState.disableAutoGuide).toBe(true)
+  offer(); await flushPromises()
+  await wrapper.get('.install-now').trigger('click')
+  expect(install.pwaInstallState.guideActive).toBe(true)
+  wrapper.unmount()
+  expect(install.pwaInstallState.guideActive).toBe(false)
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+})
+
+
+it('暂停后 appinstalled 不算教程完成；手动继续复用真实成果立即完成', async () => {
+  const { wrapper, install, offer, begin } = await render()
+  offer()
+  await begin()
+  await wrapper.get('.exit-guide').trigger('click')
+  window.dispatchEvent(new Event('appinstalled')); await flushPromises()
+  expect(wrapper.get('.installed-banner').text()).toContain('系统已确认')
+  expect(install.pwaInstallState.tutorialCompleted).toBe(false)
+  await wrapper.get('.install-now').trigger('click'); await flushPromises()
+  expect(install.pwaInstallState.tutorialCompleted).toBe(true)
+  expect(wrapper.get('.installed-banner').text()).toContain('实操教程已完成')
+  expect(wrapper.find('.install-now').exists()).toBe(false)
 })
