@@ -377,6 +377,7 @@ import operatorPortraits from '../../data/operatorPortraits.json'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
+import { usePersistedTab } from '../../utils/persistedTab.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
 const props = defineProps({ open: Boolean, pool: Object, poolSummary: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number, guided: Boolean, practice: Boolean, practiceResult: Boolean, saveReceipt: Object })
@@ -385,7 +386,7 @@ const emit = defineEmits(['close', 'save', 'load-more', 'retry', 'guide-dismiss'
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
 const dailyMode = ref('record'), recordSearch = ref('')
-const progressLabel = ref('已抽')
+const progressLabel = props.practice ? ref('已抽') : usePersistedTab('yh_recruitment_progress_input_mode', '已抽', ['已抽', '已垫'])
 const progressInput = computed({
   get: () => remaining.value === '' ? '' : progressLabel.value === '已垫' ? 40 - Number(remaining.value) : remaining.value,
   set: value => { remaining.value = value === '' ? '' : String(progressLabel.value === '已垫' ? 40 - Number(value) : value) },
@@ -709,7 +710,6 @@ watch(() => props.open, open => {
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
   const progress = props.pool?.progress
-  progressLabel.value = '已抽'
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
   nextTick(scheduleEntryVisibility)
