@@ -1,4 +1,9 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
+vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled } }))
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { createPinia } from 'pinia'
@@ -52,6 +57,7 @@ const stored = () => [{ account_id: 'acc', game: '如鸢', entries: { op: { ...e
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 
 beforeEach(() => {
+  tutorialFeature.enabled = true
   if (dialog._state.visible) dialog._cancel()
   vi.clearAllMocks()
   connectionApi.getOpenApiTokens.mockResolvedValue([])
@@ -86,6 +92,24 @@ beforeEach(() => {
   })
   vi.spyOn(starLoadoutPresetStore, 'load').mockResolvedValue()
   vi.stubGlobal('matchMedia', vi.fn(() => Object.assign(new EventTarget(), { matches: false })))
+})
+
+it.each(['/', '/operator', '/operator/quick', '/inventory', '/user/profile'])('默认关闭在 %s 保留业务主页面且不恢复历史教程', async path => {
+  tutorialFeature.enabled = false
+  const key = onboardingStorageKey('owner')
+  const history = JSON.stringify({ version: 2, status: 'in_progress', tutorialTask: 'maayuan-first-sync', waitingFor: 'maa_sync', maaYuan: { accountId: 'acc', connectionId: 'old-connection', phase: 'waiting-sync' } })
+  localStorage.setItem(key, history)
+  const { store } = await render(path)
+  expect(host.find('main').exists()).toBe(true)
+  expect(document.querySelector('.tutorial-entry, .tutorial-guide, .maayuan-tutorial-entry, .tutorial-modal-outlet')).toBeNull()
+  expect(store.active).toBe(false)
+  expect(localStorage.getItem(key)).toBe(history)
+  expect(connectionApi.getConnectionFirstSync).not.toHaveBeenCalled()
+  if (path === '/user/profile') {
+    await host.get('.app-connect').trigger('click'); await flushPromises()
+    expect(host.get('#maayuan-account').element.value).toBe('acc')
+    expect(host.text()).toContain('复制连接码')
+  }
 })
 afterEach(() => { host?.unmount(); host = null })
 

@@ -1,4 +1,9 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
+vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled } }))
+import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -33,6 +38,7 @@ vi.mock('../src/components/AppDialog.vue', () => ({ default: { template: '<div /
 vi.mock('../src/components/MobileInstallPrompt.vue', () => ({ default: { name: 'MobileInstallPrompt', props: ['routeLoading', 'accessPending'], template: '<aside />' } }))
 
 beforeEach(() => {
+  tutorialFeature.enabled = true
   vi.clearAllMocks()
   auth.userInfo = { id: 'user-a' }
   auth.accessToken = 'synthetic'
@@ -43,6 +49,17 @@ beforeEach(() => {
   beta.personalLoading = false
   beta.personalLoaded = true
   routeLoadingState.active = false
+})
+
+it('关闭总开关时跨页和刷新不挂载安装教学，也不初始化全站控制器', async () => {
+  tutorialFeature.enabled = false
+  const { router, host } = await render()
+  await router.push('/user/profile'); await nextTick()
+  await router.push('/changelog'); await nextTick()
+  expect(initializeOnboardingTour).not.toHaveBeenCalled()
+  expect(host.findComponent({ name: 'MobileInstallPrompt' }).exists()).toBe(false)
+  host.unmount()
+  expect(hooks.stop).not.toHaveBeenCalled()
 })
 
 async function render() {

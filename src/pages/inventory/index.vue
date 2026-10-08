@@ -10,7 +10,7 @@
             :switch-disabled="savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
-          <TutorialEntry task="inventory-first-baseline" label="盘点教程" />
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -31,7 +31,7 @@
 
       <section>
         <div class="wrap">
-          <OnboardingGuide :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
             <div><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
             <button v-if="inventoryAccountReady" type="button" class="btn primary inventory-entry" :disabled="loading || !!error || currentLoadedContext !== stockContext || editingStock"
@@ -169,7 +169,7 @@
             ref="manifestPanel"
             class="panel"
           >
-            <div v-if="editingStock" id="inventory-tutorial-editor" />
+            <div v-if="TUTORIALS_ENABLED && editingStock" id="inventory-tutorial-editor" />
             <div
               v-if="editingStock || stockSaveNotice"
               class="manifest-intro"
@@ -1755,6 +1755,7 @@
 </template>
 
 <script setup>
+import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";

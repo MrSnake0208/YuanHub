@@ -45,13 +45,14 @@ import { useOnboardingStore } from '@/stores/onboarding.js'
 import { modalFocusState } from '@/composables/useModalFocus.js'
 import { ONBOARDING_TASKS, FIRST_DATA_TASKS, isTutorialTaskRoute } from '@/utils/onboardingTasks.js'
 import { destroyOnboardingTour, refreshTutorialBusiness, tutorialBusiness } from '@/utils/onboardingTour.js'
+import { TUTORIALS_ENABLED } from '@/config/features.js'
 
 const props = defineProps({ tasks: { type: Array, required: true }, target: { type: [String, Object], default: null } })
 const store = useOnboardingStore(), route = useRoute(), router = useRouter()
 const region = ref(null), outlet = shallowRef(null), titleId = useId()
 let opener = null, modalOutlet = null
 const relatedModal = computed(() => modalFocusState.panel?.matches('.account-panel, .dialog'))
-const visible = computed(() => props.tasks.includes(store.tutorialTask) && ['task', 'result'].includes(store.panel) &&
+const visible = computed(() => TUTORIALS_ENABLED && props.tasks.includes(store.tutorialTask) && ['task', 'result'].includes(store.panel) &&
   isTutorialTaskRoute(store.tutorialTask, store.firstDataTask, route.path) &&
   (!modalFocusState.active || relatedModal.value))
 const title = computed(() => ONBOARDING_TASKS[store.tutorialTask]?.title)
@@ -104,14 +105,16 @@ function moveOutlet() {
   outlet.value = modalOutlet || target
   void nextTick(() => previous?.remove())
 }
-watch(() => [modalFocusState.panel, visible.value, props.target], moveOutlet, { flush: 'post' })
-watch(() => store.panel, async panel => {
-  if (panel === 'task' && visible.value) {
-    opener = document.activeElement
-    await nextTick()
-    region.value?.querySelector('h2')?.focus({ preventScroll: true })
-  }
-})
+if (TUTORIALS_ENABLED) {
+  watch(() => [modalFocusState.panel, visible.value, props.target], moveOutlet, { flush: 'post' })
+  watch(() => store.panel, async panel => {
+    if (panel === 'task' && visible.value) {
+      opener = document.activeElement
+      await nextTick()
+      region.value?.querySelector('h2')?.focus({ preventScroll: true })
+    }
+  })
+}
 
 function close() {
   const restore = region.value?.contains(document.activeElement)
@@ -135,6 +138,7 @@ function chooseFirstData(taskId) {
 }
 
 onMounted(() => {
+  if (!TUTORIALS_ENABLED) return
   window.addEventListener('keydown', onEscape, true)
   moveOutlet()
 })

@@ -1,4 +1,8 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
+import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises, RouterLinkStub, DOMWrapper } from '@vue/test-utils'
 import RecruitmentPage from '../src/pages/recruitment/index.vue'
 import { auth } from '../src/store/auth.js'
@@ -8,11 +12,20 @@ import { deferred } from '../test-support/recruitment.js'
 
 const personalMount = vi.hoisted(() => vi.fn())
 vi.mock('../src/pages/recruitment/RecruitmentWorkspace.vue', () => ({ default: { setup() { personalMount(); return () => '真实档案工作区' } } }))
-vi.mock('../src/config/features.js', () => ({ FEATURE_KEYS: { RECRUITMENT_ARCHIVE: 'recruitmentArchive' }, isFeatureEnabled: () => true }))
+vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled }, isFeatureEnabled: () => true }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: '', userInfo: null }) }))
 vi.mock('../src/api/recruitmentAccess.js', () => ({ getRecruitmentAccess: vi.fn() }))
 const render = () => mount(RecruitmentPage, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } })
-beforeEach(() => { vi.clearAllMocks(); auth.accessToken = ''; auth.userInfo = null; recruitmentAccess.setIdentity(''); getRecruitmentAccess.mockResolvedValue({ canAccess: false }) })
+beforeEach(() => { tutorialFeature.enabled = true; vi.clearAllMocks(); auth.accessToken = ''; auth.userInfo = null; recruitmentAccess.setIdentity(''); getRecruitmentAccess.mockResolvedValue({ canAccess: false }) })
+
+it('关闭教程保留匿名登录与权限提示，不暴露练习或教程菜单', async () => {
+  tutorialFeature.enabled = false
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.guide-entry-wrap, .guide-choice, .practice-panel, .guide-hint').exists()).toBe(false)
+  expect(wrapper.text()).not.toMatch(/教程|练习/)
+  expect(wrapper.findComponent(RouterLinkStub).props('to')).toContain('/login?redirect=/recruitment')
+  expect(personalMount).not.toHaveBeenCalled()
+})
 
 it('匿名可使用教程和练习，绝不初始化个人资料读取', async () => {
   const wrapper = render(); await flushPromises()

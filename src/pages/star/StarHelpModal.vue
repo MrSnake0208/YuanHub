@@ -19,7 +19,7 @@
           <details :open="topic === 'advanced'">
             <summary>编辑、养成与进阶技巧</summary>
             <section v-for="section in bagHelpSections" :key="section.title"><h3>{{ section.title }}</h3><p>{{ section.body }}</p></section>
-            <details v-if="emptyBag" class="star-help-demo">
+            <details v-if="TUTORIALS_ENABLED && emptyBag" class="star-help-demo">
               <summary>查看只读示例背包</summary>
               <div class="star-help-examples" role="group" aria-label="只读示例工作区">
                 <button type="button" :aria-pressed="demoView === 'bag'" @click="demoView = 'bag'">背包与核对示例</button>
@@ -28,7 +28,7 @@
               <BagTutorialDemo :view="demoView" />
             </details>
           </details>
-          <details :open="topic === 'guidance'">
+          <details v-if="TUTORIALS_ENABLED" :open="topic === 'guidance'">
             <summary>引导与自动提示</summary>
             <p>「稍后再看」关闭本次引导；「跳过此提示」只隐藏本次当前阶段。首次识别后点击「完成引导」，或明确选择「不再自动提示」，才会记为已读。关闭帮助不改变这些设置。</p>
             <div class="star-help-examples"><button type="button" @click="emit('replay')">重新查看当前引导</button><button type="button" :disabled="autoDisabled" @click="emit('opt-out')">{{ autoDisabled ? '已关闭自动提示' : '不再自动提示' }}</button></div>
@@ -43,6 +43,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { TUTORIALS_ENABLED } from '../../config/features.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
 import BagTutorialDemo from './BagTutorialDemo.vue'

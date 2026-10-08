@@ -2,7 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { watch } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { useOnboardingStore, onboardingStorageKey, ONBOARDING_VERSION } from '../src/stores/onboarding.js'
+import '../test-support/enableTutorials.js'
+const { useOnboardingStore, onboardingStorageKey, ONBOARDING_VERSION } = await import('../src/stores/onboarding.js')
 import { resolveTaskProgress, ownedOperatorId, inventoryBaselineAt, maaYuanCheckpoint, verifiedConnectionSync, isTutorialTaskRoute } from '../src/utils/onboardingTasks.js'
 
 function setup(initial = {}) {

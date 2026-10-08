@@ -13,13 +13,13 @@
       <section>
         <div class="wrap">
           <BetaNotice />
-          <OnboardingGuide :tasks="['today-first-data', 'operator-first-entry', 'inventory-first-baseline', 'account-create', 'maayuan-first-sync']" :target="maaTutorialTarget" />
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data', 'operator-first-entry', 'inventory-first-baseline', 'account-create', 'maayuan-first-sync']" :target="maaTutorialTarget" />
 
           <section class="game-account-summary" aria-labelledby="game-account-summary-title" :aria-busy="accountsLoading">
             <!-- 路由 hash 滚动固定 top: 0，锚点上移以避开移动导航。 -->
             <span id="game-accounts" class="account-summary-anchor" aria-hidden="true" />
             <div class="account-summary-copy">
-              <div class="account-summary-heading"><h2 id="game-account-summary-title">游戏账号</h2><TutorialEntry task="account-create" label="账号教程" /></div>
+              <div class="account-summary-heading"><h2 id="game-account-summary-title">游戏账号</h2><TutorialEntry v-if="TUTORIALS_ENABLED" task="account-create" label="账号教程" /></div>
               <p v-if="accountsLoading" role="status">正在读取游戏账号…</p>
               <div v-else-if="accountLoadError" class="account-summary-error" role="alert">
                 <p>{{ accountLoadError }}</p>
@@ -75,7 +75,7 @@
                     MaaYuan
                   </h3>
                   <span class="brand-outline">联合共建</span>
-                  <button class="act-btn ghost maayuan-tutorial-entry" type="button" @click="beginMaaYuanTutorial()">连接教程</button>
+                  <button v-if="TUTORIALS_ENABLED" class="act-btn ghost maayuan-tutorial-entry" type="button" @click="beginMaaYuanTutorial()">连接教程</button>
                 </div>
                 <p>
                   把游戏内采集到的库存与密探信息安全上传到
@@ -108,7 +108,7 @@
                   >
                 </div>
                 <p class="capability-note">星石自动采集仍在接入中，请先在星石背包导入截图。</p>
-                <div id="maayuan-tutorial-start" />
+                <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-start" />
               </div>
               <button
                 class="act-btn primary app-connect"
@@ -141,7 +141,7 @@
               aria-labelledby="connect-panel-title"
               @submit.prevent="createMaaYuanConnection"
             >
-              <div id="maayuan-tutorial-form" />
+              <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-form" />
               <div class="panel-title">
                 <span class="step-mark">1</span>
                 <div>
@@ -285,7 +285,7 @@
               aria-labelledby="new-token-title"
               tabindex="-1"
             >
-              <div v-if="newTokenKind === 'maayuan'" id="maayuan-tutorial-copy" />
+              <div v-if="TUTORIALS_ENABLED && newTokenKind === 'maayuan'" id="maayuan-tutorial-copy" />
               <div class="success-heading">
                 <span class="success-icon"
                   ><Check :size="20" aria-hidden="true"
@@ -367,7 +367,7 @@
                 </div>
               </div>
 
-              <div id="maayuan-tutorial-connection" />
+              <div v-if="TUTORIALS_ENABLED" id="maayuan-tutorial-connection" />
               <div v-if="loading" class="state">正在加载连接…</div>
               <div v-else-if="error" class="state err">
                 {{ error
@@ -605,6 +605,7 @@
 </template>
 
 <script setup>
+import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useOnboardingStore } from '../../stores/onboarding.js'
 import { recordMaaYuanAction, refreshTutorialBusiness, tutorialBusiness } from '../../utils/onboardingTour.js'
 import { useAccountListUpdates } from '../../store/accountList.js'
@@ -904,6 +905,7 @@ async function loadPermissions() {
 }
 
 function beginMaaYuanTutorial(connection) {
+  if (!TUTORIALS_ENABLED) return;
   onboarding.initialize(String(auth.userInfo?.id || 'guest'));
   if (connection && connection.token_id !== onboarding.maaYuan.connectionId) onboarding.setMaaYuanCheckpoint({ connectionId: connection.token_id, accountId: connection.account_id, phase: 'token-created' });
   onboarding.start('maayuan-first-sync');

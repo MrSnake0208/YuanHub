@@ -30,6 +30,12 @@ test('work system is explicitly disabled until it is ready to reopen', function 
   assert.equal(isFeatureEnabled(key), false)
 })
 
+test('tutorials are disabled without an explicit Vite true value', function () {
+  assert.equal(FEATURE_KEYS.TUTORIALS, 'tutorials')
+  assert.equal(FEATURE_FLAGS[FEATURE_KEYS.TUTORIALS], false)
+  assert.equal(isFeatureEnabled(FEATURE_KEYS.TUTORIALS), false)
+})
+
 test('discarded status stays disabled until the paired software supports it', function () {
   assert.equal(FEATURE_KEYS.OPERATOR_DISCARDED, 'operatorDiscarded')
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.OPERATOR_DISCARDED], false)

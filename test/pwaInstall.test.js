@@ -1,12 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {
+import '../test-support/enableTutorials.js'
+const {
   PWA_DISMISS_MS,
   detectAndroid,
   detectIos,
   detectMobileLike,
   detectSafari
-} from '../src/utils/pwaInstall.js'
+} = await import('../src/utils/pwaInstall.js')
 
 test('detects Android mobile browsers', function () {
   const nav = { userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36', platform: 'Linux armv8l', maxTouchPoints: 5 }

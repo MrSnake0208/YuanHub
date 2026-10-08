@@ -1,4 +1,5 @@
 import { reactive, watch } from 'vue'
+import { TUTORIALS_ENABLED } from '../config/features.js'
 import { useOnboardingStore } from '../stores/onboarding.js'
 import { auth } from '../store/auth.js'
 import { activeAccount } from '../store/activeAccount.js'
@@ -28,6 +29,7 @@ function applyBusiness() {
 }
 
 export async function refreshTutorialBusiness() {
+  if (!TUTORIALS_ENABLED) return
   const store = storeForIdentity(), token = ++generation, ownerId = store.ownerId, task = store.tutorialTask
   const valid = () => token === generation && store.active && onTaskPage(store) && store.ownerId === ownerId && identity() === ownerId && store.tutorialTask === task
   Object.assign(tutorialBusiness, { accounts: null, accountId: activeAccount.id, game: '', currentLoaded: false, operatorId: '', baselineAt: '', starId: '', error: '' })
@@ -106,6 +108,7 @@ async function refreshMaaYuan(store, accounts, valid) {
 }
 
 export function recordMaaYuanAction(action, context = {}) {
+  if (!TUTORIALS_ENABLED) return
   const store = storeForIdentity()
   if (!store.active || store.tutorialTask !== 'maayuan-first-sync') return
   generation++ // Product events supersede older reads.
@@ -128,6 +131,7 @@ export function recordMaaYuanAction(action, context = {}) {
 }
 
 export async function startOnboardingTask(router, taskId) {
+  if (!TUTORIALS_ENABLED) return false
   if (!Object.hasOwn(ONBOARDING_TASKS, taskId)) return false
   const store = storeForIdentity()
   const continuingHere = store.tutorialTask === taskId && store.status === 'paused' &&
@@ -142,11 +146,13 @@ export async function startOnboardingTask(router, taskId) {
 }
 
 export function destroyOnboardingTour({ preserveState = false } = {}) {
+  if (!TUTORIALS_ENABLED) return
   generation++
   if (!preserveState) storeForIdentity().dismiss()
 }
 
 export function initializeOnboardingTour(router) {
+  if (!TUTORIALS_ENABLED) return () => {}
   stopController?.()
   taskRouter = router
   const store = storeForIdentity()

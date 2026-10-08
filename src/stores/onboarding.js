@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { TUTORIALS_ENABLED } from '../config/features.js'
 import { ONBOARDING_TASKS, FIRST_DATA_TASKS, maaYuanCheckpoint, verifiedConnectionSync } from '../utils/onboardingTasks.js'
 
 // Synchronous identity watchers can re-enter initialize while it pauses an old owner.
@@ -28,11 +29,12 @@ function verifiedReceipt(evidence, task, ownerId) {
 export const useOnboardingStore = defineStore('onboarding', {
   state: defaults,
   getters: {
-    active: state => state.status === 'in_progress',
-    visible: state => state.panel !== 'hidden'
+    active: state => TUTORIALS_ENABLED && state.status === 'in_progress',
+    visible: state => TUTORIALS_ENABLED && state.panel !== 'hidden'
   },
   actions: {
     initialize(ownerId = this.ownerId) {
+      if (!TUTORIALS_ENABLED) return this
       if (initializingStores.has(this)) return this
       initializingStores.add(this)
       try {
@@ -83,6 +85,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       } finally { initializingStores.delete(this) }
     },
     start(taskId) {
+      if (!TUTORIALS_ENABLED) return false
       if (!Object.hasOwn(ONBOARDING_TASKS, taskId)) return false
       this.tutorialTask = taskId
       this.status = 'in_progress'
@@ -100,6 +103,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       return true
     },
     setMaaYuanCheckpoint(value) {
+      if (!TUTORIALS_ENABLED) return
       this.maaYuan = maaYuanCheckpoint(value)
       this.persist()
     },
@@ -117,6 +121,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       return true
     },
     dismiss({ disableAutoGuide = false } = {}) {
+      if (!TUTORIALS_ENABLED) return
       if (this.active) this.status = 'paused'
       this.panel = 'hidden'
       this.dismissedForNow = Date.now()
@@ -124,6 +129,7 @@ export const useOnboardingStore = defineStore('onboarding', {
       this.persist()
     },
     persist() {
+      if (!TUTORIALS_ENABLED) return false
       try {
         localStorage.setItem(onboardingStorageKey(this.ownerId), JSON.stringify({
           version: ONBOARDING_VERSION, status: this.status, tutorialTask: this.tutorialTask,

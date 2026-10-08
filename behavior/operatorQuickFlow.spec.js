@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
+// This suite includes the enabled tutorial entry; default-off coverage lives in onboardingTour.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
 import { mount, flushPromises } from '@vue/test-utils'
 import QuickPage from '../src/pages/operator/quick.vue'
 import { dialog } from '../src/utils/dialog.js'

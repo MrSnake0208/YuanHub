@@ -1,4 +1,5 @@
 export const FEATURE_KEYS = Object.freeze({
+  TUTORIALS: 'tutorials',
   OPERATOR_GROWTH_TRACKING: 'operatorGrowthTracking',
   OPERATOR_DISCARDED: 'operatorDiscarded',
   WORK_SYSTEM: 'workSystem',
@@ -8,9 +9,10 @@ export const FEATURE_KEYS = Object.freeze({
 
 const isViteDev = import.meta.env?.DEV === true
 
-// This feature is intentionally available only in local Vite development.
+// Growth tracking is intentionally available only in local Vite development.
 // Future flags must use explicit boolean values instead of inheriting this dev-only value.
 export const FEATURE_FLAGS = Object.freeze({
+  [FEATURE_KEYS.TUTORIALS]: import.meta.env?.VITE_TUTORIALS_ENABLED === 'true',
   [FEATURE_KEYS.OPERATOR_GROWTH_TRACKING]: isViteDev,
   [FEATURE_KEYS.OPERATOR_DISCARDED]: false,
   [FEATURE_KEYS.WORK_SYSTEM]: false,
@@ -21,3 +23,5 @@ export const FEATURE_FLAGS = Object.freeze({
 export function isFeatureEnabled(key) {
   return FEATURE_FLAGS[key] === true
 }
+
+export const TUTORIALS_ENABLED = isFeatureEnabled(FEATURE_KEYS.TUTORIALS)

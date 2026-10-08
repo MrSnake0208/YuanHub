@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { TUTORIALS_ENABLED } from '../config/features.js'
 
 export const PWA_DISMISSED_KEY = 'yuanhub:pwa-install-prompt-dismissed-until:v1'
 export const PWA_SESSION_CANCELLED_KEY = 'yuanhub:pwa-install-native-cancelled:v1'
@@ -104,6 +105,7 @@ function suppressAutoPrompt() {
 }
 
 function saveGuide() {
+  if (!TUTORIALS_ENABLED) return
   const { tutorialStarted, guideActive, tutorialCompleted, dismissedForNow, disableAutoGuide, phase } = pwaInstallState
   try {
     localStorage.setItem(PWA_GUIDE_KEY, JSON.stringify({ tutorialStarted, guideActive, tutorialCompleted, dismissedForNow, disableAutoGuide, phase }))
@@ -111,6 +113,7 @@ function saveGuide() {
 }
 
 function restoreGuide() {
+  if (!TUTORIALS_ENABLED) return
   try {
     const record = JSON.parse(localStorage.getItem(PWA_GUIDE_KEY) || 'null')
     if (!record || typeof record !== 'object') return
@@ -124,6 +127,7 @@ function restoreGuide() {
 }
 
 function completeGuideFromEvidence() {
+  if (!TUTORIALS_ENABLED) return
   if (!pwaInstallState.guideActive || !pwaInstallState.tutorialStarted) return
   if (!pwaInstallState.installed && !pwaInstallState.standalone) return
   pwaInstallState.tutorialCompleted = true
@@ -138,6 +142,7 @@ export function refreshPwaInstallStatus() {
 }
 
 export function startPwaInstallGuide() {
+  if (!TUTORIALS_ENABLED) return
   initPwaInstall()
   refreshPwaInstallStatus()
   pwaInstallState.tutorialStarted = true
@@ -153,6 +158,7 @@ export function startPwaInstallGuide() {
 }
 
 export function closePwaInstallGuide({ disableAutoGuide = false } = {}) {
+  if (!TUTORIALS_ENABLED) return
   pwaInstallState.guideActive = false
   pwaInstallState.dismissedForNow = true
   if (disableAutoGuide) pwaInstallState.disableAutoGuide = true
@@ -161,6 +167,7 @@ export function closePwaInstallGuide({ disableAutoGuide = false } = {}) {
 }
 
 export function waitForPwaInstall() {
+  if (!TUTORIALS_ENABLED) return
   refreshPwaInstallStatus()
   if (!pwaInstallState.installed) pwaInstallState.phase = 'waiting-for-install'
   saveGuide()
@@ -273,6 +280,7 @@ export function initPwaInstall() {
 }
 
 function canShowPwaInstallPromotion(now) {
+  if (!TUTORIALS_ENABLED) return false
   if (!pwaInstallState.initialized || !pwaInstallState.mobile) return false
   if (pwaInstallState.installed || pwaInstallState.standalone || pwaInstallState.autoSuppressed || pwaInstallState.disableAutoGuide) return false
   if (pwaInstallState.guideActive || pwaInstallState.phase === 'waiting-for-install' || pwaInstallState.requesting) return false

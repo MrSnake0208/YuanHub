@@ -8,7 +8,7 @@
             <h2 :id="editorId + '-title'">{{ poolName }}</h2>
             <p class="pool-confirmation">{{ poolDefinition?.start_date || '开始日期未知' }} — {{ poolDefinition?.end_date || '结束日期未知' }} · {{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</p>
           </div>
-          <button v-if="!guideVisible" type="button" class="guide-entry" @click="practice ? startGuide() : openGuide()">使用教程</button>
+          <button v-if="TUTORIALS_ENABLED && !guideVisible" type="button" class="guide-entry" @click="practice ? startGuide() : openGuide()">使用教程</button>
           <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">退出教程</button>
           <button type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
             <X :size="20" aria-hidden="true" />
@@ -367,6 +367,7 @@
 </template>
 
 <script setup>
+import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { CircleHelp, Plus, X } from '@lucide/vue'
 import RecruitmentGuideChoice from './RecruitmentGuideChoice.vue'
@@ -436,9 +437,9 @@ function dismissGuide() {
   guideVisible.value = false; guidePicker.value = false; emit('guide-dismiss')
   nextTick(() => { if (props.open && taskFocus?.isConnected) taskFocus.focus({ preventScroll: true }) })
 }
-function openGuide() { guidePicker.value = !guidePicker.value }
-function startGuide() { guidePicker.value = false; guideVisible.value = true; emit('guide-start') }
-function openPractice() { if (!props.busy) { dismissGuide(); emit('practice') } }
+function openGuide() { if (!TUTORIALS_ENABLED) return; guidePicker.value = !guidePicker.value }
+function startGuide() { if (!TUTORIALS_ENABLED) return; guidePicker.value = false; guideVisible.value = true; emit('guide-start') }
+function openPractice() { if (TUTORIALS_ENABLED && !props.busy) { dismissGuide(); emit('practice') } }
 function chooseDailyMode(mode) { dailyMode.value = mode; viewedRecords.value = false; progressReviewed.value = false }
 function switchRecordView(view) { recordView.value = view; if (guideVisible.value && !activeRow.value && !pendingCount.value) viewedRecords.value = true }
 function reviewPulls() {
@@ -449,7 +450,7 @@ function onPullInput(event) { pullsReviewed.value = false; limitPullSpan(event) 
 function markPullsUnknown() { if (activeRow.value && !props.busy && !props.readOnly) { activeRow.value.pull_span = ''; pullsReviewed.value = true } }
 function reviewProgress() { try { progressFromRemaining(remaining.value); progressReviewed.value = true } catch { progressReviewed.value = false } }
 function isGuideRow(row) { return receiptVerified.value ? row.event_id === props.saveReceipt.entries[0]?.event_id : row.event_id === displayRows.value[0]?.event_id }
-watch(() => props.guided, active => { guideVisible.value = active }, { immediate: true })
+if (TUTORIALS_ENABLED) watch(() => props.guided, active => { guideVisible.value = active }, { immediate: true })
 function entryMatches(event, entry) {
   return event && !event.deleted_at && event.pool_id === props.pool?.pool_id && event.event_id === entry.event_id && event.agent_snapshot.agent_id === entry.agent_id && event.pull_span === entry.pull_span && event.up_status === entry.up_status && (event.acquired_date || null) === entry.acquired_date && (event.note || null) === entry.note
 }
@@ -685,7 +686,7 @@ watch(() => props.open, open => {
     resetKeyboardAvoidance()
     return
   }
-  guideVisible.value = props.guided
+  guideVisible.value = TUTORIALS_ENABLED && props.guided
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''; dailyMode.value = ''; recordSearch.value = ''
   const progress = props.pool?.progress
@@ -709,8 +710,10 @@ onMounted(() => {
   viewport?.addEventListener('resize', onViewportChange)
   viewport?.addEventListener('scroll', onViewportChange)
   window.addEventListener('resize', onViewportChange)
-  window.addEventListener('pointerup', releaseGuideHint)
-  window.addEventListener('pointercancel', releaseGuideHint)
+  if (TUTORIALS_ENABLED) {
+    window.addEventListener('pointerup', releaseGuideHint)
+    window.addEventListener('pointercancel', releaseGuideHint)
+  }
   if (props.open) scheduleEntryVisibility()
 })
 onBeforeUnmount(() => {
