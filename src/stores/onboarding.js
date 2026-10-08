@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
-import { ONBOARDING_TASKS } from '../utils/onboardingTasks.js'
+import { ONBOARDING_TASKS, maaYuanCheckpoint, verifiedConnectionSync } from '../utils/onboardingTasks.js'
+
+// Synchronous identity watchers can re-enter initialize while it pauses an old owner.
+const initializingStores = new WeakSet()
 
 export const ONBOARDING_VERSION = 2
 export const ONBOARDING_STORAGE_KEY = 'yuanhub:onboarding:v2'
@@ -8,13 +11,14 @@ export const onboardingStorageKey = ownerId => `${ONBOARDING_STORAGE_KEY}:${enco
 const defaults = () => ({
   ownerId: 'guest', status: 'idle', tutorialTask: null, waitingFor: null,
   tutorialCompleted: false, completedTasks: {}, dismissedForNow: null, disableAutoGuide: false,
-  panel: 'hidden', initialized: false
+  maaYuan: maaYuanCheckpoint(), panel: 'hidden', initialized: false
 })
 
 function verifiedReceipt(evidence, task, ownerId) {
   return Object.hasOwn(ONBOARDING_TASKS, task) && evidence?.ownerId === ownerId && evidence?.task === task &&
     typeof evidence.accountId === 'string' && !!evidence.accountId &&
-    (task !== 'operator-first-entry' || (typeof evidence.operatorId === 'string' && !!evidence.operatorId))
+    (task !== 'operator-first-entry' || (typeof evidence.operatorId === 'string' && !!evidence.operatorId)) &&
+    (task !== 'maayuan-first-sync' || verifiedConnectionSync(evidence.receipt, evidence.connectionId, evidence.accountId))
 }
 
 export const useOnboardingStore = defineStore('onboarding', {
@@ -25,43 +29,53 @@ export const useOnboardingStore = defineStore('onboarding', {
   },
   actions: {
     initialize(ownerId = this.ownerId) {
-      ownerId = String(ownerId || 'guest')
-      if (this.initialized && this.ownerId === ownerId) return this
-      // Only an explicitly started guest task follows its login handoff.
-      const handoff = this.ownerId === 'guest' && this.active && ownerId !== 'guest' ? this.tutorialTask : null
-      const guestDismissal = this.ownerId === 'guest' && this.initialized ? this.dismissedForNow : null
-      const guestDisabled = this.ownerId === 'guest' && this.initialized && this.disableAutoGuide
-      if (this.initialized && this.active) {
-        this.status = 'paused'
-        this.persist()
-      }
-      this.$patch({ ...defaults(), ownerId, initialized: true })
+      if (initializingStores.has(this)) return this
+      initializingStores.add(this)
       try {
-        const saved = JSON.parse(localStorage.getItem(onboardingStorageKey(ownerId)) || 'null')
-        if (saved?.version === ONBOARDING_VERSION) {
-          this.dismissedForNow = typeof saved.dismissedForNow === 'number' ? saved.dismissedForNow : null
-          this.disableAutoGuide = saved.disableAutoGuide === true
-          this.completedTasks = Object.fromEntries(Object.entries(saved.completedTasks || {})
-            .filter(([task, evidence]) => verifiedReceipt(evidence, task, ownerId)))
-          if (Object.hasOwn(ONBOARDING_TASKS, saved.tutorialTask) && ['in_progress', 'paused', 'completed'].includes(saved.status)) {
-            this.tutorialTask = saved.tutorialTask
-            this.status = saved.status
-            this.tutorialCompleted = saved.status === 'completed' && !!this.completedTasks[saved.tutorialTask]
-            if (saved.status === 'completed' && !this.tutorialCompleted) this.status = 'paused'
-            // Re-read business evidence; a historical waiting state is not evidence.
-            this.waitingFor = 'business_state'
-            if (this.active) this.panel = 'task'
-          }
-        } else if (localStorage.getItem('yuanhub:onboarding:v1')) {
-          // A returning Tour user is not a verified business-task graduate.
-          this.dismissedForNow = Date.now()
+        ownerId = String(ownerId || 'guest')
+        if (this.initialized && this.ownerId === ownerId) return this
+        // Only an explicitly started guest task follows its login handoff.
+        const handoff = this.ownerId === 'guest' && this.active && ownerId !== 'guest' ? this.tutorialTask : null
+        const guestDismissal = this.ownerId === 'guest' && this.initialized ? this.dismissedForNow : null
+        const guestDisabled = this.ownerId === 'guest' && this.initialized && this.disableAutoGuide
+        if (this.initialized && this.active) {
+          this.status = 'paused'
+          this.persist()
         }
-      } catch { /* Unavailable storage keeps this session usable. */ }
-      if (guestDismissal) this.dismissedForNow ||= guestDismissal
-      if (guestDisabled) this.disableAutoGuide = true
-      if (guestDismissal || guestDisabled) this.persist()
-      if (handoff) this.start(handoff)
-      return this
+        this.$patch({ ...defaults(), ownerId, initialized: true })
+        try {
+          const saved = JSON.parse(localStorage.getItem(onboardingStorageKey(ownerId)) || 'null')
+          if (saved?.version === ONBOARDING_VERSION) {
+            this.dismissedForNow = typeof saved.dismissedForNow === 'number' ? saved.dismissedForNow : null
+            this.disableAutoGuide = saved.disableAutoGuide === true
+            this.maaYuan = maaYuanCheckpoint(saved.maaYuan)
+            this.completedTasks = Object.fromEntries(Object.entries(saved.completedTasks || {})
+              .filter(([task, evidence]) => verifiedReceipt(evidence, task, ownerId)))
+            if (Object.hasOwn(ONBOARDING_TASKS, saved.tutorialTask) && ['in_progress', 'paused', 'completed'].includes(saved.status)) {
+              this.tutorialTask = saved.tutorialTask
+              this.status = saved.status
+              this.tutorialCompleted = saved.status === 'completed' && !!this.completedTasks[saved.tutorialTask]
+              if (saved.tutorialTask === 'maayuan-first-sync') {
+                // A stored receipt is a hint; verify the live connection and record again.
+                this.tutorialCompleted = false
+                this.status = saved.status === 'completed' ? 'paused' : saved.status
+              }
+              if (saved.status === 'completed' && !this.tutorialCompleted) this.status = 'paused'
+              // Re-read business evidence; a historical waiting state is not evidence.
+              this.waitingFor = 'business_state'
+              if (this.active) this.panel = 'task'
+            }
+          } else if (localStorage.getItem('yuanhub:onboarding:v1')) {
+            // A returning Tour user is not a verified business-task graduate.
+            this.dismissedForNow = Date.now()
+          }
+        } catch { /* Unavailable storage keeps this session usable. */ }
+        if (guestDismissal) this.dismissedForNow ||= guestDismissal
+        if (guestDisabled) this.disableAutoGuide = true
+        if (guestDismissal || guestDisabled) this.persist()
+        if (handoff) this.start(handoff)
+        return this
+      } finally { initializingStores.delete(this) }
     },
     recommend() {
       if (this.status !== 'idle' || this.visible || this.dismissedForNow || this.disableAutoGuide || Object.keys(this.completedTasks).length) return false
@@ -83,6 +97,10 @@ export const useOnboardingStore = defineStore('onboarding', {
       this.panel = 'task'
       this.persist()
       return true
+    },
+    setMaaYuanCheckpoint(value) {
+      this.maaYuan = maaYuanCheckpoint(value)
+      this.persist()
     },
     applyProgress({ waitingFor, evidence } = {}) {
       if (!this.active) return false
@@ -109,7 +127,7 @@ export const useOnboardingStore = defineStore('onboarding', {
         localStorage.setItem(onboardingStorageKey(this.ownerId), JSON.stringify({
           version: ONBOARDING_VERSION, status: this.status, tutorialTask: this.tutorialTask,
           waitingFor: this.waitingFor, tutorialCompleted: this.tutorialCompleted,
-          completedTasks: this.completedTasks, dismissedForNow: this.dismissedForNow, disableAutoGuide: this.disableAutoGuide
+          maaYuan: maaYuanCheckpoint(this.maaYuan), completedTasks: this.completedTasks, dismissedForNow: this.dismissedForNow, disableAutoGuide: this.disableAutoGuide
         }))
         return true
       } catch { return false }

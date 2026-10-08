@@ -32,20 +32,19 @@ test('高级权限选择器展示星石采集权限分组', () => {
   assert.match(profile, /permission\.scope\.startsWith\("star:"\)/)
 })
 
-test('MaaYuan 新连接创建后给出从复制连接码到开始同步的完整步骤', () => {
-  const stepsStart = profile.indexOf('<ol v-if="newTokenKind === \'maayuan\'" class="paste-steps">')
-  const stepsEnd = profile.indexOf('</ol>', stepsStart)
-  const steps = profile.slice(stepsStart, stepsEnd)
-  assert.ok(stepsStart >= 0 && stepsEnd > stepsStart)
-  assert.match(steps, /之后仍可在“现有连接”中复制/)
-  assert.match(steps, /同步至YuanHub/)
-  assert.match(steps, /YuanHub连接码/)
-  assert.match(steps, /据点日常/)
-  assert.match(steps, /采集密探信息/)
-  assert.match(steps, /自动识别背包/)
-  assert.match(steps, /记录奖励内容及数量/)
-  assert.match(steps, /星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中/)
-  assert.match(steps, /采集结果会同步/)
+test('MaaYuan首次闭环只选背包，其他任务折叠且星石边界准确', () => {
+  assert.match(profile, /连接码已创建，还没确认同步/)
+  assert.match(profile, /仅创建连接码不表示同步成功/)
+  assert.match(profile, /newTokenKind === 'maayuan' && tokenCopied/)
+  assert.match(profile, /百宝箱 · 自动识别背包/)
+  assert.match(profile, /同步至 YuanHub/)
+  assert.match(profile, /YuanHub 连接码/)
+  assert.match(profile, /运行一次真实任务/)
+  assert.match(profile, /以后还可以同步什么/)
+  assert.match(profile, /采集密探信息/)
+  assert.match(profile, /据点日常/)
+  assert.match(profile, /记录奖励内容及数量/)
+  assert.match(profile, /网页端截图识别可用；MaaYuan 自动采集仍在接入中/)
 })
 
 test('MaaYuan 连接按钮暴露给新手教程并继续复用现有连接逻辑', () => {

@@ -5,14 +5,16 @@ import { activeAccount } from '../store/activeAccount.js'
 import { accountListChange } from '../store/accountList.js'
 import { listAccounts } from '../api/accounts.js'
 import { getOperatorCurrent } from '../api/operator.js'
-import { ONBOARDING_TASKS, ownedOperatorId, resolveTaskProgress } from './onboardingTasks.js'
+import { ONBOARDING_TASKS, ownedOperatorId, resolveTaskProgress, verifiedConnectionSync } from './onboardingTasks.js'
+import { getOpenApiTokens, getConnectionFirstSync } from '../api/openApi.js'
+import { subscribeAccountEvents } from '../store/accountEvents.js'
 import { operatorCurrentRead } from './operatorEvents.js'
 
-export const tutorialBusiness = reactive({ accounts: null, accountId: '', game: '', currentLoaded: false, operatorId: '', error: '' })
+export const tutorialBusiness = reactive({ accounts: null, accountId: '', game: '', currentLoaded: false, operatorId: '', error: '', maaFormOpen: false, accountName: '' })
 let generation = 0
 let stopController = null
 
-const identity = () => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : 'guest'
+const identity = () => auth.isLoggedIn && auth.userInfo?.id ? String(auth.userInfo.id) : 'guest'
 const storeForIdentity = () => useOnboardingStore().initialize(identity())
 
 function applyBusiness() {
@@ -26,12 +28,13 @@ export async function refreshTutorialBusiness() {
   Object.assign(tutorialBusiness, { accounts: null, accountId: activeAccount.id, game: '', currentLoaded: false, operatorId: '', error: '' })
   if (!store.active) return
   if (ownerId === 'guest') { applyBusiness(); return }
-  store.applyProgress({ waitingFor: 'business_state' })
+  if (task !== 'maayuan-first-sync' || !['maa_copy', 'maa_sync'].includes(store.waitingFor)) store.applyProgress({ waitingFor: 'business_state' })
   try {
     const accounts = await listAccounts(auth.userInfo.id)
     if (!valid()) return
     if (!Array.isArray(accounts) || accounts.some(account => !account?.id || !['如鸢', '代号鸢'].includes(account.game))) throw new Error('无法确认账号数据，请重试读取。')
     tutorialBusiness.accounts = accounts
+    if (task === 'maayuan-first-sync') { await refreshMaaYuan(store, accounts, valid); return }
     const account = accounts.find(item => item.id === activeAccount.id)
     if (task === 'account-create' || !account) { applyBusiness(); return }
     tutorialBusiness.accountId = account.id
@@ -43,8 +46,73 @@ export async function refreshTutorialBusiness() {
     applyBusiness()
   } catch (error) {
     if (!valid()) return
-    tutorialBusiness.error = error?.message || '暂时无法读取业务结果，请在真实页面处理错误后重试。'
-    applyBusiness()
+    tutorialBusiness.error = task === 'maayuan-first-sync'
+      ? (error?.status === 404
+          ? '当前连接已失效或服务尚未提供同步验证接口。可重新读取或退出；不能把连接码创建成功视为同步成功。'
+          : '暂时无法读取连接或同步证据，尚不能确认成功。可稍后重新检查或退出；历史记录没有连接来源时无法追认。')
+      : error?.message || '暂时无法读取业务结果，请在真实页面处理错误后重试。'
+    if (task === 'maayuan-first-sync') store.applyProgress({ waitingFor: 'read_error' })
+    else applyBusiness()
+  }
+}
+
+async function refreshMaaYuan(store, accounts, valid) {
+  const connections = await getOpenApiTokens()
+  if (!valid()) return
+  if (!Array.isArray(connections)) throw new Error('无法读取连接')
+  const usable = connections.filter(item => item?.token_id && accounts.some(account => account.id === item.account_id) && item.scopes?.includes('inventory:write'))
+  const checkpoint = store.maaYuan
+  let connection = usable.find(item => item.token_id === checkpoint.connectionId && item.account_id === checkpoint.accountId)
+  if (!checkpoint.connectionId) {
+    connection = checkpoint.accountId
+      ? usable.find(item => item.account_id === checkpoint.accountId)
+      : usable.find(item => item.account_id === activeAccount.id) || usable[0]
+  }
+  if (!connection) {
+    const accountId = accounts.some(account => account.id === checkpoint.accountId) ? checkpoint.accountId : ''
+    store.setMaaYuanCheckpoint({ accountId, phase: 'choose-account' })
+    store.applyProgress({ waitingFor: !accounts.length ? 'account_created' : !tutorialBusiness.maaFormOpen ? 'maa_connect' : accountId ? 'maa_create' : 'maa_account' })
+    return
+  }
+  const sameConnection = checkpoint.connectionId === connection.token_id && checkpoint.accountId === connection.account_id
+  // A local synced flag without a fresh server receipt cannot complete or skip copying.
+  const phase = sameConnection && ['token-copied', 'waiting-sync'].includes(checkpoint.phase) ? 'waiting-sync' : 'token-created'
+  store.setMaaYuanCheckpoint({ connectionId: connection.token_id, accountId: connection.account_id, phase })
+  const account = accounts.find(account => account.id === connection.account_id)
+  tutorialBusiness.accountName = account ? `${account.game} · ${account.name}` : connection.account_name
+  const receipt = await getConnectionFirstSync(connection.token_id)
+  if (!valid() || store.maaYuan.connectionId !== connection.token_id || store.maaYuan.accountId !== connection.account_id) return
+  if (verifiedConnectionSync(receipt, connection.token_id, connection.account_id)) {
+    store.setMaaYuanCheckpoint({ ...store.maaYuan, phase: 'synced' })
+    store.applyProgress({ waitingFor: 'verified', evidence: {
+      ownerId: store.ownerId, task: 'maayuan-first-sync', connectionId: connection.token_id,
+      accountId: connection.account_id, receipt: Object.fromEntries(['connection_id', 'account_id', 'synced', 'data_type', 'record_id', 'received_at'].map(key => [key, receipt[key]]))
+    } })
+  } else {
+    if (receipt?.connection_id !== connection.token_id || receipt?.account_id !== connection.account_id || receipt?.synced !== false) throw new Error('无法确认同步状态')
+    store.applyProgress({ waitingFor: phase === 'waiting-sync' ? 'maa_sync' : 'maa_copy' })
+  }
+}
+
+export function recordMaaYuanAction(action, context = {}) {
+  const store = storeForIdentity()
+  if (!store.active || store.tutorialTask !== 'maayuan-first-sync') return
+  generation++ // Product events supersede older reads.
+  if (action === 'connect') {
+    tutorialBusiness.maaFormOpen = context.open === true
+    if (!store.maaYuan.connectionId) store.applyProgress({ waitingFor: context.open ? (store.maaYuan.accountId ? 'maa_create' : 'maa_account') : 'maa_connect' })
+    return
+  }
+  if (action === 'account') {
+    store.setMaaYuanCheckpoint({ accountId: context.accountId, phase: 'choose-account' })
+    void refreshTutorialBusiness()
+  } else if (action === 'created') {
+    store.setMaaYuanCheckpoint({ accountId: context.accountId, connectionId: context.connectionId, phase: 'token-created' })
+    store.applyProgress({ waitingFor: 'maa_copy' })
+  } else if (action === 'copied' && context.connectionId === store.maaYuan.connectionId && context.accountId === store.maaYuan.accountId) {
+    store.setMaaYuanCheckpoint({ ...store.maaYuan, phase: 'token-copied' })
+    store.applyProgress({ waitingFor: 'maa_sync' })
+    void refreshTutorialBusiness()
   }
 }
 
@@ -82,7 +150,7 @@ export function initializeOnboardingTour(router) {
     void refreshTutorialBusiness()
   }, { immediate: true, flush: 'sync' })
   const stopRead = watch(operatorCurrentRead, read => {
-    if (!store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id ||
+    if (store.tutorialTask !== 'operator-first-entry' || !store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id ||
         read.accountId !== tutorialBusiness.accountId || read.game !== tutorialBusiness.game || !tutorialBusiness.accounts) return
     try {
       const operatorId = ownedOperatorId(read.data, read.accountId, read.game)
@@ -101,9 +169,22 @@ export function initializeOnboardingTour(router) {
     store.panel, store.dismissedForNow], () => {
     if (router.currentRoute.value.name === 'today') store.recommend()
   }, { immediate: true })
+  const checkMaaYuan = () => {
+    if (store.active && store.tutorialTask === 'maayuan-first-sync' && store.maaYuan.connectionId && document.visibilityState !== 'hidden') void refreshTutorialBusiness()
+  }
+  // SSE is only a wake-up; neither previews nor account-wide changes are receipts.
+  const stopEvents = subscribeAccountEvents(message => {
+    if (message?.event === 'inventory_import' && !message.data?.preview && message.data?.account_id === store.maaYuan.accountId) checkMaaYuan()
+  })
+  const poll = setInterval(checkMaaYuan, 15000)
+  window.addEventListener('focus', checkMaaYuan)
+  document.addEventListener('visibilitychange', checkMaaYuan)
   const cleanup = () => {
     generation++
-    stopIdentity(); stopBusiness(); stopRead(); stopRecommend()
+    stopIdentity(); stopBusiness(); stopRead(); stopRecommend(); stopEvents()
+    clearInterval(poll)
+    window.removeEventListener('focus', checkMaaYuan)
+    document.removeEventListener('visibilitychange', checkMaaYuan)
     if (stopController === cleanup) stopController = null
   }
   stopController = cleanup

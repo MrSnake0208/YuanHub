@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
+import { createPinia } from 'pinia'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import ProfilePage from '../src/pages/user/profile.vue'
 import { auth } from '../src/store/auth.js'
@@ -25,7 +26,7 @@ vi.mock('../src/api/openApi.js', () => ({
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
 const token = { token_id: 'tok-a', account_id: 'acc-a', account_name: '大号', remark: '旧连接', scopes: [] }
-const render = (options = {}) => mount(ProfilePage, { ...options, global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, BetaNotice: true, GameAccountManager: true }, directives: { reveal: () => {} } } })
+const render = (options = {}) => mount(ProfilePage, { ...options, global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, BetaNotice: true, GameAccountManager: true }, directives: { reveal: () => {} } } })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -139,7 +140,8 @@ it('连接设置区分星石上传权限与尚未接入的自动采集任务', a
   expect(wrapper.get('.grant-review').text()).toContain('上传星石背包临时采集结果（MaaYuan 采集任务接入中）')
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
-  expect(wrapper.get('.paste-steps').text()).toContain('星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中')
+  await wrapper.get('.nt-row button').trigger('click'); await flushPromises()
+  expect(wrapper.get('details.paste-steps').text()).toContain('星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中')
   expect(wrapper.get('.paste-steps').text()).toContain('仅创建连接码不表示同步成功')
   expect(wrapper.get('.nt-footer button').text()).toBe('收起填写说明')
   wrapper.unmount()

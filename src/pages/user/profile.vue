@@ -111,6 +111,7 @@
                 class="act-btn primary app-connect"
                 type="button"
                 data-tour="maayuan-sync"
+                :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_connect' }"
                 :disabled="busy"
                 :aria-expanded="showMaaYuanConnect"
                 aria-controls="maayuan-connect-panel"
@@ -121,6 +122,17 @@
                 }}
               </button>
             </article>
+
+            <div class="maayuan-tutorial-entry">
+              <button class="act-btn ghost" type="button" @click="beginMaaYuanTutorial()">{{ onboarding.maaYuan.connectionId ? '继续实操教程 / 测试第一次同步' : '跟着做一次：第一次连接 MaaYuan' }}</button>
+              <p>可随时退出；不会清空表单或停止已创建的连接。</p>
+            </div>
+
+            <details class="maayuan-other-tasks">
+              <summary>以后还可以同步什么</summary>
+              <p>密探练度：百宝箱 · 采集密探信息。派遣 / 情报掉落：据点日常，开启「记录奖励内容及数量」与「同步至 YuanHub」。</p>
+              <p>星石：网页端截图识别可用；MaaYuan 自动采集仍在接入中。</p>
+            </details>
 
             <form
               v-if="showMaaYuanConnect"
@@ -168,11 +180,13 @@
                   id="maayuan-account"
                   ref="maaAccountSelect"
                   v-model="maaAccountId"
-                  @change="maaAccountChosen = true"
+                  @change="chooseMaaAccount"
                   class="form-control"
+                  :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_account' }"
                   :disabled="creatingMode === 'maayuan'"
                   aria-describedby="maayuan-account-help"
                 >
+                  <option v-if="maaGuideActive && !onboarding.maaYuan.accountId" value="" disabled>请选择真实游戏账号</option>
                   <option
                     v-for="account in accounts"
                     :key="account.id"
@@ -246,13 +260,14 @@
                   class="act-btn ghost"
                   type="button"
                   :disabled="creatingMode === 'maayuan'"
-                  @click="showMaaYuanConnect = false"
+                  @click="closeMaaYuanForm"
                 >
                   取消
                 </button>
                 <button
                   class="act-btn primary"
                   type="submit"
+                  :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_create' }"
                   :disabled="creatingMode === 'maayuan' || !maaAccountId"
                 >
                   {{
@@ -288,49 +303,19 @@
                   </p>
                 </div>
               </div>
-              <ol v-if="newTokenKind === 'maayuan'" class="paste-steps">
-                <li>
-                  <span>1</span>
-                  <div class="paste-step-copy">
-                    <strong>先复制下方连接码</strong>
-                    <small>之后仍可在“现有连接”中复制。</small>
-                  </div>
-                </li>
-                <li>
-                  <span>2</span>
-                  <div class="paste-step-copy">
-                    <strong>找到你要实时统计的任务</strong>
-                    <small>派遣 / 情报掉落 → 据点日常</small>
-                    <small>密探练度 → 百宝箱 · 采集密探信息</small>
-                    <small>道具 / 心纸数量 → 百宝箱 · 自动识别背包</small>
-                    <small>星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中</small>
-                  </div>
-                </li>
-                <li>
-                  <span>3</span>
-                  <div class="paste-step-copy">
-                    <strong>打开同步选项</strong>
-                    <small>在对应任务中开启“同步至YuanHub”。据点日常还需开启“记录奖励内容及数量”。</small>
-                  </div>
-                </li>
-                <li>
-                  <span>4</span>
-                  <div class="paste-step-copy">
-                    <strong>粘贴连接码并照常使用</strong>
-                    <small>在“YuanHub连接码”粘贴刚复制的内容；完成对应任务后，采集结果会同步到上方绑定的 YuanHub 游戏账号。</small>
-                  </div>
-                </li>
-                <li>
-                  <span>5</span>
-                  <div class="paste-step-copy"><strong>运行采集任务，再确认数据</strong><small>任务完成后，在 YuanHub 切换到上方绑定的游戏账号，前往 <router-link to="/inventory">库存追踪</router-link> 或 <router-link to="/operator">密探名册</router-link> 检查对应数据。仅创建连接码不表示同步成功。</small></div>
-                </li>
-              </ol>
+              <p v-if="newTokenKind === 'maayuan'" class="paste-steps">连接码已创建，还没确认同步。请先点击真实「复制连接码」；仅创建连接码不表示同步成功。</p>
+              <details v-if="newTokenKind === 'maayuan' && tokenCopied" class="paste-steps">
+                <summary>现在去 MaaYuan 完成设置</summary>
+                <p>打开「百宝箱 · 自动识别背包」，开启「同步至 YuanHub」，在「YuanHub 连接码」粘贴刚复制的内容，运行一次真实任务，然后回到 YuanHub 检查库存。</p>
+                <p>星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中。</p>
+              </details>
               <div class="nt-row">
                 <code class="nt-code">{{ newToken.token }}</code>
                 <button
                   class="t-btn copy"
                   type="button"
                   @click="copyToken(newToken.token)"
+                  :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_copy' && onboarding.maaYuan.connectionId === newToken.token_id }"
                 >
                   <Copy :size="16" aria-hidden="true" />{{
                     tokenCopied ? "已复制" : "复制连接码"
@@ -454,9 +439,11 @@
                       type="button"
                       :disabled="busy"
                       @click="copyExistingToken(tokenItem)"
+                      :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_copy' && onboarding.maaYuan.connectionId === tokenItem.token_id }"
                     >
                       <Copy :size="15" aria-hidden="true" />{{ copyingTokenId === tokenItem.token_id ? "正在复制…" : "复制连接码" }}
                     </button>
+                    <button v-if="tokenItem.scopes?.includes('inventory:write')" class="t-btn" type="button" @click="beginMaaYuanTutorial(tokenItem)">测试 / 完成第一次同步</button>
                     <button
                       v-if="!supportsMaaYuan(tokenItem)"
                       class="t-btn update"
@@ -618,6 +605,8 @@
 </template>
 
 <script setup>
+import { useOnboardingStore } from '../../stores/onboarding.js'
+import { recordMaaYuanAction, refreshTutorialBusiness, tutorialBusiness } from '../../utils/onboardingTour.js'
 import { useAccountListUpdates } from '../../store/accountList.js'
 import '@/styles/page-header.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -661,6 +650,9 @@ import {
   scopeKeys,
 } from "../../utils/openApiToken.js";
 
+const onboarding = useOnboardingStore();
+onboarding.initialize(String(auth.userInfo?.id || 'guest'));
+const maaGuideActive = computed(() => onboarding.active && onboarding.tutorialTask === 'maayuan-first-sync' && onboarding.ownerId === String(auth.userInfo?.id || 'guest'));
 const tokens = ref([]);
 const permissions = ref([]);
 const accounts = ref([]);
@@ -820,7 +812,7 @@ function applyDefaultAccounts() {
   const defaultId = accounts.value.find(account => account.id === activeAccount.id)?.id || accounts.value[0]?.id || "";
   if (creatingMode.value !== "maayuan") {
     if (!accounts.value.some(account => account.id === maaAccountId.value)) maaAccountChosen.value = false;
-    if (!maaAccountChosen.value) maaAccountId.value = defaultId;
+    if (!maaAccountChosen.value) maaAccountId.value = maaGuideActive.value && !onboarding.maaYuan.accountId ? "" : defaultId;
   }
   if (creatingMode.value !== "advanced") {
     if (!accounts.value.some(account => account.id === customAccountId.value)) customAccountChosen.value = false;
@@ -900,10 +892,40 @@ async function loadPermissions() {
   }
 }
 
+function beginMaaYuanTutorial(connection) {
+  onboarding.initialize(String(auth.userInfo?.id || 'guest'));
+  if (connection && connection.token_id !== onboarding.maaYuan.connectionId) onboarding.setMaaYuanCheckpoint({ connectionId: connection.token_id, accountId: connection.account_id, phase: 'token-created' });
+  onboarding.start('maayuan-first-sync');
+  tutorialBusiness.maaFormOpen = showMaaYuanConnect.value;
+  if (showMaaYuanConnect.value && !onboarding.maaYuan.connectionId && !onboarding.maaYuan.accountId) {
+    if (maaAccountChosen.value && maaAccountId.value) recordMaaYuanAction('account', { accountId: maaAccountId.value });
+    else maaAccountId.value = '';
+  }
+  void refreshTutorialBusiness();
+}
+
+function chooseMaaAccount() {
+  maaAccountChosen.value = true;
+  recordMaaYuanAction('account', { accountId: maaAccountId.value });
+}
+
+function closeMaaYuanForm() {
+  showMaaYuanConnect.value = false;
+  recordMaaYuanAction('connect', { open: false });
+}
+
 function openMaaYuanConnect() {
   if (!beta.canUseBetaFeatures) { toast("请先前往内测页面确认体验资格。", true); return; }
   showMaaYuanConnect.value = !showMaaYuanConnect.value;
-  if (showMaaYuanConnect.value) applyDefaultAccounts();
+  if (showMaaYuanConnect.value) {
+    applyDefaultAccounts();
+    if (maaGuideActive.value && !onboarding.maaYuan.accountId) maaAccountId.value = "";
+    void nextTick(() => {
+      maaAccountSelect.value?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      maaAccountSelect.value?.focus({ preventScroll: true });
+    });
+  }
+  recordMaaYuanAction('connect', { open: showMaaYuanConnect.value });
 }
 
 async function revealMaaYuanConnect() {
@@ -969,7 +991,9 @@ async function createMaaYuanConnection() {
       remark: "MaaYuan",
     });
     if (userId !== auth.userInfo?.id) return;
+    if (!created?.token_id || typeof created.token !== 'string' || !created.token || (created.account_id && created.account_id !== targetAccountId)) throw new Error('连接码响应无效，请重新读取现有连接');
     showCreatedToken(created, "maayuan");
+    recordMaaYuanAction('created', { connectionId: created.token_id, accountId: targetAccountId });
     showMaaYuanConnect.value = false;
     await focusCreatedToken();
     if (userId !== auth.userInfo?.id) return;
@@ -1105,6 +1129,8 @@ async function copyExistingToken(tokenItem) {
           }),
         ]);
         await tokenPromise;
+        if (auth.userInfo?.id !== ownerId) return;
+        recordMaaYuanAction('copied', { connectionId: id, accountId: tokenItem.account_id });
         toast("连接码已复制");
         return;
       } catch (_clipboardError) {
@@ -1113,7 +1139,7 @@ async function copyExistingToken(tokenItem) {
     }
     const token = await tokenPromise;
     if (auth.userInfo?.id !== ownerId) return;
-    await copyToken(token, true);
+    if (await copyToken(token, true)) recordMaaYuanAction('copied', { connectionId: id, accountId: tokenItem.account_id });
   } catch (err) {
     if (auth.userInfo?.id === ownerId) toast(humanErr(err, "连接码复制失败"), true);
   } finally {
@@ -1122,6 +1148,9 @@ async function copyExistingToken(tokenItem) {
 }
 
 async function copyToken(token, existing = false) {
+  const ownerId = auth.userInfo?.id;
+  const connectionId = newToken.value?.token_id;
+  const accountId = newToken.value?.account_id || maaAccountId.value;
   try {
     await navigator.clipboard.writeText(token);
   } catch (_err) {
@@ -1135,13 +1164,18 @@ async function copyToken(token, existing = false) {
       if (!document.execCommand("copy")) throw new Error("复制失败");
     } catch (_fallbackError) {
       toast(existing ? "复制失败，请检查剪贴板权限" : "复制失败，请手动选择连接码复制", true);
-      return;
+      return false;
     } finally {
       textarea.remove();
     }
   }
-  if (!existing) tokenCopied.value = true;
+  if (auth.userInfo?.id !== ownerId || !profileAlive) return false;
+  if (!existing) {
+    tokenCopied.value = true;
+    if (newTokenKind.value === 'maayuan') recordMaaYuanAction('copied', { connectionId, accountId });
+  }
   toast(existing ? "连接码已复制" : "连接码已复制，可以去 MaaYuan 中粘贴了");
+  return true;
 }
 
 function finishNewToken() {
@@ -1158,6 +1192,8 @@ watch(() => auth.userInfo?.id, () => {
   accounts.value = [];
   accountManagerView.value = "";
   dismissNotice(); recentFailures.value = []; newToken.value = null;
+  tokens.value = [];
+  onboarding.initialize(String(auth.userInfo?.id || 'guest'));
   void loadAccounts();
 }, { flush: "sync" });
 watch([accounts, () => activeAccount.id], function () {
@@ -1179,6 +1215,7 @@ onMounted(function () {
 });
 onBeforeUnmount(function () {
   profileAlive = false;
+  tutorialBusiness.maaFormOpen = false;
   accountLoadVersion++;
   window.removeEventListener("resize", keepFocusedTokenVisible);
   if (layoutFrame) cancelAnimationFrame(layoutFrame);
@@ -1187,6 +1224,13 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
+.maayuan-tutorial-entry { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.maayuan-tutorial-entry p { margin: 0; font-size: 13px; color: var(--ink-60); }
+.tutorial-target { outline: 2px solid var(--tea); outline-offset: 3px; }
+.paste-steps p, .maayuan-other-tasks p { overflow-wrap: anywhere; }
+.maayuan-other-tasks summary, details.paste-steps summary { min-height: 44px; padding-block: 10px; cursor: pointer; }
+.maayuan-tutorial-entry button { min-height: 44px; }
+
 .profile-main {
   padding-bottom: 0;
 }

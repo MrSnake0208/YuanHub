@@ -20,14 +20,15 @@
             <button v-if="store.tutorialTask && !store.tutorialCompleted" type="button" @click="start(store.tutorialTask)">继续实操教程：{{ ONBOARDING_TASKS[store.tutorialTask]?.title }}</button>
             <button v-for="(task, id) in ONBOARDING_TASKS" :key="id" type="button" @click="start(id)">{{ task.title }}</button>
           </div>
-          <p class="tutorial-note">库存盘点、星石识别与 MaaYuan 连接，可从对应页面使用。</p>
+          <p class="tutorial-note">库存盘点与星石识别，可从对应页面使用。</p>
           <label class="tutorial-preference"><input v-model="disableAuto" type="checkbox" @change="savePreference" />以后不自动提示</label>
         </template>
         <template v-else-if="store.panel === 'result'">
-          <p role="status">{{ ONBOARDING_TASKS[store.tutorialTask]?.result }}</p>
+          <p role="status">{{ ONBOARDING_TASKS[store.tutorialTask]?.result }}<template v-if="store.tutorialTask === 'maayuan-first-sync'">，库存已同步到「{{ tutorialBusiness.accountName || store.maaYuan.accountId }}」。</template></p>
           <div class="tutorial-actions">
             <router-link v-if="store.tutorialTask === 'operator-first-entry'" to="/operator?tab=current" @click="close">看看养成总览</router-link>
             <button v-if="store.tutorialTask === 'operator-first-entry'" type="button" @click="close">继续录入</button>
+            <router-link v-else-if="store.tutorialTask === 'maayuan-first-sync'" to="/inventory" @click="close">查看库存（选择上方同步账号）</router-link>
             <router-link v-else to="/operator" @click="close">去录入密探</router-link>
           </div>
         </template>
@@ -38,6 +39,10 @@
             <router-link v-if="destination" :to="destination.to">{{ destination.label }}</router-link>
             <button v-if="store.waitingFor === 'read_error'" type="button" @click="refreshTutorialBusiness">重新读取真实状态</button>
           </div>
+          <template v-if="store.tutorialTask === 'maayuan-first-sync' && store.waitingFor === 'maa_sync'">
+            <p class="tutorial-note">无法直接观察 MaaYuan 设置；等待这条连接的真实库存记录，返回、刷新或跨页后会重新检查。</p>
+            <button type="button" @click="refreshTutorialBusiness">我已返回，检查真实同步</button>
+          </template>
           <button type="button" class="tutorial-back" @click="store.openTasks()">返回任务选择</button>
         </template>
       </aside>
@@ -66,12 +71,18 @@ const instruction = computed(() => ({
   read_error: '读取失败，暂不能确认成果。请处理真实错误或稍后继续。',
   account_created: '点击真实「创建游戏账号」，填写名称、选择游戏并创建。',
   account_selected: '你已有游戏账号，请在页面账号选择器中选择要录入的账号。',
+  maa_connect: '点击页面真实「连接 MaaYuan」按钮。',
+  maa_account: '在高亮的游戏账号选择器中，选择要保存库存的真实账号。',
+  maa_create: '核对所选账号与权限，再点击真实「创建 MaaYuan 连接码」。',
+  maa_copy: '连接码已就绪，还没确认同步。点击这条连接的真实「复制连接码」。',
+  maa_sync: '现在去 MaaYuan：打开「百宝箱 · 自动识别背包」，开启「同步至 YuanHub」，粘贴刚复制的连接码，运行一次任务。YuanHub 正在等待第一次真实库存同步。',
   operator_saved: route.path === '/operator/quick'
     ? '勾选一位真实密探，按游戏实际情况填写星级、等级与修为，核对预览并确认保存。'
     : '在密探名册点击「开始录入密探」，录入一位你实际拥有的密探。'
 }[store.waitingFor] || '请选择要完成的真实任务。'))
 const destination = computed(() => {
   if (store.waitingFor === 'login') return { to: { path: '/login', query: { redirect: ONBOARDING_TASKS[store.tutorialTask].route } }, label: '去登录' }
+  if (store.tutorialTask === 'maayuan-first-sync' && route.path !== '/user/profile' && store.waitingFor !== 'login') return { to: '/user/profile#maayuan-app-title', label: '返回 MaaYuan 连接' }
   if (store.waitingFor === 'account_created' && route.path !== '/user/profile') return { to: '/user/profile#game-accounts', label: '去创建游戏账号' }
   if (['account_selected', 'operator_saved'].includes(store.waitingFor) && !['/operator', '/operator/quick'].includes(route.path)) return { to: '/operator', label: '返回密探名册' }
   return null
