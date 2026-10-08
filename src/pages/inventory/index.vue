@@ -35,7 +35,7 @@
             <button v-if="inventoryAccountReady" type="button" class="btn primary inventory-entry" :disabled="loading || !!error || currentLoadedContext !== stockContext || editingStock"
               @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
           </div>
-          <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)">
+          <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)" :guide-task="inventorySetupNeeded || !auth.isLoggedIn || (!accountsLoading && !accountError && !accounts.length) ? 'inventory-first-baseline' : ''">
             <router-link v-if="!auth.isLoggedIn" class="btn primary" :to="{ path: '/login', query: { redirect: '/inventory' } }">登录</router-link>
             <button v-else-if="accountError || error" class="btn primary" type="button" @click="accountError ? loadAccounts() : reloadCurrent()">重试</button>
             <router-link v-else-if="!inventoryAccountReady && !accountsLoading" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>
@@ -1781,6 +1781,7 @@ import {
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
+import { inventoryCurrentRead } from '../../utils/inventoryEvents.js';
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
@@ -3475,6 +3476,7 @@ async function reloadCurrent(quiet, preserveContent) {
         return b.count - a.count;
       });
     currentLoadedContext.value = context;
+    if (entityType.value === 'item') inventoryCurrentRead.value = { ownerId: String(auth.userInfo?.id || ''), accountId: accountId.value, data };
   } catch (err) {
     if (seq === currentLoadSeq && context === stockContext.value && !quiet)
       error.value = humanErr(err, "加载失败，请稍后重试");

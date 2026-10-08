@@ -5,12 +5,15 @@ import { activeAccount } from '../store/activeAccount.js'
 import { accountListChange } from '../store/accountList.js'
 import { listAccounts } from '../api/accounts.js'
 import { getOperatorCurrent } from '../api/operator.js'
-import { ONBOARDING_TASKS, ownedOperatorId, resolveTaskProgress, verifiedConnectionSync } from './onboardingTasks.js'
+import { getCurrent } from '../api/inventory.js'
+import { getCurrentStarState } from '../api/starState.js'
+import { inventoryCurrentRead } from './inventoryEvents.js'
+import { ONBOARDING_TASKS, ownedOperatorId, inventoryBaselineAt, resolveTaskProgress, verifiedConnectionSync } from './onboardingTasks.js'
 import { getOpenApiTokens, getConnectionFirstSync } from '../api/openApi.js'
 import { subscribeAccountEvents } from '../store/accountEvents.js'
 import { operatorCurrentRead } from './operatorEvents.js'
 
-export const tutorialBusiness = reactive({ accounts: null, accountId: '', game: '', currentLoaded: false, operatorId: '', error: '', maaFormOpen: false, accountName: '' })
+export const tutorialBusiness = reactive({ accounts: null, accountId: '', game: '', currentLoaded: false, operatorId: '', baselineAt: '', starId: '', onToday: false, error: '', maaFormOpen: false, accountName: '' })
 let generation = 0
 let stopController = null
 
@@ -19,13 +22,13 @@ const storeForIdentity = () => useOnboardingStore().initialize(identity())
 
 function applyBusiness() {
   const store = storeForIdentity()
-  store.applyProgress(resolveTaskProgress(store.tutorialTask, { ...tutorialBusiness, ownerId: store.ownerId, loggedIn: identity() !== 'guest' }))
+  store.applyProgress(resolveTaskProgress(store.tutorialTask, { ...tutorialBusiness, firstDataTask: store.firstDataTask, ownerId: store.ownerId, loggedIn: identity() !== 'guest' }))
 }
 
 export async function refreshTutorialBusiness() {
   const store = storeForIdentity(), token = ++generation, ownerId = store.ownerId, task = store.tutorialTask
   const valid = () => token === generation && store.active && store.ownerId === ownerId && identity() === ownerId && store.tutorialTask === task
-  Object.assign(tutorialBusiness, { accounts: null, accountId: activeAccount.id, game: '', currentLoaded: false, operatorId: '', error: '' })
+  Object.assign(tutorialBusiness, { accounts: null, accountId: activeAccount.id, game: '', currentLoaded: false, operatorId: '', baselineAt: '', starId: '', error: '' })
   if (!store.active) return
   if (ownerId === 'guest') { applyBusiness(); return }
   if (task !== 'maayuan-first-sync' || !['maa_copy', 'maa_sync'].includes(store.waitingFor)) store.applyProgress({ waitingFor: 'business_state' })
@@ -36,12 +39,18 @@ export async function refreshTutorialBusiness() {
     tutorialBusiness.accounts = accounts
     if (task === 'maayuan-first-sync') { await refreshMaaYuan(store, accounts, valid); return }
     const account = accounts.find(item => item.id === activeAccount.id)
-    if (task === 'account-create' || !account) { applyBusiness(); return }
+    if (task === 'account-create' || !account || (task === 'today-first-data' && !store.firstDataTask)) { applyBusiness(); return }
     tutorialBusiness.accountId = account.id
     tutorialBusiness.game = account.game
-    const current = await getOperatorCurrent({ accountId: account.id, game: account.game })
+    const kind = task === 'inventory-first-baseline' ? 'inventory' : task === 'today-first-data' ? store.firstDataTask : 'operator'
+    const current = kind === 'inventory' ? await getCurrent({ accountId: account.id, entityType: 'item' })
+      : kind === 'star' ? await getCurrentStarState(account.id) : await getOperatorCurrent({ accountId: account.id, game: account.game })
     if (!valid() || activeAccount.id !== account.id) return
-    tutorialBusiness.operatorId = ownedOperatorId(current, account.id, account.game)
+    if (kind === 'inventory') tutorialBusiness.baselineAt = inventoryBaselineAt(current, account.id)
+    else if (kind === 'star') {
+      if (!Array.isArray(current?.inventory) || (current.account_id && current.account_id !== account.id) || current.inventory.some(item => !item?.instance_id)) throw new Error('无法确认星石保存结果，请重试读取。')
+      tutorialBusiness.starId = current.inventory[0]?.instance_id || ''
+    } else tutorialBusiness.operatorId = ownedOperatorId(current, account.id, account.game)
     tutorialBusiness.currentLoaded = true
     applyBusiness()
   } catch (error) {
@@ -121,7 +130,7 @@ export async function startOnboardingTask(router, taskId) {
   const store = storeForIdentity()
   const continuingHere = store.tutorialTask === taskId && store.status === 'paused' &&
     (router.currentRoute.value.path === ONBOARDING_TASKS[taskId]?.route.split('#')[0] ||
-      (taskId === 'operator-first-entry' && ['/operator/quick', '/user/profile', '/login'].includes(router.currentRoute.value.path)))
+      (['today-first-data', 'inventory-first-baseline', 'operator-first-entry'].includes(taskId) && ['/operator/quick', '/operator', '/inventory', '/star', '/user/profile', '/login'].includes(router.currentRoute.value.path)))
   if (!store.start(taskId)) return false
   if (continuingHere) return true
   try { await router.push(ONBOARDING_TASKS[taskId].route) } catch {
@@ -145,12 +154,13 @@ export function initializeOnboardingTour(router) {
   stopController?.()
   const store = storeForIdentity()
   const stopIdentity = watch(identity, ownerId => { generation++; store.initialize(ownerId) }, { flush: 'sync' })
-  const stopBusiness = watch(() => [store.active, store.tutorialTask, store.ownerId, activeAccount.id,
+  const stopBusiness = watch(() => [store.active, store.tutorialTask, store.firstDataTask, store.ownerId, activeAccount.id,
     activeAccount.gameFor(), accountListChange.value, router.currentRoute.value.fullPath], () => {
+    tutorialBusiness.onToday = router.currentRoute.value.name === 'today'
     void refreshTutorialBusiness()
   }, { immediate: true, flush: 'sync' })
   const stopRead = watch(operatorCurrentRead, read => {
-    if (store.tutorialTask !== 'operator-first-entry' || !store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id ||
+    if (!(store.tutorialTask === 'operator-first-entry' || (store.tutorialTask === 'today-first-data' && store.firstDataTask === 'operator')) || !store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id ||
         read.accountId !== tutorialBusiness.accountId || read.game !== tutorialBusiness.game || !tutorialBusiness.accounts) return
     try {
       const operatorId = ownedOperatorId(read.data, read.accountId, read.game)
@@ -165,10 +175,17 @@ export function initializeOnboardingTour(router) {
       applyBusiness()
     }
   }, { flush: 'sync' })
-  const stopRecommend = watch(() => [router.currentRoute.value.name, store.status, store.ownerId,
-    store.panel, store.dismissedForNow], () => {
-    if (router.currentRoute.value.name === 'today') store.recommend()
-  }, { immediate: true })
+  const stopInventoryRead = watch(inventoryCurrentRead, read => {
+    if (!(store.tutorialTask === 'inventory-first-baseline' || (store.tutorialTask === 'today-first-data' && store.firstDataTask === 'inventory')) ||
+      !store.active || !read || read.ownerId !== store.ownerId || read.accountId !== activeAccount.id || read.accountId !== tutorialBusiness.accountId || !tutorialBusiness.accounts) return
+    try {
+      tutorialBusiness.baselineAt = inventoryBaselineAt(read.data, read.accountId)
+      generation++
+      tutorialBusiness.currentLoaded = true
+      tutorialBusiness.error = ''
+      applyBusiness()
+    } catch (error) { tutorialBusiness.error = error.message; applyBusiness() }
+  }, { flush: 'sync' })
   const checkMaaYuan = () => {
     if (store.active && store.tutorialTask === 'maayuan-first-sync' && store.maaYuan.connectionId && document.visibilityState !== 'hidden') void refreshTutorialBusiness()
   }
@@ -181,7 +198,7 @@ export function initializeOnboardingTour(router) {
   document.addEventListener('visibilitychange', checkMaaYuan)
   const cleanup = () => {
     generation++
-    stopIdentity(); stopBusiness(); stopRead(); stopRecommend(); stopEvents()
+    stopIdentity(); stopBusiness(); stopRead(); stopInventoryRead(); stopEvents()
     clearInterval(poll)
     window.removeEventListener('focus', checkMaaYuan)
     document.removeEventListener('visibilitychange', checkMaaYuan)

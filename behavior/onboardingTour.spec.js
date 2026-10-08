@@ -7,6 +7,8 @@ import OnboardingGuide from '../src/components/OnboardingGuide.vue'
 import OperatorPage from '../src/pages/operator/index.vue'
 import QuickPage from '../src/pages/operator/quick.vue'
 import ProfilePage from '../src/pages/user/profile.vue'
+import InventoryPage from '../src/pages/inventory/index.vue'
+import TodayPage from '../src/pages/today/index.vue'
 import AppDialog from '../src/components/AppDialog.vue'
 import { useOnboardingStore, onboardingStorageKey } from '../src/stores/onboarding.js'
 import { initializeOnboardingTour, startOnboardingTask, refreshTutorialBusiness } from '../src/utils/onboardingTour.js'
@@ -15,6 +17,8 @@ import { activeAccount } from '../src/store/activeAccount.js'
 import * as accountsApi from '../src/api/accounts.js'
 import * as connectionApi from '../src/api/openApi.js'
 import * as operatorApi from '../src/api/operator.js'
+import * as inventoryApi from '../src/api/inventory.js'
+import * as starApi from '../src/api/starState.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { operatorCurrentRead, publishOperatorCurrentRead } from '../src/utils/operatorEvents.js'
 import { accountListChange } from '../src/store/accountList.js'
@@ -25,7 +29,7 @@ vi.mock('../src/api/operator.js', async importOriginal => {
   const actual = await importOriginal()
   return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))
 })
-vi.mock('../src/api/inventory.js', async importOriginal => ({ ...(await importOriginal()), listAgentFavorites: vi.fn().mockResolvedValue({ agent_ids: [] }) }))
+vi.mock('../src/api/inventory.js', async importOriginal => ({ ...(await importOriginal()), getCurrent: vi.fn(), importInventory: vi.fn(), getCatalog: vi.fn(), listRecords: vi.fn(), getAcquired: vi.fn(), listAgentFavorites: vi.fn().mockResolvedValue({ agent_ids: [] }) }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn().mockResolvedValue({ generation: 0, entries: [] }) }))
 vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn().mockResolvedValue({ generation: 0, revision: 0, loadouts: {} }), putCurrentStarLoadout: vi.fn() }))
 vi.mock('../src/api/openApi.js', () => ({
@@ -40,9 +44,9 @@ vi.mock('../src/store/auth.js', async () => {
 })
 vi.mock('../src/store/beta.js', () => ({ beta: { canUseBetaFeatures: true, loadMe: () => Promise.resolve(), campaign: { accessMode: 'OPEN' } } }))
 const eventCallbacks = vi.hoisted(() => new Set())
-vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: listener => { eventCallbacks.add(listener); return () => eventCallbacks.delete(listener) } }))
+vi.mock('../src/store/accountEvents.js', () => ({ setInventoryToastFavoriteAgentIds: vi.fn(), subscribeAccountEvents: listener => { eventCallbacks.add(listener); return () => eventCallbacks.delete(listener) } }))
 
-let accounts, current, host
+let accounts, current, stock, host
 const account = { id: 'acc', name: '真实组件测试账号', game: '如鸢' }
 const entry = { star_level: 1, level: 25, elite: 3 }
 const stored = () => [{ account_id: 'acc', game: '如鸢', entries: { op: { ...entry } } }]
@@ -57,6 +61,17 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
   auth.accessToken = 'synthetic-token'; auth.userInfo = { id: 'owner' }
   accounts = [{ ...account }]; current = []
+  stock = []
+  inventoryApi.getCurrent.mockImplementation(async () => stock)
+  inventoryApi.importInventory.mockImplementation(async doc => {
+    stock = [{ account_id: 'acc', entity_type: 'item', full_baseline_at: doc.records[0].effective_at || doc.records[0].effectiveAt, entries: {} }]
+    return { accepted: 1, duplicates: 0 }
+  })
+  inventoryApi.getCatalog.mockResolvedValue({ entities: [] })
+  inventoryApi.listRecords.mockResolvedValue({ items: [], next_cursor: null })
+  inventoryApi.getAcquired.mockResolvedValue({ acquired: {} })
+  starApi.getCurrentStarState.mockResolvedValue({ inventory: [] })
+  window.scrollTo = vi.fn()
   activeAccount.set('acc'); activeAccount.games = {}; activeAccount.syncAccounts(accounts)
   operatorCurrentRead.value = null; accountListChange.value = null
   accountsApi.listAccounts.mockImplementation(async () => accounts.map(item => ({ ...item })))
@@ -77,11 +92,12 @@ afterEach(() => { host?.unmount(); host = null })
 
 async function render(path = '/', pinia = createPinia()) {
   const router = createRouter({ history: createMemoryHistory(), routes: [
-    { path: '/', name: 'today', component: { template: '<main><button>普通产品操作</button></main>' } },
+    { path: '/', name: 'today', component: TodayPage },
     { path: '/operator', component: OperatorPage }, { path: '/operator/quick', component: QuickPage },
     { path: '/user/profile', component: ProfilePage },
     { path: '/login', component: { template: '<main>真实登录入口</main>' } },
-    { path: '/inventory', component: { template: '<main>库存追踪</main>' } },
+    { path: '/inventory', component: InventoryPage },
+    { path: '/star', component: { template: '<main>真实星石业务入口</main>' } },
     { path: '/changelog', component: { template: '<main>帮助页</main>' } },
     { path: '/operator/share', component: { template: '<main />' } }
   ] })
@@ -94,7 +110,7 @@ async function render(path = '/', pinia = createPinia()) {
   }, template: '<OnboardingGuide /><RouterView /><AppDialog />' }), {
     attachTo: document.body, global: { plugins: [pinia, router], directives: { reveal: () => {} }, stubs: {
       IslandSidebar: true, SiteFooter: true, BetaNotice: true, OperatorShareManager: true,
-      OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true
+      OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, TodayActivitySummary: true, TodaySubscriptionSummary: true, RewardEntryWorkspace: true
     } }
   })
   await flushPromises()
@@ -126,11 +142,12 @@ async function selectAndSave() {
 
 it('首次邀请可直接使用，不写数据、不标完成、不刷新骚扰；仍可手动开始', async () => {
   const { store } = await render()
-  expect(guide().textContent).toContain('跟着做一次')
-  expect(host.get('main button').element.disabled).toBe(false)
-  expect(accountsApi.listAccounts).not.toHaveBeenCalled()
-  await clickText('直接使用 / 暂时关闭')
+  const invitation = host.get('.tool-task-prompt')
+  expect(invitation.text()).toContain('跟着做一次')
+  await invitation.findAll('button').find(button => button.text() === '直接使用 / 暂时关闭').trigger('click')
   expect(guide()).toBeNull(); expect(store.tutorialCompleted).toBe(false)
+  expect(host.get('.tool-task-prompt').find('h2').exists()).toBe(false)
+  expect(host.get('.tool-task-prompt').text()).toContain('重新进入 / 继续实操教程')
   expect(store.disableAutoGuide).toBe(false)
   host.unmount(); await render()
   expect(guide()).toBeNull()
@@ -304,6 +321,7 @@ it('从帮助继续当前快捷录入不离开页面、不清空草稿，不按�
 
 it('永久不自动提示也可手动重进；已有账号任务只按真实账号列表完成', async () => {
   const { router, store } = await render()
+  store.recommend(); await nextTick()
   const checkbox = guide().querySelector('input[type="checkbox"]')
   checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await nextTick()
   await clickText('直接使用 / 暂时关闭')
@@ -538,4 +556,165 @@ it('MaaYuan迟到证据不交给另一身份；已撤销连接和旧完成标记
   expect(store.tutorialCompleted).toBe(false)
   expect(store.waitingFor).toBe('maa_connect')
   expect(connectionApi.generateOpenApiToken).not.toHaveBeenCalled()
+})
+
+async function followHere() {
+  await host.findAll('.tool-task-prompt button').find(button => button.text() === '跟着做一次').trigger('click')
+  await flushPromises()
+}
+async function saveBaseline() {
+  const page = host.findComponent(InventoryPage)
+  await page.get('.inventory-entry').trigger('click')
+  await page.get('.stock-baseline-confirmation input').setValue(true)
+  await page.get('.manifest-edit-actions .primary').trigger('click')
+  await flushPromises()
+}
+
+it('Today自愿参加→选择密探→真实保存→回到Today核验；一份数据足够', async () => {
+  const { router, store } = await render()
+  await followHere()
+  expect(store.waitingFor).toBe('first_task')
+  await clickText('录入第一位密探'); await enterQuick()
+  expect(store.tutorialCompleted).toBe(false)
+  await selectAndSave()
+  expect(store.waitingFor).toBe('today_return')
+  expect(store.tutorialCompleted).toBe(false)
+  await clickText('返回 Today 验证第一份数据')
+  expect(router.currentRoute.value.path).toBe('/')
+  expect(store.tutorialCompleted).toBe(true)
+  expect(guide().textContent).toContain('第一份数据已建立')
+  expect(store.completedTasks['today-first-data']).toMatchObject({ firstDataTask: 'operator', operatorId: 'op', accountId: 'acc' })
+  expect(stock).toEqual([])
+})
+
+it('Today选择盘点，返回只认完整基准；无保存、局部数据和读失败不能毕业', async () => {
+  const { router, store } = await render(); await followHere()
+  await clickText('完成首次库存盘点')
+  await router.push('/'); await flushPromises()
+  expect(store.tutorialCompleted).toBe(false)
+  stock = [{ account_id: 'acc', entity_type: 'item', entries: { coin: { count: 3 } } }]
+  await refreshTutorialBusiness()
+  expect(store.tutorialCompleted).toBe(false)
+  inventoryApi.getCurrent.mockRejectedValueOnce(new Error('库存暂不可读'))
+  await refreshTutorialBusiness()
+  expect(store.waitingFor).toBe('read_error')
+  expect(guide().textContent).toContain('库存暂不可读')
+  await clickText('退出引导')
+  expect(store.tutorialCompleted).toBe(false)
+})
+
+it('库存实操只有真实保存并读到完整基准后完成，全零也可明确确认', async () => {
+  const { store } = await render('/inventory'); await followHere()
+  expect(store.waitingFor).toBe('inventory_saved')
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  await saveBaseline()
+  expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+  expect(inventoryApi.importInventory.mock.calls[0][0].records[0]).toMatchObject({ snapshot_scope: 'full', record_type: 'stock_snapshot', account_id: 'acc' })
+  expect(store.tutorialCompleted).toBe(true)
+  expect(host.findComponent(InventoryPage).get('.inventory-freshness time').attributes('datetime')).toBe(stock[0].full_baseline_at)
+  expect(guide().textContent).toContain('完整库存基准已验证')
+})
+
+it.each(['失败', '无基准', '读取失败'])('库存保存%s保持任务未完成并允许退出，保留真实草稿/数据', async variant => {
+  const { store } = await render('/inventory'); await followHere()
+  if (variant === '失败') inventoryApi.importInventory.mockRejectedValueOnce(new Error('盘点保存失败'))
+  else if (variant === '无基准') inventoryApi.importInventory.mockResolvedValueOnce({ accepted: 1 })
+  else inventoryApi.importInventory.mockImplementationOnce(async () => {
+    stock = [{ account_id: 'acc', entity_type: 'item', full_baseline_at: '2026-10-08T00:00:00Z', entries: {} }]
+    inventoryApi.getCurrent.mockRejectedValueOnce(new Error('盘点读回失败'))
+    return { accepted: 1 }
+  })
+  await saveBaseline()
+  expect(store.tutorialCompleted).toBe(false)
+  if (variant === '失败') {
+    expect(host.findComponent(InventoryPage).text()).toContain('盘点保存失败')
+    expect(host.get('.stock-baseline-confirmation input').element.checked).toBe(true)
+  }
+  await clickText('退出引导')
+  expect(guide()).toBeNull()
+  expect(store.status).toBe('paused')
+  if (variant === '失败') expect(host.get('.stock-baseline-confirmation input').element.checked).toBe(true)
+  else if (variant === '读取失败') expect(stock[0].full_baseline_at).toBeTruthy()
+})
+
+it('库存输入与在途保存期间Esc退出，不丢草稿、不取消保存、迟到成功不毕业', async () => {
+  const { router, store } = await render('/inventory'); await followHere()
+  const page = host.findComponent(InventoryPage)
+  await page.get('.inventory-entry').trigger('click')
+  await page.get('input[aria-label="白金币当前库存"]').setValue('120')
+  const pending = deferred(); inventoryApi.importInventory.mockReturnValueOnce(pending.promise)
+  await page.get('.manifest-edit-actions .primary').trigger('click')
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises()
+  expect(page.get('input[aria-label="白金币当前库存"]').element.value).toBe('120')
+  stock = [{ account_id: 'acc', entity_type: 'item', full_baseline_at: '2026-10-08T00:00:00Z', entries: { baijinbi: { count: 120 } } }]
+  pending.resolve({ accepted: 1 }); await flushPromises()
+  expect(store.tutorialCompleted).toBe(false)
+  expect(page.get('.inventory-freshness time').exists()).toBe(true)
+  await startOnboardingTask(router, 'inventory-first-baseline'); await flushPromises()
+  expect(store.tutorialCompleted).toBe(true)
+  expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
+})
+
+it('Today刷新恢复所选业务而非步骤，星石只以当前账号云端保存状态完成', async () => {
+  const { store } = await render(); await followHere(); await clickText('完成一次星石截图识别')
+  expect(store.tutorialCompleted).toBe(false)
+  host.unmount()
+  const restored = await render('/star')
+  expect(restored.store.firstDataTask).toBe('star')
+  expect(restored.store.waitingFor).toBe('star_saved')
+  starApi.getCurrentStarState.mockResolvedValueOnce({ inventory: [{ instance_id: 'saved-star' }] })
+  await restored.router.push('/'); await flushPromises()
+  expect(restored.store.tutorialCompleted).toBe(true)
+  expect(restored.store.completedTasks['today-first-data'].starId).toBe('saved-star')
+  expect(JSON.parse(localStorage.getItem(onboardingStorageKey('owner')))).not.toHaveProperty('stepIndex')
+})
+
+it('已有成果用户不自动推荐；直接使用真实盘点不会被标为教程完成', async () => {
+  current = stored()
+  await render()
+  expect(guide()).toBeNull()
+  expect(host.find('.tool-task-prompt').exists()).toBe(false)
+  host.unmount()
+  const { store } = await render('/inventory')
+  await host.findAll('.tool-task-prompt button').find(button => button.text() === '直接使用 / 暂时关闭').trigger('click')
+  await saveBaseline()
+  expect(store.tutorialCompleted).toBe(false)
+  expect(store.completedTasks).toEqual({})
+})
+
+it('Today真实账号创建后重新读取readiness并选择首份数据，而非把建号算建档', async () => {
+  accounts = []; activeAccount.clear()
+  const { store } = await render(); await followHere()
+  await host.get('.account-management-action').trigger('click'); await flushPromises()
+  const panel = document.querySelector('.account-panel')
+  const input = panel.querySelector('.name-field input')
+  input.value = '我的真实游戏账号'; input.dispatchEvent(new Event('input', { bubbles: true }))
+  const radio = panel.querySelector('input[value="如鸢"]')
+  if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })) }
+  await nextTick()
+  panel.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+  expect(accountsApi.createAccount).toHaveBeenCalled()
+  expect(host.find('.data-readiness-grid').exists()).toBe(true)
+  expect(store.waitingFor).toBe('first_task')
+  expect(store.tutorialCompleted).toBe(false)
+})
+
+it('库存迟到的A账号读回不完成B；刷新后的历史完成不能代替重新读取', async () => {
+  const { router, store } = await render('/inventory'); await followHere()
+  const late = deferred(); inventoryApi.getCurrent.mockReturnValueOnce(late.promise)
+  const read = refreshTutorialBusiness(); await flushPromises()
+  accounts.push({ id: 'b', name: 'B', game: '如鸢' }); activeAccount.set('b'); await flushPromises()
+  late.resolve([{ account_id: 'acc', entity_type: 'item', full_baseline_at: '2026-10-08T00:00:00Z', entries: {} }]); await read
+  expect(store.tutorialCompleted).toBe(false)
+  activeAccount.set('acc'); await flushPromises()
+  stock = [{ account_id: 'acc', entity_type: 'item', full_baseline_at: '2026-10-08T00:00:00Z', entries: {} }]
+  await refreshTutorialBusiness()
+  expect(store.tutorialCompleted).toBe(true)
+  host.unmount(); stock = []
+  const restored = await render('/inventory')
+  expect(restored.store.tutorialCompleted).toBe(false)
+  expect(guide()).toBeNull()
+  await startOnboardingTask(restored.router, 'inventory-first-baseline'); await flushPromises()
+  expect(restored.store.waitingFor).toBe('inventory_saved')
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })

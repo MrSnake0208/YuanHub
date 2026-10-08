@@ -1,8 +1,26 @@
 // Only tasks with an observable, server-backed completion contract are selectable.
 export const ONBOARDING_TASKS = {
-  'operator-first-entry': { title: '录入第一位密探', route: '/operator', result: '当前账号已有真实密探档案，录入结果已验证。' },
+  'today-first-data': { title: '建立第一份真实数据', route: '/', result: '第一份数据已建立' },
+  'inventory-first-baseline': { title: '完成首次库存盘点', route: '/inventory', result: '首次库存盘点已完成，完整库存基准已验证。' },
+  'operator-first-entry': { title: '录入第一位密探', route: '/operator', result: '第一位密探已录入，当前账号录入结果已验证。' },
   'maayuan-first-sync': { title: '第一次连接 MaaYuan', route: '/user/profile', result: '第一次 MaaYuan 同步已完成' },
   'account-create': { title: '建立第一个游戏账号', route: '/user/profile#game-accounts', result: '真实游戏账号已就绪，可以开始记录数据。' }
+}
+
+export const FIRST_DATA_TASKS = {
+  operator: { title: '录入第一位密探', route: '/operator' },
+  inventory: { title: '完成首次库存盘点', route: '/inventory' },
+  star: { title: '完成一次星石截图识别', route: '/star' }
+}
+
+export function inventoryBaselineAt(current, accountId) {
+  const rows = Array.isArray(current) ? current : current?.entries ? [current] : null
+  if (!rows || rows.some(row => !row?.entries || typeof row.entries !== 'object' || Array.isArray(row.entries) ||
+    (row.account_id && row.account_id !== accountId) || (row.entity_type && row.entity_type !== 'item') ||
+    Object.values(row.entries).some(entry => !Number.isSafeInteger(entry?.count) || entry.count < 0))) {
+    throw new Error('库存数据与当前账号或类型不一致，请重试读取。')
+  }
+  return rows.find(row => typeof row.full_baseline_at === 'string' && Number.isFinite(Date.parse(row.full_baseline_at)))?.full_baseline_at || ''
 }
 
 export function ownedOperatorId(current, accountId, game) {
@@ -35,7 +53,17 @@ export function resolveTaskProgress(task, state) {
   if (task !== 'account-create' && !account) return { waitingFor: 'account_selected' }
   const evidence = { ownerId: state.ownerId, task, accountId: account?.id || state.accounts[0].id, game: account?.game }
   if (task === 'account-create') return { waitingFor: 'verified', evidence }
+  if (task === 'today-first-data' && !state.firstDataTask) return { waitingFor: 'first_task' }
   if (!state.currentLoaded) return { waitingFor: 'business_state' }
+  if (task === 'inventory-first-baseline') return state.baselineAt
+    ? { waitingFor: 'verified', evidence: { ...evidence, baselineAt: state.baselineAt } }
+    : { waitingFor: 'inventory_saved' }
+  if (task === 'today-first-data') {
+    const result = state.firstDataTask === 'operator' ? state.operatorId : state.firstDataTask === 'inventory' ? state.baselineAt : state.starId
+    if (!result) return { waitingFor: state.firstDataTask === 'operator' ? 'operator_saved' : state.firstDataTask === 'inventory' ? 'inventory_saved' : 'star_saved' }
+    if (!state.onToday) return { waitingFor: 'today_return' }
+    return { waitingFor: 'verified', evidence: { ...evidence, firstDataTask: state.firstDataTask, operatorId: state.operatorId, baselineAt: state.baselineAt, starId: state.starId } }
+  }
   if (!state.operatorId) return { waitingFor: 'operator_saved' }
   return { waitingFor: 'verified', evidence: { ...evidence, operatorId: state.operatorId } }
 }

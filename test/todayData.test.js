@@ -11,8 +11,8 @@ import {
 test('summarizes real Today data without counting duplicates or empty inventory', function () {
   assert.deepEqual(summarizeTodayData({
     current: [
-      { entries: { char_a: { level: 80 }, char_b: { level: 40 } } },
-      { entries: { char_b: { level: 50 }, char_c: { level: 1 } } }
+      { entries: { char_a: { star_level: 1, level: 80 }, char_b: { star_level: 1, level: 40 } } },
+      { entries: { char_b: { star_level: 1, level: 50 }, char_c: { star_level: 1, level: 1 } } }
     ],
     inventory: [
       { entries: { coin: { count: 12 }, feather: { count: 0 } } },
@@ -125,4 +125,10 @@ test('no records, missing evidence and failures remain distinct', function () {
     assert.equal(getTodayDataReadiness(summary).inventory, 'unknown')
   }
   assert.equal(getTodayDataReadiness({ inventoryKindCount: 0 }).inventory, 'unknown')
+})
+
+test('unowned operators do not establish data; malformed operator/star reads stay unknown', () => {
+  assert.equal(summarizeTodayData({ current: [{ entries: { op: { star_level: 0 } } }] }).operatorCount, 0)
+  for (const current of [null, {}, [null], [{ entries: [] }]]) assert.equal(summarizeTodayData({ current }).operatorCount, null)
+  for (const starState of [null, {}, { inventory: [null] }, { inventory: [{}] }]) assert.equal(summarizeTodayData({ starState }).starCount, null)
 })

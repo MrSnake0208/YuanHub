@@ -1,3 +1,4 @@
+import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { routeLocationKey } from 'vue-router'
@@ -22,7 +23,7 @@ vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(async () => ({ items: [], subscribed_count: 0, total_pending: 0 })) }))
 
-const render = () => mount(TodayPage, { global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { RouterLink: RouterLinkStub } } })
+const render = () => mount(TodayPage, { global: { plugins: [createPinia()], provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { RouterLink: RouterLinkStub } } })
 
 function signIn() {
   auth.isLoggedIn = true
@@ -91,7 +92,7 @@ it('A→B立即清空旧摘要，迟到A不能覆盖B；清空与失效id不发�
   const wrapper = render(); await flushPromises()
   activeAccount.set('b'); await flushPromises()
   expect(wrapper.get('.account-data-summary').text()).toContain('正在读取当前账号')
-  b.resolve({ entries: { one: {}, two: {} } }); await flushPromises()
+  b.resolve({ entries: { one: { star_level: 1 }, two: { star_level: 1 } } }); await flushPromises()
   expect(wrapper.get('.account-data-summary').text()).toContain('已录入 2 位')
   expect(wrapper.get('.lobby-status').text()).toBe('还有 2 项资料尚未建档，随时可以继续。')
   a.resolve({ entries: { old: {} } }); await flushPromises()
@@ -137,7 +138,7 @@ it('切换登录身份时旧列表与旧摘要失效，不把上个用户数据�
   getOperatorCurrent.mockReturnValue(late.promise)
   const wrapper = render(); await flushPromises()
   listAccounts.mockResolvedValue([{ id: 'b', name: 'B', game: '如鸢' }])
-  getOperatorCurrent.mockResolvedValue({ entries: { one: {}, two: {} } })
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 }, two: { star_level: 1 } } })
   auth.userInfo = { id: 'owner-b' }; await flushPromises()
   late.resolve({ entries: { old: {} } }); await flushPromises()
   expect(wrapper.get('.data-account-context-bar').text()).toContain('B')
@@ -166,9 +167,9 @@ it('访客只在建档区登录，不使用假演示标签或欢迎Hero', async 
 it('已有数据时展示账号状态，不显示常用工具且初始化只请求一次摘要', async () => {
   signIn()
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
-  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { level: 1 } } })
+  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { star_level: 1, level: 1 } } })
   getCurrent.mockResolvedValue({ entries: { itemA: { count: 3 } } })
-  getCurrentStarState.mockResolvedValue({ inventory: [{ id: 'star-1' }] })
+  getCurrentStarState.mockResolvedValue({ inventory: [{ instance_id: 'star-1' }] })
   const wrapper = render()
   await flushPromises()
   expect(wrapper.get('.data-account-context-bar').text()).toContain('测试大号')
@@ -197,7 +198,7 @@ it('活动单栏使用全部宽度，仅在真实账号辅助内容存在时声�
   expect(wrapper.find('.today-account-overview').exists()).toBe(false)
   expect(wrapper.get('.today-overview').classes()).not.toContain('has-sidebar')
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
-  getOperatorCurrent.mockResolvedValue({ entries: { one: {} } })
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   auth.userInfo = { id: 'owner-b' }; await flushPromises()
   expect(wrapper.find('.today-account-overview').exists()).toBe(true)
   expect(wrapper.get('.today-overview').classes()).toContain('has-sidebar')
@@ -206,7 +207,7 @@ it('活动单栏使用全部宽度，仅在真实账号辅助内容存在时声�
 it('部分已有数据时补齐为可选折叠区，已有项目没有重复录入入口', async () => {
   signIn()
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
-  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { level: 1 } } })
+  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { star_level: 1, level: 1 } } })
 
   const wrapper = render()
   await flushPromises()
@@ -224,7 +225,7 @@ it('部分已有数据时补齐为可选折叠区，已有项目没有重复录�
 it('展开可选补齐区滚动到内容，收起时不改变滚动位置', async () => {
   signIn()
   listAccounts.mockResolvedValue([{ id: 'acc-a', name: '测试大号', game: '代号鸢' }])
-  getOperatorCurrent.mockResolvedValue({ entries: { one: {} } })
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   getCurrent.mockResolvedValue({ entries: { coin: { count: 3 } } })
   const wrapper = render(); await flushPromises()
   const details = wrapper.get('details.data-onboarding')
