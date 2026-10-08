@@ -1,3 +1,11 @@
+import { shallowRef } from 'vue'
+
+// Notification of a successful product GET, never an optimistic save result.
+export const operatorCurrentRead = shallowRef(null)
+export function publishOperatorCurrentRead(read) {
+  operatorCurrentRead.value = read
+}
+
 const OPERATOR_UPDATE_EVENTS = new Set([
   'operator_scan_import',
   'operator_catalog_update',
@@ -17,4 +25,3 @@ export function operatorUpdateFromEvent(message) {
     accountId: data.account_id || data.accountId || ''
   }
 }
-

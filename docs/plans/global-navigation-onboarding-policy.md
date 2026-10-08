@@ -19,39 +19,35 @@
 - 业务固定底栏路由不自动邀请，因此本轮不新增全局底部高度协议或调整z-index。
 - 安装指南仍是非阻断区域；离场动画期间卡片不接收点击。
 
-## 七步教程
+## 实操教程（2026-10-08 取代七步 Tour）
 
-1. 欢迎与功能概览。
-2. 在个人中心“统一管理游戏账号”确认或创建子账号。
-3. 今日一览介绍现有工具入口；明确建议/状态总览仍在重做。
-4. 密探介绍当前账号、养成与“分享与数据交换”。
-5. 库存介绍背包道具、心纸与历史。
-6. 介绍“连接 MaaYuan”入口和权限边界；教程不会点击入口、生成连接码或提交权限。用户完成或退出教程后自行操作。
-7. 桌面高亮重看教程入口；≤1080px高亮顶部菜单按钮，说明打开导航后选择“新手教程”。跨断点重新定位目标。
+首次进入今日一览只推荐一次轻量、非遮罩邀请：「跟着做一次」与「直接使用 / 暂时关闭」同等明确。可勾选「以后不自动提示」。回访旧 Tour 用户不重新自动推荐；旧 Tour 的 completed/skipped 不迁移为实操成果。
 
-个人中心虽没有`requiresBeta`路由标记，也是教程宿主，以支持第二/六步跨页。资格与账号权限仍由原有App/路由/页面执行；切换登录身份取消旧教程。
+「更多 → 实操教程」始终打开任务选择/继续入口，目前开放：
 
-## 等待与取消
+- **录入第一位密探**：真实登录 → 真实游戏账号（没有时在账号与连接码创建）→ 密探名册「开始录入密探」→ 正常快捷录入与保存确认 → GET current 确认当前账号、游戏存在已招募条目。
+- **建立第一个游戏账号**：真实登录 → 真实账号表单创建 → GET accounts 验证账号已存在；已有账号直接复用，不要求再创建。
 
-- 元素出现最多等待5000ms；布局最多等待1500ms，位置与尺寸在连续三次采样中变化≤0.1px才高亮。
-- 初次定位揭示已有`.rv`区域并滚入视口；活跃步骤仅监听目标尺寸，滚动与窗口resize沿用Driver.js。
-- 找不到或无法稳定的入口使用带原因的中心提示，允许继续、返回或退出，不把完整教程误标为已跳过。
-- 准备超过200ms时显示可关闭的“正在准备”中心提示，暂时禁用前后按钮；该延迟仅避免提示闪烁，不作为几何稳定条件。
-- 关闭、重看、身份变化、离开宿主会使旧操作失效，清理DOM观察器、尺寸观察器、媒体监听、计时器及动画帧。
-- 只有当前会话能更新教程状态；旧操作finally不清除新操作。权限重定向不在登录或资格页展示业务目标。
-- 路由跳转按当前操作与目标识别内部导航；取消时以当前地址的重复导航使Vue Router废弃旧push。目标record的临时Symbol meta记录本次signal，复制到redirectedFrom后供临时guard拒绝旧操作的晚到重定向；取消/完成按所有权删除标记，guard在旧push结束时移除，不影响新导航或正常权限重定向。
-- 真实鉴权守卫在登录恢复、内测资格、招募权限及管理权限的异步等待后检查取消信号，取消时直接终止旧导航，避免晚到的重定向打断新的待完成导航；正常权限判定不变。
-- 关闭后优先恢复仍可见的原入口，入口已卸载则聚焦页面主体。
+教程不提供「下一步」来跳过业务动作，不填字段、不点业务按钮、不提交、不使用演示数据。业务页仍可正常操作；跨页不会自动拉回。创建/保存失败或读结果未知时不标记完成；当前页的真实错误与重试入口保持可用。
 
-## 验证边界
+## 退出、恢复与焦点
 
-Node/Vitest覆盖偏好、页面策略、真实Driver.js按钮链路、取消、移动目标和资源清理；合成DOM几何不能证明浏览器点击命中或真机安装。
+- `tutorialCompleted` 只由自愿参与后的权威业务证据设置；`dismissedForNow` 关闭本次并抑制刷新打扰；`disableAutoGuide` 只来自明确的永久停止自动提示选择。暂停不会丢掉任务目标。
+- 按登录身份持久化 `tutorialTask` / `waitingFor` 及完成凭据，不保存页码。刷新及重新进入时先读取真实账号与记录，不把历史等待条件当证据。游客主动开始的目标可跨真实登录交接；其他身份之间不共享完成凭据。
+- 教学使用正常流中的 sticky 提示栏，没有遮罩或几何高亮。当前产品模态打开时，提示栏进入焦点栈的当前 panel，退出按钮属于相同焦点范围；产品控件保持可点击。移动端布局保留安全区域和导航高度。
+- 退出按钮、Esc 在加载、表单、失败与确认框中立即移除教学；不调用产品 cancel、清表单或撤销已提交操作。已退出的教程不能被迟到读取或保存结果完成。
+- 「返回任务选择」暂停当前教学；继续同一快捷录入任务时保留当前页面与草稿。
+- 原有鉴权、权限守卫和取消导航工具保持其独立产品职责；教程不再注入路由信号或依赖 target wait / timeout / layout geometry。
+
+## 其它任务的接入边界
+
+在 `src/utils/onboardingTasks.js` 注册任务入口，定义只读完成证据；控制器重新读取账号及目标数据，再交给 `resolveTaskProgress`。产品页面成功读取的通知必须绑定身份、账号与游戏，禁止用成功 toast、点击次数或历史 stepIndex 作为完成证据。库存必须验证真实基准；星石必须验证真实 OCR 后进入背包的成果；MaaYuan 必须验证至少一次真实同步，生成连接码本身不算完成。这三项当前没有开放假教程，不影响原有功能及页面帮助。
+
+## 定向验证
 
 ```bash
-node --test test/onboarding.test.js test/pwaInstall.test.js test/pwaInstallExperience.test.js test/pwaInstallResponsive.test.js
-npm run test:behavior -- behavior/onboardingTour.spec.js behavior/onboardingApp.spec.js behavior/pwaInstallPrompt.spec.js behavior/islandSidebar.spec.js behavior/authStartupGuard.spec.js
+node --test test/onboarding.test.js
+npm run test:behavior -- behavior/onboardingTour.spec.js behavior/onboardingApp.spec.js behavior/islandSidebar.spec.js behavior/pwaInstallPrompt.spec.js behavior/operatorQuickFlow.spec.js behavior/operatorEntryDefaults.spec.js behavior/gameAccountManager.spec.js behavior/dialogAccessibility.spec.js behavior/mobileHeader.spec.js behavior/authStartupGuard.spec.js
 ```
 
-待用户运行：上述定向回归；浏览器完整七步、等待中关闭/重看/换身份、正常/缺失/慢路由与权限重定向；PWA在禁止页不显示、允许页及模态/抽屉恢复后重新延迟。共享流程覆盖320/390/430/768/1024/1440px、1080/1081px临界点与手机横屏；iOS/Android安装须真机确认。
-
-紧凑WorkspaceHeader和全站留白调整仍是可选后续，需要单页展示试点与真实排版证据，本轮未推广。
+API 边界测试使用合成身份与记录，实际 Vue 业务组件、确认框及教学状态机运行；生产实现没有 mock 分支。浏览器验证使用独立测试会话覆盖 320/390/430/768/1024/1440 与 844×390 横屏，测试服务响应与真实服务实操须分开报告。PWA 真机安装与完整 CI 属于用户/CI 验证范围。

@@ -393,6 +393,7 @@
 
 <script setup>
 import { useAccountListUpdates } from '../../store/accountList.js'
+import { publishOperatorCurrentRead } from '../../utils/operatorEvents.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -1163,6 +1164,7 @@ async function reloadCurrent() {
   if (!requestedContext) return false;
   const requestedAccountId = accountId.value;
   const requestedGame = gameFilter.value;
+  const ownerId = auth.userInfo?.id;
   currentLoading.value = true;
   try {
     const data = await getOperatorCurrent({
@@ -1182,6 +1184,7 @@ async function reloadCurrent() {
       return Object.assign({ id: id }, combined[id]);
     });
     currentLoadedContext.value = requestedContext;
+    publishOperatorCurrentRead({ ownerId, accountId: requestedAccountId, game: requestedGame, data });
     return true;
   } catch (err) {
     if (valid()) currentError.value = humanErr(err, "已有养成加载失败，暂不能保存；请重试以保护命盘和星石");

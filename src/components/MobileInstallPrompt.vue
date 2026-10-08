@@ -110,7 +110,7 @@ const allowedRoutes = new Set(['today', 'changelog', 'feedback-plaza'])
 const eligible = computed(() => allowedRoutes.has(route.name)
   && !props.routeLoading && !props.accessPending && !navigationOpen.value
   && !modalFocusState.active && !betaCommunity.visible
-  && !dialog._state.visible && !onboarding.active)
+  && !dialog._state.visible && !onboarding.visible)
 
 const visible = computed(function () {
   return eligible.value && ready.value
