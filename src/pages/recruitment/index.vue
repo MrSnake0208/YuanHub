@@ -1,18 +1,27 @@
 <template>
   <div class="page-recruitment">
     <IslandSidebar />
-    <main id="main-content" class="recruitment-main">
+    <main id="main-content" class="recruitment-main" @keydown.esc="onPageEscape">
       <CompactToolHeader title="招募档案" description="查看与维护当前账号的招募记录与进度。">
         <template v-if="enabled" #account>
           <DataAccountContextBar compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
         </template>
         <template v-if="enabled" #actions>
-          <button type="button" class="recruitment-tutorial-entry" :disabled="!state.archive || state.loading || state.busy" @click="beginRecordGuide"><CircleHelp :size="15" aria-hidden="true" />登记教程</button>
+          <button ref="guideEntry" type="button" class="recruitment-tutorial-entry" :aria-expanded="guidePicker || !!guideTopic" aria-controls="recruitment-guide" @click="openGuideTopics"><CircleHelp :size="15" aria-hidden="true" />使用教程</button>
           <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起备份与恢复' : '备份与恢复' }}</button>
         </template>
       </CompactToolHeader>
       <div v-if="!enabled" class="wrap"><p class="card">招募档案暂未开放。</p></div>
       <div v-else class="wrap recruitment-content">
+        <section v-if="guidePicker || guideTopic" id="recruitment-guide" ref="pageGuide" class="page-guide" aria-label="招募档案使用教程" @keydown.esc.stop.prevent="dismissPageGuide">
+          <div class="guide-heading"><strong>{{ guidePicker ? '按你现在的需要选择' : '先确认账号，再选择实际卡池' }}</strong><button type="button" @click="dismissPageGuide">关闭教程</button></div>
+          <RecruitmentGuideTopics v-if="guidePicker" @select="chooseGuideTopic" />
+          <template v-else>
+            <p role="status">{{ pageGuideMessage }}</p>
+            <details v-if="guideTopic === 'explore'"><summary>摘要怎么看？</summary><p>已知累计只汇总可确认的资料；绝密记录按每次出货计数，同一密探可以重复。卡片上的 UP ×N 是该密探在本池的获得次数，— 表示统计未知。</p></details>
+            <button type="button" @click="guidePicker = true">选择其他主题</button>
+          </template>
+        </section>
         <RecruitmentExchange v-if="state.archive" id="recruitment-exchange" ref="exchangePanel" v-model:open="showArchive" :account-id="accountId" :account-name="state.accounts.find(account => account.id === accountId)?.name" :identity="identity" :revision="state.archive.archive_revision" :game="state.archive.game_snapshot" :read-only="state.archive.game_mismatch" :busy="state.busy" :context-version="state.contextVersion" :request-version="state.requestVersion" @busy="state.busy = $event" @committed="refresh" />
         <p v-if="!identity" class="card">请先登录再使用招募档案。</p>
         <p v-else-if="!state.accountsLoading && !state.accounts.length" class="card">还没有游戏账号。<router-link to="/user/profile#game-accounts">先创建游戏账号</router-link></p>
@@ -30,7 +39,7 @@
       </div>
       <SiteFooter />
     </main>
-    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guide-owner="identity" :guide-account="accountId" :archive-event-count="state.archive?.summary.event_count" :saved-guide-event-id="savedGuideEventId" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="loadPoolRecords(selectedPoolId)" />
+    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guide-owner="identity" :guide-account="accountId" :archive-event-count="state.archive?.summary.event_count" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="retryPoolReadback" @guide-dismiss="guideTopic = ''" />
   </div>
 </template>
 
@@ -42,6 +51,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import CompactToolHeader from '../../components/CompactToolHeader.vue'
 import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import PoolEditor from './PoolEditor.vue'
+import RecruitmentGuideTopics from './RecruitmentGuideTopics.vue'
 import RecruitmentExchange from './RecruitmentExchange.vue'
 import RecruitmentTimeline from './RecruitmentTimeline.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
@@ -54,21 +64,38 @@ const enabled = isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE)
 const model = enabled ? useRecruitment() : null
 const { state, accountId, identity, game, available, writable, agents, capture, matches, refresh, command, loadPoolRecords } = model || { state: {}, accountId: '', identity: '', game: '', available: false, writable: false, agents: [], refresh() {} }
 const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false)
-const savedGuideEventId = ref('')
+const saveReceipt = ref(null), guideTopic = ref(''), guidePicker = ref(false), guideEntry = ref(null), pageGuide = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
 const canRecordPool = pool => !!pool?.snapshot.catalog_pool_id && !!recruitmentPoolCatalog(pool, state.catalog || [])?.enabled && !state.catalogError
-async function beginRecordGuide() {
-  const poolId = editorOpen.value ? selectedPoolId.value : state.archive?.current_pool_id
-  if (!poolId || !state.archive?.pools.some(pool => pool.pool_id === poolId)) {
-    state.notice = '请先点开要登记的真实卡池，再从卡池标题的「登记教程」开始。'
-    return
-  }
-  if (!editorOpen.value) openPool(poolId)
-  await nextTick()
-  poolEditor.value?.startGuide()
+const pageGuideMessage = computed(() => {
+  if (!identity.value) return '请先登录；登录后确认页头的游戏账号，教程不会替你创建数据。'
+  if (state.accountsLoading) return '正在读取账号，请等待后核对页头账号。'
+  if (!state.accounts.length) return '请通过下方「先创建游戏账号」添加真实账号，再回来选池。'
+  if (!available.value) return '请在页头选择实际使用的游戏账号。'
+  if (state.loading) return '正在读取档案，读取完成后再选择卡池。'
+  if (state.error || !state.archive) return '档案尚未成功读取，请刷新档案后再选池；读取失败不代表没有记录。'
+  if (!state.archive.pools.length) return '当前游戏暂无公共卡池，需等待目录配置；教程不能创建卡池。'
+  return '核对页头游戏账号，在下方按年份、名称和起止日期找到实际抽取的池，再亲自点开。标为「当前卡池」不一定是你要记的池；历史池也可查看，是否能新增以实际状态为准。'
+})
+function openGuideTopics() {
+  if (editorOpen.value) return poolEditor.value?.openGuideTopics()
+  guidePicker.value = true
+  nextTick(() => pageGuide.value?.querySelector('button[data-guide-topic]')?.focus({ preventScroll: true }))
 }
-watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; savedGuideEventId.value = '' })
+function chooseGuideTopic(topic) {
+  guideTopic.value = topic; guidePicker.value = false
+  nextTick(() => pageGuide.value?.querySelector('button')?.focus({ preventScroll: true }))
+}
+function onPageEscape(event) {
+  if (editorOpen.value || (!guidePicker.value && !guideTopic.value)) return
+  event.preventDefault(); event.stopPropagation(); dismissPageGuide()
+}
+function dismissPageGuide() {
+  guidePicker.value = false; guideTopic.value = ''
+  nextTick(() => guideEntry.value?.focus({ preventScroll: true }))
+}
+watch(() => state.contextVersion, () => { showArchive.value = false; editorOpen.value = false; selectedPoolId.value = ''; saveReceipt.value = null; guideTopic.value = ''; guidePicker.value = false })
 async function beforeAccountSwitch() {
   if (state.busy || exchangePanel.value?.isBusy?.()) return false;
   if (poolEditor.value?.hasDraft?.() || exchangePanel.value?.hasDraft?.()) {
@@ -79,7 +106,19 @@ async function beforeAccountSwitch() {
 function openPool(poolId) {
   if (state.loading || state.busy || !state.archive?.pools.some(pool => pool.pool_id === poolId)) return
   timeline.value?.focusPool(poolId)
-  selectedPoolId.value = poolId; savedGuideEventId.value = ''; state.error = ''; editorOpen.value = true; loadPoolRecords(poolId)
+  selectedPoolId.value = poolId; saveReceipt.value = null; state.error = ''; editorOpen.value = true; loadPoolRecords(poolId)
+  if (guideTopic.value) nextTick(() => poolEditor.value?.startGuide(guideTopic.value, false))
+}
+async function retryPoolReadback(refreshArchive = true) {
+  const token = capture(), poolId = selectedPoolId.value, receipt = saveReceipt.value
+  if (receipt && refreshArchive) await refresh()
+  if (!matches(token) || poolId !== selectedPoolId.value) return
+  let loaded = await loadPoolRecords(poolId)
+  const cursors = new Set()
+  while (loaded && matches(token) && poolId === selectedPoolId.value && receipt?.entries.some(entry => !state.records.some(event => event.event_id === entry.event_id)) && state.recordsCursor && !cursors.has(state.recordsCursor)) {
+    cursors.add(state.recordsCursor)
+    loaded = await loadPoolRecords(poolId, state.recordsCursor)
+  }
 }
 async function savePool(payload) {
   if (!writable.value || payload.data.pool_id !== selectedPoolId.value) return
@@ -87,10 +126,9 @@ async function savePool(payload) {
   try {
     const result = await command(payload.operation, payload.data, { requestId: payload.requestId, expectedRevision: payload.revision })
     if (result && matches(token)) {
-      if (payload.verifyEventId) {
-        savedGuideEventId.value = payload.verifyEventId
-        await loadPoolRecords(payload.data.pool_id)
-      } else editorOpen.value = false
+      saveReceipt.value = { ...payload.data, entries: payload.data.entries.map(entry => ({ ...entry })), revision: result.archive_revision, guide: payload.guide }
+      await retryPoolReadback(false)
+      if (matches(token) && !payload.guide && !state.recordsError && !state.error) editorOpen.value = false
     }
   } catch (error) {
     if (error.status === 409 && matches(token)) await loadPoolRecords(selectedPoolId.value)
@@ -99,6 +137,7 @@ async function savePool(payload) {
 </script>
 
 <style scoped>
+.page-guide{margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--cream);font-size:13px;line-height:1.7}.guide-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.page-guide p{margin:8px 0}.page-guide details{margin:8px 0}.page-guide summary{cursor:pointer;min-height:44px;padding-block:10px}.page-guide summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .archive-toggle{width:auto;min-width:0}.recruitment-content :deep(.timeline-heading h2){font-size:24px}
 .recruitment-tutorial-entry{display:inline-flex;align-items:center;gap:5px;padding:0 4px;border:0;border-radius:8px;background:transparent;color:var(--ink-60);font:12px/1.5 var(--font-b);white-space:nowrap}
 
