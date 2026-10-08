@@ -26,7 +26,7 @@ it('默认展示头像和彩色抽数条，单条录入后生成记录条；重�
   expect(wrapper.get('.gacha-record .record-bar').classes()).toContain('bar-low')
   expect(wrapper.get('.gacha-record .record-bar').attributes('style')).toContain('42.5%')
   await register(wrapper, 'a', '')
-  expect(wrapper.find('.entry-composer').exists()).toBe(false)
+  expect(wrapper.find('.pull-count-field').exists()).toBe(false)
   expect(wrapper.findAll('.gacha-record')).toHaveLength(2)
   expect(wrapper.findAll('.gacha-record')[0].get('.record-bar').classes()).toContain('bar-unknown')
   await wrapper.get('form').trigger('submit')
@@ -109,11 +109,12 @@ it.each(['record', 'maintain'])('%s教程和普通模式使用同一新增直存
   expect(tutorial.operation).toBe(ordinary.operation)
   expect(tutorial.revision).toBe(ordinary.revision)
   expect(tutorial.data).toEqual({ ...ordinary.data, entries: ordinary.data.entries.map(entry => ({ ...entry, event_id: tutorial.data.entries[0].event_id })) })
-  expect(tutorial.guide).toMatchObject({ topic, target: tutorial.data.entries[0].event_id })
+  expect(tutorial.guide).toBeUndefined()
 })
 
 it('严格出货正整数与保底1–40，未知进度留空；忙碌不关闭/提交', async () => {
   const wrapper = render({ pool: { ...recruitmentFixture().pools[0], progress: null } })
+  await button(wrapper, '还没出绝密').trigger('click')
   expect(wrapper.get('.remaining-field input').element.value).toBe('')
   for (const value of ['', '0', '41', '1.5']) {
     await wrapper.get('.remaining-field input').setValue(value)
@@ -167,6 +168,7 @@ it('Escape取消不写入，重开恢复服务端记录和保底；已确认非U
   const wrapper = render({ records: [event], pool: { ...recruitmentFixture().pools[0], progress: 21 } })
   await flushPromises()
   expect(wrapper.get('.non-up-stamp').text()).toBe('歪')
+  await button(wrapper, '还没出绝密').trigger('click')
   expect(wrapper.get('.progress-number strong').text()).toBe('21')
   await wrapper.get('.gacha-record .record-detail').trigger('click')
   await button(wrapper, '删除记录').trigger('click')
@@ -176,6 +178,7 @@ it('Escape取消不写入，重开恢复服务端记录和保底；已确认非U
   await wrapper.setProps({ open: false })
   await wrapper.setProps({ open: true })
   expect(wrapper.get('.gacha-record .pull-result b').text()).toBe('31')
+  await button(wrapper, '还没出绝密').trigger('click')
   expect(wrapper.get('.remaining-field input').element.value).toBe('19')
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('save')).toBeUndefined()
