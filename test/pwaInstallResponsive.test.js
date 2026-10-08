@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import '../test-support/enableTutorials.js'
 
 function createStorage() {
   const values = new Map()

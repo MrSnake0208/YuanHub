@@ -18,6 +18,7 @@
   </RouterView>
   <AccountEventToasts />
   <MobileInstallPrompt
+    v-if="TUTORIALS_ENABLED"
     :route-loading="routeLoadingState.active"
     :access-pending="betaAccessPending"
   />
@@ -47,6 +48,7 @@ import { routeLoadingState } from '@/router/index.js'
 import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
 import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
 import { initializeOnboardingTour } from '@/utils/onboardingTour.js'
+import { TUTORIALS_ENABLED } from '@/config/features.js'
 
 let stopWatch = null
 let stopEventPrompt = null
@@ -138,7 +140,7 @@ function routeStarCapture(message) {
 }
 
 onMounted(function () {
-  stopOnboarding = initializeOnboardingTour(router)
+  if (TUTORIALS_ENABLED) stopOnboarding = initializeOnboardingTour(router)
   resetMonitorPromptForFreshNavigation()
   stopNotificationUnread = subscribeNotificationUnread()
   stopIdentityWatch = watch(() => auth.userInfo?.id || '', (userId) => {

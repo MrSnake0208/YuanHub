@@ -6,25 +6,25 @@
         <div class="wrap">
           <div class="crumb"><span class="pill fill">YuanHub</span><span class="pill">添加到桌面</span></div>
           <h1>添加到桌面<span class="small">Install YuanHub</span></h1>
-          <p class="hero-sub">跟着完成一次真实安装，或继续使用网页版。随时可以关闭教程。</p>
+          <p class="hero-sub">{{ TUTORIALS_ENABLED ? '跟着完成一次真实安装，或继续使用网页版。随时可以关闭教程。' : '添加 YuanHub 到桌面，或继续使用网页版。' }}</p>
         </div>
       </header>
       <section class="wrap install-content">
-        <div v-if="pwaInstallState.guideActive" class="task-exit"><button ref="exitButton" class="install-secondary exit-guide" type="button" @click="exitGuide">关闭教程 / 退出引导</button></div>
+        <div v-if="TUTORIALS_ENABLED && pwaInstallState.guideActive" class="task-exit"><button ref="exitButton" class="install-secondary exit-guide" type="button" @click="exitGuide">关闭教程 / 退出引导</button></div>
         <article v-if="pwaInstallState.standalone || pwaInstallState.installed" class="guide-card">
           <div class="installed-banner" role="status">
             <CircleCheck :size="24" aria-hidden="true" />
             <div>
               <h2>{{ pwaInstallState.standalone ? '你现在正从桌面版 YuanHub 运行。' : '系统已确认 YuanHub 安装完成。' }}</h2>
               <p v-if="!pwaInstallState.standalone">当前仍在浏览器中，请从桌面图标打开 YuanHub。</p>
-              <p v-if="pwaInstallState.tutorialCompleted">实操教程已完成。</p>
+              <p v-if="TUTORIALS_ENABLED && pwaInstallState.tutorialCompleted">实操教程已完成。</p>
             </div>
           </div>
-          <button ref="startButton" class="install-now" type="button" @click="beginGuide">使用教程（复用已安装成果）</button>
+          <button v-if="TUTORIALS_ENABLED" ref="startButton" class="install-now" type="button" @click="beginGuide">使用教程（复用已安装成果）</button>
           <router-link ref="doneLink" class="install-secondary" to="/">继续使用 YuanHub</router-link>
         </article>
 
-        <article v-else-if="pwaInstallState.guideActive" ref="taskPanel" class="guide-card" aria-labelledby="install-task-title">
+        <article v-else-if="TUTORIALS_ENABLED && pwaInstallState.guideActive" ref="taskPanel" class="guide-card" aria-labelledby="install-task-title">
           <header class="guide-head">
             <div><span class="eyebrow">{{ pwaInstallState.ios ? 'IPHONE / IPAD' : '安装任务' }}</span><h2 id="install-task-title" ref="taskHeading" tabindex="-1">{{ taskTitle }}</h2></div>
           </header>
@@ -61,7 +61,7 @@
           </div>
         </article>
 
-        <article v-else class="guide-card">
+        <article v-else-if="TUTORIALS_ENABLED" class="guide-card">
           <div class="install-overview">
             <img src="/pwa/icon-192.png" alt="YuanHub 应用图标" width="68" height="68" />
             <div><h2>{{ pwaInstallState.dismissedForNow ? '教程已暂停，网页版仍可照常使用' : '把 YuanHub 放到桌面' }}</h2><p>安装需要你亲自操作系统提示或浏览器菜单。阅读说明不会完成教程。</p></div>
@@ -71,7 +71,35 @@
             <router-link class="install-secondary" to="/" @click="closePwaInstallGuide()">直接使用网页版</router-link>
           </div>
         </article>
-        <div class="guide-preference">
+        <article v-else class="guide-card" aria-labelledby="install-direct-title">
+          <h2 id="install-direct-title">把 YuanHub 放到桌面</h2>
+          <p>{{ getPwaInstallGuidance() }}</p>
+          <div class="install-feedback" role="status" aria-live="polite">
+            <p v-if="pwaInstallState.requesting">正在打开系统安装提示…</p>
+            <p v-else-if="pwaInstallState.phase === 'waiting-for-install'">正在等待系统完成安装。请从桌面图标打开 YuanHub。</p>
+            <p v-else-if="pwaInstallState.phase === 'dismissed'">本次安装已取消，可以重试或继续使用网页版。</p>
+            <p v-else-if="pwaInstallState.phase === 'failed'">系统安装调用失败，请查看下方安装故障排查。</p>
+            <p v-else>支持安装的浏览器会提供安装按钮，也可以使用浏览器菜单。</p>
+          </div>
+          <div class="task-actions">
+            <button v-if="pwaInstallState.installable || pwaInstallState.requesting" class="install-now" type="button" :disabled="pwaInstallState.requesting" @click="requestPwaInstall"><Download :size="17" aria-hidden="true" />{{ pwaInstallState.requesting ? '正在打开…' : '立即添加到桌面' }}</button>
+            <button class="install-secondary" type="button" @click="refreshPwaInstallStatus">重新检测安装状态</button>
+            <router-link class="install-secondary" to="/">直接使用网页版</router-link>
+          </div>
+        </article>
+        <article v-if="!TUTORIALS_ENABLED" class="guide-card">
+          <h2>安装方法</h2>
+          <p>Android：在 Chrome 菜单中选择“安装并创建快捷方式”或“添加到主屏幕”，再确认安装。</p>
+          <p>iPhone / iPad：在 Safari 中打开本站，点击“分享” → “添加到主屏幕”；如显示“作为 Web App 打开”，保持开启。</p>
+          <p>电脑：使用支持安装的浏览器，点击地址栏安装图标或浏览器菜单中的安装选项。</p>
+          <p>安装需要你确认系统提示；网页无法读取或替你开启系统权限。仅创建快捷方式不代表已作为桌面应用运行。</p>
+          <details class="shortcut-permission-help" :open="pwaInstallState.phase === 'failed'">
+            <summary>安装故障排查</summary>
+            <p>重新检测安装状态，或通过当前浏览器菜单重试。没有安装菜单时，Android 可换用 Chrome，iPhone / iPad 可换用 Safari。</p>
+            <p>部分 Android 系统限制浏览器的“添加桌面快捷方式 / 创建桌面快捷方式”权限。可检查：系统设置 → 应用 / 应用管理 → 当前浏览器 → 权限 / 其他权限。不同品牌名称可能不同。</p>
+          </details>
+        </article>
+        <div v-if="TUTORIALS_ENABLED" class="guide-preference">
           <button v-if="!pwaInstallState.disableAutoGuide" class="install-secondary" type="button" @click="exitGuide(true)">以后不自动提示</button>
           <p v-else>已关闭自动提示，仍可随时从“安装到桌面”继续教程。</p>
         </div>
@@ -90,6 +118,7 @@ import { CircleCheck, Download, Settings2 } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import { modalFocusState } from '@/composables/useModalFocus.js'
+import { TUTORIALS_ENABLED } from '@/config/features.js'
 import { closePwaInstallGuide, getPwaInstallGuidance, initPwaInstall, pwaInstallState, refreshPwaInstallStatus, requestPwaInstall, startPwaInstallGuide, waitForPwaInstall } from '@/utils/pwaInstall.js'
 
 initPwaInstall()
@@ -107,6 +136,7 @@ const taskTitle = computed(() => {
   return pwaInstallState.installable ? '现在安装 YuanHub' : '打开浏览器安装菜单'
 })
 async function beginGuide() {
+  if (!TUTORIALS_ENABLED) return
   startPwaInstallGuide()
   await nextTick()
   const target = installButton.value || taskHeading.value || doneLink.value?.$el || doneLink.value
@@ -125,23 +155,25 @@ async function exitGuide(disableAutoGuide = false) {
 function onEscape(event) {
   if (event.key === 'Escape' && pwaInstallState.guideActive && !modalFocusState.active) exitGuide()
 }
-watch(() => pwaInstallState.requesting, async requesting => {
-  const moveFocus = !requesting && document.activeElement === installButton.value && pwaInstallState.guideActive
-  if (!moveFocus) return
-  await nextTick()
-  exitButton.value?.focus()
-})
-watch(() => pwaInstallState.installed, async installed => {
-  const restoreFocus = taskPanel.value?.contains(document.activeElement)
-  if (!installed || !restoreFocus) return
-  await nextTick()
-  const link = doneLink.value?.$el || doneLink.value
-  link?.focus()
-})
-onMounted(() => window.addEventListener('keydown', onEscape))
+if (TUTORIALS_ENABLED) {
+  watch(() => pwaInstallState.requesting, async requesting => {
+    const moveFocus = !requesting && document.activeElement === installButton.value && pwaInstallState.guideActive
+    if (!moveFocus) return
+    await nextTick()
+    exitButton.value?.focus()
+  })
+  watch(() => pwaInstallState.installed, async installed => {
+    const restoreFocus = taskPanel.value?.contains(document.activeElement)
+    if (!installed || !restoreFocus) return
+    await nextTick()
+    const link = doneLink.value?.$el || doneLink.value
+    link?.focus()
+  })
+}
+onMounted(() => { if (TUTORIALS_ENABLED) window.addEventListener('keydown', onEscape) })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEscape)
-  if (pwaInstallState.guideActive) closePwaInstallGuide()
+  if (TUTORIALS_ENABLED && pwaInstallState.guideActive) closePwaInstallGuide()
 })
 </script>
 
@@ -171,6 +203,8 @@ button:focus-visible,a:focus-visible { outline: 2px solid var(--accent); outline
 .installed-banner > svg,.shortcut-permission-help > svg { flex: none; margin-top: 5px; color: var(--accent-strong); }
 .shortcut-permission-help { display: flex; align-items: flex-start; gap: 12px; margin-top: 20px; padding: 16px; border: 1px dashed var(--accent); border-radius: 16px; }
 .shortcut-permission-help h3 { font-family: var(--font-s); }
+details.shortcut-permission-help { display: block; }
+details.shortcut-permission-help summary { min-height: 44px; cursor: pointer; }
 @media (max-width: 640px) {
   .guide-card { border-radius: 16px; }
   .guide-head { align-items: flex-start; flex-direction: column; }

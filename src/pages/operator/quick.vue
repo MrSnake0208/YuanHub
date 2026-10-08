@@ -7,7 +7,7 @@
         <div class="wrap">
           <router-link class="page-header-back" to="/operator">← 返回密探名册</router-link>
           <h1 class="page-header-title">快捷录入</h1>
-          <TutorialEntry task="operator-first-entry" />
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
           <div class="quick-header-context">
             <DataAccountContextBar
               compact
@@ -26,7 +26,7 @@
 
       <section class="quick-content">
         <div class="wrap">
-          <OnboardingGuide :tasks="['operator-first-entry', 'today-first-data']" :target="tutorialTarget" />
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" :target="tutorialTarget" />
           <!-- 未登录 / 未建账号 -->
           <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
             请先登录后再使用快捷录入
@@ -151,7 +151,7 @@
               </div>
 
               <!-- 批量设置条 -->
-              <div ref="tutorialTarget" />
+              <div v-if="TUTORIALS_ENABLED" ref="tutorialTarget" />
               <label v-if="supplementMode" class="supplement-option">
                 <input v-model="overwriteGrowth" type="checkbox" :disabled="busy" />
                 同时覆盖已有密探的等级、修为
@@ -394,6 +394,7 @@
 </template>
 
 <script setup>
+import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { publishOperatorCurrentRead } from '../../utils/operatorEvents.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";

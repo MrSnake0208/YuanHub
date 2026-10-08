@@ -3,7 +3,7 @@
     <IslandSidebar />
     <main id="main-content" class="today-main">
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
-        <template #actions><TutorialEntry task="today-first-data" /></template>
+        <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
         <DataAccountContextBar
           v-if="auth.isLoggedIn"
           ref="accountContext"
@@ -25,7 +25,7 @@
           </div>
 
           <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
-          <OnboardingGuide :tasks="['today-first-data']" />
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
 
           <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-sidebar': calendarEnabled && showAccountOverview }" data-tour="today-overview">
             <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
@@ -171,7 +171,7 @@ import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
 import TodaySubscriptionSummary from '../../components/today/TodaySubscriptionSummary.vue'
 import TodayLobby from '../../components/today/TodayLobby.vue'
-import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent } from '../../api/inventory.js'

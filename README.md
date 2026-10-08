@@ -21,6 +21,8 @@ YUANHUB_DEV_API_TARGET=http://127.0.0.1:8080
 
 `.env` 已加入 Git 忽略规则，真实地址不应写回源码或提交到仓库。
 
+教程当前默认软隐藏；本地显式开启方法与恢复检查见 [教程维护说明](docs/tutorials.md)。
+
 完整前后端接口契约见 [`docs/api-contract.md`](docs/api-contract.md)。公共关卡读取使用 `/v1/level/catalog`，
 关卡管理页使用 `/v1/admin/level-catalog/**`，后者需要登录 JWT 与 `level_catalog:write`。
 

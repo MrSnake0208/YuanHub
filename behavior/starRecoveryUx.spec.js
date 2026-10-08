@@ -1,4 +1,9 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
+vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled } }))
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { reactive } from 'vue'
 import StarPage from '../src/pages/star/index.vue'
@@ -58,6 +63,7 @@ async function loadStylesheet() {
 }
 
 beforeEach(() => {
+  tutorialFeature.enabled = true
   vi.clearAllMocks()
   navigation.route = reactive({ path: '/star', query: {}, hash: '' })
   auth.isLoggedIn = false
@@ -179,6 +185,32 @@ async function replay(wrapper) {
 }
 function addUnconfirmed(root) { root.querySelector('.import-pool').insertAdjacentHTML('beforeend', '<article data-import-image="one" class="thumbnail-card is-unconfirmed"></article>') }
 async function tick() { await vi.advanceTimersByTimeAsync(100); await flushPromises() }
+
+it('关闭教程仍挂载真实识别工作区，不启动教程检查或专属DOM监听', async () => {
+  tutorialFeature.enabled = false
+  enableTutorialStatus('disabled-owner')
+  const key = 'yuanhub:star-onboarding:v2:disabled-owner'
+  localStorage.setItem(key, 'seen')
+  const observers = vi.spyOn(globalThis, 'MutationObserver')
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const handle = embedMount.mock.results[0].value
+  expect(wrapper.find('.star-tutorial-replay').exists()).toBe(false)
+  expect(wrapper.get('#product-root').isVisible()).toBe(true)
+  expect(handle.setActiveTab).toHaveBeenCalledWith('import')
+  expect(handle.getRecognitionTutorialStatus).not.toHaveBeenCalled()
+  expect(observers).not.toHaveBeenCalled()
+  expect(tour()).toBeNull()
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  await embedMount.mock.calls[0][1].onOcrRebuild(emptySnapshot, null)
+  expect(rebuildStarState).toHaveBeenCalledTimes(1)
+  expect(rebuildStarState.mock.calls[0][0]).toBe('acc-1')
+  expect(handle.getRecognitionTutorialStatus).not.toHaveBeenCalled()
+  await wrapper.get('.star-help-trigger').trigger('click'); await flushPromises()
+  expect(help().textContent).toContain('完整原始截图')
+  expect(help().textContent).not.toContain('重新查看当前引导')
+  wrapper.unmount()
+  expect(localStorage.getItem(key)).toBe('seen')
+})
 
 it.each([
   ['import', 0, '重新查看识别教程', '先上传截图'],

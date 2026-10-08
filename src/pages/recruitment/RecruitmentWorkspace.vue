@@ -7,7 +7,7 @@
           <DataAccountContextBar data-guide-target="account" compact :accounts="state.accounts" :account-id="accountId" :game="game" :is-logged-in="!!identity" :loading="state.accountsLoading" :before-switch="beforeAccountSwitch" :switch-disabled="state.busy || !!exchangePanel?.isBusy?.()" switch-disabled-reason="正在保存招募档案，请等待完成后再切换账号。" description="本页记录、进度与备份均归属此账号。" />
         </template>
         <template v-if="enabled" #actions>
-          <div class="guide-entry-wrap"><button ref="guideEntry" type="button" class="recruitment-tutorial-entry" :aria-expanded="guidePicker" @click="openGuide"><CircleHelp :size="15" aria-hidden="true" />{{ guideActive ? '退出教程' : '使用教程' }}</button>
+          <div v-if="TUTORIALS_ENABLED" class="guide-entry-wrap"><button ref="guideEntry" type="button" class="recruitment-tutorial-entry" :aria-expanded="guidePicker" @click="openGuide"><CircleHelp :size="15" aria-hidden="true" />{{ guideActive ? '退出教程' : '使用教程' }}</button>
           <RecruitmentGuideChoice v-if="guidePicker" @record="startGuide" @practice="openPractice" @close="dismissPageGuide" /></div>
           <button v-if="state.archive" type="button" class="act-btn archive-toggle" :aria-expanded="showArchive" aria-controls="recruitment-exchange" @click="showArchive = !showArchive"><Archive :size="15" aria-hidden="true" />{{ showArchive ? '收起备份与恢复' : '备份与恢复' }}</button>
         </template>
@@ -15,7 +15,7 @@
       <div v-if="!enabled" class="wrap"><p class="card">招募档案暂未开放。</p></div>
       <div v-else class="wrap recruitment-content">
         <RecruitmentExchange v-if="state.archive" id="recruitment-exchange" ref="exchangePanel" v-model:open="showArchive" :account-id="accountId" :account-name="state.accounts.find(account => account.id === accountId)?.name" :identity="identity" :revision="state.archive.archive_revision" :game="state.archive.game_snapshot" :read-only="state.archive.game_mismatch" :busy="state.busy" :context-version="state.contextVersion" :request-version="state.requestVersion" @busy="state.busy = $event" @committed="refresh" />
-        <RecruitmentGuideHint v-if="guideActive && !editorOpen && pageGuideTarget !== 'pools'" :target="pageGuideTarget" :message="pageGuideMessage"><button type="button" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
+        <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget !== 'pools'" :target="pageGuideTarget" :message="pageGuideMessage"><button type="button" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
         <p data-guide-target="login" v-if="!identity" class="card">请先登录再使用招募档案。</p>
         <p data-guide-target="account-setup" v-else-if="!state.accountsLoading && !state.accounts.length && !state.error" class="card">还没有游戏账号。<router-link to="/user/profile#game-accounts">先创建游戏账号</router-link></p>
         <div data-guide-target="archive-state" class="feedback" aria-live="polite"><p v-if="state.error" class="error" role="alert">{{ state.error }}</p><p v-if="state.catalogError">{{ state.catalogError }}</p><p v-if="state.notice">{{ state.notice }}</p><p v-if="state.loading">正在读取档案…</p><button v-if="state.error" type="button" :disabled="state.loading || state.accountsLoading" @click="available ? refresh() : loadAccounts()">重新读取</button></div>
@@ -26,14 +26,14 @@
             <div class="summary-item"><span class="summary-icon" aria-hidden="true"><Gem :size="18" /></span><div><span>绝密记录</span><div class="summary-number"><strong>{{ state.archive.summary.event_count }}</strong><small class="number-unit">条</small></div><small>按每次出货分别记录，同一密探可重复</small></div></div>
           </div>
           <div class="archive-tools"><span>记录与进度均归属当前游戏账号</span><button type="button" :disabled="state.loading || state.busy" @click="refresh"><RotateCw :size="15" aria-hidden="true" />刷新档案</button></div>
-          <RecruitmentTimeline ref="timeline" :guide-active="guideActive && !editorOpen && pageGuideTarget === 'pools'" :pools="state.archive.pools" :catalog="state.catalog || []" :agents="agents" :pool-summaries="state.archive.pool_summaries || {}" :current-pool-id="state.archive.current_pool_id" :busy="state.loading || state.busy" :context-version="state.contextVersion" @select="openPool" @practice="openPractice" />
+          <RecruitmentTimeline ref="timeline" :guide-active="TUTORIALS_ENABLED && guideActive && !editorOpen && pageGuideTarget === 'pools'" :pools="state.archive.pools" :catalog="state.catalog || []" :agents="agents" :pool-summaries="state.archive.pool_summaries || {}" :current-pool-id="state.archive.current_pool_id" :busy="state.loading || state.busy" :context-version="state.contextVersion" @select="openPool" @practice="openPractice" />
           <div v-if="!state.archive.pools.length" class="actions"><button type="button" :disabled="!writable" @click="exchangePanel?.openImport()">导入备份</button></div>
         </template>
       </div>
       <SiteFooter />
     </main>
-    <RecruitmentPractice v-if="practiceOpen" @close="practiceOpen = false" />
-    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :pool-summary="state.archive?.pool_summaries?.[selectedPoolId]" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guided="guideActive" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="retryPoolReadback" @guide-dismiss="guideActive = false" @guide-start="guideActive = true" @practice="openPractice" />
+    <RecruitmentPractice v-if="TUTORIALS_ENABLED && practiceOpen" @close="practiceOpen = false" />
+    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :pool-summary="state.archive?.pool_summaries?.[selectedPoolId]" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guided="TUTORIALS_ENABLED && guideActive" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="retryPoolReadback" @guide-dismiss="guideActive = false" @guide-start="guideActive = true" @practice="openPractice" />
   </div>
 </template>
 
@@ -50,7 +50,7 @@ import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import RecruitmentPractice from './RecruitmentPractice.vue'
 import RecruitmentExchange from './RecruitmentExchange.vue'
 import RecruitmentTimeline from './RecruitmentTimeline.vue'
-import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js'
 import { recruitmentPoolCatalog } from './rules.js'
 import { dialog } from '../../utils/dialog.js'
 import { useRecruitment } from './useRecruitment.js'
@@ -80,12 +80,14 @@ const pageGuideMessage = computed(() => {
   return '正在确认档案；不会把未读到的资料当空数据。'
 })
 function openGuide() {
+  if (!TUTORIALS_ENABLED) return
   if (editorOpen.value) return poolEditor.value?.openGuide()
   if (guideActive.value) return dismissPageGuide()
   guidePicker.value = !guidePicker.value
 }
-function startGuide() { guidePicker.value = false; guideActive.value = true }
+function startGuide() { if (!TUTORIALS_ENABLED) return; guidePicker.value = false; guideActive.value = true }
 function openPractice() {
+  if (!TUTORIALS_ENABLED) return
   if (state.busy) return
   guidePicker.value = false; guideActive.value = false; practiceOpen.value = true
 }

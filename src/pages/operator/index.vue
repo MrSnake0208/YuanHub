@@ -10,7 +10,7 @@
             switch-disabled-reason="正在保存或导入，请等待完成后再切换账号。" />
         </template>
         <template #actions>
-          <TutorialEntry task="operator-first-entry" />
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="operator-first-entry" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -31,7 +31,7 @@
 
       <section>
         <div class="wrap">
-          <OnboardingGuide :tasks="['operator-first-entry', 'today-first-data']" />
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['operator-first-entry', 'today-first-data']" />
           <div class="tool-summary" aria-label="密探概览">
             <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位 · {{ manifestPercent }}</span>
             <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
@@ -2995,7 +2995,7 @@ import StarLoadoutModal from "../../components/operator/StarLoadoutModal.vue";
 import ShareCardStats from "../../components/operator/ShareCardStats.vue";
 import operatorPortraits from "../../data/operatorPortraits.json";
 import { BOOK_VALUES, bookExperience, levelBookGapBundle } from "../../data/operatorTraining.js";
-import { FEATURE_KEYS, isFeatureEnabled } from "../../config/features.js";
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from "../../config/features.js";
 import {
   ACTIVE_OPERATOR_LEDGER_CARD_VERSION,
   OPERATOR_LEDGER_CARD_VERSIONS,

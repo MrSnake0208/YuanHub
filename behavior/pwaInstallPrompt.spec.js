@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia } from 'pinia'

@@ -1,4 +1,7 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, ref } from 'vue'
 import RecognitionTutorial from '../src/pages/star/RecognitionTutorial.vue'

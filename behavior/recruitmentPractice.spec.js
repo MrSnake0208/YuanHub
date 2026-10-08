@@ -1,4 +1,7 @@
-import { expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+import { afterAll, expect, it, vi } from 'vitest'
 import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import RecruitmentPractice from '../src/pages/recruitment/RecruitmentPractice.vue'
 import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'

@@ -1,4 +1,8 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
+import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub, DOMWrapper } from '@vue/test-utils'
 import { routeLocationKey } from 'vue-router'
 import RecruitmentPage from '../src/pages/recruitment/RecruitmentWorkspace.vue'
@@ -12,7 +16,7 @@ import { deferred, recruitmentCatalog, recruitmentEvent, recruitmentFixture } fr
 import { isFeatureEnabled } from '../src/config/features.js'
 import { entryInput } from '../src/pages/recruitment/rules.js'
 
-vi.mock('../src/config/features.js', () => ({ FEATURE_KEYS: { RECRUITMENT_ARCHIVE: 'recruitmentArchive' }, isFeatureEnabled: vi.fn(() => true) }))
+vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled }, isFeatureEnabled: vi.fn(() => true) }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'user-a' } }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
@@ -24,6 +28,7 @@ function render(stubs = {}) { return mount(RecruitmentPage, { attachTo: document
 async function selectPool(wrapper, index = 0) { await wrapper.findAll('.pool-card')[index].trigger('click'); await flushPromises() }
 const button = (wrapper, text) => wrapper.findAll('button').find(item => item.text() === text)
 beforeEach(() => {
+  tutorialFeature.enabled = true
   vi.clearAllMocks(); isFeatureEnabled.mockReturnValue(true); auth.accessToken = 'synthetic'; auth.userInfo = { id: 'user-a' }
   activeAccount.set('acc-a'); activeAccount.setGame('代号鸢', 'acc-a'); activeAccount.setGame('代号鸢', 'acc-b')
   archives = { 'acc-a': recruitmentFixture(), 'acc-b': { ...recruitmentFixture('acc-b'), summary: { ...recruitmentFixture().summary, known_total_pulls: 999 } } }
@@ -34,6 +39,18 @@ beforeEach(() => {
   records = { 'acc-a': [{ ...recruitmentEvent('A', 17), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }, { ...recruitmentEvent('B', 31), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }], 'acc-b': [] }
   api.listRecruitmentEvents.mockImplementation(({ accountId }) => Promise.resolve({ items: structuredClone(records[accountId]), next_cursor: null, archive_revision: archives[accountId].archive_revision }))
   api.recruitmentCommand.mockResolvedValue({ archive_revision: 4 })
+})
+
+it('关闭教程保留真实卡池与出货录入表单，编辑器不会自动进入引导', async () => {
+  tutorialFeature.enabled = false
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  const panel = editor(wrapper)
+  expect(wrapper.find('.recruitment-tutorial-entry').exists()).toBe(false)
+  expect(panel.find('.guide-entry, .guide-choice, .guide-hint, .guide-exit').exists()).toBe(false)
+  expect(button(panel, '抽到了绝密').element.disabled).toBe(false)
+  await button(panel, '抽到了绝密').trigger('click')
+  expect(panel.find('.entry-shortcuts').isVisible()).toBe(true)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
 })
 
 function firstRecordAccount() {
