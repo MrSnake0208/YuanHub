@@ -7,6 +7,7 @@
             <span class="editor-eyebrow">招募档案</span>
             <h2 id="pool-editor-title">{{ poolName }}</h2>
           </div>
+          <button v-if="!guideVisible" type="button" class="guide-entry" @click="startGuide">登记教程</button>
           <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">关闭教程</button>
           <button type="button" class="close-button" aria-label="关闭卡池编辑" :disabled="busy" @click="close">
             <X :size="20" aria-hidden="true" />
@@ -64,7 +65,6 @@
             <details class="entry-guide">
               <summary><CircleHelp :size="16" aria-hidden="true" />抽数怎么填写？</summary>
               <p>{{ pullSpanHelp }}</p>
-              <button type="button" class="guide-entry" @click="startGuide">重新进入 / 继续实操教程</button>
             </details>
 
             <section class="records-section" aria-labelledby="records-title">
@@ -127,7 +127,7 @@
                 role="group"
                 :aria-label="originals.has(activeRow.event_id) ? '编辑抽卡记录' : '添加抽卡记录'"
               >
-                <p v-if="guideMode === 'active'" class="guide-field-hint" role="status">{{ guideMessage }}</p>
+                <p v-if="['active', 'existing'].includes(guideMode)" class="guide-field-hint" role="status">{{ guideMode === 'existing' ? '核对这条已有记录的密探与真实抽数，按实际变化修改；确认编辑后点击底部保存。无需创建重复出货。' : guideMessage }}</p>
                 <div v-if="choosingAgent" class="agent-picker">
                   <label class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
@@ -332,7 +332,7 @@ const guideMessage = computed(() => {
   if (guideMode.value === 'invitation') return '先登记你在这个池里最近一次绝密出货。'
   if (guideMode.value === 'completed') return '第一条出货记录已登记。'
   if (!recordsReady.value) return '正在确认本池真实记录；读取失败时可重新读取，也可随时关闭教程。'
-  if (guideMode.value === 'existing') return '当前卡池已有真实出货记录，可直接使用，无需重复登记。'
+  if (guideMode.value === 'existing') return '当前卡池已有真实出货记录，无需重复登记。复习时点开已有记录，核对密探与真实抽数，按实际变化编辑并保存；也可登记下一次真实出货。'
   if (props.savedGuideEventId) return '保存已成功，正在核对本池记录。结果尚未确认时不必重复登记。'
   if (props.busy) return '正在保存真实记录；可随时关闭教程。'
   if (props.readOnly || !props.canRecord) return '当前卡池暂不能新增出货，可随时关闭教程。'
@@ -436,7 +436,7 @@ function profIcon(prof) {
 function resetAgentFilters() { agentSearch.value = ''; agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
 function close() { if (!props.busy) emit('close') }
-defineExpose({ hasDraft: () => props.open && (remaining.value !== initialRemaining.value || !!activeRow.value || deletedIds.value.length > 0 || rows.value.some(row => !originals.has(row.event_id) || isChanged(row))) })
+defineExpose({ startGuide, hasDraft: () => props.open && (remaining.value !== initialRemaining.value || !!activeRow.value || deletedIds.value.length > 0 || rows.value.some(row => !originals.has(row.event_id) || isChanged(row))) })
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse())
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'

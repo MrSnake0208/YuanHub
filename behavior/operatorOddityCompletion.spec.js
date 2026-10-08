@@ -99,7 +99,7 @@ beforeEach(async () => {
 async function render() {
   const { default: OperatorPage } = await import('../src/pages/operator/index.vue')
   const wrapper = mount(OperatorPage, { global: { plugins: [createPinia()],
-    stubs: { IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
+    stubs: { OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true,
       RouterLink: true },
     directives: { reveal: () => {} },

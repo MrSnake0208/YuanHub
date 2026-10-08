@@ -190,7 +190,7 @@ it.each([
   const key = 'yuanhub:star-onboarding:v2:direct-tutorial'
   localStorage.setItem(key, 'seen')
   const wrapper = render(); await flushPromises()
-  expect(wrapper.find('.star-tutorial-replay').exists()).toBe(false)
+  expect(wrapper.get('.star-tutorial-replay').attributes('disabled')).toBeDefined()
   await loadStylesheet(); await tick()
   if (count) {
     embedMount.mock.calls[0][1].onSummaryChange({ currentCount: count, planCount: 0, gameVersion: '如鸢' })
@@ -199,7 +199,7 @@ it.each([
   }
   const button = wrapper.get('.star-tutorial-replay')
   expect(button.isVisible()).toBe(true)
-  expect(button.text()).toBe(label)
+  expect(button.text()).toBe('使用教程')
   expect(tour()).toBeNull()
   await button.trigger('click'); await tick()
   expect(help()).toBeNull()

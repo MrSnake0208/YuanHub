@@ -27,8 +27,8 @@ let direction = 0
 function syncFollowTop() {
   if (typeof document === 'undefined') return
   const value = hidden.value
-    ? 'calc(var(--tutorial-height, 0px) + 8px + env(safe-area-inset-top))'
-    : 'calc(var(--tutorial-height, 0px) + 72px + env(safe-area-inset-top))'
+    ? 'calc(8px + env(safe-area-inset-top))'
+    : 'calc(72px + env(safe-area-inset-top))'
   document.documentElement.style.setProperty(followTopProperty, value)
 }
 

@@ -10,6 +10,7 @@
             :switch-disabled="savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
+          <TutorialEntry task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -30,12 +31,13 @@
 
       <section>
         <div class="wrap">
+          <OnboardingGuide :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
             <div><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
             <button v-if="inventoryAccountReady" type="button" class="btn primary inventory-entry" :disabled="loading || !!error || currentLoadedContext !== stockContext || editingStock"
               @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
           </div>
-          <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)" :guide-task="inventorySetupNeeded || !auth.isLoggedIn || (!accountsLoading && !accountError && !accounts.length) ? 'inventory-first-baseline' : ''">
+          <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)">
             <router-link v-if="!auth.isLoggedIn" class="btn primary" :to="{ path: '/login', query: { redirect: '/inventory' } }">登录</router-link>
             <button v-else-if="accountError || error" class="btn primary" type="button" @click="accountError ? loadAccounts() : reloadCurrent()">重试</button>
             <router-link v-else-if="!inventoryAccountReady && !accountsLoading" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>
@@ -167,6 +169,7 @@
             ref="manifestPanel"
             class="panel"
           >
+            <div v-if="editingStock" id="inventory-tutorial-editor" />
             <div
               v-if="editingStock || stockSaveNotice"
               class="manifest-intro"
@@ -1780,6 +1783,8 @@ import {
   X,
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
+import TutorialEntry from "../../components/TutorialEntry.vue";
+import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import { inventoryCurrentRead } from '../../utils/inventoryEvents.js';
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
@@ -6471,7 +6476,7 @@ onBeforeUnmount(function () {
 }
 .stock-stepper {
   width: min(100%, 140px);
-  height: 44px;
+  height: 47px;
   margin-top: 6px;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;

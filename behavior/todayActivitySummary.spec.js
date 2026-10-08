@@ -48,7 +48,7 @@ function signIn(values = accounts) {
   auth.userInfo = { user_name: '测试殿下' }
   listAccounts.mockResolvedValue(values)
 }
-const render = (component = TodayPage, props = {}) => mount(component, { props, global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { RouterLink: RouterLinkStub } } })
+const render = (component = TodayPage, props = {}) => mount(component, { props, global: { provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
 const card = wrapper => wrapper.get('.today-activity-summary')
 const link = wrapper => card(wrapper).getComponent(RouterLinkStub)
 
@@ -64,9 +64,9 @@ beforeEach(() => {
   activeAccount.games = {}
   isFeatureEnabled.mockReturnValue(true)
   listAccounts.mockResolvedValue([])
-  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { level: 1 } } })
+  getOperatorCurrent.mockResolvedValue({ entries: { '1001': { level: 1, star_level: 1 } } })
   getCurrent.mockResolvedValue({ entries: { coin: { count: 3 } } })
-  getCurrentStarState.mockResolvedValue({ inventory: [{ id: 'star-a' }] })
+  getCurrentStarState.mockResolvedValue({ inventory: [{ instance_id: 'star-a' }] })
   listActivityCalendar.mockResolvedValue({ items: [item()] })
   calendarSubscriptionSummary.mockResolvedValue({ items: [], subscribed_count: 0, total_pending: 0 })
 })
@@ -231,7 +231,7 @@ it.each(['public', 'private'])('%s失败不吞掉另一类活动内容；数据�
   expect(wrapper.text()).toContain(failed === 'public' ? '个人临期事项' : '今日公开活动')
   expect(wrapper.get(failed === 'public' ? '.activity-error' : '.today-subscriptions [role=alert]').exists()).toBe(true)
   const calls = listActivityCalendar.mock.calls.length
-  getOperatorCurrent.mockResolvedValue({ entries: { one: {} } })
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
   await wrapper.get('.today-alert button').trigger('click'); await flushPromises()
   expect(wrapper.find('.today-alert').exists()).toBe(false)
   expect(listActivityCalendar).toHaveBeenCalledTimes(calls)

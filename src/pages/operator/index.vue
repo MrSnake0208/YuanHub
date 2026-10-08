@@ -10,6 +10,7 @@
             switch-disabled-reason="正在保存或导入，请等待完成后再切换账号。" />
         </template>
         <template #actions>
+          <TutorialEntry task="operator-first-entry" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -30,6 +31,7 @@
 
       <section>
         <div class="wrap">
+          <OnboardingGuide :tasks="['operator-first-entry', 'today-first-data']" />
           <div class="tool-summary" aria-label="密探概览">
             <span>图鉴 <b>{{ catalogCount }}</b> 位</span><span>已招募 <b>{{ manifestOwned }}</b> 位 · {{ manifestPercent }}</span>
             <span class="tool-updated" :title="catalogVersion || '本地兜底'">更新于 {{ catalogVersion ? catalogVersion.split('T')[0] : '本地兜底' }}</span>
@@ -48,7 +50,6 @@
 
           <!-- TABS：图鉴 / 当前养成 / 养成追踪 -->
           <ToolTaskPrompt v-if="operatorEntryState" class="operator-entry-guide" :title="operatorEntryTitle"
-            :guide-task="['empty', 'unowned', 'logged-out', 'no-account'].includes(operatorEntryState) ? 'operator-first-entry' : ''"
             :description="operatorEntryMessage" :error="operatorEntryState.endsWith('error')">
             <router-link v-if="operatorEntryState === 'logged-out'" class="btn primary" :to="{ path: '/login', query: { redirect: '/operator' } }">登录</router-link>
             <router-link v-else-if="operatorEntryState === 'no-account'" class="btn primary" to="/user/profile#game-accounts">创建或选择账号</router-link>
@@ -2980,6 +2981,8 @@ import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
+import TutorialEntry from "../../components/TutorialEntry.vue";
+import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ButterflyIcon from "../../components/operator/ButterflyIcon.vue";

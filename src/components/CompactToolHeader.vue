@@ -50,7 +50,8 @@ const helpId = useId()
 @container (max-width: 340px) {
   .compact-tool-heading h1 { font-size: 28px; }
   .compact-tool-description { max-width: 16em; }
-  .compact-tool-row { column-gap: 8px; }
+  .compact-tool-row { grid-template-areas: 'heading heading' 'actions actions' 'account account'; column-gap: 8px; }
+  .compact-tool-actions { justify-content: flex-start; flex-wrap: wrap; }
 }
 </style>
 

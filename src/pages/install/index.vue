@@ -20,7 +20,7 @@
               <p v-if="pwaInstallState.tutorialCompleted">实操教程已完成。</p>
             </div>
           </div>
-          <button v-if="pwaInstallState.tutorialStarted && !pwaInstallState.tutorialCompleted" class="install-now" type="button" @click="beginGuide">继续实操教程（复用已安装成果）</button>
+          <button ref="startButton" class="install-now" type="button" @click="beginGuide">使用教程（复用已安装成果）</button>
           <router-link ref="doneLink" class="install-secondary" to="/">继续使用 YuanHub</router-link>
         </article>
 

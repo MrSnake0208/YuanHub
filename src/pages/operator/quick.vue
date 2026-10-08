@@ -7,6 +7,7 @@
         <div class="wrap">
           <router-link class="page-header-back" to="/operator">← 返回密探名册</router-link>
           <h1 class="page-header-title">快捷录入</h1>
+          <TutorialEntry task="operator-first-entry" />
           <div class="quick-header-context">
             <DataAccountContextBar
               compact
@@ -25,7 +26,7 @@
 
       <section class="quick-content">
         <div class="wrap">
-
+          <OnboardingGuide :tasks="['operator-first-entry', 'today-first-data']" :target="tutorialTarget" />
           <!-- 未登录 / 未建账号 -->
           <div v-if="!auth.isLoggedIn" class="state err" v-reveal>
             请先登录后再使用快捷录入
@@ -150,6 +151,7 @@
               </div>
 
               <!-- 批量设置条 -->
+              <div ref="tutorialTarget" />
               <label v-if="supplementMode" class="supplement-option">
                 <input v-model="overwriteGrowth" type="checkbox" :disabled="busy" />
                 同时覆盖已有密探的等级、修为
@@ -398,6 +400,8 @@ import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import IslandSidebar from "../../components/IslandSidebar.vue";
+import TutorialEntry from "../../components/TutorialEntry.vue";
+import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import "../../styles/page-header.css";
@@ -478,6 +482,7 @@ const steps = starSteps;
 
 // —— 页面状态 ——
 const mode = ref(route.query.mode === "supplement" ? "supplement" : "first");
+const tutorialTarget = ref(null);
 const supplementMode = computed(() => mode.value === "supplement");
 const overwriteGrowth = ref(false);
 const stepIndex = ref(0);

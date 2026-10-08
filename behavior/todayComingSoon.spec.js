@@ -23,7 +23,7 @@ vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(async () => ({ items: [], subscribed_count: 0, total_pending: 0 })) }))
 
-const render = () => mount(TodayPage, { global: { plugins: [createPinia()], provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { RouterLink: RouterLinkStub } } })
+const render = () => mount(TodayPage, { global: { plugins: [createPinia()], provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
 
 function signIn() {
   auth.isLoggedIn = true

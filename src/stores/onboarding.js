@@ -82,17 +82,6 @@ export const useOnboardingStore = defineStore('onboarding', {
         return this
       } finally { initializingStores.delete(this) }
     },
-    recommend() {
-      if (this.status !== 'idle' || this.visible || this.dismissedForNow || this.disableAutoGuide || Object.keys(this.completedTasks).length) return false
-      this.panel = 'invitation'
-      return true
-    },
-    openTasks() {
-      // Returning to the selector pauses teaching, never a business form.
-      if (this.active) this.status = 'paused'
-      this.panel = 'tasks'
-      this.persist()
-    },
     start(taskId) {
       if (!Object.hasOwn(ONBOARDING_TASKS, taskId)) return false
       this.tutorialTask = taskId

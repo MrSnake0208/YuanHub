@@ -3,7 +3,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import OnboardingGuide from '../src/components/OnboardingGuide.vue'
 import OperatorPage from '../src/pages/operator/index.vue'
 import QuickPage from '../src/pages/operator/quick.vue'
 import ProfilePage from '../src/pages/user/profile.vue'
@@ -102,12 +101,12 @@ async function render(path = '/', pinia = createPinia()) {
     { path: '/operator/share', component: { template: '<main />' } }
   ] })
   await router.push(path); await router.isReady()
-  host = mount(defineComponent({ components: { OnboardingGuide, AppDialog }, setup() {
+  host = mount(defineComponent({ components: { AppDialog }, setup() {
     let stop
     onMounted(() => { stop = initializeOnboardingTour(router) })
     onBeforeUnmount(() => stop?.())
     return {}
-  }, template: '<OnboardingGuide /><RouterView /><AppDialog />' }), {
+  }, template: '<RouterView /><AppDialog />' }), {
     attachTo: document.body, global: { plugins: [pinia, router], directives: { reveal: () => {} }, stubs: {
       IslandSidebar: true, SiteFooter: true, BetaNotice: true, OperatorShareManager: true,
       OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true, TodayActivitySummary: true, TodaySubscriptionSummary: true, RewardEntryWorkspace: true
@@ -122,7 +121,6 @@ const clickText = async text => {
   expect(button, text).toBeTruthy(); button.click(); await flushPromises()
 }
 async function begin(router, store) {
-  store.openTasks(); await nextTick()
   await startOnboardingTask(router, 'operator-first-entry'); await flushPromises()
 }
 async function enterQuick() {
@@ -140,21 +138,79 @@ async function selectAndSave() {
   document.querySelector('.dlg-btn.primary').click(); await flushPromises()
 }
 
-it('首次邀请可直接使用，不写数据、不标完成、不刷新骚扰；仍可手动开始', async () => {
+it('正常首页无全局邀请或按钮墙；本页稳定入口启动、关闭、重入均不写业务数据', async () => {
   const { store } = await render()
-  const invitation = host.get('.tool-task-prompt')
-  expect(invitation.text()).toContain('跟着做一次')
-  await invitation.findAll('button').find(button => button.text() === '直接使用 / 暂时关闭').trigger('click')
+  expect(guide()).toBeNull()
+  expect(host.findAll('.tutorial-entry')).toHaveLength(1)
+  await followHere()
+  expect(store.waitingFor).toBe('first_task')
+  await clickText('关闭教程')
   expect(guide()).toBeNull(); expect(store.tutorialCompleted).toBe(false)
-  expect(host.get('.tool-task-prompt').find('h2').exists()).toBe(false)
-  expect(host.get('.tool-task-prompt').text()).toContain('重新进入 / 继续实操教程')
+  expect(host.get('.tutorial-entry').text()).toBe('使用教程')
   expect(store.disableAutoGuide).toBe(false)
   host.unmount(); await render()
   expect(guide()).toBeNull()
-  useOnboardingStore().openTasks(); await nextTick()
+  await followHere()
   expect(guide().textContent).toContain('录入第一位密探')
   expect(accountsApi.createAccount).not.toHaveBeenCalled()
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
+})
+
+it.each(['/', '/operator', '/inventory', '/user/profile'])('已有真实数据的 %s 用户仍有唯一可见的本工作区入口，无需全局选择', async path => {
+  current = stored()
+  stock = [{ account_id: 'acc', entity_type: 'item', entries: {}, full_baseline_at: '2026-10-08T00:00:00Z' }]
+  const { store } = await render(path)
+  expect(guide()).toBeNull()
+  expect(host.findAll('.tutorial-entry')).toHaveLength(1)
+  expect(host.get('.tutorial-entry').isVisible()).toBe(true)
+  await followHere()
+  expect(guide()).toBeTruthy()
+  expect(guide().textContent).not.toContain('返回任务选择')
+  expect(guide().textContent).not.toContain('第一次连接 MaaYuan')
+  if (path !== '/') {
+    expect(store.tutorialCompleted).toBe(true)
+    expect(guide().textContent).toContain('复习时')
+  }
+  expect(accountsApi.createAccount).not.toHaveBeenCalled()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it('离开任务页不留下浮层、不查询或跳转；回到任务页重新读取真实状态', async () => {
+  const { router, store } = await render('/operator')
+  await followHere()
+  await router.push('/changelog'); await flushPromises()
+  const reads = operatorApi.getOperatorCurrent.mock.calls.length
+  expect(guide()).toBeNull()
+  expect(store.active).toBe(true)
+  current = stored()
+  publishOperatorCurrentRead({ ownerId: 'owner', accountId: 'acc', game: '如鸢', data: current })
+  await refreshTutorialBusiness(); await flushPromises()
+  expect(operatorApi.getOperatorCurrent).toHaveBeenCalledTimes(reads)
+  expect(store.tutorialCompleted).toBe(false)
+  expect(router.currentRoute.value.path).toBe('/changelog')
+  await router.push('/operator'); await flushPromises()
+  expect(store.tutorialCompleted).toBe(true)
+  expect(guide().textContent).toContain('复习时')
+})
+
+it('局部关闭将焦点还给发起入口；无关业务模态优先处理Esc且不结束教程', async () => {
+  await render()
+  host.get('.tutorial-entry').element.focus()
+  await followHere()
+  expect(guide().contains(document.activeElement)).toBe(true)
+  await clickText('关闭教程')
+  expect(document.activeElement).toBe(host.get('.tutorial-entry').element)
+  await followHere()
+  await host.get('.lobby-duty button').trigger('click'); await flushPromises()
+  expect(guide()).toBeNull()
+  const panel = document.querySelector('.duty-picker')
+  expect(panel).toBeTruthy()
+  panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  expect(document.querySelector('.duty-picker')).toBeNull()
+  expect(useOnboardingStore().active).toBe(true)
+  expect(guide()).toBeTruthy()
 })
 
 it('真实名册入口→真实快捷录入→真实确认→服务端读回，自动完成并留下可用档案', async () => {
@@ -239,7 +295,7 @@ it('读取账号失败不算无账号，不诱导重复创建；错误期间随�
   await begin(router, store)
   expect(store.waitingFor).toBe('read_error')
   expect(guide().textContent).not.toContain('去创建游戏账号')
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(store.tutorialCompleted).toBe(false); expect(guide()).toBeNull()
 })
 
@@ -267,7 +323,7 @@ it('在真实保存确认框退出不会确认或取消提交，真实按钮仍�
   await page.get('.op-check').setValue(true); await page.get('.wiz-actions .primary').trigger('click'); await flushPromises()
   const panel = document.querySelector('.dialog')
   expect(panel.querySelector('.tutorial-exit')).toBeTruthy()
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(dialog._state.visible).toBe(true); expect(page.get('.op-check').element.checked).toBe(true)
   expect(operatorApi.importOperator).not.toHaveBeenCalled()
   panel.querySelector('.dlg-btn.primary').click(); await flushPromises()
@@ -294,13 +350,13 @@ it('延迟请求在退出或换账号后不能推进；手动重入只重新读�
   const { router, store } = await render(); await begin(router, store)
   const pending = deferred(); operatorApi.getOperatorCurrent.mockReturnValueOnce(pending.promise)
   const read = refreshTutorialBusiness(); await flushPromises()
-  await clickText('退出引导')
+  await clickText('关闭教程')
   pending.resolve(stored()); await read
   expect(store.tutorialCompleted).toBe(false)
   const another = { id: 'other-account', name: '另一个账号', game: '如鸢' }
   accounts.push(another)
   operatorApi.getOperatorCurrent.mockImplementation(async ({ accountId }) => accountId === 'acc' ? stored() : [])
-  activeAccount.set('other-account'); store.openTasks(); await nextTick()
+  activeAccount.set('other-account'); await nextTick()
   await startOnboardingTask(router, 'operator-first-entry'); await flushPromises()
   expect(store.waitingFor).toBe('operator_saved'); expect(store.tutorialCompleted).toBe(false)
   expect(JSON.parse(localStorage.getItem(onboardingStorageKey('owner'))).tutorialTask).toBe('operator-first-entry')
@@ -310,9 +366,8 @@ it('从帮助继续当前快捷录入不离开页面、不清空草稿，不按�
   const { router, store } = await render(); await begin(router, store); await enterQuick()
   const page = host.findComponent(QuickPage)
   await page.get('.op-check').setValue(true)
-  await clickText('退出引导')
-  store.openTasks(); await nextTick()
-  await clickText('继续实操教程：录入第一位密探')
+  await clickText('关闭教程')
+  await page.get('.tutorial-entry').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.path).toBe('/operator/quick')
   expect(page.get('.op-check').element.checked).toBe(true)
   expect(dialog._state.visible).toBe(false)
@@ -321,12 +376,8 @@ it('从帮助继续当前快捷录入不离开页面、不清空草稿，不按�
 
 it('永久不自动提示也可手动重进；已有账号任务只按真实账号列表完成', async () => {
   const { router, store } = await render()
-  store.recommend(); await nextTick()
-  const checkbox = guide().querySelector('input[type="checkbox"]')
-  checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await nextTick()
-  await clickText('直接使用 / 暂时关闭')
+  store.dismiss({ disableAutoGuide: true })
   expect(store.disableAutoGuide).toBe(true)
-  store.openTasks(); await nextTick()
   await startOnboardingTask(router, 'account-create'); await flushPromises()
   expect(store.tutorialCompleted).toBe(true)
   expect(store.completedTasks['account-create'].accountId).toBe('acc')
@@ -385,7 +436,7 @@ it('MaaYuan创建失败保持真实表单和当前阶段，立即退出且不撤
   expect(store.maaYuan.phase).toBe('choose-account')
   expect(store.waitingFor).toBe('maa_create')
   expect(host.get('#maayuan-account').element.value).toBe('acc')
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(host.find('#maayuan-connect-panel').exists()).toBe(true)
   expect(host.get('#maayuan-account').element.value).toBe('acc')
   expect(store.tutorialCompleted).toBe(false)
@@ -395,14 +446,14 @@ it('MaaYuan创建失败保持真实表单和当前阶段，立即退出且不撤
 it.each(['token-created', 'waiting-sync'])('MaaYuan %s退出仅移除教学，重入复用原连接与真实成果', async phase => {
   const { router, store } = await render('/user/profile'); await createConnection(router)
   if (phase === 'waiting-sync') { await host.get('.nt-row button').trigger('click'); await flushPromises() }
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(host.find('.new-token').exists()).toBe(true)
   expect(store.maaYuan.phase).toBe(phase)
   expect(store.tutorialCompleted).toBe(false)
   await refreshTutorialBusiness()
   expect(store.tutorialCompleted).toBe(false)
   connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
-  await host.get('.maayuan-tutorial-entry button').trigger('click'); await flushPromises()
+  await host.get('.maayuan-tutorial-entry').trigger('click'); await flushPromises()
   expect(store.tutorialCompleted).toBe(true)
   expect(connectionApi.generateOpenApiToken).toHaveBeenCalledTimes(1)
   expect(connectionApi.deleteOpenApiToken).not.toHaveBeenCalled()
@@ -442,13 +493,19 @@ it('MaaYuan等待可刷新与跨页继续；当前页面换账号仍验证绑定
   await host.get('.nt-row button').trigger('click'); await flushPromises()
   host.unmount()
   const restored = await render('/changelog')
-  expect(restored.store.waitingFor).toBe('maa_sync')
+  expect(restored.store.waitingFor).toBe('business_state')
+  expect(guide()).toBeNull()
   expect(restored.store.maaYuan).toMatchObject({ connectionId: 'connection', accountId: 'acc', phase: 'waiting-sync' })
   accounts.push({ id: 'other', name: '另一账号', game: '如鸢' }); activeAccount.set('other'); await flushPromises()
   connectionApi.getConnectionFirstSync.mockResolvedValue(syncReceipt())
+  const reads = connectionApi.getConnectionFirstSync.mock.calls.length
   window.dispatchEvent(new Event('focus')); await flushPromises()
-  expect(restored.store.tutorialCompleted).toBe(true)
+  expect(restored.store.tutorialCompleted).toBe(false)
+  expect(connectionApi.getConnectionFirstSync).toHaveBeenCalledTimes(reads)
   expect(restored.router.currentRoute.value.path).toBe('/changelog')
+  await restored.router.push('/user/profile'); await flushPromises()
+  expect(restored.store.tutorialCompleted).toBe(true)
+  expect(restored.router.currentRoute.value.path).toBe('/user/profile')
   expect(connectionApi.generateOpenApiToken).toHaveBeenCalledTimes(1)
 })
 
@@ -468,7 +525,7 @@ it('MaaYuan预览事件、错账号或错连接证据不能完成；查询失败
   }
   connectionApi.getConnectionFirstSync.mockRejectedValueOnce(new Error('不可观察'))
   await refreshTutorialBusiness(); expect(store.waitingFor).toBe('read_error')
-  await clickText('退出引导'); expect(guide()).toBeNull()
+  await clickText('关闭教程'); expect(guide()).toBeNull()
 })
 
 it('MaaYuan在途创建/复制/同步查询退出后，迟到成功不完成且不取消业务', async () => {
@@ -476,20 +533,20 @@ it('MaaYuan在途创建/复制/同步查询退出后，迟到成功不完成且�
   await host.get('.app-connect').trigger('click'); await host.get('#maayuan-account').setValue('acc'); await flushPromises()
   const pending = deferred(); connectionApi.generateOpenApiToken.mockReturnValueOnce(pending.promise)
   await host.get('#maayuan-connect-panel').trigger('submit'); await flushPromises()
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(host.get('#maayuan-account').element.value).toBe('acc')
   pending.resolve({ ...connection(), token: crypto.randomUUID() }); connectionApi.getOpenApiTokens.mockResolvedValue([connection()]); await flushPromises()
   expect(host.find('.new-token').exists()).toBe(true)
   expect(store.status).toBe('paused')
-  await host.get('.maayuan-tutorial-entry button').trigger('click'); await flushPromises()
+  await host.get('.maayuan-tutorial-entry').trigger('click'); await flushPromises()
   const copied = deferred(); navigator.clipboard.writeText.mockReturnValueOnce(copied.promise)
   await host.get('.nt-row button').trigger('click'); await flushPromises()
-  await clickText('退出引导'); copied.resolve(); await flushPromises()
+  await clickText('关闭教程'); copied.resolve(); await flushPromises()
   expect(store.maaYuan.phase).toBe('token-created')
-  await host.get('.maayuan-tutorial-entry button').trigger('click'); await flushPromises()
+  await host.get('.maayuan-tutorial-entry').trigger('click'); await flushPromises()
   const receiptRead = deferred(); connectionApi.getConnectionFirstSync.mockReturnValueOnce(receiptRead.promise)
   const read = refreshTutorialBusiness(); await flushPromises()
-  await clickText('退出引导'); receiptRead.resolve(syncReceipt()); await read
+  await clickText('关闭教程'); receiptRead.resolve(syncReceipt()); await read
   expect(store.tutorialCompleted).toBe(false)
   expect(connectionApi.deleteOpenApiToken).not.toHaveBeenCalled()
 })
@@ -502,7 +559,7 @@ it('MaaYuan等待定时检查只读，暂停和卸载后不再查询', async () 
     const initialReads = connectionApi.getConnectionFirstSync.mock.calls.length
     await vi.advanceTimersByTimeAsync(15000); await flushPromises()
     expect(connectionApi.getConnectionFirstSync.mock.calls.length).toBeGreaterThan(initialReads)
-    await clickText('退出引导')
+    await clickText('关闭教程')
     const reads = connectionApi.getConnectionFirstSync.mock.calls.length
     window.dispatchEvent(new Event('focus')); await vi.advanceTimersByTimeAsync(15000)
     expect(connectionApi.getConnectionFirstSync).toHaveBeenCalledTimes(reads)
@@ -559,7 +616,7 @@ it('MaaYuan迟到证据不交给另一身份；已撤销连接和旧完成标记
 })
 
 async function followHere() {
-  await host.findAll('.tool-task-prompt button').find(button => button.text() === '跟着做一次').trigger('click')
+  await host.get('.tutorial-entry').trigger('click')
   await flushPromises()
 }
 async function saveBaseline() {
@@ -599,7 +656,7 @@ it('Today选择盘点，返回只认完整基准；无保存、局部数据和�
   await refreshTutorialBusiness()
   expect(store.waitingFor).toBe('read_error')
   expect(guide().textContent).toContain('库存暂不可读')
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(store.tutorialCompleted).toBe(false)
 })
 
@@ -630,7 +687,7 @@ it.each(['失败', '无基准', '读取失败'])('库存保存%s保持任务未�
     expect(host.findComponent(InventoryPage).text()).toContain('盘点保存失败')
     expect(host.get('.stock-baseline-confirmation input').element.checked).toBe(true)
   }
-  await clickText('退出引导')
+  await clickText('关闭教程')
   expect(guide()).toBeNull()
   expect(store.status).toBe('paused')
   if (variant === '失败') expect(host.get('.stock-baseline-confirmation input').element.checked).toBe(true)
@@ -676,7 +733,6 @@ it('已有成果用户不自动推荐；直接使用真实盘点不会被标为�
   expect(host.find('.tool-task-prompt').exists()).toBe(false)
   host.unmount()
   const { store } = await render('/inventory')
-  await host.findAll('.tool-task-prompt button').find(button => button.text() === '直接使用 / 暂时关闭').trigger('click')
   await saveBaseline()
   expect(store.tutorialCompleted).toBe(false)
   expect(store.completedTasks).toEqual({})

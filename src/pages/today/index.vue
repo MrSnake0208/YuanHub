@@ -3,6 +3,7 @@
     <IslandSidebar />
     <main id="main-content" class="today-main">
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
+        <template #actions><TutorialEntry task="today-first-data" /></template>
         <DataAccountContextBar
           v-if="auth.isLoggedIn"
           ref="accountContext"
@@ -24,7 +25,7 @@
           </div>
 
           <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
-          <ToolTaskPrompt v-if="showDataOnboarding && !isReturningUser" guide-task="today-first-data" title="建立第一份真实数据" description="可以跟着完成一项你需要的真实任务，也可以直接使用下方业务入口。已有成果会复用，保存并验证成功后才算建档。" />
+          <OnboardingGuide :tasks="['today-first-data']" />
 
           <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-sidebar': calendarEnabled && showAccountOverview }" data-tour="today-overview">
             <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
@@ -160,7 +161,8 @@
 
 <script setup>
 import { useAccountListUpdates } from '../../store/accountList.js'
-import ToolTaskPrompt from '../../components/ToolTaskPrompt.vue'
+import TutorialEntry from '../../components/TutorialEntry.vue'
+import OnboardingGuide from '../../components/OnboardingGuide.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'

@@ -1,7 +1,6 @@
 <template>
   <VersionUpdateBanner />
   <a class="skip-link" href="#main-content">跳到主要内容</a>
-  <OnboardingGuide :recommendation-allowed="!betaAccessPending && !betaCommunity.visible && !routeLoadingState.active" />
   <Transition name="route-loader">
     <div
       v-if="routeLoadingState.active"
@@ -31,7 +30,6 @@
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
-import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import VersionUpdateBanner from '@/components/VersionUpdateBanner.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
 import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
