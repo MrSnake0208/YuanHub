@@ -204,6 +204,8 @@ useModalFocus(() => state.visible, dialogEl, {
 .dialog-ic.ic-success { background: rgba(215, 137, 53, .16); color: var(--accent-strong) }
 .dialog-close {
   flex: none;
+  min-width: 44px;
+  min-height: 44px;
   border: none;
   background: none;
   color: var(--ink-60);

@@ -63,7 +63,10 @@ const editorOpen = ref(false), selectedPoolId = ref(''), showArchive = ref(false
 const saveReceipt = ref(null), guideActive = ref(false), practiceOpen = ref(false), guidePicker = ref(false), guideEntry = ref(null)
 const timeline = ref(null), exchangePanel = ref(null), poolEditor = ref(null)
 const selectedPool = computed(() => state.archive?.pools.find(pool => pool.pool_id === selectedPoolId.value))
-const canRecordPool = pool => !!pool?.snapshot.catalog_pool_id && !!recruitmentPoolCatalog(pool, state.catalog || [])?.enabled && !state.catalogError
+const canRecordPool = pool => {
+  const directory = recruitmentPoolCatalog(pool, state.catalog || [])
+  return !!pool?.snapshot.catalog_pool_id && !!directory?.enabled && !directory.hidden && !state.catalogError
+}
 const pageGuideTarget = computed(() => {
   if (!identity.value) return 'login'
   if (state.error || state.loading || state.accountsLoading || !state.archive && available.value) return 'archive-state'

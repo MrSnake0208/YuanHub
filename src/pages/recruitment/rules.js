@@ -11,7 +11,9 @@ export function operatorCatalogEntries(data) {
 }
 export function recruitmentPoolCatalog(pool, catalog) {
   const snapshot = pool?.mapped_snapshot || pool?.snapshot
-  return catalog.find(item => item.pool_id === snapshot?.catalog_pool_id)
+  const directory = catalog.find(item => item.pool_id === snapshot?.catalog_pool_id && (!item.game || item.game === snapshot.game))
+  if (pool?.catalog_state) return { ...(directory || snapshot), enabled: pool.catalog_state === 'enabled', hidden: pool.catalog_state === 'hidden' }
+  return directory
 }
 export function poolAgentOptions(pool, catalog, operators) {
   const directory = recruitmentPoolCatalog(pool, catalog)
