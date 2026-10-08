@@ -180,6 +180,37 @@ async function replay(wrapper) {
 function addUnconfirmed(root) { root.querySelector('.import-pool').insertAdjacentHTML('beforeend', '<article data-import-image="one" class="thumbnail-card is-unconfirmed"></article>') }
 async function tick() { await vi.advanceTimersByTimeAsync(100); await flushPromises() }
 
+it.each([
+  ['import', 0, '重新查看识别教程', '先上传截图'],
+  ['review', 0, '重新查看使用教程', '先上传截图'],
+  ['review', 1, '重新查看使用教程', '先检查识别异常'],
+])('独立教程入口在 %s、%i 颗星石时直接呼出当前引导，不经过帮助或改变已读偏好', async (tab, count, label, title) => {
+  vi.useFakeTimers(); enableTutorialStatus('direct-tutorial', true)
+  localStorage.setItem('star-tabs', tab)
+  const key = 'yuanhub:star-onboarding:v2:direct-tutorial'
+  localStorage.setItem(key, 'seen')
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.find('.star-tutorial-replay').exists()).toBe(false)
+  await loadStylesheet(); await tick()
+  if (count) {
+    embedMount.mock.calls[0][1].onSummaryChange({ currentCount: count, planCount: 0, gameVersion: '如鸢' })
+    wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><button id="toggle-ocr-review">识别结果核对</button></section>'
+    await tick()
+  }
+  const button = wrapper.get('.star-tutorial-replay')
+  expect(button.isVisible()).toBe(true)
+  expect(button.text()).toBe(label)
+  expect(tour()).toBeNull()
+  await button.trigger('click'); await tick()
+  expect(help()).toBeNull()
+  expect(tour().textContent).toContain(title)
+  expect(localStorage.getItem(key)).toBe('seen')
+  expect(embedMount.mock.results[0].value.importCaptureBatch).not.toHaveBeenCalled()
+  const api = await import('../src/api/starState.js')
+  for (const write of [api.patchCurrentStarState, api.rebuildStarState, api.restoreStarRecoveryPoint]) expect(write).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
 it('hydration gates auto start; real confirmation advances; later does not persist or immediately reopen', async () => {
   vi.useFakeTimers(); enableTutorialStatus('recognition-new-user')
   const wrapper = render(); await flushPromises(); expect(tour()).toBeNull()
