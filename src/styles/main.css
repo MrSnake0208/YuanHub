@@ -62,7 +62,7 @@ body::before{
 
 /* ---------------- 悬浮岛式侧边栏 ---------------- */
 .island{
-  position:fixed;left:28px;top:28px;bottom:28px;width:236px;z-index:var(--z-popover);
+  position:fixed;left:28px;top:calc(28px + var(--tutorial-height, 0px));bottom:28px;width:236px;z-index:var(--z-popover);
   background:var(--cream);border:1px solid var(--line);border-radius:26px;
   box-shadow:0 24px 60px -24px rgba(73,59,44,.28),0 2px 8px rgba(73,59,44,.05);
   display:flex;flex-direction:column;padding:30px 26px 24px;
@@ -114,11 +114,11 @@ a.brand{color:inherit;text-decoration:none;cursor:pointer}
 .island-foot b{color:var(--ink)}
 .island-foot .grp{margin-top:6px;font-size:11px}
 @media (min-width:1081px){
-  body:has(.version-update) .island{top:calc(28px + var(--version-update-banner-height))}
+  body:has(.version-update) .island{top:calc(28px + var(--tutorial-height, 0px) + var(--version-update-banner-height))}
 }
 @media (min-width:1081px) and (max-height:760px){
-  .island{top:18px;bottom:18px;padding-top:20px;padding-bottom:18px}
-  body:has(.version-update) .island{top:calc(18px + var(--version-update-banner-height))}
+  .island{top:calc(18px + var(--tutorial-height, 0px));bottom:18px;padding-top:20px;padding-bottom:18px}
+  body:has(.version-update) .island{top:calc(18px + var(--tutorial-height, 0px) + var(--version-update-banner-height))}
   .brand{padding-bottom:18px}
   .nav{margin-top:18px;gap:2px}
   .nav a{padding-top:9px;padding-bottom:9px}
@@ -666,33 +666,10 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
 
 @keyframes mobile-modal-in{from{opacity:0;transform:translateY(18px)}}
 
-/* ---- 新手引导 ---- */
-.driver-popover.yuanhub-tour{
-  width:min(340px,calc(100vw - 28px));padding:20px;border:1px solid var(--line);border-radius:18px;
-  background:var(--surface);color:var(--ink);box-shadow:0 24px 64px -22px rgba(73,59,44,.5);font-family:var(--font-b)
-}
-.yuanhub-tour .driver-popover-title{padding-right:24px;color:var(--ink);font-family:var(--font-s);font-size:18px;font-weight:900;letter-spacing:.03em}
-.yuanhub-tour .driver-popover-description{margin-top:9px;color:var(--ink-60);font-size:13px;line-height:1.75}
-.yuanhub-tour .driver-popover-progress-text{color:var(--ink-35);font-size:11px;font-weight:800}
-.yuanhub-tour .driver-popover-footer{margin-top:18px;gap:12px}
-.yuanhub-tour .driver-popover-footer button{min-height:38px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font:800 12px var(--font-b);text-shadow:none}
-.yuanhub-tour .driver-popover-footer .driver-popover-next-btn{border-color:var(--tea);background:var(--tea);color:var(--cream)}
-.yuanhub-tour .driver-popover-close-btn{top:10px;right:10px;width:34px;height:34px;color:var(--ink-60);font-size:24px}
-.yuanhub-tour .driver-popover-arrow-side-left{border-left-color:var(--surface)}
-.yuanhub-tour .driver-popover-arrow-side-right{border-right-color:var(--surface)}
-.yuanhub-tour .driver-popover-arrow-side-top{border-top-color:var(--surface)}
-.yuanhub-tour .driver-popover-arrow-side-bottom{border-bottom-color:var(--surface)}
-
-@media (max-width:480px){
-  .driver-popover.yuanhub-tour{padding:17px;border-radius:15px}
-  .yuanhub-tour .driver-popover-title{font-size:16px}
-  .yuanhub-tour .driver-popover-footer{align-items:flex-end}
-  .yuanhub-tour .driver-popover-navigation-btns{gap:6px}
-  .yuanhub-tour .driver-popover-footer button{min-height:36px;padding-inline:11px}
-}
-@media (prefers-reduced-motion:reduce){
-  body.driver-active{--driver-animation-duration:0ms!important}
-}
+/* Non-blocking teaching reserves space and joins the active product dialog. */
+html:has(.tutorial-guide){scroll-padding-top:calc(var(--tutorial-height, 0px) + 80px)}
+.tutorial-modal-outlet{flex-shrink:0;position:sticky;top:0;z-index:var(--z-content-raised);background:var(--surface)}
+@media (max-width:1080px){.mobile-shell{top:var(--tutorial-height, 0px)}}
 
 @media (max-width:360px){
   .mobile-brand{font-size:11px}

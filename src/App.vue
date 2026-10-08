@@ -1,6 +1,7 @@
 <template>
   <VersionUpdateBanner />
   <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <OnboardingGuide :recommendation-allowed="!betaAccessPending && !betaCommunity.visible && !routeLoadingState.active" />
   <Transition name="route-loader">
     <div
       v-if="routeLoadingState.active"
@@ -30,6 +31,7 @@
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppDialog from '@/components/AppDialog.vue'
+import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import VersionUpdateBanner from '@/components/VersionUpdateBanner.vue'
 import AccountEventToasts from '@/components/AccountEventToasts.vue'
 import MobileInstallPrompt from '@/components/MobileInstallPrompt.vue'
@@ -46,7 +48,7 @@ import { starCaptureRouteForEvent } from '@/pages/star/captureTransport.js'
 import { routeLoadingState } from '@/router/index.js'
 import { operatorUpdateFromEvent } from '@/utils/operatorEvents.js'
 import { readActiveOperatorTab } from '@/utils/operatorTabs.js'
-import { destroyOnboardingTour, initializeOnboardingTour } from '@/utils/onboardingTour.js'
+import { initializeOnboardingTour } from '@/utils/onboardingTour.js'
 
 let stopWatch = null
 let stopEventPrompt = null
@@ -138,10 +140,10 @@ function routeStarCapture(message) {
 }
 
 onMounted(function () {
+  stopOnboarding = initializeOnboardingTour(router)
   resetMonitorPromptForFreshNavigation()
   stopNotificationUnread = subscribeNotificationUnread()
-  stopIdentityWatch = watch(() => auth.userInfo?.id || '', (userId, previousId) => {
-    if (previousId !== undefined && userId !== previousId) destroyOnboardingTour()
+  stopIdentityWatch = watch(() => auth.userInfo?.id || '', (userId) => {
     beta.setIdentity(userId)
     if (stopBetaSubscription) stopBetaSubscription()
     stopBetaSubscription = userId ? beta.subscribe() : null
@@ -178,13 +180,7 @@ onMounted(function () {
     ],
     () => {
       const workspace = route.meta?.requiresBeta === true
-      // 教程第二/六步进入个人中心，不能因该页没有requiresBeta而取消内部导航。
-      const tutorialPage = workspace || route.name === 'profile'
-      if (beta.canUseBetaFeatures && tutorialPage && !betaCommunity.visible) {
-        if (!stopOnboarding) stopOnboarding = initializeOnboardingTour(router)
-      } else {
-        if (stopOnboarding) stopOnboarding()
-        stopOnboarding = null
+      if (!beta.canUseBetaFeatures) {
         if (workspace && beta.personalLoaded && !beta.personalLoading && !beta.canUseBetaFeatures) {
           void router.replace(betaLandingFor(route.fullPath))
         }

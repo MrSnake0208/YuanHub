@@ -305,7 +305,7 @@ it('更多中的教程和内测群沿用原动作，执行时关闭菜单', asyn
   const desktop = wrapper.get('.sidebar-more')
   expect(wrapper.get('.sidebar-more > summary').attributes('data-tour')).toBe('replay-entry')
   await desktop.get('summary').trigger('click')
-  await desktop.findAll('button').find(button => button.text() === '新手教程').trigger('click')
+  await desktop.findAll('button').find(button => button.text() === '实操教程').trigger('click')
   expect(restartOnboardingTour).toHaveBeenCalledTimes(1)
   expect(desktop.element.open).toBe(false)
   await wrapper.get('.mobile-menu-button').trigger('click')

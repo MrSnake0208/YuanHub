@@ -1,365 +1,309 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import OnboardingGuide from '../src/components/OnboardingGuide.vue'
+import OperatorPage from '../src/pages/operator/index.vue'
+import QuickPage from '../src/pages/operator/quick.vue'
+import ProfilePage from '../src/pages/user/profile.vue'
+import AppDialog from '../src/components/AppDialog.vue'
+import { useOnboardingStore, onboardingStorageKey } from '../src/stores/onboarding.js'
+import { initializeOnboardingTour, startOnboardingTask, refreshTutorialBusiness } from '../src/utils/onboardingTour.js'
+import { auth } from '../src/store/auth.js'
+import { activeAccount } from '../src/store/activeAccount.js'
+import * as accountsApi from '../src/api/accounts.js'
+import * as operatorApi from '../src/api/operator.js'
+import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
+import { operatorCurrentRead, publishOperatorCurrentRead } from '../src/utils/operatorEvents.js'
+import { accountListChange } from '../src/store/accountList.js'
+import { dialog } from '../src/utils/dialog.js'
 
-let tour
-let store
-let resizeObservers
-
-beforeEach(async () => {
-  vi.resetModules()
-  vi.useFakeTimers()
-  const { createPinia, setActivePinia } = await import('pinia')
-  setActivePinia(createPinia())
-  const media = new Map()
-  vi.stubGlobal('matchMedia', query => {
-    if (!media.has(query)) media.set(query, {
-      matches: query === '(prefers-reduced-motion: reduce)' || query === '(max-width: 1080px)',
-      listeners: new Set(),
-      addEventListener(_type, listener) { this.listeners.add(listener) },
-      removeEventListener(_type, listener) { this.listeners.delete(listener) }
-    })
-    return media.get(query)
-  })
-  vi.stubGlobal('requestAnimationFrame', callback => setTimeout(() => callback(performance.now()), 16))
-  vi.stubGlobal('cancelAnimationFrame', frame => clearTimeout(frame))
-  vi.stubGlobal('ResizeObserver', class {
-    constructor(callback) { this.callback = callback; this.observe = vi.fn(); this.disconnect = vi.fn(); resizeObservers.push(this) }
-  })
-  resizeObservers = []
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
-    return new DOMRect(20, 120, this.style.display === 'none' ? 0 : 160, this.style.display === 'none' ? 0 : 48)
-  })
-  vi.spyOn(HTMLElement.prototype, 'getClientRects').mockImplementation(function () {
-    return this.style.display === 'none' ? [] : [this.getBoundingClientRect()]
-  })
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() })
-  tour = await import('../src/utils/onboardingTour.js')
-  const { useOnboardingStore } = await import('../src/stores/onboarding.js')
-  store = useOnboardingStore().initialize()
+vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn(), createAccount: vi.fn(), updateAccount: vi.fn(), deleteAccount: vi.fn() }))
+vi.mock('../src/api/operator.js', async importOriginal => {
+  const actual = await importOriginal()
+  return Object.fromEntries(Object.keys(actual).map(key => [key, vi.fn()]))
 })
-
-afterEach(async () => {
-  tour.destroyOnboardingTour()
-  await Promise.resolve()
+vi.mock('../src/api/inventory.js', async importOriginal => ({ ...(await importOriginal()), listAgentFavorites: vi.fn().mockResolvedValue({ agent_ids: [] }) }))
+vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn().mockResolvedValue({ generation: 0, entries: [] }) }))
+vi.mock('../src/api/starLoadout.js', () => ({ getCurrentStarLoadout: vi.fn().mockResolvedValue({ generation: 0, revision: 0, loadouts: {} }), putCurrentStarLoadout: vi.fn() }))
+vi.mock('../src/api/openApi.js', () => ({
+  getOpenApiPermissions: vi.fn().mockResolvedValue([]), getOpenApiTokens: vi.fn().mockResolvedValue([]),
+  generateOpenApiToken: vi.fn(), getOpenApiTokenSecret: vi.fn(), updateOpenApiTokenScopes: vi.fn(), deleteOpenApiToken: vi.fn()
+}))
+vi.mock('../src/api/request.js', () => ({ avatarUrl: value => value || '' }))
+vi.mock('../src/store/auth.js', async () => {
+  const { reactive } = await import('vue')
+  const auth = reactive({ accessToken: 'synthetic-token', userInfo: { id: 'owner' }, get isLoggedIn() { return !!this.accessToken } })
+  return { auth }
 })
+vi.mock('../src/store/beta.js', () => ({ beta: { canUseBetaFeatures: true, loadMe: () => Promise.resolve(), campaign: { accessMode: 'OPEN' } } }))
+vi.mock('../src/store/accountEvents.js', () => ({ subscribeAccountEvents: () => () => {} }))
 
-async function tick(ms = 200) { await vi.advanceTimersByTimeAsync(ms) }
+let accounts, current, host
+const account = { id: 'acc', name: '真实组件测试账号', game: '如鸢' }
+const entry = { star_level: 1, level: 25, elite: 3 }
+const stored = () => [{ account_id: 'acc', game: '如鸢', entries: { op: { ...entry } } }]
+const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 
-// 真实Memory Router + Driver.js按钮；只用合成DOM/几何，不能代表浏览器排版验收。
-async function page({ missingAccount = false } = {}) {
-  const connectClick = vi.fn()
-  const router = createRouter({ history: createMemoryHistory(), routes: ['/', '/user/profile', '/operator', '/inventory', '/login'].map(path => ({ path, component: { template: '<p />' } })) })
-  const render = path => {
-    document.querySelector('main')?.remove()
-    const main = document.createElement('main')
-    const targets = path === '/user/profile' ? ['maayuan-sync', ...(missingAccount ? [] : ['account-create'])]
-      : path === '/' ? ['today-overview'] : path === '/operator' ? ['operator-workspace'] : path === '/inventory' ? ['inventory-workspace'] : []
-    for (const target of [...targets, 'replay-menu', 'replay-entry']) {
-      const button = document.createElement('button')
-      button.dataset.tour = target
-      button.textContent = target
-      if (target === 'replay-entry') button.style.display = 'none'
-      if (target === 'maayuan-sync') button.addEventListener('click', connectClick)
-      main.append(button)
-    }
-    document.body.append(main)
-  }
-  router.afterEach(to => render(to.path))
-  await router.push('/')
-  await router.isReady()
-  return { router, render, connectClick }
+beforeEach(() => {
+  if (dialog._state.visible) dialog._cancel()
+  vi.clearAllMocks()
+  auth.accessToken = 'synthetic-token'; auth.userInfo = { id: 'owner' }
+  accounts = [{ ...account }]; current = []
+  activeAccount.set('acc'); activeAccount.games = {}; activeAccount.syncAccounts(accounts)
+  operatorCurrentRead.value = null; accountListChange.value = null
+  accountsApi.listAccounts.mockImplementation(async () => accounts.map(item => ({ ...item })))
+  accountsApi.createAccount.mockImplementation(async (name, game) => { const created = { id: 'acc', name, game }; accounts.push(created); return created })
+  operatorApi.listOperatorAccounts.mockImplementation(() => accountsApi.listAccounts())
+  operatorApi.getOperatorCurrent.mockImplementation(async () => current)
+  operatorApi.getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'op', name: '测试密探', rarity: 3, games: ['如鸢'] }] })
+  operatorApi.getOperatorAnnotations.mockResolvedValue({ items: [] })
+  operatorApi.listOperatorScanReviews.mockResolvedValue({ items: [] })
+  operatorApi.importOperator.mockImplementation(async doc => {
+    current = [{ account_id: 'acc', game: '如鸢', entries: Object.fromEntries(doc.records[0].entries.map(item => [item.id, { star_level: item.starLevel, level: item.level, elite: item.elite }])) }]
+    return { accepted: 1 }
+  })
+  vi.spyOn(starLoadoutPresetStore, 'load').mockResolvedValue()
+  vi.stubGlobal('matchMedia', vi.fn(() => Object.assign(new EventTarget(), { matches: false })))
+})
+afterEach(() => { host?.unmount(); host = null })
+
+async function render(path = '/', pinia = createPinia()) {
+  const router = createRouter({ history: createMemoryHistory(), routes: [
+    { path: '/', name: 'today', component: { template: '<main><button>普通产品操作</button></main>' } },
+    { path: '/operator', component: OperatorPage }, { path: '/operator/quick', component: QuickPage },
+    { path: '/user/profile', component: ProfilePage },
+    { path: '/login', component: { template: '<main>真实登录入口</main>' } },
+    { path: '/changelog', component: { template: '<main>帮助页</main>' } },
+    { path: '/operator/share', component: { template: '<main />' } }
+  ] })
+  await router.push(path); await router.isReady()
+  host = mount(defineComponent({ components: { OnboardingGuide, AppDialog }, setup() {
+    let stop
+    onMounted(() => { stop = initializeOnboardingTour(router) })
+    onBeforeUnmount(() => stop?.())
+    return {}
+  }, template: '<OnboardingGuide /><RouterView /><AppDialog />' }), {
+    attachTo: document.body, global: { plugins: [pinia, router], directives: { reveal: () => {} }, stubs: {
+      IslandSidebar: true, SiteFooter: true, BetaNotice: true, OperatorShareManager: true,
+      OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true
+    } }
+  })
+  await flushPromises()
+  return { router, store: useOnboardingStore(pinia) }
+}
+const guide = () => document.querySelector('.tutorial-guide')
+const clickText = async text => {
+  const button = [...guide().querySelectorAll('button, a')].find(item => item.textContent === text)
+  expect(button, text).toBeTruthy(); button.click(); await flushPromises()
+}
+async function begin(router, store) {
+  store.openTasks(); await nextTick()
+  await startOnboardingTask(router, 'operator-first-entry'); await flushPromises()
+}
+async function enterQuick() {
+  const link = [...host.findAll('.operator-entry-guide a')].find(item => item.text() === '开始录入密探')
+  await link.trigger('click'); await flushPromises()
+  expect(host.findComponent(QuickPage).exists()).toBe(true)
+}
+async function selectAndSave() {
+  const page = host.findComponent(QuickPage)
+  await page.get('.op-check').setValue(true)
+  const fields = page.findAll('.batch-bar input[type="number"]')
+  await fields[0].setValue(25); await fields[1].setValue(3)
+  await page.get('.wiz-actions .primary').trigger('click'); await flushPromises()
+  expect(document.querySelector('.dialog-title').textContent).toContain('确认保存本页')
+  document.querySelector('.dlg-btn.primary').click(); await flushPromises()
 }
 
-async function start(router) {
-  const pending = tour.startOnboardingTour(router)
-  await tick()
-  expect(await pending).toBe(true)
-}
-
-async function clickNext(ms = 200) {
-  const button = document.querySelector('.driver-popover-next-btn')
-  expect(button).not.toBeNull()
-  button.click()
-  await tick(ms)
-}
-
-it('真实七步前后与完成：第六步是下一步且不点击连接，手机末步指向关闭抽屉时的菜单按钮', async () => {
-  const { router, connectClick } = await page()
-  await start(router)
-  expect(document.querySelector('.driver-popover-title').textContent).toContain('欢迎')
-  for (const id of ['account-create', 'today-overview', 'operator-workspace', 'inventory-workspace', 'maayuan-sync']) {
-    await clickNext()
-    expect(store.activeStepId).toBe(id)
-    expect(document.querySelectorAll('.driver-popover')).toHaveLength(1)
-  }
-  expect(document.querySelector('.driver-popover-next-btn').textContent).toBe('下一步')
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('主动提交后才会生成连接码')
-  await clickNext()
-  expect(store.activeStepId).toBe('replay-entry')
-  expect(document.querySelector('.driver-active-element').dataset.tour).toBe('replay-menu')
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('顶部')
-  document.querySelector('.driver-popover-prev-btn').click()
-  await tick()
-  expect(store.activeStepId).toBe('maayuan-sync')
-  await clickNext()
-  await clickNext()
-  expect(store.status).toBe('completed')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-  expect(connectClick).not.toHaveBeenCalled()
-  expect(resizeObservers.every(observer => observer.disconnect.mock.calls.length > 0)).toBe(true)
+it('首次邀请可直接使用，不写数据、不标完成、不刷新骚扰；仍可手动开始', async () => {
+  const { store } = await render()
+  expect(guide().textContent).toContain('跟着做一次')
+  expect(host.get('main button').element.disabled).toBe(false)
+  expect(accountsApi.listAccounts).not.toHaveBeenCalled()
+  await clickText('直接使用 / 暂时关闭')
+  expect(guide()).toBeNull(); expect(store.tutorialCompleted).toBe(false)
+  expect(store.disableAutoGuide).toBe(false)
+  host.unmount(); await render()
+  expect(guide()).toBeNull()
+  useOnboardingStore().openTasks(); await nextTick()
+  expect(guide().textContent).toContain('录入第一位密探')
+  expect(accountsApi.createAccount).not.toHaveBeenCalled()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
 })
 
-it('目标超时给中心提示，继续后仍能完成，不把整个教程误标为跳过', async () => {
-  const { router } = await page({ missingAccount: true })
-  await start(router)
-  await clickNext(5300)
-  expect(store.status).toBe('in_progress')
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('暂时无法定位这个入口')
-  expect(document.querySelector('.driver-active-element').id).toBe('driver-dummy-element')
-  await clickNext()
-  expect(store.activeStepId).toBe('today-overview')
-  expect(document.querySelector('.driver-active-element').dataset.tour).toBe('today-overview')
+it('真实名册入口→真实快捷录入→真实确认→服务端读回，自动完成并留下可用档案', async () => {
+  const { router, store } = await render(); await begin(router, store)
+  expect(store.waitingFor).toBe('operator_saved')
+  expect(guide().textContent).not.toMatch(/下一步|完成教程/)
+  await enterQuick()
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  await selectAndSave()
+  expect(operatorApi.importOperator).toHaveBeenCalledTimes(1)
+  expect(current[0].entries.op).toEqual(entry)
+  expect(store.tutorialCompleted).toBe(true)
+  expect(store.completedTasks['operator-first-entry']).toMatchObject({ accountId: 'acc', operatorId: 'op', ownerId: 'owner' })
+  expect(guide().textContent).toContain('录入结果已验证')
 })
 
-it('等待目标时取消立即释放等待，晚到DOM不能复活教程', async () => {
-  const { router, render } = await page({ missingAccount: true })
-  await start(router)
-  await clickNext(80)
-  tour.destroyOnboardingTour()
-  render('/user/profile')
-  const lateTarget = document.createElement('button')
-  lateTarget.dataset.tour = 'account-create'
-  document.querySelector('main').append(lateTarget)
-  await tick(6000)
-  expect(store.status).toBe('skipped')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-  expect(vi.getTimerCount()).toBe(0)
+it('真实账号表单创建是前置，创建成功自动转为等待密探，不替用户填数据', async () => {
+  accounts = []; activeAccount.clear()
+  const { router, store } = await render(); await begin(router, store)
+  expect(store.waitingFor).toBe('account_created')
+  await clickText('去创建游戏账号')
+  await host.get('[data-tour="account-create"]').trigger('click'); await flushPromises()
+  const panel = document.querySelector('.account-panel')
+  expect(panel.querySelector('.tutorial-exit')).toBeTruthy()
+  expect(panel.querySelector('.name-field input').value).toBe('')
+  const input = panel.querySelector('.name-field input'); input.value = '我的游戏账号'; input.dispatchEvent(new Event('input', { bubbles: true }))
+  const radio = panel.querySelector('input[value="如鸢"]'); radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true }))
+  await nextTick()
+  panel.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+  expect(accountsApi.createAccount).toHaveBeenCalledWith('我的游戏账号', '如鸢')
+  expect(store.waitingFor).toBe('operator_saved'); expect(store.tutorialCompleted).toBe(false)
+  expect(accounts).toHaveLength(1)
 })
 
-it('取消旧等待并重看，新会话不会被旧promise的finally清除', async () => {
-  const { router } = await page({ missingAccount: true })
-  await start(router)
-  await clickNext(80)
-  const restarting = tour.restartOnboardingTour(router)
-  await tick()
-  expect(await restarting).toBe(true)
-  expect(store.activeStepId).toBe('welcome')
-  await tick(6000)
-  expect(store.status).toBe('in_progress')
-  expect(store.activeStepId).toBe('welcome')
-  expect(document.querySelectorAll('.driver-popover')).toHaveLength(1)
+it('保存失败留在真实任务，草稿和真实错误保留；Esc只退出教程', async () => {
+  const { router, store } = await render(); await begin(router, store); await enterQuick()
+  operatorApi.importOperator.mockRejectedValueOnce(new Error('保存失败测试'))
+  await selectAndSave()
+  expect(store.waitingFor).toBe('operator_saved'); expect(store.tutorialCompleted).toBe(false)
+  expect(host.findComponent(QuickPage).text()).toContain('保存失败测试')
+  const input = host.findComponent(QuickPage).get('.op-check')
+  expect(input.element.checked).toBe(true)
+  input.element.focus(); input.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  expect(guide()).toBeNull(); expect(input.element.checked).toBe(true)
+  expect(store.status).toBe('paused'); expect(current).toEqual([])
 })
 
-it('路由等待中取消，晚到路由不显示旧步骤；允许重新启动', async () => {
-  const { router } = await page()
-  let release
-  router.beforeEach(to => to.path === '/user/profile' ? new Promise(resolve => { release = resolve }) : true)
-  await start(router)
-  await clickNext(80)
-  tour.destroyOnboardingTour()
-  release(true)
-  await tick()
-  expect(store.status).toBe('skipped')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-  const restarting = tour.restartOnboardingTour(router)
-  await tick()
-  expect(await restarting).toBe(true)
-  expect(store.activeStepId).toBe('welcome')
-})
-
-it('权限重定向不高亮登录页，也不把教程步骤标记完成', async () => {
-  const { router } = await page()
-  router.beforeEach(to => to.path === '/user/profile' ? '/login' : true)
-  await start(router)
-  await clickNext()
-  expect(router.currentRoute.value.path).toBe('/login')
-  expect(store.status).toBe('skipped')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-})
-
-it('几何变化期间不提前高亮，稳定后才显示；观察器离开时清理', async () => {
-  const { router } = await page()
-  await router.push('/user/profile')
-  const target = document.querySelector('[data-tour="account-create"]')
-  let y = 120
-  const rect = vi.spyOn(target, 'getBoundingClientRect').mockImplementation(() => new DOMRect(20, y++, 160, 48))
-  store.start('account-create')
-  const pending = tour.resumeOnboardingTour(router)
-  await tick(300)
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('正在准备')
-  expect(document.querySelector('.driver-active-element').id).toBe('driver-dummy-element')
-  rect.mockImplementation(() => new DOMRect(20, 200, 160, 48))
-  await tick()
-  expect(await pending).toBe(true)
-  expect(document.querySelector('.driver-active-element')).toBe(target)
-  const observer = resizeObservers.at(-1)
-  expect(observer.observe).toHaveBeenCalledWith(target)
-  observer.callback([])
-  await tick()
-  tour.destroyOnboardingTour()
-  expect(observer.disconnect).toHaveBeenCalled()
-})
-
-it('持续不稳定的目标有界退回中心提示，关闭期间停止几何帧', async () => {
-  const { router } = await page()
-  await router.push('/user/profile')
-  const target = document.querySelector('[data-tour="account-create"]')
-  let y = 100
-  vi.spyOn(target, 'getBoundingClientRect').mockImplementation(() => new DOMRect(20, y++, 160, 48))
-  store.start('account-create')
-  const pending = tour.resumeOnboardingTour(router)
-  await tick(1800)
-  expect(await pending).toBe(true)
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('暂时无法定位')
-  tour.destroyOnboardingTour()
-  await tick()
-  expect(vi.getTimerCount()).toBe(0)
-})
-
-it('关闭真实按钮恢复入口焦点；重复启动和下一步不会创建重复实例或跳两步', async () => {
-  const { router } = await page()
-  const opener = document.querySelector('[data-tour="replay-menu"]')
-  opener.focus()
-  const first = tour.startOnboardingTour(router)
-  expect(tour.startOnboardingTour(router)).toBe(first)
-  await tick()
-  expect(await first).toBe(true)
-  document.querySelector('.driver-popover-close-btn').click()
-  await tick()
-  expect(store.status).toBe('skipped')
-  expect(document.activeElement).toBe(opener)
-  const restarting = tour.restartOnboardingTour(router)
-  await tick()
-  await restarting
-  const button = document.querySelector('.driver-popover-next-btn')
-  button.click(); button.click()
-  await tick()
-  expect(store.activeStepId).toBe('account-create')
-  expect(document.querySelectorAll('.driver-popover')).toHaveLength(1)
-})
-
-it('内部跨路由保留教程，用户主动换页则取消当前等待', async () => {
-  const { router } = await page({ missingAccount: true })
-  const stop = tour.initializeOnboardingTour(router)
-  await tick()
-  await clickNext(80)
-  expect(store.status).toBe('in_progress')
-  await router.push('/inventory')
-  await tick(6000)
-  expect(store.status).toBe('skipped')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-  stop()
-})
-
-it('末步跨越导航断点会重新定位可见入口，关闭后移除媒体监听', async () => {
-  const { router } = await page()
-  store.start('replay-entry')
-  const pending = tour.resumeOnboardingTour(router)
-  await tick()
-  expect(await pending).toBe(true)
-  const media = matchMedia('(max-width: 1080px)')
-  document.querySelector('[data-tour="replay-entry"]').style.display = ''
-  media.matches = false
-  for (const listener of media.listeners) listener({ matches: false })
-  await tick()
-  expect(document.querySelector('.driver-active-element').dataset.tour).toBe('replay-entry')
-  media.matches = true
-  for (const listener of media.listeners) listener({ matches: true })
-  await tick()
-  expect(document.querySelector('.driver-active-element').dataset.tour).toBe('replay-menu')
-  tour.destroyOnboardingTour()
-  expect(media.listeners.size).toBe(0)
-})
-
-it('等待中的真实关闭按钮可退出；晚到目标不能再次显示', async () => {
-  const { router } = await page({ missingAccount: true })
-  await start(router)
-  await clickNext(300)
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('正在准备')
-  expect(document.querySelector('.driver-popover-next-btn').disabled).toBe(true)
-  document.querySelector('.driver-popover-close-btn').click()
-  const target = document.createElement('button')
-  target.dataset.tour = 'account-create'
-  document.querySelector('main').append(target)
-  await tick(6000)
-  expect(store.status).toBe('skipped')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-  expect(vi.getTimerCount()).toBe(0)
-})
-
-it.each([true, '/login'])('旧路由等待中先重看，再返回%s，不改变新会话或新页面', async result => {
-  const { router } = await page()
-  const stop = tour.initializeOnboardingTour(router)
-  await tick()
-  let release
-  router.beforeEach(to => to.path === '/user/profile' ? new Promise(resolve => { release = resolve }) : true)
-  await clickNext(300)
-  const restarting = tour.restartOnboardingTour(router)
-  await tick()
-  expect(await restarting).toBe(true)
-  release(result)
-  await tick()
-  expect(router.currentRoute.value.path).toBe('/')
-  expect(store.activeStepId).toBe('welcome')
-  expect(store.status).toBe('in_progress')
-  expect(document.querySelectorAll('.driver-popover')).toHaveLength(1)
-  stop()
-})
-
-it.each([true, '/login'])('旧路由仍等待时重看后主动换页，旧结果%s不抢回页面', async result => {
-  const { router } = await page()
-  const stop = tour.initializeOnboardingTour(router)
-  await tick()
-  let release
-  router.beforeEach(to => to.path === '/user/profile' ? new Promise(resolve => { release = resolve }) : true)
-  await clickNext(300)
-  const restarting = tour.restartOnboardingTour(router)
-  await tick()
-  await restarting
-  await router.push('/inventory')
-  release(result)
-  await tick()
-  expect(router.currentRoute.value.path).toBe('/inventory')
-  expect(store.status).toBe('skipped')
-  expect(document.querySelector('.driver-popover')).toBeNull()
-  stop()
-})
-
-it('取消旧路由后用户再次进入同一目标，正常权限重定向仍保留', async () => {
-  const { router } = await page()
-  const stop = tour.initializeOnboardingTour(router)
-  await tick()
-  let release
-  let first = true
-  router.beforeEach(to => {
-    if (to.path !== '/user/profile') return true
-    if (first) { first = false; return new Promise(resolve => { release = resolve }) }
-    return '/login'
+it('仅成功保存响应不算完成；读回失败不伪造成果，重读实际数据才能结束', async () => {
+  const { router, store } = await render(); await begin(router, store); await enterQuick()
+  operatorApi.importOperator.mockImplementationOnce(async () => {
+    current = stored(); operatorApi.getOperatorCurrent.mockRejectedValueOnce(new Error('读回失败'))
+    return { accepted: 1 }
   })
-  await clickNext(300)
-  tour.destroyOnboardingTour()
-  await router.push('/user/profile')
-  expect(router.currentRoute.value.path).toBe('/login')
-  release('/login')
-  await tick()
-  expect(router.currentRoute.value.path).toBe('/login')
-  expect(store.status).toBe('skipped')
-  stop()
+  await selectAndSave()
+  expect(store.tutorialCompleted).toBe(false)
+  expect(host.findComponent(QuickPage).text()).toContain('读回失败')
+  await refreshTutorialBusiness(); await flushPromises()
+  expect(store.tutorialCompleted).toBe(true)
 })
 
-it('末步准备期间键盘右箭头不提前完成；目标超时提示后仍可主动完成', async () => {
-  const { router } = await page()
-  document.querySelector('[data-tour="replay-menu"]').remove()
-  store.start('replay-entry')
-  const pending = tour.resumeOnboardingTour(router)
-  await tick(300)
-  window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }))
-  await tick(100)
-  expect(store.status).toBe('in_progress')
-  expect(document.querySelector('.driver-popover-description').textContent).toContain('正在准备')
-  await tick(5000)
-  expect(await pending).toBe(true)
-  expect(store.status).toBe('in_progress')
-  await clickNext()
-  expect(store.status).toBe('completed')
+it('真实快捷录入允许空页继续，但空保存不能完成教学', async () => {
+  const { router, store } = await render(); await begin(router, store); await enterQuick()
+  for (let i = 0; i < 6; i++) { await host.findComponent(QuickPage).get('.wiz-actions .primary').trigger('click'); await flushPromises() }
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  expect(store.tutorialCompleted).toBe(false); expect(store.waitingFor).toBe('operator_saved')
+})
+
+it('刷新重新读取真实成果，已有账号与密探直接跳过，无业务写入', async () => {
+  const { router, store } = await render(); await begin(router, store)
+  expect(store.waitingFor).toBe('operator_saved')
+  host.unmount(); current = stored()
+  const restored = await render('/operator')
+  expect(restored.store.tutorialCompleted).toBe(true)
+  expect(guide().textContent).toContain('录入结果已验证')
+  expect(accountsApi.createAccount).not.toHaveBeenCalled(); expect(operatorApi.importOperator).not.toHaveBeenCalled()
+})
+
+it('读取账号失败不算无账号，不诱导重复创建；错误期间随时退出', async () => {
+  const { router, store } = await render()
+  accountsApi.listAccounts.mockRejectedValue(new Error('账号读取失败'))
+  await begin(router, store)
+  expect(store.waitingFor).toBe('read_error')
+  expect(guide().textContent).not.toContain('去创建游戏账号')
+  await clickText('退出引导')
+  expect(store.tutorialCompleted).toBe(false); expect(guide()).toBeNull()
+})
+
+it('账号创建中按钮与键盘退出可达，既不清草稿也不取消已提交请求', async () => {
+  accounts = []; activeAccount.clear()
+  const { router, store } = await render(); await begin(router, store); await clickText('去创建游戏账号')
+  await host.get('[data-tour="account-create"]').trigger('click'); await flushPromises()
+  const panel = document.querySelector('.account-panel'), input = panel.querySelector('.name-field input')
+  input.value = '未保存草稿'; input.dispatchEvent(new Event('input', { bubbles: true })); await nextTick()
+  const pending = deferred(); accountsApi.createAccount.mockReturnValueOnce(pending.promise)
+  panel.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await flushPromises()
+  expect(panel.querySelector('button[type="submit"]').disabled).toBe(true)
+  panel.querySelector('.tutorial-exit').focus()
+  panel.querySelector('.tutorial-exit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  expect(guide()).toBeNull(); expect(panel.isConnected).toBe(true); expect(input.value).toBe('未保存草稿')
+  expect(store.tutorialCompleted).toBe(false)
+  pending.resolve({ id: 'acc', name: '未保存草稿', game: '代号鸢' }); await flushPromises()
+  expect(activeAccount.id).toBe('acc'); expect(store.status).toBe('paused')
+})
+
+it('在真实保存确认框退出不会确认或取消提交，真实按钮仍可使用', async () => {
+  const { router, store } = await render(); await begin(router, store); await enterQuick()
+  const page = host.findComponent(QuickPage)
+  await page.get('.op-check').setValue(true); await page.get('.wiz-actions .primary').trigger('click'); await flushPromises()
+  const panel = document.querySelector('.dialog')
+  expect(panel.querySelector('.tutorial-exit')).toBeTruthy()
+  await clickText('退出引导')
+  expect(dialog._state.visible).toBe(true); expect(page.get('.op-check').element.checked).toBe(true)
+  expect(operatorApi.importOperator).not.toHaveBeenCalled()
+  panel.querySelector('.dlg-btn.primary').click(); await flushPromises()
+  expect(current[0].entries.op.star_level).toBe(1)
+  expect(store.tutorialCompleted).toBe(false)
+})
+
+it('跨登录路由保留目标并在身份就绪后恢复；旧身份成果不能完成新任务', async () => {
+  auth.accessToken = ''; auth.userInfo = null; activeAccount.clear()
+  const { router, store } = await render(); await begin(router, store)
+  expect(store.waitingFor).toBe('login')
+  await clickText('去登录')
+  expect(store.active).toBe(true)
+  auth.userInfo = { id: 'owner' }; auth.accessToken = 'synthetic-token'; activeAccount.set('acc')
+  await router.push('/operator'); await flushPromises()
+  expect(store.waitingFor).toBe('operator_saved')
+  auth.userInfo = { id: 'other' }; await flushPromises()
+  publishOperatorCurrentRead({ ownerId: 'owner', accountId: 'acc', game: '如鸢', data: stored() })
+  expect(store.ownerId).toBe('other'); expect(store.tutorialCompleted).toBe(false)
+  expect(store.active).toBe(false)
+})
+
+it('延迟请求在退出或换账号后不能推进；手动重入只重新读取实际状态', async () => {
+  const { router, store } = await render(); await begin(router, store)
+  const pending = deferred(); operatorApi.getOperatorCurrent.mockReturnValueOnce(pending.promise)
+  const read = refreshTutorialBusiness(); await flushPromises()
+  await clickText('退出引导')
+  pending.resolve(stored()); await read
+  expect(store.tutorialCompleted).toBe(false)
+  const another = { id: 'other-account', name: '另一个账号', game: '如鸢' }
+  accounts.push(another)
+  operatorApi.getOperatorCurrent.mockImplementation(async ({ accountId }) => accountId === 'acc' ? stored() : [])
+  activeAccount.set('other-account'); store.openTasks(); await nextTick()
+  await startOnboardingTask(router, 'operator-first-entry'); await flushPromises()
+  expect(store.waitingFor).toBe('operator_saved'); expect(store.tutorialCompleted).toBe(false)
+  expect(JSON.parse(localStorage.getItem(onboardingStorageKey('owner'))).tutorialTask).toBe('operator-first-entry')
+})
+
+it('从帮助继续当前快捷录入不离开页面、不清空草稿，不按旧步骤重播', async () => {
+  const { router, store } = await render(); await begin(router, store); await enterQuick()
+  const page = host.findComponent(QuickPage)
+  await page.get('.op-check').setValue(true)
+  await clickText('退出引导')
+  store.openTasks(); await nextTick()
+  await clickText('继续实操教程：录入第一位密探')
+  expect(router.currentRoute.value.path).toBe('/operator/quick')
+  expect(page.get('.op-check').element.checked).toBe(true)
+  expect(dialog._state.visible).toBe(false)
+  expect(store.waitingFor).toBe('operator_saved')
+})
+
+it('永久不自动提示也可手动重进；已有账号任务只按真实账号列表完成', async () => {
+  const { router, store } = await render()
+  const checkbox = guide().querySelector('input[type="checkbox"]')
+  checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await nextTick()
+  await clickText('直接使用 / 暂时关闭')
+  expect(store.disableAutoGuide).toBe(true)
+  store.openTasks(); await nextTick()
+  await startOnboardingTask(router, 'account-create'); await flushPromises()
+  expect(store.tutorialCompleted).toBe(true)
+  expect(store.completedTasks['account-create'].accountId).toBe('acc')
+  expect(accountsApi.createAccount).not.toHaveBeenCalled()
 })

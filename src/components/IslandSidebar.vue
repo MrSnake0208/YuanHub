@@ -47,7 +47,6 @@
         class="mobile-drawer"
         aria-label="YuanHub 导航"
         tabindex="-1"
-        @keydown.tab="trapDrawerFocus"
       >
         <header class="mobile-drawer-head">
           <router-link class="mobile-drawer-brand" to="/" aria-label="返回 YuanHub 首页">
@@ -117,7 +116,7 @@
                 <UsersRound :size="20" aria-hidden="true" /><span>内测交流群</span>
               </button>
               <button type="button" class="mobile-drawer-link" @click="restartTutorial">
-                <CircleHelp :size="20" aria-hidden="true" /><span>新手教程</span>
+                <CircleHelp :size="20" aria-hidden="true" /><span>实操教程</span>
               </button>
             </div>
           </details>
@@ -222,7 +221,7 @@
             <UsersRound :size="18" aria-hidden="true" /><span>内测交流群</span>
           </button>
           <button type="button" @click="restartTutorial">
-            <CircleHelp :size="18" aria-hidden="true" /><span>新手教程</span>
+            <CircleHelp :size="18" aria-hidden="true" /><span>实操教程</span>
           </button>
         </nav>
       </details>
@@ -284,6 +283,7 @@ import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute, useRouter } from "vue-router";
 import { dialog } from "@/utils/dialog.js";
 import { restartOnboardingTour } from "@/utils/onboardingTour.js";
+import { useModalFocus } from "@/composables/useModalFocus.js";
 import { formatBuildInfo, productVersionLabel } from "@/config/buildInfo.js";
 import { notificationUnreadState } from "@/store/notificationUnread.js";
 import {
@@ -339,6 +339,7 @@ const desktopMore = ref(null);
 const menuOpen = ref(false);
 const menuToggle = ref(null);
 const menuPanel = ref(null);
+useModalFocus(menuOpen, menuPanel, { initialFocus: () => menuPanel.value, onEscape: closeMenu });
 const mobileTitle = computed(() => route.meta?.title?.split(" — ")[0] || "YuanHub");
 
 watch(() => route.fullPath, () => {
@@ -369,26 +370,6 @@ function closeMenu() {
   if (!menuOpen.value) return;
   menuOpen.value = false;
   void nextTick(() => menuToggle.value?.focus());
-}
-
-function trapDrawerFocus(event) {
-  const panel = menuPanel.value;
-  if (!panel) return;
-  const focusable = Array.from(
-    panel.querySelectorAll(
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    ),
-  );
-  if (!focusable.length) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 function closeDesktopMore(restoreFocus = false) {

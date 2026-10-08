@@ -252,10 +252,10 @@ it('主站 /install、全局弹窗及新手引导暂时隐藏正常邀请与恢�
     await nextTick()
     expect(context.host.find('aside').exists()).toBe(false)
     context.dialog._state.visible = false
-    context.onboarding.start('welcome')
+    context.onboarding.start('operator-first-entry')
     await nextTick()
     expect(context.host.find('aside').exists()).toBe(false)
-    context.onboarding.skip()
+    context.onboarding.dismiss()
     await nextTick()
     expect(context.host.find('aside').exists()).toBe(false)
     await reveal()

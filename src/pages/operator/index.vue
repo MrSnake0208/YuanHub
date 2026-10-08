@@ -3030,7 +3030,7 @@ import {
 import { auth } from "../../store/auth.js";
 import { activeAccount } from "../../store/activeAccount.js";
 import { dialog } from "../../utils/dialog.js";
-import { operatorUpdateFromEvent } from "../../utils/operatorEvents.js";
+import { operatorUpdateFromEvent, publishOperatorCurrentRead } from "../../utils/operatorEvents.js";
 import {
   OPERATOR_LEVEL_MAX,
   OPERATOR_ELITE_MAX,
@@ -7958,6 +7958,7 @@ async function reloadCurrent(quiet) {
   const targetAccount = accountId.value;
   const targetGame = gameFilter.value;
   const targetKey = targetAccount + ":" + targetGame;
+  const ownerId = auth.userInfo?.id;
   const seq = ++currentLoadSeq;
   loading.value = true;
   if (!quiet) error.value = "";
@@ -7996,6 +7997,7 @@ async function reloadCurrent(quiet) {
         );
       });
     currentLoadedKey.value = targetKey;
+    publishOperatorCurrentRead({ ownerId, accountId: targetAccount, game: targetGame, data });
     await loadStarLoadoutSnapshot(targetAccount);
   } catch (err) {
     if (
