@@ -4,18 +4,20 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia } from 'pinia'
 import { nextTick } from 'vue'
 
-let addListener
+let addListener, documentListener
 beforeEach(() => {
   vi.resetModules()
   vi.useFakeTimers()
   addListener = vi.spyOn(window, 'addEventListener')
+  documentListener = vi.spyOn(document, 'addEventListener')
 })
 
 afterEach(() => {
   // Each case imports a new real singleton; remove the old page's global listeners.
   for (const [type, listener] of addListener.mock.calls) {
-    if (['beforeinstallprompt', 'appinstalled', 'storage'].includes(type)) window.removeEventListener(type, listener)
+    if (['beforeinstallprompt', 'appinstalled', 'storage', 'focus', 'pageshow', 'keydown'].includes(type)) window.removeEventListener(type, listener)
   }
+  for (const [type, listener] of documentListener.mock.calls) if (type === 'visibilitychange') document.removeEventListener(type, listener)
   document.body.classList.remove('mobile-nav-open')
 })
 
@@ -55,7 +57,7 @@ async function main(context, path = '/') {
   await router.push(path)
   await router.isReady()
   const pinia = createPinia()
-  const host = mount(component, { global: { plugins: [router, pinia] } })
+  const host = mount(component, { attachTo: document.body, global: { plugins: [router, pinia] } })
   const { dialog } = await import('../src/utils/dialog.js')
   const { useOnboardingStore } = await import('../src/stores/onboarding.js')
   return { ...context, host, router, dialog, onboarding: useOnboardingStore(pinia) }
@@ -73,7 +75,7 @@ it('真实主站组件只在 1.8 秒后邀请', async () => {
   expect(context.host.find('aside').exists()).toBe(false)
   await vi.advanceTimersByTimeAsync(1)
   expect(context.host.get('aside').attributes('aria-label')).toBe('添加 YuanHub 到桌面')
-  expect(context.host.get('.pwa-install-primary').text()).toBe('立即添加')
+  expect(context.host.get('.pwa-install-primary').text()).toBe('跟着做一次')
 })
 
 it('主站卸载组件会清理尚未触发的展示计时器', async () => {
@@ -179,99 +181,124 @@ it('共享焦点栈的嵌套模态必须全部关闭后才能邀请', async () =
   expect(context.host.find('aside').exists()).toBe(true)
 })
 
-it('安装失败恢复也不能覆盖禁止页或资格恢复；卸载清理导航观察器', async () => {
-  const context = await main(await browser())
-  const disconnect = vi.spyOn(MutationObserver.prototype, 'disconnect')
-  context.offer('dismissed', vi.fn(async () => { throw new Error('denied') }))
-  await reveal()
+async function startAndInstall(context) {
+  await context.host.get('.pwa-install-primary').trigger('click')
+  await nextTick()
   await context.host.get('.pwa-install-primary').trigger('click')
   await flushPromises()
-  expect(context.host.find('.pwa-install-guide').exists()).toBe(true)
-  await context.router.push('/forbidden')
+}
+
+it.each(['accepted', 'dismissed', 'failed'])('主动参加后 %s 留在真实任务且始终可退出', async outcome => {
+  const context = await main(await browser())
+  const event = context.offer(outcome, vi.fn(async () => { if (outcome === 'failed') throw new Error('native failed') }))
+  await reveal()
+  expect(context.host.text()).toContain('直接使用 / 暂时关闭')
+  await startAndInstall(context)
+  expect(context.host.find('aside').exists()).toBe(true)
+  expect(context.install.pwaInstallState.installed).toBe(false)
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
+  expect(context.host.get('.pwa-install-close').text()).toBe('关闭教程 / 退出引导')
+  if (outcome === 'accepted') expect(context.host.get('.pwa-install-guide').text()).toContain('等待系统完成安装')
+  if (outcome === 'dismissed') expect(context.host.get('.pwa-install-guide').text()).toContain('已取消')
+  if (outcome === 'failed') expect(context.host.get('.pwa-install-guide').text()).toContain('调用失败')
+  expect(context.host.get('a').attributes('href')).toBe('/install')
+  expect(localStorage.getItem(context.install.PWA_AUTO_SUPPRESSED_KEY)).toBeNull()
+  await context.host.get('.pwa-install-close').trigger('click')
+  expect(context.host.find('aside').exists()).toBe(false)
+  expect(context.install.pwaInstallState.dismissedForNow).toBe(true)
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
+  expect(event.prompt).toHaveBeenCalledTimes(1)
+})
+
+it('直接使用 / Esc 关闭不消费真实事件；明确禁用才保存禁用偏好', async () => {
+  const context = await main(await browser())
+  const event = context.offer()
+  await reveal()
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+  await nextTick()
+  expect(context.host.find('aside').exists()).toBe(false)
+  expect(event.prompt).not.toHaveBeenCalled()
+  expect(context.install.pwaInstallState.installable).toBe(true)
+  expect(context.install.pwaInstallState.disableAutoGuide).toBe(false)
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
+  context.install.closePwaInstallGuide({ disableAutoGuide: true })
+  context.install.clearPwaInstallDismissal()
+  context.offer()
   await reveal()
   expect(context.host.find('aside').exists()).toBe(false)
+})
+
+it('待系统选择时可退出；appinstalled 保留事实但不会重开教程', async () => {
+  const context = await main(await browser())
+  let resolvePrompt
+  context.offer('accepted', vi.fn(() => new Promise(resolve => { resolvePrompt = resolve })))
+  await reveal()
+  await context.host.get('.pwa-install-primary').trigger('click')
+  await context.host.get('.pwa-install-primary').trigger('click')
+  await context.host.get('.pwa-install-close').trigger('click')
+  resolvePrompt(); await flushPromises()
+  window.dispatchEvent(new Event('appinstalled')); await nextTick()
+  expect(context.host.find('aside').exists()).toBe(false)
+  expect(context.install.pwaInstallState.installed).toBe(true)
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
+  context.install.startPwaInstallGuide()
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(true)
+})
+
+it('跨业务页面暂停教程，安装任务页则接续；导航观察器卸载清理', async () => {
+  const context = await main(await browser())
+  const disconnect = vi.spyOn(MutationObserver.prototype, 'disconnect')
+  context.offer()
+  await reveal()
+  await context.host.get('.pwa-install-primary').trigger('click')
+  await context.router.push('/install')
+  expect(context.install.pwaInstallState.guideActive).toBe(true)
+  expect(context.host.find('aside').exists()).toBe(false)
+  await context.router.push('/inventory')
+  expect(context.install.pwaInstallState.guideActive).toBe(false)
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
   await context.router.push('/')
-  await context.host.setProps({ accessPending: true })
   await reveal()
   expect(context.host.find('aside').exists()).toBe(false)
-  await context.host.setProps({ accessPending: false })
-  await reveal()
-  expect(context.host.find('.pwa-install-guide').exists()).toBe(true)
   context.host.unmount()
   expect(disconnect).toHaveBeenCalled()
 })
 
-it.each(['failed', 'unavailable'])('主站 %s 后权限指南仍可见且可以收起、打开教程、关闭', async outcome => {
+it('appinstalled 后结束主动教程；accepted 不结束', async () => {
   const context = await main(await browser())
-  let fail
-  const event = context.offer('dismissed', vi.fn(() => new Promise((resolve, reject) => { fail = reject })))
+  context.offer()
   await reveal()
-  const button = context.host.get('.pwa-install-primary')
-  let other
-  if (outcome === 'unavailable') {
-    // Another caller consumes the event after the rendered button, before this click.
-    other = context.install.requestPwaInstall()
-  }
-  await button.trigger('click')
-  fail(new Error('permission denied'))
-  if (other) await other
-  await flushPromises()
+  await startAndInstall(context)
   expect(context.host.find('aside').exists()).toBe(true)
-  expect(context.host.get('.pwa-install-guide').attributes('aria-live')).toBe('polite')
-  expect(context.host.get('.pwa-install-permission').text()).toContain('系统设置 → 应用/应用管理 → 当前浏览器 → 权限/其他权限')
-  expect(context.host.get('a').attributes('href')).toBe('/install')
-  expect(localStorage.getItem(context.install.PWA_AUTO_SUPPRESSED_KEY)).toBeNull()
-  expect(context.install.shouldShowPwaInstallPrompt()).toBe(false)
+  window.dispatchEvent(new Event('appinstalled')); await nextTick()
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(true)
+  expect(context.host.find('aside').exists()).toBe(false)
+})
+
+it.each(['routeLoading', 'accessPending'])('已参加者 %s 期间仍能立即退出教程', async prop => {
+  const context = await main(await browser())
+  context.offer()
+  await reveal()
   await context.host.get('.pwa-install-primary').trigger('click')
-  expect(context.host.find('.pwa-install-guide').exists()).toBe(false)
-  expect(context.host.find('aside').exists()).toBe(true)
-  await context.host.get('.pwa-install-primary').trigger('click')
-  expect(context.host.find('.pwa-install-guide').exists()).toBe(true)
+  await context.host.setProps({ [prop]: true })
+  expect(context.host.get('.pwa-install-close').text()).toContain('退出引导')
   await context.host.get('.pwa-install-close').trigger('click')
-  expect(context.host.find('aside').exists()).toBe(false)
-  expect(event.prompt).toHaveBeenCalledTimes(1)
+  expect(context.install.pwaInstallState.guideActive).toBe(false)
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
 })
 
-it('主站 /install、全局弹窗及新手引导暂时隐藏正常邀请与恢复面板', async () => {
+it('业务模态打开时暂停教程，不覆盖录入或关闭模态后自动重开', async () => {
   const context = await main(await browser())
-  context.offer('dismissed', vi.fn(async () => { throw new Error('permission denied') }))
-  await reveal()
-  for (const recovery of [false, true]) {
-    if (recovery) {
-      await context.host.get('.pwa-install-primary').trigger('click')
-      await flushPromises()
-      expect(context.host.find('.pwa-install-guide').exists()).toBe(true)
-    }
-    await context.router.push('/install')
-    expect(context.host.find('aside').exists()).toBe(false)
-    await context.router.push('/')
-    expect(context.host.find('aside').exists()).toBe(false)
-    await reveal()
-    expect(context.host.find('aside').exists()).toBe(true)
-    context.dialog._state.visible = true
-    await nextTick()
-    expect(context.host.find('aside').exists()).toBe(false)
-    context.dialog._state.visible = false
-    context.onboarding.start('operator-first-entry')
-    await nextTick()
-    expect(context.host.find('aside').exists()).toBe(false)
-    context.onboarding.dismiss()
-    await nextTick()
-    expect(context.host.find('aside').exists()).toBe(false)
-    await reveal()
-    expect(context.host.find('aside').exists()).toBe(true)
-  }
-})
-
-it.each(['accepted', 'dismissed'])('主站 %s 后隐藏当前邀请；只有接受才保存永久推广偏好', async outcome => {
-  const context = await main(await browser())
-  context.offer(outcome)
+  context.offer()
   await reveal()
   await context.host.get('.pwa-install-primary').trigger('click')
-  await flushPromises()
+  context.dialog._state.visible = true
+  await nextTick()
+  expect(context.install.pwaInstallState.guideActive).toBe(false)
+  expect(context.dialog._state.visible).toBe(true)
+  context.dialog._state.visible = false
+  await reveal()
   expect(context.host.find('aside').exists()).toBe(false)
-  expect(context.install.pwaInstallState.standalone).toBe(false)
-  expect(localStorage.getItem(context.install.PWA_AUTO_SUPPRESSED_KEY)).toBe(outcome === 'accepted' ? '1' : null)
 })
 
 it('其他调用方的恢复状态不会让主站组件挂载时自动展示', async () => {
@@ -300,33 +327,29 @@ it('主站真实 viewport 变化与同 origin 偏好事件会即时隐藏面板'
   expect(context.host.find('aside').exists()).toBe(false)
 })
 
-it('主站独立教程只在真实 standalone 显示窗口文案，旧推广偏好仍允许手动安装', async () => {
+it('旧推广偏好不冒充安装，手动开始后 accepted 仍只等待', async () => {
   const context = await browser({ suppressed: true })
   const { default: guide } = await import('../src/pages/install/index.vue')
-  const host = mount(guide, { global: { stubs: { IslandSidebar: true, SiteFooter: true } } })
-  context.offer()
-  await nextTick()
+  const host = mount(guide, { global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: true } } })
+  context.offer(); await nextTick()
   expect(host.find('.installed-banner').exists()).toBe(false)
   await host.get('.install-now').trigger('click')
-  await flushPromises()
-  expect(host.get('.install-feedback').text()).toContain('请等待系统完成')
-  expect(host.get('.installed-banner').text()).toContain('请等待系统完成后，从桌面图标打开')
-  expect(host.text()).not.toContain('当前已从桌面独立运行')
-  context.offer()
-  await nextTick()
-  expect(host.find('.install-now').exists()).toBe(false)
-  expect(context.install.pwaInstallState.standalone).toBe(false)
+  await host.get('.install-now').trigger('click'); await flushPromises()
+  expect(host.get('.install-feedback').text()).toContain('等待系统完成安装')
+  expect(host.find('.installed-banner').exists()).toBe(false)
+  expect(context.install.pwaInstallState.installed).toBe(false)
 })
 
-it('iOS 主站无自动邀请，但手动教程仍默认 iPhone 并无假安装按钮', async () => {
+it('iOS 无自动邀请，主动参加才显示真实分享菜单动作', async () => {
   const context = await main(await browser({ ios: true }))
   await reveal()
   expect(context.host.find('aside').exists()).toBe(false)
   const { default: guide } = await import('../src/pages/install/index.vue')
-  const host = mount(guide, { global: { stubs: { IslandSidebar: true, SiteFooter: true } } })
-  await nextTick()
-  expect(host.text()).toContain('iPhone / iPad 不提供网页内的一键安装按钮')
-  expect(host.find('.install-now').exists()).toBe(false)
+  const host = mount(guide, { global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: true } } })
+  await host.get('.install-now').trigger('click')
+  expect(host.get('.install-feedback').text()).toContain('Safari 的“分享”菜单')
+  expect(host.text()).not.toContain('立即添加到桌面')
+  expect(context.install.pwaInstallState.tutorialCompleted).toBe(false)
 })
 
 async function promo(context, open = false) {

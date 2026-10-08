@@ -97,19 +97,22 @@ async function installBrowser(t, { ua = 'Android Mobile', mobile = true, standal
   return { install: await reload(), reload, fire, offer, storage, session, browser, listeners }
 }
 
-test('accepted installation suppresses automatic invitation after a browser reload', async t => {
+test('accepted waits after reload without recording installation or permanent suppression', async t => {
   const context = await installBrowser(t)
   context.offer()
   assert.equal(context.install.shouldShowPwaInstallPrompt(), true)
   assert.deepEqual(await context.install.requestPwaInstall(), { outcome: 'accepted' })
   assert.equal(context.install.shouldShowPwaInstallPrompt(), false)
   assert.equal(context.install.pwaInstallState.standalone, false)
+  assert.equal(context.install.pwaInstallState.installed, false)
+  assert.equal(context.install.pwaInstallState.phase, 'waiting-for-install')
   const reloaded = await context.reload()
   context.offer()
   assert.equal(reloaded.shouldShowPwaInstallPrompt(), false)
   assert.equal(reloaded.pwaInstallState.installed, false, 'preference is not a current installation fact')
   assert.equal(reloaded.pwaInstallState.standalone, false)
-  assert.equal(context.storage.getItem(reloaded.PWA_AUTO_SUPPRESSED_KEY), '1')
+  assert.equal(context.storage.getItem(reloaded.PWA_AUTO_SUPPRESSED_KEY), null)
+  assert.equal(reloaded.pwaInstallState.phase, 'waiting-for-install')
 })
 
 for (const ua of ['Android Mobile', 'iPhone Safari']) {
@@ -205,10 +208,10 @@ for (const outcome of ['failed', 'unavailable']) {
     const { install, offer, storage } = await installBrowser(t)
     if (outcome === 'failed') offer('dismissed', async () => { throw new Error('shortcut permission denied') })
     assert.equal((await install.requestPwaInstall()).outcome, outcome)
-    assert.equal(install.pwaInstallState.installHelpNeeded, true)
+    assert.equal(install.pwaInstallState.installHelpNeeded, outcome === 'failed')
     assert.equal(install.pwaInstallState.nativeCancelledThisSession, false)
     assert.equal(install.shouldShowPwaInstallPrompt(), false)
-    assert.equal(install.shouldShowPwaInstallRecovery(), true)
+    assert.equal(install.shouldShowPwaInstallRecovery(), outcome === 'failed')
     assert.equal(storage.getItem(install.PWA_AUTO_SUPPRESSED_KEY), null)
     install.dismissPwaInstallPrompt()
     assert.equal(install.shouldShowPwaInstallRecovery(), false)
@@ -262,7 +265,7 @@ for (const failure of ['object', 'read', 'write']) {
     assert.equal((await install.requestPwaInstall()).outcome, 'dismissed')
     context.offer('accepted')
     assert.equal((await install.requestPwaInstall()).outcome, 'accepted')
-    assert.equal(install.pwaInstallState.autoSuppressed, true)
+    assert.equal(install.pwaInstallState.autoSuppressed, false)
     assert.equal(install.pwaInstallState.standalone, false)
     context.fire('appinstalled')
     assert.equal(install.pwaInstallState.autoSuppressed, true)
@@ -287,6 +290,7 @@ test('clearing dismissal does not restore automatic promotion', async t => {
   const { install, offer, storage, session } = await installBrowser(t)
   offer()
   await install.requestPwaInstall()
+  install.closePwaInstallGuide({ disableAutoGuide: true })
   offer('dismissed')
   await install.requestPwaInstall()
   assert.equal(install.pwaInstallState.nativeCancelledThisSession, true)
@@ -295,7 +299,196 @@ test('clearing dismissal does not restore automatic promotion', async t => {
   offer()
   assert.equal(install.pwaInstallState.dismissedUntil, 0)
   assert.equal(install.pwaInstallState.nativeCancelledThisSession, false)
-  assert.equal(storage.getItem(install.PWA_AUTO_SUPPRESSED_KEY), '1')
+  assert.equal(storage.getItem(install.PWA_AUTO_SUPPRESSED_KEY), null)
+  assert.equal(install.pwaInstallState.disableAutoGuide, true)
   assert.equal(session.getItem(install.PWA_SESSION_CANCELLED_KEY), null)
   assert.equal(install.shouldShowPwaInstallPrompt(), false)
 })
+
+
+test('only a voluntary active tutorial completes on appinstalled; acceptance alone never completes', async t => {
+  const { install, offer, fire } = await installBrowser(t)
+  install.startPwaInstallGuide()
+  offer()
+  await install.requestPwaInstall()
+  assert.equal(install.pwaInstallState.tutorialCompleted, false)
+  assert.equal(install.pwaInstallState.installed, false)
+  fire('appinstalled')
+  assert.equal(install.pwaInstallState.tutorialCompleted, true)
+  assert.equal(install.pwaInstallState.guideActive, false)
+  assert.equal(install.pwaInstallState.standalone, false)
+})
+
+test('installation without participation is a real fact, not tutorial completion', async t => {
+  const { install, fire } = await installBrowser(t)
+  fire('appinstalled')
+  assert.equal(install.pwaInstallState.installed, true)
+  assert.equal(install.pwaInstallState.tutorialCompleted, false)
+  install.startPwaInstallGuide()
+  assert.equal(install.pwaInstallState.tutorialCompleted, true, 'reuse existing verified result')
+})
+
+test('close, refresh, and resume preserve real events without recording completion', async t => {
+  const context = await installBrowser(t)
+  context.offer()
+  context.install.startPwaInstallGuide()
+  context.install.closePwaInstallGuide()
+  assert.equal(context.install.pwaInstallState.installable, true, 'closing does not discard the native event')
+  assert.equal(context.install.pwaInstallState.installed, false)
+  assert.equal(context.install.pwaInstallState.tutorialCompleted, false)
+  const install = await context.reload()
+  context.offer()
+  assert.equal(install.pwaInstallState.dismissedForNow, true)
+  assert.equal(install.shouldShowPwaInstallPrompt(), false)
+  install.startPwaInstallGuide()
+  assert.equal(install.pwaInstallState.guideActive, true)
+  assert.equal((await install.requestPwaInstall()).outcome, 'accepted')
+})
+
+test('close while the system prompt is pending does not reopen on late accepted/appinstalled', async t => {
+  const { install, offer, fire } = await installBrowser(t)
+  let resolvePrompt
+  let calls = 0
+  install.startPwaInstallGuide()
+  offer('accepted', () => { calls++; return new Promise(resolve => { resolvePrompt = resolve }) })
+  const pending = install.requestPwaInstall()
+  const duplicate = install.requestPwaInstall()
+  assert.equal(pending, duplicate)
+  assert.equal(calls, 1)
+  install.closePwaInstallGuide()
+  resolvePrompt()
+  await pending
+  assert.equal(install.pwaInstallState.guideActive, false)
+  assert.equal(install.pwaInstallState.installed, false)
+  fire('appinstalled')
+  assert.equal(install.pwaInstallState.installed, true)
+  assert.equal(install.pwaInstallState.tutorialCompleted, false)
+  assert.equal(install.pwaInstallState.guideActive, false)
+  install.startPwaInstallGuide()
+  assert.equal(install.pwaInstallState.tutorialCompleted, true)
+})
+
+test('appinstalled before userChoice settles is not overwritten by late cancellation', async t => {
+  const { install, fire } = await installBrowser(t)
+  let choose
+  install.startPwaInstallGuide()
+  fire('beforeinstallprompt', { prompt: async () => {}, userChoice: new Promise(resolve => { choose = resolve }) })
+  const pending = install.requestPwaInstall()
+  fire('appinstalled')
+  choose({ outcome: 'dismissed' })
+  await pending
+  assert.equal(install.pwaInstallState.installed, true)
+  assert.equal(install.pwaInstallState.phase, 'installed')
+  assert.equal(install.pwaInstallState.nativeCancelledThisSession, false)
+  assert.equal(install.pwaInstallState.tutorialCompleted, true)
+})
+
+test('iOS browser return waits; a fresh desktop launch detects navigator.standalone and completes', async t => {
+  const context = await installBrowser(t, { ua: 'iPhone Safari' })
+  context.install.startPwaInstallGuide()
+  context.install.waitForPwaInstall()
+  context.fire('pageshow')
+  context.fire('focus')
+  assert.equal(context.install.pwaInstallState.tutorialCompleted, false)
+  assert.equal(context.install.pwaInstallState.phase, 'waiting-for-install')
+  const browserReload = await context.reload()
+  assert.equal(browserReload.pwaInstallState.guideActive, true)
+  assert.equal(browserReload.pwaInstallState.tutorialCompleted, false)
+  context.browser.navigator.standalone = true
+  const desktopLaunch = await context.reload()
+  assert.equal(desktopLaunch.pwaInstallState.standalone, true)
+  assert.equal(desktopLaunch.pwaInstallState.tutorialCompleted, true)
+})
+
+test('a paused iOS tutorial reuses standalone evidence only when voluntarily resumed', async t => {
+  const context = await installBrowser(t, { ua: 'iPhone Safari' })
+  context.install.startPwaInstallGuide()
+  context.install.closePwaInstallGuide()
+  context.browser.navigator.standalone = true
+  const install = await context.reload()
+  assert.equal(install.pwaInstallState.installed, true)
+  assert.equal(install.pwaInstallState.guideActive, false)
+  assert.equal(install.pwaInstallState.tutorialCompleted, false)
+  install.startPwaInstallGuide()
+  assert.equal(install.pwaInstallState.tutorialCompleted, true)
+})
+
+test('dismissed remains retryable with a fresh native event; only failed requests need troubleshooting', async t => {
+  const { install, offer } = await installBrowser(t)
+  install.startPwaInstallGuide()
+  offer('dismissed')
+  await install.requestPwaInstall()
+  assert.equal(install.pwaInstallState.guideActive, true)
+  assert.equal(install.pwaInstallState.phase, 'dismissed')
+  assert.equal(install.pwaInstallState.installHelpNeeded, false)
+  offer('accepted', () => { throw new Error('native failure') })
+  await install.requestPwaInstall()
+  assert.equal(install.pwaInstallState.phase, 'failed')
+  assert.equal(install.pwaInstallState.installHelpNeeded, true)
+  offer('accepted')
+  await install.requestPwaInstall()
+  assert.equal(install.pwaInstallState.phase, 'waiting-for-install')
+  assert.equal(install.pwaInstallState.installed, false)
+})
+
+test('explicit disable survives reload but preserves manual resume and install', async t => {
+  const context = await installBrowser(t)
+  context.install.closePwaInstallGuide({ disableAutoGuide: true })
+  const install = await context.reload()
+  context.offer()
+  assert.equal(install.pwaInstallState.disableAutoGuide, true)
+  assert.equal(install.pwaInstallState.tutorialCompleted, false)
+  assert.equal(install.shouldShowPwaInstallPrompt(), false)
+  install.startPwaInstallGuide()
+  assert.equal(install.pwaInstallState.guideActive, true)
+  await install.requestPwaInstall()
+  assert.equal(install.pwaInstallState.installed, false)
+})
+
+test('stored tutorial history is not current installation evidence', async t => {
+  const storage = createStorage()
+  storage.setItem('yuanhub:pwa-install-guide:v1', JSON.stringify({ tutorialStarted: true, tutorialCompleted: true, guideActive: true, phase: 'installed' }))
+  const { install } = await installBrowser(t, { storage })
+  assert.equal(install.pwaInstallState.installed, false)
+  assert.equal(install.pwaInstallState.guideActive, false)
+  install.startPwaInstallGuide()
+  assert.equal(install.pwaInstallState.tutorialCompleted, false)
+  assert.equal(install.pwaInstallState.guideActive, true)
+})
+
+test('manual browser guidance chooses real iOS/Chrome/Firefox branches and does not invent unknown menus', async t => {
+  const { install } = await installBrowser(t)
+  assert.match(install.getPwaInstallGuidance({ userAgent: 'iPhone Safari' }), /Safari.*分享.*添加到主屏幕/)
+  assert.match(install.getPwaInstallGuidance({ userAgent: 'iPhone CriOS Safari' }), /请在 Safari/)
+  assert.match(install.getPwaInstallGuidance({ userAgent: 'Android Chrome Mobile' }), /Chrome/)
+  assert.match(install.getPwaInstallGuidance({ userAgent: 'Android Firefox Mobile' }), /Firefox/)
+  assert.match(install.getPwaInstallGuidance({ userAgent: 'Unknown Browser' }), /尚未识别/)
+})
+
+
+test('a fresh native event during a pending request is preserved for a real retry', async t => {
+  const { install, offer } = await installBrowser(t)
+  let resolvePrompt
+  offer('dismissed', () => new Promise(resolve => { resolvePrompt = resolve }))
+  const pending = install.requestPwaInstall()
+  let retries = 0
+  offer('accepted', async () => { retries++ })
+  resolvePrompt()
+  await pending
+  assert.equal(install.pwaInstallState.installable, true)
+  assert.equal((await install.requestPwaInstall()).outcome, 'accepted')
+  assert.equal(retries, 1)
+  assert.equal(install.pwaInstallState.installed, false)
+})
+
+for (const record of ['{broken', 'null', '{"tutorialStarted":"true","guideActive":true,"tutorialCompleted":"true","phase":"invented"}']) {
+  test(`malformed guide record is not participation or current installation evidence: ${record}`, async t => {
+    const storage = createStorage()
+    storage.setItem('yuanhub:pwa-install-guide:v1', record)
+    const { install } = await installBrowser(t, { storage })
+    assert.equal(install.pwaInstallState.tutorialStarted, false)
+    assert.equal(install.pwaInstallState.guideActive, false)
+    assert.equal(install.pwaInstallState.tutorialCompleted, false)
+    assert.equal(install.pwaInstallState.installed, false)
+  })
+}

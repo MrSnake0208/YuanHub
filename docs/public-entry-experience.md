@@ -26,9 +26,34 @@
 
 ## 主动安装 `/install`
 
-有可用原生事件时提供一键入口；没有事件时提供手动步骤，不将“没有入口”解释成系统权限错误。取消、入口不可用、系统调用失败和意外异常分别提示恢复方法；已记录安装或独立运行时不再次提供安装按钮。系统菜单与权限名称需按真实平台版本确认。
+安装是自愿任务。首次邀请提供“跟着做一次”与“直接使用 / 暂时关闭”；未参加者阅读、关闭或换页不会完成教程。邀请不使用遮罩，沿用只读页白名单与模态/导航避让；iOS 没有原生事件时不自动邀请。桌面与移动导航中的“添加到桌面”始终可重新进入。
 
-Android / iOS 标签支持方向键、Home、End，并关联对应面板。当前说明以手机/平板为主，不据此宣称已验收某个最低浏览器版本。自动安装提示沿用现有路由白名单，BOX、演示、宣传、权限页及主动安装页均不邀请；无需增加 route meta。
+Prompt 邀请参加，Quick Guide 只显示当前动作，`/install` 承载可恢复任务与真实调用失败的排障。取消、不可用入口和等待都不是错误；只有 `failed` 显示故障排查。系统请求单飞，每个阶段都有文本退出按钮与 Esc，关闭后保持真实表单、数据、原生事件及在途请求，不撤销系统安装。换到其它业务页暂停；转入 `/install` 接续。关闭后七天内不自动反复邀请；明确选择“以后不自动提示”才持久化 `disableAutoGuide`。所有暂停/禁用均允许手动继续。
+
+| 平台/结果 | 真实任务与完成规则 |
+| --- | --- |
+| Android 有 beforeinstallprompt | 自愿开始 → 点击“立即添加到桌面” → 真实 requestPwaInstall → accepted 仅进入 waiting-for-install → appinstalled 或 standalone 才完成 |
+| Android dismissed | 保留教程，等待新的原生事件或按浏览器菜单重试；可立即退出 |
+| Android failed | 显示实际调用失败与菜单/系统权限排障；网页不能读取或开启浏览器系统权限 |
+| Android 无原生事件 | 已识别 Chrome/Firefox 显示对应菜单；未确认的浏览器不杜撰菜单，建议换到支持浏览器。单纯快捷方式不证明 PWA 安装 |
+| iPhone / iPad | 自动识别实际环境 → Safari 分享/添加到主屏幕的当前动作 → 等待站外操作 → 从桌面打开后 detectStandalone 为真才完成 |
+
+`tutorialCompleted` 只由主动参加且当前未暂停的任务获得真实证据后写入；`dismissedForNow` 仅表示暂停；`disableAutoGuide` 仅为明确关闭自动提示。退出后迟到的 appinstalled 仍更新真实 installed，但不重开 UI 或把暂停教程算完成；手动继续可直接复用这份真实成果。
+
+刷新恢复教程参与与等待状态，`focus`、`pageshow`、`visibilitychange` 和 display-mode change 重查独立运行。安装事实不从历史 stepIndex、accepted、旧推广偏好或历史完成记录推断；appinstalled 在当前页面可信，刷新后无法确认设备上是否仍安装，保持未确认并等待 standalone。历史 completed 不等于设备当前仍安装。系统菜单操作、OEM 权限、是否只创建了快捷方式，以及跨浏览器/独立 Web App 的存储隔离都不可由网页可靠观测。若新环境没有参与记录，只呈现真实 standalone 成果，不编造教学完成历史。
+
+appinstalled 后仍在浏览器，显示“系统已确认 YuanHub 安装完成”，不会声称独立运行。仅 standalone 显示“你现在正从桌面版 YuanHub 运行。”
+
+菜单路径核对依据：[Chrome Android 安装](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DAndroid&hl=zh-Hans)、[Firefox Android 安装](https://support.mozilla.org/en-US/kb/use-web-apps-firefox-android)、[Apple Safari 添加到主屏幕](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/ios)。系统菜单名称仍需按真实版本核对。
+
+本次安装变更的最小回归命令（在 `YuanHub` 执行）：
+
+```bash
+node --test test/pwaInstall.test.js test/pwaInstallResponsive.test.js test/pwaInstallExperience.test.js
+npm run test:behavior -- behavior/pwaInstallPrompt.spec.js behavior/installPage.spec.js
+```
+
+真机验收：Android 分别检查 accepted 等待、取消后重试、真实 appinstalled 和桌面启动、调用失败排障；iPhone/iPad 检查分享菜单操作后仍在浏览器不完成、从桌面重入自动识别。每个平台在加载、取消、等待、站外操作前关闭，刷新后不重开邀请，再从“添加到桌面”继续并复用成果；不提交测试账号数据。检查 Tab/Esc、触屏退出、安全区域与横屏；视口覆盖 320/390/430/768/1024/1440px。回归/build/真机由用户执行，本次 Agent 仅定向源码编译与静态审查。
 
 ## 最小验收
 
