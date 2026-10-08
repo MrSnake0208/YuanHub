@@ -1,7 +1,7 @@
 <template>
   <section class="pool-timeline" aria-labelledby="timeline-title">
     <div class="timeline-heading">
-      <div><h2 id="timeline-title">卡池时间线</h2><p>珍藏每一次相遇，点击卡池查看与编辑。</p></div>
+      <div><h2 id="timeline-title">卡池时间线</h2><p>找到实际抽取的卡池，记一笔；以前的记录也在这里。</p></div>
       <button type="button" class="sort-button" @click="descending = !descending"><ArrowDownWideNarrow :size="17" aria-hidden="true" />{{ descending ? '按时间从新到旧' : '按时间从早到晚' }}</button>
     </div>
     <div v-if="years.length" class="year-filters" aria-label="卡池年份">
@@ -41,7 +41,7 @@
             </span>
             <span v-if="poolSummaries[pool.pool_id]?.has_unknown" class="pool-dates">部分出货间隔或进度未知</span>
           </span>
-          <span class="pool-entry"><span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span><span class="entry-label">查看并编辑 <ChevronRight :size="16" aria-hidden="true" /></span></span>
+          <span class="pool-entry"><span class="pool-status" :class="{ 'status-open': status(pool) === '进行中' }"><span aria-hidden="true" class="status-dot" />{{ status(pool) }}</span><span class="entry-label">{{ details(pool).enabled ? '记一笔' : '查看记录' }} <ChevronRight :size="16" aria-hidden="true" /></span></span>
         </button>
       </li>
     </ol>
@@ -93,7 +93,7 @@ const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_
 const coverAgents = pool => avatarResults.value.get(pool.pool_id) || []
 function cardLabel(pool) {
   const agents = coverAgents(pool)
-  return '查看并编辑 ' + (details(pool).name || '未知卡池') + (agents.length
+  return (details(pool).enabled ? '记一笔 ' : '查看记录 ') + (details(pool).name || '未知卡池') + (agents.length
     ? '；本池 UP 获得次数：' + agents.map(agent => agent.name + (agent.count == null ? '，统计未知' : '，获得 ' + agent.count + ' 次')).join('；') : '')
 }
 const activeUpSlots = pool => (details(pool).up_agents || []).filter(slot => slot.active !== false)
