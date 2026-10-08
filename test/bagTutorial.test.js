@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bagTutorialSteps, bagReviewInfo, createBagTutorialGate } from '../src/pages/star/bagTutorial.js'
+import { bagTutorialSteps, bagReviewInfo, createBagTutorialGate, growthPlanTutorialSteps } from '../src/pages/star/bagTutorial.js'
 import { tutorialStepIndex, tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect } from '../src/pages/star/recognitionTutorial.js'
 
 test('bag tutorial has exactly seven manually navigated steps and independent persistence', () => {
@@ -15,6 +15,17 @@ test('bag tutorial has exactly seven manually navigated steps and independent pe
   markTutorialSeen(bag, null)
   assert.equal(tutorialSeen(bag, null), true)
   assert.equal(tutorialSeen(recognition, null), false)
+})
+test('growth replay reuses the tour with growth targets and separate seen state',()=>{
+  assert.deepEqual(growthPlanTutorialSteps.map(step=>step.target),['.growth-filters','.growth-editor','.growth-route','.review-workspace-tools'])
+  assert.match(growthPlanTutorialSteps[0].body,/不会改变右侧养成路线/)
+  assert.match(growthPlanTutorialSteps[2].body,/当前账号全部待养成/)
+  assert.equal(growthPlanTutorialSteps[3],bagTutorialSteps[6])
+  const plan=tutorialStorageKey('plan-helper','plan')
+  markTutorialSeen(plan,null)
+  assert.equal(tutorialSeen(plan,null),true)
+  assert.equal(tutorialSeen(tutorialStorageKey('plan-helper','bag'),null),false)
+  assert.equal(tutorialSeen(tutorialStorageKey('plan-helper'),null),false)
 })
 test('Step 1 actively reveals review on entry and replay regardless of pending content', () => {
   const step = bagTutorialSteps[0]

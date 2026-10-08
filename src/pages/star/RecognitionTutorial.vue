@@ -33,7 +33,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
 import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect } from './recognitionTutorial.js'
-import { bagTutorialSteps, bagReviewInfo } from './bagTutorial.js'
+import { bagTutorialSteps, bagReviewInfo, growthPlanTutorialSteps } from './bagTutorial.js'
 
 const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' } })
 const emit = defineEmits(['close', 'step-change'])
@@ -41,8 +41,8 @@ const stepIndex = ref(0), mobile = ref(false), lift = ref(0), card = ref(null)
 const rects = ref([]), position = ref({ left: 12, top: 12 }), placement = ref('fallback'), ready = ref(false)
 const sheetBounds = ref(null)
 const exampleKind = ref(null), showMobileHint = ref(false)
-const steps = computed(() => props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
-const tutorialLabel = computed(() => props.mode === 'bag' ? '使用教程' : '识别教程')
+const steps = computed(() => props.mode === 'plan' ? growthPlanTutorialSteps : props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
+const tutorialLabel = computed(() => props.mode === 'plan' ? '养成教程' : props.mode === 'bag' ? '使用教程' : '识别教程')
 const step = computed(() => steps.value[stepIndex.value])
 const exampleItems = computed(() => recognitionTutorialExamples[exampleKind.value] || [])
 const cardStyle = computed(() => ({ visibility: ready.value ? 'visible' : 'hidden', ...(mobile.value ? { bottom: `${(sheetBounds.value?.bottom ?? 12) + lift.value}px`, ...(sheetBounds.value ? { maxHeight: `min(62dvh, calc(100dvh - 96px), ${sheetBounds.value.maxHeight}px)` } : {}) } : { left: `${position.value.left}px`, top: `${position.value.top}px` }) }))
@@ -248,11 +248,11 @@ h2 { margin: 2px 0 0; font-family: var(--font-s); font-weight: 900; font-size: 1
 .recognition-tour-count { font-family: var(--font-d); font-size: 12px; }
 .recognition-tour-body { white-space: pre-line; font-size: 13px; line-height: 1.6; margin: 8px 0 0; }
 .recognition-tour-body + .recognition-tour-body { margin-top: 0; }
-button { min-height: 32px; min-width: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+button { box-sizing: border-box; height: 32px; min-height: 32px; max-height: 32px; min-width: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; font-size: 13px; line-height: 1.2; cursor: pointer; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 button:disabled { opacity: .45; cursor: default; }
 .recognition-tour-close { flex: none; font-size: 18px; }
-.recognition-tour-example { min-height: 28px; border: 0; text-decoration: underline; background: transparent; padding-inline: 0; }
+.recognition-tour-example { border: 0; text-decoration: underline; background: transparent; padding-inline: 0; }
 footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; }
 .recognition-tour-next { background: var(--tea); color: var(--cream); }
 .recognition-tour-hint { font-size: 13px; line-height: 1.5; margin: 4px 0; }
@@ -260,10 +260,10 @@ footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 8
 .recognition-tour-handle-row { display: flex; justify-content: space-between; align-items: center; }
 .recognition-tour-handle { display: grid; place-items: center; flex: 1; border: 0; background: transparent; touch-action: none; user-select: none; cursor: ns-resize; }
 .recognition-tour-handle span { width: 40px; height: 4px; border-radius: 4px; background: var(--tea); opacity: .55; }
-.is-mobile button { min-height: 44px; min-width: 44px; }
-.is-mobile .recognition-tour-handle { min-height: 44px; padding: 0; }
-.is-mobile .recognition-tour-close { position: absolute; top: 8px; right: 10px; min-height: 44px; min-width: 44px; padding: 0; font-size: 18px; }
+.is-mobile button { min-width: 32px; }
+.is-mobile .recognition-tour-handle { padding: 0; }
+.is-mobile .recognition-tour-close { position: absolute; top: 8px; right: 10px; min-width: 32px; padding: 0; font-size: 18px; }
 @media (pointer: coarse) {
-  .recognition-tour-card button { min-height: 44px; min-width: 44px; }
+  .recognition-tour-card button { min-width: 32px; }
 }
 </style>

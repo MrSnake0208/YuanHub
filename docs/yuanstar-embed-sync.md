@@ -14,6 +14,22 @@
 **因此本仓库无法复现或审计这两份 JS 的源码差异**。这也正是它们被标记为
 `linguist-generated` / `-diff`（见 `.gitattributes`）的原因。
 
+## 当前 P1 本地提交集成（2026-10-08，未发布）
+
+- authoritative source仓为`drifty13/YuanStar-dev`，分支`feat/growth-plan-workspace-p1`；source commit：`d0d1760edf2442edea45eaf983fd1f533789e742`。
+- 本次为已提交 source commit 的干净工作树正式 build：在`web/`执行`npm.cmd run build:embed`，完整同步12个文件到`public/yuanstar-embed/`。构建前后源码工作树均clean，未手改JS/CSS。
+- manifest的`_sourceCommit`为上述P1 commit，`_sourceWorkingTree.status`为`clean`。12个产物的文件集、字节与SHA-256均与构建目录一致；重新构建后的产物与本轮专项行为测试使用的产物字节完全相同。
+- 运行reference为`YuanStar_Phase0_6A_经验星曜与突破材料规则_更新.xlsx`，旧workbook已由正式流程替换。
+- 保留计划页「应用筛选」及没有「清除」的最终方案。筛选后的选中/草稿按可见集合收敛；路线独立使用当前账号所有targetLevel>level的星石。
+- 背包整理与养成计划有意共用最新五色品质背景、对应深色文字和600字重，无描边；尺寸、布局与按钮高度维持用户已验收状态。经验星曜与瓶子资源标签保持独立样式。教程入口位置与文案保持。
+- `onReadBreakthroughInventory(accountId)`复用当前账号的inventory/current；`onSaveBreakthroughInventory(accountId,itemId,count)`已接入真实inventory/import单项listed盘点（含0），不是纯静态UI，不覆盖其他库存条目。经验编辑复用原星石工作区保存。
+- import确认后的读回冲突可能长期保留pending、阻止再次编辑及账号切换。用户明确将恢复机制归入P2，不阻止本地开发提交；正式发布相关写入功能前必须完成安全重读、重新编辑、确认记录不重复提交及账号恢复保护。
+- 右侧多选、数字排序、拖动与顺序持久化、路线累计资源、可完成位置/精确缺口、选择汇总、完成养成和扣料均留待P2；checkbox与完成按钮当前disabled，序号readonly。
+- 本轮通过：源码TypeScript、经验规则/突破边界/展示、19项pending-only、10项view-follow、实例更新/汇总/历史、资产流程；宿主43项Node专项、62项行为、6项provenance，以及Vue/JS检查、正式构建与diff检查。Python专项因解释器缺pytest/openpyxl未执行成功，受影响Python语法检查通过。
+- 所有写入测试使用mock/隔离fixture；未测试真实账号库存写入，未重跑完整CI/手机真机/视口矩阵。本地commit不代表已发布，不push、merge、rebase或开PR。
+
+完整收口与P2清单见[养成计划P1报告](./growth-plan-p1-closeout.md)。下列其它来源均为此前构建历史，以本节和当前manifest为准。
+
 ## 同步时必须记录
 
 每次更新 embed，请在 PR 描述里给出：

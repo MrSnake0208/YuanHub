@@ -8,6 +8,14 @@ export const bagTutorialSteps = [
   { id: 'history', title: '撤回、重做和近期存档', body: '左右箭头可以撤回 / 重做最近操作，电脑端也可以使用 Ctrl + Z / Ctrl + Y。\n时钟里可以查看近期 3 个存档。', target: '.review-workspace-tools', scroll: 'preserve', mobileAvoidTarget: true },
 ]
 
+// Reuse the existing tour component, with targets belonging to the growth workspace.
+export const growthPlanTutorialSteps = [
+  { id: 'find', title: '找到想养成的星石', body: '左侧可按大类和名称筛选，切换逐颗明细 / 名称汇总与排序。\n这些设置只影响计划背包，不会改变右侧养成路线。名称汇总行双击后可查看逐颗明细。', target: '.growth-filters', relatedTargets: '.growth-inventory' },
+  { id: 'plan', title: '设置养成目标', body: '单击左侧一颗星石，下方编辑区会跟随它。\n修改当前等级或计划等级后，点击「保存修改」。筛选后若它不再可见，编辑区会改为当前可见的星石。', target: '.growth-editor', relatedTargets: '#plan-rows .is-selected' },
+  { id: 'experience', title: '核对资源与养成路线', body: '右侧显示当前账号全部待养成星石，以及预计经验、紫星曜折合数量和突破瓶子需求。\n资源数量编辑会保存到当前账号；经验按当前经验条进度为0估算。路线顺序和完成养成暂未开放。', target: '.growth-route', relatedTargets: '.growth-resources, .growth-selection' },
+  bagTutorialSteps[6],
+]
+
 export const bagReviewInfo = {
   title: '怎么看识别结果',
   intro: '每张截图都会保留对应的识别结果。\n一般只需要处理看起来有问题的内容，不用把所有结果重新确认一遍。',

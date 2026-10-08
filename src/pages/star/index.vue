@@ -6,7 +6,7 @@
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError"
-            :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy" switch-disabled-reason="星石工作区正在准备或保存，请等待完成后再切换账号。" />
+            :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy || growthBottlePending" switch-disabled-reason="星石工作区或瓶子库存正在保存或等待确认，请处理完成后再切换账号。" />
         </template>
         <template #actions>
           <details class="tool-more">
@@ -21,6 +21,7 @@
         </template>
         <template #help>
           <p>导入截图并核对识别结果后，管理当前背包、养成计划与经验星曜。未登录时可先在本机使用，登录后同步当前账号数据。</p>
+          <button v-if="productReady" type="button" class="star-help-tutorial" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           <p>独立创作 · 著作权归作者 Drifty Yan 所有。</p>
         </template>
       </CompactToolHeader>
@@ -97,15 +98,13 @@
               @click="retryCaptureImport"
             >{{ captureImportBusy ? '重试中…' : '重试导入' }}</button>
           </p>
-          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'import' ? replayRecognitionTutorial() : replayBagTutorial()">
-            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'import' ? '重新查看识别教程' : '重新查看使用教程' }}
-          </button>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
             <button type="button" class="link" @click="setTab('import'); starImportHelpOpen = true">查看支持的截图格式与说明</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
           <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
+          <div class="star-workbench-header">
           <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
             <button
               role="tab"
@@ -113,15 +112,19 @@
               :class="{ on: activeTab === 'review' && starReviewView === 'bag' }"
               @click="starReviewView = 'bag'; setTab('review')"
             >
-              背包与核对
+              背包整理
             </button>
             <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <div v-if="activeTab === 'review'" class="star-workbench-actions">
+          <button v-if="productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'review' && starReviewView === 'plan' ? openTutorial('plan') : replayRecognitionTutorial()">
+            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'review' && starReviewView === 'plan' ? '重新查看养成教程' : '重新查看识别教程' }}
+          </button>
+          </div>
+          <div v-if="activeTab === 'review' && starReviewView === 'bag'" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
             <button type="button" class="star-filter-toggle" :aria-expanded="starFiltersOpen" aria-controls="product-root" @click="starFiltersOpen = !starFiltersOpen">{{ starFiltersOpen ? '收起筛选与设置' : '更多筛选与设置' }}</button>
           </div>
-          <div v-else class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
+          <div v-else-if="activeTab === 'import'" class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
           <div v-if="activeTab === 'import' && starImportHelpOpen" class="star-availability-note" role="note">
             <p><b>手机和电脑网页端均可使用。</b>导入截图、核对识别结果并整理背包。首次 OCR 需在本机加载识别资源，请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
             <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
@@ -168,6 +171,8 @@ import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { listAccounts } from "../../api/accounts.js";
+import { getCurrent as getCurrentInventory, importInventory } from "../../api/inventory.js";
+import { readGrowthPlanInventory, createGrowthPlanInventoryWriter } from "./growthPlanInventory.js";
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
@@ -204,6 +209,12 @@ const activeTab = usePersistedTab(
 );
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
 const starReviewView = ref('bag');
+const growthBottlePending = ref(false);
+const growthBottleWriter = createGrowthPlanInventoryWriter({
+  getCurrent: getCurrentInventory, importInventory,
+  isCurrent: owner => !unmounted && auth.isLoggedIn && owner === selectedHostAccount()?.accountId,
+});
+watch(starReviewView, view => { handle?.setReviewView?.(view); });
 const starBrowseEmpty = ref(false);
 const starFiltersOpen = ref(false);
 const starImportHelpOpen = ref(false);
@@ -237,14 +248,19 @@ function replayBagTutorial() {
 function openTutorial(mode) {
   if (recognitionTutorialOpen.value) dismissRecognitionTutorial();
   tutorialMode.value = mode;
-  const tab = mode === "bag" ? "review" : "import";
+  const tab = mode === "recognition" ? "import" : "review";
   if (activeTab.value !== tab) setTab(tab);
-  recognitionTutorialOwnerKey = mode === "bag" ? bagTutorialKey.value : recognitionTutorialKey.value;
+  recognitionTutorialOwnerKey = tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, mode);
   recognitionTutorialReplayId.value++;
   // A new component opening always starts at step 1.
   recognitionTutorialOpen.value = true;
 }
 function revealTutorialStep(step) {
+  if (tutorialMode.value === "plan") {
+    starBrowseEmpty.value = true;
+    starReviewView.value = "plan";
+    return;
+  }
   if (tutorialMode.value !== "bag") return;
   starBrowseEmpty.value = true;
   starReviewView.value = "bag";
@@ -596,6 +612,7 @@ async function syncHostAccount() {
       if (host) { accountError.value = rejectedSwitchMessage; rejectedSwitchMessage = ""; }
       productReady.value = true;
       currentHandle.setActiveTab(activeTab.value);
+      currentHandle.setReviewView?.(starReviewView.value);
       if (pendingCapture) void importPendingCapture();
       return true;
     } catch (error) {
@@ -724,6 +741,16 @@ async function mountProduct() {
     const mountedHandle = product.mountYuanStar(mountRoot.value, {
       assetBaseUrl: "/yuanstar-embed/",
       embedded: true,
+      reviewView: starReviewView.value,
+      onReadBreakthroughInventory: function (owner) {
+        const context = starContextVersion;
+        return readGrowthPlanInventory(owner, getCurrentInventory, () => !unmounted && context === starContextVersion && auth.isLoggedIn && owner === selectedHostAccount()?.accountId);
+      },
+      onSaveBreakthroughInventory: async function (owner,id,count) {
+        growthBottlePending.value = true;
+        try { return await growthBottleWriter.save(owner,id,count); }
+        finally { growthBottlePending.value = growthBottleWriter.hasPending(); }
+      },
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
@@ -781,8 +808,8 @@ watch([accountId, accountGame], () => {
 }, { flush: "sync" });
 watch([productReady, tutorialAccountReady, tutorialCloudReady, tutorialCloudHistory, activeTab, recognitionTutorialKey, summary], () => { void checkRecognitionTutorial(); }, { flush: "post" });
 watch(recognitionTutorialKey, () => { ++tutorialCheckSequence; recognitionTutorialOpen.value = false; bagTutorialGate.reset(); }, { flush: "sync" });
-watch(activeTab, (tab) => {
-  if (recognitionTutorialOpen.value && tab !== (tutorialMode.value === "bag" ? "review" : "import")) dismissRecognitionTutorial();
+watch([activeTab, starReviewView], ([tab, view]) => {
+  if (recognitionTutorialOpen.value && (tab !== (tutorialMode.value === "recognition" ? "import" : "review") || (tutorialMode.value === "plan" && view !== "plan"))) dismissRecognitionTutorial();
 });
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
@@ -822,14 +849,7 @@ onBeforeUnmount(function () {
   z-index: var(--z-toast);
   pointer-events: none;
 }
-@media (pointer: coarse) {
-  .page-star #product-root :deep(.plan-actions > .button),
-  .page-star #product-root :deep(.current-editor .editor-actions > .button) {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-.star-tutorial-replay {
+.star-tutorial-replay, .star-help-tutorial {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -841,6 +861,8 @@ onBeforeUnmount(function () {
   background: var(--surface);
   color: var(--ink);
   font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
 }
 .star-main {
@@ -1050,6 +1072,12 @@ onBeforeUnmount(function () {
 .star-main > section { padding-top: 0; }
 .star-tabs.tool-workspace-tabs { position: static; }
 .star-workbench { margin-top: 8px; }
+.star-workbench-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+@media (max-width: 640px) {
+  .star-workbench-header { gap: 6px; }
+  .star-workbench-header .star-tabs.tool-workspace-tabs { flex-wrap: nowrap; }
+  .star-tutorial-replay, .star-help-tutorial { gap: 4px; padding-inline: 6px; font-size: 13px; }
+}
 .star-workbench-actions, .star-import-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .star-import-action { flex: none; width: auto; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
 .star-filter-toggle { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); cursor: pointer; }
@@ -1090,6 +1118,16 @@ onBeforeUnmount(function () {
 .page-star #product-root.is-empty-view :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
 .page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
 .star-sync-meta { font-size: 12px; }
+/* Star actions keep the same compact height for mouse and touch input.
+   Inline name tooltips, image previews and modal backdrops are content surfaces. */
+.page-star .star-main :deep(button:not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary)) {
+  box-sizing: border-box;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding-block: 4px;
+  line-height: 1.2;
+}
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
 .star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
 .star-availability-note { margin: 8px 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
