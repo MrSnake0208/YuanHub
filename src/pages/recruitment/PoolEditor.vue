@@ -379,6 +379,7 @@ import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
 import { usePersistedTab } from '../../utils/persistedTab.js'
+import { dialog } from '../../utils/dialog.js'
 import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, recruitmentPoolCatalog, resolveRecruitmentAgent } from './rules.js'
 
 const props = defineProps({ open: Boolean, pool: Object, poolSummary: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number, guided: Boolean, practice: Boolean, practiceResult: Boolean, saveReceipt: Object })
@@ -549,8 +550,18 @@ function profIcon(prof) {
 }
 function resetAgentFilters() { agentSearch.value = ''; agentProfFilter.value = 'all'; agentSubProfFilter.value = 'all' }
 const newCount = computed(() => rows.value.filter(row => !originals.has(row.event_id)).length)
-function close() { if (!props.busy) emit('close') }
-defineExpose({ startGuide, openGuide, hasDraft: () => props.open && (remaining.value !== initialRemaining.value || !!activeRow.value || deletedIds.value.length > 0 || rows.value.some(row => !originals.has(row.event_id) || isChanged(row))) })
+let closePending = false, editorSession = 0
+async function close() {
+  if (!props.open || props.busy || closePending) return
+  if (!hasDraft()) { emit('close'); return }
+  const session = editorSession, pool = props.pool
+  closePending = true
+  try {
+    const discard = await dialog.confirm({ title: '放弃未保存修改？', message: '还有修改未保存，关闭后将丢弃。', type: 'danger', confirmText: '放弃并关闭', cancelText: '继续编辑' })
+    if (discard && props.open && !props.busy && editorSession === session && props.pool === pool) emit('close')
+  } finally { closePending = false }
+}
+defineExpose({ startGuide, openGuide, hasDraft })
 const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse().filter(row => matchesOperatorSearch(selectedAgent(row) || { name: row.agent_id }, recordSearch.value)))
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
@@ -565,6 +576,14 @@ function recordLabel(row) {
 }
 const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length)
 const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0))
+function hasDraft() {
+  if (!props.open || props.practiceResult) return false
+  if (pendingCount.value) return true
+  const row = activeRow.value
+  if (!row) return false
+  if (!originals.has(row.event_id)) return !!(row.agent_id || row.pull_span !== '' || row.acquired_date || row.note)
+  try { return isChanged(row) } catch { return true }
+}
 function updateKeyboardInset() {
   if (typeof window === 'undefined') return 0
   const viewport = window.visualViewport
@@ -701,6 +720,7 @@ function remove(row) {
   nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
 }
 watch(() => props.open, open => {
+  editorSession++
   if (!open) {
     if (guideVisible.value) dismissGuide()
     guidePicker.value = false
@@ -738,6 +758,7 @@ onMounted(() => {
   if (props.open) scheduleEntryVisibility()
 })
 onBeforeUnmount(() => {
+  editorSession++
   const viewport = window.visualViewport
   viewport?.removeEventListener('resize', onViewportChange)
   viewport?.removeEventListener('scroll', onViewportChange)
