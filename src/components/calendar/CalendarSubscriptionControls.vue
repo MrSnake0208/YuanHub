@@ -30,6 +30,7 @@
             <button type="button" :aria-label="`删除 ${entry.title || '待办' + (index + 1)}`" @click="removeEntry(entry.id)">删除</button>
           </div>
           <button type="button" :disabled="draft.checklist.length >= 50" @click="addEntry">添加待办</button>
+          <p v-if="draft.checklist.length >= 50" class="calendar-hint" role="status">已达 50 条待办上限，删除一条后可继续添加。</p>
           <label class="calendar-memo-field">文字备注（可选）
             <textarea v-model="draft.memo_note" rows="2" maxlength="1000" aria-label="文字备注（可选）" placeholder="攻略提示、兑换提醒…" />
             <span class="calendar-hint">{{ draft.memo_note.length }}/1000 字</span>
@@ -80,10 +81,20 @@ async function toggleEditor() {
 async function addEntry() {
   if (draft.value.checklist.length >= 50) return
   const token = stamp()
-  draft.value.checklist.push({ id: crypto.randomUUID(), title: '', completed: false })
+  const crypto = globalThis.crypto
+  const baseId = typeof crypto?.randomUUID === 'function' ? crypto.randomUUID()
+    : typeof crypto?.getRandomValues === 'function'
+      ? 'todo-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+      : 'todo-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2)
+  let entryId = baseId, suffix = 0
+  while (draft.value.checklist.some(entry => entry.id === entryId)) entryId = baseId + '-' + ++suffix
+  draft.value.checklist.push({ id: entryId, title: '', completed: false })
   draft.value.completed = false
   await nextTick()
-  if (current(token)) Array.from(editor.value?.querySelectorAll('.calendar-check-row input[type="text"]') || []).at(-1)?.focus()
+  if (current(token)) {
+    const inputs = editor.value?.querySelectorAll('.calendar-check-row input[type="text"]') || []
+    inputs[inputs.length - 1]?.focus()
+  }
 }
 async function removeEntry(entryId) {
   const token = stamp()
