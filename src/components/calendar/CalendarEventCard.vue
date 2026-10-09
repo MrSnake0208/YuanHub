@@ -1,8 +1,8 @@
 <template>
-  <article class="calendar-event" :class="{ 'is-ending': ending }">
+  <article class="calendar-event" :class="{ 'is-ending': ending }" :style="display.style" :data-type-color="display.color">
     <div class="calendar-event-heading">
       <div class="calendar-event-identity">
-        <div class="calendar-badges"><span class="calendar-game">{{ item.game }}</span><span class="calendar-category">{{ CALENDAR_CATEGORIES[item.category] }}</span></div>
+        <div class="calendar-badges"><span class="calendar-game">{{ item.game }}</span><span class="calendar-category">{{ display.path }}</span></div>
         <h4>{{ item.title }}</h4>
       </div>
       <div class="calendar-event-status">
@@ -13,6 +13,7 @@
     <p class="calendar-range"><Clock3 :size="15" aria-hidden="true" /> {{ calendarRangeLabel(item) }}<span v-if="item.start_time"> · {{ item.time_zone }}</span></p>
     <p v-if="!item.end_time" class="calendar-hint">具体时间未提供</p>
     <p v-if="item.description" class="calendar-description">{{ item.description }}</p>
+    <p v-if="display.association" class="calendar-hint calendar-association">{{ display.association }}</p>
     <div class="calendar-event-foot">
       <span class="calendar-hint">{{ item.source_type === 'RECRUITMENT_POOL' ? '来自招募卡池' : '手工整理' }}</span>
       <a v-if="item.source_url" :href="item.source_url" target="_blank" rel="noopener noreferrer">查看来源 <ExternalLink :size="15" aria-hidden="true" /></a>
@@ -26,9 +27,11 @@ import { computed, inject } from 'vue'
 import CalendarSubscriptionControls from './CalendarSubscriptionControls.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { Clock3, ExternalLink } from '@lucide/vue'
-import { addCalendarDays, CALENDAR_CATEGORIES, calendarDeadline, calendarRangeLabel, calendarStatuses } from '@/data/activityCalendar.js'
+import { addCalendarDays, calendarDeadline, calendarRangeLabel, calendarStatuses } from '@/data/activityCalendar.js'
+import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 const props = defineProps({ item: { type: Object, required: true }, today: { type: String, required: true } })
 const context = inject(CALENDAR_SUBSCRIPTIONS, null)
+const display = computed(() => calendarDisplay(props.item))
 const statuses = computed(() => calendarStatuses(props.item, props.today, context?.now.value))
 const deadline = computed(() => calendarDeadline(props.item, props.today, context?.now.value))
 const ending = computed(() => props.item.start_date <= props.today && props.item.end_date >= props.today && props.item.end_date <= addCalendarDays(props.today, 2))

@@ -1,7 +1,7 @@
 <template>
   <div class="calendar-fields">
     <label>游戏 *<select :id="prefix + 'game'" v-model="form.game" v-bind="attributes('game')" required><option value="">请选择游戏</option><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select><small v-if="errors.game" :id="prefix + 'error-game'">{{ errors.game }}</small></label>
-    <label>类型 *<select :id="prefix + 'category'" v-model="form.category" v-bind="attributes('category')" required><option v-for="(label, key) in MANUAL_CATEGORIES" :key="key" :value="key">{{ label }}</option></select><small v-if="errors.category" :id="prefix + 'error-category'">{{ errors.category }}</small></label>
+    <CalendarClassificationFields :form="form" :errors="errors" :prefix="prefix" />
     <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ SUGGESTION_FIELD_LABELS[field.key] }} *<input :id="prefix + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :min="field.key === 'end_date' ? form.start_date || undefined : undefined" v-bind="attributes(field.key)" required><small v-if="errors[field.key]" :id="prefix + 'error-' + field.key">{{ errors[field.key] }}</small></label>
   </div>
   <p class="calendar-hint">招募由卡池生成，请通过<router-link to="/feedback">反馈中心</router-link>提供招募线索。日期和时间按 Asia/Shanghai 记录。</p>
@@ -17,7 +17,8 @@
   </div>
 </template>
 <script setup>
-import { CALENDAR_GAMES, MANUAL_CATEGORIES } from '@/data/activityCalendar.js'
+import CalendarClassificationFields from './CalendarClassificationFields.vue'
+import { CALENDAR_GAMES } from '@/data/activityCalendar.js'
 import { SUGGESTION_FIELD_LABELS } from '@/data/activityCalendarSuggestions.js'
 const props = defineProps({ form: { type: Object, required: true }, errors: { type: Object, default: () => ({}) }, prefix: { type: String, default: 'suggestion-' }, submission: Boolean })
 const basicFields = [{ key: 'title', type: 'text', max: 120 }, { key: 'start_date', type: 'date' }, { key: 'end_date', type: 'date' }]

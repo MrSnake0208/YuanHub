@@ -179,3 +179,15 @@ it('列表网络错误可刷新，倒置日期范围不发送请求，保存网�
   expect(wrapper.find('.calendar-editor').exists()).toBe(true)
   expect(wrapper.text()).toContain('网络失败')
 })
+
+it('管理员编辑家具及神秘洞窟往返分类并保持原活动ID版本日期', async () => {
+  const wrapper = render(); await flushPromises()
+  await button(wrapper, '编辑活动').trigger('click')
+  await wrapper.get('#calendar-subtype').setValue('FURNITURE')
+  await wrapper.get('#calendar-subtype_detail').setValue('MYSTERIOUS_CAVE')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(api.updateActivityCalendar).toHaveBeenCalledWith('evt-a', expect.objectContaining({
+    category: 'ACTIVITY', subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE', expected_version: 0,
+    start_date: '2026-10-03', end_date: '2026-10-10',
+  }))
+})

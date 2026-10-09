@@ -1,5 +1,7 @@
+import { validateCalendarClassification } from './activityCalendarTypes.js'
+
 export const CALENDAR_GAMES = Object.freeze(['代号鸢', '如鸢'])
-export const CALENDAR_CATEGORIES = Object.freeze({ ACTIVITY: '活动', RECRUITMENT: '招募', LOGIN: '登录 / 签到', SHOP: '商店 / 兑换', MAINTENANCE: '维护', OTHER: '其它' })
+export const CALENDAR_CATEGORIES = Object.freeze({ ACTIVITY: '活动', RECRUITMENT: '卡池', LOGIN: '签到', SHOP: '商店', MAINTENANCE: '维护', OTHER: '其他' })
 export const MANUAL_CATEGORIES = Object.freeze(Object.fromEntries(Object.entries(CALENDAR_CATEGORIES).filter(([key]) => key !== 'RECRUITMENT')))
 export const SERVER_TIME_ZONE = 'Asia/Shanghai'
 export const CALENDAR_ENDING_WINDOW_MS = 72 * 60 * 60 * 1000
@@ -42,6 +44,8 @@ export function normalizeCalendarItem(value) {
   return {
     id: value.id, source_type: value.source_type === 'RECRUITMENT_POOL' ? 'RECRUITMENT_POOL' : 'MANUAL', source_ref: value.source_ref ?? null,
     game: value.game, title: value.title.trim(), category: value.category,
+    subtype: typeof value.subtype === 'string' ? value.subtype : null, subtype_detail: typeof value.subtype_detail === 'string' ? value.subtype_detail : null,
+    pool_type: value.source_type === 'RECRUITMENT_POOL' && typeof value.pool_type === 'string' ? value.pool_type : null,
     start_date: value.start_date, end_date: value.end_date, start_time: paired ? value.start_time : null, end_time: paired ? value.end_time : null,
     start_at: validCalendarInstant(value.start_at), end_at: validCalendarInstant(value.end_at),
     time_zone: value.time_zone || SERVER_TIME_ZONE, description: typeof value.description === 'string' ? value.description : '', source_url: safeCalendarUrl(value.source_url),
@@ -286,11 +290,11 @@ export function calendarRangeLabel(item) {
 
 export function calendarForm(entry = null) {
   const item = entry?.item || {}
-  return { id: item.id || '', version: entry?.version ?? null, game: item.game || CALENDAR_GAMES[0], title: item.title || '', category: item.category || 'ACTIVITY', start_date: item.start_date || '', end_date: item.end_date || '', precise: !!(item.start_time || item.end_time), start_time: item.start_time || '', end_time: item.end_time || '', time_zone: item.time_zone || SERVER_TIME_ZONE, description: item.description || '', source_url: item.source_url || '', source_note: entry?.source_note || '', enabled: entry?.enabled !== false }
+  return { id: item.id || '', version: entry?.version ?? null, game: item.game || CALENDAR_GAMES[0], title: item.title || '', category: item.category || 'ACTIVITY', subtype: item.subtype || '', subtype_detail: item.subtype_detail || '', start_date: item.start_date || '', end_date: item.end_date || '', precise: !!(item.start_time || item.end_time), start_time: item.start_time || '', end_time: item.end_time || '', time_zone: item.time_zone || SERVER_TIME_ZONE, description: item.description || '', source_url: item.source_url || '', source_note: entry?.source_note || '', enabled: entry?.enabled !== false }
 }
 
 export function validateCalendarForm(form) {
-  const errors = {}
+  const errors = validateCalendarClassification(form)
   if (!CALENDAR_GAMES.includes(form.game)) errors.game = '请选择游戏。'
   if (!form.title.trim() || form.title.trim().length > 120) errors.title = '请填写 1–120 字的标题。'
   if (!Object.hasOwn(MANUAL_CATEGORIES, form.category)) errors.category = '请选择手工活动类型；招募在卡池管理维护。'
@@ -308,7 +312,7 @@ export function validateCalendarForm(form) {
 }
 
 export function calendarPayload(form) {
-  const body = { game: form.game, title: form.title.trim(), category: form.category, start_date: form.start_date, end_date: form.end_date, start_time: form.precise ? form.start_time : null, end_time: form.precise ? form.end_time : null, time_zone: form.time_zone, description: form.description.trim() || null, source_url: safeCalendarUrl(form.source_url) || null, source_note: form.source_note.trim() || null, enabled: form.enabled }
+  const body = { game: form.game, title: form.title.trim(), category: form.category, subtype: form.subtype || null, subtype_detail: form.subtype_detail || null, start_date: form.start_date, end_date: form.end_date, start_time: form.precise ? form.start_time : null, end_time: form.precise ? form.end_time : null, time_zone: form.time_zone, description: form.description.trim() || null, source_url: safeCalendarUrl(form.source_url) || null, source_note: form.source_note.trim() || null, enabled: form.enabled }
   if (form.id) body.expected_version = form.version
   return body
 }

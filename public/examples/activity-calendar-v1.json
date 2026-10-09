@@ -5,6 +5,8 @@
       "game": "代号鸢",
       "title": "导入验收示例活动",
       "category": "ACTIVITY",
+      "subtype": "FURNITURE",
+      "subtype_detail": "MYSTERIOUS_CAVE",
       "start_date": "2026-10-10",
       "end_date": "2026-10-20",
       "start_time": null,

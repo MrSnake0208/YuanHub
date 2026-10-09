@@ -40,7 +40,7 @@
             <p v-if="loading" role="status">正在读取活动目录…</p>
             <p v-else-if="!entries.length && !error" class="calendar-panel">没有符合条件的活动。</p>
             <article v-for="entry in entries" :key="entry.item.id" class="calendar-panel">
-              <div class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ CALENDAR_CATEGORIES[entry.item.category] }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></div>
+              <div class="calendar-badges"><span class="calendar-game">{{ entry.item.game }}</span><span class="calendar-category">{{ calendarDisplay(entry.item).path }}</span><span class="calendar-state">{{ entry.enabled ? '已启用' : '已停用' }}</span></div>
               <h3>{{ entry.item.title }}</h3>
               <p class="calendar-range">{{ calendarRangeLabel(entry.item) }}<span v-if="entry.item.start_time"> · {{ entry.item.time_zone }}</span></p>
               <p class="calendar-hint">{{ entry.read_only ? '来自招募卡池 · 只读' : '手工整理' }} · 最近修改：{{ modifiedLabel(entry.updated_at) }}</p>
@@ -63,7 +63,7 @@
                 <legend>活动信息</legend>
                 <div class="calendar-fields">
                   <label>游戏<select id="calendar-game" v-model="form.game" :aria-invalid="!!fieldErrors.game" :aria-describedby="fieldErrors.game ? 'error-game' : undefined"><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select><small v-if="fieldErrors.game" id="error-game">{{ fieldErrors.game }}</small></label>
-                  <label>类型<select id="calendar-category" v-model="form.category" :aria-invalid="!!fieldErrors.category" :aria-describedby="fieldErrors.category ? 'error-category' : undefined"><option v-for="(label, key) in MANUAL_CATEGORIES" :key="key" :value="key">{{ label }}</option></select><small v-if="fieldErrors.category" id="error-category">{{ fieldErrors.category }}</small></label>
+                  <CalendarClassificationFields :form="form" :errors="fieldErrors" />
                   <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ field.label }}
                     <input :id="'calendar-' + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'error-' + field.key : undefined" required>
                     <small v-if="fieldErrors[field.key]" :id="'error-' + field.key">{{ fieldErrors[field.key] }}</small>
@@ -100,6 +100,8 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import CalendarSuggestionsReview from '@/components/calendar/CalendarSuggestionsReview.vue'
+import CalendarClassificationFields from '@/components/calendar/CalendarClassificationFields.vue'
+import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 import CalendarImportDialog from '@/components/calendar/CalendarImportDialog.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
@@ -107,7 +109,7 @@ import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { dialog } from '@/utils/dialog.js'
 import { createActivityCalendar, listAdminActivityCalendar, updateActivityCalendar } from '@/api/activityCalendar.js'
-import { CALENDAR_CATEGORIES, CALENDAR_GAMES, MANUAL_CATEGORIES, calendarForm, calendarPayload, calendarRangeLabel, isCalendarDate, normalizeCalendarItem, validateCalendarForm } from '@/data/activityCalendar.js'
+import { CALENDAR_CATEGORIES, CALENDAR_GAMES, calendarForm, calendarPayload, calendarRangeLabel, isCalendarDate, normalizeCalendarItem, validateCalendarForm } from '@/data/activityCalendar.js'
 import './calendar.css'
 
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
@@ -122,7 +124,7 @@ const loading = ref(false), saving = ref(false), error = ref(''), notice = ref('
 const errorSummary = ref(null), editor = ref(null), listRegion = ref(null)
 const dirty = computed(() => !!form.value && JSON.stringify(form.value) !== baseline.value)
 const confirmDiscard = useUnsavedChanges(dirty, '活动修改')
-const fieldLabels = { game: '游戏', category: '类型', title: '标题', start_date: '开始日期', end_date: '结束日期', start_time: '开始时间', end_time: '结束时间', description: '简短说明', source_url: '来源链接', source_note: '来源备注' }
+const fieldLabels = { game: '游戏', category: '展示分组', subtype: '细分类别', subtype_detail: '关联细目', title: '标题', start_date: '开始日期', end_date: '结束日期', start_time: '开始时间', end_time: '结束时间', description: '简短说明', source_url: '来源链接', source_note: '来源备注' }
 const basicFields = [{ key: 'title', label: '标题', type: 'text', max: 120 }, { key: 'start_date', label: '开始日期', type: 'date' }, { key: 'end_date', label: '结束日期', type: 'date' }]
 let generation = 0, readGeneration = 0, alive = true
 const capture = () => ({ generation, identity: identity.value })
