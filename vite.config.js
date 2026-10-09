@@ -49,6 +49,8 @@ export function collectBuildInfo(root = process.cwd(), now = new Date()) {
 
 export function buildDevServerConfig(mode, env = {}) {
   const isTunnel = mode === 'tunnel'
+  const isAgentTest = env.YUANHUB_AGENT_TEST === 'true'
+  if (isAgentTest && isTunnel) throw new Error('Agent test environment cannot use tunnel mode')
   const tunnelHost = env.YUANHUB_TUNNEL_HOST || DEFAULT_TUNNEL_HOST
   const apiTarget = isTunnel
     ? env.YUANHUB_TUNNEL_API_TARGET || env.YUANHUB_DEV_API_TARGET || DEFAULT_DEV_API_TARGET
@@ -56,8 +58,9 @@ export function buildDevServerConfig(mode, env = {}) {
 
   const config = {
     port: 5173,
-    host: isTunnel ? '127.0.0.1' : true,
-    allowedHosts: Array.from(new Set([DEFAULT_TUNNEL_HOST, tunnelHost].filter(Boolean)))
+    host: isTunnel || isAgentTest ? '127.0.0.1' : true,
+    allowedHosts: isAgentTest ? ['127.0.0.1'] : Array.from(new Set([DEFAULT_TUNNEL_HOST, tunnelHost].filter(Boolean))),
+    ...(isAgentTest ? { strictPort: true } : {})
   }
 
   const proxyTarget = {
