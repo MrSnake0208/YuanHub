@@ -5,8 +5,9 @@
     <template v-else>
       <div class="calendar-subscription-actions">
         <div v-if="record?.subscribed" class="calendar-memo-summary">
-          <strong>{{ record.memo_title ?? DEFAULT_MEMO_TITLE }}</strong>
-          <span>{{ record.checklist.length ? `已完成 ${record.checklist.filter(entry => entry.completed).length}/${record.checklist.length} 项${record.completed ? ' · 本期已完成' : ''}` : record.completed ? '本期已完成' : '本期未完成' }}</span>
+          <strong>备忘：{{ record.memo_title ?? DEFAULT_MEMO_TITLE }}</strong>
+          <span>{{ record.completed ? '本期已完成' : '本期未完成' }}</span>
+          <span>待办事项 · 已完成 {{ record.checklist.filter(entry => entry.completed).length }}/{{ record.checklist.length }} 项</span>
         </div>
         <button type="button" :disabled="busy || context.loading.value || !!context.error.value || (!record?.subscribed && closed)" @click="changeSubscription">{{ record?.subscribed ? '取消订阅' : closed ? '本期已截止' : '订阅本期' }}</button>
         <button v-if="record?.subscribed" ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor">{{ editing ? '收起备忘' : item ? '编辑备忘' : '查看备忘' }}</button>
@@ -19,14 +20,19 @@
       <form v-if="editing && record?.subscribed && item" ref="editor" class="calendar-checklist" @submit.prevent="save">
         <fieldset :disabled="busy || blocked || !!context.error.value">
           <legend>活动备忘录 · 仅当前账号可见</legend>
+          <div class="calendar-completion-row">
+            <label class="calendar-check-row"><input :checked="subscriptionCompleted(draft)" type="checkbox" @change="draft.manual_completed = $event.target.checked"> 本期已完成</label>
+            <span class="calendar-hint">与下方待办清单独立</span>
+          </div>
           <label class="calendar-memo-field">备忘标题
             <input v-model="draft.memo_title" type="text" maxlength="60" required aria-label="备忘标题">
             <span class="calendar-hint">{{ draft.memo_title.length }}/60 字 · 标题不影响完成状态</span>
           </label>
-          <label v-if="!draft.checklist.length" class="calendar-check-row"><input v-model="draft.completed" type="checkbox"> 本期已完成</label>
+          <p class="calendar-todo-summary">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项</p>
+          <p v-if="!draft.checklist.length" class="calendar-hint">还没有待办，可添加个人备忘清单。</p>
           <div v-for="(entry, index) in draft.checklist" :key="entry.id" class="calendar-check-row">
-            <label class="calendar-check-target"><input v-model="entry.completed" type="checkbox" :aria-label="`完成 ${entry.title || '待办' + (index + 1)}`"></label>
-            <input v-model="entry.title" type="text" maxlength="80" required :aria-label="`待办 ${index + 1} 名称`">
+            <label class="calendar-check-target"><input v-model="entry.completed" type="checkbox" @change.capture="freezeEntryChange(entry, 'completed', $event.target.checked)" :aria-label="`完成 ${entry.title || '待办' + (index + 1)}`"></label>
+            <input v-model="entry.title" type="text" @input.capture="freezeEntryChange(entry, 'title', $event.target.value)" maxlength="80" required :aria-label="`待办 ${index + 1} 名称`">
             <button type="button" :aria-label="`删除 ${entry.title || '待办' + (index + 1)}`" @click="removeEntry(entry.id)">删除</button>
           </div>
           <button type="button" :disabled="draft.checklist.length >= 50" @click="addEntry">添加待办</button>
@@ -78,6 +84,12 @@ async function toggleEditor() {
   await nextTick()
   if (current(token)) (editing.value ? editor.value?.querySelector('[aria-label="备忘标题"]') : editorToggle.value)?.focus()
 }
+function freezeCompletion() {
+  if (typeof draft.value.manual_completed !== 'boolean') draft.value.manual_completed = subscriptionCompleted(draft.value)
+}
+function freezeEntryChange(entry, field, value) {
+  if (entry[field] !== value) freezeCompletion()
+}
 async function addEntry() {
   if (draft.value.checklist.length >= 50) return
   const token = stamp()
@@ -88,8 +100,8 @@ async function addEntry() {
       : 'todo-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2)
   let entryId = baseId, suffix = 0
   while (draft.value.checklist.some(entry => entry.id === entryId)) entryId = baseId + '-' + ++suffix
+  freezeCompletion()
   draft.value.checklist.push({ id: entryId, title: '', completed: false })
-  draft.value.completed = false
   await nextTick()
   if (current(token)) {
     const inputs = editor.value?.querySelectorAll('.calendar-check-row input[type="text"]') || []
@@ -99,9 +111,8 @@ async function addEntry() {
 async function removeEntry(entryId) {
   const token = stamp()
   if (!await dialog.confirm({ title: '删除待办？', message: '仅删除当前账号、本期活动的这条待办，保存后生效。', confirmText: '删除', cancelText: '保留', type: 'danger' }) || !current(token)) return
-  const completed = subscriptionCompleted(draft.value)
+  freezeCompletion()
   draft.value.checklist = draft.value.checklist.filter(entry => entry.id !== entryId)
-  if (!draft.value.checklist.length) draft.value.completed = completed
 }
 function failed(err) {
   blocked.value = err?.status === 409 || !err?.status || err.status >= 500

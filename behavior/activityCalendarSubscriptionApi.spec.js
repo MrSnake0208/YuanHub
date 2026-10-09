@@ -14,8 +14,8 @@ it('private calls encode event identity and bind original user plus account for 
   const body = { account_id: 'acc-a', expected_version: 3, subscribed: false }
   await setCalendarSubscription('event', body, 'user-a')
   expect(request).toHaveBeenLastCalledWith('/v1/activity-calendar/subscriptions/event', { auth: true, expectedUserId: 'user-a', method: 'PUT', body })
-  await saveCalendarProgress('event', { account_id: 'acc-a', expected_version: 4, completed: true, checklist: [], memo_title: '本期目标', memo_note: '兑换提醒' }, 'user-a')
-  expect(request.mock.lastCall[1].body).toMatchObject({ account_id: 'acc-a', expected_version: 4, memo_title: '本期目标', memo_note: '兑换提醒' })
+  await saveCalendarProgress('event', { account_id: 'acc-a', expected_version: 4, completed: false, manual_completed: true, checklist: [{ id: 'old', title: '待办', completed: false }], memo_title: '本期目标', memo_note: '兑换提醒' }, 'user-a')
+  expect(request.mock.lastCall[1].body).toMatchObject({ account_id: 'acc-a', expected_version: 4, manual_completed: true, memo_title: '本期目标', memo_note: '兑换提醒' })
   expect(request.mock.lastCall[1].expectedUserId).toBe('user-a')
   await calendarSubscriptionSummary('acc-a', 'user-a')
   expect(request.mock.lastCall[0]).toContain('/summary?account_id=acc-a')

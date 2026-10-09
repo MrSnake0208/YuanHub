@@ -61,3 +61,17 @@ test('legacy memo defaults preserve checklist IDs and custom title never means c
   assert.equal(subscriptionCompleted({ ...custom, checklist: [] }), false)
   assert.equal(progressDraft({ memo_note: '' }).memo_note, '')
 })
+
+test('explicit manual booleans override legacy progress and draft never invents a migration', () => {
+  for (const manual of [true, false]) {
+    for (const checklist of [[], [{ id: 'stable', title: '旧待办', completed: !manual }]]) {
+      const record = { completed: !manual, checklist, manual_completed: manual }
+      assert.equal(subscriptionCompleted(record), manual)
+      assert.equal(progressDraft(record).manual_completed, manual)
+      assert.equal(subscriptionCompleted(progressDraft(record)), manual)
+    }
+  }
+  for (const record of [null, { completed: true, checklist: [] }, { completed: true, checklist: [{ id: 'old', title: '旧', completed: true }], manual_completed: null }]) {
+    assert.equal(Object.hasOwn(progressDraft(record), 'manual_completed'), false)
+  }
+})

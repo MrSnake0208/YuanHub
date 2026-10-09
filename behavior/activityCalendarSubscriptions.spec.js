@@ -34,7 +34,7 @@ beforeEach(() => {
   listCalendarSubscriptions.mockImplementation(async () => ({ items: server?.subscribed ? [server] : [], unavailable_items: [], subscribed_count: server?.subscribed ? 1 : 0 }))
   getCalendarSubscription.mockImplementation(async () => { if (!server) throw Object.assign(new Error('missing'), { status: 404, code: 'subscription_not_found' }); return server })
   setCalendarSubscription.mockImplementation(async (id, body) => { server = { ...server, event_id: id, version: (server?.version ?? -1) + 1, completed: server?.completed ?? false, checklist: server?.checklist || [], item: event, subscribed: body.subscribed }; return server })
-  saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, ...body, completed: body.checklist.length ? body.checklist.every(entry => entry.completed) : body.completed, version: server.version + 1 }; return server })
+  saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, ...body, completed: body.manual_completed ?? server.manual_completed ?? (body.checklist.length ? body.checklist.every(entry => entry.completed) : body.completed), version: server.version + 1 }; return server })
   dialog.confirm.mockResolvedValue(true)
 })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
@@ -139,7 +139,7 @@ it.each([false, true])('removing the last entry keeps its edited completion (ini
   await button('删除').trigger('click'); await flushPromises()
   expect(wrapper.get('.calendar-checklist input[type=checkbox]').element.checked).toBe(!initial)
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
-  expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ checklist: [], completed: !initial })
+  expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ checklist: [], manual_completed: !initial })
   expect(server.completed).toBe(!initial)
 })
 it('subscribe complete cancel restore reuse one activity and retain progress', async () => {
@@ -302,10 +302,11 @@ it('new checklist item may be deliberately completed before first save', async (
   await render()
   await button('编辑备忘').trigger('click'); await button('添加待办').trigger('click')
   await wrapper.get('.calendar-check-row input[type=text]').setValue('已打关卡')
-  await wrapper.get('.calendar-checklist input[type=checkbox]').setValue(true)
+  await wrapper.get('.calendar-check-target input[type=checkbox]').setValue(true)
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1].checklist[0].completed).toBe(true)
-  expect(wrapper.text()).toContain('本期已完成')
+  expect(server.completed).toBe(false)
+  expect(wrapper.get('.calendar-memo-summary').text()).toContain('本期未完成')
 })
 
 it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐藏项误标为未订阅', async () => {
@@ -374,7 +375,7 @@ it('memo title and note persist with multiple stable TODOs through reload and ca
   await inputs[0].setValue('旧待办改名')
   await inputs[1].setValue('兑换清单')
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
-  expect(server).toMatchObject({ memo_title: '本期已完成', memo_note: '兑换提醒\n<script>不要执行</script>', completed: false, version: 4 })
+  expect(server).toMatchObject({ memo_title: '本期已完成', memo_note: '兑换提醒\n<script>不要执行</script>', completed: true, manual_completed: true, version: 4 })
   expect(server.checklist).toEqual([{ id: 'legacy', title: '旧待办改名', completed: true }, { id: expect.any(String), title: '兑换清单', completed: false }])
   expect(wrapper.get('.calendar-memo-summary').text()).toContain('已完成 1/2 项')
   await button('收起备忘').trigger('click')
@@ -382,7 +383,7 @@ it('memo title and note persist with multiple stable TODOs through reload and ca
   await button('取消订阅').trigger('click'); await flushPromises()
   await button('全部活动').trigger('click'); await flushPromises()
   await button('订阅本期').trigger('click'); await flushPromises()
-  wrapper.unmount(); await render('&scope=mine&pending=1')
+  wrapper.unmount(); await render('&scope=mine')
   expect(wrapper.text()).toContain('地下遗迹')
   await button('编辑备忘').trigger('click')
   expect(wrapper.get('[aria-label="备忘标题"]').element.value).toBe('本期已完成')
@@ -494,17 +495,19 @@ it('memo scope isolates another event and another account after title and note s
 })
 
 it.each(['日程', '时间轴', '月历'])('%s reuses memo editor and keeps saved title note and progress', async view => {
-  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [{ id: 'old', title: '旧待办', completed: false }], item: event, memo_title: '兑换清单', memo_note: '留存提醒' }
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: true, manual_completed: true, checklist: [{ id: 'old', title: '旧待办', completed: false }], item: event, memo_title: '兑换清单', memo_note: '留存提醒' }
   await render('&scope=mine')
   if (view !== '日程') { await button(view).trigger('click'); await flushPromises() }
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
   expect(wrapper.get('.calendar-memo-summary').text()).toContain('兑换清单')
   expect(wrapper.get('.calendar-memo-summary').text()).toContain('已完成 0/1 项')
+  expect(wrapper.get('.calendar-memo-summary').text()).toContain('本期已完成')
   await button('编辑备忘').trigger('click')
   expect(wrapper.get('textarea').element.value).toBe('留存提醒')
+  expect(completion().element.checked).toBe(true)
   await wrapper.get('textarea').setValue('更新提醒')
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
-  expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ account_id: 'a', expected_version: 0, memo_title: '兑换清单', memo_note: '更新提醒', checklist: [{ id: 'old', title: '旧待办', completed: false }] })
+  expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ account_id: 'a', expected_version: 0, manual_completed: true, memo_title: '兑换清单', memo_note: '更新提醒', checklist: [{ id: 'old', title: '旧待办', completed: false }] })
 })
 
 it('50 TODO limit and canceling deletion preserve current activity data', async () => {
@@ -520,4 +523,127 @@ it('50 TODO limit and canceling deletion preserve current activity data', async 
   expect(wrapper.findAll('.calendar-check-row input[type=text]')).toHaveLength(50)
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '删除待办？', message: expect.stringContaining('当前账号、本期活动') }))
   expect(saveCalendarProgress).not.toHaveBeenCalled()
+})
+
+const completion = () => wrapper.get('.calendar-completion-row input[type=checkbox]')
+const todoCheckboxes = () => wrapper.findAll('.calendar-check-target input[type=checkbox]')
+it.each([true, false])('manual %s stays independent through additions, 2/2, rename, delete all and reload', async manual => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
+  await render('&scope=mine&pending=1')
+  await button('编辑备忘').trigger('click')
+  expect(completion().element.checked).toBe(false)
+  if (manual) await completion().setValue(true)
+  for (const title of ['第一项', '第二项']) {
+    await button('添加待办').trigger('click')
+    const inputs = wrapper.findAll('.calendar-check-row input[type=text]')
+    await inputs[inputs.length - 1].setValue(title)
+    expect(completion().element.checked).toBe(manual)
+  }
+  expect(wrapper.get('.calendar-todo-summary').text()).toContain('已完成 0/2 项')
+  for (const input of todoCheckboxes()) await input.setValue(true)
+  expect(completion().element.checked).toBe(manual)
+  expect(wrapper.get('.calendar-todo-summary').text()).toContain('已完成 2/2 项')
+  await todoCheckboxes()[0].setValue(false)
+  await wrapper.get('.calendar-check-row input[type=text]').setValue('重命名')
+  await wrapper.get('textarea').setValue('备注')
+  expect(completion().element.checked).toBe(manual)
+  while (button('删除')) { await button('删除').trigger('click'); await flushPromises(); expect(completion().element.checked).toBe(manual) }
+  await button('添加待办').trigger('click')
+  await wrapper.get('.calendar-check-row input[type=text]').setValue('再新增')
+  expect(completion().element.checked).toBe(manual)
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(server).toMatchObject({ completed: manual, manual_completed: manual })
+  if (manual) expect(wrapper.find('.calendar-checklist').exists()).toBe(false)
+  wrapper.unmount(); await render('&scope=mine')
+  await button('编辑备忘').trigger('click')
+  expect(completion().element.checked).toBe(manual)
+  expect(wrapper.get('.calendar-todo-summary').text()).toContain('已完成 0/1 项')
+})
+it.each([
+  [true, []], [false, []],
+  [true, [{ id: 'old', title: '旧项目', completed: true }]],
+  [false, [{ id: 'old', title: '旧项目', completed: false }]],
+])('legacy effective %s freezes only on TODO edits with checklist %j', async (effective, checklist) => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: effective, checklist, item: event }
+  await render(); await button('编辑备忘').trigger('click')
+  expect(completion().element.checked).toBe(effective)
+  expect(button('保存备忘').element.disabled).toBe(true)
+  await wrapper.get('[aria-label="备忘标题"]').setValue('本期已完成')
+  await wrapper.get('textarea').setValue('只改备注')
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(saveCalendarProgress.mock.lastCall[1]).not.toHaveProperty('manual_completed')
+  if (checklist.length) {
+    await wrapper.get('.calendar-check-row input[type=text]').setValue('旧项目重命名')
+    await todoCheckboxes()[0].setValue(!checklist[0].completed)
+  } else {
+    await button('添加待办').trigger('click'); await wrapper.get('.calendar-check-row input[type=text]').setValue('新项目')
+  }
+  expect(completion().element.checked).toBe(effective)
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(saveCalendarProgress.mock.lastCall[1].manual_completed).toBe(effective)
+  expect(server.completed).toBe(effective)
+})
+it('false with every TODO complete stays pending and status toggle has independent dirty state', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, manual_completed: false, checklist: [{ id: 'one', title: '第一项', completed: true }, { id: 'two', title: '第二项', completed: true }], item: event }
+  await render('&scope=mine&pending=1'); await button('编辑备忘').trigger('click')
+  expect(wrapper.get('.calendar-todo-summary').text()).toContain('已完成 2/2 项')
+  expect(completion().element.checked).toBe(false)
+  await completion().setValue(true)
+  expect(button('保存备忘').element.disabled).toBe(false)
+  await completion().setValue(false)
+  expect(button('保存备忘').element.disabled).toBe(true)
+  await todoCheckboxes()[0].setValue(false)
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(server.completed).toBe(false)
+  expect(wrapper.find('.calendar-checklist').exists()).toBe(true)
+})
+
+it.each(['rename', 'check', 'delete'])('legacy completed checklist freezes before first %s', async action => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: true, checklist: [{ id: 'old', title: '原待办', completed: true }], item: event }
+  await render(); await button('编辑备忘').trigger('click')
+  if (action === 'rename') await wrapper.get('.calendar-check-row input[type=text]').setValue('改名')
+  if (action === 'check') await todoCheckboxes()[0].setValue(false)
+  if (action === 'delete') { await button('删除').trigger('click'); await flushPromises() }
+  expect(completion().element.checked).toBe(true)
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(server.manual_completed).toBe(true)
+  expect(server.completed).toBe(true)
+})
+
+it('Chinese IME TODO rename preserves composition and freezes legacy completion before the final input', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: true, checklist: [{ id: 'old', title: '旧待办', completed: true }], item: event }
+  await render(); await button('编辑备忘').trigger('click')
+  const title = wrapper.get('.calendar-check-row input[type=text]')
+  await title.trigger('compositionstart')
+  title.element.value = 'zhong'
+  await title.trigger('input')
+  // Vue keeps the draft unchanged until composition commits.
+  expect(title.element.composing).toBe(true)
+  await completion().setValue(false)
+  expect(title.element.value).toBe('zhong')
+  title.element.value = '中文待办'
+  await title.trigger('compositionend')
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(saveCalendarProgress.mock.lastCall[1]).toMatchObject({ manual_completed: false, checklist: [{ id: 'old', title: '中文待办', completed: true }] })
+})
+
+it('new false overall saves 2 of 2 TODOs as pending until the user explicitly completes the activity', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
+  await render('&scope=mine&pending=1'); await button('编辑备忘').trigger('click')
+  for (const title of ['第一项', '第二项']) {
+    await button('添加待办').trigger('click')
+    const names = wrapper.findAll('.calendar-check-row input[type=text]')
+    await names[names.length - 1].setValue(title)
+  }
+  for (const input of todoCheckboxes()) await input.setValue(true)
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(server.completed).toBe(false)
+  expect(server.manual_completed).toBe(false)
+  expect(server.checklist.map(entry => entry.completed)).toEqual([true, true])
+  expect(wrapper.get('.calendar-memo-summary').text()).toContain('本期未完成')
+  expect(wrapper.get('.calendar-memo-summary').text()).toContain('已完成 2/2 项')
+  await completion().setValue(true)
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(server.completed).toBe(true)
+  expect(wrapper.find('.calendar-checklist').exists()).toBe(false)
 })
