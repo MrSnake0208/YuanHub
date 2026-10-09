@@ -411,7 +411,10 @@ it('今日信息带空态隐藏零计数，有活动保留三类统计并能恢�
   const wrapper = mount(Summary, { props: { today, counts: { total: 0, starts: 0, ends: 0, ongoing: 0 } } })
   expect(wrapper.get('time').attributes('datetime')).toBe(today)
   expect(wrapper.get('time').text()).toBe('10月3日 周六')
-  expect(wrapper.text()).toContain('当前筛选暂无活动')
+  expect(wrapper.get('.calendar-summary-help').attributes('open')).toBeUndefined()
+  expect(wrapper.get('.calendar-summary-help summary').text()).toBe('统计口径')
+  expect(wrapper.get('.calendar-summary-help .calendar-summary-scope').text()).toContain('不按时间状态或完成情况筛选，不是个人订阅数')
+  expect(wrapper.text()).toContain('当前游戏、类型及招募条件下暂无公开活动')
   expect(wrapper.find('.calendar-counts').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('可以看看接下来的日程')
   await wrapper.setProps({ counts: { total: 9, starts: 2, ends: 1, ongoing: 6 } })
@@ -419,7 +422,7 @@ it('今日信息带空态隐藏零计数，有活动保留三类统计并能恢�
   expect(wrapper.text()).not.toContain('暂无活动')
   await wrapper.setProps({ counts: { total: 0, starts: 0, ends: 0, ongoing: 0 } })
   expect(wrapper.find('.calendar-counts').exists()).toBe(false)
-  expect(wrapper.text()).toContain('当前筛选暂无活动')
+  expect(wrapper.text()).toContain('当前游戏、类型及招募条件下暂无公开活动')
 })
 
 it('今日信息带加载和失败不误报空态或残留活动统计', async () => {

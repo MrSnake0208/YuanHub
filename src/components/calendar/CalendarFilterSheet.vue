@@ -48,8 +48,7 @@ function cleanup() {
 watch(() => props.open, open => {
   cleanup()
   if (!open || typeof document === 'undefined') return
-  desktopMedia = window.matchMedia('(min-width: 768px)')
-  if (desktopMedia.matches) { emit('close'); return }
+  desktopMedia = window.matchMedia('(min-width: 1024px)')
   desktopMedia.addEventListener('change', onDesktopChange)
   const body = document.body, root = document.documentElement
   const bodyOverflow = body.style.overflow, rootOverflow = root.style.overflow, paddingRight = body.style.paddingRight
@@ -73,4 +72,9 @@ onBeforeUnmount(cleanup)
 .calendar-filter-sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(18px, env(safe-area-inset-right)) 16px max(18px, env(safe-area-inset-left)); }
 .calendar-filter-sheet-footer { padding: 12px max(18px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); border-top: 1px solid var(--line); flex: none; }
 .calendar-filter-sheet-footer button { width: 100%; background: var(--cream); }
+@media (min-width: 1024px) {
+  .calendar-filter-mask { align-items: flex-start; justify-content: flex-end; padding: 80px 32px 24px; background: color-mix(in srgb, var(--ink) 18%, transparent); }
+  .calendar-filter-sheet { width: 440px; max-height: calc(100dvh - 104px); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 18%, transparent); }
+  .calendar-filter-sheet-footer { padding-bottom: 16px; }
+}
 </style>
