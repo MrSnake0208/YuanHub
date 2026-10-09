@@ -220,24 +220,17 @@
 .calendar-subscription button, .calendar-subscription-toolbar button { min-height: 44px; }
 .calendar-subscription .calendar-error { margin-top: 10px; }
 
-.calendar-memo-summary { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
-.calendar-memo-summary strong { min-width: 0; overflow-wrap: anywhere; }
-.calendar-memo-summary span { font-size: 13px; color: var(--ink-60); }
-.calendar-memo-field { display: grid; gap: 6px; min-width: 0; margin: 12px 0; }
-.calendar-memo-field :is(input, textarea) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 16px var(--font-b); }
-.calendar-memo-field textarea { resize: vertical; }
+.calendar-todo-card-summary { flex: 1 1 100%; margin: 0; font-size: 13px; color: var(--tea); overflow-wrap: anywhere; }
 .calendar-checklist .calendar-check-row input[type="text"] { box-sizing: border-box; font-size: 16px; }
-.calendar-checklist :is(input, textarea, button) { scroll-margin-block: 100px; }
-.calendar-checklist :is(input, textarea):focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
-.calendar-memo-save:not(:disabled) { background: var(--tea); color: var(--cream); border-color: var(--tea); }
-.calendar-memo-save:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
-.calendar-memo-status { min-width: 0; font-size: 13px; color: var(--ink-60); overflow-wrap: anywhere; }
-.calendar-memo-status.is-dirty { color: var(--tea); font-weight: 700; }
+.calendar-checklist :is(input, button) { scroll-margin-block: 100px; }
+.calendar-subscription :is(input, button, summary):focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+.calendar-subscription .calendar-todo-delete { padding-inline: 8px; border-color: transparent; background: transparent; color: var(--tea); font-weight: 400; }
+.calendar-subscription .calendar-todo-save:not(:disabled) { background: var(--tea); color: var(--cream); border-color: var(--tea); }
+.calendar-todo-status { min-width: 0; font-size: 13px; color: var(--tea); overflow-wrap: anywhere; }
+.calendar-todo-status.is-dirty { font-weight: 700; }
 .calendar-memo-note { white-space: pre-wrap; overflow-wrap: anywhere; }
-.calendar-memo-readonly li { overflow-wrap: anywhere; }
+.calendar-todo-readonly li, .calendar-todo-history p { overflow-wrap: anywhere; }
+.calendar-todo-history { margin-top: 12px; font-size: 13px; }
+.calendar-todo-history summary { display: list-item; min-height: 44px; padding-block: 12px; box-sizing: border-box; cursor: pointer; color: var(--tea); }
 .calendar-subscription button { min-width: 44px; }
-
-.calendar-completion-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
-.calendar-completion-row .calendar-check-row { min-height: 44px; margin: 0; cursor: pointer; }
-.calendar-completion-row .calendar-hint { margin: 0; }
-.calendar-todo-summary { margin: 12px 0 6px; font-weight: 700; }
+.calendar-todo-summary { margin: 4px 0 6px; font-weight: 700; }

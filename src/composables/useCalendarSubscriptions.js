@@ -4,7 +4,7 @@ import { auth } from '../store/auth.js'
 import { activeAccount } from '../store/activeAccount.js'
 import { listAccounts } from '../api/accounts.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../api/activityCalendarSubscriptions.js'
-import { CALENDAR_SUBSCRIPTIONS } from '../data/activityCalendarSubscriptions.js'
+import { CALENDAR_SUBSCRIPTIONS, subscriptionCompleted } from '../data/activityCalendarSubscriptions.js'
 import { useUnsavedChanges } from '../utils/useUnsavedChanges.js'
 
 // Page-owned state shared by the three calendar views, never a cross-user singleton.
@@ -26,7 +26,7 @@ export function useCalendarSubscriptions(enabled, range, category) {
   const now = ref(Date.now()), drafts = ref({})
   const epoch = ref(0), contextNotice = ref('')
   const dirty = computed(() => Object.values(drafts.value).some(Boolean))
-  const confirmDiscard = useUnsavedChanges(dirty, '活动备忘录', { title: '还有未保存的备忘修改' })
+  const confirmDiscard = useUnsavedChanges(dirty, '活动待办', { title: '还有未保存的待办修改' })
   const byId = computed(() => Object.fromEntries(records.value.map(record => [record.event_id, record])))
   async function loadAccounts() {
     const token = ++accountGeneration, user = identity.value
@@ -43,7 +43,7 @@ export function useCalendarSubscriptions(enabled, range, category) {
   }
   watch(identity, () => { accounts.value = []; void loadAccounts() }, { immediate: true, flush: 'sync' })
   watch(() => JSON.stringify([identity.value, account.value?.id, account.value?.game]), () => {
-    if (dirty.value && !acceptedSwitch) contextNotice.value = '身份、权限或游戏账号已变化，未保存的备忘已清除。'
+    if (dirty.value && !acceptedSwitch) contextNotice.value = '身份、权限或游戏账号已变化，未保存的待办已清除。'
   }, { flush: 'sync' })
   watch(key, () => {
     epoch.value++; deferredLoad = false; records.value = []; unavailable.value = []; drafts.value = {}; count.value = 0
@@ -124,9 +124,9 @@ export function useCalendarSubscriptions(enabled, range, category) {
   async function progress(id, version, draft) {
     const context = ticket(), user = identity.value, owner = account.value?.id
     if (!current(context)) throw new Error('请先选择游戏账号。')
-    const result = await saveCalendarProgress(id, { account_id: owner, expected_version: version, ...draft }, user)
+    const result = await saveCalendarProgress(id, { account_id: owner, expected_version: version, completed: false, progress_mode: 'checklist', checklist: draft.checklist }, user)
     if (!current(context)) return null
-    if (result?.event_id !== id || !Number.isInteger(result.version) || result.version <= version) throw new Error('保存结果需要确认，请读取最新状态。')
+    if (result?.event_id !== id || !Number.isInteger(result.version) || result.version <= version || result.completed !== subscriptionCompleted(result)) throw new Error('保存结果需要确认，请读取最新状态。')
     apply(result)
     return result
   }
