@@ -81,7 +81,7 @@ it('失败可重试，空状态不伪造日程，flag关闭不初始化API', asy
   const { wrapper } = await render(); await flushPromises()
   expect(wrapper.get('[role=alert]').text()).toContain('网络失败')
   await wrapper.get('[role=alert] button').trigger('click'); await flushPromises()
-  expect(wrapper.text()).toContain('暂无近期活动')
+  expect(wrapper.text()).toContain('当前条件下无活动')
   wrapper.unmount()
   listActivityCalendar.mockClear(); isFeatureEnabled.mockReturnValue(false)
   const disabled = await render(); await flushPromises()

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { addCalendarDays, calendarFilterQuery, calendarFilters, calendarForm, calendarPayload, calendarRangeLabel, calendarStatuses, groupCalendarItems, isCalendarDate, millisecondsUntilServerMidnight, normalizeCalendarItem, normalizeCalendarItems, serverToday, summarizeCalendarDay, validateCalendarForm } from '../src/data/activityCalendar.js'
+import { CALENDAR_CATEGORIES, CALENDAR_ENDING_WINDOW_MS, addCalendarDays, calendarTimeBounds, filterCalendarItems, nextCalendarBoundary, calendarFilterQuery, calendarFilters, calendarForm, calendarPayload, calendarRangeLabel, calendarStatuses, groupCalendarItems, isCalendarDate, millisecondsUntilServerMidnight, normalizeCalendarItem, normalizeCalendarItems, serverToday, summarizeCalendarDay, validateCalendarForm } from '../src/data/activityCalendar.js'
 import { FEATURE_FLAGS, FEATURE_KEYS } from '../src/config/features.js'
 import { isRouteAccessAllowed, needsAdminAccess } from '../src/utils/routeAccess.js'
 import { routes } from '../src/router/routes.js'
@@ -67,9 +67,9 @@ test('分组排除历史、跨日只出现一次，结束提醒优先、未来7�
 })
 
 test('URL filters白名单、重复参数与清空处理保留无关query', () => {
-  assert.deepEqual(calendarFilters({}), { game: '', category: '' })
-  assert.deepEqual(calendarFilters({ game: ['如鸢', '代号鸢'], category: ['SHOP'] }), { game: '如鸢', category: 'SHOP' })
-  assert.deepEqual(calendarFilters({ game: 'invalid', category: 'toString' }), { game: '', category: '' })
+  assert.deepEqual(calendarFilters({}), { game: '', category: '', exclude_recruitment: false, status: '' })
+  assert.deepEqual(calendarFilters({ game: ['如鸢', '代号鸢'], category: ['SHOP'] }), { game: '如鸢', category: 'SHOP', exclude_recruitment: false, status: '' })
+  assert.deepEqual(calendarFilters({ game: 'invalid', category: 'toString' }), { game: '', category: '', exclude_recruitment: false, status: '' })
   assert.deepEqual(calendarFilterQuery({ game: '如鸢', category: 'SHOP', ref: 'shared' }, { game: '' }), { category: 'SHOP', ref: 'shared' })
 })
 
@@ -120,4 +120,56 @@ test('测试阶段日历与管理路由共享flag、保持lazy和独立权限边
   assert.equal(isRouteAccessAllowed(adminRoute.meta, null), false)
   assert.equal(isRouteAccessAllowed(adminRoute.meta, { permissions: ['recruitment_catalog:write'] }), false)
   assert.equal(isRouteAccessAllowed(adminRoute.meta, { permissions: ['activity_calendar:write'] }), true)
+})
+
+
+test('不含招募保留所有其它类型；默认完整、仅招募和游戏组合', () => {
+  const values = Object.keys(CALENDAR_CATEGORIES).flatMap(category => ['如鸢', '代号鸢'].map(game => item({ id: `${game}-${category}`, category, game })))
+  assert.equal(filterCalendarItems(values, calendarFilters()).length, 12)
+  assert.deepEqual([...new Set(filterCalendarItems(values, calendarFilters({ exclude_recruitment: '1' })).map(v => v.category))], ['ACTIVITY', 'LOGIN', 'SHOP', 'MAINTENANCE', 'OTHER'])
+  assert.equal(filterCalendarItems(values, calendarFilters({ category: 'RECRUITMENT' })).length, 2)
+  const selected = filterCalendarItems(values, calendarFilters({ game: '如鸢', exclude_recruitment: '1' }))
+  assert.equal(selected.length, 5)
+  assert.ok(selected.every(v => v.game === '如鸢' && v.category !== 'RECRUITMENT'))
+})
+
+test('冲突最后操作生效，分享矛盾链接招募优先，非法/重复参数安全回退', () => {
+  const query = { game: '如鸢', category: 'RECRUITMENT', view: 'month', date: '2026-10-09', scope: 'mine', pending: '1', ref: 'keep' }
+  const excluded = calendarFilterQuery(query, { exclude_recruitment: true })
+  assert.deepEqual(excluded, { game: '如鸢', view: 'month', date: '2026-10-09', scope: 'mine', pending: '1', ref: 'keep', exclude_recruitment: '1' })
+  assert.deepEqual(calendarFilterQuery(excluded, { category: 'RECRUITMENT' }), query)
+  assert.equal(calendarFilters({ category: 'RECRUITMENT', exclude_recruitment: '1' }).exclude_recruitment, false)
+  assert.deepEqual(calendarFilters({ exclude_recruitment: ['1', '0'], status: ['ending', 'ongoing'] }), { game: '', category: '', exclude_recruitment: true, status: 'ending' })
+  assert.deepEqual(calendarFilters({ game: 'no', category: 'toString', exclude_recruitment: 'true', status: 'toString' }), calendarFilters())
+  assert.deepEqual(calendarFilterQuery({ ...excluded, status: 'ending' }, { game: '', category: '', exclude_recruitment: false, status: '' }), { view: 'month', date: '2026-10-09', scope: 'mine', pending: '1', ref: 'keep' })
+})
+
+test('服务器精确时间：开始闭区间、结束开区间；仅日期覆盖整个结束日', () => {
+  const exact = item({ start_at: '2026-10-03T09:00:00+08:00', end_at: '2026-10-03T12:00:00+08:00' })
+  const ongoing = calendarFilters({ status: 'ongoing' })
+  const start = Date.parse(exact.start_at), end = Date.parse(exact.end_at)
+  assert.equal(filterCalendarItems([exact], ongoing, start - 1).length, 0)
+  assert.equal(filterCalendarItems([exact], ongoing, start).length, 1)
+  assert.equal(filterCalendarItems([exact], ongoing, end - 1).length, 1)
+  assert.equal(filterCalendarItems([exact], ongoing, end).length, 0)
+  const dates = item({ end_date: '2026-10-03' })
+  assert.deepEqual(calendarTimeBounds(dates), { start: Date.parse('2026-10-02T16:00:00Z'), end: Date.parse('2026-10-03T16:00:00Z') })
+  for (const now of ['2026-10-03T00:00:00+08:00', '2026-10-03T23:59:59.999+08:00']) assert.equal(filterCalendarItems([dates], ongoing, Date.parse(now)).length, 1)
+  assert.equal(filterCalendarItems([dates], ongoing, Date.parse('2026-10-04T00:00:00+08:00')).length, 0)
+})
+
+test('近3天结束必须正在进行，72小时含边界，跨日不依赖浏览器时区', () => {
+  const now = Date.parse('2026-10-03T12:00:00+08:00'), ending = calendarFilters({ status: 'ending' })
+  const endingAt = offset => item({ start_at: '2026-10-01T00:00:00+08:00', end_at: new Date(now + offset).toISOString() })
+  assert.equal(filterCalendarItems([endingAt(CALENDAR_ENDING_WINDOW_MS + 1)], ending, now).length, 0)
+  assert.equal(filterCalendarItems([endingAt(CALENDAR_ENDING_WINDOW_MS)], ending, now).length, 1)
+  assert.equal(filterCalendarItems([endingAt(1)], ending, now).length, 1)
+  assert.equal(filterCalendarItems([endingAt(0)], ending, now).length, 0)
+  assert.equal(filterCalendarItems([item({ start_date: '2026-10-04', end_date: '2026-10-04' })], ending, now).length, 0)
+  assert.equal(filterCalendarItems([item({ end_date: '2026-10-05' })], ending, now).length, 1)
+  assert.equal(filterCalendarItems([item({ end_date: '2026-10-06' })], ending, now).length, 0)
+  const exact = endingAt(CALENDAR_ENDING_WINDOW_MS + 1)
+  assert.equal(nextCalendarBoundary([exact], now), now + 1)
+  assert.equal(nextCalendarBoundary([exact], now + 1), Date.parse(exact.end_at))
+  assert.equal(nextCalendarBoundary([], now), Infinity)
 })

@@ -27,19 +27,28 @@
         <section class="calendar-filter-inline" aria-label="活动筛选">
           <CalendarFilterControls :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" />
         </section>
-        <button class="calendar-filter-mobile-trigger" type="button" aria-haspopup="dialog" :aria-expanded="filterOpen" aria-controls="calendar-filter-sheet" :aria-label="`筛选活动，当前：${filterSummary}，已启用 ${activeFilterCount} 个筛选条件`" @click="openFilters">
-          <SlidersHorizontal :size="17" aria-hidden="true" />
-          <span>筛选</span>
-          <span class="calendar-filter-summary">{{ filterSummary }}</span>
-          <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
-          <ChevronRight :size="17" aria-hidden="true" />
-        </button>
-        <CalendarFilterSheet :open="filterOpen" :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="setFilter({ game: '', category: '' })" @close="filterOpen = false" />
+        <div class="calendar-filter-state">
+          <button class="calendar-filter-mobile-trigger" type="button" aria-haspopup="dialog" :aria-expanded="filterOpen" aria-controls="calendar-filter-sheet" :aria-label="`筛选活动，当前：${filterSummary}，已启用 ${activeFilterCount} 个筛选条件`" @click="openFilters">
+            <SlidersHorizontal :size="17" aria-hidden="true" />
+            <span>筛选</span>
+            <span class="calendar-filter-summary">{{ filterSummary }}</span>
+            <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
+            <ChevronRight :size="17" aria-hidden="true" />
+          </button>
+          <p class="calendar-filter-desktop-summary">{{ filterSummary }}</p>
+          <button v-if="activeFilterCount" class="calendar-filter-clear" type="button" @click="resetFilters">清除筛选</button>
+        </div>
+        <CalendarFilterSheet :open="filterOpen" :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
         <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
-        <p v-if="mine" class="calendar-hint">以上为当前游戏与类型的公开活动统计，不是个人订阅数。</p>
+        <p class="calendar-hint calendar-summary-scope">以上为当前游戏、类型及招募条件的公开日历日统计；不按时间状态或完成情况筛选，不是个人订阅数。</p>
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
         <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请选择游戏账号后查看我的订阅。</p>
-        <p v-else-if="mine && !viewLoading && !viewError && !visibleItems.length" class="calendar-panel" role="status">{{ subscriptions.count.value ? '当前日期或筛选下没有订阅，试试调整日期或取消筛选。' : '还没有订阅活动，去全部活动中订阅本期吧。' }} <button v-if="!subscriptions.count.value" type="button" @click="setScope(false)">浏览全部活动</button></p>
+        <div v-else-if="!viewLoading && !viewError && !visibleItems.length" class="calendar-panel calendar-filter-empty" role="status">
+          <p>{{ mine && !subscriptions.count.value ? '还没有订阅活动，去全部活动中订阅本期吧。' : '当前条件下无活动，试试清除筛选或调整日期。' }}</p>
+          <button v-if="activeFilterCount" type="button" @click="resetFilters">清除筛选</button>
+          <button v-if="mine" type="button" @click="setScope(false)">浏览全部活动</button>
+          <button v-else type="button" @click="goToday">回到今天</button>
+        </div>
         <div class="calendar-view-content" :aria-busy="viewLoading">
           <p v-if="viewLoading" class="calendar-panel" role="status">正在读取活动日程…</p>
           <div v-else-if="viewError" class="calendar-panel calendar-error" role="alert">
@@ -92,7 +101,7 @@ import CalendarFilterControls from '@/components/calendar/CalendarFilterControls
 import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
-import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_VIEW_STORAGE_KEY, calendarAnchorDate, calendarFilterQuery, calendarFilters, calendarRequestRange, calendarView, calendarViewQuery, millisecondsUntilServerMidnight, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
+import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_TIME_FILTERS, CALENDAR_VIEW_STORAGE_KEY, calendarAnchorDate, calendarFilterQuery, calendarFilters, calendarRequestRange, calendarView, calendarViewQuery, filterCalendarItems, millisecondsUntilServerMidnight, nextCalendarBoundary, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
 import './calendar.css'
 import './public-calendar.css'
 
@@ -108,8 +117,14 @@ const mine = computed(() => subscriptionScope(route.query))
 const pendingOnly = computed(() => mine.value && subscriptionPending(route.query))
 const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.value ? { game: subscriptions.account.value?.game || '' } : {}) }))
 const filterOpen = ref(false)
-const filterSummary = computed(() => `${filters.value.game || '全部游戏'} · ${CALENDAR_CATEGORIES[filters.value.category] || '全部类型'}`)
-const activeFilterCount = computed(() => Number(!!filters.value.game) + Number(!!filters.value.category))
+const filterSummary = computed(() => [
+  mine.value ? (filters.value.game ? `${filters.value.game}（账号锁定）` : '请选择账号') : filters.value.game || '全部游戏',
+  CALENDAR_CATEGORIES[filters.value.category] || '全部类型',
+  filters.value.exclude_recruitment ? '不含招募' : '',
+  filters.value.status ? CALENDAR_TIME_FILTERS[filters.value.status] : '',
+  pendingOnly.value ? '仅未完成' : '',
+].filter(Boolean).join(' · '))
+const activeFilterCount = computed(() => Number(!mine.value && !!filters.value.game) + Number(!!filters.value.category) + Number(filters.value.exclude_recruitment) + Number(!!filters.value.status) + Number(pendingOnly.value))
 function openFilters(event) {
   event.currentTarget.focus()
   filterOpen.value = true
@@ -118,10 +133,16 @@ const currentView = computed(() => calendarView(route.query, preferredView.value
 const anchorDate = computed(() => calendarAnchorDate(route.query, today.value))
 const requestRange = computed(() => calendarRequestRange(currentView.value, anchorDate.value, today.value))
 const subscriptions = useCalendarSubscriptions(enabled, requestRange, computed(() => calendarFilters(route.query).category))
-const requestKey = computed(() => JSON.stringify({ ...filters.value, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
+const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
-const todayCounts = computed(() => summarizeCalendarDay(summaryItems.value, today.value))
-const visibleItems = computed(() => mine.value ? normalizeCalendarItems(subscriptions.records.value.filter(record => !pendingOnly.value || !record.completed).map(record => record.item)) : items.value)
+const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
+const visibleItems = computed(() => {
+  const values = mine.value
+    ? normalizeCalendarItems(subscriptions.records.value.filter(record => !pendingOnly.value || !record.completed).map(record => record.item))
+    : items.value
+  return filterCalendarItems(values, filters.value, subscriptions.now.value)
+    .filter(item => item.end_date >= requestRange.value.from && item.start_date <= requestRange.value.to)
+})
 const viewLoading = computed(() => mine.value ? subscriptions.loading.value : loading.value)
 const viewError = computed(() => mine.value ? subscriptions.error.value : error.value)
 function setScope(value) { return router.replace({ query: subscriptionScopeQuery(route.query, value) }) }
@@ -140,6 +161,7 @@ function refreshVisible() {
   deferredRefresh = false
   checkServerDate()
   subscriptions.now.value = Date.now()
+  scheduleBoundary()
   if (Date.now() - lastRefresh < 1000 || subscriptions.dirty.value) return
   lastRefresh = Date.now()
   void subscriptions.load()
@@ -153,6 +175,7 @@ onMounted(() => {
   window.addEventListener('pageshow', refreshVisible)
   minuteTimer = setInterval(() => {
     if (document.visibilityState === 'hidden') return
+    if (subscriptions.dirty.value) { deferredRefresh = true; return }
     const next = Date.now()
     subscriptions.now.value = next
     const crossed = subscriptions.records.value.some(record => record.item?.end_at && Date.parse(record.item.end_at) > previousNow && Date.parse(record.item.end_at) <= next)
@@ -169,6 +192,11 @@ onBeforeUnmount(() => {
   clearTimeout(boundaryTimer)
 })
 function setFilter(patch) { const value = { ...patch }; if (mine.value) delete value.game; return router.replace({ query: calendarFilterQuery(route.query, value) }) }
+function resetFilters() {
+  const query = calendarFilterQuery(route.query, { ...(mine.value ? {} : { game: '' }), category: '', exclude_recruitment: false, status: '' })
+  delete query.pending
+  return router.replace({ query })
+}
 async function setView(view) {
   const failure = await router.replace({ query: calendarViewQuery(route.query, { view }, today.value) })
   if (failure) return
@@ -185,7 +213,7 @@ async function goToday() {
 async function load() {
   if (!enabled) return
   const token = ++generation
-  const selectedFilters = { ...filters.value }, range = { ...requestRange.value }, date = today.value
+  const selectedFilters = { game: filters.value.game, category: filters.value.category }, range = { ...requestRange.value }, date = today.value
   loading.value = true
   error.value = ''
   items.value = []
@@ -210,14 +238,18 @@ watch(requestKey, load, { immediate: true, flush: 'sync' })
 watch(subscriptions.dirty, value => { if (!value && deferredRefresh) refreshVisible() })
 function scheduleBoundary() {
   clearTimeout(boundaryTimer)
-  const deadlines = [...items.value, ...subscriptions.records.value.map(record => record.item)].filter(Boolean).map(item => Date.parse(item.end_at)).filter(time => time > Date.now())
-  if (deadlines.length) boundaryTimer = setTimeout(() => {
+  if (!subscriptions.dirty.value) subscriptions.now.value = Date.now()
+  const next = nextCalendarBoundary([...items.value, ...normalizeCalendarItems(subscriptions.records.value.map(record => record.item))])
+  if (Number.isFinite(next)) boundaryTimer = setTimeout(() => {
+    if (subscriptions.dirty.value) { deferredRefresh = true; return }
     subscriptions.now.value = Date.now()
-    if (!subscriptions.dirty.value) void subscriptions.load()
+    const crossed = subscriptions.records.value.some(record => record.item?.end_at && Date.parse(record.item.end_at) > previousNow && Date.parse(record.item.end_at) <= subscriptions.now.value)
+    previousNow = subscriptions.now.value
+    if (crossed) void subscriptions.load()
     scheduleBoundary()
-  }, Math.min(2147483647, Math.min(...deadlines) - Date.now() + 50))
+  }, Math.min(2147483647, next - Date.now() + 50))
 }
-watch(() => [...items.value, ...subscriptions.records.value.map(record => record.item)].filter(Boolean).map(item => item.end_at).join(','), scheduleBoundary)
+watch(() => [items.value, subscriptions.records.value], scheduleBoundary)
 </script>
 
 <style scoped>

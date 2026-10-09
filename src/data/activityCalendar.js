@@ -2,6 +2,8 @@ export const CALENDAR_GAMES = Object.freeze(['代号鸢', '如鸢'])
 export const CALENDAR_CATEGORIES = Object.freeze({ ACTIVITY: '活动', RECRUITMENT: '招募', LOGIN: '登录 / 签到', SHOP: '商店 / 兑换', MAINTENANCE: '维护', OTHER: '其它' })
 export const MANUAL_CATEGORIES = Object.freeze(Object.fromEntries(Object.entries(CALENDAR_CATEGORIES).filter(([key]) => key !== 'RECRUITMENT')))
 export const SERVER_TIME_ZONE = 'Asia/Shanghai'
+export const CALENDAR_ENDING_WINDOW_MS = 72 * 60 * 60 * 1000
+export const CALENDAR_TIME_FILTERS = Object.freeze({ '': '全部', ongoing: '进行中', ending: '近 3 天结束' })
 
 export function serverToday(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: SERVER_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
@@ -93,18 +95,56 @@ export function groupCalendarItems(items, today) {
 
 export function calendarFilters(query = {}) {
   const first = value => Array.isArray(value) ? value[0] : value
-  const game = first(query.game), category = first(query.category)
-  return { game: CALENDAR_GAMES.includes(game) ? game : '', category: Object.hasOwn(CALENDAR_CATEGORIES, category) ? category : '' }
+  const game = first(query.game), category = first(query.category), status = first(query.status)
+  return {
+    game: CALENDAR_GAMES.includes(game) ? game : '',
+    category: Object.hasOwn(CALENDAR_CATEGORIES, category) ? category : '',
+    // A contradictory shared URL gives the explicit recruitment category priority.
+    exclude_recruitment: category !== 'RECRUITMENT' && ['1', true].includes(first(query.exclude_recruitment)),
+    status: Object.hasOwn(CALENDAR_TIME_FILTERS, status) ? status : '',
+  }
 }
 
 export function calendarFilterQuery(query, patch) {
-  const filters = calendarFilters({ ...calendarFilters(query), ...patch })
+  const next = { ...calendarFilters(query), ...patch }
+  if (patch.category === 'RECRUITMENT') next.exclude_recruitment = false
+  else if (patch.exclude_recruitment === true && next.category === 'RECRUITMENT') next.category = ''
+  const filters = calendarFilters(next)
   const result = { ...query }
-  for (const key of ['game', 'category']) {
-    if (filters[key]) result[key] = filters[key]
+  for (const key of ['game', 'category', 'exclude_recruitment', 'status']) {
+    if (filters[key]) result[key] = key === 'exclude_recruitment' ? '1' : filters[key]
     else delete result[key]
   }
   return result
+}
+
+export function calendarTimeBounds(item) {
+  return {
+    start: Date.parse(item.start_at || item.start_date + 'T00:00:00+08:00'),
+    end: Date.parse(item.end_at || addCalendarDays(item.end_date, 1) + 'T00:00:00+08:00'),
+  }
+}
+
+export function filterCalendarItems(items, filters, now = Date.now()) {
+  return items.filter(item => {
+    if (filters.game && item.game !== filters.game) return false
+    if (filters.category && item.category !== filters.category) return false
+    if (filters.exclude_recruitment && item.category === 'RECRUITMENT') return false
+    if (!filters.status) return true
+    const { start, end } = calendarTimeBounds(item)
+    return start <= now && now < end && (filters.status !== 'ending' || end - now <= CALENDAR_ENDING_WINDOW_MS)
+  })
+}
+
+export function nextCalendarBoundary(items, now = Date.now()) {
+  let next = Infinity
+  for (const item of items) {
+    const { start, end } = calendarTimeBounds(item)
+    for (const time of [start, end, end - CALENDAR_ENDING_WINDOW_MS]) {
+      if (time > now && time < next) next = time
+    }
+  }
+  return next
 }
 
 export const CALENDAR_VIEWS = Object.freeze({ agenda: '日程', timeline: '时间轴', month: '月历' })

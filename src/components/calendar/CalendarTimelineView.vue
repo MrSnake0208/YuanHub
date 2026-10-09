@@ -31,7 +31,6 @@
             </button>
           </div>
         </section>
-        <p v-if="!loading && !error && !groups.length" class="calendar-timeline-empty" role="status">当前时间窗口暂无活动，试试其它日期、游戏或类型。</p>
       </div>
     </div>
     <div v-if="selectedItem" id="calendar-timeline-detail" ref="detail" class="calendar-timeline-detail" tabindex="-1" role="region" aria-labelledby="calendar-timeline-detail-title">

@@ -1,6 +1,5 @@
 <template>
   <div ref="agenda" class="calendar-agenda" aria-label="活动日程">
-    <p v-if="!loading && !error && !sections.length" class="calendar-panel" role="status">当前筛选下暂无近期活动，试试其它游戏或类型。</p>
     <section v-for="section in sections" :key="section.key" class="calendar-section" :aria-labelledby="'section-' + section.key">
       <h2 :id="'section-' + section.key">{{ section.title }}<span>{{ section.count }} 项</span></h2>
       <div v-for="group in section.groups" :key="group.date" class="calendar-date-group" :data-date="group.date" :class="{ 'is-anchor': group.date === anchorDate }">
