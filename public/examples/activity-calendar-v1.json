@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "game": "代号鸢",
+      "title": "导入验收示例活动",
+      "category": "ACTIVITY",
+      "start_date": "2026-10-10",
+      "end_date": "2026-10-20",
+      "start_time": null,
+      "end_time": null,
+      "time_zone": "Asia/Shanghai",
+      "description": "仅用于本地验收，请调整日期和标题。",
+      "source_url": "https://example.com/notice",
+      "source_note": "管理员内部备注",
+      "enabled": true
+    },
+    {
+      "game": "如鸢",
+      "title": "导入验收示例登录活动",
+      "category": "LOGIN",
+      "start_date": "2026-10-12",
+      "end_date": "2026-10-15",
+      "start_time": "05:00",
+      "end_time": "23:59",
+      "enabled": false
+    }
+  ]
+}

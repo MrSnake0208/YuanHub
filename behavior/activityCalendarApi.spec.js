@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 import { request } from '../src/api/request.js'
-import { createActivityCalendar, listActivityCalendar, listAdminActivityCalendar, updateActivityCalendar } from '../src/api/activityCalendar.js'
+import { createActivityCalendar, listActivityCalendar, listAdminActivityCalendar, updateActivityCalendar, previewActivityCalendarImport, commitActivityCalendarImport } from '../src/api/activityCalendar.js'
 vi.mock('../src/api/request.js', () => ({ request: vi.fn().mockResolvedValue({ items: [] }) }))
 vi.mock('../src/store/auth.js', () => ({ auth: { accessToken: 'synthetic', userInfo: { id: 'admin-a' } } }))
 
@@ -21,4 +21,11 @@ it('日历读取API带认证并绑定当前身份，管理筛选保留false，PU
   expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/evt%2F1', { auth: true, expectedUserId: 'admin-a', method: 'PUT', body })
   await createActivityCalendar({ title: '新活动' })
   expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { title: '新活动' } })
+})
+
+it('导入预览和提交均绑定当前管理员，提交携带原文与预览token', async () => {
+  await previewActivityCalendarImport('[{}]')
+  expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/import/preview', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { json: '[{}]' } })
+  await commitActivityCalendarImport('[{}]', 'token')
+  expect(request).toHaveBeenLastCalledWith('/v1/admin/activity-calendar/import/commit', { auth: true, expectedUserId: 'admin-a', method: 'POST', body: { json: '[{}]', preview_token: 'token' } })
 })

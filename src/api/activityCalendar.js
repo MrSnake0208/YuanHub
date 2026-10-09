@@ -17,6 +17,8 @@ export function listActivityCalendar(filters) { return request(PUBLIC_PATH + que
 const adminOptions = () => ({ auth: true, expectedUserId: auth.userInfo?.id || '' })
 export function listAdminActivityCalendar(filters) { return request(ADMIN_PATH + query(filters), adminOptions()) }
 export function createActivityCalendar(body) { return request(ADMIN_PATH, { ...adminOptions(), method: 'POST', body }) }
+export function previewActivityCalendarImport(json) { return request(ADMIN_PATH + '/import/preview', { ...adminOptions(), method: 'POST', body: { json } }) }
+export function commitActivityCalendarImport(json, previewToken) { return request(ADMIN_PATH + '/import/commit', { ...adminOptions(), method: 'POST', body: { json, preview_token: previewToken } }) }
 export function updateActivityCalendar(id, body) { return request(ADMIN_PATH + '/' + encodeURIComponent(id), { ...adminOptions(), method: 'PUT', body }) }
 
 const suggestionQuery = filters => {
