@@ -3,6 +3,14 @@ import assert from 'node:assert/strict'
 
 import { buildDevServerConfig } from '../vite.config.js'
 
+test('Agent sandbox binds loopback, refuses tunnel and never falls back to another port', () => {
+  const config = buildDevServerConfig('development', { YUANHUB_AGENT_TEST: 'true' })
+  assert.equal(config.host, '127.0.0.1')
+  assert.equal(config.strictPort, true)
+  assert.deepEqual(config.allowedHosts, ['127.0.0.1'])
+  assert.throws(() => buildDevServerConfig('tunnel', { YUANHUB_AGENT_TEST: 'true' }), /cannot use tunnel/)
+})
+
 test('normal dev mode keeps LAN binding and proxies backend paths to the configured dev API', () => {
   const config = buildDevServerConfig('development', {})
 
