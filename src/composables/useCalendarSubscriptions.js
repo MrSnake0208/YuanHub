@@ -18,7 +18,7 @@ export function useCalendarSubscriptions(enabled, range, category) {
   const records = ref([]), unavailable = ref([]), count = ref(0), loading = ref(false), error = ref('')
   const now = ref(Date.now()), drafts = ref({})
   const dirty = computed(() => Object.values(drafts.value).some(Boolean))
-  const confirmDiscard = useUnsavedChanges(dirty, '活动关卡进度')
+  const confirmDiscard = useUnsavedChanges(dirty, '活动备忘录')
   const byId = computed(() => Object.fromEntries(records.value.map(record => [record.event_id, record])))
   let alive = true, accountGeneration = 0, generation = 0, deferredLoad = false
   async function loadAccounts() {

@@ -47,3 +47,17 @@ test('precise instants override source dates across timezones', () => {
   assert.deepEqual(calendarStatuses(future, '2026-10-05', now), ['即将开始'])
   assert.equal(calendarDeadline(future, '2026-10-05', now), '今天稍后开始')
 })
+
+test('legacy memo defaults preserve checklist IDs and custom title never means completed', () => {
+  const legacy = { completed: false, checklist: [{ id: 'old-id', title: '旧关卡', completed: false }] }
+  const draft = progressDraft(legacy)
+  assert.equal(draft.memo_title, '本期备忘')
+  assert.equal(draft.memo_note, '')
+  assert.deepEqual(draft.checklist, legacy.checklist)
+  const custom = progressDraft({ ...legacy, memo_title: '本期已完成', memo_note: '兑换提示\n保留换行' })
+  assert.equal(custom.memo_title, '本期已完成')
+  assert.equal(custom.memo_note, '兑换提示\n保留换行')
+  assert.equal(subscriptionCompleted(custom), false)
+  assert.equal(subscriptionCompleted({ ...custom, checklist: [] }), false)
+  assert.equal(progressDraft({ memo_note: '' }).memo_note, '')
+})
