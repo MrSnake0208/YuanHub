@@ -175,3 +175,26 @@ npm run test:behavior -- behavior/activityCalendarViews.spec.js
 ```
 
 Agent 已执行定向 SFC/JS/CSS 编译和 diff 检查，以及 Playwright CLI 的 390/768/1440px 真实 SFC 合成预览检查：无整页横滚、条长度/分轨/44px 目标、Today 重复定位、sticky 日期轴、键盘滚动/选择、详情焦点返回和三视图切换。证据位于工作区 `.playwright-cli/calendar-timeline/`；鉴权/API 为合成数据，未写后端。Node/Vitest 回归及生产 build 未执行；真实登录账号、Safari、手机触控与读屏器仍待用户验收。
+# 管理员 JSON 批量导入（2026-10-09）
+
+在 `/calendar/admin` → **活动目录**，点击与“新建活动”并列的次要按钮“批量导入”。仅 `activity_calendar:write` 管理员可见，后端两个导入接口也独立校验 JWT 和权限。功能只创建手工活动，不导入卡池或招募，不覆盖/删除现有活动。
+
+1. 下载弹窗中的 [JSON v1 两条示例](../../public/examples/activity-calendar-v1.json)，调整标题/日期，选择 UTF-8 `.json` 文件或直接粘贴。
+2. 点击“校验并预览”：查看待新建、已存在、文件内重复、错误/冲突及将公开数量；错误与差异可筛选，结果每页10条，并指出条目序号和字段。详情可查看规范化说明、来源和内部备注。
+3. 有错误/文件内冲突则修正原 JSON，重新预览；修改或换文件立即取消旧预览。重复跳过不阻塞。核对后勾选确认，再点“确认导入”。
+4. 成功/部分失败报告保留，目录刷新；若失败或响应超时，重新预览**原 JSON**并确认，已创建记录跳过。关闭未提交/部分失败草稿时沿用未保存提示。
+
+推荐格式为 `{"schema_version":1,"items":[...]}`，也接受顶层数组。原文最多 **1 MiB（UTF-8字节）**、每批 **1–200 条**，服务器再次执行限制。必填 `game/title/category/start_date/end_date`；游戏仅 `代号鸢/如鸢`，类型仅 `ACTIVITY/LOGIN/SHOP/MAINTENANCE/OTHER`。标题 trim 后1–120字、说明与内部备注各≤1000字、http(s)来源链接≤2048字；时间成对且为 `HH:mm`，日期为 `YYYY-MM-DD` 且结束不得早于开始。时区缺省 **Asia/Shanghai**，推荐所有活动使用该服务器时区；启用缺省 **true**，会在现有公共日历展示。设置 `enabled:false` 的新建活动只在管理目录出现。详情及完整可复制模板见 [下载示例](../../public/examples/activity-calendar-v1.json)。禁止 `RECRUITMENT`、服务器管理字段和未知字段/类型/版本。
+
+重复依据为游戏+类别+规范化标题+起止日期+精确时间+时区，包含停用历史活动。同名跨期/跨游戏不合并。已有同键内容差异明确提示并跳过，文件内同键不同内容阻止整批提交。并发批量导入利用 Mongo 稳定 `_id` insert 保证唯一；不覆盖既有数据。避免在导入时从单条新建入口同时创建同一活动。预览后输入或相关目录数据变化，服务器409要求重新预览。
+
+API 请求：`POST /v1/admin/activity-calendar/import/preview` body `{json: 原始文本}`；提交 `POST /v1/admin/activity-calendar/import/commit` body `{json: 同一原文, preview_token: 预览令牌}`。成功响应 `data` 内含 counts、1起始 `rows[].row/status/data/issues[{field,message}]/event_id`；200提交响应仍须检查 `failed`，部分失败不等于全成功。
+
+最小前端回归（cwd YuanHub）：
+
+```bash
+node --test test/activityCalendarImport.test.js test/activityCalendar.test.js
+npm run test:behavior -- behavior/activityCalendarImport.spec.js behavior/activityCalendarAdmin.spec.js behavior/activityCalendarApi.spec.js behavior/activityCalendarIdentity.spec.js
+```
+
+真实布局重点检查320/390/768/1440及手机横屏：卡片预览、分页、独立滚动、底部确认、44px操作目标、焦点陷阱/恢复；真实手机软键盘和Safari仍须人工验收。页面和公共三视图无需改动。

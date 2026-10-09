@@ -24,7 +24,7 @@
           <section v-if="!form" ref="listRegion" class="calendar-list" aria-labelledby="calendar-list-title" tabindex="-1">
             <header class="calendar-workspace-head">
               <h2 id="calendar-list-title">活动目录</h2>
-              <button type="button" class="calendar-primary" :disabled="loading" @click="openNew">新建活动</button>
+              <div class="calendar-actions"><button type="button" :disabled="loading" @click="importing = true">批量导入</button><button type="button" class="calendar-primary" :disabled="loading" @click="openNew">新建活动</button></div>
             </header>
             <form class="calendar-panel calendar-form" @submit.prevent="load">
               <div class="calendar-fields">
@@ -88,6 +88,7 @@
         </template>
       </div>
       <SiteFooter />
+      <CalendarImportDialog v-if="permitted && importing" :key="identity" @close="importing = false" @imported="load" />
     </main>
   </div>
 </template>
@@ -99,6 +100,7 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import CalendarSuggestionsReview from '@/components/calendar/CalendarSuggestionsReview.vue'
+import CalendarImportDialog from '@/components/calendar/CalendarImportDialog.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
@@ -114,6 +116,7 @@ const permitted = computed(() => enabled && !!identity.value && hasPermission(au
 const canManageRecruitment = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE))
 const filters = reactive({ game: '', category: '', enabled: '', from: '', to: '', search: '' })
 const workspace = ref('directory'), suggestionsReview = ref(null)
+const importing = ref(false)
 const entries = ref([]), form = ref(null), baseline = ref(''), originalEnabled = ref(true)
 const loading = ref(false), saving = ref(false), error = ref(''), notice = ref(''), fieldErrors = ref({}), conflict = ref(false)
 const errorSummary = ref(null), editor = ref(null), listRegion = ref(null)
@@ -207,6 +210,7 @@ async function save() {
   } finally { if (current(token)) saving.value = false }
 }
 watch([identity, permitted], () => {
+  importing.value = false
   generation++; readGeneration++
   entries.value = []; form.value = null; baseline.value = ''; loading.value = false; saving.value = false; error.value = ''; notice.value = ''; fieldErrors.value = {}; conflict.value = false
   if (permitted.value) void load()
