@@ -17,7 +17,7 @@ const Harness = defineComponent({ setup() { range = ref({ from: '2026-10-01', to
 async function render() {
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: Harness }] })
   await router.push('/'); await router.isReady()
-  wrapper = mount(Harness, { global: { plugins: [router] } }); await flushPromises()
+  wrapper = mount({ template: '<router-view />' }, { global: { plugins: [router] } }); await flushPromises()
 }
 beforeEach(() => {
   vi.clearAllMocks(); auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'user' }; activeAccount.set('a')
@@ -32,7 +32,7 @@ it('a background read failure does not lock an existing dirty editor', async () 
   state.setDirty('event', true)
   late.reject(new Error('offline')); await loading
   expect(state.error.value).toBe('')
-  saveCalendarProgress.mockResolvedValue(record('event'))
+  saveCalendarProgress.mockResolvedValue({ ...record('event'), version: 1 })
   await state.progress('event', 0, { completed: false, checklist: [] })
   expect(saveCalendarProgress).toHaveBeenCalled()
 })
@@ -90,5 +90,22 @@ it('no valid current account never sends a private request and GET refresh does 
   activeAccount.set('a'); await flushPromises()
   getCalendarSubscription.mockResolvedValue(record('server'))
   expect((await state.refreshOne('server')).event_id).toBe('server')
+  expect(wrapper.text()).toBe('')
+})
+it('A→B→A never adopts the first A mutation or starts a PUT after a late preflight GET', async () => {
+  await render()
+  const lateSave = deferred(), lateRead = deferred()
+  saveCalendarProgress.mockReturnValueOnce(lateSave.promise)
+  getCalendarSubscription.mockReturnValueOnce(lateRead.promise)
+  const save = state.progress('event', 0, { completed: false, checklist: [] })
+  const subscribe = state.subscribe('event', true)
+  activeAccount.set('b'); await flushPromises(); activeAccount.set('a'); await flushPromises()
+  lateSave.resolve({ ...record('event'), version: 1 }); lateRead.resolve(record('event'))
+  expect(await save).toBeNull(); await subscribe
+  expect(setCalendarSubscription).not.toHaveBeenCalled(); expect(wrapper.text()).toBe('')
+})
+it.each([{ event_id: 'foreign', version: 1 }, { event_id: 'event', version: 0 }])('unconfirmed save response %j cannot change the accepted record', async result => {
+  await render(); saveCalendarProgress.mockResolvedValueOnce(result)
+  await expect(state.progress('event', 0, { completed: false, checklist: [] })).rejects.toThrow('保存结果需要确认')
   expect(wrapper.text()).toBe('')
 })

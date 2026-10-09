@@ -42,7 +42,8 @@
             <span class="calendar-hint">{{ draft.memo_note.length }}/1000 字</span>
           </label>
           <div class="calendar-subscription-actions">
-            <button type="submit" :disabled="!dirty">{{ busy ? '保存中…' : '保存备忘' }}</button>
+            <button type="submit" class="calendar-memo-save" :disabled="!dirty">{{ saving ? '保存中…' : '保存备忘' }}</button>
+            <span class="calendar-memo-status" :class="{ 'is-dirty': dirty }" role="status" aria-live="polite">{{ saveStatus }}</span>
           </div>
         </fieldset>
       </form>
@@ -64,16 +65,19 @@ const id = computed(() => props.item?.id || props.unavailable?.event_id || '')
 const record = computed(() => context?.byId.value[id.value] || props.unavailable || null)
 const editor = ref(null), editorToggle = ref(null)
 const editing = ref(false), busy = ref(false), blocked = ref(false), error = ref(''), message = ref('')
-const draft = ref(progressDraft(null)), baseline = ref(JSON.stringify(draft.value)), version = ref(null)
-const dirty = computed(() => editing.value && JSON.stringify(draft.value) !== baseline.value)
+const saving = ref(false), saveFailed = ref(false)
+const snapshot = value => JSON.stringify([value.memo_title, value.memo_note, subscriptionCompleted(value), value.checklist.map(entry => [entry.id, entry.title, entry.completed])])
+const draft = ref(progressDraft(null)), baseline = ref(snapshot(draft.value)), version = ref(null)
+const dirty = computed(() => editing.value && snapshot(draft.value) !== baseline.value)
+const saveStatus = computed(() => saving.value ? '保存中…' : dirty.value ? saveFailed.value ? '未保存，修改仍在此页面' : '有未保存修改' : '已保存')
 const closed = computed(() => !props.item || calendarEnded(props.item, serverToday(new Date(context?.now.value || Date.now())), context?.now.value))
 let alive = true
-const stamp = () => JSON.stringify([context?.key.value, id.value])
+const stamp = () => JSON.stringify([context?.key.value, context?.epoch?.value, id.value])
 const current = token => alive && stamp() === token
-function adopt(value) { draft.value = progressDraft(value); baseline.value = JSON.stringify(draft.value); version.value = value?.version ?? null }
+function adopt(value) { draft.value = progressDraft(value); baseline.value = snapshot(draft.value); version.value = value?.version ?? null; saveFailed.value = false }
 watch(record, value => { if (!dirty.value && !busy.value) adopt(value) }, { immediate: true })
-watch(() => [context?.key.value, id.value], () => { editing.value = false; busy.value = false; blocked.value = false; error.value = ''; message.value = ''; adopt(record.value) }, { flush: 'sync' })
-watch(dirty, value => context?.setDirty(id.value, value), { flush: 'sync' })
+watch(() => [context?.key.value, context?.epoch?.value, id.value], () => { editing.value = false; busy.value = false; saving.value = false; blocked.value = false; error.value = ''; message.value = ''; adopt(record.value) }, { flush: 'sync' })
+watch(dirty, value => { context?.setDirty(id.value, value); if (value) message.value = '' }, { flush: 'sync' })
 onBeforeUnmount(() => { alive = false; context?.setDirty(id.value, false) })
 async function toggleEditor() {
   const token = stamp()
@@ -109,19 +113,23 @@ async function addEntry() {
   }
 }
 async function removeEntry(entryId) {
+  if (busy.value || dialog._state?.visible) return
   const token = stamp()
   if (!await dialog.confirm({ title: '删除待办？', message: '仅删除当前账号、本期活动的这条待办，保存后生效。', confirmText: '删除', cancelText: '保留', type: 'danger' }) || !current(token)) return
   freezeCompletion()
   draft.value.checklist = draft.value.checklist.filter(entry => entry.id !== entryId)
 }
 function failed(err) {
+  saveFailed.value = true
   blocked.value = err?.status === 409 || !err?.status || err.status >= 500
   error.value = blocked.value ? '保存结果需要确认，草稿已保留。请读取最新状态后再编辑。' : err?.message || '保存失败，请重试。'
 }
 async function changeSubscription() {
+  if (busy.value) return
   const token = stamp()
   if (dirty.value && !await context.confirmDiscard()) return
   if (!current(token)) return
+  if (busy.value) return
   busy.value = true; error.value = ''; message.value = ''
   try {
     const value = await context.subscribe(id.value, !record.value?.subscribed)
@@ -143,20 +151,22 @@ async function save() {
     return
   }
   const token = stamp()
-  busy.value = true; error.value = ''; message.value = ''
+  busy.value = true; saving.value = true; error.value = ''; message.value = ''
   try {
     const value = await context.progress(id.value, version.value, JSON.parse(JSON.stringify(draft.value)))
     if (!current(token) || !value) return
     adopt(value); message.value = '备忘已保存。'
   } catch (err) { if (current(token)) failed(err) }
-  finally { if (current(token)) busy.value = false }
+  finally { if (current(token)) { busy.value = false; saving.value = false } }
 }
 async function refresh() {
+  if (busy.value) return
   const token = stamp()
   busy.value = true
   try {
     const value = await context.refreshOne(id.value)
     if (!current(token)) return
+    if (dialog._state?.visible) return
     if (dirty.value && !await dialog.confirm({ title: '使用最新备忘？', message: '将用服务器最新备忘替换当前未保存的标题、待办和备注。', confirmText: '使用最新备忘', cancelText: '保留草稿' })) return
     if (!current(token)) return
     adopt(value); context.accept(value || { event_id: id.value, subscribed: false }); blocked.value = false; error.value = ''; message.value = '已读取最新状态。'

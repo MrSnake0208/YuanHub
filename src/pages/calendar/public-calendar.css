@@ -229,6 +229,10 @@
 .calendar-checklist .calendar-check-row input[type="text"] { box-sizing: border-box; font-size: 16px; }
 .calendar-checklist :is(input, textarea, button) { scroll-margin-block: 100px; }
 .calendar-checklist :is(input, textarea):focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+.calendar-memo-save:not(:disabled) { background: var(--tea); color: var(--cream); border-color: var(--tea); }
+.calendar-memo-save:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
+.calendar-memo-status { min-width: 0; font-size: 13px; color: var(--ink-60); overflow-wrap: anywhere; }
+.calendar-memo-status.is-dirty { color: var(--tea); font-weight: 700; }
 .calendar-memo-note { white-space: pre-wrap; overflow-wrap: anywhere; }
 .calendar-memo-readonly li { overflow-wrap: anywhere; }
 .calendar-subscription button { min-width: 44px; }

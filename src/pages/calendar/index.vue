@@ -22,11 +22,12 @@
             <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
           </button>
           <AccountSwitcher v-if="!subscriptions.accountLoading.value && !subscriptions.accountError.value" :accounts="subscriptions.accounts.value"
-            :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.confirmDiscard" />
+            :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.switchAccount" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
-          <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked)">仅未完成</label>
+          <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked, $event.target)">仅未完成</label>
           <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与活动备忘录仅当前账号可见。</p>
+          <p v-if="subscriptions.contextNotice.value" class="calendar-hint" role="status">{{ subscriptions.contextNotice.value }}</p>
         </section>
         <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
           <p class="calendar-filter-summary">{{ filterSummary }}</p>
@@ -130,6 +131,8 @@ const currentView = computed(() => calendarView(route.query, preferredView.value
 const anchorDate = computed(() => calendarAnchorDate(route.query, today.value))
 const requestRange = computed(() => calendarRequestRange(currentView.value, anchorDate.value, today.value))
 const subscriptions = useCalendarSubscriptions(enabled, requestRange, computed(() => calendarFilters(route.query).category))
+// A committed query update has already passed the shared leave confirmation.
+watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts() }, { flush: 'sync' })
 const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
@@ -143,8 +146,12 @@ const visibleItems = computed(() => {
 const viewLoading = computed(() => mine.value ? subscriptions.loading.value : loading.value)
 const viewError = computed(() => mine.value ? subscriptions.error.value : error.value)
 function setScope(value) { return router.replace({ query: subscriptionScopeQuery(route.query, value) }) }
-function setPending(value) { const query = { ...route.query }; if (value) query.pending = '1'; else delete query.pending; return router.replace({ query }) }
-let generation = 0
+function setPending(value, input) {
+  if (input) input.checked = pendingOnly.value
+  const query = { ...route.query }; if (value) query.pending = '1'; else delete query.pending
+  return router.replace({ query })
+}
+let generation = 0, publicContext = ''
 let dayTimer = null, minuteTimer = null, boundaryTimer = null, lastRefresh = 0
 let previousNow = Date.now(), deferredRefresh = false
 function checkServerDate() {
@@ -155,11 +162,12 @@ function checkServerDate() {
 }
 function refreshVisible() {
   if (subscriptions.dirty.value) { deferredRefresh = true; return }
+  const wasDeferred = deferredRefresh
   deferredRefresh = false
   checkServerDate()
   subscriptions.now.value = Date.now()
   scheduleBoundary()
-  if (Date.now() - lastRefresh < 1000 || subscriptions.dirty.value) return
+  if ((!wasDeferred && Date.now() - lastRefresh < 1000) || subscriptions.dirty.value) return
   lastRefresh = Date.now()
   void subscriptions.load()
   if (subscriptions.permitted.value) void load()
@@ -218,12 +226,14 @@ async function goToday() {
 }
 async function load() {
   if (!enabled) return
+  if (subscriptions.dirty.value) { deferredRefresh = true; return }
   const token = ++generation
+  const replacing = publicContext !== requestKey.value
+  publicContext = requestKey.value
   const selectedFilters = { game: filters.value.game, category: filters.value.category }, range = { ...requestRange.value }, date = today.value
-  loading.value = true
+  loading.value = replacing || !items.value.length
   error.value = ''
-  items.value = []
-  summaryItems.value = []
+  if (replacing) { items.value = []; summaryItems.value = [] }
   const needsSummary = date < range.from || date > range.to
   const normalize = values => normalizeCalendarItems(values).filter(item => (!selectedFilters.game || item.game === selectedFilters.game) && (!selectedFilters.category || item.category === selectedFilters.category))
   try {
@@ -232,10 +242,14 @@ async function load() {
       needsSummary ? listActivityCalendar({ ...selectedFilters, from: date, to: date }) : Promise.resolve(null),
     ])
     if (token !== generation) return
+    if (subscriptions.dirty.value) { deferredRefresh = true; return }
     items.value = normalize(result?.items).filter(item => item.end_date >= range.from && item.start_date <= range.to)
     summaryItems.value = needsSummary ? normalize(summary?.items) : items.value
   } catch (err) {
-    if (token === generation) error.value = err?.message || '活动日程读取失败，请重试。'
+    if (token === generation) {
+      if (subscriptions.dirty.value) deferredRefresh = true
+      else error.value = err?.message || '活动日程读取失败，请重试。'
+    }
   } finally {
     if (token === generation) loading.value = false
   }

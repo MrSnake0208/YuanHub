@@ -2,17 +2,19 @@ import { onBeforeUnmount, onMounted } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { dialog } from './dialog.js'
 
-export function useUnsavedChanges(isDirty, label) {
+export function useUnsavedChanges(isDirty, label, options = {}) {
   let pending = null
   async function confirmDiscard() {
     if (!isDirty.value) return true
-    if (pending) return pending
+    // One confirmation authorizes one action; later clicks must not consume it.
+    if (pending || dialog._state?.visible) return false
     pending = dialog.confirm({
       title: '放弃未保存修改？',
       message: label + '尚未保存，离开后本次修改将丢失。',
       type: 'danger',
       confirmText: '放弃修改',
       cancelText: '继续编辑',
+      ...options,
     })
     try { return await pending } finally { pending = null }
   }
