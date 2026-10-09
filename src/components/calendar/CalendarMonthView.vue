@@ -13,7 +13,8 @@
         <button v-for="day in days" :key="day.date" type="button" class="calendar-month-day" :class="{ 'is-outside': !day.inMonth, 'is-today': day.date === today }" :aria-pressed="day.date === anchorDate" :aria-current="day.date === today ? 'date' : undefined" :aria-label="day.label" @click="$emit('select-date', day.date)">
           <span class="calendar-day-number">{{ Number(day.date.slice(8)) }}<span v-if="day.date === today" class="calendar-day-today" aria-hidden="true">今</span></span>
           <span v-if="!loading && !error && day.items.length" class="calendar-day-count">{{ day.items.length }} 项</span>
-          <span v-if="!loading && !error" class="calendar-month-tags" aria-hidden="true"><span v-for="item in day.items.slice(0, 2)" :key="item.id">{{ item.title }}</span><small v-if="day.items.length > 2">+{{ day.items.length - 2 }}</small></span>
+          <span v-if="!loading && !error && day.items.length" class="calendar-month-dots" aria-hidden="true"><i v-for="entry in day.markers" :key="entry.id" :style="entry.display.style" :data-type-color="entry.display.color" /></span>
+          <span v-if="!loading && !error" class="calendar-month-tags" aria-hidden="true"><span v-for="entry in day.entries.slice(0, 2)" :key="entry.id" :style="entry.display.style" :data-type-color="entry.display.color">{{ entry.display.label }} · {{ entry.title }}</span><small v-if="day.items.length > 2">+{{ day.items.length - 2 }}</small></span>
         </button>
       </div>
     </div>
@@ -29,6 +30,7 @@ import { computed } from 'vue'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
 import { calendarDateLabel, calendarItemsOnDay, monthCalendarDays, shiftCalendarMonth } from '@/data/activityCalendar.js'
+import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, loading: Boolean, error: Boolean })
 defineEmits(['select-date'])
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
@@ -38,7 +40,10 @@ const days = computed(() => monthCalendarDays(props.items, props.anchorDate).map
   label.push(props.loading ? '活动读取中' : props.error ? '活动读取失败' : `${day.items.length}项活动`)
   if (day.date === props.today) label.push('今天')
   if (day.date === props.anchorDate) label.push('已选中')
-  return { ...day, label: label.join('，') }
+  const entries = day.items.map(item => ({ ...item, display: calendarDisplay(item) }))
+  const markers = entries.filter((entry, index) => entries.findIndex(other => other.display.color === entry.display.color) === index).slice(0, 3)
+  if (!props.loading && !props.error) label.push(...new Set(entries.map(entry => entry.display.path)))
+  return { ...day, entries, markers, label: label.join('，') }
 }))
 const selectedItems = computed(() => calendarItemsOnDay(props.items, props.anchorDate))
 </script>

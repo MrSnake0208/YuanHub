@@ -59,8 +59,8 @@ it('Controls完整展示选项，只发出单维度patch且不修改输入', asy
 it.each([
   ['', '未启用筛选', 0],
   ['?game=如鸢', '如鸢', 1],
-  ['?category=RECRUITMENT', '招募', 1],
-  ['?game=如鸢&category=RECRUITMENT', '如鸢 · 招募', 2],
+  ['?category=RECRUITMENT', '卡池', 1],
+  ['?game=如鸢&category=RECRUITMENT', '如鸢 · 卡池', 2],
   ['?game=未知&category=UNKNOWN', '未启用筛选', 0],
 ])('URL %s驱动摘要、可访问名称与0/1/2计数，默认不打开弹层', async (query, summary, count) => {
   const { wrapper } = await render(`/calendar${query}`)
@@ -98,8 +98,8 @@ it('桌面入口打开同一浮层，完整控件可操作，Escape恢复焦点'
 
 it.each(['agenda', 'timeline', 'month'])('%s逐项取消仅移除对应条件，保留视图/日期/账号与其它条件', async view => {
   const { wrapper, router } = await render(`/calendar?view=${view}&date=2026-10-09&game=如鸢&category=LOGIN&exclude_recruitment=1&status=ending&ref=keep`)
-  expect(wrapper.findAll('.calendar-active-filters button').map(node => node.text())).toEqual(['如鸢', '登录 / 签到', '不含招募', '近 3 天结束'])
-  for (const [label, key] of [['不含招募', 'exclude_recruitment'], ['登录 / 签到', 'category'], ['近 3 天结束', 'status'], ['如鸢', 'game']]) {
+  expect(wrapper.findAll('.calendar-active-filters button').map(node => node.text())).toEqual(['如鸢', '签到', '不含招募', '近 3 天结束'])
+  for (const [label, key] of [['不含招募', 'exclude_recruitment'], ['签到', 'category'], ['近 3 天结束', 'status'], ['如鸢', 'game']]) {
     const before = { ...router.currentRoute.value.query }
     await wrapper.get(`[aria-label="取消筛选：${label}"]`).trigger('click'); await flushPromises()
     delete before[key]
@@ -114,10 +114,10 @@ it('Sheet即时应用并保持打开，只有一组筛选控件，重置保留vi
   const { wrapper, router } = await render('/calendar?view=month&date=2026-09-15&ref=share')
   await open(wrapper)
   await clickSheet('如鸢')
-  await clickSheet('招募')
+  await clickSheet('卡池')
   expect(router.currentRoute.value.query).toEqual({ view: 'month', date: '2026-09-15', ref: 'share', game: '如鸢', category: 'RECRUITMENT' })
   expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game: '如鸢', category: 'RECRUITMENT' })
-  expect(summaryText(wrapper)).toBe('如鸢 · 招募')
+  expect(summaryText(wrapper)).toBe('如鸢 · 卡池')
   expect(wrapper.get('.calendar-filter-count').text()).toBe('2')
   expect(dialog()).not.toBeNull()
   expect(sheetButton('如鸢').getAttribute('aria-pressed')).toBe('true')
@@ -201,7 +201,7 @@ it('请求加载/失败仍可筛选与关闭，错误仅出现在主页面', asy
   await clickSheet('如鸢')
   expect(wrapper.get('.calendar-view-content').attributes('aria-busy')).toBe('true')
   expect(sheetButton('完成').disabled).toBe(false)
-  expect(sheetButton('招募').disabled).toBe(false)
+  expect(sheetButton('卡池').disabled).toBe(false)
   reject(new Error('筛选读取失败'))
   await flushPromises()
   expect(wrapper.get('[role=alert]').text()).toContain('筛选读取失败')
@@ -224,7 +224,7 @@ it('不含招募与类型招募最后操作生效，URL/Sheet/摘要同步且本
   expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).toEqual(expect.arrayContaining(['ACTIVITY', 'LOGIN', 'SHOP', 'MAINTENANCE', 'OTHER']))
   expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).not.toContain('RECRUITMENT')
   expect(listActivityCalendar).toHaveBeenCalledTimes(reads + 1) // Clearing category widens the API scope once.
-  await clickSheet('招募')
+  await clickSheet('卡池')
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', category: 'RECRUITMENT' })
   expect(dialog().querySelector('input[type=checkbox]').checked).toBe(false)
   expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).toEqual(['RECRUITMENT'])

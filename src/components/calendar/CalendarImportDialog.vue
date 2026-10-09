@@ -9,6 +9,7 @@
         <div class="calendar-import-body">
           <p class="calendar-hint">仅创建手工活动，不导入卡池或招募。每批 1–200 条，UTF-8 JSON 最多 1 MiB；默认 Asia/Shanghai、启用并公开。</p>
           <a href="/examples/activity-calendar-v1.json" download>下载 JSON v1 示例（2 条活动）</a>
+          <p class="calendar-hint">细分类别可选，旧 JSON 仍可导入；家具关联细目使用 FURNITURE / MYSTERIOUS_CAVE。已存在活动的分类差异只提示，不覆盖，请到目录编辑补全。</p>
           <label class="calendar-import-file">选择 .json 文件<input ref="fileInput" type="file" accept=".json,application/json" :disabled="busy" @change="chooseFile"></label>
           <label class="calendar-import-input" for="calendar-import-json">或直接粘贴 JSON
             <textarea id="calendar-import-json" ref="input" v-model="text" rows="5" spellcheck="false" :disabled="busy" :aria-invalid="!!error" :aria-describedby="error ? 'calendar-import-error' : undefined" placeholder='{"schema_version":1,"items":[…]}'></textarea>
@@ -29,7 +30,7 @@
               <li v-for="row in pageRows" :key="row.row" class="calendar-panel">
                 <div class="calendar-badges"><span>第 {{ row.row }} 条</span><span class="calendar-state">{{ labels[row.status] || row.status }}</span><span>{{ row.game || '游戏未填写' }}</span></div>
                 <h3>{{ row.title || '标题未填写' }}</h3>
-                <p v-if="row.data" class="calendar-range">{{ calendarRangeLabel(row.data) }} · {{ row.data.time_zone }} · {{ MANUAL_CATEGORIES[row.data.category] }} · {{ row.data.enabled ? '公开' : '停用' }}</p>
+                <p v-if="row.data" class="calendar-range">{{ calendarRangeLabel(row.data) }} · {{ row.data.time_zone }} · {{ calendarDisplay(row.data).path }} · {{ row.data.enabled ? '公开' : '停用' }}</p>
                 <ul v-if="row.issues.length" class="calendar-import-issues"><li v-for="(issue, index) in row.issues" :key="index"><strong>{{ issue.field }}</strong>：{{ issue.message }}</li></ul>
                 <details v-if="row.data"><summary>规范化详情</summary><p>说明：{{ row.data.description || '无' }}</p><p>来源：{{ row.data.source_url || '无' }}</p><p>内部备注：{{ row.data.source_note || '无' }}</p></details>
               </li>
@@ -51,10 +52,11 @@
 </template>
 
 <script setup>
+import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { previewActivityCalendarImport, commitActivityCalendarImport } from '@/api/activityCalendar.js'
 import { checkCalendarImportText, readCalendarImportFile } from '@/data/activityCalendarImport.js'
-import { calendarRangeLabel, MANUAL_CATEGORIES } from '@/data/activityCalendar.js'
+import { calendarRangeLabel } from '@/data/activityCalendar.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import '@/pages/calendar/calendar.css'

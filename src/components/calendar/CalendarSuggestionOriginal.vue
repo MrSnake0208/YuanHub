@@ -1,7 +1,7 @@
 <template>
   <section class="calendar-panel calendar-section calendar-suggestion-original" aria-label="原始提交资料">
     <h3>原始提交资料（只读）</h3>
-    <div class="calendar-badges"><span class="calendar-game">{{ suggestion.original.game }}</span><span class="calendar-category">{{ CALENDAR_CATEGORIES[suggestion.original.category] }}</span><span class="calendar-state" :data-status="suggestion.status">{{ SUGGESTION_STATUSES[suggestion.status] }}</span></div>
+    <div class="calendar-badges"><span class="calendar-game">{{ suggestion.original.game }}</span><span class="calendar-category">{{ calendarDisplay(suggestion.original).path }}</span><span class="calendar-state" :data-status="suggestion.status">{{ SUGGESTION_STATUSES[suggestion.status] }}</span></div>
     <h4>{{ suggestion.original.title }}</h4>
     <p class="calendar-range">{{ calendarRangeLabel(suggestion.original) }} · Asia/Shanghai</p>
     <p v-if="suggestion.original.description" class="calendar-description">{{ suggestion.original.description }}</p>
@@ -11,8 +11,9 @@
   </section>
 </template>
 <script setup>
+import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 import { computed } from 'vue'
-import { CALENDAR_CATEGORIES, calendarRangeLabel, safeCalendarUrl } from '@/data/activityCalendar.js'
+import { calendarRangeLabel, safeCalendarUrl } from '@/data/activityCalendar.js'
 import { SUGGESTION_STATUSES, suggestionTimestamp } from '@/data/activityCalendarSuggestions.js'
 const props = defineProps({ suggestion: { type: Object, required: true } })
 const sourceUrl = computed(() => safeCalendarUrl(props.suggestion.original.source_url))

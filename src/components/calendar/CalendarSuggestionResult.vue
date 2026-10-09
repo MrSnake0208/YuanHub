@@ -7,7 +7,7 @@
       <p class="calendar-description">审核说明：{{ suggestion.review_note || '无补充说明。' }}</p>
       <p v-if="suggestion.status === 'REJECTED'">请按审核说明补充资料后重新提交。</p>
       <template v-if="snapshot">
-        <h4>采纳时的活动资料</h4><p>{{ snapshot.title }} · {{ snapshot.game }} · {{ CALENDAR_CATEGORIES[snapshot.category] }}</p>
+        <h4>采纳时的活动资料</h4><p>{{ snapshot.title }} · {{ snapshot.game }} · {{ calendarDisplay(snapshot).path }}</p>
         <p class="calendar-range">{{ calendarRangeLabel(snapshot) }}</p><p v-if="snapshot.description" class="calendar-description">{{ snapshot.description }}</p>
         <a v-if="safeCalendarUrl(snapshot.source_url)" class="calendar-source-link" :href="safeCalendarUrl(snapshot.source_url)" target="_blank" rel="noopener noreferrer">采纳时的来源 ↗</a>
       </template>
@@ -19,8 +19,9 @@
   </section>
 </template>
 <script setup>
+import { calendarDisplay } from '@/data/activityCalendarTypes.js'
 import { computed } from 'vue'
-import { CALENDAR_CATEGORIES, calendarRangeLabel, safeCalendarUrl } from '@/data/activityCalendar.js'
+import { calendarRangeLabel, safeCalendarUrl } from '@/data/activityCalendar.js'
 import { SUGGESTION_STATUSES, suggestionEventLink, suggestionTimestamp } from '@/data/activityCalendarSuggestions.js'
 const props = defineProps({ suggestion: { type: Object, required: true } })
 const snapshot = computed(() => props.suggestion.accepted_snapshot)

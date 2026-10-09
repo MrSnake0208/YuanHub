@@ -4,7 +4,7 @@
 
 页面通过 `Intl.DateTimeFormat.formatToParts` 计算 Asia/Shanghai 的服务器日期。日程请求今天至未来 90 天；时间轴请求锚点前 7 天至后 27 天（闭区间五周），前后导航按 35 天推进；月历请求当前月及周一至周日的补位日期，至少 35 格、最多 42 格。月份导航保留日号并钳制月末；同月份日期选择不重复请求。服务器午夜、翌日可见性恢复与 pageshow 更新日程，同一天恢复不重复读取。默认锚点随今天移动，URL 显式日期保持。日期不按用户所在时区换算；没有时间的活动不补具体时刻。
 
-日程按今天、接下来 7 天、更晚分组，结束和开始提醒优先，跨日活动只出现一次，历史默认排除。时间轴按类型分组、每项一行，闭区间条显示起止和截断边界，今天有日期头与垂直虚线；仅面板内部横向滚动，标题在条上及上方可见，点击展开同一活动卡。月历显示每天闭区间覆盖的活动数量，选中日完整活动卡在网格下方；允许浏览历史日期。手工与招募卡池统一展示，来源文字区分。
+日程按今天、接下来 7 天、更晚分组，结束和开始提醒优先，跨日活动只出现一次，历史默认排除。时间轴按活动/卡池/商店/其他四组展示，重叠活动分轨、相邻区间复用轨道；闭区间条显示起止和截断边界，今天有日期头与竖线；仅面板内部横向滚动，标题在条上可见，点击展开同一活动卡。月历显示每天闭区间覆盖的活动数量，选中日完整活动卡在网格下方；允许浏览历史日期。手工与招募卡池统一展示，来源文字区分。
 
 时间轴标题只显示日期范围。“左右滑动查看日期 · 点击活动条查看完整信息 · 虚线标记今天”作为首次操作提示，点击“知道了”后通过当前浏览器的 `yuanhub.activity-calendar.timeline-help-dismissed.v1` 记住，不随刷新或视图切换重复显示；关闭后焦点进入时间轴。存储不可用时仍可关闭当前视图内的提示，之后重新打开可能再次提示。
 
@@ -211,3 +211,48 @@ npm run test:behavior -- behavior/activityCalendarImport.spec.js behavior/activi
 手机紧凑入口与桌面内容旁显示具体筛选摘要，较长摘要换行；有非默认条件时可直接“清除筛选”，空结果也提供恢复动作。清除游戏（公共模式）、类型、排除招募、时间状态和仅未完成，保留视图、日期锚点、全部/我的订阅模式及账号。我的订阅显示账号锁定游戏，清除不能解锁或切换游戏；原 game Query 保留用于返回公共模式。展示过滤不删除记录、不改变已订阅/完成状态、不可用记录或账号订阅总数。
 
 三视图共享同一过滤结果及各自原有请求日期窗口。今日摘要仍按当前游戏、类型及招募条件统计公开活动的日历日覆盖，不应用时间状态或仅未完成，不表示个人订阅数；原“进行中”统计仍指严格跨越今天的活动。
+
+## 细分类别与共享语义色（2026-10-09）
+
+`src/data/activityCalendarTypes.js` 是四组展示、细类、细目的单一映射；`eventTypeColors.js` 集中定义浅背景、深文字、描边、窄色条和招募封面色。`activityCalendar.js` 保留 category 原值，规范化时透传可选 `subtype/subtype_detail/pool_type`，未知细类保留事件并使用中性兜底。不会使用活动标题或“星图”等历史名称重新分类。
+
+| 展示一级 | 二级 / 细目 | 持久化 category | subtype / subtype_detail | 色彩及标记色 |
+| --- | --- | --- | --- | --- |
+| 活动 | 大型活动 | ACTIVITY | LARGE_EVENT | 绛红 #A6514A |
+| 活动 | 中型活动 | ACTIVITY | MEDIUM_EVENT | 绛红 #A6514A |
+| 活动 | 地宫 | ACTIVITY | UNDERGROUND | 紫 #88669F |
+| 活动 | 泰山府 | ACTIVITY | TAISHAN_FU | 紫 #88669F |
+| 活动 | 签到 | ACTIVITY 或旧 LOGIN | SIGN_IN；旧 LOGIN 缺字段也映射签到 | 蓝 #597D9B |
+| 活动 | 家具 | ACTIVITY | FURNITURE | 黄 #97762A |
+| 活动 | 家具 → 神秘洞窟 | ACTIVITY | FURNITURE / MYSTERIOUS_CAVE | 黄 #97762A |
+| 活动 | 未细分（旧 ACTIVITY） | ACTIVITY | null 或未知值 | 中性 #887B68 |
+| 卡池 | 限定 | RECRUITMENT（派生） | 目录 pool_type | 金 #98722A |
+| 卡池 | 复刻 | RECRUITMENT（派生） | 目录 pool_type | 蓝 #597D9B |
+| 卡池 | 照影 | RECRUITMENT（派生） | 目录 pool_type | 紫 #88669F |
+| 卡池 | 自选 | RECRUITMENT（派生） | 目录 pool_type | 绛红 #A6514A |
+| 卡池 | 常驻 / 类型未知 | RECRUITMENT（派生） | 目录 pool_type；缺字段也回退 | 中性 #887B68 |
+| 商店 | 卡池商店 | SHOP | RECRUITMENT_SHOP | 灰 #7D7972 |
+| 商店 | 活动商店 | SHOP | ACTIVITY_SHOP | 灰 #7D7972 |
+| 商店 | 未细分（旧 SHOP） | SHOP | null | 灰 #7D7972 |
+| 其他 | 维护 | OTHER 或旧 MAINTENANCE | MAINTENANCE；旧 MAINTENANCE 缺字段也映射维护 | 灰 #7D7972 |
+| 其他 | 星池 | OTHER | STAR_POOL | 橙 #AC672E |
+| 其他 | 未细分（旧 OTHER） | OTHER | null 或未知值 | 中性 #887B68 |
+
+所有未知非空细类（包括商店的未知细类）或类别不匹配均回退中性，不删除条目。中文文案不是存储主键。`subtype_detail` 只有 MYSTERIOUS_CAVE，必须位于 FURNITURE 下；表单分组仅活动/商店/其他，卡池只在招募目录维护。旧 LOGIN/MAINTENANCE 编辑时初始展示四组和对应细类，但不改写原 category；用户主动改分组/细类才调整。PUT 的两个可选字段为完整替换，null 清空。建议提交、原始资料、审核、采纳快照和 JSON 预览都显示完整层级。批量导入示例同时包含家具细目与旧 LOGIN 格式。
+
+后端直接将权威目录 `pool_type` 附到日历派生响应，`recruitmentPoolTypes.js` 同时供日历和 `RecruitmentTimeline.vue` 使用。规范化先 trim、英文 lowercase：明确别名为 limited、rerun、zhaoying、choice/select、permanent/standard，以及历史已知“傅融地宫”“重逢限定”。接受由“自选/照影/复刻/限定”组成的类型及可选“卡池/招募”后缀，按自选 > 照影 > 复刻 > 限定的既有优先级判定；常驻及可选后缀单独识别。“常驻限定”“并非限定”或未审查的自由文本均回退中性。仅解析 pool_type，不解析活动标题；招募封面保留原淡金 #F2DFAD、淡蓝 #D9E8F5、淡紫 #E7DCF4、淡红 #F1D5D1。常驻与未知不强标限定。前端不会恢复后端已过滤的隐藏/停用卡池。
+
+日程保持暖白卡与左侧 3px 分类色条，类型标签带文字、浅底和细描边。时间轴使用同一 token 的浅背景和左侧标记，类型/游戏用短文字；结束提醒仅影响倒计时文字，选中使用外框与标题下划线，均不覆盖类型色。月历不染日期格，窄屏最多 3 种不同色点加完整活动数量，桌面最多 2 条带细色线的“类型 · 标题”及 +N；日期按钮的可访问名称含全部类型，选中当日显示完整卡片。颜色不是唯一信息，现有日期边界、重叠、键盘详情和焦点恢复保留。
+
+地宫/泰山府共享紫色和相同关联提示；家具/神秘洞窟共享黄色，洞窟始终显示在家具下。无权威关联标识时不声明同一期、不视觉合并条目；家具/洞窟同档日期由维护者核对。每个记录仍独立计数、时间、ID、订阅和进度。商店按人工需求录入，不由卡池/活动自动派生。未新增定时任务、常驻细类 Chips 或图例，类型文字已说明颜色语义。
+
+现有六种 category 精确筛选和 URL 语义仍保留（LOGIN 与 MAINTENANCE 可单独选择），四组仅负责展示，不扩张筛选状态或后端查询语义。紧凑入口/Bottom Sheet、“不含招募”、时间状态、今日统计、我的订阅、账号游戏锁定均沿用原逻辑。
+
+本任务风险为 L3（兼容新增 API/持久化/导入字段）。最小验证（cwd YuanHub）：
+
+```bash
+node --test test/activityCalendar.test.js test/activityCalendarTypes.test.js test/activityCalendarSuggestions.test.js test/activityCalendarImport.test.js test/activityCalendarViews.test.js
+npx --no-install vitest run behavior/activityCalendarTypes.spec.js behavior/activityCalendarAdmin.spec.js behavior/activityCalendarSuggestions.spec.js behavior/activityCalendarImport.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarFilters.spec.js behavior/activityCalendarSubscriptions.spec.js behavior/recruitmentTimeline.spec.js
+```
+
+本地浏览器证据使用现有 5173 服务和拦截 API 的合成资料，不能代替真实登录/目录联调或真实设备键盘。后端须先支持两个新增可选字段再使用新录入表单；未授权重启现有服务。后端隔离 Mongo 的最小待执行命令参见后端 API 文档。

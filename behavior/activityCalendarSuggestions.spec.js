@@ -286,3 +286,18 @@ it('返回个人列表的nextTick期间换身份，仅由新身份初始化列�
   expect(wrapper.find('[aria-labelledby=suggestion-detail-title]').exists()).toBe(false)
   expect(document.activeElement).not.toBe(wrapper.get('[aria-labelledby=my-suggestions-title]').element)
 })
+
+it('用户建议与审核均携带家具细目，原始资料只读显示完整层级', async () => {
+  const wrapper = render(NewSuggestion); await fill(wrapper)
+  await wrapper.get('#suggestion-subtype').setValue('FURNITURE')
+  await wrapper.get('#suggestion-subtype_detail').setValue('MYSTERIOUS_CAVE')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(api.submitActivityCalendarSuggestion.mock.lastCall[0]).toMatchObject({ subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE' })
+  wrapper.unmount()
+  api.getActivityCalendarSuggestion.mockResolvedValue(suggestion({ original: original({ subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE' }) }))
+  const review = await openReview()
+  expect(review.get('.calendar-suggestion-original').text()).toContain('活动 · 家具 · 神秘洞窟')
+  expect(review.get('#review-subtype_detail').element.value).toBe('MYSTERIOUS_CAVE')
+  await review.get('form').trigger('submit'); await flushPromises()
+  expect(api.acceptActivityCalendarSuggestion.mock.lastCall[1].event).toMatchObject({ subtype: 'FURNITURE', subtype_detail: 'MYSTERIOUS_CAVE' })
+})
