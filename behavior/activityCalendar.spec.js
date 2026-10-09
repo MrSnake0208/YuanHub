@@ -18,7 +18,11 @@ async function render(path = '/calendar') {
   const wrapper = mount(Calendar, { global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
   return { wrapper, router }
 }
-beforeEach(() => { vi.clearAllMocks(); vi.stubGlobal('innerWidth', 390); isFeatureEnabled.mockReturnValue(true); listActivityCalendar.mockResolvedValue({ items: [item()] }) })
+beforeEach(() => {
+  vi.clearAllMocks(); vi.stubGlobal('innerWidth', 390)
+  vi.stubGlobal('matchMedia', vi.fn(() => Object.assign(new EventTarget(), { matches: false })))
+  isFeatureEnabled.mockReturnValue(true); listActivityCalendar.mockResolvedValue({ items: [item()] })
+})
 
 it('访客默认读取全部游戏和服务器90天范围；双来源统一展示且历史排除', async () => {
   listActivityCalendar.mockResolvedValue({ items: [item(), item({ id: 'pool', title: '招募项', game: '代号鸢', category: 'RECRUITMENT', source_type: 'RECRUITMENT_POOL' }), item({ id: 'past', title: '已结束项', start_date: '2020-01-01', end_date: '2020-01-02' })] })
@@ -35,8 +39,9 @@ it('URL筛选、分享、返回更新请求，不出现循环watch或无关query
   const { wrapper, router } = await render('/calendar?game=如鸢&category=ACTIVITY&ref=share')
   await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
-  const button = wrapper.findAll('button').find(node => node.text() === '代号鸢')
-  await button.trigger('click'); await flushPromises()
+  await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
+  Array.from(document.querySelectorAll('#calendar-filter-sheet button')).find(node => node.textContent === '代号鸢').click(); await flushPromises()
+  document.querySelector('.calendar-filter-sheet-header button').click(); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ game: '代号鸢', category: 'ACTIVITY', ref: 'share' })
   expect(listActivityCalendar).toHaveBeenCalledTimes(2)
   await router.push('/calendar?game=如鸢&category=ACTIVITY&ref=other'); await flushPromises()

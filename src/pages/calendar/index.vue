@@ -17,30 +17,28 @@
             <button type="button" :aria-pressed="!mine" @click="setScope(false)">全部活动</button>
             <button type="button" :aria-pressed="mine" @click="setScope(true)">我的订阅</button>
           </div>
+          <button ref="filterTrigger" class="calendar-filter-trigger" type="button" aria-haspopup="dialog" :aria-expanded="filterOpen" aria-controls="calendar-filter-sheet" :aria-label="`筛选活动，当前：${filterSummary}，已启用 ${activeFilterCount} 个筛选条件`" @click="openFilters">
+            <SlidersHorizontal :size="17" aria-hidden="true" /><span>筛选</span>
+            <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
+          </button>
           <AccountSwitcher v-if="!subscriptions.accountLoading.value && !subscriptions.accountError.value" :accounts="subscriptions.accounts.value"
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.confirmDiscard" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
           <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked)">仅未完成</label>
-          <p v-if="mine && subscriptions.account.value" class="calendar-hint">订阅与关卡进度仅当前账号可见。</p>
+          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与关卡进度仅当前账号可见。</p>
         </section>
-        <section class="calendar-filter-inline" aria-label="活动筛选">
-          <CalendarFilterControls :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" />
-        </section>
-        <div class="calendar-filter-state">
-          <button class="calendar-filter-mobile-trigger" type="button" aria-haspopup="dialog" :aria-expanded="filterOpen" aria-controls="calendar-filter-sheet" :aria-label="`筛选活动，当前：${filterSummary}，已启用 ${activeFilterCount} 个筛选条件`" @click="openFilters">
-            <SlidersHorizontal :size="17" aria-hidden="true" />
-            <span>筛选</span>
-            <span class="calendar-filter-summary">{{ filterSummary }}</span>
-            <span v-if="activeFilterCount" class="calendar-filter-count" aria-hidden="true">{{ activeFilterCount }}</span>
-            <ChevronRight :size="17" aria-hidden="true" />
-          </button>
-          <p class="calendar-filter-desktop-summary">{{ filterSummary }}</p>
-          <button v-if="activeFilterCount" class="calendar-filter-clear" type="button" @click="resetFilters">清除筛选</button>
+        <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
+          <p class="calendar-filter-summary">{{ filterSummary }}</p>
+          <div class="calendar-active-filters">
+            <button v-for="condition in activeFilters" :key="condition.key" type="button" :aria-label="`取消筛选：${condition.label}`" @click="removeFilter(condition)">
+              {{ condition.label }}<X :size="14" aria-hidden="true" />
+            </button>
+          </div>
+          <button class="calendar-filter-clear" type="button" @click="resetFilters">清除筛选</button>
         </div>
         <CalendarFilterSheet :open="filterOpen" :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
         <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
-        <p class="calendar-hint calendar-summary-scope">以上为当前游戏、类型及招募条件的公开日历日统计；不按时间状态或完成情况筛选，不是个人订阅数。</p>
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
         <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请选择游戏账号后查看我的订阅。</p>
         <div v-else-if="!viewLoading && !viewError && !visibleItems.length" class="calendar-panel calendar-filter-empty" role="status">
@@ -83,13 +81,13 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCalendarSubscriptions } from '@/composables/useCalendarSubscriptions.js'
 import { subscriptionScope, subscriptionPending, subscriptionScopeQuery } from '@/data/activityCalendarSubscriptions.js'
 import CalendarSubscriptionControls from '@/components/calendar/CalendarSubscriptionControls.vue'
 import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
-import { ChevronRight, LocateFixed, SlidersHorizontal } from '@lucide/vue'
+import { X, LocateFixed, SlidersHorizontal } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CalendarViewSwitcher from '@/components/calendar/CalendarViewSwitcher.vue'
@@ -97,7 +95,6 @@ import CalendarTodaySummary from '@/components/calendar/CalendarTodaySummary.vue
 import CalendarAgendaView from '@/components/calendar/CalendarAgendaView.vue'
 import CalendarTimelineView from '@/components/calendar/CalendarTimelineView.vue'
 import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue'
-import CalendarFilterControls from '@/components/calendar/CalendarFilterControls.vue'
 import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
@@ -116,15 +113,16 @@ const preferredView = ref(calendarView({}, savedView, wide))
 const mine = computed(() => subscriptionScope(route.query))
 const pendingOnly = computed(() => mine.value && subscriptionPending(route.query))
 const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.value ? { game: subscriptions.account.value?.game || '' } : {}) }))
-const filterOpen = ref(false)
-const filterSummary = computed(() => [
-  mine.value ? (filters.value.game ? `${filters.value.game}（账号锁定）` : '请选择账号') : filters.value.game || '全部游戏',
-  CALENDAR_CATEGORIES[filters.value.category] || '全部类型',
-  filters.value.exclude_recruitment ? '不含招募' : '',
-  filters.value.status ? CALENDAR_TIME_FILTERS[filters.value.status] : '',
-  pendingOnly.value ? '仅未完成' : '',
-].filter(Boolean).join(' · '))
-const activeFilterCount = computed(() => Number(!mine.value && !!filters.value.game) + Number(!!filters.value.category) + Number(filters.value.exclude_recruitment) + Number(!!filters.value.status) + Number(pendingOnly.value))
+const filterOpen = ref(false), filterTrigger = ref(null)
+const activeFilters = computed(() => [
+  !mine.value && filters.value.game && { key: 'game', label: filters.value.game, clear: '' },
+  filters.value.category && { key: 'category', label: CALENDAR_CATEGORIES[filters.value.category], clear: '' },
+  filters.value.exclude_recruitment && { key: 'exclude_recruitment', label: '不含招募', clear: false },
+  filters.value.status && { key: 'status', label: CALENDAR_TIME_FILTERS[filters.value.status], clear: '' },
+  pendingOnly.value && { key: 'pending', label: '仅未完成' },
+].filter(Boolean))
+const filterSummary = computed(() => activeFilters.value.map(condition => condition.label).join(' · ') || '未启用筛选')
+const activeFilterCount = computed(() => activeFilters.value.length)
 function openFilters(event) {
   event.currentTarget.focus()
   filterOpen.value = true
@@ -192,10 +190,19 @@ onBeforeUnmount(() => {
   clearTimeout(boundaryTimer)
 })
 function setFilter(patch) { const value = { ...patch }; if (mine.value) delete value.game; return router.replace({ query: calendarFilterQuery(route.query, value) }) }
-function resetFilters() {
+async function removeFilter(condition) {
+  const failure = await (condition.key === 'pending' ? setPending(false) : setFilter({ [condition.key]: condition.clear }))
+  if (failure) return
+  await nextTick()
+  filterTrigger.value?.focus({ preventScroll: true })
+}
+async function resetFilters() {
   const query = calendarFilterQuery(route.query, { ...(mine.value ? {} : { game: '' }), category: '', exclude_recruitment: false, status: '' })
   delete query.pending
-  return router.replace({ query })
+  const failure = await router.replace({ query })
+  if (failure || filterOpen.value) return failure
+  await nextTick()
+  filterTrigger.value?.focus({ preventScroll: true })
 }
 async function setView(view) {
   const failure = await router.replace({ query: calendarViewQuery(route.query, { view }, today.value) })
