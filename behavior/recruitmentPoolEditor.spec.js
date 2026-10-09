@@ -4,6 +4,7 @@ afterAll(() => vi.unstubAllEnvs())
 import { afterAll, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'
+import { dialog } from '../src/utils/dialog.js'
 import { recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
 
 const render = props => mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: recruitmentFixture().pools[0], recordsRevision: 3, records: [{ ...recruitmentEvent('old', 17), agent_snapshot: { agent_id: 'a', name: '甲' } }], canRecord: true, catalog: recruitmentCatalog().pools, agents: [{ id: 'a', name: '甲' }, { id: 'b', name: '乙' }], ...props }, global: { stubs: { Teleport: true } } })
@@ -299,15 +300,18 @@ it('只编辑保底时视口因键盘缩短，滚动真实输入到可见范围�
   wrapper.unmount()
 })
 
-it('Escape取消不写入，重开恢复服务端记录和保底；已确认非UP才显示歪章', async () => {
+it('Escape确认放弃后关闭且不写入，重开恢复服务端记录和保底；已确认非UP才显示歪章', async () => {
+  const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValue(true)
   const event = { ...recruitmentEvent('old', 31), agent_snapshot: { agent_id: 'a', name: '甲' }, up_status: 'non_up' }
   const wrapper = render({ records: [event], pool: { ...recruitmentFixture().pools[0], progress: 21 } })
   await flushPromises()
   expect(wrapper.get('.non-up-stamp').text()).toBe('歪')
-  expect(wrapper.get('.progress-number strong').text()).toBe('21')
+  expect(wrapper.get('.progress-number strong').text()).toBe('19')
   await wrapper.get('.gacha-record .record-detail').trigger('click')
   await button(wrapper, '删除记录').trigger('click')
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  expect(confirm).toHaveBeenCalledTimes(1)
   expect(wrapper.emitted('close')).toHaveLength(1)
   expect(wrapper.emitted('save')).toBeUndefined()
   await wrapper.setProps({ open: false })
