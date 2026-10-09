@@ -1,5 +1,24 @@
 # YuanStar embed 同步说明
 
+## 当前 P2-D 本地提交来源（2026-10-09）
+
+源码 commit：`42ae3599a8173fd6c5e81bcde3a9c2fc21a68a1b`，保持 `feat/growth-plan-workspace-p1`。从已提交 source commit 的干净工作树正式 build，再使用 `node scripts/sync-yuanstar-embed.mjs <source-checkout> <committed-SHA>` 完整同步12文件。脚本拒绝dirty source、错误HEAD及未经审查的资源集合变化；核对字节及SHA-256，manifest记录本commit与clean来源。没有手改生成JS/CSS。
+
+已收口 P2-D 名称汇总批量目标编辑、已达标抵扣、稳定实例分配、人工换选、过期保护、原子本地应用与Undo，以及用户认可的紧凑UI。成功提示保留文案和2600ms，只切换普通信息状态；错误提示保持红色。组分配37项、源码typecheck/规则/JSON专项、embed和库存身份/API行为54项、库存writer26项通过。provenance验证全部资源；隔离截图未入库。详细交付及P3只读协议判断见 [收口报告](./growth-plan-p2d-closeout.md)。以下“未提交”段落仅记录此前阶段状态。
+
+
+## P2-D 组级分配修正（2026-10-09，未提交）
+
+继续从 P2-C source commit 加当前 dirty source 正式 build:embed，完整同步12文件与源码/产物 SHA-256。组目标降序，已达标仅抵扣，待养成分配使用工作区稳定等级/来源位置顺序；预览四列优先与紧凑档位。复用原批量提交、冲突保护及Undo，不改云端/JSON模型或资源扣减。详见 [分配修正报告](./growth-plan-p2d-allocation-review.md)。以下章节是此前阶段记录。
+
+## P2-D 组编辑 UI 收紧（2026-10-09，未提交）
+
+从下述 P2-C commit 加当前 dirty source 正式 build:embed，完整同步12文件并更新源码/产物 SHA-256。仅组编辑模板、样式、统一下拉接线及路线 DOM 高度调整；分配算法与业务持久化保持原样。源码 dirty清单增加 web/src/growth-route-controls.ts。验收见 [UI 调整报告](./growth-plan-p2d-ui-review.md)。旧章节描述为此前交付状态。
+
+## 当前 P2-D 名称汇总批量目标编辑（2026-10-09，未提交）
+
+基于P2-C源码commit `2af9d51a40ea6b083a7f597b28c9d28963f27de5` 的dirty源码正式build:embed，完整同步12文件；manifest记录tracked及新增源码文件hash。名称汇总组目标编辑复用planTargets和原Session/云保存；无groupGoals、无跨generation映射、无资源扣减。保持现有右侧布局/卡片/按钮尺寸。宿主P2-C本地提交为`7cec39af300b197a84b93659b22b9ef9d5ca96e3`；P2-D未提交，不push/PR。下文clean来源为P2-C提交时的历史。
+
 ## 当前 P2-C 本地提交来源（2026-10-09）
 
 源码commit：`2af9d51a40ea6b083a7f597b28c9d28963f27de5`，分支保持`feat/growth-plan-workspace-p1`。从已提交的干净工作树正式build:embed，完整12文件与构建目录/manifest SHA-256一致，保留此前用户UI。未确认库存显示未知，可靠冲突显示实际数量，目标仅出现在反馈中；writer幂等状态机不变。本地提交，不push或PR。下文dirty来源为此前开发历史。

@@ -410,3 +410,242 @@ it('obsolete acceptance cannot overwrite a newly entered account', async () => {
   expect(root.querySelector('[data-growth-bottle="jiezheping"]').disabled).toBe(false)
   expect(root.querySelector('#growth-accept-inventory')).toBeNull()
 })
+
+
+const groupLevelField = level => [...root.querySelectorAll('[data-group-level]')].find(field => field.value === String(level))
+const groupCountField = level => root.querySelector(`[data-group-count="${groupLevelField(level).dataset.groupLevel}"]`)
+function setGroupCount(level, count) { const field = groupCountField(level); field.value = String(count); field.dispatchEvent(new Event('input', { bubbles: true })) }
+const groupRowLevels = () => [...root.querySelectorAll('[data-group-level]')].map(field => Number(field.value))
+async function groupSetup(options = {}) {
+  await setup({ onReadBreakthroughInventory: async () => ({ jiezhuping: 100, jiezheping: 200, jieyangping: 300 }), ...options })
+  await handle.applyCloudBusinessSnapshot({ generation: 2, revision: 2, inventory: [
+    ...[60,60,60,50,40,1,1].map((level,i) => ({ starInstanceId: 'o'+i, kind: '主星', name: '天府', quality: '橙', level })),
+    { starInstanceId: 'p', kind: '主星', name: '天府', quality: '紫', level: 40 },
+    { starInstanceId: 'other', kind: '主星', name: '贪狼', quality: '橙', level: 40 },
+  ], planTargets: { o3:55, o4:50, p:60, other:50 }, bag: { currentCount:9, capacity:250 }, experience: { orange:1, purple:77, white:14 } })
+  root.querySelector('#view-mode-toggle').click()
+  root.querySelector('[data-summary-group-key="主星|天府"]').click()
+  await new Promise(resolve => setTimeout(resolve, 280))
+  expect(root.querySelector('.growth-group-editor')).not.toBeNull()
+}
+function desiredGroup() {
+  for (const level of groupRowLevels()) setGroupCount(level, 0)
+  setGroupCount(60, 5); setGroupCount(50, 2)
+  root.querySelector('#growth-group-preview').click()
+}
+it('group selection isolates qualities and shows actual distribution plus editable preset/extra levels', async () => {
+  await groupSetup()
+  expect(root.querySelector('#growth-group-quality').value).toBe('橙')
+  expect([...root.querySelector('#growth-group-quality').options].map(option => option.value)).toEqual(['橙','紫'])
+  expect(root.querySelector('.growth-group-current').textContent).toContain('60 ×3')
+  expect(groupRowLevels()).toEqual([60,55,50,40,30])
+  expect(groupCountField(60).value).toBe('3'); expect(groupCountField(55).value).toBe('1')
+  expect(groupLevelField(1)).toBeUndefined()
+  const snapshot = await handle.getCloudBusinessSnapshot()
+  change('#growth-group-quality', '紫')
+  expect(root.querySelector('.growth-group-current').textContent).toContain('40 ×1')
+  expect(groupCountField(60).value).toBe('1')
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(snapshot)
+})
+it('group level/count drafts add, delete, sort and Enter never commits a single-star edit', async () => {
+  await groupSetup()
+  const before = await handle.getCloudBusinessSnapshot()
+  const field = groupLevelField(55); field.value='52'; field.dispatchEvent(new Event('change',{bubbles:true}))
+  root.querySelector('#growth-group-add').click()
+  expect(groupRowLevels()).toEqual([60,55,52,50,40,30])
+  setGroupCount(55,2)
+  const entered = groupLevelField(55); entered.value='54'; entered.dispatchEvent(new Event('input',{bubbles:true})); entered.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))
+  await settle(); expect(groupRowLevels()).toContain(54)
+  const key=groupLevelField(54).dataset.groupLevel;root.querySelector(`[data-group-remove="${key}"]`).click()
+  expect(groupRowLevels()).not.toContain(54)
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+})
+it.each(['invalid', 'duplicate', 'capacity'])('group %s draft fails without touching planTargets', async kind => {
+  await groupSetup(); const before = await handle.getCloudBusinessSnapshot()
+  if (kind === 'invalid') { const field=groupLevelField(55); field.value='61';field.dispatchEvent(new Event('input',{bubbles:true})) }
+  else if(kind === 'duplicate') { const field=groupLevelField(55);field.value='60';field.dispatchEvent(new Event('input',{bubbles:true})) }
+  else setGroupCount(60,8)
+  root.querySelector('#growth-group-preview').click()
+  expect(root.querySelector('.growth-group-editor .growth-error')).not.toBeNull()
+  expect(root.querySelector('#growth-group-confirm')).toBeNull()
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+})
+it('group preview manual swaps are ephemeral; one atomic apply updates route and one Undo restores it', async () => {
+  const commit=vi.fn(), saveBottle=vi.fn();await groupSetup({ onBusinessStateCommitted:commit, onSaveBreakthroughInventory:saveBottle })
+  commit.mockClear();const before=await handle.getCloudBusinessSnapshot(), order=routeIds(), owner='growth-probe-'+serial, revision=(await storedWorkspace(owner)).revision
+  desiredGroup()
+  expect(root.querySelectorAll('[data-group-slot]')).toHaveLength(4)
+  expect(root.querySelector('.growth-group-changes').textContent).toContain('调整2项')
+  const slots=[...root.querySelectorAll('[data-group-slot]')];const first=slots[0].value, second=slots[1].value
+  change('#growth-group-slot-0',second)
+  expect(root.querySelector('#growth-group-slot-1').value).toBe(first)
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+  root.querySelector('#growth-group-confirm').click();root.querySelector('#growth-group-confirm')?.click();await settle()
+  const after=await handle.getCloudBusinessSnapshot()
+  expect(root.querySelector('.growth-group-editor .growth-error')?.textContent).toBeUndefined()
+  expect(after.planTargets).toEqual({ o3:60,o4:60,o5:50,o6:50,p:60,other:50 })
+  expect(after.experience).toEqual(before.experience);expect(after.inventory).toEqual(before.inventory)
+  expect(routeIds().filter(id=>order.includes(id))).toEqual(order)
+  expect(routeIds().slice(-2)).toEqual(['o5','o6'])
+  expect((await storedWorkspace(owner)).revision).toBe(revision+1)
+  expect(commit).toHaveBeenCalledTimes(1);expect(saveBottle).not.toHaveBeenCalled()
+  const toast=root.querySelector('.product-toast')
+  expect(toast.textContent).toBe('组目标已应用，可撤销')
+  expect(toast.classList.contains('product-toast-info')).toBe(true)
+  // A later validation error must replace the info tone, rather than inherit success colors.
+  change('[data-growth-experience="purple"]','-1')
+  expect(root.querySelector('.product-toast').textContent).toBe('数量必须为非负整数')
+  expect(root.querySelector('.product-toast').classList.contains('product-toast-info')).toBe(false)
+  root.querySelector('#undo-workspace').click();await settle()
+  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual(before.planTargets);expect(routeIds()).toEqual(order)
+  expect(groupCountField(60).value).toBe('3');expect(groupCountField(55).value).toBe('1')
+  root.querySelector('#view-mode-toggle').click()
+  expect(root.querySelector('[data-star-id="o3"]').textContent).toContain('55')
+})
+it('manual choice of identical-level IDs can replace an unassigned instance; removed targets are explicit', async () => {
+  await groupSetup()
+  for(const level of groupRowLevels())setGroupCount(level,0)
+  setGroupCount(60,4);root.querySelector('#growth-group-preview').click()
+  expect(root.querySelector('.growth-group-changes').textContent).toContain('移除1项')
+  change('#growth-group-slot-0','o6')
+  expect(root.querySelector('.growth-group-changes').textContent).toContain('新增1项')
+  expect(root.querySelector('.growth-group-changes li')).toBeNull()
+  root.querySelector('#growth-group-back').click()
+  expect(groupCountField(60).value).toBe('4')
+  expect(root.querySelector('#growth-group-preview')).not.toBeNull()
+})
+
+it('group quality and assignment dropdowns reuse SoftDropdown without changing plans during preview', async () => {
+  await groupSetup()
+  const before = await handle.getCloudBusinessSnapshot()
+  const quality = root.querySelector('#growth-group-quality')
+  expect(quality.classList.contains('soft-dropdown-native')).toBe(true)
+  setGroupCount(60,4)
+  quality.closest('.soft-dropdown').querySelector('button').click()
+  document.querySelector('.yuanstar-dropdown-portal [role="option"]:first-child').click()
+  expect(groupCountField(60).value).toBe('4')
+  expect(document.activeElement).toBe(quality.closest('.soft-dropdown').querySelector('button'))
+  quality.closest('.soft-dropdown').querySelector('button').click()
+  document.querySelector('.yuanstar-dropdown-portal [role="option"]:last-child').click()
+  expect(root.querySelector('#growth-group-quality').value).toBe('紫')
+  expect(document.activeElement.getAttribute('aria-label')).toBe('品质')
+  expect(root.querySelector('.growth-group-current').textContent).toContain('40 ×1')
+  root.querySelector('#growth-group-preview').click()
+  const slot = root.querySelector('[data-group-slot]')
+  expect(slot.closest('.soft-dropdown').querySelector('button').getAttribute('aria-label')).toContain('名额1')
+  expect(root.querySelector('.growth-group-offset').textContent).toContain('已达标0颗 · 待养成1颗')
+  expect(root.querySelector('.growth-group-preview ul')).toBeNull()
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+})
+it('business data update invalidates preview, reports it and never commits old IDs', async () => {
+  await groupSetup();desiredGroup()
+  const oldConfirm=root.querySelector('#growth-group-confirm'), snapshot=await handle.getCloudBusinessSnapshot()
+  await handle.applyCloudBusinessSnapshot({ ...snapshot, generation:3,revision:3,experience:{...snapshot.experience,purple:999} });await settle()
+  expect(root.querySelector('.growth-group-editor .growth-error').textContent).toContain('重新预览')
+  expect(root.querySelector('#growth-group-confirm')).toBeNull()
+  oldConfirm.click();await settle()
+  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual(snapshot.planTargets)
+})
+it('account switch discards group preview and an obsolete confirmation cannot apply it to B', async () => {
+  await groupSetup();desiredGroup();const oldConfirm=root.querySelector('#growth-group-confirm')
+  await handle.setHostAccount({ accountId:'group-new-'+ ++serial,displayName:'组切换账号 '+serial,gameVersion:'如鸢' });await settle()
+  const before=await handle.getCloudBusinessSnapshot();oldConfirm.click();await settle()
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+  expect(root.querySelector('#growth-group-confirm')).toBeNull()
+})
+it('double-click still drills down and returning restores the selected group and draft scope', async () => {
+  await groupSetup();root.querySelector('[data-summary-group-key="主星|天府"]').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('逐颗明细')
+  expect(root.querySelector('.growth-group-editor')).toBeNull()
+  expect(root.querySelectorAll('#plan-rows [data-star-id]')).toHaveLength(8)
+  root.querySelector('#view-mode-toggle').click()
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('名称汇总')
+  expect(root.querySelector('.growth-group-editor')).not.toBeNull()
+})
+
+it('group saving blocks account switch until its atomic local commit finishes', async () => {
+  await groupSetup();desiredGroup();root.querySelector('#growth-group-confirm').click()
+  await expect(handle.setHostAccount({accountId:'group-save-new-'+ ++serial,displayName:'组保存新账号 '+serial,gameVersion:'如鸢'})).rejects.toThrow('组目标正在保存')
+  await settle();expect((await handle.getCloudBusinessSnapshot()).planTargets.o3).toBe(60)
+})
+it('a replacement generation with identical business values still invalidates preview', async () => {
+  await groupSetup();desiredGroup();const snapshot=await handle.getCloudBusinessSnapshot()
+  await handle.applyCloudBusinessSnapshot({...snapshot,generation:99,revision:99});await settle()
+  expect(root.querySelector('#growth-group-confirm')).toBeNull()
+  expect(root.querySelector('.growth-group-editor .growth-error').textContent).toContain('重新预览')
+})
+it('external IDB revision change rejects batch atomically, reloads latest plan and invalidates preview', async () => {
+  const commit=vi.fn();await groupSetup({onBusinessStateCommitted:commit});commit.mockClear();desiredGroup()
+  const owner='growth-probe-'+serial
+  await new Promise((resolve,reject)=>{const request=indexedDB.open('yuanstar-static');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('workspaces','readwrite'),store=tx.objectStore('workspaces'),get=store.get(owner);get.onsuccess=()=>{const value=get.result;value.revision++;value.snapshot.revision=value.revision;value.snapshot.planTargets.other=55;store.put(value)};tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)}})
+  root.querySelector('#growth-group-confirm').click();await settle()
+  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual({o3:55,o4:50,p:60,other:55})
+  expect(root.querySelector('#growth-group-confirm')).toBeNull()
+  expect(root.querySelector('.growth-group-editor .growth-error').textContent).toContain('重新预览')
+  expect(commit).not.toHaveBeenCalled()
+})
+
+async function allocationSetup(levels, targets = {}) {
+  await setup({onReadBreakthroughInventory:async()=>({jiezhuping:100,jiezheping:200,jieyangping:300})})
+  // Cloud-only hydration owns a canonical source order; capture the existing visible list, not incoming wire-array order.
+  const ids=levels.map((_,i)=>'tie-'+String(levels.length-i).padStart(2,'0'))
+  await handle.applyCloudBusinessSnapshot({generation:3,revision:3,inventory:[
+    ...levels.map((level,i)=>({starInstanceId:ids[i],kind:'主星',name:'天府',quality:'橙',level})),
+    {starInstanceId:'p',kind:'主星',name:'天府',quality:'紫',level:40},
+    {starInstanceId:'other',kind:'主星',name:'贪狼',quality:'橙',level:40}],
+    planTargets:{p:60,other:50,...targets},bag:{currentCount:levels.length+2,capacity:250},experience:{orange:1,purple:77,white:14}})
+  const visibleIds=[...root.querySelectorAll('#plan-rows [data-star-id]')].filter(row=>ids.includes(row.dataset.starId)).map(row=>row.dataset.starId)
+  root.querySelector('#view-mode-toggle').click()
+  root.querySelector('[data-summary-group-key="主星|天府"]').click()
+  await new Promise(resolve=>setTimeout(resolve,280))
+  return visibleIds
+}
+function allocationPreview(sixty, forty) {
+  for(const level of groupRowLevels())setGroupCount(level,0)
+  setGroupCount(60,sixty);setGroupCount(40,forty);root.querySelector('#growth-group-preview').click()
+}
+it.each([
+ ['A',[60,60,40,40,1,1,1,1,1],5,2,[2,3,4,5,6],2],
+ ['B',[60,60,40,40,1,1,1,1,1],4,2,[2,3,4,5],2],
+ ['C',[60,60,60,50,40],5,0,[3,4],3],
+ ['D',[1,1,1,1,1],1,2,[0,1,2],0],
+ ['G',[60,60],2,0,[],2],
+])('allocation Case %s shows only pending slots and stable ordinal, then writes exact targets',async(_name,levels,sixty,forty,positions,achieved)=>{
+  const ids=await allocationSetup(levels),before=await handle.getCloudBusinessSnapshot()
+  allocationPreview(sixty,forty)
+  const slots=[...root.querySelectorAll('[data-group-slot]')]
+  expect(slots.map(s=>s.value)).toEqual(positions.map(i=>ids[i]))
+  expect(root.querySelector('.growth-group-offset').textContent).toBe(`已达标${achieved}颗 · 待养成${positions.length}颗`)
+  slots.forEach((slot,index)=>{
+    const current=levels[positions[index]]
+    expect(slot.selectedOptions[0].textContent).toBe(`${positions[index]+1}号 · 当前${current}`)
+    expect([...slot.options].every(o=>!ids.slice(0,achieved).includes(o.value))).toBe(true)
+  })
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+  if(positions.length){root.querySelector('#growth-group-confirm').click();await settle()}
+  else expect(root.querySelector('#growth-group-confirm').disabled).toBe(true)
+  const after=await handle.getCloudBusinessSnapshot()
+  const targets=Object.fromEntries(positions.map((i,index)=>[ids[i],index<sixty-achieved?60:40]))
+  expect(after.planTargets).toEqual({p:60,other:50,...targets})
+  expect(routeIds().length).toBe(positions.length+2)
+  root.querySelector('#view-mode-toggle').click()
+  const detail=[...root.querySelectorAll('#plan-rows [data-star-id]')].filter(row=>ids.includes(row.dataset.starId))
+  expect(detail.map(row=>row.dataset.starId)).toEqual(ids)
+})
+it('manual pending replacement freezes ordinals, preserves valid swaps and Undo restores previous single plans',async()=>{
+  const levels=[60,60,40,40,1,1,1,1,1],ids=await allocationSetup(levels,{'tie-06':50,'tie-05':60})
+  const before=await handle.getCloudBusinessSnapshot(),order=routeIds()
+  allocationPreview(5,2)
+  change('#growth-group-slot-2',ids[5]);expect(root.querySelector('#growth-group-slot-3').value).toBe(ids[4])
+  change('#growth-group-slot-4',ids[8])
+  expect(root.querySelector('#growth-group-slot-4').selectedOptions[0].textContent).toBe('9号 · 当前1')
+  expect(new Set([...root.querySelectorAll('[data-group-slot]')].map(s=>s.value)).size).toBe(5)
+  expect(await handle.getCloudBusinessSnapshot()).toEqual(before)
+  root.querySelector('#growth-group-confirm').click();await settle()
+  const after=await handle.getCloudBusinessSnapshot()
+  expect(after.planTargets).toEqual({p:60,other:50,[ids[2]]:60,[ids[3]]:60,[ids[5]]:60,[ids[4]]:40,[ids[8]]:40})
+  expect(routeIds().slice(0,order.length)).toEqual(order)
+  expect(routeIds().every(id=>after.planTargets[id]!=null)).toBe(true)
+  root.querySelector('#undo-workspace').click();await settle()
+  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual(before.planTargets);expect(routeIds()).toEqual(order)
+})
