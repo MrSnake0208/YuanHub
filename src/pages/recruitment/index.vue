@@ -1,36 +1,39 @@
 <template>
-  <RecruitmentWorkspace v-if="enabled && hasAccess" />
-  <div v-else class="page-recruitment">
-    <IslandSidebar />
-    <main id="main-content" class="recruitment-main" @keydown.esc="exitGuide">
-      <CompactToolHeader title="招募档案" description="抽完卡，选对卡池，顺手记一笔。">
-        <template v-if="enabled && TUTORIALS_ENABLED" #actions>
-          <div class="guide-entry-wrap">
-            <button ref="entry" type="button" :aria-expanded="picker" @click="picker = !picker">使用教程</button>
-            <RecruitmentGuideChoice v-if="picker" @record="beginRecord" @practice="beginPractice" @close="closePicker" />
-          </div>
-        </template>
-      </CompactToolHeader>
-      <div class="wrap">
-        <p v-if="!enabled">招募档案暂未开放。</p>
-        <template v-else>
-          <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && recordGuide" target="access" :message="accessMessage" />
-          <div data-guide-target="access" class="access-note">
-            <p v-if="!identity">登录后可以记录自己的抽卡。<template v-if="TUTORIALS_ENABLED">也可以先练习，示例不会保存到账号。</template></p>
-            <p v-else-if="recruitmentAccess.loading">正在确认招募档案权限…</p>
-            <p v-else-if="recruitmentAccess.error" role="alert">权限读取失败：{{ recruitmentAccess.error }}</p>
-            <p v-else>当前账号暂没有招募档案权限。<template v-if="TUTORIALS_ENABLED">可以先练习。</template></p>
-            <router-link v-if="!identity" to="/login?redirect=/recruitment">登录并返回</router-link>
-            <button v-else type="button" :disabled="recruitmentAccess.loading" @click="recruitmentAccess.refresh({ force: true })">重新确认权限</button>
-            <button v-if="TUTORIALS_ENABLED && recordGuide" type="button" @click="beginPractice">先练习一下</button>
-            <button v-if="TUTORIALS_ENABLED && recordGuide" type="button" @click="recordGuide = false">退出教程</button>
-          </div>
-        </template>
-      </div>
-      <SiteFooter />
-    </main>
+  <div class="recruitment-route">
+    <!-- 与全站 RouterView 的 out-in 过渡保持兼容：路由页面必须只有一个元素根节点。 -->
+    <RecruitmentWorkspace v-if="enabled && hasAccess" />
+    <div v-else class="page-recruitment">
+      <IslandSidebar />
+      <main id="main-content" class="recruitment-main" @keydown.esc="exitGuide">
+        <CompactToolHeader title="招募档案" description="抽完卡，选对卡池，顺手记一笔。">
+          <template v-if="enabled && TUTORIALS_ENABLED" #actions>
+            <div class="guide-entry-wrap">
+              <button ref="entry" type="button" :aria-expanded="picker" @click="picker = !picker">使用教程</button>
+              <RecruitmentGuideChoice v-if="picker" @record="beginRecord" @practice="beginPractice" @close="closePicker" />
+            </div>
+          </template>
+        </CompactToolHeader>
+        <div class="wrap">
+          <p v-if="!enabled">招募档案暂未开放。</p>
+          <template v-else>
+            <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && recordGuide" target="access" :message="accessMessage" />
+            <div data-guide-target="access" class="access-note">
+              <p v-if="!identity">登录后可以记录自己的抽卡。<template v-if="TUTORIALS_ENABLED">也可以先练习，示例不会保存到账号。</template></p>
+              <p v-else-if="recruitmentAccess.loading">正在确认招募档案权限…</p>
+              <p v-else-if="recruitmentAccess.error" role="alert">权限读取失败：{{ recruitmentAccess.error }}</p>
+              <p v-else>当前账号暂没有招募档案权限。<template v-if="TUTORIALS_ENABLED">可以先练习。</template></p>
+              <router-link v-if="!identity" to="/login?redirect=/recruitment">登录并返回</router-link>
+              <button v-else type="button" :disabled="recruitmentAccess.loading" @click="recruitmentAccess.refresh({ force: true })">重新确认权限</button>
+              <button v-if="TUTORIALS_ENABLED && recordGuide" type="button" @click="beginPractice">先练习一下</button>
+              <button v-if="TUTORIALS_ENABLED && recordGuide" type="button" @click="recordGuide = false">退出教程</button>
+            </div>
+          </template>
+        </div>
+        <SiteFooter />
+      </main>
+    </div>
+    <RecruitmentPractice v-if="TUTORIALS_ENABLED && practice" @close="practice = false" />
   </div>
-  <RecruitmentPractice v-if="TUTORIALS_ENABLED && practice" @close="practice = false" />
 </template>
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'

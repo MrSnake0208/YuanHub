@@ -18,6 +18,13 @@ vi.mock('../src/api/recruitmentAccess.js', () => ({ getRecruitmentAccess: vi.fn(
 const render = () => mount(RecruitmentPage, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: RouterLinkStub } } })
 beforeEach(() => { tutorialFeature.enabled = true; vi.clearAllMocks(); auth.accessToken = ''; auth.userInfo = null; recruitmentAccess.setIdentity(''); getRecruitmentAccess.mockResolvedValue({ canAccess: false }) })
 
+it('招募档案保持单元素根节点，避免全站 out-in 路由过渡进入空白状态', () => {
+  const wrapper = render()
+  expect(wrapper.vm.$el.nodeType).toBe(Node.ELEMENT_NODE)
+  expect(wrapper.find('#main-content').exists()).toBe(true)
+  wrapper.unmount()
+})
+
 it('关闭教程保留匿名登录与权限提示，不暴露练习或教程菜单', async () => {
   tutorialFeature.enabled = false
   const wrapper = render(); await flushPromises()
