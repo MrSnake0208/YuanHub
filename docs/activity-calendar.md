@@ -140,11 +140,11 @@ npm run test:behavior -- behavior/activityCalendarSubscriptions.spec.js behavior
 
 本次已做定向 SFC/JS/CSS 编译解析和 diff 检查；Playwright CLI 复用现有服务，以真实 SFC + 模拟账号/API 检查 320/390/768/1440px 的长名称、44px 入口、面板边界、Escape 焦点恢复及未保存确认的取消/确认分支。未写真实数据，未执行行为回归；真实账号、Safari 与软键盘仍待用户验收。浏览器预览的 Vite HMR WebSocket 被本地网络策略阻止，页面交互检查未出现 JavaScript runtime error。
 
-活动卡支持订阅、取消、恢复及“编辑备忘”。每个登录用户 × 游戏账号 × 本期活动独立保存私人备忘；卡片默认仅展示标题与完成摘要，展开后编辑标题、TODO和文字备注，三视图复用同一控件。标题默认“本期备忘”，去首尾空白后1–60字；可选多行备注最多1000字，可显式清空，按纯文本显示。旧关卡原ID、名称和勾选状态直接成为普通待办，无数据迁移。每期最多50条待办，名称1–80字，新增默认未勾选、可在首次保存前主动勾选；删除确认只作用于当前账号、本期活动，保存后生效，删除最后一项保留删除前草稿的整体完成状态。取消订阅保留标题、清单、备注和进度，同期恢复继续使用；未来新一期不自动订阅。空清单保留独立completed勾选；非空清单只有全部勾选才完成，标题（包括“本期已完成”）及备注不参与完成算法。活动资料仍跟随公开来源。
+活动卡支持订阅、取消、恢复及“编辑备忘”。每个登录用户 × 游戏账号 × 本期活动独立保存私人备忘；卡片默认仅展示标题与完成摘要，展开后编辑标题、TODO和文字备注，三视图复用同一控件。标题默认“本期备忘”，去首尾空白后1–60字；可选多行备注最多1000字，可显式清空，按纯文本显示。旧关卡原ID、名称和勾选状态直接成为普通待办，无数据迁移。每期最多50条待办，名称1–80字，新增默认未勾选、可在首次保存前主动勾选；删除确认只作用于当前账号、本期活动，保存后生效，删除最后一项保留删除前草稿的整体完成状态。取消订阅保留标题、清单、备注和进度，同期恢复继续使用；未来新一期不自动订阅。整体完成使用独立manual_completed开关；缺失覆盖字段的历史记录才沿用清单全部勾选的旧算法，首次TODO编辑前固定旧有效状态（详见文末兼容契约）。标题（包括“本期已完成”）及备注不参与完成算法。活动资料仍跟随公开来源。
 
 “添加待办”立即显示可编辑空行并聚焦名称，空行也触发未保存保护；达到50条时禁用添加并显示上限提示。新待办ID优先使用 `crypto.randomUUID`，缺失时依次使用 `getRandomValues`、时间与随机值，并避免当前清单内重复；ID仅在新建时生成，编辑和保存不改变ID。聚焦使用常规索引，兼容未提供 `Array.prototype.at` 的浏览器。
 
-保存发送memo_title/memo_note与既有checklist/completed/expected_version；后端需先升级以接受新增字段。409或网络结果不明时保留标题、清单和备注草稿、停止旧版本保存；“读取最新状态”先读取，再确认是否替换草稿。切换日期/视图/账号、离开与收起使用现有未保存确认；后台读取和跨日刷新不会替换编辑中的草稿。用户/账号/范围变化后忽略旧请求。来源停用、消失或改游戏后停止提醒，保留备忘标题摘要，展开“查看备忘”只读查看清单/备注，并允许取消；已截止的有效活动可修正已有进度，但不能新订阅或恢复。
+保存发送memo_title/memo_note与既有checklist/completed/expected_version，并在已有独立状态或首次TODO/整体状态操作后发送manual_completed；后端需先升级以接受新增字段。409或网络结果不明时保留标题、清单和备注草稿、停止旧版本保存；“读取最新状态”先读取，再确认是否替换草稿。切换日期/视图/账号、离开与收起使用现有未保存确认；后台读取和跨日刷新不会替换编辑中的草稿。用户/账号/范围变化后忽略旧请求。来源停用、消失或改游戏后停止提醒，保留备忘标题摘要，展开“查看备忘”只读查看清单/备注，并允许取消；已截止的有效活动可修正已有进度，但不能新订阅或恢复。
 
 首页仍在原活动摘要卡内显示当前账号未来7天内、已开始且未完成的订阅，最多3项，先计算全部符合条件的活动数再截取。公共活动统计与私人活动数分开。精确时间按带时区的start_at/end_at判断，到截止瞬间即结束；仅日期的活动按上海服务器日历日处理，明确“具体时间未提供”。截止定时器、跨日及页面恢复刷新负责更新，不新增定时网络轮询。
 
@@ -258,3 +258,32 @@ npx --no-install vitest run behavior/activityCalendarTypes.spec.js behavior/acti
 ```
 
 本地浏览器证据使用现有 5173 服务和拦截 API 的合成资料，不能代替真实登录/目录联调或真实设备键盘。后端须先支持两个新增可选字段再使用新录入表单；未授权重启现有服务。后端隔离 Mongo 的最小待执行命令参见后端 API 文档。
+
+## 整期完成与待办独立（2026-10-09）
+
+编辑备忘展开后，「活动备忘录」标题下的「本期已完成」始终显示，说明「与下方待办清单独立」。单独的「待办事项 · 已完成 X/Y 项」表示个人清单进度；首页临期摘要也分开显示整期状态和待办比例；整期 true + 0/1、整期 false + 2/2 都是合法状态。新增、删除（含最后一条）、勾选和改名不会改变整期状态；备忘标题即使叫「本期已完成」也不参与状态判断。编辑保持默认折叠、最多50条及原草稿/409保护。
+
+| 字段/情况 | 读取与写入语义 |
+| --- | --- |
+| Mongo `manualCompleted` / JSON `manual_completed` 缺失或存储 null | 历史模式：非空checklist取全部完成，空checklist取旧completed；读取不写库 |
+| `manual_completed: true` 或 `false` | 独立整期状态，优先于清单；明确false不会被当成缺失 |
+| 响应 `completed` | 始终为有效整期状态，供列表、详情、仅未完成和首页摘要使用 |
+| 请求 `completed` | 保留旧协议字段语义；未传独立字段时，非空清单仍要求false；新协议可通过manual_completed独立设置true |
+| 请求省略 `manual_completed` | 保留已有覆盖状态；不会清空或迁移。显式null、数字或字符串均422 |
+
+新订阅初始有效状态false，覆盖字段暂缺失以兼容旧客户端。新编辑器首次实际修改TODO（新增、确认删除、勾选、改名）前，先将操作前有效整期状态写入明确覆盖，然后修改清单；首次手动操作整体开关也写覆盖。只改标题/备注、打开编辑器或取消删除均不迁移。旧客户端不传新字段仍使用旧清单协议，但不能擦除已存在的独立覆盖。
+
+保留旧completed、清单项目ID、唯一索引和(account/user/event)边界；不批量迁移。覆盖与备忘同一次版本CAS保存，取消/恢复保留；已截止仍按原规则编辑，来源不可用只读、不进入首页提醒。服务端集中通过isCompleted产生有效completed，前端subscriptionCompleted用相同优先级。useCalendarSubscriptions原样透传草稿可选字段，未保存延迟刷新和保存失败/409确认流程继续复用。
+
+发布顺序：先支持新字段的后端，再前端；当前运行的旧后端严格decoder会拒绝新字段，不应绕过校验。此任务未重启服务或部署。
+
+最小定向验证（分别在前/后端仓库运行）：
+
+```bash
+node --test test/activityCalendarSubscriptions.test.js
+npx --no-install vitest run behavior/activityCalendarSubscriptions.spec.js behavior/activityCalendarSubscriptionApi.spec.js behavior/activityCalendarSubscriptionIdentity.spec.js behavior/todayCalendarSubscriptions.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarFilters.spec.js
+./gradlew test --tests '*ActivityCalendarSubscriptionServiceTest' --tests '*ActivityCalendarSubscriptionControllerContractTest' --tests '*ActivityCalendarSecurityTest' --console=plain
+./gradlew integrationTest --tests '*ActivityCalendarSubscriptionMongoTest' --console=plain
+```
+
+最后一项必须使用TestMongo自有临时容器；不能连接开发/生产数据库。真实设备软键盘仍需人工检查。

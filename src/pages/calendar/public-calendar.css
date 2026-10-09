@@ -232,3 +232,8 @@
 .calendar-memo-note { white-space: pre-wrap; overflow-wrap: anywhere; }
 .calendar-memo-readonly li { overflow-wrap: anywhere; }
 .calendar-subscription button { min-width: 44px; }
+
+.calendar-completion-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
+.calendar-completion-row .calendar-check-row { min-height: 44px; margin: 0; cursor: pointer; }
+.calendar-completion-row .calendar-hint { margin: 0; }
+.calendar-todo-summary { margin: 12px 0 6px; font-weight: 700; }

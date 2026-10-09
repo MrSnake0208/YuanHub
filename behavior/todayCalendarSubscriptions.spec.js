@@ -42,3 +42,10 @@ it('known exact cutoff refreshes once and unmount releases timers', async () => 
   expect(wrapper.text()).not.toContain('本期未完成')
   wrapper.unmount(); expect(vi.getTimerCount()).toBe(0)
 })
+
+it('pending overall status remains explicit when the personal checklist is already complete', async () => {
+  const pending = { ...record('整体未完成'), manual_completed: false, checklist: [{ id: 'old', title: '清单已完成', completed: true }] }
+  calendarSubscriptionSummary.mockResolvedValue({ items: [pending], total_pending: 1, subscribed_count: 1 })
+  render({ accountId: 'a', game: '如鸢' }); await flushPromises()
+  expect(wrapper.get('li').text()).toContain('本期未完成 · 待办已完成 1/1 项')
+})
