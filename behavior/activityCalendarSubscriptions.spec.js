@@ -167,6 +167,66 @@ it('private checklist add rename and finish saves stable entries with version', 
   expect(wrapper.text()).toContain('本期已完成')
   expect(saveCalendarProgress.mock.lastCall[1].expected_version).toBe(1)
 })
+it.each(['randomUUID', 'getRandomValues', 'fallback', 'no crypto'])('adding TODOs with %s creates editable focused rows and saves unique stable IDs', async capability => {
+  const randomUUID = vi.fn(() => '12345678-1234-4234-8234-123456789abc')
+  const getRandomValues = vi.fn(bytes => bytes.fill(7))
+  vi.stubGlobal('crypto', capability === 'no crypto' ? undefined : {
+    randomUUID: capability === 'randomUUID' ? randomUUID : undefined,
+    getRandomValues: ['randomUUID', 'getRandomValues'].includes(capability) ? getRandomValues : undefined,
+  })
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
+  await render('&scope=mine')
+  await button('编辑备忘').trigger('click')
+  await button('添加待办').trigger('click'); await flushPromises()
+  const first = wrapper.get('.calendar-check-row input[type=text]')
+  expect(first.element.value).toBe('')
+  expect(document.activeElement).toBe(first.element)
+  dialog.confirm.mockResolvedValue(false)
+  await button('收起备忘').trigger('click'); await flushPromises()
+  expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '放弃未保存修改？' }))
+  expect(wrapper.find('.calendar-check-row input[type=text]').exists()).toBe(true)
+  await first.setValue('第一项')
+  await button('添加待办').trigger('click'); await flushPromises()
+  const inputs = wrapper.findAll('.calendar-check-row input[type=text]')
+  expect(inputs).toHaveLength(2)
+  expect(inputs[1].element.value).toBe('')
+  expect(document.activeElement).toBe(inputs[1].element)
+  await inputs[1].setValue('第二项')
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  const payload = saveCalendarProgress.mock.lastCall[1]
+  expect(payload).toMatchObject({ account_id: 'a', expected_version: 0, checklist: [
+    { title: '第一项', completed: false }, { title: '第二项', completed: false },
+  ] })
+  const ids = payload.checklist.map(entry => entry.id)
+  expect(new Set(ids).size).toBe(2)
+  ids.forEach(id => expect(id).toMatch(/^[A-Za-z0-9_-]{1,80}$/))
+  if (capability === 'randomUUID') {
+    expect(ids[0]).toBe('12345678-1234-4234-8234-123456789abc')
+    expect(randomUUID).toHaveBeenCalledTimes(2)
+    expect(getRandomValues).not.toHaveBeenCalled()
+  } else if (capability === 'getRandomValues') expect(getRandomValues).toHaveBeenCalledTimes(2)
+  expect(wrapper.text()).toContain('备忘已保存')
+  await wrapper.get('.calendar-check-row input[type=text]').setValue('第一项改名')
+  await button('添加待办').trigger('click'); await flushPromises()
+  await wrapper.findAll('.calendar-check-row input[type=text]')[2].setValue('第三项')
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(server.checklist.slice(0, 2).map(entry => entry.id)).toEqual(ids)
+  expect(new Set(server.checklist.map(entry => entry.id)).size).toBe(3)
+  expect(server.checklist[0].title).toBe('第一项改名')
+})
+
+it('adding a TODO focuses the new row without Array.prototype.at', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
+  await render()
+  await button('编辑备忘').trigger('click')
+  const at = Object.getOwnPropertyDescriptor(Array.prototype, 'at')
+  Object.defineProperty(Array.prototype, 'at', { ...at, value: undefined })
+  try {
+    await button('添加待办').trigger('click'); await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('.calendar-check-row input[type=text]').element)
+  } finally { Object.defineProperty(Array.prototype, 'at', at) }
+})
 it('conflict preserves draft blocks save and requires reading latest before replacement', async () => {
   server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
   await render()
@@ -452,6 +512,9 @@ it('50 TODO limit and canceling deletion preserve current activity data', async 
   await render()
   await button('编辑备忘').trigger('click')
   expect(button('添加待办').attributes('disabled')).toBeDefined()
+  expect(wrapper.text()).toContain('已达 50 条待办上限，删除一条后可继续添加。')
+  await button('添加待办').trigger('click')
+  expect(wrapper.findAll('.calendar-check-row input[type=text]')).toHaveLength(50)
   dialog.confirm.mockResolvedValue(false)
   await button('删除').trigger('click'); await flushPromises()
   expect(wrapper.findAll('.calendar-check-row input[type=text]')).toHaveLength(50)
