@@ -25,8 +25,8 @@
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.switchAccount" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
-          <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked, $event.target)">仅未完成</label>
-          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与活动备忘录仅当前账号可见。</p>
+          <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked, $event.target)">有未完成待办</label>
+          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与活动待办仅当前账号可见。</p>
           <p v-if="subscriptions.contextNotice.value" class="calendar-hint" role="status">{{ subscriptions.contextNotice.value }}</p>
         </section>
         <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
@@ -57,9 +57,9 @@
           <CalendarTimelineView v-else-if="currentView === 'timeline'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" @select-date="setDate" />
           <CalendarMonthView v-else :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" @select-date="setDate" />
         </div>
-        <section v-if="mine && subscriptions.unavailable.value.length" class="calendar-panel" aria-label="不可用的订阅">
+        <section v-if="mine && visibleUnavailable.length" class="calendar-panel" aria-label="不可用的订阅">
           <h2>活动已停用或不可用</h2>
-          <article v-for="record in subscriptions.unavailable.value" :key="record.event_id" class="calendar-event">
+          <article v-for="record in visibleUnavailable" :key="record.event_id" class="calendar-event">
             <p>这项活动已停止提醒，个人记录仍保留。</p>
             <CalendarSubscriptionControls :unavailable="record" />
           </article>
@@ -83,7 +83,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCalendarSubscriptions } from '@/composables/useCalendarSubscriptions.js'
-import { subscriptionScope, subscriptionPending, subscriptionScopeQuery } from '@/data/activityCalendarSubscriptions.js'
+import { subscriptionScope, subscriptionPending, subscriptionScopeQuery, subscriptionHasPending } from '@/data/activityCalendarSubscriptions.js'
 import CalendarSubscriptionControls from '@/components/calendar/CalendarSubscriptionControls.vue'
 import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
@@ -119,7 +119,7 @@ const activeFilters = computed(() => [
   filters.value.category && { key: 'category', label: CALENDAR_CATEGORIES[filters.value.category], clear: '' },
   filters.value.exclude_recruitment && { key: 'exclude_recruitment', label: '不含招募', clear: false },
   filters.value.status && { key: 'status', label: CALENDAR_TIME_FILTERS[filters.value.status], clear: '' },
-  pendingOnly.value && { key: 'pending', label: '仅未完成' },
+  pendingOnly.value && { key: 'pending', label: '有未完成待办' },
 ].filter(Boolean))
 const filterSummary = computed(() => activeFilters.value.map(condition => condition.label).join(' · ') || '未启用筛选')
 const activeFilterCount = computed(() => activeFilters.value.length)
@@ -138,11 +138,12 @@ const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
 const visibleItems = computed(() => {
   const values = mine.value
-    ? normalizeCalendarItems(subscriptions.records.value.filter(record => !pendingOnly.value || !record.completed).map(record => record.item))
+    ? normalizeCalendarItems(subscriptions.records.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)).map(record => record.item))
     : items.value
   return filterCalendarItems(values, filters.value, subscriptions.now.value)
     .filter(item => item.end_date >= requestRange.value.from && item.start_date <= requestRange.value.to)
 })
+const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)))
 const viewLoading = computed(() => mine.value ? subscriptions.loading.value : loading.value)
 const viewError = computed(() => mine.value ? subscriptions.error.value : error.value)
 function setScope(value) { return router.replace({ query: subscriptionScopeQuery(route.query, value) }) }

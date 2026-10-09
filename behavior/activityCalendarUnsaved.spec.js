@@ -20,8 +20,8 @@ const accounts = [{ id: 'a', name: '大号', game: '如鸢' }, { id: 'b', name: 
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 let wrapper, router, server
 const button = text => wrapper.findAll('button').find(node => node.text() === text)
-const title = () => wrapper.get('[aria-label="备忘标题"]')
-const status = () => wrapper.get('.calendar-memo-status').text()
+const title = () => wrapper.get('.calendar-check-row input[type=text]')
+const status = () => wrapper.get('.calendar-todo-status').text()
 async function settle(discard = false) { dialog[discard ? '_confirm' : '_cancel'](); await flushPromises() }
 async function render(query = '') {
   router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/calendar', component: Calendar }, { path: '/:pathMatch(.*)*', component: { template: '<div>other</div>' } }] })
@@ -29,7 +29,7 @@ async function render(query = '') {
   wrapper = mount({ components: { AppDialog }, template: '<router-view /><AppDialog />' }, { attachTo: document.body, global: { plugins: [router], stubs: { IslandSidebar: true, SiteFooter: true } } })
   await flushPromises()
 }
-async function edit() { await button('编辑备忘').trigger('click'); await title().setValue('草稿标题') }
+async function edit() { await button('编辑待办').trigger('click'); await title().setValue('草稿待办') }
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z'))
   const media = new EventTarget(); media.matches = false; vi.stubGlobal('matchMedia', vi.fn(() => media))
@@ -40,32 +40,26 @@ beforeEach(() => {
   listCalendarSubscriptions.mockImplementation(async ({ account_id }) => ({ items: [{ ...server, memo_title: account_id === 'a' ? server.memo_title : 'B的备忘' }], subscribed_count: 1 }))
   getCalendarSubscription.mockImplementation(async () => server)
   setCalendarSubscription.mockImplementation(async (id, body) => ({ ...server, subscribed: body.subscribed, version: server.version + 1 }))
-  saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, ...body, version: server.version + 1 }; return server })
+  saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, checklist: body.checklist, completed: body.checklist.length > 0 && body.checklist.every(entry => entry.completed), version: server.version + 1 }; return server })
 })
 afterEach(() => { if (dialog._state.visible) dialog._cancel(); wrapper?.unmount(); vi.useRealTimers() })
 
-it.each(['title', 'note', 'completion', 'TODO name', 'TODO check', 'blank TODO', 'delete TODO'])('%s shows unsaved immediately and reverting restores the semantic baseline', async field => {
+it.each(['TODO name', 'TODO check', 'blank TODO', 'delete TODO'])('%s shows unsaved immediately and reverting restores the semantic baseline', async field => {
   // Missing manual_completed is a real legacy record, not just a property order change.
-  await render(); await button('编辑备忘').trigger('click')
+  await render(); await button('编辑待办').trigger('click')
   expect(status()).toBe('已保存')
-  if (field === 'title') await title().setValue('改名')
-  if (field === 'note') await wrapper.get('textarea').setValue('新备注')
-  if (field === 'completion') await wrapper.get('.calendar-completion-row input').setValue(true)
   if (field === 'TODO name') await wrapper.get('.calendar-check-row input[type=text]').setValue('新待办')
   if (field === 'TODO check') await wrapper.get('.calendar-check-target input').setValue(true)
   if (field === 'blank TODO') await button('添加待办').trigger('click')
   if (field === 'delete TODO') { await button('删除').trigger('click'); await settle(true) }
   expect(status()).toBe('有未保存修改')
-  expect(button('保存备忘').element.disabled).toBe(false)
-  if (field === 'title') await title().setValue('原始标题')
-  if (field === 'note') await wrapper.get('textarea').setValue('原始备注')
-  if (field === 'completion') await wrapper.get('.calendar-completion-row input').setValue(false)
+  expect(button('保存待办').element.disabled).toBe(false)
   if (field === 'TODO name') await wrapper.get('.calendar-check-row input[type=text]').setValue('第一项')
   if (field === 'TODO check') await wrapper.get('.calendar-check-target input').setValue(false)
   if (field === 'blank TODO') { await wrapper.findAll('.calendar-check-row button')[1].trigger('click'); await settle(true) }
   if (field !== 'delete TODO') {
-    expect(status()).toBe('已保存'); expect(button('保存备忘').element.disabled).toBe(true)
-    await button('收起备忘').trigger('click'); expect(dialog._state.visible).toBe(false)
+    expect(status()).toBe('已保存'); expect(button('保存待办').element.disabled).toBe(true)
+    await button('收起待办').trigger('click'); expect(dialog._state.visible).toBe(false)
   }
 })
 
@@ -80,12 +74,12 @@ it.each(queries)('route %j cancels before URL/filter/editor change, then confirm
   title().element.focus()
   const navigation = router.replace({ query: { ...router.currentRoute.value.query, ...patch } })
   await flushPromises()
-  expect(dialog._state.title).toBe('还有未保存的备忘修改')
+  expect(dialog._state.title).toBe('还有未保存的待办修改')
   expect(document.activeElement.textContent).toBe('继续编辑')
   expect(router.currentRoute.value.fullPath).toBe(before)
   await settle(); await navigation
   expect(router.currentRoute.value.fullPath).toBe(before)
-  expect(title().element.value).toBe('草稿标题')
+  expect(title().element.value).toBe('草稿待办')
   expect(document.activeElement).toBe(title().element)
   const confirmed = router.replace({ query: { ...router.currentRoute.value.query, ...patch } }); await flushPromises(); await settle(true); await confirmed
   expect(router.currentRoute.value.query).toMatchObject(patch)
@@ -93,12 +87,12 @@ it.each(queries)('route %j cancels before URL/filter/editor change, then confirm
 })
 
 it('clean close, view/filter changes and leaving have no prompt; opening filters while dirty is harmless', async () => {
-  await render(); await button('编辑备忘').trigger('click'); await button('收起备忘').trigger('click')
+  await render(); await button('编辑待办').trigger('click'); await button('收起待办').trigger('click')
   await button('月历').trigger('click'); await flushPromises()
   await router.replace({ query: { ...router.currentRoute.value.query, status: 'ongoing' } }); await flushPromises()
   expect(dialog._state.visible).toBe(false)
   await edit(); await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
-  expect(dialog._state.visible).toBe(false); expect(title().element.value).toBe('草稿标题')
+  expect(dialog._state.visible).toBe(false); expect(title().element.value).toBe('草稿待办')
   document.querySelector('.calendar-filter-sheet-header button').click(); await flushPromises()
   const leave = router.push('/other'); await flushPromises(); await settle(); await leave
   expect(router.currentRoute.value.path).toBe('/calendar')
@@ -108,10 +102,10 @@ it('clean close, view/filter changes and leaving have no prompt; opening filters
 
 it('collapse cancellation via Esc returns focus; discard collapses without server writes', async () => {
   await render(); await edit()
-  const trigger = button('收起备忘'); trigger.element.focus(); await trigger.trigger('click'); await flushPromises()
+  const trigger = button('收起待办'); trigger.element.focus(); await trigger.trigger('click'); await flushPromises()
   expect(document.activeElement.textContent).toBe('继续编辑')
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
-  expect(document.activeElement).toBe(trigger.element); expect(title().element.value).toBe('草稿标题')
+  expect(document.activeElement).toBe(trigger.element); expect(title().element.value).toBe('草稿待办')
   await trigger.trigger('click'); await flushPromises(); await settle(true)
   expect(wrapper.find('.calendar-checklist').exists()).toBe(false)
   expect(server.memo_title).toBe('原始标题'); expect(saveCalendarProgress).not.toHaveBeenCalled()
@@ -120,10 +114,10 @@ it('collapse cancellation via Esc returns focus; discard collapses without serve
 it('global account changes are held before resetting drafts; normal switcher does not prompt twice', async () => {
   await render('&scope=mine'); await edit()
   activeAccount.set('b'); await flushPromises()
-  expect(activeAccount.id).toBe('a'); expect(title().element.value).toBe('草稿标题')
+  expect(activeAccount.id).toBe('a'); expect(title().element.value).toBe('草稿待办')
   await settle(); expect(activeAccount.id).toBe('a')
   activeAccount.set('b'); await flushPromises(); await settle(true)
-  expect(activeAccount.id).toBe('b'); expect(wrapper.text()).toContain('B的备忘')
+  expect(activeAccount.id).toBe('b'); expect(wrapper.get('.context-selector').text()).toContain('小号')
   await edit()
   await wrapper.getComponent(AccountSwitcher).get('.context-selector').trigger('click'); await flushPromises()
   document.querySelector('[data-account-id="a"]').click(); await flushPromises()
@@ -141,30 +135,30 @@ it.each(['logout', 'permission', 'identity', 'account removed', 'account game ch
   await flushPromises()
   expect(dialog._state.visible).toBe(false)
   expect(wrapper.find('.calendar-checklist').exists()).toBe(false)
-  expect(wrapper.text()).not.toContain('草稿标题')
-  expect(wrapper.text()).toContain('未保存的备忘已清除')
+  expect(wrapper.text()).not.toContain('草稿待办')
+  expect(wrapper.text()).toContain('未保存的待办已清除')
 })
 
 it('account metadata refresh preserves editing; inactive pending consent cannot switch a new identity', async () => {
   await render('&scope=mine'); await edit()
   publishAccountList(accounts.map(account => ({ ...account, name: account.name + '更新' }))); await flushPromises()
-  expect(title().element.value).toBe('草稿标题'); expect(dialog._state.visible).toBe(false)
+  expect(title().element.value).toBe('草稿待办'); expect(dialog._state.visible).toBe(false)
   activeAccount.set('b'); await flushPromises()
   auth.userInfo = { id: 'new-user' }; await flushPromises(); await settle(true)
-  expect(activeAccount.id).toBe('a'); expect(wrapper.text()).not.toContain('草稿标题')
+  expect(activeAccount.id).toBe('a'); expect(wrapper.text()).not.toContain('草稿待办')
 })
 
 it.each([409, 500, 400, undefined])('save failure %s retains draft and warns until explicit refresh acceptance', async code => {
   await render(); await edit()
   saveCalendarProgress.mockRejectedValueOnce(Object.assign(new Error('失败'), { status: code }))
   await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(status()).toBe('未保存，修改仍在此页面'); expect(title().element.value).toBe('草稿标题')
+  expect(status()).toBe('保存失败，修改仍在此页面'); expect(title().element.value).toBe('草稿待办')
   const unload = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(unload); expect(unload.defaultPrevented).toBe(true)
   if (code !== 400) {
     await button('读取最新状态').trigger('click'); await flushPromises(); await settle()
-    expect(title().element.value).toBe('草稿标题')
+    expect(title().element.value).toBe('草稿待办')
     await button('读取最新状态').trigger('click'); await flushPromises(); await settle(true)
-    expect(title().element.value).toBe('原始标题'); expect(status()).toBe('已保存')
+    expect(title().element.value).toBe('第一项'); expect(status()).toBe('已保存')
   }
 })
 
@@ -173,7 +167,7 @@ it('pending save stays unsaved, ignores double submit, then server success remov
   const late = deferred(); saveCalendarProgress.mockReturnValueOnce(late.promise)
   await wrapper.get('form').trigger('submit'); await wrapper.get('form').trigger('submit')
   expect(status()).toBe('保存中…'); expect(saveCalendarProgress).toHaveBeenCalledTimes(1)
-  late.resolve({ ...server, memo_title: '草稿标题', version: 2 }); await flushPromises()
+  late.resolve({ ...server, checklist: [{ id: 'one', title: '草稿待办', completed: false }], version: 2 }); await flushPromises()
   expect(status()).toBe('已保存')
   const unload = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(unload); expect(unload.defaultPrevented).toBe(false)
   await router.push('/other'); await flushPromises(); expect(dialog._state.visible).toBe(false)
@@ -185,7 +179,7 @@ it.each(['月历', '时间轴', '日程'])('late public refresh cannot unmount t
   const late = deferred(); listActivityCalendar.mockReturnValueOnce(late.promise)
   window.dispatchEvent(new Event('pageshow')); await flushPromises()
   await edit(); late.resolve({ items: [] }); await flushPromises()
-  expect(title().element.value).toBe('草稿标题'); expect(status()).toBe('有未保存修改')
+  expect(title().element.value).toBe('草稿待办'); expect(status()).toBe('有未保存修改')
   const reads = listActivityCalendar.mock.calls.length
   await wrapper.get('form').trigger('submit'); await flushPromises()
   expect(listActivityCalendar).toHaveBeenCalledTimes(reads + 1)
@@ -194,17 +188,17 @@ it.each(['月历', '时间轴', '日程'])('late public refresh cannot unmount t
 
 it('rapid competing leave actions use one dialog and cannot also unsubscribe', async () => {
   await render(); await edit()
-  await button('收起备忘').trigger('click'); await flushPromises()
-  await button('取消订阅').trigger('click'); await button('收起备忘').trigger('click'); await flushPromises()
+  await button('收起待办').trigger('click'); await flushPromises()
+  await button('取消订阅').trigger('click'); await button('收起待办').trigger('click'); await flushPromises()
   expect(dialog._state.visible).toBe(true)
   await settle(true)
   expect(wrapper.find('form').exists()).toBe(false); expect(setCalendarSubscription).not.toHaveBeenCalled()
 })
 
-it.each(['取消订阅', '收起备忘'])('%s cancellation preserves current memo; consent only affects this activity', async action => {
+it.each(['取消订阅', '收起待办'])('%s cancellation preserves current memo; consent only affects this activity', async action => {
   await render('&scope=mine'); await edit()
   await button(action).trigger('click'); await flushPromises(); await settle()
-  expect(title().element.value).toBe('草稿标题'); expect(setCalendarSubscription).not.toHaveBeenCalled()
+  expect(title().element.value).toBe('草稿待办'); expect(setCalendarSubscription).not.toHaveBeenCalled()
   await button(action).trigger('click'); await flushPromises(); await settle(true)
   expect(wrapper.find('form').exists()).toBe(false)
   expect(server.memo_title).toBe('原始标题')
@@ -216,14 +210,14 @@ it('back/forward cancellation and clearing filters keep exact URL and draft unti
   await router.push({ query: { view: 'agenda', status: 'ongoing', category: 'ACTIVITY' } }); await flushPromises(); await edit()
   const original = router.currentRoute.value.fullPath
   router.back(); await flushPromises(); await settle()
-  expect(router.currentRoute.value.fullPath).toBe(original); expect(title().element.value).toBe('草稿标题')
+  expect(router.currentRoute.value.fullPath).toBe(original); expect(title().element.value).toBe('草稿待办')
   await wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises(); await settle()
-  expect(router.currentRoute.value.fullPath).toBe(original); expect(title().element.value).toBe('草稿标题')
+  expect(router.currentRoute.value.fullPath).toBe(original); expect(title().element.value).toBe('草稿待办')
   router.back(); await flushPromises(); await settle(true)
   expect(router.currentRoute.value.query.status).toBeUndefined()
   await edit(); const backUrl = router.currentRoute.value.fullPath
   router.forward(); await flushPromises(); await settle()
-  expect(router.currentRoute.value.fullPath).toBe(backUrl); expect(title().element.value).toBe('草稿标题')
+  expect(router.currentRoute.value.fullPath).toBe(backUrl); expect(title().element.value).toBe('草稿待办')
 })
 
 it('timeline detail switching and closing wait for explicit discard', async () => {
@@ -232,9 +226,9 @@ it('timeline detail switching and closing wait for explicit discard', async () =
   await render(); await button('时间轴').trigger('click'); await flushPromises()
   await wrapper.findAll('.calendar-timeline-bar')[0].trigger('click'); await flushPromises(); await edit()
   await wrapper.findAll('.calendar-timeline-bar')[1].trigger('click'); await flushPromises(); await settle()
-  expect(title().element.value).toBe('草稿标题')
+  expect(title().element.value).toBe('草稿待办')
   await button('关闭详情').trigger('click'); await flushPromises(); await settle()
-  expect(title().element.value).toBe('草稿标题')
+  expect(title().element.value).toBe('草稿待办')
   await wrapper.findAll('.calendar-timeline-bar')[1].trigger('click'); await flushPromises(); await settle(true)
   expect(wrapper.get('#calendar-timeline-detail').text()).toContain('另一期活动'); expect(wrapper.find('form').exists()).toBe(false)
 })
@@ -247,9 +241,9 @@ it('a late refresh read never replaces an already open leave confirmation', asyn
   await button('读取最新状态').trigger('click'); await flushPromises()
   const leave = router.push('/other'); await flushPromises()
   late.resolve(server); await flushPromises()
-  expect(dialog._state.title).toBe('还有未保存的备忘修改')
+  expect(dialog._state.title).toBe('还有未保存的待办修改')
   await settle(); await leave
-  expect(router.currentRoute.value.path).toBe('/calendar'); expect(title().element.value).toBe('草稿标题')
+  expect(router.currentRoute.value.path).toBe('/calendar'); expect(title().element.value).toBe('草稿待办')
 })
 
 it('saving one activity does not overwrite a different dirty activity or its completion', async () => {
@@ -258,15 +252,17 @@ it('saving one activity does not overwrite a different dirty activity or its com
   listActivityCalendar.mockResolvedValue({ items: [event, other] })
   listCalendarSubscriptions.mockImplementation(async () => ({ items: [server, otherRecord], subscribed_count: 2 }))
   await render()
-  for (const toggle of wrapper.findAll('button').filter(node => node.text() === '编辑备忘')) await toggle.trigger('click')
-  const titles = wrapper.findAll('[aria-label="备忘标题"]')
+  for (const toggle of wrapper.findAll('button').filter(node => node.text() === '编辑待办')) await toggle.trigger('click')
+  const titles = wrapper.findAll('.calendar-check-row input[type=text]')
   await titles[0].setValue('第一个草稿'); await titles[1].setValue('第二个草稿')
-  await wrapper.findAll('textarea')[1].setValue('第二个备注')
+  await wrapper.findAll('.calendar-check-target input')[1].setValue(true)
   await wrapper.findAll('form')[0].trigger('submit'); await flushPromises()
-  expect(wrapper.findAll('[aria-label="备忘标题"]')[1].element.value).toBe('第二个草稿')
-  expect(wrapper.findAll('textarea')[1].element.value).toBe('第二个备注')
-  expect(wrapper.findAll('.calendar-completion-row input')[1].element.checked).toBe(true)
-  expect(wrapper.findAll('.calendar-memo-status')[1].text()).toBe('有未保存修改')
+  expect(wrapper.findAll('.calendar-check-row input[type=text]')[1].element.value).toBe('第二个草稿')
+  expect(otherRecord.memo_note).toBe('原始备注')
+  expect(otherRecord.memo_title).toBe('另一备忘')
+  expect(wrapper.findAll('.calendar-check-target input')[1].element.checked).toBe(true)
+  expect(otherRecord.manual_completed).toBe(true)
+  expect(wrapper.findAll('.calendar-todo-status')[1].text()).toBe('有未保存修改')
 })
 
 it('an invalid initial selection can choose its first valid account without a discard prompt', async () => {
@@ -275,7 +271,7 @@ it('an invalid initial selection can choose its first valid account without a di
   await wrapper.getComponent(AccountSwitcher).get('.context-selector').trigger('click'); await flushPromises()
   document.querySelector('[data-account-id="a"]').click(); await flushPromises()
   expect(activeAccount.id).toBe('a'); expect(dialog._state.visible).toBe(false)
-  expect(button('编辑备忘')).toBeDefined()
+  expect(button('编辑待办')).toBeDefined()
 })
 
 it('account re-read preserves the editor and cannot resurrect an account removed by a newer list update', async () => {
@@ -283,12 +279,12 @@ it('account re-read preserves the editor and cannot resurrect an account removed
   const state = wrapper.findComponent(Calendar).vm.$.setupState.subscriptions
   const late = deferred(); listAccounts.mockReturnValueOnce(late.promise)
   const reread = state.loadAccounts(); await flushPromises()
-  expect(title().element.value).toBe('草稿标题')
+  expect(title().element.value).toBe('草稿待办')
   publishAccountList([accounts[1]]); await flushPromises()
   late.resolve(accounts); await reread; await flushPromises()
   expect(state.account.value).toBeNull()
   expect(wrapper.find('form').exists()).toBe(false)
-  expect(wrapper.text()).toContain('未保存的备忘已清除')
+  expect(wrapper.text()).toContain('未保存的待办已清除')
 })
 
 it('canceling the pending-only checkbox restores its DOM state as well as the URL', async () => {
@@ -297,7 +293,7 @@ it('canceling the pending-only checkbox restores its DOM state as well as the UR
   await pending.setValue(true); await flushPromises(); await settle()
   expect(router.currentRoute.value.query.pending).toBeUndefined()
   expect(pending.element.checked).toBe(false)
-  expect(title().element.value).toBe('草稿标题')
+  expect(title().element.value).toBe('草稿待办')
   await pending.setValue(true); await flushPromises(); await settle(true)
   expect(router.currentRoute.value.query.pending).toBe('1')
   expect(pending.element.checked).toBe(true)

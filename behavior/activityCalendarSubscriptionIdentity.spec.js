@@ -104,7 +104,7 @@ it('A→B→A never adopts the first A mutation or starts a PUT after a late pre
   expect(await save).toBeNull(); await subscribe
   expect(setCalendarSubscription).not.toHaveBeenCalled(); expect(wrapper.text()).toBe('')
 })
-it.each([{ event_id: 'foreign', version: 1 }, { event_id: 'event', version: 0 }])('unconfirmed save response %j cannot change the accepted record', async result => {
+it.each([{ event_id: 'foreign', version: 1 }, { event_id: 'event', version: 0 }, { event_id: 'event', version: 1, completed: true, checklist: [] }])('unconfirmed save response %j cannot change the accepted record', async result => {
   await render(); saveCalendarProgress.mockResolvedValueOnce(result)
   await expect(state.progress('event', 0, { completed: false, checklist: [] })).rejects.toThrow('保存结果需要确认')
   expect(wrapper.text()).toBe('')

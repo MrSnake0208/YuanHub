@@ -1,15 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { progressDraft, subscriptionCompleted, subscriptionScope, subscriptionPending, subscriptionScopeQuery } from '../src/data/activityCalendarSubscriptions.js'
+import { progressDraft, subscriptionCompleted, subscriptionScope, subscriptionPending, subscriptionScopeQuery, subscriptionHasPending, subscriptionProgress } from '../src/data/activityCalendarSubscriptions.js'
 import { calendarDeadline, calendarEnded, calendarStatuses, normalizeCalendarItem } from '../src/data/activityCalendar.js'
 
-test('whole activity and nonempty checklist completion remain distinct and drafts are copies', () => {
+test('only nonempty checklists complete and drafts are isolated copies', () => {
   assert.equal(subscriptionCompleted({ completed: false, checklist: [] }), false)
-  assert.equal(subscriptionCompleted({ completed: true, checklist: [] }), true)
+  assert.equal(subscriptionCompleted({ completed: true, checklist: [] }), false)
   const record = { completed: true, checklist: [{ id: 'a', title: '第一关', completed: true }, { id: 'b', title: '第二关', completed: false }] }
   assert.equal(subscriptionCompleted(record), false)
   const draft = progressDraft(record)
-  assert.equal(draft.completed, false)
+  assert.deepEqual(Object.keys(draft), ['checklist'])
   draft.checklist[1].completed = true
   assert.equal(subscriptionCompleted(draft), true)
   assert.equal(record.checklist[1].completed, false)
@@ -48,30 +48,22 @@ test('precise instants override source dates across timezones', () => {
   assert.equal(calendarDeadline(future, '2026-10-05', now), '今天稍后开始')
 })
 
-test('legacy memo defaults preserve checklist IDs and custom title never means completed', () => {
-  const legacy = { completed: false, checklist: [{ id: 'old-id', title: '旧关卡', completed: false }] }
-  const draft = progressDraft(legacy)
-  assert.equal(draft.memo_title, '本期备忘')
-  assert.equal(draft.memo_note, '')
-  assert.deepEqual(draft.checklist, legacy.checklist)
-  const custom = progressDraft({ ...legacy, memo_title: '本期已完成', memo_note: '兑换提示\n保留换行' })
-  assert.equal(custom.memo_title, '本期已完成')
-  assert.equal(custom.memo_note, '兑换提示\n保留换行')
-  assert.equal(subscriptionCompleted(custom), false)
-  assert.equal(subscriptionCompleted({ ...custom, checklist: [] }), false)
-  assert.equal(progressDraft({ memo_note: '' }).memo_note, '')
-})
-
-test('explicit manual booleans override legacy progress and draft never invents a migration', () => {
-  for (const manual of [true, false]) {
-    for (const checklist of [[], [{ id: 'stable', title: '旧待办', completed: !manual }]]) {
-      const record = { completed: !manual, checklist, manual_completed: manual }
-      assert.equal(subscriptionCompleted(record), manual)
-      assert.equal(progressDraft(record).manual_completed, manual)
-      assert.equal(subscriptionCompleted(progressDraft(record)), manual)
+test('historical booleans never override TODO state or enter checklist drafts', () => {
+  for (const manual of [true, false, null, undefined]) {
+    for (const checklist of [[], [{ id: 'stable', title: '旧待办', completed: true }], [{ id: 'stable', title: '旧待办', completed: false }]]) {
+      const record = { completed: true, checklist, manual_completed: manual, memo_title: '旧标题', memo_note: '保留\n备注' }
+      const draft = progressDraft(record)
+      assert.deepEqual(draft, { checklist })
+      assert.equal(subscriptionCompleted(record), checklist.length > 0 && checklist.every(entry => entry.completed))
+      assert.equal(subscriptionHasPending(record), checklist.some(entry => !entry.completed))
+      assert.equal(record.memo_note, '保留\n备注')
+      assert.equal(record.manual_completed, manual)
     }
   }
-  for (const record of [null, { completed: true, checklist: [] }, { completed: true, checklist: [{ id: 'old', title: '旧', completed: true }], manual_completed: null }]) {
-    assert.equal(Object.hasOwn(progressDraft(record), 'manual_completed'), false)
-  }
+})
+test('progress uses empty, partial and completed labels without overall state', () => {
+  assert.equal(subscriptionProgress({ checklist: [] }), '暂无待办')
+  const checklist = [true, false, false].map((completed, i) => ({ id: String(i), title: '项', completed }))
+  assert.equal(subscriptionProgress({ checklist }), '待办事项 · 已完成 1/3 项')
+  assert.equal(subscriptionProgress({ checklist: checklist.map(entry => ({ ...entry, completed: true })) }), '待办全部完成')
 })

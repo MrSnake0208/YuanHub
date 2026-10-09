@@ -1,17 +1,19 @@
 export const CALENDAR_SUBSCRIPTIONS = Symbol('calendar-subscriptions')
 export const DEFAULT_MEMO_TITLE = '本期备忘'
 export function subscriptionCompleted(record) {
-  if (typeof record?.manual_completed === 'boolean') return record.manual_completed
-  return record?.checklist?.length ? record.checklist.every(entry => entry.completed) : record?.completed === true
+  return !!record?.checklist?.length && record.checklist.every(entry => entry.completed)
+}
+export function subscriptionHasPending(record) {
+  return !!record?.checklist?.some(entry => !entry.completed)
+}
+export function subscriptionProgress(record) {
+  const entries = record?.checklist || []
+  if (!entries.length) return '暂无待办'
+  if (subscriptionCompleted(record)) return '待办全部完成'
+  return `待办事项 · 已完成 ${entries.filter(entry => entry.completed).length}/${entries.length} 项`
 }
 export function progressDraft(record) {
-  return {
-    completed: record?.checklist?.length ? false : record?.completed === true,
-    ...(typeof record?.manual_completed === 'boolean' ? { manual_completed: record.manual_completed } : {}),
-    checklist: (record?.checklist || []).map(entry => ({ ...entry })),
-    memo_title: record?.memo_title ?? DEFAULT_MEMO_TITLE,
-    memo_note: record?.memo_note ?? '',
-  }
+  return { checklist: (record?.checklist || []).map(entry => ({ ...entry })) }
 }
 export function subscriptionScope(query) { return (Array.isArray(query.scope) ? query.scope[0] : query.scope) === 'mine' }
 export function subscriptionPending(query) { return (Array.isArray(query.pending) ? query.pending[0] : query.pending) === '1' }

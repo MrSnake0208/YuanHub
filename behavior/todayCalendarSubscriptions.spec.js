@@ -14,7 +14,7 @@ it('no account makes no private request and subscribed empty state differs from 
   render({ accountId: '' }); await flushPromises(); expect(calendarSubscriptionSummary).not.toHaveBeenCalled()
   calendarSubscriptionSummary.mockResolvedValue({ items: [], total_pending: 0, subscribed_count: 4 })
   await wrapper.setProps({ accountId: 'a' }); await flushPromises()
-  expect(wrapper.text()).toContain('近期没有尚未完成')
+  expect(wrapper.text()).toContain('近期没有需要提醒')
 })
 it('summary shows exact date plus remaining time with activity count and mine links', async () => {
   calendarSubscriptionSummary.mockResolvedValue({ items: [record('活动一'), record('活动二'), record('活动三')], total_pending: 5, subscribed_count: 8 })
@@ -43,9 +43,18 @@ it('known exact cutoff refreshes once and unmount releases timers', async () => 
   wrapper.unmount(); expect(vi.getTimerCount()).toBe(0)
 })
 
-it('pending overall status remains explicit when the personal checklist is already complete', async () => {
+it('historical manual completion never changes rendered checklist progress', async () => {
   const pending = { ...record('整体未完成'), manual_completed: false, checklist: [{ id: 'old', title: '清单已完成', completed: true }] }
   calendarSubscriptionSummary.mockResolvedValue({ items: [pending], total_pending: 1, subscribed_count: 1 })
   render({ accountId: 'a', game: '如鸢' }); await flushPromises()
-  expect(wrapper.get('li').text()).toContain('本期未完成 · 待办已完成 1/1 项')
+  expect(wrapper.get('li').text()).toContain('待办全部完成')
+  expect(wrapper.get('li').text()).not.toContain('本期未完成')
+})
+
+it('empty subscriptions and partial checklists keep clear reminder text and activity totals', async () => {
+  calendarSubscriptionSummary.mockResolvedValue({ items: [record('尚未建立'), { ...record('部分完成'), completed: true, manual_completed: true, checklist: [{ id: 'one', title: '项一', completed: true }, { id: 'two', title: '项二', completed: false }] }], total_pending: 4, subscribed_count: 5 })
+  render({ accountId: 'a' }); await flushPromises()
+  expect(wrapper.text()).toContain('暂无待办')
+  expect(wrapper.text()).toContain('已完成 1/2 项')
+  expect(wrapper.text()).toContain('另有 2 项即将截止')
 })

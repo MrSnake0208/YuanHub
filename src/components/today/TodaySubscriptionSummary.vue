@@ -9,10 +9,10 @@
         <li v-for="record in items" :key="record.event_id">
           <router-link :to="{ path: '/calendar', query: { ...mineQuery, view: 'month', date: record.item.end_date } }">{{ record.item.title }}</router-link>
           <span>截止 {{ record.item.end_date }}{{ record.item.end_time ? ' ' + record.item.end_time + ' · ' + record.item.time_zone : ' · 具体时间未提供' }} · {{ calendarDeadline(record.item, today, now) }}</span>
-          <span>{{ record.completed ? '本期已完成' : '本期未完成' }}<template v-if="record.checklist.length"> · 待办已完成 {{ record.checklist.filter(entry => entry.completed).length }}/{{ record.checklist.length }} 项</template></span>
+          <span>{{ subscriptionProgress(record) }}</span>
         </li>
       </ul>
-      <p v-else>{{ count ? '近期没有尚未完成的临期活动。' : '还没有订阅活动，去日历中订阅本期吧。' }}</p>
+      <p v-else>{{ count ? '近期没有需要提醒的临期订阅。' : '还没有订阅活动，去日历中订阅本期吧。' }}</p>
       <p v-if="total > items.length">另有 {{ total - items.length }} 项即将截止</p>
     </template>
     <router-link :to="{ path: '/calendar', query: mineQuery }">查看我的订阅</router-link>
@@ -20,6 +20,7 @@
 </template>
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { subscriptionProgress } from '@/data/activityCalendarSubscriptions.js'
 import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary } from '@/api/activityCalendarSubscriptions.js'
 import { calendarDeadline, millisecondsUntilServerMidnight, serverToday } from '@/data/activityCalendar.js'
