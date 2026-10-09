@@ -26,7 +26,7 @@
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
           <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked)">仅未完成</label>
-          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与关卡进度仅当前账号可见。</p>
+          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与活动备忘录仅当前账号可见。</p>
         </section>
         <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
           <p class="calendar-filter-summary">{{ filterSummary }}</p>
@@ -60,7 +60,6 @@
           <h2>活动已停用或不可用</h2>
           <article v-for="record in subscriptions.unavailable.value" :key="record.event_id" class="calendar-event">
             <p>这项活动已停止提醒，个人记录仍保留。</p>
-            <ul v-if="record.checklist.length"><li v-for="entry in record.checklist" :key="entry.id">{{ entry.title }} · {{ entry.completed ? '已完成' : '未完成' }}</li></ul>
             <CalendarSubscriptionControls :unavailable="record" />
           </article>
         </section>

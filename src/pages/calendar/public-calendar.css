@@ -219,3 +219,16 @@
 .calendar-check-row input[type="text"] { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
 .calendar-subscription button, .calendar-subscription-toolbar button { min-height: 44px; }
 .calendar-subscription .calendar-error { margin-top: 10px; }
+
+.calendar-memo-summary { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+.calendar-memo-summary strong { min-width: 0; overflow-wrap: anywhere; }
+.calendar-memo-summary span { font-size: 13px; color: var(--ink-60); }
+.calendar-memo-field { display: grid; gap: 6px; min-width: 0; margin: 12px 0; }
+.calendar-memo-field :is(input, textarea) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 16px var(--font-b); }
+.calendar-memo-field textarea { resize: vertical; }
+.calendar-checklist .calendar-check-row input[type="text"] { box-sizing: border-box; font-size: 16px; }
+.calendar-checklist :is(input, textarea, button) { scroll-margin-block: 100px; }
+.calendar-checklist :is(input, textarea):focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+.calendar-memo-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+.calendar-memo-readonly li { overflow-wrap: anywhere; }
+.calendar-subscription button { min-width: 44px; }
