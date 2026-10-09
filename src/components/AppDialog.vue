@@ -309,6 +309,7 @@ useModalFocus(() => state.visible, dialogEl, {
 }
 .dlg-btn {
   flex: none;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
