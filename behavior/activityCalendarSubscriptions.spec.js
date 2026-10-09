@@ -61,8 +61,8 @@ it.each(['如鸢', '代号鸢'])('mine switches in place to %s and locks filters
   expect(wrapper.text()).not.toContain('地下遗迹')
   expect(listCalendarSubscriptions.mock.lastCall[0]).toMatchObject({ account_id: 'b' })
   expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game })
-  expect(wrapper.get('.calendar-filter-summary').text()).toBe(`${game} · 全部类型`)
-  expect(wrapper.findAll('.calendar-filter-inline legend').map(node => node.text())).toEqual(['类型'])
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe(`${game}（账号锁定） · 全部类型 · 仅未完成`)
+  expect(wrapper.findAll('.calendar-filter-inline legend').map(node => node.text())).toEqual(['类型', '时间状态'])
   await button('全部活动').trigger('click'); await flushPromises()
   expect(wrapper.get('.calendar-filter-summary').text()).toBe('如鸢 · 全部类型')
   expect(router.currentRoute.value.query).toMatchObject({ view: 'agenda', date: '2026-10-05', game: '如鸢', ref: 'keep' })
@@ -243,4 +243,42 @@ it('new checklist item may be deliberately completed before first save', async (
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1].checklist[0].completed).toBe(true)
   expect(wrapper.text()).toContain('本期已完成')
+})
+
+it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐藏项误标为未订阅', async () => {
+  const login = { ...event, id: 'login', title: '签到', category: 'LOGIN', end_at: '2026-10-06T04:00:00Z' }
+  const pool = { ...event, id: 'pool', title: '招募池', category: 'RECRUITMENT' }
+  const completed = { ...event, id: 'done', title: '完成的商店', category: 'SHOP' }
+  const foreign = { ...event, id: 'foreign', title: '异游活动', game: '代号鸢' }
+  const history = { ...event, id: 'history', title: '日期窗口之外', start_date: '2026-09-01', end_date: '2026-09-30' }
+  const records = [login, pool, completed, foreign, history].map(item => ({ event_id: item.id, item, subscribed: true, version: 0, completed: item.id === 'done', checklist: [] }))
+  listCalendarSubscriptions.mockResolvedValue({ items: records, unavailable_items: [{ event_id: 'old', checklist: [] }], subscribed_count: 5 })
+  const router = await render('&scope=mine&pending=1&game=代号鸢&exclude_recruitment=1&status=ending&date=2026-10-05&ref=keep')
+  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['login'])
+  expect(wrapper.get('.calendar-filter-summary').text()).toContain('如鸢（账号锁定）')
+  const reads = listCalendarSubscriptions.mock.calls.length
+  await wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', game: '代号鸢', date: '2026-10-05', ref: 'keep' })
+  expect(activeAccount.id).toBe('a')
+  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['login', 'pool', 'done'])
+  expect(wrapper.find('.calendar-filter-clear').exists()).toBe(false)
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe('如鸢（账号锁定） · 全部类型')
+  expect(wrapper.text()).toContain('个人记录仍保留')
+  expect(records.map(record => record.subscribed)).toEqual([true, true, true, true, true])
+  expect(listCalendarSubscriptions).toHaveBeenCalledTimes(reads)
+  expect(setCalendarSubscription).not.toHaveBeenCalled()
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+})
+
+it('mine边界更新不隐藏未保存草稿，保存后再应用时间筛选', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: { ...event, end_at: '2026-10-05T04:00:01Z' } }
+  await render('&scope=mine&status=ongoing')
+  await button('记录进度').trigger('click'); await button('添加关卡').trigger('click')
+  await wrapper.get('input[type=text]').setValue('边界草稿')
+  await vi.advanceTimersByTimeAsync(1500); await flushPromises()
+  expect(wrapper.get('input[type=text]').element.value).toBe('边界草稿')
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  expect(wrapper.find('input[type=text]').exists()).toBe(false)
+  expect(wrapper.get('.calendar-filter-empty').text()).toContain('当前条件下无活动')
+  expect(saveCalendarProgress.mock.lastCall[1].checklist[0].title).toBe('边界草稿')
 })

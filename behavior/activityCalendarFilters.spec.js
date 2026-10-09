@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import Calendar from '../src/pages/calendar/index.vue'
 import CalendarFilterControls from '../src/components/calendar/CalendarFilterControls.vue'
-import { CALENDAR_CATEGORIES, CALENDAR_GAMES } from '../src/data/activityCalendar.js'
+import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_TIME_FILTERS, serverToday, addCalendarDays } from '../src/data/activityCalendar.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { isFeatureEnabled } from '../src/config/features.js'
 
@@ -47,8 +47,8 @@ async function open(wrapper) { await wrapper.get('.calendar-filter-mobile-trigge
 it('Controls完整展示选项，只发出单维度patch且不修改输入', async () => {
   const filters = { game: '如鸢', category: 'RECRUITMENT' }
   const wrapper = mount(CalendarFilterControls, { props: { filters, games: CALENDAR_GAMES, categories: CALENDAR_CATEGORIES } })
-  expect(wrapper.findAll('fieldset')).toHaveLength(2)
-  expect(wrapper.findAll('button').map(button => button.text())).toEqual(['全部游戏', ...CALENDAR_GAMES, '全部类型', ...Object.values(CALENDAR_CATEGORIES)])
+  expect(wrapper.findAll('fieldset')).toHaveLength(3)
+  expect(wrapper.findAll('button').map(button => button.text())).toEqual(['全部游戏', ...CALENDAR_GAMES, '全部类型', ...Object.values(CALENDAR_CATEGORIES), ...Object.values(CALENDAR_TIME_FILTERS)])
   await wrapper.findAll('button').find(button => button.text() === '代号鸢').trigger('click')
   await wrapper.findAll('button').find(button => button.text() === '活动').trigger('click')
   expect(wrapper.emitted('change')).toEqual([[{ game: '代号鸢' }], [{ category: 'ACTIVITY' }]])
@@ -173,4 +173,119 @@ it('请求加载/失败仍可筛选与关闭，错误仅出现在主页面', asy
   expect(sheetButton('如鸢').getAttribute('aria-pressed')).toBe('true')
   await clickSheet('完成')
   expect(dialog()).toBeNull()
+})
+
+const calendarItem = (patch = {}) => ({ id: 'evt', title: '活动', game: '如鸢', category: 'ACTIVITY', start_date: serverToday(), end_date: addCalendarDays(serverToday(), 10), ...patch })
+const inlineButton = (wrapper, text) => wrapper.findAll('.calendar-filter-inline button').find(button => button.text() === text)
+
+it('不含招募与类型招募最后操作生效，URL/Sheet/摘要同步且本地过滤不重查', async () => {
+  listActivityCalendar.mockResolvedValue({ items: Object.keys(CALENDAR_CATEGORIES).map(category => calendarItem({ id: category, title: category, category })) })
+  const { wrapper, router } = await render('/calendar?view=agenda&category=RECRUITMENT')
+  await open(wrapper)
+  const reads = listActivityCalendar.mock.calls.length
+  dialog().querySelector('input[type=checkbox]').click(); await flushPromises()
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', exclude_recruitment: '1' })
+  expect(wrapper.get('.calendar-filter-summary').text()).toContain('不含招募')
+  expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).toEqual(expect.arrayContaining(['ACTIVITY', 'LOGIN', 'SHOP', 'MAINTENANCE', 'OTHER']))
+  expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).not.toContain('RECRUITMENT')
+  expect(listActivityCalendar).toHaveBeenCalledTimes(reads + 1) // Clearing category widens the API scope once.
+  await clickSheet('招募')
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', category: 'RECRUITMENT' })
+  expect(dialog().querySelector('input[type=checkbox]').checked).toBe(false)
+  expect(wrapper.findAll('.calendar-event h4').map(node => node.text())).toEqual(['RECRUITMENT'])
+  await clickSheet('全部类型')
+  const allReads = listActivityCalendar.mock.calls.length
+  dialog().querySelector('input[type=checkbox]').click(); await flushPromises()
+  await clickSheet('进行中')
+  expect(listActivityCalendar).toHaveBeenCalledTimes(allReads)
+  expect(router.currentRoute.value.query).toMatchObject({ exclude_recruitment: '1', status: 'ongoing' })
+  await clickSheet('重置筛选')
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda' })
+  expect(dialog().querySelector('input[type=checkbox]').checked).toBe(false)
+  expect(sheetButton('全部').getAttribute('aria-pressed')).toBe('true')
+})
+
+it.each(['agenda', 'timeline', 'month'])('%s共享非招募/游戏/时间状态过滤，统计不冒充时间快捷结果', async view => {
+  const date = serverToday(), now = Date.now()
+  listActivityCalendar.mockResolvedValue({ items: [
+    calendarItem({ id: 'login', title: '保留签到', category: 'LOGIN', start_date: addCalendarDays(date, -1), end_at: new Date(now + 3600000).toISOString() }),
+    calendarItem({ id: 'shop', title: '较晚结束', category: 'SHOP' }),
+    calendarItem({ id: 'pool', category: 'RECRUITMENT' }),
+    calendarItem({ id: 'foreign', game: '代号鸢' }),
+  ] })
+  const { wrapper, router } = await render(`/calendar?view=${view}&date=${date}&game=如鸢&exclude_recruitment=1&status=ending`)
+  const component = wrapper.findComponent({ name: view === 'agenda' ? 'CalendarAgendaView' : view === 'timeline' ? 'CalendarTimelineView' : 'CalendarMonthView' })
+  expect(component.props('items').map(item => item.id)).toEqual(['login'])
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe('如鸢 · 全部类型 · 不含招募 · 近 3 天结束')
+  expect(wrapper.findAll('.calendar-counts strong').map(node => node.text())).toEqual(['1', '0', '1'])
+  expect(wrapper.get('.calendar-summary-scope').text()).toContain('不按时间状态')
+  const path = router.currentRoute.value.fullPath
+  wrapper.unmount()
+  const refreshed = await render(path)
+  expect(refreshed.wrapper.get('.calendar-filter-summary').text()).toBe('如鸢 · 全部类型 · 不含招募 · 近 3 天结束')
+})
+
+it('前进后退恢复所有条件，入口外清除只移除筛选保留视图/日期/无关Query', async () => {
+  const { wrapper, router } = await render('/calendar?view=month&date=2026-09-15&ref=share')
+  await router.push('/calendar?view=month&date=2026-09-15&ref=share&game=如鸢&exclude_recruitment=1&status=ending'); await flushPromises()
+  expect(wrapper.get('.calendar-filter-summary').text()).toContain('近 3 天结束')
+  router.back(); await flushPromises()
+  expect(wrapper.get('.calendar-filter-summary').text()).toBe('全部游戏 · 全部类型')
+  router.forward(); await flushPromises()
+  expect(wrapper.get('.calendar-filter-summary').text()).toContain('不含招募')
+  await wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query).toEqual({ view: 'month', date: '2026-09-15', ref: 'share' })
+  expect(wrapper.find('.calendar-filter-clear').exists()).toBe(false)
+  expect(dialog()).toBeNull()
+})
+
+it('无效新参数降级；条件空结果可清除，加载错误保留重试且不伪装为空', async () => {
+  listActivityCalendar.mockResolvedValue({ items: [calendarItem({ category: 'RECRUITMENT' })] })
+  const { wrapper, router } = await render('/calendar?exclude_recruitment=bad&status=toString')
+  expect(wrapper.find('.calendar-filter-clear').exists()).toBe(false)
+  expect(wrapper.find('.calendar-event').exists()).toBe(true)
+  await router.replace('/calendar?exclude_recruitment=1'); await flushPromises()
+  expect(wrapper.get('.calendar-filter-empty').text()).toContain('当前条件下无活动')
+  expect(wrapper.get('.calendar-filter-empty button').text()).toBe('清除筛选')
+  await wrapper.get('.calendar-filter-empty button').trigger('click'); await flushPromises()
+  expect(wrapper.find('.calendar-filter-empty').exists()).toBe(false)
+  listActivityCalendar.mockRejectedValueOnce(new Error('读取失败'))
+  await inlineButton(wrapper, '如鸢').trigger('click'); await flushPromises()
+  expect(wrapper.find('.calendar-filter-empty').exists()).toBe(false)
+  expect(wrapper.get('[role=alert]').text()).toContain('读取失败')
+})
+
+it('开始/72小时/结束边界即时更新，无额外公共API请求，卸载释放计时器', async () => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-09T04:00:00Z'))
+  const now = Date.now()
+  listActivityCalendar.mockResolvedValue({ items: [
+    calendarItem({ id: 'start', start_at: new Date(now + 1000).toISOString(), end_at: new Date(now + 5000).toISOString() }),
+    calendarItem({ id: 'near', end_at: new Date(now + 72 * 3600000 + 2000).toISOString() }),
+  ] })
+  const { wrapper } = await render('/calendar?view=agenda&status=ending')
+  const ids = () => wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)
+  const reads = listActivityCalendar.mock.calls.length
+  expect(ids()).toEqual([])
+  await vi.advanceTimersByTimeAsync(1050); await flushPromises()
+  expect(ids()).toEqual(['start'])
+  await vi.advanceTimersByTimeAsync(1000); await flushPromises()
+  expect(ids()).toEqual(['start', 'near'])
+  await vi.advanceTimersByTimeAsync(3000); await flushPromises()
+  expect(ids()).toEqual(['near'])
+  expect(listActivityCalendar).toHaveBeenCalledTimes(reads)
+  wrapper.unmount()
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('慢响应抵达时用当前时间判断状态，不等待下一分钟刷新', async () => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-09T04:00:00Z'))
+  const now = Date.now()
+  let resolve
+  listActivityCalendar.mockReturnValue(new Promise(done => { resolve = done }))
+  const { wrapper } = await render('/calendar?view=agenda&status=ongoing')
+  await vi.advanceTimersByTimeAsync(1500)
+  resolve({ items: [calendarItem({ id: 'started-while-loading', start_at: new Date(now + 1000).toISOString(), end_at: new Date(now + 5000).toISOString() })] })
+  await flushPromises()
+  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['started-while-loading'])
+  expect(listActivityCalendar).toHaveBeenCalledTimes(1)
 })
