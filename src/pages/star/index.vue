@@ -4,7 +4,8 @@
     <main id="main-content" class="star-main">
       <CompactToolHeader title="星石背包" description="整理星石，核对背包与养成计划">
         <template #account>
-          <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
+          <span v-if="completionDemo" class="star-sync-meta">隔离演示 · 虚构账号，未连接完成接口</span>
+          <DataAccountContextBar v-else compact :accounts="accounts" :account-id="accountId" :game="accountGame"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError"
             :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy || growthBottlePending" switch-disabled-reason="星石工作区或瓶子库存正在保存或等待确认，请处理完成后再切换账号。" />
         </template>
@@ -173,6 +174,9 @@ import SiteFooter from "../../components/SiteFooter.vue";
 import { listAccounts } from "../../api/accounts.js";
 import { getCurrent as getCurrentInventory, importInventory } from "../../api/inventory.js";
 import { createGrowthPlanInventoryWriter, growthPlanInventorySession } from "./growthPlanInventory.js";
+import { createStarCompletionApi } from '../../api/starCompletions.js';
+import { createStarCompletionPort } from './starCompletionPort.js';
+import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js';
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
@@ -191,6 +195,7 @@ import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecyc
 import { isStarCaptureDraftPersisted } from "./captureDraftReceipt.js";
 
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
+const completionDemo = import.meta.env.DEV && isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION_DEMO);
 const EMBED_STYLESHEET_URL = "/yuanstar-embed/yuanstar-embed.css";
 const EMBED_STYLESHEET_ID = "yuanstar-embed-styles";
 const route = useRoute();
@@ -604,6 +609,7 @@ async function loadAccounts() {
   }
 }
 async function syncHostAccount() {
+  if (completionDemo) return false;
   if (!handle) return false;
   productReady.value = false;
   tutorialAccountReady.value = false;
@@ -631,6 +637,7 @@ async function syncHostAccount() {
       productReady.value = true;
       currentHandle.setActiveTab(activeTab.value);
       currentHandle.setReviewView?.(starReviewView.value);
+      if (entered) void currentHandle.recoverCompletion?.();
       if (pendingCapture) void importPendingCapture();
       return true;
     } catch (error) {
@@ -750,6 +757,14 @@ async function mountProduct() {
     await waitForYuanStarDisposal();
     mountRoot.value?.replaceChildren();
     await ensureEmbedStylesheet();
+    if (import.meta.env.DEV && isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION_DEMO)) {
+      const { mountStarCompletionDemo, loadStarCompletionDemoProduct } = await import('./dev/starCompletionDemo.js');
+      const product = await loadStarCompletionDemoProduct(loadEmbedModule);
+      if (unmounted || !mountRoot.value) return;
+      handle = await mountStarCompletionDemo(product, mountRoot.value, next => { summary.value = next; });
+      productReady.value = true; activeTab.value = 'review'; starReviewView.value = 'plan';
+      return;
+    }
     const product = await loadEmbedModule();
     if (unmounted || !mountRoot.value) return;
     const initialHostAccount = selectedHostAccount();
@@ -757,6 +772,11 @@ async function mountProduct() {
       await migrateLegacyYuanStarHostAccount(initialHostAccount);
     if (unmounted || !mountRoot.value) return;
     const mountedHandle = product.mountYuanStar(mountRoot.value, {
+      completion: createStarCompletionPort({
+        api: createStarCompletionApi({ userId: String(auth.userInfo?.id || '') }), coordinator: starCloud,
+        identity: () => auth.isLoggedIn ? { userId: String(auth.userInfo?.id || ''), game: selectedHostAccount()?.gameVersion } : null,
+        enabled: isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION),
+      }),
       assetBaseUrl: "/yuanstar-embed/",
       embedded: true,
       reviewView: starReviewView.value,
@@ -807,6 +827,7 @@ function setTab(tab) {
   if (productReady.value) handle?.setActiveTab(tab);
 }
 watch([accountId, accountGame], () => {
+  if (completionDemo) return;
   starContextVersion++;
   ++tutorialCheckSequence;
   recognitionTutorialOpen.value = false;
@@ -825,6 +846,7 @@ watch([activeTab, starReviewView], ([tab, view]) => {
 });
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
+  if (completionDemo) { void mountProduct(); return; }
   // Draft restoration may finish after the first summary. Recheck on the
   // embed's actual render, without polling or changing its business lifecycle.
   tutorialStatusObserver = new MutationObserver(() => {

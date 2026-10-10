@@ -1,5 +1,18 @@
 # YuanStar embed 同步说明
 
+## 当前 P3-B 人工验收后正式来源（2026-10-10）
+
+源码commit：`836c40c4b55e7787e8ddf1ab47564354b495b82c`，分支`feat/growth-plan-workspace-p1`。最新紧凑弹窗、资源状态、标题独立分行及虚线输入已在源码提交中保留；从已提交 source commit 的干净工作树正式 build，再执行正式同步脚本。全部12个embed文件集合、字节及SHA-256一致，manifest中的_sourceCommit为该提交、_sourceWorkingTree为clean。
+
+本次授权三仓本地提交收口及用户origin同名feature非强制推送；不合并main、不开PR、不部署。真实STAR_COMPLETION仍为false，dev-only隔离演示保留。下面的未提交/未push描述是此前阶段的历史记录，最终推送结果以本次交付报告和远端引用为准。
+
+## 历史 P3-B 完成确认来源（2026-10-09）
+
+源码commit：`d9411b3abf6ad74c01df0c80c11037ede0dd9f9d`，分支仍为`feat/growth-plan-workspace-p1`。为遵守clean来源门禁，在功能及隔离UI验证完成后按用户条件授权做一次本地源码提交；随后从已提交 source commit 的干净工作树正式 build，运行原正式同步脚本。12个文件的集合、字节及SHA-256均相等，manifest使用真实commit和clean来源。脚本只更新阶段无关的说明文字，dirty/HEAD/资源集合门禁不变。
+
+P3-B完成弹窗、实际经验输入、临时突破纠正、固定命令持久恢复和权威Session采用见[交付](./growth-plan-p3b-closeout.md)。普通账号的完成功能默认关闭；隔离演示仅开发环境显式URL启用，Mock模块与虚构fixture未进入生产JS。没有真实账号完成POST，没有push/PR/部署。以下P2-D记录为历史来源。
+
+
 ## 当前 P2-D 本地提交来源（2026-10-09）
 
 源码 commit：`42ae3599a8173fd6c5e81bcde3a9c2fc21a68a1b`，保持 `feat/growth-plan-workspace-p1`。从已提交 source commit 的干净工作树正式 build，再使用 `node scripts/sync-yuanstar-embed.mjs <source-checkout> <committed-SHA>` 完整同步12文件。脚本拒绝dirty source、错误HEAD及未经审查的资源集合变化；核对字节及SHA-256，manifest记录本commit与clean来源。没有手改生成JS/CSS。

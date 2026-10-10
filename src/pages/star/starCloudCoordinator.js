@@ -137,6 +137,28 @@ export function createStarCloudCoordinator({
     } finally { session.replacing = false; if (active === session) emit() }
   }
   return { enter, committed,
+    completionScope(userId, game) {
+      const session = active
+      if (!userId || !session?.ready || selectedHostAccount()?.accountId !== session.accountId || selectedHostAccount()?.gameVersion !== game) return null
+      const state = session.writer.state()
+      if (state.pending || state.saving || state.error) return null
+      return { userId, accountId: session.accountId, game, generation: session.generation, revision: state.revision }
+    },
+    beginCompletion(scope) {
+      const session = commandSession()
+      if (scope.accountId !== session.accountId || scope.generation !== session.generation || scope.revision !== session.writer.state().revision) throw new Error('云端版本已变化，请重新确认。')
+      session.replacing = true; emit()
+      // Lease is session-bound: an old account response cannot unlock/adopt a new one.
+      return {
+        adopt(context) {
+          if (active !== session || selectedHostAccount()?.accountId !== session.accountId || context.account_id !== session.accountId) throw new Error('账号已切换，原操作仍待恢复。')
+          const next = businessState(context.state)
+          if (next.generation < session.generation || (next.generation === session.generation && next.revision < session.writer.state().revision)) throw new Error('回执版本已过期，请重新读取。')
+          if (!session.writer.adopt(next)) throw new Error('云端版本无法采用，请恢复原操作。')
+        },
+        release() { session.replacing = false; if (active === session) emit() },
+      }
+    },
     retry: () => active?.writer?.retry() ?? Promise.resolve(false),
     needsRetry: () => Boolean(active?.ready && (active.writer?.state().pending || active.writer?.state().error)),
     rebuildOcr: async (snapshot, recoveryPointId) => businessState((await rebuild(snapshot, 'pre_ocr_rebuild', recoveryPointId)).state),
