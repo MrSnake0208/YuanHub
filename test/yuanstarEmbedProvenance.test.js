@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
 const root = new URL('../', import.meta.url)
-const sourceCommit = '836c40c4b55e7787e8ddf1ab47564354b495b82c'
+const sourceCommit = '17f28628a126c4255c4d3e502b365f56ed02bcbc'
 
 test('vendored YuanStar embed keeps provenance and is marked as generated output', () => {
   const doc = readFileSync(new URL('docs/yuanstar-embed-sync.md', root), 'utf8')
@@ -46,7 +46,10 @@ test('vendored embed bounds OCR initialization and documents mobile recovery', (
   // 编译变量名会变化；延迟预热由 behavior/embedProduct.spec.js 执行真实产物验证。
   assert.match(code, /(?:300000|3e5)/)
   const host = readFileSync(new URL('src/pages/star/index.vue', root), 'utf8')
-  assert.ok(host.includes('手机和电脑网页端均可使用'))
+  assert.ok(host.includes('重新查看识别教程'))
+  assert.ok(host.includes('replayRecognitionTutorial()'))
+  const tutorial = readFileSync(new URL('src/pages/star/recognitionTutorial.js', root), 'utf8')
+  assert.ok(tutorial.includes('手动上传请使用原始截图，不要裁剪、拼接或涂改，并保留上下界面。'))
 })
 
 test('vendored release matches documented provenance and the current artifact manifest', () => {

@@ -71,16 +71,16 @@ async function mountEmbed(options = {}) {
   return { root, handle }
 }
 
-// 逐行取单元格文本（跳过首列复选框），比整行 textContent 更精确。
+// 逐行读取养成计划五列；背包整理不再有重复计划表或首列复选框。
 function planRows(root) {
-  const planPanel = root.querySelectorAll('.inventory-panel')[1]
+  const planPanel = root.querySelector('.growth-inventory')
   return [...planPanel.querySelectorAll('tbody tr')].map((row) =>
-    [...row.querySelectorAll('td')].slice(1).map((cell) => cell.textContent.replace(/\s+/g, ' ').trim()),
+    [...row.querySelectorAll('td')].map((cell) => cell.textContent.replace(/\s+/g, ' ').trim()),
   )
 }
 
 describe('vendored YuanStar embed behavior', () => {
-  it('new sorted instance follows in both panes, editing follows same ID, unchanged order keeps scroll and deleting clears selection', async () => {
+  it('single bag table follows the same instance, preserves scroll and deleting clears the editor', async () => {
     const { root, handle } = await mountEmbed()
     const inventory = Array.from({ length: 25 }, (_, index) => ({ starInstanceId: 'follow-' + index, kind: '主星', name: '天府', level: 60 - index * 2, quality: '橙' }))
     vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function () {
@@ -95,29 +95,29 @@ describe('vendored YuanStar embed behavior', () => {
     try {
       await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory, planTargets: {} })
       handle.setActiveTab('review'); await settle()
-      root.querySelector('[data-star-id="follow-0"][data-pane="plan"]').click(); await settle()
+      root.querySelector('[data-star-id="follow-0"][data-pane="current"]').click(); await settle()
       expect(selected('current').dataset.starId).toBe('follow-0')
       level().value = '48'; level().dispatchEvent(new Event('input', { bubbles: true }))
       root.querySelector('#add-current-row').click(); await settle()
       const id = selected('current').dataset.starId
       expect(id).not.toBe('follow-0')
-      expect(selected('plan').dataset.starId).toBe(id)
+      expect(root.querySelector('#plan-rows')).toBeNull()
       expect((await handle.getCloudBusinessSnapshot()).inventory).toHaveLength(26)
       const index = [...root.querySelectorAll('#current-rows tr')].indexOf(selected('current'))
       expect(root.querySelector('#current-scroll').scrollTop).toBe((index - 4) * 32)
-      expect(root.querySelector('#plan-scroll').scrollTop).toBe((index - 4) * 32)
       level().value = '57'; level().dispatchEvent(new Event('input', { bubbles: true }))
       level().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle()
       expect(selected('current').dataset.starId).toBe(id)
       expect(root.querySelector('#current-scroll').scrollTop).toBe(0)
-      for (const pane of ['current', 'plan']) root.querySelector(`#${pane}-scroll`).scrollTop = 99
+      root.querySelector('#current-scroll').scrollTop = 99
       const quality = root.querySelector('[data-current-field="quality"]')
       quality.value = '紫'; quality.dispatchEvent(new Event('change', { bubbles: true }))
       quality.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await settle()
       expect(root.querySelector('#current-scroll').scrollTop).toBe(99)
       root.querySelector('#delete-current-row').click(); await settle()
       expect(selected('current')).toBeNull(); expect(selected('plan')).toBeNull()
-      expect(root.querySelector('.current-editor')).toBeNull()
+      expect(root.querySelector('.current-editor').textContent).toContain('选择一颗星石以编辑当前背包。')
+      expect(root.querySelector('[data-current-field]')).toBeNull()
       expect((await handle.getCloudBusinessSnapshot()).inventory.some(star => star.starInstanceId === id)).toBe(false)
     } finally {
       await handle.applyCloudBusinessSnapshot({ ...businessSnapshot, inventory: [], planTargets: {}, experience: { orange: null, purple: null, white: null }, bag: { currentCount: null, capacity: null } })
@@ -178,6 +178,8 @@ describe('vendored YuanStar embed behavior', () => {
     await handle.applyCloudBusinessSnapshot(businessSnapshot)
     handle.setActiveTab('review')
     await new Promise((resolve) => setTimeout(resolve, 200))
+
+    handle.setReviewView('plan')
 
     // 养成目标列使用「当前等级→目标等级」，仅 targetLevel > level 的行才显示箭头。
     expect(planRows(root)).toEqual([

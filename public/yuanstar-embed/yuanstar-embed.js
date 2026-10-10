@@ -20010,7 +20010,7 @@ function Bv(e) {
 		["target", "计划等级"]
 	].map(([t, n]) => `<option value="${t}"${e.sortFilter === t ? " selected" : ""}>${n}</option>`).join("")}</select>`}</label><label class="pending-only-toggle"><input id="pending-only" type="checkbox" ${e.pendingOnly ? "checked" : ""} />仅看待养成</label></div>
       </section>
-      <article class="inventory-panel growth-inventory"><header><h2>计划背包 <span id="plan-count">${Mv(e.countLabel)}</span></h2></header><div class="table-scroll" id="plan-scroll"><table><colgroup><col style="width:16.6666667%"/><col style="width:16.6666667%"/><col style="width:25%"/><col style="width:16.6666667%"/><col style="width:25%"/></colgroup><thead><tr><th>大类</th><th>名称</th><th>养成目标</th><th>品质</th><th>数量</th></tr></thead><tbody id="plan-rows">${e.rows || "<tr class=\"review-filter-empty\"><td colspan=\"5\">暂无星石。</td></tr>"}</tbody></table></div></article>
+      <article class="inventory-panel growth-inventory"><header><h2>计划背包 <span id="plan-count">${Mv(e.countLabel)}</span></h2></header><div class="table-scroll" id="plan-scroll"><table class="star-inventory-table"><colgroup><col style="width:21.4285714%"/><col style="width:21.4285714%"/><col style="width:21.4285714%"/><col style="width:14.2857143%"/><col style="width:21.4285714%"/></colgroup><thead><tr><th>大类</th><th>名称</th><th>养成目标</th><th>品质</th><th>数量</th></tr></thead><tbody id="plan-rows">${e.rows || "<tr class=\"review-filter-empty\"><td colspan=\"5\">暂无星石。</td></tr>"}</tbody></table></div></article>
       <article class="edit-panel plan-editor growth-editor" data-growth-editor>${o}</article>
     </div>
     <div class="growth-column growth-right">
@@ -23317,7 +23317,7 @@ function gw(e) {
 	LS = e, RS = e === "", tC = null, nC = null, iC = null, aC = null, oC = "";
 }
 function _w() {
-	if (!KS || RS) return;
+	if (!Uw() || RS) return;
 	let e = Hw();
 	e.some((e) => e.starInstanceId === LS) || gw(e[0]?.starInstanceId ?? "");
 }
@@ -23333,7 +23333,7 @@ function vw() {
 function yw() {
 	if (TC() && vw(), RS) return null;
 	_w();
-	let e = TC() || KS ? Hw() : mw();
+	let e = TC() || Uw() ? Hw() : mw();
 	return e.find((e) => e.starInstanceId === LS) ?? e[0] ?? null;
 }
 function bw(e) {
@@ -23348,7 +23348,7 @@ function bw(e) {
 	let t = new Set(vS.filter((e) => e.targetLevel > e.level).map((e) => e.starInstanceId));
 	vC.forEach((e) => {
 		t.has(e) || vC.delete(e);
-	}), TC() ? vw() : KS ? _w() : !RS && !vS.some((e) => e.starInstanceId === LS) && gw(vS[0]?.starInstanceId ?? ""), zC.orange = e.record.snapshot.experience.orange == null ? "" : String(e.record.snapshot.experience.orange), zC.purple = e.record.snapshot.experience.purple == null ? "" : String(e.record.snapshot.experience.purple), zC.white = e.record.snapshot.experience.white == null ? "" : String(e.record.snapshot.experience.white), TS?.({
+	}), TC() ? vw() : Uw() ? _w() : !RS && !vS.some((e) => e.starInstanceId === LS) && gw(vS[0]?.starInstanceId ?? ""), zC.orange = e.record.snapshot.experience.orange == null ? "" : String(e.record.snapshot.experience.orange), zC.purple = e.record.snapshot.experience.purple == null ? "" : String(e.record.snapshot.experience.purple), zC.white = e.record.snapshot.experience.white == null ? "" : String(e.record.snapshot.experience.white), TS?.({
 		currentCount: e.record.snapshot.inventory.length,
 		planCount: Object.keys(e.record.snapshot.planTargets).filter((t) => e.record.snapshot.inventory.some((e) => e.starInstanceId === t)).length,
 		gameVersion: e.account.gameVersion
@@ -23504,10 +23504,10 @@ function Vw(e, t, n) {
 }
 function Hw() {
 	let e = Bw();
-	return KS ? e.filter((e) => e.targetLevel > e.level) : e;
+	return Uw() ? e.filter((e) => e.targetLevel > e.level) : e;
 }
 function Uw() {
-	return `<label class="pending-only-toggle">仅看待养成 <input id="pending-only" type="checkbox" ${KS ? "checked" : ""} /></label>`;
+	return TC() && KS;
 }
 function Ww(e) {
 	if (TC() && e.targetLevel > e.level) return Iv(e.level, e.targetLevel, !0);
@@ -23534,9 +23534,9 @@ function qw(e) {
 }
 function Jw(e) {
 	let t = bS ? `经验星曜规则加载失败，暂无法计算计划需求。${bS ? ` ${bS}` : ""}` : "正在加载经验星曜规则…";
-	if (!yS) return `<article class="experience-needs"><h3>计划经验星曜需求</h3><dl><div><dt>当前选中行</dt><dd>${J(t)}</dd><strong></strong></div><div><dt>${KS || Rw() ? "完成当前筛选计划所需" : "完成全部计划所需"}</dt><dd>${J(t)}</dd><strong></strong></div><div><dt>扣除当前背包后仍缺</dt><dd>${J(t)}</dd><strong></strong></div></dl></article>`;
+	if (!yS) return `<article class="experience-needs"><h3>计划经验星曜需求</h3><dl><div><dt>当前选中行</dt><dd>${J(t)}</dd><strong></strong></div><div><dt>${Uw() || Rw() ? "完成当前筛选计划所需" : "完成全部计划所需"}</dt><dd>${J(t)}</dd><strong></strong></div><div><dt>扣除当前背包后仍缺</dt><dd>${J(t)}</dd><strong></strong></div></dl></article>`;
 	let n = W.record.snapshot.experience, r = ev(e ? [Gw(e)] : [], yS, n), i = ev(Hw().map(Gw), yS, n), a = e ? Gw(e) : null, o = i.remaining == null, s = $_(i.required.experience, yS), c = o ? null : $_(i.remaining.experience, yS);
-	return `<article class="experience-needs"><h3>计划经验星曜需求</h3><dl><div><dt>当前选中行</dt><dd>${e && a ? J(`${e.name} ${e.level}级 → ${a.targetLevel}级`) : "—"}</dd><strong>需要 ${qw(r.required)}</strong></div><div><dt>${KS || Rw() ? "完成当前筛选计划所需" : "完成全部计划所需"}</dt><dd>还需6-24 ${s} 次</dd><strong>${qw(i.required)}</strong></div><div><dt>扣除当前背包后仍缺</dt><dd>${o ? "当前经验星曜数量未完整确认，暂无法计算缺口" : `还需6-24 ${c} 次`}</dd><strong>${o ? "" : qw(i.remaining)}</strong></div></dl></article>`;
+	return `<article class="experience-needs"><h3>计划经验星曜需求</h3><dl><div><dt>当前选中行</dt><dd>${e && a ? J(`${e.name} ${e.level}级 → ${a.targetLevel}级`) : "—"}</dd><strong>需要 ${qw(r.required)}</strong></div><div><dt>${Uw() || Rw() ? "完成当前筛选计划所需" : "完成全部计划所需"}</dt><dd>还需6-24 ${s} 次</dd><strong>${qw(i.required)}</strong></div><div><dt>扣除当前背包后仍缺</dt><dd>${o ? "当前经验星曜数量未完整确认，暂无法计算缺口" : `还需6-24 ${c} 次`}</dd><strong>${o ? "" : qw(i.remaining)}</strong></div></dl></article>`;
 }
 function Yw() {
 	if (TC()) {
@@ -23685,39 +23685,37 @@ function bT(e) {
 		n.set(t, (n.get(t) ?? 0) + 1);
 	});
 	let r = /* @__PURE__ */ new Map();
-	KS && Bw().forEach((e) => {
+	Uw() && Bw().forEach((e) => {
 		let t = $w(e);
 		r.set(t, (r.get(t) ?? 0) + 1);
 	});
 	let i = /* @__PURE__ */ new Set();
 	return t.map((a, o) => {
-		let s = a.starInstanceId === LS && e === zS, c = a.starInstanceId === LS && e !== zS, l = o > 0 && t[o - 1]?.kind !== a.kind, u = $w(a), d = i.has(u) ? "—" : KS ? `待养 ${n.get(u)} / 共 ${r.get(u)}` : `共${n.get(u)}颗`;
+		let s = a.starInstanceId === LS && e === zS, c = a.starInstanceId === LS && e !== zS, l = o > 0 && t[o - 1]?.kind !== a.kind, u = $w(a), d = i.has(u) ? "—" : Uw() ? `待养 ${n.get(u)} / 共 ${r.get(u)}` : `共${n.get(u)}颗`;
 		i.add(u);
 		let f = eT(a.name);
 		return `<tr class="inventory-row${s ? " is-selected" : ""}${c ? " is-counterpart" : ""}${l ? " is-kind-divider" : ""}" data-star-id="${a.starInstanceId}" data-pane="${e}" tabindex="0" aria-selected="${s}">
-      ${TC() ? "" : `<td class="check-cell"><input type="checkbox" aria-label="选择 ${a.name}" ${s ? "checked" : ""} /></td>`}
       <td>${a.kind}</td><td class="name-cell">${f ? `<button class="star-name-tooltip-trigger" type="button" data-star-description-name="${J(a.name)}">${a.name}</button>` : a.name}</td>
       <td>${e === "current" ? a.level : Ww(a)}</td>
-      <td>${Xw(a.quality)}</td><td class="quantity-cell${KS ? " pending-summary-count" : ""}">${d}</td>
+      <td>${Xw(a.quality)}</td><td class="quantity-cell${Uw() ? " pending-summary-count" : ""}">${d}</td>
     </tr>`;
 	}).join("");
 }
 function xT() {
-	return zx(Hw(), (e) => o.orderIndex(e), KS ? Bw() : void 0);
+	return zx(Hw(), (e) => o.orderIndex(e), Uw() ? Bw() : void 0);
 }
 function ST(e) {
 	let t = xT();
 	return t.map((n, r) => {
 		let i = n.key === qS, a = r > 0 && t[r - 1]?.kind !== n.kind, o = eT(n.name), s = VS === "全部" ? "—" : Xw(VS);
 		return `<tr class="inventory-row summary-row${i ? " is-selected" : ""}${a ? " is-kind-divider" : ""}" data-summary-group-key="${J(n.key)}" data-pane="${e}" tabindex="0" aria-selected="${i}">
-      ${TC() ? "" : `<td class="check-cell"><input type="checkbox" aria-label="选择 ${J(n.name)} 汇总" ${i ? "checked" : ""} /></td>`}
       <td>${n.kind}</td><td class="name-cell">${o ? `<button class="star-name-tooltip-trigger" type="button" data-star-description-name="${J(n.name)}">${J(n.name)}</button>` : J(n.name)}</td>
-      <td>—</td><td>${s}</td><td class="quantity-cell${KS ? " pending-summary-count" : ""}">${KS ? `待养 ${n.count} / 共 ${n.totalCount}` : `共${n.count}颗`}</td>
+      <td>—</td><td>${s}</td><td class="quantity-cell${Uw() ? " pending-summary-count" : ""}">${Uw() ? `待养 ${n.count} / 共 ${n.totalCount}` : `共${n.count}颗`}</td>
     </tr>`;
 	}).join("");
 }
 function CT(e) {
-	return (GS === "summary" ? ST(e) : bT(e)) || (KS ? `<tr class="review-filter-empty"><td colspan="${TC() ? 5 : 6}">当前显示范围暂无待养成星石。</td></tr>` : "");
+	return (GS === "summary" ? ST(e) : bT(e)) || `<tr class="review-filter-empty"><td colspan="5">${Uw() ? "当前显示范围暂无待养成星石。" : "暂无星石。"}</td></tr>`;
 }
 function wT(e) {
 	let t = Hw().length;
@@ -23730,7 +23728,7 @@ function TT() {
 		allStars: mw(),
 		filteredStars: Hw(),
 		selectedGroupKey: qS,
-		hasActiveFilter: KS || Rw()
+		hasActiveFilter: Uw() || Rw()
 	});
 }
 function ET(e) {
@@ -24096,37 +24094,38 @@ async function HT(e, t, n = !1) {
 }
 function UT() {
 	if (TC() && W) return kT();
+	zS = "current";
 	let e = yw(), t = wS ? "<div class=\"review-workspace-card\">" : "", n = wS ? "</div>" : "";
-	if (!W) return `<section class="review-page" aria-label="背包整理">${t}<p class="review-overview">${eC || "正在加载当前工作区…"}</p>${n}</section>`;
-	if (mw().length === 0) return `<section class="review-page" aria-label="背包整理">${t}<p class="review-overview"><span class="review-overview-count">当前汇总 0 颗。</span>${eC ? `<span class="inconsistent-warning">${J(eC)}</span>` : ""}</p><section class="inventory-grid" aria-label="当前背包与计划背包"><article class="inventory-panel"><header><h2>当前背包 <span>（0 颗）</span></h2><small>暂无星石</small></header><div class="table-scroll"><table><thead><tr><th></th><th>大类</th><th>名称</th><th>等级</th><th>品质</th><th>数量</th></tr></thead><tbody></tbody></table></div></article><article class="inventory-panel"><header class="plan-inventory-header"><div class="inventory-heading"><h2>计划背包 <span>（对应 0 颗）</span></h2><small>对应当前背包</small></div>${Uw()}</header><div class="table-scroll"><table><thead><tr><th></th><th>大类</th><th>名称</th><th>养成目标</th><th>品质</th><th>数量</th></tr></thead><tbody></tbody></table></div></article></section><section class="ocr-review" aria-labelledby="ocr-review-title"><button class="ocr-summary" id="toggle-ocr-review" type="button" aria-expanded="true"><span><strong id="ocr-review-title">识别结果核对</strong> <em>当前工作区来源与复核</em></span><span class="ocr-toggle-label">收起</span></button><div class="ocr-review-list">${vT()}</div></section>${n}</section>`;
-	e && e.starInstanceId !== LS && (LS = e.starInstanceId), KS && PE();
-	let r = e != null && e.targetLevel !== e.level, i = tC ?? e, a = nC ?? e?.targetLevel, o = mw().length, s = W.record.snapshot.bag.currentCount, c = W.record.snapshot.bag.capacity, l = YC?.runContext?.images.find((e) => e.pool === "经验星曜")?.sourceImageId ?? Object.entries(W.record.snapshot.importReview.imagePools).find(([, e]) => e === "experience")?.[0] ?? null, u = (e) => zC[e], d = W.record.snapshot.experience.evidence && typeof W.record.snapshot.experience.evidence == "object" && !Array.isArray(W.record.snapshot.experience.evidence) ? W.record.snapshot.experience.evidence.reviewReasonCodes : [], f = Array.isArray(d) && d.length ? "部分数量需要确认" : "", p = W.record.snapshot.bag.resolution && typeof W.record.snapshot.bag.resolution == "object" && !Array.isArray(W.record.snapshot.bag.resolution) ? W.record.snapshot.bag.resolution.reviewReasonCodes : [], m = s == null ? null : o - s, h = m == null ? "" : m === 0 ? "，数量一致。" : m > 0 ? `，多 ${m} 颗。当前识别比背包数量多 ${m} 颗，请优先检查重叠关系。` : `，少 ${Math.abs(m)} 颗。当前识别比背包数量少 ${Math.abs(m)} 颗，请检查漏识别或残片。`, g = Array.isArray(p) && p.length ? " 背包数量多图不一致，请人工填写。" : "";
-	return `<section class="review-page" aria-label="背包整理">${t}
-    <p class="review-overview"><span class="review-overview-count">当前汇总 ${o} 颗，背包数量 ${s ?? "—"} 颗${m == null || m === 0 ? h || "。" : "，"}</span>${m != null && m !== 0 ? `<span class="inventory-delta-warning">${J(h.replace(/^，/, ""))}</span>` : ""}${g ? `<span class="inconsistent-warning">${J(g.trim())}</span>` : ""}${eC ? `<span class="inconsistent-warning">${J(eC)}</span>` : ""}</p>
-    <section class="review-toolbar" aria-label="筛选与背包信息">
-      <div class="filter-strip">
-        <label>大类<select id="kind-filter"><option>全部</option><option>主星</option><option>辅星</option></select></label>
-        <label>品质<select id="quality-filter"><option>全部</option><option>橙</option><option>紫</option><option>蓝</option><option>绿</option><option>白</option></select></label>
-        <label class="filter-search">标准名称搜索<input id="name-filter" type="search" placeholder="可用空格或逗号分隔" value="${HS}" /></label>
-        <button class="button button-secondary" id="apply-filter" type="button">应用筛选</button><button class="button button-tertiary danger-action" id="clear-filter" type="button">清除筛选</button>
-      </div>
-      <dl class="inventory-facts"><div><dt>视图</dt><dd class="inventory-fact-aligned-control"><button class="review-view-toggle" id="view-mode-toggle" type="button" aria-pressed="${GS === "summary"}">${GS === "summary" ? "名称汇总" : "逐颗明细"}</button></dd></div>${GS === "summary" ? "<div><dt>排序</dt><dd class=\"inventory-fact-aligned-control\"><button class=\"review-sort-locked\" id=\"sort-filter\" type=\"button\" aria-disabled=\"true\">名称排序</button></dd></div>" : "<div><dt>排序</dt><dd class=\"inventory-fact-dropdown inventory-fact-aligned-control\"><select id=\"sort-filter\"><option value=\"catalog\">默认综合</option><option value=\"name\">名称排序</option><option value=\"level\">当前等级</option><option value=\"target\">计划等级</option></select></dd></div>"}<div class="editable-fact"><dt>背包数量</dt><dd><input id="bag-quantity" type="number" min="0" value="${s ?? ""}" aria-label="背包数量" /></dd></div><div class="editable-fact"><dt>背包容量</dt><dd><input id="bag-capacity" type="number" min="0" value="${c ?? ""}" aria-label="背包容量" /></dd></div><div><dt>保存状态</dt><dd class="save-state ${$S === "failed" ? "warning-value" : ""}">${ww()}</dd></div></dl>
-    </section>
-    <section class="inventory-grid" aria-label="当前背包与计划背包">
-      <article class="inventory-panel"><header><h2>当前背包 <span id="current-count">${wT("current")}</span></h2><small>${GS === "summary" ? "单击选组，双击任意位置查看逐颗明细" : "点击任意行进行核对"}</small></header><div class="table-scroll" id="current-scroll"><table><thead><tr><th></th><th>大类</th><th>名称</th><th>等级</th><th>品质</th><th>数量</th></tr></thead><tbody id="current-rows">${CT("current")}</tbody></table></div></article>
-      <article class="inventory-panel"><header class="plan-inventory-header"><div class="inventory-heading"><h2>计划背包 <span id="plan-count">${wT("plan")}</span></h2><small>${GS === "summary" ? "与当前背包同步汇总" : "对应行自动同步"}</small></div>${Uw()}</header><div class="table-scroll" id="plan-scroll"><table><thead><tr><th></th><th>大类</th><th>名称</th><th>养成目标</th><th>品质</th><th>数量</th></tr></thead><tbody id="plan-rows">${CT("plan")}</tbody></table></div></article>
-    </section>
-    ${GS === "summary" || !e || !i ? "" : `<section class="edit-section" aria-label="当前背包与计划背包编辑区">
-      <article class="edit-panel current-editor" data-edit-panel="current"><header><p class="section-kicker">当前背包编辑</p><h2>${e.name} <span>${e.kind} · ${Xw(e.quality)}</span></h2></header><div class="field-grid"><label>大类<select data-current-field="kind">${["主星", "辅星"].map((e) => `<option ${e === i.kind ? "selected" : ""}>${e}</option>`).join("")}</select></label><label>标准名称<select data-current-field="name">${tT(i.kind, i.name)}</select></label><label>当前等级<input data-current-field="level" type="number" min="1" max="60" value="${i.level}" /></label><label>品质<select data-current-field="quality">${[
+	if (!W) return `<section class="review-page is-bag-view" aria-label="背包整理">${t}<p class="review-overview">${eC || "正在加载当前工作区…"}</p>${n}</section>`;
+	e && e.starInstanceId !== LS && (LS = e.starInstanceId);
+	let r = tC ?? e, i = mw().length, a = W.record.snapshot.bag.currentCount, o = W.record.snapshot.bag.capacity, s = YC?.runContext?.images.find((e) => e.pool === "经验星曜")?.sourceImageId ?? Object.entries(W.record.snapshot.importReview.imagePools).find(([, e]) => e === "experience")?.[0] ?? null, c = (e) => zC[e], l = W.record.snapshot.experience.evidence && typeof W.record.snapshot.experience.evidence == "object" && !Array.isArray(W.record.snapshot.experience.evidence) ? W.record.snapshot.experience.evidence.reviewReasonCodes : [], u = Array.isArray(l) && l.length ? "部分数量需要确认" : "", d = W.record.snapshot.bag.resolution && typeof W.record.snapshot.bag.resolution == "object" && !Array.isArray(W.record.snapshot.bag.resolution) ? W.record.snapshot.bag.resolution.reviewReasonCodes : [], f = a == null ? null : i - a, p = f == null ? "" : f === 0 ? "，数量一致。" : f > 0 ? `，多 ${f} 颗。当前识别比背包数量多 ${f} 颗，请优先检查重叠关系。` : `，少 ${Math.abs(f)} 颗。当前识别比背包数量少 ${Math.abs(f)} 颗，请检查漏识别或残片。`, m = Array.isArray(d) && d.length ? " 背包数量多图不一致，请人工填写。" : "", h = GS === "summary" || !e || !r ? `<article class="edit-panel current-editor bag-editor is-empty" data-edit-panel="current" aria-label="当前背包编辑"><p class="bag-editor-message">${GS === "summary" ? "双击名称汇总行，查看逐颗明细。" : "选择一颗星石以编辑当前背包。"}</p></article>` : `<article class="edit-panel current-editor bag-editor" data-edit-panel="current"><header><p class="section-kicker">当前背包编辑</p><h2>${e.name} <span>${e.kind} · ${Xw(e.quality)}</span></h2></header><div class="field-grid"><label>大类<select data-current-field="kind">${["主星", "辅星"].map((e) => `<option ${e === r.kind ? "selected" : ""}>${e}</option>`).join("")}</select></label><label>标准名称<select data-current-field="name">${tT(r.kind, r.name)}</select></label><label>当前等级<input data-current-field="level" type="number" min="1" max="60" value="${r.level}" /></label><label>品质<select data-current-field="quality">${[
 		"橙",
 		"紫",
 		"蓝",
 		"绿",
 		"白"
-	].map((e) => `<option ${e === i.quality ? "selected" : ""}>${e}</option>`).join("")}</select></label></div><div class="editor-actions"><button class="button button-secondary positive-action" id="add-current-row" type="button">新增当前行</button><button class="button button-tertiary danger-action" id="delete-current-row" type="button">删除当前行</button></div></article>
-      <article class="edit-panel plan-editor" data-edit-panel="plan"><header><p class="section-kicker">计划背包编辑</p><h2>${e.name} <span>${r ? `${e.level}级 → ${e.targetLevel}级` : "保持当前等级"}</span></h2></header><div class="field-grid plan-field-grid"><label>当前等级<input value="${e.level}" readonly /></label><label>计划等级<input id="target-level" type="number" min="${e.level}" max="60" value="${a}" /></label><label>计划状态<input value="${a === e.level ? "保持当前" : "已设置计划"}" readonly /></label></div><div class="plan-actions"><button class="button button-secondary" id="restore-current" type="button" ${e.targetLevel === e.level ? "disabled" : ""}>恢复当前等级</button><button class="button button-secondary" id="quick-sixty" type="button" ${e.targetLevel === 60 ? "disabled" : ""}>快捷60级</button><button class="button button-tertiary danger-action" id="reset-plans" type="button">重置全部计划</button></div></article>
-    </section>`}
-    <section class="experience-section" aria-labelledby="experience-title"><header><div><p class="section-kicker">经验星曜</p><h2 id="experience-title">当前/计划经验星曜需求</h2></div><small>当前库存可编辑；需求按正式规则实时计算</small></header><div class="experience-grid"><article class="experience-editor" data-experience-editor><h3>当前经验星曜${f ? ` <span class="experience-inline-warning">${J(f)}</span>` : ""}</h3><div class="experience-editor-row"><div class="experience-count"><label>橙星曜数量<input data-experience-field="orange" value="${u("orange")}" /></label><label>紫星曜数量<input data-experience-field="purple" value="${u("purple")}" /></label><label>白星曜数量<input data-experience-field="white" value="${u("white")}" /></label></div><button class="button button-secondary" id="view-experience-source" type="button" ${l ? `data-experience-source="${J(l)}"` : "disabled"} title="${l ? "查看经验星曜原图" : "当前工作区暂无可查看的经验星曜原图"}"><span class="experience-source-label-desktop">查看经验星曜原图</span><span class="experience-source-label-mobile">查看原图</span></button></div></article>${GS === "summary" ? DT() : Jw(e)}</div></section>
+	].map((e) => `<option ${e === r.quality ? "selected" : ""}>${e}</option>`).join("")}</select></label></div><div class="editor-actions"><button class="button button-secondary positive-action" id="add-current-row" type="button">新增当前行</button><button class="button button-tertiary danger-action" id="delete-current-row" type="button">删除当前行</button></div></article>`;
+	return `<section class="review-page is-bag-view" aria-label="背包整理">${t}
+    <p class="review-overview"><span class="review-overview-count">当前汇总 ${i} 颗，背包数量 ${a ?? "—"} 颗${f == null || f === 0 ? p || "。" : "，"}</span>${f != null && f !== 0 ? `<span class="inventory-delta-warning">${J(p.replace(/^，/, ""))}</span>` : ""}${m ? `<span class="inconsistent-warning">${J(m.trim())}</span>` : ""}${eC ? `<span class="inconsistent-warning">${J(eC)}</span>` : ""}</p>
+    <section class="bag-workspace" aria-label="当前背包工作区">
+      <section class="review-toolbar bag-filters" aria-label="筛选与视图">
+        <div class="bag-filter-line"><label>大类<select id="kind-filter"><option>全部</option><option>主星</option><option>辅星</option></select></label><label>品质<select id="quality-filter"><option>全部</option><option>橙</option><option>紫</option><option>蓝</option><option>绿</option><option>白</option></select></label></div>
+        <div class="bag-filter-line bag-search-line"><label class="filter-search">名称搜索<input id="name-filter" type="search" placeholder="可用空格或逗号分隔" value="${J(HS)}" /></label><button class="button button-secondary" id="apply-filter" type="button">应用筛选</button></div>
+        <div class="bag-filter-line"><label>视图<button class="review-view-toggle" id="view-mode-toggle" type="button" aria-pressed="${GS === "summary"}">${GS === "summary" ? "名称汇总" : rw ? "返回名称汇总" : "逐颗明细"}</button></label><label>排序${GS === "summary" ? "<button class=\"review-sort-locked\" id=\"sort-filter\" type=\"button\" aria-disabled=\"true\">名称排序</button>" : "<select id=\"sort-filter\"><option value=\"catalog\">默认综合</option><option value=\"name\">名称排序</option><option value=\"level\">当前等级</option><option value=\"target\">计划等级</option></select>"}</label></div>
+      </section>
+      <article class="inventory-panel bag-inventory"><header><h2>当前背包 <span id="current-count">${wT("current")}</span></h2><small>${GS === "summary" ? "双击名称查看逐颗明细" : "点击任意行进行核对"}</small></header><div class="table-scroll" id="current-scroll"><table class="star-inventory-table"><colgroup><col style="width:21.4285714%"/><col style="width:21.4285714%"/><col style="width:21.4285714%"/><col style="width:14.2857143%"/><col style="width:21.4285714%"/></colgroup><thead><tr><th>大类</th><th>名称</th><th>等级</th><th>品质</th><th>数量</th></tr></thead><tbody id="current-rows">${CT("current")}</tbody></table></div></article>
+      ${h}
+      <section class="bag-summary" aria-label="背包数量与经验星曜摘要">
+        <h3 class="bag-summary-title">背包情况</h3>
+        <dl class="bag-counts"><div><dt>背包数量</dt><dd><input id="bag-quantity" type="number" min="0" value="${a ?? ""}" aria-label="背包数量" /></dd></div><div><dt>背包容量</dt><dd><input id="bag-capacity" type="number" min="1" value="${o ?? ""}" aria-label="背包容量" /></dd></div></dl>
+        <article data-experience-editor class="bag-experience"><header><h3>当前经验星曜</h3><button class="button button-secondary" id="view-experience-source" type="button" ${s ? `data-experience-source="${J(s)}"` : "disabled"} title="${s ? "查看经验星曜原图" : "当前工作区暂无可查看的经验星曜原图"}">查看经验星曜原图</button></header><div class="bag-experience-counts">${[
+		["orange", "橙"],
+		["purple", "紫"],
+		["white", "白"]
+	].map(([e, t]) => `<label class="growth-resource-quantity">${Fv(t)}<span>×</span><input class="bag-stock-input" data-experience-field="${e}" inputmode="numeric" aria-label="${t}星曜数量" value="${J(c(e))}" /></label>`).join("")}</div>${u ? `<small class="experience-inline-warning">${J(u)}</small>` : ""}</article>
+        <small class="save-state ${$S === "failed" ? "warning-value" : ""}" role="status">${ww()}</small>
+      </section>
+    </section>
     <section class="ocr-review" aria-labelledby="ocr-review-title"><button class="ocr-summary" id="toggle-ocr-review" type="button" aria-expanded="${ZS}"><span><strong id="ocr-review-title">识别结果核对</strong> <em>${YC ? YC.persisted ? "已保存识别结果，可再次核对" : "识别后补充检查" : "当前工作区来源与复核"}</em></span><span class="ocr-toggle-label">${ZS ? "收起" : "展开"}</span></button><div class="ocr-review-list${ZS ? "" : " is-collapsed"}">${vT()}</div></section>
   ${n}</section>`;
 }
@@ -24162,7 +24161,7 @@ function YT() {
 }
 function XT() {
 	let e = K.reduce((e, t) => e + t.size, 0), t = q.sourceImageId ? GT(q.sourceImageId)?.filename ?? q.sourceImageId : "—", n = q.total ? Math.min(100, Math.round(q.completed / q.total * 100)) : 0, r = rT() || q.status === "cancelling" ? "取消识别" : "开始识别";
-	return `<section class="import-page yuanstar-embedded-import" aria-label="导入识别"><div class="import-workspace-card"><section class="import-pick-progress"><article class="file-picker-panel"><input id="image-file-input" type="file" accept="image/*" multiple hidden ${Y() ? "disabled" : ""}/><h2 class="embedded-drop-title">导入截图</h2><button id="file-drop-zone" class="file-drop-zone" type="button" ${Y() ? "disabled" : ""}><span class="drop-icon">＋</span><strong>点击选择图片或拖拽图片到这里</strong><small>支持选择、拖拽或 Ctrl+V 粘贴多张本地图片；文件只保留在本机。</small></button><p id="file-summary">已选文件：${K.length} 张　·　总大小：${WT(e)}　·　${iT() ? "正在判断图片类型" : K.some((e) => !e.confirmed) ? "存在待确认分类" : K.length ? "分类均已确认" : "等待添加图片"}</p></article><article class="import-progress" id="import-progress-panel"><header><div><p class="section-kicker">导入任务进度</p><h2>${oT()}</h2></div></header><dl><div><dt>任务状态</dt><dd>${oT()}</dd></div><div><dt>当前阶段</dt><dd>${q.message || oT()}</dd></div><div><dt>当前文件</dt><dd title="${J(t)}">${J(t)}</dd></div></dl><p>当前图片：${q.completed} / ${q.total || K.length} · 已完成：${q.completed} · 待处理：${Math.max(0, (q.total || K.length) - q.completed)} · 错误数：${+!!q.error}</p><div class="progress-track"><span style="width:${n}%"></span></div>${q.error ? `<small class="import-error">${J(q.error)}</small>` : `<small>${J(q.message || "图片尚未离开本机。")}</small>`}</article></section><section class="import-pools" aria-label="图片分类池">${qT("主星")}${qT("辅星")}${qT("经验星曜")}</section><section class="overlap-grid" aria-label="主星与辅星重复行标记">${JT("主星")}${JT("辅星")}</section><footer class="import-footer"><div><button class="button button-secondary positive-action" data-confirm-all-pools type="button" ${Y() || iT() || !K.length ? "disabled" : ""}>一键确认全部分类</button><button class="button button-tertiary danger-action" data-clear-import-images type="button" ${Y() || !K.length ? "disabled" : ""}>清空待识别图片</button></div><div><button class="button button-secondary" data-open-restore type="button" ${Y() ? "disabled" : ""}>恢复快照</button><button class="button button-secondary start-recognition-action" data-start-ocr type="button" ${nT() && !rT() ? "disabled" : ""}>${r}</button></div></footer></div></section>`;
+	return `<section class="import-page yuanstar-embedded-import" aria-label="导入识别"><div class="import-workspace-card"><section class="import-pick-progress"><article class="file-picker-panel"><input id="image-file-input" type="file" accept="image/*" multiple hidden ${Y() ? "disabled" : ""}/><h2 class="embedded-drop-title">导入截图</h2><button id="file-drop-zone" class="file-drop-zone" type="button" ${Y() ? "disabled" : ""}><span class="file-drop-content"><span class="drop-icon" aria-hidden="true">＋</span><strong>点击选择图片或拖拽图片到这里</strong></span><small class="file-picker-hint">支持选择、拖拽或 Ctrl+V 粘贴多张本地图片。请上传原始截图并保留完整游戏 UI，不裁剪、拼接或涂改。</small></button><p id="file-summary">已选文件：${K.length} 张　·　总大小：${WT(e)}　·　${iT() ? "正在判断图片类型" : K.some((e) => !e.confirmed) ? "存在待确认分类" : K.length ? "分类均已确认" : "等待添加图片"}</p></article><article class="import-progress" id="import-progress-panel"><header><div><p class="section-kicker">导入任务进度</p><h2>${oT()}</h2></div></header><dl><div><dt>任务状态</dt><dd>${oT()}</dd></div><div><dt>当前阶段</dt><dd>${q.message || oT()}</dd></div><div><dt>当前文件</dt><dd title="${J(t)}">${J(t)}</dd></div></dl><p>当前图片：${q.completed} / ${q.total || K.length} · 已完成：${q.completed} · 待处理：${Math.max(0, (q.total || K.length) - q.completed)} · 错误数：${+!!q.error}</p><div class="progress-track"><span style="width:${n}%"></span></div>${q.error ? `<small class="import-error">${J(q.error)}</small>` : `<small>${J(q.message || "图片尚未离开本机。")}</small>`}</article></section><section class="import-pools" aria-label="图片分类池">${qT("主星")}${qT("辅星")}${qT("经验星曜")}</section><section class="overlap-grid" aria-label="主星与辅星重复行标记">${JT("主星")}${JT("辅星")}</section><footer class="import-footer"><div><button class="button button-secondary positive-action" data-confirm-all-pools type="button" ${Y() || iT() || !K.length ? "disabled" : ""}>一键确认全部分类</button><button class="button button-tertiary danger-action" data-clear-import-images type="button" ${Y() || !K.length ? "disabled" : ""}>清空待识别图片</button></div><div><button class="button button-secondary" data-open-restore type="button" ${Y() ? "disabled" : ""}>恢复快照</button><button class="button button-secondary start-recognition-action" data-start-ocr type="button" ${nT() && !rT() ? "disabled" : ""}>${r}</button></div></footer></div></section>`;
 }
 function ZT() {
 	return wS ? XT() : YT();
@@ -24475,7 +24474,7 @@ function NE() {
 		X();
 		return;
 	}
-	if (KS) {
+	if (Uw()) {
 		let e = LS;
 		if (_w(), e !== LS) {
 			X();
@@ -24595,7 +24594,7 @@ function KE(e, t) {
 	let n = e.closest(".soft-dropdown");
 	if (!n || e.disabled) return;
 	let r = HE(t, "soft");
-	e.matches("#sort-filter") && (r.dataset.preferredPlacement = "bottom"), [...e.options].forEach((n, i) => {
+	e.matches("#sort-filter") && (r.dataset.preferredPlacement = "bottom", r.dataset.control = "sort"), [...e.options].forEach((n, i) => {
 		let a = document.createElement("button");
 		a.className = `yuanstar-dropdown-portal-option${n.selected ? " is-selected" : ""}`, a.type = "button", a.setAttribute("role", "option"), a.setAttribute("aria-selected", String(n.selected)), a.disabled = n.disabled, a.textContent = n.textContent?.trim() || "请选择", a.addEventListener("click", () => {
 			if (!(n.disabled || e.disabled)) {
@@ -24836,7 +24835,7 @@ function gD(e) {
 	let t = xT().find((t) => t.key === e);
 	if (!t) return;
 	let n = Ow();
-	rw = Ew(), GS = "detail", HS = t.name, US = t.name, qS = null, TC() && gw(Hw()[0]?.starInstanceId ?? ""), YS = Rw(), hD(n), X();
+	rw = Ew(), GS = "detail", HS = t.name, US = t.name, qS = null, (TC() || !Hw().some((e) => e.starInstanceId === LS)) && gw(Hw()[0]?.starInstanceId ?? ""), YS = Rw(), hD(n), X();
 }
 function _D() {
 	let e = Ow();
@@ -25112,7 +25111,8 @@ function ED() {
 	})), U.querySelector("#toggle-ocr-review")?.addEventListener("click", () => {
 		ZS = !ZS, X();
 	});
-	let f = U.querySelector("[data-experience-editor]"), p = () => {
+	let f = U.querySelector("[data-experience-editor]"), p = !1, m = () => {
+		if (p) return;
 		f?.querySelectorAll("[data-experience-field]").forEach((e) => {
 			let t = e.dataset.experienceField;
 			zC[t] = e.value;
@@ -25123,15 +25123,17 @@ function ED() {
 			return;
 		}
 		let t = W?.record.snapshot.experience;
-		t && t.orange === e.orange && t.purple === e.purple && t.white === e.white || Tw((t) => t.setExperienceQuantities(e));
+		t && t.orange === e.orange && t.purple === e.purple && t.white === e.white || (p = !0, Tw((t) => t.setExperienceQuantities(e)).finally(() => {
+			p = !1;
+		}));
 	};
 	f?.querySelectorAll("[data-experience-field]").forEach((e) => {
 		e.addEventListener("input", () => {
 			let t = e.dataset.experienceField;
 			zC[t] = e.value;
-		}), e.addEventListener("focusout", p);
+		}), e.addEventListener("focusout", m);
 	}), f?.addEventListener("keydown", (e) => {
-		e.key === "Enter" && (e.preventDefault(), p());
+		e.key === "Enter" && (e.preventDefault(), m());
 	});
 }
 async function DD(e) {
@@ -25824,7 +25826,7 @@ function oO(e, t = {}) {
 	let n = !1;
 	return {
 		setReviewView(e) {
-			n || rC === e || (rC = e, pD(), iC = null, aC = null, oC = "", e === "plan" && (zS = "plan", LT()), IS === "review" && X());
+			n || rC === e || (rC = e, pD(), iC = null, aC = null, oC = "", zS = e === "plan" ? "plan" : "current", e === "plan" && LT(), IS === "review" && X());
 		},
 		async dispose() {
 			n || (n = !0, await aO());

@@ -1,6 +1,18 @@
 # YuanStar embed 同步说明
 
-## 当前 P3-B 人工验收后正式来源（2026-10-10）
+## 当前背包 UI 人工验收后正式来源（2026-10-10）
+
+源码 commit：`17f28628a126c4255c4d3e502b365f56ed02bcbc`，分支 `feat/growth-plan-workspace-p1`。从已提交 source commit 的干净工作树正式 build，再使用现有 `scripts/sync-yuanstar-embed.mjs` 同步。完整 12 文件集合、逐文件字节及 SHA-256 与构建目录一致；manifest 的 `_sourceCommit` 对应该提交，`_sourceWorkingTree.status` 为 `clean`。不使用 dirty staging 充当正式来源。
+
+本次收口包含用户已验收的背包 6:4 单表、编辑与经验摘要、导入页面紧凑留白、上传文案居中、手机重复关系三控件同行与 footer 排列。三个教程入口保留；正文未改写。真实 `STAR_COMPLETION` 仍为 false，公开 Backend 配置及开发演示隔离保留。触控 44px 适配按用户决定延后，操作按钮现有 32px 不变。
+
+源码本次重新运行 TypeScript、pending/bag 17 项、行跟随 10 项、汇总、当前实例编辑、养成计划、Import Draft UI、完成 UI 26 项与 embed build，均通过。此前浏览器人工验收与测量属于开发预览证据，不声明真机、公开服务或真实账号写入验证。宿主构建与专项结果以本轮收口报告为准；历史章节中的“当前”“未提交”等只描述当时阶段。
+
+本轮授权仅提交和安全推送现有 feature，main 只读比较，不 merge、rebase、PR、部署或真实资源扣减。
+
+宿主收口重新运行教程/完成保护/CaptureBatch 接线定向测试 32/32、正式产物与账号恢复行为 57/57、provenance 6/6，以及生产 build 和 OCR gzip 生成校验，均通过。回归用例按已验收的单表和冗余标题移除结果更新；保留实例身份、待养成、OCR 预热/超时、账号隔离与手动教程重放验证。未执行全量测试、真实用户写入或 Backend Mongo 测试。
+
+## 历史 P3-B 人工验收后正式来源（2026-10-10）
 
 源码commit：`836c40c4b55e7787e8ddf1ab47564354b495b82c`，分支`feat/growth-plan-workspace-p1`。最新紧凑弹窗、资源状态、标题独立分行及虚线输入已在源码提交中保留；从已提交 source commit 的干净工作树正式 build，再执行正式同步脚本。全部12个embed文件集合、字节及SHA-256一致，manifest中的_sourceCommit为该提交、_sourceWorkingTree为clean。
 

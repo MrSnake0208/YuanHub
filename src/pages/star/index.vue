@@ -101,7 +101,7 @@
           </p>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
-            <button type="button" class="link" @click="setTab('import'); starImportHelpOpen = true">查看支持的截图格式与说明</button>
+            <button type="button" class="link" @click="setTab('import'); replayRecognitionTutorial()">查看支持的截图格式与说明</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
           <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
@@ -123,15 +123,10 @@
           </div>
           <div v-if="activeTab === 'review' && starReviewView === 'bag'" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
-            <button type="button" class="star-filter-toggle" :aria-expanded="starFiltersOpen" aria-controls="product-root" @click="starFiltersOpen = !starFiltersOpen">{{ starFiltersOpen ? '收起筛选与设置' : '更多筛选与设置' }}</button>
-          </div>
-          <div v-else-if="activeTab === 'import'" class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong><button type="button" class="star-filter-toggle" :aria-expanded="starImportHelpOpen" @click="starImportHelpOpen = !starImportHelpOpen">截图要求与识别说明</button></div>
-          <div v-if="activeTab === 'import' && starImportHelpOpen" class="star-availability-note" role="note">
-            <p><b>手机和电脑网页端均可使用。</b>导入截图、核对识别结果并整理背包。首次 OCR 需在本机加载识别资源，请保持页面前台并使用稳定网络；MaaYuan 星石自动采集仍在接入中。</p>
-            <p>支持 JPG、PNG 等浏览器可读取的图片；请保留完整星石行、等级和品质，将主星、辅星与经验星曜截图分别核对分类。</p>
+            <button type="button" class="star-tutorial-replay" @click="replayRecognitionTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看识别教程</button>
           </div>
           </div>
-          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <RecognitionTutorial :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
@@ -239,7 +234,6 @@ async function runGrowthBottleOperation(owner, operation) {
 watch(starReviewView, view => { handle?.setReviewView?.(view); });
 const starBrowseEmpty = ref(false);
 const starFiltersOpen = ref(false);
-const starImportHelpOpen = ref(false);
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
@@ -668,8 +662,13 @@ function ensureEmbedStylesheet() {
     document.head.appendChild(link);
   });
 }
-function loadEmbedModule() {
-  return Function("url", "return import(url)")(EMBED_MODULE_URL);
+async function loadEmbedModule() {
+  const committed = () => Function("url", "return import(url)")(EMBED_MODULE_URL);
+  if (import.meta.env.DEV && new URLSearchParams(location.search).get('star_bag_preview') === '1') {
+    const { loadStarCompletionDemoProduct } = await import('./dev/starCompletionDemo.js');
+    return loadStarCompletionDemoProduct(committed);
+  }
+  return committed();
 }
 function toggleStarImport() {
   clearCloudSyncFeedback();
@@ -1112,11 +1111,10 @@ onBeforeUnmount(function () {
   .star-workbench-header .star-tabs.tool-workspace-tabs { flex-wrap: nowrap; }
   .star-tutorial-replay, .star-help-tutorial { gap: 4px; padding-inline: 6px; font-size: 13px; }
 }
-.star-workbench-actions, .star-import-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.star-workbench-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .star-import-action { flex: none; width: auto; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
-.star-filter-toggle { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); cursor: pointer; }
-.star-filter-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .page-star #product-root :deep(.review-toolbar) { border: 0; border-radius: 0; background: transparent; padding: 0; margin-bottom: 16px; }
+.page-star #product-root :deep(.is-bag-view .bag-filters) { border: 1px solid var(--line); border-radius: var(--radius-card, 12px); background: var(--surface); padding: var(--bag-card-padding); margin: 0; }
 .page-star #product-root :deep(.filter-strip) { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px; border: 0; padding: 0; }
 .page-star #product-root :deep(.filter-strip .filter-search) { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; font-size: 12px; }
 .page-star #product-root :deep(.filter-strip #name-filter) { min-height: 44px; height: 44px; font-size: 14px; background: var(--surface); }
@@ -1142,19 +1140,18 @@ onBeforeUnmount(function () {
 .page-star #product-root :deep(.filter-strip .soft-dropdown-trigger),
 .page-star #product-root :deep(.inventory-facts .soft-dropdown-trigger),
 .page-star #product-root :deep(.inventory-facts .review-view-toggle) { min-height: 44px; height: 44px; }
-.star-import-stage { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; color: var(--tea); font-size: 13px; font-weight: 600; }
 .page-star #product-root :deep(.yuanstar-embedded-shell) { padding-top: 16px; }
 .page-star #product-root :deep(.review-workspace-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .page-star #product-root :deep(.inventory-panel > header h2) { font-family: var(--font-s); color: var(--tea); }
 .page-star #product-root :deep(.review-overview:has(> .review-overview-count:only-child)) { display: none; }
 .page-star #product-root.is-empty-view :deep(.inventory-grid),
 .page-star #product-root.is-empty-view :deep(.review-workspace-tools),
-.page-star #product-root.is-empty-view :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
+.page-star #product-root.is-empty-view:not(.is-bag-view) :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
 .page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
 .star-sync-meta { font-size: 12px; }
 /* Star actions keep the same compact height for mouse and touch input.
    Inline name tooltips, image previews and modal backdrops are content surfaces. */
-.page-star .star-main :deep(button:not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary)) {
+.page-star .star-main :deep(button:not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary):not(.file-drop-zone)) {
   box-sizing: border-box;
   height: 32px !important;
   min-height: 32px !important;
@@ -1164,8 +1161,6 @@ onBeforeUnmount(function () {
 }
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
 .star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
-.star-availability-note { margin: 8px 0; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
-.star-availability-note p { margin: 0; }
 @media (max-width: 1080px) {
   .page-star { --star-bottom-bar-height: 0px; }
 }
