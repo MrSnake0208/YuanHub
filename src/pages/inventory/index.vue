@@ -25,7 +25,7 @@
           </details>
         </template>
         <template #help>
-          <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
+          <p>按当前游戏账号清点道具与密探心纸，查看奖励统计和操作历史。顶部「记录奖励」补录增量流水，「更新库存」盘点当前总量。可按分类编辑，或盘点全部道具建立完整库存基准；「更多」中可导入导出 v2 交换档案。</p>
         </template>
       </CompactToolHeader>
 
@@ -33,9 +33,14 @@
         <div class="wrap">
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
-            <div><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
-            <button v-if="inventoryAccountReady" type="button" class="btn primary inventory-entry" :disabled="loading || !!error || currentLoadedContext !== stockContext || editingStock"
-              @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
+            <div class="inventory-freshness-copy"><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
+            <div v-if="inventoryAccountReady" class="inventory-actions">
+              <button type="button" class="btn ghost reward-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
+                aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'manual'"
+                @click="openRewardEntry('manual', $event.currentTarget)"><Plus :size="16" aria-hidden="true" />记录奖励</button>
+              <button type="button" class="btn primary inventory-entry" :disabled="rewardEntryDisabled || stockActionBlocked"
+                @click="openStockEntry"><Pencil :size="16" aria-hidden="true" />更新库存</button>
+            </div>
           </div>
           <ToolTaskPrompt v-if="!editingStock && inventoryPromptTitle" class="inventory-setup" :title="inventoryPromptTitle" :description="inventoryPromptDescription" :error="!!(error || accountError)">
             <router-link v-if="!auth.isLoggedIn" class="btn primary" :to="{ path: '/login', query: { redirect: '/inventory' } }">登录</router-link>
@@ -46,6 +51,17 @@
               <button class="link" type="button" @click="inventoryBrowseCatalog = true; setTab('manifest')">先查看道具与心纸目录</button>
             </template>
           </ToolTaskPrompt>
+
+          <RewardEntryWorkspace
+            ref="rewardEntryWorkspace"
+            :key="auth.userInfo?.id || ''"
+            :account-id="accountId"
+            :account-name="currentAccountName"
+            :game="agentGameFilter"
+            :disabled="rewardEntryDisabled"
+            @busy="rewardImportBusy = $event"
+            @imported="onRewardImported"
+          ><template #actions /></RewardEntryWorkspace>
 
           <ArchiveExchangePanel
             v-if="showArchive && !editingStock"
@@ -1578,7 +1594,7 @@
                 <span class="records-kicker">库存追踪 · 操作历史</span>
                 <h2 id="records-overview-title">浏览库存变更记录</h2>
                 <p>
-                  这里按时间保留库存更新与奖励流水。新增奖励或导入本地报告会在独立工作台中完成，不会打断当前浏览位置。
+                  这里按时间查阅、筛选和追踪库存更新与奖励入账，也可删除与恢复记录。新增奖励请使用顶部「记录奖励」；本地报告可在此导入。
                 </p>
               </div>
               <div class="records-overview-actions">
@@ -1587,16 +1603,9 @@
                   <strong>{{ recordsList.length }}</strong>
                   <small>条记录</small>
                 </div>
-                <RewardEntryWorkspace
-                  ref="rewardEntryWorkspace"
-                  :account-id="accountId"
-                  :account-name="currentAccountName"
-                  :game="agentGameFilter"
-                  :latest-inventory-at="latestInventoryRecordAt"
-                  :disabled="!inventoryAccountReady || editingStock"
-                  @busy="rewardImportBusy = $event"
-                  @imported="onRewardImported"
-                />
+                <button type="button" class="btn ghost records-report-entry" :disabled="rewardEntryDisabled || rewardImportBusy"
+                  aria-haspopup="dialog" aria-controls="reward-entry-panel" :aria-expanded="rewardEntryWorkspace?.mode === 'report'"
+                  @click="openRewardEntry('report', $event.currentTarget)"><Upload :size="16" aria-hidden="true" />导入本地报告</button>
               </div>
             </section>
             <div class="records-head" v-reveal>
@@ -1665,7 +1674,7 @@
             </div>
             <div v-else-if="recordsList.length === 0" class="state">
               <strong>还没有库存变更记录</strong><br />
-              手动更新库存、添加奖励流水或导入本地报告后，记录会出现在这里。可以先使用上方的「添加奖励流水」或「导入本地报告」。
+              更新库存、记录奖励或导入本地报告后，记录会出现在这里。请使用顶部「记录奖励」「更新库存」，或此处的「导入本地报告」。
             </div>
             <template v-else>
               <ul class="record-list">
@@ -1781,6 +1790,7 @@ import {
   Save,
   Search,
   Star,
+  Upload,
   X,
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
@@ -2101,17 +2111,17 @@ const recordsBusyId = ref("");
 const deletedRecordNotices = ref([]);
 let recordsLoadSeq = 0;
 const rewardImportBusy = ref(false);
-const latestInventoryRecordAt = computed(function () {
-  const stockRecords = recordsList.value.filter(function (record) {
-    return record && record.record_type === "stock_snapshot" && record.effective_at;
-  });
-  if (!stockRecords.length) return "";
-  return stockRecords.reduce(function (latest, record) {
-    return new Date(record.effective_at).getTime() > new Date(latest).getTime()
-      ? record.effective_at
-      : latest;
-  }, stockRecords[0].effective_at);
-});
+const rewardEntryDisabled = computed(() => !inventoryAccountReady.value || loading.value || !!error.value ||
+  currentLoadedContext.value !== stockContext.value || editingStock.value || savingStock.value ||
+  !!pendingStockDocument.value || importing.value || !!recordsBusyId.value);
+const stockActionBlocked = computed(() => rewardImportBusy.value || !!rewardEntryWorkspace.value?.mode ||
+  importing.value || !!recordsBusyId.value);
+
+function openRewardEntry(mode, trigger) {
+  if (rewardEntryDisabled.value || rewardImportBusy.value) return;
+  if (mode === "manual") rewardEntryWorkspace.value?.openManual(trigger);
+  else rewardEntryWorkspace.value?.openReport(trigger);
+}
 
 function onRewardImported(targetAccountId) {
   if (targetAccountId !== accountId.value) return;
@@ -2139,14 +2149,12 @@ async function openResourceStockEditor() {
   if (isCurrent()) startStockEdit();
 }
 
-async function openResourceReportImport() {
-  const seq = inventoryContextSeq;
-  await setTab("records");
-  await nextTick();
-  if (!inventoryDisposed && seq === inventoryContextSeq && activeTab.value === "records") rewardEntryWorkspace.value?.openReport();
+function openResourceReportImport(event) {
+  openRewardEntry("report", event.currentTarget);
 }
 
 async function setTab(t) {
+  if (rewardImportBusy.value) return;
   const seq = inventoryContextSeq;
   const editSeq = stockEditSeq;
   if (editingStock.value && t !== "manifest") {
@@ -3271,6 +3279,7 @@ function scrollToStockEditor() {
 }
 
 async function openStockEntry() {
+  if (stockActionBlocked.value) return;
   if (activeTab.value === "manifest") return startStockEdit();
   const seq = inventoryContextSeq;
   await setTab("manifest");
@@ -3278,7 +3287,7 @@ async function openStockEntry() {
 }
 
 function startStockEdit(scopeEntries, scopeName) {
-  if (!inventoryAccountReady.value || loading.value || error.value || savingStock.value || currentLoadedContext.value !== stockContext.value) return;
+  if (!inventoryAccountReady.value || loading.value || error.value || savingStock.value || stockActionBlocked.value || currentLoadedContext.value !== stockContext.value) return;
   if (entityType.value === "agent" && (agentCatalogLoading.value || agentCatalogError.value)) return;
   if (!auth.isLoggedIn) {
     goLogin();
@@ -7193,9 +7202,6 @@ onBeforeUnmount(function () {
   gap: 12px;
   justify-items: stretch;
 }
-.records-overview-actions :deep(.reward-workspace) {
-  width: 100%;
-}
 .records-count {
   display: flex;
   align-items: baseline;
@@ -7472,18 +7478,6 @@ onBeforeUnmount(function () {
   .records-count {
     width: 100%;
     justify-content: flex-start;
-    transform: translateY(10px);
-  }
-  .records-overview-actions :deep(.reward-workspace) {
-    width: 100%;
-    min-height: 72px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-bottom: -28px;
-  }
-  .records-overview-actions :deep(.workspace-actions) {
-    width: 100%;
   }
   .manifest-toolbar {
     position: sticky;
@@ -8388,11 +8382,12 @@ onBeforeUnmount(function () {
 .inventory-tabs.tool-workspace-tabs { position: static; flex-direction: row; }
 .inventory-tabs.tool-workspace-tabs button { flex-direction: row; }
 .inventory-tabs.tool-workspace-tabs button svg { display: none; }
-.inventory-freshness { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
-.inventory-freshness > div { display: grid; gap: 4px; color: var(--tea); font: 500 13px/1.5 var(--font-b); min-width: 0; }
+.inventory-freshness { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.inventory-freshness-copy { display: grid; gap: 4px; color: var(--tea); font: 500 13px/1.5 var(--font-b); min-width: 0; }
 .freshness-label { color: var(--ink-60); font-size: 12px; }
 .inventory-freshness time { font-family: var(--font-d); font-variant-numeric: tabular-nums; }
-.inventory-entry { min-height: 44px; flex: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.inventory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.inventory-entry, .reward-entry, .records-report-entry { min-height: 44px; flex: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
 .inventory-setup { margin-top: 8px; }
 .manifest-toolbar { position: static; display: flex; margin-top: 0; padding: 0; gap: 8px 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .manifest-toolbar .manifest-type-switch { position: static; width: fit-content; margin: 0; padding: 0; gap: 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
@@ -8410,6 +8405,8 @@ onBeforeUnmount(function () {
 .manifest-item-tools .mf-filter button { min-height: 44px; padding-inline: 12px; }
 .manifest-item-tools .mf-filter button.on { background: color-mix(in srgb, var(--yellow) 40%, var(--cream)); color: var(--tea); box-shadow: none; }
 @media (max-width: 640px) {
+  .inventory-actions { flex: 1 1 100%; }
+  .inventory-actions > button { flex: 1 1 112px; }
   .manifest-toolbar .manifest-bar-summary { flex-basis: 100%; }
 }
 

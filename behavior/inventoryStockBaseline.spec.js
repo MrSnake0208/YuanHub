@@ -4,6 +4,7 @@ import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import InventoryPage from '../src/pages/inventory/index.vue'
 import * as inventoryApi from '../src/api/inventory.js'
+import { getRewardCatalog } from '../src/api/rewardCatalog.js'
 import { getOperatorCatalog } from '../src/api/operator.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { auth } from '../src/store/auth.js'
@@ -20,6 +21,7 @@ vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(), listRecords: vi.fn(), deleteRecord: vi.fn(), restoreRecord: vi.fn(),
   listAccounts: vi.fn(), listAgentFavorites: vi.fn(), addAgentFavorite: vi.fn(), removeAgentFavorite: vi.fn(),
 }))
+vi.mock('../src/api/rewardCatalog.js', () => ({ getRewardCatalog: vi.fn() }))
 vi.mock('../src/api/operator.js', () => ({ getOperatorCatalog: vi.fn() }))
 vi.mock('../src/store/accountEvents.js', () => ({
   setInventoryToastFavoriteAgentIds: vi.fn(), subscribeAccountEvents: vi.fn(() => () => {}),
@@ -35,18 +37,19 @@ const pending = () => {
 }
 const openReport = vi.fn()
 const rewardStub = defineComponent({
+  props: ['disabled'],
   setup(_, { expose }) {
     expose({ openReport })
     return () => h('div', { class: 'reward-workspace-stub' })
   },
 })
-function render(options = {}) {
+function render(options = {}, realRewards = false) {
   return mount(InventoryPage, { ...options, global: { plugins: [createPinia()],
     stubs: {
       OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
-      AcquiredPeriodReport: true, RewardEntryWorkspace: rewardStub,
+      AcquiredPeriodReport: true, RewardEntryWorkspace: realRewards ? false : rewardStub,
     },
     directives: { reveal: () => {} },
   } })
@@ -70,6 +73,7 @@ beforeEach(() => {
   activeAccount.setGame('代号鸢', 'acc-b')
   inventoryApi.getCatalog.mockResolvedValue({ entities: [] })
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char_001_test', name: '测试密探', rarity: 5, games: ['代号鸢'] }] })
+  getRewardCatalog.mockResolvedValue([{ entity_type: 'item', id: 'baijinbi', name: '白金币', rarity: 3 }])
   inventoryApi.getCurrent.mockResolvedValue([])
   inventoryApi.getAcquired.mockResolvedValue({ acquired: {} })
   inventoryApi.listAccounts.mockResolvedValue([
@@ -91,6 +95,7 @@ it('只读初始化不写库存，不用登录状态宣称已同步', async () =
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
   expect(wrapper.get('.inventory-setup').text()).toContain('尚未建立库存')
   expect(wrapper.get('.inventory-setup .inventory-entry').text()).toBe('开始首次盘点')
+  expect(wrapper.find('.reward-entry').exists()).toBe(false)
   expect(wrapper.get('.inventory-tabs').isVisible()).toBe(false)
   await wrapper.get('.inventory-setup .link').trigger('click')
   expect(wrapper.get('.inventory-tabs').isVisible()).toBe(true)
@@ -240,6 +245,8 @@ it('没有账号与未登录时禁止盘点，未登录不读取私有库存', a
   await flushPromises()
   expect(wrapper.find('.inventory-entry').exists()).toBe(false)
   expect(wrapper.get('.inventory-setup').text()).toContain('创建或选择账号')
+  expect(wrapper.find('.reward-entry').exists()).toBe(false)
+  expect(wrapper.findComponent(rewardStub).props('disabled')).toBe(true)
   expect(inventoryApi.getCurrent).not.toHaveBeenCalled()
   wrapper.unmount()
   auth.isLoggedIn = false
@@ -247,6 +254,8 @@ it('没有账号与未登录时禁止盘点，未登录不读取私有库存', a
   await flushPromises()
   expect(guest.find('.inventory-entry').exists()).toBe(false)
   expect(guest.get('.inventory-setup').text()).toContain('登录后管理库存')
+  expect(guest.find('.reward-entry').exists()).toBe(false)
+  expect(guest.findComponent(rewardStub).props('disabled')).toBe(true)
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
   expect(inventoryApi.getCurrent).not.toHaveBeenCalled()
 })
@@ -515,4 +524,157 @@ it.each(['success', 'failure'])('库存导出 %s 晚到不会在新账号下载�
   await operation
   expect(click).not.toHaveBeenCalled(); expect(alert).not.toHaveBeenCalled()
   click.mockRestore(); alert.mockRestore()
+})
+
+
+const clickRewardButton = async text => {
+  const node = Array.from(document.querySelectorAll('#reward-entry-panel button')).find(node => node.textContent.includes(text))
+  expect(node).toBeTruthy()
+  node.click()
+  await flushPromises()
+}
+const closeReward = async () => {
+  document.querySelector('#reward-entry-panel').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+}
+
+it.each(['manifest', 'acquired', 'records'])('%s 直接记录奖励，共用一个公共工作台并恢复实际触发器与页签', async tab => {
+  localStorage.setItem('inventory-tabs', tab)
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  const wrapper = render({ attachTo: document.body }, true)
+  await flushPromises()
+  const historyReads = inventoryApi.listRecords.mock.calls.length
+  const trigger = wrapper.get('.reward-entry')
+  expect(trigger.isVisible()).toBe(true)
+  expect(wrapper.findAll('.reward-workspace')).toHaveLength(1)
+  expect(wrapper.find('.workspace-actions').exists()).toBe(false)
+  const scrollCalls = window.scrollTo.mock.calls.length
+  await trigger.trigger('click')
+  await flushPromises()
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect(document.querySelector('[role="dialog"] h3').textContent).toBe('添加奖励流水')
+  expect(document.activeElement).toBe(document.querySelector('[role="dialog"] h3'))
+  expect(document.querySelector('.baseline-note').textContent).toContain('可能仅记录历史')
+  expect(inventoryApi.listRecords).toHaveBeenCalledTimes(historyReads)
+  expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
+  await closeReward()
+  expect(document.activeElement).toBe(trigger.element)
+  expect(wrapper.get('.inventory-tabs [aria-selected="true"]').text()).toBe({ manifest: '库存清单', acquired: '统计报告', records: '操作历史' }[tab])
+  expect(window.scrollTo).toHaveBeenCalledTimes(scrollCalls)
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('历史只保留报告入口，关闭回到报告按钮，统计空态报告入口不切页', async () => {
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  localStorage.setItem('inventory-tabs', 'records')
+  const wrapper = render({ attachTo: document.body }, true)
+  await flushPromises()
+  expect(wrapper.get('.records-overview-actions').text()).not.toContain('添加奖励流水')
+  const trigger = wrapper.get('.records-report-entry')
+  await trigger.trigger('click'); await flushPromises()
+  expect(document.querySelector('.report-workbench')).not.toBeNull()
+  await closeReward()
+  expect(document.activeElement).toBe(trigger.element)
+  await wrapper.findAll('.inventory-tabs button').find(node => node.text() === '统计报告').trigger('click')
+  await flushPromises()
+  const report = wrapper.findAll('.report-empty-actions button').find(node => node.text() === '导入库存报告')
+  await report.trigger('click'); await flushPromises()
+  expect(wrapper.get('.inventory-tabs [aria-selected="true"]').text()).toBe('统计报告')
+  await closeReward()
+  expect(document.activeElement).toBe(report.element)
+  wrapper.unmount()
+})
+
+it('库存草稿时奖励禁用；奖励草稿关闭与切视图后保留，账号切换仍需确认', async () => {
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  const wrapper = render({ attachTo: document.body }, true)
+  await enterStockEditor(wrapper)
+  expect(wrapper.get('.reward-entry').element.disabled).toBe(true)
+  await wrapper.get('.reward-entry').trigger('click')
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  await wrapper.get('.manifest-edit-actions button').trigger('click'); await flushPromises()
+  await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
+  document.querySelector('.reward-tile[aria-label^="添加白金币"]').click(); await flushPromises()
+  await closeReward()
+  dialog.confirm.mockResolvedValueOnce(false)
+  expect(await wrapper.findComponent({ name: 'DataAccountContextBar' }).props('beforeSwitch')()).toBe(false)
+  expect(dialog.confirm).toHaveBeenLastCalledWith(expect.objectContaining({ title: '放弃当前账号的录入草稿？' }))
+  await wrapper.findAll('.inventory-tabs button').find(node => node.text() === '操作历史').trigger('click'); await flushPromises()
+  await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
+  expect(document.querySelector('.basket-list li').textContent).toContain('白金币')
+  await closeReward()
+  inventoryApi.getCurrent.mockResolvedValue(fullStock('acc-b'))
+  activeAccount.set('acc-b'); await flushPromises()
+  await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
+  expect(wrapper.findComponent({ name: 'RewardEntryWorkspace' }).props('accountId')).toBe('acc-b')
+  expect(document.querySelector('.basket-list li')).toBeNull()
+  wrapper.unmount()
+})
+
+it('未知结果锁定库存、账号和视图，原样重试仅发原请求，成功按原链路刷新且留在当前视图', async () => {
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  localStorage.setItem('inventory-tabs', 'acquired')
+  const wrapper = render({ attachTo: document.body }, true)
+  await flushPromises()
+  await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
+  document.querySelector('.reward-tile[aria-label^="添加白金币"]').click()
+  const stamina = document.querySelector('input[aria-label="消耗体力"]')
+  stamina.value = '20'; stamina.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  await clickRewardButton('预览本次流水')
+  inventoryApi.importInventory.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  await clickRewardButton('确认补录')
+  const original = JSON.parse(JSON.stringify(inventoryApi.importInventory.mock.calls[0][0]))
+  expect(original.records[0]).toMatchObject({ account_id: 'acc-a', record_type: 'reward_delta' })
+  expect(wrapper.get('.reward-entry').element.disabled).toBe(true)
+  expect(wrapper.get('.inventory-entry').element.disabled).toBe(true)
+  expect(await wrapper.findComponent({ name: 'DataAccountContextBar' }).props('beforeSwitch')()).toBe(false)
+  await wrapper.findAll('.inventory-tabs button').find(node => node.text() === '操作历史').trigger('click')
+  expect(wrapper.get('.inventory-tabs [aria-selected="true"]').text()).toBe('统计报告')
+  await closeReward()
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+  const currentReads = inventoryApi.getCurrent.mock.calls.length
+  const acquiredReads = inventoryApi.getAcquired.mock.calls.length
+  const historyReads = inventoryApi.listRecords.mock.calls.length
+  inventoryApi.importInventory.mockResolvedValueOnce({ accepted: 1, duplicates: 0, history_only: 1, superseded: 0 })
+  await clickRewardButton('原样重试补录')
+  expect(inventoryApi.importInventory).toHaveBeenCalledTimes(2)
+  expect(inventoryApi.importInventory.mock.calls[1][0]).toEqual(original)
+  expect(inventoryApi.getCurrent.mock.calls.length).toBeGreaterThan(currentReads)
+  expect(inventoryApi.getAcquired.mock.calls.length).toBeGreaterThan(acquiredReads)
+  expect(inventoryApi.listRecords.mock.calls.length).toBeGreaterThan(historyReads)
+  expect(document.querySelector('.result').textContent).toContain('仅历史')
+  expect(wrapper.get('.inventory-tabs [aria-selected="true"]').text()).toBe('统计报告')
+  await closeReward()
+  expect(document.activeElement).toBe(wrapper.get('.reward-entry').element)
+  wrapper.unmount()
+})
+
+
+it('同账号换登录身份时销毁旧奖励草稿并释放锁，迟到结果不刷新新身份', async () => {
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  const wrapper = render({ attachTo: document.body }, true)
+  await flushPromises()
+  await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
+  document.querySelector('.reward-tile[aria-label^="添加白金币"]').click()
+  const stamina = document.querySelector('input[aria-label="消耗体力"]')
+  stamina.value = '20'; stamina.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  await clickRewardButton('预览本次流水')
+  const oldSave = pending()
+  inventoryApi.importInventory.mockReturnValueOnce(oldSave.promise)
+  await clickRewardButton('确认补录')
+  auth.userInfo = { id: 'new-owner' }
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  const reads = inventoryApi.getCurrent.mock.calls.length
+  oldSave.resolve({ accepted: 1, duplicates: 0, history_only: 0, superseded: 0 })
+  await flushPromises()
+  expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(reads)
+  expect(wrapper.get('.reward-entry').element.disabled).toBe(false)
+  await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
+  expect(document.querySelector('.basket-list li')).toBeNull()
+  expect(document.querySelector('.result')).toBeNull()
+  wrapper.unmount()
 })

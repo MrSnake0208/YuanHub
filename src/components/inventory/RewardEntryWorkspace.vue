@@ -1,6 +1,7 @@
 <template>
   <div class="reward-workspace">
-    <div class="workspace-actions" aria-label="新增奖励或导入库存记录">
+    <slot v-if="$slots.actions" name="actions" />
+    <div v-else class="workspace-actions" aria-label="新增奖励或导入库存记录">
       <span v-if="disabled" class="muted">登录并选择子账号后可补录记录</span>
       <button ref="manualButton" type="button" class="entry-button" :class="{ active: mode === 'manual' }" :disabled="disabled || locked" :aria-expanded="mode === 'manual'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('manual')"><Plus :size="15" aria-hidden="true" />添加奖励流水</button>
       <button ref="reportButton" type="button" class="entry-button" :class="{ active: mode === 'report' }" :disabled="disabled || locked" :aria-expanded="mode === 'report'" aria-haspopup="dialog" aria-controls="reward-entry-panel" @click="open('report')"><Upload :size="15" aria-hidden="true" />导入本地报告</button>
@@ -60,7 +61,7 @@
               <label v-if="manual.channel === '手动补录' && !manual.presets.length" class="custom-channel-field"><span>自定义渠道名称 <small>例如：活动邮件、月卡奖励</small></span><input v-model.trim="manual.customChannel" type="text" maxlength="64" placeholder="填写这笔奖励的来源" @input="clearPreview" /></label>
               <RewardDateTimePicker v-model:date="manual.date" v-model:clock="manual.clock" :disabled="locked || !!result || disabled" @update:date="clearPreview" @update:clock="clearPreview" />
               <label v-if="requiresStamina" class="stamina-field"><span>消耗体力<small>本次派遣</small></span><span class="stamina-input"><Flame :size="16" aria-hidden="true" /><input v-model="manual.stamina" type="text" inputmode="numeric" aria-label="消耗体力" placeholder="填写实际消耗" @input="clearPreview" /><span>点</span></span></label>
-              <p v-if="manualBeforeLatestSnapshot" class="baseline-note"><History :size="14" aria-hidden="true" /><span>时间早于已知最新库存快照；服务端会保留这条历史，已被快照覆盖的数量不会再次增加当前库存。</span></p>
+              <p class="baseline-note"><History :size="14" aria-hidden="true" /><span>{{ manualBeforeLatestSnapshot ? '时间早于已知最新库存快照；服务端会保留这条历史，已被快照覆盖的数量不会再次增加当前库存。' : '奖励按实际发生时间入账；若已被较新完整或局部盘点覆盖，可能仅记录历史、不增加当前库存，以服务端结果为准。奖励流水不能代替完整盘点基准。' }}</span></p>
             </div>
           </div>
           <div v-if="manual.channel === '历练'" class="training-mode-section">
@@ -168,7 +169,7 @@
         </li></ul>
         <div v-if="!result" class="confirm-bar"><p><ShieldCheck :size="16" aria-hidden="true" /><span>{{ pendingDocument ? '本次内容已锁定，请原样重试确认结果。' : selectedRecords.some(record => record.snapshot_scope === 'full') ? '完整快照会按原始时间重设该类库存，未列出的条目归零；请核对账号、时间和数量。' : selectedRecords.some(record => record.record_type === 'stock_snapshot') ? '快照按原始时间更新列出项目的库存总量，零值也会更新；请核对账号、时间和数量。' : '请核对发生时间与奖励内容，再确认入账。' }}</span></p><button type="button" class="primary-button submit-button" :disabled="busy || disabled || !selectedRecords.length || selectedRecords.length > 1000" @click="submit"><Check :size="16" aria-hidden="true" />{{ busy ? '正在提交…' : pendingDocument ? '原样重试补录' : `${mode === 'report' ? '确认补传' : '确认补录'} ${selectedRecords.length} 条` }}</button></div>
       </div>
-      <div v-if="result" class="result" role="status"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
+      <div v-if="result" ref="resultBox" class="result" role="status" tabindex="-1"><CircleCheck :size="23" aria-hidden="true" /><div><h4>{{ result.accepted === 0 && result.duplicates > 0 ? '记录已存在，未重复补录' : mode === 'report' ? '报告已补传' : '奖励已入簿' }}</h4><p>接受 {{ result.accepted }} 条 · 重复 {{ result.duplicates }} 条 · 仅历史 {{ result.history_only }} 条 · 已归档 {{ result.superseded }} 条</p><ul v-if="result.warnings?.length"><li v-for="(warning, index) in result.warnings" :key="index">{{ warningText(warning) }}</li></ul></div><button type="button" class="outline-button" @click="startNext">{{ mode === 'manual' ? '再添加一条' : '继续导入' }}<ArrowRight :size="14" aria-hidden="true" /></button></div>
               <footer class="panel-footnote"><Info :size="13" aria-hidden="true" />{{ mode === 'report' ? '奖励补齐获得量，快照保留库存总量；服务端按原时间与记录 ID 处理历史和去重。' : '历史奖励会补齐获得量；已被较新库存快照覆盖的部分，不重复增加库存。' }}</footer>
             </div>
           </section>
@@ -201,6 +202,7 @@ const checkingBaseline = ref(false)
 const error = ref('')
 const result = ref(null)
 const errorBox = ref(null)
+const resultBox = ref(null)
 const heading = ref(null)
 const dialogEl = ref(null)
 const lockNotice = ref(null)
@@ -396,9 +398,9 @@ async function loadCatalog() {
   }
   finally { catalogLoading.value = false }
 }
-async function open(nextMode) {
+async function open(nextMode, trigger) {
   if (props.disabled || locked.value) return
-  if (!mode.value) restoreFocusEl = nextMode === 'manual' ? manualButton.value : reportButton.value
+  if (!mode.value) restoreFocusEl = trigger || (nextMode === 'manual' ? manualButton.value : reportButton.value)
   if (mode.value !== nextMode) {
     if (mode.value === 'manual' && result.value) resetManual()
     fileReadSeq++; readingFile.value = false; clearPreview()
@@ -407,7 +409,7 @@ async function open(nextMode) {
   // 每次打开重新核对目录，避免管理员删改密探后继续使用页面内缓存。
   await loadCatalog()
 }
-defineExpose({ openReport: () => open('report'), hasDraft: () => !result.value && (JSON.stringify(manual.value) !== switchDraftBaseline || !!reportText.value.trim() || readingFile.value) })
+defineExpose({ mode, openManual: trigger => open('manual', trigger), openReport: trigger => open('report', trigger), hasDraft: () => !result.value && (JSON.stringify(manual.value) !== switchDraftBaseline || !!reportText.value.trim() || readingFile.value) })
 function close() {
   if (locked.value) return
   if (mode.value === 'manual' && result.value) resetManual()
@@ -622,6 +624,8 @@ async function submit() {
     if (!response || !['accepted', 'duplicates', 'history_only', 'superseded'].every(key => Number.isInteger(response[key]) && response[key] >= 0)) throw new Error('未收到有效的补录结果，请原样重试确认状态')
     result.value = response; pendingDocument.value = null
     emit('imported', targetAccount)
+    await nextTick()
+    resultBox.value?.focus({ preventScroll: true })
   } catch (err) {
     if (!disposed && props.accountId === targetAccount && manual.value === targetDraft) {
       if ([400, 401, 403, 404, 409, 422].includes(err.status)) pendingDocument.value = null
@@ -634,7 +638,7 @@ function warningText(warning) { return typeof warning === 'string' ? warning : w
 function displayDay(value) { return new Date(value).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) }
 function displayClock(value) { return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) }
 function statusLabel(value) { return value?.includes('失败') ? '上报失败' : value?.includes('成功') ? '已上报' : ['手动添加', '补标已盘点收入'].includes(value) ? value : '待核对' }
-onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll() })
+onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll(); emit('busy', false) })
 </script>
 
 <style scoped>
@@ -680,7 +684,7 @@ onBeforeUnmount(() => { disposed = true; unlockBackgroundScroll() })
 button, input, select, textarea { font: inherit; color: inherit; }
 button { appearance: none; border: 0; cursor: pointer; background: transparent; padding: 0; transition: background .16s, border-color .16s, box-shadow .16s; }
 button:disabled { opacity: .45; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .error-message:focus, .dialog-lock-note:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .error-message:focus, .dialog-lock-note:focus, .result:focus { outline: 2px solid var(--tea); outline-offset: 3px; }
 h3:focus { outline: none; }
 input, textarea { appearance: none; border-radius: 0; }
 input:disabled { cursor: not-allowed; }

@@ -177,8 +177,9 @@ it('报告外部入口复用原工作台，只读取目录而不写入库存', a
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })
 
-it('报告外部入口在账号不可写时同样禁用', async () => {
+it('手工和报告外部入口在账号不可写时同样禁用', async () => {
   const wrapper = mountWorkspace({ disabled: true })
+  await wrapper.vm.openManual()
   await wrapper.vm.openReport()
   await flushPromises()
   expect(document.body.querySelector('[role="dialog"]')).toBeNull()
@@ -1328,4 +1329,20 @@ it('空录入没有草稿；收起和重新打开后仍能检查未保存奖励�
   await wrapper.setProps({ accountId: 'acc-2' }); await flushPromises()
   expect(wrapper.vm.hasDraft()).toBe(false)
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it('提交成功后焦点留在结果区，实际 Escape 事件仍可关闭并返回手工触发器', async () => {
+  inventoryApi.importInventory.mockResolvedValue({ accepted: 1, duplicates: 0, history_only: 1, superseded: 0 })
+  const wrapper = mountWorkspace()
+  const trigger = button(wrapper, '添加奖励流水')
+  await openManualWithPreview(wrapper)
+  const submit = bodyButton('确认补录')
+  submit.focus()
+  await clickElement(submit)
+  const result = document.body.querySelector('.result')
+  expect(document.activeElement === result).toBe(true)
+  document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(document.activeElement).toBe(trigger.element)
 })
