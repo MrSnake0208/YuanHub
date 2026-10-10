@@ -5,7 +5,7 @@ vi.mock('../src/api/request.js', () => ({ request: vi.fn() }))
 vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'new-user' } } }))
 beforeEach(() => vi.clearAllMocks())
 it('every private request binds the original user and account; only update and delete carry CAS', async () => {
-  const body = { account_id: 'a', title: '领取奖励', date: '2026-10-15', time: '09:00', note: '' }
+  const body = { account_id: 'a', title: '领取奖励', start_date: '2026-10-15', end_date: '2026-10-20', time: '09:00', note: '' }
   await listCalendarPrivateItems({ account_id: 'a', from: '2026-10-01', to: '2026-10-31' }, 'owner')
   expect(request.mock.lastCall).toEqual(['/v1/activity-calendar/private-items?account_id=a&from=2026-10-01&to=2026-10-31', { auth: true, expectedUserId: 'owner' }])
   await createCalendarPrivateItem(body, 'owner')

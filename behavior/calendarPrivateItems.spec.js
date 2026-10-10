@@ -55,11 +55,11 @@ it('selected date creation saves without navigation; single time persists and pu
   const path = router.currentRoute.value.fullPath
   expect(editor()).toBeNull()
   await button('记一件事').trigger('click'); await flushPromises()
-  expect(document.querySelector('#private-item-date').value).toBe('2026-10-15')
+  expect(document.querySelector('#private-item-start_date').value).toBe('2026-10-15')
   expect(document.activeElement).toBe(document.querySelector('#private-item-title-input'))
   await field('title', '  领取奖励  '); await field('time', '23:59'); await field('note', '纯文本\n说明')
   await save()
-  expect(createCalendarPrivateItem).toHaveBeenCalledWith({ account_id: 'a', title: '领取奖励', date: '2026-10-15', time: '23:59', note: '纯文本\n说明' }, 'owner')
+  expect(createCalendarPrivateItem).toHaveBeenCalledWith({ account_id: 'a', title: '领取奖励', start_date: '2026-10-15', end_date: '2026-10-15', time: '23:59', note: '纯文本\n说明' }, 'owner')
   expect(editor()).toBeNull()
   expect(wrapper.text()).toContain('领取奖励')
   expect(wrapper.text()).toContain('23:59（上海时间）')
@@ -102,18 +102,20 @@ it('public scope never reads or renders private items; pending/category/status f
 })
 
 it('network/409 failures retain drafts; reload requires discard consent and update carries version', async () => {
-  rows = [raw()]; await render()
-  await button('编辑事项').trigger('click'); await flushPromises(); await field('title', '我的修改')
+  rows = [raw({ start_date: '2026-10-12', end_date: '2026-10-20' })]; await render()
+  await button('编辑事项').trigger('click'); await flushPromises(); await field('title', '我的修改'); await field('end_date', '2026-10-21')
   updateCalendarPrivateItem.mockRejectedValueOnce(new Error('offline'))
   await save(); expect(editor().textContent).toContain('offline'); expect(document.querySelector('#private-item-title-input').value).toBe('我的修改')
   updateCalendarPrivateItem.mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
   await save(); expect(editor().textContent).toContain('草稿仍保留')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-21')
   dialog.confirm.mockResolvedValueOnce(false)
   editor().querySelector('form > button').click(); await flushPromises()
   expect(getCalendarPrivateItem).not.toHaveBeenCalled()
-  rows = [raw({ title: '服务器更新', version: 2 })]
+  rows = [raw({ title: '服务器更新', start_date: '2026-10-12', end_date: '2026-10-22', version: 2 })]
   editor().querySelector('form > button').click(); await flushPromises()
   expect(document.querySelector('#private-item-title-input').value).toBe('服务器更新')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-22')
   await field('title', '重试成功'); await save()
   expect(updateCalendarPrivateItem.mock.lastCall[1].expected_version).toBe(2)
   expect(wrapper.text()).toContain('重试成功')
@@ -187,10 +189,10 @@ it('403 during save clears confidential draft instead of retaining it under inva
 it('saving outside the current month preserves URL and explicitly explains where to find the item', async () => {
   const router = await render(); const path = router.currentRoute.value.fullPath
   await button('添加私人事项').trigger('click'); await flushPromises()
-  await field('title', '明年备忘'); await field('date', '2027-01-15'); await save()
+  await field('title', '明年备忘'); await field('start_date', '2027-01-15'); await save()
   expect(router.currentRoute.value.fullPath).toBe(path)
   expect(wrapper.text()).toContain('2027-01-15')
-  expect(wrapper.text()).toContain('该日不在当前日期范围')
+  expect(wrapper.text()).toContain('该区间不在当前日期范围')
   expect(wrapper.findAll('.calendar-event').some(card => card.text().includes('明年备忘'))).toBe(false)
   await router.replace('/calendar?scope=mine&view=month&date=2027-01-15'); await flushPromises()
   expect(wrapper.text()).toContain('明年备忘')
@@ -214,4 +216,74 @@ it('delete confirmation from A cannot send a request after switching to B and ba
   confirm.resolve(true); await flushPromises()
   expect(deleteCalendarPrivateItem).not.toHaveBeenCalled()
   expect(wrapper.text()).toContain('私人内容')
+})
+
+
+it('new defaults follow a later start until the user edits end; invalid combinations stay inline and unsaved', async () => {
+  await render(); await button('添加私人事项').trigger('click'); await flushPromises()
+  await field('title', '连续计划')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-15')
+  await field('start_date', '2026-10-18')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-18')
+  await field('end_date', '2026-10-20'); await field('start_date', '2026-10-21')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-20')
+  expect(editor().textContent).toContain('结束日期不能早于开始日期')
+  expect(editor().querySelector('button[type=submit]').disabled).toBe(true)
+  await save(); expect(createCalendarPrivateItem).not.toHaveBeenCalled()
+  await field('start_date', '2026-10-12'); await field('end_date', '2026-10-15'); await save()
+  expect(createCalendarPrivateItem.mock.lastCall[0]).toMatchObject({ start_date: '2026-10-12', end_date: '2026-10-15' })
+  expect(wrapper.text()).toContain('2026-10-12 — 2026-10-15')
+})
+
+it('legacy edit expands, adjusts, refreshes and collapses a range while retaining time and note', async () => {
+  rows = [raw({ time: '23:59', note: '保留说明' })]
+  await render()
+  await button('编辑事项').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-15')
+  await field('end_date', '2026-10-20'); await save()
+  expect(updateCalendarPrivateItem.mock.lastCall[1]).toMatchObject({ start_date: '2026-10-15', end_date: '2026-10-20', time: '23:59', note: '保留说明', expected_version: 0 })
+  wrapper.unmount(); await render()
+  await button('编辑事项').trigger('click'); await flushPromises()
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-20')
+  await field('start_date', '2026-10-21')
+  expect(document.querySelector('#private-item-end_date').value).toBe('2026-10-20')
+  expect(editor().querySelector('button[type=submit]').disabled).toBe(true)
+  await field('start_date', '2026-10-12'); await field('end_date', '2026-10-18'); await save()
+  expect(updateCalendarPrivateItem.mock.lastCall[1]).toMatchObject({ start_date: '2026-10-12', end_date: '2026-10-18', expected_version: 1 })
+  await button('编辑事项').trigger('click'); await flushPromises(); await field('end_date', '2026-10-12'); await save()
+  expect(rows[0]).toMatchObject({ start_date: '2026-10-12', end_date: '2026-10-12', time: '23:59', note: '保留说明', version: 3 })
+  // The selected date is now outside the saved single-day range.
+  await wrapper.findComponent(Calendar).vm.$router.replace('/calendar?scope=mine&view=month&date=2026-10-12'); await flushPromises()
+  await button('删除事项').trigger('click'); await flushPromises()
+  expect(rows).toHaveLength(0); expect(wrapper.findAll('.calendar-event').some(card => card.text().includes('私人内容'))).toBe(false)
+})
+
+it('cross-month private range marks each covered day, clips a single bar, groups once and stays private', async () => {
+  rows = [raw({ start_date: '2026-09-01', end_date: '2026-11-20', time: '09:00' })]
+  const router = await render()
+  for (const day of wrapper.findAll('.calendar-month-day')) {
+    expect(day.find('.calendar-day-count').exists()).toBe(true)
+    expect(day.attributes('aria-label')).toContain('私人事项')
+  }
+  expect(wrapper.text()).toContain('开始日 09:00')
+  await router.replace('/calendar?scope=mine&view=month&date=2026-11-15'); await flushPromises()
+  expect(wrapper.text()).toContain('私人内容')
+  expect(listCalendarPrivateItems.mock.lastCall[0]).toMatchObject({ from: '2026-10-26', to: '2026-12-06' })
+  await router.replace('/calendar?scope=mine&view=timeline&date=2026-10-15'); await flushPromises()
+  const bars = wrapper.findAll('.calendar-timeline-bar[aria-label^="私人内容"]')
+  expect(bars).toHaveLength(1); expect(bars[0].attributes('style')).toContain('span 35')
+  expect(bars[0].classes()).toContain('is-clipped-start'); expect(bars[0].classes()).toContain('is-clipped-end')
+  expect(bars[0].classes()).not.toContain('is-single-day')
+  await router.replace('/calendar?scope=mine&view=agenda'); await flushPromises()
+  expect(wrapper.findAll('.calendar-event').filter(card => card.text().includes('私人内容'))).toHaveLength(1)
+  expect(wrapper.text()).toContain('日期范围内'); expect(wrapper.text()).not.toContain('开始日 09:00（上海时间） · 还有')
+  await router.replace('/calendar?view=agenda'); await flushPromises()
+  expect(wrapper.text()).not.toContain('私人内容')
+})
+
+it('range starting outside the window remains visible immediately after save when its end overlaps', async () => {
+  await render(); await button('添加私人事项').trigger('click'); await flushPromises()
+  await field('title', '延续计划'); await field('start_date', '2026-09-01'); await field('end_date', '2026-11-20'); await save()
+  expect(wrapper.findAll('.calendar-event').some(card => card.text().includes('延续计划'))).toBe(true)
+  expect(wrapper.text()).not.toContain('该区间不在当前日期范围')
 })

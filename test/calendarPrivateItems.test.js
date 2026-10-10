@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { privateCalendarItem, privateItemForm, validatePrivateItem } from '../src/data/calendarPrivateItems.js'
-import { calendarDeadline, calendarItemsOnDay, calendarRangeLabel, calendarStatuses, groupCalendarItems, normalizeCalendarItem, summarizeCalendarDay, timelineLanes } from '../src/data/activityCalendar.js'
+import { calendarDeadline, calendarItemsOnDay, calendarRangeLabel, calendarStatuses, groupCalendarItems, normalizeCalendarItem, summarizeCalendarDay, timelineLanes, monthCalendarDays, serverToday } from '../src/data/activityCalendar.js'
 import { calendarDisplay } from '../src/data/activityCalendarTypes.js'
 
 const account = { id: 'a', game: '如鸢' }
@@ -31,10 +31,12 @@ test('foreign identity invalid dates and malformed server payloads never enter a
 })
 
 test('form defaults prefill selected date and validate title note leap date and time boundaries', () => {
-  assert.deepEqual(privateItemForm(null, '2026-10-15'), { title: '', date: '2026-10-15', time: '', note: '' })
-  const form = { title: ' 文 ', date: '2028-02-29', time: '00:00', note: '文'.repeat(1000) }
+  assert.equal(privateItemForm(null).start_date, serverToday())
+  assert.equal(privateItemForm(null).end_date, serverToday())
+  assert.deepEqual(privateItemForm(null, '2026-10-15'), { title: '', start_date: '2026-10-15', end_date: '2026-10-15', time: '', note: '' })
+  const form = { title: ' 文 ', start_date: '2028-02-29', end_date: '2028-02-29', time: '00:00', note: '文'.repeat(1000) }
   assert.deepEqual(validatePrivateItem(form), {})
-  for (const patch of [{ title: ' ' }, { title: '文'.repeat(101) }, { date: '2026-02-29' }, { time: '24:00' }, { time: '9:00' }, { note: '文'.repeat(1001) }]) assert.ok(Object.keys(validatePrivateItem({ ...form, ...patch })).length)
+  for (const patch of [{ title: ' ' }, { title: '文'.repeat(101) }, { start_date: '2026-02-29' }, { end_date: '2026-02-29' }, { time: '24:00' }, { time: '9:00' }, { note: '文'.repeat(1001) }]) assert.ok(Object.keys(validatePrivateItem({ ...form, ...patch })).length)
   assert.deepEqual(validatePrivateItem({ ...form, title: '文'.repeat(100), time: '23:59' }), {})
 })
 
@@ -49,4 +51,46 @@ test('three views count single date exactly once, sort private times and pack si
   const lanes = timelineLanes(items, { from: '2026-10-14', to: '2026-10-16' })
   assert.equal(lanes.length, 3)
   assert.ok(lanes.flat().every(entry => entry.position.span === 1 && entry.position.column === 2))
+})
+
+
+test('closed private ranges cover month/year/leap boundaries, clip once and never enter public totals', () => {
+  for (const [start, end, middle] of [
+    ['2026-10-12', '2026-10-15', '2026-10-13'],
+    ['2026-09-28', '2026-10-05', '2026-10-01'],
+    ['2026-12-30', '2027-01-02', '2027-01-01'],
+    ['2028-02-28', '2028-03-01', '2028-02-29'],
+    ['2020-01-01', '2030-12-31', '2026-10-10'],
+  ]) {
+    const item = privateCalendarItem(raw({ start_date: start, end_date: end, time: '09:00' }), account)
+    assert.ok(item)
+    assert.deepEqual(privateItemForm(item), { title: item.title, start_date: start, end_date: end, time: '09:00', note: item.note })
+    assert.deepEqual(validatePrivateItem(privateItemForm(item)), {})
+    for (const day of [start, middle, end]) assert.equal(calendarItemsOnDay([item, item], day).length, 1)
+    assert.ok(monthCalendarDays([item], middle).find(day => day.date === middle).items.includes(item))
+    const lanes = timelineLanes([item], { from: middle, to: middle })
+    assert.equal(lanes.flat().length, 1)
+    assert.deepEqual(lanes[0][0].position, { column: 1, span: 1, clippedStart: start < middle, clippedEnd: end > middle })
+    assert.equal(groupCalendarItems([item], middle).flatMap(section => section.groups).flatMap(group => group.items).length, 1)
+    assert.deepEqual(calendarStatuses(item, middle), ['日期范围内'])
+    assert.equal(calendarDeadline(item, middle), '')
+    assert.equal(summarizeCalendarDay([item], middle).total, 0)
+    assert.equal(calendarRangeLabel(item), `${start} — ${end} · 开始日 09:00（上海时间）`)
+  }
+  const range = privateCalendarItem(raw({ start_date: '2026-10-12', end_date: '2026-10-15' }), account)
+  assert.equal(timelineLanes([range], { from: '2026-10-10', to: '2026-10-20' })[0][0].position.span, 4)
+  assert.equal(calendarItemsOnDay([range], '2026-10-16').length, 0)
+  assert.deepEqual(calendarStatuses(range, '2026-10-16'), ['已过日期'])
+})
+
+test('partial or invalid new date ranges cannot fall back to the valid legacy date', () => {
+  for (const patch of [
+    { start_date: '2026-10-12' }, { end_date: '2026-10-15' },
+    { start_date: '2026-10-15', end_date: '2026-10-12' },
+    { start_date: '2026-02-30', end_date: '2026-03-01' },
+    { start_date: '2026-02-28', end_date: '2026-02-29' },
+    { start_date: null, end_date: null },
+  ]) assert.equal(privateCalendarItem(raw(patch), account), null)
+  assert.equal(validatePrivateItem({ ...privateItemForm(raw()), start_date: '2026-10-20' }).end_date, '结束日期不能早于开始日期。')
+  assert.equal(privateCalendarItem({ ...raw(), date: undefined, start_date: '2026-10-12', end_date: '2026-10-15' }, account).start_date, '2026-10-12')
 })

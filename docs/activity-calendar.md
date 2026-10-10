@@ -316,13 +316,13 @@ Mongo仅允许TestMongo自有临时容器；真实手机软键盘与Safari仍须
 
 `scope=mine` 仍兼容旧链接，界面名称改为“我的日历”：显示当前游戏账号的官方订阅和独立私人事项。顶部“添加私人事项”适用于三视图；月历先选日期，再通过日期详情的“记一件事”预填当天。缺少账号时先选择/创建账号，所属游戏由账号推导。
 
-私人事项只需内容（去首尾空白后1–100字）和日期，可选一个上海时间 `HH:mm`；留空为全天，附加说明为最多1000字纯文本。单日事项没有结束时刻、完成状态、活动ID或订阅操作。保存后保持原URL、视图和日期；保存到当前范围外会提示选择对应日期查看。
+私人事项需要内容（去首尾空白后1–100字）、开始日期和结束日期；新建均预填选中日期，没有选中日期时使用上海今天。起止日期是闭区间，允许同日、跨月、跨年和长跨度；结束不得早于开始，必须是真实日期。可选一个上海时间 `HH:mm`，只表示开始日时刻；留空为全天，附加说明为最多1000字纯文本。没有结束时刻、完成状态、活动ID或订阅操作。新建仅在结束日未被明确编辑、开始日超出默认结束日时同步结束日；编辑既有事项不自动调整区间，非法日期组合内联提示并禁用保存。保存后保持原URL、视图和日期；保存到当前范围外会提示选择对应日期查看。
 
-私人事项使用独立 `PRIVATE_ITEM` 视图模型和茶棕标识，三视图复用日期分组/分轨，卡片支持编辑和确认删除。官方类型、活动状态及“有未完成待办”筛选时隐藏私人事项并说明口径；“不含招募”不排除私人事项。“全部活动”、首页今日统计、社区建议和公开API保持公共口径。
+私人事项使用独立 `PRIVATE_ITEM` 视图模型和茶棕标识，三视图复用日期分组/分轨：月历覆盖首尾内每天并可查看详情，时间轴按完整区间绘制一条横条、在视窗两端裁剪，日程沿用跨日活动分组且每条仅出现一次。卡片显示完整起止日期，可选时间标注“开始日”，不生成结束倒计时；支持编辑和确认删除。官方类型、活动状态及“有未完成待办”筛选时隐藏私人事项并说明口径；“不含招募”不排除私人事项。“全部活动”、首页今日统计、社区建议和公开API保持公共口径。
 
 独立页面级 `useCalendarPrivateItems` 绑定用户、账号及身份epoch，切换同步清空旧内容，拒绝迟到响应；请求带 `expectedUserId`。401/403/账号失效清除私人内容。复用原未保存保护覆盖关闭、路由、账号、日期和视图切换；网络失败和409保留草稿，409读取最新内容须先确认放弃。保存中禁重复操作，删除取消/失败保留原记录。
 
-API为 `/v1/activity-calendar/private-items`，沿用JWT及当前管理员测试门禁；详情/写入均带 `account_id`，更新和删除须带 `expected_version`。列表必填 `from/to`，含首尾最多100天、最多1000条，超限422要求缩小范围。每个请求由服务端重新校验归属，前端隐藏不构成隐私边界。账号重命名保留事项；有私人事项时禁止改变账号游戏，删除账号在同一事务清理事项并阻止竞态孤儿数据。不迁移公共事件或订阅数据。
+API为 `/v1/activity-calendar/private-items`，沿用JWT及当前管理员测试门禁；详情/写入均带 `account_id`，更新和删除须带 `expected_version`。创建/更新使用成对 `start_date/end_date`，所有响应返回两端日期及兼容别名 `date=start_date`。历史仅有 `date` 的记录读取为同日起止，不回写；旧 `date` 请求仍可创建或编辑单日项，但不能编辑已有多日项（422，原区间保留）。缺省 `time/note` 的更新保留旧内容，显式 `time:null`/`note:""` 可清空。前后端升级先后端再前端；旧客户端只能显示开始日，应升级前端后使用多日项。列表必填 `from/to`，按 `start_date <= to && end_date >= from` 重叠查询，含首尾最多100天、最多1000条，超限422要求缩小范围。每个请求由服务端重新校验归属，前端隐藏不构成隐私边界。账号重命名保留事项；有私人事项时禁止改变账号游戏，删除账号在同一事务清理事项并阻止竞态孤儿数据。不迁移公共事件或订阅数据。
 
 定向检查：
 
@@ -334,3 +334,13 @@ npm run build
 ```
 
 真实手机软键盘、Safari与真实账号前后端联调需人工验收；浏览器合成API验证不代表这些环境通过。具体结果见根任务 `10-10-activity-calendar-private-items/verification.md`。
+
+
+私人事项日期区间定向验证：
+
+```bash
+node --test test/calendarPrivateItems.test.js test/activityCalendar.test.js test/activityCalendarViews.test.js
+npx vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateItemsApi.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarUnsaved.spec.js
+```
+
+浏览器复用既有开发服务，以模拟 API 验证六视口和保存，脚本 `test-support/calendarPrivateRange.browser.js`：`playwright-cli -s=private-range run-code --filename=test-support/calendarPrivateRange.browser.js`。先用该独立会话 `open http://localhost:5173`；不使用真实登录信息或数据库。真实手机软键盘、Safari及真实JWT联调仍需人工检查。

@@ -15,12 +15,17 @@
           <label for="private-item-title-input">内容 <span>必填 · 最多100字</span></label>
           <input id="private-item-title-input" ref="titleInput" v-model="draft.form.title" type="text" required maxlength="100" autocomplete="off" :disabled="draft.busy" :aria-invalid="!!draft.errors.title" :aria-describedby="draft.errors.title ? 'private-item-title-error' : undefined" />
           <p v-if="draft.errors.title" id="private-item-title-error" class="calendar-private-error">{{ draft.errors.title }}</p>
-          <label for="private-item-date">日期 <span>必填</span></label>
-          <input id="private-item-date" v-model="draft.form.date" type="date" min="0001-01-01" max="9999-12-31" required :disabled="draft.busy" :aria-invalid="!!draft.errors.date" :aria-describedby="draft.errors.date ? 'private-item-date-error' : undefined" />
-          <p v-if="draft.errors.date" id="private-item-date-error" class="calendar-private-error">{{ draft.errors.date }}</p>
+          <div class="calendar-private-dates">
+            <div v-for="(label, field) in { start_date: '开始日期', end_date: '结束日期' }" :key="field">
+              <label :for="'private-item-' + field">{{ label }} <span>必填</span></label>
+              <input :id="'private-item-' + field" :value="draft.form[field]" type="date" min="0001-01-01" max="9999-12-31" required :disabled="draft.busy" :aria-invalid="!!draft.errors[field]" :aria-describedby="draft.errors[field] ? 'private-item-' + field + '-error' : 'private-item-dates-hint'" @input="state.setDate(field, $event.target.value)" />
+              <p v-if="draft.errors[field]" :id="'private-item-' + field + '-error'" class="calendar-private-error">{{ draft.errors[field] }}</p>
+            </div>
+          </div>
+          <p id="private-item-dates-hint">起止日期相同为单日；多日事项包含开始和结束当天。</p>
           <label for="private-item-time">具体时间 <span>可选 · 留空为全天</span></label>
           <div class="calendar-private-time"><input id="private-item-time" v-model="draft.form.time" type="time" :disabled="draft.busy" :aria-invalid="!!draft.errors.time" aria-describedby="private-item-time-hint" /><button v-if="draft.form.time" type="button" :disabled="draft.busy" @click="draft.form.time = ''">改为全天</button></div>
-          <p id="private-item-time-hint">{{ draft.errors.time || 'Asia/Shanghai（上海时间）；只记录这一个时刻。' }}</p>
+          <p id="private-item-time-hint">{{ draft.errors.time || 'Asia/Shanghai（上海时间）；仅代表开始日时刻，日期跨度以起止日期为准。' }}</p>
           <details :open="!!draft.form.note || !!draft.errors.note">
             <summary>附加说明（可选）</summary>
             <label for="private-item-note">纯文本说明 · 最多1000字</label>
@@ -32,7 +37,7 @@
         </form>
         <footer>
           <p role="status">{{ draft.busy ? '保存中…' : state.dirty.value ? '有未保存修改' : draft.record ? '已保存' : '填写后保存' }}</p>
-          <div><button type="button" :disabled="draft.busy" @click="state.close">取消</button><button type="submit" form="private-item-form" class="calendar-private-save" :disabled="draft.busy">{{ draft.busy ? '保存中…' : '保存' }}</button></div>
+          <div><button type="button" :disabled="draft.busy" @click="state.close">取消</button><button type="submit" form="private-item-form" class="calendar-private-save" :disabled="draft.busy || invalidDates">{{ draft.busy ? '保存中…' : '保存' }}</button></div>
         </footer>
       </section>
     </div>
@@ -42,11 +47,16 @@
 <script setup>
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { X } from '@lucide/vue'
-import { CALENDAR_PRIVATE_ITEMS } from '@/data/calendarPrivateItems.js'
+import { CALENDAR_PRIVATE_ITEMS, validatePrivateItem } from '@/data/calendarPrivateItems.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 defineProps({ account: { type: Object, required: true } })
 const state = inject(CALENDAR_PRIVATE_ITEMS)
 const draft = computed(() => state.editor.value)
+const invalidDates = computed(() => {
+  if (!draft.value) return false
+  const errors = validatePrivateItem(draft.value.form)
+  return !!(errors.start_date || errors.end_date)
+})
 const panel = ref(null), titleInput = ref(null), errorSummary = ref(null)
 useModalFocus(computed(() => !!draft.value), panel, { initialFocus: () => titleInput.value, onEscape: () => state.close() })
 function focusField(field) { panel.value?.querySelector(field === 'title' ? '#private-item-title-input' : '#private-item-' + field)?.focus() }
@@ -84,6 +94,7 @@ input, textarea { width: 100%; min-width: 0; max-width: 100%; box-sizing: border
 textarea { resize: vertical; }
 p { margin: 6px 0; line-height: 1.6; overflow-wrap: anywhere; }
 .calendar-private-context { margin: 0 0 12px; }
+.calendar-private-dates { display: grid; gap: 0 12px; grid-template-columns: minmax(0, 1fr); }
 .calendar-private-time { display: flex; align-items: center; gap: 8px; }
 .calendar-private-time input { flex: 1; width: 0; }
 .calendar-private-time button { flex: none; }
@@ -95,6 +106,7 @@ footer { border-top: 1px solid var(--line); padding-bottom: calc(14px + env(safe
 footer div { display: flex; gap: 8px; margin-left: auto; }
 .calendar-private-save { background: var(--tea); color: var(--surface); }
 @media (min-width: 768px) {
+  .calendar-private-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .calendar-private-mask { align-items: center; justify-content: center; padding: 24px; }
   .calendar-private-dialog { max-width: 480px; max-height: min(90dvh, 760px); border-radius: 20px; }
 }
