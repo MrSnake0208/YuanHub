@@ -15550,12 +15550,15 @@ onBeforeUnmount(function () {
 .catalog-more-filters .prof-filter { margin-top: 4px; padding: 8px 0; border: 0; background: transparent; }
 .current-workbench-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .current-status-summary { margin: 0; }
-.panel > .catalog-tools ~ .backpack { margin-top: 16px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.panel > .catalog-tools ~ .backpack { margin-top: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
 .panel > .catalog-tools ~ .backpack .slot-grid { margin-top: 0; gap: 16px 12px; }
 .panel > .catalog-tools ~ .backpack .bp-head { margin-bottom: 12px; padding-bottom: 8px; }
+.panel > .catalog-tools ~ .backpack > .tool-task-prompt { margin: 0; border: 0; background: transparent; }
 .catalog-version-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink-60); font-size: 12px; }
 .catalog-version-copy .catalog-version-value { flex: 1; min-width: 0; max-width: 30ch; font-weight: 500; }
 @media (min-width: 768px) {
+  /* Use the page gutters for the frame to preserve desktop grid density. */
+  .panel > .catalog-tools ~ .backpack { margin-inline: -17px; padding: 16px; }
   .catalog-tools { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search entry' 'filter more'; gap: 4px 16px; }
   .catalog-tools:not(:has(.catalog-entry)) { grid-template-areas: 'search search' 'filter more'; }
 }
