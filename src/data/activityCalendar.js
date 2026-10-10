@@ -71,7 +71,7 @@ export function summarizeCalendarDay(items, today) {
 }
 
 export function calendarStatuses(item, today, now = Date.now()) {
-  if (item.source_type === 'PRIVATE_ITEM') return [item.start_date === today ? '今天' : item.start_date < today ? '已过日期' : '未到日期']
+  if (item.source_type === 'PRIVATE_ITEM') return [item.end_date < today ? '已过日期' : item.start_date > today ? '未到日期' : item.start_date === item.end_date ? '今天' : '日期范围内']
   if (item.end_at && Date.parse(item.end_at) <= now) return ['已结束']
   if (item.start_at && Date.parse(item.start_at) > now) return ['即将开始']
   if (!item.end_at && item.end_date < today) return ['已结束']
@@ -291,7 +291,11 @@ export function calendarDeadline(item, today, now = Date.now()) {
 }
 
 export function calendarRangeLabel(item) {
-  if (item.source_type === 'PRIVATE_ITEM') return `${item.start_date} · ${item.start_time ? item.start_time + '（上海时间）' : '全天'}`
+  if (item.source_type === 'PRIVATE_ITEM') {
+    const multiDay = item.start_date !== item.end_date
+    const range = multiDay ? `${item.start_date} — ${item.end_date}` : item.start_date
+    return `${range} · ${item.start_time ? (multiDay ? '开始日 ' : '') + item.start_time + '（上海时间）' : '全天'}`
+  }
   const start = item.start_date + (item.start_time ? ' ' + item.start_time : '')
   const end = item.end_date + (item.end_time ? ' ' + item.end_time : '')
   return `${start} — ${end}`
