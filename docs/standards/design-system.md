@@ -87,6 +87,23 @@
 - 站点标签（如鸢/代号鸢）：透明底 + 描边
 - 品牌标签（MaaYuanShare）：海盐蓝描边（学 YuanAssist 站内样式）
 
+### 5.3.1 工作区导航与分段控件
+
+| 类别 | 现有控件 | 维护约束 |
+| --- | --- | --- |
+| 顶层工作区 Tab | 库存清单/统计报告/操作历史、密探图鉴/养成总览/养成规划、星石背包/养成计划 | 统一使用 `src/styles/tools-workspace.css`，不在页面 scoped 样式重复定义 |
+| 局部视图切换 | 统计报告 `.acquired-views`、日历列表/时间线/月历、招募展示视图 | 保留局部底板和层级；日历保持 `group` + `aria-pressed` |
+| 状态/排序筛选 | `.feedback-status-tabs`、通知中心 `.tabs` | 保留各自筛选视觉与行为，不套顶层工作区样式 |
+| 跨路由导航 | `FeedbackWorkspaceNav.vue` | 保留 `router-link` 和路由高亮，不声明为页内 Tab |
+
+- 顶层 Tab 使用不透明 `--surface` 底板、`--line` 细边框、12px 外圆角；内侧 4px 留白，按钮至少 44px 高，14px 正文字号。选中项为浅蜜黄底、茶棕文字与 2px 底线，状态同时通过形状和 `aria-selected` 表达；保持字重一致，避免切换时宽度跳动。
+- 未选中项用 `--ink-60`；hover 用奶油底，不显示选中底线；focus-visible 用内收 2px 茶棕轮廓，避免被滚动容器裁切。禁用项用原生 `disabled`；“即将上线”是可点击说明动作，使用虚线边框与 `aria-haspopup="dialog"`，放在 `tablist` 外，不冒充可进入视图。
+- 容器按可用宽度单行排列，空间不足时仅整组内部横向滚动，不缩小中文标签、不截断文字、不使整页溢出。保持普通文档流，禁止恢复旧 1080px fixed 底栏或 sticky 顶栏；网站一级导航独立维护。
+- 库存、密探和星石采用手动激活 Tabs：左右键循环焦点，Home/End 到首尾，Enter/Space 经原按钮调用原有切换函数。焦点移动不能触发加载、编辑放弃确认或弹窗；离组后恢复当前选中项的单一 Tab 入口。面板以 `id`、`aria-controls`、`role="tabpanel"`、`aria-labelledby` 关联；密探面板保留原有懒挂载。星石截图识别是独立动作，导入时两个背包视图均不选中，内容区域使用有名称的 `region`。
+- 新增控件先分类，不因类名含 `tabs` 就扩大共享选择器。纹理对比问题优先由控件实体底板解决，不调整全站背景；此控件无动画，兼容 reduced-motion。
+
+键盘模式依据 [WAI-ARIA Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/)，只统一导航外观和焦点，不改业务数据流。
+
 ### 5.4 反馈中心
 
 - 信息架构采用紧凑工作台：简洁 Hero、搜索与状态筛选、桌面表格、移动端工单卡、模态详情。

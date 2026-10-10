@@ -8,6 +8,8 @@ import { getCurrentStarLoadout, putCurrentStarLoadout } from '../src/api/starLoa
 import { listAgentFavorites } from '../src/api/inventory.js'
 import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { auth } from '../src/store/auth.js'
+import { dialog } from '../src/utils/dialog.js'
+import * as features from '../src/config/features.js'
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
@@ -87,6 +89,32 @@ it('空档案引导出现在默认图鉴筛选前，养成筛选不占用首屏'
   await flushPromises()
   expect(wrapper.get('.operator-tabs').isVisible()).toBe(true)
   expect(wrapper.get('.mf-search').isVisible()).toBe(true)
+  expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+})
+
+it('工作区方向键不切换视图，即将上线仍只打开说明', async () => {
+  vi.spyOn(features, 'isFeatureEnabled').mockReturnValue(false)
+  const wrapper = renderPage({ attachTo: document.body })
+  await flushPromises()
+  await wrapper.findAll('.operator-entry-guide button').find(button => button.text() === '从图鉴补录一位密探').trigger('click')
+  const catalog = wrapper.get('#operator-tab-catalog')
+  const current = wrapper.get('#operator-tab-current')
+  catalog.element.focus()
+  await catalog.trigger('keydown', { key: 'ArrowRight' })
+  expect(document.activeElement).toBe(current.element)
+  expect(catalog.attributes('aria-selected')).toBe('true')
+  expect(wrapper.get('#operator-panel-catalog').isVisible()).toBe(true)
+  const preview = wrapper.get('.tool-workspace-tabs [aria-haspopup="dialog"]')
+  expect(preview.attributes('role')).toBeUndefined()
+  await preview.trigger('click')
+  expect(dialog.alert).toHaveBeenCalledWith(expect.objectContaining({ title: '养成规划' }))
+  expect(catalog.attributes('aria-selected')).toBe('true')
+  await current.trigger('click')
+  await flushPromises()
+  expect(current.attributes('aria-selected')).toBe('true')
+  expect(current.attributes('aria-controls')).toBe('operator-panel-current')
+  expect(wrapper.get('#operator-panel-current').attributes('aria-labelledby')).toBe('operator-tab-current')
+  expect(wrapper.get('#operator-panel-current').isVisible()).toBe(true)
   expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
 })
 

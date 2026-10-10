@@ -64,41 +64,56 @@
           <div
             v-show="!operatorEntryState || catalogEntryExpanded"
             class="operator-tabs tool-workspace-tabs"
-            role="tablist"
+            role="group"
             aria-label="密探工作区"
             data-tour="operator-workspace"
             v-reveal
           >
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'catalog'"
-              :class="{ on: activeTab === 'catalog' }"
-              @click="setTab('catalog')"
-            >
-              密探图鉴
-            </button>
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'current'"
-              :class="{ on: activeTab === 'current' }"
-              @click="setTab('current')"
-            >
-              养成总览
-            </button>
-            <button
-              type="button"
-              class="operator-tab-button"
-              role="tab"
-              :aria-selected="activeTab === 'tracking'"
-              :class="{ on: activeTab === 'tracking' }"
-              @click="openGrowthPlanningPreview"
-            >
-              养成规划{{ growthTrackingEnabled ? '' : ' · 即将上线' }}
-            </button>
+            <div class="workspace-tab-list" role="tablist" aria-label="密探视图" @keydown="onWorkspaceTabKeydown" @focusin="onWorkspaceTabFocus" @focusout="onWorkspaceTabFocus">
+              <button
+                type="button"
+                class="operator-tab-button"
+                role="tab"
+                id="operator-tab-catalog"
+                aria-controls="operator-panel-catalog"
+                :tabindex="activeTab === 'catalog' ? 0 : -1"
+                :aria-selected="activeTab === 'catalog'"
+                :class="{ on: activeTab === 'catalog' }"
+                @click="setTab('catalog')"
+              >
+                密探图鉴
+              </button>
+              <button
+                type="button"
+                class="operator-tab-button"
+                role="tab"
+                id="operator-tab-current"
+                aria-controls="operator-panel-current"
+                :tabindex="activeTab === 'current' ? 0 : -1"
+                :aria-selected="activeTab === 'current'"
+                :class="{ on: activeTab === 'current' }"
+                @click="setTab('current')"
+              >
+                养成总览
+              </button>
+              <button
+                v-if="growthTrackingEnabled"
+                type="button"
+                class="operator-tab-button"
+                role="tab"
+                id="operator-tab-tracking"
+                aria-controls="operator-panel-tracking"
+                :tabindex="activeTab === 'tracking' ? 0 : -1"
+                :aria-selected="activeTab === 'tracking'"
+                :class="{ on: activeTab === 'tracking' }"
+                @click="openGrowthPlanningPreview"
+              >
+                养成规划
+              </button>
+            </div>
+            <button v-if="!growthTrackingEnabled" type="button" class="operator-tab-button" aria-haspopup="dialog"
+              @focus="$event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })"
+              @click="openGrowthPlanningPreview">养成规划 · 即将上线</button>
           </div>
 
           <!-- 分享与数据交换面板；账号选择统一在个人中心。 -->
@@ -427,6 +442,10 @@
 
           <!-- 图鉴（全量目录：默认全部显示，登录后叠加云端养成） -->
           <div
+            id="operator-panel-catalog"
+            role="tabpanel"
+            aria-labelledby="operator-tab-catalog"
+            tabindex="0"
             v-show="activeTab === 'catalog' && (!operatorEntryState || catalogEntryExpanded)"
             class="panel"
             :class="{ 'is-active': activeTab === 'catalog' }"
@@ -749,9 +768,17 @@
             </div>
           </div>
 
+          <!-- Keep inactive panel targets available without mounting their business content. -->
+          <div v-if="!visitedTabs.has('current')" id="operator-panel-current" role="tabpanel" aria-labelledby="operator-tab-current" hidden></div>
+          <div v-if="growthTrackingEnabled && !visitedTabs.has('tracking')" id="operator-panel-tracking" role="tabpanel" aria-labelledby="operator-tab-tracking" hidden></div>
+
           <!-- 当前养成 -->
           <div
             v-if="visitedTabs.has('current')"
+            id="operator-panel-current"
+            role="tabpanel"
+            aria-labelledby="operator-tab-current"
+            tabindex="0"
             v-show="activeTab === 'current' && (!operatorEntryState || catalogEntryExpanded)"
             class="panel"
             :class="{ 'is-active': activeTab === 'current' }"
@@ -2266,6 +2293,10 @@
 
           <div
             v-if="growthTrackingEnabled && visitedTabs.has('tracking')"
+            id="operator-panel-tracking"
+            role="tabpanel"
+            aria-labelledby="operator-tab-tracking"
+            tabindex="0"
             v-show="activeTab === 'tracking' && (!operatorEntryState || catalogEntryExpanded)"
             class="panel"
             :class="{ 'is-active': activeTab === 'tracking' }"
@@ -2942,6 +2973,7 @@
 <script setup>
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
+import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import {
   ref,
@@ -8904,7 +8936,6 @@ onBeforeUnmount(function () {
 .ledger-share-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ledger-share-feedback { color: var(--accent-strong); font-size: 12px; }
 @media (max-width: 1080px) {
-  .page-operator .operator-tabs { display: none; }
   .page-operator :deep(.workspace-summary) { flex-wrap: wrap; justify-content: flex-start; gap: 6px; padding: 10px; }
   .page-operator :deep(.workspace-toggle), .page-operator .workspace-mobile-link { display: inline-flex; min-height: 44px; padding: 8px 10px; font-size: 12px; justify-content: center; flex: 1 1 auto; white-space: nowrap; }
 }
@@ -8922,45 +8953,6 @@ onBeforeUnmount(function () {
 }
 
 /* ---- 密探工作区与分享面板 ---- */
-
-.operator-tabs {
-  position: sticky;
-  top: 24px;
-  z-index: var(--z-sticky-controls);
-  display: flex;
-  gap: 4px;
-  background: rgba(255, 248, 236, 0.94);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 4px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-  box-shadow: 0 12px 28px -22px rgba(73, 59, 44, 0.5);
-}
-.operator-tabs .operator-tab-button {
-  border: none;
-  background: transparent;
-  font-family: var(--font-b);
-  font-weight: 700;
-  font-size: 14px;
-  padding: 10px 26px;
-  border-radius: 10px;
-  cursor: pointer;
-  color: var(--ink-60);
-  transition: all 0.3s var(--ease);
-}
-.operator-tabs .operator-tab-button.on {
-  background: var(--tea);
-  color: var(--cream);
-}
-.operator-tabs .operator-tab-button:hover:not(.on) {
-  color: var(--ink);
-}
-.operator-tabs .sp {
-  flex: 1;
-}
 .operator-mobile-tabs {
   display: none;
 }
@@ -14272,15 +14264,6 @@ onBeforeUnmount(function () {
   .page-operator :deep(.footer) {
     padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom));
   }
-  .operator-tabs {
-    position: static;
-    gap: 8px;
-    padding: 8px;
-  }
-  .operator-tabs .operator-tab-button,
-  .operator-tabs .sp {
-    display: none;
-  }
   .operator-tabs .admin-link {
     min-height: 44px;
   }
@@ -14818,9 +14801,6 @@ onBeforeUnmount(function () {
   }
   .ledger-material-list {
     max-height: 130px;
-  }
-  .operator-tabs {
-    margin-top: 12px;
   }
   .operator-tabs .admin-link {
     padding-inline: 12px;
@@ -15528,8 +15508,6 @@ onBeforeUnmount(function () {
 
 /* Page owns metadata and filters; cards retain their existing presentation. */
 .operator-main > section { padding-top: 0; }
-.page-operator .operator-tabs.tool-workspace-tabs { display: flex; }
-.operator-tabs.tool-workspace-tabs .operator-tab-button { display: inline-flex; }
 .operator-mobile-tabs { display: none; }
 .panel:has(> .catalog-tools) { margin-top: 12px; }
 .catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'search search' 'entry more' 'filter filter'; gap: 4px 8px; align-items: center; margin-top: 0; }

@@ -101,16 +101,16 @@
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
           <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
-          <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区">
+          <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区" @keydown="onWorkspaceTabKeydown" @focusin="onWorkspaceTabFocus" @focusout="onWorkspaceTabFocus">
             <button
-              role="tab"
+              type="button" role="tab" id="star-tab-bag" aria-controls="product-root" :tabindex="starReviewView === 'bag' || activeTab !== 'review' ? 0 : -1"
               :aria-selected="activeTab === 'review' && starReviewView === 'bag'"
               :class="{ on: activeTab === 'review' && starReviewView === 'bag' }"
               @click="starReviewView = 'bag'; setTab('review')"
             >
               背包与核对
             </button>
-            <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
+            <button type="button" role="tab" id="star-tab-plan" aria-controls="product-root" :tabindex="starReviewView === 'plan' && activeTab === 'review' ? 0 : -1" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
           <div v-if="activeTab === 'review'" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
@@ -118,7 +118,7 @@
           </div>
           <div v-else class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong></div>
           </div>
-          <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen && Boolean(tutorialStep)" :step="tutorialStep" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :paused="starHelpOpen" :focus-on-open="tutorialManualReplay" @help="openStarHelp" @skip="skipTutorialStep" @close="dismissRecognitionTutorial" />
           <StarHelpModal :open="starHelpOpen" :topic="starHelpTopic" :auto-disabled="tutorialAutoDisabled" :empty-bag="!summary.currentCount" @close="starHelpOpen = false" @replay="replayCurrentTutorial" @opt-out="dismissRecognitionTutorial('opt-out')" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
@@ -146,6 +146,7 @@
 <script setup>
 import { accountIdentityVersion, useAccountListUpdates } from '../../store/accountList.js'
 import { relabelStarArchive } from './starArchiveExport.js'
+import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -954,42 +955,6 @@ onBeforeUnmount(function () {
 .star-sync-retry:hover:not(:disabled) { color: var(--accent); }
 .star-sync-retry:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; border-radius: 2px; }
 .star-sync-retry:disabled { opacity: .55; cursor: wait; }
-.star-tabs {
-  position: sticky;
-  top: 24px;
-  z-index: var(--z-sticky-controls);
-  display: flex;
-  gap: 4px;
-  margin-top: 32px;
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 248, 236, 0.94);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 28px -22px rgba(73, 59, 44, 0.5);
-}
-.star-tabs button {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 10px;
-  padding: 6px 26px;
-  color: var(--ink-60);
-  background: transparent;
-  cursor: pointer;
-  font-family: var(--font-b);
-  font-size: 14px;
-  font-weight: 700;
-}
-.star-tabs button.on {
-  color: var(--cream);
-  background: var(--tea);
-}
-.star-tabs button:hover:not(.on) {
-  color: var(--ink);
-}
 #product-root {
   min-width: 0;
   background: transparent;
@@ -1055,42 +1020,10 @@ onBeforeUnmount(function () {
   .star-sync-state {
     margin: 10px 0 0;
   }
-  .star-tabs {
-    position: fixed;
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: var(--z-popover);
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-    margin: 0;
-    padding: var(--star-tab-padding) max(12px, env(safe-area-inset-right))
-      calc(var(--star-tab-padding) + env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
-    border: 0;
-    border-top: 1px solid var(--line);
-    border-radius: 0;
-    background: rgba(255, 248, 236, 0.96);
-    box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, 0.48);
-  }
-  .star-tabs button {
-    min-height: var(--star-tab-button-height);
-    padding: 6px 8px;
-    border-radius: 11px;
-    font-size: 11.5px;
-    line-height: 1.1;
-  }
-  .star-tabs button.on {
-    color: var(--ink);
-    background: var(--yellow);
-  }
 }
 
 
 .star-main > section { padding-top: 0; }
-.star-tabs.tool-workspace-tabs { position: static; }
 .star-workbench { margin-top: 8px; }
 .star-workbench-actions, .star-import-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .star-import-action { flex: none; width: auto; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }

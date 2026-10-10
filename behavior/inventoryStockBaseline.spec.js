@@ -472,6 +472,23 @@ it('旧账号的切页丢弃确认迟到不会关闭新账号草稿或切换其�
   expect(wrapper.findAll('.inventory-tabs button').find(node => node.text() === '库存清单').attributes('aria-selected')).toBe('true')
 })
 
+it('编辑库存时方向键只移动焦点，不触发丢弃确认或读取另一工作区', async () => {
+  const wrapper = render({ attachTo: document.body })
+  await enterStockEditor(wrapper)
+  await confirmation(wrapper).setValue(true)
+  const manifest = wrapper.get('#inventory-tab-manifest')
+  manifest.element.focus()
+  await manifest.trigger('keydown', { key: 'ArrowRight' })
+  expect(document.activeElement).toBe(wrapper.get('#inventory-tab-acquired').element)
+  expect(manifest.attributes('aria-selected')).toBe('true')
+  expect(manifest.attributes('aria-controls')).toBe('inventory-panel-manifest')
+  expect(wrapper.get('#inventory-panel-manifest').attributes('aria-labelledby')).toBe('inventory-tab-manifest')
+  expect(wrapper.get('#inventory-panel-manifest').isVisible()).toBe(true)
+  expect(confirmation(wrapper).element.checked).toBe(true)
+  expect(dialog.confirm).not.toHaveBeenCalled()
+  expect(inventoryApi.getAcquired).not.toHaveBeenCalled()
+})
+
 
 it('历史页的页头录入入口返回清单，开启编辑但不提交库存', async () => {
   localStorage.setItem('inventory-tabs', 'records')
