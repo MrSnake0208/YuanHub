@@ -1125,6 +1125,8 @@ onBeforeUnmount(function () {
 .star-import-stage { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; color: var(--tea); font-size: 13px; font-weight: 600; }
 .page-star #product-root :deep(.yuanstar-embedded-shell) { padding-top: 16px; }
 .page-star #product-root :deep(.review-workspace-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.page-star #product-root :deep(.review-overview) { padding: 4px 6px; border-radius: 8px; background: var(--surface); }
+.page-star #product-root :deep(.inventory-facts .save-state) { width: fit-content; padding-inline: 4px; border-radius: 4px; background: var(--surface); }
 .page-star #product-root :deep(.inventory-panel > header h2) { font-family: var(--font-s); color: var(--tea); }
 .page-star #product-root :deep(.review-overview:has(> .review-overview-count:only-child)) { display: none; }
 .page-star #product-root.is-empty-view :deep(.inventory-grid),
