@@ -45,6 +45,14 @@ body::before{
 }
 ::selection{background:var(--yellow);color:var(--ink)}
 
+/* iOS WebKit 小字号输入会触发聚焦缩放；important 防止 scoped/font 简写覆盖安全下限。 */
+@supports (-webkit-touch-callout: none){
+  input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=button],[type=submit],[type=reset],[type=image],[type=hidden]),
+  textarea,select,[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"]{
+    font-size:max(16px,var(--input-font-size,1em))!important;
+  }
+}
+
 /* 紧凑文字标签统一使用同一行盒，避免字体基线造成视觉错位。 */
 :where(.pill,.tag,.tg,.chip,.pkg-tag,.rtag,.src-tag,.tag-prof,.tag-subprof,.tag-station,.tag-sp,.star-pill,.node-chip,.stone-lv-chip){
   display:inline-flex;

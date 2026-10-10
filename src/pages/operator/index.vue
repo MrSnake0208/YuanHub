@@ -13255,6 +13255,7 @@ onBeforeUnmount(function () {
   outline-offset: 1px;
 }
 .editor-head-stat input {
+  --input-font-size: 23px;
   width: 100%;
   min-width: 0;
   min-height: 32px;
@@ -13263,7 +13264,7 @@ onBeforeUnmount(function () {
   outline: none;
   background: transparent;
   color: var(--accent-strong);
-  font: 900 23px/1 var(--font-d);
+  font: 900 var(--input-font-size)/1 var(--font-d);
   letter-spacing: 0;
   text-align: center;
   -moz-appearance: textfield;
@@ -14856,8 +14857,9 @@ onBeforeUnmount(function () {
     padding: 8px 10px;
   }
   .editor-head-stat input {
+    --input-font-size: 22px;
     min-height: 44px;
-    font-size: 22px;
+    font-size: var(--input-font-size);
   }
   .editor-close {
     grid-column: 2;

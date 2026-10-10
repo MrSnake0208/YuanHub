@@ -993,9 +993,10 @@ h2 {
 }
 
 .remaining-input input {
+  --input-font-size: 20px;
   margin: 0;
   font-family: var(--font-d);
-  font-size: 20px;
+  font-size: var(--input-font-size);
   text-align: center;
 }
 
@@ -1409,11 +1410,12 @@ button:not(:disabled):hover {
 }
 
 .pull-count-field input {
+  --input-font-size: 18px;
   width: 96px;
   margin-top: 0;
   padding-inline: 8px;
   font-family: var(--font-d);
-  font-size: 18px;
+  font-size: var(--input-font-size);
   text-align: center;
 }
 

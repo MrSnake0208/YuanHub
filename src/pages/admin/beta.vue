@@ -212,7 +212,7 @@ textarea { box-sizing: border-box; width: 100%; border: 1px solid var(--line); b
 .capacity-field { display: grid; gap: 7px; }
 .capacity-field > label { font-weight: 700; }
 .capacity-input { display: inline-flex; align-items: center; gap: 8px; }
-.capacity-input input { box-sizing: border-box; width: 100%; max-width: 220px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--surface); color: var(--ink); font: 700 18px var(--font-d); }
+.capacity-input input { --input-font-size: 18px; box-sizing: border-box; width: 100%; max-width: 220px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--surface); color: var(--ink); font: 700 var(--input-font-size) var(--font-d); }
 .capacity-input input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .capacity-input input[aria-invalid='true'] { border-color: var(--rouge); }
 .capacity-input span { color: var(--ink-60); }
