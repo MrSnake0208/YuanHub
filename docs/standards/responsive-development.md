@@ -253,6 +253,22 @@ YuanHub 项目标准：主要可点击/可触控区域尽量不小于 **44 × 44
 
 能用 CSS 正确完成的响应式布局，不使用 JS 监听窗口尺寸替代 CSS。
 
+### 7.4 iOS 输入聚焦缩放
+
+`src/styles/main.css` 在支持 `-webkit-touch-callout` 的 iOS WebKit 中，为文本类 `input`、`textarea`、原生 `select` 和可编辑根节点设置至少 16px 的计算字号。规则在聚焦前生效，不依赖屏幕宽度，覆盖横屏、平板及 Teleport 弹层；`!important` 用于抵抗组件 scoped 样式和 `font` 简写。复选框、滑块、按钮等非文本输入不受影响。
+
+需要大于 16px 的输入使用局部 `--input-font-size`，同时以该变量设置原有 `font-size` / `font`，保留其它平台字号。不要将此变量设到非输入祖先上，以免影响嵌套控件。普通正文、标题、只读富文本保持原有样式。
+
+不得通过 viewport 的 `user-scalable=no` / `maximum-scale=1` 或手动重置缩放来规避问题。真实 iPhone Safari 复测：依次打开登录邮箱/密码、作业搜索、账房数字输入、反馈编辑及弹窗中的输入；记录聚焦前、聚焦后、收起键盘后的 `visualViewport.scale` 和 `height`，确认字号至少 16px、scale 不因聚焦变化、没有横向溢出，并确认双指缩放与页面滚动可用。桌面浏览器模拟不能证明 iOS 软键盘行为。
+
+已有开发服务运行且 Playwright CLI 可用时，可运行以下字号回归。脚本使用真实登录输入、组件 scoped 样式和 body 下的弹层样本；Chromium 中会明确展开 iOS 规则，仅验证级联、计算字号、聚焦/失焦和溢出，不验证系统键盘或缩放。
+
+```bash
+playwright-cli -s=input-zoom open http://127.0.0.1:5173/login --browser=chrome
+playwright-cli -s=input-zoom run-code --filename=test-support/inputFocusZoom.browser.js
+playwright-cli -s=input-zoom close
+```
+
 ## 8. Definition of Done
 
 所有 UI 改动都要满足与本次修改**直接相关**的跨视口不变量，但验证范围按第 3 节风险分级执行。只有 L3 结构性改动默认要求逐项检查完整视口矩阵。
