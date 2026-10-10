@@ -104,7 +104,7 @@ it('目录同步失败显示重试，历史真正为空时说明记录来源', a
   const wrapper = render()
   await flushPromises()
   expect(wrapper.get('.inventory-inline-state[role="alert"]').text()).toContain('目录同步失败')
-  expect(wrapper.text()).toContain('手动更新库存、添加奖励流水或导入本地报告')
+  expect(wrapper.text()).toContain('更新库存、记录奖励或导入本地报告')
   await wrapper.get('.inventory-inline-state[role="alert"] button').trigger('click')
   await flushPromises()
   expect(inventoryApi.getCatalog).toHaveBeenCalledTimes(2)
