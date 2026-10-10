@@ -8,7 +8,7 @@ import { CALENDAR_SUBSCRIPTIONS, subscriptionCompleted } from '../data/activityC
 import { useUnsavedChanges } from '../utils/useUnsavedChanges.js'
 
 // Page-owned state shared by the three calendar views, never a cross-user singleton.
-export function useCalendarSubscriptions(enabled, range, category) {
+export function useCalendarSubscriptions(enabled, range, category, privateDirty = ref(false)) {
   let alive = true, accountGeneration = 0, generation = 0, deferredLoad = false, acceptedSwitch = false
   const permitted = computed(() => enabled && auth.isLoggedIn && auth.isAdmin && !!auth.userInfo?.id)
   const identity = computed(() => permitted.value ? String(auth.userInfo.id) : '')
@@ -25,8 +25,8 @@ export function useCalendarSubscriptions(enabled, range, category) {
   const records = ref([]), unavailable = ref([]), count = ref(0), loading = ref(false), error = ref('')
   const now = ref(Date.now()), drafts = ref({})
   const epoch = ref(0), contextNotice = ref('')
-  const dirty = computed(() => Object.values(drafts.value).some(Boolean))
-  const confirmDiscard = useUnsavedChanges(dirty, '活动待办', { title: '还有未保存的待办修改' })
+  const dirty = computed(() => privateDirty.value || Object.values(drafts.value).some(Boolean))
+  const confirmDiscard = useUnsavedChanges(dirty, '日历内容', { title: '还有未保存的日历修改' })
   const byId = computed(() => Object.fromEntries(records.value.map(record => [record.event_id, record])))
   async function loadAccounts() {
     const token = ++accountGeneration, user = identity.value
@@ -43,7 +43,7 @@ export function useCalendarSubscriptions(enabled, range, category) {
   }
   watch(identity, () => { accounts.value = []; void loadAccounts() }, { immediate: true, flush: 'sync' })
   watch(() => JSON.stringify([identity.value, account.value?.id, account.value?.game]), () => {
-    if (dirty.value && !acceptedSwitch) contextNotice.value = '身份、权限或游戏账号已变化，未保存的待办已清除。'
+    if (dirty.value && !acceptedSwitch) contextNotice.value = '身份、权限或游戏账号已变化，未保存的日历内容已清除。'
   }, { flush: 'sync' })
   watch(key, () => {
     epoch.value++; deferredLoad = false; records.value = []; unavailable.value = []; drafts.value = {}; count.value = 0

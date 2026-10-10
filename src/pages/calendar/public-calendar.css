@@ -234,3 +234,11 @@
 .calendar-todo-history summary { display: list-item; min-height: 44px; padding-block: 12px; box-sizing: border-box; cursor: pointer; color: var(--tea); }
 .calendar-subscription button { min-width: 44px; }
 .calendar-todo-summary { margin: 4px 0 6px; font-weight: 700; }
+
+/* Private items have their own source and accent; public classifications stay unchanged. */
+.calendar-public .calendar-private-add { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); }
+.calendar-public .calendar-private-add:disabled { opacity: .6; cursor: default; }
+.calendar-public .calendar-detail-heading { flex-wrap: wrap; }
+.calendar-public .calendar-private-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.calendar-public .calendar-private-actions button { min-height: 44px; padding: 8px 12px; }
+.calendar-public .calendar-description { overflow-wrap: anywhere; white-space: pre-wrap; }

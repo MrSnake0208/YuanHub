@@ -311,3 +311,26 @@ npm run test:static
 ```
 
 Mongo仅允许TestMongo自有临时容器；真实手机软键盘与Safari仍须人工检查。测试结果以本任务verification.md为准。
+
+## 私人日历事项（2026-10-10）
+
+`scope=mine` 仍兼容旧链接，界面名称改为“我的日历”：显示当前游戏账号的官方订阅和独立私人事项。顶部“添加私人事项”适用于三视图；月历先选日期，再通过日期详情的“记一件事”预填当天。缺少账号时先选择/创建账号，所属游戏由账号推导。
+
+私人事项只需内容（去首尾空白后1–100字）和日期，可选一个上海时间 `HH:mm`；留空为全天，附加说明为最多1000字纯文本。单日事项没有结束时刻、完成状态、活动ID或订阅操作。保存后保持原URL、视图和日期；保存到当前范围外会提示选择对应日期查看。
+
+私人事项使用独立 `PRIVATE_ITEM` 视图模型和茶棕标识，三视图复用日期分组/分轨，卡片支持编辑和确认删除。官方类型、活动状态及“有未完成待办”筛选时隐藏私人事项并说明口径；“不含招募”不排除私人事项。“全部活动”、首页今日统计、社区建议和公开API保持公共口径。
+
+独立页面级 `useCalendarPrivateItems` 绑定用户、账号及身份epoch，切换同步清空旧内容，拒绝迟到响应；请求带 `expectedUserId`。401/403/账号失效清除私人内容。复用原未保存保护覆盖关闭、路由、账号、日期和视图切换；网络失败和409保留草稿，409读取最新内容须先确认放弃。保存中禁重复操作，删除取消/失败保留原记录。
+
+API为 `/v1/activity-calendar/private-items`，沿用JWT及当前管理员测试门禁；详情/写入均带 `account_id`，更新和删除须带 `expected_version`。列表必填 `from/to`，含首尾最多100天、最多1000条，超限422要求缩小范围。每个请求由服务端重新校验归属，前端隐藏不构成隐私边界。账号重命名保留事项；有私人事项时禁止改变账号游戏，删除账号在同一事务清理事项并阻止竞态孤儿数据。不迁移公共事件或订阅数据。
+
+定向检查：
+
+```bash
+node --test test/calendarPrivateItems.test.js test/activityCalendar.test.js test/activityCalendarViews.test.js test/activityCalendarTypes.test.js test/activityCalendarSubscriptions.test.js
+npx --no-install vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateItemsApi.spec.js behavior/activityCalendarSubscriptions.spec.js behavior/activityCalendarUnsaved.spec.js behavior/activityCalendarSubscriptionIdentity.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarFilters.spec.js behavior/activityCalendarTypes.spec.js behavior/activityCalendarIdentity.spec.js behavior/activityCalendarSession.spec.js behavior/todayCalendarSubscriptions.spec.js behavior/activityCalendarSuggestions.spec.js
+npm run test:static
+npm run build
+```
+
+真实手机软键盘、Safari与真实账号前后端联调需人工验收；浏览器合成API验证不代表这些环境通过。具体结果见根任务 `10-10-activity-calendar-private-items/verification.md`。

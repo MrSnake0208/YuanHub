@@ -15,7 +15,7 @@
         <section class="calendar-subscription-toolbar" aria-label="活动范围与账号">
           <div class="calendar-chips" role="group" aria-label="活动范围">
             <button type="button" :aria-pressed="!mine" @click="setScope(false)">全部活动</button>
-            <button type="button" :aria-pressed="mine" @click="setScope(true)">我的订阅</button>
+            <button type="button" :aria-pressed="mine" @click="setScope(true)">我的日历</button>
           </div>
           <button ref="filterTrigger" class="calendar-filter-trigger" type="button" aria-haspopup="dialog" :aria-expanded="filterOpen" aria-controls="calendar-filter-sheet" :aria-label="`筛选活动，当前：${filterSummary}，已启用 ${activeFilterCount} 个筛选条件`" @click="openFilters">
             <SlidersHorizontal :size="17" aria-hidden="true" /><span>筛选</span>
@@ -26,7 +26,8 @@
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
           <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked, $event.target)">有未完成待办</label>
-          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅与活动待办仅当前账号可见。</p>
+          <button v-if="mine" type="button" class="calendar-private-add" :disabled="!privateItems.ready.value" @click="privateItems.open(null, anchorDate)"><Plus :size="17" aria-hidden="true" /> 添加私人事项</button>
+          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅、活动待办与私人事项仅当前账号可见。</p>
           <p v-if="subscriptions.contextNotice.value" class="calendar-hint" role="status">{{ subscriptions.contextNotice.value }}</p>
         </section>
         <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
@@ -41,9 +42,11 @@
         <CalendarFilterSheet :open="filterOpen" :filters="filters" :lock-game="mine" :games="CALENDAR_GAMES" :categories="CALENDAR_CATEGORIES" @change="setFilter" @reset="resetFilters" @close="filterOpen = false" />
         <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
-        <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请选择游戏账号后查看我的订阅。</p>
+        <p v-if="mine && privateItems.notice.value" class="calendar-panel" role="status">{{ privateItems.notice.value }}</p>
+        <p v-if="mine && privateItemsHidden" class="calendar-hint">当前类型、时间状态或待办筛选仅显示订阅活动，私人事项已隐藏；清除对应筛选即可查看。</p>
+        <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请先通过上方账号切换器选择或新建游戏账号，再使用我的日历。</p>
         <div v-else-if="!viewLoading && !viewError && !visibleItems.length" class="calendar-panel calendar-filter-empty" role="status">
-          <p>{{ mine && !subscriptions.count.value ? '还没有订阅活动，去全部活动中订阅本期吧。' : '当前条件下无活动，试试清除筛选或调整日期。' }}</p>
+          <p>{{ mine && !subscriptions.count.value && !privateItems.records.value.length ? '我的日历还是空的，可以添加私人事项，或去全部活动订阅。' : mine ? '当前条件下无事项，试试清除筛选或调整日期。' : '当前条件下无活动，试试清除筛选或调整日期。' }}</p>
           <button v-if="activeFilterCount" type="button" @click="resetFilters">清除筛选</button>
           <button v-if="mine" type="button" @click="setScope(false)">浏览全部活动</button>
           <button v-else type="button" @click="goToday">回到今天</button>
@@ -51,11 +54,11 @@
         <div class="calendar-view-content" :aria-busy="viewLoading">
           <p v-if="viewLoading" class="calendar-panel" role="status">正在读取活动日程…</p>
           <div v-else-if="viewError" class="calendar-panel calendar-error" role="alert">
-            <p>{{ viewError }}</p><button type="button" @click="mine ? subscriptions.load() : load()">重试</button>
+            <p>{{ viewError }}</p><button type="button" @click="retry">重试</button>
           </div>
           <CalendarAgendaView v-if="currentView === 'agenda'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" />
           <CalendarTimelineView v-else-if="currentView === 'timeline'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" @select-date="setDate" />
-          <CalendarMonthView v-else :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" @select-date="setDate" />
+          <CalendarMonthView v-else :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :can-create="privateItems.ready.value" @select-date="setDate" @create-private="privateItems.open(null, $event)" />
         </div>
         <section v-if="mine && visibleUnavailable.length" class="calendar-panel" aria-label="不可用的订阅">
           <h2>活动已停用或不可用</h2>
@@ -75,6 +78,7 @@
           </nav>
         </section>
       </div>
+      <CalendarPrivateItemEditor v-if="subscriptions.account.value" :account="subscriptions.account.value" />
       <SiteFooter />
     </main>
   </div>
@@ -83,11 +87,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCalendarSubscriptions } from '@/composables/useCalendarSubscriptions.js'
+import { useCalendarPrivateItems } from '@/composables/useCalendarPrivateItems.js'
+import CalendarPrivateItemEditor from '@/components/calendar/CalendarPrivateItemEditor.vue'
 import { subscriptionScope, subscriptionPending, subscriptionScopeQuery, subscriptionHasPending } from '@/data/activityCalendarSubscriptions.js'
 import CalendarSubscriptionControls from '@/components/calendar/CalendarSubscriptionControls.vue'
 import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
-import { X, LocateFixed, SlidersHorizontal } from '@lucide/vue'
+import { X, LocateFixed, SlidersHorizontal, Plus } from '@lucide/vue'
 import IslandSidebar from '@/components/IslandSidebar.vue'
 import SiteFooter from '@/components/SiteFooter.vue'
 import CalendarViewSwitcher from '@/components/calendar/CalendarViewSwitcher.vue'
@@ -130,22 +136,28 @@ function openFilters(event) {
 const currentView = computed(() => calendarView(route.query, preferredView.value, wide))
 const anchorDate = computed(() => calendarAnchorDate(route.query, today.value))
 const requestRange = computed(() => calendarRequestRange(currentView.value, anchorDate.value, today.value))
-const subscriptions = useCalendarSubscriptions(enabled, requestRange, computed(() => calendarFilters(route.query).category))
+const privateDirty = ref(false)
+const subscriptions = useCalendarSubscriptions(enabled, requestRange, computed(() => calendarFilters(route.query).category), privateDirty)
+const privateItems = useCalendarPrivateItems(subscriptions, requestRange, mine)
+watch(privateItems.dirty, value => { privateDirty.value = value }, { immediate: true, flush: 'sync' })
 // A committed query update has already passed the shared leave confirmation.
-watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts() }, { flush: 'sync' })
+watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions.discardDrafts(); privateItems.dismiss() }, { flush: 'sync' })
 const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
+const privateItemsHidden = computed(() => !!(filters.value.category || filters.value.status || pendingOnly.value))
 const visibleItems = computed(() => {
   const values = mine.value
     ? normalizeCalendarItems(subscriptions.records.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)).map(record => record.item))
     : items.value
-  return filterCalendarItems(values, filters.value, subscriptions.now.value)
+  const publicItems = filterCalendarItems(values, filters.value, subscriptions.now.value)
+  return [...publicItems, ...(mine.value && !privateItemsHidden.value ? privateItems.records.value : [])]
     .filter(item => item.end_date >= requestRange.value.from && item.start_date <= requestRange.value.to)
 })
 const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)))
-const viewLoading = computed(() => mine.value ? subscriptions.loading.value : loading.value)
-const viewError = computed(() => mine.value ? subscriptions.error.value : error.value)
+const viewLoading = computed(() => mine.value ? subscriptions.loading.value || privateItems.loading.value : loading.value)
+const viewError = computed(() => mine.value ? subscriptions.error.value || privateItems.error.value : error.value)
+function retry() { if (mine.value) { void subscriptions.load(); void privateItems.load() } else void load() }
 function setScope(value) { return router.replace({ query: subscriptionScopeQuery(route.query, value) }) }
 function setPending(value, input) {
   if (input) input.checked = pendingOnly.value
@@ -171,6 +183,7 @@ function refreshVisible() {
   if ((!wasDeferred && Date.now() - lastRefresh < 1000) || subscriptions.dirty.value) return
   lastRefresh = Date.now()
   void subscriptions.load()
+  void privateItems.load()
   if (subscriptions.permitted.value) void load()
 }
 function onVisibilityChange() { if (document.visibilityState === 'visible') refreshVisible() }
