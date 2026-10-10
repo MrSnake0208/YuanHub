@@ -77,17 +77,23 @@
             @export="doExport"
           />
 
-          <!-- 二级导航：滚动时吸附，保持库存工作区入口可见 -->
+          <!-- 页内工作区导航：共享样式保持普通文档流。 -->
           <div
             v-show="!inventoryPromptTitle || inventoryBrowseCatalog || editingStock"
             class="inventory-tabs tool-workspace-tabs"
             data-tour="inventory-workspace"
             role="tablist"
+            @keydown="onWorkspaceTabKeydown"
+            @focusin="onWorkspaceTabFocus" @focusout="onWorkspaceTabFocus"
             aria-label="库存工作区"
             v-reveal
           >
             <button
+              type="button"
               role="tab"
+              id="inventory-tab-manifest"
+              aria-controls="inventory-panel-manifest"
+              :tabindex="activeTab === 'manifest' ? 0 : -1"
               :aria-selected="activeTab === 'manifest'"
               :class="{ on: activeTab === 'manifest' }"
               @click="setTab('manifest')"
@@ -95,7 +101,11 @@
               <Layers3 :size="17" aria-hidden="true" /><span>库存清单</span>
             </button>
             <button
+              type="button"
               role="tab"
+              id="inventory-tab-acquired"
+              aria-controls="inventory-panel-acquired"
+              :tabindex="activeTab === 'acquired' ? 0 : -1"
               :aria-selected="activeTab === 'acquired'"
               :class="{ on: activeTab === 'acquired' }"
               @click="setTab('acquired')"
@@ -105,7 +115,11 @@
               >
             </button>
             <button
+              type="button"
               role="tab"
+              id="inventory-tab-records"
+              aria-controls="inventory-panel-records"
+              :tabindex="activeTab === 'records' ? 0 : -1"
               :aria-selected="activeTab === 'records'"
               :class="{ on: activeTab === 'records' }"
               @click="setTab('records')"
@@ -181,6 +195,10 @@
 
           <!-- 追踪目录（YuanHub 当前支持的追踪范围，登录后叠加云端库存） -->
           <div
+            id="inventory-panel-manifest"
+            role="tabpanel"
+            aria-labelledby="inventory-tab-manifest"
+            tabindex="0"
             v-show="activeTab === 'manifest' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)"
             ref="manifestPanel"
             class="panel"
@@ -1009,6 +1027,10 @@
 
           <!-- 时段获得量 -->
           <div
+            id="inventory-panel-acquired"
+            role="tabpanel"
+            aria-labelledby="inventory-tab-acquired"
+            tabindex="0"
             v-show="activeTab === 'acquired' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)"
             class="panel acquired-panel"
             :aria-busy="acquiredLoading"
@@ -1588,7 +1610,11 @@
           </div>
 
           <!-- 导入记录 -->
-          <div v-show="activeTab === 'records' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)" class="panel">
+          <div id="inventory-panel-records"
+            role="tabpanel"
+            aria-labelledby="inventory-tab-records"
+            tabindex="0"
+            v-show="activeTab === 'records' && (!inventoryPromptTitle || inventoryBrowseCatalog || editingStock)" class="panel">
             <section class="records-overview" aria-labelledby="records-overview-title">
               <div class="records-overview-copy">
                 <span class="records-kicker">库存追踪 · 操作历史</span>
@@ -1766,6 +1792,7 @@
 <script setup>
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
+import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
 import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
@@ -4199,52 +4226,6 @@ onBeforeUnmount(function () {
 .load-more:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.inventory-tabs {
-  position: sticky;
-  top: 24px;
-  z-index: var(--z-sticky-controls);
-  display: flex;
-  gap: 4px;
-  background: rgba(255, 248, 236, 0.94);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 5px;
-  margin-top: 12px;
-  box-shadow: 0 12px 28px -22px rgba(73, 59, 44, 0.5);
-}
-.inventory-tabs button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: none;
-  background: transparent;
-  font-family: var(--font-b);
-  font-weight: 700;
-  font-size: 14px;
-  padding: 10px 26px;
-  border-radius: 10px;
-  cursor: pointer;
-  color: var(--ink-60);
-  transition:
-    color 0.3s var(--ease),
-    background-color 0.3s var(--ease);
-}
-.inventory-tabs button svg {
-  display: none;
-}
-.inventory-tabs button.on {
-  background: var(--tea);
-  color: var(--cream);
-}
-.inventory-tabs button:hover:not(.on) {
-  color: var(--ink);
-}
-.inventory-tabs .sp {
-  flex: 1;
 }
 .act-btn {
   border: 1.5px solid var(--line);
@@ -7429,44 +7410,6 @@ onBeforeUnmount(function () {
   .page-inventory :deep(.footer) {
     padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom));
   }
-  .inventory-tabs {
-    position: fixed;
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: var(--z-popover);
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-    margin: 0;
-    padding: 7px max(12px, env(safe-area-inset-right))
-      calc(7px + env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
-    border-radius: 0;
-    background: rgba(255, 248, 236, 0.96);
-    border-top: 1px solid var(--line);
-    border-right: 0;
-    border-bottom: 0;
-    border-left: 0;
-    box-shadow: 0 -10px 26px -18px rgba(73, 59, 44, 0.48);
-  }
-  .inventory-tabs button {
-    min-height: 48px;
-    padding: 6px 8px;
-    flex-direction: column;
-    gap: 3px;
-    border-radius: 11px;
-    font-size: 11.5px;
-    line-height: 1.1;
-  }
-  .inventory-tabs button svg {
-    display: block;
-  }
-  .inventory-tabs button.on {
-    background: var(--yellow);
-    color: var(--ink);
-  }
 }
 
 @media (min-width: 1081px) {
@@ -7503,9 +7446,6 @@ onBeforeUnmount(function () {
     width: 100%;
     min-height: 44px;
     transform: none;
-  }
-  .inventory-tabs {
-    margin: 0;
   }
   .import-box {
     padding: 14px;
@@ -8379,9 +8319,6 @@ onBeforeUnmount(function () {
 
 .inventory-main > section { padding-top: 0; }
 .panel { margin-top: 12px; }
-.inventory-tabs.tool-workspace-tabs { position: static; flex-direction: row; }
-.inventory-tabs.tool-workspace-tabs button { flex-direction: row; }
-.inventory-tabs.tool-workspace-tabs button svg { display: none; }
 .inventory-freshness { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 .inventory-freshness-copy { display: grid; gap: 4px; color: var(--tea); font: 500 13px/1.5 var(--font-b); min-width: 0; }
 .freshness-label { color: var(--ink-60); font-size: 12px; }

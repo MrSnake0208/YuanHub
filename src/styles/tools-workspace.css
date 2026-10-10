@@ -1,9 +1,64 @@
-/* Only the three page-owned workspaces use these lightweight tabs. */
-:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs { position: static; inset: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; width: fit-content; max-width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
-:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs > button[role="tab"] { display: inline-flex; flex: 0 0 auto; min-height: 44px; align-items: center; justify-content: center; padding: 8px 4px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--ink-60); font: 600 14px/1.5 var(--font-b); white-space: nowrap; }
-:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs > button[role="tab"].on { border-bottom-color: var(--tea); background: transparent; color: var(--tea); font-weight: 800; }
-:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-@media (max-width: 640px) {
-  :is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs { gap: 4px 12px; }
-  :is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs > button[role="tab"] { font-size: 13px; }
+/* Page-owned workspaces only; other segmented controls keep their own hierarchy. */
+:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow-x: auto;
+}
+.tool-workspace-tabs > .workspace-tab-list { display: flex; flex: 0 0 auto; gap: 4px; }
+.tool-workspace-tabs button svg { display: none; }
+:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-60);
+  font: 600 14px/1.5 var(--font-b);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: none;
+}
+:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--tea);
+  background: color-mix(in srgb, var(--yellow) 45%, var(--surface));
+  color: var(--tea);
+}
+@media (hover: hover) {
+  :is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:hover:not([aria-selected="true"]):not(:disabled) {
+    background: var(--cream);
+    color: var(--ink);
+  }
+}
+:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:focus-visible {
+  outline: 2px solid var(--tea);
+  outline-offset: -3px;
+}
+:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button:disabled {
+  color: var(--ink-35);
+  cursor: not-allowed;
+}
+:is(.page-operator, .page-inventory, .page-star) :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-haspopup="dialog"] {
+  border: 1px dashed var(--line);
+  font-size: 13px;
 }
