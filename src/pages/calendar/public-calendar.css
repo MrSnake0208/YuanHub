@@ -14,7 +14,8 @@
 .calendar-public .calendar-contribution-actions .calendar-contribution-secondary:hover { color: var(--tea); }
 .calendar-public .calendar-filters { background: transparent; border: 0; border-radius: 0; padding: 0; gap: 12px; }
 .calendar-public .calendar-filter-state { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.calendar-public .calendar-filter-clear { flex: none; min-height: 44px; background: transparent; border-color: transparent; font-size: 13px; font-weight: 400; }
+.calendar-public .calendar-filter-clear { flex: none; min-height: 44px; background: transparent; border-color: transparent; color: var(--tea); font-size: 13px; font-weight: 400; text-decoration: underline; text-underline-offset: 4px; }
+.calendar-public .calendar-filter-clear:active { background: var(--cream); transform: none; }
 .calendar-public .calendar-active-filters { display: none; }
 .calendar-public .calendar-filter-summary { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; font-size: 13px; color: var(--ink-60); }
 .calendar-public .calendar-filter-empty button { margin: 8px 8px 0 0; }
@@ -99,6 +100,7 @@
 .calendar-public .calendar-month-day.is-today .calendar-day-number { border-bottom: 2px solid var(--accent-strong); }
 .calendar-public .calendar-day-today { font: 10px var(--font-b); color: var(--accent-strong); }
 @media (hover: hover) {
+  .calendar-public .calendar-filter-clear:hover { background: var(--cream); text-decoration-thickness: 2px; }
   .calendar-public .calendar-month-day:not([aria-pressed=true]):hover { background: var(--cream); }
 }
 .calendar-public .calendar-day-count { font-size: 11px; white-space: nowrap; }
@@ -178,7 +180,12 @@
   .calendar-public .calendar-filter-state { flex-wrap: wrap; }
   .calendar-public .calendar-filter-summary { display: none; }
   .calendar-public .calendar-active-filters { display: flex; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
-  .calendar-public .calendar-active-filters button { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 400; border-color: transparent; background: color-mix(in srgb, var(--cream) 80%, transparent); }
+  .calendar-public .calendar-active-filters button { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--tea); border-color: color-mix(in srgb, var(--tea) 65%, var(--surface)); background: color-mix(in srgb, var(--yellow) 24%, var(--surface)); }
+  .calendar-public .calendar-active-filters button svg { flex: none; }
+  @media (hover: hover) {
+    .calendar-public .calendar-active-filters button:hover { border-color: var(--tea); background: color-mix(in srgb, var(--yellow) 36%, var(--surface)); }
+  }
+  .calendar-public .calendar-active-filters button:active { border-color: var(--tea); background: color-mix(in srgb, var(--yellow) 48%, var(--surface)); transform: none; }
   .calendar-public .calendar-header { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 20px; }
   .calendar-public .calendar-view-tools { grid-column: auto; flex-wrap: nowrap; }
   .calendar-public button.calendar-month-day { min-height: 90px; align-items: stretch; padding: 8px 6px; text-align: left; }
