@@ -17,6 +17,7 @@ export const CALENDAR_SUBTYPES = Object.freeze({
 export const CALENDAR_SUBTYPE_DETAILS = Object.freeze({ MYSTERIOUS_CAVE: { label: '神秘洞窟', subtype: 'FURNITURE' } })
 
 export function calendarDisplay(item) {
+  if (item.source_type === 'PRIVATE_ITEM') return { group: 'PRIVATE_ITEM', groupLabel: '私人事项', label: '私人事项', path: '私人事项', color: 'tea', style: eventTypeStyle('tea') }
   const group = ({ LOGIN: 'ACTIVITY', MAINTENANCE: 'OTHER' })[item.category] || (Object.hasOwn(CALENDAR_DISPLAY_GROUPS, item.category) ? item.category : 'OTHER')
   let type
   if (item.category === 'RECRUITMENT') type = recruitmentPoolType(item.pool_type)

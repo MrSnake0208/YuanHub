@@ -1,5 +1,6 @@
 // Shared calendar accents and recruitment cover colors; keep the warm paper surfaces.
 export const EVENT_TYPE_COLORS = Object.freeze({
+  tea: { background: '#F3EFE9', text: '#5A4633', border: '#CDBEAC', mark: '#806B55', cover: '#E8DFD2' },
   rouge: { background: '#FAEEEB', text: '#833F3D', border: '#D9AAA4', mark: '#A6514A', cover: '#F1D5D1' },
   purple: { background: '#F4EEF8', text: '#65507D', border: '#C9B5DD', mark: '#88669F', cover: '#E7DCF4' },
   blue: { background: '#EDF3F9', text: '#395772', border: '#ACC3D7', mark: '#597D9B', cover: '#D9E8F5' },

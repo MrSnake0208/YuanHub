@@ -38,6 +38,7 @@ export function safeCalendarUrl(value) {
 }
 
 export function normalizeCalendarItem(value) {
+  if (value?.source_type === 'PRIVATE_ITEM') return null
   if (!value || typeof value.id !== 'string' || !value.id || !CALENDAR_GAMES.includes(value.game) || !Object.hasOwn(CALENDAR_CATEGORIES, value.category) || typeof value.title !== 'string' || !value.title.trim()) return null
   if (!isCalendarDate(value.start_date) || !isCalendarDate(value.end_date) || value.end_date < value.start_date) return null
   const paired = /^([01]\d|2[0-3]):[0-5]\d$/.test(value.start_time) && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.end_time)
@@ -59,7 +60,7 @@ export function summarizeCalendarDay(items, today) {
   const counts = { starts: 0, ends: 0, ongoing: 0, total: 0 }
   const seen = new Set()
   for (const item of items) {
-    if (seen.has(item.id) || item.start_date > today || item.end_date < today) continue
+    if (item.source_type === 'PRIVATE_ITEM' || seen.has(item.id) || item.start_date > today || item.end_date < today) continue
     seen.add(item.id)
     counts.total++
     if (item.start_date === today) counts.starts++
@@ -70,6 +71,7 @@ export function summarizeCalendarDay(items, today) {
 }
 
 export function calendarStatuses(item, today, now = Date.now()) {
+  if (item.source_type === 'PRIVATE_ITEM') return [item.start_date === today ? '今天' : item.start_date < today ? '已过日期' : '未到日期']
   if (item.end_at && Date.parse(item.end_at) <= now) return ['已结束']
   if (item.start_at && Date.parse(item.start_at) > now) return ['即将开始']
   if (!item.end_at && item.end_date < today) return ['已结束']
@@ -230,7 +232,7 @@ export function timelineItemPosition(item, range) {
 export function timelineLanes(items, range) {
   const entries = items.map(item => ({ item, position: timelineItemPosition(item, range) }))
     .filter(entry => entry.position)
-    .sort((a, b) => a.position.column - b.position.column || b.position.span - a.position.span || a.item.id.localeCompare(b.item.id))
+    .sort((a, b) => a.position.column - b.position.column || b.position.span - a.position.span || privateTimeOrder(a.item, b.item) || a.item.id.localeCompare(b.item.id))
   const lanes = [], ends = []
   for (const entry of entries) {
     // ponytail: scan concurrent lanes; use a heap if real event volume warrants it.
@@ -248,7 +250,12 @@ export function calendarItemsOnDay(items, date) {
     if (seen.has(item.id) || item.start_date > date || item.end_date < date) return false
     seen.add(item.id)
     return true
-  }).sort((a, b) => Number(b.end_date === date) - Number(a.end_date === date) || a.start_date.localeCompare(b.start_date) || a.id.localeCompare(b.id))
+  }).sort((a, b) => Number(b.end_date === date) - Number(a.end_date === date) || a.start_date.localeCompare(b.start_date) || privateTimeOrder(a, b) || a.id.localeCompare(b.id))
+}
+
+function privateTimeOrder(a, b) {
+  const privateA = a.source_type === 'PRIVATE_ITEM', privateB = b.source_type === 'PRIVATE_ITEM'
+  return Number(privateA) - Number(privateB) || (privateA && privateB ? (a.start_time || '').localeCompare(b.start_time || '') : 0)
 }
 
 export function monthCalendarDays(items, date) {
@@ -266,6 +273,7 @@ export function calendarEnded(item, today, now = Date.now()) {
   return item.end_at ? Date.parse(item.end_at) <= now : item.end_date < today
 }
 export function calendarDeadline(item, today, now = Date.now()) {
+  if (item.source_type === 'PRIVATE_ITEM') return ''
   if (item.end_at && Date.parse(item.end_at) <= now) return '已截止'
   if (item.start_at && Date.parse(item.start_at) > now) {
     const startDay = serverToday(new Date(item.start_at))
@@ -283,6 +291,7 @@ export function calendarDeadline(item, today, now = Date.now()) {
 }
 
 export function calendarRangeLabel(item) {
+  if (item.source_type === 'PRIVATE_ITEM') return `${item.start_date} · ${item.start_time ? item.start_time + '（上海时间）' : '全天'}`
   const start = item.start_date + (item.start_time ? ' ' + item.start_time : '')
   const end = item.end_date + (item.end_time ? ' ' + item.end_time : '')
   return `${start} — ${end}`

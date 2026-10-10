@@ -12,6 +12,7 @@ import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: true, userInfo: { id: 'user' } }) }))
+vi.mock('../src/api/calendarPrivateItems.js', () => ({ listCalendarPrivateItems: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), setCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
@@ -74,7 +75,7 @@ it.each(queries)('route %j cancels before URL/filter/editor change, then confirm
   title().element.focus()
   const navigation = router.replace({ query: { ...router.currentRoute.value.query, ...patch } })
   await flushPromises()
-  expect(dialog._state.title).toBe('还有未保存的待办修改')
+  expect(dialog._state.title).toBe('还有未保存的日历修改')
   expect(document.activeElement.textContent).toBe('继续编辑')
   expect(router.currentRoute.value.fullPath).toBe(before)
   await settle(); await navigation
@@ -136,7 +137,7 @@ it.each(['logout', 'permission', 'identity', 'account removed', 'account game ch
   expect(dialog._state.visible).toBe(false)
   expect(wrapper.find('.calendar-checklist').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('草稿待办')
-  expect(wrapper.text()).toContain('未保存的待办已清除')
+  expect(wrapper.text()).toContain('未保存的日历内容已清除')
 })
 
 it('account metadata refresh preserves editing; inactive pending consent cannot switch a new identity', async () => {
@@ -241,7 +242,7 @@ it('a late refresh read never replaces an already open leave confirmation', asyn
   await button('读取最新状态').trigger('click'); await flushPromises()
   const leave = router.push('/other'); await flushPromises()
   late.resolve(server); await flushPromises()
-  expect(dialog._state.title).toBe('还有未保存的待办修改')
+  expect(dialog._state.title).toBe('还有未保存的日历修改')
   await settle(); await leave
   expect(router.currentRoute.value.path).toBe('/calendar'); expect(title().element.value).toBe('草稿待办')
 })
@@ -284,7 +285,7 @@ it('account re-read preserves the editor and cannot resurrect an account removed
   late.resolve(accounts); await reread; await flushPromises()
   expect(state.account.value).toBeNull()
   expect(wrapper.find('form').exists()).toBe(false)
-  expect(wrapper.text()).toContain('未保存的待办已清除')
+  expect(wrapper.text()).toContain('未保存的日历内容已清除')
 })
 
 it('canceling the pending-only checkbox restores its DOM state as well as the URL', async () => {

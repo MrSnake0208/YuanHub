@@ -19,7 +19,7 @@
       </div>
     </div>
     <section v-if="!loading && !error" class="calendar-day-detail" aria-labelledby="calendar-day-detail-title" aria-live="polite">
-      <div class="calendar-detail-heading"><h3 id="calendar-day-detail-title">{{ calendarDateLabel(anchorDate) }}</h3><span>{{ selectedItems.length ? `${selectedItems.length} 项活动` : '暂无活动' }}</span></div>
+      <div class="calendar-detail-heading"><h3 id="calendar-day-detail-title">{{ calendarDateLabel(anchorDate) }}</h3><span>{{ selectedItems.length ? `${selectedItems.length} 项${selectedItems.some(item => item.source_type === 'PRIVATE_ITEM') ? '' : '活动'}` : canCreate ? '暂无事项' : '暂无活动' }}</span><button v-if="canCreate" type="button" class="calendar-private-add" @click="$emit('create-private', anchorDate)"><Plus :size="17" aria-hidden="true" /> 记一件事</button></div>
       <div v-if="selectedItems.length" class="calendar-event-list"><CalendarEventCard v-for="item in selectedItems" :key="item.id" :item="item" :today="today" /></div>
     </section>
   </section>
@@ -27,17 +27,18 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ChevronLeft, ChevronRight } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Plus } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
 import { calendarDateLabel, calendarItemsOnDay, monthCalendarDays, shiftCalendarMonth } from '@/data/activityCalendar.js'
 import { calendarDisplay } from '@/data/activityCalendarTypes.js'
-const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, loading: Boolean, error: Boolean })
-defineEmits(['select-date'])
+const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, loading: Boolean, error: Boolean, canCreate: Boolean })
+defineEmits(['select-date', 'create-private'])
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
 const monthLabel = computed(() => calendarDateLabel(props.anchorDate, { year: 'numeric', month: 'long' }))
 const days = computed(() => monthCalendarDays(props.items, props.anchorDate).map(day => {
   const label = [calendarDateLabel(day.date, { year: 'numeric', month: 'long', day: 'numeric' })]
-  label.push(props.loading ? '活动读取中' : props.error ? '活动读取失败' : `${day.items.length}项活动`)
+  const noun = day.items.some(item => item.source_type === 'PRIVATE_ITEM') ? '事项' : '活动'
+  label.push(props.loading ? '日历读取中' : props.error ? '日历读取失败' : `${day.items.length}项${noun}`)
   if (day.date === props.today) label.push('今天')
   if (day.date === props.anchorDate) label.push('已选中')
   const entries = day.items.map(item => ({ ...item, display: calendarDisplay(item) }))
