@@ -53,6 +53,10 @@
 
           <p v-if="version === 'daihao' && rateError" id="cart-rate-error" class="cart-rate-error" role="alert">{{ rateError }}；当前仍按 {{ exchangeRate }} 换算。</p>
 
+          <div class="cart-catalog-status">
+            <p :role="catalogError ? 'alert' : 'status'">{{ catalogLoading ? '正在读取公共目录…' : catalogMessage }}</p>
+            <button v-if="catalogError" type="button" class="btn ghost" :disabled="catalogLoading" @click="loadPublicCatalog">重试读取目录</button>
+          </div>
           <p v-if="daihaoCount || ruCount" class="cart-version-hint">另一个版本「{{ version === 'daihao' ? '如鸢' : '代号鸢' }}」购物车有 {{ version === 'daihao' ? ruCount : daihaoCount }} 件礼包；切换版本不会清空。</p>
           <p v-if="operationMessage" class="cart-operation-message" :role="operationError ? 'alert' : 'status'">{{ operationMessage }}</p>
 
@@ -225,8 +229,8 @@ import PlanSaveDialog from "../../components/cart/PlanSaveDialog.vue";
 import PlanListDialog from "../../components/cart/PlanListDialog.vue";
 import { useReceiptExport } from "../../composables/useReceiptExport.js";
 import { mergePackageSnapshots, parseReferenceRate, displayPackages } from "../../utils/cartBudget.js";
-import { packagesDaihao, packagesRu } from "../../data/packages.js";
-import { track1, track2, campaignEnds } from "../../data/rewards.js";
+import { getLedgerCatalog } from "../../api/ledgerCatalog.js";
+import { bundledLedgerCatalog, normalizeLedgerCatalog, ledgerCampaignProgress, LEDGER_CACHE_KEY } from "../../utils/ledgerCatalog.js";
 import {
   createPlan,
   updatePlan,
@@ -238,9 +242,16 @@ import { auth } from "../../store/auth.js";
 import { dialog } from "../../utils/dialog.js";
 
 const version = ref("daihao");
-const exchangeRate = ref(7.2);
-const rateDraft = ref("7.2");
+const exchangeRate = ref(bundledLedgerCatalog.exchangeRate);
+const rateDraft = ref(String(bundledLedgerCatalog.exchangeRate));
 const rateError = ref("");
+const publicCatalog = ref(bundledLedgerCatalog);
+const catalogLoading = ref(false);
+const catalogMessage = ref("正在读取已发布公共目录；当前为内置迁移数据。");
+const catalogError = ref(false);
+let rateOwned = false;
+let catalogSequence = 0;
+let catalogHasLive = false;
 const cartDaihao = ref({});
 const cartRu = ref({});
 const initialPointsDaihao = ref(0);
@@ -268,7 +279,7 @@ const planLoading = ref(false);
 const planSaving = ref(false);
 const builtinSnapshots = reactive({ daihao: [], ru: [] });
 const currentBuiltins = computed(() => mergePackageSnapshots(
-  version.value === "daihao" ? packagesDaihao : packagesRu,
+  publicCatalog.value.packages[version.value],
   builtinSnapshots[version.value],
 ));
 const guestPlans = ref([]); // 游客本地暂存（读取见改动点 E5）
@@ -293,6 +304,7 @@ onMounted(() => {
   timer = setInterval(() => {
     now.value = Date.now();
   }, 1000);
+  loadPublicCatalog();
   guestPlans.value = readGuestPlans(); // 恢复游客本地暂存（改动点 E5）
 });
 onBeforeUnmount(() => {
@@ -375,6 +387,7 @@ function resetFilters() {
   selectedOnly.value = false;
 }
 function updateRateDraft(value) {
+  rateOwned = true;
   rateDraft.value = value;
   const rate = parseReferenceRate(value);
   rateError.value = rate === null ? "请输入有限且不小于 0 的参考汇率" : "";
@@ -421,43 +434,57 @@ const totalUsd = computed(() =>
     : 0,
 );
 
-// ---- 奖励进度 ----
-const unlocked1 = computed(() =>
-  track1.filter((m) => totalPoints.value >= m.points),
-);
-const unlocked2 = computed(() =>
-  track2.filter((m) => totalPoints.value >= m.points),
-);
-const next1 = computed(() => {
-  const arr = track1.map((m) => m.points).sort((a, b) => a - b);
-  return arr.find((p) => p > totalPoints.value) ?? null;
-});
-const next2 = computed(() => {
-  const arr = track2.map((m) => m.points).sort((a, b) => a - b);
-  return arr.find((p) => p > totalPoints.value) ?? null;
-});
-
-// ---- 倒计时 ----
-function campaignState(endStr) {
-  const diff = Date.parse(endStr) - now.value;
-  if (!Number.isFinite(diff)) return { active: false, label: "活动时间待确认" };
-  if (diff <= 0) return { active: false, label: "活动已结束" };
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
-  return { active: true, label: days > 0 ? days + "天 " + hours + "小时" : hours + "小时 " + minutes + "分 " + seconds + "秒" };
+// ---- 公共目录 / 动态奖励进度 ----
+const campaigns = computed(() => ledgerCampaignProgress(publicCatalog.value.campaigns, version.value, totalPoints.value, now.value));
+function replaceCatalog(next) {
+  for (const game of ["daihao", "ru"]) {
+    const cart = game === "daihao" ? cartDaihao.value : cartRu.value;
+    const selected = mergePackageSnapshots(publicCatalog.value.packages[game], builtinSnapshots[game]).filter(p => cart[p.id] > 0);
+    builtinSnapshots[game] = mergePackageSnapshots(builtinSnapshots[game], selected);
+  }
+  publicCatalog.value = next;
+  if (!rateOwned) {
+    exchangeRate.value = next.exchangeRate;
+    rateDraft.value = String(next.exchangeRate);
+  }
 }
-const track1Campaign = computed(() => campaignState(campaignEnds.track1));
-const track2Campaign = computed(() => campaignState(campaignEnds.track2));
+async function loadPublicCatalog() {
+  const sequence = ++catalogSequence;
+  catalogLoading.value = true;
+  try {
+    const raw = await getLedgerCatalog();
+    const next = normalizeLedgerCatalog(raw);
+    if (!alive || sequence !== catalogSequence) return;
+    replaceCatalog(next);
+    catalogHasLive = true;
+    catalogError.value = false;
+    catalogMessage.value = next.packages.daihao.length || next.packages.ru.length ? "已读取最新发布目录；已有选购项保留原快照。" : "管理员尚未发布可售礼包；已选礼包和私人方案仍保留。";
+    try { localStorage.setItem(LEDGER_CACHE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), data: raw })); } catch { /* Catalog remains usable when browser storage is full. */ }
+  } catch (error) {
+    if (!alive || sequence !== catalogSequence) return;
+    catalogError.value = true;
+    let fallback = catalogHasLive ? "保留本页已读取目录" : "使用内置迁移数据（不是最新发布数据）";
+    if (!catalogHasLive) {
+      try {
+        const cache = JSON.parse(localStorage.getItem(LEDGER_CACHE_KEY));
+        if (cache && Number.isFinite(Date.parse(cache.savedAt))) {
+          replaceCatalog(normalizeLedgerCatalog(cache.data));
+          fallback = `使用上次成功缓存（${new Date(cache.savedAt).toLocaleString()}，不是最新发布数据）`;
+        }
+      } catch { /* Invalid cache falls back to the bundled migration data. */ }
+    }
+    catalogMessage.value = `公共目录读取失败：${error.message || "网络异常"}；${fallback}。购物车已保留。`;
+  } finally {
+    if (alive && sequence === catalogSequence) catalogLoading.value = false;
+  }
+}
 
 const receiptProps = computed(() => ({
   cartItems: cartItems.value, cart: currentCart.value, initialPoints: currentInitialPoints.value,
   totalDraws: totalDraws.value, priceForDraws: priceForDraws.value,
   cartPoints: cartPoints.value, totalPoints: totalPoints.value,
   totalUsd: totalUsd.value, totalCny: totalCny.value,
-  unlocked1: unlocked1.value, unlocked2: unlocked2.value, next1: next1.value, next2: next2.value,
-  track1Campaign: track1Campaign.value, track2Campaign: track2Campaign.value,
+  campaigns: campaigns.value,
   version: version.value, exchangeRate: exchangeRate.value,
 }));
 const { exportReceipt: captureReceipt, exportBusy, exportSnapshot, exportPanel } = useReceiptExport(receiptProps, showResult);
@@ -484,7 +511,13 @@ function isCustomPkg(id) {
 function addToCart(pkg) {
   const cart = version.value === "daihao" ? cartDaihao : cartRu;
   const cur = cart.value[pkg.id] || 0;
-  if (cur < pkg.limit) cart.value = { ...cart.value, [pkg.id]: cur + 1 };
+  if (cur < pkg.limit) {
+    if (!isCustomPkg(pkg.id) && !builtinSnapshots[version.value].some(p => p.id === pkg.id)) {
+      const { calculatedPriceCny, ...snapshot } = pkg;
+      builtinSnapshots[version.value].push(snapshot);
+    }
+    cart.value = { ...cart.value, [pkg.id]: cur + 1 };
+  }
 }
 
 function removeFromCart(pkg) {
@@ -520,7 +553,7 @@ function addCustomPackage(form) {
     name: form.name,
     category: form.category || "自定义",
     points: parseInt(form.points) || 0,
-    draws: parseInt(form.draws) || 0,
+    draws: parseFloat(form.draws) || 0,
     limit: parseInt(form.limit) || 999,
     extra: form.extra || undefined,
     sortId: form.sortId ? parseInt(form.sortId) : undefined,
@@ -725,9 +758,9 @@ function applyPlan(plan) {
   // ① 版本（方案绑定单一 version）
   version.value = plan.version;
 
-  // ② 汇率：仅在 daihao 生效；缺省回退 7.2
+  // ② 汇率：方案值优先；缺省使用迁移默认值
   if (isDaihao)
-    updateRateDraft(plan.exchange_rate == null ? 7.2 : plan.exchange_rate);
+    updateRateDraft(plan.exchange_rate == null ? bundledLedgerCatalog.exchangeRate : plan.exchange_rate);
 
   // ③ 自定义礼包：id 以响应为准（服务端已重生成 + 回写引用）
   const customs = (plan.custom_packages || []).map(function (p) {
@@ -749,7 +782,7 @@ function applyPlan(plan) {
   else customPackagesRu.value = customs;
 
   // ④ 内置目录索引（把 content_id 对到快照，并探测缺失项）
-  const builtin = isDaihao ? packagesDaihao : packagesRu;
+  const builtin = publicCatalog.value.packages[plan.version];
   const builtinIndex = new Map(
     builtin.map(function (p) {
       return [p.id, p];
@@ -1033,4 +1066,8 @@ function openPlanSave() {
   .cart-sort, .cart-category { width: auto; flex: 1 1 140px; }
   .cart-category select { flex: 1; }
 }
+</style>
+
+<style scoped>
+.cart-catalog-status{font-size:12px;line-height:1.7;color:var(--ink-60);overflow-wrap:anywhere;margin:12px 0}.cart-catalog-status [role="alert"]{color:var(--rouge)}
 </style>

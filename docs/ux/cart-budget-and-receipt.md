@@ -30,3 +30,7 @@
 `test/cartBudget.test.js` 覆盖快照合并、参考汇率和展示筛选；`behavior/cartPlanIntegrity.spec.js` 覆盖方案计价、游戏隔离、保存和异步导出；`behavior/cartReceiptWorkspace.spec.js` 覆盖抽屉切换、焦点及清理。继续保留 `cartSafetyUx` 和 `cartCampaignExpiry` 既有安全/奖励回归。
 
 jsdom 不验证几何布局、实际 PNG、浏览器滚动位置或安全区。历史 1173px 裁切的唯一根因尚未在该 worktree 运行页面复现，不因局部布局约束已经加入就标记历史问题已验收。用户应在此 worktree 的预览中核验 1180±1、1080±1、767/768、390/1440、320px 极窄、388×608 短高度与横屏，记录视口/media/computed grids/超宽元素及导出图片。现有 5173 开发服务指向主 checkout，不代表本 worktree 页面。
+
+## 公共目录维护（2026-10-11）
+
+礼包、任意期数累充和默认参考汇率现从 `/hub/ledger/catalog` 读取。`/admin/ledger` 提供维护；详见 [维护说明](../operations/ledger-maintenance.md)。旧静态文件只承担固定种子来源与可见的故障过渡数据，不能再作为日常上新方式。目录替换时保留当前选购快照，手动/历史汇率优先；ReceiptPanel 和图片导出使用相同动态活动数据，按游戏和时间状态展示。

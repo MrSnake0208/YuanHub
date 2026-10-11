@@ -1,3 +1,4 @@
+import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
@@ -6,6 +7,7 @@ import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import { dialog } from '../src/utils/dialog.js'
 import html2canvas from 'html2canvas'
 
+vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn(async () => legacyLedgerFixture()) }))
 vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: false } }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 vi.mock('html2canvas', () => ({ default: vi.fn() }))
@@ -68,13 +70,13 @@ it('游客保存成功和本地存储失败均有页内反馈', async () => {
   await wrapper.get('.cart-plan-save').trigger('click')
   wrapper.getComponent(PlanSaveDialog).vm.$emit('save', { name: '测试方案', overwrite: false })
   await flushPromises()
-  expect(wrapper.get('[role="status"]').text()).toContain('已暂存在本机浏览器')
+  expect(wrapper.get('.cart-operation-message[role="status"]').text()).toContain('已暂存在本机浏览器')
   expect(JSON.parse(localStorage.getItem('yh_ledger_plans'))[0].name).toBe('测试方案')
   await wrapper.get('.cart-plan-save').trigger('click')
   vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => { throw new Error('quota') })
   wrapper.getComponent(PlanSaveDialog).vm.$emit('save', { name: '第二方案', overwrite: false })
   await flushPromises()
-  expect(wrapper.get('[role="alert"]').text()).toContain('保存失败')
+  expect(wrapper.get('.cart-operation-message[role="alert"]').text()).toContain('保存失败')
 })
 
 it('桌面和手机导出共用流程，完成和失败均反馈', async () => {
@@ -86,12 +88,12 @@ it('桌面和手机导出共用流程，完成和失败均反馈', async () => {
   await flushPromises()
   expect(html2canvas).toHaveBeenCalledTimes(1)
   expect(click).toHaveBeenCalledTimes(1)
-  expect(wrapper.get('[role="status"]').text()).toContain('浏览器将开始下载')
+  expect(wrapper.get('.cart-operation-message[role="status"]').text()).toContain('浏览器将开始下载')
   html2canvas.mockRejectedValueOnce(new Error('screenshot'))
   await wrapper.get('.cart-mbar .mbtn.accent').trigger('click')
   await flushPromises()
   expect(html2canvas).toHaveBeenCalledTimes(2)
-  expect(wrapper.get('[role="alert"]').text()).toContain('导出图片失败')
+  expect(wrapper.get('.cart-operation-message[role="alert"]').text()).toContain('导出图片失败')
 })
 
 

@@ -52,6 +52,11 @@ export const routes = [
         meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '我的活动建议 — 鸢鸢相抱 · YuanHub' }
     },
     {
+        path: '/admin/ledger', name: 'ledger-admin', text: '广陵账房管理', display: false, module: 'admin', icon: 'book-open',
+        component: () => import('/src/pages/ledger/admin.vue'),
+        meta: { requiresAuth: true, requiredPermission: 'ledger_catalog:write', title: '广陵账房管理 — 鸢鸢相抱 · YuanHub' }
+    },
+    {
         path: '/calendar/admin', name: 'calendar-admin', text: '活动日历管理', display: false, module: 'admin', icon: 'calendar-days',
         component: () => import('/src/pages/calendar/admin.vue'),
         meta: { requiresAuth: true, requiredPermission: 'activity_calendar:write', feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '活动日历管理 — 鸢鸢相抱 · YuanHub' }

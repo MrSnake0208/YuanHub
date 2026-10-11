@@ -48,35 +48,23 @@
         <div class="milestone">
           <div class="head"><span class="tt"><Gift :size="14" class="ic" style="color:var(--accent)" />积分奖励进度</span></div>
 
-          <div style="margin-top:14px">
+          <div v-for="campaign in campaigns" :key="campaign.id" style="margin-top:14px">
             <div class="head">
-              <span class="tt"><span class="nm">周年限时累充</span><span class="cd">{{ track1Campaign.active ? '剩余: ' : '' }}{{ track1Campaign.label }}</span></span>
-              <span v-if="track1Campaign.active && next1 !== null" class="next">距下一档还差 <b>{{ next1 - totalPoints }}</b> 分</span>
-              <span v-else-if="track1Campaign.active" class="done">已全部解锁</span>
+              <span class="tt"><span class="nm">{{ campaign.name }}</span><span class="cd">{{ campaign.label }}</span></span>
+              <span v-if="campaign.active && campaign.next !== null" class="next">距下一档还差 <b>{{ campaign.next - totalPoints }}</b> 分</span>
+              <span v-else-if="campaign.active" class="done">已全部解锁</span>
             </div>
-            <p v-if="!track1Campaign.active" class="campaign-ended-note">档位仅供历史参考，不再表示可领取奖励。</p>
-            <div v-if="unlocked1.length > 0">
-              <div v-for="(m, i) in unlocked1" :key="i" class="box">
+            <p class="receipt-price-note">{{ formatLedgerTime(campaign.starts_at, campaign.time_zone) }} — {{ formatLedgerTime(campaign.ends_at, campaign.time_zone) }} · {{ campaign.time_zone }}</p>
+            <p v-if="!campaign.active" class="campaign-ended-note">档位仅供历史参考或预算预览，不表示当前可领取奖励。</p>
+            <p v-if="campaign.source_note" class="receipt-price-note">{{ campaign.source_note }}</p>
+            <div v-if="campaign.unlocked.length > 0">
+              <div v-for="m in campaign.unlocked" :key="m.points" class="box">
                 <b>{{ m.points }}积分</b>{{ m.rewards.map(r => r.name + ' ×' + r.count).join('、') }}
               </div>
             </div>
-            <div v-else class="none">暂未解锁奖励</div>
+            <div v-else class="none">{{ campaign.active ? '暂未达到奖励门槛' : '暂无达到门槛的参考档位' }}</div>
           </div>
-
-          <div style="margin-top:16px">
-            <div class="head">
-              <span class="tt"><span class="nm">男主限时累充</span><span class="cd">{{ track2Campaign.active ? '剩余: ' : '' }}{{ track2Campaign.label }}</span></span>
-              <span v-if="track2Campaign.active && next2 !== null" class="next">距下一档还差 <b>{{ next2 - totalPoints }}</b> 分</span>
-              <span v-else-if="track2Campaign.active" class="done">已全部解锁</span>
-            </div>
-            <p v-if="!track2Campaign.active" class="campaign-ended-note">档位仅供历史参考，不再表示可领取奖励。</p>
-            <div v-if="unlocked2.length > 0">
-              <div v-for="(m, i) in unlocked2" :key="i" class="box">
-                <b>{{ m.points }}积分</b>{{ m.rewards.map(r => r.name + ' ×' + r.count).join('、') }}
-              </div>
-            </div>
-            <div v-else class="none">暂未解锁奖励</div>
-          </div>
+          <p v-if="!campaigns.length" class="receipt-price-note">当前游戏暂无已发布累充活动。</p>
         </div>
       </template>
     </div>
@@ -92,6 +80,7 @@
 <script setup>
 import { ShoppingCart, Receipt, Gift, Trash2, Download, Save } from '@lucide/vue'
 import { ref } from 'vue'
+import { formatLedgerTime } from '@/utils/ledgerCatalog.js'
 
 const receiptElement = ref(null)
 defineExpose({ receiptElement })
@@ -106,15 +95,10 @@ const props = defineProps({
   totalPoints: { type: Number, default: 0 },
   totalUsd: { type: Number, default: 0 },
   totalCny: { type: Number, default: 0 },
-  unlocked1: { type: Array, default: () => [] },
-  unlocked2: { type: Array, default: () => [] },
-  next1: { type: Number, default: null },
-  next2: { type: Number, default: null },
-  track1Campaign: { type: Object, default: () => ({ active: false, label: '活动时间待确认' }) },
-  track2Campaign: { type: Object, default: () => ({ active: false, label: '活动时间待确认' }) },
+  campaigns: { type: Array, default: () => [] },
   version: { type: String, default: 'daihao' },
   exportBusy: { type: Boolean, default: false },
-  exchangeRate: { type: Number, default: 7.2 },
+  exchangeRate: { type: Number, default: 6.7 },
   exportOnly: { type: Boolean, default: false }
 })
 

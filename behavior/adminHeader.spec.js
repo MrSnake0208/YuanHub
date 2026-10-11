@@ -76,3 +76,15 @@ it('清空超级管理员仍明确提示完整替换并走原危险确认，取�
   expect(replaceAdminRoles).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+
+it('账房公共变更审计显示动作、资源和前后值', async () => {
+  listAdminAuditLogs.mockResolvedValue({ data: [{ id: 'ledger-log', action: 'LEDGER_CATALOG_UPDATED', actorUserId: 'synthetic-editor', targetResource: 'ledger:ru:1000000',
+    before: { roles: [], receiveAreas: [], manageAreas: [], ledger: { value: '旧价格=6' } },
+    after: { roles: [], receiveAreas: [], manageAreas: [], ledger: { value: '新价格=7' } } }], page: 1, total: 1, hasNext: false })
+  const wrapper = render(Audit); await flushPromises()
+  expect(wrapper.text()).toContain('账房公共数据变更')
+  expect(wrapper.text()).toContain('ledger:ru:1000000')
+  expect(wrapper.text()).toContain('旧价格=6')
+  expect(wrapper.text()).toContain('新价格=7')
+})

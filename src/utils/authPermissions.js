@@ -1,4 +1,5 @@
 export const ADMIN_PERMISSIONS = Object.freeze({
+  LEDGER_CATALOG_WRITE: 'ledger_catalog:write',
   BETA_MANAGE: 'beta:manage',
   OPERATOR_CATALOG_WRITE: 'operator_catalog:write',
   RECRUITMENT_CATALOG_WRITE: 'recruitment_catalog:write',
