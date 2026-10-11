@@ -278,9 +278,9 @@ it('first OCR waits for persisted review, auto starts bag, dismissal stays seen 
   options.onActiveTabChange('review')
   await flushPromises()
   expect(document.querySelector('[aria-label="使用教程"]')).toBeNull()
-  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="first-ocr"></section></section>'
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><button class="ocr-summary"><em>已保存识别结果，可再次核对</em></button><section data-review-image="first-ocr"></section></section>'
   await vi.advanceTimersByTimeAsync(100); await flushPromises()
-  expect(document.querySelector('[aria-label="使用教程"]').textContent).toContain('1 / 7')
+  expect(document.querySelector('[aria-label="使用教程"]').textContent).toContain('1 / 6')
   expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看使用教程')
   await wrapper.get('.compact-tool-help').trigger('click');await flushPromises()
   expect(wrapper.get('.star-help-tutorial').text()).toContain('重新查看使用教程')
@@ -290,12 +290,69 @@ it('first OCR waits for persisted review, auto starts bag, dismissal stays seen 
   await vi.advanceTimersByTimeAsync(100); await flushPromises()
   expect(document.querySelector('.recognition-tour-card')).toBeNull()
   await wrapper.get('.star-help-tutorial').trigger('click'); await flushPromises()
-  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
   document.querySelector('[aria-label="关闭使用教程"]').click(); await flushPromises()
   await wrapper.get('.star-import-action').trigger('click'); await flushPromises()
   expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看识别教程')
   await wrapper.get('.star-tutorial-replay').trigger('click'); await flushPromises()
   expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
+})
+
+it.each(['empty', 'failed-ocr', 'json', 'local-restore', 'unpersisted-review', 'after-ocr-json', 'after-ocr-local-restore', 'after-ocr-history-restore'])('%s cannot substitute for a saved first OCR', async source => {
+  vi.useFakeTimers()
+  const user = 'bag-non-ocr-' + source
+  enableTutorialStatus(user)
+  localStorage.setItem('star-tabs', 'review')
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const options = embedMount.mock.calls[0][1], handle = embedMount.mock.results[0].value
+  expect(document.querySelector('.recognition-tour-card')).toBeNull()
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  // The cloud callback precedes the local OCR commit. A later import/restore must
+  // not reuse its pending signal if that local commit never reached review.
+  if (source.startsWith('after-ocr-')) await options.onOcrRebuild(emptySnapshot, null)
+  if (source === 'failed-ocr') {
+    rebuildStarState.mockRejectedValueOnce(Error('save failed'))
+    await expect(options.onOcrRebuild(emptySnapshot, null)).rejects.toThrow('save failed')
+  } else if (source === 'json' || source === 'after-ocr-json') await options.onReplacementImport(emptySnapshot)
+  else if (source === 'local-restore' || source === 'after-ocr-local-restore') await options.onRestoreLocalPoint(emptySnapshot)
+  else if (source === 'after-ocr-history-restore') {
+    const { restoreStarRecoveryPoint } = await import('../src/api/starState.js')
+    restoreStarRecoveryPoint.mockResolvedValueOnce({ state: { ...emptyRemote, revision: 2, generation: 2 } })
+    await options.onRestoreRecoveryPoint('fixture-point')
+  }
+  else if (source === 'unpersisted-review') await options.onOcrRebuild(emptySnapshot, null)
+  if (source !== 'empty') {
+    options.onSummaryChange({ currentCount: 1, planCount: 0, gameVersion: '如鸢' })
+    handle.getRecognitionTutorialStatus.mockReturnValue({ ready: true, hasHistory: true })
+    wrapper.get('#product-root').element.innerHTML = `<section class="ocr-review"><button class="ocr-summary"><em>${source === 'unpersisted-review' ? '识别后补充检查' : '已保存识别结果，可再次核对'}</em></button><section data-review-image="fixture"></section></section>`
+  }
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelector('[aria-label="使用教程"]')).toBeNull()
+  expect(localStorage.getItem(`yuanhub:star-bag:v1:${user}`)).toBeNull()
+  expect(localStorage.getItem(`yuanhub:star-plan:v1:${user}`)).toBeNull()
+})
+
+it('recognition keeps ownership until review handoff; only the dismissed tour is marked seen', async () => {
+  vi.useFakeTimers()
+  enableTutorialStatus('bag-no-stacked-tours')
+  const wrapper = render(); await flushPromises(); await loadStylesheet()
+  const options = embedMount.mock.calls[0][1], handle = embedMount.mock.results[0].value
+  expect(document.querySelector('[aria-label="识别教程"]')).not.toBeNull()
+  rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
+  await options.onOcrRebuild(emptySnapshot, null)
+  options.onSummaryChange({ currentCount: 1, planCount: 0, gameVersion: '如鸢' })
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><button class="ocr-summary"><em>已保存识别结果，可再次核对</em></button><section data-review-image="fixture"></section></section>'
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelectorAll('.recognition-tour-card')).toHaveLength(1)
+  expect(document.querySelector('[aria-label="识别教程"]')).not.toBeNull()
+  expect(localStorage.getItem('yuanhub:star-recognition:v1:bag-no-stacked-tours')).toBeNull()
+  handle.getRecognitionTutorialStatus.mockReturnValue({ ready: true, hasHistory: true })
+  options.onActiveTabChange('review')
+  await vi.advanceTimersByTimeAsync(100); await flushPromises()
+  expect(document.querySelectorAll('.recognition-tour-card')).toHaveLength(1)
+  expect(document.querySelector('[aria-label="使用教程"]').textContent).toContain('1 / 6')
+  expect(localStorage.getItem('yuanhub:star-recognition:v1:bag-no-stacked-tours')).toBe('seen')
+  for (const mode of ['bag', 'plan']) expect(localStorage.getItem(`yuanhub:star-${mode}:v1:bag-no-stacked-tours`)).toBeNull()
 })
 
 it('historical bag owner never auto starts even after another OCR, but manual bag replay ignores seen', async () => {
@@ -306,13 +363,13 @@ it('historical bag owner never auto starts even after another OCR, but manual ba
   options.onSummaryChange({ currentCount: 1, planCount: 0, gameVersion: '如鸢' })
   rebuildStarState.mockResolvedValue({ state: { ...emptyRemote, revision: 1, generation: 1 } })
   await options.onOcrRebuild(emptySnapshot, null)
-  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><section data-review-image="old-ocr"></section></section>'
+  wrapper.get('#product-root').element.innerHTML = '<section class="ocr-review"><button class="ocr-summary"><em>已保存识别结果，可再次核对</em></button><section data-review-image="old-ocr"></section></section>'
   options.onActiveTabChange('review')
   await vi.advanceTimersByTimeAsync(100); await flushPromises()
   expect(document.querySelector('.recognition-tour-card')).toBeNull()
   await wrapper.get('.compact-tool-help').trigger('click');await flushPromises()
   await wrapper.get('.star-help-tutorial').trigger('click'); await flushPromises()
-  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 7')
+  expect(document.querySelector('.recognition-tour-card').textContent).toContain('1 / 6')
 })
 
 it('bag replay reveals the current workspace and filters, and account changes close the old tour', async () => {
@@ -336,29 +393,37 @@ it('bag replay reveals the current workspace and filters, and account changes cl
   expect(localStorage.getItem('yuanhub:star-bag:v1:bag-current-workspace')).toBe('seen')
 })
 
-it('tab row replay uses overall usage for bag and a growth tour that stays in plan; switching views closes it',async()=>{
+it('bag replay sits beside import; recognition remains in import and growth replay stays in its tab row',async()=>{
   enableTutorialStatus('growth-replay-host',true)
   localStorage.setItem('star-tabs','review')
   const wrapper=render();await flushPromises();await loadStylesheet()
   const options=embedMount.mock.calls[0][1]
   options.onSummaryChange({currentCount:3,planCount:2,gameVersion:'如鸢'});await flushPromises()
   expect(wrapper.get('.star-workbench-header .star-tabs').exists()).toBe(true)
-  expect(wrapper.get('.star-workbench-header .star-tutorial-replay').text()).toBe('重新查看使用教程')
-  await wrapper.get('.star-tutorial-replay').trigger('click');await flushPromises()
+  expect(wrapper.find('.star-workbench-header .star-tutorial-replay').exists()).toBe(false)
+  expect(wrapper.get('.star-workbench-actions .star-tutorial-replay').text()).toBe('重新查看使用教程')
+  expect(wrapper.findAll('.star-tutorial-replay').map(button=>button.text())).toEqual(['重新查看使用教程'])
+  await wrapper.get('.star-workbench-actions .star-tutorial-replay').trigger('click');await flushPromises()
   expect(document.querySelector('[aria-label="使用教程"]')).not.toBeNull()
   expect(embedMount.mock.results[0].value.setActiveTab).toHaveBeenLastCalledWith('review')
   document.querySelector('[aria-label="关闭使用教程"]').click();await flushPromises()
   await wrapper.findAll('.star-tabs [role="tab"]')[1].trigger('click');await flushPromises()
-  expect(wrapper.get('.star-tutorial-replay').text()).toBe('重新查看养成教程')
+  expect(wrapper.get('.star-workbench-header .star-tutorial-replay').text()).toBe('重新查看养成教程')
+  expect(wrapper.find('.star-workbench-actions').exists()).toBe(false)
   await wrapper.get('.star-tutorial-replay').trigger('click');await flushPromises()
-  expect(document.querySelector('[aria-label="养成教程"]').textContent).toContain('1 / 4')
+  expect(document.querySelector('[aria-label="养成教程"]').textContent).toContain('1 / 6')
   expect(wrapper.get('#product-root').classes()).toContain('is-plan-view')
   document.querySelector('.recognition-tour-next').click();await flushPromises()
-  expect(document.querySelector('[aria-label="养成教程"]').textContent).toContain('设置养成目标')
+  expect(document.querySelector('[aria-label="养成教程"]').textContent).toContain('核对现有资源')
   expect(wrapper.get('#product-root').classes()).toContain('is-plan-view')
   await wrapper.findAll('.star-tabs [role="tab"]')[0].trigger('click');await flushPromises()
   expect(document.querySelector('.recognition-tour-card')).toBeNull()
   expect(localStorage.getItem('yuanhub:star-plan:v1:growth-replay-host')).toBe('seen')
+  await wrapper.get('.star-import-action').trigger('click');await flushPromises()
+  expect(wrapper.get('.star-workbench-header .star-tutorial-replay').text()).toBe('重新查看识别教程')
+  expect(wrapper.find('.star-workbench-actions').exists()).toBe(false)
+  await wrapper.get('.star-tutorial-replay').trigger('click');await flushPromises()
+  expect(document.querySelector('[aria-label="识别教程"]').textContent).toContain('1 / 6')
 })
 
 it('a tutorial status resolved after an account switch cannot open the old account tour', async () => {

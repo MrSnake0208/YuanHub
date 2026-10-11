@@ -21,6 +21,7 @@
           <p v-for="(paragraph, index) in step.paragraphs || [step.body]" :key="index" class="recognition-tour-body">{{ paragraph }}</p>
           <button v-if="step.exampleAction" type="button" class="recognition-tour-example" @click="exampleKind = step.exampleAction">{{ step.exampleLabel }}</button>
           <p v-if="mobile && showMobileHint" class="recognition-tour-hint">本教程卡片可拖动，不挡住操作即可</p>
+          <p v-if="mode === 'plan' && planSwitchHint" class="recognition-tour-hint">当前编辑或视图状态需要保留，可以自行切换视图后继续查看。</p>
           <footer><button type="button" :disabled="stepIndex === 0" @click="navigate(-1)">上一步</button><button type="button" class="recognition-tour-next" @click="stepIndex === steps.length - 1 ? close() : navigate(1)">{{ stepIndex === steps.length - 1 ? '完成' : '下一步' }}</button></footer>
         </div>
       </section>
@@ -34,9 +35,10 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
 import { modalFocusState } from '../../composables/useModalFocus.js'
 import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect, tutorialOcrRunning } from './recognitionTutorial.js'
-import { bagTutorialSteps, bagReviewInfo, growthPlanTutorialSteps } from './bagTutorial.js'
+import { bagTutorialSteps, bagReviewInfo } from './bagTutorial.js'
+import { growthPlanStepsForView, readGrowthPlanView, createGrowthTutorialViewGuard } from './growthPlanTutorial.js'
 
-const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' } })
+const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' }, planSwitchBlocked: Boolean })
 const emit = defineEmits(['close', 'step-change'])
 const stepIndex = ref(0), mobile = ref(false), lift = ref(0), card = ref(null)
 const rects = ref([]), position = ref({ left: 12, top: 12 }), placement = ref('fallback'), ready = ref(false)
@@ -44,13 +46,18 @@ const sheetBounds = ref(null)
 const exampleKind = ref(null), showMobileHint = ref(false)
 const blocked = ref(false)
 const suspended = computed(() => blocked.value || modalFocusState.active)
-const steps = computed(() => props.mode === 'plan' ? growthPlanTutorialSteps : props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
+const planFirstView = ref(null), planActualView = ref(null), planSwitchHint = ref(false)
+const steps = computed(() => props.mode === 'plan' ? growthPlanStepsForView(planFirstView.value) : props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
 const tutorialLabel = computed(() => props.mode === 'plan' ? '养成教程' : props.mode === 'bag' ? '使用教程' : '识别教程')
-const step = computed(() => steps.value[stepIndex.value])
+const step = computed(() => {
+  const current = steps.value[stepIndex.value]
+  return props.mode === 'plan' && current.editorView && current.editorView !== planActualView.value ? { ...current, target: '', relatedTargets: '' } : current
+})
 const exampleItems = computed(() => recognitionTutorialExamples[exampleKind.value] || [])
 const cardStyle = computed(() => ({ visibility: ready.value ? 'visible' : 'hidden', ...(mobile.value ? { bottom: `${(sheetBounds.value?.bottom ?? 12) + lift.value}px`, ...(sheetBounds.value ? { maxHeight: `min(62dvh, calc(100dvh - 96px), ${sheetBounds.value.maxHeight}px)` } : {}) } : { left: `${position.value.left}px`, top: `${position.value.top}px` }) }))
 const rectStyle = rect => ({ left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` })
 let opener = null
+let planViewGuard = null
 let frame = 0, settleFrame = 0, settleResolve = null, navigation = 0, dragging = null, resizeTimer = 0
 let resizeObserver = null, mutationObserver = null, observed = [], highlighted = [], hintShown = false
 
@@ -68,6 +75,7 @@ function clearHighlights() {
 }
 function update() {
   if (!props.open) return
+  if (props.mode === 'plan') planActualView.value = readGrowthPlanView(props.root)
   blocked.value = Boolean(props.root?.querySelector('[role="dialog"], dialog[open]')) || tutorialOcrRunning(props.root)
   if (suspended.value) { clearHighlights(); rects.value = []; return }
   const view = viewport()
@@ -154,8 +162,27 @@ function onResize() {
     if (rect && step.value.scroll !== 'preserve' && (rect.top < view.top + 64 || rect.top >= sheetTop - 16)) void revealStep(false)
   }, 160)
 }
-function navigate(delta) {
-  stepIndex.value = tutorialStepIndex(stepIndex.value, delta, steps.value.length)
+async function navigate(delta) {
+  const from = stepIndex.value, to = tutorialStepIndex(from, delta, steps.value.length)
+  const root = props.root, replay = props.replayId, visit = navigation
+  const currentPlanNavigation = () => props.open && props.mode === 'plan' && props.root === root && props.replayId === replay && stepIndex.value === from && navigation === visit
+  if (props.mode === 'plan') {
+    planSwitchHint.value = false
+    if (to === 2 && planFirstView.value === null) planFirstView.value = readGrowthPlanView(props.root) || 'detail'
+    // Reading steps 1/2 never owns the view. Only entering an already fixed
+    // editing topic may request its matching view; later steps leave it alone.
+    if ((to === 2 && (from === 3 || planFirstView.value !== readGrowthPlanView(props.root))) || (from === 2 && to === 3)) {
+      await nextTick()
+      if (!currentPlanNavigation()) return
+      const targetView = growthPlanStepsForView(planFirstView.value)[to].editorView
+      const outcome = planViewGuard?.switchTo(targetView, props.planSwitchBlocked)
+      planSwitchHint.value = outcome === 'blocked'
+      await nextTick()
+      if (!currentPlanNavigation()) return
+    }
+    planActualView.value = readGrowthPlanView(props.root)
+  }
+  stepIndex.value = to
   lift.value = 0
   exampleKind.value = null
   void revealStep()
@@ -213,6 +240,7 @@ watch([() => props.open, () => props.replayId, () => props.mode], async ([open],
   stop()
   if (!open) { exampleKind.value = null; return }
   stepIndex.value = 0; lift.value = 0
+  planFirstView.value = null; planSwitchHint.value = false
   await nextTick()
   if (!props.open) return
   window.addEventListener('scroll', scheduleUpdate, { passive: true, capture: true })
@@ -231,13 +259,15 @@ watch([() => props.open, () => props.replayId, () => props.mode], async ([open],
   const opening = revealStep(), token = navigation
   void opening.then(() => { if (props.open && token === navigation && !exampleKind.value && !suspended.value) card.value?.focus({ preventScroll: true }) })
 }, { immediate: true })
-watch(() => props.root, () => {
+watch(() => props.root, root => {
+  planViewGuard?.dispose()
+  planViewGuard = root ? createGrowthTutorialViewGuard(root) : null
   if (!props.open) return
   mutationObserver?.disconnect()
   if (props.root) mutationObserver?.observe(props.root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'role', 'disabled'] })
   scheduleUpdate()
-})
-onBeforeUnmount(() => { restoreFocus(); stop() })
+}, { immediate: true })
+onBeforeUnmount(() => { planViewGuard?.dispose(); restoreFocus(); stop() })
 watch(() => modalFocusState.active, () => { void nextTick(scheduleUpdate) })
 </script>
 

@@ -1,8 +1,15 @@
 # YuanStar embed 同步说明
 
-## 当前宿主 main 兼容合并（2026-10-11）
+## 养成下钻与六步教程兼容（2026-10-11，已人工验收）
 
-宿主保留 feature 的背包 6:4、养成计划 1:1、独立导入页，以及识别 6 步、使用 7 步、养成 4 步三套手动翻页教程。吸收全站 `TUTORIALS_ENABLED` 和异常、账号过期响应、弹窗与 OCR 让位保护。空背包仅提示先导入，用户自行选择入口；不使用 `BagTutorialDemo`。下面任务单步引导与只读示例章节为 main 的历史实现，不代表当前兼容结果。
+- 来源分支 `feat/growth-plan-workspace-p1`，source commit `0b95a91f30aa91989c217e3b81d642993eeb767e`。已提交 source commit 的干净工作树正式 build：执行 `build:embed` 并通过正式同步脚本复制完整产物，来源和每个文件 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`。
+- 养成视图按钮复用真实下钻来源，显示「逐颗明细」「名称汇总」或「返回名称汇总」；新增 `data-growth-drilldown-return`、`data-growth-tutorial-blocked` 与 `data-growth-save-state` 只读标记。点击继续使用原返回逻辑，不改筛选、养成、库存或完成接口。
+- 只解除养成视图按钮的固定宽度，保持 32px 高度、原 padding 和大类控件尺寸；视图行复用响应式换行。源仓说明见 `docs/growth-tutorial-drilldown-closeout.md`。
+- YuanHub 三套六步教程已人工验收，自动触发和已读语义保留，教程仅按可靠状态点击现有视图按钮，不自动选择、保存或完成养成。权威源码已普通推送至上述 feature 分支；宿主本轮正式提交并向上游 main 提交 PR，发布结果以 PR 为准。真实 `STAR_COMPLETION` 仍关闭，公开 Backend P3 尚未确认部署，不宣称线上扣减或 OCR 传输 E2E 通过。
+
+## 此前宿主 main 兼容合并（2026-10-11，历史阶段）
+
+合并时保留 feature 的背包 6:4、养成计划 1:1、独立导入页，以及当时的识别 6 步、使用 7 步、养成 4 步三套手动翻页教程；步骤配置已由上方三套六步收口替代。吸收全站 `TUTORIALS_ENABLED` 和异常、账号过期响应、弹窗与 OCR 让位保护。空背包仅提示先导入，用户自行选择入口；不使用 `BagTutorialDemo`。下面任务单步引导与只读示例章节为 main 的历史实现，不代表当前兼容结果。
 
 本次未重新构建或同步 embed；仍以 `17f28628a126c4255c4d3e502b365f56ed02bcbc` 的正式产物和 `docs/yuanstar-embed-manifest.json` 为准。宿主兼容修复不改变产物、P3 协议或真实完成开关。详见 [兼容合并报告](./star-main-compatibility.md)。
 
