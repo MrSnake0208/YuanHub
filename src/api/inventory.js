@@ -59,11 +59,12 @@ export function getCatalog() {
 
 // 导入（POST，需登录）——body 为完整交换文档 v2；staminaCost 会映射为 stamina_cost。
 // 响应 { accepted, duplicates, history_only, superseded, warnings: [] }
-export function importInventory(doc) {
+export function importInventory(doc, { expectedUserId } = {}) {
   return request(PATH + '/import', {
     method: 'POST',
     auth: true,
-    body: serializeInventoryExchangeDocument(doc)
+    body: serializeInventoryExchangeDocument(doc),
+    ...(expectedUserId === undefined ? {} : { expectedUserId })
   })
 }
 
@@ -78,12 +79,12 @@ export function importInventoryOpenApi(doc, token) {
 
 // 当前库存（GET，需登录）——accountId 必填；entityType?：'item' | 'agent'
 // 返回 [{ entity_type, entries: { "<id>": { count, listed_baseline_at } } }]
-export function getCurrent({ accountId, entityType } = {}) {
+export function getCurrent({ accountId, entityType } = {}, { expectedUserId, fresh = false } = {}) {
   const params = new URLSearchParams()
   if (accountId != null && accountId !== '') params.set('account_id', accountId)
   if (entityType != null && entityType !== '') params.set('entity_type', entityType)
   const qs = params.toString()
-  return request(PATH + '/current' + (qs ? '?' + qs : ''), { auth: true })
+  return request(PATH + '/current' + (qs ? '?' + qs : ''), { auth: true, ...(expectedUserId === undefined ? {} : { expectedUserId }), ...(fresh ? { headers: { 'Cache-Control': 'no-cache' } } : {}) })
 }
 
 // 时段获得量（GET，需登录）——{ accountId, entityType, from, to }

@@ -1,5 +1,73 @@
 # YuanStar embed 同步说明
 
+## 养成下钻与六步教程兼容（2026-10-11，已人工验收）
+
+- 来源分支 `feat/growth-plan-workspace-p1`，source commit `0b95a91f30aa91989c217e3b81d642993eeb767e`。已提交 source commit 的干净工作树正式 build：执行 `build:embed` 并通过正式同步脚本复制完整产物，来源和每个文件 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`。
+- 养成视图按钮复用真实下钻来源，显示「逐颗明细」「名称汇总」或「返回名称汇总」；新增 `data-growth-drilldown-return`、`data-growth-tutorial-blocked` 与 `data-growth-save-state` 只读标记。点击继续使用原返回逻辑，不改筛选、养成、库存或完成接口。
+- 只解除养成视图按钮的固定宽度，保持 32px 高度、原 padding 和大类控件尺寸；视图行复用响应式换行。源仓说明见 `docs/growth-tutorial-drilldown-closeout.md`。
+- YuanHub 三套六步教程已人工验收，自动触发和已读语义保留，教程仅按可靠状态点击现有视图按钮，不自动选择、保存或完成养成。权威源码及宿主 feature 已普通推送；向上游 main 创建 PR 时 GitHub 连接器返回 `403 Resource not accessible by integration`，当前未创建 PR，需有权限的用户或维护者继续。真实 `STAR_COMPLETION` 仍关闭，公开 Backend P3 尚未确认部署，不宣称线上扣减或 OCR 传输 E2E 通过。
+
+## 此前宿主 main 兼容合并（2026-10-11，历史阶段）
+
+合并时保留 feature 的背包 6:4、养成计划 1:1、独立导入页，以及当时的识别 6 步、使用 7 步、养成 4 步三套手动翻页教程；步骤配置已由上方三套六步收口替代。吸收全站 `TUTORIALS_ENABLED` 和异常、账号过期响应、弹窗与 OCR 让位保护。空背包仅提示先导入，用户自行选择入口；不使用 `BagTutorialDemo`。下面任务单步引导与只读示例章节为 main 的历史实现，不代表当前兼容结果。
+
+本次未重新构建或同步 embed；仍以 `17f28628a126c4255c4d3e502b365f56ed02bcbc` 的正式产物和 `docs/yuanstar-embed-manifest.json` 为准。宿主兼容修复不改变产物、P3 协议或真实完成开关。详见 [兼容合并报告](./star-main-compatibility.md)。
+
+## 当前背包 UI 人工验收后正式来源（2026-10-10）
+
+源码 commit：`17f28628a126c4255c4d3e502b365f56ed02bcbc`，分支 `feat/growth-plan-workspace-p1`。从已提交 source commit 的干净工作树正式 build，再使用现有 `scripts/sync-yuanstar-embed.mjs` 同步。完整 12 文件集合、逐文件字节及 SHA-256 与构建目录一致；manifest 的 `_sourceCommit` 对应该提交，`_sourceWorkingTree.status` 为 `clean`。不使用 dirty staging 充当正式来源。
+
+本次收口包含用户已验收的背包 6:4 单表、编辑与经验摘要、导入页面紧凑留白、上传文案居中、手机重复关系三控件同行与 footer 排列。三个教程入口保留；正文未改写。真实 `STAR_COMPLETION` 仍为 false，公开 Backend 配置及开发演示隔离保留。触控 44px 适配按用户决定延后，操作按钮现有 32px 不变。
+
+源码本次重新运行 TypeScript、pending/bag 17 项、行跟随 10 项、汇总、当前实例编辑、养成计划、Import Draft UI、完成 UI 26 项与 embed build，均通过。此前浏览器人工验收与测量属于开发预览证据，不声明真机、公开服务或真实账号写入验证。宿主构建与专项结果以本轮收口报告为准；历史章节中的“当前”“未提交”等只描述当时阶段。
+
+本轮授权仅提交和安全推送现有 feature，main 只读比较，不 merge、rebase、PR、部署或真实资源扣减。
+
+宿主收口重新运行教程/完成保护/CaptureBatch 接线定向测试 32/32、正式产物与账号恢复行为 57/57、provenance 6/6，以及生产 build 和 OCR gzip 生成校验，均通过。回归用例按已验收的单表和冗余标题移除结果更新；保留实例身份、待养成、OCR 预热/超时、账号隔离与手动教程重放验证。未执行全量测试、真实用户写入或 Backend Mongo 测试。
+
+## 历史 P3-B 人工验收后正式来源（2026-10-10）
+
+源码commit：`836c40c4b55e7787e8ddf1ab47564354b495b82c`，分支`feat/growth-plan-workspace-p1`。最新紧凑弹窗、资源状态、标题独立分行及虚线输入已在源码提交中保留；从已提交 source commit 的干净工作树正式 build，再执行正式同步脚本。全部12个embed文件集合、字节及SHA-256一致，manifest中的_sourceCommit为该提交、_sourceWorkingTree为clean。
+
+本次授权三仓本地提交收口及用户origin同名feature非强制推送；不合并main、不开PR、不部署。真实STAR_COMPLETION仍为false，dev-only隔离演示保留。下面的未提交/未push描述是此前阶段的历史记录，最终推送结果以本次交付报告和远端引用为准。
+
+## 历史 P3-B 完成确认来源（2026-10-09）
+
+源码commit：`d9411b3abf6ad74c01df0c80c11037ede0dd9f9d`，分支仍为`feat/growth-plan-workspace-p1`。为遵守clean来源门禁，在功能及隔离UI验证完成后按用户条件授权做一次本地源码提交；随后从已提交 source commit 的干净工作树正式 build，运行原正式同步脚本。12个文件的集合、字节及SHA-256均相等，manifest使用真实commit和clean来源。脚本只更新阶段无关的说明文字，dirty/HEAD/资源集合门禁不变。
+
+P3-B完成弹窗、实际经验输入、临时突破纠正、固定命令持久恢复和权威Session采用见[交付](./growth-plan-p3b-closeout.md)。普通账号的完成功能默认关闭；隔离演示仅开发环境显式URL启用，Mock模块与虚构fixture未进入生产JS。没有真实账号完成POST，没有push/PR/部署。以下P2-D记录为历史来源。
+
+
+## 当前 P2-D 本地提交来源（2026-10-09）
+
+源码 commit：`42ae3599a8173fd6c5e81bcde3a9c2fc21a68a1b`，保持 `feat/growth-plan-workspace-p1`。从已提交 source commit 的干净工作树正式 build，再使用 `node scripts/sync-yuanstar-embed.mjs <source-checkout> <committed-SHA>` 完整同步12文件。脚本拒绝dirty source、错误HEAD及未经审查的资源集合变化；核对字节及SHA-256，manifest记录本commit与clean来源。没有手改生成JS/CSS。
+
+已收口 P2-D 名称汇总批量目标编辑、已达标抵扣、稳定实例分配、人工换选、过期保护、原子本地应用与Undo，以及用户认可的紧凑UI。成功提示保留文案和2600ms，只切换普通信息状态；错误提示保持红色。组分配37项、源码typecheck/规则/JSON专项、embed和库存身份/API行为54项、库存writer26项通过。provenance验证全部资源；隔离截图未入库。详细交付及P3只读协议判断见 [收口报告](./growth-plan-p2d-closeout.md)。以下“未提交”段落仅记录此前阶段状态。
+
+
+## P2-D 组级分配修正（2026-10-09，未提交）
+
+继续从 P2-C source commit 加当前 dirty source 正式 build:embed，完整同步12文件与源码/产物 SHA-256。组目标降序，已达标仅抵扣，待养成分配使用工作区稳定等级/来源位置顺序；预览四列优先与紧凑档位。复用原批量提交、冲突保护及Undo，不改云端/JSON模型或资源扣减。详见 [分配修正报告](./growth-plan-p2d-allocation-review.md)。以下章节是此前阶段记录。
+
+## P2-D 组编辑 UI 收紧（2026-10-09，未提交）
+
+从下述 P2-C commit 加当前 dirty source 正式 build:embed，完整同步12文件并更新源码/产物 SHA-256。仅组编辑模板、样式、统一下拉接线及路线 DOM 高度调整；分配算法与业务持久化保持原样。源码 dirty清单增加 web/src/growth-route-controls.ts。验收见 [UI 调整报告](./growth-plan-p2d-ui-review.md)。旧章节描述为此前交付状态。
+
+## 当前 P2-D 名称汇总批量目标编辑（2026-10-09，未提交）
+
+基于P2-C源码commit `2af9d51a40ea6b083a7f597b28c9d28963f27de5` 的dirty源码正式build:embed，完整同步12文件；manifest记录tracked及新增源码文件hash。名称汇总组目标编辑复用planTargets和原Session/云保存；无groupGoals、无跨generation映射、无资源扣减。保持现有右侧布局/卡片/按钮尺寸。宿主P2-C本地提交为`7cec39af300b197a84b93659b22b9ef9d5ca96e3`；P2-D未提交，不push/PR。下文clean来源为P2-C提交时的历史。
+
+## 当前 P2-C 本地提交来源（2026-10-09）
+
+源码commit：`2af9d51a40ea6b083a7f597b28c9d28963f27de5`，分支保持`feat/growth-plan-workspace-p1`。从已提交的干净工作树正式build:embed，完整12文件与构建目录/manifest SHA-256一致，保留此前用户UI。未确认库存显示未知，可靠冲突显示实际数量，目标仅出现在反馈中；writer幂等状态机不变。本地提交，不push或PR。下文dirty来源为此前开发历史。
+
+
+## 当前 P2-C 库存冲突恢复（2026-10-08，未提交）
+
+沿用源码 HEAD `847b408f278368016305721fe64f21e6eb8e3890` 和 `feat/growth-plan-workspace-p1`，从 dirty source 正式执行 `build:embed`。完整同步12个文件；没有手改生成 JS/CSS。manifest 保留 dirty 标记及全部源码改动文件的 SHA-256，不把用户后续 UI 调整归属到干净 commit。
+
+仅新增瓶子冲突恢复接线 `onAcceptBreakthroughInventory` 和结构化 pending 反馈：已确认只 GET，可靠基线下用户可接受当前库存，未确认沿用原记录重试。保留当前缺口行与空选择摘要微调；CSS、worker、模型、ORT、规则表相对本轮开始字节不变。详细状态机、验证和人工验收边界见 [P2-C 审查包](./growth-plan-p2c-review.md)。下文其它版本说明为此前历史，不代表当前工作树已提交。
+
 `public/yuanstar-embed/` 下的文件**不是**本仓库的源码，而是 YuanStar 浏览器产品（嵌入构建）
 的构建产物，由维护者在同步时手工复制进来：
 
@@ -13,6 +81,36 @@
 本仓库内没有构建这些产物的脚本，公开的 YuanStar 仓库也不包含嵌入构建入口，
 **因此本仓库无法复现或审计这两份 JS 的源码差异**。这也正是它们被标记为
 `linguist-generated` / `-diff`（见 `.gitattributes`）的原因。
+
+## 当前缺口行与空选择摘要微调（2026-10-08，未提交）
+
+从下述 P2-A/B source commit 上的未提交工作树正式 build:embed，完整同步12个资源。缺口小字与紫星曜标签垂直居中，位置提示改为同行最右侧；卡片标签和按钮高度不变。未选择时摘要也展示经验、紫星曜和三种瓶子，以0占位并保持标签/粗体。
+
+manifest 保留 source commit，`_sourceWorkingTree.status` 为 `dirty`，列出本次4个源码/专项测试/审查文档变更及 SHA-256，未伪称干净提交。12个资源的文件集、字节和哈希一致。1440/390px 单项/多项缺口定向检查通过，未执行无关全量测试或真实账号写入；本次不 commit。
+
+## 此前 P2-A / P2-B 审查收口（2026-10-08，本地提交、未发布）
+
+- source commit `847b408f278368016305721fe64f21e6eb8e3890`，分支 `feat/growth-plan-workspace-p1`。已提交 source commit 的干净工作树正式 build；通过 `build:embed` 完整同步12个资源，未手工编辑 JS/CSS。
+- manifest 的 `_sourceWorkingTree.status` 为 `clean`，不保留旧 dirty 哈希记录。12个产物与 `web/dist/embed/` 文件集、字节及 SHA-256 完全一致。
+- 源码 `web/src/business/growth-route.ts` 统一清理已达成/失效目标，`web/src/growth-route-controls.ts` 管理数字与拖动交互；保留路线多选、账号本机顺序、累计资源估算和约4.5卡内部滚动。云投影不携带顺序，不代表跨设备同步。
+- 新增全选、紫星曜缺口折算与摘要标签、数字粗体和序号虚线；既有按钮高度保留。三种教程入口维持对应场景。完成养成仍 disabled，瓶子 writer 和 Backend 均未改。
+- 专项验证、文件清单及边界见[审查收口报告](./growth-plan-p2-closeout.md)。只进行两仓本地提交，未 push、merge、rebase 或创建 PR。
+
+## 此前 P1 本地提交集成（2026-10-08，未发布）
+
+- authoritative source仓为`drifty13/YuanStar-dev`，分支`feat/growth-plan-workspace-p1`；source commit：`d0d1760edf2442edea45eaf983fd1f533789e742`。
+- 本次为已提交 source commit 的干净工作树正式 build：在`web/`执行`npm.cmd run build:embed`，完整同步12个文件到`public/yuanstar-embed/`。构建前后源码工作树均clean，未手改JS/CSS。
+- manifest的`_sourceCommit`为上述P1 commit，`_sourceWorkingTree.status`为`clean`。12个产物的文件集、字节与SHA-256均与构建目录一致；重新构建后的产物与本轮专项行为测试使用的产物字节完全相同。
+- 运行reference为`YuanStar_Phase0_6A_经验星曜与突破材料规则_更新.xlsx`，旧workbook已由正式流程替换。
+- 保留计划页「应用筛选」及没有「清除」的最终方案。筛选后的选中/草稿按可见集合收敛；路线独立使用当前账号所有targetLevel>level的星石。
+- 背包整理与养成计划有意共用最新五色品质背景、对应深色文字和600字重，无描边；尺寸、布局与按钮高度维持用户已验收状态。经验星曜与瓶子资源标签保持独立样式。教程入口位置与文案保持。
+- `onReadBreakthroughInventory(accountId)`复用当前账号的inventory/current；`onSaveBreakthroughInventory(accountId,itemId,count)`已接入真实inventory/import单项listed盘点（含0），不是纯静态UI，不覆盖其他库存条目。经验编辑复用原星石工作区保存。
+- import确认后的读回冲突可能长期保留pending、阻止再次编辑及账号切换。用户明确将恢复机制归入P2，不阻止本地开发提交；正式发布相关写入功能前必须完成安全重读、重新编辑、确认记录不重复提交及账号恢复保护。
+- 右侧多选、数字排序、拖动与顺序持久化、路线累计资源、可完成位置/精确缺口、选择汇总、完成养成和扣料均留待P2；checkbox与完成按钮当前disabled，序号readonly。
+- 本轮通过：源码TypeScript、经验规则/突破边界/展示、19项pending-only、10项view-follow、实例更新/汇总/历史、资产流程；宿主43项Node专项、62项行为、6项provenance，以及Vue/JS检查、正式构建与diff检查。Python专项因解释器缺pytest/openpyxl未执行成功，受影响Python语法检查通过。
+- 所有写入测试使用mock/隔离fixture；未测试真实账号库存写入，未重跑完整CI/手机真机/视口矩阵。本地commit不代表已发布，不push、merge、rebase或开PR。
+
+完整收口与P2清单见[养成计划P1报告](./growth-plan-p1-closeout.md)。下列其它来源均为此前构建历史，以本节和当前manifest为准。
 
 ## 同步时必须记录
 

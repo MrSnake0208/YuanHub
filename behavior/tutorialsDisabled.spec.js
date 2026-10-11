@@ -7,7 +7,7 @@ import { initializeOnboardingTour, refreshTutorialBusiness, recordMaaYuanAction,
 import { TUTORIALS_ENABLED } from '../src/config/features.js'
 import TutorialEntry from '../src/components/TutorialEntry.vue'
 import OnboardingGuide from '../src/components/OnboardingGuide.vue'
-import StarHelpModal from '../src/pages/star/StarHelpModal.vue'
+import CompactToolHeader from '../src/components/CompactToolHeader.vue'
 import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'
 import { recruitmentCatalog, recruitmentFixture } from '../test-support/recruitment.js'
 
@@ -60,15 +60,10 @@ it('entry and guide stay absent even when stale tutorial props/state are present
   expect(listen.mock.calls.filter(([type]) => type === 'keydown')).toHaveLength(0)
 })
 
-it('star keeps ordinary help and screenshot examples while removing replay/preferences and the demo bag', async () => {
-  mount(StarHelpModal, { props: { open: true, emptyBag: true, topic: 'advanced' }, attachTo: document.body })
-  await flushPromises()
-  const help = document.querySelector('.star-help-panel')
-  expect(help.textContent).toContain('完整原始截图')
-  expect(help.textContent).toContain('检查识别异常')
-  expect(help.textContent).toContain('查看截图重点示例')
-  expect(help.textContent).not.toMatch(/重新查看当前引导|不再自动提示|只读示例背包/)
-  expect(help.querySelector('.bag-tutorial-demo')).toBeNull()
+it('ordinary compact help remains available while tutorials are disabled', async () => {
+  const wrapper = mount(CompactToolHeader, { props: { title: '星石背包' }, slots: { help: '<p>导入截图并核对识别结果</p>' } })
+  await wrapper.get('.compact-tool-help').trigger('click')
+  expect(wrapper.get('.compact-tool-help-content').text()).toContain('核对识别结果')
 })
 
 it('recruitment ignores guided props, keeps field help and saves real progress without a tutorial', async () => {
