@@ -1,20 +1,19 @@
+export const historyTutorialStep = {
+  id: 'history', title: '撤销、重做和近期存档',
+  paragraphs: ['页面右侧的箭头可以撤销或重做最近的操作，电脑端也可以使用 Ctrl + Z / Ctrl + Y。', '时钟按钮可以查看近期存档，方便回到之前保存的状态。'],
+  target: '.review-workspace-tools', scroll: 'preserve', mobileAvoidTarget: true,
+}
+
 export const bagTutorialSteps = [
-  { id: 'review', title: '检查识别结果', body: '识别完成后，可以在这里回看识别结果。\n发现名称、等级或其他内容不对时，可以查看原图并修正。', target: '.ocr-review', exampleAction: 'review-info', exampleLabel: '查看核对说明' },
-  { id: 'bags', title: '认识星石背包', body: '背包整理展示现在拥有的星石，养成计划在独立工作区中查看。\n点击当前背包的一行，可以选中并核对这颗星石。', target: '.bag-workspace' },
-  { id: 'find', title: '找到想看的星石', body: '可以按大类、品质和名称筛选，也可以切换逐颗明细 / 名称汇总和排序方式。\n在视图「名称汇总」里，双击某组星石的名称，可以展开查看这一组的详情。', target: '.review-toolbar' },
-  { id: 'edit', title: '编辑或新增星石', paragraphs: ['选中一行后，编辑区会载入它。\n直接修改名称、等级或品质，会编辑当前这颗星石。', '要新增时，先在编辑区填好内容，再点「新增当前行」，原来的星石会保留。\n如果不改内容直接新增，相当于复制当前行。\n删除则使用「删除当前行」。'], target: '.current-editor', relatedTargets: '#current-rows .is-selected, #current-rows .is-counterpart' },
-  { id: 'plan', title: '设置养成目标', body: '在「养成计划」工作区选中一颗星石后，可以设置计划等级。\n开启「仅看待养成」，可以只看还没有达到计划等级的星石。', target: '.growth-editor', relatedTargets: '.pending-only-toggle' },
-  { id: 'experience', title: '看看还需要多少经验星曜', body: '背包整理的资源摘要记录现有经验星曜。\n养成计划的资源与路线区域显示当前账号全部待养成星石的需求和资源缺口。', target: '.bag-summary' },
-  { id: 'history', title: '撤回、重做和近期存档', body: '左右箭头可以撤回 / 重做最近操作，电脑端也可以使用 Ctrl + Z / Ctrl + Y。\n时钟里可以查看近期 3 个存档。', target: '.review-workspace-tools', scroll: 'preserve', mobileAvoidTarget: true },
+  { id: 'review', title: '检查识别结果', paragraphs: ['识别完成后，可以在这里回看截图和识别结果。', '发现名称、等级或品质有误时，可以查看原图并修改；误识别的内容也可以忽略。', '正常结果通常不需要逐条重新确认。'], target: '.ocr-review', exampleAction: 'review-info', exampleLabel: '查看核对说明' },
+  { id: 'bags', title: '认识当前背包', paragraphs: ['这里列出了当前账号的星石，每一行对应一颗星石。', '点击任意一行，即可选中这颗星石，并在右侧查看或修改它的信息。'], target: '.bag-inventory' },
+  { id: 'find', title: '查找与查看星石', paragraphs: ['可以按照大类、品质和名称筛选，也可以切换排序方式。', '「逐颗明细」显示每颗星石；「名称汇总」将同名星石整理在一起，方便查看数量。', '在名称汇总视图中，双击某一组，即可进入这一组的逐颗明细。'], target: '.bag-filters' },
+  { id: 'experience', title: '查看背包与经验星曜', paragraphs: ['这里可以查看和调整背包数量、背包容量，以及现有的橙、紫、白经验星曜数量。', '如果需要核对截图识别出的经验星曜，可以点击「查看经验星曜原图」。'], target: '.bag-summary' },
+  { id: 'edit', title: '编辑或新增星石', paragraphs: ['选中星石后，可以在这里直接调整大类、名称、等级和品质。', '想要新增一颗时，填写好内容后点击「新增当前行」，原有星石会保留。', '不再需要的星石，可以使用「删除当前行」。'], target: '.current-editor', relatedTargets: '#current-rows .is-selected, #current-rows .is-counterpart' },
+  historyTutorialStep,
 ]
 
-// Reuse the existing tour component, with targets belonging to the growth workspace.
-export const growthPlanTutorialSteps = [
-  { id: 'find', title: '找到想养成的星石', body: '左侧可按大类和名称筛选，切换逐颗明细 / 名称汇总与排序。\n这些设置只影响计划背包，不会改变右侧养成路线。名称汇总行双击后可查看逐颗明细。', target: '.growth-filters', relatedTargets: '.growth-inventory' },
-  { id: 'plan', title: '设置养成目标', body: '单击左侧一颗星石，下方编辑区会跟随它。\n修改当前等级或计划等级后，点击「保存修改」。筛选后若它不再可见，编辑区会改为当前可见的星石。', target: '.growth-editor', relatedTargets: '#plan-rows .is-selected' },
-  { id: 'experience', title: '核对资源与养成路线', body: '右侧显示当前账号全部待养成星石，以及预计经验、紫星曜折合数量和突破瓶子需求。\n资源数量编辑会保存到当前账号；经验按当前经验条进度为0估算。完成养成暂未开放。', target: '.growth-route', relatedTargets: '.growth-resources, .growth-selection' },
-  bagTutorialSteps[6],
-]
+export { growthPlanTutorialSteps } from './growthPlanTutorial.js'
 
 export const bagReviewInfo = {
   title: '怎么看识别结果',
@@ -39,6 +38,7 @@ export function createBagTutorialGate() {
       return eligible
     },
     ocrCompleted(key) { if (owner === key && eligible) completed = true },
+    cancelOcr(key) { if (owner === key) completed = false },
     shouldStart(key, { reviewing, ready, seen, hasEvidence }) {
       return owner === key && eligible && completed && reviewing && ready && !seen && hasEvidence
     },

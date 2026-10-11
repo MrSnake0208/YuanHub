@@ -80,7 +80,7 @@ export function clipTutorialRect(rect, viewport, padding = 8) {
 
 export function tutorialElementRect(element, viewport) {
   const rect = clipTutorialRect(element?.getBoundingClientRect(), viewport)
-  const container = element?.closest?.('.table-scroll')
+  const container = element?.closest?.('.table-scroll, .growth-route-scroll')
   if (!rect || !container) return rect
   const bounds = container.getBoundingClientRect()
   const top = Math.max(rect.top, bounds.top), bottom = Math.min(rect.bottom, bounds.bottom)

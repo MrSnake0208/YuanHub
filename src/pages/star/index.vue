@@ -121,17 +121,17 @@
             </button>
             <button role="tab" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-tutorial-replay" @click="activeTab === 'review' ? openTutorial(starReviewView === 'plan' ? 'plan' : 'bag') : replayRecognitionTutorial()">
-            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'review' ? (starReviewView === 'plan' ? '重新查看养成教程' : '重新查看使用教程') : '重新查看识别教程' }}
+          <button v-if="TUTORIALS_ENABLED && productReady && (activeTab === 'import' || starReviewView === 'plan')" type="button" class="star-tutorial-replay" @click="activeTab === 'review' ? openTutorial('plan') : replayRecognitionTutorial()">
+            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'review' ? '重新查看养成教程' : '重新查看识别教程' }}
           </button>
           </div>
           <div v-if="activeTab === 'review' && starReviewView === 'bag'" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
-            <button v-if="TUTORIALS_ENABLED" type="button" class="star-tutorial-replay" @click="replayRecognitionTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看识别教程</button>
+            <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-tutorial-replay" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           </div>
           </div>
           <div id="product-root" ref="mountRoot" tabindex="-1" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
-          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
+          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
@@ -310,10 +310,11 @@ async function checkRecognitionTutorial() {
   if (!bagEligible) markTutorialSeen(bagTutorialKey.value);
   if (bagTutorialGate.shouldStart(bagTutorialOwner(), {
     reviewing: activeTab.value === "review", ready: status.ready, seen: tutorialSeen(bagTutorialKey.value),
-    hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')),
+    hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')) &&
+      mountRoot.value?.querySelector('.ocr-review .ocr-summary em')?.textContent?.trim() === '已保存识别结果，可再次核对',
   }) && !recognitionTutorialOpen.value && !emptyBagTutorialOpen.value && summary.value.currentCount > 0) replayBagTutorial();
   // Remember experienced users even if they later switch to an empty game account.
-  if (hasHistory) { markTutorialSeen(key); return; }
+  if (hasHistory) { if (!bagEligible) markTutorialSeen(key); return; }
   if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value && !emptyBagTutorialOpen.value) replayRecognitionTutorial();
 }
 const showArchive = ref(false);
@@ -803,10 +804,10 @@ async function mountProduct() {
         if (TUTORIALS_ENABLED && !unmounted && context === starContextVersion && owner === bagTutorialOwner()) bagTutorialGate.ocrCompleted(owner);
         return result;
       },
-      onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
+      onReplacementImport: function (snapshot) { if (TUTORIALS_ENABLED) bagTutorialGate.cancelOcr(bagTutorialOwner()); return starCloud.replaceImport(snapshot); },
       onListRecoveryPoints: function () { return starCloud.listRecoveryPoints(); },
-      onRestoreRecoveryPoint: function (pointId) { return starCloud.restorePoint(pointId); },
-      onRestoreLocalPoint: function (snapshot) { return starCloud.restoreLocal(snapshot); },
+      onRestoreRecoveryPoint: function (pointId) { if (TUTORIALS_ENABLED) bagTutorialGate.cancelOcr(bagTutorialOwner()); return starCloud.restorePoint(pointId); },
+      onRestoreLocalPoint: function (snapshot) { if (TUTORIALS_ENABLED) bagTutorialGate.cancelOcr(bagTutorialOwner()); return starCloud.restoreLocal(snapshot); },
       onSummaryChange: function (nextSummary) {
         summary.value = nextSummary;
       },

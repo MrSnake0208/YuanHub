@@ -284,8 +284,16 @@ describe('vendored OCR prewarming', () => {
       embed.root.querySelector('[data-cancel-ocr-confirm]').click()
       embed.handle.setActiveTab('review')
       expect(embed.root.querySelector(bagTutorialSteps[0].target)?.textContent).toContain('识别结果核对')
-      for (const step of bagTutorialSteps.filter(step => step.id !== 'plan')) expect(embed.root.querySelector(step.target), step.id).toBeTruthy()
-      expect(resolveTutorialTargets(embed.root, bagTutorialSteps[4], 844).primary).toBeNull()
+      for (const step of bagTutorialSteps) {
+        const target = embed.root.querySelector(step.target)
+        expect(target, step.id).toBeTruthy()
+        target.getBoundingClientRect = () => ({ left: 20, top: 80, right: 220, bottom: 180, width: 200, height: 100 })
+        expect(resolveTutorialTargets(embed.root, step, 844).primary, step.id).toBe(target)
+      }
+      expect(embed.root.querySelector(bagTutorialSteps[1].target).classList.contains('bag-inventory')).toBe(true)
+      expect(embed.root.querySelector(bagTutorialSteps[2].target).getAttribute('aria-label')).toBe('筛选与视图')
+      expect(embed.root.querySelector(bagTutorialSteps[3].target).textContent).toContain('当前经验星曜')
+      expect(embed.root.querySelector(bagTutorialSteps[4].target).textContent).toContain('选择一颗星石')
     } finally { await cleanup(embed) }
   }, 60000)
 

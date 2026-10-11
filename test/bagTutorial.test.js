@@ -1,26 +1,26 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bagTutorialSteps, bagReviewInfo, createBagTutorialGate, growthPlanTutorialSteps } from '../src/pages/star/bagTutorial.js'
+import { bagTutorialSteps, bagReviewInfo, createBagTutorialGate, growthPlanTutorialSteps, historyTutorialStep } from '../src/pages/star/bagTutorial.js'
 import { tutorialStepIndex, tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect } from '../src/pages/star/recognitionTutorial.js'
 
-test('bag tutorial has exactly seven manually navigated steps and independent persistence', () => {
-  assert.equal(bagTutorialSteps.length, 7)
+test('bag tutorial has exactly six manually navigated steps and independent persistence', () => {
+  assert.equal(bagTutorialSteps.length, 6)
   let step = 0
-  for (let i = 1; i < 7; i++) { step = tutorialStepIndex(step, 1, 7); assert.equal(step, i) }
-  assert.equal(tutorialStepIndex(step, 1, 7), 6)
-  for (let i = 5; i >= 0; i--) { step = tutorialStepIndex(step, -1, 7); assert.equal(step, i) }
-  assert.equal(tutorialStepIndex(step, -1, 7), 0)
+  for (let i = 1; i < 6; i++) { step = tutorialStepIndex(step, 1, 6); assert.equal(step, i) }
+  assert.equal(tutorialStepIndex(step, 1, 6), 5)
+  for (let i = 4; i >= 0; i--) { step = tutorialStepIndex(step, -1, 6); assert.equal(step, i) }
+  assert.equal(tutorialStepIndex(step, -1, 6), 0)
   const bag = tutorialStorageKey('bag-helper-user', 'bag'), recognition = tutorialStorageKey('bag-helper-user')
   assert.notEqual(bag, recognition)
   markTutorialSeen(bag, null)
   assert.equal(tutorialSeen(bag, null), true)
   assert.equal(tutorialSeen(recognition, null), false)
 })
-test('growth replay reuses the tour with growth targets and separate seen state',()=>{
-  assert.deepEqual(growthPlanTutorialSteps.map(step=>step.target),['.growth-filters','.growth-editor','.growth-route','.review-workspace-tools'])
-  assert.match(growthPlanTutorialSteps[0].body,/不会改变右侧养成路线/)
-  assert.match(growthPlanTutorialSteps[2].body,/当前账号全部待养成/)
-  assert.equal(growthPlanTutorialSteps[3],bagTutorialSteps[6])
+test('growth replay has six scoped steps and separate seen state; bag history remains intact',()=>{
+  assert.deepEqual(growthPlanTutorialSteps.map(step=>step.target),['.growth-inventory','.growth-resources','.growth-editor','.growth-editor','.growth-route-list','.growth-selection'])
+  assert.equal(bagTutorialSteps.at(-1), historyTutorialStep)
+  assert.equal(growthPlanTutorialSteps.length, 6)
+  assert.doesNotMatch(growthPlanTutorialSteps.map(step=>step.title).join(' '),/撤销|撤回|重做|存档/)
   const plan=tutorialStorageKey('plan-helper','plan')
   markTutorialSeen(plan,null)
   assert.equal(tutorialSeen(plan,null),true)
@@ -31,31 +31,28 @@ test('Step 1 actively reveals review on entry and replay regardless of pending c
   const step = bagTutorialSteps[0]
   assert.equal(step.target, '.ocr-review')
   assert.equal(step.exampleLabel, '查看核对说明')
-  assert.match(step.body, /识别完成后，可以在这里回看识别结果/)
+  assert.equal(step.paragraphs[0], '识别完成后，可以在这里回看截图和识别结果。')
   for (const rect of [{ top: 80, bottom: 600 }, { top: 1200, bottom: 2200 }]) {
     assert.equal(shouldRevealTutorialTarget(step, rect, { top: 0, height: 844 }), true)
   }
   assert.equal(shouldRevealTutorialTarget(step, null, { top: 0, height: 844 }), false)
 })
 test('find/edit/experience/history content and primary/related targets stay scoped', () => {
-  assert.match(bagTutorialSteps[2].body, /在视图「名称汇总」里，双击某组星石的名称/)
-  assert.equal(bagTutorialSteps[2].target, '.review-toolbar')
-  assert.equal(bagTutorialSteps[3].paragraphs.length, 2)
-  assert.match(bagTutorialSteps[3].paragraphs[1], /再点「新增当前行」，原来的星石会保留。\n如果不改内容直接新增/)
+  assert.deepEqual(bagTutorialSteps.map(step => step.title), ['检查识别结果', '认识当前背包', '查找与查看星石', '查看背包与经验星曜', '编辑或新增星石', '撤销、重做和近期存档'])
+  assert.deepEqual(bagTutorialSteps.map(step => step.target), ['.ocr-review', '.bag-inventory', '.bag-filters', '.bag-summary', '.current-editor', '.review-workspace-tools'])
+  assert.match(bagTutorialSteps[2].paragraphs[2], /双击某一组，即可进入这一组的逐颗明细/)
+  assert.equal(bagTutorialSteps[4].paragraphs.length, 3)
+  assert.match(bagTutorialSteps[4].paragraphs[1], /点击「新增当前行」，原有星石会保留/)
   for (const step of bagTutorialSteps) {
     for (const paragraph of step.paragraphs || [step.body]) assert.doesNotMatch(paragraph, /\n\n/)
   }
-  assert.equal(bagTutorialSteps[3].target, '.current-editor')
-  assert.match(bagTutorialSteps[3].relatedTargets, /#current-rows/)
-  assert.equal(bagTutorialSteps[1].target, '.bag-workspace')
-  assert.equal(bagTutorialSteps[4].target, '.growth-editor')
-  assert.equal(bagTutorialSteps[4].relatedTargets, '.pending-only-toggle')
-  assert.match(bagTutorialSteps[4].body, /仅看待养成/)
-  assert.equal(bagTutorialSteps[5].target, '.bag-summary')
-  assert.match(bagTutorialSteps[5].body, /当前账号全部待养成星石/)
-  assert.doesNotMatch(bagTutorialSteps[5].body, /全部养成计划/)
-  assert.equal(bagTutorialSteps[6].target, '.review-workspace-tools')
-  assert.equal(bagTutorialSteps[6].mobileAvoidTarget, true)
+  assert.match(bagTutorialSteps[4].relatedTargets, /#current-rows/)
+  assert.match(bagTutorialSteps[3].paragraphs[1], /查看经验星曜原图/)
+  assert.equal(bagTutorialSteps[5].mobileAvoidTarget, true)
+  for (const step of bagTutorialSteps) {
+    assert.ok(step?.title && step.target && (step.body || step.paragraphs?.length))
+    assert.doesNotMatch((step.paragraphs || [step.body]).join('\n'), /养成计划|养成目标|计划经验|资源缺口|突破瓶子|两个背包|仅看待养成/)
+  }
 })
 test('review explanation documents keep/ignore/edit and immediate writeback', () => {
   assert.equal(bagReviewInfo.title, '怎么看识别结果')
@@ -74,6 +71,12 @@ test('first successful OCR can auto start only after local review appears; old u
   for (const override of [{ reviewing: false }, { ready: false }, { seen: true }, { hasEvidence: false }]) {
     assert.equal(gate.shouldStart('new', { ...ready, ...override }), false)
   }
+  gate.cancelOcr('other')
+  assert.equal(gate.shouldStart('new', ready), true, 'another account cannot cancel this owner')
+  gate.cancelOcr('new')
+  assert.equal(gate.shouldStart('new', ready), false, 'import/restore invalidates pending OCR handoff only')
+  gate.ocrCompleted('new')
+  assert.equal(gate.shouldStart('new', ready), true, 'a later real OCR can qualify without resetting read records')
   assert.equal(gate.loaded('old', true), false)
   gate.ocrCompleted('old')
   assert.equal(gate.shouldStart('old', ready), false)

@@ -178,7 +178,7 @@ it('mobile drag accounts for safe areas and an offset short visual viewport', as
   expect(card().querySelector('footer').textContent).toBe('上一步完成')
 })
 
-it.each([['recognition', 6], ['bag', 7], ['plan', 4]])('%s paging survives every missing target and never performs product actions', async (mode, length) => {
+it.each([['recognition', 6], ['bag', 6], ['plan', 6]])('%s paging survives every missing target and never performs product actions', async (mode, length) => {
   root.innerHTML = ''
   const wrapper = mount(RecognitionTutorial, { props: { open: true, mode, root }, attachTo: document.body })
   await settle()
