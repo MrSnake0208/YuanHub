@@ -1,3 +1,4 @@
+import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import InventoryPage from '../src/pages/inventory/index.vue'
@@ -26,8 +27,8 @@ const record = {
 }
 
 function render() {
-  return mount(InventoryPage, { global: {
-    stubs: {
+  return mount(InventoryPage, { global: { plugins: [createPinia()],
+    stubs: { OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
       ResourceBalanceReport: true, AcquiredPeriodReport: true, RewardEntryWorkspace: true,

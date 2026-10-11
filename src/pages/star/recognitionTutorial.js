@@ -24,18 +24,29 @@ const sessionSeen = new Set()
 export function tutorialStorageKey(userId, mode = 'recognition') {
   return `yuanhub:star-${mode}:v1:` + (userId == null || userId === '' ? 'guest' : encodeURIComponent(String(userId)))
 }
-export function tutorialSeen(key, storage = globalThis.localStorage) {
-  try { return sessionSeen.has(key) || storage?.getItem(key) === 'seen' } catch (_) { return sessionSeen.has(key) }
+export function tutorialSeen(key, storage) {
+  try {
+    if (storage === undefined) storage = globalThis.localStorage
+    if (sessionSeen.has(key) || storage?.getItem(key) === 'seen') return true
+    // main v2 described the recognition onboarding. Read it only for recognition;
+    // it cannot prove that the independent bag or growth tutorials were read.
+    const prefix = 'yuanhub:star-recognition:v1:'
+    return key.startsWith(prefix) && storage?.getItem('yuanhub:star-onboarding:v2:' + key.slice(prefix.length)) === 'seen'
+  } catch (_) { return sessionSeen.has(key) }
 }
-export function markTutorialSeen(key, storage = globalThis.localStorage) {
+export function markTutorialSeen(key, storage) {
   sessionSeen.add(key)
-  try { storage?.setItem(key, 'seen') } catch (_) { /* Storage failure never blocks the workspace. */ }
+  try {
+    if (storage === undefined) storage = globalThis.localStorage
+    storage?.setItem(key, 'seen')
+  } catch (_) { /* Storage failure never blocks the workspace. */ }
 }
 export function shouldAutoStartTutorial({ ready, importing, seen, hasHistory }) {
   return ready === true && importing === true && seen !== true && hasHistory === false
 }
 
 export function resolveTutorialTargets(root, step, viewportHeight) {
+  if (!step?.target) return { primary: null, related: [] }
   const targets = Array.from(root?.querySelectorAll(step.target) || []).filter(element => element.getBoundingClientRect().width > 0)
   // Prefer a confirm button already visible; never scroll to every related button.
   const primary = targets.find(element => {
@@ -43,6 +54,10 @@ export function resolveTutorialTargets(root, step, viewportHeight) {
     return rect.top >= 0 && rect.bottom < viewportHeight * 0.65
   }) || targets[0] || null
   return { primary, related: step.relatedTargets ? Array.from(root?.querySelectorAll(step.relatedTargets) || []) : [] }
+}
+
+export function tutorialOcrRunning(root) {
+  return root?.querySelector('[data-start-ocr]')?.textContent.includes('取消识别') === true
 }
 
 export function shouldRevealTutorialTarget(step, rect, viewport) {

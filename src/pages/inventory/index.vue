@@ -10,6 +10,7 @@
             :switch-disabled="savingStock || !!pendingStockDocument || importing || rewardImportBusy || !!recordsBusyId" switch-disabled-reason="正在保存或确认入账，请处理完成后再切换账号。" />
         </template>
         <template #actions>
+          <TutorialEntry v-if="TUTORIALS_ENABLED" task="inventory-first-baseline" label="盘点教程" />
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -30,6 +31,7 @@
 
       <section>
         <div class="wrap">
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['inventory-first-baseline', 'today-first-data']" :target="editingStock ? '#inventory-tutorial-editor' : ''" />
           <div v-if="!inventorySetupNeeded && !inventoryPromptTitle" class="inventory-freshness" aria-label="库存新鲜度">
             <div><span class="freshness-label">最近完整盘点</span><time v-if="currentFullBaselineAt" :datetime="currentFullBaselineAt">{{ fmtTime(currentFullBaselineAt) }}</time><span v-else>{{ loading ? '读取中…' : error ? '读取失败' : '尚无完整盘点' }}</span></div>
             <button v-if="inventoryAccountReady" type="button" class="btn primary inventory-entry" :disabled="loading || !!error || currentLoadedContext !== stockContext || editingStock"
@@ -167,6 +169,7 @@
             ref="manifestPanel"
             class="panel"
           >
+            <div v-if="TUTORIALS_ENABLED && editingStock" id="inventory-tutorial-editor" />
             <div
               v-if="editingStock || stockSaveNotice"
               class="manifest-intro"
@@ -1752,6 +1755,7 @@
 </template>
 
 <script setup>
+import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
@@ -1780,7 +1784,10 @@ import {
   X,
 } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
+import TutorialEntry from "../../components/TutorialEntry.vue";
+import OnboardingGuide from "../../components/OnboardingGuide.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
+import { inventoryCurrentRead } from '../../utils/inventoryEvents.js';
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
@@ -3475,6 +3482,7 @@ async function reloadCurrent(quiet, preserveContent) {
         return b.count - a.count;
       });
     currentLoadedContext.value = context;
+    if (entityType.value === 'item') inventoryCurrentRead.value = { ownerId: String(auth.userInfo?.id || ''), accountId: accountId.value, data };
   } catch (err) {
     if (seq === currentLoadSeq && context === stockContext.value && !quiet)
       error.value = humanErr(err, "加载失败，请稍后重试");
@@ -6469,7 +6477,7 @@ onBeforeUnmount(function () {
 }
 .stock-stepper {
   width: min(100%, 140px);
-  height: 44px;
+  height: 47px;
   margin-top: 6px;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;

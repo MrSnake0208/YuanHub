@@ -1,8 +1,8 @@
-import { nextTick, onScopeDispose, reactive, watch } from 'vue'
+import { markRaw, nextTick, onScopeDispose, reactive, watch } from 'vue'
 
 const stack = []
 // 消费现有焦点栈，避免非阻断式邀请与业务模态同时出现。
-export const modalFocusState = reactive({ active: false })
+export const modalFocusState = reactive({ active: false, panel: null })
 const focusSelector = 'a[href], button, input, select, textarea, summary, [tabindex]'
 
 function isVisible(element) {
@@ -26,6 +26,11 @@ function top() {
     if (stack[index].blocking) return stack[index]
   }
   return stack[stack.length - 1]
+}
+
+function syncModalProjection() {
+  modalFocusState.active = stack.length > 0
+  modalFocusState.panel = top()?.panel.value ? markRaw(top().panel.value) : null
 }
 
 function focusInside(entry, preferred) {
@@ -97,7 +102,7 @@ export function useModalFocus(visible, panel, { initialFocus, onEscape, afterFoc
     const closed = entry
     entry = null
     stack.splice(stack.indexOf(closed), 1)
-    modalFocusState.active = stack.length > 0
+    syncModalProjection()
     unlisten()
     nextTick(() => restore(closed))
   }
@@ -105,11 +110,12 @@ export function useModalFocus(visible, panel, { initialFocus, onEscape, afterFoc
     if (!open) return close()
     entry = { panel, initialFocus, onEscape, afterFocus, blocking, opener: document.activeElement }
     stack.push(entry)
-    modalFocusState.active = true
+    syncModalProjection()
     listen()
   }, { immediate: true, flush: 'sync' })
   // 同步保存打开前的焦点；等弹窗 DOM 与模板 ref 更新后再聚焦。
   watch([visible, panel], ([open]) => {
+    syncModalProjection()
     if (open) nextTick(() => {
       if (entry && top() === entry && !panel.value?.contains(document.activeElement)) focusInside(entry, initialFocus())
     })

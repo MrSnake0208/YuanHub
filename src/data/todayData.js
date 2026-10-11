@@ -4,6 +4,12 @@ function mergedEntries(documents) {
   }, {})
 }
 
+function operatorRecordingCount(current) {
+  const rows = Array.isArray(current) ? current : current?.entries ? [current] : null
+  if (!rows || rows.some(row => !row?.entries || typeof row.entries !== 'object' || Array.isArray(row.entries))) return null
+  return Object.values(mergedEntries(rows)).filter(entry => Number(entry?.star_level ?? entry?.starLevel) > 0).length
+}
+
 function inventoryRecordingEvidence(inventory) {
   const documents = Array.isArray(inventory) ? inventory : inventory && typeof inventory === 'object' ? [inventory] : null
   if (!documents) return { inventoryRecorded: null, inventoryHasFullBaseline: null }
@@ -27,7 +33,7 @@ export function summarizeTodayData({ current, inventory, starState, favorites, n
   const favoriteIds = Array.isArray(favorites && favorites.agent_ids) ? favorites.agent_ids : []
   const unread = Number(notifications && notifications.count)
   return {
-    operatorCount: Object.keys(mergedEntries(current)).length,
+    operatorCount: operatorRecordingCount(current),
     favoriteCount: new Set(favoriteIds).size,
     inventoryKindCount: Object.values(mergedEntries(inventory)).filter(function (entry) {
       return Number(entry && entry.count) > 0
@@ -39,7 +45,7 @@ export function summarizeTodayData({ current, inventory, starState, favorites, n
 }
 
 export function summarizeTodayStarState(starState) {
-  return Array.isArray(starState && starState.inventory) ? starState.inventory.length : 0
+  return Array.isArray(starState && starState.inventory) && starState.inventory.every(item => typeof item?.instance_id === 'string' && !!item.instance_id) ? starState.inventory.length : null
 }
 
 function countReadiness(value) {

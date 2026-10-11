@@ -1,4 +1,9 @@
-import { beforeEach, expect, it, vi } from 'vitest'
+// Keep the existing tutorial implementation covered through explicit opt-in.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
+const tutorialFeature = vi.hoisted(() => ({ enabled: true }))
+vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled } }))
+import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -6,7 +11,7 @@ import App from '../src/App.vue'
 import { auth } from '../src/store/auth.js'
 import { beta } from '../src/store/beta.js'
 import { routeLoadingState } from '../src/router/index.js'
-import { destroyOnboardingTour, initializeOnboardingTour } from '../src/utils/onboardingTour.js'
+import { initializeOnboardingTour } from '../src/utils/onboardingTour.js'
 
 const hooks = vi.hoisted(() => ({ stop: vi.fn() }))
 vi.mock('../src/utils/onboardingTour.js', () => ({ initializeOnboardingTour: vi.fn(() => hooks.stop), destroyOnboardingTour: vi.fn() }))
@@ -28,10 +33,12 @@ vi.mock('../src/store/notificationUnread.js', () => ({ subscribeNotificationUnre
 vi.mock('../src/components/VersionUpdateBanner.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/AccountEventToasts.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/beta/BetaCommunityDialog.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../src/components/OnboardingGuide.vue', () => ({ default: { name: 'OnboardingGuide', template: '<aside />' } }))
 vi.mock('../src/components/AppDialog.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../src/components/MobileInstallPrompt.vue', () => ({ default: { name: 'MobileInstallPrompt', props: ['routeLoading', 'accessPending'], template: '<aside />' } }))
 
 beforeEach(() => {
+  tutorialFeature.enabled = true
   vi.clearAllMocks()
   auth.userInfo = { id: 'user-a' }
   auth.accessToken = 'synthetic'
@@ -42,6 +49,17 @@ beforeEach(() => {
   beta.personalLoading = false
   beta.personalLoaded = true
   routeLoadingState.active = false
+})
+
+it('关闭总开关时跨页和刷新不挂载安装教学，也不初始化全站控制器', async () => {
+  tutorialFeature.enabled = false
+  const { router, host } = await render()
+  await router.push('/user/profile'); await nextTick()
+  await router.push('/changelog'); await nextTick()
+  expect(initializeOnboardingTour).not.toHaveBeenCalled()
+  expect(host.findComponent({ name: 'MobileInstallPrompt' }).exists()).toBe(false)
+  host.unmount()
+  expect(hooks.stop).not.toHaveBeenCalled()
 })
 
 async function render() {
@@ -56,24 +74,23 @@ async function render() {
   return { router, host }
 }
 
-it('个人中心是教程宿主；第二/六步内部进入不会停止控制器，离开宿主才停止', async () => {
-  const { router } = await render()
+it('App不挂载全局教程UI；控制器跨业务页、帮助页和登录交接持续存在', async () => {
+  const { router, host } = await render()
   expect(initializeOnboardingTour).toHaveBeenCalledTimes(1)
-  await router.push('/user/profile')
-  await nextTick()
+  expect(host.findComponent({ name: 'OnboardingGuide' }).exists()).toBe(false)
+  await router.push('/user/profile'); await nextTick()
+  await router.push('/changelog'); await nextTick()
   expect(hooks.stop).not.toHaveBeenCalled()
   expect(initializeOnboardingTour).toHaveBeenCalledTimes(1)
-  await router.push('/changelog')
-  await nextTick()
+  host.unmount()
   expect(hooks.stop).toHaveBeenCalledTimes(1)
 })
 
-it('身份切换会取消旧教程，初次加载身份不误取消', async () => {
+it('身份变化交由长期教程控制器读取新身份，不在 App 中关闭登录交接', async () => {
   await render()
-  expect(destroyOnboardingTour).not.toHaveBeenCalled()
-  auth.userInfo = { id: 'user-b' }
-  await nextTick()
-  expect(destroyOnboardingTour).toHaveBeenCalledTimes(1)
+  auth.userInfo = { id: 'user-b' }; await nextTick()
+  expect(initializeOnboardingTour).toHaveBeenCalledTimes(1)
+  expect(hooks.stop).not.toHaveBeenCalled()
 })
 
 it('App把真实路由加载及资格恢复状态传给安装提示', async () => {

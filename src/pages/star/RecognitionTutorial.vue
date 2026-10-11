@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="recognition-tour" :class="{ 'is-mobile': mobile }">
+    <div v-if="open" v-show="!suspended" class="recognition-tour" :class="{ 'is-mobile': mobile }">
       <svg class="recognition-tour-shade" aria-hidden="true" width="100%" height="100%">
         <defs><mask id="recognition-tour-mask" maskUnits="userSpaceOnUse">
           <rect width="100%" height="100%" fill="white" />
@@ -32,7 +32,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import RecognitionExampleModal from './RecognitionExampleModal.vue'
-import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect } from './recognitionTutorial.js'
+import { modalFocusState } from '../../composables/useModalFocus.js'
+import { recognitionTutorialSteps, recognitionTutorialExamples, tutorialStepIndex, resolveTutorialTargets, clipTutorialRect, tutorialCardPosition, clampTutorialLift, shouldRevealTutorialTarget, tutorialSheetBounds, tutorialElementRect, tutorialOcrRunning } from './recognitionTutorial.js'
 import { bagTutorialSteps, bagReviewInfo, growthPlanTutorialSteps } from './bagTutorial.js'
 
 const props = defineProps({ open: Boolean, replayId: { type: Number, default: 0 }, root: { type: Object, default: null }, mode: { type: String, default: 'recognition' } })
@@ -41,6 +42,8 @@ const stepIndex = ref(0), mobile = ref(false), lift = ref(0), card = ref(null)
 const rects = ref([]), position = ref({ left: 12, top: 12 }), placement = ref('fallback'), ready = ref(false)
 const sheetBounds = ref(null)
 const exampleKind = ref(null), showMobileHint = ref(false)
+const blocked = ref(false)
+const suspended = computed(() => blocked.value || modalFocusState.active)
 const steps = computed(() => props.mode === 'plan' ? growthPlanTutorialSteps : props.mode === 'bag' ? bagTutorialSteps : recognitionTutorialSteps)
 const tutorialLabel = computed(() => props.mode === 'plan' ? '养成教程' : props.mode === 'bag' ? '使用教程' : '识别教程')
 const step = computed(() => steps.value[stepIndex.value])
@@ -65,6 +68,8 @@ function clearHighlights() {
 }
 function update() {
   if (!props.open) return
+  blocked.value = Boolean(props.root?.querySelector('[role="dialog"], dialog[open]')) || tutorialOcrRunning(props.root)
+  if (suspended.value) { clearHighlights(); rects.value = []; return }
   const view = viewport()
   mobile.value = window.innerWidth < 768
   const safeArea = sheetSafeArea()
@@ -129,7 +134,7 @@ async function revealStep(resetHint = true) {
   const view = viewport()
   const { primary } = resolveTutorialTargets(props.root, step.value, view.height)
   const rect = primary?.getBoundingClientRect()
-  if (shouldRevealTutorialTarget(step.value, rect, view)) {
+  if (!suspended.value && shouldRevealTutorialTarget(step.value, rect, view)) {
     const top = Math.max(0, window.scrollY + rect.top - view.top - Math.max(64, view.height * (mobile.value ? 0.16 : 0.1)))
     window.scrollTo({ top, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
     await waitForScroll(token)
@@ -143,7 +148,7 @@ function onResize() {
   scheduleUpdate()
   window.clearTimeout(resizeTimer)
   resizeTimer = window.setTimeout(() => {
-    if (!props.open || exampleKind.value) return
+    if (!props.open || exampleKind.value || suspended.value) return
     const view = viewport(), { primary } = resolveTutorialTargets(props.root, step.value, view.height)
     const rect = primary?.getBoundingClientRect(), sheetTop = mobile.value ? card.value?.getBoundingClientRect().top : view.top + view.height
     if (rect && step.value.scroll !== 'preserve' && (rect.top < view.top + 64 || rect.top >= sheetTop - 16)) void revealStep(false)
@@ -158,7 +163,7 @@ function navigate(delta) {
 function close() { exampleKind.value = null; emit('close') }
 function onKeydown(event) {
   // Product dialogs and the example viewer own Escape while they are open.
-  if (event.key === 'Escape' && !exampleKind.value && !document.querySelector('[role="dialog"], dialog[open]')) close()
+  if (event.key === 'Escape' && !suspended.value && !exampleKind.value && !document.querySelector('[role="dialog"], dialog[open]')) close()
 }
 function boundedSheetLift(value) {
   const view = viewport(), safeArea = sheetSafeArea()
@@ -222,17 +227,18 @@ watch([() => props.open, () => props.replayId, () => props.mode], async ([open],
     if (card.value) resizeObserver.observe(card.value)
   }
   mutationObserver = new MutationObserver(scheduleUpdate)
-  if (props.root) mutationObserver.observe(props.root, { childList: true, subtree: true })
+  if (props.root) mutationObserver.observe(props.root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'role', 'disabled'] })
   const opening = revealStep(), token = navigation
-  void opening.then(() => { if (props.open && token === navigation && !exampleKind.value) card.value?.focus({ preventScroll: true }) })
+  void opening.then(() => { if (props.open && token === navigation && !exampleKind.value && !suspended.value) card.value?.focus({ preventScroll: true }) })
 }, { immediate: true })
 watch(() => props.root, () => {
   if (!props.open) return
   mutationObserver?.disconnect()
-  if (props.root) mutationObserver?.observe(props.root, { childList: true, subtree: true })
+  if (props.root) mutationObserver?.observe(props.root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open', 'role', 'disabled'] })
   scheduleUpdate()
 })
 onBeforeUnmount(() => { restoreFocus(); stop() })
+watch(() => modalFocusState.active, () => { void nextTick(scheduleUpdate) })
 </script>
 
 <style>

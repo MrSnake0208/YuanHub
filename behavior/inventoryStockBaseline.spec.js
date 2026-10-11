@@ -1,3 +1,4 @@
+import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
@@ -40,8 +41,9 @@ const rewardStub = defineComponent({
   },
 })
 function render(options = {}) {
-  return mount(InventoryPage, { ...options, global: {
+  return mount(InventoryPage, { ...options, global: { plugins: [createPinia()],
     stubs: {
+      OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
       AcquiredPeriodReport: true, RewardEntryWorkspace: rewardStub,

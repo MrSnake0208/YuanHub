@@ -30,21 +30,27 @@ test('work system is explicitly disabled until it is ready to reopen', function 
   assert.equal(isFeatureEnabled(key), false)
 })
 
+test('tutorials are disabled without an explicit Vite true value', function () {
+  assert.equal(FEATURE_KEYS.TUTORIALS, 'tutorials')
+  assert.equal(FEATURE_FLAGS[FEATURE_KEYS.TUTORIALS], false)
+  assert.equal(isFeatureEnabled(FEATURE_KEYS.TUTORIALS), false)
+})
+
 test('discarded status stays disabled until the paired software supports it', function () {
   assert.equal(FEATURE_KEYS.OPERATOR_DISCARDED, 'operatorDiscarded')
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.OPERATOR_DISCARDED], false)
   assert.equal(isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED), false)
 })
 
-test('recruitment archive is open with authentication and independent recruitment access', async function () {
+test('recruitment preview is public; its personal workspace enforces independent access', async function () {
   assert.equal(FEATURE_KEYS.RECRUITMENT_ARCHIVE, 'recruitmentArchive')
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.RECRUITMENT_ARCHIVE], true)
   assert.equal(isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE), true)
   const { routes } = await import('../src/router/routes.js')
   const route = routes.find(item => item.path === '/recruitment')
   assert.equal(route.meta.feature, FEATURE_KEYS.RECRUITMENT_ARCHIVE)
-  assert.equal(route.meta.requiresAuth, true)
-  assert.equal(route.meta.requiresRecruitmentAccess, true)
+  assert.equal(route.meta.requiresAuth, undefined)
+  assert.equal(route.meta.requiresRecruitmentAccess, undefined)
   assert.equal(route.meta.requiresBeta, undefined)
   assert.equal(typeof route.component, 'function')
 })

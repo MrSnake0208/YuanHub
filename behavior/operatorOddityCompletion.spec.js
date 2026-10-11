@@ -1,3 +1,4 @@
+import { createPinia } from 'pinia'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
@@ -97,8 +98,8 @@ beforeEach(async () => {
 
 async function render() {
   const { default: OperatorPage } = await import('../src/pages/operator/index.vue')
-  const wrapper = mount(OperatorPage, { global: {
-    stubs: { IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
+  const wrapper = mount(OperatorPage, { global: { plugins: [createPinia()],
+    stubs: { OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, AccountWorkspace: true, DataAccountContextBar: true,
       OperatorShareManager: true, OperatorGrowthTracker: true, StarLoadoutEditor: true, StarLoadoutModal: true,
       RouterLink: true },
     directives: { reveal: () => {} },

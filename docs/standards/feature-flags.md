@@ -26,6 +26,12 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
+`tutorials` is disabled in both ordinary development and production builds.
+Only `VITE_TUTORIALS_ENABLED=true` explicitly enables it. All tutorial mounts,
+controllers and tutorial persistence follow the derived `TUTORIALS_ENABLED`
+export. Business UI and ordinary help remain available. See
+[tutorial maintenance](../tutorials.md) for coverage, local opt-in and recovery checks.
+
 `operatorDiscarded` is explicitly `false` in both development and production
 until the paired MaaYuan version can read `discarded`. While disabled, single
 and batch menus offer only 养成中/已毕业/养老中, filters default/reset to 全部,
