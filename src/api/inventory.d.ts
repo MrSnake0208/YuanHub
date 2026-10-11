@@ -32,9 +32,9 @@ export function listAgentFavorites(accountId?: string): Promise<unknown>
 export function addAgentFavorite(accountId: string | undefined, agentId: string): Promise<unknown>
 export function removeAgentFavorite(accountId: string | undefined, agentId: string): Promise<unknown>
 export function getCatalog(): Promise<unknown>
-export function importInventory(document: ImportDocument): Promise<InventoryImportResult>
+export function importInventory(document: ImportDocument, options?: { expectedUserId?: string }): Promise<InventoryImportResult>
 export function importInventoryOpenApi(document: ImportDocument, token: string): Promise<InventoryImportResult>
-export function getCurrent(options?: { accountId?: string; entityType?: 'item' | 'agent' }): Promise<unknown>
+export function getCurrent(options?: { accountId?: string; entityType?: 'item' | 'agent' }, requestOptions?: { expectedUserId?: string; fresh?: boolean }): Promise<unknown>
 export function getAcquired(options: { accountId: string; entityType: 'item' | 'agent'; from: string; to: string }): Promise<unknown>
 export function listRecords(options?: {
   accountId?: string

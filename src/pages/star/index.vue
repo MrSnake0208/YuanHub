@@ -4,13 +4,12 @@
     <main id="main-content" class="star-main">
       <CompactToolHeader title="星石背包" description="整理星石，核对背包与养成计划">
         <template #account>
-          <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="accountGame"
+          <span v-if="completionDemo" class="star-sync-meta">隔离演示 · 虚构账号，未连接完成接口</span>
+          <DataAccountContextBar v-else compact :accounts="accounts" :account-id="accountId" :game="accountGame"
             :is-logged-in="auth.isLoggedIn" :loading="accountsLoading" :error="accountError"
-            :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy" switch-disabled-reason="星石工作区正在准备或保存，请等待完成后再切换账号。" />
+            :switch-disabled="!productReady || starExchangeBusy || captureImportBusy || cloudWriteBusy || growthBottlePending" switch-disabled-reason="星石工作区或瓶子库存正在保存或等待确认，请处理完成后再切换账号。" />
         </template>
         <template #actions>
-          <button v-if="TUTORIALS_ENABLED" type="button" class="star-tutorial-replay" :disabled="!productReady" @click="replayCurrentTutorial"><CircleHelp :size="15" aria-hidden="true" />使用教程</button>
-          <button type="button" class="star-help-trigger" @click="openStarHelp(activeTab === 'import' ? 'screenshots' : 'review')"><CircleHelp :size="16" aria-hidden="true" />帮助</button>
           <details class="tool-more">
             <summary aria-label="更多页面操作">更多</summary>
             <div class="tool-more-content" @click.capture="$event.currentTarget.parentElement.open = false; $event.currentTarget.parentElement.querySelector('summary').focus()">
@@ -20,6 +19,11 @@
               </button>
             </div>
           </details>
+        </template>
+        <template #help>
+          <p>导入截图并核对识别结果后，管理当前背包、养成计划与经验星曜。未登录时可先在本机使用，登录后同步当前账号数据。</p>
+          <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-help-tutorial" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
+          <p>独立创作 · 著作权归作者 Drifty Yan 所有。</p>
         </template>
       </CompactToolHeader>
       <section>
@@ -97,10 +101,15 @@
           </p>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
-            <button type="button" class="link" @click="openStarHelp('screenshots')">查看截图帮助</button>
+            <button v-if="TUTORIALS_ENABLED" type="button" class="link" @click="setTab('import'); replayRecognitionTutorial()">查看支持的截图格式与说明</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
+          <ToolTaskPrompt v-if="TUTORIALS_ENABLED && emptyBagTutorialOpen" class="star-empty-tutorial" title="背包暂时为空" description="可以先导入截图，建立背包后再查看使用教程。" role="status">
+            <button type="button" class="btn primary" @click="dismissRecognitionTutorial(); setTab('import')">导入截图</button>
+            <button type="button" class="link" @click="dismissRecognitionTutorial">关闭说明</button>
+          </ToolTaskPrompt>
           <div v-show="summary.currentCount || starBrowseEmpty || activeTab === 'import' || cloudSyncError" class="star-workbench">
+          <div class="star-workbench-header">
           <div class="star-tabs tool-workspace-tabs" role="tablist" aria-label="星石工作区" @keydown="onWorkspaceTabKeydown" @focusin="onWorkspaceTabFocus" @focusout="onWorkspaceTabFocus">
             <button
               type="button" role="tab" id="star-tab-bag" aria-controls="product-root" :tabindex="starReviewView === 'bag' || activeTab !== 'review' ? 0 : -1"
@@ -108,19 +117,21 @@
               :class="{ on: activeTab === 'review' && starReviewView === 'bag' }"
               @click="starReviewView = 'bag'; setTab('review')"
             >
-              背包与核对
+              背包整理
             </button>
             <button type="button" role="tab" id="star-tab-plan" aria-controls="product-root" :tabindex="starReviewView === 'plan' && activeTab === 'review' ? 0 : -1" :aria-selected="activeTab === 'review' && starReviewView === 'plan'" :class="{ on: activeTab === 'review' && starReviewView === 'plan' }" @click="starReviewView = 'plan'; setTab('review')">养成计划</button>
           </div>
-          <div v-if="activeTab === 'review'" class="star-workbench-actions">
+          <button v-if="TUTORIALS_ENABLED && productReady && (activeTab === 'import' || starReviewView === 'plan')" type="button" class="star-tutorial-replay" @click="activeTab === 'review' ? openTutorial('plan') : replayRecognitionTutorial()">
+            <CircleHelp :size="16" aria-hidden="true" />{{ activeTab === 'review' ? '重新查看养成教程' : '重新查看识别教程' }}
+          </button>
+          </div>
+          <div v-if="activeTab === 'review' && starReviewView === 'bag'" class="star-workbench-actions">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">＋ 导入截图</button>
-            <button type="button" class="star-filter-toggle" :aria-expanded="starFiltersOpen" aria-controls="product-root" @click="starFiltersOpen = !starFiltersOpen">{{ starFiltersOpen ? '收起筛选与设置' : '更多筛选与设置' }}</button>
+            <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-tutorial-replay" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           </div>
-          <div v-else class="star-import-heading"><strong class="star-import-stage" role="status">截图识别</strong></div>
           </div>
-          <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
-          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen && Boolean(tutorialStep)" :step="tutorialStep" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :paused="starHelpOpen" :focus-on-open="tutorialManualReplay" @help="openStarHelp" @skip="skipTutorialStep" @close="dismissRecognitionTutorial" />
-          <StarHelpModal :open="starHelpOpen" :topic="starHelpTopic" :auto-disabled="tutorialAutoDisabled" :empty-bag="!summary.currentCount" @close="starHelpOpen = false" @replay="replayCurrentTutorial" @opt-out="dismissRecognitionTutorial('opt-out')" />
+          <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
@@ -148,21 +159,24 @@ import { accountIdentityVersion, useAccountListUpdates } from '../../store/accou
 import { relabelStarArchive } from './starArchiveExport.js'
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { Archive, CircleHelp } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import RecognitionTutorial from "./RecognitionTutorial.vue";
-import StarHelpModal from "./StarHelpModal.vue";
-import { TUTORIALS_ENABLED } from "../../config/features.js";
-import { tutorialStorageKey, tutorialSeen, finishTutorial, shouldAutoStartTutorial, currentRecognitionGuidance } from "./recognitionTutorial.js";
-import { bagGuidance, createBagTutorialGate } from "./bagTutorial.js";
+import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial, tutorialOcrRunning } from "./recognitionTutorial.js";
+import { createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import { listAccounts } from "../../api/accounts.js";
+import { getCurrent as getCurrentInventory, importInventory } from "../../api/inventory.js";
+import { createGrowthPlanInventoryWriter, growthPlanInventorySession } from "./growthPlanInventory.js";
+import { createStarCompletionApi } from '../../api/starCompletions.js';
+import { createStarCompletionPort } from './starCompletionPort.js';
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js';
 import { auth } from "../../store/auth.js";
 import { activeAccount, isAccountGame } from "../../store/activeAccount.js";
 import {
@@ -181,6 +195,7 @@ import { createStarCaptureHost, createStarCaptureInbox, createStarCaptureLifecyc
 import { isStarCaptureDraftPersisted } from "./captureDraftReceipt.js";
 
 const EMBED_MODULE_URL = "/yuanstar-embed/yuanstar-embed.js";
+const completionDemo = import.meta.env.DEV && isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION_DEMO);
 const EMBED_STYLESHEET_URL = "/yuanstar-embed/yuanstar-embed.css";
 const EMBED_STYLESHEET_ID = "yuanstar-embed-styles";
 const route = useRoute();
@@ -199,10 +214,31 @@ const activeTab = usePersistedTab(
 );
 const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
 const starReviewView = ref('bag');
+const growthBottlePending = ref(false);
+function growthBottleWriter(owner) {
+  const userId = String(auth.userInfo?.id || '');
+  const context = starContextVersion, identity = accountIdentityVersion;
+  return createGrowthPlanInventoryWriter({
+    state: growthPlanInventorySession(userId, owner),
+    getCurrent: args => getCurrentInventory(args, { expectedUserId: userId, fresh: true }),
+    importInventory: doc => importInventory(doc, { expectedUserId: userId }),
+    isCurrent: account => !unmounted && context === starContextVersion && identity === accountIdentityVersion && auth.isLoggedIn &&
+      userId === String(auth.userInfo?.id || '') && account === selectedHostAccount()?.accountId,
+  });
+}
+async function runGrowthBottleOperation(owner, operation) {
+  const writer = growthBottleWriter(owner);
+  const context = starContextVersion, identity = accountIdentityVersion;
+  growthBottlePending.value = true;
+  try { return await operation(writer); }
+  finally {
+    if (!unmounted && context === starContextVersion && identity === accountIdentityVersion && owner === selectedHostAccount()?.accountId)
+      growthBottlePending.value = writer.hasPending();
+  }
+}
+watch(starReviewView, view => { handle?.setReviewView?.(view); });
 const starBrowseEmpty = ref(false);
 const starFiltersOpen = ref(false);
-const starHelpOpen = ref(false);
-const starHelpTopic = ref('screenshots');
 const cloudSyncMessage = ref("");
 const cloudSyncError = ref("");
 const cloudNeedsRetry = ref(false);
@@ -210,90 +246,77 @@ const cloudRetryBusy = ref(false);
 const productReady = ref(false);
 const cloudWriteBusy = ref(false);
 const recognitionTutorialOpen = ref(false);
+const emptyBagTutorialOpen = ref(false);
 const recognitionTutorialReplayId = ref(0);
-const tutorialStep = ref(null);
-const tutorialManualReplay = ref(false);
-const tutorialAutoDisabled = ref(false);
+const tutorialMode = ref("recognition");
 const tutorialCloudReady = ref(false);
 const tutorialCloudHistory = ref(false);
 const tutorialAccountReady = ref(false);
 const recognitionTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null));
+const bagTutorialKey = computed(() => tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, "bag"));
 const bagTutorialGate = createBagTutorialGate();
-const bagTutorialOwner = () => recognitionTutorialKey.value + ":" + (accountId.value || "guest");
-const pausedTutorialOwners = new Set();
-let skippedTutorialSteps = new Set();
+const bagTutorialOwner = () => bagTutorialKey.value + ":" + (accountId.value || "guest");
 let tutorialCheckSequence = 0;
 let recognitionTutorialOwnerKey = "";
 let tutorialStatusObserver = null;
 let tutorialStatusFrame = 0;
 
-function openStarHelp(topic = 'screenshots') {
-  starHelpTopic.value = topic;
-  starHelpOpen.value = true;
-  if (TUTORIALS_ENABLED) tutorialAutoDisabled.value = tutorialSeen(recognitionTutorialKey.value);
+function replayRecognitionTutorial() {
+  openTutorial("recognition");
 }
-async function replayCurrentTutorial() {
-  if (!TUTORIALS_ENABLED) return;
-  starHelpOpen.value = false;
-  await nextTick(); // Let the modal return focus before capturing the replay opener.
-  if (activeTab.value === 'review' && !summary.value.currentCount && !mountRoot.value?.querySelector('.ocr-review [data-review-image]')) setTab('import');
-  pausedTutorialOwners.delete(bagTutorialOwner());
-  skippedTutorialSteps = new Set();
-  tutorialManualReplay.value = true;
-  recognitionTutorialOwnerKey = recognitionTutorialKey.value;
-  recognitionTutorialReplayId.value++;
-  recognitionTutorialOpen.value = true;
-  if (activeTab.value === 'review') {
+function replayBagTutorial() {
+  openTutorial("bag");
+}
+function openTutorial(mode) {
+  if (!TUTORIALS_ENABLED || !productReady.value) return;
+  if (recognitionTutorialOpen.value || emptyBagTutorialOpen.value) dismissRecognitionTutorial();
+  tutorialMode.value = mode;
+  recognitionTutorialOwnerKey = tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, mode);
+  if (mode === 'bag' && !summary.value.currentCount) {
+    emptyBagTutorialOpen.value = true;
+    return;
+  }
+  const tab = mode === "recognition" ? "import" : "review";
+  if (mode !== 'recognition') {
+    starReviewView.value = mode === 'plan' ? 'plan' : 'bag';
     starBrowseEmpty.value = true;
-    starReviewView.value = 'bag';
-    tutorialStep.value = bagGuidance;
-  } else tutorialStep.value = currentRecognitionGuidance(mountRoot.value);
+  }
+  if (activeTab.value !== tab) setTab(tab);
+  recognitionTutorialReplayId.value++;
+  // A new component opening always starts at step 1.
+  recognitionTutorialOpen.value = true;
 }
-function dismissRecognitionTutorial(reason = 'later') {
+function revealTutorialStep(step) {
+  // Paging explains the current workspace; a missing target never switches pages.
+  if (tutorialMode.value === 'bag' && activeTab.value === 'review' && starReviewView.value === 'bag' && step.id === 'find') starFiltersOpen.value = true;
+}
+function dismissRecognitionTutorial() {
   if (!TUTORIALS_ENABLED) return;
-  finishTutorial(recognitionTutorialOwnerKey || recognitionTutorialKey.value, reason);
-  tutorialAutoDisabled.value = tutorialSeen(recognitionTutorialKey.value);
-  pausedTutorialOwners.add(bagTutorialOwner());
+  markTutorialSeen(recognitionTutorialOwnerKey || recognitionTutorialKey.value);
   recognitionTutorialOpen.value = false;
-  tutorialManualReplay.value = false;
-  tutorialStep.value = null;
-}
-function skipTutorialStep(id) {
-  skippedTutorialSteps.add(id);
-  tutorialStep.value = null;
-}
-function scheduleTutorialCheck() {
-  if (tutorialStatusFrame) return;
-  tutorialStatusFrame = requestAnimationFrame(() => {
-    tutorialStatusFrame = 0;
-    void checkRecognitionTutorial();
-  });
+  emptyBagTutorialOpen.value = false;
 }
 async function checkRecognitionTutorial() {
   if (!TUTORIALS_ENABLED) return;
   const sequence = ++tutorialCheckSequence;
-  if (!productReady.value || (!tutorialManualReplay.value && (!tutorialAccountReady.value || accountsLoading.value || accountError.value ||
-      (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))))) return;
+  if (!productReady.value || !tutorialAccountReady.value || accountsLoading.value || accountError.value ||
+      (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))) return;
   const currentHandle = handle, key = recognitionTutorialKey.value, context = starContextVersion;
   let status;
   try { status = await currentHandle?.getRecognitionTutorialStatus?.(); } catch (_) { return; }
   if (context !== starContextVersion || sequence !== tutorialCheckSequence || currentHandle !== handle || key !== recognitionTutorialKey.value || unmounted) return;
-  if (!status?.ready) return;
+  if (!status?.ready || typeof status.hasHistory !== 'boolean' || tutorialOcrRunning(mountRoot.value)) return;
   const hasHistory = status.hasHistory || tutorialCloudHistory.value;
-  bagTutorialGate.loaded(bagTutorialOwner(), hasHistory);
-  if (pausedTutorialOwners.has(bagTutorialOwner())) return;
-  if (!recognitionTutorialOpen.value && shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory })) {
-    recognitionTutorialOwnerKey = key;
-    recognitionTutorialOpen.value = true;
-  }
-  const reviewReady = bagTutorialGate.shouldStart(bagTutorialOwner(), {
-    reviewing: activeTab.value === 'review', ready: status.ready, seen: tutorialSeen(key),
-    hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')),
-  });
-  if (reviewReady) { recognitionTutorialOwnerKey = key; recognitionTutorialOpen.value = true; }
-  const step = activeTab.value === 'import' ? currentRecognitionGuidance(mountRoot.value)
-    : (reviewReady || tutorialManualReplay.value) ? bagGuidance : null;
-  tutorialStep.value = recognitionTutorialOpen.value && !skippedTutorialSteps.has(step?.id) ? step : null;
+  const bagEligible = bagTutorialGate.loaded(bagTutorialOwner(), hasHistory);
+  if (!bagEligible) markTutorialSeen(bagTutorialKey.value);
+  if (bagTutorialGate.shouldStart(bagTutorialOwner(), {
+    reviewing: activeTab.value === "review", ready: status.ready, seen: tutorialSeen(bagTutorialKey.value),
+    hasEvidence: Boolean(mountRoot.value?.querySelector('.ocr-review [data-review-image]')) &&
+      mountRoot.value?.querySelector('.ocr-review .ocr-summary em')?.textContent?.trim() === '已保存识别结果，可再次核对',
+  }) && !recognitionTutorialOpen.value && !emptyBagTutorialOpen.value && summary.value.currentCount > 0) replayBagTutorial();
+  // Remember experienced users even if they later switch to an empty game account.
+  if (hasHistory) { if (!bagEligible) markTutorialSeen(key); return; }
+  if (shouldAutoStartTutorial({ ready: status.ready, importing: activeTab.value === 'import', seen: tutorialSeen(key), hasHistory }) && !recognitionTutorialOpen.value && !emptyBagTutorialOpen.value) replayRecognitionTutorial();
 }
 const showArchive = ref(false);
 const showStarImport = ref(false);
@@ -593,6 +616,7 @@ async function loadAccounts() {
   }
 }
 async function syncHostAccount() {
+  if (completionDemo) return false;
   if (!handle) return false;
   productReady.value = false;
   tutorialAccountReady.value = false;
@@ -608,6 +632,7 @@ async function syncHostAccount() {
       await currentHandle.setHostAccount(host);
       if (!isCurrent()) return false;
       mountedAccountId = host?.accountId || "";
+      growthBottlePending.value = host ? growthBottleWriter(host.accountId).hasPending() : false;
       if (previousAccountId && previousAccountId !== mountedAccountId)
         resetStarImportState();
       clearCloudSyncFeedback();
@@ -618,6 +643,8 @@ async function syncHostAccount() {
       if (host) { accountError.value = rejectedSwitchMessage; rejectedSwitchMessage = ""; }
       productReady.value = true;
       currentHandle.setActiveTab(activeTab.value);
+      currentHandle.setReviewView?.(starReviewView.value);
+      if (entered) void currentHandle.recoverCompletion?.();
       if (pendingCapture) void importPendingCapture();
       return true;
     } catch (error) {
@@ -648,8 +675,13 @@ function ensureEmbedStylesheet() {
     document.head.appendChild(link);
   });
 }
-function loadEmbedModule() {
-  return Function("url", "return import(url)")(EMBED_MODULE_URL);
+async function loadEmbedModule() {
+  const committed = () => Function("url", "return import(url)")(EMBED_MODULE_URL);
+  if (import.meta.env.DEV && new URLSearchParams(location.search).get('star_bag_preview') === '1') {
+    const { loadStarCompletionDemoProduct } = await import('./dev/starCompletionDemo.js');
+    return loadStarCompletionDemoProduct(committed);
+  }
+  return committed();
 }
 function toggleStarImport() {
   clearCloudSyncFeedback();
@@ -737,6 +769,14 @@ async function mountProduct() {
     await waitForYuanStarDisposal();
     mountRoot.value?.replaceChildren();
     await ensureEmbedStylesheet();
+    if (import.meta.env.DEV && isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION_DEMO)) {
+      const { mountStarCompletionDemo, loadStarCompletionDemoProduct } = await import('./dev/starCompletionDemo.js');
+      const product = await loadStarCompletionDemoProduct(loadEmbedModule);
+      if (unmounted || !mountRoot.value) return;
+      handle = await mountStarCompletionDemo(product, mountRoot.value, next => { summary.value = next; });
+      productReady.value = true; activeTab.value = 'review'; starReviewView.value = 'plan';
+      return;
+    }
     const product = await loadEmbedModule();
     if (unmounted || !mountRoot.value) return;
     const initialHostAccount = selectedHostAccount();
@@ -744,8 +784,17 @@ async function mountProduct() {
       await migrateLegacyYuanStarHostAccount(initialHostAccount);
     if (unmounted || !mountRoot.value) return;
     const mountedHandle = product.mountYuanStar(mountRoot.value, {
+      completion: createStarCompletionPort({
+        api: createStarCompletionApi({ userId: String(auth.userInfo?.id || '') }), coordinator: starCloud,
+        identity: () => auth.isLoggedIn ? { userId: String(auth.userInfo?.id || ''), game: selectedHostAccount()?.gameVersion } : null,
+        enabled: isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION),
+      }),
       assetBaseUrl: "/yuanstar-embed/",
       embedded: true,
+      reviewView: starReviewView.value,
+      onReadBreakthroughInventory: owner => runGrowthBottleOperation(owner, writer => writer.read(owner)),
+      onSaveBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.save(owner,id,count)),
+      onAcceptBreakthroughInventory: (owner,id,count) => runGrowthBottleOperation(owner, writer => writer.acceptCurrent(owner,id,count)),
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
@@ -756,10 +805,10 @@ async function mountProduct() {
         if (TUTORIALS_ENABLED && !unmounted && context === starContextVersion && owner === bagTutorialOwner()) bagTutorialGate.ocrCompleted(owner);
         return result;
       },
-      onReplacementImport: function (snapshot) { return starCloud.replaceImport(snapshot); },
+      onReplacementImport: function (snapshot) { if (TUTORIALS_ENABLED) bagTutorialGate.cancelOcr(bagTutorialOwner()); return starCloud.replaceImport(snapshot); },
       onListRecoveryPoints: function () { return starCloud.listRecoveryPoints(); },
-      onRestoreRecoveryPoint: function (pointId) { return starCloud.restorePoint(pointId); },
-      onRestoreLocalPoint: function (snapshot) { return starCloud.restoreLocal(snapshot); },
+      onRestoreRecoveryPoint: function (pointId) { if (TUTORIALS_ENABLED) bagTutorialGate.cancelOcr(bagTutorialOwner()); return starCloud.restorePoint(pointId); },
+      onRestoreLocalPoint: function (snapshot) { if (TUTORIALS_ENABLED) bagTutorialGate.cancelOcr(bagTutorialOwner()); return starCloud.restoreLocal(snapshot); },
       onSummaryChange: function (nextSummary) {
         summary.value = nextSummary;
       },
@@ -786,19 +835,16 @@ async function mountProduct() {
   }
 }
 function setTab(tab) {
-  if (activeTab.value !== tab && recognitionTutorialOpen.value) dismissRecognitionTutorial('later');
   activeTab.value = tab;
   if (productReady.value) handle?.setActiveTab(tab);
 }
 watch([accountId, accountGame], () => {
+  if (completionDemo) return;
   starContextVersion++;
   ++tutorialCheckSequence;
   recognitionTutorialOpen.value = false;
-  tutorialStep.value = null;
-  tutorialManualReplay.value = false;
-  recognitionTutorialOwnerKey = "";
-  skippedTutorialSteps = new Set();
-  starHelpOpen.value = false;
+  emptyBagTutorialOpen.value = false;
+  recognitionTutorialOwnerKey = '';
   tutorialAccountReady.value = false;
   bagTutorialGate.reset();
   productReady.value = false;
@@ -812,29 +858,28 @@ if (TUTORIALS_ENABLED) {
   watch(recognitionTutorialKey, () => {
     ++tutorialCheckSequence;
     recognitionTutorialOpen.value = false;
-    tutorialStep.value = null;
-    tutorialManualReplay.value = false;
-    recognitionTutorialOwnerKey = "";
-    skippedTutorialSteps = new Set();
-    starHelpOpen.value = false;
+    emptyBagTutorialOpen.value = false;
+    recognitionTutorialOwnerKey = '';
     bagTutorialGate.reset();
   }, { flush: "sync" });
-  watch(activeTab, () => {
-    // OCR's import → review handoff retains eligibility. A manual tab switch
-    // hides this visit's hint without pretending the user completed the task.
-    tutorialStep.value = null;
+  watch([activeTab, starReviewView], ([tab, view]) => {
+    if ((recognitionTutorialOpen.value || emptyBagTutorialOpen.value) && (tab !== (tutorialMode.value === "recognition" ? "import" : "review") || (tutorialMode.value === "plan" && view !== "plan"))) dismissRecognitionTutorial();
   });
-  watch(starReviewView, view => { if (view === 'plan' && recognitionTutorialOpen.value) dismissRecognitionTutorial('later'); });
 }
 watch(function () { return [route.query.capture_id, route.query.account_id, productReady.value, accountId.value]; }, queueRouteCapture);
 onMounted(async function () {
+  if (completionDemo) { void mountProduct(); return; }
   // Draft restoration may finish after the first summary. Recheck on the
   // embed's actual render, without polling or changing its business lifecycle.
   if (TUTORIALS_ENABLED) {
-    tutorialStatusObserver = new MutationObserver(scheduleTutorialCheck);
+    tutorialStatusObserver = new MutationObserver(() => {
+      if (tutorialStatusFrame) return;
+      tutorialStatusFrame = requestAnimationFrame(() => {
+        tutorialStatusFrame = 0;
+        void checkRecognitionTutorial();
+      });
+    });
     if (mountRoot.value) tutorialStatusObserver.observe(mountRoot.value, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'disabled'] });
-    mountRoot.value?.addEventListener('focusin', scheduleTutorialCheck);
-    mountRoot.value?.addEventListener('click', scheduleTutorialCheck);
   }
   await loadAccounts();
   if (unmounted) return;
@@ -844,8 +889,6 @@ onMounted(async function () {
 });
 onBeforeUnmount(function () {
   tutorialStatusObserver?.disconnect();
-  mountRoot.value?.removeEventListener('focusin', scheduleTutorialCheck);
-  mountRoot.value?.removeEventListener('click', scheduleTutorialCheck);
   cancelAnimationFrame(tutorialStatusFrame);
   unmounted = true;
   if (stopCaptureEvents) stopCaptureEvents();
@@ -864,28 +907,22 @@ onBeforeUnmount(function () {
   z-index: var(--z-toast);
   pointer-events: none;
 }
-@media (pointer: coarse) {
-  .page-star #product-root :deep(.plan-actions > .button),
-  .page-star #product-root :deep(.current-editor .editor-actions > .button) {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-.star-help-trigger,
-.star-tutorial-replay {
+.star-tutorial-replay, .star-help-tutorial {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   min-height: 44px;
-  padding: 0 4px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink-60);
-  font: 12px/1.5 var(--font-b);
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
 }
-.star-tutorial-replay:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .star-main {
   min-height: 100vh; min-height: 100dvh;
 }
@@ -1025,11 +1062,16 @@ onBeforeUnmount(function () {
 
 .star-main > section { padding-top: 0; }
 .star-workbench { margin-top: 8px; }
-.star-workbench-actions, .star-import-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.star-workbench-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+@media (max-width: 640px) {
+  .star-workbench-header { gap: 6px; }
+  .star-workbench-header .star-tabs.tool-workspace-tabs { flex-wrap: nowrap; }
+  .star-tutorial-replay, .star-help-tutorial { gap: 4px; padding-inline: 6px; font-size: 13px; }
+}
+.star-workbench-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
 .star-import-action { flex: none; width: auto; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
-.star-filter-toggle { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); cursor: pointer; }
-.star-filter-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .page-star #product-root :deep(.review-toolbar) { border: 0; border-radius: 0; background: transparent; padding: 0; margin-bottom: 16px; }
+.page-star #product-root :deep(.is-bag-view .bag-filters) { border: 1px solid var(--line); border-radius: var(--radius-card, 12px); background: var(--surface); padding: var(--bag-card-padding); margin: 0; }
 .page-star #product-root :deep(.filter-strip) { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px; border: 0; padding: 0; }
 .page-star #product-root :deep(.filter-strip .filter-search) { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; font-size: 12px; }
 .page-star #product-root :deep(.filter-strip #name-filter) { min-height: 44px; height: 44px; font-size: 14px; background: var(--surface); }
@@ -1055,7 +1097,6 @@ onBeforeUnmount(function () {
 .page-star #product-root :deep(.filter-strip .soft-dropdown-trigger),
 .page-star #product-root :deep(.inventory-facts .soft-dropdown-trigger),
 .page-star #product-root :deep(.inventory-facts .review-view-toggle) { min-height: 44px; height: 44px; }
-.star-import-stage { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; color: var(--tea); font-size: 13px; font-weight: 600; }
 .page-star #product-root :deep(.yuanstar-embedded-shell) { padding-top: 16px; }
 .page-star #product-root :deep(.review-workspace-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .page-star #product-root :deep(.review-overview) { padding: 4px 6px; border-radius: 8px; background: var(--surface); }
@@ -1064,9 +1105,19 @@ onBeforeUnmount(function () {
 .page-star #product-root :deep(.review-overview:has(> .review-overview-count:only-child)) { display: none; }
 .page-star #product-root.is-empty-view :deep(.inventory-grid),
 .page-star #product-root.is-empty-view :deep(.review-workspace-tools),
-.page-star #product-root.is-empty-view :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
+.page-star #product-root.is-empty-view:not(.is-bag-view) :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
 .page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
 .star-sync-meta { font-size: 12px; }
+/* Star actions keep the same compact height for mouse and touch input.
+   Inline name tooltips, image previews and modal backdrops are content surfaces. */
+.page-star .star-main :deep(button:not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary):not(.file-drop-zone)) {
+  box-sizing: border-box;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding-block: 4px;
+  line-height: 1.2;
+}
 .star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
 .star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
 @media (max-width: 1080px) {
