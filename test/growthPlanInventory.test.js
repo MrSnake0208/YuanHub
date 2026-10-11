@@ -5,7 +5,7 @@ test('reads stable bottle IDs from current account items only', async () => {
   let request
   const result = await readGrowthPlanInventory('a', async args => { request=args; return [{account_id:'a',entity_type:'item',entries:{jiezhuping:{count:5},jiezheping:{count:9}}}] },()=>true)
   assert.deepEqual(request,{accountId:'a',entityType:'item'})
-  assert.deepEqual(result,{jiezhuping:5,jiezheping:9,jieyangping:0})
+  assert.deepEqual(result,{jiezhuping:5,jiezheping:9,jieyangping:null})
 })
 test('listed bottle save retains explicit zero and leaves unrelated stock outside the document',async()=>{
   let document, reads=0
@@ -74,8 +74,14 @@ test('unavailable account stays unknown and performs no request', async () => {
   const result=await readGrowthPlanInventory('',()=>{throw new Error('unexpected request')},()=>false)
   assert.deepEqual(result,{jiezhuping:null,jiezheping:null,jieyangping:null})
 })
-test('successful empty item snapshot has zero stock, matching inventory tracking', async () => {
-  assert.deepEqual(await readGrowthPlanInventory('a',async()=>[],()=>true),{jiezhuping:0,jiezheping:0,jieyangping:0})
+test('an account without an item snapshot has unknown stock', async () => {
+  assert.deepEqual(await readGrowthPlanInventory('a',async()=>[],()=>true),{jiezhuping:null,jiezheping:null,jieyangping:null})
+})
+test('only a valid full snapshot proves zero for missing bottle entries', async () => {
+  for (const full_baseline_at of [null, undefined, 'invalid']) {
+    assert.deepEqual(await readGrowthPlanInventory('a',async()=>[{full_baseline_at,entries:{jiezhuping:{count:0}}}],()=>true),{jiezhuping:0,jiezheping:null,jieyangping:null})
+  }
+  assert.deepEqual(await readGrowthPlanInventory('a',async()=>[{full_baseline_at:'2026-10-11T00:00:00Z',entries:{}}],()=>true),{jiezhuping:0,jiezheping:0,jieyangping:0})
 })
 test('rejects cross-account, malformed and late responses', async () => {
   for (const response of [{account_id:'b',entries:{}},{entity_type:'agent',entries:{}},{entries:{jiezheping:{count:-1}}},{entries:{jiezheping:{count:'3'}}},[{}],null])

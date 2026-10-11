@@ -22,6 +22,18 @@
         </template>
         <template #help>
           <p>导入截图并核对识别结果后，管理当前背包、养成计划与经验星曜。未登录时可先在本机使用，登录后同步当前账号数据。</p>
+          <details>
+            <summary>上传、分类与重叠</summary>
+            <p>手机和电脑网页端均可手动上传 JPG、PNG 等图片。首次 OCR 需要下载本机识别资源，请保持页面前台并使用稳定网络。</p>
+            <p>使用同一账号、同一次背包查看过程的完整原始截图；期间不要升级、分解、获得或消耗星石。不要裁切、拼接或涂改，保留分类、完整行、等级、品质、名称与上下界面。</p>
+            <p>系统推荐分类后，可拖到正确的池；触屏可长按缩略图再拖动。确认本池或一键确认全部后开始识别。重复整行才添加前后图关系；没有重复就直接识别。</p>
+            <div class="star-help-examples"><button type="button" @click="helpExampleKind = 'screenshots'">查看截图重点示例</button><button type="button" @click="helpExampleKind = 'overlap'">查看重复整行对照</button></div>
+          </details>
+          <details>
+            <summary>检查识别异常</summary>
+            <p>{{ bagReviewInfo.intro }}</p>
+            <section v-for="section in bagReviewInfo.sections" :key="section.title"><h3>{{ section.title }}</h3><p>{{ section.body }}</p></section>
+          </details>
           <button v-if="TUTORIALS_ENABLED && productReady" type="button" class="star-help-tutorial" @click="replayBagTutorial()"><CircleHelp :size="16" aria-hidden="true" />重新查看使用教程</button>
           <p>独立创作 · 著作权归作者 Drifty Yan 所有。</p>
         </template>
@@ -101,7 +113,7 @@
           </p>
           <ToolTaskPrompt v-if="productReady && activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError" class="star-empty" title="建立你的星石背包" description="上传游戏截图，即可识别并保存星石。图片识别过程仅在本机完成。">
             <button type="button" class="btn primary star-import-action" @click="setTab('import')">导入截图</button>
-            <button v-if="TUTORIALS_ENABLED" type="button" class="link" @click="setTab('import'); replayRecognitionTutorial()">查看支持的截图格式与说明</button>
+            <button type="button" class="link" @click="helpExampleKind = 'screenshots'">查看支持的截图格式与说明</button>
             <button type="button" class="link" @click="starBrowseEmpty = true">手动核对或恢复已有快照</button>
           </ToolTaskPrompt>
           <ToolTaskPrompt v-if="TUTORIALS_ENABLED && emptyBagTutorialOpen" class="star-empty-tutorial" title="背包暂时为空" description="可以先导入截图，建立背包后再查看使用教程。" role="status">
@@ -131,6 +143,7 @@
           </div>
           </div>
           <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
+          <RecognitionExampleModal :items="recognitionTutorialExamples[helpExampleKind] || []" @close="helpExampleKind = null" />
           <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
@@ -165,8 +178,9 @@ import { Archive, CircleHelp } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
 import RecognitionTutorial from "./RecognitionTutorial.vue";
-import { tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial, tutorialOcrRunning } from "./recognitionTutorial.js";
-import { createBagTutorialGate } from "./bagTutorial.js";
+import RecognitionExampleModal from "./RecognitionExampleModal.vue";
+import { recognitionTutorialExamples, tutorialStorageKey, tutorialSeen, markTutorialSeen, shouldAutoStartTutorial, tutorialOcrRunning } from "./recognitionTutorial.js";
+import { bagReviewInfo, createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
@@ -246,6 +260,7 @@ const cloudRetryBusy = ref(false);
 const productReady = ref(false);
 const cloudWriteBusy = ref(false);
 const recognitionTutorialOpen = ref(false);
+const helpExampleKind = ref(null);
 const emptyBagTutorialOpen = ref(false);
 const recognitionTutorialReplayId = ref(0);
 const tutorialMode = ref("recognition");
@@ -923,6 +938,9 @@ onBeforeUnmount(function () {
   white-space: nowrap;
   cursor: pointer;
 }
+.star-help-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.star-help-examples button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; cursor: pointer; }
+.star-help-examples button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .star-main {
   min-height: 100vh; min-height: 100dvh;
 }
