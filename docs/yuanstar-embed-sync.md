@@ -5,7 +5,7 @@
 - 来源分支 `feat/growth-plan-workspace-p1`，source commit `0b95a91f30aa91989c217e3b81d642993eeb767e`。已提交 source commit 的干净工作树正式 build：执行 `build:embed` 并通过正式同步脚本复制完整产物，来源和每个文件 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`。
 - 养成视图按钮复用真实下钻来源，显示「逐颗明细」「名称汇总」或「返回名称汇总」；新增 `data-growth-drilldown-return`、`data-growth-tutorial-blocked` 与 `data-growth-save-state` 只读标记。点击继续使用原返回逻辑，不改筛选、养成、库存或完成接口。
 - 只解除养成视图按钮的固定宽度，保持 32px 高度、原 padding 和大类控件尺寸；视图行复用响应式换行。源仓说明见 `docs/growth-tutorial-drilldown-closeout.md`。
-- YuanHub 三套六步教程已人工验收，自动触发和已读语义保留，教程仅按可靠状态点击现有视图按钮，不自动选择、保存或完成养成。权威源码已普通推送至上述 feature 分支；宿主本轮正式提交并向上游 main 提交 PR，发布结果以 PR 为准。真实 `STAR_COMPLETION` 仍关闭，公开 Backend P3 尚未确认部署，不宣称线上扣减或 OCR 传输 E2E 通过。
+- YuanHub 三套六步教程已人工验收，自动触发和已读语义保留，教程仅按可靠状态点击现有视图按钮，不自动选择、保存或完成养成。权威源码及宿主 feature 已普通推送；向上游 main 创建 PR 时 GitHub 连接器返回 `403 Resource not accessible by integration`，当前未创建 PR，需有权限的用户或维护者继续。真实 `STAR_COMPLETION` 仍关闭，公开 Backend P3 尚未确认部署，不宣称线上扣减或 OCR 传输 E2E 通过。
 
 ## 此前宿主 main 兼容合并（2026-10-11，历史阶段）
 
