@@ -21,7 +21,6 @@
               <img v-for="portrait in coverPortraits(pool)" :key="portrait.id" class="cover-portrait" :src="portrait.src" alt="" loading="lazy" decoding="async" @error="markPortraitFailed(portrait.src)" />
             </span>
             <span v-if="hiddenPortraitCount(pool)" class="cover-more">+{{ hiddenPortraitCount(pool) }}</span>
-            <Sprout class="cover-sprout" :size="100" :stroke-width=".8" />
             <span class="cover-caption">{{ details(pool).pool_type || '招募档案' }}</span>
             <span class="cover-name">{{ details(pool).name }}</span>
             <span v-if="coverAgents(pool).length" class="cover-agents">
