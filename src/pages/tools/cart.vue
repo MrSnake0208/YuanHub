@@ -758,7 +758,7 @@ function applyPlan(plan) {
   // ① 版本（方案绑定单一 version）
   version.value = plan.version;
 
-  // ② 汇率：方案值优先；缺省使用迁移默认值
+  // ② 汇率：仅在 daihao 生效；缺省回退 6.7
   if (isDaihao)
     updateRateDraft(plan.exchange_rate == null ? bundledLedgerCatalog.exchangeRate : plan.exchange_rate);
 
