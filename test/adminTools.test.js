@@ -22,6 +22,7 @@ test('maps every management tool to its existing permission boundary', function 
     operator_areas: ['OPERATOR']
   })
   assert.deepEqual(getVisibleAdminTools(access).map(function (tool) { return tool.to }), [
+    '/admin/ledger',
     '/co-creation/admin',
     '/admin/beta',
     '/admin/recruitment-access',
@@ -121,7 +122,7 @@ test('keeps notification private and provides a guest feedback entry in more', f
 
 test('all registered administrative routes belong to management without absorbing player routes', () => {
   const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || route.meta?.requiredPermission || route.meta?.requiredAnyPermission).map(route => route.path)
-  assert.equal(managementPaths.length, 13)
+  assert.equal(managementPaths.length, 14)
   for (const path of managementPaths) {
     assert.equal(isManagementRoute(path), true, path)
     assert.equal(isManagementRoute(path + '/'), true, path + '/')
@@ -137,4 +138,15 @@ test('活动编辑员只能看到内容维护中的活动日历管理', () => {
   assert.deepEqual(getVisibleAdminTools(access).map(tool => tool.to), ['/calendar/admin'])
   assert.deepEqual(getVisibleAdminToolGroups(access).map(group => group.key), ['content'])
   assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE] })).some(tool => tool.to === '/calendar/admin'), false)
+})
+
+
+test('账房管理路由和内容入口使用独立维护权限', () => {
+  const route = routes.find(item => item.path === '/admin/ledger')
+  assert.equal(route.meta.requiresAuth, true)
+  assert.equal(route.meta.requiredPermission, ADMIN_PERMISSIONS.LEDGER_CATALOG_WRITE)
+  const access = normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.LEDGER_CATALOG_WRITE] })
+  assert.deepEqual(getVisibleAdminTools(access).map(tool => tool.to), ['/admin/ledger'])
+  assert.equal(getVisibleAdminToolGroups(access)[0].key, 'content')
+  assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: ['activity_calendar:write'] })).some(tool => tool.to === '/admin/ledger'), false)
 })

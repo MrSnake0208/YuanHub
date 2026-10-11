@@ -4,6 +4,7 @@ import {
   getCurrentAdminAccess,
   listAdminAuditLogs,
   listAdminRoleUsers,
+  normalizeAdminAuditLog,
   replaceAdminRoles
 } from '../src/api/admin.js'
 
@@ -90,4 +91,13 @@ test('normalizes paged audit records and nullable snapshots', async () => {
   })
   assert.match(url, /page=2/)
   assert.match(url, /size=20/)
+})
+
+
+test('ledger audit preserves public change detail and resource identity', () => {
+  const log = normalizeAdminAuditLog({ action: 'LEDGER_CATALOG_UPDATED', actor_user_id: 'editor', target_resource: 'ledger:ru:1000000',
+    before: { ledger: { value: '旧价格=6' } }, after: { ledger: { value: '新价格=7' } } })
+  assert.equal(log.targetResource, 'ledger:ru:1000000')
+  assert.deepEqual(log.before.ledger, { value: '旧价格=6' })
+  assert.deepEqual(log.after.ledger, { value: '新价格=7' })
 })

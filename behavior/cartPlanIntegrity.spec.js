@@ -1,3 +1,4 @@
+import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
@@ -8,6 +9,7 @@ import { auth } from '../src/store/auth.js'
 import * as ledger from '../src/api/ledger.js'
 import html2canvas from 'html2canvas'
 
+vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn(async () => legacyLedgerFixture()) }))
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
   return { auth: reactive({ isLoggedIn: false, userInfo: null }) }
@@ -222,7 +224,7 @@ it('edits made in the saving game are not replaced by an earlier save response',
   await flushPromises()
   expect(wrapper.get('.receipt input').element.value).toBe('20')
   expect(wrapper.get('.receipt').text()).toContain('35 分')
-  expect(wrapper.get('[role="status"]').text()).toContain('当前编辑内容已保留')
+  expect(wrapper.get('.cart-operation-message[role="status"]').text()).toContain('当前编辑内容已保留')
 })
 
 it('duplicate cloud save is single flight and late responses retain edits or a switched game', async () => {
@@ -243,7 +245,7 @@ it('duplicate cloud save is single flight and late responses retain edits or a s
   expect(ledger.createPlan).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.cart-version-selector').element.value).toBe('ru')
   expect(total(wrapper)).toBe(ruTotal)
-  expect(wrapper.get('[role="status"]').text()).toContain('当前编辑内容已保留')
+  expect(wrapper.get('.cart-operation-message[role="status"]').text()).toContain('当前编辑内容已保留')
 })
 
 it('failure allows retry and a cloud response from a previous login cannot replace current state', async () => {
@@ -253,7 +255,7 @@ it('failure allows retry and a cloud response from a previous login cannot repla
   const wrapper = render()
   await loadLocal(wrapper, plan())
   await save(wrapper, '失败后重试')
-  expect(wrapper.get('[role="alert"]').text()).toContain('保存失败样例')
+  expect(wrapper.get('.cart-operation-message[role="alert"]').text()).toContain('保存失败样例')
   const pending = deferred()
   ledger.createPlan.mockReturnValueOnce(pending.promise)
   wrapper.getComponent(PlanSaveDialog).vm.$emit('save', { name: '失败后重试', overwrite: false })

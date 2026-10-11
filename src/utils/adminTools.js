@@ -15,6 +15,11 @@ export const ADMIN_TOOL_GROUPS = Object.freeze([
 
 const ADMIN_TOOLS = Object.freeze([
   {
+    key: 'ledger-catalog', to: '/admin/ledger', label: '广陵账房管理',
+    description: '维护公共礼包、累充活动与默认参考汇率', group: 'content', icon: BookOpen,
+    isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.LEDGER_CATALOG_WRITE)
+  },
+  {
     key: 'development-goals', to: '/co-creation/admin', label: '开发目标',
     description: '规划开发目标、维护验收进度并关联公开反馈', group: 'content', icon: FilePenLine,
     isVisible: access => hasPermission(access, ADMIN_PERMISSIONS.DEVELOPMENT_GOAL_MANAGE)

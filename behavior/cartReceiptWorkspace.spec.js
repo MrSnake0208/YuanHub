@@ -1,9 +1,11 @@
+import { legacyLedgerFixture } from '../test-support/ledgerCatalog.js'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
 import html2canvas from 'html2canvas'
 
+vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn(async () => legacyLedgerFixture()) }))
 vi.mock('../src/store/auth.js', () => ({ auth: { isLoggedIn: false } }))
 vi.mock('html2canvas', () => ({ default: vi.fn() }))
 

@@ -39,6 +39,7 @@ test('Case 4：所有带权限元数据的路由都必须先拿到权限结果',
 
 test('Case 4：权限满足时放行，权限不足时拒绝（逐条覆盖管理路由）', function () {
   const cases = [
+    ['/admin/ledger', access({ permissions: ['ledger_catalog:write'] })],
     ['/admin/beta', access({ permissions: ['beta:manage'] })],
     ['/feedback/manage', access({ operatorAreas: ['INVENTORY'] })],
     ['/feedback/admin', access({ permissions: ['admin:feedback_access:manage'] })],

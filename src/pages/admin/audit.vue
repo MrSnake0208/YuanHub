@@ -57,6 +57,7 @@ import { listAdminAuditLogs } from '../../api/admin.js'
 const PAGE_SIZE = 20
 const AREA_LABELS = { INVENTORY: '库存', OPERATOR: '密探', LEDGER: '账房', PLAZA: '作业广场', ACCOUNT: '账号', UI: '界面', OTHER: '其他' }
 const ACTION_LABELS = {
+  LEDGER_CATALOG_UPDATED: '账房公共数据变更',
   BETA_UPDATED: '内测配置变更',
   ROLE_GRANTED: '授予角色', ROLE_REVOKED: '回收角色', ROLE_REPLACED: '替换角色',
   FEEDBACK_ACCESS_UPDATED: '更新反馈授权', FEEDBACK_ACCESS_DELETED: '删除反馈授权',
@@ -107,6 +108,7 @@ function snapshotParts(snapshot) {
   if (!snapshot) return ['无']
   const parts = []
   parts.push(...betaAuditSnapshotParts(snapshot.beta))
+  if (snapshot.ledger?.value) parts.push(snapshot.ledger.value)
   if (snapshot.roles.length) parts.push('角色：' + snapshot.roles.map(roleLabel).join('、'))
   if (snapshot.receiveAreas.length) parts.push('接收：' + snapshot.receiveAreas.map(areaLabel).join('、'))
   if (snapshot.manageAreas.length) parts.push('管理：' + snapshot.manageAreas.map(areaLabel).join('、'))
