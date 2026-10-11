@@ -6,7 +6,7 @@ import { recognitionTutorialSteps, tutorialStepIndex, tutorialStorageKey, tutori
 test('import help entries retain the tutorial after removing the duplicate heading', () => {
   const page = readFileSync(new URL('../src/pages/star/index.vue', import.meta.url), 'utf8')
   assert.doesNotMatch(page, /star-import-heading|截图要求与识别说明|starImportHelpOpen/)
-  assert.match(page, /@click="setTab\('import'\); replayRecognitionTutorial\(\)">查看支持的截图格式与说明/)
+  assert.match(page, /@click="helpExampleKind = 'screenshots'">查看支持的截图格式与说明/)
   assert.match(page, /重新查看识别教程/)
   assert.match(recognitionTutorialSteps[0].body, /原始截图.*不要裁剪、拼接或涂改.*保留上下界面/)
   assert.match(recognitionTutorialSteps[4].body, /点击「开始识别」/)

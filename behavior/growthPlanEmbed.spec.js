@@ -65,7 +65,7 @@ it('selects rows by click and keyboard; summary double-click cancels pending sin
   row.click();vi.advanceTimersByTime(220)
   expect(root.querySelector('.summary-row.is-selected')).not.toBeNull()
   row=root.querySelector('[data-summary-group-key="主星|天府"]');row.click();vi.advanceTimersByTime(100);row.click();row.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));vi.advanceTimersByTime(250)
-  expect(root.querySelector('#view-mode-toggle').textContent).toBe('逐颗明细')
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('返回名称汇总')
   expect(root.querySelectorAll('#plan-rows [data-star-id]')).toHaveLength(2)
   root.querySelector('#view-mode-toggle').click()
   expect(root.querySelector('#view-mode-toggle').textContent).toBe('名称汇总')
@@ -561,7 +561,7 @@ it('account switch discards group preview and an obsolete confirmation cannot ap
 })
 it('double-click still drills down and returning restores the selected group and draft scope', async () => {
   await groupSetup();root.querySelector('[data-summary-group-key="主星|天府"]').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))
-  expect(root.querySelector('#view-mode-toggle').textContent).toBe('逐颗明细')
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('返回名称汇总')
   expect(root.querySelector('.growth-group-editor')).toBeNull()
   expect(root.querySelectorAll('#plan-rows [data-star-id]')).toHaveLength(8)
   root.querySelector('#view-mode-toggle').click()

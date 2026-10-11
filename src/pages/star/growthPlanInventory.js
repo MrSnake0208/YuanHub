@@ -1,20 +1,20 @@
 export const BREAKTHROUGH_IDS = ['jiezhuping', 'jiezheping', 'jieyangping']
 export const unknownBreakthroughInventory = () => Object.fromEntries(BREAKTHROUGH_IDS.map(id => [id, null]))
 
-// Read-only account-scoped adapter. Missing entries in a valid item snapshot mean zero;
-// an unavailable snapshot is unknown, never an invented empty inventory.
+// Only an explicit entry or a full snapshot proves zero; absent observations stay unknown.
 export async function readGrowthPlanInventory(accountId, getCurrent, isCurrent) {
   if (!accountId || !isCurrent()) return unknownBreakthroughInventory()
   const data = await getCurrent({ accountId, entityType: 'item' })
   if (!isCurrent()) throw new Error('账号已切换，忽略旧库存响应')
   const list = Array.isArray(data) ? data : data ? [data] : []
-  // /current returns [] when this account has no item snapshot yet, as on the inventory page.
-  if (Array.isArray(data) && list.length === 0) return Object.fromEntries(BREAKTHROUGH_IDS.map(id => [id, 0]))
+  if (Array.isArray(data) && list.length === 0) return unknownBreakthroughInventory()
   if (list.length !== 1 || !list[0]?.entries || typeof list[0].entries !== 'object' || Array.isArray(list[0].entries)) throw new Error('突破瓶子库存响应无效')
   const doc = list[0]
   if ((doc.account_id && doc.account_id !== accountId) || (doc.entity_type && doc.entity_type !== 'item')) throw new Error('突破瓶子库存与当前账号不符')
+  const hasFullBaseline = typeof doc.full_baseline_at === 'string' && Number.isFinite(Date.parse(doc.full_baseline_at))
   return Object.fromEntries(BREAKTHROUGH_IDS.map(id => {
-    const value = Object.hasOwn(doc.entries, id) ? doc.entries[id]?.count : 0
+    if (!Object.hasOwn(doc.entries, id)) return [id, hasFullBaseline ? 0 : null]
+    const value = doc.entries[id]?.count
     if (!Number.isSafeInteger(value) || value < 0) throw new Error('突破瓶子库存数量无效')
     return [id, value]
   }))
