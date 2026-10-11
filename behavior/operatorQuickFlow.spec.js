@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
+// This suite includes the enabled tutorial entry; default-off coverage lives in onboardingTour.
+vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
+afterAll(() => vi.unstubAllEnvs())
 import { mount, flushPromises } from '@vue/test-utils'
 import QuickPage from '../src/pages/operator/quick.vue'
 import { dialog } from '../src/utils/dialog.js'
@@ -53,7 +56,7 @@ afterEach(() => {
 })
 const render = () => {
   const wrapper = mount(QuickPage, { global: {
-  stubs: { IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RouterLink: true },
+  stubs: { OnboardingGuide: true, IslandSidebar: true, SiteFooter: true, DataAccountContextBar: true, RouterLink: true },
   directives: { reveal: () => {} },
 } })
   wrappers.add(wrapper)
@@ -79,7 +82,7 @@ it('快捷录入页头展示账号与实际模式，模式切换保留工作区�
   expect(wrapper.get('.quick-mode-context').text()).toContain('快速补录')
   const account = wrapper.getComponent({ name: 'DataAccountContextBar' })
   expect(account.props()).toMatchObject({ compact: true, accountId: 'acc', game: '如鸢' })
-  expect(wrapper.find('main > header button').exists()).toBe(false)
+  expect(wrapper.findAll('main > header button').map(button => button.text())).toEqual(['使用教程'])
   await wrapper.findAll('.entry-mode button')[0].trigger('click')
   expect(wrapper.get('.quick-mode-context').text()).toContain('首次建档')
   expect(wrapper.get('.quick-save-guidance').text()).toContain('不会撤销之前的保存')

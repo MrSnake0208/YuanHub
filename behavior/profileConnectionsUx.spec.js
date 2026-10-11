@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
+import { createPinia } from 'pinia'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import ProfilePage from '../src/pages/user/profile.vue'
 import { auth } from '../src/store/auth.js'
@@ -25,7 +26,7 @@ vi.mock('../src/api/openApi.js', () => ({
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 
 const token = { token_id: 'tok-a', account_id: 'acc-a', account_name: '大号', remark: '旧连接', scopes: [] }
-const render = (options = {}) => mount(ProfilePage, { ...options, global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, BetaNotice: true, GameAccountManager: true }, directives: { reveal: () => {} } } })
+const render = (options = {}) => mount(ProfilePage, { ...options, global: { plugins: [createPinia()], stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, BetaNotice: true, GameAccountManager: true }, directives: { reveal: () => {} } } })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -66,10 +67,10 @@ it('摘要仅展示真实当前账号与总数，管理按需打开共享 Dialog
   await summary.get('[data-tour="account-create"]').trigger('click')
   const manager = wrapper.findComponent({ name: 'GameAccountManager' })
   expect(manager.props()).toMatchObject({ presentation: 'dialog', initialView: 'list', accounts: expect.any(Array) })
-  expect(summary.get('button').attributes('aria-expanded')).toBe('true')
+  expect(summary.get('[data-tour="account-create"]').attributes('aria-expanded')).toBe('true')
   manager.vm.$emit('close'); await flushPromises()
   expect(wrapper.findComponent({ name: 'GameAccountManager' }).exists()).toBe(false)
-  expect(summary.get('button').attributes('aria-expanded')).toBe('false')
+  expect(summary.get('[data-tour="account-create"]').attributes('aria-expanded')).toBe('false')
   activeAccount.id = 'deleted'; await flushPromises()
   expect(summary.text()).toContain('尚未选择当前账号')
   expect(summary.text()).not.toContain('已改名')
@@ -107,7 +108,7 @@ it('旧 hash 保留摘要目标但不自动打开 Dialog，空态入口直接打
   expect(wrapper.get('.game-account-summary').text()).toContain('尚未创建游戏账号')
   expect(wrapper.get('#game-accounts').exists()).toBe(true)
   expect(wrapper.findComponent({ name: 'GameAccountManager' }).exists()).toBe(false)
-  await wrapper.get('.game-account-summary button').trigger('click')
+  await wrapper.get('.game-account-summary [data-tour="account-create"]').trigger('click')
   expect(wrapper.findComponent({ name: 'GameAccountManager' }).props()).toMatchObject({ presentation: 'dialog', initialView: 'create' })
   wrapper.unmount()
 })
@@ -139,14 +140,15 @@ it('连接设置区分星石上传权限与尚未接入的自动采集任务', a
   expect(wrapper.get('.grant-review').text()).toContain('上传星石背包临时采集结果（MaaYuan 采集任务接入中）')
   await wrapper.get('#maayuan-connect-panel').trigger('submit')
   await flushPromises()
-  expect(wrapper.get('.paste-steps').text()).toContain('星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中')
+  await wrapper.get('.nt-row button').trigger('click'); await flushPromises()
+  expect(wrapper.get('details.paste-steps').text()).toContain('星石 → YuanHub 网页端先导入截图；MaaYuan 自动采集接入中')
   expect(wrapper.get('.paste-steps').text()).toContain('仅创建连接码不表示同步成功')
   expect(wrapper.get('.nt-footer button').text()).toBe('收起填写说明')
   wrapper.unmount()
 })
 
 it('补权限与停止连接使用站内危险确认；取消或账号切换后不提交', async () => {
-  const wrapper = render()
+  let wrapper = render()
   await flushPromises()
   dialog.confirm.mockResolvedValueOnce(false)
   await wrapper.get('.t-btn.update').trigger('click')
@@ -163,6 +165,9 @@ it('补权限与停止连接使用站内危险确认；取消或账号切换后�
   expect(updateOpenApiTokenScopes).not.toHaveBeenCalled()
 
   auth.userInfo = { id: 'user-a', user_name: '测试用户' }
+  wrapper.unmount()
+  wrapper = render()
+  await flushPromises()
   dialog.confirm.mockResolvedValueOnce(true)
   await wrapper.get('.t-btn.del').trigger('click')
   await flushPromises()

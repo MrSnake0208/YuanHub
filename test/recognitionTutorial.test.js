@@ -40,6 +40,30 @@ test('dismissal persists per site user, including a storage failure fallback', (
   markTutorialSeen(brokenKey, broken)
   assert.equal(tutorialSeen(brokenKey, broken), true)
 })
+
+test('main v2 read preference suppresses recognition only, without rewriting legacy or other mode records', () => {
+  const values = new Map([['yuanhub:star-onboarding:v2:main-old-user', 'seen']])
+  const storage = { getItem: key => values.get(key), setItem() { throw Error('must stay read-only') } }
+  assert.equal(tutorialSeen(tutorialStorageKey('main-old-user'), storage), true)
+  assert.equal(tutorialSeen(tutorialStorageKey('main-old-user', 'bag'), storage), false)
+  assert.equal(tutorialSeen(tutorialStorageKey('main-old-user', 'plan'), storage), false)
+  assert.equal(tutorialSeen(tutorialStorageKey('other-site-user'), storage), false)
+  assert.equal(values.size, 1)
+})
+
+test('a throwing localStorage property cannot escape the tutorial helpers', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  const key = tutorialStorageKey('throwing-property-user')
+  try {
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw Error('blocked') } })
+    assert.equal(tutorialSeen(key), false)
+    assert.doesNotThrow(() => markTutorialSeen(key))
+    assert.equal(tutorialSeen(key), true)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor)
+    else delete globalThis.localStorage
+  }
+})
 test('desktop placement prefers right, then left, below, above and keeps collision fallback on screen', () => {
   const view = { left: 0, top: 0, width: 1440, height: 900 }, size = { width: 340, height: 250 }
   assert.equal(tutorialCardPosition({ left: 300, right: 800, top: 200, bottom: 400 }, size, view).placement, 'right')

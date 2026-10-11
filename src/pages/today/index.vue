@@ -3,6 +3,7 @@
     <IslandSidebar />
     <main id="main-content" class="today-main">
       <TodayLobby :owner-id="auth.isLoggedIn ? String(auth.userInfo?.id || '') : ''" :status="lobbyStatus">
+        <template v-if="TUTORIALS_ENABLED" #actions><TutorialEntry v-if="TUTORIALS_ENABLED" task="today-first-data" /></template>
         <DataAccountContextBar
           v-if="auth.isLoggedIn"
           ref="accountContext"
@@ -24,6 +25,7 @@
           </div>
 
           <p v-if="accountLoading" class="today-loading" role="status">正在读取游戏账号…</p>
+          <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
 
           <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-sidebar': calendarEnabled && showAccountOverview }" data-tour="today-overview">
             <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
@@ -159,6 +161,8 @@
 
 <script setup>
 import { useAccountListUpdates } from '../../store/accountList.js'
+import TutorialEntry from '../../components/TutorialEntry.vue'
+import OnboardingGuide from '../../components/OnboardingGuide.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowRight, Gem, Link2, PackageOpen, Users } from '@lucide/vue'
 import IslandSidebar from '../../components/IslandSidebar.vue'
@@ -167,7 +171,7 @@ import DataAccountContextBar from '../../components/DataAccountContextBar.vue'
 import TodayActivitySummary from '../../components/today/TodayActivitySummary.vue'
 import TodaySubscriptionSummary from '../../components/today/TodaySubscriptionSummary.vue'
 import TodayLobby from '../../components/today/TodayLobby.vue'
-import { FEATURE_KEYS, isFeatureEnabled } from '../../config/features.js'
+import { FEATURE_KEYS, isFeatureEnabled, TUTORIALS_ENABLED } from '../../config/features.js'
 import { listAccounts } from '../../api/accounts.js'
 import { getOperatorCurrent } from '../../api/operator.js'
 import { getCurrent } from '../../api/inventory.js'
@@ -313,9 +317,7 @@ const onboardingDescription = computed(function () {
   return 'YuanHub 已分别检查当前子账号的密探、库存和星石。缺哪一项就只补哪一项，已有数据不会重复要求录入。'
 })
 const onboardingNote = computed(function () {
-  if (onboardingStage.value === 'auth') return '第 1 步 · 登录'
-  if (onboardingStage.value === 'account') return '第 2 步 · 子账号'
-  return '第 3 步 · 按功能补数据'
+  return '任选所需业务 · 无需全部录入'
 })
 const lobbyStatus = computed(() => {
   if (!auth.isLoggedIn) return '登录后，一起看看你的今日事项。'
@@ -352,7 +354,8 @@ async function loadDashboard() {
   try {
     const data = await listAccounts(auth.userInfo?.id)
     if (sequence !== loadSequence) return
-    accounts.value = Array.isArray(data) ? data : []
+    if (!Array.isArray(data)) throw new Error('游戏账号响应无效，请重试读取')
+    accounts.value = data
     activeAccount.syncAccounts(accounts.value)
     if (!validAccountId.value) activeAccount.set(accounts.value[0]?.id)
   } catch (error) {
@@ -377,7 +380,7 @@ async function loadSummary(sequence, targetAccount, game) {
   if (results[0].status === 'rejected') realSummary.value.operatorCount = null
   if (results[1].status === 'rejected') realSummary.value.inventoryKindCount = null
   if (results[2].status === 'rejected') realSummary.value.starCount = null
-  errorMessage.value = results.some(result => result.status === 'rejected')
+  errorMessage.value = results.some(result => result.status === 'rejected') || realSummary.value.operatorCount == null || realSummary.value.starCount == null
     ? '部分状态暂时读取失败；已读取的数据仍可查看，可重试读取状态。' : ''
   summaryLoading.value = false
 }

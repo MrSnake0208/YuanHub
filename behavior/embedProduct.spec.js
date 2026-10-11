@@ -3,6 +3,8 @@ import { Blob as CloneableBlob, File as CloneableFile } from 'node:buffer'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { loadAndImportStarCapture, STAR_CAPTURE_IMPORT_SUPERSEDED_CODE } from '../src/pages/star/captureTransport.js'
 import { createStarCaptureLifecycle, importAndMarkStarCapture } from '../src/pages/star/starCaptureLifecycle.js'
+import { recognitionTutorialSteps, resolveTutorialTargets } from '../src/pages/star/recognitionTutorial.js'
+import { bagTutorialSteps } from '../src/pages/star/bagTutorial.js'
 
 // 本文件直接执行 vendored embed 产物（public/yuanstar-embed/yuanstar-embed.js），
 // 而不是断言它的字符串。之前的 provenance 测试只做子串匹配：即使 capture_game_mismatch
@@ -264,6 +266,28 @@ describe('vendored OCR prewarming', () => {
       ;(entrance === 'drop' ? root.querySelector('#file-drop-zone') : document).dispatchEvent(event)
     }
   }
+
+  it('step tutorial targets resolve against the actual vendored import and bag workspaces', async () => {
+    let embed
+    try {
+      embed = await clockedEmbed()
+      embed.handle.setActiveTab('import')
+      expect((await embed.handle.getRecognitionTutorialStatus()).ready).toBe(true)
+      expect(embed.root.querySelector(recognitionTutorialSteps[0].target)).toBeTruthy()
+      await embed.handle.importCaptureBatch(captureBatch('如鸢'))
+      await vi.advanceTimersByTimeAsync(200)
+      expect(embed.root.querySelectorAll('.thumbnail-card.is-confirmed')).toHaveLength(3)
+      for (const step of recognitionTutorialSteps) expect(embed.root.querySelector(step.target), step.id).toBeTruthy()
+      // Actual product confirmation modal takes priority over guidance.
+      embed.root.querySelector('[data-start-ocr]').click()
+      expect(embed.root.querySelector('[role="dialog"]')).toBeTruthy()
+      embed.root.querySelector('[data-cancel-ocr-confirm]').click()
+      embed.handle.setActiveTab('review')
+      expect(embed.root.querySelector(bagTutorialSteps[0].target)?.textContent).toContain('识别结果核对')
+      for (const step of bagTutorialSteps.filter(step => step.id !== 'plan')) expect(embed.root.querySelector(step.target), step.id).toBeTruthy()
+      expect(resolveTutorialTargets(embed.root, bagTutorialSteps[4], 844).primary).toBeNull()
+    } finally { await cleanup(embed) }
+  }, 60000)
 
   it('waits ten seconds after initial render, then gives initialize its full 300 seconds', async () => {
     let embed

@@ -1,6 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RecognitionTutorial from '../src/pages/star/RecognitionTutorial.vue'
+import { computed, defineComponent, ref } from 'vue'
+import { useModalFocus } from '../src/composables/useModalFocus.js'
 import { recognitionTutorialSteps } from '../src/pages/star/recognitionTutorial.js'
 
 let root
@@ -174,4 +176,58 @@ it('mobile drag accounts for safe areas and an offset short visual viewport', as
   await click('下一步')
   expect(card().textContent).toContain('查看识别进度')
   expect(card().querySelector('footer').textContent).toBe('上一步完成')
+})
+
+it.each([['recognition', 6], ['bag', 7], ['plan', 4]])('%s paging survives every missing target and never performs product actions', async (mode, length) => {
+  root.innerHTML = ''
+  const wrapper = mount(RecognitionTutorial, { props: { open: true, mode, root }, attachTo: document.body })
+  await settle()
+  for (let index = 1; index < length; index++) {
+    await click('下一步')
+    expect(card().textContent).toContain(`${index + 1} / ${length}`)
+    expect(document.querySelectorAll('.recognition-tour-ring')).toHaveLength(0)
+  }
+  for (let index = length - 2; index >= 0; index--) {
+    await click('上一步')
+    expect(card().textContent).toContain(`${index + 1} / ${length}`)
+  }
+  expect(window.scrollTo).not.toHaveBeenCalled()
+  card().querySelector('.recognition-tour-close').click()
+  expect(wrapper.emitted('close')).toHaveLength(1)
+})
+
+it('product dialog and running OCR suspend highlights and resume the same manually chosen step', async () => {
+  mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body }); await settle()
+  await click('下一步'); await click('下一步')
+  const dialog = document.createElement('section'); dialog.setAttribute('role', 'dialog'); root.append(dialog)
+  await settle()
+  expect(card().closest('.recognition-tour').style.display).toBe('none')
+  expect(root.querySelectorAll('.recognition-tutorial-related')).toHaveLength(0)
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  dialog.remove(); await settle()
+  expect(card().textContent).toContain('3 / 6')
+  const start = root.querySelector('[data-start-ocr]'); start.textContent = '取消识别'; await settle()
+  expect(card().closest('.recognition-tour').style.display).toBe('none')
+  start.textContent = '开始识别'; await settle()
+  expect(card().closest('.recognition-tour').style.display).toBe('')
+  expect(card().textContent).toContain('3 / 6')
+  await click('下一步'); expect(card().textContent).toContain('4 / 6')
+})
+
+it('a managed modal outside the embed owns focus and Escape, then restores the tutorial opener', async () => {
+  mount(RecognitionTutorial, { props: { open: true, root }, attachTo: document.body }); await settle()
+  const opener = card().querySelector('.recognition-tour-next'); opener.focus()
+  const Dialog = defineComponent({ setup() {
+    const open = ref(true), panel = ref(null), close = ref(null)
+    useModalFocus(computed(() => open.value), panel, { initialFocus: () => close.value, onEscape: () => { open.value = false } })
+    return { open, panel, close }
+  }, template: '<section v-if="open" ref="panel" role="dialog"><button ref="close" @click="open=false">关闭业务弹窗</button></section>' })
+  mount(Dialog, { attachTo: document.body }); await settle()
+  expect(card().closest('.recognition-tour').style.display).toBe('none')
+  expect(document.activeElement.textContent).toBe('关闭业务弹窗')
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await settle()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(card().closest('.recognition-tour').style.display).toBe('')
+  expect(document.activeElement).toBe(opener)
+  expect(card().textContent).toContain('1 / 6')
 })
