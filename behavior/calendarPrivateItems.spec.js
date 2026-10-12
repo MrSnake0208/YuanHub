@@ -10,7 +10,7 @@ import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscrip
 import { createCalendarPrivateItem, deleteCalendarPrivateItem, getCalendarPrivateItem, listCalendarPrivateItems, updateCalendarPrivateItem } from '../src/api/calendarPrivateItems.js'
 import { dialog } from '../src/utils/dialog.js'
 
-vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: true, userInfo: { id: 'owner' } }) }))
+vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'owner' } }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), setCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
@@ -36,7 +36,7 @@ async function render(query = 'scope=mine&view=month&date=2026-10-15') {
 beforeEach(() => {
   vi.resetAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-10T04:00:00Z'))
   const media = new EventTarget(); media.matches = false; vi.stubGlobal('matchMedia', vi.fn(() => media))
-  auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'owner' }; activeAccount.set('a')
+  auth.isLoggedIn = true; auth.isAdmin = false; auth.userInfo = { id: 'owner' }; activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }, { id: 'b', name: '小号', game: '代号鸢' }])
   listActivityCalendar.mockResolvedValue({ items: [event] })
   listCalendarSubscriptions.mockResolvedValue({ items: [{ event_id: event.id, subscribed: true, completed: false, version: 0, checklist: [], item: event }], unavailable_items: [], subscribed_count: 1 })
@@ -165,10 +165,10 @@ it('A→B→A late reads and saves cannot populate another account or the new A 
   expect(wrapper.text()).not.toContain('旧保存'); expect(editor()).toBeNull()
 })
 
-it.each(['logout', 'permission', 'account'])('%s loss clears private data and draft immediately', async reason => {
+it.each(['logout', 'identity', 'account'])('%s loss clears private data and draft immediately', async reason => {
   rows = [raw()]; await render(); await button('编辑事项').trigger('click'); await flushPromises(); await field('title', '秘密草稿')
   if (reason === 'logout') { auth.isLoggedIn = false; auth.userInfo = null }
-  else if (reason === 'permission') auth.isAdmin = false
+  else if (reason === 'identity') auth.userInfo = { id: 'other-owner' }
   else activeAccount.set('missing')
   await flushPromises()
   expect(editor()).toBeNull(); expect(wrapper.text()).not.toContain('私人内容'); expect(wrapper.text()).not.toContain('秘密草稿')

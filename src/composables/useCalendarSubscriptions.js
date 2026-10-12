@@ -10,7 +10,7 @@ import { useUnsavedChanges } from '../utils/useUnsavedChanges.js'
 // Page-owned state shared by the three calendar views, never a cross-user singleton.
 export function useCalendarSubscriptions(enabled, range, category, privateDirty = ref(false)) {
   let alive = true, accountGeneration = 0, generation = 0, deferredLoad = false, acceptedSwitch = false
-  const permitted = computed(() => enabled && auth.isLoggedIn && auth.isAdmin && !!auth.userInfo?.id)
+  const permitted = computed(() => enabled && auth.isLoggedIn && !!auth.userInfo?.id)
   const identity = computed(() => permitted.value ? String(auth.userInfo.id) : '')
   const accounts = ref([]), accountError = ref(''), accountLoading = ref(false)
   useAccountListUpdates(next => {

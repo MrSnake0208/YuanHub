@@ -7,7 +7,7 @@ import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
-vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: true, userInfo: { id: 'user' } }) }))
+vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'user' } }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), setCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
 const deferred = () => { let resolve, reject; const promise = new Promise((done, fail) => { resolve = done; reject = fail }); return { promise, resolve, reject } }
@@ -20,7 +20,7 @@ async function render() {
   wrapper = mount({ template: '<router-view />' }, { global: { plugins: [router] } }); await flushPromises()
 }
 beforeEach(() => {
-  vi.clearAllMocks(); auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'user' }; activeAccount.set('a')
+  vi.clearAllMocks(); auth.isLoggedIn = true; auth.isAdmin = false; auth.userInfo = { id: 'user' }; activeAccount.set('a')
   listAccounts.mockResolvedValue([{ id: 'a', game: '如鸢' }, { id: 'b', game: '如鸢' }])
   listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [], subscribed_count: 0 })
 })
@@ -48,14 +48,14 @@ it('a background read returning during editing waits until the draft is released
   state.setDirty('original', false); await flushPromises()
   expect(wrapper.text()).toBe('latest')
 })
-it('same-game account switch ignores late A read and clears state on permission loss', async () => {
+it('same-game account switch ignores late A read and clears state on logout', async () => {
   const late = deferred()
   listCalendarSubscriptions.mockImplementation(({ account_id }) => account_id === 'a' ? late.promise : Promise.resolve({ items: [record('B')], subscribed_count: 1 }))
   await render(); activeAccount.set('b'); await flushPromises()
   expect(wrapper.text()).toBe('B')
   late.resolve({ items: [record('A')], subscribed_count: 1 }); await flushPromises()
   expect(wrapper.text()).toBe('B')
-  auth.isAdmin = false; await flushPromises()
+  auth.isLoggedIn = false; auth.userInfo = null; await flushPromises()
   expect(wrapper.text()).toBe('')
 })
 it('switching account while reading subscription prevents subsequent PUT to new account', async () => {

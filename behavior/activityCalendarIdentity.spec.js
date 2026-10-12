@@ -4,6 +4,8 @@ import { auth } from '../src/store/auth.js'
 import { acceptActivityCalendarSuggestion, createActivityCalendar, listAdminActivityCalendar, rejectActivityCalendarSuggestion, submitActivityCalendarSuggestion, updateActivityCalendar } from '../src/api/activityCalendar.js'
 
 vi.mock('../src/store/auth.js', () => ({ auth: { accessToken: 'token-a', refreshToken: 'refresh-a', userInfo: { id: 'admin-a' }, refresh: vi.fn(), logout: vi.fn(), refreshAdminAccess: vi.fn() } }))
+// This suite verifies identity isolation; Beta eligibility has its own route/API tests.
+vi.mock('../src/store/beta.js', () => ({ beta: { setIdentity: vi.fn(), requireAccess: vi.fn().mockResolvedValue(undefined) } }))
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 const response = status => ({ status, ok: status === 200, statusText: '', json: async () => ({ status_code: status, data: { items: [] } }) })
 beforeEach(() => {

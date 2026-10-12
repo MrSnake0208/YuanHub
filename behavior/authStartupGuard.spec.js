@@ -4,7 +4,6 @@ import { routes } from '@/router/routes.js'
 import { authGuard } from '@/router/index.js'
 import { auth } from '@/store/auth.js'
 import { beta } from '@/store/beta.js'
-import { recruitmentAccess } from '@/store/recruitmentAccess.js'
 import { NAVIGATION_SIGNAL } from '@/utils/navigationCancellation.js'
 import { deferred } from '../test-support/factories.js'
 
@@ -85,7 +84,9 @@ async function settle(router) {
 describe('路由守卫的登录态 / 管理权限分层', function () {
   beforeEach(function () {
     resetAuth()
-    recruitmentAccess.setIdentity('')
+    vi.restoreAllMocks()
+    beta.setIdentity('')
+    beta.invalidate()
   })
 
   it('Case 3：首次导航（普通/公开页面）不请求也不等待管理权限接口', async function () {
@@ -154,74 +155,59 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
     expect(backend.count(ACCESS_ME)).toBe(2)
   })
 
-  it.each([
-    [200, { access_mode: 'LIMITED', granted: false, can_access: false }, 'recruitment-required'],
-    [503, null, 'recruitment-unavailable']
-  ])('招募查询状态 %s 对应有限原因，重试仍需真实资格', async (status, data, reason) => {
-    auth.accessToken = 'valid-token'
-    auth.userInfo = { id: 'u1' }
-    let granted = false
-    const backend = installFetch([
-      { path: '/v1/recruitment/access/me', method: 'GET', respond: () => granted
-        ? jsonResponse({ status_code: 200, data: { access_mode: 'LIMITED', granted: true, can_access: true } })
-        : jsonResponse({ status_code: status, message: 'unavailable', data }, status) }
-    ])
+  it.each(['/recruitment?game=如鸢', '/calendar', '/calendar/suggestions', '/calendar/suggestions/new'])('%s 只需内测资格，查询失败或维护仍关闭；不读取独立招募/管理权限', async target => {
+    auth.accessToken = 'valid-token'; auth.userInfo = { id: 'u1' }
+    const backend = installFetch([])
+    let allowed = false, unavailable = false
+    vi.spyOn(beta, 'refresh').mockImplementation(async () => {
+      beta.campaign = { accessMode: 'BETA' }
+      beta.publicError = ''; beta.personalError = unavailable ? 'offline' : ''
+      beta.mine = { canUseBetaFeatures: allowed }
+    })
     const router = createGuardRouter()
-    await router.push('/recruitment?game=如鸢')
-    expect(router.currentRoute.value.path).toBe('/forbidden')
-    expect(router.currentRoute.value.query.reason).toBe(reason)
-    const target = router.currentRoute.value.query.from
     await router.push(target)
-    expect(router.currentRoute.value.path).toBe('/forbidden')
-    expect(recruitmentAccess.canAccess).toBe(false)
-    granted = true
+    expect(router.currentRoute.value.path).toBe('/beta')
+    expect(router.currentRoute.value.query.redirect).toBe(target)
+    unavailable = true; allowed = true
     await router.push(target)
-    expect(router.currentRoute.value.path).toBe('/recruitment')
-    expect(backend.count('/v1/recruitment/access/me')).toBe(3)
-    expect(backend.count(ACCESS_ME)).toBe(0)
+    expect(router.currentRoute.value.path).toBe('/beta')
+    unavailable = false
+    await router.push(target)
+    expect(router.currentRoute.value.fullPath).toBe(target)
+    expect(backend.calls).toHaveLength(0)
+    expect(beta.refresh).toHaveBeenCalledTimes(3)
   })
 
-  it('招募失败页换账号后重新查询，旧账号的资格不能放行新账号', async () => {
-    auth.accessToken = 'account-a'
-    auth.userInfo = { id: 'a' }
-    const backend = installFetch([
-      { path: '/v1/recruitment/access/me', method: 'GET', respond: ({ token }) =>
-        jsonResponse({ status_code: 200, data: { access_mode: 'LIMITED', can_access: token === 'account-b' } }) }
-    ])
+  it.each(['/recruitment', '/calendar'])('%s 切换账号后重新校验内测，旧资格不复用', async target => {
+    auth.accessToken = 'account-a'; auth.userInfo = { id: 'a' }
+    installFetch([])
+    vi.spyOn(beta, 'refresh').mockImplementation(async () => {
+      beta.campaign = { accessMode: 'BETA' }; beta.publicError = ''; beta.personalError = ''
+      beta.mine = { canUseBetaFeatures: beta.userId === 'b' }
+    })
     const router = createGuardRouter()
-    await router.push('/recruitment')
-    expect(router.currentRoute.value.query.reason).toBe('recruitment-required')
-    auth.accessToken = 'account-b'
-    auth.userInfo = { id: 'b' }
-    await router.push('/recruitment')
-    expect(router.currentRoute.value.path).toBe('/recruitment')
-    expect(recruitmentAccess.userId).toBe('b')
-    auth.accessToken = 'account-a'
-    auth.userInfo = { id: 'a' }
-    await router.push('/login')
-    await router.push('/recruitment')
-    expect(router.currentRoute.value.path).toBe('/forbidden')
-    expect(backend.tokensFor('/v1/recruitment/access/me')).toEqual(['account-a', 'account-b', 'account-a'])
+    await router.push(target)
+    expect(router.currentRoute.value.path).toBe('/beta')
+    auth.accessToken = 'account-b'; auth.userInfo = { id: 'b' }
+    await router.push(target)
+    expect(router.currentRoute.value.path).toBe(target)
+    expect(beta.userId).toBe('b')
+    auth.accessToken = 'account-a'; auth.userInfo = { id: 'a' }
+    await router.push('/login'); await router.push(target)
+    expect(router.currentRoute.value.path).toBe('/beta')
   })
 
-  it.each(['identity-change', 'cancelled'])('招募资格读取期间 %s，迟到结果不得恢复旧导航', async scenario => {
-    auth.accessToken = 'account-a'
-    auth.userInfo = { id: 'a' }
+  it.each(['identity-change', 'cancelled'])('内测资格读取期间 %s，迟到结果不得恢复旧导航', async scenario => {
+    auth.accessToken = 'account-a'; auth.userInfo = { id: 'a' }
     const pending = deferred(), entered = deferred()
-    installFetch([
-      { path: '/v1/recruitment/access/me', method: 'GET', respond: () => { entered.resolve(); return pending.promise } }
-    ])
-    const controller = new AbortController()
-    const next = vi.fn()
-    const navigation = authGuard({ fullPath: '/recruitment', meta: { requiresAuth: true, requiresRecruitmentAccess: true, [NAVIGATION_SIGNAL]: controller.signal } }, {}, next)
+    vi.spyOn(beta, 'refresh').mockImplementation(() => { entered.resolve(); return pending.promise })
+    const controller = new AbortController(), next = vi.fn()
+    const navigation = authGuard({ fullPath: '/recruitment', meta: { requiresAuth: true, requiresBeta: true, [NAVIGATION_SIGNAL]: controller.signal } }, {}, next)
     await entered.promise
     if (scenario === 'identity-change') {
-      auth.accessToken = 'account-b'
-      auth.userInfo = { id: 'b' }
-      recruitmentAccess.setIdentity('b')
+      auth.accessToken = 'account-b'; auth.userInfo = { id: 'b' }; beta.setIdentity('b')
     } else controller.abort()
-    pending.resolve(jsonResponse({ status_code: 200, data: { can_access: true } }))
-    await navigation
+    pending.resolve(); await navigation
     expect(next).toHaveBeenCalledExactlyOnceWith(false)
   })
 

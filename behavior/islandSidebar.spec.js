@@ -84,17 +84,14 @@ it('登录用户获得实用导航与共享未读状态，不锁死入口顺序�
   expect(wrapper.text()).toContain('测试殿下')
   expect(wrapper.text()).toContain('2')
 })
-it('招募档案导航只对拥有独立招募访问权限的登录用户显示', async () => {
-  auth.accessToken = 'test-only'; auth.userInfo = { id: 'user-a', user_name: '测试殿下' }
-  let wrapper = render(); await flushPromises()
-  expect(routes(wrapper)).not.toContain('/recruitment')
-  expect(recruitmentAccess.setIdentity).toHaveBeenCalledWith('user-a')
-  expect(recruitmentAccess.refresh).toHaveBeenCalled()
-  wrapper.unmount()
-
-  recruitmentAccess.canAccess = true
-  wrapper = render(); await flushPromises()
+it('招募入口对访客和普通用户公开，不再读取独立招募授权', async () => {
+  const wrapper = render(); await flushPromises()
   expect(routes(wrapper)).toContain('/recruitment')
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'user-a' }
+  await flushPromises()
+  expect(routes(wrapper)).toContain('/recruitment')
+  expect(recruitmentAccess.setIdentity).not.toHaveBeenCalled()
+  expect(recruitmentAccess.refresh).not.toHaveBeenCalled()
 })
 it('卸载只释放反馈订阅，不在 Sidebar 内维护通知轮询', async () => {
   auth.accessToken = 'test-only'; auth.userInfo = { user_name: '测试殿下' }
@@ -157,19 +154,13 @@ it('关闭活动flag时两处导航都没有入口', async () => {
 })
 
 
-it('访客、普通用户和权限未加载时两处导航不显示日历；权限撤销立即隐藏', async () => {
+it('日历双端入口公开，普通用户不需要管理权限；访问资格由路由校验', async () => {
   const wrapper = render()
   await wrapper.get('.mobile-menu-button').trigger('click')
-  expect(routes(wrapper)).not.toContain('/calendar')
-  auth.accessToken = 'test-only'; auth.userInfo = { id: 'user-a' }
-  await flushPromises()
-  expect(routes(wrapper)).not.toContain('/calendar')
-  auth.isAdmin = true
+  expect(routes(wrapper).filter(path => path === '/calendar')).toHaveLength(2)
+  auth.accessToken = 'test-only'; auth.userInfo = { id: 'user-a' }; auth.isAdmin = false
   await flushPromises()
   expect(routes(wrapper).filter(path => path === '/calendar')).toHaveLength(2)
-  auth.isAdmin = false
-  await flushPromises()
-  expect(routes(wrapper)).not.toContain('/calendar')
 })
 
 it.each([

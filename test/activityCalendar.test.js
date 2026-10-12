@@ -102,19 +102,19 @@ test('完整替换payload带expected_version=0，创建不带版本，关闭时�
   assert.equal(Object.hasOwn(calendarPayload(calendarForm()), 'expected_version'), false)
 })
 
-test('测试阶段日历与管理路由共享flag、保持lazy和独立权限边界', () => {
+test('日历统一内测准入、管理仍保留独立写权限', () => {
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.ACTIVITY_CALENDAR], true)
   const publicRoute = routes.find(route => route.path === '/calendar')
   const adminRoute = routes.find(route => route.path === '/calendar/admin')
   for (const route of [publicRoute, adminRoute]) { assert.equal(route.meta.feature, FEATURE_KEYS.ACTIVITY_CALENDAR); assert.equal(typeof route.component, 'function') }
   assert.equal(publicRoute.meta.requiresAuth, true)
-  assert.equal(publicRoute.meta.requiresAdmin, true)
-  assert.equal(publicRoute.meta.requiresBeta, undefined)
+  assert.equal(publicRoute.meta.requiresAdmin, undefined)
+  assert.equal(publicRoute.meta.requiresBeta, true)
   assert.equal(adminRoute.meta.requiresAuth, true)
   assert.equal(adminRoute.meta.requiredPermission, 'activity_calendar:write')
-  assert.equal(needsAdminAccess(publicRoute.meta), true)
-  assert.equal(isRouteAccessAllowed(publicRoute.meta, null), false)
-  assert.equal(isRouteAccessAllowed(publicRoute.meta, { permissions: [] }, "读取失败"), false)
+  assert.equal(needsAdminAccess(publicRoute.meta), false)
+  assert.equal(isRouteAccessAllowed(publicRoute.meta, null), true)
+  assert.equal(isRouteAccessAllowed(publicRoute.meta, { permissions: [] }, "读取失败"), true)
   assert.equal(isRouteAccessAllowed(publicRoute.meta, { permissions: ["beta:manage"] }), true)
   assert.equal(needsAdminAccess(adminRoute.meta), true)
   assert.equal(isRouteAccessAllowed(adminRoute.meta, null), false)

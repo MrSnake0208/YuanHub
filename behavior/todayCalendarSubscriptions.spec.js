@@ -4,11 +4,11 @@ import TodaySubscriptionSummary from '../src/components/today/TodaySubscriptionS
 import { calendarSubscriptionSummary } from '../src/api/activityCalendarSubscriptions.js'
 import { auth } from '../src/store/auth.js'
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn() }))
-vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: true, userInfo: { id: 'user' } }) }))
+vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'user' } }) }))
 const record = (id, patch = {}) => ({ event_id: id, completed: false, checklist: [], item: { id, title: id, start_date: '2026-10-01', end_date: '2026-10-05', ...patch } })
 let wrapper
 const render = props => { wrapper = mount(TodaySubscriptionSummary, { props, global: { stubs: { RouterLink: RouterLinkStub } } }); return wrapper }
-beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z')); auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'user' }; calendarSubscriptionSummary.mockResolvedValue({ items: [], total_pending: 0, subscribed_count: 0 }) })
+beforeEach(() => { vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z')); auth.isLoggedIn = true; auth.isAdmin = false; auth.userInfo = { id: 'user' }; calendarSubscriptionSummary.mockResolvedValue({ items: [], total_pending: 0, subscribed_count: 0 }) })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
 it('no account makes no private request and subscribed empty state differs from no subscriptions', async () => {
   render({ accountId: '' }); await flushPromises(); expect(calendarSubscriptionSummary).not.toHaveBeenCalled()

@@ -1,6 +1,5 @@
 import { reactive } from 'vue'
 import { beta } from '../store/beta.js'
-import { recruitmentAccess } from '../store/recruitmentAccess.js'
 import { betaLandingFor, safeBetaRedirect } from '../utils/betaAccess.js'
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes.js'
@@ -79,10 +78,9 @@ export async function authGuard(to, from, next) {
   }
 
   beta.setIdentity(authed ? auth.userInfo.id : '')
-  recruitmentAccess.setIdentity(authed ? auth.userInfo.id : '')
   if (to.meta?.requiresBeta) {
     await beta.refresh()
-    if (isNavigationCancelled(to)) return next(false)
+    if (isNavigationCancelled(to) || (auth.accessToken && auth.userInfo ? auth.userInfo.id : null) !== navigationUserId) return next(false)
     if (authed) {
       if (!beta.canUseBetaFeatures) return next(betaLandingFor(to.fullPath))
     } else if (beta.campaign?.accessMode !== 'OPEN' || beta.publicError) {
@@ -92,17 +90,6 @@ export async function authGuard(to, from, next) {
   if (requiresAuth && !authed) {
     // 未登录访问受保护页 → 去登录，带 redirect 回跳
     return next({ path: '/login', query: { redirect: to.fullPath } })
-  }
-
-  if (to.meta?.requiresRecruitmentAccess && authed) {
-    await recruitmentAccess.refresh({ force: true })
-    if (isNavigationCancelled(to) || !auth.accessToken || auth.userInfo?.id !== navigationUserId) return next(false)
-    if (!recruitmentAccess.canAccess) {
-      return next({ path: '/forbidden', query: {
-        from: to.fullPath,
-        reason: recruitmentAccess.error ? 'recruitment-unavailable' : 'recruitment-required'
-      } })
-    }
   }
 
   // 只有真正需要管理权限的路由才等待 /v1/admin/access/me。

@@ -25,7 +25,7 @@ import { auth } from '@/store/auth.js'
 import { calendarSubscriptionSummary } from '@/api/activityCalendarSubscriptions.js'
 import { calendarDeadline, millisecondsUntilServerMidnight, serverToday } from '@/data/activityCalendar.js'
 const props = defineProps({ accountId: { type: String, default: '' }, game: { type: String, default: '' } })
-const identity = computed(() => auth.isLoggedIn && auth.isAdmin ? auth.userInfo?.id || '' : '')
+const identity = computed(() => auth.isLoggedIn ? auth.userInfo?.id || '' : '')
 const key = computed(() => JSON.stringify([identity.value, props.accountId, props.game]))
 const mineQuery = computed(() => ({ scope: 'mine', ...(props.game ? { game: props.game } : {}) }))
 const items = ref([]), count = ref(0), total = ref(0), loading = ref(false), error = ref(''), now = ref(Date.now())

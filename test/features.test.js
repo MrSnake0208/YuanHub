@@ -11,14 +11,13 @@ const featureConfig = readFileSync(new URL('../src/config/features.js', import.m
 const operatorPage = readFileSync(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../src/router/index.js', import.meta.url), 'utf8')
 
-test('growth tracking is enabled only in Vite dev mode', function () {
+test('growth tracking is enabled in development and production', function () {
   const key = FEATURE_KEYS.OPERATOR_GROWTH_TRACKING
-  const viteDev = import.meta.env?.DEV === true
 
   assert.equal(key, 'operatorGrowthTracking')
   assert.match(featureConfig, /import\.meta\.env\?\.DEV === true/)
-  assert.equal(FEATURE_FLAGS[key], viteDev)
-  assert.equal(isFeatureEnabled(key), viteDev)
+  assert.equal(FEATURE_FLAGS[key], true)
+  assert.equal(isFeatureEnabled(key), true)
   assert.equal(isFeatureEnabled('missingFeature'), false)
 })
 
@@ -42,22 +41,22 @@ test('discarded status stays disabled until the paired software supports it', fu
   assert.equal(isFeatureEnabled(FEATURE_KEYS.OPERATOR_DISCARDED), false)
 })
 
-test('recruitment preview is public; its personal workspace enforces independent access', async function () {
+test('recruitment uses the shared beta gate with authenticated workspace', async function () {
   assert.equal(FEATURE_KEYS.RECRUITMENT_ARCHIVE, 'recruitmentArchive')
   assert.equal(FEATURE_FLAGS[FEATURE_KEYS.RECRUITMENT_ARCHIVE], true)
   assert.equal(isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE), true)
   const { routes } = await import('../src/router/routes.js')
   const route = routes.find(item => item.path === '/recruitment')
   assert.equal(route.meta.feature, FEATURE_KEYS.RECRUITMENT_ARCHIVE)
-  assert.equal(route.meta.requiresAuth, undefined)
+  assert.equal(route.meta.requiresAuth, true)
   assert.equal(route.meta.requiresRecruitmentAccess, undefined)
-  assert.equal(route.meta.requiresBeta, undefined)
+  assert.equal(route.meta.requiresBeta, true)
   assert.equal(typeof route.component, 'function')
 })
 
-test('operator tracking stays visible as a preview while the real panel remains feature-guarded', function () {
-  assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 2)
-  assert.match(operatorPage, /message: "功能准备中，开放时间以站内公告为准。"/)
+test('operator tracking retains lazy loading and shows its persistent Bug warning', function () {
+  assert.equal((operatorPage.match(/@click="openGrowthPlanningPreview"/g) || []).length, 3)
+  assert.match(operatorPage, /class="planning-bug-notice" role="note"><strong>测试中：存在很多 Bug。/)
   assert.match(operatorPage, /v-if="growthTrackingEnabled && visitedTabs\.has\('tracking'\)"/)
   assert.match(operatorPage, /function setTab\(t\) \{\s*if \(t === "tracking" && !growthTrackingEnabled\) return;/)
   assert.match(operatorPage, /return import\("\.\.\/\.\.\/components\/operator\/OperatorGrowthTracker\.vue"\)/)

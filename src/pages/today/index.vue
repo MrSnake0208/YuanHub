@@ -241,7 +241,7 @@ const accountId = computed(function () { return activeAccount.id })
 
 const accountGame = computed(function () { return activeAccount.gameFor(accountId.value) })
 const validAccountId = computed(() => accounts.value.some(account => account.id === accountId.value) ? accountId.value : '')
-const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && auth.isAdmin && !accountLoading.value)
+const calendarEnabled = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && auth.isLoggedIn && !accountLoading.value)
 const calendarGame = computed(function () {
   return auth.isLoggedIn && accounts.value.some(account => account.id === accountId.value)
     ? accountGame.value : ''
