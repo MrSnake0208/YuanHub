@@ -41,8 +41,8 @@
             <section v-if="saveReceipt" data-guide-target="readback" class="save-result" :class="{ 'is-confirmed': receiptVerified }" aria-live="polite" role="status">
               <template v-if="receiptVerified">
                 <strong>{{ savedMessage }}</strong>
-                <p>服务端已读回核对。距保底 {{ 40 - pool.progress }} 抽<span v-if="poolSummary"> · 本池已知 {{ poolSummary.known_total_pulls?.toLocaleString() ?? '未知' }} 抽 · 绝密 {{ poolSummary.event_count ?? '未知' }} 条</span>。</p>
-                <p v-if="saveReceipt.beforeSummary && poolSummary">绝密记录 {{ saveReceipt.beforeSummary.event_count }} → {{ poolSummary.event_count }} 条 · 已知抽数 {{ saveReceipt.beforeSummary.known_total_pulls }} → {{ poolSummary.known_total_pulls }} 抽；未知间隔不贡献确定抽数。</p>
+                <p>服务端已读回核对。距保底 {{ pool.progress == null ? '未知' : 40 - pool.progress }} 抽<span v-if="poolSummary"> · 本池已知 {{ poolSummary.known_total_pulls?.toLocaleString() ?? '未知' }} 抽 · 密探 {{ poolSummary.event_count ?? '未知' }} 条</span>。</p>
+                <p v-if="saveReceipt.beforeSummary && poolSummary">密探记录 {{ saveReceipt.beforeSummary.event_count }} → {{ poolSummary.event_count }} 条 · 已知抽数 {{ saveReceipt.beforeSummary.known_total_pulls }} → {{ poolSummary.known_total_pulls }} 抽；未知间隔不贡献确定抽数。</p>
               </template>
               <template v-else>
                 <strong>{{ busy ? '正在保存这笔…' : '保存请求已接收，结果尚未确认' }}</strong>
@@ -99,15 +99,15 @@
               <button class="primary" type="button" :disabled="busy || readOnly || !recordsReady || !!unverifiedSave || !pendingCount" @click="submit">{{ busy ? '保存中…' : practice ? '查看练习结果' : '保存保底进度' }}</button>
             </div>
             <section v-if="guideVisible || practice" class="daily-entry" :aria-labelledby="editorId + '-result'">
-              <h3 :id="editorId + '-result'">{{ readOnly ? '本池记录' : '这次有没有出绝密？' }}</h3>
+              <h3 :id="editorId + '-result'">{{ readOnly ? '本池记录' : '这次抽到了哪位密探？' }}</h3>
               <RecruitmentGuideHint v-if="guideVisible && guideStep === 'result'" target="result" :message="guideMessage" />
               <div v-if="!readOnly" data-guide-target="result" class="daily-choices" role="group" aria-label="这次抽卡结果">
-                <button type="button" :aria-pressed="dailyMode === 'record'" :disabled="busy || !recordsReady || !canRecord || !!activeRow || recordPendingCount > 0 || !!unverifiedSave" @click="chooseDailyMode('record')">抽到了绝密</button>
+                <button type="button" :aria-pressed="dailyMode === 'record'" :disabled="busy || !recordsReady || !canRecord || !!activeRow || recordPendingCount > 0 || !!unverifiedSave" @click="chooseDailyMode('record')">记录密探</button>
                 <button type="button" :aria-pressed="dailyMode === 'progress'" :disabled="busy || !recordsReady || !!activeRow || recordPendingCount > 0 || !!unverifiedSave" @click="chooseDailyMode('progress')">还没出绝密</button>
               </div>
               <p v-if="!dailyMode">选完再填写；以前的记录在下方，点击即可修改。</p>
-              <p v-else-if="dailyMode === 'record' && !activeRow">选择这次真实出货的密探：本池 UP 可直接点头像，其他绝密可搜索。出货间隔不知道可留空。</p>
-              <p v-else-if="dailyMode === 'progress'">只更新游戏里当前的保底，不会新增绝密记录。下方填「还差几抽保底」，不是「这次又抽了几次」。</p>
+              <p v-else-if="dailyMode === 'record' && !activeRow">选择这次真实出货的密探：本池 UP 可直接点头像，其他密探可搜索。出货间隔不知道可留空。</p>
+              <p v-else-if="dailyMode === 'progress'">只更新游戏里当前的保底，不会新增密探记录。下方填「还差几抽保底」，不是「这次又抽了几次」。</p>
             </section>
 
             <details class="entry-guide">
@@ -144,7 +144,7 @@
                     :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add(agent.id)"
                   >
-                    <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="5" aria-hidden="true" />
+                    <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
                     <span class="quick-up-mark" aria-hidden="true">UP</span>
                   </button>
                   <button
@@ -229,7 +229,7 @@
                       :disabled="busy || readOnly || recordsLoading"
                       @click="chooseOtherAgent(agent.id)"
                     >
-                      <OperatorAvatar class="agent-choice-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="5" aria-hidden="true" />
+                      <OperatorAvatar class="agent-choice-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
                       <span>{{ agent.name }}</span>
                     </button>
                     <p v-if="!filteredPickerAgents.length" class="agent-picker-empty">没有符合筛选条件的密探</p>
@@ -237,18 +237,19 @@
                 </div>
                 <div v-if="activeRow?.agent_id" class="compact-entry-row">
                   <div class="selected-agent-summary" aria-live="polite">
-                    <OperatorAvatar class="selected-agent-avatar" :avatar="agentAvatar(selectedAgent(activeRow))" :name="selectedAgent(activeRow)?.name || activeRow.agent_id" :rarity="5" aria-hidden="true" />
+                    <OperatorAvatar class="selected-agent-avatar" :avatar="agentAvatar(selectedAgent(activeRow))" :name="selectedAgent(activeRow)?.name || activeRow.agent_id" :rarity="Number(selectedAgent(activeRow)?.rarity) || 5" aria-hidden="true" />
                     <span class="selected-agent-copy"><small>已选择密探</small><strong>{{ selectedAgent(activeRow)?.name || activeRow.agent_id }}</strong></span>
                   </div>
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'pulls'" target="pulls" :message="guideMessage" />
-                  <label data-guide-target="pulls" class="pull-count-field">
+                  <p v-if="isFourStar(activeRow)" class="composer-note">4 星只记录获得次数，不影响绝密抽数与保底。</p>
+                  <label v-else data-guide-target="pulls" class="pull-count-field">
                     <span>本次出货抽数</span>
                     <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" :aria-describedby="guideVisible ? undefined : editorId + '-pulls-help'" :disabled="busy || readOnly || recordsLoading" @input="onPullInput" @blur="reviewPulls">
                   </label>
 
                 </div>
-                <button v-if="activeRow?.agent_id" type="button" class="unknown-pulls" :disabled="busy || readOnly" @click="markPullsUnknown">记不清，保留未知</button>
-                <p v-if="activeRow?.agent_id && !guideVisible" :id="editorId + '-pulls-help'" class="composer-note">{{ pullSpanHelp }}</p>
+                <button v-if="activeRow?.agent_id && !isFourStar(activeRow)" type="button" class="unknown-pulls" :disabled="busy || readOnly" @click="markPullsUnknown">记不清，保留未知</button>
+                <p v-if="activeRow?.agent_id && !isFourStar(activeRow) && !guideVisible" :id="editorId + '-pulls-help'" class="composer-note">{{ pullSpanHelp }}</p>
                 <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
                 <p v-if="activeRow && originals.has(activeRow.event_id)" class="composer-note">完成编辑只更新草稿，核对后点击底部保存修改。</p>
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-record'" target="save-record" :message="guideMessage" />
@@ -273,7 +274,7 @@
                     class="record-avatar"
                     :avatar="agentAvatar(selectedAgent(row))"
                     :name="selectedAgent(row)?.name || row.agent_id"
-                    :rarity="5"
+                    :rarity="Number(selectedAgent(row)?.rarity) || 5"
                     aria-hidden="true"
                   />
                   <button
@@ -286,8 +287,8 @@
                     <span class="record-track">
                       <span class="record-bar" :class="barClass(row)" :style="{ width: spanWidth(row) }">
                         <span class="pull-result">
-                          <b>{{ row.pull_span === '' ? '未知' : row.pull_span }}</b>
-                          <small>{{ row.pull_span === '' ? '抽数' : '抽' }}</small>
+                          <b>{{ isFourStar(row) ? '计次' : row.pull_span === '' ? '未知' : row.pull_span }}</b>
+                          <small>{{ isFourStar(row) ? '4星' : row.pull_span === '' ? '抽数' : '抽' }}</small>
                         </span>
                       </span>
                       <span v-if="row.up_status === 'non_up'" class="non-up-stamp" aria-hidden="true">歪</span>
@@ -314,10 +315,10 @@
                         class="agent-record-avatar"
                         :avatar="agentAvatar(selectedAgent(row))"
                         :name="selectedAgent(row)?.name || row.agent_id"
-                        :rarity="5"
+                        :rarity="Number(selectedAgent(row)?.rarity) || 5"
                         aria-hidden="true"
                       />
-                      <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
+                      <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ isFourStar(row) ? '4星计次' : row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
                       <span v-if="row.up_status === 'non_up'" class="agent-non-up" aria-hidden="true">歪</span>
                     </span>
                     <span class="agent-record-name">{{ selectedAgent(row)?.name || row.agent_id }}</span>
@@ -426,7 +427,7 @@ const guideMessage = computed(() => {
     case 'pulls': return props.practice ? '练习：示例这次是上次绝密之后第20抽出货，请自己填20；也可以选择记不清。' : '填两次绝密之间的抽数，例如上次出货后20抽又出就填20。首条只填能确认的间隔，记不清就保留未知。'
     case 'progress': return tailProgress.value == null && !props.practice ? '当前进度未知，暂不支持保底留空提交；先核对游戏的真实保底进度，不要猜值。退出教程会保留窗口草稿。' : props.practice ? `练习：示例游戏已垫7抽，还差33抽保底；当前选择「${progressLabel.value}」，请填${progressLabel.value === '已垫' ? 7 : 33}。` : `按游戏当前进度核对：${progressLabel.value === '已垫' ? '填已经抽了几次，例如7' : '填还差几抽保底，例如33'}；不是本次出货间隔。`
     case 'save-record': return activeRow.value && originals.has(activeRow.value.event_id) ? '点「完成」只更新这条草稿，之后仍要保存修改。' : props.practice ? '点「查看练习结果」，只展示临时示例。' : '点「加入」把这次出货加入待保存记录，再点底部「保存修改」才会写入档案。'
-    case 'save-progress': return props.practice ? '点「查看练习结果」，不会写入账号。' : '点「保存保底进度」，不会新增绝密记录。'
+    case 'save-progress': return props.practice ? '点「查看练习结果」，不会写入账号。' : '点「保存保底进度」，不会新增密探记录。'
     case 'save-changes': return '核对后点底部保存修改；完成单条编辑还没有保存到服务器。'
     case 'saved-progress': return '新的保底进度在这里。以后抽了没出绝密，就回来这个池更新。'
     case 'guide-record': return receiptVerified.value ? '刚才这笔记在这里。头像旁是本次出货抽数，未知仍是未知；下次抽完再来这个池继续记。' : '这是你已有的记录：头像旁数字是这次出货的间隔，未知不等于0。切换视图不会改动或保存资料。'
@@ -477,13 +478,13 @@ function entryMatches(event, entry) {
 }
 const receiptVerified = computed(() => {
   const receipt = props.saveReceipt
-  return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && props.pool.progress === 40 - receipt.remaining_pulls && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at))
+  return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && (receipt.remaining_pulls == null ? props.pool.progress == null : props.pool.progress === 40 - receipt.remaining_pulls) && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at))
 })
 const unverifiedSave = computed(() => props.saveReceipt && !receiptVerified.value)
 const savedMessage = computed(() => {
   const receipt = props.saveReceipt
   if (!receipt?.entries.length && !receipt?.deleted_event_ids.length) return '当前保底已保存'
-  const names = receipt.entries.map(entry => `${selectedAgent(entry)?.name || entry.agent_id}（${entry.pull_span == null ? '出货间隔未知' : entry.pull_span + '抽出货'}）`).join('、')
+  const names = receipt.entries.map(entry => `${selectedAgent(entry)?.name || entry.agent_id}（${isFourStar(entry) ? '4星计次' : entry.pull_span == null ? '出货间隔未知' : entry.pull_span + '抽出货'}）`).join('、')
   return [names && `已保存：${names}`, receipt.deleted_event_ids.length && `已移除 ${receipt.deleted_event_ids.length} 条记录`].filter(Boolean).join('；')
 })
 const isSavedRow = row => receiptVerified.value && !isChanged(row) && props.saveReceipt.entries.some(entry => entry.event_id === row.event_id)
@@ -501,7 +502,7 @@ watch(receiptVerified, verified => {
   }
   for (const id of props.saveReceipt.deleted_event_ids) originals.delete(id)
   deletedIds.value = deletedIds.value.filter(id => !props.saveReceipt.deleted_event_ids.includes(id))
-  initialRemaining.value = typeof remaining.value === 'number' ? props.saveReceipt.remaining_pulls : String(props.saveReceipt.remaining_pulls)
+  initialRemaining.value = props.saveReceipt.remaining_pulls == null ? '' : typeof remaining.value === 'number' ? props.saveReceipt.remaining_pulls : String(props.saveReceipt.remaining_pulls)
 })
 let requestId = ''
 let viewportFrame = 0
@@ -517,6 +518,11 @@ const options = computed(() => {
   return values
 })
 const selectedAgent = row => options.value.find(agent => agent.id === row.agent_id)
+const isFourStar = row => {
+  const original = props.records.find(event => event.event_id === row.event_id && event.agent_snapshot.agent_id === row.agent_id)
+  return Number(original?.agent_snapshot.rarity ?? selectedAgent(row)?.rarity) === 4
+}
+const rowInput = row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span })
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
 function localPortraitUrl(operatorId) {
   const path = operatorPortraits[operatorId]
@@ -567,10 +573,10 @@ const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) &&
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
 const spanWidth = row => row.pull_span === '' ? '100%' : Math.min(Number(row.pull_span) / 40, 1) * 100 + '%'
-const isChanged = row => JSON.stringify(entryInput(row)) !== originals.get(row.event_id)
+const isChanged = row => JSON.stringify(rowInput(row)) !== originals.get(row.event_id)
 function recordLabel(row) {
   const agent = selectedAgent(row)
-  const pulls = row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
+  const pulls = isFourStar(row) ? '4星计次，不影响保底' : row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
   const status = row.up_status === 'non_up' ? '，非UP' : (agent?.poolSlot || row.up_status === 'up') ? '，UP' : ''
   return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
 }
@@ -698,11 +704,12 @@ function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''
   try {
-    const entry = entryInput(activeRow.value)
-    if (!options.value.some(agent => agent.id === entry.agent_id)) throw new Error('请选择本池 UP 或本游戏绝密密探')
+    const entry = rowInput(activeRow.value)
+    if (!options.value.some(agent => agent.id === entry.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
     const index = rows.value.findIndex(row => row.event_id === entry.event_id)
-    if (index < 0) rows.value.push({ ...activeRow.value })
-    else rows.value.splice(index, 1, { ...activeRow.value })
+    const row = { ...activeRow.value, pull_span: entry.pull_span ?? '' }
+    if (index < 0) rows.value.push(row)
+    else rows.value.splice(index, 1, row)
     activeRow.value = null
     choosingAgent.value = false
     nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
@@ -777,12 +784,13 @@ async function submit() {
   if (!pendingCount.value) return
   error.value = ''
   try {
-    if (remaining.value === '') throw new Error('保底进度未知，暂不能保存。请核对游戏里的真实保底进度；可以关闭教程保留当前窗口草稿，不要猜值。')
+    const countOnly = rows.value.filter(isChanged).every(isFourStar) && deletedIds.value.every(id => props.records.find(event => event.event_id === id)?.agent_snapshot.rarity === 4)
+    if (remaining.value === '' && !countOnly) throw new Error('保底进度未知，暂不能保存。请核对游戏里的真实保底进度；可以关闭教程保留当前窗口草稿，不要猜值。')
     if (progressLabel.value === '已垫' && tailProgress.value == null) throw new Error('已垫次数须为 0–39 的整数')
-    progressFromRemaining(remaining.value)
+    if (remaining.value !== '') progressFromRemaining(remaining.value)
     const entries = rows.value.map(row => {
-      const input = entryInput(row)
-      if (!options.value.some(agent => agent.id === input.agent_id)) throw new Error('请选择本池 UP 或本游戏绝密密探')
+      const input = rowInput(row)
+      if (!options.value.some(agent => agent.id === input.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
       if (!originals.has(row.event_id)) {
         if (!props.canRecord) throw new Error('此卡池暂不能新增出货')
         const definition = recruitmentPoolCatalog(props.pool, props.catalog) || props.pool.snapshot
@@ -792,7 +800,7 @@ async function submit() {
     }).filter(entry => JSON.stringify(entry) !== originals.get(entry.event_id))
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     if (!requestId) requestId = crypto.randomUUID()
-    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: Number(remaining.value) } })
+    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value) } })
   } catch (err) { error.value = err.message; await nextTick(); errorSummary.value?.focus() }
 }
 </script>

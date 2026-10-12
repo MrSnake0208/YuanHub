@@ -66,7 +66,7 @@ async function startEditorGuide(wrapper, branch = 'record') {
   if (editor(wrapper).find('.guide-exit').exists()) await button(editor(wrapper), '退出教程').trigger('click')
   await button(editor(wrapper), '使用教程').trigger('click')
   await editor(wrapper).get('.guide-choice button').trigger('click')
-  const choice = button(editor(wrapper), branch === 'progress' ? '还没出绝密' : '抽到了绝密')
+  const choice = button(editor(wrapper), branch === 'progress' ? '还没出绝密' : '记录密探')
   if (['record', 'progress'].includes(branch) && !choice.element.disabled) await choice.trigger('click')
   await flushPromises()
 }
@@ -206,7 +206,7 @@ it('搜索没有结果提示回到真实输入，退出保留关键词；读取�
 it('未出绝密主题只保存真实保底，读回进度一致才完成；不新增记录', async () => {
   persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await startEditorGuide(wrapper, 'progress')
-  expect(editor(wrapper).text()).toContain('不会新增绝密记录')
+  expect(editor(wrapper).text()).toContain('不会新增密探记录')
   await editor(wrapper).get('.remaining-field input').setValue('33')
   expect(editor(wrapper).get('.progress-number strong').text()).toBe('33')
   expect(confirmed(wrapper)).toBe(false)
@@ -784,7 +784,7 @@ it('普通新账号不看教程，按玩家问题选非UP，未知间隔真实�
   const request = api.recruitmentCommand.mock.calls[0][0]
   expect(request.data.entries).toEqual([expect.objectContaining({ agent_id: 'char-b', pull_span: null, up_status: 'non_up' })])
   expect(editor(wrapper).get('.save-result').text()).toContain('已保存：非UP密探')
-  expect(editor(wrapper).get('.save-result').text()).toContain('本池已知 7 抽 · 绝密 1 条')
+  expect(editor(wrapper).get('.save-result').text()).toContain('本池已知 7 抽 · 密探 1 条')
   expect(editor(wrapper).get('.gacha-record').text()).toContain('本笔已保存')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
   expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)

@@ -192,3 +192,10 @@ it('隐藏池保留个人卡片摘要与进度，状态优先于缓存公开目�
   await wrapper.get('.pool-card').trigger('click')
   expect(wrapper.emitted('select')).toEqual([['hidden']])
 })
+
+
+it('新图鉴4星和照影SP绑定后显示头像，缺本地立绘时封面使用图鉴头像', () => {
+  const wrapper = render({ pools: [pool('p', null, null, { up_agents: [{ id: 'p:up:1', operator_id: 'four' }, { id: 'p:up:2', operator_id: 'sp' }] })], agents: [{ id: 'four', name: '机密甲', rarity: 4, avatar: '/four.webp' }, { id: 'sp', name: '照影甲', rarity: 5, sp_of: 'base', avatar: '/sp.webp' }] })
+  expect(wrapper.findAll('.up-avatar').map(item => item.classes().includes('rarity-r4'))).toEqual([true, false])
+  expect(wrapper.findAll('.cover-portrait').map(item => item.attributes('src'))).toEqual(expect.arrayContaining([expect.stringContaining('/four.webp'), expect.stringContaining('/sp.webp')]))
+})

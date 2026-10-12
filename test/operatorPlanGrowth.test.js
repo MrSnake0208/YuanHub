@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import assert from 'node:assert/strict'
 import { normalizeGrowthTarget, sharedPlanCalculations } from '../src/data/operatorPlanGrowth.js'
-import { isMovieOperator, matchesOperatorQuality, isStandardRecruitmentOperator } from '../src/utils/operatorForms.js'
+import { isMovieOperator, matchesOperatorQuality, isRecruitmentOperator } from '../src/utils/operatorForms.js'
 import { normalizeOperatorCatalog, visibleAgentEntries } from '../src/data/inventory/agentManifest.js'
 import { AGENT_CATALOG } from '../src/data/inventory/catalog.js'
 
@@ -20,11 +20,14 @@ test('catalog normalization retains unknown future movie relations and hides the
   assert.equal(isMovieOperator(AGENT_CATALOG.find(entry => entry.id === 'char_085_shizimiaosp')), true)
 })
 
-test('movie quality is separate from numeric tier and standard recruitment', () => {
+test('movie quality stays separate while recruitment accepts same-game four and five star forms', () => {
   assert.equal(matchesOperatorQuality(movie, 5), false)
   assert.equal(matchesOperatorQuality(movie, 'movie'), true)
-  assert.equal(isStandardRecruitmentOperator(movie, '如鸢'), false)
-  assert.equal(isStandardRecruitmentOperator({ ...base, rarity: 5 }, '如鸢'), true)
+  assert.equal(isRecruitmentOperator(movie, '如鸢'), true)
+  assert.equal(isRecruitmentOperator({ ...base, rarity: 5 }, '如鸢'), true)
+  assert.equal(isRecruitmentOperator({ ...base, rarity: 4 }, '如鸢'), true)
+  assert.equal(isRecruitmentOperator({ ...base, rarity: 3 }, '如鸢'), false)
+  assert.equal(isRecruitmentOperator(movie, '代号鸢'), false)
 })
 
 test('movie targets use direct stars and do not invent a new growth target by default', () => {

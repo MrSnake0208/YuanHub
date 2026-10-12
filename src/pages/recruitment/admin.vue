@@ -74,7 +74,7 @@
                   <p class="pool-meta">{{ pool.game }}<template v-if="pool.pool_type"> · {{ pool.pool_type }}</template> · {{ pool.start_date || '开始日期未知' }} — {{ pool.end_date || '结束日期未知' }}</p>
                   <div v-if="activePoolSlots(pool).length" class="up-summary" aria-label="当前 UP">
                     <span v-for="slot in activePoolSlots(pool)" :key="slot.id" class="up-summary-item">
-                      <OperatorAvatar class="up-summary-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="5" />
+                      <OperatorAvatar class="up-summary-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
                       <span>{{ operatorById(slot.operator_id)?.name || slot.name }}</span>
                     </span>
                   </div>
@@ -158,7 +158,7 @@
                   <article v-for="(slot, index) in activeSlots" :key="slot.id" class="up-slot-card">
                     <div class="slot-head">
                       <div class="slot-identity">
-                        <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="5" />
+                        <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
                         <div>
                           <span class="slot-index">UP 名额 {{ index + 1 }}</span>
                           <strong>{{ slotLabel(slot) }}</strong>
@@ -169,7 +169,7 @@
                     </div>
 
                     <div class="slot-fields">
-                      <label>对应图鉴绝密
+                      <label>对应图鉴密探（4星/5星/照影SP）
                         <select v-model="slot.operator_id" :disabled="saving || !!operatorError || originalBoundSlotIds.has(slot.id)" @change="selectOperator(slot)">
                           <option value="">暂未进入图鉴，使用占位名称</option>
                           <option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option>
@@ -200,7 +200,7 @@
                   <article v-for="slot in retiredSlots" :key="slot.id" class="history-slot">
                     <div class="slot-head">
                       <div class="slot-identity compact">
-                        <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="5" />
+                        <OperatorAvatar class="slot-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="slotLabel(slot)" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
                         <div>
                           <span class="slot-index">已退役</span>
                           <strong>{{ slotLabel(slot) }}</strong>
@@ -214,7 +214,7 @@
                     </div>
 
                     <div v-if="editingHistoricalSlotId === slot.id" class="slot-fields history-fields">
-                      <label>对应图鉴绝密
+                      <label>对应图鉴密探（4星/5星/照影SP）
                         <select v-model="slot.operator_id" :disabled="saving || !!operatorError || originalBoundSlotIds.has(slot.id)" @change="selectOperator(slot)">
                           <option value="">保持为历史占位</option>
                           <option v-for="operator in eligibleOperators" :key="operator.id" :value="operator.id">{{ operator.name }}</option>
@@ -265,7 +265,7 @@
 </template>
 
 <script setup>
-import { isStandardRecruitmentOperator } from '../../utils/operatorForms.js'
+import { isRecruitmentOperator } from '../../utils/operatorForms.js'
 
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -332,7 +332,7 @@ const filteredPools = computed(() => pools.value.filter(pool => {
   const query = search.value.toLowerCase()
   return !query || [pool.name, pool.pool_id].some(value => String(value || '').toLowerCase().includes(query))
 }))
-const eligibleOperators = computed(() => operators.value.filter(operator => isStandardRecruitmentOperator(operator, form.value?.game)))
+const eligibleOperators = computed(() => operators.value.filter(operator => isRecruitmentOperator(operator, form.value?.game)))
 const activeSlots = computed(() => form.value?.up_agents.filter(slot => slot.active) || [])
 const retiredSlots = computed(() => form.value?.up_agents.filter(slot => !slot.active) || [])
 const dirty = computed(() => {

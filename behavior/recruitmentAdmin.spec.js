@@ -87,7 +87,7 @@ it('新建卡池直接添加UP名额，不再经过N数量应用步骤', async (
   expect(wrapper.text()).toContain('卡池已保存')
 })
 
-it('占位对应图鉴密探时保留稳定槽身份与revision，并只显示同游戏绝密', async () => {
+it('占位对应图鉴密探时保留稳定槽身份与revision，并显示同游戏4星和5星', async () => {
   const wrapper = render()
   await flushPromises()
   await button(wrapper, '管理卡池').trigger('click')
@@ -96,7 +96,7 @@ it('占位对应图鉴密探时保留稳定槽身份与revision，并只显示�
   expect(select.element.disabled).toBe(false)
   expect(select.text()).toContain('正式绝密')
   expect(select.text()).not.toContain('如鸢绝密')
-  expect(select.text()).not.toContain('机密')
+  expect(select.text()).toContain('机密')
   await select.setValue('formal-a')
   expect(wrapper.get('.slot-avatar img').attributes('src')).toContain('/formal.png')
   await wrapper.get('form').trigger('submit')

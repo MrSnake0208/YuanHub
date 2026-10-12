@@ -374,3 +374,35 @@ it('隐藏池删除原出货与校正进度提交同一原子请求', async () =
   expect(wrapper.emitted('save')[0][0].data).toMatchObject({ entries: [], deleted_event_ids: ['old'], remaining_pulls: 33 })
   wrapper.unmount()
 })
+
+
+it('4星UP使用图鉴头像和紫色边框，独立计次不填写绝密抽数且保底保持原值', async () => {
+  const wrapper = render({ records: [], agents: [{ id: 'four', name: '机密甲', rarity: 4, avatar: '/four.webp' }], catalog: [{ pool_id: 'catalog-p', up_agents: [{ id: 'catalog-p:up:four', operator_id: 'four', name: '机密甲', active: true }] }] })
+  await wrapper.get('.add-record').trigger('click')
+  await wrapper.get('.agent-choice[data-agent-id="four"]').trigger('click')
+  expect(wrapper.get('.selected-agent-avatar').classes()).toContain('rarity-r4')
+  expect(wrapper.get('.selected-agent-avatar img').attributes('src')).toContain('/four.webp')
+  expect(wrapper.find('.pull-count-field').exists()).toBe(false)
+  expect(wrapper.text()).toContain('4 星只记录获得次数')
+  await wrapper.get('.composer-actions .primary').trigger('click')
+  expect(wrapper.get('.record-detail').attributes('aria-label')).toContain('4星计次，不影响保底')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].data).toMatchObject({ remaining_pulls: 40, entries: [{ agent_id: 'four', pull_span: null }] })
+})
+
+
+it('4星录入允许保底未知，提交null保留未知而非编造40抽保底', async () => {
+  const wrapper = render({ pool: { ...recruitmentFixture().pools[0], progress: null }, records: [], agents: [{ id: 'four', name: '机密甲', rarity: 4 }] })
+  await wrapper.get('.add-record').trigger('click')
+  await wrapper.get('.agent-choice[data-agent-id="four"]').trigger('click')
+  await wrapper.get('.composer-actions .primary').trigger('click')
+  await wrapper.get('form').trigger('submit')
+  const submitted = wrapper.emitted('save')[0][0].data
+  expect(submitted).toMatchObject({ remaining_pulls: null, entries: [{ agent_id: 'four', pull_span: null }] })
+  const entry = submitted.entries[0]
+  await wrapper.setProps({ recordsRevision: 4, saveReceipt: { ...submitted, revision: 4 }, records: [{ ...recruitmentEvent(entry.event_id, null), up_status: entry.up_status, agent_snapshot: { agent_id: 'four', name: '机密甲', rarity: 4 } }] })
+  await flushPromises()
+  expect(wrapper.get('.save-result').text()).toContain('机密甲（4星计次）')
+  expect(wrapper.get('.save-result').text()).toContain('距保底 未知')
+  expect(wrapper.get('.gacha-record').text()).toContain('本笔已保存')
+})

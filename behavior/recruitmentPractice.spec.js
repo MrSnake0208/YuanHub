@@ -16,7 +16,7 @@ it.each(['record', 'progress'])('隔离%s练习走同一实际控件，只显示
   const wrapper = mount(RecruitmentPractice, { attachTo: document.body })
   expect(body().find('.pool-editor').exists()).toBe(false)
   await body().get('.pool-card').trigger('click'); await flushPromises(); expect(target()).toBe('result')
-  await button(branch === 'record' ? '抽到了绝密' : '还没出绝密').trigger('click')
+  await button(branch === 'record' ? '记录密探' : '还没出绝密').trigger('click')
   if (branch === 'record') {
     await body().get('.quick-up-button').trigger('click'); expect(target()).toBe('pulls')
     await body().get('.pull-count-field input').setValue('20'); await body().get('.pull-count-field input').trigger('blur')
@@ -37,7 +37,7 @@ it.each(['record', 'progress'])('隔离%s练习走同一实际控件，只显示
   await body().get('.close-button').trigger('click'); expect(wrapper.emitted('close')).toHaveLength(1)
 })
 it('退出练习教程保留练习输入，重新挂载恢复空示例', async () => {
-  let wrapper = mount(RecruitmentPractice, { attachTo: document.body }); await body().get('.pool-card').trigger('click'); await button('抽到了绝密').trigger('click'); await body().get('.quick-up-button').trigger('click')
+  let wrapper = mount(RecruitmentPractice, { attachTo: document.body }); await body().get('.pool-card').trigger('click'); await button('记录密探').trigger('click'); await body().get('.quick-up-button').trigger('click')
   await body().get('.pull-count-field input').setValue('20')
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await flushPromises()
   expect(body().get('.pull-count-field input').element.value).toBe('20'); expect(body().find('.guide-hint').exists()).toBe(false)
@@ -61,7 +61,7 @@ it('从真实编辑窗口进入练习时两个弹窗有独立标题，退出练�
 it('直接按保存时失焦不在松开鼠标前移动提示，一次真实点击就提交示例', async () => {
   vi.useFakeTimers()
   mount(RecruitmentPractice, { attachTo: document.body })
-  await body().get('.pool-card').trigger('click'); await button('抽到了绝密').trigger('click'); await body().get('.quick-up-button').trigger('click')
+  await body().get('.pool-card').trigger('click'); await button('记录密探').trigger('click'); await body().get('.quick-up-button').trigger('click')
   await body().get('.pull-count-field input').setValue('20'); await body().get('.pull-count-field input').trigger('blur')
   await body().get('.remaining-field input').setValue('33')
   expect(target()).toBe('progress')

@@ -17,7 +17,7 @@ it('current多条出货消耗旧进度，显式未知tail为null，历史模式�
 })
 it('120窗口首条间隔未知，后续31/17；按已知120总量计一次，稳定结果ID重试不变', async () => {
   const wrapper = render({ initialMode: 'historical' }); await select(wrapper, '抽数资料').setValue('window'); await wrapper.get('fieldset select').setValue('agent-a'); await input(wrapper, '窗口内位置').setValue('17')
-  const add = wrapper.findAll('button').find(button => button.text() === '再加一位绝密')
+  const add = wrapper.findAll('button').find(button => button.text() === '再加一位密探')
   await add.trigger('click'); await flushPromises(); const rows = wrapper.findAll('fieldset'); await rows[1].get('select').setValue('agent-a'); await rows[1].get('input[type=number]').setValue('48')
   await wrapper.findAll('.check input').at(-1).setValue(true); await wrapper.get('form').trigger('submit')
   const first = wrapper.emitted('save').at(-1)[0]; expect(first.operation).toBe('batch_create'); expect(first.data.total_pull_count).toBe(120); expect(first.data.entries.map(entry => entry.pull_span)).toEqual([null, 31]); expect(first.data.entries.every(entry => entry.event_id)).toBe(true)
@@ -67,4 +67,20 @@ it('current默认客户端本日可清空；切历史只清自动日期，手填
 it('恢复的verified空/不完整名单不推导非UP', async () => {
   const wrapper = render({ pools: [{ pool_id: 'pool-a', snapshot: { name: '池', up_status: 'verified', up_agent_ids: [] }, progress: 0 }] }); await wrapper.get('fieldset select').setValue('agent-a'); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('unknown')
   await wrapper.setProps({ pools: [{ pool_id: 'pool-a', snapshot: { name: '池', up_status: 'verified', up_agent_ids: ['agent-a'], unmapped_up_agent_names: ['未确认名'] }, progress: 0 }] }); await flushPromises(); expect(select(wrapper, 'UP 状态').element.value).toBe('unknown')
+})
+
+
+it('4星独立录入不要求当前保底已知，不发送尾抽并禁止混入绝密顺序窗口', async () => {
+  const wrapper = render({ agents: [{ id: 'four', name: '机密甲', rarity: 4 }], pools: [{ pool_id: 'pool-a', snapshot: { name: '卡池' }, progress: null }] })
+  await wrapper.get('fieldset select').setValue('four')
+  expect(wrapper.text()).toContain('4 星仅计获得次数')
+  await wrapper.get('form').trigger('submit')
+  const saved = wrapper.emitted('save')[0][0]
+  expect(saved.data.entries[0].pull_span).toBeNull()
+  expect(saved.data).not.toHaveProperty('tail_progress')
+  await select(wrapper, '记录方式').setValue('historical')
+  await select(wrapper, '抽数资料').setValue('window')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.get('[role=alert]').text()).toContain('4 星请使用独立计次')
+  expect(wrapper.emitted('save')).toHaveLength(1)
 })
