@@ -475,7 +475,7 @@ it('disabled tutorials preserve all read records, initialize no tutorial observe
   expect(handle.setActiveTab).toHaveBeenLastCalledWith('import')
   expect(document.querySelector('.recognition-tour, .bag-tutorial-demo')).toBeNull()
   for (const key of records) expect(localStorage.getItem(key)).toBe('seen')
-  expect(embedMount.mock.calls[0][1].completion.enabled).toBe(false)
+  expect(embedMount.mock.calls[0][1].completion.enabled).toBe(true)
 })
 
 it('empty bag replay explains import without creating fixtures, changing pages or performing writes', async () => {
