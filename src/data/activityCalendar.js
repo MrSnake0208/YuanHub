@@ -47,6 +47,8 @@ export function normalizeCalendarItem(value) {
     game: value.game, title: value.title.trim(), category: value.category,
     subtype: typeof value.subtype === 'string' ? value.subtype : null, subtype_detail: typeof value.subtype_detail === 'string' ? value.subtype_detail : null,
     pool_type: value.source_type === 'RECRUITMENT_POOL' && typeof value.pool_type === 'string' ? value.pool_type : null,
+    up_agent_names: value.source_type === 'RECRUITMENT_POOL' && value.category === 'RECRUITMENT' && Array.isArray(value.up_agent_names)
+      ? [...new Set(value.up_agent_names.filter(name => typeof name === 'string').map(name => name.trim()).filter(Boolean))] : [],
     start_date: value.start_date, end_date: value.end_date ?? null,
     start_time: paired || (value.end_date == null && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.start_time)) ? value.start_time : null, end_time: value.end_date != null && paired ? value.end_time : null,
     start_at: validCalendarInstant(value.start_at), end_at: value.end_date == null ? null : validCalendarInstant(value.end_at),

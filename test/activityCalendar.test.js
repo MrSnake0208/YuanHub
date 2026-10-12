@@ -7,6 +7,23 @@ import { routes } from '../src/router/routes.js'
 
 const item = (patch = {}) => ({ id: 'evt-a', game: '如鸢', title: ' 活动 ', category: 'ACTIVITY', source_type: 'MANUAL', start_date: '2026-10-03', end_date: '2026-10-10', ...patch })
 
+test('公共招募UP名单兼容旧接口、去空去重，只接收已投影的snake_case字段', () => {
+  const pool = item({ source_type: 'RECRUITMENT_POOL', category: 'RECRUITMENT', source_ref: 'pool-a' })
+  for (const names of [undefined, null, '甲', {}, []]) {
+    assert.deepEqual(normalizeCalendarItem({ ...pool, up_agent_names: names }).up_agent_names, [])
+  }
+  const normalized = normalizeCalendarItem({ ...pool, up_agent_names: [' 甲 ', '乙', '', ' ', null, 42, '甲'], source_up_agent_names: ['候选'], upAgentNames: ['错误别名'] })
+  assert.deepEqual(normalized.up_agent_names, ['甲', '乙'])
+  assert.equal(normalized.title, '活动')
+  assert.equal(normalized.source_ref, 'pool-a')
+  assert.equal(normalized.start_date, pool.start_date)
+  assert.equal(normalized.end_date, pool.end_date)
+  assert.deepEqual(normalizeCalendarItem({ ...pool, source_up_agent_names: ['候选'] }).up_agent_names, [])
+  assert.deepEqual(normalizeCalendarItem(item({ up_agent_names: ['甲'] })).up_agent_names, [])
+  assert.deepEqual(normalizeCalendarItem({ ...pool, category: 'SHOP', up_agent_names: ['甲'] }).up_agent_names, [])
+  assert.equal(normalizeCalendarItem({ ...pool, source_type: 'PRIVATE_ITEM', up_agent_names: ['甲'] }), null)
+})
+
 test('某日摘要：同日开始结束各计一次，严格跨日进行中，total按活动id去重', () => {
   const today = '2026-10-03'
   const sameDay = item({ end_date: today })
