@@ -208,7 +208,7 @@ it('未出绝密主题只保存真实保底，读回进度一致才完成；不�
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await startEditorGuide(wrapper, 'progress')
   expect(editor(wrapper).text()).toContain('不会新增绝密记录')
   await editor(wrapper).get('.remaining-field input').setValue('33')
-  expect(editor(wrapper).get('.progress-number strong').text()).toBe('7')
+  expect(editor(wrapper).get('.progress-number strong').text()).toBe('33')
   expect(confirmed(wrapper)).toBe(false)
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
   expect(api.recruitmentCommand.mock.calls[0][0].data).toEqual({ pool_id: 'pool-a', entries: [], deleted_event_ids: [], remaining_pulls: 33 })
@@ -591,6 +591,7 @@ it('普通新增保存后留在本池，继续编辑原ID并改保底，重开�
 })
 
 it('移除只提交明确旧ID；取消单条编辑不改变记录，整个弹窗取消不写入', async () => {
+  persistSubmittedRecord()
   const wrapper = render(); await flushPromises(); await selectPool(wrapper); await editRow(wrapper); await composer(wrapper).get('input').setValue('20'); await button(composer(wrapper), '取消').trigger('click'); expect(feed(wrapper).at(-1).get('.pull-result b').text()).toBe('17')
   expect(editor(wrapper).find('.record-feed .delete-record').exists()).toBe(false)
   await editRow(wrapper); await button(composer(wrapper), '删除记录').trigger('click')
@@ -599,7 +600,9 @@ it('移除只提交明确旧ID；取消单条编辑不改变记录，整个弹�
   await composer(wrapper).get('.pull-count-field input').setValue('12')
   await button(composer(wrapper), '取消').trigger('click')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises(); expect(api.recruitmentCommand.mock.calls.at(-1)[0].data).toMatchObject({ entries: [], deleted_event_ids: ['A'] })
-  await editor(wrapper).get('.close-button').trigger('click'); await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(2)
+  await editor(wrapper).get('.close-button').trigger('click'); await selectPool(wrapper); expect(feed(wrapper)).toHaveLength(1)
+  expect(records['acc-a'].map(row => row.event_id)).toEqual(['B'])
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
 })
 it('409重读保留草稿，核对后追加真记录；网络重试保留请求ID与事件ID', async () => {
   persistSubmittedRecord()
@@ -797,7 +800,7 @@ it('普通未出绝密仅保存游戏距保底，读回数字突出且不生成�
   const wrapper = render(); await flushPromises(); await selectPool(wrapper)
   expect(editor(wrapper).get('.entry-shortcuts').isVisible()).toBe(true)
   expect(editor(wrapper).find('.pull-count-field').exists()).toBe(false)
-  expect(editor(wrapper).text()).toContain('这是当前进度，不是本次出货间隔')
+  expect(editor(wrapper).text()).toContain('没有出绝密时只改当前保底，不新增出货。')
   await editor(wrapper).get('.remaining-field input').setValue('31')
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
   expect(api.recruitmentCommand.mock.calls[0][0].data).toEqual({ pool_id: 'pool-a', entries: [], deleted_event_ids: [], remaining_pulls: 31 })

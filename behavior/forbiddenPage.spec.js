@@ -13,8 +13,6 @@ async function render(query) {
 }
 
 it.each([
-  ['recruitment-required', '/recruitment', '尚未获得招募档案资格', '访问名单'],
-  ['recruitment-unavailable', '/recruitment', '暂时无法确认招募档案资格', '不代表你没有资格'],
   ['admin-required', '/admin/roles', '没有此功能的管理权限', '管理权限'],
   ['admin-unavailable', '/admin/roles', '暂时无法确认管理权限', '不代表权限已被撤销']
 ])('有限原因 %s 只展示固定文案并保留恢复入口', async (reason, from, title, description) => {
@@ -22,11 +20,12 @@ it.each([
   expect(wrapper.get('h1').text()).toContain(title)
   expect(wrapper.text()).toContain(description)
   expect(wrapper.find('button').exists()).toBe(true)
-  if (reason.startsWith('recruitment')) expect(wrapper.text()).not.toContain('管理权限')
   expect(fetch).not.toHaveBeenCalled()
 })
 
 it.each([
+  { reason: 'recruitment-required', from: '/recruitment' },
+  { reason: 'recruitment-unavailable', from: '/recruitment' },
   { reason: '<script>alert(1)</script>', from: '/recruitment' },
   { reason: ['admin-unavailable', 'admin-required'], from: '/admin/roles' },
   ...['https://evil.invalid', '//evil.invalid', '/%2fevil.invalid', '/%5cevil.invalid', '/login', '/forbidden', '/unknown-page', '/promo', '/operator/share/code']
@@ -41,13 +40,13 @@ it.each([
 })
 
 it('重试保留站内路径与参数，重复点击只发起一次导航', async () => {
-  const { wrapper, router } = await render({ reason: 'recruitment-unavailable', from: '/recruitment?game=如鸢#history' })
+  const { wrapper, router } = await render({ reason: 'admin-unavailable', from: '/admin/roles?tab=权限#history' })
   const pending = deferred()
   const push = vi.spyOn(router, 'push').mockReturnValue(pending.promise)
   await wrapper.get('button').trigger('click')
   expect(wrapper.get('button').attributes('disabled')).toBeDefined()
   await wrapper.get('button').trigger('click')
-  expect(push).toHaveBeenCalledExactlyOnceWith('/recruitment?game=%E5%A6%82%E9%B8%A2#history')
+  expect(push).toHaveBeenCalledExactlyOnceWith('/admin/roles?tab=%E6%9D%83%E9%99%90#history')
   pending.resolve(undefined)
   await flushPromises()
   expect(wrapper.get('button').attributes('disabled')).toBeUndefined()

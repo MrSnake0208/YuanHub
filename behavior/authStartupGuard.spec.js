@@ -167,13 +167,13 @@ describe('路由守卫的登录态 / 管理权限分层', function () {
     const router = createGuardRouter()
     await router.push(target)
     expect(router.currentRoute.value.path).toBe('/beta')
-    expect(router.currentRoute.value.query.redirect).toBe(target)
+    expect(decodeURI(router.currentRoute.value.query.redirect)).toBe(target)
     unavailable = true; allowed = true
     await router.push(target)
     expect(router.currentRoute.value.path).toBe('/beta')
     unavailable = false
     await router.push(target)
-    expect(router.currentRoute.value.fullPath).toBe(target)
+    expect(decodeURI(router.currentRoute.value.fullPath)).toBe(target)
     expect(backend.calls).toHaveLength(0)
     expect(beta.refresh).toHaveBeenCalledTimes(3)
   })

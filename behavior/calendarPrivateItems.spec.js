@@ -168,7 +168,7 @@ it('A→B→A late reads and saves cannot populate another account or the new A 
 it.each(['logout', 'identity', 'account'])('%s loss clears private data and draft immediately', async reason => {
   rows = [raw()]; await render(); await button('编辑事项').trigger('click'); await flushPromises(); await field('title', '秘密草稿')
   if (reason === 'logout') { auth.isLoggedIn = false; auth.userInfo = null }
-  else if (reason === 'identity') auth.userInfo = { id: 'other-owner' }
+  else if (reason === 'identity') { listAccounts.mockResolvedValue([]); auth.userInfo = { id: 'other-owner' } }
   else activeAccount.set('missing')
   await flushPromises()
   expect(editor()).toBeNull(); expect(wrapper.text()).not.toContain('私人内容'); expect(wrapper.text()).not.toContain('秘密草稿')
