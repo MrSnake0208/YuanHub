@@ -65,14 +65,15 @@
                   <label>游戏<select id="calendar-game" v-model="form.game" :aria-invalid="!!fieldErrors.game" :aria-describedby="fieldErrors.game ? 'error-game' : undefined"><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select><small v-if="fieldErrors.game" id="error-game">{{ fieldErrors.game }}</small></label>
                   <CalendarClassificationFields :form="form" :errors="fieldErrors" />
                   <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ field.label }}
-                    <input :id="'calendar-' + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'error-' + field.key : undefined" required>
+                    <input :id="'calendar-' + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :aria-invalid="!!fieldErrors[field.key]" :aria-describedby="fieldErrors[field.key] ? 'error-' + field.key : field.key === 'end_date' ? 'calendar-end-date-hint' : undefined" :required="field.key !== 'end_date'">
+                    <small v-if="field.key === 'end_date'" id="calendar-end-date-hint">留空表示持续进行，后续可补填。</small>
                     <small v-if="fieldErrors[field.key]" :id="'error-' + field.key">{{ fieldErrors[field.key] }}</small>
                   </label>
                 </div>
-                <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间（开始、结束成对）</label>
+                <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间</label>
                 <p class="calendar-hint">日期和时间按 {{ form.time_zone }} 记录；未填写时间时不补造具体时刻。</p>
                 <div v-if="form.precise" class="calendar-fields">
-                  <label v-for="key in ['start_time', 'end_time']" :key="key">{{ fieldLabels[key] }}<input :id="'calendar-' + key" v-model="form[key]" type="time" required :aria-invalid="!!fieldErrors[key]" :aria-describedby="fieldErrors[key] ? 'error-' + key : undefined"><small v-if="fieldErrors[key]" :id="'error-' + key">{{ fieldErrors[key] }}</small></label>
+                  <label v-for="key in (form.end_date ? ['start_time', 'end_time'] : ['start_time'])" :key="key">{{ fieldLabels[key] }}<input :id="'calendar-' + key" v-model="form[key]" type="time" required :aria-invalid="!!fieldErrors[key]" :aria-describedby="fieldErrors[key] ? 'error-' + key : undefined"><small v-if="fieldErrors[key]" :id="'error-' + key">{{ fieldErrors[key] }}</small></label>
                 </div>
                 <div class="calendar-fields">
                   <label class="calendar-wide">简短说明<textarea id="calendar-description" v-model="form.description" rows="3" maxlength="1000" :aria-invalid="!!fieldErrors.description" :aria-describedby="fieldErrors.description ? 'error-description' : undefined"></textarea><small v-if="fieldErrors.description" id="error-description">{{ fieldErrors.description }}</small></label>

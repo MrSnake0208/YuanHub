@@ -12,7 +12,7 @@
 
 三个视图只消费容器数据，共用一个请求生命周期、generation 防迟到响应和错误重试。区间不包含今天时，同一个 load 并行补查 today 至 today，保证历史月份的今日摘要仍准确；包含今天时复用主响应，不重复补查。加载时清空活动数据并标记 aria-busy，但保持日期导航组件与按钮，防止键盘翻月/翻时间窗口丢失焦点。失败时仍可操作共享筛选、视图与日期导航。
 
-公共日历与 Today 复用 `summarizeCalendarDay(items, today)`。今日摘要的“进行中”仅统计 `start_date < today && end_date > today` 的活动，不重复计入今日开始或结束的活动。同日开始并结束的活动分别计入开始、结束，进行中为零；`total` 是闭区间覆盖当天、按活动 id 去重后的总数，不是三个计数相加。
+公共日历与 Today 复用 `summarizeCalendarDay(items, today)`。今日摘要的“进行中”仅统计 `start_date < today && (end_date == null || end_date > today)` 的活动，不重复计入今日开始或结束的活动。同日开始并结束的活动分别计入开始、结束，进行中为零；`total` 是闭区间覆盖当天、按活动 id 去重后的总数，不是三个计数相加。
 
 `/today`（首页）在“从现有工具继续”之前显示轻量“今日活动”卡，不改变现有建档、dashboard 与工具入口。登录且当前 accountId 属于已读取的子账号列表时，按 accountGame 读取；已登录用户无子账号或无有效当前选择时显示全部游戏摘要，不使用默认代号鸢冒充账号归属。仅请求 `from=today&to=today`，最多预览3个标题，超出显示“另有N项”；有效账号的查看活动日历链接携带 `game` query。
 
@@ -197,6 +197,8 @@ npm run test:behavior -- behavior/activityCalendarViews.spec.js
 Agent 已执行定向 SFC/JS/CSS 编译和 diff 检查，以及 Playwright CLI 的 390/768/1440px 真实 SFC 合成预览检查：无整页横滚、条长度/分轨/44px 目标、Today 重复定位、sticky 日期轴、键盘滚动/选择、详情焦点返回和三视图切换。证据位于工作区 `.playwright-cli/calendar-timeline/`；鉴权/API 为合成数据，未写后端。Node/Vitest 回归及生产 build 未执行；真实登录账号、Safari、手机触控与读屏器仍待用户验收。
 # 管理员 JSON 批量导入（2026-10-09）
 
+2026-10-12：手工活动与社区建议允许结束日期留空。开放结束活动按开始日期纳入列表、月历、时间线、今日摘要与订阅，日期范围显示“持续进行”；时间线只延伸到当前可见右边界。它们不进入近3天结束筛选或订阅7天截止摘要。管理员可编辑原记录补齐结束日期；直接重导不同结束日期会按现有自然键视为另一条活动。私人事项和卡池派生规则不变。
+
 在 `/calendar/admin` → **活动目录**，点击与“新建活动”并列的次要按钮“批量导入”。仅 `activity_calendar:write` 管理员可见，后端两个导入接口也独立校验 JWT 和权限。功能只创建手工活动，不导入卡池或招募，不覆盖/删除现有活动。
 
 1. 下载弹窗中的 [JSON v1 两条示例](../../public/examples/activity-calendar-v1.json)，调整标题/日期，选择 UTF-8 `.json` 文件或直接粘贴。
@@ -204,7 +206,7 @@ Agent 已执行定向 SFC/JS/CSS 编译和 diff 检查，以及 Playwright CLI �
 3. 有错误/文件内冲突则修正原 JSON，重新预览；修改或换文件立即取消旧预览。重复跳过不阻塞。核对后勾选确认，再点“确认导入”。
 4. 成功/部分失败报告保留，目录刷新；若失败或响应超时，重新预览**原 JSON**并确认，已创建记录跳过。关闭未提交/部分失败草稿时沿用未保存提示。
 
-推荐格式为 `{"schema_version":1,"items":[...]}`，也接受顶层数组。原文最多 **1 MiB（UTF-8字节）**、每批 **1–200 条**，服务器再次执行限制。必填 `game/title/category/start_date/end_date`；游戏仅 `代号鸢/如鸢`，类型仅 `ACTIVITY/LOGIN/SHOP/MAINTENANCE/OTHER`。标题 trim 后1–120字、说明与内部备注各≤1000字、http(s)来源链接≤2048字；时间成对且为 `HH:mm`，日期为 `YYYY-MM-DD` 且结束不得早于开始。时区缺省 **Asia/Shanghai**，推荐所有活动使用该服务器时区；启用缺省 **true**，会在现有公共日历展示。设置 `enabled:false` 的新建活动只在管理目录出现。详情及完整可复制模板见 [下载示例](../../public/examples/activity-calendar-v1.json)。禁止 `RECRUITMENT`、服务器管理字段和未知字段/类型/版本。
+推荐格式为 `{"schema_version":1,"items":[...]}`，也接受顶层数组。原文最多 **1 MiB（UTF-8字节）**、每批 **1–200 条**，服务器再次执行限制。必填 `game/title/category/start_date`；`end_date` 可省略或为 null，表示持续进行。游戏仅 `代号鸢/如鸢`，类型仅 `ACTIVITY/LOGIN/SHOP/MAINTENANCE/OTHER`。标题 trim 后1–120字、说明与内部备注各≤1000字、http(s)来源链接≤2048字；时间为 `HH:mm`，有结束日期时须成对，无结束日期时仅可填开始时间；已填写日期为 `YYYY-MM-DD` 且结束不得早于开始。时区缺省 **Asia/Shanghai**，推荐所有活动使用该服务器时区；启用缺省 **true**，会在现有公共日历展示。设置 `enabled:false` 的新建活动只在管理目录出现。详情及完整可复制模板见 [下载示例](../../public/examples/activity-calendar-v1.json)。禁止 `RECRUITMENT`、服务器管理字段和未知字段/类型/版本。
 
 重复依据为游戏+类别+规范化标题+起止日期+精确时间+时区，包含停用历史活动。同名跨期/跨游戏不合并。已有同键内容差异明确提示并跳过，文件内同键不同内容阻止整批提交。并发批量导入利用 Mongo 稳定 `_id` insert 保证唯一；不覆盖既有数据。避免在导入时从单条新建入口同时创建同一活动。预览后输入或相关目录数据变化，服务器409要求重新预览。
 
