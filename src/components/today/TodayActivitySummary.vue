@@ -16,7 +16,7 @@
       <ul v-if="counts.total" class="activity-preview" aria-label="今日活动预览">
         <li v-for="item in preview" :key="item.id">
           <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
-          <span class="activity-detail">{{ calendarStatuses(item, today, now).join(' / ') }} · 截止 {{ item.end_date }}{{ item.end_time ? ' ' + item.end_time + ' · ' + item.time_zone : ' · 具体时间未提供' }}</span>
+          <span class="activity-detail">{{ calendarStatuses(item, today, now).join(' / ') }} · <template v-if="item.end_date">截止 {{ item.end_date }}{{ item.end_time ? ' ' + item.end_time + ' · ' + item.time_zone : ' · 具体时间未提供' }}</template><template v-else>持续进行</template></span>
         </li>
       </ul>
       <p v-else class="activity-message">{{ game || '全部游戏' }}今天暂无公开活动，可以查看接下来的日程。</p>
@@ -31,7 +31,7 @@
         <ul class="activity-preview">
           <li v-for="item in upcoming.slice(0, 2)" :key="item.id">
             <router-link class="activity-title" :to="activityTo(item)">{{ item.title }}<ArrowRight :size="14" aria-hidden="true" /></router-link>
-            <span class="activity-detail">{{ item.start_date }}{{ item.start_time ? ' ' + item.start_time : '' }} 开始 · 截止 {{ item.end_date }}</span>
+            <span class="activity-detail">{{ item.start_date }}{{ item.start_time ? ' ' + item.start_time : '' }} 开始 · {{ item.end_date ? '截止 ' + item.end_date : '持续进行' }}</span>
           </li>
         </ul>
         <p v-if="upcoming.length > 2" class="activity-message">另有 {{ upcoming.length - 2 }} 项即将开始，可在日历查看。</p>
@@ -54,7 +54,7 @@ const now = ref(Date.now())
 const items = ref([]), loading = ref(false), error = ref(false)
 const currentItems = computed(() => items.value.filter(item => !calendarEnded(item, today.value, now.value)))
 const todayItems = computed(() => currentItems.value.filter(item => item.start_date <= today.value).sort((a, b) =>
-  a.end_date.localeCompare(b.end_date) || (a.end_time || '23:59').localeCompare(b.end_time || '23:59') || Number(b.start_date === today.value) - Number(a.start_date === today.value) || a.id.localeCompare(b.id)))
+  Number(!a.end_date) - Number(!b.end_date) || (a.end_date || '').localeCompare(b.end_date || '') || (a.end_time || '23:59').localeCompare(b.end_time || '23:59') || Number(b.start_date === today.value) - Number(a.start_date === today.value) || a.id.localeCompare(b.id)))
 const counts = computed(() => summarizeCalendarDay(todayItems.value, today.value))
 const preview = computed(() => todayItems.value.slice(0, 3))
 const upcoming = computed(() => currentItems.value.filter(item => item.start_date > today.value).sort((a, b) => a.start_date.localeCompare(b.start_date) || (a.start_time || '').localeCompare(b.start_time || '') || a.id.localeCompare(b.id)))
@@ -75,7 +75,7 @@ async function load() {
     const through = addCalendarDays(today.value, 7)
     const result = await listActivityCalendar({ game, from: today.value, to: through })
     if (token !== generation) return
-    const normalized = normalizeCalendarItems(result?.items).filter(item => (!game || item.game === game) && item.end_date >= today.value && item.start_date <= through)
+    const normalized = normalizeCalendarItems(result?.items).filter(item => (!game || item.game === game) && (item.end_date == null || item.end_date >= today.value) && item.start_date <= through)
     items.value = [...new Map(normalized.map(item => [item.id, item])).values()]
   } catch {
     if (token === generation) error.value = true

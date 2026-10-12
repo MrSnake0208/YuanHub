@@ -385,3 +385,17 @@ it('今日原地换账号同步清空摘要，不让A数量冒充B', async () =>
   expect(wrapper.get('.account-data-summary').text()).toContain('尚未录入')
   expect(wrapper.get('.data-account-context-bar').text()).toContain('小号')
 })
+
+it('持续活动保留在今日摘要，排序不报错且展示持续进行', async () => {
+  signIn([])
+  listActivityCalendar.mockResolvedValue({ items: [
+    item({ id: 'open', title: '持续活动', start_date: '2026-09-01', end_date: null }),
+    item({ id: 'closed', title: '今日截止' }),
+  ] })
+  const wrapper = render(); await flushPromises()
+  expect(card(wrapper).text()).toContain('持续活动')
+  expect(card(wrapper).text()).toContain('持续进行')
+  expect(card(wrapper).text()).not.toContain('截止 null')
+  expect(card(wrapper).findAll('.activity-counts p').map(node => node.text())).toEqual(['进行中 1', '今日开始 1', '今日结束 1'])
+  expect(card(wrapper).findAll('[aria-label="今日活动预览"] li')[0].text()).toContain('今日截止')
+})
