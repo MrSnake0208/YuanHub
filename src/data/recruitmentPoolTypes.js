@@ -29,3 +29,12 @@ export function normalizeRecruitmentPoolType(value) {
 
 export function recruitmentPoolType(value) { return RECRUITMENT_POOL_TYPES[normalizeRecruitmentPoolType(value)] }
 export function recruitmentCoverStyle(value) { return { '--cover-tone': EVENT_TYPE_COLORS[recruitmentPoolType(value).color].cover } }
+
+export function isPermanentRecruitmentPool(pool) {
+  return normalizeRecruitmentPoolType(pool?.pool_type) === 'permanent' && !pool?.end_date
+}
+
+export function recruitmentPoolDateLabel(pool) {
+  if (isPermanentRecruitmentPool(pool)) return (pool?.start_date ? pool.start_date + ' — ' : '') + '常驻 · 无限期'
+  return (pool?.start_date || '开始日期未知') + ' — ' + (pool?.end_date || '结束日期未知')
+}

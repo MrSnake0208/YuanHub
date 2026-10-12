@@ -71,7 +71,7 @@
                     <h3>{{ pool.name }}</h3>
                     <span class="status-badge" :class="{ muted: pool.hidden || !pool.enabled }">{{ statusLabel(pool) }}</span>
                   </div>
-                  <p class="pool-meta">{{ pool.game }}<template v-if="pool.pool_type"> · {{ pool.pool_type }}</template> · {{ pool.start_date || '开始日期未知' }} — {{ pool.end_date || '结束日期未知' }}</p>
+                  <p class="pool-meta">{{ pool.game }}<template v-if="pool.pool_type"> · {{ pool.pool_type }}</template> · {{ recruitmentPoolDateLabel(pool) }}</p>
                   <div v-if="activePoolSlots(pool).length" class="up-summary" aria-label="当前 UP">
                     <span v-for="slot in activePoolSlots(pool)" :key="slot.id" class="up-summary-item">
                       <OperatorAvatar class="up-summary-avatar" :avatar="operatorAvatar(operatorById(slot.operator_id))" :name="operatorById(slot.operator_id)?.name || slot.name" :rarity="Number(operatorById(slot.operator_id)?.rarity) || 5" />
@@ -106,7 +106,7 @@
               <button type="button" :disabled="saving || loading" @click="readLatest">读取最新版本供核对</button>
               <div v-if="latestPool">
                 <p>服务器版本 {{ latestPool.revision }} · {{ statusLabel(latestPool) }}</p>
-                <p>{{ latestPool.name }} · {{ latestPool.pool_type || '类型未填' }} · {{ latestPool.start_date || '日期未填' }} — {{ latestPool.end_date || '日期未填' }}</p>
+                <p>{{ latestPool.name }} · {{ latestPool.pool_type || '类型未填' }} · {{ recruitmentPoolDateLabel(latestPool) }}</p>
                 <p>UP：{{ latestPool.up_agents.map(slot => slot.name + (slot.active ? '' : '（已退役）')).join('、') || '无' }}</p>
                 <p class="hint">核对后可复制需保留的草稿，再返回目录刷新重开；不覆盖其他管理员的修改。</p>
               </div>
@@ -274,6 +274,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
+import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { dialog } from '../../utils/dialog.js'

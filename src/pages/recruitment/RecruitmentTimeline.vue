@@ -14,7 +14,7 @@
     <p v-else-if="!visiblePools.length" data-guide-target="pool-unavailable" class="timeline-empty">此年份暂无卡池。</p>
     <ol class="timeline-list" data-guide-target="pool-cards">
       <li v-for="pool in visiblePools" :key="pool.pool_id" class="timeline-row">
-        <div class="date-rail" aria-hidden="true"><span>{{ startDate(pool) ? startDate(pool).slice(0, 4) + '年' : '日期' }}</span><strong>{{ startDate(pool) ? Number(startDate(pool).slice(5, 7)) + '月' : '未知' }}</strong></div>
+        <div class="date-rail" aria-hidden="true"><span>{{ isPermanentRecruitmentPool(details(pool)) ? '常驻' : startDate(pool) ? startDate(pool).slice(0, 4) + '年' : '日期' }}</span><strong>{{ isPermanentRecruitmentPool(details(pool)) ? '∞' : startDate(pool) ? Number(startDate(pool).slice(5, 7)) + '月' : '未知' }}</strong></div>
         <button :ref="element => rememberCard(pool.pool_id, element)" type="button" class="pool-card" :disabled="busy" :aria-label="cardLabel(pool)" @click="$emit('select', pool.pool_id)">
           <span class="pool-cover" :class="'cover-tone-' + recruitmentPoolType(details(pool).pool_type).coverTone" :style="recruitmentCoverStyle(details(pool).pool_type)" aria-hidden="true">
             <span v-if="coverPortraits(pool).length" class="cover-portraits" :class="'portrait-count-' + coverPortraits(pool).length">
@@ -33,7 +33,7 @@
           <span class="pool-content">
             <span class="pool-badges"><span class="pool-type">{{ details(pool).pool_type || '招募卡池' }}</span></span>
             <span class="pool-name">{{ details(pool).name }}</span>
-            <span class="pool-dates">{{ startDate(pool) || '开始日期未知' }} — {{ details(pool).end_date || '结束日期未知' }}</span>
+            <span class="pool-dates">{{ recruitmentPoolDateLabel(details(pool)) }}</span>
             <span class="pool-metrics">
               <span><BookOpen :size="15" aria-hidden="true" />已知抽数 <b>{{ poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知' }}</b><small>抽</small></span>
               <span><Gem :size="15" aria-hidden="true" />密探记录 <b>{{ poolSummaries[pool.pool_id]?.event_count ?? '未知' }}</b><small>条</small></span>
@@ -56,7 +56,7 @@ import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { dateInZone } from '../../utils/businessDay.js'
 import { recruitmentPoolCatalog } from './rules.js'
-import { recruitmentCoverStyle, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
+import { isPermanentRecruitmentPool, recruitmentCoverStyle, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { avatarUrl } from '../../api/request.js'
 
@@ -85,6 +85,7 @@ function status(pool) {
   if (data.enabled == null) return pool.snapshot?.catalog_pool_id ? '目录未确认' : '历史卡池'
   if (data.start_date && data.start_date > today) return '未开始'
   if (data.end_date && data.end_date < today) return '已结束'
+  if (isPermanentRecruitmentPool(data)) return '常驻开放'
   return data.start_date && data.end_date ? '进行中' : '已启用'
 }
 const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_id,

@@ -6,7 +6,7 @@
           <div class="editor-title">
             <span class="editor-eyebrow">{{ practice ? '练习 · 不会保存到你的账号' : '招募档案' }}</span>
             <h2 :id="editorId + '-title'">{{ poolName }}</h2>
-            <p class="pool-confirmation">{{ poolDefinition?.start_date || '开始日期未知' }} — {{ poolDefinition?.end_date || '结束日期未知' }} · {{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</p>
+            <p class="pool-confirmation">{{ recruitmentPoolDateLabel(poolDefinition) }} · {{ practice ? '这是临时示例卡池' : '请确认是实际抽取的池' }}</p>
           </div>
           <button v-if="TUTORIALS_ENABLED && !guideVisible" type="button" class="guide-entry" @click="practice ? startGuide() : openGuide()">使用教程</button>
           <button v-if="guideVisible" type="button" class="guide-exit" @click="dismissGuide">退出教程</button>
@@ -376,6 +376,7 @@ import RecruitmentGuideChoice from './RecruitmentGuideChoice.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
+import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
 import { matchesOperatorSearch, matchesProfSubFilter, subProfOptions as deriveSubProfOptions, tokens } from '../../utils/operatorFilters.js'
 import { useModalFocus } from '../../composables/useModalFocus.js'
