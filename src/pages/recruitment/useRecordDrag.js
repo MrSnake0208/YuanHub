@@ -11,8 +11,8 @@ export function useRecordDrag(list, blocked, context, reorder, announce) {
     if (!snapshot) return
     const before = snapshot
     const ids = sortable.toArray()
-    // Sortable 移动真实 DOM；先还原，交给 Vue 按 event_id 更新。
-    sortable.sort(before.ids)
+    // 只还原拖动项，避免整表重插把记录移到 Vue 的列表结束锚点之外。
+    if (before.item.parentNode === sortable.el) sortable.el.insertBefore(before.item, before.next?.parentNode === sortable.el ? before.next : null)
     snapshot = null
     dragging.value = false
     clickBlockedUntil = Date.now() + 400
@@ -40,14 +40,15 @@ export function useRecordDrag(list, blocked, context, reorder, announce) {
     cancel()
     sortable?.destroy()
     sortable = element ? new Sortable(element, {
-      draggable: '[data-event-id]', dataIdAttr: 'data-event-id', handle: '.record-handle',
+      draggable: '[data-event-id]', dataIdAttr: 'data-event-id', handle: '.gacha-record, .record-handle',
+      filter: '.guide-hint', preventOnFilter: false,
       disabled: !!blocked.value, forceFallback: true, supportPointer: false, fallbackOnBody: true,
       delay: 300, delayOnTouchOnly: true, touchStartThreshold: 5, fallbackTolerance: 4,
       animation: motion?.matches ? 0 : 160, ghostClass: 'record-drag-gap',
       chosenClass: 'record-drag-chosen', fallbackClass: 'record-drag-floating',
       scroll: true, forceAutoScrollFallback: true, scrollSensitivity: 60, scrollSpeed: 12,
       onStart(event) {
-        snapshot = { ids: sortable.toArray(), id: event.item.dataset.eventId, context: context() }
+        snapshot = { item: event.item, next: event.item.nextSibling, id: event.item.dataset.eventId, context: context() }
         dragging.value = true
         announce('正在移动整条记录，松手放置，Escape 取消')
       },

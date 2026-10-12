@@ -277,7 +277,7 @@
                 <h3 :id="editorId + '-records'">本池抽卡进度</h3>
                 <p>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }} · 最新 → 最早</p>
               </div>
-              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status">{{ sortBlocked || '拖动头像调整整条记录；触屏长按头像，键盘聚焦头像后按上下键。点击头像或记录可编辑，再保存修改。' }}
+              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status">{{ sortBlocked || (recordView === 'progress' ? '拖动整条记录' : '拖动头像') + '调整顺序；触屏长按后拖动，键盘聚焦头像后按上下键。点击记录可编辑，再保存修改。' }}
                 <button v-if="hasMore" type="button" :disabled="busy || readOnly || recordsLoading" @click="$emit('load-all')">{{ recordsLoading ? '正在读取…' : recordsError ? '重试读取全部记录' : '读取全部后排序' }}</button>
                 <button v-if="orderChanged" type="button" :disabled="busy || !!unverifiedSave || dragging" @click="resetOrder">恢复保存前顺序</button>
               </p>
@@ -285,7 +285,7 @@
               <label v-if="rows.length" class="record-search"><span>查找已有记录</span><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="按密探名字查找" autocomplete="off"></label>
 
               <ol key="progress-records" ref="recordList" v-if="displayRows.length && recordView === 'progress'" class="record-feed">
-                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row) }">
+                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row), 'is-sortable': !sortBlocked }" @contextmenu="!sortBlocked && $event.preventDefault()">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
                   <button type="button" class="record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row)" @contextmenu.prevent>
                     <OperatorAvatar
@@ -645,7 +645,7 @@ const recordList = ref(null), sortAnnouncement = ref('')
 const sortBlocked = computed(() => {
   if (props.readOnly) return '当前仅可查看记录，不能调整顺序。'
   if (props.busy) return '正在处理请求，请稍后调整顺序。'
-  if (activeRow.value) return '先加入或完成当前记录，再拖动头像调整位置。'
+  if (activeRow.value) return '先加入或完成当前记录，再拖动记录调整位置。'
   if (unverifiedSave.value) return '保存结果尚未确认，请先重新核对。'
   if (props.recordsLoading) return '正在读取本池记录，请稍后调整顺序。'
   if (!recordsReady.value) return '本池记录读取失败或尚未就绪，请重新读取后排序。'
@@ -671,7 +671,7 @@ function applyDisplayOrder(ids) {
 const { dragging, cancelDrag, isDragClick } = useRecordDrag(recordList, sortBlocked,
   () => `${editorSession}:${props.pool?.pool_id}:${props.recordsRevision}:${props.requestVersion}`,
   applyDisplayOrder, announceOrder)
-function handleLabel(row) { return `${recordLabel(row)}；拖动头像调整位置，上下键移动` }
+function handleLabel(row) { return `${recordLabel(row)}；拖动调整位置，上下键移动` }
 function moveByKey(event, row) {
   if (!['ArrowUp', 'ArrowDown'].includes(event.key) || sortBlocked.value || dragging.value) return
   event.preventDefault()
@@ -1678,6 +1678,12 @@ select {
   padding: 0;
   border-bottom: 1px solid var(--line);
   transition: background-color 180ms ease;
+}
+
+.gacha-record.is-sortable, .gacha-record.is-sortable .record-detail {
+  cursor: grab;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 .gacha-record:hover {
