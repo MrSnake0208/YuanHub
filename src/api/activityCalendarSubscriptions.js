@@ -8,3 +8,4 @@ export const calendarSubscriptionSummary = (accountId, userId) => request(PATH +
 export const getCalendarSubscription = (id, accountId, userId) => request(PATH + '/' + encodeURIComponent(id) + query({ account_id: accountId }), options(userId))
 export const setCalendarSubscription = (id, body, userId) => request(PATH + '/' + encodeURIComponent(id), { ...options(userId), method: 'PUT', body })
 export const saveCalendarProgress = (id, body, userId) => request(PATH + '/' + encodeURIComponent(id) + '/progress', { ...options(userId), method: 'PUT', body })
+export const setCalendarCompletion = (id, body, userId) => request(PATH + '/' + encodeURIComponent(id) + '/completion', { ...options(userId), method: 'PUT', body })

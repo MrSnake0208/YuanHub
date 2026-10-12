@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import { request } from '../src/api/request.js'
 import { auth } from '../src/store/auth.js'
-import { listCalendarSubscriptions, calendarSubscriptionSummary, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
+import { listCalendarSubscriptions, calendarSubscriptionSummary, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress, setCalendarCompletion } from '../src/api/activityCalendarSubscriptions.js'
 vi.mock('../src/api/request.js', () => ({ request: vi.fn() }))
 vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'user-a' } } }))
 beforeEach(() => vi.clearAllMocks())
@@ -19,4 +19,8 @@ it('private calls encode event identity and bind original user plus account for 
   expect(request.mock.lastCall[1].expectedUserId).toBe('user-a')
   await calendarSubscriptionSummary('acc-a', 'user-a')
   expect(request.mock.lastCall[0]).toContain('/summary?account_id=acc-a')
+  await setCalendarCompletion('recruitment:pool/one', { account_id: 'acc-a', expected_version: 5, completed: true }, 'user-a')
+  expect(request).toHaveBeenLastCalledWith('/v1/activity-calendar/subscriptions/recruitment%3Apool%2Fone/completion', {
+    auth: true, expectedUserId: 'user-a', method: 'PUT', body: { account_id: 'acc-a', expected_version: 5, completed: true },
+  })
 })

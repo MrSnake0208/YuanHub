@@ -1,17 +1,21 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { progressDraft, subscriptionCompleted, subscriptionScope, subscriptionPending, subscriptionScopeQuery, subscriptionHasPending, subscriptionProgress } from '../src/data/activityCalendarSubscriptions.js'
+import { progressDraft, subscriptionCompleted, subscriptionScope, subscriptionPending, subscriptionScopeQuery, subscriptionHasPending, subscriptionProgress, subscriptionTask, subscriptionMatchesTask } from '../src/data/activityCalendarSubscriptions.js'
 import { calendarDeadline, calendarEnded, calendarStatuses, normalizeCalendarItem } from '../src/data/activityCalendar.js'
 
-test('only nonempty checklists complete and drafts are isolated copies', () => {
+test('only explicit activity completion counts and checklist drafts are isolated copies', () => {
   assert.equal(subscriptionCompleted({ completed: false, checklist: [] }), false)
   assert.equal(subscriptionCompleted({ completed: true, checklist: [] }), false)
-  const record = { completed: true, checklist: [{ id: 'a', title: '第一关', completed: true }, { id: 'b', title: '第二关', completed: false }] }
+  const record = { subscribed: true, completed: true, checklist: [{ id: 'a', title: '第一关', completed: true }, { id: 'b', title: '第二关', completed: false }] }
   assert.equal(subscriptionCompleted(record), false)
   const draft = progressDraft(record)
   assert.deepEqual(Object.keys(draft), ['checklist'])
   draft.checklist[1].completed = true
-  assert.equal(subscriptionCompleted(draft), true)
+  assert.equal(subscriptionCompleted(draft), false)
+  assert.equal(subscriptionHasPending(record), true)
+  assert.equal(subscriptionCompleted({ ...record, manual_completed: true }), true)
+  assert.equal(subscriptionHasPending({ ...record, manual_completed: true }), false)
+  assert.equal(subscriptionHasPending({ ...record, subscribed: false }), false)
   assert.equal(record.checklist[1].completed, false)
 })
 test('scope links preserve calendar context without encoding private account', () => {
@@ -48,18 +52,30 @@ test('precise instants override source dates across timezones', () => {
   assert.equal(calendarDeadline(future, '2026-10-05', now), '今天稍后开始')
 })
 
-test('historical booleans never override TODO state or enter checklist drafts', () => {
+test('explicit manual evidence is preserved without guessing from checklist or legacy fields', () => {
   for (const manual of [true, false, null, undefined]) {
     for (const checklist of [[], [{ id: 'stable', title: '旧待办', completed: true }], [{ id: 'stable', title: '旧待办', completed: false }]]) {
-      const record = { completed: true, checklist, manual_completed: manual, memo_title: '旧标题', memo_note: '保留\n备注' }
+      const record = { subscribed: true, completed: true, checklist, manual_completed: manual, memo_title: '旧标题', memo_note: '保留\n备注' }
       const draft = progressDraft(record)
       assert.deepEqual(draft, { checklist })
-      assert.equal(subscriptionCompleted(record), checklist.length > 0 && checklist.every(entry => entry.completed))
-      assert.equal(subscriptionHasPending(record), checklist.some(entry => !entry.completed))
+      assert.equal(subscriptionCompleted(record), manual === true)
+      assert.equal(subscriptionHasPending(record), manual !== true)
       assert.equal(record.memo_note, '保留\n备注')
       assert.equal(record.manual_completed, manual)
     }
   }
+})
+test('task links keep personal and time dimensions independent and accept old pending links', () => {
+  assert.equal(subscriptionTask({}), 'todo')
+  assert.equal(subscriptionTask({ pending: '1' }), 'todo')
+  assert.equal(subscriptionTask({ pending: '0' }), 'all')
+  assert.equal(subscriptionTask({ task: ['completed', 'todo'], status: 'ongoing' }), 'completed')
+  assert.equal(subscriptionTask({ task: 'invalid' }), 'todo')
+  const record = { subscribed: true, checklist: [] }
+  assert.equal(subscriptionMatchesTask(record, 'todo'), true)
+  assert.equal(subscriptionMatchesTask({ ...record, manual_completed: true }, 'completed'), true)
+  assert.equal(subscriptionMatchesTask({ ...record, subscribed: false }, 'all'), false)
+  assert.deepEqual(subscriptionScopeQuery({ scope: 'mine', pending: '0', status: 'ongoing' }, false), { task: 'all', status: 'ongoing' })
 })
 test('progress uses empty, partial and completed labels without overall state', () => {
   assert.equal(subscriptionProgress({ checklist: [] }), '暂无待办')

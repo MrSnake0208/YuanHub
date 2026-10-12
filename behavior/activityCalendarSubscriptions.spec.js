@@ -7,13 +7,13 @@ import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
 import { listAccounts } from '../src/api/accounts.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
-import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
+import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress, setCalendarCompletion } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'user' } }) }))
 vi.mock('../src/api/calendarPrivateItems.js', () => ({ listCalendarPrivateItems: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
-vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), setCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
+vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ listCalendarSubscriptions: vi.fn(), getCalendarSubscription: vi.fn(), setCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn(), setCalendarCompletion: vi.fn() }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
 const event = { id: 'evt', game: '如鸢', title: '地下遗迹', category: 'ACTIVITY', start_date: '2026-10-01', end_date: '2026-10-10' }
 let server, wrapper
@@ -35,7 +35,8 @@ beforeEach(() => {
   listCalendarSubscriptions.mockImplementation(async () => ({ items: server?.subscribed ? [server] : [], unavailable_items: [], subscribed_count: server?.subscribed ? 1 : 0 }))
   getCalendarSubscription.mockImplementation(async () => { if (!server) throw Object.assign(new Error('missing'), { status: 404, code: 'subscription_not_found' }); return server })
   setCalendarSubscription.mockImplementation(async (id, body) => { server = { ...server, event_id: id, version: (server?.version ?? -1) + 1, completed: server?.completed ?? false, checklist: server?.checklist || [], item: event, subscribed: body.subscribed }; return server })
-  saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, ...body, completed: body.checklist.length > 0 && body.checklist.every(entry => entry.completed), version: server.version + 1 }; return server })
+  saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, ...body, completed: server?.manual_completed === true, version: server.version + 1 }; return server })
+  setCalendarCompletion.mockImplementation(async (id, body) => { server = { ...server, manual_completed: body.completed, completed: body.completed, version: server.version + 1 }; return server })
   dialog.confirm.mockResolvedValue(true)
 })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
@@ -62,7 +63,7 @@ it.each(['如鸢', '代号鸢'])('mine switches in place to %s and locks filters
   expect(wrapper.text()).not.toContain('地下遗迹')
   expect(listCalendarSubscriptions.mock.lastCall[0]).toMatchObject({ account_id: 'b' })
   expect(listActivityCalendar.mock.lastCall[0]).toMatchObject({ game })
-  expect(wrapper.get('.calendar-filter-summary').text()).toBe('有未完成待办')
+  expect(wrapper.get('[aria-label="个人活动状态"]').element.value).toBe('todo')
   expect(wrapper.get('.calendar-account-scope').text()).toContain(`${game}（账号锁定）`)
   await wrapper.get('.calendar-filter-trigger').trigger('click'); await flushPromises()
   expect(Array.from(document.querySelectorAll('#calendar-filter-sheet legend')).map(node => node.textContent)).toEqual(['类型', '时间状态'])
@@ -141,7 +142,7 @@ it.each([false, true])('removing the final TODO becomes empty regardless of lega
   expect(wrapper.text()).not.toContain('待办全部完成')
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1]).toEqual({ account_id: 'a', expected_version: 0, completed: false, progress_mode: 'checklist', checklist: [] })
-  expect(server.completed).toBe(false)
+  expect(server.completed).toBe(initial)
   expect(server.manual_completed).toBe(initial)
 })
 it('subscribe complete cancel restore reuse one activity and retain progress', async () => {
@@ -242,11 +243,11 @@ it('conflict preserves draft blocks save and requires reading latest before repl
   expect(dialog.confirm).toHaveBeenCalled()
 })
 it('mine retains view and date while ignoring foreign game query and filters completed', async () => {
-  server = { event_id: 'evt', version: 0, subscribed: true, completed: true, checklist: [], item: event }
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: true, manual_completed: true, checklist: [], item: event }
   const router = await render('&scope=mine&pending=1&game=代号鸢&ref=test')
   expect(wrapper.text()).not.toContain('地下遗迹')
   expect(wrapper.getComponent(AccountSwitcher).props('accountId')).toBe('a')
-  expect(wrapper.text()).toContain('订阅、活动待办与私人事项仅当前账号可见')
+  expect(wrapper.text()).toContain('订阅即本期待办，截止不会自动完成')
   await button('全部活动').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', game: '代号鸢', ref: 'test' })
 })
@@ -278,7 +279,7 @@ it('reading conflict result in pending-only scope does not discard draft before 
   await wrapper.findAll('.calendar-check-row input[type=text]')[1].setValue('保留草稿')
   saveCalendarProgress.mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
-  server = { ...server, completed: true, checklist: [{ id: 'old', title: '服务器待办', completed: true }], version: 1 }
+  server = { ...server, completed: true, manual_completed: true, checklist: [{ id: 'old', title: '服务器待办', completed: true }], version: 1 }
   dialog.confirm.mockResolvedValue(false)
   await button('读取最新状态').trigger('click'); await flushPromises()
   expect(wrapper.findAll('.calendar-check-row input[type=text]')[1].element.value).toBe('保留草稿')
@@ -307,8 +308,96 @@ it('new checklist item may be deliberately completed before first save', async (
   await wrapper.get('.calendar-check-target input[type=checkbox]').setValue(true)
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
   expect(saveCalendarProgress.mock.lastCall[1].checklist[0].completed).toBe(true)
-  expect(server.completed).toBe(true)
+  expect(server.completed).toBe(false)
   expect(wrapper.get('.calendar-todo-summary').text()).toContain('待办全部完成')
+})
+
+it.each(['日程', '时间轴', '月历'])('%s supports subscribe todo complete public history and undo independently of checklist', async view => {
+  const router = await render()
+  await button('订阅本期').trigger('click'); await flushPromises()
+  expect(server.completed).toBe(false)
+  server = { ...server, checklist: [{ id: 'stable', title: '未完成子项', completed: false }], memo_note: '保留历史备注' }
+  await button('我的日历').trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="个人活动状态"]').element.value).toBe('todo')
+  if (view !== '日程') { await button(view).trigger('click'); await flushPromises() }
+  if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  await button('标记本期完成').trigger('click'); await flushPromises()
+  expect(setCalendarCompletion.mock.lastCall[1]).toEqual({ account_id: 'a', expected_version: 0, completed: true })
+  expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
+  expect(wrapper.get('.calendar-subscription-toolbar [role="status"]').text()).toContain('本期已完成')
+  expect(document.activeElement).toBe(wrapper.get('[aria-label="个人活动状态"]').element)
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+  await wrapper.get('[aria-label="个人活动状态"]').setValue('completed'); await flushPromises()
+  if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  expect(wrapper.text()).toContain('本期已完成')
+  expect(server.memo_note).toBe('保留历史备注')
+  expect(server.checklist[0].completed).toBe(false)
+  await button('全部活动').trigger('click'); await flushPromises()
+  if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
+  expect(wrapper.text()).toContain('地下遗迹')
+  expect(wrapper.text()).toContain('本期已完成')
+  await button('撤销完成').trigger('click'); await flushPromises()
+  expect(server.manual_completed).toBe(false)
+  expect(server.checklist[0].id).toBe('stable')
+  expect(router.currentRoute.value.query.view).toBe(view === '日程' ? 'agenda' : view === '时间轴' ? 'timeline' : 'month')
+})
+
+it('completion never writes over an unsaved checklist and conflict requires explicit refresh', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event }
+  await render('&scope=mine')
+  await button('编辑待办').trigger('click'); await button('添加待办').trigger('click')
+  await wrapper.get('.calendar-check-row input[type=text]').setValue('保留草稿')
+  expect(button('标记本期完成').element.disabled).toBe(true)
+  await button('标记本期完成').trigger('click'); await flushPromises()
+  expect(setCalendarCompletion).not.toHaveBeenCalled()
+  expect(wrapper.get('.calendar-check-row input[type=text]').element.value).toBe('保留草稿')
+  await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
+  setCalendarCompletion.mockRejectedValueOnce(Object.assign(new Error('version conflict'), { status: 409 }))
+  await button('标记本期完成').trigger('click'); await flushPromises()
+  expect(wrapper.get('[role=alert]').text()).toContain('读取最新状态')
+  expect(button('标记本期完成').element.disabled).toBe(true)
+  expect(server.completed).toBe(false)
+  await button('读取最新状态').trigger('click'); await flushPromises()
+  expect(wrapper.get('.calendar-check-row input[type=text]').element.value).toBe('保留草稿')
+})
+
+it('a late completion response for A never applies to account B', async () => {
+  listAccounts.mockResolvedValue(twoAccounts('如鸢'))
+  const rows = Object.fromEntries(['a', 'b'].map(id => [id, { event_id: 'evt', version: 0, subscribed: true, completed: false, manual_completed: false, checklist: [], item: event }]))
+  listCalendarSubscriptions.mockImplementation(async ({ account_id }) => ({ items: [rows[account_id]], subscribed_count: 1 }))
+  let resolveA
+  setCalendarCompletion.mockImplementationOnce(() => new Promise(resolve => { resolveA = resolve }))
+  await render('&scope=mine')
+  await button('标记本期完成').trigger('click'); await flushPromises()
+  await switchAccount('b')
+  resolveA({ ...rows.a, version: 1, manual_completed: true, completed: true }); await flushPromises()
+  expect(activeAccount.id).toBe('b')
+  expect(wrapper.text()).toContain('本期待办')
+  expect(button('撤销完成')).toBeUndefined()
+  expect(rows.b.manual_completed).toBe(false)
+  expect(setCalendarCompletion.mock.lastCall[1].account_id).toBe('a')
+})
+
+it('task URL composes with time filters, preserves explicit history and never completes expired subscriptions', async () => {
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [{ id: 'done', title: '全勾子项', completed: true }], item: { ...event, end_date: '2026-10-04' } }
+  const router = await render('&scope=mine&task=all&date=2026-10-04&status=ongoing')
+  expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
+  await router.push('/calendar?view=month&scope=mine&task=todo&date=2026-10-04'); await flushPromises()
+  expect(wrapper.text()).toContain('已过期 · 本期未完成')
+  await router.push('/calendar?view=month&scope=mine&task=completed&date=2026-10-04'); await flushPromises()
+  expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
+  router.back(); await flushPromises()
+  expect(wrapper.get('[aria-label="个人活动状态"]').element.value).toBe('todo')
+  expect(setCalendarCompletion).not.toHaveBeenCalled()
+})
+
+it('resetting time filters preserves legacy explicit all-subscriptions preference', async () => {
+  const router = await render('&scope=mine&pending=0&status=ongoing')
+  await wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query).toMatchObject({ scope: 'mine', task: 'all', view: 'agenda' })
+  expect(router.currentRoute.value.query.status).toBeUndefined()
+  expect(router.currentRoute.value.query.pending).toBeUndefined()
+  expect(wrapper.get('[aria-label="个人活动状态"]').element.value).toBe('all')
 })
 
 it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐藏项误标为未订阅', async () => {
@@ -317,8 +406,8 @@ it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐
   const completed = { ...event, id: 'done', title: '完成的商店', category: 'SHOP' }
   const foreign = { ...event, id: 'foreign', title: '异游活动', game: '代号鸢' }
   const history = { ...event, id: 'history', title: '日期窗口之外', start_date: '2026-09-01', end_date: '2026-09-30' }
-  const records = [login, pool, completed, foreign, history].map(item => ({ event_id: item.id, item, subscribed: true, version: 0, completed: item.id === 'done', checklist: [{ id: 'todo', title: '事项', completed: item.id === 'done' }] }))
-  listCalendarSubscriptions.mockResolvedValue({ items: records, unavailable_items: [{ event_id: 'old', checklist: [] }], subscribed_count: 5 })
+  const records = [login, pool, completed, foreign, history].map(item => ({ event_id: item.id, item, subscribed: true, version: 0, completed: item.id === 'done', manual_completed: item.id === 'done', checklist: [{ id: 'todo', title: '事项', completed: item.id === 'done' }] }))
+  listCalendarSubscriptions.mockResolvedValue({ items: records, unavailable_items: [{ event_id: 'old', subscribed: true, version: 0, checklist: [] }], subscribed_count: 5 })
   const router = await render('&scope=mine&pending=1&game=代号鸢&exclude_recruitment=1&status=ending&date=2026-10-05&ref=keep')
   expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['login'])
   expect(wrapper.get('.calendar-account-scope').text()).toContain('如鸢（账号锁定）')
@@ -326,7 +415,7 @@ it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐
   await wrapper.get('.calendar-filter-clear').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', game: '代号鸢', date: '2026-10-05', ref: 'keep' })
   expect(activeAccount.id).toBe('a')
-  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['login', 'pool', 'done'])
+  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['login', 'pool'])
   expect(wrapper.find('.calendar-filter-clear').exists()).toBe(false)
   expect(wrapper.find('.calendar-filter-state').exists()).toBe(false)
   expect(wrapper.text()).toContain('个人记录仍保留')
@@ -336,14 +425,14 @@ it('mine综合筛选与清除保持账号游戏、范围和原订阅，不将隐
   expect(saveCalendarProgress).not.toHaveBeenCalled()
 })
 
-it('mine逐项取消有未完成待办和时间状态，不改变账号或公开游戏query', async () => {
+it('mine切换个人状态与取消时间筛选互不影响账号或公开游戏query', async () => {
   const router = await render('&scope=mine&pending=1&status=ending&game=代号鸢&ref=keep')
   expect(wrapper.get('.calendar-account-scope').text()).toContain('如鸢（账号锁定）')
   expect(wrapper.find('[aria-label="取消筛选：如鸢"]').exists()).toBe(false)
-  await wrapper.get('[aria-label="取消筛选：有未完成待办"]').trigger('click'); await flushPromises()
-  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', status: 'ending', game: '代号鸢', ref: 'keep' })
+  await wrapper.get('[aria-label="个人活动状态"]').setValue('all'); await flushPromises()
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', task: 'all', status: 'ending', game: '代号鸢', ref: 'keep' })
   await wrapper.get('[aria-label="取消筛选：近 3 天结束"]').trigger('click'); await flushPromises()
-  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', game: '代号鸢', ref: 'keep' })
+  expect(router.currentRoute.value.query).toEqual({ view: 'agenda', scope: 'mine', task: 'all', game: '代号鸢', ref: 'keep' })
   expect(activeAccount.id).toBe('a')
   expect(wrapper.find('.calendar-filter-state').exists()).toBe(false)
   expect(setCalendarSubscription).not.toHaveBeenCalled()
@@ -364,7 +453,7 @@ it('mine边界更新不隐藏未保存草稿，保存后再应用时间筛选', 
 
 it.each(['日程', '时间轴', '月历'])('%s shares the TODO editor and readonly escaped history', async view => {
   server = { event_id: 'evt', version: 3, subscribed: true, completed: true, manual_completed: true, legacy_completed: true, checklist: [{ id: 'legacy', title: '旧关卡', completed: false }], item: event, memo_title: '历史自定义标题', memo_note: '兑换提醒\n<script>不要执行</script>' }
-  await render('&scope=mine')
+  await render('&scope=mine&task=all')
   if (view !== '日程') { await button(view).trigger('click'); await flushPromises() }
   if (view === '时间轴') { await wrapper.get('.calendar-timeline-bar').trigger('click'); await flushPromises() }
   expect(wrapper.get('.calendar-todo-card-summary').text()).toContain('已完成 0/1 项')
@@ -388,7 +477,7 @@ it.each(['日程', '时间轴', '月历'])('%s shares the TODO editor and readon
   expect(wrapper.get('.calendar-todo-summary').text()).toContain('待办全部完成')
 })
 it('default history is hidden and empty TODO drafts protect collapse, filter, route, unsubscribe and unload', async () => {
-  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, checklist: [], item: event, memo_title: '本期备忘', memo_note: '' }
+  server = { event_id: 'evt', version: 0, subscribed: true, completed: false, manual_completed: false, checklist: [], item: event, memo_title: '本期备忘', memo_note: '' }
   const router = await render('&scope=mine')
   await button('编辑待办').trigger('click')
   expect(wrapper.find('.calendar-todo-history').exists()).toBe(false)
@@ -400,10 +489,10 @@ it('default history is hidden and empty TODO drafts protect collapse, filter, ro
   expect(unload.defaultPrevented).toBe(true)
   await button('收起待办').trigger('click'); await flushPromises()
   await button('取消订阅').trigger('click'); await flushPromises()
-  await wrapper.get('.calendar-subscription-toolbar input[type=checkbox]').setValue(true); await flushPromises()
+  await wrapper.get('[aria-label="个人活动状态"]').setValue('completed'); await flushPromises()
   await router.push('/user/profile'); await flushPromises()
   expect(router.currentRoute.value.path).toBe('/calendar')
-  expect(router.currentRoute.value.query.pending).toBeUndefined()
+  expect(router.currentRoute.value.query.task).toBeUndefined()
   expect(wrapper.get('.calendar-check-row input[type=text]').element.value).toBe('')
   expect(setCalendarSubscription).not.toHaveBeenCalled()
 })
@@ -450,7 +539,7 @@ it('blank and overlong TODOs are rejected; saving disables duplicate submits', a
 it('unavailable TODO and history are readonly and escaped', async () => {
   const gone = { event_id: 'gone', version: 2, subscribed: true, completed: true, manual_completed: true, checklist: [{ id: 'old', title: '<b>旧关卡</b>', completed: false }], memo_title: '旧标题', memo_note: '提示\n<img src=x onerror=alert(1)>' }
   listCalendarSubscriptions.mockResolvedValue({ items: [], unavailable_items: [gone], subscribed_count: 1 })
-  await render('&scope=mine'); await button('查看待办').trigger('click')
+  await render('&scope=mine&task=all'); await button('查看待办').trigger('click')
   expect(wrapper.get('.calendar-todo-readonly').text()).toContain('<b>旧关卡</b>')
   expect(wrapper.get('.calendar-todo-history').text()).toContain('<img src=x onerror=alert(1)>')
   expect(wrapper.find('.calendar-todo-history img').exists()).toBe(false)
@@ -468,24 +557,24 @@ it('50 TODO limit and declined deletion preserve the activity', async () => {
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: '删除待办？', message: expect.stringContaining('当前账号、本期活动') }))
   expect(saveCalendarProgress).not.toHaveBeenCalled()
 })
-it.each([true, false])('legacy manual %s never overrides 1/3, 3/3, unchecking, additions or deletion', async manual => {
+it.each([true, false])('manual activity state %s survives 1/3, 3/3, unchecking, additions or deletion', async manual => {
   server = { event_id: 'evt', version: 0, subscribed: true, completed: manual, manual_completed: manual, item: event, checklist: [true, false, false].map((completed, index) => ({ id: 'old-' + index, title: '待办' + index, completed })) }
-  await render('&scope=mine'); await button('编辑待办').trigger('click')
+  await render('&scope=mine&task=all'); await button('编辑待办').trigger('click')
   expect(wrapper.get('.calendar-todo-summary').text()).toContain('已完成 1/3 项')
   for (const input of wrapper.findAll('.calendar-check-target input')) await input.setValue(true)
   expect(wrapper.get('.calendar-todo-summary').text()).toContain('待办全部完成')
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
-  expect(server.completed).toBe(true)
+  expect(server.completed).toBe(manual)
   await wrapper.get('.calendar-check-target input').setValue(false)
   await button('添加待办').trigger('click')
   await wrapper.findAll('.calendar-check-row input[type=text]')[3].setValue('新待办')
   expect(wrapper.get('.calendar-todo-summary').text()).toContain('已完成 2/4 项')
   while (button('删除')) { await button('删除').trigger('click'); await flushPromises() }
   await wrapper.get('.calendar-checklist').trigger('submit'); await flushPromises()
-  expect(server.completed).toBe(false); expect(server.manual_completed).toBe(manual)
+  expect(server.completed).toBe(manual); expect(server.manual_completed).toBe(manual)
   wrapper.unmount(); await render('&scope=mine&pending=1')
-  expect(wrapper.find('.calendar-subscription').exists()).toBe(false)
-  wrapper.unmount(); await render('&scope=mine')
+  expect(wrapper.find('.calendar-subscription').exists()).toBe(!manual)
+  wrapper.unmount(); await render('&scope=mine&task=all')
   expect(wrapper.text()).toContain('暂无待办')
 })
 it('Chinese IME keeps composing TODO title until compositionend', async () => {
@@ -500,13 +589,13 @@ it('Chinese IME keeps composing TODO title until compositionend', async () => {
   expect(saveCalendarProgress.mock.lastCall[1].checklist).toEqual([{ id: 'old', title: '中文待办', completed: false }])
   expect(saveCalendarProgress.mock.lastCall[1]).not.toHaveProperty('manual_completed')
 })
-it('pending filter includes only unfinished lists, including unavailable sources, and all view retains empty lists', async () => {
-  const records = ['empty', 'pending', 'done'].map(id => ({ event_id: id, version: 0, subscribed: true, completed: id !== 'pending', manual_completed: id === 'pending', item: { ...event, id, title: id }, checklist: id === 'empty' ? [] : [{ id: 'old', title: '事项', completed: id === 'done' }] }))
+it('todo includes empty subscriptions and unavailable sources while all retains completed activities', async () => {
+  const records = ['empty', 'pending', 'done'].map(id => ({ event_id: id, version: 0, subscribed: true, completed: id !== 'pending', manual_completed: id === 'done', item: { ...event, id, title: id }, checklist: id === 'empty' ? [] : [{ id: 'old', title: '事项', completed: id === 'done' }] }))
   listCalendarSubscriptions.mockResolvedValue({ items: records, subscribed_count: 5, unavailable_items: [{ ...records[0], event_id: 'gone-empty', item: null }, { ...records[1], event_id: 'gone-pending', item: null }] })
   const router = await render('&scope=mine&pending=1')
-  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['pending'])
-  expect(wrapper.findAll('.calendar-todo-card-summary')).toHaveLength(2)
-  await router.replace('/calendar?view=agenda&scope=mine'); await flushPromises()
+  expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items').map(item => item.id)).toEqual(['empty', 'pending'])
+  expect(wrapper.findAll('.calendar-todo-card-summary')).toHaveLength(4)
+  await router.replace('/calendar?view=agenda&scope=mine&task=all'); await flushPromises()
   expect(wrapper.findComponent({ name: 'CalendarAgendaView' }).props('items')).toHaveLength(3)
   expect(wrapper.findAll('.calendar-todo-card-summary')).toHaveLength(5)
 })
@@ -519,7 +608,7 @@ it('saving one event preserves another event and account history through switchi
   listCalendarSubscriptions.mockImplementation(async ({ account_id }) => ({ items: stores[account_id], subscribed_count: stores[account_id].length }))
   saveCalendarProgress.mockImplementation(async (id, body) => {
     const row = stores[body.account_id].find(row => row.event_id === id)
-    Object.assign(row, { checklist: body.checklist, completed: body.checklist.length > 0 && body.checklist.every(entry => entry.completed), version: row.version + 1 }); return { ...row }
+    Object.assign(row, { checklist: body.checklist, completed: row.manual_completed === true, version: row.version + 1 }); return { ...row }
   })
   await render('&scope=mine'); await button('编辑待办').trigger('click')
   await wrapper.get('.calendar-check-row input[type=text]').setValue('当前活动改名')

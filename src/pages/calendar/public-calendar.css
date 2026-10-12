@@ -1,4 +1,7 @@
 /* Public reading views; the management workspace keeps calendar.css. */
+.calendar-public .calendar-task-filter { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--tea); }
+.calendar-public .calendar-task-filter select { min-width: 0; max-width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); font: inherit; }
+.calendar-public .calendar-task-filter select:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
 .calendar-public > main { background: color-mix(in srgb, var(--surface) 42%, transparent); }
 .calendar-public .calendar-content { gap: 16px; }
 .calendar-public .calendar-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding-top: 32px; padding-bottom: 20px; }
