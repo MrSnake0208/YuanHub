@@ -49,6 +49,8 @@ jobs:
         run: npm run test:behavior
 
       - name: Build
+        env:
+          NODE_ENV: production
         run: npm run build
 
       # 校验 VERSION / commit / buildTime 确实进入了构建产物，

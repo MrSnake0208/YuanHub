@@ -1,5 +1,12 @@
 # YuanStar embed 同步说明
 
+## 本地首次突破瓶子录入修复（2026-10-12）
+
+- 来源分支 `codex/local-star-bottle-input`，source commit `854a7493e1744c4b8a4bae3e44dbd3f216ce911c`。从已提交 source commit 的干净工作树正式 build，执行 `build:embed` 后由原正式同步脚本复制完整 12 文件；manifest 记录真实来源与逐文件 SHA-256。
+- 未录入瓶子保持 `null`，显示“未录入”；已有读取和保存端口可用时允许首次编辑。加载、保存、待确认或读取错误继续禁用，复用宿主 listed 快照与读回确认，不改其余未知库存。
+- 完成按钮保留既有资源判断，并说明未选择、库存未知、库存不足或正在保存的原因。本地 Vite 与正式生产构建均默认开放真实完成；API 目标继续由既有代理配置决定，本地联调使用本地 Backend。发版前须单独确认正式 Backend 已部署兼容接口和事务实现。
+- 源修复已完成一次本地提交，本次收口仅涉及 YuanHub 与 Backend，不推送或修改源仓。用户已在本地浏览器人工连续完成多次养成，确认成功提示和养成路线清空；这属于人工验收，不是自动浏览器测试。
+
 ## 养成下钻与六步教程兼容（2026-10-11，已人工验收）
 
 - 来源分支 `feat/growth-plan-workspace-p1`，source commit `0b95a91f30aa91989c217e3b81d642993eeb767e`。已提交 source commit 的干净工作树正式 build：执行 `build:embed` 并通过正式同步脚本复制完整产物，来源和每个文件 SHA-256 记录在 `docs/yuanstar-embed-manifest.json`。

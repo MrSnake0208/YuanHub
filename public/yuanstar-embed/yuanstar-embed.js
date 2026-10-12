@@ -19986,15 +19986,21 @@ function Vv(e) {
 		insufficient: "养成资源不足",
 		unknown: "养成资源待确认",
 		pending: "完成结果待确认"
-	}[u], f = sv(e.route, n, r, e.bottleLoading || e.bottleSaving || e.bottlePending || e.bottleError ? {
+	}[u], f = e.routeSaving ? "云端状态正在保存，请等待同步完成" : {
+		empty: "请选择有效的待养成计划",
+		ready: "确认实际消耗",
+		insufficient: "经验星曜或突破瓶子库存不足，请调整选择",
+		unknown: "请确认经验星曜及所需突破瓶子的库存",
+		pending: "请查询原操作回执，确认完成结果"
+	}[u], p = sv(e.route, n, r, e.bottleLoading || e.bottleSaving || e.bottlePending || e.bottleError ? {
 		jiezhuping: null,
 		jiezheping: null,
 		jieyangping: null
-	} : e.bottles), p = f.prefix == null ? "<p class=\"growth-route-estimate\" role=\"status\">无法估算：资源库存或规则尚未确认。</p>" : `<div class="growth-route-boundary" role="status"><span>${f.prefix === 0 ? "首项资源不足" : "预计可养至此"}</span>${f.gap ? `<small class="growth-route-gap"><span>路线累计缺口（至第${f.prefix + 1}颗）</span>${((e) => [e.experience ? `<span>缺经验 <b>${dv(e.experience)}</b></span><span class="growth-route-purple">${Iv("紫")} <b>${fv(e.experience, n)}颗</b></span>` : "", ...[
+	} : e.bottles), m = p.prefix == null ? "<p class=\"growth-route-estimate\" role=\"status\">无法估算：资源库存或规则尚未确认。</p>" : `<div class="growth-route-boundary" role="status"><span>${p.prefix === 0 ? "首项资源不足" : "预计可养至此"}</span>${p.gap ? `<small class="growth-route-gap"><span>路线累计缺口（至第${p.prefix + 1}颗）</span>${((e) => [e.experience ? `<span>缺经验 <b>${dv(e.experience)}</b></span><span class="growth-route-purple">${Iv("紫")} <b>${fv(e.experience, n)}颗</b></span>` : "", ...[
 		["jiezhuping", "解注瓶"],
 		["jiezheping", "解谪瓶"],
 		["jieyangping", "解殃瓶"]
-	].map(([t, n]) => e.bottles[t] ? `<span>缺${n} <b>×${e.bottles[t]}</b></span>` : "")].filter(Boolean).join(""))(f.gap)}</small>` : "<small>全部路线资源足够</small>"}</div>`, m = e.route.map((t, r) => `${r === 0 && f.prefix === 0 ? p : ""}<article class="growth-route-card" data-growth-card-id="${Nv(t.starInstanceId)}" draggable="${!e.routeSaving}"><div class="growth-route-main"><input type="checkbox" id="growth-select-${Nv(t.starInstanceId)}" data-growth-select-id="${Nv(t.starInstanceId)}" aria-label="选择养成 ${Nv(t.name)}" ${e.selectedRouteIds?.has(t.starInstanceId) ? "checked" : ""}/><input class="growth-route-order" id="growth-order-${Nv(t.starInstanceId)}" data-growth-route-id="${Nv(t.starInstanceId)}" inputmode="numeric" aria-label="${Nv(t.name)}路线序号" value="${r + 1}" ${e.routeSaving ? "disabled" : ""}/><strong>${Nv(t.name)}</strong><span class="growth-route-level">${Lv(t.level, t.targetLevel)}</span>${Pv(t.quality)}</div><div class="growth-route-details" aria-label="本颗需求"><span>${Bv(t.level, t.targetLevel, n)}</span><span class="growth-route-materials" aria-label="突破瓶子">${Rv(t.level, t.targetLevel, n)}</span></div></article>${f.prefix === r + 1 ? p : ""}`).join("");
+	].map(([t, n]) => e.bottles[t] ? `<span>缺${n} <b>×${e.bottles[t]}</b></span>` : "")].filter(Boolean).join(""))(p.gap)}</small>` : "<small>全部路线资源足够</small>"}</div>`, h = e.route.map((t, r) => `${r === 0 && p.prefix === 0 ? m : ""}<article class="growth-route-card" data-growth-card-id="${Nv(t.starInstanceId)}" draggable="${!e.routeSaving}"><div class="growth-route-main"><input type="checkbox" id="growth-select-${Nv(t.starInstanceId)}" data-growth-select-id="${Nv(t.starInstanceId)}" aria-label="选择养成 ${Nv(t.name)}" ${e.selectedRouteIds?.has(t.starInstanceId) ? "checked" : ""}/><input class="growth-route-order" id="growth-order-${Nv(t.starInstanceId)}" data-growth-route-id="${Nv(t.starInstanceId)}" inputmode="numeric" aria-label="${Nv(t.name)}路线序号" value="${r + 1}" ${e.routeSaving ? "disabled" : ""}/><strong>${Nv(t.name)}</strong><span class="growth-route-level">${Lv(t.level, t.targetLevel)}</span>${Pv(t.quality)}</div><div class="growth-route-details" aria-label="本颗需求"><span>${Bv(t.level, t.targetLevel, n)}</span><span class="growth-route-materials" aria-label="突破瓶子">${Rv(t.level, t.targetLevel, n)}</span></div></article>${p.prefix === r + 1 ? m : ""}`).join("");
 	return `<section class="growth-workspace review-page" aria-label="养成计划">
     <div class="growth-column growth-left">
       <section class="growth-filters" aria-label="筛选与视图">
@@ -20022,15 +20028,15 @@ function Vv(e) {
 		["jiezhuping", "解注瓶"],
 		["jiezheping", "解谪瓶"],
 		["jieyangping", "解殃瓶"]
-	].map(([t, n]) => `<label class="growth-resource-quantity">${Fv(t, n)}<span>×</span><input id="growth-bottle-${t}" data-growth-bottle="${t}" class="growth-resource-input" inputmode="numeric" aria-label="${n}数量" value="${e.bottles[t] == null ? "" : e.bottles[t]}" placeholder="—" ${e.bottleLoading || e.bottleSaving || e.bottlePending || e.bottles[t] == null ? "disabled" : ""}/></label>`).join("")}${e.bottleLoading ? "<small role=\"status\">读取中…</small>" : e.bottleSaving ? "<small role=\"status\">保存中…</small>" : e.bottleError ? `<button class="button button-secondary" id="growth-retry-inventory" type="button">${e.bottlePending && e.bottlePending.phase !== "unconfirmed" ? "重新读取" : "重试"}</button>${e.bottlePending?.phase === "conflict" ? `<button class="button button-secondary" id="growth-accept-inventory" type="button" ${e.bottlePending.canAccept && e.bottleCanAccept ? "" : "disabled"}>使用当前库存</button>` : ""}` : ""}</div></section>
+	].map(([t, n]) => `<label class="growth-resource-quantity">${Fv(t, n)}<span>×</span><input id="growth-bottle-${t}" data-growth-bottle="${t}" class="growth-resource-input" inputmode="numeric" aria-label="${n}数量" value="${e.bottles[t] == null ? "" : e.bottles[t]}" placeholder="未录入" title="${e.bottles[t] == null ? "库存未知/未录入；输入数量后保存并读回确认" : "输入数量后保存并读回确认"}" ${e.bottleCanEdit !== !0 || e.bottleLoading || e.bottleSaving || e.bottlePending || e.bottleError ? "disabled" : ""}/></label>`).join("")}${e.bottleLoading ? "<small role=\"status\">读取中…</small>" : e.bottleSaving ? "<small role=\"status\">保存中…</small>" : e.bottleError ? `<button class="button button-secondary" id="growth-retry-inventory" type="button">${e.bottlePending && e.bottlePending.phase !== "unconfirmed" ? "重新读取" : "重试"}</button>${e.bottlePending?.phase === "conflict" ? `<button class="button button-secondary" id="growth-accept-inventory" type="button" ${e.bottlePending.canAccept && e.bottleCanAccept ? "" : "disabled"}>使用当前库存</button>` : ""}` : ""}</div></section>
       ${e.bottleError ? `<p class="growth-error" role="status">${Nv(e.bottleError)}</p>` : ""}
       ${e.ruleError ? `<p class="growth-error" role="status">规则加载失败：${Nv(e.ruleError)}</p>` : ""}
-      <section class="growth-route" aria-label="养成路线"><h2>养成路线 <span>${e.route.length} 颗</span></h2><p class="growth-route-note">经验按当前经验条进度为0估算，为保守最大需求。</p>${f.prefix == null && e.route.length ? p : ""}<div class="growth-route-scroll"><div class="growth-route-list" tabindex="0" aria-label="养成路线滚动列表">${e.route.length ? m : "<p class=\"growth-route-empty\">当前账号暂无待养成星石。</p>"}</div></div></section>
+      <section class="growth-route" aria-label="养成路线"><h2>养成路线 <span>${e.route.length} 颗</span></h2><p class="growth-route-note">经验按当前经验条进度为0估算，为保守最大需求。</p>${p.prefix == null && e.route.length ? m : ""}<div class="growth-route-scroll"><div class="growth-route-list" tabindex="0" aria-label="养成路线滚动列表">${e.route.length ? h : "<p class=\"growth-route-empty\">当前账号暂无待养成星石。</p>"}</div></div></section>
       <section class="growth-selection" aria-label="本次选择摘要"><div class="growth-selection-lines"><div><strong>本次选中 ${c.length}颗</strong><span>经验需求 ${c.length ? l ? dv(l.experience) : "—" : "0"}</span><span class="growth-route-purple">${Iv("紫")}折合 <b>${c.length ? l && n ? fv(l.experience, n) : "—" : "0"}</b></span></div><div>${[
 		["jiezhuping", "解注瓶"],
 		["jiezheping", "解谪瓶"],
 		["jieyangping", "解殃瓶"]
-	].map(([e, t]) => `<span>${Fv(e, t)} ×<b>${c.length ? l ? l.bottles[e] : "—" : 0}</b></span>`).join("")}</div></div><div class="growth-selection-actions"><label class="growth-select-all"><input id="growth-select-all" type="checkbox" ${e.route.length && c.length === e.route.length ? "checked" : ""} ${e.route.length ? "" : "disabled"} />全选</label><button class="button button-secondary" data-growth-complete data-completion-state="${u}" type="button" ${e.completionEnabled && u === "ready" && !e.routeSaving ? "" : "disabled"} title="${e.completionEnabled ? u === "ready" ? "确认实际消耗" : d : "完成养成尚未开放"}">${d}</button></div></section>
+	].map(([e, t]) => `<span>${Fv(e, t)} ×<b>${c.length ? l ? l.bottles[e] : "—" : 0}</b></span>`).join("")}</div></div><div class="growth-selection-actions"><label class="growth-select-all"><input id="growth-select-all" type="checkbox" ${e.route.length && c.length === e.route.length ? "checked" : ""} ${e.route.length ? "" : "disabled"} />全选</label><button class="button button-secondary" data-growth-complete data-completion-state="${u}" type="button" ${e.completionEnabled && u === "ready" && !e.routeSaving ? "" : "disabled"} title="${e.completionEnabled ? f : "完成养成尚未开放"}">${d}</button></div></section>
     </div>
   </section>`;
 }
@@ -23775,6 +23781,7 @@ function kT() {
 		bottleError: lC,
 		bottleLoading: uC,
 		bottleSaving: fC,
+		bottleCanEdit: !!wC && !!SC,
 		bottlePending: pC,
 		bottleCanAccept: !!CC
 	});
