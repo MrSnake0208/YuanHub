@@ -263,6 +263,52 @@ export function monthCalendarDays(items, date) {
   return calendarDates(monthGridRange(date)).map(day => ({ date: day, inMonth: day.slice(0, 7) === date.slice(0, 7), items: calendarItemsOnDay(items, day) }))
 }
 
+// Pack weekly slices without changing event identity or the inclusive business dates.
+export function monthCalendarWeeks(items, date, maxRows = 3) {
+  const byId = new Map()
+  for (const item of items) if (!byId.has(item.id)) byId.set(item.id, item)
+  const unique = [...byId.values()]
+    .sort((a, b) => a.start_date.localeCompare(b.start_date) || (b.end_date || '9999-12-31').localeCompare(a.end_date || '9999-12-31') || a.id.localeCompare(b.id))
+  const days = monthCalendarDays(unique, date), weeks = []
+  let previousRows = new Map()
+  for (let offset = 0; offset < days.length; offset += 7) {
+    const weekDays = days.slice(offset, offset + 7)
+    const range = { from: weekDays[0].date, to: weekDays[6].date }
+    const lanes = [], currentRows = new Map()
+    const entries = unique.map(item => ({ item, position: timelineItemPosition(item, range) })).filter(entry => entry.position)
+    // Continuing events reserve their old rows before new events fill the gaps.
+    entries.sort((a, b) => Number(previousRows.has(b.item.id)) - Number(previousRows.has(a.item.id)))
+    for (const entry of entries) {
+      const { column, span } = entry.position
+      const available = row => !(lanes[row] || []).some(other => column < other.position.column + other.position.span && other.position.column < column + span)
+      let row = previousRows.get(entry.item.id)
+      if (row == null || !available(row)) {
+        row = 0
+        while (!available(row)) row++
+      }
+      lanes[row] ||= []
+      lanes[row].push({ ...entry, row })
+      currentRows.set(entry.item.id, row)
+    }
+    // Drop empty rows when shorter events end, keeping continuing rows ordered.
+    const packed = lanes.filter(lane => lane?.length).flatMap((lane, row) => lane.map(entry => {
+      currentRows.set(entry.item.id, row)
+      return { ...entry, row }
+    }))
+    const segments = packed.filter(entry => entry.row < maxRows)
+    const visibleOnDay = index => new Set(segments.filter(({ position }) => position.column <= index + 1 && position.column + position.span > index + 1).map(entry => entry.item.id))
+    weeks.push({
+      ...range, segments, rowCount: Math.max(0, ...segments.map(entry => entry.row + 1)),
+      days: weekDays.map((day, index) => {
+        const visible = visibleOnDay(index)
+        return { ...day, hiddenCount: day.items.filter(item => !visible.has(item.id)).length }
+      }),
+    })
+    previousRows = currentRows
+  }
+  return weeks
+}
+
 export function calendarDateLabel(date, options = { month: 'long', day: 'numeric', weekday: 'short' }) {
   return new Intl.DateTimeFormat('zh-CN', { ...options, timeZone: 'UTC' }).format(new Date(date + 'T00:00:00Z'))
 }

@@ -58,7 +58,7 @@
           </div>
           <CalendarAgendaView v-if="currentView === 'agenda'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" />
           <CalendarTimelineView v-else-if="currentView === 'timeline'" :items="visibleItems" :today="today" :anchor-date="anchorDate" :locate-request="locateRequest" :loading="viewLoading" :error="!!viewError" @select-date="setDate" />
-          <CalendarMonthView v-else :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :can-create="privateItems.ready.value" @select-date="setDate" @create-private="privateItems.open(null, $event)" />
+          <CalendarMonthView v-else :items="visibleItems" :today="today" :anchor-date="anchorDate" :loading="viewLoading" :error="!!viewError" :can-create="privateItems.ready.value" @select-date="(date, afterSelect) => setDate(date).then(afterSelect)" @create-private="privateItems.open(null, $event)" />
         </div>
         <section v-if="mine && visibleUnavailable.length" class="calendar-panel" aria-label="不可用的订阅">
           <h2>活动已停用或不可用</h2>

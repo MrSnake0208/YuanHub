@@ -12,6 +12,7 @@ import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { isFeatureEnabled } from '../src/config/features.js'
 import { CALENDAR_VIEW_STORAGE_KEY, monthGridRange, timelineRange } from '../src/data/activityCalendar.js'
 import { CALENDAR_SUBSCRIPTIONS } from '../src/data/activityCalendarSubscriptions.js'
+import { denseMonthItems } from '../test-support/calendarMonthFixtures.js'
 
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/config/features.js', async importOriginal => ({ ...(await importOriginal()), isFeatureEnabled: vi.fn(() => true) }))
@@ -199,7 +200,7 @@ it('flag关闭不读偏好、不请求、不设置计时器及刷新监听', asy
   expect(wrapper.find('.calendar-view-tools').exists()).toBe(false)
 })
 
-it('Month每天计数跨月活动，按钮完整命名，选中日详情复用卡片', async () => {
+it('Month周条展示跨月活动，按钮完整命名，选中周后仅一份详情', async () => {
   const wrapper = mount(Month, { props: viewProps({ items: [event(), event({ id: 'single', title: '今日限时', start_date: today, end_date: today })] }) })
   expect(wrapper.findAll('.calendar-month-day')).toHaveLength(35)
   const selected = wrapper.get('.calendar-month-day[aria-pressed=true]')
@@ -207,6 +208,9 @@ it('Month每天计数跨月活动，按钮完整命名，选中日详情复用�
   expect(selected.attributes('aria-label')).toBe('2026年10月3日，2项活动，今天，已选中，活动 · 类型未标注')
   expect(wrapper.get('.calendar-detail-heading > span').text()).toBe('2 项活动')
   expect(wrapper.findAllComponents(EventCard)).toHaveLength(2)
+  expect(wrapper.findAll('.calendar-day-detail')).toHaveLength(1)
+  expect(wrapper.get('.calendar-day-detail').element.previousElementSibling.classList.contains('calendar-month-week')).toBe(true)
+  expect(wrapper.get('.calendar-month-bar').classes()).not.toContain('is-clipped-start')
   await wrapper.get('.calendar-month-day[aria-label^="2026年10月5日"]').trigger('click')
   expect(wrapper.emitted('select-date').at(-1)).toEqual(['2026-10-05'])
   await wrapper.setProps({ anchorDate: '2026-10-05' })
@@ -215,6 +219,75 @@ it('Month每天计数跨月活动，按钮完整命名，选中日详情复用�
   expect(wrapper.get('.calendar-day-detail').text()).not.toContain('0 项活动')
   await wrapper.setProps({ anchorDate: '2026-08-01' })
   expect(wrapper.findAll('.calendar-month-day')).toHaveLength(42)
+})
+
+it('Month密集周逐日更多进入完整清单，活动条聚焦全文且不嵌套按钮', async () => {
+  const values = denseMonthItems()
+  const wrapper = mount(Month, { attachTo: document.body, props: viewProps({ items: [...values, values[0]], anchorDate: '2026-10-14' }) })
+  const more = wrapper.get('.calendar-month-overflow button[aria-label^="10月15日"]')
+  expect(more.attributes('aria-label')).toContain('另有9项，查看当天全部12项')
+  await more.trigger('click')
+  const [date, afterSelect] = wrapper.emitted('select-date').at(-1)
+  expect(date).toBe('2026-10-15')
+  await wrapper.setProps({ anchorDate: date }); await afterSelect(); await flushPromises()
+  expect(wrapper.findAllComponents(EventCard)).toHaveLength(12)
+  expect(document.activeElement.id).toBe('calendar-day-detail-title')
+  expect(wrapper.find('button button').exists()).toBe(false)
+  const bar = wrapper.findAll('.calendar-month-bar[data-event-id="month-00"]')[2]
+  expect(bar.attributes('aria-label')).toContain(values[0].title)
+  expect(bar.classes()).toContain('is-clipped-start')
+  expect(bar.classes()).toContain('is-clipped-end')
+  await bar.trigger('click'); await flushPromises()
+  expect(wrapper.emitted('select-date').at(-1)[0]).toBe('2026-10-15')
+  await wrapper.emitted('select-date').at(-1)[1](); await flushPromises()
+  expect(document.activeElement.dataset.eventId).toBe('month-00')
+})
+
+it('Month重复副本不改变周条和详情口径；取消导航后普通选日不执行旧焦点', async () => {
+  const wrapper = mount(Month, { attachTo: document.body, props: viewProps({ items: [event({ end_date: today }), event({ end_date: '2026-10-31' })] }) })
+  expect(wrapper.findAllComponents(EventCard)).toHaveLength(1)
+  await wrapper.setProps({ anchorDate: '2026-10-15' })
+  expect(wrapper.get('.calendar-month-day[aria-pressed=true]').attributes('aria-label')).toContain('0项活动')
+  expect(wrapper.findAllComponents(EventCard)).toHaveLength(0)
+  await wrapper.setProps({ items: denseMonthItems(), anchorDate: '2026-10-03' })
+  await wrapper.get('.calendar-month-overflow button[aria-label^="10月15日"]').trigger('click')
+  await wrapper.emitted('select-date').at(-1)[1](); await flushPromises()
+  const day = wrapper.get('.calendar-month-day[aria-label^="2026年10月15日"]')
+  day.element.focus()
+  await day.trigger('click'); await wrapper.setProps({ anchorDate: '2026-10-15' }); await flushPromises()
+  expect(document.activeElement).toBe(day.element)
+})
+
+it('Month跨月条在异步新范围加载完成后聚焦完整卡片', async () => {
+  const { wrapper, router } = await render('/calendar?view=month&date=2026-10-15')
+  const pending = deferred()
+  listActivityCalendar.mockReturnValueOnce(pending.promise)
+  await wrapper.get('.calendar-month-bar').trigger('click'); await flushPromises()
+  expect(router.currentRoute.value.query.date).toBe('2026-09-30')
+  expect(wrapper.find('.calendar-day-detail').exists()).toBe(false)
+  pending.resolve({ items: [event()] }); await flushPromises()
+  expect(wrapper.get('.calendar-day-detail h3').text()).toContain('9月30日')
+  expect(document.activeElement.dataset.eventId).toBe('evt-a')
+})
+
+it('Month实时宽度切换3/4层与更多计数，卸载释放监听；加载错误不显示旧条', async () => {
+  const listeners = new Set()
+  const media = { matches: false, addEventListener: vi.fn((_, listener) => listeners.add(listener)), removeEventListener: vi.fn((_, listener) => listeners.delete(listener)) }
+  vi.stubGlobal('matchMedia', vi.fn(() => media))
+  const wrapper = mount(Month, { props: viewProps({ items: denseMonthItems(), anchorDate: '2026-10-15' }) })
+  const more = () => wrapper.get('.calendar-month-overflow button[aria-label^="10月15日"]')
+  expect(more().text()).toContain('+9')
+  media.matches = true; listeners.forEach(listener => listener()); await flushPromises()
+  expect(more().text()).toContain('+8')
+  for (const state of [{ loading: true }, { loading: false, error: true }]) {
+    await wrapper.setProps(state)
+    expect(wrapper.find('.calendar-month-bar').exists()).toBe(false)
+    expect(wrapper.find('.calendar-month-overflow').exists()).toBe(false)
+    expect(wrapper.find('.calendar-day-detail').exists()).toBe(false)
+    expect(wrapper.findAll('.calendar-month-day')).toHaveLength(35)
+  }
+  wrapper.unmount()
+  expect(listeners.size).toBe(0)
 })
 
 it('Month月末导航钳制日号，点相邻月份格同步展示月份和请求范围', async () => {

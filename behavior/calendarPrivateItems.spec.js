@@ -82,7 +82,7 @@ it.each(['agenda', 'timeline', 'month'])('private and official items coexist in 
   expect(privateCard.text()).not.toContain('编辑待办')
   expect(privateCard.text()).not.toContain('今天结束')
   expect(privateCard.findAll('button').map(node => node.text())).toEqual(['编辑事项', '删除事项'])
-  if (view === 'month') expect(wrapper.get('.calendar-month-day[aria-pressed=true] .calendar-day-count').text()).toBe('2 项')
+  if (view === 'month') expect(wrapper.get('.calendar-month-day[aria-pressed=true]').attributes('aria-label')).toContain('2项事项')
   if (view === 'timeline') expect(wrapper.findAll('.calendar-timeline-bar')).toHaveLength(2)
 })
 
@@ -262,7 +262,8 @@ it('cross-month private range marks each covered day, clips a single bar, groups
   rows = [raw({ start_date: '2026-09-01', end_date: '2026-11-20', time: '09:00' })]
   const router = await render()
   for (const day of wrapper.findAll('.calendar-month-day')) {
-    expect(day.find('.calendar-day-count').exists()).toBe(true)
+    const date = day.attributes('aria-label')
+    expect(date).toMatch(/[12]项事项/)
     expect(day.attributes('aria-label')).toContain('私人事项')
   }
   expect(wrapper.text()).toContain('开始日 09:00')

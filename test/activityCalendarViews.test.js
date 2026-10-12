@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calendarAnchorDate, calendarDates, calendarDeadline, calendarRequestRange, calendarView, calendarViewQuery, monthCalendarDays, monthGridRange, shiftCalendarMonth, timelineItemPosition, timelineLanes, timelineRange } from '../src/data/activityCalendar.js'
+import { calendarAnchorDate, calendarDates, calendarDeadline, calendarRequestRange, calendarView, calendarViewQuery, monthCalendarDays, monthCalendarWeeks, monthGridRange, shiftCalendarMonth, timelineItemPosition, timelineLanes, timelineRange } from '../src/data/activityCalendar.js'
+import { denseMonthItems } from '../test-support/calendarMonthFixtures.js'
 
 const today = '2026-10-03'
 const item = (patch = {}) => ({ id: 'a', start_date: '2026-09-30', end_date: '2026-10-04', ...patch })
@@ -107,4 +108,71 @@ test('截止提示以服务器日期计算今天/明天/剩余天数与未来开
   assert.equal(calendarDeadline(item({ end_date: '2026-10-06' }), today), '还有 3 天')
   assert.equal(calendarDeadline(item({ start_date: '2026-10-05', end_date: '2026-10-06' }), today), '2 天后开始')
   assert.equal(calendarDeadline(item({ end_date: '2026-10-02' }), today), '')
+})
+
+test('周条复用闭区间，跨年/跨月/开放结束保留延续信息，不修改输入', () => {
+  for (const date of ['2021-02-01', '2026-08-31', '2026-12-31', '2028-02-29', '2026-04-30']) {
+    const values = [item({ id: 'long', start_date: '2020-12-01', end_date: null })]
+    const before = structuredClone(values)
+    const weeks = monthCalendarWeeks(values, date)
+    assert.equal(weeks.length, monthCalendarDays([], date).length / 7)
+    for (const week of weeks) {
+      assert.equal(new Date(week.from + 'T00:00:00Z').getUTCDay(), 1)
+      assert.equal(week.segments.length, 1)
+      assert.deepEqual(week.segments[0].position, { column: 1, span: 7, clippedStart: true, clippedEnd: true })
+      assert.ok(week.days.every(day => day.items.length === 1 && day.hiddenCount === 0))
+    }
+    assert.deepEqual(values, before)
+  }
+})
+
+test('密集周有限层数、逐日隐藏ID计数准确、重排和重复不影响布局', () => {
+  const values = denseMonthItems()
+  for (const maxRows of [3, 4]) {
+    const weeks = monthCalendarWeeks([...values, values[0]], '2026-10-15', maxRows)
+    assert.deepEqual(weeks, monthCalendarWeeks(values.slice().reverse(), '2026-10-15', maxRows))
+    const selected = weeks.flatMap(week => week.days).find(day => day.date === '2026-10-15')
+    assert.equal(selected.items.length, 12)
+    assert.equal(selected.hiddenCount, 12 - maxRows)
+    for (const week of weeks) {
+      assert.ok(week.rowCount <= maxRows)
+      assert.equal(new Set(week.segments.map(entry => entry.item.id)).size, week.segments.length)
+      for (const row of Array.from({ length: maxRows }, (_, index) => index)) {
+        const entries = week.segments.filter(entry => entry.row === row).sort((a, b) => a.position.column - b.position.column)
+        for (let i = 1; i < entries.length; i++) assert.ok(entries[i - 1].position.column + entries[i - 1].position.span <= entries[i].position.column)
+      }
+      week.days.forEach((day, index) => {
+        const visible = week.segments.filter(entry => entry.position.column <= index + 1 && entry.position.column + entry.position.span > index + 1)
+        assert.equal(day.items.length, day.hiddenCount + visible.length)
+      })
+    }
+    for (let i = 1; i < weeks.length; i++) {
+      for (const entry of weeks[i].segments) {
+        const previous = weeks[i - 1].segments.find(other => other.item.id === entry.item.id)
+        if (previous && weeks[i - 1].rowCount === weeks[i].rowCount) assert.equal(entry.row, previous.row)
+      }
+    }
+  }
+})
+
+test('空周不留空轨，单日与同日边界不能共轨，结束后压缩空轨', () => {
+  assert.ok(monthCalendarWeeks([], today).every(week => week.rowCount === 0 && week.segments.length === 0 && week.days.every(day => day.hiddenCount === 0)))
+  const weeks = monthCalendarWeeks([
+    item({ id: 'short', start_date: '2026-09-28', end_date: '2026-10-01' }),
+    item({ id: 'point', start_date: '2026-10-01', end_date: '2026-10-01' }),
+    item({ id: 'later', start_date: '2026-10-01', end_date: '2026-10-12' }),
+  ], today)
+  assert.equal(weeks[0].rowCount, 3)
+  assert.equal(weeks[0].segments.find(entry => entry.item.id === 'point').position.span, 1)
+  assert.equal(weeks[1].rowCount, 1)
+  assert.equal(weeks[1].segments[0].row, 0)
+})
+
+test('重复ID首项与当天清单一致，后续副本不制造额外跨度', () => {
+  const first = item({ start_date: today, end_date: today })
+  const duplicate = { ...first, title: '重复副本', end_date: '2026-10-31' }
+  const weeks = monthCalendarWeeks([first, duplicate], today)
+  assert.equal(weeks.flatMap(week => week.segments).length, 1)
+  assert.equal(weeks[0].segments[0].position.span, 1)
+  assert.equal(weeks[0].days.find(day => day.date === today).items[0], first)
 })
