@@ -6,9 +6,7 @@ All deferred frontend features are registered in `src/config/features.js`.
 Each feature has a stable camelCase key. Future deferred features must use an
 explicit boolean value and default to `false`.
 
-The initial `operatorGrowthTracking` flag controls the growth-tracking tab on
-the `/operator` page. It is enabled only while Vite reports development mode
-(`npm run dev`) and is disabled in production builds and deployments.
+`operatorGrowthTracking` opens the growth-planning tab on `/operator` in both development and production. The planning panel displays a persistent notice that it contains many Bugs and results need checking.
 
 Use the exported key and reader in application code:
 
@@ -18,7 +16,7 @@ import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 const enabled = isFeatureEnabled(FEATURE_KEYS.OPERATOR_GROWTH_TRACKING)
 ```
 
-The registry derives the current development-only value with
+The registry derives the development-only demo boundary with
 `import.meta.env?.DEV === true`; the optional access keeps native Node tests
 safe when Vite has not injected `import.meta.env`. Do not duplicate feature
 names, boolean values, or comment-out instructions in individual pages and
@@ -71,24 +69,13 @@ npm run test:behavior -- behavior/operatorDiscardedGroup.spec.js behavior/operat
 
 ## Development and production behavior
 
-The current flag has an intentional environment boundary:
-
-```text
-npm run dev    # import.meta.env.DEV = true  -> operatorGrowthTracking = true
-npm run build  # import.meta.env.DEV = false -> operatorGrowthTracking = false
-npm test
-```
-
-Vite resolves `import.meta.env.DEV` at build time, so production deployments
-must be built with `npm run build`. Future flags may be opened or rolled back
-only by changing their own explicit boolean in `src/config/features.js`, then
-running `npm test`, `npm run build`, and deploying the new static assets.
+Growth planning, recruitment and calendar use explicit `true` values in all builds. The star-completion demo remains DEV-only and tutorials require explicit opt-in. Release switches are build-time values; changes require rebuilding and deploying the frontend.
 
 The flag only controls frontend visibility and interaction. It is not an
 authentication, authorization, or data-protection boundary; backend APIs and
 backup compatibility must be changed separately if a feature later needs to be
 strictly unavailable.
 
-`recruitmentArchive` controls the `/recruitment` route and both navigation entries. The delivered local MVP uses the explicit boolean `true` so users can review it directly; development and production builds both follow this value. It does not imply deployment. Before publishing, complete the pending user verification and decide whether to keep it open or set only `[FEATURE_KEYS.RECRUITMENT_ARCHIVE]` to `false` in `src/config/features.js`. The page requires login and independent recruitment access (`meta.requiresRecruitmentAccess`), managed at `/admin/recruitment-access`; it does not require global beta access. The backend independently protects private recruitment endpoints.
+`recruitmentArchive` controls `/recruitment` and both navigation entries and is explicitly `true`. The route requires authentication and the shared `requiresBeta` gate. Its workspace no longer polls independent recruitment access. `/admin/recruitment-access` redirects to `/manage`; the retired access settings and historical grants do not control current access. Public catalog GET remains public; private recruitment requests and shared account endpoints are protected by backend Beta policy.
 
-`activityCalendar` controls `/calendar`, `/calendar/admin`, both public navigation entries, the activity calendar tool in the content-maintenance group, and the public daily summary on `/today`. Batch 03/04/05 uses the explicit boolean `true` for local/manual acceptance; this also applies to production builds and does not imply deployment. To close it, change only `[FEATURE_KEYS.ACTIVITY_CALENDAR]` to `false`. Both routes remain lazy and declare `meta.feature`; the pages also prevent API initialization while disabled. Today does not render its summary component or make calendar requests while disabled; the component also guards its own initialization and refresh listeners. During admin testing, calendar and suggestion routes require authentication and existing admin capability; both navigation entries and the Today summary follow the same gate. Calendar reads and suggestion APIs enforce this independently on the backend. Management still requires `activity_calendar:write`. See [activity calendar](../activity-calendar.md) for behavior and focused verification.
+`activityCalendar` is explicitly `true`. `/calendar` and both suggestion routes require authentication and shared Beta eligibility, without admin testing restrictions. Navigation exposes the feature entrance; routing and backend policy enforce access. Today summaries, subscriptions and private items work for ordinary eligible users. Management and suggestion review retain `activity_calendar:write`. Feature-disabled pages remain lazy and prevent API initialization. See [activity calendar](../activity-calendar.md).
