@@ -54,6 +54,7 @@ export function useRecruitment() {
     try {
       const page = await api.listRecruitmentEvents({ accountId: token.accountId, poolId, cursor, order: 'asc', limit: 100 })
       if (!matches(token) || read !== recordsGeneration) return false
+      if (!Array.isArray(page.items) || !Number.isInteger(page.archive_revision) || page.items.some(event => event.pool_id !== poolId || event.deleted_at) || new Set(page.items.map(event => event.event_id)).size !== page.items.length || cursor && page.items.some(event => state.records.some(old => old.event_id === event.event_id))) throw new Error('记录分页不完整或不属于本池，请重新读取')
       if (cursor && page.archive_revision !== state.recordsRevision) throw new Error('档案已变化，请关闭后重新打开本池')
       state.records = cursor ? state.records.concat(page.items) : page.items
       state.recordsRevision = page.archive_revision; state.recordsCursor = page.next_cursor

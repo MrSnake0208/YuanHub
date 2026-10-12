@@ -33,7 +33,7 @@
       <SiteFooter />
     </main>
     <RecruitmentPractice v-if="TUTORIALS_ENABLED && practiceOpen" @close="practiceOpen = false" />
-    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :pool-summary="state.archive?.pool_summaries?.[selectedPoolId]" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guided="TUTORIALS_ENABLED && guideActive" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @retry="retryPoolReadback" @guide-dismiss="guideActive = false" @guide-start="guideActive = true" @practice="openPractice" />
+    <PoolEditor ref="poolEditor" :open="editorOpen" :pool="selectedPool" :pool-summary="state.archive?.pool_summaries?.[selectedPoolId]" :agents="agents" :catalog="state.catalog || []" :can-record="canRecordPool(selectedPool)" :records="state.records" :records-loading="state.recordsLoading" :records-error="state.recordsError" :records-revision="state.recordsRevision" :has-more="!!state.recordsCursor" :busy="state.busy || state.loading" :read-only="!available || !!state.archive?.game_mismatch" :server-error="state.error" :request-version="state.requestVersion" :guided="TUTORIALS_ENABLED && guideActive" :save-receipt="saveReceipt" @close="editorOpen = false" @save="savePool" @load-more="loadPoolRecords(selectedPoolId, state.recordsCursor)" @load-all="loadAllPoolRecords" @retry="retryPoolReadback" @guide-dismiss="guideActive = false" @guide-start="guideActive = true" @practice="openPractice" />
   </div>
 </template>
 
@@ -115,13 +115,29 @@ function openPool(poolId) {
   timeline.value?.focusPool(poolId)
   selectedPoolId.value = poolId; saveReceipt.value = null; state.error = ''; editorOpen.value = true; loadPoolRecords(poolId)
 }
+let loadingAllRecords = null
+async function loadAllPoolRecords() {
+  const token = { ...capture(), poolId: selectedPoolId.value }, poolId = token.poolId, cursors = new Set()
+  if (loadingAllRecords && matches(loadingAllRecords) && loadingAllRecords.poolId === poolId || state.recordsLoading || state.busy) return
+  loadingAllRecords = token
+  try {
+    while (matches(token) && editorOpen.value && poolId === selectedPoolId.value && state.recordsCursor) {
+      if (state.records.length >= 20000) { state.recordsError = '历史排序最多支持本池20000条记录，请导出备份核对'; return }
+      if (cursors.has(state.recordsCursor)) { state.recordsError = '分页游标重复，尚未读完本池记录，请重新读取'; return }
+      cursors.add(state.recordsCursor)
+      if (!await loadPoolRecords(poolId, state.recordsCursor)) return
+    }
+  } finally { if (loadingAllRecords === token) loadingAllRecords = null }
+}
 async function retryPoolReadback(refreshArchive = true) {
   const token = capture(), poolId = selectedPoolId.value, receipt = saveReceipt.value
   if (receipt && refreshArchive) await refresh()
   if (!matches(token) || poolId !== selectedPoolId.value) return
   let loaded = await loadPoolRecords(poolId)
   const cursors = new Set()
-  while (loaded && matches(token) && poolId === selectedPoolId.value && (receipt?.deleted_event_ids.length || receipt?.entries.some(entry => !state.records.some(event => event.event_id === entry.event_id))) && state.recordsCursor && !cursors.has(state.recordsCursor)) {
+  while (loaded && matches(token) && poolId === selectedPoolId.value && (receipt?.ordered_event_ids || receipt?.deleted_event_ids.length || receipt?.entries.some(entry => !state.records.some(event => event.event_id === entry.event_id))) && state.recordsCursor) {
+    if (cursors.has(state.recordsCursor)) { state.recordsError = '分页游标重复，保存顺序尚未核对，请重新读取'; return }
+    if (receipt?.ordered_event_ids && state.records.length >= 20000) { state.recordsError = '回读记录超过20000条，保存顺序尚未核对'; return }
     cursors.add(state.recordsCursor)
     loaded = await loadPoolRecords(poolId, state.recordsCursor)
   }
