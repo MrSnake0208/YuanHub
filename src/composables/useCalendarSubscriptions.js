@@ -1,9 +1,9 @@
-import { computed, onBeforeUnmount, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useAccountListUpdates } from '../store/accountList.js'
 import { auth } from '../store/auth.js'
 import { activeAccount } from '../store/activeAccount.js'
 import { listAccounts } from '../api/accounts.js'
-import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../api/activityCalendarSubscriptions.js'
+import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress, setCalendarCompletion } from '../api/activityCalendarSubscriptions.js'
 import { CALENDAR_SUBSCRIPTIONS, subscriptionCompleted } from '../data/activityCalendarSubscriptions.js'
 import { useUnsavedChanges } from '../utils/useUnsavedChanges.js'
 
@@ -98,6 +98,7 @@ export function useCalendarSubscriptions(enabled, range, category, privateDirty 
     records.value = records.value.filter(value => value.event_id !== record.event_id)
     unavailable.value = unavailable.value.filter(value => value.event_id !== record.event_id)
     if (record.subscribed) (record.item ? records.value : unavailable.value).push(record)
+    window.dispatchEvent(new CustomEvent('calendar-subscriptions-updated', { detail: { userId: identity.value, accountId: account.value?.id } }))
   }
   async function refreshOne(id) {
     const context = ticket(), user = identity.value, owner = account.value?.id
@@ -130,8 +131,21 @@ export function useCalendarSubscriptions(enabled, range, category, privateDirty 
     apply(result)
     return result
   }
+  async function complete(id, version, completed) {
+    const context = ticket(), user = identity.value, owner = account.value?.id
+    if (!current(context)) throw new Error('请先选择游戏账号。')
+    if (dirty.value) throw new Error('请先保存或收起未保存的日历修改，再标记本期状态。')
+    const result = await setCalendarCompletion(id, { account_id: owner, expected_version: version, completed }, user)
+    if (!current(context)) return null
+    if (result?.event_id !== id || !Number.isInteger(result.version) || result.version < version || !result.subscribed || result.completed !== completed || subscriptionCompleted(result) !== completed) throw new Error('保存结果需要确认，请读取最新状态。')
+    apply(result)
+    contextNotice.value = completed ? '本期已完成，可在已完成中撤销。' : '已恢复为本期待办。'
+    await nextTick()
+    if (current(context) && document.activeElement === document.body) document.querySelector('[aria-label="个人活动状态"]')?.focus()
+    return result
+  }
   function discardDrafts() { epoch.value++; drafts.value = {} }
-  const state = { permitted, identity, account, accounts, accountError, accountLoading, loadAccounts, key, epoch, contextNotice, records, unavailable, count, byId, loading, error, now, dirty, confirmDiscard, switchAccount, discardDrafts, load, refreshOne, subscribe, progress, accept: apply, setDirty: (id, value) => { drafts.value = { ...drafts.value, [id]: value } } }
+  const state = { permitted, identity, account, accounts, accountError, accountLoading, loadAccounts, key, epoch, contextNotice, records, unavailable, count, byId, loading, error, now, dirty, confirmDiscard, switchAccount, discardDrafts, load, refreshOne, subscribe, progress, complete, accept: apply, setDirty: (id, value) => { drafts.value = { ...drafts.value, [id]: value } } }
   provide(CALENDAR_SUBSCRIPTIONS, state)
   onBeforeUnmount(() => { alive = false; generation++; accountGeneration++ })
   return state

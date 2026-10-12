@@ -86,17 +86,19 @@ it.each(['agenda', 'timeline', 'month'])('private and official items coexist in 
   if (view === 'timeline') expect(wrapper.findAll('.calendar-timeline-bar')).toHaveLength(2)
 })
 
-it('public scope never reads or renders private items; pending/category/status filters describe their private exclusion', async () => {
+it('public scope never reads private items; completed/category/time filters explain private exclusion while todo retains them', async () => {
   rows = [raw()]
   const router = await render('view=month&date=2026-10-15')
   expect(listCalendarPrivateItems).not.toHaveBeenCalled(); expect(wrapper.text()).not.toContain('私人内容')
   expect(button('添加私人事项')).toBeUndefined()
   await button('我的日历').trigger('click'); await flushPromises()
   expect(router.currentRoute.value.query.scope).toBe('mine'); expect(wrapper.text()).toContain('私人内容')
-  for (const patch of [{ category: 'ACTIVITY' }, { status: 'ongoing' }, { pending: '1' }]) {
+  for (const patch of [{ category: 'ACTIVITY' }, { status: 'ongoing' }, { task: 'completed' }]) {
     await router.replace({ query: { scope: 'mine', view: 'month', date: '2026-10-15', ...patch } }); await flushPromises()
     expect(wrapper.text()).not.toContain('私人内容'); expect(wrapper.text()).toContain('私人事项已隐藏')
   }
+  await router.replace({ query: { scope: 'mine', view: 'month', date: '2026-10-15', pending: '1' } }); await flushPromises()
+  expect(wrapper.text()).toContain('私人内容')
   await router.replace({ query: { scope: 'mine', view: 'month', date: '2026-10-15', exclude_recruitment: '1' } }); await flushPromises()
   expect(wrapper.text()).toContain('私人内容')
 })
