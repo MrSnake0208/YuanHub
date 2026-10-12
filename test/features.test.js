@@ -12,40 +12,6 @@ const featureConfig = readFileSync(new URL('../src/config/features.js', import.m
 const operatorPage = readFileSync(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../src/router/index.js', import.meta.url), 'utf8')
 
-test('CI and release pin production builds and release uses the configured official API', () => {
-  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
-  const release = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8')
-  assert.match(ci, /name: Build\s+env:\s+NODE_ENV: production\s+run: npm run build/)
-  assert.ok(release.includes('NODE_ENV=production VITE_API_BASE="$API_BASE" npm run build'))
-  assert.ok(release.includes('API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}'))
-})
-
-test('star completion defaults to enabled in development, production and native Node', async () => {
-  assert.equal(FEATURE_FLAGS[FEATURE_KEYS.STAR_COMPLETION], true)
-  assert.equal(isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION), true)
-  for (const env of [{}, { DEV: true, PROD: false }, { DEV: false, PROD: true }]) {
-    const source = featureConfig.replaceAll('import.meta.env', JSON.stringify(env))
-    const flags = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
-    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.STAR_COMPLETION), true)
-  }
-})
-
-test('actual Vite production output enables completion without an opt-in or demo', async () => {
-  const { build } = await import('vite')
-  const result = await build({
-    configFile: false, envFile: false, mode: 'production', logLevel: 'silent',
-    build: { write: false, minify: false, lib: {
-      entry: fileURLToPath(new URL('../src/config/features.js', import.meta.url)),
-      formats: ['es'],
-    } },
-  })
-  const outputs = Array.isArray(result) ? result : [result]
-  const chunk = outputs.flatMap(item => item.output).find(item => item.type === 'chunk')
-  const compiled = await import('data:text/javascript;base64,' + Buffer.from(chunk.code).toString('base64'))
-  assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.STAR_COMPLETION), true)
-  assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.STAR_COMPLETION_DEMO), false)
-})
-
 test('growth tracking is enabled only in Vite dev mode', function () {
   const key = FEATURE_KEYS.OPERATOR_GROWTH_TRACKING
   const viteDev = import.meta.env?.DEV === true
@@ -102,4 +68,38 @@ test('router supports metadata-based feature fallback', function () {
   assert.match(router, /to\.meta && to\.meta\.feature/)
   assert.match(router, /isFeatureEnabled\(feature\)/)
   assert.match(router, /to\.meta\.featureFallback \|\| '\/cart'/)
+})
+
+test('CI and release pin production builds and release uses the configured official API', () => {
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
+  const release = readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8')
+  assert.match(ci, /name: Build\s+env:\s+NODE_ENV: production\s+run: npm run build/)
+  assert.ok(release.includes('NODE_ENV=production VITE_API_BASE="$API_BASE" npm run build'))
+  assert.ok(release.includes('API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}'))
+})
+
+test('star completion defaults to enabled in development, production and native Node', async () => {
+  assert.equal(FEATURE_FLAGS[FEATURE_KEYS.STAR_COMPLETION], true)
+  assert.equal(isFeatureEnabled(FEATURE_KEYS.STAR_COMPLETION), true)
+  for (const env of [{}, { DEV: true, PROD: false }, { DEV: false, PROD: true }]) {
+    const source = featureConfig.replaceAll('import.meta.env', JSON.stringify(env))
+    const flags = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
+    assert.equal(flags.isFeatureEnabled(flags.FEATURE_KEYS.STAR_COMPLETION), true)
+  }
+})
+
+test('actual Vite production output enables completion without an opt-in or demo', async () => {
+  const { build } = await import('vite')
+  const result = await build({
+    configFile: false, envFile: false, mode: 'production', logLevel: 'silent',
+    build: { write: false, minify: false, lib: {
+      entry: fileURLToPath(new URL('../src/config/features.js', import.meta.url)),
+      formats: ['es'],
+    } },
+  })
+  const outputs = Array.isArray(result) ? result : [result]
+  const chunk = outputs.flatMap(item => item.output).find(item => item.type === 'chunk')
+  const compiled = await import('data:text/javascript;base64,' + Buffer.from(chunk.code).toString('base64'))
+  assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.STAR_COMPLETION), true)
+  assert.equal(compiled.isFeatureEnabled(compiled.FEATURE_KEYS.STAR_COMPLETION_DEMO), false)
 })
