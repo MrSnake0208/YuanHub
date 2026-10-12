@@ -37,11 +37,12 @@ it('日程和时间条共享颜色与文字，临近结束和选中不覆盖类�
   expect(bar.attributes('data-type-color')).toBe('yellow')
 })
 
-it('月历少量色点和完整当天详情共享类型，独立关联条目数量不合并', () => {
+it('月历周条与完整当天详情共享类型，独立关联条目数量不合并', () => {
   const wrapper = mount(Month, { props: { items: samples, today, anchorDate: today } })
   const day = wrapper.get('.calendar-month-day[aria-pressed=true]')
-  expect(day.get('.calendar-day-count').text()).toBe('8 项')
-  expect(day.findAll('.calendar-month-dots i')).toHaveLength(3)
+  expect(day.attributes('aria-label')).toContain('8项活动')
+  expect(wrapper.get('.calendar-month-overflow button').text()).toContain('+5')
+  expect(wrapper.get('.calendar-day-detail').element.previousElementSibling.querySelectorAll('.calendar-month-bar')).toHaveLength(3)
   expect(day.attributes('aria-label')).toContain('活动 · 家具 · 神秘洞窟')
   expect(day.attributes('aria-label')).toContain('其他 · 星池')
   for (let i = 0; i < samples.length; i++) {

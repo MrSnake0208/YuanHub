@@ -4,7 +4,26 @@
 
 页面通过 `Intl.DateTimeFormat.formatToParts` 计算 Asia/Shanghai 的服务器日期。日程请求今天至未来 90 天；时间轴请求锚点前 7 天至后 27 天（闭区间五周），前后导航按 35 天推进；月历请求当前月及周一至周日的补位日期，至少 35 格、最多 42 格。月份导航保留日号并钳制月末；同月份日期选择不重复请求。服务器午夜、翌日可见性恢复与 pageshow 更新日程，同一天恢复不重复读取。默认锚点随今天移动，URL 显式日期保持。日期不按用户所在时区换算；没有时间的活动不补具体时刻。
 
-日程按今天、接下来 7 天、更晚分组，结束和开始提醒优先，跨日活动只出现一次，历史默认排除。时间轴按活动/卡池/商店/其他四组展示，重叠活动分轨、相邻区间复用轨道；闭区间条显示起止和截断边界，今天有日期头与竖线；仅面板内部横向滚动，标题在条上可见，点击展开同一活动卡。月历显示每天闭区间覆盖的活动数量，选中日完整活动卡在网格下方；允许浏览历史日期。手工与招募卡池统一展示，来源文字区分。
+日程按今天、接下来 7 天、更晚分组，结束和开始提醒优先，跨日活动只出现一次，历史默认排除。时间轴按活动/卡池/商店/其他四组展示，重叠活动分轨、相邻区间复用轨道；闭区间条显示起止和截断边界，今天有日期头与竖线；仅面板内部横向滚动，标题在条上可见，点击展开同一活动卡。月历按周展示闭区间活动条，选中日完整活动卡紧跟所属周；允许浏览历史日期。手工与招募卡池统一展示，来源文字区分。
+
+### 月历周条（2026-10-12）
+
+月历保留周一开头的5/6周补位范围。日期数字与色条分层，今天通过“今”及底线、选中日通过浅蜜黄底/边框/下划线区分。`monthCalendarWeeks` 仅生成前端显示模型，复用业务日期和区间函数，不更改 API、数据或筛选；同一 ID 去重后按起始日期、持续范围和 ID 排序，跨周尽量保留原轨道，空轨会压缩。
+
+手机与平板默认最多3层，宽度达到1024px时4层；空周只留日期行。跨日条覆盖首尾日期；跨周、跨可视区与无结束日期通过箭头和虚线端点提示延续。类型文字与浅色token共同表达分类，长名称省略后可点击查看全文。`+N` 是该日期未在已显示轨道出现的真实事项数，每周切片不制造新活动 ID，也不把跨日重复计数相加。
+
+点日期保持原 URL `date` 单源；点色条定位到该片段内的选中日（否则片段首日），并聚焦对应完整卡片；点 `+N` 聚焦当天清单标题。焦点动作在原导航/草稿确认完成后生效，跨月时等待新数据；取消或普通选日不会留下旧焦点请求。详情只挂载一份，紧随选中周。清单在最多 `min(28rem, 60svh)` 高度内滚动，保留全部卡片、订阅/私人事项操作；清单上方明确提示滚动，键盘可进入清单。主日期与事件操作至少44px高，320px下日期宽度至少44px。媒体查询只调整显示层数，不写用户设置或重复请求。
+
+定向验证（在前端仓库）：
+
+```bash
+node --test test/activityCalendarViews.test.js test/activityCalendarOpenEnded.test.js test/activityCalendarTypes.test.js test/calendarPrivateItems.test.js
+npx --no-install vitest run behavior/activityCalendarViews.spec.js behavior/activityCalendarTypes.spec.js behavior/calendarPrivateItems.spec.js behavior/activityCalendarFilters.spec.js behavior/activityCalendarUnsaved.spec.js behavior/activityCalendarSubscriptionIdentity.spec.js
+npm run test:static
+npm run build
+```
+
+浏览器合成场景：已有前端服务可用时，在隔离的 Playwright CLI 会话先 `open http://127.0.0.1:5173 --browser=chrome`，然后 `run-code --filename=test-support/calendarMonthWeeks.browser.js`。脚本拦截全部 API，只允许合成 GET，拒绝写请求和外部网络；使用12条混合类型重叠事项验证六视口、逐日折叠、键盘、全文、放大、横屏、reduced-motion、私人隔离与前进/后退。截图写 `/tmp/month-bars-after-<width>.png`，不提交。桌面模拟不代替真实 Safari、触屏和账号联调。
 
 时间轴标题只显示日期范围。“左右滑动查看日期 · 点击活动条查看完整信息 · 虚线标记今天”作为首次操作提示，点击“知道了”后通过当前浏览器的 `yuanhub.activity-calendar.timeline-help-dismissed.v1` 记住，不随刷新或视图切换重复显示；关闭后焦点进入时间轴。存储不可用时仍可关闭当前视图内的提示，之后重新打开可能再次提示。
 

@@ -60,7 +60,7 @@ async page => {
         controls: [...document.querySelectorAll('.calendar-private-actions button, .calendar-private-add')].map(el => ({ w: el.getBoundingClientRect().width, h: el.getBoundingClientRect().height })),
       }))
       if (geometry.scrollWidth > width || geometry.privateCards !== 1 || geometry.controls.some(el => el.w < 44 || el.h < 44)) throw Error(JSON.stringify(geometry))
-      if (view === 'month' && await page.locator('.calendar-month-day .calendar-day-count').count() < 35) throw Error('missing daily coverage')
+      if (view === 'month' && await page.locator('.calendar-month-day[aria-label*="事项"]').count() < 35) throw Error('missing daily coverage')
       results.push({ view, width, pass: true })
     }
     await page.getByRole('button', { name: '添加私人事项', exact: true }).click()
