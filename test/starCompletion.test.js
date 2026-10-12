@@ -48,7 +48,22 @@ const harness=async()=>{
   const port=createStarCompletionPort({api,coordinator,storage,enabled:true,identity:()=>({userId,game:host.gameVersion})})
   return {mock,coordinator,port,api,patches,switchAccount:()=>{host={accountId:'other',gameVersion:'如鸢'}},switchUser:()=>{userId='other'}}
 }
-test('public default guard rejects all three methods before any transport call',async()=>{let calls=0;const api=createStarCompletionApi({userId:'real',transport:()=>{calls++}});for(const fn of [()=>api.context('a'),()=>api.post(body()),()=>api.receipt('id','a')])assert.throws(fn,/尚未开放/);assert.equal(calls,0)})
+test('public default enables all three methods through the identity-bound transport',async()=>{
+  const calls=[]
+  const api=createStarCompletionApi({userId:'real',transport:async(...args)=>{calls.push(args);return {}}})
+  await api.context('a');await api.post(body());await api.receipt('id','a')
+  assert.deepEqual(calls.map(([path])=>path),['/v1/star-state/completion-context?account_id=a','/v1/star-state/completions','/v1/star-state/completions/id?account_id=a'])
+  for(const [,options] of calls){assert.equal(options.auth,true);assert.equal(options.expectedUserId,'real')}
+  assert.equal(calls[1][1].method,'POST');assert.deepEqual(calls[1][1].body,body())
+})
+test('explicit disable or missing identity rejects all three methods before transport',()=>{
+  for(const options of [{userId:'real',enabled:false},{userId:''},{}]){
+    let calls=0
+    const api=createStarCompletionApi({...options,transport:()=>{calls++}})
+    for(const fn of [()=>api.context('a'),()=>api.post(body()),()=>api.receipt('id','a')])assert.throws(fn,/尚未开放/)
+    assert.equal(calls,0)
+  }
+})
 test('completion adapter uses JWT identity-bound snake-case POST and encoded GET',async()=>{const requests=[];const api=createStarCompletionApi({userId:'fake',enabled:true,transport:async(...args)=>{requests.push(args);return {}}});await api.context('a/b');await api.post(body());await api.receipt('growth:a/b','a/b');assert.equal(requests[0][0],'/v1/star-state/completion-context?account_id=a%2Fb');assert.equal(requests[1][1].method,'POST');assert.equal(requests[1][1].auth,true);assert.equal(requests[1][1].expectedUserId,'fake');assert.deepEqual(requests[1][1].body,body());assert.equal(requests[2][0],'/v1/star-state/completions/growth%3Aa%2Fb?account_id=a%2Fb')})
 test('isolated mock refuses real account and undefined paths without network fallback',async()=>{const m=createStarCompletionMock();await assert.rejects(m.transport('/v1/star-state/completion-context?account_id=real'),/虚构账号/);await assert.rejects(m.transport('/v1/inventory/import',{method:'POST'}),/未定义/)})
 test('completion lease stops ordinary snapshot PATCH then adopts new revisions',async()=>{const h=await harness();h.port.begin(h.port.scope());assert.equal(h.coordinator.committed({accountId:DEMO_ACCOUNT,snapshot:snapshot()}),false);const receipt=await h.port.post(body());await h.port.adopt(await h.port.context());h.port.release();assert.equal(h.patches.length,0);assert.equal(h.coordinator.state().generation,2);assert.equal(h.port.scope().revision,receipt.star_revision);assert.deepEqual(h.mock.calls.map(v=>v.options.method||'GET'),['POST','GET']);assert.equal(h.mock.calls.some(v=>/inventory\/import|\/current/.test(v.path)),false)})
