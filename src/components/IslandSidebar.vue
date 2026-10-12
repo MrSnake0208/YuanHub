@@ -270,7 +270,6 @@ import {
 import { auth, logout as doLogout } from "@/store/auth.js";
 import { hasManagementCapability, isManagementRoute } from "@/utils/adminTools.js";
 import { beta } from "@/store/beta.js";
-import { recruitmentAccess } from "@/store/recruitmentAccess.js";
 import { FEATURE_KEYS, isFeatureEnabled } from "@/config/features.js";
 import { betaCommunity } from "@/store/betaCommunity.js";
 import { useRoute, useRouter } from "vue-router";
@@ -293,18 +292,8 @@ const showManagement = computed(() =>
   !auth.adminAccessError &&
   hasManagementCapability(auth.adminAccess),
 );
-const showCalendar = computed(() =>
-  isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR) && !!isLoggedIn.value && auth.isAdmin,
-);
-const showRecruitment = computed(() =>
-  isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE) &&
-  !!isLoggedIn.value &&
-  recruitmentAccess.canAccess,
-);
-watch(identity, (userId) => {
-  recruitmentAccess.setIdentity(userId);
-  if (userId) void recruitmentAccess.refresh();
-}, { immediate: true });
+const showCalendar = computed(() => isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR));
+const showRecruitment = computed(() => isFeatureEnabled(FEATURE_KEYS.RECRUITMENT_ARCHIVE));
 const showBetaCommunityEntry = computed(
   () =>
     !!isLoggedIn.value &&

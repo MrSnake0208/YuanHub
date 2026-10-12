@@ -69,14 +69,19 @@ test('permission 判定只认显式权限，不接受角色名冒充权限', fun
 })
 
 
-test('日历测试路由严格要求管理员；权限读取失败不能放行，反馈管理成员也可测试', () => {
+test('日历使用内测准入且不等待管理权限；内容管理仍要求专属写权限', () => {
   for (const path of ['/calendar', '/calendar/suggestions', '/calendar/suggestions/new']) {
     const meta = metaFor(path)
     assert.equal(meta.requiresAuth, true)
-    assert.equal(needsAdminAccess(meta), true)
-    assert.equal(isRouteAccessAllowed(meta, access()), false)
-    assert.equal(isRouteAccessAllowed(meta, null, '管理权限读取失败'), false)
-    assert.equal(isRouteAccessAllowed(meta, access({ permissions: ['beta:manage'] })), true)
-    assert.equal(isRouteAccessAllowed(meta, access({ operatorAreas: ['INVENTORY'] })), true)
+    assert.equal(meta.requiresBeta, true)
+    assert.equal(needsAdminAccess(meta), false)
+    assert.equal(isRouteAccessAllowed(meta, access()), true)
+    assert.equal(isRouteAccessAllowed(meta, null, '管理权限读取失败'), true)
   }
+  const admin = metaFor('/calendar/admin')
+  assert.equal(needsAdminAccess(admin), true)
+  assert.equal(isRouteAccessAllowed(admin, access()), false)
+  assert.equal(isRouteAccessAllowed(admin, null, '管理权限读取失败'), false)
+  assert.equal(isRouteAccessAllowed(admin, access({ permissions: ['beta:manage'] })), false)
+  assert.equal(isRouteAccessAllowed(admin, access({ permissions: ['activity_calendar:write'] })), true)
 })

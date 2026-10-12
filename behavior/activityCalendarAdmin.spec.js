@@ -191,3 +191,20 @@ it('管理员编辑家具及神秘洞窟往返分类并保持原活动ID版本�
     start_date: '2026-10-03', end_date: '2026-10-10',
   }))
 })
+
+it('编辑持续活动可留空结束日期并清除旧截止时刻，后续可补齐结束日期', async () => {
+  api.listAdminActivityCalendar.mockResolvedValue({ items: [entry({ item: item({ end_date: null, start_time: '05:00' }) })] })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.text()).toContain('持续进行')
+  await button(wrapper, '编辑活动').trigger('click')
+  expect(wrapper.get('#calendar-end_date').attributes('required')).toBeUndefined()
+  expect(wrapper.get('#calendar-end_date').element.value).toBe('')
+  expect(wrapper.find('#calendar-end_time').exists()).toBe(false)
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(api.updateActivityCalendar.mock.lastCall[1]).toMatchObject({ end_date: null, start_time: '05:00', end_time: null })
+  await button(wrapper, '编辑活动').trigger('click')
+  await wrapper.get('#calendar-end_date').setValue('2026-10-20')
+  await wrapper.get('#calendar-end_time').setValue('04:59')
+  await wrapper.get('form').trigger('submit'); await flushPromises()
+  expect(api.updateActivityCalendar.mock.lastCall[1]).toMatchObject({ end_date: '2026-10-20', start_time: '05:00', end_time: '04:59' })
+})

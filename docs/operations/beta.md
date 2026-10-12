@@ -19,9 +19,9 @@
 
 接口沿用 `{status_code, data}` 包装及 snake_case；本人和管理响应均包含嵌套 `campaign`，前端不拼接来自不同时刻的身份与活动状态。服务端失败不会在页面伪装成满员或自动登出。
 
-`router/routes.js` 中仅 `/`（含 `/today`）、`/inventory`、`/operator`、`/operator/quick`、`/star` 设置 `requiresBeta`。公开作业、BOX只读链接、纯本地账房、账户恢复和管理入口保留。`/beta` 自身不得设置 `requiresBeta` 或 `requiresAuth`，否则会造成循环跳转。
+`router/routes.js` 中 `/`（含 `/today`）、`/inventory`、`/operator`、`/operator/quick`、`/star`、`/calendar`、两条活动建议路由及 `/recruitment` 设置 `requiresBeta`。公开作业、BOX只读链接、纯本地账房、账户恢复和管理入口保留。`/beta` 自身不得设置 `requiresBeta` 或 `requiresAuth`，否则会造成循环跳转。
 
-`api/request.js` 还拦截个人中心、账房云方案和嵌入式星石页面触发的受限请求。账户连接码查看/撤销不受内测资格限制，创建/改权及云账号操作要求资格。全局账号事件流随权限变化启停，错误/关闭后不继续尝试绕过服务端限制。
+`api/request.js` 还拦截个人中心、账房云方案和嵌入式星石页面触发的受限请求。日历（含订阅、私人事项、活动建议）、招募个人接口与 `/v1/accounts` 统一受内测资格约束，旧招募授权不再绕过账号接口。公开招募目录 GET 保留；内容管理权限独立保留。账户连接码查看/撤销不受内测资格限制，创建/改权及云账号操作要求资格。全局账号事件流随权限变化启停，错误/关闭后不继续尝试绕过服务端限制。
 
 站内 `BETA_GRANTED` 通知跳转 `/beta`；通知不是资格凭证。管理变更必须填写原因并携带当前配置版本，审计页面展示内测配置变更前后值。
 

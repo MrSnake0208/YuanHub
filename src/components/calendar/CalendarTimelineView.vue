@@ -78,7 +78,7 @@ const groups = computed(() => [...Object.entries(CALENDAR_DISPLAY_GROUPS), ['PRI
     const deadline = calendarDeadline(item, props.today, subscriptions?.now.value)
     return {
       item, position, deadline, display,
-      ending: item.source_type !== 'PRIVATE_ITEM' && !statuses.includes('已结束') && !statuses.includes('即将开始') && item.end_date <= addCalendarDays(props.today, 2),
+      ending: item.source_type !== 'PRIVATE_ITEM' && item.end_date != null && !statuses.includes('已结束') && !statuses.includes('即将开始') && item.end_date <= addCalendarDays(props.today, 2),
       label: `${item.title}，${item.game}，${display.path}，${calendarRangeLabel(item)}${item.start_time ? '，' + item.time_zone : ''}，${statuses.join(' · ')}${deadline ? '，' + deadline : ''}，查看详情`,
     }
   }))

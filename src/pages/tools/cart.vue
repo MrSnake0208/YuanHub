@@ -3,7 +3,7 @@
     <IslandSidebar />
 
     <main id="main-content" class="cart-main">
-      <CompactToolHeader title="礼包预算">
+      <CompactToolHeader title="礼包预算" description="作者：binary · 独立创作">
         <template #account>
           <div class="cart-header-context">
             <select class="cart-version-selector" :value="version" aria-label="游戏版本" @change="setVersion($event.target.value)">
@@ -1006,6 +1006,7 @@ function openPlanSave() {
 </script>
 
 <style scoped>
+.cart-main :deep(.compact-tool-description) { color: var(--ink); font-size: 14px; font-weight: 600; }
 .cart-layout{grid-template-columns:minmax(0,1fr) 340px}
 .cart-layout>div{min-width:0}
 .pkg-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}

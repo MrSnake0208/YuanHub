@@ -40,15 +40,16 @@ export function safeCalendarUrl(value) {
 export function normalizeCalendarItem(value) {
   if (value?.source_type === 'PRIVATE_ITEM') return null
   if (!value || typeof value.id !== 'string' || !value.id || !CALENDAR_GAMES.includes(value.game) || !Object.hasOwn(CALENDAR_CATEGORIES, value.category) || typeof value.title !== 'string' || !value.title.trim()) return null
-  if (!isCalendarDate(value.start_date) || !isCalendarDate(value.end_date) || value.end_date < value.start_date) return null
+  if (!isCalendarDate(value.start_date) || (value.end_date != null && (!isCalendarDate(value.end_date) || value.end_date < value.start_date))) return null
   const paired = /^([01]\d|2[0-3]):[0-5]\d$/.test(value.start_time) && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.end_time)
   return {
     id: value.id, source_type: value.source_type === 'RECRUITMENT_POOL' ? 'RECRUITMENT_POOL' : 'MANUAL', source_ref: value.source_ref ?? null,
     game: value.game, title: value.title.trim(), category: value.category,
     subtype: typeof value.subtype === 'string' ? value.subtype : null, subtype_detail: typeof value.subtype_detail === 'string' ? value.subtype_detail : null,
     pool_type: value.source_type === 'RECRUITMENT_POOL' && typeof value.pool_type === 'string' ? value.pool_type : null,
-    start_date: value.start_date, end_date: value.end_date, start_time: paired ? value.start_time : null, end_time: paired ? value.end_time : null,
-    start_at: validCalendarInstant(value.start_at), end_at: validCalendarInstant(value.end_at),
+    start_date: value.start_date, end_date: value.end_date ?? null,
+    start_time: paired || (value.end_date == null && /^([01]\d|2[0-3]):[0-5]\d$/.test(value.start_time)) ? value.start_time : null, end_time: value.end_date != null && paired ? value.end_time : null,
+    start_at: validCalendarInstant(value.start_at), end_at: value.end_date == null ? null : validCalendarInstant(value.end_at),
     time_zone: value.time_zone || SERVER_TIME_ZONE, description: typeof value.description === 'string' ? value.description : '', source_url: safeCalendarUrl(value.source_url),
   }
 }
@@ -60,12 +61,12 @@ export function summarizeCalendarDay(items, today) {
   const counts = { starts: 0, ends: 0, ongoing: 0, total: 0 }
   const seen = new Set()
   for (const item of items) {
-    if (item.source_type === 'PRIVATE_ITEM' || seen.has(item.id) || item.start_date > today || item.end_date < today) continue
+    if (item.source_type === 'PRIVATE_ITEM' || seen.has(item.id) || item.start_date > today || (item.end_date != null && item.end_date < today)) continue
     seen.add(item.id)
     counts.total++
     if (item.start_date === today) counts.starts++
     if (item.end_date === today) counts.ends++
-    if (item.start_date < today && item.end_date > today) counts.ongoing++
+    if (item.start_date < today && (item.end_date == null || item.end_date > today)) counts.ongoing++
   }
   return counts
 }
@@ -74,7 +75,7 @@ export function calendarStatuses(item, today, now = Date.now()) {
   if (item.source_type === 'PRIVATE_ITEM') return [item.end_date < today ? '已过日期' : item.start_date > today ? '未到日期' : item.start_date === item.end_date ? '今天' : '日期范围内']
   if (item.end_at && Date.parse(item.end_at) <= now) return ['已结束']
   if (item.start_at && Date.parse(item.start_at) > now) return ['即将开始']
-  if (!item.end_at && item.end_date < today) return ['已结束']
+  if (!item.end_at && item.end_date != null && item.end_date < today) return ['已结束']
   if (!item.start_at && item.start_date > today) return ['即将开始']
   const labels = []
   if (item.end_date === today) labels.push('今日结束')
@@ -85,7 +86,7 @@ export function calendarStatuses(item, today, now = Date.now()) {
 export function groupCalendarItems(items, today) {
   const weekEnd = addCalendarDays(today, 7)
   const sections = [{ key: 'today', title: '今天', groups: [] }, { key: 'week', title: '接下来 7 天', groups: [] }, { key: 'later', title: '更晚', groups: [] }]
-  const sorted = items.filter(item => item.end_date >= today).slice().sort((a, b) => {
+  const sorted = items.filter(item => item.end_date == null || item.end_date >= today).slice().sort((a, b) => {
     const rank = item => item.end_date === today ? 0 : item.start_date === today ? 1 : item.start_date < today ? 2 : 3
     return rank(a) - rank(b) || a.start_date.localeCompare(b.start_date) || (a.start_time || '').localeCompare(b.start_time || '') || a.id.localeCompare(b.id)
   })
@@ -127,7 +128,7 @@ export function calendarFilterQuery(query, patch) {
 export function calendarTimeBounds(item) {
   return {
     start: Date.parse(item.start_at || item.start_date + 'T00:00:00+08:00'),
-    end: Date.parse(item.end_at || addCalendarDays(item.end_date, 1) + 'T00:00:00+08:00'),
+    end: item.end_date == null ? Infinity : Date.parse(item.end_at || addCalendarDays(item.end_date, 1) + 'T00:00:00+08:00'),
   }
 }
 
@@ -217,14 +218,14 @@ export function calendarRequestRange(view, date, today) {
 }
 
 export function timelineItemPosition(item, range) {
-  if (item.end_date < range.from || item.start_date > range.to) return null
+  if ((item.end_date != null && item.end_date < range.from) || item.start_date > range.to) return null
   const start = item.start_date < range.from ? range.from : item.start_date
-  const end = item.end_date > range.to ? range.to : item.end_date
+  const end = item.end_date == null || item.end_date > range.to ? range.to : item.end_date
   return {
     column: calendarDayDistance(range.from, start) + 1,
     span: calendarDayDistance(start, end) + 1,
     clippedStart: item.start_date < range.from,
-    clippedEnd: item.end_date > range.to,
+    clippedEnd: item.end_date == null || item.end_date > range.to,
   }
 }
 
@@ -247,7 +248,7 @@ export function timelineLanes(items, range) {
 export function calendarItemsOnDay(items, date) {
   const seen = new Set()
   return items.filter(item => {
-    if (seen.has(item.id) || item.start_date > date || item.end_date < date) return false
+    if (seen.has(item.id) || item.start_date > date || (item.end_date != null && item.end_date < date)) return false
     seen.add(item.id)
     return true
   }).sort((a, b) => Number(b.end_date === date) - Number(a.end_date === date) || a.start_date.localeCompare(b.start_date) || privateTimeOrder(a, b) || a.id.localeCompare(b.id))
@@ -270,7 +271,7 @@ function validCalendarInstant(value) {
   return typeof value === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value)) ? value : null
 }
 export function calendarEnded(item, today, now = Date.now()) {
-  return item.end_at ? Date.parse(item.end_at) <= now : item.end_date < today
+  return item.end_at ? Date.parse(item.end_at) <= now : item.end_date != null && item.end_date < today
 }
 export function calendarDeadline(item, today, now = Date.now()) {
   if (item.source_type === 'PRIVATE_ITEM') return ''
@@ -285,6 +286,7 @@ export function calendarDeadline(item, today, now = Date.now()) {
     return `还有 ${Math.ceil(minutes / 1440)} 天`
   }
   if (item.start_date > today) return `${calendarDayDistance(today, item.start_date)} 天后开始`
+  if (item.end_date == null) return '持续进行'
   if (item.end_date < today) return ''
   const days = calendarDayDistance(today, item.end_date)
   return days === 0 ? '今天结束' : days === 1 ? '明天结束' : `还有 ${days} 天`
@@ -297,7 +299,7 @@ export function calendarRangeLabel(item) {
     return `${range} · ${item.start_time ? (multiDay ? '开始日 ' : '') + item.start_time + '（上海时间）' : '全天'}`
   }
   const start = item.start_date + (item.start_time ? ' ' + item.start_time : '')
-  const end = item.end_date + (item.end_time ? ' ' + item.end_time : '')
+  const end = item.end_date == null ? '持续进行' : item.end_date + (item.end_time ? ' ' + item.end_time : '')
   return `${start} — ${end}`
 }
 
@@ -311,10 +313,11 @@ export function validateCalendarForm(form) {
   if (!CALENDAR_GAMES.includes(form.game)) errors.game = '请选择游戏。'
   if (!form.title.trim() || form.title.trim().length > 120) errors.title = '请填写 1–120 字的标题。'
   if (!Object.hasOwn(MANUAL_CATEGORIES, form.category)) errors.category = '请选择手工活动类型；招募在卡池管理维护。'
-  for (const key of ['start_date', 'end_date']) if (!isCalendarDate(form[key])) errors[key] = '请填写有效日期。'
-  if (!errors.start_date && !errors.end_date && form.end_date < form.start_date) errors.end_date = '结束日期不能早于开始日期。'
+  if (!isCalendarDate(form.start_date)) errors.start_date = '请填写有效日期。'
+  if (form.end_date && !isCalendarDate(form.end_date)) errors.end_date = '请填写有效日期。'
+  if (form.end_date && !errors.start_date && !errors.end_date && form.end_date < form.start_date) errors.end_date = '结束日期不能早于开始日期。'
   if (form.precise) {
-    for (const key of ['start_time', 'end_time']) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form[key])) errors[key] = '请成对填写开始和结束时间。'
+    for (const key of (form.end_date ? ['start_time', 'end_time'] : ['start_time'])) if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form[key])) errors[key] = '请填写有效时间；有结束日期时开始、结束时间须成对填写。'
     if (!errors.start_time && !errors.end_time && form.start_date === form.end_date && form.end_time < form.start_time) errors.end_time = '同日结束时间不能早于开始时间。'
   }
   for (const key of ['description', 'source_note']) if (form[key].length > 1000) errors[key] = '最多填写 1000 字。'
@@ -325,7 +328,7 @@ export function validateCalendarForm(form) {
 }
 
 export function calendarPayload(form) {
-  const body = { game: form.game, title: form.title.trim(), category: form.category, subtype: form.subtype || null, subtype_detail: form.subtype_detail || null, start_date: form.start_date, end_date: form.end_date, start_time: form.precise ? form.start_time : null, end_time: form.precise ? form.end_time : null, time_zone: form.time_zone, description: form.description.trim() || null, source_url: safeCalendarUrl(form.source_url) || null, source_note: form.source_note.trim() || null, enabled: form.enabled }
+  const body = { game: form.game, title: form.title.trim(), category: form.category, subtype: form.subtype || null, subtype_detail: form.subtype_detail || null, start_date: form.start_date, end_date: form.end_date || null, start_time: form.precise ? form.start_time : null, end_time: form.precise && form.end_date ? form.end_time : null, time_zone: form.time_zone, description: form.description.trim() || null, source_url: safeCalendarUrl(form.source_url) || null, source_note: form.source_note.trim() || null, enabled: form.enabled }
   if (form.id) body.expected_version = form.version
   return body
 }
