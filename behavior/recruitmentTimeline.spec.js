@@ -11,6 +11,30 @@ const button = (wrapper, text) => wrapper.findAll('button').find(item => item.te
 const card = (wrapper, name) => wrapper.findAll('.pool-card').find(item => item.get('.pool-name').text() === name)
 const tone = (wrapper, name) => card(wrapper, name).get('.pool-cover').classes().find(item => item.startsWith('cover-tone-'))
 
+it.each(['代号鸢', '如鸢'])('%s的常驻池始终置顶，切换排序和年份不隐藏且不修改原池数据', async game => {
+  const pools = [pool('旧池', '2025-01-01'), pool('绣衣天下', null, null, { game, pool_type: 'permanent' }), pool('新池', '2026-01-01'), pool('未知池')]
+  const original = structuredClone(pools)
+  const wrapper = render({ pools })
+  expect(names(wrapper)).toEqual(['绣衣天下', '新池', '旧池', '未知池'])
+  await button(wrapper, '按时间从新到旧').trigger('click')
+  expect(names(wrapper)).toEqual(['绣衣天下', '旧池', '新池', '未知池'])
+  await button(wrapper, '2026').trigger('click')
+  expect(names(wrapper)).toEqual(['绣衣天下', '新池'])
+  await button(wrapper, '2025').trigger('click')
+  expect(names(wrapper)).toEqual(['绣衣天下', '旧池'])
+  await button(wrapper, '日期未知').trigger('click')
+  expect(names(wrapper)).toEqual(['绣衣天下', '未知池'])
+  await wrapper.get('.pool-card').trigger('click')
+  expect(wrapper.emitted('select')).toEqual([['绣衣天下']])
+  expect(pools).toEqual(original)
+})
+
+it('仅有常驻与有限日期卡池时，不把常驻开始日期算作年份或未知日期筛选', () => {
+  const wrapper = render({ pools: [pool('绣衣天下', '2023-01-01', null, { pool_type: '常驻' }), pool('新池', '2026-01-01')] })
+  expect(names(wrapper)[0]).toBe('绣衣天下')
+  expect(wrapper.findAll('.year-filters button').map(item => item.text())).toEqual(['全部', '2026'])
+})
+
 it('两游戏常驻池无起止日期时显示无限期与常驻开放，隐藏停用优先且不伪造档期', async () => {
   const wrapper = render({ pools: [pool('绣衣天下', null, null, { game: '代号鸢', pool_type: 'permanent' })] })
   expect(wrapper.get('.pool-dates').text()).toBe('常驻 · 无限期')

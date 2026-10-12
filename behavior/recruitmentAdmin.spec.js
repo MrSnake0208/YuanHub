@@ -32,6 +32,21 @@ beforeEach(() => {
   api.updateAdminRecruitmentPool.mockImplementation(async (_, body) => ({ ...body, revision: body.expected_revision + 1 }))
 })
 
+it('管理列表常驻池优先并保留其他卡池顺序，搜索仍准确且不写入目录', async () => {
+  const pools = [pool(), { ...pool(), pool_id: 'ru-permanent', game: '如鸢', name: '绣衣天下', pool_type: 'permanent' },
+    { ...pool(), pool_id: 'old', name: '旧池' }, { ...pool(), pool_id: 'yuan-permanent', name: '绣衣天下', pool_type: '常驻' }]
+  const original = structuredClone(pools)
+  api.listAdminRecruitmentCatalog.mockResolvedValue({ pools })
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.findAll('.pool-row h3').map(item => item.text())).toEqual(['绣衣天下', '绣衣天下', '新卡池', '旧池'])
+  await input(wrapper, '搜索卡池').setValue('旧池')
+  expect(wrapper.findAll('.pool-row h3').map(item => item.text())).toEqual(['旧池'])
+  expect(pools).toEqual(original)
+  expect(api.updateAdminRecruitmentPool).not.toHaveBeenCalled()
+  expect(api.createAdminRecruitmentPool).not.toHaveBeenCalled()
+})
+
 it('普通用户直接挂载管理页也不读取或写入管理员接口', async () => {
   auth.adminAccess = { permissions: [] }
   const wrapper = render()
