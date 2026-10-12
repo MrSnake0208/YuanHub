@@ -4,6 +4,7 @@
       <div class="calendar-event-identity">
         <div class="calendar-badges"><span class="calendar-game">{{ item.game }}</span><span class="calendar-category">{{ display.path }}</span></div>
         <h4>{{ item.title }}</h4>
+        <p v-if="item.source_type === 'RECRUITMENT_POOL' && item.category === 'RECRUITMENT' && item.up_agent_names?.length" class="calendar-description calendar-up-agents">UP 密探：{{ item.up_agent_names.join('、') }}</p>
       </div>
       <div class="calendar-event-status">
         <span v-for="status in statuses" :key="status" class="calendar-state">{{ status }}</span>

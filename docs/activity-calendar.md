@@ -365,3 +365,16 @@ npx vitest run behavior/calendarPrivateItems.spec.js behavior/calendarPrivateIte
 ```
 
 浏览器复用既有开发服务，以模拟 API 验证六视口和保存，脚本 `test-support/calendarPrivateRange.browser.js`：`playwright-cli -s=private-range run-code --filename=test-support/calendarPrivateRange.browser.js`。先用该独立会话 `open http://localhost:5173`；不使用真实登录信息或数据库。真实手机软键盘、Safari及真实JWT联调仍需人工检查。
+
+## 招募 UP 名称（2026-10-12）
+
+公共招募日历使用后端只读 `up_agent_names` 名单，在池名下显示完整“UP 密探：甲、乙”。日程、月历当天清单、时间轴选中详情共用 `CalendarEventCard`；长名单允许换行，复用现有正文颜色与安全换行样式。月历与时间轴色条保持原有标题、行数和高度，通过点击或键盘激活原生按钮进入完整详情，不依赖悬停。我的日历中的公共订阅沿用同一名单；私人事项及其它类型不展示。
+
+前端只接收 `source_type=RECRUITMENT_POOL` 且 `category=RECRUITMENT` 的 snake_case 数组，过滤非字符串、空名称并保序去重。旧 API 缺字段、旧目录和没有正式 UP 的池不显示副行。后端只返回 `verified/partial` 池中有效且已绑定图鉴的槽；占位与来源候选不会冒充正式名单，前端不从 `source_up_agent_names` 或个人记录推断。
+
+最小回归（仓库根）：
+
+```bash
+node --test test/activityCalendar.test.js test/activityCalendarViews.test.js
+npm run test:behavior -- behavior/activityCalendarUpAgents.spec.js behavior/activityCalendarViews.spec.js behavior/activityCalendarSubscriptions.spec.js
+```
