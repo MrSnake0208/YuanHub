@@ -26,6 +26,19 @@ components. Unknown keys are disabled by default.
 
 ## Integration rules
 
+`starCompletion` is a public feature with the explicit boolean value `true` in
+both ordinary Vite development and production builds. The real completion workflow
+requires no separate environment variable, user setting, URL parameter or demo.
+API routing continues to use `VITE_API_BASE`, `YUANHUB_DEV_API_TARGET` and the
+existing tunnel configuration without a completion-specific transport restriction.
+For local integration, configure a local Backend target and use Vite's same-origin
+proxy; enabling the feature does not select or change the API target.
+The existing completion context, command, revision checks and receipt recovery remain authoritative.
+The release workflow supplies the official API base through `YUANHUB_FRONTEND_API_BASE`.
+Deploy a compatible Backend containing all three completion endpoints and the MongoDB
+transaction/receipt implementation before releasing the enabled frontend. Backend
+deployment readiness must be confirmed separately; a frontend build does not prove it.
+
 `tutorials` is disabled in both ordinary development and production builds.
 Only `VITE_TUTORIALS_ENABLED=true` explicitly enables it. All tutorial mounts,
 controllers and tutorial persistence follow the derived `TUTORIALS_ENABLED`
