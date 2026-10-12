@@ -11,6 +11,16 @@ const button = (wrapper, text) => wrapper.findAll('button').find(item => item.te
 const card = (wrapper, name) => wrapper.findAll('.pool-card').find(item => item.get('.pool-name').text() === name)
 const tone = (wrapper, name) => card(wrapper, name).get('.pool-cover').classes().find(item => item.startsWith('cover-tone-'))
 
+it('两游戏常驻池无起止日期时显示无限期与常驻开放，隐藏停用优先且不伪造档期', async () => {
+  const wrapper = render({ pools: [pool('绣衣天下', null, null, { game: '代号鸢', pool_type: 'permanent' })] })
+  expect(wrapper.get('.pool-dates').text()).toBe('常驻 · 无限期')
+  expect(wrapper.get('.pool-status').text()).toBe('常驻开放')
+  expect(wrapper.get('.date-rail').text()).toBe('常驻∞')
+  await wrapper.setProps({ pools: [pool('绣衣天下', null, null, { game: '如鸢', pool_type: '常驻', enabled: false })] })
+  expect(wrapper.get('.pool-dates').text()).toBe('常驻 · 无限期')
+  expect(wrapper.get('.pool-status').text()).toBe('已停用')
+})
+
 it.each([
   ['限定', 'limited'], ['重逢限定', 'limited'], ['傅融地宫', 'limited'], [' 傅融地宫 ', 'limited'],
   ['复刻', 'rerun'], ['复刻限定', 'rerun'], ['照影', 'zhaoying'], ['照影复刻限定', 'zhaoying'],
