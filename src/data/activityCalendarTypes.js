@@ -16,6 +16,13 @@ export const CALENDAR_SUBTYPES = Object.freeze({
 })
 export const CALENDAR_SUBTYPE_DETAILS = Object.freeze({ MYSTERIOUS_CAVE: { label: '神秘洞窟', subtype: 'FURNITURE' } })
 
+export function calendarUpAgentDisplay(item) {
+  if (item.source_type !== 'RECRUITMENT_POOL' || item.category !== 'RECRUITMENT' || !item.up_agent_names?.length) return null
+  const names = item.up_agent_names
+  const summary = count => names.slice(0, count).join(' / ') + (names.length > count ? ` +${names.length - count}` : '')
+  return { full: `UP 密探：${names.join('、')}`, summary: summary(2), narrow: summary(1) }
+}
+
 export function calendarDisplay(item) {
   if (item.source_type === 'PRIVATE_ITEM') return { group: 'PRIVATE_ITEM', groupLabel: '私人事项', label: '私人事项', path: '私人事项', color: 'tea', style: eventTypeStyle('tea') }
   const group = ({ LOGIN: 'ACTIVITY', MAINTENANCE: 'OTHER' })[item.category] || (Object.hasOwn(CALENDAR_DISPLAY_GROUPS, item.category) ? item.category : 'OTHER')

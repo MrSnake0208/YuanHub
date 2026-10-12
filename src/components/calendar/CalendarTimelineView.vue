@@ -22,11 +22,15 @@
         <section v-for="group in groups" :key="group.category" class="calendar-timeline-group" :aria-label="group.label">
           <h3>{{ group.label }}<span>{{ group.items.length }}</span></h3>
           <div v-for="(lane, index) in group.lanes" :key="index" class="calendar-timeline-track">
-            <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" :aria-expanded="selectedId === entry.item.id" aria-controls="calendar-timeline-detail" @click="selectEvent(entry.item.id, $event)">
+            <button v-for="entry in lane" :key="entry.item.id" type="button" class="calendar-timeline-bar" :class="{ 'is-ending': entry.ending, 'has-up-agents': !!entry.upAgents, 'is-single-day': entry.item.start_date === entry.item.end_date, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}` }" :data-type-color="entry.display.color" :title="entry.label" :aria-label="entry.label" :aria-pressed="selectedId === entry.item.id" :aria-expanded="selectedId === entry.item.id" aria-controls="calendar-timeline-detail" @click="selectEvent(entry.item.id, $event)">
               <span class="calendar-timeline-bar-content">
-                <span v-if="entry.item.start_date === entry.item.end_date" class="calendar-timeline-point" aria-hidden="true" />
+                <span v-if="entry.item.start_date === entry.item.end_date && !entry.upAgents" class="calendar-timeline-point" aria-hidden="true" />
                 <span class="calendar-timeline-bar-title">{{ entry.item.title }}</span>
-                <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-meta">{{ entry.display.label }} · {{ entry.item.game }}<strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong></span>
+                <span v-if="entry.upAgents || entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-meta">
+                  <span v-if="entry.upAgents" class="calendar-timeline-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
+                  <span v-if="entry.item.start_date !== entry.item.end_date" class="calendar-timeline-bar-context">{{ entry.upAgents ? ' · ' : '' }}{{ entry.display.label }} · {{ entry.item.game }}</span>
+                  <strong v-if="entry.ending"> · 结束提醒：{{ entry.deadline }}</strong>
+                </span>
               </span>
             </button>
           </div>
@@ -46,7 +50,7 @@ import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
 import { CALENDAR_SUBSCRIPTIONS } from '@/data/activityCalendarSubscriptions.js'
 import { addCalendarDays, calendarDateLabel, calendarDates, calendarDayDistance, calendarDeadline, calendarRangeLabel, calendarStatuses, timelineLanes, timelineRange } from '@/data/activityCalendar.js'
-import { CALENDAR_DISPLAY_GROUPS, calendarDisplay } from '@/data/activityCalendarTypes.js'
+import { CALENDAR_DISPLAY_GROUPS, calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
 const subscriptions = inject(CALENDAR_SUBSCRIPTIONS, null)
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, locateRequest: Number, loading: Boolean, error: Boolean })
 defineEmits(['select-date'])
@@ -74,12 +78,13 @@ const todayColumn = computed(() => props.today >= range.value.from && props.toda
 const groups = computed(() => [...Object.entries(CALENDAR_DISPLAY_GROUPS), ['PRIVATE_ITEM', '私人事项']].map(([category, label]) => {
   const lanes = timelineLanes(props.items.filter(item => calendarDisplay(item).group === category), range.value).map(lane => lane.map(({ item, position }) => {
     const display = calendarDisplay(item)
+    const upAgents = calendarUpAgentDisplay(item)
     const statuses = calendarStatuses(item, props.today, subscriptions?.now.value)
     const deadline = calendarDeadline(item, props.today, subscriptions?.now.value)
     return {
-      item, position, deadline, display,
+      item, position, deadline, display, upAgents,
       ending: item.source_type !== 'PRIVATE_ITEM' && item.end_date != null && !statuses.includes('已结束') && !statuses.includes('即将开始') && item.end_date <= addCalendarDays(props.today, 2),
-      label: `${item.title}，${item.game}，${display.path}，${calendarRangeLabel(item)}${item.start_time ? '，' + item.time_zone : ''}，${statuses.join(' · ')}${deadline ? '，' + deadline : ''}，查看详情`,
+      label: `${item.title}，${item.game}，${display.path}${upAgents ? '，' + upAgents.full : ''}，${calendarRangeLabel(item)}${item.start_time ? '，' + item.time_zone : ''}，${statuses.join(' · ')}${deadline ? '，' + deadline : ''}，查看详情`,
     }
   }))
   return { category, label, lanes, items: lanes.flat() }

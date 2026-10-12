@@ -2,9 +2,19 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { calendarAnchorDate, calendarDates, calendarDeadline, calendarRequestRange, calendarView, calendarViewQuery, monthCalendarDays, monthCalendarWeeks, monthGridRange, shiftCalendarMonth, timelineItemPosition, timelineLanes, timelineRange } from '../src/data/activityCalendar.js'
 import { denseMonthItems } from '../test-support/calendarMonthFixtures.js'
+import { calendarUpAgentDisplay } from '../src/data/activityCalendarTypes.js'
 
 const today = '2026-10-03'
 const item = (patch = {}) => ({ id: 'a', start_date: '2026-09-30', end_date: '2026-10-04', ...patch })
+
+test('UP摘要按两名/首名保序显示余量，完整可访问名称不截断', () => {
+  const pool = { source_type: 'RECRUITMENT_POOL', category: 'RECRUITMENT', up_agent_names: ['甲', '乙', '丙'] }
+  assert.deepEqual(calendarUpAgentDisplay(pool), { full: 'UP 密探：甲、乙、丙', summary: '甲 / 乙 +1', narrow: '甲 +2' })
+  assert.deepEqual(pool.up_agent_names, ['甲', '乙', '丙'])
+  for (const patch of [{ up_agent_names: [] }, { up_agent_names: undefined }, { source_type: 'MANUAL' }, { source_type: 'PRIVATE_ITEM' }, { category: 'SHOP' }]) {
+    assert.equal(calendarUpAgentDisplay({ ...pool, ...patch }), null)
+  }
+})
 
 test('视图按URL、本地偏好、首次宽度优先级解析，拒绝原型属性与重复参数后项', () => {
   assert.equal(calendarView({ view: 'month' }, 'agenda', true), 'month')
