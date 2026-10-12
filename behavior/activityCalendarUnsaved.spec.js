@@ -11,7 +11,7 @@ import { listAccounts } from '../src/api/accounts.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
-vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: true, userInfo: { id: 'user' } }) }))
+vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'user' } }) }))
 vi.mock('../src/api/calendarPrivateItems.js', () => ({ listCalendarPrivateItems: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
@@ -34,7 +34,7 @@ async function edit() { await button('编辑待办').trigger('click'); await tit
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z'))
   const media = new EventTarget(); media.matches = false; vi.stubGlobal('matchMedia', vi.fn(() => media))
-  auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'user' }; activeAccount.set('a')
+  auth.isLoggedIn = true; auth.isAdmin = false; auth.userInfo = { id: 'user' }; activeAccount.set('a')
   server = { event_id: 'evt', version: 1, subscribed: true, completed: false, checklist: [{ id: 'one', title: '第一项', completed: false }], memo_title: '原始标题', memo_note: '原始备注', item: event }
   listAccounts.mockResolvedValue(accounts)
   listActivityCalendar.mockResolvedValue({ items: [event] })
@@ -126,10 +126,9 @@ it('global account changes are held before resetting drafts; normal switcher doe
   expect(activeAccount.id).toBe('a'); expect(dialog._state.visible).toBe(false)
 })
 
-it.each(['logout', 'permission', 'identity', 'account removed', 'account game changed'])('%s bypasses discard confirmation and clears private drafts', async change => {
+it.each(['logout', 'identity', 'account removed', 'account game changed'])('%s bypasses discard confirmation and clears private drafts', async change => {
   await render('&scope=mine'); await edit()
   if (change === 'logout') auth.isLoggedIn = false
-  if (change === 'permission') auth.isAdmin = false
   if (change === 'identity') auth.userInfo = { id: 'other-user' }
   if (change === 'account removed') publishAccountList([accounts[1]])
   if (change === 'account game changed') publishAccountList([{ ...accounts[0], game: '代号鸢' }, accounts[1]])

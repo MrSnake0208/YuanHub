@@ -152,7 +152,7 @@ const visibleItems = computed(() => {
     : items.value
   const publicItems = filterCalendarItems(values, filters.value, subscriptions.now.value)
   return [...publicItems, ...(mine.value && !privateItemsHidden.value ? privateItems.records.value : [])]
-    .filter(item => item.end_date >= requestRange.value.from && item.start_date <= requestRange.value.to)
+    .filter(item => (item.end_date == null || item.end_date >= requestRange.value.from) && item.start_date <= requestRange.value.to)
 })
 const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)))
 const viewLoading = computed(() => mine.value ? subscriptions.loading.value || privateItems.loading.value : loading.value)
@@ -257,7 +257,7 @@ async function load() {
     ])
     if (token !== generation) return
     if (subscriptions.dirty.value) { deferredRefresh = true; return }
-    items.value = normalize(result?.items).filter(item => item.end_date >= range.from && item.start_date <= range.to)
+    items.value = normalize(result?.items).filter(item => (item.end_date == null || item.end_date >= range.from) && item.start_date <= range.to)
     summaryItems.value = needsSummary ? normalize(summary?.items) : items.value
   } catch (err) {
     if (token === generation) {

@@ -19,11 +19,11 @@ watch(() => [props.form.game, props.form.start_date, props.form.end_date], reset
 async function check() {
   if (props.disabled || loading.value) return
   reset()
-  if (!CALENDAR_GAMES.includes(props.form.game) || !isCalendarDate(props.form.start_date) || !isCalendarDate(props.form.end_date) || props.form.end_date < props.form.start_date) { error.value = '请先填写游戏和有效的日期范围。'; return }
+  if (!CALENDAR_GAMES.includes(props.form.game) || !isCalendarDate(props.form.start_date) || (props.form.end_date && (!isCalendarDate(props.form.end_date) || props.form.end_date < props.form.start_date))) { error.value = '请先填写游戏和有效的日期范围。'; return }
   const token = generation
   loading.value = true
   try {
-    const result = await listActivityCalendar({ game: props.form.game, from: props.form.start_date, to: props.form.end_date })
+    const result = await listActivityCalendar({ game: props.form.game, from: props.form.start_date, to: props.form.end_date || undefined })
     if (!alive || token !== generation) return
     entries.value = normalizeCalendarItems(result?.items); checked.value = true
   } catch (err) { if (alive && token === generation) error.value = err.message || '检查失败，可以重试。' }

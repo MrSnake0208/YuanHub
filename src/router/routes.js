@@ -39,17 +39,17 @@ export const routes = [
     {
         path: '/calendar', name: 'calendar', text: '活动日历', display: true, module: 'tools', icon: 'calendar-days',
         component: () => import('/src/pages/calendar/index.vue'),
-        meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '活动日历 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiresBeta: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '活动日历 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar/suggestions/new', name: 'calendar-suggestion-new', text: '建议补充活动', display: false, module: 'tools', icon: 'calendar-plus',
         component: () => import('/src/pages/calendar/suggestion-new.vue'),
-        meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '建议补充活动 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiresBeta: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '建议补充活动 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/calendar/suggestions', name: 'calendar-suggestions', text: '我的活动建议', display: false, module: 'tools', icon: 'calendar-days',
         component: () => import('/src/pages/calendar/suggestions.vue'),
-        meta: { requiresAuth: true, requiresAdmin: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '我的活动建议 — 鸢鸢相抱 · YuanHub' }
+        meta: { requiresAuth: true, requiresBeta: true, feature: FEATURE_KEYS.ACTIVITY_CALENDAR, featureFallback: '/', title: '我的活动建议 — 鸢鸢相抱 · YuanHub' }
     },
     {
         path: '/admin/ledger', name: 'ledger-admin', text: '广陵账房管理', display: false, module: 'admin', icon: 'book-open',
@@ -171,6 +171,8 @@ export const routes = [
         component: () => import('/src/pages/recruitment/index.vue'),
         meta: {
             feature: FEATURE_KEYS.RECRUITMENT_ARCHIVE,
+            requiresAuth: true,
+            requiresBeta: true,
             featureFallback: '/',
             title: '招募档案 — 鸢鸢相抱 · YuanHub'
         }
@@ -243,20 +245,7 @@ export const routes = [
             requiredPermission: 'recruitment_catalog:write'
         }
     },
-    {
-        path: '/admin/recruitment-access',
-        text: '招募档案访问',
-        name: 'recruitment-access-admin',
-        display: false,
-        module: 'admin',
-        icon: 'shield',
-        component: () => import('/src/pages/admin/recruitmentAccess.vue'),
-        meta: {
-            title: '招募档案访问 — 鸢鸢相抱 · YuanHub',
-            requiresAuth: true,
-            requiredPermission: 'recruitment_access:manage'
-        }
-    },
+    { path: '/admin/recruitment-access', redirect: '/manage', display: false },
     {
         path: '/level/admin',
         text: '关卡管理',

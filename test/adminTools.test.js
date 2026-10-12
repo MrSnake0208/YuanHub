@@ -25,7 +25,6 @@ test('maps every management tool to its existing permission boundary', function 
     '/admin/ledger',
     '/co-creation/admin',
     '/admin/beta',
-    '/admin/recruitment-access',
     '/feedback/manage',
     '/feedback/admin',
     '/operator/admin',
@@ -70,12 +69,11 @@ test('招募管理路由与工作台只向具有专属目录权限的管理员�
   assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.OPERATOR_CATALOG_WRITE] })).some(tool => tool.to === '/recruitment/admin'), false)
 })
 
-test('招募档案访问配置使用独立平台权限和管理入口', () => {
+test('招募独立访问配置入口退役，不再出现在管理工作台', () => {
   const route = routes.find(item => item.path === '/admin/recruitment-access')
-  assert.equal(route.meta.requiresAuth, true)
-  assert.equal(route.meta.requiredPermission, ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE)
-  assert.deepEqual(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE] })).map(tool => tool.to), ['/admin/recruitment-access'])
-  assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_CATALOG_WRITE] })).some(tool => tool.to === '/admin/recruitment-access'), false)
+  assert.equal(route.redirect, '/manage')
+  assert.equal(route.component, undefined)
+  assert.equal(getVisibleAdminTools(normalizeAdminAccess({ permissions: [ADMIN_PERMISSIONS.RECRUITMENT_ACCESS_MANAGE] })).some(tool => tool.to === '/admin/recruitment-access'), false)
 })
 
 test('adds a single accessible workbench back link to management detail pages', function () {
@@ -122,7 +120,7 @@ test('keeps notification private and provides a guest feedback entry in more', f
 
 test('all registered administrative routes belong to management without absorbing player routes', () => {
   const managementPaths = routes.filter(route => route.meta?.requiresManagement || route.meta?.requiresFeedbackManage || route.meta?.requiredPermission || route.meta?.requiredAnyPermission).map(route => route.path)
-  assert.equal(managementPaths.length, 14)
+  assert.equal(managementPaths.length, 13)
   for (const path of managementPaths) {
     assert.equal(isManagementRoute(path), true, path)
     assert.equal(isManagementRoute(path + '/'), true, path + '/')

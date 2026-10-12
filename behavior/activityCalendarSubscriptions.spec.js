@@ -9,7 +9,7 @@ import { listAccounts } from '../src/api/accounts.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
-vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: true, userInfo: { id: 'user' } }) }))
+vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'user' } }) }))
 vi.mock('../src/api/calendarPrivateItems.js', () => ({ listCalendarPrivateItems: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
@@ -28,7 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-05T04:00:00Z'))
   const media = new EventTarget(); media.matches = false
   vi.stubGlobal('matchMedia', vi.fn(() => media))
-  auth.isLoggedIn = true; auth.isAdmin = true; auth.userInfo = { id: 'user' }; activeAccount.set('a')
+  auth.isLoggedIn = true; auth.isAdmin = false; auth.userInfo = { id: 'user' }; activeAccount.set('a')
   server = null
   listAccounts.mockResolvedValue([{ id: 'a', name: '大号', game: '如鸢' }])
   listActivityCalendar.mockResolvedValue({ items: [event] })

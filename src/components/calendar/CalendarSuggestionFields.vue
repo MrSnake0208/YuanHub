@@ -2,12 +2,12 @@
   <div class="calendar-fields">
     <label>游戏 *<select :id="prefix + 'game'" v-model="form.game" v-bind="attributes('game')" required><option value="">请选择游戏</option><option v-for="game in CALENDAR_GAMES" :key="game">{{ game }}</option></select><small v-if="errors.game" :id="prefix + 'error-game'">{{ errors.game }}</small></label>
     <CalendarClassificationFields :form="form" :errors="errors" :prefix="prefix" />
-    <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ SUGGESTION_FIELD_LABELS[field.key] }} *<input :id="prefix + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :min="field.key === 'end_date' ? form.start_date || undefined : undefined" v-bind="attributes(field.key)" required><small v-if="errors[field.key]" :id="prefix + 'error-' + field.key">{{ errors[field.key] }}</small></label>
+    <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ SUGGESTION_FIELD_LABELS[field.key] }}{{ field.key === 'end_date' ? '（留空表示持续进行）' : ' *' }}<input :id="prefix + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :min="field.key === 'end_date' ? form.start_date || undefined : undefined" v-bind="attributes(field.key)" :required="field.key !== 'end_date'"><small v-if="errors[field.key]" :id="prefix + 'error-' + field.key">{{ errors[field.key] }}</small></label>
   </div>
   <p class="calendar-hint">招募由卡池生成，请通过<router-link to="/feedback">反馈中心</router-link>提供招募线索。日期和时间按 Asia/Shanghai 记录。</p>
-  <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间（开始、结束成对）</label>
+  <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间</label>
   <div v-if="form.precise" class="calendar-fields">
-    <label v-for="key in ['start_time', 'end_time']" :key="key">{{ SUGGESTION_FIELD_LABELS[key] }} *<input :id="prefix + key" v-model="form[key]" type="time" v-bind="attributes(key)" required><small v-if="errors[key]" :id="prefix + 'error-' + key">{{ errors[key] }}</small></label>
+    <label v-for="key in (form.end_date ? ['start_time', 'end_time'] : ['start_time'])" :key="key">{{ SUGGESTION_FIELD_LABELS[key] }} *<input :id="prefix + key" v-model="form[key]" type="time" v-bind="attributes(key)" required><small v-if="errors[key]" :id="prefix + 'error-' + key">{{ errors[key] }}</small></label>
   </div>
   <div class="calendar-fields">
     <label class="calendar-wide">简短说明（采纳后可公开）<textarea :id="prefix + 'description'" v-model="form.description" rows="3" maxlength="1000" v-bind="attributes('description')"></textarea><small v-if="errors.description" :id="prefix + 'error-description'">{{ errors.description }}</small></label>

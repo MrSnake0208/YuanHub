@@ -43,7 +43,7 @@ function deferred() {
 }
 function signIn(values = accounts) {
   auth.isLoggedIn = true
-  auth.isAdmin = true
+  auth.isAdmin = false
   auth.accessToken = 'test-only'
   auth.userInfo = { user_name: '测试殿下' }
   listAccounts.mockResolvedValue(values)
@@ -343,38 +343,32 @@ it('卸载时尚未返回的请求不再处理，不遗留计时器', async () =
 })
 
 
-it.each(['guest', 'ordinary', 'permissions-pending'])('%s不显示今日活动、不请求日历，保留首页导航与建档', async mode => {
-  if (mode !== 'guest') { signIn([]); auth.isAdmin = mode === 'permissions-pending' ? undefined : false }
-  const wrapper = render()
-  await flushPromises()
+it('访客不请求活动摘要，保留首页导航与登录提示', async () => {
+  const wrapper = render(); await flushPromises()
   expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
   expect(listActivityCalendar).not.toHaveBeenCalled()
   expect(wrapper.findComponent({ name: 'IslandSidebar' }).exists()).toBe(true)
-  expect(wrapper.get('.data-onboarding').text()).toContain(mode === 'guest' ? '先登录' : '先建立你的游戏子账号')
-  window.dispatchEvent(new Event('pageshow'))
-  await flushPromises()
+  expect(wrapper.get('.data-onboarding').text()).toContain('先登录')
+  window.dispatchEvent(new Event('pageshow')); await flushPromises()
   expect(listActivityCalendar).not.toHaveBeenCalled()
+  wrapper.unmount()
 })
 
-it('权限加载后显示摘要，撤销时清理计时器并丢弃迟到响应', async () => {
-  signIn([]); auth.isAdmin = false
+it('普通用户可读活动摘要，退出登录清理计时器并丢弃迟到响应', async () => {
+  signIn([])
   const late = deferred()
   listActivityCalendar.mockReturnValue(late.promise)
-  const wrapper = render()
-  await flushPromises()
-  expect(listActivityCalendar).not.toHaveBeenCalled()
-  auth.isAdmin = true
-  await flushPromises()
+  const wrapper = render(); await flushPromises()
   expect(card(wrapper).text()).toContain('正在读取')
-  auth.isAdmin = false
+  auth.isLoggedIn = false; auth.accessToken = ''; auth.userInfo = null
   await flushPromises()
-  late.resolve({ items: [item()] })
-  await flushPromises()
+  late.resolve({ items: [item()] }); await flushPromises()
   expect(wrapper.find('.today-activity-summary').exists()).toBe(false)
   await vi.advanceTimersByTimeAsync(0)
   expect(vi.getTimerCount()).toBe(0)
   window.dispatchEvent(new Event('pageshow'))
   expect(listActivityCalendar).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
 })
 
 it('今日原地换账号同步清空摘要，不让A数量冒充B', async () => {
@@ -390,4 +384,18 @@ it('今日原地换账号同步清空摘要，不让A数量冒充B', async () =>
   readB.resolve({ entries: {} }); await flushPromises()
   expect(wrapper.get('.account-data-summary').text()).toContain('尚未录入')
   expect(wrapper.get('.data-account-context-bar').text()).toContain('小号')
+})
+
+it('持续活动保留在今日摘要，排序不报错且展示持续进行', async () => {
+  signIn([])
+  listActivityCalendar.mockResolvedValue({ items: [
+    item({ id: 'open', title: '持续活动', start_date: '2026-09-01', end_date: null }),
+    item({ id: 'closed', title: '今日截止' }),
+  ] })
+  const wrapper = render(); await flushPromises()
+  expect(card(wrapper).text()).toContain('持续活动')
+  expect(card(wrapper).text()).toContain('持续进行')
+  expect(card(wrapper).text()).not.toContain('截止 null')
+  expect(card(wrapper).findAll('.activity-counts p').map(node => node.text())).toEqual(['进行中 1', '今日开始 1', '今日结束 1'])
+  expect(card(wrapper).findAll('[aria-label="今日活动预览"] li')[0].text()).toContain('今日截止')
 })

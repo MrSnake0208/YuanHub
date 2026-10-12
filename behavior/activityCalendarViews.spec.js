@@ -437,3 +437,16 @@ it('今日信息带加载和失败不误报空态或残留活动统计', async (
   await wrapper.setProps({ error: '' })
   expect(wrapper.get('.calendar-counts').text()).toContain('今日开始 1')
 })
+
+it.each(['agenda', 'month', 'timeline'])('持续活动在%s视图不被过滤且显示正确日期范围', async view => {
+  listActivityCalendar.mockResolvedValue({ items: [event({ title: '持续活动', end_date: null })] })
+  const { wrapper } = await render('/calendar?view=' + view)
+  expect(wrapper.text()).toContain('持续活动')
+  if (view === 'agenda') expect(wrapper.text()).toContain('持续进行')
+  if (view === 'timeline') {
+    const bar = wrapper.get('.calendar-timeline-bar')
+    expect(bar.attributes('aria-label')).toContain('持续进行')
+    expect(bar.classes()).not.toContain('is-ending')
+    expect(bar.attributes('style')).toContain('grid-column')
+  }
+})
