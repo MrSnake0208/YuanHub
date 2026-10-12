@@ -633,3 +633,24 @@ it('unsupported backend rejects checklist protocol visibly and retains the draft
   expect(saveCalendarProgress).toHaveBeenCalledTimes(1)
   expect(saveCalendarProgress.mock.lastCall[1].progress_mode).toBe('checklist')
 })
+
+it.each(['如鸢', '代号鸢'])('public and subscribed bars keep the same confirmed UP names for %s', async game => {
+  const pool = { ...event, id: 'recruitment:confirmed', source_type: 'RECRUITMENT_POOL', category: 'RECRUITMENT', game, title: '正式招募池', up_agent_names: ['甲', '乙', '丙'], source_up_agent_names: ['未知候选'] }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '测试账号', game }])
+  listActivityCalendar.mockResolvedValue({ items: [pool] })
+  listCalendarSubscriptions.mockResolvedValue({ items: [{ event_id: pool.id, version: 0, subscribed: true, completed: false, checklist: [], item: pool }], unavailable_items: [], subscribed_count: 1 })
+  await render(`&game=${game}`)
+  for (const scope of ['全部活动', '我的日历']) {
+    await button(scope).trigger('click'); await flushPromises()
+    for (const view of ['月历', '时间轴']) {
+      await button(view).trigger('click'); await flushPromises()
+      const bars = wrapper.findAll('.calendar-month-bar, .calendar-timeline-bar')
+      expect(bars.length).toBeGreaterThan(0)
+      expect(bars[0].get('.calendar-month-bar-up, .calendar-timeline-bar-up').text()).toBe('UP · 甲 / 乙 +1')
+      expect(bars[0].attributes('aria-label')).toContain('UP 密探：甲、乙、丙')
+      expect(wrapper.text()).not.toContain('未知候选')
+    }
+  }
+  expect(setCalendarSubscription).not.toHaveBeenCalled()
+  expect(saveCalendarProgress).not.toHaveBeenCalled()
+})

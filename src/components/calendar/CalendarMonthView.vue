@@ -19,9 +19,12 @@
               </button>
             </div>
             <div v-if="week.rowCount" class="calendar-month-bars" :style="{ gridTemplateRows: `repeat(${week.rowCount}, minmax(44px, auto))` }">
-              <button v-for="entry in week.segments" :key="entry.item.id" type="button" class="calendar-month-bar" :class="{ 'is-narrow': entry.position.span === 1, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}`, gridRow: entry.row + 1 }" :data-event-id="entry.item.id" :data-type-color="entry.display.color" :aria-label="`${entry.item.title}，${entry.display.path}，${calendarRangeLabel(entry.item)}，查看当天完整事项`" aria-controls="calendar-day-detail" @click="openDay(segmentDate(entry, week), entry.item.id)">
+              <button v-for="entry in week.segments" :key="entry.item.id" type="button" class="calendar-month-bar" :class="{ 'is-narrow': entry.position.span === 1, 'has-up-agents': !!entry.upAgents, 'is-clipped-start': entry.position.clippedStart, 'is-clipped-end': entry.position.clippedEnd }" :style="{ ...entry.display.style, gridColumn: `${entry.position.column} / span ${entry.position.span}`, gridRow: entry.row + 1 }" :data-event-id="entry.item.id" :data-type-color="entry.display.color" :aria-label="`${entry.item.title}，${entry.display.path}${entry.upAgents ? '，' + entry.upAgents.full : ''}，${calendarRangeLabel(entry.item)}，查看当天完整事项`" aria-controls="calendar-day-detail" @click="openDay(segmentDate(entry, week), entry.item.id)">
                 <span v-if="entry.position.clippedStart" class="calendar-month-continuation" aria-hidden="true">‹</span>
-                <span class="calendar-month-bar-text">{{ entry.display.label }} · {{ entry.item.title }}</span>
+                <span class="calendar-month-bar-content">
+                  <span class="calendar-month-bar-text">{{ entry.upAgents ? entry.item.title : `${entry.display.label} · ${entry.item.title}` }}</span>
+                  <span v-if="entry.upAgents" class="calendar-month-bar-up"><span class="calendar-bar-up-prefix">UP · </span>{{ entry.position.span === 1 ? entry.upAgents.narrow : entry.upAgents.summary }}</span>
+                </span>
                 <span v-if="entry.position.clippedEnd" class="calendar-month-continuation" aria-hidden="true">›</span>
               </button>
             </div>
@@ -47,7 +50,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight, Plus } from '@lucide/vue'
 import CalendarEventCard from './CalendarEventCard.vue'
 import { addCalendarDays, calendarDateLabel, calendarRangeLabel, monthCalendarWeeks, shiftCalendarMonth } from '@/data/activityCalendar.js'
-import { calendarDisplay } from '@/data/activityCalendarTypes.js'
+import { calendarDisplay, calendarUpAgentDisplay } from '@/data/activityCalendarTypes.js'
 const props = defineProps({ items: { type: Array, required: true }, today: { type: String, required: true }, anchorDate: { type: String, required: true }, loading: Boolean, error: Boolean, canCreate: Boolean })
 const emit = defineEmits(['select-date', 'create-private'])
 const weekdays = ['一', '二', '三', '四', '五', '六', '日']
@@ -63,7 +66,7 @@ onMounted(() => {
 onUnmounted(() => media?.removeEventListener('change', updateWidth))
 const monthLabel = computed(() => calendarDateLabel(props.anchorDate, { year: 'numeric', month: 'long' }))
 const weeks = computed(() => monthCalendarWeeks(props.loading || props.error ? [] : props.items, props.anchorDate, wide.value ? 4 : 3).map(week => ({
-  ...week, segments: week.segments.map(entry => ({ ...entry, display: calendarDisplay(entry.item) })),
+  ...week, segments: week.segments.map(entry => ({ ...entry, display: calendarDisplay(entry.item), upAgents: calendarUpAgentDisplay(entry.item) })),
 })))
 const selectedItems = computed(() => weeks.value.flatMap(week => week.days).find(day => day.date === props.anchorDate)?.items || [])
 function dayLabel(day) {
