@@ -26,6 +26,10 @@
             <div data-guide-target="read-state">
             <p v-if="error" ref="errorSummary" class="form-error" role="alert" tabindex="-1">{{ error }}</p>
             <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
+            <div v-if="missingRecordIds.length" class="form-error" role="alert">
+              有 {{ missingRecordIds.length }} 笔旧记录已在其他设备移除。其余草稿仍保留，请核对后移除失效草稿，再重新选择位置。
+              <button type="button" :disabled="busy" @click="discardMissingRecords">核对失效草稿</button>
+            </div>
             <p v-if="busy" class="state-note" role="status">正在处理保存或刷新请求…</p>
             <p v-if="recordsLoading" class="state-note" role="status">正在读取本池出货记录…</p>
             <div v-if="recordsError" class="form-error" role="alert">
@@ -250,6 +254,14 @@
                 </div>
                 <button v-if="activeRow?.agent_id && !isFourStar(activeRow)" type="button" class="unknown-pulls" :disabled="busy || readOnly" @click="markPullsUnknown">记不清，保留未知</button>
                 <p v-if="activeRow?.agent_id && !isFourStar(activeRow) && !guideVisible" :id="editorId + '-pulls-help'" class="composer-note">{{ pullSpanHelp }}</p>
+                <button v-if="activeRow?.agent_id" type="button" class="position-toggle" :aria-expanded="positionOpen" :aria-controls="editorId + '-position'" :disabled="busy || readOnly || !!unverifiedSave" @click="openPosition">{{ originals.has(activeRow.event_id) ? '调整顺序' : '补录到历史位置' }}</button>
+                <fieldset v-if="positionOpen" :id="editorId + '-position'" class="position-picker" :disabled="busy || readOnly || recordsLoading || !!unverifiedSave">
+                  <legend>记录位置 · 最早 → 最新</legend>
+                  <p class="composer-note">只调整先后，不按日期排序，不改出货间隔、保底和批次总量。完成后仍需保存修改。</p>
+                  <p v-if="hasMore" class="composer-note" role="status">需要先读取本池全部记录。<button type="button" :disabled="busy || recordsLoading" @click="$emit('load-all')">继续读取全部记录</button></p>
+                  <label><span>放置位置</span><select v-model="positionMode" :disabled="hasMore || !!recordsError"><option value="keep">{{ isStoredRow(activeRow) ? '保持当前位置' : '默认追加到最新' }}</option><option value="earliest">移到最早</option><option value="latest">移到最新</option><option v-if="positionOptions.length" value="before">插在这笔之前（更早）</option><option v-if="positionOptions.length" value="after">插在这笔之后（更晚）</option></select></label>
+                  <label v-if="['before', 'after'].includes(positionMode)"><span>参照记录 · 最早 → 最新（含被搜索隐藏的记录）</span><select v-model="positionAnchor" :disabled="hasMore || !!recordsError"><option disabled value="">请选择一笔记录</option><option v-for="(row, index) in positionOptions" :key="row.event_id" :value="row.event_id">{{ positionLabel(row, index) }}</option></select></label>
+                </fieldset>
                 <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
                 <p v-if="activeRow && originals.has(activeRow.event_id)" class="composer-note">完成编辑只更新草稿，核对后点击底部保存修改。</p>
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-record'" target="save-record" :message="guideMessage" />
@@ -263,7 +275,7 @@
               <div class="records-heading">
                 <span class="section-kicker">抽卡档案</span>
                 <h3 :id="editorId + '-records'">本池抽卡进度</h3>
-                <p>{{ rows.length }} 条{{ hasMore ? ' · 还有更早记录' : '' }}</p>
+                <p>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }} · 最新 → 最早</p>
               </div>
               <label v-if="rows.length" class="record-search"><span>查找已有记录</span><input v-model="recordSearch" type="search" placeholder="按密探名字查找" autocomplete="off"></label>
 
@@ -334,16 +346,17 @@
               <div v-else-if="initialized && !recordsLoading && !recordsError" data-guide-target="empty-records" class="records-empty">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'empty-records'" target="empty-records" :message="guideMessage" />
                 <strong>{{ recordSearch ? '没有找到这位密探的记录' : '还没有抽卡记录' }}</strong>
-                <p>{{ recordSearch ? '换个名字，或加载更早记录；不需要重复登记。' : '点击上方 UP 密探头像或「其他密探」登记出货；仅更新保底可以直接修改上方进度并保存。' }}</p>
+                <p>{{ recordSearch ? '换个名字，或继续加载记录；不需要重复登记。' : '点击上方 UP 密探头像或「其他密探」登记出货；仅更新保底可以直接修改上方进度并保存。' }}</p>
               </div>
 
               <div class="records-tail">
                 <p v-if="rows.length && recordView === 'progress'" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数始终以色条内数字为准。</p>
                 <p v-else-if="rows.length" class="bar-legend">头像左下角显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
-                <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">加载更早记录</button>
+                <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">继续加载记录</button>
               </div>
             </section>
 
+            <p v-if="orderChanged" class="change-note" role="status">历史顺序待保存；两种视图使用同一顺序，抽数与保底不随移动变化。</p>
             <p v-if="deletedIds.length" class="change-note">保存后将移除 {{ deletedIds.length }} 条已有出货；独立记录会减去该条已知抽数，相邻记录与批次总量不变。</p>
 
           </div>
@@ -386,9 +399,54 @@ import { entryInput, MAX_EVENT_PULLS, poolAgentOptions, progressFromRemaining, r
 
 const props = defineProps({ open: Boolean, pool: Object, poolSummary: Object, records: { type: Array, default: () => [] }, recordsLoading: Boolean, recordsError: String, recordsRevision: Number, hasMore: Boolean, agents: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, busy: Boolean, readOnly: Boolean, canRecord: Boolean, serverError: String, requestVersion: Number, guided: Boolean, practice: Boolean, practiceResult: Boolean, saveReceipt: Object })
 const editorId = 'recruitment-editor-' + useId()
-const emit = defineEmits(['close', 'save', 'load-more', 'retry', 'guide-dismiss', 'guide-start', 'practice'])
+const emit = defineEmits(['close', 'save', 'load-more', 'load-all', 'retry', 'guide-dismiss', 'guide-start', 'practice'])
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
+const orderIds = ref(null), orderRevision = ref(null), positionOpen = ref(false), positionMode = ref('keep'), positionAnchor = ref('')
+const preservedProgress = ref(null)
+const naturalRows = computed(() => {
+  const byId = new Map(rows.value.map(row => [row.event_id, row]))
+  const visibleIds = new Set(props.records.map(event => event.event_id))
+  return props.records.map(event => byId.get(event.event_id)).filter(Boolean).concat(rows.value.filter(row => !visibleIds.has(row.event_id)))
+})
+const orderedRows = computed(() => {
+  if (!orderIds.value) return naturalRows.value
+  const byId = new Map(rows.value.map(row => [row.event_id, row]))
+  const ids = new Set(orderIds.value)
+  return orderIds.value.map(id => byId.get(id)).filter(Boolean).concat(naturalRows.value.filter(row => !ids.has(row.event_id)))
+})
+const positionOptions = computed(() => orderedRows.value.filter(row => row.event_id !== activeRow.value?.event_id))
+function positionLabel(row, index) {
+  return `${index + 1}. ${selectedAgent(row)?.name || row.agent_id} · ${isFourStar(row) ? '4星计次' : row.pull_span === '' ? '间隔未知' : row.pull_span + '抽'}${row.acquired_date ? ' · ' + row.acquired_date : ''} · ${row.event_id.slice(-6)}`
+}
+function resetPosition() { positionOpen.value = false; positionMode.value = 'keep'; positionAnchor.value = '' }
+function openPosition() {
+  positionOpen.value = !positionOpen.value
+  if (!positionOpen.value) return
+  if (props.hasMore) emit('load-all')
+  nextTick(() => { entryComposer.value?.querySelector('.position-picker select')?.focus(); scheduleEntryVisibility() })
+}
+const missingRecordIds = computed(() => {
+  if (!recordsReady.value || props.hasMore || unverifiedSave.value) return []
+  const live = new Set(props.records.map(event => event.event_id))
+  return [...new Set(rows.value.filter(row => originals.has(row.event_id)).map(row => row.event_id).concat(deletedIds.value))].filter(id => !live.has(id))
+})
+async function discardMissingRecords() {
+  const ids = missingRecordIds.value.slice(), session = editorSession, revision = props.recordsRevision
+  if (!ids.length || props.busy) return
+  const discard = await dialog.confirm({ title: '移除已失效记录的本地草稿？', message: `这 ${ids.length} 笔旧记录已被其他设备删除。只丢弃这些记录尚未保存的修改，其余草稿保留；随后请重新选择位置。`, type: 'danger', confirmText: '移除失效草稿', cancelText: '继续核对' })
+  if (!discard || !props.open || props.busy || session !== editorSession || revision !== props.recordsRevision) return
+  const missing = new Set(ids)
+  rows.value = rows.value.filter(row => !missing.has(row.event_id))
+  deletedIds.value = deletedIds.value.filter(id => !missing.has(id))
+  ids.forEach(id => originals.delete(id))
+  if (orderIds.value) orderIds.value = orderIds.value.filter(id => !missing.has(id))
+  orderRevision.value = null
+  if (missing.has(activeRow.value?.event_id)) { activeRow.value = null; resetPosition() }
+  error.value = ''
+}
+const orderChanged = computed(() => !!orderIds.value && JSON.stringify(orderIds.value) !== JSON.stringify(naturalRows.value.map(row => row.event_id)))
+
 const dailyMode = ref('record'), recordSearch = ref('')
 const progressLabel = props.practice ? ref('已抽') : usePersistedTab('yh_recruitment_progress_input_mode', '已抽', ['已抽', '已垫'])
 const progressInput = computed({
@@ -479,14 +537,14 @@ function entryMatches(event, entry) {
 }
 const receiptVerified = computed(() => {
   const receipt = props.saveReceipt
-  return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && (receipt.remaining_pulls == null ? props.pool.progress == null : props.pool.progress === 40 - receipt.remaining_pulls) && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at))
+  return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && props.pool.progress === (receipt.remaining_pulls == null ? preservedProgress.value : 40 - receipt.remaining_pulls) && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at)) && (!receipt.ordered_event_ids || !props.hasMore && JSON.stringify(props.records.filter(event => !event.deleted_at).map(event => event.event_id)) === JSON.stringify(receipt.ordered_event_ids))
 })
 const unverifiedSave = computed(() => props.saveReceipt && !receiptVerified.value)
 const savedMessage = computed(() => {
   const receipt = props.saveReceipt
-  if (!receipt?.entries.length && !receipt?.deleted_event_ids.length) return '当前保底已保存'
+  if (!receipt?.entries.length && !receipt?.deleted_event_ids.length && !receipt?.ordered_event_ids) return '当前保底已保存'
   const names = receipt.entries.map(entry => `${selectedAgent(entry)?.name || entry.agent_id}（${isFourStar(entry) ? '4星计次' : entry.pull_span == null ? '出货间隔未知' : entry.pull_span + '抽出货'}）`).join('、')
-  return [names && `已保存：${names}`, receipt.deleted_event_ids.length && `已移除 ${receipt.deleted_event_ids.length} 条记录`].filter(Boolean).join('；')
+  return [names && `已保存：${names}`, receipt.ordered_event_ids && '历史顺序已保存', receipt.deleted_event_ids.length && `已移除 ${receipt.deleted_event_ids.length} 条记录`].filter(Boolean).join('；')
 })
 const isSavedRow = row => receiptVerified.value && !isChanged(row) && props.saveReceipt.entries.some(entry => entry.event_id === row.event_id)
 let rebasedReceipt = null
@@ -503,6 +561,11 @@ watch(receiptVerified, verified => {
   }
   for (const id of props.saveReceipt.deleted_event_ids) originals.delete(id)
   deletedIds.value = deletedIds.value.filter(id => !props.saveReceipt.deleted_event_ids.includes(id))
+  if (props.saveReceipt.ordered_event_ids) {
+    const byId = new Map(rows.value.map(row => [row.event_id, row]))
+    rows.value = props.saveReceipt.ordered_event_ids.map(id => byId.get(id)).filter(Boolean)
+    orderIds.value = null; orderRevision.value = null
+  }
   initialRemaining.value = props.saveReceipt.remaining_pulls == null ? '' : typeof remaining.value === 'number' ? props.saveReceipt.remaining_pulls : String(props.saveReceipt.remaining_pulls)
 })
 let requestId = ''
@@ -569,7 +632,7 @@ async function close() {
   } finally { closePending = false }
 }
 defineExpose({ startGuide, openGuide, hasDraft })
-const displayRows = computed(() => rows.value.filter(row => originals.has(row.event_id)).concat(rows.value.filter(row => !originals.has(row.event_id))).reverse().filter(row => matchesOperatorSearch(selectedAgent(row) || { name: row.agent_id }, recordSearch.value)))
+const displayRows = computed(() => orderedRows.value.slice().reverse().filter(row => matchesOperatorSearch(selectedAgent(row) || { name: row.agent_id }, recordSearch.value)))
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
@@ -581,13 +644,14 @@ function recordLabel(row) {
   const status = row.up_status === 'non_up' ? '，非UP' : (agent?.poolSlot || row.up_status === 'up') ? '，UP' : ''
   return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
 }
-const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length)
+const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (orderChanged.value ? 1 : 0))
 const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0))
 function hasDraft() {
   if (!props.open || props.practiceResult) return false
   if (pendingCount.value) return true
   const row = activeRow.value
   if (!row) return false
+  if (positionOpen.value && positionMode.value !== 'keep') return true
   if (!originals.has(row.event_id)) return !!(row.agent_id || row.pull_span !== '' || row.acquired_date || row.note)
   try { return isChanged(row) } catch { return true }
 }
@@ -669,7 +733,7 @@ function add(agentId = '') {
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   recordSearch.value = ''
   error.value = ''
-  if (!activeRow.value) activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null }
+  if (!activeRow.value) { resetPosition(); activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null } }
   if (agentId) {
     activeRow.value.agent_id = agentId
     choosingAgent.value = false
@@ -688,7 +752,7 @@ function chooseOtherAgent(agentId) {
   resetAgentFilters()
   focusEntry(true)
 }
-function edit(row) { pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function edit(row) { resetPosition(); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -700,7 +764,7 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
+function cancelEntry() { resetPosition(); activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); nextTick(() => panel.value?.querySelector('.add-record')?.focus()) }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
   error.value = ''
@@ -709,8 +773,24 @@ function confirmRecord() {
     if (!options.value.some(agent => agent.id === entry.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
     const index = rows.value.findIndex(row => row.event_id === entry.event_id)
     const row = { ...activeRow.value, pull_span: entry.pull_span ?? '' }
+    const moving = positionOpen.value && positionMode.value !== 'keep'
+    let ids = orderedRows.value.map(item => item.event_id)
+    if (moving) {
+      if (props.hasMore || !recordsReady.value) throw new Error('请读完本池全部记录后选择历史位置')
+      if (ids.length + (index < 0 ? 1 : 0) > 20000) throw new Error('历史排序最多支持本池20000条记录，请先导出备份核对')
+      ids = ids.filter(id => id !== row.event_id)
+      let target = positionMode.value === 'earliest' ? 0 : ids.length
+      if (['before', 'after'].includes(positionMode.value)) {
+        target = ids.indexOf(positionAnchor.value)
+        if (target < 0 || originals.has(positionAnchor.value) && !props.records.some(event => event.event_id === positionAnchor.value)) throw new Error('参照记录已删除或不可用，请重新选择位置')
+        if (positionMode.value === 'after') target++
+      }
+      ids.splice(target, 0, row.event_id)
+    } else if (index < 0) ids.push(row.event_id)
     if (index < 0) rows.value.push(row)
     else rows.value.splice(index, 1, row)
+    if (moving || orderIds.value) { orderIds.value = ids; if (moving) orderRevision.value = props.recordsRevision }
+    resetPosition()
     activeRow.value = null
     choosingAgent.value = false
     nextTick(() => (panel.value?.querySelector('.record-detail, .agent-record-detail') || panel.value?.querySelector('.add-record'))?.focus())
@@ -718,6 +798,8 @@ function confirmRecord() {
   } catch (err) { error.value = err.message; nextTick(() => errorSummary.value?.focus()); return false }
 }
 function remove(row) {
+  resetPosition()
+  if (orderIds.value) orderIds.value = orderIds.value.filter(id => id !== row.event_id)
   if (activeRow.value?.event_id === row.event_id) {
     activeRow.value = null
     choosingAgent.value = false
@@ -737,6 +819,7 @@ watch(() => props.open, open => {
   }
   guideVisible.value = TUTORIALS_ENABLED && props.guided
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
+  orderIds.value = null; orderRevision.value = null; resetPosition()
   rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
@@ -753,7 +836,7 @@ watch([() => props.records, () => props.recordsRevision, () => props.open, () =>
   }
   initialized.value = true
 }, { immediate: true })
-watch([rows, activeRow, deletedIds, remaining, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
+watch([rows, orderIds, activeRow, deletedIds, remaining, () => props.requestVersion], () => { requestId = '' }, { deep: true, flush: 'sync' })
 onMounted(() => {
   const viewport = window.visualViewport
   viewport?.addEventListener('resize', onViewportChange)
@@ -785,9 +868,16 @@ async function submit() {
   if (!pendingCount.value) return
   error.value = ''
   try {
+    if (missingRecordIds.value.length) throw new Error('旧记录已在其他设备删除，请先核对并移除失效草稿；其余修改仍保留')
+    if (orderChanged.value) {
+      if (props.hasMore || !recordsReady.value) throw new Error('请读完本池全部记录后保存顺序')
+      const expected = props.records.filter(event => !event.deleted_at && !deletedIds.value.includes(event.event_id)).map(event => event.event_id).concat(rows.value.filter(row => !originals.has(row.event_id)).map(row => row.event_id))
+      const intended = new Set(orderIds.value)
+      if (orderRevision.value !== props.recordsRevision || expected.length !== orderIds.value.length || expected.some(id => !intended.has(id))) throw new Error('档案已变化，顺序草稿已保留；请重新选择位置并核对完整记录后保存')
+    }
     const countOnly = rows.value.filter(isChanged).every(isFourStar) && deletedIds.value.every(id => props.records.find(event => event.event_id === id)?.agent_snapshot.rarity === 4)
     if (remaining.value === '' && !countOnly) throw new Error('保底进度未知，暂不能保存。请核对游戏里的真实保底进度；可以关闭教程保留当前窗口草稿，不要猜值。')
-    if (progressLabel.value === '已垫' && tailProgress.value == null) throw new Error('已垫次数须为 0–39 的整数')
+    if (remaining.value !== '' && progressLabel.value === '已垫' && tailProgress.value == null) throw new Error('已垫次数须为 0–39 的整数')
     if (remaining.value !== '') progressFromRemaining(remaining.value)
     const entries = rows.value.map(row => {
       const input = rowInput(row)
@@ -800,13 +890,15 @@ async function submit() {
       return input
     }).filter(entry => JSON.stringify(entry) !== originals.get(entry.event_id))
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
+    preservedProgress.value = props.pool.progress
     if (!requestId) requestId = crypto.randomUUID()
-    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value) } })
+    emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
   } catch (err) { error.value = err.message; await nextTick(); errorSummary.value?.focus() }
 }
 </script>
 
 <style scoped>
+.position-toggle{margin:8px 0}.position-picker{min-width:0;margin:8px 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}.position-picker legend{font-weight:700}.position-picker label{display:grid;gap:6px;margin-top:10px;min-width:0;font-size:13px}.position-picker select{width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}.position-picker select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .modal-mask:has(.pool-editor[data-practice]){z-index:var(--z-overlay-raised,100)}
 :deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:3px}.gacha-record:has(.guide-hint){flex-wrap:wrap}.gacha-record>.guide-hint{grid-column:1/-1;width:100%;flex-basis:100%}.agent-record-card:has(.guide-hint){grid-column:1/-1}.agent-record-card>.guide-hint{margin-bottom:12px}.compact-entry-row>.guide-hint{grid-column:1/-1}.guide-choice{margin:10px 16px}.unknown-pulls{margin:8px 0}.entry-shortcuts[data-guide-active]{outline-offset:5px}
 

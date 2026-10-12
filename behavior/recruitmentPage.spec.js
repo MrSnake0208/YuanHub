@@ -642,8 +642,8 @@ it('A迟到读写不覆盖B记录或关闭B新弹窗，切账号清旧草稿', a
 it('记录读取失败禁止保存可重试；分页不丢草稿且不混合不同版本', async () => {
   api.listRecruitmentEvents.mockRejectedValueOnce(new Error('records unavailable')); const wrapper = render(); await flushPromises(); await selectPool(wrapper); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined(); await button(editor(wrapper), '重新读取').trigger('click'); await flushPromises(); expect(feed(wrapper)).toHaveLength(2)
   await button(editor(wrapper), '取消').trigger('click'); api.listRecruitmentEvents.mockResolvedValueOnce({ items: records['acc-a'], next_cursor: 'next', archive_revision: 3 }); await selectPool(wrapper); await button(editor(wrapper), '新增记录').trigger('click'); await composer(wrapper).get('.agent-choice').trigger('click'); await composer(wrapper).get('.pull-count-field input').setValue('12')
-  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [{ ...recruitmentEvent('C', 7), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }], next_cursor: 'last', archive_revision: 3 }); await button(editor(wrapper), '加载更早记录').trigger('click'); await flushPromises(); expect(feed(wrapper)).toHaveLength(3); expect(composer(wrapper).get('.pull-count-field input').element.value).toBe('12'); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0].cursor).toBe('next')
-  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [], next_cursor: null, archive_revision: 4 }); await button(editor(wrapper), '加载更早记录').trigger('click'); await flushPromises(); expect(editor(wrapper).text()).toContain('档案已变化'); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined()
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [{ ...recruitmentEvent('C', 7), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }], next_cursor: 'last', archive_revision: 3 }); await button(editor(wrapper), '继续加载记录').trigger('click'); await flushPromises(); expect(feed(wrapper)).toHaveLength(3); expect(composer(wrapper).get('.pull-count-field input').element.value).toBe('12'); expect(api.listRecruitmentEvents.mock.calls.at(-1)[0].cursor).toBe('next')
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [], next_cursor: null, archive_revision: 4 }); await button(editor(wrapper), '继续加载记录').trigger('click'); await flushPromises(); expect(editor(wrapper).text()).toContain('档案已变化'); expect(editor(wrapper).get('button[type=submit]').attributes('disabled')).toBeDefined()
 })
 it('目录失败可编辑旧抽数和保底，禁止新出货；只选本游戏绝密，UP固定身份回显新图鉴', async () => {
   getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'char-a', name: '正式密探', avatar: '/formal.png', rarity: 5, games: ['代号鸢'] }, { id: 'other', name: '另一游戏', rarity: 5, games: ['如鸢'] }, { id: 'r4', name: '机密', rarity: 4, games: ['代号鸢'] }] })
@@ -895,4 +895,97 @@ it('隐藏目录刷新后历史入口保留，切换无历史账号不留下旧�
   activeAccount.set('acc-b'); await flushPromises()
   expect(wrapper.findAll('.pool-card')).toHaveLength(0)
   expect(api.recruitmentCommand).not.toHaveBeenCalled()
+})
+
+
+it('历史插入读取完整105条分页，原子提交后按完整顺序回读并在重开及两视图持续', async () => {
+  records['acc-a'] = Array.from({ length: 105 }, (_, index) => ({ ...recruitmentEvent('e' + index, index === 50 ? null : 1), sort_order: index + 1, agent_snapshot: { agent_id: 'char-a', name: '测试绝密', rarity: 5 } }))
+  api.listRecruitmentEvents.mockImplementation(({ accountId, cursor, order, limit }) => {
+    expect(order).toBe('asc'); expect(limit).toBe(100)
+    const start = cursor ? Number(cursor) : 0
+    return Promise.resolve({ items: structuredClone(records[accountId].slice(start, start + 100)), next_cursor: records[accountId].length > start + 100 ? String(start + 100) : null, archive_revision: archives[accountId].archive_revision })
+  })
+  api.recruitmentCommand.mockImplementation(async ({ accountId, data, operation }) => {
+    expect(operation).toBe('pool_records_save')
+    expect(data.ordered_event_ids).toHaveLength(106)
+    const entry = data.entries[0]
+    const all = [...records[accountId], { ...recruitmentEvent(entry.event_id, entry.pull_span), ...entry, agent_snapshot: { agent_id: entry.agent_id, name: '测试绝密', rarity: 5 } }]
+    records[accountId] = data.ordered_event_ids.map((id, index) => ({ ...all.find(event => event.event_id === id), sort_order: index + 1 }))
+    archives[accountId].archive_revision++
+    return { archive_revision: archives[accountId].archive_revision }
+  })
+  const w = render(); await flushPromises(); await selectPool(w)
+  await editor(w).get('.add-record').trigger('click'); await composer(w).get('.agent-choice').trigger('click')
+  await composer(w).get('.position-toggle').trigger('click'); await flushPromises()
+  expect(editor(w).findAll('.record-detail')).toHaveLength(105)
+  await composer(w).get('.position-picker select').setValue('before')
+  await composer(w).findAll('.position-picker select')[1].setValue('e50')
+  await composer(w).get('.composer-actions .primary').trigger('click')
+  await editor(w).get('form').trigger('submit'); await flushPromises()
+  expect(confirmed(w)).toBe(true)
+  const ids = api.recruitmentCommand.mock.calls[0][0].data.ordered_event_ids
+  expect(ids[51]).toBe('e50'); expect(records['acc-a'][51].pull_span).toBeNull()
+  expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
+  await button(editor(w), '密探视图').trigger('click')
+  expect(editor(w).findAll('.agent-record-detail')).toHaveLength(106)
+  await editor(w).get('.close-button').trigger('click'); await selectPool(w)
+  await button(editor(w), '继续加载记录').trigger('click'); await flushPromises()
+  expect(editor(w).findAll('.agent-record-detail')).toHaveLength(106)
+  await button(editor(w), '进度条视图').trigger('click')
+  expect(editor(w).findAll('.record-detail')).toHaveLength(106)
+  expect(records['acc-a'].map(event => event.event_id)).toEqual(ids)
+  w.unmount()
+})
+it('全量排序分页失败保留单条输入，重试读完后才允许选择；跨账号不接受旧分页', async () => {
+  const next = deferred()
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: records['acc-a'], next_cursor: 'next', archive_revision: 3 }).mockReturnValueOnce(next.promise)
+  const w = render(); await flushPromises(); await selectPool(w)
+  await editor(w).get('.add-record').trigger('click'); await composer(w).get('.agent-choice').trigger('click')
+  await composer(w).get('.pull-count-field input').setValue('12')
+  await composer(w).get('.position-toggle').trigger('click')
+  expect(composer(w).get('.position-picker select').element.disabled).toBe(true)
+  next.reject(new Error('synthetic offline')); await flushPromises()
+  expect(composer(w).get('.pull-count-field input').element.value).toBe('12')
+  expect(editor(w).text()).toContain('synthetic offline')
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: [{ ...recruitmentEvent('C', null), agent_snapshot: { agent_id: 'char-a', name: '测试绝密' } }], next_cursor: null, archive_revision: 3 })
+  await button(composer(w), '继续读取全部记录').trigger('click'); await flushPromises()
+  expect(composer(w).get('.position-picker select').element.disabled).toBe(false)
+  const late = deferred()
+  api.listRecruitmentEvents.mockReturnValueOnce(late.promise)
+  w.findComponent({ name: 'PoolEditor' }).vm.$emit('retry'); await flushPromises()
+  // Switching context externally still fences late responses; account-bar discard prompts are covered separately.
+  activeAccount.set('acc-b'); await flushPromises(); await selectPool(w)
+  late.resolve({ items: records['acc-a'], next_cursor: null, archive_revision: 3 }); await flushPromises()
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  expect(editor(w).findAll('.record-detail')).toHaveLength(0)
+  w.unmount()
+})
+it('排序分页重复ID明确失败，不将当前可见集合发送重排', async () => {
+  api.listRecruitmentEvents.mockResolvedValueOnce({ items: records['acc-a'], next_cursor: 'next', archive_revision: 3 }).mockResolvedValueOnce({ items: records['acc-a'], next_cursor: null, archive_revision: 3 })
+  const w = render(); await flushPromises(); await selectPool(w)
+  await editor(w).get('.record-detail').trigger('click'); await composer(w).get('.position-toggle').trigger('click'); await flushPromises()
+  expect(editor(w).text()).toContain('记录分页不完整')
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  expect(editor(w).findAll('.record-detail')).toHaveLength(2)
+  w.unmount()
+})
+
+it('A账号全量分页迟到不阻塞B账号独立加载全部记录', async () => {
+  const late = deferred()
+  records['acc-b'] = Array.from({length:105}, (_, i) => ({ ...recruitmentEvent('b' + i, null), agent_snapshot:{agent_id:'char-a',name:'测试绝密'} }))
+  api.listRecruitmentEvents.mockImplementation(({accountId,cursor}) => {
+    if (accountId === 'acc-a' && cursor) return late.promise
+    const start = cursor ? 100 : 0
+    return Promise.resolve({ items:structuredClone(records[accountId].slice(start,start+100)), next_cursor:!cursor ? 'more' : null, archive_revision:3 })
+  })
+  const w=render(); await flushPromises(); await selectPool(w)
+  await editor(w).get('.record-detail').trigger('click'); await composer(w).get('.position-toggle').trigger('click')
+  activeAccount.set('acc-b'); await flushPromises(); await selectPool(w)
+  await editor(w).get('.record-detail').trigger('click'); await composer(w).get('.position-toggle').trigger('click'); await flushPromises()
+  expect(editor(w).findAll('.record-detail')).toHaveLength(105)
+  expect(composer(w).get('.position-picker select').element.disabled).toBe(false)
+  late.resolve({items:[recruitmentEvent('foreign',7)], next_cursor:null, archive_revision:3}); await flushPromises()
+  expect(editor(w).findAll('.record-detail')).toHaveLength(105)
+  expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  w.unmount()
 })
