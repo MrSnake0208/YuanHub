@@ -67,12 +67,15 @@ const year = ref(''), descending = ref(true)
 const failedPortraits = ref(new Set())
 const details = pool => recruitmentPoolCatalog(pool, props.catalog) || pool.mapped_snapshot || pool.snapshot || {}
 const startDate = pool => details(pool).start_date || ''
-const years = computed(() => [...new Set(props.pools.map(pool => startDate(pool).slice(0, 4)).filter(Boolean))].sort().reverse())
-const hasUndated = computed(() => props.pools.some(pool => !startDate(pool)))
+const permanent = pool => isPermanentRecruitmentPool(details(pool))
+const years = computed(() => [...new Set(props.pools.filter(pool => !permanent(pool)).map(pool => startDate(pool).slice(0, 4)).filter(Boolean))].sort().reverse())
+const hasUndated = computed(() => props.pools.some(pool => !permanent(pool) && !startDate(pool)))
 watch([years, hasUndated], ([availableYears, undated]) => {
   if (year.value && (year.value === 'unknown' ? !undated : !availableYears.includes(year.value))) year.value = ''
 })
-const visiblePools = computed(() => props.pools.filter(pool => !year.value || (year.value === 'unknown' ? !startDate(pool) : startDate(pool).startsWith(year.value))).slice().sort((a, b) => {
+const visiblePools = computed(() => props.pools.filter(pool => permanent(pool) || !year.value || (year.value === 'unknown' ? !startDate(pool) : startDate(pool).startsWith(year.value))).slice().sort((a, b) => {
+  const pinned = Number(permanent(b)) - Number(permanent(a))
+  if (pinned) return pinned
   const first = startDate(a), second = startDate(b)
   if (!first || !second) return Number(!first) - Number(!second)
   return descending.value ? second.localeCompare(first) : first.localeCompare(second)

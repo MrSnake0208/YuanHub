@@ -274,7 +274,7 @@ import SiteFooter from '../../components/SiteFooter.vue'
 import '@/styles/page-header.css'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import operatorPortraits from '../../data/operatorPortraits.json'
-import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
+import { isPermanentRecruitmentPool, recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { auth } from '../../store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '../../utils/authPermissions.js'
 import { dialog } from '../../utils/dialog.js'
@@ -332,7 +332,7 @@ const filteredPools = computed(() => pools.value.filter(pool => {
   if (filterStatus.value && stateOf(pool) !== filterStatus.value) return false
   const query = search.value.toLowerCase()
   return !query || [pool.name, pool.pool_id].some(value => String(value || '').toLowerCase().includes(query))
-}))
+}).sort((a, b) => Number(isPermanentRecruitmentPool(b)) - Number(isPermanentRecruitmentPool(a))))
 const eligibleOperators = computed(() => operators.value.filter(operator => isRecruitmentOperator(operator, form.value?.game)))
 const activeSlots = computed(() => form.value?.up_agents.filter(slot => slot.active) || [])
 const retiredSlots = computed(() => form.value?.up_agents.filter(slot => !slot.active) || [])
