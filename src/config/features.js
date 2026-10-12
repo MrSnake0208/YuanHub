@@ -12,7 +12,8 @@ export const FEATURE_KEYS = Object.freeze({
 const isViteDev = import.meta.env?.DEV === true
 
 export const FEATURE_FLAGS = Object.freeze({
-  [FEATURE_KEYS.STAR_COMPLETION]: false,
+  // Public feature available in both development and production.
+  [FEATURE_KEYS.STAR_COMPLETION]: true,
   // Explicit development-only opt-in URL; no demo module is imported in a production build.
   [FEATURE_KEYS.STAR_COMPLETION_DEMO]: isViteDev && typeof location !== 'undefined' && new URLSearchParams(location.search).get('star_completion_demo') === '1',
   [FEATURE_KEYS.TUTORIALS]: import.meta.env?.VITE_TUTORIALS_ENABLED === 'true',

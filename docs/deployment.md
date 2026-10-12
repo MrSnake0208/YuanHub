@@ -7,6 +7,20 @@
 
 ## 1. 版本来源
 
+星石养成完成为正式公开功能：本地 Vite 开发与生产构建的 `starCompletion` 均默认启用，
+不需要用户设置环境变量、URL 参数或演示模式。CI 和服务器 Release 构建显式设置
+`NODE_ENV=production`，Release 继续从 `YUANHUB_FRONTEND_API_BASE` 注入正式 API。
+本地联调继续通过 `VITE_API_BASE` 和 `YUANHUB_DEV_API_TARGET` 配置实际 API 目标，
+使用本地 Backend；养成完成不再需要独立开发开关，也不额外限制 tunnel 配置。
+
+发布此前端版本前，必须先确认正式 Backend 已部署 completion-context、completions、
+原 operationId 回执查询，以及原子事务、库存消费重放修复和账户隔离保护
+（Backend main 的 PR #10 及后续回执嵌入快照、错误唯一索引清理修复）。MongoDB 必须支持 replica set transaction。
+后端启动只定向清理回执集合的 `state.idx_star_state_owner`，保留 operation_id 唯一索引和历史回执；
+应先合并并部署后端修复，再发布默认开放养成完成的前端。
+功能开放继续遵守既有登录、子账号和站点访问资格规则；正式开放的站点配置需单独确认。
+本地 E2E 与前端生产构建成功不等于正式 Backend 已部署或生产 E2E 已通过。
+
 | 字段 | 来源 |
 | --- | --- |
 | `productVersion` | 仓库根目录 `VERSION` 文件（唯一来源，形如 `0.0.1-beta.1`） |

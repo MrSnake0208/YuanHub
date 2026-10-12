@@ -77,6 +77,28 @@ test('unavailable account stays unknown and performs no request', async () => {
 test('an account without an item snapshot has unknown stock', async () => {
   assert.deepEqual(await readGrowthPlanInventory('a',async()=>[],()=>true),{jiezhuping:null,jiezheping:null,jieyangping:null})
 })
+
+test('first listed bottle save reads back one entry and leaves the other bottles unknown', async () => {
+  let current = [], document, reads = 0
+  const writer = createGrowthPlanInventoryWriter({
+    isCurrent: () => true,
+    getCurrent: async () => { reads++; return current },
+    importInventory: async value => {
+      document = value
+      const record = value.records[0]
+      current = [{ account_id: 'first', entity_type: 'item', entries: {
+        jiezhuping: { count: 7, listed_baseline_at: record.effective_at },
+      } }]
+      return { accepted: 1 }
+    },
+    createId: () => 'first-bottle',
+  })
+  assert.deepEqual(await writer.save('first', 'jiezhuping', 7), { jiezhuping: 7, jiezheping: null, jieyangping: null })
+  assert.equal(reads, 2)
+  assert.equal(document.records[0].snapshot_scope, 'listed')
+  assert.deepEqual(document.records[0].entries, [{ id: 'jiezhuping', count: 7, name: '解注瓶' }])
+  assert.equal(writer.hasPending(), false)
+})
 test('only a valid full snapshot proves zero for missing bottle entries', async () => {
   for (const full_baseline_at of [null, undefined, 'invalid']) {
     assert.deepEqual(await readGrowthPlanInventory('a',async()=>[{full_baseline_at,entries:{jiezhuping:{count:0}}}],()=>true),{jiezhuping:0,jiezheping:null,jieyangping:null})

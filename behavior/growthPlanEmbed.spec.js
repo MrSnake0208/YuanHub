@@ -313,6 +313,27 @@ it('unknown inventory is never treated as zero or sufficient',async()=>{
   expect(root.querySelector('.growth-route-boundary')).toBeNull()
 })
 
+it('allows first bottle entry through the existing writer without filling unknown siblings',async()=>{
+  let current=[], document
+  const writer=createGrowthPlanInventoryWriter({isCurrent:()=>true,
+    getCurrent:async()=>current,
+    importInventory:async value=>{
+      document=value
+      const record=value.records[0]
+      current=[{entries:{jiezhuping:{count:7,listed_baseline_at:record.effective_at}}}]
+      return {accepted:1}
+    },createId:()=> 'first-stock-ui'})
+  await setup({onReadBreakthroughInventory:owner=>writer.read(owner),onSaveBreakthroughInventory:(owner,id,count)=>writer.save(owner,id,count)})
+  expect([...root.querySelectorAll('[data-growth-bottle]')].every(field=>!field.disabled&&field.value==='')).toBe(true)
+  change('[data-growth-bottle="jiezhuping"]','7');await settle()
+  expect(document.records[0].snapshot_scope).toBe('listed')
+  expect(document.records[0].entries).toEqual([{id:'jiezhuping',count:7,name:'解注瓶'}])
+  expect(root.querySelector('#growth-bottle-jiezhuping').value).toBe('7')
+  expect(root.querySelector('#growth-bottle-jiezheping').value).toBe('')
+  expect(root.querySelector('#growth-bottle-jieyangping').value).toBe('')
+  expect(writer.hasPending()).toBe(false)
+})
+
 it('held drag scrolls route edges and cancellation never changes saved order',async()=>{
   await setup();const initial=routeIds(),list=root.querySelector('.growth-route-list')
   list.getBoundingClientRect=()=>({top:0,bottom:200,height:200})

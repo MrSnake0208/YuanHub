@@ -3,6 +3,15 @@ import assert from 'node:assert/strict'
 
 import { buildDevServerConfig } from '../vite.config.js'
 
+test('development and tunnel preserve explicitly configured local or public API targets', () => {
+  for (const target of ['http://192.168.218.39:8080', 'https://api.example.com']) {
+    const env = { YUANHUB_DEV_API_TARGET: target, VITE_API_BASE: 'https://preview.example.com' }
+    assert.equal(buildDevServerConfig('development', env).proxy['/v1'].target, target)
+    assert.equal(buildDevServerConfig('tunnel', env).proxy['/v1'].target, target)
+    assert.equal(buildDevServerConfig('tunnel', { ...env, YUANHUB_TUNNEL_API_TARGET: 'https://tunnel-api.example.com' }).proxy['/v1'].target, 'https://tunnel-api.example.com')
+  }
+})
+
 test('Agent sandbox binds loopback, refuses tunnel and never falls back to another port', () => {
   const config = buildDevServerConfig('development', { YUANHUB_AGENT_TEST: 'true' })
   assert.equal(config.host, '127.0.0.1')
