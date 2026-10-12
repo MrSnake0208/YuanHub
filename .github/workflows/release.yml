@@ -263,7 +263,7 @@ jobs:
               # 清掉上一次构建残留；npm 下载缓存仍保留在部署用户主目录。
               git clean -ffdx
               npm ci --no-audit --no-fund
-              VITE_API_BASE="$API_BASE" npm run build
+              NODE_ENV=production VITE_API_BASE="$API_BASE" npm run build
 
               test -f dist/index.html || {
                 echo "dist/index.html missing after server build"
