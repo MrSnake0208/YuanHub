@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div v-if="open" class="modal-mask">
       <section ref="panel" class="recruitment-editor" role="dialog" aria-modal="true" aria-labelledby="entry-title" tabindex="-1">
-        <header><h2 id="entry-title">{{ event ? '修改这条记录' : '记录绝密密探' }}</h2><button type="button" aria-label="关闭记录编辑" :disabled="busy" @click="$emit('close')">×</button></header>
+        <header><h2 id="entry-title">{{ event ? '修改这条记录' : '记录密探' }}</h2><button type="button" aria-label="关闭记录编辑" :disabled="busy" @click="$emit('close')">×</button></header>
         <form @submit.prevent="submit">
           <div class="editor-body">
             <p v-if="error" ref="errorSummary" class="form-error" role="alert" tabindex="-1">{{ error }}</p>
@@ -23,17 +23,18 @@
             </template>
             <p v-if="event?.batch_id" class="hint">这是已知总量批次中的结果，修改本条不会重复增加批次总抽数。</p>
             <fieldset v-for="(row, index) in rows" :key="row.key">
-              <legend>绝密 {{ index + 1 }}</legend>
-              <label>密探<select v-model="row.agent_id" required :disabled="busy"><option value="" disabled>选择绝密密探</option><optgroup label="本池 UP 密探"><option v-for="agent in selectableAgents.filter(item => item.poolSlot)" :key="agent.id" :value="agent.id">{{ agent.name }}{{ agent.placeholder ? '（占位）' : '' }}</option></optgroup><optgroup label="图鉴绝密 / 已有记录"><option v-for="agent in selectableAgents.filter(item => !item.poolSlot)" :key="agent.id" :value="agent.id">{{ agent.name }}</option></optgroup></select></label>
-              <div v-if="selectedAgent(row)" class="agent-preview"><OperatorAvatar :avatar="selectedAgent(row).avatar || ''" :name="selectedAgent(row).name" :rarity="5" /><span>{{ selectedAgent(row).name }}<small>{{ selectedAgent(row).placeholder ? '管理员占位，后续对应真实密探时记录继续继承' : selectedAgent(row).prof || '绝密密探' }}</small></span></div>
+              <legend>密探 {{ index + 1 }}</legend>
+              <label>密探<select v-model="row.agent_id" required :disabled="busy"><option value="" disabled>选择4星/5星密探</option><optgroup label="本池 UP 密探"><option v-for="agent in selectableAgents.filter(item => item.poolSlot)" :key="agent.id" :value="agent.id">{{ agent.name }}{{ agent.placeholder ? '（占位）' : '' }}</option></optgroup><optgroup label="图鉴密探 / 已有记录"><option v-for="agent in selectableAgents.filter(item => !item.poolSlot)" :key="agent.id" :value="agent.id">{{ agent.name }}</option></optgroup></select></label>
+              <div v-if="selectedAgent(row)" class="agent-preview"><OperatorAvatar :avatar="selectedAgent(row).avatar || ''" :name="selectedAgent(row).name" :rarity="Number(selectedAgent(row)?.rarity) || 5" /><span>{{ selectedAgent(row).name }}<small>{{ selectedAgent(row).placeholder ? '管理员占位，后续对应真实密探时记录继续继承' : selectedAgent(row).prof || '绝密密探' }}</small></span></div>
               <label v-if="countMode === 'window' && !event">窗口内位置<input v-model="row.position" type="number" inputmode="numeric" min="1" :max="windowLength" required :disabled="busy"></label>
+              <p v-else-if="isFourStar(row)" class="hint">4 星仅计获得次数，不影响绝密抽数与保底。</p>
               <label v-else>这次出货抽数<input v-model="row.pull_span" type="number" inputmode="numeric" min="1" placeholder="不知道可留空" :disabled="busy"></label>
               <div class="row-pair"><label>UP 状态<select v-model="row.up_status" :disabled="busy" @change="row.up_manual = true"><option value="unknown">未知</option><option value="up">UP</option><option value="non_up">非 UP</option></select></label><label>获得日期（可留未知）<input v-model="row.acquired_date" type="date" :disabled="busy" @input="row.auto_date = false; row.date_touched = true"></label></div>
               <label>备注<textarea v-model="row.note" maxlength="1000" rows="2" :disabled="busy"></textarea></label>
               <button v-if="rows.length > 1 && !event" type="button" :disabled="busy" @click="rows.splice(index, 1)">移除这一行</button>
             </fieldset>
-            <button v-if="!event" type="button" :disabled="busy || rows.length >= 120" @click="addRow">再加一位绝密</button>
-            <template v-if="!event && mode === 'current'">
+            <button v-if="!event" type="button" :disabled="busy || rows.length >= 120" @click="addRow">再加一位密探</button>
+            <template v-if="!event && mode === 'current' && rows.some(row => !isFourStar(row))">
               <p class="hint">卡池原进度：{{ selectedPool?.progress == null ? '未知，请先校正' : selectedPool.progress + ' 抽' }}。保存会消费已计入的旧进度，不再重复累计。</p>
               <label>最后一个绝密后又抽了多少次<input v-model="tail" type="number" inputmode="numeric" min="0" placeholder="不知道可留空" :disabled="busy"></label>
             </template>
@@ -66,6 +67,7 @@ const selectableAgents = computed(() => {
   return values
 })
 const selectedAgent = row => selectableAgents.value.find(agent => agent.id === row.agent_id)
+const isFourStar = row => Number(props.event?.agent_snapshot.agent_id === row.agent_id ? props.event.agent_snapshot.rarity : selectedAgent(row)?.rarity) === 4
 watch([() => rows.value.map(row => row.agent_id).join('|'), selectedPool, selectableAgents], () => {
   if (props.event) return
   const snapshot = recruitmentPoolCatalog(selectedPool.value, props.catalog) || selectedPool.value?.mapped_snapshot || selectedPool.value?.snapshot
@@ -102,14 +104,15 @@ useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.val
 async function submit() {
   error.value = ''
   try {
-    let entries = rows.value.map(entryInput), operation = 'event_create'
+    let entries = rows.value.map(row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span })), operation = 'event_create'
     if (props.event) {
       if (!requestId) requestId = crypto.randomUUID()
       emit('save', { operation: 'event_update', data: { event_id: props.event.event_id, entry: entries[0] }, requestId }); return
     }
     if (!poolId.value) throw new Error('请选择卡池')
-    if (entries.some(entry => !selectableAgents.value.some(agent => agent.id === entry.agent_id))) throw new Error('请选择当前卡池的 UP 或图鉴绝密密探')
+    if (entries.some(entry => !selectableAgents.value.some(agent => agent.id === entry.agent_id))) throw new Error('请选择当前卡池的 UP 或图鉴密探')
     const data = { pool_id: poolId.value, mode: mode.value, entries, extract_from_baseline: extract.value }
+    if (rows.value.some(isFourStar) && countMode.value === 'window') throw new Error('4 星请使用独立计次录入，不使用绝密顺序窗口')
     if (countMode.value === 'window') {
       const converted = fromWindowPositions(rows.value, windowLength.value, previousKnown.value, precedingPulls.value)
       entries = converted.entries; data.entries = entries
@@ -119,10 +122,11 @@ async function submit() {
       }
     } else if (countMode.value === 'batch') { operation = 'batch_create'; data.total_pull_count = integer(totalPulls.value, '批次总抽数', { positive: true }) }
     if (operation === 'batch_create') data.batch_id = batchId
-    if (mode.value === 'current') {
+    const topEntries = entries.filter(entry => !isFourStar(entry))
+    if (mode.value === 'current' && topEntries.length) {
       if (selectedPool.value?.progress == null) throw new Error('当前进度未知，请先校正卡池进度')
       data.tail_progress = integer(tail.value, '尾抽', { nullable: true })
-      if (operation === 'event_create' && (entries.some(entry => entry.pull_span == null) || entries[0].pull_span <= selectedPool.value.progress)) throw new Error('接着当前进度记录时，每次出货抽数须已知，首条须大于旧进度；不确定可改为历史补录')
+      if (operation === 'event_create' && (topEntries.some(entry => entry.pull_span == null) || topEntries[0].pull_span <= selectedPool.value.progress)) throw new Error('接着当前进度记录时，每次出货抽数须已知，首条须大于旧进度；不确定可改为历史补录')
     }
     if (!requestId) requestId = crypto.randomUUID()
     emit('save', { operation, data, requestId })

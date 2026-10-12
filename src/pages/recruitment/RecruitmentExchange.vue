@@ -55,7 +55,7 @@ const itemNames = computed(() => {
   if (!document) return names
   for (const pool of document.pools) names.set('pool:' + pool.pool_id, pool.snapshot.name)
   for (const agent of document.temporary_agents) names.set('agent:' + agent.agent_id, agent.name)
-  for (const event of document.events) names.set('event:' + event.event_id, event.agent_snapshot.name + ' · ' + (event.pull_span == null ? '抽数未知' : event.pull_span + ' 抽'))
+  for (const event of document.events) names.set('event:' + event.event_id, event.agent_snapshot.name + ' · ' + (event.agent_snapshot.rarity === 4 ? '4星计次' : event.pull_span == null ? '抽数未知' : event.pull_span + ' 抽'))
   for (const batch of document.batches) names.set('batch:' + batch.batch_id, '计数批次 · ' + batch.total_pull_count + ' 抽')
   return names
 })

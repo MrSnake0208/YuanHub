@@ -25,7 +25,7 @@
             <span class="cover-name">{{ details(pool).name }}</span>
             <span v-if="coverAgents(pool).length" class="cover-agents">
               <span v-for="agent in coverAgents(pool)" :key="agent.id" class="up-result">
-                <OperatorAvatar class="up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="5" />
+                <OperatorAvatar class="up-avatar" :avatar="agent.avatar" :name="agent.name" :rarity="agent.rarity" />
                 <span class="up-count" :class="{ 'is-muted': agent.count === 0 || agent.count == null }">{{ agent.count == null ? '—' : '×' + agent.count }}</span>
               </span>
             </span>
@@ -36,7 +36,7 @@
             <span class="pool-dates">{{ startDate(pool) || '开始日期未知' }} — {{ details(pool).end_date || '结束日期未知' }}</span>
             <span class="pool-metrics">
               <span><BookOpen :size="15" aria-hidden="true" />已知抽数 <b>{{ poolSummaries[pool.pool_id]?.known_total_pulls?.toLocaleString() ?? '未知' }}</b><small>抽</small></span>
-              <span><Gem :size="15" aria-hidden="true" />绝密记录 <b>{{ poolSummaries[pool.pool_id]?.event_count ?? '未知' }}</b><small>条</small></span>
+              <span><Gem :size="15" aria-hidden="true" />密探记录 <b>{{ poolSummaries[pool.pool_id]?.event_count ?? '未知' }}</b><small>条</small></span>
               <span><CircleGauge :size="15" aria-hidden="true" />距保底 <b>{{ remainingPulls(pool) }}</b><small>抽</small></span>
             </span>
             <span v-if="poolSummaries[pool.pool_id]?.has_unknown" class="pool-dates">部分出货间隔或进度未知</span>
@@ -58,6 +58,7 @@ import { dateInZone } from '../../utils/businessDay.js'
 import { recruitmentPoolCatalog } from './rules.js'
 import { recruitmentCoverStyle, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
+import { avatarUrl } from '../../api/request.js'
 
 const timelineId = 'recruitment-timeline-' + useId()
 const props = defineProps({ pools: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, agents: { type: Array, default: () => [] }, poolSummaries: { type: Object, default: () => ({}) }, busy: Boolean, contextVersion: Number, guideActive: Boolean })
@@ -90,7 +91,8 @@ const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_
   activeUpSlots(pool).map(slot => {
     const agent = props.agents.find(item => item.id === slot.operator_id)
     const count = props.poolSummaries[pool.pool_id]?.up_agent_counts?.[slot.id]
-    return { id: slot.id, name: agent?.name || slot.name || '未知密探',
+    return { id: slot.id, name: agent?.name || slot.name || '未知密探', rarity: Number(agent?.rarity) || 5,
+      portrait: operatorPortraits[slot.operator_id] || (agent?.avatar ? avatarUrl(agent.avatar) : ''),
       avatar: agent?.avatar || agent?.avatar_url || operatorPortraits[slot.operator_id] || '',
       count: Number.isSafeInteger(count) && count >= 0 ? count : null }
   })
@@ -102,8 +104,8 @@ function cardLabel(pool) {
     ? '；本池 UP 获得次数：' + agents.map(agent => agent.name + (agent.count == null ? '，统计未知' : '，获得 ' + agent.count + ' 次')).join('；') : '')
 }
 const activeUpSlots = pool => (details(pool).up_agents || []).filter(slot => slot.active !== false)
-const coverPortraits = pool => activeUpSlots(pool)
-  .map(slot => ({ id: slot.id, src: operatorPortraits[slot.operator_id] || '' }))
+const coverPortraits = pool => coverAgents(pool)
+  .map(agent => ({ id: agent.id, src: agent.portrait }))
   .filter(portrait => portrait.src && !failedPortraits.value.has(portrait.src))
   .slice(0, 3)
 const hiddenPortraitCount = pool => Math.max(activeUpSlots(pool).length - coverPortraits(pool).length, 0)

@@ -11,6 +11,6 @@ export function matchesOperatorQuality(entry, quality) {
   return isMovieOperator(entry) ? quality === 'movie' : Number(entry?.rarity) === Number(quality)
 }
 
-export function isStandardRecruitmentOperator(entry, game) {
-  return !isMovieOperator(entry) && Number(entry?.rarity) === 5 && entry?.games?.includes(game)
+export function isRecruitmentOperator(entry, game) {
+  return [4, 5].includes(Number(entry?.rarity)) && entry?.games?.includes(game)
 }
