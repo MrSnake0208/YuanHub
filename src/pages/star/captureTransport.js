@@ -11,7 +11,8 @@ const sections = ['main', 'support', 'experience']
 export const STAR_CAPTURE_CONTRACT_CODE = 'star_capture_contract_invalid'
 
 function contractError(message) {
-  const error = new Error(message)
+  const error = new Error('这批截图的数据不完整或格式不受支持，暂未导入。请更新 MaaYuan 后重新完整采集；仍失败时联系维护者。')
+  error.detail = message
   error.code = STAR_CAPTURE_CONTRACT_CODE
   return error
 }

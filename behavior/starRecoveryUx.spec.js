@@ -142,8 +142,8 @@ it('默认进入背包，导入不再显示冗余标题且保留识别教程与�
   expect(wrapper.find('.star-import-stage').exists()).toBe(false)
   expect(wrapper.get('.star-tutorial-replay').text()).toContain('重新查看识别教程')
   expect(wrapper.findAll('.star-tabs [role="tab"]')).toHaveLength(2)
-  expect(wrapper.get('.star-privacy-note').text()).toContain('本机识别与保存')
-  expect(wrapper.get('.star-privacy-note').attributes('title')).toBe('截图在本机识别与保存；登录后同步背包数据。')
+  expect(wrapper.get('.star-privacy-note').text()).toContain('本机识别')
+  expect(wrapper.get('.star-privacy-note').attributes('title')).toBe('图片识别在本机完成。手动截图由浏览器读取；MaaYuan 截图从临时服务器获取。登录后同步背包数据。')
   expect(wrapper.find('.star-availability-note').exists()).toBe(false)
   await wrapper.get('.star-tutorial-replay').trigger('click')
   await flushPromises()
@@ -317,7 +317,7 @@ it.each(['empty', 'failed-ocr', 'json', 'local-restore', 'unpersisted-review', '
   if (source.startsWith('after-ocr-')) await options.onOcrRebuild(emptySnapshot, null)
   if (source === 'failed-ocr') {
     rebuildStarState.mockRejectedValueOnce(Error('save failed'))
-    await expect(options.onOcrRebuild(emptySnapshot, null)).rejects.toThrow('原识别请求结果不确定')
+    await expect(options.onOcrRebuild(emptySnapshot, null)).rejects.toThrow('还无法确认新背包是否保存成功')
   } else if (source === 'json' || source === 'after-ocr-json') await options.onReplacementImport(emptySnapshot)
   else if (source === 'local-restore' || source === 'after-ocr-local-restore') await options.onRestoreLocalPoint(emptySnapshot)
   else if (source === 'after-ocr-history-restore') {
@@ -555,7 +555,7 @@ it('首次云端读取失败后显示重试，重试成功后清除错误', asyn
   const wrapper = render()
   await flushPromises()
   await loadStylesheet()
-  expect(wrapper.get('.star-sync-state').text()).toContain('星石云端状态加载失败')
+  expect(wrapper.get('.star-sync-state').text()).toContain('暂时无法读取云端背包')
   expect(wrapper.get('.star-sync-state').classes()).toContain('is-error')
   expect(wrapper.get('.star-sync-retry').text()).toBe('重试')
 
@@ -677,7 +677,7 @@ it('没有持久化证明时保留路由和重试入口，重试成功后展示�
   await flushPromises()
   expect(handle.importCaptureBatch).toHaveBeenCalledTimes(2)
   expect(getStarCaptureManifest).toHaveBeenCalledTimes(1)
-  expect(wrapper.get('.star-sync-state').text()).toContain('三段截图已导入')
+  expect(wrapper.get('.star-sync-state').text()).not.toContain('三段截图已导入')
   expect(wrapper.get('.star-sync-state').text()).toContain('截图版本为“代号鸢”')
   expect(wrapper.get('.star-sync-state').text()).toContain('当前工作区为“如鸢”')
   expect(JSON.parse(localStorage.getItem(STAR_CAPTURE_LIFECYCLE_KEY)).records['acc-1'].state).toBe('imported')
@@ -725,11 +725,11 @@ it.each([true, false])('旧 imported 缓存仍需 Draft 证明（持久化=%s）
   await loadStylesheet()
   expect(isStarCaptureDraftPersisted).toHaveBeenCalledWith('acc-1', { captureId: 'capture-1' })
   if (persisted) {
-    expect(wrapper.get('.star-sync-state').text()).toContain('已恢复本地待识别截图')
+    expect(wrapper.get('.star-sync-state').text()).toContain('已找回上次待识别的截图')
     expect(getStarCaptureManifest).not.toHaveBeenCalled()
     expect(navigation.replace).toHaveBeenCalledTimes(1)
   } else {
-    expect(wrapper.text()).not.toContain('已恢复本地待识别截图')
+    expect(wrapper.text()).not.toContain('已找回上次待识别的截图')
     expect(wrapper.get('.star-sync-retry').text()).toBe('重试导入')
     expect(getStarCaptureManifest).toHaveBeenCalledTimes(1)
     expect(navigation.replace).not.toHaveBeenCalled()
@@ -906,7 +906,8 @@ it('瓶子冲突宿主锁定切号，接受后恢复并用新记录保存明确0
 it('未确认瓶子保存卸载重挂后保留原记录', async () => {
   const f = await growthHostFixture('growth-host-remount')
   importInventory.mockRejectedValueOnce(new TypeError('POST lost'))
-  await expect(f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10)).rejects.toThrow('POST lost')
+  const failed = await f.callbacks.onSaveBreakthroughInventory('acc-1', 'jiezheping', 10).catch(error => error)
+  expect(failed.message).toContain('库存写入结果尚未确认'); expect(failed.cause.message).toBe('POST lost')
   const original = JSON.stringify(importInventory.mock.calls[0][0])
   f.wrapper.unmount(); await flushPromises(); document.getElementById('yuanstar-embed-styles')?.remove()
   const wrapper = render(); await flushPromises(); await loadStylesheet()

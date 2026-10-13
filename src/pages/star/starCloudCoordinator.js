@@ -99,7 +99,7 @@ export function createStarCloudCoordinator({
         if (!pendingRaw) continue
         const expected=JSON.parse(pendingRaw)
         if (businessSame(cloud,expected) && cloud.revision===expected.revision) storage.removeItem(prefix + accountId)
-        else session.error=new Error('原星石写入仍待权威确认，重复写入已锁定。请稍后重新加载。')
+        else session.error=new Error('上次保存结果仍待确认，请重新加载核对，不要重复替换背包或登记完成。')
       }
       session.ready = true; active = session; emit()
       if (!session.error && cloud.revision === 0 && !businessSame(next, cloud)) void session.writer.save(next)
@@ -135,9 +135,19 @@ export function createStarCloudCoordinator({
       const expected = businessState({ generation: body.expected_generation + 1, revision: body.expected_revision + 1,
         inventory: body.inventory, plan_targets: body.plan_targets, experience: body.experience, bag: body.bag })
       const pendingKey='yuanhub.star-rebuild-pending:' + session.accountId
-      if (reason === 'pre_ocr_rebuild') storage.setItem(pendingKey,JSON.stringify(expected))
+      storage.setItem(pendingKey,JSON.stringify(expected))
       let response
-      if (reason !== 'pre_ocr_rebuild') response = await rebuildState(session.accountId, body)
+      if (reason !== 'pre_ocr_rebuild') {
+        try { response = await rebuildState(session.accountId, body) }
+        catch (error) {
+          if ([400,401,403,404,409,422].includes(error?.status) && error?.code !== 'request_identity_changed') storage.removeItem(pendingKey)
+          else {
+            session.error = uncertainRebuild('背包替换结果尚未确认，请先重新加载核对，不要重复导入或恢复。')
+            throw session.error
+          }
+          throw error
+        }
+      }
       else {
         try {
           response = await rebuildState(session.accountId, body)
@@ -148,17 +158,17 @@ export function createStarCloudCoordinator({
           // the exact generation/revision and complete snapshot fence double rebuilds.
           let raw, remote
           try { raw = await getState(session.accountId); remote = businessState(raw) }
-          catch { session.error = uncertainRebuild('无法确认云端重建结果，请重新加载恢复，勿重复识别。'); throw session.error }
+          catch { session.error = uncertainRebuild('还无法确认新背包是否保存成功。原截图和旧计划已保留，请先重新加载并核对背包，不要再次完整识别。'); throw session.error }
           if (businessSame(remote, expected) && remote.revision === expected.revision) response = { state: raw }
           else {
-            session.error = uncertainRebuild('原识别请求结果不确定，已锁定重复写入。请重新加载并恢复权威状态。')
+            session.error = uncertainRebuild('还无法确认新背包是否保存成功。原截图和旧计划已保留，请先重新加载并核对背包，不要再次完整识别。')
             throw session.error
           }
         }
       }
       if (active !== session || selectedHostAccount()?.accountId !== session.accountId) throw new Error('账号已切换，请重新加载星石状态。')
       if (!session.writer.adopt(businessState(response.state))) throw new Error('云端版本已变化，请重新加载星石状态。')
-      if (reason === 'pre_ocr_rebuild') storage.removeItem(pendingKey)
+      storage.removeItem(pendingKey)
       return response
     } finally { session.replacing = false; if (active === session) emit() }
   }
@@ -173,6 +183,12 @@ export function createStarCloudCoordinator({
       if (!session.writer.adopt(businessState(response.state))) throw new Error('云端版本已变化，请重新加载星石状态。')
       return { snapshot: businessState(response.state), summary: response.recovery_summary ?? response.recoverySummary,
         recovery_point: response.recovery_point ?? response.recoveryPoint }
+    } catch (error) {
+      if (![400,401,403,404,409,422].includes(error?.status) || error?.code === 'request_identity_changed') {
+        session.error = Object.assign(new Error('恢复结果尚未确认，请重新加载核对，不要重复恢复。', { cause: error }), { code: 'star_restore_uncertain' })
+        throw session.error
+      }
+      throw error
     } finally { session.replacing = false; if (active === session) emit() }
   }
   return { enter, committed,
@@ -209,18 +225,25 @@ export function createStarCloudCoordinator({
         const raw = await getState(session.accountId), current = businessState(raw)
         if (current.generation !== scope.generation || current.revision !== scope.revision || active !== session || selectedHostAccount()?.accountId !== session.accountId) throw new Error('云端版本或账号已变化，请重新加载。')
         const incoming = draftState(snapshot,scope.generation,scope.revision)
-        if (stable([cloudInventory(incoming),incoming.bag,incoming.experience]) !== stable([cloudInventory(current),current.bag,current.experience])) throw new Error('当前背包与云端不一致，已停止仅计划恢复。')
+        if (stable([cloudInventory(incoming),incoming.bag,incoming.experience]) !== stable([cloudInventory(current),current.bag,current.experience])) throw new Error('当前背包与云端数据不一致，计划继承已停止，请先重新加载。')
         if (businessSame(current,incoming)) return productSnapshot(current)
         const pendingKey='yuanhub.star-plan-pending:' + session.accountId
         storage.setItem(pendingKey,JSON.stringify({...incoming, inventory: businessState({inventory: cloudInventory(incoming)}).inventory, revision: scope.revision+1}))
         const body = stateBody(incoming,scope.revision)
         const response = await patchState(session.accountId,body)
         const saved = businessState(response.state)
-        if (active !== session || selectedHostAccount()?.accountId !== session.accountId || saved.generation !== scope.generation || !businessSame(saved,incoming)) throw new Error('云端计划回读异常，请重新加载。')
+        if (active !== session || selectedHostAccount()?.accountId !== session.accountId || saved.generation !== scope.generation || !businessSame(saved,incoming)) throw new Error('计划保存结果尚未确认，请重新加载核对，不要重复继承。')
         if (!session.writer.adopt(saved)) throw new Error('云端版本无法采用，请重新加载。')
         storage.removeItem(pendingKey)
         return productSnapshot(saved)
-      } catch (error) { session.error = error; throw error }
+      } catch (error) {
+        if ([400,401,403,404,409,422].includes(error?.status) && error?.code !== 'request_identity_changed') {
+          storage.removeItem('yuanhub.star-plan-pending:' + session.accountId)
+        }
+        session.error = storage.getItem('yuanhub.star-plan-pending:' + session.accountId)
+          ? Object.assign(new Error('计划保存结果尚未确认，请重新加载核对，不要重复继承。', { cause: error }), { code: 'star_plan_uncertain' }) : error
+        throw session.error
+      }
       finally { session.replacing = false; if (active === session) emit() }
     },
     rebuildOcr: async (snapshot, recoveryPointId, scope) => productSnapshot(businessState((await rebuild(snapshot, 'pre_ocr_rebuild', recoveryPointId, scope)).state)),
