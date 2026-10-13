@@ -26,7 +26,7 @@ vi.mock('../src/api/operator.js', () => ({ getOperatorCurrent: vi.fn() }))
 vi.mock('../src/api/inventory.js', () => ({ getCurrent: vi.fn() }))
 vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
-vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn() }))
+vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(), listCalendarSubscriptions: vi.fn(async () => ({ items: [], unavailable_items: [] })), getCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
 vi.mock('../src/config/features.js', async importOriginal => ({ ...(await importOriginal()), isFeatureEnabled: vi.fn(() => true) }))
 
 const today = '2026-10-03'
@@ -224,7 +224,7 @@ it.each(['public', 'private'])('%s失败不吞掉另一类活动内容；数据�
     listActivityCalendar.mockResolvedValue({ items: [item({ game: accounts[0].game })] })
   }
   if (failed === 'public') calendarSubscriptionSummary.mockResolvedValue({
-    items: [{ event_id: 'mine', item: item({ title: '个人临期事项' }), checklist: [] }], subscribed_count: 1, total_pending: 1
+    items: [{ event_id: 'mine', subscribed: true, item: item({ title: '个人临期事项' }), checklist: [] }], subscribed_count: 1, total_pending: 1
   })
   getOperatorCurrent.mockRejectedValue(new Error('摘要失败'))
   const wrapper = render(); await flushPromises()
