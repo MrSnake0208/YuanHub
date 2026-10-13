@@ -458,3 +458,9 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 当前正式来源为 fix/star-ocr-plan-inheritance 的本地源码提交 07a4b015d72f1272ee1d6b1360a10167360773a0。从干净已提交来源正式 build:embed 后，使用既有同步脚本更新完整12项并核对字节/SHA-256；worker仍为 browser-vision-worker-DebJzGkA.js。未手改生成物。
 
 修复业务快照与CAS元数据混比造成的假失败，保留权威回读与版本校验。正常 OCR 完整保存后立即切到 bag 并展开核对；持续本地失败保留草稿、单独报告恢复状态，不重复 rebuild。待继承只在危险操作时阻断，计划页才自动预览。弹窗按旧背包、新背包、旧计划、新计划精简，宽屏双列、手机单列，并与页面共用柔和下拉的实现和样式。源码详细记录见其 docs/ocr-workspace-handoff-and-inheritance-ui-review.md。
+
+## 2026-10-13：继承成功提示与名称汇总返回位置
+
+已验收阶段先在宿主本地提交为 98b495982aa64dcc9f4b26e9b89f24b5c442e3f6（正式来源 07a4b01）。本阶段正式来源为原私有修复分支 fix/star-ocr-plan-inheritance 的干净提交 0025f2f4ecb3c63cdd9630a72ce9aca0300f8c42；提交后 build:embed，再通过既有同步脚本核对完整12项字节和SHA-256。本轮生成物仅JS与manifest发生变化；CSS、worker和其余运行资源不变，没有手改生成物。
+
+两处旧计划继承成功 Toast 复用 info；名称汇总下钻来源绑定原视口，bag/plan 分别保存导航与列表/整页位置，右侧路线独立保留。无效组安全回退，账号/重建清理；只保存当前挂载内存，不新增云端或后端字段。详情见 docs/ocr-inheritance-ui-followup-review.md 及源码同名审查记录。
