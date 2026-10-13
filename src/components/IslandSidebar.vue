@@ -534,6 +534,14 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   display: none;
 }
 
+/* 极短桌面窗口连同更新条会挤空主导航，让整座侧栏滚动并把更多菜单放回流内。 */
+@media (min-width: 1081px) and (max-height: 480px) {
+  .island { overflow-y: auto; overscroll-behavior: contain; }
+  .brand, .nav { flex: none; }
+  .nav { overflow: visible; }
+  .sidebar-more-panel { position: static; max-height: none; margin-block: 8px; }
+}
+
 @media (max-width: 1080px) {
   .mobile-menu-button,
   .mobile-header-action {
