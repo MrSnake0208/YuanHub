@@ -18,6 +18,8 @@ const references = new Map()
 // Existing global assets serve namespaced children and teleported dialogs.
 const globalNamespacedStyles = new Map([
   ...['Desktop', 'Mobile'].map(end =>
+    [fileURLToPath(new URL(`../src/styles/auth-fields${end}.css`, import.meta.url)), /\.page-auth/]),
+  ...['Desktop', 'Mobile'].map(end =>
     [fileURLToPath(new URL(`../src/styles/cart-workspace${end}.css`, import.meta.url)), /\.(?:cart-|pkg-|rate-bar|receipt|initial-row|divider-dashed|tot-row|grand-total|milestone|campaign-ended-note|mbtn)/]),
   ...['calendar', 'public-calendar'].flatMap(owner => ['Desktop', 'Mobile'].map(end =>
     [fileURLToPath(new URL(`../src/pages/calendar/${owner}${end}.css`, import.meta.url)), /calendar-/])),

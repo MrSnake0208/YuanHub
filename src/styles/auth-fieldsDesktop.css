@@ -1,0 +1,8 @@
+@media not all and (max-width: 360px) {
+
+@media (max-width:767px){
+  .page-auth .input-wrap input{min-height:44px;font-size:16px}
+  .page-auth .back a{min-height:44px;display:inline-flex;align-items:center}
+  .page-auth .auth-switch a{min-height:44px;display:flex;align-items:center;justify-content:center}
+}
+}

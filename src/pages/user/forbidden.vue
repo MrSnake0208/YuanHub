@@ -89,23 +89,18 @@ async function retry() {
 </script>
 
 <style scoped>
-.forbidden-band { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 48px }
-.forbidden-panel { width: min(620px, 100%); padding: 40px; background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--rouge); border-radius: 8px }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.forbidden-panel { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--rouge); border-radius: 8px }
 .forbidden-panel>svg { color: var(--rouge) }
-.eyebrow { display: block; margin-top: 20px; color: var(--accent-strong); font-family: var(--font-d); font-size: 11px; font-weight: 800; letter-spacing: .12em }
-h1 { margin-top: 8px; color: var(--ink); font-family: var(--font-s); font-size: 32px; font-weight: 900; letter-spacing: 0 }
-p { margin-top: 12px; color: var(--ink-60); line-height: 1.8 }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px }
-.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font: inherit; font-weight: 800; text-decoration: none; cursor: pointer }
+.eyebrow { color: var(--accent-strong) }
+h1 { color: var(--ink) }
+p { color: var(--ink-60) }
+.command { border: 1px solid var(--line); border-radius: 8px; color: var(--ink); text-decoration: none; cursor: pointer }
 .command:disabled { opacity: .6; cursor: wait }
 .command:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 .retry-error { color: var(--rouge) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .command.secondary { background: var(--surface) }
-@media (max-width: 640px) {
-  .forbidden-band { padding: 24px 16px }
-  .forbidden-panel { padding: 28px 20px }
-  h1 { font-size: 26px }
-  .command { width: 100% }
-}
 </style>
+<style scoped src="./forbiddenPageDesktop.css"></style>
+<style scoped src="./forbiddenPageMobile.css"></style>

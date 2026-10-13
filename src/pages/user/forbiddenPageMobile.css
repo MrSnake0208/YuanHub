@@ -1,0 +1,20 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-forbidden > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+@media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
+@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+.forbidden-band { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 48px }
+.forbidden-panel { width: min(620px, 100%); padding: 40px }
+.eyebrow { display: block; margin-top: 20px; font-family: var(--font-d); font-size: 11px; font-weight: 800; letter-spacing: .12em }
+h1 { margin-top: 8px; font-family: var(--font-s); font-size: 32px; font-weight: 900; letter-spacing: 0 }
+p { margin-top: 12px; line-height: 1.8 }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px }
+.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; font: inherit; font-weight: 800 }
+@media (max-width: 640px) {
+  .forbidden-band { padding: 24px 16px }
+  .forbidden-panel { padding: 28px 20px }
+  h1 { font-size: 26px }
+  .command { width: 100% }
+}
+}

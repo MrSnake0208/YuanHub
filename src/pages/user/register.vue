@@ -152,52 +152,42 @@ async function onSubmit() {
 </script>
 
 <style scoped>
-.back { position: absolute; top: 18px; left: 22px; font-size: 12.5px; }
-.back a { color: var(--ink-60); text-decoration: none; font-weight: 600; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.back a { color: var(--ink-60); text-decoration: none; }
 .back a:hover { color: var(--accent); }
-.auth-form { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
-.field label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-60); margin-bottom: 6px; letter-spacing: .04em; }
-.field label em { color: var(--rouge); font-style: normal; }
+.field label { color: var(--ink-60); }
+.field label em { color: var(--rouge); }
 .input-wrap {
   background: var(--cream); border: 1.5px solid var(--line); border-radius: 12px;
   transition: border-color .3s var(--ease), box-shadow .3s var(--ease);
 }
 .input-wrap.focus { border-color: var(--yellow-deep); box-shadow: 0 0 0 3px rgba(239,210,142,.35); }
-.input-wrap input {
-  width: 100%; border: none; outline: none; background: transparent;
-  padding: 12px 14px; font-size: 14px; font-family: var(--font-b); color: var(--ink);
+.input-wrap input { border: none; outline: none; background: transparent; color: var(--ink);
 }
 .input-wrap input::placeholder { color: var(--ink-35); }
-.split-row { display: flex; gap: 10px; align-items: center; }
-.split-row .input-wrap { flex: 1; }
-.code-btn {
-  flex: none; border: 1.5px solid var(--line); background: var(--surface);
-  border-radius: 999px; padding: 0 16px; height: 44px;
-  font-size: 12.5px; font-weight: 800; font-family: var(--font-b); color: var(--ink);
-  cursor: pointer; transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap;
+.code-btn { border: 1.5px solid var(--line); background: var(--surface);
+  border-radius: 999px; color: var(--ink);
+  cursor: pointer; transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease);
 }
 .code-btn:hover:not(:disabled) { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
 .code-btn:disabled { opacity: .5; cursor: default; }
-.field-err { margin-top: 5px; font-size: 12px; color: var(--rouge); font-weight: 600; }
+.field-err { color: var(--rouge); }
 .form-err {
-  display: flex; align-items: center; gap: 8px;
   background: rgba(166,81,74,.08); border: 1px solid rgba(166,81,74,.28);
-  color: var(--rouge); font-size: 12.5px; font-weight: 600; border-radius: 10px; padding: 9px 12px;
+  color: var(--rouge); border-radius: 10px;
 }
-.form-err .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rouge); flex: none; }
-.btn-submit {
-  margin-top: 4px; background: var(--tea); color: var(--cream);
-  border: none; border-radius: 999px; padding: 14px 0; font-size: 15px;
-  font-weight: 800; font-family: var(--font-b); letter-spacing: .14em; cursor: pointer;
+.form-err .dot { border-radius: 50%; background: var(--rouge); }
+.btn-submit { background: var(--tea); color: var(--cream);
+  border: none; border-radius: 999px; cursor: pointer;
   transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
 }
-.btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px); }
+.btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .btn-submit:disabled { opacity: .55; cursor: default; }
-.auth-switch {
-  margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--line);
-  text-align: center; font-size: 13px; color: var(--ink-60);
+.auth-switch { border-top: 1px dashed var(--line); color: var(--ink-60);
 }
 .auth-switch a { text-decoration: none; color: var(--ink-60); }
 .auth-switch a b { color: var(--ink); border-bottom: 1.5px solid var(--yellow); }
 .auth-switch a:hover b { color: var(--accent); }
 </style>
+<style scoped src="./registerPageDesktop.css"></style>
+<style scoped src="./registerPageMobile.css"></style>
