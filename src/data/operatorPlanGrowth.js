@@ -1,4 +1,4 @@
-import { operatorHuaji, operatorHuajiMax } from '../utils/operatorHuaji.js'
+import { operatorHuaji, operatorHuajiMax, operatorAwakeningSupported } from '../utils/operatorHuaji.js'
 import { operatorBaseId, isMovieOperator } from '../utils/operatorForms.js'
 import { getMaxEliteForLevel } from '../utils/operatorGrowthRules.js'
 import { calculateLevelRequirements, calculateXiuweiRequirements, calculateStarRequirements } from './operatorRequirements.js'
@@ -8,13 +8,24 @@ export function normalizeGrowthTarget(row, saved = {}) {
   const level = Math.max(Number(row.level) || 0, Math.min(100, Number(saved.level ?? 100) || 0))
   const elite = Math.max(Number(row.elite) || 0, Math.min(getMaxEliteForLevel(level), Number(saved.elite ?? 17) || 0))
   const currentHuaji = operatorHuaji(row)
-  const savedHuaji = saved.huaji || (saved.starLevel != null ? operatorHuaji({ ...row, huaji: null, starLevel: saved.starLevel }) : null)
+  const savedHuaji = saved.huaji || (Number(saved.starLevel) === 31 && operatorAwakeningSupported(row)
+    ? { owned: true, stage: 25, awakened: true }
+    : saved.starLevel != null ? operatorHuaji({ ...row, huaji: null, starLevel: saved.starLevel }) : null)
   const currentStar = Number(row.starLevel) || 0
   const star = Math.min(movie ? 5 : operatorHuajiMax(row), Math.max(0, Number(saved.starLevel ?? (movie ? currentStar : 7)) || 0))
   let targetHuaji = savedHuaji || { owned: star > 0, stage: movie && star > 0 ? 6 * (star - 1) + 1 : star, awakened: null }
   if (targetHuaji.stage != null && currentHuaji.stage != null && targetHuaji.stage < currentHuaji.stage) targetHuaji = { ...targetHuaji, owned: currentHuaji.owned, stage: currentHuaji.stage }
   const targetStar = targetHuaji.stage == null ? Number(saved.starLevel ?? currentStar) : movie ? (targetHuaji.stage - 1) / 6 + 1 : targetHuaji.stage
   return { level, elite, starLevel: targetStar, huaji: targetHuaji, awakened: targetHuaji.awakened, revision: Number(saved.revision) || 0 }
+}
+
+// Awakening adds one visual step only; business stages remain 0..25 or null.
+export function growthHuajiProgress(current, target) {
+  const value = operatorHuaji(current), desired = target.huaji
+  if (!value.owned || value.stage == null || desired?.stage == null) return 0
+  const finalStep = desired.awakened === true ? 1 : 0
+  const total = desired.stage + finalStep
+  return total > 0 ? Math.min(100, Math.round((Math.min(value.stage, desired.stage) + (finalStep && value.awakened === true ? 1 : 0)) / total * 100)) : 100
 }
 
 // Shared progress is purchased through the base form. Only one selected row owns its cost.
@@ -40,14 +51,17 @@ export function sharedPlanCalculations(catalog, currentById, selectedIds, target
     forms.forEach((entry, index) => {
       const ownsCost = entry.id === owner.id && Boolean(base)
       const star = Number(currentById[entry.id]?.starLevel) || 0
+      const huaji = operatorHuaji({ ...entry, ...currentById[entry.id] })
+      const desired = targets[index].huaji
+      const unknownStage = huaji.stage == null || desired?.stage == null
+      const awakeningUnsupported = desired?.awakened === true && huaji.awakened !== true
+      const knownStar = unknownStage ? { heart: 0, money: 0, items: {} } : calculateStarRequirements(huaji.stage, desired.stage)
       result[entry.id] = {
         level: calculateLevelRequirements(current.level || 0, ownsCost ? levelTarget : current.level || 0, subProf),
         xiuwei: calculateXiuweiRequirements(current.elite || 0, ownsCost ? eliteTarget : current.elite || 0, job),
         star: isMovieOperator(entry)
           ? { heart: 0, money: 0, items: {}, unsupported: targets[index].starLevel > star }
-          : (operatorHuaji({ ...entry, ...currentById[entry.id] }).stage == null || targets[index].huaji?.stage == null || (targets[index].huaji?.awakened === true && operatorHuaji({ ...entry, ...currentById[entry.id] }).awakened !== true))
-            ? { heart: 0, money: 0, items: {}, unsupported: true }
-            : calculateStarRequirements(operatorHuaji({ ...entry, ...currentById[entry.id] }).stage, targets[index].starLevel),
+          : { ...knownStar, unsupported: unknownStage || awakeningUnsupported, awakeningUnsupported },
         sharedTarget: { level: levelTarget, elite: eliteTarget },
         sharedCostOwner: owner.name || owner.id,
         sharedGrowth: forms.length > 1 || isMovieOperator(entry),

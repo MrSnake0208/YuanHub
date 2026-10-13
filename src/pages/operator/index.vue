@@ -1787,7 +1787,7 @@
                       </div>
                     </div>
                     <div class="ledger-growth-row">
-                      <span class="ledger-grow-label" :title="operatorHuajiLabel(e)">化极<small>{{ e.huaji?.awakened === true ? '已觉醒' : e.huaji?.awakened === false ? '未觉醒' : '待确认' }}</small></span>
+                      <span class="ledger-grow-label" :title="operatorHuajiLabel(e)">化极<small v-if="operatorHuaji(e).awakened === true || (operatorHuaji(e).stage === 25 && operatorAwakeningSupported(e))">{{ operatorHuaji(e).awakened === true ? '已觉醒' : operatorHuaji(e).awakened === false ? '未觉醒' : '觉醒待确认' }}</small></span>
                       <button
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
                         type="button"
@@ -1817,73 +1817,37 @@
                       <button
                         v-if="!e.spOf"
                         class="ledger-next-action ledger-popover-trigger"
-                        :class="growthActionClass(e, 'star', 1)"
+                        :class="operatorHuajiAction(e).kind === 'upgrade' ? growthActionClass(e, 'star', 1) : { 'is-complete': operatorHuajiAction(e).disabled }"
                         type="button"
                         :disabled="
                           cardSubmitStates[e.id] === 'submitting' ||
-                          (operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))
+                          operatorHuajiAction(e).disabled
                         "
-                        :aria-label="
-                          ledgerCardIsV2
-                            ? (operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))
-                              ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
-                                ? '化极已觉醒'
-                                : '化极已满级'
-                              : '化极：' +
-                                growthActionLabel(
-                                  e,
-                                  'star',
-                                  1,
-                                  '提升至下一节点',
-                                )
-                            : undefined
-                        "
-                        :title="
-                          ledgerCardIsV2
-                            ? (operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))
-                              ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
-                                ? '化极已觉醒'
-                                : '化极已满级'
-                              : '化极：' +
-                                growthActionLabel(
-                                  e,
-                                  'star',
-                                  1,
-                                  '提升至下一节点',
-                                )
-                            : undefined
-                        "
+                        :aria-label="'化极：' + operatorHuajiAction(e).label"
+                        :title="operatorHuajiAction(e).label"
                         @click="openGrowthAction(e, 'star', 1)"
                       >
-                        <template v-if="ledgerCardIsV2"
-                          ><Check
-                            v-if="(operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))"
-                            :size="14"
-                            aria-hidden="true"
-                          /><span
-                            v-else-if="!growthMaterialsReady(e, 'star', 1)"
+                        <span v-if="operatorHuajiAction(e).kind !== 'upgrade'" class="ledger-awakening-label">{{ operatorHuajiAction(e).label }}</span>
+                        <template v-else-if="ledgerCardIsV2"
+                          ><span
+                            v-if="!growthMaterialsReady(e, 'star', 1)"
                             class="ledger-action-ratio"
                             aria-hidden="true"
                             >{{ growthActionLabel(e, "star", 1, "下一节点") }}</span
                           /><span v-else class="ledger-upgrade-label" aria-hidden="true"
                             >提升</span
                           /><span class="sr-only">{{
-                            (operatorHuaji(e).stage == null || cardGrowthValue(e, "star") >= operatorHuajiMax(e))
-                              ? operatorHuaji(e).stage == null ? "化极待确认" : "化极已满阶"
-                              : growthActionLabel(e, "star", 1, "下一节点")
+                            growthActionLabel(e, "star", 1, "下一节点")
                           }}</span></template
                         ><template v-else
                           ><ChevronUp
                             v-if="
-                              operatorHuaji(e).stage != null && cardGrowthValue(e, 'star') < operatorHuajiMax(e) &&
                               growthMaterialsReady(e, 'star', 1)
                             "
                             :size="13"
                             aria-hidden="true"
                           />{{
-                            (operatorHuaji(e).stage == null || cardGrowthValue(e, "star") >= operatorHuajiMax(e))
-                              ? operatorHuaji(e).stage == null ? "化极待确认" : "化极已满阶"
-                              : growthActionLabel(e, "star", 1, "下一节点")
+                            growthActionLabel(e, "star", 1, "下一节点")
                           }}</template
                         >
                       </button>
@@ -2638,7 +2602,7 @@
                   :title="
                     editingOp.spOf
                       ? '0=未拥有 · 1~5=SP星级'
-                      : '0=未拥有 · 1~24=化极星级·节点 · 25=五星 · 觉醒独立确认'
+                      : '1~4星及节点 → 五星 → 觉醒；人工记录不扣库存'
                   "
                 >
                   <div class="star-row">
@@ -2687,12 +2651,13 @@
                       </button>
                     </span>
                   </div>
-                </div>
-                <label class="star-row">觉醒确认
-                  <select v-model="editForm.awakened" aria-label="觉醒确认" :disabled="Boolean(editingOp.spOf) || Number(editingOp.rarity) === 3 || editForm.owned === false">
-                    <option :value="null">待确认</option><option :value="false">确认未觉醒</option><option :value="true">确认已觉醒</option>
+                <label v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true" class="star-row">五星之后 · 觉醒
+                  <select v-model="editForm.awakened" aria-label="觉醒确认" :disabled="!operatorAwakeningSupported(editingOp) || editForm.owned === false">
+                    <option :value="null">待确认</option><option :value="false">确认未觉醒</option><option :value="true" :disabled="!editorCanConfirmAwakening">确认已觉醒</option>
                   </select>
                 </label>
+                <small v-if="operatorAwakeningSupported(editingOp)">仅记录游戏内状态，不扣库存；新确认已觉醒前请先核实五星化极。</small>
+                </div>
                 <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" role="status">历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 <div class="oddity-editor">
                   <strong class="oddity-caption">
@@ -2966,12 +2931,16 @@
         @request-close="requestCloseStarLoadout"
         @update:draft-loadouts="starLoadoutDrafts = $event"
       />
+      <OperatorAwakeningDialog v-if="awakeningEntry" :key="accountId + ':' + awakeningEntry.id"
+        :entry="awakeningEntry" :account-id="accountId" :game="saveGame" :refresh="refreshAwakeningEntry"
+        @close="awakeningId = ''" @saved="onAwakeningSaved" />
     </main>
   </div>
 </template>
 
 <script setup>
-import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel } from '../../utils/operatorHuaji.js';
+import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel, operatorHuajiAction, operatorAwakeningSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
+import OperatorAwakeningDialog from '../../components/operator/OperatorAwakeningDialog.vue';
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
@@ -3271,6 +3240,8 @@ const quickConfirmKey = ref("");
 const quickDrafts = ref({});
 const quickSavingIds = ref(new Set());
 const quickNotices = ref({});
+const awakeningId = ref('');
+const awakeningEntry = computed(() => currentMap.value[awakeningId.value] || null);
 const workbenchStatuses = ref({});
 const workbenchRemarks = ref({});
 const workbenchRemarkSaving = ref(new Set());
@@ -3438,6 +3409,7 @@ watch(
     currentLoadSeq += 1;
     currentLoadedKey.value = "";
     currentEntries.value = [];
+    awakeningId.value = '';
     quickEditorKey.value = "";
     quickConfirmKey.value = "";
     quickDrafts.value = {};
@@ -3764,6 +3736,7 @@ function normalizeOperator(op) {
     subProf: subProfList({ subProf: rawSub }),
     games: op.games || op.games_list || [],
     spOf: op.spOf || op.sp_of || "",
+    huajiCapabilities: op.huajiCapabilities || op.huaji_capabilities,
     discs: op.discs || op.discs_list || [],
     starStones: op.starStones || op.star_stones || [],
     specialOddityName:
@@ -4301,12 +4274,14 @@ const maxEliteForLevel = computed(function () {
 });
 
 const combatStatsInput = computed(function () {
+  const existing = currentEntries.value.find((entry) => entry.id === editingOp.value?.id);
+  const huaji = operatorHuajiDraft({ ...editingOp.value, ...existing, huaji: editForm.value.huaji }, editForm.value.starLevel);
   return {
     operatorName: editingOp.value && editingOp.value.name,
     level: editForm.value.level,
     elite: editForm.value.elite,
     starLevel: editForm.value.starLevel,
-    huaji: { ...editForm.value.huaji, awakened: editForm.value.awakened },
+    huaji: { ...huaji, awakened: huaji.owned ? editForm.value.awakened : null },
     stones: editForm.value.stones,
     oddities: editForm.value.combatStats && editForm.value.combatStats.oddities,
   };
@@ -4556,10 +4531,11 @@ const starGroupName = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
   if (v === 0) return editForm.value.owned ? "unknown" : "none";
   if (editingOp.value && editingOp.value.spOf) return v;
-  if (v === STAR_LEVEL_AWAKEN) return "awaken";
+  if (v === STAR_LEVEL_AWAKEN) return "unknown";
   if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1;
   return "none";
 });
+const editorCanConfirmAwakening = computed(() => editForm.value.huaji?.awakened === true || (editForm.value.owned && Number(editForm.value.starLevel) === 25));
 const starNode = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
   if (v >= 1 && v < 25) return (v - 1) % 6;
@@ -4573,14 +4549,10 @@ function pickStarGroup(g) {
     return;
   }
   const s = Number(g);
-  if (g !== "awaken" && !(s >= 1 && s <= 5)) return;
+  if (!(s >= 1 && s <= 5)) return;
   if (!(Number(editForm.value.starLevel) > 0)) {
     if (editForm.value.level === 0) editForm.value.level = 1;
     if (editForm.value.elite === 0) editForm.value.elite = 1;
-  }
-  if (g === "awaken") {
-    editForm.value.starLevel = STAR_LEVEL_AWAKEN;
-    return;
   }
   if (editingOp.value && editingOp.value.spOf) {
     editForm.value.starLevel = s;
@@ -5950,6 +5922,16 @@ async function openGrowthAction(entry, field, step, retriedAfterRefresh) {
     });
     return;
   }
+  if (field === 'star') {
+    const action = operatorHuajiAction(entry);
+    if (action.disabled) return;
+    if (action.kind === 'awakening') {
+      if (!auth.isLoggedIn || !accountId.value || cardSubmitStates.value[entry.id] === 'submitting') return;
+      cardPopoverKey.value = '';
+      awakeningId.value = entry.id;
+      return;
+    }
+  }
   cardPopoverStep.value = step || 1;
   const key = growthActionKey(entry, field);
   const requestSequence = (growthPreviewRequestSequences.get(key) || 0) + 1;
@@ -6032,6 +6014,17 @@ function applyUpgradeConsumption(consumed) {
   cardMaterialStock.value = Object.assign({}, stock, {
     __experience__: bookExperience(stock),
   });
+}
+
+async function refreshAwakeningEntry(id) {
+  if (!(await reloadCurrentEntry(id, true))) throw new Error('最新养成同步失败，请重试');
+  return currentMap.value[id];
+}
+
+function onAwakeningSaved({ operatorId, payload }) {
+  applyPatchedCurrentEntry(operatorId, payload);
+  awakeningId.value = '';
+  showQuickNotice(operatorId, '觉醒状态已记录，未扣除库存', 2400);
 }
 
 function applyUpgradeOperator(entry, raw) {
@@ -6273,6 +6266,11 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
   if (!entry || !auth.isLoggedIn || !accountId.value || (field === "star" && entry.spOf)) {
     return { visible: false, disabled: true };
   }
+  if (field === 'star' && operatorHuajiAction(entry).kind !== 'upgrade') {
+    const action = operatorHuajiAction(entry);
+    return { visible: true, disabled: action.disabled || cardSubmitStates.value[entry.id] === 'submitting',
+      className: action.disabled ? 'is-complete' : 'is-ready', icon: action.disabled ? 'check' : 'up', label: action.label, title: action.label };
+  }
   const currentValue = Number(cardGrowthValue(entry, field)) || 0;
   const max =
     field === "level"
@@ -6280,13 +6278,10 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
       : field === "elite"
         ? getMaxEliteForLevel(cardGrowthValue(entry, "level"))
         : operatorHuajiMax(entry);
-  const huajiUnknown = field === "star" && operatorHuaji(entry).stage == null;
-  const complete = currentValue >= max || huajiUnknown;
+  const complete = currentValue >= max;
   const fieldLabel = field === "level" ? "等级" : field === "elite" ? "修为" : "化极";
-  const label = huajiUnknown ? "化极待确认" : complete
-    ? field === "star" && currentValue === STAR_LEVEL_AWAKEN
-      ? "已觉醒"
-      : "已满级"
+  const label = complete
+    ? "已满级"
     : growthActionLabel(entry, field, step, readyLabel);
   return {
     visible: true,
@@ -6295,7 +6290,7 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
     icon: complete ? "check" : growthMaterialsReady(entry, field, step) ? "up" : "alert",
     label: label,
     title: complete
-      ? fieldLabel + (field === "star" && currentValue === STAR_LEVEL_AWAKEN ? "已觉醒" : "已满级")
+      ? fieldLabel + "已满级"
       : "在养成规划中查看" + fieldLabel + "快捷提升",
   };
 }
@@ -7102,7 +7097,7 @@ function cardCombatInput(entry) {
     level: Number(growth.level) || 0,
     elite: Number(growth.elite) || 0,
     starLevel: Number(growth.star) || 0,
-    huaji: operatorHuaji(entry),
+    huaji: operatorHuajiDraft(entry, growth.star),
     stones: cardCombatStones(entry),
     oddities: {
       attack: { current: draft.oddityAttack },
@@ -7404,16 +7399,18 @@ function cardPatch(entry) {
       level: growth.level,
       elite: growth.elite,
       star_level: growth.star,
+      huaji: input.huaji,
       oddities_signature: patch.combat_stats.combat_input_signature,
       equipped_star_stones_signature: patch.combat_stats.combat_input_signature,
     };
   }
   const beforeHuaji = operatorHuaji(entry);
-  const afterHuaji = Number(growth.star) === Number(entry.starLevel)
-    ? beforeHuaji
-    : { ...operatorHuaji({ ...entry, huaji: null, starLevel: Number(growth.star) }), awakened: beforeHuaji.awakened };
+  const afterHuaji = operatorHuajiDraft(entry, growth.star);
   delete patch.star_level;
-  if (JSON.stringify(beforeHuaji) !== JSON.stringify(afterHuaji)) patch.huaji = afterHuaji;
+  if (JSON.stringify(beforeHuaji) !== JSON.stringify(afterHuaji)) {
+    patch.huaji = afterHuaji;
+    if (!operatorAwakeningSupported(entry) && beforeHuaji.awakened === true && afterHuaji.awakened === true) delete patch.huaji.awakened;
+  }
   return patch;
 }
 
@@ -7501,6 +7498,7 @@ function mergePatchedCurrentEntry(entry, payload) {
       subProf: catalog.subProf || entry.subProf || "",
       games: catalog.games || entry.games || [],
       spOf: catalog.spOf || entry.spOf || "",
+      huajiCapabilities: catalog.huajiCapabilities || entry.huajiCapabilities,
     },
     normalizeEntry(raw, catalog.odditySchema),
   );
@@ -7699,12 +7697,13 @@ function applyEditorEntry(existing, op, id, allowCache) {
         normalizeOperatorCombatStats({}, op.odditySchema)
       : normalizeOperatorCombatStats({}, op.odditySchema);
   ensureOperatorOddities(combatStats, op);
+  const huaji = operatorHuaji({ ...op, ...existing });
   editForm.value = {
     owned: operatorHuaji({ ...op, ...existing }).owned,
     awakened: operatorHuaji({ ...op, ...existing }).awakened,
     huaji: operatorHuaji({ ...op, ...existing }),
     elite: existing.elite != null ? existing.elite : 1,
-    starLevel: existing.starLevel != null ? existing.starLevel : 0,
+    starLevel: huaji.stage == null ? Number(existing.starLevel) || 0 : op.spOf && huaji.stage > 0 ? (huaji.stage - 1) / 6 + 1 : huaji.stage,
     level: existing.level != null ? existing.level : 1,
     discLoadouts: discState.loadouts,
     stones: stones,
@@ -7817,7 +7816,15 @@ async function saveEdit() {
     return;
   }
   const oldGrowth = currentMap.value[editingOp.value.id] || {};
-  const starChanged = starLevel !== Number(oldGrowth.starLevel || 0);
+  const oldHuaji = operatorHuaji({ ...editingOp.value, ...oldGrowth });
+  const stageHuaji = operatorHuajiDraft({ ...editingOp.value, ...oldGrowth }, starLevel);
+  const starChanged = stageHuaji.stage !== oldHuaji.stage || stageHuaji.owned !== oldHuaji.owned;
+  if (editForm.value.awakened === true && oldHuaji.awakened !== true &&
+      (!operatorAwakeningSupported(editingOp.value) || !editorCanConfirmAwakening.value)) {
+    editNotice.value = '请先核实五星化极，再确认游戏中已完成觉醒';
+    editNoticeError.value = true;
+    return;
+  }
   const starMax = editingOp.value.spOf ? 5 : operatorHuajiMax(editingOp.value);
   if (starChanged && (starLevel < 0 || starLevel > starMax)) {
     editNotice.value = editingOp.value.spOf
@@ -7922,20 +7929,22 @@ async function saveEdit() {
       level: level,
       elite: elite,
       star_level: starLevel,
+      huaji: combatStatsInput.value.huaji,
       oddities_signature: currentCombatSignature,
       equipped_star_stones_signature: currentCombatSignature,
     };
   }
   delete patch.star_level;
   const priorHuaji = operatorHuaji({ ...op, ...existing });
-  const editedHuaji = starChanged
-    ? { ...operatorHuaji({ ...op, starLevel }), awakened: priorHuaji.awakened }
-    : { ...priorHuaji };
+  const editedHuaji = { ...stageHuaji };
   if (editForm.value.awakened !== undefined) editedHuaji.awakened = editForm.value.awakened;
   if (editForm.value.owned === false) { editedHuaji.owned = false; editedHuaji.stage = 0; editedHuaji.awakened = null; }
   else if (!editedHuaji.owned && editForm.value.owned === true) { editedHuaji.owned = true; editedHuaji.stage = null; }
   if (!editedHuaji.owned) editedHuaji.awakened = null;
-  if (JSON.stringify(editedHuaji) !== JSON.stringify(priorHuaji)) patch.huaji = editedHuaji;
+  if (JSON.stringify(editedHuaji) !== JSON.stringify(priorHuaji)) {
+    patch.huaji = editedHuaji;
+    if (!operatorAwakeningSupported(op) && priorHuaji.awakened === true && editedHuaji.awakened === true) delete patch.huaji.awakened;
+  }
   const submittedSignature = JSON.stringify([editForm.value, combatDisplayMode.value]);
   savingEdit.value = true;
   editNotice.value = "";
@@ -8214,6 +8223,7 @@ function normalizeCurrentEntry(operatorId, raw) {
       subProf: op.subProf || "",
       games: op.games || [],
       spOf: op.spOf || "",
+      huajiCapabilities: op.huajiCapabilities,
     },
     normalizeEntry(raw, op.odditySchema),
   );
@@ -11902,6 +11912,7 @@ onBeforeUnmount(function () {
   flex: none;
   display: block;
 }
+.ledger-next-action:has(.ledger-awakening-label) { min-height: 44px; max-width: 100%; white-space: normal; }
 .ledger-step-actions button:disabled,
 .ledger-smart-action:disabled,
 .ledger-next-action:disabled {

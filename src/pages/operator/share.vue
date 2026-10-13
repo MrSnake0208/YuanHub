@@ -195,7 +195,7 @@
                               <span v-if="!entry.sp_of && shareHuajiValue(entry) < 25" class="share-growth-number">{{ starCardNode(shareHuajiValue(entry)) }}</span>
                             </template>
                             <span v-else class="share-growth-number">{{ operatorHuajiLabel({ ...entry, ...entry.growth }) }}</span>
-                            <small v-if="shareHuajiValue(entry) != null">{{ operatorHuaji({ ...entry, ...entry.growth }).awakened === true ? '已觉醒' : operatorHuaji({ ...entry, ...entry.growth }).awakened === false ? '未觉醒' : '觉醒待确认' }}</small>
+                            <small v-if="shareHuajiValue(entry) != null && (operatorHuaji({ ...entry, ...entry.growth }).awakened === true || (shareHuajiValue(entry) === 25 && operatorAwakeningSupported(entry)))">{{ operatorHuaji({ ...entry, ...entry.growth }).awakened === true ? '已觉醒' : operatorHuaji({ ...entry, ...entry.growth }).awakened === false ? '未觉醒' : '觉醒待确认' }}</small>
                           </span>
                         </div>
                       </section>
@@ -268,7 +268,7 @@
 </template>
 
 <script setup>
-import { operatorHuaji, operatorHuajiLabel } from '../../utils/operatorHuaji.js'
+import { operatorHuaji, operatorHuajiLabel, operatorAwakeningSupported } from '../../utils/operatorHuaji.js'
 function shareHuajiValue(entry) { const value = operatorHuaji({ ...entry, ...entry.growth }); return value.stage == null ? null : entry.sp_of ? value.stage > 0 ? (value.stage - 1) / 6 + 1 : 0 : value.stage }
 
 import '@/styles/page-header.css'

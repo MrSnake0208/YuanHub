@@ -27,6 +27,17 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
 const render = () => mount(SharePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true, ShareCardStats: true } } })
+it.each([[7, null, ''], [25, null, '觉醒待确认'], [25, false, '未觉醒'], [25, true, '已觉醒']])('化极%s觉醒%s的公开摘要保留三态且不在低星堆叠待确认', async (stage, awakened, label) => {
+  getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator, rarity: 4 }] })
+  viewOperatorShare.mockResolvedValue({ ...share, entries: { [operator.id]: { ...operator.growth, huaji: { owned: true, stage, awakened } } } })
+  const wrapper = mount(SharePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true,
+    ShareCardStats: { template: '<div><slot name="growth" /></div>' } } } })
+  await flushPromises()
+  expect(wrapper.find('.ledger-huaji-value small').exists()).toBe(Boolean(label))
+  if (label) expect(wrapper.get('.ledger-huaji-value small').text()).toBe(label)
+  expect(fetch).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
 it('公开页加载真实卡片语义，点击卡片不打开编辑器或触发写请求', async () => {
   const wrapper = render(); await flushPromises()
   expect(viewOperatorShare).toHaveBeenCalledExactlyOnceWith(tokenA)
