@@ -1,0 +1,103 @@
+/* 刻意共用的外观、标签与无障碍反馈；布局和控件尺寸由各 View 的 scoped 样式持有。 */
+.record {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition:
+    transform 0.45s var(--ease),
+    box-shadow 0.45s var(--ease),
+    border-color 0.3s;
+}
+.record:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 36px -20px rgba(73, 59, 44, 0.26);
+  border-color: rgba(73, 59, 44, 0.22);
+}
+.rtag {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 7px;
+  padding: 2px 10px;
+  letter-spacing: 0.03em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rtag.rtag-reward {
+  background: var(--yellow);
+  color: var(--ink);
+}
+.rtag.rtag-snapshot {
+  border: 1.5px solid var(--brand-blue);
+  color: var(--brand-blue);
+  background: transparent;
+}
+.rtag.rtag-type {
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  color: var(--ink-60);
+}
+.rtag.rtag-stamina {
+  background: var(--cream);
+  border: 1.5px solid var(--accent);
+  color: var(--accent-strong);
+}
+.rtag.rtag-agent {
+  background: rgba(215, 137, 53, 0.08);
+  border: 1.5px solid rgba(215, 137, 53, 0.4);
+  color: var(--accent-strong);
+}
+.rtag.rtag-item {
+  background: rgba(91, 106, 140, 0.07);
+  border: 1.5px solid rgba(91, 106, 140, 0.35);
+  color: var(--slate-deep);
+}
+.rtag.effect {
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  color: var(--ink-60);
+}
+.rtag.effect.eff-history_only {
+  color: var(--slate-deep);
+  border-color: rgba(91, 106, 140, 0.35);
+}
+.rtag.effect.eff-superseded {
+  color: var(--rouge);
+  border-color: rgba(166, 81, 74, 0.4);
+}
+.record-time {
+  font-family: var(--font-d);
+}
+.record-entries {
+  color: var(--ink);
+  line-height: 1.7;
+}
+.record-id {
+  font-family: var(--font-d);
+  color: var(--ink-35);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.record-del {
+  border: 1.5px solid rgba(166, 81, 74, 0.35);
+  background: rgba(166, 81, 74, 0.06);
+  color: var(--rouge);
+  font-weight: 800;
+  cursor: pointer;
+  font-family: var(--font-b);
+  transition:
+    color 0.25s,
+    background-color 0.25s,
+    border-color 0.25s;
+}
+.record-del:hover {
+  background: rgba(166, 81, 74, 0.16);
+}
+
+.record-time, .record-entries, .record-id { overflow-wrap: anywhere; }
+.record-del:disabled { opacity: 0.45; cursor: not-allowed; }
+.record-del:focus-visible, summary:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .record:hover { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .record, .record-del { transition: none; }
+}
