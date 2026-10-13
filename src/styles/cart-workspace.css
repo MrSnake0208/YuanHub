@@ -1,0 +1,82 @@
+/* 账房共享外观；实际几何由双端文件持有。 */
+
+.cart-switch{background:rgba(73,59,44,.06);border-radius:12px}
+.cart-switch button{border:none;background:transparent;border-radius:9px;cursor:pointer;color:var(--ink-60);transition:color .3s var(--ease),background-color .3s var(--ease)}
+.cart-switch button.on{background:var(--yellow);color:var(--ink)}
+.cart-switch button:hover:not(.on){color:var(--ink)}
+.rate-bar{background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.rate-bar .lb{color:var(--ink)}
+.rate-bar input{border:1.5px solid var(--line);background:var(--paper);border-radius:10px;color:var(--ink);outline:none;transition:border-color .3s}
+.rate-bar input:focus{border-color:var(--accent)}
+.rate-bar .hint{color:var(--ink-60)}
+.rate-bar .ic{color:var(--accent)}
+.cart-filters .f-ic{color:var(--accent)}
+.cart-filters .f-dot{border-radius:50%;background:var(--accent)}
+.pkg-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;transition:border-color .4s var(--ease),box-shadow .4s var(--ease),transform .4s var(--ease)}
+.pkg-card:hover{box-shadow:0 18px 36px -20px rgba(73,59,44,.3)}
+.pkg-card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pkg-del{background:rgba(166,81,74,.12);color:var(--rouge);border:none;border-radius:50%;cursor:pointer}
+.pkg-del:hover{background:rgba(166,81,74,.22)}
+.pkg-del:focus-visible{outline:2px solid var(--rouge);outline-offset:2px}
+.pkg-name{color:var(--ink)}
+.pkg-tag{border-radius:6px}
+.pkg-tag.pts{background:var(--yellow);color:var(--ink)}
+.pkg-tag.line{border:1.5px solid var(--line);color:var(--ink-60);background:transparent}
+.pkg-tag.gold{border:1.5px solid rgba(215,137,53,.5);color:var(--accent-strong);background:rgba(215,137,53,.07)}
+.pkg-price .main{color:var(--accent-strong)}
+.pkg-price .usd{color:var(--ink)}
+.pkg-foot{border-top:1px solid var(--line)}
+.pkg-limit{color:var(--ink-60)}
+.pkg-limit b{color:var(--ink)}
+.pkg-limit b.max{color:var(--accent)}
+.pkg-add-card{background:var(--surface);border:2px dashed var(--line);border-radius:18px;color:var(--ink-60);cursor:pointer;transition:color .4s var(--ease),background-color .4s var(--ease),border-color .4s var(--ease)}
+.pkg-add-card:hover{color:var(--accent);border-color:var(--accent);background:var(--cream)}
+.pkg-add-card .ic{background:var(--paper);border-radius:50%;transition:background .3s}
+.pkg-add-card:hover .ic{background:var(--surface)}
+.receipt{background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:0 20px 44px -24px rgba(73,59,44,.22)}
+.receipt-head{background:var(--tea);color:var(--cream)}
+.receipt-head .en{color:var(--yellow)}
+.initial-row{background:var(--paper);border:1px solid var(--line);border-radius:12px}
+.initial-row .lb{color:var(--ink)}
+.initial-row .lb .ic{color:var(--accent)}
+.initial-row input{border:1px solid var(--line);border-radius:8px;color:var(--ink);background:var(--surface);outline:none;transition:border-color .3s}
+.initial-row input:focus{border-color:var(--accent)}
+.receipt-empty{color:var(--ink-60);border-bottom:1px solid var(--line)}
+.receipt-empty .ic{color:var(--ink-35);opacity:.5}
+.receipt-empty .sub{color:var(--ink-60)}
+.cart-line .nm{color:var(--ink)}
+.cart-line .nm .sub{color:var(--ink-60)}
+.cart-line .amt{color:var(--ink)}
+.divider-dashed{border-top:2px dashed var(--line)}
+.tot-row .lb{color:var(--ink-60)}
+.tot-row .v{color:var(--ink)}
+.tot-row .v.gold{color:var(--accent-strong);background:rgba(215,137,53,.08);border:1px solid rgba(215,137,53,.3);border-radius:8px}
+.tot-row .v.badge{background:var(--paper);border:1px solid var(--line);border-radius:8px}
+.tot-row .lb.strong{color:var(--ink)}
+.grand-total{border-top:1px solid var(--line)}
+.grand-total .lb{color:var(--ink)}
+.grand-total .v{color:var(--rouge)}
+.milestone .tt .nm{color:var(--ink)}
+.milestone .cd{background:var(--yellow);color:var(--ink);border-radius:999px}
+.milestone .next{color:var(--ink-60)}
+.milestone .next b{color:var(--accent)}
+.milestone .done{color:var(--accent-strong)}
+.milestone .box{color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px}
+.milestone .box b{color:var(--accent-strong)}
+.milestone .none{color:var(--ink-35);background:var(--paper);border:1px solid var(--line);border-radius:10px}
+.campaign-ended-note{color:var(--ink-60)}
+.cart-mbar{background:var(--cream);border-top:1px solid var(--line);box-shadow:0 -12px 24px -14px rgba(73,59,44,.18)}
+.cart-mbar .sum .k{color:var(--ink-60)}
+.cart-mbar .sum .v{color:var(--rouge)}
+.mbtn{border:none;border-radius:12px;cursor:pointer;transition:color .25s,background-color .25s,border-color .25s,transform .25s}
+.mbtn:disabled{opacity:.45;cursor:not-allowed}
+.mbtn.ghost{background:var(--paper);border:1.5px solid var(--line);color:var(--ink)}
+.mbtn.accent{background:var(--accent);color:var(--cream)}
+.mbtn.primary{background:var(--tea);color:var(--cream)}
+
+@media (max-width:767px){
+  .cart-filters .row::after{content:''}
+  .pkg-card{border-radius:16px}
+  .pkg-del{background:rgba(166,81,74,.1)}
+  .receipt{border-radius:18px}
+}

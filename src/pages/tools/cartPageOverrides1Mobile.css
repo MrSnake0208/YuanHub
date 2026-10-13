@@ -1,0 +1,4 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {
+.cart-catalog-status{font-size:12px;line-height:1.7;overflow-wrap:anywhere;margin:12px 0}
+}

@@ -48,12 +48,8 @@ defineEmits(['add', 'remove', 'remove-custom'])
 </script>
 
 <style scoped>
-.pkg-card{min-width:0}
-.pkg-top{flex-wrap:wrap}
-.pkg-top>div:first-child{flex:1 1 140px;min-width:0}
-.pkg-name,.pkg-tag{overflow-wrap:anywhere}
-.pkg-tag{white-space:normal}
-.pkg-price{max-width:100%;overflow-wrap:anywhere}
-.pkg-foot{flex-wrap:wrap;gap:10px}
-.stepper{flex-shrink:0}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+
 </style>
+<style scoped src="./packageCardDesktop.css"></style>
+<style scoped src="./packageCardMobile.css"></style>

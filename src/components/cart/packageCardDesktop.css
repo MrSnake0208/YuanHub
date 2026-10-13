@@ -1,0 +1,11 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.pkg-card{min-width:0}
+.pkg-top{flex-wrap:wrap}
+.pkg-top>div:first-child{flex:1 1 140px;min-width:0}
+.pkg-name,.pkg-tag{overflow-wrap:anywhere}
+.pkg-tag{white-space:normal}
+.pkg-price{max-width:100%;overflow-wrap:anywhere}
+.pkg-foot{flex-wrap:wrap;gap:10px}
+.stepper{flex-shrink:0}
+}

@@ -110,3 +110,33 @@ it('updates default setting with CAS and drops late previous account responses',
   expect(w.text()).not.toContain('修改默认汇率')
   expect(w.text()).toContain('需要广陵账房')
 })
+
+
+it.each([390, 1440])('目录编辑在%s起步跨断点保留字段、焦点与写入版本上下文', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const w = await render()
+  try {
+    await button(w, '编辑礼包').trigger('click'); await flushPromises()
+    const name = w.get('#ledger-name').element
+    await w.get('#ledger-name').setValue('跨断点未保存礼包')
+    await w.get('#ledger-price').setValue('7.25')
+    name.focus()
+    const reads = api.getAdminLedgerCatalog.mock.calls.length
+    for (const nextWidth of [767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(w.get('#ledger-name').element).toBe(name)
+      expect(name.value).toBe('跨断点未保存礼包')
+      expect(w.get('#ledger-price').element.value).toBe('7.25')
+      expect(document.activeElement).toBe(name)
+      expect(w.findAll('form')).toHaveLength(1)
+    }
+    expect(api.getAdminLedgerCatalog).toHaveBeenCalledTimes(reads)
+    expect(api.saveLedgerPackage).not.toHaveBeenCalled()
+    expect(api.saveLedgerCampaign).not.toHaveBeenCalled()
+  } finally {
+    w.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})

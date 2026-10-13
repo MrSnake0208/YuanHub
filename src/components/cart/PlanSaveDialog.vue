@@ -71,12 +71,13 @@ function submitSave(overwrite) {
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .save-tip{
-  display:flex;align-items:flex-start;gap:8px;
-  background:var(--paper);border:1px solid var(--line);border-radius:12px;
-  padding:10px 12px;font-size:12px;line-height:1.6;color:var(--ink-60);
+  background:var(--paper);border:1px solid var(--line);border-radius:12px;color:var(--ink-60);
 }
-.save-tip svg{flex-shrink:0;margin-top:2px;color:var(--brand-blue)}
+.save-tip svg{color:var(--brand-blue)}
 .save-tip.guest{background:var(--yellow);border-color:var(--yellow-deep);color:var(--ink)}
 .save-tip.guest svg{color:var(--accent-strong)}
 </style>
+<style scoped src="./planSaveDialogDesktop.css"></style>
+<style scoped src="./planSaveDialogMobile.css"></style>

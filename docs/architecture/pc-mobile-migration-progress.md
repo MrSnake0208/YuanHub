@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：21/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：23/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -19,13 +19,13 @@
 | /calendar（feature: activityCalendar） | pages/calendar/index.vue | pages/calendar/calendarPageDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarPageMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /calendar/suggestions/new（feature: activityCalendar） | pages/calendar/suggestion-new.vue | pages/calendar/calendarSuggestionNewDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarSuggestionNewMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /calendar/suggestions（feature: activityCalendar） | pages/calendar/suggestions.vue | pages/calendar/calendarSuggestionsDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarSuggestionsMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
-| /admin/ledger | pages/ledger/admin.vue | 待拆分 | 待拆分 | pages/ledger/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /admin/ledger | pages/ledger/admin.vue | pages/ledger/ledgerAdminDesktop.css + cart-workspaceDesktop.css + 组件Desktop.css | pages/ledger/ledgerAdminMobile.css + cart-workspaceMobile.css + 组件Mobile.css | 原账房/目录/方案/收据控制器 | verified_nonbrowser | B11：38行为/204 Node/CSS/build | 草稿/收据单实例/目录版本保持；人工UI待做 | pending |
 | /calendar/admin（feature: activityCalendar） | pages/calendar/admin.vue | pages/calendar/calendarAdminDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarAdminMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /works（feature: workSystem） | pages/work/index.vue | 待拆分 | 待拆分 | pages/work/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /work/new（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /work/:id（feature: workSystem） | pages/work/detail.vue | 待拆分 | 待拆分 | pages/work/detail.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /work/:id/edit（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /cart | pages/tools/cart.vue | 待拆分 | 待拆分 | pages/tools/cart.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /cart | pages/tools/cart.vue | pages/tools/cartPageDesktop.css + cart-workspaceDesktop.css + 组件Desktop.css | pages/tools/cartPageMobile.css + cart-workspaceMobile.css + 组件Mobile.css | 原账房/目录/方案/收据控制器 | verified_nonbrowser | B11：38行为/204 Node/CSS/build | 草稿/收据单实例/目录版本保持；人工UI待做 | pending |
 | /inventory | pages/inventory/index.vue | pages/inventory/inventoryWorkspaceDesktop.css + components/inventory/*Desktop.css/视图 | pages/inventory/inventoryWorkspaceMobile.css + components/inventory/*Mobile.css/视图 | pages/inventory/index.vue + 原奖励控制器 | verified_nonbrowser | B02–B05：真实父级/A1/A2/259行为/CSS/build | 无阻塞；人工UI待做 | pending |
 | /operator | pages/operator/index.vue | pages/operator/operatorWorkspaceDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorWorkspaceMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment（feature: recruitmentArchive） | pages/recruitment/index.vue | pages/recruitment/recruitmentRouteDesktop.css + recruitment*Desktop.css | pages/recruitment/recruitmentRouteMobile.css + recruitment*Mobile.css | 原useRecruitment/PoolEditor/交换控制器 | verified_nonbrowser | B07：231行为/118 Node/CSS/build | 原功能开关保留；人工UI待做 | pending |
@@ -154,4 +154,12 @@
 - `npx --no-install vitest run behavior/changelog*.spec.js behavior/notification*.spec.js`：51/51。新增6个两端真实父级用例，未读筛选、正文展开/版本锚点、编辑标题/正文/选区/焦点与唯一实例跨断点保持，resize无额外读写或定位。实例断言使用Vue内部实例，避免测试工具代理包装身份变化。通知旧链接用例仍有jsdom不支持真实导航提示。
 - `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-10-*.log`。反馈提交补记 `974a575`；本批保存标题 `refactor(changelog): 分离通知与日志双端展示`。完整路由21/43，真实UI待人工验收。
 
-下一动作：广陵账房、收据/方案弹层与公共目录管理。
+## B11：账房与公共目录管理（L2，全局专用选择器退出）
+
+- 两入口与礼包卡、收据、收据工作区、方案保存/列表共7个SFC独立接入双端CSS；页面1080px，收据1180px，内容640/767px保留。所有模板/控制器逐字不变；原Teleport单收据与媒体监听保持，未新增业务实例。
+- main.css中120条账房专用规则按原媒体/顺序精确迁出至cart-workspace外观与两端几何，测试检查原专用命名空间。通用按钮/模态框/步进器保留为刻意共享基础控件（自定义礼包使用原模态表单契约），不复制逻辑或改变录入流程。952局部+136全局源码投影一致；删除矛盾媒体块2320字节。
+- `npx --no-install vitest run behavior/cart*.spec.js behavior/ledger*.spec.js`：38/38。新增4个两端用例保留方案名/焦点/清单总额/收据实例、管理员字段/版本上下文，跨断点零写入；原方案快照、存档与账号隔离断言保留。
+- `node --test test/cartBudget.test.js test/ledgerCatalog.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：204/204。原viewport断言跟随真实模块样式；以PostCSS父媒体检查代替会跨文件误匹配的正则，并补实际1180px底部留白检查。
+- `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-11-*.log`。通知/日志提交补记 `a907933`；本批保存标题 `refactor(ledger): 隔离账房与方案收据双端布局`。完整路由23/43，人工UI仍pending。
+
+下一动作：作业广场、详情、新建/编辑与兼容性展示。

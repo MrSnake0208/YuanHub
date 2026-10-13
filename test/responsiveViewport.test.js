@@ -2,6 +2,7 @@ import { readSource } from '../test-support/readSource.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import postcss from 'postcss'
 
 const read = (path) => readSource(new URL(`../${path}`, import.meta.url))
 
@@ -36,14 +37,22 @@ test('库存分区编辑提示在窄屏内居中，避免透明提示撑宽整�
 })
 
 test('账房底栏可见的整个平板区间都有底部留白', () => {
-  const main = read('src/styles/main.css')
+  const main = read('src/styles/cart-workspace.css')
   assert.match(main, /@media \(min-width:1081px\)\{\.cart-mbar\{display:none\}\}/)
   assert.match(main, /@media \(max-width:1080px\)\{\.cart-main\{padding-bottom:calc\(92px \+ env\(safe-area-inset-bottom\)\)\}\}/)
-  assert.doesNotMatch(main, /@media \(max-width:767px\)[\s\S]*?\.cart-main\{padding-bottom:/)
+  for (const end of ['Desktop', 'Mobile']) {
+    const css = read(`src/styles/cart-workspace${end}.css`)
+    postcss.parse(css).walkRules('.cart-main', rule => {
+      for (let parent = rule.parent; parent; parent = parent.parent) {
+        if (parent.type === 'atrule' && parent.name === 'media') assert.doesNotMatch(parent.params, /max-width:\s*767px/)
+      }
+    })
+    assert.match(read(`src/pages/tools/cartPage${end}.css`), /@media\s*\(max-width:\s*1180px\)\{[\s\S]*?\.cart-main\{padding-bottom:calc\(92px \+ env\(safe-area-inset-bottom\)\)/)
+  }
 })
 
 test('窄屏账房筛选项在容器内横向滚动且不会被挤压', () => {
-  const main = read('src/styles/main.css')
+  const main = read('src/styles/cart-workspace.css')
   assert.match(main, /\.cart-filters \.row\{[^}]*overflow-x:auto/)
   assert.match(main, /\.cart-filters \.chip\{[^}]*flex:none/)
 })

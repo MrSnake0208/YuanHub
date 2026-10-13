@@ -1,0 +1,63 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 640px) {
+.plan-modal{max-width:560px}
+.plan-body{padding:16px 20px;display:flex;flex-direction:column;gap:16px}
+.guest-banner{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;font-size:12px;font-weight:700;
+}
+.guest-banner svg{flex-shrink:0}
+.guest-banner .banner-login{
+  margin-left:auto;padding:6px 14px;font-size:12px;font-weight:800;
+  font-family:var(--font-b);
+}
+
+.plan-sec{display:flex;flex-direction:column;gap:10px}
+.sec-head{
+  display:flex;align-items:center;gap:8px;
+  font-size:12.5px;font-weight:800;letter-spacing:.04em;
+}
+.sec-head .cnt{
+  margin-left:auto;padding:1px 10px;font-size:11px;
+  font-family:var(--font-d);font-weight:700;
+}
+
+.plan-empty{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:18px 12px;font-size:12px;
+}
+
+.plan-list{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
+.plan-item{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 10px;
+}
+.plan-main{
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:2px;
+}
+.plan-main b{
+  font-size:13px;font-weight:800;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+}
+.plan-main .meta{font-size:11px;font-family:var(--font-d)}
+.pbtn{
+  flex-shrink:0;width:44px;height:44px;display:grid;place-items:center;
+}
+.rename-input{
+  flex:1;min-width:0;
+  padding:6px 10px;font-size:12.5px;font-family:var(--font-b);
+}
+
+.upload-hint{
+  padding:10px 12px;font-size:11.5px;line-height:1.6;
+}
+@media (max-width:640px){
+  .plan-body{padding:14px 16px}
+  .guest-banner{align-items:flex-start;flex-wrap:wrap}
+  .guest-banner .banner-login{min-height:40px}
+  .plan-item{align-items:flex-start;flex-wrap:wrap;padding:10px}
+  .plan-main{min-height:44px;justify-content:center}
+  .pbtn{width:44px;height:44px}
+  .rename-input{min-height:44px;font-size:16px}
+}
+}
