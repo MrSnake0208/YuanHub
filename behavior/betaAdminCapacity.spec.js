@@ -51,7 +51,8 @@ function adminPayload(overrides = {}) {
   }
 }
 
-const render = () => mount(BetaAdmin, {
+const render = (options = {}) => mount(BetaAdmin, {
+  ...options,
   global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: true, teleport: true } },
 })
 const target = wrapper => wrapper.get('#beta-capacity-target')
@@ -172,4 +173,34 @@ it('读取中和权限失败仍有明确页头与恢复入口，不渲染虚构�
   expect(wrapper.get('.beta-state-toolbar button').text()).toBe('刷新管理状态')
   expect(wrapper.find('.capacity-panel').exists()).toBe(false)
   wrapper.unmount()
+})
+
+
+it.each([390, 1440])('内测容量在%s起步跨断点保持目标、原因和焦点', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  try {
+    await target(wrapper).setValue('1234')
+    await setReason(wrapper, '跨布局未提交扩容说明')
+    const input = target(wrapper).element
+    input.focus()
+    const reads = getBetaAdmin.mock.calls.length
+    for (const nextWidth of [560, 561, 767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(target(wrapper).element).toBe(input)
+      expect(input.value).toBe('1234')
+      expect(wrapper.get('#beta-admin-reason').element.value).toBe('跨布局未提交扩容说明')
+      expect(document.activeElement).toBe(input)
+      expect(submit(wrapper).element.disabled).toBe(false)
+      expect(wrapper.findAll('.capacity-panel')).toHaveLength(1)
+    }
+    expect(getBetaAdmin).toHaveBeenCalledTimes(reads)
+    expect(updateBetaAdmin).not.toHaveBeenCalled()
+    expect(beta.refresh).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

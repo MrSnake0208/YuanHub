@@ -175,50 +175,38 @@ async function resetLocal() {
 onMounted(load)
 </script>
 <style scoped>
-.beta-admin-content { display: grid; gap: 20px; padding-top: 12px; padding-bottom: 42px; }
-.admin-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: clamp(18px, 3vw, 30px); }
-h2 { font: 900 24px/1.5 var(--font-s); color: var(--ink); margin: 0 0 12px; }
-.beta-admin-content p { line-height: 1.9; color: var(--ink); overflow-wrap: anywhere; }
-.beta-state-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.beta-state-toolbar .admin-btn { flex: none; white-space: nowrap; }
-.beta-admin-content .beta-state-context { margin: 0; font-size: 13px; color: var(--ink-60); }
-.campaign-reference { display: block; font-family: var(--font-d); overflow-wrap: anywhere; }
-.capacity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
-.capacity-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; font-size: 13px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.admin-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+h2 { color: var(--ink); }
+.beta-admin-content p { color: var(--ink); }
+.beta-admin-content .beta-state-context { color: var(--ink-60); }
 .capacity-summary dt { color: var(--ink-60); }
-.capacity-summary dd { font: 700 16px/1.5 var(--font-d); color: var(--tea); }
-.admissions-panel,.access-mode-panel { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
-.admissions-panel h3,.access-mode-panel h3 { font: 800 18px/1.5 var(--font-s); color: var(--tea); }
-dl { display: grid; grid-template-columns: auto 1fr; gap: 12px 22px; } dd { margin: 0; overflow-wrap: anywhere; }
-.reason-label { display: block; font-weight: 700; margin: 12px 0; }
-.reason-hint { margin: 7px 0 0; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
-textarea { box-sizing: border-box; width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--cream); color: var(--ink); font: inherit; resize: vertical; }
-.admin-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-.admin-btn { justify-self: start; min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 11px 20px; background: var(--tea); color: var(--cream); font: 700 14px var(--font-b); cursor: pointer; }
+.capacity-summary dd { color: var(--tea); }
+.admissions-panel,.access-mode-panel { border-top: 1px solid var(--line); }
+.admissions-panel h3,.access-mode-panel h3 { color: var(--tea); }
+.reason-hint { color: var(--ink-60); }
+textarea { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); }
+.admin-btn { border: 1px solid var(--tea); border-radius: 999px; background: var(--tea); color: var(--cream); cursor: pointer; }
 .admin-btn.secondary { background: transparent; color: var(--tea); }
 .admin-btn:disabled { opacity: .45; cursor: default; }
 .admin-btn:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.admin-message { background: var(--cream); border: 1px solid var(--line); padding: 16px; border-radius: 12px; }
-.admin-message.local-mode { display: grid; gap: 5px; border-style: dashed; border-color: var(--accent); }
+.admin-message { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; }
+.admin-message.local-mode { border-style: dashed; border-color: var(--accent); }
 .admin-message.local-mode b { color: var(--accent); }
-.admin-message.local-mode span { font-size: 13px; line-height: 1.7; }
 .admin-btn.local-reset { border-color: var(--rouge); background: transparent; color: var(--rouge); }
 .error { color: var(--rouge); }
-.capacity-panel { display: grid; gap: 12px; margin-top: 18px; padding: clamp(14px, 2.4vw, 22px); border: 1px dashed var(--line); border-radius: 14px; background: transparent; }
-.capacity-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
-.capacity-head h3 { margin: 0; font: 800 18px/1.5 var(--font-s); color: var(--ink); }
-.capacity-current { margin: 0; font-size: 13px; color: var(--ink-60); }
-.capacity-current b { margin: 0 2px; font: 800 20px/1 var(--font-d); color: var(--tea); }
-.capacity-field { display: grid; gap: 7px; }
-.capacity-field > label { font-weight: 700; }
-.capacity-input { display: inline-flex; align-items: center; gap: 8px; }
-.capacity-input input { --input-font-size: 18px; box-sizing: border-box; width: 100%; max-width: 220px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--surface); color: var(--ink); font: 700 var(--input-font-size) var(--font-d); }
+.capacity-panel { border: 1px dashed var(--line); border-radius: 14px; background: transparent; }
+.capacity-head h3 { color: var(--ink); }
+.capacity-current { color: var(--ink-60); }
+.capacity-current b { color: var(--tea); }
+.capacity-input input { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
 .capacity-input input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .capacity-input input[aria-invalid='true'] { border-color: var(--rouge); }
 .capacity-input span { color: var(--ink-60); }
-.capacity-hint { margin: 0; font-size: 13px; color: var(--ink-60); }
-.capacity-hint b { margin: 0 2px; font: 800 20px/1 var(--font-d); color: var(--accent); }
-.capacity-error { margin: 0; font-size: 13px; font-weight: 700; color: var(--rouge); }
-.capacity-note { margin: 0; font-size: 12px; line-height: 1.7; color: var(--ink-60); }
-@media (max-width: 560px) { .beta-state-toolbar { display: grid; } .capacity-summary { grid-template-columns: minmax(0, 1fr); } .capacity-summary dd { margin-bottom: 0; } dl { grid-template-columns: 1fr; gap: 4px; } dd { margin-bottom: 12px; } .capacity-input input { max-width: none; } }
+.capacity-hint { color: var(--ink-60); }
+.capacity-hint b { color: var(--accent); }
+.capacity-error { color: var(--rouge); }
+.capacity-note { color: var(--ink-60); }
 </style>
+<style scoped src="./betaAdminDesktop.css"></style>
+<style scoped src="./betaAdminMobile.css"></style>
