@@ -9,6 +9,8 @@ import { activeAccount } from '../src/store/activeAccount.js'
 import { auth } from '../src/store/auth.js'
 import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 import { installViewport } from '../test-support/viewport.js'
+import InventoryRecordsWorkspace from '../src/components/inventory/InventoryRecordsWorkspace.vue'
+import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -54,12 +56,13 @@ async function removeButton(wrapper) {
 
 describe.each([1440, 390])('操作历史 %ipx', width => {
 
-function render() {
+function render(stubs = {}) {
   return mount(InventoryPage, { global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true,
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
       ResourceBalanceReport: true, AcquiredPeriodReport: true, RewardEntryWorkspace: true,
+      ...stubs,
     },
     directives: { reveal: () => {} },
   } })
@@ -483,6 +486,7 @@ it('筛选、分页与焦点跨尺寸保留，订阅不重复；卸载后迟到�
   subscribeAccountEvents.mockReturnValueOnce(unsubscribe)
   const wrapper = render()
   await flushPromises()
+  const workspace = wrapper.getComponent(InventoryRecordsWorkspace).vm.$
   await filter(wrapper, '道具').trigger('click')
   await flushPromises()
   const button = filter(wrapper, '道具')
@@ -495,6 +499,7 @@ it('筛选、分页与焦点跨尺寸保留，订阅不重复；卸载后迟到�
     viewport.resize(nextWidth)
     await flushPromises()
     expect(history(wrapper).findAll('.record-list')).toHaveLength(1)
+    expect(wrapper.getComponent(InventoryRecordsWorkspace).vm.$).toBe(workspace)
     expect(history(wrapper).get('.record').text()).toContain(record.record_id)
     expect(document.activeElement).toBe(button.element)
   }
@@ -531,6 +536,40 @@ it('增量加载失败保留记录和位置，并可重试', async () => {
   await flushPromises()
   expect(inventoryApi.listRecords).toHaveBeenLastCalledWith({ accountId: 'acc-1', entityType: undefined, cursor: 'next', limit: 50 })
   expect(wrapper.findAll('.record')).toHaveLength(2)
+})
+
+it('历史报告入口连接唯一真实奖励实例，跨断点保留文本草稿与焦点且不写入', async () => {
+  inventoryApi.getCatalog.mockResolvedValue({ entities: [{ id: 'baijinbi', name: '白金币', entity_type: 'item' }] })
+  const wrapper = render({ RewardEntryWorkspace: false })
+  document.body.append(wrapper.element)
+  await flushPromises()
+  const reward = wrapper.getComponent(RewardEntryWorkspace).vm.$
+  const opener = history(wrapper).get('.records-report-entry')
+  expect(opener.element.disabled).toBe(false)
+  await opener.trigger('click'); await flushPromises()
+  expect(opener.attributes('aria-expanded')).toBe('true')
+  document.querySelector('.paste-toggle').click(); await flushPromises()
+  const textarea = document.querySelector('#reward-report-text textarea')
+  textarea.value = '尚未解析的合成报告草稿'
+  textarea.dispatchEvent(new Event('input', { bubbles: true })); textarea.focus()
+  await flushPromises()
+  const reads = [inventoryApi.getCatalog, getOperatorCatalog, inventoryApi.getCurrent, inventoryApi.listRecords].map(fn => fn.mock.calls.length)
+  for (const next of [640, 641, 768, 1081, 390, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent(RewardEntryWorkspace).vm.$).toBe(reward)
+    expect(wrapper.findAllComponents(RewardEntryWorkspace)).toHaveLength(1)
+    expect(document.querySelector('#reward-report-text textarea')).toBe(textarea)
+    expect(textarea.value).toBe('尚未解析的合成报告草稿')
+    expect(document.activeElement).toBe(textarea)
+    expect([inventoryApi.getCatalog, getOperatorCatalog, inventoryApi.getCurrent, inventoryApi.listRecords].map(fn => fn.mock.calls.length)).toEqual(reads)
+  }
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  expect(inventoryApi.deleteRecord).not.toHaveBeenCalled()
+  expect(inventoryApi.restoreRecord).not.toHaveBeenCalled()
+  document.querySelector('[aria-label="关闭奖励工作台"]').click(); await flushPromises()
+  expect(document.querySelector('#reward-entry-panel')).toBeNull()
+  expect(opener.attributes('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(opener.element)
 })
 
 it('删除确认可核对内容，失败留页内，成功后可撤销', async () => {
