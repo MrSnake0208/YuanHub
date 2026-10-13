@@ -27,19 +27,29 @@ it.each([{ names: ['甲'] }, { names: ['甲', '乙'] }, { names: ['很长的密�
 
 it.each([
   pool({ up_agent_names: undefined }), pool({ up_agent_names: [] }),
+  pool({ up_agent_names: [null, '', ' ', 42] }),
+  pool({ up_agent_names: undefined, source_up_agent_names: ['未知候选'] }),
   pool({ source_type: 'MANUAL', category: 'ACTIVITY' }),
   { ...pool(), source_type: 'PRIVATE_ITEM', category: 'PRIVATE_ITEM' },
   { ...pool(), category: 'SHOP' },
 ])('旧API、未知、非招募和私人事项不展示UP副行：$source_type/$category', item => {
   const wrapper = mount(Card, { props: { item, today } })
   expect(wrapper.find('.calendar-up-agents').exists()).toBe(false)
+  wrapper.unmount()
+  for (const component of [Month, Timeline]) {
+    const view = mount(component, { props: { items: [item], today, anchorDate: today } })
+    expect(view.find('.calendar-month-bar-up, .calendar-timeline-bar-up').exists()).toBe(false)
+    for (const bar of view.findAll('.calendar-month-bar, .calendar-timeline-bar')) expect(bar.attributes('aria-label')).not.toContain('UP 密探')
+    view.unmount()
+  }
 })
 
-it('时间轴跨周色条不追加名单，按钮打开完整详情并恢复焦点', async () => {
+it('时间轴跨周色条直显双UP，按钮打开完整详情并恢复焦点', async () => {
   const item = pool()
   const wrapper = mount(Timeline, { props: { items: [item, ...denseMonthItems()], today, anchorDate: today }, attachTo: document.body })
   const bar = wrapper.findAll('.calendar-timeline-bar').find(node => node.text().includes(item.title))
-  expect(bar.text()).not.toContain('UP 密探：')
+  expect(bar.get('.calendar-timeline-bar-up').text()).toBe('UP · 甲 / 乙')
+  expect(bar.attributes('aria-label')).toContain('UP 密探：甲、乙')
   expect(bar.get('.calendar-timeline-bar-title').text()).toBe(item.title)
   expect(bar.attributes('aria-controls')).toBe('calendar-timeline-detail')
   bar.element.focus()
@@ -56,10 +66,11 @@ it('高密度月历跨周色条与行数不受UP影响，当天完整清单显�
   const item = pool({ start_date: '2026-09-01', up_agent_names: ['很长的密探名称'.repeat(15), '乙'] })
   const items = [item, ...denseMonthItems()]
   const wrapper = mount(Month, { props: { items, today, anchorDate: today }, attachTo: document.body })
-  const bars = () => wrapper.findAll('.calendar-month-bar').map(node => ({ text: node.text(), style: node.attributes('style') }))
+  const bars = () => wrapper.findAll('.calendar-month-bar').map(node => ({ id: node.attributes('data-event-id'), style: node.attributes('style') }))
   const withNames = bars()
   const bar = wrapper.findAll('.calendar-month-bar').find(node => node.attributes('data-event-id') === item.id)
-  expect(bar.text()).not.toContain(item.up_agent_names[0])
+  expect(bar.get('.calendar-month-bar-up').text()).toContain(item.up_agent_names[0])
+  expect(bar.attributes('aria-label')).toContain(`UP 密探：${item.up_agent_names.join('、')}`)
   expect(wrapper.get('#calendar-day-detail .calendar-up-agents').text()).toBe(`UP 密探：${item.up_agent_names.join('、')}`)
   await bar.trigger('click')
   const [date, accept] = wrapper.emitted('select-date').at(-1)
@@ -70,4 +81,39 @@ it('高密度月历跨周色条与行数不受UP影响，当天完整清单显�
   expect(bars()).toEqual(withNames)
   expect(wrapper.find('.calendar-up-agents').exists()).toBe(false)
   wrapper.unmount()
+})
+
+it.each([
+  { names: ['甲'], summary: '甲' },
+  { names: ['甲', '乙'], summary: '甲 / 乙' },
+  { names: ['甲', '乙', '丙', '丁'], summary: '甲 / 乙 +2' },
+  { names: ['超长中文名'.repeat(20), 'LongEnglishName'.repeat(20)], summary: `${'超长中文名'.repeat(20)} / ${'LongEnglishName'.repeat(20)}` },
+  { names: ['<img src=x onerror=alert(1)>', 'A&B "Q"'], summary: '<img src=x onerror=alert(1)> / A&B "Q"' },
+])('长条正文展示真实名单摘要，完整名单可读屏且安全转义：$names', ({ names, summary }) => {
+  const item = pool({ up_agent_names: names })
+  for (const component of [Month, Timeline]) {
+    const view = mount(component, { props: { items: [item], today, anchorDate: today } })
+    const bars = view.findAll('.calendar-month-bar, .calendar-timeline-bar')
+    expect(bars.length).toBeGreaterThan(0)
+    for (const bar of bars) {
+      expect(bar.get('.calendar-month-bar-up, .calendar-timeline-bar-up').text()).toBe(`UP · ${summary}`)
+      expect(bar.attributes('aria-label')).toContain(`UP 密探：${names.join('、')}`)
+      expect(bar.find('img').exists()).toBe(false)
+    }
+    view.unmount()
+  }
+})
+
+it.each(['如鸢', '代号鸢'])('单日窄条保留首名和余量，详情完整；%s部分确认不使用候选名单', async game => {
+  const item = pool({ game, start_date: today, end_date: today, up_agent_names: ['甲', '乙', '丙'], source_up_agent_names: ['未知候选'] })
+  for (const component of [Month, Timeline]) {
+    const view = mount(component, { props: { items: [item], today, anchorDate: today } })
+    const bar = view.get('.calendar-month-bar, .calendar-timeline-bar')
+    expect(bar.get('.calendar-month-bar-up, .calendar-timeline-bar-up').text()).toBe('UP · 甲 +2')
+    expect(bar.attributes('aria-label')).toContain('UP 密探：甲、乙、丙')
+    expect(view.text()).not.toContain('未知候选')
+    await bar.trigger('click'); await flushPromises()
+    expect(view.get('.calendar-up-agents').text()).toBe('UP 密探：甲、乙、丙')
+    view.unmount()
+  }
 })

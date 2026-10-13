@@ -25,9 +25,13 @@
             :account-id="subscriptions.account.value?.id || ''" :before-switch="subscriptions.switchAccount" />
           <p v-else-if="subscriptions.accountLoading.value" role="status">正在读取游戏账号…</p>
           <p v-else-if="subscriptions.accountError.value" role="alert">{{ subscriptions.accountError.value }} <button type="button" @click="subscriptions.loadAccounts">重试</button></p>
-          <label v-if="mine" class="calendar-check-row"><input type="checkbox" :checked="pendingOnly" @change="setPending($event.target.checked, $event.target)">有未完成待办</label>
+          <label v-if="mine" class="calendar-task-filter">个人活动
+            <select :value="taskStatus" aria-label="个人活动状态" @change="setTask($event.target.value, $event.target)">
+              <option value="todo">我的待办</option><option value="completed">已完成</option><option value="all">全部订阅</option>
+            </select>
+          </label>
           <button v-if="mine" type="button" class="calendar-private-add" :disabled="!privateItems.ready.value" @click="privateItems.open(null, anchorDate)"><Plus :size="17" aria-hidden="true" /> 添加私人事项</button>
-          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅、活动待办与私人事项仅当前账号可见。</p>
+          <p v-if="mine && subscriptions.account.value" class="calendar-hint calendar-account-scope">{{ filters.game }}（账号锁定） · 订阅即本期待办，截止不会自动完成；历史档期可调整日期查看。私人事项仅当前账号可见。</p>
           <p v-if="subscriptions.contextNotice.value" class="calendar-hint" role="status">{{ subscriptions.contextNotice.value }}</p>
         </section>
         <div v-if="activeFilterCount" class="calendar-filter-state" aria-label="已启用的筛选">
@@ -43,7 +47,7 @@
         <CalendarTodaySummary :today="today" :counts="todayCounts" :loading="loading" :error="error" />
         <p v-if="!mine && subscriptions.error.value" class="calendar-error" role="alert">个人订阅状态读取失败，公共活动仍可浏览。<button type="button" @click="subscriptions.load">重试订阅</button></p>
         <p v-if="mine && privateItems.notice.value" class="calendar-panel" role="status">{{ privateItems.notice.value }}</p>
-        <p v-if="mine && privateItemsHidden" class="calendar-hint">当前类型、时间状态或待办筛选仅显示订阅活动，私人事项已隐藏；清除对应筛选即可查看。</p>
+        <p v-if="mine && privateItemsHidden" class="calendar-hint">当前类型、时间状态或已完成视图仅显示订阅活动，私人事项已隐藏；清除类型/时间筛选或切回我的待办即可查看。</p>
         <p v-if="mine && !subscriptions.account.value" class="calendar-panel" role="status">请先通过上方账号切换器选择或新建游戏账号，再使用我的日历。</p>
         <div v-else-if="!viewLoading && !viewError && !visibleItems.length" class="calendar-panel calendar-filter-empty" role="status">
           <p>{{ mine && !subscriptions.count.value && !privateItems.records.value.length ? '我的日历还是空的，可以添加私人事项，或去全部活动订阅。' : mine ? '当前条件下无事项，试试清除筛选或调整日期。' : '当前条件下无活动，试试清除筛选或调整日期。' }}</p>
@@ -89,7 +93,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCalendarSubscriptions } from '@/composables/useCalendarSubscriptions.js'
 import { useCalendarPrivateItems } from '@/composables/useCalendarPrivateItems.js'
 import CalendarPrivateItemEditor from '@/components/calendar/CalendarPrivateItemEditor.vue'
-import { subscriptionScope, subscriptionPending, subscriptionScopeQuery, subscriptionHasPending } from '@/data/activityCalendarSubscriptions.js'
+import { subscriptionScope, subscriptionTask, subscriptionScopeQuery, subscriptionMatchesTask } from '@/data/activityCalendarSubscriptions.js'
 import CalendarSubscriptionControls from '@/components/calendar/CalendarSubscriptionControls.vue'
 import AccountSwitcher from '@/components/AccountSwitcher.vue'
 import { isNavigationFailure, NavigationFailureType, useRoute, useRouter } from 'vue-router'
@@ -117,7 +121,7 @@ let savedView = ''
 try { if (enabled) savedView = localStorage.getItem(CALENDAR_VIEW_STORAGE_KEY) || '' } catch { /* Storage can be unavailable in private browsers. */ }
 const preferredView = ref(calendarView({}, savedView, wide))
 const mine = computed(() => subscriptionScope(route.query))
-const pendingOnly = computed(() => mine.value && subscriptionPending(route.query))
+const taskStatus = computed(() => subscriptionTask(route.query))
 const filters = computed(() => ({ ...calendarFilters(route.query), ...(mine.value ? { game: subscriptions.account.value?.game || '' } : {}) }))
 const filterOpen = ref(false), filterTrigger = ref(null)
 const activeFilters = computed(() => [
@@ -125,7 +129,6 @@ const activeFilters = computed(() => [
   filters.value.category && { key: 'category', label: CALENDAR_CATEGORIES[filters.value.category], clear: '' },
   filters.value.exclude_recruitment && { key: 'exclude_recruitment', label: '不含招募', clear: false },
   filters.value.status && { key: 'status', label: CALENDAR_TIME_FILTERS[filters.value.status], clear: '' },
-  pendingOnly.value && { key: 'pending', label: '有未完成待办' },
 ].filter(Boolean))
 const filterSummary = computed(() => activeFilters.value.map(condition => condition.label).join(' · ') || '未启用筛选')
 const activeFilterCount = computed(() => activeFilters.value.length)
@@ -145,23 +148,33 @@ watch(() => route.fullPath, () => { if (subscriptions.dirty.value) subscriptions
 const requestKey = computed(() => JSON.stringify({ game: filters.value.game, category: filters.value.category, ...requestRange.value, today: today.value, identity: subscriptions.identity.value }))
 const items = ref([]), summaryItems = ref([]), loading = ref(false), error = ref(''), locateRequest = ref(0)
 const todayCounts = computed(() => summarizeCalendarDay(filterCalendarItems(summaryItems.value, { ...filters.value, status: '' }), today.value))
-const privateItemsHidden = computed(() => !!(filters.value.category || filters.value.status || pendingOnly.value))
+const privateItemsHidden = computed(() => !!(filters.value.category || filters.value.status || (mine.value && taskStatus.value === 'completed')))
 const visibleItems = computed(() => {
   const values = mine.value
-    ? normalizeCalendarItems(subscriptions.records.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)).map(record => record.item))
+    ? normalizeCalendarItems(subscriptions.records.value.filter(record => subscriptionMatchesTask(record, taskStatus.value)).map(record => record.item))
     : items.value
   const publicItems = filterCalendarItems(values, filters.value, subscriptions.now.value)
   return [...publicItems, ...(mine.value && !privateItemsHidden.value ? privateItems.records.value : [])]
     .filter(item => (item.end_date == null || item.end_date >= requestRange.value.from) && item.start_date <= requestRange.value.to)
 })
-const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => !pendingOnly.value || subscriptionHasPending(record)))
+const visibleUnavailable = computed(() => subscriptions.unavailable.value.filter(record => subscriptionMatchesTask(record, taskStatus.value)))
+let locatedRoute = ''
+watch(() => [route.query.event, visibleItems.value, currentView.value, anchorDate.value], async () => {
+  const eventId = Array.isArray(route.query.event) ? route.query.event[0] : route.query.event
+  if (!eventId || locatedRoute === route.fullPath) return
+  await nextTick()
+  const card = [...document.querySelectorAll('article.calendar-event[data-event-id]')].find(node => node.dataset.eventId === eventId)
+  if (card) locatedRoute = route.fullPath
+  card?.scrollIntoView?.({ block: 'nearest' })
+  card?.querySelector('h4')?.focus({ preventScroll: true })
+}, { flush: 'post' })
 const viewLoading = computed(() => mine.value ? subscriptions.loading.value || privateItems.loading.value : loading.value)
 const viewError = computed(() => mine.value ? subscriptions.error.value || privateItems.error.value : error.value)
 function retry() { if (mine.value) { void subscriptions.load(); void privateItems.load() } else void load() }
 function setScope(value) { return router.replace({ query: subscriptionScopeQuery(route.query, value) }) }
-function setPending(value, input) {
-  if (input) input.checked = pendingOnly.value
-  const query = { ...route.query }; if (value) query.pending = '1'; else delete query.pending
+function setTask(value, input) {
+  if (input) input.value = taskStatus.value
+  const query = { ...route.query, task: value }; delete query.pending
   return router.replace({ query })
 }
 let generation = 0, publicContext = ''
@@ -212,13 +225,14 @@ onBeforeUnmount(() => {
 })
 function setFilter(patch) { const value = { ...patch }; if (mine.value) delete value.game; return router.replace({ query: calendarFilterQuery(route.query, value) }) }
 async function removeFilter(condition) {
-  const failure = await (condition.key === 'pending' ? setPending(false) : setFilter({ [condition.key]: condition.clear }))
+  const failure = await setFilter({ [condition.key]: condition.clear })
   if (failure) return
   await nextTick()
   filterTrigger.value?.focus({ preventScroll: true })
 }
 async function resetFilters() {
   const query = calendarFilterQuery(route.query, { ...(mine.value ? {} : { game: '' }), category: '', exclude_recruitment: false, status: '' })
+  if (mine.value && !route.query.task && taskStatus.value === 'all') query.task = 'all'
   delete query.pending
   const failure = await router.replace({ query })
   if (failure || filterOpen.value) return failure

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { dialog } from '../src/utils/dialog.js'
 import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'
 import { recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
@@ -7,7 +7,11 @@ const records = () => [
   { ...recruitmentEvent('A', 17), agent_snapshot: { agent_id: 'a', name: '杨修', rarity: 5 } },
   { ...recruitmentEvent('B', null), agent_snapshot: { agent_id: 'b', name: '郭嘉', rarity: 5 } },
 ]
-const render = props => mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: recruitmentFixture().pools[0], recordsRevision: 3, records: records(), canRecord: true, catalog: recruitmentCatalog().pools, agents: [{ id: 'a', name: '杨修', rarity: 5, pinyin: 'yangxiu' }, { id: 'b', name: '郭嘉', rarity: 5 }, { id: 'lu', name: '陆逊', rarity: 5 }], ...props }, global: { stubs: { Teleport: true } } })
+const render = props => {
+  const w = mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: recruitmentFixture().pools[0], recordsRevision: 3, records: records(), canRecord: true, catalog: recruitmentCatalog().pools, agents: [{ id: 'a', name: '杨修', rarity: 5, pinyin: 'yangxiu' }, { id: 'b', name: '郭嘉', rarity: 5 }, { id: 'lu', name: '陆逊', rarity: 5 }], ...props }, global: { stubs: { Teleport: false } } })
+  // Real Teleport preserves DOM identity during updates; the VTU stub remounts its slot.
+  return Object.assign(new DOMWrapper(document.body), { vm: w.vm, emitted: w.emitted.bind(w), setProps: w.setProps.bind(w), unmount: w.unmount.bind(w) })
+}
 const button = (w, text) => w.findAll('button').find(b => b.text() === text)
 async function position(w, mode, anchor) {
   await w.get('.position-toggle').trigger('click')
@@ -178,4 +182,200 @@ it.each(['已抽', '已垫'])('未知保底纯排序兼容%s偏好，排序草�
   await w.get('form').trigger('submit')
   expect(w.emitted('save')[0][0].data).toMatchObject({ remaining_pulls: null, entries: [], ordered_event_ids: ['B', 'A'] })
   confirm.mockRestore(); w.unmount()
+})
+
+// Mock the library boundary only; callbacks still restore real DOM and update the mounted editor.
+const sortables = vi.hoisted(() => [])
+vi.mock('sortablejs', () => ({ default: class {
+  constructor(element, options) {
+    this.el = element; this.options = options; sortables.push(this)
+    this.drop = event => options.onEnd({ originalEvent: event })
+    document.addEventListener('mouseup', this.drop)
+  }
+  toArray() { return [...this.el.children].map(row => row.dataset.eventId) }
+  sort(ids) { for (const id of ids) this.el.append([...this.el.children].find(row => row.dataset.eventId === id)) }
+  option(key, value) { this.options[key] = value }
+  destroy() { document.removeEventListener('mouseup', this.drop) }
+} }))
+const idsOnScreen = w => w.findAll('[data-event-id]').map(row => row.attributes('data-event-id'))
+async function startDrag(w, from, to) {
+  await flushPromises()
+  const sortable = sortables.at(-1), item = sortable.el.children[from]
+  sortable.options.onStart({ item })
+  item.remove(); sortable.el.insertBefore(item, sortable.el.children[to] || null)
+  return sortable
+}
+async function drop(w, from, to, type = 'mouseup') {
+  const sortable = await startDrag(w, from, to)
+  sortable.options.onEnd({ originalEvent: new Event(type) })
+  await flushPromises()
+}
+it('加入后拖到历史中间、最早、最新：双视图一致且只保存完整旧→新集合', async () => {
+  const w = render()
+  await addLu(w); await w.get('.composer-actions .primary').trigger('click')
+  const newId = idsOnScreen(w)[0]
+  await drop(w, 0, 1)
+  expect(idsOnScreen(w)).toEqual(['B', newId, 'A'])
+  expect(w.emitted('save')).toBeUndefined()
+  expect(w.text()).toContain('历史顺序待保存')
+  await button(w, '密探视图').trigger('click')
+  expect(idsOnScreen(w)).toEqual(['B', newId, 'A'])
+  expect(w.find('.record-handle .agent-record-detail').exists()).toBe(false)
+  await drop(w, 1, 2)
+  expect(idsOnScreen(w)).toEqual(['B', 'A', newId])
+  await drop(w, 2, 0)
+  expect(idsOnScreen(w)).toEqual([newId, 'B', 'A'])
+  await drop(w, 0, 1)
+  await w.get('form').trigger('submit')
+  expect(w.emitted('save')[0][0].data).toMatchObject({ ordered_event_ids: ['A', newId, 'B'], deleted_event_ids: [], remaining_pulls: 40 })
+  expect(w.emitted('save')[0][0].data.entries[0]).toMatchObject({ event_id: newId, pull_span: null })
+  w.unmount()
+})
+it.each(['mouseup', 'touchcancel'])('无变化或%s取消不产生排序草稿、不误开编辑', async type => {
+  const w = render()
+  await drop(w, 0, type === 'touchcancel' ? 1 : 0, type)
+  expect(idsOnScreen(w)).toEqual(['B', 'A'])
+  expect(w.vm.hasDraft()).toBe(false)
+  await w.get('.record-handle').trigger('click')
+  expect(w.find('.entry-composer').exists()).toBe(false)
+  expect(w.emitted('save')).toBeUndefined()
+  w.unmount()
+})
+it('Escape只取消拖动；恢复顺序不丢新增、编辑或删除草稿，仍原子提交', async () => {
+  const extra = { ...recruitmentEvent('C', 9), agent_snapshot: { agent_id: 'a', name: '杨修', rarity: 5 } }
+  const w = render({ records: [...records(), extra] })
+  await w.findAll('.record-detail')[2].trigger('click')
+  await w.get('.pull-count-field input').setValue('18')
+  await w.get('.composer-actions .primary').trigger('click')
+  await w.findAll('.record-detail')[1].trigger('click')
+  await w.get('.entry-delete').trigger('click')
+  await addLu(w); await w.get('.composer-actions .primary').trigger('click')
+  const newId = idsOnScreen(w)[0]
+  await startDrag(w, 0, 2)
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  await flushPromises()
+  expect(idsOnScreen(w)).toEqual([newId, 'C', 'A'])
+  expect(w.emitted('close')).toBeUndefined()
+  await drop(w, 0, 2)
+  await button(w, '恢复保存前顺序').trigger('click')
+  expect(idsOnScreen(w)).toEqual([newId, 'C', 'A'])
+  await drop(w, 0, 1)
+  await w.get('form').trigger('submit')
+  const data = w.emitted('save')[0][0].data
+  expect(data.ordered_event_ids).toEqual(['A', newId, 'C'])
+  expect(data.deleted_event_ids).toEqual(['B'])
+  expect(data.entries).toEqual(expect.arrayContaining([expect.objectContaining({ event_id: 'A', pull_span: 18 }), expect.objectContaining({ event_id: newId, pull_span: null })]))
+  expect(data.entries).toHaveLength(2)
+  w.unmount()
+})
+it('头像上下键按event_id区分重复密探、恢复焦点并保留关闭确认', async () => {
+  const w = render({ records: [records()[0], { ...records()[0], event_id: 'C', pull_span: null }] })
+  const handle = w.findAll('.record-handle')[1]
+  handle.element.focus()
+  await handle.trigger('keydown', { key: 'ArrowUp' }); await flushPromises()
+  expect(idsOnScreen(w)).toEqual(['A', 'C'])
+  expect(document.activeElement).toBe(handle.element)
+  expect(w.get('.sort-announcement').text()).toContain('第1条')
+  const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValue(false)
+  await w.get('.close-button').trigger('click'); await flushPromises()
+  expect(confirm).toHaveBeenCalledOnce()
+  await w.get('form').trigger('submit')
+  expect(w.emitted('save')[0][0].data).toMatchObject({ entries: [], ordered_event_ids: ['C', 'A'] })
+  confirm.mockRestore(); w.unmount()
+})
+it('分页、加载失败与搜索禁用局部排序，全量读完可恢复；编辑和只读保持禁用', async () => {
+  const w = render({ hasMore: true })
+  await flushPromises()
+  expect(sortables.at(-1).options.disabled).toBe(true)
+  await button(w, '读取全部后排序').trigger('click')
+  expect(w.emitted('load-all')).toHaveLength(1)
+  await w.setProps({ recordsError: '离线' })
+  await button(w, '重试读取全部记录').trigger('click')
+  expect(w.emitted('load-all')).toHaveLength(2)
+  await w.setProps({ hasMore: false, recordsError: '' })
+  expect(sortables.at(-1).options.disabled).toBe(false)
+  await w.get('.record-search input').setValue('杨修')
+  expect(sortables.at(-1).options.disabled).toBe(true)
+  await w.get('.record-handle').trigger('keydown', { key: 'ArrowDown' })
+  expect(w.vm.hasDraft()).toBe(false)
+  expect(w.text()).toContain('清除搜索')
+  await w.get('.record-search input').setValue('')
+  await w.get('.record-detail').trigger('click')
+  expect(sortables.at(-1).options.disabled).toBe(true)
+  await button(w, '取消').trigger('click')
+  await w.setProps({ readOnly: true })
+  expect(sortables.at(-1).options.disabled).toBe(true)
+  expect(w.get('.record-handle').element.disabled).toBe(true)
+  w.unmount()
+})
+it('拖动中版本变化或开始请求取消移动；已提交未核验时不能再排序', async () => {
+  const w = render()
+  await startDrag(w, 0, 1)
+  await w.setProps({ recordsRevision: 4 })
+  document.dispatchEvent(new Event('mouseup')); await flushPromises()
+  expect(idsOnScreen(w)).toEqual(['B', 'A'])
+  expect(w.vm.hasDraft()).toBe(false)
+  await startDrag(w, 0, 1)
+  await w.setProps({ busy: true }); await flushPromises()
+  expect(idsOnScreen(w)).toEqual(['B', 'A'])
+  await w.setProps({ busy: false })
+  await drop(w, 0, 1)
+  await w.get('form').trigger('submit')
+  const receipt = { ...w.emitted('save')[0][0].data, revision: 5 }
+  await w.setProps({ saveReceipt: receipt })
+  expect(sortables.at(-1).options.disabled).toBe(true)
+  expect(w.vm.hasDraft()).toBe(true)
+  w.unmount()
+})
+it('reduced-motion动态关闭让位动画；组件卸载销毁库监听', async () => {
+  const motion = { matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }
+  vi.stubGlobal('matchMedia', () => motion)
+  const w = render(); await flushPromises()
+  const sortable = sortables.at(-1), destroy = vi.spyOn(sortable, 'destroy')
+  expect(sortable.options.animation).toBe(0)
+  motion.matches = false; motion.addEventListener.mock.calls[0][1]()
+  expect(sortable.options.animation).toBe(160)
+  w.unmount()
+  expect(destroy).toHaveBeenCalledOnce()
+  expect(motion.removeEventListener).toHaveBeenCalledOnce()
+})
+
+it('拖动中关闭窗口清理浮层监听，不留下顺序草稿或迟到保存', async () => {
+  const w = render()
+  const sortable = await startDrag(w, 0, 1), destroy = vi.spyOn(sortable, 'destroy')
+  await w.setProps({ open: false }); await flushPromises()
+  expect(destroy).toHaveBeenCalledOnce()
+  expect(w.find('.pool-editor').exists()).toBe(false)
+  expect(w.emitted('save')).toBeUndefined()
+  await w.setProps({ open: true }); await flushPromises()
+  expect(idsOnScreen(w)).toEqual(['B', 'A'])
+  expect(w.vm.hasDraft()).toBe(false)
+  w.unmount()
+})
+
+it('进度条和数字区域也能抓住整条记录，普通点击仍编辑、拖动结束不误开编辑', async () => {
+  const w = render(); await flushPromises()
+  const row = w.get('.gacha-record'), detail = row.get('.record-detail')
+  expect(detail.element.closest(sortables.at(-1).options.handle)).toBe(row.element)
+  expect(row.get('.pull-result b').element.closest(sortables.at(-1).options.handle)).toBe(row.element)
+  await detail.trigger('click')
+  expect(w.find('.entry-composer').exists()).toBe(true)
+  await button(w, '取消').trigger('click')
+  await drop(w, 0, 1)
+  await w.get('.record-detail').trigger('click')
+  expect(w.find('.entry-composer').exists()).toBe(false)
+  expect(idsOnScreen(w)).toEqual(['A', 'B'])
+  expect(w.emitted('save')).toBeUndefined()
+  await w.get('form').trigger('submit')
+  expect(w.emitted('save')[0][0].data).toMatchObject({ entries: [], ordered_event_ids: ['B', 'A'] })
+  w.unmount()
+})
+
+it('中间记录拖到最早处后保持落点，保留Vue列表锚点且提交完整顺序', async () => {
+  const w = render({ records: ['A', 'B', 'C', 'D'].map(event_id => ({ ...records()[0], event_id })) })
+  await drop(w, 1, 3)
+  expect(idsOnScreen(w)).toEqual(['D', 'B', 'A', 'C'])
+  await w.get('form').trigger('submit')
+  expect(w.emitted('save')[0][0].data).toMatchObject({ entries: [], ordered_event_ids: ['C', 'A', 'B', 'D'] })
+  w.unmount()
 })

@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open && pool" class="modal-mask" @click.self="close">
-      <section ref="panel" class="pool-editor" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
+      <section ref="panel" class="pool-editor" :class="{ 'is-dragging': dragging }" :data-practice="practice || undefined" role="dialog" aria-modal="true" :aria-labelledby="editorId + '-title'" tabindex="-1">
         <header class="editor-header">
           <div class="editor-title">
             <span class="editor-eyebrow">{{ practice ? '练习 · 不会保存到你的账号' : '招募档案' }}</span>
@@ -145,7 +145,7 @@
                     :title="'快速登记 ' + agent.name"
                     :aria-pressed="activeRow?.agent_id === agent.id"
                     :class="{ 'is-selected': activeRow?.agent_id === agent.id }"
-                    :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
+                    :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add(agent.id)"
                   >
                     <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
@@ -156,7 +156,7 @@
                     class="add-record"
                     :aria-pressed="choosingAgent"
                     :class="{ 'is-selected': choosingAgent }"
-                    :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
+                    :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add()"
                   >
                     <Plus :size="17" aria-hidden="true" />
@@ -277,18 +277,25 @@
                 <h3 :id="editorId + '-records'">本池抽卡进度</h3>
                 <p>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }} · 最新 → 最早</p>
               </div>
-              <label v-if="rows.length" class="record-search"><span>查找已有记录</span><input v-model="recordSearch" type="search" placeholder="按密探名字查找" autocomplete="off"></label>
+              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status">{{ sortBlocked || (recordView === 'progress' ? '拖动整条记录' : '拖动头像') + '调整顺序；触屏长按后拖动，键盘聚焦头像后按上下键。点击记录可编辑，再保存修改。' }}
+                <button v-if="hasMore" type="button" :disabled="busy || readOnly || recordsLoading" @click="$emit('load-all')">{{ recordsLoading ? '正在读取…' : recordsError ? '重试读取全部记录' : '读取全部后排序' }}</button>
+                <button v-if="orderChanged" type="button" :disabled="busy || !!unverifiedSave || dragging" @click="resetOrder">恢复保存前顺序</button>
+              </p>
+              <p class="sort-announcement" aria-live="polite" aria-atomic="true">{{ sortAnnouncement }}</p>
+              <label v-if="rows.length" class="record-search"><span>查找已有记录</span><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="按密探名字查找" autocomplete="off"></label>
 
-              <ol v-if="displayRows.length && recordView === 'progress'" class="record-feed">
-                <li v-for="row in displayRows" :key="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row) }">
+              <ol key="progress-records" ref="recordList" v-if="displayRows.length && recordView === 'progress'" class="record-feed">
+                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row), 'is-sortable': !sortBlocked }" @contextmenu="!sortBlocked && $event.preventDefault()">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
-                  <OperatorAvatar
-                    class="record-avatar"
-                    :avatar="agentAvatar(selectedAgent(row))"
-                    :name="selectedAgent(row)?.name || row.agent_id"
-                    :rarity="Number(selectedAgent(row)?.rarity) || 5"
-                    aria-hidden="true"
-                  />
+                  <button type="button" class="record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row)" @contextmenu.prevent>
+                    <OperatorAvatar
+                      class="record-avatar"
+                      :avatar="agentAvatar(selectedAgent(row))"
+                      :name="selectedAgent(row)?.name || row.agent_id"
+                      :rarity="Number(selectedAgent(row)?.rarity) || 5"
+                      aria-hidden="true"
+                    />
+                  </button>
                   <button
                     type="button"
                     class="record-detail"
@@ -312,9 +319,20 @@
                 </li>
               </ol>
 
-              <ol v-else-if="displayRows.length" class="agent-record-grid" aria-label="密探视图">
-                <li v-for="row in displayRows" :key="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="agent-record-card" :class="{ 'is-saved': isSavedRow(row) }">
+              <ol key="agent-records" ref="recordList" v-else-if="displayRows.length" class="agent-record-grid" aria-label="密探视图">
+                <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="agent-record-card" :class="{ 'is-saved': isSavedRow(row) }">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
+                  <button type="button" class="agent-record-portrait record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row)" @contextmenu.prevent>
+                    <OperatorAvatar
+                      class="agent-record-avatar"
+                      :avatar="agentAvatar(selectedAgent(row))"
+                      :name="selectedAgent(row)?.name || row.agent_id"
+                      :rarity="Number(selectedAgent(row)?.rarity) || 5"
+                      aria-hidden="true"
+                    />
+                    <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ isFourStar(row) ? '4星计次' : row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
+                    <span v-if="row.up_status === 'non_up'" class="agent-non-up" aria-hidden="true">歪</span>
+                  </button>
                   <button
                     type="button"
                     class="agent-record-detail"
@@ -322,17 +340,6 @@
                     :aria-label="recordLabel(row)"
                     @click="edit(row)"
                   >
-                    <span class="agent-record-portrait">
-                      <OperatorAvatar
-                        class="agent-record-avatar"
-                        :avatar="agentAvatar(selectedAgent(row))"
-                        :name="selectedAgent(row)?.name || row.agent_id"
-                        :rarity="Number(selectedAgent(row)?.rarity) || 5"
-                        aria-hidden="true"
-                      />
-                      <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ isFourStar(row) ? '4星计次' : row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
-                      <span v-if="row.up_status === 'non_up'" class="agent-non-up" aria-hidden="true">歪</span>
-                    </span>
                     <span class="agent-record-name">{{ selectedAgent(row)?.name || row.agent_id }}</span>
                     <span class="agent-record-flags" aria-hidden="true">
                       <span v-if="row.batch_id" class="agent-record-flag">批次</span>
@@ -370,7 +377,7 @@
             </p>
             <div class="footer-actions">
               <button type="button" :disabled="busy" @click="close">取消</button>
-              <button class="primary" type="submit" :disabled="busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || !!activeRow || !pendingCount">
+              <button class="primary" type="submit" :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || !!activeRow || !pendingCount">
                 {{ busy ? '保存中…' : pendingCount ? `保存 ${pendingCount} 项修改` : '保存修改' }}
               </button>
             </div>
@@ -388,6 +395,7 @@ import { CircleHelp, Plus, X } from '@lucide/vue'
 import RecruitmentGuideChoice from './RecruitmentGuideChoice.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
+import { useRecordDrag } from './useRecordDrag.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
@@ -633,6 +641,54 @@ async function close() {
 }
 defineExpose({ startGuide, openGuide, hasDraft })
 const displayRows = computed(() => orderedRows.value.slice().reverse().filter(row => matchesOperatorSearch(selectedAgent(row) || { name: row.agent_id }, recordSearch.value)))
+const recordList = ref(null), sortAnnouncement = ref('')
+const sortBlocked = computed(() => {
+  if (props.readOnly) return '当前仅可查看记录，不能调整顺序。'
+  if (props.busy) return '正在处理请求，请稍后调整顺序。'
+  if (activeRow.value) return '先加入或完成当前记录，再拖动记录调整位置。'
+  if (unverifiedSave.value) return '保存结果尚未确认，请先重新核对。'
+  if (props.recordsLoading) return '正在读取本池记录，请稍后调整顺序。'
+  if (!recordsReady.value) return '本池记录读取失败或尚未就绪，请重新读取后排序。'
+  if (props.hasMore) return '需要读取本池全部记录后才能拖动排序。'
+  if (rows.value.length > 20000) return '历史排序最多支持本池20000条记录，请先导出备份核对。'
+  if (recordSearch.value.trim()) return '请清除搜索后拖动排序，避免只调整部分历史。'
+  if (missingRecordIds.value.length) return '请先核对失效草稿，再调整顺序。'
+  if (orderChanged.value && orderRevision.value !== props.recordsRevision) return '档案版本已变化，顺序草稿保留；请通过记录的位置菜单重新核对，或恢复保存前顺序后重排。'
+  if (rows.value.length < 2) return '至少两条记录才能调整顺序。'
+  return ''
+})
+function announceOrder(message) { sortAnnouncement.value = message }
+function applyDisplayOrder(ids) {
+  if (sortBlocked.value) return
+  const current = displayRows.value.map(row => row.event_id)
+  const set = new Set(ids)
+  if (ids.length !== current.length || set.size !== ids.length || current.some(id => !set.has(id))) return
+  if (ids.every((id, index) => id === current[index])) return
+  orderIds.value = ids.slice().reverse()
+  orderRevision.value = props.recordsRevision
+  announceOrder('记录位置已调整，历史顺序待保存')
+}
+const { dragging, cancelDrag, isDragClick } = useRecordDrag(recordList, sortBlocked,
+  () => `${editorSession}:${props.pool?.pool_id}:${props.recordsRevision}:${props.requestVersion}`,
+  applyDisplayOrder, announceOrder)
+function handleLabel(row) { return `${recordLabel(row)}；拖动调整位置，上下键移动` }
+function moveByKey(event, row) {
+  if (!['ArrowUp', 'ArrowDown'].includes(event.key) || sortBlocked.value || dragging.value) return
+  event.preventDefault()
+  const handle = event.currentTarget
+  const ids = displayRows.value.map(item => item.event_id), index = ids.indexOf(row.event_id)
+  const target = index + (event.key === 'ArrowUp' ? -1 : 1)
+  if (target < 0 || target >= ids.length) return
+  ids.splice(index, 1); ids.splice(target, 0, row.event_id)
+  applyDisplayOrder(ids)
+  announceOrder(`${selectedAgent(row)?.name || row.agent_id}已移到第${target + 1}条，共${ids.length}条，待保存`)
+  nextTick(() => { handle?.focus(); handle?.scrollIntoView?.({ block: 'nearest' }) })
+}
+function resetOrder() {
+  orderIds.value = null; orderRevision.value = null
+  announceOrder('已恢复保存前顺序，新增、编辑和删除草稿仍保留')
+}
+
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
 const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
@@ -752,7 +808,7 @@ function chooseOtherAgent(agentId) {
   resetAgentFilters()
   focusEntry(true)
 }
-function edit(row) { resetPosition(); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function edit(row) { if (isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; resetPosition(); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -811,6 +867,7 @@ function remove(row) {
 }
 watch(() => props.open, open => {
   editorSession++
+  sortAnnouncement.value = ''
   if (!open) {
     if (guideVisible.value) dismissGuide()
     guidePicker.value = false
@@ -859,9 +916,9 @@ onBeforeUnmount(() => {
   window.clearTimeout(pointerReleaseTimer)
   resetKeyboardAvoidance()
 })
-useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => guideVisible.value || guidePicker.value ? dismissGuide() : close() })
+useModalFocus(computed(() => props.open), panel, { initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
 async function submit() {
-  if (props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
+  if (dragging.value || props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
   if (activeRow.value) {
     if (!props.practice || !confirmRecord()) return
   }
@@ -898,6 +955,21 @@ async function submit() {
 </script>
 
 <style scoped>
+.sort-help { margin: 0 0 12px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
+.sort-help button { min-height: 44px; margin-inline-start: 6px; padding: 4px 8px; background: transparent; }
+.sort-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+/* 避免 disabled 按钮吞掉松手事件，让容器接收拖动结束。 */
+.pool-editor.is-dragging button, .pool-editor.is-dragging input { pointer-events: none; }
+.record-handle { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: grab; -webkit-touch-callout: none; user-select: none; }
+.record-handle[data-sort-disabled="true"] { cursor: default; }
+.record-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.record-handle :deep(img) { pointer-events: none; -webkit-user-drag: none; }
+.record-drag-chosen { background: var(--cream); }
+.record-drag-gap { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--cream); }
+.record-drag-gap > * { opacity: .22; }
+.record-drag-floating { z-index: var(--z-overlay-raised) !important; pointer-events: none; border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 22%, transparent); opacity: .95 !important; }
+@media (prefers-reduced-motion: reduce) { .gacha-record, .agent-record-card, .record-handle { transition: none; } }
+
 .position-toggle{margin:8px 0}.position-picker{min-width:0;margin:8px 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}.position-picker legend{font-weight:700}.position-picker label{display:grid;gap:6px;margin-top:10px;min-width:0;font-size:13px}.position-picker select{width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}.position-picker select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .modal-mask:has(.pool-editor[data-practice]){z-index:var(--z-overlay-raised,100)}
 :deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:3px}.gacha-record:has(.guide-hint){flex-wrap:wrap}.gacha-record>.guide-hint{grid-column:1/-1;width:100%;flex-basis:100%}.agent-record-card:has(.guide-hint){grid-column:1/-1}.agent-record-card>.guide-hint{margin-bottom:12px}.compact-entry-row>.guide-hint{grid-column:1/-1}.guide-choice{margin:10px 16px}.unknown-pulls{margin:8px 0}.entry-shortcuts[data-guide-active]{outline-offset:5px}
@@ -1599,13 +1671,19 @@ select {
 
 .gacha-record {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-width: 0;
   padding: 0;
   border-bottom: 1px solid var(--line);
   transition: background-color 180ms ease;
+}
+
+.gacha-record.is-sortable, .gacha-record.is-sortable .record-detail {
+  cursor: grab;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 .gacha-record:hover {
@@ -1765,6 +1843,10 @@ select {
 }
 
 .agent-record-card {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  padding-top: 6px;
   position: relative;
   min-width: 0;
 }
@@ -2173,7 +2255,7 @@ summary:focus-visible,
   }
 
   .gacha-record {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
     gap: 7px;
   }
 

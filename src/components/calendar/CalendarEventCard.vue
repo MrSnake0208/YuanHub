@@ -1,9 +1,9 @@
 <template>
-  <article class="calendar-event" :class="{ 'is-ending': ending }" :style="display.style" :data-type-color="display.color">
+  <article class="calendar-event" :class="{ 'is-ending': ending }" :style="display.style" :data-type-color="display.color" :data-event-id="item.id">
     <div class="calendar-event-heading">
       <div class="calendar-event-identity">
         <div class="calendar-badges"><span class="calendar-game">{{ item.game }}</span><span class="calendar-category">{{ display.path }}</span></div>
-        <h4>{{ item.title }}</h4>
+        <h4 tabindex="-1">{{ item.title }}</h4>
         <p v-if="item.source_type === 'RECRUITMENT_POOL' && item.category === 'RECRUITMENT' && item.up_agent_names?.length" class="calendar-description calendar-up-agents">UP 密探：{{ item.up_agent_names.join('、') }}</p>
       </div>
       <div class="calendar-event-status">
