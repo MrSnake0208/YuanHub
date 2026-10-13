@@ -35,6 +35,8 @@ it('bag remains editable, entering plan opens current-inventory preview; cancel 
  expect(sent.inventory[0].level).toBe(50);expect(sent.planTargets).toEqual({new:60});expect(sent.experience).toEqual({orange:1,purple:2,white:3})
  expect(await request(db.transaction('meta').objectStore('meta').get('product.pendingPlanInheritance:'+account.accountId))).toBeUndefined()
  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual({new:60})
+ expect(root.querySelector('.product-toast').classList.contains('product-toast-info')).toBe(true)
+ expect(root.querySelector('.product-toast').textContent).toContain('旧计划已继承')
 })
 
 it('four-field group layout reuses soft controls; reselect is inert, occupied candidates swap, Escape closes only the menu',async()=>{
