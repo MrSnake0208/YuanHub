@@ -5,10 +5,17 @@ import { routeLocationKey } from 'vue-router'
 import TodayPage from '../src/pages/today/index.vue'
 import { auth } from '../src/store/auth.js'
 import { activeAccount } from '../src/store/activeAccount.js'
-import { listAccounts } from '../src/api/accounts.js'
+import { createAccount, listAccounts } from '../src/api/accounts.js'
 import { getOperatorCurrent } from '../src/api/operator.js'
 import { getCurrent } from '../src/api/inventory.js'
 import { getCurrentStarState } from '../src/api/starState.js'
+import { installViewport } from '../test-support/viewport.js'
+import TodayLobby from '../src/components/today/TodayLobby.vue'
+import TodayActivitySummary from '../src/components/today/TodayActivitySummary.vue'
+import TodaySubscriptionSummary from '../src/components/today/TodaySubscriptionSummary.vue'
+import { listActivityCalendar } from '../src/api/activityCalendar.js'
+import { listCalendarSubscriptions } from '../src/api/activityCalendarSubscriptions.js'
+import { dialog } from '../src/utils/dialog.js'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -23,7 +30,7 @@ vi.mock('../src/api/starState.js', () => ({ getCurrentStarState: vi.fn() }))
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/activityCalendarSubscriptions.js', () => ({ calendarSubscriptionSummary: vi.fn(async () => ({ items: [], subscribed_count: 0, total_pending: 0 })), listCalendarSubscriptions: vi.fn(async () => ({ items: [], unavailable_items: [] })), getCalendarSubscription: vi.fn(), saveCalendarProgress: vi.fn() }))
 
-const render = () => mount(TodayPage, { global: { plugins: [createPinia()], provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
+const render = () => mount(TodayPage, { attachTo: document.body, global: { plugins: [createPinia()], provide: { [routeLocationKey]: { fullPath: '/today' } }, stubs: { OnboardingGuide: true, RouterLink: RouterLinkStub } } })
 
 function signIn() {
   auth.isLoggedIn = true
@@ -275,4 +282,59 @@ it('库存元信息不足与读取失败使用不同说明，均不要求重录'
   expect(card.text()).toContain('不会要求你重新录入')
   expect(card.find('.readiness-action').exists()).toBe(false)
   wrapper.unmount()
+})
+
+it.each([390, 1440])('%ipx 起步跨断点保留值守搜索、焦点、可选建档展开及唯一功能实例', async width => {
+  const viewport = installViewport(width)
+  signIn(); auth.isAdmin = true; auth.userInfo = { id: 'synthetic-owner' }
+  listAccounts.mockResolvedValue([{ id: 'a', name: '合成账号', game: '如鸢' }])
+  getOperatorCurrent.mockResolvedValue({ entries: { one: { star_level: 1 } } })
+  const wrapper = render(); await flushPromises()
+  const instances = [TodayLobby, TodayActivitySummary, TodaySubscriptionSummary].map(type => wrapper.getComponent(type).vm.$)
+  const details = wrapper.get('details.data-onboarding')
+  details.element.scrollIntoView = vi.fn()
+  details.element.open = true; await details.trigger('toggle')
+  await wrapper.get('.lobby-duty button').trigger('click'); await flushPromises()
+  const search = document.querySelector('.duty-search input')
+  search.value = '阿蝉'; search.dispatchEvent(new Event('input', { bubbles: true })); search.focus()
+  await flushPromises()
+  const calls = [listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions].map(fn => fn.mock.calls.length)
+  for (const next of [width, 768, 767, 981, 390, 1440, width]) {
+    viewport.resize(next); await flushPromises()
+    expect(document.querySelector('.duty-search input')).toBe(search)
+    expect(search.value).toBe('阿蝉')
+    expect(document.activeElement).toBe(search)
+    expect(wrapper.get('details.data-onboarding').element).toBe(details.element)
+    expect(details.element.open).toBe(true)
+    ;[TodayLobby, TodayActivitySummary, TodaySubscriptionSummary].forEach((type, index) => expect(wrapper.getComponent(type).vm.$).toBe(instances[index]))
+    expect([listAccounts, getOperatorCurrent, getCurrent, getCurrentStarState, listActivityCalendar, listCalendarSubscriptions].map(fn => fn.mock.calls.length)).toEqual(calls)
+    expect(wrapper.findAll('.account-switcher')).toHaveLength(1)
+  }
+  wrapper.unmount()
+  expect(document.querySelector('.duty-picker')).toBeNull()
+})
+
+it.each([390, 1440])('%ipx 创建入口仍连接真实账号管理，跨断点保留未保存名称并关闭恢复焦点', async width => {
+  const viewport = installViewport(width)
+  signIn()
+  const wrapper = render(); await flushPromises()
+  const opener = wrapper.get('.account-management-action')
+  await opener.trigger('click'); await flushPromises()
+  const input = document.querySelector('input[placeholder="例如：大鸟大号"]')
+  expect(input).not.toBeNull()
+  input.value = '未保存的合成账号'
+  input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); await flushPromises()
+  for (const next of [768, 767, 1440, 390]) {
+    viewport.resize(next); await flushPromises()
+    expect(document.querySelector('input[placeholder="例如：大鸟大号"]')).toBe(input)
+    expect(input.value).toBe('未保存的合成账号')
+    expect(document.activeElement).toBe(input)
+  }
+  const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValueOnce(true)
+  document.querySelector('[aria-label="关闭账号面板"]').click(); await flushPromises()
+  expect(confirm).toHaveBeenCalledOnce()
+  expect(document.activeElement).toBe(opener.element)
+  expect(createAccount).not.toHaveBeenCalled()
+  expect(listAccounts).toHaveBeenCalledTimes(1)
+  expect(getOperatorCurrent).not.toHaveBeenCalled()
 })

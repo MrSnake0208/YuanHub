@@ -1,0 +1,7 @@
+/* 与桌面媒体条件互斥，跨断点只改样式，不重建 slot 中的功能实例。 */
+@media not all and (min-width: 768px) {
+  .today-page, .today-main { min-height: 100dvh; }
+  .today-wrap { max-width: 1180px; }
+  .today-content { padding: 16px 0 48px; }
+  .today-overview { display: grid; align-items: start; gap: 16px; min-width: 0; margin-bottom: 20px; }
+}

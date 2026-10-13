@@ -1,0 +1,22 @@
+/* 手机专属布局与密度；不继承桌面几何规则。 */
+@media not all and (min-width: 768px) {
+.today-subscriptions { padding: 16px; min-width: 0; border-radius: 14px; }
+.todo-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; }
+h2 { margin: 0; }
+p, span, time { font-size: 13px; overflow-wrap: anywhere; }
+.todo-scope, .todo-hint { font-size: 12px; }
+ul { display: grid; gap: 8px; margin: 8px 0; padding: 0; }
+.todo-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 4px; align-items: start; }
+.todo-check { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; }
+.todo-check input { width: 18px; height: 18px; }
+.todo-title { display: block; padding-top: 8px; font-size: 14px; }
+.todo-body { min-width: 0; }
+.todo-event { display: block; font-size: 12px; }
+.todo-event-link { justify-content: center; font-size: 12px; }
+.todo-reminders { margin-top: 12px; padding-top: 8px; }
+summary { min-height: 44px; padding: 10px 0; }
+.reminder-list li { min-width: 0; }
+time { display: block; }
+.todo-error { margin-top: 8px; }
+a, button { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; overflow-wrap: anywhere; }
+button { padding: 8px 12px; border-radius: 8px; } }

@@ -1,0 +1,52 @@
+/* 桌面专属布局与密度；共享字段外观留在功能组件。 */
+
+@media (min-width: 768px) {
+.today-lobby { isolation: isolate; }
+.lobby-wrap { max-width: 1180px; container-type: inline-size; }
+.lobby-header { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'context context'; align-items: center; gap: 4px 12px; min-height: 52px; padding-top: 4px; }
+.lobby-scene { position: relative; min-height: 164px; display: flex; align-items: center; }
+.lobby-copy { position: relative; z-index: 2; width: 58%; min-width: 0; padding: 12px 8px 12px 0; }
+.lobby-heading { grid-area: heading; display: grid; gap: 2px; min-width: 0; }
+.lobby-heading time { font-size: 11px; }
+.lobby-status { margin-top: 6px; font-size: 13px; overflow-wrap: anywhere; }
+.lobby-duty { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin-top: 8px; font-size: 12px; }
+.lobby-duty button { min-height: 44px; padding: 6px 4px; }
+.lobby-save-notice { margin-top: 4px; font-size: 12px; }
+.lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 42%; height: 164px; overflow: hidden; }
+.lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: translateY(12px); }
+.lobby-art-error { padding: 50px 8px; font-size: 12px; text-align: center; }
+.lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
+.lobby-actions { grid-area: actions; }
+.duty-picker { display: flex; flex-direction: column; width: min(100%, 560px); max-height: min(640px, 85dvh); padding: 20px; border-radius: 20px; }
+.duty-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.duty-picker-heading button { display: grid; flex: none; width: 44px; height: 44px; border-radius: 9px; }
+#duty-picker-note, .duty-result-count { font-size: 12px; }
+.duty-search { display: flex; flex: none; align-items: center; gap: 8px; margin-top: 16px; padding: 0 12px; border-radius: 10px; }
+.duty-search svg { flex: none; }
+.duty-search input { width: 100%; min-width: 0; min-height: 44px; }
+.duty-result-count { margin: 10px 0; }
+.duty-candidates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.duty-candidates button { display: flex; min-width: 0; min-height: 48px; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 10px; text-align: left; }
+.duty-candidates button span { overflow-wrap: anywhere; }
+.duty-candidates button svg { flex: none; }
+.duty-candidates > p { grid-column: 1 / -1; padding: 20px 0; font-size: 13px; }
+.duty-picker-heading button { place-items: center; } }
+@media (min-width: 768px) {
+@container (min-width: 860px) {
+  .lobby-header { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading context actions'; column-gap: 24px; }
+} }
+@media (min-width: 768px) {
+  .lobby-header { min-height: 56px; padding-top: 8px; }
+  .lobby-scene { min-height: 260px; }
+  .lobby-copy { width: 56%; padding: 20px 16px 20px 0; }
+  .lobby-heading h1 { font-size: 16px; }
+  .lobby-heading time { font-size: 12px; }
+  .lobby-greeting { font-size: clamp(28px, 3vw, 38px); }
+  .lobby-status { max-width: 380px; font-size: 14px; }
+  .lobby-duty { gap: 16px; margin-top: 12px; font-size: 13px; }
+  .lobby-portrait { left: 56%; right: auto; width: 40%; max-width: 390px; height: 244px; }
+  .lobby-portrait img { transform: translateY(16px); }
+  .duty-candidates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+
