@@ -78,36 +78,22 @@ onBeforeUnmount(() => restoreScroll?.())
 </script>
 
 <style scoped>
-.calendar-private-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: flex; align-items: flex-end; background: color-mix(in srgb, var(--ink) 45%, transparent); color: var(--ink); }
-.calendar-private-dialog { width: 100%; min-width: 0; max-height: 94dvh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 22px 22px 0 0; }
-header, footer { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px max(16px, env(safe-area-inset-right)) 14px max(16px, env(safe-area-inset-left)); }
-header h2 { margin: 0; font: 900 22px/1.4 var(--font-s); color: var(--tea); }
-button, input, summary { min-height: 44px; }
-button { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); padding: 8px 14px; cursor: pointer; }
-header button { display: grid; place-items: center; min-width: 44px; padding: 8px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.calendar-private-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); color: var(--ink); }
+.calendar-private-dialog { background: var(--surface); border: 1px solid var(--line); border-radius: 22px 22px 0 0; }
+header h2 { color: var(--tea); }
+button { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--tea); cursor: pointer; }
 button:disabled { opacity: .6; cursor: default; }
 :is(button, input, textarea, summary, a):focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
-.calendar-private-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); }
-label { display: block; margin: 12px 0 6px; font-weight: 700; }
-label span, p, label[for=private-item-note] { font-size: 13px; font-weight: 400; }
-input, textarea { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
-textarea { resize: vertical; }
-p { margin: 6px 0; line-height: 1.6; overflow-wrap: anywhere; }
-.calendar-private-context { margin: 0 0 12px; }
-.calendar-private-dates { display: grid; gap: 0 12px; grid-template-columns: minmax(0, 1fr); }
-.calendar-private-time { display: flex; align-items: center; gap: 8px; }
-.calendar-private-time input { flex: 1; width: 0; }
-.calendar-private-time button { flex: none; }
-details { margin-top: 12px; }
-summary { display: flex; align-items: center; cursor: pointer; }
+input, textarea { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+summary { cursor: pointer; }
 .calendar-private-error { color: var(--rouge); }
-.calendar-private-error a { display: block; min-height: 44px; color: inherit; }
-footer { border-top: 1px solid var(--line); padding-bottom: calc(14px + env(safe-area-inset-bottom)); flex-wrap: wrap; }
-footer div { display: flex; gap: 8px; margin-left: auto; }
+.calendar-private-error a { color: inherit; }
+footer { border-top: 1px solid var(--line); }
 .calendar-private-save { background: var(--tea); color: var(--surface); }
 @media (min-width: 768px) {
-  .calendar-private-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .calendar-private-mask { align-items: center; justify-content: center; padding: 24px; }
-  .calendar-private-dialog { max-width: 480px; max-height: min(90dvh, 760px); border-radius: 20px; }
+  .calendar-private-dialog { border-radius: 20px; }
 }
 </style>
+<style scoped src="./calendarPrivateItemEditorDesktop.css"></style>
+<style scoped src="./calendarPrivateItemEditorMobile.css"></style>

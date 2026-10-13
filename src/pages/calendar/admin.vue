@@ -111,7 +111,6 @@ import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { dialog } from '@/utils/dialog.js'
 import { createActivityCalendar, listAdminActivityCalendar, updateActivityCalendar } from '@/api/activityCalendar.js'
 import { CALENDAR_CATEGORIES, CALENDAR_GAMES, calendarForm, calendarPayload, calendarRangeLabel, isCalendarDate, normalizeCalendarItem, validateCalendarForm } from '@/data/activityCalendar.js'
-import './calendar.css'
 
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
@@ -221,17 +220,13 @@ watch([identity, permitted], () => {
 onBeforeUnmount(() => { alive = false; generation++; readGeneration++ })
 </script>
 
+<style src="./calendar.css"></style>
+<style src="./calendarDesktop.css"></style>
+<style src="./calendarMobile.css"></style>
 <style scoped>
-.calendar-content { padding-top: 12px; gap: 16px; }
-.calendar-workspace-head { margin-top: 0; }
-@media (min-width: 360px) {
-  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-}
-@media (min-width: 700px) {
-  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-.calendar-editor-identity h2 { margin: 4px 0 0; color: var(--tea); font: 900 26px/1.4 var(--font-s); overflow-wrap: anywhere; }
-.calendar-editor-identity .page-header-context { margin: 0; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.calendar-editor-identity h2 { color: var(--tea); }
 .calendar-admin :is(button,a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.calendar-admin button { white-space: nowrap; }
 </style>
+<style scoped src="./calendarAdminDesktop.css"></style>
+<style scoped src="./calendarAdminMobile.css"></style>

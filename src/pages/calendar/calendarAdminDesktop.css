@@ -1,0 +1,16 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.calendar-page > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.calendar-content { padding-top: 12px; gap: 16px; }
+.calendar-workspace-head { margin-top: 0; }
+@media (min-width: 360px) {
+  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+@media (min-width: 700px) {
+  .calendar-list > .calendar-form .calendar-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.calendar-editor-identity h2 { margin: 4px 0 0; font: 900 26px/1.4 var(--font-s); overflow-wrap: anywhere; }
+.calendar-editor-identity .page-header-context { margin: 0; }
+.calendar-admin button { white-space: nowrap; }
+}

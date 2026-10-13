@@ -34,7 +34,6 @@ import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { getActivityCalendarSuggestion, listMyActivityCalendarSuggestions } from '@/api/activityCalendar.js'
 import { calendarRangeLabel } from '@/data/activityCalendar.js'
 import { SUGGESTION_STATUSES, suggestionTimestamp } from '@/data/activityCalendarSuggestions.js'
-import './calendar.css'
 const route = useRoute(), enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
 const identity = computed(() => auth.accessToken && auth.userInfo?.id ? String(auth.userInfo.id) : '')
 const permitted = computed(() => enabled && !!identity.value)
@@ -73,15 +72,14 @@ watch(() => route.query.id, id => { if (typeof id === 'string' && id) void openD
 onBeforeUnmount(() => { alive = false; generation++; readGeneration++; detailGeneration++ })
 </script>
 
+<style src="./calendar.css"></style>
+<style src="./calendarDesktop.css"></style>
+<style src="./calendarMobile.css"></style>
 <style scoped>
-.calendar-community .calendar-header { padding-top: 20px; padding-bottom: 12px; gap: 8px; }
-.calendar-community .calendar-header h1 { margin: 0; color: var(--tea); font: 900 30px/1.3 var(--font-s); letter-spacing: .035em; overflow-wrap: anywhere; }
-.calendar-community .calendar-header > p { color: var(--ink-60); font-size: 13px; line-height: 1.7; }
-.calendar-community .calendar-header > .calendar-source-link { color: var(--ink-60); font-size: 13px; font-weight: 700; }
-@media (min-width: 700px) {
-  .calendar-community .calendar-header { grid-template-columns: minmax(0, 1fr) auto; }
-  .calendar-community .calendar-header > .calendar-source-link { grid-column: 1 / -1; }
-  .calendar-community .calendar-header h1, .calendar-community .calendar-header > p { grid-column: 1; }
-  .calendar-community .calendar-header > nav { grid-column: 2; grid-row: 2 / 4; align-self: start; }
-}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.calendar-community .calendar-header h1 { color: var(--tea); }
+.calendar-community .calendar-header > p { color: var(--ink-60); }
+.calendar-community .calendar-header > .calendar-source-link { color: var(--ink-60); }
 </style>
+<style scoped src="./calendarSuggestionsDesktop.css"></style>
+<style scoped src="./calendarSuggestionsMobile.css"></style>

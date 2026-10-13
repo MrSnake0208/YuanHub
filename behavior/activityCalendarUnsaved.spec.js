@@ -11,6 +11,7 @@ import { listAccounts } from '../src/api/accounts.js'
 import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
 import { dialog } from '../src/utils/dialog.js'
+import { installViewport } from '../test-support/viewport.js'
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'user' } }) }))
 vi.mock('../src/api/calendarPrivateItems.js', () => ({ listCalendarPrivateItems: vi.fn(async () => ({ items: [] })) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
@@ -44,6 +45,25 @@ beforeEach(() => {
   saveCalendarProgress.mockImplementation(async (id, body) => { server = { ...server, checklist: body.checklist, completed: body.checklist.length > 0 && body.checklist.every(entry => entry.completed), version: server.version + 1 }; return server })
 })
 afterEach(() => { if (dialog._state.visible) dialog._cancel(); wrapper?.unmount(); vi.useRealTimers() })
+
+it.each([390, 1440])('真实订阅待办跨独立布局保持草稿、脏状态、焦点与实例：%ipx', async width => {
+  const viewport = installViewport(width)
+  await render(); await edit()
+  const instance = wrapper.getComponent({ name: 'CalendarSubscriptionControls' }).vm.$
+  const input = title(); input.element.focus()
+  const reads = [listCalendarSubscriptions.mock.calls.length, getCalendarSubscription.mock.calls.length]
+  for (const next of [767, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent({ name: 'CalendarSubscriptionControls' }).vm.$).toBe(instance)
+    expect(title().element).toBe(input.element)
+    expect(input.element.value).toBe('草稿待办')
+    expect(status()).toBe('有未保存修改')
+    expect(document.activeElement).toBe(input.element)
+    expect([listCalendarSubscriptions.mock.calls.length, getCalendarSubscription.mock.calls.length]).toEqual(reads)
+    expect(saveCalendarProgress).not.toHaveBeenCalled()
+    expect(setCalendarSubscription).not.toHaveBeenCalled()
+  }
+})
 
 it.each(['TODO name', 'TODO check', 'blank TODO', 'delete TODO'])('%s shows unsaved immediately and reverting restores the semantic baseline', async field => {
   // Missing manual_completed is a real legacy record, not just a property order change.

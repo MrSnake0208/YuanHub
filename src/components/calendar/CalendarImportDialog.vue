@@ -59,7 +59,6 @@ import { checkCalendarImportText, readCalendarImportFile } from '@/data/activity
 import { calendarRangeLabel } from '@/data/activityCalendar.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
-import '@/pages/calendar/calendar.css'
 
 const emit = defineEmits(['close', 'imported'])
 const text = ref(''), preview = ref(null), report = ref(null), confirmed = ref(false), finished = ref(false)
@@ -130,28 +129,18 @@ async function changePage(offset) { page.value += offset; await nextTick(); summ
 onBeforeUnmount(() => { alive = false; restoreScroll() })
 </script>
 
+<style src="../../pages/calendar/calendar.css"></style>
+<style src="../../pages/calendar/calendarDesktop.css"></style>
+<style src="../../pages/calendar/calendarMobile.css"></style>
 <style scoped>
-.calendar-import-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 8px; background: rgba(73, 59, 44, .35); }
-.calendar-import-dialog { width: min(760px, 100%); max-height: calc(100dvh - 16px); min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
-.calendar-import-head, .calendar-import-footer { flex: 0 0 auto; padding: 12px; }
-.calendar-import-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
-.calendar-import-head h2 { margin: 0; font: 900 22px/1.4 var(--font-s); }
-.calendar-import-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px; display: grid; gap: 12px; }
-.calendar-import-body > * { min-width: 0; }
-.calendar-import-body p { margin: 0; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.calendar-import-mask { background: rgba(73, 59, 44, .35); }
+.calendar-import-dialog { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
+.calendar-import-head { border-bottom: 1px solid var(--line); }
 .calendar-import-body a { color: var(--brand-blue); text-underline-offset: 3px; }
-.calendar-import-file, .calendar-import-input, .calendar-import-filter { display: grid; gap: 8px; font-weight: 700; }
-.calendar-import-file input, .calendar-import-input textarea { width: 100%; min-width: 0; box-sizing: border-box; }
-.calendar-import-input textarea { resize: vertical; max-height: 35dvh; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
-.calendar-import-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.calendar-import-rows h3 { margin: 8px 0; font-size: 18px; }
-.calendar-import-issues { padding-left: 20px; overflow-wrap: anywhere; }
-.calendar-import-rows summary { min-height: 44px; display: list-item; align-content: center; cursor: pointer; }
-.calendar-import-rows details p { overflow-wrap: anywhere; white-space: pre-wrap; }
-.calendar-import-footer { border-top: 1px solid var(--line); padding-bottom: calc(12px + env(safe-area-inset-bottom)); display: grid; gap: 10px; }
-.calendar-import-footer .calendar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.calendar-import-footer button { white-space: normal; }
+.calendar-import-rows summary { cursor: pointer; }
+.calendar-import-footer { border-top: 1px solid var(--line); }
 .calendar-import-dialog :is(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (min-width: 700px) { .calendar-import-head, .calendar-import-body, .calendar-import-footer { padding: 18px 22px; } }
-@media (max-height: 460px) { .calendar-import-dialog { overflow-y: auto; } .calendar-import-body { overflow: visible; flex-shrink: 0; } }
 </style>
+<style scoped src="./calendarImportDialogDesktop.css"></style>
+<style scoped src="./calendarImportDialogMobile.css"></style>

@@ -1,0 +1,98 @@
+@media (max-width: 1080px) {.calendar-page .calendar-header { padding-top: 36px; padding-bottom: 24px; }
+.calendar-page .calendar-header h1 { font-family: var(--font-s); font-weight: 900; font-size: clamp(32px, 4vw, 52px); margin: 12px 0; }
+.calendar-page h2, .calendar-page h3, .calendar-page h4 { font-family: var(--font-s); overflow-wrap: anywhere; }
+.calendar-page .calendar-kicker { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.calendar-page .calendar-content { padding-bottom: 40px; display: grid; gap: 24px; }
+.calendar-page .calendar-panel { padding: 18px; min-width: 0; }
+.calendar-page .calendar-hint { font-size: 14px; line-height: 1.7; margin-top: 8px; overflow-wrap: anywhere; }
+.calendar-page p { line-height: 1.7; overflow-wrap: anywhere; }
+.calendar-page button, .calendar-page select, .calendar-page input:not([type=checkbox]), .calendar-page textarea { min-height: 44px; font: inherit; padding: 10px 12px; max-width: 100%; }
+.calendar-page button { font-weight: 700; }
+.calendar-page fieldset { min-width: 0; }
+.calendar-page legend { font-weight: 700; margin-bottom: 8px; }
+.calendar-page .calendar-filters { display: grid; gap: 16px; }
+.calendar-page .calendar-chips, .calendar-page .calendar-badges, .calendar-page .calendar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.calendar-page .calendar-counts { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 12px; }
+.calendar-page .calendar-counts strong { font-family: var(--font-d); font-size: 28px; }
+.calendar-page .calendar-section { display: grid; gap: 18px; min-width: 0; }
+.calendar-page .calendar-date-group { display: grid; gap: 12px; min-width: 0; }
+.calendar-page .calendar-date-group > h3 { font-family: var(--font-d); font-size: 16px; }
+.calendar-page .calendar-event-list { display: grid; gap: 12px; min-width: 0; }
+.calendar-page .calendar-event h4 { font-size: 21px; margin: 12px 0; }
+.calendar-page .calendar-game, .calendar-page .calendar-category, .calendar-page .calendar-state { display: inline-block; padding: 4px 10px; font-size: 13px; }
+.calendar-page .calendar-state { font-weight: 700; }
+.calendar-page .calendar-range { font-family: var(--font-d); font-size: 14px; margin-top: 12px; }
+.calendar-page .calendar-description { margin-top: 10px; white-space: pre-line; }
+.calendar-page .calendar-event-foot, .calendar-page .calendar-workspace-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; }
+.calendar-page .calendar-event-foot a, .calendar-page .calendar-source-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.calendar-page .calendar-error button { margin-top: 12px; }
+.calendar-page .calendar-list, .calendar-page .calendar-editor, .calendar-page .calendar-form { display: grid; gap: 18px; min-width: 0; }
+.calendar-page .calendar-fields { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.calendar-page .calendar-fields label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-weight: 700; }
+.calendar-page .calendar-fields input, .calendar-page .calendar-fields select, .calendar-page .calendar-fields textarea { width: 100%; min-width: 0; }
+.calendar-page .calendar-fields small { font-weight: 400; }
+.calendar-page .calendar-checkbox { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.calendar-page .calendar-checkbox input { width: 20px; height: 20px; }
+.calendar-page .calendar-error ul { padding-left: 22px; }
+.calendar-page .calendar-error a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 0; }
+.calendar-page .calendar-list article > h3 { margin-top: 12px; font-size: 21px; }
+.calendar-page .calendar-editor, .calendar-page .calendar-list { scroll-margin-top: calc(var(--mobile-shell-follow-top, 0px) + 16px); }
+@media (min-width: 768px) {
+  .calendar-page .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-page .calendar-fields .calendar-wide { grid-column: 1 / -1; }
+  .calendar-page .calendar-panel { padding: 24px; }
+}
+
+.calendar-page [role=alert], .calendar-page input, .calendar-page select, .calendar-page textarea { scroll-margin-top: calc(var(--mobile-shell-follow-top, 0px) + 16px); }
+
+.calendar-page .calendar-review-columns { display: grid; gap: 18px; min-width: 0; align-items: start; }
+.calendar-page .calendar-review-columns > * { min-width: 0; }
+.calendar-page .calendar-pagination { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--font-d); }
+.calendar-page .calendar-overlap-list { padding-left: 20px; display: grid; gap: 12px; overflow-wrap: anywhere; }
+.calendar-page .calendar-fields a, .calendar-page .calendar-hint a { display: inline-flex; align-items: center; min-height: 44px; }
+.calendar-page .calendar-submission-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.calendar-page .calendar-submission-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.calendar-page .calendar-workspace-nav { width: fit-content; max-width: 100%; padding: 6px; }
+.calendar-page .calendar-workspace-nav button { flex: 1; }
+.calendar-community > main > .wrap { max-width: 1080px; }
+.calendar-community .calendar-header { display: grid; gap: 12px; }
+.calendar-community .calendar-header h1, .calendar-community .calendar-header p { margin: 0; }
+.calendar-community .calendar-header > .calendar-source-link { justify-self: start; }
+.calendar-community .calendar-panel { display: grid; gap: 16px; }
+.calendar-community .calendar-panel :is(h2, h3, h4, p) { margin: 0; }
+.calendar-community h2 { font-size: 24px; }
+.calendar-community h3 { font-size: 20px; }
+.calendar-community h4 { font-size: 18px; }
+.calendar-community .calendar-form { gap: 24px; container-type: inline-size; }
+.calendar-community .calendar-form fieldset { display: grid; gap: 16px; margin: 0; padding: 0; container-type: inline-size; }
+.calendar-community .calendar-form legend { padding: 0 0 12px; margin: 0; font-family: var(--font-s); font-size: 20px; }
+.calendar-community .calendar-fields { grid-template-columns: minmax(0, 1fr); }
+.calendar-community .calendar-fields label { font-size: 14px; line-height: 1.6; }
+.calendar-community .calendar-fields :is(input, select, textarea) { font-size: 16px; font-weight: 400; }
+.calendar-community textarea { resize: vertical; line-height: 1.7; }
+.calendar-community .calendar-checkbox { padding: 10px 12px; font-size: 14px; line-height: 1.6; }
+.calendar-community .calendar-checkbox input { flex: 0 0 20px; }
+.calendar-community .calendar-form > .calendar-actions { align-items: center; gap: 12px; padding-top: 18px; }
+.calendar-community .calendar-panel > button, .calendar-community .calendar-panel > .calendar-source-link, .calendar-community .calendar-section > button { justify-self: start; }
+.calendar-community .calendar-suggestion-duplicates { gap: 12px; }
+.calendar-community .calendar-suggestion-duplicates h3 { font-size: 18px; }
+.calendar-community .calendar-overlap-list { margin: 0; }
+.calendar-community .calendar-overlap-list li + li { padding-top: 12px; }
+.calendar-community .calendar-private-note { display: grid; gap: 10px; padding: 16px; }
+.calendar-community .calendar-suggestion-card { gap: 10px; }
+.calendar-community .calendar-list .calendar-suggestion-card > h3 { margin: 2px 0; }
+.calendar-community .calendar-suggestion-card > button { margin-top: 6px; }
+.calendar-community .calendar-suggestion-pagination { align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; }
+.calendar-community .calendar-pagination { font-size: 14px; }
+.calendar-community .calendar-error { padding: 16px; }
+.calendar-community .calendar-error ul { margin: 8px 0 0; }
+.calendar-community .calendar-workspace-head { margin-top: 0; }
+@container (min-width: 520px) {
+  .calendar-community .calendar-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-community .calendar-fields .calendar-wide { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) {
+  .calendar-community .calendar-suggestion-filters { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 18px; }
+  .calendar-community .calendar-suggestion-filters > button { justify-self: end; }
+}
+}

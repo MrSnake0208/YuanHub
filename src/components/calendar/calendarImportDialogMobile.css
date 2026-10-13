@@ -1,0 +1,24 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.calendar-import-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 8px; }
+.calendar-import-dialog { width: min(760px, 100%); max-height: calc(100dvh - 16px); min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.calendar-import-head, .calendar-import-footer { flex: 0 0 auto; padding: 12px; }
+.calendar-import-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.calendar-import-head h2 { margin: 0; font: 900 22px/1.4 var(--font-s); }
+.calendar-import-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px; display: grid; gap: 12px; }
+.calendar-import-body > * { min-width: 0; }
+.calendar-import-body p { margin: 0; }
+.calendar-import-file, .calendar-import-input, .calendar-import-filter { display: grid; gap: 8px; font-weight: 700; }
+.calendar-import-file input, .calendar-import-input textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.calendar-import-input textarea { resize: vertical; max-height: 35dvh; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
+.calendar-import-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.calendar-import-rows h3 { margin: 8px 0; font-size: 18px; }
+.calendar-import-issues { padding-left: 20px; overflow-wrap: anywhere; }
+.calendar-import-rows summary { min-height: 44px; display: list-item; align-content: center; }
+.calendar-import-rows details p { overflow-wrap: anywhere; white-space: pre-wrap; }
+.calendar-import-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); display: grid; gap: 10px; }
+.calendar-import-footer .calendar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.calendar-import-footer button { white-space: normal; }
+@media (min-width: 700px) { .calendar-import-head, .calendar-import-body, .calendar-import-footer { padding: 18px 22px; } }
+@media (max-height: 460px) { .calendar-import-dialog { overflow-y: auto; } .calendar-import-body { overflow: visible; flex-shrink: 0; } }
+}
