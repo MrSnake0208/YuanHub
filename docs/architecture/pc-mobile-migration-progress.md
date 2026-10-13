@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：34/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：38/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -35,7 +35,7 @@
 | /operator/admin | pages/operator/admin.vue | pages/operator/operatorAdminDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorAdminMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment/admin | pages/recruitment/admin.vue | pages/recruitment/recruitmentAdminDesktop.css + recruitment*Desktop.css | pages/recruitment/recruitmentAdminMobile.css + recruitment*Mobile.css | 原useRecruitment/PoolEditor/交换控制器 | verified_nonbrowser | B07：231行为/118 Node/CSS/build | 原功能开关保留；人工UI待做 | pending |
 | /admin/recruitment-access → /manage | 无 UI | n/a | n/a | routes.js | n/a | 路由源码 | 纯跳转不计 UI | n/a |
-| /level/admin | pages/level/admin.vue | 待拆分 | 待拆分 | pages/level/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /level/admin | pages/level/admin.vue | pages/level/levelAdminDesktop.css | pages/level/levelAdminMobile.css | 原权限/目录/分页/编辑控制器 | verified_nonbrowser | B15：22行为/262 Node/CSS/build | 角色草稿/审计页码/关卡预览保持；人工UI待做 | pending |
 | /demo | pages/demo/index.vue | 待拆分 | 待拆分 | pages/demo/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /promo | pages/promo/index.vue | 待拆分 | 待拆分 | pages/promo/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /install | pages/install/index.vue | 待拆分 | 待拆分 | pages/install/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
@@ -44,15 +44,15 @@
 | /forgot | pages/user/forgot.vue | pages/user/forgotPageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/forgotPageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
 | /forbidden | pages/user/forbidden.vue | pages/user/forbiddenPageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/forbiddenPageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
 | /user/profile | pages/user/profile.vue | pages/user/profilePageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/profilePageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
-| /manage | pages/admin/index.vue | 待拆分 | 待拆分 | pages/admin/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /manage | pages/admin/index.vue | pages/admin/adminWorkbenchDesktop.css | pages/admin/adminWorkbenchMobile.css | 原权限/目录/分页/编辑控制器 | verified_nonbrowser | B15：22行为/262 Node/CSS/build | 角色草稿/审计页码/关卡预览保持；人工UI待做 | pending |
 | /feedback | pages/feedback/index.vue | feedbackMineDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackMineMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /feedback/plaza | pages/feedback/plaza.vue | feedbackPlazaPageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackPlazaPageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /co-creation/admin | pages/co-creation/admin.vue | coCreationAdminDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | coCreationAdminMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /co-creation | pages/co-creation/index.vue | coCreationPageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | coCreationPageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /feedback/manage | pages/feedback/manage.vue | feedbackManageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackManageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /feedback/admin | pages/feedback/admin.vue | feedbackAdminDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackAdminMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
-| /admin/roles | pages/admin/roles.vue | 待拆分 | 待拆分 | pages/admin/roles.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /admin/audit | pages/admin/audit.vue | 待拆分 | 待拆分 | pages/admin/audit.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /admin/roles | pages/admin/roles.vue | pages/admin/adminRolesDesktop.css | pages/admin/adminRolesMobile.css | 原权限/目录/分页/编辑控制器 | verified_nonbrowser | B15：22行为/262 Node/CSS/build | 角色草稿/审计页码/关卡预览保持；人工UI待做 | pending |
+| /admin/audit | pages/admin/audit.vue | pages/admin/adminAuditDesktop.css | pages/admin/adminAuditMobile.css | 原权限/目录/分页/编辑控制器 | verified_nonbrowser | B15：22行为/262 Node/CSS/build | 角色草稿/审计页码/关卡预览保持；人工UI待做 | pending |
 | /changelog | pages/changelog/index.vue | pages/changelog/changelogPageDesktop.css + 正文组件Desktop.css | pages/changelog/changelogPageMobile.css + 正文组件Mobile.css | 原页面/通知/编辑器控制器 | verified_nonbrowser | B10：51行为/184 Node/CSS/build | 筛选/锚点/正文草稿保持；人工UI待做 | pending |
 | /admin/changelog | pages/changelog/admin.vue | pages/changelog/changelogAdminDesktop.css + 正文组件Desktop.css | pages/changelog/changelogAdminMobile.css + 正文组件Mobile.css | 原页面/通知/编辑器控制器 | verified_nonbrowser | B10：51行为/184 Node/CSS/build | 筛选/锚点/正文草稿保持；人工UI待做 | pending |
 | /notifications | pages/notifications/index.vue | pages/notifications/notificationsPageDesktop.css + 正文组件Desktop.css | pages/notifications/notificationsPageMobile.css + 正文组件Mobile.css | 原页面/通知/编辑器控制器 | verified_nonbrowser | B10：51行为/184 Node/CSS/build | 筛选/锚点/正文草稿保持；人工UI待做 | pending |
@@ -182,4 +182,10 @@
 - `npx --no-install vitest run behavior/authFlow.spec.js behavior/authStartupGuard.spec.js behavior/profileConnectionsUx.spec.js behavior/gameAccountManager.spec.js behavior/betaRedirectContext.spec.js behavior/todayComingSoon.spec.js`：122/122。新增10个真实布局/父级用例保留三认证页输入/密码可见/安全回跳/焦点、连接账号/权限/备注、游戏账号名称/游戏/唯一弹层；resize零额外读写。原身份往返、迟到凭证、权限及CRUD保护仍通过。
 - `node --test test/auth*.test.js test/latestAccountSync.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：245/245。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-14-*.log`。内测提交补记 `de483ba`；本批保存标题 `refactor(user): 隔离认证与账号连接双端展示`。完整路由34/43，真实浏览器仍待人工验收。直接挂载用例原Router提示保留。
 
-下一动作：管理工作台、角色、审计与关卡目录。
+## B15：剩余管理四入口（L1样式归属，权限/写入控制器不变）
+
+- 工作台、角色、审计、关卡目录实际页面的几何/密度分别由1080px两端文件持有，main/wrap默认值独立持有；角色720px、关卡700/767/1280px内容规则保持。全部模板/脚本逐字不变，角色完整替换/危险确认、审计分页、revision与导入预览契约保留。
+- 544组原声明投影一致，删除矛盾媒体块2348字节。`npx --no-install vitest run behavior/adminHeader.spec.js behavior/adminCatalogHeader.spec.js behavior/adminWorkbench.spec.js`：22/22；新增6个两端用例保留角色筛选/勾选/弹窗/焦点、审计第二页/区域焦点、关卡真实导入预览/JSON/编辑名/revision，resize零额外请求或写入。
+- `node --test test/adminAccess.test.js test/adminTools.test.js test/levelCatalog.test.js test/authPermissions.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js`：262/262。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-15-*.log`。账号提交补记 `7681644`；本批保存标题 `refactor(admin): 分离管理与公共关卡双端展示`。完整路由38/43，人工UI仍pending。
+
+下一动作：演示、宣传、安装与404辅助入口。

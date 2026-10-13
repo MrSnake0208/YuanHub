@@ -16,7 +16,7 @@ vi.mock('../src/api/level.js', async importOriginal => ({
   ...await importOriginal(), listAdminLevelCatalog: vi.fn(), updateAdminLevel: vi.fn(),
   previewAdminLevelImport: vi.fn(), commitAdminLevelImport: vi.fn()
 }))
-const render = Component => mount(Component, { global: {
+const render = (Component, options = {}) => mount(Component, { ...options, global: {
   stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: true }, directives: { reveal: {} }
 } })
 beforeEach(() => {
@@ -81,4 +81,42 @@ it('关卡导入错误就地显示，revision冲突仍保留编辑与重载入�
   expect(document.querySelector('.editor-error').textContent).toContain('请重新加载最新数据')
   expect(document.querySelector('.editor-error button').textContent).toBe('重新加载')
   expect(document.querySelector('.revision-note').textContent).toContain('3')
+})
+
+
+it.each([390, 1440])('关卡在%s起步跨断点保留导入预览、编辑字段与revision', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = render(LevelAdmin, { attachTo: document.body }); await flushPromises()
+  try {
+    const documentText = JSON.stringify({ levels: [{ game: '如鸢', name: '合成关卡' }] })
+    await wrapper.get('.import-panel textarea').setValue(documentText)
+    previewAdminLevelImport.mockResolvedValue({ added: 1, updated: 0, invalid: 0, conflicts: 0 })
+    await wrapper.get('.import-actions button').trigger('click'); await flushPromises()
+    const preview = wrapper.get('.import-preview').element
+    await wrapper.get('.level-table .table-action').trigger('click'); await flushPromises()
+    const panel = document.querySelector('.editor-panel')
+    const name = panel.querySelector('.editor-fields label.wide input')
+    name.value = '未保存关卡名称'; name.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
+    name.focus()
+    const reads = listAdminLevelCatalog.mock.calls.length
+    for (const nextWidth of [699, 700, 767, 768, 1080, 1081, 1279, 1280, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(document.querySelector('.editor-panel')).toBe(panel)
+      expect(name.value).toBe('未保存关卡名称')
+      expect(document.activeElement).toBe(name)
+      expect(panel.querySelector('.revision-note').textContent).toContain('3')
+      expect(wrapper.get('.import-panel textarea').element.value).toBe(documentText)
+      expect(wrapper.get('.import-preview').element).toBe(preview)
+      expect(document.querySelectorAll('.editor-panel')).toHaveLength(1)
+    }
+    expect(listAdminLevelCatalog).toHaveBeenCalledTimes(reads)
+    expect(previewAdminLevelImport).toHaveBeenCalledTimes(1)
+    expect(commitAdminLevelImport).not.toHaveBeenCalled()
+    expect(updateAdminLevel).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

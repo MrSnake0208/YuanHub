@@ -270,67 +270,48 @@ onBeforeUnmount(function () { if (candidateTimer) clearTimeout(candidateTimer) }
 </script>
 
 <style scoped>
-.page-admin-roles { min-height: 100vh; min-height: 100dvh }
-.role-content { padding-top: 12px; padding-bottom: 56px }
-.role-summary { margin: 0 0 8px; color: var(--ink-60); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere }
-.role-replace-note { margin-top: 16px; color: var(--ink-60); font-size: 13px; line-height: 1.7 }
-.role-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-block: 1px solid var(--line) }
-.search-box { min-width: 260px; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60) }
-.search-box input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit }
-.search-box.wide { width: 100%; margin-top: 6px }
-.count { margin-left: auto; color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
-.command,.icon-command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
-.command { padding: 0 16px; white-space: nowrap }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.role-summary { color: var(--ink-60) }
+.role-replace-note { color: var(--ink-60) }
+.role-toolbar { border-block: 1px solid var(--line) }
+.search-box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink-60) }
+.search-box input { border: 0; outline: 0; background: transparent; color: var(--ink) }
+.count { color: var(--ink-60) }
+.command,.icon-command { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
 .command:focus-visible,.icon-command:focus-visible,.candidate:focus-visible,.role-options input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 .search-box:focus-within { outline: 2px solid var(--accent); outline-offset: 3px }
-.icon-command { width: 44px; flex: none; padding: 0; background: var(--surface); color: var(--ink) }
+.icon-command { background: var(--surface); color: var(--ink) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command:disabled,.icon-command:disabled { opacity: .5; cursor: default }
-.state { padding: 52px 0; color: var(--ink-60); text-align: center }
+.state { color: var(--ink-60) }
 .state.error,.editor-error { color: var(--rouge) }
-.role-table-wrap { position: relative; overflow-x: auto }
 .role-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
-.role-table .ops { position: sticky; right: 0; background: var(--surface) }
-.role-table th:last-child { position: sticky; right: 0; background: var(--tea) }
-.role-table { width: 100%; min-width: 920px; border-collapse: collapse; background: var(--surface) }
-.role-table th,.role-table td { padding: 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
-.role-table th { background: var(--tea); color: var(--cream); font-size: 12px }
-.role-table td strong,.role-table td code,.role-table td time { display: block; max-width: 240px; overflow-wrap: anywhere }
-.role-table td code,.role-table td time { margin-top: 4px; color: var(--ink-60); font-family: var(--font-d); font-size: 11px }
-.role-table .ops { width: 58px; text-align: right }
-.role-tag,.status-tag { display: inline-flex; margin: 0 5px 5px 0; padding: 3px 8px; border-radius: 6px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800 }
+.role-table .ops { background: var(--surface) }
+.role-table th:last-child { background: var(--tea) }
+.role-table { border-collapse: collapse; background: var(--surface) }
+.role-table th,.role-table td { border-bottom: 1px solid var(--line) }
+.role-table th { background: var(--tea); color: var(--cream) }
+.role-table td code,.role-table td time { color: var(--ink-60) }
+.role-tag,.status-tag { border-radius: 6px; background: var(--yellow); color: var(--ink) }
 .role-tag.super { color: var(--accent-strong); background: transparent; border: 1px solid var(--accent) }
 .status-tag { background: rgba(191,220,192,.6) }
 .status-tag.inactive { color: var(--rouge); background: rgba(240,207,200,.55) }
-.empty-row { color: var(--ink-60); text-align: center !important }
-.modal-layer { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 16px; background: rgba(73,59,44,.28) }
-.role-modal { width: min(620px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(73,59,44,.28) }
-.modal-head,.selected-user,.modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px }
-.eyebrow { color: var(--accent-strong); font-family: var(--font-d); font-size: 11px; font-weight: 800; letter-spacing: .12em }
-.modal-head h2 { margin-top: 4px; font-family: var(--font-s); font-size: 22px; font-weight: 900; letter-spacing: 0 }
-.user-picker { margin-top: 22px }
-.user-picker>label { color: var(--ink-60); font-size: 12px; font-weight: 800 }
-.picker-state { padding: 14px 2px; color: var(--ink-60); font-size: 12px }
-.candidate { width: 100%; min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left }
-.candidate span,.selected-user span { display: grid; gap: 3px }
+.empty-row { color: var(--ink-60) }
+.modal-layer { background: rgba(73,59,44,.28) }
+.role-modal { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(73,59,44,.28) }
+.eyebrow { color: var(--accent-strong) }
+.user-picker>label { color: var(--ink-60) }
+.picker-state { color: var(--ink-60) }
+.candidate { border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
 .candidate small,.selected-user small { color: var(--ink-60) }
-.candidate code,.selected-user code { color: var(--ink-60); font-family: var(--font-d); font-size: 11px; overflow-wrap: anywhere }
-.selected-user { margin-top: 22px; padding: 12px; background: var(--cream); border: 1px solid var(--line); border-radius: 8px }
-.role-options { margin-top: 20px; padding: 0; border: 0 }
-.role-options legend { margin-bottom: 9px; font-weight: 800 }
-.role-options label { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
+.candidate code,.selected-user code { color: var(--ink-60) }
+.selected-user { background: var(--cream); border: 1px solid var(--line); border-radius: 8px }
+.role-options { border: 0 }
+.role-options label { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
 .role-options label.selected { background: rgba(239,210,142,.28); border-color: var(--accent) }
-.role-options input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--accent) }
-.role-options span { display: grid; gap: 3px }
-.role-options small { color: var(--ink-60); line-height: 1.5 }
-.editor-error { margin-top: 14px; font-size: 13px }
-.modal-actions { justify-content: flex-end; margin-top: 22px }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0) }
-@media (max-width: 720px) {
-  .role-toolbar { flex-wrap: wrap }
-  .search-box { min-width: 0; flex: 1 1 calc(100% - 50px) }
-  .count { order: 3; margin: 0 auto 0 0 }
-  .role-toolbar>.command { order: 4 }
-}
+.role-options input { accent-color: var(--accent) }
+.role-options small { color: var(--ink-60) }
 </style>
+<style scoped src="./adminRolesDesktop.css"></style>
+<style scoped src="./adminRolesMobile.css"></style>
