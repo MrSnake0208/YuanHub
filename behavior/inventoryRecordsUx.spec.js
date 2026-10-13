@@ -1,5 +1,5 @@
 import { createPinia } from 'pinia'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import InventoryPage from '../src/pages/inventory/index.vue'
 import * as inventoryApi from '../src/api/inventory.js'
@@ -43,6 +43,17 @@ const refresh = wrapper => history(wrapper).get('.records-head > button')
 const undo = wrapper => history(wrapper).findAll('button').find(button => button.text() === '撤销删除')
 let viewport
 
+async function removeButton(wrapper) {
+  const details = history(wrapper).find('.record-details')
+  if (details.exists() && !details.element.open) {
+    details.element.open = true
+    await details.trigger('toggle')
+  }
+  return history(wrapper).get('.record-del')
+}
+
+describe.each([1440, 390])('操作历史 %ipx', width => {
+
 function render() {
   return mount(InventoryPage, { global: { plugins: [createPinia()],
     stubs: { OnboardingGuide: true,
@@ -56,7 +67,7 @@ function render() {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  viewport = installViewport()
+  viewport = installViewport(width)
   window.scrollTo = vi.fn()
   auth.isLoggedIn = true
   auth.userInfo = { id: 'synthetic-user' }
@@ -189,7 +200,7 @@ it.each(['取消', '切到B'])('删除确认后%s不写，确认包含账号与�
   dialog.confirm.mockReturnValueOnce(confirmation.promise)
   const wrapper = render()
   await flushPromises()
-  await history(wrapper).get('.record-del').trigger('click')
+  await (await removeButton(wrapper)).trigger('click')
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'danger', message: expect.stringContaining('合成账号 A') }))
   expect(inventoryApi.deleteRecord).not.toHaveBeenCalled()
   const reads = inventoryApi.listRecords.mock.calls.length
@@ -208,7 +219,7 @@ it.each(['A→B→A', '卸载', '清空账号', '切换游戏', '更换登录身
   dialog.confirm.mockReturnValueOnce(confirmation.promise)
   const wrapper = render()
   await flushPromises()
-  await history(wrapper).get('.record-del').trigger('click')
+  await (await removeButton(wrapper)).trigger('click')
   if (transition === '卸载') wrapper.unmount()
   else if (transition === '清空账号') activeAccount.set('')
   else if (transition === '切换游戏') activeAccount.setGame('如鸢', 'acc-1')
@@ -235,15 +246,18 @@ it('删除/恢复请求期间resize不重读、状态保留且重复按钮不双
   await flushPromises()
   const removal = pending()
   inventoryApi.deleteRecord.mockReturnValueOnce(removal.promise)
-  await history(wrapper).get('.record-del').trigger('click')
+  await (await removeButton(wrapper)).trigger('click')
   await flushPromises()
-  const anchor = history(wrapper).get('.record').element
   const reads = inventoryApi.listRecords.mock.calls.length
-  for (const width of [390, 768, 1440, 320, 640, 641, 1080, 1081]) viewport.resize(width)
-  await flushPromises()
-  expect(history(wrapper).get('.record').element).toBe(anchor)
+  for (const nextWidth of [390, 768, 1440, 320, 640, 641, 1080, 1081]) {
+    viewport.resize(nextWidth)
+    await flushPromises()
+    expect(history(wrapper).findAll('.record-list')).toHaveLength(1)
+    expect(history(wrapper).get('.record').text()).toContain(record.record_id)
+    expect(history(wrapper).get('.record-del').element.disabled).toBe(true)
+  }
   expect(history(wrapper).get('.record-del').element.disabled).toBe(true)
-  await history(wrapper).get('.record-del').trigger('click')
+  await (await removeButton(wrapper)).trigger('click')
   expect(inventoryApi.deleteRecord).toHaveBeenCalledTimes(1)
   expect(inventoryApi.listRecords).toHaveBeenCalledTimes(reads)
   inventoryApi.listRecords.mockResolvedValueOnce({ items: [], next_cursor: null })
@@ -264,6 +278,206 @@ it('删除/恢复请求期间resize不重读、状态保留且重复按钮不双
   expect(undo(wrapper)).toBeUndefined()
 })
 
+describe.each(['delete', 'restore'])('%s 写入完成上下文', action => {
+  const writeApi = () => action === 'delete' ? inventoryApi.deleteRecord : inventoryApi.restoreRecord
+
+  async function startWrite(wrapper, write) {
+    if (action === 'restore') {
+      inventoryApi.listRecords.mockResolvedValueOnce({ items: [], next_cursor: null })
+      await (await removeButton(wrapper)).trigger('click')
+      await flushPromises()
+      expect(undo(wrapper)).toBeDefined()
+    }
+    writeApi().mockReturnValueOnce(write.promise)
+    const button = action === 'delete' ? await removeButton(wrapper) : undo(wrapper)
+    await button.trigger('click')
+    await flushPromises()
+    expect(writeApi()).toHaveBeenLastCalledWith(record.record_id, 'acc-1')
+    expect(button.element.disabled).toBe(true)
+    const writes = writeApi().mock.calls.length
+    await button.trigger('click')
+    expect(writeApi()).toHaveBeenCalledTimes(writes)
+  }
+
+  async function invalidate(wrapper, transition) {
+    if (transition === '卸载') wrapper.unmount()
+    else if (transition === 'A→B→A') {
+      activeAccount.set('acc-2')
+      activeAccount.set('acc-1')
+    } else if (transition === '登录身份') auth.userInfo = { id: 'synthetic-other-user' }
+    else if (transition === '游戏') activeAccount.setGame('如鸢', 'acc-1')
+    else if (transition === '退出登录') auth.isLoggedIn = false
+    else activeAccount.set('')
+    await flushPromises()
+  }
+
+  const settle = (write, outcome) => outcome === 'success'
+    ? write.resolve(true) : write.reject(new Error('旧写入失败'))
+  const reads = () => [inventoryApi.listRecords.mock.calls.length, inventoryApi.getCurrent.mock.calls.length,
+    inventoryApi.getAcquired.mock.calls.length, inventoryApi.listAccounts.mock.calls.length]
+  // 卸载后 DOM 不再渲染，保留 setup 状态引用以检测迟到错误/提示回写。
+  const stateOf = state => ({ records: state.recordsList, notices: [...state.deletedRecordNotices],
+    error: state.recordsActionError, busy: state.recordsBusyId, search: state.acquiredSearch })
+
+  it.each([
+    ['卸载', 'success'], ['卸载', 'failure'],
+    ['A→B→A', 'success'], ['A→B→A', 'failure'],
+    ['登录身份', 'success'], ['登录身份', 'failure'],
+    ['游戏', 'success'], ['游戏', 'failure'],
+    ['退出登录', 'failure'], ['清空账号', 'success'],
+  ])('%s 后迟到 %s 不回写、不刷新，旧锁在失效时释放', async (transition, outcome) => {
+    const wrapper = render()
+    await flushPromises()
+    const state = wrapper.vm.$.setupState
+    const write = pending()
+    await startWrite(wrapper, write)
+    inventoryApi.listRecords.mockResolvedValue({ items: [{ ...record, record_id: 'new-context' }], next_cursor: null })
+    await invalidate(wrapper, transition)
+    const busyAfterInvalidation = state.recordsBusyId
+    const before = stateOf(state)
+    const readCounts = reads()
+    settle(write, outcome)
+    await flushPromises()
+    expect(reads()).toEqual(readCounts)
+    expect(stateOf(state)).toEqual(before)
+    expect(busyAfterInvalidation).toBe('')
+    if (transition !== '卸载') {
+      expect(state.deletedRecordNotices).toEqual([])
+      expect(history(wrapper).find('[role="alert"]').exists()).toBe(false)
+    }
+    expect(writeApi()).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['success', 'failure'])('旧操作 %s 不清除较新操作的锁，新操作结束后可重试', async outcome => {
+    const wrapper = render()
+    await flushPromises()
+    const oldWrite = pending()
+    await startWrite(wrapper, oldWrite)
+    await invalidate(wrapper, 'A→B→A')
+    expect((await removeButton(wrapper)).element.disabled).toBe(false)
+    const newWrite = pending()
+    await startWrite(wrapper, newWrite)
+    const readCounts = reads()
+    settle(oldWrite, outcome)
+    await flushPromises()
+    expect(reads()).toEqual(readCounts)
+    expect(history(wrapper).find('[role="alert"]').exists()).toBe(false)
+    const button = action === 'delete' ? await removeButton(wrapper) : undo(wrapper)
+    expect(button.element.disabled).toBe(true)
+    await button.trigger('click')
+    expect(writeApi()).toHaveBeenCalledTimes(2)
+    newWrite.reject(new Error('新写入失败'))
+    await flushPromises()
+    expect(history(wrapper).get('[role="alert"]').text()).toContain('新写入失败')
+    expect(button.element.disabled).toBe(false)
+    inventoryApi.listRecords.mockResolvedValueOnce({ items: action === 'delete' ? [] : [record], next_cursor: null })
+    await button.trigger('click')
+    await flushPromises()
+    expect(writeApi()).toHaveBeenCalledTimes(3)
+    expect(history(wrapper).find('[role="alert"]').exists()).toBe(false)
+    expect(Boolean(undo(wrapper))).toBe(action === 'delete')
+  })
+
+  it.each([
+    ['history', '卸载'], ['history', 'A→B→A'],
+    ['current', '卸载'], ['current', '登录身份'],
+  ])('%s 刷新 pending 时%s，完成后不继续刷新或清空新统计', async (stage, transition) => {
+    const wrapper = render()
+    await flushPromises()
+    const state = wrapper.vm.$.setupState
+    const write = pending()
+    const read = pending()
+    await startWrite(wrapper, write)
+    const readApi = stage === 'history' ? inventoryApi.listRecords : inventoryApi.getCurrent
+    readApi.mockReturnValueOnce(read.promise)
+    write.resolve(true)
+    await flushPromises()
+    expect(state.recordsBusyId).toBe(record.record_id)
+    await invalidate(wrapper, transition)
+    // 模拟新上下文中已输入的统计筛选；旧刷新结束不得再失效它。
+    state.acquiredSearch = '新上下文筛选'
+    const before = stateOf(state)
+    const readCounts = reads()
+    read.resolve(stage === 'history' ? { items: [record], next_cursor: null } : [])
+    await flushPromises()
+    expect(reads()).toEqual(readCounts)
+    expect(stateOf(state)).toEqual(before)
+  })
+
+  it('有效成功只刷新历史/当前库存一次并失效统计，失败不刷新且释放锁', async () => {
+    const wrapper = render()
+    await flushPromises()
+    const state = wrapper.vm.$.setupState
+    const write = pending()
+    await startWrite(wrapper, write)
+    state.acquiredSearch = '旧统计筛选'
+    const readCounts = reads()
+    inventoryApi.listRecords.mockResolvedValueOnce({ items: action === 'delete' ? [] : [record], next_cursor: null })
+    write.resolve(true)
+    await flushPromises()
+    expect(reads()).toEqual([readCounts[0] + 1, readCounts[1] + 1, readCounts[2], readCounts[3]])
+    expect(state.acquiredSearch).toBe('')
+    expect(state.recordsBusyId).toBe('')
+    expect(Boolean(undo(wrapper))).toBe(action === 'delete')
+    expect(history(wrapper).findAll('.record')).toHaveLength(action === 'delete' ? 0 : 1)
+
+    const failureApi = action === 'delete' ? inventoryApi.restoreRecord : inventoryApi.deleteRecord
+    failureApi.mockRejectedValueOnce(new Error('当前操作失败'))
+    const beforeFailure = reads()
+    const button = action === 'delete' ? undo(wrapper) : await removeButton(wrapper)
+    await button.trigger('click')
+    await flushPromises()
+    expect(history(wrapper).get('[role="alert"]').text()).toContain('当前操作失败')
+    expect(reads()).toEqual(beforeFailure)
+    expect(state.recordsBusyId).toBe('')
+  })
+})
+
+it.each([
+  ['record_already_exists', '同编号记录已重新导入，无法撤销；现有库存未更改'],
+  ['deleted_record_not_found', '这条删除备份不存在或已恢复，无法撤销'],
+])('恢复 %s 保留准确错误与撤销入口，游戏失效清除旧提示', async (code, message) => {
+  const wrapper = render()
+  await flushPromises()
+  inventoryApi.listRecords.mockResolvedValueOnce({ items: [], next_cursor: null })
+  await (await removeButton(wrapper)).trigger('click')
+  await flushPromises()
+  const reads = [inventoryApi.listRecords.mock.calls.length, inventoryApi.getCurrent.mock.calls.length]
+  inventoryApi.restoreRecord.mockRejectedValueOnce(Object.assign(new Error('原始错误'), { code }))
+  await undo(wrapper).trigger('click')
+  await flushPromises()
+  expect(history(wrapper).get('[role="alert"]').text()).toBe(message)
+  expect(undo(wrapper).element.disabled).toBe(false)
+  expect([inventoryApi.listRecords.mock.calls.length, inventoryApi.getCurrent.mock.calls.length]).toEqual(reads)
+  activeAccount.setGame('如鸢', 'acc-1')
+  await flushPromises()
+  expect(history(wrapper).find('[role="alert"]').exists()).toBe(false)
+  expect(undo(wrapper)).toBeUndefined()
+})
+
+it('并行迟到确认只允许一个删除写入，取消不释放已有写入锁', async () => {
+  const wrapper = render()
+  await flushPromises()
+  const confirmations = [pending(), pending(), pending()]
+  for (const confirmation of confirmations) dialog.confirm.mockReturnValueOnce(confirmation.promise)
+  const write = pending()
+  inventoryApi.deleteRecord.mockReturnValueOnce(write.promise)
+  const button = await removeButton(wrapper)
+  for (const _confirmation of confirmations) await button.trigger('click')
+  expect(dialog.confirm).toHaveBeenCalledTimes(3)
+  confirmations[0].resolve(true)
+  await flushPromises()
+  confirmations[1].resolve(true)
+  confirmations[2].resolve(false)
+  await flushPromises()
+  expect(inventoryApi.deleteRecord).toHaveBeenCalledTimes(1)
+  expect(button.element.disabled).toBe(true)
+  write.reject(new Error('当前删除失败'))
+  await flushPromises()
+  expect(button.element.disabled).toBe(false)
+  expect(history(wrapper).get('[role="alert"]').text()).toContain('当前删除失败')
+})
+
 it('筛选、分页与焦点跨尺寸保留，订阅不重复；卸载后迟到读取不刷新', async () => {
   const unsubscribe = vi.fn()
   subscribeAccountEvents.mockReturnValueOnce(unsubscribe)
@@ -275,14 +489,18 @@ it('筛选、分页与焦点跨尺寸保留，订阅不重复；卸载后迟到�
   // attach only the tested page so jsdom can track its activeElement.
   document.body.append(wrapper.element)
   button.element.focus()
-  const anchor = history(wrapper).get('.record').element
   const reads = inventoryApi.listRecords.mock.calls.length
   const currentReads = inventoryApi.getCurrent.mock.calls.length
-  for (const width of [390, 768, 1440, 320, 640, 641, 1080, 1081]) viewport.resize(width)
-  await flushPromises()
+  for (const nextWidth of [390, 768, 1440, 320, 640, 641, 1080, 1081]) {
+    viewport.resize(nextWidth)
+    await flushPromises()
+    expect(history(wrapper).findAll('.record-list')).toHaveLength(1)
+    expect(history(wrapper).get('.record').text()).toContain(record.record_id)
+    expect(document.activeElement).toBe(button.element)
+  }
   expect(filter(wrapper, '道具').attributes('aria-pressed')).toBe('true')
   expect(document.activeElement).toBe(button.element)
-  expect(history(wrapper).get('.record').element).toBe(anchor)
+  expect(history(wrapper).get('.record').text()).toContain(record.record_id)
   expect(inventoryApi.listRecords).toHaveBeenCalledTimes(reads)
   expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(currentReads)
   expect(subscribeAccountEvents).toHaveBeenCalledTimes(1)
@@ -319,7 +537,7 @@ it('删除确认可核对内容，失败留页内，成功后可撤销', async (
   const wrapper = render()
   await flushPromises()
   inventoryApi.deleteRecord.mockRejectedValueOnce(new Error('删除失败'))
-  await wrapper.get('.record-del').trigger('click')
+  await (await removeButton(wrapper)).trigger('click')
   await flushPromises()
   expect(dialog.confirm).toHaveBeenCalledWith(expect.objectContaining({
     type: 'danger', message: expect.stringContaining('白金币+5'),
@@ -327,7 +545,7 @@ it('删除确认可核对内容，失败留页内，成功后可撤销', async (
   expect(wrapper.get('.inventory-inline-state[role="alert"]').text()).toContain('删除失败')
   expect(wrapper.findAll('.record')).toHaveLength(1)
   inventoryApi.listRecords.mockResolvedValueOnce({ items: [], next_cursor: null })
-  await wrapper.get('.record-del').trigger('click')
+  await (await removeButton(wrapper)).trigger('click')
   await flushPromises()
   expect(wrapper.text()).toContain('撤销删除')
   inventoryApi.restoreRecord.mockRejectedValueOnce(new Error('恢复暂不可用'))
@@ -450,4 +668,6 @@ it('密探职业显示中文，金色快捷筛选只保留绝密', async () => {
 
   await wrapper.get('.agent-gold-filter input').setValue(false)
   expect(wrapper.get('.agent-result').text()).toContain('2 / 2')
+})
+
 })

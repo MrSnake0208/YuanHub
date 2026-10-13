@@ -1703,63 +1703,13 @@
               更新库存、记录奖励或导入本地报告后，记录会出现在这里。请使用顶部「记录奖励」「更新库存」，或此处的「导入本地报告」。
             </div>
             <template v-else>
-              <ul class="record-list">
-                <li v-for="r in recordsList" :key="r.record_id" class="record">
-                  <div class="record-main">
-                    <div class="record-top">
-                      <span
-                        class="rtag"
-                        :class="
-                          r.record_type === 'reward_delta'
-                            ? 'rtag-reward'
-                            : 'rtag-snapshot'
-                        "
-                        >{{
-                          r.record_type === "reward_delta"
-                            ? "实时奖励"
-                            : r.record_type === "consumption_delta"
-                              ? "升级消耗"
-                              : "库存更新"
-                        }}</span
-                      >
-                      <span
-                        class="rtag rtag-type"
-                        :class="
-                          r.entity_type === 'agent' ? 'rtag-agent' : 'rtag-item'
-                        "
-                        >{{ r.entity_type === "agent" ? "心纸" : "道具" }}</span
-                      >
-                      <span
-                        v-if="r.acquisition_channel"
-                        class="rtag rtag-type"
-                        >{{ r.acquisition_channel }}</span
-                      >
-                      <span
-                        v-if="staminaCostOf(r) !== undefined"
-                        class="rtag rtag-stamina"
-                        >消耗体力 {{ staminaCostOf(r) }}</span
-                      >
-                      <span
-                        class="rtag effect"
-                        :class="'eff-' + r.stock_effect"
-                        >{{ stockEffectLabel(r.stock_effect) }}</span
-                      >
-                      <span class="record-time">{{
-                        fmtTime(r.effective_at)
-                      }}</span>
-                    </div>
-                    <div class="record-entries">
-                      {{ entrySummary(r.entries, r.record_type) }}
-                    </div>
-                    <div class="record-id" :title="r.record_id">
-                      {{ r.record_id }}
-                    </div>
-                  </div>
-                  <button v-if="r.record_type !== 'consumption_delta'" class="record-del" :disabled="Boolean(recordsBusyId) || recordsLoading" @click="onDeleteRecord(r)">
-                    删除
-                  </button>
-                </li>
-              </ul>
+              <InventoryRecordsView
+                :records-list="recordsList" :account-id="accountId"
+                :disabled="Boolean(recordsBusyId) || recordsLoading"
+                :fmt-time="fmtTime" :entry-summary="entrySummary"
+                :stock-effect-label="stockEffectLabel" :stamina-cost-of="staminaCostOf"
+                :delete-record="onDeleteRecord"
+              />
               <div v-if="recordsError" class="inventory-inline-state is-error" role="alert">
                 {{ recordsError }}，已加载的记录仍可查看。
                 <button type="button" class="link" :disabled="recordsLoading" @click="loadRecords(recordsRetryReset)">重试加载</button>
@@ -1830,6 +1780,7 @@ import ArchiveExchangePanel from "../../components/ArchiveExchangePanel.vue";
 import ResourceBalanceReport from "../../components/inventory/ResourceBalanceReport.vue";
 import AcquiredPeriodReport from "../../components/inventory/AcquiredPeriodReport.vue";
 import InventoryItemName from "../../components/inventory/InventoryItemName.vue";
+import InventoryRecordsView from "../../components/inventory/InventoryRecordsView.vue";
 import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
@@ -3866,9 +3817,10 @@ async function loadRecords(reset) {
 
 async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id;
-  if (!rid || recordsBusyId.value || recordsLoading.value) return;
+  if (!rid || !accountId.value || !auth.isLoggedIn || inventoryDisposed || recordsBusyId.value || recordsLoading.value) return;
   const targetAccount = accountId.value;
   const contextSeq = inventoryContextSeq;
+  const isCurrent = () => !inventoryDisposed && auth.isLoggedIn && contextSeq === inventoryContextSeq && accountId.value === targetAccount;
   const summary = (rec.entity_type === "agent" ? "心纸" : "道具") +
     " · " + (rec.record_type === "reward_delta" ? "奖励" : "库存更新") +
     " · " + fmtTime(rec.effective_at) + " · " + entrySummary(rec.entries, rec.record_type);
@@ -3878,38 +3830,44 @@ async function onDeleteRecord(rec) {
     type: "danger",
     confirmText: "删除记录",
   });
-  if (!confirmed || inventoryDisposed || contextSeq !== inventoryContextSeq || accountId.value !== targetAccount) return;
+  if (!confirmed || !isCurrent() || recordsBusyId.value || recordsLoading.value) return;
   recordsBusyId.value = rid;
   recordsActionError.value = "";
   try {
     await deleteRecord(rid, targetAccount);
-    if (accountId.value !== targetAccount) return;
+    if (!isCurrent()) return;
     deletedRecordNotices.value = deletedRecordNotices.value.filter(function (notice) { return notice.recordId !== rid; });
     deletedRecordNotices.value.push({ recordId: rid, accountId: targetAccount, summary });
     recordsList.value = recordsList.value.filter(function (item) { return item.record_id !== rid; });
     await loadRecords(true);
+    if (!isCurrent()) return;
     await reloadCurrent();
+    if (!isCurrent()) return;
     resetAcquiredData();
   } catch (err) {
-    if (accountId.value === targetAccount) recordsActionError.value = humanErr(err, "删除失败");
+    if (isCurrent()) recordsActionError.value = humanErr(err, "删除失败");
   } finally {
-    recordsBusyId.value = "";
+    if (isCurrent()) recordsBusyId.value = "";
   }
 }
 
 async function onRestoreRecord(notice) {
-  if (!notice || recordsBusyId.value || accountId.value !== notice.accountId) return;
+  if (!notice || !accountId.value || !auth.isLoggedIn || inventoryDisposed || recordsBusyId.value || accountId.value !== notice.accountId) return;
+  const contextSeq = inventoryContextSeq;
+  const isCurrent = () => !inventoryDisposed && auth.isLoggedIn && contextSeq === inventoryContextSeq && accountId.value === notice.accountId;
   recordsBusyId.value = notice.recordId;
   recordsActionError.value = "";
   try {
     await restoreRecord(notice.recordId, notice.accountId);
-    if (accountId.value !== notice.accountId) return;
+    if (!isCurrent()) return;
     deletedRecordNotices.value = deletedRecordNotices.value.filter(function (item) { return item.recordId !== notice.recordId; });
     await loadRecords(true);
+    if (!isCurrent()) return;
     await reloadCurrent();
+    if (!isCurrent()) return;
     resetAcquiredData();
   } catch (err) {
-    if (accountId.value === notice.accountId) {
+    if (isCurrent()) {
       recordsActionError.value = err?.code === "record_already_exists"
         ? "同编号记录已重新导入，无法撤销；现有库存未更改"
         : err?.code === "deleted_record_not_found"
@@ -3917,7 +3875,7 @@ async function onRestoreRecord(notice) {
           : humanErr(err, "恢复记录失败，请重试");
     }
   } finally {
-    recordsBusyId.value = "";
+    if (isCurrent()) recordsBusyId.value = "";
   }
 }
 
@@ -4141,6 +4099,10 @@ onMounted(async function () {
 
 watch([accountId, () => auth.isLoggedIn, () => auth.userInfo?.id, agentGameFilter], function (values, previous) {
   inventoryContextSeq += 1;
+  // 锁由发起 generation 持有；失效时释放，旧 finally 不得清除新操作的锁。
+  recordsBusyId.value = "";
+  recordsActionError.value = "";
+  deletedRecordNotices.value = [];
   currentLoadSeq += 1;
   recordsLoadSeq += 1;
   currentLoadedContext.value = "";
@@ -4185,6 +4147,7 @@ watch([accountId, () => auth.isLoggedIn, () => auth.userInfo?.id, agentGameFilte
 onBeforeUnmount(function () {
   inventoryDisposed = true;
   inventoryContextSeq += 1;
+  recordsBusyId.value = "";
   inventoryPageReady = false;
   currentLoadSeq += 1;
   accountsLoadSeq += 1;
@@ -7259,132 +7222,6 @@ onBeforeUnmount(function () {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.record-list {
-  list-style: none;
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.record {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px 18px;
-  transition:
-    transform 0.45s var(--ease),
-    box-shadow 0.45s var(--ease),
-    border-color 0.3s;
-}
-.record:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 36px -20px rgba(73, 59, 44, 0.26);
-  border-color: rgba(73, 59, 44, 0.22);
-}
-.record-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.record-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.rtag {
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 7px;
-  padding: 2px 10px;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-.rtag.rtag-reward {
-  background: var(--yellow);
-  color: var(--ink);
-}
-.rtag.rtag-snapshot {
-  border: 1.5px solid var(--brand-blue);
-  color: var(--brand-blue);
-  background: transparent;
-}
-.rtag.rtag-type {
-  background: var(--paper);
-  border: 1.5px solid var(--line);
-  color: var(--ink-60);
-}
-.rtag.rtag-stamina {
-  background: var(--cream);
-  border: 1.5px solid var(--accent);
-  color: var(--accent-strong);
-}
-.rtag.rtag-agent {
-  background: rgba(215, 137, 53, 0.08);
-  border: 1.5px solid rgba(215, 137, 53, 0.4);
-  color: var(--accent-strong);
-}
-.rtag.rtag-item {
-  background: rgba(91, 106, 140, 0.07);
-  border: 1.5px solid rgba(91, 106, 140, 0.35);
-  color: var(--slate-deep);
-}
-.rtag.effect {
-  background: var(--paper);
-  border: 1.5px solid var(--line);
-  color: var(--ink-60);
-}
-.rtag.effect.eff-history_only {
-  color: var(--slate-deep);
-  border-color: rgba(91, 106, 140, 0.35);
-}
-.rtag.effect.eff-superseded {
-  color: var(--rouge);
-  border-color: rgba(166, 81, 74, 0.4);
-}
-.record-time {
-  font-family: var(--font-d);
-  font-size: 11.5px;
-  color: var(--ink-35);
-  margin-left: auto;
-}
-.record-entries {
-  font-size: 13px;
-  color: var(--ink);
-  line-height: 1.7;
-}
-.record-id {
-  font-family: var(--font-d);
-  font-size: 11px;
-  color: var(--ink-35);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.record-del {
-  flex: none;
-  border: 1.5px solid rgba(166, 81, 74, 0.35);
-  background: rgba(166, 81, 74, 0.06);
-  color: var(--rouge);
-  border-radius: 10px;
-  padding: 7px 16px;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  font-family: var(--font-b);
-  transition:
-    color 0.25s,
-    background-color 0.25s,
-    border-color 0.25s;
-}
-.record-del:hover {
-  background: rgba(166, 81, 74, 0.16);
-}
 
 .stock-baseline-confirmation {
   display: flex;
@@ -8260,18 +8097,6 @@ onBeforeUnmount(function () {
     width: 100%;
     min-height: 44px;
     justify-content: center;
-  }
-  .record {
-    align-items: flex-start;
-    padding: 12px;
-    flex-wrap: wrap;
-  }
-  .record-time {
-    margin-left: 0;
-  }
-  .record-del {
-    min-height: 44px;
-    width: 100%;
   }
   .state {
     padding: 36px 18px;

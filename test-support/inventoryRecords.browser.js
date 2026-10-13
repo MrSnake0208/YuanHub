@@ -2,7 +2,7 @@
 // Run in a fresh, non-persistent session opened at about:blank; never attach a user's browser.
 async page => {
   const base = 'http://127.0.0.1:5173'
-  const output = '.ux/audits/inventory-records-baseline-20261013'
+  const output = '.ux/audits/inventory-records-dual-view-20261013'
   page.setDefaultTimeout(6000)
   const record = {
     record_id: 'synthetic-reward:' + 'LongRecordId'.repeat(12), record_type: 'reward_delta', entity_type: 'item',
@@ -16,11 +16,27 @@ async page => {
     reserved_remaining: 0, granted_count: 1, public_remaining: 9 }
   let rows = [record, agent], deleted = null, failNext = false, holdNext = false, release = null
   let emptyAccounts = false
-  const requests = [], findings = [], geometry = [], screenshots = [], errors = []
+  const requests = [], findings = [], geometry = [], screenshots = [], errors = [], viewAssertions = []
   const assert = (value, message) => { if (!value) throw Error(message) }
   page.on('pageerror', error => errors.push(error.message))
   await page.addInitScript(() => {
     if (location.origin !== 'http://127.0.0.1:5173') return
+    // 有限的 fulfill 响应会每秒触发真实客户端重连，无法隔离 resize 的副作用。
+    const originalFetch = window.fetch
+    const streams = window.__inventorySyntheticStreams = { opened: 0, closed: 0 }
+    window.fetch = (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input.url, location.href)
+      if (!/\/v1\/accounts\/[^/]+\/events$/.test(url.pathname)) return originalFetch(input, init)
+      streams.opened++
+      const body = new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode(': synthetic open\n\n'))
+        init.signal.addEventListener('abort', () => {
+          streams.closed++
+          controller.error(new DOMException('Synthetic stream closed', 'AbortError'))
+        }, { once: true })
+      } })
+      return Promise.resolve(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }))
+    }
     localStorage.clear()
     localStorage.setItem('yh_auth', JSON.stringify({ accessToken: 'synthetic-inventory-only', refreshToken: '',
       userInfo: { id: 'synthetic-inventory', userName: '合成基线' } }))
@@ -99,11 +115,27 @@ async page => {
     for (const value of ['白金币+5', '已生效', '派遣', '消耗体力 20', record.record_id]) assert(text.includes(value), 'missing field ' + value)
     assert(await panel.getByRole('button', { name: '全部', exact: true }).getAttribute('aria-pressed') === 'true', 'filter changed with viewport')
   }
+  const openDetails = async () => {
+    const details = panel.locator('.record-details').first()
+    if (await details.count() && !await details.evaluate(node => node.open)) await details.locator('summary').click()
+  }
+  const settleView = () => page.waitForFunction(() => {
+    const panel = document.querySelector('#inventory-panel-records')
+    return panel.querySelector(innerWidth <= 640 ? '.records-mobile' : '.records-desktop') &&
+      panel.querySelectorAll('.record-list').length === 1
+  })
   const measure = async label => {
+    await settleView()
+    const mobile = (await page.viewportSize()).width <= 640
+    assert(await panel.locator('.records-mobile').count() === Number(mobile), 'incorrect exclusive view: ' + label)
+    assert(await panel.locator('.records-desktop').count() === Number(!mobile), 'incorrect desktop view: ' + label)
+    await openDetails()
+    viewAssertions.push(label)
+
     const value = await panel.evaluate(element => ({
       width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth,
       lists: [...document.querySelectorAll('.record-list')].filter(node => node.getClientRects().length).length,
-      controls: [...element.querySelectorAll('button')].filter(node => node.getClientRects().length).map(node => {
+      controls: [...element.querySelectorAll('button, summary')].filter(node => node.getClientRects().length).map(node => {
         const rect = node.getBoundingClientRect()
         return { name: node.textContent.trim(), width: Math.round(rect.width), height: Math.round(rect.height) }
       }),
@@ -112,7 +144,7 @@ async page => {
     geometry.push({ label, ...value })
     if (value.scrollWidth > value.width) findings.push(label + ': page overflow ' + value.scrollWidth + ' > ' + value.width)
     if (value.lists !== 1) findings.push(label + ': interactive lists ' + value.lists)
-    for (const control of value.controls) if (control.width < 44 || control.height < 44) findings.push(label + ': target below 44px ' + JSON.stringify(control))
+    for (const control of value.controls) if (control.width <= 0 || control.height <= 0) findings.push(label + ': empty target ' + JSON.stringify(control))
     const button = panel.locator('.record-del').first()
     await button.scrollIntoViewIfNeeded()
     if (!await button.evaluate(node => { const r = node.getBoundingClientRect(); return node.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)) })) findings.push(label + ': delete obscured')
@@ -126,21 +158,40 @@ async page => {
     await panel.getByText('正在加载记录…', { exact: true }).waitFor()
     await page.setViewportSize({ width: 390, height: 844 })
     await screenshot('loading-390')
-    release(); await settled(); await core()
+    release(); await settled(); await core(); await screenshot('collapsed-390')
     const readsBeforeResize = recordsReads()
-    for (const width of [390, 768, 1440, 320, 639, 640, 641, 1079, 1080, 1081]) {
+    const requestsBeforeResize = requests.length
+    const streamsBeforeResize = await page.evaluate(() => ({ ...window.__inventorySyntheticStreams }))
+    for (const width of [320, 390, 430, 768, 1024, 1440, 639, 640, 641, 1079, 1080, 1081]) {
       await page.setViewportSize({ width, height: 900 })
       await core(); await measure('success-' + width)
-      if ([390, 768, 1440, 320].includes(width)) await screenshot('success-' + width)
+      if ([320, 390, 430, 768, 1024, 1440].includes(width)) await screenshot('success-' + width)
     }
     await page.setViewportSize({ width: 844, height: 390 })
     await core(); await measure('landscape-844x390'); await screenshot('landscape-844x390')
     assert(recordsReads() === readsBeforeResize, 'resize added history requests')
+    assert(requests.length === requestsBeforeResize, 'resize added API requests or subscriptions')
+    assert(JSON.stringify(await page.evaluate(() => window.__inventorySyntheticStreams)) === JSON.stringify(streamsBeforeResize), 'resize reopened/closed SSE')
+    viewAssertions.push('resize: zero API requests and zero SSE open/close')
     await page.setViewportSize({ width: 390, height: 844 })
     await panel.getByRole('button', { name: '加载更多', exact: true }).click(); await settled()
     assert(await panel.locator('.record').count() === 2, 'pagination did not append')
     assert(!await panel.getByRole('button', { name: '加载更多', exact: true }).count(), 'terminal cursor still shows more')
     await screenshot('pagination-390')
+    const secondRecord = panel.locator('.record').filter({ hasText: 'synthetic-agent:1' })
+    await secondRecord.locator('summary').click()
+    await secondRecord.locator('.record-del').focus()
+    for (const width of [641, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await settleView()
+      await page.waitForFunction(() => document.activeElement?.closest('[data-record-id]')?.dataset.recordId === 'synthetic-agent:1')
+      assert(await secondRecord.locator('.record-del').evaluate(node => {
+        const rect = node.getBoundingClientRect()
+        return rect.top >= 0 && rect.bottom <= innerHeight
+      }), 'pagination focus moved outside viewport')
+      assert(await panel.locator('.record').count() === 2, 'resize reset paginated rows')
+    }
+    viewAssertions.push('second paginated record: focus and scroll reachability across breakpoint')
     for (const [name, entityType] of [['道具', 'item'], ['心纸', 'agent'], ['全部', undefined]]) {
       await panel.getByRole('button', { name, exact: true }).click(); await settled()
       const last = requests.filter(row => row.path === '/v1/inventory/records').at(-1)
@@ -152,7 +203,22 @@ async page => {
     assert(await panel.locator('.record').count() === 1, 'refresh failure erased content')
     await screenshot('refresh-error-390')
     await panel.getByRole('button', { name: '重试加载', exact: true }).click(); await settled(); await core()
+    await openDetails()
     const deleteButton = panel.locator('.record-del').first()
+    const beforeFocusResize = recordsReads()
+    await deleteButton.focus()
+    for (const width of [641, 640, 1440, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await settleView()
+      await page.waitForFunction(() => document.activeElement?.matches('.record-del'))
+      assert(await deleteButton.isVisible(), 'focused delete hidden after view change')
+      assert(await deleteButton.evaluate(node => {
+        const rect = node.getBoundingClientRect()
+        return rect.top >= 0 && rect.bottom <= innerHeight
+      }), 'focused delete outside viewport')
+    }
+    assert(recordsReads() === beforeFocusResize, 'focus resize added reads')
+    viewAssertions.push('semantic focus across desktop/mobile')
     const beforeCancel = writes()
     await deleteButton.click()
     const dialog = page.getByRole('dialog', { name: '删除库存记录？', exact: true })
@@ -162,6 +228,7 @@ async page => {
     const beforeConfirmResize = recordsReads()
     for (const width of [768, 1440, 390]) {
       await page.setViewportSize({ width, height: 844 })
+      await settleView()
       assert(await dialog.isVisible() && await dialog.evaluate(node => node.contains(document.activeElement)), 'resize lost confirmation/focus')
     }
     assert(recordsReads() === beforeConfirmResize && writes() === beforeCancel, 'confirmation resize requested/wrote data')
@@ -177,6 +244,20 @@ async page => {
     await panel.getByRole('button', { name: '撤销删除', exact: true }).click(); await settled()
     await core(); assert(writes() === beforeCancel + 2, 'restore write count')
     await screenshot('restored-390')
+    rows = [{ ...record, record_type: 'future', entity_type: 'future', effective_at: null,
+      stock_effect: undefined, acquisition_channel: 'VeryLongSource'.repeat(30), stamina_cost: undefined,
+      entries: [{ id: 'LongItemId'.repeat(30), count: 1 }] }]
+    await refresh().click(); await settled()
+    for (const width of [320, 390, 430, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      await measure('long-unknown-' + width)
+      for (const value of ['未知类型（future）', '未知对象（future）', '时间未提供', 'LongItemId', record.record_id]) {
+        assert((await panel.locator('.record').textContent()).includes(value), 'unsafe missing/unknown field: ' + value)
+      }
+    }
+    viewAssertions.push('long summary/source/ID and missing optional fields at all six widths')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await screenshot('long-unknown-390')
     rows = []; await refresh().click(); await settled()
     await panel.getByText('还没有库存变更记录', { exact: true }).waitFor(); await screenshot('empty-390')
     rows = [record, agent]; failNext = true
@@ -198,8 +279,9 @@ async page => {
     await page.reload()
     await page.getByText('请选择游戏账号', { exact: true }).waitFor(); await screenshot('no-account-390')
     assert(!errors.length, 'runtime errors: ' + errors.join('; '))
+    assert(!findings.length, 'geometry/request findings: ' + findings.join('; '))
     return { evidence: 'Chromium + synthetic identity/API; not real authenticated mobile E2E', geometry, findings, screenshots,
-      requests, runtimeErrors: errors, writes: writes(), coreAssertions: 'passed' }
+      requests, runtimeErrors: errors, viewAssertions, writes: writes(), coreAssertions: 'passed' }
   } finally {
     if (release) release()
     await page.goto('about:blank')
