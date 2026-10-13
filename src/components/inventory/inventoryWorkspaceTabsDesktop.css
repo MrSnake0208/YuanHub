@@ -1,0 +1,33 @@
+/* 此端工作区导航布局独立持有；键盘与选中状态仍共享。 */
+@media not all and (max-width: 1080px) {
+.inventory-tabs {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+.inventory-tabs button svg { display: none; }
+.inventory-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.inventory-tabs button[aria-haspopup="dialog"] {
+  font-size: 13px;
+}
+}

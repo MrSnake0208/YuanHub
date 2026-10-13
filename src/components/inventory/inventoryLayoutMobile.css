@@ -1,0 +1,8 @@
+@media (max-width: 1080px) {
+  .inventory-main { margin-left: 0; min-height: 100dvh; padding-bottom: 0; }
+  .inventory-main > :slotted(section) { padding: 0 0 40px; }
+  .page-inventory :deep(.footer) { padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 640px) {
+  .inventory-main > :slotted(section) { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+}
