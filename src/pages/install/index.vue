@@ -178,37 +178,25 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.page-install { min-height: 100dvh; }
-.install-hero { --wm: '桌'; }
-.install-content { display: grid; gap: 20px; padding-block: 24px calc(24px + env(safe-area-inset-bottom)); }
-.guide-card { min-width: 0; padding: clamp(18px, 4vw, 36px); border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
-.guide-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
-.guide-card h2 { margin: 5px 0; font-family: var(--font-s); font-size: clamp(21px, 3vw, 31px); }
-.eyebrow { color: var(--accent-strong); font: 800 11px var(--font-d); letter-spacing: .1em; }
-.install-overview { display: flex; align-items: flex-start; gap: 16px; }
-.install-overview > div { min-width: 0; }
-.install-overview img { flex: none; width: 68px; height: 68px; border-radius: 18px; }
-.guide-card p,.guide-preference p { margin: 8px 0; color: var(--ink-60); font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
-.task-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-.install-now,.install-secondary { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font: 800 13px var(--font-b); cursor: pointer; text-decoration: none; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.guide-card { border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
+.eyebrow { color: var(--accent-strong); }
+.install-overview img { border-radius: 18px; }
+.guide-card p,.guide-preference p { color: var(--ink-60); }
+.install-now,.install-secondary { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); cursor: pointer; text-decoration: none; }
 .install-now { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .install-now:disabled { opacity: .55; cursor: wait; }
 button:hover:not(:disabled),a:hover { border-color: var(--accent); }
 button:focus-visible,a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.task-exit { position: sticky; top: calc(72px + env(safe-area-inset-top)); z-index: var(--z-sticky); width: fit-content; max-width: 100%; padding: 4px; border-radius: 20px; background: var(--surface); }
-#install-task-title { scroll-margin-top: 150px; }
-.install-feedback { margin-top: 20px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.task-exit { border-radius: 20px; background: var(--surface); }
+.install-feedback { border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
 .install-feedback p { color: var(--ink); }
-.installed-banner { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
-.installed-banner > svg,.shortcut-permission-help > svg { flex: none; margin-top: 5px; color: var(--accent-strong); }
-.shortcut-permission-help { display: flex; align-items: flex-start; gap: 12px; margin-top: 20px; padding: 16px; border: 1px dashed var(--accent); border-radius: 16px; }
-.shortcut-permission-help h3 { font-family: var(--font-s); }
-details.shortcut-permission-help { display: block; }
-details.shortcut-permission-help summary { min-height: 44px; cursor: pointer; }
+.installed-banner > svg,.shortcut-permission-help > svg { color: var(--accent-strong); }
+.shortcut-permission-help { border: 1px dashed var(--accent); border-radius: 16px; }
+details.shortcut-permission-help summary { cursor: pointer; }
 @media (max-width: 640px) {
   .guide-card { border-radius: 16px; }
-  .guide-head { align-items: flex-start; flex-direction: column; }
-  .task-actions > *,.task-exit,.exit-guide { width: 100%; }
-  .install-overview { flex-wrap: wrap; }
 }
 </style>
+<style scoped src="./installPageDesktop.css"></style>
+<style scoped src="./installPageMobile.css"></style>

@@ -45,3 +45,33 @@ it.each(['accepted', 'dismissed', 'failed'])('direct installation handles %s wit
   wrapper.unmount()
   expect(localStorage.getItem(install.PWA_GUIDE_KEY)).toBe(history)
 })
+
+
+it.each([390, 1440])('安装页在%s起步跨断点保留安装入口且不触发系统提示', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const install = await import('../src/utils/pwaInstall.js')
+  const { default: InstallPage } = await import('../src/pages/install/index.vue')
+  const wrapper = mount(InstallPage, { attachTo: document.body, global: { stubs: { IslandSidebar: true, SiteFooter: true, RouterLink: { template: '<a><slot /></a>' } } } })
+  try {
+    const prompt = vi.fn()
+    window.dispatchEvent(Object.assign(new Event('beforeinstallprompt'), { prompt, userChoice: new Promise(() => {}) })); await flushPromises()
+    const button = wrapper.get('.install-now').element
+    button.focus()
+    const phase = install.pwaInstallState.phase
+    for (const nextWidth of [640, 641, 767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('.install-now').element).toBe(button)
+      expect(document.activeElement).toBe(button)
+      expect(install.pwaInstallState.phase).toBe(phase)
+      expect(install.pwaInstallState.guideActive).toBe(false)
+      expect(wrapper.findAll('.install-now')).toHaveLength(1)
+    }
+    expect(prompt).not.toHaveBeenCalled()
+    expect(install.pwaInstallState.installed).toBe(false)
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})

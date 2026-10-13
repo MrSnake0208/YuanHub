@@ -1,0 +1,65 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-install > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+@media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
+@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+.hero{position:relative;isolation:isolate;padding:74px 0 0;overflow:hidden}
+.hero::before{position:absolute;inset:0;z-index:1}
+.hero::after{position:absolute;z-index:0;right:-10px;top:-90px;font-weight:900;font-size:380px;line-height:1}
+.hero .wrap{position:relative;z-index:2;min-width:0}
+.crumb{display:flex;align-items:center;gap:14px;font-size:13px;font-weight:600;letter-spacing:.06em}
+.crumb .pill{padding:4px 14px}
+.hero h1{margin-top:26px;font-family:var(--font-s);font-weight:900;font-size:clamp(56px,7.2vw,100px);line-height:1.02;letter-spacing:.04em;display:flex;align-items:flex-end;flex-wrap:wrap;gap:0 28px}
+.hero h1 .small{font-family:var(--font-s);font-weight:700;font-size:clamp(18px,1.8vw,26px);padding:10px 18px 12px;margin-bottom:14px;letter-spacing:.14em}
+.hero-sub{width:min(100%,660px);margin-top:20px;max-width:660px;font-size:15px;line-height:1.9;font-weight:500;overflow-wrap:anywhere}
+
+@media (max-width:767px){
+  .hero{padding-top:28px}
+  .hero::after{right:-24px;top:-64px;font-size:180px}
+  .crumb{gap:7px;overflow-x:auto;padding-bottom:2px;font-size:11px;scrollbar-width:none}
+  .crumb::-webkit-scrollbar{display:none}
+  .crumb .pill{flex:none;padding:4px 10px}
+  .hero h1{min-width:0;margin-top:20px;font-size:40px;line-height:1.12;gap:10px;overflow-wrap:anywhere}
+  .hero h1 .small{font-size:14px;padding:8px 11px;margin-bottom:3px}
+  .hero-sub{margin-top:14px;max-width:58ch;font-size:15px;line-height:1.75}
+}
+
+@media (max-width:360px){
+  .hero::after{right:-34px;top:-70px;font-size:148px}
+  .hero h1{font-size:36px}
+}
+
+@media (min-width:768px) and (max-width:1080px){
+  .hero{padding-top:52px}
+  .hero::after{right:-26px;top:-68px;font-size:300px}
+  .hero h1{font-size:64px}
+}
+.page-install { min-height: 100dvh; }
+.install-hero { --wm: '桌'; }
+.install-content { display: grid; gap: 20px; padding-block: 24px calc(24px + env(safe-area-inset-bottom)); }
+.guide-card { min-width: 0; padding: clamp(18px, 4vw, 36px); }
+.guide-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.guide-card h2 { margin: 5px 0; font-family: var(--font-s); font-size: clamp(21px, 3vw, 31px); }
+.eyebrow { font: 800 11px var(--font-d); letter-spacing: .1em; }
+.install-overview { display: flex; align-items: flex-start; gap: 16px; }
+.install-overview > div { min-width: 0; }
+.install-overview img { flex: none; width: 68px; height: 68px; }
+.guide-card p,.guide-preference p { margin: 8px 0; font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
+.task-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.install-now,.install-secondary { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; font: 800 13px var(--font-b); }
+.task-exit { position: sticky; top: calc(72px + env(safe-area-inset-top)); z-index: var(--z-sticky); width: fit-content; max-width: 100%; padding: 4px; }
+#install-task-title { scroll-margin-top: 150px; }
+.install-feedback { margin-top: 20px; padding: 12px 16px; }
+.installed-banner { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.installed-banner > svg,.shortcut-permission-help > svg { flex: none; margin-top: 5px; }
+.shortcut-permission-help { display: flex; align-items: flex-start; gap: 12px; margin-top: 20px; padding: 16px; }
+.shortcut-permission-help h3 { font-family: var(--font-s); }
+details.shortcut-permission-help { display: block; }
+details.shortcut-permission-help summary { min-height: 44px; }
+@media (max-width: 640px) {
+  .guide-head { align-items: flex-start; flex-direction: column; }
+  .task-actions > *,.task-exit,.exit-guide { width: 100%; }
+  .install-overview { flex-wrap: wrap; }
+}
+}
