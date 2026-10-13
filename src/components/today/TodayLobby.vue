@@ -134,8 +134,16 @@ onBeforeUnmount(() => {
 .lobby-duty button { min-height: 44px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--tea); font: 700 12px/1.5 var(--font-b); cursor: pointer; }
 .lobby-duty button:hover { color: var(--accent-strong); border-color: currentColor; }
 .lobby-save-notice { margin-top: 4px; color: var(--rouge); font-size: 12px; line-height: 1.6; }
-.lobby-portrait { position: absolute; z-index: 0; right: 0; bottom: 0; width: 42%; height: 164px; overflow: hidden; pointer-events: none; }
-.lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: translateY(12px); }
+.lobby-portrait { position: absolute; z-index: 0; right: -8px; bottom: 0; width: calc(42% + 8px); height: 164px; overflow: hidden; pointer-events: none; }
+.lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 65% 0; }
+@supports (mask-composite: intersect) or (-webkit-mask-composite: source-in) {
+  .lobby-portrait img {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent), linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent), linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+}
 .lobby-art-error { padding: 50px 8px; color: var(--ink-60); font-size: 12px; line-height: 1.8; text-align: center; }
 .lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
 .lobby-actions { grid-area: actions; }
@@ -168,7 +176,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent-stro
   .lobby-status { max-width: 380px; font-size: 14px; }
   .lobby-duty { gap: 16px; margin-top: 12px; font-size: 13px; }
   .lobby-portrait { left: 56%; right: auto; width: 40%; max-width: 390px; height: 244px; }
-  .lobby-portrait img { transform: translateY(16px); }
   .duty-candidates { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
