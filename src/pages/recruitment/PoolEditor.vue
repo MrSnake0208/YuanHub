@@ -730,8 +730,11 @@ function ensureEntryVisible() {
   if (!props.open || !editorBody.value || (!entryComposer.value?.contains(document.activeElement) && document.activeElement !== remainingInput.value)) return
   const viewport = window.visualViewport
   const visibleTop = Math.max(viewport?.offsetTop || 0, panel.value?.querySelector('.editor-header')?.getBoundingClientRect().bottom || 0) + ENTRY_VISIBLE_TOP_GAP
-  const visibleBottom = Math.min(editorBody.value.getBoundingClientRect().bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
   const focusedField = panel.value?.contains(document.activeElement) && document.activeElement.matches('input, select, textarea, button') ? document.activeElement : null
+  const actions = activeRow.value ? entryComposer.value?.querySelector('.composer-actions') : panel.value?.querySelector('.progress-actions')
+  const actionsRect = actions?.getBoundingClientRect()
+  let visibleBottom = Math.min(editorBody.value.getBoundingClientRect().bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
+  if (activeRow.value && focusedField && !actions?.contains(focusedField) && actionsRect?.height > 0) visibleBottom = Math.min(visibleBottom, actionsRect.top - ENTRY_VISIBLE_BOTTOM_GAP)
   const bounds = (focusedField || entryComposer.value).getBoundingClientRect()
   const rect = { top: bounds.top, bottom: bounds.bottom, height: bounds.height }
   const availableHeight = Math.max(0, visibleBottom - visibleTop)
@@ -739,9 +742,7 @@ function ensureEntryVisible() {
   const hintTarget = currentHint && panel.value?.querySelector(`[data-guide-target="${currentHint.dataset.guideFor}"]`)
   const hintRect = currentHint?.getBoundingClientRect()
   if (focusedField && hintTarget?.contains(focusedField) && hintRect && rect.bottom - hintRect.top <= availableHeight) { rect.top = Math.min(rect.top, hintRect.top); rect.height = rect.bottom - rect.top }
-  const actions = activeRow.value ? entryComposer.value?.querySelector('.composer-actions') : panel.value?.querySelector('.progress-actions')
-  const actionsRect = actions?.getBoundingClientRect()
-  if (actionsRect && actionsRect.bottom >= rect.bottom && actionsRect.bottom - rect.top <= availableHeight) {
+  if (!activeRow.value && actionsRect && actionsRect.bottom >= rect.bottom && actionsRect.bottom - rect.top <= availableHeight) {
     rect.bottom = actionsRect.bottom
     rect.height = rect.bottom - rect.top
   }
@@ -1659,11 +1660,15 @@ select {
 }
 
 .composer-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin: 0;
+  background: color-mix(in srgb, var(--cream) 70%, var(--surface));
 }
 
 .composer-actions button {

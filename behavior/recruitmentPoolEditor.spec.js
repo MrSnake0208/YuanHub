@@ -405,6 +405,29 @@ it('只编辑保底时视口因键盘缩短，滚动真实输入到可见范围�
   wrapper.unmount()
 })
 
+it('短视口编辑时当前输入避让吸底的单条操作栏，保留焦点与草稿', async () => {
+  vi.useFakeTimers()
+  const viewport = Object.assign(new EventTarget(), { height: 390, offsetTop: 0, scale: 1 })
+  vi.stubGlobal('visualViewport', viewport)
+  vi.stubGlobal('innerHeight', 390)
+  const wrapper = render()
+  await wrapper.get('.gacha-record .record-detail').trigger('click')
+  const input = wrapper.get('.pull-count-field input')
+  vi.spyOn(input.element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 260, 96, 47))
+  vi.spyOn(wrapper.get('.editor-header').element, 'getBoundingClientRect').mockReturnValue({ bottom: 100 })
+  vi.spyOn(wrapper.get('.editor-body').element, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 350 })
+  vi.spyOn(wrapper.get('.composer-actions').element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 280, 300, 44))
+  const scroll = vi.fn(); wrapper.get('.editor-body').element.scrollBy = scroll
+  input.element.focus()
+  viewport.dispatchEvent(new Event('resize'))
+  await vi.advanceTimersByTimeAsync(200)
+  expect(scroll).toHaveBeenCalledWith({ top: 51, behavior: 'auto' })
+  expect(document.activeElement).toBe(input.element)
+  expect(input.element.value).toBe('17')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  wrapper.unmount()
+})
+
 it('Escape确认放弃后关闭且不写入，重开恢复服务端记录和保底；已确认非UP才显示歪章', async () => {
   const confirm = vi.spyOn(dialog, 'confirm').mockResolvedValue(true)
   const event = { ...recruitmentEvent('old', 31), agent_snapshot: { agent_id: 'a', name: '甲' }, up_status: 'non_up' }
