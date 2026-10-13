@@ -261,7 +261,6 @@
               <div data-guide-target="views" class="records-toolbar">
                 <div class="records-heading">
                   <h3 :id="editorId + '-records'">抽卡档案 <span>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }}</span></h3>
-                  <p>本池抽卡进度 · 最新 → 最早</p>
                 </div>
                 <label v-if="rows.length" class="record-search"><span class="sr-only">查找已有记录</span><Search :size="16" aria-hidden="true" /><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="查找密探" autocomplete="off"></label>
                 <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
@@ -319,8 +318,8 @@
                       :rarity="Number(selectedAgent(row)?.rarity) || 5"
                       aria-hidden="true"
                     />
-                    <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ isFourStar(row) ? '4星计次' : row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
-                    <span v-if="row.up_status === 'non_up'" class="agent-non-up" aria-hidden="true">歪</span>
+                    <span v-if="!isFourStar(row)" class="agent-order-badge" :title="goldOrder.get(row.event_id) ? '本池已记录第' + goldOrder.get(row.event_id) + '个金' : '读取完整记录后显示序号'" aria-hidden="true">{{ goldOrder.get(row.event_id) ?? '…' }}</span>
+                    <span v-if="row.up_status === 'non_up'" class="agent-non-up non-up-stamp" aria-hidden="true">歪</span>
                   </button>
                   <button
                     type="button"
@@ -329,7 +328,7 @@
                     :aria-label="recordLabel(row)"
                     @click="edit(row, $event)"
                   >
-                    <span class="agent-record-name">{{ selectedAgent(row)?.name || row.agent_id }}</span>
+                    <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ isFourStar(row) ? '4星计次' : row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
                     <span class="agent-record-flags" aria-hidden="true">
                       <span v-if="row.batch_id" class="agent-record-flag">批次</span>
                       <span v-if="isChanged(row)" class="agent-record-flag is-pending">待保存</span>
@@ -345,9 +344,8 @@
                 <p>{{ recordSearch ? '换个名字，或继续加载记录；不需要重复登记。' : '点击上方 UP 密探头像或「其他密探」登记出货；仅更新保底可以直接修改上方进度并保存。' }}</p>
               </div>
 
-              <div class="records-tail">
-                <p v-if="rows.length && recordView === 'progress'" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数以每条数字为准，未知不代表 0。</p>
-                <p v-else-if="rows.length" class="bar-legend">头像左下角显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
+              <div v-if="hasMore || (rows.length && recordView === 'agents')" class="records-tail">
+                <p v-if="rows.length && recordView === 'agents'" class="bar-legend">头像下方显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
                 <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">继续加载记录</button>
               </div>
             </section>
@@ -575,6 +573,18 @@ const isFourStar = row => {
 const rowInput = row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span })
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
 const selectedOtherAgent = computed(() => activeRow.value?.agent_id && !quickUpAgents.value.some(agent => agent.id === activeRow.value.agent_id) ? selectedAgent(activeRow.value) : null)
+const goldOrder = computed(() => {
+  const ranks = new Map()
+  if (!recordsReady.value) return ranks
+  const loadedIds = new Set(props.records.map(event => event.event_id))
+  let rank = 0
+  for (const row of orderedRows.value) {
+    // 分页从最早记录开始读取；尚未读完时，最新草稿的完整序号仍未知。
+    if ((props.hasMore && !loadedIds.has(row.event_id)) || isFourStar(row)) continue
+    ranks.set(row.event_id, ++rank)
+  }
+  return ranks
+})
 function localPortraitUrl(operatorId) {
   const path = operatorPortraits[operatorId]
   if (!path) return ''
@@ -677,7 +687,8 @@ function recordLabel(row) {
   const agent = selectedAgent(row)
   const pulls = isFourStar(row) ? '4星计次，不影响保底' : row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
   const status = row.up_status === 'non_up' ? '，非UP' : (agent?.poolSlot || row.up_status === 'up') ? '，UP' : ''
-  return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '')
+  const rank = goldOrder.value.get(row.event_id)
+  return '编辑' + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '') + (rank ? `，本池已记录第${rank}个金` : '')
 }
 const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (orderChanged.value ? 1 : 0))
 const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0))
@@ -1082,9 +1093,8 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .records-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
 .records-heading { flex: 1 1 100%; min-width: 0; }
 .records-heading h3 span { display: inline-block; margin-left: 8px; color: var(--ink-60); font: 400 12px/1.5 var(--font-b); }
-.records-heading p { margin-top: 3px; color: var(--ink-60); font-size: 12px; }
 .record-search { position: relative; flex: 1; min-width: 140px; }
-.record-search svg { position: absolute; top: 15px; left: 10px; color: var(--ink-60); }
+.record-search svg { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: var(--ink-60); }
 .record-search input { margin: 0; padding-left: 32px; font-size: 12px; }
 .record-view-switch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
 .record-view-switch button { min-width: 0; padding: 6px 10px; border-color: transparent; border-radius: 5px; background: transparent; color: var(--ink-60); font-size: 12px; white-space: nowrap; }
@@ -1123,13 +1133,13 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .agent-record-card { display: grid; justify-items: center; align-content: start; min-width: 0; padding-top: 6px; }
 .agent-record-portrait { display: block; position: relative; width: min(100%, 78px); aspect-ratio: 1; }
 .agent-record-avatar { width: 100%; height: 100%; }
-.agent-pull-badge { position: absolute; top: 4px; right: 4px; z-index: 2; padding: 4px 6px; border: 1px solid var(--surface); border-radius: 4px; background: var(--accent-strong); color: var(--surface); font: 700 11px/1.2 var(--font-d); white-space: nowrap; }
-.agent-pull-badge.bar-low { background: var(--editor-green); }
-.agent-pull-badge.bar-high { background: var(--rouge); }
-.agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { background: var(--slate-deep); }
-.agent-non-up { position: absolute; top: 4px; left: 4px; padding: 2px 5px; background: var(--surface); color: var(--rouge); border-radius: 3px; font-size: 12px; }
+.agent-order-badge { position: absolute; top: -6px; left: -6px; z-index: 2; min-width: 22px; padding: 3px; border: 1px solid var(--accent); border-radius: 4px; background: #F5C84C; color: var(--tea-deep); font: 700 11px/1.2 var(--font-d); text-align: center; white-space: nowrap; }
+.agent-pull-badge { --badge-color: #F3AB36; padding: 4px 8px; border: 1px solid color-mix(in srgb, var(--badge-color) 70%, var(--surface)); border-radius: 4px; background: var(--badge-color); color: var(--tea-deep); font: 700 13px/1.2 var(--font-d); white-space: nowrap; }
+.agent-pull-badge.bar-low { --badge-color: #087F5B; color: var(--surface); }
+.agent-pull-badge.bar-high { --badge-color: #C6473B; color: var(--surface); }
+.agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { --badge-color: var(--slate-deep); color: var(--surface); }
+.agent-non-up { position: absolute; top: -6px; right: -6px; z-index: 2; background: var(--surface); }
 .agent-record-detail { display: grid; justify-items: center; gap: 4px; width: 100%; min-width: 0; padding: 6px 3px; border-color: transparent; background: transparent; }
-.agent-record-name { max-width: 100%; overflow-wrap: anywhere; font-size: 13px; font-weight: 700; }
 .agent-record-flags { display: flex; justify-content: center; flex-wrap: wrap; gap: 3px; }
 .agent-record-flag { font-size: 11px; color: var(--ink-60); }
 .agent-record-flag.is-pending { padding: 2px 5px; color: var(--tea); background: var(--yellow); border-radius: 3px; }
@@ -1345,7 +1355,8 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:foc
 
 @media (min-width: 431px) {
   .modal-mask { padding: 16px; }
-  .pool-editor { width: min(780px, 100%); height: min(900px, calc(100dvh - 32px - var(--keyboard-inset))); max-height: calc(100dvh - 32px - var(--keyboard-inset)); border-radius: 18px; }
+  .pool-editor { width: min(780px, 100%); height: auto; max-height: min(860px, calc(100dvh - 32px - var(--keyboard-inset))); border-radius: 18px; }
+  .pool-editor form, .editor-body { flex: 1 1 auto; }
 }
 @media (min-width: 700px) {
   .editor-header { padding: 22px 28px 18px; }
@@ -1362,6 +1373,35 @@ button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:foc
 }
 @media (min-width: 768px) {
   .entry-workflow { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
+}
+@media (min-width: 700px) and (hover: hover) and (pointer: fine) {
+  .pool-editor { --editor-body-bottom-space: 16px; }
+  .editor-header { padding: 16px 24px 14px; }
+  h2 { font-size: 26px; }
+  h3 { font-size: 18px; }
+  .editor-body { padding: 16px 24px var(--editor-body-bottom-space); }
+  .progress-card { padding: 6px 24px; }
+  .entry-section { padding: 14px 16px; margin-bottom: 16px; }
+  .entry-heading { margin-bottom: 10px; }
+  button { min-width: 36px; min-height: 36px; padding: 6px 12px; font-size: 13px; line-height: 1.4; }
+  input { min-height: 36px; padding: 7px 10px; font-size: 14px; line-height: 1.4; }
+  .quick-up-button, .add-record { width: 60px; height: 76px; padding: 3px 4px; gap: 4px; }
+  .quick-up-name { line-height: 1.3; }
+  .quick-up-mark { top: 37px; }
+  .pull-count-field input { --input-font-size: 18px; padding-block: 5px; }
+  .pull-stepper button { min-width: 32px; min-height: 34px; padding: 6px; }
+  .pull-stepper input { min-height: 34px; }
+  .close-button, .entry-cancel, .entry-delete { width: 36px; height: 36px; padding: 7px; }
+  .entry-delete { top: 8px; right: 8px; }
+  .record-view-switch button, .progress-label-switch button { min-height: 32px; padding-block: 5px; }
+  .remaining-input input { min-height: 32px; padding-block: 5px; }
+  .records-toolbar { gap: 8px; }
+  .gacha-record { padding-block: 5px; }
+  .record-handle, .record-detail { min-height: 40px; padding: 0; }
+  .agent-record-grid { gap: 12px; padding-top: 12px; }
+  .agent-record-detail { padding: 4px 3px; }
+  .records-empty { padding: 20px 16px; }
+  footer { padding: 10px 24px; }
 }
 @media (pointer: coarse) {
   .agent-filter-reset { min-width: 44px; min-height: 44px; }
