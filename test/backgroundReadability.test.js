@@ -1,18 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import fs from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 
 const root = new URL('../', import.meta.url)
-const read = (path) => fs.readFileSync(new URL(path, root), 'utf8')
+const read = (path) => readSource(new URL(path, root))
 const mainCss = read('src/styles/main.css')
 const feedbackCss = read('src/styles/feedback-workspace.css')
 const demoVue = read('src/pages/demo/index.vue')
 
 function cssBlock(source, selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const match = source.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
-  assert.ok(match, `缺少 ${selector} 样式契约`)
-  return match[1]
+  const blocks = [...source.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))]
+  assert.ok(blocks.length, `缺少 ${selector} 样式契约`)
+  return blocks.map(match => match[1]).join(';')
 }
 
 test('全局吉祥物纹理独立为不可交互的固定背景层', () => {

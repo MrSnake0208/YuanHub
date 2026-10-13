@@ -10,7 +10,7 @@ vi.mock('vue-router', async () => {
 })
 
 beforeEach(() => { useRoute().query = {}; vi.clearAllMocks() })
-const render = () => mount(DemoPage, { global: { stubs: { IslandSidebar: true } } })
+const render = (options = {}) => mount(DemoPage, { ...options, global: { stubs: { IslandSidebar: true } } })
 
 it('演示保留样例标识且不承诺当天完成，未知材料优先提醒补记录', () => {
   const wrapper = render()
@@ -51,4 +51,32 @@ it('目标增加导致缺少功过格速度时，完整耗时显示无法估算'
   expect(wrapper.get('.demo-priority-foot').text()).toContain('完整耗时暂无法估算')
   expect(wrapper.get('.demo-estimate-note').text()).toContain('功过格缺少收集记录')
   expect(fetch).not.toHaveBeenCalled()
+})
+
+
+it.each([390, 1440])('演示在%s起步跨断点保持目标、视图URL与焦点', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  useRoute().query = { view: 'targets' }
+  const wrapper = render({ attachTo: document.body })
+  try {
+    const select = wrapper.get('.demo-target-row select')
+    await select.setValue('24')
+    select.element.focus()
+    const row = wrapper.get('.demo-target-row').element
+    for (const nextWidth of [360, 361, 767, 768, 1080, 1081, 1100, 1101, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('.demo-target-row').element).toBe(row)
+      expect(wrapper.get('.demo-target-row select').element).toBe(select.element)
+      expect(select.element.value).toBe('24')
+      expect(document.activeElement).toBe(select.element)
+      expect(useRoute().query.view).toBe('targets')
+      expect(wrapper.findAll('.demo-view')).toHaveLength(1)
+    }
+    expect(fetch).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

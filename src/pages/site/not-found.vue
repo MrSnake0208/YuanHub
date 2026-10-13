@@ -17,10 +17,12 @@ import IslandSidebar from '../../components/IslandSidebar.vue'
 </script>
 
 <style scoped>
-main { min-height:100dvh; display:grid; place-items:center; padding:24px; }
-.not-found-panel { width:min(620px,100%); padding:clamp(24px,6vw,40px); border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:8px; background:var(--surface); }
-.eyebrow { color:var(--accent-strong); font-family:var(--font-d); font-size:11px; font-weight:800; letter-spacing:.12em; }
-h1 { margin:12px 0 0; color:var(--ink); font-family:var(--font-s); font-size:clamp(26px,5vw,34px); font-weight:900; }
-p { margin:12px 0 24px; color:var(--ink-60); line-height:1.8; }
-.home-link { min-height:44px; display:inline-flex; align-items:center; padding:0 18px; border-radius:8px; background:var(--tea); color:var(--cream); font-weight:800; text-decoration:none; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.not-found-panel { border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:8px; background:var(--surface); }
+.eyebrow { color:var(--accent-strong); }
+h1 { color:var(--ink); }
+p { color:var(--ink-60); }
+.home-link { border-radius:8px; background:var(--tea); color:var(--cream); text-decoration:none; }
 </style>
+<style scoped src="./notFoundPageDesktop.css"></style>
+<style scoped src="./notFoundPageMobile.css"></style>

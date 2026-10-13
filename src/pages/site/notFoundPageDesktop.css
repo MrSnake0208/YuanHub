@@ -1,0 +1,11 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {
+.page-not-found > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+
+main { min-height:100dvh; display:grid; place-items:center; padding:24px; }
+.not-found-panel { width:min(620px,100%); padding:clamp(24px,6vw,40px); }
+.eyebrow { font-family:var(--font-d); font-size:11px; font-weight:800; letter-spacing:.12em; }
+h1 { margin:12px 0 0; font-family:var(--font-s); font-size:clamp(26px,5vw,34px); font-weight:900; }
+p { margin:12px 0 24px; line-height:1.8; }
+.home-link { min-height:44px; display:inline-flex; align-items:center; padding:0 18px; font-weight:800; }
+}
