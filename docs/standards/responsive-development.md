@@ -138,6 +138,14 @@ CSS 断点不绑定设备。YuanHub 保留以下参考视口，但**完整矩阵
 - 当前页面、返回、主要模块入口必须明确。
 - 固定导航不得遮挡页面首尾内容。
 
+桌面宽度 ≥1081px 且高度 ≤480px 时，`IslandSidebar.vue` 使用整座侧栏内部滚动，品牌、主导航和账号区不再争抢固定高度；“更多”在流内展开，避免上弹进入更新提示条覆盖区。更高的桌面窗口仍保持主导航独立滚动，手机抽屉保持头尾固定、中间导航滚动。可在已运行的开发服务上做精确布局检查（公开反馈广场 + 合成更新条，不代表登录业务页或原生 iOS 验收）：
+
+```bash
+npx --no-install playwright cli -s=sidebar-reachability open http://127.0.0.1:5173/feedback/plaza --browser=chrome
+npx --no-install playwright cli -s=sidebar-reachability run-code --filename=test-support/sidebarReachability.browser.js
+npx --no-install playwright cli -s=sidebar-reachability close
+```
+
 ### 5.2 表格与密集数据
 
 不要默认把宽表硬压进手机。
