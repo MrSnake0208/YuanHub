@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 
 const root = new URL('../', import.meta.url)
-const sourceCommit = '854a7493e1744c4b8a4bae3e44dbd3f216ce911c'
+const sourceCommit = '07a4b015d72f1272ee1d6b1360a10167360773a0'
 
 test('vendored YuanStar embed keeps provenance and is marked as generated output', () => {
   const doc = readFileSync(new URL('docs/yuanstar-embed-sync.md', root), 'utf8')
@@ -82,7 +82,7 @@ test('vendored release matches documented provenance and the current artifact ma
   assert.equal(manifest._sourceCommit, sourceCommit)
   assert.deepEqual(manifest._sourceWorkingTree, { status: 'clean' })
   assert.ok(doc.includes('P2-D 名称汇总批量目标编辑'))
-  assert.equal(manifest._sourceBranch, 'codex/local-star-bottle-input')
+  assert.equal(manifest._sourceBranch, 'fix/star-ocr-plan-inheritance')
   for (const path of ['web/vite.config.mjs', 'web/vite.embed.config.mjs', 'web/scripts/verify-ocr-build.mjs']) {
     assert.ok(doc.includes(path), path + ' documented source change')
   }
