@@ -65,9 +65,10 @@ async (page) => {
   if (!await page.locator('.pull-count-field input').evaluate(node => node === document.activeElement && node.value === '40')) throw Error('Parent rerender lost the input')
   const actionsVisible = await page.locator('.composer-actions').evaluate(node => {
     const body = node.closest('.editor-body').getBoundingClientRect(), actions = node.getBoundingClientRect()
-    return actions.top >= body.top && actions.bottom <= body.bottom && [...node.querySelectorAll('button')].every(button => button.getBoundingClientRect().height >= 44)
+    const field = document.activeElement.getBoundingClientRect()
+    return field.top >= body.top && field.bottom <= actions.top && actions.top >= body.top && actions.bottom <= body.bottom && [...node.querySelectorAll('button')].every(button => button.getBoundingClientRect().height >= 44)
   })
-  if (!actionsVisible) throw Error('Record actions are obscured or too small')
+  if (!actionsVisible) throw Error('Record input or actions are obscured, or actions are too small')
   await page.locator('.composer-actions button').filter({ hasText: /^取消$/ }).click()
   await settle()
   const cancelled = await measure()
