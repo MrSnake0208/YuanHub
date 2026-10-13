@@ -25,11 +25,12 @@ test('等级计算可跳过已完成的突破材料', function () {
   assert.equal(result.money, 300000)
 })
 
-test('化极计算保留觉醒装金玻璃', function () {
-  const result = calculateStarRequirements(30, 31)
-  assert.equal(result.heart, 100)
-  assert.equal(result.money, 300000)
-  assert.equal(result.items.zhuangjinboli, 1)
+test('普通24到25只计最后一步且五星不再计费', function () {
+  const result = calculateStarRequirements(24, 25)
+  assert.equal(result.heart, 80)
+  assert.equal(result.money, 160000)
+  assert.deepEqual(result.items, {})
+  for (let raw = 25; raw <= 30; raw++) assert.equal(calculateStarRequirements(25, raw).heart, 0)
 })
 
 test('修为计算按属性组选择材料并汇总五铢钱', function () {
@@ -54,5 +55,13 @@ test('现有星级协议映射到 Wiki 化极阶段', function () {
   assert.equal(starStageFromLevel(1), 0)
   assert.equal(starStageFromLevel(7), 6)
   assert.equal(starStageFromLevel(30), 24)
-  assert.equal(starStageFromLevel(31), 25)
+  assert.equal(starStageFromLevel(31), null)
+})
+
+test('旧觉醒编码不再作为可购买的化极阶段', function () {
+  const result = calculateStarRequirements(30, 31)
+  assert.equal(result.heart, 0)
+  assert.equal(result.money, 0)
+  assert.deepEqual(result.items, {})
+  assert.equal(result.unsupported, true)
 })

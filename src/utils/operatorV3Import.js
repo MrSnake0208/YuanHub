@@ -1,5 +1,5 @@
 export function isOperatorV3Document(value) {
-  return !!value && value.format === 'myshare-operator-exchange' && Number(value.version) === 3
+  return !!value && value.format === 'myshare-operator-exchange' && [3, 4].includes(Number(value.version))
 }
 
 export function operatorScanReviewDraft(document, operatorId, reviewId) {
@@ -23,13 +23,13 @@ export function isOperatorScanReviewDraft(review, document) {
 }
 
 export function buildOperatorV3BrowserRequest(document, targetAccountId, confirmReview) {
-  if (!isOperatorV3Document(document)) throw new Error('这不是密探养成数据交换协议 v3 文档')
+  if (!isOperatorV3Document(document)) throw new Error('这不是密探养成数据交换协议 v3/v4 文档')
   if (!targetAccountId) throw new Error('请先选择导入目标账号')
   const accounts = Array.isArray(document.accounts) ? document.accounts : []
   const sourceIds = Array.from(new Set(accounts.map(function (account) {
     return account && account.id != null ? String(account.id).trim() : ''
   }).filter(Boolean)))
-  if (sourceIds.length === 0) throw new Error('v3 文档没有可识别的来源账号')
+  if (sourceIds.length === 0) throw new Error('v3/v4 文档没有可识别的来源账号')
   if (sourceIds.length > 1) throw new Error('当前导入面板一次只支持一个来源账号，请拆分文档后分别导入')
   return {
     document: document,

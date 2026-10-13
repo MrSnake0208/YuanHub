@@ -93,3 +93,7 @@ Preview 顶层格式是 `myshare-operator-import-preview@1`，统计：`accepted
 
 协议身份和字段不变；服务端根据目录 spOf 同步本体及全部 SP 的等级/修为。各形态星级独立，缺失形态仅补零星占位；full 裁剪后也保留关系占位。关联成长变化推进 revision，并将旧观测标记 stale。历史存量不会由本次发布自动迁移。
 同一 v3 record 的有效共享 patch 值冲突时，该关联组全部 rejected（`shared_growth_conflict`）；无关组仍按原有部分接收语义处理。合法同值双形态提交在同一事务中准备并应用，允许本批同步引起的 revision 变化，保留外部并发冲突保护；响应与审计使用最终 revision。review 未确认字段仍按原规则排除。SP annotation 星级目标同样限 0..5。
+
+## 独立化极长期兼容
+
+旧30永久接收并适配五星，旧31只确认觉醒且允许stage未知；不抹除已确认awake。隐密异常保原值复核，SP继续422保护。v3单标量不能无损表达任意stage+awake；备份推荐[v4](./operator-v4.md)，v3版本语义不原地改写。

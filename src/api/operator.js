@@ -1,8 +1,9 @@
-// 密探（operator）接口封装 —— 对照 BackEndV3-Share 最新 commit ed5347a
+// 密探（operator）接口封装 —— 对照 docs/api-contract.md
 // 后端为 Spring Boot，全局 Jackson SNAKE_CASE：
-// - 请求/响应 JSON 字段均为 snake_case（account_id、full_baseline_at、
+// - Current API 请求/响应为 snake_case（account_id、full_baseline_at、
 //   snapshot_scope、effective_at、snapshot_effect 等）；
-// - 交换协议 v2 为 myshare-operator-exchange，record 自带 account_id。
+// - v2 交换正文保留 camelCase；v3/v4 为 snake_case，record 自带 account_id。
+// - Current huaji 独立记录 owned/stage/awakened；PATCH 缺失子字段不修改。
 //
 // 约定同 src/api/inventory.js：函数入参一律 camelCase，内部转 snake_case；
 // 导出接口与库存一致直接返回完整交换文档（无 ApiResult 包装），故用 raw。
@@ -83,7 +84,7 @@ export function importOperator(doc) {
   })
 }
 
-// v3 导入预览（只校验和计算差异，不写 current / 库存）。
+// v3/v4 导入预览（只校验和计算差异，不写 current / 库存）。
 // body 为 { document, account_mapping, confirm_review }。
 export function previewOperatorImport(body) {
   assertImportStatesEnabled(body)
@@ -261,7 +262,7 @@ export function deleteOperatorRecord(recordId, accountId) {
 
 // 导出（GET，需登录）——{ accountId?, scope?, version? }
 // 二选一：account_id（单账号）或 scope=all（全部账号）。
-// version 默认 2；version=3 包含客观档案、annotation、favorite 与 targets。
+// version 默认 2；version=3 保留旧标量；version=4 无损记录独立huaji和来源。
 // 直接返回交换文档（无 ApiResult 包装），故用 raw。
 export function exportOperator({ accountId, scope, version } = {}) {
   const params = new URLSearchParams()

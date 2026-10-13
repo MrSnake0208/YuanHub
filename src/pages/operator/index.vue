@@ -24,7 +24,7 @@
           </details>
         </template>
         <template #help>
-          <p>按游戏账号记录等级、修为、星级、命盘与星石。首次建档或快速补录可从「录入密探」进入，分享与 v2 / v3 档案交换在「更多」中。</p>
+          <p>按游戏账号记录等级、修为、星级、命盘与星石。首次建档或快速补录可从「录入密探」进入，分享与 v2 / v3 / v4 档案交换在「更多」中。</p>
           <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</p>
         </template>
       </CompactToolHeader>
@@ -156,7 +156,7 @@
                     可导出当前或全部账号的密探 JSON 备份，包含客观档案、状态、备注、关注和养成目标。
                   </p>
                 </div>
-                <span class="archive-format">JSON · v3 导出</span>
+                <span class="archive-format">JSON · v4 无损导出</span>
               </div>
               <div class="archive-actions">
                 <button
@@ -238,7 +238,7 @@
               <button type="button" class="btn ghost" @click="closeSelectedScanReview">已另行处理，关闭此提醒</button>
             </div>
             <p id="operator-import-tip" class="tip">
-              v3 档案会先由服务器校验并展示逐项差异；v2 档案会先展示本地影响范围。两者都需确认后才写入当前账号。
+              v3 / v4 档案会先由服务器校验并展示逐项差异；v2 档案会先展示本地影响范围。两者都需确认后才写入当前账号。
             </p>
             <div class="import-target">
               <span>导入目标</span><strong>{{ currentAccountName }}</strong
@@ -1783,11 +1783,11 @@
                       </div>
                     </div>
                     <div class="ledger-growth-row">
-                      <span class="ledger-grow-label">化极</span>
+                      <span class="ledger-grow-label" :title="operatorHuajiLabel(e)">化极<small>{{ e.huaji?.awakened === true ? '已觉醒' : e.huaji?.awakened === false ? '未觉醒' : '待确认' }}</small></span>
                       <button
                         class="ledger-editable ledger-huaji-value ledger-popover-trigger"
                         type="button"
-                        :aria-label="'化极：' + starLabel(cardGrowthValue(e, 'star'), e.spOf)"
+                        :aria-label="'化极：' + operatorHuajiLabel(e)"
                         title="化极"
                         :aria-expanded="cardPopoverKey === e.id + ':star-edit'"
                         @click="openCardPopover(e, 'star-edit')"
@@ -1801,7 +1801,7 @@
                             :size="12"
                             fill="currentColor"
                             aria-hidden="true"
-                          /><span v-if="!e.spOf"
+                          /><span v-if="!e.spOf && cardGrowthValue(e, 'star') < 25"
                             >
                             {{ starCardNode(cardGrowthValue(e, "star")) }}
                             <span class="ledger-node-label">&nbsp;节点</span></span
@@ -1817,11 +1817,11 @@
                         type="button"
                         :disabled="
                           cardSubmitStates[e.id] === 'submitting' ||
-                          cardGrowthValue(e, 'star') >= 31
+                          (operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))
                         "
                         :aria-label="
                           ledgerCardIsV2
-                            ? cardGrowthValue(e, 'star') >= 31
+                            ? (operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))
                               ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
                                 ? '化极已觉醒'
                                 : '化极已满级'
@@ -1836,7 +1836,7 @@
                         "
                         :title="
                           ledgerCardIsV2
-                            ? cardGrowthValue(e, 'star') >= 31
+                            ? (operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))
                               ? cardGrowthValue(e, 'star') === STAR_LEVEL_AWAKEN
                                 ? '化极已觉醒'
                                 : '化极已满级'
@@ -1853,7 +1853,7 @@
                       >
                         <template v-if="ledgerCardIsV2"
                           ><Check
-                            v-if="cardGrowthValue(e, 'star') >= 31"
+                            v-if="(operatorHuaji(e).stage == null || cardGrowthValue(e, 'star') >= operatorHuajiMax(e))"
                             :size="14"
                             aria-hidden="true"
                           /><span
@@ -1864,25 +1864,21 @@
                           /><span v-else class="ledger-upgrade-label" aria-hidden="true"
                             >提升</span
                           /><span class="sr-only">{{
-                            cardGrowthValue(e, "star") >= 31
-                              ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
-                                ? "已觉醒"
-                                : "已满级"
+                            (operatorHuaji(e).stage == null || cardGrowthValue(e, "star") >= operatorHuajiMax(e))
+                              ? operatorHuaji(e).stage == null ? "化极待确认" : "化极已满阶"
                               : growthActionLabel(e, "star", 1, "下一节点")
                           }}</span></template
                         ><template v-else
                           ><ChevronUp
                             v-if="
-                              cardGrowthValue(e, 'star') < 31 &&
+                              operatorHuaji(e).stage != null && cardGrowthValue(e, 'star') < operatorHuajiMax(e) &&
                               growthMaterialsReady(e, 'star', 1)
                             "
                             :size="13"
                             aria-hidden="true"
                           />{{
-                            cardGrowthValue(e, "star") >= 31
-                              ? cardGrowthValue(e, "star") === STAR_LEVEL_AWAKEN
-                                ? "已觉醒"
-                                : "已满级"
+                            (operatorHuaji(e).stage == null || cardGrowthValue(e, "star") >= operatorHuajiMax(e))
+                              ? operatorHuaji(e).stage == null ? "化极待确认" : "化极已满阶"
                               : growthActionLabel(e, "star", 1, "下一节点")
                           }}</template
                         >
@@ -1902,20 +1898,21 @@
                             :value="starDraftGroup(e)"
                             @change="setStarDraftGroup(e, $event)"
                           >
+                            <option v-if="operatorHuaji(e).owned && operatorHuaji(e).stage == null" value="-1" disabled>化极待确认（历史 {{ e.starLevel }}）</option>
                             <option value="0">未拥有</option>
                             <option
-                              v-for="group in 5"
+                              v-for="group in [1, 2, 3, 4, 5].filter(value => e.spOf || value < 5 || Number(e.rarity) !== 3)"
                               :key="group"
                               :value="group"
                             >
                               {{ group }} 星
                             </option>
-                            <option value="31">觉醒</option></select
+</select
                           ><select
                             v-if="
                               !e.spOf &&
                               starDraftGroup(e) > 0 &&
-                              starDraftGroup(e) < 31
+                              starDraftGroup(e) < 5
                             "
                             :value="starDraftNode(e)"
                             @change="setStarDraftNode(e, $event)"
@@ -2637,7 +2634,7 @@
                   :title="
                     editingOp.spOf
                       ? '0=未拥有 · 1~5=SP星级'
-                      : '0=未拥有 · 1~30=化极星级·节点（starLevel = 6×(星−1)+节点+1）· 31=觉醒'
+                      : '0=未拥有 · 1~24=化极星级·节点 · 25=五星 · 觉醒独立确认'
                   "
                 >
                   <div class="star-row">
@@ -2652,7 +2649,7 @@
                         未拥有
                       </button>
                       <button
-                        v-for="s in STAR_RANGE"
+                        v-for="s in STAR_RANGE.filter(value => editingOp.spOf || value < 5 || Number(editingOp.rarity) !== 3)"
                         :key="s"
                         type="button"
                         class="star-pill"
@@ -2661,22 +2658,14 @@
                       >
                         {{ s }}星
                       </button>
-                      <button
-                        v-if="!editingOp.spOf"
-                        type="button"
-                        class="star-pill awaken"
-                        :class="{ on: starGroupName === 'awaken' }"
-                        @click="pickStarGroup('awaken')"
-                      >
-                        觉醒
-                      </button>
                     </span>
                   </div>
                   <div
                     v-if="
                       !editingOp.spOf &&
                       starGroupName !== 'none' &&
-                      starGroupName !== 'awaken'
+                      starGroupName !== 'awaken' &&
+                      starGroupName < 5
                     "
                     class="star-row"
                   >
@@ -2695,6 +2684,12 @@
                     </span>
                   </div>
                 </div>
+                <label class="star-row">觉醒确认
+                  <select v-model="editForm.awakened" aria-label="觉醒确认" :disabled="Boolean(editingOp.spOf) || Number(editingOp.rarity) === 3 || editForm.owned === false">
+                    <option :value="null">待确认</option><option :value="false">确认未觉醒</option><option :value="true">确认已觉醒</option>
+                  </select>
+                </label>
+                <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" role="status">历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 <div class="oddity-editor">
                   <strong class="oddity-caption">
                     奇闻属性
@@ -2972,6 +2967,7 @@
 </template>
 
 <script setup>
+import { operatorHuaji, operatorHuajiMax, operatorHuajiLabel } from '../../utils/operatorHuaji.js';
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { matchesOperatorQuality } from "../../utils/operatorForms.js";
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
@@ -4144,6 +4140,9 @@ function normalizeEntry(e, odditySchema) {
     Object.prototype.hasOwnProperty.call(e, "combatStats") ||
     Object.prototype.hasOwnProperty.call(e, "stats");
   return {
+    awakened: e.huaji?.awakened ?? (Number(e.starLevel ?? e.star_level) === 31 ? true : null),
+    huaji: e.huaji || null,
+    huajiLegacy: e.huaji_legacy || e.huajiLegacy || null,
     elite: e.elite != null ? e.elite : 0,
     starLevel:
       e.starLevel != null
@@ -4189,6 +4188,7 @@ const combatStatsInput = computed(function () {
     level: editForm.value.level,
     elite: editForm.value.elite,
     starLevel: editForm.value.starLevel,
+    huaji: { ...editForm.value.huaji, awakened: editForm.value.awakened },
     stones: editForm.value.stones,
     oddities: editForm.value.combatStats && editForm.value.combatStats.oddities,
   };
@@ -4414,8 +4414,8 @@ function showEditOddityError(key, message) {
 }
 
 // 星级（starLevel）映射，与后端 OperatorService.MAX_STAR_LEVEL 对齐：
-// 0 = 未拥有；1..30 = 6×(星−1)+节点+1（1星·0 .. 5星·5，5星·5 = 30）；31 = 觉醒（仅一档）。
-const MAX_STAR_LEVEL = 31;
+// 新化极阶段最高25；旧25..30懒兼容五星，旧31只作为觉醒事实读取。
+const MAX_STAR_LEVEL = 25;
 const STAR_LEVEL_AWAKEN = 31;
 const STAR_RANGE = [1, 2, 3, 4, 5];
 const NODE_RANGE = [0, 1, 2, 3, 4, 5];
@@ -4424,7 +4424,8 @@ function starLabel(v, spOf) {
   if (n === 0) return "未拥有";
   if (spOf) return n + " 星";
   if (n === STAR_LEVEL_AWAKEN) return "觉醒";
-  if (n >= 1 && n <= 30) {
+  if (n >= 25 && n <= 30) return "5 星";
+  if (n >= 1 && n <= 24) {
     const star = Math.floor((n - 1) / 6) + 1;
     const node = (n - 1) % 6;
     return star + " ⭐ " + node + " 节点";
@@ -4435,7 +4436,7 @@ function starLabel(v, spOf) {
 // 星级分段胶囊 + 节点胶囊：把一维 starLevel 拆成「星级分组 + 节点」二维状态
 const starGroupName = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
-  if (v === 0) return "none";
+  if (v === 0) return editForm.value.owned ? "unknown" : "none";
   if (editingOp.value && editingOp.value.spOf) return v;
   if (v === STAR_LEVEL_AWAKEN) return "awaken";
   if (v >= 1 && v <= 30) return Math.floor((v - 1) / 6) + 1;
@@ -4443,18 +4444,19 @@ const starGroupName = computed(function () {
 });
 const starNode = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
-  if (v >= 1 && v <= 30) return (v - 1) % 6;
+  if (v >= 1 && v < 25) return (v - 1) % 6;
   return 0;
 });
 
 function pickStarGroup(g) {
+  editForm.value.owned = g !== "none";
   if (g === "none") {
     editForm.value.starLevel = 0;
     return;
   }
   const s = Number(g);
   if (g !== "awaken" && !(s >= 1 && s <= 5)) return;
-  if (!isOperatorOwned(editForm.value)) {
+  if (!(Number(editForm.value.starLevel) > 0)) {
     if (editForm.value.level === 0) editForm.value.level = 1;
     if (editForm.value.elite === 0) editForm.value.elite = 1;
   }
@@ -4466,12 +4468,12 @@ function pickStarGroup(g) {
     editForm.value.starLevel = s;
     return;
   }
-  editForm.value.starLevel = 6 * (s - 1) + starNode.value + 1;
+  editForm.value.starLevel = s === 5 ? 25 : 6 * (s - 1) + starNode.value + 1;
 }
 
 function pickStarNode(n) {
   const s = starGroupName.value;
-  if (typeof s !== "number") return;
+  if (typeof s !== "number" || s >= 5) return;
   editForm.value.starLevel = 6 * (s - 1) + Number(n) + 1;
 }
 
@@ -4749,7 +4751,7 @@ function compareCurrentEntries(a, b) {
   difference = (Number(b.level) || 0) - (Number(a.level) || 0);
   if (difference) return difference;
   // starLevel 本身包含大星与小节点进度，可直接作为完整化极标量比较。
-  difference = (Number(b.starLevel) || 0) - (Number(a.starLevel) || 0);
+  difference = (operatorHuaji(b).stage ?? -1) - (operatorHuaji(a).stage ?? -1);
   if (difference) return difference;
   difference =
     (CURRENT_PROF_ORDER[a.prof] ?? 99) - (CURRENT_PROF_ORDER[b.prof] ?? 99);
@@ -5393,7 +5395,7 @@ function ensureCardDraft(entry) {
       [entry.id]: {
         level: Number(entry.level) || 0,
         elite: Number(entry.elite) || 0,
-        star: Number(entry.starLevel) || 0,
+        star: operatorHuaji(entry).stage == null ? Number(entry.starLevel) || 0 : entry.spOf ? Math.floor((operatorHuaji(entry).stage - 1) / 6) + 1 : operatorHuaji(entry).stage,
         discLoadouts: normalizeCardDiscLoadouts(entry),
         starStones: normalizeCardStarStones(entry),
         remark: operatorRemark(entry),
@@ -5595,7 +5597,8 @@ function growthTarget(entry, field, step) {
   if (field === "level") return Math.min(100, draft.level + amount);
   if (field === "elite")
     return Math.min(getMaxEliteForLevel(draft.level), draft.elite + amount);
-  return Math.min(entry.spOf ? 5 : 31, draft.star + 1);
+  const value = operatorHuaji(entry);
+  return Math.min(operatorHuajiMax(entry), (value.stage ?? operatorHuajiMax(entry)) + 1);
 }
 
 function growthActionKey(entry, field) {
@@ -5921,6 +5924,7 @@ function applyUpgradeOperator(entry, raw) {
   entry.elite = Number(raw.elite) || 0;
   entry.starLevel =
     Number(raw.star_level != null ? raw.star_level : raw.starLevel) || 0;
+  entry.huaji = raw.huaji || entry.huaji;
   entry.revision = Number(raw.revision) || entry.revision || 0;
   if (preserveDraft) {
     showQuickNotice(
@@ -6019,7 +6023,7 @@ function setGrowthDraft(entry, field, value, closePopover) {
   const draft = ensureCardDraft(entry);
   if (!draft) return;
   if (field === "star")
-    value = Math.max(0, Math.min(entry.spOf ? 5 : 31, Number(value) || 0));
+    value = Math.max(0, Math.min(entry.spOf ? 5 : operatorHuajiMax(entry), Number(value) || 0));
   draft[field] = Math.trunc(Number(value) || 0);
   if (field === "level" && draft.elite > getMaxEliteForLevel(draft.level))
     draft.elite = getMaxEliteForLevel(draft.level);
@@ -6029,24 +6033,24 @@ function setGrowthDraft(entry, field, value, closePopover) {
 function starDraftGroup(entry) {
   const value = cardGrowthValue(entry, "star");
   if (entry.spOf) return value;
-  if (value === 31) return 31;
+  if (operatorHuaji(entry).owned && operatorHuaji(entry).stage == null && value === Number(entry.starLevel)) return -1;
   return value > 0 ? Math.floor((value - 1) / 6) + 1 : 0;
 }
 
 function starDraftNode(entry) {
   const value = cardGrowthValue(entry, "star");
-  return value > 0 && value < 31 ? (value - 1) % 6 : 0;
+  return value > 0 && value < 25 ? (value - 1) % 6 : 0;
 }
 
 function setStarDraftGroup(entry, event) {
   const group = Number(event && event.target ? event.target.value : 0);
   if (entry.spOf) return setGrowthDraft(entry, "star", group, false);
-  if (group === 0 || group === 31)
+  if (group === 0)
     return setGrowthDraft(entry, "star", group, false);
   setGrowthDraft(
     entry,
     "star",
-    6 * (group - 1) + starDraftNode(entry) + 1,
+    group === 5 ? 25 : 6 * (group - 1) + starDraftNode(entry) + 1,
     false,
   );
 }
@@ -6054,7 +6058,7 @@ function setStarDraftGroup(entry, event) {
 function setStarDraftNode(entry, event) {
   const node = Number(event && event.target ? event.target.value : 0);
   const group = starDraftGroup(entry);
-  if (group > 0 && group < 31)
+  if (group > 0 && group < 5)
     setGrowthDraft(entry, "star", 6 * (group - 1) + node + 1, false);
 }
 
@@ -6082,8 +6086,9 @@ function quickGrowthRequirementReady(entry, field, step) {
       xiuweiJob(sharedGrowthCatalog(entry).prof),
     );
   } else {
-    if (entry.spOf || star >= 31) return false;
-    requirement = calculateStarRequirements(star, Math.min(31, star + step));
+    const huaji = operatorHuaji(entry);
+    if (entry.spOf || huaji.stage == null || star >= operatorHuajiMax(entry)) return false;
+    requirement = calculateStarRequirements(star, Math.min(operatorHuajiMax(entry), star + step));
   }
   const itemsReady = Object.keys(requirement.items || {}).every(function (id) {
     return (Number(stock[id]) || 0) >= (Number(requirement.items[id]) || 0);
@@ -6156,10 +6161,11 @@ function plannerQuickUpgradeState(row, field, step, readyLabel) {
       ? OPERATOR_LEVEL_MAX
       : field === "elite"
         ? getMaxEliteForLevel(cardGrowthValue(entry, "level"))
-        : MAX_STAR_LEVEL;
-  const complete = currentValue >= max;
+        : operatorHuajiMax(entry);
+  const huajiUnknown = field === "star" && operatorHuaji(entry).stage == null;
+  const complete = currentValue >= max || huajiUnknown;
   const fieldLabel = field === "level" ? "等级" : field === "elite" ? "修为" : "化极";
-  const label = complete
+  const label = huajiUnknown ? "化极待确认" : complete
     ? field === "star" && currentValue === STAR_LEVEL_AWAKEN
       ? "已觉醒"
       : "已满级"
@@ -6566,7 +6572,7 @@ async function quickCorrect(entry, field, rawValue) {
         ? getMaxEliteForLevel(entry.level)
         : entry.spOf
           ? 5
-          : MAX_STAR_LEVEL;
+          : operatorHuajiMax(entry);
   const value = Math.max(0, Math.min(max, Math.trunc(Number(rawValue))));
   if (!Number.isFinite(value)) return;
   const patch = {
@@ -6974,9 +6980,11 @@ function cardCombatInput(entry) {
   };
   return {
     operatorName: entry.name,
+    spOf: entry.spOf || "",
     level: Number(growth.level) || 0,
     elite: Number(growth.elite) || 0,
     starLevel: Number(growth.star) || 0,
+    huaji: operatorHuaji(entry),
     stones: cardCombatStones(entry),
     oddities: {
       attack: { current: draft.oddityAttack },
@@ -7282,6 +7290,12 @@ function cardPatch(entry) {
       equipped_star_stones_signature: patch.combat_stats.combat_input_signature,
     };
   }
+  const beforeHuaji = operatorHuaji(entry);
+  const afterHuaji = Number(growth.star) === Number(entry.starLevel)
+    ? beforeHuaji
+    : { ...operatorHuaji({ ...entry, huaji: null, starLevel: Number(growth.star) }), awakened: beforeHuaji.awakened };
+  delete patch.star_level;
+  if (JSON.stringify(beforeHuaji) !== JSON.stringify(afterHuaji)) patch.huaji = afterHuaji;
   return patch;
 }
 
@@ -7568,6 +7582,9 @@ function applyEditorEntry(existing, op, id, allowCache) {
       : normalizeOperatorCombatStats({}, op.odditySchema);
   ensureOperatorOddities(combatStats, op);
   editForm.value = {
+    owned: operatorHuaji({ ...op, ...existing }).owned,
+    awakened: operatorHuaji({ ...op, ...existing }).awakened,
+    huaji: operatorHuaji({ ...op, ...existing }),
     elite: existing.elite != null ? existing.elite : 1,
     starLevel: existing.starLevel != null ? existing.starLevel : 0,
     level: existing.level != null ? existing.level : 1,
@@ -7681,11 +7698,13 @@ async function saveEdit() {
     editNoticeError.value = true;
     return;
   }
-  const starMax = editingOp.value.spOf ? 5 : MAX_STAR_LEVEL;
-  if (starLevel < 0 || starLevel > starMax) {
+  const oldGrowth = currentMap.value[editingOp.value.id] || {};
+  const starChanged = starLevel !== Number(oldGrowth.starLevel || 0);
+  const starMax = editingOp.value.spOf ? 5 : operatorHuajiMax(editingOp.value);
+  if (starChanged && (starLevel < 0 || starLevel > starMax)) {
     editNotice.value = editingOp.value.spOf
       ? "SP 密探星级需在 0..5 之间"
-      : "星级需在 0.." + MAX_STAR_LEVEL + " 之间（0=未拥有，31=觉醒）";
+      : "星级需在 0.." + MAX_STAR_LEVEL + " 之间（0=未拥有，觉醒独立确认）";
     editNoticeError.value = true;
     return;
   }
@@ -7789,6 +7808,16 @@ async function saveEdit() {
       equipped_star_stones_signature: currentCombatSignature,
     };
   }
+  delete patch.star_level;
+  const priorHuaji = operatorHuaji({ ...op, ...existing });
+  const editedHuaji = starChanged
+    ? { ...operatorHuaji({ ...op, starLevel }), awakened: priorHuaji.awakened }
+    : { ...priorHuaji };
+  if (editForm.value.awakened !== undefined) editedHuaji.awakened = editForm.value.awakened;
+  if (editForm.value.owned === false) { editedHuaji.owned = false; editedHuaji.stage = 0; editedHuaji.awakened = null; }
+  else if (!editedHuaji.owned && editForm.value.owned === true) { editedHuaji.owned = true; editedHuaji.stage = null; }
+  if (!editedHuaji.owned) editedHuaji.awakened = null;
+  if (JSON.stringify(editedHuaji) !== JSON.stringify(priorHuaji)) patch.huaji = editedHuaji;
   const submittedSignature = JSON.stringify([editForm.value, combatDisplayMode.value]);
   savingEdit.value = true;
   editNotice.value = "";
@@ -8028,7 +8057,7 @@ async function reloadCurrent(quiet) {
       .sort(function (a, b) {
         return (
           b.level - a.level ||
-          b.starLevel - a.starLevel ||
+          (operatorHuaji(b).stage ?? -1) - (operatorHuaji(a).stage ?? -1) ||
           b.elite - a.elite ||
           operatorReleaseOrder(b.id) - operatorReleaseOrder(a.id)
         );
@@ -8765,7 +8794,7 @@ async function doExport() {
   }
   const contextSeq = currentContextSeq;
   try {
-    const opts = { version: 3 };
+    const opts = { version: 4 };
     if (exportAll.value && accounts.value.length > 1) {
       opts.scope = "all";
     } else {
@@ -8778,7 +8807,7 @@ async function doExport() {
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "operator-full-backup-v3.json";
+    link.download = "operator-full-backup-v4.json";
     link.click();
     URL.revokeObjectURL(link.href);
   } catch (err) {

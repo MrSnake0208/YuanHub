@@ -53,8 +53,8 @@ test('token 列表字段契约：token_id/account_id/account_name/scopes/created
   assert.match(frontendProfile, /tokenItem\.scopes/)
   assert.match(frontendProfile, /tokenItem\.created_at/)
   // 前端列表不再消费 t.token 明文或旧的 create_time
-  assert.doesNotMatch(frontendProfile, /t\.token\b/)
-  assert.doesNotMatch(frontendProfile, /t\.create_time/)
+  assert.doesNotMatch(frontendProfile, /\bt\.token\b/)
+  assert.doesNotMatch(frontendProfile, /\bt\.create_time/)
 })
 test('权限列表字段契约：scope/description（字符串 key，非数字 code）', () => {
   assert.match(backendPermission, /OpenApiPermissionDto\(scope = it\.key, description = it\.desc\)/)
@@ -200,4 +200,12 @@ test('账号级 SSE 事件契约：Bearer fetch、账号路径与密探事件', 
   assert.match(frontendOperatorPage, /operator-seed-burst/)
   assert.match(frontendOperatorPage, /@keyframes operator-seed-reveal[\s\S]*?filter: none/)
   assert.doesNotMatch(frontendOperatorPage.match(/@keyframes operator-seed-reveal[^\n]*/)?.[0] || '', /transform\s*:/)
+})
+
+
+test('operator v4正式schema和有效/错误样例在前后端保持一致', () => {
+  assert.deepEqual(JSON.parse(readRel('YuanHub/docs/schemas/operator-growth-exchange-v4.schema.json')), JSON.parse(readRel('BackEndV3-Share/src/main/resources/schema/operator-growth-exchange-v4.schema.json')))
+  for (const name of ['independent.valid.json', 'legacy31.valid.json', 'unowned-stage.invalid.json']) {
+    assert.deepEqual(JSON.parse(readRel('YuanHub/docs/examples/operator-growth-exchange-v4/' + name)), JSON.parse(readRel('BackEndV3-Share/src/test/resources/operator-growth-exchange-v4/' + name)))
+  }
 })

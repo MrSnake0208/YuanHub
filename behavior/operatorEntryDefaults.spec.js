@@ -317,12 +317,12 @@ it('新草稿默认1级1修为且未拥有，打开不写云端，保存才提�
   await wrapper.get('.editor-save').trigger('click')
   await flushPromises()
   expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({
-    accountId: 'acc', operatorId: 'op', patch: expect.objectContaining({ level: 1, elite: 1, star_level: 1 }),
+    accountId: 'acc', operatorId: 'op', patch: expect.objectContaining({ level: 1, elite: 1, huaji: { owned: true, stage: 1, awakened: null } }),
   }))
 })
 
-it.each(['1星', '5星', '觉醒'])('已有零值保留到选择%s，切回未拥有不清空养成', async label => {
-  const wrapper = await openEditor({ level: 0, elite: 0, starLevel: 0 })
+it.each(['1星', '5星'])('已有零值保留到选择%s，切回未拥有不清空养成', async label => {
+  const wrapper = await openEditor({ level: 0, elite: 0, starLevel: 0 }, { ...operator, rarity: 4 })
   expect(growthValues(wrapper)).toEqual(['0', '0'])
   await pickStar(wrapper, label)
   expect(growthValues(wrapper)).toEqual(['1', '1'])
@@ -367,7 +367,7 @@ it.each([
   await flushPromises()
   expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({
     accountId: 'acc', operatorId: 'op', patch: expect.objectContaining({
-      level: expectedGrowth[0], elite: expectedGrowth[1], star_level: 8,
+      level: expectedGrowth[0], elite: expectedGrowth[1],
       combat_stats: expect.objectContaining({ oddities: {
         attack: { current: 350 }, hp: { current: 1820 }, special: { current: 11 },
       } }),
@@ -408,7 +408,36 @@ it.each([[100, 17], [90, 15]])('单个密探练度预设 %i+%i 可切换，只�
   await wrapper.get('.editor-save').trigger('click')
   await flushPromises()
   expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledWith(expect.objectContaining({
-    patch: expect.objectContaining({ level, elite, star_level: 8, combat_stats: expect.objectContaining({ oddities }) }),
+    patch: expect.objectContaining({ level, elite, combat_stats: expect.objectContaining({ oddities }) }),
   }))
   wrapper.unmount()
+})
+
+it('隐密不展示五星或觉醒按钮，历史异常可以仅编辑其它字段', async () => {
+  const wrapper = await openEditor({ level: 80, elite: 12, starLevel: 31, huaji: { owned: true, stage: null, awakened: null } })
+  expect(wrapper.findAll('.star-groups button').map(button => button.text())).not.toContain('5星')
+  expect(wrapper.get('[aria-label="觉醒确认"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.text()).toContain('历史化极待复核')
+  await wrapper.findAll('.level-row input')[0].setValue('90')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  expect(operatorApi.patchOperatorCurrent).toHaveBeenCalledTimes(1)
+  const patch = operatorApi.patchOperatorCurrent.mock.calls[0][0].patch
+  expect(patch.level).toBe(90)
+  expect(patch).not.toHaveProperty('star_level')
+  expect(patch).not.toHaveProperty('huaji')
+})
+
+it('普通觉醒确认独立于星级，待确认不会默认勾选未觉醒', async () => {
+  const wrapper = await openEditor({ level: 80, elite: 12, starLevel: 19, huaji: { owned: true, stage: 19, awakened: null } }, { ...operator, rarity: 4 })
+  const select = wrapper.get('[aria-label="觉醒确认"]')
+  expect(select.element.selectedOptions[0].textContent).toBe('待确认')
+  await select.setValue('true')
+  operatorApi.patchOperatorCurrent.mockRejectedValueOnce(new Error('synthetic save failure'))
+  await wrapper.get('.editor-save').trigger('click')
+  await flushPromises()
+  const patch = operatorApi.patchOperatorCurrent.mock.calls[0][0].patch
+  expect(patch.huaji).toEqual({ owned: true, stage: 19, awakened: true })
+  expect(patch).not.toHaveProperty('star_level')
 })

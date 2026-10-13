@@ -1,6 +1,6 @@
 # 密探养成数据交换协议 v2（兼容）
 
-状态：兼容版本，新接入建议使用 v3  
+状态：兼容版本，无损新接入建议使用 v4
 格式：`myshare-operator-exchange@2`  
 导入 Schema：[`schemas/operator-exchange-v2-import.schema.json`](./schemas/operator-exchange-v2-import.schema.json)
 
@@ -64,15 +64,9 @@ v2 导入 DTO 混用了两种命名风格：
 - Record 与命盘使用 `account_id`、`record_id`、`record_type`、`effective_at`、`snapshot_scope`、`ot_name`。
 - Entry 的三个历史字段必须使用 camelCase：`subProf`、`starLevel`、`starStones`。
 
-当前 v2 导出受全局 `SNAKE_CASE` 序列化影响，会输出 `sub_prof`、`star_level`、`star_stones`。若把 v2 导出文件再次交给 v2 导入接口，客户端应先转换：
+当前v2导出已按历史camelCase边界输出`subProf/starLevel/starStones`，可以再次交给v2导入。读取更早的snake_case导出文件时客户端仍需转换这三个字段。
 
-```text
-sub_prof    -> subProf
-star_level  -> starLevel
-star_stones -> starStones
-```
-
-这是 v2 的已知兼容边界。新工具应使用字段一致且有严格 Schema 的 [密探交换 v3](./operator-v3.md)。
+v2导出响应头`X-Operator-Exchange-Warning`说明独立化极/觉醒的信息损失；v2没有独立觉醒或未知阶段信息；无损备份必须用[密探v4](./operator-v4.md)。普通25..30永久适配五星，31只确认觉醒，不猜阶段；隐密25..31保留原值并warning。旧结构和record_id幂等契约保留。
 
 ## 4. 导入结果
 

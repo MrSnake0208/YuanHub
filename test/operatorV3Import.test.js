@@ -65,3 +65,17 @@ test('v3 响应兼容 snake_case 和 camelCase', function () {
   assert.equal(normalized.items[0].targetRevision, 3)
   assert.equal(operatorV3CommittableCount(normalized), 2)
 })
+
+
+test('v4浏览器往返保留owned未知stage和独立awake及raw/source', () => {
+  for (const awakened of [true, false, null]) {
+    const source = { format: 'myshare-operator-exchange', version: 4, accounts: [{ id: 'local' }], records: [{ record_id: 'backup', account_id: 'local', entries: [{ operator_id: 'op', huaji: { owned: true, stage: null, awakened }, huaji_legacy: { raw: 31, source: 'legacy_current' } }, { operator_id: 'missing', level: 90 }] }] }
+    const document = JSON.parse(JSON.stringify(source))
+    const body = buildOperatorV3BrowserRequest(document, 'target', false)
+    assert.deepEqual(JSON.parse(JSON.stringify(body.document)), source)
+    assert.equal('huaji' in body.document.records[0].entries[1], false)
+    const review = operatorScanReviewDraft(body.document, 'op', 'review')
+    assert.deepEqual(review.records[0].entries[0], source.records[0].entries[0])
+    assert.equal(body.document.records[0].record_id, 'backup')
+  }
+})

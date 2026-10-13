@@ -436,7 +436,7 @@ const router = useRouter();
 const route = useRoute();
 
 // —— 星阶常量（与后端 OperatorService.MAX_STAR_LEVEL 对齐） ——
-const MAX_STAR_LEVEL = 31;
+const MAX_STAR_LEVEL = 25;
 const STAR_LEVEL_AWAKEN = 31;
 const NODE_RANGE = [0, 1, 2, 3, 4, 5];
 
@@ -470,7 +470,7 @@ const starSteps = [
     key: "5",
     nav: "5星",
     title: "勾选 5 星密探",
-    sub: "勾选当前为「5 星」的密探（节点 0~5）。",
+    sub: "勾选当前为「5 星」的密探（没有小节点）。",
   },
   {
     key: "awaken",
@@ -743,6 +743,7 @@ const operatorGroups = computed(function () {
 function normalizeEntry(e) {
   e = e || {};
   return {
+    huaji: e.huaji || null,
     elite: e.elite != null ? e.elite : 0,
     starLevel:
       e.starLevel != null
@@ -769,7 +770,8 @@ function starLabelOf(v, op) {
   if (n <= 0) return "";
   if (isSpOperator(op)) return n + "星";
   if (n === STAR_LEVEL_AWAKEN) return "觉醒";
-  if (n >= 1 && n <= 30) return (Math.floor((n - 1) / 6) + 1) + "星 · " + ((n - 1) % 6) + "节点";
+  if (n >= 25 && n <= 30) return "5星";
+  if (n >= 1 && n <= 24) return (Math.floor((n - 1) / 6) + 1) + "星 · " + ((n - 1) % 6) + "节点";
   return "";
 }
 
@@ -973,6 +975,7 @@ function applyPageGrowthPreset(level, elite) {
 
 function starLabelForStep(s, node) {
   if (s.key === "awaken") return "觉醒";
+  if (Number(s.key) === 5) return "5 星";
   return Number(s.key) + " ⭐ · " + (node == null ? 0 : node) + "节点";
 }
 
@@ -992,12 +995,12 @@ function buildPageEntries(key) {
         getMaxEliteForLevel(level),
       );
       const isSp = isSpOperator(op);
-      if (isSp && key === "awaken") return null;
+      if ((isSp && key === "awaken") || (!isSp && Number(op.rarity) === 3 && ["5", "awaken"].includes(key))) return null;
       const starLevel = isSp
         ? clampInt(Number(key), 5)
         : key === "awaken"
           ? STAR_LEVEL_AWAKEN
-          : 6 * (Number(key) - 1) + (f.node == null ? 0 : f.node) + 1;
+          : Number(key) === 5 ? 25 : 6 * (Number(key) - 1) + (f.node == null ? 0 : f.node) + 1;
       return {
         starKey: key,
         starLabel: isSp ? key + "星" : starLabelForStep({ key: key }, f.node),

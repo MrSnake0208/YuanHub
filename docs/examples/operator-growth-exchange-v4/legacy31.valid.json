@@ -1,0 +1,41 @@
+{
+  "format": "myshare-operator-exchange",
+  "version": 4,
+  "exported_at": "2026-10-13T00:00:00Z",
+  "producer": {
+    "platform": "myshare",
+    "version": "7"
+  },
+  "accounts": [
+    {
+      "id": "fixture",
+      "name": "合成测试账号",
+      "game_scope": "如鸢"
+    }
+  ],
+  "records": [
+    {
+      "account_id": "fixture",
+      "record_id": "fixture:huaji-v4",
+      "record_type": "operator_snapshot",
+      "game": "如鸢",
+      "effective_at": "2026-10-13T00:00:00Z",
+      "snapshot_scope": "listed",
+      "source_kind": "backup",
+      "entries": [
+        {
+          "operator_id": "char_001_yangxiu",
+          "huaji": {
+            "owned": true,
+            "stage": null,
+            "awakened": true
+          },
+          "huaji_legacy": {
+            "raw": 31,
+            "source": "legacy_current"
+          }
+        }
+      ]
+    }
+  ]
+}

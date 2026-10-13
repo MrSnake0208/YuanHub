@@ -35,18 +35,18 @@ it('填写数值不自动启用，开关保留输入，预设可一键启用或�
   wrapper.unmount()
 })
 
-it('觉醒是星数第 6 档，预设启用或关闭后可继续修改星数范围', async () => {
+it('觉醒独立筛选，预设启用或关闭后仍保留星数范围', async () => {
   const wrapper = mount(OperatorFilterDossier, { props: { growthFilters: { ...empty, starMin: '2', starEnabled: true }, showGrowthFilters: true } })
   const awakenedPreset = wrapper.findAll('.growth-filter-presets button').find(button => button.text() === '只看觉醒')
   await awakenedPreset.trigger('click')
   const awakened = wrapper.emitted('update:growthFilters').at(-1)[0]
-  expect(awakened).toMatchObject({ starMin: '6', starMax: '6', starEnabled: true })
+  expect(awakened).toMatchObject({ awakened: 'true', starMin: '2', starEnabled: true })
   await wrapper.setProps({ growthFilters: awakened })
   expect(awakenedPreset.attributes('aria-pressed')).toBe('true')
   await awakenedPreset.trigger('click')
-  expect(wrapper.emitted('update:growthFilters').at(-1)[0]).toMatchObject({ starMin: '6', starMax: '6', starEnabled: false })
+  expect(wrapper.emitted('update:growthFilters').at(-1)[0]).toMatchObject({ awakened: '', starMin: '2', starEnabled: true })
   await wrapper.get('summary').trigger('click')
-  expect(wrapper.get('[aria-label="星数至少"]').attributes('max')).toBe('6')
+  expect(wrapper.get('[aria-label="星数至少"]').attributes('max')).toBe('5')
   expect(wrapper.find('.growth-awakened').exists()).toBe(false)
   await wrapper.get('[aria-label="星数至多"]').setValue('5')
   expect(wrapper.emitted('update:growthFilters').at(-1)[0]).toMatchObject({ starMax: '5' })

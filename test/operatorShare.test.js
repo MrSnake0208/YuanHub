@@ -119,7 +119,7 @@ test('分享卡片不按养成状态分层，直接按稀有度、等级、化�
 })
 
 test('化极文案区分普通密探、SP 密探与觉醒', () => {
-  assert.equal(operatorShareStarLabel(27, false), '5 星 · 2 节点')
+  assert.equal(operatorShareStarLabel(27, false), '5 星')
   assert.equal(operatorShareStarLabel(3, true), '3 星')
   assert.equal(operatorShareStarLabel(31, false), '觉醒')
 })

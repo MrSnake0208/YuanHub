@@ -31,8 +31,8 @@ export const DEMO_SCENARIO = {
       targetLevel: 90,
       elite: 12,
       targetElite: 15,
-      starLevel: 25,
-      targetStarLevel: 29,
+      starLevel: 21,
+      targetStarLevel: 25,
       heartOwned: 14,
       heartRequired: 20,
       heartAcquired30d: 12,
@@ -55,8 +55,8 @@ export const DEMO_SCENARIO = {
       targetLevel: 90,
       elite: 10,
       targetElite: 14,
-      starLevel: 23,
-      targetStarLevel: 27,
+      starLevel: 21,
+      targetStarLevel: 25,
       heartOwned: 11,
       heartRequired: 20,
       heartAcquired30d: 9,
@@ -79,8 +79,8 @@ export const DEMO_SCENARIO = {
       targetLevel: 85,
       elite: 11,
       targetElite: 14,
-      starLevel: 24,
-      targetStarLevel: 28,
+      starLevel: 21,
+      targetStarLevel: 25,
       heartOwned: 10,
       heartRequired: 18,
       heartAcquired30d: 7,
@@ -226,7 +226,7 @@ export function createDemoState(source = DEMO_SCENARIO) {
 }
 
 export function updateDemoTarget(state, operatorId, field, value) {
-  const allowed = { level: 100, elite: 17, starLevel: 31 }
+  const allowed = { level: 100, elite: 17, starLevel: 25 }
   if (!allowed[field]) return createDemoState(state)
   const next = createDemoState(state)
   const operator = next.operators.find(item => item.id === operatorId)
