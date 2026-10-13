@@ -62,9 +62,9 @@
 
 | route/workspace | 当前入口（src/） | desktop 所有者 | mobile 所有者 | 共享业务所有者 | 状态 | 验证证据 | 阻塞及下一动作 | manual_ui_status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| /inventory 操作历史（概览/筛选/回执/分页/列表） | components/inventory/InventoryRecordsWorkspace.vue + InventoryRecordsView.vue | inventoryRecordsWorkspaceDesktop.css + InventoryRecordsDesktopView.vue | inventoryRecordsWorkspaceMobile.css + InventoryRecordsMobileView.vue | pages/inventory/index.vue | verified_nonbrowser | B02：141 行为 + CSS 编译 + build | 无阻塞；库存其余工作区仍 pending | pending |
-| /inventory 抽卡资源报告 | components/inventory/ResourceBalanceReport.vue | resourceBalanceReportDesktop.css | resourceBalanceReportMobile.css | ResourceBalanceReport.vue + data/inventory/resourceBalance.js | verified_nonbrowser | B03：真实父级 resize/日期/趋势点 + CSS/build | 统计查询控件另列 pending | pending |
-| /inventory 据点收获报告 | components/inventory/AcquiredPeriodReport.vue | acquiredPeriodReportDesktop.css | acquiredPeriodReportMobile.css | AcquiredPeriodReport.vue + data/inventory/acquiredStats.js | verified_nonbrowser | B03：真实父级排行/焦点 + CSS/build | 统计其余展示另列 pending | pending |
+| /inventory 操作历史（概览/筛选/回执/分页/列表） | components/inventory/InventoryRecordsWorkspace.vue + InventoryRecordsView.vue | inventoryRecordsWorkspaceDesktop.css + InventoryRecordsDesktopView.vue | inventoryRecordsWorkspaceMobile.css + InventoryRecordsMobileView.vue | pages/inventory/index.vue | verified_nonbrowser | B02：141 行为 + CSS 编译 + build | 无阻塞；其余库存工作区已于B05完成 | pending |
+| /inventory 抽卡资源报告 | components/inventory/ResourceBalanceReport.vue | resourceBalanceReportDesktop.css | resourceBalanceReportMobile.css | ResourceBalanceReport.vue + data/inventory/resourceBalance.js | verified_nonbrowser | B03：真实父级 resize/日期/趋势点 + CSS/build | 统计查询控件已于B05完成 | pending |
+| /inventory 据点收获报告 | components/inventory/AcquiredPeriodReport.vue | acquiredPeriodReportDesktop.css | acquiredPeriodReportMobile.css | AcquiredPeriodReport.vue + data/inventory/acquiredStats.js | verified_nonbrowser | B03：真实父级排行/焦点 + CSS/build | 统计其余展示已于B05完成 | pending |
 | /inventory 页面壳与工作区导航 | components/inventory/InventoryLayout.vue + InventoryWorkspaceTabs.vue | inventory{Layout,WorkspaceTabs}Desktop.css | inventory{Layout,WorkspaceTabs}Mobile.css | pages/inventory/index.vue | verified_nonbrowser | B04：220 行为 + CSS 编译 + build | 无阻塞；保留单一 slot 内容实例 | pending |
 | /inventory 清单/筛选/盘点/统计查询 | pages/inventory/index.vue | inventoryWorkspaceDesktop.css | inventoryWorkspaceMobile.css | pages/inventory/index.vue | verified_nonbrowser | B05：40盘点+130历史父级行为/CSS/build | 原控制器/DOM保持；待人工UI | pending |
 | /inventory 奖励/导入预览/日期弹层 | components/inventory/RewardEntryWorkspace.vue + RewardDateTimePicker.vue | reward{EntryWorkspace,DateTimePicker}Desktop.css | reward{EntryWorkspace,DateTimePicker}Mobile.css | 原两个功能组件 | verified_nonbrowser | B05：74奖励行为/父级联动/CSS/build | 唯一弹窗与日期实例；待人工UI | pending |
@@ -207,3 +207,10 @@
 - 星石内部受阻：本机已检查的常用项目目录未发现 `web/src/yuanstar-embed.ts`；文档权威仓 `drifty13/YuanStar-dev` 与manifest源提交 `854a7493e1744c4b8a4bae3e44dbd3f216ce911c` 经已连接GitHub均404。已异步请求可用本地源码目录或当前连接可访问的仓库/分支。没有读取凭证、绕过权限、手改生成产物或启用浏览器。外围宿主通过不计整条星石路由完成。
 
 下一动作：取得真实星石源码后迁移背包/计划/OCR内部展示，从源构建并按原同步脚本更新完整产物与provenance，重跑受影响检查和最终构建。42/43保持部分完成；人工UI全部pending。
+
+## 当前源码完成性审计（源码8786a36，42/43）
+
+- 直接导入当前 `routes.js` 核对44 records、43 UI路由、42独立入口；覆盖表每条入口与源码一一对应，别名/功能注记/redirect规范化后没有缺行。42条已核实实际入口或真实布局组件的双端引用；/star内部仍blocked，不计完成。B17本地源码检查点 `8786a36`，工作树干净，dist对应该版本的最终构建。
+- 起点c13f501至该源码版本，API、store/stores、config、router、依赖清单、嵌入生成产物与manifest均无变化。根工作区 `.test-artifacts/pc-mobile-layered/completion-audit.json` 记录源码版本、验证范围和日志/构建入口SHA-256。
+- 新检查排除公开仓替代方案：已连接GitHub检索到可读的 `drifty13/YuanStar`，只有main（bfc5d70e）；当前web/package.json没有build:embed，真实嵌入入口返回404，854a749源ref也不存在。额外核对既有 `.ao/data/worktrees/yuanhub-all` 与 `Desktop/YuanHub-worktrees`，未发现入口或embed构建配置。没有以旧standalone源码替换当前嵌入业务。
+- 尚缺的是可修改、可复建当前embed的真实源码，而不是本地提交权限、浏览器授权或普通实现决策。已请求源码位置，未收到；继续保留当前可恢复版本。Goal本轮保持active，不能标COMPLETE_ENGINEERING。
