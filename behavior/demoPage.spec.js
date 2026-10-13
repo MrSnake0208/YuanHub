@@ -27,15 +27,17 @@ it('目标以星阶和节点展示，调整后更新且恢复演示不写真实�
   useRoute().query = { view: 'targets' }
   const wrapper = render()
   const first = wrapper.findAll('.demo-target-row')[0]
-  expect(first.get('.demo-target-values').text()).toContain('5 星 · 0 节点')
-  expect(first.get('.demo-target-values').text()).toContain('5 星 · 4 节点')
+  expect(first.get('.demo-target-values').text()).toContain('4 星 · 2 节点')
+  expect(first.get('.demo-target-values').text()).toContain('5 星')
   const select = first.get('select')
-  expect(select.find('option[value="24"]').attributes('disabled')).toBeDefined()
-  await select.setValue('31')
-  expect(first.get('.demo-target-values').text()).toContain('觉醒')
+  expect(select.find('option[value="20"]').attributes('disabled')).toBeDefined()
+  expect(select.find('option[value="31"]').exists()).toBe(false)
+  expect(first.get('.demo-target-values').text()).not.toContain('5 星 ·')
+  await select.setValue('24')
+  expect(first.get('.demo-target-values').text()).toContain('4 星 · 5 节点')
   await wrapper.get('.demo-reset').trigger('click')
   useRoute().query = { view: 'targets' }; await flushPromises()
-  expect(wrapper.findAll('.demo-target-row')[0].get('select').element.value).toBe('29')
+  expect(wrapper.findAll('.demo-target-row')[0].get('select').element.value).toBe('25')
   expect(fetch).not.toHaveBeenCalled()
 })
 

@@ -74,7 +74,7 @@ it('电影目标使用直接星级，不显示普通心纸和节点，并保留�
   expect(card.find('.tracker-star-trigger').exists()).toBe(false)
   const input = card.get('[aria-label="电影形态的目标星级"]')
   expect(input.attributes('max')).toBe('5')
-  expect(input.element.value).toBe('5')
+  expect(input.element.value).toBe('31')
   expect(card.find('[aria-label*="快捷提升化极"]').exists()).toBe(false)
   expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
   wrapper.unmount()

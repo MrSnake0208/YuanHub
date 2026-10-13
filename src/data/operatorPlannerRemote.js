@@ -20,7 +20,7 @@ export function workspaceBody(workspace, revision = workspace.revision) {
   return { schema_version: 1, expected_revision: revision, ...mapFields({
     activePlanId: workspace.activePlanId, trainingLevels: workspace.trainingLevels,
     plans: workspace.plans.map(plan => ({ ...plan, targets: plan.source === 'favorites' ? {} : Object.fromEntries(
-      Object.entries(plan.targets).map(([id, target]) => [id, { level: target.level, elite: target.elite, starLevel: target.starLevel }])) }))
+      Object.entries(plan.targets).map(([id, target]) => [id, { level: target.level, elite: target.elite, ...(target.huaji ? { huaji: target.huaji } : { starLevel: target.starLevel }) }])) }))
   }, snake) }
 }
 export function workspaceFromRemote(data, accountId) {

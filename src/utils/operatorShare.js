@@ -1,3 +1,4 @@
+import { operatorHuaji } from './operatorHuaji.js'
 import { operatorAnnotationStatus, operatorAnnotationApiState } from './operatorAnnotations.js'
 import { matchesProfSubFilter } from './operatorFilters.js'
 import { calculateOperatorCombatStats, normalizeOperatorCombatStats } from './operatorCombatStats.js'
@@ -66,7 +67,7 @@ export function compareOperatorShareEntries(a, b) {
   if (difference) return difference
   difference = growthNumber(b, 'level', 'level') - growthNumber(a, 'level', 'level')
   if (difference) return difference
-  difference = growthNumber(b, 'star_level', 'starLevel') - growthNumber(a, 'star_level', 'starLevel')
+  difference = (operatorHuaji({ ...b, ...b?.growth }).stage ?? -1) - (operatorHuaji({ ...a, ...a?.growth }).stage ?? -1)
   if (difference) return difference
   difference = (SHARE_PROF_ORDER[firstProf(a)] ?? 99) - (SHARE_PROF_ORDER[firstProf(b)] ?? 99)
   if (difference) return difference
@@ -121,7 +122,8 @@ export function operatorShareStarLabel(value, isSp) {
   if (!level) return '未招募'
   if (isSp) return level + ' 星'
   if (level === 31) return '觉醒'
-  if (level <= 30) return Math.floor((level - 1) / 6) + 1 + ' 星 · ' + ((level - 1) % 6) + ' 节点'
+  if (level >= 25 && level <= 30) return '5 星'
+  if (level <= 24) return Math.floor((level - 1) / 6) + 1 + ' 星 · ' + ((level - 1) % 6) + ' 节点'
   return String(level)
 }
 
@@ -179,6 +181,7 @@ export function operatorShareCombatInput(entry) {
     level: shareGrowthNumber(growth, 'level', 'level'),
     elite: shareGrowthNumber(growth, 'elite', 'elite'),
     starLevel: shareGrowthNumber(growth, 'star_level', 'starLevel'),
+    huaji: growth.huaji,
     stones: shareStoneMap(growth),
     oddities: normalized.oddities
   }

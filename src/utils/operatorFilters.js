@@ -1,6 +1,6 @@
 import { matchesOperatorQuality } from './operatorForms.js'
 // 密探 属性(prof) / 从属(subProf) 匹配与选项推导 —— operator 页 / quick 页共用
-import { OPERATOR_STAR_LEVEL_AWAKEN } from './operatorStarDisplay.js'
+import { operatorHuaji } from './operatorHuaji.js'
 
 // ------------------------------------------------------------
 // 数据形态兼容（目录归一化前后与本地兜底均覆盖）：
@@ -88,22 +88,19 @@ export function matchesOperatorSearch(entry, rawQuery) {
 // starLevel=0 是协议中的“未拥有”。等级、修为可能由 SP 本体同步，不能作为拥有依据。
 export function isOperatorOwned(entry) {
   if (!entry) return false
-  const starLevel = entry.starLevel != null ? entry.starLevel : entry.star_level
-  return Number(starLevel) > 0
+  return operatorHuaji(entry).owned
 }
 
 export function operatorStarNumber(entry) {
-  const level = Number(entry?.starLevel ?? entry?.star_level) || 0
-  // 筛选用第 6 档代表觉醒；卡片仍按游戏规则显示“觉醒”。
-  if (level === OPERATOR_STAR_LEVEL_AWAKEN) return 6
-  if (entry?.spOf || entry?.sp_of) return level
-  return level > 0 ? Math.floor((level - 1) / 6) + 1 : 0
+  const value = operatorHuaji(entry)
+  return value.owned && value.stage != null ? Math.floor((value.stage - 1) / 6) + 1 : null
 }
 
 function withinRange(value, min, max) {
   if (min === '' || min == null) min = null
   if (max === '' || max == null) max = null
   if (min == null && max == null) return true
+  if (value == null) return false
   const number = Number(value)
   return Number.isFinite(number) &&
     (min == null || number >= Number(min)) &&
@@ -112,6 +109,8 @@ function withinRange(value, min, max) {
 
 export function matchesOperatorGrowthFilters(entry, filters = {}) {
   if (!entry) return false
+  const awakened = operatorHuaji(entry).awakened
+  if (filters.awakened && (filters.awakened === 'unknown' ? awakened != null : awakened !== (filters.awakened === 'true'))) return false
   if (filters.levelEnabled && !withinRange(entry.level, filters.levelMin, filters.levelMax)) return false
   if (filters.eliteEnabled && !withinRange(entry.elite, filters.eliteMin, filters.eliteMax)) return false
   return !filters.starEnabled || withinRange(operatorStarNumber(entry), filters.starMin, filters.starMax)
@@ -119,7 +118,7 @@ export function matchesOperatorGrowthFilters(entry, filters = {}) {
 
 export function hasActiveOperatorGrowthFilters(filters = {}) {
   const f = filters || {}
-  return ['level', 'elite', 'star'].some(key => f[key + 'Enabled'] &&
+  return Boolean(f.awakened) || ['level', 'elite', 'star'].some(key => f[key + 'Enabled'] &&
     [f[key + 'Min'], f[key + 'Max']].some(value => value !== '' && value != null))
 }
 

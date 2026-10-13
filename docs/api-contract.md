@@ -1225,3 +1225,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 响应按 ApiResult 包装。分页数据为 `{has_next,page,total,data}`；目标包含上述字段、`id`、`linked_feedback: [{id,title}]`、`updated_at` 和 `version`。公开响应不返回 `feedback_ids`，并实时过滤已经取消公开的关联。管理响应保留关联 ID 供管理员解绑，但同样隐藏非公开反馈标题。
 
 未登录返回 HTTP 401，权限不足 403，校验失败 400，目标不存在 404，并发版本冲突 409。冲突时前端保留编辑内容，重新加载前确认是否放弃未保存修改。现有 PLATFORM_ADMIN/SUPER_ADMIN 角色获得管理能力；管理入口为 `/co-creation/admin`。
+
+## 独立化极兼容补充
+
+Current/PATCH增加独立huaji，catalog公开huaji_capabilities；完整接口、终点、30/31永久适配、分区/幂等和信息损失见[operator v4协议](./operator-growth-data-exchange-protocol-v4.md)。完整备份默认v4，旧v2/v3继续支持。

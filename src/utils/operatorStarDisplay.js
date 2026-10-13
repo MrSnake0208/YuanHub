@@ -11,12 +11,13 @@ export function starCardNumber(value, spOf) {
 }
 
 export function starCardNode(value) {
-  return (Number(value) - 1) % 6
+  const level = Number(value) || 0
+  return level > 0 && level < 25 ? (level - 1) % 6 : 0
 }
 
 export function starCardFallback(value) {
   const level = Number(value) || 0
   if (level === 0) return '未拥有'
-  if (level === OPERATOR_STAR_LEVEL_AWAKEN) return '觉醒'
+  if (level === OPERATOR_STAR_LEVEL_AWAKEN) return '化极待确认'
   return level
 }

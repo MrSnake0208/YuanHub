@@ -1,15 +1,20 @@
+import { operatorHuaji, operatorHuajiMax } from '../utils/operatorHuaji.js'
 import { operatorBaseId, isMovieOperator } from '../utils/operatorForms.js'
 import { getMaxEliteForLevel } from '../utils/operatorGrowthRules.js'
-import { calculateLevelRequirements, calculateXiuweiRequirements, calculateStarRequirements, starStageFromLevel } from './operatorRequirements.js'
+import { calculateLevelRequirements, calculateXiuweiRequirements, calculateStarRequirements } from './operatorRequirements.js'
 
 export function normalizeGrowthTarget(row, saved = {}) {
   const movie = isMovieOperator(row)
   const level = Math.max(Number(row.level) || 0, Math.min(100, Number(saved.level ?? 100) || 0))
   const elite = Math.max(Number(row.elite) || 0, Math.min(getMaxEliteForLevel(level), Number(saved.elite ?? 17) || 0))
+  const currentHuaji = operatorHuaji(row)
+  const savedHuaji = saved.huaji || (saved.starLevel != null ? operatorHuaji({ ...row, huaji: null, starLevel: saved.starLevel }) : null)
   const currentStar = Number(row.starLevel) || 0
-  const star = Math.min(movie ? 5 : 31, Math.max(0, Number(saved.starLevel ?? (movie ? currentStar : 7)) || 0))
-  const stage = movie ? Number : starStageFromLevel
-  return { level, elite, starLevel: stage(star) < stage(currentStar) ? currentStar : star, revision: Number(saved.revision) || 0 }
+  const star = Math.min(movie ? 5 : operatorHuajiMax(row), Math.max(0, Number(saved.starLevel ?? (movie ? currentStar : 7)) || 0))
+  let targetHuaji = savedHuaji || { owned: star > 0, stage: movie && star > 0 ? 6 * (star - 1) + 1 : star, awakened: null }
+  if (targetHuaji.stage != null && currentHuaji.stage != null && targetHuaji.stage < currentHuaji.stage) targetHuaji = { ...targetHuaji, owned: currentHuaji.owned, stage: currentHuaji.stage }
+  const targetStar = targetHuaji.stage == null ? Number(saved.starLevel ?? currentStar) : movie ? (targetHuaji.stage - 1) / 6 + 1 : targetHuaji.stage
+  return { level, elite, starLevel: targetStar, huaji: targetHuaji, awakened: targetHuaji.awakened, revision: Number(saved.revision) || 0 }
 }
 
 // Shared progress is purchased through the base form. Only one selected row owns its cost.
@@ -40,7 +45,9 @@ export function sharedPlanCalculations(catalog, currentById, selectedIds, target
         xiuwei: calculateXiuweiRequirements(current.elite || 0, ownsCost ? eliteTarget : current.elite || 0, job),
         star: isMovieOperator(entry)
           ? { heart: 0, money: 0, items: {}, unsupported: targets[index].starLevel > star }
-          : calculateStarRequirements(star, targets[index].starLevel),
+          : (operatorHuaji({ ...entry, ...currentById[entry.id] }).stage == null || targets[index].huaji?.stage == null || (targets[index].huaji?.awakened === true && operatorHuaji({ ...entry, ...currentById[entry.id] }).awakened !== true))
+            ? { heart: 0, money: 0, items: {}, unsupported: true }
+            : calculateStarRequirements(operatorHuaji({ ...entry, ...currentById[entry.id] }).stage, targets[index].starLevel),
         sharedTarget: { level: levelTarget, elite: eliteTarget },
         sharedCostOwner: owner.name || owner.id,
         sharedGrowth: forms.length > 1 || isMovieOperator(entry),

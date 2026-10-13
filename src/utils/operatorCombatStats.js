@@ -255,6 +255,7 @@ export function combatInputSignature(input) {
     level: Math.max(0, Math.trunc(Number(input.level) || 0)),
     elite: Math.max(0, Math.trunc(Number(input.elite) || 0)),
     starLevel: Math.max(0, Math.trunc(Number(input.starLevel) || 0)),
+    huaji: input.huaji || null,
     stones: normalizeStoneInputs(input.stones),
     oddities: oddities ? OPERATOR_ODDITY_KEYS.map(function (key) {
       return [key, finiteOrNull(oddities[key].current)]
@@ -346,7 +347,6 @@ function calculatePanelStoneValues(stones) {
 function panelStarValues(starLevel) {
   const value = Math.max(0, Math.trunc(Number(starLevel) || 0))
   if (!value) return { pay: 0, multiplier: 0 }
-  if (value >= 31) return { pay: 20, multiplier: 0.35 }
   const star = Math.floor((value - 1) / 6) + 1
   const node = (value - 1) % 6
   const multiplier = star >= 5 ? 0.25 : Math.max(0, (star - 1) * 0.05)
@@ -370,7 +370,7 @@ function panelRoleForInput(input) {
 }
 
 // 代号鸢 WIKI 面板公式：
-//   （等级基础值 + 化极固定值 + 星石固定值 + 奇闻）×（1 + 化极百分比 + 星石百分比 + 修为百分比）
+//   （等级基础值 + 化极固定值 + 星石固定值 + 奇闻）×（1 + 化极百分比 + 独立觉醒百分比 + 星石百分比 + 修为百分比）
 // Wiki 数据只给出 50+7 / 60+9 / 80+13 / 90+15 / 100+17 五个完整节点；
 // 中间等级不做插值，以免把阶段白值伪装成精确面板。
 export function calculateWikiOperatorCombatStats(input) {
@@ -388,7 +388,12 @@ export function calculateWikiOperatorCombatStats(input) {
   if (baseHp === 0 && baseAttack === 0) {
     return { status: 'unsupported', source: 'rules', reason: '该密探在当前养成节点尚无基础面板数据' }
   }
-  const star = panelStarValues(input.starLevel)
+  if ((input.huaji && (input.huaji.stage == null || input.huaji.awakened == null)) || (!input.huaji && Number(input.starLevel) === 31)) {
+    return { status: 'unsupported', source: 'rules', reason: '化极或觉醒待确认，无法计算面板' }
+  }
+  if (input.spOf || input.sp_of) return { status: 'unsupported', source: 'rules', reason: 'SP独立面板规则待核实，保留观测值' }
+  if (input.huaji?.owned === false) return { status: 'unsupported', source: 'rules', reason: '未拥有形态不计算战斗面板' }
+  const star = panelStarValues(input.huaji?.stage ?? input.starLevel)
   const promotionsHp = sumPromotion(role.Pay_HP, star.pay, 1)
   const promotionsAttack = sumPromotion(role.Pay_ATK, star.pay, 0)
   const stone = calculatePanelStoneValues(input.stones)
@@ -401,8 +406,10 @@ export function calculateWikiOperatorCombatStats(input) {
   const curioAttack = oddities
     ? (finiteOrNull(oddities.attack && oddities.attack.current) || 0)
     : curios.reduce(function (sum, curio) { return sum + (finiteOrNull(curio && curio.attack) || 0) }, 0)
-  const hpPercent = star.multiplier + stone.hpPercent + (tier >= 2 ? 0.05 : 0)
-  const attackPercent = star.multiplier + stone.attackPercent + (tier >= 4 ? 0.05 : 0)
+  // Cal公开结合版§6：仅已完成觉醒加10%，不改变固定值，也不再乘1.1。
+  const awakePercent = input.huaji?.awakened === true ? 0.1 : 0
+  const hpPercent = star.multiplier + awakePercent + stone.hpPercent + (tier >= 2 ? 0.05 : 0)
+  const attackPercent = star.multiplier + awakePercent + stone.attackPercent + (tier >= 4 ? 0.05 : 0)
   const hp = (baseHp + promotionsHp + stone.hpFlat + curioHp) * (1 + hpPercent)
   const attack = (baseAttack + promotionsAttack + stone.attackFlat + curioAttack) * (1 + attackPercent)
   return {
@@ -446,9 +453,10 @@ export function calculateOperatorCombatStats({ stored, input, calculator, allowA
     observedInputs.level != null && Number(observedInputs.level) === Number(input && input.level) &&
     observedInputs.elite != null && Number(observedInputs.elite) === Number(input && input.elite) &&
     observedInputs.starLevel != null && Number(observedInputs.starLevel) === Number(input && input.starLevel)
-  const changedSinceObservation = localReferenceSignature
+  const independentHuajiChanged = !localReferenceSignature && (Object.keys(observedInputs).length > 0 || Boolean(backendReferenceSignature)) && Boolean(input?.huaji) && JSON.stringify(observedInputs.huaji || null) !== JSON.stringify(input.huaji)
+  const changedSinceObservation = independentHuajiChanged || (localReferenceSignature
     ? localReferenceSignature !== signature
-    : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature))
+    : (primitiveInputChanged || (normalized.observedStatus === 'stale' && !manualPersistedAtCurrentInput) || (!!backendReferenceSignature && backendReferenceSignature !== signature)))
   const hasManualCorrection = normalized.manualAttack != null || normalized.manualHp != null
 
   // 临时关闭前端密探自动面板时，由调用方传 allowAutomatic: false。

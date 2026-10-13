@@ -15,7 +15,7 @@
       <summary>自定义范围 <span v-if="growthFilterError">范围有误</span><span v-else-if="growthFilterActive">已启用</span><span v-else-if="growthFilterConfigured">已保存</span></summary>
       <div class="growth-filter-fields">
         <fieldset v-for="range in ranges" :key="range.key" class="growth-filter-range" :class="{ 'is-enabled': modelValue[range.key + 'Enabled'] }">
-          <legend>{{ range.label }}<small v-if="range.key === 'star'">（6 = 觉醒）</small></legend>
+          <legend>{{ range.label }}</legend>
           <label class="growth-filter-enable">
             <input type="checkbox" :checked="modelValue[range.key + 'Enabled']" :aria-label="`启用${range.label}筛选`" @change="toggleRange(range.key, $event)" />
             启用
@@ -33,6 +33,7 @@
           </div>
         </fieldset>
       </div>
+      <label>觉醒确认 <select :value="modelValue.awakened || ''" aria-label="觉醒确认筛选" @change="$emit('update:modelValue', { ...modelValue, awakened: $event.target.value })"><option value="">不限</option><option value="true">已觉醒</option><option value="false">未觉醒</option><option value="unknown">待确认</option></select></label>
       <p v-if="growthFilterError" class="growth-filter-error" role="alert">{{ growthFilterError }}</p>
     </details>
   </div>
@@ -49,14 +50,14 @@ const emit = defineEmits(['update:modelValue'])
 const ranges = [
   { key: 'level', label: '等级', min: 0, max: OPERATOR_LEVEL_MAX },
   { key: 'elite', label: '修为', min: 0, max: OPERATOR_ELITE_MAX },
-  { key: 'star', label: '星数', min: 1, max: 6 },
+  { key: 'star', label: '星数', min: 1, max: 5 },
 ]
 const presets = [
   { key: 'level', label: '等级 100', min: '100', max: '100' },
   { key: 'elite', label: '修为 17', min: '17', max: '17' },
   { key: 'star', label: '二星以上', min: '2', max: '' },
   { key: 'star', label: '四星以上', min: '4', max: '' },
-  { key: 'star', label: '只看觉醒', min: '6', max: '6' },
+  { key: 'awakened', label: '只看觉醒', value: 'true' },
 ]
 
 const growthFilterActive = computed(() => hasActiveOperatorGrowthFilters(props.modelValue))
@@ -74,12 +75,14 @@ const growthFilterError = computed(function () {
 })
 
 function isActive(preset) {
+  if (preset.key === 'awakened') return props.modelValue.awakened === preset.value
   return Boolean(props.modelValue[preset.key + 'Enabled']) &&
     props.modelValue[preset.key + 'Min'] === preset.min &&
     props.modelValue[preset.key + 'Max'] === preset.max
 }
 
 function apply(preset) {
+  if (preset.key === 'awakened') return emit('update:modelValue', { ...props.modelValue, awakened: isActive(preset) ? '' : preset.value })
   emit('update:modelValue', {
     ...props.modelValue,
     [preset.key + 'Min']: preset.min,

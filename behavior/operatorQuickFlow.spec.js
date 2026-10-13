@@ -178,6 +178,7 @@ it('养成读取未完成或失败时不允许写入，成功重试后才可录�
 })
 
 it('快速补录直接选择5星，默认保留已有练度、双命盘兼容字段与非空星石', async () => {
+  getOperatorCatalog.mockResolvedValue({ operators: [{ id: 'op', name: '测试密探', rarity: 4, games: ['如鸢'] }] })
   route.query = { mode: 'supplement' }
   const discs = [{ ot_name: '初始能量+2' }]
   const stones = [{ name: '太阳', type: 'main1', level: 60 }]

@@ -212,6 +212,7 @@ it.each([false, true])('切账号后旧保存结果不污染新账号（返回�
 })
 
 it('弃置不产生化极提醒或关注名单，但仍可主动编辑和提升，关注不变', async () => {
+  api.getOperatorCurrent.mockResolvedValue([{ entries: Object.fromEntries(Object.entries(entries).map(([id, entry]) => [id, { ...entry, star_level: id === 'missing' ? 0 : 24 }])) }])
   const wrapper = await render()
   expect(wrapper.get('.current-upgrade-reminders').text()).toContain('3')
   expect(wrapper.get('.current-upgrade-reminders').text()).not.toContain('特别关注')

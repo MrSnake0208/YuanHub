@@ -19,11 +19,11 @@ OpenAPI 数据接口不能用普通 JWT，浏览器接口也不能用 OpenAPI To
 | `POST /v1/inventory/import` | 原始库存 v2 文档 | `data={accepted,duplicates,history_only,superseded,warnings}` |
 | `GET /v1/inventory/export` | `account_id` 或 `scope=all`；`include,from,to` 可选 | 原始库存 v2 文档 |
 | `GET /v1/operator/catalog` | 无，公开 | `myshare-operator-catalog@1`，通常位于 `data` |
-| `POST /v1/operator/import` | 原始密探 v2；或原始/包装密探 v3 | v2/v3 commit 结果 |
+| `POST /v1/operator/import` | 原始密探 v2；或原始/包装密探 v3/v4 | v2/v3 commit 结果 |
 | `POST /v1/operator/import/preview` | 原始或包装密探 v3 | `myshare-operator-import-preview@1` |
-| `GET /v1/operator/export` | `account_id` 或 `scope=all`；`version=2|3` | 原始密探交换文档 |
+| `GET /v1/operator/export` | `account_id` 或 `scope=all`；`version=2|3|4` | 原始密探交换文档 |
 
-库存 `include` 默认为 `current`，也可为 `current,rewards`；`from/to` 用于限制奖励流水区间。密探导出默认 `version=2`，新工具应显式请求 `version=3`。
+库存 `include` 默认为 `current`，也可为 `current,rewards`；`from/to` 用于限制奖励流水区间。密探导出默认 `version=2`，新工具应无损备份显式请求 `version=4`。
 
 导出响应不套 `{success,code,message,data}`；前端请求层必须使用 raw 模式。
 

@@ -1,3 +1,4 @@
+import { operatorHuaji } from '../utils/operatorHuaji.js'
 import { isOperatorOwned } from '../utils/operatorFilters.js'
 
 // 历练必得奖励：用户提供的十二层修为表与八档经验表。
@@ -100,10 +101,11 @@ export function trainingSchedule(gaps, levels = DEFAULT_TRAINING_LEVELS) {
 }
 
 export function growthTargetReached(current, target) {
-  // 未拥有不能因经验需求为零而被判定完成；五星旧节点 25..30 视作同阶段。
-  const star = value => Number(value) >= 25 && Number(value) < 31 ? 25 : Number(value) || 0
-  return isOperatorOwned(current) &&
-    Number(current.level || 0) >= target.level && Number(current.elite || 0) >= target.elite && star(current.starLevel) >= star(target.starLevel)
+  const value = operatorHuaji(current)
+  const desired = target.huaji || operatorHuaji({ ...current, huaji: null, starLevel: target.starLevel })
+  return value.owned && value.stage != null && desired.stage != null &&
+    Number(current.level || 0) >= target.level && Number(current.elite || 0) >= target.elite &&
+    value.stage >= desired.stage && (desired.awakened !== true || value.awakened === true)
 }
 
 // 单人专用刷取方案中，每项材料首次备齐的天数；同类其他材料占用的次数也计入。

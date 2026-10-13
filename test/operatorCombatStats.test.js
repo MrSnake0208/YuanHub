@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   calculateOperatorCombatStats,
+  calculateWikiOperatorCombatStats,
   combatInputSignature,
   combatStatsSourceLabel,
   fillOperatorDraftToMax,
@@ -239,7 +240,7 @@ test('等级、星级、星石和奇闻变化会改变计算输入指纹', funct
   const base = {
     level: 100,
     elite: 17,
-    starLevel: 31,
+    starLevel: 25, huaji: { owned: true, stage: 25, awakened: true },
     stones: { main1: { name: '天府', level: 60 } },
     oddities: {
       attack: { current: 0, max: 500 },
@@ -292,7 +293,7 @@ test('使用 Wiki 规则根据等级、修为、化极、星石和奇闻自动�
       operatorName: '杨修',
       level: 100,
       elite: 17,
-      starLevel: 31,
+      starLevel: 25, huaji: { owned: true, stage: 25, awakened: false },
       stones: {
         main1: { name: '太阳', level: 60 },
         main2: { name: '武曲', level: 60 },
@@ -363,7 +364,7 @@ test('旧 curios 攻生命字段仍可参与计算', function () {
 test('手动覆盖值优先于规则计算，可清空恢复自动计算', function () {
   const stats = calculateOperatorCombatStats({
     stored: { manualAttack: 1234, manualHp: 5678 },
-    input: { operatorName: '杨修', level: 100, elite: 17, starLevel: 31 }
+    input: { operatorName: '杨修', level: 100, elite: 17, starLevel: 25, huaji: { owned: true, stage: 25, awakened: false } }
   })
   assert.equal(stats.attack, 1234)
   assert.equal(stats.hp, 5678)
@@ -372,7 +373,7 @@ test('手动覆盖值优先于规则计算，可清空恢复自动计算', funct
 })
 
 test('手动覆盖值仍在当前输入生效时，提供自动计算切换提示', function () {
-  const input = { operatorName: '杨修', level: 100, elite: 17, starLevel: 31 }
+  const input = { operatorName: '杨修', level: 100, elite: 17, starLevel: 25, huaji: { owned: true, stage: 25, awakened: false } }
   const signature = combatInputSignature(input)
   const stats = calculateOperatorCombatStats({
     stored: {
@@ -391,7 +392,7 @@ test('手动覆盖值仍在当前输入生效时，提供自动计算切换提�
 })
 
 test('养成输入变化后自动计算优先，并保留手动值回退入口', function () {
-  const input = { operatorName: '杨修', level: 100, elite: 17, starLevel: 31 }
+  const input = { operatorName: '杨修', level: 100, elite: 17, starLevel: 25, huaji: { owned: true, stage: 25, awakened: false } }
   const signature = combatInputSignature(input)
   const stats = calculateOperatorCombatStats({
     stored: {
@@ -454,4 +455,30 @@ test('Wiki 未提供中间等级时不做伪精确插值', function () {
   assert.equal(stats.status, 'missing')
   assert.equal(stats.attack, null)
   assert.match(stats.reason, /仅提供/)
+})
+
+test('stage或觉醒未知时保留观测，不推五星或自动面板', () => {
+  for (const huaji of [{ owned: true, stage: null, awakened: true }, { owned: true, stage: 25, awakened: null }]) {
+    const result = calculateOperatorCombatStats({ stored: { observed_attack: 4001, observed_hp: 20245 }, input: { operatorName: '杨修', level: 100, elite: 17, huaji } })
+    assert.equal(result.automaticResultAvailable, false)
+    assert.equal(result.attack, 4001)
+    assert.equal(result.hp, 20245)
+    assert.match(result.reason, /待确认|待核实/)
+  }
+})
+
+
+test('普通独立觉醒只增加百分比，不修改四星节点或重复乘1.1', () => {
+  const input = { operatorName: '张飞', level: 100, elite: 17, huaji: { owned: true, stage: 22, awakened: false }, oddities: { attack: { current: 325 }, hp: { current: 0 } }, stones: { main1: { name: '天府', level: 60, rarity: 1 }, main2: { name: '武曲', level: 60, rarity: 1 }, aux1: { name: '破军', level: 60, rarity: 1 } } }
+  const before = calculateWikiOperatorCombatStats(input)
+  const after = calculateWikiOperatorCombatStats({ ...input, huaji: { ...input.huaji, awakened: true } })
+  assert.equal(before.attackPercent, 0.4225)
+  assert.equal(after.attackPercent, 0.5225)
+  assert.deepEqual(before.breakdown, after.breakdown)
+  assert.equal(after.attack, 11253.884565)
+  assert.notEqual(after.attack, before.attack * 1.1)
+  assert.equal(input.huaji.stage, 22)
+  const sp = calculateOperatorCombatStats({ stored: { observed_attack: 4001 }, input: { ...input, spOf: 'base' } })
+  assert.equal(sp.automaticResultAvailable, false)
+  assert.equal(sp.attack, 4001)
 })

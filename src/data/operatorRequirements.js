@@ -97,7 +97,7 @@ function add(map, id, count) {
 
 export function starStageFromLevel(starLevel) {
   const n = Math.trunc(Number(starLevel) || 0)
-  if (n >= 31) return 25
+  if (n >= 31) return null
   // 旧协议允许把 5 星节点写成 25..30；Wiki 计算器把它们视为
   // “四星升五星”之后、觉醒之前的同一阶段。
   if (n >= 25) return 24
@@ -139,6 +139,7 @@ export function calculateStarRequirements(currentStarLevel, targetStarLevel) {
   const from = starStageFromLevel(currentStarLevel)
   const to = starStageFromLevel(targetStarLevel)
   const result = { heart: 0, money: 0, items: {}, from, to }
+  if (Number(currentStarLevel) === 31 || Number(targetStarLevel) === 31) return { ...result, unsupported: true }
   if (to <= from) return result
   for (let stage = from + 1; stage <= to; stage += 1) {
     const entry = STAR_REQUIREMENTS[stage] || {}
@@ -197,7 +198,7 @@ export const OPERATOR_REQUIREMENT_DATA = {
   source: OPERATOR_REQUIREMENT_SOURCE,
   levelMax: 100,
   eliteMax: 17,
-  starMax: 31,
+  starMax: 25,
   starLabels: STAR_LABELS,
   professionMaterials: PROFESSION_MATERIALS
 }

@@ -31,31 +31,29 @@ test('图鉴拥有状态只由 starLevel 决定', function () {
   assert.equal(isOperatorOwned(null), false)
 })
 
-test('养成范围用第 6 档表示觉醒，星数上下限包含边界', function () {
+test('觉醒与星数独立筛选且未知阶段不伪装为第六星', function () {
   const ordinary = { level: 80, elite: 12, starLevel: 19 }
   const sp = { level: 80, elite: 12, star_level: 4, sp_of: 'char_base' }
-  const awakened = { level: 80, elite: 12, starLevel: 31 }
+  const unknown = { level: 80, elite: 12, starLevel: 31 }
+  const known = { ...unknown, huaji: { owned: true, stage: 19, awakened: true } }
   assert.equal(operatorStarNumber(ordinary), 4)
   assert.equal(operatorStarNumber(sp), 4)
-  assert.equal(operatorStarNumber(awakened), 6)
+  assert.equal(operatorStarNumber(unknown), null)
+  assert.equal(operatorStarNumber(known), 4)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '80', levelEnabled: true, eliteMax: '12', eliteEnabled: true, starMin: '4', starMax: '4', starEnabled: true }), true)
   assert.equal(matchesOperatorGrowthFilters(sp, { starMin: '4', starMax: '4', starEnabled: true }), true)
-  assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '81' }), true)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '81', levelEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { eliteMax: '11', eliteEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { starMax: '3', starEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { starMin: '5', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(unknown, { starMin: '5', starEnabled: true }), false)
+  assert.equal(matchesOperatorGrowthFilters(unknown, { awakened: 'true' }), true)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { awakened: 'true' }), false)
+  assert.equal(matchesOperatorGrowthFilters(ordinary, { awakened: 'unknown' }), true)
+  assert.equal(matchesOperatorGrowthFilters(known, { starMin: '4', starMax: '4', starEnabled: true, awakened: 'true' }), true)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: true }), false)
   assert.equal(matchesOperatorGrowthFilters(ordinary, { levelMin: '90', levelMax: '80', levelEnabled: false }), true)
-  assert.equal(matchesOperatorGrowthFilters(awakened, {}), true)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5' }), true)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '5', starEnabled: true }), true)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { starMax: '5', starEnabled: true }), false)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '6', starMax: '6', starEnabled: true }), true)
-  assert.equal(matchesOperatorGrowthFilters(ordinary, { starMin: '6', starMax: '6', starEnabled: true }), false)
-  assert.equal(matchesOperatorGrowthFilters(awakened, { starMin: '6', starMax: '6', starEnabled: true, levelMin: '81', levelEnabled: true }), false)
-  assert.equal(hasActiveOperatorGrowthFilters({ starMin: '6', starEnabled: false }), false)
-  assert.equal(hasActiveOperatorGrowthFilters({ starMin: '6', starEnabled: true }), true)
+  assert.equal(hasActiveOperatorGrowthFilters({ awakened: 'true' }), true)
 })
 
 test('subProfList 兼容字符串 / 数组 / snake_case', function () {
@@ -187,8 +185,8 @@ test('图鉴筛选口径与列表数量保持一致', function () {
   assert.equal(filtered({ manifestFilter: 'missing' }).length, 1)
   assert.equal(filtered({ search: '策' }).length, 1)
   assert.equal(filtered({ growthFilters: { levelMin: '100', levelEnabled: true } }).length, 1)
-  assert.equal(filtered({ growthFilters: { starMin: '6', starMax: '6', starEnabled: true } }).length, 1)
-  assert.equal(filtered({ manifestFilter: 'missing', growthFilters: { starMin: '6', starMax: '6', starEnabled: true } }).length, 0)
+  assert.equal(filtered({ growthFilters: { awakened: 'true' } }).length, 1)
+  assert.equal(filtered({ manifestFilter: 'missing', growthFilters: { awakened: 'true' } }).length, 0)
   assert.equal(filtered({ growthFilters: { starMin: '6', starEnabled: false } }).length, 3)
   // 图鉴搜索沿用原有的名称/别名/id 直接匹配，不启用拼音（保持既有行为）。
   assert.equal(filtered({ search: 'zhou' }).length, 0)

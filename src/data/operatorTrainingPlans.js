@@ -26,7 +26,8 @@ export function normalizeTrainingWorkspace(raw, accountId) {
     targets: Object.fromEntries(Object.entries(plan.targets || {}).filter(([, target]) => target && typeof target === 'object').map(([id, target]) => [id, {
       level: Math.max(0, Math.min(100, Math.trunc(Number(target.level)) || 0)),
       elite: Math.max(0, Math.min(17, Math.trunc(Number(target.elite)) || 0)),
-      starLevel: Math.max(0, Math.min(31, Math.trunc(Number(target.starLevel)) || 0))
+      starLevel: Math.max(0, Math.min(31, Math.trunc(Number(target.starLevel)) || 0)),
+      ...(target.huaji ? { huaji: { ...target.huaji } } : {})
     }]))
   }))
   return { ...base, plans, revision: Math.max(0, Number(raw.revision) || 0), updatedAt: raw.updatedAt || null,

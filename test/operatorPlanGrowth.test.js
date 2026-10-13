@@ -32,7 +32,9 @@ test('movie quality stays separate while recruitment accepts same-game four and 
 
 test('movie targets use direct stars and do not invent a new growth target by default', () => {
   assert.equal(normalizeGrowthTarget({ ...movie, starLevel: 2 }).starLevel, 2)
-  assert.equal(normalizeGrowthTarget(movie, { starLevel: 31 }).starLevel, 5)
+  const unknown = normalizeGrowthTarget(movie, { starLevel: 31 })
+  assert.equal(unknown.starLevel, 31)
+  assert.equal(unknown.huaji.stage, null)
   assert.equal(normalizeGrowthTarget({ ...movie, starLevel: 4 }, { starLevel: 2 }).starLevel, 4)
   assert.equal(normalizeGrowthTarget(base).starLevel, 7)
 })
@@ -62,7 +64,7 @@ test('fallback generator retains SP relations from canonical and legacy input wi
   const directory = mkdtempSync(join(tmpdir(), 'sp-catalog-'))
   try {
     writeFileSync(join(directory, 'package.json'), '{"type":"module"}')
-    for (const file of ['scripts/build-inventory-catalog.mjs', 'src/utils/operatorFilters.js', 'src/utils/operatorForms.js', 'src/utils/operatorStarDisplay.js']) {
+    for (const file of ['scripts/build-inventory-catalog.mjs', 'src/utils/operatorFilters.js', 'src/utils/operatorForms.js', 'src/utils/operatorStarDisplay.js', 'src/utils/operatorHuaji.js']) {
       const target = join(directory, file)
       mkdirSync(target.slice(0, target.lastIndexOf('/')), { recursive: true })
       copyFileSync(new URL('../' + file, import.meta.url), target)
