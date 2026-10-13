@@ -1,5 +1,10 @@
 # YuanStar embed 同步说明
 
+## 继承弹窗正文与尺寸（2026-10-13）
+
+- 最终来源 `fix/star-ocr-plan-inheritance`，source commit `c02aa31bd0f59f38de7aaa23f6ea494def5cbfbc`，由已提交的干净源码正式 build:embed 并通过原同步脚本更新完整 12 文件。manifest 来源与逐文件 SHA-256 一致；仅 CSS 资源字节变化，JS、worker 与识别资源保持一致。
+- 桌面正文统一 13px，20px 粗标题保持。弹窗宽度上限 640px，高度随内容伸缩并受视口约束；手机正文 14px、表单 16px 和 44px 触控区域保留。继承、取消、确认保存、匹配统计和原操作入口不变。
+
 ## 三页面提示与保存状态收口（2026-10-13）
 
 - 来源分支 `fix/star-ocr-plan-inheritance`，source commit `1d7075ee9d76de00ed7cfd6e58af3566fec24f29`。已提交 source commit 的干净工作树正式 build，执行 `build:embed` 后由现有同步脚本复制完整 12 文件；来源 SHA、clean 标识和全部 SHA-256 写入 `docs/yuanstar-embed-manifest.json`。
