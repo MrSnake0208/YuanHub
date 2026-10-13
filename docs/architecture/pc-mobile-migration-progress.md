@@ -30,7 +30,7 @@
 | /operator | pages/operator/index.vue | pages/operator/operatorWorkspaceDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorWorkspaceMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment（feature: recruitmentArchive） | pages/recruitment/index.vue | pages/recruitment/recruitmentRouteDesktop.css + recruitment*Desktop.css | pages/recruitment/recruitmentRouteMobile.css + recruitment*Mobile.css | 原useRecruitment/PoolEditor/交换控制器 | verified_nonbrowser | B07：231行为/118 Node/CSS/build | 原功能开关保留；人工UI待做 | pending |
 | /operator/share/:token? | pages/operator/share.vue | pages/operator/operatorShareDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorShareMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
-| /star | pages/star/index.vue | 待拆分 | 待拆分 | pages/star/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /star | pages/star/index.vue | pages/star/starHostDesktop.css（仅宿主） | pages/star/starHostMobile.css（仅宿主） | 原 mountYuanStar/账号/云同步/OCR 控制器 | blocked | B17宿主及共享边界；整合门禁通过 | 内部真实源码缺失，已连接 drifty13/YuanStar-dev 返回404；未计完成 | pending |
 | /operator/quick | pages/operator/quick.vue | pages/operator/operatorQuickDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorQuickMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /operator/admin | pages/operator/admin.vue | pages/operator/operatorAdminDesktop.css + components/operator/*Desktop.css + styles/operator-ledger-card.v*Desktop.css | pages/operator/operatorAdminMobile.css + components/operator/*Mobile.css + styles/operator-ledger-card.v*Mobile.css | 原页面/功能组件控制器 | verified_nonbrowser | B06：321行为/262 Node/static/build | 无阻塞；人工UI待做 | pending |
 | /recruitment/admin | pages/recruitment/admin.vue | pages/recruitment/recruitmentAdminDesktop.css + recruitment*Desktop.css | pages/recruitment/recruitmentAdminMobile.css + recruitment*Mobile.css | 原useRecruitment/PoolEditor/交换控制器 | verified_nonbrowser | B07：231行为/118 Node/CSS/build | 原功能开关保留；人工UI待做 | pending |
@@ -71,7 +71,8 @@
 | /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue + components/operator/ | operatorWorkspaceDesktop.css + 功能组件Desktop.css | operatorWorkspaceMobile.css + 功能组件Mobile.css | 原控制器/visitedTabs/全部功能组件 | verified_nonbrowser | B06：真实父级编辑/追踪清单/星石状态 + 原契约 | 保持功能开关；人工UI待做 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/RecruitmentWorkspace.vue + PoolEditor/EntryEditor/RecruitmentExchange/RecruitmentTimeline | 对应recruitment*Desktop.css | 对应recruitment*Mobile.css | 原控制器及 PoolEditor | verified_nonbrowser | B07：真实行编辑/预览 resize与原排序/CAS测试 | rows/originals/orderRevision/CAS逐字保留；人工UI待做 | pending |
 | /calendar 公共/个人/私人事项/三种视图 | pages/calendar/index.vue + components/calendar/ | calendar/public-calendarDesktop.css + 各局部Desktop.css | calendar/public-calendarMobile.css + 各局部Mobile.css | 原控制器/订阅编辑器 | verified_nonbrowser | B08：三视图/私人事项/订阅待办真实resize | agenda/timeline/month保持用户选择；人工UI待做 | pending |
-| /star 嵌入内部（背包/计划/OCR） | pages/star/index.vue | 待核实源码 | 待核实源码 | 唯一 iframe 业务实例 | pending | 主站入口存在 | 定位真实源码与同步流程；禁止直接修改构建产物 | pending |
+| /star 嵌入内部（背包/计划/OCR） | 外部 web/src/yuanstar-embed.ts → public/yuanstar-embed/ | 待真实源码 | 待真实源码 | 唯一 mountYuanStar DOM业务实例 | blocked | 原产物18行为/provenance通过；没有内部迁移证据 | 当前854a749源提交不可访问；已询问源码目录/可访问仓库，未改产物 | pending |
+| 全站共享页头/导航/页脚/账号工作区/弹层 | components/ + styles/ | compactToolHeader/islandSidebar/accountWorkspace等Desktop.css；五组全局布局Desktop.css | 对应Mobile.css | 原组件/Teleport/焦点/订阅/未决承诺 | verified_nonbrowser | B17及完整整合门禁 | 公共图标/头像/徽标/密码与选择字段仍为刻意共享控件 | pending |
 
 ## B01：今日一览（L2，整体任务 L3）
 
@@ -195,4 +196,14 @@
 - `node --test test/demoScenario.test.js test/pwaInstall*.test.js test/pcMobileStyleOwnership.test.js test/backgroundReadability.test.js test/brandLogo.test.js`：294/294；背景层契约跟随真实外部样式，合并同选择器外观/几何块后保留原全部层级与换行断言。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-16-*.log`。
 - 管理提交补记 `ce5a758`；本批保存标题 `refactor(site): 隔离演示宣传与辅助入口双端布局`。完整路由42/43，人工UI仍pending。星石真实内部源码仍需定位，外围壳不能计整条路由完成。
 
-下一动作：星石宿主与真实内部源码；复核共享展示边界，再进行整合非浏览器门禁。
+## B17：星石宿主与全站共享展示边界（局部L1，整合L3）
+
+- 辅助入口检查点已保存 `2471d23`。星石宿主接入 `starHost{Desktop,Mobile}.css`；CompactToolHeader、IslandSidebar、账号事件提示/切换器/工作区、AppDialog、数据交换、账号归属、安装提示、引导提示、空状态、版本横幅及星石教程/示例弹层共15个SFC的实际布局与密度分别归属双端。所有生产模板和完整脚本保持逐字一致；没有复制业务所有者或更换挂载父节点。
+- main.css 中原导航/页脚/手机页头规则移到 sidebar-layout/footer-layout/mobile-header 的共享外观与互斥双端文件；page-header 与仅余星石的 tools-workspace 同样分层，保留原全局命名空间、特异性与真实CSS import链。页头/页脚复制当前wrap默认值；page-header的默认值采用低特异性，保留反馈1320px等既有覆盖。图标/头像、徽标、密码输入、SoftSelect、普通链接/按钮与通用表单仍为刻意公共控件契约；库存A1原文件未改。
+- 15个SFC及5个全局布局的2720组宽度/媒体声明投影与迁移前一致（加入显式继承默认值前；自定义属性末尾空白按CSS语义归一）。模板/控制器逐字对比通过；仅裁掉外层归属不可能命中的媒体块。此证据不等于视觉或浏览器验收。
+- 宿主/共享页头/原真实vendored embed定向行为124/124；新增页头帮助/账号/焦点与宿主唯一实例/计划视图/resize零读写的4用例。账号工作区和AppDialog再增加4个双向跨宽度用例，未保存名称/归属/焦点/唯一实例/未决承诺保持；对应15/15通过。
+- 首轮完整行为有1条旧文案断言失败：tutorialsDisabled期待“抽数怎么填写？”。使用起点c13f501的真实PoolEditor运行原测试，复现同一失败（5通过/1失败，原始日志保留），证明迁移前已有。测试改为验证当前“距保底/已垫”填写入口，原教程禁用、真实保存载荷23及save次数断言均保留。库存静态测试跟随真实style.src，原sticky/单入口断言保留；密探已退出全局导航，正向验证改为实际页面归属。
+- 最终已执行现有脚本：`npm run test:static` 610/610；`npm run test:repo` 1283/1283；`npm run test:behavior` 116文件2004/2004；`npm run build` 成功（PWA191资源，OCR gzip生成与校验成功）。整合后补齐星石教程/示例两个纯样式归属，并降低page-header继承默认值特异性；已重跑受影响行为15/15、相关静态290/290，再执行完整static610/repo1283与最终build；其余行为源码未变。日志在根工作区 `.test-artifacts/pc-mobile-layered/final-*.log` 与 `batch-17-*.log`。
+- 星石内部受阻：本机已检查的常用项目目录未发现 `web/src/yuanstar-embed.ts`；文档权威仓 `drifty13/YuanStar-dev` 与manifest源提交 `854a7493e1744c4b8a4bae3e44dbd3f216ce911c` 经已连接GitHub均404。已异步请求可用本地源码目录或当前连接可访问的仓库/分支。没有读取凭证、绕过权限、手改生成产物或启用浏览器。外围宿主通过不计整条星石路由完成。
+
+下一动作：取得真实星石源码后迁移背包/计划/OCR内部展示，从源构建并按原同步脚本更新完整产物与provenance，重跑受影响检查和最终构建。42/43保持部分完成；人工UI全部pending。

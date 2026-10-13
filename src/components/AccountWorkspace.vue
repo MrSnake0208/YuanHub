@@ -239,194 +239,68 @@ function submitCreate() {
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* —— 统一子账号「数据归属」工作区（库存 / 密探共用一套样式） —— */
-.account-workspace { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden }
-.account-workspace.soft-dropdown-workspace { overflow: visible }
-
-.account-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(410px, 520px) auto; align-items: center; gap: 12px; padding: 22px 24px }
-.account-bar.with-actions { grid-template-columns: minmax(410px, 1fr) auto auto }
-.account-bar.with-actions .account-heading { grid-column: 1 / -1 }
-.account-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: .04em }
-.account-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7 }
-.section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
-
-.account-context { display: grid; grid-template-columns: minmax(170px, 1fr) minmax(190px, .82fr); align-items: start; gap: 12px }
-.account-selector { display: flex; min-width: 0; flex-direction: column; gap: 6px }
-.ac-label { font-size: 11.5px; font-weight: 800; color: var(--ink-60); letter-spacing: .08em }
-.account-selector select { width: 100%; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 13px; font-size: 14px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; min-width: 160px; cursor: pointer; transition: border-color .3s, box-shadow .3s }
+.account-workspace { background: var(--surface); border: 1px solid var(--line); border-radius: 20px }
+.account-heading p { color: var(--ink-60) }
+.section-kicker { color: var(--accent-strong) }
+.ac-label { color: var(--ink-60) }
+.account-selector select { border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); outline: none; cursor: pointer; transition: border-color .3s, box-shadow .3s }
 .account-selector select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
-.account-soft-dropdown { position: relative; width: 100%; min-width: 0; font-family: var(--font-b); font-size: 14px }
-.account-soft-trigger { position: relative; display: flex; width: 100%; min-width: 160px; min-height: 44px; align-items: center; padding: 10px 34px 10px 13px; overflow: hidden; border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
-.account-soft-trigger::after { position: absolute; top: 50%; right: 14px; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ''; opacity: .72; transform: translateY(-65%) rotate(45deg); transition: transform .2s var(--ease) }
-.account-soft-trigger[aria-expanded='true']::after { transform: translateY(-35%) rotate(225deg) }
+.account-soft-trigger { border: 1.5px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--paper); cursor: pointer; transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
+.account-soft-trigger::after { border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ''; opacity: .72; transition: transform .2s var(--ease) }
 .account-soft-trigger:hover:not(:disabled),.account-soft-trigger:focus-visible { border-color: var(--accent); background: var(--cream); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13); outline: 0 }
 .account-soft-trigger:disabled { cursor: not-allowed; opacity: .55 }
-.account-soft-listbox { position: absolute; z-index: var(--z-popover); top: calc(100% + 5px); right: 0; left: 0; display: grid; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); font: inherit; scrollbar-color: var(--yellow-deep) transparent; scrollbar-width: thin }
-.account-soft-option { width: 100%; min-height: 44px; padding: 8px 10px; overflow: hidden; border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap }
+.account-soft-listbox { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 24px rgba(73, 59, 44, .16); scrollbar-color: var(--yellow-deep) transparent }
+.account-soft-option { border: 0; border-radius: 7px; color: var(--ink); background: transparent; cursor: pointer }
 .account-soft-option:hover:not(:disabled),.account-soft-option:focus-visible,.account-soft-option[aria-selected='true'] { background: var(--cream); outline: 0 }
 .account-soft-option:disabled { cursor: not-allowed; opacity: .55 }
-.ac-warn { font-size: 12px; color: var(--rouge); font-weight: 700 }
-.account-game { min-width: 0; margin: 0; padding: 0; border: 0 }
-.account-game legend { margin-bottom: 6px }
-.account-game-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--paper) }
-.account-game-options label { position: relative; display: inline-flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; border-radius: 7px; color: var(--ink-60); font-size: 12px; font-weight: 800; cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
+.ac-warn { color: var(--rouge) }
+.account-game { border: 0 }
+.account-game-options { border: 1.5px solid var(--line); border-radius: 11px; background: var(--paper) }
+.account-game-options label { border-radius: 7px; color: var(--ink-60); cursor: pointer; transition: color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease) }
 .account-game-options label.on { background: var(--yellow); color: var(--ink); box-shadow: inset 0 0 0 1px var(--yellow-deep) }
 .account-game-options label:focus-within { outline: 2px solid var(--brand-blue); outline-offset: 1px }
-.account-game-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none }
-.account-game small { display: block; margin-top: 5px; color: var(--ink-35); font-size: 10px; font-weight: 700; line-height: 1.35; white-space: nowrap }
-.account-game-readonly strong { display: flex; min-height: 44px; align-items: center; margin-top: 6px; padding: 0 13px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--cream); color: var(--ink); font-size: 13px; font-weight: 900 }
+.account-game-options input { opacity: 0; pointer-events: none }
+.account-game small { color: var(--ink-35) }
+.account-game-readonly strong { border: 1.5px solid var(--line); border-radius: 11px; background: var(--cream); color: var(--ink) }
 .account-game:disabled { opacity: .52 }
 .account-game:disabled .account-game-options label { cursor: not-allowed }
 
-.act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px }
-.account-manage { min-height: 44px; align-self: center; transform: translateY(9px) }
+.act-btn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; color: var(--ink-60); cursor: pointer; transition: color .3s var(--ease), background-color .3s var(--ease), border-color .3s var(--ease) }
 .account-manage-link { text-decoration: none }
-.account-manage svg { flex: none }
 
-.account-mgr { border-top: 1px dashed var(--line); background: var(--cream); padding: 20px 24px 22px }
-.account-mgr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px }
-.account-mgr-head h3 { font-size: 14px; font-weight: 900; font-family: var(--font-s) }
-.account-mgr-head p { margin-top: 4px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
-.account-count { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap }
-
-.ac-new { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
-.ac-new input { flex: 1; min-width: 200px; border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: var(--font-b); color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
+.account-mgr { border-top: 1px dashed var(--line); background: var(--cream) }
+.account-mgr-head p { color: var(--ink-60) }
+.account-count { border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60) }
+.ac-new input { border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); outline: none; transition: border-color .3s }
 .ac-new input:focus { border-color: var(--accent) }
-
-.ac-list { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px }
-.ac-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--paper) }
+.ac-item { border: 1px solid var(--line); border-radius: 12px; background: var(--paper) }
 .ac-item.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent) }
-.ac-item .ac-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--yellow-deep); flex: none }
-.ac-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
-.ac-name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--ink) }
-.ac-name em { font-style: normal; background: var(--yellow); border-radius: 999px; padding: 2px 7px; font-size: 10px; letter-spacing: .03em }
+.ac-item .ac-dot { border-radius: 50%; background: var(--yellow-deep) }
+.ac-name { color: var(--ink) }
+.ac-name em { background: var(--yellow); border-radius: 999px }
 
-.ac-btn { flex: none; min-height: 44px; border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--font-b); transition: color .25s, background-color .25s, border-color .25s }
+.ac-btn { border: 1.5px solid var(--line); background: transparent; color: var(--ink-60); border-radius: 9px; cursor: pointer; transition: color .25s, background-color .25s, border-color .25s }
 .ac-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink) }
 .ac-btn.danger { border-color: rgba(166, 81, 74, .35); color: var(--rouge) }
 .ac-btn.danger:hover:not(:disabled) { background: rgba(166, 81, 74, .1) }
 .ac-btn:disabled { opacity: .45; cursor: not-allowed }
 
-.ac-empty { margin-top: 12px; font-size: 12.5px; color: var(--ink-35); font-weight: 600 }
-
-.workspace-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px }
-.workspace-status:empty { display: none }
-.workspace-status { display: flex; flex-wrap: wrap; gap: 8px 18px; min-width: 0; color: var(--ink-60); font-size: 12.5px; overflow-wrap: anywhere }
-.workspace-toggle { min-height: 44px; flex: none }
+.ac-empty { color: var(--ink-35) }
+.workspace-status { color: var(--ink-60) }
 .workspace-toggle:hover, .workspace-toggle:focus-visible { border-color: var(--accent); color: var(--ink) }
 .workspace-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 .workspace-panels { border-top: 1px solid var(--line) }
-.workspace-account, .workspace-side { min-width: 0 }
-.split-workspace .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start }
-.split-workspace .account-context { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) }
-.split-workspace .account-manage { transform: none; align-self: stretch }
-.split-workspace .account-bar.with-actions > :deep(.archive-toggle) { transform: none; align-self: stretch; min-height: 44px }
-.split-workspace .account-bar { padding: 20px 24px 22px }
-.split-workspace .account-heading h2 { font-size: 18px }
-.split-workspace .account-context { margin-top: 4px }
-.split-workspace .account-selector select { min-height: 44px }
-.split-workspace .account-selector select { min-width: 0 }
 @media (min-width: 1024px) {
-  .workspace-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .workspace-side { border-left: 1px solid var(--line); background: var(--cream) }
   .workspace-side :deep(.share-manager) { border-top: 0 }
 }
 @media (max-width: 640px) {
-  .workspace-summary { padding: 10px 16px }
-  .split-workspace .account-context { grid-template-columns: 1fr }
   .account-workspace { border-radius: 16px }
-  .account-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 16px 10px; padding: 18px 16px }
-  .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .account-heading, .account-context { grid-column: 1 / -1 }
-  .account-bar.with-actions > .account-manage,
-  .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0 }
-  .account-context { grid-template-columns: 1fr; gap: 13px }
-  .account-selector { gap: 6px }
-  .account-selector select { width: 100%; min-width: 0; min-height: 46px; font-size: 16px }
-  .account-soft-dropdown { font-size: 16px }
-  .account-soft-trigger { min-width: 0; min-height: 46px }
-  .account-game-options label { min-height: 44px }
-  .account-game small { white-space: normal }
-  .account-manage { width: 100%; min-height: 44px; transform: none }
-  .account-mgr { padding: 16px }
-  .account-mgr-head { flex-direction: column; gap: 8px }
-  .ac-new { align-items: stretch; flex-direction: column }
-  .ac-new input { width: 100%; min-width: 0; min-height: 44px; font-size: 16px }
-  .ac-new .btn { width: 100% }
-  .ac-item { align-items: flex-start; gap: 8px; padding: 12px; flex-wrap: wrap }
-  .ac-meta { flex-basis: calc(100% - 24px) }
-  .ac-btn { min-height: 44px; flex: 1 }
-}
-
-@media (min-width: 641px) and (max-width: 900px) {
-  .account-bar { grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr); }
-  .account-heading { grid-column: 1 / -1; }
-  .account-context { grid-column: 1 / -1; }
-  .account-manage { width: 100%; transform: none; }
-  .account-bar.with-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
-  .account-bar.with-actions .account-context { grid-column: 1 / -1; }
-  .account-bar.with-actions > .account-manage,
-  .account-bar.with-actions > :deep(.archive-toggle) { width: 100%; min-width: 0; }
-}
-@media (max-width: 640px) {
-  .account-workspace .account-mgr { padding: 12px 16px }
-  .account-workspace .account-mgr-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; margin-bottom: 10px }
-  .account-workspace .account-mgr-head > div { display: contents }
-  .account-workspace .account-mgr-head h3 { grid-column: 1; grid-row: 1 }
-  .account-workspace .account-count { grid-column: 2; grid-row: 1; padding: 3px 8px }
-  .account-workspace .account-mgr-head p { grid-column: 1 / -1; margin-top: 0; line-height: 1.5 }
-  .account-workspace .ac-new { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px }
-  .account-workspace .ac-new input { padding: 8px 10px }
-  .account-workspace .ac-new .btn { min-height: 44px; padding: 8px 12px; white-space: nowrap }
-  .account-workspace .ac-list { margin-top: 10px; gap: 6px }
-  .account-workspace .ac-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 8px }
-  .account-workspace .ac-dot { display: none }
-  .account-workspace .ac-name { flex-wrap: wrap; gap: 3px 6px; font-size: 13px }
-  .account-workspace .ac-name-text { min-width: 0; overflow-wrap: anywhere }
-  .account-workspace .ac-name em { flex: none }
-  .account-workspace .ac-btn { min-width: 44px; min-height: 44px; padding: 6px 8px }
-  .account-workspace .ac-empty { margin-top: 8px }
-  .account-workspace .account-bar.with-actions { padding: 14px 16px; gap: 10px }
-  .account-workspace .account-heading h2 { font-size: 17px }
-  .account-workspace .account-heading p { margin-top: 3px; font-size: 12px; line-height: 1.5 }
-  .account-workspace .section-kicker { margin-bottom: 3px }
-  .account-workspace .account-context { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 0 }
-  .account-workspace .account-selector { gap: 4px }
-  .account-workspace .account-game legend { margin-bottom: 4px }
-  .account-workspace .account-selector select { min-height: 46px; padding: 9px 8px }
-  .account-workspace .account-soft-trigger { min-width: 0; padding: 9px 28px 9px 8px }
-  .account-workspace .account-bar.with-actions > :deep(.star-sync-action) { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; transform: none }
-  .account-workspace .account-game-options { padding: 1px; gap: 1px }
-  .account-workspace .account-game-options label { min-height: 44px; font-size: 12px }
-  .account-workspace .account-manage,
-  .account-workspace .account-bar.with-actions > :deep(.archive-toggle) { padding: 8px 10px }
 }
 
 /* 数据交换在半宽账号栏和手机上共用紧凑排布。 */
-.split-workspace :deep(.archive-workspace) { padding: 14px 24px }
-.split-workspace :deep(.archive-actions) { grid-template-columns: 1fr; gap: 8px; margin-top: 10px; padding-top: 10px }
-.split-workspace :deep(.export-group) { grid-template-columns: minmax(0, 1fr) auto; gap: 8px }
-.split-workspace :deep(.export-label) { grid-column: 1 / -1 }
-.split-workspace :deep(.archive-import),
-.split-workspace :deep(.export-submit) { min-height: 44px; padding: 8px 12px }
-@media (max-width: 640px) {
-  .account-workspace :deep(.archive-workspace) { padding: 12px 16px }
-  .account-workspace :deep(.archive-heading) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; align-items: center }
-  .account-workspace :deep(.archive-heading > div) { display: contents }
-  .account-workspace :deep(.archive-heading .section-kicker) { grid-column: 1; margin-bottom: 0 }
-  .account-workspace :deep(.archive-heading h2) { grid-column: 1; font-size: 17px }
-  .account-workspace :deep(.archive-format) { grid-column: 2; grid-row: 1 / 3; padding: 3px 8px }
-  .account-workspace :deep(.archive-heading p) { grid-column: 1 / -1; margin-top: 0; font-size: 12px; line-height: 1.5 }
-  .account-workspace :deep(.archive-actions) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; padding-top: 10px }
-  .account-workspace :deep(.export-group) { display: contents }
-  .account-workspace :deep(.export-label) { grid-column: 1 / -1 }
-  .account-workspace :deep(.export-options) { grid-column: 1 / -1; gap: 8px }
-  .account-workspace :deep(.export-option) { min-height: 44px; padding: 6px 8px }
-  .account-workspace :deep(.archive-import),
-  .account-workspace :deep(.export-submit) { min-height: 44px; padding: 8px 10px; width: 100% }
-  .account-workspace :deep(.export-label) { grid-row: 1 }
-  .account-workspace :deep(.export-options) { grid-row: 2 }
-  .account-workspace :deep(.archive-import),
-  .account-workspace :deep(.export-submit) { grid-row: 3 }
-}
 </style>
+<style scoped src="./accountWorkspaceDesktop.css"></style>
+<style scoped src="./accountWorkspaceMobile.css"></style>

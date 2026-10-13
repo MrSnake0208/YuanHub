@@ -1,0 +1,131 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.dialog-enter-from .dialog,
+.dialog-leave-to .dialog {
+  transform: translateY(18px) scale(.97);
+}
+
+.dialog-mask {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay-blocking, 200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.dialog {
+  width: 100%;
+  max-width: 400px;
+  overflow: hidden;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 20px 0;
+}
+.dialog-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-s);
+  font-weight: 900;
+  font-size: 17px;
+  letter-spacing: .04em;
+}
+.dialog-ic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+}
+.dialog-close {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+}
+
+.dialog-body {
+  padding: 18px 20px 4px;
+}
+.dialog-msg {
+  font-size: 13.5px;
+  line-height: 1.85;
+  font-weight: 600;
+  white-space: pre-line;
+  word-break: break-word;
+}
+.dialog-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.dialog-choice {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 13px 10px 15px;
+  text-align: left;
+  font: 800 13px/1.35 var(--font-b);
+  touch-action: manipulation;
+}
+.dialog-choice:active { transform: scale(.98); }
+.dialog-choice-copy { display: grid; min-width: 0; gap: 2px; }
+.dialog-choice-copy strong { font-weight: 900; }
+.dialog-choice-copy small { font-size: 11px; font-weight: 700; }
+.dialog-check {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dialog-check input { width: 17px; height: 17px; margin: 0; }
+.dialog-field {
+  display: block;
+  margin-top: 14px;
+}
+.dialog-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.dialog-field input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: var(--font-b);
+}
+
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px 18px;
+}
+.dlg-btn {
+  flex: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-b);
+}
+.dlg-btn:active:not(:disabled) { transform: scale(.98); }
+}

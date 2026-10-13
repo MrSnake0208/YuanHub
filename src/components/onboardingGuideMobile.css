@@ -1,0 +1,12 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.tutorial-guide { min-width: 0; margin-block: 12px; padding: 12px; font: 14px/1.5 var(--font-b); overflow-wrap: anywhere; }
+.tutorial-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tutorial-heading h2 { margin: 0; min-width: 0; font-size: 16px; }
+.tutorial-guide p { margin: 4px 0; }
+.tutorial-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tutorial-guide button, .tutorial-actions a { min-height: 44px; padding: 8px 12px; font: inherit; }
+.tutorial-exit { flex-shrink: 0; }
+.tutorial-note { font-size: 12px; }
+@media (max-height: 450px) { .tutorial-guide { font-size: 12px; } .tutorial-guide p { margin-block: 2px; } }
+}

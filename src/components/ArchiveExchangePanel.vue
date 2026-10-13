@@ -70,37 +70,24 @@ defineEmits(['toggle-import', 'update:scope', 'export'])
 </script>
 
 <style scoped>
-.act-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface); padding: 8px 16px; color: var(--ink-60); cursor: pointer; font-family: var(--font-b); font-size: 12.5px; font-weight: 700; white-space: nowrap; transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.act-btn { border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-60); cursor: pointer; transition: color 0.3s var(--ease), background-color 0.3s var(--ease), border-color 0.3s var(--ease); }
 .act-btn:disabled { cursor: not-allowed; opacity: 0.45; }
-.archive-workspace { margin-top: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--cream); padding: 16px 24px 18px; }
-.archive-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.archive-heading h2 { font-family: var(--font-s); font-size: 21px; line-height: 1.3; font-weight: 900; letter-spacing: 0.04em; }
-.archive-heading p { margin-top: 5px; color: var(--ink-60); font-size: 12.5px; line-height: 1.7; }
-.section-kicker { display: block; margin-bottom: 6px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: 0.14em; }
-.archive-format { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-60); font-size: 11px; font-weight: 800; white-space: nowrap; }
-.archive-actions { display: grid; grid-template-columns: minmax(150px, 0.36fr) minmax(0, 1fr); gap: 18px; align-items: stretch; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
-.archive-actions svg { flex: none; }
-.archive-import { min-height: 52px; border-radius: 12px; background: var(--surface); }
-.export-group { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
-.export-label { color: var(--ink-60); font-size: 12px; font-weight: 800; white-space: nowrap; }
-.export-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.export-option { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); cursor: pointer; transition: border-color 0.25s, background-color 0.25s, box-shadow 0.25s; }
+.archive-workspace { border: 1px solid var(--line); border-radius: 16px; background: var(--cream); }
+.archive-heading p { color: var(--ink-60); }
+.section-kicker { color: var(--accent-strong); }
+.archive-format { border: 1px solid var(--line); border-radius: 999px; color: var(--ink-60); }
+.archive-actions { border-top: 1px dashed var(--line); }
+.archive-import { border-radius: 12px; background: var(--surface); }
+.export-label { color: var(--ink-60); }
+.export-option { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); cursor: pointer; transition: border-color 0.25s, background-color 0.25s, box-shadow 0.25s; }
 .export-option.active { border-color: var(--accent); background: var(--cream); box-shadow: inset 3px 0 0 var(--accent); }
 .export-option.disabled { opacity: 0.55; cursor: not-allowed; }
-.export-option input { width: 15px; height: 15px; flex: none; accent-color: var(--accent); }
-.export-option span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.export-option b { color: var(--ink); font-size: 12.5px; white-space: nowrap; }
-.export-option small { overflow: hidden; color: var(--ink-60); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.export-submit { min-height: 52px; padding-inline: 18px; border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.export-option input { accent-color: var(--accent); }
+.export-option b { color: var(--ink); }
+.export-option small { color: var(--ink-60); }
+.export-submit { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .export-submit:hover:not(:disabled) { border-color: var(--tea-deep); background: var(--tea-deep); color: var(--cream); }
-@media (max-width: 640px) {
-  .archive-workspace { padding: 14px 16px 16px; }
-  .archive-heading { flex-direction: column; gap: 8px; }
-  .archive-actions { grid-template-columns: 1fr; gap: 12px; }
-  .archive-import, .export-submit { width: 100%; min-height: 46px; }
-  .export-group { grid-template-columns: 1fr; gap: 8px; }
-  .export-label { font-size: 11.5px; }
-  .export-option { min-height: 58px; padding: 8px 9px; }
-  .export-option b { font-size: 12px; }
-}
 </style>
+<style scoped src="./archiveExchangePanelDesktop.css"></style>
+<style scoped src="./archiveExchangePanelMobile.css"></style>

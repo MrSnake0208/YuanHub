@@ -1,0 +1,13 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {
+.tool-more { position: relative; }
+.compact-tool-header .tool-more > summary { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; min-height: 44px; padding: 0 4px; font-size: 12px; font-weight: 500; white-space: nowrap; list-style: none; }
+.tool-more > summary::-webkit-details-marker { display: none; }
+.tool-more > summary::before { font-size: 20px; line-height: 1; }
+.tool-more-content { position: absolute; inset: calc(100% + 6px) 0 auto auto; z-index: var(--z-popover); display: grid; gap: 8px; width: max-content; max-width: calc(100vw - 32px); padding: 10px; }
+.tool-summary { display: flex; flex-wrap: wrap; gap: 2px 0; margin: 2px 0 10px; font-size: 13px; line-height: 1.6; }
+.tool-summary > span { display: inline-flex; flex-wrap: nowrap; gap: 4px; align-items: baseline; }
+.tool-summary > span + span::before { margin-inline: 8px; }
+.tool-summary time { white-space: nowrap; font: inherit; font-variant-numeric: tabular-nums; }
+.tool-summary b { font-family: var(--font-d); font-weight: 500; }
+}

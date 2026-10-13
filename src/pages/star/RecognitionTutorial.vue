@@ -275,31 +275,18 @@ watch(() => modalFocusState.active, () => { void nextTick(scheduleUpdate) })
 .recognition-tutorial-related { outline: 2px solid var(--accent) !important; outline-offset: 4px; }
 </style>
 <style scoped>
-.recognition-tour { position: fixed; inset: 0; z-index: var(--z-popover); pointer-events: none; }
-.recognition-tour-shade { position: absolute; inset: 0; pointer-events: none; }
-.recognition-tour-ring { position: absolute; border: 2px solid var(--accent); border-radius: 12px; box-sizing: border-box; pointer-events: none; }
-.recognition-tour-card { position: fixed; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 36px rgb(73 59 44 / 22%); pointer-events: auto; font-family: var(--font-b); }
-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-h2 { margin: 2px 0 0; font-family: var(--font-s); font-weight: 900; font-size: 16px; line-height: 1.4; }
-.recognition-tour-count { font-family: var(--font-d); font-size: 12px; }
-.recognition-tour-body { white-space: pre-line; font-size: 13px; line-height: 1.6; margin: 8px 0 0; }
-.recognition-tour-body + .recognition-tour-body { margin-top: 0; }
-button { box-sizing: border-box; height: 32px; min-height: 32px; max-height: 32px; min-width: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; font-size: 13px; line-height: 1.2; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.recognition-tour { pointer-events: none; }
+.recognition-tour-shade { pointer-events: none; }
+.recognition-tour-ring { border: 2px solid var(--accent); border-radius: 12px; pointer-events: none; }
+.recognition-tour-card { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 36px rgb(73 59 44 / 22%); pointer-events: auto; }
+button { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); cursor: pointer; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 button:disabled { opacity: .45; cursor: default; }
-.recognition-tour-close { flex: none; font-size: 18px; }
-.recognition-tour-example { border: 0; text-decoration: underline; background: transparent; padding-inline: 0; }
-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.recognition-tour-example { border: 0; text-decoration: underline; background: transparent; }
 .recognition-tour-next { background: var(--tea); color: var(--cream); }
-.recognition-tour-hint { font-size: 13px; line-height: 1.5; margin: 4px 0; }
-.is-mobile .recognition-tour-card { --recognition-tour-safe-top: env(safe-area-inset-top, 0px); --recognition-tour-safe-bottom: env(safe-area-inset-bottom, 0px); left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); width: auto; max-height: min(62dvh, calc(100dvh - 96px)); padding: 8px 12px 10px; }
-.recognition-tour-handle-row { display: flex; justify-content: space-between; align-items: center; }
-.recognition-tour-handle { display: grid; place-items: center; flex: 1; border: 0; background: transparent; touch-action: none; user-select: none; cursor: ns-resize; }
-.recognition-tour-handle span { width: 40px; height: 4px; border-radius: 4px; background: var(--tea); opacity: .55; }
-.is-mobile button { min-width: 32px; }
-.is-mobile .recognition-tour-handle { padding: 0; }
-.is-mobile .recognition-tour-close { position: absolute; top: 8px; right: 10px; min-width: 32px; padding: 0; font-size: 18px; }
-@media (pointer: coarse) {
-  .recognition-tour-card button { min-width: 32px; }
-}
+.recognition-tour-handle { border: 0; background: transparent; user-select: none; cursor: ns-resize; }
+.recognition-tour-handle span { border-radius: 4px; background: var(--tea); opacity: .55; }
 </style>
+<style scoped src="./recognitionTutorialDesktop.css"></style>
+<style scoped src="./recognitionTutorialMobile.css"></style>

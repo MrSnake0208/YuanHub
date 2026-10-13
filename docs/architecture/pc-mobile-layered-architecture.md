@@ -11,3 +11,5 @@
 保留现有外观与录入流程，不恢复教程，不升级依赖，不以 UA 判定布局，不擅改开关或鉴权。库存 A1 专属样式及 A2 generation/disposed/锁归属是后续迁移不变量。
 
 唯一覆盖表与当前检查点见 [迁移进度](pc-mobile-migration-progress.md)。必要非浏览器验证由 Agent 执行，真实视觉/触控/软键盘由用户人工验收，二者分开计状态。
+
+全站公共展示也按职责分层：CompactToolHeader、IslandSidebar、账号工作区及弹层各自引入独立双端CSS。sidebar-layout、footer-layout、mobile-header、page-header和tools-workspace保留原全局命名空间与CSS import链，双端规则由互斥媒体限制；共享文件仅持有外观。全局继承默认值复制时保持既有页面覆盖优先级，避免新增特异性改变反馈等页面的宽度。图标、头像、状态徽标、密码输入和SoftSelect等稳定字段保留公共契约。星石内部以真实源仓为唯一修改入口，禁止修改public中的生成bundle来冒充迁移。

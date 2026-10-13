@@ -149,15 +149,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.tutorial-guide { min-width: 0; margin-block: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 14px/1.5 var(--font-b); overflow-wrap: anywhere; }
-.tutorial-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.tutorial-heading h2 { margin: 0; min-width: 0; font-size: 16px; }
-.tutorial-guide p { margin: 4px 0; }
-.tutorial-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.tutorial-guide button, .tutorial-actions a { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--tea); font: inherit; cursor: pointer; text-decoration: none; }
-.tutorial-exit { flex-shrink: 0; }
-.tutorial-note { color: var(--ink-60); font-size: 12px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.tutorial-guide { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.tutorial-guide button, .tutorial-actions a { border: 1px solid var(--line); border-radius: 10px; background: var(--cream); color: var(--tea); cursor: pointer; text-decoration: none; }
+.tutorial-note { color: var(--ink-60); }
 .tutorial-error { color: var(--rouge); }
 .tutorial-guide :focus-visible { outline: 2px solid var(--tea); outline-offset: -2px; }
-@media (max-height: 450px) { .tutorial-guide { font-size: 12px; } .tutorial-guide p { margin-block: 2px; } }
 </style>
+<style scoped src="./onboardingGuideDesktop.css"></style>
+<style scoped src="./onboardingGuideMobile.css"></style>

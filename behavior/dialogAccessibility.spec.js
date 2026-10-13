@@ -220,3 +220,29 @@ describe('公共 Dialog 键盘行为', () => {
     expect(document.activeElement).toBe(document.body.querySelector('.community-primary'))
   })
 })
+
+it.each([[390, 1440], [1440, 390]])('共享弹窗 %i→%i 保持草稿、焦点和未决承诺', async (from, to) => {
+  const previousWidth = window.innerWidth
+  window.innerWidth = from
+  const wrapper = render(AppDialog)
+  let settled = false
+  const result = dialog.prompt({ title: '未保存名称' }).then(value => { settled = true; return value })
+  try {
+    await flushPromises()
+    const input = new DOMWrapper(document.querySelector('.dialog-field input'))
+    await input.setValue('跨端草稿')
+    input.element.focus()
+    const instance = wrapper.vm.$
+    window.innerWidth = to
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+    expect(wrapper.vm.$).toBe(instance)
+    expect(document.querySelectorAll('.dialog[role="dialog"]')).toHaveLength(1)
+    expect(document.querySelector('.dialog-field input')).toBe(input.element)
+    expect(input.element.value).toBe('跨端草稿')
+    expect(document.activeElement).toBe(input.element)
+    expect(settled).toBe(false)
+    dialog._cancel()
+    expect(await result).toBeNull()
+  } finally { window.innerWidth = previousWidth }
+})

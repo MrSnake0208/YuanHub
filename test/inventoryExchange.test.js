@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { readSource } from '../test-support/readSource.js'
 
 import {
   MAX_STAMINA_COST,
@@ -12,7 +13,7 @@ import {
   validateInventoryExchangeDocument
 } from '../src/data/inventory/exchange.js'
 
-const inventoryPage = readFileSync(new URL('../src/pages/inventory/index.vue', import.meta.url), 'utf8')
+const inventoryPage = readSource(new URL('../src/pages/inventory/index.vue', import.meta.url))
 const mobileHeader = readFileSync(new URL('../src/components/MobileHeader.vue', import.meta.url), 'utf8')
 
 test('inventory import panel follows the shared archive visibility state', function () {

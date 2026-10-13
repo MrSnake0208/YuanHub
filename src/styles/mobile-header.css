@@ -1,0 +1,38 @@
+@import './mobile-headerDesktop.css';
+
+@import './mobile-headerMobile.css';
+
+@media (max-width:1080px){
+  .mobile-shell{
+    background:rgba(255,248,236,.96);border-bottom:1px solid var(--line);
+    box-shadow:0 8px 24px -20px rgba(73,59,44,.45);transition:transform .18s cubic-bezier(.25,1,.5,1);
+  }
+}
+
+@media (max-width:1080px){
+  .mobile-shell:has(:focus-visible){transition:none}
+}
+
+@media (max-width:1080px){
+  .mobile-brand{
+    color:var(--ink);text-decoration:none;
+  }
+}
+
+@media (max-width:1080px){
+  .mobile-brand .brand-mark{border-radius:9px}
+}
+
+@media (max-width:1080px){
+  .mobile-nav a{border-radius:9px;
+    color:var(--ink-60);text-decoration:none;
+  }
+}
+
+@media (max-width:1080px){
+  .mobile-nav a.active,.mobile-nav a.router-link-active{background:var(--yellow);color:var(--ink)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .mobile-shell{transition:none}
+}

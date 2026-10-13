@@ -1,0 +1,66 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {
+.version-update {
+  position: relative;
+  z-index: var(--z-banner, 70);
+}
+.version-update__inner {
+  display: flex;
+  align-items: center;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 9px clamp(16px, 2.4vw, 48px);
+}
+.version-update__icon {
+  display: inline-flex;
+  flex: none;
+}
+.version-update__text {
+  flex: 1 1 320px;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.version-update__versions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-family: var(--font-d);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.version-update__action {
+  flex: none;
+  padding: 8px 18px;
+  font-family: var(--font-b);
+  font-size: 13px;
+  font-weight: 800;
+}
+.version-update__action:hover {
+  transform: translateY(-1px);
+}
+.version-update__action:active {
+  transform: none;
+}
+@media (min-width: 1081px) {
+  .version-update {
+    position: sticky;
+    top: 0;
+    height: 53px;
+  }
+  .version-update__inner {
+    height: 100%;
+    flex-wrap: nowrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .version-update__action:hover {
+    transform: none;
+  }
+}
+}

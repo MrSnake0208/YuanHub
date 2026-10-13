@@ -60,3 +60,24 @@ it('compact 账号为空或读取中仍保留原管理目标与可读状态', as
   await wrapper.setProps({ loading: true })
   expect(wrapper.get('.context-selector').text()).toBe('正在读取账号…')
 })
+
+it.each([[390, 1440], [1440, 390]])('页头 %i→%i 保持帮助、账号和焦点', async (from, to) => {
+  const previousWidth = window.innerWidth
+  window.innerWidth = from
+  const wrapper = mount(CompactToolHeader, { attachTo: document.body, props: { title: '星石背包' }, slots: { account: '<span>账号 A</span>', help: '<p>未关闭的说明</p>' } })
+  try {
+    const instance = wrapper.vm.$
+    const trigger = wrapper.get('.compact-tool-help')
+    await trigger.trigger('click')
+    trigger.element.focus()
+    const content = wrapper.get('.compact-tool-help-content').element
+    window.innerWidth = to
+    window.dispatchEvent(new Event('resize'))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.$).toBe(instance)
+    expect(wrapper.get('.compact-tool-help-content').element).toBe(content)
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('.compact-tool-account').text()).toBe('账号 A')
+    expect(document.activeElement).toBe(trigger.element)
+  } finally { wrapper.unmount(); window.innerWidth = previousWidth }
+})

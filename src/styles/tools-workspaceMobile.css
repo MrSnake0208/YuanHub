@@ -1,0 +1,33 @@
+@media (max-width: 1080px) {
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px;
+  overflow-x: auto;
+}
+.tool-workspace-tabs > .workspace-tab-list { display: flex; flex: 0 0 auto; gap: 4px; }
+.tool-workspace-tabs button svg { display: none; }
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font: 600 14px/1.5 var(--font-b);
+  white-space: nowrap;
+}
+.page-star :is(.operator-tabs, .inventory-tabs, .star-tabs).tool-workspace-tabs button[aria-haspopup="dialog"] {
+  font-size: 13px;
+}
+}
