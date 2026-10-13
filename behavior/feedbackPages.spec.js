@@ -18,6 +18,7 @@ import { auth } from '../src/store/auth.js'
 import { findSimilarFeedback } from '../src/api/coCreation.js'
 import { productVersionLabel } from '../src/config/buildInfo.js'
 import { PUBLIC_TYPE_OPTIONS } from '../src/utils/feedbackPublic.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -356,13 +357,14 @@ it('详情限制Tab，二级发布弹窗关闭后返回详情且Escape不穿透'
   wrapper.unmount()
 })
 
-it('keeps reporter messages on the left and admin messages on the right', () => {
+it.each(['Desktop', 'Mobile'])('keeps reporter messages on the left and admin messages on the right: %s', end => {
   const source = readFileSync(join(process.cwd(), 'src/components/feedback/FeedbackTicketDetail.vue'), 'utf8')
+    + readFileSync(join(process.cwd(), `src/components/feedback/feedbackTicketDetail${end}.css`), 'utf8')
   const declarationsFor = selector => {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const match = source.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
-    expect(match, `Missing style rule for ${selector}`).toBeTruthy()
-    return match[1]
+    const matches = [...source.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))]
+    expect(matches.length, `Missing style rule for ${selector}`).toBeGreaterThan(0)
+    return matches.map(match => match[1]).join('\n')
   }
 
   // 组件在 5822bc1 之后按「自己 / 对方」对齐气泡（对方靠左，自己靠右）。
@@ -413,6 +415,48 @@ beforeEach(() => {
   dialog.choose.mockReset().mockResolvedValue({ value: 'complete', checked: true })
   dialog.confirm.mockResolvedValue(true)
   dialog.prompt.mockReset().mockResolvedValue('不属于本板块的反馈')
+})
+
+it.each([390, 1440].flatMap(width => [[width, '我的工单', MyFeedback], [width, '管理工单', ManagedFeedback]]))('真实工单回复跨双端布局保持草稿、焦点及详情实例：%ipx %s', async (width, _label, component) => {
+  const viewport = installViewport(width)
+  const wrapper = render(component, { attachTo: document.body }); await flushPromises()
+  await choose(wrapper, 'rpt_a'); await compose(wrapper, '尚未发送的回复')
+  const detail = wrapper.getComponent({ name: 'FeedbackTicketDetail' }).vm.$
+  const input = wrapper.get('.feedback-reply-form textarea'); input.element.focus()
+  const reads = [api.getFeedback.mock.calls.length, api.getManagedFeedback.mock.calls.length]
+  for (const next of [640, 641, 767, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent({ name: 'FeedbackTicketDetail' }).vm.$).toBe(detail)
+    expect(wrapper.findAll('.ticket-detail-dialog')).toHaveLength(1)
+    expect(input.element.value).toBe('尚未发送的回复')
+    expect(document.activeElement).toBe(input.element)
+    expect([api.getFeedback.mock.calls.length, api.getManagedFeedback.mock.calls.length]).toEqual(reads)
+    expect(api.appendMyFeedbackMessage).not.toHaveBeenCalled()
+    expect(api.appendManagedFeedbackMessage).not.toHaveBeenCalled()
+  }
+})
+
+it.each([390, 1440])('真实工单公开发布弹窗跨布局保持标题与摘要，不自动发布：%ipx', async width => {
+  const viewport = installViewport(width)
+  api.getManagedFeedback.mockResolvedValue({ ...ticket('rpt_a'), workflowStage: 'PROCESSING', publicConsent: true, visibility: 'PRIVATE' })
+  const wrapper = render(ManagedFeedback, { attachTo: document.body }); await flushPromises(); await choose(wrapper, 'rpt_a')
+  await wrapper.findAll('.feedback-action-toolbar button').find(button => button.text() === '管理操作').trigger('click')
+  await wrapper.get('[aria-label="管理操作选项"]').findAll('button')[0].trigger('click'); await flushPromises()
+  const panel = wrapper.getComponent(AdminFeedbackPublishPanel).vm.$
+  const title = wrapper.get('.feedback-management-dialog input')
+  const summary = wrapper.get('.feedback-management-dialog textarea')
+  await title.setValue('尚未发布的标题'); await summary.setValue('尚未发布的公开摘要'); summary.element.focus()
+  const reads = api.getManagedFeedback.mock.calls.length
+  for (const next of [640, 641, 767, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent(AdminFeedbackPublishPanel).vm.$).toBe(panel)
+    expect(wrapper.findAll('.feedback-management-dialog')).toHaveLength(1)
+    expect(title.element.value).toBe('尚未发布的标题')
+    expect(summary.element.value).toBe('尚未发布的公开摘要')
+    expect(document.activeElement).toBe(summary.element)
+    expect(api.getManagedFeedback).toHaveBeenCalledTimes(reads)
+    expect(api.publishFeedback).not.toHaveBeenCalled()
+  }
 })
 
 it.each([

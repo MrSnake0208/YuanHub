@@ -78,25 +78,22 @@ defineEmits(['updated', 'unpublished'])
 </script>
 
 <style scoped>
-.public-detail { display: grid; gap: 14px; }
-.public-detail-state { padding: 18px 0; color: var(--feedback-text-muted); font-size: 13px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.public-detail-state { color: var(--feedback-text-muted); }
 .public-detail-state.error { color: var(--feedback-danger); }
-.public-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; }
-.public-detail-category { min-width: 0; padding: 2px 9px; border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); font-size: 11px; overflow-wrap: anywhere; }
-.public-detail-title { color: var(--feedback-text); font-family: var(--font-s); font-size: 24px; font-weight: 900; line-height: 1.35; }
-.public-detail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.public-detail-support-count { color: var(--feedback-text-muted); font: 12px var(--font-d); }
-.public-detail-section { padding-top: 12px; border-top: 1px solid var(--feedback-line); }
-.public-detail-section h3 { margin-bottom: 8px; color: var(--feedback-text); font-size: 12px; font-weight: 900; }
-.public-detail-section p { color: var(--feedback-text-muted); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
-.public-detail-merged { padding: 12px 14px; border: 1px dashed var(--yellow-deep); border-radius: 7px; background: rgba(239, 210, 142, .2); color: var(--feedback-text); }
-.public-detail-merged strong { font-size: 13px; }
-.public-detail-merged p { margin-top: 4px; color: var(--feedback-text-muted); font-size: 12px; }
-.public-detail-merged a { display: inline-block; margin-top: 6px; color: var(--accent-strong); font-size: 12px; font-weight: 800; }
-.public-detail-versions { display: grid; gap: 6px; list-style: none; }
-.public-detail-versions li { display: inline-flex; align-items: baseline; gap: 8px; }
-.public-detail-versions span { color: var(--feedback-text-dim); font-size: 10.5px; font-weight: 800; }
-.public-detail-versions strong { color: var(--feedback-text); font: 12px var(--font-d); font-weight: 700; }
-.public-detail-done { display: inline-flex; align-items: center; gap: 8px; color: var(--feedback-success); font-size: 12.5px; font-weight: 800; }
-.public-detail-foot { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.public-detail-category { border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); }
+.public-detail-title { color: var(--feedback-text); }
+.public-detail-support-count { color: var(--feedback-text-muted); }
+.public-detail-section { border-top: 1px solid var(--feedback-line); }
+.public-detail-section h3 { color: var(--feedback-text); }
+.public-detail-section p { color: var(--feedback-text-muted); }
+.public-detail-merged { border: 1px dashed var(--yellow-deep); border-radius: 7px; background: rgba(239, 210, 142, .2); color: var(--feedback-text); }
+.public-detail-merged p { color: var(--feedback-text-muted); }
+.public-detail-merged a { color: var(--accent-strong); }
+.public-detail-versions span { color: var(--feedback-text-dim); }
+.public-detail-versions strong { color: var(--feedback-text); }
+.public-detail-done { color: var(--feedback-success); }
+.public-detail-foot { color: var(--feedback-text-dim); }
 </style>
+<style scoped src="./publicFeedbackDetailDesktop.css"></style>
+<style scoped src="./publicFeedbackDetailMobile.css"></style>

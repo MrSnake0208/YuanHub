@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：今日一览、库存与密探四入口 verified_nonbrowser（12/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：18/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -45,12 +45,12 @@
 | /forbidden | pages/user/forbidden.vue | 待拆分 | 待拆分 | pages/user/forbidden.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /user/profile | pages/user/profile.vue | 待拆分 | 待拆分 | pages/user/profile.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /manage | pages/admin/index.vue | 待拆分 | 待拆分 | pages/admin/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /feedback | pages/feedback/index.vue | 待拆分 | 待拆分 | pages/feedback/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /feedback/plaza | pages/feedback/plaza.vue | 待拆分 | 待拆分 | pages/feedback/plaza.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /co-creation/admin | pages/co-creation/admin.vue | 待拆分 | 待拆分 | pages/co-creation/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /co-creation | pages/co-creation/index.vue | 待拆分 | 待拆分 | pages/co-creation/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /feedback/manage | pages/feedback/manage.vue | 待拆分 | 待拆分 | pages/feedback/manage.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /feedback/admin | pages/feedback/admin.vue | 待拆分 | 待拆分 | pages/feedback/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /feedback | pages/feedback/index.vue | feedbackMineDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackMineMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
+| /feedback/plaza | pages/feedback/plaza.vue | feedbackPlazaPageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackPlazaPageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
+| /co-creation/admin | pages/co-creation/admin.vue | coCreationAdminDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | coCreationAdminMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
+| /co-creation | pages/co-creation/index.vue | coCreationPageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | coCreationPageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
+| /feedback/manage | pages/feedback/manage.vue | feedbackManageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackManageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
+| /feedback/admin | pages/feedback/admin.vue | feedbackAdminDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackAdminMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /admin/roles | pages/admin/roles.vue | 待拆分 | 待拆分 | pages/admin/roles.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /admin/audit | pages/admin/audit.vue | 待拆分 | 待拆分 | pages/admin/audit.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /changelog | pages/changelog/index.vue | 待拆分 | 待拆分 | pages/changelog/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
@@ -139,4 +139,12 @@
 - `npx --no-install vitest run behavior/activityCalendar*.spec.js behavior/calendarPrivateItems*.spec.js`：307/307（20文件）。新增10个两端用例，三个用户视图的URL/实例/焦点不重置，私人事项标题/日期/备注和订阅待办脏草稿保持，resize无额外读写；原账号隔离/迟到结果/权限与契约检查保留。部分直接挂载测试保留Router缺少活动路由提示，不代表真实运行错误。
 - `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-08-*.log`。招募提交补记 `6ec309d`；本批保存标题 `refactor(calendar): 隔离日历视图与私人事项双端布局`。完整路由12/43，人工UI仍pending。
 
-下一动作：反馈/共建真实工作区及工单处理与审核弹层，保留编辑、附件和发布预览。
+## B09：反馈与共建六入口、工单与公开展示（L1样式归属；按现有权限/草稿流程回归）
+
+- 六入口与工单列表/详情/导航、合并/发布/版本选择、广场卡片/详情/管理、相似反馈、开发目标展示共19个SFC有独立双端CSS。原模板与控制器保留，页面仅把CSS import改成实际style src引用；SupportButton与类型/状态徽记是刻意共享字段契约。
+- feedback-workspace共享外观保留，几何/密度拆成Desktop/Mobile；保留原feedback命名空间及反馈管理员专用access-modal例外（已核对唯一调用），不会借scoped改变原子组件/Teleport样式覆盖。各页独立持有原1320px内容宽度、手机18px与平板32px空间。
+- 局部2584组、共享样式136组声明投影与基线一致；删除矛盾媒体块6944字节。`node --test test/feedback*.test.js test/coCreationContract.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：236/236。
+- `npx --no-install vitest run behavior/feedback*.spec.js behavior/coCreation.spec.js`：174/174（7文件）。新增6个两端真实父级用例验证我的/管理工单回复草稿、焦点、详情实例，公开标题/摘要/发布面板保持；resize无额外读写。气泡对齐原源码断言改为分别检查两端文件，未弱化权限/附件/内部信息隔离与草稿断言。
+- `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-09-*.log`。日历提交补记 `7007932`；本批保存标题 `refactor(feedback): 拆分反馈共建与工单双端展示`。完整路由18/43，真实浏览器视觉仍pending。
+
+下一动作：通知中心、公开更新日志及更新日志管理，保留筛选、定位、编写草稿和审核状态。

@@ -1,0 +1,10 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.feedback-page > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.plaza-submit { gap: 8px; justify-self: start; }
+.feedback-plaza-page:has(.plaza-state.empty) .plaza-submit { display: none; }
+
+.plaza-context { margin-top: 16px; font-size: 13px; line-height: 1.7; }
+.plaza-context a { font-weight: 800; }
+}

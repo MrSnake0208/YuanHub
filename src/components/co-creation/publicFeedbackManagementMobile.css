@@ -1,0 +1,6 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.public-management { display: grid; gap: 12px; padding-top: 14px; }
+.public-management > button { justify-self: start; }
+.public-management > p { font-size: 12px; line-height: 1.7; }
+}

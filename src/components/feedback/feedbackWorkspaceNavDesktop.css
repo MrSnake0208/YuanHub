@@ -1,0 +1,49 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.feedback-workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 18px;
+}
+
+.feedback-workspace-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.feedback-workspace-nav a {
+  flex: 0 0 auto;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.feedback-workspace-nav-unread {
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  margin-left: 1px;
+}
+
+.feedback-workspace-management {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+}

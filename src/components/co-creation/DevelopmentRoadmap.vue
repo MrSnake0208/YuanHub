@@ -62,35 +62,25 @@ defineExpose({ reload: load })
 </script>
 
 <style scoped>
-.development-roadmap { padding-bottom: 40px; }
-.goal-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-top: 20px; color: var(--feedback-text-muted); font-size: 13px; }
-.goal-toolbar label { display: grid; gap: 6px; min-width: 0; }
-.goal-toolbar select { min-width: 160px; }
-.goal-notice { margin-top: 16px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
-.goal-state { display: grid; justify-items: center; gap: 12px; padding: 48px 16px; color: var(--feedback-text-muted); }
-.goal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; align-items: start; }
-.goal-card { min-width: 0; padding: 22px; border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); overflow-wrap: anywhere; }
-.goal-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.goal-stage { padding: 5px 10px; border: 1px solid var(--feedback-line-strong); border-radius: 6px; color: var(--feedback-accent); font-size: 12px; font-weight: 800; }
-.goal-card h2 { margin-top: 16px; color: var(--feedback-text); font: 900 21px/1.5 var(--font-s); }
-.goal-description { margin-top: 10px; color: var(--feedback-text-muted); font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
-.goal-target { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; color: var(--feedback-text-muted); font-size: 12px; }
-.goal-progress { display: grid; grid-template-columns: 1fr auto; gap: 9px; margin-top: 20px; color: var(--feedback-text); font-size: 12px; }
-.goal-progress strong { font-family: var(--font-d); }
-.goal-progress progress { grid-column: 1 / -1; width: 100%; height: 10px; accent-color: var(--accent); }
-.goal-details { margin-top: 16px; border-top: 1px solid var(--feedback-line); }
-.goal-details summary { min-height: 44px; padding-top: 14px; color: var(--feedback-text); font-size: 13px; font-weight: 800; cursor: pointer; }
-.goal-criteria { display: grid; gap: 10px; list-style: none; padding: 8px 0; }
-.goal-criteria li { display: flex; align-items: start; gap: 8px; color: var(--feedback-text-muted); font-size: 13px; line-height: 1.6; }
-.goal-criteria svg { flex: none; margin-top: 2px; }
-.goal-criteria span { flex: 1; min-width: 0; }
-.goal-criteria small { flex: none; }
-.goal-links { display: grid; gap: 8px; margin-top: 12px; font-size: 13px; }
-.goal-links h3 { color: var(--feedback-text); font-size: 13px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.goal-toolbar { color: var(--feedback-text-muted); }
+.goal-notice { color: var(--feedback-text-muted); }
+.goal-state { color: var(--feedback-text-muted); }
+.goal-card { border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); }
+.goal-stage { border: 1px solid var(--feedback-line-strong); border-radius: 6px; color: var(--feedback-accent); }
+.goal-card h2 { color: var(--feedback-text); }
+.goal-description { color: var(--feedback-text-muted); }
+.goal-target { color: var(--feedback-text-muted); }
+.goal-progress { color: var(--feedback-text); }
+.goal-progress progress { accent-color: var(--accent); }
+.goal-details { border-top: 1px solid var(--feedback-line); }
+.goal-details summary { color: var(--feedback-text); cursor: pointer; }
+.goal-criteria li { color: var(--feedback-text-muted); }
+.goal-links h3 { color: var(--feedback-text); }
 .goal-links p { color: var(--feedback-text-muted); }
-.goal-links a { color: var(--accent-strong); text-decoration: underline; line-height: 1.7; }
-.goal-card footer { margin-top: 18px; color: var(--feedback-text-dim); font-size: 11px; }
-.goal-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 24px; color: var(--feedback-text-muted); font-size: 13px; }
-@media (max-width: 1023px) { .goal-grid { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 767px) { .goal-card { padding: 16px; } .goal-toolbar { flex-wrap: wrap; } }
+.goal-links a { color: var(--accent-strong); text-decoration: underline; }
+.goal-card footer { color: var(--feedback-text-dim); }
+.goal-pagination { color: var(--feedback-text-muted); }
 </style>
+<style scoped src="./developmentRoadmapDesktop.css"></style>
+<style scoped src="./developmentRoadmapMobile.css"></style>

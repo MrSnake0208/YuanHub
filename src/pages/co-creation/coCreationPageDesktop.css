@@ -1,0 +1,8 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.feedback-page > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.creation-admin-link { margin: 0; justify-self: start; }
+.creation-context { margin-top: 0; font-size: 13px; line-height: 1.7; }
+.creation-context a { font-weight: 800; }
+}

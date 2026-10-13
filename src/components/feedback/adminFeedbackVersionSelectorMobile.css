@@ -1,0 +1,29 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 640px) {
+.admin-version-panel { overflow: hidden; }
+.admin-version-panel.dialog .admin-version-body { padding: 0; }
+.admin-version-trigger { width: 100%; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; text-align: left; }
+.admin-version-heading { min-width: 0; display: block; }
+.admin-version-kicker { display: block; margin-bottom: 5px; font: 800 10px var(--font-d); letter-spacing: .16em; }
+.admin-version-heading strong { display: block; font-family: var(--font-s); font-size: 15px; font-weight: 900; }
+.admin-version-summary { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.admin-version-summary-text { max-width: 320px; overflow: hidden; font-size: 11.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.admin-version-chevron { flex: none; }
+.admin-version-panel.open .admin-version-chevron { transform: rotate(180deg); }
+.admin-version-body { padding: 0 14px 14px; }
+.admin-version-hint { margin-top: 12px; font-size: 12px; line-height: 1.7; }
+.admin-version-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.admin-version-grid label { min-width: 0; display: grid; gap: 6px; }
+.admin-version-grid label > span { font-size: 12px; font-weight: 800; }
+.admin-version-state { margin-top: 12px; font-size: 12px; }
+.admin-version-state.error,.admin-version-error { margin-top: 12px; font-size: 12px; font-weight: 700; }
+.admin-version-message { margin-top: 12px; font-size: 12px; font-weight: 700; }
+.admin-version-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+@media (max-width: 640px) {
+  .admin-version-trigger { align-items: flex-start; }
+  .admin-version-summary { align-items: flex-end; flex-direction: column; gap: 5px; }
+  .admin-version-summary-text { max-width: 180px; }
+  .admin-version-grid { grid-template-columns: 1fr; }
+  .admin-version-panel.dialog select { font-size: 16px; }
+}
+}

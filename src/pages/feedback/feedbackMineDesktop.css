@@ -1,0 +1,23 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.feedback-page > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.page-header-action { gap: 8px; }
+
+.feedback-public-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 10px 14px; font-size: 12.5px; font-weight: 700; }
+.feedback-public-notice button { font-size: 18px; line-height: 1; }
+.feedback-modal { max-width: 620px; }
+.feedback-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; margin-top: 6px; }
+.feedback-modal-kicker { display: block; margin-bottom: 5px; font: 800 10px var(--font-d); letter-spacing: .16em; }
+.feedback-modal .modal-head h2 { font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }
+.feedback-submission-note { margin: 0 0 16px; font-size: 12px; line-height: 1.7; }
+.feedback-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.feedback-form-grid label { min-width: 0; margin: 0; }
+.feedback-form-grid label > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 800; }
+.feedback-form-grid .full { grid-column: 1 / -1; }
+.feedback-form-grid small { display: block; margin-top: 5px; font-size: 11px; text-align: right; }
+.feedback-form-grid .feedback-consent { display: flex; align-items: flex-start; gap: 8px; }
+.feedback-form-grid .feedback-consent input { width: auto; flex: none; margin-top: 3px; }
+.feedback-form-grid .feedback-consent span { margin: 0; line-height: 1.6; }
+.feedback-form-grid .feedback-consent small { text-align: left; font-weight: 400; }
+}

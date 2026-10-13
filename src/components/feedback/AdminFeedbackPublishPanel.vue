@@ -133,40 +133,26 @@ function save() {
 </script>
 
 <style scoped>
-.admin-public-panel { overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.admin-public-panel { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .admin-public-panel.dialog { border: 0; border-radius: 0; background: transparent; }
-.admin-public-panel.dialog .admin-public-body { border-top: 0; padding: 0; }
-.admin-public-trigger { width: 100%; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 0; background: transparent; color: var(--feedback-text); text-align: left; cursor: pointer; }
+.admin-public-panel.dialog .admin-public-body { border-top: 0; }
+.admin-public-trigger { border: 0; background: transparent; color: var(--feedback-text); cursor: pointer; }
 .admin-public-trigger:hover { background: var(--feedback-panel-hover); }
 .admin-public-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .admin-public-trigger:disabled { cursor: wait; }
-.admin-public-heading { min-width: 0; display: block; }
-.admin-public-kicker { display: block; margin-bottom: 5px; color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .16em; }
-.admin-public-heading strong { display: block; color: var(--feedback-text); font-family: var(--font-s); font-size: 15px; font-weight: 900; }
-.admin-public-summary { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.admin-public-summary-text { max-width: 260px; overflow: hidden; color: var(--feedback-text-muted); font-size: 11.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.admin-public-flag { padding: 3px 8px; border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--brand-blue); font: 800 10px var(--font-d); letter-spacing: .1em; }
-.admin-public-chevron { flex: none; color: var(--feedback-text-dim); transition: transform .16s ease; }
-.admin-public-panel.open .admin-public-chevron { transform: rotate(180deg); }
-.admin-public-body { padding: 0 14px 14px; border-top: 1px solid var(--feedback-line); }
-.admin-public-hint { margin-top: 12px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
-.admin-public-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-.admin-public-grid label { min-width: 0; display: grid; gap: 6px; }
-.admin-public-grid label > span { color: var(--feedback-text-muted); font-size: 12px; font-weight: 800; }
-.admin-public-grid .full { grid-column: 1 / -1; }
-.admin-public-stats { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 14px; }
-.admin-public-stats div { display: inline-flex; align-items: baseline; gap: 6px; }
-.admin-public-stats dt { color: var(--feedback-text-dim); font-size: 10px; font-weight: 800; }
-.admin-public-stats dd { color: var(--feedback-text); font: 12px var(--font-d); font-weight: 700; }
-.admin-public-message { margin-top: 12px; color: var(--feedback-success); font-size: 12px; font-weight: 700; }
-.admin-public-error { margin-top: 12px; color: var(--feedback-danger); font-size: 12px; font-weight: 700; }
-.admin-public-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-@media (max-width: 640px) {
-  .admin-public-trigger { align-items: flex-start; }
-  .admin-public-summary { align-items: flex-end; flex-direction: column; gap: 5px; }
-  .admin-public-summary-text { max-width: 150px; }
-  .admin-public-grid { grid-template-columns: 1fr; }
-  .admin-public-grid .full { grid-column: auto; }
-  .admin-public-panel.dialog input, .admin-public-panel.dialog select, .admin-public-panel.dialog textarea { font-size: 16px; }
-}
+.admin-public-kicker { color: var(--accent-strong); }
+.admin-public-heading strong { color: var(--feedback-text); }
+.admin-public-summary-text { color: var(--feedback-text-muted); }
+.admin-public-flag { border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--brand-blue); }
+.admin-public-chevron { color: var(--feedback-text-dim); transition: transform .16s ease; }
+.admin-public-body { border-top: 1px solid var(--feedback-line); }
+.admin-public-hint { color: var(--feedback-text-muted); }
+.admin-public-grid label > span { color: var(--feedback-text-muted); }
+.admin-public-stats dt { color: var(--feedback-text-dim); }
+.admin-public-stats dd { color: var(--feedback-text); }
+.admin-public-message { color: var(--feedback-success); }
+.admin-public-error { color: var(--feedback-danger); }
 </style>
+<style scoped src="./adminFeedbackPublishPanelDesktop.css"></style>
+<style scoped src="./adminFeedbackPublishPanelMobile.css"></style>
