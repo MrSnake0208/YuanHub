@@ -80,42 +80,31 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', outside); do
 </script>
 
 <style scoped>
-.reward-datetime { position: relative; min-width: 0; color: var(--ink); }
-.field-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 12px; font-weight: 800; }
-.field-label small { color: var(--ink-60); font-size: 11px; font-weight: 400; }
-.datetime-inputs { display: flex; gap: 8px; }
-.date-input, .clock-input { display: flex; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 9px; min-width: 0; }
-.date-input { flex: 1; }
-.clock-input { justify-content: flex-start; gap: 7px; width: 122px; padding: 0 10px; box-sizing: border-box; font: 13px 'Archivo', var(--font-b); }
-input { appearance: none; background: transparent; color: var(--ink); border: 0; outline: none; font: 13px 'Archivo', var(--font-b); width: 100%; min-width: 0; height: 44px; padding: 0 10px; box-sizing: border-box; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.reward-datetime { color: var(--ink); }
+.field-label small { color: var(--ink-60); }
+.date-input, .clock-input { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; }
+input { appearance: none; background: transparent; color: var(--ink); border: 0; outline: none; }
 .date-input:focus-within, .clock-input:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
-button { appearance: none; display: inline-flex; justify-content: center; align-items: center; border: 0; border-radius: 8px; color: var(--ink); background: transparent; min-width: 44px; min-height: 44px; padding: 0; font: inherit; cursor: pointer; }
+button { appearance: none; border: 0; border-radius: 8px; color: var(--ink); background: transparent; cursor: pointer; }
 button:hover:not(:disabled) { background: var(--paper); }
 button:focus-visible { outline: 2px solid var(--tea); outline-offset: 1px; }
 button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
-.date-input button { min-width: 44px; height: 44px; }
-.calendar, .time-popover { position: absolute; left: 0; top: calc(100% + 8px); z-index: var(--z-popover); width: min(296px, calc(100vw - 80px)); padding: 14px; border: 1px solid var(--line); border-radius: 14px; box-sizing: border-box; background: var(--surface); box-shadow: 0 16px 40px -12px rgba(73,59,44,.24), inset 0 0 0 4px var(--cream); }
-.calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.calendar-heading strong { font-family: var(--font-s); font-size: 14px; }
-.calendar-week, .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; text-align: center; }
-.calendar-week { color: var(--ink-60); font-size: 11px; padding: 5px 0; }
-.calendar-days button { min-width: 0; min-height: 34px; font-family: 'Archivo', var(--font-b); font-size: 12px; }
+.calendar, .time-popover { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 16px 40px -12px rgba(73,59,44,.24), inset 0 0 0 4px var(--cream); }
+.calendar-week { color: var(--ink-60); }
 .calendar-days .today { box-shadow: inset 0 0 0 1px var(--line); }
 .calendar-days .selected { background: var(--tea); color: var(--cream); }
-.today-button { width: 100%; margin-top: 8px; border-top: 1px solid var(--line); border-radius: 0; font-size: 12px; }
-.time-popover { left: auto; right: 0; width: min(284px, calc(100vw - 80px)); }
-.time-heading { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
-.time-heading span { font: 900 15px var(--font-s); }
-.time-heading small { color: var(--ink-60); font-size: 10px; }
-.time-columns { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; margin: 12px 0; }
-.time-column { min-width: 0; }
-.time-column-label { display: block; margin-bottom: 5px; color: var(--ink-60); text-align: center; font-size: 10px; }
-.time-options { display: grid; grid-template-columns: minmax(0,1fr); gap: 3px; max-height: 168px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.time-options button { min-width: 0; min-height: 44px; border-radius: 5px; scroll-snap-align: center; font: 11px 'Archivo', var(--font-b); }
+.today-button { border-top: 1px solid var(--line); border-radius: 0; }
+.time-heading { border-bottom: 1px solid var(--line); }
+.time-heading small { color: var(--ink-60); }
+.time-column-label { color: var(--ink-60); }
+.time-options { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); scrollbar-color: var(--line) transparent; }
+.time-options button { border-radius: 5px; }
 .time-options button.selected { background: var(--tea); color: var(--cream); }
-.time-foot { display: flex; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
-.now-button { color: var(--ink-60); font-size: 11px; }
-.done-button { padding: 0 13px; background: var(--tea); color: var(--cream); font-size: 11px; }
-@media (max-width: 480px) { .clock-input { width: 104px; font-size: 11px; } }
+.time-foot { border-top: 1px solid var(--line); }
+.now-button { color: var(--ink-60); }
+.done-button { background: var(--tea); color: var(--cream); }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
 </style>
+<style scoped src="./rewardDateTimePickerDesktop.css"></style>
+<style scoped src="./rewardDateTimePickerMobile.css"></style>

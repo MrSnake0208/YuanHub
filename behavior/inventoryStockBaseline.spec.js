@@ -87,6 +87,26 @@ beforeEach(() => {
   dialog.confirm.mockResolvedValue(true)
 })
 
+it.each([390, 1440])('真实库存盘点跨展示断点保持数量草稿、焦点和保存状态：%ipx', async width => {
+  const viewport = installViewport(width)
+  inventoryApi.getCurrent.mockResolvedValue(fullStock())
+  const wrapper = render({ attachTo: document.body })
+  await enterStockEditor(wrapper)
+  const input = wrapper.get('.stock-count-input')
+  await input.setValue('17')
+  input.element.focus()
+  const reads = inventoryApi.getCurrent.mock.calls.length
+  for (const next of [640, 640.5, 641, 767, 768, 900, 1080, 1080.5, 1081, 1200, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.get('.stock-count-input').element).toBe(input.element)
+    expect(input.element.value).toBe('17')
+    expect(document.activeElement).toBe(input.element)
+    expect(save(wrapper).element.disabled).toBe(false)
+    expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(reads)
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  }
+})
+
 it('只读初始化不写库存，不用登录状态宣称已同步', async () => {
   const wrapper = render({ attachTo: document.body })
   await flushPromises()
