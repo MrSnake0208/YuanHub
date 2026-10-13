@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：今日一览 verified_nonbrowser（1/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：今日一览与库存 verified_nonbrowser（2/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -26,7 +26,7 @@
 | /work/:id（feature: workSystem） | pages/work/detail.vue | 待拆分 | 待拆分 | pages/work/detail.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /work/:id/edit（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /cart | pages/tools/cart.vue | 待拆分 | 待拆分 | pages/tools/cart.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /inventory | pages/inventory/index.vue | 待拆分 | 待拆分 | pages/inventory/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /inventory | pages/inventory/index.vue | pages/inventory/inventoryWorkspaceDesktop.css + components/inventory/*Desktop.css/视图 | pages/inventory/inventoryWorkspaceMobile.css + components/inventory/*Mobile.css/视图 | pages/inventory/index.vue + 原奖励控制器 | verified_nonbrowser | B02–B05：真实父级/A1/A2/259行为/CSS/build | 无阻塞；人工UI待做 | pending |
 | /operator | pages/operator/index.vue | 待拆分 | 待拆分 | pages/operator/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /recruitment（feature: recruitmentArchive） | pages/recruitment/index.vue | 待拆分 | 待拆分 | pages/recruitment/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /operator/share/:token? | pages/operator/share.vue | 待拆分 | 待拆分 | pages/operator/share.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
@@ -66,7 +66,8 @@
 | /inventory 抽卡资源报告 | components/inventory/ResourceBalanceReport.vue | resourceBalanceReportDesktop.css | resourceBalanceReportMobile.css | ResourceBalanceReport.vue + data/inventory/resourceBalance.js | verified_nonbrowser | B03：真实父级 resize/日期/趋势点 + CSS/build | 统计查询控件另列 pending | pending |
 | /inventory 据点收获报告 | components/inventory/AcquiredPeriodReport.vue | acquiredPeriodReportDesktop.css | acquiredPeriodReportMobile.css | AcquiredPeriodReport.vue + data/inventory/acquiredStats.js | verified_nonbrowser | B03：真实父级排行/焦点 + CSS/build | 统计其余展示另列 pending | pending |
 | /inventory 页面壳与工作区导航 | components/inventory/InventoryLayout.vue + InventoryWorkspaceTabs.vue | inventory{Layout,WorkspaceTabs}Desktop.css | inventory{Layout,WorkspaceTabs}Mobile.css | pages/inventory/index.vue | verified_nonbrowser | B04：220 行为 + CSS 编译 + build | 无阻塞；保留单一 slot 内容实例 | pending |
-| /inventory 清单/筛选/盘点/统计/奖励 | pages/inventory/index.vue | 待拆分 | 待拆分 | pages/inventory/index.vue | pending | 真实父级模板 | 分稳定子区迁移；保护编辑草稿 | pending |
+| /inventory 清单/筛选/盘点/统计查询 | pages/inventory/index.vue | inventoryWorkspaceDesktop.css | inventoryWorkspaceMobile.css | pages/inventory/index.vue | verified_nonbrowser | B05：40盘点+130历史父级行为/CSS/build | 原控制器/DOM保持；待人工UI | pending |
+| /inventory 奖励/导入预览/日期弹层 | components/inventory/RewardEntryWorkspace.vue + RewardDateTimePicker.vue | reward{EntryWorkspace,DateTimePicker}Desktop.css | reward{EntryWorkspace,DateTimePicker}Mobile.css | 原两个功能组件 | verified_nonbrowser | B05：74奖励行为/父级联动/CSS/build | 唯一弹窗与日期实例；待人工UI | pending |
 | /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue | 待拆分 | 待拆分 | pages/operator/index.vue | pending | 实际路由 | 保持 visitedTabs 与编辑器实例 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/index.vue | 待拆分 | 待拆分 | 原控制器及 PoolEditor | pending | 实际路由 | 保护 rows/originals/orderRevision/CAS | pending |
 | /calendar 公共/个人/私人事项/三种视图 | pages/calendar/index.vue | 待拆分 | 待拆分 | 原控制器/订阅编辑器 | pending | 实际路由 | agenda/timeline/month 是用户选择，不随设备重置 | pending |
@@ -105,4 +106,12 @@
 - `node --test test/inventoryLayoutStyles.test.js`：1/1；实际 scoped/slot CSS 编译与设备媒体归属通过。`npm run build` 成功，`git diff --check` 通过；日志 `.test-artifacts/pc-mobile-layered/batch-04-*.log`。
 - 本批保存标题 `refactor(inventory): 拆分页面壳与工作区导航双端布局`；整站仍1/43，库存其余真实展示继续迁移。
 
-下一动作：继续库存清单、盘点、统计查询与奖励内部的真实样式归属，保留现有控制器和挂载树。
+## B05：库存剩余清单、盘点、统计查询与奖励内部（L1 样式归属；关键状态做定向回归）
+
+- 页面剩余实际排布/空间/密度移入 `pages/inventory/inventoryWorkspace{Desktop,Mobile}.css`；奖励弹窗与日期选择器各自有 `reward{EntryWorkspace,DateTimePicker}{Desktop,Mobile}.css`。完整模板/业务脚本逐字不变，未切换父节点，未复制副作用。站点壳以1080px、奖励内容以原767px区别归属，内部原断点保留。
+- 原 inline 样式只保留刻意共享的颜色、边框/圆角、焦点外观和动效；InventoryItemName 的元素徽记是稳定共享字段契约。几何、全部字体声明及相关变量归各端。新增外部文件仍 scoped，不影响其他页面；历史试点/A1/A2未修改。
+- 三个展示所有者在17个宽度（含640.5/767.5/1080.5）×pointer/reduced-motion/hover组合，共408组声明级联投影与基线一致，模板/脚本逐字比对通过；动画定义单独比对。只是源码证据，非浏览器布局验证。
+- `node --test test/inventoryWorkspaceStyles.test.js`：3/3。`npx --no-install vitest run behavior/inventoryRecordsUx.spec.js behavior/inventoryRecordsViews.spec.js behavior/inventoryStockBaseline.spec.js behavior/rewardEntryWorkspace.spec.js`：259/259。新增4个两端用例，真实盘点数量草稿/保存状态/焦点、奖励预览/日期弹层实例与焦点跨断点不丢，resize零写入/额外读取。
+- `npm run build` 成功；`git diff --check` 通过。日志 `.test-artifacts/pc-mobile-layered/batch-05-*.log`。本批保存标题 `refactor(inventory): 完成清单盘点与奖励双端样式归属`。库存真实路由全部工程接入，整站2/43；真实运行与视觉仍pending。
+
+下一动作：密探图鉴/养成/规划/分享/快捷录入的实际展示样式隔离，保持visitedTabs与所有编辑器实例。

@@ -6,6 +6,7 @@ import * as inventoryApi from '../src/api/inventory.js'
 import * as rewardCatalogApi from '../src/api/rewardCatalog.js'
 import { deferred } from '../test-support/factories.js'
 import { ITEM_CATALOG } from '../src/data/inventory/catalog.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/api/inventory.js', () => ({
   importInventory: vi.fn(),
@@ -165,6 +166,32 @@ beforeEach(() => {
   document.documentElement.style.overflow = ''
   document.body.style.overflow = ''
   document.body.style.paddingRight = ''
+})
+
+it.each([390, 1440])('奖励预览和日期弹层跨双端样式断点保持实例、焦点和草稿：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = mountWorkspace()
+  await openManualWithPreview(wrapper)
+  const workspace = wrapper.vm.$
+  const picker = wrapper.getComponent(RewardDateTimePicker).vm.$
+  const preview = document.querySelector('.preview-section')
+  const previewText = preview.textContent
+  const trigger = document.querySelector('button[aria-label="选择发生日期"]')
+  trigger.click(); await flushPromises()
+  const day = document.querySelector('#reward-calendar button[data-day][tabindex="0"]')
+  day.focus()
+  const reads = rewardCatalogApi.getRewardCatalog.mock.calls.length
+  for (const next of [480, 481, 767, 767.5, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.vm.$).toBe(workspace)
+    expect(wrapper.getComponent(RewardDateTimePicker).vm.$).toBe(picker)
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+    expect(document.querySelector('.preview-section')).toBe(preview)
+    expect(preview.textContent).toBe(previewText)
+    expect(document.activeElement).toBe(day)
+    expect(rewardCatalogApi.getRewardCatalog).toHaveBeenCalledTimes(reads)
+    expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+  }
 })
 
 it('报告外部入口复用原工作台，只读取目录而不写入库存', async () => {
