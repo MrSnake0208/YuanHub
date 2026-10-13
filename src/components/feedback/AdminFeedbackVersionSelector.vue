@@ -121,34 +121,24 @@ onMounted(loadVersions)
 </script>
 
 <style scoped>
-.admin-version-panel { overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.admin-version-panel { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
 .admin-version-panel.dialog { border: 0; border-radius: 0; background: transparent; }
-.admin-version-panel.dialog .admin-version-body { border-top: 0; padding: 0; }
-.admin-version-trigger { width: 100%; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 0; background: transparent; color: var(--feedback-text); text-align: left; cursor: pointer; }
+.admin-version-panel.dialog .admin-version-body { border-top: 0; }
+.admin-version-trigger { border: 0; background: transparent; color: var(--feedback-text); cursor: pointer; }
 .admin-version-trigger:hover { background: var(--feedback-panel-hover); }
 .admin-version-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .admin-version-trigger:disabled { cursor: wait; }
-.admin-version-heading { min-width: 0; display: block; }
-.admin-version-kicker { display: block; margin-bottom: 5px; color: var(--accent-strong); font: 800 10px var(--font-d); letter-spacing: .16em; }
-.admin-version-heading strong { display: block; color: var(--feedback-text); font-family: var(--font-s); font-size: 15px; font-weight: 900; }
-.admin-version-summary { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.admin-version-summary-text { max-width: 320px; overflow: hidden; color: var(--feedback-text-muted); font-size: 11.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.admin-version-chevron { flex: none; color: var(--feedback-text-dim); transition: transform .16s ease; }
-.admin-version-panel.open .admin-version-chevron { transform: rotate(180deg); }
-.admin-version-body { padding: 0 14px 14px; border-top: 1px solid var(--feedback-line); }
-.admin-version-hint { margin-top: 12px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
-.admin-version-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-.admin-version-grid label { min-width: 0; display: grid; gap: 6px; }
-.admin-version-grid label > span { color: var(--feedback-text-muted); font-size: 12px; font-weight: 800; }
-.admin-version-state { margin-top: 12px; color: var(--feedback-text-muted); font-size: 12px; }
-.admin-version-state.error,.admin-version-error { margin-top: 12px; color: var(--feedback-danger); font-size: 12px; font-weight: 700; }
-.admin-version-message { margin-top: 12px; color: var(--feedback-success); font-size: 12px; font-weight: 700; }
-.admin-version-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-@media (max-width: 640px) {
-  .admin-version-trigger { align-items: flex-start; }
-  .admin-version-summary { align-items: flex-end; flex-direction: column; gap: 5px; }
-  .admin-version-summary-text { max-width: 180px; }
-  .admin-version-grid { grid-template-columns: 1fr; }
-  .admin-version-panel.dialog select { font-size: 16px; }
-}
+.admin-version-kicker { color: var(--accent-strong); }
+.admin-version-heading strong { color: var(--feedback-text); }
+.admin-version-summary-text { color: var(--feedback-text-muted); }
+.admin-version-chevron { color: var(--feedback-text-dim); transition: transform .16s ease; }
+.admin-version-body { border-top: 1px solid var(--feedback-line); }
+.admin-version-hint { color: var(--feedback-text-muted); }
+.admin-version-grid label > span { color: var(--feedback-text-muted); }
+.admin-version-state { color: var(--feedback-text-muted); }
+.admin-version-state.error,.admin-version-error { color: var(--feedback-danger); }
+.admin-version-message { color: var(--feedback-success); }
 </style>
+<style scoped src="./adminFeedbackVersionSelectorDesktop.css"></style>
+<style scoped src="./adminFeedbackVersionSelectorMobile.css"></style>

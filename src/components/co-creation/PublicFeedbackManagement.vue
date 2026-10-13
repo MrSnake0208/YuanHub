@@ -153,8 +153,10 @@ onBeforeUnmount(() => { requestId += 1 })
 </script>
 
 <style scoped>
-.public-management { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--feedback-line); }
-.public-management > button { justify-self: start; }
-.public-management > p { color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.public-management { border-top: 1px solid var(--feedback-line); }
+.public-management > p { color: var(--feedback-text-muted); }
 .public-management > p[role="alert"] { color: var(--feedback-danger); }
 </style>
+<style scoped src="./publicFeedbackManagementDesktop.css"></style>
+<style scoped src="./publicFeedbackManagementMobile.css"></style>

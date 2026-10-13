@@ -45,40 +45,17 @@ const canAccessManagement = computed(function () {
 </script>
 
 <style scoped>
-.feedback-workspace-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-top: 18px;
-}
-
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .feedback-workspace-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  min-width: 0;
-  max-width: 100%;
   border: 1px solid var(--feedback-line);
   border-radius: 8px;
   background: var(--feedback-panel-deep);
-  overflow-x: auto;
 }
 
 .feedback-workspace-nav a {
-  flex: 0 0 auto;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 16px;
   border-right: 1px solid var(--feedback-line);
   color: var(--feedback-text-muted);
-  font-size: 12px;
-  font-weight: 800;
   text-decoration: none;
-  white-space: nowrap;
 }
 
 .feedback-workspace-nav a:hover,
@@ -88,10 +65,6 @@ const canAccessManagement = computed(function () {
 }
 
 .feedback-workspace-nav-unread {
-  flex: 0 0 7px;
-  width: 7px;
-  height: 7px;
-  margin-left: 1px;
   border-radius: 50%;
   background: var(--rouge);
 }
@@ -99,35 +72,12 @@ const canAccessManagement = computed(function () {
 .feedback-workspace-nav a:last-child { border-right: 0; }
 
 .feedback-workspace-management {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 12px;
   color: var(--feedback-text-muted);
-  font-size: 12px;
-  font-weight: 800;
   text-decoration: none;
 }
 
 .feedback-workspace-management:hover { color: var(--accent-strong); }
 .feedback-workspace-header a:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
-
-@media (max-width: 767px) {
-  .feedback-workspace-header {
-    flex-direction: column;
-    align-items: stretch;
-    margin-top: 12px;
-  }
-
-  .feedback-workspace-nav {
-    width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .feedback-workspace-nav::-webkit-scrollbar { display: none; }
-  .feedback-workspace-nav a { flex: 1 0 auto; justify-content: center; min-height: 44px; }
-  .feedback-workspace-management { align-self: flex-end; }
-}
 </style>
+<style scoped src="./feedbackWorkspaceNavDesktop.css"></style>
+<style scoped src="./feedbackWorkspaceNavMobile.css"></style>

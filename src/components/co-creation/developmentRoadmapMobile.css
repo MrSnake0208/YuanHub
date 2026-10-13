@@ -1,0 +1,33 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1023px) {
+.development-roadmap { padding-bottom: 40px; }
+.goal-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-top: 20px; font-size: 13px; }
+.goal-toolbar label { display: grid; gap: 6px; min-width: 0; }
+.goal-toolbar select { min-width: 160px; }
+.goal-notice { margin-top: 16px; font-size: 12px; line-height: 1.7; }
+.goal-state { display: grid; justify-items: center; gap: 12px; padding: 48px 16px; }
+.goal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; align-items: start; }
+.goal-card { min-width: 0; padding: 22px; overflow-wrap: anywhere; }
+.goal-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.goal-stage { padding: 5px 10px; font-size: 12px; font-weight: 800; }
+.goal-card h2 { margin-top: 16px; font: 900 21px/1.5 var(--font-s); }
+.goal-description { margin-top: 10px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+.goal-target { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 12px; }
+.goal-progress { display: grid; grid-template-columns: 1fr auto; gap: 9px; margin-top: 20px; font-size: 12px; }
+.goal-progress strong { font-family: var(--font-d); }
+.goal-progress progress { grid-column: 1 / -1; width: 100%; height: 10px; }
+.goal-details { margin-top: 16px; }
+.goal-details summary { min-height: 44px; padding-top: 14px; font-size: 13px; font-weight: 800; }
+.goal-criteria { display: grid; gap: 10px; list-style: none; padding: 8px 0; }
+.goal-criteria li { display: flex; align-items: start; gap: 8px; font-size: 13px; line-height: 1.6; }
+.goal-criteria svg { flex: none; margin-top: 2px; }
+.goal-criteria span { flex: 1; min-width: 0; }
+.goal-criteria small { flex: none; }
+.goal-links { display: grid; gap: 8px; margin-top: 12px; font-size: 13px; }
+.goal-links h3 { font-size: 13px; }
+.goal-links a { line-height: 1.7; }
+.goal-card footer { margin-top: 18px; font-size: 11px; }
+.goal-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 24px; font-size: 13px; }
+@media (max-width: 1023px) { .goal-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .goal-card { padding: 16px; } .goal-toolbar { flex-wrap: wrap; } }
+}

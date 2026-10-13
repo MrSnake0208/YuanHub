@@ -1,0 +1,60 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.feedback-page > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+@media (max-width: 767px) { .wrap { width: 100%;  padding-inline: 18px; } }
+@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+.page-feedback-access { min-height: 100vh; min-height: 100dvh }
+.category-panel { margin-top: 24px; padding: 20px }
+.category-panel h2 { margin: 0 0 6px; font-size: 18px }
+.category-panel p { margin: 0 0 14px }
+.category-create, .category-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 10px }
+.category-create input, .category-list input { min-height: 40px; padding: 0 10px }
+.category-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none }
+.category-list li { padding: 7px 10px }
+.category-list button { min-height: 32px }
+.access-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px }
+.access-heading h2 { margin: 0; font: 900 22px/1.4 var(--font-s) }
+.access-create { flex: none; min-height: 44px; white-space: nowrap }
+.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-bottom: 14px }
+.access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px }
+.access-search input { width: 100% }
+.access-count { font: 11px var(--font-d) }
+.icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center }
+.state { padding: 40px 0; text-align: center }
+.access-table-wrap { overflow-x: auto; margin-bottom: 48px; scrollbar-gutter: stable }
+.access-table { width: 100%; min-width: 980px }
+.access-preview { margin-top: 16px; font-size: 12px; line-height: 1.6 }
+.access-preview p + p { margin-top: 8px }
+.legacy-permissions { margin-top: 14px }
+.legacy-permissions summary { display: list-item; min-height: 44px; padding-block: 12px; font-weight: 700 }
+.access-table th,.access-table td { padding: 14px 16px; text-align: left; vertical-align: top }
+.access-table th { font-size: 11px }
+.access-table td strong,.access-table td code { display: block }
+.access-table td small { display: block; margin-top: 4px; font-size: 11px }
+.access-table td code { margin-top: 3px; font-size: 11px }
+.access-table .ops { width: 92px; white-space: nowrap; text-align: right }
+.area-tag { display: inline-block; margin: 0 5px 5px 0; padding: 2px 7px; font-size: 11px; font-weight: 700 }
+.access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow-y: auto }
+.access-modal-body { padding: 20px }
+.user-picker label { display: grid; gap: 6px; font-size: 12px; font-weight: 700 }
+.user-picker input { height: 44px; padding: 0 12px }
+.picker-state { padding: 10px; font-size: 12px }
+.user-result { width: 100%; display: flex; justify-content: space-between; padding: 10px 12px }
+.user-result span,.selected-user span { display: grid; gap: 3px; text-align: left }
+.user-result small,.selected-user small { font-size: 11px }
+.selected-user { display: flex; justify-content: space-between; padding: 12px }
+.permission-group { margin-top: 18px; padding: 0 }
+.permission-group legend { margin-bottom: 9px; font-weight: 800 }
+.area-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+.area-grid label { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; white-space: nowrap }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px }
+.command { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; font-weight: 700 }
+@media (max-width: 720px) {
+  .access-toolbar { flex-wrap: wrap }
+  .access-search { width: 100%; min-width: 0; flex: 1 1 100% }
+  .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .access-table th:nth-child(5),.access-table td:nth-child(5),.access-table th:nth-child(6),.access-table td:nth-child(6) { display: none }
+  .access-modal-body { padding: 16px }
+}
+}

@@ -1,0 +1,14 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.feedback-plaza { padding-bottom: 56px; }
+.plaza-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
+.plaza-skeleton { min-height: 168px; display: grid; gap: 12px; padding: 16px; }
+.plaza-skeleton span { display: block; height: 12px; }
+.plaza-skeleton span:first-child { width: 45%; }
+.plaza-skeleton span:nth-child(2) { width: 82%; height: 16px; }
+.plaza-skeleton span:last-child { width: 60%; }
+.plaza-state { min-height: 240px; display: grid; place-content: center; justify-items: center; gap: 10px; margin-top: 18px; padding: 28px; font-size: 13px; text-align: center; }
+.plaza-pagination { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 8px; font: 11px var(--font-d); }
+.plaza-pagination > div { display: flex; overflow: hidden; }
+.plaza-pagination button { width: 44px; height: 44px; display: grid; place-items: center; }
+}

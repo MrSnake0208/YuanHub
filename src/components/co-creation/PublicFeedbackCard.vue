@@ -53,11 +53,8 @@ defineEmits(['open', 'updated'])
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .public-card {
-  min-width: 0;
-  display: grid;
-  gap: 10px;
-  padding: 16px;
   border: 1px solid var(--feedback-line);
   border-radius: 8px;
   background: var(--feedback-panel);
@@ -68,21 +65,14 @@ defineEmits(['open', 'updated'])
 }
 .public-card:hover,
 .public-card:focus-visible { border-color: var(--accent); box-shadow: inset 3px 0 var(--yellow-deep); }
-.public-card-badges { display: flex; flex-wrap: wrap; gap: 7px; }
-.public-card-category { min-width: 0; padding: 2px 9px; border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); font-size: 11px; overflow-wrap: anywhere; }
-.public-card-title { color: var(--feedback-text); font-size: 15px; font-weight: 900; line-height: 1.5; }
+.public-card-category { border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); }
+.public-card-title { color: var(--feedback-text); }
 .public-card-summary {
-  display: -webkit-box;
-  overflow: hidden;
   color: var(--feedback-text-muted);
-  font-size: 12.5px;
-  line-height: 1.7;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
 }
-.public-card-version { color: var(--feedback-text-dim); font: 11px var(--font-d); }
-.public-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
-.public-card-support { display: inline-flex; align-items: center; gap: 5px; color: var(--rouge); font-size: 12px; font-weight: 800; }
-.public-card-support-button { flex: none; }
-.public-card-foot time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
+.public-card-version { color: var(--feedback-text-dim); }
+.public-card-support { color: var(--rouge); }
+.public-card-foot time { color: var(--feedback-text-dim); }
 </style>
+<style scoped src="./publicFeedbackCardDesktop.css"></style>
+<style scoped src="./publicFeedbackCardMobile.css"></style>

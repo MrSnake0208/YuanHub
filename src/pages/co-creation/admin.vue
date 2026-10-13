@@ -58,7 +58,6 @@ import { DEVELOPMENT_STAGES, getAdminDevelopmentGoal, saveDevelopmentGoal } from
 import { listPublicFeedback } from '@/api/coCreation.js'
 import { auth } from '@/store/auth.js'
 import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
-import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 
 const form = ref(null), editingId = ref(''), original = ref(''), busy = ref(false), error = ref(''), conflict = ref(false), notice = ref('')
@@ -131,36 +130,24 @@ async function save() {
 onBeforeUnmount(() => { mounted = false; session += 1; searchId += 1 })
 </script>
 
+<style src="../../styles/feedback-workspace.css"></style>
+<style src="../../styles/feedback-workspaceDesktop.css"></style>
+<style src="../../styles/feedback-workspaceMobile.css"></style>
 <style scoped>
-.goal-workspace-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; padding: 8px 0 12px; border-bottom: 1px solid var(--feedback-line); }
-.goal-workspace-toolbar h2 { margin: 0; color: var(--tea); font: 900 20px/1.4 var(--font-s); }
-.goal-public-view { grid-column: 1; grid-row: 2; display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: var(--accent-strong); font-size: 13px; text-decoration: underline; }
-.goal-create-action { grid-column: 2; grid-row: 1 / 3; }
-.goal-admin-context { margin: 0 0 16px; color: var(--feedback-warn); font-size: 13px; line-height: 1.7; }
-.goal-save-notice { margin-top: 16px; color: var(--feedback-success); }
-.goal-editor { margin-top: 16px; padding: 24px; border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); overflow-wrap: anywhere; }
-.goal-editor h2 { margin-bottom: 8px; color: var(--feedback-text); font: 900 22px var(--font-s); }
-.goal-editor fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
-.goal-editor label { display: grid; gap: 7px; min-width: 0; color: var(--feedback-text); font-size: 13px; }
-.goal-editor .full { grid-column: 1 / -1; }
-.goal-editor h3 { color: var(--feedback-text); font-size: 14px; }
-.criteria-editor > p,.link-editor > p { margin: 6px 0 12px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
-.criterion-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.criterion-row > input { flex: 1; min-width: 0; }
-.criterion-check { min-width: 44px !important; min-height: 44px; place-content: center; }
-.linked-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 10px 0; color: var(--feedback-text); font-size: 13px; }
-.linked-row span { min-width: 0; overflow-wrap: anywhere; }
-.linked-row button { flex: none; }
-.goal-search { display: flex; gap: 8px; margin-top: 14px; }
-.goal-search input { min-width: 0; flex: 1; }
-.goal-editor-actions { display: flex; justify-content: end; gap: 12px; margin-top: 20px; }
-.feedback-form-error { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 16px; font-size: 13px; line-height: 1.7; }
-.goal-search button,.criterion-row button,.goal-editor-actions button,.feedback-form-error button { flex-shrink: 0; white-space: nowrap; }
-.feedback-content :deep(.goal-toolbar) { margin-top: 16px; }
-.feedback-content :deep(.goal-notice) { margin-top: 8px; }
-.feedback-content :deep(.goal-grid) { margin-top: 12px; }
-.feedback-content :deep(.goal-card header button) { flex-shrink: 0; white-space: nowrap; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.goal-workspace-toolbar { border-bottom: 1px solid var(--feedback-line); }
+.goal-workspace-toolbar h2 { color: var(--tea); }
+.goal-public-view { color: var(--accent-strong); text-decoration: underline; }
+.goal-admin-context { color: var(--feedback-warn); }
+.goal-save-notice { color: var(--feedback-success); }
+.goal-editor { border: 1px solid var(--feedback-line); border-radius: 12px; background: var(--feedback-panel); }
+.goal-editor h2 { color: var(--feedback-text); }
+.goal-editor fieldset { border: 0; }
+.goal-editor label { color: var(--feedback-text); }
+.goal-editor h3 { color: var(--feedback-text); }
+.criteria-editor > p,.link-editor > p { color: var(--feedback-text-muted); }
+.linked-row { color: var(--feedback-text); }
 .feedback-content :is(button,a,summary):focus-visible,.feedback-content :deep(:is(button,a,summary):focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
-@media (min-width: 600px) { .goal-workspace-toolbar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; } .goal-public-view { grid-column: 2; grid-row: 1; } .goal-create-action { grid-column: 3; grid-row: 1; } }
-@media (max-width: 767px) { .goal-editor { padding: 16px; } .goal-editor fieldset { grid-template-columns: minmax(0, 1fr); } .criterion-row { flex-wrap: wrap; } .criterion-row > input { width: calc(100% - 60px); } .goal-editor-actions button { flex: 1; } }
 </style>
+<style scoped src="./coCreationAdminDesktop.css"></style>
+<style scoped src="./coCreationAdminMobile.css"></style>

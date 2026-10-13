@@ -1,0 +1,25 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.public-card {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+.public-card-badges { display: flex; flex-wrap: wrap; gap: 7px; }
+.public-card-category { min-width: 0; padding: 2px 9px; font-size: 11px; overflow-wrap: anywhere; }
+.public-card-title { font-size: 15px; font-weight: 900; line-height: 1.5; }
+.public-card-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.7;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.public-card-version { font: 11px var(--font-d); }
+.public-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.public-card-support { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; }
+.public-card-support-button { flex: none; }
+.public-card-foot time { font: 10.5px var(--font-d); }
+}

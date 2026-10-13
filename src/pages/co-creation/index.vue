@@ -20,13 +20,17 @@ import IslandSidebar from '@/components/IslandSidebar.vue'
 import DevelopmentRoadmap from '@/components/co-creation/DevelopmentRoadmap.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
-import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 const canManage = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.DEVELOPMENT_GOAL_MANAGE))
 </script>
 
+<style src="../../styles/feedback-workspace.css"></style>
+<style src="../../styles/feedback-workspaceDesktop.css"></style>
+<style src="../../styles/feedback-workspaceMobile.css"></style>
 <style scoped>
-.creation-admin-link { margin: 0; justify-self: start; }
-.creation-context { margin-top: 0; color: var(--feedback-text-muted); font-size: 13px; line-height: 1.7; }
-.creation-context a { color: var(--accent-strong); font-weight: 800; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.creation-context { color: var(--feedback-text-muted); }
+.creation-context a { color: var(--accent-strong); }
 </style>
+<style scoped src="./coCreationPageDesktop.css"></style>
+<style scoped src="./coCreationPageMobile.css"></style>

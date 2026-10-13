@@ -250,7 +250,6 @@ import { useUnsavedChanges } from '@/utils/useUnsavedChanges.js'
 import { useModalFocus } from '@/composables/useModalFocus.js'
 import { PUBLIC_TYPE_OPTIONS, feedbackPrefill, isFeedbackType, publicTypeLabel as typeLabel } from '@/utils/feedbackPublic.js'
 import { dialog } from '@/utils/dialog.js'
-import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 
 const PAGE_SIZE = 20
@@ -664,31 +663,23 @@ onBeforeUnmount(() => {
 })
 </script>
 
+<style src="../../styles/feedback-workspace.css"></style>
+<style src="../../styles/feedback-workspaceDesktop.css"></style>
+<style src="../../styles/feedback-workspaceMobile.css"></style>
 <style scoped>
-.page-header-action { gap: 8px; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.page-header-action { cursor: pointer; }
 
-.feedback-public-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 10px 14px; border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); font-size: 12.5px; font-weight: 700; }
-.feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); font-size: 18px; line-height: 1; cursor: pointer; }
-.feedback-modal { max-width: 620px; }
-.feedback-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 100%; margin-top: 6px; }
-.feedback-modal-kicker { display: block; margin-bottom: 5px; color: var(--feedback-accent); font: 800 10px var(--font-d); letter-spacing: .16em; }
-.feedback-modal .modal-head h2 { color: var(--feedback-text); font-family: var(--font-s); font-size: 20px; font-weight: 900; letter-spacing: 0; }
+.feedback-public-notice { border: 1px solid var(--feedback-success); border-radius: 8px; background: rgba(95, 127, 97, .1); color: var(--feedback-text); }
+.feedback-public-notice button { border: 0; background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
+.feedback-modal-kicker { color: var(--feedback-accent); }
+.feedback-modal .modal-head h2 { color: var(--feedback-text); }
 .feedback-modal .modal-head button { color: var(--feedback-text-muted); }
 .feedback-modal form { background: var(--feedback-panel-deep); }
-.feedback-submission-note { margin: 0 0 16px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.7; }
-.feedback-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.feedback-form-grid label { min-width: 0; margin: 0; }
-.feedback-form-grid label > span { display: block; margin-bottom: 6px; color: var(--feedback-text-muted); font-size: 12px; font-weight: 800; }
-.feedback-form-grid .full { grid-column: 1 / -1; }
-.feedback-form-grid small { display: block; margin-top: 5px; color: var(--feedback-text-dim); font-size: 11px; text-align: right; }
-.feedback-form-grid .feedback-consent { display: flex; align-items: flex-start; gap: 8px; }
-.feedback-form-grid .feedback-consent input { width: auto; flex: none; margin-top: 3px; }
-.feedback-form-grid .feedback-consent span { margin: 0; line-height: 1.6; }
-.feedback-form-grid .feedback-consent small { text-align: left; font-weight: 400; }
+.feedback-submission-note { color: var(--feedback-text-muted); }
+.feedback-form-grid label > span { color: var(--feedback-text-muted); }
+.feedback-form-grid small { color: var(--feedback-text-dim); }
 .feedback-form-grid select option { background: var(--feedback-panel-deep); color: var(--feedback-text); }
-
-@media (max-width: 767px) {
-  .feedback-form-grid { grid-template-columns: 1fr; }
-  .feedback-form-grid .full { grid-column: auto; }
-}
 </style>
+<style scoped src="./feedbackMineDesktop.css"></style>
+<style scoped src="./feedbackMineMobile.css"></style>

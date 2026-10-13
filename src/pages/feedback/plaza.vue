@@ -25,7 +25,6 @@ import FeedbackPlaza from '@/components/co-creation/FeedbackPlaza.vue'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
-import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 
 const route = useRoute()
@@ -35,10 +34,13 @@ const canManageFeedback = computed(() => canManageAnyFeedback(auth.adminAccess))
 const canConfigureFeedback = computed(() => hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.FEEDBACK_ACCESS_MANAGE))
 </script>
 
+<style src="../../styles/feedback-workspace.css"></style>
+<style src="../../styles/feedback-workspaceDesktop.css"></style>
+<style src="../../styles/feedback-workspaceMobile.css"></style>
 <style scoped>
-.plaza-submit { gap: 8px; justify-self: start; }
-.feedback-plaza-page:has(.plaza-state.empty) .plaza-submit { display: none; }
-
-.plaza-context { margin-top: 16px; color: var(--feedback-text-muted); font-size: 13px; line-height: 1.7; }
-.plaza-context a { color: var(--accent-strong); font-weight: 800; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.plaza-context { color: var(--feedback-text-muted); }
+.plaza-context a { color: var(--accent-strong); }
 </style>
+<style scoped src="./feedbackPlazaPageDesktop.css"></style>
+<style scoped src="./feedbackPlazaPageMobile.css"></style>

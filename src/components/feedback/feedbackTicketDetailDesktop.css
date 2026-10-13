@@ -1,0 +1,44 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.detail-state { padding: 18px 0; font-size: 13px; }
+.detail-reporter { display: flex; align-items: baseline; gap: 8px; padding: 16px 0 14px; font-size: 12px; }
+.detail-reporter code { margin-left: auto; }
+.detail-build { padding: 0 0 12px; font: 10.5px var(--font-d); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detail-section { padding: 20px 0; }
+.detail-section h3 { margin-bottom: 14px; font-size: 12px; font-weight: 900; }
+.detail-section h3 span { margin-left: 5px; font-size: 10px; }
+.detail-content,.detail-message p { font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; }
+.conversation-section { display: grid; gap: 18px; }
+.conversation-section h3 { margin-bottom: 0; }
+.detail-message { width: min(78%, 640px); padding: 0; }
+.detail-message.is-self { justify-self: end; }
+.detail-message.is-other { justify-self: start; }
+.detail-message header { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.detail-message.is-self header { flex-direction: row-reverse; }
+.detail-message header strong { font-size: 11.5px; }
+.detail-admin-label { display: inline-flex; align-items: center; gap: 4px; }
+.detail-message header time { font: 10.5px var(--font-d); }
+.detail-message > p { width: fit-content; max-width: 100%; padding: 11px 14px; }
+.detail-message.is-self > p { margin-left: auto; }
+.detail-media-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.detail-media-grid a { position: relative; display: block; overflow: hidden; aspect-ratio: 4 / 3; }
+.detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; font-size: 11px; text-align: center; }
+.detail-file-list { display: grid; gap: 7px; margin-top: 10px; }
+.detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 44px; align-items: center; gap: 9px; padding: 8px 9px; }
+.detail-file-copy { min-width: 0; display: grid; gap: 2px; }
+.detail-file-copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.detail-file-copy small { font: 10.5px var(--font-d); }
+.detail-file-copy .detail-file-error { font-family: var(--font-b); }
+.detail-file-row button { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; }
+.detail-closure { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 11px; margin-top: 18px; padding: 14px 15px; }
+.detail-closure-icon { margin-top: 1px; }
+.detail-closure > div > strong { display: block; font-size: 13px; font-weight: 900; }
+.detail-closure p { margin-top: 4px; font-size: 12px; line-height: 1.65; }
+.detail-closure-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 8px; }
+.detail-closure-meta span { font-size: 10px; font-weight: 800; }
+.detail-closure-meta strong { font-size: 11.5px; }
+.detail-closure-meta time { font: 10.5px var(--font-d); }
+.detail-management-area { padding: 22px 0 24px; }
+.detail-action-area { position: sticky; bottom: -26px; margin: 0 -26px -26px; padding: 16px 26px 20px; }
+}

@@ -41,16 +41,13 @@ defineEmits(['support', 'error'])
 </script>
 
 <style scoped>
-.similar-list { display: grid; gap: 10px; padding: 12px 14px; border: 1px dashed var(--yellow-deep); border-radius: 8px; background: rgba(239, 210, 142, .16); }
-.similar-title { color: var(--ink); font-size: 12px; font-weight: 900; }
-.similar-state { color: var(--ink-60); font-size: 12px; }
-.similar-list ul { display: grid; gap: 9px; list-style: none; }
-.similar-list li { display: grid; gap: 9px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
-.similar-main { min-width: 0; display: grid; gap: 5px; }
-.similar-main strong { overflow: hidden; color: var(--ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.similar-meta { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-60); font: 11px var(--font-d); }
-.similar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-@media (min-width: 640px) {
-  .similar-list li { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.similar-list { border: 1px dashed var(--yellow-deep); border-radius: 8px; background: rgba(239, 210, 142, .16); }
+.similar-title { color: var(--ink); }
+.similar-state { color: var(--ink-60); }
+.similar-list li { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.similar-main strong { color: var(--ink); }
+.similar-meta { color: var(--ink-60); }
 </style>
+<style scoped src="./similarFeedbackListDesktop.css"></style>
+<style scoped src="./similarFeedbackListMobile.css"></style>

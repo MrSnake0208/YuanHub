@@ -212,31 +212,24 @@ watch(() => props.item?.id, () => {
 </script>
 
 <style scoped>
-.detail-state { padding: 18px 0; color: var(--feedback-text-muted); font-size: 13px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.detail-state { color: var(--feedback-text-muted); }
 .detail-state.error { color: var(--feedback-danger); }
-.detail-reporter { display: flex; align-items: baseline; gap: 8px; padding: 16px 0 14px; border-bottom: 1px solid var(--feedback-line); font-size: 12px; }
+.detail-reporter { border-bottom: 1px solid var(--feedback-line); }
 .detail-reporter span,.detail-reporter code { color: var(--feedback-text-dim); }
 .detail-reporter strong { color: var(--feedback-text); }
-.detail-reporter code { margin-left: auto; }
 /* 应用诊断行：低视觉权重，单行显示，不参与对话消息的左右布局。 */
-.detail-build { padding: 0 0 12px; color: var(--feedback-text-dim); font: 10.5px var(--font-d); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.detail-section { padding: 20px 0; border-bottom: 1px solid var(--feedback-line); }
-.detail-section h3 { margin-bottom: 14px; color: var(--feedback-text); font-size: 12px; font-weight: 900; }
-.detail-section h3 span { margin-left: 5px; color: var(--feedback-text-dim); font-size: 10px; }
-.detail-content,.detail-message p { color: var(--feedback-text); font-size: 13.5px; line-height: 1.75; white-space: pre-wrap; }
-.conversation-section { display: grid; gap: 18px; }
-.conversation-section h3 { margin-bottom: 0; }
-.detail-message { width: min(78%, 640px); padding: 0; background: transparent; }
-.detail-message.is-self { justify-self: end; }
-.detail-message.is-other { justify-self: start; }
-.detail-message header { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.detail-message.is-self header { flex-direction: row-reverse; }
-.detail-message header strong { color: var(--feedback-text); font-size: 11.5px; }
-.detail-admin-label { display: inline-flex; align-items: center; gap: 4px; color: var(--tea); }
+.detail-build { color: var(--feedback-text-dim); }
+.detail-section { border-bottom: 1px solid var(--feedback-line); }
+.detail-section h3 { color: var(--feedback-text); }
+.detail-section h3 span { color: var(--feedback-text-dim); }
+.detail-content,.detail-message p { color: var(--feedback-text); }
+.detail-message { background: transparent; }
+.detail-message header strong { color: var(--feedback-text); }
+.detail-admin-label { color: var(--tea); }
 .detail-message.is-admin header strong { color: var(--tea); }
-.detail-message header time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
-.detail-message > p { width: fit-content; max-width: 100%; padding: 11px 14px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); }
-.detail-message.is-self > p { margin-left: auto; }
+.detail-message header time { color: var(--feedback-text-dim); }
+.detail-message > p { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); }
 .detail-message.is-reporter > p { border-color: var(--feedback-line); background: var(--surface); }
 .detail-message.is-reporter.is-self > p {
   border-color: color-mix(in srgb, var(--feedback-line-strong) 74%, var(--tea));
@@ -247,38 +240,27 @@ watch(() => props.item?.id, () => {
 .detail-message.is-admin > p { border-color: var(--yellow-deep); background: var(--yellow); }
 .detail-message.is-admin.is-self > p { border-right: 3px solid var(--tea); }
 .detail-message.is-admin.is-other > p { border-left: 3px solid var(--tea); }
-.detail-media-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.detail-media-grid a { position: relative; display: block; overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); aspect-ratio: 4 / 3; }
-.detail-media-grid img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.detail-media-fallback { width: 100%; height: 100%; display: grid; place-items: center; padding: 8px; color: var(--feedback-text-muted); font-size: 11px; text-align: center; }
-.detail-file-list { display: grid; gap: 7px; margin-top: 10px; }
-.detail-file-row { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr) 44px; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
-.detail-file-copy { min-width: 0; display: grid; gap: 2px; }
-.detail-file-copy strong { overflow: hidden; color: var(--feedback-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.detail-file-copy small { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
-.detail-file-copy .detail-file-error { color: var(--feedback-danger); font-family: var(--font-b); }
-.detail-file-row button { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel-deep); color: var(--feedback-text); cursor: pointer; }
+.detail-media-grid a { border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); }
+.detail-media-fallback { color: var(--feedback-text-muted); }
+.detail-file-row { border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
+.detail-file-copy strong { color: var(--feedback-text); }
+.detail-file-copy small { color: var(--feedback-text-dim); }
+.detail-file-copy .detail-file-error { color: var(--feedback-danger); }
+.detail-file-row button { border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--feedback-panel-deep); color: var(--feedback-text); cursor: pointer; }
 .detail-file-row button:disabled { opacity: .55; cursor: default; }
 .is-spinning { animation: detail-file-spin .8s linear infinite; }
 @keyframes detail-file-spin { to { transform: rotate(360deg); } }
-.detail-closure { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 11px; margin-top: 18px; padding: 14px 15px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
-.detail-closure-icon { margin-top: 1px; color: var(--feedback-text-dim); }
+.detail-closure { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
+.detail-closure-icon { color: var(--feedback-text-dim); }
 .detail-closure.is-resolved .detail-closure-icon { color: var(--feedback-success); }
 .detail-closure.is-dismissed .detail-closure-icon { color: var(--feedback-danger); }
-.detail-closure > div > strong { display: block; color: var(--feedback-text); font-size: 13px; font-weight: 900; }
-.detail-closure p { margin-top: 4px; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.65; }
-.detail-closure-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--feedback-line); }
-.detail-closure-meta span { color: var(--feedback-text-dim); font-size: 10px; font-weight: 800; }
-.detail-closure-meta strong { color: var(--feedback-text); font-size: 11.5px; }
-.detail-closure-meta time { color: var(--feedback-text-dim); font: 10.5px var(--font-d); }
-.detail-management-area { padding: 22px 0 24px; }
-.detail-action-area { position: sticky; bottom: -26px; margin: 0 -26px -26px; padding: 16px 26px 20px; background: rgba(255, 253, 246, .96); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
-
-@media (max-width: 767px) {
-  .detail-reporter { align-items: flex-start; flex-wrap: wrap; }
-  .detail-reporter code { width: 100%; margin-left: 0; overflow-wrap: anywhere; }
-  .detail-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .detail-message { width: 92%; }
-  .detail-action-area { bottom: calc(-20px - env(safe-area-inset-bottom)); margin: 0 -16px calc(-20px - env(safe-area-inset-bottom)); padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); }
-}
+.detail-closure > div > strong { color: var(--feedback-text); }
+.detail-closure p { color: var(--feedback-text-muted); }
+.detail-closure-meta { border-top: 1px solid var(--feedback-line); }
+.detail-closure-meta span { color: var(--feedback-text-dim); }
+.detail-closure-meta strong { color: var(--feedback-text); }
+.detail-closure-meta time { color: var(--feedback-text-dim); }
+.detail-action-area { background: rgba(255, 253, 246, .96); border-top: 1px solid var(--feedback-line); backdrop-filter: blur(10px); }
 </style>
+<style scoped src="./feedbackTicketDetailDesktop.css"></style>
+<style scoped src="./feedbackTicketDetailMobile.css"></style>

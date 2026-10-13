@@ -206,7 +206,6 @@ import { dialog } from '@/utils/dialog.js'
 import { auth } from '@/store/auth.js'
 import { ADMIN_PERMISSIONS, canManageAnyFeedback, hasPermission } from '@/utils/authPermissions.js'
 import { feedbackUnreadState } from '@/store/feedbackUnread.js'
-import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 
 const grants = ref([])
@@ -492,72 +491,55 @@ onMounted(() => { isMounted = true; load() })
 onBeforeUnmount(() => { isMounted = false; loadRequestId += 1; cancelUserSearch() })
 </script>
 
+<style src="../../styles/feedback-workspace.css"></style>
+<style src="../../styles/feedback-workspaceDesktop.css"></style>
+<style src="../../styles/feedback-workspaceMobile.css"></style>
 <style scoped>
-.page-feedback-access { min-height: 100vh; min-height: 100dvh }
-.category-panel { margin-top: 24px; padding: 20px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep) }
-.category-panel h2 { margin: 0 0 6px; font-size: 18px }
-.category-panel p { margin: 0 0 14px; color: var(--feedback-text-dim) }
-.category-create, .category-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 10px }
-.category-create input, .category-list input { min-height: 40px; padding: 0 10px; border: 1px solid var(--feedback-line-strong); background: var(--surface); color: var(--ink) }
-.category-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none }
-.category-list li { padding: 7px 10px; border: 1px solid var(--feedback-line-strong) }
-.category-list button { min-height: 32px; border: 0; background: transparent; color: var(--feedback-accent); cursor: pointer }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.category-panel { border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep) }
+.category-panel p { color: var(--feedback-text-dim) }
+.category-create input, .category-list input { border: 1px solid var(--feedback-line-strong); background: var(--surface); color: var(--ink) }
+.category-list li { border: 1px solid var(--feedback-line-strong) }
+.category-list button { border: 0; background: transparent; color: var(--feedback-accent); cursor: pointer }
 .category-list button:disabled { opacity: .5; cursor: default }
-.access-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px }
-.access-heading h2 { margin: 0; color: var(--tea); font: 900 22px/1.4 var(--font-s) }
-.access-create { flex: none; min-height: 44px; white-space: nowrap }
-.access-toolbar { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-bottom: 14px }
-.access-search { display: flex; align-items: center; gap: 8px; width: min(480px, 55%); padding: 0 12px; height: 48px; border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
+.access-heading h2 { color: var(--tea) }
+.access-search { border: 1px solid var(--feedback-line-strong); background: var(--feedback-panel-deep); color: var(--feedback-text-dim) }
 .access-search:focus-within { border-color: var(--feedback-accent) }
-.access-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink) }
+.access-search input { border: 0; outline: 0; background: transparent; color: var(--ink) }
 .access-search input::placeholder { color: var(--feedback-text-dim) }
-.access-count { color: var(--feedback-text-dim); font: 11px var(--font-d) }
-.icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
+.access-count { color: var(--feedback-text-dim) }
+.icon-command { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer }
 .icon-command.primary { background: var(--tea); color: var(--cream); border-color: var(--tea) }
 .icon-command.danger { color: var(--rouge) }
-.state { padding: 40px 0; text-align: center; color: var(--ink-60) }
+.state { color: var(--ink-60) }
 .state.error,.editor-error { color: var(--rouge) }
-.access-table-wrap { overflow-x: auto; margin-bottom: 48px; border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(73,59,44,.42); scrollbar-gutter: stable }
-.access-table { width: 100%; min-width: 980px; border-collapse: collapse; background: var(--feedback-panel) }
-.access-preview { margin-top: 16px; color: var(--ink-60); font-size: 12px; line-height: 1.6 }
-.access-preview p + p { margin-top: 8px }
-.legacy-permissions { margin-top: 14px }
-.legacy-permissions summary { display: list-item; min-height: 44px; padding-block: 12px; color: var(--ink); font-weight: 700; cursor: pointer }
-.access-table th,.access-table td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
-.access-table th { background: var(--tea); color: var(--cream); font-size: 11px }
+.access-table-wrap { border: 1px solid var(--feedback-line); border-radius: 8px; box-shadow: 0 16px 36px -32px rgba(73,59,44,.42) }
+.access-table { border-collapse: collapse; background: var(--feedback-panel) }
+.access-preview { color: var(--ink-60) }
+.legacy-permissions summary { color: var(--ink); cursor: pointer }
+.access-table th,.access-table td { border-bottom: 1px solid var(--line) }
+.access-table th { background: var(--tea); color: var(--cream) }
 .access-table tbody tr:hover { background: var(--feedback-panel-hover) }
-.access-table td strong,.access-table td code { display: block }
-.access-table td small { display: block; margin-top: 4px; color: var(--ink-60); font-size: 11px }
-.access-table td code { margin-top: 3px; color: var(--ink-35); font-size: 11px }
-.access-table .ops { width: 92px; white-space: nowrap; text-align: right }
-.area-tag { display: inline-block; margin: 0 5px 5px 0; padding: 2px 7px; border: 1px solid var(--yellow-deep); border-radius: 5px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 700 }
+.access-table td small { color: var(--ink-60) }
+.access-table td code { color: var(--ink-35) }
+.area-tag { border: 1px solid var(--yellow-deep); border-radius: 5px; background: var(--yellow); color: var(--ink) }
 .area-tag.manage { border-color: var(--brand-blue); background: transparent; color: var(--brand-blue) }
 .muted,.empty-row { color: var(--ink-35) }
-.access-modal { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); max-height: min(760px, calc(100dvh - 32px)); overflow-y: auto }
-.access-modal-body { padding: 20px }
-.user-picker label { display: grid; gap: 6px; color: var(--ink-60); font-size: 12px; font-weight: 700 }
-.user-picker input { height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }
-.picker-state { padding: 10px; color: var(--ink-60); font-size: 12px }
-.user-result { width: 100%; display: flex; justify-content: space-between; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
-.user-result span,.selected-user span { display: grid; gap: 3px; text-align: left }
-.user-result small,.selected-user small { color: var(--ink-60); font-size: 11px }
-.selected-user { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--line) }
+.user-picker label { color: var(--ink-60) }
+.user-picker input { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) }
+.picker-state { color: var(--ink-60) }
+.user-result { border: 0; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer }
+.user-result small,.selected-user small { color: var(--ink-60) }
+.selected-user { border-bottom: 1px solid var(--line) }
 .selected-user code { color: var(--ink-60) }
-.permission-group { margin-top: 18px; padding: 0; border: 0 }
-.permission-group legend { margin-bottom: 9px; color: var(--ink); font-weight: 800 }
-.area-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
-.area-grid label { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-60); cursor: pointer; white-space: nowrap }
+.permission-group { border: 0 }
+.permission-group legend { color: var(--ink) }
+.area-grid label { border: 1px solid var(--line); border-radius: 7px; color: var(--ink-60); cursor: pointer }
 .area-grid label.on { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink) }
-.modal-foot { display: flex; justify-content: flex-end; gap: 10px }
-.command { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 7px; font-weight: 700; cursor: pointer }
+.command { border: 1px solid var(--line); border-radius: 7px; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command.primary { background: var(--tea); border-color: var(--tea); color: var(--cream) }
 .command:disabled { opacity: .5; cursor: default }
-@media (max-width: 720px) {
-  .access-toolbar { flex-wrap: wrap }
-  .access-search { width: 100%; min-width: 0; flex: 1 1 100% }
-  .area-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .access-table th:nth-child(5),.access-table td:nth-child(5),.access-table th:nth-child(6),.access-table td:nth-child(6) { display: none }
-  .access-modal-body { padding: 16px }
-}
 </style>
+<style scoped src="./feedbackAdminDesktop.css"></style>
+<style scoped src="./feedbackAdminMobile.css"></style>

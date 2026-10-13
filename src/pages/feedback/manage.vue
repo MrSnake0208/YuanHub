@@ -288,7 +288,6 @@ import * as feedbackUnreadStore from '@/store/feedbackUnread.js'
 import { ADMIN_PERMISSIONS, hasPermission } from '@/utils/authPermissions.js'
 import { useFeedbackMedia } from '@/utils/feedbackMedia.js'
 import { productVersionLabel } from '@/config/buildInfo.js'
-import '@/styles/feedback-workspace.css'
 import '@/styles/page-header.css'
 
 const { feedbackUnreadState, subscribeFeedbackUnread } = feedbackUnreadStore
@@ -1030,69 +1029,39 @@ onBeforeUnmount(() => {
 })
 </script>
 
+<style src="../../styles/feedback-workspace.css"></style>
+<style src="../../styles/feedback-workspaceDesktop.css"></style>
+<style src="../../styles/feedback-workspaceMobile.css"></style>
 <style scoped>
-@media (min-width: 768px) and (max-width: 1199px) {
-  .feedback-command-bar { grid-template-columns: minmax(0, 1fr); }
-  .feedback-status-tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; }
-  .feedback-status-tabs button { flex: none; }
-}
-.permission-state { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: 10px; margin: 16px 0 48px; padding: 28px; border: 1px solid var(--feedback-line); background: var(--feedback-panel); color: var(--feedback-text-muted); text-align: center; }
-.permission-state strong { color: var(--feedback-text); font-size: 18px; }
-.permission-state .feedback-primary-action { margin-top: 8px; text-decoration: none; }
-.feedback-admin-settings { display: grid; gap: 10px; }
-.feedback-merge-relations { padding: 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.feedback-merge-relations > div { min-width: 0; display: grid; gap: 8px; }
-.feedback-merge-relations strong { color: var(--feedback-text); font-family: var(--font-s); font-size: 14px; }
-.feedback-merge-relations ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.feedback-merge-relations li { min-width: 0; max-width: 100%; }
-.feedback-merge-relations a { display: inline-block; max-width: 100%; padding: 8px 10px; border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--surface); color: var(--feedback-text); font-size: 12px; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 2px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.permission-state { border: 1px solid var(--feedback-line); background: var(--feedback-panel); color: var(--feedback-text-muted); }
+.permission-state strong { color: var(--feedback-text); }
+.permission-state .feedback-primary-action { text-decoration: none; }
+.feedback-merge-relations { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.feedback-merge-relations strong { color: var(--feedback-text); }
+.feedback-merge-relations a { border: 1px solid var(--feedback-line); border-radius: 6px; background: var(--surface); color: var(--feedback-text); text-decoration: underline; text-underline-offset: 2px; }
 .feedback-merge-relations a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.feedback-management-summary { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; color: var(--feedback-text-muted); font-size: 11px; line-height: 1.5; }
-.feedback-management-summary span { overflow-wrap: anywhere; }
-.feedback-management-summary small { flex-basis: 100%; }
-.feedback-page-message { margin-top: 14px; }
-.feedback-read-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; color: var(--feedback-text-muted); font-size: 11px; }
-.feedback-queue-count { margin-left: 4px; font-family: var(--font-d); }
-.feedback-ticket-actions { display: grid; gap: 10px; }
-.feedback-reply-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.feedback-reply-tools code { min-width: 0; color: var(--feedback-text-muted); font: 12px var(--font-d); overflow-wrap: anywhere; }
+.feedback-management-summary { color: var(--feedback-text-muted); }
+.feedback-read-tools { color: var(--feedback-text-muted); }
+.feedback-reply-tools code { color: var(--feedback-text-muted); }
 .feedback-reply-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.feedback-action-toolbar .danger { margin-left: auto; }
-.feedback-action-toolbar [aria-expanded="true"] svg { transform: rotate(180deg); }
-.feedback-workflow-options { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.feedback-management-dialog { width: min(640px, calc(100vw - 28px)); max-width: 640px; max-height: min(760px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
-.feedback-management-dialog .modal-head button { min-width: 44px; min-height: 44px; }
-.feedback-management-body { min-height: 0; overflow-y: auto; padding: 16px 20px 20px; }
-.feedback-workflow-form { display: grid; gap: 12px; max-height: min(60vh, 420px); max-height: min(60dvh, 420px); overflow-y: auto; padding: 14px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.feedback-workflow-form > strong { color: var(--feedback-text); font-family: var(--font-s); font-size: 14px; }
-.feedback-workflow-form label { min-width: 0; display: grid; gap: 6px; color: var(--feedback-text); font-size: 12px; font-weight: 800; }
-.feedback-workflow-form select, .feedback-workflow-form textarea { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); color: var(--feedback-text); font: 14px var(--font-b); }
-.feedback-workflow-form textarea { min-height: 86px; resize: vertical; }
+.feedback-workflow-options { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.feedback-workflow-form { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.feedback-workflow-form > strong { color: var(--feedback-text); }
+.feedback-workflow-form label { color: var(--feedback-text); }
+.feedback-workflow-form select, .feedback-workflow-form textarea { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); color: var(--feedback-text); }
 .feedback-workflow-form select:focus-visible, .feedback-workflow-form textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.feedback-workflow-hint, .feedback-workflow-error { margin: 0; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.6; }
+.feedback-workflow-hint, .feedback-workflow-error { color: var(--feedback-text-muted); }
 .feedback-workflow-error { color: var(--feedback-danger); }
-.feedback-workflow-error button { border: 0; background: none; color: inherit; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
-.feedback-workflow-message { margin: 0; padding: 10px 12px; border-left: 3px solid var(--feedback-success); border-radius: 5px; background: var(--feedback-panel); color: var(--feedback-text); font-size: 12px; font-weight: 800; }
-.feedback-history-dialog { width: min(640px, calc(100vw - 28px)); max-height: min(760px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
-.feedback-history-dialog .modal-head small { display: block; margin-top: 4px; color: var(--feedback-text-dim); font: 11px var(--font-d); overflow-wrap: anywhere; }
-.feedback-history-dialog .modal-head button { min-width: 44px; min-height: 44px; }
-.feedback-history-body { min-height: 0; overflow-y: auto; padding: 16px 20px; }
-.feedback-history-body > p { color: var(--feedback-text-muted); font-size: 12px; line-height: 1.6; }
+.feedback-workflow-error button { border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; }
+.feedback-workflow-message { border-left: 3px solid var(--feedback-success); border-radius: 5px; background: var(--feedback-panel); color: var(--feedback-text); }
+.feedback-history-dialog .modal-head small { color: var(--feedback-text-dim); }
+.feedback-history-body > p { color: var(--feedback-text-muted); }
 .feedback-history-body > .feedback-workflow-error { color: var(--feedback-danger); }
-.feedback-workflow-events { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.feedback-workflow-events li { min-width: 0; display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); overflow-wrap: anywhere; }
-.feedback-workflow-events li > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 5px 12px; }
-.feedback-workflow-events b { color: var(--feedback-text); font-size: 12px; }
-.feedback-workflow-events time, .feedback-workflow-events span { color: var(--feedback-text-dim); font-size: 11px; }
-.feedback-workflow-events p { margin: 0; color: var(--feedback-text-muted); font-size: 12px; line-height: 1.6; }
-@media (max-width: 640px) {
-  .feedback-management-dialog { width: 100%; max-height: min(92dvh, 760px); }
-  .feedback-management-body { padding: 14px 16px 18px; }
-  .feedback-history-dialog { width: 100%; max-height: min(92dvh, 760px); }
-  .feedback-action-toolbar > button { flex: 1 1 calc(50% - 4px); }
-  .feedback-action-toolbar .danger { margin-left: 0; }
-  .feedback-workflow-options > button { flex: 1 1 calc(50% - 4px); }
-  .feedback-workflow-form select, .feedback-workflow-form textarea { font-size: 16px; }
-  .feedback-workflow-form .feedback-form-actions { flex-wrap: wrap; }
-}
+.feedback-workflow-events li { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--surface); }
+.feedback-workflow-events b { color: var(--feedback-text); }
+.feedback-workflow-events time, .feedback-workflow-events span { color: var(--feedback-text-dim); }
+.feedback-workflow-events p { color: var(--feedback-text-muted); }
 </style>
+<style scoped src="./feedbackManageDesktop.css"></style>
+<style scoped src="./feedbackManageMobile.css"></style>

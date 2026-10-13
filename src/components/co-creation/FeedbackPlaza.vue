@@ -277,21 +277,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.feedback-plaza { padding-bottom: 56px; }
-.plaza-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
-.plaza-skeleton { min-height: 168px; display: grid; gap: 12px; padding: 16px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
-.plaza-skeleton span { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(156, 122, 77, .12), rgba(156, 122, 77, .22), rgba(156, 122, 77, .12)); background-size: 200% 100%; animation: plaza-shimmer 1.3s ease-in-out infinite; }
-.plaza-skeleton span:first-child { width: 45%; }
-.plaza-skeleton span:nth-child(2) { width: 82%; height: 16px; }
-.plaza-skeleton span:last-child { width: 60%; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.plaza-skeleton { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); }
+.plaza-skeleton span { border-radius: 6px; background: linear-gradient(90deg, rgba(156, 122, 77, .12), rgba(156, 122, 77, .22), rgba(156, 122, 77, .12)); background-size: 200% 100%; animation: plaza-shimmer 1.3s ease-in-out infinite; }
 @keyframes plaza-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-.plaza-state { min-height: 240px; display: grid; place-content: center; justify-items: center; gap: 10px; margin-top: 18px; padding: 28px; border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); font-size: 13px; text-align: center; }
+.plaza-state { border: 1px solid var(--feedback-line); border-radius: 8px; background: var(--feedback-panel); color: var(--feedback-text-muted); }
 .plaza-state strong { color: var(--feedback-text); }
 .plaza-state.error { color: var(--feedback-danger); }
-.plaza-pagination { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 8px; color: var(--feedback-text-dim); font: 11px var(--font-d); }
-.plaza-pagination > div { display: flex; overflow: hidden; border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
-.plaza-pagination button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
+.plaza-pagination { color: var(--feedback-text-dim); }
+.plaza-pagination > div { border: 1px solid var(--feedback-line); border-radius: 7px; background: var(--feedback-panel); }
+.plaza-pagination button { border: 0; border-left: 1px solid var(--feedback-line); background: transparent; color: var(--feedback-text-muted); cursor: pointer; }
 .plaza-pagination button:first-child { border-left: 0; }
 .plaza-pagination button:disabled { opacity: .3; cursor: default; }
-
 </style>
+<style scoped src="./feedbackPlazaDesktop.css"></style>
+<style scoped src="./feedbackPlazaMobile.css"></style>

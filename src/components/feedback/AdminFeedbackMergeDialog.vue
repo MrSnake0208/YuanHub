@@ -139,20 +139,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.merge-dialog { width: min(680px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 32px)); max-height: min(760px, calc(100dvh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
-.merge-body { min-height: 0; overflow-y: auto; padding: 18px 20px; }
-.merge-lead { margin-bottom: 10px; color: var(--ink); font-weight: 800; }
-.merge-lead, .merge-selected { overflow-wrap: anywhere; }
-.merge-selected { padding-top: 10px; color: var(--tea); font-size: 12px; font-weight: 800; }
-.merge-list { display: grid; gap: 8px; margin-top: 14px; list-style: none; }
-.merge-list li button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.merge-lead { color: var(--ink); }
+.merge-selected { color: var(--tea); }
+.merge-list li button { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .merge-list li.on button { border-color: var(--yellow-deep); background: var(--yellow); }
-.merge-item-main { min-width: 0; display: grid; gap: 4px; }
-.merge-item-main strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.merge-item-main small { color: var(--ink-60); font: 11px var(--font-d); }
-.merge-pick { flex: none; color: var(--tea); font-size: 12px; font-weight: 800; }
-.merge-state { padding: 12px 0; color: var(--ink-60); font-size: 12px; }
+.merge-item-main small { color: var(--ink-60); }
+.merge-pick { color: var(--tea); }
+.merge-state { color: var(--ink-60); }
 .merge-state.error { color: var(--rouge); }
-.merge-warning { margin-top: 14px; padding: 10px 12px; border: 1px dashed var(--yellow-deep); border-radius: 7px; background: rgba(239, 210, 142, .22); color: var(--ink-60); font-size: 12px; line-height: 1.7; }
-.merge-dialog .modal-foot { flex: none; }
+.merge-warning { border: 1px dashed var(--yellow-deep); border-radius: 7px; background: rgba(239, 210, 142, .22); color: var(--ink-60); }
 </style>
+<style scoped src="./adminFeedbackMergeDialogDesktop.css"></style>
+<style scoped src="./adminFeedbackMergeDialogMobile.css"></style>
