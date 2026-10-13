@@ -65,16 +65,15 @@ onBeforeUnmount(cleanup)
 </script>
 
 <style scoped>
-.calendar-filter-mask { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; align-items: flex-end; background: color-mix(in srgb, var(--ink) 45%, transparent); }
-.calendar-filter-sheet { width: 100%; min-width: 0; max-height: min(76dvh, 640px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 22px 22px 0 0; color: var(--ink); }
-.calendar-filter-sheet-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px max(18px, env(safe-area-inset-right)) 12px max(18px, env(safe-area-inset-left)); flex: none; }
-.calendar-filter-sheet-header h2 { font-size: 22px; }
-.calendar-filter-sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(18px, env(safe-area-inset-right)) 16px max(18px, env(safe-area-inset-left)); }
-.calendar-filter-sheet-footer { padding: 12px max(18px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); border-top: 1px solid var(--line); flex: none; }
-.calendar-filter-sheet-footer button { width: 100%; background: var(--cream); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.calendar-filter-mask { background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.calendar-filter-sheet { background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 22px 22px 0 0; color: var(--ink); }
+.calendar-filter-sheet-footer { border-top: 1px solid var(--line); }
+.calendar-filter-sheet-footer button { background: var(--cream); }
 @media (min-width: 1024px) {
-  .calendar-filter-mask { align-items: flex-start; justify-content: flex-end; padding: 80px 32px 24px; background: color-mix(in srgb, var(--ink) 18%, transparent); }
-  .calendar-filter-sheet { width: 440px; max-height: calc(100dvh - 104px); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 18%, transparent); }
-  .calendar-filter-sheet-footer { padding-bottom: 16px; }
+  .calendar-filter-mask { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+  .calendar-filter-sheet { border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 48px color-mix(in srgb, var(--tea) 18%, transparent); }
 }
 </style>
+<style scoped src="./calendarFilterSheetDesktop.css"></style>
+<style scoped src="./calendarFilterSheetMobile.css"></style>

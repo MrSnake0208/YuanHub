@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：今日一览、库存与密探四入口 verified_nonbrowser（8/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：今日一览、库存与密探四入口 verified_nonbrowser（12/43 UI 路由）；库存 A1/A2 与后续子工作区持续定向复核通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -16,11 +16,11 @@
 | /beta | pages/beta/index.vue | 待拆分 | 待拆分 | pages/beta/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /admin/beta | pages/admin/beta.vue | 待拆分 | 待拆分 | pages/admin/beta.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /（alias /today） | pages/today/index.vue | components/today/today{Layout,Account,Onboarding,Lobby,Activity,Subscription}Desktop.css | components/today/today{Layout,Account,Onboarding,Lobby,Activity,Subscription}Mobile.css | pages/today/index.vue | verified_nonbrowser | B01：87 行为 + 12 Node + static/build | 无阻塞；待人工 UI | pending |
-| /calendar（feature: activityCalendar） | pages/calendar/index.vue | 待拆分 | 待拆分 | pages/calendar/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /calendar/suggestions/new（feature: activityCalendar） | pages/calendar/suggestion-new.vue | 待拆分 | 待拆分 | pages/calendar/suggestion-new.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /calendar/suggestions（feature: activityCalendar） | pages/calendar/suggestions.vue | 待拆分 | 待拆分 | pages/calendar/suggestions.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /calendar（feature: activityCalendar） | pages/calendar/index.vue | pages/calendar/calendarPageDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarPageMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
+| /calendar/suggestions/new（feature: activityCalendar） | pages/calendar/suggestion-new.vue | pages/calendar/calendarSuggestionNewDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarSuggestionNewMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
+| /calendar/suggestions（feature: activityCalendar） | pages/calendar/suggestions.vue | pages/calendar/calendarSuggestionsDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarSuggestionsMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /admin/ledger | pages/ledger/admin.vue | 待拆分 | 待拆分 | pages/ledger/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /calendar/admin（feature: activityCalendar） | pages/calendar/admin.vue | 待拆分 | 待拆分 | pages/calendar/admin.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /calendar/admin（feature: activityCalendar） | pages/calendar/admin.vue | pages/calendar/calendarAdminDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarAdminMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /works（feature: workSystem） | pages/work/index.vue | 待拆分 | 待拆分 | pages/work/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /work/new（feature: workSystem） | pages/work/editor.vue | 待拆分 | 待拆分 | pages/work/editor.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /work/:id（feature: workSystem） | pages/work/detail.vue | 待拆分 | 待拆分 | pages/work/detail.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
@@ -70,7 +70,7 @@
 | /inventory 奖励/导入预览/日期弹层 | components/inventory/RewardEntryWorkspace.vue + RewardDateTimePicker.vue | reward{EntryWorkspace,DateTimePicker}Desktop.css | reward{EntryWorkspace,DateTimePicker}Mobile.css | 原两个功能组件 | verified_nonbrowser | B05：74奖励行为/父级联动/CSS/build | 唯一弹窗与日期实例；待人工UI | pending |
 | /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue + components/operator/ | operatorWorkspaceDesktop.css + 功能组件Desktop.css | operatorWorkspaceMobile.css + 功能组件Mobile.css | 原控制器/visitedTabs/全部功能组件 | verified_nonbrowser | B06：真实父级编辑/追踪清单/星石状态 + 原契约 | 保持功能开关；人工UI待做 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/RecruitmentWorkspace.vue + PoolEditor/EntryEditor/RecruitmentExchange/RecruitmentTimeline | 对应recruitment*Desktop.css | 对应recruitment*Mobile.css | 原控制器及 PoolEditor | verified_nonbrowser | B07：真实行编辑/预览 resize与原排序/CAS测试 | rows/originals/orderRevision/CAS逐字保留；人工UI待做 | pending |
-| /calendar 公共/个人/私人事项/三种视图 | pages/calendar/index.vue | 待拆分 | 待拆分 | 原控制器/订阅编辑器 | pending | 实际路由 | agenda/timeline/month 是用户选择，不随设备重置 | pending |
+| /calendar 公共/个人/私人事项/三种视图 | pages/calendar/index.vue + components/calendar/ | calendar/public-calendarDesktop.css + 各局部Desktop.css | calendar/public-calendarMobile.css + 各局部Mobile.css | 原控制器/订阅编辑器 | verified_nonbrowser | B08：三视图/私人事项/订阅待办真实resize | agenda/timeline/month保持用户选择；人工UI待做 | pending |
 | /star 嵌入内部（背包/计划/OCR） | pages/star/index.vue | 待核实源码 | 待核实源码 | 唯一 iframe 业务实例 | pending | 主站入口存在 | 定位真实源码与同步流程；禁止直接修改构建产物 | pending |
 
 ## B01：今日一览（L2，整体任务 L3）
@@ -131,4 +131,12 @@
 - 首次行为测试3条旧文案断言失败；临时使用d956db0原始组件与原始测试复跑，55项中同样3条失败。更新回执、未保存数量、保存按钮文案/禁用状态的断言，保留草稿、顺序、数据与命令次数；没有为迎合旧测试恢复废弃UI。临时基线文件已清除，原始失败日志保留。
 - `npm run build` 成功、`git diff --check` 通过；日志 `.test-artifacts/pc-mobile-layered/batch-07-*.log`。密探本批提交补记 `d956db0`。本批保存标题 `refactor(recruitment): 分离招募与记录编辑双端展示`。完整路由8/43，人工UI仍pending。
 
-下一动作：日历公共/个人视图、私人事项、建议及管理端；保留agenda/timeline/month用户选择和账号订阅草稿。
+## B08：日历四入口与全部日历展示（L1样式归属；按私人数据和订阅风险回归）
+
+- 公共/个人日历、建议提交/记录、管理员入口各自有双端CSS与显式main/wrap空间；calendar.css/public-calendar.css保留公共外观，实际布局与密度移入对应Desktop/Mobile文件。保持原全局calendar命名空间服务子视图与Teleport弹层，实际SFC外部样式引用替代原CSS import；全局规则逐条检查命名空间与设备媒体归属。
+- 筛选抽屉、私人事项与管理导入弹窗各自scoped双端CSS；全部7个模板逐字不变，业务脚本仅移动CSS import，无状态/请求/校验/权限变更。agenda/timeline/month仍是原用户选择，共享功能组件由上述独立模块CSS持有真实排布，没有六套业务实例。
+- 局部7个展示952组、共享样式272组声明投影与原源码一致；默认壳值另按main.css接回。`node --test test/pcMobileStyleOwnership.test.js test/activityCalendar*.test.js test/calendarPrivateItems.test.js test/overlayLayering.test.js`：183/183。
+- `npx --no-install vitest run behavior/activityCalendar*.spec.js behavior/calendarPrivateItems*.spec.js`：307/307（20文件）。新增10个两端用例，三个用户视图的URL/实例/焦点不重置，私人事项标题/日期/备注和订阅待办脏草稿保持，resize无额外读写；原账号隔离/迟到结果/权限与契约检查保留。部分直接挂载测试保留Router缺少活动路由提示，不代表真实运行错误。
+- `npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-08-*.log`。招募提交补记 `6ec309d`；本批保存标题 `refactor(calendar): 隔离日历视图与私人事项双端布局`。完整路由12/43，人工UI仍pending。
+
+下一动作：反馈/共建真实工作区及工单处理与审核弹层，保留编辑、附件和发布预览。

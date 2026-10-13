@@ -13,6 +13,7 @@ import { isFeatureEnabled } from '../src/config/features.js'
 import { CALENDAR_VIEW_STORAGE_KEY, monthGridRange, timelineRange } from '../src/data/activityCalendar.js'
 import { CALENDAR_SUBSCRIPTIONS } from '../src/data/activityCalendarSubscriptions.js'
 import { denseMonthItems } from '../test-support/calendarMonthFixtures.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/api/activityCalendar.js', () => ({ listActivityCalendar: vi.fn() }))
 vi.mock('../src/config/features.js', async importOriginal => ({ ...(await importOriginal()), isFeatureEnabled: vi.fn(() => true) }))
@@ -40,6 +41,25 @@ beforeEach(() => {
   vi.stubGlobal('innerWidth', 390)
   isFeatureEnabled.mockReturnValue(true)
   listActivityCalendar.mockResolvedValue({ items: [event()] })
+})
+
+it.each([390, 1440].flatMap(width => ['agenda', 'timeline', 'month'].map(view => [width, view])))('用户选择的日历视图跨独立布局保持实例、URL与焦点：%ipx %s', async (width, view) => {
+  const viewport = installViewport(width)
+  const { wrapper, router } = await render(`/calendar?view=${view}&date=2026-10-07&game=如鸢&ref=share`)
+  const component = { agenda: Agenda, timeline: Timeline, month: Month }[view]
+  const instance = wrapper.getComponent(component).vm.$
+  const selected = wrapper.get('.calendar-view-switcher [aria-pressed=true]')
+  selected.element.focus()
+  const path = router.currentRoute.value.fullPath
+  const reads = listActivityCalendar.mock.calls.length
+  for (const next of [640, 641, 767, 767.5, 768, 1024, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.findAllComponents(component)).toHaveLength(1)
+    expect(wrapper.getComponent(component).vm.$).toBe(instance)
+    expect(router.currentRoute.value.fullPath).toBe(path)
+    expect(document.activeElement).toBe(selected.element)
+    expect(listActivityCalendar).toHaveBeenCalledTimes(reads)
+  }
 })
 
 it.each([[320, 'agenda'], [390, 'agenda'], [430, 'agenda'], [768, 'agenda'], [1024, 'timeline'], [1440, 'timeline']])('首次%dpx选择%s，resize不会强制改视图', async (width, view) => {

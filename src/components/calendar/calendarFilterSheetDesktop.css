@@ -1,0 +1,15 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.calendar-filter-mask { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; align-items: flex-end; }
+.calendar-filter-sheet { width: 100%; min-width: 0; max-height: min(76dvh, 640px); display: flex; flex-direction: column; }
+.calendar-filter-sheet-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px max(18px, env(safe-area-inset-right)) 12px max(18px, env(safe-area-inset-left)); flex: none; }
+.calendar-filter-sheet-header h2 { font-size: 22px; }
+.calendar-filter-sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px max(18px, env(safe-area-inset-right)) 16px max(18px, env(safe-area-inset-left)); }
+.calendar-filter-sheet-footer { padding: 12px max(18px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); flex: none; }
+.calendar-filter-sheet-footer button { width: 100%; }
+@media (min-width: 1024px) {
+  .calendar-filter-mask { align-items: flex-start; justify-content: flex-end; padding: 80px 32px 24px; }
+  .calendar-filter-sheet { width: 440px; max-height: calc(100dvh - 104px); }
+  .calendar-filter-sheet-footer { padding-bottom: 16px; }
+}
+}

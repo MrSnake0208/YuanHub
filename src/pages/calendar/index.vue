@@ -110,8 +110,6 @@ import CalendarFilterSheet from '@/components/calendar/CalendarFilterSheet.vue'
 import { FEATURE_KEYS, isFeatureEnabled } from '@/config/features.js'
 import { listActivityCalendar } from '@/api/activityCalendar.js'
 import { CALENDAR_CATEGORIES, CALENDAR_GAMES, CALENDAR_TIME_FILTERS, CALENDAR_VIEW_STORAGE_KEY, calendarAnchorDate, calendarFilterQuery, calendarFilters, calendarRequestRange, calendarView, calendarViewQuery, filterCalendarItems, millisecondsUntilServerMidnight, nextCalendarBoundary, normalizeCalendarItems, serverToday, summarizeCalendarDay } from '@/data/activityCalendar.js'
-import './calendar.css'
-import './public-calendar.css'
 
 const route = useRoute(), router = useRouter()
 const enabled = isFeatureEnabled(FEATURE_KEYS.ACTIVITY_CALENDAR)
@@ -301,12 +299,15 @@ function scheduleBoundary() {
 watch(() => [items.value, subscriptions.records.value], scheduleBoundary)
 </script>
 
+<style src="./calendar.css"></style>
+<style src="./calendarDesktop.css"></style>
+<style src="./calendarMobile.css"></style>
+<style src="./public-calendar.css"></style>
+<style src="./public-calendarDesktop.css"></style>
+<style src="./public-calendarMobile.css"></style>
 <style scoped>
-.calendar-public .calendar-content { grid-template-columns: minmax(0, 1fr); }
-.calendar-public .calendar-header { padding-top: 20px; padding-bottom: 12px; gap: 12px; }
-.calendar-public .calendar-header h1 { margin: 0; color: var(--tea); font: 900 30px/1.3 var(--font-s); letter-spacing: .035em; overflow-wrap: anywhere; }
-@media (min-width: 768px) {
-  .calendar-public .calendar-header { grid-template-columns: minmax(0, 1fr) auto; }
-  .calendar-public .calendar-view-tools { grid-column: 2; grid-row: 1; }
-}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.calendar-public .calendar-header h1 { color: var(--tea); }
 </style>
+<style scoped src="./calendarPageDesktop.css"></style>
+<style scoped src="./calendarPageMobile.css"></style>

@@ -9,6 +9,7 @@ import { listActivityCalendar } from '../src/api/activityCalendar.js'
 import { listCalendarSubscriptions, getCalendarSubscription, setCalendarSubscription, saveCalendarProgress } from '../src/api/activityCalendarSubscriptions.js'
 import { createCalendarPrivateItem, deleteCalendarPrivateItem, getCalendarPrivateItem, listCalendarPrivateItems, updateCalendarPrivateItem } from '../src/api/calendarPrivateItems.js'
 import { dialog } from '../src/utils/dialog.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ isLoggedIn: true, isAdmin: false, userInfo: { id: 'owner' } }) }))
 vi.mock('../src/api/accounts.js', () => ({ listAccounts: vi.fn() }))
@@ -22,6 +23,26 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes, 
 let wrapper, rows
 const button = text => wrapper.findAll('button').find(node => node.text() === text)
 const editor = () => document.querySelector('.calendar-private-dialog')
+it.each([390, 1440])('真实日历私人事项跨布局保持未保存文本、日期及焦点：%ipx', async width => {
+  const viewport = installViewport(width)
+  await render(); await button('添加私人事项').trigger('click'); await flushPromises()
+  await field('title', '尚未保存的私人事项'); await field('start_date', '2026-10-16'); await field('note', '私密草稿')
+  const instance = wrapper.getComponent({ name: 'CalendarPrivateItemEditor' }).vm.$
+  const input = document.querySelector('#private-item-title-input'); input.focus()
+  const reads = [listCalendarPrivateItems.mock.calls.length, listCalendarSubscriptions.mock.calls.length]
+  for (const next of [767, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent({ name: 'CalendarPrivateItemEditor' }).vm.$).toBe(instance)
+    expect(document.querySelectorAll('.calendar-private-dialog')).toHaveLength(1)
+    expect(input.value).toBe('尚未保存的私人事项')
+    expect(document.querySelector('#private-item-start_date').value).toBe('2026-10-16')
+    expect(document.querySelector('#private-item-note').value).toBe('私密草稿')
+    expect(document.activeElement).toBe(input)
+    expect([listCalendarPrivateItems.mock.calls.length, listCalendarSubscriptions.mock.calls.length]).toEqual(reads)
+    expect(createCalendarPrivateItem).not.toHaveBeenCalled()
+    expect(updateCalendarPrivateItem).not.toHaveBeenCalled()
+  }
+})
 async function field(name, value) {
   const input = document.querySelector(name === 'title' ? '#private-item-title-input' : '#private-item-' + name)
   input.value = value; input.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises()
