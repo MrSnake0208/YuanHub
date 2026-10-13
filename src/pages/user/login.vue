@@ -98,13 +98,11 @@ async function onSubmit() {
 </script>
 
 <style scoped>
-.logout-result { margin-top:20px; padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--tea); font-weight:700; }
-.auth-form { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
-.field label {
-  display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-60); margin-bottom: 6px;
-  letter-spacing: .04em;
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.logout-result { border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--tea); }
+.field label { color: var(--ink-60);
 }
-.field label em { color: var(--rouge); font-style: normal; }
+.field label em { color: var(--rouge); }
 .input-wrap {
   background: var(--cream);
   border: 1.5px solid var(--line);
@@ -112,34 +110,27 @@ async function onSubmit() {
   transition: border-color .3s var(--ease), box-shadow .3s var(--ease);
 }
 .input-wrap.focus { border-color: var(--yellow-deep); box-shadow: 0 0 0 3px rgba(239,210,142,.35); }
-.input-wrap input {
-  width: 100%; border: none; outline: none; background: transparent;
-  padding: 12px 14px; font-size: 14px; font-family: var(--font-b); color: var(--ink);
+.input-wrap input { border: none; outline: none; background: transparent; color: var(--ink);
 }
 .input-wrap input::placeholder { color: var(--ink-35); }
-.field-err { margin-top: 5px; font-size: 12px; color: var(--rouge); font-weight: 600; }
+.field-err { color: var(--rouge); }
 .form-err {
-  display: flex; align-items: center; gap: 8px;
   background: rgba(166,81,74,.08); border: 1px solid rgba(166,81,74,.28);
-  color: var(--rouge); font-size: 12.5px; font-weight: 600;
-  border-radius: 10px; padding: 9px 12px;
+  color: var(--rouge);
+  border-radius: 10px;
 }
-.form-err .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rouge); flex: none; }
+.form-err .dot { border-radius: 50%; background: var(--rouge); }
 .btn-submit {
-  margin-top: 4px;
   background: var(--tea); color: var(--cream);
-  border: none; border-radius: 999px; padding: 14px 0;
-  font-size: 15px; font-weight: 800; font-family: var(--font-b);
-  letter-spacing: .14em; cursor: pointer; transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
+  border: none; border-radius: 999px; cursor: pointer; transition: color .35s var(--ease), background-color .35s var(--ease), transform .35s var(--ease);
 }
-.btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; transform: translateY(-2px); }
+.btn-submit:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .btn-submit:disabled { opacity: .55; cursor: default; }
-.auth-switch {
-  margin-top: 24px; padding-top: 18px; border-top: 1px dashed var(--line);
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  font-size: 13px; color: var(--ink-60);
+.auth-switch { border-top: 1px dashed var(--line); color: var(--ink-60);
 }
 .auth-switch a { text-decoration: none; color: var(--ink-60); transition: color .3s; }
 .auth-switch a b { color: var(--ink); border-bottom: 1.5px solid var(--yellow); }
 .auth-switch a:hover, .auth-switch a:hover b { color: var(--accent); }
 </style>
+<style scoped src="./loginPageDesktop.css"></style>
+<style scoped src="./loginPageMobile.css"></style>

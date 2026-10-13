@@ -541,9 +541,6 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
   .modal input{min-height:44px;font-size:16px}
   .modal-foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
   .modal-foot .btn{flex:1}
-  .page-auth .input-wrap input{min-height:44px;font-size:16px}
-  .page-auth .back a{min-height:44px;display:inline-flex;align-items:center}
-  .page-auth .auth-switch a{min-height:44px;display:flex;align-items:center;justify-content:center}
   .rv{transform:translateY(8px);transition-duration:.3s}
   .modal{animation-name:mobile-modal-in;transform-origin:bottom}
 }
@@ -556,8 +553,6 @@ main,.wrap,.hero-stats>div,.work>*{min-width:0}
 @media (max-width:360px){
   .mobile-brand{font-size:11px}
   .mobile-brand .brand-mark{width:30px;height:30px}
-  .page-auth .split-row{align-items:stretch;flex-direction:column}
-  .page-auth .split-row .code-btn{width:100%}
   .hero::after{right:-34px;top:-70px;font-size:148px}
   .page-detail .hero::after{right:-34px;top:-66px;font-size:156px}
   .hero h1,.page-detail .hero h1{font-size:36px}

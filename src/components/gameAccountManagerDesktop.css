@@ -1,0 +1,66 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.game-account-manager { margin-top: 24px; }
+.game-account-manager.is-dialog-presentation { display: contents; }
+.manager-head, .manager-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.manager-head { justify-content: space-between; flex-wrap: wrap; padding: 16px; }
+.manager-title h2 { font: 900 20px/1.4 var(--font-s); }
+.account-count { font: 13px/1.5 var(--font-d); white-space: nowrap; }
+.account-list { margin: 0; padding: 0 16px; list-style: none; }
+.account-row { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 12px 0; }
+.account-identity { flex: 1; min-width: 0; }
+.account-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
+.account-identity p { margin: 3px 0 0; font-size: 12px; }
+.more-trigger, .panel-close { display: grid; place-items: center; flex: none; min-width: 44px; min-height: 44px; }
+.primary-action, .secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 14px; font: 700 13px/1.5 var(--font-b); white-space: nowrap; }
+.manager-state, .empty-state { display: flex; align-items: center; gap: 12px; padding: 20px 16px; font-size: 13px; }
+.empty-state svg { flex: none; }
+.empty-state h3 { font: 900 15px/1.5 var(--font-s); }
+.empty-state p { margin-top: 4px; line-height: 1.6; }
+.text-button { min-height: 44px; flex: none; font: inherit; }
+.manager-message { margin: 0; padding: 12px 16px; font-size: 13px; overflow-wrap: anywhere; }
+.account-panel-mask { align-items: flex-end; padding: max(12px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) 0 max(0px, env(safe-area-inset-left)); }
+.account-panel { display: flex; flex-direction: column; min-width: 0; width: 100%; max-width: none; max-height: 100%; overflow: hidden; font: 14px/1.6 var(--font-b); }
+.account-panel .modal-head { flex: none; padding: 12px 16px; }
+.account-panel .modal-head h3 { min-width: 0; overflow-wrap: anywhere; }
+.account-panel .account-form { display: flex; flex-direction: column; min-height: 0; gap: 0; padding: 0; }
+.form-body, .more-actions, .id-content { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 16px; overflow-wrap: anywhere; }
+.form-body { display: grid; gap: 16px; }
+.account-panel .modal-foot { flex: none; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.modal-foot button { flex: 1; }
+.panel-identity { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.panel-identity small { display: block; font-size: 12px; font-weight: 400; }
+.name-field { min-width: 0; margin: 0; }
+.name-field > span, .game-choice legend { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+.account-panel .name-field input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; font-size: 16px; }
+.game-choice { min-width: 0; margin: 0; padding: 0; }
+.game-options { display: flex; gap: 24px; flex-wrap: wrap; }
+.account-panel .game-options label { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; font-size: 14px; }
+.account-panel .game-options input { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; }
+.form-hint, .id-content > p:not(.panel-identity) { margin: 0; font-size: 12px; }
+.more-actions { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+.more-actions .panel-identity { padding: 0 8px 12px; }
+.more-actions button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 10px 8px; text-align: left; font: inherit; }
+.more-actions .danger { margin-top: 8px; }
+.id-content { display: grid; gap: 12px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+.id-content code { display: block; min-width: 0; padding: 12px; overflow-wrap: anywhere; }
+.manager-dialog-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.dialog-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; }
+.dialog-list-head p { font-size: 13px; }
+.manager-settings { display: flex; align-items: center; min-height: 44px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.danger-zone { display: grid; padding-top: 12px; font-size: 12px; }
+.danger-zone .danger { justify-self: start; }
+.is-manager-dialog .modal-head h3 { flex: 1; }
+:global(body:has(.account-panel-mask) .dialog-close),
+:global(body:has(.account-panel-mask) .dlg-btn) { min-width: 44px; min-height: 44px; }
+@media (min-width: 768px) {
+  .manager-head { padding: 16px 24px; }
+  .account-list { padding: 0 24px; }
+  .account-panel-mask { align-items: center; padding: 16px; }
+  .account-panel { max-width: 460px; max-height: 100%; }
+  .account-panel-mask.is-more { z-index: var(--z-popover); }
+  .more-panel { position: fixed; }
+  .modal-foot button { flex: none; }
+  .is-manager-dialog .account-panel { max-width: 520px; }
+}
+}

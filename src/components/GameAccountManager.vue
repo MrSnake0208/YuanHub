@@ -318,78 +318,50 @@ onBeforeUnmount(() => { alive = false; cleanup?.() })
 </script>
 
 <style scoped>
-.game-account-manager { margin-top: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
-.game-account-manager.is-dialog-presentation { display: contents; }
-.manager-head, .manager-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.manager-head { justify-content: space-between; flex-wrap: wrap; padding: 16px; border-bottom: 1px solid var(--line); }
-.manager-title h2 { color: var(--tea); font: 900 20px/1.4 var(--font-s); }
-.account-count { color: var(--ink-60); font: 13px/1.5 var(--font-d); white-space: nowrap; }
-.account-list { margin: 0; padding: 0 16px; list-style: none; }
-.account-row { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 12px 0; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.game-account-manager { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.manager-head { border-bottom: 1px solid var(--line); }
+.manager-title h2 { color: var(--tea); }
+.account-count { color: var(--ink-60); }
 .account-row + .account-row { border-top: 1px solid var(--line); }
-.account-identity { flex: 1; min-width: 0; }
-.account-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 14px; font-weight: 700; }
-.account-identity p { margin: 3px 0 0; color: var(--ink-60); font-size: 12px; }
+.account-name { color: var(--ink); }
+.account-identity p { color: var(--ink-60); }
 .account-identity p span { color: var(--tea); }
-.more-trigger, .panel-close { display: grid; place-items: center; flex: none; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--tea); cursor: pointer; }
+.more-trigger, .panel-close { border: 0; border-radius: 8px; background: transparent; color: var(--tea); cursor: pointer; }
 .more-trigger:hover, .panel-close:hover { background: var(--cream); }
-.primary-action, .secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font: 700 13px/1.5 var(--font-b); white-space: nowrap; }
+.primary-action, .secondary-action { border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .primary-action { border-color: var(--yellow-deep); background: var(--yellow); color: var(--ink); }
 .secondary-action { background: var(--surface); color: var(--tea); }
 button:disabled { opacity: .55; cursor: not-allowed; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
-.manager-state, .empty-state { display: flex; align-items: center; gap: 12px; padding: 20px 16px; color: var(--ink-60); font-size: 13px; }
-.empty-state svg { flex: none; }
-.empty-state h3 { color: var(--tea); font: 900 15px/1.5 var(--font-s); }
-.empty-state p { margin-top: 4px; line-height: 1.6; }
-.text-button { min-height: 44px; flex: none; border: 0; background: transparent; color: var(--tea); font: inherit; cursor: pointer; text-decoration: underline; }
-.manager-message { margin: 0; padding: 12px 16px; border-top: 1px solid var(--line); color: var(--tea); font-size: 13px; overflow-wrap: anywhere; }
+.manager-state, .empty-state { color: var(--ink-60); }
+.empty-state h3 { color: var(--tea); }
+.text-button { border: 0; background: transparent; color: var(--tea); cursor: pointer; text-decoration: underline; }
+.manager-message { border-top: 1px solid var(--line); color: var(--tea); }
 .error { color: var(--rouge); }
-.account-panel-mask { align-items: flex-end; padding: max(12px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) 0 max(0px, env(safe-area-inset-left)); }
-.account-panel { display: flex; flex-direction: column; min-width: 0; width: 100%; max-width: none; max-height: 100%; border-radius: 18px 18px 0 0; overflow: hidden; box-shadow: none; color: var(--ink); font: 14px/1.6 var(--font-b); }
-.account-panel .modal-head { flex: none; padding: 12px 16px; }
-.account-panel .modal-head h3 { min-width: 0; overflow-wrap: anywhere; }
-.account-panel .account-form { display: flex; flex-direction: column; min-height: 0; gap: 0; padding: 0; }
-.form-body, .more-actions, .id-content { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 16px; overflow-wrap: anywhere; }
-.form-body { display: grid; gap: 16px; }
-.account-panel .modal-foot { flex: none; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
-.modal-foot button { flex: 1; }
-.panel-identity { margin: 0; color: var(--tea); font-weight: 700; overflow-wrap: anywhere; }
-.panel-identity small { display: block; color: var(--ink-60); font-size: 12px; font-weight: 400; }
-.name-field { min-width: 0; margin: 0; }
-.name-field > span, .game-choice legend { display: block; margin-bottom: 6px; color: var(--tea); font-size: 13px; font-weight: 700; }
-.account-panel .name-field input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; font-size: 16px; }
-.game-choice { min-width: 0; margin: 0; padding: 0; border: 0; }
-.game-options { display: flex; gap: 24px; flex-wrap: wrap; }
-.account-panel .game-options label { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; color: var(--ink); cursor: pointer; font-size: 14px; }
-.account-panel .game-options input { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; accent-color: var(--tea); }
-.form-hint, .id-content > p:not(.panel-identity) { margin: 0; color: var(--ink-60); font-size: 12px; }
-.more-actions { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-.more-actions .panel-identity { padding: 0 8px 12px; }
-.more-actions button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 10px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--tea); text-align: left; font: inherit; cursor: pointer; }
+.account-panel { border-radius: 18px 18px 0 0; box-shadow: none; color: var(--ink); }
+.panel-identity { color: var(--tea); }
+.panel-identity small { color: var(--ink-60); }
+.name-field > span, .game-choice legend { color: var(--tea); }
+.game-choice { border: 0; }
+.account-panel .game-options label { color: var(--ink); cursor: pointer; }
+.account-panel .game-options input { accent-color: var(--tea); }
+.form-hint, .id-content > p:not(.panel-identity) { color: var(--ink-60); }
+.more-actions button { border: 0; border-radius: 6px; background: transparent; color: var(--tea); cursor: pointer; }
 .more-actions button:hover { background: var(--cream); }
-.more-actions .danger { margin-top: 8px; border-top: 1px solid var(--line); border-radius: 0; color: var(--rouge); }
-.id-content { display: grid; gap: 12px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
-.id-content code { display: block; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); overflow-wrap: anywhere; user-select: text; }
-.manager-dialog-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.dialog-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; }
-.dialog-list-head p { color: var(--ink-60); font-size: 13px; }
-.manager-settings { display: flex; align-items: center; min-height: 44px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); color: var(--tea); text-decoration: none; }
+.more-actions .danger { border-top: 1px solid var(--line); border-radius: 0; color: var(--rouge); }
+.id-content code { border: 1px solid var(--line); border-radius: 8px; background: var(--cream); user-select: text; }
+.dialog-list-head p { color: var(--ink-60); }
+.manager-settings { border-top: 1px solid var(--line); color: var(--tea); text-decoration: none; }
 a:focus-visible { outline: 2px solid var(--tea); outline-offset: -3px; }
-.danger-zone { display: grid; border-top: 1px solid var(--line); padding-top: 12px; color: var(--ink-60); font-size: 12px; }
-.danger-zone .danger { justify-self: start; color: var(--rouge); }
-.is-manager-dialog .modal-head h3 { flex: 1; }
+.danger-zone { border-top: 1px solid var(--line); color: var(--ink-60); }
+.danger-zone .danger { color: var(--rouge); }
 /* The shared danger confirmation is opened above this manager's panel. */
-:global(body:has(.account-panel-mask) .dialog-close),
-:global(body:has(.account-panel-mask) .dlg-btn) { min-width: 44px; min-height: 44px; }
 @media (min-width: 768px) {
-  .manager-head { padding: 16px 24px; }
-  .account-list { padding: 0 24px; }
-  .account-panel-mask { align-items: center; padding: 16px; }
-  .account-panel { max-width: 460px; max-height: 100%; border-radius: 16px; }
-  .account-panel-mask.is-more { background: transparent; z-index: var(--z-popover); }
-  .more-panel { position: fixed; box-shadow: 0 4px 16px rgba(73,59,44,.08); border-radius: 10px; }
-  .modal-foot button { flex: none; }
-  .is-manager-dialog .account-panel { max-width: 520px; }
+  .account-panel { border-radius: 16px; }
+  .account-panel-mask.is-more { background: transparent; }
+  .more-panel { box-shadow: 0 4px 16px rgba(73,59,44,.08); border-radius: 10px; }
 }
 </style>
+<style scoped src="./gameAccountManagerDesktop.css"></style>
+<style scoped src="./gameAccountManagerMobile.css"></style>

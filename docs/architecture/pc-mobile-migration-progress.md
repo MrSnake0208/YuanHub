@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：29/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：34/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -39,11 +39,11 @@
 | /demo | pages/demo/index.vue | 待拆分 | 待拆分 | pages/demo/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /promo | pages/promo/index.vue | 待拆分 | 待拆分 | pages/promo/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /install | pages/install/index.vue | 待拆分 | 待拆分 | pages/install/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /login | pages/user/login.vue | 待拆分 | 待拆分 | pages/user/login.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /register | pages/user/register.vue | 待拆分 | 待拆分 | pages/user/register.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /forgot | pages/user/forgot.vue | 待拆分 | 待拆分 | pages/user/forgot.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /forbidden | pages/user/forbidden.vue | 待拆分 | 待拆分 | pages/user/forbidden.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /user/profile | pages/user/profile.vue | 待拆分 | 待拆分 | pages/user/profile.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /login | pages/user/login.vue | pages/user/loginPageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/loginPageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
+| /register | pages/user/register.vue | pages/user/registerPageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/registerPageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
+| /forgot | pages/user/forgot.vue | pages/user/forgotPageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/forgotPageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
+| /forbidden | pages/user/forbidden.vue | pages/user/forbiddenPageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/forbiddenPageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
+| /user/profile | pages/user/profile.vue | pages/user/profilePageDesktop.css + authLayout/gameAccountManagerDesktop.css | pages/user/profilePageMobile.css + authLayout/gameAccountManagerMobile.css | 原账号/认证/连接权限控制器 | verified_nonbrowser | B14：122行为/245 Node/CSS/build | 草稿/校验/身份/权限保持；人工UI待做 | pending |
 | /manage | pages/admin/index.vue | 待拆分 | 待拆分 | pages/admin/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
 | /feedback | pages/feedback/index.vue | feedbackMineDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackMineMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
 | /feedback/plaza | pages/feedback/plaza.vue | feedbackPlazaPageDesktop.css + feedback-workspaceDesktop.css + 功能组件Desktop.css | feedbackPlazaPageMobile.css + feedback-workspaceMobile.css + 功能组件Mobile.css | 原页面/工单/共建控制器 | verified_nonbrowser | B09：174行为/236 Node/CSS/build | 回复/发布/流转状态保持；人工UI待做 | pending |
@@ -175,4 +175,11 @@
 - 544组源码声明投影一致，清除矛盾媒体块6635字节。`npx --no-install vitest run behavior/beta*.spec.js`：30/30；新增4个两端用例，规则展开/同意/焦点、扩容目标/原因/禁用状态保持，resize无报名、取消、刷新或容量写入。
 - `node --test test/beta*.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：234/234。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-13-*.log`。作业提交补记 `475b00d`；本批保存标题 `refactor(beta): 分离内测资格与容量双端展示`。完整路由29/43，人工UI仍pending。
 
-下一动作：登录/注册/找回、禁止访问、账号与连接码。
+## B14：认证、异常入口与账号连接（L2；鉴权/权限控制器未改）
+
+- 五路由与AuthLayout、GameAccountManager共7个SFC接入双端CSS；页面1080px、账号弹层767px，原内容断点保持。主区/内容空间显式归属，PasswordInput/编号详情仍为刻意共享字段控件。
+- 952组原局部声明投影一致。认证5条全局布局规则按原page-auth命名空间迁出main.css，接入AuthLayout两端auth-fields，以360px极窄表单排列边界区分，136组全局投影一致；避免scoped提升继承规则优先级。其他继承页壳与当前局部层叠顺序保持；共清理无效媒体块4084字节。
+- `npx --no-install vitest run behavior/authFlow.spec.js behavior/authStartupGuard.spec.js behavior/profileConnectionsUx.spec.js behavior/gameAccountManager.spec.js behavior/betaRedirectContext.spec.js behavior/todayComingSoon.spec.js`：122/122。新增10个真实布局/父级用例保留三认证页输入/密码可见/安全回跳/焦点、连接账号/权限/备注、游戏账号名称/游戏/唯一弹层；resize零额外读写。原身份往返、迟到凭证、权限及CRUD保护仍通过。
+- `node --test test/auth*.test.js test/latestAccountSync.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：245/245。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-14-*.log`。内测提交补记 `de483ba`；本批保存标题 `refactor(user): 隔离认证与账号连接双端展示`。完整路由34/43，真实浏览器仍待人工验收。直接挂载用例原Router提示保留。
+
+下一动作：管理工作台、角色、审计与关卡目录。

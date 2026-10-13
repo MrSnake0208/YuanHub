@@ -517,3 +517,42 @@ it.each(['identity', 'roundtrip', 'unmount'])('列表请求期间 %s 变化，�
   expect(activeAccount.syncAccounts).not.toHaveBeenCalled()
   expect(activeAccount.id).toBe('current-context')
 })
+
+
+it.each([390, 1440])('连接草稿在%s起步跨断点保持账号、权限、备注与焦点', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  listAccounts.mockResolvedValue([{ id: 'acc-a', name: '大号', game: '代号鸢' }, { id: 'acc-b', name: '小号', game: '如鸢' }])
+  getOpenApiPermissions.mockResolvedValue([{ scope: 'inventory:write', description: '上传库存' }])
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  try {
+    const details = wrapper.get('.advanced-zone').element
+    details.open = true
+    await wrapper.get('#advanced-account').setValue('acc-b')
+    await wrapper.get('.advanced-form input[type="checkbox"]').setValue(true)
+    await wrapper.get('#advanced-remark').setValue('跨布局未保存连接')
+    const input = wrapper.get('#advanced-remark').element
+    input.focus()
+    const accountReads = listAccounts.mock.calls.length
+    const tokenReads = getOpenApiTokens.mock.calls.length
+    for (const nextWidth of [640, 641, 767, 768, 820, 821, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('#advanced-remark').element).toBe(input)
+      expect(input.value).toBe('跨布局未保存连接')
+      expect(document.activeElement).toBe(input)
+      expect(wrapper.get('#advanced-account').element.value).toBe('acc-b')
+      expect(wrapper.get('.advanced-form input[type="checkbox"]').element.checked).toBe(true)
+      expect(wrapper.get('.advanced-zone').element).toBe(details)
+      expect(details.open).toBe(true)
+      expect(wrapper.findAll('.advanced-form')).toHaveLength(1)
+    }
+    expect(listAccounts).toHaveBeenCalledTimes(accountReads)
+    expect(getOpenApiTokens).toHaveBeenCalledTimes(tokenReads)
+    expect(generateOpenApiToken).not.toHaveBeenCalled()
+    expect(updateOpenApiTokenScopes).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})

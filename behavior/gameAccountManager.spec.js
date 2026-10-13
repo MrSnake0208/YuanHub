@@ -294,3 +294,35 @@ it('Dialog 结束创建/保存/删除回列表，空账号仍可创建', async (
   expect(list.value).toEqual([]); expect(activeAccount.id).toBe(''); expect(panel().textContent).toContain('还没有游戏账号')
   expect(panel().querySelector('.primary-action').disabled).toBe(false)
 })
+
+
+it.each([390, 1440])('游戏账号草稿在%s起步跨断点保持名称、游戏和唯一弹层', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const { wrapper, manager } = render(rows, { presentation: 'dialog', initialView: 'create' }); await flushPromises()
+  try {
+    await inputName('跨布局未保存账号')
+    const dialogPanel = panel()
+    const input = panel().querySelector('.name-field input')
+    const game = panel().querySelector('input[value="如鸢"]')
+    game.checked = true; game.dispatchEvent(new Event('change', { bubbles: true })); await nextTick()
+    input.focus()
+    for (const nextWidth of [640, 767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(panel()).toBe(dialogPanel)
+      expect(panel().querySelector('.name-field input')).toBe(input)
+      expect(input.value).toBe('跨布局未保存账号')
+      expect(game.checked).toBe(true)
+      expect(document.activeElement).toBe(input)
+      expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+    }
+    expect(manager.emitted('update:accountId')).toBeUndefined()
+    expect(createAccount).not.toHaveBeenCalled()
+    expect(updateAccount).not.toHaveBeenCalled()
+    expect(deleteAccount).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})
