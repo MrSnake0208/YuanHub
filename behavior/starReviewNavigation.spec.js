@@ -145,3 +145,56 @@ it.each([
   await history('undo')
   expect(list().scrollTop).toBe(430); expect(pageY).toBe(510)
 })
+
+it.each([
+  ['bag', 'arrow'], ['bag', 'keyboard'], ['plan', 'arrow'], ['plan', 'keyboard']
+])('%s drill history cannot be applied by %s undo on the other page', async (from, control) => {
+  await setup(from); list().scrollTop = 430; pageY = 510; drill('主星|武曲'); await settle()
+  const target = from === 'bag' ? 'plan' : 'bag'
+  handle.setReviewView(target); await settle(); list().scrollTop = 320; pageY = 360
+  if (target === 'plan') root.querySelector('.growth-route-list').scrollTop = 370
+  const before = { view: root.querySelector('#view-mode-toggle').textContent, filter: root.querySelector('#name-filter').value }
+  if (control === 'arrow') root.querySelector('#undo-workspace').click()
+  else { root.querySelector('#view-mode-toggle').focus({ preventScroll: true }); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })) }
+  await settle()
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe(before.view)
+  expect(root.querySelector('#name-filter').value).toBe(before.filter)
+  expect(root.querySelector('.summary-row.is-selected')).toBeNull()
+  expect(list().scrollTop).toBe(320); expect(pageY).toBe(360)
+  if (target === 'plan') expect(root.querySelector('.growth-route-list').scrollTop).toBe(370)
+  handle.setReviewView(from); await settle(); root.querySelector('#undo-workspace').click(); await settle()
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('名称汇总')
+  expect(root.querySelector('.summary-row.is-selected')?.dataset.summaryGroupKey).toBe('主星|武曲')
+  expect(list().scrollTop).toBe(430); expect(pageY).toBe(510)
+})
+
+it('pure navigation undo and redo remain independent across both pages', async () => {
+  await setup('bag'); list().scrollTop = 430; pageY = 510; drill('主星|武曲'); await settle()
+  root.querySelector('#undo-workspace').click(); await settle()
+  handle.setReviewView('plan'); await settle(); root.querySelector('#view-mode-toggle').click(); await settle()
+  list().scrollTop = 620; pageY = 680; drill('主星|天机'); await settle()
+  handle.setReviewView('bag'); await settle(); root.querySelector('#redo-workspace').click(); await settle()
+  expect(root.querySelector('#name-filter').value).toBe('武曲')
+  root.querySelector('#undo-workspace').click(); await settle(); expect(list().scrollTop).toBe(430)
+  handle.setReviewView('plan'); await settle(); root.querySelector('#undo-workspace').click(); await settle()
+  expect(root.querySelector('.summary-row.is-selected')?.dataset.summaryGroupKey).toBe('主星|天机')
+  expect(list().scrollTop).toBe(620); expect(pageY).toBe(680)
+  root.querySelector('#redo-workspace').click(); await settle(); expect(root.querySelector('#name-filter').value).toBe('天机')
+})
+
+it.each(['bag', 'plan'])('%s business edit still supports undo and redo from the other page', async from => {
+  await setup(from); drill('主星|武曲'); await settle()
+  const value = async () => { const snapshot = await handle.getCloudBusinessSnapshot(); return from === 'plan' ? snapshot.planTargets.c : snapshot.inventory.find(star => star.starInstanceId === 'c').level }
+  const changed = from === 'plan' ? 50 : 45, original = from === 'plan' ? 60 : 40
+  if (from === 'plan') { fire('#growth-target-level', '50', 'input'); root.querySelector('#growth-save').click() }
+  else { fire('[data-current-field="level"]', '45', 'input'); root.querySelector('[data-current-field="level"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })) }
+  await settle(); expect(await value()).toBe(changed)
+  handle.setReviewView(from === 'plan' ? 'bag' : 'plan'); await settle(); list().scrollTop = 320; pageY = 360
+  const view = root.querySelector('#view-mode-toggle').textContent
+  root.querySelector('#undo-workspace').click(); await settle()
+  expect(await value()).toBe(original)
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe(view); expect(list().scrollTop).toBe(320); expect(pageY).toBe(360)
+  root.querySelector('#redo-workspace').click(); await settle()
+  expect(await value()).toBe(changed)
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe(view)
+})
