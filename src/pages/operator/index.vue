@@ -2651,12 +2651,12 @@
                       </button>
                     </span>
                   </div>
-                <label v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true" class="star-row">五星之后 · 觉醒
+                <label v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true" class="star-row star-awakening-row">五星之后 · 觉醒
                   <select v-model="editForm.awakened" aria-label="觉醒确认" :disabled="!operatorAwakeningSupported(editingOp) || editForm.owned === false">
                     <option :value="null">待确认</option><option :value="false">确认未觉醒</option><option :value="true" :disabled="!editorCanConfirmAwakening">确认已觉醒</option>
                   </select>
                 </label>
-                <small v-if="operatorAwakeningSupported(editingOp)">仅记录游戏内状态，不扣库存；新确认已觉醒前请先核实五星化极。</small>
+                <small v-if="operatorAwakeningSupported(editingOp)" class="star-awakening-hint">仅记录游戏内状态，不扣库存；新确认已觉醒前请先核实五星化极。</small>
                 </div>
                 <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" role="status">历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 <div class="oddity-editor">
@@ -13662,6 +13662,49 @@ onBeforeUnmount(function () {
   gap: 12px;
   min-width: 0;
 }
+.star-awakening-row {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--yellow-deep);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--tea);
+  font: 800 14px/1.5 var(--font-b);
+}
+.star-awakening-row select {
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 220px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--cream);
+  color: var(--ink);
+  font: 700 14px/1.5 var(--font-b);
+  cursor: pointer;
+}
+.star-awakening-row select:hover:not(:disabled) {
+  border-color: var(--yellow-deep);
+}
+.star-awakening-row select:focus-visible {
+  outline: 2px solid var(--tea);
+  outline-offset: 3px;
+}
+.star-awakening-row select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.star-awakening-hint {
+  padding-inline: 2px;
+  color: var(--ink-60);
+  font: 12px/1.7 var(--font-b);
+  overflow-wrap: anywhere;
+}
 .star-caption {
   flex: none;
   width: 34px;
@@ -15613,6 +15656,10 @@ onBeforeUnmount(function () {
   .star-groups {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 3px;
+  }
+  .star-awakening-row select {
+    flex-basis: 100%;
+    max-width: none;
   }
   .star-pill {
     padding-inline: 2px;
