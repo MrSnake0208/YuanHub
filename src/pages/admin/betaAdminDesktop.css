@@ -1,0 +1,40 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-beta-admin > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.beta-admin-content { display: grid; gap: 20px; padding-top: 12px; padding-bottom: 42px; }
+.admin-card { padding: clamp(18px, 3vw, 30px); }
+h2 { font: 900 24px/1.5 var(--font-s); margin: 0 0 12px; }
+.beta-admin-content p { line-height: 1.9; overflow-wrap: anywhere; }
+.beta-state-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.beta-state-toolbar .admin-btn { flex: none; white-space: nowrap; }
+.beta-admin-content .beta-state-context { margin: 0; font-size: 13px; }
+.campaign-reference { display: block; font-family: var(--font-d); overflow-wrap: anywhere; }
+.capacity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+.capacity-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; font-size: 13px; }
+.capacity-summary dd { font: 700 16px/1.5 var(--font-d); }
+.admissions-panel,.access-mode-panel { margin-top: 20px; padding-top: 16px; }
+.admissions-panel h3,.access-mode-panel h3 { font: 800 18px/1.5 var(--font-s); }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 12px 22px; } dd { margin: 0; overflow-wrap: anywhere; }
+.reason-label { display: block; font-weight: 700; margin: 12px 0; }
+.reason-hint { margin: 7px 0 0; font-size: 12px; line-height: 1.7; }
+textarea { box-sizing: border-box; width: 100%; padding: 14px; font: inherit; resize: vertical; }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.admin-btn { justify-self: start; min-height: 44px; padding: 11px 20px; font: 700 14px var(--font-b); }
+.admin-message { padding: 16px; }
+.admin-message.local-mode { display: grid; gap: 5px; }
+.admin-message.local-mode span { font-size: 13px; line-height: 1.7; }
+.capacity-panel { display: grid; gap: 12px; margin-top: 18px; padding: clamp(14px, 2.4vw, 22px); }
+.capacity-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.capacity-head h3 { margin: 0; font: 800 18px/1.5 var(--font-s); }
+.capacity-current { margin: 0; font-size: 13px; }
+.capacity-current b { margin: 0 2px; font: 800 20px/1 var(--font-d); }
+.capacity-field { display: grid; gap: 7px; }
+.capacity-field > label { font-weight: 700; }
+.capacity-input { display: inline-flex; align-items: center; gap: 8px; }
+.capacity-input input { --input-font-size: 18px; box-sizing: border-box; width: 100%; max-width: 220px; min-height: 44px; padding: 10px 14px; font: 700 var(--input-font-size) var(--font-d); }
+.capacity-hint { margin: 0; font-size: 13px; }
+.capacity-hint b { margin: 0 2px; font: 800 20px/1 var(--font-d); }
+.capacity-error { margin: 0; font-size: 13px; font-weight: 700; }
+.capacity-note { margin: 0; font-size: 12px; line-height: 1.7; }
+}

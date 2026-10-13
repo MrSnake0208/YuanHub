@@ -4,7 +4,7 @@
 
 - 起点：主前端 main@c13f501；staged/unstaged/untracked 均为空。根仓 unrelated dirty 不属于本任务。
 - 前置成果：库存受控双视图与 A1 独立 CSS、A2 写入完成上下文保护已在 HEAD，需本轮定向复核；历史测试数字不作本轮证据。
-- 当前：27/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
+- 当前：29/43 条 UI 路由 verified_nonbrowser；库存 A1/A2 与已接入模块定向验证通过；manual_ui_status 全部 pending。尚未全站完成。
 - 根任务：.trellis/tasks/10-14-yuanhub-pc-mobile-layered。完整目标仍为全站工程迁移。
 
 ## 真实路由覆盖
@@ -13,8 +13,8 @@
 
 | route/workspace | 当前入口（src/） | desktop 所有者 | mobile 所有者 | 共享业务所有者 | 状态 | 验证证据 | 阻塞及下一动作 | manual_ui_status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| /beta | pages/beta/index.vue | 待拆分 | 待拆分 | pages/beta/index.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
-| /admin/beta | pages/admin/beta.vue | 待拆分 | 待拆分 | pages/admin/beta.vue | pending | 路由实际导入 | 按模块实施；无已确认外部阻塞 | pending |
+| /beta | pages/beta/index.vue | pages/beta/betaPageDesktop.css + beta组件Desktop.css | pages/beta/betaPageMobile.css + beta组件Mobile.css | 原资格/报名/容量控制器 | verified_nonbrowser | B13：30行为/234 Node/CSS/build | 同意版本/候补/容量原因保持；人工UI待做 | pending |
+| /admin/beta | pages/admin/beta.vue | pages/admin/betaAdminDesktop.css + beta组件Desktop.css | pages/admin/betaAdminMobile.css + beta组件Mobile.css | 原资格/报名/容量控制器 | verified_nonbrowser | B13：30行为/234 Node/CSS/build | 同意版本/候补/容量原因保持；人工UI待做 | pending |
 | /（alias /today） | pages/today/index.vue | components/today/today{Layout,Account,Onboarding,Lobby,Activity,Subscription}Desktop.css | components/today/today{Layout,Account,Onboarding,Lobby,Activity,Subscription}Mobile.css | pages/today/index.vue | verified_nonbrowser | B01：87 行为 + 12 Node + static/build | 无阻塞；待人工 UI | pending |
 | /calendar（feature: activityCalendar） | pages/calendar/index.vue | pages/calendar/calendarPageDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarPageMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
 | /calendar/suggestions/new（feature: activityCalendar） | pages/calendar/suggestion-new.vue | pages/calendar/calendarSuggestionNewDesktop.css + calendar/public-calendarDesktop.css + components/calendar/*Desktop.css | pages/calendar/calendarSuggestionNewMobile.css + calendar/public-calendarMobile.css + components/calendar/*Mobile.css | 原页面/订阅/私人事项/建议控制器 | verified_nonbrowser | B08：307行为/183 Node/CSS/build | 原用户视图/权限/开关保持；人工UI待做 | pending |
@@ -169,4 +169,10 @@
 - `npx --no-install vitest run behavior/workUx.spec.js behavior/workEditorHeader.spec.js`：19/19。新增4个两端用例，标题/回合说明/等待时长/动作节点顺序与焦点、旧版原始数据展开/返回页码保持，resize零额外读取、保存、兼容性请求。
 - `node --test test/workApi.test.js test/workEditor.test.js test/workPages.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js`：216/216。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-12-*.log`。账房提交补记 `d0476c8`；本批保存标题 `refactor(work): 拆分作业文档与详情双端展示`。完整路由27/43，人工UI仍pending。
 
-下一动作：内测资格与管理容量设置。
+## B13：内测资格与容量管理（L1样式归属）
+
+- 两页面与资格说明、交流群弹窗共4个SFC独立双端CSS；页面1080px、说明767px、群弹窗600px，原内容阈值保留。内测落地页显式持有原无侧栏全宽主区，管理员页面保留站点主区。所有模板/控制器逐字不变，原同意版本、候补、权限与容量限制不变。
+- 544组源码声明投影一致，清除矛盾媒体块6635字节。`npx --no-install vitest run behavior/beta*.spec.js`：30/30；新增4个两端用例，规则展开/同意/焦点、扩容目标/原因/禁用状态保持，resize无报名、取消、刷新或容量写入。
+- `node --test test/beta*.test.js test/pcMobileStyleOwnership.test.js test/overlayLayering.test.js test/responsiveViewport.test.js`：234/234。`npm run build`、`git diff --check`成功；日志 `.test-artifacts/pc-mobile-layered/batch-13-*.log`。作业提交补记 `475b00d`；本批保存标题 `refactor(beta): 分离内测资格与容量双端展示`。完整路由29/43，人工UI仍pending。
+
+下一动作：登录/注册/找回、禁止访问、账号与连接码。

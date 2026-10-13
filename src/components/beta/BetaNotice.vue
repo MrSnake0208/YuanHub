@@ -13,12 +13,10 @@ const copy = computed(() => betaStatusCopy(beta.campaign, beta.mine, beta.public
 onMounted(() => { void beta.loadPublic() })
 </script>
 <style scoped>
-.beta-notice { margin: 18px 0; padding: 15px 18px; border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--yellow-deep)); border-radius: 14px; background: var(--cream); color: var(--ink); text-align: left; }
-.beta-notice.tone-granted, .beta-notice.tone-open { --tone: var(--tea); }
-.beta-notice.tone-error { --tone: var(--rouge); }
-.beta-notice.tone-join, .beta-notice.tone-paused { --tone: var(--accent); }
-.beta-notice.tone-closed, .beta-notice.tone-pending, .beta-notice.tone-full { --tone: var(--ink-35); }
-.beta-notice strong { font-size: 14px; }
-.beta-notice p { margin: 6px 0; font-size: 13px; line-height: 1.75; color: var(--ink-60); }
-.beta-notice a { display: inline-flex; min-height: 44px; align-items: center; color: var(--tea); font-size: 13px; font-weight: 700; text-underline-offset: 4px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.beta-notice { border: 1px solid var(--line); border-left: 4px solid var(--tone, var(--yellow-deep)); border-radius: 14px; background: var(--cream); color: var(--ink); }
+.beta-notice p { color: var(--ink-60); }
+.beta-notice a { color: var(--tea); text-underline-offset: 4px; }
 </style>
+<style scoped src="./betaNoticeDesktop.css"></style>
+<style scoped src="./betaNoticeMobile.css"></style>

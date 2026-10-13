@@ -13,7 +13,7 @@ vi.mock('../src/store/beta.js', async () => { const { reactive } = await import(
 }) } })
 
 const campaign = () => ({ campaignId: 'synthetic', rulesVersion: 'v1', accessMode: 'BETA', publicState: 'OPEN_REGISTRATION' })
-const render = () => mount(BetaPage, { global: { stubs: { RouterLink: RouterLinkStub, SiteFooter: true } } })
+const render = (options = {}) => mount(BetaPage, { ...options, global: { stubs: { RouterLink: RouterLinkStub, SiteFooter: true } } })
 
 beforeEach(() => {
   beta.campaign = campaign()
@@ -76,4 +76,36 @@ it('取消候补失败即使异常消息为空，也显示可读错误', async (
   await flushPromises()
   expect(wrapper.get('.invite-action [role="alert"]').text()).toContain('取消候补失败')
   wrapper.unmount()
+})
+
+
+it.each([390, 1440])('报名在%s起步跨断点保持同意版本、展开规则和焦点', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = render({ attachTo: document.body }); await flushPromises()
+  try {
+    const rules = wrapper.get('.rules-details').element
+    rules.open = true
+    await wrapper.get('.rules-consent input').setValue(true)
+    const checkbox = wrapper.get('.rules-consent input').element
+    checkbox.focus()
+    const reads = refresh.mock.calls.length
+    for (const nextWidth of [520, 521, 760, 761, 980, 981, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('.rules-details').element).toBe(rules)
+      expect(rules.open).toBe(true)
+      expect(wrapper.get('.rules-consent input').element).toBe(checkbox)
+      expect(checkbox.checked).toBe(true)
+      expect(document.activeElement).toBe(checkbox)
+      expect(wrapper.get('.invite-action .beta-button.primary').element.disabled).toBe(false)
+      expect(wrapper.findAll('.invite-card')).toHaveLength(1)
+    }
+    expect(refresh).toHaveBeenCalledTimes(reads)
+    expect(join).not.toHaveBeenCalled()
+    expect(withdraw).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

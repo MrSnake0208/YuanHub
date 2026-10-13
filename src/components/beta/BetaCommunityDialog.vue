@@ -130,6 +130,7 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .beta-community-enter-active,
 .beta-community-leave-active {
   transition: opacity .24s var(--ease);
@@ -145,26 +146,14 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 .beta-community-enter-from .community-dialog,
 .beta-community-leave-to .community-dialog {
   opacity: 0;
-  transform: translateY(16px) scale(.98);
 }
 
 .community-mask {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay-panel);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 22px;
   background: rgba(73, 59, 44, .52);
   backdrop-filter: blur(4px);
 }
 
 .community-dialog {
-  width: min(560px, 100%);
-  max-height: min(760px, calc(100vh - 44px));
-  max-height: min(760px, calc(100dvh - 44px));
-  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--surface);
@@ -172,50 +161,17 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
   color: var(--ink);
 }
 
-.community-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 22px 24px 0;
-}
-
-.community-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .community-heading p {
-  margin: 0 0 2px;
   color: var(--accent-strong);
-  font: 800 11px/1.35 var(--font-b);
-  letter-spacing: .12em;
-}
-
-.community-heading h2 {
-  margin: 0;
-  font: 900 21px/1.3 var(--font-s);
-  letter-spacing: .03em;
 }
 
 .community-icon {
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
   border-radius: 13px;
   background: var(--yellow);
   color: var(--tea);
 }
 
 .community-close {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
   border: 0;
   border-radius: 11px;
   background: transparent;
@@ -228,72 +184,25 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
   color: var(--ink);
 }
 
-.community-body {
-  padding: 18px 24px 8px;
-}
-
 .community-intro {
-  max-width: 600px;
-  margin: 0 0 18px;
   color: var(--ink-60);
-  font: 650 13.5px/1.8 var(--font-b);
-}
-
-.community-main {
-  min-width: 0;
-}
-
-.community-details {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 0;
 }
 
 .detail-label {
-  display: block;
-  margin-bottom: 8px;
   color: var(--ink-60);
-  font: 750 12px/1.4 var(--font-b);
-}
-
-.group-number-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.group-number {
-  min-width: 0;
-  font: 900 clamp(26px, 5vw, 38px)/1.15 var(--font-s);
-  letter-spacing: .04em;
-  overflow-wrap: anywhere;
 }
 
 .copy-button,
 .community-primary {
-  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  font-family: var(--font-b);
-  font-weight: 800;
   cursor: pointer;
   transition: transform .16s var(--ease), border-color .2s ease, background-color .2s ease;
-  touch-action: manipulation;
 }
 
 .copy-button {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 12px;
   background: var(--paper);
   color: var(--tea);
-  font-size: 12px;
 }
 
 .copy-button:hover {
@@ -302,55 +211,30 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 }
 
 .community-note {
-  display: flex;
-  gap: 9px;
-  padding: 13px 14px;
   border-radius: 14px;
   background: var(--paper);
   color: var(--ink-60);
 }
 
 .community-note svg {
-  flex: none;
-  margin-top: 2px;
   color: var(--tea);
-}
-
-.community-note p {
-  margin: 0;
-  font: 650 12px/1.7 var(--font-b);
 }
 
 .community-note a {
   color: var(--tea);
-  font-weight: 850;
   text-underline-offset: 3px;
 }
 
-.community-foot {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding: 14px 24px 22px;
-}
-
 .community-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 112px;
-  padding: 0 18px;
   border-color: var(--tea);
   background: var(--tea);
   color: var(--cream);
 }
-.join-steps, .join-result { margin-top: 12px; color: var(--ink-60); font: 650 12px/1.8 var(--font-b); }
+.join-steps, .join-result { color: var(--ink-60); }
 .join-result { color: var(--tea); }
 
 .copy-button:active,
 .community-primary:active {
-  transform: scale(.98);
   transition-duration: 0s;
 }
 
@@ -363,55 +247,10 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
 }
 
 @media (max-width: 600px) {
-  .community-mask {
-    align-items: flex-end;
-    padding: 0;
-  }
 
   .community-dialog {
-    width: 100%;
-    max-height: min(88vh, 760px, calc(100vh - 44px));
-    max-height: min(88dvh, 760px, calc(100dvh - 44px));
     border-width: 1px 0 0;
     border-radius: 24px 24px 0 0;
-  }
-
-  .community-head {
-    padding: 18px 18px 0;
-  }
-
-  .community-heading h2 {
-    font-size: 19px;
-  }
-
-  .community-body {
-    padding: 16px 18px 4px;
-  }
-
-  .community-intro {
-    margin-bottom: 14px;
-  }
-
-  .community-details {
-    gap: 14px;
-    padding: 0;
-  }
-
-  .group-number-row {
-    justify-content: space-between;
-  }
-
-  .group-number {
-    font-size: 30px;
-  }
-
-  .community-foot {
-    padding: 14px 18px max(18px, env(safe-area-inset-bottom));
-  }
-
-  .community-primary {
-    width: 100%;
-    min-height: 46px;
   }
 }
 
@@ -424,3 +263,5 @@ useModalFocus(() => betaCommunity.visible, dialogEl, {
   }
 }
 </style>
+<style scoped src="./betaCommunityDialogDesktop.css"></style>
+<style scoped src="./betaCommunityDialogMobile.css"></style>
