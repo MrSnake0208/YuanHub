@@ -39,11 +39,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.changelog-related { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); }
-.changelog-related h3 { margin-bottom: 9px; color: var(--ink-60); font-size: 12px; font-weight: 900; }
-.changelog-related ul { display: grid; gap: 7px; list-style: none; }
-.changelog-related li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-.changelog-related a { color: var(--tea); font-size: 13px; font-weight: 800; text-decoration: none; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.changelog-related { border-top: 1px dashed var(--line); }
+.changelog-related h3 { color: var(--ink-60); }
+.changelog-related a { color: var(--tea); text-decoration: none; }
 .changelog-related a:hover { color: var(--accent-strong); text-decoration: underline; }
-.changelog-related span { color: var(--ink-35); font: 11px var(--font-d); }
+.changelog-related span { color: var(--ink-35); }
 </style>
+<style scoped src="./changelogRelatedFeedbackDesktop.css"></style>
+<style scoped src="./changelogRelatedFeedbackMobile.css"></style>

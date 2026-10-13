@@ -1,0 +1,24 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-changelog > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+@media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
+@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+.page-changelog { min-height: 100vh; min-height: 100dvh; }
+.changelog-card { scroll-margin-top: 84px; }
+.changelog-highlights { margin-top: 18px; padding-left: 20px; font-size: 14px; line-height: 1.8; }
+.changelog-highlights li { margin-block: 6px; overflow-wrap: anywhere; }
+.changelog-highlights li span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.changelog-full summary { min-height: 44px; padding-top: 14px; font-size: 13px; font-weight: 800; }
+.changelog-feed { display: grid; gap: 22px; padding-bottom: 12px; }
+.changelog-card { padding: clamp(22px, 4vw, 42px); }
+.changelog-card header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 9px 12px; padding-bottom: 18px; }
+.changelog-card h2 { grid-column: 1 / -1; font-family: var(--font-s); font-size: 24px; line-height: 1.4; overflow-wrap: anywhere; font-weight: 900; }
+.version { width: fit-content; max-width: 100%; overflow-wrap: anywhere; padding: 4px 11px; font-family: var(--font-d); font-size: 12px; font-weight: 800; }
+.changelog-card time { white-space: nowrap; font-family: var(--font-d); font-size: 12px; }
+.state { min-height: 220px; display: grid; place-content: center; text-align: center; }
+.state button, .load-more { min-height: 44px; margin: 12px auto 0; padding: 10px 22px; font-weight: 800; }
+.inline-error { text-align: center; }
+.anchor-status { font-size: 13px; text-align: center; }
+.load-more { display: block; }
+}
