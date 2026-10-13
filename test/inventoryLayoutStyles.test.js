@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import postcss from 'postcss'
 import { compileStyle } from '@vue/compiler-sfc'
+import { readSource } from '../test-support/readSource.js'
 
 const directory = new URL('../src/components/inventory/', import.meta.url)
 test('inventory shell and navigation compile scoped CSS with device and slot ownership', () => {
@@ -17,8 +18,9 @@ test('inventory shell and navigation compile scoped CSS with device and slot own
     })
     if (owner === 'inventoryLayout') assert.match(compiled.code, /section\[data-v-inventory-layout-test-s\]/)
   }
-  const global = readFileSync(new URL('../src/styles/tools-workspace.css', import.meta.url), 'utf8')
+  const global = readSource(new URL('../src/styles/tools-workspace.css', import.meta.url))
   assert.doesNotMatch(global, /\.page-inventory/)
-  assert.match(global, /\.page-operator/)
+  assert.doesNotMatch(global, /\.page-operator/)
+  assert.match(readSource(new URL('../src/pages/operator/index.vue', import.meta.url)), /\.operator-tabs/)
   assert.match(global, /\.page-star/)
 })

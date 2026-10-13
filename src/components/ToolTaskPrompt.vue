@@ -11,14 +11,16 @@ defineProps({ title: { type: String, required: true }, description: { type: Stri
 </script>
 
 <style scoped>
-.tool-task-prompt { margin-block: 16px 24px; padding: 32px 16px; text-align: center; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 16px; }
-.tool-task-prompt h2 { margin: 0; color: var(--tea); font: 900 22px/1.5 var(--font-s); }
-.tool-task-prompt p { max-width: 40em; margin: 8px auto 0; color: var(--ink-60); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
-.tool-task-actions { display: grid; justify-items: center; gap: 4px; margin-top: 20px; }
-.tool-task-actions :deep(a), .tool-task-actions :deep(button) { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; font-size: 14px; text-decoration: none; }
-.tool-task-actions :deep(.btn) { flex: none; padding: 10px 18px; border-radius: 8px; white-space: nowrap; }
-.tool-task-actions :deep(.link) { padding: 8px; background: transparent; border: 0; color: var(--tea); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.tool-task-prompt { background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 16px; }
+.tool-task-prompt h2 { color: var(--tea); }
+.tool-task-prompt p { color: var(--ink-60); }
+.tool-task-actions :deep(a), .tool-task-actions :deep(button) { text-decoration: none; }
+.tool-task-actions :deep(.btn) { border-radius: 8px; }
+.tool-task-actions :deep(.link) { background: transparent; border: 0; color: var(--tea); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 .tool-task-actions :deep(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
 .tool-task-prompt.is-error { border-color: var(--rouge); }
-@media (min-width: 768px) { .tool-task-prompt { padding-block: 40px; border-radius: 20px; } .tool-task-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; } }
+@media (min-width: 768px) { .tool-task-prompt { border-radius: 20px; } }
 </style>
+<style scoped src="./toolTaskPromptDesktop.css"></style>
+<style scoped src="./toolTaskPromptMobile.css"></style>

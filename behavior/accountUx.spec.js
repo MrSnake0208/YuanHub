@@ -53,3 +53,26 @@ it('柔和账号下拉关联标签，方向键导航并在选中或 Escape 后�
   expect(document.activeElement).toBe(trigger.element)
   wrapper.unmount()
 })
+
+it.each([[390, 1440], [1440, 390]])('共享账号工作区 %i→%i 保持未保存名称、归属、焦点与唯一实例', async (from, to) => {
+  const previousWidth = window.innerWidth
+  window.innerWidth = from
+  const wrapper = mount(AccountWorkspace, { attachTo: document.body, props: { accountId: 'acc-a', accounts }, global })
+  try {
+    await wrapper.get('.account-manage').trigger('click')
+    const input = wrapper.get('.ac-new input')
+    await input.setValue('未保存的新账号')
+    input.element.focus()
+    const instance = wrapper.vm.$
+    window.innerWidth = to
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+    expect(wrapper.vm.$).toBe(instance)
+    expect(wrapper.findAll('.account-mgr')).toHaveLength(1)
+    expect(wrapper.get('.ac-new input').element).toBe(input.element)
+    expect(input.element.value).toBe('未保存的新账号')
+    expect(wrapper.props('accountId')).toBe('acc-a')
+    expect(document.activeElement).toBe(input.element)
+    for (const event of ['create', 'rename', 'delete', 'change', 'update:accountId']) expect(wrapper.emitted(event)).toBeUndefined()
+  } finally { wrapper.unmount(); window.innerWidth = previousWidth }
+})

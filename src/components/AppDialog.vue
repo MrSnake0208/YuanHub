@@ -135,6 +135,7 @@ useModalFocus(() => state.visible, dialogEl, {
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* —— 项目风格弹窗：复用骨架色/点缀色，不新增色值 —— */
 .dialog-enter-active,
 .dialog-leave-active {
@@ -148,183 +149,82 @@ useModalFocus(() => state.visible, dialogEl, {
 .dialog-leave-to {
   opacity: 0;
 }
-.dialog-enter-from .dialog,
-.dialog-leave-to .dialog {
-  transform: translateY(18px) scale(.97);
-}
 
 .dialog-mask {
-  position: fixed;
-  inset: 0;
   background: rgba(73, 59, 44, .5);
   backdrop-filter: blur(3px);
-  z-index: var(--z-overlay-blocking, 200);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
 }
 .dialog {
-  width: 100%;
-  max-width: 400px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
   box-shadow: 0 40px 80px -30px rgba(73, 59, 44, .45);
-  overflow: hidden;
   outline: none;
 }
-.dialog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 16px 20px 0;
-}
 .dialog-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-s);
-  font-weight: 900;
-  font-size: 17px;
-  letter-spacing: .04em;
   color: var(--ink);
 }
 .dialog-ic {
-  flex: none;
-  width: 34px;
-  height: 34px;
   border-radius: 10px;
-  display: grid;
-  place-items: center;
 }
 .dialog-ic.ic-info { background: rgba(73, 59, 44, .08); color: var(--ink-60) }
 .dialog-ic.ic-danger { background: rgba(166, 81, 74, .14); color: var(--rouge) }
 .dialog-ic.ic-success { background: rgba(215, 137, 53, .16); color: var(--accent-strong) }
 .dialog-close {
-  flex: none;
-  min-width: 44px;
-  min-height: 44px;
   border: none;
   background: none;
   color: var(--ink-60);
   cursor: pointer;
-  padding: 4px;
-  display: grid;
-  place-items: center;
   border-radius: 8px;
   transition: color .2s ease, background-color .2s ease;
 }
 .dialog-close:hover { color: var(--ink); background: var(--paper) }
-
-.dialog-body {
-  padding: 18px 20px 4px;
-}
 .dialog-msg {
-  font-size: 13.5px;
-  line-height: 1.85;
   color: var(--ink-60);
-  font-weight: 600;
-  white-space: pre-line;
-  word-break: break-word;
-}
-.dialog-choices {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
 }
 .dialog-choice {
-  display: flex;
-  min-height: 52px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 13px 10px 15px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--cream);
   color: var(--ink);
-  text-align: left;
-  font: 800 13px/1.35 var(--font-b);
   cursor: pointer;
   transition: transform .16s var(--ease), border-color .2s ease, background-color .2s ease, color .2s ease;
-  touch-action: manipulation;
 }
-.dialog-choice:active { transform: scale(.98); transition-duration: 0s; }
+.dialog-choice:active { transition-duration: 0s; }
 .dialog-choice:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .dialog-choice.is-primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
 .dialog-choice.is-quiet { background: var(--paper); color: var(--ink-60); }
-.dialog-choice-copy { display: grid; min-width: 0; gap: 2px; }
-.dialog-choice-copy strong { font-weight: 900; }
-.dialog-choice-copy small { color: inherit; font-size: 11px; font-weight: 700; opacity: .72; }
+.dialog-choice-copy small { color: inherit; opacity: .72; }
 .dialog-check {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 9px;
-  margin-top: 10px;
   color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 700;
   cursor: pointer;
 }
-.dialog-check input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent); }
+.dialog-check input { accent-color: var(--accent); }
 .dialog-check input:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
   .dialog-choice:hover { border-color: var(--accent); background: var(--surface); }
   .dialog-choice.is-primary:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
 }
-.dialog-field {
-  display: block;
-  margin-top: 14px;
-}
 .dialog-field-label {
-  display: block;
-  margin-bottom: 6px;
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 800;
 }
 .dialog-field input {
-  width: 100%;
   border: 1.5px solid var(--line);
   border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 13px;
-  font-family: var(--font-b);
   color: var(--ink);
   background: var(--paper);
   outline: none;
   transition: border-color .2s ease, background-color .2s ease;
 }
 .dialog-field input:focus { border-color: var(--accent); background: var(--surface) }
-
-.dialog-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 20px 18px;
-}
 .dlg-btn {
-  flex: none;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   border-radius: 12px;
-  padding: 10px 24px;
-  font-size: 13px;
-  font-weight: 800;
-  font-family: var(--font-b);
   cursor: pointer;
   transition: transform .16s var(--ease), background-color .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease), opacity .2s ease;
   border: 1.5px solid transparent;
 }
 .dlg-btn:disabled { opacity: .45; cursor: not-allowed }
-.dlg-btn:active:not(:disabled) { transform: scale(.98); transition-duration: 0s; }
+.dlg-btn:active:not(:disabled) { transition-duration: 0s; }
 .dlg-btn.ghost { background: var(--paper); border-color: var(--line); color: var(--ink) }
 .dlg-btn.ghost:hover:not(:disabled) { background: var(--cream); border-color: var(--ink) }
 .dlg-btn.primary { background: var(--tea); color: var(--cream) }
@@ -340,3 +240,5 @@ useModalFocus(() => state.visible, dialogEl, {
   .dlg-btn { transition: none; }
 }
 </style>
+<style scoped src="./appDialogDesktop.css"></style>
+<style scoped src="./appDialogMobile.css"></style>

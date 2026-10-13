@@ -1,0 +1,3 @@
+@media not all and (max-width: 1080px) {
+.mobile-shell{display:none}
+}

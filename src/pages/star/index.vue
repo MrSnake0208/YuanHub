@@ -915,95 +915,49 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
-.star-main :deep(.compact-tool-description) { color: var(--ink); font-size: 14px; font-weight: 600; }
-.page-star {
-  --wm: "星石";
-}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.star-main :deep(.compact-tool-description) { color: var(--ink); }
 .page-star #product-root :deep(.product-toast) {
-  z-index: var(--z-toast);
   pointer-events: none;
 }
 .star-tutorial-replay, .star-help-tutorial {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
   color: var(--ink);
-  font: inherit;
-  font-size: 14px;
-  white-space: nowrap;
   cursor: pointer;
 }
-.star-help-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.star-help-examples button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); font: inherit; cursor: pointer; }
+.star-help-examples button { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); color: var(--ink); cursor: pointer; }
 .star-help-examples button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.star-main {
-  min-height: 100vh; min-height: 100dvh;
-}
 .archive-toggle {
-  display: inline-flex;
-  min-height: 44px;
-  align-self: center;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
   border: 1.5px solid var(--line);
   border-radius: 999px;
   color: var(--ink-60);
   background: transparent;
   cursor: pointer;
-  font-family: var(--font-b);
-  font-size: 12.5px;
-  font-weight: 700;
-  white-space: nowrap;
   transition: all 0.3s var(--ease);
 }
 .archive-toggle:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
-.archive-toggle svg {
-  flex: none;
-}
-.star-exchange-import { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 14px; }
-.star-exchange-import .tip { margin: 0 0 12px; color: var(--ink-60); font-size: 12.5px; line-height: 1.8; }
-.star-exchange-import .file-label { display: inline-flex; cursor: pointer; }
-.star-exchange-import .file-label input { display: none; }
-.star-exchange-error { margin: 8px 0 0; color: var(--rouge); font-size: 12.5px; font-weight: 700; line-height: 1.6; }
-.star-exchange-preview { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); padding: 12px 14px; }
-.star-exchange-preview dl { display: grid; gap: 4px; margin: 0; }
-.star-exchange-preview dl div { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; }
-.star-exchange-preview dt { color: var(--ink-60); font-size: 11px; font-weight: 800; }
-.star-exchange-preview dd { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
+.star-exchange-import { border-top: 1px dashed var(--line); }
+.star-exchange-import .tip { color: var(--ink-60); }
+.star-exchange-import .file-label { cursor: pointer; }
+.star-exchange-error { color: var(--rouge); }
+.star-exchange-preview { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.star-exchange-preview dt { color: var(--ink-60); }
+.star-exchange-preview dd { color: var(--ink); }
 .star-sync-state {
-  margin: 10px 2px 0;
   color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.6;
 }
 .star-sync-state.is-error {
   color: var(--rouge);
 }
 .star-sync-retry {
-  display: inline-flex;
-  min-width: 44px;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  margin-left: 8px;
-  padding: 8px 12px;
   border: 0;
   background: transparent;
   color: var(--tea);
-  font: inherit;
-  font-weight: 800;
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -1012,135 +966,38 @@ onBeforeUnmount(function () {
 .star-sync-retry:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; border-radius: 2px; }
 .star-sync-retry:disabled { opacity: .55; cursor: wait; }
 #product-root {
-  min-width: 0;
   background: transparent;
-  --bg-surface: var(--surface);
-  --bg-subtle: var(--cream);
-  --text-primary: var(--ink);
-  --text-secondary: var(--ink-60);
-  --text-muted: var(--ink-35);
-  --border-soft: var(--line);
-  --border-row: var(--line);
-  font-family: var(--font-b);
 }
 .yuanstar-mount-error {
-  margin: 24px 0;
-  padding: 16px 20px;
   border: 1px solid rgba(166, 81, 74, 0.45);
   border-radius: 14px;
   color: var(--rouge);
   background: var(--surface);
-  font-weight: 700;
-  line-height: 1.7;
 }
-.yuanstar-mount-loading { margin: 24px 0; color: var(--ink-60); }
+.yuanstar-mount-loading { color: var(--ink-60); }
 .yuanstar-mount-error button {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  margin-left: 8px;
-  padding: 8px 12px;
   border: 1px solid currentColor;
   border-radius: 8px;
   background: transparent;
   color: inherit;
-  font: inherit;
   cursor: pointer;
 }
 .yuanstar-mount-error button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
-@media (max-width: 1080px) {
-  .page-star #product-root :deep(.product-toast) {
-    top: calc(env(safe-area-inset-top) + 12px);
-    bottom: auto;
-  }
-  .page-star {
-    --star-tab-button-height: 48px;
-    --star-tab-padding: 7px;
-    --star-bottom-bar-height: calc(var(--star-tab-button-height) + 2 * var(--star-tab-padding) + 1px + env(safe-area-inset-bottom));
-  }
-  .page-star #product-root :deep(.review-workspace-tools) {
-    bottom: calc(var(--star-bottom-bar-height) + 12px);
-  }
-  .star-main > section {
-    padding-bottom: 40px;
-  }
-  .page-star :deep(.footer) {
-    padding-bottom: calc(32px + var(--star-bottom-bar-height));
-  }
-  .archive-toggle {
-    width: 100%;
-    transform: none;
-  }
-  .star-exchange-preview { align-items: stretch; flex-direction: column; }
-  .star-exchange-preview .btn { width: 100%; }
-  .star-sync-state {
-    margin: 10px 0 0;
-  }
-}
-
-
-.star-main > section { padding-top: 0; }
-.star-workbench { margin-top: 8px; }
-.star-workbench-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-@media (max-width: 640px) {
-  .star-workbench-header { gap: 6px; }
-  .star-workbench-header .star-tabs.tool-workspace-tabs { flex-wrap: nowrap; }
-  .star-tutorial-replay, .star-help-tutorial { gap: 4px; padding-inline: 6px; font-size: 13px; }
-}
-.star-workbench-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-.star-import-action { flex: none; width: auto; min-height: 44px; padding: 8px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
-.page-star #product-root :deep(.review-toolbar) { border: 0; border-radius: 0; background: transparent; padding: 0; margin-bottom: 16px; }
-.page-star #product-root :deep(.is-bag-view .bag-filters) { border: 1px solid var(--line); border-radius: var(--radius-card, 12px); background: var(--surface); padding: var(--bag-card-padding); margin: 0; }
-.page-star #product-root :deep(.filter-strip) { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 8px; border: 0; padding: 0; }
-.page-star #product-root :deep(.filter-strip .filter-search) { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; font-size: 12px; }
-.page-star #product-root :deep(.filter-strip #name-filter) { min-height: 44px; height: 44px; font-size: 14px; background: var(--surface); }
-.page-star #product-root :deep(.filter-strip > button) { min-height: 44px; height: 44px; padding: 8px; font-size: 12px; }
-.page-star #product-root :deep(.filter-strip #apply-filter) { grid-column: 2; grid-row: 1; }
-.page-star #product-root :deep(.filter-strip #clear-filter) { grid-column: 3; grid-row: 1; border: 0; background: transparent; color: var(--tea); }
-.page-star #product-root:not(.filters-open) :deep(.filter-strip > label:not(.filter-search)) { display: none; }
-.page-star #product-root:not(.filters-open) :deep(.inventory-facts > div:not(:has(.save-state))) { display: none; }
-.page-star #product-root:not(.filters-open) :deep(.inventory-facts) { display: block; padding: 4px 0 0; border: 0; background: transparent; }
-.page-star #product-root:not(.filters-open) :deep(.inventory-facts dt) { display: none; }
-.page-star #product-root:not(.filters-open) :deep(.inventory-facts dd) { height: auto; min-height: 0; font-size: 12px; }
-.page-star #product-root :deep(.inventory-facts > div:has(.save-state)) { display: block; grid-column: 1 / -1; }
-.page-star #product-root.is-plan-view :deep(.inventory-grid > .inventory-panel:first-child),
-.page-star #product-root.is-plan-view :deep(.edit-section > .current-editor) { display: none; }
-.page-star #product-root.is-plan-view :deep(.inventory-grid),
-.page-star #product-root.is-plan-view :deep(.edit-section) { grid-template-columns: minmax(0, 1fr); }
-.page-star #product-root.filters-open :deep(.filter-strip > label:not(.filter-search)) { grid-row: 2; }
-.page-star #product-root.filters-open :deep(.filter-strip > label:first-child) { grid-column: 1; }
-.page-star #product-root.filters-open :deep(.filter-strip > label:nth-child(2)) { grid-column: 2 / -1; }
-.page-star #product-root.filters-open :deep(.inventory-facts > div) { grid-template-rows: 16px 44px; }
-.page-star #product-root.filters-open :deep(.inventory-facts dd) { height: 44px; min-height: 44px; overflow: visible; }
-.page-star #product-root :deep(.inventory-facts input),
-.page-star #product-root :deep(.filter-strip .soft-dropdown-trigger),
-.page-star #product-root :deep(.inventory-facts .soft-dropdown-trigger),
-.page-star #product-root :deep(.inventory-facts .review-view-toggle) { min-height: 44px; height: 44px; }
-.page-star #product-root :deep(.yuanstar-embedded-shell) { padding-top: 16px; }
-.page-star #product-root :deep(.review-workspace-card) { padding: 0; border: 0; border-radius: 0; background: transparent; }
-.page-star #product-root :deep(.review-overview) { padding: 4px 6px; border-radius: 8px; background: var(--surface); }
-.page-star #product-root :deep(.inventory-facts .save-state) { width: fit-content; padding-inline: 4px; border-radius: 4px; background: var(--surface); }
-.page-star #product-root :deep(.inventory-panel > header h2) { font-family: var(--font-s); color: var(--tea); }
-.page-star #product-root :deep(.review-overview:has(> .review-overview-count:only-child)) { display: none; }
-.page-star #product-root.is-empty-view :deep(.inventory-grid),
-.page-star #product-root.is-empty-view :deep(.review-workspace-tools),
-.page-star #product-root.is-empty-view:not(.is-bag-view) :deep(.ocr-review:has(.ocr-review-list > .review-detail:only-child)) { display: none; }
-.page-star #product-root :deep(.inventory-panel:has(tbody:empty)) { height: 180px; }
-.star-sync-meta { font-size: 12px; }
+.star-import-action { border-radius: 8px; }
+.page-star #product-root :deep(.review-toolbar) { border: 0; border-radius: 0; background: transparent; }
+.page-star #product-root :deep(.is-bag-view .bag-filters) { border: 1px solid var(--line); border-radius: var(--radius-card, 12px); background: var(--surface); }
+.page-star #product-root :deep(.filter-strip) { border: 0; }
+.page-star #product-root :deep(.filter-strip #name-filter) { background: var(--surface); }
+.page-star #product-root :deep(.filter-strip #clear-filter) { border: 0; background: transparent; color: var(--tea); }
+.page-star #product-root:not(.filters-open) :deep(.inventory-facts) { border: 0; background: transparent; }
+.page-star #product-root :deep(.review-workspace-card) { border: 0; border-radius: 0; background: transparent; }
+.page-star #product-root :deep(.review-overview) { border-radius: 8px; background: var(--surface); }
+.page-star #product-root :deep(.inventory-facts .save-state) { border-radius: 4px; background: var(--surface); }
+.page-star #product-root :deep(.inventory-panel > header h2) { color: var(--tea); }
 /* Star actions keep the same compact height for mouse and touch input.
    Inline name tooltips, image previews and modal backdrops are content surfaces. */
-.page-star .star-main :deep(button:not(.star-name-tooltip-trigger):not(.thumbnail-preview):not(.dialog-backdrop):not(.lightbox-backdrop):not(.ocr-summary):not(.file-drop-zone)) {
-  box-sizing: border-box;
-  height: 32px !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
-  padding-block: 4px;
-  line-height: 1.2;
-}
-.star-sync-state.is-error, .star-sync-state.is-warning { margin: 8px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
+.star-sync-state.is-error, .star-sync-state.is-warning { border: 1px solid currentColor; border-radius: 8px; background: var(--surface); }
 .star-sync-state.is-warning:not(.is-error) { color: var(--accent-strong); }
-@media (max-width: 1080px) {
-  .page-star { --star-bottom-bar-height: 0px; }
-}
-
 </style>
+<style scoped src="./starHostDesktop.css"></style>
+<style scoped src="./starHostMobile.css"></style>

@@ -29,47 +29,29 @@ const helpId = useId()
 </script>
 
 <style scoped>
-.compact-tool-header { padding-block: 20px 12px; color: var(--ink); }
-.compact-tool-header:has(.tool-more[open]) { position: relative; z-index: var(--z-popover); }
-.compact-tool-header > .wrap { container-type: inline-size; }
-.compact-tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'heading actions' 'account account'; align-items: center; gap: 4px 12px; }
-.compact-tool-heading { grid-area: heading; min-width: 0; }
-.compact-tool-heading h1 { margin: 0; color: var(--tea); font-family: var(--font-s); font-size: 30px; font-weight: 900; line-height: 1.3; letter-spacing: .035em; white-space: nowrap; }
-.compact-tool-description { margin: 2px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink-60); }
-.compact-tool-account { grid-area: account; min-width: 0; }
-.compact-tool-actions { grid-area: actions; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
-.compact-tool-help { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.compact-tool-header { color: var(--ink); }
+.compact-tool-heading h1 { color: var(--tea); }
+.compact-tool-description { color: var(--ink-60); }
+.compact-tool-help { border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }
 .compact-tool-help:hover { color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, transparent); }
 .compact-tool-help:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.compact-tool-help-content { margin-top: 12px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
-.compact-tool-help-content :deep(p) { margin: 0; }
-@container (min-width: 860px) {
-  .compact-tool-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'heading account actions'; gap: 24px; }
-  .compact-tool-heading h1 { font-size: 32px; }
-}
-@container (max-width: 340px) {
-  .compact-tool-heading h1 { font-size: 28px; }
-  .compact-tool-description { max-width: 16em; }
-  .compact-tool-row { grid-template-areas: 'heading heading' 'actions actions' 'account account'; column-gap: 8px; }
-  .compact-tool-actions { justify-content: flex-start; flex-wrap: wrap; }
-}
+.compact-tool-help-content { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 </style>
+<style scoped src="./compactToolHeaderDesktop.css"></style>
+<style scoped src="./compactToolHeaderMobile.css"></style>
 
 <style>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* Page-owned disclosures and summaries, shared only by compact tool pages. */
-.tool-more { position: relative; }
-.compact-tool-header .tool-more > summary { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; list-style: none; }
-.tool-more > summary::-webkit-details-marker { display: none; }
-.tool-more > summary::before { content: '⋯'; font-size: 20px; line-height: 1; }
+.compact-tool-header .tool-more > summary { border: 0; border-radius: 8px; background: transparent; color: var(--ink-60); cursor: pointer; }
+.tool-more > summary::before { content: '⋯'; }
 .tool-more > summary:hover, .tool-more[open] > summary { color: var(--tea); background: color-mix(in srgb, var(--tea) 5%, transparent); }
 .tool-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.tool-more-content { position: absolute; inset: calc(100% + 6px) 0 auto auto; z-index: var(--z-popover); display: grid; gap: 8px; width: max-content; max-width: calc(100vw - 32px); padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(73,59,44,.12); }
-.tool-summary { display: flex; flex-wrap: wrap; gap: 2px 0; margin: 2px 0 10px; color: var(--ink-60); font-size: 13px; line-height: 1.6; }
-.tool-summary > span { display: inline-flex; flex-wrap: nowrap; gap: 4px; align-items: baseline; }
-.tool-summary > span + span::before { content: '·'; margin-inline: 8px; color: var(--ink-35); }
-.tool-summary time { white-space: nowrap; font: inherit; font-variant-numeric: tabular-nums; }
-.tool-summary b { font-family: var(--font-d); color: inherit; font-weight: 500; }
-@media (max-width: 640px) {
-  .tool-summary .tool-updated { display: none; }
-}
+.tool-more-content { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 8px 24px rgba(73,59,44,.12); }
+.tool-summary { color: var(--ink-60); }
+.tool-summary > span + span::before { content: '·'; color: var(--ink-35); }
+.tool-summary b { color: inherit; }
 </style>
+<style src="./compactToolHeaderOverrides1Desktop.css"></style>
+<style src="./compactToolHeaderOverrides1Mobile.css"></style>

@@ -98,89 +98,36 @@ const currentPath = computed(function () {
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .data-account-context-bar {
-  display: flex;
-  min-height: 72px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-top: 18px;
-  padding: 14px 16px;
   border: 1px solid var(--line);
   border-left: 4px solid var(--accent);
   border-radius: 14px;
   background: var(--surface);
   box-shadow: 0 8px 24px rgba(73, 59, 44, .045);
 }
-.context-leading {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 12px;
-}
 .context-icon {
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
   border-radius: 11px;
   background: var(--yellow);
   color: var(--ink);
 }
-.context-copy {
-  min-width: 0;
-}
 .context-kicker {
-  display: block;
-  margin-bottom: 2px;
   color: var(--accent-strong);
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: .11em;
 }
 .context-copy > strong {
-  display: block;
-  overflow: hidden;
   color: var(--ink);
-  font-family: var(--font-s);
-  font-size: 17px;
-  font-weight: 900;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .context-copy small {
-  display: block;
-  margin-top: 3px;
   color: var(--ink-60);
-  font-size: 11.5px;
-  font-weight: 650;
-  line-height: 1.45;
 }
 .context-copy .context-error { color: var(--rouge); }
 .context-action {
-  display: inline-flex;
-  min-height: 44px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: 0 14px;
   border: 1.5px solid var(--line);
   border-radius: 999px;
   color: var(--ink-60);
   background: var(--paper);
-  font-size: 12px;
-  font-weight: 800;
   text-decoration: none;
   transition: border-color .2s var(--ease), color .2s var(--ease), background-color .2s var(--ease);
-}
-.context-actions {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
 }
 .context-action:hover,
 .context-action:focus-visible {
@@ -195,40 +142,13 @@ const currentPath = computed(function () {
 .data-account-context-bar.is-loading {
   opacity: .82;
 }
-
-@media (max-width: 900px) {
-  .data-account-context-bar { flex-wrap: wrap; }
-  .context-actions { width: 100%; flex-wrap: wrap; }
-}
-@media (max-width: 640px) {
-  .data-account-context-bar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 14px;
-    padding: 13px 14px;
-  }
-  .context-leading {
-    align-items: flex-start;
-  }
-  .context-copy > strong {
-    white-space: normal;
-  }
-  .context-action {
-    width: 100%;
-    min-height: 44px;
-  }
-  .context-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  }
-  :slotted(.act-btn) { width: 100%; min-width: 0; transform: none; }
-}
-.data-account-context-bar.is-compact { display: flex; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 0 8px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.context-selector { position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; max-width: 100%; padding: 0 8px; border-radius: 6px; color: var(--ink-60); font: 500 13px/1.5 var(--font-b); text-decoration: none; }
-.context-selector::before { content: ''; position: absolute; inset: 7px 0; z-index: -1; border-radius: 6px; background: color-mix(in srgb, var(--cream) 75%, transparent); }
+.data-account-context-bar.is-compact { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.context-selector { border-radius: 6px; color: var(--ink-60); text-decoration: none; }
+.context-selector::before { content: ''; border-radius: 6px; background: color-mix(in srgb, var(--cream) 75%, transparent); }
 .context-selector:hover { color: var(--tea); }
 .context-selector:hover::before { background: var(--cream); }
 .context-selector:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.is-compact .context-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; overflow-wrap: anywhere; }
+.is-compact .context-error { color: var(--rouge); }
 </style>
+<style scoped src="./dataAccountContextBarDesktop.css"></style>
+<style scoped src="./dataAccountContextBarMobile.css"></style>

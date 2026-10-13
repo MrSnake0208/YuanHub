@@ -1,0 +1,8 @@
+@media not all and (max-width: 1080px) {
+.footer .wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+
+.footer{margin-top:96px;padding:60px 0 44px}
+.footer .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap}
+.footer .big{font-family:var(--font-d);font-weight:900;font-size:clamp(28px,3.6vw,46px);line-height:1.1;letter-spacing:.04em}
+.footer .fine{font-size:12.5px;line-height:2.1;text-align:right}
+}

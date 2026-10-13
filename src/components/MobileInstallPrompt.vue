@@ -115,20 +115,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .pwa-install-prompt {
-  position: fixed;
-  z-index: var(--z-popover);
-  right: 12px;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  left: 12px;
   pointer-events: none;
 }
 .pwa-install-card {
-  position: relative;
-  width: min(520px, 100%);
-  margin: 0 auto;
-  max-height: calc(60dvh - env(safe-area-inset-bottom));
-  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: rgba(255, 253, 246, .98);
@@ -137,76 +128,36 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(14px);
 }
 .pwa-install-card::before {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 3px;
   background: linear-gradient(90deg, var(--yellow-deep), var(--accent), transparent 82%);
   content: '';
 }
-.pwa-install-main {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 17px;
-}
 .pwa-install-main img {
-  width: 52px;
-  height: 52px;
-  flex: none;
   border: 1px solid var(--line);
   border-radius: 13px;
   background: var(--paper);
 }
 .pwa-install-title {
-  margin: 0;
   color: var(--ink);
-  font-family: var(--font-s);
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: .035em;
 }
 .pwa-install-copy {
-  margin: 5px 0 0;
   color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.6;
 }
-.pwa-install-exit { position: sticky; top: 0; z-index: 2; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
-.pwa-install-close { width: 100%; }
+.pwa-install-exit { background: var(--surface); border-bottom: 1px solid var(--line); }
 .pwa-install-guide {
-  margin: 0 16px 12px;
-  padding: 11px 13px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--paper);
 }
-.pwa-install-guide p { margin: 0; color: var(--ink); font-size: 13px; line-height: 1.65; }
-.pwa-install-task-link { display: block; padding: 12px 16px; min-height: 48px; color: var(--ink); }
+.pwa-install-guide p { color: var(--ink); }
+.pwa-install-task-link { color: var(--ink); }
 .pwa-install-card :focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .pwa-install-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 11px 16px 14px;
   border-top: 1px solid var(--line);
   background: rgba(246, 237, 208, .35);
 }
 .pwa-install-primary,
 .pwa-install-secondary {
-  min-height: 48px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 8px 14px;
   border-radius: 999px;
-  font-family: var(--font-b);
-  font-size: 12px;
-  font-weight: 800;
   text-decoration: none;
   cursor: pointer;
 }
@@ -226,27 +177,16 @@ onBeforeUnmount(() => {
 .pwa-install-enter-active,
 .pwa-install-leave-active { transition: opacity .25s var(--ease), transform .25s var(--ease); }
 .pwa-install-enter-from,
-.pwa-install-leave-to { opacity: 0; transform: translateY(14px); }
+.pwa-install-leave-to { opacity: 0; }
 .pwa-install-leave-active .pwa-install-card { pointer-events: none; }
 
 @media (max-width: 420px) {
-  .pwa-install-prompt { right: 8px; left: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }
   .pwa-install-card { border-radius: 16px; }
-  .pwa-install-main { padding: 15px 14px; }
-  .pwa-install-main img { width: 48px; height: 48px; }
-  .pwa-install-title { font-size: 15.5px; }
-  .pwa-install-copy { font-size: 11.5px; }
-  .pwa-install-actions { padding: 10px 13px 12px; }
-  .pwa-install-primary,.pwa-install-secondary { min-height: 48px; padding-inline: 12px; font-size: 11.5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pwa-install-enter-active,.pwa-install-leave-active { transition: none; }
 }
-
-@media (orientation: landscape) and (max-height: 520px) {
-  .pwa-install-copy { display: none; }
-  .pwa-install-main { padding-block: 11px; }
-  .pwa-install-actions { padding-block: 8px; }
-}
 </style>
+<style scoped src="./mobileInstallPromptDesktop.css"></style>
+<style scoped src="./mobileInstallPromptMobile.css"></style>

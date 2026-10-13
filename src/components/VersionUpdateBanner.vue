@@ -27,100 +27,39 @@ const versionLine = computed(() =>
 </script>
 
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* 顶部信息条：暖茶棕底 + 奶油字 + 蜜黄按钮，属“更新提示”而非错误告警。 */
 .version-update {
-  position: relative;
-  z-index: var(--z-banner, 70);
   background: var(--tea);
   color: var(--cream);
   border-bottom: 1px solid rgba(255, 248, 236, 0.18);
 }
-.version-update__inner {
-  display: flex;
-  align-items: center;
-  gap: 10px 16px;
-  flex-wrap: wrap;
-  width: 100%;
-  padding: 9px clamp(16px, 2.4vw, 48px);
-}
 .version-update__icon {
-  display: inline-flex;
-  flex: none;
   color: var(--yellow);
 }
 .version-update__text {
-  flex: 1 1 320px;
-  min-width: 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.6;
   color: var(--cream);
 }
 .version-update__versions {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 8px;
-  padding: 1px 8px;
   border: 1px solid rgba(255, 248, 236, 0.4);
   border-radius: 999px;
-  font-family: var(--font-d);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
 }
 .version-update__action {
-  flex: none;
   border: 0;
   border-radius: 999px;
-  padding: 8px 18px;
   background: var(--yellow);
   color: var(--ink);
-  font-family: var(--font-b);
-  font-size: 13px;
-  font-weight: 800;
   cursor: pointer;
   transition: background-color 0.25s var(--ease), transform 0.25s var(--ease);
 }
 .version-update__action:hover {
   background: var(--yellow-deep);
-  transform: translateY(-1px);
-}
-.version-update__action:active {
-  transform: none;
-}
-@media (min-width: 1081px) {
-  /* 站点级更新提示固定在整个视口顶部；侧边栏由全局布局规则同步下移。 */
-  .version-update {
-    position: sticky;
-    top: 0;
-    height: 53px;
-  }
-  .version-update__inner {
-    height: 100%;
-    flex-wrap: nowrap;
-  }
-}
-@media (max-width: 767px) {
-  .version-update__inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 16px;
-  }
-  .version-update__text {
-    flex: none;
-  }
-  .version-update__action {
-    align-self: flex-start;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .version-update__action {
     transition: none;
   }
-  .version-update__action:hover {
-    transform: none;
-  }
 }
 </style>
+<style scoped src="./versionUpdateBannerDesktop.css"></style>
+<style scoped src="./versionUpdateBannerMobile.css"></style>

@@ -44,8 +44,8 @@ const nativeFunction = Function
 let embedMount
 afterEach(() => document.getElementById('yuanstar-embed-styles')?.remove())
 
-function render() {
-  return mount(StarPage, { global: {
+function render(options = {}) {
+  return mount(StarPage, { ...options, global: {
     stubs: {
       RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true,
       AccountWorkspace: true, DataAccountContextBar: true, ArchiveExchangePanel: true,
@@ -956,4 +956,31 @@ it('外部切到有效B账号不应用A的pending，返回A只核对原已确认
   await flushPromises(); expect(f.wrapper.findComponent({ name: 'DataAccountContextBar' }).props('switchDisabled')).toBe(false)
   expect(importInventory).toHaveBeenCalledTimes(2); expect(stock['acc-2'].count).toBe(0)
   f.wrapper.unmount()
+})
+
+it.each([[390, 1440], [1440, 390]])('宿主 %i→%i 保持唯一嵌入、计划视图与焦点且不读写', async (from, to) => {
+  const previousWidth = window.innerWidth
+  window.innerWidth = from
+  const wrapper = render({ attachTo: document.body })
+  try {
+    await flushPromises(); await loadStylesheet()
+    embedMount.mock.calls[0][1].onSummaryChange({ currentCount: 3, planCount: 1, gameVersion: '如鸢' })
+    await flushPromises()
+    await wrapper.get('#star-tab-plan').trigger('click')
+    wrapper.get('#star-tab-plan').element.focus()
+    const root = wrapper.get('#product-root').element
+    const handle = embedMount.mock.results[0].value
+    const calls = [listAccounts, getCurrentStarState, importInventory, handle.setHostAccount, handle.setReviewView].map(fn => fn.mock.calls.length)
+    window.innerWidth = to
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+    expect(embedMount).toHaveBeenCalledTimes(1)
+    expect(wrapper.findAll('#product-root')).toHaveLength(1)
+    expect(wrapper.get('#product-root').element).toBe(root)
+    expect(wrapper.get('#product-root').classes()).toContain('is-plan-view')
+    expect(wrapper.get('#star-tab-plan').attributes('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(wrapper.get('#star-tab-plan').element)
+    expect([listAccounts, getCurrentStarState, importInventory, handle.setHostAccount, handle.setReviewView].map(fn => fn.mock.calls.length)).toEqual(calls)
+    expect(handle.dispose).not.toHaveBeenCalled()
+  } finally { wrapper.unmount(); window.innerWidth = previousWidth }
 })

@@ -387,38 +387,15 @@ onBeforeUnmount(function () {
 </script>
 
 <style scoped>
-.nav .calendar-nav-link { align-items: center; }
-.nav > a { flex-shrink: 0; min-height: 44px; }
-.management-nav-link { margin-top: 12px; }
-.island-foot { position: relative; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .sidebar-more-trigger {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 10px;
-  padding: 0 8px;
   border-radius: 10px;
   color: var(--ink-60);
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
-  list-style: none;
 }
-summary::-webkit-details-marker { display: none; }
-.more-chevron { margin-left: auto; flex: none; }
-details[open] > summary .more-chevron { transform: rotate(180deg); }
 .sidebar-more-trigger:hover,
 .sidebar-more-trigger.active { background: var(--yellow); color: var(--ink); }
 .sidebar-more-panel {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: -12px;
-  right: -12px;
-  display: grid;
-  max-height: min(420px, calc(100dvh - 180px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 6px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
@@ -426,66 +403,31 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
 }
 .sidebar-more-panel > a,
 .sidebar-more-panel > button {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
   border: 0;
   border-radius: 9px;
   background: transparent;
   color: var(--ink-60);
-  font: 700 13px/1.3 var(--font-b);
-  text-align: left;
   text-decoration: none;
   cursor: pointer;
 }
-.sidebar-more-panel svg { flex: none; }
 .sidebar-more-panel > a:hover,
 .sidebar-more-panel > a.active,
 .sidebar-more-panel > button:hover { background: var(--yellow); color: var(--ink); }
 .more-feedback-badge {
-  display: inline-flex;
-  min-width: 21px;
-  height: 21px;
-  margin-left: auto;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
   border-radius: 999px;
   background: var(--rouge);
   color: #fff;
-  font: 900 10px/1 var(--font-b);
 }
-.sidebar-utilities { display: flex; align-items: center; gap: 4px; }
 .sidebar-utilities .sidebar-account {
-  display: flex;
-  min-width: 0;
-  min-height: 44px;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
   border: 0;
-  line-height: 1.35;
 }
-.sidebar-account strong,
-.sidebar-account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-account strong { font-size: 12px; }
-.sidebar-account small { color: var(--ink-60); font-size: 10px; }
+.sidebar-account small { color: var(--ink-60); }
 .sidebar-utilities .sidebar-notifications {
-  position: relative;
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
   border: 0;
   border-radius: 10px;
 }
 .sidebar-notifications.active,
 .sidebar-notifications:hover { background: var(--yellow); }
-.sidebar-notifications .sidebar-badge { position: absolute; top: 0; right: 0; margin: 0; }
 :where(.sidebar-more-trigger, .sidebar-more-panel > a, .sidebar-more-panel > button, .sidebar-account, .sidebar-notifications, .foot-logout, .mobile-more > summary):focus-visible {
   outline: 2px solid var(--brand-blue);
   outline-offset: 2px;
@@ -493,17 +435,6 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
 .foot-logout {
   background: none;
   border: none;
-  display: inline-flex;
-  width: 44px;
-  min-height: 44px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin-left: 2px;
-  font-family: var(--font-b, inherit);
-  font-size: 12px;
-  font-weight: 700;
   color: var(--ink-60);
   cursor: pointer;
   text-decoration: underline;
@@ -514,45 +445,16 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   color: var(--rouge);
 }
 .sidebar-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  margin-left: auto;
-  padding: 0 6px;
   background: var(--rouge);
   color: #fff;
   border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-}
-.mobile-menu-button,
-.mobile-header-action,
-.mobile-drawer-layer {
-  display: none;
 }
 
 /* 极短桌面窗口连同更新条会挤空主导航，让整座侧栏滚动并把更多菜单放回流内。 */
-@media (min-width: 1081px) and (max-height: 480px) {
-  .island { overflow-y: auto; overscroll-behavior: contain; }
-  .brand, .nav { flex: none; }
-  .nav { overflow: visible; }
-  .sidebar-more-panel { position: static; max-height: none; margin-block: 8px; }
-}
 
 @media (max-width: 1080px) {
   .mobile-menu-button,
   .mobile-header-action {
-    position: relative;
-    display: inline-flex;
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
     border: 1px solid transparent;
     border-radius: 12px;
     background: transparent;
@@ -567,171 +469,62 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
     background: var(--surface);
     color: var(--accent-strong);
   }
-  .mobile-page-context {
-    min-width: 0;
-    flex: 1;
-    padding: 0 6px;
-    text-align: center;
-  }
   .mobile-page-title {
-    display: block;
-    overflow: hidden;
     color: var(--ink);
-    font-family: var(--font-s);
-    font-size: 15px;
-    font-weight: 900;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .mobile-header-badge {
-    position: absolute;
-    top: 3px;
-    right: 1px;
-    display: inline-flex;
-    min-width: 17px;
-    height: 17px;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px;
     border: 2px solid var(--cream);
     border-radius: 999px;
     background: var(--rouge);
     color: #fff;
-    font-size: 8px;
-    font-weight: 900;
-    line-height: 1;
-  }
-  .mobile-drawer-layer {
-    position: fixed;
-    z-index: var(--z-overlay);
-    inset: 0;
-    display: block;
   }
   .mobile-drawer-scrim {
-    position: absolute;
-    inset: 0;
     background: rgba(73, 59, 44, .34);
     backdrop-filter: blur(2px);
   }
   .mobile-drawer {
-    position: absolute;
-    z-index: 1;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    width: min(348px, 90vw);
-    min-width: 0;
-    flex-direction: column;
-    overflow: hidden;
     border-right: 1px solid var(--line);
     background: var(--surface);
     box-shadow: 22px 0 58px -30px rgba(73, 59, 44, .52);
     outline: 0;
   }
   .mobile-drawer-head {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 10px;
-    padding:
-      calc(12px + env(safe-area-inset-top))
-      max(12px, env(safe-area-inset-right))
-      12px
-      max(16px, env(safe-area-inset-left));
     border-bottom: 1px solid var(--line);
     background: color-mix(in srgb, var(--cream) 72%, var(--surface));
   }
   .mobile-drawer-brand {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    align-items: center;
-    gap: 10px;
     color: var(--ink);
     text-decoration: none;
   }
   .mobile-drawer-brand .brand-mark {
-    width: 38px;
-    height: 38px;
-    flex: none;
     border-radius: 11px;
   }
-  .mobile-drawer-brand > span {
-    display: grid;
-    min-width: 0;
-    gap: 1px;
-  }
-  .mobile-drawer-brand strong {
-    font-family: var(--font-s);
-    font-size: 15px;
-    font-weight: 900;
-  }
   .mobile-drawer-brand small {
-    overflow: hidden;
     color: var(--ink-60);
-    font-size: 10px;
-    font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .mobile-drawer-close {
-    display: inline-flex;
-    width: 44px;
-    height: 44px;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
     border: 1px solid var(--line);
     border-radius: 12px;
     background: var(--surface);
     color: var(--ink-60);
     cursor: pointer;
   }
-  .mobile-drawer-nav {
-    min-height: 0;
-    flex: 1;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 10px max(12px, env(safe-area-inset-right)) 18px max(12px, env(safe-area-inset-left));
-  }
-  .mobile-drawer-section {
-    display: grid;
-    gap: 3px;
-    padding: 8px 0;
-  }
   .mobile-drawer-section + .mobile-drawer-section,
   .mobile-more,
   .mobile-management {
     border-top: 1px solid var(--line);
   }
-  .mobile-more { padding: 8px 0; }
   .mobile-drawer-section > a,
   .mobile-drawer-link {
-    position: relative;
-    display: flex;
-    width: 100%;
-    min-height: 48px;
-    align-items: center;
-    gap: 12px;
-    padding: 9px 11px;
     border: 0;
     border-radius: 12px;
     background: transparent;
     color: var(--ink-60);
-    font-family: var(--font-b);
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1.25;
-    text-align: left;
     text-decoration: none;
     cursor: pointer;
   }
   .mobile-drawer-section > a svg,
   .mobile-drawer-link svg {
-    flex: none;
     color: var(--tea);
   }
   .mobile-drawer-section > a:hover,
@@ -743,65 +536,22 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
     color: var(--ink);
   }
   .mobile-drawer-foot {
-    display: grid;
-    flex: none;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px;
-    padding:
-      10px
-      max(12px, env(safe-area-inset-right))
-      calc(10px + env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
     border-top: 1px solid var(--line);
     background: var(--cream);
   }
   .mobile-account-link {
-    display: flex;
-    min-width: 0;
-    min-height: 48px;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 8px;
     border-radius: 12px;
     color: var(--ink);
     text-decoration: none;
   }
-  .mobile-account-link > span {
-    display: grid;
-    min-width: 0;
-    gap: 1px;
-  }
-  .mobile-account-link strong,
-  .mobile-account-link small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .mobile-account-link strong {
-    font-size: 12px;
-    font-weight: 900;
-  }
   .mobile-account-link small {
     color: var(--ink-60);
-    font-size: 9.5px;
-    font-weight: 700;
   }
   .mobile-drawer-logout {
-    display: inline-flex;
-    min-width: 58px;
-    min-height: 44px;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 7px 9px;
     border: 0;
     border-radius: 11px;
     background: transparent;
     color: var(--rouge);
-    font-family: var(--font-b);
-    font-size: 11px;
-    font-weight: 900;
     cursor: pointer;
   }
   .mobile-drawer-enter-active,
@@ -816,10 +566,6 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   .mobile-drawer-leave-to {
     opacity: 0;
   }
-  .mobile-drawer-enter-from .mobile-drawer,
-  .mobile-drawer-leave-to .mobile-drawer {
-    transform: translateX(-100%);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -832,15 +578,7 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
 }
 /* 次级区域版本入口：低干扰、单行、可聚焦；移动端侧栏本身不渲染。 */
 .foot-version {
-  display: block;
-  margin-top: 10px;
   color: var(--ink-60);
-  font-family: var(--font-d);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .02em;
-  line-height: 1.6;
-  white-space: nowrap;
   border-bottom: 0;
   transition: color .25s var(--ease);
 }
@@ -853,3 +591,5 @@ details[open] > summary .more-chevron { transform: rotate(180deg); }
   border-radius: 4px;
 }
 </style>
+<style scoped src="./islandSidebarDesktop.css"></style>
+<style scoped src="./islandSidebarMobile.css"></style>

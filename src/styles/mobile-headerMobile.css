@@ -1,0 +1,92 @@
+@media (max-width: 1080px) {
+.mobile-shell{display:none}
+
+@media (max-width:1080px){
+  body.mobile-nav-open{overflow:hidden}
+}
+
+@media (max-width:1080px){
+  .mobile-shell{
+    position:sticky;top:0;z-index:var(--z-popover);display:flex;align-items:center;gap:8px;
+    min-height:calc(64px + env(safe-area-inset-top));
+    padding:calc(8px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));
+    transform:translateY(0);
+  }
+}
+
+@media (max-width:1080px){
+  .mobile-shell--hidden{transform:translateY(calc(-100% - 12px))}
+}
+
+@media (max-width:1080px){
+  .mobile-shell:has(:focus-visible){transform:translateY(0)}
+}
+
+@media (max-width:1080px){
+  .mobile-brand{
+    flex:none;min-height:44px;display:flex;align-items:center;gap:8px;padding:5px 8px;font-family:var(--font-s);font-size:13px;font-weight:900;
+  }
+}
+
+@media (max-width:1080px){
+  .mobile-brand .brand-mark{width:32px;height:32px;flex:none}
+}
+
+@media (max-width:1080px){
+  .mobile-nav{min-width:0;flex:1;margin-left:auto;display:flex;gap:3px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}
+}
+
+@media (max-width:1080px){
+  .mobile-nav::-webkit-scrollbar{display:none}
+}
+
+@media (max-width:1080px){
+  .mobile-nav a{
+    flex:0 0 68px;min-height:44px;padding:4px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:800;line-height:1.1;
+  }
+}
+
+@media (max-width:1080px){
+  .detail-mobile-shell{gap:4px}
+}
+
+@media (max-width:1080px){
+  .detail-mobile-shell .mobile-brand{gap:4px;padding-inline:4px}
+}
+
+@media (max-width:1080px){
+  .detail-mobile-nav{display:flex;overflow-x:auto;scrollbar-width:none}
+}
+
+@media (max-width:1080px){
+  .detail-mobile-nav::-webkit-scrollbar{display:none}
+}
+
+@media (max-width:1080px){
+  .detail-mobile-nav a{flex:none;min-width:60px;white-space:nowrap}
+}
+
+@media (max-width:480px){
+  .mobile-shell{gap:6px;padding-inline:max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right))}
+}
+
+@media (max-width:480px){
+  .mobile-brand{gap:4px;padding-inline:3px;font-size:12px;white-space:nowrap}
+}
+
+@media (max-width:480px){
+  .mobile-nav{gap:2px}
+}
+
+@media (max-width:480px){
+  .mobile-nav a{flex-basis:62px;min-width:0;padding-inline:2px}
+}
+
+@media (max-width:360px){
+  .mobile-brand{font-size:11px}
+}
+
+@media (max-width:360px){
+  .mobile-brand .brand-mark{width:30px;height:30px}
+}
+}

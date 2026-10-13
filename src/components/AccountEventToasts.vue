@@ -61,74 +61,55 @@ function agentIconSrc(operatorId) {
 </script>
 
 <style scoped>
-.account-event-toasts { position: fixed; z-index: var(--z-toast); top: 22px; right: 24px; display: flex; width: min(340px, calc(100vw - 40px)); flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none }
-.account-event-history { max-width: 100%; max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 12px; pointer-events: auto; }
-.account-event-history summary { min-height: 44px; display: flex; align-items: center; padding: 8px 12px; cursor: pointer; font-weight: 800; }
-.account-event-history ul { max-height: 34vh; overflow: auto; margin: 0; padding: 0 12px 12px 28px; }
-.account-event-history li { margin-top: 8px; }
-.account-event-history small { display: block; color: var(--ink-60); overflow-wrap: anywhere; }
-.account-event-toast { --toast-accent: var(--yellow-deep); position: relative; display: grid; grid-template-columns: 38px minmax(0, 1fr) 44px; min-height: 64px; align-items: center; gap: 9px; padding: 10px 7px 10px 10px; border: 1.5px solid var(--toast-accent); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .9); font-size: 12.5px; line-height: 1.35; pointer-events: auto }
-.account-event-toast::after { position: absolute; right: 17px; bottom: -8px; width: 14px; height: 14px; border-right: 1.5px solid var(--yellow-deep); border-bottom: 1.5px solid var(--yellow-deep); border-radius: 0 0 4px; background: var(--surface); content: ''; transform: skewY(34deg) rotate(20deg) }
-.account-event-toast.is-capsule::after { display: none }
-.toast-badge { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--toast-accent); border-radius: 50%; background: var(--yellow); color: var(--accent-strong); box-shadow: inset 0 0 0 3px var(--surface) }
-.toast-agent-icon { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
-.toast-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px }
-.toast-copy b { overflow: hidden; font-size: 12.5px; font-weight: 900; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap }
-.toast-copy small { overflow: hidden; color: var(--ink-60); font-size: 11px; font-weight: 700; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap }
-.toast-kicker { overflow: hidden; color: var(--toast-accent); font-family: var(--font-d); font-size: 9px; font-style: normal; font-weight: 900; letter-spacing: .11em; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap }
-.toast-stars { color: var(--toast-accent); font-family: var(--font-d); font-size: 10px; letter-spacing: .03em; white-space: nowrap }
-.account-event-toast.is-capsule { grid-template-columns: 34px minmax(0, 1fr) auto 44px; width: fit-content; max-width: min(300px, calc(100vw - 32px)); min-height: 50px; padding: 6px 6px 6px 7px; gap: 7px; border-radius: 999px; border-color: color-mix(in srgb, var(--toast-accent) 72%, var(--line)); box-shadow: 0 10px 28px rgba(73, 59, 44, .2); }
-.account-event-toast.is-capsule .toast-badge { width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--toast-accent) 15%, var(--surface)); }
-.account-event-toast.is-capsule .toast-copy { gap: 1px; }
-.account-event-toast.is-capsule .toast-copy { max-width: 154px; }
-.account-event-toast.is-capsule .toast-copy b { font-size: 13px; }
-.account-event-toast.is-capsule.rarity-r5 { --toast-accent: var(--accent); }
-.account-event-toast.is-capsule.rarity-r4 { --toast-accent: var(--brand-blue); }
-.account-event-toast.is-capsule.rarity-r3 { --toast-accent: var(--mist); }
-.account-event-toast.is-inventory { grid-template-columns: 48px minmax(0, 1fr) 44px; width: min(330px, calc(100vw - 40px)); min-height: 0; padding: 14px; border: 1px solid var(--accent); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 22px rgba(86, 66, 38, .09) }
-.account-event-toast.is-inventory::after { display: none }
-.account-event-toast.is-inventory .toast-badge { width: 48px; height: 48px; border-color: var(--accent); background: var(--cream); box-shadow: none; color: var(--accent-strong) }
-.account-event-toast.is-inventory .toast-copy { gap: 4px }
-.account-event-toast.is-inventory .toast-copy b { font-size: 15px; line-height: 1.2 }
-.account-event-toast.is-inventory .toast-copy small { color: var(--ink-60); font-size: 13px; white-space: normal }
-.inventory-entries { display: flex; flex-wrap: wrap; gap: 4px 8px; color: #615344; font-size: 12px; line-height: 1.4 }
-.inventory-entry { display: inline-flex; gap: 2px; padding: 1px 5px; border-radius: 7px; background: rgba(240, 224, 174, .28) }
-.inventory-entry b { color: #8e5e20; font-weight: 800 }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.account-event-toasts { pointer-events: none }
+.account-event-history { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); pointer-events: auto; }
+.account-event-history summary { cursor: pointer; }
+.account-event-history small { color: var(--ink-60); }
+.account-event-toast { border: 1.5px solid var(--toast-accent); border-radius: 18px 18px 6px 18px; background: var(--surface); color: var(--ink); box-shadow: 0 12px 28px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .9); pointer-events: auto }
+.account-event-toast::after { border-right: 1.5px solid var(--yellow-deep); border-bottom: 1.5px solid var(--yellow-deep); border-radius: 0 0 4px; background: var(--surface); content: '' }
+.toast-badge { border: 1px solid var(--toast-accent); border-radius: 50%; background: var(--yellow); color: var(--accent-strong); box-shadow: inset 0 0 0 3px var(--surface) }
+.toast-agent-icon { border-radius: inherit; }
+.toast-copy small { color: var(--ink-60) }
+.toast-kicker { color: var(--toast-accent) }
+.toast-stars { color: var(--toast-accent) }
+.account-event-toast.is-capsule { border-radius: 999px; border-color: color-mix(in srgb, var(--toast-accent) 72%, var(--line)); box-shadow: 0 10px 28px rgba(73, 59, 44, .2); }
+.account-event-toast.is-capsule .toast-badge { border-radius: 50%; background: color-mix(in srgb, var(--toast-accent) 15%, var(--surface)); }
+.account-event-toast.is-inventory { border: 1px solid var(--accent); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 22px rgba(86, 66, 38, .09) }
+.account-event-toast.is-inventory .toast-badge { border-color: var(--accent); background: var(--cream); box-shadow: none; color: var(--accent-strong) }
+.account-event-toast.is-inventory .toast-copy small { color: var(--ink-60) }
+.inventory-entries { color: #615344 }
+.inventory-entry { border-radius: 7px; background: rgba(240, 224, 174, .28) }
+.inventory-entry b { color: #8e5e20 }
 .inventory-entry.is-white-coin { background: rgba(239, 210, 142, .55); color: #8e5e20 }
 .inventory-entry.is-zhuyu { background: rgba(191, 220, 192, .62); color: #466b4a }
 .inventory-entry.is-favorite-agent { background: rgba(240, 207, 200, .68); color: #8c4740 }
 .account-toast-enter-active.is-inventory { animation: inventory-refined-in .36s cubic-bezier(.18,.82,.2,1) both }
 .account-toast-enter-active.is-inventory .toast-badge { animation: inventory-icon-ring .58s ease-out .08s both }
-.account-event-toast.is-warning { --toast-accent: rgba(166, 81, 74, .55); border-color: var(--toast-accent) }
+.account-event-toast.is-warning { border-color: var(--toast-accent) }
 .account-event-toast.is-warning::after { border-color: rgba(166, 81, 74, .55) }
 .account-event-toast.is-warning .toast-badge { border-color: var(--toast-accent); background: var(--surface); color: var(--rouge) }
-.account-event-toast.is-warning .toast-copy small { white-space: normal }
-.account-event-toast a, .account-event-history a { color: var(--brand-blue); font-weight: 800; text-decoration: underline }
+.account-event-toast a, .account-event-history a { color: var(--brand-blue); text-decoration: underline }
 .account-event-toast a:focus-visible, .account-event-history a:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
-.account-event-toast button { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-60); cursor: pointer }
+.account-event-toast button { border: 0; border-radius: 50%; background: transparent; color: var(--ink-60); cursor: pointer }
 .account-event-toast button:hover { background: rgba(73, 59, 44, .08); color: var(--ink) }
 .account-event-toast button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
 .account-toast-enter-active, .account-toast-leave-active { transition: opacity .2s ease, transform .2s var(--ease) }
-.account-toast-enter-from, .account-toast-leave-to { opacity: 0; transform: translateY(-8px) }
+.account-toast-enter-from, .account-toast-leave-to { opacity: 0 }
 .account-toast-enter-active.is-capsule { animation: capsule-pop .62s cubic-bezier(.17,.9,.22,1) both; }
 .account-toast-enter-active.is-capsule .toast-badge { animation: capsule-icon-pop .55s cubic-bezier(.17,.9,.22,1) .06s both; }
 @keyframes capsule-pop { 0% { opacity: 0; transform: translateY(10px) scale(.82) } 55% { opacity: 1; transform: translateY(-2px) scale(1.045) } 100% { opacity: 1; transform: none } }
 @keyframes capsule-icon-pop { 0% { transform: scale(.4) rotate(-12deg); filter: brightness(.7) } 65% { transform: scale(1.18) rotate(3deg); filter: brightness(1.35) } 100% { transform: scale(1); filter: none } }
 @keyframes inventory-refined-in { 0% { opacity: 0; transform: translateY(-10px) scale(.98) } 65% { opacity: 1; transform: translateY(1px) scale(1.005) } 100% { opacity: 1; transform: none } }
 @keyframes inventory-icon-ring { 0% { box-shadow: 0 0 0 0 rgba(215, 137, 53, .28) } 100% { box-shadow: 0 0 0 10px rgba(215, 137, 53, 0) } }
-.account-event-preview { position: fixed; z-index: var(--z-popover); right: 22px; bottom: 22px; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 5px; padding: 6px; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(73, 59, 44, .16) }
-.account-event-preview strong { padding: 0 7px; color: var(--ink-60); font-size: 10px; white-space: nowrap }
-.account-event-preview button { min-width: 44px; min-height: 44px; flex: none; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); font: 800 10.5px var(--font-b); cursor: pointer }
+.account-event-preview { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(73, 59, 44, .16) }
+.account-event-preview strong { color: var(--ink-60) }
+.account-event-preview button { border: 1px solid var(--line); border-radius: 6px; background: var(--cream); color: var(--ink); cursor: pointer }
 .account-event-preview button:hover { border-color: var(--accent); color: var(--accent-strong) }
 .account-event-preview button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px }
-@media (max-width: 767px) {
-  .account-event-toasts { top: auto; right: 16px; bottom: calc(78px + env(safe-area-inset-bottom)); left: auto; width: min(320px, calc(100vw - 32px)); align-items: flex-end }
-  .account-event-toast.is-capsule { max-width: calc(100vw - 32px); }
-  .account-event-toast.is-capsule .toast-copy { max-width: min(154px, calc(100vw - 146px)); }
-  .account-event-toast.is-inventory { width: min(330px, calc(100vw - 32px)); }
-  .account-event-preview { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); left: 12px; overflow-x: auto }
-}
 @media (prefers-reduced-motion: reduce) {
   .account-toast-enter-active, .account-toast-leave-active, .account-toast-enter-active.is-capsule, .account-toast-enter-active.is-capsule .toast-badge, .account-toast-enter-active.is-inventory, .account-toast-enter-active.is-inventory .toast-badge { animation: none; transition: none }
 }
 </style>
+<style scoped src="./accountEventToastsDesktop.css"></style>
+<style scoped src="./accountEventToastsMobile.css"></style>
