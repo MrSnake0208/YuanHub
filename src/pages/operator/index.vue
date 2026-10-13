@@ -24,7 +24,7 @@
           </details>
         </template>
         <template #help>
-          <p>按游戏账号记录等级、修为、星级、命盘与星石。首次建档或快速补录可从「录入密探」进入，分享与 v2 / v3 / v4 档案交换在「更多」中。</p>
+          <p>手动补录从「录入密探」进入；扫描有不确定项时，点页面上方「待复核采集结果」中的「查看并修改」；JSON 备份导入/导出在「更多」中。</p>
           <p>养成总览中，点按虚线数值可手动校正；快捷提升会核对并扣除库存，手动校正与完整编辑不扣库存。面板计算源自 <a href="https://wiki.biligame.com/yuan/" target="_blank" rel="noopener noreferrer">bwiki 编辑部</a>及技术外援，数值可能有个位数误差，请以游戏内为准。</p>
         </template>
       </CompactToolHeader>
@@ -38,7 +38,7 @@
           </div>
           <section v-if="scanReviews.length || scanReviewError" class="scan-review-panel" aria-label="待复核采集结果">
             <h2>待复核采集结果 <span>{{ scanReviews.length }}</span></h2>
-            <p>采集结果中有需要核对的内容；可靠分区可能已写入当前档案。</p>
+            <p>{{ currentAccountName }} · 可靠分区可能已保存，待核内容不会自动当作全部保存成功。点「查看并修改」可用字段表单核对，无需编辑代码。</p>
             <p v-if="scanReviewError" role="alert">{{ scanReviewError }}</p>
             <ul>
               <li v-for="review in scanReviews" :key="review.record_id + ':' + review.operator_id">
@@ -131,7 +131,7 @@
           >
             <template #summary-actions>
               <router-link class="act-btn ghost workspace-mobile-link" to="/operator/share">查看他人 BOX</router-link>
-              <router-link class="act-btn ghost workspace-mobile-link" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="showImport = false">{{ operatorEntryState ? '首次/快捷录入' : '快速补录' }}</router-link>
+              <router-link class="act-btn ghost workspace-mobile-link" :to="operatorEntryState ? quickHref : quickSupplementHref" @click="hideBackupImport">{{ operatorEntryState ? '首次/快捷录入' : '快速补录' }}</router-link>
             </template>
             <template #side>
               <OperatorShareManager
@@ -151,9 +151,9 @@
               <div class="archive-heading">
                 <div>
                   <span class="section-kicker">数据交换</span>
-                  <h2>导入或导出档案</h2>
+                  <h2>JSON 备份导入/导出</h2>
                   <p>
-                    可导出当前或全部账号的密探 JSON 备份，包含客观档案、状态、备注、关注和养成目标。
+                    此处用于已有 JSON 备份。手动补录请点「录入密探」，扫描复核请从上方待复核列表进入。导出包含客观档案、状态、备注、关注和养成目标。
                   </p>
                 </div>
                 <span class="archive-format">JSON · v4 无损导出</span>
@@ -163,10 +163,10 @@
                   class="act-btn archive-import"
                   :disabled="!auth.isLoggedIn"
                   :aria-expanded="showImport"
-                  @click="showImport = !showImport"
+                  @click="toggleImportPanel"
                 >
                   <Upload :size="16" aria-hidden="true" />{{
-                    showImport ? "收起导入" : "导入档案"
+                    selectedScanReview ? "JSON 备份导入" : showImport ? "收起导入" : "JSON 备份导入"
                   }}
                 </button>
                 <div class="export-group">
@@ -229,14 +229,12 @@
 
           <!-- 导入档案 -->
           <div v-if="showImport" class="import-box" v-reveal>
-            <div v-if="selectedScanReview" class="scan-review-context">
-              <strong>正在复核：{{ importOperatorName(selectedScanReview.operator_id) }}</strong>
-              <p>请核对下方采集文档并修改错误字段，再校验预览、确认导入。修正稿会作为新记录写入。</p>
-              <ul>
-                <li v-for="(issue, index) in [...(selectedScanReview.blocking_errors || []), ...(selectedScanReview.warnings || [])]" :key="index">{{ issue.message || issue.code }}<small v-if="issue.field"> · {{ issue.field }}</small></li>
-              </ul>
-              <button type="button" class="btn ghost" @click="closeSelectedScanReview">已另行处理，关闭此提醒</button>
-            </div>
+            <OperatorScanReviewForm v-if="selectedScanReview" :key="selectedScanReview.account_id + ':' + selectedScanReview.record_id + ':' + selectedScanReview.operator_id"
+              ref="scanReviewForm" class="scan-review-context" :review="selectedScanReview" :catalog="catalogMap[selectedScanReview.operator_id] || {}"
+              :account-name="currentAccountName" :current="scanReviewCurrent" :current-loading="scanReviewCurrentLoading" :current-error="scanReviewCurrentError" :busy="importing"
+              @change="onScanReviewChange" @preview="previewV3Import" @close="closeScanReview" @dismiss="closeSelectedScanReview" @readback="readScanReviewCurrent" />
+            <div v-if="!selectedScanReview" class="backup-import">
+            <h2>JSON 备份导入</h2>
             <p id="operator-import-tip" class="tip">
               v3 / v4 档案会先由服务器校验并展示逐项差异；v2 档案会先展示本地影响范围。两者都需确认后才写入当前账号。
             </p>
@@ -249,6 +247,7 @@
             <textarea
               id="operator-import-json"
               v-model="importText"
+              :disabled="importing"
               aria-label="密探交换档案 JSON"
               :aria-invalid="!!importError"
               :aria-describedby="
@@ -273,15 +272,16 @@
                 选择 JSON 文件
                 <input
                   type="file"
+                  :disabled="importing"
                   accept=".json,application/json"
                   @change="onFilePick"
                 />
               </label>
-              <button class="btn ghost" type="button" @click="fillExample">
+              <button class="btn ghost" type="button" :disabled="importing" @click="fillExample">
                 填入 v3 示例
               </button>
               <button
-                v-if="importDocumentVersion === 3"
+                v-if="[3, 4].includes(importDocumentVersion)"
                 class="btn primary"
                 type="button"
                 :disabled="importing || !importText.trim() || !accountId"
@@ -305,6 +305,10 @@
                 {{ importing ? "校验中…" : "校验并预览 v2" }}
               </button>
             </div>
+            </div>
+            <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
+            <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
+            <details v-if="importRequestIssue" class="import-technical"><summary>本次请求的技术详情</summary><pre>{{ JSON.stringify(importRequestIssue, null, 2) }}</pre></details>
             <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="v2 导入预览">
               <div class="import-preview-head">
                 <div>
@@ -320,48 +324,50 @@
               <details><summary>查看涉及密探</summary><ul><li v-for="entry in importV2Preview.entries" :key="entry.id">{{ entry.name }} · {{ entry.id }}</li></ul></details>
             </section>
             <section
-              v-if="importPreview"
+              v-if="v3Receipt"
               class="import-preview"
               aria-live="polite"
-              aria-label="v3 导入预览"
+              :aria-label="importPreview ? 'v3 导入预览' : '逐项保存回执'"
             >
               <div class="import-preview-head">
                 <div>
-                  <strong>导入预览</strong>
+                  <strong>{{ importPreview ? '预览影响 · 尚未保存' : '服务器保存回执' }}</strong>
                   <span
-                    >可写入
-                    {{ importPreview.accepted + importPreview.partial }} ·
-                    待复核 {{ importPreview.review }} · 拒绝
-                    {{ importPreview.rejected }} · 无变化
-                    {{ importPreview.unchanged }}</span
+                    >{{ importPreview ? '可完整写入' : '完整写入' }} {{ v3Receipt.accepted }} ·
+                    {{ importPreview ? '可部分写入' : '部分写入' }} {{ v3Receipt.partial }} ·
+                    待复核 {{ v3Receipt.review }} · 拒绝
+                    {{ v3Receipt.rejected }} · 无变化
+                    {{ v3Receipt.unchanged }}</span
                   >
                 </div>
                 <button
                   class="btn primary"
+                  v-if="importPreview"
                   type="button"
                   :disabled="importing || !canCommitV3Import"
                   @click="commitV3Import"
                 >
-                  {{ importing ? "导入中…" : "确认导入" }}
+                  {{ importing ? "保存中…" : "确认保存" }}
                 </button>
               </div>
-              <label v-if="importPreview.review" class="import-review-confirm">
+              <label v-if="importPreview && importPreview.review && !selectedScanReview" class="import-review-confirm">
                 <input
                   v-model="importConfirmReview"
                   type="checkbox"
+                  :disabled="importing"
                   @change="onImportReviewChange"
                 />
                 <span>确认写入需要人工复核的分区；勾选后请重新预览</span>
               </label>
-              <p v-if="importPreview.rejected" class="import-preview-warning">
+              <p v-if="v3Receipt.rejected" class="import-preview-warning">
                 被拒绝的密探不会写入，其余可接受条目仍可继续导入。
               </p>
               <div class="import-preview-list">
                 <details
-                  v-for="(item, index) in importPreview.items"
+                  v-for="(item, index) in v3Receipt.items"
                   :key="item.recordId + ':' + item.operatorId + ':' + index"
                   class="import-preview-item"
-                  :open="item.status === 'rejected' || item.status === 'review'"
+                  :open="['rejected', 'review', 'partial'].includes(item.status) || !importPreview"
                 >
                   <summary>
                     <span class="import-status" :class="'is-' + item.status">{{
@@ -383,8 +389,8 @@
                     <div v-for="(change, field) in item.changes" :key="field">
                       <dt>{{ importFieldLabel(field) }}</dt>
                       <dd>
-                        {{ importValueLabel(change.before, field) }} →
-                        {{ importValueLabel(change.after, field) }}
+                        {{ importValueLabel(change.before, field, item.operatorId) }} →
+                        {{ importValueLabel(change.after, field, item.operatorId) }}
                       </dd>
                     </div>
                   </dl>
@@ -397,19 +403,20 @@
                       :key="'error:' + issueIndex"
                       class="error"
                     >
-                      {{ issue.message || issue.code
-                      }}<small v-if="issue.field">{{ issue.field }}</small>
+                      {{ operatorReviewIssueText(issue) }}
+                      <a v-if="selectedScanReview && scanReviewForm?.hasField(operatorReviewField(issue))" :href="'#scan-review-field-' + operatorReviewField(issue)" @click.prevent="scanReviewForm?.focusField(operatorReviewField(issue))">定位{{ operatorReviewFieldLabel(issue.field || issue.field_path || issue.fieldPath) }}</a>
                     </li>
                     <li
                       v-for="(issue, issueIndex) in item.warnings"
                       :key="'warning:' + issueIndex"
                     >
-                      {{ issue.message || issue.code
-                      }}<small v-if="issue.field">{{ issue.field }}</small>
+                      {{ operatorReviewIssueText(issue) }}
                     </li>
                   </ul>
+                  <details class="import-technical"><summary>技术详情</summary><pre>{{ JSON.stringify(item, null, 2) }}</pre></details>
                 </details>
               </div>
+              <p v-if="!v3Receipt.items.length" class="import-preview-warning">旧版响应没有逐项回执，无法据此确认每个字段的保存情况。请重新读回当前档案核对；复核提醒继续保留。</p>
             </section>
             <div
               v-if="importResult && importResult.kind === 'v2'"
@@ -432,11 +439,8 @@
               class="import-result"
               role="status"
             >
-              导入完成：写入
-              {{ importResult.accepted + importResult.partial }} 条 · 拒绝
-              {{ importResult.rejected }} 条 · 无变化
-              {{ importResult.unchanged }} 条
-              <button class="ok" @click="afterImport">查看养成总览</button>
+              {{ importResult.accepted || importResult.partial ? '已收到保存回执，请核对上方逐项结果。' : '本次没有新的完整写入，请核对上方原因。' }}
+              <button class="ok" @click="afterImport">{{ importing ? '处理中…' : '查看养成总览' }}</button>
             </div>
           </div>
 
@@ -461,7 +465,7 @@
                 aria-label="搜索密探名称、别名或 ID"
                 placeholder="搜索名称 / 别名 / ID"
               />
-              <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="showImport = false">＋ 录入密探</router-link>
+              <router-link v-if="!operatorEntryState" class="btn primary catalog-entry" :to="quickSupplementHref" @click="hideBackupImport">＋ 录入密探</router-link>
               <div class="mf-filter" role="group" aria-label="招募状态">
                 <button
                   :aria-pressed="manifestFilter === 'all'"
@@ -926,7 +930,7 @@
               @reset="resetCurrentFilters"
             >
               <template #primary-tool>
-                <router-link class="btn primary" :to="quickSupplementHref" @click="showImport = false">＋ 录入密探</router-link>
+                <router-link class="btn primary" :to="quickSupplementHref" @click="hideBackupImport">＋ 录入密探</router-link>
                 <button
                   class="current-favorite-sort"
                   :class="{ on: favoriteFirst }"
@@ -3009,6 +3013,7 @@ import {
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import AccountWorkspace from "../../components/AccountWorkspace.vue";
+import OperatorScanReviewForm from "../../components/operator/OperatorScanReviewForm.vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import TutorialEntry from "../../components/TutorialEntry.vue";
 import OnboardingGuide from "../../components/OnboardingGuide.vue";
@@ -3134,9 +3139,9 @@ import {
   isOperatorV3Document,
   normalizeOperatorV3ImportResponse,
   operatorV3CommittableCount,
-  operatorScanReviewDraft,
   isOperatorScanReviewDraft,
 } from "../../utils/operatorV3Import.js";
+import { operatorReviewCanClose, operatorReviewField, operatorReviewFieldLabel, operatorReviewIssueText, operatorReviewReceiptItem, operatorReviewSource, operatorReviewValueLabel } from "../../utils/operatorScanReview.js";
 
 const ODDITY_KEYS = OPERATOR_ODDITY_KEYS;
 const growthTrackingEnabled = isFeatureEnabled(
@@ -3166,6 +3171,7 @@ const activeTab = usePersistedTab(
 const visitedTabs = ref(new Set(["catalog", activeTab.value]));
 watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
+let operatorNavigationSeq = 0;
 let operatorAccountDataReady = false;
 let operatorPageDisposed = false;
 const manifestSearch = ref("");
@@ -3212,6 +3218,7 @@ const showArchive = ref(false);
 const showImport = ref(false);
 const importText = ref("");
 const importError = ref("");
+const importRequestIssue = ref(null);
 const importing = ref(false);
 const importResult = ref(null);
 const importPreview = ref(null);
@@ -3222,6 +3229,19 @@ const importConfirmReview = ref(false);
 const scanReviews = ref([]);
 const scanReviewError = ref("");
 const selectedScanReview = ref(null);
+const scanReviewForm = ref(null);
+const scanReviewErrorEl = ref(null);
+const scanReviewCurrent = ref(null);
+const scanReviewCurrentLoading = ref(false);
+const scanReviewCurrentError = ref("");
+const scanReviewSavedMessage = ref("");
+const scanReviewDirty = ref(false);
+const scanReviewComplete = ref(false);
+const confirmScanReviewDiscard = useUnsavedChanges(scanReviewDirty, "扫描复核内容");
+const v3Receipt = computed(() => importPreview.value || (importResult.value?.kind === 'v3' ? importResult.value : null));
+let importOperationSeq = 0;
+let scanReviewCurrentSeq = 0;
+let scanReviewTrigger = null;
 let scanReviewLoadSeq = 0;
 const favoriteAgentIds = ref(new Set());
 const favoriteBusyIds = ref(new Set());
@@ -3505,14 +3525,28 @@ const ledgerShareStatus = computed(() => {
   return operatorShare.value.status === "未开启" ? "未分享" : operatorShare.value.status;
 });
 watch(accountId, () => { clearTimeout(shareCopyTimer); shareCopySeq += 1; shareCopyFeedback.value = ""; });
-watch(accountId, () => {
-  if (selectedScanReview.value) {
-    importText.value = "";
-    importResult.value = null;
-    resetImportPreview();
-  }
+watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn], () => {
+  importOperationSeq += 1;
+  scanReviewCurrentSeq += 1;
+  scanReviewLoadSeq += 1;
   selectedScanReview.value = null;
+  scanReviewDirty.value = false;
+  scanReviewComplete.value = false;
+  scanReviewCurrent.value = null;
+  scanReviewCurrentError.value = '';
+  scanReviewCurrentLoading.value = false;
+  scanReviewSavedMessage.value = '';
+  scanReviews.value = [];
+  importText.value = '';
+  importResult.value = null;
+  importError.value = '';
+  importing.value = false;
+  showImport.value = false;
+  resetImportPreview();
   void loadScanReviews();
+}, { flush: 'sync' });
+watch(importError, async message => {
+  if (message && selectedScanReview.value) { await nextTick(); scanReviewErrorEl.value?.focus(); }
 });
 async function copyLedgerShare() {
   const targetAccount = accountId.value;
@@ -3565,10 +3599,21 @@ const canCommitV3Import = computed(function () {
   }
 });
 
-function toggleArchive() {
+async function toggleArchive() {
+  if (selectedScanReview.value && !(await closeScanReview())) return;
   showArchive.value = !showArchive.value;
   if (showArchive.value) accountWorkspaceCompact.value = false;
   if (!showArchive.value) showImport.value = false;
+}
+
+async function toggleImportPanel() {
+  if (selectedScanReview.value) {
+    if (await closeScanReview()) showImport.value = true;
+  } else showImport.value = !showImport.value;
+}
+
+function hideBackupImport() {
+  if (!selectedScanReview.value) showImport.value = false;
 }
 
 async function loadScanReviews() {
@@ -3588,37 +3633,108 @@ async function loadScanReviews() {
   }
 }
 
-function openScanReview(review) {
-  if (!review || review.account_id !== accountId.value) return;
+async function openScanReview(review) {
+  if (!review || review.account_id !== accountId.value || importing.value) return;
+  const contextSeq = currentContextSeq;
+  const operation = importOperationSeq;
+  const navigationSeq = operatorNavigationSeq;
+  if (!selectedScanReview.value && importText.value.trim() && !importResult.value && !(await dialog.confirm({
+    title: '放弃未保存的 JSON 导入稿？', message: '打开扫描复核会替换当前导入稿。', type: 'danger', confirmText: '放弃并复核', cancelText: '继续编辑',
+  }))) return;
+  if (operation !== importOperationSeq) return;
+  if (!(await confirmScanReviewDiscard()) || operation !== importOperationSeq || navigationSeq !== operatorNavigationSeq || contextSeq !== currentContextSeq || review.account_id !== accountId.value || operatorPageDisposed) return;
   try {
-    const draftRecordId = "review:" + (globalThis.crypto?.randomUUID?.() || Date.now() + ":" + Math.random().toString(36).slice(2));
-    const draft = operatorScanReviewDraft(review.document, review.operator_id, draftRecordId);
-    selectedScanReview.value = { ...review, draftRecordId };
+    operatorReviewSource(review);
+    scanReviewTrigger = document.activeElement;
+    selectedScanReview.value = { ...review, draftRecordId: newScanReviewRecordId(), correctedAt: new Date().toISOString() };
+    scanReviewDirty.value = false;
+    scanReviewComplete.value = false;
+    scanReviewSavedMessage.value = '';
+    scanReviewCurrent.value = null;
     showArchive.value = true;
     accountWorkspaceCompact.value = false;
     showImport.value = true;
-    importText.value = JSON.stringify(draft, null, 2);
+    importText.value = '';
     onImportTextInput();
-    void nextTick(() => document.querySelector(".scan-review-context")?.scrollIntoView({ block: "start" }));
+    void readScanReviewCurrent();
+    void nextTick(() => { scanReviewForm.value?.focus(); document.querySelector(".scan-review-context")?.scrollIntoView?.({ block: "start" }); });
   } catch (err) {
     scanReviewError.value = humanErr(err, "无法打开采集结果");
   }
 }
 
-async function closeSelectedScanReview() {
+function newScanReviewRecordId() {
+  return "review:" + (globalThis.crypto?.randomUUID?.() || Date.now() + ":" + Math.random().toString(36).slice(2));
+}
+
+function onScanReviewChange(change) {
+  scanReviewDirty.value = change.dirty;
+  scanReviewComplete.value = change.complete;
+  if (change.saved) return;
+  if (change.document && selectedScanReview.value) {
+    change.document.records[0].record_id = selectedScanReview.value.draftRecordId;
+    if (JSON.stringify(change.document) === importText.value) return;
+    selectedScanReview.value.draftRecordId = newScanReviewRecordId();
+    change.document.records[0].record_id = selectedScanReview.value.draftRecordId;
+    importText.value = JSON.stringify(change.document);
+  } else importText.value = '';
+  scanReviewSavedMessage.value = '';
+  onImportTextInput();
+}
+
+async function readScanReviewCurrent() {
   const review = selectedScanReview.value;
   if (!review || review.account_id !== accountId.value) return;
+  const seq = ++scanReviewCurrentSeq;
+  const operation = importOperationSeq;
+  scanReviewCurrentLoading.value = true;
+  scanReviewCurrentError.value = '';
+  try {
+    const response = await getOperatorCurrent({ accountId: review.account_id, game: gameFilter.value });
+    if (seq !== scanReviewCurrentSeq || selectedScanReview.value !== review || review.account_id !== accountId.value) return;
+    scanReviewCurrent.value = currentEntryRawFromResponse(response, review.operator_id);
+    if (operation === importOperationSeq) resetImportPreview();
+  } catch (err) {
+    if (seq === scanReviewCurrentSeq && selectedScanReview.value === review) scanReviewCurrentError.value = humanErr(err, '现值读取失败，请重试；输入仍保留');
+  } finally {
+    if (seq === scanReviewCurrentSeq) scanReviewCurrentLoading.value = false;
+  }
+}
+
+async function closeScanReview() {
+  const review = selectedScanReview.value;
+  const contextSeq = currentContextSeq;
+  if (importing.value || !(await confirmScanReviewDiscard()) || contextSeq !== currentContextSeq || selectedScanReview.value !== review) return false;
+  selectedScanReview.value = null;
+  scanReviewDirty.value = false;
+  scanReviewComplete.value = false;
+  scanReviewSavedMessage.value = '';
+  scanReviewCurrentSeq += 1;
+  importText.value = '';
+  onImportTextInput();
+  showImport.value = false;
+  await nextTick();
+  if (scanReviewTrigger?.isConnected) scanReviewTrigger.focus({ preventScroll: true });
+  return true;
+}
+
+async function closeSelectedScanReview() {
+  const review = selectedScanReview.value;
+  if (!review || review.account_id !== accountId.value || importing.value) return;
+  const contextSeq = currentContextSeq;
   const confirmed = await dialog.confirm({
     title: "关闭待复核提醒？",
     message: "仅关闭这条提醒，不会写入尚未录入的采集字段。",
     confirmText: "关闭提醒",
   });
-  if (!confirmed || review.account_id !== accountId.value || selectedScanReview.value !== review) return;
+  if (!confirmed || contextSeq !== currentContextSeq || review.account_id !== accountId.value || selectedScanReview.value !== review) return;
+  importing.value = true;
   try {
     await closeOperatorScanReview({ accountId: review.account_id, recordId: review.record_id, operatorId: review.operator_id });
-    if (review.account_id !== accountId.value) return;
+    if (contextSeq !== currentContextSeq || operatorPageDisposed) return;
     if (selectedScanReview.value === review) {
       selectedScanReview.value = null;
+      scanReviewDirty.value = false;
       importText.value = "";
       importResult.value = null;
       resetImportPreview();
@@ -3626,7 +3742,9 @@ async function closeSelectedScanReview() {
     }
     await loadScanReviews();
   } catch (err) {
-    scanReviewError.value = humanErr(err, "关闭提醒失败");
+    if (contextSeq === currentContextSeq) scanReviewError.value = humanErr(err, "关闭提醒失败");
+  } finally {
+    if (contextSeq === currentContextSeq) importing.value = false;
   }
 }
 
@@ -7990,9 +8108,10 @@ async function beforeAccountSwitch() {
   if (accountSwitchBusy.value) return false;
   const contextSeq = currentContextSeq;
   if (editorDirty.value && !(await confirmEditorDiscard())) return false;
+  if (scanReviewDirty.value && !(await confirmScanReviewDiscard())) return false;
   if (contextSeq !== currentContextSeq || accountSwitchBusy.value) return false;
   const dirtyCards = currentEntries.value.some(entry => cardDraftBaselines.value[entry.id] && cardDraftBaselines.value[entry.id] !== cardDraftSnapshot(entry));
-  if (dirtyCards || starLoadoutIsDirty() || (importText.value.trim() && !importResult.value)) {
+  if (dirtyCards || starLoadoutIsDirty() || (!selectedScanReview.value && importText.value.trim() && !importResult.value)) {
     return dialog.confirm({ title: '放弃当前账号的未保存内容？', message: '切换账号会关闭当前草稿与导入预览。已保存的数据不受影响。', type: 'danger', confirmText: '放弃并切换', cancelText: '继续处理' });
   }
   return true;
@@ -8332,6 +8451,7 @@ function routeQueryValue(value) {
 }
 
 async function consumeOperatorNavigation() {
+  const navigationSeq = ++operatorNavigationSeq;
   const requestedTab = routeQueryValue(route.query.tab);
   const operatorId = routeQueryValue(route.query.focus);
   const reviewRecordId = routeQueryValue(route.query.review_record);
@@ -8340,18 +8460,23 @@ async function consumeOperatorNavigation() {
   const effect = routeQueryValue(route.query.effect) === "new" ? "new" : "updated";
   const targetTab = requestedTab === "current" || requestedTab === "catalog" ? requestedTab : "";
   if (!targetTab && !operatorId && !reviewRecordId) return;
+  if (reviewRecordId && reviewAccountId && accounts.value.some(account => account.id === reviewAccountId)) accountId.value = reviewAccountId;
+  const contextSeq = currentContextSeq;
+  const navigationIsCurrent = () => navigationSeq === operatorNavigationSeq && contextSeq === currentContextSeq && !operatorPageDisposed;
   if (reviewRecordId) {
     const accountOwned = !reviewAccountId || accounts.value.some(account => account.id === reviewAccountId);
     if (accountOwned) {
-      if (reviewAccountId) accountId.value = reviewAccountId;
       await loadScanReviews();
+      if (!navigationIsCurrent()) return;
       const review = scanReviews.value.find(item => item.record_id === reviewRecordId && item.operator_id === reviewOperatorId);
-      if (review) openScanReview(review);
+      if (review) await openScanReview(review);
       else scanReviewError.value = "这条待复核结果已处理或不属于当前账号";
     } else scanReviewError.value = "无法访问此账号的待复核结果";
   }
+  if (!navigationIsCurrent()) return;
   if (operatorId) await focusAndFlashScanOperator(operatorId, effect, targetTab || "catalog");
   else if (targetTab) await setTab(targetTab);
+  if (!navigationIsCurrent()) return;
 
   const cleanedQuery = Object.assign({}, route.query);
   delete cleanedQuery.tab;
@@ -8364,10 +8489,11 @@ async function consumeOperatorNavigation() {
 }
 
 watch(
-  function () { return [route.query.tab, route.query.focus, route.query.effect, route.query.review_record, route.query.review_operator]; },
+  function () { return [route.query.tab, route.query.focus, route.query.effect, route.query.review_record, route.query.review_operator, route.query.account_id]; },
   function () {
     if (operatorNavigationReady) void consumeOperatorNavigation();
   },
+  { flush: 'sync' },
 );
 
 function handleAccountEvent(message) {
@@ -8481,13 +8607,16 @@ function resetImportPreview() {
 }
 
 function onImportTextInput() {
+  importOperationSeq += 1;
   importError.value = "";
+  importRequestIssue.value = null;
   importResult.value = null;
   importConfirmReview.value = false;
   resetImportPreview();
 }
 
 async function previewV3Import() {
+  if (importing.value) return;
   if (!auth.isLoggedIn) {
     goLogin();
     return;
@@ -8509,19 +8638,32 @@ async function previewV3Import() {
     return;
   }
   const contextSeq = currentContextSeq;
+  const operation = ++importOperationSeq;
+  const targetAccount = accountId.value;
   importing.value = true;
   resetImportPreview();
   try {
     const response = await previewOperatorImport(requestBody);
-    if (contextSeq !== currentContextSeq) return;
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
     importPreview.value = normalizeOperatorV3ImportResponse(response);
     importPreviewKey.value = JSON.stringify(requestBody);
   } catch (err) {
-    if (contextSeq !== currentContextSeq) return;
-    importError.value = humanErr(err, "v3 档案预览失败");
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
+    importError.value = importFailureText(err, "档案预览失败，输入已保留，可重试");
   } finally {
-    if (contextSeq === currentContextSeq) importing.value = false;
+    if (importRequestIsCurrent(operation, contextSeq, targetAccount)) importing.value = false;
   }
+}
+
+function importRequestIsCurrent(operation, contextSeq, targetAccount) {
+  return operation === importOperationSeq && contextSeq === currentContextSeq && targetAccount === accountId.value && !operatorPageDisposed;
+}
+
+function importFailureText(err, fallback) {
+  importRequestIssue.value = { code: err?.code || '', message: err?.message || '', field_path: err?.payload?.error?.field_path || err?.payload?.data?.error?.field_path || '' };
+  if (err?.code) return operatorReviewIssueText(err);
+  if (/Failed to fetch|NetworkError|fetch|timeout|超时/i.test(err?.message || '')) return '网络未能确认结果，输入已保留。可重新读回现值，或重试同一份修正。';
+  return humanErr(err, fallback);
 }
 
 async function commitV3Import() {
@@ -8544,39 +8686,64 @@ async function commitV3Import() {
     return;
   }
   const contextSeq = currentContextSeq;
+  const operation = ++importOperationSeq;
   importing.value = true;
   const targetAccount = accountId.value;
   const review = selectedScanReview.value;
   const reviewingThisDocument = review && review.account_id === targetAccount &&
     isOperatorScanReviewDraft(review, requestBody.document);
+  const complete = scanReviewComplete.value;
   try {
-    const response = normalizeOperatorV3ImportResponse(
+    let duplicateReceipt = null;
+    if (reviewingThisDocument) {
+      const latest = normalizeOperatorV3ImportResponse(await previewOperatorImport(requestBody));
+      if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
+      const item = operatorReviewReceiptItem(latest, review, requestBody.document);
+      const duplicate = item?.status === 'unchanged' && item.warnings.some(issue => issue.code === 'duplicate_record');
+      if (duplicate) duplicateReceipt = latest;
+      else if (JSON.stringify(latest) !== JSON.stringify(importPreview.value)) {
+        importPreview.value = latest;
+        importPreviewKey.value = JSON.stringify(requestBody);
+        importError.value = '服务器档案或校验结果已变化，已更新预览。输入仍保留，请核对新的影响后再次确认保存。';
+        return;
+      }
+    }
+    const response = duplicateReceipt || normalizeOperatorV3ImportResponse(
       await importOperator(requestBody),
     );
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
     let resolvedReview = false;
-    if (reviewingThisDocument && operatorV3CommittableCount(response) > 0) {
+    if (reviewingThisDocument && operatorReviewCanClose(response, review, requestBody.document, complete)) {
       try {
         await closeOperatorScanReview({ accountId: targetAccount, recordId: review.record_id, operatorId: review.operator_id });
         resolvedReview = true;
       } catch (closeError) {
-        if (contextSeq === currentContextSeq && targetAccount === accountId.value) importError.value = "档案已导入，但关闭提醒失败：" + humanErr(closeError, "请稍后重试");
+        if (importRequestIsCurrent(operation, contextSeq, targetAccount)) importError.value = "修正已保存，但关闭提醒失败：" + humanErr(closeError, "请稍后重试");
       }
     }
-    if (contextSeq !== currentContextSeq || targetAccount !== accountId.value) return;
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
     importResult.value = Object.assign({ kind: "v3" }, response);
     resetImportPreview();
     await reloadCurrent(true);
-    if (contextSeq !== currentContextSeq) return;
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
     if (reviewingThisDocument) {
-      if (resolvedReview) selectedScanReview.value = null;
-      else if (!importError.value) importError.value = "本次修正尚未录入，请检查结果并重新预览";
+      const item = operatorReviewReceiptItem(response, review, requestBody.document);
+      if (item && ['accepted', 'partial', 'unchanged'].includes(item.status) &&
+          !item.blockingErrors.length) scanReviewForm.value?.markSaved();
+      if (resolvedReview) { selectedScanReview.value = null; scanReviewDirty.value = false; }
+      else {
+        scanReviewSavedMessage.value = response.items.length
+          ? '请核对逐项保存回执；未处理或仍被拒绝的字段继续保留提醒。'
+          : '服务器未提供逐项回执，不能确认每个字段已保存；请重新读回核对，提醒继续保留。';
+        await readScanReviewCurrent();
+      }
       await loadScanReviews();
     }
   } catch (err) {
-    if (contextSeq !== currentContextSeq) return;
-    importError.value = humanErr(err, "v3 档案导入失败");
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
+    importError.value = importFailureText(err, "档案保存失败，输入已保留，可重试");
   } finally {
-    if (contextSeq === currentContextSeq) importing.value = false;
+    if (importRequestIsCurrent(operation, contextSeq, targetAccount)) importing.value = false;
   }
 }
 
@@ -8588,8 +8755,8 @@ function onImportReviewChange() {
 function importStatusLabel(status) {
   return (
     {
-      accepted: "可导入",
-      partial: "部分导入",
+      accepted: importPreview.value ? "可保存" : "已保存",
+      partial: importPreview.value ? "可部分保存" : "部分保存",
       review: "待复核",
       rejected: "已拒绝",
       unchanged: "无变化",
@@ -8599,7 +8766,7 @@ function importStatusLabel(status) {
 
 function importOperatorName(id) {
   const op = catalogMap.value[id];
-  return op && op.name ? op.name + " · " + id : id;
+  return op && op.name ? op.name : '图鉴未收录的密探';
 }
 
 function importFieldLabel(field) {
@@ -8608,6 +8775,8 @@ function importFieldLabel(field) {
       level: "等级",
       elite: "修为",
       star_level: "化极",
+      huaji: "化极与觉醒",
+      huaji_legacy: "历史化极来源",
       disc_loadouts: "命盘",
       star_stones: "已装备星石",
       equipped_star_stones: "已装备星石",
@@ -8620,11 +8789,19 @@ function importFieldLabel(field) {
   );
 }
 
-function importValueLabel(value, field) {
+function importValueLabel(value, field, operatorId) {
   if (field === "growth_state") return statusLabel(value);
-  if (value == null) return "无";
-  if (Array.isArray(value)) return value.length ? JSON.stringify(value) : "空";
-  if (typeof value === "object") return JSON.stringify(value);
+  if (value == null) return "未知";
+  if (field === 'huaji' || field === 'disc_loadouts') return operatorReviewValueLabel(value, field, catalogMap.value[operatorId]);
+  if (field === 'combat_stats') {
+    const oddities = value.oddities || {};
+    const facts = Object.keys(oddities).map(key => operatorReviewFieldLabel('combat_stats.oddities.' + key) + ' ' + (oddities[key]?.current ?? '未知'));
+    if (value.observed_attack != null || value.observedAttack != null) facts.push('观测攻击 ' + (value.observed_attack ?? value.observedAttack));
+    if (value.observed_hp != null || value.observedHp != null) facts.push('观测生命 ' + (value.observed_hp ?? value.observedHp));
+    return facts.join('、') || '战斗观测记录（技术详情可查）';
+  }
+  if (Array.isArray(value)) return value.length ? value.map(item => item.name || '已记录项目').join('、') : "未配置";
+  if (typeof value === "object") return '已记录（技术详情可查）';
   return String(value);
 }
 
@@ -8696,13 +8873,16 @@ async function commitV2Import() {
 }
 
 function onFilePick(ev) {
+  if (importing.value) return;
   const file = ev && ev.target && ev.target.files && ev.target.files[0];
   if (!file) return;
   selectedScanReview.value = null;
   const contextSeq = currentContextSeq;
+  const operation = ++importOperationSeq;
+  const targetAccount = accountId.value;
   const reader = new FileReader();
   reader.onload = function () {
-    if (contextSeq !== currentContextSeq) return;
+    if (!importRequestIsCurrent(operation, contextSeq, targetAccount)) return;
     importText.value = String(reader.result || "");
     onImportTextInput();
   };
@@ -8767,8 +8947,12 @@ function fillExample() {
   onImportTextInput();
 }
 
-function afterImport() {
+async function afterImport() {
+  const operation = importOperationSeq;
+  const contextSeq = currentContextSeq;
+  if (importing.value || !(await confirmScanReviewDiscard()) || operation !== importOperationSeq || contextSeq !== currentContextSeq || operatorPageDisposed) return;
   selectedScanReview.value = null;
+  scanReviewDirty.value = false;
   importResult.value = null;
   importConfirmReview.value = false;
   resetImportPreview();
@@ -8865,6 +9049,9 @@ onMounted(async function () {
 });
 
 onBeforeUnmount(function () {
+  importOperationSeq += 1;
+  scanReviewCurrentSeq += 1;
+  scanReviewLoadSeq += 1;
   annotationScopeSeq += 1;
   annotationLoadSeq += 1;
   operatorPageDisposed = true;
@@ -8942,12 +9129,15 @@ onBeforeUnmount(function () {
 .scan-review-panel h2 span { color: var(--rouge); }
 .scan-review-panel p, .scan-review-context p { margin: 8px 0; font-size: 13px; line-height: 1.5; }
 .scan-review-panel ul, .scan-review-context ul { margin: 10px 0 0; padding-left: 20px; }
-.scan-review-panel li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.scan-review-panel li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 6px 0; overflow-wrap: anywhere; }
 .scan-review-panel button { min-height: 44px; padding: 0 12px; border: 1px solid var(--rouge); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .scan-review-panel button:focus-visible, .scan-review-context button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 .scan-review-context { margin-top: 0; }
 .scan-review-context li { margin: 4px 0; font-size: 12px; }
 .scan-review-context button { margin-top: 12px; }
+.import-technical pre { max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.import-technical summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+.backup-import h2 { margin-top: 0; font: 900 20px var(--font-s); }
 .orphan-current { margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .orphan-current p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }
 .orphan-current ul { list-style: none; margin: 0; padding: 0; }

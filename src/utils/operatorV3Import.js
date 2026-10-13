@@ -19,7 +19,8 @@ export function operatorScanReviewDraft(document, operatorId, reviewId) {
 export function isOperatorScanReviewDraft(review, document) {
   const records = document?.records
   return !!review && Array.isArray(records) && records.length === 1 &&
-    records[0].record_id === review.draftRecordId && records[0].entries?.length === 1
+    records[0].record_id === review.draftRecordId && records[0].entries?.length === 1 &&
+    (!review.operator_id || records[0].entries[0].operator_id === review.operator_id)
 }
 
 export function buildOperatorV3BrowserRequest(document, targetAccountId, confirmReview) {
