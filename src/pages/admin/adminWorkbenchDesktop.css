@@ -1,0 +1,110 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-admin-workbench > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.page-admin-workbench {
+  min-height: 100vh; min-height: 100dvh;
+}
+
+.workbench-content {
+  padding: 12px 0 16px;
+}
+
+.workbench-state {
+  min-height: 240px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.workbench-state strong {
+  font-family: var(--font-s);
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.workbench-state span {
+  max-width: 42ch;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.workbench-state .command {
+  margin-top: 7px;
+}
+
+.workbench-groups {
+  display: grid;
+  gap: 42px;
+}
+
+.workbench-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 15px 0 13px;
+}
+
+.section-kicker {
+  font-family: var(--font-d);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+
+.workbench-group h2 {
+  font-family: var(--font-s);
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.workbench-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workbench-tool {
+  min-width: 0;
+  min-height: 102px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+}
+
+.workbench-tool:hover {
+  transform: translateY(-2px);
+}
+
+.workbench-tool-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.workbench-tool-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workbench-tool-copy strong {
+  overflow-wrap: anywhere;
+  font-family: var(--font-s);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.workbench-tool-copy small {
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+}

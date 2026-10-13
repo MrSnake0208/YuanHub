@@ -127,28 +127,25 @@ onMounted(function () { load(1) })
 </script>
 
 <style scoped>
-.page-admin-audit { min-height: 100vh; min-height: 100dvh }
-.audit-content { padding-top: 12px; padding-bottom: 56px }
-.audit-toolbar { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-block: 1px solid var(--line); color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
-.icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer }
-.icon-command { flex: none; margin-left: auto }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.audit-toolbar { border-block: 1px solid var(--line); color: var(--ink-60) }
+.icon-command { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); cursor: pointer }
 .command:focus-visible,.icon-command:focus-visible,.state button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
-.state button { min-height: 44px }
-.state { padding: 52px 0; color: var(--ink-60); text-align: center }
+.state { color: var(--ink-60) }
 .state.error { color: var(--rouge) }
-.audit-table-wrap { overflow-x: auto }
 .audit-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
-.audit-table { width: 100%; min-width: 1050px; border-collapse: collapse; background: var(--surface) }
-.audit-table th,.audit-table td { padding: 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
-.audit-table th { background: var(--tea); color: var(--cream); font-size: 12px }
-.audit-table code,.audit-table time { display: block; max-width: 210px; color: var(--ink-60); font-family: var(--font-d); font-size: 11px; overflow-wrap: anywhere }
-.audit-table time { color: var(--ink); font-size: 12px }
-.action-tag { display: inline-flex; padding: 3px 8px; background: var(--yellow); border-radius: 6px; font-size: 11px; font-weight: 800 }
-.snapshot-line { display: block; max-width: 250px; margin-bottom: 4px; color: var(--ink-60); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere }
-.empty-row { color: var(--ink-60); text-align: center !important }
-.pager { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 20px }
-.pager span { color: var(--ink-60); font-family: var(--font-d); font-size: 12px }
-.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; font-weight: 800; cursor: pointer }
+.audit-table { border-collapse: collapse; background: var(--surface) }
+.audit-table th,.audit-table td { border-bottom: 1px solid var(--line) }
+.audit-table th { background: var(--tea); color: var(--cream) }
+.audit-table code,.audit-table time { color: var(--ink-60) }
+.audit-table time { color: var(--ink) }
+.action-tag { background: var(--yellow); border-radius: 6px }
+.snapshot-line { color: var(--ink-60) }
+.empty-row { color: var(--ink-60) }
+.pager span { color: var(--ink-60) }
+.command { border: 1px solid var(--line); border-radius: 8px; cursor: pointer }
 .command.secondary { background: var(--surface); color: var(--ink) }
 .command:disabled,.icon-command:disabled { opacity: .5; cursor: default }
 </style>
+<style scoped src="./adminAuditDesktop.css"></style>
+<style scoped src="./adminAuditMobile.css"></style>

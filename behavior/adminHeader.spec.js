@@ -11,7 +11,7 @@ vi.mock('../src/api/admin.js', () => ({ listAdminAuditLogs: vi.fn(), listAdminRo
 vi.mock('../src/api/user.js', () => ({ searchFeedbackAccessUsers: vi.fn(async () => []) }))
 vi.mock('../src/store/auth.js', () => ({ auth: { userInfo: { id: 'current-admin' }, refreshAdminAccess: vi.fn() } }))
 vi.mock('../src/utils/dialog.js', () => ({ dialog: { confirm: vi.fn() } }))
-const render = Component => mount(Component, { global: { stubs: { IslandSidebar: true, RouterLink: true } } })
+const render = (Component, options = {}) => mount(Component, { ...options, global: { stubs: { IslandSidebar: true, RouterLink: true } } })
 const binding = { userId: 'other-admin', userName: '实际角色用户', roles: ['SUPER_ADMIN'], activated: true }
 beforeEach(() => {
   vi.clearAllMocks()
@@ -87,4 +87,59 @@ it('账房公共变更审计显示动作、资源和前后值', async () => {
   expect(wrapper.text()).toContain('ledger:ru:1000000')
   expect(wrapper.text()).toContain('旧价格=6')
   expect(wrapper.text()).toContain('新价格=7')
+})
+
+
+it.each([390, 1440])('角色编辑在%s起步跨断点保留勾选、筛选和唯一弹窗', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = render(Roles, { attachTo: document.body }); await flushPromises()
+  try {
+    await wrapper.get('input[type="search"]').setValue('实际角色用户')
+    await wrapper.get('button[title="编辑角色"]').trigger('click'); await flushPromises()
+    const modal = document.querySelector('.role-modal')
+    const checkbox = modal.querySelector('input[value="PLATFORM_ADMIN"]')
+    checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await flushPromises()
+    checkbox.focus()
+    const reads = listAdminRoleUsers.mock.calls.length
+    for (const nextWidth of [720, 721, 767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(document.querySelector('.role-modal')).toBe(modal)
+      expect(checkbox.checked).toBe(true)
+      expect(modal.querySelector('input[value="SUPER_ADMIN"]').checked).toBe(true)
+      expect(document.activeElement).toBe(checkbox)
+      expect(wrapper.get('input[type="search"]').element.value).toBe('实际角色用户')
+      expect(document.querySelectorAll('.role-modal')).toHaveLength(1)
+    }
+    expect(listAdminRoleUsers).toHaveBeenCalledTimes(reads)
+    expect(replaceAdminRoles).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
+})
+
+it.each([390, 1440])('审计在%s起步跨断点保留页码与列表区域焦点', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  const wrapper = render(Audit, { attachTo: document.body }); await flushPromises()
+  try {
+    listAdminAuditLogs.mockResolvedValue({ data: [], page: 2, total: 143, hasNext: true })
+    await wrapper.get('.pager button:last-child').trigger('click'); await flushPromises()
+    const region = wrapper.get('.audit-table-wrap').element
+    region.focus()
+    const reads = listAdminAuditLogs.mock.calls.length
+    for (const nextWidth of [767, 768, 1080, 1081, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(wrapper.get('.audit-table-wrap').element).toBe(region)
+      expect(document.activeElement).toBe(region)
+      expect(wrapper.get('.audit-summary').text()).toContain('第 2 / 8 页')
+    }
+    expect(listAdminAuditLogs).toHaveBeenCalledTimes(reads)
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })

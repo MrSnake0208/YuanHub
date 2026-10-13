@@ -1,0 +1,24 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-admin-audit > main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.page-admin-audit { min-height: 100vh; min-height: 100dvh }
+.audit-content { padding-top: 12px; padding-bottom: 56px }
+.audit-toolbar { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--font-d); font-size: 12px }
+.icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center }
+.icon-command { flex: none; margin-left: auto }
+.state button { min-height: 44px }
+.state { padding: 52px 0; text-align: center }
+.audit-table-wrap { overflow-x: auto }
+.audit-table { width: 100%; min-width: 1050px }
+.audit-table th,.audit-table td { padding: 14px; text-align: left; vertical-align: top }
+.audit-table th { font-size: 12px }
+.audit-table code,.audit-table time { display: block; max-width: 210px; font-family: var(--font-d); font-size: 11px; overflow-wrap: anywhere }
+.audit-table time { font-size: 12px }
+.action-tag { display: inline-flex; padding: 3px 8px; font-size: 11px; font-weight: 800 }
+.snapshot-line { display: block; max-width: 250px; margin-bottom: 4px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere }
+.empty-row { text-align: center !important }
+.pager { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 20px }
+.pager span { font-family: var(--font-d); font-size: 12px }
+.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; font-weight: 800 }
+}

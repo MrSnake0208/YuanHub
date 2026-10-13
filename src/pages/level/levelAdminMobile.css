@@ -1,0 +1,104 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.page-level-admin > main { margin-left: 0; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+@media (max-width: 767px) { .wrap { width: 100%; max-width: none; padding-inline: 16px; } }
+@media (min-width: 768px) and (max-width: 1080px) { .wrap { padding-inline: 32px; } }
+.page-level-admin { min-height: 100vh; min-height: 100dvh }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+.level-content { padding-top: 12px; padding-bottom: 20px }
+.level-toolbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 10px; padding: 12px 0 }
+.level-toolbar label { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 11px; font-weight: 800 }
+.level-toolbar select, .level-search input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; font: 13px var(--font-b) }
+.level-search { position: relative; grid-column: 1 / -1; flex-direction: row !important; align-items: center; min-height: 44px; padding: 0 11px }
+.level-search input { padding-left: 0 }
+.level-tools { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px }
+.level-tools .command { flex: 1; padding-inline: 8px; white-space: nowrap }
+@media (min-width: 700px) {
+  .level-toolbar { grid-template-columns: repeat(3, minmax(112px, 1fr)) minmax(200px, 1.5fr) }
+  .level-search { position: relative; grid-column: auto }
+  .level-tools .command { flex: none; padding-inline: 14px }
+}
+.command { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 14px; font: 800 13px var(--font-b) }
+.command:hover:not(:disabled) { transform: translateY(-1px) }
+.state { min-height: 160px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px; padding: 28px; text-align: center }
+.state.error { flex-wrap: wrap }
+.state-retry { min-height: 44px; font: inherit; font-weight: 800 }
+.list-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; min-height: 30px; margin-top: 10px; font-size: 12px; font-weight: 700 }
+.catalog-version { font-family: var(--font-d); overflow-wrap: anywhere }
+.archive-note { margin: 2px 0 8px; font-size: 12px; line-height: 1.6 }
+.level-table-wrap { position: relative; margin-top: 2px; overflow-x: auto; padding: 8px 10px; scrollbar-gutter: stable }
+.level-table { width: 100%; min-width: 1320px; font-size: 12.5px }
+.level-table th { padding: 10px 8px; font-size: 11px; font-weight: 800; text-align: left; white-space: nowrap }
+.level-table td { padding: 11px 8px; vertical-align: middle; white-space: nowrap }
+.level-table code, .level-mobile-card code { font: 11px var(--font-d); overflow-wrap: anywhere }
+.game-tag, .status-tag, .open-tag { display: inline-flex; align-items: center; min-height: 23px; padding: 3px 8px; font-size: 11px; font-weight: 800; white-space: nowrap }
+.time-cell { font-size: 11px }
+.ops-col { position: sticky; right: 0; z-index: 2; min-width: 160px }
+.level-table thead .ops-col { z-index: 3 }
+.table-action { min-height: 44px; display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; padding: 6px 8px; font: 800 11px var(--font-b) }
+.empty-row { padding: 38px 20px !important; text-align: center !important }
+.level-mobile-list { display: none }
+.level-lower-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 16px; margin-top: 22px }
+.tree-panel, .import-panel { min-width: 0; padding: 20px }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px }
+.panel-head h2 { margin-top: 4px; font: 900 22px var(--font-s) }
+.panel-head > span { font-size: 11px; white-space: nowrap }
+.eyebrow { font: 800 10px var(--font-d); letter-spacing: .14em }
+.panel-hint { margin: 12px 0; font-size: 12px; line-height: 1.7 }
+.panel-hint code { font: 11px var(--font-d) }
+.catalog-tree, .catalog-tree ul { list-style: none; padding-left: 0 }
+.catalog-tree { max-height: 330px; overflow: auto; padding: 2px 4px }
+.catalog-tree ul { padding-left: 17px }
+.catalog-tree > ul { padding-left: 0 }
+.catalog-tree li { padding: 4px 0; font-size: 12.5px }
+.catalog-tree li > span, .catalog-tree li > strong { display: inline-block; max-width: calc(100% - 45px); overflow-wrap: anywhere }
+.catalog-tree small { margin-left: 7px; font: 10px var(--font-d) }
+.panel-empty { font-size: 12px }
+.import-panel textarea { width: 100%; min-height: 150px; resize: vertical; padding: 10px; font: 12px/1.6 var(--font-d) }
+.import-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px }
+.inline-error, .editor-error { font-size: 12px; line-height: 1.6 }
+.inline-error { margin-top: 9px }
+.import-preview { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 12px }
+.import-stat { min-width: 0; padding: 8px 5px; text-align: center }
+.import-stat strong { display: block; font: 900 19px var(--font-d) }
+.import-stat span { font-size: 10px; white-space: nowrap }
+.import-details { grid-column: 1 / -1; max-height: 100px; overflow: auto; margin: 2px 0 0; padding-left: 20px; font-size: 11px; line-height: 1.6 }
+.editor-mask { position: fixed; inset: 0; z-index: var(--z-overlay-panel); display: grid; place-items: center; padding: 24px }
+.editor-panel { width: min(720px, 100%); max-height: 90vh; max-height: 90dvh; overflow-y: auto; padding: 24px 26px }
+.editor-head { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 14px }
+.editor-head h2 { margin-top: 4px; font: 900 23px var(--font-s) }
+.editor-head p { margin-top: 5px; font-size: 12px; line-height: 1.6 }
+.icon-command { flex: none; width: 44px; height: 44px; display: grid; place-items: center; margin: -8px -8px 0 auto }
+.editor-error { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px }
+.editor-error button { flex: none; white-space: nowrap; min-height: 44px; padding: 5px 9px; font: 800 11px var(--font-b) }
+.editor-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 14px; padding-top: 18px }
+.editor-fields label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 800 }
+.editor-fields label.wide { grid-column: 1 / -1 }
+.editor-fields input, .editor-fields select { min-height: 44px; width: 100%; padding: 8px 10px; font: 13px var(--font-b) }
+.revision-note { margin-top: 12px; font: 11px var(--font-d) }
+.editor-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; padding-top: 16px }
+
+@media (max-width: 767px) {
+  .level-search input { font-size: 16px }
+  .level-table-wrap { display: none }
+  .level-mobile-list { display: flex; flex-direction: column; gap: 10px; margin-top: 3px }
+  .level-mobile-card { overflow: hidden; padding: 13px }
+  .level-mobile-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px }
+  .level-mobile-card header > div { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 7px }
+  .level-mobile-card header strong { overflow-wrap: anywhere; font: 900 18px var(--font-s) }
+  .level-mobile-card dl { display: grid; gap: 7px; margin: 13px 0 0; padding-top: 11px }
+  .level-mobile-card dl div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; min-width: 0 }
+  .level-mobile-card dt { font-size: 11px; font-weight: 800 }
+  .level-mobile-card dd { min-width: 0; margin: 0; font-size: 12px; overflow-wrap: anywhere }
+  .level-mobile-card footer { display: flex; justify-content: flex-end; gap: 5px; margin-top: 12px; padding-top: 9px }
+  .level-lower-grid { grid-template-columns: 1fr; margin-top: 16px }
+  .tree-panel, .import-panel { padding: 16px }
+  .import-preview { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+  .editor-mask { align-items: end; padding: 10px }
+  .editor-panel { max-height: 92vh; max-height: 92dvh; padding: 20px 16px }
+  .editor-fields { grid-template-columns: 1fr; gap: 11px }
+  .editor-fields label.wide { grid-column: auto }
+  .editor-actions .command { min-height: 44px; flex: 1 }
+}
+}
