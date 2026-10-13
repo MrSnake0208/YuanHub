@@ -77,16 +77,19 @@ it('默认展示头像和彩色抽数条，单条录入后生成记录条；重�
 
 it('密探视图按头像排列并显示单条抽数，切换视图不改变记录且头像仍可进入编辑', async () => {
   const wrapper = render({ records: [
-    { ...recruitmentEvent('known', 17), agent_snapshot: { agent_id: 'a', name: '甲' } },
+    { ...recruitmentEvent('known', 17), agent_snapshot: { agent_id: 'a', name: '甲' }, up_status: 'non_up' },
     { ...recruitmentEvent('unknown', null), agent_snapshot: { agent_id: 'b', name: '乙' } }
   ] })
   await button(wrapper, '密探视图').trigger('click')
   expect(button(wrapper, '密探视图').attributes('aria-pressed')).toBe('true')
   expect(wrapper.find('.record-feed').exists()).toBe(false)
   expect(wrapper.findAll('.agent-record-card')).toHaveLength(2)
-  expect(wrapper.findAll('.agent-pull-badge').map(item => item.text()).sort()).toEqual(['17抽', '未知'])
-  expect(wrapper.findAll('.agent-record-name').map(item => item.text()).sort()).toEqual(['乙', '甲'])
+  expect(wrapper.findAll('.agent-record-detail .agent-pull-badge').map(item => item.text()).sort()).toEqual(['17抽', '未知'])
+  expect(wrapper.find('.agent-record-portrait .agent-pull-badge').exists()).toBe(false)
+  expect(wrapper.find('.agent-record-name').exists()).toBe(false)
   const known = wrapper.findAll('.agent-record-card').find(item => item.text().includes('17抽'))
+  expect(known.get('.agent-record-portrait .non-up-stamp').text()).toBe('歪')
+  expect(known.get('.agent-record-detail').attributes('aria-label')).toContain('甲，17抽出货，非UP')
   await known.get('.agent-record-detail').trigger('click')
   expect(wrapper.get('.pull-count-field input').element.value).toBe('17')
   await button(wrapper, '取消').trigger('click')

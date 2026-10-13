@@ -22,6 +22,40 @@ async function addLu(w) {
   await w.get('.agent-choice[data-agent-id="lu"]').trigger('click')
 }
 const pulls = w => w.findAll('.record-detail .pull-result b').map(b => b.text())
+it('金卡序号按最早出货起算，跳过4星，重复密探和未知抽数分别计数，搜索不重新编号', async () => {
+  const w = render({ records: [
+    records()[0],
+    { ...recruitmentEvent('four', null), agent_snapshot: { agent_id: 'four', name: '机密甲', rarity: 4 } },
+    { ...recruitmentEvent('repeat', null), agent_snapshot: { agent_id: 'a', name: '杨修', rarity: 5 }, up_status: 'non_up' },
+    { ...recruitmentEvent('sp', 31), agent_snapshot: { agent_id: 'sp', name: 'SP密探', rarity: 5, temporary: true } },
+  ] })
+  await button(w, '密探视图').trigger('click')
+  expect(w.findAll('.agent-order-badge').map(b => b.text())).toEqual(['3', '2', '1'])
+  expect(w.get('[data-event-id="four"]').find('.agent-order-badge').exists()).toBe(false)
+  expect(w.get('[data-event-id="repeat"] .agent-pull-badge').text()).toBe('未知')
+  expect(w.get('[data-event-id="repeat"] .agent-non-up').text()).toBe('歪')
+  expect(w.get('[data-event-id="repeat"] .record-handle').attributes('aria-label')).toContain('本池已记录第2个金')
+  await w.get('.record-search input').setValue('SP密探')
+  expect(w.findAll('.agent-order-badge').map(b => b.text())).toEqual(['3'])
+  await button(w, '进度条视图').trigger('click')
+  expect(w.get('.record-detail').attributes('aria-label')).toContain('本池已记录第3个金')
+  expect(w.vm.hasDraft()).toBe(false)
+  w.unmount()
+})
+it('分页未完只编号已知早期记录，新草稿等完整记录后确定序号', async () => {
+  const w = render({ records: records().slice(0, 1), hasMore: true })
+  await addLu(w)
+  await w.get('.composer-actions .primary').trigger('click')
+  const newId = idsOnScreen(w)[0]
+  await button(w, '密探视图').trigger('click')
+  expect(w.get('[data-event-id="A"] .agent-order-badge').text()).toBe('1')
+  expect(w.get(`[data-event-id="${newId}"] .agent-order-badge`).text()).toBe('…')
+  await w.setProps({ records: records(), hasMore: false })
+  expect(w.get(`[data-event-id="${newId}"] .agent-order-badge`).text()).toBe('3')
+  expect(w.get('[data-event-id="B"] .agent-order-badge').text()).toBe('2')
+  expect(w.emitted('save')).toBeUndefined()
+  w.unmount()
+})
 it.each([0, 1, 2])('新增默认最新，键盘移动%i步保留未知间隔和保底，双视图共享顺序', async steps => {
   const w = render()
   await addLu(w)
@@ -207,11 +241,14 @@ it('加入后拖到历史中间、最早、最新：双视图一致且只保存�
   expect(w.text()).toContain('历史顺序待保存')
   await button(w, '密探视图').trigger('click')
   expect(idsOnScreen(w)).toEqual(['B', newId, 'A'])
+  expect(w.get(`[data-event-id="${newId}"] .agent-order-badge`).text()).toBe('2')
   expect(w.find('.record-handle .agent-record-detail').exists()).toBe(false)
   await drop(w, 1, 2)
   expect(idsOnScreen(w)).toEqual(['B', 'A', newId])
+  expect(w.get(`[data-event-id="${newId}"] .agent-order-badge`).text()).toBe('1')
   await drop(w, 2, 0)
   expect(idsOnScreen(w)).toEqual([newId, 'B', 'A'])
+  expect(w.get(`[data-event-id="${newId}"] .agent-order-badge`).text()).toBe('3')
   await drop(w, 0, 1)
   await w.get('form').trigger('submit')
   expect(w.emitted('save')[0][0].data).toMatchObject({ ordered_event_ids: ['A', newId, 'B'], deleted_event_ids: [], remaining_pulls: 40 })
