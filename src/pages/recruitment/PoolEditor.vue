@@ -17,6 +17,32 @@
 
         <RecruitmentGuideChoice v-if="guidePicker" @record="startGuide" @practice="openPractice" @close="guidePicker = false" />
         <form @submit.prevent="submit" @focusin="scheduleEntryVisibility" @pointerdown.capture="holdGuideHint">
+          <section class="progress-card" :class="{ 'is-saved': receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
+            <h3 :id="editorId + '-progress'">当前保底</h3>
+            <div class="progress-overview">
+              <RecruitmentGuideHint v-if="guideVisible && guideStep === 'saved-progress'" target="saved-progress" :message="guideMessage" />
+              <div data-guide-target="saved-progress" class="progress-number" aria-live="polite">
+                <span>{{ progressLabel === '已抽' ? '距保底' : '已垫' }}</span>
+                <strong>{{ displayedProgress == null ? '—' : displayedProgress }}</strong><span>抽</span>
+                <small>{{ tailProgress == null ? '进度未知' : progressLabel === '已抽' ? `已垫 ${tailProgress} 抽` : `距保底 ${40 - tailProgress} 抽` }}</small>
+              </div>
+              <div class="progress-rail" aria-hidden="true"><span :style="{ width: tailProgress == null ? '0%' : tailProgress / 40 * 100 + '%' }"></span></div>
+            </div>
+            <div class="remaining-guide">
+              <RecruitmentGuideHint v-if="guideVisible && guideStep === 'progress'" target="progress" :message="guideMessage" />
+              <div class="record-view-switch progress-label-switch" role="group" aria-label="保底进度填写方式">
+                <button v-for="label in ['已抽', '已垫']" :key="label" type="button" :class="{ 'is-selected': progressLabel === label }" :aria-pressed="progressLabel === label" :disabled="busy || readOnly || recordsLoading" @click="progressLabel = label">{{ label === '已抽' ? '距保底' : '已垫' }}</button>
+              </div>
+              <label data-guide-target="progress" class="remaining-field">
+                <span class="sr-only">{{ progressLabel === '已抽' ? '距保底还差' : '已经垫了' }}</span>
+                <span class="remaining-input">
+                  <input ref="remainingInput" v-model="progressInput" type="number" inputmode="numeric" :min="progressLabel === '已抽' ? 1 : 0" :max="progressLabel === '已抽' ? 40 : 39" placeholder="未知" :disabled="busy || readOnly || recordsLoading" :aria-invalid="!!progressError || undefined" :aria-describedby="progressError ? editorId + '-progress-error' : undefined" @input="progressReviewed = false; progressError = ''" @blur="reviewProgress">
+                  <span>抽</span>
+                </span>
+              </label>
+            </div>
+            <p v-if="progressError" :id="editorId + '-progress-error'" class="progress-error" role="alert">{{ progressError }}</p>
+          </section>
           <div ref="editorBody" class="editor-body">
             <p v-if="readOnly && !practiceResult" data-guide-target="read-only" class="state-note">当前档案只可查看，暂不能修改。</p>
             <p v-else-if="pool?.catalog_state === 'hidden'" data-guide-target="read-only" class="state-note">此卡池已隐藏。已有记录、统计与保底保留，可维护和导出；不能新增出货。</p>
@@ -27,7 +53,7 @@
             <p v-if="error" ref="errorSummary" class="form-error" role="alert" tabindex="-1">{{ error }}</p>
             <p v-if="serverError" class="form-error" role="alert">{{ serverError }}</p>
             <div v-if="missingRecordIds.length" class="form-error" role="alert">
-              有 {{ missingRecordIds.length }} 笔旧记录已在其他设备移除。其余草稿仍保留，请核对后移除失效草稿，再重新选择位置。
+              有 {{ missingRecordIds.length }} 笔旧记录已在其他设备移除。其余草稿仍保留，请核对后移除失效草稿，再重新调整顺序。
               <button type="button" :disabled="busy" @click="discardMissingRecords">核对失效草稿</button>
             </div>
             <p v-if="busy" class="state-note" role="status">正在处理保存或刷新请求…</p>
@@ -42,61 +68,12 @@
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'practice-result'" target="practice-result" :message="guideMessage" />
             <section v-if="practiceResult" data-guide-target="practice-result" class="save-result" role="status"><strong>练习结果 · 仅示例</strong><p>已经熟悉怎么记录；需要时到自己的卡池里记一笔。</p><p>下方记录与保底都是临时示例，没有保存到账号。</p></section>
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'readback'" target="readback" :message="guideMessage" />
-            <section v-if="saveReceipt" data-guide-target="readback" class="save-result" :class="{ 'is-confirmed': receiptVerified }" aria-live="polite" role="status">
-              <template v-if="receiptVerified">
-                <strong>{{ savedMessage }}</strong>
-                <p>服务端已读回核对。距保底 {{ pool.progress == null ? '未知' : 40 - pool.progress }} 抽<span v-if="poolSummary"> · 本池已知 {{ poolSummary.known_total_pulls?.toLocaleString() ?? '未知' }} 抽 · 密探 {{ poolSummary.event_count ?? '未知' }} 条</span>。</p>
-                <p v-if="saveReceipt.beforeSummary && poolSummary">密探记录 {{ saveReceipt.beforeSummary.event_count }} → {{ poolSummary.event_count }} 条 · 已知抽数 {{ saveReceipt.beforeSummary.known_total_pulls }} → {{ poolSummary.known_total_pulls }} 抽；未知间隔不贡献确定抽数。</p>
-              </template>
-              <template v-else>
+            <section v-if="unverifiedSave" data-guide-target="readback" class="save-result" aria-live="polite" role="status">
                 <strong>{{ busy ? '正在保存这笔…' : '保存请求已接收，结果尚未确认' }}</strong>
                 <p>请重新核对保存结果，无需再新建一条。若其它设备更新了档案，可关闭并重新打开本池查看最新记录。</p>
                 <button type="button" :disabled="busy || recordsLoading" @click="$emit('retry')">重新核对本笔</button>
-              </template>
             </section>
 
-            <section v-show="showProgress" class="progress-card" :class="{ 'is-saved': receiptVerified && Number(remaining) === saveReceipt.remaining_pulls }" :aria-labelledby="editorId + '-progress'">
-              <div class="progress-copy">
-                <span class="section-kicker">当前进度</span>
-                <h3 :id="editorId + '-progress'">保底进度</h3>
-                <p>按游戏当下显示核对；本页用 40 抽换算，不自动猜测出货后的进度。</p>
-              </div>
-
-              <div class="progress-overview">
-                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'saved-progress'" target="saved-progress" :message="guideMessage" />
-                <div data-guide-target="saved-progress" class="progress-number" aria-live="polite">
-                  <span>{{ progressLabel === '已抽' ? '距离下次保底' : '已经抽了' }}</span>
-                  <div><strong>{{ displayedProgress == null ? '—' : displayedProgress }}</strong><small>/ 40 抽</small></div>
-                </div>
-                <div class="progress-rail" aria-hidden="true">
-                  <span :style="{ width: displayedProgress == null ? '0%' : Math.min(displayedProgress / 40, 1) * 100 + '%' }"></span>
-                </div>
-              </div>
-
-              <div class="remaining-guide">
-                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'progress'" target="progress" :message="guideMessage"><button v-if="tailProgress == null && !practice" type="button" :disabled="busy" @click="openPractice">先练习一下</button></RecruitmentGuideHint>
-                <div class="record-view-switch progress-label-switch" role="group" aria-label="保底进度填写方式">
-                  <button v-for="label in ['已抽', '已垫']" :key="label" type="button" :class="{ 'is-selected': progressLabel === label }" :aria-pressed="progressLabel === label" :disabled="busy || readOnly || recordsLoading" @click="progressLabel = label">{{ label }}</button>
-                </div>
-              <label data-guide-target="progress" class="remaining-field">
-                <span>{{ progressLabel === '已抽' ? '距离下次保底' : '已经抽了' }}</span>
-                <span class="remaining-input">
-                  <input
-                    ref="remainingInput"
-                    @input="progressReviewed = false" @blur="reviewProgress"
-                    v-model="progressInput"
-                    type="number"
-                    inputmode="numeric"
-                    :min="progressLabel === '已抽' ? 1 : 0"
-                    :max="progressLabel === '已抽' ? 40 : 39"
-                    :placeholder="progressLabel === '已抽' ? '1–40' : '0–39'"
-                    :disabled="busy || readOnly || recordsLoading"
-                  >
-                  <span>抽</span>
-                </span>
-              </label>
-              </div>
-            </section>
 
             <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-progress'" target="save-progress" :message="guideMessage" />
             <div v-if="dailyMode === 'progress' && !activeRow" data-guide-target="save-progress" class="progress-actions">
@@ -114,25 +91,12 @@
               <p v-else-if="dailyMode === 'progress'">只更新游戏里当前的保底，不会新增密探记录。下方填「还差几抽保底」，不是「这次又抽了几次」。</p>
             </section>
 
-            <details class="entry-guide">
-              <summary><CircleHelp :size="16" aria-hidden="true" />抽数怎么填写？</summary>
-              <p>{{ pullSpanHelp }}</p>
-              <p>出货后请按游戏中当下的真实状态核对距保底；本页不会自动重置进度，也不会从其他卡池继承。没有出绝密时只改当前保底，不新增出货。</p>
-              <p>已知累计 = 历史基准 + 普通记录的已知间隔 + 批次总量 + 当前进度。未知资料不贡献确定抽数，也不代表实际抽了 0 次。批次内记录不重复累加；基准若已含这段历史，继续新增可能重复计数，请先核对备份。本页未提供历史基准、总量批次或 120 抽窗口的旧补录入口。</p>
-              <p>进度条与密探视图展示同一组记录，头像左下角数字是这次出货的间隔，不是获得次数。新增点「加入」进入待保存记录，之后用底部「保存修改」统一提交；已有记录修改后点完成，同样需要底部保存。未读回核对前不算确认保存。</p>
-              <p>取消单条编辑保留原记录；关闭整个窗口丢弃未提交草稿。删除仅在保存后生效：独立记录减去本条已知抽数，相邻间隔和批次总量不变。教程不会替你删除或导入数据。</p>
-            </details>
-
-            <section class="records-section" :aria-labelledby="editorId + '-records'">
-              <RecruitmentGuideHint v-if="guideVisible && guideStep === 'views'" target="views" :message="guideMessage" />
-              <div data-guide-target="views" class="records-toolbar">
-                <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
-                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')">进度条视图</button>
-                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')">密探视图</button>
-                </div>
-
+            <section class="entry-section" :aria-labelledby="editorId + '-entry'">
+              <div class="entry-heading">
+                <h3 :id="editorId + '-entry'">{{ activeRow && originals.has(activeRow.event_id) ? '编辑这条出货' : '记录本次出货' }}</h3>
+                <p>加入待保存草稿，核对后统一保存</p>
               </div>
-
+              <div class="entry-workflow">
                 <RecruitmentGuideHint v-if="guideVisible && guideStep === 'agents'" target="agents" :message="guideMessage" />
                 <div v-show="dailyMode === 'record' || (!guideVisible && !practice)" data-guide-target="agents" class="entry-shortcuts" role="group" aria-label="快速登记出货">
                   <button
@@ -150,17 +114,24 @@
                   >
                     <OperatorAvatar class="quick-up-avatar" :avatar="agentAvatar(agent)" :name="agent.name" :rarity="Number(agent.rarity) || 5" aria-hidden="true" />
                     <span class="quick-up-mark" aria-hidden="true">UP</span>
+                    <span class="quick-up-name">{{ agent.name }}</span>
+                    <Check v-if="activeRow?.agent_id === agent.id" class="quick-up-check" :size="14" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     class="add-record"
-                    :aria-pressed="choosingAgent"
-                    :class="{ 'is-selected': choosingAgent }"
+                    :aria-label="selectedOtherAgent ? '更换密探：' + selectedOtherAgent.name : quickUpAgents.length ? '其他密探' : '新增记录'"
+                    :aria-expanded="choosingAgent"
+                    :aria-controls="editorId + '-agent-picker'"
+                    :aria-pressed="!!selectedOtherAgent"
+                    :class="{ 'is-selected': choosingAgent || selectedOtherAgent }"
                     :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || (!canRecord && (!activeRow || !originals.has(activeRow.event_id))) || (!activeRow && newCount >= 120)"
                     @click="add('', $event)"
                   >
-                    <Plus :size="17" aria-hidden="true" />
-                    {{ quickUpAgents.length ? '其他密探' : '新增记录' }}
+                    <OperatorAvatar v-if="selectedOtherAgent" class="quick-up-avatar" :avatar="agentAvatar(selectedOtherAgent)" :name="selectedOtherAgent.name" :rarity="Number(selectedOtherAgent.rarity) || 5" aria-hidden="true" />
+                    <span v-else class="other-agent-placeholder"><Plus :size="22" aria-hidden="true" /></span>
+                    <span class="quick-up-name">{{ selectedOtherAgent?.name || (quickUpAgents.length ? '其他密探' : '新增记录') }}</span>
+                    <Check v-if="selectedOtherAgent" class="quick-up-check" :size="14" aria-hidden="true" />
                   </button>
                 </div>
 
@@ -173,7 +144,7 @@
               >
 
                 <RecruitmentGuideHint v-if="guideVisible && ['agent-search', 'agent-results'].includes(guideStep)" :target="guideStep" :message="guideMessage" />
-                <div v-if="choosingAgent" class="agent-picker">
+                <div v-if="choosingAgent" :id="editorId + '-agent-picker'" class="agent-picker" role="group" aria-label="选择其他密探">
                   <label data-guide-target="agent-search" class="agent-search">
                     <span class="sr-only">搜索密探名字</span>
                     <input
@@ -189,7 +160,7 @@
                     <span><b>{{ filteredPickerAgents.length }}</b> / {{ options.length }} 位</span>
                     <div class="agent-filter-actions">
                       <button v-if="hasAgentFilters" type="button" class="agent-filter-reset" @click="resetAgentFilters">重置</button>
-                      <button type="button" class="agent-picker-cancel" :disabled="busy" @click="cancelEntry">取消</button>
+                      <button type="button" class="agent-picker-cancel" :disabled="busy" @click="cancelAgentPicker">取消</button>
                     </div>
                   </div>
                   <div class="agent-filter-row">
@@ -239,55 +210,76 @@
                     <p v-if="!filteredPickerAgents.length" class="agent-picker-empty">没有符合筛选条件的密探</p>
                   </div>
                 </div>
-                <div v-if="activeRow?.agent_id" class="compact-entry-row">
-                  <div class="selected-agent-summary" aria-live="polite">
-                    <OperatorAvatar class="selected-agent-avatar" :avatar="agentAvatar(selectedAgent(activeRow))" :name="selectedAgent(activeRow)?.name || activeRow.agent_id" :rarity="Number(selectedAgent(activeRow)?.rarity) || 5" aria-hidden="true" />
-                    <span class="selected-agent-copy"><small>已选择密探</small><strong>{{ selectedAgent(activeRow)?.name || activeRow.agent_id }}</strong></span>
-                  </div>
+                <div class="compact-entry-row">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'pulls'" target="pulls" :message="guideMessage" />
-                  <p v-if="isFourStar(activeRow)" class="composer-note">4 星只记录获得次数，不影响绝密抽数与保底。</p>
-                  <label v-else data-guide-target="pulls" class="pull-count-field">
-                    <span>本次出货抽数</span>
-                    <input ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="不知道可留空" :aria-describedby="guideVisible ? undefined : editorId + '-pulls-help'" :disabled="busy || readOnly || recordsLoading" @input="onPullInput" @blur="reviewPulls">
-                  </label>
-
-                </div>
-                <button v-if="activeRow?.agent_id && !isFourStar(activeRow)" type="button" class="unknown-pulls" :disabled="busy || readOnly" @click="markPullsUnknown">记不清，保留未知</button>
-                <p v-if="activeRow?.agent_id && !isFourStar(activeRow) && !guideVisible" :id="editorId + '-pulls-help'" class="composer-note">{{ pullSpanHelp }}</p>
-                <button v-if="activeRow?.agent_id" type="button" class="position-toggle" :aria-expanded="positionOpen" :aria-controls="editorId + '-position'" :disabled="busy || readOnly || !!unverifiedSave" @click="openPosition">{{ originals.has(activeRow.event_id) ? '调整顺序' : '补录到历史位置' }}</button>
-                <fieldset v-if="positionOpen" :id="editorId + '-position'" class="position-picker" :disabled="busy || readOnly || recordsLoading || !!unverifiedSave">
-                  <legend>记录位置 · 最早 → 最新</legend>
-                  <p class="composer-note">只调整先后，不按日期排序，不改出货间隔、保底和批次总量。完成后仍需保存修改。</p>
-                  <p v-if="hasMore" class="composer-note" role="status">需要先读取本池全部记录。<button type="button" :disabled="busy || recordsLoading" @click="$emit('load-all')">继续读取全部记录</button></p>
-                  <label><span>放置位置</span><select v-model="positionMode" :disabled="hasMore || !!recordsError"><option value="keep">{{ isStoredRow(activeRow) ? '保持当前位置' : '默认追加到最新' }}</option><option value="earliest">移到最早</option><option value="latest">移到最新</option><option v-if="positionOptions.length" value="before">插在这笔之前（更早）</option><option v-if="positionOptions.length" value="after">插在这笔之后（更晚）</option></select></label>
-                  <label v-if="['before', 'after'].includes(positionMode)"><span>参照记录 · 最早 → 最新（含被搜索隐藏的记录）</span><select v-model="positionAnchor" :disabled="hasMore || !!recordsError"><option disabled value="">请选择一笔记录</option><option v-for="(row, index) in positionOptions" :key="row.event_id" :value="row.event_id">{{ positionLabel(row, index) }}</option></select></label>
-                </fieldset>
-                <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
-                <p v-if="activeRow && originals.has(activeRow.event_id)" class="composer-note">完成编辑只更新草稿，核对后点击底部保存修改。</p>
-                <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-record'" target="save-record" :message="guideMessage" />
-                  <div v-if="activeRow?.agent_id" data-guide-target="save-record" class="composer-actions">
-                    <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)">删除记录</button>
-                    <button type="button" :disabled="busy" @click="cancelEntry">取消</button>
-                    <button type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : practice ? '查看练习结果' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading || ((!!recordsError || !!unverifiedSave) && !originals.has(activeRow.event_id))" @click="practice && !originals.has(activeRow.event_id) ? submit() : confirmRecord()">{{ busy ? '保存中…' : originals.has(activeRow.event_id) ? '完成' : practice ? '查看练习结果' : '加入' }}</button>
+                  <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-record'" target="save-record" :message="guideMessage" />
+                  <div class="composer-actions">
+                    <div class="pull-controls">
+                      <div data-guide-target="pulls" class="pull-count-field">
+                        <label :for="editorId + '-pull-span'">本次出货抽数</label>
+                        <span class="pull-stepper">
+                          <button type="button" aria-label="减少本次出货抽数" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || isFourStar(activeRow) || (activeRow.pull_span !== '' && Number(activeRow.pull_span) <= 1)" @click="stepPullSpan(-1)"><Minus :size="16" aria-hidden="true" /></button>
+                          <input v-if="isFourStar(activeRow)" :id="editorId + '-pull-span'" type="text" value="计次" aria-label="4星只计次，不影响保底" disabled>
+                          <input v-else :id="editorId + '-pull-span'" ref="pullSpanInput" v-model="activeRow.pull_span" type="number" inputmode="numeric" min="1" :max="MAX_EVENT_PULLS" step="1" placeholder="未知" :aria-invalid="!!entryError || undefined" :aria-describedby="entryError ? editorId + '-entry-error' : undefined" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id" @input="onPullInput" @blur="reviewPulls">
+                          <button type="button" aria-label="增加本次出货抽数" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || isFourStar(activeRow) || Number(activeRow.pull_span) >= MAX_EVENT_PULLS" @click="stepPullSpan(1)"><Plus :size="16" aria-hidden="true" /></button>
+                        </span>
+                      </div>
+                      <button type="button" class="unknown-pulls" :aria-pressed="!isFourStar(activeRow) && activeRow.pull_span === ''" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || isFourStar(activeRow)" @click="markPullsUnknown">未知</button>
+                    </div>
+                    <button data-guide-target="save-record" type="button" class="primary" :aria-label="originals.has(activeRow.event_id) ? '完成编辑当前记录' : practice ? '查看练习结果' : '加入当前记录'" :disabled="busy || readOnly || recordsLoading || choosingAgent || !activeRow.agent_id || ((!!recordsError || !!unverifiedSave) && !originals.has(activeRow.event_id))" @click="practice && !originals.has(activeRow.event_id) ? submit() : confirmRecord()">{{ busy ? '处理中…' : originals.has(activeRow.event_id) ? '完成' : practice ? '查看练习结果' : '加入' }}</button>
+                    <button type="button" class="entry-cancel" title="取消当前录入" :disabled="busy" @click="cancelEntry"><X :size="16" aria-hidden="true" /><span class="sr-only">取消</span></button>
                   </div>
+                </div>
+                <button v-if="isStoredRow(activeRow)" type="button" class="entry-delete" title="删除记录" :disabled="busy || readOnly || recordsLoading" @click="remove(activeRow)"><Trash2 :size="16" aria-hidden="true" /><span class="sr-only">删除记录</span></button>
               </div>
 
-              <div class="records-heading">
-                <span class="section-kicker">抽卡档案</span>
-                <h3 :id="editorId + '-records'">本池抽卡进度</h3>
-                <p>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }} · 最新 → 最早</p>
+              <div v-if="!activeRow" class="entry-placeholder" aria-label="请先选择出货密探">
+                <div class="composer-actions">
+                <div class="pull-controls">
+                  <div class="pull-count-field">
+                    <label :for="editorId + '-pull-span'">本次出货抽数</label>
+                    <span class="pull-stepper">
+                      <button type="button" aria-label="减少本次出货抽数" disabled><Minus :size="16" aria-hidden="true" /></button>
+                      <input :id="editorId + '-pull-span'" type="number" placeholder="未知" disabled>
+                      <button type="button" aria-label="增加本次出货抽数" disabled><Plus :size="16" aria-hidden="true" /></button>
+                    </span>
+                  </div>
+                  <button type="button" class="unknown-pulls" disabled>未知</button>
+                </div>
+                  <button type="button" class="primary" disabled>加入</button>
+                  <button type="button" class="entry-cancel" aria-label="取消当前录入" title="取消当前录入" disabled><X :size="16" aria-hidden="true" /></button>
+                </div>
               </div>
-              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status">{{ sortBlocked || (recordView === 'progress' ? '拖动整条记录' : '拖动头像') + '调整顺序；触屏长按后拖动，键盘聚焦头像后按上下键。点击记录可编辑，再保存修改。' }}
+              </div>
+              <p v-if="entryError" :id="editorId + '-entry-error'" class="form-error" role="alert">{{ entryError }}</p>
+              <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
+              <p v-if="tailProgress == null" class="unknown-progress-note">当前保底未知：可先加入草稿；保存绝密记录前需核对游戏保底。仅 4 星计次或调整顺序可保留未知。</p>
+            </section>
+
+            <section class="records-section" :aria-labelledby="editorId + '-records'">
+              <RecruitmentGuideHint v-if="guideVisible && guideStep === 'views'" target="views" :message="guideMessage" />
+              <div data-guide-target="views" class="records-toolbar">
+                <div class="records-heading">
+                  <h3 :id="editorId + '-records'">抽卡档案 <span>{{ rows.length }} 条{{ hasMore ? ' · 尚未读完' : '' }}</span></h3>
+                  <p>本池抽卡进度 · 最新 → 最早</p>
+                </div>
+                <label v-if="rows.length" class="record-search"><span class="sr-only">查找已有记录</span><Search :size="16" aria-hidden="true" /><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="查找密探" autocomplete="off"></label>
+                <div class="record-view-switch" role="group" aria-label="本池抽卡记录视图">
+                  <button type="button" :class="{ 'is-selected': recordView === 'progress' }" :aria-pressed="recordView === 'progress'" @click="switchRecordView('progress')">进度条视图</button>
+                  <button type="button" :class="{ 'is-selected': recordView === 'agents' }" :aria-pressed="recordView === 'agents'" @click="switchRecordView('agents')">密探视图</button>
+                </div>
+              </div>
+              <p v-if="rows.length" :id="editorId + '-sort-help'" class="sort-help" role="status">{{ sortBlocked || '拖动排序 · 点击编辑 · 触屏长按拖动 · 聚焦头像后用上下键移动' }}
                 <button v-if="hasMore" type="button" :disabled="busy || readOnly || recordsLoading" @click="$emit('load-all')">{{ recordsLoading ? '正在读取…' : recordsError ? '重试读取全部记录' : '读取全部后排序' }}</button>
                 <button v-if="orderChanged" type="button" :disabled="busy || !!unverifiedSave || dragging" @click="resetOrder">恢复保存前顺序</button>
               </p>
               <p class="sort-announcement" aria-live="polite" aria-atomic="true">{{ sortAnnouncement }}</p>
-              <label v-if="rows.length" class="record-search"><span>查找已有记录</span><input v-model="recordSearch" :disabled="dragging" type="search" placeholder="按密探名字查找" autocomplete="off"></label>
 
               <ol key="progress-records" ref="recordList" v-if="displayRows.length && recordView === 'progress'" class="record-feed">
                 <li v-for="row in displayRows" :key="row.event_id" :data-event-id="row.event_id" :data-guide-target="isGuideRow(row) ? 'guide-record' : undefined" class="gacha-record" :class="{ 'is-saved': isSavedRow(row), 'is-sortable': !sortBlocked }" @contextmenu="!sortBlocked && $event.preventDefault()">
                   <RecruitmentGuideHint v-if="guideVisible && guideStep === 'guide-record' && isGuideRow(row)" target="guide-record" :message="guideMessage" />
                   <button type="button" class="record-handle" :disabled="busy || readOnly || recordsLoading || !!activeRow" :data-sort-disabled="!!sortBlocked" :aria-label="handleLabel(row)" :aria-describedby="editorId + '-sort-help'" @keydown="moveByKey($event, row)" @click="edit(row, $event)" @contextmenu.prevent>
+                    <GripVertical class="drag-grip" :size="14" aria-hidden="true" />
                     <OperatorAvatar
                       class="record-avatar"
                       :avatar="agentAvatar(selectedAgent(row))"
@@ -305,14 +297,11 @@
                   >
                     <span class="record-track">
                       <span class="record-bar" :class="barClass(row)" :style="{ width: spanWidth(row) }">
-                        <span class="pull-result">
-                          <b>{{ isFourStar(row) ? '计次' : row.pull_span === '' ? '未知' : row.pull_span }}</b>
-                          <small>{{ isFourStar(row) ? '4星' : row.pull_span === '' ? '抽数' : '抽' }}</small>
-                        </span>
+                        <span class="pull-result"><b>{{ isFourStar(row) ? '计次' : row.pull_span === '' ? '未知' : row.pull_span }}</b><small>{{ isFourStar(row) ? '4星' : row.pull_span === '' ? '抽数' : '抽' }}</small></span>
                       </span>
                       <span v-if="row.up_status === 'non_up'" class="non-up-stamp" aria-hidden="true">歪</span>
-                      <span v-if="row.batch_id" class="status-pill is-neutral" aria-hidden="true">批次</span>
-                      <span v-if="isChanged(row)" class="pending-mark" aria-hidden="true">待保存</span>
+                      <span v-if="row.batch_id" class="status-pill is-neutral">批次</span>
+                      <span v-if="isChanged(row)" class="pending-mark">待保存</span>
                       <span v-else-if="isSavedRow(row)" class="saved-mark">本笔已保存</span>
                     </span>
                   </button>
@@ -357,7 +346,7 @@
               </div>
 
               <div class="records-tail">
-                <p v-if="rows.length && recordView === 'progress'" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数始终以色条内数字为准。</p>
+                <p v-if="rows.length && recordView === 'progress'" class="bar-legend">色条按 40 抽刻度辅助比较间隔；绿色 ≤20、金色 21–30、红色 ≥31，实际抽数以每条数字为准，未知不代表 0。</p>
                 <p v-else-if="rows.length" class="bar-legend">头像左下角显示这条出货记录的抽数；同一密探多次出货会分别排列，未知抽数显示“未知”。</p>
                 <button v-if="hasMore" type="button" class="load-more" :disabled="busy || recordsLoading" @click="$emit('load-more')">继续加载记录</button>
               </div>
@@ -371,14 +360,15 @@
           <RecruitmentGuideHint v-if="guideVisible && guideStep === 'save-changes'" target="save-changes" :message="guideMessage" />
           <footer data-guide-target="save-changes" v-show="(!guideVisible && !practice) || ((!dailyMode || pendingCount || readOnly) && (dailyMode !== 'progress' || recordPendingCount > 0) && (!guideVisible || !['views', 'guide-record', 'empty-records'].includes(guideStep) || pendingCount || activeRow))" :class="{ 'is-entry-active': !!activeRow }">
             <p class="footer-state" aria-live="polite">
-              <template v-if="activeRow">{{ originals.has(activeRow.event_id) ? '正在编辑一条记录' : '正在登记一条记录' }}</template>
-              <template v-else-if="pendingCount">{{ pendingCount }} 项修改尚未保存</template>
-              <template v-else>修改将在保存后生效</template>
+              <strong v-if="pendingCount">{{ pendingCount }} 项未保存</strong>
+              <span v-if="activeRow">{{ originals.has(activeRow.event_id) ? '完成单条编辑后统一保存' : '本条加入后可统一保存' }}</span>
+              <span v-else-if="pendingCount">仅在当前窗口，保存后写入档案</span>
+              <span v-else>{{ unverifiedSave ? '保存结果尚未确认，请重新核对' : receiptVerified ? '已保存并核对' : '修改将在保存后生效' }}</span>
             </p>
             <div class="footer-actions">
               <button type="button" :disabled="busy" @click="close">取消</button>
               <button class="primary" type="submit" :disabled="dragging || busy || readOnly || recordsLoading || !!recordsError || !!unverifiedSave || !initialized || !!activeRow || !pendingCount">
-                {{ busy ? '保存中…' : pendingCount ? `保存 ${pendingCount} 项修改` : '保存修改' }}
+                {{ busy ? '保存中…' : '保存修改' }}
               </button>
             </div>
           </footer>
@@ -391,11 +381,12 @@
 <script setup>
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
-import { CircleHelp, Plus, X } from '@lucide/vue'
+import { Check, GripVertical, Minus, Plus, Search, Trash2, X } from '@lucide/vue'
 import RecruitmentGuideChoice from './RecruitmentGuideChoice.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { useRecordDrag } from './useRecordDrag.js'
+import { createRecruitmentId } from './createRecruitmentId.js'
 import operatorPortraits from '../../data/operatorPortraits.json'
 import { recruitmentPoolDateLabel } from '../../data/recruitmentPoolTypes.js'
 import { AGENT_PROFS } from '../../data/inventory/catalog.js'
@@ -410,7 +401,8 @@ const editorId = 'recruitment-editor-' + useId()
 const emit = defineEmits(['close', 'save', 'load-more', 'load-all', 'retry', 'guide-dismiss', 'guide-start', 'practice'])
 const panel = ref(null), editorBody = ref(null), entryComposer = ref(null), errorSummary = ref(null), error = ref(''), rows = ref([]), remaining = ref(''), initialRemaining = ref(''), activeRow = ref(null), choosingAgent = ref(false), agentSearch = ref(''), agentSearchInput = ref(null), agentProfFilter = ref('all'), agentSubProfFilter = ref('all'), pullSpanInput = ref(null), remainingInput = ref(null), initialized = ref(false), deletedIds = ref([]), recordView = ref('progress')
 const originals = reactive(new Map())
-const orderIds = ref(null), orderRevision = ref(null), positionOpen = ref(false), positionMode = ref('keep'), positionAnchor = ref('')
+const orderIds = ref(null), orderRevision = ref(null)
+const entryError = ref(''), progressError = ref('')
 const preservedProgress = ref(null)
 const naturalRows = computed(() => {
   const byId = new Map(rows.value.map(row => [row.event_id, row]))
@@ -423,17 +415,6 @@ const orderedRows = computed(() => {
   const ids = new Set(orderIds.value)
   return orderIds.value.map(id => byId.get(id)).filter(Boolean).concat(naturalRows.value.filter(row => !ids.has(row.event_id)))
 })
-const positionOptions = computed(() => orderedRows.value.filter(row => row.event_id !== activeRow.value?.event_id))
-function positionLabel(row, index) {
-  return `${index + 1}. ${selectedAgent(row)?.name || row.agent_id} · ${isFourStar(row) ? '4星计次' : row.pull_span === '' ? '间隔未知' : row.pull_span + '抽'}${row.acquired_date ? ' · ' + row.acquired_date : ''} · ${row.event_id.slice(-6)}`
-}
-function resetPosition() { positionOpen.value = false; positionMode.value = 'keep'; positionAnchor.value = '' }
-function openPosition() {
-  positionOpen.value = !positionOpen.value
-  if (!positionOpen.value) return
-  if (props.hasMore) emit('load-all')
-  nextTick(() => { focusInBody(entryComposer.value?.querySelector('.position-picker select')); scheduleEntryVisibility() })
-}
 const missingRecordIds = computed(() => {
   if (!recordsReady.value || props.hasMore || unverifiedSave.value) return []
   const live = new Set(props.records.map(event => event.event_id))
@@ -442,7 +423,7 @@ const missingRecordIds = computed(() => {
 async function discardMissingRecords() {
   const ids = missingRecordIds.value.slice(), session = editorSession, revision = props.recordsRevision
   if (!ids.length || props.busy) return
-  const discard = await dialog.confirm({ title: '移除已失效记录的本地草稿？', message: `这 ${ids.length} 笔旧记录已被其他设备删除。只丢弃这些记录尚未保存的修改，其余草稿保留；随后请重新选择位置。`, type: 'danger', confirmText: '移除失效草稿', cancelText: '继续核对' })
+  const discard = await dialog.confirm({ title: '移除已失效记录的本地草稿？', message: `这 ${ids.length} 笔旧记录已被其他设备删除。只丢弃这些记录尚未保存的修改，其余草稿保留；随后请重新调整顺序。`, type: 'danger', confirmText: '移除失效草稿', cancelText: '继续核对' })
   if (!discard || !props.open || props.busy || session !== editorSession || revision !== props.recordsRevision) return
   const missing = new Set(ids)
   rows.value = rows.value.filter(row => !missing.has(row.event_id))
@@ -450,7 +431,7 @@ async function discardMissingRecords() {
   ids.forEach(id => originals.delete(id))
   if (orderIds.value) orderIds.value = orderIds.value.filter(id => !missing.has(id))
   orderRevision.value = null
-  if (missing.has(activeRow.value?.event_id)) { activeRow.value = null; resetPosition() }
+  if (missing.has(activeRow.value?.event_id)) { activeRow.value = null }
   error.value = ''
 }
 const orderChanged = computed(() => !!orderIds.value && JSON.stringify(orderIds.value) !== JSON.stringify(naturalRows.value.map(row => row.event_id)))
@@ -461,8 +442,6 @@ const progressInput = computed({
   get: () => remaining.value === '' ? '' : progressLabel.value === '已垫' ? 40 - Number(remaining.value) : remaining.value,
   set: value => { remaining.value = value === '' ? '' : String(progressLabel.value === '已垫' ? 40 - Number(value) : value) },
 })
-const showProgress = computed(() => !!dailyMode.value || !!activeRow.value || pendingCount.value > 0 || receiptVerified.value)
-const pullSpanHelp = '不是卡池累计抽数。例如上次绝密后，第 20 抽又出绝密，就填 20。首条也只填你确知的出货间隔，不知道就留空，系统保留未知。同一密探再次出货可继续新增记录。'
 const guideVisible = ref(false), guidePicker = ref(false), pullsReviewed = ref(false), progressReviewed = ref(false), viewedRecords = ref(false)
 const recordsReady = computed(() => initialized.value && !props.recordsLoading && !props.recordsError)
 const pointerGuide = ref('')
@@ -492,7 +471,7 @@ const guideMessage = computed(() => {
     case 'agent-search': return filteredPickerAgents.value.length ? '在这里输入这次出货的密探名字。' : '没有符合条件的密探，换个关键词或点「重置」筛选；不要选别人代替。'
     case 'agent-results': return '点搜索结果中实际抽到的那位密探。'
     case 'pulls': return props.practice ? '练习：示例这次是上次绝密之后第20抽出货，请自己填20；也可以选择记不清。' : '填两次绝密之间的抽数，例如上次出货后20抽又出就填20。首条只填能确认的间隔，记不清就保留未知。'
-    case 'progress': return tailProgress.value == null && !props.practice ? '当前进度未知，暂不支持保底留空提交；先核对游戏的真实保底进度，不要猜值。退出教程会保留窗口草稿。' : props.practice ? `练习：示例游戏已垫7抽，还差33抽保底；当前选择「${progressLabel.value}」，请填${progressLabel.value === '已垫' ? 7 : 33}。` : `按游戏当前进度核对：${progressLabel.value === '已垫' ? '填已经抽了几次，例如7' : '填还差几抽保底，例如33'}；不是本次出货间隔。`
+    case 'progress': return tailProgress.value == null && !props.practice ? '当前进度未知，暂不支持保底留空提交；先核对游戏的真实保底进度，不要猜值。退出教程会保留窗口草稿。' : props.practice ? `练习：示例游戏已垫7抽，还差33抽保底；当前选择「${progressLabel.value === '已抽' ? '距保底' : '已垫'}」，请填${progressLabel.value === '已垫' ? 7 : 33}。` : `按游戏当前进度核对：${progressLabel.value === '已垫' ? '填已经抽了几次，例如7' : '填还差几抽保底，例如33'}；不是本次出货间隔。`
     case 'save-record': return activeRow.value && originals.has(activeRow.value.event_id) ? '点「完成」只更新这条草稿，之后仍要保存修改。' : props.practice ? '点「查看练习结果」，只展示临时示例。' : '点「加入」把这次出货加入待保存记录，再点底部「保存修改」才会写入档案。'
     case 'save-progress': return props.practice ? '点「查看练习结果」，不会写入账号。' : '点「保存保底进度」，不会新增密探记录。'
     case 'save-changes': return '核对后点底部保存修改；完成单条编辑还没有保存到服务器。'
@@ -530,8 +509,13 @@ function reviewPulls() {
   if (!activeRow.value || activeRow.value.pull_span === '') return
   try { entryInput(activeRow.value); pullsReviewed.value = true } catch { pullsReviewed.value = false }
 }
-function onPullInput(event) { pullsReviewed.value = false; limitPullSpan(event) }
-function markPullsUnknown() { if (activeRow.value && !props.busy && !props.readOnly) { activeRow.value.pull_span = ''; pullsReviewed.value = true } }
+function onPullInput(event) { entryError.value = ''; pullsReviewed.value = false; limitPullSpan(event) }
+function stepPullSpan(delta) {
+  if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return
+  activeRow.value.pull_span = String(Math.min(MAX_EVENT_PULLS, Math.max(1, (Number(activeRow.value.pull_span) || 0) + delta)))
+  entryError.value = ''; pullsReviewed.value = false
+}
+function markPullsUnknown() { if (activeRow.value && !props.busy && !props.readOnly) { activeRow.value.pull_span = ''; entryError.value = ''; pullsReviewed.value = true } }
 function reviewProgress() {
   // When an already-focused progress field loses focus before the player has
   // finished selecting an agent, that incidental blur is not tutorial review.
@@ -548,12 +532,6 @@ const receiptVerified = computed(() => {
   return !!receipt && recordsReady.value && !props.busy && !props.serverError && Number.isInteger(receipt.revision) && props.recordsRevision >= receipt.revision && receipt.pool_id === props.pool?.pool_id && props.pool.progress === (receipt.remaining_pulls == null ? preservedProgress.value : 40 - receipt.remaining_pulls) && receipt.entries.every(entry => props.records.some(event => entryMatches(event, entry))) && (!receipt.deleted_event_ids.length || !props.hasMore) && receipt.deleted_event_ids.every(id => !props.records.some(event => event.event_id === id && !event.deleted_at)) && (!receipt.ordered_event_ids || !props.hasMore && JSON.stringify(props.records.filter(event => !event.deleted_at).map(event => event.event_id)) === JSON.stringify(receipt.ordered_event_ids))
 })
 const unverifiedSave = computed(() => props.saveReceipt && !receiptVerified.value)
-const savedMessage = computed(() => {
-  const receipt = props.saveReceipt
-  if (!receipt?.entries.length && !receipt?.deleted_event_ids.length && !receipt?.ordered_event_ids) return '当前保底已保存'
-  const names = receipt.entries.map(entry => `${selectedAgent(entry)?.name || entry.agent_id}（${isFourStar(entry) ? '4星计次' : entry.pull_span == null ? '出货间隔未知' : entry.pull_span + '抽出货'}）`).join('、')
-  return [names && `已保存：${names}`, receipt.ordered_event_ids && '历史顺序已保存', receipt.deleted_event_ids.length && `已移除 ${receipt.deleted_event_ids.length} 条记录`].filter(Boolean).join('；')
-})
 const isSavedRow = row => receiptVerified.value && !isChanged(row) && props.saveReceipt.entries.some(entry => entry.event_id === row.event_id)
 let rebasedReceipt = null
 watch(receiptVerified, verified => {
@@ -596,6 +574,7 @@ const isFourStar = row => {
 }
 const rowInput = row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span })
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
+const selectedOtherAgent = computed(() => activeRow.value?.agent_id && !quickUpAgents.value.some(agent => agent.id === activeRow.value.agent_id) ? selectedAgent(activeRow.value) : null)
 function localPortraitUrl(operatorId) {
   const path = operatorPortraits[operatorId]
   if (!path) return ''
@@ -653,7 +632,7 @@ const sortBlocked = computed(() => {
   if (rows.value.length > 20000) return '历史排序最多支持本池20000条记录，请先导出备份核对。'
   if (recordSearch.value.trim()) return '请清除搜索后拖动排序，避免只调整部分历史。'
   if (missingRecordIds.value.length) return '请先核对失效草稿，再调整顺序。'
-  if (orderChanged.value && orderRevision.value !== props.recordsRevision) return '档案版本已变化，顺序草稿保留；请通过记录的位置菜单重新核对，或恢复保存前顺序后重排。'
+  if (orderChanged.value && orderRevision.value !== props.recordsRevision) return '档案版本已变化，顺序草稿保留；请恢复保存前顺序后重新拖动或用上下键调整。'
   if (rows.value.length < 2) return '至少两条记录才能调整顺序。'
   return ''
 })
@@ -691,8 +670,8 @@ function resetOrder() {
 
 const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) && Number(remaining.value) >= 1 && Number(remaining.value) <= 40 ? 40 - Number(remaining.value) : null)
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
-const barClass = row => row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
-const spanWidth = row => row.pull_span === '' ? '100%' : Math.min(Number(row.pull_span) / 40, 1) * 100 + '%'
+const barClass = row => isFourStar(row) ? 'bar-count' : row.pull_span === '' ? 'bar-unknown' : Number(row.pull_span) <= 20 ? 'bar-low' : Number(row.pull_span) <= 30 ? 'bar-mid' : 'bar-high'
+const spanWidth = row => isFourStar(row) ? '0%' : row.pull_span === '' ? '100%' : Math.min(Number(row.pull_span) / 40, 1) * 100 + '%'
 const isChanged = row => JSON.stringify(rowInput(row)) !== originals.get(row.event_id)
 function recordLabel(row) {
   const agent = selectedAgent(row)
@@ -707,7 +686,6 @@ function hasDraft() {
   if (pendingCount.value) return true
   const row = activeRow.value
   if (!row) return false
-  if (positionOpen.value && positionMode.value !== 'keep') return true
   if (!originals.has(row.event_id)) return !!(row.agent_id || row.pull_span !== '' || row.acquired_date || row.note)
   try { return isChanged(row) } catch { return true }
 }
@@ -727,14 +705,13 @@ function updateKeyboardInset() {
 function ensureEntryVisible() {
   if (typeof window === 'undefined') return
   updateKeyboardInset()
-  if (!props.open || !editorBody.value || (!entryComposer.value?.contains(document.activeElement) && document.activeElement !== remainingInput.value)) return
+  if (!props.open || !editorBody.value || !entryComposer.value?.contains(document.activeElement)) return
   const viewport = window.visualViewport
-  const visibleTop = Math.max(viewport?.offsetTop || 0, panel.value?.querySelector('.editor-header')?.getBoundingClientRect().bottom || 0) + ENTRY_VISIBLE_TOP_GAP
+  const visibleTop = Math.max(viewport?.offsetTop || 0, editorBody.value.getBoundingClientRect().top, panel.value?.querySelector('.editor-header')?.getBoundingClientRect().bottom || 0) + ENTRY_VISIBLE_TOP_GAP
   const focusedField = panel.value?.contains(document.activeElement) && document.activeElement.matches('input, select, textarea, button') ? document.activeElement : null
   const actions = activeRow.value ? entryComposer.value?.querySelector('.composer-actions') : panel.value?.querySelector('.progress-actions')
   const actionsRect = actions?.getBoundingClientRect()
-  let visibleBottom = Math.min(editorBody.value.getBoundingClientRect().bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
-  if (activeRow.value && focusedField && !actions?.contains(focusedField) && actionsRect?.height > 0) visibleBottom = Math.min(visibleBottom, actionsRect.top - ENTRY_VISIBLE_BOTTOM_GAP)
+  const visibleBottom = Math.min(editorBody.value.getBoundingClientRect().bottom, viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - ENTRY_VISIBLE_BOTTOM_GAP
   const bounds = (focusedField || entryComposer.value).getBoundingClientRect()
   const rect = { top: bounds.top, bottom: bounds.bottom, height: bounds.height }
   const availableHeight = Math.max(0, visibleBottom - visibleTop)
@@ -781,7 +758,7 @@ function focusEntry(preferPulls = false) {
   const session = editorSession
   nextTick(() => {
     if (!props.open || session !== editorSession || !activeRow.value) return
-    const target = preferPulls ? pullSpanInput.value || entryComposer.value?.querySelector('.composer-actions .primary') : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
+    const target = preferPulls ? (pullSpanInput.value?.disabled ? null : pullSpanInput.value) || entryComposer.value?.querySelector('.composer-actions .primary') : agentSearchInput.value || entryComposer.value?.querySelector('.agent-choice')
     target?.focus({ preventScroll: true })
     scheduleEntryVisibility()
   })
@@ -822,18 +799,23 @@ function add(agentId = '', event) {
   dailyMode.value = 'record'
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
   recordSearch.value = ''
-  error.value = ''
-  if (!activeRow.value) { resetPosition(); activeRow.value = { event_id: crypto.randomUUID(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null } }
+  error.value = ''; entryError.value = ''
+  if (!activeRow.value) { activeRow.value = { event_id: createRecruitmentId(), agent_id: '', pull_span: '', up_status: 'unknown', acquired_date: null, note: null } }
   if (agentId) {
     activeRow.value.agent_id = agentId
     choosingAgent.value = false
     focusEntry(true)
     return
   }
-  activeRow.value.agent_id = ''
   resetAgentFilters()
   choosingAgent.value = true
   focusEntry(false)
+}
+function cancelAgentPicker() {
+  if (!activeRow.value?.agent_id) { cancelEntry(); return }
+  choosingAgent.value = false
+  resetAgentFilters()
+  focusEntry(true)
 }
 function chooseOtherAgent(agentId) {
   if (!activeRow.value) return
@@ -842,7 +824,7 @@ function chooseOtherAgent(agentId) {
   resetAgentFilters()
   focusEntry(true)
 }
-function edit(row, event) { if (isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); resetPosition(); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
+function edit(row, event) { if (isDragClick() || props.busy || props.readOnly || props.recordsLoading || activeRow.value) return; rememberEntry(event?.currentTarget, row.event_id); pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false; error.value = ''; entryError.value = ''; activeRow.value = { ...row }; choosingAgent.value = false; focusEntry(true) }
 function isStoredRow(row) { return !!row && rows.value.some(item => item.event_id === row.event_id) }
 function limitPullSpan(event) {
   if (!activeRow.value) return
@@ -854,43 +836,28 @@ function limitPullSpan(event) {
   event.target.value = String(limited)
   activeRow.value.pull_span = String(limited)
 }
-function cancelEntry() { resetPosition(); activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); restoreEntry() }
+function cancelEntry() { entryError.value = ''; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); restoreEntry() }
 function confirmRecord() {
   if (!activeRow.value || props.busy || props.readOnly || props.recordsLoading) return false
-  error.value = ''
+  error.value = ''; entryError.value = ''
   try {
     const entry = rowInput(activeRow.value)
     if (!options.value.some(agent => agent.id === entry.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
     const index = rows.value.findIndex(row => row.event_id === entry.event_id)
     const row = { ...activeRow.value, pull_span: entry.pull_span ?? '' }
-    const moving = positionOpen.value && positionMode.value !== 'keep'
-    let ids = orderedRows.value.map(item => item.event_id)
-    if (moving) {
-      if (props.hasMore || !recordsReady.value) throw new Error('请读完本池全部记录后选择历史位置')
-      if (ids.length + (index < 0 ? 1 : 0) > 20000) throw new Error('历史排序最多支持本池20000条记录，请先导出备份核对')
-      ids = ids.filter(id => id !== row.event_id)
-      let target = positionMode.value === 'earliest' ? 0 : ids.length
-      if (['before', 'after'].includes(positionMode.value)) {
-        target = ids.indexOf(positionAnchor.value)
-        if (target < 0 || originals.has(positionAnchor.value) && !props.records.some(event => event.event_id === positionAnchor.value)) throw new Error('参照记录已删除或不可用，请重新选择位置')
-        if (positionMode.value === 'after') target++
-      }
-      ids.splice(target, 0, row.event_id)
-    } else if (index < 0) ids.push(row.event_id)
-    if (index < 0) rows.value.push(row)
-    else rows.value.splice(index, 1, row)
-    if (moving || orderIds.value) { orderIds.value = ids; if (moving) orderRevision.value = props.recordsRevision }
-    resetPosition()
+    if (index < 0) {
+      rows.value.push(row)
+      if (orderIds.value) orderIds.value = [...orderIds.value, row.event_id]
+    } else rows.value.splice(index, 1, row)
     activeRow.value = null
     choosingAgent.value = false
     restoreEntry(row.event_id)
     return true
-  } catch (err) { error.value = err.message; nextTick(() => focusInBody(errorSummary.value)); return false }
+  } catch (err) { entryError.value = err.message; nextTick(() => { focusInBody(pullSpanInput.value || agentSearchInput.value); scheduleEntryVisibility() }); return false }
 }
 function remove(row) {
   const index = displayRows.value.findIndex(item => item.event_id === row.event_id)
   const neighbor = displayRows.value[index + 1] || displayRows.value[index - 1]
-  resetPosition()
   if (orderIds.value) orderIds.value = orderIds.value.filter(id => id !== row.event_id)
   if (activeRow.value?.event_id === row.event_id) {
     activeRow.value = null
@@ -913,8 +880,8 @@ watch(() => props.open, open => {
   }
   guideVisible.value = TUTORIALS_ENABLED && props.guided
   pullsReviewed.value = false; progressReviewed.value = false; viewedRecords.value = false
-  orderIds.value = null; orderRevision.value = null; resetPosition()
-  rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
+  orderIds.value = null; orderRevision.value = null
+  rows.value = []; activeRow.value = null; choosingAgent.value = false; resetAgentFilters(); deletedIds.value = []; originals.clear(); initialized.value = false; error.value = ''; entryError.value = ''; progressError.value = ''; requestId = ''; dailyMode.value = props.practice || guideVisible.value ? '' : 'record'; recordSearch.value = ''
   const progress = props.pool?.progress
   remaining.value = Number.isInteger(progress) && progress >= 0 && progress < 40 ? String(40 - progress) : ''
   initialRemaining.value = remaining.value
@@ -953,26 +920,32 @@ onBeforeUnmount(() => {
   window.clearTimeout(pointerReleaseTimer)
   resetKeyboardAvoidance()
 })
-useModalFocus(computed(() => props.open), panel, { preventRestoreScroll: true, initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
+useModalFocus(computed(() => props.open), panel, { preventRestoreScroll: true, initialFocus: () => panel.value?.querySelector('.remaining-field input:not(:disabled), .record-view-switch button'), onEscape: () => { if (!cancelDrag()) choosingAgent.value ? cancelAgentPicker() : guideVisible.value || guidePicker.value ? dismissGuide() : close() } })
 async function submit() {
   if (dragging.value || props.busy || props.readOnly || props.recordsLoading || props.recordsError || !initialized.value || !props.pool || unverifiedSave.value) return
   if (activeRow.value) {
     if (!props.practice || !confirmRecord()) return
   }
   if (!pendingCount.value) return
-  error.value = ''
+  error.value = ''; progressError.value = ''
   try {
     if (missingRecordIds.value.length) throw new Error('旧记录已在其他设备删除，请先核对并移除失效草稿；其余修改仍保留')
     if (orderChanged.value) {
       if (props.hasMore || !recordsReady.value) throw new Error('请读完本池全部记录后保存顺序')
       const expected = props.records.filter(event => !event.deleted_at && !deletedIds.value.includes(event.event_id)).map(event => event.event_id).concat(rows.value.filter(row => !originals.has(row.event_id)).map(row => row.event_id))
       const intended = new Set(orderIds.value)
-      if (orderRevision.value !== props.recordsRevision || expected.length !== orderIds.value.length || expected.some(id => !intended.has(id))) throw new Error('档案已变化，顺序草稿已保留；请重新选择位置并核对完整记录后保存')
+      if (orderRevision.value !== props.recordsRevision || expected.length !== orderIds.value.length || expected.some(id => !intended.has(id))) throw new Error('档案已变化，顺序草稿已保留；请恢复保存前顺序，重新调整并核对完整记录后保存')
     }
     const countOnly = rows.value.filter(isChanged).every(isFourStar) && deletedIds.value.every(id => props.records.find(event => event.event_id === id)?.agent_snapshot.rarity === 4)
-    if (remaining.value === '' && !countOnly) throw new Error('保底进度未知，暂不能保存。请核对游戏里的真实保底进度；可以关闭教程保留当前窗口草稿，不要猜值。')
-    if (remaining.value !== '' && progressLabel.value === '已垫' && tailProgress.value == null) throw new Error('已垫次数须为 0–39 的整数')
-    if (remaining.value !== '') progressFromRemaining(remaining.value)
+    try {
+      if (remaining.value === '' && !countOnly) throw new Error('保底进度未知：草稿已保留，请核对游戏里的真实保底再保存，不要猜值。')
+      if (remaining.value !== '' && progressLabel.value === '已垫' && tailProgress.value == null) throw new Error('已垫次数须为 0–39 的整数')
+      if (remaining.value !== '') progressFromRemaining(remaining.value)
+    } catch (err) {
+      progressError.value = err.message
+      await nextTick(); remainingInput.value?.focus({ preventScroll: true })
+      return
+    }
     const entries = rows.value.map(row => {
       const input = rowInput(row)
       if (!options.value.some(agent => agent.id === input.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
@@ -985,429 +958,235 @@ async function submit() {
     }).filter(entry => JSON.stringify(entry) !== originals.get(entry.event_id))
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     preservedProgress.value = props.pool.progress
-    if (!requestId) requestId = crypto.randomUUID()
+    if (!requestId) requestId = createRecruitmentId()
     emit('save', { requestId, revision: props.recordsRevision, operation: 'pool_records_save', data: { pool_id: props.pool.pool_id, entries, deleted_event_ids: deletedIds.value.slice(), remaining_pulls: remaining.value === '' ? null : Number(remaining.value), ...(orderChanged.value ? { ordered_event_ids: orderIds.value.slice() } : {}) } })
   } catch (err) { error.value = err.message; await nextTick(); focusInBody(errorSummary.value) }
 }
 </script>
 
 <style scoped>
-.sort-help { margin: 0 0 12px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
-.sort-help button { min-height: 44px; margin-inline-start: 6px; padding: 4px 8px; background: transparent; }
-.sort-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-/* 避免 disabled 按钮吞掉松手事件，让容器接收拖动结束。 */
-.pool-editor.is-dragging button, .pool-editor.is-dragging input { pointer-events: none; }
-.record-handle { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: grab; -webkit-touch-callout: none; user-select: none; }
-.record-handle[data-sort-disabled="true"] { cursor: default; }
-.record-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.record-handle :deep(img) { pointer-events: none; -webkit-user-drag: none; }
-.record-drag-chosen { background: var(--cream); }
-.record-drag-gap { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--cream); }
-.record-drag-gap > * { opacity: .22; }
-.record-drag-floating { z-index: var(--z-overlay-raised) !important; pointer-events: none; border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 22%, transparent); opacity: .95 !important; }
-@media (prefers-reduced-motion: reduce) { .gacha-record, .agent-record-card, .record-handle { transition: none; } }
-
-.position-toggle{margin:8px 0}.position-picker{min-width:0;margin:8px 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}.position-picker legend{font-weight:700}.position-picker label{display:grid;gap:6px;margin-top:10px;min-width:0;font-size:13px}.position-picker select{width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}.position-picker select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.modal-mask:has(.pool-editor[data-practice]){z-index:var(--z-overlay-raised,100)}
-:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:3px}.gacha-record:has(.guide-hint){flex-wrap:wrap}.gacha-record>.guide-hint{grid-column:1/-1;width:100%;flex-basis:100%}.agent-record-card:has(.guide-hint){grid-column:1/-1}.agent-record-card>.guide-hint{margin-bottom:12px}.compact-entry-row>.guide-hint{grid-column:1/-1}.guide-choice{margin:10px 16px}.unknown-pulls{margin:8px 0}.entry-shortcuts[data-guide-active]{outline-offset:5px}
-
 .modal-mask {
   --keyboard-inset: 0px;
   bottom: var(--keyboard-inset);
   z-index: var(--z-overlay-panel);
-  padding: 12px;
+  padding: 0;
 }
-
+.modal-mask:has(.pool-editor[data-practice]) { z-index: var(--z-overlay-raised); }
 .pool-editor {
-  --editor-body-bottom-space: 24px;
   --keyboard-inset: 0px;
-
+  --editor-body-bottom-space: 24px;
+  --editor-green: #426451;
   display: flex;
   flex-direction: column;
-  width: min(780px, 100%);
-  max-height: calc(100dvh - 24px - var(--keyboard-inset));
   min-width: 0;
+  width: 100%;
+  height: calc(100dvh - var(--keyboard-inset));
+  max-height: calc(100dvh - var(--keyboard-inset));
+  padding-top: env(safe-area-inset-top);
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 22px;
   background: var(--surface);
   color: var(--ink);
 }
-
+h2, h3, p { margin: 0; }
+h3 { font: 900 20px/1.5 var(--font-s); }
 .editor-header {
   display: flex;
+  flex: none;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 22px;
-  border-bottom: 1px solid var(--line);
-  background: var(--cream);
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(105deg, var(--cream), var(--surface));
 }
-
-.editor-title {
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.pool-confirmation, .daily-entry p, .save-result p { color: var(--ink-60); font-size: 12px; line-height: 1.7; margin-top: 6px; }
-.daily-entry { margin-bottom: 16px; }
-.daily-entry h3 { font: 800 18px/1.5 var(--font-s); }
-.daily-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.daily-choices button[aria-pressed="true"] { background: var(--tea); border-color: var(--tea); color: var(--cream); }
-.save-result { margin-bottom: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
-.save-result.is-confirmed, .is-saved { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); }
-.saved-mark { flex: none; color: var(--tea); font-size: 10px; }
-.record-search { margin-bottom: 12px; }
-.progress-actions { margin: 12px 0; }
-
-.guide-exit { flex: none; min-height: 44px; }
-.guide-entry { margin-top: 6px; }
-
-.editor-eyebrow,
-.section-kicker {
-  display: block;
-  color: var(--accent-strong);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .14em;
-}
-
-h2,
-h3,
-p {
-  margin: 0;
-}
-
-h2 {
-  margin-top: 5px;
-  font: 900 25px/1.45 var(--font-s);
-}
-
-.pool-editor form {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
+.editor-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.editor-eyebrow { color: var(--accent-strong); font-size: 11px; font-weight: 700; letter-spacing: .2em; }
+h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
+.pool-confirmation { margin-top: 6px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.close-button { display: grid; place-items: center; flex: none; padding: 9px; border-radius: 50%; }
+.pool-editor form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .editor-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 20px 22px var(--editor-body-bottom-space);
+  padding: 20px 16px var(--editor-body-bottom-space);
   scroll-padding: 16px 0 var(--editor-body-bottom-space);
 }
-
-.state-note,
-.change-note {
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--cream);
-  color: var(--ink-60);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.change-note {
-  margin-top: 18px;
-}
-
-.remaining-guide{min-width:0}.remaining-guide:has(.guide-hint){grid-column:1/-1}
 .progress-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(160px, .8fr) minmax(170px, .8fr);
-  align-items: center;
-  gap: 18px;
-  padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
-  border-radius: 16px;
-  background: linear-gradient(145deg, var(--cream), var(--surface));
-}
-
-.progress-copy h3,
-.records-heading h3 {
-  margin-top: 4px;
-  font: 800 18px/1.45 var(--font-s);
-}
-
-.progress-copy p {
-  margin-top: 7px;
-  color: var(--ink-60);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.progress-overview {
-  min-width: 0;
-}
-
-.progress-number > span {
-  color: var(--ink-60);
-  font-size: 11px;
-}
-
-.progress-number > div {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.progress-number strong {
-  font: 700 30px/1 var(--font-d);
-}
-
-.progress-number small {
-  color: var(--ink-60);
-  font-size: 12px;
-}
-
-.progress-rail,
-.record-track {
-  overflow: hidden;
-  width: 100%;
-  background: color-mix(in srgb, var(--line) 62%, transparent);
-}
-
-.progress-rail {
-  height: 7px;
-  margin-top: 10px;
-  border-radius: 999px;
-}
-
-.progress-rail > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 180ms ease;
-}
-
-.remaining-field {
-  display: block;
-  min-width: 0;
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.remaining-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.remaining-input input {
-  --input-font-size: 20px;
-  margin: 0;
-  font-family: var(--font-d);
-  font-size: var(--input-font-size);
-  text-align: center;
-}
-
-.remaining-input > span {
-  flex: none;
-  color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.entry-guide {
-  margin: 12px 2px 20px;
-  color: var(--ink-60);
-  font-size: 12px;
-}
-
-.entry-guide summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  color: var(--ink-60);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.entry-guide p {
-  max-width: 62ch;
-  padding: 2px 0 0 22px;
-  line-height: 1.8;
-}
-
-.records-section {
-  min-width: 0;
-}
-
-.records-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-}
-
-.records-heading {
-  margin-bottom: 12px;
-}
-
-.records-heading p {
-  margin-top: 3px;
-  color: var(--ink-60);
-  font-size: 11px;
-}
-
-.record-view-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px;
-  width: fit-content;
-  margin: 0;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cream) 72%, var(--surface));
-}
-
-.record-view-switch button {
-  min-width: 104px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border-color: transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--ink-60);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.record-view-switch button.is-selected {
-  border-color: var(--tea);
-  background: var(--tea);
-  color: var(--cream);
-}
-
-.record-view-switch button.is-selected:not(:disabled):hover {
-  border-color: var(--tea);
-  background: color-mix(in srgb, var(--tea) 92%, var(--surface));
-}
-
-.progress-label-switch button {
-  min-width: 44px;
-  padding-inline: 8px;
-}
-
-.progress-label-switch {
-  margin-bottom: 8px;
-}
-
-button {
-  min-width: 44px;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 9px 14px;
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
-  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, opacity 180ms ease;
-}
-
-button:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
-  background: var(--cream);
-}
-
-.close-button {
-  display: grid;
-  flex: none;
-  place-items: center;
-  padding: 9px;
-  border-radius: 50%;
-}
-
-.add-record {
-  display: inline-flex;
   flex: none;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-color: color-mix(in srgb, var(--tea) 32%, var(--line));
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.entry-shortcuts {
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-block: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 23%, var(--surface));
 }
-
-.quick-up-button {
+.progress-card h3 { font: 700 12px/1.5 var(--font-b); color: var(--ink-60); }
+.progress-overview { flex: 1; min-width: 164px; }
+.progress-number { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+.progress-number strong { font: 700 17px/1 var(--font-d); }
+.progress-number small { margin-left: 8px; color: var(--ink-60); font-size: 12px; }
+.progress-rail { height: 3px; max-width: 180px; margin-top: 6px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.progress-rail > span { display: block; height: 100%; background: var(--editor-green); }
+.remaining-guide { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.remaining-guide > .guide-hint { flex-basis: 100%; }
+.remaining-input { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.remaining-input input { width: 66px; margin: 0; padding-inline: 6px; text-align: center; font-family: var(--font-d); }
+.progress-label-switch { border: 0; padding: 0; background: transparent; }
+.progress-label-switch button { min-width: 44px; padding: 6px 8px; }
+.progress-error { flex-basis: 100%; color: var(--rouge); font-size: 12px; line-height: 1.6; }
+.entry-section { position: relative; padding: 16px 14px; margin-bottom: 22px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--cream) 35%, var(--surface)); }
+.entry-heading { padding-right: 44px; margin-bottom: 14px; }
+.entry-heading p { margin-top: 3px; color: var(--ink-60); font-size: 12px; }
+.entry-workflow { display: grid; gap: 16px; }
+.entry-shortcuts { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; padding-block: 3px; }
+.quick-up-button, .add-record {
   position: relative;
   display: grid;
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  place-items: center;
-  padding: 1px;
-  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
-  border-radius: 12px;
-  background: var(--cream);
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  flex: none;
+  width: 64px;
+  height: 88px;
+  padding: 5px;
+  border-color: transparent;
+  background: transparent;
 }
-
-.quick-up-button.is-selected,
-.add-record.is-selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--yellow) 35%, var(--surface));
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.quick-up-avatar {
-  width: 38px;
-  height: 38px;
-}
-
-.quick-up-mark {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  display: grid;
-  min-width: 20px;
-  height: 16px;
-  place-items: center;
-  padding-inline: 4px;
-  border: 1px solid var(--surface);
-  border-radius: 999px;
-  background: var(--tea);
-  color: var(--cream);
-  font: 800 8px/1 var(--font-d);
-  pointer-events: none;
-}
-
-.entry-composer {
-  min-width: 0;
-  margin: 0 0 10px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cream) 70%, var(--surface));
-  scroll-margin-block: 16px 24px;
-}
+.quick-up-avatar, .other-agent-placeholder { width: 48px; height: 48px; }
+.other-agent-placeholder { display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 8px; }
+.quick-up-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
+.quick-up-mark { position: absolute; top: 39px; right: 3px; padding: 2px 5px; border-radius: 3px; background: var(--tea); color: var(--cream); font: 700 9px/1.2 var(--font-d); }
+.quick-up-check { position: absolute; top: 0; right: 0; padding: 2px; box-sizing: content-box; border-radius: 50%; background: var(--editor-green); color: var(--surface); }
+.quick-up-button.is-selected, .add-record.is-selected { border-color: var(--editor-green); background: color-mix(in srgb, var(--editor-green) 7%, var(--surface)); }
+.entry-composer { min-width: 0; scroll-margin-block: 16px 24px; }
+.compact-entry-row { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.pull-controls { display: flex; align-items: end; gap: 8px; min-width: 0; }
+.pull-count-field { display: grid; gap: 6px; min-width: 0; font-size: 12px; }
+.pull-count-field input { --input-font-size: 20px; width: 52px; margin: 0; padding: 8px 4px; text-align: center; font: 700 var(--input-font-size)/1.2 var(--font-d); }
+.pull-stepper { display: flex; align-items: center; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.pull-stepper button { display: grid; place-items: center; padding: 9px; border: 0; background: transparent; }
+.pull-stepper input { min-width: 0; border: 0; border-radius: 0; appearance: textfield; }
+.pull-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.unknown-pulls { padding-inline: 8px; color: var(--ink-60); font-size: 12px; }
+.unknown-pulls[aria-pressed="true"] { border-color: var(--tea); background: var(--cream); color: var(--tea); }
+.composer-note, .unknown-progress-note { margin-top: 8px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
+.composer-actions { display: flex; align-items: end; gap: 8px; width: 100%; }
+.composer-actions > .primary { flex: none; width: 56px; padding-inline: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-editor[data-practice] .composer-actions > .primary { width: auto; }
+.entry-cancel, .entry-delete { display: grid; flex: none; place-items: center; width: 44px; height: 44px; padding: 9px; background: transparent; }
+.entry-delete { position: absolute; top: 10px; right: 10px; border-color: transparent; color: var(--rouge); }
+.entry-placeholder { min-width: 0; }
+.records-section { min-width: 0; }
+.records-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+.records-heading { flex: 1 1 100%; min-width: 0; }
+.records-heading h3 span { display: inline-block; margin-left: 8px; color: var(--ink-60); font: 400 12px/1.5 var(--font-b); }
+.records-heading p { margin-top: 3px; color: var(--ink-60); font-size: 12px; }
+.record-search { position: relative; flex: 1; min-width: 140px; }
+.record-search svg { position: absolute; top: 15px; left: 10px; color: var(--ink-60); }
+.record-search input { margin: 0; padding-left: 32px; font-size: 12px; }
+.record-view-switch { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); }
+.record-view-switch button { min-width: 0; padding: 6px 10px; border-color: transparent; border-radius: 5px; background: transparent; color: var(--ink-60); font-size: 12px; white-space: nowrap; }
+.record-view-switch button.is-selected { color: var(--tea); background: var(--surface); border-color: var(--line); }
+.progress-label-switch { padding: 0; border: 0; background: transparent; }
+.progress-label-switch button.is-selected { background: var(--surface); }
+.sort-help { color: var(--ink-60); font-size: 12px; line-height: 1.7; margin-bottom: 8px; }
+.sort-help button { margin-left: 6px; padding: 4px 8px; font-size: 12px; background: transparent; }
+.record-feed { display: grid; list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.gacha-record { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.record-handle { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: grab; -webkit-touch-callout: none; user-select: none; }
+.record-handle[data-sort-disabled="true"] { cursor: default; }
+.record-handle :deep(img) { pointer-events: none; -webkit-user-drag: none; }
+.drag-grip { flex: none; color: var(--ink-60); }
+.record-avatar { width: 40px; height: 40px; flex: none; }
+.record-detail { display: flex; align-items: center; width: 100%; min-width: 0; min-height: 44px; padding: 0; border: 0; border-radius: 7px; background: transparent; text-align: left; }
+.record-detail:not(:disabled):hover { background: transparent; }
+.record-track { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; width: 100%; min-width: 0; min-height: 36px; }
+.record-bar { --bar-color: var(--accent-strong); display: flex; flex: none; align-items: center; min-width: 72px; max-width: calc(100% - 48px); height: 36px; padding: 0 10px; border-radius: 6px; color: var(--surface); background-color: var(--bar-color); background-image: repeating-linear-gradient(115deg, transparent 0 14px, rgba(255, 255, 255, .12) 14px 27px); }
+.record-bar.bar-low { --bar-color: #367447; }
+.record-bar.bar-mid { --bar-color: var(--accent-strong); }
+.record-bar.bar-high { --bar-color: var(--rouge); }
+.record-bar.bar-unknown, .record-bar.bar-count { --bar-color: var(--slate-deep); }
+.pull-result { display: flex; align-items: baseline; gap: 5px; min-width: 0; white-space: nowrap; }
+.pull-result b { font: 700 20px/1 var(--font-d); }
+.pull-result small { color: color-mix(in srgb, var(--surface) 88%, transparent); font-size: 12px; font-weight: 700; }
+.status-pill, .pending-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; min-height: 24px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1; }
+.status-pill { border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--accent-strong); }
+.status-pill.is-neutral { border-color: var(--line); color: var(--ink-60); }
+.non-up-stamp { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border: 2px solid var(--rouge); border-radius: 50%; color: var(--rouge); font: 800 17px/1 var(--font-s); transform: rotate(-12deg); }
+.pending-mark { background: var(--yellow); color: var(--tea); }
+.saved-mark { color: var(--editor-green); font-size: 11px; }
+.gacha-record.is-sortable, .gacha-record.is-sortable .record-detail { cursor: grab; -webkit-touch-callout: none; user-select: none; }
+.gacha-record:hover { background: var(--cream); }
+.agent-record-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr)); gap: 16px 12px; list-style: none; margin: 0; padding: 16px 0; border-top: 1px solid var(--line); }
+.agent-record-card { display: grid; justify-items: center; align-content: start; min-width: 0; padding-top: 6px; }
+.agent-record-portrait { display: block; position: relative; width: min(100%, 78px); aspect-ratio: 1; }
+.agent-record-avatar { width: 100%; height: 100%; }
+.agent-pull-badge { position: absolute; top: 4px; right: 4px; z-index: 2; padding: 4px 6px; border: 1px solid var(--surface); border-radius: 4px; background: var(--accent-strong); color: var(--surface); font: 700 11px/1.2 var(--font-d); white-space: nowrap; }
+.agent-pull-badge.bar-low { background: var(--editor-green); }
+.agent-pull-badge.bar-high { background: var(--rouge); }
+.agent-pull-badge.bar-unknown, .agent-pull-badge.bar-count { background: var(--slate-deep); }
+.agent-non-up { position: absolute; top: 4px; left: 4px; padding: 2px 5px; background: var(--surface); color: var(--rouge); border-radius: 3px; font-size: 12px; }
+.agent-record-detail { display: grid; justify-items: center; gap: 4px; width: 100%; min-width: 0; padding: 6px 3px; border-color: transparent; background: transparent; }
+.agent-record-name { max-width: 100%; overflow-wrap: anywhere; font-size: 13px; font-weight: 700; }
+.agent-record-flags { display: flex; justify-content: center; flex-wrap: wrap; gap: 3px; }
+.agent-record-flag { font-size: 11px; color: var(--ink-60); }
+.agent-record-flag.is-pending { padding: 2px 5px; color: var(--tea); background: var(--yellow); border-radius: 3px; }
+.records-empty { padding: 28px 16px; border-block: 1px dashed var(--line); text-align: center; }
+.records-empty strong { font: 700 16px/1.5 var(--font-s); }
+.records-empty p { margin-top: 6px; font-size: 12px; line-height: 1.7; color: var(--ink-60); }
+.records-tail { display: flex; align-items: start; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.bar-legend { flex: 1; min-width: 180px; font-size: 11px; line-height: 1.7; color: var(--ink-60); }
+.load-more { font-size: 12px; }
+footer { display: flex; flex: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--cream); }
+.footer-state { display: grid; gap: 2px; color: var(--ink-60); font-size: 12px; line-height: 1.5; }
+.footer-state strong { color: var(--tea); font-weight: 700; }
+.footer-actions { display: flex; gap: 8px; margin-left: auto; }
+.footer-actions .primary { min-width: 112px; }
+button { min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; color: var(--ink); background: var(--surface); font: inherit; cursor: pointer; }
+button:not(:disabled):hover { border-color: var(--ink-35); background: var(--cream); }
+.primary { border-color: var(--tea); background: var(--tea); color: var(--cream); }
+.primary:not(:disabled):hover { border-color: var(--tea); background: color-mix(in srgb, var(--tea) 90%, var(--surface)); }
+label { display: block; min-width: 0; font-size: 13px; }
+input { min-width: 0; min-height: 44px; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+input[aria-invalid="true"] { border-color: var(--rouge); }
+button:disabled, input:disabled { cursor: not-allowed; opacity: .55; }
+button:focus-visible, input:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--tea); outline-offset: 2px; }
+.form-error { margin: 10px 0; color: var(--rouge); font-size: 13px; line-height: 1.7; }
+.state-note, .change-note, .save-result { padding: 10px 12px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); font-size: 12px; line-height: 1.7; }
+.change-note { margin-top: 16px; }
+.save-result p, .daily-entry p { margin-top: 6px; color: var(--ink-60); font-size: 12px; line-height: 1.7; }
+.is-saved { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); }
+.inline-action { margin-left: 6px; padding: 4px 8px; }
+.daily-entry { margin-bottom: 16px; }
+.daily-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.daily-choices button[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
+.progress-actions { margin: 12px 0; }
+.guide-choice { margin: 10px 16px; }
+:deep([data-guide-active]) { outline: 2px solid var(--accent); outline-offset: 3px; }
+.gacha-record > .guide-hint, .compact-entry-row > .guide-hint { grid-column: 1 / -1; width: 100%; }
+.agent-record-card:has(.guide-hint) { grid-column: 1 / -1; }
+.sr-only, .sort-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* 避免 disabled 按钮吞掉松手事件，让容器接收拖动结束。 */
+.pool-editor.is-dragging button, .pool-editor.is-dragging input { pointer-events: none; }
+.record-drag-chosen { background: var(--cream); }
+.record-drag-gap { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--cream); }
+.record-drag-gap > * { opacity: .22; }
+.record-drag-floating { z-index: var(--z-overlay-raised) !important; pointer-events: none; border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 22%, transparent); opacity: .95 !important; }
 
 .agent-picker {
-  margin-bottom: 10px;
+  position: absolute;
+  z-index: var(--z-overlay-raised);
+  top: calc(100% + 8px);
+  inset-inline: 0;
+  max-height: min(440px, 50dvh);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
 .agent-search {
@@ -1563,757 +1342,36 @@ button:not(:disabled):hover {
   text-align: center;
 }
 
-.compact-entry-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 10px 12px;
-}
-
-.selected-agent-summary {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 9px 5px 6px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.selected-agent-avatar {
-  width: 36px;
-  height: 36px;
-  flex: none;
-}
-
-.selected-agent-copy {
-  display: grid;
-  min-width: 0;
-  gap: 1px;
-}
-
-.selected-agent-copy small {
-  color: var(--ink-60);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.selected-agent-copy strong {
-  max-width: 150px;
-  overflow: hidden;
-  font-size: 12px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.pull-count-field {
-  display: grid;
-  grid-template-columns: max-content 96px;
-  align-items: center;
-  gap: 9px;
-  flex: none;
-}
-
-.pull-count-field input {
-  --input-font-size: 18px;
-  width: 96px;
-  margin-top: 0;
-  padding-inline: 8px;
-  font-family: var(--font-d);
-  font-size: var(--input-font-size);
-  text-align: center;
-}
-
-.pull-count-field > span {
-  white-space: nowrap;
-}
-
-.composer-note {
-  margin-top: 8px;
-  color: var(--ink-60);
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-label {
-  display: block;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-input,
-select {
-  width: 100%;
-  min-width: 0;
-  min-height: 46px;
-  margin-top: 7px;
-  padding: 10px 11px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-}
-
-.composer-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  margin: 0;
-  background: color-mix(in srgb, var(--cream) 70%, var(--surface));
-}
-
-.composer-actions button {
-  min-width: 64px;
-  padding-inline: 14px;
-}
-
-.composer-actions .entry-delete {
-  margin-right: auto;
-  border-color: color-mix(in srgb, var(--rouge) 28%, var(--line));
-  color: var(--rouge);
-  background: color-mix(in srgb, var(--rouge) 4%, var(--surface));
-}
-
-.composer-actions .entry-delete:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--rouge) 46%, var(--line));
-  background: color-mix(in srgb, var(--rouge) 8%, var(--surface));
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.record-feed {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--line);
-  list-style: none;
-}
-
-.gacha-record {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 0;
-  border-bottom: 1px solid var(--line);
-  transition: background-color 180ms ease;
-}
-
-.gacha-record.is-sortable, .gacha-record.is-sortable .record-detail {
-  cursor: grab;
-  -webkit-touch-callout: none;
-  user-select: none;
-}
-
-.gacha-record:hover {
-  background: color-mix(in srgb, var(--cream) 58%, transparent);
-}
-
-.record-avatar {
-  width: 40px;
-  height: 40px;
-}
-
-.record-detail {
-  display: flex;
-  min-width: 0;
-  min-height: 44px;
-  align-items: center;
-  overflow: hidden;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  text-align: left;
-}
-
-.record-detail:not(:disabled):hover {
-  border-color: transparent;
-  background: transparent;
-}
-
-.record-track {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  min-width: 0;
-  min-height: 36px;
-  overflow: hidden;
-}
-
-.record-bar {
-  --bar-color: var(--accent-strong);
-  display: flex;
-  flex: none;
-  align-items: center;
-  min-width: 72px;
-  max-width: calc(100% - 48px);
-  height: 36px;
-  padding: 0 10px;
-  border-radius: 6px;
-  color: var(--surface);
-  background-color: var(--bar-color);
-  background-image: repeating-linear-gradient(115deg, transparent 0 14px, rgba(255, 255, 255, .12) 14px 27px);
-}
-
-.record-bar.bar-low {
-  --bar-color: #367447;
-}
-
-.record-bar.bar-mid {
-  --bar-color: var(--accent-strong);
-}
-
-.record-bar.bar-high {
-  --bar-color: var(--rouge);
-}
-
-.record-bar.bar-unknown {
-  --bar-color: var(--slate-deep);
-}
-
-.pull-result {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.pull-result b {
-  font: 700 20px/1 var(--font-d);
-}
-
-.pull-result small {
-  color: color-mix(in srgb, var(--surface) 88%, transparent);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.status-pill,
-.pending-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  min-height: 24px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.status-pill {
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
-  color: var(--accent-strong);
-}
 
-.status-pill.is-neutral {
-  border-color: var(--line);
-  color: var(--ink-60);
+@media (min-width: 431px) {
+  .modal-mask { padding: 16px; }
+  .pool-editor { width: min(780px, 100%); height: min(900px, calc(100dvh - 32px - var(--keyboard-inset))); max-height: calc(100dvh - 32px - var(--keyboard-inset)); border-radius: 18px; }
+}
+@media (min-width: 700px) {
+  .editor-header { padding: 22px 28px 18px; }
+  h2 { font-size: 28px; }
+  .editor-body { padding: 22px 28px var(--editor-body-bottom-space); }
+  .progress-card { padding-inline: 28px; }
+  .remaining-guide { margin-left: auto; }
+  .progress-overview { flex: 0 1 260px; }
+  .entry-section { padding: 20px; }
+  .entry-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; }
+  .records-heading { flex: 1; }
+  .record-search { flex: 0 1 180px; }
+  footer { padding-inline: 28px; }
+}
+@media (min-width: 768px) {
+  .entry-workflow { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
+}
+@media (pointer: coarse) {
+  .agent-filter-reset { min-width: 44px; min-height: 44px; }
 }
-
-.non-up-stamp {
-  display: grid;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 2px solid var(--rouge);
-  border-radius: 50%;
-  color: var(--rouge);
-  font: 800 17px/1 var(--font-s);
-  transform: rotate(-12deg);
-}
-
-.pending-mark {
-  background: var(--yellow);
-  color: var(--tea);
-}
-
-.delete-record {
-  display: grid;
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  place-items: center;
-  padding: 0;
-  border-color: transparent;
-  background: transparent;
-  color: var(--rouge);
-}
-
-.delete-record:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--rouge) 30%, transparent);
-  background: color-mix(in srgb, var(--rouge) 7%, transparent);
-}
-
-.agent-record-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr));
-  gap: 16px 12px;
-  margin: 0;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--line);
-  list-style: none;
-}
-
-.agent-record-card {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  padding-top: 6px;
-  position: relative;
-  min-width: 0;
-}
-
-.agent-record-detail {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  justify-items: center;
-  gap: 5px;
-  padding: 6px 3px 7px;
-  border-color: transparent;
-  background: transparent;
-  text-align: center;
-}
-
-.agent-record-detail:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
-  background: color-mix(in srgb, var(--cream) 60%, transparent);
-}
-
-.agent-record-portrait {
-  position: relative;
-  display: block;
-  width: min(100%, 78px);
-  aspect-ratio: 1;
-}
-
-.agent-record-avatar {
-  width: 100%;
-  height: 100%;
-}
-
-.agent-pull-badge {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 3px 7px;
-  border: 1px solid color-mix(in srgb, var(--surface) 80%, transparent);
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(73, 59, 44, .16);
-  color: var(--surface);
-  background: var(--accent-strong);
-  font: 800 11px/1 var(--font-d);
-  white-space: nowrap;
-}
-
-.agent-pull-badge.bar-low { background: #367447; }
-.agent-pull-badge.bar-mid { background: var(--accent-strong); }
-.agent-pull-badge.bar-high { background: var(--rouge); }
-.agent-pull-badge.bar-unknown { background: var(--slate-deep); }
-
-.agent-non-up {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  z-index: 2;
-  display: grid;
-  width: 25px;
-  height: 25px;
-  place-items: center;
-  border: 1.5px solid var(--rouge);
-  border-radius: 50%;
-  color: var(--rouge);
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  font: 800 13px/1 var(--font-s);
-  transform: rotate(-10deg);
-}
-
-.agent-record-name {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.agent-record-flags {
-  display: flex;
-  flex-wrap: wrap;
-  min-height: 17px;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
-
-.agent-record-flag {
-  display: inline-flex;
-  min-height: 17px;
-  align-items: center;
-  padding: 1px 5px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--ink-60);
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.agent-record-flag.is-pending {
-  border-color: transparent;
-  background: var(--yellow);
-  color: var(--tea);
-}
-
-.records-empty {
-  padding: 22px 18px;
-  border: 1px dashed var(--line);
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--cream) 50%, transparent);
-  text-align: center;
-}
-
-.records-empty strong {
-  font: 800 15px/1.5 var(--font-s);
-}
-
-.records-empty p {
-  margin-top: 5px;
-  color: var(--ink-60);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.records-tail {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 10px;
-}
-
-.bar-legend {
-  max-width: 62ch;
-  color: var(--ink-60);
-  font-size: 10px;
-  line-height: 1.7;
-}
-
-.load-more {
-  flex: none;
-
-  font-size: 12px;
-}
-
-.primary {
-  border-color: var(--tea);
-  background: var(--tea);
-  color: var(--cream);
-}
-
-.primary:not(:disabled):hover {
-  border-color: var(--tea);
-  background: color-mix(in srgb, var(--tea) 90%, var(--surface));
-}
-
-.inline-action {
-
-
-  margin-left: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-footer {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-top: 1px solid var(--line);
-  padding: 14px 20px;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
-  background: var(--cream);
-}
-
-.footer-state {
-  min-width: 0;
-  color: var(--ink-60);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.footer-actions {
-  display: flex;
-  flex: none;
-  gap: 9px;
-}
-
-.form-error {
-  margin: 10px 0 14px;
-  color: var(--rouge);
-  font-size: 13px;
-  line-height: 1.8;
-}
-
-button:disabled,
-input:disabled,
-select:disabled {
-  cursor: not-allowed;
-  opacity: .55;
-}
-
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-summary:focus-visible,
-[tabindex]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-@media (max-width: 720px) {
-  .progress-card {
-    grid-template-columns: minmax(0, 1fr) minmax(145px, .72fr);
-  }
-
-  .progress-copy {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 520px) {
-  .pool-editor {
-    --editor-body-bottom-space: 22px;
-  }
-
-  .editor-header {
-    padding: 18px 16px;
-  }
-
-  .editor-body {
-    padding: 17px 16px var(--editor-body-bottom-space);
-  }
-
-  h2 {
-    font-size: 22px;
-  }
-
-  .progress-card {
-    grid-template-columns: minmax(0, 1fr) minmax(132px, .9fr);
-    gap: 14px;
-    padding: 15px;
-  }
-
-  .compact-entry-row {
-    gap: 8px 10px;
-  }
-
-  .selected-agent-summary {
-    width: 100%;
-  }
-
-  .selected-agent-copy strong {
-    max-width: none;
-  }
-
-  .agent-filter-options {
-    display: grid;
-  }
-
-  .agent-filter-options.is-prof {
-    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
-  }
-
-  .agent-filter-options.is-subprof {
-    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
-  }
-
-  .agent-filter-options button {
-    width: 100%;
-    padding-inline: 2px;
-  }
-
-  .agent-filter-options button img {
-    display: none;
-  }
-
-  .agent-picker-results {
-    max-height: 44dvh;
-  }
-
-  .records-heading {
-    margin-bottom: 10px;
-  }
-
-  .records-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .record-view-switch {
-    width: 100%;
-  }
-
-  .record-view-switch button {
-    min-width: 0;
-  }
-
-  .entry-shortcuts {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .add-record {
-    padding-inline: 12px;
-  }
-
-  .gacha-record {
-    gap: 8px;
-  }
-
-  .record-bar {
-    min-width: 68px;
-    max-width: calc(100% - 42px);
-    padding-inline: 9px;
-  }
-
-  .pull-result b {
-    font-size: 20px;
-  }
-
-  .records-tail {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  footer {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 9px;
-    padding-inline: 16px;
-  }
-
-  .footer-actions {
-    display: grid;
-    grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr);
-  }
-
-  footer.is-entry-active {
-    display: none;
-  }
-
-  .entry-composer { scroll-margin-block: 16px 24px; }
+  .agent-filter-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
+  .agent-filter-options button { width: 100%; padding-inline: 2px; }
+  .agent-picker-results { max-height: 35dvh; }
 }
-
-@media (max-width: 430px) {
-  .modal-mask {
-    padding: 0;
-  }
-
-  .pool-editor {
-    width: 100%;
-    height: calc(100dvh - var(--keyboard-inset));
-    max-height: calc(100dvh - var(--keyboard-inset));
-    padding-top: env(safe-area-inset-top);
-    padding-right: env(safe-area-inset-right);
-    padding-left: env(safe-area-inset-left);
-    border-radius: 0;
-  }
-
-  .progress-card {
-    grid-template-columns: minmax(0, 1fr) minmax(122px, .85fr);
-  }
-
-  .progress-number strong {
-    font-size: 27px;
-  }
-
-  .record-track {
-    gap: 6px;
-  }
-}
-
-@media (max-width: 360px) {
-  .progress-card {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .remaining-field {
-    max-width: 180px;
-  }
-
-  .records-heading {
-    margin-bottom: 10px;
-  }
-
-  .entry-shortcuts .add-record {
-    flex: 1 1 120px;
-    width: auto;
-  }
-
-  .gacha-record {
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 7px;
-  }
-
-  .record-avatar {
-    width: 40px;
-    height: 40px;
-  }
-
-  .record-bar {
-    min-width: 64px;
-    padding-inline: 8px;
-  }
-
-  .status-pill.is-neutral {
-    display: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .progress-rail > span,
-  button,
-  .gacha-record {
-    transition: none;
-  }
+  .pool-editor *, .pool-editor *::before, .pool-editor *::after { transition: none; animation: none; }
 }
 </style>

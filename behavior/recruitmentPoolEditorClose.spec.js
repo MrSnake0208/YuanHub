@@ -117,7 +117,7 @@ it('保存读回核对完成且没有新修改时直接关闭', async () => {
   await wrapper.get('form').trigger('submit')
   const receipt = { ...wrapper.emitted('save')[0][0].data, revision: 4 }
   await wrapper.setProps({ pool: { ...recruitmentFixture().pools[0], progress: 7 }, recordsRevision: 4, saveReceipt: receipt })
-  expect(wrapper.get('.save-result.is-confirmed').exists()).toBe(true)
+  expect(wrapper.get('.footer-state').text()).toContain('已保存并核对')
   expect(wrapper.vm.hasDraft()).toBe(false)
   await attemptClose(wrapper, 'button')
   expect(confirm).not.toHaveBeenCalled()
