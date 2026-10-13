@@ -116,7 +116,7 @@ const hiddenPortraitCount = pool => Math.max(activeUpSlots(pool).length - coverP
 function markPortraitFailed(src) { if (src) failedPortraits.value.add(src) }
 const cards = new Map()
 function rememberCard(id, element) { if (element) cards.set(id, element); else cards.delete(id) }
-defineExpose({ focusPool: id => cards.get(id)?.focus() })
+defineExpose({ focusPool: id => cards.get(id)?.focus({ preventScroll: true }) })
 watch(() => props.contextVersion, () => { year.value = ''; descending.value = true })
 </script>
 

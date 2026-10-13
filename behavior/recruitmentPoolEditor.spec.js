@@ -2,12 +2,12 @@
 vi.hoisted(() => vi.stubEnv('VITE_TUTORIALS_ENABLED', 'true'))
 afterAll(() => vi.unstubAllEnvs())
 import { afterAll, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import PoolEditor from '../src/pages/recruitment/PoolEditor.vue'
 import { dialog } from '../src/utils/dialog.js'
 import { recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
 
-const render = props => mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: recruitmentFixture().pools[0], recordsRevision: 3, records: [{ ...recruitmentEvent('old', 17), agent_snapshot: { agent_id: 'a', name: '甲' } }], canRecord: true, catalog: recruitmentCatalog().pools, agents: [{ id: 'a', name: '甲' }, { id: 'b', name: '乙' }], ...props }, global: { stubs: { Teleport: true } } })
+const render = (props, teleport = true) => mount(PoolEditor, { attachTo: document.body, props: { open: true, pool: recruitmentFixture().pools[0], recordsRevision: 3, records: [{ ...recruitmentEvent('old', 17), agent_snapshot: { agent_id: 'a', name: '甲' } }], canRecord: true, catalog: recruitmentCatalog().pools, agents: [{ id: 'a', name: '甲' }, { id: 'b', name: '乙' }], ...props }, global: { stubs: { Teleport: teleport } } })
 const button = (wrapper, text) => wrapper.findAll('button').find(button => button.text() === text)
 const progressModeKey = 'yh_recruitment_progress_input_mode'
 
@@ -90,6 +90,110 @@ it('点击记录只展开紧凑抽数编辑，取消不改变记录；完成编�
   await wrapper.get('form').trigger('submit')
   expect(wrapper.get('.gacha-record .record-bar').classes()).toContain('bar-high')
   expect(wrapper.emitted('save')[0][0].data.entries[0]).toMatchObject({ event_id: 'old', pull_span: 31 })
+})
+
+it.each(['进度条视图', '密探视图'])('焦点恢复：%s取消与完成返回原记录，只在弹窗内按需滚动', async view => {
+  const records = ['first', 'middle', 'last'].map(id => ({ ...recruitmentEvent(id, 17), agent_snapshot: { agent_id: 'a', name: '甲' } }))
+  const wrapper = render({ records }, false)
+  await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  await button(ui, view).trigger('click')
+  const body = ui.get('.editor-body').element
+  vi.spyOn(body, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 700 })
+  body.scrollBy = vi.fn()
+  const original = ui.get('[data-event-id="middle"] .record-detail, [data-event-id="middle"] .agent-record-detail')
+  vi.spyOn(original.element, 'getBoundingClientRect').mockReturnValue({ top: 300, bottom: 344 })
+  const focus = vi.spyOn(original.element, 'focus')
+  body.scrollTop = 500
+  await original.trigger('click')
+  body.scrollTop = 20
+  await ui.get('.composer-actions button:not(.entry-delete):not(.primary)').trigger('click')
+  expect(document.activeElement).toBe(original.element)
+  expect(focus).toHaveBeenLastCalledWith({ preventScroll: true })
+  expect(body.scrollTop).toBe(500)
+  expect(body.scrollBy).not.toHaveBeenCalled()
+  await original.trigger('click')
+  await ui.get('.pull-count-field input').setValue('23')
+  await ui.get('.composer-actions .primary').trigger('click')
+  expect(document.activeElement).toBe(original.element)
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await ui.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].data.entries).toEqual([expect.objectContaining({ event_id: 'middle', pull_span: 23 })])
+})
+
+it.each(['进度条视图', '密探视图'])('焦点恢复：%s连续删除中首尾后选择相邻记录，空列表回新增', async view => {
+  const wrapper = render({ records: ['first', 'middle', 'last'].map(id => ({ ...recruitmentEvent(id, 17), agent_snapshot: { agent_id: 'a', name: '甲' } })) }, false)
+  await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  await button(ui, view).trigger('click')
+  for (const [removed, next] of [['middle', 'first'], ['last', 'first'], ['first', null]]) {
+    await ui.get(`[data-event-id="${removed}"] .record-handle`).trigger('click')
+    await button(ui, '删除记录').trigger('click')
+    expect(ui.find(`[data-event-id="${removed}"]`).exists()).toBe(false)
+    if (next) expect(document.activeElement).toBe(ui.get(`[data-event-id="${next}"] .record-handle`).element)
+    else expect(document.activeElement).toBe(ui.get('.add-record').element)
+  }
+  expect(wrapper.emitted('save')).toBeUndefined()
+  await ui.get('form').trigger('submit')
+  expect(wrapper.emitted('save')[0][0].data.deleted_event_ids).toEqual(['middle', 'last', 'first'])
+})
+
+it('焦点恢复：新增取消返回入口，加入后定位新记录而非第一条旧记录', async () => {
+  const wrapper = render({}, false)
+  await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  await ui.get('.add-record').trigger('click')
+  await ui.get('.agent-picker-cancel').trigger('click')
+  expect(document.activeElement).toBe(ui.get('.add-record').element)
+  await ui.get('.add-record').trigger('click')
+  await ui.get('.agent-choice[data-agent-id="a"]').trigger('click')
+  await ui.get('.pull-count-field input').setValue('20')
+  await ui.get('.composer-actions .primary').trigger('click')
+  const newRow = ui.findAll('[data-event-id]').find(row => row.attributes('data-event-id') !== 'old')
+  expect(document.activeElement).toBe(newRow.get('.record-detail').element)
+  expect(wrapper.emitted('save')).toBeUndefined()
+})
+
+it('焦点恢复：历史位置选择聚焦真实控件，不把长表单滚回顶部', async () => {
+  vi.useFakeTimers()
+  const wrapper = render({}, false)
+  await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  await ui.get('.record-detail').trigger('click')
+  const body = ui.get('.editor-body').element
+  body.scrollBy = vi.fn()
+  vi.spyOn(body, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 700 })
+  vi.spyOn(ui.get('.editor-header').element, 'getBoundingClientRect').mockReturnValue({ bottom: 100 })
+  await ui.get('.position-toggle').trigger('click')
+  const select = ui.get('.position-picker select').element
+  vi.spyOn(select, 'getBoundingClientRect').mockReturnValue({ top: 300, bottom: 344, height: 44 })
+  vi.spyOn(ui.get('.entry-composer').element, 'getBoundingClientRect').mockReturnValue({ top: -200, bottom: 600, height: 800 })
+  body.scrollBy.mockClear()
+  await vi.advanceTimersByTimeAsync(200)
+  expect(document.activeElement).toBe(select)
+  expect(body.scrollBy).not.toHaveBeenCalled()
+  expect(wrapper.emitted('save')).toBeUndefined()
+})
+
+it('焦点恢复：校验摘要只滚动编辑容器，后续避让不抢焦点，父级重渲染保留输入', async () => {
+  vi.useFakeTimers()
+  const wrapper = render({}, false)
+  await flushPromises()
+  const ui = new DOMWrapper(document.body)
+  await ui.get('.record-detail').trigger('click')
+  const input = ui.get('.pull-count-field input')
+  await input.setValue('1.5')
+  input.element.focus()
+  await wrapper.setProps({ pool: { ...recruitmentFixture().pools[0] } })
+  expect(document.activeElement).toBe(input.element)
+  expect(input.element.value).toBe('1.5')
+  await ui.get('.composer-actions .primary').trigger('click')
+  const summary = ui.get('.form-error')
+  expect(document.activeElement).toBe(summary.element)
+  await vi.advanceTimersByTimeAsync(200)
+  expect(document.activeElement).toBe(summary.element)
+  expect(ui.find('.entry-composer').exists()).toBe(true)
+  expect(wrapper.emitted('save')).toBeUndefined()
 })
 
 it.each(['record', 'maintain'])('%s教程和普通模式使用同一先加入草稿、再统一保存机制', async topic => {
@@ -289,6 +393,7 @@ it('只编辑保底时视口因键盘缩短，滚动真实输入到可见范围�
   const input = wrapper.get('.remaining-field input')
   vi.spyOn(input.element, 'getBoundingClientRect').mockReturnValue(new DOMRectReadOnly(0, 453, 96, 47))
   vi.spyOn(wrapper.get('.editor-header').element, 'getBoundingClientRect').mockReturnValue({ bottom: 100 })
+  vi.spyOn(wrapper.get('.editor-body').element, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 844 })
   const scroll = vi.fn(); wrapper.get('.editor-body').element.scrollBy = scroll
   input.element.focus()
   viewport.height = 400; viewport.dispatchEvent(new Event('resize'))

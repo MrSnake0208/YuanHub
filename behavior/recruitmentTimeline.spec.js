@@ -11,6 +11,13 @@ const button = (wrapper, text) => wrapper.findAll('button').find(item => item.te
 const card = (wrapper, name) => wrapper.findAll('.pool-card').find(item => item.get('.pool-name').text() === name)
 const tone = (wrapper, name) => card(wrapper, name).get('.pool-cover').classes().find(item => item.startsWith('cover-tone-'))
 
+it('焦点恢复：准备卡池入口焦点不隐式移动页面', () => {
+  const wrapper = render({ pools: [pool('目标池')] })
+  const focus = vi.spyOn(wrapper.get('.pool-card').element, 'focus')
+  wrapper.vm.focusPool('目标池')
+  expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+})
+
 it.each(['代号鸢', '如鸢'])('%s的常驻池始终置顶，切换排序和年份不隐藏且不修改原池数据', async game => {
   const pools = [pool('旧池', '2025-01-01'), pool('绣衣天下', null, null, { game, pool_type: 'permanent' }), pool('新池', '2026-01-01'), pool('未知池')]
   const original = structuredClone(pools)
