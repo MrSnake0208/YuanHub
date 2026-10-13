@@ -36,7 +36,7 @@ it('bag remains editable, entering plan opens current-inventory preview; cancel 
  expect(await request(db.transaction('meta').objectStore('meta').get('product.pendingPlanInheritance:'+account.accountId))).toBeUndefined()
  expect((await handle.getCloudBusinessSnapshot()).planTargets).toEqual({new:60})
  expect(root.querySelector('.product-toast').classList.contains('product-toast-info')).toBe(true)
- expect(root.querySelector('.product-toast').textContent).toContain('旧计划已继承')
+ expect(root.querySelector('.product-toast').textContent).toContain('旧养成计划已继承')
 })
 
 it('four-field group layout reuses soft controls; reselect is inert, occupied candidates swap, Escape closes only the menu',async()=>{
@@ -70,6 +70,6 @@ it('remount already in plan view reopens durable pending workflow and rejects st
  expect(document.querySelector('.plan-inheritance-dialog')).not.toBeNull()
  await handle.applyCloudBusinessSnapshot({inventory:[{starInstanceId:'new',kind:'主星',name:'天府',quality:'橙',level:55}],planTargets:{},bag:{currentCount:1,capacity:100},experience:{orange:1,purple:2,white:3}})
  document.querySelector('[data-inheritance-confirm]').click();await settle()
- expect(document.querySelector('.inheritance-error').textContent).toContain('已变化')
+ expect(document.querySelector('.inheritance-error').textContent).toContain('已更新')
  expect(options.onApplyRecoveredPlan).not.toHaveBeenCalled()
 })

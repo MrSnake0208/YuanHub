@@ -16,7 +16,8 @@ it('瓶子writer经实际API/serializer保留listed单项0和幂等正文，绑�
   const writer = createGrowthPlanInventoryWriter({ isCurrent: () => true, createId: () => 'api-fixture', now: () => 0,
     getCurrent: args => getCurrent(args, { expectedUserId: 'user-a', fresh: true }),
     importInventory: doc => importInventory(doc, { expectedUserId: 'user-a' }) })
-  await expect(writer.save('game-a', 'jiezheping', 0)).rejects.toThrow('lost response')
+  const failed = await writer.save('game-a', 'jiezheping', 0).catch(error => error)
+  expect(failed.message).toContain('库存写入结果尚未确认'); expect(failed.cause.message).toBe('lost response')
   await writer.save('game-a', 'jiezheping', 0)
   const posts = request.mock.calls.filter(([, options]) => options.method === 'POST')
   expect(posts).toHaveLength(2); expect(posts[0][1].body).toEqual(posts[1][1].body)

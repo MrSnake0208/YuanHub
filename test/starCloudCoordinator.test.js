@@ -12,6 +12,39 @@ const handle = () => ({ getCloudBusinessSnapshot: async () => local(), applyClou
 const tick = () => new Promise(resolve => setTimeout(resolve, 0))
 const deferred = () => { let resolve; return { promise: new Promise(done => { resolve = done }), resolve } }
 
+for (const committedBeforeLoss of [false, true]) test(`uncertain JSON rebuild fences a second POST and reload reads authority (${committedBeforeLoss})`, async () => {
+  let current = remote(), posts = 0; const persistent = storage()
+  const options = { selectedHostAccount: () => ({accountId:'a'}), storage: persistent,
+    getState: async () => current, rebuildState: async () => {
+      posts++; if (committedBeforeLoss) current = remote(3,6)
+      throw new TypeError('lost response')
+    } }
+  const c = createStarCloudCoordinator(options); await c.enter(handle())
+  await assert.rejects(c.replaceImport(local()), error => error.code === 'star_rebuild_uncertain')
+  await assert.rejects(c.replaceImport(local()), /未完成/)
+  assert.equal(posts, 1); assert.equal(c.committed({accountId:'a', snapshot:local()}), false)
+  assert.equal(c.completionScope('fake','如鸢'),null)
+  const remount = createStarCloudCoordinator(options); await remount.enter(handle())
+  assert.equal(remount.needsRetry(), !committedBeforeLoss)
+  assert.equal(posts,1,'reload never retries POST')
+  assert.equal(!!persistent.getItem('yuanhub.star-rebuild-pending:a'), !committedBeforeLoss)
+})
+
+test('explicit JSON rejection leaves no uncertain rebuild lock', async () => {
+  const persistent = storage()
+  const c = createStarCloudCoordinator({ selectedHostAccount: () => ({accountId:'a'}), storage:persistent,
+    getState:async()=>remote(), rebuildState:async()=>{throw Object.assign(Error('invalid'),{status:422})} })
+  await c.enter(handle()); await assert.rejects(c.replaceImport(local()), /invalid/)
+  assert.equal(c.state().error,undefined);assert.equal(persistent.getItem('yuanhub.star-rebuild-pending:a'),null)
+})
+
+test('lost restore response blocks repeat until authority is read', async () => {
+  let posts=0;const c=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:'a'}),storage:storage(),getState:async()=>remote(),
+    restorePoint:async()=>{posts++;throw new TypeError('lost')} })
+  await c.enter(handle()); await assert.rejects(c.restorePoint('point'),e=>e.code==='star_restore_uncertain')
+  await assert.rejects(c.restorePoint('point'),/未完成/);assert.equal(posts,1)
+})
+
 test('one StarState writer hydrates and sends generation fenced PATCH', async () => {
   const writes = []
   const coordinator = createStarCloudCoordinator({ selectedHostAccount: () => ({ accountId: 'a' }), storage: storage(),
@@ -194,7 +227,7 @@ test('wrong OCR readback blocks confirmation and leaves local handoff uncommitte
   const c=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:'a'}),storage:storage(),getState:async()=>current,
     rebuildState:async()=>{current={...remote(3,6),plan_targets:{'main.1':40}};return {state:current};}});
   await c.enter(handle());
-  await assert.rejects(()=>c.rebuildOcr(local(),'point'),/结果不确定/);
+  await assert.rejects(()=>c.rebuildOcr(local(),'point'),/无法确认.*保存成功/);
   assert.equal(c.needsRetry(),true);assert.throws(()=>c.ocrRebuildScope(),/未完成/);
   assert.equal(c.committed({accountId:'a',snapshot:local()}),false);
 });
@@ -203,7 +236,7 @@ test('old first readback remains uncertain and remount cannot repeat POST', asyn
   let current=remote(),posts=0;const persistent=storage();
   const options={selectedHostAccount:()=>({accountId:'a'}),storage:persistent,getState:async()=>current,rebuildState:async()=>{posts++;throw new Error('lost');}};
   const c=createStarCloudCoordinator(options);await c.enter(handle());
-  await assert.rejects(()=>c.rebuildOcr(local(),'point'),/结果不确定/);
+  await assert.rejects(()=>c.rebuildOcr(local(),'point'),/无法确认.*保存成功/);
   await assert.rejects(()=>c.rebuildOcr(local(),'point'),/未完成/);
   const remount=createStarCloudCoordinator(options);await remount.enter(handle());
   await assert.rejects(()=>remount.rebuildOcr(local(),'point'),/未完成/);assert.equal(posts,1);
@@ -230,5 +263,5 @@ test('only-plan recovery patches current generation and preserves inventory reso
 test('only-plan recovery rejects inventory changes and stale scope', async () => {
   let writes=0;
   const c=createStarCloudCoordinator({selectedHostAccount:()=>({accountId:'a'}),storage:storage(),getState:async()=>remote(),patchState:async()=>{writes++;}});
-  await c.enter(handle());await assert.rejects(()=>c.applyRecoveredPlan({...local(),inventory:[]},c.ocrRebuildScope()),/背包与云端不一致/);assert.equal(writes,0);
+  await c.enter(handle());await assert.rejects(()=>c.applyRecoveredPlan({...local(),inventory:[]},c.ocrRebuildScope()),/背包与云端数据不一致/);assert.equal(writes,0);
 });

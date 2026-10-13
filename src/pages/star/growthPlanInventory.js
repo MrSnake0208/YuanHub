@@ -46,15 +46,15 @@ export function createGrowthPlanInventoryWriter({ getCurrent, importInventory, i
   }
   const failure = error => {
     const pending = describe()
-    const message = pending?.phase === 'unconfirmed'
-      ? `库存写入结果尚未确认：${error.message}。请重试原记录，暂不能编辑新数量。`
+    const message = /账号已切换|正在保存或读取库存/.test(error.message) ? error.message : pending?.phase === 'unconfirmed'
+      ? '库存写入结果尚未确认，请重试本次保存。确认前暂不能修改为新数量，也不能直接采用当前库存。'
       : pending?.phase === 'acknowledged'
-        ? `库存写入已确认，读回尚未完成：${error.message}。请重新读取核对。`
+        ? '库存写入已确认，但最新库存尚未读取成功。请重新读取核对，不要再次新增保存。'
         : error.message
     return Object.assign(new Error(message, { cause: error }),
       { status: error.status, code: error.code, inventoryPending: pending })
   }
-  const conflict = p => new Error(`${bottleNames[p.id]}${p.notApplied ? '保存记录已确认存档，但未改变当前库存。' : '库存与保存目标不一致。'}尝试保存：${p.count}，当前读取：${p.latest.inventory[p.id]}。请核对当前库存后继续。${p.latest.reliable ? '' : '当前读取尚未证实本次盘点基线，请重新读取；持续无法确认时需服务端核查原记录。'}`)
+  const conflict = p => new Error(`${bottleNames[p.id]}${p.notApplied ? '本次记录已保存，但未改变当前库存。' : '当前库存与本次保存数量不一致。'}本次保存：${p.count}，当前库存：${p.latest.inventory[p.id] ?? '未知'}。${p.latest.reliable ? '请核对后重新读取，或使用当前库存；使用当前库存只读取核对，不会再次修改云端库存。' : '当前库存尚未可靠确认，请重新读取；仍无法确认时请保留数据并联系维护者。'}`)
 
   async function readBack(p) {
     p.latest = null // A failed/obsolete read cannot leave an older acceptance offer enabled.
@@ -91,7 +91,7 @@ export function createGrowthPlanInventoryWriter({ getCurrent, importInventory, i
       return run(accountId, async () => {
         const p = state.pending
         if (!p) return readGrowthPlanInventory(accountId, getCurrent, () => isCurrent(accountId))
-        if (!p.acknowledged) throw new Error('库存写入结果尚未确认，请重试原记录；不能使用当前库存解除保护。')
+        if (!p.acknowledged) throw new Error('库存写入结果尚未确认，请重试本次保存。确认前不能直接采用当前库存。')
         return check(p)
       })
     },
@@ -107,8 +107,8 @@ export function createGrowthPlanInventoryWriter({ getCurrent, importInventory, i
     },
     async save(accountId, id, count) {
       return run(accountId, async () => {
-        if (!BREAKTHROUGH_IDS.includes(id) || !Number.isSafeInteger(count) || count < 0) throw new Error('瓶子数量必须为非负整数')
-        if (state.pending && (state.pending.id !== id || state.pending.count !== count)) throw new Error('上次库存保存尚未解决，请原样重试或核对已确认的库存冲突')
+        if (!BREAKTHROUGH_IDS.includes(id) || !Number.isSafeInteger(count) || count < 0) throw new Error('瓶子数量请输入0或正整数。')
+        if (state.pending && (state.pending.id !== id || state.pending.count !== count)) throw new Error('上次库存保存尚未确认，请重试本次保存或核对已读取的库存。')
         if (!state.pending) {
           const data = await getCurrent({ accountId, entityType: 'item' })
           current(accountId)
@@ -132,7 +132,7 @@ export function createGrowthPlanInventoryWriter({ getCurrent, importInventory, i
             if (p.attempts === 1 && [400,401,403,404,409,422].includes(error?.status) && error?.code !== 'request_identity_changed') state.pending = null
             throw error
           }
-          if (!result || !((result.accepted === 1 && !result.duplicates) || (result.duplicates === 1 && !result.accepted))) throw new Error('库存保存结果未确认，请原样重试')
+          if (!result || !((result.accepted === 1 && !result.duplicates) || (result.duplicates === 1 && !result.accepted))) throw new Error('库存保存结果尚未确认，请重试本次保存。')
           p.acknowledged = true // Retain confirmation even if the account changed while POST was in flight.
           p.notApplied = !!(result.superseded || result.history_only)
         }
