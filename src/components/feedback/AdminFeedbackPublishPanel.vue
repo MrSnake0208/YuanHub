@@ -38,6 +38,7 @@
           <span>反馈类型</span>
           <small>同时更新内部工单类型与广场分类。</small>
           <select v-model="form.type" class="feedback-form-control" :disabled="!canPublish">
+            <option v-if="!isFeedbackType(item.type)" :value="item.type || ''">{{ publicTypeLabel(item.type) }}（保留原类型）</option>
             <option v-for="option in typeOptions" :key="option.key" :value="option.key">{{ option.label }}</option>
           </select>
         </label>
@@ -74,7 +75,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { ChevronDown } from '@lucide/vue'
-import { PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS } from '@/utils/feedbackPublic.js'
+import { PUBLIC_STATUS_OPTIONS, PUBLIC_TYPE_OPTIONS, isFeedbackType, publicTypeLabel } from '@/utils/feedbackPublic.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -104,7 +105,7 @@ const form = reactive({ publicTitle: '', publicSummary: '', publicStatus: 'COLLE
 const hasDraft = computed(() => form.publicStatus !== (props.item?.publicStatus || 'COLLECTING') || (canPublish.value && (
   form.publicTitle.trim() !== (props.item?.publicTitle || props.item?.title || '').trim() ||
   form.publicSummary.trim() !== (props.item?.publicSummary || '').trim() ||
-  form.type !== (props.item?.type || 'BUG')
+  form.type !== (props.item?.type || '')
 )))
 defineExpose({ hasDraft })
 
@@ -112,7 +113,7 @@ function sync() {
   form.publicTitle = props.item?.publicTitle || props.item?.title || ''
   form.publicSummary = props.item?.publicSummary || ''
   form.publicStatus = props.item?.publicStatus || 'COLLECTING'
-  form.type = props.item?.type || 'BUG'
+  form.type = props.item?.type || ''
 }
 
 watch(() => [props.item?.id, props.item?.visibility], sync, { immediate: true })
@@ -121,6 +122,7 @@ watch(() => props.item?.id, () => { open.value = false })
 function save() {
   const publicTitle = form.publicTitle.trim()
   if ((!canPublish.value && !isPublic.value) || (canPublish.value && !publicTitle) || props.busy) return
+  if (form.type !== (props.item?.type || '') && !isFeedbackType(form.type)) return
   emit('save', {
     publicTitle,
     publicSummary: form.publicSummary.trim() || null,

@@ -79,6 +79,7 @@
           <nav class="calendar-submission-nav calendar-contribution-actions" aria-label="活动资料补充">
             <router-link :to="{ path: '/calendar/suggestions/new', query: filters.game ? { game: filters.game } : {} }">建议补充活动</router-link>
             <router-link class="calendar-contribution-secondary" to="/calendar/suggestions">我的建议</router-link>
+            <router-link class="calendar-contribution-secondary" :to="{ path: '/feedback', query: { new: '1', category: 'CALENDAR' } }">反馈日历问题</router-link>
           </nav>
         </section>
       </div>

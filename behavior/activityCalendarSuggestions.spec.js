@@ -33,6 +33,12 @@ beforeEach(() => {
   api.acceptActivityCalendarSuggestion.mockResolvedValue(suggestion({ status: 'ACCEPTED', event_id: 'event-a' }))
   api.rejectActivityCalendarSuggestion.mockResolvedValue(suggestion({ status: 'REJECTED' }))
 })
+it('招募线索反馈入口只预填内容问题与日历板块', async () => {
+  const wrapper = render(NewSuggestion); await flushPromises()
+  const link = wrapper.findAllComponents(RouterLinkStub).find(node => node.text() === '反馈中心')
+  expect(link.props('to')).toEqual({ path: '/feedback', query: { new: '1', type: 'CONTENT', category: 'CALENDAR' } })
+  wrapper.unmount()
+})
 it('提交只预填合法游戏，不继承浏览历史日期；字段错误关联摘要焦点并保持资料', async () => {
   route.query = { game: '如鸢', date: '2020-01-01' }
   const wrapper = render(NewSuggestion)

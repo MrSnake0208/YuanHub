@@ -4,7 +4,7 @@
     <CalendarClassificationFields :form="form" :errors="errors" :prefix="prefix" />
     <label v-for="field in basicFields" :key="field.key" :class="{ 'calendar-wide': field.key === 'title' }">{{ SUGGESTION_FIELD_LABELS[field.key] }}{{ field.key === 'end_date' ? '（留空表示持续进行）' : ' *' }}<input :id="prefix + field.key" v-model="form[field.key]" :type="field.type" :maxlength="field.max" :min="field.key === 'end_date' ? form.start_date || undefined : undefined" v-bind="attributes(field.key)" :required="field.key !== 'end_date'"><small v-if="errors[field.key]" :id="prefix + 'error-' + field.key">{{ errors[field.key] }}</small></label>
   </div>
-  <p class="calendar-hint">招募由卡池生成，请通过<router-link to="/feedback">反馈中心</router-link>提供招募线索。日期和时间按 Asia/Shanghai 记录。</p>
+  <p class="calendar-hint">招募由卡池生成，请通过<router-link :to="{ path: '/feedback', query: { new: '1', type: 'CONTENT', category: 'CALENDAR' } }">反馈中心</router-link>提供招募线索。日期和时间按 Asia/Shanghai 记录。</p>
   <label class="calendar-checkbox"><input v-model="form.precise" type="checkbox">填写精确时间</label>
   <div v-if="form.precise" class="calendar-fields">
     <label v-for="key in (form.end_date ? ['start_time', 'end_time'] : ['start_time'])" :key="key">{{ SUGGESTION_FIELD_LABELS[key] }} *<input :id="prefix + key" v-model="form[key]" type="time" v-bind="attributes(key)" required><small v-if="errors[key]" :id="prefix + 'error-' + key">{{ errors[key] }}</small></label>

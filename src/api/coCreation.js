@@ -17,6 +17,8 @@ export function normalizePublicFeedback(raw) {
     publicTitle: raw.publicTitle ?? raw.public_title ?? '',
     publicSummary: raw.publicSummary ?? raw.public_summary ?? '',
     type: String(raw.type || '').toUpperCase(),
+    category: raw.category || '',
+    categoryLabel: raw.categoryLabel ?? raw.category_label ?? '',
     publicStatus: raw.publicStatus ?? raw.public_status ?? null,
     supportCount: Number(raw.supportCount ?? raw.support_count ?? 0),
     supportedByCurrentUser: Boolean(raw.supportedByCurrentUser ?? raw.supported_by_current_user),

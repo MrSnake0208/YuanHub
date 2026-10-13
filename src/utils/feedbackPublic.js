@@ -1,4 +1,4 @@
-// 共创中心 / 公开反馈共享的常量与文案。
+// 反馈中心 / 共创中心共享的类型、校验与文案。
 // 状态一律「文字 + 颜色」双重表达,颜色只作辅助。
 
 export const PUBLIC_STATUS_OPTIONS = Object.freeze([
@@ -20,6 +20,24 @@ export const PUBLIC_TYPE_OPTIONS = Object.freeze([
   { key: 'OTHER', label: '其他' }
 ])
 
+export function isFeedbackType(type) {
+  return PUBLIC_TYPE_OPTIONS.some(option => option.key === type)
+}
+
+export function feedbackPrefill(query, categories) {
+  const key = value => typeof value === 'string' ? value.trim().toUpperCase() : ''
+  const rawType = key(query.type)
+  const rawCategory = key(query.category)
+  const rawArea = key(query.area)
+  const legacy = rawType === 'FEEDBACK'
+  const type = legacy && isFeedbackType(rawCategory) ? rawCategory : rawType
+  let category = rawCategory || rawArea
+  if ((legacy && isFeedbackType(rawCategory)) || (rawCategory === type && rawArea)) category = rawArea
+  const board = categories.find(option => option.key === category || (category === 'CALENDAR' && option.builtinKey === 'CALENDAR'))
+    || (category === 'CALENDAR' ? categories.find(option => option.label === '活动日历') : null)
+  return { type: isFeedbackType(type) ? type : 'BUG', category: board?.key || '' }
+}
+
 export const PUBLIC_SORT_OPTIONS = Object.freeze([
   { key: 'hot', label: '热门' },
   { key: 'latest', label: '最新' },
@@ -33,7 +51,7 @@ export function publicStatusLabel(status) {
 
 export function publicTypeLabel(type) {
   const key = String(type || '').trim().toUpperCase()
-  return PUBLIC_TYPE_OPTIONS.find(option => option.key === key)?.label || key || '其他'
+  return PUBLIC_TYPE_OPTIONS.find(option => option.key === key)?.label || '其他'
 }
 
 // 底层行为完全相同,仅按反馈类型切换文案。

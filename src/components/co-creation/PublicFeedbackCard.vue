@@ -10,6 +10,7 @@
   >
     <header class="public-card-badges">
       <FeedbackTypeBadge :type="item.type" />
+      <span v-if="item.categoryLabel" class="public-card-category">{{ item.categoryLabel }}</span>
       <FeedbackStatusBadge :status="item.publicStatus" />
     </header>
     <h3 class="public-card-title">{{ item.publicTitle || '未命名反馈' }}</h3>
@@ -68,6 +69,7 @@ defineEmits(['open', 'updated'])
 .public-card:hover,
 .public-card:focus-visible { border-color: var(--accent); box-shadow: inset 3px 0 var(--yellow-deep); }
 .public-card-badges { display: flex; flex-wrap: wrap; gap: 7px; }
+.public-card-category { min-width: 0; padding: 2px 9px; border: 1px solid var(--brand-blue); border-radius: 5px; color: var(--ink); font-size: 11px; overflow-wrap: anywhere; }
 .public-card-title { color: var(--feedback-text); font-size: 15px; font-weight: 900; line-height: 1.5; }
 .public-card-summary {
   display: -webkit-box;
