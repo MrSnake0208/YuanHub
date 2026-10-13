@@ -54,5 +54,8 @@ function beginPractice() { if (!TUTORIALS_ENABLED) return; closePicker(); record
 watch(identity, () => { picker.value = false; recordGuide.value = false }, { flush: 'sync' })
 </script>
 <style scoped>
-.recruitment-main{min-width:0}.guide-entry-wrap{position:relative}.guide-entry-wrap>.guide-choice{position:absolute;right:0;top:100%;width:240px;z-index:var(--z-popover)}button,a{display:inline-flex;align-items:center;min-height:44px;padding:8px 12px;color:var(--ink);font:inherit}.guide-entry-wrap>button{border:0;background:transparent;cursor:pointer}.access-note{padding:16px 0;line-height:1.7}.access-note button{margin:8px 8px 0 0;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:4px}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+button,a{color:var(--ink)}.guide-entry-wrap>button{border:0;background:transparent;cursor:pointer}.access-note button{border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer}:deep([data-guide-active]){outline:2px solid var(--accent);outline-offset:4px}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 </style>
+<style scoped src="./recruitmentRouteDesktop.css"></style>
+<style scoped src="./recruitmentRouteMobile.css"></style>

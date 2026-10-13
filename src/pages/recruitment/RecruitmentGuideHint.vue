@@ -37,5 +37,8 @@ onMounted(locate)
 onBeforeUnmount(() => { clear(); cancelAnimationFrame(frame) })
 </script>
 <style scoped>
-.guide-hint{position:relative;width:fit-content;max-width:100%;margin:10px 0 12px;padding:10px 12px;border:1px solid var(--accent);border-radius:10px;background:var(--cream);color:var(--ink);font:13px/1.6 var(--font-b);overflow-wrap:anywhere}.guide-hint::after{position:absolute;bottom:-6px;left:20px;width:10px;height:10px;content:'';transform:rotate(45deg);border-right:1px solid var(--accent);border-bottom:1px solid var(--accent);background:var(--cream)}p{margin:0}.guide-hint :deep(button){margin-top:8px}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.guide-hint{border:1px solid var(--accent);border-radius:10px;background:var(--cream);color:var(--ink)}.guide-hint::after{content:'';border-right:1px solid var(--accent);border-bottom:1px solid var(--accent);background:var(--cream)}
 </style>
+<style scoped src="./recruitmentGuideHintDesktop.css"></style>
+<style scoped src="./recruitmentGuideHintMobile.css"></style>

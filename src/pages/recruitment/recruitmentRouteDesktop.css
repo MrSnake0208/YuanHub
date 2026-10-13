@@ -1,0 +1,6 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {/* 固定当前站点壳默认值，使本页两端可独立调整。 */
+.recruitment-main { margin-left: 292px; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 48px; min-width: 0; }
+.recruitment-main{min-width:0}.guide-entry-wrap{position:relative}.guide-entry-wrap>.guide-choice{position:absolute;right:0;top:100%;width:240px;z-index:var(--z-popover)}button,a{display:inline-flex;align-items:center;min-height:44px;padding:8px 12px;font:inherit}.access-note{padding:16px 0;line-height:1.7}.access-note button{margin:8px 8px 0 0}
+}

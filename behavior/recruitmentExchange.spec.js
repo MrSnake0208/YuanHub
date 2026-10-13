@@ -6,6 +6,7 @@ import * as api from '../src/api/recruitment.js'
 import { request } from '../src/api/request.js'
 import { MAX_IMPORT_BYTES } from '../src/pages/recruitment/rules.js'
 import { deferred, recruitmentEvent } from '../test-support/recruitment.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/api/recruitment.js', () => ({ exportRecruitment: vi.fn(), previewRecruitmentImport: vi.fn(), commitRecruitmentImport: vi.fn() }))
 vi.mock('../src/api/request.js', () => ({ request: vi.fn() }))
@@ -20,6 +21,25 @@ async function file(wrapper, document = documentFixture(), custom = {}) {
   await input.trigger('change'); await flushPromises()
 }
 async function preview(wrapper) { await file(wrapper); await wrapper.get('form').trigger('submit'); await flushPromises() }
+it.each([390, 1440])('招募备份预览跨布局保持文件、令牌绑定的预览及焦点：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = render(); await preview(wrapper)
+  const instance = wrapper.vm.$
+  const panel = wrapper.get('.preview')
+  const text = panel.text()
+  const confirm = panel.get('button.primary'); confirm.element.focus()
+  for (const next of [767, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.vm.$).toBe(instance)
+    expect(wrapper.get('.preview').element).toBe(panel.element)
+    expect(panel.text()).toBe(text)
+    expect(wrapper.text()).toContain('backup.json')
+    expect(confirm.element.disabled).toBe(false)
+    expect(document.activeElement).toBe(confirm.element)
+    expect(api.previewRecruitmentImport).toHaveBeenCalledTimes(1)
+    expect(api.commitRecruitmentImport).not.toHaveBeenCalled()
+  }
+})
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubGlobal('Blob', NodeBlob); capturedBlob = null
   Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(blob => { capturedBlob = blob; return 'blob:synthetic' }) })

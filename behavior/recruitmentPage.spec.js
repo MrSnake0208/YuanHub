@@ -15,6 +15,7 @@ import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 import { deferred, recruitmentCatalog, recruitmentEvent, recruitmentFixture } from '../test-support/recruitment.js'
 import { isFeatureEnabled } from '../src/config/features.js'
 import { entryInput } from '../src/pages/recruitment/rules.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/config/features.js', async original => ({ ...(await original()), get TUTORIALS_ENABLED() { return tutorialFeature.enabled }, isFeatureEnabled: vi.fn(() => true) }))
 vi.mock('../src/store/auth.js', async () => ({ auth: (await import('vue')).reactive({ accessToken: 'synthetic', userInfo: { id: 'user-a' } }) }))
@@ -212,11 +213,12 @@ it('未出绝密主题只保存真实保底，读回进度一致才完成；不�
   expect(confirmed(wrapper)).toBe(false)
   await editor(wrapper).get('form').trigger('submit'); await flushPromises()
   expect(api.recruitmentCommand.mock.calls[0][0].data).toEqual({ pool_id: 'pool-a', entries: [], deleted_event_ids: [], remaining_pulls: 33 })
-  expect(editor(wrapper).text()).toContain('当前保底已保存')
+  expect(editor(wrapper).get('.footer-state').text()).toContain('已保存并核对')
+  expect(editor(wrapper).get('.progress-card').classes()).toContain('is-saved')
   expect(confirmed(wrapper)).toBe(true)
   expect(records['acc-a']).toHaveLength(2)
   expect(editor(wrapper).find('.pending-mark').exists()).toBe(false)
-  expect(editor(wrapper).get('footer').text()).toContain('修改将在保存后生效')
+  expect(editor(wrapper).get('footer button[type=submit]').element.disabled).toBe(true)
 })
 
 it('保底保存失败或回读值不同不完成，重新核对后完成且不重复发送', async () => {
@@ -382,7 +384,8 @@ it('成功保存后再编辑、删除和改保底，重开教程不会用旧回�
   expect(feed(wrapper)).toHaveLength(1)
   expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('26')
   expect(editor(wrapper).get('.remaining-field input').element.value).toBe('31')
-  expect(editor(wrapper).get('footer').text()).toContain('保存 3 项修改')
+  expect(editor(wrapper).get('.footer-state strong').text()).toBe('3 项未保存')
+  expect(editor(wrapper).get('footer button[type=submit]').text()).toBe('保存修改')
   expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
 })
 
@@ -400,7 +403,8 @@ it('成功请求回读失败后继续修改，首次核对旧回执只校准已�
   await button(editor(wrapper), '重新核对本笔').trigger('click'); await flushPromises()
   expect(feed(wrapper)).toHaveLength(1)
   expect(feed(wrapper)[0].get('.pull-result b').text()).toBe('26')
-  expect(editor(wrapper).get('footer').text()).toContain('保存 3 项修改')
+  expect(editor(wrapper).get('.footer-state strong').text()).toBe('3 项未保存')
+  expect(editor(wrapper).get('footer button[type=submit]').text()).toBe('保存修改')
   expect(api.recruitmentCommand).toHaveBeenCalledTimes(1)
 })
 
@@ -456,6 +460,26 @@ const editor = () => new DOMWrapper(document.body).get('.pool-editor[role=dialog
 const composer = wrapper => editor(wrapper).get('.entry-composer')
 const feed = wrapper => editor(wrapper).findAll('.gacha-record')
 async function editRow(wrapper, index = 0) { await feed(wrapper).at(-1 - index).get('.record-detail').trigger('click') }
+it.each([390, 1440])('真实招募工作区跨布局保持行草稿、排序与焦点，不触发写入：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = render(); await flushPromises(); await selectPool(wrapper)
+  await editRow(wrapper)
+  const input = composer(wrapper).get('.pull-count-field input')
+  await input.setValue('22'); input.element.focus()
+  const instance = wrapper.getComponent({ name: 'PoolEditor' }).vm.$
+  const rows = feed(wrapper).map(row => row.element)
+  const reads = [api.getRecruitmentArchive.mock.calls.length, api.listRecruitmentEvents.mock.calls.length]
+  for (const next of [430, 431, 520, 521, 699, 700, 767, 768, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent({ name: 'PoolEditor' }).vm.$).toBe(instance)
+    expect(document.querySelectorAll('.pool-editor[role="dialog"]')).toHaveLength(1)
+    expect(feed(wrapper).map(row => row.element)).toEqual(rows)
+    expect(input.element.value).toBe('22')
+    expect(document.activeElement).toBe(input.element)
+    expect([api.getRecruitmentArchive.mock.calls.length, api.listRecruitmentEvents.mock.calls.length]).toEqual(reads)
+    expect(api.recruitmentCommand).not.toHaveBeenCalled()
+  }
+})
 async function addRecord(wrapper, agent = 'char-a', span = '12') {
   const quick = editor(wrapper).find('.quick-up-button[data-agent-id="' + agent + '"]')
   if (quick.exists()) await quick.trigger('click')

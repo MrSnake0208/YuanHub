@@ -1,0 +1,4 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.practice-panel{width:min(900px,100%);max-height:calc(100dvh - 24px);overflow:auto;padding:16px}header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}h2{font:700 20px/1.5 var(--font-s)}p{font-size:13px;line-height:1.7}button{flex:none;min-height:44px;padding:8px 12px}
+}
