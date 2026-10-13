@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 
-const page = readFileSync(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
+const page = readSource(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
 
 test('v2 先预览影响并二次确认，只有提交函数写入', () => {
   assert.match(page, /@click="previewV2Import"/)

@@ -1,0 +1,76 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 1080px) {.share-main{margin-left:292px;min-height:100vh;min-height:100dvh;min-width:0}
+.wrap{max-width:1180px;margin:0 auto;padding:0 48px;min-width:0}
+.share-main { padding-bottom: 0 }
+.share-content { padding-top: 12px }
+.share-entry { max-width: 780px; margin: 0 auto; padding: 34px }
+.section-kicker { display: block; margin-bottom: 8px; font-size: 11px; font-weight: 800; letter-spacing: .14em }
+.share-entry h2,.share-state h2 { font-family: var(--font-s); font-size: 24px; font-weight: 900 }
+.share-entry > p,.share-state p { margin-top: 8px; font-size: 13px; line-height: 1.8 }
+.share-entry label { display: block; margin-top: 24px; font-size: 12px; font-weight: 800 }
+.share-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 8px }
+.share-entry input { min-width: 0; min-height: 46px; padding: 10px 13px; font: 13px var(--font-d) }
+.share-entry button,.share-state button,.share-toolbar button { min-height: 44px; padding: 9px 18px; font: 800 13px var(--font-b) }
+.share-state { padding: 28px 20px; text-align: center }
+.state-mark { display: grid; width: 54px; height: 54px; margin: 0 auto 16px; place-items: center; font: 900 24px var(--font-d) }
+.state-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px }
+.share-state button { margin-top: 20px }
+.state-actions button { margin-top: 0 }
+.share-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin-bottom: 16px; padding: 0 0 12px }
+.share-toolbar p { min-width: 0; overflow-wrap: anywhere; font-size: 12.5px }
+.share-toolbar button { min-height: 44px; padding: 7px 14px; font-size: 12px }
+.share-filter-dossier { margin-bottom: 20px }
+.share-ledger { margin-top: 16px; padding: 16px }
+.current-ledger-meta { display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 14px; font-size: 11px; font-weight: 700; line-height: 1.6 }
+.current-ledger-meta span { min-width: 0; overflow-wrap: anywhere }
+.operator-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px }
+.agent-ledger-card { --ledger-rarity-accent: #99b5cf; position: relative; min-width: 0; display: flex; flex-direction: column; gap: 11px; padding: 14px 12px 12px }
+.agent-ledger-card:hover { z-index: var(--z-content-raised); transform: translateY(-5px) }
+.agent-ledger-card:focus-visible { z-index: var(--z-content-raised); transform: translateY(-5px) }
+.ledger-card-head { position: relative; display: flex; gap: 10px; align-items: center; min-width: 0 }
+.ledger-avatar { position: relative; flex: none; width: 46px; height: 46px; overflow: hidden }
+.ledger-avatar img { display: block; width: 100%; height: 100%; object-fit: cover }
+.ledger-avatar > span { display: grid; width: 100%; height: 100%; place-items: center; font: 900 21px var(--font-s) }
+.ledger-identity { min-width: 0; flex: 1 }
+.ledger-name-row { display: flex; min-width: 0; align-items: center; gap: 5px }
+.ledger-name-row h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 900 16px var(--font-s) }
+.agent-ledger-card--share .ledger-identity { padding-right: 58px }
+.agent-ledger-card--share .share-ledger-status { position: absolute; top: 0; right: 0 }
+.share-ledger-status { min-width: 0; min-height: 24px; display: inline-grid; place-items: center; flex: none; padding: 3px 8px; font-size: 9px; font-weight: 800; white-space: nowrap }
+.ledger-mobile-prof { display: none }
+.ledger-prof { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; font-size: 10.5px; font-weight: 700 }
+.ledger-prof-copy { display: flex; min-width: 0; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ledger-prof img { width: 15px; height: 15px; flex: none; object-fit: contain }
+.ledger-combat { display: grid; grid-template-columns: 1fr 1fr; gap: 7px }
+.ledger-combat-stat { min-width: 0; padding: 7px 8px 6px }
+.ledger-combat-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 10px; font-weight: 800 }
+.ledger-combat-head > span { display: inline-flex; align-items: center; gap: 3px }
+.ledger-combat-value { display: block; width: 100%; min-width: 0; margin-top: 3px; padding: 1px 0 3px; font: 900 20px/1 var(--font-d); text-align: center }
+.ledger-combat-source { display: block; min-height: 12px; margin-top: 4px; font-size: 8px; font-weight: 800; text-align: center }
+.ledger-oddity { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 4px; font: 800 10px var(--font-d) }
+.ledger-oddity-icon { display: block; width: 12px; height: 12px; flex: none; font-size: 10px; line-height: 12px; text-align: center }
+.ledger-oddity > span:last-child { font-size: 9px }
+.ledger-combat + .ledger-growth { margin-top: -10px }
+.ledger-growth { display: flex; flex-direction: column; gap: 7px; padding: 9px }
+.ledger-growth-row { display: flex; min-width: 0; min-height: 24px; align-items: center; gap: 5px; font-size: 11px }
+.ledger-grow-label { width: 32px; flex: none; font-weight: 700 }
+.share-ledger-growth-value { min-width: 0; margin: 0; overflow: hidden; font: 700 13px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
+.share-growth-complete { display: inline-flex; min-height: 28px; align-items: center; justify-content: center; margin-left: auto; padding: 4px 8px; font: 800 10px var(--font-b); line-height: 1; white-space: nowrap }
+.ledger-destiny { display: flex; flex-direction: column; gap: 5px; padding-top: 2px }
+.ledger-destiny-row { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0 }
+.ledger-destiny-row > span { display: inline-flex; flex: none; align-items: center; font-size: 10px; font-weight: 800; line-height: 1.2 }
+.ledger-destiny-row > .ledger-destiny-values { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0 }
+.ledger-destiny-row em { display: inline-flex; align-items: center; justify-content: center; padding: 2px 5px; font-size: 9px; font-style: normal; font-weight: 500; line-height: 1.2 }
+.disc-term.has-description { position: relative }
+.ledger-stones { position: relative; display: grid; align-content: start; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; margin-top: auto; padding-top: 2px; overflow: visible }
+.ledger-stones > .stone-slot { width: 100%; aspect-ratio: 1; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 0; font: inherit; text-align: center; box-sizing: border-box }
+.ledger-stones > .stone-slot.is-empty { min-height: 0; font-size: 15px }
+.ledger-stones strong { max-width: 100%; overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap }
+.ledger-stones small { font: 8px var(--font-d) }
+.disc-floating-tooltip { position: fixed; z-index: var(--z-popover); width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 8px 10px; font: 700 11px/1.5 var(--font-b); text-align: left; white-space: normal; overflow-wrap: anywhere }
+.disc-floating-tooltip.is-top { transform: translate(-50%, -100%) }
+.disc-floating-tooltip.is-bottom { transform: translate(-50%, 0) }
+.disc-floating-tooltip::after { position: absolute; left: 50%; width: 8px; height: 8px; transform: translateX(-50%) rotate(45deg) }
+.disc-floating-tooltip.is-top::after { bottom: -5px }
+.disc-floating-tooltip.is-bottom::after { top: -5px }
+}

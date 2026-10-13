@@ -1,0 +1,15 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 760px) {
+.cultivation-progress { min-width: 0; padding: 20px; }
+.resource-list { display: grid; gap: 0; }
+.resource { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 2px; }
+.resource-icon { display: grid; width: 42px; height: 42px; place-items: center; font: 800 20px var(--font-s); }
+.resource-icon img { object-fit: contain; }.resource-body { display: grid; min-width: 0; gap: 6px; }
+.resource-head { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 6px 14px; font-size: 12px; line-height: 1.6; }
+.resource-title { display: flex; min-width: 0; flex: 1 1 auto; align-items: baseline; gap: 10px; }
+.resource-title > b { min-width: 0; overflow: hidden; flex: 0 1 auto; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.resource-percent { flex: none; font-family: var(--font-d); }
+.resource-summary { min-width: 0; overflow: hidden; flex: 0 1 auto; font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }.resource-summary strong, .resource-summary b { font-family: var(--font-d); }.resource-empty { font-size: 12px; line-height: 1.6; padding: 12px; }
+.track { position: relative; height: 7px; overflow: hidden; }
+.track i { position: absolute; top: 0; bottom: 0; }.before { left: 0; }
+}

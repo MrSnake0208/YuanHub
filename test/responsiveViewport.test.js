@@ -1,8 +1,9 @@
+import { readSource } from '../test-support/readSource.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 
-const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
+const read = (path) => readSource(new URL(`../${path}`, import.meta.url))
 
 test('根页面不掩盖横向溢出，关键页面与弹窗为动态视口提供回退', () => {
   const main = read('src/styles/main.css')
@@ -22,8 +23,8 @@ test('根页面不掩盖横向溢出，关键页面与弹窗为动态视口提�
   }
   // Today inherits the global main fallback; its scoped rule overrides only dvh.
   assert.match(main, /main\s*\{[^}]*min-height:\s*100vh;\s*min-height:\s*100dvh/)
-  assert.match(read('src/pages/today/index.vue'), /<main[^>]*class="today-main"/)
-  assert.match(read('src/pages/today/index.vue'), /\.today-main\s*\{[^}]*min-height:\s*100dvh/)
+  assert.match(read('src/components/today/TodayLayout.vue'), /<main[^>]*class="today-main"/)
+  assert.match(read('src/components/today/TodayLayout.vue'), /\.today-main\s*\{[^}]*min-height:\s*100dvh/)
 })
 
 test('库存分区编辑提示在窄屏内居中，避免透明提示撑宽整页', () => {

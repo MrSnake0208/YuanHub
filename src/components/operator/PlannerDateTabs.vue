@@ -94,26 +94,19 @@ onBeforeUnmount(() => { observer?.disconnect(); drag.dispose(); document.removeE
 </script>
 
 <style scoped>
-.date-caption { margin: 4px 0 8px; color: var(--ink-60); font-size: 12px; line-height: 1.6; }
-.planner-dates { min-width: 0; padding: 0 0 4px; border-bottom: 1px solid var(--line); }
-.date-navigation, .date-context, .date-actions { display: flex; align-items: center; }
-.date-navigation { flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
-.date-context { gap: 8px; min-width: 0; color: var(--tea); font: 700 13px var(--font-b); }
-.date-month { display: inline-flex; align-items: center; gap: 6px; }
-.date-month > svg { flex: none; color: var(--accent-strong); }
-.date-current-status, .date-menu { display: none; }
-.date-context small { color: var(--ink-60); font: 12px var(--font-d); white-space: nowrap; }
-.date-actions { gap: 4px; margin-left: auto; flex-wrap: wrap; }
-.date-step, .date-today { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 44px; height: 44px; padding: 0 8px; border: 0; border-radius: 9px; background: transparent; color: var(--tea); cursor: pointer; }
-.date-today { font: 700 12px var(--font-b); }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.date-caption { color: var(--ink-60); }
+.planner-dates { border-bottom: 1px solid var(--line); }
+.date-context { color: var(--tea); }
+.date-month > svg { color: var(--accent-strong); }
+.date-context small { color: var(--ink-60); }
+.date-step, .date-today { border: 0; border-radius: 9px; background: transparent; color: var(--tea); cursor: pointer; }
 .date-step:disabled { opacity: .3; cursor: default; }
-.date-tabs { display: flex; gap: 4px; min-width: 0; overflow-x: auto; padding: 4px; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; cursor: grab; user-select: none; overflow-anchor: none; }
-.date-tabs::-webkit-scrollbar { display: none; }
+.date-tabs { cursor: grab; user-select: none; }
 .date-tabs.dragging, .date-tabs.dragging * { cursor: grabbing; }
-.date-tab { position: relative; display: flex; flex: 0 0 80px; flex-direction: column; justify-content: center; align-items: center; gap: 4px; min-height: 84px; padding: 9px 4px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer; white-space: nowrap; transition: background-color 140ms ease, color 140ms ease; }
-.day-number { color: var(--ink-60); font: 12px/1.3 var(--font-b); }
-.date-tab time { font: 700 18px/1.2 var(--font-d); font-variant-numeric: tabular-nums; }
-.date-status { display: flex; align-items: center; justify-content: center; gap: 3px; height: 16px; color: var(--ink-60); font: 11px/1 var(--font-b); }
+.date-tab { border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+.day-number { color: var(--ink-60); }
+.date-status { color: var(--ink-60); }
 .date-tab.selected { background: var(--paper); color: var(--tea); box-shadow: inset 0 -2px var(--accent); }
 .date-tab.today .day-number, .date-status.manual { color: var(--accent-strong); }
 .date-tab.past:not(.selected) time { color: var(--ink-60); }
@@ -121,23 +114,15 @@ onBeforeUnmount(() => { observer?.disconnect(); drag.dispose(); document.removeE
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button:active:not(:disabled) { background: var(--paper); }
 @media (max-width: 640px) {
-  .date-navigation { flex-wrap: nowrap; gap: 4px; }
-  .date-context { flex-direction: column; align-items: flex-start; gap: 3px; padding: 4px 0; }
-  .date-context small { font-size: 12px; white-space: normal; }
-  .date-current-status { display: inline; }
-  .date-management, .date-adjacent, .date-status { display: none; }
-  .date-actions { flex: none; flex-wrap: nowrap; }
-  .date-tab { flex-basis: 60px; min-height: 64px; gap: 3px; padding: 7px 4px; }
-  .date-menu { display: block; position: relative; }
-  .date-menu > summary { display: grid; place-items: center; width: 44px; min-height: 44px; list-style: none; border-radius: 8px; color: var(--tea); cursor: pointer; }
-  .date-menu > summary::-webkit-details-marker { display: none; }
+  .date-menu > summary { border-radius: 8px; color: var(--tea); cursor: pointer; }
   .date-menu > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .date-menu[open] > summary { background: var(--paper); }
-  .date-menu-options { position: absolute; z-index: var(--z-popover); top: calc(100% + 4px); right: 0; display: grid; width: 192px; max-width: calc(100vw - 32px); gap: 4px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .12); }
-  .date-menu-options button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--tea); text-align: left; font: 13px/1.5 var(--font-b); cursor: pointer; }
-  .date-menu-options button > svg { flex: none; }
+  .date-menu-options { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgba(73, 59, 44, .12); }
+  .date-menu-options button { border: 0; border-radius: 6px; background: transparent; color: var(--tea); cursor: pointer; }
   .date-menu-options button:hover:not(:disabled) { background: var(--cream); }
   .date-menu-options button:disabled { opacity: .4; cursor: default; }
 }
 @media (prefers-reduced-motion: reduce) { .date-tab { transition: none; } }
 </style>
+<style scoped src="./plannerDateTabsDesktop.css"></style>
+<style scoped src="./plannerDateTabsMobile.css"></style>

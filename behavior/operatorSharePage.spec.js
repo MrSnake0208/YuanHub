@@ -4,6 +4,7 @@ import SharePage from '../src/pages/operator/share.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperatorCatalog, viewOperatorShare } from '../src/api/operator.js'
 import { deferred, operatorFixture } from '../test-support/factories.js'
+import { installViewport } from '../test-support/viewport.js'
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
   const route = reactive({ params: { token: '' } })
@@ -26,7 +27,25 @@ beforeEach(() => {
   media = new EventTarget(); media.matches = false
   vi.stubGlobal('matchMedia', vi.fn(() => media))
 })
-const render = () => mount(SharePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true, ShareCardStats: true } } })
+const render = (stubs = {}) => mount(SharePage, { global: { stubs: { RouterLink: RouterLinkStub, IslandSidebar: true, SiteFooter: true, OperatorFilterDossier: true, ShareCardStats: true, ...stubs } } })
+it.each([390, 1440])('公开页真实筛选跨布局保持搜索、焦点和只读单实例：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = render({ OperatorFilterDossier: false, ShareCardStats: false })
+  document.body.append(wrapper.element); await flushPromises()
+  const dossier = wrapper.getComponent({ name: 'OperatorFilterDossier' }).vm.$
+  const search = wrapper.get('input[type="search"]')
+  await search.setValue('只读')
+  search.element.focus()
+  for (const next of [640, 641, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent({ name: 'OperatorFilterDossier' }).vm.$).toBe(dossier)
+    expect(wrapper.findAll('article[role="listitem"]')).toHaveLength(1)
+    expect(search.element.value).toBe('只读')
+    expect(document.activeElement).toBe(search.element)
+    expect(viewOperatorShare).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalled()
+  }
+})
 it.each([[7, null, ''], [25, null, '觉醒待确认'], [25, false, '未觉醒'], [25, true, '已觉醒']])('化极%s觉醒%s的公开摘要保留三态且不在低星堆叠待确认', async (stage, awakened, label) => {
   getOperatorCatalog.mockResolvedValue({ operators: [{ ...operator, rarity: 4 }] })
   viewOperatorShare.mockResolvedValue({ ...share, entries: { [operator.id]: { ...operator.growth, huaji: { owned: true, stage, awakened } } } })

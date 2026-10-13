@@ -10,6 +10,7 @@ import { starLoadoutPresetStore } from '../src/domain/starLoadoutPresets.js'
 import { auth } from '../src/store/auth.js'
 import { dialog } from '../src/utils/dialog.js'
 import * as features from '../src/config/features.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
@@ -74,6 +75,27 @@ async function openEditor(existing, catalog = operator) {
 }
 const growthValues = wrapper => wrapper.findAll('.level-row input').map(input => input.element.value)
 const pickStar = (wrapper, label) => wrapper.findAll('.star-groups button').find(button => button.text() === label).trigger('click')
+
+it.each([390, 1440])('真实密探完整编辑器跨双端布局保留草稿、焦点和唯一面板：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = await openEditor()
+  document.body.append(wrapper.element)
+  const panel = wrapper.get('.editor-panel').element
+  const input = wrapper.findAll('.level-row input')[0]
+  await input.setValue('37')
+  input.element.focus()
+  const reads = operatorApi.getOperatorCurrent.mock.calls.length
+  for (const next of [640, 641, 767, 768, 900, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.findAll('.editor-panel')).toHaveLength(1)
+    expect(wrapper.get('.editor-panel').element).toBe(panel)
+    expect(input.element.value).toBe('37')
+    expect(document.activeElement).toBe(input.element)
+    expect(operatorApi.getOperatorCurrent).toHaveBeenCalledTimes(reads)
+    expect(operatorApi.importOperator).not.toHaveBeenCalled()
+    expect(operatorApi.patchOperatorCurrent).not.toHaveBeenCalled()
+  }
+})
 
 it('空档案引导出现在默认图鉴筛选前，养成筛选不占用首屏', async () => {
   const wrapper = renderPage({ attachTo: document.body })

@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
+import { installViewport } from '../test-support/viewport.js'
 import { h } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import Tracker from '../src/components/operator/OperatorGrowthTracker.vue'
@@ -28,6 +29,31 @@ beforeEach(() => {
   getOperatorGrowthTargets.mockResolvedValue({ items: [] })
   getCurrent.mockResolvedValue([])
   listRecords.mockResolvedValue({ items: [] })
+})
+
+it.each([390, 1440])('真实养成追踪父级跨布局保留清单名称草稿和编辑器：%ipx', async width => {
+  const viewport = installViewport(width)
+  const wrapper = mount(Tracker, { attachTo: document.body,
+    props: { accountId: 'acc', isLoggedIn: true, currentEntries: [{ id: 'op', level: 1, elite: 1, starLevel: 1 }],
+      catalogEntries: [{ id: 'op', name: '测试密探', rarity: 3 }] },
+    global: { stubs: { PlannerExactOptimizer: true } },
+  })
+  await flushPromises()
+  await wrapper.get('[aria-label="编辑清单"]').trigger('click'); await flushPromises()
+  const picker = wrapper.getComponent({ name: 'OperatorTrainingPlanPicker' }).vm.$
+  const input = wrapper.get('#plan-name-input')
+  await input.setValue('尚未保存的清单'); input.element.focus()
+  const reads = plannerApi.getTrainingWorkspace.mock.calls.length
+  for (const next of [640, 641, 700, 701, 900, 901, 1080, 1081, 320, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent({ name: 'OperatorTrainingPlanPicker' }).vm.$).toBe(picker)
+    expect(wrapper.get('dialog').element.open).toBe(true)
+    expect(input.element.value).toBe('尚未保存的清单')
+    expect(document.activeElement).toBe(input.element)
+    expect(plannerApi.getTrainingWorkspace).toHaveBeenCalledTimes(reads)
+    expect(plannerApi.putTrainingWorkspace).not.toHaveBeenCalled()
+    expect(plannerApi.putStaminaSchedule).not.toHaveBeenCalled()
+  }
 })
 
 it('等级修为非零但星级未拥有时，规划不标完成、不显示快捷提升；更新星级后正常拥有', async () => {

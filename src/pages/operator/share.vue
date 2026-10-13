@@ -590,84 +590,56 @@ watch(function () { return route.params.token }, function (token) {
 </script>
 
 <style scoped>
-.share-main { padding-bottom: 0 }
-.share-content { padding-top: 12px }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .share-entry,.share-state { border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 22px 44px -34px rgba(73, 59, 44, .42) }
-.share-entry { max-width: 780px; margin: 0 auto; padding: 34px }
-.section-kicker { display: block; margin-bottom: 8px; color: var(--accent-strong); font-size: 11px; font-weight: 800; letter-spacing: .14em }
-.share-entry h2,.share-state h2 { font-family: var(--font-s); font-size: 24px; font-weight: 900 }
-.share-entry > p,.share-state p { margin-top: 8px; color: var(--ink-60); font-size: 13px; line-height: 1.8 }
-.share-entry label { display: block; margin-top: 24px; color: var(--ink-60); font-size: 12px; font-weight: 800 }
-.share-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 8px }
-.share-entry input { min-width: 0; min-height: 46px; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 13px; color: var(--ink); background: var(--paper); font: 13px var(--font-d); outline: none }
+.section-kicker { color: var(--accent-strong) }
+.share-entry > p,.share-state p { color: var(--ink-60) }
+.share-entry label { color: var(--ink-60) }
+.share-entry input { border: 1.5px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--paper); outline: none }
 .share-entry input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(215, 137, 53, .13) }
-.share-entry button,.share-state button,.share-toolbar button { min-height: 44px; border: 1px solid var(--tea); border-radius: 999px; padding: 9px 18px; color: var(--cream); background: var(--tea); cursor: pointer; font: 800 13px var(--font-b) }
+.share-entry button,.share-state button,.share-toolbar button { border: 1px solid var(--tea); border-radius: 999px; color: var(--cream); background: var(--tea); cursor: pointer }
 .share-entry button:focus-visible,.share-state button:focus-visible,.share-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
 .share-entry button:hover,.share-state button:hover,.share-toolbar button:hover,.share-entry button:focus-visible,.share-state button:focus-visible,.share-toolbar button:focus-visible { border-color: var(--accent); background: var(--accent) }
 .entry-error { color: var(--rouge) !important }
-.share-state { padding: 28px 20px; text-align: center }
-.state-mark { display: grid; width: 54px; height: 54px; margin: 0 auto 16px; place-items: center; border-radius: 50%; color: var(--tea); background: var(--yellow); font: 900 24px var(--font-d) }
+.state-mark { border-radius: 50%; color: var(--tea); background: var(--yellow) }
 .share-state.is-error .state-mark { color: var(--cream); background: var(--rouge) }
-.state-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px }
-.share-state button { margin-top: 20px }
-.state-actions button { margin-top: 0 }
 button.ghost { border-color: var(--line); color: var(--ink-60); background: transparent }
 button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: var(--cream) }
-.share-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin-bottom: 16px; padding: 0 0 12px; border-bottom: 1px solid var(--line) }
-.share-toolbar p { min-width: 0; overflow-wrap: anywhere; color: var(--ink-60); font-size: 12.5px }
-.share-toolbar button { min-height: 44px; padding: 7px 14px; font-size: 12px }
-.share-filter-dossier { margin-bottom: 20px }
-.share-ledger { margin-top: 16px; padding: 16px; border: 1px solid rgba(255, 248, 236, .22); border-radius: 20px; background: linear-gradient(145deg, var(--tea), var(--tea-deep)); box-shadow: 0 20px 40px -24px rgba(73, 59, 44, .55) }
-.current-ledger-meta { display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 14px; color: rgba(255, 248, 236, .76); font-size: 11px; font-weight: 700; line-height: 1.6 }
-.current-ledger-meta span { min-width: 0; overflow-wrap: anywhere }
+.share-toolbar { border-bottom: 1px solid var(--line) }
+.share-toolbar p { color: var(--ink-60) }
+.share-ledger { border: 1px solid rgba(255, 248, 236, .22); border-radius: 20px; background: linear-gradient(145deg, var(--tea), var(--tea-deep)); box-shadow: 0 20px 40px -24px rgba(73, 59, 44, .55) }
+.current-ledger-meta { color: rgba(255, 248, 236, .76) }
 .current-ledger-meta span:last-child { color: var(--yellow) }
-.operator-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px }
-.agent-ledger-card { --ledger-rarity-accent: #99b5cf; position: relative; min-width: 0; display: flex; flex-direction: column; gap: 11px; padding: 14px 12px 12px; color: var(--ink); border: 1px solid var(--line); border-top: 2px solid var(--ledger-rarity-accent); border-radius: 12px; background: linear-gradient(180deg, var(--surface), var(--cream)); box-shadow: 0 8px 24px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .8); cursor: pointer; transition: transform .35s var(--ease), box-shadow .35s var(--ease) }
+.agent-ledger-card { color: var(--ink); border: 1px solid var(--line); border-top: 2px solid var(--ledger-rarity-accent); border-radius: 12px; background: linear-gradient(180deg, var(--surface), var(--cream)); box-shadow: 0 8px 24px rgba(73, 59, 44, .18), inset 0 1px 0 rgba(255, 255, 255, .8); cursor: pointer; transition: transform .35s var(--ease), box-shadow .35s var(--ease) }
 .agent-ledger-card--share { cursor: default }
-.agent-ledger-card:hover { z-index: var(--z-content-raised); transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
-.agent-ledger-card:focus-visible { z-index: var(--z-content-raised); outline: 2px solid var(--brand-blue); outline-offset: 2px; transform: translateY(-5px); box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
+.agent-ledger-card:hover { box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
+.agent-ledger-card:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; box-shadow: 0 18px 30px rgba(73, 59, 44, .25), inset 0 1px 0 rgba(255, 255, 255, .8) }
 .agent-ledger-card.status-growing { border-left: 3px solid #6f9f76 }
 .agent-ledger-card.status-graduated { border-left: 3px solid var(--yellow-deep) }
 .agent-ledger-card.status-inactive { border-left: 3px solid rgba(73, 59, 44, .35) }
-.ledger-card-head { position: relative; display: flex; gap: 10px; align-items: center; min-width: 0 }
-.ledger-avatar { position: relative; flex: none; width: 46px; height: 46px; overflow: hidden; border: 2px solid var(--ledger-rarity-accent); border-radius: 10px; background: color-mix(in srgb, var(--ledger-rarity-accent) 16%, var(--paper)) }
-.ledger-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 8px }
-.ledger-avatar > span { display: grid; width: 100%; height: 100%; place-items: center; color: var(--ink-35); font: 900 21px var(--font-s) }
-.ledger-identity { min-width: 0; flex: 1 }
-.ledger-name-row { display: flex; min-width: 0; align-items: center; gap: 5px }
-.ledger-name-row h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 900 16px var(--font-s) }
-.agent-ledger-card--share .ledger-identity { padding-right: 58px }
-.agent-ledger-card--share .share-ledger-status { position: absolute; top: 0; right: 0 }
-.share-ledger-status { min-width: 0; min-height: 24px; display: inline-grid; place-items: center; flex: none; border: 1px solid transparent; border-radius: 999px; padding: 3px 8px; font-size: 9px; font-weight: 800; white-space: nowrap }
+.ledger-avatar { border: 2px solid var(--ledger-rarity-accent); border-radius: 10px; background: color-mix(in srgb, var(--ledger-rarity-accent) 16%, var(--paper)) }
+.ledger-avatar img { border-radius: 8px }
+.ledger-avatar > span { color: var(--ink-35) }
+.share-ledger-status { border: 1px solid transparent; border-radius: 999px }
 .share-ledger-status.status-growing { border-color: rgba(111, 159, 118, .45); background: #bfdcc0; color: #315f38 }
 .share-ledger-status.status-graduated { border-color: rgba(239, 210, 142, .85); background: var(--yellow); color: var(--ink) }
 .share-ledger-status.status-inactive { border-color: rgba(73, 59, 44, .22); background: rgba(73, 59, 44, .12); color: var(--ink-60) }
-.ledger-mobile-prof { display: none }
-.ledger-prof { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; color: var(--ink-60); font-size: 10.5px; font-weight: 700 }
-.ledger-prof-copy { display: flex; min-width: 0; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.ledger-prof img { width: 15px; height: 15px; flex: none; object-fit: contain }
-.ledger-combat { display: grid; grid-template-columns: 1fr 1fr; gap: 7px }
-.ledger-combat-stat { min-width: 0; padding: 7px 8px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface) }
-.ledger-combat-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; color: var(--ink-60); font-size: 10px; font-weight: 800 }
-.ledger-combat-head > span { display: inline-flex; align-items: center; gap: 3px }
-.ledger-combat-value { display: block; width: 100%; min-width: 0; margin-top: 3px; padding: 1px 0 3px; border-bottom: 1px dashed var(--accent); color: var(--ink); font: 900 20px/1 var(--font-d); text-align: center }
-.ledger-combat-source { display: block; min-height: 12px; margin-top: 4px; color: var(--ink-35); font-size: 8px; font-weight: 800; text-align: center }
-.ledger-oddity { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 4px; color: var(--accent-strong); font: 800 10px var(--font-d) }
-.ledger-oddity-icon { display: block; width: 12px; height: 12px; flex: none; color: var(--ink-60); font-size: 10px; line-height: 12px; text-align: center }
-.ledger-oddity > span:last-child { color: var(--ink-35); font-size: 9px }
-.ledger-combat + .ledger-growth { margin-top: -10px }
-.ledger-growth { display: flex; flex-direction: column; gap: 7px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, .62) }
-.ledger-growth-row { display: flex; min-width: 0; min-height: 24px; align-items: center; gap: 5px; font-size: 11px }
-.ledger-grow-label { width: 32px; flex: none; color: var(--ink-60); font-weight: 700 }
-.share-ledger-growth-value { min-width: 0; margin: 0; overflow: hidden; color: var(--ink); font: 700 13px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
-.share-growth-complete { display: inline-flex; min-height: 28px; align-items: center; justify-content: center; margin-left: auto; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(73, 59, 44, .08); color: var(--ink-60); font: 800 10px var(--font-b); line-height: 1; white-space: nowrap; opacity: .72 }
+.ledger-prof { color: var(--ink-60) }
+.ledger-combat-stat { border: 1px solid var(--line); border-radius: 6px; background: var(--surface) }
+.ledger-combat-head { color: var(--ink-60) }
+.ledger-combat-value { border-bottom: 1px dashed var(--accent); color: var(--ink) }
+.ledger-combat-source { color: var(--ink-35) }
+.ledger-oddity { color: var(--accent-strong) }
+.ledger-oddity-icon { color: var(--ink-60) }
+.ledger-oddity > span:last-child { color: var(--ink-35) }
+.ledger-growth { border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, .62) }
+.ledger-grow-label { color: var(--ink-60) }
+.share-ledger-growth-value { color: var(--ink) }
+.share-growth-complete { border: 1px solid var(--line); border-radius: 6px; background: rgba(73, 59, 44, .08); color: var(--ink-60); opacity: .72 }
 .share-growth-complete.is-awakened { border-color: #c9d8c5; background: #eef5ec; color: #6f846b }
-.ledger-destiny { display: flex; flex-direction: column; gap: 5px; padding-top: 2px }
-.ledger-destiny-row { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0 }
-.ledger-destiny-row > span { display: inline-flex; flex: none; align-items: center; color: var(--accent-strong); font-size: 10px; font-weight: 800; line-height: 1.2 }
-.ledger-destiny-row > .ledger-destiny-values { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0 }
-.ledger-destiny-row em { display: inline-flex; align-items: center; justify-content: center; padding: 2px 5px; border: 1px solid rgba(215, 137, 53, .28); border-radius: 4px; background: rgba(215, 137, 53, .12); color: var(--ink); font-size: 9px; font-style: normal; font-weight: 500; line-height: 1.2 }
-.disc-term.has-description { position: relative; cursor: help }
+.ledger-destiny-row > span { color: var(--accent-strong) }
+.ledger-destiny-row em { border: 1px solid rgba(215, 137, 53, .28); border-radius: 4px; background: rgba(215, 137, 53, .12); color: var(--ink) }
+.disc-term.has-description { cursor: help }
 .disc-term.has-description:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px }
 .ledger-destiny-row em.empty { border-style: dashed; background: transparent; color: var(--ink-35) }
 .ledger-destiny-row:nth-child(1) > span { color: #a66c2b }
@@ -676,134 +648,62 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 .ledger-destiny-row:nth-child(2) > span { color: #7e7a72 }
 .ledger-destiny-row:nth-child(2) em { border-color: #d8d3cb; background: #f5f2ed; color: #7e7a72 }
 .ledger-destiny-row:nth-child(2) em.empty { border-color: #d8d3cb; background: transparent; color: #7e7a72 }
-.ledger-stones { position: relative; display: grid; align-content: start; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; margin-top: auto; padding-top: 2px; overflow: visible }
-.ledger-stones > .stone-slot { width: 100%; aspect-ratio: 1; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; text-align: center; box-sizing: border-box }
-.ledger-stones > .stone-slot.is-empty { min-height: 0; background: transparent; color: var(--line); font-size: 15px }
-.ledger-stones strong { max-width: 100%; overflow: hidden; color: var(--ink); font-size: 8px; text-overflow: ellipsis; white-space: nowrap }
-.ledger-stones small { color: var(--ink-60); font: 8px var(--font-d) }
-.disc-floating-tooltip { position: fixed; z-index: var(--z-popover); width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--tea); color: var(--cream); box-shadow: 0 10px 24px rgba(73, 59, 44, .28); font: 700 11px/1.5 var(--font-b); text-align: left; white-space: normal; overflow-wrap: anywhere; pointer-events: none; animation: disc-tooltip-in .14s ease both }
-.disc-floating-tooltip.is-top { transform: translate(-50%, -100%) }
-.disc-floating-tooltip.is-bottom { transform: translate(-50%, 0) }
-.disc-floating-tooltip::after { position: absolute; left: 50%; width: 8px; height: 8px; background: var(--tea); content: ''; transform: translateX(-50%) rotate(45deg) }
-.disc-floating-tooltip.is-top::after { bottom: -5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line) }
-.disc-floating-tooltip.is-bottom::after { top: -5px; border-left: 1px solid var(--line); border-top: 1px solid var(--line) }
+.ledger-stones > .stone-slot { border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink) }
+.ledger-stones > .stone-slot.is-empty { background: transparent; color: var(--line) }
+.ledger-stones strong { color: var(--ink) }
+.ledger-stones small { color: var(--ink-60) }
+.disc-floating-tooltip { border: 1px solid var(--line); border-radius: 7px; background: var(--tea); color: var(--cream); box-shadow: 0 10px 24px rgba(73, 59, 44, .28); pointer-events: none; animation: disc-tooltip-in .14s ease both }
+.disc-floating-tooltip::after { background: var(--tea); content: '' }
+.disc-floating-tooltip.is-top::after { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line) }
+.disc-floating-tooltip.is-bottom::after { border-left: 1px solid var(--line); border-top: 1px solid var(--line) }
 @keyframes disc-tooltip-in { from { opacity: 0 } to { opacity: 1 } }
-@media (max-width: 1080px) {
-  .operator-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) }
-  .current-ledger-meta { flex-direction: column; gap: 4px }
-}
 @media (max-width: 640px) {
-  .share-content { padding-top: 12px }
-  .share-entry { padding: 24px 18px }
-  .share-entry-row { grid-template-columns: 1fr }
-  .share-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .share-toolbar p { grid-column: 1 / -1; overflow-wrap: anywhere }
-  .share-toolbar button { width: 100% }
-  .share-ledger { margin-inline: -2px; padding: 12px; border-radius: 16px }
-  .current-ledger-meta { flex-direction: column; gap: 4px; padding-bottom: 12px; font-size: 12px; line-height: 1.5 }
-  .operator-grid { grid-template-columns: 1fr; gap: 12px }
-  .agent-ledger-card { padding: 14px 12px 12px; gap: 12px }
-  .ledger-card-head { gap: 9px }
-  .ledger-avatar { width: 44px; height: 44px }
-  .ledger-name-row { justify-content: flex-start }
-  .ledger-name-row h3 { flex: 0 1 auto; max-width: 42%; font-size: 16px }
-  .ledger-mobile-prof { display: inline-flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 3px; overflow: hidden; color: var(--ink-60); font-size: 10.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap }
-  .ledger-mobile-prof img { width: 14px; height: 14px; flex: none; object-fit: contain }
-  .ledger-prof { display: none }
-  .ledger-combat { gap: 8px }
-  .ledger-combat-stat { padding: 9px 10px 8px }
-  .ledger-combat-head { font-size: 11.5px }
-  .ledger-combat-value { min-height: 30px; font-size: 24px }
-  .ledger-combat-source { min-height: 14px; font-size: 10px }
-  .ledger-oddity { font-size: 11.5px }
-  .ledger-growth { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 7px 8px }
-  .ledger-growth-row { display: flex; min-width: 0; min-height: 72px; align-items: stretch; flex-direction: column; gap: 5px }
-  .ledger-grow-label { width: auto; min-height: 18px; font-size: 11px; text-align: center }
-  .share-ledger-growth-value { display: grid; width: 100%; min-height: 34px; align-items: center; justify-content: center; padding-inline: 2px; font-size: 15px; text-align: center }
-  .share-ledger-growth .share-growth-complete { width: 100%; min-height: 28px; margin-left: 0 }
-  .ledger-destiny-row > span { font-size: 11px }
-  .ledger-stones { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px }
-  .ledger-stones > .stone-slot { aspect-ratio: 1 }
-  .ledger-stones strong,.ledger-stones small { font-size: 9.5px }
-  .state-actions { flex-direction: column }
+  .share-ledger { border-radius: 16px }
+  .ledger-mobile-prof { color: var(--ink-60) }
 }
 </style>
+<style scoped src="./operatorShareDesktop.css"></style>
+<style scoped src="./operatorShareMobile.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v1.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v1Desktop.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v1Mobile.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v2.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v2Desktop.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v2Mobile.css"></style>
 <style scoped src="../../styles/operator-ledger-card.v3.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v3Desktop.css"></style>
+<style scoped src="../../styles/operator-ledger-card.v3Mobile.css"></style>
 <style scoped>
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* Read-only adaptation of the current-growth V3 portrait card. */
-.agent-ledger-card--share .ledger-loadouts {
-  display: contents;
-}
 
 .agent-ledger-card--share.agent-ledger-card--v2 .fate-trait-style-a .ledger-destiny-row em.disc-term {
   box-shadow: none;
 }
 
 /* Keep both summary panels on the same numeric type treatment. */
-.agent-ledger-card--share.agent-ledger-card--v3 :is(.share-ledger-growth-value, .ledger-combat-value) {
-  font-family: var(--font-d);
-  font-weight: 000;
-  font-variant-numeric: tabular-nums;
-}
-
-.agent-ledger-card--share.agent-ledger-card--v3 .share-growth-number {
-  font-weight: 900;
-}
-
-.agent-ledger-card--share.agent-ledger-card--v3 .share-growth-prefix {
-  position: relative;
-  top: 1px;
-  font-size: .8em;
-  font-weight: 600;
-}
 
 /* Desktop keeps diamond markers; mobile matches the growth card's dot markers. */
-.agent-ledger-card--share .ledger-destiny-marker {
-  display: none;
-}
 
 .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
-  position: relative;
-  width: 11px;
-  padding: 0 3px 0 3px;
   border: 0;
-  font-size: 0;
 }
 
 .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span::before {
-  display: block;
-  width: 5px;
-  height: 5px;
   border: 1px solid var(--fate-series-accent);
-  transform: rotate(45deg);
   content: '';
 }
 
 
 /* Preserve the stacked V1/V2 spacing; V3 defines its own summary rows. */
-.agent-ledger-card--share:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
-  margin-top: -10px;
-}
-
-.agent-ledger-card--share.agent-ledger-card--v2:where(:not(.agent-ledger-card--v3)) .share-card-stats:not(.is-enabled) .ledger-growth {
-  margin-top: -6.75px;
-}
 
 @media (max-width: 640px) {
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > span {
-    display: none;
-  }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-marker {
-    display: block;
     color: var(--fate-series-accent);
   }
 
   .share-ledger:has(.agent-ledger-card--v3) {
-    margin-inline: 0;
-    padding: 8px 0;
     border: 0;
     background: transparent;
     box-shadow: none;
@@ -815,210 +715,34 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
   }
 
   .agent-ledger-card.agent-ledger-card--share.agent-ledger-card--v3 {
-    --share-upper-height: 56px;
-    grid-template-rows: var(--share-upper-height) auto;
     border: 1px solid var(--line);
     background: var(--surface);
     box-shadow: 0 3px 10px rgba(73, 59, 44, .05);
-    transform: none;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-portrait img {
-    transform: translateX(-35px);
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head {
-    --ledger-name-top: 0px;
-    --ledger-prof-top: 3px;
-    grid-row: 1;
-    grid-template-rows: var(--share-upper-height);
-    height: var(--share-upper-height);
-    column-gap: 0;
-    align-self: start;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--two-char {
-    --ledger-name-top: 4px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--three-char {
-    --ledger-name-top: 0px;
-    --ledger-prof-top: 1px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--chendeng-sp {
-    --ledger-name-top: 1px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-card-head.share-identity--shizimiao-sp {
-    --ledger-name-top: 0px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3 {
-    grid-row: 1;
-    max-height: var(--share-upper-height);
-    margin-right: 2px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3.is-three-char-name {
-    font-size: 17px;
-    letter-spacing: .03em;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name {
-    max-height: var(--share-upper-height);
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-identity {
-    display: contents;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 :is(.ledger-avatar, .ledger-prof),
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-prof-attribute {
-    display: none;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-prof-tab {
-    grid-row: 1;
-    /* Use the name's line-box whitespace to tighten the visible gap. */
-    margin-right: -2px;
-    margin-top: 2px;
-    overflow: visible;
-    white-space: normal;
   }
 
   /* Long SP titles use two columns within the status stamp's height. */
-  .agent-ledger-card--share.agent-ledger-card--v3
-    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp) {
-    grid-template-columns: 20px max-content 26px;
-    grid-template-rows: var(--share-upper-height);
-    gap: 0;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3
-    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp) .ledger-name-tab > h3 {
-    grid-column: 2;
-    grid-row: 1;
-    display: grid;
-    grid-template-columns: repeat(2, max-content);
-    grid-template-rows: var(--share-upper-height);
-    align-self: stretch;
-    justify-self: stretch;
-    width: auto;
-    height: var(--share-upper-height);
-    max-height: var(--share-upper-height);
-    margin: 0 2px 0 0;
-    padding: 0;
-    writing-mode: horizontal-tb;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3
-    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp)
-    :is(.ledger-name-prefix, .ledger-name-continuation) {
-    align-self: start;
-    justify-self: center;
-    margin-top: var(--ledger-name-top);
-    padding-inline: 1px;
-    writing-mode: vertical-rl;
-    white-space: nowrap;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-prefix {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-identity--shizimiao-sp .ledger-name-prefix {
-    font-size: 13px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-continuation {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3
-    .ledger-card-head:is(.share-identity--chendeng-sp, .share-identity--shizimiao-sp) .ledger-prof-tab {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: center;
-    margin: 0;
-  }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status {
-    --ledger-seal-ink: var(--ink-60);
-    --ledger-seal-paper: var(--surface);
-    position: static;
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: center;
-    width: 26px;
-    height: var(--share-upper-height);
-    min-height: var(--share-upper-height);
     /* Match the top and right card insets so the two rounded corners nest. */
-    margin-top: 0;
-    padding: 6px 2px;
     border: 3px double color-mix(in srgb, var(--ledger-seal-ink) 66%, transparent);
     border-radius: 6px;
     background: color-mix(in srgb, var(--ledger-seal-paper) 85%, transparent);
     color: var(--ledger-seal-ink);
-    font: 900 11.5px/1.3 var(--font-s);
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    letter-spacing: .06em;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status.status-growing {
-    --ledger-seal-ink: #315f38;
-    --ledger-seal-paper: color-mix(in srgb, #bfdcc0 26%, var(--surface));
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-status.status-graduated {
-    --ledger-seal-ink: var(--accent-strong);
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-growth.share-ledger-growth {
-    grid-column: 1;
-    grid-row: 2;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-content: start;
-    align-self: start;
-    align-content: start;
-    max-width: 180px;
-    gap: 4px;
-    margin: 0;
-    padding: 3px 6px;
     border: 0;
     border-radius: 6px;
     background: color-mix(in srgb, var(--surface) 64%, transparent);
   }
 
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .ledger-growth-row:nth-child(n) {
-    grid-column: auto;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 14px 24px;
-    justify-self: stretch;
-    width: auto;
-    min-height: 24px;
-    gap: 0;
-  }
-
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-grow-label {
-    width: auto;
     color: var(--tea);
-    font-size: 11px;
-    text-align: center;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth .share-ledger-growth-value {
-    justify-content: center;
-    width: 100%;
-    min-height: 24px;
-    padding: 0;
     border-radius: 3px;
     background: transparent;
-    font-size: 14px;
-    font-variant-numeric: tabular-nums;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .share-ledger-growth-value.ledger-huaji-value {
@@ -1027,132 +751,26 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
     box-shadow: none;
   }
 
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: start;
-    min-width: 0;
-    max-width: 180px;
-    gap: 2px;
-    padding-left: var(--ledger-growth-inset);
-  }
-
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-stat {
-    grid-template-columns: 12px minmax(0, 1fr);
-    gap: 2px;
-    padding: 4px 3px;
     border: 0;
     border-radius: 6px;
     background: color-mix(in srgb, var(--surface) 76%, transparent);
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats.is-enabled :is(.ledger-combat, .ledger-growth) {
-    grid-area: 1 / 1;
-    align-self: stretch;
-    max-width: none;
-    margin: 0;
     background: transparent;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats .ledger-combat {
-    padding-left: 3px;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats .ledger-combat-stat {
-    grid-template-rows: 20px 16px;
-    align-content: start;
-    padding: 4px 2px 3px;
     background: transparent;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-growth {
-    align-content: start;
-    padding: 5px 4px 3px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats.is-enabled .ledger-growth-row:nth-child(n) {
-    grid-template-rows: 14px 22px;
-    row-gap: 1px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .share-card-stats.is-enabled .share-ledger-growth-value {
-    min-height: 22px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-head,
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > .stat-icon {
-    grid-column: 1;
-    width: 12px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-combat-value {
-    grid-column: 2;
-    min-height: 20px;
-    padding: 0;
-    font-size: 14px;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-oddity > span:last-child {
-    grid-column: 2;
     color: var(--tea);
-    font-size: 9px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-loadouts {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-rows: repeat(2, minmax(24px, auto));
-    min-width: 0;
-    padding-left: 5px;
-    margin-bottom: 1px;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny {
-    grid-column: 1;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-    row-gap: 4px;
-    padding-top: 0;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row:nth-child(n) {
-    display: grid;
-    grid-template-columns: 10px minmax(0, 1fr);
-    align-items: center;
-    gap: 4px;
-    min-height: 24px;
-    padding-top: 0;
     background: transparent;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-destiny-row > .ledger-destiny-values {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 3px;
-    max-height: none;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .fate-trait-style-a .ledger-destiny-row em {
-    width: auto;
-    max-width: 100%;
-    min-height: 24px;
-    padding: 3px;
-    font-size: 11px;
-    line-height: 1.35;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones {
-    align-content: start;
-    margin: 0;
-  }
-
-  .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot {
-    height: 24px;
-    min-height: 24px;
-    aspect-ratio: auto;
-    align-self: center;
   }
 
   .agent-ledger-card--share.agent-ledger-card--v3 .ledger-stones > .stone-slot:nth-of-type(n+4) {
@@ -1165,5 +783,6 @@ button.ghost:hover,button.ghost:focus-visible { color: var(--ink); background: v
 }
 .agent-ledger-card.status-discarded { border-left: 3px dashed var(--tea); }
 .share-ledger-status.status-discarded { border-style: dashed; color: var(--tea); background: var(--cream); }
-.agent-ledger-card--share.agent-ledger-card--v3 .ledger-name-tab > h3.is-long-name { max-width: 52px; overflow: hidden; }
 </style>
+<style scoped src="./operatorShareOverrides4Desktop.css"></style>
+<style scoped src="./operatorShareOverrides4Mobile.css"></style>

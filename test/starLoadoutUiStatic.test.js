@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 
-const editor = readFileSync(new URL('../src/components/operator/StarLoadoutEditor.vue', import.meta.url), 'utf8')
-const modal = readFileSync(new URL('../src/components/operator/StarLoadoutModal.vue', import.meta.url), 'utf8')
-const manager = readFileSync(new URL('../src/components/operator/StarPresetManager.vue', import.meta.url), 'utf8')
-const softSelect = readFileSync(new URL('../src/components/ui/SoftSelect.vue', import.meta.url), 'utf8')
-const page = readFileSync(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
+const editor = readSource(new URL('../src/components/operator/StarLoadoutEditor.vue', import.meta.url), 'utf8')
+const modal = readSource(new URL('../src/components/operator/StarLoadoutModal.vue', import.meta.url), 'utf8')
+const manager = readSource(new URL('../src/components/operator/StarPresetManager.vue', import.meta.url), 'utf8')
+const softSelect = readSource(new URL('../src/components/ui/SoftSelect.vue', import.meta.url), 'utf8')
+const page = readSource(new URL('../src/pages/operator/index.vue', import.meta.url), 'utf8')
 
 test('C2S editor stays group-first and has no independent save footer', function () {
   assert.match(editor, /const activeKind = ref\('main'\)/)
@@ -56,7 +56,8 @@ test('C2W keeps preset details horizontal and gives filter status its intrinsic 
 })
 
 test('C2S visual states avoid group and replacement outlines while preserving quality color', function () {
-  assert.match(editor, /\.star-loadout-editor\.is-inline\{--candidate-columns:4;--candidate-gap:7px;background:transparent\}/)
+  assert.match(editor, /\.star-loadout-editor\.is-inline\{--candidate-columns:4;--candidate-gap:7px\}/)
+  assert.match(editor, /\.star-loadout-editor\.is-inline\{background:transparent\}/)
   assert.doesNotMatch(editor, /--query-span/)
   assert.doesNotMatch(editor, /\.star-slot-group\.active\{[^}]*border/)
   assert.doesNotMatch(editor, /\.star-loadout-slot\.replacement\{[^}]*outline/)

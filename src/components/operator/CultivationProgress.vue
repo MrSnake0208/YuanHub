@@ -31,29 +31,15 @@ function number(value) { return Number(value || 0).toLocaleString('zh-CN', { max
 </script>
 
 <style scoped>
-.cultivation-progress { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); }
-.resource-list { display: grid; gap: 0; }
-.resource { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 2px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.cultivation-progress { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); }
 .resource + .resource { border-top: 1px dashed var(--line); }
-.resource-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; color: var(--tea); font: 800 20px var(--font-s); }
-.resource-icon img { object-fit: contain; }.resource-body { display: grid; min-width: 0; gap: 6px; }
-.resource-head { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 6px 14px; font-size: 12px; line-height: 1.6; }
-.resource-title { display: flex; min-width: 0; flex: 1 1 auto; align-items: baseline; gap: 10px; }
-.resource-title > b { min-width: 0; overflow: hidden; flex: 0 1 auto; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.resource-percent { flex: none; color: var(--ink-60); font-family: var(--font-d); }
-.resource-summary { min-width: 0; overflow: hidden; flex: 0 1 auto; color: var(--ink-60); font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.resource-summary strong { color: #517654; }.resource-summary b { color: var(--ink); }.resource-summary strong, .resource-summary b { font-family: var(--font-d); }
-.complete .resource-percent { color: #517654; }.resource-empty { color: var(--ink-60); font-size: 12px; line-height: 1.6; padding: 12px; }
-.track { position: relative; height: 7px; overflow: hidden; border-radius: 999px; background: var(--paper); }
-.track i { position: absolute; top: 0; bottom: 0; }.before { left: 0; background: #c48b4d; }.today { background: #e8bc6c; }
-@media (max-width: 760px) { .cultivation-progress { padding: 14px; } }
-@media (max-width: 640px) {
-  .resource { grid-template-columns: 32px minmax(0, 1fr); gap: 8px; padding: 10px 0; }
-  .resource-icon, .resource-icon img { width: 32px; height: 32px; }
-  .resource-head { align-items: flex-start; gap: 8px; }
-  .resource-title { display: grid; gap: 3px; }
-  .resource-title > b { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
-  .resource-summary { overflow: visible; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; }
-  .resource-percent { padding-top: 2px; font-size: 12px; }
-}
+.resource-icon { border-radius: 8px; color: var(--tea); }
+.resource-percent { color: var(--ink-60); }
+.resource-summary { color: var(--ink-60); }
+.resource-summary strong { color: #517654; }.resource-summary b { color: var(--ink); }
+.complete .resource-percent { color: #517654; }.resource-empty { color: var(--ink-60); }
+.track { border-radius: 999px; background: var(--paper); }.before { background: #c48b4d; }.today { background: #e8bc6c; }
 </style>
+<style scoped src="./cultivationProgressDesktop.css"></style>
+<style scoped src="./cultivationProgressMobile.css"></style>

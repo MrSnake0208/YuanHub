@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readSource } from '../test-support/readSource.js'
 
 function read(rel) {
-  return readFileSync(new URL('../' + rel, import.meta.url), 'utf8')
+  return readSource(new URL('../' + rel, import.meta.url), 'utf8')
 }
 
 const operatorPage = read('src/pages/operator/index.vue')

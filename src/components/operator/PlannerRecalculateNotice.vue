@@ -18,15 +18,14 @@ defineEmits(['recalculate'])
 </script>
 
 <style scoped>
-.recalculate-notice { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--cream); color: var(--ink); }
-p { margin: 0; font-size: 13px; line-height: 1.7; }
-p + p { margin-top: 4px; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.recalculate-notice { border-left: 3px solid var(--accent); background: var(--cream); color: var(--ink); }
 strong { color: var(--tea); }
-button { display: flex; flex: none; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--cream); font: inherit; font-size: 13px; cursor: pointer; }
+button { border: 1px solid var(--tea); border-radius: 8px; background: var(--tea); color: var(--cream); cursor: pointer; }
 button:hover:not(:disabled) { filter: brightness(1.1); }
 button:active:not(:disabled) { filter: brightness(.95); }
 button:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 3px; }
 button:disabled { opacity: .6; cursor: wait; }
-svg { flex: none; }
-@media (max-width: 640px) { .recalculate-notice { flex-direction: column; align-items: stretch; } }
 </style>
+<style scoped src="./plannerRecalculateNoticeDesktop.css"></style>
+<style scoped src="./plannerRecalculateNoticeMobile.css"></style>

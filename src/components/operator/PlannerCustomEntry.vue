@@ -43,33 +43,22 @@ const formatAmount = value => Number(value).toLocaleString('zh-CN', { maximumFra
 </script>
 
 <style scoped>
-.custom-entry { min-width: 0; margin-top: 10px; padding: 0 10px 10px; border: 1px solid var(--planner-line, var(--line)); border-radius: 8px; background: var(--cream); color: var(--ink); }
-.custom-entry-heading { display: flex; align-items: center; gap: 8px; min-height: 40px; color: var(--ink-60); font: 12px/1.5 var(--font-b); }
-.custom-entry-total { display: inline-flex; align-items: baseline; gap: 4px; margin-left: auto; white-space: nowrap; }
-.custom-entry-total b { color: var(--planner-gain); font: 700 15px/1.3 var(--font-d); font-variant-numeric: tabular-nums; }
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.custom-entry { border: 1px solid var(--planner-line, var(--line)); border-radius: 8px; background: var(--cream); color: var(--ink); }
+.custom-entry-heading { color: var(--ink-60); }
+.custom-entry-total b { color: var(--planner-gain); }
 .spend .custom-entry-total b { color: var(--rouge); }
-.custom-entry-remove { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 32px; min-height: 36px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); cursor: pointer; }
-.custom-entry-heading > .custom-entry-remove { margin-right: -6px; }
-.custom-entry-fields { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 8px; }
-.spend .custom-entry-fields { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
-.custom-entry-fields label { display: grid; min-width: 0; gap: 4px; color: var(--ink-60); font: 12px/1.5 var(--font-b); }
-.custom-entry-fields label > span { white-space: nowrap; }
-.custom-entry input { width: 100%; min-width: 0; min-height: 40px; margin: 0; padding: 7px 8px; border: 1px solid var(--planner-line, var(--line)); border-radius: 6px; background: var(--surface); color: var(--ink); font: 600 14px/1.5 var(--font-b); }
-.custom-entry input[type="number"] { padding-right: 4px; padding-left: 4px; text-align: center; font-family: var(--font-d); font-variant-numeric: tabular-nums; appearance: textfield; }
-.custom-entry input::-webkit-inner-spin-button, .custom-entry input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.custom-entry-yields { display: grid; gap: 6px; margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--planner-line, var(--line)); }
-.custom-yields-heading { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-60); font: 12px/1.5 var(--font-b); }
-.custom-yield-add { width: 116px; flex: none; }
-.custom-yield-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 32px; align-items: center; gap: 6px; }
-.custom-yield-row > label { min-width: 0; color: var(--ink); font: 13px/1.5 var(--font-b); overflow-wrap: anywhere; }
+.custom-entry-remove { border: 0; border-radius: 6px; background: transparent; color: var(--ink-60); cursor: pointer; }
+.custom-entry-fields label { color: var(--ink-60); }
+.custom-entry input { border: 1px solid var(--planner-line, var(--line)); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.custom-entry input[type="number"] { appearance: textfield; }
+.custom-entry input::-webkit-inner-spin-button, .custom-entry input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.custom-entry-yields { border-top: 1px dashed var(--planner-line, var(--line)); }
+.custom-yields-heading { color: var(--ink-60); }
+.custom-yield-row > label { color: var(--ink); }
 .custom-entry :is(button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .custom-entry :is(button, input):disabled { opacity: .5; cursor: default; }
 @media (hover: hover) { .custom-entry-remove:hover:not(:disabled) { color: var(--rouge); background: var(--surface); } }
-@media (max-width: 640px) {
-  .custom-entry { padding-right: 8px; padding-left: 8px; }
-  .custom-entry-heading { min-height: 44px; }
-  .custom-entry input { min-height: 44px; padding: 6px; font-size: 16px; }
-  .custom-entry-remove { width: 44px; min-height: 44px; }
-  .custom-yield-row { grid-template-columns: minmax(0, 1fr) 64px 44px; gap: 4px; }
-}
 </style>
+<style scoped src="./plannerCustomEntryDesktop.css"></style>
+<style scoped src="./plannerCustomEntryMobile.css"></style>
