@@ -1,0 +1,131 @@
+/* 桌面报告布局与密度；760px 内容断点对应现有图表展示。 */
+@media not all and (max-width: 760px) {
+.period-report { margin-top: 16px; overflow: hidden; border-radius: 8px }
+.report-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 20px 13px }
+.report-head-copy > span { display: block; font-size: 10px }
+.report-head h2 { margin-top: 2px; font-size: 20px }
+.report-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) }
+.report-metric { position: relative; min-width: 0; min-height: 128px; padding: 18px 17px 16px }
+.report-metric > svg { position: absolute; top: 17px; right: 17px }
+.report-metric > span { display: block; padding-right: 24px; font-size: 11px }
+.report-metric > strong { display: block; margin-top: 10px; font-size: 28px }
+.report-metric > strong i { margin-left: 5px; font-size: 10px }
+.report-metric > small { display: block; margin-top: 9px; font-size: 10px }
+.coin-formula { overflow-wrap: anywhere }
+.coin-average b { font-size: 11px }
+.dispatch-duration-split { overflow-wrap: anywhere }
+.dispatch-duration-split span { display: block }
+.dispatch-duration-split span + span { margin-top: 2px }
+.coin-metric > strong { font-size: 34px }
+.report-body { display: grid; grid-template-columns: 25% minmax(0, 1.35fr) minmax(0, 1fr) }
+.report-body > section { min-width: 0; padding: 17px 18px 19px }
+.lucky-days { display: flex; min-height: 0; flex-direction: column }
+.heart-ranking { position: relative; display: grid; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto }
+.subsection-heading { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 10px }
+.subsection-heading > div { display: flex; align-items: center; gap: 7px }
+.subsection-heading h3 { margin: 0; font-size: 15px }
+.subsection-heading > span { font-size: 9.5px }
+.same-day-mark { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px }
+.same-day-convergence { position: relative; flex: 1 1 auto; margin-top: 8px; padding: 30px 0 4px 22px }
+.same-day-convergence::before { position: absolute; top: 0; bottom: 0; left: 8px; width: 1px }
+.same-day-convergence::after { position: absolute; top: 32px; left: 0; box-sizing: border-box; width: 17px; height: 17px; border-radius: 50% }
+.same-day-date-line { display: flex; min-width: 0; align-items: flex-start; gap: 8px }
+.same-day-date-line > .same-day-mark { flex: 0 0 auto; margin-top: 5px; font-size: 9.5px }
+.same-day-date time { display: block; min-width: 0; font-size: 20px }
+.same-day-date > small { display: block; margin-top: 5px; font-size: 9.5px }
+.same-day-rewards { margin-top: 15px; padding: 0 }
+.same-day-rewards > li { display: grid; min-width: 0; grid-template-columns: 28px minmax(0, 1fr); align-items: start; gap: 8px; padding: 10px 4px 10px 0 }
+.same-day-reward-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50% }
+.same-day-rewards > li > div { min-width: 0 }
+.same-day-rewards > li > div > span { display: block; font-size: 10px }
+.same-day-rewards > li > div > small { display: block; margin-top: 4px; overflow-wrap: anywhere; font-size: 9.5px }
+.lucky-day-timeline { position: relative; flex: 1 1 auto; margin-top: 8px; padding: 34px 0 2px 22px }
+.lucky-day-timeline::before { position: absolute; top: 0; bottom: 0; left: 8px; width: 1px }
+.lucky-day-timeline > li { position: relative; min-width: 0; min-height: 104px; padding: 7px 0 18px }
+.lucky-day-timeline > li:last-child { min-height: 88px; padding-bottom: 6px }
+.lucky-day-timeline span { display: block; font-size: 9.5px }
+.lucky-day-timeline time { position: relative; display: block; width: fit-content; margin-top: 7px; font-size: 18px }
+.lucky-day-timeline time::before, .lucky-day-timeline > li.is-empty p::before { position: absolute; top: 50%; left: -22px; box-sizing: border-box; width: 17px; height: 17px; border-radius: 50%; transform: translateY(-50%) }
+.lucky-day-timeline small, .lucky-day-timeline p { display: block; margin-top: 5px; font-size: 9.5px }
+.lucky-day-timeline p { position: relative; margin-top: 11px }
+.lucky-day-timeline > li.is-empty p::before { top: .775em }
+.ranking-heading { align-items: flex-start }
+.ranking-switch { display: inline-flex; padding: 3px; border-radius: 8px }
+.ranking-switch button { min-height: 32px; padding: 5px 9px; border-radius: 5px; font-size: 10px }
+.ranking-rarity-checkbox { position: absolute; top: 52px; right: 18px; z-index: 2; display: inline-flex; min-height: 32px; align-items: center; gap: 5px; padding: 4px 0 4px 6px; font-size: 10px }
+.ranking-rarity-checkbox input { width: 15px; height: 15px; margin: 0 }
+.ranking-state { display: grid; min-height: 220px; place-items: center; font-size: 11px; text-align: center }
+.ranking-hint { margin-top: 12px; font-size: 10px; text-align: center }
+.podium { display: grid; min-height: 252px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 9px; padding-top: 10px }
+.podium li { display: flex; min-width: 0; flex-direction: column; align-items: center }
+.podium .place-1 { grid-column: 2; grid-row: 1 }
+.podium .place-2 { grid-column: 1; grid-row: 1 }
+.podium .place-3 { grid-column: 3; grid-row: 1 }
+.portrait { position: relative; display: grid; width: 58px; aspect-ratio: 1; place-items: center; overflow: visible; border-radius: 50% }
+.place-1 .portrait { width: 64px }
+.portrait img, .portrait-fallback { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit }
+.portrait img { object-fit: cover }
+.portrait-fallback { display: none; place-items: center; font-size: 22px }
+.portrait.has-image-error .portrait-fallback { display: grid }
+.portrait-count { position: absolute; right: -9px; bottom: -4px; z-index: 2; min-width: 30px; padding: 3px 5px; border-radius: 999px; font-size: 10px; text-align: center }
+.podium li > strong { width: 100%; margin-top: 9px; overflow: hidden; font-size: 11px; text-align: center }
+.podium-base { display: flex; width: 100%; height: 48px; margin-top: 8px; align-items: flex-start; justify-content: center; gap: 2px; padding-top: 10px; border-radius: 6px 6px 0 0 }
+.place-1 .podium-base { height: 94px }
+.place-2 .podium-base { height: 70px }
+.podium-medal { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; font-size: 18px }
+.place-1 .podium-medal { width: 36px; height: 36px; flex-basis: 36px; font-size: 20px }
+.podium-base small { font-size: 9px }
+.absence-contrast { position: relative; display: grid; min-height: 82px; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 11px; margin-top: 10px; padding: 13px 82px 13px 13px; overflow: hidden; border-radius: 8px }
+.absence-contrast::before { position: absolute; top: 7px; right: 7px; bottom: 7px; left: 7px; border-radius: 5px }
+.absence-contrast.is-undetermined { display: flex; min-height: 76px }
+.absence-portrait { position: relative; display: grid; width: 48px; height: 48px; z-index: 1; place-items: center; border-radius: 50% }
+.absence-portrait img, .absence-portrait .portrait-fallback { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit }
+.absence-portrait img { object-fit: cover }
+.absence-portrait.has-image-error .portrait-fallback { display: grid }
+.absence-copy { min-width: 0; z-index: 1 }
+.absence-copy > span { display: block; font-size: 9px }
+.absence-copy > div { display: flex; min-width: 0; align-items: baseline; gap: 8px; margin-top: 3px }
+.absence-copy strong { display: block; flex: 0 0 auto; margin-top: 4px; font-size: 13px }
+.absence-copy > div strong { margin-top: 0 }
+.absence-copy p { min-width: 0; font-size: 10.5px }
+.absence-meta { z-index: 1; max-width: 76px; font-size: 9px; text-align: right }
+.absence-seal { position: absolute; top: 50%; right: -13px; width: 96px; height: auto; z-index: 0; object-fit: contain; transform: translateY(-50%) rotate(-7deg) }
+.coverage-line, .bias-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.coverage-line { margin-top: 20px }
+.coverage-line span, .bias-line span { font-size: 10.5px }
+.coverage-line strong, .bias-line strong { font-size: 19px }
+.measure-track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 999px }
+.measure-track i { display: block; width: 100%; height: 100%; border-radius: inherit; transform: scaleX(var(--measure-scale, 0)); transform-origin: left }
+.coverage-copy, .bias-copy { display: block; margin-top: 7px; font-size: 10px }
+.echo-divider { margin: 17px 0 }
+.bias-copy { min-height: 3.3em }
+.lucky-coframe { position: relative; margin-top: 17px; padding: 15px; overflow: hidden; border-radius: 18px; container-type: inline-size }
+.lucky-coframe::before { position: absolute; inset: 5px; border-radius: 13px }
+.lucky-coframe::after { position: absolute; top: -45%; left: -15%; width: 24%; height: 190%; transform: translateX(-220%) skewX(-18deg) }
+.coframe-head { position: relative; display: flex; z-index: 1; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 1px 1px 12px }
+.coframe-heading { min-width: 0 }
+.coframe-title { display: block; overflow: hidden; font-size: 10px }
+.coframe-heading small { display: block; margin-top: 5px; font-size: 9.5px }
+.coframe-count { display: inline-flex; min-height: 24px; flex: 0 0 auto; align-items: center; padding: 4px 9px; border-radius: 999px; font-size: 9px }
+.coframe-agents { position: relative; display: grid; z-index: 1; grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); gap: 7px; margin-top: 12px; padding: 0 }
+.coframe-agents > li { display: grid; min-width: 0; min-height: 46px; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 8px 5px 5px; border-radius: 12px }
+.coframe-portrait { position: relative; display: grid; width: 34px; height: 34px; place-items: center; overflow: hidden; border-radius: 50% }
+.coframe-portrait img, .coframe-portrait .portrait-fallback { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit }
+.coframe-portrait img { object-fit: cover }
+.coframe-portrait .portrait-fallback { display: none; place-items: center; font-size: 12px }
+.coframe-portrait.has-image-error .portrait-fallback { display: grid }
+.coframe-agents strong { min-width: 0; font-size: 11.5px; overflow-wrap: anywhere }
+.coframe-agents b { font-size: 10px }
+@container (max-width: 280px) {
+  .coframe-head { gap: 8px; padding-bottom: 11px }
+  .coframe-count { padding-inline: 7px }
+  .coframe-agents { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px }
+  .coframe-agents > li { min-height: 44px; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 5px; padding: 5px 6px 5px 4px }
+  .coframe-portrait { width: 30px; height: 30px }
+  .coframe-agents strong { font-size: 10.5px }
+  .coframe-agents b { font-size: 9px }
+}
+@media (max-width: 980px) {
+  .report-body { grid-template-columns: 25% minmax(0, 1fr) }
+  .favorite-echo { grid-column: 1 / -1; border-top: 1px solid var(--line); border-left: 0 !important }
+} }

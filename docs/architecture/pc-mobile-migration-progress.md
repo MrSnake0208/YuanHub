@@ -63,6 +63,8 @@
 | route/workspace | 当前入口（src/） | desktop 所有者 | mobile 所有者 | 共享业务所有者 | 状态 | 验证证据 | 阻塞及下一动作 | manual_ui_status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | /inventory 操作历史（概览/筛选/回执/分页/列表） | components/inventory/InventoryRecordsWorkspace.vue + InventoryRecordsView.vue | inventoryRecordsWorkspaceDesktop.css + InventoryRecordsDesktopView.vue | inventoryRecordsWorkspaceMobile.css + InventoryRecordsMobileView.vue | pages/inventory/index.vue | verified_nonbrowser | B02：141 行为 + CSS 编译 + build | 无阻塞；库存其余工作区仍 pending | pending |
+| /inventory 抽卡资源报告 | components/inventory/ResourceBalanceReport.vue | resourceBalanceReportDesktop.css | resourceBalanceReportMobile.css | ResourceBalanceReport.vue + data/inventory/resourceBalance.js | verified_nonbrowser | B03：真实父级 resize/日期/趋势点 + CSS/build | 统计查询控件另列 pending | pending |
+| /inventory 据点收获报告 | components/inventory/AcquiredPeriodReport.vue | acquiredPeriodReportDesktop.css | acquiredPeriodReportMobile.css | AcquiredPeriodReport.vue + data/inventory/acquiredStats.js | verified_nonbrowser | B03：真实父级排行/焦点 + CSS/build | 统计其余展示另列 pending | pending |
 | /inventory 清单/筛选/盘点/统计/奖励 | pages/inventory/index.vue | 待拆分 | 待拆分 | pages/inventory/index.vue | pending | 真实父级模板 | 分稳定子区迁移；保护编辑草稿 | pending |
 | /operator 图鉴/养成/规划/编辑 | pages/operator/index.vue | 待拆分 | 待拆分 | pages/operator/index.vue | pending | 实际路由 | 保持 visitedTabs 与编辑器实例 | pending |
 | /recruitment 时间线/卡池/记录/交换 | pages/recruitment/index.vue | 待拆分 | 待拆分 | 原控制器及 PoolEditor | pending | 实际路由 | 保护 rows/originals/orderRevision/CAS | pending |
@@ -84,6 +86,14 @@
 - `npx --no-install vitest run behavior/inventoryRecordsUx.spec.js behavior/inventoryRecordsViews.spec.js`：141/141；新增两端真实报告入口与唯一 RewardEntryWorkspace 连接测试，跨 640/641/768/1081 保留未解析文本草稿及焦点，无额外读写。原确认/删除/恢复/锁归属/账号往返/卸载/迟到错误不变量全通过。
 - `node --test test/inventoryRecordsWorkspaceStyles.test.js`：1/1；设备 CSS 实际 scoped 编译、媒体归属及父页专属选择器移除。迁移前后历史 CSS 在 10 个宽度的声明投影一致，含 640.5px 连续性；不代表像素验收。
 - `npm run build`：Vite/PWA/OCR 产物成功，当前 `YuanHub/dist/` 含 B01+B02；`git diff --check` 通过。A1 两个列表视图及 A2 函数未修改。日志 `.test-artifacts/pc-mobile-layered/batch-02-*.log`。
-- 本批仅历史子工作区验证完成；/inventory 全路由仍 pending，清单/盘点/统计/奖励内部尚需迁移。精确本地提交标题 `refactor(inventory): 分离历史工作区双端布局`。
+- 本批仅历史子工作区验证完成；/inventory 全路由仍 pending，清单/盘点/统计/奖励内部尚需迁移。精确本地提交 `7636d30`（main，7 文件）。
 
-下一动作：拆分 ResourceBalanceReport/AcquiredPeriodReport 的真实双端样式职责，保持月历/趋势/选中日期/tooltip 等局部状态与统计父级实例稳定；之后处理库存清单与录入。
+## B03：库存两种报告（L1 样式归属，验证按既有关键状态扩展）
+
+- ResourceBalanceReport 与 AcquiredPeriodReport 的真实几何/密度/容器规则分别移至 `*Desktop.css`、`*Mobile.css`，以现有 760px 图表内容断点互斥。模板和完整脚本逐字未变，唯一实例与原 cleanup 保留；共同字段外观与装饰动画刻意共享。
+- `npx --no-install vitest run behavior/inventoryRecordsUx.spec.js behavior/inventoryRecordsViews.spec.js behavior/resourceBalance.spec.js behavior/acquiredPeriodReport.spec.js`：154/154。新增两端真实库存父级测试，覆盖月历日期/趋势固定点/排行金卡筛选/焦点/实例保持、450/900 SVG viewBox 和 resize 零额外请求；保留 A1/A2 全部有效断言。
+- `node --test test/resourceBalance.test.js test/acquiredStats.test.js`：26/26；`node --test test/inventoryReportStyles.test.js`：1/1。两报告在 14 个宽度（含 760.5）、两种容器宽度、hover/reduced-motion 组合的 224 组源码声明投影与基线一致；该比较不能证明像素布局。
+- `npm run test:static`：603 文件、0 失败；`npm run build`：Vite/PWA/OCR 产物成功；`git diff --check` 通过。日志 `.test-artifacts/pc-mobile-layered/batch-03-*.log`。精确本地提交标题 `refactor(inventory): 隔离统计报告双端展示样式`。
+- 全站计数仍为 1/43 UI 路由完整迁移；库存历史与两种报告是已验证子工作区，库存清单/盘点/筛选、统计查询及奖励内部仍待处理，不计全路由完成。
+
+下一动作：拆分库存真实页面壳与工作区导航的两端维护边界，保持原 slot 中奖励/盘点实例；继而继续库存清单筛选和盘点。
