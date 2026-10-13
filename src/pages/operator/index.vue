@@ -2626,6 +2626,17 @@
                       >
                         {{ s }}星
                       </button>
+                      <button
+                        v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true"
+                        type="button"
+                        class="star-pill awaken"
+                        :class="{ on: editForm.owned && editForm.awakened === true }"
+                        :aria-pressed="editForm.owned && editForm.awakened === true"
+                        aria-label="觉醒确认"
+                        :disabled="savingEdit || !operatorAwakeningSupported(editingOp) || editForm.owned === false || !editorCanConfirmAwakening"
+                        :title="!editorCanConfirmAwakening ? '达到五星后可记录觉醒' : '仅记录游戏内觉醒状态，不扣库存；点击切换，保存后生效'"
+                        @click="toggleEditAwakening"
+                      >觉醒</button>
                     </span>
                   </div>
                   <div
@@ -2651,12 +2662,7 @@
                       </button>
                     </span>
                   </div>
-                <label v-if="operatorAwakeningSupported(editingOp) || editForm.awakened === true" class="star-row star-awakening-row">五星之后 · 觉醒
-                  <select v-model="editForm.awakened" aria-label="觉醒确认" :disabled="!operatorAwakeningSupported(editingOp) || editForm.owned === false">
-                    <option :value="null">待确认</option><option :value="false">确认未觉醒</option><option :value="true" :disabled="!editorCanConfirmAwakening">确认已觉醒</option>
-                  </select>
-                </label>
-                <small v-if="operatorAwakeningSupported(editingOp)" class="star-awakening-hint">仅记录游戏内状态，不扣库存；新确认已觉醒前请先核实五星化极。</small>
+                  <small v-if="operatorAwakeningSupported(editingOp)" class="star-awakening-hint">{{ editForm.awakened == null && Number(editForm.starLevel) === 25 ? '觉醒待确认；' : '' }}五星后可开启觉醒记录，仅记录游戏内状态，不扣库存；保存后生效。</small>
                 </div>
                 <p v-if="operatorHuaji({ ...editingOp, ...currentMap[editingOp.id] }).stage == null" role="status">历史化极待复核；可先保存其它养成，不会推断星级。</p>
                 <div class="oddity-editor">
@@ -4536,6 +4542,10 @@ const starGroupName = computed(function () {
   return "none";
 });
 const editorCanConfirmAwakening = computed(() => editForm.value.huaji?.awakened === true || (editForm.value.owned && Number(editForm.value.starLevel) === 25));
+function toggleEditAwakening() {
+  if (savingEdit.value || !operatorAwakeningSupported(editingOp.value) || editForm.value.owned === false || !editorCanConfirmAwakening.value) return;
+  editForm.value.awakened = editForm.value.awakened !== true;
+}
 const starNode = computed(function () {
   const v = Number(editForm.value.starLevel) || 0;
   if (v >= 1 && v < 25) return (v - 1) % 6;
@@ -4543,6 +4553,10 @@ const starNode = computed(function () {
 });
 
 function pickStarGroup(g) {
+  // 只关闭本次新开启的草稿，历史已确认的觉醒仍独立保留。
+  if (Number(g) !== 5 && editForm.value.awakened === true && editForm.value.huaji?.awakened !== true) {
+    editForm.value.awakened = false;
+  }
   editForm.value.owned = g !== "none";
   if (g === "none") {
     editForm.value.starLevel = 0;
@@ -13662,43 +13676,6 @@ onBeforeUnmount(function () {
   gap: 12px;
   min-width: 0;
 }
-.star-awakening-row {
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px 16px;
-  margin-top: 2px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--yellow-deep);
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--tea);
-  font: 800 14px/1.5 var(--font-b);
-}
-.star-awakening-row select {
-  flex: 1 1 160px;
-  min-width: 0;
-  max-width: 220px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1.5px solid var(--line);
-  border-radius: 10px;
-  background: var(--cream);
-  color: var(--ink);
-  font: 700 14px/1.5 var(--font-b);
-  cursor: pointer;
-}
-.star-awakening-row select:hover:not(:disabled) {
-  border-color: var(--yellow-deep);
-}
-.star-awakening-row select:focus-visible {
-  outline: 2px solid var(--tea);
-  outline-offset: 3px;
-}
-.star-awakening-row select:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
 .star-awakening-hint {
   padding-inline: 2px;
   color: var(--ink-60);
@@ -13743,7 +13720,18 @@ onBeforeUnmount(function () {
   color: var(--ink);
 }
 .star-pill.awaken {
+  min-height: 44px;
   letter-spacing: 0.04em;
+}
+.star-pill.awaken:focus-visible {
+  outline: 2px solid var(--tea);
+  outline-offset: 2px;
+}
+.star-pill.awaken:disabled {
+  border-color: var(--line);
+  color: var(--ink-60);
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 .star-pill.awaken.on {
   background: var(--tea);
@@ -15476,6 +15464,14 @@ onBeforeUnmount(function () {
 
 /* 手机端养成卡片与编辑器的最后一层收口：窄屏不挤压文字，也不让弹层溢出视口。 */
 @media (max-width: 640px) {
+  .star-groups:has(.awaken) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .star-groups:has(.awaken) .star-pill {
+    min-height: 44px;
+    font-size: 12px;
+  }
   .current-ledger-meta {
     min-width: 0;
   }
@@ -15656,10 +15652,6 @@ onBeforeUnmount(function () {
   .star-groups {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 3px;
-  }
-  .star-awakening-row select {
-    flex-basis: 100%;
-    max-width: none;
   }
   .star-pill {
     padding-inline: 2px;
