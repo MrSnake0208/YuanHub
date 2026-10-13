@@ -1,0 +1,6 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media (max-width: 767px) {
+.receipt-price-note{font-size:11px;line-height:1.6;margin:8px 0;overflow-wrap:anywhere}
+.cart-line{gap:12px;flex-wrap:wrap}
+.cart-line .nm{min-width:0;overflow-wrap:anywhere}
+}

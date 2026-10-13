@@ -1,0 +1,8 @@
+/* 本端持有实际布局、密度与空间；原内容断点保持。 */
+@media not all and (max-width: 767px) {
+.save-tip{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px 12px;font-size:12px;line-height:1.6;
+}
+.save-tip svg{flex-shrink:0;margin-top:2px}
+}

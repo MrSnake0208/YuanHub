@@ -111,7 +111,8 @@ function onInitialInput(e) {
 </script>
 
 <style scoped>
-.receipt-price-note{font-size:11px;line-height:1.6;color:var(--ink-60);margin:8px 0;overflow-wrap:anywhere}
-.cart-line{gap:12px;flex-wrap:wrap}
-.cart-line .nm{min-width:0;overflow-wrap:anywhere}
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
+.receipt-price-note{color:var(--ink-60)}
 </style>
+<style scoped src="./receiptPanelDesktop.css"></style>
+<style scoped src="./receiptPanelMobile.css"></style>

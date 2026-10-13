@@ -119,86 +119,54 @@ function commitRename(p) {
 </script>
 
 <style scoped>
-.plan-modal{max-width:560px}
-.plan-body{padding:16px 20px;display:flex;flex-direction:column;gap:16px}
-
+/* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 /* 游客引导条：蜜黄底棕字（分类标签同款配色） */
-.guest-banner{
-  display:flex;align-items:center;gap:8px;background:var(--yellow);
-  border:1px solid var(--yellow-deep);border-radius:12px;
-  padding:10px 12px;font-size:12px;font-weight:700;color:var(--ink);
+.guest-banner{background:var(--yellow);
+  border:1px solid var(--yellow-deep);border-radius:12px;color:var(--ink);
 }
-.guest-banner svg{flex-shrink:0;color:var(--accent-strong)}
-.guest-banner .banner-login{
-  margin-left:auto;border:none;background:var(--tea);color:var(--cream);
-  border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;
-  font-family:var(--font-b);cursor:pointer;transition:background .3s var(--ease);
+.guest-banner svg{color:var(--accent-strong)}
+.guest-banner .banner-login{border:none;background:var(--tea);color:var(--cream);
+  border-radius:999px;cursor:pointer;transition:background .3s var(--ease);
 }
 .guest-banner .banner-login:hover{background:var(--accent)}
-
-.plan-sec{display:flex;flex-direction:column;gap:10px}
-.sec-head{
-  display:flex;align-items:center;gap:8px;
-  font-size:12.5px;font-weight:800;color:var(--ink);letter-spacing:.04em;
+.sec-head{color:var(--ink);
 }
 .sec-head svg{color:var(--accent)}
-.sec-head .cnt{
-  margin-left:auto;background:var(--paper);border:1px solid var(--line);
-  border-radius:999px;padding:1px 10px;font-size:11px;color:var(--ink-60);
-  font-family:var(--font-d);font-weight:700;
+.sec-head .cnt{background:var(--paper);border:1px solid var(--line);
+  border-radius:999px;color:var(--ink-60);
 }
 
 .plan-empty{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  background:var(--paper);border:1px dashed var(--line);border-radius:14px;
-  padding:18px 12px;font-size:12px;color:var(--ink-60);
+  background:var(--paper);border:1px dashed var(--line);border-radius:14px;color:var(--ink-60);
 }
 .spin{animation:pspin 1s linear infinite}
 @keyframes pspin{to{transform:rotate(360deg)}}
-
-.plan-list{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
 .plan-item{
-  display:flex;align-items:center;gap:6px;
-  background:var(--surface);border:1px solid var(--line);border-radius:14px;
-  padding:8px 10px;transition:border-color .3s var(--ease);
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;transition:border-color .3s var(--ease);
 }
 .plan-item:hover{border-color:var(--yellow-deep)}
 .plan-main{
-  flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px;
-  background:none;border:none;text-align:left;cursor:pointer;padding:2px;
+  background:none;border:none;cursor:pointer;
 }
-.plan-main b{
-  font-size:13px;font-weight:800;color:var(--ink);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+.plan-main b{color:var(--ink);
 }
 .plan-main:hover b{color:var(--accent-strong)}
-.plan-main .meta{font-size:11px;color:var(--ink-60);font-family:var(--font-d)}
-.pbtn{
-  flex-shrink:0;width:44px;height:44px;border-radius:9px;display:grid;place-items:center;
+.plan-main .meta{color:var(--ink-60)}
+.pbtn{border-radius:9px;
   background:var(--paper);border:1px solid var(--line);color:var(--ink-60);
   cursor:pointer;transition:color .25s var(--ease),background-color .25s var(--ease),border-color .25s var(--ease);
 }
 .pbtn:hover{color:var(--ink);border-color:var(--ink)}
 .pbtn.ok{background:var(--yellow);border-color:var(--yellow-deep);color:var(--ink)}
 .pbtn.danger:hover{color:var(--rouge);border-color:var(--rouge);background:rgba(166,81,74,.08)}
-.rename-input{
-  flex:1;min-width:0;border:1.5px solid var(--line);border-radius:9px;
-  padding:6px 10px;font-size:12.5px;font-family:var(--font-b);color:var(--ink);
+.rename-input{border:1.5px solid var(--line);border-radius:9px;color:var(--ink);
   background:var(--paper);outline:none;
 }
 .rename-input:focus{border-color:var(--accent)}
 
 .upload-hint{
-  background:var(--cream);border:1px dashed var(--line);border-radius:12px;
-  padding:10px 12px;font-size:11.5px;line-height:1.6;color:var(--ink-60);
-}
-@media (max-width:640px){
-  .plan-body{padding:14px 16px}
-  .guest-banner{align-items:flex-start;flex-wrap:wrap}
-  .guest-banner .banner-login{min-height:40px}
-  .plan-item{align-items:flex-start;flex-wrap:wrap;padding:10px}
-  .plan-main{min-height:44px;justify-content:center}
-  .pbtn{width:44px;height:44px}
-  .rename-input{min-height:44px;font-size:16px}
+  background:var(--cream);border:1px dashed var(--line);border-radius:12px;color:var(--ink-60);
 }
 </style>
+<style scoped src="./planListDialogDesktop.css"></style>
+<style scoped src="./planListDialogMobile.css"></style>

@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import CartPage from '../src/pages/tools/cart.vue'
 import PlanSaveDialog from '../src/components/cart/PlanSaveDialog.vue'
+import ReceiptPanel from '../src/components/cart/ReceiptPanel.vue'
 import html2canvas from 'html2canvas'
 
 vi.mock('../src/api/ledgerCatalog.js', () => ({ getLedgerCatalog: vi.fn(async () => legacyLedgerFixture()) }))
@@ -124,4 +125,39 @@ it('unmount releases media listener and scroll lock; pending export cannot downl
   expect(document.body.style.overflow).toBe('')
   expect(media.removeEventListener).toHaveBeenCalledWith('change', change)
   expect(document.querySelector('.cart-export-view')).toBeNull()
+})
+
+
+it.each([390, 1440])('方案草稿在%s起步跨收据布局保持焦点、名称与唯一清单', async width => {
+  const originalWidth = window.innerWidth
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  media.matches = width <= 1180
+  const wrapper = render(); await flushPromises()
+  try {
+    await wrapper.get('.pkg-card .stepper button:last-child').trigger('click')
+    if (media.matches) await openReceipt(wrapper)
+    const receipt = wrapper.getComponent(ReceiptPanel).vm.$
+    await bodyElement('.cart-actions button:last-child').trigger('click'); await flushPromises()
+    const input = document.querySelector('[aria-label="方案名称"]')
+    await new DOMWrapper(input).setValue('跨布局未保存方案')
+    input.focus()
+    const total = document.querySelector('.receipt .grand-total .v').textContent
+    for (const nextWidth of [767, 768, 1080, 1180, 1181, width]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: nextWidth })
+      media.matches = nextWidth <= 1180
+      change()
+      window.dispatchEvent(new Event('resize')); await flushPromises()
+      expect(document.querySelector('[aria-label="方案名称"]')).toBe(input)
+      expect(input.value).toBe('跨布局未保存方案')
+      expect(document.activeElement).toBe(input)
+      expect(wrapper.getComponent(ReceiptPanel).vm.$).toBe(receipt)
+      expect(document.querySelectorAll('.receipt')).toHaveLength(1)
+      expect(document.querySelector('.receipt .grand-total .v').textContent).toBe(total)
+    }
+    expect(localStorage.getItem('yh_ledger_plans')).toBeNull()
+    expect(html2canvas).not.toHaveBeenCalled()
+  } finally {
+    wrapper.unmount()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+  }
 })
