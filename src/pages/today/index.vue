@@ -28,7 +28,6 @@
           <OnboardingGuide v-if="TUTORIALS_ENABLED" :tasks="['today-first-data']" />
 
           <div v-if="calendarEnabled || showAccountOverview" class="today-overview" :class="{ 'has-sidebar': calendarEnabled && showAccountOverview }" data-tour="today-overview">
-            <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
             <div v-if="showAccountOverview" class="today-account-overview">
               <TodaySubscriptionSummary v-if="calendarEnabled && validAccountId" :account-id="validAccountId" :game="accountGame" />
               <section class="account-data-summary" aria-labelledby="account-data-title" :aria-busy="summaryLoading">
@@ -46,6 +45,7 @@
                 </template>
               </section>
             </div>
+            <TodayActivitySummary v-if="calendarEnabled" :game="calendarGame" />
           </div>
 
           <component
@@ -481,7 +481,7 @@ onBeforeUnmount(() => { loadSequence++; summarySequence++ })
 }
 @media (min-width: 981px) {
   .today-main { margin-left: 228px; }
-  .has-sidebar { grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); }
+  .has-sidebar { grid-template-columns: minmax(260px, 300px) minmax(0, 1fr); }
   .account-management-card { grid-template-columns: minmax(0, 1fr) auto; }
   .sync-recommendation { flex-direction: row; align-items: center; }
 }
