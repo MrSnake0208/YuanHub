@@ -246,7 +246,9 @@ it('关闭未保存内容复用共享弹窗；Tab 困在上层，Esc 只取消�
   expect(page.find('.scan-review-form').exists()).toBe(false)
   expect(api.closeOperatorScanReview).not.toHaveBeenCalled()
   await page.get('.scan-review-panel button').trigger('click'); await flushPromises()
-  expect(page.get('[aria-label="复核化极星级与节点"]').element.value).toBe('')
+  const unknownStage = page.get('[aria-label="复核化极星级与节点"]').element.selectedOptions[0]
+  expect(unknownStage.textContent).toBe('未知，请核对')
+  expect(unknownStage._value).toBeNull()
 })
 
 it('奇闻上限和未知值使用正常控件修正，错误摘要聚焦且有定位链接', async () => {
