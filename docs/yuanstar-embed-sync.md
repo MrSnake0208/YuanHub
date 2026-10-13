@@ -464,3 +464,7 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 已验收阶段先在宿主本地提交为 98b495982aa64dcc9f4b26e9b89f24b5c442e3f6（正式来源 07a4b01）。本阶段正式来源为原私有修复分支 fix/star-ocr-plan-inheritance 的干净提交 0025f2f4ecb3c63cdd9630a72ce9aca0300f8c42；提交后 build:embed，再通过既有同步脚本核对完整12项字节和SHA-256。本轮生成物仅JS与manifest发生变化；CSS、worker和其余运行资源不变，没有手改生成物。
 
 两处旧计划继承成功 Toast 复用 info；名称汇总下钻来源绑定原视口，bag/plan 分别保存导航与列表/整页位置，右侧路线独立保留。无效组安全回退，账号/重建清理；只保存当前挂载内存，不新增云端或后端字段。详情见 docs/ocr-inheritance-ui-followup-review.md 及源码同名审查记录。
+
+### 撤销入口补充
+
+正式来源更新为 fix/star-ocr-plan-inheritance 的干净本地提交7d35b57224ecae0585e0795a85fb35aede5feb02，提交后build:embed及既有同步脚本完整12项字节/hash核验通过。左箭头与Ctrl+Z恢复历史导航时明确绑定其viewport，重做保存离开位置；右侧路线独立保留。CSS和worker未变，未手改生成物。

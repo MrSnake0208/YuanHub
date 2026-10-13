@@ -25469,7 +25469,7 @@ function cO(e) {
 	let t = aE().find((t) => t.key === e);
 	if (!t) return;
 	let n = fT();
-	Pw = cT(), Pw.summarySelectedGroupKey = e, Pw.summaryGroupIndex = aE().findIndex((e) => e.key === Pw.summarySelectedGroupKey), SC = "detail", yC = t.name, bC = t.name, wC = null, (tw() || !ET().some((e) => e.starInstanceId === mC)) && Qw(ET()[0]?.starInstanceId ?? ""), EC = ST(), sO(n), X();
+	Pw = cT(), Pw.summarySelectedGroupKey = e, Pw.summaryGroupIndex = aE().findIndex((e) => e.key === Pw.summarySelectedGroupKey), Object.assign(n, Pw), SC = "detail", yC = t.name, bC = t.name, wC = null, (tw() || !ET().some((e) => e.starInstanceId === mC)) && Qw(ET()[0]?.starInstanceId ?? ""), EC = ST(), sO(n), X();
 }
 function lO() {
 	let e = fT(), t = qE();
@@ -25786,6 +25786,7 @@ async function yO(e) {
 	}
 	let n = hT(e);
 	if (n && gT(e)) {
+		let r = qE();
 		G = "saving", AC = "", X();
 		try {
 			if (n.workspaceMutation) {
@@ -25793,12 +25794,21 @@ async function yO(e) {
 				if (!Q(t) || !n) return;
 				nT(n), _T(), iT();
 			}
-			n.workspaceMutation || pT(e === "undo" ? n.before : n.after), e === "undo" ? (Bw.pop(), Vw.push(n)) : (Vw.pop(), Bw.push(n)), G = "saved";
+			if (!n.workspaceMutation) {
+				let t = e === "undo" ? n.after : n.before;
+				t.viewport = r;
+				let i = e === "undo" ? n.before : n.after;
+				pT(i), r = {
+					...i.viewport,
+					routeScrollTop: r.routeScrollTop
+				};
+			}
+			e === "undo" ? (Bw.pop(), Vw.push(n)) : (Vw.pop(), Bw.push(n)), G = "saved";
 		} catch (e) {
 			if (!Q(t)) return;
 			G = "failed", AC = e instanceof Error ? e.message : "历史操作失败，当前数据已重新加载。";
 		}
-		X();
+		X("keep", r);
 		return;
 	}
 	if (!(e === "undo" ? !W.canUndo : !W.canRedo)) {
