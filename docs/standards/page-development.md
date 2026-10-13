@@ -9,9 +9,9 @@
 1. 在 `YuanHub/src/pages/<模块>/` 下创建页面 `.vue` 文件。
 2. 在 `YuanHub/src/router/routes.js` 中按照现有路由模板注册页面。
 
-页面样式、配色和视觉元素同时必须遵守 [MaaYuan Share 设计规范](./design-system.md)，所有页面与组件的跨视口行为必须遵守 [YuanHub 响应式开发规范](./responsive-development.md)。
+页面视觉优先按本次明确的设计稿或提示词实现；[MaaYuan Share 设计规范](./design-system.md) 提供现有品牌和样式参考，不要求所有页面外观统一。跨视口可用性、业务逻辑复用与可访问性仍遵守 [YuanHub 响应式开发规范](./responsive-development.md)。
 
-任何页面不得以桌面端完成作为交付标准。开发过程中至少同时维护 390px 手机主基准与 1440px 桌面主基准，完成前按响应式规范的完整视口矩阵验收。
+任何页面不得以桌面端完成作为交付标准。按响应式规范的风险等级考虑相关手机、平板和桌面视口；完整矩阵仅用于结构性高风险 UI 变更。仓库浏览器自动化默认禁用，真实布局与触控由用户手动验收，除非本次明确授权。
 
 ## 2. 页面目录
 
@@ -60,13 +60,12 @@ const data = ref('')
 
 <style scoped>
 .page-demo-button {
-  min-height: 44px;
-  padding: 8px 14px;
+  padding: 8px 12px; /* 示例仅展示局部样式，不规定全站按钮尺寸 */
 }
 </style>
 ```
 
-示例只说明页面文件与 Vue 3 `<script setup>` 的基本形态；具体组件、样式和配色应优先遵循项目现有实现以及设计规范。
+示例只说明页面文件与 Vue 3 `<script setup>` 的基本形态；具体视觉由本次设计要求决定，现有组件与设计规范作为参考，避免为外观统一复制非必要结构。
 
 ## 5. 变更检查
 

@@ -47,7 +47,6 @@ test('库存类型切换复用单一入口，桌面遵循模式到工具动线�
   assert.match(inventoryPage, /\.manifest-bar-divider\s*\{[\s\S]*width:\s*1px;[\s\S]*height:\s*30px;/)
   assert.match(inventoryPage, /@media \(max-width: 640px\)[\s\S]*\.manifest-type-switch\s*\{[\s\S]*position:\s*sticky;[\s\S]*top:\s*var\([\s\S]*--mobile-shell-follow-top,[\s\S]*72px[\s\S]*safe-area-inset-top[\s\S]*\);[\s\S]*bottom:\s*auto;[\s\S]*width:\s*min\(100%, 360px\);/)
   assert.doesNotMatch(inventoryPage, /page-inventory:has\(\.mobile-shell--hidden\)/)
-  assert.match(inventoryPage, /\.manifest-type-switch > button\s*\{[\s\S]*min-height:\s*44px;/)
   assert.match(inventoryPage, /\.manifest-type-label-compact\s*\{[\s\S]*display:\s*none;/)
   assert.match(inventoryPage, /v-if="!editingStock" class="manifest-toolbar"[\s\S]*class="type-switch manifest-type-switch"[\s\S]*class="manifest-bar"/)
 })

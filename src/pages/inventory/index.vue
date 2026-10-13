@@ -3868,6 +3868,7 @@ async function onDeleteRecord(rec) {
   const rid = rec && rec.record_id;
   if (!rid || recordsBusyId.value || recordsLoading.value) return;
   const targetAccount = accountId.value;
+  const contextSeq = inventoryContextSeq;
   const summary = (rec.entity_type === "agent" ? "心纸" : "道具") +
     " · " + (rec.record_type === "reward_delta" ? "奖励" : "库存更新") +
     " · " + fmtTime(rec.effective_at) + " · " + entrySummary(rec.entries, rec.record_type);
@@ -3877,7 +3878,7 @@ async function onDeleteRecord(rec) {
     type: "danger",
     confirmText: "删除记录",
   });
-  if (!confirmed || accountId.value !== targetAccount) return;
+  if (!confirmed || inventoryDisposed || contextSeq !== inventoryContextSeq || accountId.value !== targetAccount) return;
   recordsBusyId.value = rid;
   recordsActionError.value = "";
   try {

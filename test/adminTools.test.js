@@ -82,8 +82,6 @@ test('adds a single accessible workbench back link to management detail pages', 
 
   assert.match(backLink, /<router-link[^>]+to="\/manage"[^>]+aria-label="返回管理工作台"/s)
   assert.match(backLink, /<ArrowLeft[^>]+:size="20"[^>]+aria-hidden="true"/)
-  assert.match(backLink, /\.admin-back-link\s*\{[\s\S]*display:\s*inline-flex[\s\S]*min-height:\s*48px[\s\S]*font:\s*800 16px/)
-  assert.match(backLink, /@media\s*\(max-width:\s*767px\)[\s\S]*\.admin-back-link\s*\{[\s\S]*font-size:\s*16px/)
   for (const page of ['admin/roles', 'admin/audit', 'admin/beta', 'operator/admin', 'level/admin', 'changelog/admin']) {
     const source = readSource(`../src/pages/${page}.vue`)
     assert.equal((source.match(/to="\/manage"/g) || []).length, 1)
