@@ -1,0 +1,40 @@
+/* 手机专属布局与密度；不继承桌面几何规则。 */
+@media not all and (min-width: 768px) {.data-onboarding { scroll-margin-top: calc(84px + env(safe-area-inset-top)); margin-bottom: 20px; padding: 20px 16px; border-radius: 18px; }
+.onboarding-heading { display: flex; flex-direction: column; align-items: start; justify-content: space-between; gap: 8px; }
+.onboarding-heading > div { max-width: 760px; }
+.onboarding-heading h2 { margin-top: 9px; font-size: 23px; }
+.onboarding-heading p { margin-top: 9px; font-size: 13px; }
+.onboarding-note { flex: 0 0 auto; max-width: 180px; font-size: 11px; text-align: left; }
+.auth-onboarding-card { display: grid; grid-template-columns: 1fr; align-items: center; gap: 14px 18px; margin-top: 22px; padding: 16px; border-radius: 14px; }
+.auth-onboarding-copy h3 { font-size: 19px; }
+.auth-onboarding-copy p { margin-top: 6px; font-size: 12px; }
+.auth-onboarding-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.inline-account-card { display: grid; grid-template-columns: 1fr; gap: 18px 24px; margin-top: 22px; padding: 16px; border-radius: 14px; }
+.inline-account-intro { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 13px; grid-column: 1 / -1; }
+.inline-account-intro h3 { font-size: 19px; }
+.inline-account-intro p { margin-top: 6px; font-size: 12px; }
+.account-management-card { align-items: center; }
+.account-management-card .inline-account-intro { grid-column: auto; }
+.entry-choice-wrap { margin-top: 18px; }
+.data-readiness-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.data-readiness-card { display: flex; flex-direction: column; padding: 18px; border-radius: 13px; }
+.readiness-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 11px; }
+.readiness-icon { display: grid; width: 36px; height: 36px; border-radius: 9px; }
+.readiness-card-head h3 { font-size: 17px; }
+.readiness-status { display: block; margin-top: 3px; font-size: 10.5px; }
+.data-readiness-card > p { margin-top: 13px; font-size: 11.5px; }
+.readiness-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; margin-top: 12px; padding: 0 11px; border-radius: 8px; font-size: 11.5px; }
+.sync-recommendation { display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 16px; margin-top: 14px; padding: 16px; border-radius: 13px; }
+.sync-recommendation-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
+.sync-recommendation h3 { margin-top: 5px; font-size: 17px; }
+.sync-recommendation p { margin-top: 5px; font-size: 11.5px; }
+.sync-recommendation small { display: block; margin-top: 6px; font-size: 10.5px; }
+.entry-icon { display: grid; width: 40px; height: 40px; border-radius: 10px; }
+.entry-primary-action, .entry-secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 15px; border-radius: 9px; font-size: 12px; }
+.data-onboarding.is-optional { padding: 0; border-radius: 0; }
+.is-optional > summary { min-height: 44px; padding: 10px 0; font-size: 13px; }
+.is-optional .onboarding-heading { margin-top: 12px; }
+.auth-onboarding-card > .entry-icon { display: none; }
+.readiness-icon { place-items: center; }
+.entry-icon { place-items: center; } }
+

@@ -20,7 +20,9 @@ test('uses 今日一览 as the default page', function () {
 
   const page = readFileSync(new URL('../src/pages/today/index.vue', import.meta.url), 'utf8')
   // Keep static architecture boundaries here; behavior lives in the mounted SFC tests.
-  assert.match(page, /data-tour="today-overview"/)
+  const layout = readFileSync(new URL('../src/components/today/TodayLayout.vue', import.meta.url), 'utf8')
+  assert.match(page, /<TodayLayout/)
+  assert.match(layout, /data-tour="today-overview"/)
   assert.match(page, /DataAccountContextBar/)
   assert.doesNotMatch(page, /createTodayAccount/)
   assert.doesNotMatch(page, /DemoPage|OperatorGrowthTracker/)

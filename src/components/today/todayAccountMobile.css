@@ -1,0 +1,11 @@
+/* 手机专属布局与密度；不继承桌面几何规则。 */
+@media not all and (min-width: 768px) {
+.today-alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }
+.today-alert button { min-height: 44px; padding: 8px 12px; border-radius: 7px; }
+.today-loading { font-size: 13px; }
+.today-account-overview { display: grid; align-items: start; gap: 16px; min-width: 0; margin-bottom: 20px; }
+.today-account-overview { margin-bottom: 0; }
+.account-data-summary { min-width: 0; padding: 16px; border-radius: 14px; }
+.account-data-summary > p { margin-top: 8px; font-size: 13px; overflow-wrap: anywhere; }
+.account-data-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; }
+.account-data-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; } }

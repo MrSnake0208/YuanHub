@@ -222,29 +222,26 @@ onMounted(() => {
 onBeforeUnmount(() => { alive = false; generation++; clearTimeout(timer); clearInterval(minute); document.removeEventListener('visibilitychange', visible); window.removeEventListener('pageshow', visible); window.removeEventListener('calendar-subscriptions-updated', updated) })
 </script>
 <style scoped>
-.today-subscriptions { padding: 16px; min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-.todo-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; }
-h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); margin: 0; }
-p, span, time { color: var(--tea); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
-.todo-scope, .todo-hint { font-size: 12px; }
-ul { display: grid; gap: 8px; list-style: none; margin: 8px 0; padding: 0; }
-.todo-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 4px; align-items: start; }
-.todo-check { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; cursor: pointer; }
-.todo-check input { width: 18px; height: 18px; accent-color: var(--tea); cursor: inherit; }
+/* 刻意共享的字段外观，不持有双端布局。 */
+
+.today-subscriptions { border: 1px solid var(--line); background: var(--surface); }
+h2 { color: var(--tea); font: 900 20px/1.5 var(--font-s); }
+p, span, time { color: var(--tea); line-height: 1.7; }
+ul { list-style: none; }
+.todo-check { cursor: pointer; }
+.todo-check input { accent-color: var(--tea); cursor: inherit; }
 .todo-check.is-disabled { opacity: .6; cursor: wait; }
-.todo-title { display: block; padding-top: 8px; font-size: 14px; font-weight: 700; }
-.todo-body { min-width: 0; }
+.todo-title { font-weight: 700; }
 .is-complete .todo-title { text-decoration: line-through; font-weight: 400; }
-.todo-event { display: block; font-size: 12px; font-weight: 400; }
-.todo-event-link { justify-content: center; font-size: 12px; }
-.todo-reminders { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
-summary { min-height: 44px; padding: 10px 0; color: var(--tea); font-weight: 700; cursor: pointer; }
-.reminder-list li { min-width: 0; }
-time { display: block; color: var(--accent-strong); }
+.todo-event { font-weight: 400; }
+.todo-reminders { border-top: 1px solid var(--line); }
+summary { color: var(--tea); font-weight: 700; cursor: pointer; }
+time { color: var(--accent-strong); }
 time.is-urgent, .todo-error p { color: var(--rouge); }
-.todo-error { margin-top: 8px; }
-a, button { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; color: var(--tea); font-weight: 700; overflow-wrap: anywhere; }
-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream); cursor: pointer; }
+a, button { color: var(--tea); font-weight: 700; }
+button { border: 1px solid var(--line); background: var(--cream); cursor: pointer; }
 button:disabled { opacity: .6; cursor: wait; }
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--tea); outline-offset: 3px; }
 </style>
+<style scoped src="./todaySubscriptionDesktop.css"></style>
+<style scoped src="./todaySubscriptionMobile.css"></style>

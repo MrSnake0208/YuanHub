@@ -1,5 +1,7 @@
 # 04：双视图试点复盘与 Phase 2 建议
 
+> 2026-10-14 后续状态：本文件的暂停扩面/等待确认等阶段范围已由 [方案 B 全站分层决策](pc-mobile-layered-architecture.md) 及用户 Goal 授权替代；历史证据保持原样。当前执行见 [迁移进度](pc-mobile-migration-progress.md)。
+
 结论：**Adjust——保留库存历史试点，暂停扩面。** 业务单源、展示择一挂载已有源码和历史合成测试证据；尚不能证明移动端回归与维护成本实际下降。先确认本文 A1/A2 的最小修正任务，再决定是否开始一个后续模块。本次不修源码、不创建后续 task、不调整路由、不提交。
 
 本轮交付风险 **L0：文档与静态审查，无行为变化**，`verification_owner=user`。候选实施风险单独标注，不把文档审查升级为全量测试任务。本文是 [01 ADR](responsive-view-boundaries-adr-20261013.md) 的复盘及任务建议；[responsive-development.md](../standards/responsive-development.md) 仍是唯一响应式规范，本文不晋升为新标准。
