@@ -4,10 +4,13 @@
     <p v-else-if="item && item.game !== context.account.value.game" class="calendar-hint">请切换到{{ item.game }}账号后订阅。</p>
     <template v-else>
       <div class="calendar-subscription-actions">
+        <p v-if="record?.subscribed" class="calendar-activity-status">{{ subscriptionCompleted(record) ? '本期已完成' : !item ? '活动不可用 · 本期未完成' : closed ? '已过期 · 本期未完成' : '本期待办' }}</p>
+        <button v-if="record?.subscribed" type="button" :disabled="busy || blocked || context.dirty.value || context.loading.value || !!context.error.value" @click="changeCompletion">{{ subscriptionCompleted(record) ? '撤销完成' : '标记本期完成' }}</button>
         <p v-if="record?.subscribed && (!editing || !item)" class="calendar-todo-card-summary">{{ subscriptionProgress(record) }}</p>
         <button type="button" :disabled="busy || context.loading.value || !!context.error.value || (!record?.subscribed && closed)" @click="changeSubscription">{{ record?.subscribed ? '取消订阅' : closed ? '本期已截止' : '订阅本期' }}</button>
         <button v-if="record?.subscribed" ref="editorToggle" type="button" :disabled="busy" :aria-expanded="editing" @click="toggleEditor">{{ editing ? '收起待办' : item ? '编辑待办' : '查看待办' }}</button>
       </div>
+      <p v-if="record?.subscribed && context.dirty.value" class="calendar-hint">请先保存或收起未保存的修改，再标记本期状态；活动完成与下方清单独立。</p>
       <div v-if="editing && record?.subscribed && !item" class="calendar-todo-readonly">
         <p class="calendar-hint">活动不可用，待办仅可查看。</p>
         <ul v-if="record.checklist.length"><li v-for="entry in record.checklist" :key="entry.id">{{ entry.completed ? '已完成' : '未完成' }} · {{ entry.title }}</li></ul>
@@ -16,7 +19,8 @@
       <form v-if="editing && record?.subscribed && item" ref="editor" class="calendar-checklist" @submit.prevent="save">
         <fieldset :disabled="busy || blocked || !!context.error.value">
           <legend>活动待办 · 仅当前账号可见</legend>
-          <p class="calendar-todo-summary" role="status" aria-live="polite">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项<span v-if="subscriptionCompleted(draft)"> · 待办全部完成</span></p>
+          <p class="calendar-todo-summary" role="status" aria-live="polite">待办事项 · 已完成 {{ draft.checklist.filter(entry => entry.completed).length }}/{{ draft.checklist.length }} 项<span v-if="draft.checklist.length && draft.checklist.every(entry => entry.completed)"> · 待办全部完成</span></p>
+          <p class="calendar-hint">清单勾选不代表整期完成。完成活动后，请使用上方“标记本期完成”。</p>
           <p v-if="!draft.checklist.length" class="calendar-hint">暂无待办</p>
           <div v-for="(entry, index) in draft.checklist" :key="entry.id" class="calendar-check-row">
             <label class="calendar-check-target"><input v-model="entry.completed" type="checkbox" :aria-label="`完成 ${entry.title || '待办' + (index + 1)}`"></label>
@@ -35,7 +39,6 @@
         <summary>查看旧备忘内容（历史数据）</summary>
         <p v-if="record.memo_title && record.memo_title !== DEFAULT_MEMO_TITLE">{{ record.memo_title }}</p>
         <p v-if="record.memo_note" class="calendar-memo-note">{{ record.memo_note }}</p>
-        <p v-if="typeof record.manual_completed === 'boolean'" class="calendar-hint">旧整期完成标记：{{ record.manual_completed ? '已完成' : '未完成' }}（仅作历史记录，不影响待办状态）</p>
         <p v-if="record.legacy_completed" class="calendar-hint">旧完成记录：已完成（不影响待办状态）</p>
       </details>
       <p v-if="error" class="calendar-error" role="alert">{{ error }}</p>
@@ -57,7 +60,7 @@ const record = computed(() => context?.byId.value[id.value] || props.unavailable
 const editor = ref(null), editorToggle = ref(null)
 const editing = ref(false), busy = ref(false), blocked = ref(false), error = ref(''), message = ref('')
 const saving = ref(false), saveFailed = ref(false)
-const hasHistory = computed(() => (record.value?.memo_title && record.value.memo_title !== DEFAULT_MEMO_TITLE) || !!record.value?.memo_note || typeof record.value?.manual_completed === 'boolean' || record.value?.legacy_completed === true)
+const hasHistory = computed(() => (record.value?.memo_title && record.value.memo_title !== DEFAULT_MEMO_TITLE) || !!record.value?.memo_note || record.value?.legacy_completed === true)
 const snapshot = value => JSON.stringify(value.checklist.map(entry => [entry.id, entry.title, entry.completed]))
 const draft = ref(progressDraft(null)), baseline = ref(snapshot(draft.value)), version = ref(null)
 const dirty = computed(() => editing.value && snapshot(draft.value) !== baseline.value)
@@ -120,6 +123,17 @@ async function changeSubscription() {
     if (!current(token) || !value) return
     adopt(value); editing.value = false; blocked.value = false
     message.value = value.subscribed ? '已订阅本期，已有待办与历史内容会保留。' : '已取消订阅，待办与历史内容已保留。'
+  } catch (err) { if (current(token)) failed(err) }
+  finally { if (current(token)) busy.value = false }
+}
+async function changeCompletion() {
+  if (busy.value || blocked.value || context.dirty.value) return
+  const token = stamp(), completed = !subscriptionCompleted(record.value)
+  busy.value = true; error.value = ''; message.value = ''
+  try {
+    const value = await context.complete(id.value, record.value.version, completed)
+    if (!current(token) || !value) return
+    version.value = value.version
   } catch (err) { if (current(token)) failed(err) }
   finally { if (current(token)) busy.value = false }
 }

@@ -287,15 +287,15 @@ it('account re-read preserves the editor and cannot resurrect an account removed
   expect(wrapper.text()).toContain('未保存的日历内容已清除')
 })
 
-it('canceling the pending-only checkbox restores its DOM state as well as the URL', async () => {
+it('canceling personal status selection restores its DOM state as well as the URL', async () => {
   await render('&scope=mine'); await edit()
-  const pending = wrapper.get('.calendar-subscription-toolbar input[type=checkbox]')
-  await pending.setValue(true); await flushPromises(); await settle()
-  expect(router.currentRoute.value.query.pending).toBeUndefined()
-  expect(pending.element.checked).toBe(false)
+  const pending = wrapper.get('[aria-label="个人活动状态"]')
+  await pending.setValue('completed'); await flushPromises(); await settle()
+  expect(router.currentRoute.value.query.task).toBeUndefined()
+  expect(pending.element.value).toBe('todo')
   expect(title().element.value).toBe('草稿待办')
-  await pending.setValue(true); await flushPromises(); await settle(true)
-  expect(router.currentRoute.value.query.pending).toBe('1')
-  expect(pending.element.checked).toBe(true)
+  await pending.setValue('completed'); await flushPromises(); await settle(true)
+  expect(router.currentRoute.value.query.task).toBe('completed')
+  expect(pending.element.value).toBe('completed')
   expect(wrapper.find('form').exists()).toBe(false)
 })
