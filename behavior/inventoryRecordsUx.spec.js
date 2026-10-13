@@ -11,6 +11,8 @@ import { subscribeAccountEvents } from '../src/store/accountEvents.js'
 import { installViewport } from '../test-support/viewport.js'
 import InventoryRecordsWorkspace from '../src/components/inventory/InventoryRecordsWorkspace.vue'
 import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
+import ResourceBalanceReport from '../src/components/inventory/ResourceBalanceReport.vue'
+import AcquiredPeriodReport from '../src/components/inventory/AcquiredPeriodReport.vue'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -570,6 +572,59 @@ it('历史报告入口连接唯一真实奖励实例，跨断点保留文本草�
   expect(document.querySelector('#reward-entry-panel')).toBeNull()
   expect(opener.attributes('aria-expanded')).toBe('false')
   expect(document.activeElement).toBe(opener.element)
+})
+
+it('真实统计父级跨断点保留月历日期、趋势固定点与排行选择，resize 零额外请求', async () => {
+  localStorage.setItem('inventory-tabs', 'acquired')
+  const effectiveAt = new Date().toISOString()
+  inventoryApi.getAcquired.mockResolvedValue({ acquired: { baijinbi: 5 } })
+  inventoryApi.listRecords.mockResolvedValue({ items: [
+    { ...record, record_id: 'snapshot:stats', record_type: 'stock_snapshot', effective_at: effectiveAt, snapshot_scope: 'full', entries: [{ id: 'baijinbi', count: 50 }, { id: 'zhuyu', count: 1 }] },
+    { ...record, effective_at: effectiveAt },
+  ], next_cursor: null })
+  const wrapper = render({ ResourceBalanceReport: false, AcquiredPeriodReport: false })
+  document.body.append(wrapper.element); await flushPromises()
+  const resource = wrapper.getComponent(ResourceBalanceReport)
+  const instance = resource.vm.$
+  const day = resource.findAll('.day').find(node => node.find('.resource-row').exists())
+  expect(day).toBeDefined()
+  await day.trigger('click'); day.element.focus()
+  const detail = resource.get('.day-detail').text()
+  const calls = () => [inventoryApi.getAcquired, inventoryApi.listRecords, inventoryApi.getCurrent, inventoryApi.listAgentFavorites].map(fn => fn.mock.calls.length)
+  const reads = calls()
+  for (const next of [760, 761, 980, 1081, 390, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent(ResourceBalanceReport).vm.$).toBe(instance)
+    expect(resource.get('.day-detail').text()).toBe(detail)
+    expect(day.attributes('aria-pressed')).toBe('true')
+    expect(document.activeElement).toBe(day.element)
+    expect(calls()).toEqual(reads)
+  }
+  await resource.findAll('.view-switch button').find(node => node.text() === '趋势').trigger('click')
+  const point = resource.get('circle[role="button"]')
+  await point.trigger('click'); point.element.focus()
+  const tooltip = resource.get('.point-tooltip').text()
+  for (const next of [760, 761, 390, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(resource.get('.point-tooltip').text()).toBe(tooltip)
+    expect(point.attributes('aria-pressed')).toBe('true')
+    expect(document.activeElement).toBe(point.element)
+    expect(resource.get('.trend-plot svg').attributes('viewBox')).toBe(`0 0 ${next <= 760 ? 450 : 900} 320`)
+    expect(calls()).toEqual(reads)
+  }
+  await wrapper.get('[aria-label="据点收获统计账簿"]').trigger('click'); await flushPromises()
+  const acquired = wrapper.getComponent(AcquiredPeriodReport)
+  const acquiredInstance = acquired.vm.$
+  const goldOnly = acquired.get('.ranking-rarity-checkbox input')
+  await goldOnly.setValue(true); goldOnly.element.focus()
+  for (const next of [360, 440, 760, 761, 980, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent(AcquiredPeriodReport).vm.$).toBe(acquiredInstance)
+    expect(goldOnly.element.checked).toBe(true)
+    expect(document.activeElement).toBe(goldOnly.element)
+    expect(calls()).toEqual(reads)
+  }
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
 })
 
 it('删除确认可核对内容，失败留页内，成功后可撤销', async () => {

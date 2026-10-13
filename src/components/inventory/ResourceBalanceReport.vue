@@ -219,155 +219,71 @@ function pointInfo(r, p) {
 </script>
 
 <style scoped>
-.resource-report { margin-top: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; color: var(--ink) }
-.report-heading { padding: 16px 20px 13px; border-bottom: 1px solid var(--line) }
-.report-heading-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px }
-.report-heading-copy > span { display: block; color: var(--accent-strong); font-size: 10px; font-weight: 900 }
-h2, h3 { font-family: var(--font-s); font-weight: 900; margin: 0 }
-.report-heading-copy h2 { margin-top: 2px; color: var(--ink); font-size: 20px; letter-spacing: 0 }
-.coin-basis { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
-.coin-basis button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 12px; }
+/* 刻意共享的字段外观与装饰动画；布局和密度由双端文件持有。 */
+
+.resource-report { border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+.report-heading { border-bottom: 1px solid var(--line) }
+.report-heading-copy > span { color: var(--accent-strong); font-weight: 900 }
+h2, h3 { font-family: var(--font-s); font-weight: 900 }
+.report-heading-copy h2 { color: var(--ink); letter-spacing: 0 }
+.coin-basis button { border: 1px solid var(--line); background: var(--surface); }
 .coin-basis button[aria-pressed="true"] { background: var(--tea); color: var(--cream); }
-h3 { font-size: 15px }
-.report-heading p, .explanation, .resource-summary small { color: var(--ink-60); font-size: 12px; line-height: 1.7 }
-.resource-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; overflow: hidden; border-bottom: 1px solid var(--line); background: var(--cream) }
-.resource-summary article { min-width: 0; padding: 11px 13px 10px; background: var(--surface) }
-.resource-summary article:first-child { padding-left: 20px }
-.resource-summary article:last-child { padding-right: 20px }
+.report-heading p, .explanation, .resource-summary small { color: var(--ink-60); line-height: 1.7 }
+.resource-summary { border-bottom: 1px solid var(--line); background: var(--cream) }
+.resource-summary article { background: var(--surface) }
 .resource-summary article + article { border-left: 1px solid var(--line) }
-.resource-name { display: flex; min-width: 0; align-items: center; gap: 6px }
-.resource-name h3 { min-width: 0; overflow: hidden; color: var(--ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap }
-.resource-name img, .resource-row img { object-fit: contain }
-.summary-values { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px }
-.summary-values > strong { min-width: 0; overflow: hidden; color: var(--ink); font: 900 24px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
-.summary-foot { display: flex; min-width: 0; align-items: baseline; gap: 4px; font-size: 9px; line-height: 1.2; white-space: nowrap }
+.resource-name h3 { color: var(--ink); text-overflow: ellipsis; white-space: nowrap }
+.summary-values > strong { color: var(--ink); font: 900 24px var(--font-d); text-overflow: ellipsis; white-space: nowrap }
+.summary-foot { line-height: 1.2; white-space: nowrap }
 .summary-foot span { color: var(--ink-60) }
 .summary-foot b { color: var(--accent-strong); font: 900 12px var(--font-d) }
 .summary-foot b.is-increase { color: #527658 }
 .summary-foot b.is-decrease { color: var(--rouge) }
-.summary-meta { display: block; margin-top: 4px; overflow-wrap: anywhere; white-space: normal }
-.view-heading, .view-switch { display: flex; align-items: center; gap: 8px }
-.view-heading { justify-content: space-between; flex-wrap: wrap; padding: 17px 20px 0 }
+.summary-meta { white-space: normal }
 button { color: var(--ink); font: inherit; cursor: pointer }
 button:disabled { opacity: .4; cursor: default }
-.view-switch { border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: var(--paper) }
-.view-switch button { min-height: 32px; padding: 8px 18px; border: 0; border-radius: 5px; background: transparent; font-size: 12px; font-weight: 800 }
+.view-switch { border: 1px solid var(--line); background: var(--paper) }
+.view-switch button { border: 0; background: transparent; font-weight: 800 }
 .view-switch button[aria-pressed=true] { background: var(--tea); color: var(--cream) }
 button:focus-visible, circle:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px }
 button:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent) }
-.legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 20px; font-size: 12px }
-.legend span { display: flex; align-items: center; gap: 6px }
-.legend i { width: 8px; height: 8px; border-radius: 50% }
-.legend i.dashed { width: 20px; height: 0; border-top: 2px dashed var(--ink-60); border-radius: 0 }
-.weekdays, .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) }
-.weekdays span { text-align: center; padding: 10px; font-size: 12px; color: var(--ink-60) }
+.legend i.dashed { border-top: 2px dashed var(--ink-60) }
+.weekdays span { color: var(--ink-60) }
 .calendar { border-top: 1px solid var(--line); border-left: 1px solid var(--line) }
-.calendar-day-state { grid-row: 2; color: var(--ink-60); font-size: 10px; line-height: 1.5 }
-.calendar-state-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 20px 0; color: var(--ink-60); font-size: 11px; line-height: 1.6 }
-.report-empty strong { display: block; font-size: 14px }
-.report-empty p { margin-top: 8px }
-.report-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
-.calendar-scroll { margin-inline: 20px }
-.day { display: grid; min-width: 0; min-height: 118px; grid-template-rows: 16px repeat(3, 18px); align-content: start; gap: 5px; padding: 9px; text-align: left; border: 0; border-top: 2px solid transparent; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface) }
+.calendar-day-state { color: var(--ink-60); line-height: 1.5 }
+.calendar-state-legend { color: var(--ink-60); line-height: 1.6 }
+.day { border: 0; border-top: 2px solid transparent; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface) }
 .day.blank { background: var(--cream) }
 .day.is-month-start { border-top: 2px solid var(--accent); background: linear-gradient(180deg, rgba(239,210,142,.18), var(--surface) 28%) }
 .day.is-range-start:not(.is-month-start) { border-top: 2px solid var(--brand-blue) }
 .day[aria-pressed=true] { background: var(--paper); box-shadow: inset 0 0 0 2px var(--accent) }
-.day-date-line { display: flex; min-width: 0; min-height: 16px; align-items: flex-start; justify-self: stretch; gap: 4px; margin: 0 }
-.month-marker { display: inline; flex: 0 0 auto; color: var(--accent-strong); font: 900 10px/1.3 var(--font-s) }
-.day time { display: block; min-width: 0; overflow: hidden; font: 800 13px/1.3 var(--font-d); text-overflow: ellipsis; white-space: nowrap }
+.month-marker { color: var(--accent-strong); font: 900 10px/1.3 var(--font-s) }
+.day time { font: 800 13px/1.3 var(--font-d); text-overflow: ellipsis; white-space: nowrap }
 .day.is-month-start time, .day.is-range-start time { color: var(--accent-strong); font-weight: 900 }
-.resource-row { display: grid; min-width: 0; min-height: 18px; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px; align-items: center; margin: 0; font: 600 11px var(--font-d) }
-.resource-row b { overflow-wrap: anywhere }
+.resource-row { font: 600 11px var(--font-d) }
 .resource-row .is-increase { color: var(--resource-increase, #527658) }
 .resource-row .is-decrease { color: var(--rouge) }
 .resource-row .is-stock { color: var(--ink-60); font-weight: 600 }
-.range-title { overflow-wrap: anywhere; line-height: 1.6 }
-.resource-row small { color: var(--ink-60); font-size: 10px }
-.day-detail { margin: 14px 20px 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--cream) }
-.day-detail p { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; line-height: 1.7 }
-.explanation { margin: 12px 20px 0 }
-.trend { margin: 0 20px }
-.trend > .explanation, .trend > .report-state, .trend > .point-detail { margin-left: 0; margin-right: 0 }
-.trend svg { display: block; width: 100%; margin-top: 16px; background: var(--cream); border: 1px solid var(--line); border-radius: 8px }
+.range-title { line-height: 1.6 }
+.resource-row small { color: var(--ink-60) }
+.day-detail { border: 1px solid var(--line); background: var(--cream) }
+.day-detail p { line-height: 1.7 }
+.trend svg { background: var(--cream); border: 1px solid var(--line) }
 .grid-line { stroke: var(--line) }
 .trend text { fill: var(--ink-60); font: 12px var(--font-d) }
 .trend circle { cursor: pointer; stroke: var(--surface); stroke-width: 2px }
-.trend-plot { position: relative; margin-top: 16px }
-.trend > .legend { margin: 14px 0 0 }
-.trend-plot svg { margin-top: 0 }
 .trend circle:focus { outline: none }
 .trend circle:focus-visible { stroke: currentColor; stroke-width: 2px; paint-order: stroke }
 .trend circle.point-halo { stroke: none; pointer-events: none }
-.point-tooltip { position: absolute; z-index: 2; width: 220px; max-width: 100%; padding: 12px; pointer-events: none; border: 1px solid var(--line); border-top: 3px solid var(--point-color); border-radius: 12px; background: var(--surface); box-shadow: 0 5px 18px rgba(73, 59, 44, .12); text-align: left }
-.point-tooltip-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
-.point-tooltip-heading b { font-size: 12px }
+.point-tooltip { pointer-events: none; border: 1px solid var(--line); border-top: 3px solid var(--point-color); background: var(--surface); box-shadow: 0 5px 18px rgba(73, 59, 44, .12) }
 .point-tooltip-heading time { color: var(--ink-60); font: 11px var(--font-d) }
-.point-stock { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 }
-.point-stock span, .point-tooltip dt { color: var(--ink-60); font-size: 11px }
+.point-stock span, .point-tooltip dt { color: var(--ink-60) }
 .point-stock strong { color: var(--ink); font: 900 25px/1.1 var(--font-d) }
-.point-tooltip dl { display: grid; gap: 6px }
-.point-tooltip dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px }
-.point-tooltip dd { margin: 0; font: 700 12px var(--font-d) }
+.point-tooltip dd { font: 700 12px var(--font-d) }
 .point-tooltip .is-increase { color: #527658 }
 .point-tooltip .is-decrease { color: var(--rouge) }
-.point-note { margin: 8px 0 0; color: var(--ink-60); font-size: 11px; line-height: 1.6 }
-.report-state, .point-detail { padding: 14px; margin: 12px 20px 0; background: var(--cream); font-size: 12px; line-height: 1.7 }
-@media (min-width: 761px) {
-  .calendar-content { margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 3px 10px rgba(73, 59, 44, .05) }
-  .calendar-content::after { content: ''; display: block; height: 16px; background: var(--cream) }
-  .weekdays { background: var(--cream) }
-  .weekdays span { padding: 11px 8px; font-family: var(--font-s); font-weight: 900 }
-  .weekdays span:first-child, .weekdays span:last-child { color: var(--accent-strong) }
-  .calendar { overflow: hidden; border: 0; border-block: 1px solid var(--line); border-radius: 0; background: var(--surface) }
-  .day { position: relative; height: 108px; min-height: 108px; grid-template-rows: 18px repeat(3, 18px); gap: 3px; padding: 12px 14px }
-  .day:nth-child(7n) { border-right: 0 }
-  .day:nth-last-child(-n + 7) { border-bottom: 0 }
-  .day.blank { background: color-mix(in srgb, var(--cream) 50%, var(--surface)) }
-  .day[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); box-shadow: none }
-  .day:not(:disabled):hover { box-shadow: none }
-  .day:focus-visible { outline-offset: -3px }
-}
-@media (min-width: 761px) and (hover: hover) {
-  .day:not(:disabled):hover { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)) }
-  .day[aria-pressed=true]:hover { background: color-mix(in srgb, var(--yellow) 22%, var(--surface)) }
-}
-@media (max-width: 1000px) { .resource-row { grid-template-columns: 18px minmax(0, 1fr) auto } }
-@media (max-width: 760px) {
-  .report-heading { padding: 14px 14px 11px }
-  .report-heading-row { align-items: center; flex-wrap: nowrap; gap: 8px }
-  .report-heading-copy { min-width: 0 }
-  .report-heading-copy h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-  .resource-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 }
-  .resource-summary article { padding: 8px 5px 7px }
-  .resource-summary article:first-child { padding-left: 14px }
-  .resource-summary article:last-child { padding-right: 14px }
-  .resource-summary article + article { border-left: 1px solid var(--line) }
-  .resource-name { justify-content: flex-start; gap: 3px; flex-wrap: nowrap }
-  .resource-name img { width: 20px; height: 20px }
-  .resource-name h3 { font-size: 10px; text-align: center }
-  .resource-summary .summary-meta { display: block; font-size: 11px; line-height: 1.5 }
-  .summary-values { gap: 3px; margin-top: 5px }
-  .summary-values > strong { max-width: 100%; font-size: 15px; line-height: 1.1 }
-  .summary-foot { gap: 2px; font-size: 8px }
-  .summary-foot span { display: none }
-  .summary-foot b { font-size: 10px }
-  .view-heading { align-items: center; flex-wrap: nowrap; gap: 6px; padding: 14px 14px 0 }
-  .range-title { min-width: 0; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap }
-  .view-switch { flex: 0 0 auto }
-  .view-switch button { min-height: 32px; padding: 6px 10px; font-size: 11px }
-  .legend { margin: 14px }
-  .day { height: 78px; min-height: 78px; grid-template-rows: 17px repeat(3, 14px); gap: 2px; padding: 4px 1px }
-  .day-date-line { min-height: 14px; padding-left: 4px }
-  .day[aria-pressed=true] { box-shadow: none }
-  .day:not(:disabled):hover { box-shadow: none }
-  .resource-row { width: 86%; min-width: min(100%, 4.5em); justify-self: center; min-height: 14px; display: flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--resource-color) 65%, var(--surface)); border-radius: 999px; background: color-mix(in srgb, var(--resource-color) 24%, var(--surface)); font-size: 9px }
-  .resource-row img { display: none }
-  .resource-row b { white-space: nowrap; letter-spacing: -.2px; font-variant-numeric: tabular-nums }
-  .resource-row small { display: none }
-  .calendar-scroll { margin-inline: 0 }
-  .calendar-content { min-width: 0 }
-  .day-detail, .explanation, .trend, .report-state, .point-detail, .calendar-state-legend { margin-left: 14px; margin-right: 14px }
-  .trend > .explanation, .trend > .report-state, .trend > .point-detail { margin-left: 0; margin-right: 0 }
-}
+.point-note { color: var(--ink-60); line-height: 1.6 }
+.report-state, .point-detail { background: var(--cream); line-height: 1.7 }
 </style>
+<style scoped src="./resourceBalanceReportDesktop.css"></style>
+<style scoped src="./resourceBalanceReportMobile.css"></style>

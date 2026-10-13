@@ -1,0 +1,86 @@
+/* 桌面报告布局与密度；760px 内容断点对应现有图表展示。 */
+@media not all and (max-width: 760px) {
+.resource-report { margin-top: 16px; border-radius: 8px; overflow: hidden }
+.report-heading { padding: 16px 20px 13px }
+.report-heading-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px }
+.report-heading-copy > span { display: block; font-size: 10px }
+h2, h3 { margin: 0 }
+.report-heading-copy h2 { margin-top: 2px; font-size: 20px }
+.coin-basis { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+.coin-basis button { min-height: 44px; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+h3 { font-size: 15px }
+.report-heading p, .explanation, .resource-summary small { font-size: 12px }
+.resource-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; overflow: hidden }
+.resource-summary article { min-width: 0; padding: 11px 13px 10px }
+.resource-summary article:first-child { padding-left: 20px }
+.resource-summary article:last-child { padding-right: 20px }
+.resource-name { display: flex; min-width: 0; align-items: center; gap: 6px }
+.resource-name h3 { min-width: 0; overflow: hidden; font-size: 13px }
+.resource-name img, .resource-row img { object-fit: contain }
+.summary-values { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px }
+.summary-values > strong { min-width: 0; overflow: hidden }
+.summary-foot { display: flex; min-width: 0; align-items: baseline; gap: 4px; font-size: 9px }
+.summary-meta { display: block; margin-top: 4px; overflow-wrap: anywhere }
+.view-heading, .view-switch { display: flex; align-items: center; gap: 8px }
+.view-heading { justify-content: space-between; flex-wrap: wrap; padding: 17px 20px 0 }
+.view-switch { border-radius: 8px; padding: 3px }
+.view-switch button { min-height: 32px; padding: 8px 18px; border-radius: 5px; font-size: 12px }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 20px; font-size: 12px }
+.legend span { display: flex; align-items: center; gap: 6px }
+.legend i { width: 8px; height: 8px; border-radius: 50% }
+.legend i.dashed { width: 20px; height: 0; border-radius: 0 }
+.weekdays, .calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) }
+.weekdays span { text-align: center; padding: 10px; font-size: 12px }
+.calendar-day-state { grid-row: 2; font-size: 10px }
+.calendar-state-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 20px 0; font-size: 11px }
+.report-empty strong { display: block; font-size: 14px }
+.report-empty p { margin-top: 8px }
+.report-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
+.calendar-scroll { margin-inline: 20px }
+.day { display: grid; min-width: 0; min-height: 118px; grid-template-rows: 16px repeat(3, 18px); align-content: start; gap: 5px; padding: 9px; text-align: left }
+.day-date-line { display: flex; min-width: 0; min-height: 16px; align-items: flex-start; justify-self: stretch; gap: 4px; margin: 0 }
+.month-marker { display: inline; flex: 0 0 auto }
+.day time { display: block; min-width: 0; overflow: hidden }
+.resource-row { display: grid; min-width: 0; min-height: 18px; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px; align-items: center; margin: 0 }
+.resource-row b { overflow-wrap: anywhere }
+.range-title { overflow-wrap: anywhere }
+.resource-row small { font-size: 10px }
+.day-detail { margin: 14px 20px 0; padding: 14px; border-radius: 8px }
+.day-detail p { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 12px }
+.explanation { margin: 12px 20px 0 }
+.trend { margin: 0 20px }
+.trend > .explanation, .trend > .report-state, .trend > .point-detail { margin-left: 0; margin-right: 0 }
+.trend svg { display: block; width: 100%; margin-top: 16px; border-radius: 8px }
+.trend-plot { position: relative; margin-top: 16px }
+.trend > .legend { margin: 14px 0 0 }
+.trend-plot svg { margin-top: 0 }
+.point-tooltip { position: absolute; z-index: 2; width: 220px; max-width: 100%; padding: 12px; border-radius: 12px; text-align: left }
+.point-tooltip-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+.point-tooltip-heading b { font-size: 12px }
+.point-stock { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 }
+.point-stock span, .point-tooltip dt { font-size: 11px }
+.point-tooltip dl { display: grid; gap: 6px }
+.point-tooltip dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px }
+.point-tooltip dd { margin: 0 }
+.point-note { margin: 8px 0 0; font-size: 11px }
+.report-state, .point-detail { padding: 14px; margin: 12px 20px 0; font-size: 12px }
+@media (min-width: 761px) {
+  .calendar-content { margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 3px 10px rgba(73, 59, 44, .05) }
+  .calendar-content::after { content: ''; display: block; height: 16px; background: var(--cream) }
+  .weekdays { background: var(--cream) }
+  .weekdays span { padding: 11px 8px; font-family: var(--font-s); font-weight: 900 }
+  .weekdays span:first-child, .weekdays span:last-child { color: var(--accent-strong) }
+  .calendar { overflow: hidden; border: 0; border-block: 1px solid var(--line); border-radius: 0; background: var(--surface) }
+  .day { position: relative; height: 108px; min-height: 108px; grid-template-rows: 18px repeat(3, 18px); gap: 3px; padding: 12px 14px }
+  .day:nth-child(7n) { border-right: 0 }
+  .day:nth-last-child(-n + 7) { border-bottom: 0 }
+  .day.blank { background: color-mix(in srgb, var(--cream) 50%, var(--surface)) }
+  .day[aria-pressed=true] { background: color-mix(in srgb, var(--yellow) 16%, var(--surface)); box-shadow: none }
+  .day:not(:disabled):hover { box-shadow: none }
+  .day:focus-visible { outline-offset: -3px }
+}
+@media (min-width: 761px) and (hover: hover) {
+  .day:not(:disabled):hover { background: color-mix(in srgb, var(--yellow) 10%, var(--surface)) }
+  .day[aria-pressed=true]:hover { background: color-mix(in srgb, var(--yellow) 22%, var(--surface)) }
+}
+@media (max-width: 1000px) { .resource-row { grid-template-columns: 18px minmax(0, 1fr) auto } } }
