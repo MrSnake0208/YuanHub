@@ -117,3 +117,31 @@ it('account switch and replacement generation discard old page positions and dri
   handle.setReviewView('plan'); await settle(); expect(list().scrollTop).toBe(0)
   expect(root.querySelector('#view-mode-toggle').textContent).not.toBe('返回名称汇总')
 })
+
+it.each([
+  ['bag', 'arrow'], ['bag', 'keyboard'], ['plan', 'arrow'], ['plan', 'keyboard']
+])('%s: %s undo/redo restores the saved drill navigation and positions', async (view, control) => {
+  await setup(view)
+  list().scrollTop = 430; pageY = 510
+  drill('主星|武曲'); await settle()
+  list().scrollTop = 25; pageY = 80
+  if (view === 'plan') root.querySelector('.growth-route-list').scrollTop = 370
+  const history = async direction => {
+    if (control === 'arrow') root.querySelector(direction === 'undo' ? '#undo-workspace' : '#redo-workspace').click()
+    else {
+      root.querySelector('#view-mode-toggle').focus({ preventScroll: true })
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: direction === 'undo' ? 'z' : 'y', ctrlKey: true, bubbles: true, cancelable: true }))
+    }
+    await settle()
+  }
+  await history('undo')
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('名称汇总')
+  expect(root.querySelector('.summary-row.is-selected')?.dataset.summaryGroupKey).toBe('主星|武曲')
+  expect(list().scrollTop).toBe(430); expect(pageY).toBe(510)
+  if (view === 'plan') expect(root.querySelector('.growth-route-list').scrollTop).toBe(370)
+  await history('redo')
+  expect(root.querySelector('#view-mode-toggle').textContent).toBe('返回名称汇总')
+  expect(list().scrollTop).toBe(25); expect(pageY).toBe(80)
+  await history('undo')
+  expect(list().scrollTop).toBe(430); expect(pageY).toBe(510)
+})
