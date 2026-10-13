@@ -41,7 +41,7 @@
       <section>
         <div class="wrap">
           <div class="tool-summary" aria-label="星石概览">
-            <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
+            <template v-if="productReady"><span>当前背包 <b>{{ summary.currentCount }}</b> 颗</span><span v-if="summary.planInheritancePending">旧养成计划待继承</span><span v-else>养成计划 <b>{{ summary.planCount }}</b> 颗</span></template>
             <span v-else role="status">正在准备当前账号的星石数据…</span>
             <span v-if="activeTab === 'import'" class="star-privacy-note" title="截图在本机识别与保存；登录后同步背包数据。">本机识别与保存</span>
             <span v-if="cloudSyncMessage && !cloudSyncError && !cloudNeedsRetry && !cloudRetryBusy" class="star-sync-meta" role="status"
@@ -144,7 +144,7 @@
           </div>
           <div id="product-root" ref="mountRoot" :role="activeTab === 'review' ? 'tabpanel' : 'region'" :aria-labelledby="activeTab === 'review' ? 'star-tab-' + starReviewView : undefined" :aria-label="activeTab === 'import' ? '截图识别' : undefined" tabindex="0" v-show="productReady" :class="{ 'is-plan-view': starReviewView === 'plan', 'is-bag-view': starReviewView === 'bag', 'filters-open': starFiltersOpen, 'is-empty-view': activeTab === 'review' && !summary.currentCount && !starBrowseEmpty && !cloudSyncError }"></div>
           <RecognitionExampleModal :items="recognitionTutorialExamples[helpExampleKind] || []" @close="helpExampleKind = null" />
-          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
+          <RecognitionTutorial v-if="TUTORIALS_ENABLED" :open="recognitionTutorialOpen" :replay-id="recognitionTutorialReplayId" :root="mountRoot" :mode="tutorialMode" :plan-switch-blocked="summary.planInheritancePending || summary.planInheritanceOpen || cloudWriteBusy || growthBottlePending || !productReady || activeTab !== 'review' || starReviewView !== 'plan'" @step-change="revealTutorialStep" @close="dismissRecognitionTutorial" />
           <p v-if="!productReady && !mountError" class="yuanstar-mount-loading" role="status">
             {{ accountError && !mountBusy ? '当前账号的星石数据尚未就绪。' : '正在加载星石工作区…' }}
             <button v-if="accountError && !mountBusy" type="button" class="star-sync-retry" @click="syncHostAccount().catch(() => {})">重新加载当前账号</button>
@@ -226,7 +226,8 @@ const activeTab = usePersistedTab(
   "review",
   ["import", "review"],
 );
-const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢" });
+const summary = ref({ currentCount: 0, planCount: 0, gameVersion: "如鸢", planInheritancePending: false, planInheritanceOpen: false });
+watch(() => summary.value.planInheritancePending || summary.value.planInheritanceOpen, blocked => { if (blocked) recognitionTutorialOpen.value = false; });
 const starReviewView = ref('bag');
 const growthBottlePending = ref(false);
 function growthBottleWriter(owner) {
@@ -283,7 +284,7 @@ function replayBagTutorial() {
   openTutorial("bag");
 }
 function openTutorial(mode) {
-  if (!TUTORIALS_ENABLED || !productReady.value) return;
+  if (!TUTORIALS_ENABLED || !productReady.value || summary.value.planInheritancePending || summary.value.planInheritanceOpen) return;
   if (recognitionTutorialOpen.value || emptyBagTutorialOpen.value) dismissRecognitionTutorial();
   tutorialMode.value = mode;
   recognitionTutorialOwnerKey = tutorialStorageKey(auth.isLoggedIn ? auth.userInfo?.id : null, mode);
@@ -312,7 +313,7 @@ function dismissRecognitionTutorial() {
   emptyBagTutorialOpen.value = false;
 }
 async function checkRecognitionTutorial() {
-  if (!TUTORIALS_ENABLED) return;
+  if (!TUTORIALS_ENABLED || summary.value.planInheritancePending || summary.value.planInheritanceOpen) return;
   const sequence = ++tutorialCheckSequence;
   if (!productReady.value || !tutorialAccountReady.value || accountsLoading.value || accountError.value ||
       (auth.isLoggedIn && (!auth.userInfo?.id || !selectedHostAccount() || !tutorialCloudReady.value))) return;
@@ -813,9 +814,11 @@ async function mountProduct() {
       hostAccount: initialHostAccount,
       onBusinessStateCommitted: function (event) { starCloud.committed(event); },
       onCaptureCommitted: function (event) { return captureHost.onCaptureCommitted(event); },
-      onOcrRebuild: async function (snapshot, recoveryPointId) {
+      onApplyRecoveredPlan: function (snapshot, scope) { return starCloud.applyRecoveredPlan(snapshot, scope); },
+      getOcrRebuildScope: function () { return starCloud.ocrRebuildScope(); },
+      onOcrRebuild: async function (snapshot, recoveryPointId, scope) {
         const owner = bagTutorialOwner(), context = starContextVersion;
-        const result = await starCloud.rebuildOcr(snapshot, recoveryPointId);
+        const result = await starCloud.rebuildOcr(snapshot, recoveryPointId, scope);
         // Observe the existing successful OCR handoff. The tour also waits for the persisted review DOM.
         if (TUTORIALS_ENABLED && !unmounted && context === starContextVersion && owner === bagTutorialOwner()) bagTutorialGate.ocrCompleted(owner);
         return result;
@@ -829,6 +832,9 @@ async function mountProduct() {
       },
       onActiveTabChange: function (tab) {
         activeTab.value = tab;
+      },
+      onReviewViewChange: function (view) {
+        starReviewView.value = view;
       },
     });
     if (unmounted) {

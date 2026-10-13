@@ -317,7 +317,7 @@ it.each(['empty', 'failed-ocr', 'json', 'local-restore', 'unpersisted-review', '
   if (source.startsWith('after-ocr-')) await options.onOcrRebuild(emptySnapshot, null)
   if (source === 'failed-ocr') {
     rebuildStarState.mockRejectedValueOnce(Error('save failed'))
-    await expect(options.onOcrRebuild(emptySnapshot, null)).rejects.toThrow('save failed')
+    await expect(options.onOcrRebuild(emptySnapshot, null)).rejects.toThrow('原识别请求结果不确定')
   } else if (source === 'json' || source === 'after-ocr-json') await options.onReplacementImport(emptySnapshot)
   else if (source === 'local-restore' || source === 'after-ocr-local-restore') await options.onRestoreLocalPoint(emptySnapshot)
   else if (source === 'after-ocr-history-restore') {

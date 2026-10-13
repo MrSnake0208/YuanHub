@@ -446,3 +446,15 @@ provenance 无泄漏，extra footer OCR = 0；structured 总耗时约 276.2s，�
 - `node node_modules/vitest/vitest.mjs run behavior/embedProduct.spec.js behavior/starRecoveryUx.spec.js`：16 / 16 通过。
 - `node --test test/yuanstarEmbedProvenance.test.js test/starCloudStatus.test.js test/starCaptureHostWiring.test.js`：8 / 8 通过，含 provenance 校验。
 - 两仓 `git diff --check` 通过；只提交 YuanHub 当前阶段的 8 个文件，不 push。
+
+## OCR 旧计划延后继承
+
+该阶段 embed 来自 fix/star-ocr-plan-inheritance 的已提交干净源码 928dda73193055d967373bb37b1b3402ea0897e7。OCR 先保存空计划的新背包与证据，旧计划来源保存在账号本地恢复点及待继承工作流；核对背包后进入计划视图，读取最新库存进行组级预览，确认只 CAS PATCH 计划，取消不放弃来源。支持同浏览器刷新，跨设备的云端完整旧计划提取仍未支持。
+
+正式同步脚本只允许单个 browser-vision-worker 哈希文件名替换，先拷贝并校验全部新资源，再删除该明确的旧 worker；其他资源集合变化仍拒绝。manifest 和完整产物集合对应同一源码提交。
+
+## 2026-10-13：OCR 工作区收口与精简继承弹窗
+
+当前正式来源为 fix/star-ocr-plan-inheritance 的本地源码提交 07a4b015d72f1272ee1d6b1360a10167360773a0。从干净已提交来源正式 build:embed 后，使用既有同步脚本更新完整12项并核对字节/SHA-256；worker仍为 browser-vision-worker-DebJzGkA.js。未手改生成物。
+
+修复业务快照与CAS元数据混比造成的假失败，保留权威回读与版本校验。正常 OCR 完整保存后立即切到 bag 并展开核对；持续本地失败保留草稿、单独报告恢复状态，不重复 rebuild。待继承只在危险操作时阻断，计划页才自动预览。弹窗按旧背包、新背包、旧计划、新计划精简，宽屏双列、手机单列，并与页面共用柔和下拉的实现和样式。源码详细记录见其 docs/ocr-workspace-handoff-and-inheritance-ui-review.md。
