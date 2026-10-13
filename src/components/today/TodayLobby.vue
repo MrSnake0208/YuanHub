@@ -136,14 +136,6 @@ onBeforeUnmount(() => {
 .lobby-save-notice { margin-top: 4px; color: var(--rouge); font-size: 12px; line-height: 1.6; }
 .lobby-portrait { position: absolute; z-index: 0; right: -8px; bottom: 0; width: calc(42% + 8px); height: 164px; overflow: hidden; pointer-events: none; }
 .lobby-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 65% 0; }
-@supports (mask-composite: intersect) or (-webkit-mask-composite: source-in) {
-  .lobby-portrait img {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent), linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
-    mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent), linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
-  }
-}
 .lobby-art-error { padding: 50px 8px; color: var(--ink-60); font-size: 12px; line-height: 1.8; text-align: center; }
 .lobby-context { grid-area: context; min-width: 0; max-width: 100%; }
 .lobby-actions { grid-area: actions; }
