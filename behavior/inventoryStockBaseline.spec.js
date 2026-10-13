@@ -10,6 +10,7 @@ import { activeAccount } from '../src/store/activeAccount.js'
 import { auth } from '../src/store/auth.js'
 import { dialog } from '../src/utils/dialog.js'
 import { subscribeAccountEvents } from '../src/store/accountEvents.js'
+import { installViewport } from '../test-support/viewport.js'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -162,6 +163,7 @@ it('取消已确认盘点需要确认丢弃，拒绝留草稿，同意后不写�
 })
 
 it('失败保留确认与草稿，重复点击只发一笔，重试成功后退出编辑', async () => {
+  const viewport = installViewport(390)
   const attempt = pending()
   inventoryApi.importInventory.mockReturnValueOnce(attempt.promise)
   const wrapper = render()
@@ -171,6 +173,12 @@ it('失败保留确认与草稿，重复点击只发一笔，重试成功后退�
   await save(wrapper).trigger('click')
   expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
   expect(wrapper.get('.stock-count-input').element.disabled).toBe(true)
+  const reads = inventoryApi.getCurrent.mock.calls.length
+  for (const width of [768, 1440, 320, 390]) viewport.resize(width)
+  await flushPromises()
+  expect(confirmation(wrapper).element.checked).toBe(true)
+  expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(reads)
+  expect(inventoryApi.importInventory).toHaveBeenCalledTimes(1)
   attempt.reject(new Error('保存暂时失败'))
   await flushPromises()
   expect(wrapper.get('.stock-edit-error').text()).toContain('保存暂时失败')
@@ -604,6 +612,7 @@ it('历史只保留报告入口，关闭回到报告按钮，统计空态报告�
 })
 
 it('库存草稿时奖励禁用；奖励草稿关闭与切视图后保留，账号切换仍需确认', async () => {
+  const viewport = installViewport(390)
   inventoryApi.getCurrent.mockResolvedValue(fullStock())
   const wrapper = render({ attachTo: document.body }, true)
   await enterStockEditor(wrapper)
@@ -613,6 +622,15 @@ it('库存草稿时奖励禁用；奖励草稿关闭与切视图后保留，账�
   await wrapper.get('.manifest-edit-actions button').trigger('click'); await flushPromises()
   await wrapper.get('.reward-entry').trigger('click'); await flushPromises()
   document.querySelector('.reward-tile[aria-label^="添加白金币"]').click(); await flushPromises()
+  const historyReads = inventoryApi.listRecords.mock.calls.length
+  const currentReads = inventoryApi.getCurrent.mock.calls.length
+  for (const width of [768, 1440, 640, 641, 1080, 1081, 320, 390]) viewport.resize(width)
+  await flushPromises()
+  expect(document.querySelectorAll('.reward-workspace')).toHaveLength(1)
+  expect(document.querySelector('.basket-list li').textContent).toContain('白金币')
+  expect(inventoryApi.listRecords).toHaveBeenCalledTimes(historyReads)
+  expect(inventoryApi.getCurrent).toHaveBeenCalledTimes(currentReads)
+  expect(inventoryApi.importInventory).not.toHaveBeenCalled()
   await closeReward()
   dialog.confirm.mockResolvedValueOnce(false)
   expect(await wrapper.findComponent({ name: 'DataAccountContextBar' }).props('beforeSwitch')()).toBe(false)
