@@ -13,6 +13,8 @@ import InventoryRecordsWorkspace from '../src/components/inventory/InventoryReco
 import RewardEntryWorkspace from '../src/components/inventory/RewardEntryWorkspace.vue'
 import ResourceBalanceReport from '../src/components/inventory/ResourceBalanceReport.vue'
 import AcquiredPeriodReport from '../src/components/inventory/AcquiredPeriodReport.vue'
+import InventoryLayout from '../src/components/inventory/InventoryLayout.vue'
+import InventoryWorkspaceTabs from '../src/components/inventory/InventoryWorkspaceTabs.vue'
 
 vi.mock('../src/store/auth.js', async () => {
   const { reactive } = await import('vue')
@@ -117,6 +119,36 @@ it('从清单进入历史才读取，加载中禁用动作且重复触发不重�
   expect(history(wrapper).get('.record').text()).toContain('白金币+5')
   expect(filter(wrapper, '全部').attributes('aria-pressed')).toBe('true')
   expect(inventoryApi.importInventory).not.toHaveBeenCalled()
+})
+
+it('真实壳层与工作区导航保留手动键盘激活，跨壳层断点不重建或发请求', async () => {
+  const wrapper = render(); document.body.append(wrapper.element)
+  await flushPromises()
+  const layout = wrapper.getComponent(InventoryLayout).vm.$
+  const navigation = wrapper.getComponent(InventoryWorkspaceTabs).vm.$
+  const current = wrapper.get('#inventory-tab-records')
+  const acquired = wrapper.get('#inventory-tab-acquired')
+  current.element.focus()
+  await current.trigger('keydown', { key: 'ArrowLeft' })
+  expect(document.activeElement).toBe(acquired.element)
+  expect(current.attributes('aria-selected')).toBe('true')
+  expect(acquired.attributes('aria-selected')).toBe('false')
+  expect(inventoryApi.getAcquired).not.toHaveBeenCalled()
+  const reads = [inventoryApi.listRecords.mock.calls.length, inventoryApi.getCurrent.mock.calls.length]
+  for (const next of [640, 641, 1080, 1081, 390, 1440]) {
+    viewport.resize(next); await flushPromises()
+    expect(wrapper.getComponent(InventoryLayout).vm.$).toBe(layout)
+    expect(wrapper.getComponent(InventoryWorkspaceTabs).vm.$).toBe(navigation)
+    expect(document.activeElement).toBe(acquired.element)
+    expect(wrapper.findAll('main#main-content')).toHaveLength(1)
+    expect(wrapper.findAll('[role="tablist"][aria-label="库存工作区"]')).toHaveLength(1)
+    expect([inventoryApi.listRecords.mock.calls.length, inventoryApi.getCurrent.mock.calls.length]).toEqual(reads)
+  }
+  wrapper.get('main').element.setAttribute('tabindex', '-1')
+  wrapper.get('main').element.focus()
+  expect(current.element.tabIndex).toBe(0)
+  expect(acquired.element.tabIndex).toBe(-1)
+  expect(inventoryApi.getAcquired).not.toHaveBeenCalled()
 })
 
 it('筛选全部/道具/心纸重置游标，同值不读取，分页追加且刷新替换', async () => {

@@ -1,8 +1,5 @@
 <template>
-  <div class="page-inventory">
-    <IslandSidebar />
-
-    <main id="main-content" class="inventory-main">
+  <InventoryLayout>
       <CompactToolHeader title="背包库存" description="查看材料与心纸，掌握库存余量">
         <template #account>
           <DataAccountContextBar compact :accounts="accounts" :account-id="accountId" :game="agentGameFilter"
@@ -77,56 +74,10 @@
             @export="doExport"
           />
 
-          <!-- 页内工作区导航：共享样式保持普通文档流。 -->
-          <div
+          <InventoryWorkspaceTabs
             v-show="!inventoryPromptTitle || inventoryBrowseCatalog || editingStock"
-            class="inventory-tabs tool-workspace-tabs"
-            data-tour="inventory-workspace"
-            role="tablist"
-            @keydown="onWorkspaceTabKeydown"
-            @focusin="onWorkspaceTabFocus" @focusout="onWorkspaceTabFocus"
-            aria-label="库存工作区"
-            v-reveal
-          >
-            <button
-              type="button"
-              role="tab"
-              id="inventory-tab-manifest"
-              aria-controls="inventory-panel-manifest"
-              :tabindex="activeTab === 'manifest' ? 0 : -1"
-              :aria-selected="activeTab === 'manifest'"
-              :class="{ on: activeTab === 'manifest' }"
-              @click="setTab('manifest')"
-            >
-              <Layers3 :size="17" aria-hidden="true" /><span>库存清单</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="inventory-tab-acquired"
-              aria-controls="inventory-panel-acquired"
-              :tabindex="activeTab === 'acquired' ? 0 : -1"
-              :aria-selected="activeTab === 'acquired'"
-              :class="{ on: activeTab === 'acquired' }"
-              @click="setTab('acquired')"
-            >
-              <CalendarDays :size="17" aria-hidden="true" /><span
-                >统计报告</span
-              >
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="inventory-tab-records"
-              aria-controls="inventory-panel-records"
-              :tabindex="activeTab === 'records' ? 0 : -1"
-              :aria-selected="activeTab === 'records'"
-              :class="{ on: activeTab === 'records' }"
-              @click="setTab('records')"
-            >
-              <ListFilter :size="17" aria-hidden="true" /><span>操作历史</span>
-            </button>
-          </div>
+            :active-tab="activeTab" @select="setTab" v-reveal
+          />
 
           <!-- 导入档案 -->
           <div v-if="showArchive && !editingStock && showImport" class="import-box" v-reveal>
@@ -1638,22 +1589,22 @@
         </div>
       </section>
 
-      <SiteFooter>
-        <template #big>广陵库房<br /><span>清点 · 归档 · 溯源</span></template>
-        <template #fine>
-          <b>YuanHub</b> · 库存与奖励台账<br />
-          MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
-          数据仅供参考，请以游戏内实际库存为准
-        </template>
-      </SiteFooter>
-    </main>
-  </div>
+      <template #footer>
+        <SiteFooter>
+          <template #big>广陵库房<br /><span>清点 · 归档 · 溯源</span></template>
+          <template #fine>
+            <b>YuanHub</b> · 库存与奖励台账<br />
+            MAA × 鸢BWiki × 辟雍学府 × YuanAssist 共同搭建<br />
+            数据仅供参考，请以游戏内实际库存为准
+          </template>
+        </SiteFooter>
+      </template>
+  </InventoryLayout>
 </template>
 
 <script setup>
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
-import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
 import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
@@ -1694,7 +1645,8 @@ import InventoryItemName from "../../components/inventory/InventoryItemName.vue"
 import InventoryRecordsWorkspace from '../../components/inventory/InventoryRecordsWorkspace.vue';
 import InventoryRecordsView from "../../components/inventory/InventoryRecordsView.vue";
 import RewardEntryWorkspace from "../../components/inventory/RewardEntryWorkspace.vue";
-import IslandSidebar from "../../components/IslandSidebar.vue";
+import InventoryLayout from "../../components/inventory/InventoryLayout.vue";
+import InventoryWorkspaceTabs from "../../components/inventory/InventoryWorkspaceTabs.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
 import {
   getCatalog,
@@ -7030,17 +6982,6 @@ onBeforeUnmount(function () {
   flex: none;
   accent-color: var(--tea);
 }
-@media (max-width: 1080px) {
-  .inventory-main {
-    padding-bottom: 0;
-  }
-  .inventory-main > section {
-    padding-bottom: 40px;
-  }
-  .page-inventory :deep(.footer) {
-    padding-bottom: calc(32px + 50px + env(safe-area-inset-bottom));
-  }
-}
 
 @media (min-width: 1081px) {
   .manifest-toolbar {
@@ -7060,9 +7001,6 @@ onBeforeUnmount(function () {
 }
 
 @media (max-width: 640px) {
-  .inventory-main > section {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  }
   .archive-toggle {
     width: 100%;
     min-height: 44px;
@@ -7892,8 +7830,6 @@ onBeforeUnmount(function () {
 @media (max-width: 360px) {
   .report-book-switch.acquired-type-switch > button { min-height: 32px; padding-inline: 6px; font-size: 10px }
 }
-
-.inventory-main > section { padding-top: 0; }
 .panel { margin-top: 12px; }
 .inventory-freshness { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 0 16px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 .inventory-freshness-copy { display: grid; gap: 4px; color: var(--tea); font: 500 13px/1.5 var(--font-b); min-width: 0; }

@@ -1,0 +1,5 @@
+/* 对齐现有站点侧栏断点，独立声明主区与内容空间。 */
+@media not all and (max-width: 1080px) {
+  .inventory-main { margin-left: 292px; min-height: 100dvh; }
+  .inventory-main > :slotted(section) { padding: 0 0 8px; }
+}
